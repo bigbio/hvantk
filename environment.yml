@@ -1,0 +1,10 @@
+name: pyvatk-env
+channels:
+  - defaults
+dependencies:
+  - python==3.10.0
+  - pip
+  - pip:
+      - click~=8.1.7
+      - setuptools~=68.2.0
+      - hail~=0.2.120
