@@ -1,12 +1,23 @@
+"""
+A module to create Hail Tables from different raw data files.
+The tables are used to annotate variants and genes with different features.
+
+"""
+
 import hail as hl
 
-from pyvatk.constants import RAW_RESOURCE_PATHS, DATA_PATH
-
-output_dir_default = f'{DATA_PATH}/data/ht'
-raw_resource_paths = RAW_RESOURCE_PATHS
+from pyvatk.settings import RAW_DATA_PATHS
 
 
-def update_gnomad_constraint_metrics_tb() -> hl.Table:
+raw_resource_paths = RAW_DATA_PATHS
+
+
+def create_gnomad_constraint_gene_metrics_tb() -> hl.Table:
+    """
+    Create a Hail Table with gene-level constraint metrics from gnomad.
+
+    :return: Hail Table
+    """
     gnomad_path = raw_resource_paths.get('gnomad_metrics_path')
     gnomad_tb = hl.import_table(paths=gnomad_path,
                                 impute=True,
@@ -19,7 +30,12 @@ def update_gnomad_constraint_metrics_tb() -> hl.Table:
     return gnomad_tb
 
 
-def update_interactome_tb() -> hl.Table:
+def create_interactome_tb() -> hl.Table:
+    """
+    Create a Hail Table with protein-protein interaction data.
+
+    :return: Hail Table
+    """
     interactome_bed = raw_resource_paths.get('interactome_path')
     ppi_tb = (hl.import_bed(path=interactome_bed,
                             skip_invalid_intervals=True,
@@ -31,7 +47,12 @@ def update_interactome_tb() -> hl.Table:
     return ppi_tb
 
 
-def update_gene_ensembl_ann_tb() -> hl.Table:
+def create_gene_ensembl_ann_tb() -> hl.Table:
+    """
+    Create a Hail Table with gene and transcript ensembl IDs.
+
+    :return: Hail Table
+    """
     gene_ann_path = raw_resource_paths.get('gene_ann_path')
     gene_tb = (hl.import_table(paths=gene_ann_path,
                                impute=True,
@@ -48,7 +69,12 @@ def update_gene_ensembl_ann_tb() -> hl.Table:
     return gene_tb
 
 
-def update_clinvar_tb() -> hl.Table:
+def create_clinvar_tb() -> hl.Table:
+    """
+    Create a Hail Table with clinvar variants.
+
+    :return: Hail Table
+    """
     clinvar_path = raw_resource_paths.get('clinvar_path')
     recode = {f"{i}": f"chr{i}" for i in (list(range(1, 23)) + ['X', 'Y'])}
     clinvar_tb = (hl.import_vcf(path=clinvar_path,
@@ -64,7 +90,12 @@ def update_clinvar_tb() -> hl.Table:
     return clinvar_tb
 
 
-def update_gevir_tb() -> hl.Table:
+def create_gevir_tb() -> hl.Table:
+    """
+    Create a Hail Table with gene-level constraint metrics from GeVir.
+
+    :return: Hail Table
+    """
     gevir_path = raw_resource_paths.get('gevir_path')
 
     gevir_tb = (hl.import_table(paths=gevir_path,
@@ -76,7 +107,12 @@ def update_gevir_tb() -> hl.Table:
     return gevir_tb
 
 
-def update_scell_deg_tb() -> hl.Table:
+def create_scell_deg_tb() -> hl.Table:
+    """
+    Create a Hail Table with single-cell differentially expressed genes.
+
+    :return: Hail Table
+    """
     scell_path = raw_resource_paths.get('scell_heart_path')
 
     sdeg_tb = (hl.import_table(paths=scell_path,
@@ -92,7 +128,13 @@ def update_scell_deg_tb() -> hl.Table:
     return sdeg_tb
 
 
-def update_hca_tb() -> hl.Table:
+def create_hca_tb() -> hl.Table:
+    """
+    Create a Hail Table with gene expression levels from Human Heart Cell Atlas.
+
+    :return: Hail Table
+    """
+
     hca_path = raw_resource_paths.get('scell_hca_path')
 
     hca_tb = hl.import_table(paths=hca_path,
@@ -137,7 +179,13 @@ def update_hca_tb() -> hl.Table:
     return hca_tb
 
 
-def update_rnaseq_tb() -> hl.Table:
+def create_rnaseq_tb() -> hl.Table:
+    """
+    Create a Hail Table with gene expression levels from human RNA-seq data (ArrayExpression accession: E-MTAB-6814)
+
+    :return: Hail Table
+    """
+
     rna_table = raw_resource_paths.get('rnaseq_path')
 
     tb = hl.import_table(paths=rna_table,
