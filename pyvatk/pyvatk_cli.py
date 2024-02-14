@@ -1,6 +1,6 @@
 import click
 
-from pyvatk.constants import CONTEXT_SETTINGS
+from pyvatk.settings import CONTEXT_SETTINGS
 from pyvatk.cli.make_annotation_tables_cli import make_annotation_tables_cli
 
 

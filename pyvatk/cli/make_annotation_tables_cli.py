@@ -97,8 +97,10 @@ def make_annotation_tables_from_raw_sources(raw_data_path: str,
 
 
 @click.command('mktables', short_help='Create annotation tables from raw sources.')
-@click.option('--raw_data_path', default=RAW_DATA_PATH, type=str,
+@click.option('--raw_data_path', default=RAW_DATA_PATH, type=str, required=True,
               help='Path to raw data directory.')
+@click.option('--output_dir', default=output_dir_default, type=str, required=True,
+              help='Output directory to copy created Hail tables')
 @click.option('--ccr',
               is_flag=True, help='Create/update CCR table from source.')
 @click.option('--interactome',
@@ -117,14 +119,20 @@ def make_annotation_tables_from_raw_sources(raw_data_path: str,
               is_flag=True, help='Create/update gene annotation table from Ensembl.')
 @click.option('--gnomad_metrics',
               is_flag=True, help='Create/update transcript-specific constraint metrics from gnomad database')
-@click.option('--output_dir',
-              default=output_dir_default, type=str, help='Output directory to copy created Hail tables')
 @click.option('--default_ref_genome', default='GRCh38', type=str,
               help='Default reference genome to start Hail. Only GRCh38 is supported for now.')
 @click.pass_context
-def make_annotation_tables_cli(ctx, raw_data_path, ccr, interactome, temporal_rnaseq, clinvar, gevir, scell_heart_deg,
-                               hca_rnaseq, gene_ensembl, gnomad_metrics, output_dir, default_ref_genome):
-    make_annotation_tables_from_raw_sources(ccr,
+def make_annotation_tables_cli(ctx, raw_data_path,  output_dir, ccr, interactome, temporal_rnaseq, clinvar, gevir,
+                               scell_heart_deg, hca_rnaseq, gene_ensembl, gnomad_metrics, default_ref_genome):
+
+    # exit if no flat parameter is set
+    if not any([ccr, interactome, temporal_rnaseq, clinvar,
+                gevir, scell_heart_deg, hca_rnaseq, gene_ensembl, gnomad_metrics]):
+        click.echo('No flag set. Please set at least one flag to create/update a table.')
+        ctx.abort()
+
+    make_annotation_tables_from_raw_sources(raw_data_path,
+                                            ccr,
                                             interactome,
                                             temporal_rnaseq,
                                             clinvar,
