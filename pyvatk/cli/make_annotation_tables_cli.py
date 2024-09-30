@@ -25,7 +25,7 @@ def cli():
 
 
 def make_annotation_tables_from_raw_sources(raw_data_path: str,
-                                            ccr: bool = False,
+                                            ccr: bool = False,  # TODO: implement CCR table
                                             interactome: bool = False,
                                             temporal_rnaseq: bool = False,
                                             clinvar: bool = False,
