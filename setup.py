@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(
-    name="pyvatk",
+    name="hvantk",
     version="0.1.0",
     description="A package for gene and variant annotation.",
     author="Enrique Audain & Rafiga Masmaliyeva",
@@ -20,7 +20,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'pyvatk=pyvatk.pyvatk_cli:pyvatk_main',
+            'hvantk=hvantk.pyvatk_cli:pyvatk_main',
         ],
     },
     classifiers=[

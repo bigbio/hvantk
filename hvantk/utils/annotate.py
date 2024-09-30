@@ -3,7 +3,7 @@
 
 import hail as hl
 
-from pyvatk.utils.dataset import (get_ccr_ht,
+from hvantk.utils.dataset import (get_ccr_ht,
                                   get_gevir_ht,
                                   get_gene_expression_ht,
                                   get_ppi_ht,
