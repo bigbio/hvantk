@@ -1,2 +1,2 @@
-# pyvatk
-Variant Annotator ToolKit
+# hvantk
+Hail variant annotation toolkit. 
