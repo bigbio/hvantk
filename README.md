@@ -1,5 +1,5 @@
 # hvantk
-Hail multiomics variant annotation toolkit. 
+Hail-based multiomics variant annotation toolkit. 
 
 # Things to do: 
 
