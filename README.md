@@ -10,3 +10,10 @@ Hail multiomics variant annotation toolkit.
 - Add a section about conversion from local files. including local mapping files of they are needed. 
 - Some small benchmarks with loom -> to the annotation tool in hail.
 
+Sources: 
+
+- Variants 
+- Bulk-RNA 
+- SC-RNA 
+- Proteomics
+
