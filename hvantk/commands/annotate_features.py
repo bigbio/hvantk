@@ -7,18 +7,18 @@ import sys
 
 import hail as hl
 
-from pyvatk.utils.annotate import (annotate_ccr,
-                                  annotate_gevir,
-                                  annotate_rnaseq_expression,
-                                  annotate_ppi,
-                                  annotate_gnomad_af,
-                                  annotate_ensembl_gene,
-                                  annotate_dbnsfp_scores,
-                                  annotate_gnomad_constraint_metrics,
-                                  annotate_degs,
-                                  annotate_variant_id,
-                                  annotate_clinvar_clnsig,
-                                  annotate_hca)
+from hvantk.utils.annotate import (annotate_ccr,
+                                   annotate_gevir,
+                                   annotate_rnaseq_expression,
+                                   annotate_ppi,
+                                   annotate_gnomad_af,
+                                   annotate_ensembl_gene,
+                                   annotate_dbnsfp_scores,
+                                   annotate_gnomad_constraint_metrics,
+                                   annotate_degs,
+                                   annotate_variant_id,
+                                   annotate_clinvar_clnsig,
+                                   annotate_hca)
 
 
 project_dir = None

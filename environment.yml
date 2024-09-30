@@ -1,4 +1,4 @@
-name: pyvatk-env
+name: hvantk-env
 channels:
   - defaults
 dependencies:

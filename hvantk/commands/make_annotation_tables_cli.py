@@ -5,8 +5,8 @@ Generate annotation tables from multiple (raw) sources
 
 import click
 
-from pyvatk.settings import CONTEXT_SETTINGS, RAW_DATA_PATH, set_raw_data_path
-from pyvatk.utils.make_tables import (create_interactome_tb,
+from hvantk.settings import CONTEXT_SETTINGS, RAW_DATA_PATH, set_raw_data_path
+from hvantk.utils.make_tables import (create_interactome_tb,
                                       create_rnaseq_tb,
                                       create_clinvar_tb,
                                       create_gevir_tb,

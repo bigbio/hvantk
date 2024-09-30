@@ -1,13 +1,13 @@
 import click
 
-from pyvatk.settings import CONTEXT_SETTINGS
-from pyvatk.cli.make_annotation_tables_cli import make_annotation_tables_cli
+from hvantk.settings import CONTEXT_SETTINGS
+from hvantk.commands.make_annotation_tables_cli import make_annotation_tables_cli
 
 
-# Main CLI entry point for the package (pyvatk)
+# Main CLI entry point for the package (hvantk)
 
 
-@click.group('pyvatk',
+@click.group('hvantk',
              help='A python package for gene and variant annotation.',
              context_settings=CONTEXT_SETTINGS)
 def cli():
@@ -17,10 +17,9 @@ def cli():
 
 cli.add_command(make_annotation_tables_cli)
 
-
-def pyvatk_main():
+def main():
     cli()
 
 
 if __name__ == '__main__':
-    pyvatk_main()
+    main()

@@ -6,7 +6,7 @@ The tables are used to annotate variants and genes with different features.
 
 import hail as hl
 
-from pyvatk.settings import RAW_DATA_PATHS
+from hvantk.settings import RAW_DATA_PATHS
 
 
 raw_resource_paths = RAW_DATA_PATHS
