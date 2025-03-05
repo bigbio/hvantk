@@ -6,10 +6,13 @@ from hvantk.utils.make_tables import (create_gnomad_constraint_gene_metrics_tb,
                                       create_gevir_tb,
                                       create_ensembl_gene_tb)
 
+# get the root directory of the project
+PROJECT_DIR = Path(__file__).parent.parent
+
 
 def test_create_gnomad_constraint_gene_metrics_tb():
-    input_path = "../testdata/raw/gnomad/gnomad.v2.1.1.lof_metrics.by_gene.chr20.tsv.bgz"
-    output_path = '../testdata/hail_tables/gnomad/gnomad.v2.1.1.lof_metrics.by_gene.chr20.ht'
+    input_path =  PROJECT_DIR / "testdata/raw/gnomad/gnomad.v2.1.1.lof_metrics.by_gene.chr20.tsv.bgz"
+    output_path = PROJECT_DIR / "testdata/hail_tables/gnomad/gnomad.v2.1.1.lof_metrics.by_gene.chr20.ht"
     fields = ['oe_syn_upper', 'oe_mis_upper', 'oe_lof_upper']  # fields to select
     overwrite = True
     export_tsv = True
@@ -32,8 +35,8 @@ def test_create_gnomad_constraint_gene_metrics_tb():
 
 
 def test_create_interactome_tb():
-    input_path = "../testdata/raw/interactome/Interactome_INSIDER_hg38_stripped.chr20.bed.bgz"
-    output_path = "../testdata/hail_tables/interactome/Interactome_INSIDER_hg38_stripped.chr20.ht"
+    input_path = PROJECT_DIR / "testdata/raw/interactome/Interactome_INSIDER_hg38_stripped.chr20.bed.bgz"
+    output_path = PROJECT_DIR / "testdata/hail_tables/interactome/Interactome_INSIDER_hg38_stripped.chr20.ht"
     overwrite = True
     export_tsv = True
     reference_genome = 'GRCh38'
@@ -56,8 +59,8 @@ def test_create_interactome_tb():
 
 
 def test_create_clinvar_tb():
-    input_path = "../testdata/raw/clinvar/clinvar_20220403_chr20.vcf.bgz"
-    output_path = "../testdata/hail_tables/clinvar/clinvar_20220403_chr20.ht"
+    input_path = PROJECT_DIR / "testdata/raw/clinvar/clinvar_20220403_chr20.vcf.bgz"
+    output_path = PROJECT_DIR / "testdata/hail_tables/clinvar/clinvar_20220403_chr20.ht"
     overwrite = True
     export_tsv = True
 
@@ -78,8 +81,8 @@ def test_create_clinvar_tb():
 
 
 def test_create_gevir_tb():
-    input_path = "../testdata/raw/gevir/gevir_metrics_pmid31873297.tsv.bgz"
-    output_path = "../testdata/hail_tables/gevir/gevir_metrics_pmid31873297.ht"
+    input_path = PROJECT_DIR / "testdata/raw/gevir/gevir_metrics_pmid31873297.tsv.bgz"
+    output_path = PROJECT_DIR / "testdata/hail_tables/gevir/gevir_metrics_pmid31873297.ht"
     overwrite = True
     export_tsv = True
 
@@ -100,8 +103,8 @@ def test_create_gevir_tb():
 
 
 def test_create_ensembl_gene_tb():
-    input_path = "../testdata/raw/ensembl/ensembl_gene_biomart.tsv.bgz"
-    output_path = "../testdata/hail_tables/ensembl/ensembl_gene_biomart.ht"
+    input_path = PROJECT_DIR / "testdata/raw/ensembl/ensembl_gene_biomart.tsv.bgz"
+    output_path = PROJECT_DIR / "testdata/hail_tables/ensembl/ensembl_gene_biomart.ht"
     fields = None  # select all fields
     canonical = True
     overwrite = True
