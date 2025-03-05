@@ -7,12 +7,9 @@ import click
 
 from hvantk.settings import CONTEXT_SETTINGS, RAW_DATA_PATH, set_raw_data_path
 from hvantk.utils.make_tables import (create_interactome_tb,
-                                      create_rnaseq_tb,
+                                      # create_rnaseq_tb,
                                       create_clinvar_tb,
                                       create_gevir_tb,
-                                      create_scell_deg_tb,
-                                      create_hca_tb,
-                                      create_gene_ensembl_ann_tb,
                                       create_gnomad_constraint_gene_metrics_tb)
 
 output_dir_default = f'{RAW_DATA_PATH}/annotation_tables'
@@ -64,27 +61,6 @@ def make_annotation_tables_from_raw_sources(raw_data_path: str,
         gevir_tb = create_gevir_tb()
         gevir_tb.checkpoint(
             f'{output_dir}/gevir.metrics.ht',
-            overwrite=True
-        )
-
-    if scell_heart_deg:
-        deg_tb = create_scell_deg_tb()
-        deg_tb.checkpoint(
-            f'{output_dir}/scell.heart.degs.ht',
-            overwrite=True
-        )
-
-    if hca_rnaseq:
-        hca_tb = create_hca_tb()
-        hca_tb.checkpoint(
-            f'{output_dir}/hca.heart.ht',
-            overwrite=True
-        )
-
-    if gene_ensembl:
-        gene_tb = create_gene_ensembl_ann_tb()
-        gene_tb.checkpoint(
-            f'{output_dir}/gene.ann.ensembl.ht',
             overwrite=True
         )
 
