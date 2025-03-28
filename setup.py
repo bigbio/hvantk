@@ -13,14 +13,10 @@ setup(
     long_description_content_type="text/markdown",
     url="",  # TODO: Update github url
     packages=find_packages(),
-    install_requires=[
-        "click",
-        "setuptools",
-        "hail"
-    ],
+    install_requires=["click", "setuptools", "hail"],
     entry_points={
-        'console_scripts': [
-            'hvantk=hvantk.pyvatk_cli:pyvatk_main',
+        "console_scripts": [
+            "hvantk=hvantk.pyvatk_cli:pyvatk_main",
         ],
     },
     classifiers=[
@@ -29,5 +25,5 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: POSIX :: Linux",
     ],
-    python_requires='>=3.10.0',
+    python_requires=">=3.10.0",
 )

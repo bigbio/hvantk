@@ -4,7 +4,9 @@ from tqdm import tqdm
 import os.path as path
 
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 def download_file(url: str, out_dir: str, file_name: str):
     """
@@ -18,34 +20,38 @@ def download_file(url: str, out_dir: str, file_name: str):
     """
     # Validate file_name doesn't contain path traversal
     if path.isabs(file_name) or ".." in file_name:
-        raise ValueError(f"Invalid file_name: {file_name}. Must be a simple filename without path components.")
-    
+        raise ValueError(
+            f"Invalid file_name: {file_name}. Must be a simple filename without path components."
+        )
+
     os.makedirs(out_dir, exist_ok=True)
     local_path = os.path.join(out_dir, file_name)
     logger.info(f"Downloading {url} to {local_path}")
     try:
         response = requests.get(url, stream=True, timeout=30)  # Add timeout
         response.raise_for_status()  # Raises exception for 4XX/5XX responses
-        
-        total_size = int(response.headers.get('content-length', 0))
-        
+
+        total_size = int(response.headers.get("content-length", 0))
+
         # Optional: Add file size check
         max_size = 1024 * 1024 * 1024  # 1GB
         if total_size > max_size:
-            logger.warning(f"File is very large ({total_size/1024/1024:.1f} MB), exceeding recommended size of {max_size/1024/1024:.1f} MB")
-        
-        with open(local_path, 'wb') as f, tqdm(
-                desc=file_name,
-                total=total_size,
-                unit='B',
-                unit_scale=True,
-                unit_divisor=1024,
+            logger.warning(
+                f"File is very large ({total_size/1024/1024:.1f} MB), exceeding recommended size of {max_size/1024/1024:.1f} MB"
+            )
+
+        with open(local_path, "wb") as f, tqdm(
+            desc=file_name,
+            total=total_size,
+            unit="B",
+            unit_scale=True,
+            unit_divisor=1024,
         ) as bar:
             for chunk in response.iter_content(chunk_size=8192):
                 size = f.write(chunk)
                 bar.update(size)
         logger.info(f"Download completed: {local_path}")
-        
+
     except requests.exceptions.RequestException as e:
         # Clean up partial download if it exists
         if os.path.exists(local_path):
