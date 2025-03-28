@@ -63,10 +63,24 @@ class UCSCDataset:
         download_file(url=url_download, out_dir=out_dir, file_name=EXPRESSION_MATRIX_FILE_NAME)
 
 
-    def download_metadata(self, out_dir: str):
+    def download_metadata(self, out_dir: str) -> str:
+        """
+        Download the metadata file for this dataset.
+        
+        Args:
+            out_dir: Directory where the file will be saved
+            
+        Returns:
+            Path to the downloaded file
+            
+        Raises:
+            ValueError: If the download fails
+        """
         url_download = f"{UCSC_CELL_BROWSER_BASE_URL}/{self.name}/{METADATA_FILE_NAME}"
-        download_file(url=url_download, out_dir=out_dir, file_name=METADATA_FILE_NAME)
-
+        try:
+            return download_file(url=url_download, out_dir=out_dir, file_name=METADATA_FILE_NAME)
+        except Exception as e:
+            raise ValueError(f"Failed to download metadata for {self.name}: {str(e)}")
 
 @dataclass
 class UCSCDataSetCollection:
