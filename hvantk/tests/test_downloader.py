@@ -21,7 +21,7 @@ def temp_dir():
     shutil.rmtree(temp_dir)
 
 
-def test_download_expression_matrix(temp_dir, test_urls):
+def test_download_expression_matrix(temp_dir):
     """Test download expression matrix file from UCSC Cell Browser"""
     # Mock successful response for unit testing
     with patch('requests.get') as mock_get:
@@ -30,7 +30,7 @@ def test_download_expression_matrix(temp_dir, test_urls):
         mock_response.headers.get.return_value = '1024'  # Content length
         mock_response.iter_content.return_value = [b'test data']
 
-        download_file(test_urls["expression_matrix"], temp_dir, EXPRESSION_MATRIX_FILE_NAME)
+        download_file(url_expression_matrix, temp_dir, EXPRESSION_MATRIX_FILE_NAME)
 
         # Verify file exists
         expected_path = os.path.join(temp_dir, EXPRESSION_MATRIX_FILE_NAME)
