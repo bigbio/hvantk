@@ -59,6 +59,18 @@ class UCSCDataset:
                 f"{self.sampleCount} samples")
 
     def download_expression_matrix(self, out_dir: str):
+        """
+        Download the expression matrix file for this dataset.
+
+            Args:
+                out_dir: Directory where the file will be saved
+
+            Returns:
+                Path to the downloaded file
+
+            Raises:
+                ValueError: If the download fails
+        """
         url_download = f"{UCSC_CELL_BROWSER_BASE_URL}/{self.name}/{EXPRESSION_MATRIX_FILE_NAME}"
         download_file(url=url_download, out_dir=out_dir, file_name=EXPRESSION_MATRIX_FILE_NAME)
 
