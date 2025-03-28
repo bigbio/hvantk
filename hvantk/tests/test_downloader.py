@@ -41,12 +41,12 @@ def test_download_expression_matrix(temp_dir, test_urls):
             assert f.read() == b'test data'
 
 
-def test_download_metadata():
+def test_download_metadata(temp_dir):
     """
     Test download metadata file from UCSC Cell Browser
 
     :return: None
     """
-    download_file(url_metadata, "data", METADATA_FILE_NAME)
-    assert os.path.exists(f"data/{METADATA_FILE_NAME}")
+    download_file(url_metadata, temp_dir, METADATA_FILE_NAME)
+    assert os.path.exists(os.path.join(temp_dir, METADATA_FILE_NAME))
 
