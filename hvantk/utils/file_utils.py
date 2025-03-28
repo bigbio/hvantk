@@ -1,20 +1,10 @@
 import os
 import requests
 from tqdm import tqdm
-
-
-def download_file(url: str, out_dir: str, file_name: str):
-    """
-    Download a file from a URL to a local directory.
-
-    :param url: URL of the file to download
-    :param out_dir: Local directory to save the file
-    :param file_name: Name of the file to save
-
-    :return: None
-    """
-import os
 import os.path as path
+
+import logging
+logger = logging.getLogger(__name__)
 
 def download_file(url: str, out_dir: str, file_name: str):
     """
