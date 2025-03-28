@@ -8,14 +8,15 @@ dataset = "adultPancreas"
 url_expression_matrix = f"{UCSC_CELL_BROWSER_BASE_URL}/{dataset}/{EXPRESSION_MATRIX_FILE_NAME}"
 url_metadata = f"{UCSC_CELL_BROWSER_BASE_URL}/{dataset}/{METADATA_FILE_NAME}"
 
-def test_download_expression_matrix():
+def test_download_expression_matrix(tmp_path):
     """
     Test download expression matrix file from UCSC Cell Browser
 
     :return: None
     """
-    download_file(url_expression_matrix, "data", EXPRESSION_MATRIX_FILE_NAME)
-    assert os.path.exists(f"data/{EXPRESSION_MATRIX_FILE_NAME}")
+    out_dir = str(tmp_path / "data")
+    download_file(url_expression_matrix, out_dir, EXPRESSION_MATRIX_FILE_NAME)
+    assert os.path.exists(os.path.join(out_dir, EXPRESSION_MATRIX_FILE_NAME))
 
 
 def test_download_metadata():
