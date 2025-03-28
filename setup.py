@@ -7,8 +7,8 @@ setup(
     name="hvantk",
     version="0.1.0",
     description="A package for gene and variant annotation.",
-    author="Enrique Audain & Rafiga Masmaliyeva",
-    author_email="enrique.audain.martinez@uni-oldenburg.de",
+    author="",
+    author_email="enrique.audain@uol.de",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="",  # TODO: Update github url
