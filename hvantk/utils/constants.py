@@ -17,3 +17,8 @@ ENSEMBL_BIOMART_FIELDS = {
     'Gene Synonym': 'gene_synonym'
 }
 
+# UCSC Cell Browser base URL
+UCSC_CELL_BROWSER_BASE_URL = "https://cells.ucsc.edu"
+EXPRESSION_MATRIX_FILE_NAME = "exprMatrix.tsv.gz"
+METADATA_FILE_NAME = "meta.tsv"
+
