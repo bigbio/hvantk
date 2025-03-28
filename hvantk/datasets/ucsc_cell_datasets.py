@@ -78,18 +78,27 @@ class UCSCDataSetCollection:
 
     @classmethod
     def from_json(cls, json_path: str) -> 'UCSCDataSetCollection':
-        with open(json_path, 'r') as file:
-            data = json.load(file)
-
-        datasets = [UCSCDataset(**ds) for ds in data['datasets']]
-        return cls(
-            shortLabel=data['shortLabel'],
-            abstract=data['abstract'],
-            inDir=data['inDir'],
-            name=data['name'],
-            datasets=datasets
-        )
-
+        try:
+            with open(json_path, 'r') as file:
+                data = json.load(file)
+            
+            required_keys = ['shortLabel', 'abstract', 'inDir', 'name', 'datasets']
+            missing_keys = [key for key in required_keys if key not in data]
+            if missing_keys:
+                raise ValueError(f"Missing required keys in JSON: {', '.join(missing_keys)}")
+                
+            datasets = [UCSCDataset(**ds) for ds in data['datasets']]
+            return cls(
+                shortLabel=data['shortLabel'],
+                abstract=data['abstract'],
+                inDir=data['inDir'],
+                name=data['name'],
+                datasets=datasets
+            )
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON format: {str(e)}")
+        except OSError as e:
+            raise ValueError(f"Could not read file {json_path}: {str(e)}")
     def get_dataset_by_name(self, dataset_name: str) -> Optional[UCSCDataset]:
         for dataset in self.datasets:
             if dataset.name == dataset_name:
