@@ -20,6 +20,33 @@ class DatasetFacets:
 
 @dataclass
 class UCSCDataset:
+    """
+        Represents a single dataset from the UCSC Cell Browser.
+
+        This class encapsulates metadata about a UCSC cell dataset including its
+        identifier, facets (like organisms, diseases, etc.), and provides methods
+        to download the associated data files.
+
+        Attributes:
+            shortLabel: Short descriptive label for the dataset
+            name: Unique identifier for the dataset
+            md5: MD5 hash of the dataset
+            hasFiles: List of available file types
+            body_parts: List of associated body parts
+            organisms: List of organisms in the dataset
+            tags: List of tags categorizing the dataset
+            projects: List of projects associated with the dataset
+            diseases: List of diseases studied in the dataset
+            life_stages: List of life stages represented
+            domains: List of scientific domains
+            sources: List of data sources
+            assays: List of assay types
+            facets: Aggregated facets for filtering/categorization
+            sampleCount: Number of samples in the dataset
+            isCollection: Whether this is a collection of datasets
+            collectionCount: Number of collections (if applicable)
+            datasetCount: Number of datasets in this collection (if applicable)
+    """
     shortLabel: str
     name: str
     md5: str
@@ -53,10 +80,22 @@ class UCSCDataset:
             )
 
     def summary(self) -> str:
-        return (f"Dataset {self.name} ({self.shortLabel}): \n"
-                f"{len(self.body_parts)} body parts, \n"
-                f"{len(self.organisms)} organisms, \n"
-                f"{self.sampleCount} samples")
+        """
+            Returns a formatted summary of the dataset.
+
+            Returns:
+                str: A human-readable summary of dataset information
+        """
+        summary_lines = [
+                    f"Dataset: {self.name} ({self.shortLabel})",
+                    f"Sample count: {self.sampleCount or 'Unknown'}",
+                    f"Organisms: {', '.join(self.organisms) if self.organisms else 'None'}",
+                    f"Body parts: {', '.join(self.body_parts) if self.body_parts else 'None'}",
+                    f"Diseases: {', '.join(self.diseases) if self.diseases else 'None'}",
+                    f"Assays: {', '.join(self.assays) if self.assays else 'None'}"
+            ]
+
+        return "\n".join(summary_lines)
 
     def download_expression_matrix(self, out_dir: str) -> str:
         """
@@ -95,10 +134,25 @@ class UCSCDataset:
         try:
             return download_file(url=url_download, out_dir=out_dir, file_name=METADATA_FILE_NAME)
         except Exception as e:
-            raise ValueError(f"Failed to download metadata for {self.name}: {str(e)}")
+            raise ValueError(f"Failed to download metadata for {self.name}: {str(e)}") from e
+
 
 @dataclass
 class UCSCDataSetCollection:
+    """
+       Represents a collection of UCSC cell datasets.
+
+        This class manages a group of related UCSC datasets, providing methods to
+        access, filter, and summarize the collection. It can be instantiated from
+        a JSON file containing dataset metadata.
+
+        Attributes:
+            shortLabel: Short descriptive label for the collection
+            abstract: Description of the dataset collection
+            inDir: Input directory information
+            name: Unique identifier for the collection
+            datasets: List of UCSCDataset objects in this collection
+    """
     shortLabel: str
     abstract: str
     inDir: str
@@ -115,6 +169,12 @@ class UCSCDataSetCollection:
             missing_keys = [key for key in required_keys if key not in data]
             if missing_keys:
                 raise ValueError(f"Missing required keys in JSON: {', '.join(missing_keys)}")
+
+            if not isinstance(data['datasets'], list):
+               raise ValueError("The 'datasets' field must be a list")
+
+            if not data['datasets']:
+                raise ValueError("The 'datasets' list cannot be empty")
                 
             datasets = [UCSCDataset(**ds) for ds in data['datasets']]
             return cls(
@@ -125,17 +185,42 @@ class UCSCDataSetCollection:
                 datasets=datasets
             )
         except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON format: {str(e)}")
+            raise ValueError(f"Invalid JSON format: {str(e)}") from e
         except OSError as e:
-            raise ValueError(f"Could not read file {json_path}: {str(e)}")
+            raise ValueError(f"Could not read file {json_path}: {str(e)}") from e
+        except (KeyError, TypeError) as e:
+            raise ValueError(f"Invalid dataset format in JSON: {str(e)}") from e
+
     def get_dataset_by_name(self, dataset_name: str) -> Optional[UCSCDataset]:
+        """
+            Retrieve a dataset by its name.
+
+            Args:
+                dataset_name: The unique name identifier of the dataset to find
+
+            Returns:
+                The matching UCSCDataset object or None if not found
+        """
         for dataset in self.datasets:
             if dataset.name == dataset_name:
                 return dataset
         return None
 
     def total_samples(self) -> int:
+        """
+            Calculate the total number of samples across all datasets in the collection.
+
+            Returns:
+                int: The total number of samples. If sample counts are not available (None),
+                        returns 0.
+        """
         return sum(dataset.sampleCount or 0 for dataset in self.datasets)
 
     def list_dataset_names(self) -> List[str]:
+        """
+            List the names of all datasets in the collection.
+
+            Returns:
+                List[str]: A list of dataset names
+        """
         return [dataset.name for dataset in self.datasets]
