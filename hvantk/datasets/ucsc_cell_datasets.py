@@ -58,7 +58,7 @@ class UCSCDataset:
                 f"{len(self.organisms)} organisms, \n"
                 f"{self.sampleCount} samples")
 
-    def download_expression_matrix(self, out_dir: str):
+    def download_expression_matrix(self, out_dir: str) -> str:
         """
         Download the expression matrix file for this dataset.
 
@@ -72,7 +72,10 @@ class UCSCDataset:
                 ValueError: If the download fails
         """
         url_download = f"{UCSC_CELL_BROWSER_BASE_URL}/{self.name}/{EXPRESSION_MATRIX_FILE_NAME}"
-        download_file(url=url_download, out_dir=out_dir, file_name=EXPRESSION_MATRIX_FILE_NAME)
+        try:
+            return download_file(url=url_download, out_dir=out_dir, file_name=EXPRESSION_MATRIX_FILE_NAME)
+        except Exception as e:
+            raise ValueError(f"Failed to download expression matrix for {self.name}: {str(e)}") from e
 
 
     def download_metadata(self, out_dir: str) -> str:
