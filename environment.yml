@@ -2,7 +2,7 @@ name: hvantk
 channels:
   - defaults
 dependencies:
-  - python==3.10.0
+  - python>=3.10.0
   - pip
   - pip:
       - click~=8.1.7
