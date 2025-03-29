@@ -8,7 +8,6 @@ import click
 from hvantk.settings import CONTEXT_SETTINGS, RAW_DATA_PATH, set_raw_data_path
 from hvantk.utils.make_tables import (
     create_interactome_tb,
-    # create_rnaseq_tb,
     create_clinvar_tb,
     create_gevir_tb,
     create_gnomad_constraint_gene_metrics_tb,
@@ -46,10 +45,6 @@ def make_annotation_tables_from_raw_sources(
             f"{output_dir}/interactome.{default_ref_genome}.ht", overwrite=True
         )
 
-    if temporal_rnaseq:
-        rnaseq_tb = create_rnaseq_tb()
-        rnaseq_tb.checkpoint(f"{output_dir}/rnaseq.human.ht", overwrite=True)
-
     if clinvar:
         clinvar_tb = create_clinvar_tb()
         clinvar_tb.checkpoint(
@@ -83,9 +78,6 @@ def make_annotation_tables_from_raw_sources(
 @click.option("--ccr", is_flag=True, help="Create/update CCR table from source.")
 @click.option(
     "--interactome", is_flag=True, help="Create/update CCR table from source."
-)
-@click.option(
-    "--temporal_rnaseq", is_flag=True, help="Create/update RNAseq table from source."
 )
 @click.option(
     "--clinvar", is_flag=True, help="Create/update Clinvar table from source."
@@ -126,7 +118,6 @@ def make_annotation_tables_cli(
     output_dir,
     ccr,
     interactome,
-    temporal_rnaseq,
     clinvar,
     gevir,
     scell_heart_deg,
@@ -141,7 +132,6 @@ def make_annotation_tables_cli(
         [
             ccr,
             interactome,
-            temporal_rnaseq,
             clinvar,
             gevir,
             scell_heart_deg,
@@ -159,7 +149,6 @@ def make_annotation_tables_cli(
         raw_data_path,
         ccr,
         interactome,
-        temporal_rnaseq,
         clinvar,
         gevir,
         scell_heart_deg,
