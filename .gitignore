@@ -163,5 +163,4 @@ cython_debug/
 #   This is used for user-specific configurations and will be ignored globally.
 /local
 /testscripts
-/testdata
 
