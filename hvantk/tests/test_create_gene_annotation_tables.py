@@ -1,3 +1,4 @@
+import pytest
 import shutil
 from pathlib import Path
 
@@ -11,9 +12,23 @@ from hvantk.utils.make_tables import (
 
 # Test data directory
 TEST_DIR = Path(__file__).parent / "testdata"
-
 # Temporary directory for testing
 TMP_DIR = Path(__file__).parent / "tmp"
+
+
+@pytest.fixture(autouse=True)
+def setup_teardown():
+    """Create and clean up the temporary directory for each test."""
+    # Setup - This runs before each test
+    TMP_DIR.mkdir(exist_ok=True, parents=True)
+
+    # The test runs here
+    yield
+
+    # Teardown - This runs after each test
+    if TMP_DIR.exists():
+        shutil.rmtree(TMP_DIR)
+
 
 def test_create_gnomad_constraint_gene_metrics_tb():
     input_path = (
@@ -43,10 +58,6 @@ def test_create_gnomad_constraint_gene_metrics_tb():
     # check that the .SUCCESS file exists
     success_file = Path(output_path) / "_SUCCESS"
     assert success_file.exists()
-
-    # Remove tmp directory
-    if TMP_DIR.exists():
-        shutil.rmtree(TMP_DIR)
 
 
 def test_create_interactome_tb():
@@ -78,9 +89,6 @@ def test_create_interactome_tb():
     success_file = Path(output_path) / "_SUCCESS"
     assert success_file.exists()
 
-    # Remove tmp directory
-    if TMP_DIR.exists():
-        shutil.rmtree(TMP_DIR)
 
 
 def test_create_clinvar_tb():
@@ -103,10 +111,6 @@ def test_create_clinvar_tb():
     # check that the .SUCCESS file exists
     success_file = Path(output_path) / "_SUCCESS"
     assert success_file.exists()
-
-    # Remove tmp directory
-    if TMP_DIR.exists():
-        shutil.rmtree(TMP_DIR)
 
 
 def test_create_gevir_tb():
@@ -132,10 +136,6 @@ def test_create_gevir_tb():
     success_file = Path(output_path) / "_SUCCESS"
     assert success_file.exists()
 
-    # Remove tmp directory
-    if TMP_DIR.exists():
-        shutil.rmtree(TMP_DIR)
-
 
 def test_create_ensembl_gene_tb():
     input_path = TEST_DIR / "raw/ensembl/ensembl_gene_biomart.tsv.bgz"
@@ -159,9 +159,3 @@ def test_create_ensembl_gene_tb():
     # check that the .SUCCESS file exists
     success_file = Path(output_path) / "_SUCCESS"
     assert success_file.exists()
-
-    # Remove tmp directory
-    if TMP_DIR.exists():
-        shutil.rmtree(TMP_DIR)
-
-
