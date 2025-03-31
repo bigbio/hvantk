@@ -2,7 +2,7 @@ import os
 
 
 # context settings for click
-CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
 # The global variables RAW_DATA_PATH and ANNOTATION_DATA_PATH are used to store
 # the paths to the raw data and annotation data, respectively.
@@ -49,24 +49,23 @@ def set_annotation_data_path(annotation_data_path: str):
         ANNOTATION_DATA_PATH = annotation_data_path
         return ANNOTATION_DATA_PATH
     else:
-        raise ValueError("Invalid annotation_data_path: {}".format(annotation_data_path))
+        raise ValueError(
+            "Invalid annotation_data_path: {}".format(annotation_data_path)
+        )
 
 
 # A dictionary of raw data paths
 RAW_DATA_PATHS = {
-   'interactome_path':      f'{RAW_DATA_PATH}/interactome/Interactome_INSIDER_hg38_stripped.bed',
-   'clinvar_path':          f'{RAW_DATA_PATH}/clinvar/clinvar_20220403.vcf.gz',
-   'rnaseq_path':           f'{RAW_DATA_PATH}/rnaseq-expression/E-MTAB-6814.Human.CPM.txt',
-   'gene_ann_path':         f'{RAW_DATA_PATH}/ensembl/gene.ensembl.canonical.042022.tsv',
-   'gnomad_metrics_path':   f'{RAW_DATA_PATH}/gnomad/gnomad.v2.1.1.lof_metrics.by_transcript.txt.bgz',
-   'gevir_path':            f'{RAW_DATA_PATH}/gevir/gevir_metrics_pmid31873297.tsv.txt',
-   'scell_heart_path':      f'{RAW_DATA_PATH}/rnaseq-expression/deg_scell_heart_pmid31835037.tsv',
-   'scell_hca_path':        f'{RAW_DATA_PATH}/rnaseq-expression/hca_cells_ucsc_042022.tsv'
+    "interactome_path": f"{RAW_DATA_PATH}/interactome/Interactome_INSIDER_hg38_stripped.bed",
+    "clinvar_path": f"{RAW_DATA_PATH}/clinvar/clinvar_20220403.vcf.gz",
+    "rnaseq_path": f"{RAW_DATA_PATH}/rnaseq-expression/E-MTAB-6814.Human.CPM.txt",
+    "gene_ann_path": f"{RAW_DATA_PATH}/ensembl/gene.ensembl.canonical.042022.tsv",
+    "gnomad_metrics_path": f"{RAW_DATA_PATH}/gnomad/gnomad.v2.1.1.lof_metrics.by_transcript.txt.bgz",
+    "gevir_path": f"{RAW_DATA_PATH}/gevir/gevir_metrics_pmid31873297.tsv.txt",
+    "scell_heart_path": f"{RAW_DATA_PATH}/rnaseq-expression/deg_scell_heart_pmid31835037.tsv",
+    "scell_hca_path": f"{RAW_DATA_PATH}/rnaseq-expression/hca_cells_ucsc_042022.tsv",
 }
 
 
 # A dictionary of annotation data paths
 ANNOTATION_DATA_PATHS = {}
-
-
-

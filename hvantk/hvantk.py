@@ -7,9 +7,11 @@ from hvantk.commands.make_annotation_tables_cli import make_annotation_tables_cl
 # Main CLI entry point for the package (hvantk)
 
 
-@click.group('hvantk',
-             help='A python package for gene and variant annotation.',
-             context_settings=CONTEXT_SETTINGS)
+@click.group(
+    "hvantk",
+    help="A python package for gene and variant annotation.",
+    context_settings=CONTEXT_SETTINGS,
+)
 def cli():
     """A python package for gene and variant annotation."""
     pass
@@ -17,9 +19,10 @@ def cli():
 
 cli.add_command(make_annotation_tables_cli)
 
+
 def main():
     cli()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
