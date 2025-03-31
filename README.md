@@ -1,3 +1,5 @@
+[![Python Package using Conda](https://github.com/bigbio/hvantk/actions/workflows/python-package-conda.yml/badge.svg)](https://github.com/bigbio/hvantk/actions/workflows/python-package-conda.yml)
+
 # hvantk
 Hail-based multiomics variant annotation toolkit.
 
