@@ -16,7 +16,7 @@ setup(
     install_requires=["click", "setuptools", "hail"],
     entry_points={
         "console_scripts": [
-            "hvantk=hvantk.pyvatk_cli:pyvatk_main",
+            "hvantk=hvantk.hvantk:main",
         ],
     },
     classifiers=[
