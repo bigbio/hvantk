@@ -68,3 +68,14 @@ def test_from_json_existing_file():
 
     # Print the summary of the first dataset
     print(collection.datasets[0].summary())
+
+
+def test_list_dataset_names():
+    collection = UCSCDataSetCollection.from_json(
+        UCSC_JSON_FILE_PATH
+    )
+    dataset_names = collection.list_dataset_names()
+    print(dataset_names)
+    assert isinstance(dataset_names, list)
+    assert len(dataset_names) == 267
+    assert "dev-brain-regions" in dataset_names
