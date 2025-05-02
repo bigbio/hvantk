@@ -95,7 +95,20 @@ def compress_files(source_dir: str, output_zip: str, remove_originals: bool = Fa
     :type remove_originals: bool
     :return: This function does not return any value.
     :rtype: None
+    :raises FileNotFoundError: If the source directory does not exist
+    :raises PermissionError: If there are permission issues with reading or writing files
     """
+    if not os.path.exists(source_dir):
+        raise FileNotFoundError(f"Source directory '{source_dir}' does not exist")
+
+    if not os.path.isdir(source_dir):
+        raise ValueError(f"Source path '{source_dir}' is not a directory")
+
+    # Create parent directory for output_zip if it doesn't exist
+    output_dir = os.path.dirname(output_zip)
+    if output_dir and not os.path.exists(output_dir):
+        os.makedirs(output_dir, exist_ok=True)
+
     with zipfile.ZipFile(output_zip, "w", zipfile.ZIP_DEFLATED) as zipf:
         for root, _, files in os.walk(source_dir):
             for file in files:
@@ -108,7 +121,6 @@ def compress_files(source_dir: str, output_zip: str, remove_originals: bool = Fa
     if remove_originals:
         shutil.rmtree(source_dir)
         logging.info(f"Removed original directory '{source_dir}' after compression.")
-
 
 def decompress_files(zip_path: str, extract_to: str, remove_originals: bool = False) -> None:
     """
