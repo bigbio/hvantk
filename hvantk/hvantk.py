@@ -2,6 +2,7 @@ import click
 
 from hvantk.settings import CONTEXT_SETTINGS
 from hvantk.commands.make_annotation_tables_cli import make_annotation_tables_cli
+from hvantk.commands.ucsc_downloader import ucsc_downloader
 
 
 # Main CLI entry point for the package (hvantk)
@@ -16,7 +17,7 @@ def cli():
     """A python package for gene and variant annotation."""
     pass
 
-
+cli.add_command(ucsc_downloader)
 cli.add_command(make_annotation_tables_cli)
 
 
