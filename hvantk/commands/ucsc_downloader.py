@@ -1,4 +1,5 @@
 import click
+import os
 
 from hvantk.datasets.ucsc_cell_datasets import UCSCDataSetCollection
 from hvantk.settings import CONTEXT_SETTINGS
@@ -88,9 +89,7 @@ def ucsc_downloader(ctx, dataset, output_dir, base_url, list_datasets):
         return
 
     # Construct the URLs for the expression matrix and metadata files
-    url_expression_matrix = (
-        f"{base_url}/{dataset}/{EXPRESSION_MATRIX_FILE_NAME}"
-    )
+    url_expression_matrix = f"{base_url}/{dataset}/{EXPRESSION_MATRIX_FILE_NAME}"
     url_metadata = f"{base_url}/{dataset}/{METADATA_FILE_NAME}"
 
     # check that both urls exist
@@ -101,16 +100,26 @@ def ucsc_downloader(ctx, dataset, output_dir, base_url, list_datasets):
         click.echo(f"Error: Metadata URL does not exist: {url_metadata}")
         return
 
-    # make output dir as: output_dir/dataset
-    output_dir = f"{output_dir}/{dataset}"
+    # Validate output directory
+    if os.path.exists(output_dir) and not os.path.isdir(output_dir):
+        click.echo(f"Error: Output path exists but is not a directory: {output_dir}")
+        return
+
+    # make dataset-specific directory
+    dataset_dir = f"{output_dir}/{dataset}"
+
+    # Check if dataset directory already exists and has content
+    if os.path.exists(dataset_dir) and os.listdir(dataset_dir):
+        if not click.confirm(f"Directory {dataset_dir} already exists and has content. Overwrite?"):
+            click.echo("Download canceled.")
+            return
 
     # Download the expression matrix file
-    download_file(url_expression_matrix, output_dir, EXPRESSION_MATRIX_FILE_NAME)
+    download_file(url_expression_matrix, dataset_dir, EXPRESSION_MATRIX_FILE_NAME)
     # Download the metadata file
-    download_file(url_metadata, output_dir, METADATA_FILE_NAME)
+    download_file(url_metadata, dataset_dir, METADATA_FILE_NAME)
 
-    click.echo(f"Data downloaded to {output_dir}")
-
+    click.echo(f"Data downloaded to {dataset_dir}")
 
 if __name__ == "__main__":
     cli()
