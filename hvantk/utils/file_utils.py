@@ -125,12 +125,24 @@ def decompress_files(zip_path: str, extract_to: str, remove_originals: bool = Fa
     :type remove_originals: bool
 
     :return: None
+    :raises FileNotFoundError: If the zip file does not exist
+    :raises zipfile.BadZipFile: If the file is not a valid zip file
+    :raises PermissionError: If there are permission issues with extracting files
     """
+    if not os.path.exists(zip_path):
+        raise FileNotFoundError(f"Zip file '{zip_path}' does not exist")
+
+    # Create extract directory if it doesn't exist
+    os.makedirs(extract_to, exist_ok=True)
+
     with zipfile.ZipFile(zip_path, "r") as zipf:
+        # Check if the zip file is valid
+        if zipf.testzip() is not None:
+            raise zipfile.BadZipFile(f"'{zip_path}' is corrupted")
+
         zipf.extractall(extract_to)
     logging.info(f"Extracted '{zip_path}' into '{extract_to}'")
 
     if remove_originals:
         os.remove(zip_path)
         logging.info(f"Removed archive file '{zip_path}' after decompression.")
-
