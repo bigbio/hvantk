@@ -62,6 +62,23 @@ def download_file(url: str, out_dir: str, file_name: str):
         raise Exception(f"Failed to download {url}: {str(e)}")
 
 
+# define a function to test if a given url exists
+def url_exists(url: str) -> bool:
+    """
+    Check if a URL exists by sending a HEAD request.
+
+    :param url: URL to check
+    :type url: str
+    :return: True if the URL exists, False otherwise
+    :rtype: bool
+    """
+    try:
+        response = requests.head(url, allow_redirects=True)
+        return response.status_code == 200
+    except requests.RequestException:
+        return False
+
+
 def compress_files(source_dir: str, output_zip: str, remove_originals: bool = False) -> None:
     """
     Compresses the files in a given source directory into a ZIP archive, maintaining
