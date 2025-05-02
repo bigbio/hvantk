@@ -2,7 +2,7 @@ import click
 
 from hvantk.datasets.ucsc_cell_datasets import UCSCDataSetCollection
 from hvantk.settings import CONTEXT_SETTINGS
-from hvantk.utils.file_utils import download_file
+from hvantk.utils.file_utils import download_file, url_exists
 from hvantk.utils.constants import (
     UCSC_CELL_BROWSER_BASE_URL,
     EXPRESSION_MATRIX_FILE_NAME,
@@ -92,6 +92,14 @@ def ucsc_downloader(ctx, dataset, output_dir, base_url, list_datasets):
         f"{base_url}/{dataset}/{EXPRESSION_MATRIX_FILE_NAME}"
     )
     url_metadata = f"{base_url}/{dataset}/{METADATA_FILE_NAME}"
+
+    # check that both urls exist
+    if not url_exists(url_expression_matrix):
+        click.echo(f"Error: Expression matrix URL does not exist: {url_expression_matrix}")
+        return
+    if not url_exists(url_metadata):
+        click.echo(f"Error: Metadata URL does not exist: {url_metadata}")
+        return
 
     # make output dir as: output_dir/dataset
     output_dir = f"{output_dir}/{dataset}"
