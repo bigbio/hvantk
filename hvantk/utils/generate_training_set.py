@@ -18,8 +18,6 @@ from settings import project_dir
 out_dir = f"{project_dir}/data/training_set"
 logger.info(f"Output directory: {out_dir}")
 
-print(out_dir)
-
 hl.init()
 logger.info("Hail initialized")
 
