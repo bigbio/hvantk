@@ -2,6 +2,9 @@
 # 08.04.22
 
 import hail as hl
+import logging
+
+logger = logging.getLogger(__name__)
 
 from hvantk.utils.dataset import (
     get_ccr_ht,
@@ -19,6 +22,7 @@ from hvantk.utils.dataset import (
 
 
 def annotate_clinvar_clnsig(t: hl.Table) -> hl.Table:
+    logger.info("Annotating ClinVar CLNSIG")
     clinvar_ht = get_clinvar_ht()
     # Benign labels from Clinvar
     benign_label_clinvar = ["Benign/Likely_benign", "Likely_benign", "Benign"]
@@ -47,6 +51,7 @@ def annotate_clinvar_clnsig(t: hl.Table) -> hl.Table:
 
 
 def annotate_ccr(t: hl.Table) -> hl.Table:
+    logger.info("Annotating CCR")
     ccr_ht = get_ccr_ht()
     t = t.annotate(ccr_pct=ccr_ht[t.locus].ccr_pct)
     return t
@@ -56,6 +61,7 @@ def annotate_gevir(
     t: hl.Table,
     gene_id_col: str,
 ) -> hl.Table:
+    logger.info("Annotating GEVIR")
     gevir_ht = get_gevir_ht().select("gevir_pct", "virlof_pct")
     t = t.annotate(**gevir_ht[t[gene_id_col]])
     return t
@@ -64,12 +70,14 @@ def annotate_gevir(
 def annotate_rnaseq_expression(
     t: hl.Table, gene_id_col: str, organ: str = "Heart"
 ) -> hl.Table:
+    logger.info("Annotating RNAseq expression")
     gene_expression_ht = get_gene_expression_ht(organ=organ)
     t = t.annotate(**gene_expression_ht[t[gene_id_col]])
     return t
 
 
 def annotate_ppi(t: hl.Table) -> hl.Table:
+    logger.info("Annotating PPI")
     ppi_ht = get_ppi_ht()
     t = t.annotate(ppi_site=hl.int(hl.is_defined(ppi_ht[t.locus])))
     return t
@@ -84,6 +92,7 @@ def annotate_ensembl_gene(t: hl.Table, gene_symbol_col: str) -> hl.Table:
     :param gene_symbol_col: Column name with gene symbols
     :return: Hail Table
     """
+    logger.info("Annotating Ensembl gene")
 
     # Import and prepare gene table for annotation
     gene_ht = get_gene_ann_ht()
@@ -107,6 +116,7 @@ def annotate_dbnsfp_scores(t: hl.Table, transcript_id_col: str) -> hl.Table:
     :param transcript_id_col: Ensembl transcript ID column
     :return: Hail Table
     """
+    logger.info("Annotating dbNSFP scores")
 
     # Import and parse dbNSFP dataset with annotation scores
     ht_scores = get_dbnsfp_scores_ht()
@@ -130,6 +140,7 @@ def annotate_gnomad_constraint_metrics(t: hl.Table, transcript_id_col: str) -> h
     :param transcript_id_col: Ensembl transcript ID column
     :return: Hail Table
     """
+    logger.info("Annotating gnomAD constraint metrics")
     gnomad_metrics = get_gnomad_metrics_ht()
     t = t.annotate(**gnomad_metrics[t[transcript_id_col]])
     return t
@@ -148,6 +159,7 @@ def annotate_degs(
 
     :return: Hail Table
     """
+    logger.info("Annotating DEGs")
     degs = get_deg_ht()
 
     t = t.annotate(sc_cluster_id=degs[t[gene_symbol_col]].cluster_id)
@@ -185,6 +197,7 @@ def annotate_hca(
 
     :return: Hail Table
     """
+    logger.info("Annotating HCA")
     hca_tb = get_hca_ht().select(*cell_categories)
 
     t = t.annotate(hca=hl.struct(**hca_tb[t[gene_id_col]]))
@@ -200,6 +213,7 @@ def annotate_gnomad_af(t: hl.Table) -> hl.Table:
     :param t: Hail Table keyed by `locus` and `alleles`
     :return: Hail Table
     """
+    logger.info("Annotating gnomAD AF")
 
     # import gnomad table with allele frequency annotation
     gnomad_af = get_gnomad_af_ht()
@@ -222,6 +236,7 @@ def annotate_variant_id(t: hl.Table, field_name: str = "vid") -> hl.Table:
     :param t: Hail table
     :return: Hail Table
     """
+    logger.info("Annotating variant ID")
 
     variant_id_ann_exp = {
         field_name: hl.delimit(

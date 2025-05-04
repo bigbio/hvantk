@@ -5,6 +5,9 @@ The tables are used to annotate variants and genes with different features.
 """
 
 import hail as hl
+import logging
+
+logger = logging.getLogger(__name__)
 
 from hvantk.utils.constants import ENSEMBL_BIOMART_FIELDS
 
@@ -30,16 +33,20 @@ def create_gnomad_constraint_gene_metrics_tb(
     :param export_tsv: Whether to export the table as a TSV file.
     :return: Hail Table
     """
+    logger.info(f"Creating gnomAD constraint gene metrics table from {input_path}")
     gnomad_tb = hl.import_table(
         paths=input_path, impute=True, min_partitions=100, key="gene_id"
     )
 
     if fields is not None:
+        logger.info(f"Selecting fields: {fields}")
         gnomad_tb = gnomad_tb.select(*fields)
 
+    logger.info(f"Checkpointing table to {output_path}")
     gnomad_tb = gnomad_tb.checkpoint(output=output_path, overwrite=overwrite)
 
     if export_tsv:
+        logger.info(f"Exporting table to {output_path}.tsv.bgz")
         gnomad_tb.export(output_path + ".tsv.bgz")
 
     return gnomad_tb
@@ -63,6 +70,7 @@ def create_interactome_tb(
 
     :return: Hail Table
     """
+    logger.info(f"Creating interactome table from {input_path}")
     ppi_tb = (
         hl.import_bed(
             path=input_path,
@@ -73,9 +81,11 @@ def create_interactome_tb(
         .distinct()
     )
 
+    logger.info(f"Checkpointing table to {output_path}")
     ppi_tb = ppi_tb.checkpoint(output=output_path, overwrite=overwrite)
 
     if export_tsv:
+        logger.info(f"Exporting table to {output_path}.tsv.bgz")
         ppi_tb.export(f"{output_path}.tsv.bgz")
 
     return ppi_tb
@@ -98,6 +108,7 @@ def create_clinvar_tb(
     :param reference_genome: Reference genome to use (default: GRCh38).
     :return: Hail Table
     """
+    logger.info(f"Creating ClinVar table from {input_path}")
     recode = {f"{i}": f"chr{i}" for i in (list(range(1, 23)) + ["X", "Y"])}
     clinvar_tb = (
         hl.import_vcf(
@@ -112,9 +123,11 @@ def create_clinvar_tb(
         .key_by("locus", "alleles")
     )
 
+    logger.info(f"Checkpointing table to {output_path}")
     clinvar_tb = clinvar_tb.checkpoint(output=output_path, overwrite=overwrite)
 
     if export_tsv:
+        logger.info(f"Exporting table to {output_path}.tsv.bgz")
         (clinvar_tb.flatten().export(f"{output_path}.tsv.bgz"))
 
     return clinvar_tb
@@ -137,16 +150,20 @@ def create_gevir_tb(
     :param export_tsv: Whether to export the table as a TSV file.
     :return: Hail Table
     """
+    logger.info(f"Creating GEVIR table from {input_path}")
     gevir_tb = hl.import_table(
         paths=input_path, impute=True, min_partitions=100, key="gene_id"
     )
 
     if fields is not None:
+        logger.info(f"Selecting fields: {fields}")
         gevir_tb = gevir_tb.select(*fields)
 
+    logger.info(f"Checkpointing table to {output_path}")
     gevir_tb = gevir_tb.checkpoint(output=output_path, overwrite=overwrite)
 
     if export_tsv:
+        logger.info(f"Exporting table to {output_path}.tsv.bgz")
         gevir_tb.export(output_path + ".tsv.bgz")
 
     return gevir_tb
@@ -175,17 +192,20 @@ def create_ensembl_gene_tb(
 
     :return: Hail Table
     """
-
+    logger.info(f"Creating Ensembl gene table from {input_path}")
     gene_tb = hl.import_table(paths=input_path, min_partitions=50)
 
     # replace field names
+    logger.info("Replacing field names")
     gene_tb = gene_tb.rename(ENSEMBL_BIOMART_FIELDS)
 
     # filter canonical transcripts
     if canonical:
+        logger.info("Filtering canonical transcripts")
         gene_tb = gene_tb.filter(gene_tb.canonical == "1", keep=True)
 
     # group by gene_id
+    logger.info("Grouping by gene_id")
     gene_tb = (
         gene_tb.group_by(gene_tb.gene_id)
         .aggregate(
@@ -208,11 +228,14 @@ def create_ensembl_gene_tb(
     )
 
     if fields is not None:
+        logger.info(f"Selecting fields: {fields}")
         gene_tb = gene_tb.select(*fields)
 
+    logger.info(f"Checkpointing table to {output_path}")
     gene_tb = gene_tb.checkpoint(output=output_path, overwrite=overwrite)
 
     if export_tsv:
+        logger.info(f"Exporting table to {output_path}.tsv.bgz")
         gene_tb.export(output_path + ".tsv.bgz")
 
     return gene_tb
