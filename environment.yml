@@ -1,10 +1,10 @@
 name: hvantk
 channels:
-  - defaults
+  - conda-forge
+  - bioconda
 dependencies:
   - python>=3.10.0
   - pip
   - pip:
-      - click~=8.1.7
-      - setuptools
-      - hail~=0.2.120
+      - click
+      - hail

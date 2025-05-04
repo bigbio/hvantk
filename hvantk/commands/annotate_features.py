@@ -7,6 +7,10 @@ import sys
 
 import hail as hl
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 from hvantk.utils.annotate import (
     annotate_ccr,
     annotate_gevir,
@@ -44,11 +48,14 @@ def check_variant_tb(t: hl.Table, gene_col: str):
 
 
 def main(args):
+    logger.info("Starting annotate_features command")
     # Init Hail
     hl.init(default_reference="GRCh38")
 
     ht = hl.read_table(args.variant_ht)
-    print(ht.row)
+    logger.info(f"Reading table from {args.variant_ht}")
+    ht = hl.read_table(args.variant_ht)
+    logger.info(f"Table schema: {ht.row}")
 
     gene_col = args.gene_col
 
@@ -56,53 +63,71 @@ def main(args):
     check_variant_tb(ht, gene_col)
 
     # filter to bi-allelic variants
+    logger.info("Filtering to bi-allelic variants")
     ht = ht.filter(hl.len(ht.alleles) == 2)
 
     # annotate clinvar significance
+    # annotate clinvar significance
+    logger.info("Annotating ClinVar significance")
     ht = annotate_clinvar_clnsig(ht)
 
     # annotate variant ID from locus and alleles
+    logger.info("Annotating variant ID")
     ht = annotate_variant_id(ht)
 
     # annotate gene/transcript ensembl IDs
+    logger.info("Annotating Ensembl gene IDs")
     ht = annotate_ensembl_gene(ht, gene_symbol_col=gene_col)
 
     # annotate ccr
+    logger.info("Annotating CCR")
     ht = annotate_ccr(ht)
 
     # annotate gvir
+    logger.info("Annotating GEVIR")
     ht = annotate_gevir(ht, gene_id_col="GeneID")
 
     # annotate rnaseq expression
+    logger.info("Annotating RNA-seq expression")
     ht = annotate_rnaseq_expression(ht, gene_id_col="GeneID")
 
     # annotate gnomad af
+    logger.info("Annotating gnomAD AF")
     ht = annotate_gnomad_af(ht)
 
     # annotate gnomad constraint metrics
+    logger.info("Annotating gnomAD constraint metrics")
     ht = annotate_gnomad_constraint_metrics(ht, transcript_id_col="TranscriptID")
 
     # annotate interactome sites
+    logger.info("Annotating interactome sites")
     ht = annotate_ppi(ht)
 
     # annotate HCA
     # ht = annotate_degs(ht,
     #                   gene_symbol_col=gene_col)
+    logger.info("Annotating HCA")
     ht = annotate_hca(ht, gene_id_col="GeneID")
 
     # annotate deleterious scores
+    logger.info("Annotating dbNSFP scores")
     ht = annotate_dbnsfp_scores(ht, transcript_id_col="TranscriptID")
 
     # write as HT
     output_ht_path = f"{args.output_ht}/ts.denovo.features.ht"
+    logger.info(f"Writing table to {output_ht_path}")
     ht = ht.checkpoint(output=output_ht_path, overwrite=True)
 
     if args.write_to_file:
+        logger.info(f"Exporting table to {output_ht_path}.tsv.bgz")
         (ht.flatten().export(f"{output_ht_path}.tsv.bgz"))
 
     # Stop Hail
+    logger.info("Stopping Hail")
     hl.stop()
 
+
+    logger.info("annotate_features command completed")
 
 if __name__ == "__main__":
 
