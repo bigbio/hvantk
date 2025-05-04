@@ -31,14 +31,8 @@ def setup_teardown():
 
 
 def test_create_gnomad_constraint_gene_metrics_tb():
-    input_path = (
-        TEST_DIR
-        / "raw/gnomad/gnomad.v2.1.1.lof_metrics.by_gene.chr20.tsv.bgz"
-    )
-    output_path = (
-        TMP_DIR
-       / "gnomad.v2.1.1.lof_metrics.by_gene.chr20.ht"
-    )
+    input_path = TEST_DIR / "raw/gnomad/gnomad.v2.1.1.lof_metrics.by_gene.chr20.tsv.bgz"
+    output_path = TMP_DIR / "gnomad.v2.1.1.lof_metrics.by_gene.chr20.ht"
     fields = ["oe_syn_upper", "oe_mis_upper", "oe_lof_upper"]  # fields to select
     overwrite = True
     export_tsv = True
@@ -62,13 +56,9 @@ def test_create_gnomad_constraint_gene_metrics_tb():
 
 def test_create_interactome_tb():
     input_path = (
-        TEST_DIR
-        / "raw/interactome/Interactome_INSIDER_hg38_stripped.chr20.bed.bgz"
+        TEST_DIR / "raw/interactome/Interactome_INSIDER_hg38_stripped.chr20.bed.bgz"
     )
-    output_path = (
-        TMP_DIR
-        / "Interactome_INSIDER_hg38_stripped.chr20.ht"
-    )
+    output_path = TMP_DIR / "Interactome_INSIDER_hg38_stripped.chr20.ht"
     overwrite = True
     export_tsv = True
     reference_genome = "GRCh38"
@@ -88,7 +78,6 @@ def test_create_interactome_tb():
     # check that the .SUCCESS file exists
     success_file = Path(output_path) / "_SUCCESS"
     assert success_file.exists()
-
 
 
 def test_create_clinvar_tb():
@@ -115,9 +104,7 @@ def test_create_clinvar_tb():
 
 def test_create_gevir_tb():
     input_path = TEST_DIR / "raw/gevir/gevir_metrics_pmid31873297.tsv.bgz"
-    output_path = (
-        TMP_DIR / "gevir_metrics_pmid31873297.ht"
-    )
+    output_path = TMP_DIR / "gevir_metrics_pmid31873297.ht"
     overwrite = True
     export_tsv = True
 

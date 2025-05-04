@@ -82,14 +82,18 @@ def url_exists(url: str) -> bool:
             logger.debug(f"URL {url} exists with status code: {response.status_code}")
             return True
         else:
-             logger.warning(f"URL {url} does not exist with status code: {response.status_code}")
-             return False
+            logger.warning(
+                f"URL {url} does not exist with status code: {response.status_code}"
+            )
+            return False
     except requests.RequestException as e:
         logger.exception(f"Error checking URL {url}: {e}")
         return False
 
 
-def compress_files(source_dir: str, output_zip: str, remove_originals: bool = False) -> None:
+def compress_files(
+    source_dir: str, output_zip: str, remove_originals: bool = False
+) -> None:
     """
     Compresses the files in a given source directory into a ZIP archive, maintaining
     the folder structure. Optionally, the original source directory can be removed
@@ -132,7 +136,10 @@ def compress_files(source_dir: str, output_zip: str, remove_originals: bool = Fa
         shutil.rmtree(source_dir)
         logger.info(f"Removed original directory '{source_dir}' after compression.")
 
-def decompress_files(zip_path: str, extract_to: str, remove_originals: bool = False) -> None:
+
+def decompress_files(
+    zip_path: str, extract_to: str, remove_originals: bool = False
+) -> None:
     """
     Decompresses files from a zip archive to a specified location. Optionally, removes the original zip
     archive after extraction.

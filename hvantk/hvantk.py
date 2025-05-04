@@ -21,6 +21,7 @@ def cli():
     logger.info("Starting hvantk CLI")
     pass
 
+
 cli.add_command(ucsc_downloader)
 cli.add_command(make_annotation_tables_cli)
 

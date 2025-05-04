@@ -50,7 +50,9 @@ def make_annotation_tables_from_raw_sources(
         bed_ppi.checkpoint(
             f"{output_dir}/interactome.{default_ref_genome}.ht", overwrite=True
         )
-        logger.info(f"Interactome table created at {output_dir}/interactome.{default_ref_genome}.ht")
+        logger.info(
+            f"Interactome table created at {output_dir}/interactome.{default_ref_genome}.ht"
+        )
 
     if clinvar:
         logger.info("Creating ClinVar table")
@@ -58,7 +60,9 @@ def make_annotation_tables_from_raw_sources(
         clinvar_tb.checkpoint(
             f"{output_dir}/clinvar.{default_ref_genome}.ht", overwrite=True
         )
-        logger.info(f"ClinVar table created at {output_dir}/clinvar.{default_ref_genome}.ht")
+        logger.info(
+            f"ClinVar table created at {output_dir}/clinvar.{default_ref_genome}.ht"
+        )
 
     if gevir:
         logger.info("Creating GEVIR table")
@@ -173,6 +177,7 @@ def make_annotation_tables_cli(
         default_ref_genome,
     )
     logger.info("make_annotation_tables_from_raw_sources completed")
+
 
 if __name__ == "__main__":
     logger.info("Starting make_annotation_tables_cli")

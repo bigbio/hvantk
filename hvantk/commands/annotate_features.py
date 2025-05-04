@@ -126,8 +126,8 @@ def main(args):
     logger.info("Stopping Hail")
     hl.stop()
 
-
     logger.info("annotate_features command completed")
+
 
 if __name__ == "__main__":
 

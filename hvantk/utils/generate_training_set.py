@@ -57,7 +57,9 @@ clinvar_ht = clinvar_ht.filter(
 )
 
 # annotate TP/FP label based on Pathogenic/Benign annotations from clinvar
-logger.info("Annotating TP/FP label based on Pathogenic/Benign annotations from Clinvar")
+logger.info(
+    "Annotating TP/FP label based on Pathogenic/Benign annotations from Clinvar"
+)
 ts_ann_expr = {
     "is_tp_site": hl.case()
     .when(

@@ -101,7 +101,9 @@ def ucsc_downloader(ctx, dataset, output_dir, base_url, list_datasets):
     # check that both urls exist
     logger.info(f"Checking if expression matrix URL exists: {url_expression_matrix}")
     if not url_exists(url_expression_matrix):
-        click.echo(f"Error: Expression matrix URL does not exist: {url_expression_matrix}")
+        click.echo(
+            f"Error: Expression matrix URL does not exist: {url_expression_matrix}"
+        )
         logger.error(f"Expression matrix URL does not exist: {url_expression_matrix}")
         return
     logger.info(f"Checking if metadata URL exists: {url_metadata}")
@@ -120,12 +122,16 @@ def ucsc_downloader(ctx, dataset, output_dir, base_url, list_datasets):
 
     # Check if dataset directory already exists and has content
     if os.path.exists(dataset_dir) and os.listdir(dataset_dir):
-        if not click.confirm(f"Directory {dataset_dir} already exists and has content. Overwrite?"):
+        if not click.confirm(
+            f"Directory {dataset_dir} already exists and has content. Overwrite?"
+        ):
             click.echo("Download canceled.")
             return
 
     # Download the expression matrix file
-    logger.info(f"Downloading expression matrix from {url_expression_matrix} to {dataset_dir}")
+    logger.info(
+        f"Downloading expression matrix from {url_expression_matrix} to {dataset_dir}"
+    )
     download_file(url_expression_matrix, dataset_dir, EXPRESSION_MATRIX_FILE_NAME)
     # Download the metadata file
     logger.info(f"Downloading metadata from {url_metadata} to {dataset_dir}")
@@ -133,6 +139,7 @@ def ucsc_downloader(ctx, dataset, output_dir, base_url, list_datasets):
 
     click.echo(f"Data downloaded to {dataset_dir}")
     logger.info(f"Data downloaded to {dataset_dir}")
+
 
 if __name__ == "__main__":
     logger.info("Starting ucsc_downloader CLI")
