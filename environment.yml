@@ -1,6 +1,5 @@
 name: hvantk
 channels:
-  - defaults
   - conda-forge
   - bioconda
 dependencies:
