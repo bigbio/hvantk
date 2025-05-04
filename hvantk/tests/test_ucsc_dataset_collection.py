@@ -3,6 +3,7 @@ import json
 from hvantk.datasets.ucsc_cell_datasets import UCSCDataSetCollection, UCSCDataset
 from hvantk.utils.constants import UCSC_JSON_FILE_PATH
 
+
 # Correctly create UCSCDataset objects from JSON data
 def test_from_json_creates_dataset_objects(tmp_path):
     # Create a temporary JSON file with multiple datasets
@@ -59,9 +60,7 @@ def test_from_json_creates_dataset_objects(tmp_path):
 
 # Test create UCSCDataSetCollection object from existing JSON file
 def test_from_json_existing_file():
-    collection = UCSCDataSetCollection.from_json(
-       UCSC_JSON_FILE_PATH
-    )
+    collection = UCSCDataSetCollection.from_json(UCSC_JSON_FILE_PATH)
     assert len(collection.datasets) == 267
     assert isinstance(collection.datasets[0], UCSCDataset)
     assert collection.datasets[0].name == "cortex-dev"
@@ -71,9 +70,7 @@ def test_from_json_existing_file():
 
 
 def test_list_dataset_names():
-    collection = UCSCDataSetCollection.from_json(
-        UCSC_JSON_FILE_PATH
-    )
+    collection = UCSCDataSetCollection.from_json(UCSC_JSON_FILE_PATH)
     dataset_names = collection.list_dataset_names()
     print(dataset_names)
     assert isinstance(dataset_names, list)

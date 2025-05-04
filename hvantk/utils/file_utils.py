@@ -9,6 +9,7 @@ import os.path as path
 import logging
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)  # Set default log level to DEBUG
 
 
 def download_file(url: str, out_dir: str, file_name: str):
@@ -29,10 +30,11 @@ def download_file(url: str, out_dir: str, file_name: str):
 
     os.makedirs(out_dir, exist_ok=True)
     local_path = os.path.join(out_dir, file_name)
-    logger.info(f"Downloading {url} to {local_path}")
+    logger.debug(f"Downloading {url} to {local_path}")
     try:
         response = requests.get(url, stream=True, timeout=30)  # Add timeout
         response.raise_for_status()  # Raises exception for 4XX/5XX responses
+        logger.debug(f"Download response status code: {response.status_code}")
 
         total_size = int(response.headers.get("content-length", 0))
 
@@ -59,6 +61,7 @@ def download_file(url: str, out_dir: str, file_name: str):
         # Clean up partial download if it exists
         if os.path.exists(local_path):
             os.remove(local_path)
+        logger.exception(f"Failed to download {url}: {str(e)}")
         raise Exception(f"Failed to download {url}: {str(e)}")
 
 
@@ -73,13 +76,24 @@ def url_exists(url: str) -> bool:
     :rtype: bool
     """
     try:
+        logger.debug(f"Checking if URL exists: {url}")
         response = requests.head(url, allow_redirects=True)
-        return response.status_code == 200
-    except requests.RequestException:
+        if response.status_code == 200:
+            logger.debug(f"URL {url} exists with status code: {response.status_code}")
+            return True
+        else:
+            logger.warning(
+                f"URL {url} does not exist with status code: {response.status_code}"
+            )
+            return False
+    except requests.RequestException as e:
+        logger.exception(f"Error checking URL {url}: {e}")
         return False
 
 
-def compress_files(source_dir: str, output_zip: str, remove_originals: bool = False) -> None:
+def compress_files(
+    source_dir: str, output_zip: str, remove_originals: bool = False
+) -> None:
     """
     Compresses the files in a given source directory into a ZIP archive, maintaining
     the folder structure. Optionally, the original source directory can be removed
@@ -116,13 +130,16 @@ def compress_files(source_dir: str, output_zip: str, remove_originals: bool = Fa
                 # Use relative path in the archive to preserve folder structure.
                 arcname = os.path.relpath(file_path, source_dir)
                 zipf.write(file_path, arcname)
-    logging.info(f"Compressed '{source_dir}' into '{output_zip}'")
+    logger.info(f"Compressed '{source_dir}' into '{output_zip}'")
 
     if remove_originals:
         shutil.rmtree(source_dir)
-        logging.info(f"Removed original directory '{source_dir}' after compression.")
+        logger.info(f"Removed original directory '{source_dir}' after compression.")
 
-def decompress_files(zip_path: str, extract_to: str, remove_originals: bool = False) -> None:
+
+def decompress_files(
+    zip_path: str, extract_to: str, remove_originals: bool = False
+) -> None:
     """
     Decompresses files from a zip archive to a specified location. Optionally, removes the original zip
     archive after extraction.
@@ -153,8 +170,8 @@ def decompress_files(zip_path: str, extract_to: str, remove_originals: bool = Fa
             raise zipfile.BadZipFile(f"'{zip_path}' is corrupted")
 
         zipf.extractall(extract_to)
-    logging.info(f"Extracted '{zip_path}' into '{extract_to}'")
+    logger.info(f"Extracted '{zip_path}' into '{extract_to}'")
 
     if remove_originals:
         os.remove(zip_path)
-        logging.info(f"Removed archive file '{zip_path}' after decompression.")
+        logger.info(f"Removed archive file '{zip_path}' after decompression.")

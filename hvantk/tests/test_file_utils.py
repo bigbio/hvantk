@@ -2,6 +2,7 @@ import zipfile
 import pytest
 from hvantk.utils.file_utils import compress_files, decompress_files
 
+
 @pytest.fixture
 def setup_test_environment(tmp_path):
     test_dir = tmp_path / "test_dir"
@@ -12,6 +13,7 @@ def setup_test_environment(tmp_path):
     (test_dir / "file2.txt").write_text("This is another test file.")
     return test_dir, test_zip, extracted_dir
 
+
 def test_compress_files(setup_test_environment):
     test_dir, test_zip, _ = setup_test_environment
     compress_files(str(test_dir), str(test_zip))
@@ -21,11 +23,13 @@ def test_compress_files(setup_test_environment):
         assert "file1.txt" in zipf.namelist()
         assert "file2.txt" in zipf.namelist()
 
+
 def test_compress_files_with_removal(setup_test_environment):
     test_dir, test_zip, _ = setup_test_environment
     compress_files(str(test_dir), str(test_zip), remove_originals=True)
     assert test_zip.exists()
     assert not test_dir.exists()
+
 
 def test_decompress_files(setup_test_environment):
     test_dir, test_zip, extracted_dir = setup_test_environment
@@ -34,6 +38,7 @@ def test_decompress_files(setup_test_environment):
     assert extracted_dir.exists()
     assert (extracted_dir / "file1.txt").exists()
     assert (extracted_dir / "file2.txt").exists()
+
 
 def test_decompress_files_with_removal(setup_test_environment):
     test_dir, test_zip, extracted_dir = setup_test_environment

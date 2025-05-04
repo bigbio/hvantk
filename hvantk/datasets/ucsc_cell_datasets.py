@@ -1,6 +1,9 @@
 from typing import List, Optional
 from dataclasses import dataclass, field
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 from hvantk.utils.constants import (
     UCSC_CELL_BROWSER_BASE_URL,
@@ -176,6 +179,7 @@ class UCSCDataSetCollection:
 
     @classmethod
     def from_json(cls, json_path: str) -> "UCSCDataSetCollection":
+        logger.info(f"Loading UCSC dataset collection from JSON: {json_path}")
         try:
             with open(json_path, "r") as file:
                 data = json.load(file)
@@ -202,13 +206,17 @@ class UCSCDataSetCollection:
                 datasets=datasets,
             )
         except json.JSONDecodeError as e:
+            logger.exception(f"Invalid JSON format: {str(e)}")
             raise ValueError(f"Invalid JSON format: {str(e)}") from e
         except OSError as e:
+            logger.exception(f"Could not read file {json_path}: {str(e)}")
             raise ValueError(f"Could not read file {json_path}: {str(e)}") from e
         except (KeyError, TypeError) as e:
+            logger.exception(f"Invalid dataset format in JSON: {str(e)}")
             raise ValueError(f"Invalid dataset format in JSON: {str(e)}") from e
 
     def get_dataset_by_name(self, dataset_name: str) -> Optional[UCSCDataset]:
+        logger.debug(f"Getting dataset by name: {dataset_name}")
         """
         Retrieve a dataset by its name.
 
@@ -220,7 +228,9 @@ class UCSCDataSetCollection:
         """
         for dataset in self.datasets:
             if dataset.name == dataset_name:
+                logger.debug(f"Dataset found: {dataset.name}")
                 return dataset
+        logger.debug(f"Dataset not found: {dataset_name}")
         return None
 
     def total_samples(self) -> int:
@@ -234,10 +244,13 @@ class UCSCDataSetCollection:
         return sum(dataset.sampleCount or 0 for dataset in self.datasets)
 
     def list_dataset_names(self) -> List[str]:
+        logger.debug("Listing dataset names")
         """
         List the names of all datasets in the collection.
 
         Returns:
             List[str]: A list of dataset names
         """
-        return [dataset.name for dataset in self.datasets]
+        dataset_names = [dataset.name for dataset in self.datasets]
+        logger.debug(f"Dataset names: {dataset_names}")
+        return dataset_names

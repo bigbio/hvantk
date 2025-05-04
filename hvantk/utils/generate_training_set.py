@@ -8,15 +8,18 @@ Generate training set from Clinvar
 """
 
 import hail as hl
+import logging
+
+logger = logging.getLogger(__name__)
 
 from fschd.utils.data_utils import get_chd_gene_set, get_clinvar_ht
 from settings import project_dir
 
 out_dir = f"{project_dir}/data/training_set"
-
-print(out_dir)
+logger.info(f"Output directory: {out_dir}")
 
 hl.init()
+logger.info("Hail initialized")
 
 # Pathogenic labels from Clinvar
 PATHOGENIC_LABEL_CLINVAR = [
@@ -32,15 +35,19 @@ CHD_LABEL_CLINVAR = ["Congenital_heart_disease", "Congenital_heart_defect"]
 BENIGN_LABEL_CLINVAR = ["Benign/Likely_benign", "Likely_benign", "Benign"]
 
 # import known CHD-associated genes
+logger.info("Importing known CHD-associated genes")
 chd_gene_set = get_chd_gene_set()
 
 # import clinvar data base
+logger.info("Importing Clinvar database")
 clinvar_ht = get_clinvar_ht()
 
 # add gene column to clinvar table
+logger.info("Adding gene column to Clinvar table")
 clinvar_ht = clinvar_ht.annotate(gene=clinvar_ht.info.GENEINFO.split("[:]")[0])
 
 # filter to non-synonymous variants
+logger.info("Filtering to non-synonymous variants")
 clinvar_ht = clinvar_ht.annotate(
     Consequence=clinvar_ht.info.MC.map(lambda x: x.split("[|]")[1])
 )
@@ -50,6 +57,9 @@ clinvar_ht = clinvar_ht.filter(
 )
 
 # annotate TP/FP label based on Pathogenic/Benign annotations from clinvar
+logger.info(
+    "Annotating TP/FP label based on Pathogenic/Benign annotations from Clinvar"
+)
 ts_ann_expr = {
     "is_tp_site": hl.case()
     .when(
@@ -70,7 +80,6 @@ ts_ann_expr = {
     )
     .default(False),
 }
-
 ts_ht = clinvar_ht.annotate(**ts_ann_expr)
 
 ts_ht = ts_ht.filter(ts_ht.is_tp_site != ts_ht.is_tn_site)
@@ -87,9 +96,11 @@ ts_ht = ts_ht.filter(hl.is_defined(ts_ht.rf_label))
 ts_ht = ts_ht.select("gene", "rf_label")
 
 # export results
+logger.info("Exporting results")
 ht_out_path = f"{out_dir}/ts.clinvar.ht"
 ts_ht = ts_ht.checkpoint(output=ht_out_path, overwrite=True)
 
 ts_ht.export(f"{ht_out_path}.tsv")
 
 hl.stop()
+logger.info("Hail stopped")

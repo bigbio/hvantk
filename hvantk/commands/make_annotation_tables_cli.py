@@ -5,6 +5,10 @@ Generate annotation tables from multiple (raw) sources
 
 import click
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 from hvantk.settings import CONTEXT_SETTINGS, RAW_DATA_PATH, set_raw_data_path
 from hvantk.utils.make_tables import (
     create_interactome_tb,
@@ -37,27 +41,40 @@ def make_annotation_tables_from_raw_sources(
     default_ref_genome: str = "GRCh38",
 ):
     # set the raw data path
+    logger.info(f"Setting raw data path to {raw_data_path}")
     set_raw_data_path(raw_data_path)
 
     if interactome:
+        logger.info("Creating interactome table")
         bed_ppi = create_interactome_tb()
         bed_ppi.checkpoint(
             f"{output_dir}/interactome.{default_ref_genome}.ht", overwrite=True
         )
+        logger.info(
+            f"Interactome table created at {output_dir}/interactome.{default_ref_genome}.ht"
+        )
 
     if clinvar:
+        logger.info("Creating ClinVar table")
         clinvar_tb = create_clinvar_tb()
         clinvar_tb.checkpoint(
             f"{output_dir}/clinvar.{default_ref_genome}.ht", overwrite=True
         )
+        logger.info(
+            f"ClinVar table created at {output_dir}/clinvar.{default_ref_genome}.ht"
+        )
 
     if gevir:
+        logger.info("Creating GEVIR table")
         gevir_tb = create_gevir_tb()
         gevir_tb.checkpoint(f"{output_dir}/gevir.metrics.ht", overwrite=True)
+        logger.info(f"GEVIR table created at {output_dir}/gevir.metrics.ht")
 
     if gnomad_metrics:
+        logger.info("Creating gnomAD metrics table")
         gnomad_tb = create_gnomad_constraint_gene_metrics_tb()
         gnomad_tb.checkpoint(f"{output_dir}/gnomad.metrics.ht", overwrite=True)
+        logger.info(f"gnomAD metrics table created at {output_dir}/gnomad.metrics.ht")
 
 
 @click.command("mktables", short_help="Create annotation tables from raw sources.")
@@ -145,6 +162,7 @@ def make_annotation_tables_cli(
         )
         ctx.abort()
 
+    logger.info("Starting make_annotation_tables_from_raw_sources")
     make_annotation_tables_from_raw_sources(
         raw_data_path,
         ccr,
@@ -158,7 +176,10 @@ def make_annotation_tables_cli(
         output_dir,
         default_ref_genome,
     )
+    logger.info("make_annotation_tables_from_raw_sources completed")
 
 
 if __name__ == "__main__":
+    logger.info("Starting make_annotation_tables_cli")
     cli()
+    logger.info("make_annotation_tables_cli completed")
