@@ -17,7 +17,11 @@ from hvantk.commands.ucsc_downloader import ucsc_downloader
     context_settings=CONTEXT_SETTINGS,
 )
 def cli():
-    """A python package for gene and variant annotation."""
+    """
+    Entry point for the hvantk command-line interface.
+    
+    Serves as the root CLI group for gene and variant annotation commands.
+    """
     logger.info("Starting hvantk CLI")
     pass
 
@@ -26,6 +30,11 @@ cli.add_command(make_annotation_tables_cli)
 
 
 def main():
+    """
+    Runs the main entry point for the hvantk CLI application.
+    
+    Invokes the command-line interface to process user commands and logs the start and completion of the main function.
+    """
     logger.info("Running main function")
     cli()
     logger.info("Main function completed")

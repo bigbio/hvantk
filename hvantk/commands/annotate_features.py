@@ -48,6 +48,11 @@ def check_variant_tb(t: hl.Table, gene_col: str):
 
 
 def main(args):
+    """
+    Annotates a Hail variant table with multiple genomic and functional features.
+    
+    Reads a variant Hail Table, validates required columns, filters to bi-allelic variants, and sequentially annotates the table with ClinVar significance, variant IDs, Ensembl gene IDs, constrained coding regions, gene intolerance metrics, RNA-seq expression, gnomAD allele frequencies and constraint metrics, protein-protein interaction sites, Human Cell Atlas data, and dbNSFP deleteriousness scores. Writes the annotated table to disk and optionally exports it as a compressed TSV file.
+    """
     logger.info("Starting annotate_features command")
     # Init Hail
     hl.init(default_reference="GRCh38")
