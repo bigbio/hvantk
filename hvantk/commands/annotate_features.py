@@ -54,7 +54,6 @@ def main(args):
 
     ht = hl.read_table(args.variant_ht)
     logger.info(f"Reading table from {args.variant_ht}")
-    ht = hl.read_table(args.variant_ht)
     logger.info(f"Table schema: {ht.row}")
 
     gene_col = args.gene_col
