@@ -47,6 +47,7 @@ def cli():
               default=UCSC_GENE_COLUMN,
               help='Column name for gene in the expression matrix (default: UCSC_GENE_COLUMN)')
 @click.option('--split_gene_field', 
+              is_flag=True,
               default=True, 
               help='Split gene field and use first element(e.g., A|B -> A)')
 @click.option('--metadata_index_col', 
