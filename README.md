@@ -50,7 +50,50 @@ hvantk ucsc-downloader --dataset adultPancreas --output-dir data/ucsc
 
 This command downloads the expression matrix and metadata for the `adultPancreas` dataset from the UCSC Cell Browser and saves it to the `data/ucsc` directory.
 
-### 2. Create annotation tables from raw sources:
+### 2. Convert UCSC Cell data to Hail matrix table:
+
+```bash
+hvantk ucsc-matrix -e hvantk/tests/testdata/raw/ucsc/exprMatrix.test.tsv.bgz -m hvantk/tests/testdata/raw/ucsc/meta.test.tsv -o data/ucsc/exprMatrix.mt
+```
+
+This command converts the expression matrix and metadata files from the UCSC Cell Browser into a Hail matrix table format.
+
+Example matrix table schema:
+```markdown
+----------------------------------------
+Global fields:
+    None
+----------------------------------------
+Column fields:
+    'cell_id': str
+    'metadata': struct {
+        orig_ident: str, 
+        nCount_RNA: int32, 
+        nFeature_RNA: int32, 
+        percent_mt: float64, 
+        Rep: int32, 
+        Age: int32, 
+        Region: str, 
+        RNA_snn_res_0_8: int32, 
+        seurat_clusters: int32, 
+        clusters: int32, 
+        colors: str, 
+        major_cell_class: str
+    }
+----------------------------------------
+Row fields:
+    'gene': str
+----------------------------------------
+Entry fields:
+    'x': int32
+----------------------------------------
+Column key: ['cell_id']
+Row key: ['gene']
+----------------------------------------
+```
+
+
+### 3. Create annotation tables from raw sources:
 
 ```bash
 hvantk mktables --raw_data_path /path/to/raw_data --clinvar --interactome --gevir --gnomad_metrics
