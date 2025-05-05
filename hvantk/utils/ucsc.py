@@ -1,8 +1,11 @@
-# Utils function to convert USCS single cell dataset to Hail Matrix Tables
+"""
+Utility functions to convert UCSC Cell Browser datasets to Hail Matrix Tables.
+
+This module provides functions to convert UCSC metadata and expression matrix files
+into Hail Tables and MatrixTables for downstream genetic and single-cell analysis.
+"""
 
 import os
-from typing import Union
-
 import hail as hl
 import pandas as pd
 
@@ -11,7 +14,6 @@ from hvantk.utils.constants import (
     UCSC_CELL_ID_COLUMN,
     UCSC_GENE_COLUMN
 )
-
 
 def _replace_dots_in_column_names(df: pd.DataFrame) -> pd.DataFrame:
     """
