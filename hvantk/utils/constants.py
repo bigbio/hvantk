@@ -43,4 +43,3 @@ logger.debug(f"UCSC JSON file path: {UCSC_JSON_FILE_PATH}")
 # UCSC gene and cell ID columns
 UCSC_CELL_ID_COLUMN = "cell_id"
 UCSC_GENE_COLUMN = "gene"
-

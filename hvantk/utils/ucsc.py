@@ -76,22 +76,11 @@ def create_mt_from_ucsc_expression_matrix(
         delimiter: str = "\t",
         row_fields: dict = None,
         row_key: str = UCSC_GENE_COLUMN,
-):
-    if not os.path.exists(expression_matrix_path):
-        raise FileNotFoundError(f"Expression matrix file not found: {expression_matrix_path}")
-
-    # Set default row_fields if None
-    if row_fields is None:
-        row_fields = {UCSC_GENE_COLUMN: hl.tstr}
-
-    # Check if the output path exists and overwrite is set to False
-    ...
         split_gene_field: bool = True,
         min_partitions: int = 50,
         force_bgz: bool = True,
         overwrite: bool = True,
-        metadata_ht: hl.Table = None,
-) -> hl.MatrixTable:
+        metadata_ht: hl.Table = None) -> hl.MatrixTable:
     """
     Creates a Hail MatrixTable from a given UCSC expression matrix file.
     Annotates the MatrixTable with metadata if provided.
@@ -113,6 +102,15 @@ def create_mt_from_ucsc_expression_matrix(
     :raises ValueError: If metadata_ht is provided but not a Hail Table,
         or if its key does not match the matrix table's column key.
     """
+
+    if not os.path.exists(expression_matrix_path):
+         raise FileNotFoundError(f"Expression matrix file not found: {expression_matrix_path}")
+
+    # Set default row_fields if None
+    if row_fields is None:
+         row_fields = {UCSC_GENE_COLUMN: hl.tstr}
+
+    # Check if the output path exists and overwrite is set to False
 
     # Check if the expression matrix file exists
     if not os.path.exists(expression_matrix_path):

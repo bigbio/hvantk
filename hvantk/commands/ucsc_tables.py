@@ -4,13 +4,10 @@ import click
 import hail as hl
 
 from hvantk.settings import CONTEXT_SETTINGS
-from hvantk.utils.constants import (
-    UCSC_CELL_ID_COLUMN,
-    UCSC_GENE_COLUMN
-)
+from hvantk.utils.constants import UCSC_CELL_ID_COLUMN, UCSC_GENE_COLUMN
 from hvantk.utils.ucsc import (
     convert_ucsc_metadata_to_hail_table,
-    create_mt_from_ucsc_expression_matrix
+    create_mt_from_ucsc_expression_matrix,
 )
 
 logger = logging.getLogger(__name__)
@@ -22,65 +19,86 @@ def cli():
     pass
 
 
-@click.command("ucsc-matrix", short_help="Create Hail matrix table from UCSC metadata and expression matrix")
-@click.option('--expression_matrix',
-              '-e',
-              required=True,
-              type=click.Path(exists=True, file_okay=True, dir_okay=False),
-              default=None,
-              help='Path to the expression matrix file (Block-compressed TSV file)')
-@click.option('--metadata',
-              '-m',
-              required=True,
-              type=click.Path(exists=True, file_okay=True, dir_okay=False),
-              default=None,
-              help='Path to the metadata file (TSV format)'
+@click.command(
+    "ucsc-matrix",
+    short_help="Create Hail matrix table from UCSC metadata and expression matrix",
 )
-@click.option('--output_mt',
-              '-o',
-              required=True,
-              type=click.Path(file_okay=False, dir_okay=True),
-              default='ucsc_expression_matrix.mt',
-              help='Output path for the Hail matrix table'
+@click.option(
+    "--expression_matrix",
+    "-e",
+    required=True,
+    type=click.Path(exists=True, file_okay=True, dir_okay=False),
+    default=None,
+    help="Path to the expression matrix file (Block-compressed TSV file)",
 )
-@click.option('--gene_column', 
-              default=UCSC_GENE_COLUMN,
-              help='Column name for gene in the expression matrix (default: UCSC_GENE_COLUMN)')
-@click.option('--split_gene_field', 
-              is_flag=True,
-              default=True, 
-              help='Split gene field and use first element(e.g., A|B -> A)')
-@click.option('--metadata_index_col', 
-              default=0,
-              help='Index column in metadata file (default: 0)')
-@click.option('--delimiter',
-                '-d',
-                default='\t',
-                type=str,
-                help='Delimiter for the expression matrix file (default: tab)')
-@click.option('--min_partitions', 
-              '-p',
-              default=50, 
-              type=int,
-              help='Minimum number of partitions for the Matrix Table')
-@click.option('--force_bgz', 
-              is_flag=True,
-              default=True, 
-              help='Force bgz compression for the input matrix expression file')
-@click.option('--overwrite', 
-              is_flag=True,
-              default=True, 
-              help='Overwrite existing files at output path')
-def make_ucsc_matrix_table(metadata,
-                           expression_matrix,
-                           output_mt,
-                           gene_column,
-                           metadata_index_col,
-                           delimiter,
-                           min_partitions,
-                           force_bgz,
-                           split_gene_field,
-                           overwrite):
+@click.option(
+    "--metadata",
+    "-m",
+    required=True,
+    type=click.Path(exists=True, file_okay=True, dir_okay=False),
+    default=None,
+    help="Path to the metadata file (TSV format)",
+)
+@click.option(
+    "--output_mt",
+    "-o",
+    required=True,
+    type=click.Path(file_okay=False, dir_okay=True),
+    default="ucsc_expression_matrix.mt",
+    help="Output path for the Hail matrix table",
+)
+@click.option(
+    "--gene_column",
+    default=UCSC_GENE_COLUMN,
+    help="Column name for gene in the expression matrix (default: UCSC_GENE_COLUMN)",
+)
+@click.option(
+    "--split_gene_field",
+    is_flag=True,
+    default=True,
+    help="Split gene field and use first element(e.g., A|B -> A)",
+)
+@click.option(
+    "--metadata_index_col", default=0, help="Index column in metadata file (default: 0)"
+)
+@click.option(
+    "--delimiter",
+    "-d",
+    default="\t",
+    type=str,
+    help="Delimiter for the expression matrix file (default: tab)",
+)
+@click.option(
+    "--min_partitions",
+    "-p",
+    default=50,
+    type=int,
+    help="Minimum number of partitions for the Matrix Table",
+)
+@click.option(
+    "--force_bgz",
+    is_flag=True,
+    default=True,
+    help="Force bgz compression for the input matrix expression file",
+)
+@click.option(
+    "--overwrite",
+    is_flag=True,
+    default=True,
+    help="Overwrite existing files at output path",
+)
+def make_ucsc_matrix_table(
+    metadata,
+    expression_matrix,
+    output_mt,
+    gene_column,
+    metadata_index_col,
+    delimiter,
+    min_partitions,
+    force_bgz,
+    split_gene_field,
+    overwrite,
+):
     """
     Create a Hail Matrix Table from UCSC metadata and expression matrix.
 
@@ -100,16 +118,16 @@ def make_ucsc_matrix_table(metadata,
     :return: Hail Matrix Table created from the given UCSC metadata and expression matrix.
     :rtype: hl.MatrixTable
     """
-    
+
     logger.info(f"Converting metadata file: {metadata}")
     # Convert metadata to Hail Table
     metadata_ht = convert_ucsc_metadata_to_hail_table(
         metadata_path=metadata,
         sep=delimiter,
         index_col=metadata_index_col,
-        index_name=UCSC_CELL_ID_COLUMN
+        index_name=UCSC_CELL_ID_COLUMN,
     )
-    
+
     logger.info(f"Creating matrix table from expression matrix: {expression_matrix}")
     # Create matrix table
     mt = create_mt_from_ucsc_expression_matrix(
@@ -122,18 +140,20 @@ def make_ucsc_matrix_table(metadata,
         min_partitions=min_partitions,
         force_bgz=force_bgz,
         overwrite=overwrite,
-        metadata_ht=metadata_ht
+        metadata_ht=metadata_ht,
     )
-    
+
     num_rows = mt.count_rows()
     num_cols = mt.count_cols()
     logger.info(f"Successfully created matrix table at: {output_mt}")
-    logger.info(f"Matrix table dimensions: {num_rows} rows (genes) × {num_cols} columns (cells)")
+    logger.info(
+        f"Matrix table dimensions: {num_rows} rows (genes) × {num_cols} columns (cells)"
+    )
 
     # print nicely formatted mt.describe() to the console
     logger.info("Matrix Table description:")
     logger.info(mt.describe())
-    
+
     return mt
 
 

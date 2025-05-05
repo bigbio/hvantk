@@ -18,7 +18,9 @@ def bi_allelic_expr(t: Union[hl.Table, hl.MatrixTable]) -> hl.expr.BooleanExpres
 
 
 def split_field_expr(
-        t: Union[hl.Table, hl.MatrixTable], field_name: str = "gene", split_char: str = "\\|"
+    t: Union[hl.Table, hl.MatrixTable],
+    field_name: str = "gene",
+    split_char: str = "\\|",
 ) -> hl.expr.StringExpression:
     """
     Splits the value of a specified field in a Hail Table or MatrixTable based on a delimiter and
