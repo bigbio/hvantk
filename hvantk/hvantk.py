@@ -6,6 +6,7 @@ logger = logging.getLogger(__name__)
 from hvantk.settings import CONTEXT_SETTINGS
 from hvantk.commands.make_annotation_tables_cli import make_annotation_tables_cli
 from hvantk.commands.ucsc_downloader import ucsc_downloader
+from hvantk.commands.ucsc_tables import make_ucsc_matrix_table
 
 
 # Main CLI entry point for the package (hvantk)
@@ -23,6 +24,7 @@ def cli():
 
 
 cli.add_command(ucsc_downloader)
+cli.add_command(make_ucsc_matrix_table)
 cli.add_command(make_annotation_tables_cli)
 
 
