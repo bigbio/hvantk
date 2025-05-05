@@ -1,0 +1,23 @@
+[
+  {
+    "title": "The Genotype-Tissue Expression (GTEx) project v8",
+    "accession": "E-GTEX-8",
+    "type": "RNA-Seq mRNA baseline",
+    "pubmedid": "35922509",
+    "description": "",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-GTEX-8.condensed-sdrf.tsv"
+      },
+      {
+        "type": "tpm",
+        "name": "E-GTEX-8-tpms.tsv"
+      },
+      {
+        "type": "fpkm",
+        "name": "E-GTEX-8-fpkms.tsv"
+      }
+    ]
+  }
+]
