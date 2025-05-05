@@ -72,8 +72,18 @@ def create_mt_from_ucsc_expression_matrix(
         expression_matrix_path: str,
         output_path: str = None,
         delimiter: str = "\t",
-        row_fields: dict = {UCSC_GENE_COLUMN: hl.tstr},
+        row_fields: dict = None,
         row_key: str = UCSC_GENE_COLUMN,
+):
+    if not os.path.exists(expression_matrix_path):
+        raise FileNotFoundError(f"Expression matrix file not found: {expression_matrix_path}")
+
+    # Set default row_fields if None
+    if row_fields is None:
+        row_fields = {UCSC_GENE_COLUMN: hl.tstr}
+
+    # Check if the output path exists and overwrite is set to False
+    ...
         split_gene_field: bool = True,
         min_partitions: int = 50,
         force_bgz: bool = True,
