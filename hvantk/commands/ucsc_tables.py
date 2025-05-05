@@ -63,9 +63,11 @@ def cli():
               type=int,
               help='Minimum number of partitions for the Matrix Table')
 @click.option('--force_bgz', 
+              is_flag=True,
               default=True, 
               help='Force bgz compression for the input matrix expression file')
 @click.option('--overwrite', 
+              is_flag=True,
               default=True, 
               help='Overwrite existing files at output path')
 def make_ucsc_matrix_table(metadata,
