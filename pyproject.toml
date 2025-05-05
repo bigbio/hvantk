@@ -2,9 +2,16 @@
 name = "hvantk"
 version = "0.1.0"
 description = "Hail-based multiomics variant annotation toolkit."
-authors = ["Yasset Perez-Riverol <ypriverol@gmail.com>"]
+authors = ["Yasset Perez-Riverol <ypriverol@gmail.com>",
+           "Enrique Audain <enrique.audain@uni-oldenburg.de>"]
 license = "MIT"
 readme = "README.md"
+keywords = [
+    "multiomics",
+    "annotation-toolkit",
+    "data-analysis",
+    "big data"
+]
 
 [tool.poetry.dependencies]
 python = ">=3.10.0"
@@ -21,3 +28,10 @@ flake8 = "^4.0"
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.urls]
+GitHub = "https://github.com/bigbio/hvantk/"
+LICENSE = "https://github.com/bigbio/hvantk/blob/main/LICENSE"
+
+[tool.poetry.scripts]
+hvantk = "hvantk.hvantk:main"
