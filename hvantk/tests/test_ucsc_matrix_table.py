@@ -23,9 +23,9 @@ TESTDATA_DIR = Path(__file__).parent / "testdata" / "raw" / "ucsc"
 METADATA_FILE_PATH = (TESTDATA_DIR / "meta.test.tsv").resolve()
 EXPRESSION_MATRIX_FILE_PATH = (TESTDATA_DIR / "exprMatrix.test.tsv.bgz").resolve()
 
-# Temporary directory for testing
-TMP_DIR = Path(__file__).parent / "tmp"
-MATRIX_TABLE_OUTPUT_PATH = TMP_DIR / "ucsc_expression_matrix.mt"
+# --- around line 90: fix the success-file path check ---
+    output_path = Path(temp_dir) / "ucsc_expression_matrix.mt"
+    success_file = output_path / "_SUCCESS"
 
 
 @pytest.fixture
