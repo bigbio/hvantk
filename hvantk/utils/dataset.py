@@ -12,7 +12,7 @@ source_dir = None
 def get_chd_denovo_ht() -> hl.Table:
     """
     Returns a Hail Table of de novo mutations identified in CHD trios.
-    
+
     The dataset is curated from Jin 2017 and Sifrim-Hitz 2016 studies and contains de novo mutation calls relevant to congenital heart disease research.
     """
     logger.info("Getting CHD de novo HT")
@@ -22,7 +22,7 @@ def get_chd_denovo_ht() -> hl.Table:
 def get_clinvar_ht() -> hl.Table:
     """
     Returns the Clinvar dataset as a Hail Table (hg38 reference).
-    
+
     The table contains variant annotations from the Clinvar database mapped to the GRCh38 genome build.
     """
     logger.info("Getting Clinvar HT")
@@ -34,11 +34,11 @@ def get_gene_expression_ht(
 ) -> hl.Table:
     """
     Retrieves a Hail Table of gene expression values for a specified organ across time points.
-    
+
     Args:
         organ: Name of the organ to extract expression data for (default is "Heart").
         tp_col: Column containing averaged expression values per time point (default is "mean_expr_time_point").
-    
+
     Returns:
         A Hail Table keyed by gene, with columns for each time point containing expression values for the specified organ.
     """
@@ -66,7 +66,7 @@ def get_gene_expression_ht(
 def get_chd_gene_set() -> hl.expr.SetExpression:
     """
     Retrieves the set of congenital heart disease (CHD) genes.
-    
+
     Reads a gene set file containing CHD-associated genes and returns them as a Hail set expression.
     """
     logger.info("Getting CHD gene set")
@@ -81,7 +81,7 @@ def get_chd_gene_set() -> hl.expr.SetExpression:
 def get_gene_ann_ht() -> hl.Table:
     """
     Returns a Hail Table containing gene annotation data.
-    
+
     The table includes gene-level annotations sourced from Ensembl.
     """
     logger.info("Getting gene annotation HT")
@@ -91,7 +91,7 @@ def get_gene_ann_ht() -> hl.Table:
 def get_ccr_ht() -> hl.Table:
     """
     Returns a Hail Table containing constrained coding region (CCR) data.
-    
+
     The table provides CCR annotations for genomic regions, useful for variant interpretation.
     """
     logger.info("Getting CCR HT")
@@ -101,7 +101,7 @@ def get_ccr_ht() -> hl.Table:
 def get_gevir_ht() -> hl.Table:
     """
     Returns the GEVIR metrics dataset as a Hail Table.
-    
+
     The table contains gene-level GEVIR scores used for variant interpretation.
     """
     logger.info("Getting GEVIR HT")
@@ -111,7 +111,7 @@ def get_gevir_ht() -> hl.Table:
 def get_ppi_ht() -> hl.Table:
     """
     Returns a Hail Table containing protein-protein interaction (PPI) data.
-    
+
     The table provides curated interactome information mapped to the GRCh38 reference genome.
     """
     logger.info("Getting PPI HT")
@@ -121,7 +121,7 @@ def get_ppi_ht() -> hl.Table:
 def get_dbnsfp_scores_ht() -> hl.Table:
     """
     Returns a Hail Table containing dbNSFP variant scores.
-    
+
     The table includes functional prediction scores and annotations for genetic variants from the dbNSFP database.
     """
     logger.info("Getting dbNSFP scores HT")
@@ -131,7 +131,7 @@ def get_dbnsfp_scores_ht() -> hl.Table:
 def get_gnomad_metrics_ht() -> hl.Table:
     """
     Returns a Hail Table containing gnomAD variant metrics.
-    
+
     The table includes various metrics from the Genome Aggregation Database (gnomAD) for use in downstream analyses.
     """
     logger.info("Getting gnomAD metrics HT")
@@ -157,7 +157,7 @@ def get_deg_ht() -> hl.Table:
 def get_hca_ht() -> hl.Table:
     """
     Returns a Hail Table containing Human Cell Atlas (HCA) heart data.
-    
+
     The table includes single-cell transcriptomic data from the HCA heart project.
     """
     logger.info("Getting HCA HT")

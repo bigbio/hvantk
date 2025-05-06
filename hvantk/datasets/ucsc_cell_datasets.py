@@ -181,15 +181,15 @@ class UCSCDataSetCollection:
     def from_json(cls, json_path: str) -> "UCSCDataSetCollection":
         """
         Loads a UCSC dataset collection and its datasets from a JSON file.
-        
+
         Reads the specified JSON file, validates required fields, and constructs a UCSCDataSetCollection instance with its datasets. Raises a ValueError if the file is missing required keys, contains invalid data, or cannot be read.
-         
+
         Args:
             json_path: Path to the JSON file containing the collection metadata and datasets.
-        
+
         Returns:
             An instance of UCSCDataSetCollection populated with datasets from the JSON file.
-        
+
         Raises:
             ValueError: If the JSON file is invalid, missing required fields, or cannot be read.
         """
@@ -232,12 +232,12 @@ class UCSCDataSetCollection:
     def get_dataset_by_name(self, dataset_name: str) -> Optional[UCSCDataset]:
         """
         Returns the dataset with the specified name, or None if not found.
-        
+
         Args:
-        	dataset_name: The name of the dataset to search for.
-        
+                dataset_name: The name of the dataset to search for.
+
         Returns:
-        	The UCSCDataset instance matching the given name, or None if no match exists.
+                The UCSCDataset instance matching the given name, or None if no match exists.
         """
         logger.debug(f"Getting dataset by name: {dataset_name}")
         """
@@ -259,7 +259,7 @@ class UCSCDataSetCollection:
     def total_samples(self) -> int:
         """
         Returns the total number of samples across all datasets in the collection.
-        
+
         If a dataset's sample count is missing, it is treated as zero.
         """
         return sum(dataset.sampleCount or 0 for dataset in self.datasets)
@@ -267,7 +267,7 @@ class UCSCDataSetCollection:
     def list_dataset_names(self) -> List[str]:
         """
         Returns a list of all dataset names in the collection.
-        
+
         Returns:
             List[str]: The names of all datasets.
         """

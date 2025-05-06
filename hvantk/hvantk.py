@@ -20,7 +20,7 @@ from hvantk.commands.ucsc_tables import make_ucsc_matrix_table
 def cli():
     """
     Entry point for the hvantk command-line interface.
-    
+
     Serves as the root CLI group for gene and variant annotation commands.
     """
     logger.info("Starting hvantk CLI")
@@ -35,7 +35,7 @@ cli.add_command(make_annotation_tables_cli)
 def main():
     """
     Runs the main entry point for the hvantk CLI application.
-    
+
     Invokes the command-line interface to process user commands and logs the start and completion of the main function.
     """
     logger.info("Running main function")

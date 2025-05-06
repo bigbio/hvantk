@@ -15,7 +15,7 @@ logger.setLevel(logging.DEBUG)  # Set default log level to DEBUG
 def download_file(url: str, out_dir: str, file_name: str):
     """
     Downloads a file from the specified URL to a local directory with a given file name.
-    
+
     Validates that the file name does not contain path traversal components. Creates the output directory if it does not exist. Raises an exception if the download fails or if the file name is invalid.
     """
     # Validate file_name doesn't contain path traversal
@@ -65,7 +65,7 @@ def download_file(url: str, out_dir: str, file_name: str):
 def url_exists(url: str) -> bool:
     """
     Checks whether the specified URL exists by performing an HTTP HEAD request.
-    
+
     Returns:
         True if the URL responds with status code 200; otherwise, False.
     """
@@ -90,12 +90,12 @@ def compress_files(
 ) -> None:
     """
     Compresses all files in a directory into a ZIP archive, preserving folder structure.
-    
+
     Args:
         source_dir: Path to the directory whose contents will be compressed.
         output_zip: Path to the output ZIP file.
         remove_originals: If True, deletes the source directory after compression.
-    
+
     Raises:
         FileNotFoundError: If the source directory does not exist.
         ValueError: If the source path is not a directory.
@@ -131,14 +131,14 @@ def decompress_files(
 ) -> None:
     """
     Extracts all files from a ZIP archive to a target directory.
-    
+
     If the ZIP file is corrupted, a BadZipFile exception is raised. Optionally deletes the original ZIP file after extraction if remove_originals is True.
-    
+
     Args:
         zip_path: Path to the ZIP archive.
         extract_to: Directory where files will be extracted.
         remove_originals: If True, deletes the ZIP file after extraction.
-    
+
     Raises:
         FileNotFoundError: If the ZIP file does not exist.
         zipfile.BadZipFile: If the ZIP file is invalid or corrupted.
