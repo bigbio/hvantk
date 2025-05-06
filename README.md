@@ -59,39 +59,49 @@ hvantk ucsc-matrix -e hvantk/tests/testdata/raw/ucsc/exprMatrix.test.tsv.bgz -m 
 This command converts the expression matrix and metadata files from the UCSC Cell Browser into a Hail matrix table format.
 
 Example matrix table schema:
+
 ```markdown
-----------------------------------------
+---
+
 Global fields:
-    None
-----------------------------------------
+None
+
+---
+
 Column fields:
-    'cell_id': str
-    'metadata': struct {
-        orig_ident: str, 
-        nCount_RNA: int32, 
-        nFeature_RNA: int32, 
-        percent_mt: float64, 
-        Rep: int32, 
-        Age: int32, 
-        Region: str, 
-        RNA_snn_res_0_8: int32, 
-        seurat_clusters: int32, 
-        clusters: int32, 
-        colors: str, 
-        major_cell_class: str
-    }
-----------------------------------------
+'cell_id': str
+'metadata': struct {
+orig_ident: str,
+nCount_RNA: int32,
+nFeature_RNA: int32,
+percent_mt: float64,
+Rep: int32,
+Age: int32,
+Region: str,
+RNA_snn_res_0_8: int32,
+seurat_clusters: int32,
+clusters: int32,
+colors: str,
+major_cell_class: str
+}
+
+---
+
 Row fields:
-    'gene': str
-----------------------------------------
+'gene': str
+
+---
+
 Entry fields:
-    'x': int32
-----------------------------------------
+'x': int32
+
+---
+
 Column key: ['cell_id']
 Row key: ['gene']
-----------------------------------------
-```
 
+---
+```
 
 ### 3. Create annotation tables from raw sources:
 

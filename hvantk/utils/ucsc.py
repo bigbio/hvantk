@@ -10,10 +10,8 @@ import hail as hl
 import pandas as pd
 
 from hvantk.utils.expressions import split_field_expr
-from hvantk.utils.constants import (
-    UCSC_CELL_ID_COLUMN,
-    UCSC_GENE_COLUMN
-)
+from hvantk.utils.constants import UCSC_CELL_ID_COLUMN, UCSC_GENE_COLUMN
+
 
 def _replace_dots_in_column_names(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -24,14 +22,16 @@ def _replace_dots_in_column_names(df: pd.DataFrame) -> pd.DataFrame:
     :return: DataFrame with dots replaced by underscores in column names.
     :rtype: pd.DataFrame
     """
-    df.columns = df.columns.str.replace('.', '_', regex=False)
+    df.columns = df.columns.str.replace(".", "_", regex=False)
     return df
 
 
-def convert_ucsc_metadata_to_hail_table(metadata_path: str,
-                                   sep: str = "\t",
-                                   index_col: int = 0,
-                                   index_name: str = UCSC_CELL_ID_COLUMN) -> hl.Table:
+def convert_ucsc_metadata_to_hail_table(
+    metadata_path: str,
+    sep: str = "\t",
+    index_col: int = 0,
+    index_name: str = UCSC_CELL_ID_COLUMN,
+) -> hl.Table:
     """
     Converts a tabular metadata file from UCSC expression matrix into a Hail Table.
 
@@ -59,7 +59,7 @@ def convert_ucsc_metadata_to_hail_table(metadata_path: str,
     df.reset_index(inplace=True)
 
     # Rename the index column
-    df.rename(columns={'index': index_name}, inplace=True)
+    df.rename(columns={"index": index_name}, inplace=True)
 
     # Replace dots in column names with underscores
     df = _replace_dots_in_column_names(df)
@@ -71,16 +71,17 @@ def convert_ucsc_metadata_to_hail_table(metadata_path: str,
 
 
 def create_mt_from_ucsc_expression_matrix(
-        expression_matrix_path: str,
-        output_path: str = None,
-        delimiter: str = "\t",
-        row_fields: dict = None,
-        row_key: str = UCSC_GENE_COLUMN,
-        split_gene_field: bool = True,
-        min_partitions: int = 50,
-        force_bgz: bool = True,
-        overwrite: bool = True,
-        metadata_ht: hl.Table = None) -> hl.MatrixTable:
+    expression_matrix_path: str,
+    output_path: str = None,
+    delimiter: str = "\t",
+    row_fields: dict = None,
+    row_key: str = UCSC_GENE_COLUMN,
+    split_gene_field: bool = True,
+    min_partitions: int = 50,
+    force_bgz: bool = True,
+    overwrite: bool = True,
+    metadata_ht: hl.Table = None,
+) -> hl.MatrixTable:
     """
     Creates a Hail MatrixTable from a given UCSC expression matrix file.
     Annotates the MatrixTable with metadata if provided.
@@ -104,21 +105,27 @@ def create_mt_from_ucsc_expression_matrix(
     """
 
     if not os.path.exists(expression_matrix_path):
-         raise FileNotFoundError(f"Expression matrix file not found: {expression_matrix_path}")
+        raise FileNotFoundError(
+            f"Expression matrix file not found: {expression_matrix_path}"
+        )
 
     # Set default row_fields if None
     if row_fields is None:
-         row_fields = {UCSC_GENE_COLUMN: hl.tstr}
+        row_fields = {UCSC_GENE_COLUMN: hl.tstr}
 
     # Check if the output path exists and overwrite is set to False
 
     # Check if the expression matrix file exists
     if not os.path.exists(expression_matrix_path):
-        raise FileNotFoundError(f"Expression matrix file not found: {expression_matrix_path}")
+        raise FileNotFoundError(
+            f"Expression matrix file not found: {expression_matrix_path}"
+        )
 
     # Check if the output path exists and overwrite is set to False
     if output_path and os.path.exists(output_path) and not overwrite:
-        raise FileExistsError(f"Output path already exists: {output_path}. Set overwrite=True to overwrite.")
+        raise FileExistsError(
+            f"Output path already exists: {output_path}. Set overwrite=True to overwrite."
+        )
 
     # Import the matrix table with the specified parameters
     mt = hl.import_matrix_table(
@@ -127,7 +134,7 @@ def create_mt_from_ucsc_expression_matrix(
         row_fields=row_fields,
         row_key=row_key,
         min_partitions=min_partitions,
-        force_bgz=force_bgz
+        force_bgz=force_bgz,
     )
 
     # rename col_id to cell_id

@@ -16,15 +16,15 @@ ANNOTATION_DATA_PATH = None
 def set_raw_data_path(raw_data_path: str):
     """
     Sets the global RAW_DATA_PATH variable to the specified directory path.
-    
+
     Args:
-    	raw_data_path: Directory path to use for raw data.
-    
+        raw_data_path: Directory path to use for raw data.
+
     Returns:
-    	The updated RAW_DATA_PATH.
-    
+        The updated RAW_DATA_PATH.
+
     Raises:
-    	ValueError: If the provided path is not a valid directory.
+        ValueError: If the provided path is not a valid directory.
     """
     global RAW_DATA_PATH
     if os.path.isdir(raw_data_path):
@@ -39,13 +39,13 @@ def set_raw_data_path(raw_data_path: str):
 def set_annotation_data_path(annotation_data_path: str):
     """
     Sets the global annotation data path if the provided directory exists.
-    
+
     Args:
         annotation_data_path: Path to the annotation data directory.
-    
+
     Returns:
         The updated annotation data path.
-    
+
     Raises:
         ValueError: If the provided path is not a valid directory.
     """

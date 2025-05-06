@@ -76,7 +76,7 @@ def _print_dataset_names():
 def ucsc_downloader(ctx, dataset, output_dir, base_url, list_datasets):
     """
     Downloads expression matrix and metadata files for a specified UCSC Cell Browser dataset.
-    
+
     If the --list_datasets flag is provided, lists all available datasets instead of downloading.
     Checks for the existence of required files at the specified URLs before downloading.
     Prompts for confirmation if the target dataset directory exists and contains files.

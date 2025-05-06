@@ -43,16 +43,16 @@ def make_annotation_tables_from_raw_sources(
     # set the raw data path
     """
     Generates selected gene and variant annotation tables from raw data sources.
-    
+
     For each enabled annotation type, creates the corresponding Hail table from raw data
     and saves it to the specified output directory. Only interactome, ClinVar, GEVIR, and
     gnomAD metrics tables are currently implemented; other options are accepted but not used.
-    
+
     Args:
         raw_data_path: Path to the directory containing raw annotation data.
         output_dir: Directory where generated annotation tables will be saved.
         default_ref_genome: Reference genome build identifier (e.g., "GRCh38").
-    
+
     Note:
         Only the interactome, ClinVar, GEVIR, and gnomAD metrics tables are generated.
         Other flags are reserved for future implementation.
@@ -163,7 +163,7 @@ def make_annotation_tables_cli(
     # exit if no flat parameter is set
     """
     Handles the CLI command for generating annotation tables from raw data sources.
-    
+
     Validates that at least one annotation table flag is set, then initiates the creation
     of the selected tables using the provided raw data path, output directory, and
     reference genome. Aborts execution if no table creation flags are specified.
