@@ -2,3 +2,4 @@ click
 hail
 requests
 tqdm
+pandas
