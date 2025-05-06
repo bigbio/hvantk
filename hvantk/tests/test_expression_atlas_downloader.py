@@ -4,8 +4,7 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner
 from hvantk.commands import expression_atlas_downloader
-from hvantk.tests.test_create_gene_annotation_tables import TEST_DIR
-
+# Define the test directory path
 TEST_DIR = Path(__file__).parent.parent
 
 
