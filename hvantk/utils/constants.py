@@ -39,3 +39,7 @@ logger.debug(f"Metadata file name: {METADATA_FILE_NAME}")
 # Path to the JSON file containing the UCSC cell datasets
 UCSC_JSON_FILE_PATH = BASE_DIR.parent / "resources" / "cells_ucsc_datasets.json"
 logger.debug(f"UCSC JSON file path: {UCSC_JSON_FILE_PATH}")
+
+# UCSC gene and cell ID columns
+UCSC_CELL_ID_COLUMN = "cell_id"
+UCSC_GENE_COLUMN = "gene"

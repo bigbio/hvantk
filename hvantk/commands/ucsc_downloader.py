@@ -75,18 +75,12 @@ def _print_dataset_names():
 @click.pass_context
 def ucsc_downloader(ctx, dataset, output_dir, base_url, list_datasets):
     """
-    logger.info(f"Starting ucsc_downloader for dataset: {dataset}, output_dir: {output_dir}, base_url: {base_url}")
-    # Download expression matrix and metadata from the UCSC Cell Browser for a specified dataset (e.g., adultPancreas).
-
-    Usage examples:
-        # Download a specific dataset
-        hvantk ucsc-downloader --dataset <dataset_name> --output-dir <output_directory>
-
-        # Download a specific dataset with a custom base URL
-        hvantk ucsc-downloader --dataset <dataset_name> --output-dir <output_directory> --base_url <custom_base_url>
-
-        # List all available datasets
-        hvantk ucsc-downloader --list_datasets
+    Downloads expression matrix and metadata files for a specified UCSC Cell Browser dataset.
+    
+    If the --list_datasets flag is provided, lists all available datasets instead of downloading.
+    Checks for the existence of required files at the specified URLs before downloading.
+    Prompts for confirmation if the target dataset directory exists and contains files.
+    Downloaded files are saved in a dataset-specific subdirectory within the output directory.
     """
 
     if list_datasets:

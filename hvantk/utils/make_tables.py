@@ -24,14 +24,20 @@ def create_gnomad_constraint_gene_metrics_tb(
     export_tsv: bool = False,
 ) -> hl.Table:
     """
-    Create a Hail Table with gene-level constraint metrics from gnomad.
-
-    :param input_path: Path to the input file.
-    :param output_path: Path to save the output Hail Table.
-    :param fields: List of fields to select from the input table.
-    :param overwrite: Whether to overwrite the existing output file.
-    :param export_tsv: Whether to export the table as a TSV file.
-    :return: Hail Table
+    Creates a Hail Table of gene-level constraint metrics from a gnomAD input file.
+    
+    Imports the table keyed by gene ID, optionally selects specified fields, checkpoints
+    the result to disk, and can export it as a compressed TSV file.
+    
+    Args:
+        input_path: Path to the gnomAD constraint metrics file.
+        output_path: Destination path for the checkpointed Hail Table.
+        fields: Optional list of fields to retain in the table.
+        overwrite: If True, overwrites any existing output at the destination.
+        export_tsv: If True, exports the table as a compressed TSV file.
+    
+    Returns:
+        A Hail Table containing gene-level constraint metrics.
     """
     logger.info(f"Creating gnomAD constraint gene metrics table from {input_path}")
     gnomad_tb = hl.import_table(
@@ -60,15 +66,19 @@ def create_interactome_tb(
     reference_genome: str = "GRCh38",
 ) -> hl.Table:
     """
-    Create a Hail Table with protein-protein interaction data.
-
-    :param input_path: Path to the input BED file.
-    :param output_path: Path to save the output Hail Table.
-    :param overwrite: Whether to overwrite the existing output file.
-    :param export_tsv: Whether to export the table as a TSV file.
-    :param reference_genome: Reference genome to use (default: GRCh38).
-
-    :return: Hail Table
+    Creates a Hail Table of protein-protein interactions from a BED file.
+    
+    Imports interaction intervals, removes duplicates, and checkpoints the resulting table to disk. Optionally exports the table as a compressed TSV file.
+    
+    Args:
+        input_path: Path to the input BED file containing interaction data.
+        output_path: Destination path for the checkpointed Hail Table.
+        overwrite: If True, overwrites any existing output at the destination.
+        export_tsv: If True, exports the table as a compressed TSV file.
+        reference_genome: Reference genome build to use for interval parsing.
+    
+    Returns:
+        A Hail Table containing the processed protein-protein interaction data.
     """
     logger.info(f"Creating interactome table from {input_path}")
     ppi_tb = (
@@ -99,14 +109,19 @@ def create_clinvar_tb(
     reference_genome: str = "GRCh38",
 ) -> hl.Table:
     """
-    Create a Hail Table with clinvar variants.
-
-    :param input_path: Path to the input VCF file.
-    :param output_path: Path to save the output Hail Table.
-    :param overwrite: Whether to overwrite the existing output file.
-    :param export_tsv: Whether to export the table as a TSV file.
-    :param reference_genome: Reference genome to use (default: GRCh38).
-    :return: Hail Table
+    Creates a Hail Table of ClinVar variants from a VCF file.
+    
+    Imports ClinVar variant data, recodes contig names to the "chr" format, skips invalid loci, and keys the table by locus and alleles. The resulting table is checkpointed to disk and can optionally be exported as a compressed TSV file.
+    
+    Args:
+        input_path: Path to the input ClinVar VCF file.
+        output_path: Destination path for the checkpointed Hail Table.
+        overwrite: If True, overwrites any existing output at the destination.
+        export_tsv: If True, exports the table as a compressed TSV file.
+        reference_genome: Reference genome to use for import (default: "GRCh38").
+    
+    Returns:
+        A Hail Table containing ClinVar variant annotations.
     """
     logger.info(f"Creating ClinVar table from {input_path}")
     recode = {f"{i}": f"chr{i}" for i in (list(range(1, 23)) + ["X", "Y"])}
@@ -141,14 +156,17 @@ def create_gevir_tb(
     export_tsv: bool = False,
 ) -> hl.Table:
     """
-    Create a Hail Table with gene-level constraint metrics from GeVir.
-
-    :param input_path: Path to the input file.
-    :param output_path: Path to save the output Hail Table.
-    :param fields: List of fields to select from the input table.
-    :param overwrite: Whether to overwrite the existing output file.
-    :param export_tsv: Whether to export the table as a TSV file.
-    :return: Hail Table
+    Creates a Hail Table of gene-level constraint metrics from a GeVir input file.
+    
+    Args:
+        input_path: Path to the GeVir input file.
+        output_path: Destination path for the checkpointed Hail Table.
+        fields: Optional list of fields to select from the imported table.
+        overwrite: If True, overwrites any existing output at the destination.
+        export_tsv: If True, exports the resulting table as a compressed TSV file.
+    
+    Returns:
+        A Hail Table keyed by gene ID containing GeVir constraint metrics.
     """
     logger.info(f"Creating GEVIR table from {input_path}")
     gevir_tb = hl.import_table(
@@ -178,19 +196,20 @@ def create_ensembl_gene_tb(
     export_tsv: bool = False,
 ) -> hl.Table:
     """
-    Create a Hail Table with gene-level metrics from Ensembl.
-
-    Table was created using the Ensembl Biomart database (GRCh38.p13) with the following query:
-    <read xml file here>
-
-    :param input_path: Path to the input file.
-    :param output_path: Path to save the output Hail Table.
-    :param fields: List of fields to select from the input table.
-    :param canonical: Whether to filter canonical transcripts. Default: True.
-    :param overwrite: Whether to overwrite the existing output file.
-    :param export_tsv: Whether to export the table as a TSV file.
-
-    :return: Hail Table
+    Creates a Hail Table of gene-level metrics from an Ensembl Biomart export.
+    
+    Aggregates transcript, protein, and synonym information per gene, with optional filtering for canonical transcripts and selection of specific fields. The resulting table is checkpointed to disk and can be exported as a TSV file.
+    
+    Args:
+        input_path: Path to the Ensembl Biomart export file.
+        output_path: Destination path for the checkpointed Hail Table.
+        fields: Optional list of fields to include in the output table.
+        canonical: If True, includes only canonical transcripts.
+        overwrite: If True, overwrites any existing output file.
+        export_tsv: If True, exports the table as a compressed TSV file.
+    
+    Returns:
+        A Hail Table keyed by gene ID with aggregated gene-level metrics.
     """
     logger.info(f"Creating Ensembl gene table from {input_path}")
     gene_tb = hl.import_table(paths=input_path, min_partitions=50)
