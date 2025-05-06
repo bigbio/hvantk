@@ -22,6 +22,11 @@ from hvantk.utils.dataset import (
 
 
 def annotate_clinvar_clnsig(t: hl.Table) -> hl.Table:
+    """
+    Annotates variants with simplified ClinVar clinical significance labels.
+    
+    Variants are annotated with a clinical significance label based on ClinVar data: "P" for pathogenic, "B" for benign, or missing if neither applies. The annotation is determined by matching ClinVar CLNSIG values against predefined sets of pathogenic and benign labels.
+    """
     logger.info("Annotating ClinVar CLNSIG")
     clinvar_ht = get_clinvar_ht()
     # Benign labels from Clinvar
@@ -51,6 +56,11 @@ def annotate_clinvar_clnsig(t: hl.Table) -> hl.Table:
 
 
 def annotate_ccr(t: hl.Table) -> hl.Table:
+    """
+    Annotates variants with constrained coding region (CCR) percentile scores.
+    
+    Adds a `ccr_pct` field to the input Hail Table by joining on the variant locus.
+    """
     logger.info("Annotating CCR")
     ccr_ht = get_ccr_ht()
     t = t.annotate(ccr_pct=ccr_ht[t.locus].ccr_pct)
@@ -61,6 +71,11 @@ def annotate_gevir(
     t: hl.Table,
     gene_id_col: str,
 ) -> hl.Table:
+    """
+    Annotates a Hail Table with GEVIR gene-level constraint metrics.
+    
+    Adds the `gevir_pct` and `virlof_pct` fields to each row by joining on the specified gene ID column.
+    """
     logger.info("Annotating GEVIR")
     gevir_ht = get_gevir_ht().select("gevir_pct", "virlof_pct")
     t = t.annotate(**gevir_ht[t[gene_id_col]])
@@ -70,6 +85,16 @@ def annotate_gevir(
 def annotate_rnaseq_expression(
     t: hl.Table, gene_id_col: str, organ: str = "Heart"
 ) -> hl.Table:
+    """
+    Annotates a Hail Table with RNA-seq gene expression data for a specified organ.
+    
+    Args:
+        gene_id_col: Name of the column containing gene IDs to match against the expression dataset.
+        organ: Name of the organ for which gene expression data should be used (default is "Heart").
+    
+    Returns:
+        The input table annotated with gene expression values from the selected organ.
+    """
     logger.info("Annotating RNAseq expression")
     gene_expression_ht = get_gene_expression_ht(organ=organ)
     t = t.annotate(**gene_expression_ht[t[gene_id_col]])
@@ -77,6 +102,14 @@ def annotate_rnaseq_expression(
 
 
 def annotate_ppi(t: hl.Table) -> hl.Table:
+    """
+    Annotates variants with a binary flag indicating presence at a protein-protein interaction (PPI) site.
+    
+    Adds a `ppi_site` field set to 1 if the variant locus is present in the PPI dataset, or 0 otherwise.
+    
+    Returns:
+        A Hail Table with the `ppi_site` annotation.
+    """
     logger.info("Annotating PPI")
     ppi_ht = get_ppi_ht()
     t = t.annotate(ppi_site=hl.int(hl.is_defined(ppi_ht[t.locus])))
@@ -85,12 +118,9 @@ def annotate_ppi(t: hl.Table) -> hl.Table:
 
 def annotate_ensembl_gene(t: hl.Table, gene_symbol_col: str) -> hl.Table:
     """
-    Annotate gene and transcript ensembl canonical IDs given a gene symbol name.
-    Includes searching for synonymous gene name.
-
-    :param t: Hail Table
-    :param gene_symbol_col: Column name with gene symbols
-    :return: Hail Table
+    Annotates a table with Ensembl gene and canonical transcript IDs based on gene symbols.
+    
+    Searches for gene symbols and their synonyms to map each entry to its corresponding Ensembl gene and transcript IDs.
     """
     logger.info("Annotating Ensembl gene")
 
@@ -110,11 +140,16 @@ def annotate_ensembl_gene(t: hl.Table, gene_symbol_col: str) -> hl.Table:
 
 def annotate_dbnsfp_scores(t: hl.Table, transcript_id_col: str) -> hl.Table:
     """
-    Annotate transcript-specific deleterious scores from dbNSFP database.
-
-    :param t: Hail Table keyed by `locus` and `alleles`
-    :param transcript_id_col: Ensembl transcript ID column
-    :return: Hail Table
+    Annotates variants with transcript-specific deleteriousness scores from the dbNSFP database.
+    
+    The function joins transcript-level scores (e.g., CADD, REVEL) from dbNSFP to the input Hail Table keyed by variant, then extracts the score corresponding to the specified transcript ID column.
+    
+    Args:
+        t: Hail Table keyed by 'locus' and 'alleles'.
+        transcript_id_col: Name of the column containing Ensembl transcript IDs.
+    
+    Returns:
+        Hail Table annotated with transcript-specific deleteriousness scores.
     """
     logger.info("Annotating dbNSFP scores")
 
@@ -134,11 +169,14 @@ def annotate_dbnsfp_scores(t: hl.Table, transcript_id_col: str) -> hl.Table:
 
 def annotate_gnomad_constraint_metrics(t: hl.Table, transcript_id_col: str) -> hl.Table:
     """
-    Annotate transcript-specific loss-of-function and missense constraint metrics from gnomad.
-
-    :param t: Hail Table
-    :param transcript_id_col: Ensembl transcript ID column
-    :return: Hail Table
+    Annotates transcript-level loss-of-function and missense constraint metrics from gnomAD.
+    
+    Args:
+        t: Input Hail Table to annotate.
+        transcript_id_col: Name of the column containing Ensembl transcript IDs.
+    
+    Returns:
+        Hail Table annotated with gnomAD constraint metrics for each transcript.
     """
     logger.info("Annotating gnomAD constraint metrics")
     gnomad_metrics = get_gnomad_metrics_ht()
@@ -150,14 +188,15 @@ def annotate_degs(
     t: hl.Table, gene_symbol_col: str, clusters: list = ["C0", "C5", "C7", "C10", "C14"]
 ) -> hl.Table:
     """
-    Annotate (1-True, 0-False) whether the gene is differentially expressed in
-    cardiac-specific cell clusters.
-
-    :param t: Hail Table
-    :param gene_symbol_col: Column name with gene symbols
-    :param clusters: Cell cluster ids to query (e.g. C0, C1...)
-
-    :return: Hail Table
+    Annotates genes with binary flags indicating differential expression in specified cardiac cell clusters.
+    
+    Args:
+        t: Input Hail Table containing gene information.
+        gene_symbol_col: Name of the column containing gene symbols.
+        clusters: List of cardiac cell cluster IDs to annotate (default: ["C0", "C5", "C7", "C10", "C14"]).
+    
+    Returns:
+        Hail Table with additional fields for each cluster, set to 1 if the gene is differentially expressed in that cluster, 0 otherwise.
     """
     logger.info("Annotating DEGs")
     degs = get_deg_ht()
@@ -189,13 +228,15 @@ def annotate_hca(
     ),
 ) -> hl.Table:
     """
-    Annotate gene expression levels (mean umi/cell) per cell categories from HCA dataset (UCSC)
-
-    :param t: Hail Table
-    :param gene_id_col: Column name with gene symbols
-    :param cell_categories: Cell categories to annotate (e.g. ...) TODO: make cell categories a constant
-
-    :return: Hail Table
+    Annotates gene expression levels across specified cell categories from the Human Cell Atlas.
+    
+    Args:
+        t: Input Hail Table.
+        gene_id_col: Name of the column containing gene IDs.
+        cell_categories: Tuple of cell category names to annotate (default includes major cardiac and related cell types).
+    
+    Returns:
+        Hail Table annotated with a struct of mean UMI per cell for each specified cell category under the 'hca' field.
     """
     logger.info("Annotating HCA")
     hca_tb = get_hca_ht().select(*cell_categories)
@@ -207,11 +248,9 @@ def annotate_hca(
 
 def annotate_gnomad_af(t: hl.Table) -> hl.Table:
     """
-    Annotate allele frequencies from gnomad v3.0 (whole-genome).
-    Annotate missing (absent) AF values as zero.
-
-    :param t: Hail Table keyed by `locus` and `alleles`
-    :return: Hail Table
+    Annotates variants with allele frequencies from gnomAD v3.0 whole-genome data.
+    
+    Missing allele frequencies are annotated as zero.
     """
     logger.info("Annotating gnomAD AF")
 
@@ -229,12 +268,14 @@ def annotate_gnomad_af(t: hl.Table) -> hl.Table:
 
 def annotate_variant_id(t: hl.Table, field_name: str = "vid") -> hl.Table:
     """
-    Expected input dataset with bi-allelic variant, and fields `locus` and `alleles`.
-    Annotate variant ids as follows 'chr:position:ref:alt'.
-
-    :param field_name: variant id field name
-    :param t: Hail table
-    :return: Hail Table
+    Annotates each variant with a string identifier in the format 'chr:position:ref:alt'.
+    
+    Args:
+        t: Hail Table containing bi-allelic variants with 'locus' and 'alleles' fields.
+        field_name: Name of the field to store the variant ID (default is "vid").
+    
+    Returns:
+        Hail Table with an added field containing the variant ID string.
     """
     logger.info("Annotating variant ID")
 

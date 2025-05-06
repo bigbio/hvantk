@@ -14,13 +14,9 @@ logger.setLevel(logging.DEBUG)  # Set default log level to DEBUG
 
 def download_file(url: str, out_dir: str, file_name: str):
     """
-    Download a file from a URL to a local directory.
-
-    :param url: URL of the file to download
-    :param out_dir: Local directory to save the file
-    :param file_name: Name of the file to save
-
-    :return: None
+    Downloads a file from the specified URL to a local directory with a given file name.
+    
+    Validates that the file name does not contain path traversal components. Creates the output directory if it does not exist. Raises an exception if the download fails or if the file name is invalid.
     """
     # Validate file_name doesn't contain path traversal
     if path.isabs(file_name) or ".." in file_name:
@@ -68,12 +64,10 @@ def download_file(url: str, out_dir: str, file_name: str):
 # define a function to test if a given url exists
 def url_exists(url: str) -> bool:
     """
-    Check if a URL exists by sending a HEAD request.
-
-    :param url: URL to check
-    :type url: str
-    :return: True if the URL exists, False otherwise
-    :rtype: bool
+    Checks whether the specified URL exists by performing an HTTP HEAD request.
+    
+    Returns:
+        True if the URL responds with status code 200; otherwise, False.
     """
     try:
         logger.debug(f"Checking if URL exists: {url}")
@@ -95,22 +89,17 @@ def compress_files(
     source_dir: str, output_zip: str, remove_originals: bool = False
 ) -> None:
     """
-    Compresses the files in a given source directory into a ZIP archive, maintaining
-    the folder structure. Optionally, the original source directory can be removed
-    after compression.
-
-    :param source_dir: Path to the source directory to compress.
-    :type source_dir: str
-    :param output_zip: Path to the resulting ZIP file, including the file name and
-        extension.
-    :type output_zip: str
-    :param remove_originals: Indicates whether the original source directory should
-        be removed after compression. Defaults to False.
-    :type remove_originals: bool
-    :return: This function does not return any value.
-    :rtype: None
-    :raises FileNotFoundError: If the source directory does not exist
-    :raises PermissionError: If there are permission issues with reading or writing files
+    Compresses all files in a directory into a ZIP archive, preserving folder structure.
+    
+    Args:
+        source_dir: Path to the directory whose contents will be compressed.
+        output_zip: Path to the output ZIP file.
+        remove_originals: If True, deletes the source directory after compression.
+    
+    Raises:
+        FileNotFoundError: If the source directory does not exist.
+        ValueError: If the source path is not a directory.
+        PermissionError: If there are file access permission issues.
     """
     if not os.path.exists(source_dir):
         raise FileNotFoundError(f"Source directory '{source_dir}' does not exist")
@@ -141,22 +130,19 @@ def decompress_files(
     zip_path: str, extract_to: str, remove_originals: bool = False
 ) -> None:
     """
-    Decompresses files from a zip archive to a specified location. Optionally, removes the original zip
-    archive after extraction.
-
-    :param zip_path: Path to the zip file to be decompressed.
-    :type zip_path: str
-
-    :param extract_to: Directory where the contents of the zip file will be extracted.
-    :type extract_to: str
-
-    :param remove_originals: Whether to delete the original zip file after extraction. Defaults to False.
-    :type remove_originals: bool
-
-    :return: None
-    :raises FileNotFoundError: If the zip file does not exist
-    :raises zipfile.BadZipFile: If the file is not a valid zip file
-    :raises PermissionError: If there are permission issues with extracting files
+    Extracts all files from a ZIP archive to a target directory.
+    
+    If the ZIP file is corrupted, a BadZipFile exception is raised. Optionally deletes the original ZIP file after extraction if remove_originals is True.
+    
+    Args:
+        zip_path: Path to the ZIP archive.
+        extract_to: Directory where files will be extracted.
+        remove_originals: If True, deletes the ZIP file after extraction.
+    
+    Raises:
+        FileNotFoundError: If the ZIP file does not exist.
+        zipfile.BadZipFile: If the ZIP file is invalid or corrupted.
+        PermissionError: If there are file access permission issues.
     """
     if not os.path.exists(zip_path):
         raise FileNotFoundError(f"Zip file '{zip_path}' does not exist")
