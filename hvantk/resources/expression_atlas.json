@@ -19,5 +19,26 @@
         "name": "E-GTEX-8-fpkms.tsv"
       }
     ]
+  },
+  {
+    "title": "Human RNA-seq time-series of the development of seven major organs",
+    "accession": "E-MTAB-6814",
+    "type": "RNA-Seq mRNA baseline",
+    "pubmedid": "31243369",
+    "description": "",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-MTAB-6814.condensed-sdrf.tsv"
+      },
+      {
+        "type": "tpm",
+        "name": "E-MTAB-6814-tpms.tsv"
+      },
+      {
+        "type": "fpkm",
+        "name": "E-MTAB-6814-fpkms.tsv"
+      }
+    ]
   }
 ]
