@@ -9,10 +9,33 @@ import sys
 import ftplib
 import json
 
+from hvantk.datasets.expression_atlas_datasets import ExpressionAtlasDatasetCollection
+from hvantk.utils.constants import EXPRESSION_ATLAS_JSON_FILE_PATH
+
 logger = logging.getLogger(__name__)
 
+def _print_dataset_accessions():
+    """
+    Prints the accessions of all available Expression Atlas datasets in a formatted list.
 
-@click.command()
+    :raises FileNotFoundError: If the JSON file containing Expression Atlas dataset
+                                information is not found at the specified path.
+    :raises JSONDecodeError: If the JSON file contains invalid JSON format.
+    """
+    try:
+        collection = ExpressionAtlasDatasetCollection.from_json(EXPRESSION_ATLAS_JSON_FILE_PATH)
+        dataset_accessions = collection.list_dataset_accessions()
+        if not dataset_accessions:
+            click.echo("No datasets available.")
+        else:
+            click.echo("Available datasets:")
+            for accession in dataset_accessions:
+                click.echo(f"- {accession}")
+    except ValueError as e:
+        click.echo(f"Error: {e}")
+
+
+@click.command("expression-atlas-downloader", short_help="Download Expression Atlas dataset")
 @click.option(
     "--config_path",
     required=False,
@@ -22,10 +45,46 @@ logger = logging.getLogger(__name__)
     "--accession", required=False, help="The accession of the experiment to download."
 )
 @click.option(
-    "--download_path", required=True, help="The path to download the data to."
+    "--download_path",
+    type=click.Path(exists=False, file_okay=False, dir_okay=True),
+    required=True,
+    help="The path to download the data to."
 )
-def download_experiments(config_path, accession, download_path):
-    """Downloads experiment datasets from Expression Atlas using FTP."""
+@click.option(
+    "--list_datasets",
+    is_flag=True,
+    required=False,
+    help="List all available datasets in the Expression Atlas collection.",
+)
+def download_experiments(config_path, accession, download_path, list_datasets):
+    """
+    This function downloads experiments from the Expression Atlas database using FTP.
+
+    :param config_path: The optional path to an expression_atlas.json file. This JSON
+        configuration file contains details on specific files to download for each
+        experiment.
+    :type config_path: str, optional
+    :param accession: The optional accession of the experiment to download. If provided,
+        only files from this specific experiment are downloaded unless filtered further
+        via config_path.
+    :type accession: str, optional
+    :param download_path: The required path to save downloaded data. This directory will
+        be created if it does not already exist.
+    :type download_path: str
+    :return: None
+    :param list_datasets: If set, lists all available datasets in the Expression Atlas
+        collection instead of downloading.
+    :type list_datasets: bool
+    :return: None
+    :raises ftplib.error_perm: Raised if there are FTP permission issues while accessing
+        the FTP server or its directories.
+    :raises Exception: Raised for any other errors encountered during the operation.
+    """
+
+    if list_datasets:
+        _print_dataset_accessions()
+        return
+
     ftp_url = "ftp.ebi.ac.uk"
 
     # Create download directory if it doesn't exist
