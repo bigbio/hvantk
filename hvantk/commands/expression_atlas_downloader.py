@@ -28,7 +28,7 @@ def _print_dataset_accessions():
         if not dataset_accessions:
             click.echo("No datasets available.")
         else:
-            click.echo("Available datasets:")
+            click.echo(f"Available datasets ({len(dataset_accessions)}):")
             for accession in dataset_accessions:
                 click.echo(f"- {accession}")
     except ValueError as e:
@@ -82,6 +82,7 @@ def download_experiments(config_path, accession, download_path, list_datasets):
     """
 
     if list_datasets:
+        logger.warning("--accession and --config_path options are ignored when --list_datasets is specified.")
         _print_dataset_accessions()
         return
 
