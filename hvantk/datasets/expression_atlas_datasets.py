@@ -6,9 +6,7 @@ from typing import List, Optional, Dict
 logger = logging.getLogger(__name__)
 
 from hvantk.utils.file_utils import download_file
-
-# Constants for Expression Atlas
-EXPRESSION_ATLAS_BASE_URL = "https://www.ebi.ac.uk/gxa/experiments-content"
+from hvantk.utils.constants import EXPRESSION_ATLAS_BASE_URL
 
 
 @dataclass
