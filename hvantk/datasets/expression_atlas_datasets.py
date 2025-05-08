@@ -222,7 +222,13 @@ class ExpressionAtlasDatasetCollection:
 
         Returns:
             List[ExpressionAtlasDataset]: Filtered list of datasets
+
+        Raises:
+            ValueError: If the organism parameter is None or empty
         """
+        if not organism:
+            raise ValueError("Organism parameter cannot be None or empty")
+
         organism_lower = organism.lower()
         return [
             dataset for dataset in self.datasets 
