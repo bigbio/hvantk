@@ -1,9 +1,5 @@
 # Constants for the project
 
-# Ensembl biomart fields mapping
-# ['Gene stable ID', 'Transcript stable ID', 'Protein stable ID', 'Chromosome/scaffold name',
-# 'Gene start (bp)', 'Gene end (bp)', 'Ensembl Canonical', 'Gene name', 'Gene type', 'Gene Synonym']
-
 from pathlib import Path
 import logging
 
@@ -13,7 +9,7 @@ logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parent
 logger.debug(f"Base directory: {BASE_DIR}")
 
-
+## Ensembl/biomart constants
 ENSEMBL_BIOMART_FIELDS = {
     "Gene stable ID": "gene_id",
     "Transcript stable ID": "transcript_id",
@@ -28,7 +24,7 @@ ENSEMBL_BIOMART_FIELDS = {
 }
 logger.debug(f"Ensembl biomart fields: {ENSEMBL_BIOMART_FIELDS}")
 
-# UCSC Cell Browser base URL
+## UCSC Cell Browser base URL
 UCSC_CELL_BROWSER_BASE_URL = "https://cells.ucsc.edu"
 logger.debug(f"UCSC Cell Browser base URL: {UCSC_CELL_BROWSER_BASE_URL}")
 EXPRESSION_MATRIX_FILE_NAME = "exprMatrix.tsv.gz"
@@ -43,3 +39,13 @@ logger.debug(f"UCSC JSON file path: {UCSC_JSON_FILE_PATH}")
 # UCSC gene and cell ID columns
 UCSC_CELL_ID_COLUMN = "cell_id"
 UCSC_GENE_COLUMN = "gene"
+
+## Expression Atlas base URL
+EXPRESSION_ATLAS_BASE_URL = "https://www.ebi.ac.uk/gxa/experiments-content"
+logger.debug(f"Expression Atlas base URL: {EXPRESSION_ATLAS_BASE_URL}")
+
+# Path to the JSON file containing the Expression Atlas datasets
+EXPRESSION_ATLAS_JSON_FILE_PATH = (
+    BASE_DIR.parent / "resources" / "expression_atlas.json"
+)
+logger.debug(f"Expression Atlas JSON file path: {EXPRESSION_ATLAS_JSON_FILE_PATH}")

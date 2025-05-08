@@ -1,18 +1,14 @@
+import shutil
+import tempfile
 from pathlib import Path
 
 import pytest
-import tempfile
-import shutil
-import hail as hl
 
-from hvantk.tests.test_downloader import temp_dir
+from hvantk.utils.constants import UCSC_CELL_ID_COLUMN, UCSC_GENE_COLUMN
 from hvantk.utils.ucsc import (
     convert_ucsc_metadata_to_hail_table,
     create_mt_from_ucsc_expression_matrix,
 )
-
-from hvantk.utils.constants import UCSC_CELL_ID_COLUMN, UCSC_GENE_COLUMN
-
 
 # Test data directory
 TESTDATA_DIR = Path(__file__).parent / "testdata" / "raw" / "ucsc"

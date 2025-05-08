@@ -25,7 +25,7 @@
     "accession": "E-MTAB-6814",
     "type": "RNA-Seq mRNA baseline",
     "pubmedid": "31243369",
-    "description": "",
+    "description": "This dataset covers the development of 7 organs (brain, cerebellum, heart, kidney, liver, ovary and testis) from 4 weeks post conception to adulthood (including ageing).",
     "files": [
       {
         "type": "sdrf",
@@ -38,6 +38,111 @@
       {
         "type": "fpkm",
         "name": "E-MTAB-6814-fpkms.tsv"
+      }
+    ]
+  },
+  {
+    "title": "Chicken RNA-seq time-series of the development of seven major organs",
+    "accession": "E-MTAB-6769",
+    "type": "RNA-Seq mRNA baseline",
+    "pubmedid": "31243369",
+    "description": "This dataset covers the development of 7 organs (brain, cerebellum, heart, kidney, liver, ovary and testis) from day 10 post-conception to day 155 post-hatch in Gallus gallus.",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-MTAB-6769.condensed-sdrf.tsv"
+      },
+      {
+        "type": "tpm",
+        "name": "E-MTAB-6769-tpms.tsv"
+      },
+      {
+        "type": "fpkm",
+        "name": "E-MTAB-6769-fpkms.tsv"
+      }
+    ]
+  },
+  {
+    "title": "Opossum RNA-seq time-series of the development of seven major organs",
+    "accession": "E-MTAB-6833",
+    "type": "RNA-Seq mRNA baseline",
+    "pubmedid": "31243369",
+    "description": "This dataset covers the development of 7 organs (brain, cerebellum, heart, kidney, liver, ovary and testis) from embryonic day 13.5 to adulthood in Monodelphis domestica.",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-MTAB-6833.condensed-sdrf.tsv"
+      },
+      {
+        "type": "tpm",
+        "name": "E-MTAB-6833-tpms.tsv"
+      },
+      {
+        "type": "fpkm",
+        "name": "E-MTAB-6833-fpkms.tsv"
+      }
+    ]
+  },
+  {
+    "title": "Mouse RNA-seq time-series of the development of seven major organs",
+    "accession": "E-MTAB-6798",
+    "type": "RNA-Seq mRNA baseline",
+    "pubmedid": "31243369",
+    "description": "This dataset covers the development of 7 organs (brain, cerebellum, heart, kidney, liver, ovary and testis) from embryonic day 10.5 to adulthood in Mus musculus.",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-MTAB-6798.condensed-sdrf.tsv"
+      },
+      {
+        "type": "tpm",
+        "name": "E-MTAB-6798-tpms.tsv"
+      },
+      {
+        "type": "fpkm",
+        "name": "E-MTAB-6798-fpkms.tsv"
+      }
+    ]
+  },
+  {
+    "title": "Rabbit RNA-seq time-series of the development of seven major organs",
+    "accession": "E-MTAB-6782",
+    "type": "RNA-Seq mRNA baseline",
+    "pubmedid": "31243369",
+    "description": "This dataset covers the development of 7 organs (brain, cerebellum, heart, kidney, liver, ovary and testis) from embryonic day 12 to adulthood in Oryctolagus cuniculus.",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-MTAB-6782.condensed-sdrf.tsv"
+      },
+      {
+        "type": "tpm",
+        "name": "E-MTAB-6782-tpms.tsv"
+      },
+      {
+        "type": "fpkm",
+        "name": "E-MTAB-6782-fpkms.tsv"
+      }
+    ]
+  },
+  {
+    "title": "Rat RNA-seq time-series of the development of seven major organs",
+    "accession": "E-MTAB-6811",
+    "type": "RNA-Seq mRNA baseline",
+    "pubmedid": "31243369",
+    "description": "This dataset covers the development of 7 organs (brain, cerebellum, heart, kidney, liver, ovary and testis) from embryonic day 11 to adulthood in Rattus norvegicus.",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-MTAB-6811.condensed-sdrf.tsv"
+      },
+      {
+        "type": "tpm",
+        "name": "E-MTAB-6811-tpms.tsv"
+      },
+      {
+        "type": "fpkm",
+        "name": "E-MTAB-6811-fpkms.tsv"
       }
     ]
   }
