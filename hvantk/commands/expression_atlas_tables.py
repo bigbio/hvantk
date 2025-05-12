@@ -43,7 +43,7 @@ def cli():
     "-o",
     required=True,
     type=click.Path(file_okay=False, dir_okay=True),
-    default="expression_atlas_matrix.mt",
+    default="data/expression_atlas_matrix.mt",
     help="Output path for the Hail matrix table",
 )
 @click.option(
@@ -73,13 +73,11 @@ def cli():
 @click.option(
     "--force_bgz",
     is_flag=True,
-    default=True,
     help="Force bgz compression for the input matrix expression file",
 )
 @click.option(
     "--overwrite",
     is_flag=True,
-    default=True,
     help="Overwrite existing files at output path",
 )
 def make_expression_atlas_matrix_table(

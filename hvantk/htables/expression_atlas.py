@@ -55,10 +55,10 @@ def _import_sdrf(sdrf_file: str, **kwargs) -> pd.DataFrame:
 
         return sdrf_df
 
-    except FileNotFoundError:
-        raise FileNotFoundError(f"SDRF file not found: {sdrf_file}")
-    except pd.errors.EmptyDataError:
-        raise pd.errors.EmptyDataError(f"SDRF file is empty: {sdrf_file}")
+    except FileNotFoundError as e:
+        raise FileNotFoundError(f"SDRF file not found: {sdrf_file}") from e
+    except pd.errors.EmptyDataError as e:
+        raise pd.errors.EmptyDataError(f"SDRF file is empty: {sdrf_file}") from e
 
 
 def _reshape_sdrf_long_to_wide_format(df_sdrf: pd.DataFrame,
@@ -174,9 +174,9 @@ def convert_sdrf_to_hail_table(
 
 def create_mt_from_expression_atlas_matrix(
     expression_matrix_path: str,
-    output_path: str = None,
+    output_path: str | None = None,
     delimiter: str = "\t",
-    row_fields: dict = {"Gene ID": hl.tstr, "Gene Name": hl.tstr, "GeneID": hl.tstr},
+    row_fields: dict | None = None,
     row_key: str = "GeneID",
     min_partitions: int = 50,
     force_bgz: bool = True,
@@ -229,7 +229,7 @@ def create_mt_from_expression_atlas_matrix(
 
     # Validate row_fields
     if row_fields is None:
-        row_fields = {"Gene ID": hl.tstr}
+        row_fields = {"Gene ID": hl.tstr, "Gene Name": hl.tstr, "GeneID": hl.tstr}
 
     # Check if output path exists when overwrite is False
     if output_path and os.path.exists(output_path) and not overwrite:
