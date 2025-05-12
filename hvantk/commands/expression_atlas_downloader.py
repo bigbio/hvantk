@@ -35,7 +35,7 @@ def _download_file_with_retry(ftp, remote_file, local_file_path, ftp_url=None, f
     """
     attempt = 0
     delay = initial_delay
-    
+
     while attempt < max_attempts:
         try:
             with open(local_file_path, "wb") as f:
@@ -47,26 +47,31 @@ def _download_file_with_retry(ftp, remote_file, local_file_path, ftp_url=None, f
             if attempt >= max_attempts:
                 logger.error(f"Failed to download {remote_file} after {max_attempts} attempts: {str(e)}")
                 return False
-            
+
             # Log the retry attempt
-            logger.warning(f"FTP connection error while downloading {remote_file}: {str(e)}. "
-                           f"Retrying ({attempt}/{max_attempts}) in {delay} seconds...")
-            
+            logger.warning(
+                f"FTP connection error while downloading {remote_file}: {str(e)}. "
+                f"Retrying ({attempt}/{max_attempts}) in {delay} seconds..."
+            )
+
             # Wait before retrying with exponential backoff and jitter
             time.sleep(delay + random.uniform(0, 1))
             delay *= 2  # Exponential backoff
-            
+
             # Re-establish FTP connection if URL is provided
             if ftp_url:
-                try:
+                import contextlib
+                with contextlib.suppress(Exception):
                     ftp.quit()
-                except:
-                    pass
-                
-                ftp.connect(ftp_url)
-                ftp.login()
-                ftp.set_pasv(True)
-                
+
+                try:
+                    ftp.connect(ftp_url)
+                    ftp.login()
+                    ftp.set_pasv(True)
+                except (ftplib.error_temp, ConnectionRefusedError) as e:
+                    logger.error(f"Failed to reconnect to FTP server: {str(e)}")
+                    return False
+
                 # Navigate back to the correct directory if path is provided
                 if ftp_path:
                     try:
@@ -74,7 +79,7 @@ def _download_file_with_retry(ftp, remote_file, local_file_path, ftp_url=None, f
                     except ftplib.error_perm as e:
                         logger.error(f"Cannot access {ftp_path}: {e}")
                         return False
-    
+
     return False  # If we get here, all attempts failed
 
 
