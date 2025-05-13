@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from hvantk.utils.constants import UCSC_CELL_ID_COLUMN, UCSC_GENE_COLUMN
-from hvantk.utils.ucsc import (
+from hvantk.htables.ucsc import (
     convert_ucsc_metadata_to_hail_table,
     create_mt_from_ucsc_expression_matrix,
 )

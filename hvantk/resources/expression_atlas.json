@@ -15,6 +15,10 @@
         "name": "E-GTEX-8-tpms.tsv"
       },
       {
+        "type": "transcript-tpm",
+        "name": "E-GTEX-8-transcripts-tpms.tsv"
+      },
+      {
         "type": "fpkm",
         "name": "E-GTEX-8-fpkms.tsv"
       }
@@ -34,6 +38,10 @@
       {
         "type": "tpm",
         "name": "E-MTAB-6814-tpms.tsv"
+      },
+       {
+        "type": "transcript-tpm",
+        "name": "E-MTAB-6814-transcripts-tpms.tsv"
       },
       {
         "type": "fpkm",
@@ -57,6 +65,10 @@
         "name": "E-MTAB-6769-tpms.tsv"
       },
       {
+        "type": "transcript-tpm",
+        "name": "E-MTAB-6769-transcripts-tpms.tsv"
+      },
+      {
         "type": "fpkm",
         "name": "E-MTAB-6769-fpkms.tsv"
       }
@@ -76,6 +88,10 @@
       {
         "type": "tpm",
         "name": "E-MTAB-6833-tpms.tsv"
+      },
+      {
+        "type": "transcript-tpm",
+        "name": "E-MTAB-6833-transcripts-tpms.tsv"
       },
       {
         "type": "fpkm",
@@ -99,6 +115,10 @@
         "name": "E-MTAB-6798-tpms.tsv"
       },
       {
+        "type": "transcript-tpm",
+        "name": "E-MTAB-6798-transcripts-tpms.tsv"
+      },
+      {
         "type": "fpkm",
         "name": "E-MTAB-6798-fpkms.tsv"
       }
@@ -120,6 +140,10 @@
         "name": "E-MTAB-6782-tpms.tsv"
       },
       {
+        "type": "transcript-tpm",
+        "name": "E-MTAB-6782-transcripts-tpms.tsv"
+      },
+      {
         "type": "fpkm",
         "name": "E-MTAB-6782-fpkms.tsv"
       }
@@ -139,6 +163,10 @@
       {
         "type": "tpm",
         "name": "E-MTAB-6811-tpms.tsv"
+      },
+       {
+        "type": "transcript-tpm",
+        "name": "E-MTAB-6811-transcripts-tpms.tsv"
       },
       {
         "type": "fpkm",
