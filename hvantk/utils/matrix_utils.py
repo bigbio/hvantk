@@ -43,7 +43,7 @@ def summarize_matrix(mt: hl.MatrixTable) -> Dict:
         for field in metadata_fields:
             # Check if the field is likely numerical
             field_type = mt.col.metadata[field].dtype
-            is_numeric = str(field_type).startswith(('tfloat', 'tint', 'tdouble'))
+            is_numeric = isinstance(field_type, (hl.tint32, hl.tint64, hl.tfloat32, hl.tfloat64, hl.tfloat))
 
             if is_numeric:
                 # For numerical fields, compute summary statistics
@@ -260,7 +260,7 @@ def visualize_expression_distribution(mt: hl.MatrixTable,
 
         # Use plain Python integer for n_bins
         expr = hl.log10(hl.float64(mt[expr_field]))
-        hist = mt.aggregate_entries(hl.agg.hist(expr=expr, start=log_min, end=log_max, bins=n_bins))
+        hist = mt.aggregate_entries(hl.agg.hist(expr, log_min, log_max, n_bins))
         x_label = "log10(Expression)"
     else:
         min_val = mt.aggregate_entries(hl.agg.min(mt[expr_field]))
@@ -273,7 +273,7 @@ def visualize_expression_distribution(mt: hl.MatrixTable,
 
         # Use plain Python integer for n_bins
         expr = hl.float64(mt[expr_field])
-        hist = mt.aggregate_entries(hl.agg.hist(expr=expr, start=min_val, end=max_val, bins=n_bins))
+        hist = mt.aggregate_entries(hl.agg.hist(expr, min_val, max_val, n_bins))
         x_label = "Expression"
 
     # Plot using matplotlib
