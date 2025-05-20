@@ -43,7 +43,7 @@ def summarize_matrix(mt: hl.MatrixTable) -> Dict:
         for field in metadata_fields:
             # Check if the field is likely numerical
             field_type = mt.col.metadata[field].dtype
-            is_numeric = isinstance(field_type, (hl.tint32, hl.tint64, hl.tfloat32, hl.tfloat64, hl.tfloat))
+            is_numeric = hl.is_numeric(field_type)
 
             if is_numeric:
                 # For numerical fields, compute summary statistics
@@ -54,7 +54,8 @@ def summarize_matrix(mt: hl.MatrixTable) -> Dict:
                     'std': field_stats.stdev,
                     'min': field_stats.min,
                     'max': field_stats.max,
-                    'n_missing': field_stats.n_missing
+                    'n': field_stats.n,
+                    'sum': field_stats.sum
                 }
             else:
                 # For categorical fields, first collect unique values then count them
