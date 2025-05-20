@@ -3,3 +3,5 @@ hail
 requests
 tqdm
 pandas
+matplotlib
+numpy
