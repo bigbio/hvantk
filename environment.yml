@@ -10,3 +10,6 @@ dependencies:
       - hail
       - requests
       - tqdm
+      - pandas
+      - numpy
+      - matplotlib
