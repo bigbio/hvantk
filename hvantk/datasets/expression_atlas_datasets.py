@@ -55,7 +55,7 @@ class ExpressionAtlasDataset:
         Download a specific file for this dataset by file type.
 
         Args:
-            file_type: Type of the file to download (e.g., "tpm", "fpkm", "sdrf")
+            file_type: Type of the file to download (e.g., "transcript-tpm", "sdrf")
             out_dir: Directory where the file will be saved
 
         Returns:
@@ -80,24 +80,20 @@ class ExpressionAtlasDataset:
                 f"Failed to download {file_type} file for {self.accession}: {str(e)}"
             ) from e
 
-    def download_expression_data(self, out_dir: str, format: str = "tpm") -> str:
+    def download_expression_data(self, out_dir: str) -> str:
         """
-        Download expression data for this dataset.
+        Download expression data (transcript TPM) for this dataset.
 
         Args:
             out_dir: Directory where the file will be saved
-            format: Format of the expression data to download ("tpm" or "fpkm")
 
         Returns:
             Path to the downloaded file
 
         Raises:
-            ValueError: If the specified format is not available or download fails
+            ValueError: If the transcript-tpm file is not available or download fails
         """
-        if format not in ["tpm", "fpkm"]:
-            raise ValueError(f"Invalid format '{format}'. Must be 'tpm' or 'fpkm'")
-        
-        return self.download_file(format, out_dir)
+        return self.download_file("transcript-tpm", out_dir)
 
     def download_metadata(self, out_dir: str) -> str:
         """
