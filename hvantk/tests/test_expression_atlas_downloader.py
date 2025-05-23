@@ -69,7 +69,7 @@ def test_download_experiments_accession_with_config(download_path):
     # Assert that the command was successful
     assert result.exit_code == 0
 
-    # Assert that sdrf the file was created
+    # Assert that the sdrf file was created
     sdrf_file_path = os.path.join(download_path, f"{accession}.condensed-sdrf.tsv")
     assert os.path.exists(sdrf_file_path)
 
