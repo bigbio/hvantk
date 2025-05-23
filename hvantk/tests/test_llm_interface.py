@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import hail as hl
 import os
 
-from hvantk.utils.llm_interface import natural_language_query, LLMInterface
+from hvantk.utils.llm_interface import LLMInterface, natural_language_query
 
 
 @pytest.fixture
