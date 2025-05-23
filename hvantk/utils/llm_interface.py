@@ -14,8 +14,7 @@ and provides a bridge between natural language and bioinformatic analysis.
 import json
 import logging
 import os
-from functools import lru_cache
-from typing import Dict, Optional, Any
+from typing import Dict, Optional
 
 import hail as hl
 import numpy as np
@@ -34,19 +33,22 @@ LLM_PROVIDERS = ["openai", "anthropic", "local", "google"]
 
 class LLMConfigError(Exception):
     """Raised when there is an issue with the LLM configuration."""
+
     pass
 
 
 class LLMInterface:
     """Interface for interacting with Language Models for MatrixTable analysis."""
 
-    def __init__(self,
-                 provider: str = "google",
-                 model: str = None,
-                 api_key: str = None,
-                 max_tokens: int = 4096,
-                 temperature: float = 0.7,
-                 matrix_sample_size: int = 1000):
+    def __init__(
+        self,
+        provider: str = "google",
+        model: str = None,
+        api_key: str = None,
+        max_tokens: int = 4096,
+        temperature: float = 0.7,
+        matrix_sample_size: int = 1000,
+    ):
         """
         Initialize the LLM interface.
 
@@ -60,7 +62,9 @@ class LLMInterface:
         """
         self.provider = provider.lower()
         if self.provider not in LLM_PROVIDERS:
-            raise LLMConfigError(f"Unsupported LLM provider: {provider}. Choose from {LLM_PROVIDERS}")
+            raise LLMConfigError(
+                f"Unsupported LLM provider: {provider}. Choose from {LLM_PROVIDERS}"
+            )
 
         self.model = model or self._get_default_model()
         self.api_key = api_key or self._get_api_key()
@@ -75,7 +79,7 @@ class LLMInterface:
             "openai": "gpt-4o-mini",
             "anthropic": "claude-3-opus",
             "local": "deepseek-r1",
-            "google": "gemini-2.0-flash"
+            "google": "gemini-2.0-flash",
         }
         return defaults.get(self.provider, "gemini-2.0-flash")
 
@@ -98,48 +102,65 @@ class LLMInterface:
         if self.provider == "openai":
             try:
                 import openai
+
                 client = openai.OpenAI(api_key=self.api_key)
                 return client
             except ImportError as e:
-                raise LLMConfigError("OpenAI package not installed. Run 'pip install openai'") from e
+                raise LLMConfigError(
+                    "OpenAI package not installed. Run 'pip install openai'"
+                ) from e
         elif self.provider == "anthropic":
             try:
                 import anthropic
+
                 client = anthropic.Anthropic(api_key=self.api_key)
                 return client
             except ImportError as e:
-                raise LLMConfigError("Anthropic package not installed. Run 'pip install anthropic'") from e
+                raise LLMConfigError(
+                    "Anthropic package not installed. Run 'pip install anthropic'"
+                ) from e
         elif self.provider == "google":
             try:
                 from google import genai
+
                 genai.configure(api_key=self.api_key)
                 return genai
             except ImportError as e:
-                raise LLMConfigError("Google Generative AI package not installed. Run 'pip install google-generativeai'") from e
+                raise LLMConfigError(
+                    "Google Generative AI package not installed. Run 'pip install google-generativeai'"
+                ) from e
         elif self.provider == "local":
             try:
                 import requests
+
                 # For Ollama models, we don't need to load the model directly
                 # We'll just verify we can connect to the Ollama API
                 # Default Ollama endpoint
-                ollama_endpoint = os.environ.get("OLLAMA_ENDPOINT", "http://localhost:11434")
+                ollama_endpoint = os.environ.get(
+                    "OLLAMA_ENDPOINT", "http://localhost:11434"
+                )
                 # Test connection to Ollama
                 try:
                     response = requests.get(f"{ollama_endpoint}/api/tags")
                     if response.status_code != 200:
-                        raise LLMConfigError(f"Could not connect to Ollama API at {ollama_endpoint}")
+                        raise LLMConfigError(
+                            f"Could not connect to Ollama API at {ollama_endpoint}"
+                        )
                     return {"endpoint": ollama_endpoint}
                 except requests.exceptions.RequestException as e:
-                    raise LLMConfigError(f"Failed to connect to Ollama API: {str(e)}") from e
+                    raise LLMConfigError(
+                        f"Failed to connect to Ollama API: {str(e)}"
+                    ) from e
             except ImportError as e:
-                raise LLMConfigError("Requests package not installed. Run 'pip install requests'") from e
+                raise LLMConfigError(
+                    "Requests package not installed. Run 'pip install requests'"
+                ) from e
 
         raise LLMConfigError(f"Unsupported LLM provider: {self.provider}")
 
-    def prepare_matrix_data(self,
-                           mt: hl.MatrixTable,
-                           sample_rows: int = None,
-                           sample_cols: int = None) -> Dict:
+    def prepare_matrix_data(
+        self, mt: hl.MatrixTable, sample_rows: int = None, sample_cols: int = None
+    ) -> Dict:
         """
         Prepare MatrixTable data for LLM consumption by sampling and summarizing.
 
@@ -177,7 +198,7 @@ class LLMInterface:
         if sampled_data:
             sample_df = sampled_data.to_pandas()
             # Convert to dictionary representation for JSON serialization
-            sample_dict = sample_df.to_dict(orient='records')
+            sample_dict = sample_df.to_dict(orient="records")
         else:
             sample_dict = []
 
@@ -190,7 +211,7 @@ class LLMInterface:
             "col_metadata_sample": [dict(x) for x in col_meta],
             "row_metadata_sample": [dict(x) for x in row_meta],
             "data_sample": sample_dict,
-            "matrix_schema": str(mt.describe())
+            "matrix_schema": str(mt.describe()),
         }
 
         return prepared_data
@@ -201,16 +222,20 @@ class LLMInterface:
             model=self.model,
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
+                {"role": "user", "content": user_prompt},
             ],
             temperature=self.temperature,
-            max_tokens=self.max_tokens
+            max_tokens=self.max_tokens,
         )
         return {
             "response_text": response.choices[0].message.content,
             "model_used": self.model,
             "finish_reason": response.choices[0].finish_reason,
-            "usage": response.usage.dict() if hasattr(response.usage, 'dict') else vars(response.usage),
+            "usage": (
+                response.usage.dict()
+                if hasattr(response.usage, "dict")
+                else vars(response.usage)
+            ),
         }
 
     def _query_anthropic(self, system_prompt: str, user_prompt: str) -> Dict:
@@ -218,11 +243,9 @@ class LLMInterface:
         response = self.client.messages.create(
             model=self.model,
             system=system_prompt,
-            messages=[
-                {"role": "user", "content": user_prompt}
-            ],
+            messages=[{"role": "user", "content": user_prompt}],
             temperature=self.temperature,
-            max_tokens=self.max_tokens
+            max_tokens=self.max_tokens,
         )
         return {
             "response_text": response.content[0].text,
@@ -236,23 +259,22 @@ class LLMInterface:
         generation_config = {
             "temperature": self.temperature,
             "max_output_tokens": self.max_tokens,
+            "systemInstruction": {"parts": [system_prompt]},
         }
 
         response = self.client.GenerativeModel(
-            model_name=self.model,
-            generation_config=generation_config
-        ).generate_content(
-            contents=[
-                {"role": "system", "parts": [system_prompt]},
-                {"role": "user", "parts": [user_prompt]}
-            ]
-        )
+            model_name=self.model, generation_config=generation_config
+        ).generate_content(contents=[{"role": "user", "parts": [user_prompt]}])
 
         return {
             "response_text": response.text,
             "model_used": self.model,
             "finish_reason": "stop",  # Gemini doesn't provide this explicitly
-            "usage": {"prompt_tokens": -1, "completion_tokens": -1, "total_tokens": -1}  # Not provided by Gemini API
+            "usage": {
+                "prompt_tokens": -1,
+                "completion_tokens": -1,
+                "total_tokens": -1,
+            },  # Not provided by Gemini API
         }
 
     def _query_local(self, system_prompt: str, user_prompt: str) -> Dict:
@@ -270,15 +292,12 @@ class LLMInterface:
                 "stream": False,
                 "options": {
                     "temperature": self.temperature,
-                    "num_predict": self.max_tokens
-                }
+                    "num_predict": self.max_tokens,
+                },
             }
 
             # Make the API call to Ollama
-            response = requests.post(
-                f"{ollama_endpoint}/api/generate",
-                json=payload
-            )
+            response = requests.post(f"{ollama_endpoint}/api/generate", json=payload)
 
             if response.status_code != 200:
                 raise Exception(f"Ollama API error: {response.text}")
@@ -293,8 +312,9 @@ class LLMInterface:
                 "usage": {
                     "prompt_tokens": response_data.get("prompt_eval_count", -1),
                     "completion_tokens": response_data.get("eval_count", -1),
-                    "total_tokens": response_data.get("prompt_eval_count", 0) + response_data.get("eval_count", 0)
-                }
+                    "total_tokens": response_data.get("prompt_eval_count", 0)
+                    + response_data.get("eval_count", 0),
+                },
             }
         except Exception as e:
             logger.error(f"Error querying local model: {str(e)}")
@@ -302,14 +322,20 @@ class LLMInterface:
                 "response_text": "",
                 "model_used": self.model,
                 "finish_reason": "error",
-                "usage": {"prompt_tokens": -1, "completion_tokens": -1, "total_tokens": -1},
-                "error": str(e)
+                "usage": {
+                    "prompt_tokens": -1,
+                    "completion_tokens": -1,
+                    "total_tokens": -1,
+                },
+                "error": str(e),
             }
 
-    def query_llm(self,
-                 natural_language_query: str,
-                 mt: hl.MatrixTable,
-                 context: Optional[Dict] = None) -> Dict:
+    def query_llm(
+        self,
+        natural_language_query: str,
+        mt: hl.MatrixTable,
+        context: Optional[Dict] = None,
+    ) -> Dict:
         """
         Send a natural language query about a MatrixTable to the LLM.
         Args:
@@ -321,28 +347,30 @@ class LLMInterface:
         """
         # Prepare matrix data
         matrix_data = self.prepare_matrix_data(mt)
-        
+
         # Construct prompt
         system_prompt = self._get_system_prompt()
-        user_prompt = self._construct_user_prompt(natural_language_query, matrix_data, context)
-        
+        user_prompt = self._construct_user_prompt(
+            natural_language_query, matrix_data, context
+        )
+
         # Call appropriate LLM based on provider
         provider_methods = {
             "openai": self._query_openai,
             "anthropic": self._query_anthropic,
             "google": self._query_google,
-            "local": self._query_local
+            "local": self._query_local,
         }
-        
+
         if self.provider not in provider_methods:
             raise LLMConfigError(f"Unsupported LLM provider: {self.provider}")
-        
+
         result = provider_methods[self.provider](system_prompt, user_prompt)
-        
+
         # Parse the response to extract code snippets and explanation
         parsed_response = self._parse_llm_response(result["response_text"])
         result.update(parsed_response)
-        
+
         return result
 
     def _get_system_prompt(self) -> str:
@@ -359,10 +387,9 @@ class LLMInterface:
                   For complex analyses, break down the approach into clear steps.
         """
 
-    def _construct_user_prompt(self,
-                              query: str,
-                              matrix_data: Dict,
-                              context: Optional[Dict] = None) -> str:
+    def _construct_user_prompt(
+        self, query: str, matrix_data: Dict, context: Optional[Dict] = None
+    ) -> str:
         """
         Construct the user prompt from query and context.
 
@@ -380,8 +407,10 @@ class LLMInterface:
         condensed_data = {
             "summary": matrix_data["summary"],
             "schema": matrix_data["matrix_schema"],
-            "sample_rows": matrix_data["row_metadata_sample"][:3],  # Limit samples to save tokens
-            "sample_cols": matrix_data["col_metadata_sample"][:3]
+            "sample_rows": matrix_data["row_metadata_sample"][
+                :3
+            ],  # Limit samples to save tokens
+            "sample_cols": matrix_data["col_metadata_sample"][:3],
         }
 
         matrix_str = json.dumps(condensed_data, default=str, indent=2)
@@ -418,26 +447,28 @@ class LLMInterface:
         import re
 
         # Extract code blocks
-        code_blocks = re.findall(r'```(?:python)?\s*(.*?)\s*```', response_text, re.DOTALL)
+        code_blocks = re.findall(
+            r"```(?:python)?\s*(.*?)\s*```", response_text, re.DOTALL
+        )
 
         # Extract explanation (text outside code blocks)
         explanation = response_text
         for block in code_blocks:
-            explanation = explanation.replace(f'```python\n{block}\n```', '')
-            explanation = explanation.replace(f'```\n{block}\n```', '')
+            explanation = explanation.replace(f"```python\n{block}\n```", "")
+            explanation = explanation.replace(f"```\n{block}\n```", "")
 
         # Clean up explanation
-        explanation = re.sub(r'\n{3,}', '\n\n', explanation).strip()
+        explanation = re.sub(r"\n{3,}", "\n\n", explanation).strip()
 
         return {
             "explanation": explanation,
             "code_snippets": code_blocks,
-            "executable_code": '\n\n'.join(code_blocks) if code_blocks else None
+            "executable_code": "\n\n".join(code_blocks) if code_blocks else None,
         }
 
-    def execute_generated_code(self, code: str, mt: hl.MatrixTable, globals: Dict = None) -> Any:
+    def execute_generated_code(self, code, mt=None, globals=None):
         """
-        Safely execute the code generated by the LLM.
+        Safely execute the code generated by the LLM using RestrictedPython sandbox.
 
         Args:
             code: Python code to execute
@@ -447,80 +478,124 @@ class LLMInterface:
         Returns:
             Result of the code execution
         """
+        try:
+            from RestrictedPython import compile_restricted, safe_globals
+            from RestrictedPython.Guards import (
+                guarded_getattr,
+                guarded_getitem,
+                guarded_setitem,
+                guarded_iter,
+            )
+            from RestrictedPython.PrintCollector import PrintCollector
+            import time
+        except ImportError:
+            logger.error(
+                "RestrictedPython not installed. Run 'pip install RestrictedPython'"
+            )
+            return {"error": "RestrictedPython not installed", "code": code}
+
         # Setup execution environment
         if globals is None:
             globals = {}
 
-        execution_globals = {
+        # Create restricted globals
+        restricted_globals = safe_globals.copy()
+
+        # Add necessary builtins
+        restricted_globals["_print_"] = PrintCollector
+        restricted_globals["_getattr_"] = guarded_getattr
+        restricted_globals["_getitem_"] = guarded_getitem
+        restricted_globals["_setitem_"] = guarded_setitem
+        restricted_globals["_iter_"] = guarded_iter
+
+        # Add safe subset of Python builtins
+        safe_builtins = {
+            "abs": abs,
+            "all": all,
+            "any": any,
+            "bool": bool,
+            "dict": dict,
+            "enumerate": enumerate,
+            "filter": filter,
+            "float": float,
+            "frozenset": frozenset,
+            "int": int,
+            "isinstance": isinstance,
+            "len": len,
+            "list": list,
+            "map": map,
+            "max": max,
+            "min": min,
+            "range": range,
+            "round": round,
+            "set": set,
+            "sorted": sorted,
+            "str": str,
+            "sum": sum,
+            "tuple": tuple,
+            "zip": zip,
+        }
+        restricted_globals["__builtins__"].update(safe_builtins)
+
+        # Add specific whitelisted modules and objects
+        allowed_modules = {
             "hl": hl,
             "np": np,
             "pd": pd,
             "mt": mt,
             "matrix_utils": matrix_utils,
-            **globals
         }
+        restricted_globals.update(allowed_modules)
+        restricted_globals.update(globals)
 
-        local_vars = {}
+        # Set execution timeout (30 seconds)
+        timeout = 30.0
+        start_time = time.time()
+
+        # Add a hook to check for timeouts during execution
+        def check_timeout():
+            if time.time() - start_time > timeout:
+                raise TimeoutError(f"Execution timed out (> {timeout} seconds)")
+            return True
+
+        restricted_globals["_check_timeout"] = check_timeout
 
         try:
-            # Execute the code
-            exec(code, execution_globals, local_vars)
+            # Add timeout checks to the code
+            modified_code = "if _check_timeout():\n"
+            for line in code.split("\n"):
+                modified_code += f"    {line}\n    if _check_timeout(): pass\n"
+
+            # Compile the code in restricted mode
+            byte_code = compile_restricted(
+                modified_code, filename="<generated_code>", mode="exec"
+            )
+
+            # Create a namespace for execution
+            local_vars = {}
+
+            # Execute the compiled code in the restricted environment
+            exec(byte_code, restricted_globals, local_vars)
 
             # Look for a result variable - common convention in generated code
             if "result" in local_vars:
                 return local_vars["result"]
+            elif "_print" in local_vars:  # Get any printed output
+                return local_vars["_print"]()
             else:
-                # Return all local variables as the result
-                return {k: v for k, v in local_vars.items() if not k.startswith("_")}
+                # Return all local variables as the result (excluding internal ones)
+                return {
+                    k: v
+                    for k, v in local_vars.items()
+                    if not k.startswith("_") and k not in restricted_globals
+                }
 
+        except TimeoutError as te:
+            logger.error(f"Timeout executing generated code: {str(te)}")
+            return {"error": str(te), "code": code}
+        except SyntaxError as se:
+            logger.error(f"Syntax error in generated code: {str(se)}")
+            return {"error": f"Syntax error: {str(se)}", "code": code}
         except Exception as e:
             logger.error(f"Error executing generated code: {str(e)}")
             return {"error": str(e), "code": code}
-
-
-# Utility functions
-
-def load_llm_config() -> Dict:
-    """Load LLM configuration from settings or environment variables."""
-    config = {
-        "provider": os.environ.get("LLM_PROVIDER", "google"),  # Default to Google
-        "model": os.environ.get("LLM_MODEL", None),  # Default will be set based on provider
-        "api_key": None,  # Will be retrieved based on provider
-        "max_tokens": int(os.environ.get("LLM_MAX_TOKENS", 4096)),
-        "temperature": float(os.environ.get("LLM_TEMPERATURE", 0.7))
-    }
-    return config
-
-
-@lru_cache(maxsize=10)
-def get_llm_interface() -> LLMInterface:
-    """Get a cached LLM interface using default configuration."""
-    config = load_llm_config()
-    return LLMInterface(**config)
-
-
-def natural_language_query(query: str, mt: hl.MatrixTable, execute: bool = False) -> Dict:
-    """
-    Convenience function for querying an LLM about a MatrixTable.
-
-    Args:
-        query: Natural language query
-        mt: MatrixTable to analyze
-        execute: Whether to execute the generated code
-
-    Returns:
-        Dict containing explanation, generated code, and execution results if requested
-    """
-    llm = get_llm_interface()
-    response = llm.query_llm(query, mt)
-
-    result = {
-        "explanation": response["explanation"],
-        "suggested_code": response["executable_code"]
-    }
-
-    if execute and response["executable_code"]:
-        execution_result = llm.execute_generated_code(response["executable_code"], mt)
-        result["execution_result"] = execution_result
-
-    return result
