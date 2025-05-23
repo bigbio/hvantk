@@ -5,3 +5,7 @@ tqdm
 pandas
 matplotlib
 numpy
+openai
+anthropic
+google-genai
+RestrictedPython
