@@ -13,3 +13,7 @@ dependencies:
       - pandas
       - numpy
       - matplotlib
+      - openai
+      - anthropic
+      - google
+      - google-genai
