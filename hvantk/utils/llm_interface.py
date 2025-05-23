@@ -599,3 +599,66 @@ class LLMInterface:
         except Exception as e:
             logger.error(f"Error executing generated code: {str(e)}")
             return {"error": str(e), "code": code}
+
+
+def get_llm_interface(**kwargs) -> LLMInterface:
+    """
+    Get an LLM interface with default or specified configuration.
+
+    This is a factory function that creates and returns an LLMInterface instance
+    with either default settings or the specified configuration.
+
+    Args:
+        **kwargs: Configuration options to pass to LLMInterface constructor
+
+    Returns:
+        An initialized LLMInterface instance
+    """
+    return LLMInterface(**kwargs)
+
+
+def natural_language_query(
+    query: str,
+    mt: hl.MatrixTable,
+    context: Optional[Dict] = None,
+    execute: bool = False,
+    llm_config: Optional[Dict] = None
+) -> Dict:
+    """
+    Process a natural language query about a MatrixTable and return results.
+
+    This function provides a simplified interface for querying an LLM about a Hail MatrixTable.
+    It handles the setup of the LLM, sends the query, and optionally executes the generated code.
+
+    Args:
+        query: Natural language query about the MatrixTable
+        mt: The Hail MatrixTable to analyze
+        context: Additional context to provide to the LLM (optional)
+        execute: Whether to execute the generated code (default: False)
+        llm_config: Configuration for the LLM interface (optional)
+
+    Returns:
+        Dict containing explanation, suggested code, and optionally execution results
+    """
+    # Initialize the LLM interface with provided or default configuration
+    llm_config = llm_config or {}
+    llm = get_llm_interface(**llm_config)
+
+    # Send the query to the LLM
+    response = llm.query_llm(query, mt, context)
+
+    # Prepare the result dictionary
+    result = {
+        "explanation": response.get("explanation", ""),
+        "suggested_code": response.get("executable_code", "")
+    }
+
+    # Execute the generated code if requested
+    if execute and response.get("executable_code"):
+        result["execution_result"] = llm.execute_generated_code(
+            response["executable_code"],
+            mt
+        )
+
+    return result
+
