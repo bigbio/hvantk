@@ -16,3 +16,4 @@ dependencies:
       - openai
       - anthropic
       - google-genai
+      - RestrictedPython
