@@ -7,5 +7,4 @@ matplotlib
 numpy
 openai
 anthropic
-google
 google-genai

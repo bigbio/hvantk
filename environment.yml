@@ -15,5 +15,4 @@ dependencies:
       - matplotlib
       - openai
       - anthropic
-      - google
       - google-genai
