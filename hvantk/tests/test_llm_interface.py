@@ -158,7 +158,7 @@ def test_summarize_matrix_query(mock_get_llm, mock_matrix_table):
 
 
 @pytest.mark.parametrize("provider,model", [
-    ("openai", "gpt-4.1-mini"),
+    ("openai", "gpt-4o-mini"),
     ("anthropic", "claude-3-opus"),
     ("local", "mixtral-8x7b")
 ])
@@ -345,7 +345,7 @@ def test_real_openai_model_query(mock_matrix_table):
         # Initialize the LLM interface for OpenAI
         llm = LLMInterface(
             provider="openai",
-            model="gpt-4.1-mini",  # Or any other available model
+            model="gpt-4o-mini",  # Or any other available model
             temperature=0.7,
             max_tokens=2048,
         )
