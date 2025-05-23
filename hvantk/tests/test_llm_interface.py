@@ -68,7 +68,7 @@ def test_natural_language_query(mock_get_llm, mock_matrix_table):
 
     # Verify the function called the right methods
     mock_get_llm.assert_called_once()
-    mock_llm.query_llm.assert_called_once_with(query, mock_matrix_table)
+    mock_llm.query_llm.assert_called_once_with(query, mock_matrix_table, None)
     mock_llm.execute_generated_code.assert_not_called()
 
     # Verify the result structure
@@ -142,7 +142,7 @@ def test_summarize_matrix_query(mock_get_llm, mock_matrix_table):
     print(f"Execution result: {result['execution_result']}")
 
     # Verify the query was processed correctly
-    mock_llm.query_llm.assert_called_once_with(query, mock_matrix_table)
+    mock_llm.query_llm.assert_called_once_with(query, mock_matrix_table, None)
 
     # Verify code was executed
     mock_llm.execute_generated_code.assert_called_once_with(
@@ -197,7 +197,7 @@ def test_llm_providers(mock_get_llm, provider, model, mock_matrix_table):
     print(f"Execution result: {result['execution_result']}")
 
     # Verify the query was processed correctly
-    mock_llm.query_llm.assert_called_once_with(query, mock_matrix_table)
+    mock_llm.query_llm.assert_called_once_with(query, mock_matrix_table, None)
 
     # Verify code was executed
     mock_llm.execute_generated_code.assert_called_once_with(
