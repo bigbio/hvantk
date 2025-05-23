@@ -72,7 +72,7 @@ class LLMInterface:
     def _get_default_model(self) -> str:
         """Get the default model for the selected provider."""
         defaults = {
-            "openai": "gpt-4.1-mini",
+            "openai": "gpt-4o-mini",
             "anthropic": "claude-3-opus",
             "local": "deepseek-r1",
             "google": "gemini-2.0-flash"
@@ -100,22 +100,22 @@ class LLMInterface:
                 import openai
                 client = openai.OpenAI(api_key=self.api_key)
                 return client
-            except ImportError:
-                raise LLMConfigError("OpenAI package not installed. Run 'pip install openai'")
+            except ImportError as e:
+                raise LLMConfigError("OpenAI package not installed. Run 'pip install openai'") from e
         elif self.provider == "anthropic":
             try:
                 import anthropic
                 client = anthropic.Anthropic(api_key=self.api_key)
                 return client
-            except ImportError:
-                raise LLMConfigError("Anthropic package not installed. Run 'pip install anthropic'")
+            except ImportError as e:
+                raise LLMConfigError("Anthropic package not installed. Run 'pip install anthropic'") from e
         elif self.provider == "google":
             try:
                 from google import genai
                 genai.configure(api_key=self.api_key)
                 return genai
-            except ImportError:
-                raise LLMConfigError("Google Generative AI package not installed. Run 'pip install google-generativeai'")
+            except ImportError as e:
+                raise LLMConfigError("Google Generative AI package not installed. Run 'pip install google-generativeai'") from e
         elif self.provider == "local":
             try:
                 import requests
@@ -130,9 +130,9 @@ class LLMInterface:
                         raise LLMConfigError(f"Could not connect to Ollama API at {ollama_endpoint}")
                     return {"endpoint": ollama_endpoint}
                 except requests.exceptions.RequestException as e:
-                    raise LLMConfigError(f"Failed to connect to Ollama API: {str(e)}")
-            except ImportError:
-                raise LLMConfigError("Requests package not installed. Run 'pip install requests'")
+                    raise LLMConfigError(f"Failed to connect to Ollama API: {str(e)}") from e
+            except ImportError as e:
+                raise LLMConfigError("Requests package not installed. Run 'pip install requests'") from e
 
         raise LLMConfigError(f"Unsupported LLM provider: {self.provider}")
 
@@ -195,156 +195,169 @@ class LLMInterface:
 
         return prepared_data
 
+    def _query_openai(self, system_prompt: str, user_prompt: str) -> Dict:
+        """Query OpenAI API."""
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=self.temperature,
+            max_tokens=self.max_tokens
+        )
+        return {
+            "response_text": response.choices[0].message.content,
+            "model_used": self.model,
+            "finish_reason": response.choices[0].finish_reason,
+            "usage": response.usage.dict() if hasattr(response.usage, 'dict') else vars(response.usage),
+        }
+
+    def _query_anthropic(self, system_prompt: str, user_prompt: str) -> Dict:
+        """Query Anthropic API."""
+        response = self.client.messages.create(
+            model=self.model,
+            system=system_prompt,
+            messages=[
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=self.temperature,
+            max_tokens=self.max_tokens
+        )
+        return {
+            "response_text": response.content[0].text,
+            "model_used": self.model,
+            "stop_reason": response.stop_reason,
+            "usage": response.usage,
+        }
+
+    def _query_google(self, system_prompt: str, user_prompt: str) -> Dict:
+        """Query Google Gemini API."""
+        generation_config = {
+            "temperature": self.temperature,
+            "max_output_tokens": self.max_tokens,
+        }
+
+        response = self.client.GenerativeModel(
+            model_name=self.model,
+            generation_config=generation_config
+        ).generate_content(
+            contents=[
+                {"role": "system", "parts": [system_prompt]},
+                {"role": "user", "parts": [user_prompt]}
+            ]
+        )
+
+        return {
+            "response_text": response.text,
+            "model_used": self.model,
+            "finish_reason": "stop",  # Gemini doesn't provide this explicitly
+            "usage": {"prompt_tokens": -1, "completion_tokens": -1, "total_tokens": -1}  # Not provided by Gemini API
+        }
+
+    def _query_local(self, system_prompt: str, user_prompt: str) -> Dict:
+        """Query local LLM (Ollama) API."""
+        try:
+            import requests
+
+            # Get Ollama client configuration
+            ollama_endpoint = self.client["endpoint"]
+
+            # Prepare the request payload for Ollama API
+            payload = {
+                "model": self.model,
+                "prompt": f"{system_prompt}\n\n{user_prompt}",
+                "stream": False,
+                "options": {
+                    "temperature": self.temperature,
+                    "num_predict": self.max_tokens
+                }
+            }
+
+            # Make the API call to Ollama
+            response = requests.post(
+                f"{ollama_endpoint}/api/generate",
+                json=payload
+            )
+
+            if response.status_code != 200:
+                raise Exception(f"Ollama API error: {response.text}")
+
+            response_data = response.json()
+            response_text = response_data.get("response", "")
+
+            return {
+                "response_text": response_text,
+                "model_used": self.model,
+                "finish_reason": "stop",
+                "usage": {
+                    "prompt_tokens": response_data.get("prompt_eval_count", -1),
+                    "completion_tokens": response_data.get("eval_count", -1),
+                    "total_tokens": response_data.get("prompt_eval_count", 0) + response_data.get("eval_count", 0)
+                }
+            }
+        except Exception as e:
+            logger.error(f"Error querying local model: {str(e)}")
+            return {
+                "response_text": "",
+                "model_used": self.model,
+                "finish_reason": "error",
+                "usage": {"prompt_tokens": -1, "completion_tokens": -1, "total_tokens": -1},
+                "error": str(e)
+            }
+
     def query_llm(self,
                  natural_language_query: str,
                  mt: hl.MatrixTable,
                  context: Optional[Dict] = None) -> Dict:
         """
         Send a natural language query about a MatrixTable to the LLM.
-
         Args:
             natural_language_query: The query in natural language
             mt: The MatrixTable to analyze
             context: Additional context to provide to the LLM
-
         Returns:
             Dict containing LLM response and suggested code
         """
         # Prepare matrix data
         matrix_data = self.prepare_matrix_data(mt)
-
+        
         # Construct prompt
         system_prompt = self._get_system_prompt()
         user_prompt = self._construct_user_prompt(natural_language_query, matrix_data, context)
-
+        
         # Call appropriate LLM based on provider
-        if self.provider == "openai":
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                temperature=self.temperature,
-                max_tokens=self.max_tokens
-            )
-            result = {
-                "response_text": response.choices[0].message.content,
-                "model_used": self.model,
-                "finish_reason": response.choices[0].finish_reason,
-                "usage": response.usage.dict() if hasattr(response.usage, 'dict') else vars(response.usage),
-            }
-
-        elif self.provider == "anthropic":
-            response = self.client.messages.create(
-                model=self.model,
-                system=system_prompt,
-                messages=[
-                    {"role": "user", "content": user_prompt}
-                ],
-                temperature=self.temperature,
-                max_tokens=self.max_tokens
-            )
-            result = {
-                "response_text": response.content[0].text,
-                "model_used": self.model,
-                "stop_reason": response.stop_reason,
-                "usage": response.usage,
-            }
-
-        elif self.provider == "google":
-            generation_config = {
-                "temperature": self.temperature,
-                "max_output_tokens": self.max_tokens,
-            }
-
-            response = self.client.GenerativeModel(
-                model_name=self.model,
-                generation_config=generation_config
-            ).generate_content(
-                contents=[
-                    {"role": "system", "parts": [system_prompt]},
-                    {"role": "user", "parts": [user_prompt]}
-                ]
-            )
-
-            result = {
-                "response_text": response.text,
-                "model_used": self.model,
-                "finish_reason": "stop",  # Gemini doesn't provide this explicitly
-                "usage": {"prompt_tokens": -1, "completion_tokens": -1, "total_tokens": -1}  # Not provided by Gemini API
-            }
-
-        elif self.provider == "local":
-            try:
-                import requests
-                import json
-
-                # Get Ollama client configuration
-                ollama_endpoint = self.client["endpoint"]
-
-                # Prepare the request payload for Ollama API
-                payload = {
-                    "model": self.model,
-                    "prompt": f"{system_prompt}\n\n{user_prompt}",
-                    "stream": False,
-                    "options": {
-                        "temperature": self.temperature,
-                        "num_predict": self.max_tokens
-                    }
-                }
-
-                # Make the API call to Ollama
-                response = requests.post(
-                    f"{ollama_endpoint}/api/generate",
-                    json=payload
-                )
-
-                if response.status_code != 200:
-                    raise Exception(f"Ollama API error: {response.text}")
-
-                response_data = response.json()
-                response_text = response_data.get("response", "")
-
-                result = {
-                    "response_text": response_text,
-                    "model_used": self.model,
-                    "finish_reason": "stop",
-                    "usage": {
-                        "prompt_tokens": response_data.get("prompt_eval_count", -1),
-                        "completion_tokens": response_data.get("eval_count", -1),
-                        "total_tokens": response_data.get("prompt_eval_count", 0) + response_data.get("eval_count", 0)
-                    }
-                }
-            except Exception as e:
-                logger.error(f"Error querying local model: {str(e)}")
-                result = {
-                    "response_text": "",
-                    "model_used": self.model,
-                    "finish_reason": "error",
-                    "usage": {"prompt_tokens": -1, "completion_tokens": -1, "total_tokens": -1},
-                    "error": str(e)
-                }
-
+        provider_methods = {
+            "openai": self._query_openai,
+            "anthropic": self._query_anthropic,
+            "google": self._query_google,
+            "local": self._query_local
+        }
+        
+        if self.provider not in provider_methods:
+            raise LLMConfigError(f"Unsupported LLM provider: {self.provider}")
+        
+        result = provider_methods[self.provider](system_prompt, user_prompt)
+        
         # Parse the response to extract code snippets and explanation
         parsed_response = self._parse_llm_response(result["response_text"])
         result.update(parsed_response)
-
+        
         return result
 
     def _get_system_prompt(self) -> str:
         """Generate the system prompt for the LLM."""
         return """You are a bioinformatics expert specializing in gene expression analysis using Hail.
-Your task is to help users analyze gene expression data stored in Hail MatrixTable format.
-When given a query, respond with:
-1. A clear explanation of how to solve the problem
-2. Executable Python code using Hail that implements the solution
-3. Any relevant insights about the biological implications
+                  Your task is to help users analyze gene expression data stored in Hail MatrixTable format.
+                  When given a query, respond with:
+                  1. A clear explanation of how to solve the problem
+                  2. Executable Python code using Hail that implements the solution
+                  3. Any relevant insights about the biological implications
 
-Use the provided MatrixTable schema and sample data to understand the structure.
-Always focus on practical, executable solutions with proper Hail syntax.
-For complex analyses, break down the approach into clear steps.
-"""
+                  Use the provided MatrixTable schema and sample data to understand the structure.
+                  Always focus on practical, executable solutions with proper Hail syntax.
+                  For complex analyses, break down the approach into clear steps.
+        """
 
     def _construct_user_prompt(self,
                               query: str,
@@ -374,22 +387,22 @@ For complex analyses, break down the approach into clear steps.
         matrix_str = json.dumps(condensed_data, default=str, indent=2)
 
         prompt = f"""
-I want to analyze a gene expression dataset stored as a Hail MatrixTable.
+                  I want to analyze a gene expression dataset stored as a Hail MatrixTable.
 
-QUERY:
-{query}
+                  QUERY:
+                  {query}
 
-MATRIX INFORMATION:
-{matrix_str}
+                  MATRIX INFORMATION:
+                  {matrix_str}
 
-ADDITIONAL CONTEXT:
-{context_str}
+                  ADDITIONAL CONTEXT:
+                  {context_str}
 
-Please provide:
-1. An explanation of how to approach this analysis
-2. Executable Python code using Hail
-3. Any insights about the biological implications
-"""
+                  Please provide:
+                  1. An explanation of how to approach this analysis
+                  2. Executable Python code using Hail
+                  3. Any insights about the biological implications
+        """
         return prompt
 
     def _parse_llm_response(self, response_text: str) -> Dict:
