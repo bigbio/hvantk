@@ -60,10 +60,10 @@ def convert_cptac_expression_to_matrix_table(
     # Work directly with the coordinate format - no need to pivot
     # Select only the required columns for the MatrixTable
     coord_df = df[[gene_id_col, sample_id_col, expression_col]].copy()
-
+    
     # Convert to Hail Table
     coord_ht = hl.Table.from_pandas(coord_df)
-
+    
     # Convert to MatrixTable using coordinate representation
     mt = coord_ht.to_matrix_table(
         row_key=[gene_id_col],
@@ -176,22 +176,24 @@ def create_cptac_matrix_table(
         numeric_cols=numeric_cols
     )
     
-    # Check for sample ID mismatches - get the sample IDs from the col_value
-    # Instead of mt.s, we need to use mt.col_value which gives us the value in the col_key
-    expr_samples = set(mt[sample_id_col].collect())
+    # Check for sample ID mismatches - get the sample IDs from the MatrixTable columns
+    # Use mt.col_key to access the column keys (sample IDs) properly
+    expr_samples = set(mt.col_key.collect())
     meta_samples = set(metadata_ht[sample_id_col].collect())
 
     if expr_samples != meta_samples:
         missing_in_meta = expr_samples - meta_samples
         missing_in_expr = meta_samples - expr_samples
+        error_messages = []
         if missing_in_meta:
-            logger.warning(f"Samples in expression data but not in metadata: {missing_in_meta}")
+            error_messages.append(f"Samples in expression data but not in metadata: {missing_in_meta}")
         if missing_in_expr:
-            logger.warning(f"Samples in metadata but not in expression data: {missing_in_expr}")
-    
+            error_messages.append(f"Samples in metadata but not in expression data: {missing_in_expr}")
+        raise ValueError("Sample ID mismatches found. " + "; ".join(error_messages))
+
     # Annotate MatrixTable with metadata
     # Use the sample_id_col to join with metadata
-    mt = mt.annotate_cols(**metadata_ht[mt[sample_id_col]])
+    mt = mt.annotate_cols(**metadata_ht[mt.col_key])
 
     logger.info("Successfully created annotated MatrixTable")
     return mt
