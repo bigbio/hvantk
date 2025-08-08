@@ -178,7 +178,8 @@ def create_cptac_matrix_table(
     
     # Check for sample ID mismatches - get the sample IDs from the MatrixTable columns
     # Use mt.col_key to access the column keys (sample IDs) properly
-    expr_samples = set(mt.col_key.collect())
+    # Extract the sample ID values from the struct since col_key returns Struct objects
+    expr_samples = set(mt.aggregate_cols(hl.agg.collect(mt.col_key[sample_id_col])))
     meta_samples = set(metadata_ht[sample_id_col].collect())
 
     if expr_samples != meta_samples:

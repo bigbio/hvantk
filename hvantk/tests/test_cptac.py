@@ -150,8 +150,6 @@ def test_create_cptac_matrix_table_sample_mismatch():
         'TumorType': ['TypeA']
     })
     
-    mt = create_cptac_matrix_table(expression_df, metadata_df)
-    
-    # Should still create MatrixTable but with warning
-    assert mt.count_rows() == 1
-    assert mt.count_cols() == 1
+    # Should raise ValueError due to sample mismatch
+    with pytest.raises(ValueError, match="Sample ID mismatches found"):
+        create_cptac_matrix_table(expression_df, metadata_df)
