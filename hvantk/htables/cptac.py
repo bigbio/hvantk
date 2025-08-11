@@ -52,10 +52,7 @@ def convert_cptac_expression_to_matrix_table(
     gene_name_dict = {}
     if gene_name_col and gene_name_col in df.columns:
         # Create a dictionary mapping gene IDs to their names
-        for _, row in df.iterrows():
-            gene_id = row[gene_id_col]
-            gene_name = row[gene_name_col]
-            gene_name_dict[gene_id] = gene_name
+        gene_name_dict = df.drop_duplicates(subset=[gene_id_col]).set_index(gene_id_col)[gene_name_col].to_dict()
 
     # Work directly with the coordinate format - no need to pivot
     # Select only the required columns for the MatrixTable
@@ -158,7 +155,7 @@ def create_cptac_matrix_table(
         ValueError: If there are mismatches between expression and metadata sample IDs
     """
     logger.info("Creating complete CPTAC MatrixTable")
-    
+
     # Create expression MatrixTable
     mt = convert_cptac_expression_to_matrix_table(
         expression_df,
@@ -167,7 +164,7 @@ def create_cptac_matrix_table(
         sample_id_col=sample_id_col,
         expression_col=expression_col
     )
-    
+
     # Create metadata Table
     metadata_ht = convert_cptac_metadata_to_table(
         metadata_df,
@@ -175,12 +172,13 @@ def create_cptac_matrix_table(
         categorical_cols=categorical_cols,
         numeric_cols=numeric_cols
     )
-    
+
     # Check for sample ID mismatches - get the sample IDs from the MatrixTable columns
     # Use mt.col_key to access the column keys (sample IDs) properly
     # Extract the sample ID values from the struct since col_key returns Struct objects
-    expr_samples = set(mt.aggregate_cols(hl.agg.collect(mt.col_key[sample_id_col])))
     meta_samples = set(metadata_ht[sample_id_col].collect())
+
+    expr_samples = set(mt.aggregate_cols(hl.agg.collect(mt.col_key[sample_id_col])))
 
     if expr_samples != meta_samples:
         missing_in_meta = expr_samples - meta_samples
