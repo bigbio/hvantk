@@ -1,52 +1,26 @@
 """
 Visualization module for hvantk.
 
-This module provides functions and classes for visualizing multiomics data,
-including heatmaps, volcano plots, PCA plots, and other common visualizations
-used in multiomics analysis.
+This module provides functions and classes for visualizing multiomics data.
 """
 
 from .base import (
     set_default_style,
-    save_figure
+    save_figure,
+    get_colors,
+    add_figure_labels,
 )
 
-from .omics import (
-    plot_heatmap,
-    plot_volcano,
-    plot_pca,
-    plot_umap,
-    plot_expression_distribution,
-    plot_sample_correlation,
-    plot_variant_lollipop,
-    plot_manhattan
-)
+# Lazy facade to avoid importing heavy backends at module import time
 
-from .clinical import (
-    plot_survival_curve,
-    plot_clinical_association
-)
-
-from .enrichment import (
-    plot_enrichment_barplot,
-    plot_enrichment_dotplot,
-    plot_pathway_network
-)
+def visualize_expression_distribution(*args, **kwargs):
+    from .expression.hail import visualize_expression_distribution as _impl
+    return _impl(*args, **kwargs)
 
 __all__ = [
     'set_default_style',
     'save_figure',
-    'plot_heatmap',
-    'plot_volcano',
-    'plot_pca',
-    'plot_umap',
-    'plot_expression_distribution',
-    'plot_sample_correlation',
-    'plot_variant_lollipop',
-    'plot_manhattan',
-    'plot_survival_curve',
-    'plot_clinical_association',
-    'plot_enrichment_barplot',
-    'plot_enrichment_dotplot',
-    'plot_pathway_network'
+    'get_colors',
+    'add_figure_labels',
+    'visualize_expression_distribution',
 ]
