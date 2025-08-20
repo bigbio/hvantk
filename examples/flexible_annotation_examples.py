@@ -2,7 +2,7 @@
 # Demonstrates how to add custom annotations and future data sources
 
 import logging
-from hvantk.annotation.flexible_annotation import (
+from hvantk.annotation.annotation_pipeline import (
     AnnotationConfig,
     FlexibleAnnotationStreamer,
     AnnotationRegistry,

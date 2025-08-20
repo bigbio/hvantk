@@ -4,13 +4,13 @@
 import pytest
 import logging
 from unittest.mock import Mock, patch
-from hvantk.annotation.flexible_annotation import (
+from hvantk.annotation.annotation_pipeline import (
     AnnotationConfig,
     FlexibleAnnotationStreamer,
     AnnotationRegistry,
     ConfigurableAnnotationPipeline,
     create_flexible_pipeline,
-    add_custom_annotation
+    add_custom_annotation,
 )
 from hvantk.utils.clinvar_streamer import ClinvarDataStreamer
 import hail as hl
