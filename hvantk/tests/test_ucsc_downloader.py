@@ -3,8 +3,8 @@ import pytest
 import tempfile
 import shutil
 from unittest.mock import patch
-from hvantk.utils.file_utils import download_file
-from hvantk.utils.constants import (
+from hvantk.data.file_utils import download_file
+from hvantk.core.constants import (
     UCSC_CELL_BROWSER_BASE_URL,
     EXPRESSION_MATRIX_FILE_NAME,
     METADATA_FILE_NAME,

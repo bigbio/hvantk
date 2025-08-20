@@ -13,6 +13,14 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
+__all__ = [
+    "convert_cptac_expression_to_matrix_table",
+    "convert_cptac_metadata_to_table",
+    "create_cptac_matrix_table",
+    "save_cptac_matrix_table",
+]
+
+
 def convert_cptac_expression_to_matrix_table(
     expression_df: pd.DataFrame,
     gene_id_col: str = 'GeneID',
@@ -22,28 +30,28 @@ def convert_cptac_expression_to_matrix_table(
 ) -> hl.MatrixTable:
     """
     Converts a CPTAC expression dataframe to a Hail MatrixTable.
-    
+
     Args:
         expression_df: DataFrame containing gene expression data
         gene_id_col: Column name containing gene IDs
         gene_name_col: Column name containing gene names (optional)
         sample_id_col: Column name containing sample IDs
         expression_col: Column name containing expression values
-        
+
     Returns:
         A Hail MatrixTable with genes as rows and samples as columns
-        
+
     Raises:
         ValueError: If required columns are missing from the input DataFrame
     """
     logger.info("Converting CPTAC expression data to MatrixTable")
-    
+
     # Validate required columns
     required_cols = [gene_id_col, sample_id_col, expression_col]
     missing_cols = [col for col in required_cols if col not in expression_df.columns]
     if missing_cols:
         raise ValueError(f"Missing required columns: {missing_cols}")
-    
+
     # Create a copy of the DataFrame to avoid modifying the original
     df = expression_df.copy()
 
@@ -57,10 +65,10 @@ def convert_cptac_expression_to_matrix_table(
     # Work directly with the coordinate format - no need to pivot
     # Select only the required columns for the MatrixTable
     coord_df = df[[gene_id_col, sample_id_col, expression_col]].copy()
-    
+
     # Convert to Hail Table
     coord_ht = hl.Table.from_pandas(coord_df)
-    
+
     # Convert to MatrixTable using coordinate representation
     mt = coord_ht.to_matrix_table(
         row_key=[gene_id_col],
@@ -79,6 +87,7 @@ def convert_cptac_expression_to_matrix_table(
     logger.info(f"Created MatrixTable with {mt.count_rows()} genes and {mt.count_cols()} samples")
     return mt
 
+
 def convert_cptac_metadata_to_table(
     metadata_df: pd.DataFrame,
     sample_id_col: str = 'SampleID',
@@ -87,43 +96,44 @@ def convert_cptac_metadata_to_table(
 ) -> hl.Table:
     """
     Converts CPTAC metadata to a Hail Table.
-    
+
     Args:
         metadata_df: DataFrame containing sample metadata
         sample_id_col: Column name containing sample IDs
         categorical_cols: List of column names to be treated as categorical variables
         numeric_cols: List of column names to be treated as numeric variables
-        
+
     Returns:
         A Hail Table with samples as rows and metadata as columns
-        
+
     Raises:
         ValueError: If sample_id_col is missing from the input DataFrame
     """
     logger.info("Converting CPTAC metadata to Table")
-    
+
     if sample_id_col not in metadata_df.columns:
         raise ValueError(f"Sample ID column '{sample_id_col}' not found in metadata")
-    
+
     # Convert to Hail Table
     ht = hl.Table.from_pandas(metadata_df)
-    
+
     # Set sample ID as key
     ht = ht.key_by(sample_id_col)
-    
+
     # Convert specified columns to appropriate types
     if categorical_cols:
         for col in categorical_cols:
             if col in ht.row:
                 ht = ht.annotate(**{col: hl.str(ht[col])})
-    
+
     if numeric_cols:
         for col in numeric_cols:
             if col in ht.row:
                 ht = ht.annotate(**{col: hl.float64(ht[col])})
-    
+
     logger.info(f"Created metadata Table with {ht.count()} samples")
     return ht
+
 
 def create_cptac_matrix_table(
     expression_df: pd.DataFrame,
@@ -137,7 +147,7 @@ def create_cptac_matrix_table(
 ) -> hl.MatrixTable:
     """
     Creates a complete CPTAC MatrixTable with expression data and metadata.
-    
+
     Args:
         expression_df: DataFrame containing gene expression data
         metadata_df: DataFrame containing sample metadata
@@ -147,10 +157,10 @@ def create_cptac_matrix_table(
         expression_col: Column name containing expression values
         categorical_cols: List of metadata columns to be treated as categorical
         numeric_cols: List of metadata columns to be treated as numeric
-        
+
     Returns:
         A Hail MatrixTable with genes as rows, samples as columns, and metadata annotated
-        
+
     Raises:
         ValueError: If there are mismatches between expression and metadata sample IDs
     """
@@ -197,6 +207,7 @@ def create_cptac_matrix_table(
     logger.info("Successfully created annotated MatrixTable")
     return mt
 
+
 def save_cptac_matrix_table(
     mt: hl.MatrixTable,
     output_path: str,
@@ -204,17 +215,17 @@ def save_cptac_matrix_table(
 ) -> None:
     """
     Saves a CPTAC MatrixTable to disk.
-    
+
     Args:
         mt: The MatrixTable to save
         output_path: Path where the MatrixTable will be saved
         overwrite: Whether to overwrite existing files
-        
+
     Raises:
         ValueError: If the output path already exists and overwrite is False
     """
     logger.info(f"Saving MatrixTable to {output_path}")
-    
+
     try:
         mt.write(output_path, overwrite=overwrite)
         logger.info("Successfully saved MatrixTable")

@@ -3,11 +3,11 @@ import logging
 import click
 import hail as hl
 
-from hvantk.htables.expression_atlas import (
+from hvantk.tables.expression_atlas import (
     convert_sdrf_to_hail_table,
     create_mt_from_expression_atlas_matrix,
 )
-from hvantk.settings import CONTEXT_SETTINGS
+from hvantk.core.config import CONTEXT_SETTINGS
 
 logger = logging.getLogger(__name__)
 

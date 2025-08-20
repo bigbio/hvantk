@@ -1,14 +1,9 @@
 import logging
 
 import click
-import hail as hl
 
-from hvantk.settings import CONTEXT_SETTINGS
-from hvantk.utils.constants import UCSC_CELL_ID_COLUMN, UCSC_GENE_COLUMN
-from hvantk.htables.ucsc import (
-    convert_ucsc_metadata_to_hail_table,
-    create_mt_from_ucsc_expression_matrix,
-)
+from hvantk.core.config import CONTEXT_SETTINGS
+from hvantk.core.constants import UCSC_CELL_ID_COLUMN, UCSC_GENE_COLUMN
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +97,6 @@ def make_ucsc_matrix_table(
     """
     Create a Hail Matrix Table from UCSC metadata and expression matrix.
 
-    :param ctx: The click context object, passed automatically by the Click CLI framework.
     :param metadata: Path to the UCSC metadata file in TSV format.
     :param expression_matrix: Path to the UCSC gene expression matrix file (block-compressed TSV format).
     :param output_mt: Output directory path for the generated Hail Matrix Table.
@@ -118,6 +112,12 @@ def make_ucsc_matrix_table(
     :return: Hail Matrix Table created from the given UCSC metadata and expression matrix.
     :rtype: hl.MatrixTable
     """
+
+    import hail as hl
+    from hvantk.tables.ucsc import (
+        convert_ucsc_metadata_to_hail_table,
+        create_mt_from_ucsc_expression_matrix,
+    )
 
     logger.info(f"Converting metadata file: {metadata}")
     # Convert metadata to Hail Table

@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 
-from hvantk.htables.expression_atlas import (
+from hvantk.tables.expression_atlas import (
     convert_sdrf_to_hail_table,
     create_mt_from_expression_atlas_matrix,
 )
@@ -64,4 +64,3 @@ def test_create_mt_from_expression_atlas_matrix(temp_dir):
     # Check if the MatrixTable has the expected number of rows and columns
     assert mt.count_rows() == 116643
     assert mt.count_cols() == 317
-

@@ -7,7 +7,7 @@ import pandas as pd
 import hail as hl
 import tempfile
 import os
-from hvantk.htables.cptac import (
+from hvantk.tables.cptac import (
     convert_cptac_expression_to_matrix_table,
     convert_cptac_metadata_to_table,
     create_cptac_matrix_table,

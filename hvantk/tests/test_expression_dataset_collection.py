@@ -4,7 +4,7 @@ from hvantk.datasets.expression_atlas_datasets import (
     ExpressionAtlasDatasetCollection,
     ExpressionAtlasDataset,
 )
-from hvantk.utils.constants import EXPRESSION_ATLAS_JSON_FILE_PATH
+from hvantk.core.constants import EXPRESSION_ATLAS_JSON_FILE_PATH
 
 
 def test_from_json_creates_dataset_objects(tmp_path):
@@ -97,4 +97,3 @@ def test_list_dataset_accessions():
     assert len(accessions) > 0
     assert "E-GTEX-8" in accessions
     assert "E-MTAB-6782" in accessions
-

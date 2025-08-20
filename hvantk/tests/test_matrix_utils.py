@@ -8,11 +8,11 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import pytest
 
-from hvantk.htables.ucsc import (
+from hvantk.tables.ucsc import (
     convert_ucsc_metadata_to_hail_table,
     create_mt_from_ucsc_expression_matrix,
 )
-from hvantk.utils.constants import UCSC_CELL_ID_COLUMN, UCSC_GENE_COLUMN
+from hvantk.core.constants import UCSC_CELL_ID_COLUMN, UCSC_GENE_COLUMN
 from hvantk.utils.matrix_utils import (
     summarize_matrix,
     filter_by_metadata,

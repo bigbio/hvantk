@@ -12,7 +12,7 @@ import time
 import random
 
 from hvantk.datasets.expression_atlas_datasets import ExpressionAtlasDatasetCollection
-from hvantk.utils.constants import EXPRESSION_ATLAS_JSON_FILE_PATH
+from hvantk.core.constants import EXPRESSION_ATLAS_JSON_FILE_PATH
 
 logger = logging.getLogger(__name__)
 

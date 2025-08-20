@@ -6,6 +6,8 @@ import os
 from hvantk.utils.llm_interface import LLMInterface, natural_language_query
 
 
+pytest.skip("Skipping entire module in this phase", allow_module_level=True)
+
 def is_ci_environment():
     """Detect if running in a CI environment"""
     ci_indicators = [

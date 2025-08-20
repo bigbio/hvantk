@@ -9,13 +9,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from hvantk.settings import CONTEXT_SETTINGS, RAW_DATA_PATH, set_raw_data_path
-from hvantk.utils.make_tables import (
-    create_interactome_tb,
-    create_clinvar_tb,
-    create_gevir_tb,
-    create_gnomad_constraint_gene_metrics_tb,
-)
+from hvantk.core.config import CONTEXT_SETTINGS, RAW_DATA_PATH, RAW_DATA_PATHS, set_raw_data_path
 
 output_dir_default = f"{RAW_DATA_PATH}/annotation_tables"
 
@@ -40,6 +34,14 @@ def make_annotation_tables_from_raw_sources(
     output_dir: str = output_dir_default,
     default_ref_genome: str = "GRCh38",
 ):
+    # Import table creators lazily to avoid heavy Hail import at CLI load time
+    from hvantk.tables.creators import (
+        create_interactome_tb,
+        create_clinvar_tb,
+        create_gevir_tb,
+        create_gnomad_constraint_gene_metrics_tb,
+    )
+
     # set the raw data path
     """
     Generates selected gene and variant annotation tables from raw data sources.
@@ -62,35 +64,52 @@ def make_annotation_tables_from_raw_sources(
 
     if interactome:
         logger.info("Creating interactome table")
-        bed_ppi = create_interactome_tb()
-        bed_ppi.checkpoint(
-            f"{output_dir}/interactome.{default_ref_genome}.ht", overwrite=True
+        input_path = RAW_DATA_PATHS["interactome_path"]
+        output_path = f"{output_dir}/interactome.{default_ref_genome}.ht"
+        create_interactome_tb(
+            input_path=input_path,
+            output_path=output_path,
+            overwrite=True,
         )
         logger.info(
-            f"Interactome table created at {output_dir}/interactome.{default_ref_genome}.ht"
+            f"Interactome table created at {output_path}"
         )
 
     if clinvar:
         logger.info("Creating ClinVar table")
-        clinvar_tb = create_clinvar_tb()
-        clinvar_tb.checkpoint(
-            f"{output_dir}/clinvar.{default_ref_genome}.ht", overwrite=True
+        input_path = RAW_DATA_PATHS["clinvar_path"]
+        output_path = f"{output_dir}/clinvar.{default_ref_genome}.ht"
+        create_clinvar_tb(
+            input_path=input_path,
+            output_path=output_path,
+            overwrite=True,
+            reference_genome=default_ref_genome,
         )
         logger.info(
-            f"ClinVar table created at {output_dir}/clinvar.{default_ref_genome}.ht"
+            f"ClinVar table created at {output_path}"
         )
 
     if gevir:
         logger.info("Creating GEVIR table")
-        gevir_tb = create_gevir_tb()
-        gevir_tb.checkpoint(f"{output_dir}/gevir.metrics.ht", overwrite=True)
-        logger.info(f"GEVIR table created at {output_dir}/gevir.metrics.ht")
+        input_path = RAW_DATA_PATHS["gevir_path"]
+        output_path = f"{output_dir}/gevir.metrics.ht"
+        create_gevir_tb(
+            input_path=input_path,
+            output_path=output_path,
+            overwrite=True,
+        )
+        logger.info(f"GEVIR table created at {output_path}")
 
     if gnomad_metrics:
         logger.info("Creating gnomAD metrics table")
-        gnomad_tb = create_gnomad_constraint_gene_metrics_tb()
-        gnomad_tb.checkpoint(f"{output_dir}/gnomad.metrics.ht", overwrite=True)
-        logger.info(f"gnomAD metrics table created at {output_dir}/gnomad.metrics.ht")
+        input_path = RAW_DATA_PATHS["gnomad_metrics_path"]
+        output_path = f"{output_dir}/gnomad.metrics.ht"
+        create_gnomad_constraint_gene_metrics_tb(
+            input_path=input_path,
+            output_path=output_path,
+            overwrite=True,
+        )
+        logger.info(f"gnomAD metrics table created at {output_path}")
 
 
 @click.command("mktables", short_help="Create annotation tables from raw sources.")

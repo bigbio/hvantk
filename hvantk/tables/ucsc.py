@@ -10,7 +10,12 @@ import hail as hl
 import pandas as pd
 
 from hvantk.utils.expressions import split_field_expr
-from hvantk.utils.constants import UCSC_CELL_ID_COLUMN, UCSC_GENE_COLUMN
+from hvantk.core.constants import UCSC_CELL_ID_COLUMN, UCSC_GENE_COLUMN
+
+__all__ = [
+    "convert_ucsc_metadata_to_hail_table",
+    "create_mt_from_ucsc_expression_matrix",
+]
 
 
 def _replace_dots_in_column_names(df: pd.DataFrame) -> pd.DataFrame:
@@ -113,13 +118,6 @@ def create_mt_from_ucsc_expression_matrix(
     if row_fields is None:
         row_fields = {UCSC_GENE_COLUMN: hl.tstr}
 
-    # Check if the output path exists and overwrite is set to False
-
-    # Check if the expression matrix file exists
-    if not os.path.exists(expression_matrix_path):
-        raise FileNotFoundError(
-            f"Expression matrix file not found: {expression_matrix_path}"
-        )
 
     # Check if the output path exists and overwrite is set to False
     if output_path and os.path.exists(output_path) and not overwrite:

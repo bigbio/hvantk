@@ -1,7 +1,7 @@
 import json
 
 from hvantk.datasets.ucsc_cell_datasets import UCSCDataSetCollection, UCSCDataset
-from hvantk.utils.constants import UCSC_JSON_FILE_PATH
+from hvantk.core.constants import UCSC_JSON_FILE_PATH
 
 
 # Correctly create UCSCDataset objects from JSON data

@@ -1,6 +1,6 @@
 import zipfile
 import pytest
-from hvantk.utils.file_utils import compress_files, decompress_files
+from hvantk.data.file_utils import compress_files, decompress_files
 
 
 @pytest.fixture
