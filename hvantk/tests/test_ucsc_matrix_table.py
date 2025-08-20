@@ -10,6 +10,9 @@ from hvantk.tables.ucsc import (
     create_mt_from_ucsc_expression_matrix,
 )
 
+# Mark as Hail-dependent and slow
+pytestmark = [pytest.mark.hail, pytest.mark.slow]
+
 # Test data directory
 TESTDATA_DIR = Path(__file__).parent / "testdata" / "raw" / "ucsc"
 METADATA_FILE_PATH = (TESTDATA_DIR / "meta.test.tsv").resolve()

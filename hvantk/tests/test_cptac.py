@@ -4,7 +4,6 @@ Tests for the CPTAC data processing module.
 
 import pytest
 import pandas as pd
-import hail as hl
 import tempfile
 import os
 from hvantk.tables.cptac import (
@@ -14,8 +13,8 @@ from hvantk.tables.cptac import (
     save_cptac_matrix_table
 )
 
-# Initialize Hail
-hl.init()
+# Mark as Hail-dependent and potentially slow
+pytestmark = [pytest.mark.hail, pytest.mark.slow]
 
 @pytest.fixture
 def sample_expression_data():
@@ -38,8 +37,10 @@ def sample_metadata_data():
         'TumorSize': [2.5]
     })
 
+
 def test_convert_cptac_expression_to_matrix_table(sample_expression_data):
     """Test conversion of expression data to MatrixTable."""
+    import hail as hl
     mt = convert_cptac_expression_to_matrix_table(
         sample_expression_data,
         gene_id_col='GeneID',
@@ -66,6 +67,7 @@ def test_convert_cptac_expression_to_matrix_table(sample_expression_data):
     assert 'Expression' in mt.entry
     assert mt.entry.Expression.dtype == hl.tfloat64
 
+
 def test_convert_cptac_expression_to_matrix_table_missing_columns():
     """Test handling of missing required columns."""
     df = pd.DataFrame({
@@ -77,8 +79,10 @@ def test_convert_cptac_expression_to_matrix_table_missing_columns():
     with pytest.raises(ValueError, match="Missing required columns"):
         convert_cptac_expression_to_matrix_table(df)
 
+
 def test_convert_cptac_metadata_to_table(sample_metadata_data):
     """Test conversion of metadata to Table."""
+    import hail as hl
     ht = convert_cptac_metadata_to_table(
         sample_metadata_data,
         sample_id_col='SampleID',
@@ -98,6 +102,7 @@ def test_convert_cptac_metadata_to_table(sample_metadata_data):
     assert ht.Age.dtype == hl.tfloat64
     assert ht.TumorSize.dtype == hl.tfloat64
 
+
 def test_convert_cptac_metadata_to_table_missing_sample_id():
     """Test handling of missing sample ID column."""
     df = pd.DataFrame({
@@ -108,8 +113,10 @@ def test_convert_cptac_metadata_to_table_missing_sample_id():
     with pytest.raises(ValueError, match="Sample ID column"):
         convert_cptac_metadata_to_table(df)
 
+
 def test_create_cptac_matrix_table(sample_expression_data, sample_metadata_data):
     """Test creation of complete MatrixTable with expression and metadata."""
+    import hail as hl
     mt = create_cptac_matrix_table(
         sample_expression_data,
         sample_metadata_data,
@@ -136,6 +143,7 @@ def test_create_cptac_matrix_table(sample_expression_data, sample_metadata_data)
     assert mt.col.Stage.dtype == hl.tstr
     assert mt.col.Age.dtype == hl.tfloat64
     assert mt.col.TumorSize.dtype == hl.tfloat64
+
 
 def test_create_cptac_matrix_table_sample_mismatch():
     """Test handling of sample ID mismatches between expression and metadata."""

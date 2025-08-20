@@ -18,9 +18,12 @@ from hvantk.utils.matrix_utils import (
     filter_by_metadata,
     filter_by_gene_list,
     filter_by_expression,
-    visualize_expression_distribution,
     get_top_expressed_genes
 )
+from hvantk.visualization import visualize_expression_distribution
+
+# Mark as Hail-dependent and slow
+pytestmark = [pytest.mark.hail, pytest.mark.slow]
 
 # Test data directory
 TESTDATA_DIR = Path(__file__).parent / "testdata" / "raw" / "ucsc"

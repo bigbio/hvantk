@@ -10,6 +10,9 @@ from hvantk.tables.expression_atlas import (
     create_mt_from_expression_atlas_matrix,
 )
 
+# Mark as Hail-dependent and slow
+pytestmark = [pytest.mark.hail, pytest.mark.slow]
+
 # Test data directory
 TESTDATA_DIR = Path(__file__).parent / "testdata" / "raw" / "expression_atlas"
 SDRF_FILE_PATH = (TESTDATA_DIR / "E-MTAB-6798.condensed-sdrf.tsv").resolve()

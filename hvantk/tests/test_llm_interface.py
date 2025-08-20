@@ -1,12 +1,12 @@
 import pytest
 from unittest.mock import MagicMock, patch
-import hail as hl
 import os
 
 from hvantk.utils.llm_interface import LLMInterface, natural_language_query
 
+# Mark entire module as LLM/Hail – skipped in fast runs by default
+pytestmark = [pytest.mark.llm, pytest.mark.hail]
 
-pytest.skip("Skipping entire module in this phase", allow_module_level=True)
 
 def is_ci_environment():
     """Detect if running in a CI environment"""
@@ -54,6 +54,9 @@ def should_skip_real_llm_test(test_type="LLM"):
 @pytest.fixture
 def mock_matrix_table():
     """Create a simple mock MatrixTable for testing using coordinate representation"""
+    # Import hail lazily to avoid heavy import at collection time
+    import hail as hl
+
     # Create a simple test matrix with 10 rows (genes) and 5 columns (samples)
     n_rows, n_cols = 10, 5
 

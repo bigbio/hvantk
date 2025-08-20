@@ -10,6 +10,9 @@ from hvantk.tables.creators import (
     create_ensembl_gene_tb,
 )
 
+# Mark as Hail-dependent and slow
+pytestmark = [pytest.mark.hail, pytest.mark.slow]
+
 # Test data directory
 TEST_DIR = Path(__file__).parent / "testdata"
 # Temporary directory for testing
