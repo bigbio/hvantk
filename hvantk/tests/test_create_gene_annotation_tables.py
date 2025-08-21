@@ -2,7 +2,7 @@ import pytest
 import shutil
 from pathlib import Path
 
-from hvantk.tables.creators import (
+from hvantk.tables.table_builders import (
     create_gnomad_constraint_gene_metrics_tb,
     create_interactome_tb,
     create_clinvar_tb,
