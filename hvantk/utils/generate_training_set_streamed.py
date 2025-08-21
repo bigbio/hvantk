@@ -8,17 +8,18 @@ Generate training set from Clinvar using data streamers
 """
 
 import logging
+import os
 from hvantk.utils.clinvar_streamer import create_clinvar_training_set_streamer, load_chd_gene_set
-from hvantk.core.config import RAW_DATA_PATHS
 
 logger = logging.getLogger(__name__)
+
 
 def main():
     """Main function to generate training set using data streamers"""
 
     # Configuration
     output_dir = "./data/training_set"
-    clinvar_path = RAW_DATA_PATHS.get("clinvar_path", "./data/clinvar/clinvar_20220403.vcf.gz")
+    clinvar_path = os.environ.get("CLINVAR_VCF", "./data/clinvar/clinvar_20220403.vcf.gz")
 
     logger.info(f"Starting Clinvar training set generation")
     logger.info(f"Clinvar path: {clinvar_path}")

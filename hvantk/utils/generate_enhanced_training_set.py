@@ -2,10 +2,10 @@
 # Generates feature-rich training sets by combining Clinvar labels with variant and gene annotations
 
 import logging
+import os
 import hail as hl
 from hvantk.annotation.annotation_streamer import create_enhanced_clinvar_training_streamer
 from hvantk.utils.clinvar_streamer import load_chd_gene_set
-from hvantk.core.config import RAW_DATA_PATHS
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ def main():
 
     # Configuration
     output_dir = "./data/training_set"
-    clinvar_path = RAW_DATA_PATHS.get("clinvar_path", "./data/clinvar/clinvar_20220403.vcf.gz")
+    clinvar_path = os.environ.get("CLINVAR_VCF", "./data/clinvar/clinvar_20220403.vcf.gz")
 
     logger.info(f"Starting enhanced Clinvar training set generation")
     logger.info(f"Clinvar path: {clinvar_path}")
@@ -102,7 +102,7 @@ def create_minimal_feature_set():
     logger.info("Creating minimal feature training set")
 
     processor = create_enhanced_clinvar_training_streamer(
-        clinvar_path=RAW_DATA_PATHS.get("clinvar_path"),
+        clinvar_path=os.environ.get("CLINVAR_VCF"),
         output_dir="./data/training_set",
         include_prediction_scores=True,   # Only include prediction scores
         include_expression=False,         # Skip expression data
@@ -119,7 +119,7 @@ def create_expression_focused_set():
     logger.info("Creating expression-focused training set")
 
     processor = create_enhanced_clinvar_training_streamer(
-        clinvar_path=RAW_DATA_PATHS.get("clinvar_path"),
+        clinvar_path=os.environ.get("CLINVAR_VCF"),
         output_dir="./data/training_set",
         tissue_focus="heart",
         include_prediction_scores=False,  # Skip prediction scores
