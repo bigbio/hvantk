@@ -9,7 +9,8 @@ Generate training set from Clinvar using data streamers
 
 import logging
 import os
-from hvantk.utils.clinvar_streamer import create_clinvar_training_set_streamer, load_chd_gene_set
+from hvantk.utils.clinvar_streamer import create_clinvar_training_set_streamer
+from hvantk.utils import load_sample_chd_gene_set
 
 logger = logging.getLogger(__name__)
 
@@ -25,16 +26,14 @@ def main():
     logger.info(f"Clinvar path: {clinvar_path}")
     logger.info(f"Output directory: {output_dir}")
 
-    # Load CHD gene set
-    logger.info("Loading CHD-associated genes")
-    chd_gene_set = load_chd_gene_set()
-    logger.info(f"Loaded {len(chd_gene_set)} CHD genes")
+    gene_set = load_sample_chd_gene_set()  # default sandbox set
+    logger.info(f"Loaded {len(gene_set)} sample genes")
 
     # Create the streaming processor
     processor = create_clinvar_training_set_streamer(
         clinvar_path=clinvar_path,
         output_dir=output_dir,
-        chd_genes=chd_gene_set
+        gene_set=gene_set
     )
 
     # Process the data

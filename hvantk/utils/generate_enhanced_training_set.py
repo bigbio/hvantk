@@ -5,7 +5,7 @@ import logging
 import os
 import hail as hl
 from hvantk.annotation.annotation_streamer import create_enhanced_clinvar_training_streamer
-from hvantk.utils.clinvar_streamer import load_chd_gene_set
+from hvantk.utils import load_sample_chd_gene_set
 
 logger = logging.getLogger(__name__)
 
@@ -22,14 +22,14 @@ def main():
 
     # Load CHD gene set
     logger.info("Loading CHD-associated genes")
-    chd_gene_set = load_chd_gene_set()
-    logger.info(f"Loaded {len(chd_gene_set)} CHD genes")
+    gene_set = load_sample_chd_gene_set()
+    logger.info(f"Loaded {len(gene_set)} sample genes")
 
     # Create the enhanced streaming processor with all annotation sources
     processor = create_enhanced_clinvar_training_streamer(
         clinvar_path=clinvar_path,
         output_dir=output_dir,
-        chd_genes=chd_gene_set,
+        gene_set=gene_set,
         tissue_focus="heart",  # Focus on heart tissue for CHD
         include_prediction_scores=True,  # CADD, SIFT, PolyPhen, REVEL, etc.
         include_expression=True,         # Gene expression across tissues
