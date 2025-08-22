@@ -257,34 +257,32 @@ class EnhancedClinvarTrainingSetProcessor(StreamProcessor):
 
     def __init__(self,
                  clinvar_path: str,
-                 chd_genes: Optional[Set[str]] = None,
+                 gene_set: Optional[Set[str]] = None,
                  output_dir: str = "./data/training_set",
                  include_prediction_scores: bool = True,
                  include_expression: bool = True,
                  include_constraint: bool = True,
                  include_population_freq: bool = True,
-                 tissue_focus: str = "heart"):
+                 tissue_focus: str = "heart",
+                 filter_to_gene_set: bool = False):
         super().__init__("EnhancedClinvarTrainingSet")
         self.output_dir = output_dir
         self.tissue_focus = tissue_focus
 
-        # Add base Clinvar streamer
+        # Base ClinVar streamer (reuse generic gene_set)
         clinvar_streamer = ClinvarDataStreamer(
             clinvar_path=clinvar_path,
-            chd_genes=chd_genes
+            gene_set=gene_set,
+            filter_to_gene_set=filter_to_gene_set,
         )
         self.add_streamer(clinvar_streamer)
 
-        # Add annotation streamers based on configuration
         if include_prediction_scores:
             self.add_streamer(VariantPredictionScoreStreamer(""))
-
         if include_expression:
             self.add_streamer(GeneExpressionStreamer("", tissue_focus))
-
         if include_constraint:
             self.add_streamer(GeneConstraintStreamer())
-
         if include_population_freq:
             self.add_streamer(PopulationFrequencyStreamer())
 
@@ -376,32 +374,33 @@ class EnhancedClinvarTrainingSetProcessor(StreamProcessor):
 def create_enhanced_clinvar_training_streamer(
     clinvar_path: str,
     output_dir: str = "./data/training_set",
-    chd_genes: Optional[Set[str]] = None,
+    gene_set: Optional[Set[str]] = None,
+    gene_set_path: Optional[str] = None,
     tissue_focus: str = "heart",
+    filter_to_gene_set: bool = False,
     **annotation_flags
 ) -> 'EnhancedClinvarTrainingSetProcessor':
+    """Factory creating an enhanced ClinVar training set processor.
+
+    If no gene_set is provided, falls back to sample CHD-oriented set for sandboxing.
     """
-    Factory function to create an enhanced Clinvar training set processor.
+    from hvantk.utils import load_gene_set, load_sample_chd_gene_set
 
-    Args:
-        clinvar_path: Path to Clinvar VCF file
-        output_dir: Output directory for training set
-        chd_genes: Set of CHD-associated genes
-        tissue_focus: Primary tissue for expression analysis
-        **annotation_flags: Boolean flags for which annotations to include
-
-    Returns:
-        Configured EnhancedClinvarTrainingSetProcessor
-    """
-    from hvantk.utils.clinvar_streamer import load_chd_gene_set
-
-    if chd_genes is None:
-        chd_genes = load_chd_gene_set()
+    if gene_set is None and gene_set_path is None:
+        gene_set = load_sample_chd_gene_set()
+    else:
+        combined: Set[str] = set()
+        if gene_set_path is not None:
+            combined |= load_gene_set(gene_set_path)
+        if gene_set is not None:
+            combined |= set(gene_set)
+        gene_set = combined
 
     return EnhancedClinvarTrainingSetProcessor(
         clinvar_path=clinvar_path,
-        chd_genes=chd_genes,
+        gene_set=gene_set,
         output_dir=output_dir,
         tissue_focus=tissue_focus,
+        filter_to_gene_set=filter_to_gene_set,
         **annotation_flags
     )
