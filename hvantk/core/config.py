@@ -7,8 +7,7 @@ logger = logging.getLogger(__name__)
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 logger.debug(f"Context settings: {CONTEXT_SETTINGS}")
 
-# The global variables RAW_DATA_PATH and ANNOTATION_DATA_PATH are used to store
-# the paths to the raw data and annotation data, respectively.
+# Global paths (may be configured at runtime)
 RAW_DATA_PATH = None
 ANNOTATION_DATA_PATH = None
 
@@ -61,20 +60,6 @@ def set_annotation_data_path(annotation_data_path: str):
         )
 
 
-# A dictionary of raw data paths
-RAW_DATA_PATHS = {
-    "interactome_path": f"{RAW_DATA_PATH}/interactome/Interactome_INSIDER_hg38_stripped.bed",
-    "clinvar_path": f"{RAW_DATA_PATH}/clinvar/clinvar_20220403.vcf.gz",
-    "rnaseq_path": f"{RAW_DATA_PATH}/rnaseq-expression/E-MTAB-6814.Human.CPM.txt",
-    "gene_ann_path": f"{RAW_DATA_PATH}/ensembl/gene.ensembl.canonical.042022.tsv",
-    "gnomad_metrics_path": f"{RAW_DATA_PATH}/gnomad/gnomad.v2.1.1.lof_metrics.by_transcript.txt.bgz",
-    "gevir_path": f"{RAW_DATA_PATH}/gevir/gevir_metrics_pmid31873297.tsv.txt",
-    "scell_heart_path": f"{RAW_DATA_PATH}/rnaseq-expression/deg_scell_heart_pmid31835037.tsv",
-    "scell_hca_path": f"{RAW_DATA_PATH}/rnaseq-expression/hca_cells_ucsc_042022.tsv",
-}
-logger.debug(f"Raw data paths: {RAW_DATA_PATHS}")
-
-
-# A dictionary of annotation data paths
+# A dictionary of annotation data paths (reserved for future use)
 ANNOTATION_DATA_PATHS = {}
 logger.debug(f"Annotation data paths: {ANNOTATION_DATA_PATHS}")

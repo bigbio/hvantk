@@ -175,3 +175,4 @@ class DataException(Exception):
 
     def __str__(self):
         return "DataException: An error occurred while processing the data."
+

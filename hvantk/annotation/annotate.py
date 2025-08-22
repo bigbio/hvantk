@@ -6,7 +6,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from hvantk.utils.dataset import (
+from hvantk.data.dataset import (
     get_ccr_ht,
     get_gevir_ht,
     get_gene_expression_ht,
@@ -292,3 +292,4 @@ def annotate_variant_id(t: hl.Table, field_name: str = "vid") -> hl.Table:
     }
 
     return t.annotate(**variant_id_ann_exp)
+

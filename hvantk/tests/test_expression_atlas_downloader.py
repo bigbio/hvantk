@@ -14,6 +14,8 @@ def download_path(tmpdir):
     return str(tmpdir.mkdir("downloads"))
 
 
+@pytest.mark.network
+@pytest.mark.slow
 @pytest.mark.skipif(
     os.environ.get("CI", "false").lower() == "true",
     reason="Test skipped in CI environment - downloads all files and runs too slow",
@@ -47,6 +49,8 @@ def test_download_experiments_config(download_path):
     assert os.path.getsize(file_path) > 0
 
 
+@pytest.mark.network
+@pytest.mark.slow
 def test_download_experiments_accession_with_config(download_path):
     # Create a CliRunner instance
     runner = CliRunner()

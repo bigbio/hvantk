@@ -3,8 +3,8 @@ import pytest
 import tempfile
 import shutil
 from unittest.mock import patch
-from hvantk.utils.file_utils import download_file
-from hvantk.utils.constants import (
+from hvantk.data.file_utils import download_file
+from hvantk.core.constants import (
     UCSC_CELL_BROWSER_BASE_URL,
     EXPRESSION_MATRIX_FILE_NAME,
     METADATA_FILE_NAME,
@@ -52,5 +52,14 @@ def test_download_metadata(temp_dir):
 
     :return: None
     """
-    download_file(url_metadata, temp_dir, METADATA_FILE_NAME)
-    assert os.path.exists(os.path.join(temp_dir, METADATA_FILE_NAME))
+    # Mock successful response for unit testing
+    with patch("requests.get") as mock_get:
+        mock_response = mock_get.return_value
+        mock_response.status_code = 200
+        mock_response.headers.get.return_value = "1024"  # Content length
+        mock_response.iter_content.return_value = [b"metadata test data"]
+
+        download_file(url_metadata, temp_dir, METADATA_FILE_NAME)
+        assert os.path.exists(os.path.join(temp_dir, METADATA_FILE_NAME))
+        with open(os.path.join(temp_dir, METADATA_FILE_NAME), "rb") as f:
+            assert f.read() == b"metadata test data"

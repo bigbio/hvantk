@@ -1,11 +1,11 @@
-# Constants for the project
+# Core constants for the project
 
 from pathlib import Path
 import logging
 
 logger = logging.getLogger(__name__)
 
-# Base directory of the project
+# Base directory of the package (hvantk)
 BASE_DIR = Path(__file__).resolve().parent
 logger.debug(f"Base directory: {BASE_DIR}")
 
@@ -49,3 +49,17 @@ EXPRESSION_ATLAS_JSON_FILE_PATH = (
     BASE_DIR.parent / "resources" / "expression_atlas.json"
 )
 logger.debug(f"Expression Atlas JSON file path: {EXPRESSION_ATLAS_JSON_FILE_PATH}")
+
+# Explicit public API for this module
+__all__ = [
+    "BASE_DIR",
+    "ENSEMBL_BIOMART_FIELDS",
+    "UCSC_CELL_BROWSER_BASE_URL",
+    "EXPRESSION_MATRIX_FILE_NAME",
+    "METADATA_FILE_NAME",
+    "UCSC_JSON_FILE_PATH",
+    "UCSC_CELL_ID_COLUMN",
+    "UCSC_GENE_COLUMN",
+    "EXPRESSION_ATLAS_BASE_URL",
+    "EXPRESSION_ATLAS_JSON_FILE_PATH",
+]

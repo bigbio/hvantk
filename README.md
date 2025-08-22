@@ -7,9 +7,9 @@ Hail-based multiomics variant annotation toolkit.
 
 ## Description
 
-`hvankt` is a annotation toolkit that uses hail to annotate variants and genes with multiple omics data types (e.g.,
+`hvantk` is an annotation toolkit that uses Hail to annotate variants and genes with multiple omics data types (e.g.,
 variant prediction scores, gene or protein expression). The library is designed to be modular and extensible,
-allowing users to add new data types and sources. The main goal is to leverages multiomics integration and annotations
+allowing users to add new data types and sources. The main goal is to leverage multiomics integration and annotations
 from heterogeneous sources to improve the interpretation of genetic variants.
 
 ## Installation
@@ -53,7 +53,7 @@ This command downloads the expression matrix and metadata for the `adultPancreas
 ### 2. Convert UCSC Cell data to Hail matrix table:
 
 ```bash
-hvantk ucsc-matrix -e hvantk/tests/testdata/raw/ucsc/exprMatrix.test.tsv.bgz -m hvantk/tests/testdata/raw/ucsc/meta.test.tsv -o data/ucsc/exprMatrix.mt
+hvantk mkmatrix ucsc -e hvantk/tests/testdata/raw/ucsc/exprMatrix.test.tsv.bgz -m hvantk/tests/testdata/raw/ucsc/meta.test.tsv -o data/ucsc/exprMatrix.mt
 ```
 
 This command converts the expression matrix and metadata files from the UCSC Cell Browser into a Hail matrix table format.
@@ -103,13 +103,96 @@ Row key: ['gene']
 ---
 ```
 
-### 3. Create annotation tables from raw sources:
+### 3A. Batch-create annotation tables from a recipe:
 
-```bash
-hvantk mktables --raw_data_path /path/to/raw_data --clinvar --interactome --gevir --gnomad_metrics
+Create a recipe JSON (YAML also supported if PyYAML is installed):
+
+```json
+{
+  "tables": [
+    {
+      "name": "clinvar",
+      "input": "/data/clinvar_2024.vcf.bgz",
+      "output": "/out/clinvar.ht",
+      "params": {"reference_genome": "GRCh38", "export_tsv": true}
+    },
+    {
+      "name": "interactome",
+      "input": "/data/insider.bed.bgz",
+      "output": "/out/interactome.ht",
+      "params": {"reference_genome": "GRCh38"}
+    }
+  ]
+}
 ```
 
-This command creates annotation tables from raw data sources for ClinVar, interactome, GeVIR, and gnomAD metrics. Make sure to replace `/path/to/raw_data` with the actual path to your raw data directory. See [README.sources.md](README.sources.md) for instructions on how to download the raw data.
+Run:
+
+```bash
+hvantk mktable-batch --recipe /path/to/tables.json
+```
+
+### 3B. Create a single table from an explicit raw file:
+
+- ClinVar (VCF → HT keyed by locus, alleles):
+
+```bash
+hvantk mktable clinvar --raw-input /path/to/clinvar.vcf.bgz --output-ht /path/to/clinvar.ht --ref-genome GRCh38 --overwrite
+```
+
+- Interactome (BED intervals → HT keyed by interval):
+
+```bash
+hvantk mktable interactome --raw-input /path/to/interactome.bed.bgz --output-ht /path/to/interactome.ht
+```
+
+- GeVIR (TSV keyed by gene_id):
+
+```bash
+hvantk mktable gevir --raw-input /path/to/gevir.tsv.bgz --output-ht /path/to/gevir.ht --fields oe_syn_upper,oe_mis_upper
+```
+
+- gnomAD constraint metrics (TSV keyed by gene_id):
+
+```bash
+hvantk mktable gnomad-metrics --raw-input /path/to/gnomad.tsv.bgz --output-ht /path/to/gnomad.ht
+```
+
+- Ensembl gene annotations (Biomart TSV keyed by gene_id):
+
+```bash
+hvantk mktable ensembl-gene --raw-input /path/to/biomart.tsv.bgz --output-ht /path/to/ensembl.ht --no-canonical
+```
+
+Run `hvantk mktable --help` or `hvantk mktable <subcommand> --help` for full options.
+
+### 2B. Batch-create MatrixTables from a recipe:
+
+Create a recipe JSON (YAML also supported if PyYAML is installed):
+
+```json
+{
+  "matrices": [
+    {
+      "name": "ucsc",
+      "inputs": {
+        "expression_matrix": "/data/ucsc/expr.tsv.bgz",
+        "metadata": "/data/ucsc/meta.tsv"
+      },
+      "output": "/out/ucsc.mt",
+      "params": {"gene_column": "gene", "overwrite": true}
+    }
+  ]
+}
+```
+
+Run:
+
+```bash
+hvantk mkmatrix-batch --recipe /path/to/matrices.json
+```
+
+For more examples and recipes, see docs/USAGE.md and examples/recipes/.
 
 ## Annotation sources
 
@@ -144,3 +227,29 @@ A full description of the sources and how to download the data is available in t
 - Add a section to download the data from the sources.
 - Add a section about conversion from local files. including local mapping files of they are needed.
 - Some small benchmarks with loom -> to the annotation tool in hail.
+
+## Developer quickstart
+
+- Install and activate the environment (see Installation), then run tests:
+  - `pytest -q`
+- Explore the CLI to see available commands:
+  - `hvantk --help`
+- Typical workflow when adding a new data source:
+  1) Define a data product contract (Table/MatrixTable schema + metadata)
+  2) Write a downloader (optional) and a builder that outputs a Hail Table/MatrixTable
+  3) Register the dataset in a small manifest (provenance, versions, hashes)
+  4) Create streamers (transformers) and compose a recipe to answer a biological question
+  5) Add tiny tests using the fixtures in hvantk/tests/testdata
+
+See:
+- docs/DEVELOPING.md – dev workflow and contracts
+- docs/STREAMERS_AND_RECIPES.md – streamer interface and JSON recipes (YAML optional)
+- docs/DATA_CATALOG.md – hosting strategy and dataset registry format
+
+## Limitations and strategy
+
+- Heterogeneous omics, full-table builds: Prefer a slice-first approach. Builders should support selectors (genes/regions, tissues/cell types, timepoints) so users don’t have to build everything. Cache by parameter hash to reuse slices.
+- Limited hosting: Use a lightweight data catalog (JSON first; YAML optional) that points to immutable remote URIs (S3/GCS/Zenodo/DOI) with checksums. Host only manifests and small indices in this repo.
+- Streamers and pipelines: Define a tiny plugin contract for streamers (read -> transform -> write) and compose them with JSON "recipes" (YAML optional). Keep streamers stateless and testable on tiny fixtures.
+
+Quick starts for each topic and examples live under examples/ (see examples/recipes/ and examples/datasets/).
