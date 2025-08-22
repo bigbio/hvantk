@@ -11,6 +11,7 @@ from typing import Optional, List
 logger = logging.getLogger(__name__)
 
 from hvantk.core.constants import ENSEMBL_BIOMART_FIELDS
+from hvantk.utils import contig_recoding  # renamed import
 
 __all__ = [
     "create_gnomad_constraint_gene_metrics_tb",
@@ -84,7 +85,8 @@ def create_clinvar_tb(
     reference_genome: str = "GRCh38",
 ) -> hl.Table:
     logger.info(f"Creating ClinVar table from {input_path}")
-    recode = {f"{i}": f"chr{i}" for i in (list(range(1, 23)) + ["X", "Y"])}
+    # Use utility for contig recoding
+    recode = contig_recoding()
     clinvar_tb = (
         hl.import_vcf(
             path=input_path,
