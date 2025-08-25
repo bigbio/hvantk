@@ -2,9 +2,8 @@
 # Enhanced architecture for custom and future annotation sources
 
 import hail as hl
-from typing import Iterator, Optional, Set, List, Dict, Any, Union, Callable
+from typing import Iterator, Optional, List, Dict, Any, Callable
 from hvantk.data.data_streamer import HailDataStreamer, StreamProcessor
-from abc import ABC, abstractmethod
 import logging
 from pathlib import Path
 
@@ -126,29 +125,69 @@ class FlexibleAnnotationStreamer(HailDataStreamer):
             self.logger.error(f"Annotation failed for {self.config.name}: {e}")
             return chunk  # Return original chunk on failure
 
+    # -------------------- Internal helpers for safer annotation --------------------
+    def _check_fields(self, chunk: hl.Table, required: List[str]) -> bool:
+        missing = [f for f in required if f not in chunk.row]
+        if missing:
+            self.logger.warning(
+                f"Missing required field(s) {missing} for annotation type '{self.config.annotation_type}' in {self.config.name}; skipping annotation on this chunk"
+            )
+            return False
+        return True
+
+    def _safe_apply(self, chunk: hl.Table, key_expr) -> hl.Table:
+        """Attempt to index annotation_data; if key missing or fails, return chunk unmodified.
+        This protects against runtime failures due to absent keys."""
+        try:
+            ann_row = self.annotation_data[key_expr]
+            # Copy over all annotation row fields (mirrors original ** behavior) – missing values propagate safely.
+            return chunk.annotate(**{fname: ann_row[fname] for fname in self.annotation_data.row})
+        except Exception as e:
+            self.logger.warning(f"Safe annotation lookup failed for {self.config.name}: {e}; returning original chunk")
+            return chunk
+
     def _annotate_by_variant(self, chunk: hl.Table) -> hl.Table:
-        """Annotate by variant (locus + alleles)"""
-        return chunk.annotate(**self.annotation_data[chunk.key])
+        """Annotate by variant (locus + alleles). Validates key fields exist."""
+        # If table already keyed (expected: locus, alleles) use that; otherwise build struct from required fields.
+        if chunk.key and len(chunk.key) == 2 and all(k in chunk.row for k in chunk.key):
+            key_expr = hl.struct(**{k: chunk[k] for k in chunk.key})
+        else:
+            if not self._check_fields(chunk, ['locus', 'alleles']):
+                return chunk
+            key_expr = hl.struct(locus=chunk.locus, alleles=chunk.alleles)
+        return self._safe_apply(chunk, key_expr)
 
     def _annotate_by_gene(self, chunk: hl.Table) -> hl.Table:
-        """Annotate by gene symbol"""
-        if 'gene' not in chunk.row:
-            self.logger.warning("No 'gene' field found in chunk for gene annotation")
+        """Annotate by gene symbol. Accepts either 'gene' or 'gene_symbol'."""
+        field_name = None
+        if 'gene' in chunk.row:
+            field_name = 'gene'
+        elif 'gene_symbol' in chunk.row:
+            field_name = 'gene_symbol'
+        else:
+            self.logger.warning("No 'gene' or 'gene_symbol' field found in chunk for gene annotation; skipping")
             return chunk
-        return chunk.annotate(**self.annotation_data[chunk.gene])
+        return self._safe_apply(chunk, chunk[field_name])
 
     def _annotate_by_region(self, chunk: hl.Table) -> hl.Table:
-        """Annotate by genomic region overlap"""
-        return chunk.annotate(**self.annotation_data[chunk.locus])
+        """Annotate by genomic region overlap (expects 'locus')."""
+        if not self._check_fields(chunk, ['locus']):
+            return chunk
+        return self._safe_apply(chunk, chunk.locus)
 
     def _annotate_custom(self, chunk: hl.Table) -> hl.Table:
-        """Custom annotation logic - can be extended"""
-        join_fields = self.config.join_key.split(',')
+        """Custom annotation logic - validates all join fields."""
+        join_fields = [f.strip() for f in self.config.join_key.split(',') if f.strip()]
+        if not join_fields:
+            self.logger.warning(f"No join_key specified for custom annotation {self.config.name}; skipping")
+            return chunk
+        if not self._check_fields(chunk, join_fields):
+            return chunk
         if len(join_fields) == 1:
-            key = chunk[join_fields[0]]
+            key_expr = chunk[join_fields[0]]
         else:
-            key = hl.struct(**{field: chunk[field] for field in join_fields})
-        return chunk.annotate(**self.annotation_data[key])
+            key_expr = hl.struct(**{field: chunk[field] for field in join_fields})
+        return self._safe_apply(chunk, key_expr)
 
     def _apply_feature_mapping(self, annotated: hl.Table) -> hl.Table:
         """Apply feature name mapping for standardization"""
@@ -353,4 +392,3 @@ def add_custom_annotation(pipeline: ConfigurableAnnotationPipeline,
         **config_kwargs
     )
     return pipeline.add_annotation(config=config)
-

@@ -49,6 +49,36 @@ class AnnotationStreamer(HailDataStreamer):
         """Process a chunk by adding annotations"""
         return self.annotate_chunk(chunk)
 
+    # ---------------- Defensive helpers ----------------
+    def _safe_gene_annotate(self, chunk: hl.Table, gene_field_candidates=("gene", "gene_symbol", "Gene")) -> Optional[hl.Table]:
+        """Safely annotate a chunk using a gene field.
+
+        Steps:
+        1. Find first existing gene field from candidates.
+        2. If none found, log warning and return original chunk.
+        3. Attempt to index annotation_data with that field expression.
+        4. On any failure (missing annotation_data, missing key, runtime error) log and return original chunk.
+        """
+        if self.annotation_data is None:
+            self.logger.warning(f"Annotation data not loaded for {self.name}; skipping gene annotation")
+            return chunk
+        # Find available gene field
+        gene_field = next((f for f in gene_field_candidates if f in chunk.row), None)
+        if gene_field is None:
+            self.logger.warning(f"No gene field ({gene_field_candidates}) found in chunk for {self.name}; skipping")
+            return chunk
+        try:
+            gene_expr = chunk[gene_field]
+            # Attempt lookup; Hail returns a struct with missing fields if key absent (no exception), but we still wrap for safety.
+            ann_row = self.annotation_data[gene_expr]
+            # Build annotation dictionary from annotation_data row schema
+            annotate_kwargs = {fname: ann_row[fname] for fname in self.annotation_data.row}
+            annotated = chunk.annotate(**annotate_kwargs)
+            return annotated
+        except Exception as e:
+            self.logger.warning(f"Gene annotation failed for field '{gene_field}' in {self.name}: {e}; returning original chunk")
+            return chunk
+
 
 class VariantPredictionScoreStreamer(AnnotationStreamer):
     """
@@ -122,10 +152,13 @@ class GeneExpressionStreamer(AnnotationStreamer):
 
     def annotate_chunk(self, chunk: hl.Table) -> hl.Table:
         """Add gene expression annotations"""
-        self.logger.debug(f"Adding gene expression data to {chunk.count()} variants")
+        # Avoid triggering full count (expensive); rely on lazy logging context.
+        self.logger.debug("Adding gene expression data to chunk")
 
-        # Join on gene symbol
-        annotated = chunk.annotate(**self.annotation_data[chunk.gene])
+        annotated = self._safe_gene_annotate(chunk)
+        if annotated is chunk:
+            # Skip derived features if we couldn't annotate
+            return chunk
 
         # Add derived expression features
         annotated = annotated.annotate(
@@ -171,10 +204,11 @@ class GeneConstraintStreamer(AnnotationStreamer):
 
     def annotate_chunk(self, chunk: hl.Table) -> hl.Table:
         """Add gene constraint annotations"""
-        self.logger.debug(f"Adding gene constraint data to {chunk.count()} variants")
+        self.logger.debug("Adding gene constraint data to chunk")
 
-        # Join on gene symbol
-        annotated = chunk.annotate(**self.annotation_data[chunk.gene])
+        annotated = self._safe_gene_annotate(chunk)
+        if annotated is chunk:
+            return chunk
 
         # Add derived constraint features
         annotated = annotated.annotate(
@@ -384,7 +418,7 @@ def create_enhanced_clinvar_training_streamer(
 
     If no gene_set is provided, falls back to sample CHD-oriented set for sandboxing.
     """
-    from hvantk.utils import load_gene_set, load_sample_chd_gene_set
+    from hvantk.utils.gene_sets import load_gene_set, load_sample_chd_gene_set
 
     if gene_set is None and gene_set_path is None:
         gene_set = load_sample_chd_gene_set()
