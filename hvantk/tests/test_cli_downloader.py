@@ -4,6 +4,7 @@ from unittest.mock import patch, MagicMock
 import pytest
 from click.testing import CliRunner
 from hvantk.commands.ucsc_downloader import ucsc_downloader
+from hvantk.core.constants import UCSC_CELL_BROWSER_BASE_URL
 
 
 @pytest.fixture
@@ -115,3 +116,49 @@ def test_ucsc_downloader_download_failure(mock_download_file, test_output_dir):
     )
     assert result.exit_code != 0
     assert "Download failed" in result.output
+
+
+def test_ucsc_downloader_invalid_dataset_traversal(mock_download_file):
+    runner = CliRunner()
+    result = runner.invoke(
+        ucsc_downloader,
+        [
+            "--dataset",
+            "../etc/passwd",
+            "--output-dir",
+            "dummy_path",
+        ],
+    )
+    assert result.exit_code != 0
+    assert "Invalid dataset value" in result.output
+
+
+def test_ucsc_downloader_invalid_dataset_slash(mock_download_file):
+    runner = CliRunner()
+    result = runner.invoke(
+        ucsc_downloader,
+        [
+            "--dataset",
+            "bad/name",
+            "--output-dir",
+            "dummy_path",
+        ],
+    )
+    assert result.exit_code != 0
+    assert "Invalid dataset value" in result.output
+
+
+def test_ucsc_downloader_invalid_dataset_whitespace(mock_download_file):
+    runner = CliRunner()
+    result = runner.invoke(
+        ucsc_downloader,
+        [
+            "--dataset",
+            "bad name",
+            "--output-dir",
+            "dummy_path",
+        ],
+    )
+    assert result.exit_code != 0
+    assert "Invalid dataset value" in result.output
+

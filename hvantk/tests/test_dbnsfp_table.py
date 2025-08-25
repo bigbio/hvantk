@@ -21,7 +21,7 @@ def setup_teardown():
 
 
 def test_create_dbnsfp_tb_builds_and_keys_variants():
-    input_path = TEST_DIR / "raw/dbnfsp/dbNSFP4_v49a_example_variants.bgz"
+    input_path = TEST_DIR / "raw/dbnsfp/dbNSFP4_v49a_example_variants.bgz"
     output_path = TMP_DIR / "dbnsfp_example.ht"
 
     tb = create_dbnsfp_tb(
@@ -40,4 +40,3 @@ def test_create_dbnsfp_tb_builds_and_keys_variants():
     # output exists
     success_file = Path(output_path) / "_SUCCESS"
     assert success_file.exists()
-
