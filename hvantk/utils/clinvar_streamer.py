@@ -39,8 +39,8 @@ class ClinvarDataStreamer(HailDataStreamer):
         overwrite_table: bool = False,
         filter_to_gene_set: bool = False,
     ):
-        self_clinvar_name = "ClinvarTrainingSet"
-        super().__init__(self_clinvar_name, chunk_size)
+        clinvar_name = "ClinvarTrainingSet"
+        super().__init__(clinvar_name, chunk_size)
         self.gene_set = gene_set or set()
         # Normalize disease terms (case-insensitive, replace spaces with underscores) if provided
         self.disease_terms = disease_terms or set()
@@ -71,14 +71,24 @@ class ClinvarDataStreamer(HailDataStreamer):
             self.clinvar_ht = hl.import_vcf(self.clinvar_path, reference_genome="GRCh38").rows()
         if "GENEINFO" in self.clinvar_ht.row.info:
             self.clinvar_ht = self.clinvar_ht.annotate(
-                gene=self.clinvar_ht.info.GENEINFO.split("[:]")[0]
+                gene=hl.if_else(
+                    hl.is_defined(self.clinvar_ht.info.GENEINFO) & (hl.len(self.clinvar_ht.info.GENEINFO) > 0),
+                    self.clinvar_ht.info.GENEINFO.split(":")[0],
+                    hl.missing(hl.tstr)
+                )
             )
         else:
             self.logger.warning("info.GENEINFO field absent; gene set filtering may be ineffective")
             self.clinvar_ht = self.clinvar_ht.annotate(gene=hl.missing(hl.tstr))
         if "MC" in self.clinvar_ht.row.info:
             self.clinvar_ht = self.clinvar_ht.annotate(
-                Consequence=self.clinvar_ht.info.MC.map(lambda x: x.split("[|]")[1])
+                Consequence=self.clinvar_ht.info.MC.map(
+                    lambda x: hl.if_else(
+                        hl.is_defined(x) & (hl.len(x.split("|")) > 1),
+                        x.split("|")[1],
+                        ""
+                    )
+                )
             )
         else:
             self.clinvar_ht = self.clinvar_ht.annotate(Consequence=hl.empty_array(hl.tstr))
@@ -119,9 +129,11 @@ class ClinvarDataStreamer(HailDataStreamer):
         else:
             disease_tp = hl.literal(False)
 
+        # If gene_set is empty, do not filter by gene (treat as True)
+        gene_filter = hl.literal(True) if not self.gene_set else hl.literal(self.gene_set).contains(chunk_ht.gene)
         gene_tp = (
             chunk_ht.info.CLNSIG.any(lambda x: hl.set(self.PATHOGENIC_LABELS).contains(x)) &
-            (hl.literal(self.gene_set).contains(chunk_ht.gene) if self.gene_set else False)
+            gene_filter
         )
 
         ts_ann_expr = {
