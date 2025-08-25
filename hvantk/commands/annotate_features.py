@@ -6,6 +6,7 @@ import argparse
 import sys
 
 import hail as hl
+from hvantk.core.hail_context import init_hail, shutdown_hail
 
 import logging
 
@@ -54,8 +55,8 @@ def main(args):
     Reads a variant Hail Table, validates required columns, filters to bi-allelic variants, and sequentially annotates the table with ClinVar significance, variant IDs, Ensembl gene IDs, constrained coding regions, gene intolerance metrics, RNA-seq expression, gnomAD allele frequencies and constraint metrics, protein-protein interaction sites, Human Cell Atlas data, and dbNSFP deleteriousness scores. Writes the annotated table to disk and optionally exports it as a compressed TSV file.
     """
     logger.info("Starting annotate_features command")
-    # Init Hail
-    hl.init(default_reference="GRCh38")
+    # Initialize Hail (idempotent, guarded)
+    init_hail(default_reference="GRCh38")
 
     ht = hl.read_table(args.variant_ht)
     logger.info(f"Reading table from {args.variant_ht}")
@@ -126,9 +127,9 @@ def main(args):
         logger.info(f"Exporting table to {output_ht_path}.tsv.bgz")
         (ht.flatten().export(f"{output_ht_path}.tsv.bgz"))
 
-    # Stop Hail
-    logger.info("Stopping Hail")
-    hl.stop()
+    # Optional shutdown (only if this script is the end of process)
+    logger.info("Shutting down Hail context")
+    shutdown_hail()
 
     logger.info("annotate_features command completed")
 

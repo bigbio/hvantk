@@ -93,6 +93,19 @@ def ucsc_downloader(ctx, dataset, output_dir, base_url, list_datasets):
         logger.info("Listing available datasets completed.")
         ctx.exit(0)
 
+    # Dataset validation (prevent path traversal / malformed URLs) BEFORE using it anywhere
+    invalid = (
+        (".." in dataset) or
+        any(ch in dataset for ch in ["/", "\\"]) or
+        any(ch.isspace() for ch in dataset)
+    )
+    if invalid:
+        click.echo(
+            f"Invalid dataset value: '{dataset}'. Datasets must not contain '..', slashes, or whitespace."
+        )
+        logger.error(f"Rejected invalid dataset value: '{dataset}'")
+        ctx.exit(1)
+
     # Validate base_url
     if not _is_valid_url(base_url):
         click.echo("Invalid URL")
