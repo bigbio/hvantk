@@ -52,24 +52,38 @@ def main():
             logger.info(f"  True Negatives (TN): {tn_count}")
             logger.info(f"  Total: {tp_count + tn_count}")
 
-            # Feature coverage statistics
-            feature_stats = training_set.aggregate({
-                'has_prediction_scores': training_set.aggregate(
-                    hl.agg.fraction(hl.is_defined(training_set.combined_deleteriousness))
-                ),
-                'has_expression': training_set.aggregate(
-                    hl.agg.fraction(hl.is_defined(training_set.median_expression))
-                ),
-                'has_constraint': training_set.aggregate(
-                    hl.agg.fraction(hl.is_defined(training_set.constraint_score))
-                ),
-                'has_frequency': training_set.aggregate(
-                    hl.agg.fraction(hl.is_defined(training_set.AF))
-                ),
-                'avg_feature_completeness': training_set.aggregate(
-                    hl.agg.mean(training_set.feature_completeness)
+            # Feature coverage statistics (single-pass; guard absent fields)
+            row_fields = set(training_set.row.dtype.field_names())
+            feature_stats = training_set.aggregate(
+                hl.struct(
+                    has_prediction_scores=(
+                        hl.agg.fraction(hl.is_defined(training_set.combined_deleteriousness))
+                        if "combined_deleteriousness" in row_fields
+                        else hl.agg.fraction(hl.literal(False))
+                    ),
+                    has_expression=(
+                        hl.agg.fraction(hl.is_defined(training_set.median_expression))
+                        if "median_expression" in row_fields
+                        else hl.agg.fraction(hl.literal(False))
+                    ),
+                    has_constraint=(
+                        hl.agg.fraction(hl.is_defined(training_set.constraint_score))
+                        if "constraint_score" in row_fields
+                        else hl.agg.fraction(hl.literal(False))
+                    ),
+                    has_frequency=(
+                        hl.agg.fraction(hl.is_defined(training_set.AF))
+                        if "AF" in row_fields
+                        else hl.agg.fraction(hl.literal(False))
+                    ),
+                    # Mean over all rows (returns missing if field absent or always missing)
+                    avg_feature_completeness=(
+                        hl.agg.mean(training_set.feature_completeness)
+                        if "feature_completeness" in row_fields
+                        else hl.agg.mean(hl.null(hl.tfloat64))
+                    ),
                 )
-            })
+            )
 
             logger.info(f"Feature coverage statistics:")
             logger.info(f"  Prediction scores: {feature_stats['has_prediction_scores']:.2%}")
@@ -79,7 +93,7 @@ def main():
             logger.info(f"  Average feature completeness: {feature_stats['avg_feature_completeness']:.2f}")
 
             # Show top features by pathogenicity score
-            if 'pathogenicity_score' in training_set.row:
+            if 'pathogenicity_score' in training_set.row.dtype.fields:
                 top_pathogenic = training_set.filter(
                     hl.is_defined(training_set.pathogenicity_score)
                 ).order_by(hl.desc(training_set.pathogenicity_score)).take(5)
