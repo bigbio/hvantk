@@ -17,6 +17,9 @@ def download_file(url: str, out_dir: str, file_name: str):
     Downloads a file from the specified URL to a local directory with a given file name.
 
     Validates that the file name does not contain path traversal components. Creates the output directory if it does not exist. Raises an exception if the download fails or if the file name is invalid.
+
+    Returns:
+        str: The local filesystem path to the downloaded file on success.
     """
     # Validate file_name doesn't contain path traversal
     if path.isabs(file_name) or ".." in file_name:
@@ -52,6 +55,7 @@ def download_file(url: str, out_dir: str, file_name: str):
                 size = f.write(chunk)
                 bar.update(size)
         logger.info(f"Download completed: {local_path}")
+        return local_path
 
     except requests.exceptions.RequestException as e:
         # Clean up partial download if it exists

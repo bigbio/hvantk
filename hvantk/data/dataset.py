@@ -174,5 +174,8 @@ class DataException(Exception):
         super().__init__(message)
 
     def __str__(self):
+        base = super().__str__()
+        if base:
+            return f"DataException: {base}"
         return "DataException: An error occurred while processing the data."
 

@@ -5,6 +5,9 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any, Iterator, Optional, List
 import hail as hl
+from hvantk.core.hail_context import init_hail, hail_initialized
+import os
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -63,23 +66,27 @@ class HailDataStreamer(DataStreamer):
     def __init__(self, name: str, chunk_size: int = 10000, init_hail: bool = True):
         super().__init__(name, chunk_size)
         self.init_hail = init_hail
-        self._hail_initialized = False
+        # Track whether THIS streamer triggered initialization (informational only)
+        self._streamer_initialized_hail = False
 
     def setup(self) -> None:
         """Initialize Hail if needed"""
         super().setup()
-        if self.init_hail and not self._hail_initialized:
-            hl.init()
-            self._hail_initialized = True
-            self.logger.info("Hail initialized")
+        if self.init_hail:
+            was_already = hail_initialized()
+            init_hail()  # idempotent global initializer
+            if not was_already and hail_initialized():
+                self._streamer_initialized_hail = True
+                self.logger.info("Hail initialized (by streamer)")
+            else:
+                self.logger.debug("Hail already initialized; streamer proceeding")
 
     def teardown(self) -> None:
-        """Stop Hail if we initialized it"""
+        """No-op for global Hail lifecycle (do not stop shared Hail context)."""
         super().teardown()
-        if self._hail_initialized:
-            hl.stop()
-            self.logger.info("Hail stopped")
-
+        # Intentionally NOT calling hl.stop() here to avoid shutting down a shared
+        # global session that other streamers or user code may still need. Users
+        # can call hvantk.core.context.shutdown_hail() explicitly if desired.
 
 class StreamProcessor:
     """
@@ -129,9 +136,18 @@ class StreamProcessor:
                 else:
                     # Subsequent streamers process output from previous streamer
                     processed_chunks = []
-                    for chunk in result if isinstance(result, (list, tuple)) else [result]:
-                        processed_chunks.extend(streamer.stream() if hasattr(streamer, 'set_input')
-                                              and streamer.set_input(chunk) else [streamer.process_chunk(chunk)])
+                    incoming_chunks = result if isinstance(result, (list, tuple)) else [result]
+                    for chunk in incoming_chunks:
+                        if hasattr(streamer, 'set_input'):
+                            setup_ok = streamer.set_input(chunk)
+                            if setup_ok:
+                                # set_input succeeded; stream produces zero or more outputs
+                                processed_chunks.extend(streamer.stream())
+                            else:
+                                # Fallback to single-chunk processing
+                                processed_chunks.append(streamer.process_chunk(chunk))
+                        else:
+                            processed_chunks.append(streamer.process_chunk(chunk))
                     result = processed_chunks
 
             if output_path and result:
@@ -145,6 +161,65 @@ class StreamProcessor:
                 streamer.teardown()
 
     def _save_result(self, result: Any, output_path: str) -> None:
-        """Save the final result to the specified path"""
-        self.logger.info(f"Saving results to {output_path}")
-        # Implementation depends on result type - will be handled by specific streamers
+        """Persist the final pipeline result to disk.
+
+        Supported result types:
+          - str -> UTF-8 text file
+          - bytes / bytearray -> binary file
+          - dict / list (JSON serializable) -> pretty-printed JSON file
+          - hail.Table -> checkpoint (.ht) (if output_path does not end with .ht, it is used as given)
+          - list of hail.Table -> union then checkpoint
+
+        For any other type, raise NotImplementedError to force subclasses to
+        implement a custom serialization strategy.
+        """
+        if not output_path or not isinstance(output_path, str):
+            raise ValueError("output_path must be a non-empty string")
+
+        # Ensure parent directory exists
+        parent = os.path.dirname(output_path) or "."
+        try:
+            os.makedirs(parent, exist_ok=True)
+        except Exception as e:
+            self.logger.error(f"Failed creating parent directory '{parent}': {e}")
+            raise
+
+        try:
+            # Hail Table or list[Hail Table]
+            if isinstance(result, hl.Table):
+                self.logger.info(f"Saving Hail Table to {output_path}")
+                result.checkpoint(output_path, overwrite=True)
+                return
+            if isinstance(result, list) and result and all(isinstance(r, hl.Table) for r in result):
+                self.logger.info(f"Unioning {len(result)} Hail Tables and saving to {output_path}")
+                combined = result[0]
+                for tb in result[1:]:
+                    combined = combined.union(tb)
+                combined.checkpoint(output_path, overwrite=True)
+                return
+
+            # Simple Python types
+            if isinstance(result, str):
+                self.logger.info(f"Writing text result to {output_path}")
+                with open(output_path, "w", encoding="utf-8") as fh:
+                    fh.write(result)
+                return
+            if isinstance(result, (bytes, bytearray)):
+                self.logger.info(f"Writing binary result to {output_path}")
+                with open(output_path, "wb") as fh:
+                    fh.write(result)
+                return
+            if isinstance(result, (dict, list)):
+                self.logger.info(f"Writing JSON result to {output_path}")
+                with open(output_path, "w", encoding="utf-8") as fh:
+                    json.dump(result, fh, indent=2, ensure_ascii=False)
+                return
+
+            # Unsupported type -> delegate responsibility
+            msg = ("_save_result does not know how to persist object of type "
+                   f"{type(result).__name__}; subclasses must override _save_result")
+            self.logger.error(msg)
+            raise NotImplementedError(msg)
+        except Exception as e:
+            self.logger.error(f"Failed saving result to {output_path}: {e}")
+            raise
