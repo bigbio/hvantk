@@ -11,7 +11,7 @@ from typing import Optional, List
 logger = logging.getLogger(__name__)
 
 from hvantk.core.constants import ENSEMBL_BIOMART_FIELDS
-from hvantk.utils import contig_recoding  # renamed import
+from hvantk.utils.genome import contig_recoding  # correct module import
 
 __all__ = [
     "create_gnomad_constraint_gene_metrics_tb",

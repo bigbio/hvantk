@@ -107,12 +107,32 @@ def convert_cptac_metadata_to_table(
         A Hail Table with samples as rows and metadata as columns
 
     Raises:
-        ValueError: If sample_id_col is missing from the input DataFrame
+        ValueError: If sample_id_col is missing from the input DataFrame or duplicate sample IDs exist
     """
     logger.info("Converting CPTAC metadata to Table")
 
     if sample_id_col not in metadata_df.columns:
         raise ValueError(f"Sample ID column '{sample_id_col}' not found in metadata")
+
+    # Detect duplicate sample IDs (fast fail to avoid incorrect joins / explode)
+    if metadata_df[sample_id_col].duplicated().any():
+        dup_counts = metadata_df[sample_id_col][metadata_df[sample_id_col].duplicated(keep=False)].value_counts()
+        # Limit list length in message if extremely large
+        duplicate_list = dup_counts.index.tolist()
+        if len(duplicate_list) > 50:
+            shown = duplicate_list[:50]
+            more = len(duplicate_list) - 50
+            display_ids = f"{shown} (+{more} more)"
+        else:
+            display_ids = str(duplicate_list)
+        raise ValueError(
+            "Duplicate sample IDs found in metadata ({} duplicates across {} unique IDs). Example duplicates: {}. Counts: {}".format(
+                dup_counts.sum() - dup_counts.shape[0],  # total duplicate entries beyond first occurrences
+                len(dup_counts),
+                display_ids,
+                dup_counts.to_dict()
+            )
+        )
 
     # Convert to Hail Table
     ht = hl.Table.from_pandas(metadata_df)
