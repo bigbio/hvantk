@@ -12,10 +12,10 @@
         "gene_name_col": "Gene Name",
         "sample_id_col": "SampleID",
         "expression_col": "Expression",
-        "categorical_cols": "TumorType,Stage",
+        "categorical_cols": ["TumorType", "Stage"],
+        "numeric_cols": ["Age", "Expression"],
         "overwrite": true
       }
     }
   ]
 }
-
