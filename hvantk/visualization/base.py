@@ -37,8 +37,11 @@ def set_default_style(style: str = 'default',
     """
     try:
         import seaborn as sns
-        sns.set_theme(style=style, context=context, palette=palette, font_scale=font_scale)
+        orig_style = style
         if style == 'publication':
+            style = 'whitegrid'  # Map to a valid seaborn style
+        sns.set_theme(style=style, context=context, palette=palette, font_scale=font_scale)
+        if orig_style == 'publication':
             # Publication-ready style settings
             plt.rcParams['font.family'] = 'sans-serif'
             plt.rcParams['font.sans-serif'] = ['Arial', 'DejaVu Sans', 'Liberation Sans']
@@ -154,7 +157,8 @@ def add_figure_labels(fig: plt.Figure,
         The figure to add labels to
     labels : dict
         Dictionary mapping label text to (x, y, alignment) coordinates
-        Example: {'A': (0.05, 0.95, 'top left'), 'B': (0.5, 0.95, 'top center')}
+        Example: {'A': (0.05, 0.95, 'left top'), 'B': (0.5, 0.95, 'top center')}
+        The order of alignment tokens is free-form (e.g., 'left top' or 'top left').
     fontsize : int
         Font size for labels
     fontweight : str
@@ -162,6 +166,24 @@ def add_figure_labels(fig: plt.Figure,
     **kwargs
         Additional keyword arguments passed to fig.text()
     """
+    valid_ha = {'left', 'center', 'right'}
+    valid_va = {'top', 'center', 'bottom'}
     for label, (x, y, alignment) in labels.items():
-        ha, va = alignment.lower().split()
+        ha = va = None
+        tokens = alignment.lower().split()
+        for token in tokens:
+            if token in valid_ha:
+                ha = token
+            if token in valid_va:
+                va = token
+        # Sensible defaults
+        if ha is None:
+            ha = 'center'
+        if va is None:
+            va = 'center'
+        # Validate
+        if ha not in valid_ha:
+            raise ValueError(f"Invalid horizontal alignment '{ha}' for label '{label}'. Must be one of {valid_ha}.")
+        if va not in valid_va:
+            raise ValueError(f"Invalid vertical alignment '{va}' for label '{label}'. Must be one of {valid_va}.")
         fig.text(x, y, label, ha=ha, va=va, fontsize=fontsize, fontweight=fontweight, **kwargs)
