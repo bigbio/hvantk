@@ -113,7 +113,7 @@ class UCSCDataset:
                 out_dir: Directory where the file will be saved
 
             Returns:
-                Path to the downloaded file
+                str: Local filesystem path to the downloaded expression matrix file
 
             Raises:
                 ValueError: If the download fails
@@ -138,7 +138,7 @@ class UCSCDataset:
             out_dir: Directory where the file will be saved
 
         Returns:
-            Path to the downloaded file
+            str: Local filesystem path to the downloaded metadata file
 
         Raises:
             ValueError: If the download fails
