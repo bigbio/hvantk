@@ -308,6 +308,7 @@ class EnhancedClinvarTrainingSetProcessor(StreamProcessor):
             clinvar_path=clinvar_path,
             gene_set=gene_set,
             filter_to_gene_set=filter_to_gene_set,
+            preserve_variant_keys=True,  # Ensure variant-identifying columns are preserved
         )
         self.add_streamer(clinvar_streamer)
 
@@ -358,6 +359,9 @@ class EnhancedClinvarTrainingSetProcessor(StreamProcessor):
             for chunk in all_chunks[1:]:
                 final_ht = final_ht.union(chunk)
 
+            # Trim to only ['gene', 'rf_label'] after all annotation
+            final_ht = final_ht.select('gene', 'rf_label')
+
             # Add final feature engineering
             final_ht = self._add_final_features(final_ht)
 
@@ -369,7 +373,7 @@ class EnhancedClinvarTrainingSetProcessor(StreamProcessor):
             # Export as TSV with all features
             final_ht.export(f"{output_path}.tsv")
 
-            self.logger.info(f"Enhanced training set complete. Features: {len(final_ht.row)}")
+            self.logger.info(f"Enhanced training set complete. Features: {len(final_ht.row.dtype.keys())}")
             return final_ht
 
         finally:

@@ -12,6 +12,9 @@ keywords = [
     "data-analysis",
     "big data"
 ]
+include = [
+  { path = "hvantk/resources/catalog.yaml", format = ["sdist", "wheel"] }
+]
 
 [tool.poetry.dependencies]
 python = ">=3.10.0"

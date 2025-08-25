@@ -228,7 +228,10 @@ def create_dbnsfp_tb(
         if "chr" not in ht.row:
             raise ValueError("dbNSFP input missing '#chr' or 'chr' column")
 
-    ht = ht.annotate(chr='chr' + hl.str(ht['chr']))
+    _chr_str = hl.str(ht['chr'])
+    ht = ht.annotate(
+        chr=hl.if_else(_chr_str.lower().startswith("chr"), _chr_str, hl.str("chr") + _chr_str)
+    )
 
     # Build variant_key: chr:pos:ref:alt
     if 'pos(1-based)' not in ht.row or 'ref' not in ht.row or 'alt' not in ht.row:
@@ -256,7 +259,8 @@ def create_dbnsfp_tb(
 
         score_fields = [f for f in ht.row if f.endswith('_score') or f == 'CADD_phred']
         def _to_float_array(s):
-            arr = s.split(";")
+            s_def = hl.or_else(s, "")  # empty string if missing
+            arr = s_def.split(";")
             return hl.map(lambda x: hl.parse_float(x), arr)
 
         def _single_to_dict(val):
@@ -266,9 +270,9 @@ def create_dbnsfp_tb(
 
         ann = {}
         for f in score_fields:
+            is_multi = hl.is_defined(ht[f]) & ht[f].contains(";")
             ann[f] = hl.if_else(
-                ht[f].contains(";"),
-                # split per-transcript values
+                is_multi,
                 hl.dict(hl.zip(ht.Ensembl_transcriptid, _to_float_array(ht[f]))),
                 _single_to_dict(ht[f])
             )

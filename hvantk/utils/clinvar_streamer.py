@@ -7,7 +7,7 @@ from hvantk.data.data_streamer import HailDataStreamer, StreamProcessor
 import logging
 
 from hvantk.tables.table_builders import create_clinvar_tb
-from hvantk.utils.gene_sets import load_gene_set, load_sample_chd_gene_set
+from hvantk.utils.gene_sets import load_gene_set
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +38,7 @@ class ClinvarDataStreamer(HailDataStreamer):
         table_output_path: Optional[str] = None,
         overwrite_table: bool = False,
         filter_to_gene_set: bool = False,
+        preserve_variant_keys: bool = False,  # New flag
     ):
         clinvar_name = "ClinvarTrainingSet"
         super().__init__(clinvar_name, chunk_size)
@@ -51,6 +52,7 @@ class ClinvarDataStreamer(HailDataStreamer):
         self.table_output_path = table_output_path
         self.overwrite_table = overwrite_table
         self.filter_to_gene_set = filter_to_gene_set
+        self.preserve_variant_keys = preserve_variant_keys
 
     @staticmethod
     def _normalize_disease_term(term: str) -> str:
@@ -69,7 +71,8 @@ class ClinvarDataStreamer(HailDataStreamer):
             )
         else:
             self.clinvar_ht = hl.import_vcf(self.clinvar_path, reference_genome="GRCh38").rows()
-        if "GENEINFO" in self.clinvar_ht.row.info:
+        info_fields = self.clinvar_ht.row.dtype['info'].fields
+        if 'GENEINFO' in info_fields:
             self.clinvar_ht = self.clinvar_ht.annotate(
                 gene=hl.if_else(
                     hl.is_defined(self.clinvar_ht.info.GENEINFO) & (hl.len(self.clinvar_ht.info.GENEINFO) > 0),
@@ -80,7 +83,7 @@ class ClinvarDataStreamer(HailDataStreamer):
         else:
             self.logger.warning("info.GENEINFO field absent; gene set filtering may be ineffective")
             self.clinvar_ht = self.clinvar_ht.annotate(gene=hl.missing(hl.tstr))
-        if "MC" in self.clinvar_ht.row.info:
+        if 'MC' in info_fields:
             self.clinvar_ht = self.clinvar_ht.annotate(
                 Consequence=self.clinvar_ht.info.MC.map(
                     lambda x: hl.if_else(
@@ -123,9 +126,9 @@ class ClinvarDataStreamer(HailDataStreamer):
         # Build disease-based TP condition if disease_terms provided
         if self._normalized_disease_terms:
             disease_set = hl.literal(self._normalized_disease_terms)
-            disease_tp = chunk_ht.info.CLNDN.any(
-                lambda x: disease_set.contains(hl.str(x).replace(' ', '_').lower())
-            )
+            clndn = hl.or_else(chunk_ht.info.CLNDN, "")
+            tokens = hl.str(clndn).split(r"\|").map(lambda t: t.replace(' ', '_').lower())
+            disease_tp = tokens.any(lambda t: disease_set.contains(t))
         else:
             disease_tp = hl.literal(False)
 
@@ -155,9 +158,9 @@ class ClinvarDataStreamer(HailDataStreamer):
             .when(annotated.is_tn_site, "TN")
             .or_missing()
         )
-        result = annotated.filter(hl.is_defined(annotated.rf_label)).select(
-            "gene", "rf_label"
-        )
+        result = annotated.filter(hl.is_defined(annotated.rf_label))
+        if not self.preserve_variant_keys:
+            result = result.select("gene", "rf_label")
         return result
 
 
@@ -200,8 +203,8 @@ class ClinvarTrainingSetProcessor(StreamProcessor):
             output_path = output_path or f"{self.output_dir}/ts.clinvar.ht"
             final_ht = final_ht.checkpoint(output=output_path, overwrite=True)
             final_ht = final_ht.select(
-                "gene", "rf_label"
-            )  # Only select relevant columns
+                gene=final_ht.gene, rf_label=final_ht.rf_label
+            )  # Keep variant keys for downstream annotation compatibility
             final_ht.export(f"{output_path}.tsv")
             self.logger.info(
                 f"Training set generation complete. Final count: {final_ht.count()}"

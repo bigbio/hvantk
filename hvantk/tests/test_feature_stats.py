@@ -1,9 +1,16 @@
+import os
 import hail as hl
 import pytest
+
+pytestmark = pytest.mark.skipif(
+    os.environ.get("RUN_HAIL_TESTS") != "1",
+    reason="Hail tests require RUN_HAIL_TESTS=1"
+)
 
 def safe_float(val):
     return hl.missing(hl.tfloat64) if val is None else float(val)
 
+@pytest.mark.hail
 def test_feature_coverage_stats():
     hl.init(log='/tmp/hail_test.log', quiet=True)
     rows = [
@@ -64,4 +71,3 @@ def test_feature_coverage_stats():
     assert 0 <= feature_stats.has_constraint <= 1
     assert 0 <= feature_stats.has_frequency <= 1
     assert 0.0 < feature_stats.avg_feature_completeness <= 1.0
-

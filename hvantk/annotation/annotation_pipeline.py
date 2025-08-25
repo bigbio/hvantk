@@ -74,15 +74,23 @@ class FlexibleAnnotationStreamer(HailDataStreamer):
         """Automatically detect file format and load appropriately"""
         path_obj = Path(path)
         suffix = path_obj.suffix.lower()
+        suffixes = [s.lower() for s in path_obj.suffixes]
+        path_lower = str(path).lower()
 
-        if suffix == '.ht':
+        # Compressed VCF/BED detection
+        if path_lower.endswith('.vcf.gz') or ('.vcf' in suffixes and '.gz' in suffixes):
+            return hl.import_vcf(path).rows()
+        elif path_lower.endswith('.bed.gz') or ('.bed' in suffixes and '.gz' in suffixes):
+            return hl.import_bed(path)
+        # Uncompressed
+        elif suffix == '.ht':
             return hl.read_table(path)
         elif suffix in ['.tsv', '.txt', '.csv']:
             delimiter = '\t' if suffix in ['.tsv', '.txt'] else ','
             return hl.import_table(path, delimiter=delimiter, impute=True)
-        elif suffix in ['.vcf', '.vcf.gz']:
+        elif suffix == '.vcf':
             return hl.import_vcf(path).rows()
-        elif suffix in ['.bed', '.bed.gz']:
+        elif suffix == '.bed':
             return hl.import_bed(path)
         else:
             # Default to table import
@@ -140,8 +148,9 @@ class FlexibleAnnotationStreamer(HailDataStreamer):
         This protects against runtime failures due to absent keys."""
         try:
             ann_row = self.annotation_data[key_expr]
-            # Copy over all annotation row fields (mirrors original ** behavior) – missing values propagate safely.
-            return chunk.annotate(**{fname: ann_row[fname] for fname in self.annotation_data.row})
+            # Use the annotation row's field names for annotation
+            field_names = self.annotation_data.row.dtype.keys()
+            return chunk.annotate(**{fname: ann_row[fname] for fname in field_names})
         except Exception as e:
             self.logger.warning(f"Safe annotation lookup failed for {self.config.name}: {e}; returning original chunk")
             return chunk
@@ -311,6 +320,7 @@ class ConfigurableAnnotationPipeline(StreamProcessor):
                 for chunk in result[1:]:
                     final_result = final_result.union(chunk)
                 final_result = final_result.checkpoint(output_path, overwrite=True)
+                result = final_result  # Ensure the returned value is the unioned, checkpointed table
             else:
                 result = result.checkpoint(output_path, overwrite=True)
 

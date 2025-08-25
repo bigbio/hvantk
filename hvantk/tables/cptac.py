@@ -66,6 +66,10 @@ def convert_cptac_expression_to_matrix_table(
     # Select only the required columns for the MatrixTable
     coord_df = df[[gene_id_col, sample_id_col, expression_col]].copy()
 
+    # Ensure key columns are strings for consistent joins
+    coord_df[gene_id_col] = coord_df[gene_id_col].astype(str)
+    coord_df[sample_id_col] = coord_df[sample_id_col].astype(str)
+
     # Convert to Hail Table
     coord_ht = hl.Table.from_pandas(coord_df)
 
@@ -111,8 +115,11 @@ def convert_cptac_metadata_to_table(
     """
     logger.info("Converting CPTAC metadata to Table")
 
+    # Check if sample_id_col exists in metadata_df
     if sample_id_col not in metadata_df.columns:
         raise ValueError(f"Sample ID column '{sample_id_col}' not found in metadata")
+    metadata_df = metadata_df.copy()
+    metadata_df[sample_id_col] = metadata_df[sample_id_col].astype(str)
 
     # Detect duplicate sample IDs (fast fail to avoid incorrect joins / explode)
     if metadata_df[sample_id_col].duplicated().any():

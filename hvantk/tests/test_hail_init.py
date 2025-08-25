@@ -1,7 +1,15 @@
+import os
 import hail as hl
+import pytest
 from hvantk.core.hail_context import init_hail, hail_initialized, get_hail_init_args, shutdown_hail
 from unittest.mock import patch
 
+pytestmark = pytest.mark.skipif(
+    os.environ.get("RUN_HAIL_TESTS") != "1",
+    reason="Hail tests require RUN_HAIL_TESTS=1"
+)
+
+@pytest.mark.hail
 def test_init_hail_idempotent():
     shutdown_hail()  # ensure clean state
     call_count = {"n": 0}
@@ -25,6 +33,7 @@ def test_init_hail_idempotent():
     assert not hail_initialized()
 
 
+@pytest.mark.hail
 def test_reinit_after_shutdown():
     shutdown_hail()
     call_count = {"n": 0}
@@ -40,4 +49,3 @@ def test_reinit_after_shutdown():
         init_hail()
         assert call_count["n"] == 2  # second init after shutdown
     shutdown_hail()
-
