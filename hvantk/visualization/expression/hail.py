@@ -27,8 +27,8 @@ def visualize_expression_distribution(mt: hl.MatrixTable,
         Matplotlib figure
     """
     # Verify the expression field exists
-    if expr_field not in mt.entry:
-        raise ValueError(f"Expression field '{expr_field}' not found in entry fields. Available fields: {list(mt.entry)}")
+    if expr_field not in mt.entry.dtype.fields:
+        raise ValueError(f"Expression field '{expr_field}' not found in entry fields. Available fields: {list(mt.entry.dtype.fields)}")
 
     # Ensure n_bins is an integer
     n_bins = int(n_bins)
