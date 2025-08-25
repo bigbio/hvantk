@@ -10,6 +10,7 @@ from hvantk.commands.make_table_cli import mktable_group
 from hvantk.commands.make_table_batch_cli import mktable_batch_cli
 from hvantk.commands.make_matrix_cli import mkmatrix_group
 from hvantk.commands.make_matrix_batch_cli import mkmatrix_batch_cli
+from hvantk.commands.catalog_cli import catalog
 
 
 # Main CLI entry point for the package (hvantk)
@@ -36,6 +37,7 @@ cli.add_command(mktable_group)  # per-table builder
 cli.add_command(mktable_batch_cli)  # batch builder from recipe
 cli.add_command(mkmatrix_group)  # per-matrix builder
 cli.add_command(mkmatrix_batch_cli)  # batch matrix builder from recipe
+cli.add_command(catalog)  # catalog operations
 
 
 def main():

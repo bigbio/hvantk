@@ -20,6 +20,7 @@ click = "*"
 requests = "*"
 tqdm = "*"
 pandas = "^1.5"
+PyYAML = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.0"
@@ -35,4 +36,3 @@ LICENSE = "https://github.com/bigbio/hvantk/blob/main/LICENSE"
 
 [tool.poetry.scripts]
 hvantk = "hvantk.hvantk:main"
-
