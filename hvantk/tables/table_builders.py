@@ -4,7 +4,6 @@ Hail Table builders for converting raw sources into Hail Tables (HT).
 This module supersedes 'creators.py'. Prefer importing from 'table_builders'.
 """
 
-import hail as hl
 import logging
 from typing import Optional, List
 from hvantk.utils.table_utils import get_row_fields
@@ -30,8 +29,10 @@ def create_gnomad_constraint_gene_metrics_tb(
     fields: list = None,
     overwrite: bool = False,
     export_tsv: bool = False,
-) -> hl.Table:
+) -> 'hl.Table':
+    import hail as hl  # Lazy import to avoid Hail/JVM cost on mere module import
     logger.info(f"Creating gnomAD constraint gene metrics table from {input_path}")
+    # If schema is stable, consider specifying types=... instead of impute=True
     gnomad_tb = hl.import_table(
         paths=input_path, impute=True, min_partitions=100, key="gene_id"
     )
@@ -56,7 +57,8 @@ def create_interactome_tb(
     overwrite: bool = False,
     export_tsv: bool = False,
     reference_genome: str = "GRCh38",
-) -> hl.Table:
+) -> 'hl.Table':
+    import hail as hl
     logger.info(f"Creating interactome table from {input_path}")
     ppi_tb = (
         hl.import_bed(
@@ -84,7 +86,8 @@ def create_clinvar_tb(
     overwrite: bool = False,
     export_tsv: bool = False,
     reference_genome: str = "GRCh38",
-) -> hl.Table:
+) -> 'hl.Table':
+    import hail as hl
     logger.info(f"Creating ClinVar table from {input_path}")
     # Use utility for contig recoding
     recode = contig_recoding()
@@ -117,8 +120,10 @@ def create_gevir_tb(
     fields: list = None,
     overwrite: bool = False,
     export_tsv: bool = False,
-) -> hl.Table:
+) -> 'hl.Table':
+    import hail as hl
     logger.info(f"Creating GEVIR table from {input_path}")
+    # If schema is stable, consider specifying types=... instead of impute=True
     gevir_tb = hl.import_table(
         paths=input_path, impute=True, min_partitions=100, key="gene_id"
     )
@@ -144,9 +149,10 @@ def create_ensembl_gene_tb(
     canonical: bool = True,
     overwrite: bool = False,
     export_tsv: bool = False,
-) -> hl.Table:
+) -> 'hl.Table':
+    import hail as hl
     logger.info(f"Creating Ensembl gene table from {input_path}")
-    gene_tb = hl.import_table(paths=input_path, min_partitions=50)
+    gene_tb = hl.import_table(paths=input_path, min_partitions=50, impute=True)
 
     logger.info("Replacing field names")
     gene_tb = gene_tb.rename(ENSEMBL_BIOMART_FIELDS)
@@ -168,11 +174,11 @@ def create_ensembl_gene_tb(
             gene_synonym=hl.agg.collect_as_set(gene_tb.gene_synonym).filter(
                 lambda x: x != ""
             ),
-            gene_name=hl.agg.collect(gene_tb.gene_name).first(),
-            chromosome=hl.agg.collect(gene_tb.chromosome).first(),
-            gene_start=hl.agg.collect(gene_tb.gene_start).first(),
-            gene_end=hl.agg.collect(gene_tb.gene_end).first(),
-            gene_type=hl.agg.collect(gene_tb.gene_type).first(),
+            gene_name=hl.agg.take(hl.or_else(gene_tb.gene_name, ""), 1)[0],
+            chromosome=hl.agg.take(hl.or_else(gene_tb.chromosome, ""), 1)[0],
+            gene_start=hl.agg.take(hl.or_else(gene_tb.gene_start, hl.null(hl.tint)), 1)[0],
+            gene_end=hl.agg.take(hl.or_else(gene_tb.gene_end, hl.null(hl.tint)), 1)[0],
+            gene_type=hl.agg.take(hl.or_else(gene_tb.gene_type, ""), 1)[0],
         )
         .key_by("gene_id")
     )
@@ -201,17 +207,50 @@ def create_dbnsfp_tb(
     force_bgz: bool = True,
     parse_transcript_scores: bool = True,
     group_prefixes: Optional[List[str]] = None,
-) -> hl.Table:
+) -> 'hl.Table':
     """
     Create a Hail Table from a dbNSFP variant TSV/BGZ file keyed by (locus, alleles).
 
-    Steps:
+    Example usage:
+        ht = create_dbnsfp_tb(
+            input_path="/path/to/dbNSFP.tsv.bgz",
+            output_path="/path/to/output.ht"
+        )
+
+    Parameters
+    ----------
+    input_path : str
+        Path to the dbNSFP TSV/BGZ input file.
+    output_path : str
+        Path to write the output Hail Table.
+    reference_genome : str, optional
+        Reference genome to use for parsing variants (default: "GRCh38").
+    overwrite : bool, optional
+        Whether to overwrite the output file if it exists (default: False).
+    export_tsv : bool, optional
+        If True, also export a flattened TSV version (default: False).
+    min_partitions : int, optional
+        Minimum number of partitions for import (default: 200).
+    force_bgz : bool, optional
+        If True, force bgzip compression for input (default: True).
+    parse_transcript_scores : bool, optional
+        If True, parse transcript-specific scores into dicts (default: True).
+    group_prefixes : list of str, optional
+        List of field prefixes to group into structs (default: common population/annotation prefixes).
+
+    Returns
+    -------
+    hl.Table
+        Hail Table keyed by (locus, alleles) with parsed and grouped annotations.
+
+    Steps performed:
     - Import table with missing '.' and no type imputation
     - Build a variant key from '#chr', 'pos(1-based)', 'ref', 'alt' and parse to (locus, alleles)
     - Key the table by (locus, alleles)
     - Optionally map transcript-specific scores ending with '_score' or 'CADD_phred' to dict(Ensembl_transcriptid -> float)
     - Optionally group common prefixes (e.g., gnomAD, ExAC) into structs and drop original prefixed columns
     """
+    import hail as hl
     logger.info(f"Importing dbNSFP table from {input_path}")
     ht = hl.import_table(
         paths=input_path,
@@ -253,6 +292,9 @@ def create_dbnsfp_tb(
 
     # Key the table by (locus, alleles) before any selects to avoid overwriting key fields
     ht = ht.key_by('locus', 'alleles')
+    # Optional cleanup of staging columns; keep if downstream needs them
+    ht = ht.drop('variant_key')
+    ht = ht.drop('chr', 'pos(1-based)', 'ref', 'alt')
 
     # Transcript-specific score parsing
     row_fields = get_row_fields(ht)
@@ -288,9 +330,9 @@ def create_dbnsfp_tb(
     if group_prefixes is None:
         group_prefixes = ['gnomAD', 'ExAC', '1000Gp3', 'ESP6500', 'clinvar']
 
+    row_fields_list = list(get_row_fields(ht))
     for prefix in group_prefixes:
-        row_fields_list = list(get_row_fields(ht))
-        pref_fields = [f for f in row_fields_list if isinstance(f, str) and f.startswith(prefix)]
+        pref_fields = [f for f in row_fields_list if f != prefix and f.startswith(prefix)]
         if pref_fields:
             logger.info(f"Grouping {prefix}* fields into struct '{prefix}' ({len(pref_fields)} fields)")
             ht = ht.annotate(**{prefix: hl.struct(**{f: ht[f] for f in pref_fields})})

@@ -33,4 +33,3 @@ def split_field_expr(
     :rtype: hl.expr.StringExpression
     """
     return t[field_name].split(split_char)[0] if field_name in t.row else t[field_name]
-

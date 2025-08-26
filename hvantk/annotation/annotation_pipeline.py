@@ -5,7 +5,8 @@ import hail as hl
 from typing import Iterator, Optional, List, Dict, Any, Callable
 from hvantk.data.data_streamer import HailDataStreamer, StreamProcessor
 import logging
-from pathlib import Path
+import os
+import warnings
 
 logger = logging.getLogger(__name__)
 
@@ -72,9 +73,6 @@ class FlexibleAnnotationStreamer(HailDataStreamer):
 
     def _auto_load_data(self, path: str) -> hl.Table:
         """Automatically detect file format and load appropriately"""
-        from pathlib import Path
-        import os
-        import warnings
         path_obj = Path(path)
         suffix = path_obj.suffix.lower()
         suffixes = [s.lower() for s in path_obj.suffixes]
@@ -87,7 +85,8 @@ class FlexibleAnnotationStreamer(HailDataStreamer):
                 if file_size > 100 * 1024 * 1024 and not path_lower.endswith('.bgz'):
                     warnings.warn(
                         f"File {path} is large and not block-compressed (.bgz). Hail will process it with a single CPU, which may be slow. For parallel processing, use bgzip (.bgz) compression.",
-                        UserWarning
+                        UserWarning,
+                        stacklevel=2
                     )
             except Exception:
                 pass
@@ -125,10 +124,7 @@ class FlexibleAnnotationStreamer(HailDataStreamer):
             )
         ):
             warn_if_large_and_not_bgz(path, path_lower)
-            if any(e in path_lower for e in ['.tsv', '.txt']):
-                delimiter = '\t'
-            else:
-                delimiter = ','
+            delimiter = '\t' if any(e in path_lower for e in ['.tsv', '.txt']) else ','
             return hl.import_table(path, delimiter=delimiter, impute=True)
         else:
             # Default to table import
