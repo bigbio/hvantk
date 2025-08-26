@@ -172,10 +172,12 @@ def add_figure_labels(fig: plt.Figure,
         ha = va = None
         tokens = alignment.lower().split()
         for token in tokens:
-            if token in valid_ha:
+            if ha is None and token in valid_ha:
                 ha = token
-            if token in valid_va:
+                continue
+            if va is None and token in valid_va:
                 va = token
+                continue
         # Sensible defaults
         if ha is None:
             ha = 'center'
