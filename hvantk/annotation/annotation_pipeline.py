@@ -72,28 +72,67 @@ class FlexibleAnnotationStreamer(HailDataStreamer):
 
     def _auto_load_data(self, path: str) -> hl.Table:
         """Automatically detect file format and load appropriately"""
+        from pathlib import Path
+        import os
+        import warnings
         path_obj = Path(path)
         suffix = path_obj.suffix.lower()
         suffixes = [s.lower() for s in path_obj.suffixes]
         path_lower = str(path).lower()
 
-        # Compressed VCF/BED detection
-        if path_lower.endswith('.vcf.gz') or ('.vcf' in suffixes and '.gz' in suffixes):
+        # Helper: warn if large and not .bgz
+        def warn_if_large_and_not_bgz(path, path_lower):
+            try:
+                file_size = os.path.getsize(path)
+                if file_size > 100 * 1024 * 1024 and not path_lower.endswith('.bgz'):
+                    warnings.warn(
+                        f"File {path} is large and not block-compressed (.bgz). Hail will process it with a single CPU, which may be slow. For parallel processing, use bgzip (.bgz) compression.",
+                        UserWarning
+                    )
+            except Exception:
+                pass
+
+        # VCF detection (compressed and uncompressed)
+        if (
+            path_lower.endswith('.vcf') or
+            path_lower.endswith('.vcf.gz') or
+            path_lower.endswith('.vcf.bgz') or
+            ('.vcf' in suffixes and ('.gz' in suffixes or '.bgz' in suffixes))
+        ):
+            warn_if_large_and_not_bgz(path, path_lower)
             return hl.import_vcf(path).rows()
-        elif path_lower.endswith('.bed.gz') or ('.bed' in suffixes and '.gz' in suffixes):
+        # BED detection (compressed and uncompressed)
+        elif (
+            path_lower.endswith('.bed') or
+            path_lower.endswith('.bed.gz') or
+            path_lower.endswith('.bed.bgz') or
+            ('.bed' in suffixes and ('.gz' in suffixes or '.bgz' in suffixes))
+        ):
+            warn_if_large_and_not_bgz(path, path_lower)
             return hl.import_bed(path)
-        # Uncompressed
+        # Hail Table
         elif suffix == '.ht':
             return hl.read_table(path)
-        elif suffix in ['.tsv', '.txt', '.csv']:
-            delimiter = '\t' if suffix in ['.tsv', '.txt'] else ','
+        # Tabular files (.tsv/.csv/.txt, compressed or not)
+        elif (
+            any(
+                path_lower.endswith(ext) or path_lower.endswith(ext + '.gz') or path_lower.endswith(ext + '.bgz')
+                for ext in ['.tsv', '.csv', '.txt']
+            ) or
+            any(
+                ext in suffixes and ('.gz' in suffixes or '.bgz' in suffixes)
+                for ext in ['.tsv', '.csv', '.txt']
+            )
+        ):
+            warn_if_large_and_not_bgz(path, path_lower)
+            if any(e in path_lower for e in ['.tsv', '.txt']):
+                delimiter = '\t'
+            else:
+                delimiter = ','
             return hl.import_table(path, delimiter=delimiter, impute=True)
-        elif suffix == '.vcf':
-            return hl.import_vcf(path).rows()
-        elif suffix == '.bed':
-            return hl.import_bed(path)
         else:
             # Default to table import
+            warn_if_large_and_not_bgz(path, path_lower)
             return hl.import_table(path, impute=True)
 
     def setup(self) -> None:
@@ -157,13 +196,9 @@ class FlexibleAnnotationStreamer(HailDataStreamer):
 
     def _annotate_by_variant(self, chunk: hl.Table) -> hl.Table:
         """Annotate by variant (locus + alleles). Validates key fields exist."""
-        # If table already keyed (expected: locus, alleles) use that; otherwise build struct from required fields.
-        if chunk.key and len(chunk.key) == 2 and all(k in chunk.row for k in chunk.key):
-            key_expr = hl.struct(**{k: chunk[k] for k in chunk.key})
-        else:
-            if not self._check_fields(chunk, ['locus', 'alleles']):
-                return chunk
-            key_expr = hl.struct(locus=chunk.locus, alleles=chunk.alleles)
+        if not self._check_fields(chunk, ['locus', 'alleles']):
+            return chunk
+        key_expr = hl.struct(locus=chunk.locus, alleles=chunk.alleles)
         return self._safe_apply(chunk, key_expr)
 
     def _annotate_by_gene(self, chunk: hl.Table) -> hl.Table:
