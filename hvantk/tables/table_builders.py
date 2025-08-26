@@ -4,6 +4,7 @@ Hail Table builders for converting raw sources into Hail Tables (HT).
 This module supersedes 'creators.py'. Prefer importing from 'table_builders'.
 """
 
+import hail as hl
 import logging
 from typing import Optional, List
 from hvantk.utils.table_utils import get_row_fields
@@ -30,7 +31,32 @@ def create_gnomad_constraint_gene_metrics_tb(
     overwrite: bool = False,
     export_tsv: bool = False,
 ) -> 'hl.Table':
-    import hail as hl  # Lazy import to avoid Hail/JVM cost on mere module import
+    """
+    Create a Hail Table from gnomAD constraint gene metrics TSV file keyed by gene_id.
+    Example usage:
+        ht = create_gnomad_constraint_gene_metrics_tb(
+            input_path="/path/to/gnomad_constraint_metrics.txt",
+            output_path="/path/to/output.ht",
+            fields=["gene_id", "pLI", "oe_lof"]
+        )
+    Parameters
+    ----------
+    input_path : str
+        Path to the gnomAD constraint gene metrics TSV input file.
+    output_path : str
+        Path to write the output Hail Table.
+    fields : list, optional
+        List of fields to select from the imported table (default: None, selects all fields).
+    overwrite : bool, optional
+        Whether to overwrite the output file if it exists (default: False).
+    export_tsv : bool, optional
+        If True, also export a TSV version (default: False).
+    Returns
+    -------
+    hl.Table
+        Hail Table keyed by gene_id with selected constraint metrics.
+    """
+
     logger.info(f"Creating gnomAD constraint gene metrics table from {input_path}")
     # If schema is stable, consider specifying types=... instead of impute=True
     gnomad_tb = hl.import_table(
@@ -58,7 +84,31 @@ def create_interactome_tb(
     export_tsv: bool = False,
     reference_genome: str = "GRCh38",
 ) -> 'hl.Table':
-    import hail as hl
+    """
+    Create a Hail Table from a protein-protein interaction BED file.
+    Example usage:
+        ht = create_interactome_tb(
+            input_path="/path/to/interactome.bed",
+            output_path="/path/to/output.ht"
+        )
+    Parameters
+    ----------
+    input_path : str
+        Path to the protein-protein interaction BED input file.
+    output_path : str
+        Path to write the output Hail Table.
+    overwrite : bool, optional
+        Whether to overwrite the output file if it exists (default: False).
+    export_tsv : bool, optional
+        If True, also export a TSV version (default: False).
+    reference_genome : str, optional
+        Reference genome to use for parsing intervals (default: "GRCh38").
+    Returns
+    -------
+    hl.Table
+        Hail Table with protein-protein interactions.
+    """
+
     logger.info(f"Creating interactome table from {input_path}")
     ppi_tb = (
         hl.import_bed(
@@ -87,7 +137,30 @@ def create_clinvar_tb(
     export_tsv: bool = False,
     reference_genome: str = "GRCh38",
 ) -> 'hl.Table':
-    import hail as hl
+    """
+    Create a Hail Table from a ClinVar VCF file keyed by (locus, alleles).
+    Example usage:
+        ht = create_clinvar_tb(
+            input_path="/path/to/clinvar.vcf.gz",
+            output_path="/path/to/output.ht"
+        )
+    Parameters
+    ----------
+    input_path : str
+        Path to the ClinVar VCF input file.
+    output_path : str
+        Path to write the output Hail Table.
+    overwrite : bool, optional
+        Whether to overwrite the output file if it exists (default: False).
+    export_tsv : bool, optional
+        If True, also export a flattened TSV version (default: False).
+    reference_genome : str, optional
+        Reference genome to use for parsing variants (default: "GRCh38").
+    Returns
+    -------
+    hl.Table
+        Hail Table keyed by (locus, alleles) with ClinVar annotations.
+    """
     logger.info(f"Creating ClinVar table from {input_path}")
     # Use utility for contig recoding
     recode = contig_recoding()
@@ -121,7 +194,32 @@ def create_gevir_tb(
     overwrite: bool = False,
     export_tsv: bool = False,
 ) -> 'hl.Table':
-    import hail as hl
+    """
+    Create a Hail Table from GEVIR gene metrics TSV file keyed by gene_id.
+    Example usage:
+        ht = create_gevir_tb(
+            input_path="/path/to/gevir_metrics.txt",
+            output_path="/path/to/output.ht",
+            fields=["gene_id", "gevir_score", "gevir_rank"]
+        )
+    Parameters
+    ----------
+    input_path : str
+        Path to the GEVIR gene metrics TSV input file.
+    output_path : str
+        Path to write the output Hail Table.
+    fields : list, optional
+        List of fields to select from the imported table (default: None, selects all fields).
+    overwrite : bool, optional
+        Whether to overwrite the output file if it exists (default: False).
+    export_tsv : bool, optional
+        If True, also export a TSV version (default: False).
+    Returns
+    -------
+    hl.Table
+        Hail Table keyed by gene_id with selected GEVIR metrics.
+
+    """
     logger.info(f"Creating GEVIR table from {input_path}")
     # If schema is stable, consider specifying types=... instead of impute=True
     gevir_tb = hl.import_table(
@@ -150,7 +248,34 @@ def create_ensembl_gene_tb(
     overwrite: bool = False,
     export_tsv: bool = False,
 ) -> 'hl.Table':
-    import hail as hl
+    """
+    Create a Hail Table from an Ensembl BioMart gene annotation TSV file keyed by gene_id.
+    Example usage:
+        ht = create_ensembl_gene_tb(
+            input_path="/path/to/ensembl_biomart_genes.txt",
+            output_path="/path/to/output.ht",
+            fields=["gene_id", "gene_name", "gene_type", "chromosome",
+                    "gene_start", "gene_end", "transcript_id", "protein_id"]
+        )
+    Parameters
+    ----------
+    input_path : str
+        Path to the Ensembl BioMart gene annotation TSV input file.
+    output_path : str
+        Path to write the output Hail Table.
+    fields : list, optional
+        List of fields to select from the imported table (default: None, selects all fields).
+    canonical : bool, optional
+        If True, filter to only canonical transcripts (default: True).
+    overwrite : bool, optional
+        Whether to overwrite the output file if it exists (default: False).
+    export_tsv : bool, optional
+        If True, also export a TSV version (default: False).
+    Returns
+    -------
+    hl.Table
+        Hail Table keyed by gene_id with selected Ensembl gene annotations.
+    """
     logger.info(f"Creating Ensembl gene table from {input_path}")
     gene_tb = hl.import_table(paths=input_path, min_partitions=50, impute=True)
 
@@ -250,7 +375,7 @@ def create_dbnsfp_tb(
     - Optionally map transcript-specific scores ending with '_score' or 'CADD_phred' to dict(Ensembl_transcriptid -> float)
     - Optionally group common prefixes (e.g., gnomAD, ExAC) into structs and drop original prefixed columns
     """
-    import hail as hl
+
     logger.info(f"Importing dbNSFP table from {input_path}")
     ht = hl.import_table(
         paths=input_path,

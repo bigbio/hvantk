@@ -7,6 +7,7 @@ from hvantk.data.data_streamer import HailDataStreamer, StreamProcessor
 import logging
 import os
 import warnings
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
