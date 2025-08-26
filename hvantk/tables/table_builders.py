@@ -301,8 +301,8 @@ def create_ensembl_gene_tb(
             ),
             gene_name=hl.agg.take(hl.or_else(gene_tb.gene_name, ""), 1)[0],
             chromosome=hl.agg.take(hl.or_else(gene_tb.chromosome, ""), 1)[0],
-            gene_start=hl.agg.take(hl.or_else(gene_tb.gene_start, hl.null(hl.tint)), 1)[0],
-            gene_end=hl.agg.take(hl.or_else(gene_tb.gene_end, hl.null(hl.tint)), 1)[0],
+            gene_start=hl.agg.take(hl.or_else(gene_tb.gene_start, hl.null(gene_tb.gene_start.dtype)), 1)[0],
+            gene_end=hl.agg.take(hl.or_else(gene_tb.gene_end, hl.null(gene_tb.gene_end.dtype)), 1)[0],
             gene_type=hl.agg.take(hl.or_else(gene_tb.gene_type, ""), 1)[0],
         )
         .key_by("gene_id")
@@ -455,8 +455,8 @@ def create_dbnsfp_tb(
     if group_prefixes is None:
         group_prefixes = ['gnomAD', 'ExAC', '1000Gp3', 'ESP6500', 'clinvar']
 
-    row_fields_list = list(get_row_fields(ht))
     for prefix in group_prefixes:
+        row_fields_list = list(get_row_fields(ht))
         pref_fields = [f for f in row_fields_list if f != prefix and f.startswith(prefix)]
         if pref_fields:
             logger.info(f"Grouping {prefix}* fields into struct '{prefix}' ({len(pref_fields)} fields)")

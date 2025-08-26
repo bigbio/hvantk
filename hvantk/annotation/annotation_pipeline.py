@@ -15,15 +15,17 @@ logger = logging.getLogger(__name__)
 class AnnotationConfig:
     """Configuration class for annotation sources"""
 
-    def __init__(self,
-                 name: str,
-                 source_path: str,
-                 annotation_type: str = "variant",  # "variant", "gene", "region"
-                 join_key: Optional[str] = None,
-                 loader_func: Optional[Callable] = None,
-                 preprocessing_func: Optional[Callable] = None,
-                 feature_mapping: Optional[Dict[str, str]] = None,
-                 metadata: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        name: str,
+        source_path: str,
+        annotation_type: str = "variant",  # "variant", "gene", "region"
+        join_key: Optional[str] = None,
+        loader_func: Optional[Callable] = None,
+        preprocessing_func: Optional[Callable] = None,
+        feature_mapping: Optional[Dict[str, str]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ):
         self.name = name
         self.source_path = source_path
         self.annotation_type = annotation_type
@@ -39,7 +41,7 @@ class AnnotationConfig:
             "variant": "locus,alleles",
             "gene": "gene_symbol",
             "region": "locus",
-            "transcript": "transcript_id"
+            "transcript": "transcript_id",
         }
         return defaults.get(self.annotation_type, "key")
 
@@ -83,61 +85,123 @@ class FlexibleAnnotationStreamer(HailDataStreamer):
         def warn_if_large_and_not_bgz(path, path_lower):
             try:
                 file_size = os.path.getsize(path)
-                if file_size > 100 * 1024 * 1024 and not path_lower.endswith('.bgz'):
+                if file_size > 100 * 1024 * 1024 and not path_lower.endswith(".bgz"):
                     warnings.warn(
                         f"File {path} is large and not block-compressed (.bgz). Hail will process it with a single CPU, which may be slow. For parallel processing, use bgzip (.bgz) compression.",
                         UserWarning,
-                        stacklevel=2
+                        stacklevel=2,
                     )
             except Exception:
                 pass
 
         # VCF detection (compressed and uncompressed)
         if (
-            path_lower.endswith('.vcf') or
-            path_lower.endswith('.vcf.gz') or
-            path_lower.endswith('.vcf.bgz') or
-            ('.vcf' in suffixes and ('.gz' in suffixes or '.bgz' in suffixes))
+            path_lower.endswith(".vcf")
+            or path_lower.endswith(".vcf.gz")
+            or path_lower.endswith(".vcf.bgz")
+            or (".vcf" in suffixes and (".gz" in suffixes or ".bgz" in suffixes))
         ):
             warn_if_large_and_not_bgz(path, path_lower)
             return hl.import_vcf(path).rows()
         # BED detection (compressed and uncompressed)
         elif (
-            path_lower.endswith('.bed') or
-            path_lower.endswith('.bed.gz') or
-            path_lower.endswith('.bed.bgz') or
-            ('.bed' in suffixes and ('.gz' in suffixes or '.bgz' in suffixes))
+            path_lower.endswith(".bed")
+            or path_lower.endswith(".bed.gz")
+            or path_lower.endswith(".bed.bgz")
+            or (".bed" in suffixes and (".gz" in suffixes or ".bgz" in suffixes))
         ):
             warn_if_large_and_not_bgz(path, path_lower)
             return hl.import_bed(path)
         # Hail Table
-        elif suffix == '.ht':
+        elif suffix == ".ht":
             return hl.read_table(path)
         # Tabular files (.tsv/.csv/.txt, compressed or not)
-        elif (
-            any(
-                path_lower.endswith(ext) or path_lower.endswith(ext + '.gz') or path_lower.endswith(ext + '.bgz')
-                for ext in ['.tsv', '.csv', '.txt']
-            ) or
-            any(
-                ext in suffixes and ('.gz' in suffixes or '.bgz' in suffixes)
-                for ext in ['.tsv', '.csv', '.txt']
-            )
+        elif any(
+            path_lower.endswith(ext)
+            or path_lower.endswith(ext + ".gz")
+            or path_lower.endswith(ext + ".bgz")
+            for ext in [".tsv", ".csv", ".txt"]
+        ) or any(
+            ext in suffixes and (".gz" in suffixes or ".bgz" in suffixes)
+            for ext in [".tsv", ".csv", ".txt"]
         ):
             warn_if_large_and_not_bgz(path, path_lower)
-            delimiter = '\t' if any(e in path_lower for e in ['.tsv', '.txt']) else ','
+            delimiter = "\t" if any(e in path_lower for e in [".tsv", ".txt"]) else ","
             return hl.import_table(path, delimiter=delimiter, impute=True)
         else:
             # Default to table import
             warn_if_large_and_not_bgz(path, path_lower)
             return hl.import_table(path, impute=True)
 
+    def _ensure_annotation_key(self) -> None:
+        """
+        Ensure self.annotation_data is keyed on the expected join fields for
+        efficient/valid self.annotation_data[key_expr] lookups.
+        """
+        ht = self.annotation_data
+        if not isinstance(ht, hl.Table):
+            return
+
+        try:
+            if self.config.annotation_type == "variant":
+                # Prefer (locus, alleles) if present
+                row_fields = set(ht.row.dtype.keys())
+                if {"locus", "alleles"} <= row_fields:
+                    self.annotation_data = ht.key_by("locus", "alleles")
+                    return
+
+            elif self.config.annotation_type == "gene":
+                # Try gene_symbol first, then gene
+                row_fields = set(ht.row.dtype.keys())
+                if "gene_symbol" in row_fields:
+                    self.annotation_data = ht.key_by("gene_symbol")
+                    return
+                if "gene" in row_fields:
+                    self.annotation_data = ht.key_by("gene")
+                    return
+
+            elif self.config.annotation_type == "region":
+                # Interval-keyed tables support point lookups with a locus
+                row_fields = set(ht.row.dtype.keys())
+                if "interval" in row_fields:
+                    self.annotation_data = ht.key_by("interval")
+                    return
+                if "locus" in row_fields:
+                    self.annotation_data = ht.key_by("locus")
+                    return
+
+            # Fallback: use explicit join_key if provided and fields exist
+            join_fields = [
+                f.strip() for f in (self.config.join_key or "").split(",") if f.strip()
+            ]
+            if join_fields:
+                row_fields = set(ht.row.dtype.keys())
+                if all(f in row_fields for f in join_fields):
+                    self.annotation_data = ht.key_by(*join_fields)
+                    return
+
+            # If we reach here, we did not rekey. Proceed as-is; _safe_apply will guard.
+            self.logger.debug(
+                f"No suitable key inferred for {self.config.name}; proceeding without rekey"
+            )
+
+        except Exception as ke:
+            self.logger.warning(
+                f"Failed to set key on annotation data for {self.config.name}: {ke}"
+            )
+
     def setup(self) -> None:
         """Load annotation data with error handling"""
         super().setup()
         try:
             self.annotation_data = self.load_annotation_data()
-            self.logger.info(f"Loaded {self.config.name}: {self.annotation_data.count()} records")
+            # Ensure proper keying for subsequent index lookups; avoid full counts here.
+            self._ensure_annotation_key()
+            key_descr = [str(k) for k in self.annotation_data.key]  # informational only
+            row_fields = list(self.annotation_data.row.dtype.keys())
+            self.logger.info(
+                f"Loaded {self.config.name} (fields={len(row_fields)}, key={key_descr})"
+            )
         except Exception as e:
             self.logger.error(f"Failed to load {self.config.name}: {e}")
             raise
@@ -184,16 +248,30 @@ class FlexibleAnnotationStreamer(HailDataStreamer):
         This protects against runtime failures due to absent keys."""
         try:
             ann_row = self.annotation_data[key_expr]
-            # Use the annotation row's field names for annotation
-            field_names = self.annotation_data.row.dtype.keys()
-            return chunk.annotate(**{fname: ann_row[fname] for fname in field_names})
+            # Use the annotation row's field names for annotation, skipping join-key fields and existing chunk fields
+            field_names = list(self.annotation_data.row.dtype.keys())
+            # Determine join-key fields to skip
+            if self.config.annotation_type == "variant":
+                skip_fields = {"locus", "alleles"}
+            elif self.config.annotation_type == "gene":
+                skip_fields = {"gene", "gene_symbol"}
+            elif self.config.annotation_type == "region":
+                skip_fields = {"interval", "locus"}
+            else:
+                skip_fields = set(f.strip() for f in (self.config.join_key or "").split(",") if f.strip())
+            # Also skip any fields already present in chunk.row
+            chunk_fields = set(chunk.row.keys())
+            fields_to_copy = [fname for fname in field_names if fname not in skip_fields and fname not in chunk_fields]
+            return chunk.annotate(**{fname: ann_row[fname] for fname in fields_to_copy})
         except Exception as e:
-            self.logger.warning(f"Safe annotation lookup failed for {self.config.name}: {e}; returning original chunk")
+            self.logger.warning(
+                f"Safe annotation lookup failed for {self.config.name}: {e}; returning original chunk"
+            )
             return chunk
 
     def _annotate_by_variant(self, chunk: hl.Table) -> hl.Table:
         """Annotate by variant (locus + alleles). Validates key fields exist."""
-        if not self._check_fields(chunk, ['locus', 'alleles']):
+        if not self._check_fields(chunk, ["locus", "alleles"]):
             return chunk
         key_expr = hl.struct(locus=chunk.locus, alleles=chunk.alleles)
         return self._safe_apply(chunk, key_expr)
@@ -201,26 +279,30 @@ class FlexibleAnnotationStreamer(HailDataStreamer):
     def _annotate_by_gene(self, chunk: hl.Table) -> hl.Table:
         """Annotate by gene symbol. Accepts either 'gene' or 'gene_symbol'."""
         field_name = None
-        if 'gene' in chunk.row:
-            field_name = 'gene'
-        elif 'gene_symbol' in chunk.row:
-            field_name = 'gene_symbol'
+        if "gene" in chunk.row:
+            field_name = "gene"
+        elif "gene_symbol" in chunk.row:
+            field_name = "gene_symbol"
         else:
-            self.logger.warning("No 'gene' or 'gene_symbol' field found in chunk for gene annotation; skipping")
+            self.logger.warning(
+                "No 'gene' or 'gene_symbol' field found in chunk for gene annotation; skipping"
+            )
             return chunk
         return self._safe_apply(chunk, chunk[field_name])
 
     def _annotate_by_region(self, chunk: hl.Table) -> hl.Table:
         """Annotate by genomic region overlap (expects 'locus')."""
-        if not self._check_fields(chunk, ['locus']):
+        if not self._check_fields(chunk, ["locus"]):
             return chunk
         return self._safe_apply(chunk, chunk.locus)
 
     def _annotate_custom(self, chunk: hl.Table) -> hl.Table:
         """Custom annotation logic - validates all join fields."""
-        join_fields = [f.strip() for f in self.config.join_key.split(',') if f.strip()]
+        join_fields = [f.strip() for f in self.config.join_key.split(",") if f.strip()]
         if not join_fields:
-            self.logger.warning(f"No join_key specified for custom annotation {self.config.name}; skipping")
+            self.logger.warning(
+                f"No join_key specified for custom annotation {self.config.name}; skipping"
+            )
             return chunk
         if not self._check_fields(chunk, join_fields):
             return chunk
@@ -240,7 +322,9 @@ class FlexibleAnnotationStreamer(HailDataStreamer):
 
     def stream(self) -> Iterator[hl.Table]:
         """Not implemented for annotation streamers"""
-        raise NotImplementedError("FlexibleAnnotationStreamer is for processing existing chunks")
+        raise NotImplementedError(
+            "FlexibleAnnotationStreamer is for processing existing chunks"
+        )
 
     def process_chunk(self, chunk: hl.Table) -> hl.Table:
         """Process chunk by adding annotations"""
@@ -288,19 +372,23 @@ class ConfigurableAnnotationPipeline(StreamProcessor):
     registry entries or custom configurations.
     """
 
-    def __init__(self,
-                 name: str,
-                 base_streamer: HailDataStreamer,
-                 registry: Optional[AnnotationRegistry] = None):
+    def __init__(
+        self,
+        name: str,
+        base_streamer: HailDataStreamer,
+        registry: Optional[AnnotationRegistry] = None,
+    ):
         super().__init__(name)
         self.registry = registry or AnnotationRegistry()
         self.add_streamer(base_streamer)
         self._feature_transformations = []
 
-    def add_annotation(self,
-                      annotation_name: str = None,
-                      config: AnnotationConfig = None,
-                      **streamer_kwargs) -> 'ConfigurableAnnotationPipeline':
+    def add_annotation(
+        self,
+        annotation_name: str = None,
+        config: AnnotationConfig = None,
+        **streamer_kwargs,
+    ) -> "ConfigurableAnnotationPipeline":
         """Add annotation by name (from registry) or direct config"""
         if config:
             streamer = FlexibleAnnotationStreamer(config, **streamer_kwargs)
@@ -312,18 +400,20 @@ class ConfigurableAnnotationPipeline(StreamProcessor):
         self.add_streamer(streamer)
         return self
 
-    def add_annotations_by_category(self,
-                                   category: str,
-                                   **streamer_kwargs) -> 'ConfigurableAnnotationPipeline':
+    def add_annotations_by_category(
+        self, category: str, **streamer_kwargs
+    ) -> "ConfigurableAnnotationPipeline":
         """Add all annotations from a category"""
         annotation_names = self.registry.list_by_category(category)
         for name in annotation_names:
             self.add_annotation(annotation_name=name, **streamer_kwargs)
         return self
 
-    def add_feature_transformation(self,
-                                  transform_func: Callable[[hl.Table], hl.Table],
-                                  description: str = "Custom transformation"):
+    def add_feature_transformation(
+        self,
+        transform_func: Callable[[hl.Table], hl.Table],
+        description: str = "Custom transformation",
+    ):
         """Add custom feature transformation to be applied after annotations"""
         self._feature_transformations.append((transform_func, description))
         return self
@@ -361,6 +451,7 @@ class ConfigurableAnnotationPipeline(StreamProcessor):
 
 # Built-in annotation configurations for common sources
 
+
 def create_builtin_registry() -> AnnotationRegistry:
     """Create registry with built-in annotation configurations"""
     registry = AnnotationRegistry()
@@ -371,14 +462,13 @@ def create_builtin_registry() -> AnnotationRegistry:
             name="dbnsfp_scores",
             source_path="",  # Will be set by dataset function
             annotation_type="variant",
-            loader_func=lambda _: __import__('hvantk.data.dataset', fromlist=['get_dbnsfp_scores_ht']).get_dbnsfp_scores_ht(),
-            feature_mapping={
-                "CADD_phred": "cadd_score",
-                "REVEL_score": "revel_score"
-            },
-            metadata={"category": "prediction", "data_type": "scores"}
+            loader_func=lambda _: __import__(
+                "hvantk.data.dataset", fromlist=["get_dbnsfp_scores_ht"]
+            ).get_dbnsfp_scores_ht(),
+            feature_mapping={"CADD_phred": "cadd_score", "REVEL_score": "revel_score"},
+            metadata={"category": "prediction", "data_type": "scores"},
         ),
-        category="prediction"
+        category="prediction",
     )
 
     # Gene expression
@@ -387,10 +477,12 @@ def create_builtin_registry() -> AnnotationRegistry:
             name="gene_expression",
             source_path="",
             annotation_type="gene",
-            loader_func=lambda _: __import__('hvantk.data.dataset', fromlist=['get_gene_expression_ht']).get_gene_expression_ht(),
-            metadata={"category": "expression", "data_type": "levels"}
+            loader_func=lambda _: __import__(
+                "hvantk.data.dataset", fromlist=["get_gene_expression_ht"]
+            ).get_gene_expression_ht(),
+            metadata={"category": "expression", "data_type": "levels"},
         ),
-        category="expression"
+        category="expression",
     )
 
     # Population frequencies
@@ -399,14 +491,13 @@ def create_builtin_registry() -> AnnotationRegistry:
             name="gnomad_frequencies",
             source_path="",
             annotation_type="variant",
-            loader_func=lambda _: __import__('hvantk.data.dataset', fromlist=['get_gnomad_af_ht']).get_gnomad_af_ht(),
-            feature_mapping={
-                "AF": "allele_frequency",
-                "AC": "allele_count"
-            },
-            metadata={"category": "population", "data_type": "frequencies"}
+            loader_func=lambda _: __import__(
+                "hvantk.data.dataset", fromlist=["get_gnomad_af_ht"]
+            ).get_gnomad_af_ht(),
+            feature_mapping={"AF": "allele_frequency", "AC": "allele_count"},
+            metadata={"category": "population", "data_type": "frequencies"},
         ),
-        category="population"
+        category="population",
     )
 
     return registry
@@ -414,23 +505,27 @@ def create_builtin_registry() -> AnnotationRegistry:
 
 # Factory functions for easy usage
 
-def create_flexible_pipeline(base_streamer: HailDataStreamer,
-                           pipeline_name: str = "FlexibleAnnotationPipeline") -> ConfigurableAnnotationPipeline:
+
+def create_flexible_pipeline(
+    base_streamer: HailDataStreamer, pipeline_name: str = "FlexibleAnnotationPipeline"
+) -> ConfigurableAnnotationPipeline:
     """Create a flexible annotation pipeline with built-in registry"""
     registry = create_builtin_registry()
     return ConfigurableAnnotationPipeline(pipeline_name, base_streamer, registry)
 
 
-def add_custom_annotation(pipeline: ConfigurableAnnotationPipeline,
-                         name: str,
-                         source_path: str,
-                         annotation_type: str = "variant",
-                         **config_kwargs) -> ConfigurableAnnotationPipeline:
+def add_custom_annotation(
+    pipeline: ConfigurableAnnotationPipeline,
+    name: str,
+    source_path: str,
+    annotation_type: str = "variant",
+    **config_kwargs,
+) -> ConfigurableAnnotationPipeline:
     """Helper to add custom annotation to existing pipeline"""
     config = AnnotationConfig(
         name=name,
         source_path=source_path,
         annotation_type=annotation_type,
-        **config_kwargs
+        **config_kwargs,
     )
     return pipeline.add_annotation(config=config)
