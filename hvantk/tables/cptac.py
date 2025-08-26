@@ -70,6 +70,15 @@ def convert_cptac_expression_to_matrix_table(
     coord_df[gene_id_col] = coord_df[gene_id_col].astype(str)
     coord_df[sample_id_col] = coord_df[sample_id_col].astype(str)
 
+    # Validate uniqueness of (gene, sample) coordinates
+    dup_mask = coord_df.duplicated(subset=[gene_id_col, sample_id_col], keep=False)
+    if dup_mask.any():
+        examples = coord_df.loc[dup_mask, [gene_id_col, sample_id_col]].drop_duplicates().head(20).to_dict("records")
+        raise ValueError(
+            f"Duplicate (gene, sample) coordinate rows detected: {examples} "
+            f"(showing up to 20). Deduplicate or aggregate before conversion."
+        )
+
     # Convert to Hail Table
     coord_ht = hl.Table.from_pandas(coord_df)
 
@@ -149,14 +158,17 @@ def convert_cptac_metadata_to_table(
 
     # Convert specified columns to appropriate types
     if categorical_cols:
+        row_fields = set(ht.row.dtype.fields.keys())
         for col in categorical_cols:
-            if col in ht.row:
+            if col in row_fields:
                 ht = ht.annotate(**{col: hl.str(ht[col])})
 
     if numeric_cols:
+        row_fields = set(ht.row.dtype.fields.keys())
         for col in numeric_cols:
-            if col in ht.row:
-                ht = ht.annotate(**{col: hl.float64(ht[col])})
+            if col in row_fields:
+                # robust: parse even if column came in as string/object
+                ht = ht.annotate(**{col: hl.parse_float(hl.str(ht[col]))})
 
     logger.info(f"Created metadata Table with {ht.count()} samples")
     return ht
