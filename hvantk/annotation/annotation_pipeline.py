@@ -145,24 +145,26 @@ class FlexibleAnnotationStreamer(HailDataStreamer):
         try:
             if self.config.annotation_type == "variant":
                 # Prefer (locus, alleles) if present
-                row_fields = set(ht.row.dtype.keys())
+                row_fields = set(ht.row.dtype.fields)
                 if {"locus", "alleles"} <= row_fields:
                     self.annotation_data = ht.key_by("locus", "alleles")
                     return
 
             elif self.config.annotation_type == "gene":
-                # Try gene_symbol first, then gene
-                row_fields = set(ht.row.dtype.keys())
-                if "gene_symbol" in row_fields:
-                    self.annotation_data = ht.key_by("gene_symbol")
-                    return
-                if "gene" in row_fields:
-                    self.annotation_data = ht.key_by("gene")
-                    return
+                # Try common gene identifiers in order of preference (case-insensitive)
+                row_fields = set(ht.row.dtype.fields)
+                candidates = ("gene_symbol", "gene", "Gene", "gene_name", "gene_id")
+                # Build a mapping of lowercase field names to actual field names
+                row_fields_lc = {f.lower(): f for f in row_fields}
+                for candidate in candidates:
+                    candidate_lc = candidate.lower()
+                    if candidate_lc in row_fields_lc:
+                        self.annotation_data = ht.key_by(row_fields_lc[candidate_lc])
+                        return
 
             elif self.config.annotation_type == "region":
                 # Interval-keyed tables support point lookups with a locus
-                row_fields = set(ht.row.dtype.keys())
+                row_fields = set(ht.row.dtype.fields)
                 if "interval" in row_fields:
                     self.annotation_data = ht.key_by("interval")
                     return
@@ -175,7 +177,7 @@ class FlexibleAnnotationStreamer(HailDataStreamer):
                 f.strip() for f in (self.config.join_key or "").split(",") if f.strip()
             ]
             if join_fields:
-                row_fields = set(ht.row.dtype.keys())
+                row_fields = set(ht.row.dtype.fields)
                 if all(f in row_fields for f in join_fields):
                     self.annotation_data = ht.key_by(*join_fields)
                     return
@@ -198,7 +200,7 @@ class FlexibleAnnotationStreamer(HailDataStreamer):
             # Ensure proper keying for subsequent index lookups; avoid full counts here.
             self._ensure_annotation_key()
             key_descr = [str(k) for k in self.annotation_data.key]  # informational only
-            row_fields = list(self.annotation_data.row.dtype.keys())
+            row_fields = list(self.annotation_data.row.dtype.fields)
             self.logger.info(
                 f"Loaded {self.config.name} (fields={len(row_fields)}, key={key_descr})"
             )
@@ -235,7 +237,8 @@ class FlexibleAnnotationStreamer(HailDataStreamer):
 
     # -------------------- Internal helpers for safer annotation --------------------
     def _check_fields(self, chunk: hl.Table, required: List[str]) -> bool:
-        missing = [f for f in required if f not in chunk.row]
+        row_fields = set(chunk.row.dtype.fields)
+        missing = [f for f in required if f not in row_fields]
         if missing:
             self.logger.warning(
                 f"Missing required field(s) {missing} for annotation type '{self.config.annotation_type}' in {self.config.name}; skipping annotation on this chunk"
@@ -249,7 +252,7 @@ class FlexibleAnnotationStreamer(HailDataStreamer):
         try:
             ann_row = self.annotation_data[key_expr]
             # Use the annotation row's field names for annotation, skipping join-key fields and existing chunk fields
-            field_names = list(self.annotation_data.row.dtype.keys())
+            field_names = list(self.annotation_data.row.dtype.fields)
             # Determine join-key fields to skip
             if self.config.annotation_type == "variant":
                 skip_fields = {"locus", "alleles"}
@@ -259,9 +262,11 @@ class FlexibleAnnotationStreamer(HailDataStreamer):
                 skip_fields = {"interval", "locus"}
             else:
                 skip_fields = set(f.strip() for f in (self.config.join_key or "").split(",") if f.strip())
-            # Also skip any fields already present in chunk.row
-            chunk_fields = set(chunk.row.keys())
+            # Also skip any fields already present in chunk
+            chunk_fields = set(chunk.row.dtype.fields)
             fields_to_copy = [fname for fname in field_names if fname not in skip_fields and fname not in chunk_fields]
+            if not fields_to_copy:
+                return chunk
             return chunk.annotate(**{fname: ann_row[fname] for fname in fields_to_copy})
         except Exception as e:
             self.logger.warning(
@@ -277,15 +282,17 @@ class FlexibleAnnotationStreamer(HailDataStreamer):
         return self._safe_apply(chunk, key_expr)
 
     def _annotate_by_gene(self, chunk: hl.Table) -> hl.Table:
-        """Annotate by gene symbol. Accepts either 'gene' or 'gene_symbol'."""
+        """Annotate by gene symbol. Accepts common gene field names, case-insensitive."""
+        accepted_names = {"gene", "gene_symbol", "gene_id", "gene_name"}
+        row_fields = list(chunk.row.dtype.fields)
         field_name = None
-        if "gene" in chunk.row:
-            field_name = "gene"
-        elif "gene_symbol" in chunk.row:
-            field_name = "gene_symbol"
-        else:
+        for f in row_fields:
+            if f.lower() in accepted_names:
+                field_name = f
+                break
+        if not field_name:
             self.logger.warning(
-                "No 'gene' or 'gene_symbol' field found in chunk for gene annotation; skipping"
+                f"No accepted gene field found in chunk for gene annotation; present fields: {row_fields}"
             )
             return chunk
         return self._safe_apply(chunk, chunk[field_name])
