@@ -7,6 +7,7 @@ This module supersedes 'creators.py'. Prefer importing from 'table_builders'.
 import hail as hl
 import logging
 from typing import Optional, List
+from hvantk.utils.table_utils import get_row_fields
 
 logger = logging.getLogger(__name__)
 
@@ -221,11 +222,12 @@ def create_dbnsfp_tb(
     )
 
     # Normalize chromosome field and construct variant key
-    if "#chr" in ht.row:
+    row_fields = get_row_fields(ht)
+    if "#chr" in row_fields:
         ht = ht.rename({'#chr': 'chr'})
     else:
         # Some exports might already use 'chr'
-        if "chr" not in ht.row:
+        if "chr" not in row_fields:
             raise ValueError("dbNSFP input missing '#chr' or 'chr' column")
 
     _chr_str = hl.str(ht['chr'])
@@ -234,7 +236,8 @@ def create_dbnsfp_tb(
     )
 
     # Build variant_key: chr:pos:ref:alt
-    if 'pos(1-based)' not in ht.row or 'ref' not in ht.row or 'alt' not in ht.row:
+    row_fields = get_row_fields(ht)
+    if 'pos(1-based)' not in row_fields or 'ref' not in row_fields or 'alt' not in row_fields:
         raise ValueError("dbNSFP input missing required columns: 'pos(1-based)', 'ref', or 'alt'")
 
     variant_key_expr = hl.array([
@@ -252,12 +255,14 @@ def create_dbnsfp_tb(
     ht = ht.key_by('locus', 'alleles')
 
     # Transcript-specific score parsing
-    if parse_transcript_scores and 'Ensembl_transcriptid' in ht.row:
+    row_fields = get_row_fields(ht)
+    if parse_transcript_scores and 'Ensembl_transcriptid' in row_fields:
         logger.info("Parsing transcript-specific scores into dicts keyed by Ensembl_transcriptid")
         ht = ht.annotate(Ensembl_transcriptid=hl.str(ht.Ensembl_transcriptid))
         ht = ht.annotate(Ensembl_transcriptid=ht.Ensembl_transcriptid.split(";"))
 
-        score_fields = [f for f in ht.row if f.endswith('_score') or f == 'CADD_phred']
+        row_fields_list = list(get_row_fields(ht))
+        score_fields = [f for f in row_fields_list if f.endswith('_score') or f == 'CADD_phred']
         def _to_float_array(s):
             s_def = hl.or_else(s, "")  # empty string if missing
             arr = s_def.split(";")
@@ -284,7 +289,8 @@ def create_dbnsfp_tb(
         group_prefixes = ['gnomAD', 'ExAC', '1000Gp3', 'ESP6500', 'clinvar']
 
     for prefix in group_prefixes:
-        pref_fields = [f for f in ht.row if isinstance(f, str) and f.startswith(prefix)]
+        row_fields_list = list(get_row_fields(ht))
+        pref_fields = [f for f in row_fields_list if isinstance(f, str) and f.startswith(prefix)]
         if pref_fields:
             logger.info(f"Grouping {prefix}* fields into struct '{prefix}' ({len(pref_fields)} fields)")
             ht = ht.annotate(**{prefix: hl.struct(**{f: ht[f] for f in pref_fields})})
