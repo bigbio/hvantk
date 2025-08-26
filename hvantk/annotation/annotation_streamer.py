@@ -62,17 +62,22 @@ class AnnotationStreamer(HailDataStreamer):
         if self.annotation_data is None:
             self.logger.warning(f"Annotation data not loaded for {self.name}; skipping gene annotation")
             return chunk
-        # Find available gene field
-        gene_field = next((f for f in gene_field_candidates if f in chunk.row), None)
+        # Find available gene field using dtype.fields
+        gene_fields = getattr(chunk.row.dtype, 'fields', None)
+        if gene_fields is None:
+            gene_fields = list(chunk.row.dtype)
+        gene_field = next((f for f in gene_field_candidates if f in gene_fields), None)
         if gene_field is None:
             self.logger.warning(f"No gene field ({gene_field_candidates}) found in chunk for {self.name}; skipping")
             return chunk
         try:
             gene_expr = chunk[gene_field]
-            # Attempt lookup; Hail returns a struct with missing fields if key absent (no exception), but we still wrap for safety.
             ann_row = self.annotation_data[gene_expr]
-            # Build annotation dictionary from annotation_data row schema
-            annotate_kwargs = {fname: ann_row[fname] for fname in self.annotation_data.row}
+            # Use annotation_data row dtype fields for valid annotation names
+            ann_fields = getattr(self.annotation_data.row.dtype, 'fields', None)
+            if ann_fields is None:
+                ann_fields = list(self.annotation_data.row.dtype)
+            annotate_kwargs = {fname: ann_row[fname] for fname in ann_fields}
             annotated = chunk.annotate(**annotate_kwargs)
             return annotated
         except Exception as e:
