@@ -9,3 +9,4 @@ openai
 anthropic
 google-genai
 RestrictedPython
+pyyaml

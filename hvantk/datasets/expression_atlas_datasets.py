@@ -5,8 +5,8 @@ from typing import List, Optional, Dict
 
 logger = logging.getLogger(__name__)
 
-from hvantk.utils.file_utils import download_file
-from hvantk.utils.constants import EXPRESSION_ATLAS_BASE_URL
+from hvantk.data.file_utils import download_file
+from hvantk.core.constants import EXPRESSION_ATLAS_BASE_URL
 
 
 @dataclass

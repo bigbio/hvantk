@@ -1,14 +1,62 @@
 import pytest
 from unittest.mock import MagicMock, patch
-import hail as hl
 import os
 
 from hvantk.utils.llm_interface import LLMInterface, natural_language_query
+
+# Mark entire module as LLM/Hail – skipped in fast runs by default
+pytestmark = [pytest.mark.llm, pytest.mark.hail]
+
+
+def is_ci_environment():
+    """Detect if running in a CI environment"""
+    ci_indicators = [
+        'CI',           # Generic CI indicator
+        'GITHUB_ACTIONS',  # GitHub Actions
+        'TRAVIS',       # Travis CI
+        'CIRCLECI',     # Circle CI
+        'JENKINS_URL',  # Jenkins
+        'GITLAB_CI',    # GitLab CI
+        'BUILDKITE',    # Buildkite
+        'TF_BUILD',     # Azure DevOps
+    ]
+    return any(os.environ.get(env_var, '').lower() in ['true', '1', 'yes'] for env_var in ci_indicators)
+
+
+def should_skip_real_llm_test(test_type="LLM"):
+    """
+    Determine if a real LLM test should be skipped.
+
+    Args:
+        test_type: Type of test for clear messaging (e.g., "OpenAI", "Ollama")
+
+    Returns:
+        tuple: (should_skip: bool, skip_reason: str)
+    """
+    # Skip automatically in CI environments
+    if is_ci_environment():
+        return True, f"Skipping real {test_type} test: CI environment detected"
+
+    # Check explicit skip flag
+    if os.environ.get("SKIP_REAL_LLM_TESTS", "false").lower() == "true":
+        return True, f"Skipping real {test_type} test: SKIP_REAL_LLM_TESTS is set to true"
+
+    # For local environments, require explicit opt-in
+    if os.environ.get("RUN_REAL_LLM_TESTS", "true").lower() != "true":
+        return True, (
+            f"Skipping real {test_type} test: Set RUN_REAL_LLM_TESTS=true to run locally. "
+            "This test makes real API calls and may require API keys."
+        )
+
+    return False, ""
 
 
 @pytest.fixture
 def mock_matrix_table():
     """Create a simple mock MatrixTable for testing using coordinate representation"""
+    # Import hail lazily to avoid heavy import at collection time
+    import hail as hl
+
     # Create a simple test matrix with 10 rows (genes) and 5 columns (samples)
     n_rows, n_cols = 10, 5
 
@@ -241,19 +289,24 @@ def test_create_openai_interface(mock_openai, mock_env_get):
 
 def test_real_local_model_query(mock_matrix_table):
     """
-    Test a real query to the local deepseek-r1 model via Ollama.
+    Test a real query to the local gpt-oss:20b model via Ollama.
 
-    This test is designed to run a real query against the Ollama API using the deepseek-r1 model.
+    This test is designed to run a real query against the Ollama API using the gpt-oss:20b model.
     It uses a mocked matrix and makes an actual API call.
 
-    Note: This test requires Ollama to be running with the deepseek-r1 model loaded.
+    Note: This test requires Ollama to be running with the gpt-oss:20b model loaded.
     It will be skipped if:
+    - Running in CI environment (automatically detected)
     - SKIP_REAL_LLM_TESTS environment variable is set to "true"
+    - RUN_REAL_LLM_TESTS environment variable is set to "false"
     - Connection to Ollama API fails
+
+    To run locally: set RUN_REAL_LLM_TESTS=true and ensure Ollama is running
     """
-    # Skip in CI environments
-    if os.environ.get("SKIP_REAL_LLM_TESTS", "false").lower() == "true":
-        pytest.skip("Skipping real LLM test in CI environment or as requested by SKIP_REAL_LLM_TESTS")
+    # Check if test should be skipped
+    should_skip, skip_reason = should_skip_real_llm_test("Ollama")
+    if should_skip:
+        pytest.skip(skip_reason)
 
     # Check if Ollama is available before running the test
     import requests
@@ -263,11 +316,11 @@ def test_real_local_model_query(mock_matrix_table):
         if response.status_code != 200:
             pytest.skip(f"Skipping test: Ollama API returned status code {response.status_code}")
 
-        # Check if deepseek-r1 model is available
+        # Check if gpt-oss:20b model is available
         models = response.json().get("models", [])
         model_names = [model.get("name") for model in models]
-        if "deepseek-r1" not in model_names and "deepseek-r1:latest" not in model_names:
-            pytest.skip("Skipping test: deepseek-r1 model not available in Ollama")
+        if "gpt-oss:20b" not in model_names and "gpt-oss:20b:latest" not in model_names:
+            pytest.skip("Skipping test: gpt-oss:20b model not available in Ollama")
 
     except (requests.RequestException, ValueError) as e:
         pytest.skip(f"Skipping test: Cannot connect to Ollama API: {str(e)}")
@@ -276,20 +329,23 @@ def test_real_local_model_query(mock_matrix_table):
         # Initialize the LLM interface directly to use the local model
         llm = LLMInterface(
             provider="local",
-            model="deepseek-r1",
+            model="gpt-oss:20b",
             temperature=0.7,
             max_tokens=2048
         )
 
         # Create a query
-        query = ("Can you analyze this Hail gene expression matrix and tell me:"
-                 " 1) How many samples are there?"
-                 " 2) Suggest a visualization?")
+        query = ("I have a Hail gene expression matrix with samples and genes. Please help me create visualizations to:"
+                 " 1) Generate a heatmap of the top 20 most variable genes across all samples"
+                 " 2) Create a PCA plot to visualize sample clustering"
+                 " 3) Make a histogram showing the distribution of expression values"
+                 " 4) Plot a correlation matrix between samples"
+                 " Please provide executable Python code using matplotlib, seaborn, or plotly.")
 
         # Make the query
-        print("\n========== REAL DEEPSEEK-R1 MODEL QUERY TEST ==========")
+        print("\n========== REAL GPT-OSS:20B MODEL QUERY TEST ==========")
         print(f"Query: {query}")
-        print("Making query to local deepseek-r1 model via Ollama...")
+        print("Making query to local gpt-oss:20b model via Ollama...")
 
         response = llm.query_llm(query, mock_matrix_table)
 
@@ -322,15 +378,18 @@ def test_real_openai_model_query(mock_matrix_table):
 
     Note: This test requires an OpenAI API key to be set in the environment.
     It will be skipped if:
+    - Running in CI environment (automatically detected)
     - SKIP_REAL_LLM_TESTS environment variable is set to "true"
+    - RUN_REAL_LLM_TESTS environment variable is set to "false"
     - OpenAI API key is not available
     - Connection to OpenAI API fails
+
+    To run locally: set RUN_REAL_LLM_TESTS=true and provide OPENAI_API_KEY
     """
-    # Skip in CI environments
-    if os.environ.get("SKIP_REAL_LLM_TESTS", "false").lower() == "true":
-        pytest.skip(
-            "Skipping real LLM test in CI environment or as requested by SKIP_REAL_LLM_TESTS"
-        )
+    # Check if test should be skipped
+    should_skip, skip_reason = should_skip_real_llm_test("OpenAI")
+    if should_skip:
+        pytest.skip(skip_reason)
 
     # Check if OpenAI API key is available
     api_key = os.environ.get("OPENAI_API_KEY")
@@ -352,9 +411,7 @@ def test_real_openai_model_query(mock_matrix_table):
 
         # Create a query
         query = (
-            "Can you analyze this Hail gene expression matrix and tell me:"
-            " 1) How many samples are there?"
-            " 2) Suggest a visualization?"
+            "How to get the top 5 expressed genes per samples in this Hail gene expression matrix?"
         )
 
         # Make the query

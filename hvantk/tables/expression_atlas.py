@@ -2,6 +2,11 @@ import pandas as pd
 import hail as hl
 import os
 
+__all__ = [
+    "convert_sdrf_to_hail_table",
+    "create_mt_from_expression_atlas_matrix",
+]
+
 
 def _import_sdrf(sdrf_file: str, **kwargs) -> pd.DataFrame:
     """

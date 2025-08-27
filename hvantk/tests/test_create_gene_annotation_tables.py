@@ -2,13 +2,16 @@ import pytest
 import shutil
 from pathlib import Path
 
-from hvantk.utils.make_tables import (
+from hvantk.tables.table_builders import (
     create_gnomad_constraint_gene_metrics_tb,
     create_interactome_tb,
     create_clinvar_tb,
     create_gevir_tb,
     create_ensembl_gene_tb,
 )
+
+# Mark as Hail-dependent and slow
+pytestmark = [pytest.mark.hail, pytest.mark.slow]
 
 # Test data directory
 TEST_DIR = Path(__file__).parent / "testdata"

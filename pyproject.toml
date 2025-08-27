@@ -12,6 +12,9 @@ keywords = [
     "data-analysis",
     "big data"
 ]
+include = [
+  { path = "hvantk/resources/catalog.yaml", format = ["sdist", "wheel"] }
+]
 
 [tool.poetry.dependencies]
 python = ">=3.10.0"
@@ -20,6 +23,7 @@ click = "*"
 requests = "*"
 tqdm = "*"
 pandas = "^1.5"
+PyYAML = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.0"
@@ -35,4 +39,3 @@ LICENSE = "https://github.com/bigbio/hvantk/blob/main/LICENSE"
 
 [tool.poetry.scripts]
 hvantk = "hvantk.hvantk:main"
-

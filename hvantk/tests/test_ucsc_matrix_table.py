@@ -4,11 +4,14 @@ from pathlib import Path
 
 import pytest
 
-from hvantk.utils.constants import UCSC_CELL_ID_COLUMN, UCSC_GENE_COLUMN
-from hvantk.htables.ucsc import (
+from hvantk.core.constants import UCSC_CELL_ID_COLUMN, UCSC_GENE_COLUMN
+from hvantk.tables.ucsc import (
     convert_ucsc_metadata_to_hail_table,
     create_mt_from_ucsc_expression_matrix,
 )
+
+# Mark as Hail-dependent and slow
+pytestmark = [pytest.mark.hail, pytest.mark.slow]
 
 # Test data directory
 TESTDATA_DIR = Path(__file__).parent / "testdata" / "raw" / "ucsc"

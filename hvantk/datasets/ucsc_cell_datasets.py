@@ -5,12 +5,12 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from hvantk.utils.constants import (
+from hvantk.core.constants import (
     UCSC_CELL_BROWSER_BASE_URL,
     EXPRESSION_MATRIX_FILE_NAME,
     METADATA_FILE_NAME,
 )
-from hvantk.utils.file_utils import download_file
+from hvantk.data.file_utils import download_file
 
 
 @dataclass
@@ -113,7 +113,7 @@ class UCSCDataset:
                 out_dir: Directory where the file will be saved
 
             Returns:
-                Path to the downloaded file
+                str: Local filesystem path to the downloaded expression matrix file
 
             Raises:
                 ValueError: If the download fails
@@ -138,7 +138,7 @@ class UCSCDataset:
             out_dir: Directory where the file will be saved
 
         Returns:
-            Path to the downloaded file
+            str: Local filesystem path to the downloaded metadata file
 
         Raises:
             ValueError: If the download fails
