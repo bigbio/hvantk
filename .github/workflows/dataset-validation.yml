@@ -1,16 +1,14 @@
-# File: .github/workflows/dataset-validation.yml
 name: Dataset Validation Registry Update
 
 on:
   schedule:
-    # Run daily at 2 AM UTC
-    - cron: '0 2 * * *'
+    - cron: '0 2 * * *' # daily at 02:00 UTC
   workflow_dispatch:
     inputs:
       force_revalidate:
         description: 'Force revalidation of all datasets'
         required: false
-        default: false          # boolean, not a string
+        default: false
         type: boolean
       dataset_filter:
         description: 'Specific dataset to validate (leave empty for all)'
@@ -21,12 +19,12 @@ on:
         required: false
         default: '50'
         type: string
-  pull_request: {}              # Enables PR comment step below
+  pull_request: {}
 
 permissions:
-  contents: write               # needed for gh-pages push and artifact upload
-  issues: write                 # needed to open failure issues
-  pull-requests: write          # needed to comment on PRs
+  contents: write
+  issues: write
+  pull-requests: write
 
 concurrency:
   group: dataset-validation-${{ github.ref }}
@@ -48,12 +46,14 @@ jobs:
           cache: 'pip'
 
       - name: Install system dependencies
+        shell: bash
         run: |
           set -euo pipefail
           sudo apt-get update
           sudo apt-get install -y tabix bgzip
 
       - name: Install Python dependencies
+        shell: bash
         run: |
           set -euo pipefail
           python -m pip install --upgrade pip
@@ -61,6 +61,7 @@ jobs:
           pip install -e .
 
       - name: Create validation directories
+        shell: bash
         run: |
           set -euo pipefail
           mkdir -p dataset_validation_results/{downloads,samples,logs}
@@ -69,6 +70,7 @@ jobs:
       - name: Run UCSC dataset validation
         id: ucsc_validation
         continue-on-error: true
+        shell: bash
         run: |
           set -euo pipefail
           echo "🔬 Validating UCSC datasets..."
@@ -79,11 +81,13 @@ jobs:
             --max-datasets "${{ github.event.inputs.max_datasets || '50' }}" \
             --force-revalidate ${{ github.event.inputs.force_revalidate || false }} \
             --verbose 2>&1 | tee dataset_validation_results/logs/ucsc_validation.log
-          test ${PIPESTATUS[0]} -eq 0
+          # Ensure failure bubbles despite tee (read PIPESTATUS immediately)
+          code="${PIPESTATUS[0]}"; exit "$code"
 
       - name: Run Expression Atlas dataset validation
         id: atlas_validation
         continue-on-error: true
+        shell: bash
         run: |
           set -euo pipefail
           echo "🧪 Validating Expression Atlas datasets..."
@@ -94,9 +98,10 @@ jobs:
             --max-datasets "${{ github.event.inputs.max_datasets || '50' }}" \
             --force-revalidate ${{ github.event.inputs.force_revalidate || false }} \
             --verbose 2>&1 | tee dataset_validation_results/logs/atlas_validation.log
-          test ${PIPESTATUS[0]} -eq 0
+          code="${PIPESTATUS[0]}"; exit "$code"
 
       - name: Generate web registry and API endpoints
+        shell: bash
         run: |
           set -euo pipefail
           echo "🌐 Generating complete registry interface..."
@@ -105,6 +110,7 @@ jobs:
             --output ./docs/registry
 
       - name: Create status badge
+        shell: bash
         run: |
           set -euo pipefail
           echo "🏷️ Creating status badge..."
@@ -115,7 +121,7 @@ sys.path.insert(0, str(Path.cwd()))
 from hvantk.register import RegistryManager
 
 manager = RegistryManager("./dataset_validation_results/validation_registry.json")
-stats = manager.get_registry_statistics()
+stats = manager.get_registry_statistics() if manager else {}
 
 rate = stats.get("success_rate", 0)
 successful = stats.get("successful", 0)
@@ -148,6 +154,7 @@ PY
 
       - name: Generate validation summary
         if: always()
+        shell: bash
         run: |
           set -euo pipefail
           echo "📊 Generating validation summary..."
@@ -192,9 +199,8 @@ if failed_datasets:
     lines.append("")
     lines.append(f"### Recent Failures ({len(failed_datasets)})")
     for failure in failed_datasets:
-        err = (failure.get("error_message") or "")[:100]
-        if len(failure.get("error_message") or "") > 100:
-            err += "..."
+        msg = (failure.get("error_message") or "")
+        err = (msg[:100] + "...") if len(msg) > 100 else msg
         lines.append(f"- **{failure.get('dataset_id','unknown')}** ({failure.get('status','unknown')}): {err}")
 
 with open("validation_summary.md", "w") as f:
@@ -243,4 +249,4 @@ PY
 
 This issue was automatically created by the validation pipeline.`,
               labels: ['validation', 'automation', 'bug']
-            });
+            })
