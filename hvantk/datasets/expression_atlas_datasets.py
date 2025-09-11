@@ -110,6 +110,22 @@ class ExpressionAtlasDataset:
         """
         return self.download_file("sdrf", out_dir)
 
+    def download_expression_file(self, out_dir: str, file_name: str) -> str:
+        """Download a specific expression file by name."""
+        url_download = f"{EXPRESSION_ATLAS_BASE_URL}/{self.accession}/download/{file_name}"
+        try:
+            return download_file(url=url_download, out_dir=out_dir, file_name=file_name)
+        except Exception as e:
+            raise ValueError(f"Failed to download {file_name} for {self.accession}: {str(e)}") from e
+
+    def download_sdrf_file(self, out_dir: str, file_name: str) -> str:
+        """Download a specific SDRF file by name."""
+        url_download = f"{EXPRESSION_ATLAS_BASE_URL}/{self.accession}/download/{file_name}"
+        try:
+            return download_file(url=url_download, out_dir=out_dir, file_name=file_name)
+        except Exception as e:
+            raise ValueError(f"Failed to download {file_name} for {self.accession}: {str(e)}") from e
+
 
 @dataclass
 class ExpressionAtlasDatasetCollection:
@@ -149,84 +165,90 @@ class ExpressionAtlasDatasetCollection:
                 data = json.load(file)
 
             if not isinstance(data, list):
-                raise ValueError("The JSON file should contain a list of datasets")
+                raise ValueError(f"JSON file {json_path} must contain a list of datasets")
 
-            if not data:
-                raise ValueError("The dataset list cannot be empty")
+            datasets = []
+            for dataset_dict in data:
+                datasets.append(ExpressionAtlasDataset(**dataset_dict))
 
-            datasets = [ExpressionAtlasDataset(**ds) for ds in data]
+            logger.info(f"Loaded {len(datasets)} Expression Atlas datasets from {json_path}")
             return cls(datasets=datasets)
-            
+
+        except FileNotFoundError:
+            raise ValueError(f"JSON file not found: {json_path}")
         except json.JSONDecodeError as e:
-            logger.exception(f"Invalid JSON format: {str(e)}")
-            raise ValueError(f"Invalid JSON format: {str(e)}") from e
-        except OSError as e:
-            logger.exception(f"Could not read file {json_path}: {str(e)}")
-            raise ValueError(f"Could not read file {json_path}: {str(e)}") from e
-        except (KeyError, TypeError) as e:
-            logger.exception(f"Invalid dataset format in JSON: {str(e)}")
-            raise ValueError(f"Invalid dataset format in JSON: {str(e)}") from e
+            raise ValueError(f"Invalid JSON in file {json_path}: {str(e)}")
+        except Exception as e:
+            raise ValueError(f"Error loading datasets from {json_path}: {str(e)}")
 
-    def get_dataset_by_accession(self, accession: str) -> Optional[ExpressionAtlasDataset]:
+    def filter_by_type(self, dataset_type: str) -> "ExpressionAtlasDatasetCollection":
         """
-        Returns the dataset with the specified accession ID, or None if not found.
+        Filter datasets by type.
 
         Args:
-            accession: The accession ID of the dataset to search for.
+            dataset_type: Type to filter by (e.g., "RNA-Seq mRNA baseline")
 
         Returns:
-            The ExpressionAtlasDataset instance matching the given accession, or None if no match exists.
+            New collection containing only datasets of the specified type
         """
-        logger.debug(f"Getting dataset by accession: {accession}")
+        filtered_datasets = [ds for ds in self.datasets if ds.type == dataset_type]
+        return ExpressionAtlasDatasetCollection(datasets=filtered_datasets)
+
+    def get_by_accession(self, accession: str) -> Optional[ExpressionAtlasDataset]:
+        """
+        Get a dataset by its accession ID.
+
+        Args:
+            accession: The accession ID to search for
+
+        Returns:
+            The dataset with the matching accession, or None if not found
+        """
+        return next((ds for ds in self.datasets if ds.accession == accession), None)
+
+    def summary(self) -> str:
+        """
+        Returns a formatted summary of the collection.
+
+        Returns:
+            str: A human-readable summary of the collection
+        """
+        if not self.datasets:
+            return "Empty Expression Atlas dataset collection"
+
+        type_counts = {}
         for dataset in self.datasets:
-            if dataset.accession == accession:
-                logger.debug(f"Dataset found: {dataset.accession}")
-                return dataset
-        logger.debug(f"Dataset not found: {accession}")
-        return None
+            type_counts[dataset.type] = type_counts.get(dataset.type, 0) + 1
 
-    def list_dataset_accessions(self) -> List[str]:
-        """
-        Returns a list of all dataset accession IDs in the collection.
-
-        Returns:
-            List[str]: The accession IDs of all datasets.
-        """
-        logger.debug("Listing dataset accessions")
-        accessions = [dataset.accession for dataset in self.datasets]
-        logger.debug(f"Dataset accessions: {accessions}")
-        return accessions
-
-    def filter_by_type(self, dataset_type: str) -> List[ExpressionAtlasDataset]:
-        """
-        Filters the collection to include only datasets of the specified type.
-
-        Args:
-            dataset_type: The type of datasets to include
-
-        Returns:
-            List[ExpressionAtlasDataset]: Filtered list of datasets
-        """
-        return [dataset for dataset in self.datasets if dataset.type == dataset_type]
-
-    def filter_by_organism(self, organism: str) -> List[ExpressionAtlasDataset]:
-        """
-        Filters the collection to include only datasets related to the specified organism.
-
-        Args:
-            organism: Name of the organism to filter by (case-insensitive partial match)
-
-        Returns:
-            List[ExpressionAtlasDataset]: Filtered list of datasets
-
-        Raises:
-            ValueError: If the organism parameter is None or empty
-        """
-        if not organism:
-            raise ValueError("Organism parameter cannot be None or empty")
-
-        organism_lower = organism.lower()
-        return [
-            dataset for dataset in self.datasets 
-            if organism_lower in dataset.title.lower() or organism_lower in (dataset.description or "").lower()
+        summary_lines = [
+            f"Expression Atlas Dataset Collection",
+            f"Total datasets: {len(self.datasets)}",
+            "Dataset types:",
         ]
+
+        for dtype, count in type_counts.items():
+            summary_lines.append(f"  {dtype}: {count}")
+
+        return "\n".join(summary_lines)
+
+
+def load_expression_atlas_datasets(json_path: Optional[str] = None) -> List[ExpressionAtlasDataset]:
+    """
+    Load Expression Atlas datasets from JSON file.
+
+    Args:
+        json_path: Path to JSON file. If None, uses default resource file.
+
+    Returns:
+        List of ExpressionAtlasDataset objects
+    """
+    if json_path is None:
+        import os
+        json_path = os.path.join(
+            os.path.dirname(__file__),
+            "..", "resources", "expression_atlas.json"
+        )
+
+    collection = ExpressionAtlasDatasetCollection.from_json(json_path)
+    return collection.datasets
+
