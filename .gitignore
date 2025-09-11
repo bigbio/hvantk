@@ -175,5 +175,16 @@ validation.log
 validation_report.txt
 validation_summary.txt
 
-# Hail temporary files
+# HVANTK-specific ignores
+demo_registry_output/
+validation_test/
+real_registry_output/
+real_test_output/
+workflow_test_output/
+*.log
 hail-*.log
+
+# Temporary development files
+temp_*
+test_*_output/
+local_test_*
