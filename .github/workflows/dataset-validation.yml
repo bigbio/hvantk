@@ -158,7 +158,7 @@ jobs:
                 body: summary
               });
             } catch (error) {
-              core.warning(`Could not read validation summary: ${error.message}`);
+              core.warning('Could not read validation summary: ' + error.message);
             }
 
       - name: Create validation failure issue
@@ -174,13 +174,8 @@ jobs:
               core.warning('Could not read validation summary');
             }
             
-            const title = `Dataset Validation Failed - ${new Date().toISOString().split('T')[0]}`;
-            const body = `${summary}
-
-**Workflow Run:** ${context.payload.repository.html_url}/actions/runs/${context.runId}
-**Logs:** Check the workflow run for detailed error logs.
-
-This issue was automatically created by the validation pipeline.`;
+            const title = 'Dataset Validation Failed - ' + new Date().toISOString().split('T')[0];
+            const body = summary + '\n\n**Workflow Run:** ' + context.payload.repository.html_url + '/actions/runs/' + context.runId + '\n**Logs:** Check the workflow run for detailed error logs.\n\nThis issue was automatically created by the validation pipeline.';
 
             await github.rest.issues.create({
               owner: context.repo.owner,
