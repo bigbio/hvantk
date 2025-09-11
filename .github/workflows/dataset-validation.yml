@@ -101,13 +101,15 @@ stats = manager.get_registry_statistics()
 
 # Create status badge data
 rate = stats['success_rate']
-print(f'Success Rate: {rate}% ({stats[\"successful\"]}/{stats[\"total_datasets\"]})')
+successful = stats['successful']
+total = stats['total_datasets']
+print(f'Success Rate: {rate}% ({successful}/{total})')
 
 # Write status for badge
 with open('./docs/registry/status.txt', 'w') as f:
-    f.write(f'{rate}')
+    f.write(str(rate))
 "
-        
+
     - name: Upload validation artifacts
       uses: actions/upload-artifact@v3
       if: always()
