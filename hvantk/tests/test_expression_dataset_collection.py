@@ -68,7 +68,7 @@ def test_from_json_existing_file():
 
 
 def test_get_dataset_by_accession():
-    """Test the get_dataset_by_accession method."""
+    """Test the get_by_accession method."""
     # Create a collection with test datasets
     dataset1 = ExpressionAtlasDataset(
         title="Dataset 1", accession="E-MTAB-1234", type="RNA-Seq mRNA baseline"
@@ -79,12 +79,12 @@ def test_get_dataset_by_accession():
     collection = ExpressionAtlasDatasetCollection(datasets=[dataset1, dataset2])
 
     # Test finding an existing dataset
-    found_dataset = collection.get_dataset_by_accession("E-MTAB-1234")
+    found_dataset = collection.get_by_accession("E-MTAB-1234")
     assert found_dataset is not None
     assert found_dataset.title == "Dataset 1"
 
     # Test finding a non-existent dataset
-    not_found_dataset = collection.get_dataset_by_accession("non-existent")
+    not_found_dataset = collection.get_by_accession("non-existent")
     assert not_found_dataset is None
 
 

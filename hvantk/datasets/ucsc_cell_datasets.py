@@ -216,6 +216,15 @@ class UCSCDataSetCollection:
         """
         return next((ds for ds in self.datasets if ds.name == name), None)
 
+    def list_dataset_names(self) -> List[str]:
+        """
+        List all dataset names in the collection.
+
+        Returns:
+            List of names for all datasets in the collection
+        """
+        return [dataset.name for dataset in self.datasets]
+
     def filter_by_organism(self, organism: str) -> "UCSCDataSetCollection":
         """
         Filter datasets by organism.

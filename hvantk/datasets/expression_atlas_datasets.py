@@ -206,6 +206,15 @@ class ExpressionAtlasDatasetCollection:
         """
         return next((ds for ds in self.datasets if ds.accession == accession), None)
 
+    def list_dataset_accessions(self) -> List[str]:
+        """
+        List all dataset accessions in the collection.
+
+        Returns:
+            List of accession IDs for all datasets in the collection
+        """
+        return [dataset.accession for dataset in self.datasets]
+
     def summary(self) -> str:
         """
         Returns a formatted summary of the collection.
@@ -251,4 +260,3 @@ def load_expression_atlas_datasets(json_path: Optional[str] = None) -> List[Expr
 
     collection = ExpressionAtlasDatasetCollection.from_json(json_path)
     return collection.datasets
-
