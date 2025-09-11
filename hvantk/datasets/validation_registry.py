@@ -380,10 +380,10 @@ class DatasetValidationRegistry:
                     else:
                         output_file = output_file + '.gz'
 
-                # Create block-compressed file using bgzip
+                # Create block-compressed file using bgzip with fallback to gzip
                 lines = _read_compressed_lines(input_file, num_lines)
                 if lines:
-                    return _write_bgzip_file(lines, output_file)
+                    return _write_compressed_file(lines, output_file, use_bgzip=True)
                 else:
                     logger.error(f"No lines read from {input_file}")
                     return False
@@ -396,7 +396,7 @@ class DatasetValidationRegistry:
                         output_file = output_file + '.gz'
 
                 lines = _read_uncompressed_lines(input_file, num_lines)
-                return _write_bgzip_file(lines, output_file)
+                return _write_compressed_file(lines, output_file, use_bgzip=True)
 
         except Exception as e:
             logger.error(f"Error creating sample file: {e}")
