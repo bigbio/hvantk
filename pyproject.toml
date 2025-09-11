@@ -25,7 +25,7 @@ tqdm = "*"
 pandas = "^1.5"
 PyYAML = "*"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 pytest = "^7.0"
 flake8 = "^4.0"
 
