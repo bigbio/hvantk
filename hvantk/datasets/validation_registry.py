@@ -356,7 +356,7 @@ class DatasetValidationRegistry:
 
         return failed_datasets
 
-    def create_sample_file(self, input_file: str, output_file: str, num_lines: int = 100) -> bool:
+    def create_sample_file(self, input_file: str, output_file: str, num_lines: int = 100) -> tuple[bool, str]:
         """
         Create a sample file with the first N lines using native Python.
         Creates block-compressed (.gz) files when needed for Hail compatibility.
@@ -367,66 +367,76 @@ class DatasetValidationRegistry:
             num_lines: Number of lines to extract (default: 100)
 
         Returns:
-            bool: True if successful, False otherwise
+            tuple[bool, str]: (success status, actual output file path)
         """
         try:
+            actual_output_file = output_file
+
             # Handle compressed files
             if input_file.endswith('.gz'):
                 # For compressed input, create block-compressed output for Hail
                 # bgzip requires .gz extension, so ensure we use that
-                if not output_file.endswith('.gz'):
-                    if output_file.endswith('.bgz'):
-                        output_file = output_file[:-4] + '.gz'
+                if not actual_output_file.endswith('.gz'):
+                    if actual_output_file.endswith('.bgz'):
+                        actual_output_file = actual_output_file[:-4] + '.gz'
                     else:
-                        output_file = output_file + '.gz'
+                        actual_output_file = actual_output_file + '.gz'
 
                 # Create block-compressed file using bgzip with fallback to gzip
                 lines = _read_compressed_lines(input_file, num_lines)
                 if lines:
-                    return _write_compressed_file(lines, output_file, use_bgzip=True)
+                    success = _write_compressed_file(lines, actual_output_file, use_bgzip=True)
+                    return success, actual_output_file
                 else:
                     logger.error(f"No lines read from {input_file}")
-                    return False
+                    return False, actual_output_file
             else:
                 # For uncompressed input, create block-compressed output for consistency
-                if not output_file.endswith('.gz'):
-                    if output_file.endswith('.bgz'):
-                        output_file = output_file[:-4] + '.gz'
+                if not actual_output_file.endswith('.gz'):
+                    if actual_output_file.endswith('.bgz'):
+                        actual_output_file = actual_output_file[:-4] + '.gz'
                     else:
-                        output_file = output_file + '.gz'
+                        actual_output_file = actual_output_file + '.gz'
 
                 lines = _read_uncompressed_lines(input_file, num_lines)
-                return _write_compressed_file(lines, output_file, use_bgzip=True)
+                success = _write_compressed_file(lines, actual_output_file, use_bgzip=True)
+                return success, actual_output_file
 
         except Exception as e:
             logger.error(f"Error creating sample file: {e}")
             # Fallback to regular compression
             return self._create_sample_file_fallback(input_file, output_file, num_lines)
 
-    def _create_sample_file_fallback(self, input_file: str, output_file: str, num_lines: int = 100) -> bool:
+    def _create_sample_file_fallback(self, input_file: str, output_file: str, num_lines: int = 100) -> tuple[bool, str]:
         """
         Fallback method to create sample files using regular gzip compression.
         Used when bgzip is not available.
+
+        Returns:
+            tuple[bool, str]: (success status, actual output file path)
         """
         try:
             logger.warning("bgzip not available, falling back to regular gzip compression")
 
             # Ensure output has .gz extension for fallback
-            if output_file.endswith('.bgz'):
-                output_file = output_file[:-4] + '.gz'
-            elif not output_file.endswith('.gz'):
-                output_file = output_file + '.gz'
+            actual_output_file = output_file
+            if actual_output_file.endswith('.bgz'):
+                actual_output_file = actual_output_file[:-4] + '.gz'
+            elif not actual_output_file.endswith('.gz'):
+                actual_output_file = actual_output_file + '.gz'
 
             if input_file.endswith('.gz'):
                 lines = _read_compressed_lines(input_file, num_lines)
-                return _write_compressed_file(lines, output_file)
+                success = _write_compressed_file(lines, actual_output_file)
+                return success, actual_output_file
             else:
                 lines = _read_uncompressed_lines(input_file, num_lines)
-                return _write_compressed_file(lines, output_file)
+                success = _write_compressed_file(lines, actual_output_file)
+                return success, actual_output_file
 
         except Exception as e:
             logger.error(f"Fallback compression failed: {e}")
-            return False
+            return False, output_file
 
     def validate_file_header(self, file_path: str, expected_columns: Optional[List[str]] = None) -> Dict[str, Any]:
         """
@@ -590,7 +600,7 @@ class DatasetValidationRegistry:
             result: ValidationResult from Tier 1
             files: Dictionary mapping file types to file paths
             sample_dir: Directory to store sample files
-            sample_lines: Number of lines for sample files
+            sample_lines: Number of lines for sample files (metadata uses full file)
 
         Returns:
             Updated ValidationResult with Tier 2 results
@@ -615,8 +625,17 @@ class DatasetValidationRegistry:
 
                     sample_path = os.path.join(sample_dir, sample_filename)
 
-                    if self.create_sample_file(file_path, sample_path, sample_lines):
-                        sample_files[file_type] = sample_path
+                    # For metadata files, use the complete file to ensure cell ID overlap
+                    # For expression matrices, use sample to keep validation fast
+                    if file_type == "metadata":
+                        logger.info(f"Using complete metadata file for {result.dataset_id} to ensure cell ID overlap")
+                        # Copy the complete metadata file instead of sampling
+                        success, actual_output_path = self._copy_complete_file(file_path, sample_path)
+                    else:
+                        success, actual_output_path = self.create_sample_file(file_path, sample_path, sample_lines)
+
+                    if success:
+                        sample_files[file_type] = actual_output_path  # Store the actual path with .gz if created
                     else:
                         raise Exception(f"Failed to create sample file for {file_type}")
 
@@ -632,7 +651,8 @@ class DatasetValidationRegistry:
                 result.tier2_details = {
                     "sample_files_created": True,
                     "matrix_creation_success": True,
-                    "sample_lines": sample_lines
+                    "sample_lines": sample_lines,
+                    "metadata_complete": True  # Indicate we used complete metadata
                 }
                 logger.info(f"Tier 2 validation passed for {result.dataset_id}")
             else:
@@ -997,3 +1017,99 @@ class DatasetValidationRegistry:
             logger.error(f"Expression Atlas simple validation failed: {e}")
             return False
 
+    def _copy_complete_file(self, input_file: str, output_file: str) -> tuple[bool, str]:
+        """
+        Copy a complete file (compressed or uncompressed) to the output location.
+        Ensures proper compression format for Hail compatibility.
+
+        Args:
+            input_file: Path to the input file
+            output_file: Path to the output file
+
+        Returns:
+            tuple[bool, str]: (success status, actual output file path)
+        """
+        try:
+            actual_output_file = output_file
+
+            # Ensure output has .gz extension for Hail compatibility
+            if not actual_output_file.endswith('.gz'):
+                if actual_output_file.endswith('.bgz'):
+                    actual_output_file = actual_output_file[:-4] + '.gz'
+                else:
+                    actual_output_file = actual_output_file + '.gz'
+
+            # Handle compressed input files
+            if input_file.endswith('.gz'):
+                # For compressed input, we can copy directly or re-compress with bgzip
+                if shutil.which('bgzip'):
+                    try:
+                        # Use bgzip to ensure block compression compatibility
+                        # First decompress, then recompress with bgzip
+                        temp_file = actual_output_file + '.tmp'
+
+                        # Decompress to temp file
+                        with gzip.open(input_file, 'rt', encoding='utf-8') as f_in:
+                            with open(temp_file, 'w', encoding='utf-8') as f_out:
+                                shutil.copyfileobj(f_in, f_out)
+
+                        # Compress with bgzip
+                        with open(actual_output_file, 'wb') as output_handle:
+                            result = subprocess.run(
+                                ['bgzip', '-c', temp_file],
+                                stdout=output_handle,
+                                stderr=subprocess.PIPE,
+                                check=True
+                            )
+
+                        # Clean up temp file
+                        os.remove(temp_file)
+
+                        logger.info(f"Successfully copied complete file {input_file} to {actual_output_file} using bgzip")
+                        return True, actual_output_file
+
+                    except Exception as e:
+                        logger.warning(f"bgzip copy failed, falling back to gzip: {e}")
+                        # Clean up temp file if it exists
+                        temp_file = actual_output_file + '.tmp'
+                        if os.path.exists(temp_file):
+                            os.remove(temp_file)
+
+                # Fallback: copy with gzip
+                with gzip.open(input_file, 'rt', encoding='utf-8') as f_in:
+                    with gzip.open(actual_output_file, 'wt', encoding='utf-8') as f_out:
+                        shutil.copyfileobj(f_in, f_out)
+
+                logger.info(f"Successfully copied complete file {input_file} to {actual_output_file} using gzip")
+                return True, actual_output_file
+
+            else:
+                # For uncompressed input, compress the output
+                if shutil.which('bgzip'):
+                    try:
+                        # Use bgzip for block compression
+                        with open(actual_output_file, 'wb') as output_handle:
+                            result = subprocess.run(
+                                ['bgzip', '-c', input_file],
+                                stdout=output_handle,
+                                stderr=subprocess.PIPE,
+                                check=True
+                            )
+
+                        logger.info(f"Successfully copied and compressed complete file {input_file} to {actual_output_file} using bgzip")
+                        return True, actual_output_file
+
+                    except Exception as e:
+                        logger.warning(f"bgzip compression failed, falling back to gzip: {e}")
+
+                # Fallback: compress with gzip
+                with open(input_file, 'r', encoding='utf-8') as f_in:
+                    with gzip.open(actual_output_file, 'wt', encoding='utf-8') as f_out:
+                        shutil.copyfileobj(f_in, f_out)
+
+                logger.info(f"Successfully copied and compressed complete file {input_file} to {actual_output_file} using gzip")
+                return True, actual_output_file
+
+        except Exception as e:
+            logger.error(f"Failed to copy complete file {input_file} to {output_file}: {e}")
+            return False, output_file
