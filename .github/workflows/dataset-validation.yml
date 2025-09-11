@@ -114,24 +114,17 @@ jobs:
         run: |
           set -euo pipefail
           echo "🏷️ Creating status badge..."
-          python - <<'PY'
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path.cwd()))
-from hvantk.register import RegistryManager
+          chmod +x scripts/create_status_badge.py
+          python scripts/create_status_badge.py
 
-manager = RegistryManager("./dataset_validation_results/validation_registry.json")
-stats = manager.get_registry_statistics() if manager else {}
-
-rate = stats.get("success_rate", 0)
-successful = stats.get("successful", 0)
-total = stats.get("total_datasets", 0)
-print(f"Success Rate: {rate}% ({successful}/{total})")
-
-Path("./docs/registry").mkdir(parents=True, exist_ok=True)
-with open("./docs/registry/status.txt", "w") as f:
-    f.write(str(rate))
-PY
+      - name: Generate validation summary
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "📊 Generating validation summary..."
+          chmod +x scripts/generate_validation_summary.py
+          python scripts/generate_validation_summary.py
 
       - name: Upload validation artifacts
         if: always()
@@ -149,64 +142,6 @@ PY
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs/registry
-          publish_branch: gh-pages
-          commit_message: "🚀 Update dataset validation registry - ${{ github.run_number }}"
-
-      - name: Generate validation summary
-        if: always()
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "📊 Generating validation summary..."
-          python - <<'PY'
-import sys, os
-from pathlib import Path
-from datetime import datetime
-sys.path.insert(0, str(Path.cwd()))
-try:
-    from hvantk.register import RegistryManager
-    manager = RegistryManager("./dataset_validation_results/validation_registry.json")
-    stats = manager.get_registry_statistics()
-    failed_datasets = manager.get_failed_datasets(5)
-except Exception:
-    stats = {"total_datasets": 0, "successful": 0, "failed": 0, "success_rate": 0.0}
-    failed_datasets = []
-
-run_id = os.environ.get("GITHUB_RUN_NUMBER", "unknown")
-timestamp = datetime.utcnow().isoformat() + "Z"
-
-lines = []
-lines.append("## Dataset Validation Summary 📊")
-lines.append("")
-lines.append(f"**Run ID:** {run_id}")
-lines.append(f"**Timestamp:** {timestamp}")
-lines.append("")
-lines.append("### Overall Results")
-lines.append(f"- 📈 **Total Datasets:** {stats.get('total_datasets', 0)}")
-lines.append(f"- ✅ **Successful:** {stats.get('successful', 0)} ({stats.get('success_rate', 0)}%)")
-lines.append(f"- ❌ **Failed:** {stats.get('failed', 0)}")
-
-by_status = stats.get("by_status") or {}
-if by_status:
-    lines.append("")
-    lines.append("### Status Breakdown")
-    for status, count in sorted(by_status.items()):
-        emoji = "✅" if "passed" in status else ("❌" if "failed" in status else "⚪")
-        status_title = status.replace("_", " ").title()
-        lines.append(f"- {emoji} **{status_title}:** {count}")
-
-if failed_datasets:
-    lines.append("")
-    lines.append(f"### Recent Failures ({len(failed_datasets)})")
-    for failure in failed_datasets:
-        msg = (failure.get("error_message") or "")
-        err = (msg[:100] + "...") if len(msg) > 100 else msg
-        lines.append(f"- **{failure.get('dataset_id','unknown')}** ({failure.get('status','unknown')}): {err}")
-
-with open("validation_summary.md", "w") as f:
-    f.write("\n".join(lines))
-print("✅ Validation summary generated")
-PY
 
       - name: Comment validation summary on PR
         if: github.event_name == 'pull_request'
@@ -238,15 +173,19 @@ PY
             } catch (error) {
               core.warning('Could not read validation summary');
             }
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: `Dataset Validation Failed - ${new Date().toISOString().split('T')[0]}`,
-              body: `${summary}
+            
+            const title = `Dataset Validation Failed - ${new Date().toISOString().split('T')[0]}`;
+            const body = `${summary}
 
 **Workflow Run:** ${context.payload.repository.html_url}/actions/runs/${context.runId}
 **Logs:** Check the workflow run for detailed error logs.
 
-This issue was automatically created by the validation pipeline.`,
+This issue was automatically created by the validation pipeline.`;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
               labels: ['validation', 'automation', 'bug']
-            })
+            });
