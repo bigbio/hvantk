@@ -165,3 +165,15 @@ cython_debug/
 /testscripts
 .DS_Store
 
+# HVANTK Dataset Validation Framework - Temporary Files
+dataset_validation/
+debug_download/
+test_*.gz
+test_*.txt
+test_*.bgz
+validation.log
+validation_report.txt
+validation_summary.txt
+
+# Hail temporary files
+hail-*.log
