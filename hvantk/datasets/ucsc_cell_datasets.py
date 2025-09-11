@@ -157,127 +157,121 @@ class UCSCDataset:
 @dataclass
 class UCSCDataSetCollection:
     """
-    Represents a collection of UCSC cell datasets.
+    Represents a collection of UCSC Cell Browser datasets.
 
-     This class manages a group of related UCSC datasets, providing methods to
-     access, filter, and summarize the collection. It can be instantiated from
-     a JSON file containing dataset metadata.
+    This class manages a group of UCSC datasets, providing methods to
+    access, filter, and summarize the collection.
 
-     Attributes:
-         shortLabel: Short descriptive label for the collection
-         abstract: Description of the dataset collection
-         inDir: Input directory information
-         name: Unique identifier for the collection
-         datasets: List of UCSCDataset objects in this collection
+    Attributes:
+        datasets: List of UCSCDataset objects in this collection
     """
 
-    shortLabel: str
-    abstract: str
-    inDir: str
-    name: str
     datasets: List[UCSCDataset]
 
     @classmethod
     def from_json(cls, json_path: str) -> "UCSCDataSetCollection":
         """
-        Loads a UCSC dataset collection and its datasets from a JSON file.
-
-        Reads the specified JSON file, validates required fields, and constructs a UCSCDataSetCollection instance with its datasets. Raises a ValueError if the file is missing required keys, contains invalid data, or cannot be read.
+        Loads a UCSC dataset collection from a JSON file.
 
         Args:
-            json_path: Path to the JSON file containing the collection metadata and datasets.
+            json_path: Path to the JSON file containing the datasets.
 
         Returns:
             An instance of UCSCDataSetCollection populated with datasets from the JSON file.
 
         Raises:
-            ValueError: If the JSON file is invalid, missing required fields, or cannot be read.
+            ValueError: If the JSON file is invalid or cannot be read.
         """
         logger.info(f"Loading UCSC dataset collection from JSON: {json_path}")
         try:
             with open(json_path, "r") as file:
                 data = json.load(file)
 
-            required_keys = ["shortLabel", "abstract", "inDir", "name", "datasets"]
-            missing_keys = [key for key in required_keys if key not in data]
-            if missing_keys:
-                raise ValueError(
-                    f"Missing required keys in JSON: {', '.join(missing_keys)}"
-                )
+            if not isinstance(data, dict) or "datasets" not in data:
+                raise ValueError(f"JSON file {json_path} must contain a 'datasets' key with a list")
 
-            if not isinstance(data["datasets"], list):
-                raise ValueError("The 'datasets' field must be a list")
+            datasets = []
+            for dataset_dict in data["datasets"]:
+                datasets.append(UCSCDataset(**dataset_dict))
 
-            if not data["datasets"]:
-                raise ValueError("The 'datasets' list cannot be empty")
+            logger.info(f"Loaded {len(datasets)} UCSC datasets from {json_path}")
+            return cls(datasets=datasets)
 
-            datasets = [UCSCDataset(**ds) for ds in data["datasets"]]
-            return cls(
-                shortLabel=data["shortLabel"],
-                abstract=data["abstract"],
-                inDir=data["inDir"],
-                name=data["name"],
-                datasets=datasets,
-            )
+        except FileNotFoundError:
+            raise ValueError(f"JSON file not found: {json_path}")
         except json.JSONDecodeError as e:
-            logger.exception(f"Invalid JSON format: {str(e)}")
-            raise ValueError(f"Invalid JSON format: {str(e)}") from e
-        except OSError as e:
-            logger.exception(f"Could not read file {json_path}: {str(e)}")
-            raise ValueError(f"Could not read file {json_path}: {str(e)}") from e
-        except (KeyError, TypeError) as e:
-            logger.exception(f"Invalid dataset format in JSON: {str(e)}")
-            raise ValueError(f"Invalid dataset format in JSON: {str(e)}") from e
+            raise ValueError(f"Invalid JSON in file {json_path}: {str(e)}")
+        except Exception as e:
+            raise ValueError(f"Error loading datasets from {json_path}: {str(e)}")
 
-    def get_dataset_by_name(self, dataset_name: str) -> Optional[UCSCDataset]:
+    def get_by_name(self, name: str) -> Optional[UCSCDataset]:
         """
-        Returns the dataset with the specified name, or None if not found.
+        Get a dataset by its name.
 
         Args:
-                dataset_name: The name of the dataset to search for.
+            name: The dataset name to search for
 
         Returns:
-                The UCSCDataset instance matching the given name, or None if no match exists.
+            The dataset with the matching name, or None if not found
         """
-        logger.debug(f"Getting dataset by name: {dataset_name}")
+        return next((ds for ds in self.datasets if ds.name == name), None)
+
+    def filter_by_organism(self, organism: str) -> "UCSCDataSetCollection":
         """
-        Retrieve a dataset by its name.
+        Filter datasets by organism.
 
         Args:
-            dataset_name: The unique name identifier of the dataset to find
+            organism: Organism to filter by
 
         Returns:
-            The matching UCSCDataset object or None if not found
+            New collection containing only datasets with the specified organism
         """
+        filtered_datasets = [ds for ds in self.datasets if organism in (ds.organisms or [])]
+        return UCSCDataSetCollection(datasets=filtered_datasets)
+
+    def summary(self) -> str:
+        """
+        Returns a formatted summary of the collection.
+
+        Returns:
+            str: A human-readable summary of the collection
+        """
+        if not self.datasets:
+            return "Empty UCSC dataset collection"
+
+        organism_counts = {}
         for dataset in self.datasets:
-            if dataset.name == dataset_name:
-                logger.debug(f"Dataset found: {dataset.name}")
-                return dataset
-        logger.debug(f"Dataset not found: {dataset_name}")
-        return None
+            for organism in (dataset.organisms or []):
+                organism_counts[organism] = organism_counts.get(organism, 0) + 1
 
-    def total_samples(self) -> int:
-        """
-        Returns the total number of samples across all datasets in the collection.
+        summary_lines = [
+            f"UCSC Dataset Collection",
+            f"Total datasets: {len(self.datasets)}",
+            "Organisms:",
+        ]
 
-        If a dataset's sample count is missing, it is treated as zero.
-        """
-        return sum(dataset.sampleCount or 0 for dataset in self.datasets)
+        for organism, count in organism_counts.items():
+            summary_lines.append(f"  {organism}: {count}")
 
-    def list_dataset_names(self) -> List[str]:
-        """
-        Returns a list of all dataset names in the collection.
+        return "\n".join(summary_lines)
 
-        Returns:
-            List[str]: The names of all datasets.
-        """
-        logger.debug("Listing dataset names")
-        """
-        List the names of all datasets in the collection.
 
-        Returns:
-            List[str]: A list of dataset names
-        """
-        dataset_names = [dataset.name for dataset in self.datasets]
-        logger.debug(f"Dataset names: {dataset_names}")
-        return dataset_names
+def load_ucsc_datasets(json_path: Optional[str] = None) -> List[UCSCDataset]:
+    """
+    Load UCSC datasets from JSON file.
+
+    Args:
+        json_path: Path to JSON file. If None, uses default resource file.
+
+    Returns:
+        List of UCSCDataset objects
+    """
+    if json_path is None:
+        import os
+        json_path = os.path.join(
+            os.path.dirname(__file__),
+            "..", "resources", "cells_ucsc_datasets.json"
+        )
+
+    collection = UCSCDataSetCollection.from_json(json_path)
+    return collection.datasets
