@@ -1,0 +1,230 @@
+name: Dataset Validation Registry Update
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      force_revalidate:
+        description: 'Force revalidation of all datasets'
+        required: false
+        default: 'false'
+        type: boolean
+      dataset_filter:
+        description: 'Specific dataset to validate (leave empty for all)'
+        required: false
+        type: string
+      max_datasets:
+        description: 'Maximum number of datasets to validate'
+        required: false
+        default: '50'
+        type: string
+
+jobs:
+  validate-datasets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        cache: 'pip'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y tabix bgzip
+
+    - name: Install Python dependencies
+      run: |
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -e .
+
+    - name: Create validation directories
+      run: |
+        mkdir -p dataset_validation_results/{downloads,samples,logs}
+        mkdir -p docs/registry
+
+    - name: Run UCSC dataset validation
+      id: ucsc_validation
+      continue-on-error: true
+      run: |
+        echo "🔬 Validating UCSC datasets..."
+        python -m hvantk.commands.dataset_validation_cli validate-datasets \
+          --ucsc-datasets ${{ github.event.inputs.dataset_filter || 'all' }} \
+          --work-dir ./dataset_validation_results \
+          --registry-file ./dataset_validation_results/validation_registry.json \
+          --max-datasets ${{ github.event.inputs.max_datasets || '50' }} \
+          --force-revalidate ${{ github.event.inputs.force_revalidate || 'false' }} \
+          --verbose 2>&1 | tee dataset_validation_results/logs/ucsc_validation.log
+
+    - name: Run Expression Atlas dataset validation
+      id: atlas_validation
+      continue-on-error: true
+      run: |
+        echo "🧪 Validating Expression Atlas datasets..."
+        python -m hvantk.commands.dataset_validation_cli validate-datasets \
+          --expression-atlas-datasets ${{ github.event.inputs.dataset_filter || 'all' }} \
+          --work-dir ./dataset_validation_results \
+          --registry-file ./dataset_validation_results/validation_registry.json \
+          --max-datasets ${{ github.event.inputs.max_datasets || '50' }} \
+          --force-revalidate ${{ github.event.inputs.force_revalidate || 'false' }} \
+          --verbose 2>&1 | tee dataset_validation_results/logs/atlas_validation.log
+
+    - name: Generate web registry and API endpoints
+      run: |
+        echo "🌐 Generating complete registry interface..."
+        python -m hvantk.commands.registry_cli complete \
+          --input ./dataset_validation_results/validation_registry.json \
+          --output ./docs/registry
+
+    - name: Create status badge
+      run: |
+        echo "🏷️ Creating status badge..."
+        python -c "
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path.cwd()))
+
+from hvantk.register import RegistryManager
+
+# Get registry statistics
+manager = RegistryManager('./dataset_validation_results/validation_registry.json')
+stats = manager.get_registry_statistics()
+
+# Create status badge data
+rate = stats['success_rate']
+print(f'Success Rate: {rate}% ({stats[\"successful\"]}/{stats[\"total_datasets\"]})')
+
+# Write status for badge
+with open('./docs/registry/status.txt', 'w') as f:
+    f.write(f'{rate}')
+"
+        
+    - name: Upload validation artifacts
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: validation-results
+        path: |
+          dataset_validation_results/
+          docs/registry/
+        retention-days: 30
+        
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      if: always()
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./docs/registry
+        publish_branch: gh-pages
+        commit_message: "🚀 Update dataset validation registry - ${{ github.run_number }}"
+        
+    - name: Generate validation summary
+      if: always()
+      run: |
+        echo "📊 Generating validation summary..."
+        python -c "
+import sys
+import os
+from pathlib import Path
+from datetime import datetime
+
+sys.path.insert(0, str(Path.cwd()))
+
+from hvantk.register import RegistryManager
+
+# Initialize manager
+try:
+    manager = RegistryManager('./dataset_validation_results/validation_registry.json')
+    stats = manager.get_registry_statistics()
+    failed_datasets = manager.get_failed_datasets(5)
+except FileNotFoundError:
+    stats = {'total_datasets': 0, 'successful': 0, 'failed': 0, 'success_rate': 0.0}
+    failed_datasets = []
+
+# Generate summary
+summary = f'''## Dataset Validation Summary 📊
+
+**Run ID:** {os.environ.get('GITHUB_RUN_NUMBER', 'unknown')}
+**Timestamp:** {datetime.now().isoformat()}
+
+### Overall Results
+- 📈 **Total Datasets:** {stats['total_datasets']}
+- ✅ **Successful:** {stats['successful']} ({stats['success_rate']}%)
+- ❌ **Failed:** {stats['failed']}
+'''
+
+if 'by_status' in stats and stats['by_status']:
+    summary += '''
+### Status Breakdown
+'''
+    for status, count in sorted(stats['by_status'].items()):
+        emoji = '✅' if 'passed' in status else '❌' if 'failed' in status else '⚪'
+        summary += f'- {emoji} **{status.replace(\"_\", \" \").title()}:** {count}\\n'
+
+if failed_datasets:
+    summary += f'''
+### Recent Failures ({len(failed_datasets)})
+'''
+    for failure in failed_datasets:
+        error = failure['error_message'][:100] + ('...' if len(failure['error_message']) > 100 else '')
+        summary += f'- **{failure[\"dataset_id\"]}** ({failure[\"status\"]}): {error}\\n'
+
+# Save summary
+with open('validation_summary.md', 'w') as f:
+    f.write(summary)
+print('✅ Validation summary generated')
+"
+
+    - name: Comment validation summary on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          try {
+            const summary = fs.readFileSync('validation_summary.md', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary
+            });
+          } catch (error) {
+            console.log('Could not read validation summary:', error);
+          }
+
+    - name: Create validation failure issue
+      if: failure() && (steps.ucsc_validation.outcome == 'failure' || steps.atlas_validation.outcome == 'failure')
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          let summary = 'Validation pipeline failed. Check workflow logs for details.';
+          
+          try {
+            summary = fs.readFileSync('validation_summary.md', 'utf8');
+          } catch (error) {
+            console.log('Could not read validation summary');
+          }
+          
+          github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: `Dataset Validation Failed - ${new Date().toISOString().split('T')[0]}`,
+            body: `${summary}
+
+**Workflow Run:** ${context.payload.repository.html_url}/actions/runs/${context.runId}
+**Logs:** Check the workflow run for detailed error logs.
+
+This issue was automatically created by the validation pipeline.`,
+            labels: ['validation', 'automation', 'bug']
+          });
