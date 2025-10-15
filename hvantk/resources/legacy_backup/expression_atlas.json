@@ -1,0 +1,461 @@
+[
+  {
+    "title": "The Genotype-Tissue Expression (GTEx) project v8",
+    "accession": "E-GTEX-8",
+    "type": "RNA-Seq mRNA baseline",
+    "pubmedid": "35922509",
+    "description": "",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-GTEX-8.condensed-sdrf.tsv"
+      },
+      {
+        "type": "transcript-tpm",
+        "name": "E-GTEX-8-transcripts-tpms.tsv"
+      }
+    ]
+  },
+  {
+    "title": "Human RNA-seq time-series of the development of seven major organs",
+    "accession": "E-MTAB-6814",
+    "type": "RNA-Seq mRNA baseline",
+    "pubmedid": "31243369",
+    "description": "This dataset covers the development of 7 organs (brain, cerebellum, heart, kidney, liver, ovary and testis) from 4 weeks post conception to adulthood (including ageing).",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-MTAB-6814.condensed-sdrf.tsv"
+      },
+      {
+        "type": "transcript-tpm",
+        "name": "E-MTAB-6814-transcripts-tpms.tsv"
+      }
+    ]
+  },
+  {
+    "title": "Chicken RNA-seq time-series of the development of seven major organs",
+    "accession": "E-MTAB-6769",
+    "type": "RNA-Seq mRNA baseline",
+    "pubmedid": "31243369",
+    "description": "This dataset covers the development of 7 organs (brain, cerebellum, heart, kidney, liver, ovary and testis) from day 10 post-conception to day 155 post-hatch in Gallus gallus.",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-MTAB-6769.condensed-sdrf.tsv"
+      },
+      {
+        "type": "transcript-tpm",
+        "name": "E-MTAB-6769-transcripts-tpms.tsv"
+      }
+    ]
+  },
+  {
+    "title": "Opossum RNA-seq time-series of the development of seven major organs",
+    "accession": "E-MTAB-6833",
+    "type": "RNA-Seq mRNA baseline",
+    "pubmedid": "31243369",
+    "description": "This dataset covers the development of 7 organs (brain, cerebellum, heart, kidney, liver, ovary and testis) from embryonic day 13.5 to adulthood in Monodelphis domestica.",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-MTAB-6833.condensed-sdrf.tsv"
+      },
+      {
+        "type": "transcript-tpm",
+        "name": "E-MTAB-6833-transcripts-tpms.tsv"
+      }
+    ]
+  },
+  {
+    "title": "Mouse RNA-seq time-series of the development of seven major organs",
+    "accession": "E-MTAB-6798",
+    "type": "RNA-Seq mRNA baseline",
+    "pubmedid": "31243369",
+    "description": "This dataset covers the development of 7 organs (brain, cerebellum, heart, kidney, liver, ovary and testis) from embryonic day 10.5 to adulthood in Mus musculus.",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-MTAB-6798.condensed-sdrf.tsv"
+      },
+      {
+        "type": "transcript-tpm",
+        "name": "E-MTAB-6798-transcripts-tpms.tsv"
+      }
+    ]
+  },
+  {
+    "title": "Rabbit RNA-seq time-series of the development of seven major organs",
+    "accession": "E-MTAB-6782",
+    "type": "RNA-Seq mRNA baseline",
+    "pubmedid": "31243369",
+    "description": "This dataset covers the development of 7 organs (brain, cerebellum, heart, kidney, liver, ovary and testis) from embryonic day 12 to adulthood in Oryctolagus cuniculus.",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-MTAB-6782.condensed-sdrf.tsv"
+      },
+      {
+        "type": "transcript-tpm",
+        "name": "E-MTAB-6782-transcripts-tpms.tsv"
+      }
+    ]
+  },
+  {
+    "title": "Rat RNA-seq time-series of the development of seven major organs",
+    "accession": "E-MTAB-6811",
+    "type": "RNA-Seq mRNA baseline",
+    "pubmedid": "31243369",
+    "description": "This dataset covers the development of 7 organs (brain, cerebellum, heart, kidney, liver, ovary and testis) from embryonic day 11 to adulthood in Rattus norvegicus.",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-MTAB-6811.condensed-sdrf.tsv"
+      },
+      {
+        "type": "transcript-tpm",
+        "name": "E-MTAB-6811-transcripts-tpms.tsv"
+      }
+    ]
+  },
+  {
+    "title": "Human protein atlas - Normal tissue proteomics",
+    "accession": "E-ERAD-475",
+    "type": "Proteomics baseline",
+    "pubmedid": "25613900",
+    "description": "Protein expression data from the Human Protein Atlas covering normal human tissues using mass spectrometry and immunohistochemistry approaches.",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-ERAD-475.condensed-sdrf.tsv"
+      },
+      {
+        "type": "protein-abundance",
+        "name": "E-ERAD-475-protein-abundance.tsv"
+      }
+    ]
+  },
+  {
+    "title": "RNA-seq of human individual tissues and mixture of tissues",
+    "accession": "E-MTAB-2770",
+    "type": "RNA-Seq mRNA baseline",
+    "pubmedid": "24705247",
+    "description": "RNA sequencing of 95 human individuals representing 27 different tissues to study tissue-specific gene expression patterns and individual variation.",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-MTAB-2770.condensed-sdrf.tsv"
+      },
+      {
+        "type": "transcript-tpm",
+        "name": "E-MTAB-2770-transcripts-tpms.tsv"
+      }
+    ]
+  },
+  {
+    "title": "Human Protein Atlas - Normal tissue proteomics",
+    "accession": "E-PROT-13",
+    "type": "Proteomics baseline",
+    "pubmedid": "31665441",
+    "description": "Mass spectrometry-based protein expression profiling of normal human tissues from the Human Protein Atlas providing quantitative protein abundance data.",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-PROT-13.condensed-sdrf.tsv"
+      },
+      {
+        "type": "protein-abundance",
+        "name": "E-PROT-13-protein-abundance.tsv"
+      }
+    ]
+  },
+  {
+    "title": "RNA-seq of mouse tissues",
+    "accession": "E-MTAB-2706",
+    "type": "RNA-Seq mRNA baseline",
+    "pubmedid": "24705247",
+    "description": "RNA sequencing analysis of multiple mouse tissues to characterize baseline gene expression patterns across different organ systems in Mus musculus.",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-MTAB-2706.condensed-sdrf.tsv"
+      },
+      {
+        "type": "transcript-tpm",
+        "name": "E-MTAB-2706-transcripts-tpms.tsv"
+      }
+    ]
+  },
+  {
+    "title": "Expression data from mouse tissues",
+    "accession": "E-GEOD-5615",
+    "type": "Microarray mRNA baseline",
+    "pubmedid": "17576787",
+    "description": "Microarray gene expression profiling of various mouse tissues using Affymetrix arrays to establish baseline expression reference in Mus musculus.",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-GEOD-5615.condensed-sdrf.tsv"
+      },
+      {
+        "type": "transcript-tpm",
+        "name": "E-GEOD-5615-transcripts-tpms.tsv"
+      }
+    ]
+  },
+  {
+    "title": "Illumina Body Map 2.0",
+    "accession": "E-MTAB-513",
+    "type": "RNA-Seq mRNA baseline",
+    "pubmedid": "22955987",
+    "description": "RNA-seq expression profiling of 16 human tissues using Illumina HiSeq 2000 platform providing comprehensive human tissue gene expression reference.",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-MTAB-513.condensed-sdrf.tsv"
+      },
+      {
+        "type": "transcript-tpm",
+        "name": "E-MTAB-513-transcripts-tpms.tsv"
+      }
+    ]
+  },
+  {
+    "title": "Human Protein Atlas - Cancer proteomics",
+    "accession": "E-MTAB-2836",
+    "type": "Proteomics baseline",
+    "pubmedid": "25613900",
+    "description": "Protein expression analysis in human cancer tissues from the Human Protein Atlas project using mass spectrometry and immunohistochemistry approaches.",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-MTAB-2836.condensed-sdrf.tsv"
+      },
+      {
+        "type": "protein-abundance",
+        "name": "E-MTAB-2836-protein-abundance.tsv"
+      }
+    ]
+  },
+  {
+    "title": "RNA-seq of human brain regions",
+    "accession": "E-MTAB-3579",
+    "type": "RNA-Seq mRNA baseline",
+    "pubmedid": "25954002",
+    "description": "Transcriptome analysis of different human brain regions to understand regional gene expression differences and brain-specific expression patterns.",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-MTAB-3579.condensed-sdrf.tsv"
+      },
+      {
+        "type": "transcript-tpm",
+        "name": "E-MTAB-3579-transcripts-tpms.tsv"
+      }
+    ]
+  },
+  {
+    "title": "RNA-seq of human lung tissue",
+    "accession": "E-MTAB-3827",
+    "type": "RNA-Seq mRNA baseline",
+    "pubmedid": "26343147",
+    "description": "RNA sequencing analysis of human lung tissue samples for baseline gene expression characterization and pulmonary-specific expression patterns.",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-MTAB-3827.condensed-sdrf.tsv"
+      },
+      {
+        "type": "transcript-tpm",
+        "name": "E-MTAB-3827-transcripts-tpms.tsv"
+      }
+    ]
+  },
+  {
+    "title": "RNA-seq of zebrafish developmental stages",
+    "accession": "E-MTAB-3358",
+    "type": "RNA-Seq mRNA baseline",
+    "pubmedid": "25954002",
+    "description": "Time-course RNA sequencing analysis of zebrafish development from early embryonic to adult stages to study developmental gene expression programs.",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-MTAB-3358.condensed-sdrf.tsv"
+      },
+      {
+        "type": "transcript-tpm",
+        "name": "E-MTAB-3358-transcripts-tpms.tsv"
+      }
+    ]
+  },
+  {
+    "title": "RNA-seq of human thyroid tissue",
+    "accession": "E-MTAB-2801",
+    "type": "RNA-Seq mRNA baseline",
+    "pubmedid": "24705247",
+    "description": "RNA sequencing analysis of human thyroid tissue samples for baseline expression profiling and endocrine-specific gene expression patterns.",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-MTAB-2801.condensed-sdrf.tsv"
+      },
+      {
+        "type": "transcript-tpm",
+        "name": "E-MTAB-2801-transcripts-tpms.tsv"
+      }
+    ]
+  },
+  {
+    "title": "RNA-seq of human pancreatic islets",
+    "accession": "E-MTAB-4840",
+    "type": "RNA-Seq mRNA baseline",
+    "pubmedid": "27399492",
+    "description": "Transcriptome analysis of human pancreatic islet cells to study diabetes-related gene expression and beta-cell specific expression programs.",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-MTAB-4840.condensed-sdrf.tsv"
+      },
+      {
+        "type": "transcript-tpm",
+        "name": "E-MTAB-4840-transcripts-tpms.tsv"
+      }
+    ]
+  },
+  {
+    "title": "Expression data from human breast cancer cell lines",
+    "accession": "E-GEOD-19520",
+    "type": "Microarray mRNA baseline",
+    "pubmedid": "20505153",
+    "description": "Microarray expression profiling of human breast cancer cell lines using Affymetrix arrays to characterize cancer-specific expression patterns.",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-GEOD-19520.condensed-sdrf.tsv"
+      },
+      {
+        "type": "transcript-tpm",
+        "name": "E-GEOD-19520-transcripts-tpms.tsv"
+      }
+    ]
+  },
+  {
+    "title": "RNA-seq of human keratinocytes",
+    "accession": "E-GEOD-66048",
+    "type": "RNA-Seq mRNA baseline",
+    "pubmedid": "26059913",
+    "description": "RNA sequencing analysis of primary human keratinocytes under different conditions to study skin-specific gene expression.",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-GEOD-66048.condensed-sdrf.tsv"
+      },
+      {
+        "type": "transcript-tpm",
+        "name": "E-GEOD-66048-transcripts-tpms.tsv"
+      }
+    ]
+  },
+  {
+    "title": "RNA-seq of human skin tissue",
+    "accession": "E-MTAB-3578",
+    "type": "RNA-Seq mRNA baseline",
+    "pubmedid": "25954002",
+    "description": "Transcriptome analysis of human skin tissue samples across different anatomical sites to characterize skin-specific expression patterns.",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-MTAB-3578.condensed-sdrf.tsv"
+      },
+      {
+        "type": "transcript-tpm",
+        "name": "E-MTAB-3578-transcripts-tpms.tsv"
+      }
+    ]
+  },
+  {
+    "title": "Human Protein Atlas - Subcellular proteomics",
+    "accession": "E-PROT-3",
+    "type": "Proteomics baseline",
+    "pubmedid": "28495876",
+    "description": "Subcellular protein localization data from the Human Protein Atlas using immunofluorescence microscopy to map protein subcellular distribution.",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-PROT-3.condensed-sdrf.tsv"
+      },
+      {
+        "type": "protein-abundance",
+        "name": "E-PROT-3-protein-abundance.tsv"
+      }
+    ]
+  },
+  {
+    "title": "Expression data from human tissues",
+    "accession": "E-GEOD-26284",
+    "type": "Microarray mRNA baseline",
+    "pubmedid": "21483801",
+    "description": "Microarray-based gene expression analysis across multiple human tissues and cell types using Affymetrix platform.",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-GEOD-26284.condensed-sdrf.tsv"
+      },
+      {
+        "type": "transcript-tpm",
+        "name": "E-GEOD-26284-transcripts-tpms.tsv"
+      }
+    ]
+  },
+  {
+    "title": "RNA-seq of human immune cell populations",
+    "accession": "E-MTAB-4344",
+    "type": "RNA-Seq mRNA baseline",
+    "pubmedid": "27499199",
+    "description": "RNA sequencing analysis of purified human immune cell populations to characterize cell-type specific expression and immune system gene expression patterns.",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-MTAB-4344.condensed-sdrf.tsv"
+      },
+      {
+        "type": "transcript-tpm",
+        "name": "E-MTAB-4344-transcripts-tpms.tsv"
+      }
+    ]
+  },
+  {
+    "title": "RNA-seq of human fetal tissues",
+    "accession": "E-MTAB-1733",
+    "type": "RNA-Seq mRNA baseline",
+    "pubmedid": "24705247",
+    "description": "Transcriptome analysis of human fetal tissues across different developmental stages to study prenatal gene expression programs.",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-MTAB-1733.condensed-sdrf.tsv"
+      },
+      {
+        "type": "transcript-tpm",
+        "name": "E-MTAB-1733-transcripts-tpms.tsv"
+      }
+    ]
+  },
+  {
+    "title": "RNA-seq of human liver tissue",
+    "accession": "E-MTAB-2800",
+    "type": "RNA-Seq mRNA baseline",
+    "pubmedid": "24705247",
+    "description": "RNA sequencing analysis of human liver tissue samples for baseline hepatic gene expression and liver-specific expression patterns.",
+    "files": [
+      {
+        "type": "sdrf",
+        "name": "E-MTAB-2800.condensed-sdrf.tsv"
+      },
+      {
+        "type": "transcript-tpm",
+        "name": "E-MTAB-2800-transcripts-tpms.tsv"
+      }
+    ]
+  }
+]
