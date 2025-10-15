@@ -50,7 +50,7 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y tabix bgzip
+          sudo apt-get install -y tabix
 
       - name: Install Python dependencies
         shell: bash
@@ -65,7 +65,6 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dataset_validation_results/{downloads,samples,logs}
-          mkdir -p docs/registry
 
       - name: Run UCSC dataset validation
         id: ucsc_validation
@@ -100,31 +99,18 @@ jobs:
             --verbose 2>&1 | tee dataset_validation_results/logs/atlas_validation.log
           code="${PIPESTATUS[0]}"; exit "$code"
 
-      - name: Generate web registry and API endpoints
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "🌐 Generating complete registry interface..."
-          python -m hvantk.commands.registry_cli complete \
-            --input ./dataset_validation_results/validation_registry.json \
-            --output ./docs/registry
-
-      - name: Create status badge
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "🏷️ Creating status badge..."
-          chmod +x scripts/create_status_badge.py
-          python scripts/create_status_badge.py
-
       - name: Generate validation summary
         if: always()
         shell: bash
         run: |
           set -euo pipefail
           echo "📊 Generating validation summary..."
-          chmod +x scripts/generate_validation_summary.py
-          python scripts/generate_validation_summary.py
+          if [ -f "scripts/generate_validation_summary.py" ]; then
+            chmod +x scripts/generate_validation_summary.py
+            python scripts/generate_validation_summary.py
+          else
+            echo "Validation summary script not found, skipping..."
+          fi
 
       - name: Upload validation artifacts
         if: always()
@@ -133,15 +119,7 @@ jobs:
           name: validation-results
           path: |
             dataset_validation_results/
-            docs/registry/
           retention-days: 30
-
-      - name: Deploy to GitHub Pages
-        if: always()
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs/registry
 
       - name: Comment validation summary on PR
         if: github.event_name == 'pull_request'
