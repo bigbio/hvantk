@@ -1,5 +1,5 @@
 # HVANTK Dataset Registry Configuration
-# This file contains configuration options for the live dataset validation registry
+# This file contains configuration options for the dataset validation registry
 
 class RegistryConfig:
     """Configuration class for the dataset validation registry."""
@@ -13,25 +13,6 @@ class RegistryConfig:
         self.sample_lines = 100
         self.timeout_minutes = 120
 
-        # GitHub Pages settings
-        self.pages_branch = "gh-pages"
-        self.pages_path = "/"
-
-        # Web interface settings
-        self.site_title = "HVANTK Dataset Validation Registry"
-        self.site_description = "Live status of dataset validation for Hail MatrixTable compatibility"
-        self.theme_color = "#667eea"
-
-        # Chart settings
-        self.chart_colors = {
-            "tier3_passed": "#28a745",
-            "tier2_passed": "#ffc107",
-            "tier1_passed": "#17a2b8",
-            "failed": "#dc3545",
-            "download_failed": "#6c757d",
-            "not_tested": "#6c757d"
-        }
-
         # Notification settings
         self.create_issues_on_failure = True
         self.issue_labels = ["validation", "automation", "bug"]
@@ -40,13 +21,6 @@ class RegistryConfig:
         self.data_sources = {
             "ucsc": "https://cells.ucsc.edu/",
             "expression_atlas": "https://www.ebi.ac.uk/gxa/"
-        }
-
-        # API endpoints (when registry is deployed)
-        self.api_endpoints = {
-            "status": "/api/status.json",
-            "datasets": "/api/datasets.json",
-            "stats": "/api/stats.json"
         }
 
 # Validation tier descriptions
