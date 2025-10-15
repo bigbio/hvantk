@@ -44,11 +44,18 @@ UCSC_GENE_COLUMN = "gene"
 EXPRESSION_ATLAS_BASE_URL = "https://www.ebi.ac.uk/gxa/experiments-content"
 logger.debug(f"Expression Atlas base URL: {EXPRESSION_ATLAS_BASE_URL}")
 
-# Path to the JSON file containing the Expression Atlas datasets
-EXPRESSION_ATLAS_JSON_FILE_PATH = (
-    BASE_DIR.parent / "resources" / "expression_atlas.json"
-)
-logger.debug(f"Expression Atlas JSON file path: {EXPRESSION_ATLAS_JSON_FILE_PATH}")
+# Path to the new unified registry system
+REGISTRY_ROOT_PATH = BASE_DIR.parent / "resources" / "registry"
+
+# Backward compatibility - path to transcriptomics datasets (replaces expression_atlas.json)
+TRANSCRIPTOMICS_DATASETS_PATH = REGISTRY_ROOT_PATH / "transcriptomics" / "datasets.json"
+
+# Legacy path for compatibility (deprecated)
+EXPRESSION_ATLAS_JSON_FILE_PATH = BASE_DIR.parent / "resources" / "expression_atlas.json"
+
+logger.debug(f"Registry root path: {REGISTRY_ROOT_PATH}")
+logger.debug(f"Transcriptomics datasets path: {TRANSCRIPTOMICS_DATASETS_PATH}")
+logger.debug(f"Legacy Expression Atlas path: {EXPRESSION_ATLAS_JSON_FILE_PATH}")
 
 # Explicit public API for this module
 __all__ = [
@@ -61,5 +68,7 @@ __all__ = [
     "UCSC_CELL_ID_COLUMN",
     "UCSC_GENE_COLUMN",
     "EXPRESSION_ATLAS_BASE_URL",
-    "EXPRESSION_ATLAS_JSON_FILE_PATH",
+    "REGISTRY_ROOT_PATH",
+    "TRANSCRIPTOMICS_DATASETS_PATH",
+    "EXPRESSION_ATLAS_JSON_FILE_PATH",  # Backward compatibility
 ]
