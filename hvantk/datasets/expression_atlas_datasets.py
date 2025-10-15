@@ -246,17 +246,48 @@ def load_expression_atlas_datasets(json_path: Optional[str] = None) -> List[Expr
     Load Expression Atlas datasets from JSON file.
 
     Args:
-        json_path: Path to JSON file. If None, uses default resource file.
+        json_path: Path to JSON file. If None, uses new unified registry system.
 
     Returns:
         List of ExpressionAtlasDataset objects
     """
     if json_path is None:
-        import os
-        json_path = os.path.join(
-            os.path.dirname(__file__),
-            "..", "resources", "expression_atlas.json"
-        )
+        # Use new unified registry system
+        try:
+            import sys
+            from pathlib import Path
+            sys.path.append(str(Path(__file__).parent.parent / "resources"))
+            from unified_registry import load_expression_atlas_datasets as load_new_format
 
+            # Load from new registry format and convert to old format for compatibility
+            new_datasets = load_new_format()
+            legacy_datasets = []
+
+            for dataset in new_datasets:
+                # Convert new schema format back to legacy format for compatibility
+                legacy_dataset = ExpressionAtlasDataset(
+                    title=dataset.get("title", ""),
+                    accession=dataset.get("accession", ""),
+                    type=f"{dataset.get('platform_type', 'RNA-seq')} {dataset.get('data_level', 'gene')} {dataset.get('expression_unit', 'TPM')}",
+                    pubmedid=dataset.get("pubmedid"),
+                    description=dataset.get("description", ""),
+                    files=[{
+                        "type": file_obj.get("description", "").replace("File type: ", ""),
+                        "name": file_obj.get("path", "")
+                    } for file_obj in dataset.get("files", [])]
+                )
+                legacy_datasets.append(legacy_dataset)
+
+            return legacy_datasets
+
+        except Exception as e:
+            # Fallback to legacy system
+            import os
+            json_path = os.path.join(
+                os.path.dirname(__file__),
+                "..", "resources", "expression_atlas.json"
+            )
+
+    # Use legacy loading method if json_path is specified or fallback needed
     collection = ExpressionAtlasDatasetCollection.from_json(json_path)
     return collection.datasets
