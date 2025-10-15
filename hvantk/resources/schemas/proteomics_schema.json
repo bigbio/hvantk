@@ -1,0 +1,190 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Proteomics Dataset Schema",
+  "description": "Schema for proteomics datasets extending the common schema",
+  "type": "object",
+  "required": ["title", "accession", "description", "files", "data_source", "quantification_method", "protein_inference_method"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Human-readable title of the dataset"
+    },
+    "accession": {
+      "type": "string",
+      "description": "Unique identifier/accession number for the dataset",
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "pubmedid": {
+      "type": ["string", "null"],
+      "description": "PubMed ID associated with the dataset",
+      "pattern": "^[0-9]+$"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of the dataset"
+    },
+    "files": {
+      "type": "array",
+      "description": "Array of file objects in the dataset",
+      "items": {
+        "$ref": "#/definitions/file_object"
+      },
+      "minItems": 1
+    },
+    "data_source": {
+      "type": "string",
+      "description": "Source of the data (e.g., GEO, TCGA, ArrayExpress)",
+      "enum": ["GEO", "TCGA", "ArrayExpress", "ENA", "SRA", "dbGaP", "UCSC", "Expression_Atlas", "Custom"]
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of last update to the dataset metadata"
+    },
+    "update_frequency": {
+      "type": "string",
+      "description": "How frequently the dataset is expected to be updated",
+      "enum": ["static", "weekly", "monthly", "quarterly", "annually", "irregular"]
+    },
+    "organism": {
+      "type": "string",
+      "description": "Scientific name of the organism",
+      "default": "Homo sapiens"
+    },
+    "tissue_type": {
+      "type": ["string", "array"],
+      "description": "Tissue or cell type(s) represented in the dataset"
+    },
+    "sample_count": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Number of samples in the dataset"
+    },
+    "license": {
+      "type": "string",
+      "description": "License or usage terms for the dataset"
+    },
+    "doi": {
+      "type": ["string", "null"],
+      "description": "Digital Object Identifier for the dataset"
+    },
+    "contact": {
+      "type": "object",
+      "properties": {
+        "name": {"type": "string"},
+        "email": {"type": "string", "format": "email"},
+        "institution": {"type": "string"}
+      }
+    },
+    "quantification_method": {
+      "type": "string",
+      "description": "Method used for protein quantification",
+      "enum": ["label-free", "TMT", "iTRAQ", "SILAC", "spectral_counting", "intensity_based", "targeted_MS"]
+    },
+    "protein_inference_method": {
+      "type": "string",
+      "description": "Algorithm used for protein inference from peptides",
+      "enum": ["parsimony", "bayesian", "protein_prophet", "fido", "mascot", "maxquant"]
+    },
+    "abundance_unit": {
+      "type": "string",
+      "description": "Unit of protein abundance measurement",
+      "enum": ["intensity", "log2_intensity", "LFQ", "iBAQ", "normalized_intensity", "spectral_counts", "NSAF"],
+      "default": "intensity"
+    },
+    "ms_instrument": {
+      "type": ["string", "null"],
+      "description": "Mass spectrometry instrument used",
+      "enum": ["Orbitrap", "Q-TOF", "Triple_Quad", "Ion_Trap", "MALDI-TOF", "other"]
+    },
+    "fragmentation_method": {
+      "type": ["string", "null"],
+      "description": "Peptide fragmentation method",
+      "enum": ["CID", "HCD", "ETD", "ECD", "UVPD", "other"]
+    },
+    "search_engine": {
+      "type": ["string", "null"],
+      "description": "Database search engine used for peptide identification",
+      "enum": ["Mascot", "SEQUEST", "X!Tandem", "MaxQuant", "MSFragger", "Comet", "other"]
+    },
+    "protein_database": {
+      "type": ["string", "null"],
+      "description": "Protein sequence database used for search",
+      "enum": ["UniProt", "RefSeq", "Ensembl", "NCBI", "custom"]
+    },
+    "database_version": {
+      "type": ["string", "null"],
+      "description": "Version of the protein database used"
+    },
+    "fdr_threshold": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1,
+      "description": "False discovery rate threshold applied to identifications"
+    },
+    "quality_metrics": {
+      "type": "object",
+      "properties": {
+        "protein_identification_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Percentage of proteins identified"
+        },
+        "peptide_identification_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Percentage of peptides identified"
+        },
+        "missing_value_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Rate of missing values in the dataset"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "file_object": {
+      "type": "object",
+      "required": ["path", "format", "size_bytes"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Relative or absolute path to the file"
+        },
+        "format": {
+          "type": "string",
+          "description": "File format",
+          "enum": ["tsv", "csv", "json", "parquet", "vcf", "bcf", "bam", "sam", "fastq", "fasta", "bed", "gff", "gtf", "h5", "hdf5", "xlsx", "txt", "zip", "tar.gz"]
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "File size in bytes"
+        },
+        "checksum": {
+          "type": "string",
+          "description": "MD5 or SHA256 checksum for file integrity validation"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to download the file"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of what this file contains"
+        },
+        "compression": {
+          "type": "string",
+          "enum": ["none", "gzip", "bzip2", "xz"],
+          "default": "none"
+        }
+      }
+    }
+  }
+}
+

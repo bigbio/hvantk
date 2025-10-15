@@ -1,0 +1,191 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Genomics Dataset Schema",
+  "description": "Schema for genomics datasets extending the common schema",
+  "type": "object",
+  "required": ["title", "accession", "description", "files", "data_source", "genome_build", "variant_types"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Human-readable title of the dataset"
+    },
+    "accession": {
+      "type": "string",
+      "description": "Unique identifier/accession number for the dataset",
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "pubmedid": {
+      "type": ["string", "null"],
+      "description": "PubMed ID associated with the dataset",
+      "pattern": "^[0-9]+$"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of the dataset"
+    },
+    "files": {
+      "type": "array",
+      "description": "Array of file objects in the dataset",
+      "items": {
+        "$ref": "#/definitions/file_object"
+      },
+      "minItems": 1
+    },
+    "data_source": {
+      "type": "string",
+      "description": "Source of the data (e.g., GEO, TCGA, ArrayExpress)",
+      "enum": ["GEO", "TCGA", "ArrayExpress", "ENA", "SRA", "dbGaP", "UCSC", "Expression_Atlas", "Custom"]
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of last update to the dataset metadata"
+    },
+    "update_frequency": {
+      "type": "string",
+      "description": "How frequently the dataset is expected to be updated",
+      "enum": ["static", "weekly", "monthly", "quarterly", "annually", "irregular"]
+    },
+    "organism": {
+      "type": "string",
+      "description": "Scientific name of the organism",
+      "default": "Homo sapiens"
+    },
+    "tissue_type": {
+      "type": ["string", "array"],
+      "description": "Tissue or cell type(s) represented in the dataset"
+    },
+    "sample_count": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Number of samples in the dataset"
+    },
+    "license": {
+      "type": "string",
+      "description": "License or usage terms for the dataset"
+    },
+    "doi": {
+      "type": ["string", "null"],
+      "description": "Digital Object Identifier for the dataset"
+    },
+    "contact": {
+      "type": "object",
+      "properties": {
+        "name": {"type": "string"},
+        "email": {"type": "string", "format": "email"},
+        "institution": {"type": "string"}
+      }
+    },
+    "genome_build": {
+      "type": "string",
+      "description": "Reference genome build used",
+      "enum": ["GRCh38", "GRCh37", "hg38", "hg19", "T2T-CHM13", "custom"]
+    },
+    "variant_types": {
+      "type": "array",
+      "description": "Types of genetic variants included",
+      "items": {
+        "type": "string",
+        "enum": ["SNV", "SNP", "indel", "CNV", "SV", "STR", "inversion", "translocation"]
+      },
+      "minItems": 1
+    },
+    "frequency_data": {
+      "type": "boolean",
+      "description": "Whether allele frequency data is included",
+      "default": false
+    },
+    "clinical_significance": {
+      "type": "boolean",
+      "description": "Whether clinical significance annotations are included",
+      "default": false
+    },
+    "population_data": {
+      "type": "object",
+      "properties": {
+        "populations": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Population groups represented in the data"
+        },
+        "ancestry_groups": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Ancestry groups included"
+        }
+      }
+    },
+    "variant_calling_pipeline": {
+      "type": ["string", "null"],
+      "description": "Variant calling pipeline or software used",
+      "enum": ["GATK", "FreeBayes", "VarScan", "Strelka", "Mutect2", "DeepVariant", "custom"]
+    },
+    "annotation_sources": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Annotation databases used",
+      "examples": ["ClinVar", "dbSNP", "gnomAD", "COSMIC", "CADD", "PolyPhen", "SIFT"]
+    },
+    "quality_filters": {
+      "type": "object",
+      "properties": {
+        "min_depth": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Minimum read depth for variant calls"
+        },
+        "min_quality_score": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Minimum quality score for variants"
+        },
+        "genotype_quality_threshold": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Minimum genotype quality threshold"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "file_object": {
+      "type": "object",
+      "required": ["path", "format", "size_bytes"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Relative or absolute path to the file"
+        },
+        "format": {
+          "type": "string",
+          "description": "File format",
+          "enum": ["tsv", "csv", "json", "parquet", "vcf", "bcf", "bam", "sam", "fastq", "fasta", "bed", "gff", "gtf", "h5", "hdf5", "xlsx", "txt", "zip", "tar.gz"]
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "File size in bytes"
+        },
+        "checksum": {
+          "type": "string",
+          "description": "MD5 or SHA256 checksum for file integrity validation"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to download the file"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of what this file contains"
+        },
+        "compression": {
+          "type": "string",
+          "enum": ["none", "gzip", "bzip2", "xz"],
+          "default": "none"
+        }
+      }
+    }
+  }
+}
+
