@@ -1,19 +1,90 @@
-# Sample catalog with placeholder URIs; replace with your hosting locations
-- id: clinvar.ht
-  version: 2025-05-01
-  type: table
-  build: GRCh38
-  uri: https://example.org/hvantk/artifacts/clinvar/2025-05-01/clinvar.ht
-  checksum_algo: sha256  # placeholder; replace with actual algorithm if different
-  checksum: deadbeef     # placeholder; replace with real digest matching checksum_algo
-  size_bytes: 123456
-  n_partitions: 256
-  schema_hash: a1b2c3d4
-  params:
-    reference_genome: GRCh38
-  created: 2025-05-01T12:00:00Z
-  provenance:
-    source:
-      - https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar.vcf.gz
-    builder: hvantk.tables.table_builders.create_clinvar_tb
-    commit: 0000000  # placeholder commit SHA
+version: "2.0"
+generated: "2025-09-23T16:30:00"
+description: "Unified catalog of all omics datasets in hvantk registry"
+
+registry_structure:
+  schemas: "hvantk/resources/schemas/"
+  transcriptomics: "hvantk/resources/registry/transcriptomics/"
+  proteomics: "hvantk/resources/registry/proteomics/"
+  genomics: "hvantk/resources/registry/genomics/"
+  epigenomics: "hvantk/resources/registry/epigenomics/"
+
+summary:
+  total_datasets: 306
+  omics_types_with_data: 3
+  by_omics_type:
+    transcriptomics: 297
+    proteomics: 2
+    genomics: 7
+    epigenomics: 0
+
+datasets:
+  transcriptomics:
+    count: 297
+    schema: "schemas/transcriptomics_schema.json"
+    data_file: "registry/transcriptomics/datasets.json"
+    data_sources:
+      - Expression_Atlas
+      - UCSC
+      - Custom
+    organisms:
+      - Homo sapiens
+      - Mus musculus
+      - Gallus gallus
+      - Other species
+    platform_types:
+      - RNA-seq
+      - single-cell RNA-seq
+      - microarray
+    sample_range:
+      min: 1
+      max: 17382
+
+  proteomics:
+    count: 2
+    schema: "schemas/proteomics_schema.json"
+    data_file: "registry/proteomics/datasets.json"
+    data_sources:
+      - Expression_Atlas
+    organisms:
+      - Homo sapiens
+    datasets:
+      - E-PROT-13: "Human Protein Atlas - Normal tissue proteomics"
+      - E-PROT-3: "Human Protein Atlas - Subcellular proteomics"
+    status: "Active with Human Protein Atlas data"
+
+  genomics:
+    count: 7
+    schema: "schemas/genomics_schema.json"
+    data_file: "registry/genomics/datasets.json"
+    data_sources:
+      - Custom
+    organisms:
+      - Homo sapiens
+    genome_builds:
+      - GRCh38
+    datasets:
+      - dbNSFP_v4.7: "Missense variants prediction scores"
+      - ClinVar_latest: "Clinical variant annotations"
+      - gnomAD_v4.1: "Population allele frequencies"
+      - INSIDER_v1.0: "Protein-protein interaction sites"
+      - Ensembl_v110: "Gene annotations"
+      - GeVIR_v1.0: "Variant pathogenicity scores"
+      - CCR_v2.0: "Coding-constrained regions"
+    status: "Active with key genomic annotation resources"
+
+  epigenomics:
+    count: 0
+    schema: "schemas/epigenomics_schema.json"
+    data_file: "registry/epigenomics/datasets.json"
+    status: "Ready for data"
+
+migration_info:
+  completed: "2025-09-23"
+  corrected: "2025-09-23"
+  genomics_populated: "2025-09-23"
+  legacy_backup: "legacy_backup/"
+  datasets_migrated: 299
+  proteomics_correction: "Moved 2 E-PROT datasets from transcriptomics to proteomics"
+  genomics_addition: "Added 7 key genomic annotation datasets"
+  validation_status: "All datasets pass their respective schema validation"
