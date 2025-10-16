@@ -1,90 +1,85 @@
-version: "2.0"
-generated: "2025-09-23T16:30:00"
-description: "Unified catalog of all omics datasets in hvantk registry"
-
+version: '2.0'
+generated: '2025-10-16T11:53:17.977662'
+description: Unified catalog of all omics datasets in hvantk registry
 registry_structure:
-  schemas: "hvantk/resources/schemas/"
-  transcriptomics: "hvantk/resources/registry/transcriptomics/"
-  proteomics: "hvantk/resources/registry/proteomics/"
-  genomics: "hvantk/resources/registry/genomics/"
-  epigenomics: "hvantk/resources/registry/epigenomics/"
-
-summary:
-  total_datasets: 306
-  omics_types_with_data: 3
-  by_omics_type:
-    transcriptomics: 297
-    proteomics: 2
-    genomics: 7
-    epigenomics: 0
-
+  schemas: hvantk/resources/schemas/
+  transcriptomics: hvantk/resources/registry/transcriptomics/
+  proteomics: hvantk/resources/registry/proteomics/
+  genomics: hvantk/resources/registry/genomics/
+  epigenomics: hvantk/resources/registry/epigenomics/
 datasets:
   transcriptomics:
     count: 297
-    schema: "schemas/transcriptomics_schema.json"
-    data_file: "registry/transcriptomics/datasets.json"
-    data_sources:
-      - Expression_Atlas
-      - UCSC
+    schemas: schemas/transcriptomics_schema.json
+    data_file: registry/transcriptomics/datasets.json
+    summary:
+      data_sources:
       - Custom
-    organisms:
-      - Homo sapiens
-      - Mus musculus
+      - UCSC
+      - Expression_Atlas
+      organisms:
+      - Fruit Fly (D. melanogaster)
+      - Human (H. sapiens)
       - Gallus gallus
-      - Other species
-    platform_types:
-      - RNA-seq
-      - single-cell RNA-seq
-      - microarray
-    sample_range:
-      min: 1
-      max: 17382
-
+      - Mus musculus
+      - Freshwater Hydra (H. vulgaris)
+      - Sea Squirt (C. robusta)
+      - Sea urchin (S. purpuratus)
+      - Dog (C. familiaris)
+      - African Clawed Frog (X. laevis)
+      - Rat (R. norvegicus)
+      - Brine Shrimp (A. franciscana)
+      - Mouse lemur (T. microcebus)
+      - Sea Squirt (C. intestinalis)
+      - Blood Fluke (S. mansoni)
+      - Human-Mouse Xenograft
+      - Horse (E. caballus)
+      - Freshwater Worm (P. leidyi)
+      - Marmoset (C. jacchus)
+      - Fruit fly (D. melanogaster)
+      - Mosquito (A. aegypti)
+      - Colonial Hydroid (H. symbiolongicarpus)
+      - X. tropicalis
+      - Zebrafish (D. rerio)
+      - Homo sapiens
+      - Starlet Sea Anemone (N. vectensis)
+      sample_range:
+        min: 0
+        max: 2058652
   proteomics:
     count: 2
-    schema: "schemas/proteomics_schema.json"
-    data_file: "registry/proteomics/datasets.json"
-    data_sources:
+    schemas: schemas/proteomics_schema.json
+    data_file: registry/proteomics/datasets.json
+    summary:
+      data_sources:
       - Expression_Atlas
-    organisms:
+      organisms:
       - Homo sapiens
-    datasets:
-      - E-PROT-13: "Human Protein Atlas - Normal tissue proteomics"
-      - E-PROT-3: "Human Protein Atlas - Subcellular proteomics"
-    status: "Active with Human Protein Atlas data"
-
+      sample_range:
+        min: 1
+        max: 1
   genomics:
     count: 7
-    schema: "schemas/genomics_schema.json"
-    data_file: "registry/genomics/datasets.json"
-    data_sources:
+    schemas: schemas/genomics_schema.json
+    data_file: registry/genomics/datasets.json
+    summary:
+      data_sources:
       - Custom
-    organisms:
+      organisms:
       - Homo sapiens
-    genome_builds:
-      - GRCh38
-    datasets:
-      - dbNSFP_v4.7: "Missense variants prediction scores"
-      - ClinVar_latest: "Clinical variant annotations"
-      - gnomAD_v4.1: "Population allele frequencies"
-      - INSIDER_v1.0: "Protein-protein interaction sites"
-      - Ensembl_v110: "Gene annotations"
-      - GeVIR_v1.0: "Variant pathogenicity scores"
-      - CCR_v2.0: "Coding-constrained regions"
-    status: "Active with key genomic annotation resources"
-
+      sample_range:
+        min: 20000
+        max: 700000000
   epigenomics:
     count: 0
-    schema: "schemas/epigenomics_schema.json"
-    data_file: "registry/epigenomics/datasets.json"
-    status: "Ready for data"
-
-migration_info:
-  completed: "2025-09-23"
-  corrected: "2025-09-23"
-  genomics_populated: "2025-09-23"
-  legacy_backup: "legacy_backup/"
-  datasets_migrated: 299
-  proteomics_correction: "Moved 2 E-PROT datasets from transcriptomics to proteomics"
-  genomics_addition: "Added 7 key genomic annotation datasets"
-  validation_status: "All datasets pass their respective schema validation"
+    schemas: schemas/epigenomics_schema.json
+    data_file: registry/epigenomics/datasets.json
+    summary:
+      data_sources: []
+      organisms: []
+      sample_range:
+        min: 0
+        max: 0
+summary:
+  total_datasets: 306
+  omics_types: 3
