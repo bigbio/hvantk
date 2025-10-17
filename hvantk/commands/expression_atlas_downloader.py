@@ -108,7 +108,7 @@ def _print_dataset_accessions():
 @click.option(
     "--config_path",
     required=False,
-    help="The path to the expression_atlas.json config file.",
+    help="The path to the registry config file (optional). Either --config_path or --accession must be supplied.",
 )
 @click.option(
     "--accession", required=False, help="The accession of the experiment to download."

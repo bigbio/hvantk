@@ -1,0 +1,70 @@
+[
+  {
+    "title": "Human Protein Atlas - Normal tissue proteomics",
+    "accession": "E-PROT-13",
+    "description": "Mass spectrometry-based protein expression profiling of normal human tissues from the Human Protein Atlas providing quantitative protein abundance data.",
+    "pubmedid": "31665441",
+    "data_source": "Expression_Atlas",
+    "last_updated": "2025-09-23T16:06:05.621609",
+    "update_frequency": "static",
+    "organism": "Homo sapiens",
+    "tissue_type": "",
+    "sample_count": 1,
+    "license": "CC BY-SA 4.0",
+    "doi": "10.1093/nar/gkz935",
+    "contact": "contact@proteinatlas.org",
+    "quantification_method": "intensity_based",
+    "protein_inference_method": "parsimony",
+    "abundance_unit": "intensity",
+    "protein_database": "UniProt",
+    "database_version": "current",
+    "files": [
+      {
+        "path": "E-PROT-13.condensed-sdrf.tsv",
+        "format": "tsv",
+        "size_bytes": null,
+        "description": "File type: sdrf"
+      },
+      {
+        "path": "E-PROT-13-protein-abundance.tsv",
+        "format": "tsv",
+        "size_bytes": null,
+        "description": "File type: protein-abundance"
+      }
+    ]
+  },
+  {
+    "title": "Human Protein Atlas - Subcellular proteomics",
+    "accession": "E-PROT-3",
+    "description": "Subcellular protein localization data from the Human Protein Atlas using immunofluorescence microscopy to map protein subcellular distribution.",
+    "pubmedid": "28495876",
+    "data_source": "Expression_Atlas",
+    "last_updated": "2025-09-23T16:06:05.621670",
+    "update_frequency": "static",
+    "organism": "Homo sapiens",
+    "tissue_type": "",
+    "sample_count": 1,
+    "license": "CC BY-SA 4.0",
+    "doi": "10.1126/science.aal3321",
+    "contact": "contact@proteinatlas.org",
+    "quantification_method": "intensity_based",
+    "protein_inference_method": "parsimony",
+    "abundance_unit": "intensity",
+    "protein_database": "UniProt",
+    "database_version": "current",
+    "files": [
+      {
+        "path": "E-PROT-3.condensed-sdrf.tsv",
+        "format": "tsv",
+        "size_bytes": null,
+        "description": "File type: sdrf"
+      },
+      {
+        "path": "E-PROT-3-protein-abundance.tsv",
+        "format": "tsv",
+        "size_bytes": null,
+        "description": "File type: protein-abundance"
+      }
+    ]
+  }
+]

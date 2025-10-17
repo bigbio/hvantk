@@ -164,6 +164,15 @@ def convert_sdrf_to_hail_table(
     # Reshape SDRF DataFrame from long to wide format
     df_wide = _reshape_sdrf_long_to_wide_format(df_sdrf)
 
+    # Handle None/NA values to ensure proper type inference
+    # For object (string-like) columns with NA values, replace with empty string
+    for col in df_wide.columns:
+        if pd.api.types.is_object_dtype(df_wide[col]) and df_wide[col].isna().any():
+            df_wide[col] = df_wide[col].fillna("")
+
+    # Note: Numeric NA values are preserved to maintain missingness information
+    # instead of coercing to 0, which would destroy meaningful missing data
+
     # Convert the DataFrame to a Hail Table
     ht = (hl.Table.from_pandas(df_wide)
           .key_by(*keys)

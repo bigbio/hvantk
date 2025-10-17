@@ -1,19 +1,85 @@
-# Sample catalog with placeholder URIs; replace with your hosting locations
-- id: clinvar.ht
-  version: 2025-05-01
-  type: table
-  build: GRCh38
-  uri: https://example.org/hvantk/artifacts/clinvar/2025-05-01/clinvar.ht
-  checksum_algo: sha256  # placeholder; replace with actual algorithm if different
-  checksum: deadbeef     # placeholder; replace with real digest matching checksum_algo
-  size_bytes: 123456
-  n_partitions: 256
-  schema_hash: a1b2c3d4
-  params:
-    reference_genome: GRCh38
-  created: 2025-05-01T12:00:00Z
-  provenance:
-    source:
-      - https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar.vcf.gz
-    builder: hvantk.tables.table_builders.create_clinvar_tb
-    commit: 0000000  # placeholder commit SHA
+version: '2.0'
+generated: '2025-10-16T11:53:17.977662'
+description: Unified catalog of all omics datasets in hvantk registry
+registry_structure:
+  schemas: hvantk/resources/schemas/
+  transcriptomics: hvantk/resources/registry/transcriptomics/
+  proteomics: hvantk/resources/registry/proteomics/
+  genomics: hvantk/resources/registry/genomics/
+  epigenomics: hvantk/resources/registry/epigenomics/
+datasets:
+  transcriptomics:
+    count: 297
+    schemas: schemas/transcriptomics_schema.json
+    data_file: registry/transcriptomics/datasets.json
+    summary:
+      data_sources:
+      - Custom
+      - UCSC
+      - Expression_Atlas
+      organisms:
+      - Fruit Fly (D. melanogaster)
+      - Human (H. sapiens)
+      - Gallus gallus
+      - Mus musculus
+      - Freshwater Hydra (H. vulgaris)
+      - Sea Squirt (C. robusta)
+      - Sea urchin (S. purpuratus)
+      - Dog (C. familiaris)
+      - African Clawed Frog (X. laevis)
+      - Rat (R. norvegicus)
+      - Brine Shrimp (A. franciscana)
+      - Mouse lemur (T. microcebus)
+      - Sea Squirt (C. intestinalis)
+      - Blood Fluke (S. mansoni)
+      - Human-Mouse Xenograft
+      - Horse (E. caballus)
+      - Freshwater Worm (P. leidyi)
+      - Marmoset (C. jacchus)
+      - Fruit fly (D. melanogaster)
+      - Mosquito (A. aegypti)
+      - Colonial Hydroid (H. symbiolongicarpus)
+      - X. tropicalis
+      - Zebrafish (D. rerio)
+      - Homo sapiens
+      - Starlet Sea Anemone (N. vectensis)
+      sample_range:
+        min: 0
+        max: 2058652
+  proteomics:
+    count: 2
+    schemas: schemas/proteomics_schema.json
+    data_file: registry/proteomics/datasets.json
+    summary:
+      data_sources:
+      - Expression_Atlas
+      organisms:
+      - Homo sapiens
+      sample_range:
+        min: 1
+        max: 1
+  genomics:
+    count: 7
+    schemas: schemas/genomics_schema.json
+    data_file: registry/genomics/datasets.json
+    summary:
+      data_sources:
+      - Custom
+      organisms:
+      - Homo sapiens
+      sample_range:
+        min: 20000
+        max: 700000000
+  epigenomics:
+    count: 0
+    schemas: schemas/epigenomics_schema.json
+    data_file: registry/epigenomics/datasets.json
+    summary:
+      data_sources: []
+      organisms: []
+      sample_range:
+        min: 0
+        max: 0
+summary:
+  total_datasets: 306
+  omics_types: 3

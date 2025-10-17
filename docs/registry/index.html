@@ -1,0 +1,253 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HVANTK Live Demo Registry</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>🧬 HVANTK Live Demo Registry</h1>
+            <p>Live status of dataset validation for Hail MatrixTable compatibility</p>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Summary Statistics -->
+        <section class="stats-section">
+            <h2>📊 Summary Statistics</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>2</h3>
+                    <p>Total Datasets</p>
+                </div>
+                <div class="stat-card success">
+                    <h3>1</h3>
+                    <p>Validated Successfully</p>
+                </div>
+                <div class="stat-card failed">
+                    <h3>1</h3>
+                    <p>Failed Validation</p>
+                </div>
+                <div class="stat-card">
+                    <h3>50.0%</h3>
+                    <p>Success Rate</p>
+                </div>
+            </div>
+            <p class="last-updated">Last updated: 2025-09-11 18:27 UTC</p>
+        </section>
+
+        <!-- Validation Status Chart -->
+        <section class="chart-section">
+            <h2>📈 Validation Status Distribution</h2>
+            <canvas id="statusChart" width="400" height="200"></canvas>
+        </section>
+
+        <!-- UCSC Datasets -->
+        <section class="datasets-section">
+            <h2>🔬 UCSC Cell Browser Datasets (2 datasets)</h2>
+            
+        <table class="dataset-table">
+            <thead>
+                <tr>
+                    <th>Dataset ID</th>
+                    <th>Status</th>
+                    <th>Last Updated</th>
+                    <th>Error Message</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+        
+                <tr class="success">
+                    <td><strong>cortex-dev</strong></td>
+                    <td><span class="badge" style="background-color: #ffc107; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em;">Tier2 Passed</span></td>
+                    <td>2025-09-11 18:27</td>
+                    <td class="error-message"></td>
+                    <td><a href="#" onclick="showDetails('cortex-dev')">View Details</a></td>
+                </tr>
+            
+                <tr class="failed">
+                    <td><strong>ad-multi-region</strong></td>
+                    <td><span class="badge" style="background-color: #6c757d; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em;">Download Failed</span></td>
+                    <td>2025-09-11 18:27</td>
+                    <td class="error-message">Failed to download files: Failed to download expression matrix for ad-multi-region: 404 Client Error...</td>
+                    <td><a href="#" onclick="showDetails('ad-multi-region')">View Details</a></td>
+                </tr>
+            
+            </tbody>
+        </table>
+        
+        </section>
+
+        <!-- Expression Atlas Datasets -->
+        <section class="datasets-section">
+            <h2>🧪 Expression Atlas Datasets (0 datasets)</h2>
+            <p>No Expression Atlas datasets found.</p>
+        </section>
+
+        <!-- Legend -->
+        <section class="legend-section">
+            <h2>📖 Status Legend</h2>
+            <div class="legend">
+                <div class="legend-item">
+                    <span class="badge" style="background-color: #28a745; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em;">Tier3 Passed</span>
+                    <span>Tier 3 Passed - Full dataset validated successfully</span>
+                </div>
+                <div class="legend-item">
+                    <span class="badge" style="background-color: #ffc107; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em;">Tier2 Passed</span>
+                    <span>Tier 2 Passed - Sample validation successful</span>
+                </div>
+                <div class="legend-item">
+                    <span class="badge" style="background-color: #17a2b8; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em;">Tier1 Passed</span>
+                    <span>Tier 1 Passed - Header validation successful</span>
+                </div>
+                <div class="legend-item">
+                    <span class="badge" style="background-color: #6c757d; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em;">Tier1 Failed</span>
+                    <span>Failed - Header validation failed</span>
+                </div>
+                <div class="legend-item">
+                    <span class="badge" style="background-color: #6c757d; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em;">Download Failed</span>
+                    <span>Download Failed - Unable to download dataset</span>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Dataset Details Modal -->
+    <div id="detailsModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>Generated automatically by <a href="https://github.com/your-org/pyvatk">HVANTK</a> | 
+               <a href="https://github.com/your-org/pyvatk/actions">View Validation Runs</a></p>
+        </div>
+    </footer>
+
+    <script>
+        // Dataset registry data for JavaScript
+        const registryData = {
+  "cortex-dev": {
+    "dataset_id": "cortex-dev",
+    "dataset_type": "ucsc",
+    "status": "tier2_passed",
+    "timestamp": "2025-09-11T18:27:38.472184",
+    "failure_type": null,
+    "error_message": null,
+    "tier1_details": {
+      "expression_matrix": {
+        "file_exists": true,
+        "readable": true,
+        "delimiter_detected": "\t",
+        "num_columns": 4262,
+        "header_line": "gene\tHi_GW21_4.Hi_GW21_4\tHi_GW21_5.Hi_GW21_5\tHi_GW21_8.Hi_GW21_8",
+        "first_data_line": "RP11.560A15.3|RP11.560A15.3\t0.0\t0.0\t0.0",
+        "encoding_valid": true,
+        "expected_columns_found": [
+          "gene"
+        ],
+        "missing_columns": []
+      },
+      "metadata": {
+        "file_exists": true,
+        "readable": true,
+        "delimiter_detected": "\t",
+        "num_columns": 7,
+        "header_line": "Cell\tWGCNAcluster\tName\tAge_in_Weeks\tRegionName\tLaminae\tArea",
+        "first_data_line": "Hi_GW21_4.Hi_GW21_4\tGlyc\tSample1\t19\tCortex\tAll\t0",
+        "encoding_valid": true
+      }
+    },
+    "tier2_details": {
+      "sample_files_created": true,
+      "matrix_creation_success": true,
+      "sample_lines": 100,
+      "metadata_complete": true
+    },
+    "tier3_details": null,
+    "sample_file_paths": {
+      "expression_matrix": "/mnt/nfs/work/hvantk/samples/ucsc/cortex-dev/cortex-dev_expression_matrix_sample.txt.gz",
+      "metadata": "/mnt/nfs/work/hvantk/samples/ucsc/cortex-dev/cortex-dev_metadata_sample.txt.gz"
+    }
+  },
+  "ad-multi-region": {
+    "dataset_id": "ad-multi-region",
+    "dataset_type": "ucsc",
+    "status": "download_failed",
+    "timestamp": "2025-09-11T18:27:44.674515",
+    "failure_type": "download_error",
+    "error_message": "Failed to download files: Failed to download expression matrix for ad-multi-region: 404 Client Error: Not Found",
+    "tier1_details": null,
+    "tier2_details": null,
+    "tier3_details": null,
+    "sample_file_paths": null
+  }
+};
+        
+        // Chart.js configuration  
+        const ctx = document.getElementById('statusChart').getContext('2d');
+        const statusChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['tier2_passed', 'download_failed'],
+                datasets: [{
+                    data: [1, 1],
+                    backgroundColor: ['#ffc107', '#6c757d']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+        
+        // Modal functionality
+        const modal = document.getElementById('detailsModal');
+        const span = document.getElementsByClassName('close')[0];
+        
+        function showDetails(datasetId) {
+            const dataset = registryData[datasetId];
+            document.getElementById('modalBody').innerHTML = generateDetailView(datasetId, dataset);
+            modal.style.display = 'block';
+        }
+        
+        span.onclick = function() {
+            modal.style.display = 'none';
+        }
+        
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        function generateDetailView(datasetId, dataset) {
+            return `
+                <h2>${datasetId}</h2>
+                <p><strong>Type:</strong> ${dataset.dataset_type}</p>
+                <p><strong>Status:</strong> ${dataset.status}</p>
+                <p><strong>Last Updated:</strong> ${new Date(dataset.timestamp).toLocaleString()}</p>
+                ${dataset.error_message ? `<p><strong>Error:</strong> ${dataset.error_message}</p>` : ''}
+                ${dataset.tier1_details ? `<h3>Tier 1 Details</h3><pre>${JSON.stringify(dataset.tier1_details, null, 2)}</pre>` : ''}
+                ${dataset.tier2_details ? `<h3>Tier 2 Details</h3><pre>${JSON.stringify(dataset.tier2_details, null, 2)}</pre>` : ''}
+                ${dataset.tier3_details ? `<h3>Tier 3 Details</h3><pre>${JSON.stringify(dataset.tier3_details, null, 2)}</pre>` : ''}
+            `;
+        }
+    </script>
+</body>
+</html>
+        
