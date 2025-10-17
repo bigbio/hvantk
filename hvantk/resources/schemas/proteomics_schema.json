@@ -52,8 +52,21 @@
       "default": "Homo sapiens"
     },
     "tissue_type": {
-      "type": ["string", "array"],
-      "description": "Tissue or cell type(s) represented in the dataset"
+      "anyOf": [
+        {
+          "type": "string",
+          "description": "Single tissue or cell type represented in the dataset"
+        },
+        {
+          "type": "array",
+          "description": "Multiple tissue or cell types represented in the dataset",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      ]
     },
     "sample_count": {
       "type": "integer",
@@ -93,24 +106,52 @@
       "default": "intensity"
     },
     "ms_instrument": {
-      "type": ["string", "null"],
-      "description": "Mass spectrometry instrument used",
-      "enum": ["Orbitrap", "Q-TOF", "Triple_Quad", "Ion_Trap", "MALDI-TOF", "other"]
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "enum": ["Orbitrap", "Q-TOF", "Triple_Quad", "Ion_Trap", "MALDI-TOF", "other"]
+        }
+      ],
+      "description": "Mass spectrometry instrument used"
     },
     "fragmentation_method": {
-      "type": ["string", "null"],
-      "description": "Peptide fragmentation method",
-      "enum": ["CID", "HCD", "ETD", "ECD", "UVPD", "other"]
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "enum": ["CID", "HCD", "ETD", "ECD", "UVPD", "other"]
+        }
+      ],
+      "description": "Peptide fragmentation method"
     },
     "search_engine": {
-      "type": ["string", "null"],
-      "description": "Database search engine used for peptide identification",
-      "enum": ["Mascot", "SEQUEST", "X!Tandem", "MaxQuant", "MSFragger", "Comet", "other"]
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "enum": ["Mascot", "SEQUEST", "X!Tandem", "MaxQuant", "MSFragger", "Comet", "other"]
+        }
+      ],
+      "description": "Database search engine used for peptide identification"
     },
     "protein_database": {
-      "type": ["string", "null"],
-      "description": "Protein sequence database used for search",
-      "enum": ["UniProt", "RefSeq", "Ensembl", "NCBI", "custom"]
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "enum": ["UniProt", "RefSeq", "Ensembl", "NCBI", "custom"]
+        }
+      ],
+      "description": "Protein sequence database used for search"
     },
     "database_version": {
       "type": ["string", "null"],
@@ -187,4 +228,3 @@
     }
   }
 }
-

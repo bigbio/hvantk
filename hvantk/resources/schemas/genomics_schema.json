@@ -3,6 +3,7 @@
   "title": "Genomics Dataset Schema",
   "description": "Schema for genomics datasets extending the common schema",
   "type": "object",
+  "additionalProperties": false,
   "required": ["title", "accession", "description", "files", "data_source", "genome_build", "variant_types"],
   "properties": {
     "title": {
@@ -53,6 +54,9 @@
     },
     "tissue_type": {
       "type": ["string", "array"],
+      "items": {
+        "type": "string"
+      },
       "description": "Tissue or cell type(s) represented in the dataset"
     },
     "sample_count": {
@@ -118,7 +122,7 @@
     "variant_calling_pipeline": {
       "type": ["string", "null"],
       "description": "Variant calling pipeline or software used",
-      "enum": ["GATK", "FreeBayes", "VarScan", "Strelka", "Mutect2", "DeepVariant", "custom"]
+      "enum": ["GATK", "FreeBayes", "VarScan", "Strelka", "Mutect2", "DeepVariant", "custom", null]
     },
     "annotation_sources": {
       "type": "array",
@@ -188,4 +192,3 @@
     }
   }
 }
-
