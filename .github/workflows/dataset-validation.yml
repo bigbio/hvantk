@@ -5,6 +5,15 @@ on:
     - cron: '0 2 * * *' # daily at 02:00 UTC
   workflow_dispatch:
     inputs:
+      validation_mode:
+        description: 'Validation mode'
+        required: false
+        default: 'quick'
+        type: choice
+        options:
+          - quick
+          - full
+          - metadata-only
       force_revalidate:
         description: 'Force revalidation of all datasets'
         required: false
@@ -17,7 +26,7 @@ on:
       max_datasets:
         description: 'Maximum number of datasets to validate'
         required: false
-        default: '50'
+        default: '10'
         type: string
   pull_request: {}
 
@@ -66,56 +75,120 @@ jobs:
           set -euo pipefail
           mkdir -p dataset_validation_results/{downloads,samples,logs}
 
-      - name: Run UCSC dataset validation
-        id: ucsc_validation
-        continue-on-error: true
+      - name: Determine validation strategy
+        id: strategy
         shell: bash
         run: |
           set -euo pipefail
-          echo "🔬 Validating UCSC datasets..."
           
-          # Build the command with conditional --force-revalidate flag
-          cmd="python -m hvantk.commands.dataset_validation_cli validate-datasets \
-            --ucsc-datasets \"${{ github.event.inputs.dataset_filter || 'all' }}\" \
-            --work-dir ./dataset_validation_results \
-            --registry-file ./dataset_validation_results/validation_registry.json \
-            --max-datasets \"${{ github.event.inputs.max_datasets || '50' }}\" \
-            --verbose"
-          
-          # Add --force-revalidate flag only if the input is truthy
-          if [[ "${{ github.event.inputs.force_revalidate }}" == "true" ]]; then
-            cmd="$cmd --force-revalidate"
+          # Determine validation mode based on trigger and inputs
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "mode=metadata-only" >> $GITHUB_OUTPUT
+            echo "max_datasets=3" >> $GITHUB_OUTPUT
+            echo "datasets=cortex-dev,zeisel2015,E-MTAB-5061" >> $GITHUB_OUTPUT
+            echo "reason=PR validation - testing code changes only" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "schedule" ]]; then
+            echo "mode=quick" >> $GITHUB_OUTPUT
+            echo "max_datasets=10" >> $GITHUB_OUTPUT
+            echo "datasets=all" >> $GITHUB_OUTPUT
+            echo "reason=Scheduled run - monitoring dataset health" >> $GITHUB_OUTPUT
+          else
+            # Manual workflow_dispatch
+            echo "mode=${{ github.event.inputs.validation_mode || 'quick' }}" >> $GITHUB_OUTPUT
+            echo "max_datasets=${{ github.event.inputs.max_datasets || '10' }}" >> $GITHUB_OUTPUT
+            echo "datasets=${{ github.event.inputs.dataset_filter || 'all' }}" >> $GITHUB_OUTPUT
+            echo "reason=Manual run - user requested validation" >> $GITHUB_OUTPUT
           fi
-          
-          # Execute the command and capture output
-          eval "$cmd" 2>&1 | tee dataset_validation_results/logs/ucsc_validation.log
-          # Ensure failure bubbles despite tee (read PIPESTATUS immediately)
-          code="${PIPESTATUS[0]}"; exit "$code"
 
-      - name: Run Expression Atlas dataset validation
-        id: atlas_validation
+      - name: Display validation plan
+        shell: bash
+        run: |
+          echo "🎯 Validation Strategy:"
+          echo "  Mode: ${{ steps.strategy.outputs.mode }}"
+          echo "  Max datasets: ${{ steps.strategy.outputs.max_datasets }}"
+          echo "  Datasets: ${{ steps.strategy.outputs.datasets }}"
+          echo "  Reason: ${{ steps.strategy.outputs.reason }}"
+          echo ""
+          
+          case "${{ steps.strategy.outputs.mode }}" in
+            "metadata-only")
+              echo "📋 Metadata-only validation:"
+              echo "  ✓ Check dataset availability"
+              echo "  ✓ Validate catalog integrity"
+              echo "  ✓ Test CLI functionality"
+              echo "  ✗ No data downloads"
+              echo "  ⚡ Fast execution (~2-5 minutes)"
+              ;;
+            "quick")
+              echo "🚀 Quick validation:"
+              echo "  ✓ Download sample data only"
+              echo "  ✓ Header validation (Tier 1)"
+              echo "  ✓ Limited sample validation"
+              echo "  📊 Moderate data usage (~500MB-2GB)"
+              echo "  ⏱️  Medium execution (~10-20 minutes)"
+              ;;
+            "full")
+              echo "🔍 Full validation:"
+              echo "  ✓ Complete data downloads"
+              echo "  ✓ All validation tiers"
+              echo "  ✓ Comprehensive testing"
+              echo "  💾 High data usage (5GB+)"
+              echo "  ⏳ Long execution (~30-60 minutes)"
+              ;;
+          esac
+
+      - name: Run dataset validation
+        id: validation
         continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
-          echo "🧪 Validating Expression Atlas datasets..."
           
-          # Build the command with conditional --force-revalidate flag
+          # Build base command
           cmd="python -m hvantk.commands.dataset_validation_cli validate-datasets \
-            --expression-atlas-datasets \"${{ github.event.inputs.dataset_filter || 'all' }}\" \
             --work-dir ./dataset_validation_results \
             --registry-file ./dataset_validation_results/validation_registry.json \
-            --max-datasets \"${{ github.event.inputs.max_datasets || '50' }}\" \
+            --max-datasets ${{ steps.strategy.outputs.max_datasets }} \
             --verbose"
           
-          # Add --force-revalidate flag only if the input is truthy
+          # Add mode-specific flags
+          case "${{ steps.strategy.outputs.mode }}" in
+            "metadata-only")
+              cmd="$cmd --quick-validation"
+              # For metadata-only, we'll just test a few known datasets
+              cmd="$cmd --ucsc-datasets cortex-dev zeisel2015"
+              ;;
+            "quick")
+              cmd="$cmd --sample-lines 50"  # Reduced sample size
+              if [[ "${{ steps.strategy.outputs.datasets }}" == "all" ]]; then
+                cmd="$cmd --ucsc-datasets all"
+              else
+                cmd="$cmd --ucsc-datasets ${{ steps.strategy.outputs.datasets }}"
+              fi
+              ;;
+            "full")
+              if [[ "${{ steps.strategy.outputs.datasets }}" == "all" ]]; then
+                cmd="$cmd --ucsc-datasets all --expression-atlas-datasets all"
+              else
+                cmd="$cmd --ucsc-datasets ${{ steps.strategy.outputs.datasets }}"
+              fi
+              ;;
+          esac
+          
+          # Add force revalidate if requested
           if [[ "${{ github.event.inputs.force_revalidate }}" == "true" ]]; then
             cmd="$cmd --force-revalidate"
           fi
           
-          # Execute the command and capture output
-          eval "$cmd" 2>&1 | tee dataset_validation_results/logs/atlas_validation.log
-          code="${PIPESTATUS[0]}"; exit "$code"
+          echo "🚀 Executing: $cmd"
+          echo ""
+          
+          # Execute validation and capture results
+          eval "$cmd" 2>&1 | tee dataset_validation_results/logs/validation.log
+          exit_code="${PIPESTATUS[0]}"
+          
+          echo "validation_exit_code=$exit_code" >> $GITHUB_OUTPUT
+          exit "$exit_code"
 
       - name: Generate validation summary
         if: always()

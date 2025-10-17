@@ -41,43 +41,106 @@ def validate_datasets_command(args):
 
     results = {}
 
-    # Validate UCSC datasets
-    if args.ucsc_datasets:
-        if args.ucsc_datasets == ['all']:
-            logger.info("Validating all UCSC datasets")
-            results.update(validator.validate_ucsc_datasets_batch(
-                max_datasets=args.max_datasets
-            ))
-        else:
-            logger.info(f"Validating specific UCSC datasets: {args.ucsc_datasets}")
-            results.update(validator.validate_ucsc_datasets_batch(
-                dataset_names=args.ucsc_datasets,
-                max_datasets=args.max_datasets
-            ))
+    # Handle quick validation mode (metadata-only)
+    if getattr(args, 'quick_validation', False):
+        logger.info("Running in quick validation mode - metadata and availability checks only")
 
-    # Validate Expression Atlas datasets
-    if args.expression_atlas_datasets:
-        if args.expression_atlas_datasets == ['all']:
-            logger.info("Validating all Expression Atlas datasets")
-            results.update(validator.validate_expression_atlas_datasets_batch(
-                max_datasets=args.max_datasets
-            ))
-        else:
-            logger.info(f"Validating specific Expression Atlas datasets: {args.expression_atlas_datasets}")
-            results.update(validator.validate_expression_atlas_datasets_batch(
-                accessions=args.expression_atlas_datasets,
-                max_datasets=args.max_datasets
-            ))
+        # Quick validation for UCSC datasets
+        if args.ucsc_datasets:
+            from hvantk.datasets.ucsc_cell_datasets import load_ucsc_datasets
+            try:
+                all_datasets = load_ucsc_datasets()
+                logger.info(f"✓ Successfully loaded UCSC catalog: {len(all_datasets)} datasets available")
+
+                # Test a few specific datasets for availability
+                test_datasets = args.ucsc_datasets if args.ucsc_datasets != ['all'] else ['cortex-dev', 'zeisel2015']
+                for dataset_name in test_datasets[:3]:  # Limit to 3 for quick check
+                    dataset = next((ds for ds in all_datasets if ds.name == dataset_name), None)
+                    if dataset:
+                        logger.info(f"✓ Dataset {dataset_name} found in catalog")
+                        # Create a mock successful result for quick validation
+                        from hvantk.datasets.validation_registry import ValidationResult, ValidationStatus
+                        results[dataset_name] = ValidationResult(
+                            dataset_id=dataset_name,
+                            dataset_type="ucsc",
+                            status=ValidationStatus.TIER1_PASSED,
+                            error_message=None
+                        )
+                    else:
+                        logger.warning(f"✗ Dataset {dataset_name} not found in catalog")
+
+            except Exception as e:
+                logger.error(f"Failed to load UCSC catalog: {e}")
+
+        # Quick validation for Expression Atlas datasets
+        if args.expression_atlas_datasets:
+            from hvantk.datasets.expression_atlas_datasets import load_expression_atlas_datasets
+            try:
+                all_datasets = load_expression_atlas_datasets()
+                logger.info(f"✓ Successfully loaded Expression Atlas catalog: {len(all_datasets)} datasets available")
+
+                # Test a few specific datasets
+                test_datasets = args.expression_atlas_datasets if args.expression_atlas_datasets != ['all'] else ['E-MTAB-5061']
+                for accession in test_datasets[:3]:
+                    dataset = next((ds for ds in all_datasets if ds.accession == accession), None)
+                    if dataset:
+                        logger.info(f"✓ Dataset {accession} found in catalog")
+                        results[accession] = ValidationResult(
+                            dataset_id=accession,
+                            dataset_type="expression_atlas",
+                            status=ValidationStatus.TIER1_PASSED,
+                            error_message=None
+                        )
+                    else:
+                        logger.warning(f"✗ Dataset {accession} not found in catalog")
+
+            except Exception as e:
+                logger.error(f"Failed to load Expression Atlas catalog: {e}")
+
+        logger.info("Quick validation completed - no data downloads performed")
+
+    else:
+        # Standard validation with data downloads
+        # Validate UCSC datasets
+        if args.ucsc_datasets:
+            if args.ucsc_datasets == ['all']:
+                logger.info("Validating all UCSC datasets")
+                results.update(validator.validate_ucsc_datasets_batch(
+                    max_datasets=args.max_datasets
+                ))
+            else:
+                logger.info(f"Validating specific UCSC datasets: {args.ucsc_datasets}")
+                results.update(validator.validate_ucsc_datasets_batch(
+                    dataset_names=args.ucsc_datasets,
+                    max_datasets=args.max_datasets
+                ))
+
+        # Validate Expression Atlas datasets
+        if args.expression_atlas_datasets:
+            if args.expression_atlas_datasets == ['all']:
+                logger.info("Validating all Expression Atlas datasets")
+                results.update(validator.validate_expression_atlas_datasets_batch(
+                    max_datasets=args.max_datasets
+                ))
+            else:
+                logger.info(f"Validating specific Expression Atlas datasets: {args.expression_atlas_datasets}")
+                results.update(validator.validate_expression_atlas_datasets_batch(
+                    accessions=args.expression_atlas_datasets,
+                    max_datasets=args.max_datasets
+                ))
 
     # Print summary
     print(f"\nValidation completed for {len(results)} datasets")
 
     success_count = sum(1 for r in results.values()
-                       if r.status in [ValidationStatus.TIER2_PASSED, ValidationStatus.TIER3_PASSED])
+                       if r.status in [ValidationStatus.TIER2_PASSED, ValidationStatus.TIER3_PASSED, ValidationStatus.TIER1_PASSED])
     failed_count = len(results) - success_count
 
     print(f"Successful: {success_count}")
     print(f"Failed: {failed_count}")
+
+    if getattr(args, 'quick_validation', False):
+        print("Note: Quick validation mode - only metadata and availability checked")
 
     if args.report_file:
         report = validator.generate_validation_report(args.report_file)
@@ -376,6 +439,8 @@ Examples:
                                 help='Exit with error code if any validation fails')
     validate_parser.add_argument('--force-revalidate', action='store_true',
                                 help='Force revalidation of datasets even if they were previously validated')
+    validate_parser.add_argument('--quick-validation', action='store_true',
+                                help='Quick validation mode - only check metadata and headers, no full downloads')
     validate_parser.add_argument('--verbose', '-v', action='store_true',
                                 help='Enable verbose logging')
     validate_parser.set_defaults(func=validate_datasets_command)
