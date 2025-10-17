@@ -20,7 +20,7 @@ from .validation_registry import (
 )
 
 from .api_generator import APIEndpointGenerator
-from .config import RegistryConfig
+from .config import RegistryConfig, VALIDATION_TIERS, STATUS_DEFINITIONS
 
 # Optional modules (guarded to avoid import-time failures)
 try:
@@ -41,6 +41,8 @@ __all__ = [
     'DatasetValidationRegistry',
     'APIEndpointGenerator',
     'RegistryConfig',
+    'VALIDATION_TIERS',
+    'STATUS_DEFINITIONS',
 ]
 
 # Add optional imports only if they succeeded

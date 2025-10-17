@@ -62,11 +62,7 @@ class WebRegistryGenerator:
 <html>
 <head>
     <title>HVANTK Dataset Registry</title>
-    <style>
-        body {{ font-family: Arial, sans-serif; margin: 40px; }}
-        .header {{ color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px; }}
-        .notice {{ background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; margin: 20px 0; border-radius: 4px; }}
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="header">
@@ -88,7 +84,43 @@ class WebRegistryGenerator:
 </body>
 </html>""")
 
+        # Create a basic styles.css file
+        css_file = output_path / "styles.css"
+        with open(css_file, 'w') as f:
+            f.write("""/* HVANTK Dataset Registry Styles */
+body {
+    font-family: Arial, sans-serif;
+    margin: 40px;
+    background-color: #f8f9fa;
+}
+
+.header {
+    color: #333;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+.notice {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    padding: 15px;
+    margin: 20px 0;
+    border-radius: 4px;
+}
+
+ul {
+    list-style-type: disc;
+    margin-left: 20px;
+}
+
+li {
+    margin: 5px 0;
+}
+""")
+
         logger.info(f"Generated stub web interface at {index_file}")
+        logger.info(f"Generated CSS file at {css_file}")
         return output_path
 
     def generate_dashboard(self, registry_file: str, output_file: str) -> Path:
@@ -171,7 +203,8 @@ class WebRegistryGenerator:
 
         config = status_config.get(status, {'color': '#6c757d', 'label': 'Unknown'})
 
-        badge_svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="104" height="20">
+        badge_svg = f'''<!-- Status badge for {status} -->
+<svg xmlns="http://www.w3.org/2000/svg" width="104" height="20">
             <linearGradient id="b" x2="0" y2="100%">
                 <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
                 <stop offset="1" stop-opacity=".1"/>
@@ -185,8 +218,8 @@ class WebRegistryGenerator:
                 <path fill="url(#b)" d="M0 0h104v20H0z"/>
             </g>
             <g fill="#fff" text-anchor="middle" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="110">
-                <text x="325" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="530">Status</text>
-                <text x="325" y="140" transform="scale(.1)" textLength="530">Status</text>
+                <text x="325" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="530">badge</text>
+                <text x="325" y="140" transform="scale(.1)" textLength="530">badge</text>
                 <text x="825" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="310">{config['label']}</text>
                 <text x="825" y="140" transform="scale(.1)" textLength="310">{config['label']}</text>
             </g>

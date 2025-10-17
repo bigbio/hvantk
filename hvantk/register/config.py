@@ -5,12 +5,13 @@ class RegistryConfig:
     """Configuration class for the dataset validation registry."""
 
     def __init__(self):
+        """Initialize registry configuration with default values."""
         # Registry Settings
         self.validation_schedule = "0 2 * * *"  # Daily at 2 AM UTC
 
         # Web interface settings
-        self.site_title = "HVANTK Dataset Registry"
-        self.theme_color = "#1f77b4"
+        self.site_title = "HVANTK Dataset Validation Registry"
+        self.theme_color = "#667eea"
 
         # Validation limits
         self.max_datasets_per_run = 100
@@ -20,6 +21,18 @@ class RegistryConfig:
         # Notification settings
         self.create_issues_on_failure = True
         self.issue_labels = ["validation", "automation", "bug"]
+
+        # Chart colors for status visualization
+        self.chart_colors = {
+            "tier3_passed": "#28a745",
+            "tier2_passed": "#28a745",
+            "tier1_passed": "#17a2b8",
+            "tier3_failed": "#dc3545",
+            "tier2_failed": "#dc3545",
+            "tier1_failed": "#dc3545",
+            "not_validated": "#6c757d",
+            "in_progress": "#ffc107"
+        }
 
         # Dataset source URLs (for reference)
         self.data_sources = {
