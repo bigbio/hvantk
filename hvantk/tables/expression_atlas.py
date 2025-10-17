@@ -170,18 +170,8 @@ def convert_sdrf_to_hail_table(
         if pd.api.types.is_object_dtype(df_wide[col]) and df_wide[col].isna().any():
             df_wide[col] = df_wide[col].fillna("")
 
-    # For numeric columns with NA values, replace with appropriate defaults
-    for col in df_wide.columns:
-        if pd.api.types.is_numeric_dtype(df_wide[col]) and df_wide[col].isna().any():
-            df_wide[col] = df_wide[col].fillna(0)
-
-    # Create a schema dictionary for explicit type control
-    schema = {}
-    for col in df_wide.columns:
-        if (
-            df_wide[col].isna().any()
-        ):  # If column still has NA values after previous operations
-            schema[col] = hl.tstr  # Default to string type for problematic columns
+    # Note: Numeric NA values are preserved to maintain missingness information
+    # instead of coercing to 0, which would destroy meaningful missing data
 
     # Convert the DataFrame to a Hail Table
     ht = (hl.Table.from_pandas(df_wide)
