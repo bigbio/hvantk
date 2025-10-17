@@ -377,6 +377,8 @@ Examples:
                                 help='Generate detailed report to file')
     validate_parser.add_argument('--strict', action='store_true',
                                 help='Exit with error code if any validation fails')
+    validate_parser.add_argument('--force-revalidate', action='store_true',
+                                help='Force revalidation of datasets even if they were previously validated')
     validate_parser.set_defaults(func=validate_datasets_command)
 
     # Report command
@@ -419,7 +421,7 @@ Examples:
                                 help='Path to creation registry file')
     registry_parser.add_argument('--filter-source', choices=['ucsc', 'expression_atlas'],
                                 help='Filter by dataset source')
-    registry_parser.add_argument('--filter-matrix-type', choices=['expression', 'atac', 'multiome'],
+    registry_parser.add_argument('--filter-matrix-type', choices=[m.value for m in MatrixType],
                                 help='Filter by matrix type')
     registry_parser.add_argument('--filter-status',
                                 choices=['validated', 'failed', 'untested', 'deprecated', 'requires_update'],

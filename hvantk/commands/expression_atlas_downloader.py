@@ -108,7 +108,7 @@ def _print_dataset_accessions():
 @click.option(
     "--config_path",
     required=False,
-    help="The path to the registry config file (defaults to new unified registry).",
+    help="The path to the registry config file (optional). Either --config_path or --accession must be supplied.",
 )
 @click.option(
     "--accession", required=False, help="The accession of the experiment to download."
