@@ -73,13 +73,22 @@ jobs:
         run: |
           set -euo pipefail
           echo "🔬 Validating UCSC datasets..."
-          python -m hvantk.commands.dataset_validation_cli validate-datasets \
-            --ucsc-datasets "${{ github.event.inputs.dataset_filter || 'all' }}" \
+          
+          # Build the command with conditional --force-revalidate flag
+          cmd="python -m hvantk.commands.dataset_validation_cli validate-datasets \
+            --ucsc-datasets \"${{ github.event.inputs.dataset_filter || 'all' }}\" \
             --work-dir ./dataset_validation_results \
             --registry-file ./dataset_validation_results/validation_registry.json \
-            --max-datasets "${{ github.event.inputs.max_datasets || '50' }}" \
-            --force-revalidate ${{ github.event.inputs.force_revalidate || false }} \
-            --verbose 2>&1 | tee dataset_validation_results/logs/ucsc_validation.log
+            --max-datasets \"${{ github.event.inputs.max_datasets || '50' }}\" \
+            --verbose"
+          
+          # Add --force-revalidate flag only if the input is truthy
+          if [[ "${{ github.event.inputs.force_revalidate }}" == "true" ]]; then
+            cmd="$cmd --force-revalidate"
+          fi
+          
+          # Execute the command and capture output
+          eval "$cmd" 2>&1 | tee dataset_validation_results/logs/ucsc_validation.log
           # Ensure failure bubbles despite tee (read PIPESTATUS immediately)
           code="${PIPESTATUS[0]}"; exit "$code"
 
@@ -90,13 +99,22 @@ jobs:
         run: |
           set -euo pipefail
           echo "🧪 Validating Expression Atlas datasets..."
-          python -m hvantk.commands.dataset_validation_cli validate-datasets \
-            --expression-atlas-datasets "${{ github.event.inputs.dataset_filter || 'all' }}" \
+          
+          # Build the command with conditional --force-revalidate flag
+          cmd="python -m hvantk.commands.dataset_validation_cli validate-datasets \
+            --expression-atlas-datasets \"${{ github.event.inputs.dataset_filter || 'all' }}\" \
             --work-dir ./dataset_validation_results \
             --registry-file ./dataset_validation_results/validation_registry.json \
-            --max-datasets "${{ github.event.inputs.max_datasets || '50' }}" \
-            --force-revalidate ${{ github.event.inputs.force_revalidate || false }} \
-            --verbose 2>&1 | tee dataset_validation_results/logs/atlas_validation.log
+            --max-datasets \"${{ github.event.inputs.max_datasets || '50' }}\" \
+            --verbose"
+          
+          # Add --force-revalidate flag only if the input is truthy
+          if [[ "${{ github.event.inputs.force_revalidate }}" == "true" ]]; then
+            cmd="$cmd --force-revalidate"
+          fi
+          
+          # Execute the command and capture output
+          eval "$cmd" 2>&1 | tee dataset_validation_results/logs/atlas_validation.log
           code="${PIPESTATUS[0]}"; exit "$code"
 
       - name: Generate validation summary
@@ -162,3 +180,10 @@ jobs:
               body: body,
               labels: ['validation', 'automation', 'bug']
             });
+
+      - name: Deploy to GitHub Pages
+        if: always()
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/registry
