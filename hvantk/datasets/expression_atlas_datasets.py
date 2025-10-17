@@ -1,7 +1,9 @@
 import json
 import logging
+import os
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict
+from urllib.parse import quote
 
 logger = logging.getLogger(__name__)
 
@@ -112,19 +114,27 @@ class ExpressionAtlasDataset:
 
     def download_expression_file(self, out_dir: str, file_name: str) -> str:
         """Download a specific expression file by name."""
-        url_download = f"{EXPRESSION_ATLAS_BASE_URL}/{self.accession}/download/{file_name}"
+        # Sanitize file name to prevent path traversal attacks
+        safe_name = os.path.basename(file_name)
+        # URL-encode the safe name for the download URL
+        encoded_name = quote(safe_name, safe="")
+        url_download = f"{EXPRESSION_ATLAS_BASE_URL}/{self.accession}/download/{encoded_name}"
         try:
-            return download_file(url=url_download, out_dir=out_dir, file_name=file_name)
+            return download_file(url=url_download, out_dir=out_dir, file_name=safe_name)
         except Exception as e:
-            raise ValueError(f"Failed to download {file_name} for {self.accession}: {str(e)}") from e
+            raise ValueError(f"Failed to download {safe_name} for {self.accession}: {str(e)}") from e
 
     def download_sdrf_file(self, out_dir: str, file_name: str) -> str:
         """Download a specific SDRF file by name."""
-        url_download = f"{EXPRESSION_ATLAS_BASE_URL}/{self.accession}/download/{file_name}"
+        # Sanitize file name to prevent path traversal attacks
+        safe_name = os.path.basename(file_name)
+        # URL-encode the safe name for the download URL
+        encoded_name = quote(safe_name, safe="")
+        url_download = f"{EXPRESSION_ATLAS_BASE_URL}/{self.accession}/download/{encoded_name}"
         try:
-            return download_file(url=url_download, out_dir=out_dir, file_name=file_name)
+            return download_file(url=url_download, out_dir=out_dir, file_name=safe_name)
         except Exception as e:
-            raise ValueError(f"Failed to download {file_name} for {self.accession}: {str(e)}") from e
+            raise ValueError(f"Failed to download {safe_name} for {self.accession}: {str(e)}") from e
 
 
 @dataclass
@@ -252,19 +262,14 @@ def load_expression_atlas_datasets(json_path: Optional[str] = None) -> List[Expr
         List of ExpressionAtlasDataset objects
     """
     if json_path is None:
-        # Use new unified registry system
         try:
-            import sys
             from pathlib import Path
-            sys.path.append(str(Path(__file__).parent.parent / "resources"))
-            from unified_registry import load_expression_atlas_datasets as load_new_format
+            from hvantk.resources.unified_registry import load_expression_atlas_datasets as load_new_format
 
-            # Load from new registry format and convert to old format for compatibility
             new_datasets = load_new_format()
             legacy_datasets = []
 
             for dataset in new_datasets:
-                # Convert new schema format back to legacy format for compatibility
                 legacy_dataset = ExpressionAtlasDataset(
                     title=dataset.get("title", ""),
                     accession=dataset.get("accession", ""),
@@ -280,14 +285,14 @@ def load_expression_atlas_datasets(json_path: Optional[str] = None) -> List[Expr
 
             return legacy_datasets
 
+        except ImportError:
+            logger.warning("Unified registry not available, falling back to legacy loading")
+            from pathlib import Path
+            json_path = str(Path(__file__).parent.parent / "resources" / "expression_atlas.json")
         except Exception as e:
-            # Fallback to legacy system
-            import os
-            json_path = os.path.join(
-                os.path.dirname(__file__),
-                "..", "resources", "expression_atlas.json"
-            )
+            logger.error(f"Failed to load from unified registry: {e}")
+            from pathlib import Path
+            json_path = str(Path(__file__).parent.parent / "resources" / "expression_atlas.json")
 
-    # Use legacy loading method if json_path is specified or fallback needed
     collection = ExpressionAtlasDatasetCollection.from_json(json_path)
     return collection.datasets

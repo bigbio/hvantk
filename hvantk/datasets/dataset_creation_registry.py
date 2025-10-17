@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import tempfile
 from dataclasses import dataclass, asdict
 from datetime import datetime
 from enum import Enum
@@ -140,8 +142,8 @@ class DatasetCreationRegistry:
         self.load_registry()
 
     def _get_default_registry_file(self) -> str:
-        """Get default registry file path."""
-        return str(Path(__file__).parent.parent / "resources" / "dataset_creation_registry.json")
+        """Get default, user-writable registry path (~/.hvantk/registry/...)."""
+        return str(Path.home() / ".hvantk" / "registry" / "dataset_creation_registry.json")
 
     def load_registry(self) -> None:
         """Load registry from file."""
@@ -162,21 +164,53 @@ class DatasetCreationRegistry:
             self.datasets = {}
 
     def save_registry(self) -> None:
-        """Save registry to file."""
+        """Save registry to file using atomic write to prevent corruption."""
+        registry_path = Path(self.registry_file)
+        temp_file = None
+
         try:
             # Ensure directory exists
-            Path(self.registry_file).parent.mkdir(parents=True, exist_ok=True)
+            registry_path.parent.mkdir(parents=True, exist_ok=True)
 
+            # Prepare data for serialization
             data = {
                 dataset_id: self._dataset_entry_to_dict(entry)
                 for dataset_id, entry in self.datasets.items()
             }
 
-            with open(self.registry_file, 'w') as f:
-                json.dump(data, f, indent=2, default=str)
+            # Create secure temporary file in the same directory as the registry file
+            # This ensures the temp file is on the same filesystem for atomic replace
+            with tempfile.NamedTemporaryFile(
+                mode='w',
+                dir=registry_path.parent,
+                prefix=f'.{registry_path.name}.',
+                suffix='.tmp',
+                delete=False
+            ) as temp_file:
+                json.dump(data, temp_file, indent=2, default=str)
+                temp_file.flush()
+                os.fsync(temp_file.fileno())  # Force write to disk
+                temp_filename = temp_file.name
+
+            # Atomically replace the registry file
+            os.replace(temp_filename, self.registry_file)
+            temp_file = None  # Successfully moved, don't delete in cleanup
+
             logger.info(f"Saved {len(self.datasets)} datasets to registry")
+
         except Exception as e:
-            logger.error(f"Failed to save registry: {e}")
+            logger.exception(f"Failed to save registry: {e}")
+            # Clean up temporary file if it exists and wasn't successfully moved
+            if temp_file is not None and hasattr(temp_file, 'name'):
+                try:
+                    os.unlink(temp_file.name)
+                except OSError:
+                    pass  # Ignore cleanup errors
+            elif 'temp_filename' in locals():
+                try:
+                    os.unlink(temp_filename)
+                except OSError:
+                    pass  # Ignore cleanup errors
             raise
 
     def _dict_to_dataset_entry(self, data: Dict[str, Any]) -> DatasetEntry:

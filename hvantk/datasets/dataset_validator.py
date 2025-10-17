@@ -112,13 +112,13 @@ class DatasetValidator:
                 meta_path = dataset.download_metadata(str(dataset_dir))
                 files["metadata"] = meta_path
 
-            except Exception as e:
+            except ValueError as e:
                 result = ValidationResult(
                     dataset_id=dataset_name,
                     dataset_type="ucsc",
                     status=ValidationStatus.DOWNLOAD_FAILED,
                     failure_type=FailureType.DOWNLOAD_ERROR,
-                    error_message=f"Failed to download files: {str(e)}"
+                    error_message=f"Failed to download files: {e!s}"
                 )
                 self.registry.update_result(result)
                 return result
@@ -196,13 +196,13 @@ class DatasetValidator:
                 if not files:
                     raise Exception("No valid expression matrix or metadata files found")
 
-            except Exception as e:
+            except ValueError as e:
                 result = ValidationResult(
                     dataset_id=accession,
                     dataset_type="expression_atlas",
                     status=ValidationStatus.DOWNLOAD_FAILED,
                     failure_type=FailureType.DOWNLOAD_ERROR,
-                    error_message=f"Failed to download files: {str(e)}"
+                    error_message=f"Failed to download files: {e!s}"
                 )
                 self.registry.update_result(result)
                 return result

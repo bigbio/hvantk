@@ -28,6 +28,62 @@ from typing import Dict, List, Optional, Any, Union, BinaryIO, TextIO
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_path_for_registry(absolute_path: str, base_work_dir: Optional[str] = None) -> str:
+    """
+    Sanitize absolute paths for storage in registry artifacts.
+
+    Converts absolute paths to relative paths or logical URIs to avoid
+    exposing infrastructure details and improve portability.
+
+    Args:
+        absolute_path: The absolute path to sanitize
+        base_work_dir: Optional base working directory to make path relative to
+
+    Returns:
+        Sanitized path (relative or logical URI)
+    """
+    if not absolute_path:
+        return absolute_path
+
+    path_obj = Path(absolute_path)
+
+    # Remove common infrastructure prefixes
+    infrastructure_prefixes = [
+        "/mnt/nfs/work/hvantk",
+        "/mnt/nfs/work",
+        "/mnt/nfs",
+        "/data/hvantk",
+        "/tmp/hvantk"
+    ]
+
+    path_str = str(path_obj.resolve())
+
+    # Try to remove infrastructure prefixes and create relative paths
+    for prefix in infrastructure_prefixes:
+        if path_str.startswith(prefix):
+            # Create a logical path relative to hvantk work directory
+            relative_part = path_str[len(prefix):].lstrip('/')
+            if relative_part:
+                return f"samples/{relative_part}"
+            break
+
+    # If base_work_dir is provided, try to make path relative to it
+    if base_work_dir:
+        try:
+            base_path = Path(base_work_dir).resolve()
+            if path_obj.is_relative_to(base_path):
+                return str(path_obj.relative_to(base_path))
+        except (ValueError, OSError):
+            pass
+
+    # Fallback: use just the filename with a logical prefix
+    if path_obj.name:
+        return f"samples/{path_obj.parent.name}/{path_obj.name}"
+
+    # Last resort: return a generic placeholder
+    return "samples/sample_file"
+
+
 def _read_compressed_lines(file_path: str, num_lines: int) -> List[str]:
     """
     Read first N lines from a compressed file using native Python.
@@ -163,6 +219,11 @@ def _write_bgzip_file(lines: List[str], output_path: str) -> bool:
         if os.path.exists(temp_file):
             os.remove(temp_file)
         return False
+
+
+class ValidationError(Exception):
+    """Raised when dataset validation fails."""
+    pass
 
 
 class ValidationStatus(Enum):
@@ -635,9 +696,11 @@ class DatasetValidationRegistry:
                         success, actual_output_path = self.create_sample_file(file_path, sample_path, sample_lines)
 
                     if success:
-                        sample_files[file_type] = actual_output_path  # Store the actual path with .gz if created
+                        # Sanitize the path before storing in registry to avoid exposing infrastructure details
+                        sanitized_path = _sanitize_path_for_registry(actual_output_path, sample_dir)
+                        sample_files[file_type] = sanitized_path
                     else:
-                        raise Exception(f"Failed to create sample file for {file_type}")
+                        raise ValidationError(f"Failed to create sample file for {file_type}")
 
             result.sample_file_paths = sample_files
 
@@ -818,8 +881,7 @@ class DatasetValidationRegistry:
                 try:
                     # Try to decompress with bgzip and read with pandas
                     import subprocess
-                    cmd = f"bgzip -dc '{expr_file}'"
-                    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+                    result = subprocess.run(['bgzip', '-dc', expr_file], capture_output=True, text=True, check=False)
                     if result.returncode == 0 and result.stdout:
                         from io import StringIO
                         df_expr_head = pd.read_csv(StringIO(result.stdout), sep='\t', nrows=5)
@@ -1032,7 +1094,7 @@ class DatasetValidationRegistry:
         try:
             actual_output_file = output_file
 
-            # Ensure output has .gz extension for Hail compatibility
+            # Ensure output has .gz extension (Hail compatibility)
             if not actual_output_file.endswith('.gz'):
                 if actual_output_file.endswith('.bgz'):
                     actual_output_file = actual_output_file[:-4] + '.gz'
