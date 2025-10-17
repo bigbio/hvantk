@@ -10,9 +10,13 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 
 from .validation_registry import DatasetValidationRegistry, ValidationResult
-from .web_generator import WebRegistryGenerator
 from .api_generator import APIEndpointGenerator
 from .config import RegistryConfig
+
+try:
+    from .web_generator import WebRegistryGenerator
+except Exception:
+    WebRegistryGenerator = None
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +44,7 @@ class RegistryManager:
         """
         self.config = config or RegistryConfig()
         self.registry = DatasetValidationRegistry(registry_file)
-        self.web_generator = WebRegistryGenerator(self.config)
+        self.web_generator = WebRegistryGenerator(self.config) if WebRegistryGenerator is not None else None
         self.api_generator = APIEndpointGenerator(self.config)
 
         logger.info("Registry manager initialized")
@@ -71,7 +75,13 @@ class RegistryManager:
 
         Returns:
             Path to generated web interface
+
+        Raises:
+            RuntimeError: If web generator is not configured
         """
+        if self.web_generator is None:
+            raise RuntimeError("WebRegistryGenerator is not configured; cannot generate web interface")
+
         logger.info(f"Generating web interface in {output_dir}")
         return self.web_generator.generate_web_registry(
             str(self.registry.registry_file),
@@ -106,16 +116,18 @@ class RegistryManager:
         """
         logger.info(f"Generating complete registry in {output_dir}")
 
-        # Generate web interface
-        web_path = self.generate_web_interface(output_dir)
+        result = {}
+
+        # Generate web interface (only if available)
+        if self.web_generator is not None:
+            result['web_interface'] = self.generate_web_interface(output_dir)
+        else:
+            logger.warning("WebRegistryGenerator not available - skipping web interface generation")
 
         # Generate API endpoints
-        api_path = self.generate_api_endpoints(output_dir)
+        result['api_endpoints'] = self.generate_api_endpoints(output_dir)
 
-        return {
-            'web_interface': web_path,
-            'api_endpoints': api_path
-        }
+        return result
 
     def get_registry_statistics(self) -> Dict[str, Any]:
         """Get comprehensive statistics about the registry."""

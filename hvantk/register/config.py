@@ -8,6 +8,10 @@ class RegistryConfig:
         # Registry Settings
         self.validation_schedule = "0 2 * * *"  # Daily at 2 AM UTC
 
+        # Web interface settings
+        self.site_title = "HVANTK Dataset Registry"
+        self.theme_color = "#1f77b4"
+
         # Validation limits
         self.max_datasets_per_run = 100
         self.sample_lines = 100
