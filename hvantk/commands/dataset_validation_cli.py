@@ -353,9 +353,6 @@ Examples:
         """
     )
 
-    parser.add_argument('--verbose', '-v', action='store_true',
-                       help='Enable verbose logging')
-
     subparsers = parser.add_subparsers(dest='command', help='Available commands')
 
     # Validate datasets command
@@ -379,6 +376,8 @@ Examples:
                                 help='Exit with error code if any validation fails')
     validate_parser.add_argument('--force-revalidate', action='store_true',
                                 help='Force revalidation of datasets even if they were previously validated')
+    validate_parser.add_argument('--verbose', '-v', action='store_true',
+                                help='Enable verbose logging')
     validate_parser.set_defaults(func=validate_datasets_command)
 
     # Report command
