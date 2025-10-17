@@ -10,9 +10,9 @@
     "organism": "Homo sapiens",
     "tissue_type": "",
     "sample_count": 1,
-    "license": null,
-    "doi": null,
-    "contact": null,
+    "license": "CC BY-SA 4.0",
+    "doi": "10.1093/nar/gkz935",
+    "contact": "contact@proteinatlas.org",
     "quantification_method": "intensity_based",
     "protein_inference_method": "parsimony",
     "abundance_unit": "intensity",
@@ -22,13 +22,13 @@
       {
         "path": "E-PROT-13.condensed-sdrf.tsv",
         "format": "tsv",
-        "size_bytes": 0,
+        "size_bytes": null,
         "description": "File type: sdrf"
       },
       {
         "path": "E-PROT-13-protein-abundance.tsv",
         "format": "tsv",
-        "size_bytes": 0,
+        "size_bytes": null,
         "description": "File type: protein-abundance"
       }
     ]
@@ -44,9 +44,9 @@
     "organism": "Homo sapiens",
     "tissue_type": "",
     "sample_count": 1,
-    "license": null,
-    "doi": null,
-    "contact": null,
+    "license": "CC BY-SA 4.0",
+    "doi": "10.1126/science.aal3321",
+    "contact": "contact@proteinatlas.org",
     "quantification_method": "intensity_based",
     "protein_inference_method": "parsimony",
     "abundance_unit": "intensity",
@@ -56,13 +56,13 @@
       {
         "path": "E-PROT-3.condensed-sdrf.tsv",
         "format": "tsv",
-        "size_bytes": 0,
+        "size_bytes": null,
         "description": "File type: sdrf"
       },
       {
         "path": "E-PROT-3-protein-abundance.tsv",
         "format": "tsv",
-        "size_bytes": 0,
+        "size_bytes": null,
         "description": "File type: protein-abundance"
       }
     ]
