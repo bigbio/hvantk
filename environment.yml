@@ -8,6 +8,7 @@ dependencies:
   - pip:
       - click
       - hail
+      - gnomad
       - requests
       - tqdm
       - pandas
