@@ -54,7 +54,6 @@ def test_reinit_after_shutdown():
 @pytest.mark.hail
 def test_hail_matrix_generation():
     """
-    # TODO: This test is redundant with hvantk/tests/test_hail_init.py
     Test if Hail is installed and working correctly.
 
     This test uses the session-scoped hail_session fixture for Hail initialization.
