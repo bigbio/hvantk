@@ -30,7 +30,9 @@ def combine_gvcfs(
         tmp_path (str): Temporary directory path used during processing.
         save_path (str): Path to save the combiner plan.
         vdses (List[str]): List of VDS paths to be combined.
-        kwargs (dict): Additional keyword arguments to pass to the combiner.
+        kwargs (dict): Additional keyword arguments to pass to the new_combiner hail function.
+                      Can include 'intervals', 'use_genome_default_intervals', or
+                      'use_exome_default_intervals' (mutually exclusive).
         reference_genome (str): Reference genome to use (default: GRCh38).
 
     Returns:
@@ -56,6 +58,29 @@ def combine_gvcfs(
             validated_vdses = validate_vds_paths(vdses)
             logging.info(f"Validated {len(validated_vdses)} VDS file paths.")
 
+        # Handle interval-related parameters from kwargs
+        intervals = kwargs.pop('intervals', None)
+        use_genome_default = kwargs.pop('use_genome_default_intervals', False)
+        use_exome_default = kwargs.pop('use_exome_default_intervals', False)
+
+        # Validate that only one interval method is specified
+        interval_params_set = sum([
+            intervals is not None,
+            use_genome_default,
+            use_exome_default
+        ])
+
+        if interval_params_set > 1:
+            raise ValueError(
+                "Only one of 'intervals', 'use_genome_default_intervals', or "
+                "'use_exome_default_intervals' can be specified."
+            )
+
+        # Set default to genome intervals if none specified
+        if interval_params_set == 0:
+            use_genome_default = True
+            logging.info("No interval method specified, defaulting to use_genome_default_intervals=True")
+
         # Set up and run the Hail GVCF combiner
         combiner = hl.vds.new_combiner(
             output_path=vds_output_path,
@@ -63,7 +88,9 @@ def combine_gvcfs(
             gvcf_paths=validated_gvcfs,
             save_path=save_path,
             vds_paths=validated_vdses,
-            use_genome_default_intervals=True,  # TODO: Use default intervals for the genome, but must be customized
+            intervals=intervals,
+            use_genome_default_intervals=use_genome_default,
+            use_exome_default_intervals=use_exome_default,
             reference_genome=reference_genome,
             **kwargs,
         )
