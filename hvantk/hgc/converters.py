@@ -117,7 +117,7 @@ def convert_mt_to_multi_sample_vcf(
                 AF=mt.variant_qc.AF[1],
                 AC=mt.variant_qc.AC[1],
                 AN=mt.variant_qc.AN,
-                call_rate=mt.variant_qc.call_rate # TODO: Maybe change to CR?
+                call_rate=mt.variant_qc.call_rate
             )
         )
 
