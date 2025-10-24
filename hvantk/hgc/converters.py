@@ -1,7 +1,14 @@
 import logging
 import hail as hl
-from gnomad.utils.annotations import annotate_adj
 from hvantk.hgc.constants import ADJ_GT_FIELD
+
+# Make gnomad import optional - only required when adjust_genotypes=True
+try:
+    from gnomad.utils.annotations import annotate_adj
+    GNOMAD_AVAILABLE = True
+except ImportError:
+    GNOMAD_AVAILABLE = False
+    annotate_adj = None
 
 
 def convert_vds_to_mt(
@@ -25,8 +32,18 @@ def convert_vds_to_mt(
         convert_lgt_to_gt (bool): If True, convert LGT to GT. Recommended after splitting multi-allelic variants.
         skip_keying_by_cols (bool): If True, skip keying the MatrixTable by columns.
         overwrite (bool): Whether to overwrite the output if it already exists.
+
+    Raises:
+        RuntimeError: If adjust_genotypes=True but gnomad is not installed.
     """
     try:
+        # Check gnomad availability early if adjust_genotypes is requested
+        if adjust_genotypes and not GNOMAD_AVAILABLE:
+            raise RuntimeError(
+                "adjust_genotypes=True requires the 'gnomad' package to be installed. "
+                "Please install it with 'pip install gnomad' or set adjust_genotypes=False."
+            )
+
         logging.info(f"Reading VDS from {vds_path}...")
         vds = hl.vds.read_vds(vds_path)
 
@@ -35,7 +52,20 @@ def convert_vds_to_mt(
 
         if adjust_genotypes:
             logging.info("Annotating MatrixTable with adjusted genotypes...")
-            mt = annotate_adj(mt)
+            # annotate_adj requires certain fields (GQ, DP, AD) to be present in entries
+            # Check if the required fields exist before calling annotate_adj
+            required_fields = {'GQ', 'DP', 'AD'}
+            missing_fields = required_fields - set(mt.entry.keys())
+
+            if missing_fields:
+                logging.warning(
+                    f"Cannot annotate adjusted genotypes: missing required fields {missing_fields}. "
+                    f"Skipping adjusted genotype annotation. "
+                    f"Available entry fields: {list(mt.entry.keys())}"
+                )
+            else:
+                mt = annotate_adj(mt)
+                logging.info("Adjusted genotype annotation completed successfully.")
 
         if not skip_split_multi:
             logging.info("Splitting multi-allelic variants...")
@@ -140,26 +170,35 @@ def convert_mt_to_multi_sample_vcf(
             logging.info("Skipping filtering rows based on AC: option disabled.")
 
         logging.info("Dropping fields that are not compatible with VCF format...")
-        # Get existing entry and row fields
-        existing_entry_fields = set(mt.entry.keys())
-        existing_row_fields = set(mt.row.keys())
+        # Get existing entry and row fields using dtype (correct way for Hail structs)
+        # Access fields through the struct's dtype
+        entry_dtype = mt.entry.dtype
+        row_dtype = mt.row.dtype
+
+        existing_entry_fields = set(entry_dtype.fields.keys()) if hasattr(entry_dtype, 'fields') else set()
+        existing_row_fields = set(row_dtype.fields.keys()) if hasattr(row_dtype, 'fields') else set()
 
         # Fields we want to drop if they exist
         entry_fields_to_drop = {'adj'}
         row_fields_to_drop = {'gvcf_info', 'variant_qc'}
 
-        # Only drop fields that actually exist
-        fields_to_drop = []
+        # Build list of Hail field expressions to drop
+        drop_expressions = []
+        dropped_field_names = []
+
         for field in entry_fields_to_drop:
             if field in existing_entry_fields:
-                fields_to_drop.append(field)
+                drop_expressions.append(mt.entry[field])
+                dropped_field_names.append(f"entry.{field}")
+
         for field in row_fields_to_drop:
             if field in existing_row_fields:
-                fields_to_drop.append(field)
+                drop_expressions.append(mt.row[field])
+                dropped_field_names.append(f"row.{field}")
 
-        if fields_to_drop:
-            logging.info(f"Dropping fields: {', '.join(fields_to_drop)}")
-            mt = mt.drop(*fields_to_drop)
+        if drop_expressions:
+            logging.info(f"Dropping fields: {', '.join(dropped_field_names)}")
+            mt = mt.drop(*drop_expressions)
         else:
             logging.info("No fields to drop.")
 
