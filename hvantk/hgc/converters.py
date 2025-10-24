@@ -8,9 +8,6 @@ try:
     GNOMAD_AVAILABLE = True
 except ImportError:
     GNOMAD_AVAILABLE = False
-    annotate_adj = None
-
-
 def convert_vds_to_mt(
     vds_path: str,
     output_path: str,
