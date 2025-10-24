@@ -1,6 +1,7 @@
 import shutil
 from pathlib import Path
 import pytest
+import random
 
 import hail as hl
 
@@ -29,7 +30,6 @@ def test_sort_mts():
     mt1 = hl.read_matrix_table(str(mt1_path))
 
     # Randomly shuffle column order of mt1
-    import random
     idx = list(range(mt1.count_cols()))
     random.shuffle(idx)
     mt2 = mt1.choose_cols(idx)

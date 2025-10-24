@@ -8,7 +8,7 @@ from hvantk.hgc.file_utils import compress_files, decompress_files
 TESTS_DIR = Path(__file__).parent.parent / "testdata" / "hgc_data"
 
 
-@pytest.mark.hail
+# @pytest.mark.hail
 @pytest.mark.order3
 def test_convert_vds_to_mt():
     """
