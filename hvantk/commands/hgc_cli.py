@@ -15,6 +15,7 @@ import logging
 import click
 import glob
 import os
+import tempfile
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,8 @@ from hvantk.hgc import (
     check_path_exists_and_readable,
     validate_vds_paths,
 )
+
+DEFAULT_TEMP_DIR = os.environ.get('HGC_TEMP_DIR', tempfile.gettempdir())
 
 
 # Utility functions for CLI
@@ -80,8 +83,9 @@ def validate_output_path(output_path, create_dirs=False):
         return False
 
 
-def estimate_resource_requirements(file_paths, operation='combine'):
+def estimate_resource_requirements(file_paths):
     """Estimate resource requirements for an operation."""
+    logger = logging.getLogger(__name__)
     total_size = 0
     for path in file_paths:
         try:
@@ -90,9 +94,24 @@ def estimate_resource_requirements(file_paths, operation='combine'):
             elif os.path.isdir(path):
                 for root, dirs, files in os.walk(path):
                     for file in files:
-                        total_size += os.path.getsize(os.path.join(root, file))
-        except Exception:
-            pass
+                        file_path = os.path.join(root, file)
+                        try:
+                            total_size += os.path.getsize(file_path)
+                        except OSError as e:
+                            logger.warning(
+                                f"Failed to get size of file '{file_path}': {e}"
+                            )
+                            continue
+        except OSError as e:
+            logger.warning(
+                f"Failed to access path '{path}': {e}"
+            )
+            continue
+        except Exception as e:
+            logger.error(
+                f"Unexpected error accessing path '{path}': {e}"
+            )
+            raise
 
     total_size_gb = total_size / (1024 ** 3)
 
@@ -131,7 +150,7 @@ def hgc_group(ctx, log_level):
 @click.option('--gvcf-dir', '-g', help='Directory containing GVCF files')
 @click.option('--vds-paths', '-v', multiple=True, help='VDS paths to combine with GVCFs')
 @click.option('--output', '-o', required=True, help='Output VDS path')
-@click.option('--temp-dir', '--tmp', default='/tmp/hgc', help='Temporary directory for intermediate files')
+@click.option('--temp-dir', '--tmp', default=DEFAULT_TEMP_DIR, help='Temporary directory for intermediate files')
 @click.option('--save-path', '-s', help='Path to save the combiner plan')
 @click.option('--dry-run', is_flag=True, help='Show what would be done without executing')
 @click.pass_context
@@ -180,7 +199,7 @@ def gvcf_combine(ctx, gvcf_dir, vds_paths, output, temp_dir, save_path, dry_run)
         click.echo(f"✅ Successfully combined GVCFs to {output}")
 
     except Exception as e:
-        logger.error(f"GVCF combination failed: {e}")
+        logger.exception(f"GVCF combination failed: {e}")
         click.echo(f"❌ Error: {e}", err=True)
         ctx.exit(1)
 
@@ -236,7 +255,7 @@ def vds_combine(ctx, input_dir, output, validate, overwrite, dry_run):
         click.echo(f"✅ Successfully combined VDS datasets to {output}")
 
     except Exception as e:
-        logger.error(f"VDS combination failed: {e}")
+        logger.exception(f"VDS combination failed: {e}")
         click.echo(f"❌ Error: {e}", err=True)
         ctx.exit(1)
 
@@ -305,7 +324,7 @@ def vds2mt(ctx, input, output, adjust_genotypes, skip_split_multi, convert_lgt_t
         click.echo(f"✅ Successfully converted {input} to MatrixTable at {output}")
 
     except Exception as e:
-        logger.error(f"VDS to MatrixTable conversion failed: {e}")
+        logger.exception(f"VDS to MatrixTable conversion failed: {e}")
         click.echo(f"❌ Error: {e}", err=True)
         ctx.exit(1)
 
@@ -368,7 +387,7 @@ def mt2vcf(ctx, input, output, filter_adj, min_ac, split_multi, dry_run):
         click.echo(f"✅ Successfully converted {input} to VCF at {output}")
 
     except Exception as e:
-        logger.error(f"MatrixTable to VCF conversion failed: {e}")
+        logger.exception(f"MatrixTable to VCF conversion failed: {e}")
         click.echo(f"❌ Error: {e}", err=True)
         ctx.exit(1)
 
