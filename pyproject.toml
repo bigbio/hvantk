@@ -20,7 +20,8 @@ include = [
 
 [tool.poetry.dependencies]
 python = ">=3.10.0"
-hail = "^0.2.115"
+hail = "*"
+gnomad = "*"
 click = "^8.1.3"
 requests = "*"
 tqdm = "*"
