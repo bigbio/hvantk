@@ -37,15 +37,27 @@ def convert_vds_to_mt(
             logging.info("Annotating MatrixTable with adjusted genotypes...")
             mt = annotate_adj(mt)
 
-        # convert LGT to GT
-        if convert_lgt_to_gt:
-            logging.warning("This step is recommended before running any downstream analyses (e.g., split_multi_hts).")
-            logging.info("Converting LGT to GT...")
-            mt = mt.annotate_entries(GT=hl.vds.lgt_to_gt(mt.LGT, mt.LA))
-
         if not skip_split_multi:
             logging.info("Splitting multi-allelic variants...")
             mt = hl.split_multi_hts(mt)
+
+        # Convert LGT to GT - MUST be done AFTER splitting multi-allelic variants
+        # because split_multi_hts changes allele indices, and LGT references those indices.
+        # Converting before split would result in incorrect genotypes.
+        if convert_lgt_to_gt:
+            if skip_split_multi:
+                # This is a dangerous combination - warn and prevent incorrect genotypes
+                logging.error(
+                    "Cannot convert LGT to GT when skip_split_multi=True. "
+                    "LGT to GT conversion requires multi-allelic variants to be split first. "
+                    "Either set skip_split_multi=False or set convert_lgt_to_gt=False."
+                )
+                raise ValueError(
+                    "LGT to GT conversion requires splitting multi-allelic variants. "
+                    "Set skip_split_multi=False to enable LGT→GT conversion."
+                )
+            logging.info("Converting LGT to GT (after splitting multi-allelic variants)...")
+            mt = mt.annotate_entries(GT=hl.vds.lgt_to_gt(mt.LGT, mt.LA))
 
         if not skip_keying_by_cols:
             logging.info("Keying MatrixTable by columns...")
@@ -128,7 +140,28 @@ def convert_mt_to_multi_sample_vcf(
             logging.info("Skipping filtering rows based on AC: option disabled.")
 
         logging.info("Dropping fields that are not compatible with VCF format...")
-        mt = mt.drop(*[mt.gvcf_info, mt.adj, mt.variant_qc])
+        # Get existing entry and row fields
+        existing_entry_fields = set(mt.entry.keys())
+        existing_row_fields = set(mt.row.keys())
+
+        # Fields we want to drop if they exist
+        entry_fields_to_drop = {'adj'}
+        row_fields_to_drop = {'gvcf_info', 'variant_qc'}
+
+        # Only drop fields that actually exist
+        fields_to_drop = []
+        for field in entry_fields_to_drop:
+            if field in existing_entry_fields:
+                fields_to_drop.append(field)
+        for field in row_fields_to_drop:
+            if field in existing_row_fields:
+                fields_to_drop.append(field)
+
+        if fields_to_drop:
+            logging.info(f"Dropping fields: {', '.join(fields_to_drop)}")
+            mt = mt.drop(*fields_to_drop)
+        else:
+            logging.info("No fields to drop.")
 
         logging.info(f"Exporting VCF to {vcf_path}...")
         hl.export_vcf(mt, vcf_path)
