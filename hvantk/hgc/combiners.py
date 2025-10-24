@@ -95,13 +95,11 @@ def combine_gvcfs(
             **kwargs,
         )
         combiner.run()
+        logging.info("GVCF combination completed successfully.")
 
-    except Exception as e:
+    except Exception:
         logging.exception("An error occurred during GVCF combination.")
         raise
-
-    finally:
-        logging.info("GVCF combination completed successfully.")
 
 
 def combine_vdses(
@@ -150,13 +148,11 @@ def combine_vdses(
 
         # Write the combined VDS to the output path.
         combined_vds.write(output_path, overwrite=overwrite)
+        logging.info(f"Combined VDS written to {output_path}")
 
-    except Exception as e:
+    except Exception:
         logging.exception("An error occurred during VDS combination.")
         raise
-
-    finally:
-        logging.info(f"Combined VDS written to {output_path}")
 
 
 def combine_matrix_table_rows(
@@ -208,13 +204,11 @@ def combine_matrix_table_rows(
 
         # Write the combined MatrixTable to the output path.
         combined_mt.write(output_path, overwrite=overwrite)
+        logging.info(f"Combined MatrixTable written to {output_path}")
 
-    except Exception as e:
+    except Exception:
         logging.exception("An error occurred during MatrixTable combination.")
         raise
-
-    finally:
-        logging.info(f"Combined MatrixTable written to {output_path}")
 
 
 def combine_matrix_table_cols(
@@ -260,10 +254,8 @@ def combine_matrix_table_cols(
 
         # Write the combined MatrixTable to the output path.
         combined_mt.write(output_path, overwrite=overwrite)
+        logging.info(f"Combined MatrixTable written to {output_path}")
 
-    except Exception as e:
+    except Exception:
         logging.exception("An error occurred during MatrixTable combination.")
         raise
-
-    finally:
-        logging.info(f"Combined MatrixTable written to {output_path}")
