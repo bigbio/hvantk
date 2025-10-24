@@ -200,7 +200,7 @@ def sort_mts_cols(mts: List[hl.MatrixTable], ref_index: int = 0) -> List[hl.Matr
     All matrix tables are assumed to have equal number of columns and the same column keys.
 
     Parameters:
-        mts (List[hl.MatrixTable]: List of matrix table objects.
+        mts (List[hl.MatrixTable]): List of matrix table objects.
         ref_index (int): The index of the reference matrix table in the list. The reference table's columns
                          remain unchanged. Defaults to 0.
 
