@@ -182,6 +182,10 @@ def combine_matrix_table_rows(
         ValueError: If no valid MatrixTables are found.
         Exception: If an error occurs during MatrixTable combination or writing.
     """
+    # Guard against empty mt_paths to fail fast with a clear error
+    if not mt_paths or len(mt_paths) == 0:
+        raise ValueError("mt_paths must contain at least one path")
+
     if kwargs is None:
         kwargs = {}
     try:
@@ -228,7 +232,7 @@ def combine_matrix_table_cols(
     Parameters:
         mt_paths (List[str]): List of MatrixTable paths to combine.
         output_path (str): Path where the combined MatrixTable will be written.
-        n_partitions (bool): Number of partitions to use when writing the combined MatrixTable.
+        n_partitions (int): Number of partitions to use when writing the combined MatrixTable.
         overwrite (bool): Whether to overwrite the output if it already exists.
         kwargs: Additional keyword arguments to pass to the Hail's union_cols function.
 
@@ -236,6 +240,10 @@ def combine_matrix_table_cols(
         ValueError: If no valid MatrixTables are found.
         Exception: If an error occurs during MatrixTable combination or writing.
     """
+    # Guard against empty mt_paths to fail fast with a clear error
+    if not mt_paths or len(mt_paths) == 0:
+        raise ValueError("mt_paths must contain at least one path")
+
     if kwargs is None:
         kwargs = {}
     try:
