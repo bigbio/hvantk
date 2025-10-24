@@ -14,8 +14,8 @@ from hvantk.hgc.constants import GVCF_EXTENSION, GVCF_EXTENSION_TBI, VDS_EXTENSI
 Utility functions for file handling.
 """
 
-# Configure logging. Adjust the level as needed.
-logging.basicConfig(level=logging.INFO)
+# Get module logger - do not configure logging at import time
+logger = logging.getLogger(__name__)
 
 
 def check_path_exists_and_readable(path: str) -> str:
@@ -146,7 +146,7 @@ def validate_vds_paths(vdses: Union[str, List[str]]) -> List[str]:
                 raise ValueError(f"Directory '{path}' does not end with '{VDS_EXTENSION}'.")
             validated_paths.append(path)
     else:
-        raise ValueError("Input must be either a directory path (str) or a list of directory paths.")
+        raise TypeError("Input must be either a directory path (str) or a list of directory paths.")
 
     return validated_paths
 
@@ -168,11 +168,11 @@ def compress_files(source_dir: str, output_zip: str, remove_originals: bool = Fa
                 # Use relative path in the archive to preserve folder structure.
                 arcname = os.path.relpath(file_path, source_dir)
                 zipf.write(file_path, arcname)
-    logging.info(f"Compressed '{source_dir}' into '{output_zip}'")
+    logger.info(f"Compressed '{source_dir}' into '{output_zip}'")
 
     if remove_originals:
         shutil.rmtree(source_dir)
-        logging.info(f"Removed original directory '{source_dir}' after compression.")
+        logger.info(f"Removed original directory '{source_dir}' after compression.")
 
 
 def decompress_files(zip_path: str, extract_to: str, remove_originals: bool = False) -> None:
@@ -185,11 +185,11 @@ def decompress_files(zip_path: str, extract_to: str, remove_originals: bool = Fa
     """
     with zipfile.ZipFile(zip_path, "r") as zipf:
         zipf.extractall(extract_to)
-    logging.info(f"Extracted '{zip_path}' into '{extract_to}'")
+    logger.info(f"Extracted '{zip_path}' into '{extract_to}'")
 
     if remove_originals:
         os.remove(zip_path)
-        logging.info(f"Removed archive file '{zip_path}' after decompression.")
+        logger.info(f"Removed archive file '{zip_path}' after decompression.")
 
 
 def sort_mts_cols(mts: List[hl.MatrixTable], ref_index: int = 0) -> List[hl.MatrixTable]:
@@ -222,11 +222,12 @@ def sort_mts_cols(mts: List[hl.MatrixTable], ref_index: int = 0) -> List[hl.Matr
     sorted_mts = []
     for i, mt in enumerate(mts):
         if i == ref_index:
-            # Leave the reference matrix table unchanged.
+            # Leave the reference matrix table unchanged (original without col_idx).
             sorted_mts.append(mt)
         else:
             mt_indexed = mt.add_col_index()
             new_order = mt_indexed.index_cols(ref_mt.col_key).col_idx.collect()
-            sorted_mts.append(mt_indexed.choose_cols(new_order))
+            # Reorder columns and drop the transient col_idx field before returning
+            sorted_mts.append(mt_indexed.choose_cols(new_order).drop('col_idx'))
 
     return sorted_mts
