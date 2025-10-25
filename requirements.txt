@@ -1,5 +1,6 @@
 click
 hail
+gnomad
 requests
 tqdm
 pandas

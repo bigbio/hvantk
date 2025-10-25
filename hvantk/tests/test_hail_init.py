@@ -3,6 +3,7 @@ import hail as hl
 import pytest
 from hvantk.core.hail_context import init_hail, hail_initialized, get_hail_init_args, shutdown_hail
 from unittest.mock import patch
+import logging
 
 pytestmark = pytest.mark.skipif(
     os.environ.get("RUN_HAIL_TESTS") != "1",
@@ -49,3 +50,16 @@ def test_reinit_after_shutdown():
         init_hail()
         assert call_count["n"] == 2  # second init after shutdown
     shutdown_hail()
+
+@pytest.mark.hail
+def test_hail_matrix_generation():
+    """
+    Test if Hail is installed and working correctly.
+
+    This test uses the session-scoped hail_session fixture for Hail initialization.
+    """
+    # Create a MatrixTable using Hail's balding_nichols_model
+    mt = hl.balding_nichols_model(n_populations=3, n_samples=10, n_variants=100)
+    logging.info(mt.show())
+    assert mt.count() == (100, 10)
+
