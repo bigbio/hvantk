@@ -93,6 +93,8 @@ Functions for combining genomic datasets:
 
 - **`combine_gvcfs()`** - Combine GVCF files and/or existing VDS datasets into a new VDS
 - **`combine_vdses()`** - Merge multiple VDS directories into a single VDS
+
+**Advanced functions** (require direct import from `hvantk.hgc.combiners`):
 - **`combine_matrix_table_rows()`** - Combine MatrixTables by rows (variants)
 - **`combine_matrix_table_cols()`** - Combine MatrixTables by columns (samples)
 
@@ -508,45 +510,150 @@ mt.write("cohort_filtered.mt")
 
 ## API Reference
 
-### Functions
+### Main Functions
 
-#### `combine_gvcfs(gvcf_dir, vds_output_path, tmp_path, save_path, vdses, kwargs, reference_genome)`
+#### `combine_gvcfs(gvcf_dir, vds_output_path, tmp_path, save_path, vdses, kwargs, reference_genome='GRCh38')`
 Combine GVCF files into a VDS using Hail's GVCF combiner.
 
-#### `combine_vdses(vdses_dir, output_path, validate, overwrite)`
+**Parameters:**
+- `gvcf_dir` (str): Directory containing GVCF files
+- `vds_output_path` (str): Output VDS path
+- `tmp_path` (str): Temporary directory path
+- `save_path` (str): Path to save combiner plan
+- `vdses` (List[str]): List of existing VDS paths to combine
+- `kwargs` (Dict): Additional parameters for Hail's combiner
+- `reference_genome` (str): Reference genome (default: 'GRCh38')
+
+**Returns:** None
+
+#### `combine_vdses(vdses_dir, output_path, validate=True, overwrite=False)`
 Combine multiple VDS directories into a single VDS.
 
-#### `combine_matrix_table_rows(mt_paths, output_path, n_partitions, force_sort_cols, overwrite, kwargs)`
-Combine multiple MatrixTables by rows (variants).
+**Parameters:**
+- `vdses_dir` (str): Directory containing VDS subdirectories
+- `output_path` (str): Output merged VDS path
+- `validate` (bool): Validate combined VDS (default: True)
+- `overwrite` (bool): Overwrite existing output (default: False)
 
-#### `combine_matrix_table_cols(mt_paths, output_path, n_partitions, overwrite, kwargs)`
-Combine multiple MatrixTables by columns (samples).
+**Returns:** None
 
-#### `convert_vds_to_mt(vds_path, output_path, adjust_genotypes, skip_split_multi, convert_lgt_to_gt, skip_keying_by_cols, overwrite)`
+#### `convert_vds_to_mt(vds_path, output_path, adjust_genotypes=True, skip_split_multi=False, convert_lgt_to_gt=True, skip_keying_by_cols=False, overwrite=False)`
 Convert a VDS to dense MatrixTable format.
 
-#### `convert_mt_to_multi_sample_vcf(mt_path, vcf_path, filter_adj_genotypes, min_ac, split_multi)`
+**Parameters:**
+- `vds_path` (str): Input VDS path
+- `output_path` (str): Output MatrixTable path
+- `adjust_genotypes` (bool): Annotate with adjusted genotypes (default: True)
+- `skip_split_multi` (bool): Skip splitting multi-allelic variants (default: False)
+- `convert_lgt_to_gt` (bool): Convert LGT to GT after splitting (default: True)
+- `skip_keying_by_cols` (bool): Skip column keying (default: False)
+- `overwrite` (bool): Overwrite existing output (default: False)
+
+**Returns:** None
+
+#### `convert_mt_to_multi_sample_vcf(mt_path, vcf_path, filter_adj_genotypes=True, min_ac=1, split_multi=True)`
 Convert a MatrixTable to multi-sample VCF format.
 
-#### `validate_vcfs_paths(directory, pattern)`
+**Parameters:**
+- `mt_path` (str): Input MatrixTable path
+- `vcf_path` (str): Output VCF file path
+- `filter_adj_genotypes` (bool): Filter to adjusted genotypes (default: True)
+- `min_ac` (int): Minimum alternate allele count (default: 1)
+- `split_multi` (bool): Split multi-allelic variants (default: True)
+
+**Returns:** None
+
+### Utility Functions
+
+#### `validate_vcfs_paths(directory, pattern=None)`
 Retrieve and validate GVCF file paths in a directory.
+
+**Parameters:**
+- `directory` (str): Directory to search for GVCF files
+- `pattern` (str): Glob pattern for matching files (default: None)
+
+**Returns:** List[str] - List of validated GVCF file paths
 
 #### `validate_vds_paths(vdses)`
 Validate VDS directory paths.
 
+**Parameters:**
+- `vdses` (Union[str, List[str]]): Directory or list of VDS paths
+
+**Returns:** List[str] - List of validated VDS paths
+
 #### `check_path_exists_and_readable(path)`
 Check if a file or directory exists and is readable.
 
-#### `sort_mts_cols(mts, ref_index)`
+**Parameters:**
+- `path` (str): Path to check
+
+**Returns:** str - The validated path
+
+**Raises:** FileNotFoundError, PermissionError
+
+#### `sort_mts_cols(mts, ref_index=0)`
 Sort the column order of MatrixTables to match a reference.
+
+**Parameters:**
+- `mts` (List[hl.MatrixTable]): List of MatrixTables to sort
+- `ref_index` (int): Index of reference MatrixTable (default: 0)
+
+**Returns:** List[hl.MatrixTable] - Sorted MatrixTables
+
+### Advanced Functions
+
+These functions require direct import from `hvantk.hgc.combiners`:
+
+#### `combine_matrix_table_rows(mt_paths, output_path, n_partitions, force_sort_cols=False, overwrite=False, kwargs=None)`
+Combine multiple MatrixTables by rows (variants).
+
+**Parameters:**
+- `mt_paths` (List[str]): List of MatrixTable paths
+- `output_path` (str): Output path for combined MatrixTable
+- `n_partitions` (int): Number of partitions for output
+- `force_sort_cols` (bool): Sort columns before combining (default: False)
+- `overwrite` (bool): Overwrite existing output (default: False)
+- `kwargs` (dict): Additional arguments for Hail's union_rows
+
+**Returns:** None
+
+#### `combine_matrix_table_cols(mt_paths, output_path, n_partitions, overwrite=False, kwargs=None)`
+Combine multiple MatrixTables by columns (samples).
+
+**Parameters:**
+- `mt_paths` (List[str]): List of MatrixTable paths
+- `output_path` (str): Output path for combined MatrixTable
+- `n_partitions` (int): Number of partitions for output
+- `overwrite` (bool): Overwrite existing output (default: False)
+- `kwargs` (dict): Additional arguments for Hail's union_cols
+
+**Returns:** None
 
 ## Constants
 
 The module defines commonly used constants in `hvantk.hgc.constants`:
 
-- **Reference Genomes**: `HG38_GENOME_REFERENCE`, `HG37_GENOME_REFERENCE`
-- **File Extensions**: `GVCF_EXTENSION`, `VCF_EXTENSION`, `VDS_EXTENSION`
-- **Entry Fields**: `GT_FIELD`, `AD_FIELD`, `DP_FIELD`, `GQ_FIELD`, `ADJ_GT_FIELD`
+**Reference Genomes:**
+- `HG38_GENOME_REFERENCE` - "GRCh38"
+- `HG37_GENOME_REFERENCE` - "GRCh37"
+
+**File Extensions:**
+- `GVCF_EXTENSION` - ".g.vcf.gz"
+- `GVCF_EXTENSION_TBI` - ".g.vcf.gz.tbi"
+- `VCF_EXTENSION` - ".vcf.gz"
+- `VCF_EXTENSION_TBI` - ".vcf.gz.tbi"
+- `VDS_EXTENSION` - ".vds"
+
+**Entry Fields:**
+- `GT_FIELD` - "GT" (Genotype)
+- `AD_FIELD` - "AD" (Allelic depths)
+- `DP_FIELD` - "DP" (Read depth)
+- `GQ_FIELD` - "GQ" (Genotype quality)
+- `PL_FIELD` - "PL" (Phred-scaled likelihoods)
+- `ADJ_GT_FIELD` - "adj" (Adjusted genotype flag)
+
+**Note:** MatrixTable files use the `.mt` extension, but this is a directory structure convention rather than a defined constant in the module.
 
 ## Testing
 
