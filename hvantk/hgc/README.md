@@ -651,6 +651,9 @@ The module defines commonly used constants in `hvantk.hgc.constants`:
 - `DP_FIELD` - "DP" (Read depth)
 - `GQ_FIELD` - "GQ" (Genotype quality)
 - `PL_FIELD` - "PL" (Phred-scaled likelihoods)
+- `PID_FIELD` - "PID" (Physical phasing ID)
+- `SB_FIELD` - "SB" (Strand bias)
+- `MIN_DP_FIELD` - "MIN_DP" (Minimum read depth)
 - `ADJ_GT_FIELD` - "adj" (Adjusted genotype flag)
 
 **Note:** MatrixTable files use the `.mt` extension, but this is a directory structure convention rather than a defined constant in the module.
