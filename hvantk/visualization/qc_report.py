@@ -370,6 +370,19 @@ def fig_to_base64(fig) -> str:
     return base64.b64encode(plot_data).decode('utf-8')
 
 
+def create_placeholder_plot(title: str, message: str, figsize: tuple = (10, 6)) -> str:
+    """Create a placeholder plot with a message and return as base64 string."""
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.text(0.5, 0.5, message, ha='center', va='center',
+            transform=ax.transAxes, fontsize=14, color='gray')
+    ax.set_title(title)
+    ax.axis('off')  # Remove axes for cleaner look
+
+    plot_base64 = fig_to_base64(fig)
+    plt.close(fig)
+    return plot_base64
+
+
 def get_status_badge(value: float, good_threshold: float, acceptable_threshold: float,
                     higher_is_better: bool = True) -> str:
     """Generate HTML status badge based on value and thresholds."""
@@ -495,62 +508,76 @@ def generate_variant_metrics_table(variant_df: pd.DataFrame) -> str:
     return ''.join(rows)
 
 
-def generate_recommendations(sample_df: pd.DataFrame, variant_df: pd.DataFrame) -> str:
+def generate_recommendations(sample_df: Optional[pd.DataFrame], variant_df: Optional[pd.DataFrame]) -> str:
     """Generate QC recommendations based on the data."""
     recommendations = []
 
-    # Sample recommendations
-    sample_data = _prepare_sample_qc_data(sample_df)
-    if 'call_rate' in sample_data.columns:
-        sample_call_rates = sample_data['call_rate'].dropna()
-        low_call_rate_samples = (sample_call_rates < 0.85).sum()
-        if low_call_rate_samples > 0:
-            pct = low_call_rate_samples / len(sample_call_rates) * 100
-            recommendations.append(f"""
-                <div class="alert alert-warning">
-                    <strong>⚠️ Sample Call Rates:</strong> {low_call_rate_samples} samples ({pct:.1f}%) 
-                    have call rates below 85%. Consider removing these samples from analysis.
-                </div>
-            """)
-        else:
-            recommendations.append("""
-                <div class="alert alert-success">
-                    <strong>✅ Sample Call Rates:</strong> All samples have acceptable call rates (≥85%).
-                </div>
-            """)
+    # Sample recommendations - only if sample QC data is available
+    if sample_df is not None:
+        sample_data = _prepare_sample_qc_data(sample_df)
+        if 'call_rate' in sample_data.columns:
+            sample_call_rates = sample_data['call_rate'].dropna()
+            low_call_rate_samples = (sample_call_rates < 0.85).sum()
+            if low_call_rate_samples > 0:
+                pct = low_call_rate_samples / len(sample_call_rates) * 100
+                recommendations.append(f"""
+                    <div class="alert alert-warning">
+                        <strong>⚠️ Sample Call Rates:</strong> {low_call_rate_samples} samples ({pct:.1f}%) 
+                        have call rates below 85%. Consider removing these samples from analysis.
+                    </div>
+                """)
+            else:
+                recommendations.append("""
+                    <div class="alert alert-success">
+                        <strong>✅ Sample Call Rates:</strong> All samples have acceptable call rates (≥85%).
+                    </div>
+                """)
+    else:
+        recommendations.append("""
+            <div class="alert alert-info">
+                <strong>ℹ️ Sample QC:</strong> Sample QC metrics not available - consider running sample QC analysis.
+            </div>
+        """)
 
-    # Variant recommendations
-    variant_data = _prepare_variant_qc_data(variant_df)
-    if 'call_rate' in variant_data.columns:
-        variant_call_rates = variant_data['call_rate'].dropna()
-        low_call_rate_variants = (variant_call_rates < 0.80).sum()
-        if low_call_rate_variants > 0:
-            pct = low_call_rate_variants / len(variant_call_rates) * 100
-            recommendations.append(f"""
-                <div class="alert alert-warning">
-                    <strong>⚠️ Variant Call Rates:</strong> {low_call_rate_variants:,} variants ({pct:.1f}%) 
-                    have call rates below 80%. Consider filtering these variants.
-                </div>
-            """)
-        else:
-            recommendations.append("""
-                <div class="alert alert-success">
-                    <strong>✅ Variant Call Rates:</strong> Most variants have acceptable call rates (≥80%).
-                </div>
-            """)
+    # Variant recommendations - only if variant QC data is available
+    if variant_df is not None:
+        variant_data = _prepare_variant_qc_data(variant_df)
+        if 'call_rate' in variant_data.columns:
+            variant_call_rates = variant_data['call_rate'].dropna()
+            low_call_rate_variants = (variant_call_rates < 0.80).sum()
+            if low_call_rate_variants > 0:
+                pct = low_call_rate_variants / len(variant_call_rates) * 100
+                recommendations.append(f"""
+                    <div class="alert alert-warning">
+                        <strong>⚠️ Variant Call Rates:</strong> {low_call_rate_variants:,} variants ({pct:.1f}%) 
+                        have call rates below 80%. Consider filtering these variants.
+                    </div>
+                """)
+            else:
+                recommendations.append("""
+                    <div class="alert alert-success">
+                        <strong>✅ Variant Call Rates:</strong> Most variants have acceptable call rates (≥80%).
+                    </div>
+                """)
 
-    # HWE recommendations
-    if 'p_value_hwe' in variant_data.columns:
-        hwe_pvals = variant_data['p_value_hwe'].dropna()
-        hwe_failing = (hwe_pvals < 1e-6).sum()
-        if hwe_failing > 0:
-            pct = hwe_failing / len(hwe_pvals) * 100
-            recommendations.append(f"""
-                <div class="alert alert-info">
-                    <strong>ℹ️ Hardy-Weinberg Equilibrium:</strong> {hwe_failing:,} variants ({pct:.1f}%) 
-                    fail HWE test (p < 1e-6). Review these for potential genotyping errors.
-                </div>
-            """)
+        # HWE recommendations - only if variant QC data is available
+        if 'p_value_hwe' in variant_data.columns:
+            hwe_pvals = variant_data['p_value_hwe'].dropna()
+            hwe_failing = (hwe_pvals < 1e-6).sum()
+            if hwe_failing > 0:
+                pct = hwe_failing / len(hwe_pvals) * 100
+                recommendations.append(f"""
+                    <div class="alert alert-info">
+                        <strong>ℹ️ Hardy-Weinberg Equilibrium:</strong> {hwe_failing:,} variants ({pct:.1f}%) 
+                        fail HWE test (p < 1e-6). Review these for potential genotyping errors.
+                    </div>
+                """)
+    else:
+        recommendations.append("""
+            <div class="alert alert-info">
+                <strong>ℹ️ Variant QC:</strong> Variant QC metrics not available - consider running variant QC analysis.
+            </div>
+        """)
 
     if not recommendations:
         recommendations.append("""
@@ -598,86 +625,140 @@ def generate_qc_report(qc_results,
 
     logger.info("Generating comprehensive QC HTML report...")
 
-    # Get data
-    sample_df = qc_results.get_sample_metrics_df()
-    variant_df = qc_results.get_variant_metrics_df()
+    # Get data - check if QC is available before calling getters
+    sample_df = qc_results.get_sample_metrics_df() if qc_results.has_sample_qc else None
+    variant_df = qc_results.get_variant_metrics_df() if qc_results.has_variant_qc else None
 
-    # Basic stats
-    n_samples = len(sample_df)
-    n_variants = len(variant_df)
+    # Basic stats with fallback values
+    n_samples = len(sample_df) if sample_df is not None else 0
+    n_variants = len(variant_df) if variant_df is not None else 0
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # Generate plots and convert to base64
     plot_data = {}
 
-    if 'sample_overview' in include_plots:
-        logger.info("Generating sample overview plot...")
-        fig = plot_sample_qc_overview(sample_df, figsize=(15, 10))
-        plot_data['sample_overview_plot'] = fig_to_base64(fig)
-        plt.close(fig)
+    # Initialize all plot keys with placeholder images to avoid KeyError in template formatting
+    # These will be overwritten with actual plots if they're in include_plots
+    plot_placeholders = {
+        'sample_overview_plot': ('Sample QC Overview', 'Plot not included\nin this report', (15, 10)),
+        'sample_call_rate_plot': ('Sample Call Rate Distribution', 'Plot not included\nin this report', (10, 6)),
+        'sample_titv_plot': ('Sample Ti/Tv Ratio Distribution', 'Plot not included\nin this report', (10, 6)),
+        'variant_overview_plot': ('Variant QC Overview', 'Plot not included\nin this report', (15, 10)),
+        'variant_call_rate_plot': ('Variant Call Rate Distribution', 'Plot not included\nin this report', (10, 6)),
+        'allele_freq_plot': ('Allele Frequency Spectrum', 'Plot not included\nin this report', (10, 6)),
+        'hwe_plot': ('Hardy-Weinberg Equilibrium P-values', 'Plot not included\nin this report', (10, 6))
+    }
 
-    if 'sample_call_rates' in include_plots:
-        logger.info("Generating sample call rate plot...")
-        fig = plot_sample_call_rate_distribution(sample_df, figsize=(10, 6))
-        plot_data['sample_call_rate_plot'] = fig_to_base64(fig)
-        plt.close(fig)
+    # Initialize with placeholders
+    for key, (plot_title, message, figsize) in plot_placeholders.items():
+        plot_data[key] = create_placeholder_plot(plot_title, message, figsize)
 
-    if 'titv' in include_plots:
-        logger.info("Generating sample Ti/Tv plot...")
-        try:
-            fig = plot_sample_titv_distribution(sample_df, figsize=(10, 6))
-            plot_data['sample_titv_plot'] = fig_to_base64(fig)
+    # Sample plots - only generate if sample QC is available
+    if qc_results.has_sample_qc and sample_df is not None:
+        if 'sample_overview' in include_plots:
+            logger.info("Generating sample overview plot...")
+            fig = plot_sample_qc_overview(sample_df, figsize=(15, 10))
+            plot_data['sample_overview_plot'] = fig_to_base64(fig)
             plt.close(fig)
-        except (ValueError, KeyError, AttributeError, TypeError) as e:
-            # Handle expected recoverable errors (missing data, wrong types, etc.)
-            logger.warning(f"Ti/Tv plot failed with {type(e).__name__}: {e}")
-            # Create placeholder plot
-            fig, ax = plt.subplots(figsize=(10, 6))
-            ax.text(0.5, 0.5, 'Ti/Tv data not available\nfor this dataset',
-                   ha='center', va='center', transform=ax.transAxes,
-                   fontsize=14, color='gray')
-            ax.set_title('Sample Ti/Tv Ratio Distribution')
-            plot_data['sample_titv_plot'] = fig_to_base64(fig)
+
+        if 'sample_call_rates' in include_plots:
+            logger.info("Generating sample call rate plot...")
+            fig = plot_sample_call_rate_distribution(sample_df, figsize=(10, 6))
+            plot_data['sample_call_rate_plot'] = fig_to_base64(fig)
             plt.close(fig)
-        except Exception:
-            # Unexpected errors should not be masked - re-raise them
-            logger.exception("Unexpected error generating Ti/Tv plot")
-            raise
 
-    if 'variant_overview' in include_plots:
-        logger.info("Generating variant overview plot...")
-        fig = plot_variant_qc_overview(variant_df, figsize=(15, 10))
-        plot_data['variant_overview_plot'] = fig_to_base64(fig)
-        plt.close(fig)
+        if 'titv' in include_plots:
+            logger.info("Generating sample Ti/Tv plot...")
+            try:
+                fig = plot_sample_titv_distribution(sample_df, figsize=(10, 6))
+                plot_data['sample_titv_plot'] = fig_to_base64(fig)
+                plt.close(fig)
+            except (ValueError, KeyError, AttributeError, TypeError) as e:
+                # Handle expected recoverable errors (missing data, wrong types, etc.)
+                logger.warning(f"Ti/Tv plot failed with {type(e).__name__}: {e}")
+                # Create placeholder plot
+                plot_data['sample_titv_plot'] = create_placeholder_plot(
+                    'Sample Ti/Tv Ratio Distribution', 'Ti/Tv data not available\nfor this dataset', (10, 6))
+            except Exception:
+                # Unexpected errors should not be masked - re-raise them
+                logger.exception("Unexpected error generating Ti/Tv plot")
+                raise
+    else:
+        # Update placeholders with "QC not available" message for requested plots when no sample QC
+        if 'sample_overview' in include_plots:
+            plot_data['sample_overview_plot'] = create_placeholder_plot(
+                'Sample QC Overview', 'Sample QC not available\nfor this dataset', (15, 10))
 
-    if 'variant_call_rates' in include_plots:
-        logger.info("Generating variant call rate plot...")
-        fig = plot_variant_call_rate_distribution(variant_df, figsize=(10, 6))
-        plot_data['variant_call_rate_plot'] = fig_to_base64(fig)
-        plt.close(fig)
+        if 'sample_call_rates' in include_plots:
+            plot_data['sample_call_rate_plot'] = create_placeholder_plot(
+                'Sample Call Rate Distribution', 'Sample call rate data\nnot available', (10, 6))
 
-    if 'allele_frequencies' in include_plots:
-        logger.info("Generating allele frequency plot...")
-        fig = plot_allele_frequency_spectrum(variant_df, figsize=(10, 6))
-        plot_data['allele_freq_plot'] = fig_to_base64(fig)
-        plt.close(fig)
+        if 'titv' in include_plots:
+            plot_data['sample_titv_plot'] = create_placeholder_plot(
+                'Sample Ti/Tv Ratio Distribution', 'Sample Ti/Tv data\nnot available', (10, 6))
 
-    if 'hwe' in include_plots:
-        logger.info("Generating HWE plot...")
-        fig = plot_hwe_pvalues(variant_df, figsize=(10, 6))
-        plot_data['hwe_plot'] = fig_to_base64(fig)
-        plt.close(fig)
+    # Variant plots - only generate if variant QC is available
+    if qc_results.has_variant_qc and variant_df is not None:
+        if 'variant_overview' in include_plots:
+            logger.info("Generating variant overview plot...")
+            fig = plot_variant_qc_overview(variant_df, figsize=(15, 10))
+            plot_data['variant_overview_plot'] = fig_to_base64(fig)
+            plt.close(fig)
 
-    # Generate metrics tables
-    sample_metrics_table = generate_sample_metrics_table(sample_df)
-    variant_metrics_table = generate_variant_metrics_table(variant_df)
+        if 'variant_call_rates' in include_plots:
+            logger.info("Generating variant call rate plot...")
+            fig = plot_variant_call_rate_distribution(variant_df, figsize=(10, 6))
+            plot_data['variant_call_rate_plot'] = fig_to_base64(fig)
+            plt.close(fig)
 
-    # Generate overview metrics
-    sample_data = _prepare_sample_qc_data(sample_df)
-    variant_data = _prepare_variant_qc_data(variant_df)
+        if 'allele_frequencies' in include_plots:
+            logger.info("Generating allele frequency plot...")
+            fig = plot_allele_frequency_spectrum(variant_df, figsize=(10, 6))
+            plot_data['allele_freq_plot'] = fig_to_base64(fig)
+            plt.close(fig)
+
+        if 'hwe' in include_plots:
+            logger.info("Generating HWE plot...")
+            fig = plot_hwe_pvalues(variant_df, figsize=(10, 6))
+            plot_data['hwe_plot'] = fig_to_base64(fig)
+            plt.close(fig)
+    else:
+        # Update placeholders with "QC not available" message for requested plots when no variant QC
+        if 'variant_overview' in include_plots:
+            plot_data['variant_overview_plot'] = create_placeholder_plot(
+                'Variant QC Overview', 'Variant QC not available\nfor this dataset', (15, 10))
+
+        if 'variant_call_rates' in include_plots:
+            plot_data['variant_call_rate_plot'] = create_placeholder_plot(
+                'Variant Call Rate Distribution', 'Variant call rate data\nnot available', (10, 6))
+
+        if 'allele_frequencies' in include_plots:
+            plot_data['allele_freq_plot'] = create_placeholder_plot(
+                'Allele Frequency Spectrum', 'Allele frequency data\nnot available', (10, 6))
+
+        if 'hwe' in include_plots:
+            plot_data['hwe_plot'] = create_placeholder_plot(
+                'Hardy-Weinberg Equilibrium P-values', 'Hardy-Weinberg data\nnot available', (10, 6))
+
+    # Generate metrics tables with fallback for missing QC data
+    if qc_results.has_sample_qc and sample_df is not None:
+        sample_metrics_table = generate_sample_metrics_table(sample_df)
+    else:
+        sample_metrics_table = '<tr><td colspan="6" style="text-align: center; color: #666;">Sample QC metrics not available</td></tr>'
+
+    if qc_results.has_variant_qc and variant_df is not None:
+        variant_metrics_table = generate_variant_metrics_table(variant_df)
+    else:
+        variant_metrics_table = '<tr><td colspan="6" style="text-align: center; color: #666;">Variant QC metrics not available</td></tr>'
+
+    # Generate overview metrics - prepare data with conditional checks
+    sample_data = _prepare_sample_qc_data(sample_df) if sample_df is not None else None
+    variant_data = _prepare_variant_qc_data(variant_df) if variant_df is not None else None
 
     overview_metrics = []
-    if 'call_rate' in sample_data.columns:
+
+    # Sample QC metrics - only if sample QC is available
+    if sample_data is not None and 'call_rate' in sample_data.columns:
         sample_cr = sample_data['call_rate'].mean()
         status = get_status_badge(sample_cr, 0.95, 0.85, True)
         overview_metrics.append(f"""
@@ -687,8 +768,17 @@ def generate_qc_report(qc_results,
                 <td>{status}</td>
             </tr>
         """)
+    else:
+        overview_metrics.append(f"""
+            <tr>
+                <td>Mean Sample Call Rate</td>
+                <td>N/A</td>
+                <td><span class="badge badge-warning">No QC Data</span></td>
+            </tr>
+        """)
 
-    if 'call_rate' in variant_data.columns:
+    # Variant QC metrics - only if variant QC is available
+    if variant_data is not None and 'call_rate' in variant_data.columns:
         variant_cr = variant_data['call_rate'].mean()
         status = get_status_badge(variant_cr, 0.90, 0.80, True)
         overview_metrics.append(f"""
@@ -698,13 +788,32 @@ def generate_qc_report(qc_results,
                 <td>{status}</td>
             </tr>
         """)
+    else:
+        overview_metrics.append(f"""
+            <tr>
+                <td>Mean Variant Call Rate</td>
+                <td>N/A</td>
+                <td><span class="badge badge-warning">No QC Data</span></td>
+            </tr>
+        """)
 
-    # Overall quality assessment
-    sample_quality = "Good" if 'call_rate' in sample_data.columns and sample_data['call_rate'].mean() > 0.90 else "Review"
-    variant_quality = "Good" if 'call_rate' in variant_data.columns and variant_data['call_rate'].mean() > 0.85 else "Review"
-    overall_quality = "Good" if sample_quality == "Good" and variant_quality == "Good" else "Review"
+    # Overall quality assessment with fallback logic
+    sample_quality = "Good" if (sample_data is not None and
+                               'call_rate' in sample_data.columns and
+                               sample_data['call_rate'].mean() > 0.90) else "Review"
+    variant_quality = "Good" if (variant_data is not None and
+                                'call_rate' in variant_data.columns and
+                                variant_data['call_rate'].mean() > 0.85) else "Review"
 
-    # Generate recommendations
+    # If no QC data is available, mark as "Incomplete"
+    if sample_data is None and variant_data is None:
+        overall_quality = "Incomplete"
+    elif sample_quality == "Good" and variant_quality == "Good":
+        overall_quality = "Good"
+    else:
+        overall_quality = "Review"
+
+    # Generate recommendations - handle None dataframes
     recommendations = generate_recommendations(sample_df, variant_df)
 
     # Analysis parameters
