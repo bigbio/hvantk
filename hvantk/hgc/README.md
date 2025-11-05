@@ -90,9 +90,6 @@ hvantk hgc qc-report -i analysis_qc.mt -o qc_report.html
 
 # Filter based on QC metrics
 hvantk hgc filter-qc -i analysis_qc.mt -o filtered.mt --min-sample-call-rate 0.95
-
-# Batch QC processing
-hvantk hgc qc-batch -p "cohort_*.mt" -o batch_qc/ --generate-reports
 ```
 
 ### Python API
