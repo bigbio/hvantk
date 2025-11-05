@@ -837,7 +837,7 @@ def plot_qc(ctx, input, output_dir, plot_type, output_format, style, figsize, dp
         try:
             width, height = map(float, figsize.split(','))
             figsize_tuple = (width, height)
-        except:
+        except ValueError:
             click.echo(f"❌ Invalid figsize format: {figsize}. Use format: width,height", err=True)
             ctx.exit(1)
 
@@ -1343,9 +1343,4 @@ def qc_batch(ctx, input_pattern, output_dir, compute_qc, generate_plots, generat
         click.echo(f"❌ Error: {e}", err=True)
         ctx.exit(1)
 
-
-    except Exception as e:
-        logger.exception(f"MatrixTable to VCF conversion failed: {e}")
-        click.echo(f"❌ Error: {e}", err=True)
-        ctx.exit(1)
 
