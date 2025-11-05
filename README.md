@@ -194,6 +194,59 @@ hvantk mkmatrix-batch --recipe /path/to/matrices.json
 
 For more examples and recipes, see docs/USAGE.md and examples/recipes/.
 
+## HGC: Hail-based Genotype Combiner
+
+The HGC (Hail-based Genotype Combiner) module provides high-performance tools for joint genotyping workflows using Hail. It enables efficient combination of GVCF files and includes comprehensive quality control functionality for post-combination analysis.
+
+### Core Features
+- **Joint Genotyping**: Combine thousands of GVCF files into unified VDS/MatrixTable formats
+- **Format Conversion**: Convert between VDS, MatrixTable, and VCF formats
+- **Quality Control**: Comprehensive QC metrics, visualizations, and filtering for combined cohorts
+- **Scalable Processing**: Optimized for large cohorts with efficient memory usage
+- **CLI & Python API**: Flexible interfaces for different workflow needs
+
+### Quick Start
+
+#### Joint Genotyping Pipeline
+```bash
+# Combine GVCF files
+hvantk hgc gvcf-combine -g /data/gvcfs -o cohort.vds
+
+# Convert to MatrixTable
+hvantk hgc vds2mt -i cohort.vds -o cohort.mt --adjust-genotypes
+
+# Export to VCF
+hvantk hgc mt2vcf -i cohort.mt -o cohort.vcf.gz
+```
+
+#### Post-Combination Quality Control
+```bash
+# Compute QC metrics for combined cohort
+hvantk hgc compute-qc -i cohort.mt -o cohort_qc.mt
+
+# Generate comprehensive QC report
+hvantk hgc qc-report -i cohort_qc.mt -o qc_report.html
+
+# Create interactive QC plots
+hvantk hgc plot-qc -i cohort_qc.mt -o plots/ --plot-type dashboard --interactive
+```
+
+### Programmatic Usage
+
+```python
+from hvantk.hgc import combine_gvcfs, convert_vds_to_mt, compute_full_qc
+
+# Joint genotyping
+combine_gvcfs(gvcf_dir="/data/gvcfs", vds_output_path="cohort.vds", tmp_path="/tmp")
+convert_vds_to_mt(vds_path="cohort.vds", output_path="cohort.mt")
+
+# Quality control on combined cohort
+qc_results = compute_full_qc(hl.read_matrix_table("cohort.mt"))
+qc_results.generate_html_report('qc_report.html')
+```
+
+For detailed documentation, see [hvantk/hgc/README.md](hvantk/hgc/README.md).
+
 ## Annotation sources
 
 A full description of the sources and how to download the data is available in the
