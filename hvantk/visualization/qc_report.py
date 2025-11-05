@@ -27,9 +27,9 @@ from datetime import datetime
 from typing import List, Union, Optional
 
 import pandas as pd
-import matplotlib.pyplot as plt
 import matplotlib
-matplotlib.use('Agg')  # Use non-interactive backend
+matplotlib.use('Agg')  # Use non-interactive backend - must be set before importing pyplot
+import matplotlib.pyplot as plt
 
 from .qc_plots import (
     plot_sample_qc_overview,
@@ -628,8 +628,9 @@ def generate_qc_report(qc_results,
             fig = plot_sample_titv_distribution(sample_df, figsize=(10, 6))
             plot_data['sample_titv_plot'] = fig_to_base64(fig)
             plt.close(fig)
-        except Exception as e:
-            logger.warning(f"Ti/Tv plot failed: {e}")
+        except (ValueError, KeyError, AttributeError, TypeError) as e:
+            # Handle expected recoverable errors (missing data, wrong types, etc.)
+            logger.warning(f"Ti/Tv plot failed with {type(e).__name__}: {e}")
             # Create placeholder plot
             fig, ax = plt.subplots(figsize=(10, 6))
             ax.text(0.5, 0.5, 'Ti/Tv data not available\nfor this dataset',
@@ -638,6 +639,10 @@ def generate_qc_report(qc_results,
             ax.set_title('Sample Ti/Tv Ratio Distribution')
             plot_data['sample_titv_plot'] = fig_to_base64(fig)
             plt.close(fig)
+        except Exception:
+            # Unexpected errors should not be masked - re-raise them
+            logger.exception("Unexpected error generating Ti/Tv plot")
+            raise
 
     if 'variant_overview' in include_plots:
         logger.info("Generating variant overview plot...")
