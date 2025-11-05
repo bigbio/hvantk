@@ -24,7 +24,7 @@ import base64
 from io import BytesIO
 from pathlib import Path
 from datetime import datetime
-from typing import List, Union
+from typing import List, Union, Optional
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -52,7 +52,7 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quality Control Report</title>
+    <title>{title}</title>
     <style>
         body {{
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -214,7 +214,7 @@ HTML_TEMPLATE = """
 <body>
     <div class="container">
         <div class="header">
-            <h1>Quality Control Report</h1>
+            <h1>{title}</h1>
             <div class="subtitle">Generated on {timestamp}</div>
         </div>
 
@@ -513,7 +513,7 @@ def generate_recommendations(sample_df: pd.DataFrame, variant_df: pd.DataFrame) 
                 </div>
             """)
         else:
-            recommendations.append(f"""
+            recommendations.append("""
                 <div class="alert alert-success">
                     <strong>✅ Sample Call Rates:</strong> All samples have acceptable call rates (≥85%).
                 </div>
@@ -533,7 +533,7 @@ def generate_recommendations(sample_df: pd.DataFrame, variant_df: pd.DataFrame) 
                 </div>
             """)
         else:
-            recommendations.append(f"""
+            recommendations.append("""
                 <div class="alert alert-success">
                     <strong>✅ Variant Call Rates:</strong> Most variants have acceptable call rates (≥80%).
                 </div>
@@ -566,7 +566,7 @@ def generate_recommendations(sample_df: pd.DataFrame, variant_df: pd.DataFrame) 
 def generate_qc_report(qc_results,
                       output_path: Union[str, Path],
                       title: str = "Quality Control Report",
-                      include_plots: List[str] = None) -> Path:
+                      include_plots: Optional[List[str]] = None) -> Path:
     """
     Generate comprehensive HTML QC report.
 
@@ -712,6 +712,7 @@ def generate_qc_report(qc_results,
 
     # Format HTML
     html_content = HTML_TEMPLATE.format(
+        title=title,
         timestamp=timestamp,
         n_samples=n_samples,
         n_variants=n_variants,
