@@ -8,7 +8,7 @@ styling, and common operations used across different visualization types.
 import os
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from typing import Optional, Union, Tuple, Dict, Any
+from typing import Optional, Union, Tuple, Dict, Any, List
 
 
 def set_default_style(style: str = 'default',
@@ -74,7 +74,7 @@ def set_default_style(style: str = 'default',
 def save_figure(fig: plt.Figure,
                 filename: str,
                 dpi: int = 300,
-                formats: list = ['png'],
+                formats: Optional[List[str]] = None,
                 transparent: bool = False,
                 bbox_inches: str = 'tight',
                 output_dir: Optional[str] = None,
@@ -90,8 +90,9 @@ def save_figure(fig: plt.Figure,
         Base name of the file to save (without extension)
     dpi : int
         Resolution in dots per inch
-    formats : list
-        List of file formats to save (e.g., ['png', 'pdf', 'svg'])
+    formats : list of str, optional
+        List of file formats to save (e.g., ['png', 'pdf', 'svg']).
+        Defaults to ['png'] if not specified.
     transparent : bool
         Whether to save with a transparent background
     bbox_inches : str
@@ -101,6 +102,10 @@ def save_figure(fig: plt.Figure,
     **kwargs
         Additional keyword arguments passed to plt.savefig()
     """
+    # Initialize formats with default value if None
+    if formats is None:
+        formats = ['png']
+
     if output_dir is not None:
         os.makedirs(output_dir, exist_ok=True)
 
