@@ -4,19 +4,35 @@ HGC is a module within hvantk that provides high-performance tools for joint gen
 
 ## Overview
 
-The HGC module implements a complete joint genotyping pipeline:
+The HGC module implements a complete joint genotyping pipeline with integrated quality control:
 
+### Primary Functionality: Joint Genotyping
 1. **GVCF Combination** - Combine multiple single-sample GVCF files into a unified Variant DataSet (VDS)
 2. **VDS Operations** - Merge multiple VDS datasets and convert between formats
 3. **MatrixTable Processing** - Convert VDS to analysis-ready MatrixTable format
 4. **VCF Export** - Export processed data back to standard VCF format
 
+### Additional Functionality: Quality Control & Visualization
+5. **QC Metrics Computation** - Comprehensive sample and variant quality assessment on combined cohorts
+6. **QC Visualization** - Static and interactive plots for quality control analysis
+7. **QC Reports** - Professional HTML reports with embedded plots and recommendations
+8. **QC-based Filtering** - Quality-based sample and variant filtering tools
+
 ## Key Features
 
+### Core Joint Genotyping Features
 - **Scalable Joint Genotyping**: Efficiently combine thousands of GVCF files using Hail's optimized combiner
 - **Flexible Data Formats**: Work with VDS (storage-optimized) and MatrixTable (analysis-optimized) formats
-- **Quality Control**: Built-in support for adjusted genotype annotations and variant filtering
 - **Multi-allelic Handling**: Automatic splitting and normalization of multi-allelic variants
+- **Genotype Annotation**: Built-in support for adjusted genotype annotations
+
+### Quality Control Features (Post-Combination)
+- **Comprehensive QC Metrics**: Sample and variant-level quality assessment for combined cohorts
+- **Interactive Visualizations**: Static matplotlib and interactive Plotly plots for data exploration
+- **Professional Reports**: HTML reports with embedded plots, metrics, and recommendations
+- **Quality-based Filtering**: Threshold-based sample and variant filtering tools
+
+### Interface Options
 - **CLI and Python API**: Use via command-line interface or directly in Python scripts
 
 ## Installation
@@ -34,7 +50,9 @@ poetry shell
 
 ### Command-Line Interface
 
-The HGC module provides four main commands accessible via `hvantk hgc`:
+#### Core Joint Genotyping Commands
+
+The HGC module provides four main genotype combination commands accessible via `hvantk hgc`:
 
 ```bash
 # View available commands
@@ -53,7 +71,33 @@ hvantk hgc vds2mt -i combined.vds -o analysis.mt
 hvantk hgc mt2vcf -i analysis.mt -o results.vcf.gz
 ```
 
+#### Quality Control Commands (Post-Combination)
+
+Additional QC commands for analyzing combined cohorts:
+
+```bash
+# Compute QC metrics for combined cohort
+hvantk hgc compute-qc -i analysis.mt -o analysis_qc.mt
+
+# Generate QC visualizations
+hvantk hgc plot-qc -i analysis_qc.mt -o plots/ --plot-type dashboard
+
+# Create interactive QC plots
+hvantk hgc plot-qc -i analysis_qc.mt -o plots/ --interactive
+
+# Generate comprehensive QC report
+hvantk hgc qc-report -i analysis_qc.mt -o qc_report.html
+
+# Filter based on QC metrics
+hvantk hgc filter-qc -i analysis_qc.mt -o filtered.mt --min-sample-call-rate 0.95
+
+# Batch QC processing
+hvantk hgc qc-batch -p "cohort_*.mt" -o batch_qc/ --generate-reports
+```
+
 ### Python API
+
+#### Core Joint Genotyping Functions
 
 Use HGC functions directly in Python:
 
@@ -82,6 +126,39 @@ convert_vds_to_mt(
     adjust_genotypes=True,
     skip_split_multi=False,
     convert_lgt_to_gt=True
+)
+```
+
+#### Quality Control Functions (Post-Combination)
+
+Additional QC functionality for combined cohorts:
+
+```python
+from hvantk.hgc import compute_full_qc, filter_samples_by_qc, filter_variants_by_qc
+
+# Load combined MatrixTable
+import hail as hl
+mt = hl.read_matrix_table("analysis.mt")
+
+# Compute comprehensive QC metrics
+qc_results = compute_full_qc(mt)
+
+# Generate visualizations
+qc_results.plot_dashboard(save_path='qc_dashboard.png')
+qc_results.plot_interactive_dashboard().show()
+qc_results.generate_html_report('qc_report.html')
+
+# Apply quality filters
+mt_filtered = filter_samples_by_qc(
+    qc_results.mt,
+    min_call_rate=0.95,
+    min_ti_tv_ratio=1.8
+)
+
+mt_filtered = filter_variants_by_qc(
+    mt_filtered,
+    min_call_rate=0.90,
+    min_hwe_pvalue=1e-6
 )
 ```
 
@@ -281,7 +358,9 @@ The output VCF includes standard INFO fields:
 
 ## Typical Workflow
 
-A complete joint genotyping workflow using HGC:
+A complete joint genotyping and QC workflow using HGC:
+
+### Core Joint Genotyping Pipeline
 
 ```bash
 # Step 1: Combine individual GVCF files
@@ -302,6 +381,33 @@ hvantk hgc mt2vcf \
   -o cohort_joint_called.vcf.gz \
   --filter-adj \
   --min-ac 2
+```
+
+### Optional: Post-Combination Quality Control
+
+```bash
+# Step 4: Compute QC metrics for combined cohort
+hvantk hgc compute-qc \
+  -i cohort.mt \
+  -o cohort_qc.mt
+
+# Step 5: Generate QC report
+hvantk hgc qc-report \
+  -i cohort_qc.mt \
+  -o cohort_qc_report.html
+
+# Step 6: Filter based on QC (optional)
+hvantk hgc filter-qc \
+  -i cohort_qc.mt \
+  -o cohort_filtered.mt \
+  --min-sample-call-rate 0.95 \
+  --min-variant-call-rate 0.90
+
+# Step 7: Export filtered results
+hvantk hgc mt2vcf \
+  -i cohort_filtered.mt \
+  -o cohort_filtered.vcf.gz \
+  --filter-adj
 ```
 
 ## Data Formats
