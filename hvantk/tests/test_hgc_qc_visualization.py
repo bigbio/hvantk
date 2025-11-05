@@ -243,13 +243,15 @@ def test_html_qc_report_generation(test_mt):
     mt = test_mt
     qc_results = compute_full_qc(mt)
 
+    report_title = "Test QC Report"
+
     with tempfile.TemporaryDirectory() as tmp_dir:
         # Test 1: Generate HTML report with all plots
         report_path = Path(tmp_dir) / 'qc_report.html'
         result_path = generate_qc_report(
             qc_results,
             report_path,
-            title="Test QC Report"
+            title=report_title
         )
 
         # Verify report was created
@@ -258,7 +260,7 @@ def test_html_qc_report_generation(test_mt):
 
         # Check report contains expected content
         report_content = result_path.read_text()
-        assert "Quality Control Report" in report_content, "Report should contain QC content"
+        assert report_title in report_content, "Report should contain the specified title"
 
         # Test 2: Generate report through QCMetrics
         report_path2 = Path(tmp_dir) / 'qcmetrics_report.html'
@@ -269,6 +271,10 @@ def test_html_qc_report_generation(test_mt):
 
         assert result_path2.exists(), "QCMetrics HTML report should be created"
         assert result_path2.stat().st_size > 50000, "QCMetrics report should be substantial"
+
+        # Verify the title parameter works through QCMetrics wrapper
+        report_content2 = result_path2.read_text()
+        assert "QCMetrics Generated Report" in report_content2, "Report should contain the QCMetrics title"
 
 
 def test_qc_data_validation(test_mt):
