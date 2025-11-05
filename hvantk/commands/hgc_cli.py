@@ -953,16 +953,16 @@ def plot_qc(ctx, input, output_dir, plot_type, output_format, style, figsize, dp
                         fig = qc_results.plot_interactive_sample_titv()
                         save_interactive_plot(fig, output_path / 'interactive_sample_titv.html')
                         created_files.append('interactive_sample_titv.html')
-                    except Exception as e:
-                        click.echo(f"⚠️  Interactive Ti/Tv plot skipped: {e}")
+                    except (ValueError, KeyError, AttributeError, TypeError) as e:
+                        click.echo(f"⚠️  Interactive Ti/Tv plot skipped: {type(e).__name__}: {e}")
 
                     # Sample scatter plot (bonus interactive feature)
                     try:
                         fig = qc_results.plot_interactive_sample_scatter()
                         save_interactive_plot(fig, output_path / 'interactive_sample_scatter.html')
                         created_files.append('interactive_sample_scatter.html')
-                    except Exception as e:
-                        click.echo(f"⚠️  Interactive scatter plot skipped: {e}")
+                    except (ValueError, KeyError, AttributeError, TypeError) as e:
+                        click.echo(f"⚠️  Interactive scatter plot skipped: {type(e).__name__}: {e}")
                 else:
                     # Standard matplotlib plots
                     fig = qc_results.plot_sample_call_rates(
@@ -978,8 +978,8 @@ def plot_qc(ctx, input, output_dir, plot_type, output_format, style, figsize, dp
                             **plot_kwargs
                         )
                         created_files.append(f'sample_titv.{output_format}')
-                    except Exception as e:
-                        click.echo(f"⚠️  Ti/Tv plot skipped: {e}")
+                    except (ValueError, KeyError, AttributeError, TypeError) as e:
+                        click.echo(f"⚠️  Ti/Tv plot skipped: {type(e).__name__}: {e}")
 
             if qc_results.has_variant_qc:
                 click.echo("🎨 Creating individual variant plots...")
@@ -1306,11 +1306,36 @@ def qc_batch(ctx, input_pattern, output_dir, compute_qc, generate_plots, generat
 
                     results['report_created'] = str(report_path)
 
+            except FileNotFoundError as e:
+                error_msg = f"File not found: {e}"
+                click.echo(f"❌ Error processing {file_stem}: {error_msg}")
+                return {'file': file_stem, 'success': False, 'error': error_msg}
+            except (OSError, IOError) as e:
+                error_msg = f"I/O error: {e}"
+                click.echo(f"❌ Error processing {file_stem}: {error_msg}")
+                return {'file': file_stem, 'success': False, 'error': error_msg}
+            except (KeyError, AttributeError) as e:
+                error_msg = f"Missing required field or attribute: {e}"
+                click.echo(f"❌ Error processing {file_stem}: {error_msg}")
+                return {'file': file_stem, 'success': False, 'error': error_msg}
+            except ValueError as e:
+                error_msg = f"Invalid value or data: {e}"
+                click.echo(f"❌ Error processing {file_stem}: {error_msg}")
+                return {'file': file_stem, 'success': False, 'error': error_msg}
+            except ImportError as e:
+                error_msg = f"Import error: {e}"
+                click.echo(f"❌ Error processing {file_stem}: {error_msg}")
+                return {'file': file_stem, 'success': False, 'error': error_msg}
+            except Exception as e:
+                # Catch any unexpected errors and log them
+                error_msg = f"Unexpected error ({type(e).__name__}): {e}"
+                logger.exception(f"Unexpected error processing {file_stem}: {e}")
+                click.echo(f"❌ Error processing {file_stem}: {error_msg}")
+                return {'file': file_stem, 'success': False, 'error': error_msg}
+            else:
+                # Success - return results when no exception occurred
                 return results
 
-            except Exception as e:
-                click.echo(f"❌ Error processing {file_stem}: {e}")
-                return {'file': file_stem, 'success': False, 'error': str(e)}
 
         # Process files
         if parallel > 1:
