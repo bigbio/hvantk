@@ -28,19 +28,20 @@ tqdm = "*"
 pandas = "^2.0.0"
 PyYAML = "*"
 psutil = "*"
-matplotlib = "*"
+matplotlib = { version = "*", optional = true }
 seaborn = { version = "*", optional = true }
 plotly = { version = "*", optional = true }
 
 [tool.poetry.extras]
-viz = ["seaborn", "plotly"]
+viz = ["matplotlib", "seaborn", "plotly"]
 interactive = ["plotly"]
-hgc = ["seaborn", "plotly"]
+hgc = ["matplotlib", "seaborn", "plotly"]
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
 flake8 = "^6.0.0"
 black = "^23.7.0"
+matplotlib = "*"
 seaborn = "*"
 plotly = "*"
 
