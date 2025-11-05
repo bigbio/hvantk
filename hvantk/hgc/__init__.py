@@ -2,7 +2,8 @@
 HGC (Hail-based Genotype Combiner) module.
 
 This module provides functionality for combining and converting genomic variant data
-using Hail, including GVCF combination, VDS operations, and MatrixTable conversions.
+using Hail, including GVCF combination, VDS operations, MatrixTable conversions,
+and comprehensive quality control analysis.
 """
 
 from hvantk.hgc.combiners import combine_gvcfs, combine_vdses
@@ -14,6 +15,18 @@ from hvantk.hgc.file_utils import (
     compress_files,
     decompress_files,
     sort_mts_cols
+)
+from hvantk.hgc.qc import (
+    QCMetrics,
+    compute_sample_qc,
+    compute_variant_qc,
+    compute_full_qc,
+    extract_qc_metrics,
+    filter_samples_by_qc,
+    filter_variants_by_qc,
+    get_qc_summary_stats,
+    prepare_qc_for_visualization,
+    save_qc_metrics
 )
 
 __all__ = [
@@ -29,5 +42,16 @@ __all__ = [
     'validate_vds_paths',
     'compress_files',
     'decompress_files',
-    'sort_mts_cols'
+    'sort_mts_cols',
+    # Classes and functions from qc
+    'QCMetrics',
+    'compute_sample_qc',
+    'compute_variant_qc',
+    'compute_full_qc',
+    'extract_qc_metrics',
+    'filter_samples_by_qc',
+    'filter_variants_by_qc',
+    'get_qc_summary_stats',
+    'prepare_qc_for_visualization',
+    'save_qc_metrics'
 ]
