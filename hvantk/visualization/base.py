@@ -8,7 +8,7 @@ styling, and common operations used across different visualization types.
 import os
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from typing import Optional, Union, Tuple, Dict, Any
+from typing import Optional, Union, Tuple, Dict, Any, List
 
 
 def set_default_style(style: str = 'default',
@@ -38,9 +38,13 @@ def set_default_style(style: str = 'default',
     try:
         import seaborn as sns
         orig_style = style
-        if style == 'publication':
-            style = 'whitegrid'  # Map to a valid seaborn style
-        sns.set_theme(style=style, context=context, palette=palette, font_scale=font_scale)
+        # Map styles to valid seaborn styles
+        style_mapping = {
+            'default': 'whitegrid',
+            'publication': 'whitegrid'
+        }
+        seaborn_style = style_mapping.get(style, style)
+        sns.set_theme(style=seaborn_style, context=context, palette=palette, font_scale=font_scale)
         if orig_style == 'publication':
             # Publication-ready style settings
             plt.rcParams['font.family'] = 'sans-serif'
@@ -70,7 +74,7 @@ def set_default_style(style: str = 'default',
 def save_figure(fig: plt.Figure,
                 filename: str,
                 dpi: int = 300,
-                formats: list = ['png', 'pdf'],
+                formats: Optional[List[str]] = None,
                 transparent: bool = False,
                 bbox_inches: str = 'tight',
                 output_dir: Optional[str] = None,
@@ -86,8 +90,9 @@ def save_figure(fig: plt.Figure,
         Base name of the file to save (without extension)
     dpi : int
         Resolution in dots per inch
-    formats : list
-        List of file formats to save (e.g., ['png', 'pdf', 'svg'])
+    formats : list of str, optional
+        List of file formats to save (e.g., ['png', 'pdf', 'svg']).
+        Defaults to ['png'] if not specified.
     transparent : bool
         Whether to save with a transparent background
     bbox_inches : str
@@ -97,11 +102,18 @@ def save_figure(fig: plt.Figure,
     **kwargs
         Additional keyword arguments passed to plt.savefig()
     """
+    # Initialize formats with default value if None
+    if formats is None:
+        formats = ['png']
+
     if output_dir is not None:
         os.makedirs(output_dir, exist_ok=True)
 
     for fmt in formats:
-        save_path = os.path.join(output_dir, f"{filename}.{fmt}") if output_dir else f"{filename}.{fmt}"
+        # Handle case where filename already has an extension and convert Path to str
+        filename_str = str(filename)
+        base_name = filename_str.replace('.png', '').replace('.pdf', '').replace('.svg', '')
+        save_path = os.path.join(output_dir, f"{base_name}.{fmt}") if output_dir else f"{base_name}.{fmt}"
         fig.savefig(save_path, format=fmt, dpi=dpi, transparent=transparent,
                    bbox_inches=bbox_inches, **kwargs)
         print(f"Figure saved: {save_path}")
