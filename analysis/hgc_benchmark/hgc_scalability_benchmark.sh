@@ -14,7 +14,7 @@
 #   --sample-sizes SIZES  Comma-separated sample sizes (default: 20,50,100,250,500,750,1000)
 #   --reference REF       Reference genome (default: GRCh38)
 #   --seed SEED          Random seed for sampling (default: 42)
-#   --conda-env ENV      Conda environment name (default: auto-detect or use pyvatk)
+#   --conda-env ENV      Conda environment name (default: auto-detect or use hvantk)
 #   --resume             Resume from previous run (skip completed runs)
 #   --help               Show this help message
 
@@ -27,7 +27,7 @@ SAMPLE_SIZES="20,50,100,250,500,750,1000"
 REFERENCE="GRCh38"
 SEED=42
 RESUME=false
-CONDA_ENV=""  # Auto-detect or specify conda environment name
+CONDA_ENV=""  # Auto-detect or specify conda environment name (default: hvantk)
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -83,8 +83,8 @@ if [ -z "$CONDA_ENV" ]; then
         CONDA_ENV="$CONDA_DEFAULT_ENV"
         echo "Auto-detected conda environment: $CONDA_ENV"
     else
-        # Default to pyvatk if no environment detected
-        CONDA_ENV="pyvatk"
+        # Default to hvantk if no environment detected
+        CONDA_ENV="hvantk"
         echo "No conda environment detected, will try to use: $CONDA_ENV"
     fi
 fi
@@ -119,6 +119,27 @@ fi
 
 echo ""
 
+# Validate that hvantk is importable
+echo "Validating Python environment..."
+if ! python -c "from hvantk.hgc import combine_gvcfs" 2>/dev/null; then
+    echo "ERROR: hvantk module is not installed in the current Python environment!"
+    echo ""
+    echo "Current Python: $(which python)"
+    echo "Conda environment: $CONDA_ENV"
+    echo ""
+    echo "Please install hvantk in this environment:"
+    echo "  conda activate $CONDA_ENV"
+    echo "  cd /path/to/hvantk"
+    echo "  pip install -e ."
+    echo ""
+    echo "Or use a different conda environment that has hvantk installed:"
+    echo "  bash $0 --conda-env <env_with_hvantk> [other options]"
+    echo ""
+    exit 1
+fi
+echo "✓ hvantk module is available"
+echo ""
+
 echo "========================================================================"
 echo "HGC Scalability Benchmark"
 echo "========================================================================"
@@ -128,6 +149,7 @@ echo "Sample sizes:       ${SIZES[*]}"
 echo "Reference genome:   $REFERENCE"
 echo "Random seed:        $SEED"
 echo "Conda environment:  $CONDA_ENV"
+echo "Python executable:  $(which python)"
 echo "Resume mode:        $RESUME"
 echo "========================================================================"
 echo ""
