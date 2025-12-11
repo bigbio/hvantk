@@ -1,0 +1,56 @@
+#!/bin/bash
+#
+# Quick Start Example - Run HGC Scalability Benchmark
+#
+# This script provides a simple way to run the benchmark with default settings
+# for the CHD_1000WGS chr20 data.
+
+set -euo pipefail
+
+# Configuration
+GVCF_DIR="/mnt/nfs/KOL_UOL/projects/CHD_1000WGS/variant_calling/split_vcfs/chr20"
+OUTPUT_DIR="./scalability_results_chr20_$(date +%Y%m%d)"
+SAMPLE_SIZES="20,50,100,250,500,750,1000"
+REFERENCE="GRCh38"
+
+echo "========================================================================"
+echo "HGC Scalability Benchmark - Quick Start"
+echo "========================================================================"
+echo ""
+echo "This will run the complete scalability benchmark with the following settings:"
+echo "  - GVCF directory: $GVCF_DIR"
+echo "  - Output directory: $OUTPUT_DIR"
+echo "  - Sample sizes: $SAMPLE_SIZES"
+echo "  - Reference genome: $REFERENCE"
+echo ""
+echo "Expected runtime: ~100+ hours for all 7 sample sizes"
+echo ""
+read -p "Do you want to continue? (y/N) " -n 1 -r
+echo
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "Aborted."
+    exit 0
+fi
+
+echo ""
+echo "Starting benchmark..."
+echo ""
+
+# Run the benchmark
+bash "$(dirname "$0")/hgc_scalability_benchmark.sh" \
+    --gvcf-dir "$GVCF_DIR" \
+    --output-dir "$OUTPUT_DIR" \
+    --sample-sizes "$SAMPLE_SIZES" \
+    --reference "$REFERENCE"
+
+echo ""
+echo "========================================================================"
+echo "Benchmark completed!"
+echo "========================================================================"
+echo ""
+echo "Results saved to: $OUTPUT_DIR"
+echo ""
+echo "To generate plots, run:"
+echo "  python $(dirname "$0")/plot_scalability_results.py --results-dir $OUTPUT_DIR"
+echo ""
+
