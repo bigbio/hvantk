@@ -95,26 +95,35 @@ def run_hgc_workflow(
     tmp_path = str(output_dir / "tmp")
     combiner_plan = str(output_dir / f"combiner_plan_{sample_size}.json")
 
-    # Create a temporary directory with the GVCF list for combine_gvcfs
-    gvcf_dir = output_dir / "gvcf_input"
-    gvcf_dir.mkdir(exist_ok=True)
-
-    # Write GVCF list to a temporary location
-    gvcf_list_temp = gvcf_dir / "gvcf_list.txt"
-    with open(gvcf_list_temp, 'w') as f:
-        for gvcf in gvcf_files:
-            f.write(f"{gvcf}\n")
-
     logger.info("="*80)
     logger.info(f"Starting HGC workflow for {sample_size} samples")
     logger.info("="*80)
 
     # STEP 1: Combine GVCFs → VDS
     logger.info(f"[{sample_size}] Step 1/4: Combining {len(gvcf_files)} GVCFs to VDS...")
+    logger.info(f"[{sample_size}]   GVCF files:")
+    for i, gvcf in enumerate(gvcf_files[:5], 1):  # Show first 5
+        logger.info(f"[{sample_size}]     {i}. {gvcf}")
+    if len(gvcf_files) > 5:
+        logger.info(f"[{sample_size}]     ... and {len(gvcf_files) - 5} more")
+
     start = time.time()
     try:
+        # Create a temporary directory with symlinks to the GVCF files
+        # This allows combine_gvcfs to find them via directory scanning
+        import os
+        gvcf_links_dir = output_dir / "gvcf_links"
+        gvcf_links_dir.mkdir(exist_ok=True)
+
+        logger.info(f"[{sample_size}]   Creating symbolic links to GVCFs...")
+        for gvcf_path in gvcf_files:
+            link_name = gvcf_links_dir / os.path.basename(gvcf_path)
+            if not link_name.exists():
+                os.symlink(gvcf_path, link_name)
+
+        logger.info(f"[{sample_size}]   Calling hvantk combine_gvcfs...")
         combine_gvcfs(
-            gvcf_dir=str(gvcf_dir),
+            gvcf_dir=str(gvcf_links_dir),
             vds_output_path=vds_path,
             tmp_path=tmp_path,
             save_path=combiner_plan,
