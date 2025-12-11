@@ -17,7 +17,7 @@ REFERENCE="GRCh38"
 if [ -n "${CONDA_DEFAULT_ENV:-}" ]; then
     CONDA_ENV="$CONDA_DEFAULT_ENV"
 else
-    CONDA_ENV="pyvatk"
+    CONDA_ENV="hvantk"
 fi
 
 echo "========================================================================"
