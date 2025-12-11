@@ -48,14 +48,27 @@ logger = logging.getLogger(__name__)
 def setup_hail(tmp_dir: Path, log_file: Path):
     """Initialize Hail with appropriate settings."""
     logger.info("Initializing Hail...")
-    hl.init(
-        tmp_dir=str(tmp_dir),
-        log=str(log_file),
-        quiet=False,
-        append=False
-    )
-    logger.info(f"Hail version: {hl.__version__}")
-    logger.info(f"Hail temp directory: {tmp_dir}")
+
+    # Ensure directories exist and have correct permissions
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    log_file.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        hl.init(
+            tmp_dir=str(tmp_dir),
+            log=str(log_file),
+            quiet=False,
+            append=False,
+            min_block_size=0,  # Important for combiner
+            default_reference='GRCh38'
+        )
+        logger.info(f"✓ Hail initialized successfully")
+        logger.info(f"  Hail version: {hl.__version__}")
+        logger.info(f"  Temp directory: {tmp_dir}")
+        logger.info(f"  Log file: {log_file}")
+    except Exception as e:
+        logger.error(f"Failed to initialize Hail: {e}")
+        raise
 
 
 def read_gvcf_list(gvcf_list_file: Path) -> List[str]:
@@ -116,17 +129,31 @@ def run_hgc_workflow(
         gvcf_links_dir.mkdir(exist_ok=True)
 
         logger.info(f"[{sample_size}]   Creating symbolic links to GVCFs and their indexes...")
+        created_links = 0
         for gvcf_path in gvcf_files:
             # Create symlink for GVCF file
             link_name = gvcf_links_dir / os.path.basename(gvcf_path)
             if not link_name.exists():
                 os.symlink(gvcf_path, link_name)
+                created_links += 1
 
             # Create symlink for index file (.tbi)
             tbi_path = gvcf_path + '.tbi'
             tbi_link_name = gvcf_links_dir / (os.path.basename(gvcf_path) + '.tbi')
-            if os.path.exists(tbi_path) and not tbi_link_name.exists():
-                os.symlink(tbi_path, tbi_link_name)
+            if os.path.exists(tbi_path):
+                if not tbi_link_name.exists():
+                    os.symlink(tbi_path, tbi_link_name)
+                    created_links += 1
+            else:
+                logger.warning(f"[{sample_size}]   Index file not found: {tbi_path}")
+
+        logger.info(f"[{sample_size}]   Created {created_links} symbolic links")
+
+        # Verify symlinks are valid
+        link_files = list(gvcf_links_dir.glob("*.g.vcf.gz"))
+        logger.info(f"[{sample_size}]   Found {len(link_files)} GVCF files in symlink directory")
+        if len(link_files) != len(gvcf_files):
+            logger.warning(f"[{sample_size}]   Expected {len(gvcf_files)} but found {len(link_files)} GVCF files")
 
         logger.info(f"[{sample_size}]   Calling hvantk combine_gvcfs...")
         combine_gvcfs(
