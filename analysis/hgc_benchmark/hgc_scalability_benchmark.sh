@@ -78,7 +78,8 @@ IFS=',' read -ra SIZES <<< "$SAMPLE_SIZES"
 # Detect and activate conda environment
 if [ -z "$CONDA_ENV" ]; then
     # Try to auto-detect conda environment
-    if [ -n "$CONDA_DEFAULT_ENV" ]; then
+    # Use parameter expansion to avoid unbound variable error
+    if [ -n "${CONDA_DEFAULT_ENV:-}" ]; then
         CONDA_ENV="$CONDA_DEFAULT_ENV"
         echo "Auto-detected conda environment: $CONDA_ENV"
     else

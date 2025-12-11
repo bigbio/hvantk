@@ -14,7 +14,7 @@ SAMPLE_SIZES="20,50,100,250,500,750,1000"
 REFERENCE="GRCh38"
 
 # Detect conda environment
-if [ -n "$CONDA_DEFAULT_ENV" ]; then
+if [ -n "${CONDA_DEFAULT_ENV:-}" ]; then
     CONDA_ENV="$CONDA_DEFAULT_ENV"
 else
     CONDA_ENV="pyvatk"
