@@ -152,15 +152,27 @@ sample_gvcfs() {
     echo "Sampled $n GVCFs to: $output_file"
 }
 
-# Function to parse memory from time output (macOS compatible)
-parse_memory_macos() {
+# Function to parse memory from time output
+parse_memory() {
     local log_file=$1
-    # Look for "maximum resident set size" in bytes, convert to MB
-    local mem_bytes=$(grep "maximum resident set size" "$log_file" | awk '{print $1}')
-    if [ -n "$mem_bytes" ]; then
-        echo "scale=2; $mem_bytes / 1024 / 1024" | bc
+    local os_type=$(uname -s)
+
+    if [[ "$os_type" == "Darwin" ]]; then
+        # macOS: "maximum resident set size" in bytes
+        local mem_bytes=$(grep "maximum resident set size" "$log_file" | awk '{print $1}')
+        if [ -n "$mem_bytes" ]; then
+            echo "scale=2; $mem_bytes / 1024 / 1024" | bc
+        else
+            echo "N/A"
+        fi
     else
-        echo "N/A"
+        # Linux: "Maximum resident set size (kbytes)"
+        local mem_kb=$(grep "Maximum resident set size" "$log_file" | awk '{print $NF}')
+        if [ -n "$mem_kb" ]; then
+            echo "scale=2; $mem_kb / 1024" | bc
+        else
+            echo "N/A"
+        fi
     fi
 }
 
@@ -202,25 +214,42 @@ for SIZE in "${SIZES[@]}"; do
     echo "Running HGC workflow for $SIZE samples..."
     echo "Log file: $LOG_FILE"
 
-    # Use /usr/bin/time on macOS to capture memory
+    # Detect OS and use appropriate time command flags
     START_TIME=$(date +%s)
+    OS_TYPE=$(uname -s)
 
-    if command -v /usr/bin/time &> /dev/null; then
+    # Run the workflow with appropriate time command
+    if [[ "$OS_TYPE" == "Darwin" ]]; then
         # macOS: Use /usr/bin/time -l for detailed stats
+        echo "Detected macOS - using 'time -l'"
         /usr/bin/time -l python "$PYTHON_SCRIPT" \
             --gvcf-list "$SAMPLE_LIST" \
             --output-dir "$RUN_DIR" \
             --sample-size "$SIZE" \
             --reference "$REFERENCE" \
-            2>&1 | tee "$LOG_FILE" "$TIME_LOG"
+            > >(tee "$LOG_FILE") 2> >(tee "$TIME_LOG" >&2)
     else
-        # Linux fallback
-        /usr/bin/time -v python "$PYTHON_SCRIPT" \
-            --gvcf-list "$SAMPLE_LIST" \
-            --output-dir "$RUN_DIR" \
-            --sample-size "$SIZE" \
-            --reference "$REFERENCE" \
-            2>&1 | tee "$LOG_FILE" "$TIME_LOG"
+        # Linux: Try /usr/bin/time -v for detailed stats
+        echo "Detected Linux - using 'time -v'"
+        # First check if -v flag is supported
+        if /usr/bin/time -v echo test >/dev/null 2>&1; then
+            /usr/bin/time -v python "$PYTHON_SCRIPT" \
+                --gvcf-list "$SAMPLE_LIST" \
+                --output-dir "$RUN_DIR" \
+                --sample-size "$SIZE" \
+                --reference "$REFERENCE" \
+                > >(tee "$LOG_FILE") 2> >(tee "$TIME_LOG" >&2)
+        else
+            # Fallback: Use simple time without detailed stats
+            echo "Warning: /usr/bin/time -v not supported, using basic timing"
+            python "$PYTHON_SCRIPT" \
+                --gvcf-list "$SAMPLE_LIST" \
+                --output-dir "$RUN_DIR" \
+                --sample-size "$SIZE" \
+                --reference "$REFERENCE" \
+                2>&1 | tee "$LOG_FILE"
+            echo "No detailed memory stats available" > "$TIME_LOG"
+        fi
     fi
 
     EXIT_CODE=${PIPESTATUS[0]}
@@ -252,7 +281,7 @@ for SIZE in "${SIZES[@]}"; do
 
     # Extract memory usage
     if [ -f "$TIME_LOG" ]; then
-        PEAK_MEMORY=$(parse_memory_macos "$TIME_LOG")
+        PEAK_MEMORY=$(parse_memory "$TIME_LOG")
         echo "$SIZE,$PEAK_MEMORY,$WALL_TIME" >> "$MEMORY_CSV"
         echo "Memory usage saved to: $MEMORY_CSV"
         echo "Peak memory: ${PEAK_MEMORY} MB"
