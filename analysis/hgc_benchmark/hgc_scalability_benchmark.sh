@@ -14,6 +14,7 @@
 #   --sample-sizes SIZES  Comma-separated sample sizes (default: 20,50,100,250,500,750,1000)
 #   --reference REF       Reference genome (default: GRCh38)
 #   --seed SEED          Random seed for sampling (default: 42)
+#   --conda-env ENV      Conda environment name (default: auto-detect or use pyvatk)
 #   --resume             Resume from previous run (skip completed runs)
 #   --help               Show this help message
 
@@ -26,6 +27,7 @@ SAMPLE_SIZES="20,50,100,250,500,750,1000"
 REFERENCE="GRCh38"
 SEED=42
 RESUME=false
+CONDA_ENV=""  # Auto-detect or specify conda environment name
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -50,6 +52,10 @@ while [[ $# -gt 0 ]]; do
             SEED="$2"
             shift 2
             ;;
+        --conda-env)
+            CONDA_ENV="$2"
+            shift 2
+            ;;
         --resume)
             RESUME=true
             shift
@@ -69,6 +75,49 @@ done
 # Convert comma-separated sizes to array
 IFS=',' read -ra SIZES <<< "$SAMPLE_SIZES"
 
+# Detect and activate conda environment
+if [ -z "$CONDA_ENV" ]; then
+    # Try to auto-detect conda environment
+    if [ -n "$CONDA_DEFAULT_ENV" ]; then
+        CONDA_ENV="$CONDA_DEFAULT_ENV"
+        echo "Auto-detected conda environment: $CONDA_ENV"
+    else
+        # Default to pyvatk if no environment detected
+        CONDA_ENV="pyvatk"
+        echo "No conda environment detected, will try to use: $CONDA_ENV"
+    fi
+fi
+
+# Initialize conda for bash if not already done
+if [ -f "$HOME/miniconda3/etc/profile.d/conda.sh" ]; then
+    source "$HOME/miniconda3/etc/profile.d/conda.sh"
+elif [ -f "$HOME/anaconda3/etc/profile.d/conda.sh" ]; then
+    source "$HOME/anaconda3/etc/profile.d/conda.sh"
+elif [ -f "/opt/conda/etc/profile.d/conda.sh" ]; then
+    source "/opt/conda/etc/profile.d/conda.sh"
+elif command -v conda &> /dev/null; then
+    # Try to initialize conda if command exists
+    eval "$(conda shell.bash hook 2>/dev/null)" || true
+fi
+
+# Activate the conda environment
+if command -v conda &> /dev/null; then
+    echo "Activating conda environment: $CONDA_ENV"
+    conda activate "$CONDA_ENV" 2>/dev/null || {
+        echo "WARNING: Failed to activate conda environment '$CONDA_ENV'"
+        echo "Please activate it manually before running this script:"
+        echo "  conda activate $CONDA_ENV"
+        echo "Or specify a different environment with --conda-env"
+        exit 1
+    }
+    echo "Conda environment activated: $(conda info --envs | grep '*' | awk '{print $1}')"
+else
+    echo "WARNING: conda not found. Make sure the correct Python environment is active."
+    echo "Current Python: $(which python)"
+fi
+
+echo ""
+
 echo "========================================================================"
 echo "HGC Scalability Benchmark"
 echo "========================================================================"
@@ -77,6 +126,7 @@ echo "Output directory:   $OUTPUT_DIR"
 echo "Sample sizes:       ${SIZES[*]}"
 echo "Reference genome:   $REFERENCE"
 echo "Random seed:        $SEED"
+echo "Conda environment:  $CONDA_ENV"
 echo "Resume mode:        $RESUME"
 echo "========================================================================"
 echo ""
