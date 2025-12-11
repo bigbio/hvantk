@@ -13,6 +13,13 @@ OUTPUT_DIR="./scalability_results_chr20_$(date +%Y%m%d)"
 SAMPLE_SIZES="20,50,100,250,500,750,1000"
 REFERENCE="GRCh38"
 
+# Detect conda environment
+if [ -n "$CONDA_DEFAULT_ENV" ]; then
+    CONDA_ENV="$CONDA_DEFAULT_ENV"
+else
+    CONDA_ENV="pyvatk"
+fi
+
 echo "========================================================================"
 echo "HGC Scalability Benchmark - Quick Start"
 echo "========================================================================"
@@ -22,6 +29,7 @@ echo "  - GVCF directory: $GVCF_DIR"
 echo "  - Output directory: $OUTPUT_DIR"
 echo "  - Sample sizes: $SAMPLE_SIZES"
 echo "  - Reference genome: $REFERENCE"
+echo "  - Conda environment: $CONDA_ENV"
 echo ""
 echo "Expected runtime: ~100+ hours for all 7 sample sizes"
 echo ""
@@ -41,7 +49,8 @@ bash "$(dirname "$0")/hgc_scalability_benchmark.sh" \
     --gvcf-dir "$GVCF_DIR" \
     --output-dir "$OUTPUT_DIR" \
     --sample-sizes "$SAMPLE_SIZES" \
-    --reference "$REFERENCE"
+    --reference "$REFERENCE" \
+    --conda-env "$CONDA_ENV"
 
 echo ""
 echo "========================================================================"
