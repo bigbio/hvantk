@@ -115,11 +115,18 @@ def run_hgc_workflow(
         gvcf_links_dir = output_dir / "gvcf_links"
         gvcf_links_dir.mkdir(exist_ok=True)
 
-        logger.info(f"[{sample_size}]   Creating symbolic links to GVCFs...")
+        logger.info(f"[{sample_size}]   Creating symbolic links to GVCFs and their indexes...")
         for gvcf_path in gvcf_files:
+            # Create symlink for GVCF file
             link_name = gvcf_links_dir / os.path.basename(gvcf_path)
             if not link_name.exists():
                 os.symlink(gvcf_path, link_name)
+
+            # Create symlink for index file (.tbi)
+            tbi_path = gvcf_path + '.tbi'
+            tbi_link_name = gvcf_links_dir / (os.path.basename(gvcf_path) + '.tbi')
+            if os.path.exists(tbi_path) and not tbi_link_name.exists():
+                os.symlink(tbi_path, tbi_link_name)
 
         logger.info(f"[{sample_size}]   Calling hvantk combine_gvcfs...")
         combine_gvcfs(
