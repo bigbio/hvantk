@@ -105,7 +105,7 @@ def test_download_file_with_retry_progress_bar(download_path, monkeypatch):
     This is a unit test that mocks FTP operations.
     """
     import ftplib
-    from unittest.mock import Mock, MagicMock, call
+    from unittest.mock import Mock
     from hvantk.commands.expression_atlas_downloader import _download_file_with_retry
 
     # Create a mock FTP object
