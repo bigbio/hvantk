@@ -1,9 +1,12 @@
 import os
 from pathlib import Path
+import ftplib
+from unittest.mock import Mock
 
 import pytest
 from click.testing import CliRunner
 from hvantk.commands import expression_atlas_downloader
+from hvantk.commands.expression_atlas_downloader import _download_file_with_retry
 
 # Define the test directory path
 TEST_DIR = Path(__file__).parent.parent
@@ -104,10 +107,6 @@ def test_download_file_with_retry_progress_bar(download_path, monkeypatch):
     Test that _download_file_with_retry uses tqdm for progress tracking.
     This is a unit test that mocks FTP operations.
     """
-    import ftplib
-    from unittest.mock import Mock
-    from hvantk.commands.expression_atlas_downloader import _download_file_with_retry
-
     # Create a mock FTP object
     mock_ftp = Mock(spec=ftplib.FTP)
     
