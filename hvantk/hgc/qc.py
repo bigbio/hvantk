@@ -22,6 +22,7 @@ import pandas as pd
 import numpy as np
 from typing import Optional, Dict, Tuple, List, Union
 from pathlib import Path
+from hvantk.hgc.constants import AD_FIELD, DP_FIELD, GT_FIELD
 
 logger = logging.getLogger(__name__)
 
@@ -388,6 +389,45 @@ class QCMetrics:
         )
 
 
+def _ensure_ad_field(mt: hl.MatrixTable) -> hl.MatrixTable:
+    """Guarantee an AD entry field if possible (used for QC robustness).
+
+    - If AD exists, return unchanged.
+    - Else, if LAD exists, reuse it as AD.
+    - Else, if DP and GT exist, synthesize a simple AD array.
+    Raises if none of the above are available.
+    """
+    if AD_FIELD in mt.entry:
+        return mt
+
+    if "LAD" in mt.entry:
+        return mt.annotate_entries(**{AD_FIELD: mt.LAD})
+
+    if DP_FIELD in mt.entry and GT_FIELD in mt.entry:
+        return mt.annotate_entries(
+            **{
+                AD_FIELD: hl.if_else(
+                    hl.is_defined(mt.GT) & hl.is_defined(mt.DP),
+                    hl.cond(
+                        mt.GT.is_hom_ref(),
+                        [mt.DP, 0],
+                        hl.cond(mt.GT.is_het(), [mt.DP // 2, mt.DP // 2], [0, mt.DP]),
+                    ),
+                    hl.missing("array<int32>"),
+                )
+            }
+        )
+
+    raise ValueError("Cannot create AD field: missing AD/LAD and (DP+GT)")
+
+
+def _recompute_variant_ac(mt: hl.MatrixTable, call_field: str) -> hl.MatrixTable:
+    """Drop/recompute variant_ac to avoid stale or malformed arrays."""
+    if "variant_ac" in mt.row:
+        mt = mt.drop("variant_ac")
+    return mt.annotate_rows(variant_ac=hl.agg.call_stats(mt[call_field], mt.alleles).AC)
+
+
 def compute_sample_qc(mt: hl.MatrixTable,
                      name: str = 'sample_qc',
                      call_field: str = 'GT') -> hl.MatrixTable:
@@ -423,6 +463,10 @@ def compute_sample_qc(mt: hl.MatrixTable,
         # Ensure the call field exists
         if call_field not in mt.entry:
             raise ValueError(f"Call field '{call_field}' not found in MatrixTable entries")
+
+        # Guard against stale variant_ac and missing AD
+        mt = _recompute_variant_ac(mt, call_field)
+        mt = _ensure_ad_field(mt)
 
         # Compute sample QC using Hail's built-in function
         mt_with_qc = hl.sample_qc(mt, name=name)
@@ -481,6 +525,9 @@ def compute_variant_qc(mt: hl.MatrixTable,
         # Ensure the call field exists
         if call_field not in mt.entry:
             raise ValueError(f"Call field '{call_field}' not found in MatrixTable entries")
+
+        # Recompute variant_ac to ensure consistency before variant_qc
+        mt = _recompute_variant_ac(mt, call_field)
 
         # Compute variant QC using Hail's built-in function
         mt_with_qc = hl.variant_qc(mt, name=name)
