@@ -210,6 +210,23 @@ if [ ! -f "$MEMORY_CSV" ] || [ "$RESUME" = false ]; then
     echo "sample_size,peak_memory_mb,run_time_sec" > "$MEMORY_CSV"
 fi
 
+# Verify CSV headers were created correctly
+if [ ! -s "$TIMING_CSV" ]; then
+    echo "ERROR: Failed to create timing CSV with header"
+    exit 1
+fi
+if [ ! -s "$MEMORY_CSV" ]; then
+    echo "ERROR: Failed to create memory CSV with header"
+    exit 1
+fi
+
+echo "CSV files initialized:"
+echo "  - Timing:  $TIMING_CSV"
+echo "    Header:  $(head -1 "$TIMING_CSV")"
+echo "  - Memory:  $MEMORY_CSV"
+echo "    Header:  $(head -1 "$MEMORY_CSV")"
+echo ""
+
 # Function to sample GVCFs
 sample_gvcfs() {
     local n=$1
@@ -359,28 +376,23 @@ for SIZE in "${SIZES[@]}"; do
     # Extract timing from JSON
     if [ -f "$TIMING_FILE" ]; then
         set +e
-        TIMING_ROW=$(python3 <<'PY' "$TIMING_FILE" "$SIZE"
-import json, sys
-path, size = sys.argv[1], sys.argv[2]
-required = ["gvcf_combine", "vds_to_mt", "compute_qc", "mt_to_vcf", "total"]
-with open(path, "r", encoding="utf-8") as f:
-    data = json.load(f)
-missing = [k for k in required if k not in data]
-if missing:
-    sys.exit(1)
-print(f"{size},{data['gvcf_combine']},{data['vds_to_mt']},{data['compute_qc']},{data['mt_to_vcf']},{data['total']}")
-PY)
+        TIMING_OUTPUT=$(python3 "$SCRIPT_DIR/extract_timing.py" "$TIMING_FILE" "$SIZE" 2>&1)
         PY_EXIT=$?
         set -e
 
-        if [ $PY_EXIT -eq 0 ] && [ -n "$TIMING_ROW" ]; then
-            echo "$TIMING_ROW" >> "$TIMING_CSV"
-            echo "Timings saved to: $TIMING_CSV"
+        if [ $PY_EXIT -eq 0 ] && [ -n "$TIMING_OUTPUT" ]; then
+            echo "$TIMING_OUTPUT" >> "$TIMING_CSV"
+            echo "✓ Timings saved to: $TIMING_CSV"
         else
-            echo "WARNING: Timing file is malformed or missing required fields: $TIMING_FILE"
+            echo "✗ ERROR: Failed to extract timing from $TIMING_FILE (exit code: $PY_EXIT)"
+            echo "  Python output: $TIMING_OUTPUT"
+            if [ -f "$TIMING_FILE" ]; then
+                echo "  Timing file contents:"
+                cat "$TIMING_FILE" | head -20
+            fi
         fi
     else
-        echo "WARNING: Timing file not found: $TIMING_FILE"
+        echo "✗ WARNING: Timing file not found: $TIMING_FILE"
     fi
 
     # Extract memory usage
