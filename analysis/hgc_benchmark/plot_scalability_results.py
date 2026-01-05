@@ -106,7 +106,10 @@ def plot_total_runtime(timing_df: pd.DataFrame, output_path: Path):
     residuals = total_times - p_linear(sample_sizes)
     ss_res = np.sum(residuals**2)
     ss_tot = np.sum((total_times - np.mean(total_times))**2)
-    r_squared = 1 - (ss_res / ss_tot)
+    if ss_tot > 0:
+        r_squared = 1 - (ss_res / ss_tot)
+    else:
+        r_squared = 1.0
 
     ax.set_xlabel('Sample Size', fontsize=14, fontweight='bold')
     ax.set_ylabel('Total Runtime (seconds)', fontsize=14, fontweight='bold')
@@ -216,6 +219,11 @@ def plot_scaling_efficiency(timing_df: pd.DataFrame, output_path: Path):
 
     sample_sizes = timing_df['sample_size'].values
     total_times = timing_df['total_sec'].values
+
+    # Validate that sample sizes are greater than zero
+    if (sample_sizes == 0).any():
+        raise ValueError("Sample sizes must be greater than zero")
+
     time_per_sample = total_times / sample_sizes
 
     ax.plot(sample_sizes, time_per_sample, 'o-', linewidth=2.5, markersize=10,
@@ -292,7 +300,10 @@ def generate_summary_report(timing_df: pd.DataFrame, memory_df: pd.DataFrame, ou
     residuals = total_times - p(sample_sizes)
     ss_res = np.sum(residuals**2)
     ss_tot = np.sum((total_times - np.mean(total_times))**2)
-    r_squared = 1 - (ss_res / ss_tot)
+    if ss_tot > 0:
+        r_squared = 1 - (ss_res / ss_tot)
+    else:
+        r_squared = 1.0
 
     report_lines.append(f"Linear fit: y = {z[0]:.4f}x + {z[1]:.2f}")
     report_lines.append(f"R-squared: {r_squared:.4f}")
