@@ -175,6 +175,11 @@ mkdir -p "$OUTPUT_DIR"
 mkdir -p "$OUTPUT_DIR/sample_sets"
 mkdir -p "$OUTPUT_DIR/run_logs"
 
+MASTER_LOG="$OUTPUT_DIR/benchmark.log"
+touch "$MASTER_LOG"
+# Mirror all stdout/stderr to the master log for traceability
+exec > >(tee -a "$MASTER_LOG") 2>&1
+
 # Warn if using placeholder GVCF_DIR
 if [ "$GVCF_DIR" = "/path/to/your/gvcf_directory" ]; then
     echo "WARNING: GVCF_DIR is set to a placeholder. Set --gvcf-dir or export GVCF_DIR before running."
