@@ -352,8 +352,8 @@ def mt2vcf(ctx, input, output, filter_adj, min_ac, split_multi, dry_run):
     compatibility with other tools and pipelines.
 
     Examples:
-        hvantk hgc mt2vcf -i analysis.mt -o results.vcf.gz
-        hvantk hgc mt2vcf -i analysis.mt -o results.vcf.gz --min-ac 2
+        hvantk hgc mt2vcf -i analysis.mt -o results.vcf.bgz
+        hvantk hgc mt2vcf -i analysis.mt -o results.vcf.bgz --min-ac 2
     """
     try:
         logger.info("Starting MatrixTable to VCF conversion")
