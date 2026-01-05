@@ -245,19 +245,19 @@ def test_qc_visualization():
         logger.info("Testing QCMetrics plotting methods...")
 
         try:
-            fig1 = qc_results.plot_sample_overview()
+            qc_results.plot_sample_overview()
             logger.info("✓ Sample overview plot created")
         except Exception as e:
             logger.warning(f"Sample overview plot failed: {e}")
 
         try:
-            fig2 = qc_results.plot_variant_overview()
+            qc_results.plot_variant_overview()
             logger.info("✓ Variant overview plot created")
         except Exception as e:
             logger.warning(f"Variant overview plot failed: {e}")
 
         try:
-            fig3 = qc_results.plot_dashboard()
+            qc_results.plot_dashboard()
             logger.info("✓ QC dashboard created")
         except Exception as e:
             logger.warning(f"QC dashboard failed: {e}")
@@ -270,10 +270,10 @@ def test_qc_visualization():
             sample_df = qc_results.get_sample_metrics_df()
             variant_df = qc_results.get_variant_metrics_df()
 
-            fig4 = plot_sample_qc_overview(sample_df)
+            plot_sample_qc_overview(sample_df)
             logger.info("✓ Direct sample overview import works")
 
-            fig5 = plot_variant_qc_overview(variant_df)
+            plot_variant_qc_overview(variant_df)
             logger.info("✓ Direct variant overview import works")
 
         except Exception as e:
