@@ -223,15 +223,15 @@ sample_gvcfs() {
     fi
 
     # Pure Python deterministic sampling to avoid shuf/gshuf issues
-    python3 <<'PY' "$SEED" "$GVCF_LIST" "$output_file" "$n"
-import random, sys, pathlib
-seed, list_path, out_path, take_n = sys.argv[1:5]
-random.seed(int(seed))
-with open(list_path, "r", encoding="utf-8") as f:
-    lines = f.readlines()
-random.shuffle(lines)
-pathlib.Path(out_path).write_text("".join(lines[: int(take_n)]), encoding="utf-8")
-PY
+    python3 - "$SEED" "$GVCF_LIST" "$output_file" "$n" <<'PY'
+ import random, sys, pathlib
+ seed, list_path, out_path, take_n = sys.argv[1:5]
+ random.seed(int(seed))
+ with open(list_path, "r", encoding="utf-8") as f:
+     lines = f.readlines()
+ random.shuffle(lines)
+ pathlib.Path(out_path).write_text("".join(lines[: int(take_n)]), encoding="utf-8")
+ PY
     status=$?
 
     if [ ${status:-1} -ne 0 ]; then
