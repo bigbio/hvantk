@@ -105,7 +105,7 @@ def run_hgc_workflow(
     mt_path = str(output_dir / f"analysis_{sample_size}.mt")
     sample_qc_path = str(output_dir / f"sample_qc_{sample_size}.ht")
     variant_qc_path = str(output_dir / f"variant_qc_{sample_size}.ht")
-    vcf_path = str(output_dir / f"cohort_{sample_size}.vcf.gz")
+    vcf_path = str(output_dir / f"cohort_{sample_size}.vcf.bgz")
     tmp_path = str(output_dir / "tmp")
     combiner_plan = str(output_dir / f"combiner_plan_{sample_size}.json")
 
