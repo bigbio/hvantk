@@ -8,7 +8,12 @@
 set -euo pipefail
 
 # Configuration
-GVCF_DIR="/mnt/nfs/KOL_UOL/projects/CHD_1000WGS/variant_calling/split_vcfs/chr20"
+# Set the GVCF directory path. You can set the GVCF_DIR environment variable before running this script,
+# or edit the placeholder path below to your actual GVCF directory.
+GVCF_DIR="${GVCF_DIR:-/path/to/your/gvcf_directory}"
+if [ "$GVCF_DIR" = "/path/to/your/gvcf_directory" ]; then
+    echo "WARNING: GVCF_DIR is set to a placeholder path. Please set the GVCF_DIR environment variable or edit the script to point to your actual GVCF directory."
+fi
 OUTPUT_DIR="./scalability_results_chr20_$(date +%Y%m%d)"
 SAMPLE_SIZES="20,50,100,250,500,750,1000"
 REFERENCE="GRCh38"
