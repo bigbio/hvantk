@@ -9,10 +9,10 @@ This script runs the complete HGC workflow for a given set of GVCF files:
 4. Export clean cohort VCF
 
 Usage:
-    python hgc_scalability_benchmark.py \\
-        --gvcf-list samples_100.txt \\
-        --output-dir ./run_100 \\
-        --sample-size 100 \\
+    python hgc_scalability_benchmark.py \
+        --gvcf-list samples_100.txt \
+        --output-dir ./run_100 \
+        --sample-size 100 \
         --reference GRCh38
 """
 
