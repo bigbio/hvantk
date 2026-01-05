@@ -435,13 +435,6 @@ def _ensure_ad_field(mt: hl.MatrixTable, allow_synthetic_ad: bool = True) -> hl.
     raise ValueError("Cannot create AD field: missing AD/LAD and (DP+GT)")
 
 
-def _recompute_variant_ac(mt: hl.MatrixTable, call_field: str) -> hl.MatrixTable:
-    """Drop/recompute variant_ac to avoid stale or malformed arrays."""
-    if "variant_ac" in mt.row:
-        mt = mt.drop("variant_ac")
-    return mt.annotate_rows(variant_ac=hl.agg.call_stats(mt[call_field], mt.alleles).AC)
-
-
 def compute_sample_qc(mt: hl.MatrixTable,
                      name: str = 'sample_qc',
                      call_field: str = 'GT') -> hl.MatrixTable:
@@ -457,6 +450,11 @@ def compute_sample_qc(mt: hl.MatrixTable,
     - Mean genotype quality (GQ)
     - Mean depth (DP)
     - Transition/transversion ratio
+
+    This function properly handles both:
+    - Split multi-allelic variants (after split_multi_hts)
+    - Non-split multi-allelic variants
+    - Biallelic-only datasets
 
     Args:
         mt: Input MatrixTable
@@ -478,11 +476,42 @@ def compute_sample_qc(mt: hl.MatrixTable,
         if call_field not in mt.entry:
             raise ValueError(f"Call field '{call_field}' not found in MatrixTable entries")
 
-        # Guard against stale variant_ac
-        mt = _recompute_variant_ac(mt, call_field)
+        # Remove any existing variant_ac annotation to avoid Hail's internal
+        # array indexing bug with split multi-allelic variants.
+        # Hail's sample_qc() will recompute variant_ac internally if needed.
+        if "variant_ac" in mt.row:
+            logger.debug("Dropping existing variant_ac annotation to avoid indexing issues")
+            mt = mt.drop("variant_ac")
+
+        # CRITICAL FIX: For split multi-allelic variants, use LPGT instead of GT
+        # GT may still have original allele indices, but LPGT has local (biallelic) indices
+        effective_call_field = call_field
+        had_gt_originally = 'GT' in mt.entry
+
+        # Detect if variants have been split and LPGT is available
+        if 'was_split' in mt.row and 'LPGT' in mt.entry:
+            logger.info("Detected split multi-allelic variants - using LPGT for QC to avoid array indexing issues")
+            effective_call_field = 'LPGT'
+
+        # If using a non-standard call field, we need to ensure Hail uses it via GT
+        if effective_call_field != 'GT':
+            logger.info(f"Using '{effective_call_field}' as the genotype field for sample QC")
+            # Temporarily replace GT with the effective call field
+            mt = mt.annotate_entries(GT=mt[effective_call_field])
 
         # Compute sample QC using Hail's built-in function
+        # This will internally compute variant_ac correctly for the current genotypes
         mt_with_qc = hl.sample_qc(mt, name=name)
+
+        # Restore original GT state: if we used a different field, restore GT from effective_call_field
+        # This ensures GT is bound to the new MatrixTable source
+        if effective_call_field != 'GT':
+            if had_gt_originally:
+                # Re-annotate GT from the effective call field (now from new MT source)
+                mt_with_qc = mt_with_qc.annotate_entries(GT=mt_with_qc[effective_call_field])
+            else:
+                # GT didn't exist originally, so drop it
+                mt_with_qc = mt_with_qc.drop('GT')
 
         # Add additional custom metrics if available
         if 'GQ' in mt.entry:
@@ -519,6 +548,11 @@ def compute_variant_qc(mt: hl.MatrixTable,
     - Heterozygosity metrics
     - Mean genotype quality and depth
 
+    This function properly handles both:
+    - Split multi-allelic variants (after split_multi_hts)
+    - Non-split multi-allelic variants
+    - Biallelic-only datasets
+
     Args:
         mt: Input MatrixTable
         name: Name for the variant QC annotation (default: 'variant_qc')
@@ -539,11 +573,39 @@ def compute_variant_qc(mt: hl.MatrixTable,
         if call_field not in mt.entry:
             raise ValueError(f"Call field '{call_field}' not found in MatrixTable entries")
 
-        # Recompute variant_ac to ensure consistency before variant_qc
-        mt = _recompute_variant_ac(mt, call_field)
+        # Remove any existing variant_ac to let variant_qc compute it fresh
+        if "variant_ac" in mt.row:
+            logger.debug("Dropping existing variant_ac annotation")
+            mt = mt.drop("variant_ac")
+
+        # CRITICAL FIX: For split multi-allelic variants, use LPGT instead of GT
+        # GT may still have original allele indices, but LPGT has local (biallelic) indices
+        effective_call_field = call_field
+        had_gt_originally = 'GT' in mt.entry
+
+        # Detect if variants have been split and LPGT is available
+        if 'was_split' in mt.row and 'LPGT' in mt.entry:
+            logger.info("Detected split multi-allelic variants - using LPGT for QC to avoid array indexing issues")
+            effective_call_field = 'LPGT'
+
+        # If using a non-standard call field, ensure Hail uses it via GT
+        if effective_call_field != 'GT':
+            logger.info(f"Using '{effective_call_field}' as the genotype field for variant QC")
+            # Temporarily replace GT with the effective call field
+            mt = mt.annotate_entries(GT=mt[effective_call_field])
 
         # Compute variant QC using Hail's built-in function
         mt_with_qc = hl.variant_qc(mt, name=name)
+
+        # Restore original GT state: if we used a different field, restore GT from effective_call_field
+        # This ensures GT is bound to the new MatrixTable source
+        if effective_call_field != 'GT':
+            if had_gt_originally:
+                # Re-annotate GT from the effective call field (now from new MT source)
+                mt_with_qc = mt_with_qc.annotate_entries(GT=mt_with_qc[effective_call_field])
+            else:
+                # GT didn't exist originally, so drop it
+                mt_with_qc = mt_with_qc.drop('GT')
 
         # Add additional custom metrics if available
         if 'GQ' in mt.entry:
