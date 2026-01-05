@@ -215,6 +215,8 @@ sample_gvcfs() {
     local n=$1
     local output_file=$2
 
+    echo "[sample_gvcfs] target_count=$n list=$GVCF_LIST output=$output_file seed=$SEED"
+
     if [ "$n" -gt "$TOTAL_GVCFS" ]; then
         echo "WARNING: Requested $n samples but only $TOTAL_GVCFS available. Using all available GVCFs."
         n=$TOTAL_GVCFS
@@ -222,18 +224,25 @@ sample_gvcfs() {
 
     # Use shuf/gshuf with seeded temp random source; fallback to deterministic Python sampler
     if command -v gshuf &> /dev/null; then
+        echo "[sample_gvcfs] using gshuf"
         local tmp_rand_file
         tmp_rand_file=$(mktemp)
         yes "$SEED" | head -c 1048576 > "$tmp_rand_file"
+        echo "[sample_gvcfs] random source ready: $tmp_rand_file"
         gshuf --random-source="$tmp_rand_file" -n "$n" "$GVCF_LIST" > "$output_file"
+        status=$?
         rm -f "$tmp_rand_file"
     elif command -v shuf &> /dev/null; then
+        echo "[sample_gvcfs] using shuf"
         local tmp_rand_file
         tmp_rand_file=$(mktemp)
         yes "$SEED" | head -c 1048576 > "$tmp_rand_file"
+        echo "[sample_gvcfs] random source ready: $tmp_rand_file"
         shuf --random-source="$tmp_rand_file" -n "$n" "$GVCF_LIST" > "$output_file"
+        status=$?
         rm -f "$tmp_rand_file"
     else
+        echo "[sample_gvcfs] using python fallback"
         python3 <<'PY' "$SEED" "$GVCF_LIST" "$output_file" "$n"
 import random, sys, pathlib
 seed, list_path, out_path, take_n = sys.argv[1:5]
@@ -241,16 +250,19 @@ random.seed(int(seed))
 with open(list_path, "r", encoding="utf-8") as f:
     lines = f.readlines()
 random.shuffle(lines)
-with open(out_path, "w", encoding="utf-8") as out:
-    out.writelines(lines[: int(take_n)])
+pathlib.Path(out_path).write_text("".join(lines[: int(take_n)]), encoding="utf-8")
 PY
-        if [ $? -ne 0 ]; then
-            echo "ERROR: Failed to deterministically sample GVCFs without shuf/gshuf" >&2
-            exit 1
-        fi
+        status=$?
     fi
 
-    echo "Sampled $n GVCFs to: $output_file"
+    if [ ${status:-1} -ne 0 ]; then
+        echo "ERROR: sampling failed with status ${status:-unknown}" >&2
+        return $status
+    fi
+
+    local sampled_count
+    sampled_count=$(wc -l < "$output_file" 2>/dev/null || echo 0)
+    echo "Sampled $sampled_count GVCFs to: $output_file"
 }
 
 # Function to parse memory from time output
