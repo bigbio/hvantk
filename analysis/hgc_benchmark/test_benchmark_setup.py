@@ -6,6 +6,8 @@ This script checks that all required dependencies are available
 and the configuration is correct.
 """
 
+import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -68,7 +70,19 @@ def check_gvcf_directory(gvcf_dir: str) -> bool:
     print(f"✓ GVCF directory exists with {len(gvcf_files)} files: {gvcf_dir}")
     return True
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Validate HGC scalability benchmark setup"
+    )
+    parser.add_argument(
+        "--gvcf-dir",
+        default=os.environ.get("GVCF_DIR", "/path/to/your/gvcf_directory"),
+        help="Path to GVCF directory (overrides env var GVCF_DIR)",
+    )
+    return parser.parse_args()
+
 def main():
+    args = parse_args()
     print("=" * 80)
     print("HGC Scalability Benchmark - Setup Validation")
     print("=" * 80)
@@ -98,10 +112,12 @@ def main():
     print()
 
     print("Checking GVCF directory...")
-    gvcf_dir = "/mnt/nfs/KOL_UOL/projects/CHD_1000WGS/variant_calling/split_vcfs/chr20"
+    gvcf_dir = args.gvcf_dir
+    if gvcf_dir == "/path/to/your/gvcf_directory":
+        print("  WARNING: GVCF_DIR is still a placeholder. Set --gvcf-dir or export GVCF_DIR.")
     gvcf_ok = check_gvcf_directory(gvcf_dir)
     if not gvcf_ok:
-        print(f"  Note: You can specify a different directory with --gvcf-dir")
+        print("  Note: You can specify a different directory with --gvcf-dir")
     all_ok &= gvcf_ok
     print()
 
@@ -127,14 +143,14 @@ def main():
         print()
         print("To start the benchmark, run:")
         print(f"  cd {script_dir}")
-        print("  bash hgc_scalability_benchmark.sh")
+        print("  bash hgc_scalability_benchmark.sh --gvcf-dir <path>")
     else:
         print("✗ Some checks failed. Please resolve the issues above.")
         print()
         print("Common fixes:")
         print("  - Install missing packages: pip install hail pandas numpy matplotlib seaborn")
         print("  - Check that hvantk is installed: pip install -e .")
-        print("  - Verify GVCF directory path is correct")
+        print("  - Verify GVCF directory path is correct (or set --gvcf-dir / GVCF_DIR)")
     print("=" * 80)
 
     return 0 if all_ok else 1
