@@ -19,6 +19,7 @@ Usage:
 import argparse
 import json
 import logging
+import os
 import sys
 import time
 from pathlib import Path
@@ -124,7 +125,6 @@ def run_hgc_workflow(
     try:
         # Create a temporary directory with symlinks to the GVCF files
         # This allows combine_gvcfs to find them via directory scanning
-        import os
         gvcf_links_dir = output_dir / "gvcf_links"
         gvcf_links_dir.mkdir(exist_ok=True)
 
@@ -133,7 +133,13 @@ def run_hgc_workflow(
         for gvcf_path in gvcf_files:
             # Create symlink for GVCF file
             link_name = gvcf_links_dir / os.path.basename(gvcf_path)
-            if not link_name.exists():
+            if os.path.lexists(link_name):
+                # Remove broken symlink if exists
+                if not link_name.exists():
+                    os.remove(link_name)
+                    os.symlink(gvcf_path, link_name)
+                    created_links += 1
+            else:
                 os.symlink(gvcf_path, link_name)
                 created_links += 1
 
@@ -141,7 +147,13 @@ def run_hgc_workflow(
             tbi_path = gvcf_path + '.tbi'
             tbi_link_name = gvcf_links_dir / (os.path.basename(gvcf_path) + '.tbi')
             if os.path.exists(tbi_path):
-                if not tbi_link_name.exists():
+                if os.path.lexists(tbi_link_name):
+                    # Remove broken symlink if exists
+                    if not tbi_link_name.exists():
+                        os.remove(tbi_link_name)
+                        os.symlink(tbi_path, tbi_link_name)
+                        created_links += 1
+                else:
                     os.symlink(tbi_path, tbi_link_name)
                     created_links += 1
             else:
