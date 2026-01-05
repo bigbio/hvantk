@@ -389,13 +389,15 @@ class QCMetrics:
         )
 
 
-def _ensure_ad_field(mt: hl.MatrixTable) -> hl.MatrixTable:
+def _ensure_ad_field(mt: hl.MatrixTable, allow_synthetic_ad: bool = True) -> hl.MatrixTable:
     """Guarantee an AD entry field if possible (used for QC robustness).
 
     - If AD exists, return unchanged.
     - Else, if LAD exists, reuse it as AD.
-    - Else, if DP and GT exist, synthesize a simple AD array.
-    Raises if none of the above are available.
+    - Else, if DP and GT exist and ``allow_synthetic_ad`` is True, synthesize a simple AD array.
+
+    WARNING: Synthesized AD is an approximation (uniform split for hets) and is only
+    applied to biallelic sites. Multi-allelic sites require a real AD/LAD field.
     """
     if AD_FIELD in mt.entry:
         return mt
@@ -404,6 +406,18 @@ def _ensure_ad_field(mt: hl.MatrixTable) -> hl.MatrixTable:
         return mt.annotate_entries(**{AD_FIELD: mt.LAD})
 
     if DP_FIELD in mt.entry and GT_FIELD in mt.entry:
+        if not allow_synthetic_ad:
+            raise ValueError("AD field is missing and synthetic AD is disabled; provide AD or LAD.")
+
+        multi_allelic_count = mt.aggregate_rows(hl.agg.count_where(hl.len(mt.alleles) > 2))
+        if multi_allelic_count > 0:
+            raise ValueError(
+                f"Cannot synthesize AD for {multi_allelic_count} multi-allelic sites; provide AD/LAD instead."
+            )
+
+        logger.warning(
+            "AD field is missing; synthesizing approximate AD from DP+GT for biallelic sites only."
+        )
         return mt.annotate_entries(
             **{
                 AD_FIELD: hl.if_else(
@@ -464,9 +478,8 @@ def compute_sample_qc(mt: hl.MatrixTable,
         if call_field not in mt.entry:
             raise ValueError(f"Call field '{call_field}' not found in MatrixTable entries")
 
-        # Guard against stale variant_ac and missing AD
+        # Guard against stale variant_ac
         mt = _recompute_variant_ac(mt, call_field)
-        mt = _ensure_ad_field(mt)
 
         # Compute sample QC using Hail's built-in function
         mt_with_qc = hl.sample_qc(mt, name=name)
