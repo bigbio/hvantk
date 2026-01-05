@@ -21,7 +21,7 @@
 set -euo pipefail
 
 # Default configuration
-GVCF_DIR="/mnt/nfs/KOL_UOL/projects/CHD_1000WGS/variant_calling/split_vcfs/chr20"
+GVCF_DIR="${GVCF_DIR:-/path/to/your/gvcf_directory}"
 OUTPUT_DIR="./scalability_results"
 SAMPLE_SIZES="20,50,100,250,500,750,1000"
 REFERENCE="GRCh38"
@@ -175,6 +175,11 @@ mkdir -p "$OUTPUT_DIR"
 mkdir -p "$OUTPUT_DIR/sample_sets"
 mkdir -p "$OUTPUT_DIR/run_logs"
 
+# Warn if using placeholder GVCF_DIR
+if [ "$GVCF_DIR" = "/path/to/your/gvcf_directory" ]; then
+    echo "WARNING: GVCF_DIR is set to a placeholder. Set --gvcf-dir or export GVCF_DIR before running."
+fi
+
 # Create list of all GVCF files
 echo "Scanning GVCF directory..."
 GVCF_LIST="$OUTPUT_DIR/all_gvcfs.txt"
@@ -210,16 +215,34 @@ sample_gvcfs() {
         n=$TOTAL_GVCFS
     fi
 
-    # Use shuf with seed for reproducible sampling
-    # On macOS, use gshuf if available, otherwise use sort -R with seed
+    # Use shuf/gshuf with seeded temp random source; fallback to deterministic Python sampler
     if command -v gshuf &> /dev/null; then
-        gshuf --random-source=<(yes $SEED) -n "$n" "$GVCF_LIST" > "$output_file"
+        local tmp_rand_file
+        tmp_rand_file=$(mktemp)
+        yes "$SEED" | head -c 1048576 > "$tmp_rand_file"
+        gshuf --random-source="$tmp_rand_file" -n "$n" "$GVCF_LIST" > "$output_file"
+        rm -f "$tmp_rand_file"
     elif command -v shuf &> /dev/null; then
-        shuf --random-source=<(yes $SEED) -n "$n" "$GVCF_LIST" > "$output_file"
+        local tmp_rand_file
+        tmp_rand_file=$(mktemp)
+        yes "$SEED" | head -c 1048576 > "$tmp_rand_file"
+        shuf --random-source="$tmp_rand_file" -n "$n" "$GVCF_LIST" > "$output_file"
+        rm -f "$tmp_rand_file"
     else
-        # Fallback for macOS without gshuf
-        export RANDOM=$SEED
-        sort -R "$GVCF_LIST" | head -n "$n" > "$output_file"
+        python3 <<'PY' "$SEED" "$GVCF_LIST" "$output_file" "$n"
+import random, sys, pathlib
+seed, list_path, out_path, take_n = sys.argv[1:5]
+random.seed(int(seed))
+with open(list_path, "r", encoding="utf-8") as f:
+    lines = f.readlines()
+random.shuffle(lines)
+with open(out_path, "w", encoding="utf-8") as out:
+    out.writelines(lines[: int(take_n)])
+PY
+        if [ $? -ne 0 ]; then
+            echo "ERROR: Failed to deterministically sample GVCFs without shuf/gshuf" >&2
+            exit 1
+        fi
     fi
 
     echo "Sampled $n GVCFs to: $output_file"
@@ -339,15 +362,27 @@ for SIZE in "${SIZES[@]}"; do
 
     # Extract timing from JSON
     if [ -f "$TIMING_FILE" ]; then
-        GVCF_COMBINE=$(python -c "import json; print(json.load(open('$TIMING_FILE'))['gvcf_combine'])" 2>/dev/null || echo "N/A")
-        VDS_TO_MT=$(python -c "import json; print(json.load(open('$TIMING_FILE'))['vds_to_mt'])" 2>/dev/null || echo "N/A")
-        COMPUTE_QC=$(python -c "import json; print(json.load(open('$TIMING_FILE'))['compute_qc'])" 2>/dev/null || echo "N/A")
-        MT_TO_VCF=$(python -c "import json; print(json.load(open('$TIMING_FILE'))['mt_to_vcf'])" 2>/dev/null || echo "N/A")
-        TOTAL=$(python -c "import json; print(json.load(open('$TIMING_FILE'))['total'])" 2>/dev/null || echo "N/A")
+        set +e
+        TIMING_ROW=$(python3 <<'PY' "$TIMING_FILE" "$SIZE"
+import json, sys
+path, size = sys.argv[1], sys.argv[2]
+required = ["gvcf_combine", "vds_to_mt", "compute_qc", "mt_to_vcf", "total"]
+with open(path, "r", encoding="utf-8") as f:
+    data = json.load(f)
+missing = [k for k in required if k not in data]
+if missing:
+    sys.exit(1)
+print(f"{size},{data['gvcf_combine']},{data['vds_to_mt']},{data['compute_qc']},{data['mt_to_vcf']},{data['total']}")
+PY)
+        PY_EXIT=$?
+        set -e
 
-        # Append to timing CSV
-        echo "$SIZE,$GVCF_COMBINE,$VDS_TO_MT,$COMPUTE_QC,$MT_TO_VCF,$TOTAL" >> "$TIMING_CSV"
-        echo "Timings saved to: $TIMING_CSV"
+        if [ $PY_EXIT -eq 0 ] && [ -n "$TIMING_ROW" ]; then
+            echo "$TIMING_ROW" >> "$TIMING_CSV"
+            echo "Timings saved to: $TIMING_CSV"
+        else
+            echo "WARNING: Timing file is malformed or missing required fields: $TIMING_FILE"
+        fi
     else
         echo "WARNING: Timing file not found: $TIMING_FILE"
     fi
