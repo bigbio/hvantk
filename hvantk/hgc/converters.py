@@ -8,6 +8,8 @@ try:
     GNOMAD_AVAILABLE = True
 except ImportError:
     GNOMAD_AVAILABLE = False
+    annotate_adj = None  # defined to satisfy linters; guarded by GNOMAD_AVAILABLE
+
 def convert_vds_to_mt(
     vds_path: str,
     output_path: str,
@@ -90,7 +92,12 @@ def convert_vds_to_mt(
                     "Set skip_split_multi=False to enable LGT→GT conversion."
                 )
             logging.info("Converting LGT to GT (after splitting multi-allelic variants)...")
-            mt = mt.annotate_entries(GT=hl.vds.lgt_to_gt(mt.LGT, mt.LA))
+            # Guard undefined LGT to preserve missingness and avoid out-of-bounds issues downstream
+            mt = mt.annotate_entries(
+                GT=hl.or_missing(hl.is_defined(mt.LGT), hl.vds.lgt_to_gt(mt.LGT, mt.LA))
+            )
+            # Drop obsolete LGT to avoid accidental reuse
+            mt = mt.drop('LGT')
 
         if not skip_keying_by_cols:
             logging.info("Keying MatrixTable by columns...")
