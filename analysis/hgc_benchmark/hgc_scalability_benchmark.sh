@@ -350,23 +350,27 @@ for SIZE in "${SIZES[@]}"; do
     if [[ "$OS_TYPE" == "Darwin" ]]; then
         # macOS: Use /usr/bin/time -l for detailed stats
         echo "Detected macOS - using 'time -l'"
-        /usr/bin/time -l python "$PYTHON_SCRIPT" \
+        # Redirect time stats to TIME_LOG, stdout/stderr to LOG_FILE
+        { /usr/bin/time -l python "$PYTHON_SCRIPT" \
             --gvcf-list "$SAMPLE_LIST" \
             --output-dir "$RUN_DIR" \
             --sample-size "$SIZE" \
             --reference "$REFERENCE" \
-            > >(tee "$LOG_FILE") 2> >(tee "$TIME_LOG" >&2)
+            2>&1 1>&3 | tee "$TIME_LOG" >&2; } 3>&1 | tee "$LOG_FILE"
+        EXIT_CODE=${PIPESTATUS[0]}
     else
         # Linux: Try /usr/bin/time -v for detailed stats
         echo "Detected Linux - using 'time -v'"
         # First check if -v flag is supported
         if /usr/bin/time -v echo test >/dev/null 2>&1; then
-            /usr/bin/time -v python "$PYTHON_SCRIPT" \
+            # Redirect time stats to TIME_LOG, stdout/stderr to LOG_FILE
+            { /usr/bin/time -v python "$PYTHON_SCRIPT" \
                 --gvcf-list "$SAMPLE_LIST" \
                 --output-dir "$RUN_DIR" \
                 --sample-size "$SIZE" \
                 --reference "$REFERENCE" \
-                > >(tee "$LOG_FILE") 2> >(tee "$TIME_LOG" >&2)
+                2>&1 1>&3 | tee "$TIME_LOG" >&2; } 3>&1 | tee "$LOG_FILE"
+            EXIT_CODE=${PIPESTATUS[0]}
         else
             # Fallback: Use simple time without detailed stats
             echo "Warning: /usr/bin/time -v not supported, using basic timing"
@@ -376,11 +380,10 @@ for SIZE in "${SIZES[@]}"; do
                 --sample-size "$SIZE" \
                 --reference "$REFERENCE" \
                 2>&1 | tee "$LOG_FILE"
+            EXIT_CODE=${PIPESTATUS[0]}
             echo "No detailed memory stats available" > "$TIME_LOG"
         fi
     fi
-
-    EXIT_CODE=${PIPESTATUS[0]}
     END_TIME=$(date +%s)
     WALL_TIME=$((END_TIME - START_TIME))
 
