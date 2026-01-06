@@ -4,6 +4,7 @@
 import hail as hl
 from typing import Iterator, Optional, List, Dict, Any, Callable
 from hvantk.data.data_streamer import HailDataStreamer, StreamProcessor
+from hvantk.hgc.constants import VCF_EXTENSION
 import logging
 import os
 import warnings
@@ -98,7 +99,7 @@ class FlexibleAnnotationStreamer(HailDataStreamer):
         if (
             path_lower.endswith(".vcf")
             or path_lower.endswith(".vcf.gz")
-            or path_lower.endswith(".vcf.bgz")
+            or path_lower.endswith(VCF_EXTENSION)
             or (".vcf" in suffixes and (".gz" in suffixes or ".bgz" in suffixes))
         ):
             warn_if_large_and_not_bgz(path, path_lower)
