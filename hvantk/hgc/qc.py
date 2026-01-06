@@ -22,7 +22,6 @@ import pandas as pd
 import numpy as np
 from typing import Optional, Dict, Tuple, List, Union
 from pathlib import Path
-from hvantk.hgc.constants import AD_FIELD, DP_FIELD, GT_FIELD
 
 logger = logging.getLogger(__name__)
 
@@ -389,50 +388,6 @@ class QCMetrics:
         )
 
 
-def _ensure_ad_field(mt: hl.MatrixTable, allow_synthetic_ad: bool = True) -> hl.MatrixTable:
-    """Guarantee an AD entry field if possible (used for QC robustness).
-
-    - If AD exists, return unchanged.
-    - Else, if LAD exists, reuse it as AD.
-    - Else, if DP and GT exist and ``allow_synthetic_ad`` is True, synthesize a simple AD array.
-
-    WARNING: Synthesized AD is an approximation (uniform split for hets) and is only
-    applied to biallelic sites. Multi-allelic sites require a real AD/LAD field.
-    """
-    if AD_FIELD in mt.entry:
-        return mt
-
-    if "LAD" in mt.entry:
-        return mt.annotate_entries(**{AD_FIELD: mt.LAD})
-
-    if DP_FIELD in mt.entry and GT_FIELD in mt.entry:
-        if not allow_synthetic_ad:
-            raise ValueError("AD field is missing and synthetic AD is disabled; provide AD or LAD.")
-
-        multi_allelic_count = mt.aggregate_rows(hl.agg.count_where(hl.len(mt.alleles) > 2))
-        if multi_allelic_count > 0:
-            raise ValueError(
-                f"Cannot synthesize AD for {multi_allelic_count} multi-allelic sites; provide AD/LAD instead."
-            )
-
-        logger.warning(
-            "AD field is missing; synthesizing approximate AD from DP+GT for biallelic sites only."
-        )
-        return mt.annotate_entries(
-            **{
-                AD_FIELD: hl.if_else(
-                    hl.is_defined(mt.GT) & hl.is_defined(mt.DP),
-                    hl.cond(
-                        mt.GT.is_hom_ref(),
-                        [mt.DP, 0],
-                        hl.cond(mt.GT.is_het(), [mt.DP // 2, mt.DP // 2], [0, mt.DP]),
-                    ),
-                    hl.missing("array<int32>"),
-                )
-            }
-        )
-
-    raise ValueError("Cannot create AD field: missing AD/LAD and (DP+GT)")
 
 
 def compute_sample_qc(mt: hl.MatrixTable,
