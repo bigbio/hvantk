@@ -1,6 +1,6 @@
 import logging
 import hail as hl
-from hvantk.hgc.constants import ADJ_GT_FIELD
+from hvantk.hgc.constants import ADJ_GT_FIELD, VCF_EXTENSION
 
 # Make gnomad import optional - only required when adjust_genotypes=True
 try:
@@ -134,7 +134,7 @@ def convert_mt_to_multi_sample_vcf(
         # Validate VCF path
         if vcf_path.endswith('.vcf.gz'):
             logging.warning(
-                f"VCF path ends in .vcf.gz - consider using .vcf.bgz for block gzip compression. "
+                f"VCF path ends in .vcf.gz - consider using {VCF_EXTENSION} for block gzip compression. "
                 f"Block gzip is the VCF standard and ensures compatibility with bcftools, tabix, GATK."
             )
 
