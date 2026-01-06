@@ -81,19 +81,45 @@ def combine_gvcfs(
             use_genome_default = True
             logging.info("No interval method specified, defaulting to use_genome_default_intervals=True")
 
+        # Log diagnostic information before combining
+        logging.info(f"Creating combiner with:")
+        logging.info(f"  - Output VDS: {vds_output_path}")
+        logging.info(f"  - Temp path: {tmp_path}")
+        logging.info(f"  - Number of GVCFs: {len(validated_gvcfs)}")
+        logging.info(f"  - Reference genome: {reference_genome}")
+        logging.info(f"  - Use genome intervals: {use_genome_default}")
+        logging.info(f"  - Use exome intervals: {use_exome_default}")
+        if validated_gvcfs:
+            logging.info(f"  - First GVCF: {validated_gvcfs[0]}")
+
         # Set up and run the Hail GVCF combiner
-        combiner = hl.vds.new_combiner(
-            output_path=vds_output_path,
-            temp_path=tmp_path,
-            gvcf_paths=validated_gvcfs,
-            save_path=save_path,
-            vds_paths=validated_vdses,
-            intervals=intervals,
-            use_genome_default_intervals=use_genome_default,
-            use_exome_default_intervals=use_exome_default,
-            reference_genome=reference_genome,
-            **kwargs,
-        )
+        try:
+            combiner = hl.vds.new_combiner(
+                output_path=vds_output_path,
+                temp_path=tmp_path,
+                gvcf_paths=validated_gvcfs,
+                save_path=save_path,
+                vds_paths=validated_vdses,
+                intervals=intervals,
+                use_genome_default_intervals=use_genome_default,
+                use_exome_default_intervals=use_exome_default,
+                reference_genome=reference_genome,
+                **kwargs,
+            )
+        except Exception as e:
+            logging.error(f"Failed to create combiner: {e}")
+            logging.error(f"This error often indicates:")
+            logging.error(f"  1. Hail/Spark version mismatch (check warnings above)")
+            logging.error(f"  2. Invalid GVCF file format or corruption")
+            logging.error(f"  3. Reference genome mismatch in VCF headers")
+            logging.error(f"  4. Backend communication issues")
+            logging.error(f"")
+            logging.error(f"Troubleshooting steps:")
+            logging.error(f"  - Verify GVCF files are valid and readable")
+            logging.error(f"  - Check Spark/Hail version compatibility")
+            logging.error(f"  - Try importing first GVCF manually: hl.import_vcf('{validated_gvcfs[0] if validated_gvcfs else 'N/A'}')")
+            raise
+
         combiner.run()
         logging.info("GVCF combination completed successfully.")
 
