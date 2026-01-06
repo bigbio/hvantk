@@ -29,6 +29,25 @@ SEED=42
 RESUME=false
 CONDA_ENV=""  # Auto-detect or specify conda environment name (default: hvantk)
 
+# =============================================================================
+# Proxy Configuration for Hail (Critical for HPC/Corporate Environments)
+# =============================================================================
+echo "Configuring proxy settings for Hail backend..."
+
+# Save original proxy settings
+ORIGINAL_HTTP_PROXY="${HTTP_PROXY:-}"
+ORIGINAL_HTTPS_PROXY="${HTTPS_PROXY:-}"
+
+# Bypass proxy for localhost traffic (Hail/Spark communication)
+export NO_PROXY="localhost,127.0.0.1,0.0.0.0,::1"
+export no_proxy="localhost,127.0.0.1,0.0.0.0,::1"
+unset HTTP_PROXY HTTPS_PROXY http_proxy https_proxy
+
+echo "  ✓ Proxy disabled for localhost (Hail backend communication)"
+echo "  NO_PROXY: $NO_PROXY"
+
+
+
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
