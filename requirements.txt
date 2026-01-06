@@ -5,6 +5,7 @@ requests
 tqdm
 pandas
 matplotlib
+seaborn
 numpy
 openai
 anthropic
