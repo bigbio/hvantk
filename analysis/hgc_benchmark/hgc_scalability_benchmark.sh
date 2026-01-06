@@ -289,7 +289,7 @@ parse_memory() {
         # macOS: "maximum resident set size" in bytes
         local mem_bytes=$(grep "maximum resident set size" "$log_file" | awk '{print $1}')
         if [ -n "$mem_bytes" ]; then
-            echo "scale=2; $mem_bytes / 1024 / 1024" | bc
+            python3 -c "print(f'{$mem_bytes / 1024 / 1024:.2f}')"
         else
             echo "N/A"
         fi
@@ -297,7 +297,7 @@ parse_memory() {
         # Linux: "Maximum resident set size (kbytes)"
         local mem_kb=$(grep "Maximum resident set size" "$log_file" | awk '{print $NF}')
         if [ -n "$mem_kb" ]; then
-            echo "scale=2; $mem_kb / 1024" | bc
+            python3 -c "print(f'{$mem_kb / 1024:.2f}')"
         else
             echo "N/A"
         fi
