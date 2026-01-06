@@ -16,6 +16,7 @@ dependencies:
       - pandas
       - numpy
       - matplotlib
+      - seaborn
       - openai
       - anthropic
       - google-genai
