@@ -193,7 +193,7 @@ def run_hgc_workflow(
             output_path=mt_path,
             adjust_genotypes=True,
             skip_split_multi=False,
-            convert_lgt_to_gt=True,
+            skip_validation=False,  # Keep validation for benchmarking to catch issues
             overwrite=True
         )
         timings['vds_to_mt'] = time.time() - start
