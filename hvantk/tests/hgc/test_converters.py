@@ -30,7 +30,7 @@ def test_convert_vds_to_mt():
         vds_path=str(vds_path),
         output_path=str(mt_output_path),
         adjust_genotypes=True,
-        convert_lgt_to_gt=True,
+        skip_validation=False,  # Run validation in tests
         skip_split_multi=False,
         skip_keying_by_cols=False,
         overwrite=True,
