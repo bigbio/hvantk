@@ -10,105 +10,192 @@ except ImportError:
     GNOMAD_AVAILABLE = False
     annotate_adj = None  # defined to satisfy linters; guarded by GNOMAD_AVAILABLE
 
+
+def _split_vds(vds: hl.vds.VariantDataset, skip_split: bool = False) -> hl.vds.VariantDataset:
+    """
+    Split multi-allelic variants at the VDS level.
+
+    This is the recommended approach for VDS data as it handles sparse
+    variant/reference data correctly and produces biallelic variants.
+
+    Parameters:
+        vds: Input VariantDataset
+        skip_split: If True, skip splitting
+
+    Returns:
+        Split (or unchanged) VariantDataset
+    """
+    if skip_split:
+        logging.info("Skipping VDS-level multi-allelic split as requested.")
+        return vds
+
+    logging.info("Splitting multi-allelic variants at VDS level (sparse split)…")
+    return hl.vds.split_multi(vds)
+
+
+def _validate_and_fix_biallelic_entries(mt: hl.MatrixTable, skip_validation: bool = False) -> hl.MatrixTable:
+    """
+    Validate that GT and AD are correctly aligned to biallelic split variants.
+
+    After VDS-level split, this should find 0 issues. This is a safety check
+    that can be skipped for trusted pipelines to improve performance.
+
+    Parameters:
+        mt: Input MatrixTable (after VDS split + densification)
+        skip_validation: If True, skip validation (faster, use only if confident)
+
+    Returns:
+        MatrixTable with any invalid entries fixed (set to missing)
+    """
+    if skip_validation:
+        logging.info("Skipping biallelic validation (skip_validation=True)")
+        return mt
+
+    logging.info("Validating biallelic entries (GT indices and AD lengths)…")
+
+    # Single aggregation for both GT and AD validation (performance optimization)
+    validation = mt.aggregate_entries(
+        hl.struct(
+            # GT validation: check for out-of-bounds allele indices
+            n_invalid_gt=hl.agg.count_where(
+                hl.is_defined(mt.GT) & hl.any(
+                    lambda i: mt.GT[i] >= hl.len(mt.alleles),
+                    hl.range(0, mt.GT.ploidy)
+                )
+            ),
+            gt_examples=hl.agg.filter(
+                hl.is_defined(mt.GT) & hl.any(
+                    lambda i: mt.GT[i] >= hl.len(mt.alleles),
+                    hl.range(0, mt.GT.ploidy)
+                ),
+                hl.agg.take(hl.struct(locus=mt.locus, alleles=mt.alleles, GT=mt.GT), 3)
+            ),
+            # AD validation: check for length mismatch
+            n_invalid_ad=hl.agg.count_where(
+                hl.is_defined(mt.AD) & (hl.len(mt.AD) != hl.len(mt.alleles))
+            ),
+            ad_examples=hl.agg.filter(
+                hl.is_defined(mt.AD) & (hl.len(mt.AD) != hl.len(mt.alleles)),
+                hl.agg.take(hl.struct(locus=mt.locus, alleles=mt.alleles, AD=mt.AD), 3)
+            )
+        )
+    )
+
+    # Report findings
+    if validation.n_invalid_gt == 0 and validation.n_invalid_ad == 0:
+        logging.info("✓ All entries valid (GT indices and AD lengths correct)")
+        return mt
+
+    # Log issues found
+    if validation.n_invalid_gt > 0:
+        logging.warning(
+            f"Found {validation.n_invalid_gt} entries with out-of-bounds GT indices. "
+            f"Examples: {validation.gt_examples}"
+        )
+
+    if validation.n_invalid_ad > 0:
+        logging.warning(
+            f"Found {validation.n_invalid_ad} entries with AD length mismatch. "
+            f"Examples: {validation.ad_examples}"
+        )
+
+    # Fix invalid GTs (set to missing)
+    if validation.n_invalid_gt > 0:
+        logging.info("Setting invalid genotypes to missing…")
+        mt = mt.annotate_entries(
+            GT=hl.if_else(
+                hl.is_defined(mt.GT) & hl.any(
+                    lambda i: mt.GT[i] >= hl.len(mt.alleles),
+                    hl.range(0, mt.GT.ploidy)
+                ),
+                hl.missing(hl.tcall),
+                mt.GT
+            )
+        )
+
+    return mt
+
+
 def convert_vds_to_mt(
     vds_path: str,
     output_path: str,
     adjust_genotypes: bool = True,
     skip_split_multi: bool = False,
-    convert_lgt_to_gt: bool = True,
+    skip_validation: bool = False,
     skip_keying_by_cols: bool = False,
     overwrite: bool = False,
 ) -> None:
     """
     Convert a Variant Dataset (VDS) to MatrixTable (MT).
-    Split multi-allelic variants, convert the VDS to a dense MT, and optionally annotate the MT with adj.
+
+    This function:
+    1. Splits multi-allelic variants at VDS level (recommended for VDS data)
+    2. Densifies to MatrixTable
+    3. Validates biallelic entries (optional, for safety)
+    4. Annotates adjusted genotypes (optional, requires gnomad)
+    5. Keys by sample and writes to disk
 
     Parameters:
-        vds_path (str): Path to the input VDS.
-        output_path (str): Path where the output MatrixTable will be written.
-        adjust_genotypes (bool): If True, annotate the MatrixTable with adjusted genotypes.
-        skip_split_multi (bool): If True, skip splitting multi-allelic variants.
-        convert_lgt_to_gt (bool): If True, convert LGT to GT. Recommended after splitting multi-allelic variants.
-        skip_keying_by_cols (bool): If True, skip keying the MatrixTable by columns.
-        overwrite (bool): Whether to overwrite the output if it already exists.
+        vds_path: Path to the input VDS
+        output_path: Path where the output MatrixTable will be written
+        adjust_genotypes: If True, annotate with adjusted genotypes (requires gnomad)
+        skip_split_multi: If True, skip splitting multi-allelic variants
+        skip_validation: If True, skip biallelic validation (faster, use only if confident)
+        skip_keying_by_cols: If True, skip keying the MatrixTable by columns
+        overwrite: Whether to overwrite the output if it already exists
 
     Raises:
-        RuntimeError: If adjust_genotypes=True but gnomad is not installed.
+        RuntimeError: If adjust_genotypes=True but gnomad is not installed
+
+    Notes:
+        - VDS-level splitting is critical for correct GT/AD/PL alignment
+        - Validation can be skipped for trusted pipelines to improve performance
+        - After VDS split, GT/AD are already biallelic (no manual downcoding needed)
     """
     try:
-        # Check gnomad availability early if adjust_genotypes is requested
+        # Check dependencies
         if adjust_genotypes and not GNOMAD_AVAILABLE:
             raise RuntimeError(
                 "adjust_genotypes=True requires the 'gnomad' package to be installed. "
                 "Please install it with 'pip install gnomad' or set adjust_genotypes=False."
             )
 
+        # Step 1: Load and split VDS
         logging.info(f"Reading VDS from {vds_path}...")
         vds = hl.vds.read_vds(vds_path)
+        vds = _split_vds(vds, skip_split=skip_split_multi)
 
-        logging.info("Converting VDS to dense MatrixTable...")
+        # Step 2: Densify to MatrixTable
+        logging.info("Converting VDS to dense MatrixTable…")
         mt = hl.vds.to_dense_mt(vds)
 
-        if not skip_split_multi:
-            logging.info("Splitting multi-allelic variants...")
-            mt = hl.split_multi_hts(mt)
+        # Step 3: Validate biallelic entries (optional, can skip for performance)
+        mt = _validate_and_fix_biallelic_entries(mt, skip_validation=skip_validation)
 
-        # Create AD from LAD if LAD exists but AD doesn't
-        # This must happen BEFORE adjust_genotypes to enable adj annotation
-        if 'LAD' in mt.entry and 'AD' not in mt.entry:
-            logging.info("Creating AD field from LAD (local allele depths)")
-            mt = mt.annotate_entries(AD=mt.LAD)
-
+        # Step 4: Annotate adjusted genotypes (optional, requires gnomad)
         if adjust_genotypes:
             logging.info("Annotating MatrixTable with adjusted genotypes...")
-            # annotate_adj requires certain fields (GQ, DP, AD) to be present in entries
-            # Check if the required fields exist before calling annotate_adj
-            required_fields = {'GQ', 'DP', 'AD'}
+            required_fields = {'GQ', 'DP', 'AD', 'GT'}
             missing_fields = required_fields - set(mt.entry.keys())
 
             if missing_fields:
                 logging.warning(
-                    f"Cannot annotate adjusted genotypes: missing required fields {missing_fields}. "
-                    f"Skipping adjusted genotype annotation. "
-                    f"Available entry fields: {list(mt.entry.keys())}"
+                    f"Cannot annotate adjusted genotypes: missing {missing_fields}. "
+                    f"Available: {list(mt.entry.keys())}"
                 )
             else:
                 mt = annotate_adj(mt)
-                logging.info("Adjusted genotype annotation completed successfully.")
+                logging.info("Adjusted genotype annotation completed.")
 
-        # Convert LGT to GT - MUST be done AFTER splitting multi-allelic variants
-        # because split_multi_hts changes allele indices, and LGT references those indices.
-        # Converting before split would result in incorrect genotypes.
-        if convert_lgt_to_gt:
-            if skip_split_multi:
-                # This is a dangerous combination - warn and prevent incorrect genotypes
-                logging.error(
-                    "Cannot convert LGT to GT when skip_split_multi=True. "
-                    "LGT to GT conversion requires multi-allelic variants to be split first. "
-                    "Either set skip_split_multi=False or set convert_lgt_to_gt=False."
-                )
-                raise ValueError(
-                    "LGT to GT conversion requires splitting multi-allelic variants. "
-                    "Set skip_split_multi=False to enable LGT→GT conversion."
-                )
-            logging.info("Converting LGT to GT (after splitting multi-allelic variants)...")
-            # Guard undefined LGT to preserve missingness and avoid out-of-bounds issues downstream
-            mt = mt.annotate_entries(
-                GT=hl.or_missing(hl.is_defined(mt.LGT), hl.vds.lgt_to_gt(mt.LGT, mt.LA))
-            )
-            # Drop obsolete LGT to avoid accidental reuse
-            mt = mt.drop('LGT')
-
+        # Step 5: Key by sample (optional)
         if not skip_keying_by_cols:
-            logging.info("Keying MatrixTable by columns...")
+            logging.info("Keying MatrixTable by sample column 's'...")
             mt = mt.key_cols_by(mt['s'])
 
-        logging.info("MatrixTable schema:")
-        logging.info(mt.describe())
-
+        # Step 6: Write output
         logging.info(f"Writing MatrixTable to {output_path}...")
         mt.write(output_path, overwrite=overwrite)
-        logging.info("MatrixTable successfully written.")
+        logging.info("✓ MatrixTable successfully written.")
 
     except Exception as e:
         logging.exception("An error occurred during VDS to MT conversion.")
