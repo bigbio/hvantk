@@ -1,9 +1,12 @@
 import os
 from pathlib import Path
+import ftplib
+from unittest.mock import Mock
 
 import pytest
 from click.testing import CliRunner
 from hvantk.commands import expression_atlas_downloader
+from hvantk.commands.expression_atlas_downloader import _download_file_with_retry
 
 # Define the test directory path
 TEST_DIR = Path(__file__).parent.parent
@@ -97,3 +100,54 @@ def test_download_experiments_without_accession_or_config(download_path):
 
     # Assert that the command was not successful
     assert result.exit_code == 1
+
+
+def test_download_file_with_retry_progress_bar(download_path, monkeypatch):
+    """
+    Test that _download_file_with_retry uses tqdm for progress tracking.
+    This is a unit test that mocks FTP operations.
+    """
+    # Create a mock FTP object
+    mock_ftp = Mock(spec=ftplib.FTP)
+    
+    # Mock the file size command
+    mock_ftp.voidcmd = Mock()
+    mock_ftp.size = Mock(return_value=1024)  # 1KB file
+    
+    # Mock retrbinary to simulate file download with chunks
+    def mock_retrbinary(cmd, callback):
+        # Simulate downloading in chunks
+        chunk1 = b"x" * 512
+        chunk2 = b"y" * 512
+        callback(chunk1)
+        callback(chunk2)
+    
+    mock_ftp.retrbinary = mock_retrbinary
+    
+    # Create test file path
+    test_file = os.path.join(download_path, "test_file.txt")
+    
+    # Call the function
+    result = _download_file_with_retry(
+        mock_ftp, 
+        "test_file.txt", 
+        test_file,
+        ftp_url="test.ftp.com",
+        ftp_path="/test/path"
+    )
+    
+    # Assert download was successful
+    assert result is True
+    assert os.path.exists(test_file)
+    
+    # Verify the file content
+    with open(test_file, "rb") as f:
+        content = f.read()
+        assert len(content) == 1024
+        assert content[:512] == b"x" * 512
+        assert content[512:] == b"y" * 512
+    
+    # Verify FTP methods were called
+    mock_ftp.voidcmd.assert_called_once_with("TYPE I")
+    mock_ftp.size.assert_called_once_with("test_file.txt")
+

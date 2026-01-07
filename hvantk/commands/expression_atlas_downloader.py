@@ -10,6 +10,7 @@ import ftplib
 import json
 import time
 import random
+from tqdm import tqdm
 
 from hvantk.datasets.expression_atlas_datasets import ExpressionAtlasDatasetCollection
 from hvantk.core.constants import EXPRESSION_ATLAS_JSON_FILE_PATH
@@ -38,8 +39,31 @@ def _download_file_with_retry(ftp, remote_file, local_file_path, ftp_url=None, f
 
     while attempt < max_attempts:
         try:
+            # Get file size for progress bar
+            file_size = 0
+            try:
+                ftp.voidcmd("TYPE I")  # Binary mode
+                file_size = ftp.size(remote_file)
+            except (ftplib.error_perm, AttributeError):
+                # If SIZE command fails, continue without progress bar
+                file_size = 0
+
+            # Download with progress bar
             with open(local_file_path, "wb") as f:
-                ftp.retrbinary(f"RETR {remote_file}", f.write)
+                with tqdm(
+                    desc=remote_file,
+                    total=file_size,
+                    unit="B",
+                    unit_scale=True,
+                    unit_divisor=1024,
+                    disable=(file_size == 0),  # Disable if size unknown
+                ) as pbar:
+                    def callback(data):
+                        f.write(data)
+                        pbar.update(len(data))
+
+                    ftp.retrbinary(f"RETR {remote_file}", callback)
+
             logger.info(f"Downloaded {remote_file} to {local_file_path}")
             return True  # Success
         except (ConnectionResetError, ftplib.error_temp, ftplib.error_proto, EOFError) as e:

@@ -4,16 +4,19 @@ channels:
   - bioconda
 dependencies:
   - python>=3.10,<3.13
+  - openjdk=11  # Required for Spark/Hail
   - pip
   - pip:
       - click
-      - hail
+      - hail==0.2.137  # Pin exact version for Spark compatibility
+      - pyspark==3.5.7  # Must match Hail's compiled Spark version
       - gnomad
       - requests
       - tqdm
       - pandas
       - numpy
       - matplotlib
+      - seaborn
       - openai
       - anthropic
       - google-genai

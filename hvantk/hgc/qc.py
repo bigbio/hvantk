@@ -388,9 +388,66 @@ class QCMetrics:
         )
 
 
+
+
+def _prepare_qc_gt(mt: hl.MatrixTable, call_field: str = 'GT', prefer_lpgT: bool = True,
+                   tmp_field: str = '__qc_gt') -> hl.MatrixTable:
+    """
+    Create a temporary entry field with genotypes aligned to the row alleles and sanitized.
+
+    - Prefer LPGT on split datasets when available (local, biallelic indices).
+    - Otherwise use the provided call_field (default GT).
+    - Set genotype to missing if any allele index is out of bounds for the current row alleles.
+    """
+    # Choose base genotype expression
+    base_field = call_field
+    if prefer_lpgT and ('was_split' in mt.row) and ('LPGT' in mt.entry):
+        base_field = 'LPGT'
+
+    if base_field not in mt.entry:
+        raise ValueError(f"Call field '{base_field}' not found in MatrixTable entries")
+
+    base_gt = mt[base_field]
+
+    # Sanitize: set to missing if any allele index >= len(alleles)
+    # Protect against missing genotypes
+    invalid_gt = hl.is_defined(base_gt) & hl.any(
+        lambda i: base_gt[i] >= hl.len(mt.alleles),
+        hl.range(0, base_gt.ploidy)
+    )
+    qc_gt = hl.if_else(invalid_gt, hl.missing(hl.tcall), base_gt)
+
+    return mt.annotate_entries(**{tmp_field: qc_gt})
+
+
+def _with_temp_gt(mt: hl.MatrixTable, tmp_field: str = '__qc_gt', backup_field: str = '__orig_GT') -> hl.MatrixTable:
+    """
+    Return a MatrixTable where entry field GT is temporarily set to the sanitized
+    genotype stored in tmp_field. If GT exists originally, back it up in backup_field.
+    """
+    if 'GT' in mt.entry:
+        return mt.annotate_entries(**{backup_field: mt.GT, 'GT': mt[tmp_field]})
+    else:
+        return mt.annotate_entries(GT=mt[tmp_field])
+
+
+def _restore_gt(mt: hl.MatrixTable, backup_field: str = '__orig_GT') -> hl.MatrixTable:
+    """
+    Restore original GT from backup_field if present; otherwise drop GT that was added temporarily.
+    Always drop the backup_field if present.
+    """
+    if backup_field in mt.entry:
+        mt = mt.annotate_entries(GT=mt[backup_field])
+        mt = mt.drop(backup_field)
+    else:
+        # GT did not exist originally; keep the sanitized GT as current GT
+        pass
+    return mt
+
+
 def compute_sample_qc(mt: hl.MatrixTable,
-                     name: str = 'sample_qc',
-                     call_field: str = 'GT') -> hl.MatrixTable:
+                      name: str = 'sample_qc',
+                      call_field: str = 'GT') -> hl.MatrixTable:
     """
     Compute sample-level quality control metrics.
 
@@ -403,6 +460,11 @@ def compute_sample_qc(mt: hl.MatrixTable,
     - Mean genotype quality (GQ)
     - Mean depth (DP)
     - Transition/transversion ratio
+
+    This function properly handles both:
+    - Split multi-allelic variants (after split_multi_hts)
+    - Non-split multi-allelic variants
+    - Biallelic-only datasets
 
     Args:
         mt: Input MatrixTable
@@ -420,25 +482,42 @@ def compute_sample_qc(mt: hl.MatrixTable,
     logger.info("Computing sample-level QC metrics")
 
     try:
-        # Ensure the call field exists
-        if call_field not in mt.entry:
+        if call_field not in mt.entry and not (('was_split' in mt.row) and ('LPGT' in mt.entry)):
             raise ValueError(f"Call field '{call_field}' not found in MatrixTable entries")
 
-        # Compute sample QC using Hail's built-in function
-        mt_with_qc = hl.sample_qc(mt, name=name)
+        if "variant_ac" in mt.row:
+            logger.debug("Dropping existing variant_ac annotation to avoid indexing issues")
+            mt = mt.drop("variant_ac")
 
-        # Add additional custom metrics if available
+        tmp_field = '__qc_gt'
+        mt_qc = _prepare_qc_gt(mt, call_field=call_field, prefer_lpgT=True, tmp_field=tmp_field)
+
+        # Preflight: count invalid GT if any slipped through
+        invalid_count = mt_qc.aggregate_entries(
+            hl.agg.count_where(
+                hl.is_defined(mt_qc[tmp_field]) & hl.any(
+                    lambda i: mt_qc[tmp_field][i] >= hl.len(mt_qc.alleles),
+                    hl.range(0, mt_qc[tmp_field].ploidy)
+                )
+            )
+        )
+        if invalid_count:
+            logger.warning(f"Preflight: found {invalid_count} invalid temp genotypes before sample_qc; they will be set missing")
+
+        # Ensure compatibility: temporarily set GT to the sanitized tmp field
+        mt_for_qc = _with_temp_gt(mt_qc, tmp_field=tmp_field, backup_field='__orig_GT')
+
+        # Call sample_qc without relying on call_field support
+        mt_with_qc = hl.sample_qc(mt_for_qc, name=name)
+
+        # Restore original GT if it existed and drop temps
+        mt_with_qc = _restore_gt(mt_with_qc, backup_field='__orig_GT')
+        mt_with_qc = mt_with_qc.drop(tmp_field)
+
         if 'GQ' in mt.entry:
-            # Add mean genotype quality
-            mt_with_qc = mt_with_qc.annotate_cols(
-                **{f"{name}_mean_gq": hl.agg.mean(mt_with_qc.GQ)}
-            )
-
+            mt_with_qc = mt_with_qc.annotate_cols(**{f"{name}_mean_gq": hl.agg.mean(mt_with_qc.GQ)})
         if 'DP' in mt.entry:
-            # Add mean depth
-            mt_with_qc = mt_with_qc.annotate_cols(
-                **{f"{name}_mean_dp": hl.agg.mean(mt_with_qc.DP)}
-            )
+            mt_with_qc = mt_with_qc.annotate_cols(**{f"{name}_mean_dp": hl.agg.mean(mt_with_qc.DP)})
 
         logger.info(f"Successfully computed sample QC metrics for {mt_with_qc.count_cols()} samples")
         return mt_with_qc
@@ -462,6 +541,11 @@ def compute_variant_qc(mt: hl.MatrixTable,
     - Heterozygosity metrics
     - Mean genotype quality and depth
 
+    This function properly handles both:
+    - Split multi-allelic variants (after split_multi_hts)
+    - Non-split multi-allelic variants
+    - Biallelic-only datasets
+
     Args:
         mt: Input MatrixTable
         name: Name for the variant QC annotation (default: 'variant_qc')
@@ -478,25 +562,37 @@ def compute_variant_qc(mt: hl.MatrixTable,
     logger.info("Computing variant-level QC metrics")
 
     try:
-        # Ensure the call field exists
-        if call_field not in mt.entry:
+        if call_field not in mt.entry and not (('was_split' in mt.row) and ('LPGT' in mt.entry)):
             raise ValueError(f"Call field '{call_field}' not found in MatrixTable entries")
 
-        # Compute variant QC using Hail's built-in function
-        mt_with_qc = hl.variant_qc(mt, name=name)
+        if "variant_ac" in mt.row:
+            logger.debug("Dropping existing variant_ac annotation")
+            mt = mt.drop("variant_ac")
 
-        # Add additional custom metrics if available
+        tmp_field = '__qc_gt'
+        mt_qc = _prepare_qc_gt(mt, call_field=call_field, prefer_lpgT=True, tmp_field=tmp_field)
+
+        # Preflight logging as above
+        invalid_count = mt_qc.aggregate_entries(
+            hl.agg.count_where(
+                hl.is_defined(mt_qc[tmp_field]) & hl.any(
+                    lambda i: mt_qc[tmp_field][i] >= hl.len(mt_qc.alleles),
+                    hl.range(0, mt_qc[tmp_field].ploidy)
+                )
+            )
+        )
+        if invalid_count:
+            logger.warning(f"Preflight: found {invalid_count} invalid temp genotypes before variant_qc; they will be set missing")
+
+        mt_for_qc = _with_temp_gt(mt_qc, tmp_field=tmp_field, backup_field='__orig_GT')
+        mt_with_qc = hl.variant_qc(mt_for_qc, name=name)
+        mt_with_qc = _restore_gt(mt_with_qc, backup_field='__orig_GT')
+        mt_with_qc = mt_with_qc.drop(tmp_field)
+
         if 'GQ' in mt.entry:
-            # Add mean genotype quality per variant
-            mt_with_qc = mt_with_qc.annotate_rows(
-                **{f"{name}_mean_gq": hl.agg.mean(mt_with_qc.GQ)}
-            )
-
+            mt_with_qc = mt_with_qc.annotate_rows(**{f"{name}_mean_gq": hl.agg.mean(mt_with_qc.GQ)})
         if 'DP' in mt.entry:
-            # Add mean depth per variant
-            mt_with_qc = mt_with_qc.annotate_rows(
-                **{f"{name}_mean_dp": hl.agg.mean(mt_with_qc.DP)}
-            )
+            mt_with_qc = mt_with_qc.annotate_rows(**{f"{name}_mean_dp": hl.agg.mean(mt_with_qc.DP)})
 
         logger.info(f"Successfully computed variant QC metrics for {mt_with_qc.count_rows()} variants")
         return mt_with_qc

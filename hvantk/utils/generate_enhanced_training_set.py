@@ -4,6 +4,7 @@
 import logging
 import os
 import hail as hl
+from hvantk.hgc.constants import VCF_EXTENSION
 from hvantk.annotation.annotation_streamer import create_enhanced_clinvar_training_streamer
 from hvantk.utils.gene_sets import load_sample_chd_gene_set
 
@@ -14,7 +15,7 @@ def main():
 
     # Configuration
     output_dir = "./data/training_set"
-    clinvar_path = os.environ.get("CLINVAR_VCF", "./data/clinvar/clinvar_20220403.vcf.gz")
+    clinvar_path = os.environ.get("CLINVAR_VCF", f"./data/clinvar/clinvar_20220403{VCF_EXTENSION}")
 
     logger.info(f"Starting enhanced Clinvar training set generation")
     logger.info(f"Clinvar path: {clinvar_path}")

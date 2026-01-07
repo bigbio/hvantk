@@ -272,13 +272,13 @@ def vds_combine(ctx, input_dir, output, validate, overwrite, dry_run):
 @click.option('--adjust-genotypes/--no-adjust-genotypes', default=True,
               help='Annotate with adjusted genotypes')
 @click.option('--skip-split-multi', is_flag=True, help='Skip splitting multi-allelic variants')
-@click.option('--convert-lgt-to-gt/--no-convert-lgt-to-gt', default=True,
-              help='Convert LGT to GT (recommended)')
+@click.option('--skip-validation', is_flag=True,
+              help='Skip biallelic validation (faster, use only if confident)')
 @click.option('--skip-keying-by-cols', is_flag=True, help='Skip keying MatrixTable by columns')
 @click.option('--overwrite/--no-overwrite', default=False, help='Overwrite output if exists')
 @click.option('--dry-run', is_flag=True, help='Show what would be done without executing')
 @click.pass_context
-def vds2mt(ctx, input, output, adjust_genotypes, skip_split_multi, convert_lgt_to_gt,
+def vds2mt(ctx, input, output, adjust_genotypes, skip_split_multi, skip_validation,
            skip_keying_by_cols, overwrite, dry_run):
     """
     Convert Variant DataSet (VDS) to MatrixTable format.
@@ -288,7 +288,7 @@ def vds2mt(ctx, input, output, adjust_genotypes, skip_split_multi, convert_lgt_t
 
     Examples:
         hvantk hgc vds2mt -i dataset.vds -o dataset.mt
-        hvantk hgc vds2mt -i dataset.vds -o dataset.mt --skip-split-multi
+        hvantk hgc vds2mt -i dataset.vds -o dataset.mt --skip-validation
     """
     try:
         logger.info("Starting VDS to MatrixTable conversion")
@@ -312,7 +312,7 @@ def vds2mt(ctx, input, output, adjust_genotypes, skip_split_multi, convert_lgt_t
             click.echo(f"   • Output: {output}")
             click.echo(f"   • Adjust genotypes: {adjust_genotypes}")
             click.echo(f"   • Skip split multi: {skip_split_multi}")
-            click.echo(f"   • Convert LGT to GT: {convert_lgt_to_gt}")
+            click.echo(f"   • Skip validation: {skip_validation}")
             return
 
         # Execute conversion
@@ -322,7 +322,7 @@ def vds2mt(ctx, input, output, adjust_genotypes, skip_split_multi, convert_lgt_t
             output_path=output,
             adjust_genotypes=adjust_genotypes,
             skip_split_multi=skip_split_multi,
-            convert_lgt_to_gt=convert_lgt_to_gt,
+            skip_validation=skip_validation,
             skip_keying_by_cols=skip_keying_by_cols,
             overwrite=overwrite
         )
@@ -352,8 +352,8 @@ def mt2vcf(ctx, input, output, filter_adj, min_ac, split_multi, dry_run):
     compatibility with other tools and pipelines.
 
     Examples:
-        hvantk hgc mt2vcf -i analysis.mt -o results.vcf.gz
-        hvantk hgc mt2vcf -i analysis.mt -o results.vcf.gz --min-ac 2
+        hvantk hgc mt2vcf -i analysis.mt -o results.vcf.bgz
+        hvantk hgc mt2vcf -i analysis.mt -o results.vcf.bgz --min-ac 2
     """
     try:
         logger.info("Starting MatrixTable to VCF conversion")
