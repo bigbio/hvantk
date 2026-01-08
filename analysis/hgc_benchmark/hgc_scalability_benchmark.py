@@ -306,6 +306,16 @@ def run_hgc_workflow(
         logger.error(f"[{sample_size}] Step 2 FAILED: {e}")
         raise
 
+    # STEP 2.1: Record MT partition count (NO repartition - let Spark scale naturally)
+    logger.info(f"[{sample_size}] Step 2.1: Recording MatrixTable partition count...")
+    try:
+        mt = hl.read_matrix_table(mt_path)
+        timings['mt_partitions'] = mt.n_partitions
+        logger.info(f"[{sample_size}]   → MatrixTable has {mt.n_partitions} partitions (natural, not forced)")
+    except Exception as e:
+        logger.error(f"[{sample_size}] Step 2.1 FAILED: {e}")
+        raise
+
     # STEP 3: Compute QC metrics and export QC tables
     logger.info(f"[{sample_size}] Step 3/4: Computing QC metrics and exporting QC tables...")
     start = time.time()

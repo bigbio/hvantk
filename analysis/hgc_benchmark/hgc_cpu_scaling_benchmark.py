@@ -188,10 +188,16 @@ def run_hgc_workflow(
     output_dir: Path,
     sample_size: int,
     num_cpus: int,
-    reference_genome: str = 'GRCh38'
+    reference_genome: str = 'GRCh38',
+    shuffle_partitions: int = 2048,
 ) -> Dict[str, float]:
     """
     Run complete end-to-end HGC workflow: GVCF → VDS → MT → QC Tables + Cohort VCF
+
+    For CPU SCALING BENCHMARKS (fixed sample size, variable CPU count):
+    - Repartition MT to FIXED partition count (ALWAYS, mandatory Step 2.1)
+    - This ensures same amount of work across all CPU counts
+    - Measure pure CPU parallelism without confounding task overhead
 
     Args:
         gvcf_files: List of GVCF file paths
@@ -199,6 +205,8 @@ def run_hgc_workflow(
         sample_size: Number of samples (for logging)
         num_cpus: Number of CPUs allocated
         reference_genome: Reference genome (GRCh38 or GRCh37)
+        shuffle_partitions: FIXED partition count for MT repartition (default: 2048)
+                           MUST be constant across CPU scaling runs
 
     Returns:
         Dictionary with timing breakdown for each step
@@ -208,6 +216,7 @@ def run_hgc_workflow(
     # Define paths - include CPU count in naming to avoid conflicts
     vds_path = str(output_dir / f"combined_{sample_size}_cpu{num_cpus}.vds")
     mt_path = str(output_dir / f"analysis_{sample_size}_cpu{num_cpus}.mt")
+    mt_checkpoint_path = str(output_dir / f"analysis_{sample_size}_cpu{num_cpus}.repart.mt")
     sample_qc_path = str(output_dir / f"sample_qc_{sample_size}_cpu{num_cpus}.ht")
     variant_qc_path = str(output_dir / f"variant_qc_{sample_size}_cpu{num_cpus}.ht")
     vcf_path = str(output_dir / f"cohort_{sample_size}_cpu{num_cpus}.vcf.bgz")
@@ -299,21 +308,42 @@ def run_hgc_workflow(
         logger.error(f"[{num_cpus} CPUs] Step 2 FAILED: {e}")
         raise
 
+    # STEP 2.1 (MANDATORY for CPU scaling): Repartition and checkpoint MT with FIXED partitions
+    logger.info(f"[{num_cpus} CPUs] Step 2.1: Repartitioning MT to {shuffle_partitions} partitions (FIXED for CPU scaling) and checkpointing...")
+    start = time.time()
+    try:
+        mt = hl.read_matrix_table(mt_path)
+        logger.info(f"[{num_cpus} CPUs]   Current partitions: {mt.n_partitions}")
+        mt = mt.repartition(shuffle_partitions, shuffle=True)
+        mt = mt.checkpoint(mt_checkpoint_path, overwrite=True)
+        mt_path = mt_checkpoint_path  # use checkpointed MT downstream
+        timings['mt_repartition_checkpoint'] = time.time() - start
+        logger.info(f"[{num_cpus} CPUs] Step 2.1 completed in {timings['mt_repartition_checkpoint']:.1f}s")
+        logger.info(f"[{num_cpus} CPUs]   → Repartitioned MT: {mt.n_partitions} partitions")
+        logger.info(f"[{num_cpus} CPUs]   → Checkpointed MT: {mt_path}")
+    except Exception as e:
+        logger.error(f"[{num_cpus} CPUs] Step 2.1 FAILED: {e}")
+        raise
+
     # STEP 3: Compute QC metrics and export QC tables
     logger.info(f"[{num_cpus} CPUs] Step 3/4: Computing QC metrics and exporting QC tables...")
     start = time.time()
     try:
         mt = hl.read_matrix_table(mt_path)
+        qc_compute_start = time.time()
         qc_metrics = compute_full_qc(mt)
+        timings['compute_qc_compute'] = time.time() - qc_compute_start
 
-        # Export QC tables separately
+        write_start = time.time()
         qc_metrics.sample_qc.write(sample_qc_path, overwrite=True)
         qc_metrics.variant_qc.write(variant_qc_path, overwrite=True)
+        timings['compute_qc_write'] = time.time() - write_start
 
         timings['compute_qc'] = time.time() - start
         logger.info(f"[{num_cpus} CPUs] Step 3 completed in {timings['compute_qc']:.1f}s")
         logger.info(f"[{num_cpus} CPUs]   → Sample QC table: {sample_qc_path}")
         logger.info(f"[{num_cpus} CPUs]   → Variant QC table: {variant_qc_path}")
+        logger.info(f"[{num_cpus} CPUs]   compute: {timings['compute_qc_compute']:.1f}s; write: {timings['compute_qc_write']:.1f}s")
     except Exception as e:
         logger.error(f"[{num_cpus} CPUs] Step 3 FAILED: {e}")
         raise
@@ -346,7 +376,8 @@ def run_hgc_workflow(
     logger.info(f"[{num_cpus} CPUs] Timing breakdown:")
     logger.info(f"[{num_cpus} CPUs]   - GVCF → VDS:    {timings['gvcf_combine']:.1f}s ({timings['gvcf_combine']/timings['total']*100:.1f}%)")
     logger.info(f"[{num_cpus} CPUs]   - VDS → MT:      {timings['vds_to_mt']:.1f}s ({timings['vds_to_mt']/timings['total']*100:.1f}%)")
-    logger.info(f"[{num_cpus} CPUs]   - Compute QC:    {timings['compute_qc']:.1f}s ({timings['compute_qc']/timings['total']*100:.1f}%)")
+    logger.info(f"[{num_cpus} CPUs]   - MT Repartition: {timings.get('mt_repartition_checkpoint', 0):.1f}s ({timings.get('mt_repartition_checkpoint', 0)/timings['total']*100:.1f}%)")
+    logger.info(f"[{num_cpus} CPUs]   - Compute QC:    {timings['compute_qc']:.1f}s ({timings['compute_qc']/timings['total']*100:.1f}%) [compute={timings.get('compute_qc_compute',0):.1f}s, write={timings.get('compute_qc_write',0):.1f}s]")
     logger.info(f"[{num_cpus} CPUs]   - MT → VCF:      {timings['mt_to_vcf']:.1f}s ({timings['mt_to_vcf']/timings['total']*100:.1f}%)")
     logger.info("="*80)
 
@@ -473,7 +504,8 @@ def main():
             output_dir=args.output_dir,
             sample_size=args.sample_size,
             num_cpus=args.num_cpus,
-            reference_genome=args.reference
+            reference_genome=args.reference,
+            shuffle_partitions=args.shuffle_partitions,
         )
 
         # Save timing results to JSON
