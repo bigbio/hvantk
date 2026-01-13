@@ -252,25 +252,36 @@ qc_results.generate_html_report('qc_report.html')
 
 For detailed documentation, see [hvantk/hgc/README.md](hvantk/hgc/README.md).
 
-## Architecture (To be implemented)
+## Architecture
 
 `hvantk` is organized into domain-specific modules with shared infrastructure:
 
-| Module | Purpose | Key Features |
-|--------|---------|--------------|
-| **core/** | Shared utilities | Hail helpers, I/O, logging, protocols |
-| **data/** | Data management | Catalog, downloaders, versioning |
-| **vak/** | Variant annotations | ClinVar, dbNSFP, gnomAD, CCR |
-| **gak/** | Gene annotations | Ensembl, GeVIR, gene constraints |
-| **pak/** | Protein annotations | INSIDER (PPI), protein expression |
-| **omex/** | Expression matrices | Bulk & single-cell RNA-seq |
-| **pipeline/** | Workflow orchestration | Recipe parser, streamers, execution |
+| Module | Purpose | Key Components |
+|--------|---------|----------------|
+| **core/** | Shared infrastructure | Hail context, config, logging, protocols |
+| **data/** | Data management | Datasets, file utilities, data streaming |
+| **builders/** | Data builders | Variants, genes, proteins, expression builders |
+| **commands/** | CLI implementation | Table/matrix builders, batch processing, catalog |
 | **hgc/** | Joint genotyping | GVCF combining, QC, format conversion |
+| **utils/** | Helper functions | Table/matrix utilities, genome helpers |
+| **resources/** | Data catalog | Dataset registry, schemas |
 
-Each module follows the **Builder → Streamer → Recipe** pattern:
-- **Builders**: Convert raw data → Hail Tables/MatrixTables
-- **Streamers**: Transform Tables (filter, join, aggregate)
-- **Recipes**: Compose builders + streamers into workflows (JSON/YAML)
+### Key Design Patterns
+
+- **Builder Protocol**: Convert raw data → Hail Tables/MatrixTables
+- **Streamer Protocol**: Transform Tables (filter, join, aggregate)
+- **Downloader Protocol**: Fetch external datasets with verification
+- **Recipe-based workflows**: Compose builders via JSON/YAML recipes
+
+### Extension Points
+
+The library uses protocol-based contracts (defined in `core/protocols.py`) to ensure consistent patterns when adding new data sources. Each builder follows the same interface:
+
+```python
+def build(input_path: str, **params) -> hl.Table | hl.MatrixTable
+def validate_schema(data: hl.Table | hl.MatrixTable) -> bool
+def get_metadata() -> Dict[str, Any]
+```
 
 For detailed architecture documentation, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
