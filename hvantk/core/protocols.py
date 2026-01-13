@@ -5,7 +5,7 @@ These protocols define the contracts that different components must follow,
 enabling better type checking and clearer interfaces for extensibility.
 """
 
-from typing import Protocol, Any, Dict, Optional
+from typing import Protocol, Any, Dict, Callable
 from pathlib import Path
 import hail as hl
 
@@ -288,5 +288,5 @@ class Downloader(Protocol):
 
 # Type aliases for convenience
 TableOrMatrix = hl.Table | hl.MatrixTable
-BuilderFunction = callable
-StreamerFunction = callable
+BuilderFunction = Callable[..., hl.Table | hl.MatrixTable]
+StreamerFunction = Callable[[hl.Table | hl.MatrixTable], hl.Table | hl.MatrixTable]
