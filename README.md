@@ -68,7 +68,7 @@ hvantk hgc compute-qc -i cohort.mt -o cohort_qc.mt
 hvantk hgc qc-report -i cohort_qc.mt -o qc_report.html
 ```
 
-📖 **[Full HGC Documentation](hvantk/hgc/README.md)**
+📖 **[Full HGC Documentation](docs/tools/hgc.md)**
 
 ### Annotation Tables: Build Custom Annotation Resources
 
@@ -88,7 +88,7 @@ hvantk mktable ensembl-gene --raw-input biomart.tsv.bgz --output-ht ensembl.ht
 hvantk mktable-batch --recipe tables_recipe.json
 ```
 
-📖 **[Annotation Tables Guide](docs/USAGE.md#annotation-tables)**
+📖 **[Annotation Tables Guide](docs/library/usage.md#1-build-a-single-annotation-table-ht)**
 
 ### Expression Matrices: Process Omics Data
 
@@ -103,7 +103,7 @@ hvantk mkmatrix ucsc -e expr.tsv.bgz -m metadata.tsv -o ucsc.mt
 hvantk mkmatrix-batch --recipe matrices_recipe.json
 ```
 
-📖 **[Expression Data Guide](docs/USAGE.md#expression-matrices)**
+📖 **[Expression Data Guide](docs/library/usage.md#3-build-a-single-matrixtable-mt)**
 
 ### Data Downloaders
 
@@ -115,7 +115,7 @@ Download curated datasets directly from public repositories.
 hvantk ucsc-downloader --dataset adultPancreas --output-dir data/ucsc
 ```
 
-📖 **[Data Sources](README.sources.md)**
+📖 **[Data Sources](docs/library/annotation-sources.md)**
 
 ## Quick Start Example
 
@@ -149,9 +149,11 @@ hvantk mktable-batch --recipe recipe.json
 ## Documentation
 
 - **[Architecture Overview](docs/ARCHITECTURE.md)** - Module organization and design patterns
-- **[Usage Guide](docs/USAGE.md)** - Detailed usage examples and recipes
-- **[Data Sources](README.sources.md)** - Available annotation sources and download instructions
+- **[Usage Guide](docs/library/usage.md)** - Detailed usage examples and recipes
+- **[Data Sources](docs/library/annotation-sources.md)** - Available annotation sources and download instructions
+- **[HGC Tool](docs/tools/hgc.md)** - Joint genotyping and quality control
 - **[API Reference](docs/ARCHITECTURE.md#extension-points)** - Extending hvantk with custom builders
+- **[Full Documentation Index](docs/README.md)** - Complete documentation structure
 
 ## Citation
 
@@ -168,10 +170,12 @@ If you use hvantk in your research, please cite:
 
 ## Contributing
 
-We welcome contributions! Please see our [contributing guidelines](docs/ARCHITECTURE.md#extension-points) for information on:
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed information on:
+- Development workflow and setup
 - Adding new data sources
-- Implementing custom builders
-- Running tests and submitting PRs
+- Code style guidelines
+- Testing requirements
+- Pull request process
 
 **Developer quick start:**
 ```bash
