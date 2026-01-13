@@ -13,6 +13,7 @@ Usage:
 """
 
 import argparse
+import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -419,6 +420,5 @@ def main():
 
 
 if __name__ == '__main__':
-    import sys
     main()
 
