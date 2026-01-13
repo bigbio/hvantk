@@ -3,11 +3,19 @@
 
 # hvantk
 
-**Hail-based multiomics variant annotation toolkit**
+**Hail-based toolkit for multi-omics variant annotation and analysis.**
 
-`hvantk` is a powerful annotation toolkit that uses [Hail](https://hail.is/) to annotate variants and genes with multiple omics data types. It enables integration of variant prediction scores, gene expression data, protein expression, and clinical annotations to improve genetic variant interpretation.
+`hvantk` is an annotation toolkit that uses [Hail](https://hail.is/) to annotate variants and genes with multiple omics data types. It enables integration of variant prediction scores, gene expression data, protein expression, and clinical annotations to improve genetic variant interpretation.
 
-## ✨ Key Features
+`hvantk` is a modular toolkit that uses [Apache Hail](https://hail.is/) to annotate and analyze variants, genes, proteins, and expression data from heterogeneous omics sources. The library enables multi-omics integration to improve the interpretation of genetic variants.
+
+**Core Capabilities:**
+- Variant annotations (ClinVar, dbNSFP, gnomAD, CCR scores)
+- Gene annotations (Ensembl, GeVIR, gene constraints)
+- Protein annotations (INSIDER protein-protein interactions)
+- Expression data (bulk & single-cell RNA-seq from UCSC, GTEx)
+- Joint genotyping workflows (GVCF combining, QC, format conversion)
+- Recipe-based batch processing
 
 - **Multiomics Integration**: Combine variant annotations, gene expression, and clinical data
 - **Hail-Powered**: Leverage Hail's scalable genomic data processing
@@ -16,7 +24,7 @@
 - **Recipe-Based Workflows**: JSON/YAML recipes for reproducible analyses
 - **Multiple Formats**: Support for VCF, MatrixTable, and Hail Table formats
 
-## 📦 Installation
+### Using Poetry (recommended)
 
 ```bash
 git clone https://github.com/bigbio/hvantk
@@ -25,113 +33,164 @@ poetry install
 poetry shell
 ```
 
-Prerequisites: [Poetry](https://python-poetry.org/) for dependency management.
-
-## 🚀 Quick Start
-
-### Build Annotation Tables
+### Using pip
 
 ```bash
-# ClinVar annotations
-hvantk mktable clinvar --raw-input clinvar.vcf.bgz --output-ht clinvar.ht --ref-genome GRCh38
-
-# Gene constraint metrics
-hvantk mktable gnomad-metrics --raw-input gnomad.tsv.bgz --output-ht gnomad.ht
+git clone https://github.com/bigbio/hvantk
+cd hvantk
+pip install -e .
 ```
 
-### Create Expression MatrixTables
+**Prerequisites**: Python ≥3.10, Apache Hail
 
-```bash
-# UCSC Cell Browser data
-hvantk mkmatrix ucsc \
-  --expression-matrix expr.tsv.bgz \
-  --metadata meta.tsv \
-  --output-mt ucsc.mt
-```
+## Main Tools
 
-### Joint Genotyping with HGC
+### HGC: Joint Genotyping Pipeline
 
+High-performance joint genotyping for large cohorts using Hail. Combines thousands of GVCF files with integrated quality control.
+
+**Key features:**
+- GVCF combination at scale
+- VDS ↔ MatrixTable ↔ VCF format conversion
+- Comprehensive QC metrics and visualization
+- Professional HTML QC reports
+
+**Quick example:**
 ```bash
 # Combine GVCF files
 hvantk hgc gvcf-combine -g /data/gvcfs -o cohort.vds
 
-# Convert to MatrixTable
-hvantk hgc vds2mt -i cohort.vds -o cohort.mt --adjust-genotypes
+# Convert to MatrixTable and run QC
+hvantk hgc vds2mt -i cohort.vds -o cohort.mt
+hvantk hgc compute-qc -i cohort.mt -o cohort_qc.mt
 
 # Generate QC report
-hvantk hgc qc-report -i cohort.mt -o qc_report.html
+hvantk hgc qc-report -i cohort_qc.mt -o qc_report.html
 ```
 
-## 📚 Documentation
+📖 **[Full HGC Documentation](hvantk/hgc/README.md)**
 
-Comprehensive documentation is available in the [`docs/`](docs/) directory:
+### Annotation Tables: Build Custom Annotation Resources
 
-- **[Usage Guide](docs/library/usage.md)** - Detailed examples and workflows
-- **[HGC Tool](docs/tools/hgc.md)** - Joint genotyping and quality control
-- **[Annotation Sources](docs/library/annotation-sources.md)** - Available data sources
-- **[Developer Guide](docs/planning/DEVELOPING.md)** - Contributing and development
-- **[Full Documentation Index](docs/README.md)** - Complete documentation structure
+Create Hail Tables from public annotation databases (ClinVar, gnomAD, Ensembl, etc.).
 
-## 🧬 Supported Data Sources
+**Single table creation:**
+```bash
+# Build ClinVar annotation table
+hvantk mktable clinvar --raw-input clinvar.vcf.bgz --output-ht clinvar.ht --ref-genome GRCh38
 
-### Variant Annotations
-- **ClinVar** - Clinical significance annotations
-- **dbNSFP** - Missense variant prediction scores
-- **gnomAD** - Population allele frequencies and constraint metrics
-- **INSIDER** - Protein-protein interaction sites
+# Build Ensembl gene table
+hvantk mktable ensembl-gene --raw-input biomart.tsv.bgz --output-ht ensembl.ht
+```
 
-### Expression Data
-- **UCSC Cell Browser** - Single-cell RNA-seq datasets
-- **Expression Atlas** - Bulk RNA-seq across tissues and conditions
-- **CPTAC** - Protein expression data
+**Batch processing with recipes:**
+```bash
+hvantk mktable-batch --recipe tables_recipe.json
+```
 
-See [Annotation Sources](docs/library/annotation-sources.md) for complete list and download instructions.
+📖 **[Annotation Tables Guide](docs/USAGE.md#annotation-tables)**
 
-## 🔧 Tools
+### Expression Matrices: Process Omics Data
 
-### HGC: Hail-based Genotype Combiner
+Build Hail MatrixTables from bulk and single-cell expression data.
 
-High-performance joint genotyping workflow for combining GVCF files:
+**Example:**
+```bash
+# Convert UCSC Cell Browser data to MatrixTable
+hvantk mkmatrix ucsc -e expr.tsv.bgz -m metadata.tsv -o ucsc.mt
 
-- Scalable GVCF combination (1000s of samples)
-- VDS ↔ MatrixTable ↔ VCF format conversion
-- Comprehensive quality control and visualization
-- Interactive HTML reports
+# Batch processing
+hvantk mkmatrix-batch --recipe matrices_recipe.json
+```
 
-[HGC Documentation](docs/tools/hgc.md) | [Examples](examples/hgc_qc_example.py)
+📖 **[Expression Data Guide](docs/USAGE.md#expression-matrices)**
 
-## 💻 For Developers
+### Data Downloaders
+
+Download curated datasets directly from public repositories.
+
+**Example:**
+```bash
+# Download UCSC Cell Browser dataset
+hvantk ucsc-downloader --dataset adultPancreas --output-dir data/ucsc
+```
+
+📖 **[Data Sources](README.sources.md)**
+
+## Quick Start Example
 
 ```bash
-# Run tests
-pytest -q
+# 1. Download a dataset
+hvantk ucsc-downloader --dataset adultPancreas --output-dir data/ucsc
 
-# Explore CLI
-hvantk --help
+# 2. Convert to Hail MatrixTable
+hvantk mkmatrix ucsc \
+  -e data/ucsc/exprMatrix.tsv.bgz \
+  -m data/ucsc/meta.tsv \
+  -o data/ucsc/adultPancreas.mt
 
-# Add a new data source
-# 1. Define schema contract
-# 2. Write builder function
-# 3. Register in catalog
-# 4. Add tests
+# 3. Build annotation tables via recipe
+cat > recipe.json << EOF
+{
+  "tables": [
+    {
+      "name": "clinvar",
+      "input": "/data/clinvar.vcf.bgz",
+      "output": "/out/clinvar.ht",
+      "params": {"reference_genome": "GRCh38"}
+    }
+  ]
+}
+EOF
+
+hvantk mktable-batch --recipe recipe.json
 ```
 
-See [Developer Guide](docs/planning/DEVELOPING.md) for detailed workflow.
+## Documentation
 
-## 📄 License
+- **[Architecture Overview](docs/ARCHITECTURE.md)** - Module organization and design patterns
+- **[Usage Guide](docs/USAGE.md)** - Detailed usage examples and recipes
+- **[Data Sources](README.sources.md)** - Available annotation sources and download instructions
+- **[API Reference](docs/ARCHITECTURE.md#extension-points)** - Extending hvantk with custom builders
 
-MIT License - see [LICENSE](LICENSE) for details.
+## Citation
 
-## 🤝 Contributing
+If you use hvantk in your research, please cite:
 
-Contributions welcome! Please see our [Developer Guide](docs/planning/DEVELOPING.md) for:
-- Development workflow
-- Code style guidelines
-- Testing requirements
-- Pull request process
+```bibtex
+@software{hvantk2024,
+  title = {hvantk: Hail-based toolkit for multi-omics variant annotation and analysis},
+  author = {Perez-Riverol, Yasset and Audain, Enrique},
+  year = {2024},
+  url = {https://github.com/bigbio/hvantk}
+}
+```
 
-## 📧 Support
+## Contributing
+
+We welcome contributions! Please see our [contributing guidelines](docs/ARCHITECTURE.md#extension-points) for information on:
+- Adding new data sources
+- Implementing custom builders
+- Running tests and submitting PRs
+
+**Developer quick start:**
+```bash
+poetry install
+pytest -q
+hvantk --help
+```
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support
 
 - **Issues**: [GitHub Issues](https://github.com/bigbio/hvantk/issues)
+- **Questions**: Open a discussion on GitHub
 - **Documentation**: [docs/](docs/)
-- **Examples**: [examples/](examples/)
+
+## Acknowledgments
+
+- Built on [Apache Hail](https://hail.is/) for distributed genomic data processing
+- Integrates data from ClinVar, gnomAD, Ensembl, UCSC, and other public resources
