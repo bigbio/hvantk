@@ -3,14 +3,19 @@
 
 # hvantk
 
-Hail-based multiomics variant annotation toolkit.
+**Hail-based toolkit for multi-omics variant annotation and analysis.**
 
 ## Description
 
-`hvantk` is an annotation toolkit that uses Hail to annotate variants and genes with multiple omics data types (e.g.,
-variant prediction scores, gene or protein expression). The library is designed to be modular and extensible,
-allowing users to add new data types and sources. The main goal is to leverage multiomics integration and annotations
-from heterogeneous sources to improve the interpretation of genetic variants.
+`hvantk` is a modular toolkit that uses Hail to annotate and analyze variants, genes, proteins, and expression data from heterogeneous omics sources. The library enables multi-omics integration to improve the interpretation of genetic variants.
+
+**Core Capabilities:**
+- **Variant annotations**: ClinVar, dbNSFP, gnomAD, CCR scores
+- **Gene annotations**: Ensembl, GeVIR, gene constraints
+- **Protein annotations**: INSIDER protein-protein interactions
+- **Expression matrices**: Bulk & single-cell RNA-seq (UCSC, GTEx)
+- **Joint genotyping (HGC)**: GVCF combining, QC, format conversion
+- **Pipeline orchestration**: Recipe-based batch workflows
 
 ## Installation
 
@@ -246,6 +251,28 @@ qc_results.generate_html_report('qc_report.html')
 ```
 
 For detailed documentation, see [hvantk/hgc/README.md](hvantk/hgc/README.md).
+
+## Architecture (To be implemented)
+
+`hvantk` is organized into domain-specific modules with shared infrastructure:
+
+| Module | Purpose | Key Features |
+|--------|---------|--------------|
+| **core/** | Shared utilities | Hail helpers, I/O, logging, protocols |
+| **data/** | Data management | Catalog, downloaders, versioning |
+| **vak/** | Variant annotations | ClinVar, dbNSFP, gnomAD, CCR |
+| **gak/** | Gene annotations | Ensembl, GeVIR, gene constraints |
+| **pak/** | Protein annotations | INSIDER (PPI), protein expression |
+| **omex/** | Expression matrices | Bulk & single-cell RNA-seq |
+| **pipeline/** | Workflow orchestration | Recipe parser, streamers, execution |
+| **hgc/** | Joint genotyping | GVCF combining, QC, format conversion |
+
+Each module follows the **Builder → Streamer → Recipe** pattern:
+- **Builders**: Convert raw data → Hail Tables/MatrixTables
+- **Streamers**: Transform Tables (filter, join, aggregate)
+- **Recipes**: Compose builders + streamers into workflows (JSON/YAML)
+
+For detailed architecture documentation, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Annotation sources
 
