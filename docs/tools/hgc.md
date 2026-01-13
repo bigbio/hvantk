@@ -481,9 +481,9 @@ combine_gvcfs(..., reference_genome="GRCh38")
 
 ### Common Issues
 
-**Issue: "gnomad package not found"**
+**Issue: "gnomAD package not found"**
 ```
-Solution: Install gnomad package or disable adjusted genotypes:
+Solution: Install gnomAD package or disable adjusted genotypes:
 pip install gnomad
 # OR
 convert_vds_to_mt(..., adjust_genotypes=False)

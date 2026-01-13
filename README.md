@@ -3,11 +3,9 @@
 
 # hvantk
 
-**Hail-based toolkit for multi-omics variant annotation and analysis.**
+**Hail-based toolkit for multiomics variant annotation and analysis.**
 
-`hvantk` is an annotation toolkit that uses [Hail](https://hail.is/) to annotate variants and genes with multiple omics data types. It enables integration of variant prediction scores, gene expression data, protein expression, and clinical annotations to improve genetic variant interpretation.
-
-`hvantk` is a modular toolkit that uses [Apache Hail](https://hail.is/) to annotate and analyze variants, genes, proteins, and expression data from heterogeneous omics sources. The library enables multi-omics integration to improve the interpretation of genetic variants.
+`hvantk` is a modular toolkit that uses [Apache Hail](https://hail.is/) to annotate and analyze variants, genes, proteins, and expression data from heterogeneous omics sources. The library enables multiomics integration to improve the interpretation of genetic variants.
 
 **Core Capabilities:**
 - Variant annotations (ClinVar, dbNSFP, gnomAD, CCR scores)
@@ -17,14 +15,7 @@
 - Joint genotyping workflows (GVCF combining, QC, format conversion)
 - Recipe-based batch processing
 
-- **Multiomics Integration**: Combine variant annotations, gene expression, and clinical data
-- **Hail-Powered**: Leverage Hail's scalable genomic data processing
-- **Modular Design**: Extensible framework for adding new data sources
-- **Joint Genotyping**: HGC module for efficient GVCF combination and quality control
-- **Recipe-Based Workflows**: JSON/YAML recipes for reproducible analyses
-- **Multiple Formats**: Support for VCF, MatrixTable, and Hail Table formats
-
-### Using Poetry (recommended)
+## Installation
 
 ```bash
 git clone https://github.com/bigbio/hvantk
