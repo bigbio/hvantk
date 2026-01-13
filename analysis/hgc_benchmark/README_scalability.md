@@ -1,10 +1,26 @@
-# HGC Scalability Benchmark
+# HGC Scalability & Performance Benchmarks
 
-This directory contains scripts to benchmark the scalability of the HGC (Hail-based Genotype Combiner) workflow at different sample sizes.
+This directory contains scripts to benchmark the HGC (Hail-based Genotype Combiner) workflow performance.
+
+## Available Benchmarks
+
+### 1. Sample Size Scalability (Weak Scaling)
+**Purpose**: Measure how runtime scales with increasing cohort size  
+**Varies**: Sample count (20, 50, 100, 250, 500, 750, 1000)  
+**Fixed**: CPU count (144 CPUs)  
+**Script**: `hgc_scalability_benchmark.sh`
+
+### 2. CPU Scaling (Strong Scaling) ⭐ NEW
+**Purpose**: Measure speedup and efficiency with varying CPU count  
+**Varies**: CPU count (16, 24, 32, 48, 64, 96, 144)  
+**Fixed**: Sample count (e.g., 500 samples)  
+**Script**: `hgc_cpu_scaling_benchmark.sh`
+
+---
 
 ## Overview
 
-The benchmark measures the complete end-to-end HGC workflow performance:
+The benchmarks measure the complete end-to-end HGC workflow performance:
 
 1. **GVCF → VDS**: Combine individual GVCF files into a Variant DataSet
 2. **VDS → MatrixTable**: Convert VDS to analysis-ready MatrixTable
@@ -15,16 +31,29 @@ The benchmark measures the complete end-to-end HGC workflow performance:
 
 - **Runtime**: Wall-clock time for each step and total workflow
 - **Memory**: Peak memory usage per run
-- **Scalability**: How performance scales with sample size
+- **Scalability**: How performance scales with sample size or CPU count
+- **Speedup**: Performance gain from additional CPUs (CPU scaling only)
+- **Efficiency**: CPU utilization effectiveness (CPU scaling only)
 
 ## Files
 
+### Sample Size Scalability
 ```
-analysis/
-├── hgc_scalability_benchmark.sh       # Main orchestration script (bash)
+├── hgc_scalability_benchmark.sh       # Orchestration script (sample size scaling)
 ├── hgc_scalability_benchmark.py       # Python workflow runner
-├── plot_scalability_results.py        # Results visualization script
+├── plot_scalability_results.py        # Visualization script
 └── README_scalability.md              # This file
+```
+
+### CPU Scaling (NEW)
+```
+├── hgc_cpu_scaling_benchmark.sh       # Orchestration script (CPU scaling)
+├── hgc_cpu_scaling_benchmark.py       # Python workflow runner with CPU config
+├── plot_cpu_scaling_results.py        # CPU scaling visualization
+├── generate_sample_list.sh            # Helper to create fixed sample lists
+├── run_cpu_scaling_example.sh         # Complete example workflow
+├── README_cpu_scaling.md              # Full CPU scaling documentation
+└── QUICKREF_cpu_scaling.md            # Quick reference guide
 ```
 
 ## Requirements
@@ -36,7 +65,9 @@ analysis/
 
 ## Usage
 
-### 1. Run the Benchmark
+### Sample Size Scalability Benchmark
+
+#### 1. Run the Benchmark
 
 ```bash
 cd analysis
@@ -69,7 +100,7 @@ bash hgc_scalability_benchmark.sh \
 - `--resume`: Resume from previous run (skip completed runs)
 - `--help`: Show help message
 
-### 2. Generate Plots
+#### 2. Generate Plots
 
 After the benchmark completes:
 
@@ -85,7 +116,76 @@ This generates:
 - Memory usage vs sample size
 - Summary report (text file)
 
-## Output Structure
+---
+
+### CPU Scaling Benchmark (NEW)
+
+#### 1. Prepare Fixed Sample List
+
+```bash
+# Generate a fixed list of 500 GVCFs
+bash generate_sample_list.sh /path/to/gvcfs 500 samples_500.txt
+```
+
+#### 2. Run CPU Scaling Benchmark
+
+```bash
+# Run with default CPU counts (16,24,32,48,64,96,144)
+bash hgc_cpu_scaling_benchmark.sh \
+    --gvcf-list samples_500.txt \
+    --output-dir ./cpu_scaling_500 \
+    --sample-size 500 \
+    --cpu-counts 16,24,32,48,64,96,144
+
+# Or use the example script
+bash run_cpu_scaling_example.sh
+```
+
+**Default Configuration:**
+- Sample size: 500 (FIXED)
+- CPU counts: 16, 24, 32, 48, 64, 96, 144 (VARIABLE)
+- Memory per core: 4GB
+- Reference genome: GRCh38
+
+**Options:**
+- `--gvcf-list FILE`: File with GVCF paths (one per line)
+- `--output-dir DIR`: Output directory for results
+- `--sample-size N`: Fixed sample size (for naming/logging)
+- `--cpu-counts COUNTS`: Comma-separated CPU counts to test
+- `--memory-per-core GB`: Memory per CPU core in GB
+- `--reference REF`: Reference genome
+- `--resume`: Skip already completed runs
+- `--help`: Show help message
+
+#### 3. View CPU Scaling Results
+
+```bash
+# View summary
+cat ./cpu_scaling_500/cpu_scaling_summary.txt
+
+# View comprehensive plot
+open ./cpu_scaling_500/cpu_scaling_comprehensive.png
+```
+
+**Generated Plots:**
+- `cpu_scaling_runtime.png` - Runtime vs CPU count
+- `cpu_scaling_speedup.png` - Speedup analysis with ideal reference
+- `cpu_scaling_efficiency.png` - Parallel efficiency curve
+- `cpu_scaling_step_breakdown.png` - Per-step scaling
+- `cpu_scaling_comprehensive.png` - 4-panel overview (publication-ready)
+
+**Key Metrics:**
+- **Speedup**: How much faster with more CPUs (ideal = linear)
+- **Efficiency**: CPU utilization percentage (100% = perfect)
+- **Sweet spot**: Optimal CPU count for efficiency/cost tradeoff
+
+For detailed documentation, see:
+- `README_cpu_scaling.md` - Full documentation
+- `QUICKREF_cpu_scaling.md` - Quick reference guide
+
+---
+
+## Sample Size Benchmark Output Structure
 
 ```
 scalability_results/

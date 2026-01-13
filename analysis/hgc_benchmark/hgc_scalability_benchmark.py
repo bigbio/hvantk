@@ -46,27 +46,130 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def setup_hail(tmp_dir: Path, log_file: Path):
-    """Initialize Hail with appropriate settings."""
-    logger.info("Initializing Hail...")
+def setup_hail(
+    tmp_dir: Path,
+    log_file: Path,
+    *,
+    driver_memory_gb: int = 128,
+    max_partition_bytes_mb: int = 128,
+    local_dir: Path | None = None,
+    aqe_enabled: bool = False,
+) -> None:
+    """
+    Initialize Hail for sample scalability benchmarking (weak scaling).
 
-    # Ensure directories exist and have correct permissions
+    Benchmarking goal
+    -----------------
+    You want runtime to scale linearly with sample count: T(n) ≈ a*n for large n.
+    The amount of work grows with sample count, so partition count should also grow.
+
+    Key benchmarking choices (and why)
+    ----------------------------------
+    1) Keep partition SIZE constant (max_partition_bytes), not COUNT:
+       - Each partition should have ~128MB of data (Spark standard)
+       - As samples increase, data increases, so partition count increases naturally
+       - This reflects real-world scaling: more data = more partitions
+       - Opposite of CPU scaling, where partition COUNT is fixed!
+
+    2) Use a large, FIXED driver heap:
+       - Genomic workflows need memory for sample/variant metadata
+       - Fixed heap prevents GC variance across runs
+       - Keep constant across all sample sizes
+
+    3) AQE off for reproducibility:
+       - Adaptive Query Execution changes execution plans at runtime
+       - Makes runs non-comparable
+       - For scalability measurement: OFF
+       - For production: ON (for best performance)
+
+    4) local[144] CPU allocation (fixed):
+       - Constant CPU count isolates sample scaling
+       - Measures algorithm complexity: O(n), O(n²), etc.
+       - Not measuring CPU parallelism
+
+    Practical benchmarking tips
+    ---------------------------
+    - Do one warm-up run (discard it) to stabilize JIT and filesystem cache.
+    - Run each sample size once (not replicates) since you're measuring scaling, not variance.
+    - Plot runtime vs sample size and fit to y = a*n + b to check linearity.
+    - Expected R² > 0.98 for linear scaling
+
+    Args:
+        tmp_dir: Hail temporary directory (should be on fast local storage).
+        log_file: Hail log file path.
+        driver_memory_gb: Fixed driver heap size across all runs (default: 128GB).
+        max_partition_bytes_mb: Max partition size in MB for input reading (default: 128MB).
+                                Partition COUNT will scale with data size.
+        local_dir: Optional Spark local directory for shuffle spill (recommend NVMe).
+        aqe_enabled: Whether to enable Adaptive Query Execution (recommend False, default: False).
+
+    Returns:
+        None (initializes Hail global context).
+    """
+    logger.info("Initializing Hail for sample scalability benchmarking (weak scaling)")
+    logger.info("Benchmark invariants (kept constant across sample size runs):")
+    logger.info(f"  driver_memory_gb     = {driver_memory_gb}g")
+    logger.info(f"  max_partition_bytes  = {max_partition_bytes_mb} MB")
+    logger.info(f"  AQE enabled          = {aqe_enabled}")
+    if local_dir is not None:
+        logger.info(f"  spark.local.dir      = {local_dir}")
+    logger.info("Note: Partition COUNT will scale with data size (samples)")
+    logger.info("      This is CORRECT for weak scaling (unlike CPU scaling)")
+
+    # Ensure directories exist
     tmp_dir.mkdir(parents=True, exist_ok=True)
     log_file.parent.mkdir(parents=True, exist_ok=True)
+    if local_dir is not None:
+        local_dir.mkdir(parents=True, exist_ok=True)
 
+    spark_conf = {
+        # --- Memory (fixed across sample size runs) ---
+        "spark.driver.memory": f"{driver_memory_gb}g",
+
+        # --- Input file splitting (fixed to control work distribution) ---
+        # Partition SIZE is fixed; partition COUNT scales with data (correct for weak scaling)
+        "spark.sql.files.maxPartitionBytes": str(max_partition_bytes_mb * 1024 * 1024),
+
+        # --- Shuffles (adaptive: let Spark decide based on data size) ---
+        # Do not fix shuffle partitions! Let them scale with data.
+        # Use Spark defaults or calculate from sample count.
+        "spark.sql.shuffle.partitions": "200",  # Conservative default for small starts
+
+        # --- AQE (off for reproducible weak scaling measurement) ---
+        "spark.sql.adaptive.enabled": "true" if aqe_enabled else "false",
+        "spark.sql.adaptive.coalescePartitions.enabled": "true" if aqe_enabled else "false",
+    }
+
+    # Optional: place shuffle spill & temp files on fast local disk
+    if local_dir is not None:
+        spark_conf["spark.local.dir"] = str(local_dir)
+
+    # Initialize Hail context
     try:
+        # Stop previous context if exists
+        if hl.current_backend() is not None:
+            try:
+                hl.stop()
+            except Exception:
+                pass
+
         hl.init(
             tmp_dir=str(tmp_dir),
             log=str(log_file),
             quiet=False,
             append=False,
-            min_block_size=0,  # Important for combiner
-            default_reference='GRCh38'
+            min_block_size=0,          # Important for combiner workflows
+            default_reference="GRCh38",
+            master="local[144]",        # Fixed CPU allocation for weak scaling
+            spark_conf=spark_conf,
         )
-        logger.info(f"✓ Hail initialized successfully")
+
+        logger.info("✓ Hail initialized successfully")
         logger.info(f"  Hail version: {hl.__version__}")
-        logger.info(f"  Temp directory: {tmp_dir}")
-        logger.info(f"  Log file: {log_file}")
+        logger.info(f"  Spark master: local[144]")
+        logger.info(f"  tmp_dir: {tmp_dir}")
+        logger.info(f"  log_file: {log_file}")
+
     except Exception as e:
         logger.error(f"Failed to initialize Hail: {e}")
         raise
@@ -203,6 +306,16 @@ def run_hgc_workflow(
         logger.error(f"[{sample_size}] Step 2 FAILED: {e}")
         raise
 
+    # STEP 2.1: Record MT partition count (NO repartition - let Spark scale naturally)
+    logger.info(f"[{sample_size}] Step 2.1: Recording MatrixTable partition count...")
+    try:
+        mt = hl.read_matrix_table(mt_path)
+        timings['mt_partitions'] = mt.n_partitions
+        logger.info(f"[{sample_size}]   → MatrixTable has {mt.n_partitions} partitions (natural, not forced)")
+    except Exception as e:
+        logger.error(f"[{sample_size}] Step 2.1 FAILED: {e}")
+        raise
+
     # STEP 3: Compute QC metrics and export QC tables
     logger.info(f"[{sample_size}] Step 3/4: Computing QC metrics and exporting QC tables...")
     start = time.time()
@@ -282,6 +395,29 @@ def main():
         help='Number of samples (for logging and naming)'
     )
     parser.add_argument(
+        '--driver-memory',
+        type=int,
+        default=128,
+        help='Driver memory in GB (default: 128, kept FIXED across runs)'
+    )
+    parser.add_argument(
+        '--max-partition-bytes',
+        type=int,
+        default=128,
+        help='Max partition bytes in MB (default: 128, kept FIXED - partition count will scale with data)'
+    )
+    parser.add_argument(
+        '--local-dir',
+        type=Path,
+        default=None,
+        help='Spark local directory for shuffle spill (recommend fast NVMe)'
+    )
+    parser.add_argument(
+        '--aqe-enabled',
+        action='store_true',
+        help='Enable Adaptive Query Execution (default: False for reproducible weak scaling)'
+    )
+    parser.add_argument(
         '--reference',
         type=str,
         default='GRCh38',
@@ -302,16 +438,27 @@ def main():
     ))
     logger.addHandler(file_handler)
 
-    logger.info(f"HGC Scalability Benchmark - Sample Size: {args.sample_size}")
-    logger.info(f"GVCF list: {args.gvcf_list}")
-    logger.info(f"Output directory: {args.output_dir}")
-    logger.info(f"Reference genome: {args.reference}")
+    logger.info(f"HGC Scalability Benchmark - Weak Scaling Test")
+    logger.info(f"  Sample Size: {args.sample_size} (VARIABLE)")
+    logger.info(f"  Driver Memory: {args.driver_memory}GB (FIXED)")
+    logger.info(f"  Max Partition Bytes: {args.max_partition_bytes}MB (FIXED)")
+    logger.info(f"  AQE Enabled: {args.aqe_enabled}")
+    logger.info(f"  GVCF list: {args.gvcf_list}")
+    logger.info(f"  Output directory: {args.output_dir}")
+    logger.info(f"  Reference genome: {args.reference}")
 
     # Initialize Hail
     tmp_dir = args.output_dir / "hail_tmp"
     tmp_dir.mkdir(exist_ok=True)
     hail_log = args.output_dir / f"hail_{args.sample_size}.log"
-    setup_hail(tmp_dir, hail_log)
+    setup_hail(
+        tmp_dir=tmp_dir,
+        log_file=hail_log,
+        driver_memory_gb=args.driver_memory,
+        max_partition_bytes_mb=args.max_partition_bytes,
+        local_dir=args.local_dir,
+        aqe_enabled=args.aqe_enabled,
+    )
 
     # Read GVCF list
     gvcf_files = read_gvcf_list(args.gvcf_list)
