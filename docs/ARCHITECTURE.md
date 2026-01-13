@@ -11,6 +11,8 @@
 
 ## Project Structure
 
+## Current Structure
+
 ```
 hvantk/
 ├── core/                # Shared infrastructure
@@ -24,24 +26,12 @@ hvantk/
 │   ├── file_utils.py   # File I/O utilities
 │   └── data_streamer.py # Data streaming
 │
-├── builders/            # Data builders by domain
-│   ├── variants/       # Variant-level annotations
-│   │   ├── clinvar.py     # ClinVar variant annotations
-│   │   ├── dbnsfp.py      # dbNSFP prediction scores
-│   │   ├── gnomad.py      # gnomAD variant frequencies
-│   │   └── ccr.py         # CCR constraint scores
-│   │
-│   ├── genes/          # Gene-level annotations
-│   │   ├── ensembl.py     # Ensembl gene annotations
-│   │   ├── gevir.py       # GeVIR scores
-│   │   └── gnomad_metrics.py # gnomAD gene constraints
-│   │
-│   ├── proteins/       # Protein-level annotations
-│   │   └── insider.py     # INSIDER protein-protein interactions
-│   │
-│   └── expression/     # Expression matrices
-│       ├── ucsc.py        # UCSC Cell Browser matrices
-│       └── bulk.py        # Bulk RNA-seq matrices
+├── tables/              # Table and matrix builders
+│   ├── table_builders.py    # Variant and gene annotation builders
+│   ├── matrix_builders.py   # Expression matrix builders
+│   ├── ucsc.py             # UCSC-specific builders
+│   ├── expression_atlas.py # Expression Atlas builders
+│   └── registry.py         # Builder registry
 │
 ├── commands/            # CLI command implementations
 │   ├── make_table_cli.py      # Table builder commands
@@ -69,23 +59,56 @@ hvantk/
 │   └── schemas/        # Schema definitions
 │
 └── tests/               # Test suite
-    ├── unit/           # Unit tests
-    ├── integration/    # Integration tests
+    ├── test_*.py       # Unit and integration tests
     └── testdata/       # Test data fixtures
 ```
+
+## Future Structure (Proposed)
+
+For improved organization, builders could be separated by domain:
+
+```
+hvantk/
+├── builders/            # Data builders by domain (FUTURE)
+│   ├── variants/       # Variant-level annotations
+│   │   ├── clinvar.py     # ClinVar variant annotations
+│   │   ├── dbnsfp.py      # dbNSFP prediction scores
+│   │   ├── gnomad.py      # gnomAD variant frequencies
+│   │   └── ccr.py         # CCR constraint scores
+│   │
+│   ├── genes/          # Gene-level annotations
+│   │   ├── ensembl.py     # Ensembl gene annotations
+│   │   ├── gevir.py       # GeVIR scores
+│   │   └── gnomad_metrics.py # gnomAD gene constraints
+│   │
+│   ├── proteins/       # Protein-level annotations
+│   │   └── insider.py     # INSIDER protein-protein interactions
+│   │
+│   └── expression/     # Expression matrices
+│       ├── ucsc.py        # UCSC Cell Browser matrices
+│       └── bulk.py        # Bulk RNA-seq matrices
+```
+
+This reorganization would improve navigability while maintaining backward compatibility through import shims.
 
 ## Design Principles
 
 ### 1. Domain Separation
 
-Data is organized by biological domain rather than technical implementation:
+Data builders are currently organized in the `tables/` module, with plans to separate by biological domain:
 
-- **Variants** (`builders/variants/`) - Variant-level annotations keyed by `(locus, alleles)`
-- **Genes** (`builders/genes/`) - Gene-level annotations keyed by `gene_id`
-- **Proteins** (`builders/proteins/`) - Protein-level annotations keyed by `protein_id` or `interval`
-- **Expression** (`builders/expression/`) - Expression matrices with rows=genes, columns=samples/cells
+**Current organization:**
+- `tables/table_builders.py` - All variant and gene annotation builders
+- `tables/matrix_builders.py` - All expression matrix builders
+- `tables/ucsc.py` - UCSC-specific builders
 
-This organization makes it intuitive to find and add new data sources.
+**Future organization (proposed):**
+- **Variants** - Variant-level annotations keyed by `(locus, alleles)`
+- **Genes** - Gene-level annotations keyed by `gene_id`
+- **Proteins** - Protein-level annotations keyed by `protein_id` or `interval`
+- **Expression** - Expression matrices with rows=genes, columns=samples/cells
+
+This reorganization would make it more intuitive to find and add new data sources while maintaining backward compatibility.
 
 ### 2. Protocol-Based Extensibility
 
@@ -246,37 +269,29 @@ annotated = variants.annotate(
 - `file_utils.py` - File I/O utilities (download, checksum, compression)
 - `data_streamer.py` - Data streaming and transformation helpers
 
-### Builders Module (`builders/`)
+### Tables Module (`tables/`)
 
 **Purpose**: Convert raw data files into Hail Tables/MatrixTables
 
-**Organization by domain**:
+**Current organization**:
 
-#### `builders/variants/`
-- **ClinVar** - Variant clinical significance (VCF → Table)
-- **dbNSFP** - Missense variant prediction scores (TSV → Table)
-- **gnomAD** - Population variant frequencies (VCF → Table)
-- **CCR** - Coding-constrained regions (BED → Table)
+- `table_builders.py` - All variant and gene annotation builders:
+  - **ClinVar** - Variant clinical significance (VCF → Table)
+  - **dbNSFP** - Missense variant prediction scores (TSV → Table)
+  - **Ensembl** - Gene annotations from Biomart (TSV → Table)
+  - **GeVIR** - Gene-level viability scores (TSV → Table)
+  - **gnomAD Metrics** - Gene constraint metrics (TSV → Table)
+  - **INSIDER** - Protein-protein interaction sites (BED → Table)
 
-**Schema**: Tables keyed by `(locus, alleles)`
+- `matrix_builders.py` - Expression matrix builders:
+  - **UCSC** - Single-cell RNA-seq (TSV → MatrixTable)
+  - **Expression Atlas** - Bulk RNA-seq (TSV → MatrixTable)
 
-#### `builders/genes/`
-- **Ensembl** - Gene annotations from Biomart (TSV → Table)
-- **GeVIR** - Gene-level viability scores (TSV → Table)
-- **gnomAD Metrics** - Gene constraint metrics (TSV → Table)
-
-**Schema**: Tables keyed by `gene_id`
-
-#### `builders/proteins/`
-- **INSIDER** - Protein-protein interaction sites (BED → Table)
-
-**Schema**: Tables keyed by `interval` or `protein_id`
-
-#### `builders/expression/`
-- **UCSC** - Single-cell RNA-seq from UCSC Cell Browser (TSV → MatrixTable)
-- **Bulk** - Bulk RNA-seq expression (TSV → MatrixTable)
-
-**Schema**: MatrixTables with rows=genes, columns=samples/cells
+**Schemas**:
+- Variant tables keyed by `(locus, alleles)`
+- Gene tables keyed by `gene_id`
+- Protein tables keyed by `interval` or `protein_id`
+- Expression matrices with rows=genes, columns=samples/cells
 
 ### Commands Module (`commands/`)
 
@@ -334,36 +349,56 @@ tests/
 
 ### Adding a New Data Source
 
-1. **Choose the appropriate domain** (`variants/`, `genes/`, `proteins/`, `expression/`)
-
-2. **Implement a builder** following the `Builder` protocol:
+1. **Add builder to appropriate file** in `hvantk/tables/`:
    ```python
-   # hvantk/builders/variants/my_source.py
-   from hvantk.core.protocols import Builder
+   # hvantk/tables/table_builders.py (for variants/genes)
+   # OR hvantk/tables/matrix_builders.py (for expression)
+   
    import hail as hl
    
    def create_my_source_tb(input_path: str, output_path: str, **kwargs) -> hl.Table:
-       # Implementation
-       pass
+       """
+       Create a Hail Table from my data source.
+       
+       Follows the Builder protocol pattern.
+       """
+       # Import data
+       ht = hl.import_table(input_path, ...)
+       
+       # Key appropriately (locus/alleles for variants, gene_id for genes)
+       ht = ht.key_by(...)
+       
+       # Checkpoint to disk
+       ht = ht.checkpoint(output_path, overwrite=kwargs.get('overwrite', False))
+       
+       return ht
    ```
 
-3. **Add a CLI command**:
+2. **Add a CLI command** in `hvantk/commands/make_table_cli.py`:
    ```python
-   # hvantk/commands/make_table_cli.py
    @mktable_group.command("my-source")
-   def mktable_my_source(...):
-       create_my_source_tb(...)
+   @_raw_input_opt
+   @_output_ht_opt
+   @_overwrite_opt
+   def mktable_my_source(raw_input: str, output_ht: str, overwrite: bool):
+       """Build a MySource Hail Table."""
+       from hvantk.tables.table_builders import create_my_source_tb
+       
+       create_my_source_tb(
+           input_path=raw_input,
+           output_path=output_ht,
+           overwrite=overwrite
+       )
    ```
 
-4. **Add tests**:
+3. **Add tests** in `hvantk/tests/`:
    ```python
-   # hvantk/tests/unit/builders/test_variants.py
    def test_create_my_source_tb():
        # Test implementation
        pass
    ```
 
-5. **Update documentation** in README.md and USAGE.md
+4. **Update documentation** in README.md and USAGE.md
 
 ### Adding a New Transformation
 
