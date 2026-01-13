@@ -3,211 +3,54 @@
 
 # hvantk
 
-Hail-based multiomics variant annotation toolkit.
+**Hail-based multiomics variant annotation toolkit**
 
-## Description
+`hvantk` is a powerful annotation toolkit that uses [Hail](https://hail.is/) to annotate variants and genes with multiple omics data types. It enables integration of variant prediction scores, gene expression data, protein expression, and clinical annotations to improve genetic variant interpretation.
 
-`hvantk` is an annotation toolkit that uses Hail to annotate variants and genes with multiple omics data types (e.g.,
-variant prediction scores, gene or protein expression). The library is designed to be modular and extensible,
-allowing users to add new data types and sources. The main goal is to leverage multiomics integration and annotations
-from heterogeneous sources to improve the interpretation of genetic variants.
+## ✨ Key Features
 
-## Installation
+- **Multiomics Integration**: Combine variant annotations, gene expression, and clinical data
+- **Hail-Powered**: Leverage Hail's scalable genomic data processing
+- **Modular Design**: Extensible framework for adding new data sources
+- **Joint Genotyping**: HGC module for efficient GVCF combination and quality control
+- **Recipe-Based Workflows**: JSON/YAML recipes for reproducible analyses
+- **Multiple Formats**: Support for VCF, MatrixTable, and Hail Table formats
 
-Download the source code and install the package using Poetry:
+## 📦 Installation
 
 ```bash
 git clone https://github.com/bigbio/hvantk
 cd hvantk
 poetry install
-```
-
-If you don't have Poetry installed, you can install it using:
-
-```bash
-pip install poetry
-```
-
-or, if you prefer conda:
-
-```bash
-conda install -c conda-forge poetry
-```
-
-Then, activate the environment:
-
-```bash
 poetry shell
 ```
 
-## Usage Examples
+Prerequisites: [Poetry](https://python-poetry.org/) for dependency management.
 
-### 1. Download UCSC Cell Browser data:
+## 🚀 Quick Start
 
-```bash
-hvantk ucsc-downloader --dataset adultPancreas --output-dir data/ucsc
-```
-
-This command downloads the expression matrix and metadata for the `adultPancreas` dataset from the UCSC Cell Browser and saves it to the `data/ucsc` directory.
-
-### 2. Convert UCSC Cell data to Hail matrix table:
+### Build Annotation Tables
 
 ```bash
-hvantk mkmatrix ucsc -e hvantk/tests/testdata/raw/ucsc/exprMatrix.test.tsv.bgz -m hvantk/tests/testdata/raw/ucsc/meta.test.tsv -o data/ucsc/exprMatrix.mt
+# ClinVar annotations
+hvantk mktable clinvar --raw-input clinvar.vcf.bgz --output-ht clinvar.ht --ref-genome GRCh38
+
+# Gene constraint metrics
+hvantk mktable gnomad-metrics --raw-input gnomad.tsv.bgz --output-ht gnomad.ht
 ```
 
-This command converts the expression matrix and metadata files from the UCSC Cell Browser into a Hail matrix table format.
-
-Example matrix table schema:
-
-```markdown
----
-
-Global fields:
-None
-
----
-
-Column fields:
-'cell_id': str
-'metadata': struct {
-orig_ident: str,
-nCount_RNA: int32,
-nFeature_RNA: int32,
-percent_mt: float64,
-Rep: int32,
-Age: int32,
-Region: str,
-RNA_snn_res_0_8: int32,
-seurat_clusters: int32,
-clusters: int32,
-colors: str,
-major_cell_class: str
-}
-
----
-
-Row fields:
-'gene': str
-
----
-
-Entry fields:
-'x': int32
-
----
-
-Column key: ['cell_id']
-Row key: ['gene']
-
----
-```
-
-### 3A. Batch-create annotation tables from a recipe:
-
-Create a recipe JSON (YAML also supported if PyYAML is installed):
-
-```json
-{
-  "tables": [
-    {
-      "name": "clinvar",
-      "input": "/data/clinvar_2024.vcf.bgz",
-      "output": "/out/clinvar.ht",
-      "params": {"reference_genome": "GRCh38", "export_tsv": true}
-    },
-    {
-      "name": "interactome",
-      "input": "/data/insider.bed.bgz",
-      "output": "/out/interactome.ht",
-      "params": {"reference_genome": "GRCh38"}
-    }
-  ]
-}
-```
-
-Run:
+### Create Expression MatrixTables
 
 ```bash
-hvantk mktable-batch --recipe /path/to/tables.json
+# UCSC Cell Browser data
+hvantk mkmatrix ucsc \
+  --expression-matrix expr.tsv.bgz \
+  --metadata meta.tsv \
+  --output-mt ucsc.mt
 ```
 
-### 3B. Create a single table from an explicit raw file:
+### Joint Genotyping with HGC
 
-- ClinVar (VCF → HT keyed by locus, alleles):
-
-```bash
-hvantk mktable clinvar --raw-input /path/to/clinvar.vcf.bgz --output-ht /path/to/clinvar.ht --ref-genome GRCh38 --overwrite
-```
-
-- Interactome (BED intervals → HT keyed by interval):
-
-```bash
-hvantk mktable interactome --raw-input /path/to/interactome.bed.bgz --output-ht /path/to/interactome.ht
-```
-
-- GeVIR (TSV keyed by gene_id):
-
-```bash
-hvantk mktable gevir --raw-input /path/to/gevir.tsv.bgz --output-ht /path/to/gevir.ht --fields oe_syn_upper,oe_mis_upper
-```
-
-- gnomAD constraint metrics (TSV keyed by gene_id):
-
-```bash
-hvantk mktable gnomad-metrics --raw-input /path/to/gnomad.tsv.bgz --output-ht /path/to/gnomad.ht
-```
-
-- Ensembl gene annotations (Biomart TSV keyed by gene_id):
-
-```bash
-hvantk mktable ensembl-gene --raw-input /path/to/biomart.tsv.bgz --output-ht /path/to/ensembl.ht --no-canonical
-```
-
-Run `hvantk mktable --help` or `hvantk mktable <subcommand> --help` for full options.
-
-### 2B. Batch-create MatrixTables from a recipe:
-
-Create a recipe JSON (YAML also supported if PyYAML is installed):
-
-```json
-{
-  "matrices": [
-    {
-      "name": "ucsc",
-      "inputs": {
-        "expression_matrix": "/data/ucsc/expr.tsv.bgz",
-        "metadata": "/data/ucsc/meta.tsv"
-      },
-      "output": "/out/ucsc.mt",
-      "params": {"gene_column": "gene", "overwrite": true}
-    }
-  ]
-}
-```
-
-Run:
-
-```bash
-hvantk mkmatrix-batch --recipe /path/to/matrices.json
-```
-
-For more examples and recipes, see docs/USAGE.md and examples/recipes/.
-
-## HGC: Hail-based Genotype Combiner
-
-The HGC (Hail-based Genotype Combiner) module provides high-performance tools for joint genotyping workflows using Hail. It enables efficient combination of GVCF files and includes comprehensive quality control functionality for post-combination analysis.
-
-### Core Features
-- **Joint Genotyping**: Combine thousands of GVCF files into unified VDS/MatrixTable formats
-- **Format Conversion**: Convert between VDS, MatrixTable, and VCF formats
-- **Quality Control**: Comprehensive QC metrics, visualizations, and filtering for combined cohorts
-- **Scalable Processing**: Optimized for large cohorts with efficient memory usage
-- **CLI & Python API**: Flexible interfaces for different workflow needs
-
-### Quick Start
-
-#### Joint Genotyping Pipeline
 ```bash
 # Combine GVCF files
 hvantk hgc gvcf-combine -g /data/gvcfs -o cohort.vds
@@ -215,94 +58,80 @@ hvantk hgc gvcf-combine -g /data/gvcfs -o cohort.vds
 # Convert to MatrixTable
 hvantk hgc vds2mt -i cohort.vds -o cohort.mt --adjust-genotypes
 
-# Export to VCF
-hvantk hgc mt2vcf -i cohort.mt -o cohort.vcf.gz
+# Generate QC report
+hvantk hgc qc-report -i cohort.mt -o qc_report.html
 ```
 
-#### Post-Combination Quality Control
+## 📚 Documentation
+
+Comprehensive documentation is available in the [`docs/`](docs/) directory:
+
+- **[Usage Guide](docs/library/usage.md)** - Detailed examples and workflows
+- **[HGC Tool](docs/tools/hgc.md)** - Joint genotyping and quality control
+- **[Annotation Sources](docs/library/annotation-sources.md)** - Available data sources
+- **[Developer Guide](docs/planning/DEVELOPING.md)** - Contributing and development
+- **[Full Documentation Index](docs/README.md)** - Complete documentation structure
+
+## 🧬 Supported Data Sources
+
+### Variant Annotations
+- **ClinVar** - Clinical significance annotations
+- **dbNSFP** - Missense variant prediction scores
+- **gnomAD** - Population allele frequencies and constraint metrics
+- **INSIDER** - Protein-protein interaction sites
+
+### Expression Data
+- **UCSC Cell Browser** - Single-cell RNA-seq datasets
+- **Expression Atlas** - Bulk RNA-seq across tissues and conditions
+- **CPTAC** - Protein expression data
+
+See [Annotation Sources](docs/library/annotation-sources.md) for complete list and download instructions.
+
+## 🔧 Tools
+
+### HGC: Hail-based Genotype Combiner
+
+High-performance joint genotyping workflow for combining GVCF files:
+
+- Scalable GVCF combination (1000s of samples)
+- VDS ↔ MatrixTable ↔ VCF format conversion
+- Comprehensive quality control and visualization
+- Interactive HTML reports
+
+[HGC Documentation](docs/tools/hgc.md) | [Examples](examples/hgc_qc_example.py)
+
+## 💻 For Developers
+
 ```bash
-# Compute QC metrics for combined cohort
-hvantk hgc compute-qc -i cohort.mt -o cohort_qc.mt
+# Run tests
+pytest -q
 
-# Generate comprehensive QC report
-hvantk hgc qc-report -i cohort_qc.mt -o qc_report.html
+# Explore CLI
+hvantk --help
 
-# Create interactive QC plots
-hvantk hgc plot-qc -i cohort_qc.mt -o plots/ --plot-type dashboard --interactive
+# Add a new data source
+# 1. Define schema contract
+# 2. Write builder function
+# 3. Register in catalog
+# 4. Add tests
 ```
 
-### Programmatic Usage
+See [Developer Guide](docs/planning/DEVELOPING.md) for detailed workflow.
 
-```python
-from hvantk.hgc import combine_gvcfs, convert_vds_to_mt, compute_full_qc
+## 📄 License
 
-# Joint genotyping
-combine_gvcfs(gvcf_dir="/data/gvcfs", vds_output_path="cohort.vds", tmp_path="/tmp")
-convert_vds_to_mt(vds_path="cohort.vds", output_path="cohort.mt")
+MIT License - see [LICENSE](LICENSE) for details.
 
-# Quality control on combined cohort
-qc_results = compute_full_qc(hl.read_matrix_table("cohort.mt"))
-qc_results.generate_html_report('qc_report.html')
-```
+## 🤝 Contributing
 
-For detailed documentation, see [hvantk/hgc/README.md](hvantk/hgc/README.md).
+Contributions welcome! Please see our [Developer Guide](docs/planning/DEVELOPING.md) for:
+- Development workflow
+- Code style guidelines
+- Testing requirements
+- Pull request process
 
-## Annotation sources
+## 📧 Support
 
-A full description of the sources and how to download the data is available in the
-[README.sources.md](README.sources.md) file.
-
-- Variants and genomic regions
-
-  - Missense variants prediction scores (from dbNSFP)
-  - ClinVar annotations
-  - gnomAD annotations (e.g. allele frequencies)
-  - Protein-protein interaction site (INSIDER)
-  - Ensemble gene annotations
-  - GeVIR score (PMID:31873297)
-  - Coding-constrained region (CCR) score
-
-- Bulk RNA-seq data
-
-  - Human tissue expression (brain, heart, liver, kidney), multiple developmental time points (E-MTAB-6814)
-
-- Single-cell RNA-seq data
-
-  - Embryonic human heart single-cell RNA-seq data (PMID:31835037).
-  - Human heart single-cell RNA-seq data (PMID:31835037).
-  - Human heart cell atlas (UCSC, https://doi.org/10.1038/s41586-020-2797-4).
-
-- Protein expression data
-  - TODO: Add protein expression data sources.
-
-# Things to do:
-
-- Add a section to download the data from the sources.
-- Add a section about conversion from local files. including local mapping files of they are needed.
-- Some small benchmarks with loom -> to the annotation tool in hail.
-
-## Developer quickstart
-
-- Install and activate the environment (see Installation), then run tests:
-  - `pytest -q`
-- Explore the CLI to see available commands:
-  - `hvantk --help`
-- Typical workflow when adding a new data source:
-  1) Define a data product contract (Table/MatrixTable schema + metadata)
-  2) Write a downloader (optional) and a builder that outputs a Hail Table/MatrixTable
-  3) Register the dataset in a small manifest (provenance, versions, hashes)
-  4) Create streamers (transformers) and compose a recipe to answer a biological question
-  5) Add tiny tests using the fixtures in hvantk/tests/testdata
-
-See:
-- docs/DEVELOPING.md – dev workflow and contracts
-- docs/STREAMERS_AND_RECIPES.md – streamer interface and JSON recipes (YAML optional)
-- docs/DATA_CATALOG.md – hosting strategy and dataset registry format
-
-## Limitations and strategy
-
-- Heterogeneous omics, full-table builds: Prefer a slice-first approach. Builders should support selectors (genes/regions, tissues/cell types, timepoints) so users don’t have to build everything. Cache by parameter hash to reuse slices.
-- Limited hosting: Use a lightweight data catalog (JSON first; YAML optional) that points to immutable remote URIs (S3/GCS/Zenodo/DOI) with checksums. Host only manifests and small indices in this repo.
-- Streamers and pipelines: Define a tiny plugin contract for streamers (read -> transform -> write) and compose them with JSON "recipes" (YAML optional). Keep streamers stateless and testable on tiny fixtures.
-
-Quick starts for each topic and examples live under examples/ (see examples/recipes/ and examples/datasets/).
+- **Issues**: [GitHub Issues](https://github.com/bigbio/hvantk/issues)
+- **Documentation**: [docs/](docs/)
+- **Examples**: [examples/](examples/)
