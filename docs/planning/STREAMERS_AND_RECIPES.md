@@ -4,31 +4,85 @@ This document describes the streamer interface and recipe format for hvantk data
 
 ## Overview
 
-Streamers are stateless, composable data transformers that follow a simple contract:
-- **Read**: Load data from a source (Hail Table, MatrixTable, or file)
-- **Transform**: Apply operations (filtering, annotation, aggregation)
-- **Write**: Output results to a destination
+Streamers are stateless, composable data transformers that follow the `Streamer` protocol:
+- **Transform**: Apply operations to Hail data structures (filtering, annotation, aggregation, joining)
+- **Validate**: Check that input data matches expected schema
+- **Metadata**: Provide information about the streamer's capabilities and requirements
+
+Streamers focus purely on transformation logic. I/O operations (reading from sources and writing to destinations) 
+are handled by the pipeline orchestration layer, which allows streamers to remain simple, testable, and composable.
 
 Recipes are JSON or YAML configurations that chain streamers together to answer biological questions.
 
 ## Streamer Interface
 
-A streamer should implement:
+A streamer should implement the `Streamer` protocol defined in `hvantk/core/protocols.py`:
 
 ```python
+from typing import Union, Dict, Any
+import hail as hl
+
 class Streamer:
-    def read(self, source: str) -> Union[hl.Table, hl.MatrixTable]:
-        """Load data from source"""
+    def transform(
+        self, 
+        input_data: Union[hl.Table, hl.MatrixTable], 
+        **params: Any
+    ) -> Union[hl.Table, hl.MatrixTable]:
+        """
+        Transform input data and return output.
+        
+        Parameters
+        ----------
+        input_data : Union[hl.Table, hl.MatrixTable]
+            Input Hail data structure
+        **params : Any
+            Transformation parameters (e.g., filter thresholds, join tables, etc.)
+        
+        Returns
+        -------
+        Union[hl.Table, hl.MatrixTable]
+            Transformed Hail data structure
+        """
         pass
     
-    def transform(self, data: Union[hl.Table, hl.MatrixTable]) -> Union[hl.Table, hl.MatrixTable]:
-        """Apply transformations"""
+    def validate_input(
+        self, 
+        input_data: Union[hl.Table, hl.MatrixTable]
+    ) -> bool:
+        """
+        Validate that input schema matches expectations.
+        
+        Parameters
+        ----------
+        input_data : Union[hl.Table, hl.MatrixTable]
+            The Hail data structure to validate
+        
+        Returns
+        -------
+        bool
+            True if input schema is valid, False otherwise
+        """
         pass
     
-    def write(self, data: Union[hl.Table, hl.MatrixTable], destination: str) -> None:
-        """Write data to destination"""
+    def get_metadata(self) -> Dict[str, Any]:
+        """
+        Return metadata about this streamer.
+        
+        Returns
+        -------
+        Dict[str, Any]
+            Metadata dictionary containing:
+            - type: str - 'filter', 'join', 'aggregate', 'annotate', etc.
+            - input_type: str - Expected input type
+            - output_type: str - Output type (optional)
+            - description: str - Human-readable description (optional)
+        """
         pass
 ```
+
+**Note**: Streamers focus on transformation logic only. Reading from sources and writing to destinations 
+are handled separately by pipeline orchestration (see recipe execution below). This separation allows 
+streamers to be pure, stateless transformers that are easily testable and composable.
 
 ### Design Principles
 
@@ -129,30 +183,32 @@ from hvantk.recipes import execute_recipe
 execute_recipe('recipe.json')
 ```
 
-## Built-in Streamers
+## Built-in Pipeline Components
 
-### Readers
+The pipeline supports various components for different stages of data processing:
+
+### I/O Components (Readers/Writers)
+These handle data loading and exporting, separate from the Streamer protocol:
 - `table_reader`: Load Hail Table
 - `matrix_table_reader`: Load Hail MatrixTable
 - `vcf_reader`: Load VCF file
-
-### Transformers
-- `frequency_filter`: Filter by allele frequency
-- `quality_filter`: Filter by quality metrics
-- `expression_annotator`: Add expression data
-- `consequence_annotator`: Add variant consequences
-
-### Writers
 - `table_writer`: Write Hail Table
 - `matrix_table_writer`: Write Hail MatrixTable
 - `vcf_writer`: Export to VCF
 - `tsv_writer`: Export to TSV
 
+### Streamers (Transform Components)
+These implement the `Streamer` protocol for data transformation:
+- `frequency_filter`: Filter by allele frequency
+- `quality_filter`: Filter by quality metrics
+- `expression_annotator`: Add expression data
+- `consequence_annotator`: Add variant consequences
+
 ## Creating Custom Streamers
 
-To create a custom streamer:
+To create a custom streamer, implement the `Streamer` protocol:
 
-1. Implement the streamer interface
+1. Implement all protocol methods: `transform()`, `validate_input()`, and `get_metadata()`
 2. Register it in the streamer registry
 3. Add tests with fixtures
 4. Document parameters
@@ -160,17 +216,40 @@ To create a custom streamer:
 Example:
 
 ```python
-from hvantk.streamers import BaseStreamer
+from typing import Union, Dict, Any
+import hail as hl
 
-class MyCustomStreamer(BaseStreamer):
-    def transform(self, data, **kwargs):
-        # Apply custom logic
-        filtered = data.filter(...)
+class MyCustomStreamer:
+    """Custom streamer that filters variants by a custom criterion."""
+    
+    def transform(
+        self, 
+        input_data: Union[hl.Table, hl.MatrixTable], 
+        **params: Any
+    ) -> Union[hl.Table, hl.MatrixTable]:
+        """Apply custom filtering logic."""
+        threshold = params.get('threshold', 0.5)
+        filtered = input_data.filter(input_data.custom_field >= threshold)
         return filtered
+    
+    def validate_input(
+        self, 
+        input_data: Union[hl.Table, hl.MatrixTable]
+    ) -> bool:
+        """Validate that input has required field."""
+        return 'custom_field' in input_data.row
+    
+    def get_metadata(self) -> Dict[str, Any]:
+        """Return streamer metadata."""
+        return {
+            'type': 'filter',
+            'input_type': 'variant_table',
+            'description': 'Filters variants by custom field threshold'
+        }
 
-# Register
+# Register the streamer
 from hvantk.streamers import register_streamer
-register_streamer('my_custom', MyCustomStreamer)
+register_streamer('my_custom_filter', MyCustomStreamer)
 ```
 
 ## Testing Recipes
