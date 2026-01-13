@@ -61,8 +61,8 @@ After reviewing the proposed refactoring plan and the current codebase, this doc
 **Risk**: None - Documentation only
 
 **Tasks Completed**:
-1. ✅ Created `docs/ARCHITECTURE.md` - Comprehensive architecture guide (402 lines)
-2. ✅ Created `docs/REFACTORING_REVIEW.md` - Analysis of original plan (214 lines)
+1. ✅ Created `docs/ARCHITECTURE.md` - Comprehensive architecture guide (437 lines)
+2. ✅ Created `docs/REFACTORING_REVIEW.md` - Analysis of original plan (182 lines)
 3. ✅ Created `docs/REFACTORING_IMPLEMENTATION.md` - Implementation summary (259 lines)
 4. ✅ Updated `README.md` with current architecture
 
@@ -130,8 +130,8 @@ After reviewing the proposed refactoring plan and the current codebase, this doc
 **Protocols and Documentation** (Immediate Value Delivered):
 - [x] Created `hvantk/core/protocols.py` with Builder, Streamer, Downloader protocols
 - [x] Added comprehensive type hints and docstrings
-- [x] Created `docs/ARCHITECTURE.md` - 402 lines documenting current structure
-- [x] Created `docs/REFACTORING_REVIEW.md` - 214 lines analyzing original plan
+- [x] Created `docs/ARCHITECTURE.md` - 437 lines documenting current structure
+- [x] Created `docs/REFACTORING_REVIEW.md` - 182 lines analyzing original plan
 - [x] Created `docs/REFACTORING_IMPLEMENTATION.md` - 259 lines implementation summary
 - [x] Updated README with current architecture
 

@@ -5,7 +5,7 @@ These protocols define the contracts that different components must follow,
 enabling better type checking and clearer interfaces for extensibility.
 """
 
-from typing import Protocol, Any, Dict, Callable
+from typing import Protocol, Any, Dict, Callable, Union
 from pathlib import Path
 import hail as hl
 
@@ -34,7 +34,7 @@ class Builder(Protocol):
         self, 
         input_path: str, 
         **params: Any
-    ) -> hl.Table | hl.MatrixTable:
+    ) -> Union[hl.Table, hl.MatrixTable]:
         """
         Build a Hail Table or MatrixTable from raw input.
         
@@ -48,7 +48,7 @@ class Builder(Protocol):
         
         Returns
         -------
-        hl.Table | hl.MatrixTable
+        Union[hl.Table, hl.MatrixTable]
             The constructed Hail Table or MatrixTable with appropriate keys
         
         Raises
@@ -62,14 +62,14 @@ class Builder(Protocol):
     
     def validate_schema(
         self, 
-        data: hl.Table | hl.MatrixTable
+        data: Union[hl.Table, hl.MatrixTable]
     ) -> bool:
         """
         Validate that the output schema matches expectations.
         
         Parameters
         ----------
-        data : hl.Table | hl.MatrixTable
+        data : Union[hl.Table, hl.MatrixTable]
             The Hail Table or MatrixTable to validate
         
         Returns
@@ -117,22 +117,22 @@ class Streamer(Protocol):
     
     def transform(
         self, 
-        input_data: hl.Table | hl.MatrixTable, 
+        input_data: Union[hl.Table, hl.MatrixTable], 
         **params: Any
-    ) -> hl.Table | hl.MatrixTable:
+    ) -> Union[hl.Table, hl.MatrixTable]:
         """
         Transform input data and return output.
         
         Parameters
         ----------
-        input_data : hl.Table | hl.MatrixTable
+        input_data : Union[hl.Table, hl.MatrixTable]
             Input Hail data structure
         **params : Any
             Transformation parameters (e.g., filter thresholds, join tables, etc.)
         
         Returns
         -------
-        hl.Table | hl.MatrixTable
+        Union[hl.Table, hl.MatrixTable]
             Transformed Hail data structure
         
         Raises
@@ -144,14 +144,14 @@ class Streamer(Protocol):
     
     def validate_input(
         self, 
-        input_data: hl.Table | hl.MatrixTable
+        input_data: Union[hl.Table, hl.MatrixTable]
     ) -> bool:
         """
         Validate that input schema matches expectations.
         
         Parameters
         ----------
-        input_data : hl.Table | hl.MatrixTable
+        input_data : Union[hl.Table, hl.MatrixTable]
             The Hail data structure to validate
         
         Returns
@@ -287,6 +287,6 @@ class Downloader(Protocol):
 
 
 # Type aliases for convenience
-TableOrMatrix = hl.Table | hl.MatrixTable
-BuilderFunction = Callable[..., hl.Table | hl.MatrixTable]
-StreamerFunction = Callable[[hl.Table | hl.MatrixTable], hl.Table | hl.MatrixTable]
+TableOrMatrix = Union[hl.Table, hl.MatrixTable]
+BuilderFunction = Callable[..., Union[hl.Table, hl.MatrixTable]]
+StreamerFunction = Callable[[Union[hl.Table, hl.MatrixTable]], Union[hl.Table, hl.MatrixTable]]
