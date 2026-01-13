@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "hvantk"
 version = "0.1.0"
-description = "Hail-based toolkit for joint genotyping workflows and multiomics variant annotation."
+description = "Hail-based toolkit for multi-omics variant annotation and analysis"
 authors = ["Yasset Perez-Riverol <ypriverol@gmail.com>",
            "Enrique Audain <enrique.audain@uni-oldenburg.de>"]
 license = "MIT"
