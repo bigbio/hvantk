@@ -1,11 +1,9 @@
 """
 HGC (Hail-based Genotype Combiner) module.
-
 This module provides functionality for combining and converting genomic variant data
 using Hail, including GVCF combination, VDS operations, MatrixTable conversions,
-and comprehensive quality control analysis.
+comprehensive quality control analysis, and end-to-end pipeline orchestration.
 """
-
 from hvantk.hgc.combiners import combine_gvcfs, combine_vdses
 from hvantk.hgc.converters import convert_vds_to_mt, convert_mt_to_multi_sample_vcf
 from hvantk.hgc.file_utils import (
@@ -28,7 +26,12 @@ from hvantk.hgc.qc import (
     prepare_qc_for_visualization,
     save_qc_metrics
 )
-
+from hvantk.hgc.pipeline import (
+    PipelineConfig,
+    PipelineState,
+    PipelineStage,
+    PipelineRunner
+)
 __all__ = [
     # Functions from combiners
     'combine_gvcfs',
@@ -53,5 +56,10 @@ __all__ = [
     'filter_variants_by_qc',
     'get_qc_summary_stats',
     'prepare_qc_for_visualization',
-    'save_qc_metrics'
+    'save_qc_metrics',
+    # Classes from pipeline
+    'PipelineConfig',
+    'PipelineState',
+    'PipelineStage',
+    'PipelineRunner'
 ]
