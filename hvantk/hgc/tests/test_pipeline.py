@@ -122,6 +122,7 @@ class TestPipelineState:
             assert loaded_state.start_time == "2026-01-14T10:00:00"
 
 
+@pytest.mark.hail
 class TestPipelineRunner:
     """Test PipelineRunner orchestration (without actually running Hail)."""
 
