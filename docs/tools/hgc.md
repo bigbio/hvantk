@@ -6,7 +6,16 @@ HGC is a module within hvantk that provides high-performance tools for joint gen
 
 The HGC module implements a complete joint genotyping pipeline with integrated quality control:
 
-### Primary Functionality: Joint Genotyping
+### Primary Functionality
+
+**Pipeline Orchestration** (Recommended)
+- **End-to-End Automation** - Single command runs gVCF → VDS → MT → QC → pVCF workflow
+- **Flexible Resumption** - Skip completed stages to resume from any point
+- **Integrated QC** - Optional quality filtering and HTML report generation
+- **State Persistence** - Automatic checkpointing for error recovery
+
+**Individual Component Commands** (Advanced)
+
 1. **GVCF Combination** - Combine multiple single-sample GVCF files into a unified Variant DataSet (VDS)
 2. **VDS Operations** - Merge multiple VDS datasets and convert between formats
 3. **MatrixTable Processing** - Convert VDS to analysis-ready MatrixTable format
@@ -19,6 +28,13 @@ The HGC module implements a complete joint genotyping pipeline with integrated q
 8. **QC-based Filtering** - Quality-based sample and variant filtering tools
 
 ## Key Features
+
+### Pipeline Orchestration
+- **Single-Command Workflows**: Run complete gVCF → pVCF pipeline with one command
+- **Smart Resumption**: Skip completed stages to recover from errors or resume processing
+- **Integrated QC**: Built-in quality filtering and HTML report generation
+- **State Management**: Automatic checkpointing with JSON state files
+- **Dry-Run Mode**: Preview execution plan before running
 
 ### Core Joint Genotyping Features
 - **Scalable Joint Genotyping**: Efficiently combine thousands of GVCF files using Hail's optimized combiner
@@ -50,9 +66,38 @@ poetry shell
 
 ### Command-Line Interface
 
-#### Core Joint Genotyping Commands
+#### End-to-End Pipeline (Recommended)
 
-The HGC module provides four main genotype combination commands accessible via `hvantk hgc`:
+For most users, the **pipeline command** provides the easiest way to run the complete workflow:
+
+```bash
+# Run complete pipeline: gVCF → VDS → MT → QC → VCF
+hvantk hgc pipeline \
+  -i /path/to/gvcfs \
+  -o /path/to/output
+
+# With QC filtering and HTML report
+hvantk hgc pipeline \
+  -i /path/to/gvcfs \
+  -o /path/to/output \
+  --apply-qc-filters \
+  --min-sample-call-rate 0.95 \
+  --generate-qc-report
+
+# View execution plan without running
+hvantk hgc pipeline \
+  -i /path/to/gvcfs \
+  -o /path/to/output \
+  --dry-run
+```
+
+See [Pipeline Orchestration](#pipeline-orchestration) for detailed documentation.
+
+#### Individual Component Commands
+
+For advanced users who need fine-grained control, HGC provides individual commands:
+
+**Core Joint Genotyping Commands:**
 
 ```bash
 # View available commands
@@ -71,7 +116,7 @@ hvantk hgc vds2mt -i combined.vds -o analysis.mt
 hvantk hgc mt2vcf -i analysis.mt -o results.vcf.gz
 ```
 
-#### Quality Control Commands (Post-Combination)
+**Quality Control Commands (Post-Combination):**
 
 Additional QC commands for analyzing combined cohorts:
 
@@ -159,9 +204,47 @@ mt_filtered = filter_variants_by_qc(
 )
 ```
 
+#### Pipeline Orchestration (Recommended)
+
+For end-to-end workflows, use the Pipeline API:
+
+```python
+from hvantk.hgc.pipeline import PipelineConfig, PipelineRunner
+
+# Create configuration
+config = PipelineConfig(
+    input_dir="/data/gvcfs",
+    output_dir="/data/output",
+    apply_qc_filters=True,
+    min_sample_call_rate=0.95,
+    generate_qc_report=True
+)
+
+# Run pipeline
+runner = PipelineRunner(config)
+runner.show_plan()  # Optional: preview execution
+state = runner.run()
+
+# Check results
+print(f"Outputs: {state.outputs}")
+```
+
+See [Pipeline Orchestration](#pipeline-orchestration) for detailed documentation.
+
 ## Core Components
 
-### 1. Combiners (`hvantk.hgc.combiners`)
+### 1. Pipeline (`hvantk.hgc.pipeline`)
+
+**Recommended** - End-to-end workflow orchestration:
+
+- **`PipelineConfig`** - Configuration dataclass with validation
+- **`PipelineRunner`** - Orchestration engine with dry-run support
+- **`PipelineState`** - State tracking with JSON save/load
+- **`PipelineStage`** - Enum of pipeline stages
+
+See [Pipeline Orchestration](#pipeline-orchestration) for detailed usage.
+
+### 2. Combiners (`hvantk.hgc.combiners`)
 
 Functions for combining genomic datasets:
 
@@ -172,14 +255,14 @@ Functions for combining genomic datasets:
 - **`combine_matrix_table_rows()`** - Combine MatrixTables by rows (variants)
 - **`combine_matrix_table_cols()`** - Combine MatrixTables by columns (samples)
 
-### 2. Converters (`hvantk.hgc.converters`)
+### 3. Converters (`hvantk.hgc.converters`)
 
 Functions for format conversion:
 
 - **`convert_vds_to_mt()`** - Convert VDS to dense MatrixTable format
 - **`convert_mt_to_multi_sample_vcf()`** - Export MatrixTable to multi-sample VCF
 
-### 3. File Utilities (`hvantk.hgc.file_utils`)
+### 4. File Utilities (`hvantk.hgc.file_utils`)
 
 Helper functions for file handling:
 
@@ -353,11 +436,231 @@ The output VCF includes standard INFO fields:
 - `AN`: Total number of alleles
 - `call_rate`: Variant call rate
 
+## Pipeline Orchestration
+
+The **HGC Pipeline** provides end-to-end workflow orchestration from gVCF files to cohort VCF with integrated quality control. This is the **recommended approach** for most users.
+
+### Overview
+
+The pipeline orchestrates five stages:
+
+1. **Combine gVCFs** → VDS (Variant Dataset)
+2. **Convert VDS** → MatrixTable
+3. **Compute Sample QC** metrics
+4. **Compute Variant QC** metrics
+5. **Export** → Project VCF (pVCF)
+
+Each stage can be skipped for flexible workflow resumption.
+
+### Basic Usage
+
+```bash
+# Run complete pipeline
+hvantk hgc pipeline \
+  -i /data/gvcfs \
+  -o /data/output
+
+# With QC filtering and reporting
+hvantk hgc pipeline \
+  -i /data/gvcfs \
+  -o /data/output \
+  --apply-qc-filters \
+  --min-sample-call-rate 0.95 \
+  --min-variant-call-rate 0.90 \
+  --generate-qc-report
+
+# View execution plan (dry run)
+hvantk hgc pipeline \
+  -i /data/gvcfs \
+  -o /data/output \
+  --dry-run
+```
+
+### Key Features
+
+- **End-to-End Automation**: Single command runs the complete workflow
+- **Stage Skipping**: Resume from any intermediate stage
+- **QC Integration**: Optional quality filtering before export
+- **State Persistence**: Automatic checkpointing for recovery
+- **Flexible Configuration**: 20+ options for customization
+
+### Common Workflows
+
+#### 1. Standard Pipeline with QC
+
+```bash
+hvantk hgc pipeline \
+  -i /data/gvcfs \
+  -o /data/output \
+  --output-prefix my_cohort \
+  --apply-qc-filters \
+  --generate-qc-report
+```
+
+**Output:**
+- `my_cohort.vds/` - Combined variant dataset
+- `my_cohort.mt/` - MatrixTable
+- `my_cohort_filtered.mt/` - QC-filtered MatrixTable
+- `my_cohort.vcf.bgz` - Final cohort VCF
+- `qc/my_cohort_qc_report.html` - QC report
+
+#### 2. Resume from Existing VDS
+
+```bash
+hvantk hgc pipeline \
+  -i /data/gvcfs \
+  -o /data/output \
+  --skip-combine-gvcfs \
+  --vds-path /data/existing.vds
+```
+
+#### 3. QC-Only Analysis
+
+```bash
+hvantk hgc pipeline \
+  -i /data/gvcfs \
+  -o /data/qc_analysis \
+  --skip-export-pvcf \
+  --generate-qc-report
+```
+
+#### 4. Resume After Error
+
+```bash
+# If pipeline fails, check state
+cat /data/output/.pipeline_state.json
+
+# Resume from last successful stage
+hvantk hgc pipeline \
+  -i /data/gvcfs \
+  -o /data/output \
+  --skip-combine-gvcfs \
+  --vds-path /data/output/cohort.vds \
+  --overwrite
+```
+
+### Configuration Options
+
+**Required:**
+- `-i, --input-dir` - Directory containing gVCF files
+- `-o, --output-dir` - Output directory
+
+**Stage Control:**
+- `--skip-combine-gvcfs` - Skip Stage 1 (requires `--vds-path`)
+- `--skip-vds-to-mt` - Skip Stage 2 (requires `--mt-path`)
+- `--skip-compute-sample-qc` - Skip Stage 3
+- `--skip-compute-variant-qc` - Skip Stage 4
+- `--skip-export-pvcf` - Skip Stage 5
+
+**Quality Control:**
+- `--apply-qc-filters` - Apply QC filters before export
+- `--min-sample-call-rate FLOAT` - Minimum sample call rate (default: 0.85)
+- `--min-variant-call-rate FLOAT` - Minimum variant call rate (default: 0.85)
+- `--generate-qc-report` - Create HTML QC report
+
+**Processing:**
+- `--reference-genome [GRCh37|GRCh38]` - Reference build (default: GRCh38)
+- `--n-partitions INT` - Partitions for parallel processing
+- `--tmp-dir PATH` - Temporary directory
+- `--overwrite` - Overwrite existing files
+- `--output-prefix TEXT` - Output filename prefix (default: cohort)
+
+**Utility:**
+- `--dry-run` - Show execution plan without running
+
+### Output Structure
+
+```
+output_directory/
+├── cohort.vds/                    # Stage 1: Combined VDS
+├── cohort.mt/                     # Stage 2: MatrixTable
+├── cohort_filtered.mt/            # Filtered MT (if --apply-qc-filters)
+├── cohort.vcf.bgz                 # Stage 5: Cohort VCF
+├── qc/
+│   ├── cohort_sample_qc.ht        # Stage 3: Sample QC
+│   ├── cohort_sample_qc.csv
+│   ├── cohort_variant_qc.ht       # Stage 4: Variant QC
+│   ├── cohort_variant_qc.csv
+│   └── cohort_qc_report.html      # HTML Report
+├── logs/
+│   └── pipeline_*.log
+└── .pipeline_state.json           # State for recovery
+```
+
+### Python API
+
+```python
+from hvantk.hgc.pipeline import PipelineConfig, PipelineRunner
+
+# Configure pipeline
+config = PipelineConfig(
+    input_dir="/data/gvcfs",
+    output_dir="/data/output",
+    output_prefix="my_cohort",
+    apply_qc_filters=True,
+    min_sample_call_rate=0.95,
+    min_variant_call_rate=0.90,
+    generate_qc_report=True,
+    reference_genome="GRCh38"
+)
+
+# Validate configuration
+errors = config.validate()
+if errors:
+    for error in errors:
+        print(f"Error: {error}")
+    exit(1)
+
+# Create and run pipeline
+runner = PipelineRunner(config)
+runner.show_plan()  # Preview execution
+state = runner.run()
+
+# Check results
+if state.errors:
+    print(f"Pipeline failed: {state.errors}")
+else:
+    print(f"Success! Outputs: {state.outputs}")
+```
+
+### Performance Tips
+
+**Memory Management:**
+```bash
+# For large cohorts (>1000 samples)
+export PYSPARK_SUBMIT_ARGS='--driver-memory 32g --executor-memory 32g'
+hvantk hgc pipeline -i /data/gvcfs -o /data/output --n-partitions 1000
+```
+
+**Disk Space:**
+- VDS: ~1-2x input gVCF size
+- MatrixTable: ~0.5-1x VDS size
+- pVCF: ~0.5-1x MatrixTable size
+
+**Typical Runtime** (varies by hardware and cohort size):
+- 100 samples: ~30-60 minutes
+- 500 samples: ~2-4 hours
+- 1000 samples: ~4-8 hours
+
 ## Typical Workflow
 
-A complete joint genotyping and QC workflow using HGC:
+### Recommended: Using the Pipeline Command
 
-### Core Joint Genotyping Pipeline
+For most use cases, use the integrated pipeline (see [Pipeline Orchestration](#pipeline-orchestration)):
+
+```bash
+hvantk hgc pipeline \
+  -i /data/gvcfs \
+  -o /data/output \
+  --apply-qc-filters \
+  --generate-qc-report
+```
+
+### Alternative: Manual Step-by-Step
+
+For advanced users requiring fine-grained control, individual commands can be used:
+
+#### Core Joint Genotyping Pipeline
 
 ```bash
 # Step 1: Combine individual GVCF files
@@ -798,6 +1101,10 @@ Contributions are welcome! Please ensure:
 ## License
 
 HGC is part of hvantk, released under the MIT License. See [LICENSE](../../LICENSE) for details.
+
+---
+
+**Note:** This documentation integrates content from the standalone pipeline documentation files (`hgc-pipeline.md` and `hgc-pipeline-quickref.md`). All pipeline functionality is now documented in the [Pipeline Orchestration](#pipeline-orchestration) section above.
 
 ## Support
 
