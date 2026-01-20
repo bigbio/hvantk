@@ -14,7 +14,6 @@ def safe_float(val):
 
 @pytest.mark.hail
 def test_feature_coverage_stats():
-    hl.init(log="/tmp/hail_test.log", quiet=True)
     rows = [
         {
             "combined_deleteriousness": 1.2,
