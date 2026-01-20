@@ -11,6 +11,7 @@ import os
 import sys
 from pathlib import Path
 
+
 def check_import(module_name: str, package_name: str = None) -> bool:
     """Check if a module can be imported."""
     try:
@@ -21,6 +22,7 @@ def check_import(module_name: str, package_name: str = None) -> bool:
         print(f"✗ {package_name or module_name} is NOT available")
         return False
 
+
 def check_hvantk_hgc() -> bool:
     """Check if hvantk.hgc functions are available."""
     try:
@@ -28,23 +30,27 @@ def check_hvantk_hgc() -> bool:
             combine_gvcfs,
             convert_vds_to_mt,
             compute_full_qc,
-            convert_mt_to_multi_sample_vcf
+            convert_mt_to_multi_sample_vcf,
         )
+
         print("✓ hvantk.hgc functions are available")
         return True
     except ImportError as e:
         print(f"✗ hvantk.hgc import failed: {e}")
         return False
 
+
 def check_hail() -> bool:
     """Check if Hail is available and can be initialized."""
     try:
         import hail as hl
+
         print(f"✓ Hail is available (version: {hl.__version__})")
         return True
     except ImportError:
         print("✗ Hail is NOT available")
         return False
+
 
 def check_gvcf_directory(gvcf_dir: str) -> bool:
     """Check if GVCF directory exists and contains files."""
@@ -58,7 +64,7 @@ def check_gvcf_directory(gvcf_dir: str) -> bool:
         return False
 
     # Check for GVCF files
-    gvcf_patterns = ['*.g.vcf.gz', '*.gvcf.gz', '*.g.vcf', '*.gvcf']
+    gvcf_patterns = ["*.g.vcf.gz", "*.gvcf.gz", "*.g.vcf", "*.gvcf"]
     gvcf_files = []
     for pattern in gvcf_patterns:
         gvcf_files.extend(list(path.glob(pattern)))
@@ -70,6 +76,7 @@ def check_gvcf_directory(gvcf_dir: str) -> bool:
     print(f"✓ GVCF directory exists with {len(gvcf_files)} files: {gvcf_dir}")
     return True
 
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Validate HGC scalability benchmark setup"
@@ -80,6 +87,7 @@ def parse_args() -> argparse.Namespace:
         help="Path to GVCF directory (overrides env var GVCF_DIR)",
     )
     return parser.parse_args()
+
 
 def main():
     args = parse_args()
@@ -95,7 +103,9 @@ def main():
     if version.major >= 3 and version.minor >= 8:
         print(f"✓ Python {version.major}.{version.minor}.{version.micro}")
     else:
-        print(f"✗ Python {version.major}.{version.minor}.{version.micro} (requires 3.8+)")
+        print(
+            f"✗ Python {version.major}.{version.minor}.{version.micro} (requires 3.8+)"
+        )
         all_ok = False
     print()
 
@@ -114,7 +124,9 @@ def main():
     print("Checking GVCF directory...")
     gvcf_dir = args.gvcf_dir
     if gvcf_dir == "/path/to/your/gvcf_directory":
-        print("  WARNING: GVCF_DIR is still a placeholder. Set --gvcf-dir or export GVCF_DIR.")
+        print(
+            "  WARNING: GVCF_DIR is still a placeholder. Set --gvcf-dir or export GVCF_DIR."
+        )
     gvcf_ok = check_gvcf_directory(gvcf_dir)
     if not gvcf_ok:
         print("  Note: You can specify a different directory with --gvcf-dir")
@@ -126,7 +138,7 @@ def main():
     scripts = [
         "hgc_scalability_benchmark.sh",
         "hgc_scalability_benchmark.py",
-        "plot_scalability_results.py"
+        "plot_scalability_results.py",
     ]
     for script in scripts:
         script_path = script_dir / script
@@ -148,13 +160,17 @@ def main():
         print("✗ Some checks failed. Please resolve the issues above.")
         print()
         print("Common fixes:")
-        print("  - Install missing packages: pip install hail pandas numpy matplotlib seaborn")
+        print(
+            "  - Install missing packages: pip install hail pandas numpy matplotlib seaborn"
+        )
         print("  - Check that hvantk is installed: pip install -e .")
-        print("  - Verify GVCF directory path is correct (or set --gvcf-dir / GVCF_DIR)")
+        print(
+            "  - Verify GVCF directory path is correct (or set --gvcf-dir / GVCF_DIR)"
+        )
     print("=" * 80)
 
     return 0 if all_ok else 1
 
-if __name__ == '__main__':
-    sys.exit(main())
 
+if __name__ == "__main__":
+    sys.exit(main())

@@ -161,4 +161,3 @@ def test_ucsc_downloader_invalid_dataset_whitespace(mock_download_file):
     )
     assert result.exit_code != 0
     assert "Invalid dataset value" in result.output
-

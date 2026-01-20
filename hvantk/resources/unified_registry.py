@@ -1,6 +1,7 @@
 """
 Unified registry interface for hvantk - replaces multiple separate registry files.
 """
+
 import json
 import logging
 from pathlib import Path
@@ -8,6 +9,7 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
+
 
 class HvantkRegistry:
     """Main interface for accessing all omics datasets in hvantk."""
@@ -25,7 +27,7 @@ class HvantkRegistry:
             datasets_file = self.registry_root / omics_type / "datasets.json"
             if datasets_file.exists():
                 try:
-                    with open(datasets_file, 'r') as f:
+                    with open(datasets_file, "r") as f:
                         self._cache[omics_type] = json.load(f)
                 except Exception as e:
                     logger.error(f"Error loading {omics_type}: {e}")
@@ -59,8 +61,13 @@ class HvantkRegistry:
                     return result
         return None
 
-    def search(self, query: str = "", omics_type: Optional[str] = None,
-               organism: Optional[str] = None, data_source: Optional[str] = None) -> List[Dict]:
+    def search(
+        self,
+        query: str = "",
+        omics_type: Optional[str] = None,
+        organism: Optional[str] = None,
+        data_source: Optional[str] = None,
+    ) -> List[Dict]:
         """Search datasets with various filters."""
         results = []
         search_types = [omics_type] if omics_type else self.omics_types
@@ -78,7 +85,10 @@ class HvantkRegistry:
                     continue
 
                 # Filter by data source
-                if data_source and dataset.get("data_source", "").lower() != data_source.lower():
+                if (
+                    data_source
+                    and dataset.get("data_source", "").lower() != data_source.lower()
+                ):
                     continue
 
                 result = dataset.copy()
@@ -91,9 +101,11 @@ class HvantkRegistry:
         """Get registry statistics."""
         stats = {
             "total_datasets": sum(len(datasets) for datasets in self._cache.values()),
-            "by_omics_type": {otype: len(datasets) for otype, datasets in self._cache.items()},
+            "by_omics_type": {
+                otype: len(datasets) for otype, datasets in self._cache.items()
+            },
             "organisms": {},
-            "data_sources": {}
+            "data_sources": {},
         }
 
         # Count organisms and data sources
@@ -103,7 +115,9 @@ class HvantkRegistry:
                 data_source = dataset.get("data_source", "Unknown")
 
                 stats["organisms"][organism] = stats["organisms"].get(organism, 0) + 1
-                stats["data_sources"][data_source] = stats["data_sources"].get(data_source, 0) + 1
+                stats["data_sources"][data_source] = (
+                    stats["data_sources"].get(data_source, 0) + 1
+                )
 
         return stats
 
@@ -112,20 +126,29 @@ class HvantkRegistry:
         self._cache = {}
         self._load_registry()
 
+
 # Backward compatibility - maintain existing function signatures
 def load_transcriptomics_registry() -> List[Dict]:
     """Backward compatibility function for transcriptomics data."""
     registry = HvantkRegistry()
     return registry.list_transcriptomics_datasets()
 
+
 def load_expression_atlas_datasets() -> List[Dict]:
     """Backward compatibility function for Expression Atlas data."""
     registry = HvantkRegistry()
-    return [d for d in registry.list_transcriptomics_datasets()
-            if d.get("data_source") == "Expression_Atlas"]
+    return [
+        d
+        for d in registry.list_transcriptomics_datasets()
+        if d.get("data_source") == "Expression_Atlas"
+    ]
+
 
 def load_ucsc_datasets() -> List[Dict]:
     """Backward compatibility function for UCSC data."""
     registry = HvantkRegistry()
-    return [d for d in registry.list_transcriptomics_datasets()
-            if d.get("data_source") == "UCSC"]
+    return [
+        d
+        for d in registry.list_transcriptomics_datasets()
+        if d.get("data_source") == "UCSC"
+    ]

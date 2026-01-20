@@ -77,7 +77,7 @@ def test_convert_mt_to_cvcf():
         vcf_path=str(vcf_output_path),
         filter_adj_genotypes=True,
         min_ac=1,
-        split_multi=True
+        split_multi=True,
     )
 
     # Check if the vcf_output_path file exists

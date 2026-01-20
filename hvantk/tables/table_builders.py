@@ -30,7 +30,7 @@ def create_gnomad_constraint_gene_metrics_tb(
     fields: list = None,
     overwrite: bool = False,
     export_tsv: bool = False,
-) -> 'hl.Table':
+) -> "hl.Table":
     """
     Create a Hail Table from gnomAD constraint gene metrics TSV file keyed by gene_id.
     Example usage:
@@ -83,7 +83,7 @@ def create_interactome_tb(
     overwrite: bool = False,
     export_tsv: bool = False,
     reference_genome: str = "GRCh38",
-) -> 'hl.Table':
+) -> "hl.Table":
     """
     Create a Hail Table from a protein-protein interaction BED file.
     Example usage:
@@ -136,7 +136,7 @@ def create_clinvar_tb(
     overwrite: bool = False,
     export_tsv: bool = False,
     reference_genome: str = "GRCh38",
-) -> 'hl.Table':
+) -> "hl.Table":
     """
     Create a Hail Table from a ClinVar VCF file keyed by (locus, alleles).
     Example usage:
@@ -193,7 +193,7 @@ def create_gevir_tb(
     fields: list = None,
     overwrite: bool = False,
     export_tsv: bool = False,
-) -> 'hl.Table':
+) -> "hl.Table":
     """
     Create a Hail Table from GEVIR gene metrics TSV file keyed by gene_id.
     Example usage:
@@ -247,7 +247,7 @@ def create_ensembl_gene_tb(
     canonical: bool = True,
     overwrite: bool = False,
     export_tsv: bool = False,
-) -> 'hl.Table':
+) -> "hl.Table":
     """
     Create a Hail Table from an Ensembl BioMart gene annotation TSV file keyed by gene_id.
     Example usage:
@@ -301,8 +301,12 @@ def create_ensembl_gene_tb(
             ),
             gene_name=hl.agg.take(hl.or_else(gene_tb.gene_name, ""), 1)[0],
             chromosome=hl.agg.take(hl.or_else(gene_tb.chromosome, ""), 1)[0],
-            gene_start=hl.agg.take(hl.or_else(gene_tb.gene_start, hl.null(gene_tb.gene_start.dtype)), 1)[0],
-            gene_end=hl.agg.take(hl.or_else(gene_tb.gene_end, hl.null(gene_tb.gene_end.dtype)), 1)[0],
+            gene_start=hl.agg.take(
+                hl.or_else(gene_tb.gene_start, hl.null(gene_tb.gene_start.dtype)), 1
+            )[0],
+            gene_end=hl.agg.take(
+                hl.or_else(gene_tb.gene_end, hl.null(gene_tb.gene_end.dtype)), 1
+            )[0],
             gene_type=hl.agg.take(hl.or_else(gene_tb.gene_type, ""), 1)[0],
         )
         .key_by("gene_id")
@@ -332,7 +336,7 @@ def create_dbnsfp_tb(
     force_bgz: bool = True,
     parse_transcript_scores: bool = True,
     group_prefixes: Optional[List[str]] = None,
-) -> 'hl.Table':
+) -> "hl.Table":
     """
     Create a Hail Table from a dbNSFP variant TSV/BGZ file keyed by (locus, alleles).
 
@@ -381,55 +385,72 @@ def create_dbnsfp_tb(
         paths=input_path,
         min_partitions=min_partitions,
         impute=False,
-        missing='.',
+        missing=".",
         force_bgz=force_bgz,
     )
 
     # Normalize chromosome field and construct variant key
     row_fields = get_row_fields(ht)
     if "#chr" in row_fields:
-        ht = ht.rename({'#chr': 'chr'})
+        ht = ht.rename({"#chr": "chr"})
     else:
         # Some exports might already use 'chr'
         if "chr" not in row_fields:
             raise ValueError("dbNSFP input missing '#chr' or 'chr' column")
 
-    _chr_str = hl.str(ht['chr'])
+    _chr_str = hl.str(ht["chr"])
     ht = ht.annotate(
-        chr=hl.if_else(_chr_str.lower().startswith("chr"), _chr_str, hl.str("chr") + _chr_str)
+        chr=hl.if_else(
+            _chr_str.lower().startswith("chr"), _chr_str, hl.str("chr") + _chr_str
+        )
     )
 
     # Build variant_key: chr:pos:ref:alt
     row_fields = get_row_fields(ht)
-    if 'pos(1-based)' not in row_fields or 'ref' not in row_fields or 'alt' not in row_fields:
-        raise ValueError("dbNSFP input missing required columns: 'pos(1-based)', 'ref', or 'alt'")
+    if (
+        "pos(1-based)" not in row_fields
+        or "ref" not in row_fields
+        or "alt" not in row_fields
+    ):
+        raise ValueError(
+            "dbNSFP input missing required columns: 'pos(1-based)', 'ref', or 'alt'"
+        )
 
-    variant_key_expr = hl.array([
-        ht.chr,
-        hl.str(ht['pos(1-based)']),
-        ht.ref,
-        ht.alt,
-    ])
-    ht = ht.annotate(variant_key=hl.delimit(variant_key_expr, ':'))
+    variant_key_expr = hl.array(
+        [
+            ht.chr,
+            hl.str(ht["pos(1-based)"]),
+            ht.ref,
+            ht.alt,
+        ]
+    )
+    ht = ht.annotate(variant_key=hl.delimit(variant_key_expr, ":"))
 
     # Parse to locus/alleles
-    ht = ht.annotate(**hl.parse_variant(ht.variant_key, reference_genome=reference_genome))
+    ht = ht.annotate(
+        **hl.parse_variant(ht.variant_key, reference_genome=reference_genome)
+    )
 
     # Key the table by (locus, alleles) before any selects to avoid overwriting key fields
-    ht = ht.key_by('locus', 'alleles')
+    ht = ht.key_by("locus", "alleles")
     # Optional cleanup of staging columns; keep if downstream needs them
-    ht = ht.drop('variant_key')
-    ht = ht.drop('chr', 'pos(1-based)', 'ref', 'alt')
+    ht = ht.drop("variant_key")
+    ht = ht.drop("chr", "pos(1-based)", "ref", "alt")
 
     # Transcript-specific score parsing
     row_fields = get_row_fields(ht)
-    if parse_transcript_scores and 'Ensembl_transcriptid' in row_fields:
-        logger.info("Parsing transcript-specific scores into dicts keyed by Ensembl_transcriptid")
+    if parse_transcript_scores and "Ensembl_transcriptid" in row_fields:
+        logger.info(
+            "Parsing transcript-specific scores into dicts keyed by Ensembl_transcriptid"
+        )
         ht = ht.annotate(Ensembl_transcriptid=hl.str(ht.Ensembl_transcriptid))
         ht = ht.annotate(Ensembl_transcriptid=ht.Ensembl_transcriptid.split(";"))
 
         row_fields_list = list(get_row_fields(ht))
-        score_fields = [f for f in row_fields_list if f.endswith('_score') or f == 'CADD_phred']
+        score_fields = [
+            f for f in row_fields_list if f.endswith("_score") or f == "CADD_phred"
+        ]
+
         def _to_float_array(s):
             s_def = hl.or_else(s, "")  # empty string if missing
             arr = s_def.split(";")
@@ -437,8 +458,12 @@ def create_dbnsfp_tb(
 
         def _single_to_dict(val):
             # Map same scalar value to all transcripts
-            return hl.dict(hl.zip(ht.Ensembl_transcriptid,
-                                  hl.map(lambda _x: hl.parse_float(val), ht.Ensembl_transcriptid)))
+            return hl.dict(
+                hl.zip(
+                    ht.Ensembl_transcriptid,
+                    hl.map(lambda _x: hl.parse_float(val), ht.Ensembl_transcriptid),
+                )
+            )
 
         ann = {}
         for f in score_fields:
@@ -446,20 +471,24 @@ def create_dbnsfp_tb(
             ann[f] = hl.if_else(
                 is_multi,
                 hl.dict(hl.zip(ht.Ensembl_transcriptid, _to_float_array(ht[f]))),
-                _single_to_dict(ht[f])
+                _single_to_dict(ht[f]),
             )
         if ann:
             ht = ht.annotate(**ann)
 
     # Group common prefixes into structs and drop original columns
     if group_prefixes is None:
-        group_prefixes = ['gnomAD', 'ExAC', '1000Gp3', 'ESP6500', 'clinvar']
+        group_prefixes = ["gnomAD", "ExAC", "1000Gp3", "ESP6500", "clinvar"]
 
     for prefix in group_prefixes:
         row_fields_list = list(get_row_fields(ht))
-        pref_fields = [f for f in row_fields_list if f != prefix and f.startswith(prefix)]
+        pref_fields = [
+            f for f in row_fields_list if f != prefix and f.startswith(prefix)
+        ]
         if pref_fields:
-            logger.info(f"Grouping {prefix}* fields into struct '{prefix}' ({len(pref_fields)} fields)")
+            logger.info(
+                f"Grouping {prefix}* fields into struct '{prefix}' ({len(pref_fields)} fields)"
+            )
             ht = ht.annotate(**{prefix: hl.struct(**{f: ht[f] for f in pref_fields})})
             # Drop original columns (preserve keys implicitly)
             ht = ht.drop(*pref_fields)

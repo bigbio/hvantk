@@ -45,7 +45,9 @@ def _load_recipe(recipe_path: str) -> Dict[str, Any]:
         pass
     if yaml is not None:
         return yaml.safe_load(text)
-    raise ValueError("Recipe is not valid JSON, and YAML support is not installed. Install PyYAML or provide JSON.")
+    raise ValueError(
+        "Recipe is not valid JSON, and YAML support is not installed. Install PyYAML or provide JSON."
+    )
 
 
 @click.command("mkmatrix-batch", short_help="Create MatrixTables from a recipe.")
@@ -76,7 +78,9 @@ def mkmatrix_batch_cli(ctx, recipe):
         output_mt = entry.get("output")
         params = entry.get("params", {})
         if not name or not isinstance(inputs, dict) or not output_mt:
-            click.echo(f"Invalid entry in recipe (requires name,inputs,output): {entry}")
+            click.echo(
+                f"Invalid entry in recipe (requires name,inputs,output): {entry}"
+            )
             ctx.abort()
         logger.info(f"Building matrix via recipe: {name}")
         try:
@@ -85,4 +89,3 @@ def mkmatrix_batch_cli(ctx, recipe):
             click.echo(str(e))
             ctx.abort()
         click.echo(f"{name} MatrixTable created at {output_mt}")
-

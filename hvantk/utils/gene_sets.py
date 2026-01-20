@@ -2,6 +2,7 @@
 
 Provides a generic loader to replace the previous CHD-specific helper.
 """
+
 from __future__ import annotations
 from pathlib import Path
 from typing import Iterable, Optional, Set, Union
@@ -10,6 +11,7 @@ __all__ = [
     "load_gene_set",
     "load_sample_chd_gene_set",
 ]
+
 
 def load_gene_set(
     path: Optional[Union[str, Path]] = None,
@@ -68,16 +70,16 @@ def load_gene_set(
                     token = parts[column].strip()
                 else:
                     token = line
-                if strip_version and '.' in token:
-                    token = token.split('.', 1)[0]
+                if strip_version and "." in token:
+                    token = token.split(".", 1)[0]
                 if token:
                     gene_set.add(token)
 
     if genes is not None:
         for g in genes:
             token = g.strip()
-            if strip_version and '.' in token:
-                token = token.split('.', 1)[0]
+            if strip_version and "." in token:
+                token = token.split(".", 1)[0]
             if token:
                 gene_set.add(token)
 
@@ -87,7 +89,14 @@ def load_gene_set(
 def load_sample_chd_gene_set() -> Set[str]:
     """Return the legacy sample CHD-associated gene set (for backward compatibility)."""
     return {
-        "GATA4", "NKX2-5", "TBX5", "NOTCH1", "CHD7",
-        "TBX1", "MYH6", "ACTC1", "MYH7", "TNNT2"
+        "GATA4",
+        "NKX2-5",
+        "TBX5",
+        "NOTCH1",
+        "CHD7",
+        "TBX1",
+        "MYH6",
+        "ACTC1",
+        "MYH7",
+        "TNNT2",
     }
-

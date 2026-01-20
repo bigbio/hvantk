@@ -188,7 +188,9 @@ class UCSCDataSetCollection:
                 data = json.load(file)
 
             if not isinstance(data, dict) or "datasets" not in data:
-                raise ValueError(f"JSON file {json_path} must contain a 'datasets' key with a list")
+                raise ValueError(
+                    f"JSON file {json_path} must contain a 'datasets' key with a list"
+                )
 
             datasets = []
             for dataset_dict in data["datasets"]:
@@ -235,7 +237,9 @@ class UCSCDataSetCollection:
         Returns:
             New collection containing only datasets with the specified organism
         """
-        filtered_datasets = [ds for ds in self.datasets if organism in (ds.organisms or [])]
+        filtered_datasets = [
+            ds for ds in self.datasets if organism in (ds.organisms or [])
+        ]
         return UCSCDataSetCollection(datasets=filtered_datasets)
 
     def summary(self) -> str:
@@ -250,7 +254,7 @@ class UCSCDataSetCollection:
 
         organism_counts = {}
         for dataset in self.datasets:
-            for organism in (dataset.organisms or []):
+            for organism in dataset.organisms or []:
                 organism_counts[organism] = organism_counts.get(organism, 0) + 1
 
         summary_lines = [
@@ -277,9 +281,9 @@ def load_ucsc_datasets(json_path: Optional[str] = None) -> List[UCSCDataset]:
     """
     if json_path is None:
         import os
+
         json_path = os.path.join(
-            os.path.dirname(__file__),
-            "..", "resources", "cells_ucsc_datasets.json"
+            os.path.dirname(__file__), "..", "resources", "cells_ucsc_datasets.json"
         )
 
     collection = UCSCDataSetCollection.from_json(json_path)

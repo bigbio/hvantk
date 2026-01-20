@@ -59,16 +59,14 @@ def combine_gvcfs(
             logging.info(f"Validated {len(validated_vdses)} VDS file paths.")
 
         # Handle interval-related parameters from kwargs
-        intervals = kwargs.pop('intervals', None)
-        use_genome_default = kwargs.pop('use_genome_default_intervals', False)
-        use_exome_default = kwargs.pop('use_exome_default_intervals', False)
+        intervals = kwargs.pop("intervals", None)
+        use_genome_default = kwargs.pop("use_genome_default_intervals", False)
+        use_exome_default = kwargs.pop("use_exome_default_intervals", False)
 
         # Validate that only one interval method is specified
-        interval_params_set = sum([
-            intervals is not None,
-            use_genome_default,
-            use_exome_default
-        ])
+        interval_params_set = sum(
+            [intervals is not None, use_genome_default, use_exome_default]
+        )
 
         if interval_params_set > 1:
             raise ValueError(
@@ -79,7 +77,9 @@ def combine_gvcfs(
         # Set default to genome intervals if none specified
         if interval_params_set == 0:
             use_genome_default = True
-            logging.info("No interval method specified, defaulting to use_genome_default_intervals=True")
+            logging.info(
+                "No interval method specified, defaulting to use_genome_default_intervals=True"
+            )
 
         # Log diagnostic information before combining
         logging.info(f"Creating combiner with:")
@@ -117,7 +117,9 @@ def combine_gvcfs(
             logging.error(f"Troubleshooting steps:")
             logging.error(f"  - Verify GVCF files are valid and readable")
             logging.error(f"  - Check Spark/Hail version compatibility")
-            logging.error(f"  - Try importing first GVCF manually: hl.import_vcf('{validated_gvcfs[0] if validated_gvcfs else 'N/A'}')")
+            logging.error(
+                f"  - Try importing first GVCF manually: hl.import_vcf('{validated_gvcfs[0] if validated_gvcfs else 'N/A'}')"
+            )
             raise
 
         combiner.run()

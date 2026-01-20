@@ -622,7 +622,7 @@ def natural_language_query(
     mt: hl.MatrixTable,
     context: Optional[Dict] = None,
     execute: bool = False,
-    llm_config: Optional[Dict] = None
+    llm_config: Optional[Dict] = None,
 ) -> Dict:
     """
     Process a natural language query about a MatrixTable and return results.
@@ -650,15 +650,13 @@ def natural_language_query(
     # Prepare the result dictionary
     result = {
         "explanation": response.get("explanation", ""),
-        "suggested_code": response.get("executable_code", "")
+        "suggested_code": response.get("executable_code", ""),
     }
 
     # Execute the generated code if requested
     if execute and response.get("executable_code"):
         result["execution_result"] = llm.execute_generated_code(
-            response["executable_code"],
-            mt
+            response["executable_code"], mt
         )
 
     return result
-

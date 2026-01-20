@@ -21,10 +21,15 @@ from pathlib import Path
 def main():
     """Extract timing data and format as CSV row."""
     if len(sys.argv) != 3:
-        print("Usage: extract_timing.py <timing_json_file> <sample_size>", file=sys.stderr)
+        print(
+            "Usage: extract_timing.py <timing_json_file> <sample_size>", file=sys.stderr
+        )
         print("", file=sys.stderr)
         print("Example:", file=sys.stderr)
-        print("  python3 extract_timing.py scalability_results/run_2/timing_2.json 2", file=sys.stderr)
+        print(
+            "  python3 extract_timing.py scalability_results/run_2/timing_2.json 2",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     timing_file = sys.argv[1]
@@ -40,18 +45,24 @@ def main():
             print(f"ERROR: File not found: {timing_file}", file=sys.stderr)
             sys.exit(1)
 
-        with open(timing_path, 'r', encoding='utf-8') as f:
+        with open(timing_path, "r", encoding="utf-8") as f:
             data = json.load(f)
 
         # Validate JSON structure
         if not isinstance(data, dict):
-            print(f"ERROR: JSON file does not contain a dictionary: {timing_file}", file=sys.stderr)
+            print(
+                f"ERROR: JSON file does not contain a dictionary: {timing_file}",
+                file=sys.stderr,
+            )
             sys.exit(1)
 
         # Check for missing required fields
         missing = [k for k in required_fields if k not in data]
         if missing:
-            print(f"ERROR: Missing required fields in {timing_file}: {missing}", file=sys.stderr)
+            print(
+                f"ERROR: Missing required fields in {timing_file}: {missing}",
+                file=sys.stderr,
+            )
             print(f"Available fields: {list(data.keys())}", file=sys.stderr)
             sys.exit(1)
 
@@ -59,8 +70,10 @@ def main():
         for field in required_fields:
             value = data[field]
             if not isinstance(value, (int, float)):
-                print(f"ERROR: Field '{field}' has non-numeric value: {value} (type: {type(value).__name__})",
-                      file=sys.stderr)
+                print(
+                    f"ERROR: Field '{field}' has non-numeric value: {value} (type: {type(value).__name__})",
+                    file=sys.stderr,
+                )
                 sys.exit(1)
 
         # Format as CSV row: sample_size,gvcf_combine,vds_to_mt,compute_qc,mt_to_vcf,total
@@ -77,7 +90,7 @@ def main():
         print(f"ERROR: Invalid JSON in {timing_file}: {e}", file=sys.stderr)
         print(f"File contents:", file=sys.stderr)
         try:
-            with open(timing_file, 'r') as f:
+            with open(timing_file, "r") as f:
                 print(f.read()[:500], file=sys.stderr)  # Show first 500 chars
         except:
             pass
@@ -88,10 +101,10 @@ def main():
     except Exception as e:
         print(f"ERROR: Unexpected error processing {timing_file}: {e}", file=sys.stderr)
         import traceback
+
         traceback.print_exc(file=sys.stderr)
         sys.exit(1)
 
 
 if __name__ == "__main__":
     main()
-

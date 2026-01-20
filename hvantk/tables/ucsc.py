@@ -118,7 +118,6 @@ def create_mt_from_ucsc_expression_matrix(
     if row_fields is None:
         row_fields = {UCSC_GENE_COLUMN: hl.tstr}
 
-
     # Check if the output path exists and overwrite is set to False
     if output_path and os.path.exists(output_path) and not overwrite:
         raise FileExistsError(

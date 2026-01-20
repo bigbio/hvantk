@@ -64,9 +64,7 @@ def mktable_batch_cli(ctx, recipe):
         output_path = entry.get("output")
         params = entry.get("params", {})
         if not name or not input_path or not output_path:
-            click.echo(
-                f"Invalid entry in recipe (requires name,input,output): {entry}"
-            )
+            click.echo(f"Invalid entry in recipe (requires name,input,output): {entry}")
             ctx.abort()
         logger.info(f"Building table via recipe: {name}")
         run_table_builder(name, input_path, output_path, params)

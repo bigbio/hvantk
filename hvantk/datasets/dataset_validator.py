@@ -5,6 +5,7 @@ This module provides high-level orchestration for validating datasets from UCSC 
 It integrates with existing dataset classes and the validation registry to provide automated
 dataset validation workflows.
 """
+
 from __future__ import annotations
 
 import logging
@@ -17,7 +18,7 @@ from hvantk.datasets.validation_registry import (
     DatasetValidationRegistry,
     ValidationResult,
     ValidationStatus,
-    FailureType
+    FailureType,
 )
 
 logger = logging.getLogger(__name__)
@@ -31,10 +32,12 @@ class DatasetValidator:
     to provide automated validation of datasets for matrix creation.
     """
 
-    def __init__(self,
-                 work_dir: Optional[str] = None,
-                 sample_lines: int = 100,
-                 registry_file: Optional[str] = None):
+    def __init__(
+        self,
+        work_dir: Optional[str] = None,
+        sample_lines: int = 100,
+        registry_file: Optional[str] = None,
+    ):
         """
         Initialize the dataset validator.
 
@@ -43,7 +46,9 @@ class DatasetValidator:
             sample_lines: Number of lines to use for sample validation
             registry_file: Path to validation registry file
         """
-        self.work_dir = Path(work_dir) if work_dir else Path.cwd() / "dataset_validation"
+        self.work_dir = (
+            Path(work_dir) if work_dir else Path.cwd() / "dataset_validation"
+        )
         self.sample_lines = sample_lines
         self.registry = DatasetValidationRegistry(registry_file)
 
@@ -56,7 +61,9 @@ class DatasetValidator:
 
         logger.info(f"Dataset validator initialized with work_dir: {self.work_dir}")
 
-    def validate_ucsc_dataset(self, dataset_name: str, force_revalidate: bool = False) -> ValidationResult:
+    def validate_ucsc_dataset(
+        self, dataset_name: str, force_revalidate: bool = False
+    ) -> ValidationResult:
         """
         Validate a UCSC dataset by name.
 
@@ -70,7 +77,9 @@ class DatasetValidator:
         # Check if already validated
         existing_result = self.registry.get_result(dataset_name)
         if existing_result and not force_revalidate:
-            logger.info(f"Dataset {dataset_name} already validated: {existing_result.status.value}")
+            logger.info(
+                f"Dataset {dataset_name} already validated: {existing_result.status.value}"
+            )
             return existing_result
 
         logger.info(f"Starting validation of UCSC dataset: {dataset_name}")
@@ -93,7 +102,7 @@ class DatasetValidator:
                     dataset_type="ucsc",
                     status=ValidationStatus.DOWNLOAD_FAILED,
                     failure_type=FailureType.DOWNLOAD_ERROR,
-                    error_message=f"Dataset {dataset_name} not found in UCSC catalog"
+                    error_message=f"Dataset {dataset_name} not found in UCSC catalog",
                 )
                 self.registry.update_result(result)
                 return result
@@ -118,7 +127,7 @@ class DatasetValidator:
                     dataset_type="ucsc",
                     status=ValidationStatus.DOWNLOAD_FAILED,
                     failure_type=FailureType.DOWNLOAD_ERROR,
-                    error_message=f"Failed to download files: {e!s}"
+                    error_message=f"Failed to download files: {e!s}",
                 )
                 self.registry.update_result(result)
                 return result
@@ -133,12 +142,14 @@ class DatasetValidator:
                 dataset_type="ucsc",
                 status=ValidationStatus.DOWNLOAD_FAILED,
                 failure_type=FailureType.UNKNOWN_ERROR,
-                error_message=str(e)
+                error_message=str(e),
             )
             self.registry.update_result(result)
             return result
 
-    def validate_expression_atlas_dataset(self, accession: str, force_revalidate: bool = False) -> ValidationResult:
+    def validate_expression_atlas_dataset(
+        self, accession: str, force_revalidate: bool = False
+    ) -> ValidationResult:
         """
         Validate an Expression Atlas dataset by accession.
 
@@ -152,14 +163,18 @@ class DatasetValidator:
         # Check if already validated
         existing_result = self.registry.get_result(accession)
         if existing_result and not force_revalidate:
-            logger.info(f"Dataset {accession} already validated: {existing_result.status.value}")
+            logger.info(
+                f"Dataset {accession} already validated: {existing_result.status.value}"
+            )
             return existing_result
 
         logger.info(f"Starting validation of Expression Atlas dataset: {accession}")
 
         try:
             # Load dataset using existing Expression Atlas dataset class
-            from hvantk.datasets.expression_atlas_datasets import load_expression_atlas_datasets
+            from hvantk.datasets.expression_atlas_datasets import (
+                load_expression_atlas_datasets,
+            )
 
             # Load all Expression Atlas datasets to find the one we want
             all_datasets = load_expression_atlas_datasets()
@@ -175,7 +190,7 @@ class DatasetValidator:
                     dataset_type="expression_atlas",
                     status=ValidationStatus.DOWNLOAD_FAILED,
                     failure_type=FailureType.DOWNLOAD_ERROR,
-                    error_message=f"Dataset {accession} not found in Expression Atlas catalog"
+                    error_message=f"Dataset {accession} not found in Expression Atlas catalog",
                 )
                 self.registry.update_result(result)
                 return result
@@ -194,7 +209,9 @@ class DatasetValidator:
                 files["metadata"] = meta_path
 
                 if not files:
-                    raise Exception("No valid expression matrix or metadata files found")
+                    raise Exception(
+                        "No valid expression matrix or metadata files found"
+                    )
 
             except ValueError as e:
                 result = ValidationResult(
@@ -202,7 +219,7 @@ class DatasetValidator:
                     dataset_type="expression_atlas",
                     status=ValidationStatus.DOWNLOAD_FAILED,
                     failure_type=FailureType.DOWNLOAD_ERROR,
-                    error_message=f"Failed to download files: {e!s}"
+                    error_message=f"Failed to download files: {e!s}",
                 )
                 self.registry.update_result(result)
                 return result
@@ -217,12 +234,14 @@ class DatasetValidator:
                 dataset_type="expression_atlas",
                 status=ValidationStatus.DOWNLOAD_FAILED,
                 failure_type=FailureType.UNKNOWN_ERROR,
-                error_message=str(e)
+                error_message=str(e),
             )
             self.registry.update_result(result)
             return result
 
-    def _validate_dataset_files(self, dataset_id: str, dataset_type: str, files: Dict[str, str]) -> ValidationResult:
+    def _validate_dataset_files(
+        self, dataset_id: str, dataset_type: str, files: Dict[str, str]
+    ) -> ValidationResult:
         """
         Perform the multi-tier validation on downloaded files.
 
@@ -252,8 +271,11 @@ class DatasetValidator:
 
         return result
 
-    def validate_ucsc_datasets_batch(self, dataset_names: Optional[List[str]] = None,
-                                   max_datasets: Optional[int] = None) -> Dict[str, ValidationResult]:
+    def validate_ucsc_datasets_batch(
+        self,
+        dataset_names: Optional[List[str]] = None,
+        max_datasets: Optional[int] = None,
+    ) -> Dict[str, ValidationResult]:
         """
         Validate multiple UCSC datasets in batch.
 
@@ -270,18 +292,24 @@ class DatasetValidator:
         all_datasets = load_ucsc_datasets()
 
         if dataset_names:
-            datasets_to_validate = [ds for ds in all_datasets if ds.name in dataset_names]
+            datasets_to_validate = [
+                ds for ds in all_datasets if ds.name in dataset_names
+            ]
         else:
             datasets_to_validate = all_datasets
 
         if max_datasets:
             datasets_to_validate = datasets_to_validate[:max_datasets]
 
-        logger.info(f"Starting batch validation of {len(datasets_to_validate)} UCSC datasets")
+        logger.info(
+            f"Starting batch validation of {len(datasets_to_validate)} UCSC datasets"
+        )
 
         results = {}
         for i, dataset in enumerate(datasets_to_validate, 1):
-            logger.info(f"Validating dataset {i}/{len(datasets_to_validate)}: {dataset.name}")
+            logger.info(
+                f"Validating dataset {i}/{len(datasets_to_validate)}: {dataset.name}"
+            )
             try:
                 result = self.validate_ucsc_dataset(dataset.name)
                 results[dataset.name] = result
@@ -292,14 +320,17 @@ class DatasetValidator:
                     dataset_type="ucsc",
                     status=ValidationStatus.DOWNLOAD_FAILED,
                     failure_type=FailureType.UNKNOWN_ERROR,
-                    error_message=str(e)
+                    error_message=str(e),
                 )
 
-        logger.info(f"Batch validation completed. Results: {len(results)} datasets processed")
+        logger.info(
+            f"Batch validation completed. Results: {len(results)} datasets processed"
+        )
         return results
 
-    def validate_expression_atlas_datasets_batch(self, accessions: Optional[List[str]] = None,
-                                               max_datasets: Optional[int] = None) -> Dict[str, ValidationResult]:
+    def validate_expression_atlas_datasets_batch(
+        self, accessions: Optional[List[str]] = None, max_datasets: Optional[int] = None
+    ) -> Dict[str, ValidationResult]:
         """
         Validate multiple Expression Atlas datasets in batch.
 
@@ -311,23 +342,31 @@ class DatasetValidator:
         Returns:
             Dictionary mapping dataset accessions to validation results
         """
-        from hvantk.datasets.expression_atlas_datasets import load_expression_atlas_datasets
+        from hvantk.datasets.expression_atlas_datasets import (
+            load_expression_atlas_datasets,
+        )
 
         all_datasets = load_expression_atlas_datasets()
 
         if accessions:
-            datasets_to_validate = [ds for ds in all_datasets if ds.accession in accessions]
+            datasets_to_validate = [
+                ds for ds in all_datasets if ds.accession in accessions
+            ]
         else:
             datasets_to_validate = all_datasets
 
         if max_datasets:
             datasets_to_validate = datasets_to_validate[:max_datasets]
 
-        logger.info(f"Starting batch validation of {len(datasets_to_validate)} Expression Atlas datasets")
+        logger.info(
+            f"Starting batch validation of {len(datasets_to_validate)} Expression Atlas datasets"
+        )
 
         results = {}
         for i, dataset in enumerate(datasets_to_validate, 1):
-            logger.info(f"Validating dataset {i}/{len(datasets_to_validate)}: {dataset.accession}")
+            logger.info(
+                f"Validating dataset {i}/{len(datasets_to_validate)}: {dataset.accession}"
+            )
             try:
                 result = self.validate_expression_atlas_dataset(dataset.accession)
                 results[dataset.accession] = result
@@ -338,10 +377,12 @@ class DatasetValidator:
                     dataset_type="expression_atlas",
                     status=ValidationStatus.DOWNLOAD_FAILED,
                     failure_type=FailureType.UNKNOWN_ERROR,
-                    error_message=str(e)
+                    error_message=str(e),
                 )
 
-        logger.info(f"Batch validation completed. Results: {len(results)} datasets processed")
+        logger.info(
+            f"Batch validation completed. Results: {len(results)} datasets processed"
+        )
         return results
 
     def generate_validation_report(self, output_file: Optional[str] = None) -> str:
@@ -370,14 +411,16 @@ class DatasetValidator:
             "Status Breakdown:",
         ]
 
-        for status, count in stats.get('by_status', {}).items():
+        for status, count in stats.get("by_status", {}).items():
             report_lines.append(f"  {status}: {count}")
 
         if successful:
-            report_lines.extend([
-                "",
-                f"Successful Datasets ({len(successful)}):",
-            ])
+            report_lines.extend(
+                [
+                    "",
+                    f"Successful Datasets ({len(successful)}):",
+                ]
+            )
             for dataset_id in successful[:10]:  # Show first 10
                 result = self.registry.get_result(dataset_id)
                 report_lines.append(f"  {dataset_id} ({result.dataset_type})")
@@ -385,21 +428,27 @@ class DatasetValidator:
                 report_lines.append(f"  ... and {len(successful) - 10} more")
 
         if failed:
-            report_lines.extend([
-                "",
-                f"Failed Datasets ({len(failed)}):",
-            ])
+            report_lines.extend(
+                [
+                    "",
+                    f"Failed Datasets ({len(failed)}):",
+                ]
+            )
             for dataset_id in failed[:10]:  # Show first 10
                 result = self.registry.get_result(dataset_id)
-                failure_info = f" - {result.failure_type.value}" if result.failure_type else ""
-                report_lines.append(f"  {dataset_id} ({result.dataset_type}){failure_info}")
+                failure_info = (
+                    f" - {result.failure_type.value}" if result.failure_type else ""
+                )
+                report_lines.append(
+                    f"  {dataset_id} ({result.dataset_type}){failure_info}"
+                )
             if len(failed) > 10:
                 report_lines.append(f"  ... and {len(failed) - 10} more")
 
         report_content = "\n".join(report_lines)
 
         if output_file:
-            with open(output_file, 'w') as f:
+            with open(output_file, "w") as f:
                 f.write(report_content)
             logger.info(f"Validation report saved to {output_file}")
 

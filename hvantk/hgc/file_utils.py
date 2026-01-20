@@ -133,7 +133,9 @@ def validate_vds_paths(vdses: Union[str, List[str]]) -> List[str]:
             if os.path.isdir(full_path):
                 check_path_exists_and_readable(full_path)
                 if not entry.endswith(VDS_EXTENSION):
-                    raise ValueError(f"Directory '{full_path}' does not end with '{VDS_EXTENSION}'.")
+                    raise ValueError(
+                        f"Directory '{full_path}' does not end with '{VDS_EXTENSION}'."
+                    )
                 validated_paths.append(full_path)
     elif isinstance(vdses, list):
         # vdses is a list of directory paths
@@ -143,17 +145,21 @@ def validate_vds_paths(vdses: Union[str, List[str]]) -> List[str]:
             check_path_exists_and_readable(path)
             base_name = os.path.basename(path)
             if not base_name.endswith(VDS_EXTENSION):
-                raise ValueError(f"Directory '{path}' does not end with '{VDS_EXTENSION}'.")
+                raise ValueError(
+                    f"Directory '{path}' does not end with '{VDS_EXTENSION}'."
+                )
             validated_paths.append(path)
     else:
-        raise TypeError("Input must be either a directory path (str) or a list of directory paths.")
+        raise TypeError(
+            "Input must be either a directory path (str) or a list of directory paths."
+        )
 
     return validated_paths
 
 
-
-
-def compress_files(source_dir: str, output_zip: str, remove_originals: bool = False) -> None:
+def compress_files(
+    source_dir: str, output_zip: str, remove_originals: bool = False
+) -> None:
     """
     Compresses all files in source_dir (including subdirectories) into a single ZIP archive.
 
@@ -175,7 +181,9 @@ def compress_files(source_dir: str, output_zip: str, remove_originals: bool = Fa
         logger.info(f"Removed original directory '{source_dir}' after compression.")
 
 
-def decompress_files(zip_path: str, extract_to: str, remove_originals: bool = False) -> None:
+def decompress_files(
+    zip_path: str, extract_to: str, remove_originals: bool = False
+) -> None:
     """
     Decompresses a ZIP archive into the specified directory.
 
@@ -192,7 +200,9 @@ def decompress_files(zip_path: str, extract_to: str, remove_originals: bool = Fa
         logger.info(f"Removed archive file '{zip_path}' after decompression.")
 
 
-def sort_mts_cols(mts: List[hl.MatrixTable], ref_index: int = 0) -> List[hl.MatrixTable]:
+def sort_mts_cols(
+    mts: List[hl.MatrixTable], ref_index: int = 0
+) -> List[hl.MatrixTable]:
     """
     Sort the column order of a list of matrix tables to match a reference matrix table.
 
@@ -214,7 +224,9 @@ def sort_mts_cols(mts: List[hl.MatrixTable], ref_index: int = 0) -> List[hl.Matr
         sorted_mts = sort_mts_cols([mt1, mt2, mt3], ref_index=0)
     """
     if not 0 <= ref_index < len(mts):
-        raise IndexError("ref_index is out of range for the provided list of matrix tables.")
+        raise IndexError(
+            "ref_index is out of range for the provided list of matrix tables."
+        )
 
     # Compute the column order based on the reference matrix table.
     ref_mt = mts[ref_index].add_col_index()
@@ -228,6 +240,6 @@ def sort_mts_cols(mts: List[hl.MatrixTable], ref_index: int = 0) -> List[hl.Matr
             mt_indexed = mt.add_col_index()
             new_order = mt_indexed.index_cols(ref_mt.col_key).col_idx.collect()
             # Reorder columns and drop the transient col_idx field before returning
-            sorted_mts.append(mt_indexed.choose_cols(new_order).drop('col_idx'))
+            sorted_mts.append(mt_indexed.choose_cols(new_order).drop("col_idx"))
 
     return sorted_mts

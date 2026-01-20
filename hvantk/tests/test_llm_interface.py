@@ -11,16 +11,19 @@ pytestmark = [pytest.mark.llm, pytest.mark.hail]
 def is_ci_environment():
     """Detect if running in a CI environment"""
     ci_indicators = [
-        'CI',           # Generic CI indicator
-        'GITHUB_ACTIONS',  # GitHub Actions
-        'TRAVIS',       # Travis CI
-        'CIRCLECI',     # Circle CI
-        'JENKINS_URL',  # Jenkins
-        'GITLAB_CI',    # GitLab CI
-        'BUILDKITE',    # Buildkite
-        'TF_BUILD',     # Azure DevOps
+        "CI",  # Generic CI indicator
+        "GITHUB_ACTIONS",  # GitHub Actions
+        "TRAVIS",  # Travis CI
+        "CIRCLECI",  # Circle CI
+        "JENKINS_URL",  # Jenkins
+        "GITLAB_CI",  # GitLab CI
+        "BUILDKITE",  # Buildkite
+        "TF_BUILD",  # Azure DevOps
     ]
-    return any(os.environ.get(env_var, '').lower() in ['true', '1', 'yes'] for env_var in ci_indicators)
+    return any(
+        os.environ.get(env_var, "").lower() in ["true", "1", "yes"]
+        for env_var in ci_indicators
+    )
 
 
 def should_skip_real_llm_test(test_type="LLM"):
@@ -39,7 +42,10 @@ def should_skip_real_llm_test(test_type="LLM"):
 
     # Check explicit skip flag
     if os.environ.get("SKIP_REAL_LLM_TESTS", "false").lower() == "true":
-        return True, f"Skipping real {test_type} test: SKIP_REAL_LLM_TESTS is set to true"
+        return (
+            True,
+            f"Skipping real {test_type} test: SKIP_REAL_LLM_TESTS is set to true",
+        )
 
     # For local environments, require explicit opt-in
     if os.environ.get("RUN_REAL_LLM_TESTS", "true").lower() != "true":
@@ -64,32 +70,34 @@ def mock_matrix_table():
     coord_data = []
     for i in range(n_rows):
         for j in range(n_cols):
-            coord_data.append({
-                'gene_id': f'ENSG{i:08d}',
-                'gene_name': f'GENE{i}',
-                'sample_id': f'SAMPLE{j}',
-                'tissue': f'TISSUE{j%3}',
-                'expression': float(i+j)
-            })
+            coord_data.append(
+                {
+                    "gene_id": f"ENSG{i:08d}",
+                    "gene_name": f"GENE{i}",
+                    "sample_id": f"SAMPLE{j}",
+                    "tissue": f"TISSUE{j%3}",
+                    "expression": float(i + j),
+                }
+            )
 
     # Create a coordinate table
     coord_ht = hl.Table.parallelize(
         coord_data,
-        schema='struct{gene_id: str, gene_name: str, sample_id: str, tissue: str, expression: float64}'
+        schema="struct{gene_id: str, gene_name: str, sample_id: str, tissue: str, expression: float64}",
     )
 
     # Convert to a matrix table using the to_matrix_table method
     mt = coord_ht.to_matrix_table(
-        row_key=['gene_id'],
-        col_key=['sample_id'],
-        row_fields=['gene_name'],
-        col_fields=['tissue']
+        row_key=["gene_id"],
+        col_key=["sample_id"],
+        row_fields=["gene_name"],
+        col_fields=["tissue"],
     )
 
     return mt
 
 
-@patch('hvantk.utils.llm_interface.get_llm_interface')
+@patch("hvantk.utils.llm_interface.get_llm_interface")
 def test_natural_language_query(mock_get_llm, mock_matrix_table):
     """Test that natural_language_query processes queries and returns expected results"""
     # Create a mock LLM interface
@@ -98,8 +106,10 @@ def test_natural_language_query(mock_get_llm, mock_matrix_table):
     # Set up the mock response from query_llm
     mock_response = {
         "explanation": "This is a test explanation for gene expression analysis",
-        "code_snippets": ["import hail as hl\n\nresult = mt.aggregate_cols(hl.agg.mean(mt.expression))"],
-        "executable_code": "import hail as hl\n\nresult = mt.aggregate_cols(hl.agg.mean(mt.expression))"
+        "code_snippets": [
+            "import hail as hl\n\nresult = mt.aggregate_cols(hl.agg.mean(mt.expression))"
+        ],
+        "executable_code": "import hail as hl\n\nresult = mt.aggregate_cols(hl.agg.mean(mt.expression))",
     }
     mock_llm.query_llm.return_value = mock_response
 
@@ -131,12 +141,13 @@ def test_natural_language_query(mock_get_llm, mock_matrix_table):
     mock_llm.query_llm.reset_mock()
 
     # Test case 2: With execution
-    result_with_execution = natural_language_query(query, mock_matrix_table, execute=True)
+    result_with_execution = natural_language_query(
+        query, mock_matrix_table, execute=True
+    )
 
     # Verify execute_generated_code was called
     mock_llm.execute_generated_code.assert_called_once_with(
-        mock_response["executable_code"],
-        mock_matrix_table
+        mock_response["executable_code"], mock_matrix_table
     )
 
     # Verify the result contains execution_result
@@ -145,7 +156,7 @@ def test_natural_language_query(mock_get_llm, mock_matrix_table):
     assert result_with_execution["execution_result"] == mock_execution_result
 
 
-@patch('hvantk.utils.llm_interface.get_llm_interface')
+@patch("hvantk.utils.llm_interface.get_llm_interface")
 def test_summarize_matrix_query(mock_get_llm, mock_matrix_table):
     """Test natural language query with 'summarize the matrix expression'"""
     # Create a mock LLM interface
@@ -154,25 +165,17 @@ def test_summarize_matrix_query(mock_get_llm, mock_matrix_table):
     # Set up the mock response for matrix summarization
     mock_response = {
         "explanation": "Here's a summary of the matrix expression data",
-        "code_snippets": ["import hail as hl\nfrom hvantk.utils import matrix_utils\n\nresult = matrix_utils.summarize_matrix(mt)"],
-        "executable_code": "import hail as hl\nfrom hvantk.utils import matrix_utils\n\nresult = matrix_utils.summarize_matrix(mt)"
+        "code_snippets": [
+            "import hail as hl\nfrom hvantk.utils import matrix_utils\n\nresult = matrix_utils.summarize_matrix(mt)"
+        ],
+        "executable_code": "import hail as hl\nfrom hvantk.utils import matrix_utils\n\nresult = matrix_utils.summarize_matrix(mt)",
     }
     mock_llm.query_llm.return_value = mock_response
 
     # Set up mock execution result
     mock_execution_result = {
-        "dimensions": {
-            "n_samples": 5,
-            "n_genes": 10,
-            "n_entries": 50,
-            "sparsity": 0.0
-        },
-        "expression_stats": {
-            "mean": 4.5,
-            "std": 2.87,
-            "min": 0.0,
-            "max": 9.0
-        }
+        "dimensions": {"n_samples": 5, "n_genes": 10, "n_entries": 50, "sparsity": 0.0},
+        "expression_stats": {"mean": 4.5, "std": 2.87, "min": 0.0, "max": 9.0},
     }
     mock_llm.execute_generated_code.return_value = mock_execution_result
 
@@ -194,8 +197,7 @@ def test_summarize_matrix_query(mock_get_llm, mock_matrix_table):
 
     # Verify code was executed
     mock_llm.execute_generated_code.assert_called_once_with(
-        mock_response["executable_code"],
-        mock_matrix_table
+        mock_response["executable_code"], mock_matrix_table
     )
 
     # Assert response is not empty
@@ -205,12 +207,15 @@ def test_summarize_matrix_query(mock_get_llm, mock_matrix_table):
     assert result["execution_result"] == mock_execution_result
 
 
-@pytest.mark.parametrize("provider,model", [
-    ("openai", "gpt-4o-mini"),
-    ("anthropic", "claude-3-opus"),
-    ("local", "mixtral-8x7b")
-])
-@patch('hvantk.utils.llm_interface.get_llm_interface')
+@pytest.mark.parametrize(
+    "provider,model",
+    [
+        ("openai", "gpt-4o-mini"),
+        ("anthropic", "claude-3-opus"),
+        ("local", "mixtral-8x7b"),
+    ],
+)
+@patch("hvantk.utils.llm_interface.get_llm_interface")
 def test_llm_providers(mock_get_llm, provider, model, mock_matrix_table):
     """Test that each LLM provider can process a natural language query"""
     # Create a mock LLM interface
@@ -220,8 +225,10 @@ def test_llm_providers(mock_get_llm, provider, model, mock_matrix_table):
     # but we'll keep a consistent structure for testing
     mock_response = {
         "explanation": f"This is a test explanation from {provider} {model}",
-        "code_snippets": [f"# Code generated by {provider} {model}\nimport hail as hl\n\nresult = mt.count_rows()"],
-        "executable_code": f"# Code generated by {provider} {model}\nimport hail as hl\n\nresult = mt.count_rows()"
+        "code_snippets": [
+            f"# Code generated by {provider} {model}\nimport hail as hl\n\nresult = mt.count_rows()"
+        ],
+        "executable_code": f"# Code generated by {provider} {model}\nimport hail as hl\n\nresult = mt.count_rows()",
     }
     mock_llm.query_llm.return_value = mock_response
 
@@ -249,8 +256,7 @@ def test_llm_providers(mock_get_llm, provider, model, mock_matrix_table):
 
     # Verify code was executed
     mock_llm.execute_generated_code.assert_called_once_with(
-        mock_response["executable_code"],
-        mock_matrix_table
+        mock_response["executable_code"], mock_matrix_table
     )
 
     # Assert response is not empty
@@ -259,12 +265,12 @@ def test_llm_providers(mock_get_llm, provider, model, mock_matrix_table):
     assert "execution_result" in result
     assert result["execution_result"] == mock_execution_result
     assert provider in result["explanation"]  # Provider name should be in explanation
-    assert model in result["explanation"]     # Model name should be in explanation
+    assert model in result["explanation"]  # Model name should be in explanation
 
 
 # New tests for LLM interface creation
-@patch('os.environ.get')
-@patch('openai.OpenAI')
+@patch("os.environ.get")
+@patch("openai.OpenAI")
 def test_create_openai_interface(mock_openai, mock_env_get):
     """Test that OpenAI interface can be created successfully"""
     # Mock API key in environment
@@ -310,11 +316,14 @@ def test_real_local_model_query(mock_matrix_table):
 
     # Check if Ollama is available before running the test
     import requests
+
     try:
         ollama_endpoint = os.environ.get("OLLAMA_ENDPOINT", "http://localhost:11434")
         response = requests.get(f"{ollama_endpoint}/api/tags", timeout=2)
         if response.status_code != 200:
-            pytest.skip(f"Skipping test: Ollama API returned status code {response.status_code}")
+            pytest.skip(
+                f"Skipping test: Ollama API returned status code {response.status_code}"
+            )
 
         # Check if gpt-oss:20b model is available
         models = response.json().get("models", [])
@@ -328,19 +337,18 @@ def test_real_local_model_query(mock_matrix_table):
     try:
         # Initialize the LLM interface directly to use the local model
         llm = LLMInterface(
-            provider="local",
-            model="gpt-oss:20b",
-            temperature=0.7,
-            max_tokens=2048
+            provider="local", model="gpt-oss:20b", temperature=0.7, max_tokens=2048
         )
 
         # Create a query
-        query = ("I have a Hail gene expression matrix with samples and genes. Please help me create visualizations to:"
-                 " 1) Generate a heatmap of the top 20 most variable genes across all samples"
-                 " 2) Create a PCA plot to visualize sample clustering"
-                 " 3) Make a histogram showing the distribution of expression values"
-                 " 4) Plot a correlation matrix between samples"
-                 " Please provide executable Python code using matplotlib, seaborn, or plotly.")
+        query = (
+            "I have a Hail gene expression matrix with samples and genes. Please help me create visualizations to:"
+            " 1) Generate a heatmap of the top 20 most variable genes across all samples"
+            " 2) Create a PCA plot to visualize sample clustering"
+            " 3) Make a histogram showing the distribution of expression values"
+            " 4) Plot a correlation matrix between samples"
+            " Please provide executable Python code using matplotlib, seaborn, or plotly."
+        )
 
         # Make the query
         print("\n========== REAL GPT-OSS:20B MODEL QUERY TEST ==========")
@@ -355,8 +363,8 @@ def test_real_local_model_query(mock_matrix_table):
         print(f"\nExplanation:\n{response['explanation']}")
 
         print("\n----- SUGGESTED CODE -----")
-        if response.get('executable_code'):
-            print(response['executable_code'])
+        if response.get("executable_code"):
+            print(response["executable_code"])
         else:
             print("No executable code provided by the model")
 
@@ -410,9 +418,7 @@ def test_real_openai_model_query(mock_matrix_table):
         )
 
         # Create a query
-        query = (
-            "How to get the top 5 expressed genes per samples in this Hail gene expression matrix?"
-        )
+        query = "How to get the top 5 expressed genes per samples in this Hail gene expression matrix?"
 
         # Make the query
         print("\n========== REAL OPENAI MODEL QUERY TEST ==========")

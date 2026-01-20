@@ -41,7 +41,12 @@ def mkmatrix_group():
 
 
 @mkmatrix_group.command("ucsc")
-@click.option("--expression-matrix", "expression_matrix", required=True, type=click.Path(exists=True))
+@click.option(
+    "--expression-matrix",
+    "expression_matrix",
+    required=True,
+    type=click.Path(exists=True),
+)
 @click.option("--metadata", required=True, type=click.Path(exists=True))
 @click.option("--output-mt", "output_mt", required=True, type=click.Path())
 @click.option("--gene-column", default="gene", show_default=True)
@@ -49,7 +54,9 @@ def mkmatrix_group():
 @click.option("--delimiter", default="\t", show_default=True)
 @click.option("--min-partitions", default=50, type=int, show_default=True)
 @click.option("--force-bgz/--no-force-bgz", default=True, show_default=True)
-@click.option("--split-gene-field/--no-split-gene-field", default=True, show_default=True)
+@click.option(
+    "--split-gene-field/--no-split-gene-field", default=True, show_default=True
+)
 @click.option("--overwrite", is_flag=True)
 def mkmatrix_ucsc(
     expression_matrix,
@@ -81,7 +88,12 @@ def mkmatrix_ucsc(
 
 
 @mkmatrix_group.command("expression-atlas")
-@click.option("--expression-matrix", "expression_matrix", required=True, type=click.Path(exists=True))
+@click.option(
+    "--expression-matrix",
+    "expression_matrix",
+    required=True,
+    type=click.Path(exists=True),
+)
 @click.option("--sdrf", required=True, type=click.Path(exists=True))
 @click.option("--output-mt", "output_mt", required=True, type=click.Path())
 @click.option("--gene-column", default="Gene ID", show_default=True)
@@ -118,15 +130,31 @@ def mkmatrix_expression_atlas(
 
 
 @mkmatrix_group.command("cptac")
-@click.option("--expression", required=True, type=click.Path(exists=True), help="Path to CPTAC expression TSV/CSV")
-@click.option("--metadata", required=True, type=click.Path(exists=True), help="Path to CPTAC metadata TSV/CSV")
+@click.option(
+    "--expression",
+    required=True,
+    type=click.Path(exists=True),
+    help="Path to CPTAC expression TSV/CSV",
+)
+@click.option(
+    "--metadata",
+    required=True,
+    type=click.Path(exists=True),
+    help="Path to CPTAC metadata TSV/CSV",
+)
 @click.option("--output-mt", "output_mt", required=True, type=click.Path())
 @click.option("--gene-id-col", default="GeneID", show_default=True)
 @click.option("--gene-name-col", default="Gene Name", show_default=True)
 @click.option("--sample-id-col", default="SampleID", show_default=True)
 @click.option("--expression-col", default="Expression", show_default=True)
-@click.option("--categorical-cols", default=None, help="Comma-separated categorical metadata columns")
-@click.option("--numeric-cols", default=None, help="Comma-separated numeric metadata columns")
+@click.option(
+    "--categorical-cols",
+    default=None,
+    help="Comma-separated categorical metadata columns",
+)
+@click.option(
+    "--numeric-cols", default=None, help="Comma-separated numeric metadata columns"
+)
 @click.option("--overwrite", is_flag=True)
 def mkmatrix_cptac(
     expression,

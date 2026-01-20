@@ -8,7 +8,7 @@ from hvantk.data.data_streamer import DataStreamer, HailDataStreamer, StreamProc
 from hvantk.utils.clinvar_streamer import (
     ClinvarDataStreamer,
     ClinvarTrainingSetProcessor,
-    create_clinvar_training_set_streamer
+    create_clinvar_training_set_streamer,
 )
 from hvantk.utils import load_sample_chd_gene_set
 
@@ -29,9 +29,7 @@ class TestDataStreamer:
     def test_clinvar_streamer_init(self):
         gene_set = {"GATA4", "NKX2-5"}
         streamer = ClinvarDataStreamer(
-            clinvar_path="/path/to/clinvar.vcf.gz",
-            gene_set=gene_set,
-            chunk_size=5000
+            clinvar_path="/path/to/clinvar.vcf.gz", gene_set=gene_set, chunk_size=5000
         )
         assert streamer.name == "ClinvarTrainingSet"
         assert streamer.chunk_size == 5000
@@ -40,8 +38,7 @@ class TestDataStreamer:
 
     def test_factory_function(self):
         processor = create_clinvar_training_set_streamer(
-            clinvar_path="/path/to/clinvar.vcf.gz",
-            output_dir="/tmp/test"
+            clinvar_path="/path/to/clinvar.vcf.gz", output_dir="/tmp/test"
         )
         assert isinstance(processor, ClinvarTrainingSetProcessor)
         assert processor.name == "ClinvarTrainingSetGeneration"

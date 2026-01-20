@@ -68,15 +68,17 @@ class ExpressionAtlasDataset:
         """
         file_info = next((f for f in self.files if f["type"] == file_type), None)
         if not file_info:
-            raise ValueError(f"File type '{file_type}' not available for {self.accession}")
+            raise ValueError(
+                f"File type '{file_type}' not available for {self.accession}"
+            )
 
         file_name = file_info["name"]
-        url_download = f"{EXPRESSION_ATLAS_BASE_URL}/{self.accession}/download/{file_name}"
-        
+        url_download = (
+            f"{EXPRESSION_ATLAS_BASE_URL}/{self.accession}/download/{file_name}"
+        )
+
         try:
-            return download_file(
-                url=url_download, out_dir=out_dir, file_name=file_name
-            )
+            return download_file(url=url_download, out_dir=out_dir, file_name=file_name)
         except Exception as e:
             raise ValueError(
                 f"Failed to download {file_type} file for {self.accession}: {str(e)}"
@@ -118,11 +120,15 @@ class ExpressionAtlasDataset:
         safe_name = os.path.basename(file_name)
         # URL-encode the safe name for the download URL
         encoded_name = quote(safe_name, safe="")
-        url_download = f"{EXPRESSION_ATLAS_BASE_URL}/{self.accession}/download/{encoded_name}"
+        url_download = (
+            f"{EXPRESSION_ATLAS_BASE_URL}/{self.accession}/download/{encoded_name}"
+        )
         try:
             return download_file(url=url_download, out_dir=out_dir, file_name=safe_name)
         except Exception as e:
-            raise ValueError(f"Failed to download {safe_name} for {self.accession}: {str(e)}") from e
+            raise ValueError(
+                f"Failed to download {safe_name} for {self.accession}: {str(e)}"
+            ) from e
 
     def download_sdrf_file(self, out_dir: str, file_name: str) -> str:
         """Download a specific SDRF file by name."""
@@ -130,11 +136,15 @@ class ExpressionAtlasDataset:
         safe_name = os.path.basename(file_name)
         # URL-encode the safe name for the download URL
         encoded_name = quote(safe_name, safe="")
-        url_download = f"{EXPRESSION_ATLAS_BASE_URL}/{self.accession}/download/{encoded_name}"
+        url_download = (
+            f"{EXPRESSION_ATLAS_BASE_URL}/{self.accession}/download/{encoded_name}"
+        )
         try:
             return download_file(url=url_download, out_dir=out_dir, file_name=safe_name)
         except Exception as e:
-            raise ValueError(f"Failed to download {safe_name} for {self.accession}: {str(e)}") from e
+            raise ValueError(
+                f"Failed to download {safe_name} for {self.accession}: {str(e)}"
+            ) from e
 
 
 @dataclass
@@ -157,7 +167,7 @@ class ExpressionAtlasDatasetCollection:
         """
         Loads an Expression Atlas dataset collection from a JSON file.
 
-        Reads the specified JSON file and constructs an ExpressionAtlasDatasetCollection 
+        Reads the specified JSON file and constructs an ExpressionAtlasDatasetCollection
         instance with its datasets.
 
         Args:
@@ -169,19 +179,25 @@ class ExpressionAtlasDatasetCollection:
         Raises:
             ValueError: If the JSON file is invalid or cannot be read.
         """
-        logger.info(f"Loading Expression Atlas dataset collection from JSON: {json_path}")
+        logger.info(
+            f"Loading Expression Atlas dataset collection from JSON: {json_path}"
+        )
         try:
             with open(json_path, "r") as file:
                 data = json.load(file)
 
             if not isinstance(data, list):
-                raise ValueError(f"JSON file {json_path} must contain a list of datasets")
+                raise ValueError(
+                    f"JSON file {json_path} must contain a list of datasets"
+                )
 
             datasets = []
             for dataset_dict in data:
                 datasets.append(ExpressionAtlasDataset(**dataset_dict))
 
-            logger.info(f"Loaded {len(datasets)} Expression Atlas datasets from {json_path}")
+            logger.info(
+                f"Loaded {len(datasets)} Expression Atlas datasets from {json_path}"
+            )
             return cls(datasets=datasets)
 
         except FileNotFoundError:
@@ -251,7 +267,9 @@ class ExpressionAtlasDatasetCollection:
         return "\n".join(summary_lines)
 
 
-def load_expression_atlas_datasets(json_path: Optional[str] = None) -> List[ExpressionAtlasDataset]:
+def load_expression_atlas_datasets(
+    json_path: Optional[str] = None,
+) -> List[ExpressionAtlasDataset]:
     """
     Load Expression Atlas datasets from JSON file.
 
@@ -264,7 +282,9 @@ def load_expression_atlas_datasets(json_path: Optional[str] = None) -> List[Expr
     if json_path is None:
         try:
             from pathlib import Path
-            from hvantk.resources.unified_registry import load_expression_atlas_datasets as load_new_format
+            from hvantk.resources.unified_registry import (
+                load_expression_atlas_datasets as load_new_format,
+            )
 
             new_datasets = load_new_format()
             legacy_datasets = []
@@ -276,23 +296,36 @@ def load_expression_atlas_datasets(json_path: Optional[str] = None) -> List[Expr
                     type=f"{dataset.get('platform_type', 'RNA-seq')} {dataset.get('data_level', 'gene')} {dataset.get('expression_unit', 'TPM')}",
                     pubmedid=dataset.get("pubmedid"),
                     description=dataset.get("description", ""),
-                    files=[{
-                        "type": file_obj.get("description", "").replace("File type: ", ""),
-                        "name": file_obj.get("path", "")
-                    } for file_obj in dataset.get("files", [])]
+                    files=[
+                        {
+                            "type": file_obj.get("description", "").replace(
+                                "File type: ", ""
+                            ),
+                            "name": file_obj.get("path", ""),
+                        }
+                        for file_obj in dataset.get("files", [])
+                    ],
                 )
                 legacy_datasets.append(legacy_dataset)
 
             return legacy_datasets
 
         except ImportError:
-            logger.warning("Unified registry not available, falling back to legacy loading")
+            logger.warning(
+                "Unified registry not available, falling back to legacy loading"
+            )
             from pathlib import Path
-            json_path = str(Path(__file__).parent.parent / "resources" / "expression_atlas.json")
+
+            json_path = str(
+                Path(__file__).parent.parent / "resources" / "expression_atlas.json"
+            )
         except Exception as e:
             logger.error(f"Failed to load from unified registry: {e}")
             from pathlib import Path
-            json_path = str(Path(__file__).parent.parent / "resources" / "expression_atlas.json")
+
+            json_path = str(
+                Path(__file__).parent.parent / "resources" / "expression_atlas.json"
+            )
 
     collection = ExpressionAtlasDatasetCollection.from_json(json_path)
     return collection.datasets

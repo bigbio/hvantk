@@ -67,6 +67,7 @@ def download_file(url: str, out_dir: str, file_name: str):
 
 # define a function to test if a given url exists
 
+
 def url_exists(url: str) -> bool:
     """
     Checks whether the specified URL exists by performing an HTTP HEAD request.
@@ -166,4 +167,3 @@ def decompress_files(
     if remove_originals:
         os.remove(zip_path)
         logger.info(f"Removed archive file '{zip_path}' after decompression.")
-

@@ -51,7 +51,9 @@ REGISTRY_ROOT_PATH = BASE_DIR.parent / "resources" / "registry"
 TRANSCRIPTOMICS_DATASETS_PATH = REGISTRY_ROOT_PATH / "transcriptomics" / "datasets.json"
 
 # Legacy path for compatibility (deprecated)
-EXPRESSION_ATLAS_JSON_FILE_PATH = BASE_DIR.parent / "resources" / "expression_atlas.json"
+EXPRESSION_ATLAS_JSON_FILE_PATH = (
+    BASE_DIR.parent / "resources" / "expression_atlas.json"
+)
 
 logger.debug(f"Registry root path: {REGISTRY_ROOT_PATH}")
 logger.debug(f"Transcriptomics datasets path: {TRANSCRIPTOMICS_DATASETS_PATH}")

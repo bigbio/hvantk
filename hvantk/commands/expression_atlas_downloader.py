@@ -18,10 +18,18 @@ from hvantk.core.constants import EXPRESSION_ATLAS_JSON_FILE_PATH
 logger = logging.getLogger(__name__)
 
 
-def _download_file_with_retry(ftp, remote_file, local_file_path, ftp_url=None, ftp_path=None, max_attempts=3, initial_delay=1):
+def _download_file_with_retry(
+    ftp,
+    remote_file,
+    local_file_path,
+    ftp_url=None,
+    ftp_path=None,
+    max_attempts=3,
+    initial_delay=1,
+):
     """
     Download a file with retry logic to handle connection issues.
-    
+
     Args:
         ftp (ftplib.FTP): FTP connection
         remote_file (str): Name of remote file to download
@@ -30,7 +38,7 @@ def _download_file_with_retry(ftp, remote_file, local_file_path, ftp_url=None, f
         ftp_path (str, optional): FTP directory path for reconnection
         max_attempts (int): Maximum number of retry attempts
         initial_delay (int): Initial delay between retries in seconds
-    
+
     Returns:
         bool: True if successful, False otherwise
     """
@@ -58,6 +66,7 @@ def _download_file_with_retry(ftp, remote_file, local_file_path, ftp_url=None, f
                     unit_divisor=1024,
                     disable=(file_size == 0),  # Disable if size unknown
                 ) as pbar:
+
                     def callback(data):
                         f.write(data)
                         pbar.update(len(data))
@@ -66,10 +75,17 @@ def _download_file_with_retry(ftp, remote_file, local_file_path, ftp_url=None, f
 
             logger.info(f"Downloaded {remote_file} to {local_file_path}")
             return True  # Success
-        except (ConnectionResetError, ftplib.error_temp, ftplib.error_proto, EOFError) as e:
+        except (
+            ConnectionResetError,
+            ftplib.error_temp,
+            ftplib.error_proto,
+            EOFError,
+        ) as e:
             attempt += 1
             if attempt >= max_attempts:
-                logger.error(f"Failed to download {remote_file} after {max_attempts} attempts: {str(e)}")
+                logger.error(
+                    f"Failed to download {remote_file} after {max_attempts} attempts: {str(e)}"
+                )
                 return False
 
             # Log the retry attempt
@@ -85,6 +101,7 @@ def _download_file_with_retry(ftp, remote_file, local_file_path, ftp_url=None, f
             # Re-establish FTP connection if URL is provided
             if ftp_url:
                 import contextlib
+
                 with contextlib.suppress(Exception):
                     ftp.quit()
 
@@ -116,7 +133,9 @@ def _print_dataset_accessions():
     :raises JSONDecodeError: If the JSON file contains invalid JSON format.
     """
     try:
-        collection = ExpressionAtlasDatasetCollection.from_json(EXPRESSION_ATLAS_JSON_FILE_PATH)
+        collection = ExpressionAtlasDatasetCollection.from_json(
+            EXPRESSION_ATLAS_JSON_FILE_PATH
+        )
         dataset_accessions = collection.list_dataset_accessions()
         if not dataset_accessions:
             click.echo("No datasets available.")
@@ -128,7 +147,9 @@ def _print_dataset_accessions():
         click.echo(f"Error: {e}")
 
 
-@click.command("expression-atlas-downloader", short_help="Download Expression Atlas dataset")
+@click.command(
+    "expression-atlas-downloader", short_help="Download Expression Atlas dataset"
+)
 @click.option(
     "--config_path",
     required=False,
@@ -141,7 +162,7 @@ def _print_dataset_accessions():
     "--download_path",
     type=click.Path(exists=False, file_okay=False, dir_okay=True),
     required=True,
-    help="The path to download the data to."
+    help="The path to download the data to.",
 )
 @click.option(
     "--list_datasets",
@@ -175,7 +196,9 @@ def download_experiments(config_path, accession, download_path, list_datasets):
     """
 
     if list_datasets:
-        logger.warning("--accession and --config_path options are ignored when --list_datasets is specified.")
+        logger.warning(
+            "--accession and --config_path options are ignored when --list_datasets is specified."
+        )
         _print_dataset_accessions()
         return
 
@@ -243,7 +266,7 @@ def download_experiments(config_path, accession, download_path, list_datasets):
                     except ftplib.error_perm as e:
                         logger.error(f"Cannot access {ftp_path}: {e}")
                         continue
-                        
+
                     files = ftp.nlst()
                     experiment_config = next(
                         (item for item in config if item["accession"] == experiment_id),
@@ -265,7 +288,9 @@ def download_experiments(config_path, accession, download_path, list_datasets):
                     # Download each file with retry logic
                     for file in files:
                         file_path = os.path.join(download_path, file)
-                        _download_file_with_retry(ftp, file, file_path, ftp_url, ftp_path)
+                        _download_file_with_retry(
+                            ftp, file, file_path, ftp_url, ftp_path
+                        )
             else:
                 logger.error("Either --config_path or --accession must be provided.")
                 sys.exit(1)

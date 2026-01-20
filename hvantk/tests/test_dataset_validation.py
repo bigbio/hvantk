@@ -5,13 +5,17 @@ Test script for the dataset validation framework.
 This script demonstrates the combined approach for validating datasets
 and provides examples of how to use the new validation system.
 """
+
 import logging
 import tempfile
 from pathlib import Path
 
 # Setup logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
+
 
 def test_dataset_loading():
     """Test loading datasets from JSON catalogs."""
@@ -22,6 +26,7 @@ def test_dataset_loading():
     try:
         # Test UCSC dataset loading
         from hvantk.datasets.ucsc_cell_datasets import load_ucsc_datasets
+
         ucsc_datasets = load_ucsc_datasets()
         print(f"✓ Loaded {len(ucsc_datasets)} UCSC datasets")
 
@@ -30,7 +35,10 @@ def test_dataset_loading():
             print(f"  {i+1}. {dataset.name} - {dataset.shortLabel}")
 
         # Test Expression Atlas dataset loading
-        from hvantk.datasets.expression_atlas_datasets import load_expression_atlas_datasets
+        from hvantk.datasets.expression_atlas_datasets import (
+            load_expression_atlas_datasets,
+        )
+
         atlas_datasets = load_expression_atlas_datasets()
         print(f"✓ Loaded {len(atlas_datasets)} Expression Atlas datasets")
 
@@ -44,6 +52,7 @@ def test_dataset_loading():
         print(f"✗ Dataset loading failed: {e}")
         return False
 
+
 def test_validation_registry():
     """Test the validation registry functionality."""
     print("\n" + "=" * 60)
@@ -55,7 +64,7 @@ def test_validation_registry():
             DatasetValidationRegistry,
             ValidationResult,
             ValidationStatus,
-            FailureType
+            FailureType,
         )
 
         # Create a temporary registry for testing
@@ -68,8 +77,13 @@ def test_validation_registry():
                 dataset_id="test-dataset",
                 dataset_type="ucsc",
                 status=ValidationStatus.TIER2_PASSED,
-                tier1_details={"expression_matrix": {"readable": True, "delimiter_detected": "\t"}},
-                tier2_details={"sample_files_created": True, "matrix_creation_success": True}
+                tier1_details={
+                    "expression_matrix": {"readable": True, "delimiter_detected": "\t"}
+                },
+                tier2_details={
+                    "sample_files_created": True,
+                    "matrix_creation_success": True,
+                },
             )
 
             # Update registry
@@ -94,6 +108,7 @@ def test_validation_registry():
         print(f"✗ Validation registry test failed: {e}")
         return False
 
+
 def test_file_validation():
     """Test file header validation with sample data."""
     print("\n" + "=" * 60)
@@ -108,7 +123,7 @@ def test_file_validation():
 
             # Create a sample file for testing
             sample_file = Path(temp_dir) / "test_matrix.txt"
-            with open(sample_file, 'w') as f:
+            with open(sample_file, "w") as f:
                 f.write("gene\tsample1\tsample2\tsample3\n")
                 f.write("GENE1\t1.5\t2.3\t0.8\n")
                 f.write("GENE2\t0.2\t1.1\t3.4\n")
@@ -130,6 +145,7 @@ def test_file_validation():
         print(f"✗ File validation test failed: {e}")
         return False
 
+
 def test_sample_file_creation():
     """Test sample file creation functionality."""
     print("\n" + "=" * 60)
@@ -144,7 +160,7 @@ def test_sample_file_creation():
 
             # Create a larger test file
             input_file = Path(temp_dir) / "large_test_file.txt"
-            with open(input_file, 'w') as f:
+            with open(input_file, "w") as f:
                 f.write("gene\tsample1\tsample2\n")
                 for i in range(200):  # Create 200 lines
                     f.write(f"GENE{i}\t{i*1.1}\t{i*0.9}\n")
@@ -155,7 +171,7 @@ def test_sample_file_creation():
 
             if success and output_file.exists():
                 # Count lines in output file
-                with open(output_file, 'r') as f:
+                with open(output_file, "r") as f:
                     lines = f.readlines()
 
                 if len(lines) == 10:
@@ -173,6 +189,7 @@ def test_sample_file_creation():
     except Exception as e:
         print(f"✗ Sample file creation test failed: {e}")
         return False
+
 
 def demo_basic_usage():
     """Demonstrate basic usage of the validation system."""
@@ -196,13 +213,16 @@ def demo_basic_usage():
 
             # Show registry status
             stats = validator.registry.get_summary_stats()
-            print(f"✓ Registry initialized with {stats.get('total', 0)} existing results")
+            print(
+                f"✓ Registry initialized with {stats.get('total', 0)} existing results"
+            )
 
             return True
 
     except Exception as e:
         print(f"✗ Basic usage demo failed: {e}")
         return False
+
 
 def main():
     """Run all tests."""
@@ -240,15 +260,20 @@ def main():
     print(f"\nTests passed: {passed}/{total}")
 
     if passed == total:
-        print("\n🎉 All tests passed! The dataset validation framework is ready to use.")
+        print(
+            "\n🎉 All tests passed! The dataset validation framework is ready to use."
+        )
         print("\nNext steps:")
         print("1. Try: python -m hvantk.commands.dataset_validation_cli list")
-        print("2. Try: python -m hvantk.commands.dataset_validation_cli validate --ucsc-datasets cortex-dev")
+        print(
+            "2. Try: python -m hvantk.commands.dataset_validation_cli validate --ucsc-datasets cortex-dev"
+        )
         print("3. Try: python -m hvantk.commands.dataset_validation_cli status")
     else:
         print(f"\n⚠️  {total - passed} tests failed. Please check the errors above.")
 
     return passed == total
+
 
 if __name__ == "__main__":
     success = main()

@@ -88,6 +88,7 @@ class HailDataStreamer(DataStreamer):
         # global session that other streamers or user code may still need. Users
         # can call hvantk.core.context.shutdown_hail() explicitly if desired.
 
+
 class StreamProcessor:
     """
     Orchestrates multiple data streamers in a pipeline.
@@ -98,11 +99,13 @@ class StreamProcessor:
         self.streamers: List[DataStreamer] = []
         self.logger = logging.getLogger(f"{__name__}.{name}")
 
-    def add_streamer(self, streamer: DataStreamer) -> 'StreamProcessor':
+    def add_streamer(self, streamer: DataStreamer) -> "StreamProcessor":
         """Add a streamer to the pipeline"""
         self.streamers.append(streamer)
         # Avoid attribute errors with mocks or lightweight objects lacking a `name`
-        _sname = getattr(streamer, "name", getattr(streamer, "__name__", streamer.__class__.__name__))
+        _sname = getattr(
+            streamer, "name", getattr(streamer, "__name__", streamer.__class__.__name__)
+        )
         self.logger.info(f"Added streamer: {_sname}")
         return self
 
@@ -116,7 +119,9 @@ class StreamProcessor:
         Returns:
             Final processed result
         """
-        self.logger.info(f"Starting {self.name} pipeline with {len(self.streamers)} streamers")
+        self.logger.info(
+            f"Starting {self.name} pipeline with {len(self.streamers)} streamers"
+        )
 
         # Setup all streamers
         for streamer in self.streamers:
@@ -127,8 +132,14 @@ class StreamProcessor:
 
             # Process through each streamer in sequence
             for i, streamer in enumerate(self.streamers):
-                _sname = getattr(streamer, "name", getattr(streamer, "__name__", streamer.__class__.__name__))
-                self.logger.info(f"Processing with streamer {i+1}/{len(self.streamers)}: {_sname}")
+                _sname = getattr(
+                    streamer,
+                    "name",
+                    getattr(streamer, "__name__", streamer.__class__.__name__),
+                )
+                self.logger.info(
+                    f"Processing with streamer {i+1}/{len(self.streamers)}: {_sname}"
+                )
 
                 if i == 0:
                     # First streamer processes raw data
@@ -136,9 +147,11 @@ class StreamProcessor:
                 else:
                     # Subsequent streamers process output from previous streamer
                     processed_chunks = []
-                    incoming_chunks = result if isinstance(result, (list, tuple)) else [result]
+                    incoming_chunks = (
+                        result if isinstance(result, (list, tuple)) else [result]
+                    )
                     for chunk in incoming_chunks:
-                        if hasattr(streamer, 'set_input'):
+                        if hasattr(streamer, "set_input"):
                             setup_ok = streamer.set_input(chunk)
                             if setup_ok:
                                 # set_input succeeded; stream produces zero or more outputs
@@ -190,8 +203,14 @@ class StreamProcessor:
                 self.logger.info(f"Saving Hail Table to {output_path}")
                 result.checkpoint(output_path, overwrite=True)
                 return
-            if isinstance(result, list) and result and all(isinstance(r, hl.Table) for r in result):
-                self.logger.info(f"Unioning {len(result)} Hail Tables and saving to {output_path}")
+            if (
+                isinstance(result, list)
+                and result
+                and all(isinstance(r, hl.Table) for r in result)
+            ):
+                self.logger.info(
+                    f"Unioning {len(result)} Hail Tables and saving to {output_path}"
+                )
                 combined = result[0]
                 for tb in result[1:]:
                     combined = combined.union(tb)
@@ -216,8 +235,10 @@ class StreamProcessor:
                 return
 
             # Unsupported type -> delegate responsibility
-            msg = ("_save_result does not know how to persist object of type "
-                   f"{type(result).__name__}; subclasses must override _save_result")
+            msg = (
+                "_save_result does not know how to persist object of type "
+                f"{type(result).__name__}; subclasses must override _save_result"
+            )
             self.logger.error(msg)
             raise NotImplementedError(msg)
         except Exception as e:

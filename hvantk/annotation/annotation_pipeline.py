@@ -262,10 +262,18 @@ class FlexibleAnnotationStreamer(HailDataStreamer):
             elif self.config.annotation_type == "region":
                 skip_fields = {"interval", "locus"}
             else:
-                skip_fields = set(f.strip() for f in (self.config.join_key or "").split(",") if f.strip())
+                skip_fields = set(
+                    f.strip()
+                    for f in (self.config.join_key or "").split(",")
+                    if f.strip()
+                )
             # Also skip any fields already present in chunk
             chunk_fields = set(chunk.row.dtype.fields)
-            fields_to_copy = [fname for fname in field_names if fname not in skip_fields and fname not in chunk_fields]
+            fields_to_copy = [
+                fname
+                for fname in field_names
+                if fname not in skip_fields and fname not in chunk_fields
+            ]
             if not fields_to_copy:
                 return chunk
             return chunk.annotate(**{fname: ann_row[fname] for fname in fields_to_copy})

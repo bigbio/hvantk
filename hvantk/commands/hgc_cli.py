@@ -32,19 +32,19 @@ from hvantk.hgc import (
     compute_variant_qc,
     filter_samples_by_qc,
     filter_variants_by_qc,
-    save_qc_metrics
+    save_qc_metrics,
 )
 
-DEFAULT_TEMP_DIR = os.environ.get('HGC_TEMP_DIR', tempfile.gettempdir())
+DEFAULT_TEMP_DIR = os.environ.get("HGC_TEMP_DIR", tempfile.gettempdir())
 
 
 # Utility functions for CLI
-def setup_logging_for_hgc(log_level='INFO'):
+def setup_logging_for_hgc(log_level="INFO"):
     """Set up logging for HGC operations."""
     numeric_level = getattr(logging, log_level.upper(), logging.INFO)
     logging.basicConfig(
         level=numeric_level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
 
@@ -57,14 +57,14 @@ def expand_file_patterns(patterns):
     return expanded
 
 
-def validate_input_files(file_paths, file_type='gvcf'):
+def validate_input_files(file_paths, file_type="gvcf"):
     """Validate input files and return (is_valid, errors) tuple."""
     errors = []
     try:
-        if file_type == 'gvcf':
+        if file_type == "gvcf":
             for path in file_paths:
                 check_path_exists_and_readable(path)
-        elif file_type == 'vds':
+        elif file_type == "vds":
             validate_vds_paths(file_paths)
         else:
             for path in file_paths:
@@ -109,17 +109,13 @@ def estimate_resource_requirements(file_paths):
                             )
                             continue
         except OSError as e:
-            logger.warning(
-                f"Failed to access path '{path}': {e}"
-            )
+            logger.warning(f"Failed to access path '{path}': {e}")
             continue
         except Exception as e:
-            logger.error(
-                f"Unexpected error accessing path '{path}': {e}"
-            )
+            logger.error(f"Unexpected error accessing path '{path}': {e}")
             raise
 
-    total_size_gb = total_size / (1024 ** 3)
+    total_size_gb = total_size / (1024**3)
 
     # Simple heuristic estimates
     memory = f"{max(4, int(total_size_gb * 2))}g"
@@ -127,17 +123,23 @@ def estimate_resource_requirements(file_paths):
     estimated_runtime = max(5, int(total_size_gb * 2))
 
     return {
-        'memory': memory,
-        'partitions': partitions,
-        'estimated_runtime_minutes': estimated_runtime,
-        'total_size_gb': round(total_size_gb, 2)
+        "memory": memory,
+        "partitions": partitions,
+        "estimated_runtime_minutes": estimated_runtime,
+        "total_size_gb": round(total_size_gb, 2),
     }
 
 
-@click.group(name="hgc", help="HGC (Hail-based Genotype Combiner) commands for joint genotyping workflows")
-@click.option('--log-level', default='INFO',
-              type=click.Choice(['DEBUG', 'INFO', 'WARNING', 'ERROR']),
-              help='Set logging level')
+@click.group(
+    name="hgc",
+    help="HGC (Hail-based Genotype Combiner) commands for joint genotyping workflows",
+)
+@click.option(
+    "--log-level",
+    default="INFO",
+    type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"]),
+    help="Set logging level",
+)
 @click.pass_context
 def hgc_group(ctx, log_level):
     """
@@ -145,7 +147,7 @@ def hgc_group(ctx, log_level):
     """
     # Ensure that ctx.obj exists and is a dict
     ctx.ensure_object(dict)
-    ctx.obj['log_level'] = log_level
+    ctx.obj["log_level"] = log_level
 
     # Set up logging for HGC operations
     setup_logging_for_hgc(log_level)
@@ -153,12 +155,21 @@ def hgc_group(ctx, log_level):
 
 
 @hgc_group.command(name="gvcf-combine")
-@click.option('--gvcf-dir', '-g', help='Directory containing GVCF files')
-@click.option('--vds-paths', '-v', multiple=True, help='VDS paths to combine with GVCFs')
-@click.option('--output', '-o', required=True, help='Output VDS path')
-@click.option('--temp-dir', '--tmp', default=DEFAULT_TEMP_DIR, help='Temporary directory for intermediate files')
-@click.option('--save-path', '-s', help='Path to save the combiner plan')
-@click.option('--dry-run', is_flag=True, help='Show what would be done without executing')
+@click.option("--gvcf-dir", "-g", help="Directory containing GVCF files")
+@click.option(
+    "--vds-paths", "-v", multiple=True, help="VDS paths to combine with GVCFs"
+)
+@click.option("--output", "-o", required=True, help="Output VDS path")
+@click.option(
+    "--temp-dir",
+    "--tmp",
+    default=DEFAULT_TEMP_DIR,
+    help="Temporary directory for intermediate files",
+)
+@click.option("--save-path", "-s", help="Path to save the combiner plan")
+@click.option(
+    "--dry-run", is_flag=True, help="Show what would be done without executing"
+)
 @click.pass_context
 def gvcf_combine(ctx, gvcf_dir, vds_paths, output, temp_dir, save_path, dry_run):
     """
@@ -199,7 +210,7 @@ def gvcf_combine(ctx, gvcf_dir, vds_paths, output, temp_dir, save_path, dry_run)
             tmp_path=temp_dir,
             save_path=save_path or f"{output}.plan",
             vdses=list(vds_paths) if vds_paths else [],
-            kwargs={}
+            kwargs={},
         )
 
         click.echo(f"✅ Successfully combined GVCFs to {output}")
@@ -211,11 +222,19 @@ def gvcf_combine(ctx, gvcf_dir, vds_paths, output, temp_dir, save_path, dry_run)
 
 
 @hgc_group.command(name="vds-combine")
-@click.option('--input-dir', '-i', required=True, help='Directory containing VDS datasets')
-@click.option('--output', '-o', required=True, help='Output path for combined VDS')
-@click.option('--validate/--no-validate', default=True, help='Validate the combined VDS')
-@click.option('--overwrite/--no-overwrite', default=False, help='Overwrite output if exists')
-@click.option('--dry-run', is_flag=True, help='Show what would be done without executing')
+@click.option(
+    "--input-dir", "-i", required=True, help="Directory containing VDS datasets"
+)
+@click.option("--output", "-o", required=True, help="Output path for combined VDS")
+@click.option(
+    "--validate/--no-validate", default=True, help="Validate the combined VDS"
+)
+@click.option(
+    "--overwrite/--no-overwrite", default=False, help="Overwrite output if exists"
+)
+@click.option(
+    "--dry-run", is_flag=True, help="Show what would be done without executing"
+)
 @click.pass_context
 def vds_combine(ctx, input_dir, output, validate, overwrite, dry_run):
     """
@@ -255,7 +274,7 @@ def vds_combine(ctx, input_dir, output, validate, overwrite, dry_run):
             vdses_dir=input_dir,
             output_path=output,
             validate=validate,
-            overwrite=overwrite
+            overwrite=overwrite,
         )
 
         click.echo(f"✅ Successfully combined VDS datasets to {output}")
@@ -267,19 +286,42 @@ def vds_combine(ctx, input_dir, output, validate, overwrite, dry_run):
 
 
 @hgc_group.command(name="vds2mt")
-@click.option('--input', '-i', required=True, help='Input VDS dataset')
-@click.option('--output', '-o', required=True, help='Output MatrixTable path')
-@click.option('--adjust-genotypes/--no-adjust-genotypes', default=True,
-              help='Annotate with adjusted genotypes')
-@click.option('--skip-split-multi', is_flag=True, help='Skip splitting multi-allelic variants')
-@click.option('--skip-validation', is_flag=True,
-              help='Skip biallelic validation (faster, use only if confident)')
-@click.option('--skip-keying-by-cols', is_flag=True, help='Skip keying MatrixTable by columns')
-@click.option('--overwrite/--no-overwrite', default=False, help='Overwrite output if exists')
-@click.option('--dry-run', is_flag=True, help='Show what would be done without executing')
+@click.option("--input", "-i", required=True, help="Input VDS dataset")
+@click.option("--output", "-o", required=True, help="Output MatrixTable path")
+@click.option(
+    "--adjust-genotypes/--no-adjust-genotypes",
+    default=True,
+    help="Annotate with adjusted genotypes",
+)
+@click.option(
+    "--skip-split-multi", is_flag=True, help="Skip splitting multi-allelic variants"
+)
+@click.option(
+    "--skip-validation",
+    is_flag=True,
+    help="Skip biallelic validation (faster, use only if confident)",
+)
+@click.option(
+    "--skip-keying-by-cols", is_flag=True, help="Skip keying MatrixTable by columns"
+)
+@click.option(
+    "--overwrite/--no-overwrite", default=False, help="Overwrite output if exists"
+)
+@click.option(
+    "--dry-run", is_flag=True, help="Show what would be done without executing"
+)
 @click.pass_context
-def vds2mt(ctx, input, output, adjust_genotypes, skip_split_multi, skip_validation,
-           skip_keying_by_cols, overwrite, dry_run):
+def vds2mt(
+    ctx,
+    input,
+    output,
+    adjust_genotypes,
+    skip_split_multi,
+    skip_validation,
+    skip_keying_by_cols,
+    overwrite,
+    dry_run,
+):
     """
     Convert Variant DataSet (VDS) to MatrixTable format.
 
@@ -294,7 +336,7 @@ def vds2mt(ctx, input, output, adjust_genotypes, skip_split_multi, skip_validati
         logger.info("Starting VDS to MatrixTable conversion")
 
         # Validate input
-        is_valid, errors = validate_input_files([input], 'vds')
+        is_valid, errors = validate_input_files([input], "vds")
         if not is_valid:
             click.echo("❌ Input file validation failed:", err=True)
             for error in errors:
@@ -307,7 +349,9 @@ def vds2mt(ctx, input, output, adjust_genotypes, skip_split_multi, skip_validati
             ctx.exit(1)
 
         if dry_run:
-            click.echo("🔍 Dry run mode - would execute VDS to MatrixTable conversion with:")
+            click.echo(
+                "🔍 Dry run mode - would execute VDS to MatrixTable conversion with:"
+            )
             click.echo(f"   • Input: {input}")
             click.echo(f"   • Output: {output}")
             click.echo(f"   • Adjust genotypes: {adjust_genotypes}")
@@ -324,7 +368,7 @@ def vds2mt(ctx, input, output, adjust_genotypes, skip_split_multi, skip_validati
             skip_split_multi=skip_split_multi,
             skip_validation=skip_validation,
             skip_keying_by_cols=skip_keying_by_cols,
-            overwrite=overwrite
+            overwrite=overwrite,
         )
 
         click.echo(f"✅ Successfully converted {input} to MatrixTable at {output}")
@@ -336,13 +380,20 @@ def vds2mt(ctx, input, output, adjust_genotypes, skip_split_multi, skip_validati
 
 
 @hgc_group.command(name="mt2vcf")
-@click.option('--input', '-i', required=True, help='Input MatrixTable')
-@click.option('--output', '-o', required=True, help='Output VCF file path')
-@click.option('--filter-adj/--no-filter-adj', default=True,
-              help='Filter to adjusted genotypes (recommended)')
-@click.option('--min-ac', default=1, type=int, help='Minimum alternate allele count')
-@click.option('--split-multi/--no-split-multi', default=True, help='Split multi-allelic variants')
-@click.option('--dry-run', is_flag=True, help='Show what would be done without executing')
+@click.option("--input", "-i", required=True, help="Input MatrixTable")
+@click.option("--output", "-o", required=True, help="Output VCF file path")
+@click.option(
+    "--filter-adj/--no-filter-adj",
+    default=True,
+    help="Filter to adjusted genotypes (recommended)",
+)
+@click.option("--min-ac", default=1, type=int, help="Minimum alternate allele count")
+@click.option(
+    "--split-multi/--no-split-multi", default=True, help="Split multi-allelic variants"
+)
+@click.option(
+    "--dry-run", is_flag=True, help="Show what would be done without executing"
+)
 @click.pass_context
 def mt2vcf(ctx, input, output, filter_adj, min_ac, split_multi, dry_run):
     """
@@ -359,7 +410,7 @@ def mt2vcf(ctx, input, output, filter_adj, min_ac, split_multi, dry_run):
         logger.info("Starting MatrixTable to VCF conversion")
 
         # Validate input
-        is_valid, errors = validate_input_files([input], 'mt')
+        is_valid, errors = validate_input_files([input], "mt")
         if not is_valid:
             click.echo("❌ Input file validation failed:", err=True)
             for error in errors:
@@ -372,7 +423,9 @@ def mt2vcf(ctx, input, output, filter_adj, min_ac, split_multi, dry_run):
             ctx.exit(1)
 
         if dry_run:
-            click.echo("🔍 Dry run mode - would execute MatrixTable to VCF conversion with:")
+            click.echo(
+                "🔍 Dry run mode - would execute MatrixTable to VCF conversion with:"
+            )
             click.echo(f"   • Input: {input}")
             click.echo(f"   • Output: {output}")
             click.echo(f"   • Filter adjusted genotypes: {filter_adj}")
@@ -387,7 +440,7 @@ def mt2vcf(ctx, input, output, filter_adj, min_ac, split_multi, dry_run):
             vcf_path=output,
             filter_adj_genotypes=filter_adj,
             min_ac=min_ac,
-            split_multi=split_multi
+            split_multi=split_multi,
         )
 
         click.echo(f"✅ Successfully converted {input} to VCF at {output}")
@@ -397,17 +450,34 @@ def mt2vcf(ctx, input, output, filter_adj, min_ac, split_multi, dry_run):
         click.echo(f"❌ Error: {e}", err=True)
         ctx.exit(1)
 
+
 @hgc_group.command(name="compute-qc")
-@click.option('--input', '-i', required=True, help='Input MatrixTable path')
-@click.option('--output-dir', '-o', required=True, help='Output directory for QC metrics')
-@click.option('--sample-qc/--no-sample-qc', default=True, help='Compute sample-level QC metrics')
-@click.option('--variant-qc/--no-variant-qc', default=True, help='Compute variant-level QC metrics')
-@click.option('--call-field', default='GT', help='Name of the call field to use (default: GT)')
-@click.option('--prefix', default='qc_metrics', help='Prefix for output files')
-@click.option('--save-mt/--no-save-mt', default=True, help='Save MatrixTable with QC annotations')
-@click.option('--dry-run', is_flag=True, help='Show what would be done without executing')
+@click.option("--input", "-i", required=True, help="Input MatrixTable path")
+@click.option(
+    "--output-dir", "-o", required=True, help="Output directory for QC metrics"
+)
+@click.option(
+    "--sample-qc/--no-sample-qc", default=True, help="Compute sample-level QC metrics"
+)
+@click.option(
+    "--variant-qc/--no-variant-qc",
+    default=True,
+    help="Compute variant-level QC metrics",
+)
+@click.option(
+    "--call-field", default="GT", help="Name of the call field to use (default: GT)"
+)
+@click.option("--prefix", default="qc_metrics", help="Prefix for output files")
+@click.option(
+    "--save-mt/--no-save-mt", default=True, help="Save MatrixTable with QC annotations"
+)
+@click.option(
+    "--dry-run", is_flag=True, help="Show what would be done without executing"
+)
 @click.pass_context
-def compute_qc(ctx, input, output_dir, sample_qc, variant_qc, call_field, prefix, save_mt, dry_run):
+def compute_qc(
+    ctx, input, output_dir, sample_qc, variant_qc, call_field, prefix, save_mt, dry_run
+):
     """
     Compute comprehensive quality control metrics for samples and variants.
 
@@ -424,7 +494,7 @@ def compute_qc(ctx, input, output_dir, sample_qc, variant_qc, call_field, prefix
         logger.info("Starting QC metrics computation")
 
         # Validate input
-        is_valid, errors = validate_input_files([input], 'mt')
+        is_valid, errors = validate_input_files([input], "mt")
         if not is_valid:
             click.echo("❌ Input file validation failed:", err=True)
             for error in errors:
@@ -437,7 +507,10 @@ def compute_qc(ctx, input, output_dir, sample_qc, variant_qc, call_field, prefix
             ctx.exit(1)
 
         if not sample_qc and not variant_qc:
-            click.echo("❌ At least one of --sample-qc or --variant-qc must be enabled", err=True)
+            click.echo(
+                "❌ At least one of --sample-qc or --variant-qc must be enabled",
+                err=True,
+            )
             ctx.exit(1)
 
         if dry_run:
@@ -453,6 +526,7 @@ def compute_qc(ctx, input, output_dir, sample_qc, variant_qc, call_field, prefix
 
         # Import hail and read MatrixTable
         import hail as hl
+
         hl.init(quiet=True)
 
         click.echo("🔄 Loading MatrixTable...")
@@ -466,13 +540,15 @@ def compute_qc(ctx, input, output_dir, sample_qc, variant_qc, call_field, prefix
             click.echo("🔄 Computing sample QC metrics...")
             mt_qc = compute_sample_qc(mt, call_field=call_field)
             from hvantk.hgc.qc import QCMetrics
-            sample_qc_table = mt_qc.cols().select('sample_qc')
+
+            sample_qc_table = mt_qc.cols().select("sample_qc")
             qc_results = QCMetrics(mt_qc, sample_qc_table, None)
         else:  # variant_qc only
             click.echo("🔄 Computing variant QC metrics...")
             mt_qc = compute_variant_qc(mt, call_field=call_field)
             from hvantk.hgc.qc import QCMetrics
-            variant_qc_table = mt_qc.rows().select('variant_qc')
+
+            variant_qc_table = mt_qc.rows().select("variant_qc")
             qc_results = QCMetrics(mt_qc, None, variant_qc_table)
 
         # Save QC metrics
@@ -480,12 +556,13 @@ def compute_qc(ctx, input, output_dir, sample_qc, variant_qc, call_field, prefix
         saved_files = save_qc_metrics(qc_results, output_dir, prefix)
 
         # Remove MatrixTable from saved files if not requested
-        if not save_mt and 'matrix_table' in saved_files:
+        if not save_mt and "matrix_table" in saved_files:
             import os
             import shutil
-            if os.path.exists(saved_files['matrix_table']):
-                shutil.rmtree(saved_files['matrix_table'])
-            del saved_files['matrix_table']
+
+            if os.path.exists(saved_files["matrix_table"]):
+                shutil.rmtree(saved_files["matrix_table"])
+            del saved_files["matrix_table"]
 
         click.echo("✅ Successfully computed and saved QC metrics:")
         for file_type, file_path in saved_files.items():
@@ -498,26 +575,66 @@ def compute_qc(ctx, input, output_dir, sample_qc, variant_qc, call_field, prefix
 
 
 @hgc_group.command(name="filter-qc")
-@click.option('--input', '-i', required=True, help='Input MatrixTable with QC annotations')
-@click.option('--output', '-o', required=True, help='Output filtered MatrixTable path')
-@click.option('--min-sample-call-rate', type=float, default=0.85, help='Minimum sample call rate')
-@click.option('--min-variant-call-rate', type=float, default=0.85, help='Minimum variant call rate')
-@click.option('--min-ac', type=int, default=1, help='Minimum allele count for variants')
-@click.option('--max-ac', type=int, help='Maximum allele count for variants')
-@click.option('--min-af', type=float, help='Minimum allele frequency for variants')
-@click.option('--max-af', type=float, help='Maximum allele frequency for variants')
-@click.option('--hwe-threshold', type=float, default=1e-6, help='Hardy-Weinberg equilibrium p-value threshold')
-@click.option('--min-mean-dp', type=float, help='Minimum mean depth for samples')
-@click.option('--max-mean-dp', type=float, help='Maximum mean depth for samples')
-@click.option('--min-mean-gq', type=float, help='Minimum mean genotype quality for samples')
-@click.option('--sample-qc-name', default='sample_qc', help='Name of sample QC annotation')
-@click.option('--variant-qc-name', default='variant_qc', help='Name of variant QC annotation')
-@click.option('--overwrite/--no-overwrite', default=False, help='Overwrite output if exists')
-@click.option('--dry-run', is_flag=True, help='Show what would be done without executing')
+@click.option(
+    "--input", "-i", required=True, help="Input MatrixTable with QC annotations"
+)
+@click.option("--output", "-o", required=True, help="Output filtered MatrixTable path")
+@click.option(
+    "--min-sample-call-rate", type=float, default=0.85, help="Minimum sample call rate"
+)
+@click.option(
+    "--min-variant-call-rate",
+    type=float,
+    default=0.85,
+    help="Minimum variant call rate",
+)
+@click.option("--min-ac", type=int, default=1, help="Minimum allele count for variants")
+@click.option("--max-ac", type=int, help="Maximum allele count for variants")
+@click.option("--min-af", type=float, help="Minimum allele frequency for variants")
+@click.option("--max-af", type=float, help="Maximum allele frequency for variants")
+@click.option(
+    "--hwe-threshold",
+    type=float,
+    default=1e-6,
+    help="Hardy-Weinberg equilibrium p-value threshold",
+)
+@click.option("--min-mean-dp", type=float, help="Minimum mean depth for samples")
+@click.option("--max-mean-dp", type=float, help="Maximum mean depth for samples")
+@click.option(
+    "--min-mean-gq", type=float, help="Minimum mean genotype quality for samples"
+)
+@click.option(
+    "--sample-qc-name", default="sample_qc", help="Name of sample QC annotation"
+)
+@click.option(
+    "--variant-qc-name", default="variant_qc", help="Name of variant QC annotation"
+)
+@click.option(
+    "--overwrite/--no-overwrite", default=False, help="Overwrite output if exists"
+)
+@click.option(
+    "--dry-run", is_flag=True, help="Show what would be done without executing"
+)
 @click.pass_context
-def filter_qc(ctx, input, output, min_sample_call_rate, min_variant_call_rate,
-              min_ac, max_ac, min_af, max_af, hwe_threshold, min_mean_dp, max_mean_dp,
-              min_mean_gq, sample_qc_name, variant_qc_name, overwrite, dry_run):
+def filter_qc(
+    ctx,
+    input,
+    output,
+    min_sample_call_rate,
+    min_variant_call_rate,
+    min_ac,
+    max_ac,
+    min_af,
+    max_af,
+    hwe_threshold,
+    min_mean_dp,
+    max_mean_dp,
+    min_mean_gq,
+    sample_qc_name,
+    variant_qc_name,
+    overwrite,
+    dry_run,
+):
     """
     Filter MatrixTable based on quality control metrics.
 
@@ -534,7 +651,7 @@ def filter_qc(ctx, input, output, min_sample_call_rate, min_variant_call_rate,
         logger.info("Starting QC-based filtering")
 
         # Validate input
-        is_valid, errors = validate_input_files([input], 'mt')
+        is_valid, errors = validate_input_files([input], "mt")
         if not is_valid:
             click.echo("❌ Input file validation failed:", err=True)
             for error in errors:
@@ -552,20 +669,27 @@ def filter_qc(ctx, input, output, min_sample_call_rate, min_variant_call_rate,
             click.echo(f"   • Output: {output}")
             click.echo(f"   • Sample filters:")
             click.echo(f"     - Min call rate: {min_sample_call_rate}")
-            if min_mean_dp: click.echo(f"     - Min mean depth: {min_mean_dp}")
-            if max_mean_dp: click.echo(f"     - Max mean depth: {max_mean_dp}")
-            if min_mean_gq: click.echo(f"     - Min mean GQ: {min_mean_gq}")
+            if min_mean_dp:
+                click.echo(f"     - Min mean depth: {min_mean_dp}")
+            if max_mean_dp:
+                click.echo(f"     - Max mean depth: {max_mean_dp}")
+            if min_mean_gq:
+                click.echo(f"     - Min mean GQ: {min_mean_gq}")
             click.echo(f"   • Variant filters:")
             click.echo(f"     - Min call rate: {min_variant_call_rate}")
             click.echo(f"     - Min AC: {min_ac}")
-            if max_ac: click.echo(f"     - Max AC: {max_ac}")
-            if min_af: click.echo(f"     - Min AF: {min_af}")
-            if max_af: click.echo(f"     - Max AF: {max_af}")
+            if max_ac:
+                click.echo(f"     - Max AC: {max_ac}")
+            if min_af:
+                click.echo(f"     - Min AF: {min_af}")
+            if max_af:
+                click.echo(f"     - Max AF: {max_af}")
             click.echo(f"     - HWE threshold: {hwe_threshold}")
             return
 
         # Import hail and read MatrixTable
         import hail as hl
+
         hl.init(quiet=True)
 
         click.echo("🔄 Loading MatrixTable...")
@@ -584,7 +708,7 @@ def filter_qc(ctx, input, output, min_sample_call_rate, min_variant_call_rate,
                 min_mean_dp=min_mean_dp,
                 max_mean_dp=max_mean_dp,
                 min_mean_gq=min_mean_gq,
-                sample_qc_name=sample_qc_name
+                sample_qc_name=sample_qc_name,
             )
         except ValueError as e:
             if "Sample QC annotation" in str(e):
@@ -604,7 +728,7 @@ def filter_qc(ctx, input, output, min_sample_call_rate, min_variant_call_rate,
                 min_af=min_af,
                 max_af=max_af,
                 hwe_threshold=hwe_threshold,
-                variant_qc_name=variant_qc_name
+                variant_qc_name=variant_qc_name,
             )
         except ValueError as e:
             if "Variant QC annotation" in str(e):
@@ -625,10 +749,14 @@ def filter_qc(ctx, input, output, min_sample_call_rate, min_variant_call_rate,
         variants_removed = n_variants_initial - n_variants_final
 
         click.echo("✅ Successfully applied QC filters:")
-        click.echo(f"   • Samples: {n_samples_initial} → {n_samples_final} "
-                  f"({samples_removed} removed, {samples_removed/n_samples_initial*100:.1f}%)")
-        click.echo(f"   • Variants: {n_variants_initial} → {n_variants_final} "
-                  f"({variants_removed} removed, {variants_removed/n_variants_initial*100:.1f}%)")
+        click.echo(
+            f"   • Samples: {n_samples_initial} → {n_samples_final} "
+            f"({samples_removed} removed, {samples_removed/n_samples_initial*100:.1f}%)"
+        )
+        click.echo(
+            f"   • Variants: {n_variants_initial} → {n_variants_final} "
+            f"({variants_removed} removed, {variants_removed/n_variants_initial*100:.1f}%)"
+        )
         click.echo(f"   • Output: {output}")
 
     except Exception as e:
@@ -638,12 +766,18 @@ def filter_qc(ctx, input, output, min_sample_call_rate, min_variant_call_rate,
 
 
 @hgc_group.command(name="qc-summary")
-@click.option('--qc-dir', '-d', required=True, help='Directory containing QC metrics files')
-@click.option('--sample-file', help='Specific sample QC file (optional)')
-@click.option('--variant-file', help='Specific variant QC file (optional)')
-@click.option('--output', '-o', help='Output file for summary report')
-@click.option('--format', type=click.Choice(['csv', 'json', 'markdown']), default='markdown',
-              help='Output format for summary')
+@click.option(
+    "--qc-dir", "-d", required=True, help="Directory containing QC metrics files"
+)
+@click.option("--sample-file", help="Specific sample QC file (optional)")
+@click.option("--variant-file", help="Specific variant QC file (optional)")
+@click.option("--output", "-o", help="Output file for summary report")
+@click.option(
+    "--format",
+    type=click.Choice(["csv", "json", "markdown"]),
+    default="markdown",
+    help="Output format for summary",
+)
 @click.pass_context
 def qc_summary(ctx, qc_dir, sample_file, variant_file, output, format):
     """
@@ -676,7 +810,9 @@ def qc_summary(ctx, qc_dir, sample_file, variant_file, output, format):
             else:
                 sample_path = sample_files[0]
                 if len(sample_files) > 1:
-                    click.echo(f"ℹ️  Multiple sample QC files found, using {sample_path.name}")
+                    click.echo(
+                        f"ℹ️  Multiple sample QC files found, using {sample_path.name}"
+                    )
 
         if variant_file:
             variant_path = Path(variant_file)
@@ -688,7 +824,9 @@ def qc_summary(ctx, qc_dir, sample_file, variant_file, output, format):
             else:
                 variant_path = variant_files[0]
                 if len(variant_files) > 1:
-                    click.echo(f"ℹ️  Multiple variant QC files found, using {variant_path.name}")
+                    click.echo(
+                        f"ℹ️  Multiple variant QC files found, using {variant_path.name}"
+                    )
 
         if not sample_path and not variant_path:
             click.echo("❌ No QC files found", err=True)
@@ -701,50 +839,59 @@ def qc_summary(ctx, qc_dir, sample_file, variant_file, output, format):
             click.echo(f"📊 Processing sample QC metrics from {sample_path}")
             sample_df = pd.read_csv(sample_path)
             from hvantk.hgc.qc import get_qc_summary_stats
+
             sample_summary = get_qc_summary_stats(sample_df)
-            summary_data['sample_qc'] = {
-                'file': str(sample_path),
-                'n_samples': len(sample_df),
-                'summary_stats': sample_summary.to_dict() if not sample_summary.empty else {},
-                'columns': sample_df.columns.tolist()
+            summary_data["sample_qc"] = {
+                "file": str(sample_path),
+                "n_samples": len(sample_df),
+                "summary_stats": (
+                    sample_summary.to_dict() if not sample_summary.empty else {}
+                ),
+                "columns": sample_df.columns.tolist(),
             }
 
         if variant_path and variant_path.exists():
             click.echo(f"📊 Processing variant QC metrics from {variant_path}")
             variant_df = pd.read_csv(variant_path)
             from hvantk.hgc.qc import get_qc_summary_stats
+
             variant_summary = get_qc_summary_stats(variant_df)
-            summary_data['variant_qc'] = {
-                'file': str(variant_path),
-                'n_variants': len(variant_df),
-                'summary_stats': variant_summary.to_dict() if not variant_summary.empty else {},
-                'columns': variant_df.columns.tolist()
+            summary_data["variant_qc"] = {
+                "file": str(variant_path),
+                "n_variants": len(variant_df),
+                "summary_stats": (
+                    variant_summary.to_dict() if not variant_summary.empty else {}
+                ),
+                "columns": variant_df.columns.tolist(),
             }
 
         # Output summary
         if output:
             output_path = Path(output)
-            if format == 'csv':
+            if format == "csv":
                 # Combine summaries into CSV
                 all_stats = []
                 for qc_type, data in summary_data.items():
-                    for metric, stats in data['summary_stats'].items():
+                    for metric, stats in data["summary_stats"].items():
                         for stat_name, value in stats.items():
-                            all_stats.append({
-                                'qc_type': qc_type,
-                                'metric': metric,
-                                'statistic': stat_name,
-                                'value': value
-                            })
+                            all_stats.append(
+                                {
+                                    "qc_type": qc_type,
+                                    "metric": metric,
+                                    "statistic": stat_name,
+                                    "value": value,
+                                }
+                            )
                 summary_df = pd.DataFrame(all_stats)
                 summary_df.to_csv(output_path, index=False)
 
-            elif format == 'json':
+            elif format == "json":
                 import json
-                with open(output_path, 'w') as f:
+
+                with open(output_path, "w") as f:
                     json.dump(summary_data, f, indent=2)
 
-            elif format == 'markdown':
+            elif format == "markdown":
                 # Generate markdown report
                 md_content = "# Quality Control Summary Report\n\n"
 
@@ -754,23 +901,39 @@ def qc_summary(ctx, qc_dir, sample_file, variant_file, output, format):
                     md_content += f"- **Count**: {data.get('n_samples', data.get('n_variants', 0)):,}\n"
                     md_content += f"- **Metrics**: {', '.join(data['columns'])}\n\n"
 
-                    if data['summary_stats']:
+                    if data["summary_stats"]:
                         md_content += "### Summary Statistics\n\n"
                         md_content += "| Metric | Count | Mean | Std | Min | 25% | 50% | 75% | Max |\n"
                         md_content += "|--------|--------|--------|--------|--------|--------|--------|--------|--------|\n"
 
-                        for metric, stats in data['summary_stats'].items():
+                        for metric, stats in data["summary_stats"].items():
                             if isinstance(stats, dict):
                                 row = f"| {metric} |"
-                                for stat in ['count', 'mean', 'std', 'min', '25%', '50%', '75%', 'max']:
-                                    value = stats.get(stat, 'N/A')
-                                    if isinstance(value, (int, float)) and stat != 'count':
-                                        value = f"{value:.3f}" if abs(value) < 1000 else f"{value:.2e}"
+                                for stat in [
+                                    "count",
+                                    "mean",
+                                    "std",
+                                    "min",
+                                    "25%",
+                                    "50%",
+                                    "75%",
+                                    "max",
+                                ]:
+                                    value = stats.get(stat, "N/A")
+                                    if (
+                                        isinstance(value, (int, float))
+                                        and stat != "count"
+                                    ):
+                                        value = (
+                                            f"{value:.3f}"
+                                            if abs(value) < 1000
+                                            else f"{value:.2e}"
+                                        )
                                     row += f" {value} |"
                                 md_content += row + "\n"
                         md_content += "\n"
 
-                with open(output_path, 'w') as f:
+                with open(output_path, "w") as f:
                     f.write(md_content)
 
             click.echo(f"💾 Summary saved to {output_path}")
@@ -780,7 +943,9 @@ def qc_summary(ctx, qc_dir, sample_file, variant_file, output, format):
             for qc_type, data in summary_data.items():
                 click.echo(f"\n{qc_type.replace('_', ' ').title()}:")
                 click.echo(f"  File: {data['file']}")
-                click.echo(f"  Count: {data.get('n_samples', data.get('n_variants', 0)):,}")
+                click.echo(
+                    f"  Count: {data.get('n_samples', data.get('n_variants', 0)):,}"
+                )
                 click.echo(f"  Metrics: {len(data['columns'])}")
 
         click.echo("✅ QC summary completed successfully")
@@ -792,26 +957,52 @@ def qc_summary(ctx, qc_dir, sample_file, variant_file, output, format):
 
 
 @hgc_group.command(name="plot-qc")
-@click.option('--input', '-i', required=True, help='Input MatrixTable with QC annotations')
-@click.option('--output-dir', '-o', required=True, help='Output directory for plots')
-@click.option('--plot-type',
-              type=click.Choice(['overview', 'individual', 'dashboard', 'all']),
-              default='overview',
-              help='Type of plots to generate')
-@click.option('--format', 'output_format',
-              type=click.Choice(['png', 'pdf', 'svg']),
-              default='png',
-              help='Output format for plots')
-@click.option('--style',
-              type=click.Choice(['default', 'publication']),
-              default='default',
-              help='Plot style')
-@click.option('--figsize', default='10,6', help='Figure size as width,height (e.g., 10,6)')
-@click.option('--dpi', default=300, help='Resolution for output plots')
-@click.option('--interactive', is_flag=True, help='Generate interactive plots (requires plotly)')
-@click.option('--dry-run', is_flag=True, help='Show what would be done without executing')
+@click.option(
+    "--input", "-i", required=True, help="Input MatrixTable with QC annotations"
+)
+@click.option("--output-dir", "-o", required=True, help="Output directory for plots")
+@click.option(
+    "--plot-type",
+    type=click.Choice(["overview", "individual", "dashboard", "all"]),
+    default="overview",
+    help="Type of plots to generate",
+)
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["png", "pdf", "svg"]),
+    default="png",
+    help="Output format for plots",
+)
+@click.option(
+    "--style",
+    type=click.Choice(["default", "publication"]),
+    default="default",
+    help="Plot style",
+)
+@click.option(
+    "--figsize", default="10,6", help="Figure size as width,height (e.g., 10,6)"
+)
+@click.option("--dpi", default=300, help="Resolution for output plots")
+@click.option(
+    "--interactive", is_flag=True, help="Generate interactive plots (requires plotly)"
+)
+@click.option(
+    "--dry-run", is_flag=True, help="Show what would be done without executing"
+)
 @click.pass_context
-def plot_qc(ctx, input, output_dir, plot_type, output_format, style, figsize, dpi, interactive, dry_run):
+def plot_qc(
+    ctx,
+    input,
+    output_dir,
+    plot_type,
+    output_format,
+    style,
+    figsize,
+    dpi,
+    interactive,
+    dry_run,
+):
     """
     Generate QC plots from MatrixTable with QC annotations.
 
@@ -835,10 +1026,13 @@ def plot_qc(ctx, input, output_dir, plot_type, output_format, style, figsize, dp
 
         # Parse figsize
         try:
-            width, height = map(float, figsize.split(','))
+            width, height = map(float, figsize.split(","))
             figsize_tuple = (width, height)
         except ValueError:
-            click.echo(f"❌ Invalid figsize format: {figsize}. Use format: width,height", err=True)
+            click.echo(
+                f"❌ Invalid figsize format: {figsize}. Use format: width,height",
+                err=True,
+            )
             ctx.exit(1)
 
         output_path = Path(output_dir)
@@ -866,29 +1060,31 @@ def plot_qc(ctx, input, output_dir, plot_type, output_format, style, figsize, dp
         mt = hl.read_matrix_table(input)
 
         # Check for QC annotations
-        if 'sample_qc' not in mt.col and 'variant_qc' not in mt.row:
-            click.echo("❌ No QC annotations found in MatrixTable. Run compute-qc first.", err=True)
+        if "sample_qc" not in mt.col and "variant_qc" not in mt.row:
+            click.echo(
+                "❌ No QC annotations found in MatrixTable. Run compute-qc first.",
+                err=True,
+            )
             ctx.exit(1)
 
         # Extract QC metrics
         from hvantk.hgc.qc import extract_qc_metrics, QCMetrics
 
         # Create QCMetrics object
-        sample_qc = mt.cols().select('sample_qc') if 'sample_qc' in mt.col else None
-        variant_qc = mt.rows().select('variant_qc') if 'variant_qc' in mt.row else None
+        sample_qc = mt.cols().select("sample_qc") if "sample_qc" in mt.col else None
+        variant_qc = mt.rows().select("variant_qc") if "variant_qc" in mt.row else None
 
-        qc_results = QCMetrics(
-            mt=mt,
-            sample_qc=sample_qc,
-            variant_qc=variant_qc
+        qc_results = QCMetrics(mt=mt, sample_qc=sample_qc, variant_qc=variant_qc)
+
+        click.echo(
+            f"📊 Found QC data: Sample QC: {qc_results.has_sample_qc}, Variant QC: {qc_results.has_variant_qc}"
         )
-
-        click.echo(f"📊 Found QC data: Sample QC: {qc_results.has_sample_qc}, Variant QC: {qc_results.has_variant_qc}")
 
         # Check for interactive plotting
         if interactive:
             try:
                 from hvantk.visualization.interactive_qc import check_plotly_available
+
                 check_plotly_available()
                 click.echo("🎨 Using interactive plotly plots")
                 use_interactive = True
@@ -899,85 +1095,96 @@ def plot_qc(ctx, input, output_dir, plot_type, output_format, style, figsize, dp
         else:
             use_interactive = False
 
-        plot_kwargs = {
-            'style': style,
-            'figsize': figsize_tuple,
-            'dpi': dpi
-        }
+        plot_kwargs = {"style": style, "figsize": figsize_tuple, "dpi": dpi}
 
         # Generate plots based on type
         created_files = []
 
-        if plot_type == 'overview' or plot_type == 'all':
+        if plot_type == "overview" or plot_type == "all":
             if qc_results.has_sample_qc:
                 click.echo("🎨 Creating sample QC overview...")
                 if use_interactive:
                     # For interactive, we'll create a dashboard instead of overview
                     fig = qc_results.plot_interactive_dashboard()
-                    from hvantk.visualization.interactive_qc import save_interactive_plot
+                    from hvantk.visualization.interactive_qc import (
+                        save_interactive_plot,
+                    )
+
                     save_interactive_plot(
                         fig,
-                        output_path / 'interactive_sample_overview.html',
-                        format='html'
+                        output_path / "interactive_sample_overview.html",
+                        format="html",
                     )
-                    created_files.append('interactive_sample_overview.html')
+                    created_files.append("interactive_sample_overview.html")
                 else:
                     fig = qc_results.plot_sample_overview(
-                        save_path=output_path / f'sample_overview.{output_format}',
-                        **plot_kwargs
+                        save_path=output_path / f"sample_overview.{output_format}",
+                        **plot_kwargs,
                     )
-                    created_files.append(f'sample_overview.{output_format}')
+                    created_files.append(f"sample_overview.{output_format}")
 
             if qc_results.has_variant_qc and not use_interactive:
                 click.echo("🎨 Creating variant QC overview...")
                 fig = qc_results.plot_variant_overview(
-                    save_path=output_path / f'variant_overview.{output_format}',
-                    **plot_kwargs
+                    save_path=output_path / f"variant_overview.{output_format}",
+                    **plot_kwargs,
                 )
-                created_files.append(f'variant_overview.{output_format}')
+                created_files.append(f"variant_overview.{output_format}")
 
-        if plot_type == 'individual' or plot_type == 'all':
+        if plot_type == "individual" or plot_type == "all":
             if qc_results.has_sample_qc:
                 click.echo("🎨 Creating individual sample plots...")
 
                 if use_interactive:
-                    from hvantk.visualization.interactive_qc import save_interactive_plot
+                    from hvantk.visualization.interactive_qc import (
+                        save_interactive_plot,
+                    )
 
                     # Sample call rates (interactive)
                     fig = qc_results.plot_interactive_sample_call_rates()
-                    save_interactive_plot(fig, output_path / 'interactive_sample_call_rates.html')
-                    created_files.append('interactive_sample_call_rates.html')
+                    save_interactive_plot(
+                        fig, output_path / "interactive_sample_call_rates.html"
+                    )
+                    created_files.append("interactive_sample_call_rates.html")
 
                     # Sample Ti/Tv (interactive)
                     try:
                         fig = qc_results.plot_interactive_sample_titv()
-                        save_interactive_plot(fig, output_path / 'interactive_sample_titv.html')
-                        created_files.append('interactive_sample_titv.html')
+                        save_interactive_plot(
+                            fig, output_path / "interactive_sample_titv.html"
+                        )
+                        created_files.append("interactive_sample_titv.html")
                     except (ValueError, KeyError, AttributeError, TypeError) as e:
-                        click.echo(f"⚠️  Interactive Ti/Tv plot skipped: {type(e).__name__}: {e}")
+                        click.echo(
+                            f"⚠️  Interactive Ti/Tv plot skipped: {type(e).__name__}: {e}"
+                        )
 
                     # Sample scatter plot (bonus interactive feature)
                     try:
                         fig = qc_results.plot_interactive_sample_scatter()
-                        save_interactive_plot(fig, output_path / 'interactive_sample_scatter.html')
-                        created_files.append('interactive_sample_scatter.html')
+                        save_interactive_plot(
+                            fig, output_path / "interactive_sample_scatter.html"
+                        )
+                        created_files.append("interactive_sample_scatter.html")
                     except (ValueError, KeyError, AttributeError, TypeError) as e:
-                        click.echo(f"⚠️  Interactive scatter plot skipped: {type(e).__name__}: {e}")
+                        click.echo(
+                            f"⚠️  Interactive scatter plot skipped: {type(e).__name__}: {e}"
+                        )
                 else:
                     # Standard matplotlib plots
                     fig = qc_results.plot_sample_call_rates(
-                        save_path=output_path / f'sample_call_rates.{output_format}',
-                        **plot_kwargs
+                        save_path=output_path / f"sample_call_rates.{output_format}",
+                        **plot_kwargs,
                     )
-                    created_files.append(f'sample_call_rates.{output_format}')
+                    created_files.append(f"sample_call_rates.{output_format}")
 
                     # Sample Ti/Tv (if available)
                     try:
                         fig = qc_results.plot_sample_titv(
-                            save_path=output_path / f'sample_titv.{output_format}',
-                            **plot_kwargs
+                            save_path=output_path / f"sample_titv.{output_format}",
+                            **plot_kwargs,
                         )
-                        created_files.append(f'sample_titv.{output_format}')
+                        created_files.append(f"sample_titv.{output_format}")
                     except (ValueError, KeyError, AttributeError, TypeError) as e:
                         click.echo(f"⚠️  Ti/Tv plot skipped: {type(e).__name__}: {e}")
 
@@ -985,59 +1192,70 @@ def plot_qc(ctx, input, output_dir, plot_type, output_format, style, figsize, dp
                 click.echo("🎨 Creating individual variant plots...")
 
                 if use_interactive:
-                    from hvantk.visualization.interactive_qc import save_interactive_plot
+                    from hvantk.visualization.interactive_qc import (
+                        save_interactive_plot,
+                    )
 
                     # Variant call rates (interactive)
                     fig = qc_results.plot_interactive_variant_call_rates()
-                    save_interactive_plot(fig, output_path / 'interactive_variant_call_rates.html')
-                    created_files.append('interactive_variant_call_rates.html')
+                    save_interactive_plot(
+                        fig, output_path / "interactive_variant_call_rates.html"
+                    )
+                    created_files.append("interactive_variant_call_rates.html")
 
                     # Allele frequencies (interactive)
                     fig = qc_results.plot_interactive_allele_frequencies()
-                    save_interactive_plot(fig, output_path / 'interactive_allele_frequencies.html')
-                    created_files.append('interactive_allele_frequencies.html')
+                    save_interactive_plot(
+                        fig, output_path / "interactive_allele_frequencies.html"
+                    )
+                    created_files.append("interactive_allele_frequencies.html")
 
                     # HWE p-values (interactive)
                     fig = qc_results.plot_interactive_hwe_pvalues()
-                    save_interactive_plot(fig, output_path / 'interactive_hwe_pvalues.html')
-                    created_files.append('interactive_hwe_pvalues.html')
+                    save_interactive_plot(
+                        fig, output_path / "interactive_hwe_pvalues.html"
+                    )
+                    created_files.append("interactive_hwe_pvalues.html")
                 else:
                     # Standard matplotlib plots
                     fig = qc_results.plot_variant_call_rates(
-                        save_path=output_path / f'variant_call_rates.{output_format}',
-                        **plot_kwargs
+                        save_path=output_path / f"variant_call_rates.{output_format}",
+                        **plot_kwargs,
                     )
-                    created_files.append(f'variant_call_rates.{output_format}')
+                    created_files.append(f"variant_call_rates.{output_format}")
 
                     # Allele frequencies
                     fig = qc_results.plot_allele_frequencies(
-                        save_path=output_path / f'allele_frequencies.{output_format}',
-                        **plot_kwargs
+                        save_path=output_path / f"allele_frequencies.{output_format}",
+                        **plot_kwargs,
                     )
-                    created_files.append(f'allele_frequencies.{output_format}')
+                    created_files.append(f"allele_frequencies.{output_format}")
 
                     # HWE p-values
                     fig = qc_results.plot_hwe_pvalues(
-                        save_path=output_path / f'hwe_pvalues.{output_format}',
-                        **plot_kwargs
+                        save_path=output_path / f"hwe_pvalues.{output_format}",
+                        **plot_kwargs,
                     )
-                    created_files.append(f'hwe_pvalues.{output_format}')
+                    created_files.append(f"hwe_pvalues.{output_format}")
 
-        if plot_type == 'dashboard' or plot_type == 'all':
+        if plot_type == "dashboard" or plot_type == "all":
             click.echo("🎨 Creating comprehensive QC dashboard...")
 
             if use_interactive:
                 from hvantk.visualization.interactive_qc import save_interactive_plot
+
                 fig = qc_results.plot_interactive_dashboard()
-                save_interactive_plot(fig, output_path / 'interactive_qc_dashboard.html')
-                created_files.append('interactive_qc_dashboard.html')
+                save_interactive_plot(
+                    fig, output_path / "interactive_qc_dashboard.html"
+                )
+                created_files.append("interactive_qc_dashboard.html")
             else:
                 fig = qc_results.plot_dashboard(
-                    save_path=output_path / f'qc_dashboard.{output_format}',
+                    save_path=output_path / f"qc_dashboard.{output_format}",
                     figsize=(20, 12),
-                    **{k: v for k, v in plot_kwargs.items() if k != 'figsize'}
+                    **{k: v for k, v in plot_kwargs.items() if k != "figsize"},
                 )
-                created_files.append(f'qc_dashboard.{output_format}')
+                created_files.append(f"qc_dashboard.{output_format}")
 
         # Summary
         click.echo(f"\n📊 Successfully created {len(created_files)} QC plots:")
@@ -1056,19 +1274,36 @@ def plot_qc(ctx, input, output_dir, plot_type, output_format, style, figsize, dp
 
 
 @hgc_group.command(name="qc-report")
-@click.option('--input', '-i', required=True, help='Input MatrixTable with QC annotations')
-@click.option('--output', '-o', required=True, help='Output HTML report file')
-@click.option('--title', default='Quality Control Report', help='Report title')
-@click.option('--include-plots',
-              multiple=True,
-              type=click.Choice(['sample_overview', 'variant_overview', 'sample_call_rates',
-                               'variant_call_rates', 'allele_frequencies', 'hwe', 'titv']),
-              help='Specific plots to include (can be used multiple times)')
-@click.option('--style',
-              type=click.Choice(['default', 'publication']),
-              default='default',
-              help='Plot style for embedded plots')
-@click.option('--dry-run', is_flag=True, help='Show what would be done without executing')
+@click.option(
+    "--input", "-i", required=True, help="Input MatrixTable with QC annotations"
+)
+@click.option("--output", "-o", required=True, help="Output HTML report file")
+@click.option("--title", default="Quality Control Report", help="Report title")
+@click.option(
+    "--include-plots",
+    multiple=True,
+    type=click.Choice(
+        [
+            "sample_overview",
+            "variant_overview",
+            "sample_call_rates",
+            "variant_call_rates",
+            "allele_frequencies",
+            "hwe",
+            "titv",
+        ]
+    ),
+    help="Specific plots to include (can be used multiple times)",
+)
+@click.option(
+    "--style",
+    type=click.Choice(["default", "publication"]),
+    default="default",
+    help="Plot style for embedded plots",
+)
+@click.option(
+    "--dry-run", is_flag=True, help="Show what would be done without executing"
+)
 @click.pass_context
 def qc_report(ctx, input, output, title, include_plots, style, dry_run):
     """
@@ -1114,38 +1349,36 @@ def qc_report(ctx, input, output, title, include_plots, style, dry_run):
         mt = hl.read_matrix_table(input)
 
         # Check for QC annotations
-        if 'sample_qc' not in mt.col and 'variant_qc' not in mt.row:
-            click.echo("❌ No QC annotations found in MatrixTable. Run compute-qc first.", err=True)
+        if "sample_qc" not in mt.col and "variant_qc" not in mt.row:
+            click.echo(
+                "❌ No QC annotations found in MatrixTable. Run compute-qc first.",
+                err=True,
+            )
             ctx.exit(1)
 
         # Extract QC metrics and create QCMetrics object
         from hvantk.hgc.qc import QCMetrics
 
-        sample_qc = mt.cols().select('sample_qc') if 'sample_qc' in mt.col else None
-        variant_qc = mt.rows().select('variant_qc') if 'variant_qc' in mt.row else None
+        sample_qc = mt.cols().select("sample_qc") if "sample_qc" in mt.col else None
+        variant_qc = mt.rows().select("variant_qc") if "variant_qc" in mt.row else None
 
-        qc_results = QCMetrics(
-            mt=mt,
-            sample_qc=sample_qc,
-            variant_qc=variant_qc
+        qc_results = QCMetrics(mt=mt, sample_qc=sample_qc, variant_qc=variant_qc)
+
+        click.echo(
+            f"📊 Found QC data: Sample QC: {qc_results.has_sample_qc}, Variant QC: {qc_results.has_variant_qc}"
         )
 
-        click.echo(f"📊 Found QC data: Sample QC: {qc_results.has_sample_qc}, Variant QC: {qc_results.has_variant_qc}")
-
         # Prepare report parameters
-        report_kwargs = {
-            'title': title
-        }
+        report_kwargs = {"title": title}
 
         if include_plots:
-            report_kwargs['include_plots'] = list(include_plots)
+            report_kwargs["include_plots"] = list(include_plots)
 
         # Generate HTML report
         click.echo("📝 Generating comprehensive HTML QC report...")
 
         report_path = qc_results.generate_html_report(
-            output_path=output_path,
-            **report_kwargs
+            output_path=output_path, **report_kwargs
         )
 
         # Get file size
@@ -1156,8 +1389,12 @@ def qc_report(ctx, input, output, title, include_plots, style, dry_run):
         click.echo(f"   • Size: {file_size:.1f} KB")
         click.echo(f"   • Title: {title}")
 
-        sample_df = qc_results.get_sample_metrics_df() if qc_results.has_sample_qc else None
-        variant_df = qc_results.get_variant_metrics_df() if qc_results.has_variant_qc else None
+        sample_df = (
+            qc_results.get_sample_metrics_df() if qc_results.has_sample_qc else None
+        )
+        variant_df = (
+            qc_results.get_variant_metrics_df() if qc_results.has_variant_qc else None
+        )
 
         if sample_df is not None:
             click.echo(f"   • Samples: {len(sample_df):,}")
@@ -1175,57 +1412,151 @@ def qc_report(ctx, input, output, title, include_plots, style, dry_run):
 
 
 @hgc_group.command(name="pipeline")
-@click.option('-i', '--input-dir', type=click.Path(exists=True), required=True,
-              help='Path to directory containing input gVCF files')
-@click.option('-o', '--output-dir', type=click.Path(), required=True,
-              help='Path to output directory')
+@click.option(
+    "-i",
+    "--input-dir",
+    type=click.Path(exists=True),
+    required=True,
+    help="Path to directory containing input gVCF files",
+)
+@click.option(
+    "-o",
+    "--output-dir",
+    type=click.Path(),
+    required=True,
+    help="Path to output directory",
+)
 # Stage control flags
-@click.option('--skip-combine-gvcfs', is_flag=True, default=False,
-              help='Skip combining gVCF files (use existing VDS)')
-@click.option('--skip-vds-to-mt', is_flag=True, default=False,
-              help='Skip VDS to MatrixTable conversion (use existing MT)')
-@click.option('--skip-compute-sample-qc', is_flag=True, default=False,
-              help='Skip computing sample QC metrics')
-@click.option('--skip-compute-variant-qc', is_flag=True, default=False,
-              help='Skip computing variant QC metrics')
-@click.option('--skip-export-pvcf', is_flag=True, default=False,
-              help='Skip exporting the cohort (project) VCF')
+@click.option(
+    "--skip-combine-gvcfs",
+    is_flag=True,
+    default=False,
+    help="Skip combining gVCF files (use existing VDS)",
+)
+@click.option(
+    "--skip-vds-to-mt",
+    is_flag=True,
+    default=False,
+    help="Skip VDS to MatrixTable conversion (use existing MT)",
+)
+@click.option(
+    "--skip-compute-sample-qc",
+    is_flag=True,
+    default=False,
+    help="Skip computing sample QC metrics",
+)
+@click.option(
+    "--skip-compute-variant-qc",
+    is_flag=True,
+    default=False,
+    help="Skip computing variant QC metrics",
+)
+@click.option(
+    "--skip-export-pvcf",
+    is_flag=True,
+    default=False,
+    help="Skip exporting the cohort (project) VCF",
+)
 # Path overrides
-@click.option('--vds-path', type=click.Path(), default=None,
-              help='Path to existing VDS (required if --skip-combine-gvcfs)')
-@click.option('--mt-path', type=click.Path(), default=None,
-              help='Path to existing MatrixTable (required if --skip-vds-to-mt)')
+@click.option(
+    "--vds-path",
+    type=click.Path(),
+    default=None,
+    help="Path to existing VDS (required if --skip-combine-gvcfs)",
+)
+@click.option(
+    "--mt-path",
+    type=click.Path(),
+    default=None,
+    help="Path to existing MatrixTable (required if --skip-vds-to-mt)",
+)
 # Processing configuration
-@click.option('--tmp-dir', type=click.Path(), default=None,
-              help='Path to temporary directory for intermediate files')
-@click.option('--reference-genome', type=click.Choice(['GRCh37', 'GRCh38']),
-              default='GRCh38', help='Reference genome build')
-@click.option('--n-partitions', type=int, default=None,
-              help='Number of partitions for parallel processing')
-@click.option('--overwrite', is_flag=True, default=False,
-              help='Overwrite existing output files')
-@click.option('--dry-run', is_flag=True, default=False,
-              help='Show what would be done without executing')
+@click.option(
+    "--tmp-dir",
+    type=click.Path(),
+    default=None,
+    help="Path to temporary directory for intermediate files",
+)
+@click.option(
+    "--reference-genome",
+    type=click.Choice(["GRCh37", "GRCh38"]),
+    default="GRCh38",
+    help="Reference genome build",
+)
+@click.option(
+    "--n-partitions",
+    type=int,
+    default=None,
+    help="Number of partitions for parallel processing",
+)
+@click.option(
+    "--overwrite", is_flag=True, default=False, help="Overwrite existing output files"
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    default=False,
+    help="Show what would be done without executing",
+)
 # QC configuration
-@click.option('--min-sample-call-rate', type=float, default=0.85,
-              help='Minimum sample call rate for QC filtering')
-@click.option('--min-variant-call-rate', type=float, default=0.85,
-              help='Minimum variant call rate for QC filtering')
-@click.option('--apply-qc-filters', is_flag=True, default=False,
-              help='Apply QC filters before exporting pVCF')
+@click.option(
+    "--min-sample-call-rate",
+    type=float,
+    default=0.85,
+    help="Minimum sample call rate for QC filtering",
+)
+@click.option(
+    "--min-variant-call-rate",
+    type=float,
+    default=0.85,
+    help="Minimum variant call rate for QC filtering",
+)
+@click.option(
+    "--apply-qc-filters",
+    is_flag=True,
+    default=False,
+    help="Apply QC filters before exporting pVCF",
+)
 # Output options
-@click.option('--keep-intermediates', is_flag=True, default=True,
-              help='Keep intermediate files (VDS, MT)')
-@click.option('--generate-qc-report', is_flag=True, default=False,
-              help='Generate HTML QC report after computing QC metrics')
-@click.option('--output-prefix', type=str, default='cohort',
-              help='Prefix for output files')
+@click.option(
+    "--keep-intermediates",
+    is_flag=True,
+    default=True,
+    help="Keep intermediate files (VDS, MT)",
+)
+@click.option(
+    "--generate-qc-report",
+    is_flag=True,
+    default=False,
+    help="Generate HTML QC report after computing QC metrics",
+)
+@click.option(
+    "--output-prefix", type=str, default="cohort", help="Prefix for output files"
+)
 @click.pass_context
-def pipeline(ctx, input_dir, output_dir, skip_combine_gvcfs, skip_vds_to_mt,
-             skip_compute_sample_qc, skip_compute_variant_qc, skip_export_pvcf,
-             vds_path, mt_path, tmp_dir, reference_genome, n_partitions,
-             overwrite, dry_run, min_sample_call_rate, min_variant_call_rate,
-             apply_qc_filters, keep_intermediates, generate_qc_report, output_prefix):
+def pipeline(
+    ctx,
+    input_dir,
+    output_dir,
+    skip_combine_gvcfs,
+    skip_vds_to_mt,
+    skip_compute_sample_qc,
+    skip_compute_variant_qc,
+    skip_export_pvcf,
+    vds_path,
+    mt_path,
+    tmp_dir,
+    reference_genome,
+    n_partitions,
+    overwrite,
+    dry_run,
+    min_sample_call_rate,
+    min_variant_call_rate,
+    apply_qc_filters,
+    keep_intermediates,
+    generate_qc_report,
+    output_prefix,
+):
     """
     Run end-to-end gVCF processing pipeline.
 
@@ -1278,7 +1609,7 @@ def pipeline(ctx, input_dir, output_dir, skip_combine_gvcfs, skip_vds_to_mt,
             min_variant_call_rate=min_variant_call_rate,
             apply_qc_filters=apply_qc_filters,
             keep_intermediates=keep_intermediates,
-            generate_qc_report=generate_qc_report
+            generate_qc_report=generate_qc_report,
         )
 
         # Validate configuration
@@ -1298,24 +1629,24 @@ def pipeline(ctx, input_dir, output_dir, skip_combine_gvcfs, skip_vds_to_mt,
             return
 
         # Display starting message
-        click.echo("\n" + "="*70)
+        click.echo("\n" + "=" * 70)
         click.echo("🚀 Starting HGC Pipeline Execution")
-        click.echo("="*70 + "\n")
+        click.echo("=" * 70 + "\n")
 
         # Run pipeline
         state = runner.run()
 
         # Display results
-        click.echo("\n" + "="*70)
+        click.echo("\n" + "=" * 70)
         if state.errors:
             click.echo("❌ Pipeline completed with errors:")
             for error in state.errors:
                 click.echo(f"   • {error}")
-            click.echo("="*70 + "\n")
+            click.echo("=" * 70 + "\n")
             ctx.exit(1)
         else:
             click.echo("✅ Pipeline completed successfully!")
-            click.echo("="*70)
+            click.echo("=" * 70)
 
             # Show outputs
             click.echo("\n📦 Output files:")
@@ -1330,5 +1661,3 @@ def pipeline(ctx, input_dir, output_dir, skip_combine_gvcfs, skip_vds_to_mt,
         logger.exception(f"Pipeline failed: {e}")
         click.echo(f"❌ Error: {e}", err=True)
         ctx.exit(1)
-
-

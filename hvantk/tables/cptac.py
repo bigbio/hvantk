@@ -23,10 +23,10 @@ __all__ = [
 
 def convert_cptac_expression_to_matrix_table(
     expression_df: pd.DataFrame,
-    gene_id_col: str = 'GeneID',
-    gene_name_col: Optional[str] = 'Gene Name',
-    sample_id_col: str = 'SampleID',
-    expression_col: str = 'Expression'
+    gene_id_col: str = "GeneID",
+    gene_name_col: Optional[str] = "Gene Name",
+    sample_id_col: str = "SampleID",
+    expression_col: str = "Expression",
 ) -> hl.MatrixTable:
     """
     Converts a CPTAC expression dataframe to a Hail MatrixTable.
@@ -60,7 +60,11 @@ def convert_cptac_expression_to_matrix_table(
     gene_name_dict = {}
     if gene_name_col and gene_name_col in df.columns:
         # Create a dictionary mapping gene IDs to their names
-        gene_name_dict = df.drop_duplicates(subset=[gene_id_col]).set_index(gene_id_col)[gene_name_col].to_dict()
+        gene_name_dict = (
+            df.drop_duplicates(subset=[gene_id_col])
+            .set_index(gene_id_col)[gene_name_col]
+            .to_dict()
+        )
 
     # Work directly with the coordinate format - no need to pivot
     # Select only the required columns for the MatrixTable
@@ -73,7 +77,12 @@ def convert_cptac_expression_to_matrix_table(
     # Validate uniqueness of (gene, sample) coordinates
     dup_mask = coord_df.duplicated(subset=[gene_id_col, sample_id_col], keep=False)
     if dup_mask.any():
-        examples = coord_df.loc[dup_mask, [gene_id_col, sample_id_col]].drop_duplicates().head(20).to_dict("records")
+        examples = (
+            coord_df.loc[dup_mask, [gene_id_col, sample_id_col]]
+            .drop_duplicates()
+            .head(20)
+            .to_dict("records")
+        )
         raise ValueError(
             f"Duplicate (gene, sample) coordinate rows detected: {examples} "
             f"(showing up to 20). Deduplicate or aggregate before conversion."
@@ -84,10 +93,7 @@ def convert_cptac_expression_to_matrix_table(
 
     # Convert to MatrixTable using coordinate representation
     mt = coord_ht.to_matrix_table(
-        row_key=[gene_id_col],
-        col_key=[sample_id_col],
-        row_fields=[],
-        col_fields=[]
+        row_key=[gene_id_col], col_key=[sample_id_col], row_fields=[], col_fields=[]
     )
 
     # If we have gene names, add them as row annotations
@@ -97,15 +103,17 @@ def convert_cptac_expression_to_matrix_table(
         # Use the dictionary to annotate rows with gene names
         mt = mt.annotate_rows(gene_name=gene_name_dict_expr.get(mt[gene_id_col]))
 
-    logger.info(f"Created MatrixTable with {mt.count_rows()} genes and {mt.count_cols()} samples")
+    logger.info(
+        f"Created MatrixTable with {mt.count_rows()} genes and {mt.count_cols()} samples"
+    )
     return mt
 
 
 def convert_cptac_metadata_to_table(
     metadata_df: pd.DataFrame,
-    sample_id_col: str = 'SampleID',
+    sample_id_col: str = "SampleID",
     categorical_cols: Optional[List[str]] = None,
-    numeric_cols: Optional[List[str]] = None
+    numeric_cols: Optional[List[str]] = None,
 ) -> hl.Table:
     """
     Converts CPTAC metadata to a Hail Table.
@@ -132,7 +140,9 @@ def convert_cptac_metadata_to_table(
 
     # Detect duplicate sample IDs (fast fail to avoid incorrect joins / explode)
     if metadata_df[sample_id_col].duplicated().any():
-        dup_counts = metadata_df[sample_id_col][metadata_df[sample_id_col].duplicated(keep=False)].value_counts()
+        dup_counts = metadata_df[sample_id_col][
+            metadata_df[sample_id_col].duplicated(keep=False)
+        ].value_counts()
         # Limit list length in message if extremely large
         duplicate_list = dup_counts.index.tolist()
         if len(duplicate_list) > 50:
@@ -143,10 +153,13 @@ def convert_cptac_metadata_to_table(
             display_ids = str(duplicate_list)
         raise ValueError(
             "Duplicate sample IDs found in metadata ({} duplicates across {} unique IDs). Example duplicates: {}. Counts: {}".format(
-                dup_counts.sum() - dup_counts.shape[0],  # total duplicate entries beyond first occurrences
+                dup_counts.sum()
+                - dup_counts.shape[
+                    0
+                ],  # total duplicate entries beyond first occurrences
                 len(dup_counts),
                 display_ids,
-                dup_counts.to_dict()
+                dup_counts.to_dict(),
             )
         )
 
@@ -177,12 +190,12 @@ def convert_cptac_metadata_to_table(
 def create_cptac_matrix_table(
     expression_df: pd.DataFrame,
     metadata_df: pd.DataFrame,
-    gene_id_col: str = 'GeneID',
-    gene_name_col: Optional[str] = 'Gene Name',
-    sample_id_col: str = 'SampleID',
-    expression_col: str = 'Expression',
+    gene_id_col: str = "GeneID",
+    gene_name_col: Optional[str] = "Gene Name",
+    sample_id_col: str = "SampleID",
+    expression_col: str = "Expression",
     categorical_cols: Optional[List[str]] = None,
-    numeric_cols: Optional[List[str]] = None
+    numeric_cols: Optional[List[str]] = None,
 ) -> hl.MatrixTable:
     """
     Creates a complete CPTAC MatrixTable with expression data and metadata.
@@ -211,7 +224,7 @@ def create_cptac_matrix_table(
         gene_id_col=gene_id_col,
         gene_name_col=gene_name_col,
         sample_id_col=sample_id_col,
-        expression_col=expression_col
+        expression_col=expression_col,
     )
 
     # Create metadata Table
@@ -219,7 +232,7 @@ def create_cptac_matrix_table(
         metadata_df,
         sample_id_col=sample_id_col,
         categorical_cols=categorical_cols,
-        numeric_cols=numeric_cols
+        numeric_cols=numeric_cols,
     )
 
     # Check for sample ID mismatches - get the sample IDs from the MatrixTable columns
@@ -234,9 +247,13 @@ def create_cptac_matrix_table(
         missing_in_expr = meta_samples - expr_samples
         error_messages = []
         if missing_in_meta:
-            error_messages.append(f"Samples in expression data but not in metadata: {missing_in_meta}")
+            error_messages.append(
+                f"Samples in expression data but not in metadata: {missing_in_meta}"
+            )
         if missing_in_expr:
-            error_messages.append(f"Samples in metadata but not in expression data: {missing_in_expr}")
+            error_messages.append(
+                f"Samples in metadata but not in expression data: {missing_in_expr}"
+            )
         raise ValueError("Sample ID mismatches found. " + "; ".join(error_messages))
 
     # Annotate MatrixTable with metadata
@@ -248,9 +265,7 @@ def create_cptac_matrix_table(
 
 
 def save_cptac_matrix_table(
-    mt: hl.MatrixTable,
-    output_path: str,
-    overwrite: bool = False
+    mt: hl.MatrixTable, output_path: str, overwrite: bool = False
 ) -> None:
     """
     Saves a CPTAC MatrixTable to disk.

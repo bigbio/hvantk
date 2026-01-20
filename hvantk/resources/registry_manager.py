@@ -1,6 +1,7 @@
 """
 New unified registry manager for the reorganized hvantk registry system.
 """
+
 import json
 import logging
 from pathlib import Path
@@ -12,10 +13,12 @@ try:
     from schema_validator import SchemaValidator
 except ImportError:
     import sys
+
     sys.path.append(str(Path(__file__).parent))
     from schema_validator import SchemaValidator
 
 logger = logging.getLogger(__name__)
+
 
 class RegistryManager:
     """Unified manager for accessing and managing omics datasets across all categories."""
@@ -33,7 +36,7 @@ class RegistryManager:
             datasets_file = self.registry_root / omics_type / "datasets.json"
             if datasets_file.exists():
                 try:
-                    with open(datasets_file, 'r') as f:
+                    with open(datasets_file, "r") as f:
                         datasets = json.load(f)
                     self._datasets_cache[omics_type] = datasets
                     logger.info(f"Loaded {len(datasets)} {omics_type} datasets")
@@ -51,11 +54,13 @@ class RegistryManager:
         """Get all datasets for a specific omics type."""
         return self._datasets_cache.get(omics_type, [])
 
-    def search_datasets(self,
-                       query: str = "",
-                       omics_type: Optional[str] = None,
-                       organism: Optional[str] = None,
-                       data_source: Optional[str] = None) -> List[Dict]:
+    def search_datasets(
+        self,
+        query: str = "",
+        omics_type: Optional[str] = None,
+        organism: Optional[str] = None,
+        data_source: Optional[str] = None,
+    ) -> List[Dict]:
         """
         Search datasets across all omics types or within a specific type.
 
@@ -75,11 +80,13 @@ class RegistryManager:
             for dataset in datasets:
                 # Text search
                 if query:
-                    searchable_text = " ".join([
-                        dataset.get("title", ""),
-                        dataset.get("description", ""),
-                        dataset.get("accession", "")
-                    ]).lower()
+                    searchable_text = " ".join(
+                        [
+                            dataset.get("title", ""),
+                            dataset.get("description", ""),
+                            dataset.get("accession", ""),
+                        ]
+                    ).lower()
 
                     if query.lower() not in searchable_text:
                         continue
@@ -88,7 +95,10 @@ class RegistryManager:
                 if organism and dataset.get("organism", "").lower() != organism.lower():
                     continue
 
-                if data_source and dataset.get("data_source", "").lower() != data_source.lower():
+                if (
+                    data_source
+                    and dataset.get("data_source", "").lower() != data_source.lower()
+                ):
                     continue
 
                 # Add omics type annotation
@@ -181,10 +191,12 @@ class RegistryManager:
             datasets_file = self.registry_root / omics_type / "datasets.json"
             datasets_file.parent.mkdir(parents=True, exist_ok=True)
 
-            with open(datasets_file, 'w') as f:
+            with open(datasets_file, "w") as f:
                 json.dump(self._datasets_cache[omics_type], f, indent=2)
 
-            logger.info(f"Saved {len(self._datasets_cache[omics_type])} {omics_type} datasets")
+            logger.info(
+                f"Saved {len(self._datasets_cache[omics_type])} {omics_type} datasets"
+            )
             return True
         except Exception as e:
             logger.error(f"Error saving {omics_type} datasets: {e}")
@@ -196,7 +208,7 @@ class RegistryManager:
             "total_datasets": 0,
             "by_omics_type": {},
             "by_organism": {},
-            "by_data_source": {}
+            "by_data_source": {},
         }
 
         for omics_type, datasets in self._datasets_cache.items():
@@ -206,11 +218,15 @@ class RegistryManager:
             for dataset in datasets:
                 # Count by organism
                 organism = dataset.get("organism", "Unknown")
-                stats["by_organism"][organism] = stats["by_organism"].get(organism, 0) + 1
+                stats["by_organism"][organism] = (
+                    stats["by_organism"].get(organism, 0) + 1
+                )
 
                 # Count by data source
                 data_source = dataset.get("data_source", "Unknown")
-                stats["by_data_source"][data_source] = stats["by_data_source"].get(data_source, 0) + 1
+                stats["by_data_source"][data_source] = (
+                    stats["by_data_source"].get(data_source, 0) + 1
+                )
 
         return stats
 

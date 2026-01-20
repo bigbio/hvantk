@@ -5,12 +5,14 @@ for converting plain numeric (and sex) chromosome labels (e.g. '1', '2', 'X')
 into reference-style contigs (e.g. 'chr1', 'chr2', 'chrX') when importing
 VCF / BED data into Hail.
 """
+
 from __future__ import annotations
 from typing import Iterable, Tuple, Dict
 
 __all__ = [
     "contig_recoding",
 ]
+
 
 def contig_recoding(
     prefix: str = "chr",

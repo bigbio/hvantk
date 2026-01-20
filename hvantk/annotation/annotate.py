@@ -292,4 +292,3 @@ def annotate_variant_id(t: hl.Table, field_name: str = "vid") -> hl.Table:
     }
 
     return t.annotate(**variant_id_ann_exp)
-

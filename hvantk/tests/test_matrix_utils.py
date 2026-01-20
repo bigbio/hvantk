@@ -18,7 +18,7 @@ from hvantk.utils.matrix_utils import (
     filter_by_metadata,
     filter_by_gene_list,
     filter_by_expression,
-    get_top_expressed_genes
+    get_top_expressed_genes,
 )
 from hvantk.visualization import visualize_expression_distribution
 
@@ -78,19 +78,19 @@ def test_summarize_matrix(sample_matrix_table):
     summary = summarize_matrix(sample_matrix_table)
 
     # Verify summary contains expected keys
-    assert 'dimensions' in summary
-    assert 'metadata_fields' in summary
-    assert 'metadata_stats' in summary
-    assert 'expression_stats' in summary
+    assert "dimensions" in summary
+    assert "metadata_fields" in summary
+    assert "metadata_stats" in summary
+    assert "expression_stats" in summary
 
     # Verify dimensions are correct
-    assert summary['dimensions']['n_samples'] == sample_matrix_table.count_cols()
-    assert summary['dimensions']['n_genes'] == sample_matrix_table.count_rows()
+    assert summary["dimensions"]["n_samples"] == sample_matrix_table.count_cols()
+    assert summary["dimensions"]["n_genes"] == sample_matrix_table.count_rows()
 
     # Verify metadata fields exist if present in the MatrixTable
-    if 'metadata' in sample_matrix_table.col:
-        assert len(summary['metadata_fields']) > 0
-        assert len(summary['metadata_stats']) > 0
+    if "metadata" in sample_matrix_table.col:
+        assert len(summary["metadata_fields"]) > 0
+        assert len(summary["metadata_stats"]) > 0
 
     # print summary for debugging
     print("Matrix Summary:" + str(summary))
@@ -100,7 +100,7 @@ def test_filter_by_metadata(sample_matrix_table):
     """
     Test the filter_by_metadata function
     """
-    if 'metadata' not in sample_matrix_table.col:
+    if "metadata" not in sample_matrix_table.col:
         pytest.skip("Sample MatrixTable does not contain metadata")
 
     # Get a metadata field to filter on
@@ -117,7 +117,9 @@ def test_filter_by_metadata(sample_matrix_table):
     filter_value = list(field_values)[0]
 
     # Filter the MatrixTable
-    filtered_mt = filter_by_metadata(sample_matrix_table, {metadata_field: filter_value})
+    filtered_mt = filter_by_metadata(
+        sample_matrix_table, {metadata_field: filter_value}
+    )
 
     # Check that all samples in filtered table have the filter value
     all_match = filtered_mt.aggregate_cols(
@@ -133,7 +135,7 @@ def test_filter_by_gene_list(sample_matrix_table):
     Test the filter_by_gene_list function
     """
 
-    gene_field_name = 'gene'  # This is what we expect to be returned
+    gene_field_name = "gene"  # This is what we expect to be returned
 
     # Get a few gene IDs to filter on
     gene_ids = sample_matrix_table.aggregate_rows(
@@ -141,7 +143,9 @@ def test_filter_by_gene_list(sample_matrix_table):
     )
 
     # Filter the MatrixTable by gene IDs
-    filtered_mt = filter_by_gene_list(sample_matrix_table, gene_ids=gene_ids, gene_id_field=gene_field_name)
+    filtered_mt = filter_by_gene_list(
+        sample_matrix_table, gene_ids=gene_ids, gene_id_field=gene_field_name
+    )
 
     # Check that filtered MatrixTable has only the specified genes
     assert filtered_mt.count_rows() == len(gene_ids)
@@ -164,7 +168,7 @@ def test_filter_by_expression(sample_matrix_table):
             mean=hl.agg.mean(sample_matrix_table.x),
             std=hl.agg.stats(sample_matrix_table.x).stdev,
             min=hl.agg.min(sample_matrix_table.x),
-            max=hl.agg.max(sample_matrix_table.x)
+            max=hl.agg.max(sample_matrix_table.x),
         )
     )
 
@@ -183,7 +187,9 @@ def test_filter_by_expression(sample_matrix_table):
 
     # Test filter by min samples
     min_samples = 2
-    sample_filtered_mt = filter_by_expression(sample_matrix_table, min_samples=min_samples)
+    sample_filtered_mt = filter_by_expression(
+        sample_matrix_table, min_samples=min_samples
+    )
 
     # Check that the filtered matrix table has fewer or equal number of rows
     assert sample_filtered_mt.count_rows() <= sample_matrix_table.count_rows()
@@ -194,7 +200,9 @@ def test_get_top_expressed_genes(sample_matrix_table):
     Test the get_top_expressed_genes function
     """
     # Get top 10 expressed genes
-    top_genes_df = get_top_expressed_genes(sample_matrix_table, n=10, gene_id_field='gene')
+    top_genes_df = get_top_expressed_genes(
+        sample_matrix_table, n=10, gene_id_field="gene"
+    )
 
     # Check that the function returns a pandas DataFrame
     assert isinstance(top_genes_df, pd.DataFrame)
@@ -203,23 +211,20 @@ def test_get_top_expressed_genes(sample_matrix_table):
     assert len(top_genes_df) == 10
 
     # Check required columns are present - using the field name from the returned DataFrame
-    gene_field_name = 'gene'  # This is what we expect to be returned
+    gene_field_name = "gene"  # This is what we expect to be returned
     assert gene_field_name in top_genes_df.columns
-    assert 'mean_expr' in top_genes_df.columns
+    assert "mean_expr" in top_genes_df.columns
 
     # Check that genes are sorted by expression
-    assert top_genes_df['mean_expr'].is_monotonic_decreasing
+    assert top_genes_df["mean_expr"].is_monotonic_decreasing
 
     # Test by_metadata if metadata is available
-    if 'metadata' in sample_matrix_table.col:
+    if "metadata" in sample_matrix_table.col:
         metadata_field = list(sample_matrix_table.col.metadata.dtype)[0]
 
         # Get top genes by a metadata field
         top_by_metadata = get_top_expressed_genes(
-            sample_matrix_table,
-            n=5,
-            by_metadata=metadata_field,
-            gene_id_field='gene'
+            sample_matrix_table, n=5, by_metadata=metadata_field, gene_id_field="gene"
         )
 
         # Check that the result includes the metadata field
@@ -228,7 +233,9 @@ def test_get_top_expressed_genes(sample_matrix_table):
         print("Top expressed genes by metadata:\n", top_by_metadata)
 
 
-def test_visualize_expression_distribution(sample_matrix_table, temp_dir, show_figure=True):
+def test_visualize_expression_distribution(
+    sample_matrix_table, temp_dir, show_figure=True
+):
     """
     Test the visualize_expression_distribution function
 
@@ -238,13 +245,15 @@ def test_visualize_expression_distribution(sample_matrix_table, temp_dir, show_f
         show_figure: If True, will display the figure (default: False)
     """
     # Generate the plot
-    fig = visualize_expression_distribution(sample_matrix_table, n_bins=20, log_scale=True)
+    fig = visualize_expression_distribution(
+        sample_matrix_table, n_bins=20, log_scale=True
+    )
 
     # Check that the figure is a matplotlib figure
     assert isinstance(fig, plt.Figure)
 
     # Save the figure to check it was created properly
-    fig_path = os.path.join(temp_dir, 'expr_dist.png')
+    fig_path = os.path.join(temp_dir, "expr_dist.png")
     fig.savefig(fig_path)
 
     # Display the figure if requested
