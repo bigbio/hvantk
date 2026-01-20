@@ -388,7 +388,14 @@ def run_hgc_workflow(
         raise
 
     # Summary
-    timings["total"] = sum(timings.values())
+    total_keys = [
+        "gvcf_combine",
+        "vds_to_mt",
+        "mt_repartition_checkpoint",
+        "compute_qc",
+        "mt_to_vcf",
+    ]
+    timings["total"] = sum(timings[k] for k in total_keys if k in timings)
     timings["num_cpus"] = num_cpus
     timings["sample_size"] = sample_size
 
