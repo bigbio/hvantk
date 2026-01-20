@@ -163,7 +163,7 @@ class RegistryManager:
         successful = sum(
             count
             for status, count in status_counts.items()
-            if status in ["tier3_passed", "tier2_passed"]
+            if status in ["tier3_passed", "tier2_passed", "tier1_passed"]
         )
 
         return {
