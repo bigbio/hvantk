@@ -2,7 +2,7 @@
 
 ## Overview
 
-`hvantk` (Hail-based Variant Annotation Toolkit) is a modular toolkit for multi-omics variant annotation and analysis built on Apache Hail. The architecture emphasizes:
+`hvantk` (Hail-based Variant Annotation Toolkit) is a modular toolkit for multi-omics variant annotation and analysis built on Hail. The architecture emphasizes:
 
 1. **Domain organization** - Separate concerns for variants, genes, proteins, and expression data
 2. **Extensibility** - Protocol-based contracts for builders, streamers, and downloaders
@@ -408,7 +408,7 @@ tests/
 
 ## Dependencies
 
-- **Apache Hail** - Distributed data processing framework
+- **Hail** - Distributed data processing framework
 - **gnomAD** - Utilities for gnomAD data
 - **Click** - CLI framework
 - **Pandas** - Data manipulation
