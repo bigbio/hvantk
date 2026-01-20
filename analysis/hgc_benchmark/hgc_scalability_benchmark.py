@@ -365,7 +365,9 @@ def run_hgc_workflow(
         raise
 
     # Summary
-    timings["total"] = sum(timings.values())
+    # Only sum actual timing values, excluding partition count
+    timing_keys = ["gvcf_combine", "vds_to_mt", "compute_qc", "mt_to_vcf"]
+    timings["total"] = sum(timings.get(k, 0) for k in timing_keys)
     logger.info("=" * 80)
     logger.info(
         f"[{sample_size}] ✅ Complete workflow finished in {timings['total']:.1f}s"
