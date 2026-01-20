@@ -4,6 +4,7 @@ MatrixTable builders for converting raw sources into Hail MatrixTables (MT).
 This module provides unified builders that wrap existing per-source functions
 and normalize options and naming.
 """
+
 from __future__ import annotations
 
 import logging
@@ -136,10 +137,16 @@ def build_cptac_mt(
     from hvantk.tables.cptac import create_cptac_matrix_table
 
     logger.info("Reading CPTAC expression table from %s", expression_path)
-    expr_df = pd.read_csv(expression_path, sep="\t" if expression_path.endswith((".tsv", ".tsv.bgz", ".tsv.gz")) else ",")
+    expr_df = pd.read_csv(
+        expression_path,
+        sep="\t" if expression_path.endswith((".tsv", ".tsv.bgz", ".tsv.gz")) else ",",
+    )
 
     logger.info("Reading CPTAC metadata table from %s", metadata_path)
-    meta_df = pd.read_csv(metadata_path, sep="\t" if metadata_path.endswith((".tsv", ".tsv.bgz", ".tsv.gz")) else ",")
+    meta_df = pd.read_csv(
+        metadata_path,
+        sep="\t" if metadata_path.endswith((".tsv", ".tsv.bgz", ".tsv.gz")) else ",",
+    )
 
     logger.info("Building CPTAC MatrixTable")
     mt = create_cptac_matrix_table(
@@ -158,4 +165,3 @@ def build_cptac_mt(
         mt = mt.checkpoint(output_mt, overwrite=overwrite)
 
     return mt
-

@@ -27,7 +27,6 @@ from hvantk.annotation.annotate import (
     annotate_hca,
 )
 
-
 project_dir = None
 out_path = f"{project_dir}/data/features"
 

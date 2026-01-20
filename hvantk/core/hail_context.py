@@ -15,6 +15,7 @@ Environment variables:
 - HVANTK_SKIP_HAIL_INIT: if set to a non-empty value, init_hail() will skip
   calling hl.init() (assumes caller/environment already initialized Hail).
 """
+
 from __future__ import annotations
 
 import os
@@ -49,7 +50,9 @@ def init_hail(**kwargs) -> None:
 
     if os.environ.get("HVANTK_SKIP_HAIL_INIT"):
         if not _HAIL_INITIALIZED:
-            _logger.info("Skipping hl.init() due to HVANTK_SKIP_HAIL_INIT environment variable")
+            _logger.info(
+                "Skipping hl.init() due to HVANTK_SKIP_HAIL_INIT environment variable"
+            )
             _HAIL_INITIALIZED = True  # Treat as initialized to avoid later attempts
         return
 
@@ -94,4 +97,3 @@ def shutdown_hail() -> None:
     finally:
         _HAIL_INITIALIZED = False
         _HAIL_INIT_ARGS = {}
-

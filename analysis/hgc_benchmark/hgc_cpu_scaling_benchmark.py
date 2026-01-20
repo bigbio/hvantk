@@ -32,16 +32,14 @@ from hvantk.hgc import (
     combine_gvcfs,
     convert_vds_to_mt,
     compute_full_qc,
-    convert_mt_to_multi_sample_vcf
+    convert_mt_to_multi_sample_vcf,
 )
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
 logger = logging.getLogger(__name__)
 
@@ -126,17 +124,16 @@ def setup_hail(
         #
         # --- Memory (local mode) ---
         "spark.driver.memory": f"{driver_memory_gb}g",
-
         # --- Partitioning (fixed across CPU runs) ---
         "spark.sql.shuffle.partitions": str(shuffle_partitions),
         "spark.default.parallelism": str(shuffle_partitions),
-
         # Controls how Spark splits input files for reading (keep fixed across runs).
         "spark.sql.files.maxPartitionBytes": str(max_partition_bytes_mb * 1024 * 1024),
-
         # --- AQE (off for pure scaling, on for best-real runtime in a separate experiment) ---
         "spark.sql.adaptive.enabled": "true" if aqe_enabled else "false",
-        "spark.sql.adaptive.coalescePartitions.enabled": "true" if aqe_enabled else "false",
+        "spark.sql.adaptive.coalescePartitions.enabled": (
+            "true" if aqe_enabled else "false"
+        ),
     }
 
     # Optional: place shuffle spill & temp files on fast local disk
@@ -158,7 +155,7 @@ def setup_hail(
             log=str(log_file),
             quiet=False,
             append=False,
-            min_block_size=0,          # important for some combiner workflows
+            min_block_size=0,  # important for some combiner workflows
             default_reference="GRCh38",
             master=f"local[{num_cpus}]",
             spark_conf=spark_conf,
@@ -177,7 +174,7 @@ def setup_hail(
 
 def read_gvcf_list(gvcf_list_file: Path) -> List[str]:
     """Read list of GVCF files from a text file."""
-    with open(gvcf_list_file, 'r') as f:
+    with open(gvcf_list_file, "r") as f:
         gvcf_files = [line.strip() for line in f if line.strip()]
     logger.info(f"Read {len(gvcf_files)} GVCF files from {gvcf_list_file}")
     return gvcf_files
@@ -188,7 +185,7 @@ def run_hgc_workflow(
     output_dir: Path,
     sample_size: int,
     num_cpus: int,
-    reference_genome: str = 'GRCh38',
+    reference_genome: str = "GRCh38",
     shuffle_partitions: int = 2048,
 ) -> Dict[str, float]:
     """
@@ -216,19 +213,23 @@ def run_hgc_workflow(
     # Define paths - include CPU count in naming to avoid conflicts
     vds_path = str(output_dir / f"combined_{sample_size}_cpu{num_cpus}.vds")
     mt_path = str(output_dir / f"analysis_{sample_size}_cpu{num_cpus}.mt")
-    mt_checkpoint_path = str(output_dir / f"analysis_{sample_size}_cpu{num_cpus}.repart.mt")
+    mt_checkpoint_path = str(
+        output_dir / f"analysis_{sample_size}_cpu{num_cpus}.repart.mt"
+    )
     sample_qc_path = str(output_dir / f"sample_qc_{sample_size}_cpu{num_cpus}.ht")
     variant_qc_path = str(output_dir / f"variant_qc_{sample_size}_cpu{num_cpus}.ht")
     vcf_path = str(output_dir / f"cohort_{sample_size}_cpu{num_cpus}.vcf.bgz")
     tmp_path = str(output_dir / "tmp")
     combiner_plan = str(output_dir / f"combiner_plan_{sample_size}_cpu{num_cpus}.json")
 
-    logger.info("="*80)
+    logger.info("=" * 80)
     logger.info(f"Starting HGC workflow: {sample_size} samples @ {num_cpus} CPUs")
-    logger.info("="*80)
+    logger.info("=" * 80)
 
     # STEP 1: Combine GVCFs → VDS
-    logger.info(f"[{num_cpus} CPUs] Step 1/4: Combining {len(gvcf_files)} GVCFs to VDS...")
+    logger.info(
+        f"[{num_cpus} CPUs] Step 1/4: Combining {len(gvcf_files)} GVCFs to VDS..."
+    )
     logger.info(f"[{num_cpus} CPUs]   GVCF files:")
     for i, gvcf in enumerate(gvcf_files[:5], 1):  # Show first 5
         logger.info(f"[{num_cpus} CPUs]     {i}. {gvcf}")
@@ -241,7 +242,9 @@ def run_hgc_workflow(
         gvcf_links_dir = output_dir / f"gvcf_links_cpu{num_cpus}"
         gvcf_links_dir.mkdir(exist_ok=True)
 
-        logger.info(f"[{num_cpus} CPUs]   Creating symbolic links to GVCFs and their indexes...")
+        logger.info(
+            f"[{num_cpus} CPUs]   Creating symbolic links to GVCFs and their indexes..."
+        )
         created_links = 0
         for gvcf_path in gvcf_files:
             # Create symlink for GVCF file
@@ -256,8 +259,8 @@ def run_hgc_workflow(
                 created_links += 1
 
             # Create symlink for index file (.tbi)
-            tbi_path = gvcf_path + '.tbi'
-            tbi_link_name = gvcf_links_dir / (os.path.basename(gvcf_path) + '.tbi')
+            tbi_path = gvcf_path + ".tbi"
+            tbi_link_name = gvcf_links_dir / (os.path.basename(gvcf_path) + ".tbi")
             if os.path.exists(tbi_path):
                 if os.path.lexists(tbi_link_name):
                     if not tbi_link_name.exists():
@@ -280,10 +283,12 @@ def run_hgc_workflow(
             save_path=combiner_plan,
             vdses=[],
             kwargs={},
-            reference_genome=reference_genome
+            reference_genome=reference_genome,
         )
-        timings['gvcf_combine'] = time.time() - start
-        logger.info(f"[{num_cpus} CPUs] Step 1 completed in {timings['gvcf_combine']:.1f}s")
+        timings["gvcf_combine"] = time.time() - start
+        logger.info(
+            f"[{num_cpus} CPUs] Step 1 completed in {timings['gvcf_combine']:.1f}s"
+        )
         logger.info(f"[{num_cpus} CPUs]   → VDS written to: {vds_path}")
     except Exception as e:
         logger.error(f"[{num_cpus} CPUs] Step 1 FAILED: {e}")
@@ -299,17 +304,21 @@ def run_hgc_workflow(
             adjust_genotypes=True,
             skip_split_multi=False,
             skip_validation=False,
-            overwrite=True
+            overwrite=True,
         )
-        timings['vds_to_mt'] = time.time() - start
-        logger.info(f"[{num_cpus} CPUs] Step 2 completed in {timings['vds_to_mt']:.1f}s")
+        timings["vds_to_mt"] = time.time() - start
+        logger.info(
+            f"[{num_cpus} CPUs] Step 2 completed in {timings['vds_to_mt']:.1f}s"
+        )
         logger.info(f"[{num_cpus} CPUs]   → MatrixTable written to: {mt_path}")
     except Exception as e:
         logger.error(f"[{num_cpus} CPUs] Step 2 FAILED: {e}")
         raise
 
     # STEP 2.1 (MANDATORY for CPU scaling): Repartition and checkpoint MT with FIXED partitions
-    logger.info(f"[{num_cpus} CPUs] Step 2.1: Repartitioning MT to {shuffle_partitions} partitions (FIXED for CPU scaling) and checkpointing...")
+    logger.info(
+        f"[{num_cpus} CPUs] Step 2.1: Repartitioning MT to {shuffle_partitions} partitions (FIXED for CPU scaling) and checkpointing..."
+    )
     start = time.time()
     try:
         mt = hl.read_matrix_table(mt_path)
@@ -317,33 +326,43 @@ def run_hgc_workflow(
         mt = mt.repartition(shuffle_partitions, shuffle=True)
         mt = mt.checkpoint(mt_checkpoint_path, overwrite=True)
         mt_path = mt_checkpoint_path  # use checkpointed MT downstream
-        timings['mt_repartition_checkpoint'] = time.time() - start
-        logger.info(f"[{num_cpus} CPUs] Step 2.1 completed in {timings['mt_repartition_checkpoint']:.1f}s")
-        logger.info(f"[{num_cpus} CPUs]   → Repartitioned MT: {mt.n_partitions} partitions")
+        timings["mt_repartition_checkpoint"] = time.time() - start
+        logger.info(
+            f"[{num_cpus} CPUs] Step 2.1 completed in {timings['mt_repartition_checkpoint']:.1f}s"
+        )
+        logger.info(
+            f"[{num_cpus} CPUs]   → Repartitioned MT: {mt.n_partitions} partitions"
+        )
         logger.info(f"[{num_cpus} CPUs]   → Checkpointed MT: {mt_path}")
     except Exception as e:
         logger.error(f"[{num_cpus} CPUs] Step 2.1 FAILED: {e}")
         raise
 
     # STEP 3: Compute QC metrics and export QC tables
-    logger.info(f"[{num_cpus} CPUs] Step 3/4: Computing QC metrics and exporting QC tables...")
+    logger.info(
+        f"[{num_cpus} CPUs] Step 3/4: Computing QC metrics and exporting QC tables..."
+    )
     start = time.time()
     try:
         mt = hl.read_matrix_table(mt_path)
         qc_compute_start = time.time()
         qc_metrics = compute_full_qc(mt)
-        timings['compute_qc_compute'] = time.time() - qc_compute_start
+        timings["compute_qc_compute"] = time.time() - qc_compute_start
 
         write_start = time.time()
         qc_metrics.sample_qc.write(sample_qc_path, overwrite=True)
         qc_metrics.variant_qc.write(variant_qc_path, overwrite=True)
-        timings['compute_qc_write'] = time.time() - write_start
+        timings["compute_qc_write"] = time.time() - write_start
 
-        timings['compute_qc'] = time.time() - start
-        logger.info(f"[{num_cpus} CPUs] Step 3 completed in {timings['compute_qc']:.1f}s")
+        timings["compute_qc"] = time.time() - start
+        logger.info(
+            f"[{num_cpus} CPUs] Step 3 completed in {timings['compute_qc']:.1f}s"
+        )
         logger.info(f"[{num_cpus} CPUs]   → Sample QC table: {sample_qc_path}")
         logger.info(f"[{num_cpus} CPUs]   → Variant QC table: {variant_qc_path}")
-        logger.info(f"[{num_cpus} CPUs]   compute: {timings['compute_qc_compute']:.1f}s; write: {timings['compute_qc_write']:.1f}s")
+        logger.info(
+            f"[{num_cpus} CPUs]   compute: {timings['compute_qc_compute']:.1f}s; write: {timings['compute_qc_write']:.1f}s"
+        )
     except Exception as e:
         logger.error(f"[{num_cpus} CPUs] Step 3 FAILED: {e}")
         raise
@@ -357,97 +376,115 @@ def run_hgc_workflow(
             vcf_path=vcf_path,
             filter_adj_genotypes=True,
             min_ac=1,
-            split_multi=True
+            split_multi=True,
         )
-        timings['mt_to_vcf'] = time.time() - start
-        logger.info(f"[{num_cpus} CPUs] Step 4 completed in {timings['mt_to_vcf']:.1f}s")
+        timings["mt_to_vcf"] = time.time() - start
+        logger.info(
+            f"[{num_cpus} CPUs] Step 4 completed in {timings['mt_to_vcf']:.1f}s"
+        )
         logger.info(f"[{num_cpus} CPUs]   → Cohort VCF: {vcf_path}")
     except Exception as e:
         logger.error(f"[{num_cpus} CPUs] Step 4 FAILED: {e}")
         raise
 
     # Summary
-    timings['total'] = sum(timings.values())
-    timings['num_cpus'] = num_cpus
-    timings['sample_size'] = sample_size
+    total_keys = [
+        "gvcf_combine",
+        "vds_to_mt",
+        "mt_repartition_checkpoint",
+        "compute_qc",
+        "mt_to_vcf",
+    ]
+    timings["total"] = sum(timings[k] for k in total_keys if k in timings)
+    timings["num_cpus"] = num_cpus
+    timings["sample_size"] = sample_size
 
-    logger.info("="*80)
-    logger.info(f"[{num_cpus} CPUs] ✅ Complete workflow finished in {timings['total']:.1f}s")
+    logger.info("=" * 80)
+    logger.info(
+        f"[{num_cpus} CPUs] ✅ Complete workflow finished in {timings['total']:.1f}s"
+    )
     logger.info(f"[{num_cpus} CPUs] Timing breakdown:")
-    logger.info(f"[{num_cpus} CPUs]   - GVCF → VDS:    {timings['gvcf_combine']:.1f}s ({timings['gvcf_combine']/timings['total']*100:.1f}%)")
-    logger.info(f"[{num_cpus} CPUs]   - VDS → MT:      {timings['vds_to_mt']:.1f}s ({timings['vds_to_mt']/timings['total']*100:.1f}%)")
-    logger.info(f"[{num_cpus} CPUs]   - MT Repartition: {timings.get('mt_repartition_checkpoint', 0):.1f}s ({timings.get('mt_repartition_checkpoint', 0)/timings['total']*100:.1f}%)")
-    logger.info(f"[{num_cpus} CPUs]   - Compute QC:    {timings['compute_qc']:.1f}s ({timings['compute_qc']/timings['total']*100:.1f}%) [compute={timings.get('compute_qc_compute',0):.1f}s, write={timings.get('compute_qc_write',0):.1f}s]")
-    logger.info(f"[{num_cpus} CPUs]   - MT → VCF:      {timings['mt_to_vcf']:.1f}s ({timings['mt_to_vcf']/timings['total']*100:.1f}%)")
-    logger.info("="*80)
+    logger.info(
+        f"[{num_cpus} CPUs]   - GVCF → VDS:    {timings['gvcf_combine']:.1f}s ({timings['gvcf_combine']/timings['total']*100:.1f}%)"
+    )
+    logger.info(
+        f"[{num_cpus} CPUs]   - VDS → MT:      {timings['vds_to_mt']:.1f}s ({timings['vds_to_mt']/timings['total']*100:.1f}%)"
+    )
+    logger.info(
+        f"[{num_cpus} CPUs]   - MT Repartition: {timings.get('mt_repartition_checkpoint', 0):.1f}s ({timings.get('mt_repartition_checkpoint', 0)/timings['total']*100:.1f}%)"
+    )
+    logger.info(
+        f"[{num_cpus} CPUs]   - Compute QC:    {timings['compute_qc']:.1f}s ({timings['compute_qc']/timings['total']*100:.1f}%) [compute={timings.get('compute_qc_compute',0):.1f}s, write={timings.get('compute_qc_write',0):.1f}s]"
+    )
+    logger.info(
+        f"[{num_cpus} CPUs]   - MT → VCF:      {timings['mt_to_vcf']:.1f}s ({timings['mt_to_vcf']/timings['total']*100:.1f}%)"
+    )
+    logger.info("=" * 80)
 
     return timings
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Run HGC CPU scaling benchmark for fixed cohort size',
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        description="Run HGC CPU scaling benchmark for fixed cohort size",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
-        '--gvcf-list',
+        "--gvcf-list",
         type=Path,
         required=True,
-        help='Text file with list of GVCF file paths (one per line)'
+        help="Text file with list of GVCF file paths (one per line)",
     )
     parser.add_argument(
-        '--output-dir',
-        type=Path,
-        required=True,
-        help='Output directory for results'
+        "--output-dir", type=Path, required=True, help="Output directory for results"
     )
     parser.add_argument(
-        '--sample-size',
+        "--sample-size",
         type=int,
         required=True,
-        help='Number of samples (for logging and naming)'
+        help="Number of samples (for logging and naming)",
     )
     parser.add_argument(
-        '--num-cpus',
+        "--num-cpus",
         type=int,
         required=True,
-        help='Number of CPU cores to allocate to Hail/Spark'
+        help="Number of CPU cores to allocate to Hail/Spark",
     )
     parser.add_argument(
-        '--driver-memory',
+        "--driver-memory",
         type=int,
         default=128,
-        help='Driver memory in GB (default: 128, kept FIXED across runs for fair comparison)'
+        help="Driver memory in GB (default: 128, kept FIXED across runs for fair comparison)",
     )
     parser.add_argument(
-        '--shuffle-partitions',
+        "--shuffle-partitions",
         type=int,
         default=2048,
-        help='Number of shuffle partitions (default: 2048, kept FIXED across runs)'
+        help="Number of shuffle partitions (default: 2048, kept FIXED across runs)",
     )
     parser.add_argument(
-        '--max-partition-bytes',
+        "--max-partition-bytes",
         type=int,
         default=128,
-        help='Max partition bytes in MB (default: 128)'
+        help="Max partition bytes in MB (default: 128)",
     )
     parser.add_argument(
-        '--local-dir',
+        "--local-dir",
         type=Path,
         default=None,
-        help='Spark local directory for shuffle spill (recommend fast NVMe)'
+        help="Spark local directory for shuffle spill (recommend fast NVMe)",
     )
     parser.add_argument(
-        '--aqe-enabled',
-        action='store_true',
-        help='Enable Adaptive Query Execution (default: False for pure CPU scaling)'
+        "--aqe-enabled",
+        action="store_true",
+        help="Enable Adaptive Query Execution (default: False for pure CPU scaling)",
     )
     parser.add_argument(
-        '--reference',
+        "--reference",
         type=str,
-        default='GRCh38',
-        choices=['GRCh38', 'GRCh37'],
-        help='Reference genome (default: GRCh38)'
+        default="GRCh38",
+        choices=["GRCh38", "GRCh37"],
+        help="Reference genome (default: GRCh38)",
     )
 
     args = parser.parse_args()
@@ -458,9 +495,9 @@ def main():
     # Add file handler for logging
     log_file = args.output_dir / f"workflow_cpu{args.num_cpus}.log"
     file_handler = logging.FileHandler(log_file)
-    file_handler.setFormatter(logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    ))
+    file_handler.setFormatter(
+        logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    )
     logger.addHandler(file_handler)
 
     logger.info(f"HGC CPU Scaling Benchmark")
@@ -510,7 +547,7 @@ def main():
 
         # Save timing results to JSON
         timing_file = args.output_dir / f"timing_cpu{args.num_cpus}.json"
-        with open(timing_file, 'w') as f:
+        with open(timing_file, "w") as f:
             json.dump(timings, f, indent=2)
         logger.info(f"Timing results saved to: {timing_file}")
 
@@ -526,6 +563,5 @@ def main():
         hl.stop()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
-

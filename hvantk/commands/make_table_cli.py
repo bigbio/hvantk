@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 # Internal wrappers so tests can mock without importing hail-heavy modules at import time
 
+
 def _create_clinvar_tb(*args, **kwargs):
     from hvantk.tables.table_builders import create_clinvar_tb
 
@@ -66,14 +67,24 @@ def mktable_group():
 
 # Shared options
 _raw_input_opt = click.option(
-    "--raw-input", required=True, type=str, help="Path to the raw input file (VCF/TSV/BED/etc.)",
+    "--raw-input",
+    required=True,
+    type=str,
+    help="Path to the raw input file (VCF/TSV/BED/etc.)",
 )
 _output_ht_opt = click.option(
-    "--output-ht", required=True, type=str, help="Path to write the output Hail Table (.ht)",
+    "--output-ht",
+    required=True,
+    type=str,
+    help="Path to write the output Hail Table (.ht)",
 )
-_overwrite_opt = click.option("--overwrite", is_flag=True, help="Overwrite existing outputs if present")
+_overwrite_opt = click.option(
+    "--overwrite", is_flag=True, help="Overwrite existing outputs if present"
+)
 _export_tsv_opt = click.option(
-    "--export-tsv", is_flag=True, help="Additionally export a flattened TSV (.tsv.bgz) next to the HT"
+    "--export-tsv",
+    is_flag=True,
+    help="Additionally export a flattened TSV (.tsv.bgz) next to the HT",
 )
 _ref_genome_opt = click.option(
     "--ref-genome",
@@ -90,7 +101,9 @@ _ref_genome_opt = click.option(
 @_overwrite_opt
 @_export_tsv_opt
 @_ref_genome_opt
-def mktable_clinvar(raw_input: str, output_ht: str, overwrite: bool, export_tsv: bool, ref_genome: str):
+def mktable_clinvar(
+    raw_input: str, output_ht: str, overwrite: bool, export_tsv: bool, ref_genome: str
+):
     """Build a ClinVar Hail Table from a VCF (keyed by locus, alleles)."""
     logger.info("Building ClinVar table")
     _create_clinvar_tb(
@@ -109,7 +122,9 @@ def mktable_clinvar(raw_input: str, output_ht: str, overwrite: bool, export_tsv:
 @_overwrite_opt
 @_export_tsv_opt
 @_ref_genome_opt
-def mktable_interactome(raw_input: str, output_ht: str, overwrite: bool, export_tsv: bool, ref_genome: str):
+def mktable_interactome(
+    raw_input: str, output_ht: str, overwrite: bool, export_tsv: bool, ref_genome: str
+):
     """Build an interactome Table from a BED (keyed by interval)."""
     logger.info("Building interactome table")
     _create_interactome_tb(
@@ -133,9 +148,17 @@ def mktable_interactome(raw_input: str, output_ht: str, overwrite: bool, export_
     default=None,
     help="Comma-separated list of fields to retain (optional)",
 )
-def mktable_gevir(raw_input: str, output_ht: str, overwrite: bool, export_tsv: bool, fields: Optional[str]):
+def mktable_gevir(
+    raw_input: str,
+    output_ht: str,
+    overwrite: bool,
+    export_tsv: bool,
+    fields: Optional[str],
+):
     """Build a GeVIR gene-level Table from a TSV (keyed by gene_id)."""
-    selected: Optional[List[str]] = [f.strip() for f in fields.split(",")] if fields else None
+    selected: Optional[List[str]] = (
+        [f.strip() for f in fields.split(",")] if fields else None
+    )
     logger.info("Building GeVIR table")
     _create_gevir_tb(
         input_path=raw_input,
@@ -159,10 +182,16 @@ def mktable_gevir(raw_input: str, output_ht: str, overwrite: bool, export_tsv: b
     help="Comma-separated list of fields to retain (optional)",
 )
 def mktable_gnomad_metrics(
-    raw_input: str, output_ht: str, overwrite: bool, export_tsv: bool, fields: Optional[str]
+    raw_input: str,
+    output_ht: str,
+    overwrite: bool,
+    export_tsv: bool,
+    fields: Optional[str],
 ):
     """Build a gnomAD constraint metrics gene Table from a TSV (keyed by gene_id)."""
-    selected: Optional[List[str]] = [f.strip() for f in fields.split(",")] if fields else None
+    selected: Optional[List[str]] = (
+        [f.strip() for f in fields.split(",")] if fields else None
+    )
     logger.info("Building gnomAD metrics table")
     _create_gnomad_constraint_gene_metrics_tb(
         input_path=raw_input,
@@ -200,7 +229,9 @@ def mktable_ensembl_gene(
     canonical: bool,
 ):
     """Build an Ensembl gene annotation Table from a Biomart TSV (keyed by gene_id)."""
-    selected: Optional[List[str]] = [f.strip() for f in fields.split(",")] if fields else None
+    selected: Optional[List[str]] = (
+        [f.strip() for f in fields.split(",")] if fields else None
+    )
     logger.info("Building Ensembl gene table")
     _create_ensembl_gene_tb(
         input_path=raw_input,
@@ -219,7 +250,11 @@ def mktable_ensembl_gene(
 @_overwrite_opt
 @_export_tsv_opt
 @_ref_genome_opt
-@click.option("--no-parse-transcript-scores", is_flag=True, help="Do not parse transcript-specific score fields into dicts")
+@click.option(
+    "--no-parse-transcript-scores",
+    is_flag=True,
+    help="Do not parse transcript-specific score fields into dicts",
+)
 @click.option(
     "--group-prefixes",
     type=str,

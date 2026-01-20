@@ -45,7 +45,9 @@ class ClinvarDataStreamer(HailDataStreamer):
         self.gene_set = gene_set or set()
         # Normalize disease terms (case-insensitive, replace spaces with underscores) if provided
         self.disease_terms = disease_terms or set()
-        self._normalized_disease_terms = {self._normalize_disease_term(d) for d in self.disease_terms}
+        self._normalized_disease_terms = {
+            self._normalize_disease_term(d) for d in self.disease_terms
+        }
         self.clinvar_path = clinvar_path
         self.clinvar_ht = None
         self.use_table_builder = use_table_builder
@@ -56,13 +58,15 @@ class ClinvarDataStreamer(HailDataStreamer):
 
     @staticmethod
     def _normalize_disease_term(term: str) -> str:
-        return term.replace(' ', '_').lower()
+        return term.replace(" ", "_").lower()
 
     def setup(self) -> None:
         super().setup()
         self.logger.info(f"Loading ClinVar data from {self.clinvar_path}")
         if self.use_table_builder:
-            output_path = self.table_output_path or hl.utils.new_temp_file("clinvar", "ht")
+            output_path = self.table_output_path or hl.utils.new_temp_file(
+                "clinvar", "ht"
+            )
             self.clinvar_ht = create_clinvar_tb(
                 input_path=self.clinvar_path,
                 output_path=output_path,
@@ -70,31 +74,38 @@ class ClinvarDataStreamer(HailDataStreamer):
                 export_tsv=False,
             )
         else:
-            self.clinvar_ht = hl.import_vcf(self.clinvar_path, reference_genome="GRCh38").rows()
-        info_fields = self.clinvar_ht.row.dtype['info'].fields
-        if 'GENEINFO' in info_fields:
+            self.clinvar_ht = hl.import_vcf(
+                self.clinvar_path, reference_genome="GRCh38"
+            ).rows()
+        info_fields = self.clinvar_ht.row.dtype["info"].fields
+        if "GENEINFO" in info_fields:
             self.clinvar_ht = self.clinvar_ht.annotate(
                 gene=hl.if_else(
-                    hl.is_defined(self.clinvar_ht.info.GENEINFO) & (hl.len(self.clinvar_ht.info.GENEINFO) > 0),
+                    hl.is_defined(self.clinvar_ht.info.GENEINFO)
+                    & (hl.len(self.clinvar_ht.info.GENEINFO) > 0),
                     self.clinvar_ht.info.GENEINFO.split(":")[0],
-                    hl.missing(hl.tstr)
+                    hl.missing(hl.tstr),
                 )
             )
         else:
-            self.logger.warning("info.GENEINFO field absent; gene set filtering may be ineffective")
+            self.logger.warning(
+                "info.GENEINFO field absent; gene set filtering may be ineffective"
+            )
             self.clinvar_ht = self.clinvar_ht.annotate(gene=hl.missing(hl.tstr))
-        if 'MC' in info_fields:
+        if "MC" in info_fields:
             self.clinvar_ht = self.clinvar_ht.annotate(
                 Consequence=self.clinvar_ht.info.MC.map(
                     lambda x: hl.if_else(
                         hl.is_defined(x) & (hl.len(x.split("|")) > 1),
                         x.split("|")[1],
-                        ""
+                        "",
                     )
                 )
             )
         else:
-            self.clinvar_ht = self.clinvar_ht.annotate(Consequence=hl.empty_array(hl.tstr))
+            self.clinvar_ht = self.clinvar_ht.annotate(
+                Consequence=hl.empty_array(hl.tstr)
+            )
 
     def stream(self) -> Iterator[hl.Table]:
         if self.clinvar_ht is None:
@@ -127,16 +138,24 @@ class ClinvarDataStreamer(HailDataStreamer):
         if self._normalized_disease_terms:
             disease_set = hl.literal(self._normalized_disease_terms)
             clndn = hl.or_else(chunk_ht.info.CLNDN, "")
-            tokens = hl.str(clndn).split(r"\|").map(lambda t: t.replace(' ', '_').lower())
+            tokens = (
+                hl.str(clndn).split(r"\|").map(lambda t: t.replace(" ", "_").lower())
+            )
             disease_tp = tokens.any(lambda t: disease_set.contains(t))
         else:
             disease_tp = hl.literal(False)
 
         # If gene_set is empty, do not filter by gene (treat as True)
-        gene_filter = hl.literal(True) if not self.gene_set else hl.literal(self.gene_set).contains(chunk_ht.gene)
+        gene_filter = (
+            hl.literal(True)
+            if not self.gene_set
+            else hl.literal(self.gene_set).contains(chunk_ht.gene)
+        )
         gene_tp = (
-            chunk_ht.info.CLNSIG.any(lambda x: hl.set(self.PATHOGENIC_LABELS).contains(x)) &
-            gene_filter
+            chunk_ht.info.CLNSIG.any(
+                lambda x: hl.set(self.PATHOGENIC_LABELS).contains(x)
+            )
+            & gene_filter
         )
 
         ts_ann_expr = {

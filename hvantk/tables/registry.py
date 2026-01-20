@@ -11,6 +11,7 @@ Contract per entry:
 
 This module adapts hvantk.tables.table_builders functions to this contract.
 """
+
 from __future__ import annotations
 
 import logging
@@ -22,7 +23,10 @@ logger = logging.getLogger(__name__)
 
 # Table builders adapters
 
-def _clinvar_adapter(input_path: str, output_path: str, params: Dict[str, Any] | None = None):
+
+def _clinvar_adapter(
+    input_path: str, output_path: str, params: Dict[str, Any] | None = None
+):
     from hvantk.tables.table_builders import create_clinvar_tb
 
     params = params or {}
@@ -35,7 +39,9 @@ def _clinvar_adapter(input_path: str, output_path: str, params: Dict[str, Any] |
     )
 
 
-def _interactome_adapter(input_path: str, output_path: str, params: Dict[str, Any] | None = None):
+def _interactome_adapter(
+    input_path: str, output_path: str, params: Dict[str, Any] | None = None
+):
     from hvantk.tables.table_builders import create_interactome_tb
 
     params = params or {}
@@ -48,7 +54,9 @@ def _interactome_adapter(input_path: str, output_path: str, params: Dict[str, An
     )
 
 
-def _gevir_adapter(input_path: str, output_path: str, params: Dict[str, Any] | None = None):
+def _gevir_adapter(
+    input_path: str, output_path: str, params: Dict[str, Any] | None = None
+):
     from hvantk.tables.table_builders import create_gevir_tb
 
     params = params or {}
@@ -65,7 +73,9 @@ def _gevir_adapter(input_path: str, output_path: str, params: Dict[str, Any] | N
     )
 
 
-def _gnomad_metrics_adapter(input_path: str, output_path: str, params: Dict[str, Any] | None = None):
+def _gnomad_metrics_adapter(
+    input_path: str, output_path: str, params: Dict[str, Any] | None = None
+):
     from hvantk.tables.table_builders import create_gnomad_constraint_gene_metrics_tb
 
     params = params or {}
@@ -81,7 +91,9 @@ def _gnomad_metrics_adapter(input_path: str, output_path: str, params: Dict[str,
     )
 
 
-def _ensembl_gene_adapter(input_path: str, output_path: str, params: Dict[str, Any] | None = None):
+def _ensembl_gene_adapter(
+    input_path: str, output_path: str, params: Dict[str, Any] | None = None
+):
     from hvantk.tables.table_builders import create_ensembl_gene_tb
 
     params = params or {}
@@ -98,7 +110,9 @@ def _ensembl_gene_adapter(input_path: str, output_path: str, params: Dict[str, A
     )
 
 
-def _dbnsfp_adapter(input_path: str, output_path: str, params: Dict[str, Any] | None = None):
+def _dbnsfp_adapter(
+    input_path: str, output_path: str, params: Dict[str, Any] | None = None
+):
     from hvantk.tables.table_builders import create_dbnsfp_tb
 
     params = params or {}
@@ -129,20 +143,27 @@ TABLE_BUILDERS: Dict[str, Callable[[str, str, Dict[str, Any] | None], None]] = {
 }
 
 
-def run_table_builder(name: str, input_path: str, output_path: str, params: Dict[str, Any] | None = None) -> None:
+def run_table_builder(
+    name: str, input_path: str, output_path: str, params: Dict[str, Any] | None = None
+) -> None:
     """Run a registered table builder by name.
 
     Raises KeyError if the builder name is unknown.
     """
     if name not in TABLE_BUILDERS:
         raise KeyError(f"Unknown table builder: {name}")
-    logger.info(f"Running builder '{name}' with input={input_path} output={output_path} params={params}")
+    logger.info(
+        f"Running builder '{name}' with input={input_path} output={output_path} params={params}"
+    )
     TABLE_BUILDERS[name](input_path, output_path, params or {})
 
 
 # Matrix builders adapters
 
-def _ucsc_mt_adapter(inputs: Dict[str, str], output_mt: str, params: Dict[str, Any] | None = None):
+
+def _ucsc_mt_adapter(
+    inputs: Dict[str, str], output_mt: str, params: Dict[str, Any] | None = None
+):
     from hvantk.tables.matrix_builders import build_ucsc_mt
 
     params = params or {}
@@ -165,7 +186,9 @@ def _ucsc_mt_adapter(inputs: Dict[str, str], output_mt: str, params: Dict[str, A
     )
 
 
-def _expression_atlas_mt_adapter(inputs: Dict[str, str], output_mt: str, params: Dict[str, Any] | None = None):
+def _expression_atlas_mt_adapter(
+    inputs: Dict[str, str], output_mt: str, params: Dict[str, Any] | None = None
+):
     from hvantk.tables.matrix_builders import build_expression_atlas_mt
 
     params = params or {}
@@ -187,7 +210,9 @@ def _expression_atlas_mt_adapter(inputs: Dict[str, str], output_mt: str, params:
     )
 
 
-def _cptac_mt_adapter(inputs: Dict[str, str], output_mt: str, params: Dict[str, Any] | None = None):
+def _cptac_mt_adapter(
+    inputs: Dict[str, str], output_mt: str, params: Dict[str, Any] | None = None
+):
     from hvantk.tables.matrix_builders import build_cptac_mt
 
     params = params or {}
@@ -221,19 +246,28 @@ def _cptac_mt_adapter(inputs: Dict[str, str], output_mt: str, params: Dict[str, 
     )
 
 
-MATRIX_BUILDERS: Dict[str, Callable[[Dict[str, str], str, Dict[str, Any] | None], None]] = {
+MATRIX_BUILDERS: Dict[
+    str, Callable[[Dict[str, str], str, Dict[str, Any] | None], None]
+] = {
     "ucsc": _ucsc_mt_adapter,
     "expression-atlas": _expression_atlas_mt_adapter,
     "cptac": _cptac_mt_adapter,
 }
 
 
-def run_matrix_builder(name: str, inputs: Dict[str, str], output_mt: str, params: Dict[str, Any] | None = None) -> None:
+def run_matrix_builder(
+    name: str,
+    inputs: Dict[str, str],
+    output_mt: str,
+    params: Dict[str, Any] | None = None,
+) -> None:
     """Run a registered matrix builder by name.
 
     Raises KeyError if the builder name is unknown.
     """
     if name not in MATRIX_BUILDERS:
         raise KeyError(f"Unknown matrix builder: {name}")
-    logger.info(f"Running matrix builder '{name}' with inputs={inputs} output={output_mt} params={params}")
+    logger.info(
+        f"Running matrix builder '{name}' with inputs={inputs} output={output_mt} params={params}"
+    )
     MATRIX_BUILDERS[name](inputs, output_mt, params or {})

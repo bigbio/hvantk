@@ -21,7 +21,9 @@ def main():
 
     # Configuration
     output_dir = "./data/training_set"
-    clinvar_path = os.environ.get("CLINVAR_VCF", f"./data/clinvar/clinvar_20220403{VCF_EXTENSION}")
+    clinvar_path = os.environ.get(
+        "CLINVAR_VCF", f"./data/clinvar/clinvar_20220403{VCF_EXTENSION}"
+    )
 
     logger.info(f"Starting Clinvar training set generation")
     logger.info(f"Clinvar path: {clinvar_path}")
@@ -32,16 +34,16 @@ def main():
 
     # Create the streaming processor
     processor = create_clinvar_training_set_streamer(
-        clinvar_path=clinvar_path,
-        output_dir=output_dir,
-        gene_set=gene_set
+        clinvar_path=clinvar_path, output_dir=output_dir, gene_set=gene_set
     )
 
     # Process the data
     try:
         training_set = processor.process()
         if training_set:
-            logger.info(f"Successfully generated training set with {training_set.count()} variants")
+            logger.info(
+                f"Successfully generated training set with {training_set.count()} variants"
+            )
 
             # Show some statistics
             tp_count = training_set.filter(training_set.rf_label == "TP").count()
@@ -63,6 +65,6 @@ def main():
 if __name__ == "__main__":
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
     main()

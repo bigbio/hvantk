@@ -36,7 +36,7 @@ def summarize_matrix(mt: hl.MatrixTable) -> Dict:
     n_entries = n_samples * n_genes
 
     # Sample metadata summaries
-    if 'metadata' in mt.col:
+    if "metadata" in mt.col:
         metadata_fields = list(mt.col.metadata.dtype)
         metadata_stats = {}
 
@@ -50,25 +50,31 @@ def summarize_matrix(mt: hl.MatrixTable) -> Dict:
                 field_stats = mt.aggregate_cols(hl.agg.stats(mt.metadata[field]))
                 # Convert to a more compact dict format
                 field_stats = {
-                    'mean': field_stats.mean,
-                    'std': field_stats.stdev,
-                    'min': field_stats.min,
-                    'max': field_stats.max,
-                    'n': field_stats.n,
-                    'sum': field_stats.sum
+                    "mean": field_stats.mean,
+                    "std": field_stats.stdev,
+                    "min": field_stats.min,
+                    "max": field_stats.max,
+                    "n": field_stats.n,
+                    "sum": field_stats.sum,
                 }
             else:
                 # For categorical fields, first collect unique values then count them
-                unique_values = mt.aggregate_cols(hl.agg.collect_as_set(mt.metadata[field]))
+                unique_values = mt.aggregate_cols(
+                    hl.agg.collect_as_set(mt.metadata[field])
+                )
                 unique_count = len(unique_values)
 
-                if unique_count <= 50:  # Only show counter for fields with reasonable cardinality
+                if (
+                    unique_count <= 50
+                ):  # Only show counter for fields with reasonable cardinality
                     field_stats = mt.aggregate_cols(hl.agg.counter(mt.metadata[field]))
                 else:
                     # For high cardinality categorical fields, just show counts
                     field_stats = {
-                        'n_unique': unique_count,
-                        'most_common': mt.aggregate_cols(hl.agg.take(mt.metadata[field], 5))
+                        "n_unique": unique_count,
+                        "most_common": mt.aggregate_cols(
+                            hl.agg.take(mt.metadata[field], 5)
+                        ),
                     }
 
             metadata_stats[field] = field_stats
@@ -77,7 +83,7 @@ def summarize_matrix(mt: hl.MatrixTable) -> Dict:
         metadata_stats = {}
 
     # Expression value statistics
-    if 'x' in mt.entry:
+    if "x" in mt.entry:
         expr_stats = mt.aggregate_entries(
             hl.struct(
                 mean=hl.agg.mean(mt.x),
@@ -85,7 +91,7 @@ def summarize_matrix(mt: hl.MatrixTable) -> Dict:
                 min=hl.agg.min(mt.x),
                 max=hl.agg.max(mt.x),
                 non_zero=hl.agg.count_where(mt.x > 0),
-                zeros=hl.agg.count_where(mt.x == 0)
+                zeros=hl.agg.count_where(mt.x == 0),
             )
         )
     else:
@@ -93,22 +99,27 @@ def summarize_matrix(mt: hl.MatrixTable) -> Dict:
 
     # Prepare the complete summary
     summary = {
-        'dimensions': {
-            'n_samples': n_samples,
-            'n_genes': n_genes,
-            'n_entries': n_entries,
-            'sparsity': 1 - (expr_stats.get('non_zero', 0) / n_entries) if n_entries > 0 else None
+        "dimensions": {
+            "n_samples": n_samples,
+            "n_genes": n_genes,
+            "n_entries": n_entries,
+            "sparsity": (
+                1 - (expr_stats.get("non_zero", 0) / n_entries)
+                if n_entries > 0
+                else None
+            ),
         },
-        'metadata_fields': metadata_fields,
-        'metadata_stats': metadata_stats,
-        'expression_stats': expr_stats,
+        "metadata_fields": metadata_fields,
+        "metadata_stats": metadata_stats,
+        "expression_stats": expr_stats,
     }
 
     return summary
 
 
-def filter_by_metadata(mt: hl.MatrixTable,
-                       filters: Dict[str, Union[str, List[str]]]) -> hl.MatrixTable:
+def filter_by_metadata(
+    mt: hl.MatrixTable, filters: Dict[str, Union[str, List[str]]]
+) -> hl.MatrixTable:
     """
     Filter the MatrixTable by sample metadata.
 
@@ -137,11 +148,13 @@ def filter_by_metadata(mt: hl.MatrixTable,
     return filtered_mt
 
 
-def filter_by_gene_list(mt: hl.MatrixTable,
-                        gene_ids: Optional[List[str]] = None,
-                        gene_names: Optional[List[str]] = None,
-                        gene_id_field: str = 'GeneID',
-                        gene_name_field: str = 'Gene Name') -> hl.MatrixTable:
+def filter_by_gene_list(
+    mt: hl.MatrixTable,
+    gene_ids: Optional[List[str]] = None,
+    gene_names: Optional[List[str]] = None,
+    gene_id_field: str = "GeneID",
+    gene_name_field: str = "Gene Name",
+) -> hl.MatrixTable:
     """
     Filter the MatrixTable to include only specified genes.
 
@@ -159,21 +172,31 @@ def filter_by_gene_list(mt: hl.MatrixTable,
 
     if gene_ids is not None:
         if gene_id_field not in mt.row:
-            raise ValueError(f"Field {gene_id_field} not found in row fields. Available fields: {list(mt.row)}")
-        filtered_mt = filtered_mt.filter_rows(hl.literal(set(gene_ids)).contains(filtered_mt[gene_id_field]))
+            raise ValueError(
+                f"Field {gene_id_field} not found in row fields. Available fields: {list(mt.row)}"
+            )
+        filtered_mt = filtered_mt.filter_rows(
+            hl.literal(set(gene_ids)).contains(filtered_mt[gene_id_field])
+        )
 
     if gene_names is not None:
         if gene_name_field not in mt.row:
-            raise ValueError(f"Field {gene_name_field} not found in row fields. Available fields: {list(mt.row)}")
-        filtered_mt = filtered_mt.filter_rows(hl.literal(set(gene_names)).contains(filtered_mt[gene_name_field]))
+            raise ValueError(
+                f"Field {gene_name_field} not found in row fields. Available fields: {list(mt.row)}"
+            )
+        filtered_mt = filtered_mt.filter_rows(
+            hl.literal(set(gene_names)).contains(filtered_mt[gene_name_field])
+        )
 
     return filtered_mt
 
 
-def filter_by_expression(mt: hl.MatrixTable,
-                         min_expr: float = None,
-                         max_expr: float = None,
-                         min_samples: int = None) -> hl.MatrixTable:
+def filter_by_expression(
+    mt: hl.MatrixTable,
+    min_expr: float = None,
+    max_expr: float = None,
+    min_samples: int = None,
+) -> hl.MatrixTable:
     """
     Filter the MatrixTable based on expression values.
 
@@ -195,16 +218,16 @@ def filter_by_expression(mt: hl.MatrixTable,
             x_filtered=hl.if_else(filtered_mt.x >= min_expr, filtered_mt.x, 0)
         )
         # Replace the original x with the filtered one
-        filtered_mt = filtered_mt.drop('x')
-        filtered_mt = filtered_mt.rename({'x_filtered': 'x'})
+        filtered_mt = filtered_mt.drop("x")
+        filtered_mt = filtered_mt.rename({"x_filtered": "x"})
 
     if max_expr is not None:
         # Apply a maximum threshold
         filtered_mt = filtered_mt.annotate_entries(
             x_filtered=hl.if_else(filtered_mt.x <= max_expr, filtered_mt.x, max_expr)
         )
-        filtered_mt = filtered_mt.drop('x')
-        filtered_mt = filtered_mt.rename({'x_filtered': 'x'})
+        filtered_mt = filtered_mt.drop("x")
+        filtered_mt = filtered_mt.rename({"x_filtered": "x"})
 
     if min_samples is not None:
         # Count samples where gene is expressed per row
@@ -214,19 +237,23 @@ def filter_by_expression(mt: hl.MatrixTable,
         )
 
         # Filter genes expressed in at least min_samples
-        filtered_mt = filtered_mt.filter_rows(filtered_mt.n_expressed_samples >= min_samples)
+        filtered_mt = filtered_mt.filter_rows(
+            filtered_mt.n_expressed_samples >= min_samples
+        )
 
         # Clean up the annotation if desired
-        filtered_mt = filtered_mt.drop('n_expressed_samples')
+        filtered_mt = filtered_mt.drop("n_expressed_samples")
 
     return filtered_mt
 
 
-def get_top_expressed_genes(mt: hl.MatrixTable,
-                            n: int = 20,
-                            by_metadata: str = None,
-                            gene_id_field: str = 'GeneID',
-                            gene_name_field: str = 'Gene Name') -> pd.DataFrame:
+def get_top_expressed_genes(
+    mt: hl.MatrixTable,
+    n: int = 20,
+    by_metadata: str = None,
+    gene_id_field: str = "GeneID",
+    gene_name_field: str = "Gene Name",
+) -> pd.DataFrame:
     """
     Get the top expressed genes overall or by a metadata category.
 
@@ -243,7 +270,9 @@ def get_top_expressed_genes(mt: hl.MatrixTable,
     # Verify field names exist in the row fields
     row_fields = list(mt.row)
     if gene_id_field not in row_fields:
-        raise ValueError(f"Field {gene_id_field} not found in row fields. Available fields: {row_fields}")
+        raise ValueError(
+            f"Field {gene_id_field} not found in row fields. Available fields: {row_fields}"
+        )
 
     # Check if gene name field is available
     has_gene_names = gene_name_field in row_fields
@@ -259,7 +288,7 @@ def get_top_expressed_genes(mt: hl.MatrixTable,
             fields_to_select.insert(1, gene_name_field)
         df = tb.select(*fields_to_select).to_pandas()
 
-        df = df.sort_values('mean_expr', ascending=False).head(n)
+        df = df.sort_values("mean_expr", ascending=False).head(n)
 
     else:
         # Group by metadata field and get top genes for each group
@@ -275,7 +304,9 @@ def get_top_expressed_genes(mt: hl.MatrixTable,
         # For each category, filter and get top genes
         for category in categories:
             mt_filtered = filter_by_metadata(mt, {by_metadata: category})
-            mt_filtered = mt_filtered.annotate_rows(mean_expr=hl.agg.mean(mt_filtered.x))
+            mt_filtered = mt_filtered.annotate_rows(
+                mean_expr=hl.agg.mean(mt_filtered.x)
+            )
 
             # Get the top n genes
             tb = mt_filtered.rows().key_by()
@@ -284,7 +315,7 @@ def get_top_expressed_genes(mt: hl.MatrixTable,
                 fields_to_select.insert(1, gene_name_field)
             df_category = tb.select(*fields_to_select).to_pandas()
 
-            df_category = df_category.sort_values('mean_expr', ascending=False).head(n)
+            df_category = df_category.sort_values("mean_expr", ascending=False).head(n)
             df_category[by_metadata] = category
 
             result_dfs.append(df_category)

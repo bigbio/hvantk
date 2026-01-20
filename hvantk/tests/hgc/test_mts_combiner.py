@@ -30,17 +30,22 @@ def test_combine_matrix_table_rows():
     mt1_path = TESTS_DIR / "mts/test.mt"
     mt2_path = mt1_path
     mt_output_path = TESTS_DIR / "mts/combined.mt"
-    combine_matrix_table_rows(mt_paths=[str(mt1_path), str(mt2_path)],
-                              output_path=str(mt_output_path),
-                              n_partitions=20,
-                              overwrite=True)
+    combine_matrix_table_rows(
+        mt_paths=[str(mt1_path), str(mt2_path)],
+        output_path=str(mt_output_path),
+        n_partitions=20,
+        overwrite=True,
+    )
 
     # Check if the mt_output_path / '_SUCCESS' file exists
     assert mt_output_path.joinpath("_SUCCESS").exists()
 
     # Check if the number of rows in the output MatrixTable is
     # equal to the sum of the number of rows in the input MatrixTables
-    assert hl.read_matrix_table(str(mt_output_path)).count_rows() == 2*hl.read_matrix_table(str(mt1_path)).count_rows()
+    assert (
+        hl.read_matrix_table(str(mt_output_path)).count_rows()
+        == 2 * hl.read_matrix_table(str(mt1_path)).count_rows()
+    )
 
     # cleanup temporary files or directories
     shutil.rmtree(mt1_path)
@@ -66,17 +71,22 @@ def test_combine_matrix_table_cols():
     mt1_path = TESTS_DIR / "mts/test.mt"
     mt2_path = mt1_path
     mt_output_path = TESTS_DIR / "mts/combined.mt"
-    combine_matrix_table_cols(mt_paths=[str(mt1_path), str(mt2_path)],
-                              output_path=str(mt_output_path),
-                              n_partitions=20,
-                              overwrite=True)
+    combine_matrix_table_cols(
+        mt_paths=[str(mt1_path), str(mt2_path)],
+        output_path=str(mt_output_path),
+        n_partitions=20,
+        overwrite=True,
+    )
 
     # Check if the mt_output_path / '_SUCCESS' file exists
     assert mt_output_path.joinpath("_SUCCESS").exists()
 
     # Check if the number of columns in the output MatrixTable is
     # equal to the sum of the number of columns in the input MatrixTables
-    assert hl.read_matrix_table(str(mt_output_path)).count_cols() == 2*hl.read_matrix_table(str(mt1_path)).count_cols()
+    assert (
+        hl.read_matrix_table(str(mt_output_path)).count_cols()
+        == 2 * hl.read_matrix_table(str(mt1_path)).count_cols()
+    )
 
     # cleanup temporary files or directories
     shutil.rmtree(mt1_path)

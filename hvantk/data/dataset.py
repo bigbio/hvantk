@@ -178,4 +178,3 @@ class DataException(Exception):
         if base:
             return f"DataException: {base}"
         return "DataException: An error occurred while processing the data."
-

@@ -3,6 +3,7 @@ Tests for the HVANTK Registry Module
 
 This module contains comprehensive tests for the register functionality.
 """
+
 import json
 import tempfile
 import shutil
@@ -10,10 +11,16 @@ from pathlib import Path
 import pytest
 
 from hvantk.register import (
-    ValidationStatus, FailureType, ValidationResult,
-    DatasetValidationRegistry, WebRegistryGenerator,
-    APIEndpointGenerator, RegistryConfig, RegistryManager,
-    VALIDATION_TIERS, STATUS_DEFINITIONS
+    ValidationStatus,
+    FailureType,
+    ValidationResult,
+    DatasetValidationRegistry,
+    WebRegistryGenerator,
+    APIEndpointGenerator,
+    RegistryConfig,
+    RegistryManager,
+    VALIDATION_TIERS,
+    STATUS_DEFINITIONS,
 )
 
 
@@ -35,7 +42,7 @@ class TestValidationRegistry:
 
     def test_registry_operations(self):
         """Test basic registry operations."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump({}, f)
             temp_file = f.name
 
@@ -47,7 +54,7 @@ class TestValidationRegistry:
                 dataset_id="test-dataset",
                 dataset_type="ucsc",
                 status=ValidationStatus.TIER2_PASSED,
-                error_message="Test error"
+                error_message="Test error",
             )
 
             registry.update_result(result)
@@ -95,21 +102,21 @@ class TestWebGenerator:
                 "dataset_type": "ucsc",
                 "status": "tier3_passed",
                 "timestamp": "2025-09-11T10:00:00",
-                "error_message": None
+                "error_message": None,
             },
             "test-dataset-2": {
                 "dataset_type": "expression_atlas",
                 "status": "tier1_failed",
                 "timestamp": "2025-09-11T11:00:00",
-                "error_message": "Test error message"
-            }
+                "error_message": "Test error message",
+            },
         }
 
         stats = generator.generate_summary_stats(test_registry)
-        assert stats['total'] == 2
-        assert stats['successful'] == 1
-        assert stats['failed'] == 1
-        assert stats['success_rate'] == 50.0
+        assert stats["total"] == 2
+        assert stats["successful"] == 1
+        assert stats["failed"] == 1
+        assert stats["success_rate"] == 50.0
 
 
 class TestAPIGenerator:
@@ -126,34 +133,34 @@ class TestAPIGenerator:
                 "dataset_type": "ucsc",
                 "status": "tier3_passed",
                 "timestamp": "2025-09-11T10:00:00",
-                "error_message": None
+                "error_message": None,
             },
             "test-dataset-2": {
                 "dataset_type": "expression_atlas",
                 "status": "tier1_failed",
                 "timestamp": "2025-09-11T11:00:00",
-                "error_message": "Test error message"
-            }
+                "error_message": "Test error message",
+            },
         }
 
         # Test status API generation
         status_api = generator.generate_status_api(test_registry)
-        assert status_api['status'] == 'ok'
-        assert status_api['summary']['total_datasets'] == 2
-        assert status_api['summary']['successful_validations'] == 1
-        assert status_api['summary']['success_rate'] == 50.0
+        assert status_api["status"] == "ok"
+        assert status_api["summary"]["total_datasets"] == 2
+        assert status_api["summary"]["successful_validations"] == 1
+        assert status_api["summary"]["success_rate"] == 50.0
 
         # Test datasets API generation
         datasets_api = generator.generate_datasets_api(test_registry)
-        assert 'datasets' in datasets_api
-        assert 'metadata' in datasets_api
-        assert datasets_api['metadata']['total_count'] == 2
+        assert "datasets" in datasets_api
+        assert "metadata" in datasets_api
+        assert datasets_api["metadata"]["total_count"] == 2
 
         # Test stats API generation
         stats_api = generator.generate_stats_api(test_registry)
-        assert 'statistics' in stats_api
-        assert 'recent_failures' in stats_api
-        assert len(stats_api['recent_failures']) == 1  # One failed dataset
+        assert "statistics" in stats_api
+        assert "recent_failures" in stats_api
+        assert len(stats_api["recent_failures"]) == 1  # One failed dataset
 
 
 class TestRegistryManager:
@@ -175,14 +182,14 @@ class TestRegistryManager:
             result1 = ValidationResult(
                 dataset_id="test-ucsc-1",
                 dataset_type="ucsc",
-                status=ValidationStatus.TIER3_PASSED
+                status=ValidationStatus.TIER3_PASSED,
             )
 
             result2 = ValidationResult(
                 dataset_id="test-atlas-1",
                 dataset_type="expression_atlas",
                 status=ValidationStatus.TIER1_FAILED,
-                error_message="Test validation error"
+                error_message="Test validation error",
             )
 
             manager.update_validation_result(result1)
@@ -191,15 +198,15 @@ class TestRegistryManager:
 
             # Test statistics
             stats = manager.get_registry_statistics()
-            assert stats['total_datasets'] == 2
-            assert stats['successful'] == 1
-            assert stats['failed'] == 1
-            assert stats['success_rate'] == 50.0
+            assert stats["total_datasets"] == 2
+            assert stats["successful"] == 1
+            assert stats["failed"] == 1
+            assert stats["success_rate"] == 50.0
 
             # Test failed datasets
             failed = manager.get_failed_datasets()
             assert len(failed) == 1
-            assert failed[0]['dataset_id'] == 'test-atlas-1'
+            assert failed[0]["dataset_id"] == "test-atlas-1"
 
             # Test web interface generation
             web_path = manager.generate_web_interface(str(output_dir))
@@ -214,8 +221,8 @@ class TestRegistryManager:
 
             # Test complete registry generation
             paths = manager.generate_complete_registry(str(output_dir))
-            assert 'web_interface' in paths
-            assert 'api_endpoints' in paths
+            assert "web_interface" in paths
+            assert "api_endpoints" in paths
 
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)

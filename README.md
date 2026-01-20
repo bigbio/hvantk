@@ -5,7 +5,7 @@
 
 **Hail-based toolkit for multiomics variant annotation and analysis.**
 
-`hvantk` is a modular toolkit that uses [Apache Hail](https://hail.is/) to annotate and analyze variants, genes, proteins, and expression data from heterogeneous omics sources. The library enables multiomics integration to improve the interpretation of genetic variants.
+`hvantk` is a modular toolkit that uses [Hail](https://hail.is/) to annotate and analyze variants, genes, proteins, and expression data from heterogeneous omics sources. The library enables multiomics integration to improve the interpretation of genetic variants.
 
 **Core Capabilities:**
 - Variant annotations (ClinVar, dbNSFP, gnomAD, CCR scores)
@@ -32,7 +32,7 @@ cd hvantk
 pip install -e .
 ```
 
-**Prerequisites**: Python ≥3.10, Apache Hail
+**Prerequisites**: Python ≥3.10, Hail
 
 ## Main Tools
 
@@ -187,5 +187,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Acknowledgments
 
-- Built on [Apache Hail](https://hail.is/) for distributed genomic data processing
+- Built on [Hail](https://hail.is/) for distributed genomic data processing
 - Integrates data from ClinVar, gnomAD, Ensembl, UCSC, and other public resources

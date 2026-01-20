@@ -16,7 +16,7 @@ from .validation_registry import (
     ValidationStatus,
     FailureType,
     ValidationResult,
-    DatasetValidationRegistry
+    DatasetValidationRegistry,
 )
 
 from .api_generator import APIEndpointGenerator
@@ -35,19 +35,19 @@ except ImportError:
 
 # Build __all__ dynamically based on what was successfully imported
 __all__ = [
-    'ValidationStatus',
-    'FailureType',
-    'ValidationResult',
-    'DatasetValidationRegistry',
-    'APIEndpointGenerator',
-    'RegistryConfig',
-    'VALIDATION_TIERS',
-    'STATUS_DEFINITIONS',
+    "ValidationStatus",
+    "FailureType",
+    "ValidationResult",
+    "DatasetValidationRegistry",
+    "APIEndpointGenerator",
+    "RegistryConfig",
+    "VALIDATION_TIERS",
+    "STATUS_DEFINITIONS",
 ]
 
 # Add optional imports only if they succeeded
 if WebRegistryGenerator is not None:
-    __all__.append('WebRegistryGenerator')
+    __all__.append("WebRegistryGenerator")
 
 if RegistryManager is not None:
-    __all__.append('RegistryManager')
+    __all__.append("RegistryManager")

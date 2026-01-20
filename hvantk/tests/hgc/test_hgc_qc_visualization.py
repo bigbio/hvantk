@@ -23,26 +23,26 @@ def test_mt():
     """
     # Create realistic test data using Balding-Nichols model
     mt = hl.balding_nichols_model(
-        n_populations=2,      # Two populations for genetic diversity
-        n_samples=25,         # Small but sufficient sample size
-        n_variants=150,       # Enough variants for meaningful QC
-        n_partitions=2
+        n_populations=2,  # Two populations for genetic diversity
+        n_samples=25,  # Small but sufficient sample size
+        n_variants=150,  # Enough variants for meaningful QC
+        n_partitions=2,
     )
 
     # Add realistic entry fields that QC will analyze
     mt = mt.annotate_entries(
         GQ=hl.int32(hl.rand_unif(10, 40)),  # Genotype quality 10-40
-        DP=hl.int32(hl.rand_unif(5, 35)),   # Depth 5-35
-        AD=hl.array([
-            hl.int32(hl.rand_unif(0, 15)),  # Reference allele depth
-            hl.int32(hl.rand_unif(0, 15))   # Alternate allele depth
-        ])
+        DP=hl.int32(hl.rand_unif(5, 35)),  # Depth 5-35
+        AD=hl.array(
+            [
+                hl.int32(hl.rand_unif(0, 15)),  # Reference allele depth
+                hl.int32(hl.rand_unif(0, 15)),  # Alternate allele depth
+            ]
+        ),
     )
 
     # Add some sample metadata for more realistic QC
-    mt = mt.annotate_cols(
-        population=hl.if_else(mt.sample_idx < 12, "POP1", "POP2")
-    )
+    mt = mt.annotate_cols(population=hl.if_else(mt.sample_idx < 12, "POP1", "POP2"))
 
     return mt
 
@@ -71,8 +71,12 @@ def test_create_matrixtable_and_compute_qc(test_mt):
 
     # Verify key sample QC columns exist
     expected_sample_cols = [
-        'sample_qc.call_rate', 'sample_qc.n_called', 'sample_qc.n_het',
-        'sample_qc.n_hom_var', 'sample_qc.r_ti_tv', 'sample_qc.dp_stats.mean'
+        "sample_qc.call_rate",
+        "sample_qc.n_called",
+        "sample_qc.n_het",
+        "sample_qc.n_hom_var",
+        "sample_qc.r_ti_tv",
+        "sample_qc.dp_stats.mean",
     ]
     for col in expected_sample_cols:
         assert col in sample_df.columns, f"Missing sample QC column: {col}"
@@ -83,14 +87,17 @@ def test_create_matrixtable_and_compute_qc(test_mt):
 
     # Verify key variant QC columns exist
     expected_variant_cols = [
-        'variant_qc.call_rate', 'variant_qc.AF', 'variant_qc.AC',
-        'variant_qc.n_het', 'variant_qc.p_value_hwe'
+        "variant_qc.call_rate",
+        "variant_qc.AF",
+        "variant_qc.AC",
+        "variant_qc.n_het",
+        "variant_qc.p_value_hwe",
     ]
     for col in expected_variant_cols:
         assert col in variant_df.columns, f"Missing variant QC column: {col}"
 
     # Verify QC values are reasonable
-    call_rates = sample_df['sample_qc.call_rate']
+    call_rates = sample_df["sample_qc.call_rate"]
     assert call_rates.min() >= 0.0, "Call rates should be >= 0"
     assert call_rates.max() <= 1.0, "Call rates should be <= 1"
 
@@ -106,7 +113,7 @@ def test_static_qc_visualizations(test_mt):
         plot_allele_frequency_spectrum,
         plot_sample_qc_overview,
         plot_variant_qc_overview,
-        plot_qc_summary_dashboard
+        plot_qc_summary_dashboard,
     )
 
     # Use the pre-created test MatrixTable from fixture
@@ -190,6 +197,7 @@ def test_interactive_qc_visualizations(test_mt):
     """Test 4: Generate interactive QC visualizations using plotly (if available)."""
     try:
         from hvantk.visualization.interactive_qc import check_plotly_available
+
         check_plotly_available()
     except ImportError:
         pytest.skip("Plotly not available")
@@ -199,7 +207,7 @@ def test_interactive_qc_visualizations(test_mt):
         plot_interactive_sample_call_rates,
         plot_interactive_variant_call_rates,
         plot_interactive_allele_frequencies,
-        plot_interactive_qc_dashboard
+        plot_interactive_qc_dashboard,
     )
 
     # Use the pre-created test MatrixTable from fixture
@@ -212,7 +220,7 @@ def test_interactive_qc_visualizations(test_mt):
     # Test 1: Interactive sample call rates
     fig1 = plot_interactive_sample_call_rates(sample_df)
     assert fig1 is not None, "Interactive sample call rates should be created"
-    assert hasattr(fig1, 'show'), "Should be a plotly figure with show method"
+    assert hasattr(fig1, "show"), "Should be a plotly figure with show method"
 
     # Test 2: Interactive variant call rates
     fig2 = plot_interactive_variant_call_rates(variant_df)
@@ -247,34 +255,37 @@ def test_html_qc_report_generation(test_mt):
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         # Test 1: Generate HTML report with all plots
-        report_path = Path(tmp_dir) / 'qc_report.html'
-        result_path = generate_qc_report(
-            qc_results,
-            report_path,
-            title=report_title
-        )
+        report_path = Path(tmp_dir) / "qc_report.html"
+        result_path = generate_qc_report(qc_results, report_path, title=report_title)
 
         # Verify report was created
         assert result_path.exists(), "HTML report should be created"
-        assert result_path.stat().st_size > 50000, "Report should be substantial (>50KB)"
+        assert (
+            result_path.stat().st_size > 50000
+        ), "Report should be substantial (>50KB)"
 
         # Check report contains expected content
         report_content = result_path.read_text()
-        assert report_title in report_content, "Report should contain the specified title"
+        assert (
+            report_title in report_content
+        ), "Report should contain the specified title"
 
         # Test 2: Generate report through QCMetrics
-        report_path2 = Path(tmp_dir) / 'qcmetrics_report.html'
+        report_path2 = Path(tmp_dir) / "qcmetrics_report.html"
         result_path2 = qc_results.generate_html_report(
-            report_path2,
-            title="QCMetrics Generated Report"
+            report_path2, title="QCMetrics Generated Report"
         )
 
         assert result_path2.exists(), "QCMetrics HTML report should be created"
-        assert result_path2.stat().st_size > 50000, "QCMetrics report should be substantial"
+        assert (
+            result_path2.stat().st_size > 50000
+        ), "QCMetrics report should be substantial"
 
         # Verify the title parameter works through QCMetrics wrapper
         report_content2 = result_path2.read_text()
-        assert "QCMetrics Generated Report" in report_content2, "Report should contain the QCMetrics title"
+        assert (
+            "QCMetrics Generated Report" in report_content2
+        ), "Report should contain the QCMetrics title"
 
 
 def test_qc_data_validation(test_mt):
@@ -289,7 +300,7 @@ def test_qc_data_validation(test_mt):
     sample_df = qc_results.get_sample_metrics_df()
 
     # Check call rates are in valid range
-    call_rates = sample_df['sample_qc.call_rate']
+    call_rates = sample_df["sample_qc.call_rate"]
     assert (call_rates >= 0).all(), "All sample call rates should be >= 0"
     assert (call_rates <= 1).all(), "All sample call rates should be <= 1"
 
@@ -297,16 +308,17 @@ def test_qc_data_validation(test_mt):
     variant_df = qc_results.get_variant_metrics_df()
 
     # Check variant call rates
-    var_call_rates = variant_df['variant_qc.call_rate']
+    var_call_rates = variant_df["variant_qc.call_rate"]
     assert (var_call_rates >= 0).all(), "All variant call rates should be >= 0"
     assert (var_call_rates <= 1).all(), "All variant call rates should be <= 1"
 
     # Check allele frequencies
-    if 'variant_qc.AF' in variant_df.columns:
+    if "variant_qc.AF" in variant_df.columns:
         # Handle AF as array or float
-        af_data = variant_df['variant_qc.AF']
-        if hasattr(af_data.iloc[0], '__len__') and len(af_data.iloc[0]) > 1:
+        af_data = variant_df["variant_qc.AF"]
+        if hasattr(af_data.iloc[0], "__len__") and len(af_data.iloc[0]) > 1:
             # AF is array format, check alternate allele frequency
             alt_afs = [af[1] if len(af) > 1 else 0 for af in af_data]
-            assert all(0 <= af <= 1 for af in alt_afs), "Allele frequencies should be in [0,1]"
-
+            assert all(
+                0 <= af <= 1 for af in alt_afs
+            ), "Allele frequencies should be in [0,1]"

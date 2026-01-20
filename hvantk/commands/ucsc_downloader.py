@@ -95,9 +95,9 @@ def ucsc_downloader(ctx, dataset, output_dir, base_url, list_datasets):
 
     # Dataset validation (prevent path traversal / malformed URLs) BEFORE using it anywhere
     invalid = (
-        (".." in dataset) or
-        any(ch in dataset for ch in ["/", "\\"]) or
-        any(ch.isspace() for ch in dataset)
+        (".." in dataset)
+        or any(ch in dataset for ch in ["/", "\\"])
+        or any(ch.isspace() for ch in dataset)
     )
     if invalid:
         click.echo(
@@ -133,12 +133,16 @@ def ucsc_downloader(ctx, dataset, output_dir, base_url, list_datasets):
 
     # For UCSC base, ensure URLs exist
     if perform_exist_check:
-        logger.info(f"Checking if expression matrix URL exists: {url_expression_matrix}")
+        logger.info(
+            f"Checking if expression matrix URL exists: {url_expression_matrix}"
+        )
         if not file_utils.url_exists(url_expression_matrix):
             click.echo(
                 f"Error: Expression matrix URL does not exist: {url_expression_matrix}"
             )
-            logger.error(f"Expression matrix URL does not exist: {url_expression_matrix}")
+            logger.error(
+                f"Expression matrix URL does not exist: {url_expression_matrix}"
+            )
             ctx.exit(1)
         logger.info(f"Checking if metadata URL exists: {url_metadata}")
         if not file_utils.url_exists(url_metadata):

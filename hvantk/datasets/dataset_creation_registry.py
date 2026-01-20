@@ -5,6 +5,7 @@ This module provides a comprehensive registry of all datasets that have been val
 for Hail MatrixTable creation, including their metadata, creation requirements,
 and recommended usage patterns.
 """
+
 from __future__ import annotations
 
 import json
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 class DatasetSource(Enum):
     """Dataset source types."""
+
     UCSC = "ucsc"
     EXPRESSION_ATLAS = "expression_atlas"
     CPTAC = "cptac"
@@ -30,6 +32,7 @@ class DatasetSource(Enum):
 
 class MatrixType(Enum):
     """Types of matrices that can be created."""
+
     EXPRESSION = "expression"
     METHYLATION = "methylation"
     GENOTYPE = "genotype"
@@ -40,16 +43,18 @@ class MatrixType(Enum):
 
 class CreationStatus(Enum):
     """Status of dataset matrix creation capability."""
-    VALIDATED = "validated"           # Successfully creates matrices
-    FAILED = "failed"                # Cannot create matrices
-    UNTESTED = "untested"            # Not yet validated
-    DEPRECATED = "deprecated"        # No longer supported
+
+    VALIDATED = "validated"  # Successfully creates matrices
+    FAILED = "failed"  # Cannot create matrices
+    UNTESTED = "untested"  # Not yet validated
+    DEPRECATED = "deprecated"  # No longer supported
     REQUIRES_UPDATE = "requires_update"  # Needs configuration update
 
 
 @dataclass
 class DatasetMetadata:
     """Metadata for a dataset."""
+
     title: str
     description: str
     organism: str
@@ -70,6 +75,7 @@ class DatasetMetadata:
 @dataclass
 class CreationRequirements:
     """Requirements for creating matrices from this dataset."""
+
     min_memory_gb: int = 4
     min_partitions: int = 1
     max_partitions: Optional[int] = None
@@ -87,6 +93,7 @@ class CreationRequirements:
 @dataclass
 class FileInfo:
     """Information about dataset files."""
+
     expression_matrix: Optional[str] = None
     metadata: Optional[str] = None
     features: Optional[str] = None
@@ -100,6 +107,7 @@ class FileInfo:
 @dataclass
 class UsageExample:
     """Example of how to use this dataset."""
+
     title: str
     description: str
     code_snippet: str
@@ -109,6 +117,7 @@ class UsageExample:
 @dataclass
 class DatasetEntry:
     """Complete dataset registry entry."""
+
     dataset_id: str
     source: DatasetSource
     matrix_type: MatrixType
@@ -143,13 +152,15 @@ class DatasetCreationRegistry:
 
     def _get_default_registry_file(self) -> str:
         """Get default, user-writable registry path (~/.hvantk/registry/...)."""
-        return str(Path.home() / ".hvantk" / "registry" / "dataset_creation_registry.json")
+        return str(
+            Path.home() / ".hvantk" / "registry" / "dataset_creation_registry.json"
+        )
 
     def load_registry(self) -> None:
         """Load registry from file."""
         try:
             if Path(self.registry_file).exists():
-                with open(self.registry_file, 'r') as f:
+                with open(self.registry_file, "r") as f:
                     data = json.load(f)
                     self.datasets = {
                         dataset_id: self._dict_to_dataset_entry(entry_data)
@@ -181,11 +192,11 @@ class DatasetCreationRegistry:
             # Create secure temporary file in the same directory as the registry file
             # This ensures the temp file is on the same filesystem for atomic replace
             with tempfile.NamedTemporaryFile(
-                mode='w',
+                mode="w",
                 dir=registry_path.parent,
-                prefix=f'.{registry_path.name}.',
-                suffix='.tmp',
-                delete=False
+                prefix=f".{registry_path.name}.",
+                suffix=".tmp",
+                delete=False,
             ) as temp_file:
                 json.dump(data, temp_file, indent=2, default=str)
                 temp_file.flush()
@@ -201,12 +212,12 @@ class DatasetCreationRegistry:
         except Exception as e:
             logger.exception(f"Failed to save registry: {e}")
             # Clean up temporary file if it exists and wasn't successfully moved
-            if temp_file is not None and hasattr(temp_file, 'name'):
+            if temp_file is not None and hasattr(temp_file, "name"):
                 try:
                     os.unlink(temp_file.name)
                 except OSError:
                     pass  # Ignore cleanup errors
-            elif 'temp_filename' in locals():
+            elif "temp_filename" in locals():
                 try:
                     os.unlink(temp_filename)
                 except OSError:
@@ -216,46 +227,46 @@ class DatasetCreationRegistry:
     def _dict_to_dataset_entry(self, data: Dict[str, Any]) -> DatasetEntry:
         """Convert dictionary to DatasetEntry."""
         # Convert nested dictionaries to dataclasses
-        metadata = DatasetMetadata(**data['metadata'])
-        requirements = CreationRequirements(**data['requirements'])
-        files = FileInfo(**data['files'])
+        metadata = DatasetMetadata(**data["metadata"])
+        requirements = CreationRequirements(**data["requirements"])
+        files = FileInfo(**data["files"])
 
         usage_examples = [
-            UsageExample(**example) for example in data.get('usage_examples', [])
+            UsageExample(**example) for example in data.get("usage_examples", [])
         ]
 
         return DatasetEntry(
-            dataset_id=data['dataset_id'],
-            source=DatasetSource(data['source']),
-            matrix_type=MatrixType(data['matrix_type']),
-            status=CreationStatus(data['status']),
+            dataset_id=data["dataset_id"],
+            source=DatasetSource(data["source"]),
+            matrix_type=MatrixType(data["matrix_type"]),
+            status=CreationStatus(data["status"]),
             metadata=metadata,
             requirements=requirements,
             files=files,
-            creation_command=data['creation_command'],
-            validation_date=data['validation_date'],
-            last_tested=data['last_tested'],
+            creation_command=data["creation_command"],
+            validation_date=data["validation_date"],
+            last_tested=data["last_tested"],
             usage_examples=usage_examples,
-            known_issues=data.get('known_issues', []),
-            alternative_approaches=data.get('alternative_approaches', [])
+            known_issues=data.get("known_issues", []),
+            alternative_approaches=data.get("alternative_approaches", []),
         )
 
     def _dataset_entry_to_dict(self, entry: DatasetEntry) -> Dict[str, Any]:
         """Convert DatasetEntry to dictionary."""
         return {
-            'dataset_id': entry.dataset_id,
-            'source': entry.source.value,
-            'matrix_type': entry.matrix_type.value,
-            'status': entry.status.value,
-            'metadata': asdict(entry.metadata),
-            'requirements': asdict(entry.requirements),
-            'files': asdict(entry.files),
-            'creation_command': entry.creation_command,
-            'validation_date': entry.validation_date,
-            'last_tested': entry.last_tested,
-            'usage_examples': [asdict(example) for example in entry.usage_examples],
-            'known_issues': entry.known_issues,
-            'alternative_approaches': entry.alternative_approaches
+            "dataset_id": entry.dataset_id,
+            "source": entry.source.value,
+            "matrix_type": entry.matrix_type.value,
+            "status": entry.status.value,
+            "metadata": asdict(entry.metadata),
+            "requirements": asdict(entry.requirements),
+            "files": asdict(entry.files),
+            "creation_command": entry.creation_command,
+            "validation_date": entry.validation_date,
+            "last_tested": entry.last_tested,
+            "usage_examples": [asdict(example) for example in entry.usage_examples],
+            "known_issues": entry.known_issues,
+            "alternative_approaches": entry.alternative_approaches,
         }
 
     def add_dataset(self, dataset: DatasetEntry) -> None:
@@ -267,10 +278,12 @@ class DatasetCreationRegistry:
         """Get a dataset by ID."""
         return self.datasets.get(dataset_id)
 
-    def list_datasets(self,
-                     source: Optional[DatasetSource] = None,
-                     matrix_type: Optional[MatrixType] = None,
-                     status: Optional[CreationStatus] = None) -> List[DatasetEntry]:
+    def list_datasets(
+        self,
+        source: Optional[DatasetSource] = None,
+        matrix_type: Optional[MatrixType] = None,
+        status: Optional[CreationStatus] = None,
+    ) -> List[DatasetEntry]:
         """List datasets with optional filtering."""
         datasets = list(self.datasets.values())
 
@@ -312,12 +325,12 @@ class DatasetCreationRegistry:
             by_matrix_type[matrix_key] = by_matrix_type.get(matrix_key, 0) + 1
 
         return {
-            'total': total,
-            'by_status': by_status,
-            'by_source': by_source,
-            'by_matrix_type': by_matrix_type,
-            'validated_count': by_status.get('validated', 0),
-            'failed_count': by_status.get('failed', 0)
+            "total": total,
+            "by_status": by_status,
+            "by_source": by_source,
+            "by_matrix_type": by_matrix_type,
+            "validated_count": by_status.get("validated", 0),
+            "failed_count": by_status.get("failed", 0),
         }
 
     def generate_creation_report(self, output_file: Optional[str] = None) -> str:
@@ -339,56 +352,66 @@ class DatasetCreationRegistry:
             "By Source:",
         ]
 
-        for source, count in stats['by_source'].items():
+        for source, count in stats["by_source"].items():
             report_lines.append(f"  {source}: {count}")
 
-        report_lines.extend([
-            "",
-            "By Matrix Type:",
-        ])
+        report_lines.extend(
+            [
+                "",
+                "By Matrix Type:",
+            ]
+        )
 
-        for matrix_type, count in stats['by_matrix_type'].items():
+        for matrix_type, count in stats["by_matrix_type"].items():
             report_lines.append(f"  {matrix_type}: {count}")
 
         if validated_datasets:
-            report_lines.extend([
-                "",
-                "✅ VALIDATED DATASETS (Ready for Use):",
-                "-" * 50,
-            ])
+            report_lines.extend(
+                [
+                    "",
+                    "✅ VALIDATED DATASETS (Ready for Use):",
+                    "-" * 50,
+                ]
+            )
 
             for dataset in validated_datasets:
-                report_lines.extend([
-                    f"Dataset ID: {dataset.dataset_id}",
-                    f"  Title: {dataset.metadata.title}",
-                    f"  Source: {dataset.source.value}",
-                    f"  Type: {dataset.matrix_type.value}",
-                    f"  Samples: {dataset.metadata.sample_count or 'Unknown'}",
-                    f"  Creation Command: {dataset.creation_command}",
-                    f"  Last Tested: {dataset.last_tested}",
-                    ""
-                ])
+                report_lines.extend(
+                    [
+                        f"Dataset ID: {dataset.dataset_id}",
+                        f"  Title: {dataset.metadata.title}",
+                        f"  Source: {dataset.source.value}",
+                        f"  Type: {dataset.matrix_type.value}",
+                        f"  Samples: {dataset.metadata.sample_count or 'Unknown'}",
+                        f"  Creation Command: {dataset.creation_command}",
+                        f"  Last Tested: {dataset.last_tested}",
+                        "",
+                    ]
+                )
 
         if failed_datasets:
-            report_lines.extend([
-                "",
-                "❌ FAILED DATASETS:",
-                "-" * 50,
-            ])
+            report_lines.extend(
+                [
+                    "",
+                    "❌ FAILED DATASETS:",
+                    "-" * 50,
+                ]
+            )
 
             for dataset in failed_datasets:
-                report_lines.extend([
-                    f"Dataset ID: {dataset.dataset_id}",
-                    f"  Title: {dataset.metadata.title}",
-                    f"  Source: {dataset.source.value}",
-                    f"  Known Issues: {'; '.join(dataset.known_issues) if dataset.known_issues else 'None listed'}",
-                    ""
-                ])
+                report_lines.extend(
+                    [
+                        f"Dataset ID: {dataset.dataset_id}",
+                        f"  Title: {dataset.metadata.title}",
+                        f"  Source: {dataset.source.value}",
+                        f"  Known Issues: {'; '.join(dataset.known_issues) if dataset.known_issues else 'None listed'}",
+                        "",
+                    ]
+                )
 
         report = "\n".join(report_lines)
 
         if output_file:
-            with open(output_file, 'w') as f:
+            with open(output_file, "w") as f:
                 f.write(report)
             logger.info(f"Report saved to {output_file}")
 
@@ -403,16 +426,18 @@ class DatasetCreationRegistry:
         examples = [
             f"# Create matrix from {dataset.dataset_id}",
             dataset.creation_command,
-            ""
+            "",
         ]
 
         # Add usage examples
         for example in dataset.usage_examples:
-            examples.extend([
-                f"# {example.title}",
-                f"# {example.description}",
-                example.code_snippet,
-                ""
-            ])
+            examples.extend(
+                [
+                    f"# {example.title}",
+                    f"# {example.description}",
+                    example.code_snippet,
+                    "",
+                ]
+            )
 
         return examples

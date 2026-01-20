@@ -30,7 +30,9 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         fname = pathlib.Path(item.fspath).name
         # Apply suffix-based markers
-        for suffix, marker in _SUFFIX_TO_MARK.items() if False else _SUFFIX_TO_MARK.items():
+        for suffix, marker in (
+            _SUFFIX_TO_MARK.items() if False else _SUFFIX_TO_MARK.items()
+        ):
             if fname.endswith(suffix):
                 item.add_marker(marker)
         # Ensure hail tests use the hail_session fixture (single-shot Hail startup)

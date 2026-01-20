@@ -4,17 +4,20 @@
 import logging
 from hvantk.utils.clinvar_streamer import (
     ClinvarDataStreamer,
-    create_clinvar_training_set_streamer
+    create_clinvar_training_set_streamer,
 )
 import hail as hl
 from pathlib import Path
 
 # General ClinVar path variable (adjust as needed for your environment)
-CLINVAR_TEST_VCF = Path("../hvantk/tests/testdata/raw/clinvar/clinvar_20220403_chr20.vcf.bgz")
+CLINVAR_TEST_VCF = Path(
+    "../hvantk/tests/testdata/raw/clinvar/clinvar_20220403_chr20.vcf.bgz"
+)
 # Primary path alias used across examples (can be reassigned if needed)
 clinvar_path = CLINVAR_TEST_VCF
 
 logger = logging.getLogger(__name__)
+
 
 def example_basic_usage():
     """Example of basic Clinvar training set generation"""
@@ -27,7 +30,7 @@ def example_basic_usage():
     processor = create_clinvar_training_set_streamer(
         clinvar_path=str(clinvar_path),
         output_dir="./data/training_set",
-        gene_set=gene_set
+        gene_set=gene_set,
     )
 
     # Process data
@@ -45,16 +48,28 @@ def example_custom_streamer():
 
     # Create custom CHD gene set
     custom_gene_set = {
-        "GATA4", "NKX2-5", "TBX5", "NOTCH1", "CHD7",
-        "TBX1", "MYH6", "ACTC1", "MYH7", "TNNT2",
-        "SCN5A", "KCNQ1", "KCNH2", "RYR2", "PKP2"
+        "GATA4",
+        "NKX2-5",
+        "TBX5",
+        "NOTCH1",
+        "CHD7",
+        "TBX1",
+        "MYH6",
+        "ACTC1",
+        "MYH7",
+        "TNNT2",
+        "SCN5A",
+        "KCNQ1",
+        "KCNH2",
+        "RYR2",
+        "PKP2",
     }
 
     # Create individual streamer
     streamer = ClinvarDataStreamer(
         clinvar_path=str(clinvar_path),
         gene_set=custom_gene_set,
-        chunk_size=5000  # Smaller chunks for demo
+        chunk_size=5000,  # Smaller chunks for demo
     )
 
     # Manual processing
@@ -84,8 +99,7 @@ def example_with_validation():
     print("=== Training Set Generation with Validation ===")
 
     processor = create_clinvar_training_set_streamer(
-        clinvar_path=str(clinvar_path),
-        output_dir="./data/training_set"
+        clinvar_path=str(clinvar_path), output_dir="./data/training_set"
     )
 
     # Process with validation
@@ -109,23 +123,28 @@ def example_with_validation():
             print("  Dataset balance looks reasonable")
 
         # Show gene distribution
-        gene_counts = (result
-                       .group_by(result.gene)
-                       .aggregate(
-                           n_variants=hl.agg.count(),
-                           n_tp=hl.agg.count_where(result.rf_label == "TP"),
-                           n_tn=hl.agg.count_where(result.rf_label == "TN"),
-                           tp_fraction=hl.agg.fraction(result.rf_label == "TP"),
-                           tn_fraction=hl.agg.fraction(result.rf_label == "TN"),
-                       )
-                       )
+        gene_counts = result.group_by(result.gene).aggregate(
+            n_variants=hl.agg.count(),
+            n_tp=hl.agg.count_where(result.rf_label == "TP"),
+            n_tn=hl.agg.count_where(result.rf_label == "TN"),
+            tp_fraction=hl.agg.fraction(result.rf_label == "TP"),
+            tn_fraction=hl.agg.fraction(result.rf_label == "TN"),
+        )
         # Order by the per-gene variant count (field name avoids method collision)
         top_genes = gene_counts.order_by(hl.desc(gene_counts.n_variants)).take(10)
 
         print("  Top 10 genes by variant count (with TP/TN stats):")
         for gene_row in top_genes:
-            tp_pct = f"{gene_row.tp_fraction:.2%}" if gene_row.tp_fraction is not None else "NA"
-            tn_pct = f"{gene_row.tn_fraction:.2%}" if gene_row.tn_fraction is not None else "NA"
+            tp_pct = (
+                f"{gene_row.tp_fraction:.2%}"
+                if gene_row.tp_fraction is not None
+                else "NA"
+            )
+            tn_pct = (
+                f"{gene_row.tn_fraction:.2%}"
+                if gene_row.tn_fraction is not None
+                else "NA"
+            )
             print(
                 f"    {gene_row.gene}: total={gene_row.n_variants} TP={gene_row.n_tp} TN={gene_row.n_tn} "
                 f"TP%={tp_pct} TN%={tn_pct}"
@@ -134,8 +153,7 @@ def example_with_validation():
 
 if __name__ == "__main__":
     logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s'
+        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
     )
 
     print("Clinvar Data Streamer Examples")

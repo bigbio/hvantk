@@ -9,7 +9,12 @@ import shutil
 from pathlib import Path
 import pytest
 
-from hvantk.hgc.pipeline import PipelineConfig, PipelineState, PipelineRunner, PipelineStage
+from hvantk.hgc.pipeline import (
+    PipelineConfig,
+    PipelineState,
+    PipelineRunner,
+    PipelineStage,
+)
 
 
 class TestPipelineConfig:
@@ -17,10 +22,7 @@ class TestPipelineConfig:
 
     def test_config_creation(self):
         """Test creating a basic configuration."""
-        config = PipelineConfig(
-            input_dir="/test/input",
-            output_dir="/test/output"
-        )
+        config = PipelineConfig(input_dir="/test/input", output_dir="/test/output")
         assert config.input_dir == "/test/input"
         assert config.output_dir == "/test/output"
         assert config.reference_genome == "GRCh38"
@@ -29,8 +31,7 @@ class TestPipelineConfig:
     def test_config_validation_missing_input(self):
         """Test validation catches missing input directory."""
         config = PipelineConfig(
-            input_dir="/nonexistent/path",
-            output_dir="/test/output"
+            input_dir="/nonexistent/path", output_dir="/test/output"
         )
         errors = config.validate()
         assert len(errors) > 0
@@ -42,7 +43,7 @@ class TestPipelineConfig:
             config = PipelineConfig(
                 input_dir=tmpdir,
                 output_dir=tmpdir,
-                skip_combine_gvcfs=True
+                skip_combine_gvcfs=True,
                 # Missing vds_path
             )
             errors = config.validate()
@@ -55,7 +56,7 @@ class TestPipelineConfig:
             config = PipelineConfig(
                 input_dir=tmpdir,
                 output_dir=tmpdir,
-                min_sample_call_rate=1.5  # Invalid: > 1.0
+                min_sample_call_rate=1.5,  # Invalid: > 1.0
             )
             errors = config.validate()
             assert len(errors) > 0
@@ -67,10 +68,7 @@ class TestPipelineState:
 
     def test_state_creation(self):
         """Test creating a pipeline state."""
-        config = PipelineConfig(
-            input_dir="/test/input",
-            output_dir="/test/output"
-        )
+        config = PipelineConfig(input_dir="/test/input", output_dir="/test/output")
         state = PipelineState(config=config)
         assert state.config == config
         assert state.current_stage is None
@@ -79,15 +77,11 @@ class TestPipelineState:
 
     def test_state_mark_complete(self):
         """Test marking stages as complete."""
-        config = PipelineConfig(
-            input_dir="/test/input",
-            output_dir="/test/output"
-        )
+        config = PipelineConfig(input_dir="/test/input", output_dir="/test/output")
         state = PipelineState(config=config)
 
         state.mark_stage_complete(
-            PipelineStage.COMBINE_GVCFS,
-            output_path="/test/output.vds"
+            PipelineStage.COMBINE_GVCFS, output_path="/test/output.vds"
         )
 
         assert PipelineStage.COMBINE_GVCFS.value in state.completed_stages
@@ -98,14 +92,10 @@ class TestPipelineState:
     def test_state_save_load(self):
         """Test saving and loading pipeline state."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            config = PipelineConfig(
-                input_dir=tmpdir,
-                output_dir=tmpdir
-            )
+            config = PipelineConfig(input_dir=tmpdir, output_dir=tmpdir)
             state = PipelineState(config=config)
             state.mark_stage_complete(
-                PipelineStage.COMBINE_GVCFS,
-                output_path="/test/output.vds"
+                PipelineStage.COMBINE_GVCFS, output_path="/test/output.vds"
             )
             state.start_time = "2026-01-14T10:00:00"
 
@@ -130,9 +120,7 @@ class TestPipelineRunner:
         """Test runner initialization and path setup."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config = PipelineConfig(
-                input_dir=tmpdir,
-                output_dir=tmpdir,
-                output_prefix="test_cohort"
+                input_dir=tmpdir, output_dir=tmpdir, output_prefix="test_cohort"
             )
             runner = PipelineRunner(config)
 
@@ -141,15 +129,12 @@ class TestPipelineRunner:
             assert "mt" in runner.paths
             assert "pvcf" in runner.paths
             assert "qc_report" in runner.paths
-            assert runner.paths['vds'].endswith('test_cohort.vds')
+            assert runner.paths["vds"].endswith("test_cohort.vds")
 
     def test_runner_show_plan(self, capsys):
         """Test that show_plan displays execution plan."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            config = PipelineConfig(
-                input_dir=tmpdir,
-                output_dir=tmpdir
-            )
+            config = PipelineConfig(input_dir=tmpdir, output_dir=tmpdir)
             runner = PipelineRunner(config)
             runner.show_plan()
 
@@ -173,7 +158,7 @@ class TestPipelineRunner:
                 output_dir=tmpdir,
                 skip_combine_gvcfs=True,
                 skip_compute_sample_qc=True,
-                vds_path=str(vds_path)
+                vds_path=str(vds_path),
             )
             runner = PipelineRunner(config)
             runner.show_plan()
@@ -226,4 +211,3 @@ if __name__ == "__main__":
     print("  ✓ Pipeline stages enum works")
 
     print("\n✅ All tests passed!")
-

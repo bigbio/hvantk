@@ -4,6 +4,7 @@ Web Registry Generator for HVANTK Dataset Validation
 This module provides web interface generation capabilities for the dataset
 validation registry system.
 """
+
 import logging
 from pathlib import Path
 from typing import Optional, Dict, Any
@@ -46,18 +47,24 @@ class WebRegistryGenerator:
         Raises:
             NotImplementedError: This is a stub implementation
         """
-        logger.warning("WebRegistryGenerator.generate_web_registry called - stub implementation")
+        logger.warning(
+            "WebRegistryGenerator.generate_web_registry called - stub implementation"
+        )
 
         # Create output directory if it doesn't exist
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
 
         # Get timestamp
-        timestamp = Path(registry_file).stat().st_mtime if Path(registry_file).exists() else "unknown"
+        timestamp = (
+            Path(registry_file).stat().st_mtime
+            if Path(registry_file).exists()
+            else "unknown"
+        )
 
         # Create a basic index.html file as a placeholder
         index_file = output_path / "index.html"
-        with open(index_file, 'w') as f:
+        with open(index_file, "w") as f:
             f.write(f"""<!DOCTYPE html>
 <html>
 <head>
@@ -86,7 +93,7 @@ class WebRegistryGenerator:
 
         # Create a basic styles.css file
         css_file = output_path / "styles.css"
-        with open(css_file, 'w') as f:
+        with open(css_file, "w") as f:
             f.write("""/* HVANTK Dataset Registry Styles */
 body {
     font-family: Arial, sans-serif;
@@ -137,12 +144,14 @@ li {
         Raises:
             NotImplementedError: This is a stub implementation
         """
-        logger.warning("WebRegistryGenerator.generate_dashboard called - stub implementation")
+        logger.warning(
+            "WebRegistryGenerator.generate_dashboard called - stub implementation"
+        )
 
         output_path = Path(output_file)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             f.write("""<!DOCTYPE html>
 <html>
 <head>
@@ -191,19 +200,19 @@ li {
         """
         # Define status colors and labels
         status_config = {
-            'tier3_passed': {'color': '#28a745', 'label': 'Tier3 Passed'},
-            'tier2_passed': {'color': '#28a745', 'label': 'Tier2 Passed'},
-            'tier1_passed': {'color': '#17a2b8', 'label': 'Tier1 Passed'},
-            'tier3_failed': {'color': '#dc3545', 'label': 'Tier3 Failed'},
-            'tier2_failed': {'color': '#dc3545', 'label': 'Tier2 Failed'},
-            'tier1_failed': {'color': '#dc3545', 'label': 'Tier1 Failed'},
-            'not_validated': {'color': '#6c757d', 'label': 'Not Validated'},
-            'in_progress': {'color': '#ffc107', 'label': 'In Progress'}
+            "tier3_passed": {"color": "#28a745", "label": "Tier3 Passed"},
+            "tier2_passed": {"color": "#28a745", "label": "Tier2 Passed"},
+            "tier1_passed": {"color": "#17a2b8", "label": "Tier1 Passed"},
+            "tier3_failed": {"color": "#dc3545", "label": "Tier3 Failed"},
+            "tier2_failed": {"color": "#dc3545", "label": "Tier2 Failed"},
+            "tier1_failed": {"color": "#dc3545", "label": "Tier1 Failed"},
+            "not_validated": {"color": "#6c757d", "label": "Not Validated"},
+            "in_progress": {"color": "#ffc107", "label": "In Progress"},
         }
 
-        config = status_config.get(status, {'color': '#6c757d', 'label': 'Unknown'})
+        config = status_config.get(status, {"color": "#6c757d", "label": "Unknown"})
 
-        badge_svg = f'''<!-- Status badge for {status} -->
+        badge_svg = f"""<!-- Status badge for {status} -->
 <svg xmlns="http://www.w3.org/2000/svg" width="104" height="20">
             <linearGradient id="b" x2="0" y2="100%">
                 <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
@@ -223,7 +232,7 @@ li {
                 <text x="825" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="310">{config['label']}</text>
                 <text x="825" y="140" transform="scale(.1)" textLength="310">{config['label']}</text>
             </g>
-        </svg>'''
+        </svg>"""
 
         return badge_svg
 
@@ -238,28 +247,28 @@ li {
             Dictionary with summary statistics including total, successful, failed counts and success rate
         """
         if not registry:
-            return {
-                'total': 0,
-                'successful': 0,
-                'failed': 0,
-                'success_rate': 0.0
-            }
+            return {"total": 0, "successful": 0, "failed": 0, "success_rate": 0.0}
 
         total = len(registry)
-        status_counts = Counter(data.get('status', 'unknown') for data in registry.values())
+        status_counts = Counter(
+            data.get("status", "unknown") for data in registry.values()
+        )
 
         # Define successful statuses
-        successful_statuses = {'tier3_passed', 'tier2_passed', 'tier1_passed'}
-        successful = sum(count for status, count in status_counts.items()
-                        if status in successful_statuses)
+        successful_statuses = {"tier3_passed", "tier2_passed", "tier1_passed"}
+        successful = sum(
+            count
+            for status, count in status_counts.items()
+            if status in successful_statuses
+        )
 
         failed = total - successful
         success_rate = round((successful / total * 100) if total > 0 else 0.0, 1)
 
         return {
-            'total': total,
-            'successful': successful,
-            'failed': failed,
-            'success_rate': success_rate,
-            'status_breakdown': dict(status_counts)
+            "total": total,
+            "successful": successful,
+            "failed": failed,
+            "success_rate": success_rate,
+            "status_breakdown": dict(status_counts),
         }

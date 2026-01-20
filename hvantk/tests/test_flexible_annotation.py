@@ -26,8 +26,7 @@ class TestFlexibleAnnotationFramework:
 
         # Basic config
         basic_config = AnnotationConfig(
-            name="test_annotation",
-            source_path="/path/to/data.tsv"
+            name="test_annotation", source_path="/path/to/data.tsv"
         )
         assert basic_config.name == "test_annotation"
         assert basic_config.annotation_type == "variant"
@@ -35,9 +34,7 @@ class TestFlexibleAnnotationFramework:
 
         # Gene annotation config
         gene_config = AnnotationConfig(
-            name="gene_test",
-            source_path="/path/to/genes.csv",
-            annotation_type="gene"
+            name="gene_test", source_path="/path/to/genes.csv", annotation_type="gene"
         )
         assert gene_config.join_key == "gene_symbol"
 
@@ -47,7 +44,7 @@ class TestFlexibleAnnotationFramework:
             source_path="/path/to/custom.bed",
             annotation_type="region",
             feature_mapping={"score": "custom_score"},
-            metadata={"version": "1.0"}
+            metadata={"version": "1.0"},
         )
         assert custom_config.feature_mapping["score"] == "custom_score"
         assert custom_config.metadata["version"] == "1.0"
@@ -88,7 +85,9 @@ class TestFlexibleAnnotationFramework:
         registry.register(test_config, "test")
 
         # Build pipeline
-        pipeline = ConfigurableAnnotationPipeline("TestPipeline", base_streamer, registry)
+        pipeline = ConfigurableAnnotationPipeline(
+            "TestPipeline", base_streamer, registry
+        )
 
         # Test adding annotations
         pipeline.add_annotation(annotation_name="test_ann")
@@ -99,7 +98,9 @@ class TestFlexibleAnnotationFramework:
         initial_count = len(pipeline.streamers)
         pipeline.add_annotations_by_category("test")
         # Should add both test annotations from the category
-        assert len(pipeline.streamers) == initial_count + 2  # Added both test annotations
+        assert (
+            len(pipeline.streamers) == initial_count + 2
+        )  # Added both test annotations
 
     def test_custom_annotation_addition(self):
         """Test adding completely custom annotations"""
@@ -114,7 +115,7 @@ class TestFlexibleAnnotationFramework:
             "my_custom_scores",
             "/path/to/custom.csv",
             annotation_type="gene",
-            feature_mapping={"raw_score": "normalized_score"}
+            feature_mapping={"raw_score": "normalized_score"},
         )
 
         # Should have base + custom annotation streamers
@@ -156,7 +157,7 @@ class TestFlexibleAnnotationFramework:
         future_config = AnnotationConfig(
             name="future_format",
             source_path="/path/to/future.xyz",
-            loader_func=custom_loader
+            loader_func=custom_loader,
         )
 
         assert future_config.loader_func is not None
@@ -166,7 +167,7 @@ class TestFlexibleAnnotationFramework:
             name="custom_join",
             source_path="/path/to/data",
             annotation_type="custom",
-            join_key="transcript_id,exon_number"
+            join_key="transcript_id,exon_number",
         )
 
         assert custom_join_config.join_key == "transcript_id,exon_number"
@@ -174,15 +175,12 @@ class TestFlexibleAnnotationFramework:
         # Test 3: Complex preprocessing
         def complex_preprocessing(ht):
             """Complex data transformation"""
-            return ht.annotate(
-                processed=True,
-                score_normalized=ht.raw_score / 100.0
-            )
+            return ht.annotate(processed=True, score_normalized=ht.raw_score / 100.0)
 
         preprocess_config = AnnotationConfig(
             name="preprocessed_data",
             source_path="/path/to/raw",
-            preprocessing_func=complex_preprocessing
+            preprocessing_func=complex_preprocessing,
         )
 
         assert preprocess_config.preprocessing_func is not None
@@ -203,8 +201,12 @@ class TestRealWorldScenarios:
             # Regional annotations
             AnnotationConfig("regulatory_regions", "/regions/encode.bed", "region"),
             # Custom API source
-            AnnotationConfig("disease_db", "api://diseasedb.org/genes", "gene",
-                           loader_func=lambda x: Mock(spec=hl.Table))
+            AnnotationConfig(
+                "disease_db",
+                "api://diseasedb.org/genes",
+                "gene",
+                loader_func=lambda x: Mock(spec=hl.Table),
+            ),
         ]
 
         # All should be creatable without code changes
@@ -227,12 +229,12 @@ class TestRealWorldScenarios:
             name="prediction_scores_flexible",
             source_path="",
             annotation_type="variant",
-            loader_func=lambda _: Mock(spec=hl.Table)
+            loader_func=lambda _: Mock(spec=hl.Table),
         )
         flexible_streamer = FlexibleAnnotationStreamer(flexible_config)
 
         # Both should have similar interfaces
-        assert hasattr(flexible_streamer, 'process_chunk')
+        assert hasattr(flexible_streamer, "process_chunk")
         assert flexible_streamer.name.startswith("FlexibleAnnotation_")
 
     def test_error_handling_and_fallbacks(self):
@@ -240,8 +242,7 @@ class TestRealWorldScenarios:
 
         # Config with invalid source
         bad_config = AnnotationConfig(
-            name="bad_source",
-            source_path="/nonexistent/path.tsv"
+            name="bad_source", source_path="/nonexistent/path.tsv"
         )
 
         streamer = FlexibleAnnotationStreamer(bad_config)

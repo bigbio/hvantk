@@ -10,6 +10,7 @@ format) or at entry['builder'] (alternate). Builder arguments are taken from
 entry['args'] or entry['params'] (whichever present) and can be overridden via
 --override key=value pairs.
 """
+
 import importlib
 import importlib.resources as ir
 from typing import Any, Dict, List, Tuple
@@ -59,7 +60,9 @@ def _normalize_catalog(raw: Any) -> Dict[str, Dict[str, Any]]:
 
 def _load_catalog(path: str | None = None) -> Dict[str, Dict[str, Any]]:
     if yaml is None:
-        raise RuntimeError("PyYAML is required for catalog CLI. Install with `pip install pyyaml`.")
+        raise RuntimeError(
+            "PyYAML is required for catalog CLI. Install with `pip install pyyaml`."
+        )
     if path:
         with open(path, "r") as fh:
             raw = yaml.safe_load(fh)
@@ -69,7 +72,11 @@ def _load_catalog(path: str | None = None) -> Dict[str, Dict[str, Any]]:
     return _normalize_catalog(raw)
 
 
-@click.group("catalog", context_settings=CONTEXT_SETTINGS, help="Interact with hvantk artifact catalog (list, show, build).")
+@click.group(
+    "catalog",
+    context_settings=CONTEXT_SETTINGS,
+    help="Interact with hvantk artifact catalog (list, show, build).",
+)
 def catalog():
     """Root command group for catalog operations."""
     pass
@@ -95,7 +102,12 @@ def list_entries(catalog_path: str | None):
 
 @catalog.command("show")
 @click.argument("key")
-@click.option("--catalog", "catalog_path", type=click.Path(exists=True, dir_okay=False, readable=True), default=None)
+@click.option(
+    "--catalog",
+    "catalog_path",
+    type=click.Path(exists=True, dir_okay=False, readable=True),
+    default=None,
+)
 def show_entry(key: str, catalog_path: str | None):
     """Show full YAML for an entry."""
     cat = _load_catalog(catalog_path)
@@ -109,7 +121,9 @@ def _extract_builder(entry: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
     # Prefer provenance.builder then top-level builder
     builder_path = entry.get("provenance", {}).get("builder") or entry.get("builder")
     if not builder_path:
-        raise click.ClickException("Entry has no builder path defined (provenance.builder or builder)")
+        raise click.ClickException(
+            "Entry has no builder path defined (provenance.builder or builder)"
+        )
     # Args precedence: args > params
     args = dict(entry.get("args") or entry.get("params") or {})
     return builder_path, args
@@ -117,7 +131,12 @@ def _extract_builder(entry: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
 
 @catalog.command("build")
 @click.argument("key")
-@click.option("--catalog", "catalog_path", type=click.Path(exists=True, dir_okay=False, readable=True), default=None)
+@click.option(
+    "--catalog",
+    "catalog_path",
+    type=click.Path(exists=True, dir_okay=False, readable=True),
+    default=None,
+)
 @click.option(
     "--override",
     multiple=True,

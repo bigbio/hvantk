@@ -29,7 +29,7 @@ def test_create_dbnsfp_tb_builds_and_keys_variants():
         output_path=str(output_path),
         overwrite=True,
         export_tsv=False,
-        min_partitions = 10,
+        min_partitions=10,
         reference_genome="GRCh38",
         parse_transcript_scores=True,
     )

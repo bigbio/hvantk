@@ -11,10 +11,12 @@ import matplotlib as mpl
 from typing import Optional, Union, Tuple, Dict, Any, List
 
 
-def set_default_style(style: str = 'default',
-                      context: str = 'notebook',
-                      palette: str = 'deep',
-                      font_scale: float = 1.0) -> None:
+def set_default_style(
+    style: str = "default",
+    context: str = "notebook",
+    palette: str = "deep",
+    font_scale: float = 1.0,
+) -> None:
     """
     Set the default matplotlib style for visualizations.
 
@@ -37,48 +39,54 @@ def set_default_style(style: str = 'default',
     """
     try:
         import seaborn as sns
+
         orig_style = style
         # Map styles to valid seaborn styles
-        style_mapping = {
-            'default': 'whitegrid',
-            'publication': 'whitegrid'
-        }
+        style_mapping = {"default": "whitegrid", "publication": "whitegrid"}
         seaborn_style = style_mapping.get(style, style)
-        sns.set_theme(style=seaborn_style, context=context, palette=palette, font_scale=font_scale)
-        if orig_style == 'publication':
+        sns.set_theme(
+            style=seaborn_style, context=context, palette=palette, font_scale=font_scale
+        )
+        if orig_style == "publication":
             # Publication-ready style settings
-            plt.rcParams['font.family'] = 'sans-serif'
-            plt.rcParams['font.sans-serif'] = ['Arial', 'DejaVu Sans', 'Liberation Sans']
-            plt.rcParams['axes.linewidth'] = 0.8
-            plt.rcParams['axes.labelsize'] = 8
-            plt.rcParams['xtick.labelsize'] = 7
-            plt.rcParams['ytick.labelsize'] = 7
-            plt.rcParams['legend.fontsize'] = 7
-            plt.rcParams['figure.titlesize'] = 10
+            plt.rcParams["font.family"] = "sans-serif"
+            plt.rcParams["font.sans-serif"] = [
+                "Arial",
+                "DejaVu Sans",
+                "Liberation Sans",
+            ]
+            plt.rcParams["axes.linewidth"] = 0.8
+            plt.rcParams["axes.labelsize"] = 8
+            plt.rcParams["xtick.labelsize"] = 7
+            plt.rcParams["ytick.labelsize"] = 7
+            plt.rcParams["legend.fontsize"] = 7
+            plt.rcParams["figure.titlesize"] = 10
     except ImportError:
         # Fall back to matplotlib styles if seaborn is not available
         available_styles = plt.style.available
         if style in available_styles:
             plt.style.use(style)
         else:
-            plt.style.use('default')
+            plt.style.use("default")
 
         # Basic font size adjustments
-        plt.rcParams['font.size'] = 10 * font_scale
-        plt.rcParams['axes.labelsize'] = 11 * font_scale
-        plt.rcParams['axes.titlesize'] = 12 * font_scale
-        plt.rcParams['xtick.labelsize'] = 9 * font_scale
-        plt.rcParams['ytick.labelsize'] = 9 * font_scale
+        plt.rcParams["font.size"] = 10 * font_scale
+        plt.rcParams["axes.labelsize"] = 11 * font_scale
+        plt.rcParams["axes.titlesize"] = 12 * font_scale
+        plt.rcParams["xtick.labelsize"] = 9 * font_scale
+        plt.rcParams["ytick.labelsize"] = 9 * font_scale
 
 
-def save_figure(fig: plt.Figure,
-                filename: str,
-                dpi: int = 300,
-                formats: Optional[List[str]] = None,
-                transparent: bool = False,
-                bbox_inches: str = 'tight',
-                output_dir: Optional[str] = None,
-                **kwargs) -> None:
+def save_figure(
+    fig: plt.Figure,
+    filename: str,
+    dpi: int = 300,
+    formats: Optional[List[str]] = None,
+    transparent: bool = False,
+    bbox_inches: str = "tight",
+    output_dir: Optional[str] = None,
+    **kwargs,
+) -> None:
     """
     Save a matplotlib figure in multiple formats.
 
@@ -104,7 +112,7 @@ def save_figure(fig: plt.Figure,
     """
     # Initialize formats with default value if None
     if formats is None:
-        formats = ['png']
+        formats = ["png"]
 
     if output_dir is not None:
         os.makedirs(output_dir, exist_ok=True)
@@ -112,16 +120,28 @@ def save_figure(fig: plt.Figure,
     for fmt in formats:
         # Handle case where filename already has an extension and convert Path to str
         filename_str = str(filename)
-        base_name = filename_str.replace('.png', '').replace('.pdf', '').replace('.svg', '')
-        save_path = os.path.join(output_dir, f"{base_name}.{fmt}") if output_dir else f"{base_name}.{fmt}"
-        fig.savefig(save_path, format=fmt, dpi=dpi, transparent=transparent,
-                   bbox_inches=bbox_inches, **kwargs)
+        base_name = (
+            filename_str.replace(".png", "").replace(".pdf", "").replace(".svg", "")
+        )
+        save_path = (
+            os.path.join(output_dir, f"{base_name}.{fmt}")
+            if output_dir
+            else f"{base_name}.{fmt}"
+        )
+        fig.savefig(
+            save_path,
+            format=fmt,
+            dpi=dpi,
+            transparent=transparent,
+            bbox_inches=bbox_inches,
+            **kwargs,
+        )
         print(f"Figure saved: {save_path}")
 
 
-def get_colors(n_colors: int,
-               palette: str = 'deep',
-               as_cmap: bool = False) -> Union[list, mpl.colors.Colormap]:
+def get_colors(
+    n_colors: int, palette: str = "deep", as_cmap: bool = False
+) -> Union[list, mpl.colors.Colormap]:
     """
     Generate a list of colors or a colormap.
 
@@ -141,6 +161,7 @@ def get_colors(n_colors: int,
     """
     try:
         import seaborn as sns
+
         if as_cmap:
             return sns.color_palette(palette, as_cmap=True)
         else:
@@ -151,15 +172,19 @@ def get_colors(n_colors: int,
             return plt.get_cmap(palette)
         else:
             cmap = plt.get_cmap(palette)
-            return [mpl.colors.rgb2hex(cmap(i / (n_colors - 1 if n_colors > 1 else 1)))
-                    for i in range(n_colors)]
+            return [
+                mpl.colors.rgb2hex(cmap(i / (n_colors - 1 if n_colors > 1 else 1)))
+                for i in range(n_colors)
+            ]
 
 
-def add_figure_labels(fig: plt.Figure,
-                      labels: Dict[str, Tuple[float, float, str]],
-                      fontsize: int = 12,
-                      fontweight: str = 'bold',
-                      **kwargs) -> None:
+def add_figure_labels(
+    fig: plt.Figure,
+    labels: Dict[str, Tuple[float, float, str]],
+    fontsize: int = 12,
+    fontweight: str = "bold",
+    **kwargs,
+) -> None:
     """
     Add subplot labels (A, B, C, etc.) to figure.
 
@@ -178,8 +203,8 @@ def add_figure_labels(fig: plt.Figure,
     **kwargs
         Additional keyword arguments passed to fig.text()
     """
-    valid_ha = {'left', 'center', 'right'}
-    valid_va = {'top', 'center', 'bottom'}
+    valid_ha = {"left", "center", "right"}
+    valid_va = {"top", "center", "bottom"}
     for label, (x, y, alignment) in labels.items():
         ha = va = None
         tokens = alignment.lower().split()
@@ -192,12 +217,25 @@ def add_figure_labels(fig: plt.Figure,
                 continue
         # Sensible defaults
         if ha is None:
-            ha = 'center'
+            ha = "center"
         if va is None:
-            va = 'center'
+            va = "center"
         # Validate
         if ha not in valid_ha:
-            raise ValueError(f"Invalid horizontal alignment '{ha}' for label '{label}'. Must be one of {valid_ha}.")
+            raise ValueError(
+                f"Invalid horizontal alignment '{ha}' for label '{label}'. Must be one of {valid_ha}."
+            )
         if va not in valid_va:
-            raise ValueError(f"Invalid vertical alignment '{va}' for label '{label}'. Must be one of {valid_va}.")
-        fig.text(x, y, label, ha=ha, va=va, fontsize=fontsize, fontweight=fontweight, **kwargs)
+            raise ValueError(
+                f"Invalid vertical alignment '{va}' for label '{label}'. Must be one of {valid_va}."
+            )
+        fig.text(
+            x,
+            y,
+            label,
+            ha=ha,
+            va=va,
+            fontsize=fontsize,
+            fontweight=fontweight,
+            **kwargs,
+        )

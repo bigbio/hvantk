@@ -29,8 +29,12 @@ logger = logging.getLogger(__name__)
 class QCMetrics:
     """Container class for QC metrics and metadata."""
 
-    def __init__(self, mt: hl.MatrixTable, sample_qc: Optional[hl.Table] = None,
-                 variant_qc: Optional[hl.Table] = None):
+    def __init__(
+        self,
+        mt: hl.MatrixTable,
+        sample_qc: Optional[hl.Table] = None,
+        variant_qc: Optional[hl.Table] = None,
+    ):
         self.mt = mt
         self.sample_qc = sample_qc
         self.variant_qc = variant_qc
@@ -77,6 +81,7 @@ class QCMetrics:
             raise ValueError("No sample QC data available for plotting")
 
         from hvantk.visualization.qc_plots import plot_sample_qc_overview
+
         return plot_sample_qc_overview(self.get_sample_metrics_df(), **kwargs)
 
     def plot_variant_overview(self, **kwargs):
@@ -97,6 +102,7 @@ class QCMetrics:
             raise ValueError("No variant QC data available for plotting")
 
         from hvantk.visualization.qc_plots import plot_variant_qc_overview
+
         return plot_variant_qc_overview(self.get_variant_metrics_df(), **kwargs)
 
     def plot_dashboard(self, **kwargs):
@@ -114,6 +120,7 @@ class QCMetrics:
             The created figure
         """
         from hvantk.visualization.qc_plots import plot_qc_summary_dashboard
+
         return plot_qc_summary_dashboard(self, **kwargs)
 
     def plot_sample_call_rates(self, **kwargs):
@@ -134,7 +141,10 @@ class QCMetrics:
             raise ValueError("No sample QC data available for plotting")
 
         from hvantk.visualization.qc_plots import plot_sample_call_rate_distribution
-        return plot_sample_call_rate_distribution(self.get_sample_metrics_df(), **kwargs)
+
+        return plot_sample_call_rate_distribution(
+            self.get_sample_metrics_df(), **kwargs
+        )
 
     def plot_sample_titv(self, **kwargs):
         """
@@ -154,6 +164,7 @@ class QCMetrics:
             raise ValueError("No sample QC data available for plotting")
 
         from hvantk.visualization.qc_plots import plot_sample_titv_distribution
+
         return plot_sample_titv_distribution(self.get_sample_metrics_df(), **kwargs)
 
     def plot_variant_call_rates(self, **kwargs):
@@ -174,7 +185,10 @@ class QCMetrics:
             raise ValueError("No variant QC data available for plotting")
 
         from hvantk.visualization.qc_plots import plot_variant_call_rate_distribution
-        return plot_variant_call_rate_distribution(self.get_variant_metrics_df(), **kwargs)
+
+        return plot_variant_call_rate_distribution(
+            self.get_variant_metrics_df(), **kwargs
+        )
 
     def plot_allele_frequencies(self, **kwargs):
         """
@@ -194,6 +208,7 @@ class QCMetrics:
             raise ValueError("No variant QC data available for plotting")
 
         from hvantk.visualization.qc_plots import plot_allele_frequency_spectrum
+
         return plot_allele_frequency_spectrum(self.get_variant_metrics_df(), **kwargs)
 
     def plot_hwe_pvalues(self, **kwargs):
@@ -214,6 +229,7 @@ class QCMetrics:
             raise ValueError("No variant QC data available for plotting")
 
         from hvantk.visualization.qc_plots import plot_hwe_pvalues
+
         return plot_hwe_pvalues(self.get_variant_metrics_df(), **kwargs)
 
     def generate_html_report(self, output_path: Union[str, Path], **kwargs):
@@ -238,6 +254,7 @@ class QCMetrics:
         >>> report_path = qc_results.generate_html_report('qc_report.html')
         """
         from hvantk.visualization.qc_report import generate_qc_report
+
         return generate_qc_report(self, output_path, **kwargs)
 
     # Interactive plotting methods
@@ -258,8 +275,13 @@ class QCMetrics:
         if not self.has_sample_qc:
             raise ValueError("No sample QC data available for plotting")
 
-        from hvantk.visualization.interactive_qc import plot_interactive_sample_call_rates
-        return plot_interactive_sample_call_rates(self.get_sample_metrics_df(), **kwargs)
+        from hvantk.visualization.interactive_qc import (
+            plot_interactive_sample_call_rates,
+        )
+
+        return plot_interactive_sample_call_rates(
+            self.get_sample_metrics_df(), **kwargs
+        )
 
     def plot_interactive_sample_titv(self, **kwargs):
         """
@@ -279,6 +301,7 @@ class QCMetrics:
             raise ValueError("No sample QC data available for plotting")
 
         from hvantk.visualization.interactive_qc import plot_interactive_sample_titv
+
         return plot_interactive_sample_titv(self.get_sample_metrics_df(), **kwargs)
 
     def plot_interactive_variant_call_rates(self, **kwargs):
@@ -298,8 +321,13 @@ class QCMetrics:
         if not self.has_variant_qc:
             raise ValueError("No variant QC data available for plotting")
 
-        from hvantk.visualization.interactive_qc import plot_interactive_variant_call_rates
-        return plot_interactive_variant_call_rates(self.get_variant_metrics_df(), **kwargs)
+        from hvantk.visualization.interactive_qc import (
+            plot_interactive_variant_call_rates,
+        )
+
+        return plot_interactive_variant_call_rates(
+            self.get_variant_metrics_df(), **kwargs
+        )
 
     def plot_interactive_allele_frequencies(self, **kwargs):
         """
@@ -318,8 +346,13 @@ class QCMetrics:
         if not self.has_variant_qc:
             raise ValueError("No variant QC data available for plotting")
 
-        from hvantk.visualization.interactive_qc import plot_interactive_allele_frequencies
-        return plot_interactive_allele_frequencies(self.get_variant_metrics_df(), **kwargs)
+        from hvantk.visualization.interactive_qc import (
+            plot_interactive_allele_frequencies,
+        )
+
+        return plot_interactive_allele_frequencies(
+            self.get_variant_metrics_df(), **kwargs
+        )
 
     def plot_interactive_hwe_pvalues(self, **kwargs):
         """
@@ -339,6 +372,7 @@ class QCMetrics:
             raise ValueError("No variant QC data available for plotting")
 
         from hvantk.visualization.interactive_qc import plot_interactive_hwe_pvalues
+
         return plot_interactive_hwe_pvalues(self.get_variant_metrics_df(), **kwargs)
 
     def plot_interactive_dashboard(self, **kwargs):
@@ -356,9 +390,12 @@ class QCMetrics:
             Interactive plotly figure
         """
         from hvantk.visualization.interactive_qc import plot_interactive_qc_dashboard
+
         return plot_interactive_qc_dashboard(self, **kwargs)
 
-    def plot_interactive_sample_scatter(self, x_metric='call_rate', y_metric='r_ti_tv', **kwargs):
+    def plot_interactive_sample_scatter(
+        self, x_metric="call_rate", y_metric="r_ti_tv", **kwargs
+    ):
         """
         Plot interactive sample scatter plot.
 
@@ -380,18 +417,18 @@ class QCMetrics:
             raise ValueError("No sample QC data available for plotting")
 
         from hvantk.visualization.interactive_qc import plot_interactive_sample_scatter
+
         return plot_interactive_sample_scatter(
-            self.get_sample_metrics_df(),
-            x_metric=x_metric,
-            y_metric=y_metric,
-            **kwargs
+            self.get_sample_metrics_df(), x_metric=x_metric, y_metric=y_metric, **kwargs
         )
 
 
-
-
-def _prepare_qc_gt(mt: hl.MatrixTable, call_field: str = 'GT', prefer_lpgT: bool = True,
-                   tmp_field: str = '__qc_gt') -> hl.MatrixTable:
+def _prepare_qc_gt(
+    mt: hl.MatrixTable,
+    call_field: str = "GT",
+    prefer_lpgT: bool = True,
+    tmp_field: str = "__qc_gt",
+) -> hl.MatrixTable:
     """
     Create a temporary entry field with genotypes aligned to the row alleles and sanitized.
 
@@ -401,8 +438,8 @@ def _prepare_qc_gt(mt: hl.MatrixTable, call_field: str = 'GT', prefer_lpgT: bool
     """
     # Choose base genotype expression
     base_field = call_field
-    if prefer_lpgT and ('was_split' in mt.row) and ('LPGT' in mt.entry):
-        base_field = 'LPGT'
+    if prefer_lpgT and ("was_split" in mt.row) and ("LPGT" in mt.entry):
+        base_field = "LPGT"
 
     if base_field not in mt.entry:
         raise ValueError(f"Call field '{base_field}' not found in MatrixTable entries")
@@ -412,26 +449,27 @@ def _prepare_qc_gt(mt: hl.MatrixTable, call_field: str = 'GT', prefer_lpgT: bool
     # Sanitize: set to missing if any allele index >= len(alleles)
     # Protect against missing genotypes
     invalid_gt = hl.is_defined(base_gt) & hl.any(
-        lambda i: base_gt[i] >= hl.len(mt.alleles),
-        hl.range(0, base_gt.ploidy)
+        lambda i: base_gt[i] >= hl.len(mt.alleles), hl.range(0, base_gt.ploidy)
     )
     qc_gt = hl.if_else(invalid_gt, hl.missing(hl.tcall), base_gt)
 
     return mt.annotate_entries(**{tmp_field: qc_gt})
 
 
-def _with_temp_gt(mt: hl.MatrixTable, tmp_field: str = '__qc_gt', backup_field: str = '__orig_GT') -> hl.MatrixTable:
+def _with_temp_gt(
+    mt: hl.MatrixTable, tmp_field: str = "__qc_gt", backup_field: str = "__orig_GT"
+) -> hl.MatrixTable:
     """
     Return a MatrixTable where entry field GT is temporarily set to the sanitized
     genotype stored in tmp_field. If GT exists originally, back it up in backup_field.
     """
-    if 'GT' in mt.entry:
-        return mt.annotate_entries(**{backup_field: mt.GT, 'GT': mt[tmp_field]})
+    if "GT" in mt.entry:
+        return mt.annotate_entries(**{backup_field: mt.GT, "GT": mt[tmp_field]})
     else:
         return mt.annotate_entries(GT=mt[tmp_field])
 
 
-def _restore_gt(mt: hl.MatrixTable, backup_field: str = '__orig_GT') -> hl.MatrixTable:
+def _restore_gt(mt: hl.MatrixTable, backup_field: str = "__orig_GT") -> hl.MatrixTable:
     """
     Restore original GT from backup_field if present; otherwise drop GT that was added temporarily.
     Always drop the backup_field if present.
@@ -445,9 +483,9 @@ def _restore_gt(mt: hl.MatrixTable, backup_field: str = '__orig_GT') -> hl.Matri
     return mt
 
 
-def compute_sample_qc(mt: hl.MatrixTable,
-                      name: str = 'sample_qc',
-                      call_field: str = 'GT') -> hl.MatrixTable:
+def compute_sample_qc(
+    mt: hl.MatrixTable, name: str = "sample_qc", call_field: str = "GT"
+) -> hl.MatrixTable:
     """
     Compute sample-level quality control metrics.
 
@@ -482,44 +520,61 @@ def compute_sample_qc(mt: hl.MatrixTable,
     logger.info("Computing sample-level QC metrics")
 
     try:
-        if call_field not in mt.entry and not (('was_split' in mt.row) and ('LPGT' in mt.entry)):
-            raise ValueError(f"Call field '{call_field}' not found in MatrixTable entries")
+        if call_field not in mt.entry and not (
+            ("was_split" in mt.row) and ("LPGT" in mt.entry)
+        ):
+            raise ValueError(
+                f"Call field '{call_field}' not found in MatrixTable entries"
+            )
 
         if "variant_ac" in mt.row:
-            logger.debug("Dropping existing variant_ac annotation to avoid indexing issues")
+            logger.debug(
+                "Dropping existing variant_ac annotation to avoid indexing issues"
+            )
             mt = mt.drop("variant_ac")
 
-        tmp_field = '__qc_gt'
-        mt_qc = _prepare_qc_gt(mt, call_field=call_field, prefer_lpgT=True, tmp_field=tmp_field)
+        tmp_field = "__qc_gt"
+        mt_qc = _prepare_qc_gt(
+            mt, call_field=call_field, prefer_lpgT=True, tmp_field=tmp_field
+        )
 
         # Preflight: count invalid GT if any slipped through
         invalid_count = mt_qc.aggregate_entries(
             hl.agg.count_where(
-                hl.is_defined(mt_qc[tmp_field]) & hl.any(
+                hl.is_defined(mt_qc[tmp_field])
+                & hl.any(
                     lambda i: mt_qc[tmp_field][i] >= hl.len(mt_qc.alleles),
-                    hl.range(0, mt_qc[tmp_field].ploidy)
+                    hl.range(0, mt_qc[tmp_field].ploidy),
                 )
             )
         )
         if invalid_count:
-            logger.warning(f"Preflight: found {invalid_count} invalid temp genotypes before sample_qc; they will be set missing")
+            logger.warning(
+                f"Preflight: found {invalid_count} invalid temp genotypes before sample_qc; they will be set missing"
+            )
 
         # Ensure compatibility: temporarily set GT to the sanitized tmp field
-        mt_for_qc = _with_temp_gt(mt_qc, tmp_field=tmp_field, backup_field='__orig_GT')
+        mt_for_qc = _with_temp_gt(mt_qc, tmp_field=tmp_field, backup_field="__orig_GT")
 
         # Call sample_qc without relying on call_field support
         mt_with_qc = hl.sample_qc(mt_for_qc, name=name)
 
         # Restore original GT if it existed and drop temps
-        mt_with_qc = _restore_gt(mt_with_qc, backup_field='__orig_GT')
+        mt_with_qc = _restore_gt(mt_with_qc, backup_field="__orig_GT")
         mt_with_qc = mt_with_qc.drop(tmp_field)
 
-        if 'GQ' in mt.entry:
-            mt_with_qc = mt_with_qc.annotate_cols(**{f"{name}_mean_gq": hl.agg.mean(mt_with_qc.GQ)})
-        if 'DP' in mt.entry:
-            mt_with_qc = mt_with_qc.annotate_cols(**{f"{name}_mean_dp": hl.agg.mean(mt_with_qc.DP)})
+        if "GQ" in mt.entry:
+            mt_with_qc = mt_with_qc.annotate_cols(
+                **{f"{name}_mean_gq": hl.agg.mean(mt_with_qc.GQ)}
+            )
+        if "DP" in mt.entry:
+            mt_with_qc = mt_with_qc.annotate_cols(
+                **{f"{name}_mean_dp": hl.agg.mean(mt_with_qc.DP)}
+            )
 
-        logger.info(f"Successfully computed sample QC metrics for {mt_with_qc.count_cols()} samples")
+        logger.info(
+            f"Successfully computed sample QC metrics for {mt_with_qc.count_cols()} samples"
+        )
         return mt_with_qc
 
     except Exception as e:
@@ -527,9 +582,9 @@ def compute_sample_qc(mt: hl.MatrixTable,
         raise
 
 
-def compute_variant_qc(mt: hl.MatrixTable,
-                      name: str = 'variant_qc',
-                      call_field: str = 'GT') -> hl.MatrixTable:
+def compute_variant_qc(
+    mt: hl.MatrixTable, name: str = "variant_qc", call_field: str = "GT"
+) -> hl.MatrixTable:
     """
     Compute variant-level quality control metrics.
 
@@ -562,39 +617,54 @@ def compute_variant_qc(mt: hl.MatrixTable,
     logger.info("Computing variant-level QC metrics")
 
     try:
-        if call_field not in mt.entry and not (('was_split' in mt.row) and ('LPGT' in mt.entry)):
-            raise ValueError(f"Call field '{call_field}' not found in MatrixTable entries")
+        if call_field not in mt.entry and not (
+            ("was_split" in mt.row) and ("LPGT" in mt.entry)
+        ):
+            raise ValueError(
+                f"Call field '{call_field}' not found in MatrixTable entries"
+            )
 
         if "variant_ac" in mt.row:
             logger.debug("Dropping existing variant_ac annotation")
             mt = mt.drop("variant_ac")
 
-        tmp_field = '__qc_gt'
-        mt_qc = _prepare_qc_gt(mt, call_field=call_field, prefer_lpgT=True, tmp_field=tmp_field)
+        tmp_field = "__qc_gt"
+        mt_qc = _prepare_qc_gt(
+            mt, call_field=call_field, prefer_lpgT=True, tmp_field=tmp_field
+        )
 
         # Preflight logging as above
         invalid_count = mt_qc.aggregate_entries(
             hl.agg.count_where(
-                hl.is_defined(mt_qc[tmp_field]) & hl.any(
+                hl.is_defined(mt_qc[tmp_field])
+                & hl.any(
                     lambda i: mt_qc[tmp_field][i] >= hl.len(mt_qc.alleles),
-                    hl.range(0, mt_qc[tmp_field].ploidy)
+                    hl.range(0, mt_qc[tmp_field].ploidy),
                 )
             )
         )
         if invalid_count:
-            logger.warning(f"Preflight: found {invalid_count} invalid temp genotypes before variant_qc; they will be set missing")
+            logger.warning(
+                f"Preflight: found {invalid_count} invalid temp genotypes before variant_qc; they will be set missing"
+            )
 
-        mt_for_qc = _with_temp_gt(mt_qc, tmp_field=tmp_field, backup_field='__orig_GT')
+        mt_for_qc = _with_temp_gt(mt_qc, tmp_field=tmp_field, backup_field="__orig_GT")
         mt_with_qc = hl.variant_qc(mt_for_qc, name=name)
-        mt_with_qc = _restore_gt(mt_with_qc, backup_field='__orig_GT')
+        mt_with_qc = _restore_gt(mt_with_qc, backup_field="__orig_GT")
         mt_with_qc = mt_with_qc.drop(tmp_field)
 
-        if 'GQ' in mt.entry:
-            mt_with_qc = mt_with_qc.annotate_rows(**{f"{name}_mean_gq": hl.agg.mean(mt_with_qc.GQ)})
-        if 'DP' in mt.entry:
-            mt_with_qc = mt_with_qc.annotate_rows(**{f"{name}_mean_dp": hl.agg.mean(mt_with_qc.DP)})
+        if "GQ" in mt.entry:
+            mt_with_qc = mt_with_qc.annotate_rows(
+                **{f"{name}_mean_gq": hl.agg.mean(mt_with_qc.GQ)}
+            )
+        if "DP" in mt.entry:
+            mt_with_qc = mt_with_qc.annotate_rows(
+                **{f"{name}_mean_dp": hl.agg.mean(mt_with_qc.DP)}
+            )
 
-        logger.info(f"Successfully computed variant QC metrics for {mt_with_qc.count_rows()} variants")
+        logger.info(
+            f"Successfully computed variant QC metrics for {mt_with_qc.count_rows()} variants"
+        )
         return mt_with_qc
 
     except Exception as e:
@@ -602,10 +672,12 @@ def compute_variant_qc(mt: hl.MatrixTable,
         raise
 
 
-def compute_full_qc(mt: hl.MatrixTable,
-                   sample_qc_name: str = 'sample_qc',
-                   variant_qc_name: str = 'variant_qc',
-                   call_field: str = 'GT') -> QCMetrics:
+def compute_full_qc(
+    mt: hl.MatrixTable,
+    sample_qc_name: str = "sample_qc",
+    variant_qc_name: str = "variant_qc",
+    call_field: str = "GT",
+) -> QCMetrics:
     """
     Compute comprehensive QC metrics for both samples and variants.
 
@@ -629,10 +701,14 @@ def compute_full_qc(mt: hl.MatrixTable,
 
     try:
         # Compute sample QC
-        mt_with_sample_qc = compute_sample_qc(mt, name=sample_qc_name, call_field=call_field)
+        mt_with_sample_qc = compute_sample_qc(
+            mt, name=sample_qc_name, call_field=call_field
+        )
 
         # Compute variant QC
-        mt_with_full_qc = compute_variant_qc(mt_with_sample_qc, name=variant_qc_name, call_field=call_field)
+        mt_with_full_qc = compute_variant_qc(
+            mt_with_sample_qc, name=variant_qc_name, call_field=call_field
+        )
 
         # Extract QC tables
         sample_qc_table = mt_with_full_qc.cols().select(sample_qc_name)
@@ -646,9 +722,11 @@ def compute_full_qc(mt: hl.MatrixTable,
         raise
 
 
-def extract_qc_metrics(mt: hl.MatrixTable,
-                      sample_qc_name: str = 'sample_qc',
-                      variant_qc_name: str = 'variant_qc') -> Tuple[pd.DataFrame, pd.DataFrame]:
+def extract_qc_metrics(
+    mt: hl.MatrixTable,
+    sample_qc_name: str = "sample_qc",
+    variant_qc_name: str = "variant_qc",
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Extract QC metrics as pandas DataFrames.
 
@@ -680,7 +758,9 @@ def extract_qc_metrics(mt: hl.MatrixTable,
         if variant_qc_name in mt.row:
             variant_qc_table = mt.rows().select(variant_qc_name)
             variant_qc_df = variant_qc_table.to_pandas()
-            logger.info(f"Extracted variant QC metrics for {len(variant_qc_df)} variants")
+            logger.info(
+                f"Extracted variant QC metrics for {len(variant_qc_df)} variants"
+            )
 
         return sample_qc_df, variant_qc_df
 
@@ -689,12 +769,14 @@ def extract_qc_metrics(mt: hl.MatrixTable,
         raise
 
 
-def filter_samples_by_qc(mt: hl.MatrixTable,
-                        min_call_rate: float = 0.85,
-                        min_mean_dp: Optional[float] = None,
-                        max_mean_dp: Optional[float] = None,
-                        min_mean_gq: Optional[float] = None,
-                        sample_qc_name: str = 'sample_qc') -> hl.MatrixTable:
+def filter_samples_by_qc(
+    mt: hl.MatrixTable,
+    min_call_rate: float = 0.85,
+    min_mean_dp: Optional[float] = None,
+    max_mean_dp: Optional[float] = None,
+    min_mean_gq: Optional[float] = None,
+    sample_qc_name: str = "sample_qc",
+) -> hl.MatrixTable:
     """
     Filter samples based on QC thresholds.
 
@@ -744,8 +826,10 @@ def filter_samples_by_qc(mt: hl.MatrixTable,
         n_samples_after = mt_filtered.count_cols()
         n_removed = n_samples_before - n_samples_after
 
-        logger.info(f"Filtered {n_removed} samples ({n_removed/n_samples_before*100:.1f}%), "
-                   f"{n_samples_after} samples remaining")
+        logger.info(
+            f"Filtered {n_removed} samples ({n_removed/n_samples_before*100:.1f}%), "
+            f"{n_samples_after} samples remaining"
+        )
 
         return mt_filtered
 
@@ -754,14 +838,16 @@ def filter_samples_by_qc(mt: hl.MatrixTable,
         raise
 
 
-def filter_variants_by_qc(mt: hl.MatrixTable,
-                         min_call_rate: float = 0.85,
-                         min_ac: int = 1,
-                         max_ac: Optional[int] = None,
-                         min_af: Optional[float] = None,
-                         max_af: Optional[float] = None,
-                         hwe_threshold: Optional[float] = 1e-6,
-                         variant_qc_name: str = 'variant_qc') -> hl.MatrixTable:
+def filter_variants_by_qc(
+    mt: hl.MatrixTable,
+    min_call_rate: float = 0.85,
+    min_ac: int = 1,
+    max_ac: Optional[int] = None,
+    min_af: Optional[float] = None,
+    max_af: Optional[float] = None,
+    hwe_threshold: Optional[float] = 1e-6,
+    variant_qc_name: str = "variant_qc",
+) -> hl.MatrixTable:
     """
     Filter variants based on QC thresholds.
 
@@ -819,8 +905,10 @@ def filter_variants_by_qc(mt: hl.MatrixTable,
         n_variants_after = mt_filtered.count_rows()
         n_removed = n_variants_before - n_variants_after
 
-        logger.info(f"Filtered {n_removed} variants ({n_removed/n_variants_before*100:.1f}%), "
-                   f"{n_variants_after} variants remaining")
+        logger.info(
+            f"Filtered {n_removed} variants ({n_removed/n_variants_before*100:.1f}%), "
+            f"{n_variants_after} variants remaining"
+        )
 
         return mt_filtered
 
@@ -829,8 +917,9 @@ def filter_variants_by_qc(mt: hl.MatrixTable,
         raise
 
 
-def get_qc_summary_stats(qc_df: pd.DataFrame,
-                        metrics: Optional[List[str]] = None) -> pd.DataFrame:
+def get_qc_summary_stats(
+    qc_df: pd.DataFrame, metrics: Optional[List[str]] = None
+) -> pd.DataFrame:
     """
     Get summary statistics for QC metrics.
 
@@ -866,9 +955,11 @@ def get_qc_summary_stats(qc_df: pd.DataFrame,
         raise
 
 
-def prepare_qc_for_visualization(qc_metrics: QCMetrics,
-                                sample_metrics: Optional[List[str]] = None,
-                                variant_metrics: Optional[List[str]] = None) -> Dict[str, pd.DataFrame]:
+def prepare_qc_for_visualization(
+    qc_metrics: QCMetrics,
+    sample_metrics: Optional[List[str]] = None,
+    variant_metrics: Optional[List[str]] = None,
+) -> Dict[str, pd.DataFrame]:
     """
     Prepare QC data for visualization by extracting and flattening key metrics.
 
@@ -899,9 +990,9 @@ def prepare_qc_for_visualization(qc_metrics: QCMetrics,
             flattened_sample = sample_df.copy()
             new_columns = []
             for col in flattened_sample.columns:
-                if isinstance(col, str) and '.' in col:
+                if isinstance(col, str) and "." in col:
                     # Extract the metric name after the last dot
-                    new_name = col.split('.')[-1]
+                    new_name = col.split(".")[-1]
                     new_columns.append(new_name)
                 else:
                     new_columns.append(col)
@@ -910,13 +1001,17 @@ def prepare_qc_for_visualization(qc_metrics: QCMetrics,
 
             if sample_metrics is None:
                 # Use all available flattened metrics
-                result['sample'] = flattened_sample
+                result["sample"] = flattened_sample
             else:
                 # Filter to requested metrics
-                available_sample_metrics = [m for m in sample_metrics if m in flattened_sample.columns]
-                result['sample'] = flattened_sample[available_sample_metrics]
+                available_sample_metrics = [
+                    m for m in sample_metrics if m in flattened_sample.columns
+                ]
+                result["sample"] = flattened_sample[available_sample_metrics]
 
-            logger.info(f"Prepared {len(result['sample'].columns)} sample metrics for visualization")
+            logger.info(
+                f"Prepared {len(result['sample'].columns)} sample metrics for visualization"
+            )
 
         # Prepare variant QC data
         if qc_metrics.has_variant_qc:
@@ -926,8 +1021,8 @@ def prepare_qc_for_visualization(qc_metrics: QCMetrics,
             flattened_variant = variant_df.copy()
             new_columns = []
             for col in flattened_variant.columns:
-                if isinstance(col, str) and '.' in col:
-                    new_name = col.split('.')[-1]
+                if isinstance(col, str) and "." in col:
+                    new_name = col.split(".")[-1]
                     new_columns.append(new_name)
                 else:
                     new_columns.append(col)
@@ -935,31 +1030,47 @@ def prepare_qc_for_visualization(qc_metrics: QCMetrics,
             flattened_variant.columns = new_columns
 
             # Handle array columns (AC, AF) by extracting alternate allele values
-            if 'AC' in flattened_variant.columns:
+            if "AC" in flattened_variant.columns:
                 try:
-                    flattened_variant['AC_alt'] = flattened_variant['AC'].apply(
-                        lambda x: x[1] if isinstance(x, (list, np.ndarray)) and len(x) > 1 else x
+                    flattened_variant["AC_alt"] = flattened_variant["AC"].apply(
+                        lambda x: (
+                            x[1]
+                            if isinstance(x, (list, np.ndarray)) and len(x) > 1
+                            else x
+                        )
                     )
                 except (TypeError, IndexError):
-                    logger.warning("Could not extract alternate allele count from AC column")
+                    logger.warning(
+                        "Could not extract alternate allele count from AC column"
+                    )
 
-            if 'AF' in flattened_variant.columns:
+            if "AF" in flattened_variant.columns:
                 try:
-                    flattened_variant['AF_alt'] = flattened_variant['AF'].apply(
-                        lambda x: x[1] if isinstance(x, (list, np.ndarray)) and len(x) > 1 else x
+                    flattened_variant["AF_alt"] = flattened_variant["AF"].apply(
+                        lambda x: (
+                            x[1]
+                            if isinstance(x, (list, np.ndarray)) and len(x) > 1
+                            else x
+                        )
                     )
                 except (TypeError, IndexError):
-                    logger.warning("Could not extract alternate allele frequency from AF column")
+                    logger.warning(
+                        "Could not extract alternate allele frequency from AF column"
+                    )
 
             if variant_metrics is None:
                 # Use all available flattened metrics
-                result['variant'] = flattened_variant
+                result["variant"] = flattened_variant
             else:
                 # Filter to requested metrics
-                available_variant_metrics = [m for m in variant_metrics if m in flattened_variant.columns]
-                result['variant'] = flattened_variant[available_variant_metrics]
+                available_variant_metrics = [
+                    m for m in variant_metrics if m in flattened_variant.columns
+                ]
+                result["variant"] = flattened_variant[available_variant_metrics]
 
-            logger.info(f"Prepared {len(result['variant'].columns)} variant metrics for visualization")
+            logger.info(
+                f"Prepared {len(result['variant'].columns)} variant metrics for visualization"
+            )
 
         return result
 
@@ -968,9 +1079,9 @@ def prepare_qc_for_visualization(qc_metrics: QCMetrics,
         raise
 
 
-def save_qc_metrics(qc_metrics: QCMetrics,
-                   output_dir: Union[str, Path],
-                   prefix: str = 'qc_metrics') -> Dict[str, str]:
+def save_qc_metrics(
+    qc_metrics: QCMetrics, output_dir: Union[str, Path], prefix: str = "qc_metrics"
+) -> Dict[str, str]:
     """
     Save QC metrics to files.
 
@@ -999,7 +1110,7 @@ def save_qc_metrics(qc_metrics: QCMetrics,
             sample_df = qc_metrics.get_sample_metrics_df()
             sample_path = output_dir / f"{prefix}_sample_qc.csv"
             sample_df.to_csv(sample_path, index=False)
-            saved_files['sample_qc'] = str(sample_path)
+            saved_files["sample_qc"] = str(sample_path)
             logger.info(f"Saved sample QC metrics to {sample_path}")
 
         # Save variant QC
@@ -1007,13 +1118,13 @@ def save_qc_metrics(qc_metrics: QCMetrics,
             variant_df = qc_metrics.get_variant_metrics_df()
             variant_path = output_dir / f"{prefix}_variant_qc.csv"
             variant_df.to_csv(variant_path, index=False)
-            saved_files['variant_qc'] = str(variant_path)
+            saved_files["variant_qc"] = str(variant_path)
             logger.info(f"Saved variant QC metrics to {variant_path}")
 
         # Save MatrixTable if needed
         mt_path = output_dir / f"{prefix}_with_qc.mt"
         qc_metrics.mt.write(str(mt_path), overwrite=True)
-        saved_files['matrix_table'] = str(mt_path)
+        saved_files["matrix_table"] = str(mt_path)
         logger.info(f"Saved MatrixTable with QC annotations to {mt_path}")
 
         return saved_files
@@ -1021,4 +1132,3 @@ def save_qc_metrics(qc_metrics: QCMetrics,
     except Exception as e:
         logger.error(f"Failed to save QC metrics: {e}")
         raise
-

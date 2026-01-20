@@ -36,18 +36,25 @@ def _import_sdrf(sdrf_file: str, **kwargs) -> pd.DataFrame:
             "sep": "\t",
             "comment": "#",
             "header": None,
-            "names": ['accession', 'unused', 'sample_id', 'column_type', 'column_name', 'column_value']
+            "names": [
+                "accession",
+                "unused",
+                "sample_id",
+                "column_type",
+                "column_name",
+                "column_value",
+            ],
         }
 
         # Update defaults with any provided kwargs
         read_params = {**default_params, **kwargs}
 
         # Infer number of columns if names not provided in kwargs
-        if 'names' not in kwargs:
+        if "names" not in kwargs:
             with open(sdrf_file) as f:
                 first_line = f.readline().strip()
-                num_cols = len(first_line.split(read_params['sep']))
-                read_params['usecols'] = range(min(6, num_cols))
+                num_cols = len(first_line.split(read_params["sep"]))
+                read_params["usecols"] = range(min(6, num_cols))
 
         # Read file
         sdrf_df = pd.read_csv(sdrf_file, **read_params)
@@ -56,7 +63,7 @@ def _import_sdrf(sdrf_file: str, **kwargs) -> pd.DataFrame:
         sdrf_df.columns = sdrf_df.columns.str.strip()
 
         # Drop unused columns
-        sdrf_df.drop(columns=['unused'], inplace=True, errors='ignore')
+        sdrf_df.drop(columns=["unused"], inplace=True, errors="ignore")
 
         return sdrf_df
 
@@ -66,72 +73,75 @@ def _import_sdrf(sdrf_file: str, **kwargs) -> pd.DataFrame:
         raise pd.errors.EmptyDataError(f"SDRF file is empty: {sdrf_file}") from e
 
 
-def _reshape_sdrf_long_to_wide_format(df_sdrf: pd.DataFrame,
-                                          include_only_factors: bool = False,
-                                          include_only_characteristic: bool = False) -> pd.DataFrame:
-        """
-        Reshapes an input DataFrame from long format to wide format based on specific
-        filtering and pivoting rules.
+def _reshape_sdrf_long_to_wide_format(
+    df_sdrf: pd.DataFrame,
+    include_only_factors: bool = False,
+    include_only_characteristic: bool = False,
+) -> pd.DataFrame:
+    """
+    Reshapes an input DataFrame from long format to wide format based on specific
+    filtering and pivoting rules.
 
-        Args:
-            df_sdrf (pd.DataFrame): Input DataFrame containing columns: 'sample_name',
-                'column_type', 'column_name', and 'column_value'.
-            include_only_factors (bool, optional): If True, include only factor rows. Defaults to False.
-            include_only_characteristic (bool, optional): If True, include only characteristic rows.
-                Defaults to False.
+    Args:
+        df_sdrf (pd.DataFrame): Input DataFrame containing columns: 'sample_name',
+            'column_type', 'column_name', and 'column_value'.
+        include_only_factors (bool, optional): If True, include only factor rows. Defaults to False.
+        include_only_characteristic (bool, optional): If True, include only characteristic rows.
+            Defaults to False.
 
-        Returns:
-            pd.DataFrame: Reshaped DataFrame in wide format with:
-                - Columns representing distinct column_name values
-                - Rows representing sample_name entries
-                - Values from column_value
-                - Clean column names (spaces replaced with underscores)
+    Returns:
+        pd.DataFrame: Reshaped DataFrame in wide format with:
+            - Columns representing distinct column_name values
+            - Rows representing sample_name entries
+            - Values from column_value
+            - Clean column names (spaces replaced with underscores)
 
-        Raises:
-            ValueError: If both include_only_factors and include_only_characteristic are True
-        """
-        if include_only_factors and include_only_characteristic:
-            raise ValueError("Cannot set both include_only_factors and include_only_characteristic to True")
-
-        df = df_sdrf.copy()
-
-        # Filter rows based on column_type
-        if include_only_characteristic:
-            df = df[df['column_type'] == 'characteristic']
-        elif include_only_factors:
-            df = df[df['column_type'] == 'factor']
-        # else: use all column types
-
-        # Handle duplicate sample_id/column_name combinations by taking last value
-        pivot_df = df[['sample_id', 'column_name', 'column_value']].drop_duplicates(
-            subset=['sample_id', 'column_name'],
-            keep='last'
+    Raises:
+        ValueError: If both include_only_factors and include_only_characteristic are True
+    """
+    if include_only_factors and include_only_characteristic:
+        raise ValueError(
+            "Cannot set both include_only_factors and include_only_characteristic to True"
         )
 
-        # Reshape from long to wide format
-        wide_df = pivot_df.pivot(
-            index='sample_id',
-            columns='column_name',
-            values='column_value'
-        )
+    df = df_sdrf.copy()
 
-        # Reset index to make sample_id a column
-        wide_df.reset_index(inplace=True)
+    # Filter rows based on column_type
+    if include_only_characteristic:
+        df = df[df["column_type"] == "characteristic"]
+    elif include_only_factors:
+        df = df[df["column_type"] == "factor"]
+    # else: use all column types
 
-        # Clean column names (replace spaces and special chars with underscores)
-        wide_df.columns = [str(col).strip().replace(' ', '_').replace('(', '').replace(')', '')
-                           for col in wide_df.columns]
+    # Handle duplicate sample_id/column_name combinations by taking last value
+    pivot_df = df[["sample_id", "column_name", "column_value"]].drop_duplicates(
+        subset=["sample_id", "column_name"], keep="last"
+    )
 
-        return wide_df
+    # Reshape from long to wide format
+    wide_df = pivot_df.pivot(
+        index="sample_id", columns="column_name", values="column_value"
+    )
+
+    # Reset index to make sample_id a column
+    wide_df.reset_index(inplace=True)
+
+    # Clean column names (replace spaces and special chars with underscores)
+    wide_df.columns = [
+        str(col).strip().replace(" ", "_").replace("(", "").replace(")", "")
+        for col in wide_df.columns
+    ]
+
+    return wide_df
 
 
 def convert_sdrf_to_hail_table(
-        sdrf_file: str,
-        output_file: str=None,
-        keys=None,
-        repartition: int = 50,
-        overwrite: bool = False,
-        **kwargs
+    sdrf_file: str,
+    output_file: str = None,
+    keys=None,
+    repartition: int = 50,
+    overwrite: bool = False,
+    **kwargs,
 ) -> hl.Table:
     """
     Convert an SDRF (Sample and Data Relationship Format) file to a Hail Table.
@@ -158,7 +168,7 @@ def convert_sdrf_to_hail_table(
     """
     # Import SDRF file
     if keys is None:
-        keys = ['sample_id']
+        keys = ["sample_id"]
     df_sdrf = _import_sdrf(sdrf_file, **kwargs)
 
     # Reshape SDRF DataFrame from long to wide format
@@ -174,10 +184,7 @@ def convert_sdrf_to_hail_table(
     # instead of coercing to 0, which would destroy meaningful missing data
 
     # Convert the DataFrame to a Hail Table
-    ht = (hl.Table.from_pandas(df_wide)
-          .key_by(*keys)
-          .repartition(repartition)
-          .persist())
+    ht = hl.Table.from_pandas(df_wide).key_by(*keys).repartition(repartition).persist()
 
     # Write the Hail Table to a file
     if output_file is not None:
