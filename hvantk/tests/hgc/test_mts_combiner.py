@@ -6,7 +6,7 @@ import pytest
 import hail as hl
 
 from hvantk.hgc.combiners import combine_matrix_table_rows, combine_matrix_table_cols
-from hvantk.hgc.file_utils import decompress_files
+from hvantk.data.file_utils import decompress_files
 
 TESTS_DIR = Path(__file__).parent.parent / "testdata" / "hgc_data"
 

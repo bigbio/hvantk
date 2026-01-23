@@ -11,7 +11,7 @@ from hvantk.commands.make_table_batch_cli import mktable_batch_cli
 from hvantk.commands.make_matrix_cli import mkmatrix_group
 from hvantk.commands.make_matrix_batch_cli import mkmatrix_batch_cli
 from hvantk.commands.catalog_cli import catalog
-from hvantk.commands.hgc_cli import hgc_group
+from hvantk.commands.hgc import hgc_group
 
 # Main CLI entry point for the package (hvantk)
 

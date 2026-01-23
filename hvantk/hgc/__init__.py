@@ -11,10 +11,9 @@ from hvantk.hgc.file_utils import (
     check_path_exists_and_readable,
     validate_vcfs_paths,
     validate_vds_paths,
-    compress_files,
-    decompress_files,
     sort_mts_cols,
 )
+from hvantk.data.file_utils import compress_files, decompress_files
 from hvantk.hgc.qc import (
     QCMetrics,
     compute_sample_qc,

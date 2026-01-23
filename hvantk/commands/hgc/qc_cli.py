@@ -1,32 +1,26 @@
 """
-HGC CLI Commands Module
+HGC QC CLI Commands Module
 
-This module provides command-line interface commands for the HGC (Hail-based Genotype Combiner) toolkit.
-Integrates with hvantk's CLI architecture to provide joint genotyping capabilities.
+This module provides command-line interface commands for quality control operations
+in the HGC (Hail-based Genotype Combiner) toolkit.
 
 Commands:
-- hvantk hgc gvcf-combine: Combine GVCF files for joint genotyping
-- hvantk hgc vds-combine: Combine VDS datasets
-- hvantk hgc vds2mt: Convert VDS to MatrixTable
-- hvantk hgc mt2vcf: Convert MatrixTable to VCF
+- hvantk hgc compute-qc: Compute QC metrics for samples and variants
+- hvantk hgc filter-qc: Filter MatrixTable based on QC metrics
+- hvantk hgc qc-summary: Generate summary statistics from QC metrics files
+- hvantk hgc plot-qc: Generate QC plots from QC annotations
+- hvantk hgc qc-report: Generate comprehensive HTML QC report
 """
 
 import logging
 import click
-import glob
 import os
-import tempfile
 
 logger = logging.getLogger(__name__)
 
-# Import HGC functionality - use the actual functions that exist
+# Import HGC QC functionality
 from hvantk.hgc import (
-    combine_gvcfs,
-    combine_vdses,
-    convert_vds_to_mt,
-    convert_mt_to_multi_sample_vcf,
     check_path_exists_and_readable,
-    validate_vds_paths,
     compute_full_qc,
     compute_sample_qc,
     compute_variant_qc,
@@ -35,423 +29,25 @@ from hvantk.hgc import (
     save_qc_metrics,
 )
 
-DEFAULT_TEMP_DIR = os.environ.get("HGC_TEMP_DIR", tempfile.gettempdir())
+# Import utility functions
+from .utils import validate_input_files, validate_output_path
 
 
-# Utility functions for CLI
-def setup_logging_for_hgc(log_level="INFO"):
-    """Set up logging for HGC operations."""
-    numeric_level = getattr(logging, log_level.upper(), logging.INFO)
-    logging.basicConfig(
-        level=numeric_level,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
-
-
-def expand_file_patterns(patterns):
-    """Expand file patterns/wildcards into actual file paths."""
-    expanded = []
-    for pattern in patterns:
-        matches = glob.glob(pattern)
-        expanded.extend(matches)
-    return expanded
-
-
-def validate_input_files(file_paths, file_type="gvcf"):
-    """Validate input files and return (is_valid, errors) tuple."""
-    errors = []
-    try:
-        if file_type == "gvcf":
-            for path in file_paths:
-                check_path_exists_and_readable(path)
-        elif file_type == "vds":
-            validate_vds_paths(file_paths)
-        else:
-            for path in file_paths:
-                check_path_exists_and_readable(path)
-        return (True, [])
-    except Exception as e:
-        errors.append(str(e))
-        return (False, errors)
-
-
-def validate_output_path(output_path, create_dirs=False):
-    """Validate output path and optionally create parent directories."""
-    try:
-        parent_dir = os.path.dirname(output_path)
-        if parent_dir and not os.path.exists(parent_dir):
-            if create_dirs:
-                os.makedirs(parent_dir, exist_ok=True)
-            else:
-                return False
-        return True
-    except Exception:
-        return False
-
-
-def estimate_resource_requirements(file_paths):
-    """Estimate resource requirements for an operation."""
-    logger = logging.getLogger(__name__)
-    total_size = 0
-    for path in file_paths:
-        try:
-            if os.path.isfile(path):
-                total_size += os.path.getsize(path)
-            elif os.path.isdir(path):
-                for root, dirs, files in os.walk(path):
-                    for file in files:
-                        file_path = os.path.join(root, file)
-                        try:
-                            total_size += os.path.getsize(file_path)
-                        except OSError as e:
-                            logger.warning(
-                                f"Failed to get size of file '{file_path}': {e}"
-                            )
-                            continue
-        except OSError as e:
-            logger.warning(f"Failed to access path '{path}': {e}")
-            continue
-        except Exception as e:
-            logger.error(f"Unexpected error accessing path '{path}': {e}")
-            raise
-
-    total_size_gb = total_size / (1024**3)
-
-    # Simple heuristic estimates
-    memory = f"{max(4, int(total_size_gb * 2))}g"
-    partitions = max(100, int(total_size_gb * 10))
-    estimated_runtime = max(5, int(total_size_gb * 2))
-
-    return {
-        "memory": memory,
-        "partitions": partitions,
-        "estimated_runtime_minutes": estimated_runtime,
-        "total_size_gb": round(total_size_gb, 2),
-    }
-
-
-@click.group(
-    name="hgc",
-    help="HGC (Hail-based Genotype Combiner) commands for joint genotyping workflows",
-)
-@click.option(
-    "--log-level",
-    default="INFO",
-    type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"]),
-    help="Set logging level",
-)
-@click.pass_context
-def hgc_group(ctx, log_level):
+def register_qc_commands(group):
     """
-    HGC command group for joint genotyping operations.
+    Register QC commands to the HGC command group.
+
+    Args:
+        group: Click command group to add commands to
     """
-    # Ensure that ctx.obj exists and is a dict
-    ctx.ensure_object(dict)
-    ctx.obj["log_level"] = log_level
-
-    # Set up logging for HGC operations
-    setup_logging_for_hgc(log_level)
-    logger.info(f"Starting HGC command with log level: {log_level}")
+    group.add_command(compute_qc)
+    group.add_command(filter_qc)
+    group.add_command(qc_summary)
+    group.add_command(plot_qc)
+    group.add_command(qc_report)
 
 
-@hgc_group.command(name="gvcf-combine")
-@click.option("--gvcf-dir", "-g", help="Directory containing GVCF files")
-@click.option(
-    "--vds-paths", "-v", multiple=True, help="VDS paths to combine with GVCFs"
-)
-@click.option("--output", "-o", required=True, help="Output VDS path")
-@click.option(
-    "--temp-dir",
-    "--tmp",
-    default=DEFAULT_TEMP_DIR,
-    help="Temporary directory for intermediate files",
-)
-@click.option("--save-path", "-s", help="Path to save the combiner plan")
-@click.option(
-    "--dry-run", is_flag=True, help="Show what would be done without executing"
-)
-@click.pass_context
-def gvcf_combine(ctx, gvcf_dir, vds_paths, output, temp_dir, save_path, dry_run):
-    """
-    Combine GVCF files for joint genotyping.
-
-    This command takes GVCF files from a directory and/or existing VDS datasets
-    and combines them into a single joint-called variant dataset using Hail's optimized combiner.
-
-    Examples:
-        hvantk hgc gvcf-combine -g /path/to/gvcfs -o combined.vds
-        hvantk hgc gvcf-combine -g /path/to/gvcfs -v existing.vds -o combined.vds
-    """
-    try:
-        logger.info("Starting GVCF combination workflow")
-
-        if not gvcf_dir and not vds_paths:
-            click.echo("❌ Either --gvcf-dir or --vds-paths must be provided", err=True)
-            ctx.exit(1)
-
-        # Validate output path
-        if not validate_output_path(output, create_dirs=True):
-            click.echo("❌ Invalid output path", err=True)
-            ctx.exit(1)
-
-        if dry_run:
-            click.echo("🔍 Dry run mode - would execute GVCF combination with:")
-            click.echo(f"   • GVCF directory: {gvcf_dir or 'None'}")
-            click.echo(f"   • VDS paths: {list(vds_paths) if vds_paths else 'None'}")
-            click.echo(f"   • Output: {output}")
-            click.echo(f"   • Temp directory: {temp_dir}")
-            return
-
-        # Execute combination
-        click.echo("🔄 Starting GVCF combination...")
-        combine_gvcfs(
-            gvcf_dir=gvcf_dir,
-            vds_output_path=output,
-            tmp_path=temp_dir,
-            save_path=save_path or f"{output}.plan",
-            vdses=list(vds_paths) if vds_paths else [],
-            kwargs={},
-        )
-
-        click.echo(f"✅ Successfully combined GVCFs to {output}")
-
-    except Exception as e:
-        logger.exception(f"GVCF combination failed: {e}")
-        click.echo(f"❌ Error: {e}", err=True)
-        ctx.exit(1)
-
-
-@hgc_group.command(name="vds-combine")
-@click.option(
-    "--input-dir", "-i", required=True, help="Directory containing VDS datasets"
-)
-@click.option("--output", "-o", required=True, help="Output path for combined VDS")
-@click.option(
-    "--validate/--no-validate", default=True, help="Validate the combined VDS"
-)
-@click.option(
-    "--overwrite/--no-overwrite", default=False, help="Overwrite output if exists"
-)
-@click.option(
-    "--dry-run", is_flag=True, help="Show what would be done without executing"
-)
-@click.pass_context
-def vds_combine(ctx, input_dir, output, validate, overwrite, dry_run):
-    """
-    Combine Variant DataSets (VDS) for joint analysis.
-
-    VDS is Hail's optimized format for large-scale variant data storage
-    and processing with efficient compression and query capabilities.
-
-    Examples:
-        hvantk hgc vds-combine -i /path/to/vds_datasets -o combined.vds
-        hvantk hgc vds-combine -i /path/to/vds_datasets -o combined.vds --no-validate
-    """
-    try:
-        logger.info("Starting VDS combination workflow")
-
-        # Validate input directory
-        if not os.path.isdir(input_dir):
-            click.echo(f"❌ Input directory not found: {input_dir}", err=True)
-            ctx.exit(1)
-
-        # Validate output path
-        if not validate_output_path(output, create_dirs=True):
-            click.echo("❌ Invalid output path", err=True)
-            ctx.exit(1)
-
-        if dry_run:
-            click.echo("🔍 Dry run mode - would execute VDS combination with:")
-            click.echo(f"   • Input directory: {input_dir}")
-            click.echo(f"   • Output: {output}")
-            click.echo(f"   • Validate: {validate}")
-            click.echo(f"   • Overwrite: {overwrite}")
-            return
-
-        # Execute combination
-        click.echo("🔄 Starting VDS combination...")
-        combine_vdses(
-            vdses_dir=input_dir,
-            output_path=output,
-            validate=validate,
-            overwrite=overwrite,
-        )
-
-        click.echo(f"✅ Successfully combined VDS datasets to {output}")
-
-    except Exception as e:
-        logger.exception(f"VDS combination failed: {e}")
-        click.echo(f"❌ Error: {e}", err=True)
-        ctx.exit(1)
-
-
-@hgc_group.command(name="vds2mt")
-@click.option("--input", "-i", required=True, help="Input VDS dataset")
-@click.option("--output", "-o", required=True, help="Output MatrixTable path")
-@click.option(
-    "--adjust-genotypes/--no-adjust-genotypes",
-    default=True,
-    help="Annotate with adjusted genotypes",
-)
-@click.option(
-    "--skip-split-multi", is_flag=True, help="Skip splitting multi-allelic variants"
-)
-@click.option(
-    "--skip-validation",
-    is_flag=True,
-    help="Skip biallelic validation (faster, use only if confident)",
-)
-@click.option(
-    "--skip-keying-by-cols", is_flag=True, help="Skip keying MatrixTable by columns"
-)
-@click.option(
-    "--overwrite/--no-overwrite", default=False, help="Overwrite output if exists"
-)
-@click.option(
-    "--dry-run", is_flag=True, help="Show what would be done without executing"
-)
-@click.pass_context
-def vds2mt(
-    ctx,
-    input,
-    output,
-    adjust_genotypes,
-    skip_split_multi,
-    skip_validation,
-    skip_keying_by_cols,
-    overwrite,
-    dry_run,
-):
-    """
-    Convert Variant DataSet (VDS) to MatrixTable format.
-
-    VDS is optimized for storage while MatrixTable is better for analysis.
-    This conversion creates a dense matrix which is recommended for most analyses.
-
-    Examples:
-        hvantk hgc vds2mt -i dataset.vds -o dataset.mt
-        hvantk hgc vds2mt -i dataset.vds -o dataset.mt --skip-validation
-    """
-    try:
-        logger.info("Starting VDS to MatrixTable conversion")
-
-        # Validate input
-        is_valid, errors = validate_input_files([input], "vds")
-        if not is_valid:
-            click.echo("❌ Input file validation failed:", err=True)
-            for error in errors:
-                click.echo(f"   • {error}", err=True)
-            ctx.exit(1)
-
-        # Validate output path
-        if not validate_output_path(output, create_dirs=True):
-            click.echo("❌ Invalid output path", err=True)
-            ctx.exit(1)
-
-        if dry_run:
-            click.echo(
-                "🔍 Dry run mode - would execute VDS to MatrixTable conversion with:"
-            )
-            click.echo(f"   • Input: {input}")
-            click.echo(f"   • Output: {output}")
-            click.echo(f"   • Adjust genotypes: {adjust_genotypes}")
-            click.echo(f"   • Skip split multi: {skip_split_multi}")
-            click.echo(f"   • Skip validation: {skip_validation}")
-            return
-
-        # Execute conversion
-        click.echo("🔄 Starting VDS to MatrixTable conversion...")
-        convert_vds_to_mt(
-            vds_path=input,
-            output_path=output,
-            adjust_genotypes=adjust_genotypes,
-            skip_split_multi=skip_split_multi,
-            skip_validation=skip_validation,
-            skip_keying_by_cols=skip_keying_by_cols,
-            overwrite=overwrite,
-        )
-
-        click.echo(f"✅ Successfully converted {input} to MatrixTable at {output}")
-
-    except Exception as e:
-        logger.exception(f"VDS to MatrixTable conversion failed: {e}")
-        click.echo(f"❌ Error: {e}", err=True)
-        ctx.exit(1)
-
-
-@hgc_group.command(name="mt2vcf")
-@click.option("--input", "-i", required=True, help="Input MatrixTable")
-@click.option("--output", "-o", required=True, help="Output VCF file path")
-@click.option(
-    "--filter-adj/--no-filter-adj",
-    default=True,
-    help="Filter to adjusted genotypes (recommended)",
-)
-@click.option("--min-ac", default=1, type=int, help="Minimum alternate allele count")
-@click.option(
-    "--split-multi/--no-split-multi", default=True, help="Split multi-allelic variants"
-)
-@click.option(
-    "--dry-run", is_flag=True, help="Show what would be done without executing"
-)
-@click.pass_context
-def mt2vcf(ctx, input, output, filter_adj, min_ac, split_multi, dry_run):
-    """
-    Convert MatrixTable to VCF format.
-
-    Exports processed genomic data back to standard VCF format for
-    compatibility with other tools and pipelines.
-
-    Examples:
-        hvantk hgc mt2vcf -i analysis.mt -o results.vcf.bgz
-        hvantk hgc mt2vcf -i analysis.mt -o results.vcf.bgz --min-ac 2
-    """
-    try:
-        logger.info("Starting MatrixTable to VCF conversion")
-
-        # Validate input
-        is_valid, errors = validate_input_files([input], "mt")
-        if not is_valid:
-            click.echo("❌ Input file validation failed:", err=True)
-            for error in errors:
-                click.echo(f"   • {error}", err=True)
-            ctx.exit(1)
-
-        # Validate output path
-        if not validate_output_path(output, create_dirs=True):
-            click.echo("❌ Invalid output path", err=True)
-            ctx.exit(1)
-
-        if dry_run:
-            click.echo(
-                "🔍 Dry run mode - would execute MatrixTable to VCF conversion with:"
-            )
-            click.echo(f"   • Input: {input}")
-            click.echo(f"   • Output: {output}")
-            click.echo(f"   • Filter adjusted genotypes: {filter_adj}")
-            click.echo(f"   • Minimum AC: {min_ac}")
-            click.echo(f"   • Split multi: {split_multi}")
-            return
-
-        # Execute conversion
-        click.echo("🔄 Starting MatrixTable to VCF conversion...")
-        convert_mt_to_multi_sample_vcf(
-            mt_path=input,
-            vcf_path=output,
-            filter_adj_genotypes=filter_adj,
-            min_ac=min_ac,
-            split_multi=split_multi,
-        )
-
-        click.echo(f"✅ Successfully converted {input} to VCF at {output}")
-
-    except Exception as e:
-        logger.exception(f"MatrixTable to VCF conversion failed: {e}")
-        click.echo(f"❌ Error: {e}", err=True)
-        ctx.exit(1)
-
-
-@hgc_group.command(name="compute-qc")
+@click.command(name="compute-qc")
 @click.option("--input", "-i", required=True, help="Input MatrixTable path")
 @click.option(
     "--output-dir", "-o", required=True, help="Output directory for QC metrics"
@@ -557,7 +153,6 @@ def compute_qc(
 
         # Remove MatrixTable from saved files if not requested
         if not save_mt and "matrix_table" in saved_files:
-            import os
             import shutil
 
             if os.path.exists(saved_files["matrix_table"]):
@@ -574,7 +169,7 @@ def compute_qc(
         ctx.exit(1)
 
 
-@hgc_group.command(name="filter-qc")
+@click.command(name="filter-qc")
 @click.option(
     "--input", "-i", required=True, help="Input MatrixTable with QC annotations"
 )
@@ -765,7 +360,7 @@ def filter_qc(
         ctx.exit(1)
 
 
-@hgc_group.command(name="qc-summary")
+@click.command(name="qc-summary")
 @click.option(
     "--qc-dir", "-d", required=True, help="Directory containing QC metrics files"
 )
@@ -956,7 +551,7 @@ def qc_summary(ctx, qc_dir, sample_file, variant_file, output, format):
         ctx.exit(1)
 
 
-@hgc_group.command(name="plot-qc")
+@click.command(name="plot-qc")
 @click.option(
     "--input", "-i", required=True, help="Input MatrixTable with QC annotations"
 )
@@ -1273,7 +868,7 @@ def plot_qc(
         ctx.exit(1)
 
 
-@hgc_group.command(name="qc-report")
+@click.command(name="qc-report")
 @click.option(
     "--input", "-i", required=True, help="Input MatrixTable with QC annotations"
 )
@@ -1407,257 +1002,5 @@ def qc_report(ctx, input, output, title, include_plots, style, dry_run):
 
     except Exception as e:
         logger.exception(f"QC HTML report generation failed: {e}")
-        click.echo(f"❌ Error: {e}", err=True)
-        ctx.exit(1)
-
-
-@hgc_group.command(name="pipeline")
-@click.option(
-    "-i",
-    "--input-dir",
-    type=click.Path(exists=True),
-    required=True,
-    help="Path to directory containing input gVCF files",
-)
-@click.option(
-    "-o",
-    "--output-dir",
-    type=click.Path(),
-    required=True,
-    help="Path to output directory",
-)
-# Stage control flags
-@click.option(
-    "--skip-combine-gvcfs",
-    is_flag=True,
-    default=False,
-    help="Skip combining gVCF files (use existing VDS)",
-)
-@click.option(
-    "--skip-vds-to-mt",
-    is_flag=True,
-    default=False,
-    help="Skip VDS to MatrixTable conversion (use existing MT)",
-)
-@click.option(
-    "--skip-compute-sample-qc",
-    is_flag=True,
-    default=False,
-    help="Skip computing sample QC metrics",
-)
-@click.option(
-    "--skip-compute-variant-qc",
-    is_flag=True,
-    default=False,
-    help="Skip computing variant QC metrics",
-)
-@click.option(
-    "--skip-export-pvcf",
-    is_flag=True,
-    default=False,
-    help="Skip exporting the cohort (project) VCF",
-)
-# Path overrides
-@click.option(
-    "--vds-path",
-    type=click.Path(),
-    default=None,
-    help="Path to existing VDS (required if --skip-combine-gvcfs)",
-)
-@click.option(
-    "--mt-path",
-    type=click.Path(),
-    default=None,
-    help="Path to existing MatrixTable (required if --skip-vds-to-mt)",
-)
-# Processing configuration
-@click.option(
-    "--tmp-dir",
-    type=click.Path(),
-    default=None,
-    help="Path to temporary directory for intermediate files",
-)
-@click.option(
-    "--reference-genome",
-    type=click.Choice(["GRCh37", "GRCh38"]),
-    default="GRCh38",
-    help="Reference genome build",
-)
-@click.option(
-    "--n-partitions",
-    type=int,
-    default=None,
-    help="Number of partitions for parallel processing",
-)
-@click.option(
-    "--overwrite", is_flag=True, default=False, help="Overwrite existing output files"
-)
-@click.option(
-    "--dry-run",
-    is_flag=True,
-    default=False,
-    help="Show what would be done without executing",
-)
-# QC configuration
-@click.option(
-    "--min-sample-call-rate",
-    type=float,
-    default=0.85,
-    help="Minimum sample call rate for QC filtering",
-)
-@click.option(
-    "--min-variant-call-rate",
-    type=float,
-    default=0.85,
-    help="Minimum variant call rate for QC filtering",
-)
-@click.option(
-    "--apply-qc-filters",
-    is_flag=True,
-    default=False,
-    help="Apply QC filters before exporting pVCF",
-)
-# Output options
-@click.option(
-    "--keep-intermediates",
-    is_flag=True,
-    default=True,
-    help="Keep intermediate files (VDS, MT)",
-)
-@click.option(
-    "--generate-qc-report",
-    is_flag=True,
-    default=False,
-    help="Generate HTML QC report after computing QC metrics",
-)
-@click.option(
-    "--output-prefix", type=str, default="cohort", help="Prefix for output files"
-)
-@click.pass_context
-def pipeline(
-    ctx,
-    input_dir,
-    output_dir,
-    skip_combine_gvcfs,
-    skip_vds_to_mt,
-    skip_compute_sample_qc,
-    skip_compute_variant_qc,
-    skip_export_pvcf,
-    vds_path,
-    mt_path,
-    tmp_dir,
-    reference_genome,
-    n_partitions,
-    overwrite,
-    dry_run,
-    min_sample_call_rate,
-    min_variant_call_rate,
-    apply_qc_filters,
-    keep_intermediates,
-    generate_qc_report,
-    output_prefix,
-):
-    """
-    Run end-to-end gVCF processing pipeline.
-
-    Orchestrates the complete workflow from gVCF files to cohort VCF:
-
-    \b
-    Stages:
-      1. Combine gVCFs into VDS (Variant Dataset)
-      2. Convert VDS to MatrixTable
-      3. Compute sample QC metrics
-      4. Compute variant QC metrics
-      5. Export to project VCF (pVCF)
-
-    \b
-    Examples:
-      # Run full pipeline
-      hvantk hgc pipeline -i /path/to/gvcfs -o /path/to/output
-
-      # Skip sample QC
-      hvantk hgc pipeline -i /path/to/gvcfs -o /path/to/output --skip-compute-sample-qc
-
-      # Start from existing VDS
-      hvantk hgc pipeline -i /path/to/gvcfs -o /path/to/output \\
-          --skip-combine-gvcfs --vds-path /path/to/existing.vds
-
-      # Apply QC filters before export
-      hvantk hgc pipeline -i /path/to/gvcfs -o /path/to/output \\
-          --apply-qc-filters --min-sample-call-rate 0.9
-    """
-    try:
-        from hvantk.hgc.pipeline import PipelineConfig, PipelineRunner
-
-        # Create configuration
-        config = PipelineConfig(
-            input_dir=input_dir,
-            output_dir=output_dir,
-            tmp_dir=tmp_dir,
-            reference_genome=reference_genome,
-            n_partitions=n_partitions,
-            overwrite=overwrite,
-            output_prefix=output_prefix,
-            skip_combine_gvcfs=skip_combine_gvcfs,
-            skip_vds_to_mt=skip_vds_to_mt,
-            skip_compute_sample_qc=skip_compute_sample_qc,
-            skip_compute_variant_qc=skip_compute_variant_qc,
-            skip_export_pvcf=skip_export_pvcf,
-            vds_path=vds_path,
-            mt_path=mt_path,
-            min_sample_call_rate=min_sample_call_rate,
-            min_variant_call_rate=min_variant_call_rate,
-            apply_qc_filters=apply_qc_filters,
-            keep_intermediates=keep_intermediates,
-            generate_qc_report=generate_qc_report,
-        )
-
-        # Validate configuration
-        errors = config.validate()
-        if errors:
-            click.echo("❌ Configuration validation failed:", err=True)
-            for error in errors:
-                click.echo(f"   • {error}", err=True)
-            ctx.exit(1)
-
-        # Create pipeline runner
-        runner = PipelineRunner(config)
-
-        # Show plan if dry-run
-        if dry_run:
-            runner.show_plan()
-            return
-
-        # Display starting message
-        click.echo("\n" + "=" * 70)
-        click.echo("🚀 Starting HGC Pipeline Execution")
-        click.echo("=" * 70 + "\n")
-
-        # Run pipeline
-        state = runner.run()
-
-        # Display results
-        click.echo("\n" + "=" * 70)
-        if state.errors:
-            click.echo("❌ Pipeline completed with errors:")
-            for error in state.errors:
-                click.echo(f"   • {error}")
-            click.echo("=" * 70 + "\n")
-            ctx.exit(1)
-        else:
-            click.echo("✅ Pipeline completed successfully!")
-            click.echo("=" * 70)
-
-            # Show outputs
-            click.echo("\n📦 Output files:")
-            for stage, output_path in state.outputs.items():
-                click.echo(f"   • {stage}: {output_path}")
-
-            click.echo(f"\n📊 Completed stages: {len(state.completed_stages)}")
-            click.echo(f"⏱️  Duration: {state.start_time} → {state.end_time}")
-            click.echo("")
-
-    except Exception as e:
-        logger.exception(f"Pipeline failed: {e}")
         click.echo(f"❌ Error: {e}", err=True)
         ctx.exit(1)

@@ -5,7 +5,8 @@ import random
 
 import hail as hl
 
-from hvantk.hgc.file_utils import decompress_files, sort_mts_cols
+from hvantk.hgc.file_utils import sort_mts_cols
+from hvantk.data.file_utils import decompress_files
 
 TESTS_DIR = Path(__file__).parent.parent / "testdata" / "hgc_data"
 

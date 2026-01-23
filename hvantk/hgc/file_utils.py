@@ -1,7 +1,5 @@
 import glob
 import os
-import shutil
-import zipfile
 import logging
 
 import hail as hl
@@ -155,49 +153,6 @@ def validate_vds_paths(vdses: Union[str, List[str]]) -> List[str]:
         )
 
     return validated_paths
-
-
-def compress_files(
-    source_dir: str, output_zip: str, remove_originals: bool = False
-) -> None:
-    """
-    Compresses all files in source_dir (including subdirectories) into a single ZIP archive.
-
-    :param source_dir: The directory containing files to compress.
-    :param output_zip: The path to the output ZIP file.
-    :param remove_originals: If True, remove the source directory after compression.
-    """
-    with zipfile.ZipFile(output_zip, "w", zipfile.ZIP_DEFLATED) as zipf:
-        for root, _, files in os.walk(source_dir):
-            for file in files:
-                file_path = os.path.join(root, file)
-                # Use relative path in the archive to preserve folder structure.
-                arcname = os.path.relpath(file_path, source_dir)
-                zipf.write(file_path, arcname)
-    logger.info(f"Compressed '{source_dir}' into '{output_zip}'")
-
-    if remove_originals:
-        shutil.rmtree(source_dir)
-        logger.info(f"Removed original directory '{source_dir}' after compression.")
-
-
-def decompress_files(
-    zip_path: str, extract_to: str, remove_originals: bool = False
-) -> None:
-    """
-    Decompresses a ZIP archive into the specified directory.
-
-    :param zip_path: The path to the ZIP archive.
-    :param extract_to: The directory to extract the archive contents to.
-    :param remove_originals: If True, remove the ZIP archive after extraction.
-    """
-    with zipfile.ZipFile(zip_path, "r") as zipf:
-        zipf.extractall(extract_to)
-    logger.info(f"Extracted '{zip_path}' into '{extract_to}'")
-
-    if remove_originals:
-        os.remove(zip_path)
-        logger.info(f"Removed archive file '{zip_path}' after decompression.")
 
 
 def sort_mts_cols(
