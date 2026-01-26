@@ -1,0 +1,8 @@
+# Golden test variants for PSROC integration tests
+# Format: chr:pos:ref:alt
+# These are synthetic variants for testing purposes
+chr1:12345:A:T
+chr1:23456:G:C
+chr2:34567:C:A
+chr2:45678:T:G
+chr3:56789:A:G
