@@ -89,7 +89,7 @@ allows you to run the complete pipeline without needing real ClinVar or dbNSFP t
 
 ```bash
 # First, generate the synthetic test data (if not already present)
-python hvantk/tests/testdata/psroc/generate_synthetic_data.py
+python scripts/generate_psroc_testdata.py
 
 # Run the example script (builds tables and runs full pipeline)
 python examples/psroc/run_psroc_example.py --output-dir /tmp/psroc_example
@@ -127,7 +127,8 @@ Located in `hvantk/tests/testdata/psroc/`:
 - `synthetic_dbnsfp.tsv` - dbNSFP-like prediction scores
 - `test_genes.txt` - Gene list for `--genes-file` testing
 - `test_variants.txt` - Variant list for `--variants` testing
-- `generate_synthetic_data.py` - Script to regenerate test data
+
+To regenerate test data, run: `python scripts/generate_psroc_testdata.py`
 
 ## Detailed Usage
 

@@ -48,7 +48,7 @@ def main(output_dir: str = "/tmp/psroc_example") -> int:
 
     if not clinvar_tsv.exists() or not dbnsfp_tsv.exists():
         print("ERROR: Synthetic test data not found.")
-        print("Please run: python hvantk/tests/testdata/psroc/generate_synthetic_data.py")
+        print("Please run: python scripts/generate_psroc_testdata.py")
         return 1
 
     print(f"Test data directory: {testdata_dir}")
@@ -70,8 +70,9 @@ def main(output_dir: str = "/tmp/psroc_example") -> int:
     init_hail(quiet=True)
 
     # Import the data generation module
-    sys.path.insert(0, str(testdata_dir))
-    from generate_synthetic_data import build_hail_tables
+    scripts_dir = repo_root / "scripts"
+    sys.path.insert(0, str(scripts_dir))
+    from generate_psroc_testdata import build_hail_tables
 
     # Build Hail Tables from TSV files
     print()
