@@ -217,7 +217,7 @@ class PSROCState:
     config: PSROCConfig
     current_stage: Optional[PSROCStage] = None
     completed_stages: List[str] = field(default_factory=list)
-    outputs: Dict[str, str] = field(default_factory=dict)
+    outputs: Dict[str, Any] = field(default_factory=dict)
     errors: List[str] = field(default_factory=list)
     start_time: Optional[str] = None
     end_time: Optional[str] = None
@@ -781,6 +781,8 @@ class PSROCPipeline:
 
         logger.info(f"   ✓ Assigned labels: {ht.aggregate(hl.count_distinct(ht.label))} classes")
 
+        # Update instance variable so downstream stages see the labeled table
+        self._labeled_ht = ht
         return ht
 
     def _annotate_scores(self) -> hl.Table:
@@ -806,6 +808,8 @@ class PSROCPipeline:
 
         logger.info(f"   ✓ Annotated with dbNSFP scores: {ht.count()} variants")
 
+        # Update instance variable so downstream stages see the annotated table
+        self._annotated_ht = ht
         return ht
 
     def _compute_missingness(self) -> Dict[str, ScoreMissingness]:
@@ -817,17 +821,30 @@ class PSROCPipeline:
 
         ht = self._annotated_ht
 
+        # Compute total count once to avoid repeated materialization
+        ht_count = ht.count()
+
         # Compute missingness for each score field
         missingness_results = {}
         for field in ht.row:
             if field.startswith("dbnsfp."):
-                # Calculate missingness rate
-                missingness_rate = ht.filter(hl.is_missing(ht[field])).count() / ht.count()
+                # Calculate missingness statistics
+                n_missing = ht.filter(hl.is_missing(ht[field])).count()
+                n_present = ht_count - n_missing
+                missingness_rate = n_missing / ht_count if ht_count > 0 else 0.0
+                included_in_analysis = missingness_rate <= self.config.max_missingness
+
                 missingness_results[field] = ScoreMissingness(
-                    score=field,
+                    score_name=field,
+                    n_total=ht_count,
+                    n_present=n_present,
+                    n_missing=n_missing,
                     missingness_rate=missingness_rate,
-                    n_missing=ht.filter(hl.is_missing(ht[field])).count(),
-                    n_total=ht.count(),
+                    included_in_analysis=included_in_analysis,
+                    exclusion_reason=(
+                        f"missingness_rate ({missingness_rate:.2f}) exceeds "
+                        f"max_missingness ({self.config.max_missingness:.2f})"
+                    ) if not included_in_analysis else None,
                 )
 
         # Filter out scores exceeding the missingness threshold
@@ -851,29 +868,45 @@ class PSROCPipeline:
 
         ht = self._annotated_ht
 
-        # Filter scores by missingness threshold
-        if self.config.max_missingness < 1.0:
-            score_fields = [
-                f for f in ht.row if f.startswith("dbnsfp.") and f in self.state.outputs["missingness"]
-            ]
-            ht = ht.select("variant", "label", *score_fields)
+        # Filter to pathogenic/benign only (exclude uncertain/conflicting)
+        ht = ht.filter((ht.label == "Pathogenic") | (ht.label == "Benign"))
 
-        # Compute ROC metrics for each score
-        roc_results = {}
-        for score in ht.row:
-            if score.startswith("dbnsfp."):
-                try:
-                    metrics = compute_roc_metrics(
-                        ht,
-                        score=score,
-                        label_col="label",
-                        pos_label="Pathogenic",
-                        neg_label="Benign",
-                        threshold_method=self.config.threshold_method,
-                    )
-                    roc_results[score] = metrics
-                except Exception as e:
-                    logger.warning(f"   ⚠ Failed to compute ROC metrics for {score}: {e}")
+        # Get score fields (only those that passed missingness threshold)
+        score_fields = [
+            f for f in ht.row
+            if f.startswith("dbnsfp.") and f in self.state.outputs.get("missingness", {})
+        ]
+
+        if not score_fields:
+            logger.warning("   ⚠ No scores passed the missingness threshold")
+            return {}
+
+        # Select only needed fields
+        ht = ht.select("label", *score_fields)
+
+        # Convert to pandas for easier NumPy extraction
+        df = ht.to_pandas()
+
+        # Convert labels to binary (1=Pathogenic, 0=Benign)
+        labels = np.array([1 if label == "Pathogenic" else 0 for label in df["label"]])
+
+        # Extract scores into dictionary of NumPy arrays
+        scores_dict = {}
+        for score_field in score_fields:
+            scores_dict[score_field] = df[score_field].to_numpy(dtype=float)
+
+        # Compute ROC metrics for all scores at once
+        try:
+            roc_results = compute_roc_metrics(
+                labels=labels,
+                scores=scores_dict,
+                max_missingness=self.config.max_missingness,
+                pos_label=1,
+                threshold_method=self.config.threshold_method,
+            )
+        except Exception as e:
+            logger.error(f"   ✗ Failed to compute ROC metrics: {e}")
+            raise
 
         logger.info(f"   ✓ Computed ROC metrics for {len(roc_results)} scores")
 
