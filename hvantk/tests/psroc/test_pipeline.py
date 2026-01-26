@@ -20,6 +20,7 @@ from hvantk.psroc.pipeline import (
     PSROCStage,
     PATHOGENIC_LABELS,
     BENIGN_LABELS,
+    parse_variant_list,
 )
 from hvantk.psroc.roc import ROCResult, ScoreMissingness
 
@@ -421,8 +422,7 @@ class TestVariantFileParsing:
     """Test variant file parsing in the pipeline."""
 
     def test_parse_variant_file_format(self):
-        """Test parsing variant file format chr:pos:ref:alt."""
-        # This tests the expected format without running the full pipeline
+        """Test parsing variant file format chr:pos:ref:alt using the real parser."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             f.write("chr1:12345:A:T\n")
             f.write("chr2:67890:G:C\n")
@@ -431,47 +431,28 @@ class TestVariantFileParsing:
             variants_file = f.name
 
         try:
-            with open(variants_file, "r") as f:
-                variants = []
-                for line in f:
-                    line = line.strip()
-                    if not line or line.startswith("#"):
-                        continue
-                    parts = line.split(":")
-                    if len(parts) == 4:
-                        variants.append(tuple(parts))
-
+            variants = parse_variant_list(variants_file)
             assert len(variants) == 3
-            assert variants[0] == ("chr1", "12345", "A", "T")
-            assert variants[1] == ("chr2", "67890", "G", "C")
-            assert variants[2] == ("chr3", "11111", "T", "A")
+            assert variants[0] == ("chr1", 12345, "A", "T")
+            assert variants[1] == ("chr2", 67890, "G", "C")
+            assert variants[2] == ("chr3", 11111, "T", "A")
         finally:
             Path(variants_file).unlink()
 
     def test_parse_variant_file_without_chr_prefix(self):
-        """Test parsing variant file with variants without chr prefix."""
+        """Test parsing variant file with variants without chr prefix using the real parser."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             f.write("1:12345:A:T\n")  # No chr prefix
             f.write("2:67890:G:C\n")
             variants_file = f.name
 
         try:
-            with open(variants_file, "r") as f:
-                variants = []
-                for line in f:
-                    line = line.strip()
-                    if not line or line.startswith("#"):
-                        continue
-                    parts = line.split(":")
-                    if len(parts) == 4:
-                        chrom = parts[0]
-                        if not chrom.startswith("chr"):
-                            chrom = f"chr{chrom}"
-                        variants.append((chrom, parts[1], parts[2], parts[3]))
-
+            variants = parse_variant_list(variants_file)
             assert len(variants) == 2
             assert variants[0][0] == "chr1"  # chr prefix added
             assert variants[1][0] == "chr2"
+            assert variants[0][1] == 12345
+            assert variants[1][1] == 67890
         finally:
             Path(variants_file).unlink()
 
