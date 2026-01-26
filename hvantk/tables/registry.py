@@ -16,22 +16,12 @@ from __future__ import annotations
 
 import logging
 import inspect
-from typing import Callable, Dict, Any
+from typing import Callable, Dict, Any, get_type_hints
 
 logger = logging.getLogger(__name__)
 
 
 # Helper functions for parameter type conversion
-def _parse_fields_param(value: Any) -> list | None:
-    """Parse fields parameter which may be a list or comma-separated string."""
-    if value is None:
-        return None
-    if isinstance(value, list):
-        return value
-    if isinstance(value, str):
-        return [f.strip() for f in value.split(",") if f.strip()]
-    return None
-
 
 def _parse_list_param(value: Any) -> list | None:
     """Parse a generic list parameter (comma-separated string or list)."""
@@ -63,17 +53,17 @@ def _convert_param_type(param_name: str, value: Any, target_type: type) -> Any:
         return _parse_list_param(value)
 
     # Type-specific conversions
-    if target_type == bool:
+    if target_type is bool:
         if isinstance(value, bool):
             return value
         if isinstance(value, str):
             return value.lower() in ("true", "1", "yes", "on")
         return bool(value)
-    elif target_type == int:
+    elif target_type is int:
         return int(value)
-    elif target_type == str:
+    elif target_type is str:
         return str(value)
-    elif target_type == list:
+    elif target_type is list:
         return _parse_list_param(value)
 
     return value
@@ -121,6 +111,13 @@ def create_table_adapter(
         sig = inspect.signature(builder_func)
         params = params or {}
 
+        # Get resolved type hints (handles string annotations from __future__)
+        try:
+            type_hints = get_type_hints(builder_func)
+        except Exception:
+            # If get_type_hints fails, fall back to raw annotations
+            type_hints = {}
+
         # Build kwargs for the builder function
         kwargs = {"input_path": input_path, "output_path": output_path}
 
@@ -131,9 +128,11 @@ def create_table_adapter(
 
             if param_name in params:
                 value = params[param_name]
-                # Get target type from annotation or default value
+                # Get target type from type hints, annotation, or default value
                 target_type = None
-                if param_obj.annotation != inspect.Parameter.empty:
+                if param_name in type_hints:
+                    target_type = type_hints[param_name]
+                elif param_obj.annotation != inspect.Parameter.empty:
                     target_type = param_obj.annotation
                 elif param_obj.default != inspect.Parameter.empty:
                     target_type = type(param_obj.default)
@@ -194,6 +193,13 @@ def create_matrix_adapter(
         sig = inspect.signature(builder_func)
         params = params or {}
 
+        # Get resolved type hints (handles string annotations from __future__)
+        try:
+            type_hints = get_type_hints(builder_func)
+        except Exception:
+            # If get_type_hints fails, fall back to raw annotations
+            type_hints = {}
+
         # Build kwargs - map inputs to function parameters
         kwargs = {}
 
@@ -216,8 +222,11 @@ def create_matrix_adapter(
             elif param_name in params:
                 # Handle parameters from params dict
                 value = params[param_name]
+                # Get target type from type hints, annotation, or default value
                 target_type = None
-                if param_obj.annotation != inspect.Parameter.empty:
+                if param_name in type_hints:
+                    target_type = type_hints[param_name]
+                elif param_obj.annotation != inspect.Parameter.empty:
                     target_type = param_obj.annotation
                 elif param_obj.default != inspect.Parameter.empty:
                     target_type = type(param_obj.default)
