@@ -557,17 +557,26 @@ def plot_missingness_summary(
             linewidth=2,
             label=f"Threshold ({threshold_pct:.0f}%)",
         )
-        ax.legend(loc="lower right", fontsize=10)
 
     ax.set_title(title, fontsize=14, fontweight="bold")
     ax.grid(True, alpha=0.3, axis="x")
 
-    # Add legend for colors
+    # Add legend for colors (combine with threshold if present)
     from matplotlib.patches import Patch
     legend_elements = [
         Patch(facecolor=PSROC_COLORS["included"], edgecolor="black", label="Included"),
         Patch(facecolor=PSROC_COLORS["excluded"], edgecolor="black", label="Excluded"),
     ]
+
+    # Include threshold line in legend if present
+    if max_missingness_threshold is not None:
+        from matplotlib.lines import Line2D
+        threshold_pct = max_missingness_threshold * 100
+        legend_elements.append(
+            Line2D([0], [0], color=PSROC_COLORS["excluded"], linestyle="--",
+                   linewidth=2, label=f"Threshold ({threshold_pct:.0f}%)")
+        )
+
     ax.legend(handles=legend_elements, loc="lower right", fontsize=10)
 
     plt.tight_layout()
@@ -717,7 +726,7 @@ def plot_psroc_summary_dashboard(
         worst_score = min(results.items(), key=lambda x: x[1].auc)
 
         summary_text += f"SCORES ANALYZED: {len(results)}\n\n"
-        summary_text += f"Best Score:\n"
+        summary_text += "Best Score:\n"
         summary_text += f"  {best_score[0]}\n"
         summary_text += f"  AUC: {best_score[1].auc:.3f}\n"
         summary_text += f"  Optimal Threshold: {best_score[1].optimal_threshold:.3f}\n"
@@ -725,18 +734,18 @@ def plot_psroc_summary_dashboard(
         summary_text += f"  Specificity: {best_score[1].specificity_at_optimal:.3f}\n\n"
 
         if len(results) > 1:
-            summary_text += f"Worst Score:\n"
+            summary_text += "Worst Score:\n"
             summary_text += f"  {worst_score[0]}\n"
             summary_text += f"  AUC: {worst_score[1].auc:.3f}\n\n"
 
         # Variants info from first result
-        first_result = list(results.values())[0]
+        first_result = next(iter(results.values()))
         summary_text += f"Variants Used: {first_result.n_variants_used}\n"
 
     if missingness:
         n_included = sum(1 for m in missingness.values() if m.included_in_analysis)
         n_excluded = len(missingness) - n_included
-        summary_text += f"\nMISSINGNESS:\n"
+        summary_text += "\nMISSINGNESS:\n"
         summary_text += f"  Scores Included: {n_included}\n"
         summary_text += f"  Scores Excluded: {n_excluded}\n"
         if max_missingness_threshold is not None:
