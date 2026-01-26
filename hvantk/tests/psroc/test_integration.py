@@ -13,8 +13,6 @@ Most tests require Hail initialization and are marked accordingly.
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-import shutil
 
 import numpy as np
 import pytest
@@ -23,7 +21,6 @@ from hvantk.psroc.pipeline import (
     PSROCConfig,
     PSROCState,
     PSROCResult,
-    PSROCPipeline,
     PSROCStage,
     PATHOGENIC_LABELS,
     BENIGN_LABELS,
@@ -105,18 +102,19 @@ class TestGoldenDatasets:
             "score_30pct": np.array([0.1, 0.2, np.nan, np.nan, np.nan, 0.6, 0.7, 0.8, 0.9, 1.0])
         }
 
-        results = compute_roc_metrics(labels, scores_at_threshold, max_missingness=0.3)
         # Score with exactly 30% missing should be excluded (>= threshold)
-        assert "score_30pct" not in results
+        # This should raise ValueError because all scores are excluded
+        with pytest.raises(ValueError, match="All scores were excluded due to high missingness"):
+            compute_roc_metrics(labels, scores_at_threshold, max_missingness=0.3)
 
-        # Score with 29% missing (should be included)
+        # Score with 20% missing (should be included, below 30% threshold)
         scores_below_threshold = {
-            "score_29pct": np.array([0.1, 0.2, 0.3, np.nan, np.nan, 0.6, 0.7, 0.8, 0.9, 1.0])
+            "score_20pct": np.array([0.1, 0.2, 0.3, np.nan, np.nan, 0.6, 0.7, 0.8, 0.9, 1.0])
         }
 
         # This has 2/10 = 20% missing, which should be included
         results_below = compute_roc_metrics(labels, scores_below_threshold, max_missingness=0.3)
-        assert "score_29pct" in results_below
+        assert "score_20pct" in results_below
 
 
 class TestPipelineOutputArtifacts:
@@ -127,15 +125,6 @@ class TestPipelineOutputArtifacts:
         with tempfile.TemporaryDirectory() as tmpdir:
             output_dir = Path(tmpdir) / "psroc_output"
 
-            # Create mock config
-            config = PSROCConfig(
-                genes=["BRCA1"],
-                clinvar_ht=str(tmpdir),  # Dummy path
-                dbnsfp_ht=str(tmpdir),   # Dummy path
-                scores=["CADD_phred"],
-                output_dir=str(output_dir),
-                output_prefix="test",
-            )
 
             # Simulate directory creation
             output_dir.mkdir(parents=True, exist_ok=True)
@@ -488,7 +477,6 @@ class TestHailIntegration:
         if not CLINVAR_TEST_DATA.exists():
             pytest.skip(f"Test data not found: {CLINVAR_TEST_DATA}")
 
-        import hail as hl
 
         # Just verify we can read the VCF header
         # Full table building would be too slow for a unit test

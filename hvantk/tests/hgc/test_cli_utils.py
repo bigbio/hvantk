@@ -3,9 +3,7 @@ Tests for HGC CLI utilities.
 """
 
 import os
-import tempfile
-from unittest.mock import patch, MagicMock
-import pytest
+from unittest.mock import patch
 
 from hvantk.commands.hgc.utils import (
     setup_logging_for_hgc,

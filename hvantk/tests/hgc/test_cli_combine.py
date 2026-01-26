@@ -2,9 +2,8 @@
 Tests for HGC CLI combine commands.
 """
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from click.testing import CliRunner
-import pytest
 
 from hvantk.commands.hgc.combine_cli import gvcf_combine, vds_combine
 

@@ -4,7 +4,6 @@ Tests for HGC CLI pipeline command.
 
 from unittest.mock import patch, MagicMock
 from click.testing import CliRunner
-import pytest
 
 from hvantk.commands.hgc.pipeline_cli import pipeline
 

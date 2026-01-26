@@ -2,9 +2,8 @@
 Tests for HGC CLI convert commands.
 """
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from click.testing import CliRunner
-import pytest
 
 from hvantk.commands.hgc.convert_cli import vds2mt, mt2vcf
 

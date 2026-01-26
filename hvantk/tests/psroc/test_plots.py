@@ -15,7 +15,6 @@ matplotlib.use("Agg")  # Use non-interactive backend for tests
 import matplotlib.pyplot as plt
 
 from hvantk.psroc.roc import (
-    ROCResult,
     ScoreMissingness,
     compute_roc_metrics,
     compute_all_missingness,

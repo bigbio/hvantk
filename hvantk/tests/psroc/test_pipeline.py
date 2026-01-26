@@ -5,11 +5,9 @@ This module tests the pipeline orchestration including configuration validation,
 label assignment, and end-to-end pipeline execution.
 """
 
-import json
 import tempfile
 from pathlib import Path
-from typing import Dict, List
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 import numpy as np
 import pytest

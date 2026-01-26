@@ -9,7 +9,6 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-import pytest
 from click.testing import CliRunner
 
 from hvantk.commands.psroc_cli import psroc_cmd, _parse_comma_separated
@@ -267,7 +266,7 @@ class TestPSROCCLIDryRun:
             clinvar_path.mkdir()
             dbnsfp_path.mkdir()
 
-            result = runner.invoke(
+            runner.invoke(
                 psroc_cmd,
                 [
                     "--genes",
