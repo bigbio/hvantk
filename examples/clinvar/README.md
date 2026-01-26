@@ -4,13 +4,13 @@ This directory contains examples for working with ClinVar variant annotations us
 
 ## Contents
 
-**`clinvar_streamer_example.py`** - ClinVar data filtering and export
+**`clinvar_streamer_example.py`** - ClinVar data streaming and chunk processing
 
 Demonstrates:
 - Loading ClinVar annotation tables
-- Filtering variants by clinical significance
-- Extracting pathogenic variants
-- Exporting results to various formats
+- Streaming and processing variant data in chunks
+- Filtering by gene set or disease terms
+- Aggregating and analyzing results
 
 ## Quick Start
 
@@ -24,107 +24,87 @@ python examples/clinvar/clinvar_streamer_example.py
 
 ## Example Workflow
 
-The example demonstrates common ClinVar operations:
+The example demonstrates common ClinVar streaming operations:
 
 ```python
-from hvantk.data.data_streamer import ClinVarStreamer
+from hvantk.utils.clinvar_streamer import ClinvarDataStreamer
 
-# Initialize streamer
-streamer = ClinVarStreamer("path/to/clinvar.ht")
+# Path to ClinVar VCF or Hail Table
+clinvar_path = "path/to/clinvar.vcf.bgz"  # or .ht
 
-# Filter for pathogenic variants
-pathogenic = streamer.filter_by_significance(["Pathogenic", "Likely_pathogenic"])
+# Optional: define a gene set to filter
+gene_set = {"BRCA1", "BRCA2"}
 
-# Filter by genes
-brca_variants = streamer.filter_by_genes(["BRCA1", "BRCA2"])
+# Create the streamer
+streamer = ClinvarDataStreamer(
+    clinvar_path=clinvar_path,
+    gene_set=gene_set,  # Optional
+    chunk_size=5000,    # Optional, default 10000
+)
 
-# Filter by review status
-high_confidence = streamer.filter_by_stars(min_stars=2)
+# Setup the streamer (loads data)
+streamer.setup()
 
-# Export results
-streamer.export_tsv("pathogenic_variants.tsv")
-streamer.export_vcf("pathogenic_variants.vcf.bgz")
+try:
+    for chunk in streamer.stream():
+        # chunk is a Hail Table with a subset of variants
+        print(f"Chunk rows: {chunk.count()}")
+        # You can process, filter, or export each chunk here
+finally:
+    streamer.teardown()
 ```
 
 ## Common Operations
 
-### Filter by Clinical Significance
+### Filter by Gene Set
 
 ```python
-# Pathogenic variants only
-pathogenic = streamer.filter_by_significance(["Pathogenic"])
-
-# Pathogenic or Likely pathogenic
-likely_pathogenic = streamer.filter_by_significance([
-    "Pathogenic",
-    "Likely_pathogenic"
-])
-
-# Exclude VUS
-no_vus = streamer.exclude_vus()
-
-# Benign variants
-benign = streamer.filter_by_significance(["Benign", "Likely_benign"])
+# Only variants in specified genes
+streamer = ClinvarDataStreamer(
+    clinvar_path=clinvar_path,
+    gene_set={"BRCA1", "BRCA2", "TP53"},
+)
+streamer.setup()
+for chunk in streamer.stream():
+    # Process chunk
+    pass
+streamer.teardown()
 ```
 
-### Filter by Genes
+### Filter by Disease Terms
 
 ```python
-# Single gene
-brca1 = streamer.filter_by_genes(["BRCA1"])
-
-# Multiple genes
-cancer_genes = streamer.filter_by_genes(["BRCA1", "BRCA2", "TP53", "PTEN"])
-
-# From file
-streamer.filter_by_genes_file("gene_list.txt")
+# Only variants with matching disease terms (case-insensitive, underscores allowed)
+streamer = ClinvarDataStreamer(
+    clinvar_path=clinvar_path,
+    disease_terms={"breast_cancer", "ovarian_cancer"},
+)
+streamer.setup()
+for chunk in streamer.stream():
+    # Process chunk
+    pass
+streamer.teardown()
 ```
 
-### Filter by Review Status
+### Aggregating Results
 
 ```python
-# At least 2 stars (multiple submitters)
-high_quality = streamer.filter_by_stars(min_stars=2)
+# Aggregate variant counts by gene across all chunks
+from collections import Counter
 
-# At least 3 stars (expert panel)
-expert_reviewed = streamer.filter_by_stars(min_stars=3)
+gene_counts = Counter()
+streamer.setup()
+for chunk in streamer.stream():
+    rows = chunk.select("gene").collect()
+    for row in rows:
+        gene_counts[row.gene] += 1
+streamer.teardown()
+print(gene_counts)
 ```
-
-### Combine Filters
-
-```python
-# Pathogenic variants in BRCA1/2 with high confidence
-result = (streamer
-    .filter_by_genes(["BRCA1", "BRCA2"])
-    .filter_by_significance(["Pathogenic"])
-    .filter_by_stars(min_stars=2))
-
-result.export_tsv("brca_pathogenic_high_conf.tsv")
-```
-
-## ClinVar Significance Levels
-
-| CLNSIG | Description | Common Use |
-|--------|-------------|------------|
-| Pathogenic | Disease-causing | Disease studies |
-| Likely_pathogenic | Probably disease-causing | Disease studies |
-| Uncertain_significance | Unknown impact (VUS) | Usually excluded |
-| Likely_benign | Probably not harmful | Control sets |
-| Benign | Not harmful | Control sets |
-
-## Review Status (Stars)
-
-| Stars | Status | Description |
-|-------|--------|-------------|
-| 0 | No assertion | Low confidence |
-| 1 | Single submitter | Basic confidence |
-| 2 | Multiple submitters | Good confidence |
-| 3 | Expert panel | High confidence |
-| 4 | Practice guideline | Highest confidence |
 
 ## Building ClinVar Tables
 
-Before using the streamer, you need a ClinVar Hail Table:
+Before using the streamer, you need a ClinVar Hail Table or VCF:
 
 ```bash
 # Option 1: CLI
@@ -143,95 +123,35 @@ create_clinvar_tb(
 )
 ```
 
-## Export Formats
-
-### TSV Export
-
-```python
-streamer.export_tsv("output.tsv")
-```
-
-Includes columns:
-- `locus` - Genomic position (chr:pos)
-- `alleles` - Reference and alternate alleles
-- `CLNSIG` - Clinical significance
-- `CLNREVSTAT` - Review status
-- `GENEINFO` - Associated gene(s)
-- Additional INFO fields
-
-### VCF Export
-
-```python
-streamer.export_vcf("output.vcf.bgz")
-```
-
-Standard VCF format with ClinVar annotations in INFO field.
-
-### Hail Table
-
-```python
-filtered_ht = streamer.get_table()
-filtered_ht.write("filtered_clinvar.ht")
-```
-
-Preserves full Hail Table structure for downstream analysis.
-
 ## Advanced Usage
 
-### Custom Filters
+### Custom Chunk Processing
 
 ```python
-# Filter by allele frequency (if annotated)
-rare_variants = streamer.filter_expr("ht.info.AF < 0.01")
+# Example: count pathogenic variants in each chunk
+def process_chunk(chunk):
+    return chunk.filter(chunk.info.CLNSIG.contains("Pathogenic")).count()
 
-# Filter by variant type
-snvs = streamer.filter_expr("hl.len(ht.alleles[0]) == 1 & hl.len(ht.alleles[1]) == 1")
+streamer.setup()
+for chunk in streamer.stream():
+    n_pathogenic = process_chunk(chunk)
+    print(f"Pathogenic variants in chunk: {n_pathogenic}")
+streamer.teardown()
 ```
 
-### Statistics
+### Using with create_clinvar_training_set_streamer
 
 ```python
-# Count variants
-total = streamer.count()
+from hvantk.utils.clinvar_streamer import create_clinvar_training_set_streamer
 
-# Get significance distribution
-sig_counts = streamer.get_significance_counts()
-
-# Get per-gene counts
-gene_counts = streamer.get_gene_counts()
-```
-
-## Use Cases
-
-### Case 1: Disease Variant Discovery
-
-```python
-# Find pathogenic variants in candidate genes
-disease_variants = (ClinVarStreamer("clinvar.ht")
-    .filter_by_genes_file("candidate_genes.txt")
-    .filter_by_significance(["Pathogenic", "Likely_pathogenic"])
-    .filter_by_stars(min_stars=1)
-    .export_tsv("disease_variants.tsv"))
-```
-
-### Case 2: Benign Control Set
-
-```python
-# Extract high-confidence benign variants
-benign_controls = (ClinVarStreamer("clinvar.ht")
-    .filter_by_significance(["Benign", "Likely_benign"])
-    .filter_by_stars(min_stars=2)
-    .export_vcf("benign_controls.vcf.bgz"))
-```
-
-### Case 3: Expert-Curated Variants
-
-```python
-# Get only expert-reviewed pathogenic variants
-expert_path = (ClinVarStreamer("clinvar.ht")
-    .filter_by_stars(min_stars=3)
-    .filter_by_significance(["Pathogenic"])
-    .get_table())
+processor = create_clinvar_training_set_streamer(
+    clinvar_path=clinvar_path,
+    output_dir="./data/training_set",
+    gene_set={"BRCA1", "BRCA2"},
+)
+result = processor.process()
+if result:
+    print(f"Generated training set with {result.count()} variants")
 ```
 
 ## Documentation
@@ -248,11 +168,10 @@ expert_path = (ClinVarStreamer("clinvar.ht")
 
 ## Tips
 
-1. **Review status matters**: Use `min_stars=2` for reliable results
-2. **VUS variants**: Usually excluded from analysis (uncertain significance)
-3. **Multiple genes**: ClinVar variants can affect multiple genes
-4. **Data freshness**: Update ClinVar tables regularly (monthly recommended)
-5. **Memory**: Large filters may require sufficient Spark memory
+1. **Gene set and disease term filtering**: Use the gene_set and disease_terms arguments for targeted streaming
+2. **Chunk size**: Adjust chunk_size for memory/performance tradeoffs
+3. **Data freshness**: Update ClinVar tables regularly (monthly recommended)
+4. **Memory**: Large filters may require sufficient Spark memory
 
 ## Troubleshooting
 
@@ -268,7 +187,7 @@ hvantk mktable clinvar --raw-input clinvar.vcf.bgz --output-ht clinvar.ht
 ClinVar uses HGNC gene symbols. Check gene naming:
 ```python
 # View available genes
-gene_list = streamer.get_unique_genes()
+gene_list = streamer.clinvar_ht.aggregate(hl.agg.collect_as_set(streamer.clinvar_ht.gene))
 print(gene_list)
 ```
 
@@ -277,8 +196,10 @@ print(gene_list)
 For large filters, increase Spark memory or filter in stages:
 ```python
 # Filter incrementally
-filtered = (streamer
-    .filter_by_significance(["Pathogenic"])
-    .checkpoint("temp.ht")  # Checkpoint intermediate result
-    .filter_by_genes(gene_list))
+streamer = ClinvarDataStreamer(clinvar_path=clinvar_path, gene_set=gene_list)
+streamer.setup()
+for chunk in streamer.stream():
+    # Process chunk
+    pass
+streamer.teardown()
 ```
