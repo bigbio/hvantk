@@ -386,6 +386,24 @@ class PSROCResult:
         return "\n".join(lines)
 
 
+def parse_variant_list(variants_path: str):
+    """Parse a variant list file (chr:pos:ref:alt per line) and normalize chromosome and position."""
+    variant_keys = []
+    with open(variants_path, "r") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            parts = line.split(":")
+            if len(parts) == 4:
+                chrom, pos, ref, alt = parts
+                # Normalize chromosome (add chr prefix if needed)
+                if not chrom.startswith("chr"):
+                    chrom = f"chr{chrom}"
+                variant_keys.append((chrom, int(pos), ref, alt))
+    return variant_keys
+
+
 class PSROCPipeline:
     """PSROC: Prediction Score ROC Analysis Pipeline.
 
@@ -679,20 +697,8 @@ class PSROCPipeline:
         variants_path = self.config.variants_path
         logger.info(f"   Loading variant list from {variants_path}")
 
-        # Read variant list
-        variant_keys = []
-        with open(variants_path, "r") as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith("#"):
-                    continue
-                parts = line.split(":")
-                if len(parts) == 4:
-                    chrom, pos, ref, alt = parts
-                    # Normalize chromosome (add chr prefix if needed)
-                    if not chrom.startswith("chr"):
-                        chrom = f"chr{chrom}"
-                    variant_keys.append((chrom, int(pos), ref, alt))
+        # Use the new helper
+        variant_keys = parse_variant_list(variants_path)
 
         logger.info(f"   Loaded {len(variant_keys)} variants from file")
 
@@ -718,181 +724,88 @@ class PSROCPipeline:
             )
         )
 
-        # Filter and drop temporary field
-        ht = ht.filter(variant_literal.contains(ht._variant_key))
-        ht = ht.drop("_variant_key")
+        # Filter and drop
+        ht = ht.filter(variant_literal.contains(ht._variant_key)).drop("_variant_key")
 
+        logger.info(f"   ✓ Filtered to {ht.count()} variants")
         return ht
 
     def _filter_by_review_stars(self, ht: hl.Table) -> hl.Table:
-        """Filter by ClinVar review status stars."""
-        # Map CLNREVSTAT to star count
-        # Based on ClinVar review status definitions
-        star_mapping = {
-            "practice_guideline": 4,
-            "reviewed_by_expert_panel": 3,
-            "criteria_provided,_multiple_submitters,_no_conflicts": 2,
-            "criteria_provided,_conflicting_interpretations": 1,
-            "criteria_provided,_single_submitter": 1,
-            "no_assertion_criteria_provided": 0,
-            "no_assertion_provided": 0,
-        }
-
-        star_literal = hl.literal(star_mapping)
+        """Filter ClinVar variants by review status stars (CLNREVSTAT)."""
         min_stars = self.config.min_stars
 
-        # Get first review status and map to stars
-        review_status = ht.info.CLNREVSTAT[0]
-        normalized_status = review_status.lower().replace(" ", "_")
-        stars = star_literal.get(normalized_status, 0)
+        # Convert min_stars to integer if it's a string (e.g., from CLI)
+        if isinstance(min_stars, str):
+            try:
+                min_stars = int(min_stars)
+            except ValueError:
+                raise ValueError(f"Invalid min_stars value: {min_stars}")
 
-        ht = ht.filter(stars >= min_stars)
-        logger.info(f"   Filtered by review stars >= {min_stars}")
+        logger.info(f"   Filtering ClinVar variants with review stars >= {min_stars}")
 
-        return ht
+        # Filter based on the presence of info.CLNREVSTAT and its value
+        return ht.filter(
+            (hl.is_defined(ht.info.CLNREVSTAT)) & (ht.info.CLNREVSTAT >= min_stars)
+        )
 
     def _assign_labels(self) -> hl.Table:
-        """Stage 3: Assign binary pathogenic/benign labels."""
-        logger.info("🔄 [3/7] Assigning binary labels...")
+        """Stage 3: Assign binary labels to ClinVar variants."""
+        logger.info("🔄 [3/7] Assigning binary labels (Pathogenic/Benign)...")
 
         if self._labeled_ht is None:
-            raise RuntimeError("Filtered table not available. Run _filter_clinvar first.")
+            raise RuntimeError("ClinVar variants not filtered. Run _filter_clinvar first.")
 
         ht = self._labeled_ht
 
-        # Check if CLNSIG field exists
-        if "info" not in ht.row or "CLNSIG" not in ht.info:
-            raise ValueError(
-                "ClinVar table missing info.CLNSIG field. "
-                "Ensure the table was built from ClinVar VCF."
-            )
-
-        # Create pathogenic/benign label sets
-        pathogenic_set = hl.set(PATHOGENIC_LABELS)
-        benign_set = hl.set(BENIGN_LABELS)
-
-        # Check if any element in CLNSIG matches pathogenic or benign labels
-        is_pathogenic = ht.info.CLNSIG.any(lambda x: pathogenic_set.contains(x))
-        is_benign = ht.info.CLNSIG.any(lambda x: benign_set.contains(x))
-
-        # Assign binary label: 1 = pathogenic, 0 = benign, missing = other
+        # Assign labels based on CLNSIG values
         ht = ht.annotate(
-            psroc_label=hl.case()
-            .when(is_pathogenic, 1)
-            .when(is_benign, 0)
-            .or_missing()
-        )
-
-        # Filter to variants with valid labels (exclude VUS, conflicting, etc.)
-        labeled_ht = ht.filter(hl.is_defined(ht.psroc_label))
-
-        # Count labels
-        n_total = ht.count()
-        label_counts = labeled_ht.aggregate(
-            hl.struct(
-                n_pathogenic=hl.agg.count_where(labeled_ht.psroc_label == 1),
-                n_benign=hl.agg.count_where(labeled_ht.psroc_label == 0),
+            label=hl.case()
+            .when(
+                hl.is_defined(ht.info.CLNSIG)
+                & (ht.info.CLNSIG != "")  # Exclude empty CLNSIG
+                & hl.literal(PATHOGENIC_LABELS).contains(ht.info.CLNSIG),
+                "Pathogenic",
             )
+            .when(
+                hl.is_defined(ht.info.CLNSIG)
+                & (ht.info.CLNSIG != "")  # Exclude empty CLNSIG
+                & hl.literal(BENIGN_LABELS).contains(ht.info.CLNSIG),
+                "Benign",
+            )
+            .otherwise("Uncertain/Conflicting"),
         )
-        n_labeled = labeled_ht.count()
-        n_excluded = n_total - n_labeled
 
-        self._n_pathogenic = label_counts.n_pathogenic
-        self._n_benign = label_counts.n_benign
-        self._n_excluded = n_excluded
-        self._n_total = n_total
+        # Filter out uncertain/conflicting variants by default
+        if self.config.min_stars <= 0:
+            ht = ht.filter(ht.label != "Uncertain/Conflicting")
 
-        logger.info(f"   ✓ Labels assigned:")
-        logger.info(f"     Pathogenic: {self._n_pathogenic}")
-        logger.info(f"     Benign: {self._n_benign}")
-        logger.info(f"     Excluded (VUS/conflicting): {n_excluded}")
+        logger.info(f"   ✓ Assigned labels: {ht.aggregate(hl.count_distinct(ht.label))} classes")
 
-        # Warn if class imbalance is severe
-        if self._n_pathogenic < 30:
-            logger.warning(f"   ⚠ Low pathogenic count ({self._n_pathogenic}) may affect ROC reliability")
-        if self._n_benign < 30:
-            logger.warning(f"   ⚠ Low benign count ({self._n_benign}) may affect ROC reliability")
-
-        self._labeled_ht = labeled_ht
-        return labeled_ht
+        return ht
 
     def _annotate_scores(self) -> hl.Table:
-        """Stage 4: Join with dbNSFP scores."""
+        """Stage 4: Annotate ClinVar variants with dbNSFP scores."""
         logger.info("🔄 [4/7] Annotating with dbNSFP scores...")
 
         if self._labeled_ht is None:
-            raise RuntimeError("Labeled table not available. Run _assign_labels first.")
+            raise RuntimeError("ClinVar variants not labeled. Run _assign_labels first.")
+
         if self._dbnsfp_ht is None:
             raise RuntimeError("dbNSFP table not loaded. Run _load_tables first.")
 
         ht = self._labeled_ht
-        dbnsfp = self._dbnsfp_ht
 
-        # Check which requested scores exist in dbNSFP
-        dbnsfp_fields = set(dbnsfp.row)
-        available_scores = []
-        missing_scores = []
-
-        for score in self.config.scores:
-            if score in dbnsfp_fields:
-                available_scores.append(score)
-            else:
-                missing_scores.append(score)
-                logger.warning(f"   ⚠ Score '{score}' not found in dbNSFP table")
-
-        if not available_scores:
-            raise ValueError(
-                f"None of the requested scores found in dbNSFP table: {self.config.scores}"
-            )
-
-        if missing_scores:
-            logger.warning(
-                f"   Missing scores will be skipped: {missing_scores}"
-            )
-
-        # Select only the scores we need from dbNSFP
-        dbnsfp_subset = dbnsfp.select(*available_scores)
-
-        # Join tables on variant key
-        ht = ht.annotate(**dbnsfp_subset[ht.key])
-
-        # Handle transcript-specific scores (stored as dicts in dbNSFP)
-        # For dict scores, we take the max value across transcripts
-        for score in available_scores:
-            score_type = ht[score].dtype
-            if isinstance(score_type, hl.tdict):
-                # Take max value across transcripts
-                ht = ht.annotate(
-                    **{
-                        score: hl.if_else(
-                            hl.is_defined(ht[score]) & (hl.len(ht[score]) > 0),
-                            hl.max(ht[score].values()),
-                            hl.missing(hl.tfloat64),
-                        )
-                    }
-                )
-
-        # Checkpoint the annotated table
-        ht = ht.checkpoint(
-            self.paths["annotated_ht"],
-            overwrite=self.config.overwrite,
+        # Join with dbNSFP scores
+        ht = ht.key_by("variant").join(
+            self._dbnsfp_ht.key_by("variant"), how="left"
         )
 
-        logger.info(f"   ✓ Annotated table saved: {self.paths['annotated_ht']}")
+        # Keep only relevant score fields
+        score_fields = [f for f in ht.row if f.startswith("dbnsfp.")]
+        ht = ht.select("variant", "label", *score_fields)
 
-        # Export TSV if requested
-        if self.config.export_tsv:
-            export_fields = ["psroc_label"] + available_scores
-            if "gene" in ht.row:
-                export_fields = ["gene"] + export_fields
+        logger.info(f"   ✓ Annotated with dbNSFP scores: {ht.count()} variants")
 
-            ht.select(*[f for f in export_fields if f in ht.row]).export(
-                self.paths["annotated_tsv"]
-            )
-            logger.info(f"   ✓ TSV exported: {self.paths['annotated_tsv']}")
-
-        self._annotated_ht = ht
-        self._available_scores = available_scores
         return ht
 
     def _compute_missingness(self) -> Dict[str, ScoreMissingness]:
@@ -900,143 +813,124 @@ class PSROCPipeline:
         logger.info("🔄 [5/7] Computing missingness statistics...")
 
         if self._annotated_ht is None:
-            raise RuntimeError("Annotated table not available. Run _annotate_scores first.")
+            raise RuntimeError("Variants not annotated. Run _annotate_scores first.")
 
         ht = self._annotated_ht
 
-        # Collect data for missingness computation
-        # We need labels and all score values
-        data = ht.select(
-            "psroc_label",
-            *self._available_scores,
-        ).collect()
+        # Compute missingness for each score field
+        missingness_results = {}
+        for field in ht.row:
+            if field.startswith("dbnsfp."):
+                # Calculate missingness rate
+                missingness_rate = ht.filter(hl.is_missing(ht[field])).count() / ht.count()
+                missingness_results[field] = ScoreMissingness(
+                    score=field,
+                    missingness_rate=missingness_rate,
+                    n_missing=ht.filter(hl.is_missing(ht[field])).count(),
+                    n_total=ht.count(),
+                )
 
-        # Convert to numpy arrays
-        labels = np.array([row.psroc_label for row in data])
-        scores_dict = {
-            score: np.array(
-                [
-                    float(row[score]) if row[score] is not None else np.nan
-                    for row in data
-                ],
-                dtype=np.float64,
-            )
-            for score in self._available_scores
+        # Filter out scores exceeding the missingness threshold
+        filtered_scores = {
+            k: v for k, v in missingness_results.items() if v.missingness_rate <= self.config.max_missingness
         }
 
-        # Compute missingness for all scores
-        missingness = compute_all_missingness(
-            scores_dict, max_missingness=self.config.max_missingness
-        )
+        logger.info(f"   ✓ Computed missingness statistics for {len(missingness_results)} scores")
+        logger.info(f"   ✓ Scores passed missingness filter: {len(filtered_scores)}")
 
-        # Filter scores by missingness
-        scores_included, scores_excluded = filter_scores_by_missingness(
-            missingness, max_missingness=self.config.max_missingness
-        )
+        self.state.outputs["missingness"] = filtered_scores
 
-        logger.info(f"   ✓ Missingness computed:")
-        for score_name, stats in missingness.items():
-            status = "included" if stats.included_in_analysis else "EXCLUDED"
-            logger.info(f"     {score_name}: {stats.missingness_rate:.1%} missing [{status}]")
-
-        if not scores_included:
-            raise ValueError(
-                f"All scores exceeded missingness threshold ({self.config.max_missingness:.0%}). "
-                "Consider increasing --max-missingness."
-            )
-
-        # Store for later stages
-        self._labels = labels
-        self._scores_dict = scores_dict
-        self._missingness = missingness
-        self._scores_included = scores_included
-        self._scores_excluded = scores_excluded
-
-        return missingness
+        return filtered_scores
 
     def _compute_roc_metrics(self) -> Dict[str, ROCResult]:
         """Stage 6: Compute ROC metrics for included scores."""
-        logger.info("🔄 [6/7] Computing ROC metrics...")
+        logger.info("🔄 [6/7] Computing ROC metrics for included scores...")
 
-        if self._labels is None or self._scores_dict is None:
-            raise RuntimeError("Data not prepared. Run _compute_missingness first.")
+        if self._annotated_ht is None:
+            raise RuntimeError("Variants not annotated. Run _annotate_scores first.")
 
-        # Filter to only included scores
-        included_scores = {
-            name: values
-            for name, values in self._scores_dict.items()
-            if name in self._scores_included
-        }
+        ht = self._annotated_ht
 
-        # Compute ROC metrics
-        metrics = compute_roc_metrics(
-            labels=self._labels,
-            scores=included_scores,
-            max_missingness=self.config.max_missingness,
-            threshold_method=self.config.threshold_method,
-        )
+        # Filter scores by missingness threshold
+        if self.config.max_missingness < 1.0:
+            score_fields = [
+                f for f in ht.row if f.startswith("dbnsfp.") and f in self.state.outputs["missingness"]
+            ]
+            ht = ht.select("variant", "label", *score_fields)
 
-        logger.info(f"   ✓ ROC metrics computed for {len(metrics)} scores:")
-        for name, roc in sorted(metrics.items(), key=lambda x: x[1].auc, reverse=True):
-            logger.info(f"     {name}: AUC={roc.auc:.3f}")
+        # Compute ROC metrics for each score
+        roc_results = {}
+        for score in ht.row:
+            if score.startswith("dbnsfp."):
+                try:
+                    metrics = compute_roc_metrics(
+                        ht,
+                        score=score,
+                        label_col="label",
+                        pos_label="Pathogenic",
+                        neg_label="Benign",
+                        threshold_method=self.config.threshold_method,
+                    )
+                    roc_results[score] = metrics
+                except Exception as e:
+                    logger.warning(f"   ⚠ Failed to compute ROC metrics for {score}: {e}")
 
-        self._metrics = metrics
-        return metrics
+        logger.info(f"   ✓ Computed ROC metrics for {len(roc_results)} scores")
+
+        self.state.outputs["roc_metrics"] = roc_results
+
+        return roc_results
 
     def _generate_outputs(self) -> PSROCResult:
-        """Stage 7: Generate plots, metrics, and reports."""
-        logger.info("🔄 [7/7] Generating outputs...")
+        """Stage 7: Generate output files and reports."""
+        logger.info("🔄 [7/7] Generating output files and reports...")
 
-        # Create result object
+        if self._annotated_ht is None:
+            raise RuntimeError("Variants not annotated. Run _annotate_scores first.")
+
+        ht = self._annotated_ht
+
+        # Export annotated variants to TSV if requested
+        if self.config.export_tsv:
+            logger.info(f"   Exporting annotated variants to TSV: {self.paths['annotated_tsv']}")
+            ht.export(self.paths["annotated_tsv"])
+
+        # Write the annotated Hail Table to disk
+        logger.info(f"   Writing annotated Hail Table: {self.paths['annotated_ht']}")
+        ht.write(self.paths["annotated_ht"], overwrite=True)
+
+        # Collect metrics and missingness results
+        metrics = self.state.outputs.get("roc_metrics", {})
+        missingness = self.state.outputs.get("missingness", {})
+
         result = PSROCResult(
             annotated_ht_path=self.paths["annotated_ht"],
-            metrics=self._metrics,
-            missingness=self._missingness,
-            n_pathogenic=self._n_pathogenic,
-            n_benign=self._n_benign,
-            n_excluded=self._n_excluded,
-            n_total=self._n_total,
-            scores_included=self._scores_included,
-            scores_excluded=self._scores_excluded,
+            metrics=metrics,
+            missingness=missingness,
+            n_pathogenic=ht.filter(ht.label == "Pathogenic").count(),
+            n_benign=ht.filter(ht.label == "Benign").count(),
+            n_excluded=ht.filter(ht.label == "Uncertain/Conflicting").count(),
+            n_total=ht.count(),
+            scores_included=[s for s in ht.row if s.startswith("dbnsfp.") and s in missingness],
+            scores_excluded=[s for s in ht.row if s.startswith("dbnsfp.") and s not in missingness],
             max_missingness_threshold=self.config.max_missingness,
             output_dir=self.config.output_dir,
         )
 
-        # Save metrics JSON
-        metrics_dict = {
-            "total_variants": result.n_total,
-            "n_pathogenic": result.n_pathogenic,
-            "n_benign": result.n_benign,
-            "n_excluded": result.n_excluded,
-            "scores_included": result.scores_included,
-            "scores_excluded": result.scores_excluded,
-            "max_missingness_threshold": result.max_missingness_threshold,
-            "metrics": {name: r.to_dict() for name, r in result.metrics.items()},
-        }
-
+        # Save metrics and missingness to JSON
+        logger.info(f"   Saving metrics to JSON: {self.paths['metrics_json']}")
         with open(self.paths["metrics_json"], "w") as f:
-            json.dump(metrics_dict, f, indent=2)
-        logger.info(f"   ✓ Metrics saved: {self.paths['metrics_json']}")
+            json.dump({k: v.to_dict() for k, v in metrics.items()}, f, indent=2)
 
-        # Save missingness report
-        missingness_dict = {
-            "total_variants": result.n_total,
-            "max_missingness_threshold": result.max_missingness_threshold,
-            "scores_included": result.scores_included,
-            "scores_excluded": result.scores_excluded,
-            "scores": {name: m.to_dict() for name, m in result.missingness.items()},
-        }
-
+        logger.info(f"   Saving missingness to JSON: {self.paths['missingness_json']}")
         with open(self.paths["missingness_json"], "w") as f:
-            json.dump(missingness_dict, f, indent=2)
-        logger.info(f"   ✓ Missingness report saved: {self.paths['missingness_json']}")
+            json.dump({k: v.to_dict() for k, v in missingness.items()}, f, indent=2)
 
-        # Generate plots if enabled
-        if self.config.generate_plots and self._metrics:
+        # Generate and save plots
+        if self.config.generate_plots:
             self._generate_plots(result)
 
-        # Print summary
-        print(result.summary())
+        logger.info(f"   ✓ Output files and reports generated in: {self.config.output_dir}")
 
         return result
 
@@ -1048,46 +942,43 @@ class PSROCPipeline:
         try:
             # ROC curves
             if result.metrics:
-                fig = plot_roc_curves(
+                base_roc_path = self.paths["roc_curves_png"].removesuffix(".png")
+                plot_roc_curves(
                     result.metrics,
-                    output_path=self.paths["roc_curves_png"],
+                    output_path=base_roc_path,
                     title=f"PSROC: ROC Curves ({len(result.metrics)} scores)",
                 )
-                fig.savefig(self.paths["roc_curves_png"], dpi=150, bbox_inches="tight")
-                matplotlib.pyplot.close(fig)
                 logger.info(f"   ✓ ROC curves plot: {self.paths['roc_curves_png']}")
 
                 # AUC comparison
-                fig = plot_auc_comparison(
+                base_auc_path = self.paths["auc_comparison_png"].removesuffix(".png")
+                plot_auc_comparison(
                     result.metrics,
-                    output_path=self.paths["auc_comparison_png"],
+                    output_path=base_auc_path,
                 )
-                fig.savefig(self.paths["auc_comparison_png"], dpi=150, bbox_inches="tight")
-                matplotlib.pyplot.close(fig)
                 logger.info(f"   ✓ AUC comparison plot: {self.paths['auc_comparison_png']}")
 
             # Missingness summary
             if result.missingness:
-                fig = plot_missingness_summary(
+                base_missingness_path = self.paths["missingness_png"].removesuffix(".png")
+                plot_missingness_summary(
                     result.missingness,
-                    output_path=self.paths["missingness_png"],
+                    output_path=base_missingness_path,
                     max_missingness_threshold=result.max_missingness_threshold,
                 )
-                fig.savefig(self.paths["missingness_png"], dpi=150, bbox_inches="tight")
-                matplotlib.pyplot.close(fig)
                 logger.info(f"   ✓ Missingness plot: {self.paths['missingness_png']}")
 
             # Summary dashboard
             if result.metrics and result.missingness:
-                fig = plot_psroc_summary_dashboard(
+                base_dashboard_path = self.paths["dashboard_png"].removesuffix(".png")
+                plot_psroc_summary_dashboard(
                     result.metrics,
                     result.missingness,
-                    output_path=self.paths["dashboard_png"],
+                    output_path=base_dashboard_path,
                     max_missingness_threshold=result.max_missingness_threshold,
                 )
-                fig.savefig(self.paths["dashboard_png"], dpi=150, bbox_inches="tight")
-                matplotlib.pyplot.close(fig)
                 logger.info(f"   ✓ Dashboard plot: {self.paths['dashboard_png']}")
 
         except Exception as e:
             logger.warning(f"   ⚠ Plot generation failed: {e}")
+
