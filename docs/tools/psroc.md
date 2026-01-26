@@ -80,6 +80,55 @@ for score_name, roc in result.metrics.items():
     print(f"{score_name}: AUC={roc.auc:.3f}")
 ```
 
+## Example with Synthetic Data
+
+The PSROC module includes synthetic test data for learning and testing. This data
+allows you to run the complete pipeline without needing real ClinVar or dbNSFP tables.
+
+### Running the Example
+
+```bash
+# First, generate the synthetic test data (if not already present)
+python hvantk/tests/testdata/psroc/generate_synthetic_data.py
+
+# Run the example script (builds tables and runs full pipeline)
+python examples/psroc/run_psroc_example.py --output-dir /tmp/psroc_example
+```
+
+### Synthetic Dataset Characteristics
+
+The synthetic dataset contains:
+
+| Component | Description |
+|-----------|-------------|
+| **Variants** | 100 variants across BRCA1, BRCA2, and TP53 |
+| **Labels** | 50 pathogenic, 40 benign, 10 VUS (excluded) |
+| **Scores** | 4 prediction scores with varying performance |
+
+### Expected Results
+
+The synthetic scores are designed to demonstrate different discriminative capabilities:
+
+| Score | Expected AUC | Missingness | Status |
+|-------|-------------|-------------|--------|
+| REVEL_score | ~0.95 | ~2% | Included |
+| CADD_phred | ~0.90 | ~5% | Included |
+| MetaLR_score | ~0.75 | ~10% | Included |
+| VEST4_score | N/A | ~40% | Excluded |
+
+The VEST4_score is intentionally designed with high missingness to demonstrate
+the automatic score exclusion feature when missingness exceeds the threshold.
+
+### Test Data Files
+
+Located in `hvantk/tests/testdata/psroc/`:
+
+- `synthetic_clinvar.tsv` - ClinVar-like variant annotations
+- `synthetic_dbnsfp.tsv` - dbNSFP-like prediction scores
+- `test_genes.txt` - Gene list for `--genes-file` testing
+- `test_variants.txt` - Variant list for `--variants` testing
+- `generate_synthetic_data.py` - Script to regenerate test data
+
 ## Detailed Usage
 
 ### Input Sources
@@ -209,6 +258,78 @@ The PSROC pipeline executes seven stages:
 | 5. Compute Missingness | Calculate per-score missingness statistics |
 | 6. Compute ROC | Compute ROC metrics for qualifying scores |
 | 7. Generate Outputs | Create plots, metrics JSON, and reports |
+
+### Pipeline Workflow Diagram
+
+```mermaid
+flowchart TB
+    subgraph Inputs["Inputs"]
+        CV[("ClinVar HT<br/>locus, alleles<br/>info.CLNSIG")]
+        DB[("dbNSFP HT<br/>locus, alleles<br/>score fields")]
+        GS["Gene List /<br/>Variant List"]
+    end
+
+    subgraph Stage1["1. Load Tables"]
+        L1["Load ClinVar"]
+        L2["Load dbNSFP"]
+    end
+
+    subgraph Stage2["2. Filter ClinVar"]
+        F1["Filter by<br/>genes/variants"]
+        F2["Filter by<br/>review stars"]
+    end
+
+    subgraph Stage3["3. Assign Labels"]
+        A1{"CLNSIG<br/>value?"}
+        A2["Label = 1<br/>(Pathogenic)"]
+        A3["Label = 0<br/>(Benign)"]
+        A4["Exclude<br/>(VUS)"]
+    end
+
+    subgraph Stage4["4. Annotate Scores"]
+        J1["Join on<br/>locus, alleles"]
+    end
+
+    subgraph Stage5["5. Compute Missingness"]
+        M1["Calculate<br/>per-score"]
+        M2{"Rate ><br/>threshold?"}
+        M3["Include"]
+        M4["Exclude"]
+    end
+
+    subgraph Stage6["6. Compute ROC"]
+        R1["FPR, TPR<br/>curves"]
+        R2["AUC +<br/>threshold"]
+    end
+
+    subgraph Stage7["7. Generate Outputs"]
+        O1["Plots"]
+        O2["Metrics JSON"]
+        O3["Hail Table"]
+    end
+
+    CV --> L1
+    DB --> L2
+    GS --> F1
+    L1 --> F1
+    F1 --> F2
+    F2 --> A1
+    A1 -->|"P/LP"| A2
+    A1 -->|"B/LB"| A3
+    A1 -->|"VUS"| A4
+    A2 --> J1
+    A3 --> J1
+    L2 --> J1
+    J1 --> M1
+    M1 --> M2
+    M2 -->|"No"| M3
+    M2 -->|"Yes"| M4
+    M3 --> R1
+    R1 --> R2
+    R2 --> O1
+    R2 --> O2
+    R2 --> O3
+```
 
 ### Label Assignment
 

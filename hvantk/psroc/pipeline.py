@@ -643,7 +643,7 @@ class PSROCPipeline:
                 gene=hl.if_else(
                     hl.is_defined(ht.info.GENEINFO)
                     & (hl.len(ht.info.GENEINFO) > 0),
-                    ht.info.GENEINFO.split(":")[0],
+                    ht.info.GENEINFO[0].split(":")[0],
                     hl.missing(hl.tstr),
                 )
             )
