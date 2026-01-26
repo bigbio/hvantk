@@ -113,12 +113,12 @@ def compute_score_missingness(
     n_present = n_total - n_missing
     missingness_rate = n_missing / n_total if n_total > 0 else 0.0
 
-    # Scores with missingness >= threshold are excluded
-    included = missingness_rate < max_missingness
+    # Scores with missingness > threshold are excluded
+    included = missingness_rate <= max_missingness
     exclusion_reason = None
     if not included:
         exclusion_reason = (
-            f"missingness_rate ({missingness_rate:.2f}) exceeds or equals "
+            f"missingness_rate ({missingness_rate:.2f}) exceeds "
             f"max_missingness ({max_missingness:.2f})"
         )
 
