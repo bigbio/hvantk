@@ -34,117 +34,100 @@ pip install -e .
 
 **Prerequisites**: Python ≥3.10, Hail
 
-## Main Tools
+## Core Workflows
 
 ### HGC: Joint Genotyping Pipeline
 
-High-performance joint genotyping for large cohorts using Hail. Combines thousands of GVCF files with integrated quality control.
+High-performance joint genotyping for large cohorts. Combines thousands of GVCF files with integrated QC.
 
-**Key features:**
-- GVCF combination at scale
-- VDS ↔ MatrixTable ↔ VCF format conversion
-- Comprehensive QC metrics and visualization
-- Professional HTML QC reports
-
-**Quick example:**
 ```bash
-# Combine GVCF files
+# End-to-end pipeline
+hvantk hgc pipeline -i /data/gvcfs -o /output
+
+# Or run individual steps
 hvantk hgc gvcf-combine -g /data/gvcfs -o cohort.vds
-
-# Convert to MatrixTable and run QC
 hvantk hgc vds2mt -i cohort.vds -o cohort.mt
-hvantk hgc compute-qc -i cohort.mt -o cohort_qc.mt
-
-# Generate QC report
-hvantk hgc qc-report -i cohort_qc.mt -o qc_report.html
+hvantk hgc qc-report -i cohort.mt -o qc_report.html
 ```
 
 📖 **[Full HGC Documentation](docs/tools/hgc.md)**
 
-### Annotation Tables: Build Custom Annotation Resources
+### PSROC: Variant Score Evaluation
 
-Create Hail Tables from public annotation databases (ClinVar, gnomAD, Ensembl, etc.).
+Evaluate pathogenicity prediction scores (CADD, REVEL, MetaLR) using ClinVar truth labels. Generate ROC curves and performance metrics.
 
-**Single table creation:**
 ```bash
-# Build ClinVar annotation table
-hvantk mktable clinvar --raw-input clinvar.vcf.bgz --output-ht clinvar.ht --ref-genome GRCh38
-
-# Build Ensembl gene table
-hvantk mktable ensembl-gene --raw-input biomart.tsv.bgz --output-ht ensembl.ht
+# Run ROC analysis
+hvantk psroc \
+  --genes-file genes.txt \
+  --clinvar-ht clinvar.ht \
+  --dbnsfp-ht dbnsfp.ht \
+  --scores "CADD_phred,REVEL_score" \
+  --output-dir results/
 ```
 
-**Batch processing with recipes:**
+📖 **[PSROC Documentation](docs/tools/psroc.md)** | **[Example](examples/psroc/)**
+
+### Annotation Tables
+
+Create Hail Tables from public databases (ClinVar, gnomAD, Ensembl).
+
 ```bash
+# Single table
+hvantk mktable clinvar --raw-input clinvar.vcf.bgz --output-ht clinvar.ht
+
+# Batch processing
 hvantk mktable-batch --recipe tables_recipe.json
 ```
 
-📖 **[Annotation Tables Guide](docs/library/usage.md#1-build-a-single-annotation-table-ht)**
+📖 **[Tables Guide](docs/library/usage.md#1-build-a-single-annotation-table-ht)**
 
-### Expression Matrices: Process Omics Data
+### Expression Matrices
 
 Build Hail MatrixTables from bulk and single-cell expression data.
 
-**Example:**
 ```bash
-# Convert UCSC Cell Browser data to MatrixTable
+# UCSC Cell Browser data
 hvantk mkmatrix ucsc -e expr.tsv.bgz -m metadata.tsv -o ucsc.mt
 
 # Batch processing
 hvantk mkmatrix-batch --recipe matrices_recipe.json
 ```
 
-📖 **[Expression Data Guide](docs/library/usage.md#3-build-a-single-matrixtable-mt)**
+📖 **[Expression Guide](docs/library/usage.md#3-build-a-single-matrixtable-mt)**
 
 ### Data Downloaders
 
-Download curated datasets directly from public repositories.
+Download curated datasets from public repositories.
 
-**Example:**
 ```bash
-# Download UCSC Cell Browser dataset
 hvantk ucsc-downloader --dataset adultPancreas --output-dir data/ucsc
 ```
 
 📖 **[Data Sources](docs/library/annotation-sources.md)**
 
-## Quick Start Example
+## Quick Start
 
 ```bash
-# 1. Download a dataset
+# Download and process expression data
 hvantk ucsc-downloader --dataset adultPancreas --output-dir data/ucsc
+hvantk mkmatrix ucsc -e data/ucsc/exprMatrix.tsv.bgz -m data/ucsc/meta.tsv -o data/ucsc/adultPancreas.mt
 
-# 2. Convert to Hail MatrixTable
-hvantk mkmatrix ucsc \
-  -e data/ucsc/exprMatrix.tsv.bgz \
-  -m data/ucsc/meta.tsv \
-  -o data/ucsc/adultPancreas.mt
+# Build annotation tables
+hvantk mktable clinvar --raw-input clinvar.vcf.bgz --output-ht clinvar.ht --ref-genome GRCh38
 
-# 3. Build annotation tables via recipe
-cat > recipe.json << EOF
-{
-  "tables": [
-    {
-      "name": "clinvar",
-      "input": "/data/clinvar.vcf.bgz",
-      "output": "/out/clinvar.ht",
-      "params": {"reference_genome": "GRCh38"}
-    }
-  ]
-}
-EOF
-
+# Or use batch processing with recipes (see examples/recipes/)
 hvantk mktable-batch --recipe recipe.json
 ```
 
 ## Documentation
 
-- **[Architecture Overview](docs/ARCHITECTURE.md)** - Module organization and design patterns
-- **[Usage Guide](docs/library/usage.md)** - Detailed usage examples and recipes
-- **[Data Sources](docs/library/annotation-sources.md)** - Available annotation sources and download instructions
-- **[HGC Tool](docs/tools/hgc.md)** - Joint genotyping and quality control
-- **[API Reference](docs/ARCHITECTURE.md#extension-points)** - Extending hvantk with custom builders
-- **[Full Documentation Index](docs/README.md)** - Complete documentation structure
+- **[Usage Guide](docs/library/usage.md)** - Examples and recipes
+- **[HGC Tool](docs/tools/hgc.md)** - Joint genotyping pipeline
+- **[PSROC Tool](docs/tools/psroc.md)** - Variant score evaluation
+- **[Data Sources](docs/library/annotation-sources.md)** - Available annotations
+- **[Architecture](docs/ARCHITECTURE.md)** - Design and extension points
+- **[Full Index](docs/README.md)** - Complete documentation
 
 ## Citation
 

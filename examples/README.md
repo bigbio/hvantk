@@ -393,6 +393,7 @@ examples/
 │
 ├── hgc/                         # HGC joint genotyping workflow
 │   ├── README.md
+│   ├── README_scalability.md
 │   ├── hgc_qc_example.py
 │   ├── hgc_cpu_scaling_benchmark.py
 │   ├── hgc_scalability_benchmark.py

@@ -236,8 +236,8 @@ expert_path = (ClinVarStreamer("clinvar.ht")
 
 ## Documentation
 
-- [ClinVar Streamer API](../../docs/library/usage.md#clinvar-streamer)
-- [Table Builders](../../docs/library/usage.md#table-builders)
+- [ClinVar Table Builder](../../docs/library/usage.md)
+- [Table Builders Guide](../../docs/library/usage.md)
 - [Architecture](../../docs/ARCHITECTURE.md)
 
 ## Resources
