@@ -22,7 +22,7 @@ Example:
 
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
-from typing import Optional, Dict, Any, List, Set, Union
+from typing import Optional, Dict, Any, List, Set
 from enum import Enum
 import json
 import logging
@@ -554,10 +554,10 @@ class PSROCPipeline:
             self._run_stage(PSROCStage.ANNOTATE_SCORES)
 
             # Stage 5: Compute missingness
-            missingness = self._run_stage(PSROCStage.COMPUTE_MISSINGNESS)
+            self._run_stage(PSROCStage.COMPUTE_MISSINGNESS)
 
             # Stage 6: Compute ROC metrics
-            metrics = self._run_stage(PSROCStage.COMPUTE_ROC)
+            self._run_stage(PSROCStage.COMPUTE_ROC)
 
             # Stage 7: Generate outputs
             result = self._run_stage(PSROCStage.GENERATE_OUTPUTS)
