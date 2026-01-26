@@ -640,7 +640,7 @@ hvantk hgc pipeline \
 
 ## 11. Appendix: Complete CLI Option Reference
 
-```
+```text
 hvantk hgc pipeline [OPTIONS]
 
 Required Options:
