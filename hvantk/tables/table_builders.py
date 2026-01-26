@@ -1,18 +1,85 @@
 """
-Hail Table builders for converting raw sources into Hail Tables (HT).
+Hail Table builders for converting raw data sources into Hail Tables.
 
-This module supersedes 'creators.py'. Prefer importing from 'table_builders'.
+This module provides builder functions that convert raw annotation sources
+(TSV, VCF, BED) into checkpointed Hail Tables with standardized patterns.
 """
 
 import hail as hl
 import logging
-from typing import Optional, List
+from typing import Optional, List, Callable
 from hvantk.utils.table_utils import get_row_fields
 
 logger = logging.getLogger(__name__)
 
 from hvantk.core.constants import ENSEMBL_BIOMART_FIELDS
 from hvantk.utils.genome import contig_recoding  # correct module import
+
+
+def _create_table_base(
+    source_name: str,
+    input_path: str,
+    output_path: str,
+    import_func: Callable[[], hl.Table],
+    transform_func: Optional[Callable[[hl.Table], hl.Table]] = None,
+    fields: Optional[List[str]] = None,
+    overwrite: bool = False,
+    export_tsv: bool = False,
+) -> hl.Table:
+    """
+    Base helper for creating Hail Tables with common import/checkpoint/export pattern.
+
+    This internal helper reduces boilerplate by handling the common workflow:
+    1. Log import message
+    2. Execute import function
+    3. Apply optional transformations
+    4. Apply optional field selection
+    5. Checkpoint with logging
+    6. Optional TSV export
+
+    Parameters
+    ----------
+    source_name : str
+        Human-readable name of the data source (for logging).
+    input_path : str
+        Path to the input file.
+    output_path : str
+        Path to write the output Hail Table.
+    import_func : Callable
+        Function that returns the imported Hail Table.
+    transform_func : Callable, optional
+        Function to transform the table after import (default: None).
+    fields : list of str, optional
+        List of fields to select from the table (default: None, keeps all).
+    overwrite : bool, optional
+        Whether to overwrite the output file if it exists (default: False).
+    export_tsv : bool, optional
+        If True, also export a TSV version (default: False).
+
+    Returns
+    -------
+    hl.Table
+        The checkpointed Hail Table.
+    """
+    logger.info(f"Creating {source_name} table from {input_path}")
+    ht = import_func()
+
+    if transform_func is not None:
+        ht = transform_func(ht)
+
+    if fields is not None:
+        logger.info(f"Selecting fields: {fields}")
+        ht = ht.select(*fields)
+
+    logger.info(f"Checkpointing table to {output_path}")
+    ht = ht.checkpoint(output=output_path, overwrite=overwrite)
+
+    if export_tsv:
+        logger.info(f"Exporting table to {output_path}.tsv.bgz")
+        ht.export(output_path + ".tsv.bgz")
+
+    return ht
+
 
 __all__ = [
     "create_gnomad_constraint_gene_metrics_tb",
@@ -33,12 +100,14 @@ def create_gnomad_constraint_gene_metrics_tb(
 ) -> "hl.Table":
     """
     Create a Hail Table from gnomAD constraint gene metrics TSV file keyed by gene_id.
+
     Example usage:
         ht = create_gnomad_constraint_gene_metrics_tb(
             input_path="/path/to/gnomad_constraint_metrics.txt",
             output_path="/path/to/output.ht",
             fields=["gene_id", "pLI", "oe_lof"]
         )
+
     Parameters
     ----------
     input_path : str
@@ -51,30 +120,27 @@ def create_gnomad_constraint_gene_metrics_tb(
         Whether to overwrite the output file if it exists (default: False).
     export_tsv : bool, optional
         If True, also export a TSV version (default: False).
+
     Returns
     -------
     hl.Table
         Hail Table keyed by gene_id with selected constraint metrics.
+
+    Notes
+    -----
+    If schema is stable, consider specifying types=... instead of impute=True.
     """
-
-    logger.info(f"Creating gnomAD constraint gene metrics table from {input_path}")
-    # If schema is stable, consider specifying types=... instead of impute=True
-    gnomad_tb = hl.import_table(
-        paths=input_path, impute=True, min_partitions=100, key="gene_id"
+    return _create_table_base(
+        source_name="gnomAD constraint gene metrics",
+        input_path=input_path,
+        output_path=output_path,
+        import_func=lambda: hl.import_table(
+            paths=input_path, impute=True, min_partitions=100, key="gene_id"
+        ),
+        fields=fields,
+        overwrite=overwrite,
+        export_tsv=export_tsv,
     )
-
-    if fields is not None:
-        logger.info(f"Selecting fields: {fields}")
-        gnomad_tb = gnomad_tb.select(*fields)
-
-    logger.info(f"Checkpointing table to {output_path}")
-    gnomad_tb = gnomad_tb.checkpoint(output=output_path, overwrite=overwrite)
-
-    if export_tsv:
-        logger.info(f"Exporting table to {output_path}.tsv.bgz")
-        gnomad_tb.export(output_path + ".tsv.bgz")
-
-    return gnomad_tb
 
 
 def create_interactome_tb(
@@ -86,11 +152,13 @@ def create_interactome_tb(
 ) -> "hl.Table":
     """
     Create a Hail Table from a protein-protein interaction BED file.
+
     Example usage:
         ht = create_interactome_tb(
             input_path="/path/to/interactome.bed",
             output_path="/path/to/output.ht"
         )
+
     Parameters
     ----------
     input_path : str
@@ -103,31 +171,25 @@ def create_interactome_tb(
         If True, also export a TSV version (default: False).
     reference_genome : str, optional
         Reference genome to use for parsing intervals (default: "GRCh38").
+
     Returns
     -------
     hl.Table
         Hail Table with protein-protein interactions.
     """
-
-    logger.info(f"Creating interactome table from {input_path}")
-    ppi_tb = (
-        hl.import_bed(
+    return _create_table_base(
+        source_name="interactome",
+        input_path=input_path,
+        output_path=output_path,
+        import_func=lambda: hl.import_bed(
             path=input_path,
             skip_invalid_intervals=True,
             reference_genome=reference_genome,
-        )
-        .repartition(100)
-        .distinct()
+        ),
+        transform_func=lambda ht: ht.repartition(100).distinct(),
+        overwrite=overwrite,
+        export_tsv=export_tsv,
     )
-
-    logger.info(f"Checkpointing table to {output_path}")
-    ppi_tb = ppi_tb.checkpoint(output=output_path, overwrite=overwrite)
-
-    if export_tsv:
-        logger.info(f"Exporting table to {output_path}.tsv.bgz")
-        ppi_tb.export(f"{output_path}.tsv.bgz")
-
-    return ppi_tb
 
 
 def create_clinvar_tb(
@@ -139,11 +201,13 @@ def create_clinvar_tb(
 ) -> "hl.Table":
     """
     Create a Hail Table from a ClinVar VCF file keyed by (locus, alleles).
+
     Example usage:
         ht = create_clinvar_tb(
             input_path="/path/to/clinvar.vcf.gz",
             output_path="/path/to/output.ht"
         )
+
     Parameters
     ----------
     input_path : str
@@ -156,33 +220,37 @@ def create_clinvar_tb(
         If True, also export a flattened TSV version (default: False).
     reference_genome : str, optional
         Reference genome to use for parsing variants (default: "GRCh38").
+
     Returns
     -------
     hl.Table
         Hail Table keyed by (locus, alleles) with ClinVar annotations.
+
+    Notes
+    -----
+    Uses force=True for import which may impact performance (single-threaded processing).
     """
-    logger.info(f"Creating ClinVar table from {input_path}")
-    # Use utility for contig recoding
     recode = contig_recoding()
-    clinvar_tb = (
-        hl.import_vcf(
+
+    clinvar_tb = _create_table_base(
+        source_name="ClinVar",
+        input_path=input_path,
+        output_path=output_path,
+        import_func=lambda: hl.import_vcf(
             path=input_path,
             force=True,
             reference_genome=reference_genome,
             contig_recoding=recode,
             skip_invalid_loci=True,
-        )
-        .rows()
-        .repartition(100)
-        .key_by("locus", "alleles")
+        ).rows(),
+        transform_func=lambda ht: ht.repartition(100).key_by("locus", "alleles"),
+        overwrite=overwrite,
+        export_tsv=False,  # Handle custom export below
     )
 
-    logger.info(f"Checkpointing table to {output_path}")
-    clinvar_tb = clinvar_tb.checkpoint(output=output_path, overwrite=overwrite)
-
     if export_tsv:
-        logger.info(f"Exporting table to {output_path}.tsv.bgz")
-        (clinvar_tb.flatten().export(f"{output_path}.tsv.bgz"))
+        logger.info(f"Exporting flattened table to {output_path}.tsv.bgz")
+        clinvar_tb.flatten().export(f"{output_path}.tsv.bgz")
 
     return clinvar_tb
 
@@ -196,12 +264,14 @@ def create_gevir_tb(
 ) -> "hl.Table":
     """
     Create a Hail Table from GEVIR gene metrics TSV file keyed by gene_id.
+
     Example usage:
         ht = create_gevir_tb(
             input_path="/path/to/gevir_metrics.txt",
             output_path="/path/to/output.ht",
             fields=["gene_id", "gevir_score", "gevir_rank"]
         )
+
     Parameters
     ----------
     input_path : str
@@ -214,30 +284,27 @@ def create_gevir_tb(
         Whether to overwrite the output file if it exists (default: False).
     export_tsv : bool, optional
         If True, also export a TSV version (default: False).
+
     Returns
     -------
     hl.Table
         Hail Table keyed by gene_id with selected GEVIR metrics.
 
+    Notes
+    -----
+    If schema is stable, consider specifying types=... instead of impute=True.
     """
-    logger.info(f"Creating GEVIR table from {input_path}")
-    # If schema is stable, consider specifying types=... instead of impute=True
-    gevir_tb = hl.import_table(
-        paths=input_path, impute=True, min_partitions=100, key="gene_id"
+    return _create_table_base(
+        source_name="GEVIR",
+        input_path=input_path,
+        output_path=output_path,
+        import_func=lambda: hl.import_table(
+            paths=input_path, impute=True, min_partitions=100, key="gene_id"
+        ),
+        fields=fields,
+        overwrite=overwrite,
+        export_tsv=export_tsv,
     )
-
-    if fields is not None:
-        logger.info(f"Selecting fields: {fields}")
-        gevir_tb = gevir_tb.select(*fields)
-
-    logger.info(f"Checkpointing table to {output_path}")
-    gevir_tb = gevir_tb.checkpoint(output=output_path, overwrite=overwrite)
-
-    if export_tsv:
-        logger.info(f"Exporting table to {output_path}.tsv.bgz")
-        gevir_tb.export(output_path + ".tsv.bgz")
-
-    return gevir_tb
 
 
 def create_ensembl_gene_tb(
@@ -250,6 +317,7 @@ def create_ensembl_gene_tb(
 ) -> "hl.Table":
     """
     Create a Hail Table from an Ensembl BioMart gene annotation TSV file keyed by gene_id.
+
     Example usage:
         ht = create_ensembl_gene_tb(
             input_path="/path/to/ensembl_biomart_genes.txt",
@@ -257,6 +325,7 @@ def create_ensembl_gene_tb(
             fields=["gene_id", "gene_name", "gene_type", "chromosome",
                     "gene_start", "gene_end", "transcript_id", "protein_id"]
         )
+
     Parameters
     ----------
     input_path : str
@@ -271,59 +340,60 @@ def create_ensembl_gene_tb(
         Whether to overwrite the output file if it exists (default: False).
     export_tsv : bool, optional
         If True, also export a TSV version (default: False).
+
     Returns
     -------
     hl.Table
         Hail Table keyed by gene_id with selected Ensembl gene annotations.
     """
-    logger.info(f"Creating Ensembl gene table from {input_path}")
-    gene_tb = hl.import_table(paths=input_path, min_partitions=50, impute=True)
 
-    logger.info("Replacing field names")
-    gene_tb = gene_tb.rename(ENSEMBL_BIOMART_FIELDS)
+    def transform(ht: hl.Table) -> hl.Table:
+        logger.info("Replacing field names")
+        ht = ht.rename(ENSEMBL_BIOMART_FIELDS)
 
-    if canonical:
-        logger.info("Filtering canonical transcripts")
-        gene_tb = gene_tb.filter(gene_tb.canonical == "1", keep=True)
+        if canonical:
+            logger.info("Filtering canonical transcripts")
+            ht = ht.filter(ht.canonical == "1", keep=True)
 
-    logger.info("Grouping by gene_id")
-    gene_tb = (
-        gene_tb.group_by(gene_tb.gene_id)
-        .aggregate(
-            transcript_id=hl.agg.collect_as_set(gene_tb.transcript_id).filter(
-                lambda x: x != ""
-            ),
-            protein_id=hl.agg.collect_as_set(gene_tb.protein_id).filter(
-                lambda x: x != ""
-            ),
-            gene_synonym=hl.agg.collect_as_set(gene_tb.gene_synonym).filter(
-                lambda x: x != ""
-            ),
-            gene_name=hl.agg.take(hl.or_else(gene_tb.gene_name, ""), 1)[0],
-            chromosome=hl.agg.take(hl.or_else(gene_tb.chromosome, ""), 1)[0],
-            gene_start=hl.agg.take(
-                hl.or_else(gene_tb.gene_start, hl.null(gene_tb.gene_start.dtype)), 1
-            )[0],
-            gene_end=hl.agg.take(
-                hl.or_else(gene_tb.gene_end, hl.null(gene_tb.gene_end.dtype)), 1
-            )[0],
-            gene_type=hl.agg.take(hl.or_else(gene_tb.gene_type, ""), 1)[0],
+        logger.info("Grouping by gene_id")
+        ht = (
+            ht.group_by(ht.gene_id)
+            .aggregate(
+                transcript_id=hl.agg.collect_as_set(ht.transcript_id).filter(
+                    lambda x: x != ""
+                ),
+                protein_id=hl.agg.collect_as_set(ht.protein_id).filter(
+                    lambda x: x != ""
+                ),
+                gene_synonym=hl.agg.collect_as_set(ht.gene_synonym).filter(
+                    lambda x: x != ""
+                ),
+                gene_name=hl.agg.take(hl.or_else(ht.gene_name, ""), 1)[0],
+                chromosome=hl.agg.take(hl.or_else(ht.chromosome, ""), 1)[0],
+                gene_start=hl.agg.take(
+                    hl.or_else(ht.gene_start, hl.null(ht.gene_start.dtype)), 1
+                )[0],
+                gene_end=hl.agg.take(
+                    hl.or_else(ht.gene_end, hl.null(ht.gene_end.dtype)), 1
+                )[0],
+                gene_type=hl.agg.take(hl.or_else(ht.gene_type, ""), 1)[0],
+            )
+            .key_by("gene_id")
         )
-        .key_by("gene_id")
+        return ht
+
+    return _create_table_base(
+        source_name="Ensembl gene",
+        input_path=input_path,
+        output_path=output_path,
+        import_func=lambda: hl.import_table(
+            paths=input_path, min_partitions=50, impute=True
+        ),
+        transform_func=transform,
+        fields=fields,
+        overwrite=overwrite,
+        export_tsv=export_tsv,
     )
-
-    if fields is not None:
-        logger.info(f"Selecting fields: {fields}")
-        gene_tb = gene_tb.select(*fields)
-
-    logger.info(f"Checkpointing table to {output_path}")
-    gene_tb = gene_tb.checkpoint(output=output_path, overwrite=overwrite)
-
-    if export_tsv:
-        logger.info(f"Exporting table to {output_path}.tsv.bgz")
-        gene_tb.export(output_path + ".tsv.bgz")
-
-    return gene_tb
 
 
 def create_dbnsfp_tb(
@@ -372,132 +442,139 @@ def create_dbnsfp_tb(
     hl.Table
         Hail Table keyed by (locus, alleles) with parsed and grouped annotations.
 
+    Notes
+    -----
     Steps performed:
     - Import table with missing '.' and no type imputation
     - Build a variant key from '#chr', 'pos(1-based)', 'ref', 'alt' and parse to (locus, alleles)
     - Key the table by (locus, alleles)
-    - Optionally map transcript-specific scores ending with '_score' or 'CADD_phred' to dict(Ensembl_transcriptid -> float)
-    - Optionally group common prefixes (e.g., gnomAD, ExAC) into structs and drop original prefixed columns
+    - Optionally map transcript-specific scores ending with '_score' or 'CADD_phred' to dict
+    - Optionally group common prefixes (e.g., gnomAD, ExAC) into structs
     """
 
-    logger.info(f"Importing dbNSFP table from {input_path}")
-    ht = hl.import_table(
-        paths=input_path,
-        min_partitions=min_partitions,
-        impute=False,
-        missing=".",
-        force_bgz=force_bgz,
-    )
+    def transform(ht: hl.Table) -> hl.Table:
+        # Normalize chromosome field and construct variant key
+        row_fields = get_row_fields(ht)
+        if "#chr" in row_fields:
+            ht = ht.rename({"#chr": "chr"})
+        else:
+            if "chr" not in row_fields:
+                raise ValueError("dbNSFP input missing '#chr' or 'chr' column")
 
-    # Normalize chromosome field and construct variant key
-    row_fields = get_row_fields(ht)
-    if "#chr" in row_fields:
-        ht = ht.rename({"#chr": "chr"})
-    else:
-        # Some exports might already use 'chr'
-        if "chr" not in row_fields:
-            raise ValueError("dbNSFP input missing '#chr' or 'chr' column")
-
-    _chr_str = hl.str(ht["chr"])
-    ht = ht.annotate(
-        chr=hl.if_else(
-            _chr_str.lower().startswith("chr"), _chr_str, hl.str("chr") + _chr_str
-        )
-    )
-
-    # Build variant_key: chr:pos:ref:alt
-    row_fields = get_row_fields(ht)
-    if (
-        "pos(1-based)" not in row_fields
-        or "ref" not in row_fields
-        or "alt" not in row_fields
-    ):
-        raise ValueError(
-            "dbNSFP input missing required columns: 'pos(1-based)', 'ref', or 'alt'"
+        _chr_str = hl.str(ht["chr"])
+        ht = ht.annotate(
+            chr=hl.if_else(
+                _chr_str.lower().startswith("chr"), _chr_str, hl.str("chr") + _chr_str
+            )
         )
 
-    variant_key_expr = hl.array(
-        [
-            ht.chr,
-            hl.str(ht["pos(1-based)"]),
-            ht.ref,
-            ht.alt,
-        ]
-    )
-    ht = ht.annotate(variant_key=hl.delimit(variant_key_expr, ":"))
-
-    # Parse to locus/alleles
-    ht = ht.annotate(
-        **hl.parse_variant(ht.variant_key, reference_genome=reference_genome)
-    )
-
-    # Key the table by (locus, alleles) before any selects to avoid overwriting key fields
-    ht = ht.key_by("locus", "alleles")
-    # Optional cleanup of staging columns; keep if downstream needs them
-    ht = ht.drop("variant_key")
-    ht = ht.drop("chr", "pos(1-based)", "ref", "alt")
-
-    # Transcript-specific score parsing
-    row_fields = get_row_fields(ht)
-    if parse_transcript_scores and "Ensembl_transcriptid" in row_fields:
-        logger.info(
-            "Parsing transcript-specific scores into dicts keyed by Ensembl_transcriptid"
-        )
-        ht = ht.annotate(Ensembl_transcriptid=hl.str(ht.Ensembl_transcriptid))
-        ht = ht.annotate(Ensembl_transcriptid=ht.Ensembl_transcriptid.split(";"))
-
-        row_fields_list = list(get_row_fields(ht))
-        score_fields = [
-            f for f in row_fields_list if f.endswith("_score") or f == "CADD_phred"
-        ]
-
-        def _to_float_array(s):
-            s_def = hl.or_else(s, "")  # empty string if missing
-            arr = s_def.split(";")
-            return hl.map(lambda x: hl.parse_float(x), arr)
-
-        def _single_to_dict(val):
-            # Map same scalar value to all transcripts
-            return hl.dict(
-                hl.zip(
-                    ht.Ensembl_transcriptid,
-                    hl.map(lambda _x: hl.parse_float(val), ht.Ensembl_transcriptid),
-                )
+        # Build variant_key: chr:pos:ref:alt
+        row_fields = get_row_fields(ht)
+        if (
+            "pos(1-based)" not in row_fields
+            or "ref" not in row_fields
+            or "alt" not in row_fields
+        ):
+            raise ValueError(
+                "dbNSFP input missing required columns: 'pos(1-based)', 'ref', or 'alt'"
             )
 
-        ann = {}
-        for f in score_fields:
-            is_multi = hl.is_defined(ht[f]) & ht[f].contains(";")
-            ann[f] = hl.if_else(
-                is_multi,
-                hl.dict(hl.zip(ht.Ensembl_transcriptid, _to_float_array(ht[f]))),
-                _single_to_dict(ht[f]),
-            )
-        if ann:
-            ht = ht.annotate(**ann)
+        variant_key_expr = hl.array(
+            [ht.chr, hl.str(ht["pos(1-based)"]), ht.ref, ht.alt]
+        )
+        ht = ht.annotate(variant_key=hl.delimit(variant_key_expr, ":"))
 
-    # Group common prefixes into structs and drop original columns
-    if group_prefixes is None:
-        group_prefixes = ["gnomAD", "ExAC", "1000Gp3", "ESP6500", "clinvar"]
+        # Parse to locus/alleles
+        ht = ht.annotate(
+            **hl.parse_variant(ht.variant_key, reference_genome=reference_genome)
+        )
 
-    for prefix in group_prefixes:
-        row_fields_list = list(get_row_fields(ht))
-        pref_fields = [
-            f for f in row_fields_list if f != prefix and f.startswith(prefix)
-        ]
-        if pref_fields:
+        # Key the table and cleanup staging columns
+        ht = ht.key_by("locus", "alleles")
+        ht = ht.drop("variant_key", "chr", "pos(1-based)", "ref", "alt")
+
+        # Transcript-specific score parsing
+        row_fields = get_row_fields(ht)
+        if parse_transcript_scores and "Ensembl_transcriptid" in row_fields:
             logger.info(
-                f"Grouping {prefix}* fields into struct '{prefix}' ({len(pref_fields)} fields)"
+                "Parsing transcript-specific scores into dicts keyed by Ensembl_transcriptid"
             )
-            ht = ht.annotate(**{prefix: hl.struct(**{f: ht[f] for f in pref_fields})})
-            # Drop original columns (preserve keys implicitly)
-            ht = ht.drop(*pref_fields)
+            ht = ht.annotate(Ensembl_transcriptid=hl.str(ht.Ensembl_transcriptid))
+            ht = ht.annotate(Ensembl_transcriptid=ht.Ensembl_transcriptid.split(";"))
 
-    logger.info(f"Checkpointing dbNSFP table to {output_path}")
-    ht = ht.checkpoint(output=output_path, overwrite=overwrite)
+            row_fields_list = list(get_row_fields(ht))
+            score_fields = [
+                f for f in row_fields_list if f.endswith("_score") or f == "CADD_phred"
+            ]
+
+            def _to_float_array(s):
+                s_def = hl.or_else(s, "")
+                arr = s_def.split(";")
+                return hl.map(hl.parse_float, arr)
+
+            def _single_to_dict(val):
+                return hl.dict(
+                    hl.zip(
+                        ht.Ensembl_transcriptid,
+                        hl.map(
+                            lambda _x: hl.parse_float(val), ht.Ensembl_transcriptid
+                        ),
+                    )
+                )
+
+            ann = {}
+            for f in score_fields:
+                is_multi = hl.is_defined(ht[f]) & ht[f].contains(";")
+                ann[f] = hl.if_else(
+                    is_multi,
+                    hl.dict(hl.zip(ht.Ensembl_transcriptid, _to_float_array(ht[f]))),
+                    _single_to_dict(ht[f]),
+                )
+            if ann:
+                ht = ht.annotate(**ann)
+
+        # Group common prefixes into structs
+        prefixes = group_prefixes or [
+            "gnomAD",
+            "ExAC",
+            "1000Gp3",
+            "ESP6500",
+            "clinvar",
+        ]
+        for prefix in prefixes:
+            row_fields_list = list(get_row_fields(ht))
+            pref_fields = [
+                f for f in row_fields_list if f != prefix and f.startswith(prefix)
+            ]
+            if pref_fields:
+                logger.info(
+                    f"Grouping {prefix}* fields into struct '{prefix}' ({len(pref_fields)} fields)"
+                )
+                ht = ht.annotate(
+                    **{prefix: hl.struct(**{f: ht[f] for f in pref_fields})}
+                )
+                ht = ht.drop(*pref_fields)
+
+        return ht
+
+    dbnsfp_tb = _create_table_base(
+        source_name="dbNSFP",
+        input_path=input_path,
+        output_path=output_path,
+        import_func=lambda: hl.import_table(
+            paths=input_path,
+            min_partitions=min_partitions,
+            impute=False,
+            missing=".",
+            force_bgz=force_bgz,
+        ),
+        transform_func=transform,
+        overwrite=overwrite,
+        export_tsv=False,  # Handle custom export below
+    )
 
     if export_tsv:
         logger.info(f"Exporting flattened dbNSFP table to {output_path}.tsv.bgz")
-        ht.flatten().export(f"{output_path}.tsv.bgz")
+        dbnsfp_tb.flatten().export(f"{output_path}.tsv.bgz")
 
-    return ht
+    return dbnsfp_tb
