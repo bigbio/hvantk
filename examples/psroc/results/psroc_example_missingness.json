@@ -1,0 +1,46 @@
+{
+  "total_variants": 100,
+  "max_missingness_threshold": 0.3,
+  "scores_included": [
+    "CADD_phred",
+    "REVEL_score",
+    "MetaLR_score"
+  ],
+  "scores_excluded": [
+    "VEST4_score"
+  ],
+  "scores": {
+    "CADD_phred": {
+      "n_total": 90,
+      "n_present": 83,
+      "n_missing": 7,
+      "missingness_rate": 0.07777777777777778,
+      "included_in_analysis": true,
+      "exclusion_reason": null
+    },
+    "REVEL_score": {
+      "n_total": 90,
+      "n_present": 87,
+      "n_missing": 3,
+      "missingness_rate": 0.03333333333333333,
+      "included_in_analysis": true,
+      "exclusion_reason": null
+    },
+    "MetaLR_score": {
+      "n_total": 90,
+      "n_present": 81,
+      "n_missing": 9,
+      "missingness_rate": 0.1,
+      "included_in_analysis": true,
+      "exclusion_reason": null
+    },
+    "VEST4_score": {
+      "n_total": 90,
+      "n_present": 52,
+      "n_missing": 38,
+      "missingness_rate": 0.4222222222222222,
+      "included_in_analysis": false,
+      "exclusion_reason": "missingness_rate (0.42) exceeds max_missingness (0.30)"
+    }
+  }
+}
