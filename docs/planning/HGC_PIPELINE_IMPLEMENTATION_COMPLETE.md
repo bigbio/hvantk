@@ -136,21 +136,21 @@ from hvantk.hgc import PipelineConfig, PipelineRunner
 ## File Changes
 
 ### New Files Created
-1. `/Users/enrique/projects/github/pyvatk/hvantk/hgc/pipeline.py` (733 lines)
+1. `hvantk/hgc/pipeline.py` (733 lines)
    - Complete pipeline orchestration module
    
-2. `/Users/enrique/projects/github/pyvatk/docs/tools/hgc-pipeline.md` (418 lines)
+2. `docs/tools/hgc-pipeline.md` (418 lines)
    - Comprehensive user documentation
    
-3. `/Users/enrique/projects/github/pyvatk/hvantk/hgc/tests/test_pipeline.py` (286 lines)
+3. `hvantk/hgc/tests/test_pipeline.py` (286 lines)
    - Unit tests for pipeline functionality
 
 ### Modified Files
-1. `/Users/enrique/projects/github/pyvatk/hvantk/hgc/__init__.py`
+1. `hvantk/hgc/__init__.py`
    - Added pipeline module exports
    - Updated docstring
 
-2. `/Users/enrique/projects/github/pyvatk/hvantk/commands/hgc_cli.py`
+2. `hvantk/commands/hgc_cli.py`
    - Added `pipeline` command (158 lines)
    - Full integration with existing CLI structure
 
