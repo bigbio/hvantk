@@ -113,11 +113,12 @@ def compute_score_missingness(
     n_present = n_total - n_missing
     missingness_rate = n_missing / n_total if n_total > 0 else 0.0
 
-    included = missingness_rate <= max_missingness
+    # Scores with missingness >= threshold are excluded
+    included = missingness_rate < max_missingness
     exclusion_reason = None
     if not included:
         exclusion_reason = (
-            f"missingness_rate ({missingness_rate:.2f}) exceeds "
+            f"missingness_rate ({missingness_rate:.2f}) exceeds or equals "
             f"max_missingness ({max_missingness:.2f})"
         )
 
@@ -299,8 +300,11 @@ def compute_roc_metrics(
             valid_labels, valid_scores, pos_label=pos_label
         )
 
-        # Compute AUC
-        auc = roc_auc_score(valid_labels, valid_scores)
+        # Compute AUC - convert labels to binary (0/1) based on pos_label
+        # roc_auc_score doesn't support pos_label parameter, so we need to
+        # ensure labels are in binary format where 1 represents the positive class
+        binary_labels = (valid_labels == pos_label).astype(int)
+        auc = roc_auc_score(binary_labels, valid_scores)
 
         # Find optimal threshold
         optimal_threshold, sensitivity, specificity = find_optimal_threshold(
