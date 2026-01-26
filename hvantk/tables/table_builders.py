@@ -510,7 +510,7 @@ def create_dbnsfp_tb(
             def _to_float_array(s):
                 s_def = hl.or_else(s, "")
                 arr = s_def.split(";")
-                return hl.map(lambda x: hl.parse_float(x), arr)
+                return hl.map(hl.parse_float, arr)
 
             def _single_to_dict(val):
                 return hl.dict(
