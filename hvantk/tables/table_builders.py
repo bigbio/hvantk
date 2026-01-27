@@ -12,7 +12,12 @@ from hvantk.utils.table_utils import get_row_fields
 
 logger = logging.getLogger(__name__)
 
-from hvantk.core.constants import ENSEMBL_BIOMART_FIELDS
+from hvantk.core.constants import (
+    ENSEMBL_BIOMART_FIELDS,
+    CLINGEN_GENE_DISEASE_FIELDS,
+    CLINGEN_CLASSIFICATION_LEVELS,
+    CLINGEN_HEADER_SKIP_LINES,
+)
 from hvantk.utils.genome import contig_recoding  # correct module import
 
 
@@ -88,6 +93,7 @@ __all__ = [
     "create_gevir_tb",
     "create_ensembl_gene_tb",
     "create_dbnsfp_tb",
+    "create_clingen_gene_disease_tb",
 ]
 
 
@@ -578,3 +584,206 @@ def create_dbnsfp_tb(
         dbnsfp_tb.flatten().export(f"{output_path}.tsv.bgz")
 
     return dbnsfp_tb
+
+
+def create_clingen_gene_disease_tb(
+    input_path: str,
+    output_path: str,
+    key_by: str = "gene_disease",
+    min_classification: Optional[str] = None,
+    fields: Optional[List[str]] = None,
+    overwrite: bool = False,
+    export_tsv: bool = False,
+) -> "hl.Table":
+    """
+    Create a Hail Table from a ClinGen Gene-Disease Validity CSV file.
+
+    ClinGen provides curated gene-disease associations with evidence-based
+    classifications (Definitive, Strong, Moderate, Limited, etc.).
+
+    Example usage:
+        # Default: keyed by (hgnc_id, mondo_id)
+        ht = create_clingen_gene_disease_tb(
+            input_path="/path/to/clingen.csv",
+            output_path="/path/to/output.ht"
+        )
+
+        # Gene-level aggregation (for joining with other gene tables)
+        ht = create_clingen_gene_disease_tb(
+            input_path="/path/to/clingen.csv",
+            output_path="/path/to/output.ht",
+            key_by="gene",
+            min_classification="Moderate"
+        )
+
+    Parameters
+    ----------
+    input_path : str
+        Path to the ClinGen Gene-Disease Validity CSV file.
+    output_path : str
+        Path to write the output Hail Table.
+    key_by : str, optional
+        Keying strategy:
+        - "gene_disease" (default): Key by (hgnc_id, mondo_id) - preserves full granularity
+        - "gene": Aggregate diseases per gene, key by hgnc_id
+    min_classification : str, optional
+        Filter to classifications at or above this level. Valid values:
+        "Definitive", "Strong", "Moderate", "Limited", "Disputed", "Refuted".
+        If None, includes all classifications (default: None).
+    fields : list of str, optional
+        List of fields to select from the table (default: None, keeps all).
+    overwrite : bool, optional
+        Whether to overwrite the output file if it exists (default: False).
+    export_tsv : bool, optional
+        If True, also export a TSV version (default: False).
+
+    Returns
+    -------
+    hl.Table
+        Hail Table with ClinGen gene-disease validity annotations.
+
+    Notes
+    -----
+    The ClinGen CSV file has a 6-line metadata header that is skipped during import.
+
+    Classification hierarchy (from strongest to weakest):
+    1. Definitive
+    2. Strong
+    3. Moderate
+    4. Limited
+    5. Disputed
+    6. Refuted
+    7. No Known Disease Relationship
+
+    When key_by="gene", diseases are aggregated per gene with fields:
+    - disease_labels: set of disease labels
+    - mondo_ids: set of MONDO IDs
+    - classifications: set of classification levels
+    - max_classification_level: numeric level of highest classification
+    - max_classification_label: label of highest classification
+    - n_diseases: count of associated diseases
+    """
+    import tempfile
+    import os
+
+    if key_by not in ("gene_disease", "gene"):
+        raise ValueError(f"key_by must be 'gene_disease' or 'gene', got: {key_by}")
+
+    if min_classification is not None and min_classification not in CLINGEN_CLASSIFICATION_LEVELS:
+        raise ValueError(
+            f"min_classification must be one of {CLINGEN_CLASSIFICATION_LEVELS}, "
+            f"got: {min_classification}"
+        )
+
+    # Preprocess CSV to skip header lines
+    # ClinGen files have 6 metadata lines before the actual header
+    logger.info(f"Preprocessing ClinGen CSV to skip {CLINGEN_HEADER_SKIP_LINES} header lines")
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as tmp_file:
+        tmp_path = tmp_file.name
+        try:
+            with open(input_path, "r") as f:
+                for i, line in enumerate(f):
+                    if i >= CLINGEN_HEADER_SKIP_LINES:
+                        tmp_file.write(line)
+        except Exception as e:
+            os.unlink(tmp_path)
+            raise RuntimeError(f"Failed to preprocess ClinGen CSV: {e}") from e
+
+    try:
+        def import_func():
+            return hl.import_table(
+                paths=tmp_path,
+                delimiter=",",
+                quote='"',
+                impute=False,
+                min_partitions=10,
+            )
+
+        def transform(ht: hl.Table) -> hl.Table:
+            # Rename fields to standardized names
+            logger.info("Renaming fields to standardized names")
+            rename_map = {k: v for k, v in CLINGEN_GENE_DISEASE_FIELDS.items()
+                         if k in get_row_fields(ht)}
+            ht = ht.rename(rename_map)
+
+            # Clean HGNC ID (strip "HGNC:" prefix)
+            row_fields = get_row_fields(ht)
+            if "hgnc_id" in row_fields:
+                ht = ht.annotate(
+                    hgnc_id=hl.if_else(
+                        ht.hgnc_id.startswith("HGNC:"),
+                        ht.hgnc_id.replace("HGNC:", ""),
+                        ht.hgnc_id,
+                    )
+                )
+
+            # Clean MONDO ID (strip "MONDO:" prefix if present)
+            if "mondo_id" in row_fields:
+                ht = ht.annotate(
+                    mondo_id=hl.if_else(
+                        ht.mondo_id.startswith("MONDO:"),
+                        ht.mondo_id.replace("MONDO:", ""),
+                        ht.mondo_id,
+                    )
+                )
+
+            # Add classification level as numeric for filtering/sorting
+            classification_order = {
+                level: i for i, level in enumerate(CLINGEN_CLASSIFICATION_LEVELS)
+            }
+            ht = ht.annotate(
+                classification_level=hl.literal(classification_order).get(
+                    ht.classification, hl.len(CLINGEN_CLASSIFICATION_LEVELS)
+                )
+            )
+
+            # Apply min_classification filter if specified
+            if min_classification is not None:
+                min_level = classification_order[min_classification]
+                logger.info(f"Filtering to classifications >= {min_classification} (level {min_level})")
+                ht = ht.filter(ht.classification_level <= min_level)
+
+            # Apply keying strategy
+            if key_by == "gene_disease":
+                logger.info("Keying by (hgnc_id, mondo_id)")
+                ht = ht.key_by("hgnc_id", "mondo_id")
+            else:  # key_by == "gene"
+                logger.info("Aggregating by gene (hgnc_id)")
+                ht = (
+                    ht.group_by("hgnc_id", "gene_symbol")
+                    .aggregate(
+                        disease_labels=hl.agg.collect_as_set(ht.disease_label),
+                        mondo_ids=hl.agg.collect_as_set(ht.mondo_id),
+                        classifications=hl.agg.collect_as_set(ht.classification),
+                        modes_of_inheritance=hl.agg.collect_as_set(ht.mode_of_inheritance),
+                        max_classification_level=hl.agg.min(ht.classification_level),
+                        n_diseases=hl.agg.count(),
+                    )
+                    .key_by("hgnc_id")
+                )
+                # Add max classification label
+                classification_labels = hl.literal(CLINGEN_CLASSIFICATION_LEVELS)
+                ht = ht.annotate(
+                    max_classification_label=classification_labels[ht.max_classification_level]
+                )
+
+            return ht
+
+        clingen_tb = _create_table_base(
+            source_name="ClinGen Gene-Disease Validity",
+            input_path=input_path,
+            output_path=output_path,
+            import_func=import_func,
+            transform_func=transform,
+            fields=fields,
+            overwrite=overwrite,
+            export_tsv=export_tsv,
+        )
+
+        return clingen_tb
+
+    finally:
+        # Clean up temp file
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
