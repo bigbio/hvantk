@@ -59,6 +59,12 @@ def _create_dbnsfp_tb(*args, **kwargs):
     return create_dbnsfp_tb(*args, **kwargs)
 
 
+def _create_clingen_gene_disease_tb(*args, **kwargs):
+    from hvantk.tables.table_builders import create_clingen_gene_disease_tb
+
+    return create_clingen_gene_disease_tb(*args, **kwargs)
+
+
 @click.group("mktable", context_settings=CONTEXT_SETTINGS)
 def mktable_group():
     """Create a single annotation Table/MatrixTable from a raw input file."""
@@ -286,3 +292,56 @@ def mktable_dbnsfp(
         group_prefixes=prefixes,
     )
     click.echo(f"dbNSFP table created at {output_ht}")
+
+
+@mktable_group.command("clingen-gene-disease")
+@_raw_input_opt
+@_output_ht_opt
+@_overwrite_opt
+@_export_tsv_opt
+@click.option(
+    "--key-by",
+    type=click.Choice(["gene_disease", "gene"], case_sensitive=False),
+    default="gene_disease",
+    show_default=True,
+    help="Keying strategy: 'gene_disease' (hgnc_id, mondo_id) or 'gene' (aggregated by hgnc_id)",
+)
+@click.option(
+    "--min-classification",
+    type=click.Choice(
+        ["Definitive", "Strong", "Moderate", "Limited", "Disputed", "Refuted"],
+        case_sensitive=True,
+    ),
+    default=None,
+    help="Filter to classifications at or above this level",
+)
+@click.option(
+    "--fields",
+    type=str,
+    default=None,
+    help="Comma-separated list of fields to retain (optional)",
+)
+def mktable_clingen_gene_disease(
+    raw_input: str,
+    output_ht: str,
+    overwrite: bool,
+    export_tsv: bool,
+    key_by: str,
+    min_classification: Optional[str],
+    fields: Optional[str],
+):
+    """Build a ClinGen Gene-Disease Validity Table from a CSV (keyed by gene or gene-disease)."""
+    selected: Optional[List[str]] = (
+        [f.strip() for f in fields.split(",")] if fields else None
+    )
+    logger.info("Building ClinGen Gene-Disease table")
+    _create_clingen_gene_disease_tb(
+        input_path=raw_input,
+        output_path=output_ht,
+        key_by=key_by.lower(),
+        min_classification=min_classification,
+        fields=selected,
+        overwrite=overwrite,
+        export_tsv=export_tsv,
+    )
+    click.echo(f"ClinGen Gene-Disease table created at {output_ht}")

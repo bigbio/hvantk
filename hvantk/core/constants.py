@@ -59,6 +59,37 @@ logger.debug(f"Registry root path: {REGISTRY_ROOT_PATH}")
 logger.debug(f"Transcriptomics datasets path: {TRANSCRIPTOMICS_DATASETS_PATH}")
 logger.debug(f"Legacy Expression Atlas path: {EXPRESSION_ATLAS_JSON_FILE_PATH}")
 
+# ClinGen Gene-Disease Validity
+CLINGEN_DOWNLOADS_URL = "https://search.clinicalgenome.org/kb/downloads"
+CLINGEN_BASE_URL = "https://search.clinicalgenome.org/kb/gene-validity/download"
+CLINGEN_FILE_PREFIX = "Clingen-Gene-Disease-Summary"
+CLINGEN_HEADER_SKIP_LINES = 6
+
+CLINGEN_GENE_DISEASE_FIELDS = {
+    "GENE SYMBOL": "gene_symbol",
+    "GENE ID (HGNC)": "hgnc_id",
+    "DISEASE LABEL": "disease_label",
+    "DISEASE ID (MONDO)": "mondo_id",
+    "MOI": "mode_of_inheritance",
+    "SOP": "sop_version",
+    "CLASSIFICATION": "classification",
+    "ONLINE REPORT": "report_url",
+    "CLASSIFICATION DATE": "classification_date",
+    "GCEP": "gene_curation_expert_panel",
+}
+
+CLINGEN_CLASSIFICATION_LEVELS = [
+    "Definitive",
+    "Strong",
+    "Moderate",
+    "Limited",
+    "Disputed",
+    "Refuted",
+    "No Known Disease Relationship",
+]
+
+logger.debug(f"ClinGen base URL: {CLINGEN_BASE_URL}")
+
 # Explicit public API for this module
 __all__ = [
     "BASE_DIR",
@@ -73,4 +104,10 @@ __all__ = [
     "REGISTRY_ROOT_PATH",
     "TRANSCRIPTOMICS_DATASETS_PATH",
     "EXPRESSION_ATLAS_JSON_FILE_PATH",  # Backward compatibility
+    "CLINGEN_DOWNLOADS_URL",
+    "CLINGEN_BASE_URL",
+    "CLINGEN_FILE_PREFIX",
+    "CLINGEN_HEADER_SKIP_LINES",
+    "CLINGEN_GENE_DISEASE_FIELDS",
+    "CLINGEN_CLASSIFICATION_LEVELS",
 ]
