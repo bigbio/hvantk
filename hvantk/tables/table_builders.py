@@ -7,6 +7,7 @@ This module provides builder functions that convert raw annotation sources
 
 import hail as hl
 import logging
+import uuid
 from typing import Optional, List, Callable
 from hvantk.utils.table_utils import get_row_fields
 
@@ -675,20 +676,33 @@ def create_clingen_gene_disease_tb(
             f"got: {min_classification}"
         )
 
-    # Preprocess CSV to skip header lines
+    # Preprocess CSV to skip header lines using Hadoop filesystem API
     # ClinGen files have 6 metadata lines before the actual header
+    # Use Hadoop API to support cloud URIs (gs://, s3://) and distributed Spark clusters
     logger.info(f"Preprocessing ClinGen CSV to skip {CLINGEN_HEADER_SKIP_LINES} header lines")
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as tmp_file:
-        tmp_path = tmp_file.name
+    # Create a Hadoop-accessible temp path (visible to all executors)
+    tmp_path = f"/tmp/clingen_preprocessed_{uuid.uuid4().hex}.csv"
+    try:
+        # Read input using Hadoop filesystem (supports local and remote URIs)
+        with hl.hadoop_open(input_path, "r") as f:
+            lines = f.readlines()
+
+        # Write preprocessed file to Hadoop-accessible location
+        with hl.hadoop_open(tmp_path, "w") as out:
+            for i, line in enumerate(lines):
+                if i >= CLINGEN_HEADER_SKIP_LINES:
+                    out.write(line)
+
+        logger.info(f"Preprocessed file written to {tmp_path}")
+
+    except Exception as e:
+        # Clean up temp file if preprocessing fails
         try:
-            with open(input_path, "r") as f:
-                for i, line in enumerate(f):
-                    if i >= CLINGEN_HEADER_SKIP_LINES:
-                        tmp_file.write(line)
-        except Exception as e:
-            os.unlink(tmp_path)
-            raise RuntimeError(f"Failed to preprocess ClinGen CSV: {e}") from e
+            hl.hadoop_remove(tmp_path)
+        except Exception:
+            pass
+        raise RuntimeError(f"Failed to preprocess ClinGen CSV: {e}") from e
 
     try:
         def import_func():
@@ -762,11 +776,14 @@ def create_clingen_gene_disease_tb(
                     )
                     .key_by("hgnc_id")
                 )
-                # Add max classification label
+                # Add max classification label with safe index clamping
+                # max_classification_level can be len(CLINGEN_CLASSIFICATION_LEVELS) for
+                # unknown classifications, so we clamp to valid index range
                 classification_labels = hl.literal(CLINGEN_CLASSIFICATION_LEVELS)
-                ht = ht.annotate(
-                    max_classification_label=classification_labels[ht.max_classification_level]
+                safe_index = hl.min(
+                    ht.max_classification_level, hl.len(classification_labels) - 1
                 )
+                ht = ht.annotate(max_classification_label=classification_labels[safe_index])
 
             return ht
 
@@ -784,6 +801,9 @@ def create_clingen_gene_disease_tb(
         return clingen_tb
 
     finally:
-        # Clean up temp file
-        if os.path.exists(tmp_path):
-            os.unlink(tmp_path)
+        # Clean up temp file using Hadoop filesystem API
+        try:
+            hl.hadoop_remove(tmp_path)
+            logger.info(f"Cleaned up temp file: {tmp_path}")
+        except Exception as e:
+            logger.warning(f"Failed to clean up temp file {tmp_path}: {e}")
