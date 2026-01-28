@@ -68,6 +68,29 @@ hvantk psroc \
 
 📖 **[PSROC Documentation](docs/tools/psroc.md)** | **[Example](examples/psroc/)**
 
+### EnrichEx: Gene Set Enrichment
+
+Test gene set enrichment using overlap analysis (Fisher's exact test) and case-control burden testing (rare variant regression).
+
+```bash
+# Overlap enrichment - test if GWAS genes are enriched in cell types
+hvantk enrichex overlap \
+  -g gwas_genes.txt \
+  -s gene_sets.json \
+  -o overlap_results.tsv \
+  --generate-report
+
+# Burden testing - test if cases have excess rare variants
+hvantk enrichex burden \
+  -m cohort.mt \
+  -p phenotypes.ht \
+  -s gene_sets.json \
+  -o burden_results.tsv \
+  --generate-report
+```
+
+📖 **[EnrichEx Documentation](docs/tools/enrichex.md)** | **[Example](examples/enrichex/)**
+
 ### Annotation Tables
 
 Create Hail Tables from public databases (ClinVar, gnomAD, Ensembl).
@@ -125,6 +148,7 @@ hvantk mktable-batch --recipe recipe.json
 - **[Usage Guide](docs/library/usage.md)** - Examples and recipes
 - **[HGC Tool](docs/tools/hgc.md)** - Joint genotyping pipeline
 - **[PSROC Tool](docs/tools/psroc.md)** - Variant score evaluation
+- **[EnrichEx Tool](docs/tools/enrichex.md)** - Gene set enrichment analysis
 - **[Data Sources](docs/library/annotation-sources.md)** - Available annotations
 - **[Architecture](docs/ARCHITECTURE.md)** - Design and extension points
 - **[Full Index](docs/README.md)** - Complete documentation
