@@ -36,6 +36,7 @@ try:
 except (
     ModuleNotFoundError
 ) as exc:  # pragma: no cover - depends on optional Hail install
+    _exc = exc
     logger.warning(
         "Hail-dependent EnrichEx burden methods unavailable: %s. "
         "Install hvantk with the required extras to enable them.",
@@ -46,7 +47,7 @@ except (
         raise ImportError(
             "Burden analysis requires the optional Hail dependency. "
             "Install hvantk with the 'hail' requirements."
-        ) from exc
+        ) from _exc
 
     VariantFilter = None  # type: ignore[assignment]
     compute_geneset_burden_mt = _missing_dependency  # type: ignore[assignment]
