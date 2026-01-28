@@ -146,9 +146,17 @@ def plot_enrichment_dotplot(
         )
         cbar_label = color_config.get("label") or color_by.replace("_", " ").title()
         # Position colorbar vertically on the right side (upper portion)
-        cbar = fig.colorbar(scatter, ax=ax, label=cbar_label, orientation="vertical",
-                           pad=0.02, aspect=15, shrink=0.5, anchor=(0.0, 1.0))
-        cbar.ax.yaxis.set_label_position('right')
+        cbar = fig.colorbar(
+            scatter,
+            ax=ax,
+            label=cbar_label,
+            orientation="vertical",
+            pad=0.02,
+            aspect=15,
+            shrink=0.5,
+            anchor=(0.0, 1.0),
+        )
+        cbar.ax.yaxis.set_label_position("right")
     else:
         scatter = ax.scatter(
             df["plot_order"],
@@ -351,7 +359,9 @@ def plot_burden_forest(
     ax.set_xlabel(
         xlabel
         or (
-            "Odds Ratio (log scale)" if phenotype_type == "binary" and log_scale else "Effect Size"
+            "Odds Ratio (log scale)"
+            if phenotype_type == "binary" and log_scale
+            else "Effect Size"
         )
     )
     ax.set_title(title or "Burden Forest Plot")
@@ -699,5 +709,9 @@ def _apply_custom_colors(
 
 def _format_color_label(color_by: str, value: Any, alpha_threshold: float) -> str:
     if color_by == "significant":
-        return f"Significant (p < {alpha_threshold:g})" if bool(value) else "Not significant"
+        return (
+            f"Significant (p < {alpha_threshold:g})"
+            if bool(value)
+            else "Not significant"
+        )
     return str(value)

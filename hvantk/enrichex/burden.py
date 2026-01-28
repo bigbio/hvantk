@@ -262,13 +262,10 @@ def compute_geneset_burden_mt(
 
     # STEP 1: Aggregate variants → genes per sample
     logger.info("Step 1: Aggregating variants to genes per sample...")
-    mt_genes = (
-        mt.group_rows_by(mt[gene_field])
-        .aggregate(
-            hets=hl.agg.count_where(mt.GT.is_het()),
-            homs=hl.agg.count_where(mt.GT.is_hom_var()),
-            chets=hl.agg.count_where(mt.GT.is_het()) >= 2,
-        )
+    mt_genes = mt.group_rows_by(mt[gene_field]).aggregate(
+        hets=hl.agg.count_where(mt.GT.is_het()),
+        homs=hl.agg.count_where(mt.GT.is_hom_var()),
+        chets=hl.agg.count_where(mt.GT.is_het()) >= 2,
     )
 
     # Re-annotate with gene set membership (lost in grouping)
@@ -297,10 +294,8 @@ def compute_geneset_burden_mt(
             hl.agg.sum(hl.if_else(mt_genes.chets | (mt_genes.homs > 0), 1, 0))
         )
 
-    mt_burden = (
-        mt_genes.group_rows_by(gene_set_name=mt_genes.gene_set_ids).aggregate(
-            burden=agg_expr
-        )
+    mt_burden = mt_genes.group_rows_by(gene_set_name=mt_genes.gene_set_ids).aggregate(
+        burden=agg_expr
     )
 
     n_gene_sets_final = mt_burden.count_rows()

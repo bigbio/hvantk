@@ -32,12 +32,13 @@ from hvantk.psroc.roc import (
     compute_all_missingness,
 )
 
-
 # Test data paths
 TEST_DATA_DIR = Path(__file__).parent.parent / "testdata"
 PSROC_TEST_DATA = TEST_DATA_DIR / "psroc"
 CLINVAR_TEST_DATA = TEST_DATA_DIR / "raw" / "clinvar" / "clinvar_20220403_chr20.vcf.bgz"
-DBNSFP_TEST_DATA = TEST_DATA_DIR / "raw" / "dbnsfp" / "dbNSFP4_v49a_example_variants.bgz"
+DBNSFP_TEST_DATA = (
+    TEST_DATA_DIR / "raw" / "dbnsfp" / "dbNSFP4_v49a_example_variants.bgz"
+)
 GOLDEN_VARIANTS = PSROC_TEST_DATA / "golden_variants.txt"
 
 
@@ -51,10 +52,12 @@ class TestGoldenDatasets:
 
         # Create perfect separator: benign scores < pathogenic scores
         scores = {
-            "perfect_score": np.concatenate([
-                np.linspace(0.0, 0.4, 50),   # Benign: 0.0-0.4
-                np.linspace(0.6, 1.0, 50),   # Pathogenic: 0.6-1.0
-            ])
+            "perfect_score": np.concatenate(
+                [
+                    np.linspace(0.0, 0.4, 50),  # Benign: 0.0-0.4
+                    np.linspace(0.6, 1.0, 50),  # Pathogenic: 0.6-1.0
+                ]
+            )
         }
 
         results = compute_roc_metrics(labels, scores)
@@ -86,7 +89,11 @@ class TestGoldenDatasets:
         # Benign: mean=0.3, Pathogenic: mean=0.7
         benign_scores = np.random.normal(0.3, 0.15, n // 2)
         patho_scores = np.random.normal(0.7, 0.15, n // 2)
-        scores = {"moderate_score": np.clip(np.concatenate([benign_scores, patho_scores]), 0, 1)}
+        scores = {
+            "moderate_score": np.clip(
+                np.concatenate([benign_scores, patho_scores]), 0, 1
+            )
+        }
 
         results = compute_roc_metrics(labels, scores)
 
@@ -99,21 +106,29 @@ class TestGoldenDatasets:
 
         # Score with exactly 30% missing (should be excluded at 0.3 threshold)
         scores_at_threshold = {
-            "score_30pct": np.array([0.1, 0.2, np.nan, np.nan, np.nan, 0.6, 0.7, 0.8, 0.9, 1.0])
+            "score_30pct": np.array(
+                [0.1, 0.2, np.nan, np.nan, np.nan, 0.6, 0.7, 0.8, 0.9, 1.0]
+            )
         }
 
         # Score with exactly 30% missing should be excluded (>= threshold)
         # This should raise ValueError because all scores are excluded
-        with pytest.raises(ValueError, match="All scores were excluded due to high missingness"):
+        with pytest.raises(
+            ValueError, match="All scores were excluded due to high missingness"
+        ):
             compute_roc_metrics(labels, scores_at_threshold, max_missingness=0.3)
 
         # Score with 20% missing (should be included, below 30% threshold)
         scores_below_threshold = {
-            "score_20pct": np.array([0.1, 0.2, 0.3, np.nan, np.nan, 0.6, 0.7, 0.8, 0.9, 1.0])
+            "score_20pct": np.array(
+                [0.1, 0.2, 0.3, np.nan, np.nan, 0.6, 0.7, 0.8, 0.9, 1.0]
+            )
         }
 
         # This has 2/10 = 20% missing, which should be included
-        results_below = compute_roc_metrics(labels, scores_below_threshold, max_missingness=0.3)
+        results_below = compute_roc_metrics(
+            labels, scores_below_threshold, max_missingness=0.3
+        )
         assert "score_20pct" in results_below
 
 
@@ -124,7 +139,6 @@ class TestPipelineOutputArtifacts:
         """Test that output directory structure is created correctly."""
         with tempfile.TemporaryDirectory() as tmpdir:
             output_dir = Path(tmpdir) / "psroc_output"
-
 
             # Simulate directory creation
             output_dir.mkdir(parents=True, exist_ok=True)
@@ -369,8 +383,8 @@ class TestResultSummary:
         summary = result.summary()
 
         assert "100" in summary  # n_total
-        assert "50" in summary   # n_pathogenic
-        assert "45" in summary   # n_benign
+        assert "50" in summary  # n_pathogenic
+        assert "45" in summary  # n_benign
         assert "CADD_phred" in summary
         assert "0.850" in summary  # AUC
         assert "REVEL_score" in summary  # excluded score
@@ -467,6 +481,7 @@ class TestHailIntegration:
     def hail_session(self):
         """Initialize Hail for tests."""
         import hail as hl
+
         if not hl.spark_context():
             hl.init(quiet=True)
         yield
@@ -476,7 +491,6 @@ class TestHailIntegration:
         """Test that ClinVar test data can be loaded."""
         if not CLINVAR_TEST_DATA.exists():
             pytest.skip(f"Test data not found: {CLINVAR_TEST_DATA}")
-
 
         # Just verify we can read the VCF header
         # Full table building would be too slow for a unit test

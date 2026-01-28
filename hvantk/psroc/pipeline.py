@@ -442,7 +442,8 @@ class PSROCPipeline:
         errors = config.validate()
         if errors:
             raise ValueError(
-                "Configuration validation failed:\n" + "\n".join(f"  - {e}" for e in errors)
+                "Configuration validation failed:\n"
+                + "\n".join(f"  - {e}" for e in errors)
             )
 
         self.state = PSROCState(config=config)
@@ -491,6 +492,7 @@ class PSROCPipeline:
             logger.info("Hail already initialized")
         except Exception:
             from hvantk.core.hail_context import init_hail
+
             init_hail()
             logger.info("Hail initialized via hvantk")
 
@@ -659,8 +661,7 @@ class PSROCPipeline:
         if "info" in ht.row and "GENEINFO" in ht.info:
             ht = ht.annotate(
                 gene=hl.if_else(
-                    hl.is_defined(ht.info.GENEINFO)
-                    & (hl.len(ht.info.GENEINFO) > 0),
+                    hl.is_defined(ht.info.GENEINFO) & (hl.len(ht.info.GENEINFO) > 0),
                     ht.info.GENEINFO[0].split(":")[0],
                     hl.missing(hl.tstr),
                 )
@@ -706,9 +707,7 @@ class PSROCPipeline:
             raise ValueError(f"No valid variants found in {variants_path}")
 
         # Create a set of variant strings for filtering
-        variant_set = {
-            f"{v[0]}:{v[1]}:{v[2]}:{v[3]}" for v in variant_keys
-        }
+        variant_set = {f"{v[0]}:{v[1]}:{v[2]}:{v[3]}" for v in variant_keys}
         variant_literal = hl.literal(variant_set)
 
         # Create variant key expression
@@ -753,7 +752,9 @@ class PSROCPipeline:
         logger.info("🔄 [3/7] Assigning binary labels (Pathogenic/Benign)...")
 
         if self._labeled_ht is None:
-            raise RuntimeError("ClinVar variants not filtered. Run _filter_clinvar first.")
+            raise RuntimeError(
+                "ClinVar variants not filtered. Run _filter_clinvar first."
+            )
 
         ht = self._labeled_ht
 
@@ -779,7 +780,9 @@ class PSROCPipeline:
         if self.config.min_stars <= 0:
             ht = ht.filter(ht.label != "Uncertain/Conflicting")
 
-        logger.info(f"   ✓ Assigned labels: {ht.aggregate(hl.count_distinct(ht.label))} classes")
+        logger.info(
+            f"   ✓ Assigned labels: {ht.aggregate(hl.count_distinct(ht.label))} classes"
+        )
 
         # Update instance variable so downstream stages see the labeled table
         self._labeled_ht = ht
@@ -790,7 +793,9 @@ class PSROCPipeline:
         logger.info("🔄 [4/7] Annotating with dbNSFP scores...")
 
         if self._labeled_ht is None:
-            raise RuntimeError("ClinVar variants not labeled. Run _assign_labels first.")
+            raise RuntimeError(
+                "ClinVar variants not labeled. Run _assign_labels first."
+            )
 
         if self._dbnsfp_ht is None:
             raise RuntimeError("dbNSFP table not loaded. Run _load_tables first.")
@@ -798,9 +803,7 @@ class PSROCPipeline:
         ht = self._labeled_ht
 
         # Join with dbNSFP scores
-        ht = ht.key_by("variant").join(
-            self._dbnsfp_ht.key_by("variant"), how="left"
-        )
+        ht = ht.key_by("variant").join(self._dbnsfp_ht.key_by("variant"), how="left")
 
         # Keep only relevant score fields
         score_fields = [f for f in ht.row if f.startswith("dbnsfp.")]
@@ -842,17 +845,25 @@ class PSROCPipeline:
                     missingness_rate=missingness_rate,
                     included_in_analysis=included_in_analysis,
                     exclusion_reason=(
-                        f"missingness_rate ({missingness_rate:.2f}) exceeds "
-                        f"max_missingness ({self.config.max_missingness:.2f})"
-                    ) if not included_in_analysis else None,
+                        (
+                            f"missingness_rate ({missingness_rate:.2f}) exceeds "
+                            f"max_missingness ({self.config.max_missingness:.2f})"
+                        )
+                        if not included_in_analysis
+                        else None
+                    ),
                 )
 
         # Filter out scores exceeding the missingness threshold
         filtered_scores = {
-            k: v for k, v in missingness_results.items() if v.missingness_rate <= self.config.max_missingness
+            k: v
+            for k, v in missingness_results.items()
+            if v.missingness_rate <= self.config.max_missingness
         }
 
-        logger.info(f"   ✓ Computed missingness statistics for {len(missingness_results)} scores")
+        logger.info(
+            f"   ✓ Computed missingness statistics for {len(missingness_results)} scores"
+        )
         logger.info(f"   ✓ Scores passed missingness filter: {len(filtered_scores)}")
 
         self.state.outputs["missingness"] = filtered_scores
@@ -873,8 +884,10 @@ class PSROCPipeline:
 
         # Get score fields (only those that passed missingness threshold)
         score_fields = [
-            f for f in ht.row
-            if f.startswith("dbnsfp.") and f in self.state.outputs.get("missingness", {})
+            f
+            for f in ht.row
+            if f.startswith("dbnsfp.")
+            and f in self.state.outputs.get("missingness", {})
         ]
 
         if not score_fields:
@@ -925,7 +938,9 @@ class PSROCPipeline:
 
         # Export annotated variants to TSV if requested
         if self.config.export_tsv:
-            logger.info(f"   Exporting annotated variants to TSV: {self.paths['annotated_tsv']}")
+            logger.info(
+                f"   Exporting annotated variants to TSV: {self.paths['annotated_tsv']}"
+            )
             ht.export(self.paths["annotated_tsv"])
 
         # Write the annotated Hail Table to disk
@@ -944,8 +959,12 @@ class PSROCPipeline:
             n_benign=ht.filter(ht.label == "Benign").count(),
             n_excluded=ht.filter(ht.label == "Uncertain/Conflicting").count(),
             n_total=ht.count(),
-            scores_included=[s for s in ht.row if s.startswith("dbnsfp.") and s in missingness],
-            scores_excluded=[s for s in ht.row if s.startswith("dbnsfp.") and s not in missingness],
+            scores_included=[
+                s for s in ht.row if s.startswith("dbnsfp.") and s in missingness
+            ],
+            scores_excluded=[
+                s for s in ht.row if s.startswith("dbnsfp.") and s not in missingness
+            ],
             max_missingness_threshold=self.config.max_missingness,
             output_dir=self.config.output_dir,
         )
@@ -963,13 +982,16 @@ class PSROCPipeline:
         if self.config.generate_plots:
             self._generate_plots(result)
 
-        logger.info(f"   ✓ Output files and reports generated in: {self.config.output_dir}")
+        logger.info(
+            f"   ✓ Output files and reports generated in: {self.config.output_dir}"
+        )
 
         return result
 
     def _generate_plots(self, result: PSROCResult) -> None:
         """Generate visualization plots."""
         import matplotlib
+
         matplotlib.use("Agg")  # Non-interactive backend
 
         try:
@@ -989,11 +1011,15 @@ class PSROCPipeline:
                     result.metrics,
                     output_path=base_auc_path,
                 )
-                logger.info(f"   ✓ AUC comparison plot: {self.paths['auc_comparison_png']}")
+                logger.info(
+                    f"   ✓ AUC comparison plot: {self.paths['auc_comparison_png']}"
+                )
 
             # Missingness summary
             if result.missingness:
-                base_missingness_path = self.paths["missingness_png"].removesuffix(".png")
+                base_missingness_path = self.paths["missingness_png"].removesuffix(
+                    ".png"
+                )
                 plot_missingness_summary(
                     result.missingness,
                     output_path=base_missingness_path,
@@ -1014,4 +1040,3 @@ class PSROCPipeline:
 
         except Exception as e:
             logger.warning(f"   ⚠ Plot generation failed: {e}")
-

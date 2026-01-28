@@ -333,7 +333,9 @@ def psroc_cmd(
                     )
 
             if result.scores_excluded:
-                click.echo(f"\n  Scores excluded (high missingness): {len(result.scores_excluded)}")
+                click.echo(
+                    f"\n  Scores excluded (high missingness): {len(result.scores_excluded)}"
+                )
                 for name in result.scores_excluded:
                     miss = result.missingness[name]
                     click.echo(f"    {name}: {miss.missingness_rate:.1%} missing")

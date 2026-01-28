@@ -124,9 +124,7 @@ def register_burden_commands(group):
     show_default=True,
     help="Column name for sample ID in phenotype file (TSV only)",
 )
-@click.option(
-    "--dry-run", is_flag=True, help="Show execution plan without running"
-)
+@click.option("--dry-run", is_flag=True, help="Show execution plan without running")
 @click.option(
     "--generate-report",
     is_flag=True,
@@ -275,9 +273,7 @@ def burden_test(
         phenotype_ht = hl.read_table(phenotypes)
     else:
         # Import TSV and convert to Hail Table
-        phenotype_ht = hl.import_table(phenotypes, impute=True).key_by(
-            sample_id_field
-        )
+        phenotype_ht = hl.import_table(phenotypes, impute=True).key_by(sample_id_field)
     click.echo(f"  {phenotype_ht.count()} samples with phenotypes")
 
     click.echo(f"\nLoading gene sets: {gene_sets}")

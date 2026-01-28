@@ -4,7 +4,11 @@ Tests for overlap enrichment analysis.
 
 import pytest
 
-from hvantk.enrichex.gene_sets import GeneSet, GeneSetCollection, load_gene_sets_from_dict
+from hvantk.enrichex.gene_sets import (
+    GeneSet,
+    GeneSetCollection,
+    load_gene_sets_from_dict,
+)
 from hvantk.enrichex.overlap import (
     OverlapResult,
     compute_overlap_enrichment,
@@ -117,7 +121,9 @@ class TestComputeOverlapEnrichment:
         # Query genes not in any set
         query = ["X", "Y", "Z"]
 
-        results = compute_overlap_enrichment(query, collection, correction_method="none")
+        results = compute_overlap_enrichment(
+            query, collection, correction_method="none"
+        )
 
         # Should have results but no overlap
         assert len(results) == 2
@@ -158,9 +164,10 @@ class TestComputeOverlapEnrichment:
 
         # Bonferroni should be more conservative
         for r_bh, r_bonf in zip(results_bh, results_bonf):
-            assert r_bonf.p_adjusted >= r_bh.p_adjusted or abs(
-                r_bonf.p_adjusted - r_bh.p_adjusted
-            ) < 1e-10
+            assert (
+                r_bonf.p_adjusted >= r_bh.p_adjusted
+                or abs(r_bonf.p_adjusted - r_bh.p_adjusted) < 1e-10
+            )
 
     def test_results_sorted_by_pvalue(self, hail_session):
         """Test that results are sorted by p-value."""
@@ -177,7 +184,9 @@ class TestComputeOverlapEnrichment:
 
         query = ["A", "B", "C", "D", "E"]
 
-        results = compute_overlap_enrichment(query, collection, correction_method="none")
+        results = compute_overlap_enrichment(
+            query, collection, correction_method="none"
+        )
 
         # Results should be sorted by p-value (ascending)
         p_values = [r.p_value for r in results]
@@ -201,7 +210,9 @@ class TestComputeOverlapEnrichment:
         # Query includes gene not in background
         query = ["A", "B", "Z"]  # Z not in background
 
-        results = compute_overlap_enrichment(query, collection, correction_method="none")
+        results = compute_overlap_enrichment(
+            query, collection, correction_method="none"
+        )
 
         # Only A and B should be counted (2 genes, not 3)
         assert results[0].n_query == 2
@@ -216,7 +227,9 @@ class TestComputeOverlapEnrichment:
 
         query = []
 
-        results = compute_overlap_enrichment(query, collection, correction_method="none")
+        results = compute_overlap_enrichment(
+            query, collection, correction_method="none"
+        )
 
         # Should return empty results
         assert len(results) == 0
@@ -232,7 +245,9 @@ class TestComputeOverlapEnrichment:
         # Query genes not in background
         query = ["X", "Y", "Z"]
 
-        results = compute_overlap_enrichment(query, collection, correction_method="none")
+        results = compute_overlap_enrichment(
+            query, collection, correction_method="none"
+        )
 
         # Should return empty (warning logged)
         assert len(results) == 0
@@ -250,7 +265,9 @@ class TestComputeOverlapEnrichment:
 
         query = ["A", "B", "X", "Y"]
 
-        results = compute_overlap_enrichment(query, collection, correction_method="none")
+        results = compute_overlap_enrichment(
+            query, collection, correction_method="none"
+        )
 
         # Overlap should be A and B
         assert set(results[0].overlap_genes) == {"A", "B"}
@@ -386,8 +403,10 @@ class TestOverlapEnrichmentIntegration:
         }
 
         # Realistic background: ~50 genes
-        background = set(gene_sets_dict["T_cell"]) | set(gene_sets_dict["B_cell"]) | set(
-            gene_sets_dict["Macrophage"]
+        background = (
+            set(gene_sets_dict["T_cell"])
+            | set(gene_sets_dict["B_cell"])
+            | set(gene_sets_dict["Macrophage"])
         )
         background.update([f"GENE{i}" for i in range(40)])  # Add more genes
 

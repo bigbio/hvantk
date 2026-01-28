@@ -171,7 +171,9 @@ def main(output_dir: str = "/tmp/psroc_example") -> int:
         print()
 
     print("Data files:")
-    for data_file in sorted(results_dir.glob("*.json")) + sorted(results_dir.glob("*.tsv")):
+    for data_file in sorted(results_dir.glob("*.json")) + sorted(
+        results_dir.glob("*.tsv")
+    ):
         print(f"  - {data_file.name}")
 
     print()
@@ -179,7 +181,9 @@ def main(output_dir: str = "/tmp/psroc_example") -> int:
     print("PSROC Example Complete!")
     print("=" * 70)
     print()
-    print(f"View the dashboard plot: {results_dir / 'plots' / 'psroc_example_dashboard.png'}")
+    print(
+        f"View the dashboard plot: {results_dir / 'plots' / 'psroc_example_dashboard.png'}"
+    )
 
     return 0
 

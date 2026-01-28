@@ -215,7 +215,9 @@ class GeneSetCollection:
             data = json.load(f)
 
         collection = cls.from_dict(data)
-        logger.info(f"Loaded {len(collection)} gene sets with {len(collection.background_genes)} background genes")
+        logger.info(
+            f"Loaded {len(collection)} gene sets with {len(collection.background_genes)} background genes"
+        )
 
         return collection
 

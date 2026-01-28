@@ -228,9 +228,7 @@ class TestClinGenDownloaderCLI:
         """Test --overwrite flag is passed correctly."""
         runner = CliRunner()
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch.object(
-                ClinGenGeneDiseaseDataset, "download"
-            ) as mock_download:
+            with patch.object(ClinGenGeneDiseaseDataset, "download") as mock_download:
                 mock_download.return_value = os.path.join(tmpdir, "test.csv")
 
                 result = runner.invoke(

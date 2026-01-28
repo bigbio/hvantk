@@ -81,7 +81,9 @@ def generate_report(
         next to the HTML report.
     """
     if not overlap_results and not burden_results:
-        raise ValueError("At least one of overlap_results or burden_results is required.")
+        raise ValueError(
+            "At least one of overlap_results or burden_results is required."
+        )
 
     output_path = Path(output_path).expanduser()
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -97,30 +99,38 @@ def generate_report(
         "date": analysis_date or datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "analyst": analyst_name,
         "overview": _create_overview(overlap_df, burden_df),
-        "overlap_section": _create_overlap_section(
-            overlap_df,
-            top_n=top_n,
-            include_gene_lists=include_gene_lists,
-            embed_static_plots=embed_static_plots,
-            output_dir=output_path.parent,
-        )
-        if overlap_df is not None and not overlap_df.empty
-        else None,
-        "burden_section": _create_burden_section(
-            burden_df,
-            top_n=top_n,
-            embed_static_plots=embed_static_plots,
-            output_dir=output_path.parent,
-        )
-        if burden_df is not None and not burden_df.empty
-        else None,
-        "gene_sets_section": _create_gene_sets_section(gene_sets) if gene_sets else None,
-        "methods_section": _create_methods_section(
-            has_overlap=overlap_df is not None and not overlap_df.empty,
-            has_burden=burden_df is not None and not burden_df.empty,
-        )
-        if include_methods
-        else None,
+        "overlap_section": (
+            _create_overlap_section(
+                overlap_df,
+                top_n=top_n,
+                include_gene_lists=include_gene_lists,
+                embed_static_plots=embed_static_plots,
+                output_dir=output_path.parent,
+            )
+            if overlap_df is not None and not overlap_df.empty
+            else None
+        ),
+        "burden_section": (
+            _create_burden_section(
+                burden_df,
+                top_n=top_n,
+                embed_static_plots=embed_static_plots,
+                output_dir=output_path.parent,
+            )
+            if burden_df is not None and not burden_df.empty
+            else None
+        ),
+        "gene_sets_section": (
+            _create_gene_sets_section(gene_sets) if gene_sets else None
+        ),
+        "methods_section": (
+            _create_methods_section(
+                has_overlap=overlap_df is not None and not overlap_df.empty,
+                has_burden=burden_df is not None and not burden_df.empty,
+            )
+            if include_methods
+            else None
+        ),
     }
 
     html_output = _render_report(report_data)
@@ -138,7 +148,9 @@ def _create_overview(
     overlap_df: Optional[pd.DataFrame],
     burden_df: Optional[pd.DataFrame],
 ) -> Optional[Dict[str, Any]]:
-    if (overlap_df is None or overlap_df.empty) and (burden_df is None or burden_df.empty):
+    if (overlap_df is None or overlap_df.empty) and (
+        burden_df is None or burden_df.empty
+    ):
         return None
 
     overview: Dict[str, Any] = {}
@@ -169,7 +181,9 @@ def _create_overview(
         overview["burden"] = {
             "total_tests": len(burden_df),
             "significant": int(_resolve_significance(burden_df, p_col=p_col).sum()),
-            "effect_label": "Odds Ratio" if effect_col == "odds_ratio" else "Effect Size",
+            "effect_label": (
+                "Odds Ratio" if effect_col == "odds_ratio" else "Effect Size"
+            ),
             "effect_col": effect_col,
             "top_hits": top_hits,
             "p_col": p_col,
@@ -292,7 +306,9 @@ def _create_gene_sets_section(collection: GeneSetCollection) -> Dict[str, Any]:
     }
 
 
-def _create_methods_section(has_overlap: bool, has_burden: bool) -> Optional[Dict[str, str]]:
+def _create_methods_section(
+    has_overlap: bool, has_burden: bool
+) -> Optional[Dict[str, str]]:
     if not has_overlap and not has_burden:
         return None
     methods: Dict[str, str] = {}
@@ -342,8 +358,12 @@ def _build_header(
     date: str,
     analyst: Optional[str],
 ) -> str:
-    desc_html = f"<p class='description'>{html.escape(description)}</p>" if description else ""
-    analyst_html = f"<p class='analyst'>Analyst: {html.escape(analyst)}</p>" if analyst else ""
+    desc_html = (
+        f"<p class='description'>{html.escape(description)}</p>" if description else ""
+    )
+    analyst_html = (
+        f"<p class='analyst'>Analyst: {html.escape(analyst)}</p>" if analyst else ""
+    )
     return (
         "<header>"
         f"<h1>{html.escape(title)}</h1>"
@@ -459,9 +479,7 @@ def _build_burden_section(section: Dict[str, Any]) -> str:
 
     plot_html = ""
     if section["plot_src"]:
-        plot_html = (
-            f"<img src='{section['plot_src']}' alt='Burden Plot' class='embedded-image'/>"
-        )
+        plot_html = f"<img src='{section['plot_src']}' alt='Burden Plot' class='embedded-image'/>"
 
     table_html = (
         "<table><thead><tr>"
@@ -499,7 +517,9 @@ def _build_gene_sets_section(section: Dict[str, Any]) -> str:
 def _build_methods_section(section: Dict[str, str]) -> str:
     paragraphs = []
     for key, text in section.items():
-        paragraphs.append(f"<p><strong>{html.escape(key.title())}:</strong> {html.escape(text)}</p>")
+        paragraphs.append(
+            f"<p><strong>{html.escape(key.title())}:</strong> {html.escape(text)}</p>"
+        )
     return "<section id='methods'><h2>Methods</h2>" + "".join(paragraphs) + "</section>"
 
 
@@ -586,7 +606,9 @@ def _resolve_pvalue_column(df: pd.DataFrame) -> str:
     raise ValueError("Results must include p_adjusted or p_value columns.")
 
 
-def _resolve_significance(df: pd.DataFrame, p_col: str, threshold: float = 0.05) -> pd.Series:
+def _resolve_significance(
+    df: pd.DataFrame, p_col: str, threshold: float = 0.05
+) -> pd.Series:
     if "significant" in df.columns:
         return df["significant"].astype(bool)
     return df[p_col] < threshold

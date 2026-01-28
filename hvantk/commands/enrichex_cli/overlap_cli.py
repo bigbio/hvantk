@@ -72,7 +72,9 @@ def register_overlap_commands(group):
     help="Generate plots and HTML report in the output directory",
 )
 @click.pass_context
-def overlap_test(ctx, gene_list, gene_sets, output, correction, alpha, output_format, generate_report):
+def overlap_test(
+    ctx, gene_list, gene_sets, output, correction, alpha, output_format, generate_report
+):
     """Test gene list enrichment in gene sets using Fisher's exact test.
 
     This command tests whether a query gene list is significantly enriched
@@ -134,16 +136,16 @@ def overlap_test(ctx, gene_list, gene_sets, output, correction, alpha, output_fo
     click.echo(f"Loading gene sets from: {gene_sets}")
     gene_set_collection = GeneSetCollection.load(gene_sets)
     click.echo(f"  {len(gene_set_collection)} gene sets loaded")
-    click.echo(f"  Background universe: {len(gene_set_collection.background_genes)} genes")
+    click.echo(
+        f"  Background universe: {len(gene_set_collection.background_genes)} genes"
+    )
 
     # Run enrichment
     click.echo(f"\nRunning overlap enrichment analysis...")
     click.echo(f"  Correction method: {correction}")
     click.echo(f"  Significance threshold: {alpha}")
 
-    df = compute_overlap_enrichment_pandas(
-        query_genes, gene_set_collection, correction
-    )
+    df = compute_overlap_enrichment_pandas(query_genes, gene_set_collection, correction)
 
     if df.empty:
         click.echo("\nNo results generated (check gene ID matching)")
@@ -164,40 +166,40 @@ def overlap_test(ctx, gene_list, gene_sets, output, correction, alpha, output_fo
 
     # Generate report if requested
     if generate_report:
-            from pathlib import Path
+        from pathlib import Path
 
-            from hvantk.enrichex.report import generate_report
+        from hvantk.enrichex.report import generate_report
 
-            click.echo("\nGenerating report...")
+        click.echo("\nGenerating report...")
 
-            # Determine output directory and file paths
-            output_path = Path(output)
-            if output_path.suffix in [".tsv", ".json"]:
-                output_dir = output_path.parent
-                results_path = output_path
-            else:
-                output_dir = output_path
-                output_dir.mkdir(parents=True, exist_ok=True)
-                results_path = output_dir / "overlap_results.tsv"
-                if not results_path.exists():
-                    df.to_csv(results_path, sep="\t", index=False)
+        # Determine output directory and file paths
+        output_path = Path(output)
+        if output_path.suffix in [".tsv", ".json"]:
+            output_dir = output_path.parent
+            results_path = output_path
+        else:
+            output_dir = output_path
+            output_dir.mkdir(parents=True, exist_ok=True)
+            results_path = output_dir / "overlap_results.tsv"
+            if not results_path.exists():
+                df.to_csv(results_path, sep="\t", index=False)
 
-            report_path = output_dir / "enrichex_overlap_report.html"
+        report_path = output_dir / "enrichex_overlap_report.html"
 
-            generate_report(
-                output_path=str(report_path),
-                overlap_results=str(results_path),
-                gene_sets_path=gene_sets,
-                title="EnrichEx Overlap Enrichment Report",
-                description=f"Fisher's exact test for gene list enrichment in gene sets. Correction: {correction}, alpha: {alpha}",
-                top_n=20,
-                include_methods=True,
-                include_gene_lists=True,
-                embed_static_plots=True,
-            )
+        generate_report(
+            output_path=str(report_path),
+            overlap_results=str(results_path),
+            gene_sets_path=gene_sets,
+            title="EnrichEx Overlap Enrichment Report",
+            description=f"Fisher's exact test for gene list enrichment in gene sets. Correction: {correction}, alpha: {alpha}",
+            top_n=20,
+            include_methods=True,
+            include_gene_lists=True,
+            embed_static_plots=True,
+        )
 
-            click.echo(f"✓ Report generated: {report_path}")
-            click.echo(f"  Plots saved in: {output_dir}")
+        click.echo(f"✓ Report generated: {report_path}")
+        click.echo(f"  Plots saved in: {output_dir}")
 
     # Summary statistics
     n_significant = (df["p_adjusted"] < alpha).sum()

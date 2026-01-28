@@ -33,7 +33,9 @@ try:
         logistic_burden_test,
         run_burden_analysis,
     )
-except ModuleNotFoundError as exc:  # pragma: no cover - depends on optional Hail install
+except (
+    ModuleNotFoundError
+) as exc:  # pragma: no cover - depends on optional Hail install
     logger.warning(
         "Hail-dependent EnrichEx burden methods unavailable: %s. "
         "Install hvantk with the required extras to enable them.",

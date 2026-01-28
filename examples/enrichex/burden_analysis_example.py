@@ -21,8 +21,7 @@ from hvantk.core.hail_context import init_hail
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -41,7 +40,9 @@ def create_synthetic_cohort(n_samples=1000, n_variants=500):
     n_variants : int
         Number of variants to generate
     """
-    logger.info(f"Creating synthetic cohort: {n_samples} samples, {n_variants} variants")
+    logger.info(
+        f"Creating synthetic cohort: {n_samples} samples, {n_variants} variants"
+    )
 
     # Create base MatrixTable
     mt = hl.utils.range_matrix_table(n_variants, n_samples)
@@ -49,7 +50,7 @@ def create_synthetic_cohort(n_samples=1000, n_variants=500):
     # Add genomic coordinates
     mt = mt.annotate_rows(
         locus=hl.locus("chr17", 41000000 + mt.row_idx, reference_genome="GRCh38"),
-        alleles=["A", "T"]
+        alleles=["A", "T"],
     )
     mt = mt.key_rows_by(mt.locus, mt.alleles)
 
@@ -61,42 +62,55 @@ def create_synthetic_cohort(n_samples=1000, n_variants=500):
     mt = mt.annotate_entries(
         GT=hl.call(
             hl.if_else(hl.rand_unif(0, 1) < 0.01, 1, 0),  # 1% het rate
-            hl.if_else(hl.rand_unif(0, 1) < 0.001, 1, 0)  # 0.1% hom-alt rate
+            hl.if_else(hl.rand_unif(0, 1) < 0.001, 1, 0),  # 0.1% hom-alt rate
         ),
         GQ=hl.int32(hl.rand_unif(20, 99)),
-        DP=hl.int32(hl.rand_unif(10, 100))
+        DP=hl.int32(hl.rand_unif(10, 100)),
     )
 
     # Add variant annotations
     # In real data, these come from VEP, dbNSFP, gnomAD, etc.
     gene_pool = [
-        "TREM2", "CD33", "MS4A6A", "TYROBP", "CSF1R",  # Microglia
-        "SLC17A7", "GRIN2A", "GRIN2B", "CAMK2A",       # Excitatory neurons
-        "GAD1", "GAD2", "PVALB", "SST",                # Inhibitory neurons
-        "GFAP", "AQP4", "SLC1A2",                      # Astrocytes
-        "APOE", "CLU", "BIN1", "PICALM"                # AD risk genes
+        "TREM2",
+        "CD33",
+        "MS4A6A",
+        "TYROBP",
+        "CSF1R",  # Microglia
+        "SLC17A7",
+        "GRIN2A",
+        "GRIN2B",
+        "CAMK2A",  # Excitatory neurons
+        "GAD1",
+        "GAD2",
+        "PVALB",
+        "SST",  # Inhibitory neurons
+        "GFAP",
+        "AQP4",
+        "SLC1A2",  # Astrocytes
+        "APOE",
+        "CLU",
+        "BIN1",
+        "PICALM",  # AD risk genes
     ]
 
     mt = mt.annotate_rows(
         # Gene annotation (typically from VEP)
         SYMBOL=gene_pool[hl.int32(hl.rand_unif(0, len(gene_pool)))],
-
         # Allele frequency (typically from gnomAD)
         gnomad_af=hl.rand_unif(0.0, 0.01),
-
         # CADD score (typically from dbNSFP)
         cadd_phred=hl.rand_unif(15.0, 35.0),
-
         # VEP consequence
-        most_severe_consequence=hl.literal([
-            "missense_variant",
-            "synonymous_variant",
-            "frameshift_variant",
-            "stop_gained"
-        ])[hl.int32(hl.rand_unif(0, 4))],
-
+        most_severe_consequence=hl.literal(
+            [
+                "missense_variant",
+                "synonymous_variant",
+                "frameshift_variant",
+                "stop_gained",
+            ]
+        )[hl.int32(hl.rand_unif(0, 4))],
         # Filter status
-        filters=hl.empty_set(hl.tstr)
+        filters=hl.empty_set(hl.tstr),
     )
 
     logger.info("Synthetic cohort created")
@@ -111,7 +125,9 @@ def create_phenotype_table(n_samples=1000, n_cases=500):
         phenotypes_ht = hl.read_table("phenotypes.ht")
         phenotypes_ht = hl.import_table("phenotypes.tsv", key="sample_id")
     """
-    logger.info(f"Creating phenotype table: {n_cases} cases, {n_samples - n_cases} controls")
+    logger.info(
+        f"Creating phenotype table: {n_cases} cases, {n_samples - n_cases} controls"
+    )
 
     # Create table with sample IDs
     ht = hl.utils.range_table(n_samples)
@@ -122,18 +138,15 @@ def create_phenotype_table(n_samples=1000, n_cases=500):
     ht = ht.annotate(
         # Binary phenotype (case/control)
         is_case=ht.idx < n_cases,
-
         # Continuous phenotype (e.g., cognitive score)
         cognitive_score=hl.if_else(
             ht.idx < n_cases,
-            hl.rand_norm(80.0, 10.0),   # Cases: mean=80, sd=10
-            hl.rand_norm(100.0, 10.0)   # Controls: mean=100, sd=10
+            hl.rand_norm(80.0, 10.0),  # Cases: mean=80, sd=10
+            hl.rand_norm(100.0, 10.0),  # Controls: mean=100, sd=10
         ),
-
         # Covariates
         age=hl.rand_norm(70.0, 10.0),
         sex=hl.if_else(hl.rand_bool(0.5), "M", "F"),
-
         # Principal components (from ancestry PCA)
         PC1=hl.rand_norm(0, 1),
         PC2=hl.rand_norm(0, 1),
@@ -159,25 +172,38 @@ def create_gene_sets():
     """
     return {
         "Microglia": [
-            "TREM2", "CD33", "MS4A6A", "MS4A4A", "TYROBP",
-            "CSF1R", "C1QA", "C1QB", "C1QC", "CTSS"
+            "TREM2",
+            "CD33",
+            "MS4A6A",
+            "MS4A4A",
+            "TYROBP",
+            "CSF1R",
+            "C1QA",
+            "C1QB",
+            "C1QC",
+            "CTSS",
         ],
         "Excitatory_Neurons": [
-            "SLC17A7", "CAMK2A", "GRIN2A", "GRIN2B", "NRGN",
-            "SATB2", "TBR1", "CUX2"
+            "SLC17A7",
+            "CAMK2A",
+            "GRIN2A",
+            "GRIN2B",
+            "NRGN",
+            "SATB2",
+            "TBR1",
+            "CUX2",
         ],
         "Inhibitory_Neurons": [
-            "GAD1", "GAD2", "SLC32A1", "PVALB", "SST",
-            "VIP", "LAMP5"
+            "GAD1",
+            "GAD2",
+            "SLC32A1",
+            "PVALB",
+            "SST",
+            "VIP",
+            "LAMP5",
         ],
-        "Astrocytes": [
-            "GFAP", "AQP4", "SLC1A2", "SLC1A3", "ALDOC",
-            "GJA1"
-        ],
-        "AD_Risk_Genes": [
-            "APOE", "CLU", "CR1", "PICALM", "BIN1",
-            "ABCA7", "SORL1"
-        ]
+        "Astrocytes": ["GFAP", "AQP4", "SLC1A2", "SLC1A3", "ALDOC", "GJA1"],
+        "AD_Risk_Genes": ["APOE", "CLU", "CR1", "PICALM", "BIN1", "ABCA7", "SORL1"],
     }
 
 
@@ -194,9 +220,9 @@ def main():
     logger.info(f"Output directory: {output_dir}")
 
     # Create synthetic data
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "=" * 60)
     logger.info("CREATING SYNTHETIC DATA")
-    logger.info("="*60)
+    logger.info("=" * 60)
     logger.info("Note: In real analysis, you would load actual data:")
     logger.info("  mt = hl.read_matrix_table('cohort.mt')")
     logger.info("  phenotypes_ht = hl.read_table('phenotypes.ht')")
@@ -207,11 +233,12 @@ def main():
 
     # Save gene sets
     gene_sets_full = {
-        "background_genes": list(set([g for genes in gene_sets.values() for g in genes])),
+        "background_genes": list(
+            set([g for genes in gene_sets.values() for g in genes])
+        ),
         "gene_sets": {
-            name: {"name": name, "genes": genes}
-            for name, genes in gene_sets.items()
-        }
+            name: {"name": name, "genes": genes} for name, genes in gene_sets.items()
+        },
     }
     gene_sets_path = output_dir / "gene_sets.json"
     with open(gene_sets_path, "w") as f:
@@ -219,9 +246,9 @@ def main():
     logger.info(f"\nSaved gene sets to: {gene_sets_path}")
 
     # Run burden analysis - Binary phenotype
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "=" * 60)
     logger.info("RUNNING BURDEN ANALYSIS: BINARY PHENOTYPE (CASE/CONTROL)")
-    logger.info("="*60)
+    logger.info("=" * 60)
 
     results_binary_ht = run_burden_analysis(
         mt=mt,
@@ -230,11 +257,11 @@ def main():
         phenotype_field="is_case",
         phenotype_type="binary",
         covariates=["PC1", "PC2", "PC3", "PC4", "PC5", "age", "sex"],
-        max_af=0.001,           # Rare variants (AF < 0.1%)
-        min_cadd=25.0,          # High CADD scores
+        max_af=0.001,  # Rare variants (AF < 0.1%)
+        min_cadd=25.0,  # High CADD scores
         genotype_aggregation="hets",
         correction_method="benjamini-hochberg",
-        alpha=0.05
+        alpha=0.05,
     )
 
     # Export results
@@ -244,27 +271,29 @@ def main():
 
     # Display results
     results_binary_df = results_binary_ht.to_pandas()
-    results_binary_df = results_binary_df.sort_values('p_value')
+    results_binary_df = results_binary_df.sort_values("p_value")
 
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "=" * 60)
     logger.info("BINARY PHENOTYPE RESULTS")
-    logger.info("="*60)
+    logger.info("=" * 60)
     logger.info(f"{'Gene Set':<25} {'OR':<8} {'95% CI':<20} {'P-value':<12} {'Sig':<5}")
-    logger.info("-"*80)
+    logger.info("-" * 80)
 
     for _, row in results_binary_df.iterrows():
         ci_str = f"[{row['ci_lower']:.2f}, {row['ci_upper']:.2f}]"
-        sig_marker = "***" if row['significant'] else ""
-        logger.info(f"{row['gene_set_name']:<25} "
-                   f"{row['odds_ratio']:>7.2f} "
-                   f"{ci_str:<20} "
-                   f"{row['p_adjusted']:>11.2e} "
-                   f"{sig_marker:<5}")
+        sig_marker = "***" if row["significant"] else ""
+        logger.info(
+            f"{row['gene_set_name']:<25} "
+            f"{row['odds_ratio']:>7.2f} "
+            f"{ci_str:<20} "
+            f"{row['p_adjusted']:>11.2e} "
+            f"{sig_marker:<5}"
+        )
 
     # Run burden analysis - Continuous phenotype
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "=" * 60)
     logger.info("RUNNING BURDEN ANALYSIS: CONTINUOUS PHENOTYPE")
-    logger.info("="*60)
+    logger.info("=" * 60)
 
     results_continuous_ht = run_burden_analysis(
         mt=mt,
@@ -277,7 +306,7 @@ def main():
         min_cadd=25.0,
         genotype_aggregation="hets",
         correction_method="benjamini-hochberg",
-        alpha=0.05
+        alpha=0.05,
     )
 
     # Export results
@@ -287,26 +316,28 @@ def main():
 
     # Display results
     results_continuous_df = results_continuous_ht.to_pandas()
-    results_continuous_df = results_continuous_df.sort_values('p_value')
+    results_continuous_df = results_continuous_df.sort_values("p_value")
 
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "=" * 60)
     logger.info("CONTINUOUS PHENOTYPE RESULTS")
-    logger.info("="*60)
+    logger.info("=" * 60)
     logger.info(f"{'Gene Set':<25} {'Beta':<10} {'SE':<10} {'P-value':<12} {'Sig':<5}")
-    logger.info("-"*70)
+    logger.info("-" * 70)
 
     for _, row in results_continuous_df.iterrows():
-        sig_marker = "***" if row['significant'] else ""
-        logger.info(f"{row['gene_set_name']:<25} "
-                   f"{row['beta']:>9.2f} "
-                   f"{row['standard_error']:>9.2f} "
-                   f"{row['p_adjusted']:>11.2e} "
-                   f"{sig_marker:<5}")
+        sig_marker = "***" if row["significant"] else ""
+        logger.info(
+            f"{row['gene_set_name']:<25} "
+            f"{row['beta']:>9.2f} "
+            f"{row['standard_error']:>9.2f} "
+            f"{row['p_adjusted']:>11.2e} "
+            f"{sig_marker:<5}"
+        )
 
     # Interpretation
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "=" * 60)
     logger.info("INTERPRETATION GUIDE")
-    logger.info("="*60)
+    logger.info("=" * 60)
 
     logger.info("""
 Binary Phenotype (Case/Control):
@@ -347,9 +378,9 @@ Next Steps:
 5. Combine with expression data for functional validation
     """)
 
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "=" * 60)
     logger.info("ALTERNATIVE GENOTYPE AGGREGATION METHODS")
-    logger.info("="*60)
+    logger.info("=" * 60)
 
     logger.info("""
 You can test different genetic models by changing --genotype-aggregation:
@@ -374,9 +405,9 @@ Example:
     hvantk enrichex burden ... --genotype-aggregation chets
     """)
 
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "=" * 60)
     logger.info("VARIANT FILTERING STRATEGIES")
-    logger.info("="*60)
+    logger.info("=" * 60)
 
     logger.info("""
 Conservative (high confidence):
@@ -392,9 +423,9 @@ Permissive (exploratory):
     Use for: Exploratory analyses, large cohorts
     """)
 
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "=" * 60)
     logger.info("Analysis complete!")
-    logger.info("="*60)
+    logger.info("=" * 60)
     logger.info(f"\nOutput files:")
     logger.info(f"  - Gene sets: {gene_sets_path}")
     logger.info(f"  - Binary results: {binary_results_path}")

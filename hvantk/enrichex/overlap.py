@@ -160,7 +160,9 @@ def compute_overlap_enrichment(
 
         # Skip empty gene sets
         if n_gene_set == 0:
-            logger.warning(f"Gene set '{gene_set.name}' has no genes in background, skipping")
+            logger.warning(
+                f"Gene set '{gene_set.name}' has no genes in background, skipping"
+            )
             continue
 
         # Compute overlap
@@ -262,7 +264,9 @@ def compute_overlap_enrichment_pandas(
     _require_hail()
     import pandas as pd
 
-    results = compute_overlap_enrichment(query_genes, gene_set_collection, correction_method)
+    results = compute_overlap_enrichment(
+        query_genes, gene_set_collection, correction_method
+    )
 
     if not results:
         # Return empty DataFrame with expected columns

@@ -11,6 +11,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 import matplotlib
+
 matplotlib.use("Agg")  # Use non-interactive backend for tests
 import matplotlib.pyplot as plt
 
@@ -326,18 +327,24 @@ class TestPlotIntegration:
 
         # Create scores with different qualities
         scores = {
-            "excellent": np.concatenate([
-                np.random.normal(0.3, 0.1, n // 2),
-                np.random.normal(0.8, 0.1, n // 2),
-            ]),
-            "good": np.concatenate([
-                np.random.normal(0.4, 0.15, n // 2),
-                np.random.normal(0.7, 0.15, n // 2),
-            ]),
-            "with_missing": np.concatenate([
-                np.random.normal(0.35, 0.12, n // 2),
-                np.random.normal(0.75, 0.12, n // 2),
-            ]),
+            "excellent": np.concatenate(
+                [
+                    np.random.normal(0.3, 0.1, n // 2),
+                    np.random.normal(0.8, 0.1, n // 2),
+                ]
+            ),
+            "good": np.concatenate(
+                [
+                    np.random.normal(0.4, 0.15, n // 2),
+                    np.random.normal(0.7, 0.15, n // 2),
+                ]
+            ),
+            "with_missing": np.concatenate(
+                [
+                    np.random.normal(0.35, 0.12, n // 2),
+                    np.random.normal(0.75, 0.12, n // 2),
+                ]
+            ),
         }
 
         # Add some missing values

@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 # Helper functions for parameter type conversion
 
+
 def _parse_list_param(value: Any) -> list | None:
     """Parse a generic list parameter (comma-separated string or list)."""
     if value is None:
@@ -256,9 +257,7 @@ TABLE_BUILDERS: Dict[str, Callable[[str, str, Dict[str, Any] | None], None]] = {
     "ensembl-gene": create_table_adapter(
         "hvantk.tables.table_builders", "create_ensembl_gene_tb"
     ),
-    "dbnsfp": create_table_adapter(
-        "hvantk.tables.table_builders", "create_dbnsfp_tb"
-    ),
+    "dbnsfp": create_table_adapter("hvantk.tables.table_builders", "create_dbnsfp_tb"),
     "clingen-gene-disease": create_table_adapter(
         "hvantk.tables.table_builders", "create_clingen_gene_disease_tb"
     ),

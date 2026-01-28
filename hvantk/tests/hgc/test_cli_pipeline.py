@@ -13,6 +13,7 @@ def test_pipeline_cli_basic():
     runner = CliRunner()
     with runner.isolated_filesystem():
         import os
+
         os.makedirs("input_dir")
         os.makedirs("output_dir")
 
@@ -36,10 +37,7 @@ def test_pipeline_cli_basic():
 
                 result = runner.invoke(
                     pipeline,
-                    [
-                        "--input-dir", "input_dir",
-                        "--output-dir", "output_dir"
-                    ],
+                    ["--input-dir", "input_dir", "--output-dir", "output_dir"],
                 )
 
                 assert result.exit_code == 0
@@ -51,6 +49,7 @@ def test_pipeline_cli_validation_failure():
     runner = CliRunner()
     with runner.isolated_filesystem():
         import os
+
         os.makedirs("input_dir")
         os.makedirs("output_dir")
 
@@ -61,10 +60,7 @@ def test_pipeline_cli_validation_failure():
 
             result = runner.invoke(
                 pipeline,
-                [
-                    "--input-dir", "input_dir",
-                    "--output-dir", "output_dir"
-                ],
+                ["--input-dir", "input_dir", "--output-dir", "output_dir"],
             )
 
             assert result.exit_code == 1
@@ -77,6 +73,7 @@ def test_pipeline_cli_dry_run():
     runner = CliRunner()
     with runner.isolated_filesystem():
         import os
+
         os.makedirs("input_dir")
         os.makedirs("output_dir")
 
@@ -92,9 +89,11 @@ def test_pipeline_cli_dry_run():
                 result = runner.invoke(
                     pipeline,
                     [
-                        "--input-dir", "input_dir",
-                        "--output-dir", "output_dir",
-                        "--dry-run"
+                        "--input-dir",
+                        "input_dir",
+                        "--output-dir",
+                        "output_dir",
+                        "--dry-run",
                     ],
                 )
 
@@ -108,6 +107,7 @@ def test_pipeline_cli_with_errors():
     runner = CliRunner()
     with runner.isolated_filesystem():
         import os
+
         os.makedirs("input_dir")
         os.makedirs("output_dir")
 
@@ -125,10 +125,7 @@ def test_pipeline_cli_with_errors():
 
                 result = runner.invoke(
                     pipeline,
-                    [
-                        "--input-dir", "input_dir",
-                        "--output-dir", "output_dir"
-                    ],
+                    ["--input-dir", "input_dir", "--output-dir", "output_dir"],
                 )
 
                 assert result.exit_code == 1
@@ -141,6 +138,7 @@ def test_pipeline_cli_custom_options():
     runner = CliRunner()
     with runner.isolated_filesystem():
         import os
+
         os.makedirs("input_dir")
         os.makedirs("output_dir")
 
@@ -163,11 +161,15 @@ def test_pipeline_cli_custom_options():
                 result = runner.invoke(
                     pipeline,
                     [
-                        "--input-dir", "input_dir",
-                        "--output-dir", "output_dir",
+                        "--input-dir",
+                        "input_dir",
+                        "--output-dir",
+                        "output_dir",
                         "--skip-compute-sample-qc",
-                        "--reference-genome", "GRCh37",
-                        "--output-prefix", "my_cohort"
+                        "--reference-genome",
+                        "GRCh37",
+                        "--output-prefix",
+                        "my_cohort",
                     ],
                 )
 
@@ -184,6 +186,7 @@ def test_pipeline_cli_skip_stages():
     runner = CliRunner()
     with runner.isolated_filesystem():
         import os
+
         os.makedirs("input_dir")
         os.makedirs("output_dir")
 
@@ -206,12 +209,16 @@ def test_pipeline_cli_skip_stages():
                 result = runner.invoke(
                     pipeline,
                     [
-                        "--input-dir", "input_dir",
-                        "--output-dir", "output_dir",
+                        "--input-dir",
+                        "input_dir",
+                        "--output-dir",
+                        "output_dir",
                         "--skip-combine-gvcfs",
                         "--skip-vds-to-mt",
-                        "--vds-path", "/existing.vds",
-                        "--mt-path", "/existing.mt"
+                        "--vds-path",
+                        "/existing.vds",
+                        "--mt-path",
+                        "/existing.mt",
                     ],
                 )
 

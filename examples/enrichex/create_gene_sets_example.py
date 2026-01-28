@@ -23,8 +23,7 @@ from hvantk.enrichex import (
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -39,31 +38,117 @@ def example_seurat_format():
         CD33        Microglia   4.56e-45    2.1         0.88    0.15
         ...
     """
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "=" * 60)
     logger.info("Example 1: Seurat FindAllMarkers Format")
-    logger.info("="*60)
+    logger.info("=" * 60)
 
     # Create example data
-    seurat_data = pd.DataFrame({
-        'gene': ['TREM2', 'CD33', 'MS4A6A', 'TYROBP', 'CSF1R',
-                 'SLC17A7', 'GRIN2A', 'GRIN2B', 'CAMK2A', 'NRGN',
-                 'GAD1', 'GAD2', 'PVALB', 'SST', 'VIP'],
-        'cluster': ['Microglia', 'Microglia', 'Microglia', 'Microglia', 'Microglia',
-                    'Excitatory', 'Excitatory', 'Excitatory', 'Excitatory', 'Excitatory',
-                    'Inhibitory', 'Inhibitory', 'Inhibitory', 'Inhibitory', 'Inhibitory'],
-        'p_val': [1e-50, 1e-45, 1e-40, 1e-38, 1e-35,
-                  1e-48, 1e-42, 1e-40, 1e-38, 1e-35,
-                  1e-45, 1e-44, 1e-40, 1e-38, 1e-35],
-        'avg_log2FC': [2.5, 2.1, 2.0, 1.9, 1.8,
-                       3.0, 2.8, 2.5, 2.3, 2.0,
-                       2.8, 2.7, 2.4, 2.2, 2.0],
-        'pct.1': [0.95, 0.88, 0.85, 0.82, 0.80,
-                  0.98, 0.95, 0.92, 0.90, 0.85,
-                  0.96, 0.95, 0.90, 0.88, 0.85],
-        'pct.2': [0.10, 0.15, 0.18, 0.20, 0.22,
-                  0.05, 0.08, 0.10, 0.12, 0.15,
-                  0.08, 0.10, 0.12, 0.15, 0.18]
-    })
+    seurat_data = pd.DataFrame(
+        {
+            "gene": [
+                "TREM2",
+                "CD33",
+                "MS4A6A",
+                "TYROBP",
+                "CSF1R",
+                "SLC17A7",
+                "GRIN2A",
+                "GRIN2B",
+                "CAMK2A",
+                "NRGN",
+                "GAD1",
+                "GAD2",
+                "PVALB",
+                "SST",
+                "VIP",
+            ],
+            "cluster": [
+                "Microglia",
+                "Microglia",
+                "Microglia",
+                "Microglia",
+                "Microglia",
+                "Excitatory",
+                "Excitatory",
+                "Excitatory",
+                "Excitatory",
+                "Excitatory",
+                "Inhibitory",
+                "Inhibitory",
+                "Inhibitory",
+                "Inhibitory",
+                "Inhibitory",
+            ],
+            "p_val": [
+                1e-50,
+                1e-45,
+                1e-40,
+                1e-38,
+                1e-35,
+                1e-48,
+                1e-42,
+                1e-40,
+                1e-38,
+                1e-35,
+                1e-45,
+                1e-44,
+                1e-40,
+                1e-38,
+                1e-35,
+            ],
+            "avg_log2FC": [
+                2.5,
+                2.1,
+                2.0,
+                1.9,
+                1.8,
+                3.0,
+                2.8,
+                2.5,
+                2.3,
+                2.0,
+                2.8,
+                2.7,
+                2.4,
+                2.2,
+                2.0,
+            ],
+            "pct.1": [
+                0.95,
+                0.88,
+                0.85,
+                0.82,
+                0.80,
+                0.98,
+                0.95,
+                0.92,
+                0.90,
+                0.85,
+                0.96,
+                0.95,
+                0.90,
+                0.88,
+                0.85,
+            ],
+            "pct.2": [
+                0.10,
+                0.15,
+                0.18,
+                0.20,
+                0.22,
+                0.05,
+                0.08,
+                0.10,
+                0.12,
+                0.15,
+                0.08,
+                0.10,
+                0.12,
+                0.15,
+                0.18,
+            ],
+        }
+    )
 
     # Save to TSV
     output_dir = Path("enrichex_gene_sets")
@@ -79,7 +164,7 @@ def example_seurat_format():
         cluster_col="cluster",
         score_col="avg_log2FC",
         score_threshold=1.5,  # Keep genes with log2FC > 1.5
-        top_n=100  # Top 100 genes per cluster (or all if fewer)
+        top_n=100,  # Top 100 genes per cluster (or all if fewer)
     )
 
     logger.info(f"\nLoaded {len(gene_sets)} gene sets:")
@@ -105,51 +190,71 @@ def example_manual_creation():
     - KEGG pathways
     - Custom functional groupings
     """
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "=" * 60)
     logger.info("Example 2: Manual Gene Set Creation")
-    logger.info("="*60)
+    logger.info("=" * 60)
 
     # Define gene sets manually
     ad_immune = GeneSet(
         name="AD_Immune_Genes",
         genes={
-            "TREM2", "CD33", "MS4A6A", "MS4A4A", "TYROBP",
-            "CR1", "CLU", "ABCA7", "INPP5D", "HLA-DRB1"
+            "TREM2",
+            "CD33",
+            "MS4A6A",
+            "MS4A4A",
+            "TYROBP",
+            "CR1",
+            "CLU",
+            "ABCA7",
+            "INPP5D",
+            "HLA-DRB1",
         },
         source="Lambert et al. Nat Genet 2013; Jansen et al. Nat Genet 2019",
-        metadata={
-            "category": "immune",
-            "disease": "Alzheimers",
-            "evidence": "GWAS"
-        }
+        metadata={"category": "immune", "disease": "Alzheimers", "evidence": "GWAS"},
     )
 
     ad_lipid = GeneSet(
         name="AD_Lipid_Genes",
         genes={
-            "APOE", "APOC1", "ABCA7", "CLU", "SORL1",
-            "ABCA1", "LIPC", "CETP", "APOB", "LDLR"
+            "APOE",
+            "APOC1",
+            "ABCA7",
+            "CLU",
+            "SORL1",
+            "ABCA1",
+            "LIPC",
+            "CETP",
+            "APOB",
+            "LDLR",
         },
         source="Lambert et al. Nat Genet 2013",
         metadata={
             "category": "lipid_metabolism",
             "disease": "Alzheimers",
-            "evidence": "GWAS"
-        }
+            "evidence": "GWAS",
+        },
     )
 
     ad_endocytosis = GeneSet(
         name="AD_Endocytosis_Genes",
         genes={
-            "PICALM", "BIN1", "CD2AP", "EPHA1", "RIN3",
-            "SORL1", "PTK2B", "SH3KBP1", "GRB2", "AP2A2"
+            "PICALM",
+            "BIN1",
+            "CD2AP",
+            "EPHA1",
+            "RIN3",
+            "SORL1",
+            "PTK2B",
+            "SH3KBP1",
+            "GRB2",
+            "AP2A2",
         },
         source="Lambert et al. Nat Genet 2013",
         metadata={
             "category": "endocytosis",
             "disease": "Alzheimers",
-            "evidence": "GWAS"
-        }
+            "evidence": "GWAS",
+        },
     )
 
     # Define background (all genes of interest)
@@ -158,27 +263,38 @@ def example_manual_creation():
         all_genes.update(gs.genes)
 
     # Add additional background genes
-    all_genes.update([
-        "ACTB", "GAPDH", "TUBB", "APP", "MAPT", "SNCA",
-        "PSEN1", "PSEN2", "MEF2C", "CASS4", "FERMT2"
-    ])
+    all_genes.update(
+        [
+            "ACTB",
+            "GAPDH",
+            "TUBB",
+            "APP",
+            "MAPT",
+            "SNCA",
+            "PSEN1",
+            "PSEN2",
+            "MEF2C",
+            "CASS4",
+            "FERMT2",
+        ]
+    )
 
     # Create collection
     gene_sets = GeneSetCollection(
         gene_sets={
             "AD_Immune": ad_immune,
             "AD_Lipid": ad_lipid,
-            "AD_Endocytosis": ad_endocytosis
+            "AD_Endocytosis": ad_endocytosis,
         },
         background_genes=all_genes,
         source_description="Alzheimer's disease GWAS genes grouped by function",
         metadata={
             "references": [
                 "Lambert et al. Nat Genet 2013 PMID:24162737",
-                "Jansen et al. Nat Genet 2019 PMID:30617256"
+                "Jansen et al. Nat Genet 2019 PMID:30617256",
             ],
-            "date_created": "2026-01-28"
-        }
+            "date_created": "2026-01-28",
+        },
     )
 
     # Save
@@ -206,9 +322,9 @@ def example_msigdb_format():
 
     Download from: https://www.gsea-msigdb.org/gsea/msigdb/
     """
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "=" * 60)
     logger.info("Example 3: MSigDB GMT Format")
-    logger.info("="*60)
+    logger.info("=" * 60)
 
     # Create example GMT data
     output_dir = Path("enrichex_gene_sets")
@@ -237,10 +353,7 @@ HALLMARK_OXIDATIVE_PHOSPHORYLATION\thttp://www.gsea-msigdb.org/gsea/msigdb\tMT-N
             genes = set(parts[2:])
 
             gene_sets_dict[name] = GeneSet(
-                name=name,
-                genes=genes,
-                source="MSigDB",
-                metadata={"url": url}
+                name=name, genes=genes, source="MSigDB", metadata={"url": url}
             )
             all_genes.update(genes)
 
@@ -251,8 +364,8 @@ HALLMARK_OXIDATIVE_PHOSPHORYLATION\thttp://www.gsea-msigdb.org/gsea/msigdb\tMT-N
         source_description="MSigDB Hallmark Gene Sets",
         metadata={
             "source": "MSigDB",
-            "url": "https://www.gsea-msigdb.org/gsea/msigdb/"
-        }
+            "url": "https://www.gsea-msigdb.org/gsea/msigdb/",
+        },
     )
 
     # Save
@@ -274,25 +387,54 @@ def example_from_dataframe():
 
     Use this for custom data manipulation before creating gene sets.
     """
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "=" * 60)
     logger.info("Example 4: From pandas DataFrame (Custom)")
-    logger.info("="*60)
+    logger.info("=" * 60)
 
     # Create example marker data
-    marker_data = pd.DataFrame({
-        'gene': ['TREM2', 'CD33', 'MS4A6A', 'SLC17A7', 'GRIN2A',
-                 'GAD1', 'GAD2', 'GFAP', 'AQP4', 'MBP'],
-        'cell_type': ['Microglia', 'Microglia', 'Microglia',
-                      'Excitatory', 'Excitatory',
-                      'Inhibitory', 'Inhibitory',
-                      'Astrocyte', 'Astrocyte',
-                      'Oligodendrocyte'],
-        'log2fc': [3.2, 2.8, 2.5, 3.5, 3.1, 3.0, 2.9, 3.3, 3.0, 3.4],
-        'p_value': [1e-50, 1e-45, 1e-40, 1e-48, 1e-42,
-                    1e-45, 1e-44, 1e-46, 1e-43, 1e-47],
-        'pct_in': [0.95, 0.88, 0.85, 0.98, 0.95, 0.96, 0.95, 0.97, 0.93, 0.98],
-        'pct_out': [0.10, 0.15, 0.18, 0.05, 0.08, 0.08, 0.10, 0.06, 0.09, 0.05]
-    })
+    marker_data = pd.DataFrame(
+        {
+            "gene": [
+                "TREM2",
+                "CD33",
+                "MS4A6A",
+                "SLC17A7",
+                "GRIN2A",
+                "GAD1",
+                "GAD2",
+                "GFAP",
+                "AQP4",
+                "MBP",
+            ],
+            "cell_type": [
+                "Microglia",
+                "Microglia",
+                "Microglia",
+                "Excitatory",
+                "Excitatory",
+                "Inhibitory",
+                "Inhibitory",
+                "Astrocyte",
+                "Astrocyte",
+                "Oligodendrocyte",
+            ],
+            "log2fc": [3.2, 2.8, 2.5, 3.5, 3.1, 3.0, 2.9, 3.3, 3.0, 3.4],
+            "p_value": [
+                1e-50,
+                1e-45,
+                1e-40,
+                1e-48,
+                1e-42,
+                1e-45,
+                1e-44,
+                1e-46,
+                1e-43,
+                1e-47,
+            ],
+            "pct_in": [0.95, 0.88, 0.85, 0.98, 0.95, 0.96, 0.95, 0.97, 0.93, 0.98],
+            "pct_out": [0.10, 0.15, 0.18, 0.05, 0.08, 0.08, 0.10, 0.06, 0.09, 0.05],
+        }
+    )
 
     logger.info("Example marker data:")
     logger.info(marker_data.to_string())
@@ -304,19 +446,19 @@ def example_from_dataframe():
     logger.info("  - pct_in > 0.90")
 
     filtered = marker_data[
-        (marker_data['log2fc'] > 2.0) &
-        (marker_data['p_value'] < 1e-40) &
-        (marker_data['pct_in'] > 0.90)
+        (marker_data["log2fc"] > 2.0)
+        & (marker_data["p_value"] < 1e-40)
+        & (marker_data["pct_in"] > 0.90)
     ]
 
     logger.info(f"\nFiltered: {len(filtered)}/{len(marker_data)} genes")
 
     # Group by cell type
     gene_sets_dict = {}
-    all_genes = set(filtered['gene'])
+    all_genes = set(filtered["gene"])
 
-    for cell_type in filtered['cell_type'].unique():
-        genes = set(filtered[filtered['cell_type'] == cell_type]['gene'])
+    for cell_type in filtered["cell_type"].unique():
+        genes = set(filtered[filtered["cell_type"] == cell_type]["gene"])
         gene_sets_dict[cell_type] = GeneSet(
             name=cell_type,
             genes=genes,
@@ -324,15 +466,15 @@ def example_from_dataframe():
             metadata={
                 "log2fc_threshold": 2.0,
                 "p_value_threshold": 1e-40,
-                "pct_in_threshold": 0.90
-            }
+                "pct_in_threshold": 0.90,
+            },
         )
 
     # Create collection
     gene_sets = GeneSetCollection(
         gene_sets=gene_sets_dict,
         background_genes=all_genes,
-        source_description="Stringently filtered cell-type markers"
+        source_description="Stringently filtered cell-type markers",
     )
 
     # Save
@@ -353,9 +495,9 @@ def example_from_dataframe():
 def main():
     """Run all examples."""
 
-    logger.info("="*60)
+    logger.info("=" * 60)
     logger.info("EnrichEx: Gene Set Creation Examples")
-    logger.info("="*60)
+    logger.info("=" * 60)
 
     # Run examples
     example_seurat_format()
@@ -364,9 +506,9 @@ def main():
     example_from_dataframe()
 
     # Summary
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "=" * 60)
     logger.info("SUMMARY")
-    logger.info("="*60)
+    logger.info("=" * 60)
 
     logger.info("""
 Gene sets created in multiple formats:
@@ -401,9 +543,9 @@ from hvantk.enrichex import GeneSetCollection
 gene_sets = GeneSetCollection.load("enrichex_gene_sets/seurat_gene_sets.json")
     """)
 
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "=" * 60)
     logger.info("BEST PRACTICES")
-    logger.info("="*60)
+    logger.info("=" * 60)
 
     logger.info("""
 1. Gene Set Size:
@@ -437,9 +579,9 @@ gene_sets = GeneSetCollection.load("enrichex_gene_sets/seurat_gene_sets.json")
    - Archive gene sets with results
     """)
 
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "=" * 60)
     logger.info("ADDITIONAL RESOURCES")
-    logger.info("="*60)
+    logger.info("=" * 60)
 
     logger.info("""
 Gene Set Databases:
