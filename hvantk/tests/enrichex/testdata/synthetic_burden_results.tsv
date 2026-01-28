@@ -1,0 +1,7 @@
+gene_set_name	odds_ratio	ci_lower	ci_upper	p_value	p_adjusted	significant
+Microglia	1.65	1.25	2.15	0.0008	0.0012	True
+Astrocytes	1.32	1.01	1.72	0.018	0.035	True
+Oligodendrocytes	1.21	0.95	1.55	0.074	0.11	False
+Endothelial	1.08	0.82	1.42	0.42	0.5	False
+Inhibitory Neurons	0.95	0.71	1.27	0.68	0.74	False
+Excitatory Neurons	0.88	0.65	1.18	0.31	0.38	False

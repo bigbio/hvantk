@@ -1,0 +1,140 @@
+{
+  "gene_sets": {
+    "Microglia": {
+      "name": "Microglia",
+      "genes": [
+        "APOE",
+        "TREM2",
+        "CD33",
+        "MS4A6A",
+        "TYROBP",
+        "SPI1",
+        "LPL",
+        "ITGAM",
+        "C1QA",
+        "C1QB",
+        "C1QC",
+        "ABI3"
+      ],
+      "source": "synthetic::cell_type",
+      "n_genes": 12,
+      "metadata": {
+        "category": "immune"
+      }
+    },
+    "Astrocytes": {
+      "name": "Astrocytes",
+      "genes": [
+        "GFAP",
+        "S100B",
+        "AQP4",
+        "ALDH1L1",
+        "GLUL",
+        "FGFR3",
+        "SOX9",
+        "SPARCL1"
+      ],
+      "source": "synthetic::cell_type",
+      "n_genes": 8,
+      "metadata": {
+        "category": "glia"
+      }
+    },
+    "Oligodendrocytes": {
+      "name": "Oligodendrocytes",
+      "genes": [
+        "MOG",
+        "MBP",
+        "PLP1",
+        "MOBP",
+        "MYRF"
+      ],
+      "source": "synthetic::cell_type",
+      "n_genes": 5,
+      "metadata": {
+        "category": "glia"
+      }
+    },
+    "Endothelial": {
+      "name": "Endothelial",
+      "genes": [
+        "CLDN5",
+        "PECAM1",
+        "FLT1",
+        "VWF"
+      ],
+      "source": "synthetic::cell_type",
+      "n_genes": 4,
+      "metadata": {
+        "category": "vascular"
+      }
+    },
+    "Inhibitory Neurons": {
+      "name": "Inhibitory Neurons",
+      "genes": [
+        "GAD1",
+        "GAD2",
+        "SLC6A1"
+      ],
+      "source": "synthetic::cell_type",
+      "n_genes": 3,
+      "metadata": {
+        "category": "neuronal"
+      }
+    },
+    "Excitatory Neurons": {
+      "name": "Excitatory Neurons",
+      "genes": [
+        "GRIN2A",
+        "NRGN",
+        "CAMK2A"
+      ],
+      "source": "synthetic::cell_type",
+      "n_genes": 3,
+      "metadata": {
+        "category": "neuronal"
+      }
+    }
+  },
+  "background_genes": [
+    "APOE",
+    "TREM2",
+    "CD33",
+    "MS4A6A",
+    "TYROBP",
+    "SPI1",
+    "LPL",
+    "ITGAM",
+    "C1QA",
+    "C1QB",
+    "C1QC",
+    "ABI3",
+    "GFAP",
+    "S100B",
+    "AQP4",
+    "ALDH1L1",
+    "GLUL",
+    "FGFR3",
+    "SOX9",
+    "SPARCL1",
+    "MOG",
+    "MBP",
+    "PLP1",
+    "MOBP",
+    "MYRF",
+    "CLDN5",
+    "PECAM1",
+    "FLT1",
+    "VWF",
+    "GAD1",
+    "GAD2",
+    "SLC6A1",
+    "GRIN2A",
+    "NRGN",
+    "CAMK2A"
+  ],
+  "n_gene_sets": 6,
+  "n_background": 35,
+  "source_description": "Synthetic EnrichEx example gene sets",
+  "metadata": {}
+}

@@ -1,0 +1,7 @@
+gene_set_name	n_overlap	n_gene_set	n_background	odds_ratio	p_value	p_adjusted	significant	overlap_genes
+Microglia	12	180	18000	2.8	5.0e-08	1.5e-07	True	APOE,TREM2,CD33,MS4A6A,TYROBP,SPI1,LPL,ITGAM,C1QA,C1QB,C1QC,ABI3
+Astrocytes	10	210	18000	2.2	7.5e-06	2.2e-05	True	GFAP,S100B,AQP4,ALDH1L1,GLUL,FGFR3,SOX9,SPARCL1
+Oligodendrocytes	7	160	18000	1.7	0.0008	0.0021	True	MOG,MBP,PLP1,MOBP,MYRF
+Endothelial	5	140	18000	1.3	0.012	0.028	False	CLDN5,PECAM1,FLT1,VWF
+Inhibitory Neurons	4	155	18000	1.1	0.08	0.14	False	GAD1,GAD2,SLC6A1
+Excitatory Neurons	3	175	18000	0.95	0.15	0.22	False	GRIN2A,NRGN,CAMK2A
