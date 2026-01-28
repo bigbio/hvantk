@@ -69,6 +69,3 @@ from hvantk.commands.enrichex_cli.overlap_cli import register_overlap_commands
 
 register_overlap_commands(enrichex_group)
 register_burden_commands(enrichex_group)
-
-# Note: Visualization is now integrated directly into overlap and burden commands
-# via the --generate-report flag. No separate plot/report subcommands needed.
