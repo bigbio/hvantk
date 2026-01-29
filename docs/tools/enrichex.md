@@ -137,6 +137,7 @@ print(significant[['gene_set_name', 'odds_ratio', 'p_adjusted']])
 from hvantk.enrichex import run_burden_analysis
 from hvantk.core.hail_context import init_hail
 import hail as hl
+import json
 
 # Initialize Hail
 init_hail()
@@ -151,16 +152,15 @@ with open("gene_sets.json") as f:
 
 # Run burden analysis
 results_ht = run_burden_analysis(
-    mt=mt,
-    phenotypes_ht=phenotypes_ht,
+    cohort_mt=mt,
+    phenotype_ht=phenotypes_ht,
     gene_sets=gene_sets,
     phenotype_field="is_case",
     phenotype_type="binary",
-    covariates=["PC1", "PC2", "PC3", "age", "sex"],
+    covariate_fields=["PC1", "PC2", "PC3", "PC4", "PC5", "age", "sex"],
     max_af=0.001,
     min_cadd=25.0,
-    genotype_aggregation="hets",
-    correction_method="benjamini-hochberg"
+    genotype_aggregation="hets"
 )
 
 # Export results
@@ -169,9 +169,7 @@ results_ht.export("burden_results.tsv")
 
 ## Visualization
 
-EnrichEx ships with matplotlib-based plots that mirror the planning doc in
-`docs/planning/ENRICHEX_VISUALIZATION_DESIGN.md`. The CLI exposes these plots
-under a dedicated `plot` group:
+EnrichEx ships with matplotlib-based plots. The CLI exposes these plots under a dedicated `plot` group:
 
 ```bash
 # Enrichment dot plot
@@ -263,7 +261,7 @@ generate_report(
     overlap_results="enrichment_results.tsv",
     burden_results="burden_results.tsv",
     gene_sets_path="brain_cell_types.json",
-    title="Alzheimer's Disease EnrichEx Analysis",
+    title="Alzheimer's Disease EnricEx Analysis",
     description="Combined overlap + burden review",
     analyst_name="Bioinformatics Core",
     top_n=20,
@@ -903,22 +901,20 @@ from hvantk.enrichex import run_burden_analysis
 import hail as hl
 
 results_ht = run_burden_analysis(
-    mt=hl.read_matrix_table("cohort.mt"),
-    phenotypes_ht=hl.read_table("phenotypes.ht"),
+    cohort_mt=hl.read_matrix_table("cohort.mt"),
+    phenotype_ht=hl.read_table("phenotypes.ht"),
     gene_sets={
         "Microglia": ["TREM2", "CD33", "MS4A6A"],
         "Excitatory": ["GRIN2A", "GRIN2B", "SLC17A7"]
     },
     phenotype_field="is_case",
     phenotype_type="binary",  # or "continuous"
-    covariates=["PC1", "PC2", "PC3", "age", "sex"],
+    covariate_fields=["PC1", "PC2", "PC3", "age", "sex"],
     max_af=0.001,
     min_cadd=25.0,
     consequences=["missense_variant", "frameshift_variant"],
     genotype_aggregation="hets",  # or "homs", "chets", "homs_chets"
-    gene_field="SYMBOL",
-    correction_method="benjamini-hochberg",
-    alpha=0.05
+    gene_field="SYMBOL"
 )
 
 # Export results
@@ -1071,7 +1067,7 @@ OR=15.2, 95% CI: [4.5, 48.3]
 
 ### Burden Testing
 
-#### Binary Phenotypes (Case/Control)
+#### Binary Phenotype (Case/Control)
 
 **Odds Ratio Interpretation:**
 
@@ -1342,54 +1338,6 @@ See the `examples/enrichex/` directory for complete workflow examples:
 - `overlap_enrichment_example.py` - Gene list enrichment analysis
 - `burden_analysis_example.py` - Case-control burden testing
 - `create_gene_sets_example.py` - Creating gene sets from marker files
-- `multi_phenotype_analysis.py` - Testing multiple phenotypes
-
-Also see the tutorial notebook:
-- `notebooks/enrichex_tutorial.ipynb` - Interactive step-by-step tutorial
 
 ## Dependencies
 
-- **hail** >= 0.2.100 - Genomic data processing and regression
-- **numpy** - Numerical operations
-- **pandas** - Data manipulation
-- **scipy** - Statistical functions (Fisher's exact test via Hail)
-- **click** - CLI interface
-- **Python** >= 3.10
-
-## References
-
-### Methods
-- Fisher's Exact Test: [Wikipedia](https://en.wikipedia.org/wiki/Fisher%27s_exact_test)
-- Gene Set Enrichment Analysis: [Subramanian et al. PNAS 2005](https://www.pnas.org/doi/10.1073/pnas.0506580102)
-- Burden Testing: [Lee et al. AJHG 2012](https://www.cell.com/ajhg/fulltext/S0002-9297(12)00316-3)
-- SKAT: [Wu et al. AJHG 2011](https://www.cell.com/ajhg/fulltext/S0002-9297(11)00222-9)
-
-### Gene Sets
-- MSigDB: [Molecular Signatures Database](https://www.gsea-msigdb.org/gsea/msigdb/)
-- Gene Ontology: [GO Consortium](http://geneontology.org/)
-- Reactome: [Reactome Pathway Database](https://reactome.org/)
-- Cell-Type Markers: [PanglaoDB](https://panglaodb.se/), [CellMarker](http://bio-bigdata.hrbmu.edu.cn/CellMarker/)
-
-### Tools
-- Hail: [Hail Documentation](https://hail.is/docs/0.2/)
-- LDSC-SEG: [Finucane et al. Nat Genet 2018](https://www.nature.com/articles/s41588-018-0081-4)
-- MAGMA: [de Leeuw et al. PLoS Comput Biol 2015](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1004219)
-
-## License
-
-EnrichEx is part of hvantk, released under the MIT License. See [LICENSE](../../LICENSE) for details.
-
-## Support
-
-- **Issues**: [GitHub Issues](https://github.com/bigbio/hvantk/issues)
-- **Documentation**: [hvantk Documentation](https://github.com/bigbio/hvantk/tree/main/docs)
-- **Examples**: [EnrichEx Examples](https://github.com/bigbio/hvantk/tree/main/examples/enrichex)
-- **Tutorial**: [EnrichEx Notebook](https://github.com/bigbio/hvantk/tree/main/notebooks/enrichex_tutorial.ipynb)
-
-## Citation
-
-If you use EnrichEx in your research, please cite:
-
-```
-[Citation to be added upon publication]
-```
