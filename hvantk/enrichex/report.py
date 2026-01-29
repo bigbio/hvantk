@@ -9,6 +9,7 @@ inline CSS, and lightweight string formatting (no template engines).
 from __future__ import annotations
 
 import html
+import math
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -255,17 +256,26 @@ def _create_burden_section(
     df = df.copy()
     effect_col = "odds_ratio" if "odds_ratio" in df.columns else "beta"
     if "ci_lower" not in df.columns and {"beta", "standard_error"}.issubset(df.columns):
-        df["ci_lower"] = df["beta"] - 1.96 * df["standard_error"]
-        df["ci_upper"] = df["beta"] + 1.96 * df["standard_error"]
+        if effect_col == "odds_ratio":
+            df["ci_lower"] = (df["beta"] - 1.96 * df["standard_error"]).map(math.exp)
+            df["ci_upper"] = (df["beta"] + 1.96 * df["standard_error"]).map(math.exp)
+        else:
+            df["ci_lower"] = df["beta"] - 1.96 * df["standard_error"]
+            df["ci_upper"] = df["beta"] + 1.96 * df["standard_error"]
 
     p_col = _resolve_pvalue_column(df)
     df = df.sort_values(p_col).head(top_n)
     table_rows = []
     for _, row in df.iterrows():
+        effect_value = row.get(effect_col)
+        if effect_col == "odds_ratio":
+            if pd.isna(effect_value):
+                beta = row.get("beta")
+                effect_value = math.exp(beta) if beta is not None and not pd.isna(beta) else beta
         table_rows.append(
             {
                 "gene_set_name": row.get("gene_set_name"),
-                "effect": row.get(effect_col),
+                "effect": effect_value,
                 "ci_lower": row.get("ci_lower"),
                 "ci_upper": row.get("ci_upper"),
                 "p_value": row.get("p_value"),
