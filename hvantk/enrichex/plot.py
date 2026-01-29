@@ -497,27 +497,32 @@ def plot_enrichment_barplot(
         ax.set_ylabel(label)
 
     if show_ci and {"ci_lower", "ci_upper"}.issubset(df.columns):
-        minus = df[value] - df["ci_lower"]
-        plus = df["ci_upper"] - df[value]
-        errors = np.vstack([minus, plus])
-        if orientation == "horizontal":
-            ax.errorbar(
-                df[value],
-                positions,
-                xerr=errors,
-                fmt="none",
-                ecolor="#444444",
-                capsize=3,
+        if value == "-log10_p":
+            logger.warning(
+                "Cannot plot confidence intervals when value == '-log10_p': CI columns are on the p-value scale and would be mismatched. Skipping error bars."
             )
         else:
-            ax.errorbar(
-                positions,
-                df[value],
-                yerr=errors,
-                fmt="none",
-                ecolor="#444444",
-                capsize=3,
-            )
+            minus = df[value] - df["ci_lower"]
+            plus = df["ci_upper"] - df[value]
+            errors = np.vstack([minus, plus])
+            if orientation == "horizontal":
+                ax.errorbar(
+                    df[value],
+                    positions,
+                    xerr=errors,
+                    fmt="none",
+                    ecolor="#444444",
+                    capsize=3,
+                )
+            else:
+                ax.errorbar(
+                    positions,
+                    df[value],
+                    yerr=errors,
+                    fmt="none",
+                    ecolor="#444444",
+                    capsize=3,
+                )
 
     if legend_handles:
         ax.legend(handles=legend_handles, loc="best", frameon=False)
