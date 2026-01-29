@@ -159,12 +159,9 @@ def example_seurat_format():
 
     # Load as gene sets
     gene_sets = load_marker_genes(
-        tsv_path=str(seurat_path),
-        gene_col="gene",
-        cluster_col="cluster",
-        score_col="avg_log2FC",
-        score_threshold=1.5,  # Keep genes with log2FC > 1.5
-        top_n=100,  # Top 100 genes per cluster (or all if fewer)
+        marker_file=str(seurat_path),
+        gene_column="gene",
+        cluster_column="cluster",
     )
 
     logger.info(f"\nLoaded {len(gene_sets)} gene sets:")
