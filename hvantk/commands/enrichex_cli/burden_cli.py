@@ -323,9 +323,21 @@ def burden_test(
     # Sort by p-value
     result_df = result_df.sort_values("p_value")
 
+    # Output (resolve output path once to allow directory targets)
+    from pathlib import Path
+
+    output_path = Path(output)
+    if output_path.suffix in [".tsv", ".json"]:
+        output_dir = output_path.parent
+        results_path = output_path
+    else:
+        output_dir = output_path
+        output_dir.mkdir(parents=True, exist_ok=True)
+        results_path = output_dir / "burden_results.tsv"
+
     # Output
-    result_df.to_csv(output, sep="\t", index=False)
-    click.echo(f"\n✓ Results written to: {output}")
+    result_df.to_csv(results_path, sep="\t", index=False)
+    click.echo(f"\n✓ Results written to: {results_path}")
 
     # Summary statistics
     n_significant = result_df["significant"].sum()
@@ -430,37 +442,18 @@ def burden_test(
 
     # Generate report if requested
     if generate_report:
-        from pathlib import Path
-
         from hvantk.enrichex.report import generate_report as gen_report
 
         click.echo("\nGenerating report...")
 
-        # Determine output directory and file paths
-        output_path = Path(output)
-        if output_path.suffix in [".tsv", ".json"]:
-            output_dir = output_path.parent
-            results_path = output_path
-        else:
-            output_dir = output_path
-            output_dir.mkdir(parents=True, exist_ok=True)
-            results_path = output_dir / "burden_results.tsv"
-
         report_path = output_dir / "enrichex_burden_report.html"
 
         gen_report(
-            output_path=str(report_path),
-            burden_results=str(results_path),
+            output_path=report_path,
+            burden_results=results_path,
             gene_sets_path=gene_sets,
-            title="EnrichEx Burden Testing Report",
-            description=f"Burden testing using {phenotype_type} phenotype. "
-            f"Aggregation: {genotype_aggregation}, Max AF: {max_af}, "
-            f"Min CADD: {min_cadd if min_cadd > 0 else 'disabled'}",
-            top_n=20,
-            include_methods=True,
-            include_gene_lists=False,
+            phenotype_type=phenotype_type,
+            top_n=25,
             embed_static_plots=True,
         )
-
-        click.echo(f"✓ Report generated: {report_path}")
-        click.echo(f"  Plots saved in: {output_dir}")
+        click.echo(f"\n✓ Report written to: {report_path}")
