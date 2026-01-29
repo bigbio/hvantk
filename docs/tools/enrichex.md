@@ -8,13 +8,13 @@ The EnrichEx module implements two complementary analysis approaches:
 
 ### Primary Functionality
 
-**Overlap Enrichment**
+#### Overlap Enrichment
 - **Fisher's Exact Test** - Statistical testing of gene list enrichment in gene sets
 - **Cell-Type Analysis** - Identify enriched cell types for gene lists (e.g., GWAS hits)
 - **Multiple Testing Correction** - Bonferroni and Benjamini-Hochberg corrections
 - **Flexible Gene Sets** - Support for custom gene set collections
 
-**Burden Testing**
+#### Burden Testing
 - **Hail-Native Regression** - Scalable logistic/linear regression for 100K+ samples
 - **Gene Set Burden** - Aggregate rare variant burden across gene sets
 - **Multiple Models** - Heterozygous, homozygous, and compound heterozygous models
@@ -22,13 +22,13 @@ The EnrichEx module implements two complementary analysis approaches:
 
 ### Key Features
 
-**Overlap Enrichment Features:**
+#### Overlap Enrichment Features:
 - **Fast Computation** - Fisher's exact test via Hail's optimized implementation
 - **Rich Results** - Odds ratios, confidence intervals, overlapping genes
 - **Multiple Outputs** - TSV, JSON, and pandas DataFrame formats
 - **Interpretable** - Clear statistical significance with adjusted p-values
 
-**Burden Testing Features:**
+#### Burden Testing Features:
 - **Distributed Computing** - Scales to 100K+ samples via Hail/Spark
 - **Flexible Genotype Models** - Hets, homs, compound hets, or combined
 - **Phenotype Support** - Binary (case/control) and continuous phenotypes
@@ -261,7 +261,7 @@ generate_report(
     overlap_results="enrichment_results.tsv",
     burden_results="burden_results.tsv",
     gene_sets_path="brain_cell_types.json",
-    title="Alzheimer's Disease EnricEx Analysis",
+    title="Alzheimer's Disease EnrichEx Analysis",
     description="Combined overlap + burden review",
     analyst_name="Bioinformatics Core",
     top_n=20,
@@ -370,7 +370,7 @@ import hail as hl
 
 # Load cohort with multiple phenotypes
 mt = hl.read_matrix_table("neuro_cohort.mt")
-phenotypes_ht = hl.read_table("phenotypes.ht")
+phenotype_ht = hl.read_table("phenotypes.ht")
 
 # Gene sets
 gene_sets = {
@@ -382,12 +382,12 @@ gene_sets = {
 # Test each phenotype
 for pheno in ["alzheimers", "parkinsons", "schizophrenia"]:
     results_ht = run_burden_analysis(
-        mt=mt,
-        phenotypes_ht=phenotypes_ht,
+        cohort_mt=mt,
+        phenotype_ht=phenotype_ht,
         gene_sets=gene_sets,
         phenotype_field=pheno,
         phenotype_type="binary",
-        covariates=["PC1", "PC2", "PC3", "age", "sex"],
+        covariate_fields=["PC1", "PC2", "PC3", "age", "sex"],
         max_af=0.001,
         min_cadd=25.0
     )
@@ -437,12 +437,9 @@ from hvantk.enrichex import GeneSetCollection, load_marker_genes
 
 # Load from TSV file (columns: gene, cell_type, score)
 gene_sets = load_marker_genes(
-    tsv_path="cell_type_markers.tsv",
-    gene_col="gene",
-    cluster_col="cell_type",
-    score_col="log2fc",
-    score_threshold=1.0,  # Filter by log2FC > 1.0
-    top_n=100  # Take top 100 genes per cell type
+    marker_file="cell_type_markers.tsv",
+    gene_column="gene",
+    cluster_column="cell_type",
 )
 
 # Save as JSON
@@ -486,8 +483,8 @@ gene_set_collection.save("brain_markers.json")
 
 Gene lists can be provided in two formats:
 
-**Option 1: Text file (one gene per line)**
-```
+##### Option 1: Text file (one gene per line)
+```text
 APOE
 CLU
 CR1
@@ -495,7 +492,7 @@ PICALM
 BIN1
 ```
 
-**Option 2: Comma-separated list**
+##### Option 2: Comma-separated list
 ```bash
 hvantk enrichex overlap \
   --gene-list "APOE,CLU,CR1,PICALM,BIN1" \
@@ -713,9 +710,9 @@ hvantk enrichex burden \
 #### TSV Format
 
 ```tsv
-gene_set_name	n_query	n_gene_set	n_overlap	n_background	p_value	odds_ratio	ci_lower	ci_upper	p_adjusted	significant	overlap_genes
-Microglia	9	150	5	20000	0.0001	15.2	4.5	48.3	0.002	True	TREM2;CD33;MS4A6A;TYROBP;CSF1R
-Excitatory_Neurons	9	500	2	20000	0.45	1.2	0.3	4.8	0.60	False	GRIN2A;SLC17A7
+gene_set_name\tn_query\tn_gene_set\tn_overlap\tn_background\tp_value\todds_ratio\tci_lower\tci_upper\tp_adjusted\tsignificant\toverlap_genes
+Microglia\t9\t150\t5\t20000\t0.0001\t15.2\t4.5\t48.3\t0.002\tTrue\tTREM2;CD33;MS4A6A;TYROBP;CSF1R
+Excitatory_Neurons\t9\t500\t2\t20000\t0.45\t1.2\t0.3\t4.8\t0.60\tFalse\tGRIN2A;SLC17A7
 ```
 
 **Columns:**
@@ -759,9 +756,9 @@ Excitatory_Neurons	9	500	2	20000	0.45	1.2	0.3	4.8	0.60	False	GRIN2A;SLC17A7
 #### Binary Phenotype (Logistic Regression)
 
 ```tsv
-gene_set_name	beta	standard_error	z_stat	p_value	odds_ratio	ci_lower	ci_upper	p_adjusted	significant
-Microglia	0.45	0.12	3.75	0.0002	1.57	1.24	1.98	0.004	True
-Excitatory_Neurons	0.08	0.10	0.80	0.42	1.08	0.89	1.31	0.60	False
+gene_set_name\tbeta\tstandard_error\tz_stat\tp_value\todds_ratio\tci_lower\tci_upper\tp_adjusted\tsignificant
+Microglia\t0.45\t0.12\t3.75\t0.0002\t1.57\t1.24\t1.98\t0.004\tTrue
+Excitatory_Neurons\t0.08\t0.10\t0.80\t0.42\t1.08\t0.89\t1.31\t0.60\tFalse
 ```
 
 **Columns:**
@@ -778,9 +775,9 @@ Excitatory_Neurons	0.08	0.10	0.80	0.42	1.08	0.89	1.31	0.60	False
 #### Continuous Phenotype (Linear Regression)
 
 ```tsv
-gene_set_name	beta	standard_error	t_stat	p_value	p_adjusted	significant
-Microglia	2.35	0.65	3.62	0.0003	0.006	True
-Excitatory_Neurons	0.42	0.58	0.72	0.47	0.70	False
+gene_set_name\tbeta\tstandard_error\tt_stat\tp_value\tp_adjusted\tsignificant
+Microglia\t2.35\t0.65\t3.62\t0.0003\t0.006\tTrue
+Excitatory_Neurons\t0.42\t0.58\t0.72\t0.47\t0.70\tFalse
 ```
 
 **Columns:**
@@ -991,12 +988,9 @@ Load gene sets from TSV marker file:
 from hvantk.enrichex import load_marker_genes
 
 gene_sets = load_marker_genes(
-    tsv_path="seurat_markers.tsv",
-    gene_col="gene",
-    cluster_col="cluster",
-    score_col="avg_log2FC",
-    score_threshold=1.0,  # Keep genes with log2FC > 1
-    top_n=100  # Top 100 genes per cluster
+    marker_file="seurat_markers.tsv",
+    gene_column="gene",
+    cluster_column="cluster",
 )
 
 gene_sets.save("markers.json")
@@ -1031,7 +1025,7 @@ p_adjusted_none = apply_correction(p_values, method="none")
 The odds ratio (OR) quantifies enrichment strength:
 
 | OR Range | Interpretation |
-|----------|----------------|
+| --- | --- |
 | OR > 10 | Very strong enrichment |
 | OR 5-10 | Strong enrichment |
 | OR 2-5 | Moderate enrichment |
@@ -1040,7 +1034,7 @@ The odds ratio (OR) quantifies enrichment strength:
 | OR < 1 | Depletion |
 
 **Example:**
-```
+```text
 Microglia: OR=15.2, p=0.002
 ```
 Interpretation: Query genes are 15x more likely to be microglia genes than expected by chance. Highly significant (p=0.002).
@@ -1049,7 +1043,7 @@ Interpretation: Query genes are 15x more likely to be microglia genes than expec
 
 95% CI provides uncertainty estimate:
 
-```
+```text
 OR=15.2, 95% CI: [4.5, 48.3]
 ```
 
@@ -1072,13 +1066,13 @@ OR=15.2, 95% CI: [4.5, 48.3]
 **Odds Ratio Interpretation:**
 
 | OR | Effect | Interpretation |
-|----|--------|----------------|
+| --- | --- | --- |
 | OR = 2.0 | Risk factor | Cases have 2x more burden than controls |
 | OR = 1.0 | No effect | Equal burden in cases and controls |
 | OR = 0.5 | Protective | Cases have 50% less burden than controls |
 
 **Example:**
-```
+```text
 Microglia burden:
   beta=0.45, OR=1.57, 95% CI [1.24, 1.98], p=0.0002
 ```
@@ -1098,7 +1092,7 @@ Interpretation:
 
 **Beta Coefficient Interpretation:**
 
-```
+```text
 Microglia burden:
   beta=2.35, SE=0.65, t=3.62, p=0.0003
 ```
@@ -1209,16 +1203,16 @@ Use for: Exploratory analyses, large cohorts
 
 ### Common Issues
 
-**Issue: "No overlapping genes between query and background"**
-```
+#### Issue: "No overlapping genes between query and background"
+```text
 Solution: Check gene identifier consistency
 - Ensure query and gene sets use same ID system (symbol vs Ensembl)
 - Check for case sensitivity
 - Verify gene names are current (not outdated aliases)
 ```
 
-**Issue: "Gene set has no variants passing filters"**
-```
+#### Issue: "Gene set has no variants passing filters"
+```text
 Solution: Relax variant filters or check annotations
 hvantk enrichex burden ... --max-af 0.01 --min-cadd 15
 
@@ -1227,8 +1221,8 @@ Or verify VEP annotations are present:
 - Verify CADD scores are annotated
 ```
 
-**Issue: "MatrixTable column key mismatch"**
-```
+#### Issue: "MatrixTable column key mismatch"
+```python
 Solution: Ensure sample IDs match between MT and phenotype table
 # Check column keys
 mt.col_key.dtype  # Should match phenotype table key
@@ -1238,16 +1232,16 @@ phenotypes_ht.key.dtype
 mt = mt.key_cols_by(s=hl.str(mt.s))
 ```
 
-**Issue: "Warning: Low sample count for gene set"**
-```
+#### Issue: "Warning: Low sample count for gene set"
+```text
 Solution: This is informational
 - < 10 samples with burden may reduce power
 - Consider combining related gene sets
 - Use more permissive filters to increase burden carriers
 ```
 
-**Issue: "Regression did not converge"**
-```
+#### Issue: "Regression did not converge"
+```text
 Solution: Check for issues:
 1. Complete separation (all cases or all controls have burden)
 2. Very low burden counts
@@ -1340,4 +1334,3 @@ See the `examples/enrichex/` directory for complete workflow examples:
 - `create_gene_sets_example.py` - Creating gene sets from marker files
 
 ## Dependencies
-
