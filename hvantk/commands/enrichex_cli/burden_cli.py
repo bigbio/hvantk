@@ -452,7 +452,6 @@ def burden_test(
             output_path=report_path,
             burden_results=results_path,
             gene_sets_path=gene_sets,
-            phenotype_type=phenotype_type,
             top_n=25,
             embed_static_plots=True,
         )
