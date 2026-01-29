@@ -219,6 +219,7 @@ def _create_overlap_section(
         df,
         output_path=str(plot_path),
         top_n=top_n,
+        sort_by=p_col,
         title="Overlap Enrichment",
     )
     plot_src = plot_path.name
@@ -275,13 +276,24 @@ def _create_burden_section(
 
     plot_path = output_dir / "enrichex_burden.png"
     phenotype_type = "binary" if "odds_ratio" in df.columns else "continuous"
-    fig = plot_burden_forest(
-        df,
-        output_path=str(plot_path),
-        top_n=top_n,
-        phenotype_type=phenotype_type,
-        title="Burden Testing",
-    )
+    if phenotype_type == "continuous":
+        fig = plot_burden_forest(
+            df,
+            output_path=str(plot_path),
+            top_n=top_n,
+            phenotype_type=phenotype_type,
+            sort_by=p_col,
+            ascending=True,
+            title="Burden Testing",
+        )
+    else:
+        fig = plot_burden_forest(
+            df,
+            output_path=str(plot_path),
+            top_n=top_n,
+            phenotype_type=phenotype_type,
+            title="Burden Testing",
+        )
     plot_src = plot_path.name
     if embed_static_plots:
         plot_src = f"data:image/png;base64,{encode_figure_to_base64(fig)}"
