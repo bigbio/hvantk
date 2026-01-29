@@ -95,7 +95,7 @@ def create_synthetic_cohort(n_samples=1000, n_variants=500):
 
     mt = mt.annotate_rows(
         # Gene annotation (typically from VEP)
-        SYMBOL=gene_pool[hl.int32(hl.rand_unif(0, len(gene_pool)))],
+        SYMBOL=hl.literal(gene_pool)[hl.int32(hl.rand_unif(0, len(gene_pool)))],
         # Allele frequency (typically from gnomAD)
         gnomad_af=hl.rand_unif(0.0, 0.01),
         # CADD score (typically from dbNSFP)
@@ -251,17 +251,15 @@ def main():
     logger.info("=" * 60)
 
     results_binary_ht = run_burden_analysis(
-        mt=mt,
-        phenotypes_ht=phenotypes_ht,
+        cohort_mt=mt,
+        phenotype_ht=phenotypes_ht,
         gene_sets=gene_sets,
         phenotype_field="is_case",
         phenotype_type="binary",
-        covariates=["PC1", "PC2", "PC3", "PC4", "PC5", "age", "sex"],
+        covariate_fields=["PC1", "PC2", "PC3", "PC4", "PC5", "age", "sex"],
         max_af=0.001,  # Rare variants (AF < 0.1%)
         min_cadd=25.0,  # High CADD scores
         genotype_aggregation="hets",
-        correction_method="benjamini-hochberg",
-        alpha=0.05,
     )
 
     # Export results
@@ -296,17 +294,15 @@ def main():
     logger.info("=" * 60)
 
     results_continuous_ht = run_burden_analysis(
-        mt=mt,
-        phenotypes_ht=phenotypes_ht,
+        cohort_mt=mt,
+        phenotype_ht=phenotypes_ht,
         gene_sets=gene_sets,
         phenotype_field="cognitive_score",
         phenotype_type="continuous",
-        covariates=["PC1", "PC2", "PC3", "PC4", "PC5", "age", "sex"],
+        covariate_fields=["PC1", "PC2", "PC3", "PC4", "PC5", "age", "sex"],
         max_af=0.001,
         min_cadd=25.0,
         genotype_aggregation="hets",
-        correction_method="benjamini-hochberg",
-        alpha=0.05,
     )
 
     # Export results
