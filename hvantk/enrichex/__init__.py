@@ -21,7 +21,6 @@ CLI commands:
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -43,17 +42,17 @@ except (
         exc,
     )
 
-    def _missing_dependency(*_: Any, **__: Any) -> None:
-        raise ImportError(
-            "Burden analysis requires the optional Hail dependency. "
-            "Install hvantk with the 'hail' requirements."
-        ) from _exc
+    class VariantFilter:
+        def __init__(self, *a, **k):
+            raise ImportError(
+                "Burden analysis requires the optional Hail dependency. "
+                "Install hvantk with the 'hail' requirements."
+            ) from _exc
 
-    VariantFilter = None  # type: ignore[assignment]
-    compute_geneset_burden_mt = _missing_dependency  # type: ignore[assignment]
-    linear_burden_test = _missing_dependency  # type: ignore[assignment]
-    logistic_burden_test = _missing_dependency  # type: ignore[assignment]
-    run_burden_analysis = _missing_dependency  # type: ignore[assignment]
+    compute_geneset_burden_mt = VariantFilter  # type: ignore[assignment]
+    linear_burden_test = VariantFilter  # type: ignore[assignment]
+    logistic_burden_test = VariantFilter  # type: ignore[assignment]
+    run_burden_analysis = VariantFilter  # type: ignore[assignment]
 from hvantk.enrichex.constants import (
     CORRECTION_METHODS,
     DEFAULT_ALPHA,
