@@ -160,7 +160,9 @@ class TestPSROCCLIValidation:
             )
 
             assert result.exit_code != 0
-            assert "genes" in result.output.lower() or "variants" in result.output.lower()
+            assert (
+                "genes" in result.output.lower() or "variants" in result.output.lower()
+            )
 
     def test_multiple_variant_sources(self):
         """Test error when multiple variant sources provided."""
@@ -194,7 +196,9 @@ class TestPSROCCLIValidation:
             )
 
             assert result.exit_code != 0
-            assert "multiple" in result.output.lower() or "cannot" in result.output.lower()
+            assert (
+                "multiple" in result.output.lower() or "cannot" in result.output.lower()
+            )
 
     def test_invalid_reference_genome(self):
         """Test error with invalid reference genome."""

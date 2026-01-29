@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 # PSROC-specific color scheme
 PSROC_COLORS = {
     "diagonal": "#888888",  # Gray for random classifier line
-    "optimal": "#FFD700",   # Gold for optimal threshold markers
+    "optimal": "#FFD700",  # Gold for optimal threshold markers
     "good_auc": "#2E8B57",  # Sea Green for AUC >= 0.8
     "medium_auc": "#FF8C00",  # Dark Orange for 0.6 <= AUC < 0.8
     "poor_auc": "#DC143C",  # Crimson for AUC < 0.6
@@ -161,7 +161,9 @@ def plot_roc_curves(
         # Mark optimal threshold point
         if show_optimal:
             # Find the point closest to the optimal threshold
-            opt_idx = np.argmin(np.abs(roc_result.thresholds - roc_result.optimal_threshold))
+            opt_idx = np.argmin(
+                np.abs(roc_result.thresholds - roc_result.optimal_threshold)
+            )
             ax.scatter(
                 roc_result.fpr[opt_idx],
                 roc_result.tpr[opt_idx],
@@ -290,7 +292,9 @@ def plot_roc_curve_single(
 
     # Mark optimal threshold point
     if show_optimal:
-        opt_idx = np.argmin(np.abs(roc_result.thresholds - roc_result.optimal_threshold))
+        opt_idx = np.argmin(
+            np.abs(roc_result.thresholds - roc_result.optimal_threshold)
+        )
         opt_fpr = roc_result.fpr[opt_idx]
         opt_tpr = roc_result.tpr[opt_idx]
 
@@ -435,8 +439,20 @@ def plot_auc_comparison(
                 )
 
         # Add reference lines
-        ax.axvline(0.5, color=PSROC_COLORS["diagonal"], linestyle="--", alpha=0.5, label="Random")
-        ax.axvline(0.8, color=PSROC_COLORS["good_auc"], linestyle="--", alpha=0.5, label="Good (0.8)")
+        ax.axvline(
+            0.5,
+            color=PSROC_COLORS["diagonal"],
+            linestyle="--",
+            alpha=0.5,
+            label="Random",
+        )
+        ax.axvline(
+            0.8,
+            color=PSROC_COLORS["good_auc"],
+            linestyle="--",
+            alpha=0.5,
+            label="Good (0.8)",
+        )
 
     else:
         x_pos = np.arange(len(names))
@@ -458,8 +474,20 @@ def plot_auc_comparison(
                 )
 
         # Add reference lines
-        ax.axhline(0.5, color=PSROC_COLORS["diagonal"], linestyle="--", alpha=0.5, label="Random")
-        ax.axhline(0.8, color=PSROC_COLORS["good_auc"], linestyle="--", alpha=0.5, label="Good (0.8)")
+        ax.axhline(
+            0.5,
+            color=PSROC_COLORS["diagonal"],
+            linestyle="--",
+            alpha=0.5,
+            label="Random",
+        )
+        ax.axhline(
+            0.8,
+            color=PSROC_COLORS["good_auc"],
+            linestyle="--",
+            alpha=0.5,
+            label="Good (0.8)",
+        )
 
     ax.set_title(title, fontsize=14, fontweight="bold")
     ax.legend(loc="lower right" if horizontal else "upper right", fontsize=9)
@@ -563,6 +591,7 @@ def plot_missingness_summary(
 
     # Add legend for colors (combine with threshold if present)
     from matplotlib.patches import Patch
+
     legend_elements = [
         Patch(facecolor=PSROC_COLORS["included"], edgecolor="black", label="Included"),
         Patch(facecolor=PSROC_COLORS["excluded"], edgecolor="black", label="Excluded"),
@@ -571,10 +600,17 @@ def plot_missingness_summary(
     # Include threshold line in legend if present
     if max_missingness_threshold is not None:
         from matplotlib.lines import Line2D
+
         threshold_pct = max_missingness_threshold * 100
         legend_elements.append(
-            Line2D([0], [0], color=PSROC_COLORS["excluded"], linestyle="--",
-                   linewidth=2, label=f"Threshold ({threshold_pct:.0f}%)")
+            Line2D(
+                [0],
+                [0],
+                color=PSROC_COLORS["excluded"],
+                linestyle="--",
+                linewidth=2,
+                label=f"Threshold ({threshold_pct:.0f}%)",
+            )
         )
 
     ax.legend(handles=legend_elements, loc="lower right", fontsize=10)
@@ -647,7 +683,9 @@ def plot_psroc_summary_dashboard(
                 label=f"{score_name} ({roc_result.auc:.3f})",
             )
 
-        ax1.plot([0, 1], [0, 1], color=PSROC_COLORS["diagonal"], linestyle="--", linewidth=1)
+        ax1.plot(
+            [0, 1], [0, 1], color=PSROC_COLORS["diagonal"], linestyle="--", linewidth=1
+        )
         ax1.set_xlim([0, 1])
         ax1.set_ylim([0, 1.05])
         ax1.set_xlabel("False Positive Rate")

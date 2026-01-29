@@ -23,9 +23,9 @@ Documentation for specific tools within hvantk:
 
 Documentation for developers and contributors:
 
-- **[Developer Guide](planning/DEVELOPING.md)** - Development workflow and contracts
-- **[Streamers and Recipes](planning/STREAMERS_AND_RECIPES.md)** - Streamer interface and JSON/YAML recipe format
-- **[Data Catalog](planning/DATA_CATALOG.md)** - Dataset registry, versioning, and hosting strategy
+- **[Developer Guide](../local/docs/DEVELOPING.md)** - Development workflow and contracts
+- **[Streamers and Recipes](../local/docs/STREAMERS_AND_RECIPES.md)** - Streamer interface and JSON/YAML recipe format
+- **[Data Catalog](../local/docs/DATA_CATALOG.md)** - Dataset registry, versioning, and hosting strategy
 
 ### 📊 Registry (`registry/`)
 
@@ -45,10 +45,10 @@ Dataset registry and web interface for browsing available datasets.
 - [Joint genotyping with HGC](tools/hgc.md#quick-start) - Combine GVCF files
 
 ### For Developers
-- [Contributing](planning/DEVELOPING.md#contributing) - How to contribute
-- [Add a new data source](planning/DEVELOPING.md#development-cycle) - Add new annotations
-- [Create custom streamers](planning/STREAMERS_AND_RECIPES.md#creating-custom-streamers) - Build transformers
-- [Register datasets](planning/DATA_CATALOG.md#registering-a-new-dataset) - Add to catalog
+- [Contributing](../local/docs/DEVELOPING.md#contributing) - How to contribute
+- [Add a new data source](../local/docs/DEVELOPING.md#development-cycle) - Add new annotations
+- [Create custom streamers](../local/docs/STREAMERS_AND_RECIPES.md#creating-custom-streamers) - Build transformers
+- [Register datasets](../local/docs/DATA_CATALOG.md#registering-a-new-dataset) - Add to catalog
 
 ## Documentation Conventions
 
@@ -73,4 +73,4 @@ Documentation contributions are welcome! Please:
 4. Add links between related sections
 5. Test all code examples
 
-See the [Developer Guide](planning/DEVELOPING.md) for more information.
+See the [Developer Guide](../local/docs/DEVELOPING.md) for more information.

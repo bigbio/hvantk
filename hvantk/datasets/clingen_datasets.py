@@ -109,9 +109,7 @@ class ClinGenGeneDiseaseDataset:
         logger.info(f"Latest ClinGen Gene-Disease version: {latest_date}")
         return cls.from_date(latest_date)
 
-    def download(
-        self, output_dir: str, overwrite: bool = False
-    ) -> str:
+    def download(self, output_dir: str, overwrite: bool = False) -> str:
         """
         Download the dataset CSV file.
 
@@ -144,9 +142,7 @@ class ClinGenGeneDiseaseDataset:
             logger.info(f"Downloaded ClinGen dataset to {output_path}")
             return output_path
         except Exception as e:
-            raise RuntimeError(
-                f"Failed to download ClinGen dataset: {str(e)}"
-            ) from e
+            raise RuntimeError(f"Failed to download ClinGen dataset: {str(e)}") from e
 
     def get_metadata(self) -> Dict[str, str]:
         """

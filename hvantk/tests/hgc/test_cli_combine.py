@@ -12,7 +12,9 @@ def test_gvcf_combine_cli_basic():
     """Test gvcf-combine command with basic options."""
     runner = CliRunner()
     with patch("hvantk.commands.hgc.combine_cli.combine_gvcfs") as mock_combine:
-        with patch("hvantk.commands.hgc.combine_cli.validate_output_path") as mock_validate:
+        with patch(
+            "hvantk.commands.hgc.combine_cli.validate_output_path"
+        ) as mock_validate:
             mock_validate.return_value = True
 
             result = runner.invoke(
@@ -45,11 +47,7 @@ def test_gvcf_combine_cli_dry_run():
 
         result = runner.invoke(
             gvcf_combine,
-            [
-                "--gvcf-dir", "/path/to/gvcfs",
-                "--output", "/out.vds",
-                "--dry-run"
-            ],
+            ["--gvcf-dir", "/path/to/gvcfs", "--output", "/out.vds", "--dry-run"],
         )
 
         assert result.exit_code == 0
@@ -61,16 +59,22 @@ def test_gvcf_combine_cli_with_vds_paths():
     """Test gvcf-combine command with VDS paths."""
     runner = CliRunner()
     with patch("hvantk.commands.hgc.combine_cli.combine_gvcfs") as mock_combine:
-        with patch("hvantk.commands.hgc.combine_cli.validate_output_path") as mock_validate:
+        with patch(
+            "hvantk.commands.hgc.combine_cli.validate_output_path"
+        ) as mock_validate:
             mock_validate.return_value = True
 
             result = runner.invoke(
                 gvcf_combine,
                 [
-                    "--gvcf-dir", "/gvcfs",
-                    "--vds-paths", "/vds1.vds",
-                    "--vds-paths", "/vds2.vds",
-                    "--output", "/out.vds"
+                    "--gvcf-dir",
+                    "/gvcfs",
+                    "--vds-paths",
+                    "/vds1.vds",
+                    "--vds-paths",
+                    "/vds2.vds",
+                    "--output",
+                    "/out.vds",
                 ],
             )
 
@@ -86,6 +90,7 @@ def test_vds_combine_cli_basic():
     runner = CliRunner()
     with runner.isolated_filesystem():
         import os
+
         os.makedirs("input_dir")
 
         with patch("hvantk.commands.hgc.combine_cli.combine_vdses") as mock_combine:
@@ -116,15 +121,12 @@ def test_vds_combine_cli_dry_run():
     runner = CliRunner()
     with runner.isolated_filesystem():
         import os
+
         os.makedirs("input_dir")
 
         result = runner.invoke(
             vds_combine,
-            [
-                "--input-dir", "input_dir",
-                "--output", "/out.vds",
-                "--dry-run"
-            ],
+            ["--input-dir", "input_dir", "--output", "/out.vds", "--dry-run"],
         )
 
         assert result.exit_code == 0
@@ -137,16 +139,13 @@ def test_vds_combine_cli_no_validate():
     runner = CliRunner()
     with runner.isolated_filesystem():
         import os
+
         os.makedirs("input_dir")
 
         with patch("hvantk.commands.hgc.combine_cli.combine_vdses") as mock_combine:
             result = runner.invoke(
                 vds_combine,
-                [
-                    "--input-dir", "input_dir",
-                    "--output", "/out.vds",
-                    "--no-validate"
-                ],
+                ["--input-dir", "input_dir", "--output", "/out.vds", "--no-validate"],
             )
 
             assert result.exit_code == 0

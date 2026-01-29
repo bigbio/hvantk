@@ -237,6 +237,6 @@ hvantk mkmatrix-batch --recipe examples/recipes/cptac.example.json
 
 ## See also
 
-- [Data Catalog](../planning/DATA_CATALOG.md) – versioning, provenance, and hosting strategy
-- [Developer Guide](../planning/DEVELOPING.md) – dev workflow and builder contracts
+- [Data Catalog](../../local/docs/DATA_CATALOG.md) – versioning, provenance, and hosting strategy
+- [Developer Guide](../../local/docs/DEVELOPING.md) – dev workflow and builder contracts
 - [Recipe Examples](../../examples/recipes/) – ready-to-edit recipe templates

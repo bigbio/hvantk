@@ -37,7 +37,9 @@ def _print_available_versions():
         click.echo(f"  ... and {len(versions) - 20} more")
 
 
-@click.command("clingen-downloader", short_help="Download ClinGen Gene-Disease Validity data")
+@click.command(
+    "clingen-downloader", short_help="Download ClinGen Gene-Disease Validity data"
+)
 @click.option(
     "--version",
     "version_date",

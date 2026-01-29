@@ -6,6 +6,7 @@ This directory contains end-to-end workflow examples demonstrating how to use hv
 
 - [HGC (Joint Genotyping)](#hgc-joint-genotyping)
 - [PSROC (Prediction Score ROC Analysis)](#psroc-prediction-score-roc-analysis)
+- [EnrichEx (Gene Set Enrichment)](#enrichex-gene-set-enrichment)
 - [ClinVar Data Streaming](#clinvar-data-streaming)
 - [Recipe Templates](#recipe-templates)
 
@@ -50,6 +51,36 @@ python examples/psroc/run_psroc_example.py
 **Outputs:** ROC curves (PNG), AUC metrics (JSON), annotated variants (TSV)
 
 **Documentation:** [PSROC README](psroc/README.md) | [PSROC Docs](../docs/tools/psroc.md)
+
+---
+
+### EnrichEx (Gene Set Enrichment)
+
+**Directory:** [`enrichex/`](enrichex/)
+
+Gene set enrichment analysis using overlap testing (Fisher's exact) and case-control burden testing (Hail regression).
+
+**Key scripts:**
+- `overlap_enrichment_example.py` - Overlap enrichment using Python API
+- `burden_analysis_example.py` - Burden testing with synthetic data
+- `create_gene_sets_example.py` - Create gene set collections
+
+**Quick start:**
+```bash
+# CLI usage (recommended)
+hvantk enrichex overlap \
+  -g my_genes.txt \
+  -s examples/enrichex/synthetic_gene_sets.json \
+  -o results.tsv \
+  --generate-report
+
+# Python API
+python examples/enrichex/overlap_enrichment_example.py
+```
+
+**Outputs:** Results (TSV), plots (PNG), HTML reports
+
+**Documentation:** [EnrichEx README](enrichex/README.md) | [EnrichEx Docs](../docs/tools/enrichex.md)
 
 ---
 
@@ -231,6 +262,28 @@ hvantk psroc \
   --output-dir results/
 ```
 
+### Workflow 4: EnrichEx Gene Set Analysis
+
+```bash
+# 1. Overlap enrichment - test GWAS genes against cell-type markers
+hvantk enrichex overlap \
+  -g gwas_genes.txt \
+  -s gene_sets.json \
+  -o overlap_results.tsv \
+  --generate-report
+
+# 2. Burden testing - test rare variant burden in gene sets
+hvantk enrichex burden \
+  -m annotated_cohort.mt \
+  -p phenotypes.ht \
+  -s gene_sets.json \
+  --covariates PC1,PC2,PC3,age,sex \
+  --max-af 0.001 \
+  --min-cadd 25 \
+  -o burden_results.tsv \
+  --generate-report
+```
+
 ---
 
 ## Customizing Examples
@@ -374,6 +427,7 @@ See [`CONTRIBUTING.md`](../CONTRIBUTING.md) for guidelines.
 - [Annotation Sources](../docs/library/annotation-sources.md)
 - [HGC Documentation](../docs/tools/hgc.md)
 - [PSROC Documentation](../docs/tools/psroc.md)
+- [EnrichEx Documentation](../docs/tools/enrichex.md)
 - [Architecture Overview](../docs/ARCHITECTURE.md)
 
 ### External Resources
@@ -408,6 +462,17 @@ examples/
 │       ├── *.json              # Metrics
 │       ├── *.tsv               # Annotated variants
 │       └── plots/              # ROC curves and dashboards
+│
+├── enrichex/                    # EnrichEx gene set enrichment
+│   ├── README.md
+│   ├── synthetic_gene_sets.json # Example gene sets
+│   ├── overlap_enrichment_example.py
+│   ├── burden_analysis_example.py
+│   ├── create_gene_sets_example.py
+│   └── results/                 # Example outputs
+│       ├── *.tsv               # Results tables
+│       ├── *.png               # Plots
+│       └── *.html              # Reports
 │
 ├── clinvar/                     # ClinVar data streaming
 │   ├── README.md

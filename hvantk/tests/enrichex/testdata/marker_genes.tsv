@@ -1,0 +1,15 @@
+cluster	gene
+T_cell	CD3D
+T_cell	CD3E
+T_cell	CD3G
+T_cell	CD8A
+B_cell	CD19
+B_cell	CD79A
+B_cell	CD79B
+B_cell	MS4A1
+Macrophage	CD14
+Macrophage	CD68
+Macrophage	FCGR3A
+NK_cell	NCAM1
+NK_cell	KLRD1
+NK_cell	NKG7

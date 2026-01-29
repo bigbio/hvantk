@@ -522,9 +522,7 @@ def create_dbnsfp_tb(
                 return hl.dict(
                     hl.zip(
                         ht.Ensembl_transcriptid,
-                        hl.map(
-                            lambda _x: hl.parse_float(val), ht.Ensembl_transcriptid
-                        ),
+                        hl.map(lambda _x: hl.parse_float(val), ht.Ensembl_transcriptid),
                     )
                 )
 
@@ -669,7 +667,10 @@ def create_clingen_gene_disease_tb(
     if key_by not in ("gene_disease", "gene"):
         raise ValueError(f"key_by must be 'gene_disease' or 'gene', got: {key_by}")
 
-    if min_classification is not None and min_classification not in CLINGEN_CLASSIFICATION_LEVELS:
+    if (
+        min_classification is not None
+        and min_classification not in CLINGEN_CLASSIFICATION_LEVELS
+    ):
         raise ValueError(
             f"min_classification must be one of {CLINGEN_CLASSIFICATION_LEVELS}, "
             f"got: {min_classification}"
@@ -678,7 +679,9 @@ def create_clingen_gene_disease_tb(
     # Preprocess CSV to skip header lines using Hadoop filesystem API
     # ClinGen files have 6 metadata lines before the actual header
     # Use Hadoop API to support cloud URIs (gs://, s3://) and distributed Spark clusters
-    logger.info(f"Preprocessing ClinGen CSV to skip {CLINGEN_HEADER_SKIP_LINES} header lines")
+    logger.info(
+        f"Preprocessing ClinGen CSV to skip {CLINGEN_HEADER_SKIP_LINES} header lines"
+    )
 
     # Use Hail's temp file utility to create a Hadoop-accessible temp file
     tmp_path = hl.utils.new_temp_file(suffix=".csv")
@@ -702,6 +705,7 @@ def create_clingen_gene_disease_tb(
         raise RuntimeError(f"Failed to preprocess ClinGen CSV: {e}") from e
 
     try:
+
         def import_func():
             return hl.import_table(
                 paths=tmp_path,
@@ -714,8 +718,11 @@ def create_clingen_gene_disease_tb(
         def transform(ht: hl.Table) -> hl.Table:
             # Rename fields to standardized names
             logger.info("Renaming fields to standardized names")
-            rename_map = {k: v for k, v in CLINGEN_GENE_DISEASE_FIELDS.items()
-                         if k in get_row_fields(ht)}
+            rename_map = {
+                k: v
+                for k, v in CLINGEN_GENE_DISEASE_FIELDS.items()
+                if k in get_row_fields(ht)
+            }
             ht = ht.rename(rename_map)
 
             # Clean HGNC ID (strip "HGNC:" prefix)
@@ -752,7 +759,9 @@ def create_clingen_gene_disease_tb(
             # Apply min_classification filter if specified
             if min_classification is not None:
                 min_level = classification_order[min_classification]
-                logger.info(f"Filtering to classifications >= {min_classification} (level {min_level})")
+                logger.info(
+                    f"Filtering to classifications >= {min_classification} (level {min_level})"
+                )
                 ht = ht.filter(ht.classification_level <= min_level)
 
             # Apply keying strategy
@@ -767,7 +776,9 @@ def create_clingen_gene_disease_tb(
                         disease_labels=hl.agg.collect_as_set(ht.disease_label),
                         mondo_ids=hl.agg.collect_as_set(ht.mondo_id),
                         classifications=hl.agg.collect_as_set(ht.classification),
-                        modes_of_inheritance=hl.agg.collect_as_set(ht.mode_of_inheritance),
+                        modes_of_inheritance=hl.agg.collect_as_set(
+                            ht.mode_of_inheritance
+                        ),
                         max_classification_level=hl.agg.min(ht.classification_level),
                         n_diseases=hl.agg.count(),
                     )
@@ -780,7 +791,9 @@ def create_clingen_gene_disease_tb(
                 safe_index = hl.min(
                     ht.max_classification_level, hl.len(classification_labels) - 1
                 )
-                ht = ht.annotate(max_classification_label=classification_labels[safe_index])
+                ht = ht.annotate(
+                    max_classification_label=classification_labels[safe_index]
+                )
 
             return ht
 

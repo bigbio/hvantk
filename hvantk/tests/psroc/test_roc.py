@@ -191,9 +191,7 @@ class TestComputeROCMetrics:
         """Test computing metrics for multiple scores simultaneously."""
         labels = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1])
         scores = {
-            "good_score": np.array(
-                [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-            ),
+            "good_score": np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]),
             "medium_score": np.array(
                 [0.2, 0.3, 0.5, 0.6, 0.7, 0.4, 0.5, 0.8, 0.9, 0.95]
             ),
@@ -225,11 +223,20 @@ class TestComputeROCMetrics:
         """Test that scores with high missingness are excluded."""
         labels = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1])
         scores = {
-            "good_score": np.array(
-                [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-            ),
+            "good_score": np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]),
             "bad_score": np.array(
-                [np.nan, np.nan, np.nan, np.nan, 0.5, np.nan, np.nan, np.nan, np.nan, 1.0]
+                [
+                    np.nan,
+                    np.nan,
+                    np.nan,
+                    np.nan,
+                    0.5,
+                    np.nan,
+                    np.nan,
+                    np.nan,
+                    np.nan,
+                    1.0,
+                ]
             ),
         }
 
@@ -281,9 +288,7 @@ class TestComputeROCMetrics:
         """Test that optimal threshold is computed and included."""
         labels = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1])
         scores = {
-            "test_score": np.array(
-                [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-            )
+            "test_score": np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
         }
 
         results = compute_roc_metrics(labels, scores, threshold_method="youden")
@@ -297,9 +302,7 @@ class TestComputeROCMetrics:
         """Test using custom positive label."""
         # Use 2 as positive label instead of 1
         labels = np.array([0, 0, 0, 0, 0, 2, 2, 2, 2, 2])
-        scores = {
-            "score": np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
-        }
+        scores = {"score": np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0])}
 
         results = compute_roc_metrics(labels, scores, pos_label=2)
 

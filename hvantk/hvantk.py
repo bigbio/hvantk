@@ -14,6 +14,7 @@ from hvantk.commands.make_matrix_batch_cli import mkmatrix_batch_cli
 from hvantk.commands.catalog_cli import catalog
 from hvantk.commands.hgc import hgc_group
 from hvantk.commands.psroc_cli import psroc_cmd
+from hvantk.commands.enrichex_cli import enrichex_group
 
 # Main CLI entry point for the package (hvantk)
 
@@ -44,6 +45,7 @@ cli.add_command(mkmatrix_batch_cli)  # batch matrix builder from recipe
 cli.add_command(catalog)  # catalog operations
 cli.add_command(hgc_group)  # HGC joint genotyping commands
 cli.add_command(psroc_cmd)  # PSROC prediction score ROC analysis
+cli.add_command(enrichex_group)  # EnrichEx gene set enrichment analysis
 
 
 def main():

@@ -140,9 +140,9 @@ Follow this workflow when adding a new annotation source:
 5. **Update documentation**
    - Add to [Annotation Sources](docs/library/annotation-sources.md)
    - Add usage example to [Usage Guide](docs/library/usage.md)
-   - Update [Data Catalog](docs/planning/DATA_CATALOG.md) if needed
+   - Update [Data Catalog](local/docs/DATA_CATALOG.md) if needed
 
-See [Developer Guide](docs/planning/DEVELOPING.md) and [Architecture](docs/ARCHITECTURE.md) for detailed information.
+See [Developer Guide](local/docs/DEVELOPING.md) and [Architecture](docs/ARCHITECTURE.md) for detailed information.
 
 ## Code Review Process
 

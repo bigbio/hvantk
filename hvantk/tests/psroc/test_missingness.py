@@ -60,7 +60,9 @@ class TestComputeScoreMissingness:
 
     def test_partial_missing_above_threshold(self):
         """Test with partial missing values above threshold."""
-        values = np.array([0.1, np.nan, np.nan, np.nan, np.nan, 0.6, 0.7, 0.8, 0.9, 1.0])
+        values = np.array(
+            [0.1, np.nan, np.nan, np.nan, np.nan, 0.6, 0.7, 0.8, 0.9, 1.0]
+        )
 
         result = compute_score_missingness(values, "test_score", max_missingness=0.3)
 
@@ -85,7 +87,9 @@ class TestComputeScoreMissingness:
     def test_just_above_threshold(self):
         """Test score just above missingness threshold is excluded."""
         # 31% missing with threshold of 0.3 should be excluded (>)
-        values = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, np.nan, np.nan, np.nan, np.nan])
+        values = np.array(
+            [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, np.nan, np.nan, np.nan, np.nan]
+        )
 
         result = compute_score_missingness(values, "test_score", max_missingness=0.3)
 
@@ -94,7 +98,9 @@ class TestComputeScoreMissingness:
 
     def test_empty_array_raises_error(self):
         """Test that empty array raises ValueError."""
-        with pytest.raises(ValueError, match="Cannot compute missingness for empty array"):
+        with pytest.raises(
+            ValueError, match="Cannot compute missingness for empty array"
+        ):
             compute_score_missingness(np.array([]), "test_score")
 
     def test_custom_threshold(self):
@@ -134,7 +140,9 @@ class TestFilterScoresByMissingness:
             ),
         }
 
-        included, excluded = filter_scores_by_missingness(missingness, max_missingness=0.3)
+        included, excluded = filter_scores_by_missingness(
+            missingness, max_missingness=0.3
+        )
 
         assert included == ["score_a", "score_b"]
         assert excluded == []
@@ -160,7 +168,9 @@ class TestFilterScoresByMissingness:
             ),
         }
 
-        included, excluded = filter_scores_by_missingness(missingness, max_missingness=0.3)
+        included, excluded = filter_scores_by_missingness(
+            missingness, max_missingness=0.3
+        )
 
         assert included == []
         assert sorted(excluded) == ["score_a", "score_b"]
@@ -194,7 +204,9 @@ class TestFilterScoresByMissingness:
             ),
         }
 
-        included, excluded = filter_scores_by_missingness(missingness, max_missingness=0.3)
+        included, excluded = filter_scores_by_missingness(
+            missingness, max_missingness=0.3
+        )
 
         assert sorted(included) == ["borderline_score", "good_score"]
         assert excluded == ["bad_score"]
@@ -301,7 +313,9 @@ class TestClassStratifiedMissingness:
         """
         # Create data with different missingness patterns by class
         labels = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1])
-        scores = np.array([0.1, 0.2, np.nan, 0.4, 0.5, np.nan, np.nan, np.nan, 0.9, 1.0])
+        scores = np.array(
+            [0.1, 0.2, np.nan, 0.4, 0.5, np.nan, np.nan, np.nan, 0.9, 1.0]
+        )
 
         # Compute stratified missingness
         benign_mask = labels == 0
