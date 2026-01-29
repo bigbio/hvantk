@@ -306,7 +306,6 @@ def main():
         query_genes=query_genes,
         gene_set_collection=gene_sets,
         correction_method="benjamini-hochberg",
-        alpha=0.05,
     )
 
     # Save all results
@@ -341,7 +340,7 @@ def main():
             # Show overlapping genes
             overlap_genes = row["overlap_genes"]
             if isinstance(overlap_genes, str):
-                genes = overlap_genes.split(";")
+                genes = [g.strip() for g in overlap_genes.split(",")]
                 logger.info(f"  Genes: {', '.join(genes)}")
 
     # Display all results summary
@@ -404,7 +403,7 @@ Consider:
     logger.info("\n" + "=" * 60)
     logger.info("Analysis complete!")
     logger.info("=" * 60)
-    logger.info(f"\nOutput files:")
+    logger.info("\nOutput files:")
     logger.info(f"  - Gene sets: {gene_sets_path}")
     logger.info(f"  - Results: {results_path}")
 
