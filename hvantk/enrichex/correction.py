@@ -40,7 +40,7 @@ def apply_correction(
     [0.004, 0.04, 0.2, 0.4]
 
     >>> apply_correction(p_values, method="benjamini-hochberg")
-    [0.004, 0.0133, 0.0667, 0.1]
+    [0.004, 0.02, 0.0667, 0.1]
     """
     if not p_values:
         return []
@@ -49,7 +49,7 @@ def apply_correction(
 
     if method == "none":
         logger.debug("No correction applied")
-        return p_values
+        return list(p_values)
 
     elif method == "bonferroni":
         logger.debug(f"Applying Bonferroni correction (n={n_tests})")
