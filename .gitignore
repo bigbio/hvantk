@@ -188,3 +188,9 @@ hail-*.log
 temp_*
 test_*_output/
 local_test_*
+
+*.log 
+*.blg
+*.out
+*.aux
+
