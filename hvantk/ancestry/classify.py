@@ -209,7 +209,7 @@ def train_classifier(
         )
 
     # Validate training data
-    validate_training_data(labels, min_samples_per_pop)
+    pop_counts = validate_training_data(labels, min_samples_per_pop)
 
     # Prepare features
     X_train = scores_df[pc_cols].values
@@ -236,6 +236,15 @@ def train_classifier(
     conf_matrix_labels = None
 
     if validate:
+        # Verify n_cv_folds is valid for the smallest class
+        min_count = min(pop_counts.values())
+        if n_cv_folds > min_count:
+            raise ValueError(
+                f"n_cv_folds ({n_cv_folds}) exceeds the smallest class count ({min_count}). "
+                f"StratifiedKFold requires n_splits <= min_class_count. "
+                f"Population counts: {pop_counts}"
+            )
+
         logger.info(f"Performing {n_cv_folds}-fold stratified cross-validation")
 
         cv = StratifiedKFold(
