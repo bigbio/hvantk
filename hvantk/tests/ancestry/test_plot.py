@@ -21,7 +21,6 @@ def sample_predictions_df():
     """Create sample predictions DataFrame for testing plots."""
     np.random.seed(42)
     n_query = 50
-    n_ref = 90
 
     # Generate PC coordinates - 3 clusters for EUR, AFR, EAS
     pc1_means = {"EUR": -5, "AFR": 5, "EAS": 0}
