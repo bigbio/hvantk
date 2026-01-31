@@ -202,4 +202,5 @@ checkpoints/
 *.pkl # Pickle files
 data/ # Data directory
 
-
+# Manuscript build files
+manuscript/
