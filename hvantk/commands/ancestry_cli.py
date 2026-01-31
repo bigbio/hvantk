@@ -31,14 +31,14 @@ logger = logging.getLogger(__name__)
 @click.option(
     "-q",
     "--query-mt",
-    type=click.Path(exists=True),
+    type=str,
     required=True,
     help="Path to query MatrixTable (cohort with unknown ancestry)",
 )
 @click.option(
     "-r",
     "--reference-mt",
-    type=click.Path(exists=True),
+    type=str,
     required=True,
     help="Path to reference MatrixTable with known ancestry labels",
 )
@@ -60,7 +60,7 @@ logger = logging.getLogger(__name__)
     "--output-dir",
     type=click.Path(),
     default=None,
-    help="Directory for additional outputs (TSV, model, report). Defaults to output-ht directory.",
+    help="Directory for additional outputs (TSV, model, report). Defaults to <output-ht parent>/ancestry_results.",
 )
 # Variant filtering
 @click.option(
@@ -296,12 +296,12 @@ def ancestry_inference_cmd(
 
     \b
     Output Files:
-      {output_ht}                    Hail Table with predictions
-      {output_dir}/predictions.tsv   TSV export (if --export-tsv)
-      {output_dir}/rf_model.pkl      Trained model (if --save-model)
-      {output_dir}/pca_loadings.ht   PCA loadings (if --save-loadings)
-      {output_dir}/report.html       HTML report (if --generate-report)
-      {output_dir}/pipeline_stats.json  Pipeline statistics
+      {output_ht}                          Hail Table with predictions
+      {output_dir}/predictions.tsv         TSV export (if --export-tsv)
+      {output_dir}/rf_model.pkl            Trained model (if --save-model)
+      {output_dir}/pca_loadings.ht         PCA loadings (if --save-loadings)
+      {output_dir}/ancestry_report.html    HTML report (if --generate-report)
+      {output_dir}/pipeline_stats.json     Pipeline statistics
 
     \b
     Probability Threshold Guidance:
@@ -320,6 +320,7 @@ def ancestry_inference_cmd(
         import hail as hl
         from hvantk.core.hail_context import init_hail
         from hvantk.ancestry.pipeline import run_ancestry_inference, PipelineConfig
+        from hailtop import fs
 
         # Initialize Hail (handle case where it's already running externally)
         logger.info("Initializing Hail")
@@ -328,6 +329,18 @@ def ancestry_inference_cmd(
         except AssertionError:
             # Hail may already be initialized externally (e.g., in tests)
             logger.debug("Hail appears to be already initialized externally")
+
+        # Validate input paths (cloud-aware)
+        if not fs.exists(query_mt):
+            raise click.BadParameter(
+                f"Query MatrixTable does not exist: {query_mt}",
+                param_hint="--query-mt"
+            )
+        if not fs.exists(reference_mt):
+            raise click.BadParameter(
+                f"Reference MatrixTable does not exist: {reference_mt}",
+                param_hint="--reference-mt"
+            )
 
         # Validate parameters
         if min_af < 0 or min_af >= 0.5:
@@ -483,9 +496,12 @@ def ancestry_inference_cmd(
             click.echo(f"CV Accuracy:       {result.get_accuracy():.2%}")
 
         click.echo("\nAncestry distribution:")
-        for pop, count in query_preds[PREDICTED_ANCESTRY_COL].value_counts().items():
-            pct = 100 * count / len(query_preds)
-            click.echo(f"  {pop}: {count} ({pct:.1f}%)")
+        if len(query_preds) == 0:
+            click.echo("  No query samples to display")
+        else:
+            for pop, count in query_preds[PREDICTED_ANCESTRY_COL].value_counts().items():
+                pct = 100 * count / len(query_preds)
+                click.echo(f"  {pop}: {count} ({pct:.1f}%)")
 
         click.echo("\nOutput files:")
         click.echo(f"  Predictions: {output_ht}")
