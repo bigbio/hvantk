@@ -120,7 +120,7 @@ The pipeline performs an inner join on variants present in both query and refere
 Variants are filtered to retain high-quality, informative markers:
 
 | Filter | Default | Rationale |
-|--------|---------|-----------|
+| ------ | ------- | --------- |
 | Autosomes only | chr1-22 | Avoid sex chromosome complications |
 | Biallelic | 2 alleles | Simplify analysis |
 | SNPs only | `is_snp()` | More reliable than indels |
@@ -157,7 +157,7 @@ A Random Forest classifier is trained on reference samples:
 Predictions are made with probability thresholds:
 
 | Threshold | Behavior |
-|-----------|----------|
+| --------- | -------- |
 | 0.50 | Aggressive; may misclassify admixed individuals |
 | 0.75 | Balanced (default) |
 | 0.90 | Conservative; more "unassigned" but higher confidence |
@@ -166,7 +166,7 @@ Samples with max probability below threshold are labeled "unassigned".
 
 ## CLI Reference
 
-```
+```text
 hvantk ancestry-inference [OPTIONS]
 
 Options:
@@ -238,7 +238,7 @@ Options:
 ### Supported Reference Panels
 
 | Panel | Populations | Samples | Notes |
-|-------|-------------|---------|-------|
+| ----- | ----------- | ------- | ----- |
 | 1000 Genomes Phase 3 | 5 super-populations | 2,504 | Widely used standard |
 | HapMap Phase 3 | 11 populations | 1,184 | Curated for pop-gen |
 | gnomAD | 8 populations | Variable | WES/WGS specific |
@@ -247,7 +247,7 @@ Options:
 
 ### Predictions Hail Table
 
-```
+```text
 Schema:
   Row key: 's' (sample ID)
   Row fields:
@@ -262,7 +262,7 @@ Schema:
 ### Additional Outputs
 
 | File | Description |
-|------|-------------|
+| ---- | ----------- |
 | `predictions.tsv` | TSV export (with `--export-tsv`) |
 | `ancestry_report.html` | HTML report (with `--generate-report`) |
 | `rf_model.pkl` | Trained model (with `--save-model`) |
@@ -444,26 +444,31 @@ eur_mt = annotated_mt.filter_cols(
 
 ### Common Issues
 
-**"No shared variants between query and reference"**
+#### "No shared variants between query and reference"
+
 - Ensure both MTs use the same reference genome
 - Check that variants are normalized (left-aligned, trimmed)
 - Verify row keys are `(locus, alleles)`
 
-**"Only N shared variants; need at least 10,000"**
+#### "Only N shared variants; need at least 10,000"
+
 - Your cohort may have been genotyped on a different platform
 - Consider using a more compatible reference panel
 - Use `--min-shared-variants` to lower the threshold (not recommended)
 
-**"Population X has only N samples (need 10)"**
+#### "Population X has only N samples (need 10)"
+
 - Reference panel may have insufficient samples for some populations
 - Consider merging similar populations or excluding sparse ones
 
-**Many samples marked "unassigned"**
+#### Many samples marked "unassigned"
+
 - May indicate admixed individuals
 - Try lowering `--min-prob` threshold
 - Check if query cohort matches reference panel populations
 
-**Cross-validation accuracy is low**
+#### Cross-validation accuracy is low
+
 - Reference panel populations may overlap in PC space
 - Try using more PCs (`--n-pcs-classify 15`)
 - Some populations are inherently difficult to separate
