@@ -299,7 +299,7 @@ annotated_mt = result.annotate_matrixtable(query_mt)
 ### Output Files
 
 | File | Description |
-|------|-------------|
+| ---- | ----------- |
 | `predictions.ht` | Hail Table with ancestry predictions |
 | `predictions.tsv` | TSV export (with `--export-tsv`) |
 | `ancestry_report.html` | HTML report with visualizations |
