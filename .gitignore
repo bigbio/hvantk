@@ -194,3 +194,12 @@ local_test_*
 *.out
 *.aux
 
+# Ignore large data files
+checkpoints/
+*.ht/ # Hail table files
+*.mt/ # Hail matrix table files
+*.vds/ # Hail variant dataset files
+*.pkl # Pickle files
+data/ # Data directory
+
+
