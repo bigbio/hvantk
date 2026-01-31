@@ -383,7 +383,7 @@ class TestGenerateAncestryReport:
         from hvantk.ancestry.report import generate_ancestry_report
 
         output_path = str(tmp_path / "report.html")
-        result = generate_ancestry_report(mock_ancestry_result, output_path)
+        generate_ancestry_report(mock_ancestry_result, output_path)
 
         assert Path(output_path).exists()
 
