@@ -24,6 +24,7 @@ from typing import Any, Dict, List, Optional, Union
 
 import hail as hl
 import pandas as pd
+from hailtop import fs
 
 from hvantk.ancestry.constants import (
     ANCESTRY_COL,
@@ -726,7 +727,8 @@ def _checkpoint_or_load(
 
     cp_path = str(Path(checkpoint_path) / f"{name}.mt")
 
-    if Path(cp_path).exists() and not overwrite:
+    # Use cloud-aware existence check
+    if fs.exists(cp_path) and not overwrite:
         logger.info(f"Loading from checkpoint: {cp_path}")
         return hl.read_matrix_table(cp_path)
 
