@@ -5,6 +5,7 @@ summarizing ancestry inference results, including visualizations, statistics,
 and sample predictions.
 """
 
+import html
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -209,7 +210,7 @@ def _create_summary_card(value: Any, label: str) -> str:
     return f"""
     <div class="summary-card">
         <div class="value">{value}</div>
-        <div class="label">{label}</div>
+        <div class="label">{html.escape(str(label))}</div>
     </div>
     """
 
@@ -224,11 +225,15 @@ def _create_ancestry_table(predictions_df: pd.DataFrame) -> str:
     for ancestry, count in counts.items():
         pct = 100 * count / total
         pop_name = POPULATION_NAMES.get(ancestry, ancestry)
-        badge_class = f"ancestry-{ancestry}" if ancestry in ["AFR", "AMR", "EAS", "EUR", "SAS", "unassigned"] else ""
+        # Whitelist allowed ancestry codes for badge_class to prevent XSS
+        badge_class = f"ancestry-{ancestry}" if ancestry in ["AFR", "AMR", "EAS", "EUR", "SAS", "unassigned"] else "ancestry-unassigned"
+        # Escape user-controlled strings
+        ancestry_escaped = html.escape(str(ancestry))
+        pop_name_escaped = html.escape(str(pop_name))
         rows.append(f"""
         <tr>
-            <td><span class="ancestry-badge {badge_class}">{ancestry}</span></td>
-            <td>{pop_name}</td>
+            <td><span class="ancestry-badge {badge_class}">{ancestry_escaped}</span></td>
+            <td>{pop_name_escaped}</td>
             <td>{count:,}</td>
             <td>{pct:.1f}%</td>
         </tr>
@@ -296,10 +301,10 @@ def _create_predictions_table(predictions_df: pd.DataFrame, max_rows: int = 100)
             )
 
     # Build table
-    headers = "<tr>" + "".join(f"<th>{c}</th>" for c in display_df.columns) + "</tr>"
+    headers = "<tr>" + "".join(f"<th>{html.escape(str(c))}</th>" for c in display_df.columns) + "</tr>"
     rows = []
     for _, row in display_df.iterrows():
-        cells = "".join(f"<td>{row[c]}</td>" for c in display_df.columns)
+        cells = "".join(f"<td>{html.escape(str(row[c]))}</td>" for c in display_df.columns)
         rows.append(f"<tr>{cells}</tr>")
 
     return f"""
@@ -315,7 +320,7 @@ def _create_config_table(config_dict: Dict[str, Any]) -> str:
     """Create configuration table."""
     rows = []
     for key, value in config_dict.items():
-        rows.append(f"<tr><td>{key}</td><td>{value}</td></tr>")
+        rows.append(f"<tr><td>{html.escape(str(key))}</td><td>{html.escape(str(value))}</td></tr>")
 
     return f"""
     <table class="config-table">
@@ -506,8 +511,8 @@ def generate_ancestry_report(
 
     # Render template
     html_content = REPORT_TEMPLATE.format(
-        title=title,
-        timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        title=html.escape(title),
+        timestamp=html.escape(datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
         summary_cards=summary_cards,
         ancestry_section=ancestry_section,
         pca_section=pca_section,
