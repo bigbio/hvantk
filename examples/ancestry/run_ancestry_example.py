@@ -311,7 +311,7 @@ def main(output_dir: str = "./examples/ancestry/results") -> int:
 
     # Pipeline statistics
     stats = result.pipeline_stats
-    print(f"\n  Pipeline statistics:")
+    print("\n  Pipeline statistics:")
     print(f"    Shared variants: {stats['n_shared_variants']}")
     print(f"    Variants after filtering: {stats.get('n_variants_after_filter', 'N/A')}")
     print(f"    Training samples: {stats['n_training_samples']}")
