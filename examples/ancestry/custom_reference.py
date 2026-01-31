@@ -120,7 +120,7 @@ def prepare_reference_panel(
     n_variants = mt.count_rows()
     final_counts = mt.aggregate_cols(hl.agg.counter(mt[ancestry_col]))
 
-    logger.info(f"\nPrepared reference panel:")
+    logger.info("\nPrepared reference panel:")
     logger.info(f"  Total samples: {n_samples}")
     logger.info(f"  Total variants: {n_variants}")
     logger.info(f"  Populations: {len(final_counts)}")
