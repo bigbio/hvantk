@@ -18,6 +18,9 @@ Core library documentation for end users:
 Documentation for specific tools within hvantk:
 
 - **[HGC (Hail-based Genotype Combiner)](tools/hgc.md)** - Joint genotyping workflows, VDS/MatrixTable conversion, and quality control
+- **[PSROC (Pathogenicity Score ROC)](tools/psroc.md)** - Variant score evaluation using ClinVar truth labels
+- **[EnrichEx](tools/enrichex.md)** - Gene set enrichment analysis (overlap and burden testing)
+- **[Ancestry Inference](tools/ancestry.md)** - Genetic ancestry prediction using PCA and Random Forest classification
 
 ### 📋 Planning & Development (`planning/`)
 
@@ -43,6 +46,7 @@ Dataset registry and web interface for browsing available datasets.
 - [Build annotation tables](library/usage.md#1-build-a-single-annotation-table-ht) - Create Hail Tables
 - [Create expression matrices](library/usage.md#3-build-a-single-matrixtable-mt) - Create MatrixTables
 - [Joint genotyping with HGC](tools/hgc.md#quick-start) - Combine GVCF files
+- [Ancestry inference](tools/ancestry.md#quick-start) - Predict genetic ancestry
 
 ### For Developers
 - [Contributing](../local/docs/DEVELOPING.md#contributing) - How to contribute
