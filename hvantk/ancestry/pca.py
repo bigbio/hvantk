@@ -147,6 +147,38 @@ def compute_pca(
 
     logger.info(f"Computing PCA with {n_pcs} PCs on {n_variants} variants, {n_samples} samples")
 
+    # Check for sufficient data to compute requested number of PCs
+    # Mathematically, we can compute at most min(n_variants, n_samples) - 1 PCs
+    min_dim = min(n_variants, n_samples)
+    if min_dim <= n_pcs:
+        raise ValueError(
+            f"Insufficient data for PCA: need at least {n_pcs + 1} variants AND "
+            f"{n_pcs + 1} samples to compute {n_pcs} PCs, but got {n_variants} "
+            f"variants and {n_samples} samples. Maximum PCs possible: {min_dim - 1}"
+        )
+
+    # Warn if variant count is below recommended threshold for ancestry inference
+    # gnomAD uses ~200k LD-pruned variants; research shows minimum ~100-1000 for
+    # continental-level ancestry differentiation
+    if n_variants < 1000:
+        logger.warning(
+            f"Only {n_variants} variants available for PCA. Ancestry inference may be "
+            f"unreliable with fewer than 1,000 variants. gnomAD uses ~200k LD-pruned "
+            f"variants for robust population structure analysis."
+        )
+    elif n_variants < 10000:
+        logger.warning(
+            f"Only {n_variants} variants available for PCA. For robust ancestry "
+            f"inference, consider using 10,000+ LD-pruned variants."
+        )
+
+    # Warn if sample size is very small
+    if n_samples < 50:
+        logger.warning(
+            f"Only {n_samples} samples available for PCA. Small sample sizes may "
+            f"affect robustness of population structure analysis."
+        )
+
     # Ensure n_pcs doesn't exceed minimum dimension
     max_pcs = min(n_variants, n_samples) - 1
     if n_pcs > max_pcs:
@@ -276,10 +308,11 @@ def project_samples(
     # Compute projection: centered genotype * loadings
     # Use hl.pc_project which does this efficiently
     # Note: pc_project expects a call expression (GT), not n_alt_alleles()
+    # Use the annotated row fields to avoid expression source mismatch
     scores_ht = hl.experimental.pc_project(
         mt.GT,
-        loadings.loadings,
-        loadings.af,
+        mt.loadings,
+        mt.af,
     )
 
     # Annotate with individual PC columns
