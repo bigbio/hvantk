@@ -228,6 +228,86 @@ Run:
 hvantk mkmatrix-batch --recipe examples/recipes/cptac.example.json
 ```
 
+## 5) Ancestry Inference
+
+Predict genetic ancestry for samples using PCA and Random Forest classification against a labeled reference panel.
+
+### Basic Usage
+
+```bash
+# Predict ancestry using 1000 Genomes as reference
+hvantk ancestry-inference \
+  -q /data/my_cohort.mt \
+  -r /data/1kg_phase3.mt \
+  --ancestry-col super_pop \
+  -o /out/ancestry_predictions.ht \
+  --generate-report \
+  --export-tsv
+```
+
+### With Custom Parameters
+
+```bash
+# Conservative assignment with custom filtering
+hvantk ancestry-inference \
+  -q /data/my_cohort.mt \
+  -r /data/1kg_phase3.mt \
+  --ancestry-col super_pop \
+  -o /out/ancestry_predictions.ht \
+  --min-af 0.05 \
+  --min-call-rate 0.99 \
+  --n-pcs 30 \
+  --n-pcs-classify 15 \
+  --min-prob 0.90 \
+  --generate-report
+```
+
+### Python API
+
+```python
+import hail as hl
+from hvantk.ancestry import run_ancestry_inference
+
+# Initialize Hail
+hl.init()
+
+# Load data
+query_mt = hl.read_matrix_table("my_cohort.mt")
+reference_mt = hl.read_matrix_table("1kg_phase3.mt")
+
+# Run inference
+result = run_ancestry_inference(
+    query_mt=query_mt,
+    reference_mt=reference_mt,
+    ancestry_col="super_pop",
+    min_prob=0.75,
+)
+
+# Get results
+predictions = result.get_predictions_df()
+print(predictions['predicted_ancestry'].value_counts())
+
+# Generate visualizations
+result.generate_report("ancestry_report.html")
+fig = result.plot_pca()
+fig.savefig("pca_plot.png", dpi=300)
+
+# Annotate original MT with predictions
+annotated_mt = result.annotate_matrixtable(query_mt)
+```
+
+### Output Files
+
+| File | Description |
+| ---- | ----------- |
+| `predictions.ht` | Hail Table with ancestry predictions |
+| `predictions.tsv` | TSV export (with `--export-tsv`) |
+| `ancestry_report.html` | HTML report with visualizations |
+| `rf_model.pkl` | Trained model (with `--save-model`) |
+| `pca_loadings.ht` | PCA loadings (with `--save-loadings`) |
+
+📖 **[Full Ancestry Documentation](../tools/ancestry.md)** | **[Examples](../../examples/ancestry/)**
+
 ## Tips & troubleshooting
 
 - Use `--overwrite` to replace an existing output. Without it, builders abort if the output exists.

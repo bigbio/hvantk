@@ -13,6 +13,7 @@
 - Protein annotations (INSIDER protein-protein interactions)
 - Expression data (bulk & single-cell RNA-seq from UCSC, GTEx)
 - Joint genotyping workflows (GVCF combining, QC, format conversion)
+- Ancestry inference (PCA + Random Forest classification)
 - Recipe-based batch processing
 
 ## Installation
@@ -91,6 +92,32 @@ hvantk enrichex burden \
 
 📖 **[EnrichEx Documentation](docs/tools/enrichex.md)** | **[Example](examples/enrichex/)**
 
+### Ancestry Inference
+
+Predict genetic ancestry for samples using PCA and Random Forest classification against a labeled reference panel (e.g., 1000 Genomes).
+
+```bash
+# Basic ancestry inference
+hvantk ancestry-inference \
+  -q cohort.mt \
+  -r 1kg_reference.mt \
+  --ancestry-col super_pop \
+  -o ancestry_predictions.ht \
+  --generate-report
+
+# Conservative assignment with higher confidence threshold
+hvantk ancestry-inference \
+  -q cohort.mt \
+  -r 1kg_reference.mt \
+  --ancestry-col super_pop \
+  -o ancestry_predictions.ht \
+  --min-prob 0.90 \
+  --generate-report \
+  --export-tsv
+```
+
+📖 **[Ancestry Documentation](docs/tools/ancestry.md)** | **[Example](examples/ancestry/)**
+
 ### Annotation Tables
 
 Create Hail Tables from public databases (ClinVar, gnomAD, Ensembl).
@@ -149,6 +176,7 @@ hvantk mktable-batch --recipe recipe.json
 - **[HGC Tool](docs/tools/hgc.md)** - Joint genotyping pipeline
 - **[PSROC Tool](docs/tools/psroc.md)** - Variant score evaluation
 - **[EnrichEx Tool](docs/tools/enrichex.md)** - Gene set enrichment analysis
+- **[Ancestry Tool](docs/tools/ancestry.md)** - Genetic ancestry inference
 - **[Data Sources](docs/library/annotation-sources.md)** - Available annotations
 - **[Architecture](docs/ARCHITECTURE.md)** - Design and extension points
 - **[Full Index](docs/README.md)** - Complete documentation

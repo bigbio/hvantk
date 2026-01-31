@@ -15,6 +15,7 @@ from hvantk.commands.catalog_cli import catalog
 from hvantk.commands.hgc import hgc_group
 from hvantk.commands.psroc_cli import psroc_cmd
 from hvantk.commands.enrichex_cli import enrichex_group
+from hvantk.commands.ancestry_cli import ancestry_inference_cmd
 
 # Main CLI entry point for the package (hvantk)
 
@@ -46,6 +47,7 @@ cli.add_command(catalog)  # catalog operations
 cli.add_command(hgc_group)  # HGC joint genotyping commands
 cli.add_command(psroc_cmd)  # PSROC prediction score ROC analysis
 cli.add_command(enrichex_group)  # EnrichEx gene set enrichment analysis
+cli.add_command(ancestry_inference_cmd)  # Ancestry inference pipeline
 
 
 def main():
