@@ -192,6 +192,12 @@ def _normalize_gt_field(mt: hl.MatrixTable) -> hl.MatrixTable:
     if "GT" in mt.entry:
         return mt
     elif "LGT" in mt.entry:
+        # Validate that LA field exists for lgt_to_gt conversion
+        if "LA" not in mt.entry:
+            raise ValueError(
+                "MatrixTable has LGT entry field but is missing required LA (local alleles) field. "
+                "LA is required for converting LGT to GT."
+            )
         logger.info("Converting LGT to GT")
         return mt.annotate_entries(GT=hl.vds.lgt_to_gt(mt.LGT, mt.LA))
     else:
