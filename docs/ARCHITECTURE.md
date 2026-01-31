@@ -9,106 +9,314 @@
 3. **Usability** - CLI-first design with clear command structure
 4. **Scalability** - Built on Hail for distributed processing of large datasets
 
+## Architecture Diagram
+
+**Figure 1. hvantk layered architecture for multi-omics variant annotation and analysis.**
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'fontFamily': 'Arial'}}}%%
+flowchart BT
+  %% ══════════════════════════════════════════════════════════════════════════
+  %% LAYER 0: Runtime Foundation
+  %% ══════════════════════════════════════════════════════════════════════════
+  subgraph L0["<b>L0 · Runtime</b>"]
+    HAIL["Hail + Apache Spark"]
+  end
+
+  %% ══════════════════════════════════════════════════════════════════════════
+  %% LAYER 1: Core Infrastructure
+  %% ══════════════════════════════════════════════════════════════════════════
+  subgraph L1["<b>L1 · Core Infrastructure</b>"]
+    direction LR
+    PROTO["Protocols<br/><i>Builder · Streamer · Downloader</i>"]
+    UTILS["Utilities<br/><i>config · hail_context</i>"]
+  end
+
+  %% ══════════════════════════════════════════════════════════════════════════
+  %% LAYER 2: Data Acquisition (Downloaders + Builders)
+  %% ══════════════════════════════════════════════════════════════════════════
+  subgraph L2["<b>L2 · Data Acquisition</b>"]
+    direction LR
+    DL["Downloaders"]
+    BD["Builders"]
+  end
+
+  %% ══════════════════════════════════════════════════════════════════════════
+  %% LAYER 3: Data Products (Hail Tables / MatrixTables)
+  %% ══════════════════════════════════════════════════════════════════════════
+  subgraph L3["<b>L3 · Data Products</b>"]
+    direction LR
+    VARIANTS["<b>Variants HT</b><br/>ClinVar · dbNSFP · gnomAD"]
+    GENES["<b>Genes HT</b><br/>Ensembl · GeVIR"]
+    EXPR["<b>Expression MT</b><br/>scRNA · Bulk RNA"]
+    %% Invisible links to force horizontal layout
+    VARIANTS ~~~ GENES ~~~ EXPR
+  end
+
+  %% ══════════════════════════════════════════════════════════════════════════
+  %% LAYER 4: DataStreamers (Transform & Compose)
+  %% ══════════════════════════════════════════════════════════════════════════
+  subgraph L4["<b>L4 · DataStreamers</b>"]
+    direction LR
+    S1["VariantStreamer"]
+    S2["GeneStreamer"]
+    S3["ExpressionStreamer"]
+  end
+
+  %% ══════════════════════════════════════════════════════════════════════════
+  %% LAYER 5: Analysis Pipelines / Workflows
+  %% ══════════════════════════════════════════════════════════════════════════
+  subgraph L5["<b>L5 · Analysis Pipelines</b>"]
+    direction LR
+    P1["<b>HGC</b><br/><i>Joint genotyping<br/>& Ancestry</i>"]
+    P2["<b>PSROC</b><br/><i>Score evaluation</i>"]
+    P3["<b>EnrichEx</b><br/><i>Enrichment</i>"]
+  end
+
+  %% ══════════════════════════════════════════════════════════════════════════
+  %% USER DATA (External input to HGC)
+  %% ══════════════════════════════════════════════════════════════════════════
+  UD["<b>User Data</b><br/><i>GVCFs · Cohort MT</i>"]
+
+  %% ══════════════════════════════════════════════════════════════════════════
+  %% INTERFACES (CLI & API)
+  %% ══════════════════════════════════════════════════════════════════════════
+  subgraph IF["<b>Interfaces</b>"]
+    direction TB
+    CLI["CLI · Python API"]
+  end
+
+  %% ══════════════════════════════════════════════════════════════════════════
+  %% VERTICAL DATA FLOW (bottom → top)
+  %% ══════════════════════════════════════════════════════════════════════════
+  L0 --> L1 --> L2
+  DL --> BD
+  BD --> L3
+  L3 --> L4
+  L4 --> L5
+
+  %% ══════════════════════════════════════════════════════════════════════════
+  %% USER DATA INPUT TO HGC
+  %% ══════════════════════════════════════════════════════════════════════════
+  UD --> P1
+
+  %% ══════════════════════════════════════════════════════════════════════════
+  %% STREAMER REUSE (key architectural concept)
+  %% ══════════════════════════════════════════════════════════════════════════
+  S1 -.-> P1
+  S1 -.-> P2
+  S2 -.-> P2
+  S2 -.-> P3
+  S3 -.-> P3
+
+  %% ══════════════════════════════════════════════════════════════════════════
+  %% INTERFACE ACCESS
+  %% ══════════════════════════════════════════════════════════════════════════
+  IF ---- L5
+  IF ---- L2
+
+  %% ══════════════════════════════════════════════════════════════════════════
+  %% STYLING
+  %% ══════════════════════════════════════════════════════════════════════════
+  classDef runtime fill:#e8f4f8,stroke:#0077b6,stroke-width:2px
+  classDef core fill:#f0f4f8,stroke:#495057,stroke-width:1px
+  classDef acquisition fill:#fff3cd,stroke:#856404,stroke-width:1px
+  classDef dataproducts fill:#f9f9f9,stroke:#666,stroke-width:1px
+  classDef variants fill:#f8d7da,stroke:#721c24,stroke-width:1px
+  classDef genes fill:#d4edda,stroke:#155724,stroke-width:1px
+  classDef expression fill:#e2d5f1,stroke:#5a3d8a,stroke-width:1px
+  classDef streamers fill:#cce5ff,stroke:#004085,stroke-width:1px
+  classDef pipelines fill:#d1ecf1,stroke:#0c5460,stroke-width:2px
+  classDef interfaces fill:#f5f5f5,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5
+  classDef userdata fill:#fff,stroke:#e67e22,stroke-width:2px,stroke-dasharray: 5 5
+
+  class L0 runtime
+  class L1 core
+  class L2 acquisition
+  class VARIANTS variants
+  class GENES genes
+  class EXPR expression
+  class L3 dataproducts
+  class L4 streamers
+  class L5 pipelines
+  class IF interfaces
+  class UD userdata
+```
+
+<details>
+<summary><b>Legend</b></summary>
+
+| Layer | Description |
+|-------|-------------|
+| **L0 · Runtime** | Hail + Apache Spark distributed computing foundation |
+| **L1 · Core** | Protocol definitions (Builder, Streamer, Downloader) and shared utilities |
+| **L2 · Acquisition** | Downloaders fetch remote datasets; Builders create Hail Tables/MatrixTables |
+| **L3 · Data Products** | Domain-organized Hail objects: Variants, Genes, Expression |
+| **L4 · DataStreamers** | Reusable components that filter, annotate, join, and aggregate data |
+| **L5 · Pipelines** | End-to-end workflows: HGC, PSROC, EnrichEx |
+| **User Data** | User-provided GVCFs or cohort MatrixTables (external input to HGC) |
+| **Interfaces** | CLI (`hvantk`) and Python API |
+
+**Visual notation:**
+- **Solid arrows**: Primary data flow (bottom → top)
+- **Dashed arrows**: DataStreamer reuse across multiple pipelines
+- **Dashed border (orange)**: External user-provided data
+
+</details>
+
+**Caption:** *hvantk implements a six-layer architecture for scalable multi-omics variant annotation. Built on Hail/Spark (L0), the toolkit provides extensibility protocols (L1) for data acquisition (L2) that produces domain-organized Hail Tables and MatrixTables (L3). DataStreamers (L4) are reusable transformation components (dashed arrows) that can be composed into analysis pipelines (L5). The HGC pipeline additionally accepts user-provided cohort data (GVCFs or MatrixTables) for joint genotyping and ancestry inference. CLI and Python API interfaces provide access at multiple levels.*
+
+Editable PowerPoint version: `docs/figures/hvantk_architecture.pptx`.
+
 ## Project Structure
 
-## Current Structure
-
 ```
 hvantk/
-├── core/                # Shared infrastructure
-│   ├── config.py       # Configuration management
-│   ├── constants.py    # Shared constants
-│   ├── hail_context.py # Hail session management
-│   └── protocols.py    # Protocol definitions (Builder, Streamer, Downloader)
+├── hvantk.py              # Main CLI entry point
 │
-├── data/                # Data management utilities
-│   ├── dataset.py      # Dataset handling
-│   ├── file_utils.py   # File I/O utilities
-│   └── data_streamer.py # Data streaming
+├── core/                  # L1: Core infrastructure
+│   ├── config.py          # Configuration management
+│   ├── constants.py       # Shared constants
+│   ├── hail_context.py    # Hail session management (thread-safe init)
+│   └── protocols.py       # Protocol definitions (Builder, Streamer, Downloader)
 │
-├── tables/              # Table and matrix builders
-│   ├── table_builders.py    # Variant and gene annotation builders
-│   ├── matrix_builders.py   # Expression matrix builders
-│   ├── ucsc.py             # UCSC-specific builders
-│   ├── expression_atlas.py # Expression Atlas builders
-│   └── registry.py         # Builder registry
+├── data/                  # L1: Data management utilities
+│   ├── dataset.py         # Dataset handling
+│   ├── file_utils.py      # File I/O utilities
+│   └── data_streamer.py   # DataStreamer base classes & StreamProcessor
 │
-├── commands/            # CLI command implementations
-│   ├── make_table_cli.py      # Table builder commands
-│   ├── make_matrix_cli.py     # Matrix builder commands
-│   ├── make_table_batch_cli.py  # Batch table building
-│   ├── make_matrix_batch_cli.py # Batch matrix building
-│   ├── catalog_cli.py         # Data catalog commands
-│   ├── ucsc_downloader.py     # UCSC downloader
-│   └── hgc_cli.py            # HGC joint genotyping
+├── datasets/              # L2: Dataset definitions and validation
+│   ├── ucsc_cell_datasets.py        # UCSC Cell Browser datasets
+│   ├── expression_atlas_datasets.py # Expression Atlas datasets
+│   ├── clingen_datasets.py          # ClinGen datasets
+│   ├── dataset_validator.py         # Dataset validation
+│   └── validation_registry.py       # Validation registry
 │
-├── hgc/                 # Hail Genotype Combiner (joint genotyping)
-│   ├── combine.py      # GVCF combination
-│   ├── convert.py      # Format conversion (VDS ↔ MT ↔ VCF)
-│   ├── qc.py           # Quality control
-│   └── plot.py         # QC visualization
+├── tables/                # L2-L3: Table and matrix builders
+│   ├── table_builders.py  # Variant/gene annotation builders (ClinVar, dbNSFP, Ensembl, etc.)
+│   ├── matrix_builders.py # Expression matrix builders
+│   ├── ucsc.py            # UCSC Cell Browser builders
+│   ├── expression_atlas.py# Expression Atlas builders
+│   ├── cptac.py           # CPTAC proteomics builders
+│   └── registry.py        # Builder registry for recipes
 │
-├── utils/               # Utility functions
-│   ├── table_utils.py  # Table manipulation helpers
-│   ├── genome.py       # Genome/contig utilities
-│   └── ...
+├── annotation/            # L4: Annotation pipeline
+│   ├── annotate.py        # Core annotation functions
+│   ├── annotation_pipeline.py # Pipeline orchestration
+│   └── annotation_streamer.py # Annotation DataStreamer
 │
-├── resources/           # Data catalog and schemas
-│   ├── catalog.yaml    # Dataset registry
-│   ├── registry/       # Dataset metadata
-│   └── schemas/        # Schema definitions
+├── hgc/                   # L5: HGC - Joint genotyping pipeline
+│   ├── combiners.py       # GVCF/MT combination
+│   ├── converters.py      # Format conversion (VDS ↔ MT ↔ VCF)
+│   ├── qc.py              # Quality control metrics
+│   ├── pipeline.py        # End-to-end pipeline orchestration
+│   ├── file_utils.py      # HGC-specific file utilities
+│   └── constants.py       # HGC constants
 │
-└── tests/               # Test suite
-    ├── test_*.py       # Unit and integration tests
-    └── testdata/       # Test data fixtures
+├── ancestry/              # L5: Ancestry inference pipeline
+│   ├── pipeline.py        # End-to-end ancestry pipeline
+│   ├── pca.py             # PCA computation
+│   ├── classify.py        # Random Forest classification
+│   ├── merge.py           # Reference/query merging
+│   ├── filter.py          # Variant filtering
+│   ├── plot.py            # Ancestry visualization
+│   ├── report.py          # HTML report generation
+│   └── constants.py       # Ancestry constants
+│
+├── psroc/                 # L5: PSROC - Score evaluation pipeline
+│   ├── pipeline.py        # End-to-end PSROC pipeline
+│   ├── roc.py             # ROC curve computation
+│   └── plots.py           # ROC visualization
+│
+├── enrichex/              # L5: EnrichEx - Gene set enrichment
+│   ├── overlap.py         # Overlap enrichment (Fisher's exact)
+│   ├── burden.py          # Burden testing (rare variant regression)
+│   ├── gene_sets.py       # Gene set handling
+│   ├── correction.py      # Multiple testing correction
+│   ├── plot.py            # Enrichment visualization
+│   └── report.py          # HTML report generation
+│
+├── commands/              # CLI command implementations
+│   ├── make_table_cli.py        # mktable commands
+│   ├── make_matrix_cli.py       # mkmatrix commands
+│   ├── make_table_batch_cli.py  # mktable-batch (recipes)
+│   ├── make_matrix_batch_cli.py # mkmatrix-batch (recipes)
+│   ├── catalog_cli.py           # Data catalog commands
+│   ├── ancestry_cli.py          # Ancestry CLI
+│   ├── psroc_cli.py             # PSROC CLI
+│   ├── ucsc_downloader.py       # UCSC downloader
+│   ├── expression_atlas_downloader.py # Expression Atlas downloader
+│   ├── clingen_downloader.py    # ClinGen downloader
+│   ├── hgc/                     # HGC CLI subcommands
+│   │   ├── combine_cli.py       # gvcf-combine, mt-combine
+│   │   ├── convert_cli.py       # vds2mt, mt2vcf
+│   │   ├── qc_cli.py            # compute-qc, qc-report
+│   │   └── pipeline_cli.py      # pipeline (end-to-end)
+│   └── enrichex_cli/            # EnrichEx CLI subcommands
+│       ├── overlap_cli.py       # overlap enrichment
+│       └── burden_cli.py        # burden testing
+│
+├── utils/                 # Utility functions
+│   ├── table_utils.py     # Table manipulation helpers
+│   ├── matrix_utils.py    # MatrixTable utilities
+│   ├── genome.py          # Genome/contig utilities
+│   ├── gene_sets.py       # Gene set utilities
+│   ├── expressions.py     # Expression data utilities
+│   ├── catalog.py         # Catalog utilities
+│   ├── clinvar_streamer.py# ClinVar-specific streamer
+│   └── llm_interface.py   # LLM integration utilities
+│
+├── visualization/         # Visualization and reporting
+│   ├── base.py            # Base visualization classes
+│   ├── qc_plots.py        # QC plotting functions
+│   ├── qc_report.py       # QC HTML report generation
+│   ├── interactive_qc.py  # Interactive QC dashboards
+│   └── expression/        # Expression-specific visualizations
+│       └── hail.py        # Hail-based expression plots
+│
+├── register/              # Registry management
+│   ├── manager.py         # Registry manager
+│   ├── config.py          # Registry configuration
+│   ├── api_generator.py   # API documentation generator
+│   └── web_generator.py   # Web interface generator
+│
+├── resources/             # Data catalog and schemas
+│   ├── catalog.yaml       # Dataset registry
+│   ├── registry/          # Per-domain dataset metadata
+│   ├── schemas/           # JSON schema definitions
+│   └── unified_registry.py# Unified registry access
+│
+└── tests/                 # Test suite
+    ├── conftest.py        # Pytest fixtures (hail_session, etc.)
+    ├── testdata/          # Test data fixtures
+    ├── hgc/               # HGC tests
+    ├── ancestry/          # Ancestry tests
+    ├── psroc/             # PSROC tests
+    └── enrichex/          # EnrichEx tests
 ```
-
-## Future Structure (Proposed)
-
-For improved organization, builders could be separated by domain:
-
-```
-hvantk/
-├── builders/            # Data builders by domain (FUTURE)
-│   ├── variants/       # Variant-level annotations
-│   │   ├── clinvar.py     # ClinVar variant annotations
-│   │   ├── dbnsfp.py      # dbNSFP prediction scores
-│   │   ├── gnomad.py      # gnomAD variant frequencies
-│   │   └── ccr.py         # CCR constraint scores
-│   │
-│   ├── genes/          # Gene-level annotations
-│   │   ├── ensembl.py     # Ensembl gene annotations
-│   │   ├── gevir.py       # GeVIR scores
-│   │   └── gnomad_metrics.py # gnomAD gene constraints
-│   │
-│   ├── proteins/       # Protein-level annotations
-│   │   └── insider.py     # INSIDER protein-protein interactions
-│   │
-│   └── expression/     # Expression matrices
-│       ├── ucsc.py        # UCSC Cell Browser matrices
-│       └── bulk.py        # Bulk RNA-seq matrices
-```
-
-This reorganization would improve navigability while maintaining backward compatibility through import shims.
 
 ## Design Principles
 
 ### 1. Domain Separation
 
-Data builders are currently organized in the `tables/` module, with plans to separate by biological domain:
+The codebase is organized by function and biological domain:
 
-**Current organization:**
-- `tables/table_builders.py` - All variant and gene annotation builders
-- `tables/matrix_builders.py` - All expression matrix builders
-- `tables/ucsc.py` - UCSC-specific builders
+**Data Builders** (`tables/`):
+- `table_builders.py` - Variant and gene annotation builders (ClinVar, dbNSFP, Ensembl, GeVIR, etc.)
+- `matrix_builders.py` - Expression matrix builders
+- `ucsc.py`, `expression_atlas.py`, `cptac.py` - Source-specific builders
 
-**Future organization (proposed):**
-- **Variants** - Variant-level annotations keyed by `(locus, alleles)`
-- **Genes** - Gene-level annotations keyed by `gene_id`
-- **Proteins** - Protein-level annotations keyed by `protein_id` or `interval`
-- **Expression** - Expression matrices with rows=genes, columns=samples/cells
+**Analysis Pipelines** (separate modules):
+- `hgc/` - Joint genotyping and cohort analysis
+- `ancestry/` - Population ancestry inference
+- `psroc/` - Pathogenicity score evaluation
+- `enrichex/` - Gene set enrichment analysis
 
-This reorganization would make it more intuitive to find and add new data sources while maintaining backward compatibility.
+**Data Product Keying**:
+- **Variants** - Keyed by `(locus, alleles)`
+- **Genes** - Keyed by `gene_id`
+- **Proteins** - Keyed by `protein_id` or `interval`
+- **Expression** - MatrixTables with rows=genes, columns=samples/cells
 
 ### 2. Protocol-Based Extensibility
 
