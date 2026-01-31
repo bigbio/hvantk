@@ -189,18 +189,23 @@ temp_*
 test_*_output/
 local_test_*
 
-*.log 
+*.log
 *.blg
 *.out
 *.aux
 
 # Ignore large data files
 checkpoints/
-*.ht/ # Hail table files
-*.mt/ # Hail matrix table files
-*.vds/ # Hail variant dataset files
-*.pkl # Pickle files
-data/ # Data directory
+# Hail table files
+*.ht/
+# Hail matrix table files
+*.mt/
+# Hail variant dataset files
+*.vds/
+# Pickle files
+*.pkl
+# Data directory
+data/
 
 # Manuscript build files
 manuscript/

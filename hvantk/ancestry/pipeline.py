@@ -688,10 +688,7 @@ def _dataframe_to_hail_table(
     # Register cleanup for when Python exits (temp files cleaned up by OS anyway)
     def cleanup():
         import shutil
-        try:
-            shutil.rmtree(tmp_dir, ignore_errors=True)
-        except Exception:
-            pass
+        shutil.rmtree(tmp_dir, ignore_errors=True)
 
     atexit.register(cleanup)
 

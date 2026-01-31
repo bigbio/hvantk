@@ -15,8 +15,10 @@ Example:
 """
 
 import logging
-import click
 from pathlib import Path
+from urllib.parse import urlparse
+
+import click
 
 from hvantk.core.config import CONTEXT_SETTINGS
 
@@ -380,7 +382,25 @@ def ancestry_inference_cmd(
             n_pcs_classify = n_pcs
 
         # Determine output directory
+        def _is_cloud_uri(path: str) -> bool:
+            parsed = urlparse(path)
+            if not parsed.scheme:
+                return False
+            if parsed.scheme.lower() == "file":
+                return False
+            if len(path) >= 2 and path[1] == ":" and path[0].isalpha():
+                return False
+            return True
+
+        output_is_cloud = _is_cloud_uri(output_ht)
         if output_dir is None:
+            if output_is_cloud:
+                click.echo(
+                    "Error: --output-ht points to a cloud URI. "
+                    "Provide a local --output-dir for additional outputs.",
+                    err=True,
+                )
+                ctx.exit(1)
             output_dir = str(Path(output_ht).parent / "ancestry_results")
 
         output_path = Path(output_dir)

@@ -147,7 +147,7 @@ flowchart BT
 <summary><b>Legend</b></summary>
 
 | Layer | Description |
-|-------|-------------|
+| --- | --- |
 | **L0 · Runtime** | Hail + Apache Spark distributed computing foundation |
 | **L1 · Core** | Protocol definitions (Builder, Streamer, Downloader) and shared utilities |
 | **L2 · Acquisition** | Downloaders fetch remote datasets; Builders create Hail Tables/MatrixTables |
@@ -164,13 +164,13 @@ flowchart BT
 
 </details>
 
-**Caption:** *hvantk implements a six-layer architecture for scalable multi-omics variant annotation. Built on Hail/Spark (L0), the toolkit provides extensibility protocols (L1) for data acquisition (L2) that produces domain-organized Hail Tables and MatrixTables (L3). DataStreamers (L4) are reusable transformation components (dashed arrows) that can be composed into analysis pipelines (L5). The HGC pipeline additionally accepts user-provided cohort data (GVCFs or MatrixTables) for joint genotyping and ancestry inference. CLI and Python API interfaces provide access at multiple levels.*
+**Caption:** *hvantk implements a six-layer architecture for scalable multi-omics variant annotation. Built on Hail/Spark (L0), the toolkit provides extensibility protocols (L1) for data acquisition (L2) that produces domain-organized Hail Tables and MatrixTables (L3). DataStreamers (L4) are reusable transformation components (dashed arrows) that can be composed into analysis pipelines (L5). The HGC pipeline additionally accepts user-provided cohort data (GVCFs or MatrixTables) for joint genotyping and ancestry inference. CLI and Python APIs provide access at multiple levels.*
 
 Editable PowerPoint version: `docs/figures/hvantk_architecture.pptx`.
 
 ## Project Structure
 
-```
+```text
 hvantk/
 ├── hvantk.py              # Main CLI entry point
 │
