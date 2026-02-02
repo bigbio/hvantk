@@ -22,13 +22,12 @@ Documentation for specific tools within hvantk:
 - **[EnrichEx](tools/enrichex.md)** - Gene set enrichment analysis (overlap and burden testing)
 - **[Ancestry Inference](tools/ancestry.md)** - Genetic ancestry prediction using PCA and Random Forest classification
 
-### 📋 Planning & Development (`planning/`)
+### 📋 Planning & Development
 
 Documentation for developers and contributors:
 
-- **[Developer Guide](../local/docs/DEVELOPING.md)** - Development workflow and contracts
-- **[Streamers and Recipes](../local/docs/STREAMERS_AND_RECIPES.md)** - Streamer interface and JSON/YAML recipe format
-- **[Data Catalog](../local/docs/DATA_CATALOG.md)** - Dataset registry, versioning, and hosting strategy
+- **[Architecture](ARCHITECTURE.md)** - System design, protocols, and extension points
+- **[Contributing](../CONTRIBUTING.md)** - Development workflow and contribution guidelines
 
 ### 📊 Registry (`registry/`)
 
@@ -49,10 +48,9 @@ Dataset registry and web interface for browsing available datasets.
 - [Ancestry inference](tools/ancestry.md#quick-start) - Predict genetic ancestry
 
 ### For Developers
-- [Contributing](../local/docs/DEVELOPING.md#contributing) - How to contribute
-- [Add a new data source](../local/docs/DEVELOPING.md#development-cycle) - Add new annotations
-- [Create custom streamers](../local/docs/STREAMERS_AND_RECIPES.md#creating-custom-streamers) - Build transformers
-- [Register datasets](../local/docs/DATA_CATALOG.md#registering-a-new-dataset) - Add to catalog
+- [Contributing](../CONTRIBUTING.md) - How to contribute
+- [Add a new data source](ARCHITECTURE.md#adding-a-new-data-source) - Add new annotations
+- [Architecture](ARCHITECTURE.md) - System design and extension points
 
 ## Documentation Conventions
 
@@ -77,4 +75,4 @@ Documentation contributions are welcome! Please:
 4. Add links between related sections
 5. Test all code examples
 
-See the [Developer Guide](../local/docs/DEVELOPING.md) for more information.
+See the [Contributing Guide](../CONTRIBUTING.md) and [Architecture](ARCHITECTURE.md) for more information.

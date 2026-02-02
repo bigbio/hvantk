@@ -169,30 +169,23 @@ results_ht.export("burden_results.tsv")
 
 ## Visualization
 
-EnrichEx ships with matplotlib-based plots. The CLI exposes these plots under a dedicated `plot` group:
+EnrichEx ships with matplotlib-based plots. Generate visualizations using the `--generate-report` flag on the `overlap` and `burden` commands:
 
 ```bash
-# Enrichment dot plot
-hvantk enrichex plot dotplot \
-  -i enrichment_results.tsv \
-  -o enrichment.png \
-  --top-n 20 \
-  --format png
+# Run overlap enrichment with report generation
+hvantk enrichex overlap \
+  -g gwas_genes.txt \
+  -s brain_cell_types.json \
+  -o enrichment_results.tsv \
+  --generate-report
 
-# Burden forest plot
-hvantk enrichex plot forest \
-  -i burden_results.tsv \
-  -o burden_forest.pdf \
-  --phenotype-type binary \
-  --top-n 25 \
-  --format pdf
-
-# Quick-look bar chart
-hvantk enrichex plot barplot \
-  -i enrichment_results.tsv \
-  -o enrichment_bars.png \
-  --value odds_ratio \
-  --top-n 15
+# Run burden testing with report generation
+hvantk enrichex burden \
+  -m cohort.mt \
+  -p phenotypes.ht \
+  -s gene_sets.json \
+  -o burden_results.tsv \
+  --generate-report
 ```
 
 The same functionality is available via Python:
@@ -234,22 +227,28 @@ the axes or save multiple formats as needed.
 
 ## HTML Reports
 
-The new `hvantk enrichex report` command generates a lightweight static report
-with inline plots and tables:
+HTML reports are generated using the `--generate-report` flag on the `overlap` and `burden` commands. Reports include inline plots and summary tables:
 
 ```bash
-hvantk enrichex report \
-  --overlap-results enrichment_results.tsv \
-  --burden-results burden_results.tsv \
-  --gene-sets brain_cell_types.json \
-  -o ad_enrichex_report.html \
-  --title "Alzheimer's Disease EnrichEx Analysis" \
-  --description "Summary of overlap and burden findings" \
-  --analyst-name "Bioinformatics Core"
+# Generate overlap enrichment with HTML report
+hvantk enrichex overlap \
+  -g ad_gwas_genes.txt \
+  -s brain_cell_types.json \
+  -o enrichment_results.tsv \
+  --generate-report \
+  --report-title "Alzheimer's Disease Enrichment Analysis"
+
+# Generate burden test with HTML report
+hvantk enrichex burden \
+  -m cohort.mt \
+  -p phenotypes.ht \
+  -s gene_sets.json \
+  -o burden_results.tsv \
+  --generate-report \
+  --report-title "AD Burden Analysis"
 ```
 
-By default plots are embedded as base64 PNGs. Use `--no-embed-plots` when you
-prefer separate PNG files next to the HTML.
+Reports are saved alongside the output file with an `.html` extension.
 
 From Python, the `generate_report` helper offers the same functionality:
 

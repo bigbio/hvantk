@@ -263,8 +263,7 @@ hvantk/
 │   ├── gene_sets.py       # Gene set utilities
 │   ├── expressions.py     # Expression data utilities
 │   ├── catalog.py         # Catalog utilities
-│   ├── clinvar_streamer.py# ClinVar-specific streamer
-│   └── llm_interface.py   # LLM integration utilities
+│   └── clinvar_streamer.py# ClinVar-specific streamer
 │
 ├── visualization/         # Visualization and reporting
 │   ├── base.py            # Base visualization classes
@@ -277,8 +276,7 @@ hvantk/
 ├── register/              # Registry management
 │   ├── manager.py         # Registry manager
 │   ├── config.py          # Registry configuration
-│   ├── api_generator.py   # API documentation generator
-│   └── web_generator.py   # Web interface generator
+│   └── api_generator.py   # API documentation generator
 │
 ├── resources/             # Data catalog and schemas
 │   ├── catalog.yaml       # Dataset registry
@@ -407,7 +405,7 @@ Raw File (VCF/TSV/BED) → Builder → Hail Table → Disk (.ht)
 
 Example:
 ```python
-from hvantk.builders.variants.clinvar import create_clinvar_tb
+from hvantk.tables.table_builders import create_clinvar_tb
 
 ht = create_clinvar_tb(
     input_path="clinvar.vcf.bgz",
