@@ -21,5 +21,5 @@ Open `index.html` in a web browser to view the dataset registry dashboard.
 
 ## See Also
 
-- [Data Catalog Documentation](../../local/docs/DATA_CATALOG.md) - Dataset registry strategy and format
 - [Annotation Sources](../library/annotation-sources.md) - Available data sources
+- [Architecture](../ARCHITECTURE.md) - System design and data organization

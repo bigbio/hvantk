@@ -148,15 +148,6 @@ Demonstrates:
 - Categorical metadata handling
 - Custom column mapping
 
-### Analysis Recipes
-
-**`heart_rare_variants.yaml`** - Example analysis workflow (YAML format)
-
-Demonstrates:
-- Multi-step analysis pipeline
-- Combining multiple data sources
-- Downstream analysis patterns
-
 ---
 
 ## Running Examples
@@ -481,8 +472,7 @@ examples/
 └── recipes/                     # Recipe templates
     ├── tables.example.json
     ├── matrices.example.json
-    ├── cptac.example.json
-    └── heart_rare_variants.yaml
+    └── cptac.example.json
 ```
 
 ---

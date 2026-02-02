@@ -157,6 +157,9 @@ python -c "import hail; print(f'  Hail version: {hail.__version__}')" || {
 }
 echo ""
 
+# Get script directory for finding benchmark.py and plot_results.py
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Create output directory
 mkdir -p "$OUTPUT_DIR"
 
@@ -241,7 +244,7 @@ for NUM_CPUS in "${CPUS[@]}"; do
     START_TIME=$(date +%s)
 
     # Build command with required arguments
-    CMD="python hgc_cpu_scaling_benchmark.py \
+    CMD="python \"$SCRIPT_DIR/benchmark.py\" \
         --gvcf-list \"$GVCF_LIST\" \
         --output-dir \"$OUTPUT_DIR\" \
         --sample-size $SAMPLE_SIZE \
@@ -313,7 +316,7 @@ echo ""
 
 # Generate plots
 echo "Generating plots..."
-if python plot_cpu_scaling_results.py --results-dir "$OUTPUT_DIR"; then
+if python "$SCRIPT_DIR/plot_results.py" --results-dir "$OUTPUT_DIR"; then
     echo "✓ Plots generated successfully"
 else
     echo "WARNING: Plot generation failed (check if plot_cpu_scaling_results.py exists)"

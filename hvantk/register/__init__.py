@@ -24,11 +24,6 @@ from .config import RegistryConfig, VALIDATION_TIERS, STATUS_DEFINITIONS
 
 # Optional modules (guarded to avoid import-time failures)
 try:
-    from .web_generator import WebRegistryGenerator
-except ImportError:
-    WebRegistryGenerator = None
-
-try:
     from .manager import RegistryManager
 except ImportError:
     RegistryManager = None
@@ -46,8 +41,5 @@ __all__ = [
 ]
 
 # Add optional imports only if they succeeded
-if WebRegistryGenerator is not None:
-    __all__.append("WebRegistryGenerator")
-
 if RegistryManager is not None:
     __all__.append("RegistryManager")

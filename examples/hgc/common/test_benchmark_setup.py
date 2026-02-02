@@ -134,28 +134,53 @@ def main():
     print()
 
     print("Checking benchmark scripts...")
-    script_dir = Path(__file__).parent
-    scripts = [
-        "hgc_scalability_benchmark.sh",
-        "hgc_scalability_benchmark.py",
-        "plot_scalability_results.py",
+    common_dir = Path(__file__).parent
+    hgc_dir = common_dir.parent
+    scalability_dir = hgc_dir / "scalability"
+    cpu_scaling_dir = hgc_dir / "cpu_scaling"
+
+    # Check scalability benchmark scripts
+    print("\nScalability benchmark:")
+    scalability_scripts = [
+        ("benchmark.py", scalability_dir),
+        ("benchmark.sh", scalability_dir),
+        ("plot_results.py", scalability_dir),
     ]
-    for script in scripts:
-        script_path = script_dir / script
+    for script, location in scalability_scripts:
+        script_path = location / script
         if script_path.exists():
-            print(f"✓ {script} exists")
+            print(f"  ✓ {script} exists")
         else:
-            print(f"✗ {script} NOT found")
+            print(f"  ✗ {script} NOT found")
+            all_ok = False
+
+    # Check CPU scaling benchmark scripts
+    print("\nCPU scaling benchmark:")
+    cpu_scaling_scripts = [
+        ("benchmark.py", cpu_scaling_dir),
+        ("benchmark.sh", cpu_scaling_dir),
+        ("plot_results.py", cpu_scaling_dir),
+    ]
+    for script, location in cpu_scaling_scripts:
+        script_path = location / script
+        if script_path.exists():
+            print(f"  ✓ {script} exists")
+        else:
+            print(f"  ✗ {script} NOT found")
             all_ok = False
     print()
 
     print("=" * 80)
     if all_ok:
-        print("✓ All checks passed! Ready to run benchmark.")
+        print("✓ All checks passed! Ready to run benchmarks.")
         print()
-        print("To start the benchmark, run:")
-        print(f"  cd {script_dir}")
-        print("  bash hgc_scalability_benchmark.sh --gvcf-dir <path>")
+        print("To run scalability benchmark:")
+        print(f"  cd {scalability_dir}")
+        print("  bash benchmark.sh --gvcf-dir <path>")
+        print()
+        print("To run CPU scaling benchmark:")
+        print(f"  cd {cpu_scaling_dir}")
+        print("  bash benchmark.sh --gvcf-list <file> --output-dir <dir>")
     else:
         print("✗ Some checks failed. Please resolve the issues above.")
         print()

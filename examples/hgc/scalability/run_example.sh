@@ -50,7 +50,7 @@ echo "Starting benchmark..."
 echo ""
 
 # Run the benchmark
-bash "$(dirname "$0")/hgc_scalability_benchmark.sh" \
+bash "$(dirname "$0")/benchmark.sh" \
     --gvcf-dir "$GVCF_DIR" \
     --output-dir "$OUTPUT_DIR" \
     --sample-sizes "$SAMPLE_SIZES" \
@@ -65,6 +65,6 @@ echo ""
 echo "Results saved to: $OUTPUT_DIR"
 echo ""
 echo "To generate plots, run:"
-echo "  python $(dirname "$0")/plot_scalability_results.py --results-dir $OUTPUT_DIR"
+echo "  python $(dirname "$0")/plot_results.py --results-dir $OUTPUT_DIR"
 echo ""
 

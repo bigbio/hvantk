@@ -8,13 +8,13 @@ This directory contains scripts to benchmark the HGC (Hail-based Genotype Combin
 **Purpose**: Measure how runtime scales with increasing cohort size  
 **Varies**: Sample count (20, 50, 100, 250, 500, 750, 1000)  
 **Fixed**: CPU count (144 CPUs)  
-**Script**: `hgc_scalability_benchmark.sh`
+**Script**: `benchmark.sh`
 
 ### 2. CPU Scaling (Strong Scaling) ⭐ NEW
 **Purpose**: Measure speedup and efficiency with varying CPU count  
 **Varies**: CPU count (16, 24, 32, 48, 64, 96, 144)  
 **Fixed**: Sample count (e.g., 500 samples)  
-**Script**: `hgc_cpu_scaling_benchmark.sh`
+**Script**: `../cpu_scaling/benchmark.sh`
 
 ---
 
@@ -39,19 +39,19 @@ The benchmarks measure the complete end-to-end HGC workflow performance:
 
 ### Sample Size Scalability
 ```
-├── hgc_scalability_benchmark.sh       # Orchestration script (sample size scaling)
-├── hgc_scalability_benchmark.py       # Python workflow runner
-├── plot_scalability_results.py        # Visualization script
+├── benchmark.sh       # Orchestration script (sample size scaling)
+├── benchmark.py       # Python workflow runner
+├── plot_results.py        # Visualization script
 └── README_scalability.md              # This file
 ```
 
 ### CPU Scaling (NEW)
 ```
-├── hgc_cpu_scaling_benchmark.sh       # Orchestration script (CPU scaling)
-├── hgc_cpu_scaling_benchmark.py       # Python workflow runner with CPU config
-├── plot_cpu_scaling_results.py        # CPU scaling visualization
-├── generate_sample_list.sh            # Helper to create fixed sample lists
-├── run_cpu_scaling_example.sh         # Complete example workflow
+├── ../cpu_scaling/benchmark.sh       # Orchestration script (CPU scaling)
+├── ../cpu_scaling/benchmark.py       # Python workflow runner with CPU config
+├── ../cpu_scaling/plot_results.py        # CPU scaling visualization
+├── ../common/generate_sample_list.sh            # Helper to create fixed sample lists
+├── ../cpu_scaling/run_example.sh         # Complete example workflow
 ├── README_cpu_scaling.md              # Full CPU scaling documentation
 └── QUICKREF_cpu_scaling.md            # Quick reference guide
 ```
@@ -73,10 +73,10 @@ The benchmarks measure the complete end-to-end HGC workflow performance:
 cd analysis
 
 # Run with default settings
-bash hgc_scalability_benchmark.sh
+bash benchmark.sh
 
 # Or customize parameters
-bash hgc_scalability_benchmark.sh \
+bash benchmark.sh \
     --gvcf-dir /path/to/gvcfs \
     --output-dir ./my_results \
     --sample-sizes 20,50,100,250,500,750,1000 \
@@ -105,7 +105,7 @@ bash hgc_scalability_benchmark.sh \
 After the benchmark completes:
 
 ```bash
-python plot_scalability_results.py --results-dir ./scalability_results
+python plot_results.py --results-dir ./scalability_results
 ```
 
 This generates:
@@ -124,21 +124,21 @@ This generates:
 
 ```bash
 # Generate a fixed list of 500 GVCFs
-bash generate_sample_list.sh /path/to/gvcfs 500 samples_500.txt
+bash ../common/generate_sample_list.sh /path/to/gvcfs 500 samples_500.txt
 ```
 
 #### 2. Run CPU Scaling Benchmark
 
 ```bash
 # Run with default CPU counts (16,24,32,48,64,96,144)
-bash hgc_cpu_scaling_benchmark.sh \
+bash ../cpu_scaling/benchmark.sh \
     --gvcf-list samples_500.txt \
     --output-dir ./cpu_scaling_500 \
     --sample-size 500 \
     --cpu-counts 16,24,32,48,64,96,144
 
 # Or use the example script
-bash run_cpu_scaling_example.sh
+bash ../cpu_scaling/run_example.sh
 ```
 
 **Default Configuration:**
@@ -304,10 +304,10 @@ The summary report includes:
 
 ```bash
 # 1. Run benchmark (takes several hours for 7 sample sizes)
-bash hgc_scalability_benchmark.sh
+bash benchmark.sh
 
 # 2. Generate plots
-python plot_scalability_results.py --results-dir ./scalability_results
+python plot_results.py --results-dir ./scalability_results
 
 # 3. View results
 cat scalability_results/hgc_scalability_report.txt
@@ -345,7 +345,7 @@ rm -rf scalability_results/run_*/analysis_*.mt
 ### Custom Sample Sizes
 
 ```bash
-bash hgc_scalability_benchmark.sh \
+bash benchmark.sh \
     --sample-sizes 10,25,50,100,200,400,800 \
     --output-dir ./custom_results
 ```
@@ -354,7 +354,7 @@ bash hgc_scalability_benchmark.sh \
 
 ```bash
 # Quick test with small sizes
-bash hgc_scalability_benchmark.sh \
+bash benchmark.sh \
     --sample-sizes 20,50 \
     --output-dir ./test_run
 ```
@@ -362,7 +362,7 @@ bash hgc_scalability_benchmark.sh \
 ### Different Reference Genome
 
 ```bash
-bash hgc_scalability_benchmark.sh \
+bash benchmark.sh \
     --reference GRCh37
 ```
 

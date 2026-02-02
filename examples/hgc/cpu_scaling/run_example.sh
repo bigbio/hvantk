@@ -78,7 +78,7 @@ if [ -f "$SAMPLE_LIST" ]; then
     echo "Using existing list (delete to regenerate)"
 else
     echo "Generating new sample list: $SAMPLE_LIST"
-    bash generate_sample_list.sh "$GVCF_DIR" "$SAMPLE_SIZE" "$SAMPLE_LIST"
+    bash "$(dirname "$0")/../common/generate_sample_list.sh" "$GVCF_DIR" "$SAMPLE_SIZE" "$SAMPLE_LIST"
 fi
 
 echo ""
@@ -100,7 +100,7 @@ echo ""
 
 read -p "Press Enter to start benchmark (or Ctrl+C to cancel)..."
 
-bash hgc_cpu_scaling_benchmark.sh \
+bash "$(dirname "$0")/benchmark.sh" \
     --gvcf-list "$SAMPLE_LIST" \
     --output-dir "$OUTPUT_DIR" \
     --sample-size "$SAMPLE_SIZE" \

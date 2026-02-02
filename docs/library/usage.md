@@ -317,6 +317,6 @@ annotated_mt = result.annotate_matrixtable(query_mt)
 
 ## See also
 
-- [Data Catalog](../../local/docs/DATA_CATALOG.md) – versioning, provenance, and hosting strategy
-- [Developer Guide](../../local/docs/DEVELOPING.md) – dev workflow and builder contracts
+- [Architecture](../ARCHITECTURE.md) – system design and extension points
+- [Contributing](../../CONTRIBUTING.md) – development workflow and contribution guidelines
 - [Recipe Examples](../../examples/recipes/) – ready-to-edit recipe templates

@@ -175,7 +175,7 @@ echo ""
 
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PYTHON_SCRIPT="$SCRIPT_DIR/hgc_scalability_benchmark.py"
+PYTHON_SCRIPT="$SCRIPT_DIR/benchmark.py"
 
 # Check if Python script exists
 if [ ! -f "$PYTHON_SCRIPT" ]; then

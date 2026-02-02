@@ -2,8 +2,6 @@
 
 Hail-based multiomics variant annotation toolkit.
 
-### TODO: Add how to prepare the data (if any pre-processing is needed).
-
 List of raw sources and URL to download the data.
 
 ## Annotation sources
@@ -68,5 +66,3 @@ List of raw sources and URL to download the data.
     Description: Adult human heart cell atlas (https://doi.org/10.1038/s41586-020-2797-4).\
     URL: https://cells.ucsc.edu/?bp=heart&ds=heart-cell-atlas
 
-- Protein expression data
-  - TODO: Add protein expression data sources.
