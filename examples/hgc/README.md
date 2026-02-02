@@ -2,120 +2,125 @@
 
 This directory contains examples and benchmarks for the HGC joint genotyping pipeline.
 
-## Contents
+## Directory Structure
 
-### Examples
-
-**`hgc_qc_example.py`** - Quality control workflow for joint-called cohorts
-
-Demonstrates:
-- Computing QC metrics for combined cohorts
-- Generating QC visualizations
-- Creating HTML reports with interactive plots
-- Quality-based filtering strategies
-
-```bash
-python examples/hgc/hgc_qc_example.py
 ```
-
-### Benchmarks
-
-**`hgc_cpu_scaling_benchmark.py`** - CPU scaling benchmark
-
-Tests how HGC performance scales with different CPU core counts.
-
-**`hgc_scalability_benchmark.py`** - Sample size scalability benchmark
-
-Tests how HGC performance scales with cohort size (number of samples).
-
-**`test_benchmark_setup.py`** - Benchmark environment validation
-
-Verifies that the environment is properly configured for running benchmarks.
-
-### Supporting Scripts
-
-The `scripts/` directory contains:
-- `plot_cpu_scaling_results.py` - Visualization for CPU scaling results
-- `plot_scalability_results.py` - Visualization for scalability results
-- `extract_timing.py` - Timing data extraction utilities
-- Shell scripts for running benchmarks (`run_*.sh`)
-- Environment setup scripts (`setup_*.sh`)
+examples/hgc/
+├── README.md                  # This file
+├── qc/                        # Quality control examples
+│   └── hgc_qc_example.py     # QC workflow for joint-called cohorts
+├── scalability/               # Sample size scalability benchmark
+│   ├── README.md             # Scalability benchmark documentation
+│   ├── benchmark.py          # Python workflow runner
+│   ├── benchmark.sh          # Shell orchestration script
+│   ├── plot_results.py       # Results visualization
+│   └── run_example.sh        # Quick start script
+├── cpu_scaling/               # CPU scaling benchmark
+│   ├── benchmark.py          # Python workflow runner
+│   ├── benchmark.sh          # Shell orchestration script
+│   ├── plot_results.py       # Results visualization
+│   └── run_example.sh        # Quick start script
+├── common/                    # Shared utilities
+│   ├── test_benchmark_setup.py  # Environment validation
+│   ├── setup_hvantk_env.sh      # Environment setup
+│   ├── extract_timing.py        # Timing utilities
+│   └── generate_sample_list.sh  # Sample list generation
+└── results/                   # Example output files
+```
 
 ## Quick Start
 
-### Run QC Example
+### 1. Validate Environment
+
+```bash
+python examples/hgc/common/test_benchmark_setup.py
+```
+
+### 2. Run QC Example
 
 ```bash
 # Activate environment
 poetry shell
 
 # Run QC workflow (uses test data)
-python examples/hgc/hgc_qc_example.py
+python examples/hgc/qc/hgc_qc_example.py
 
 # Check outputs
 ls examples/hgc/results/
 ```
 
-### Run Benchmarks
+### 3. Run Benchmarks
+
+**Scalability benchmark** (tests performance vs. sample count):
 
 ```bash
-# Validate environment first
-python examples/hgc/test_benchmark_setup.py
-
-# Run CPU scaling benchmark
-python examples/hgc/hgc_cpu_scaling_benchmark.py
-
-# Run sample scalability benchmark
-python examples/hgc/hgc_scalability_benchmark.py
+cd examples/hgc/scalability
+bash run_example.sh
+# Or run directly:
+bash benchmark.sh --gvcf-dir /path/to/gvcfs --output-dir ./results
 ```
+
+**CPU scaling benchmark** (tests performance vs. CPU count):
+
+```bash
+cd examples/hgc/cpu_scaling
+bash run_example.sh
+# Or run directly:
+bash benchmark.sh --gvcf-list samples.txt --output-dir ./results
+```
+
+## Components
+
+### QC Workflow (`qc/`)
+
+Demonstrates quality control for joint-called cohorts:
+- Computing QC metrics
+- Generating visualizations
+- Creating HTML reports
+- Quality-based filtering strategies
+
+### Scalability Benchmark (`scalability/`)
+
+Tests how HGC performance scales with cohort size:
+- Runs HGC workflow with varying sample counts
+- Measures timing for each step
+- Generates scaling plots
+
+See [scalability/README.md](scalability/README.md) for detailed documentation.
+
+### CPU Scaling Benchmark (`cpu_scaling/`)
+
+Tests strong scaling (speedup vs. CPU count):
+- Runs HGC workflow with fixed cohort size
+- Varies CPU core count
+- Measures speedup and efficiency
+
+### Common Utilities (`common/`)
+
+Shared scripts for all benchmarks:
+- **test_benchmark_setup.py** - Validates environment setup
+- **setup_hvantk_env.sh** - Creates conda environment
+- **extract_timing.py** - Extracts timing data from logs
+- **generate_sample_list.sh** - Generates sample lists from GVCF directory
 
 ## Expected Outputs
 
 ### QC Workflow
 
-- `qc_report_*.html` - Interactive HTML report with:
-  - Summary statistics
-  - Sample and variant QC metrics
-  - Ti/Tv ratio analysis
-  - Quality recommendations
+- `qc_report_*.html` - Interactive HTML report
 - `qc_dashboard_*.png` - Multi-panel QC visualization
 
 ### Benchmarks
 
-- Timing metrics (JSON format)
+- Timing metrics (JSON/CSV format)
 - Performance plots (PNG format)
-- Scalability analysis results
+- Scalability analysis summaries
 
 ## Documentation
 
-For detailed documentation on the HGC pipeline:
 - [HGC Documentation](../../docs/tools/hgc.md)
 - [Architecture Overview](../../docs/ARCHITECTURE.md)
-- [Scalability Guide](./README_scalability.md)
-
-## Customization
-
-### QC Example
-
-Modify `hgc_qc_example.py` to use your own data:
-
-```python
-# Change input paths
-input_mt = "path/to/your/cohort.mt"
-output_dir = "path/to/output/"
-```
-
-### Benchmarks
-
-Edit benchmark parameters:
-
-```python
-# In hgc_cpu_scaling_benchmark.py
-cpu_counts = [2, 4, 8, 16]  # Test different core counts
-
-# In hgc_scalability_benchmark.py
-sample_sizes = [100, 500, 1000, 5000]  # Test different cohort sizes
-```
+- [Scalability Guide](scalability/README.md)
 
 ## Requirements
 
@@ -123,10 +128,3 @@ sample_sizes = [100, 500, 1000, 5000]  # Test different cohort sizes
 - Spark configured with appropriate resources
 - For benchmarks: sufficient CPU cores and memory
 - For QC: MatrixTable with sample and variant data
-
-## Tips
-
-1. **QC workflow**: Start with small test datasets to verify the pipeline
-2. **Benchmarks**: Ensure adequate system resources (CPU, memory, disk)
-3. **Results**: Check `results/` directory for all outputs
-4. **Customization**: Copy scripts and modify for your specific needs
