@@ -134,14 +134,16 @@ def main():
     print()
 
     print("Checking benchmark scripts...")
-    script_dir = Path(__file__).parent
+    base_dir = Path(__file__).parent
+    scripts_dir = base_dir / "scripts"
+    # Scripts in different locations: .py in base_dir, .sh and plot in scripts/
     scripts = [
-        "hgc_scalability_benchmark.sh",
-        "hgc_scalability_benchmark.py",
-        "plot_scalability_results.py",
+        ("hgc_scalability_benchmark.py", base_dir),
+        ("hgc_scalability_benchmark.sh", scripts_dir),
+        ("plot_scalability_results.py", scripts_dir),
     ]
-    for script in scripts:
-        script_path = script_dir / script
+    for script, location in scripts:
+        script_path = location / script
         if script_path.exists():
             print(f"✓ {script} exists")
         else:
@@ -154,7 +156,7 @@ def main():
         print("✓ All checks passed! Ready to run benchmark.")
         print()
         print("To start the benchmark, run:")
-        print(f"  cd {script_dir}")
+        print(f"  cd {scripts_dir}")
         print("  bash hgc_scalability_benchmark.sh --gvcf-dir <path>")
     else:
         print("✗ Some checks failed. Please resolve the issues above.")
