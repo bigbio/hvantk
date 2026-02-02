@@ -2,8 +2,7 @@
 Unified Registry Manager for HVANTK Dataset Validation
 
 This module provides a high-level interface for managing the complete
-dataset validation registry workflow, including validation, web generation,
-and API endpoint creation.
+dataset validation registry workflow, including validation and API endpoint creation.
 """
 
 import logging
@@ -14,11 +13,6 @@ from .validation_registry import DatasetValidationRegistry, ValidationResult
 from .api_generator import APIEndpointGenerator
 from .config import RegistryConfig
 
-try:
-    from .web_generator import WebRegistryGenerator
-except Exception:
-    WebRegistryGenerator = None
-
 logger = logging.getLogger(__name__)
 
 
@@ -28,7 +22,6 @@ class RegistryManager:
 
     This class orchestrates all aspects of the registry including:
     - Validation result storage and retrieval
-    - Web interface generation
     - API endpoint creation
     - Configuration management
     """
@@ -47,11 +40,6 @@ class RegistryManager:
         """
         self.config = config or RegistryConfig()
         self.registry = DatasetValidationRegistry(registry_file)
-        self.web_generator = (
-            WebRegistryGenerator(self.config)
-            if WebRegistryGenerator is not None
-            else None
-        )
         self.api_generator = APIEndpointGenerator(self.config)
 
         logger.info("Registry manager initialized")
@@ -75,29 +63,6 @@ class RegistryManager:
         """Save validation results to file."""
         self.registry.save_registry()
 
-    def generate_web_interface(self, output_dir: str) -> Path:
-        """
-        Generate the complete web interface for the registry.
-
-        Args:
-            output_dir: Directory to output web files
-
-        Returns:
-            Path to generated web interface
-
-        Raises:
-            RuntimeError: If web generator is not configured
-        """
-        if self.web_generator is None:
-            raise RuntimeError(
-                "WebRegistryGenerator is not configured; cannot generate web interface"
-            )
-
-        logger.info(f"Generating web interface in {output_dir}")
-        return self.web_generator.generate_web_registry(
-            str(self.registry.registry_file), output_dir
-        )
-
     def generate_api_endpoints(self, output_dir: str) -> Path:
         """
         Generate API endpoints for the registry.
@@ -115,7 +80,7 @@ class RegistryManager:
 
     def generate_complete_registry(self, output_dir: str) -> Dict[str, Path]:
         """
-        Generate both web interface and API endpoints.
+        Generate API endpoints for the registry.
 
         Args:
             output_dir: Directory to output all files
@@ -126,14 +91,6 @@ class RegistryManager:
         logger.info(f"Generating complete registry in {output_dir}")
 
         result = {}
-
-        # Generate web interface (only if available)
-        if self.web_generator is not None:
-            result["web_interface"] = self.generate_web_interface(output_dir)
-        else:
-            logger.warning(
-                "WebRegistryGenerator not available - skipping web interface generation"
-            )
 
         # Generate API endpoints
         result["api_endpoints"] = self.generate_api_endpoints(output_dir)
