@@ -15,7 +15,6 @@ from hvantk.register import (
     FailureType,
     ValidationResult,
     DatasetValidationRegistry,
-    WebRegistryGenerator,
     APIEndpointGenerator,
     RegistryConfig,
     RegistryManager,
@@ -76,47 +75,6 @@ class TestValidationRegistry:
 
         finally:
             Path(temp_file).unlink(missing_ok=True)
-
-
-class TestWebGenerator:
-    """Test the WebRegistryGenerator class."""
-
-    def test_badge_generation(self):
-        """Test status badge generation."""
-        config = RegistryConfig()
-        generator = WebRegistryGenerator(config)
-
-        badge = generator.generate_status_badge("tier3_passed")
-        assert "badge" in badge
-        assert "#28a745" in badge  # Check for the green color
-        assert "Tier3 Passed" in badge  # Check for formatted text
-
-    def test_statistics_generation(self):
-        """Test statistics generation."""
-        config = RegistryConfig()
-        generator = WebRegistryGenerator(config)
-
-        # Create test registry data
-        test_registry = {
-            "test-dataset-1": {
-                "dataset_type": "ucsc",
-                "status": "tier3_passed",
-                "timestamp": "2025-09-11T10:00:00",
-                "error_message": None,
-            },
-            "test-dataset-2": {
-                "dataset_type": "expression_atlas",
-                "status": "tier1_failed",
-                "timestamp": "2025-09-11T11:00:00",
-                "error_message": "Test error message",
-            },
-        }
-
-        stats = generator.generate_summary_stats(test_registry)
-        assert stats["total"] == 2
-        assert stats["successful"] == 1
-        assert stats["failed"] == 1
-        assert stats["success_rate"] == 50.0
 
 
 class TestAPIGenerator:
@@ -208,11 +166,6 @@ class TestRegistryManager:
             assert len(failed) == 1
             assert failed[0]["dataset_id"] == "test-atlas-1"
 
-            # Test web interface generation
-            web_path = manager.generate_web_interface(str(output_dir))
-            assert (output_dir / "index.html").exists()
-            assert (output_dir / "styles.css").exists()
-
             # Test API generation
             api_path = manager.generate_api_endpoints(str(output_dir))
             assert (output_dir / "api" / "status.json").exists()
@@ -221,7 +174,6 @@ class TestRegistryManager:
 
             # Test complete registry generation
             paths = manager.generate_complete_registry(str(output_dir))
-            assert "web_interface" in paths
             assert "api_endpoints" in paths
 
         finally:

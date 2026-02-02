@@ -21,7 +21,6 @@ _SUFFIX_TO_MARK = {
     "_network.py": pytest.mark.network,
     "_slow.py": pytest.mark.slow,
     "_integration.py": pytest.mark.integration,
-    "_llm.py": pytest.mark.llm,
 }
 
 
