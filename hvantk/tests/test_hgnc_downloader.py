@@ -24,7 +24,7 @@ class TestDownloadHgnc:
         # Mock urllib.request.urlretrieve
         with patch("urllib.request.urlretrieve") as mock_retrieve:
             # Simulate successful download by creating the file
-            def create_file(url, path):
+            def create_file(_url, path):
                 Path(path).write_text("test content")
                 return (path, None)
 
@@ -41,7 +41,7 @@ class TestDownloadHgnc:
         output_path = tmp_path / "nested" / "dir" / "hgnc_complete_set.txt"
 
         with patch("urllib.request.urlretrieve") as mock_retrieve:
-            def create_file(url, path):
+            def create_file(_url, path):
                 Path(path).write_text("test content")
                 return (path, None)
 
@@ -66,7 +66,7 @@ class TestDownloadHgnc:
         output_path.write_text("existing content")
 
         with patch("urllib.request.urlretrieve") as mock_retrieve:
-            def create_file(url, path):
+            def create_file(_url, path):
                 Path(path).write_text("new content")
                 return (path, None)
 

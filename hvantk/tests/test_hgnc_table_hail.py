@@ -158,7 +158,7 @@ class TestCreateHgncGeneTb:
         input_path = TEST_DIR / "raw/hgnc/hgnc_test_sample.tsv"
         output_path = TMP_DIR / "hgnc_export.ht"
 
-        tb = create_hgnc_gene_tb(
+        create_hgnc_gene_tb(
             input_path=str(input_path),
             output_path=str(output_path),
             overwrite=True,
@@ -283,7 +283,7 @@ class TestGeneMapper:
         assert result["FANCD1"] == "BRCA2"
         assert result["UNKNOWN"] is None
 
-    def test_annotate_table_by_ensembl(self, mapper, hgnc_table):
+    def test_annotate_table_by_ensembl(self, mapper):
         """Test annotating a table with HGNC data."""
         import hail as hl
 

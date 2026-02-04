@@ -112,21 +112,39 @@ class GeneMapper:
         self._alias_to_hgnc = {}
 
         if "alias_symbols" in row_fields:
-            data = self._ht.select("alias_symbols").collect()
+            alias_ht = self._ht.select("alias_symbols")
+            data = alias_ht.order_by(alias_ht.hgnc_id).collect()
             for row in data:
                 if row.alias_symbols:
                     for alias in row.alias_symbols:
-                        # Don't overwrite if alias already maps to another gene
-                        if alias not in self._alias_to_hgnc:
+                        existing_hgnc = self._alias_to_hgnc.get(alias)
+                        # Keep first mapping, but log collisions for visibility.
+                        if existing_hgnc is None:
                             self._alias_to_hgnc[alias] = row.hgnc_id
+                        elif existing_hgnc != row.hgnc_id:
+                            logger.warning(
+                                "Alias collision for %s: existing=%s new=%s",
+                                alias,
+                                existing_hgnc,
+                                row.hgnc_id,
+                            )
 
         if "prev_symbols" in row_fields:
-            data = self._ht.select("prev_symbols").collect()
+            prev_ht = self._ht.select("prev_symbols")
+            data = prev_ht.order_by(prev_ht.hgnc_id).collect()
             for row in data:
                 if row.prev_symbols:
                     for prev in row.prev_symbols:
-                        if prev not in self._alias_to_hgnc:
+                        existing_hgnc = self._alias_to_hgnc.get(prev)
+                        if existing_hgnc is None:
                             self._alias_to_hgnc[prev] = row.hgnc_id
+                        elif existing_hgnc != row.hgnc_id:
+                            logger.warning(
+                                "Previous symbol collision for %s: existing=%s new=%s",
+                                prev,
+                                existing_hgnc,
+                                row.hgnc_id,
+                            )
 
     def _build_ensembl_lookup(self) -> None:
         """Build ensembl_gene_id -> hgnc_id lookup dictionary."""
@@ -174,13 +192,22 @@ class GeneMapper:
             self._uniprot_to_hgnc = {}
             return
 
-        data = self._ht.select("uniprot_ids").collect()
+        uniprot_ht = self._ht.select("uniprot_ids")
+        data = uniprot_ht.order_by(uniprot_ht.hgnc_id).collect()
         self._uniprot_to_hgnc = {}
         for row in data:
             if row.uniprot_ids:
                 for uid in row.uniprot_ids:
-                    if uid not in self._uniprot_to_hgnc:
+                    existing_hgnc = self._uniprot_to_hgnc.get(uid)
+                    if existing_hgnc is None:
                         self._uniprot_to_hgnc[uid] = row.hgnc_id
+                    elif existing_hgnc != row.hgnc_id:
+                        logger.warning(
+                            "UniProt collision for %s: existing=%s new=%s",
+                            uid,
+                            existing_hgnc,
+                            row.hgnc_id,
+                        )
 
     # === Mapping Methods ===
 
@@ -241,13 +268,13 @@ class GeneMapper:
             List of HGNC IDs to map.
         target_type : str
             Type of output IDs. One of: "gene_symbol", "ensembl_gene_id",
-            "entrez_id", "uniprot_ids".
+            "entrez_id", "uniprot_id".
 
         Returns
         -------
         dict
             Mapping from HGNC ID to target ID (or None if not found).
-            For uniprot_ids, returns the first UniProt ID if multiple exist.
+            For uniprot_id, returns the first UniProt ID if multiple exist.
         """
         if target_type == "hgnc_id":
             return {id_: id_ for id_ in hgnc_ids}

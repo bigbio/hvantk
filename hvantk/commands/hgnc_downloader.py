@@ -103,7 +103,7 @@ def hgnc_downloader(ctx, output_path, overwrite):
 
         hvantk hgnc-downloader --output data/hgnc/hgnc_complete_set.txt --overwrite
     """
-    click.echo(f"Downloading HGNC gene nomenclature data...")
+    click.echo("Downloading HGNC gene nomenclature data...")
     click.echo(f"Source: {HGNC_DOWNLOAD_URL}")
 
     try:
