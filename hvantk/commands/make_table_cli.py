@@ -65,6 +65,12 @@ def _create_clingen_gene_disease_tb(*args, **kwargs):
     return create_clingen_gene_disease_tb(*args, **kwargs)
 
 
+def _create_hgnc_gene_tb(*args, **kwargs):
+    from hvantk.tables.table_builders import create_hgnc_gene_tb
+
+    return create_hgnc_gene_tb(*args, **kwargs)
+
+
 @click.group("mktable", context_settings=CONTEXT_SETTINGS)
 def mktable_group():
     """Create a single annotation Table/MatrixTable from a raw input file."""
@@ -345,3 +351,43 @@ def mktable_clingen_gene_disease(
         export_tsv=export_tsv,
     )
     click.echo(f"ClinGen Gene-Disease table created at {output_ht}")
+
+
+@mktable_group.command("hgnc")
+@_raw_input_opt
+@_output_ht_opt
+@_overwrite_opt
+@_export_tsv_opt
+@click.option(
+    "--include-withdrawn",
+    is_flag=True,
+    help="Include withdrawn/non-approved genes (default: only approved)",
+)
+@click.option(
+    "--fields",
+    type=str,
+    default=None,
+    help="Comma-separated list of fields to retain (optional)",
+)
+def mktable_hgnc(
+    raw_input: str,
+    output_ht: str,
+    overwrite: bool,
+    export_tsv: bool,
+    include_withdrawn: bool,
+    fields: Optional[str],
+):
+    """Build an HGNC gene nomenclature Table from a TSV (keyed by hgnc_id)."""
+    selected: Optional[List[str]] = (
+        [f.strip() for f in fields.split(",")] if fields else None
+    )
+    logger.info("Building HGNC gene table")
+    _create_hgnc_gene_tb(
+        input_path=raw_input,
+        output_path=output_ht,
+        include_withdrawn=include_withdrawn,
+        fields=selected,
+        overwrite=overwrite,
+        export_tsv=export_tsv,
+    )
+    click.echo(f"HGNC gene table created at {output_ht}")
