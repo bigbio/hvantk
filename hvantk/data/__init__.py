@@ -3,6 +3,7 @@
 Data management utilities including:
 - Base streamer classes (DataStreamer, HailDataStreamer, StreamProcessor)
 - Data source streamers (ClinvarDataStreamer, ClinGenStreamer)
+- Gene ID mapping utility (GeneMapper)
 """
 
 from hvantk.data.clingen_streamer import ClinGenStreamer
@@ -16,6 +17,7 @@ from hvantk.data.data_streamer import (
     HailDataStreamer,
     StreamProcessor,
 )
+from hvantk.data.gene_mapper import GeneMapper
 
 __all__ = [
     # Base classes
@@ -27,4 +29,6 @@ __all__ = [
     "ClinvarDataStreamer",
     "ClinvarTrainingSetProcessor",
     "create_clinvar_training_set_streamer",
+    # Gene ID mapping
+    "GeneMapper",
 ]
