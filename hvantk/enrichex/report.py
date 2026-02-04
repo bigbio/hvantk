@@ -18,7 +18,7 @@ from typing import Any, Dict, List, Optional
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from hvantk.enrichex.gene_sets import GeneSetCollection
+from hvantk.utils.gene_sets import GeneSetCollection
 from hvantk.enrichex.plot import (
     encode_figure_to_base64,
     plot_burden_forest,
