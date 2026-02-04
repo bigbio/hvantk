@@ -204,8 +204,6 @@ checkpoints/
 *.vds/
 # Pickle files
 *.pkl
-# Data directory
-data/
 
 # Manuscript build files
 manuscript/
