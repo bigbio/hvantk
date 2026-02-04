@@ -17,6 +17,8 @@ from hvantk.core.constants import (
     CLINGEN_GENE_DISEASE_FIELDS,
     CLINGEN_CLASSIFICATION_LEVELS,
     CLINGEN_HEADER_SKIP_LINES,
+    HGNC_GENE_FIELDS,
+    HGNC_PIPE_SEPARATED_FIELDS,
 )
 from hvantk.utils.genome import contig_recoding  # correct module import
 
@@ -94,6 +96,7 @@ __all__ = [
     "create_ensembl_gene_tb",
     "create_dbnsfp_tb",
     "create_clingen_gene_disease_tb",
+    "create_hgnc_gene_tb",
 ]
 
 
@@ -817,3 +820,107 @@ def create_clingen_gene_disease_tb(
             logger.info(f"Cleaned up temp file: {tmp_path}")
         except Exception as e:
             logger.warning(f"Failed to clean up temp file {tmp_path}: {e}")
+
+
+def create_hgnc_gene_tb(
+    input_path: str,
+    output_path: str,
+    include_withdrawn: bool = False,
+    fields: Optional[List[str]] = None,
+    overwrite: bool = False,
+    export_tsv: bool = False,
+) -> "hl.Table":
+    """
+    Create a Hail Table from HGNC gene nomenclature data keyed by hgnc_id.
+
+    HGNC (HUGO Gene Nomenclature Committee) provides the authoritative source
+    for human gene symbols and cross-references to other databases.
+
+    Example usage:
+        ht = create_hgnc_gene_tb(
+            input_path="/data/hgnc_complete_set.txt",
+            output_path="/tables/hgnc.ht"
+        )
+
+    Parameters
+    ----------
+    input_path : str
+        Path to the HGNC complete set TSV file (hgnc_complete_set.txt).
+    output_path : str
+        Path to write the output Hail Table.
+    include_withdrawn : bool, optional
+        If True, include withdrawn/non-approved genes (default: False).
+    fields : list of str, optional
+        List of fields to select from the table (default: None, keeps all).
+    overwrite : bool, optional
+        Whether to overwrite the output file if it exists (default: False).
+    export_tsv : bool, optional
+        If True, also export a TSV version (default: False).
+
+    Returns
+    -------
+    hl.Table
+        Hail Table keyed by hgnc_id with gene nomenclature and cross-references.
+
+    Notes
+    -----
+    The table includes:
+    - Core identifiers: hgnc_id, gene_symbol, gene_name, status
+    - Symbol history: alias_symbols, prev_symbols (as arrays)
+    - Cross-references: ensembl_gene_id, entrez_id, uniprot_ids, etc.
+    - Gene classification: locus_group, locus_type, gene_group
+    - Disease/clinical links: omim_id, orphanet_id, gencc, mane_select
+
+    Pipe-separated fields (alias_symbol, prev_symbol, uniprot_ids, etc.) are
+    automatically parsed into arrays.
+    """
+
+    def transform(ht: hl.Table) -> hl.Table:
+        # Rename fields to standardized names
+        logger.info("Renaming HGNC fields to standardized names")
+        row_fields = get_row_fields(ht)
+        rename_map = {k: v for k, v in HGNC_GENE_FIELDS.items() if k in row_fields}
+        ht = ht.rename(rename_map)
+
+        # Filter to approved genes unless include_withdrawn is True
+        if not include_withdrawn:
+            logger.info("Filtering to approved genes only")
+            ht = ht.filter(ht.status == "Approved")
+
+        # Parse pipe-separated fields into arrays
+        logger.info("Parsing pipe-separated fields into arrays")
+        row_fields = get_row_fields(ht)
+        for field in HGNC_PIPE_SEPARATED_FIELDS:
+            if field in row_fields:
+                # Split on pipe, filter empty strings
+                ht = ht.annotate(
+                    **{
+                        field: hl.if_else(
+                            hl.is_defined(ht[field]) & (ht[field] != ""),
+                            ht[field].split("\\|").filter(lambda x: x != ""),
+                            hl.empty_array(hl.tstr),
+                        )
+                    }
+                )
+
+        # Key by hgnc_id
+        logger.info("Keying table by hgnc_id")
+        ht = ht.key_by("hgnc_id")
+
+        return ht
+
+    return _create_table_base(
+        source_name="HGNC gene nomenclature",
+        input_path=input_path,
+        output_path=output_path,
+        import_func=lambda: hl.import_table(
+            paths=input_path,
+            impute=False,
+            min_partitions=10,
+            missing="",
+        ),
+        transform_func=transform,
+        fields=fields,
+        overwrite=overwrite,
+        export_tsv=export_tsv,
+    )
