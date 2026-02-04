@@ -123,9 +123,8 @@ def overlap_test(
     # Initialize Hail (required for Fisher's exact test)
     init_hail()
 
-    from hvantk.enrichex.gene_sets import GeneSetCollection
     from hvantk.enrichex.overlap import compute_overlap_enrichment_pandas
-    from hvantk.utils.gene_sets import load_gene_set
+    from hvantk.utils.gene_sets import GeneSetCollection, load_gene_set
 
     # Load query genes
     click.echo(f"Loading query genes from: {gene_list}")

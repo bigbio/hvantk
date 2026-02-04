@@ -4,7 +4,7 @@ Tests for overlap enrichment analysis.
 
 import pytest
 
-from hvantk.enrichex.gene_sets import (
+from hvantk.utils.gene_sets import (
     GeneSet,
     GeneSetCollection,
     load_gene_sets_from_dict,

@@ -308,6 +308,34 @@ annotated_mt = result.annotate_matrixtable(query_mt)
 
 📖 **[Full Ancestry Documentation](../tools/ancestry.md)** | **[Examples](../../examples/ancestry/)**
 
+## ClinGen Gene-Disease streamer
+
+```python
+from hvantk.data.clingen_streamer import ClinGenStreamer
+
+streamer = ClinGenStreamer("/data/clingen/clingen_gene_disease.ht")
+
+# High-confidence genes
+definitive = streamer.get_genes_by_classification("Definitive")
+
+# Disease keyword search
+cancer_genes = streamer.get_genes_by_disease(
+    ["cancer", "carcinoma", "tumor"],
+    match_mode="contains",
+    min_classification="Moderate",
+)
+
+# Dataset stats + summary
+stats = streamer.compute_stats()
+summary = streamer.classification_summary()
+
+# Export gene sets for EnrichEx
+streamer.export_for_enrichex(
+    "/out/clingen_gene_sets.json",
+    min_classification="Moderate",
+)
+```
+
 ## Tips & troubleshooting
 
 - Use `--overwrite` to replace an existing output. Without it, builders abort if the output exists.

@@ -63,7 +63,7 @@ from hvantk.enrichex.constants import (
     PHENOTYPE_TYPES,
 )
 from hvantk.enrichex.correction import apply_correction, fdr_threshold
-from hvantk.enrichex.gene_sets import (
+from hvantk.utils.gene_sets import (
     GeneSet,
     GeneSetCollection,
     load_gene_sets_from_dict,

@@ -20,7 +20,7 @@ else:
     _HAIL_IMPORT_ERROR = None
 
 from hvantk.enrichex.correction import apply_correction
-from hvantk.enrichex.gene_sets import GeneSetCollection
+from hvantk.utils.gene_sets import GeneSetCollection
 
 logger = logging.getLogger(__name__)
 
