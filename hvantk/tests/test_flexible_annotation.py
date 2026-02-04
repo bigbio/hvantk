@@ -12,7 +12,7 @@ from hvantk.annotation.annotation_pipeline import (
     create_flexible_pipeline,
     add_custom_annotation,
 )
-from hvantk.utils.clinvar_streamer import ClinvarDataStreamer
+from hvantk.data.clinvar_streamer import ClinvarDataStreamer
 import hail as hl
 
 logging.basicConfig(level=logging.INFO)

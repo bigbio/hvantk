@@ -27,7 +27,7 @@ python examples/clinvar/clinvar_streamer_example.py
 The example demonstrates common ClinVar streaming operations:
 
 ```python
-from hvantk.utils.clinvar_streamer import ClinvarDataStreamer
+from hvantk.data.clinvar_streamer import ClinvarDataStreamer
 
 # Path to ClinVar VCF or Hail Table
 clinvar_path = "path/to/clinvar.vcf.bgz"  # or .ht
@@ -142,7 +142,7 @@ streamer.teardown()
 ### Using with create_clinvar_training_set_streamer
 
 ```python
-from hvantk.utils.clinvar_streamer import create_clinvar_training_set_streamer
+from hvantk.data.clinvar_streamer import create_clinvar_training_set_streamer
 
 processor = create_clinvar_training_set_streamer(
     clinvar_path=clinvar_path,

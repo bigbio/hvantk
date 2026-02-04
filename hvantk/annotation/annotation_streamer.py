@@ -4,7 +4,7 @@
 import hail as hl
 from typing import Iterator, Optional, Set
 from hvantk.data.data_streamer import HailDataStreamer, StreamProcessor
-from hvantk.utils.clinvar_streamer import ClinvarDataStreamer
+from hvantk.data.clinvar_streamer import ClinvarDataStreamer
 import logging
 
 logger = logging.getLogger(__name__)
