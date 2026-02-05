@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 import hail as hl
 import pandas as pd
@@ -13,6 +13,7 @@ from hvantk.core.constants import CLINGEN_CLASSIFICATION_LEVELS
 from hvantk.data.data_streamer import HailDataStreamer
 from hvantk.data.dataset import get_gene_ann_ht
 from hvantk.utils.gene_sets import load_gene_sets_from_dict
+from hvantk.utils.table_utils import get_row_fields
 
 logger = logging.getLogger(__name__)
 
@@ -284,6 +285,95 @@ class ClinGenStreamer(HailDataStreamer):
 
         return self._return_gene_symbols(ht, as_set=as_set)
 
+    def get_geneset_per_disease(
+        self,
+        min_classification: Optional[str] = None,
+        include_mondo_id: bool = False,
+    ) -> Dict[str, Set[str]]:
+        """
+        Get genesets grouped by individual disease labels.
+
+        Returns a dictionary where each key is a disease label and the value
+        is a set of gene symbols associated with that disease.
+
+        Parameters
+        ----------
+        min_classification : str, optional
+            Filter to minimum classification level before grouping.
+        include_mondo_id : bool
+            If True, returns dict with tuples (disease_label, mondo_id) as keys.
+
+        Returns
+        -------
+        dict
+            Mapping of disease_label -> set of gene symbols.
+            If include_mondo_id is True, returns {(disease_label, mondo_id): genes}.
+
+        Examples
+        --------
+        >>> streamer = ClinGenStreamer("clingen.ht")
+        >>> streamer.setup()
+        >>> genesets = streamer.get_geneset_per_disease(min_classification="Moderate")
+        >>> print(genesets["breast-ovarian cancer, familial 1"])
+        {'BRCA1'}
+        """
+        self._ensure_table_loaded()
+        ht = self._table
+        if ht is None:
+            raise ValueError("ClinGen table not loaded.")
+
+        # Apply classification filter if specified
+        if min_classification:
+            min_classification = self._normalize_classification(min_classification)
+            ht = self._apply_min_classification_filter(ht, min_classification)
+
+        if self._keying_mode == "gene_disease":
+            # Group by disease and collect genes
+            if include_mondo_id:
+                grouped = ht.group_by("disease_label", "mondo_id").aggregate(
+                    genes=hl.agg.collect_as_set(ht.gene_symbol)
+                )
+                rows = grouped.collect()
+                return {
+                    (row.disease_label, row.mondo_id): set(row.genes)
+                    for row in rows
+                }
+            else:
+                grouped = ht.group_by("disease_label").aggregate(
+                    genes=hl.agg.collect_as_set(ht.gene_symbol)
+                )
+                rows = grouped.collect()
+                return {row.disease_label: set(row.genes) for row in rows}
+        else:
+            # Gene-keyed table: disease_labels is already a set per gene
+            # Need to invert the mapping
+            if include_mondo_id:
+                row_fields = get_row_fields(ht)
+                if "disease_mondo_pairs" not in row_fields:
+                    raise ValueError(
+                        "include_mondo_id requires disease_mondo_pairs on gene-keyed "
+                        "ClinGen tables. Rebuild with create_clingen_gene_disease_tb "
+                        "(key_by='gene') from a recent hvantk version."
+                    )
+                rows = ht.select("gene_symbol", "disease_mondo_pairs").collect()
+                disease_to_genes: Dict[Tuple[str, Optional[str]], Set[str]] = {}
+                for row in rows:
+                    for pair in row.disease_mondo_pairs or []:
+                        key = (pair.disease_label, pair.mondo_id)
+                        if key not in disease_to_genes:
+                            disease_to_genes[key] = set()
+                        disease_to_genes[key].add(row.gene_symbol)
+                return disease_to_genes
+
+            rows = ht.select("gene_symbol", "disease_labels").collect()
+            disease_to_genes = {}
+            for row in rows:
+                for disease in row.disease_labels or []:
+                    if disease not in disease_to_genes:
+                        disease_to_genes[disease] = set()
+                    disease_to_genes[disease].add(row.gene_symbol)
+            return disease_to_genes
+
     def compute_stats(self) -> Dict[str, Any]:
         """
         Compute comprehensive statistics about the ClinGen dataset.
@@ -309,8 +399,8 @@ class ClinGenStreamer(HailDataStreamer):
             raise ValueError("ClinGen table not loaded.")
 
         total_associations = ht.count()
-        unique_genes = ht.aggregate(hl.agg.count_distinct(ht.gene_symbol))
-        unique_diseases = ht.aggregate(hl.agg.count_distinct(ht.disease_label))
+        unique_genes = len(ht.aggregate(hl.agg.collect_as_set(ht.gene_symbol)))
+        unique_diseases = len(ht.aggregate(hl.agg.collect_as_set(ht.disease_label)))
         classification_counts = ht.aggregate(hl.agg.counter(ht.classification))
         moi_counts = ht.aggregate(hl.agg.counter(ht.mode_of_inheritance))
         gcep_counts = ht.aggregate(hl.agg.counter(ht.gene_curation_expert_panel))
@@ -342,6 +432,7 @@ class ClinGenStreamer(HailDataStreamer):
             (row.gene_symbol, row.n_diseases) for row in top_genes_rows
         ]
 
+        # Get most recent classification date using Hail aggregator (ignores missing)
         last_update = ht.aggregate(hl.agg.max(ht.classification_date))
 
         return {
@@ -381,15 +472,17 @@ class ClinGenStreamer(HailDataStreamer):
             classification_level=ht.classification_level,
         ).aggregate(
             n_associations=hl.agg.count(),
-            n_genes=hl.agg.count_distinct(ht.gene_symbol),
-            n_diseases=hl.agg.count_distinct(ht.disease_label),
+            genes=hl.agg.collect_as_set(ht.gene_symbol),
+            diseases=hl.agg.collect_as_set(ht.disease_label),
         )
 
         total = ht.count()
         df = summary_ht.to_pandas()
+        df["n_genes"] = df["genes"].apply(len)
+        df["n_diseases"] = df["diseases"].apply(len)
         df["pct_associations"] = (df["n_associations"] / total) * 100
         df = df.sort_values("classification_level").reset_index(drop=True)
-        return df.drop(columns=["classification_level"])
+        return df.drop(columns=["classification_level", "genes", "diseases"])
 
     def gcep_summary(self) -> pd.DataFrame:
         """
@@ -415,17 +508,19 @@ class ClinGenStreamer(HailDataStreamer):
             gcep=ht.gene_curation_expert_panel
         ).aggregate(
             n_associations=hl.agg.count(),
-            n_genes=hl.agg.count_distinct(ht.gene_symbol),
-            n_diseases=hl.agg.count_distinct(ht.disease_label),
+            genes=hl.agg.collect_as_set(ht.gene_symbol),
+            diseases=hl.agg.collect_as_set(ht.disease_label),
             classification_counts=hl.agg.counter(ht.classification),
             last_curation=hl.agg.max(ht.classification_date),
         )
 
         df = summary_ht.to_pandas()
+        df["n_genes"] = df["genes"].apply(len)
+        df["n_diseases"] = df["diseases"].apply(len)
         df["top_classification"] = df["classification_counts"].apply(
             lambda counts: max(counts, key=counts.get) if counts else None
         )
-        return df.drop(columns=["classification_counts"]).sort_values(
+        return df.drop(columns=["classification_counts", "genes", "diseases"]).sort_values(
             "n_associations", ascending=False
         )
 
@@ -459,6 +554,263 @@ class ClinGenStreamer(HailDataStreamer):
             )
             gene_sets[name] = genes
         return gene_sets
+
+    def categorize_by_ontology(
+        self,
+        mondo_obo_path: str,
+        min_classification: Optional[str] = None,
+        categories: Optional[Dict[str, str]] = None,
+    ) -> Dict[str, Dict[str, Set[str]]]:
+        """
+        Categorize diseases using MONDO ontology hierarchy.
+
+        This method uses the MONDO disease ontology to properly categorize
+        diseases based on their ontological relationships (is_a hierarchy),
+        rather than keyword matching.
+
+        Parameters
+        ----------
+        mondo_obo_path : str
+            Path to the MONDO OBO file. Can be downloaded using:
+            `hvantk.utils.mondo_parser.download_mondo_obo()`
+        min_classification : str, optional
+            Filter to minimum classification level.
+        categories : dict, optional
+            Custom category mapping {MONDO_ID: category_name}.
+            If None, uses default MONDO_DISEASE_CATEGORIES.
+
+        Returns
+        -------
+        dict
+            Mapping of category_name -> {
+                "genes": set of gene symbols,
+                "diseases": set of disease labels,
+                "mondo_ids": set of MONDO IDs
+            }
+
+        Examples
+        --------
+        >>> streamer = ClinGenStreamer("clingen.ht")
+        >>> streamer.setup()
+        >>> results = streamer.categorize_by_ontology("mondo.obo")
+        >>> print(results["cardiovascular disease"]["genes"])
+        {'TTN', 'MYH7', 'MYBPC3', ...}
+        """
+        from hvantk.utils.mondo_parser import MondoOntology, MONDO_DISEASE_CATEGORIES
+
+        self._ensure_table_loaded()
+        ht = self._table
+        if ht is None:
+            raise ValueError("ClinGen table not loaded.")
+
+        # Apply classification filter if specified
+        if min_classification:
+            min_classification = self._normalize_classification(min_classification)
+            ht = self._apply_min_classification_filter(ht, min_classification)
+
+        # Load the MONDO ontology
+        logger.info(f"Loading MONDO ontology from {mondo_obo_path}")
+        mondo = MondoOntology(mondo_obo_path)
+
+        # Use default categories if not provided
+        if categories is None:
+            categories = MONDO_DISEASE_CATEGORIES
+
+        # Collect all gene-disease-mondo associations
+        if self._keying_mode == "gene_disease":
+            # Key fields can't be selected directly, so collect the full rows
+            # and extract the needed fields
+            rows = ht.collect()
+        else:
+            # For gene-keyed tables, we need to expand
+            row_fields = get_row_fields(ht)
+            if "disease_mondo_pairs" not in row_fields:
+                raise ValueError(
+                    "Gene-keyed ClinGen tables must include disease_mondo_pairs to "
+                    "categorize by ontology. Rebuild with "
+                    "create_clingen_gene_disease_tb(key_by='gene') from a recent "
+                    "hvantk version."
+                )
+            rows = []
+            gene_rows = ht.select("gene_symbol", "disease_mondo_pairs").collect()
+            for row in gene_rows:
+                for pair in row.disease_mondo_pairs or []:
+                    rows.append(
+                        {
+                            "gene_symbol": row.gene_symbol,
+                            "disease_label": pair.disease_label,
+                            "mondo_id": pair.mondo_id,
+                        }
+                    )
+
+        # Categorize each disease and aggregate
+        results: Dict[str, Dict[str, Set[str]]] = {}
+        for cat_name in categories.values():
+            results[cat_name] = {"genes": set(), "diseases": set(), "mondo_ids": set()}
+
+        uncategorized = {"genes": set(), "diseases": set(), "mondo_ids": set()}
+
+        for row in rows:
+            gene = row.gene_symbol if hasattr(row, 'gene_symbol') else row["gene_symbol"]
+            disease = row.disease_label if hasattr(row, 'disease_label') else row["disease_label"]
+            mondo_id = row.mondo_id if hasattr(row, 'mondo_id') else row["mondo_id"]
+
+            if not mondo_id:
+                uncategorized["genes"].add(gene)
+                uncategorized["diseases"].add(disease)
+                continue
+
+            # Normalize MONDO ID
+            if not mondo_id.startswith("MONDO:"):
+                mondo_id = f"MONDO:{mondo_id}"
+
+            # Get categories for this disease
+            matched_cats = mondo.categorize(mondo_id, categories)
+
+            if matched_cats:
+                for cat_id, cat_name in matched_cats:
+                    results[cat_name]["genes"].add(gene)
+                    results[cat_name]["diseases"].add(disease)
+                    results[cat_name]["mondo_ids"].add(mondo_id)
+            else:
+                uncategorized["genes"].add(gene)
+                uncategorized["diseases"].add(disease)
+                uncategorized["mondo_ids"].add(mondo_id)
+
+        # Add uncategorized if non-empty
+        if uncategorized["genes"]:
+            results["uncategorized"] = uncategorized
+
+        logger.info(f"Categorized diseases into {len(results)} categories")
+        return results
+
+    def categorize_by_ontology_summary(
+        self,
+        mondo_obo_path: str,
+        min_classification: Optional[str] = None,
+        categories: Optional[Dict[str, str]] = None,
+    ) -> pd.DataFrame:
+        """
+        Get a summary DataFrame of ontology-based disease categorization.
+
+        Parameters
+        ----------
+        mondo_obo_path : str
+            Path to the MONDO OBO file.
+        min_classification : str, optional
+            Filter to minimum classification level.
+        categories : dict, optional
+            Custom category mapping {MONDO_ID: category_name}.
+
+        Returns
+        -------
+        pd.DataFrame
+            Summary with columns: category, n_genes, n_diseases, sample_genes
+        """
+        results = self.categorize_by_ontology(
+            mondo_obo_path, min_classification, categories
+        )
+
+        summary_data = []
+        for category, data in sorted(results.items(), key=lambda x: -len(x[1]["genes"])):
+            genes = data["genes"]
+            summary_data.append({
+                "category": category,
+                "n_genes": len(genes),
+                "n_diseases": len(data["diseases"]),
+                "sample_genes": ", ".join(sorted(genes)[:10]) + ("..." if len(genes) > 10 else ""),
+            })
+
+        return pd.DataFrame(summary_data)
+
+    def get_genes_by_ontology_category(
+        self,
+        mondo_obo_path: str,
+        category_id: str,
+        min_classification: Optional[str] = None,
+        as_set: bool = True,
+    ) -> Union[Set[str], List[Tuple[str, str, str]]]:
+        """
+        Get genes belonging to a specific ontology category.
+
+        Parameters
+        ----------
+        mondo_obo_path : str
+            Path to the MONDO OBO file.
+        category_id : str
+            MONDO ID of the category (e.g., "MONDO:0004995" for cardiovascular).
+        min_classification : str, optional
+            Filter to minimum classification level.
+        as_set : bool
+            If True, return set of gene symbols. If False, return list of
+            (gene, disease, mondo_id) tuples.
+
+        Returns
+        -------
+        set or list
+            Genes in the specified category.
+        """
+        from hvantk.utils.mondo_parser import MondoOntology
+
+        self._ensure_table_loaded()
+        ht = self._table
+        if ht is None:
+            raise ValueError("ClinGen table not loaded.")
+
+        if min_classification:
+            min_classification = self._normalize_classification(min_classification)
+            ht = self._apply_min_classification_filter(ht, min_classification)
+
+        # Load ontology
+        mondo = MondoOntology(mondo_obo_path)
+
+        # Get all descendants of the category (all diseases under this category)
+        category_diseases = mondo.get_descendants(category_id, include_self=True)
+
+        # Collect genes from ClinGen data (can't select key fields directly)
+        genes = set()
+        full_results = []
+
+        if self._keying_mode == "gene_disease":
+            rows = ht.collect()
+            for row in rows:
+                mondo_id = row.mondo_id
+                if not mondo_id:
+                    continue
+                if not mondo_id.startswith("MONDO:"):
+                    mondo_id = f"MONDO:{mondo_id}"
+
+                if mondo_id in category_diseases:
+                    genes.add(row.gene_symbol)
+                    full_results.append((row.gene_symbol, row.disease_label, mondo_id))
+        else:
+            row_fields = get_row_fields(ht)
+            if "disease_mondo_pairs" not in row_fields:
+                raise ValueError(
+                    "Gene-keyed ClinGen tables must include disease_mondo_pairs to "
+                    "query ontology categories. Rebuild with "
+                    "create_clingen_gene_disease_tb(key_by='gene') from a recent "
+                    "hvantk version."
+                )
+            rows = ht.select("gene_symbol", "disease_mondo_pairs").collect()
+            for row in rows:
+                gene_symbol = row.gene_symbol
+                for pair in row.disease_mondo_pairs or []:
+                    mondo_id = pair.mondo_id
+                    if not mondo_id:
+                        continue
+                    if not mondo_id.startswith("MONDO:"):
+                        mondo_id = f"MONDO:{mondo_id}"
+
+                    if mondo_id in category_diseases:
+                        genes.add(gene_symbol)
+                        full_results.append(
+                            (gene_symbol, pair.disease_label, mondo_id)
+                        )
+
+        if as_set:
+            return genes
+        return full_results
 
     def group_by_gcep(
         self,
@@ -867,6 +1219,9 @@ class ClinGenStreamer(HailDataStreamer):
             ht.group_by("hgnc_id", "gene_symbol")
             .aggregate(
                 disease_labels=hl.agg.collect_as_set(ht.disease_label),
+                disease_mondo_pairs=hl.agg.collect_as_set(
+                    hl.struct(disease_label=ht.disease_label, mondo_id=ht.mondo_id)
+                ),
                 mondo_ids=hl.agg.collect_as_set(ht.mondo_id),
                 classifications=hl.agg.collect_as_set(ht.classification),
                 modes_of_inheritance=hl.agg.collect_as_set(ht.mode_of_inheritance),

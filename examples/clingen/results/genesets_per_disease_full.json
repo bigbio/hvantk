@@ -1,0 +1,7326 @@
+{
+  "2-aminoadipic 2-oxoadipic aciduria": [
+    "DHTKD1"
+  ],
+  "2-methylbutyryl-CoA dehydrogenase deficiency": [
+    "ACADSB"
+  ],
+  "3-hydroxy-3-methylglutaric aciduria": [
+    "HMGCL"
+  ],
+  "3-hydroxy-3-methylglutaryl-CoA synthase deficiency": [
+    "HMGCS2"
+  ],
+  "3-hydroxyisobutyric aciduria": [
+    "HIBADH"
+  ],
+  "3-hydroxyisobutyryl-CoA hydrolase deficiency": [
+    "HIBCH"
+  ],
+  "3-methylcrotonyl-CoA carboxylase deficiency": [
+    "MCCC1",
+    "MCCC2"
+  ],
+  "3-methylglutaconic aciduria type 1": [
+    "AUH"
+  ],
+  "3-methylglutaconic aciduria type 5": [
+    "DNAJC19"
+  ],
+  "3-methylglutaconic aciduria type 8": [
+    "HTRA2"
+  ],
+  "3-methylglutaconic aciduria type 9": [
+    "TIMM50"
+  ],
+  "A4GALT-congenital disorder of glycosylation": [
+    "A4GALT"
+  ],
+  "AARS1-related leukoencephalopathy": [
+    "AARS1"
+  ],
+  "ABCA4-related retinopathy": [
+    "ABCA4"
+  ],
+  "ACAN-related short stature spectrum": [
+    "ACAN"
+  ],
+  "ACCES syndrome": [
+    "UBA2"
+  ],
+  "ACD-related short telomere syndrome": [
+    "ACD"
+  ],
+  "ACTB-associated syndromic thrombocytopenia": [
+    "ACTB"
+  ],
+  "ACTL6A-related BAFopathy": [
+    "ACTL6A"
+  ],
+  "ACTN2-related cardiac and skeletal myopathy": [
+    "ACTN2"
+  ],
+  "ADAM9-related retinopathy": [
+    "ADAM9"
+  ],
+  "ADAR-related type 1 interferonopathy": [
+    "ADAR"
+  ],
+  "ADNP-related multiple congenital anomalies - intellectual disability - autism spectrum disorder": [
+    "ADNP"
+  ],
+  "AGAT deficiency": [
+    "GATM"
+  ],
+  "AHDC1-related intellectual disability - obstructive sleep apnea - mild dysmorphism syndrome": [
+    "AHDC1"
+  ],
+  "AIPL1-related retinopathy": [
+    "AIPL1"
+  ],
+  "AKT2-related familial partial lipodystrophy": [
+    "AKT2"
+  ],
+  "ALG1-congenital disorder of glycosylation": [
+    "ALG1"
+  ],
+  "ALG11-congenital disorder of glycosylation": [
+    "ALG11"
+  ],
+  "ALG12-congenital disorder of glycosylation": [
+    "ALG12"
+  ],
+  "ALG2-congenital disorder of glycosylation": [
+    "ALG2"
+  ],
+  "ALG3-congenital disorder of glycosylation": [
+    "ALG3"
+  ],
+  "ALG6-congenital disorder of glycosylation 1C": [
+    "ALG6"
+  ],
+  "ALG9-associated autosomal dominant polycystic kidney disease": [
+    "ALG9"
+  ],
+  "ALPL-related autosomal dominant hypophosphatasia": [
+    "ALPL"
+  ],
+  "ALPL-related autosomal recessive hypophosphatasia": [
+    "ALPL"
+  ],
+  "ALS2-related motor neuron disease": [
+    "ALS2"
+  ],
+  "AP-4 deficiency syndrome": [
+    "AP4B1",
+    "AP4E1",
+    "AP4M1",
+    "AP4S1"
+  ],
+  "ASAH1-related sphingolipidosis": [
+    "ASAH1"
+  ],
+  "ATF6-related retinopathy": [
+    "ATF6"
+  ],
+  "ATM-related cancer predisposition": [
+    "ATM"
+  ],
+  "ATP1A3-associated neurological disorder": [
+    "ATP1A3"
+  ],
+  "ATP6AP2-related disorder": [
+    "ATP6AP2"
+  ],
+  "ATR-X-related syndrome": [
+    "ATRX"
+  ],
+  "Aarskog-Scott syndrome, X-linked": [
+    "FGD1"
+  ],
+  "Adams-Oliver syndrome": [
+    "DOCK6"
+  ],
+  "Alagille syndrome": [
+    "NOTCH2"
+  ],
+  "Alagille syndrome due to a JAG1 point mutation": [
+    "JAG1"
+  ],
+  "Alexander disease": [
+    "GFAP"
+  ],
+  "Allan-Herndon-Dudley syndrome": [
+    "SLC16A2"
+  ],
+  "Alport syndrome": [
+    "COL4A3",
+    "COL4A4",
+    "COL4A5"
+  ],
+  "Alstrom syndrome": [
+    "ALMS1"
+  ],
+  "Alzahrani-Kuwahara syndrome": [
+    "SMG8"
+  ],
+  "Angelman syndrome": [
+    "UBE3A"
+  ],
+  "Antley-Bixler syndrome with genital anomalies and disordered steroidogenesis": [
+    "POR"
+  ],
+  "Apert syndrome": [
+    "FGFR2"
+  ],
+  "B-cell immunodeficiency, distal limb anomalies, and urogenital malformations": [
+    "TOP2B"
+  ],
+  "B3GALT6-congenital disorder of glycosylation": [
+    "B3GALT6"
+  ],
+  "BAP1-related tumor predisposition syndrome": [
+    "BAP1"
+  ],
+  "BARD1-related cancer predisposition": [
+    "BARD1"
+  ],
+  "BBS1-related ciliopathy": [
+    "BBS1"
+  ],
+  "BBS10-related ciliopathy": [
+    "BBS10"
+  ],
+  "BBS12-related ciliopathy": [
+    "BBS12"
+  ],
+  "BBS2-related ciliopathy": [
+    "BBS2"
+  ],
+  "BBS4-related ciliopathy": [
+    "BBS4"
+  ],
+  "BBS5-related ciliopathy": [
+    "BBS5"
+  ],
+  "BBS7-related ciliopathy": [
+    "BBS7"
+  ],
+  "BBS9-related ciliopathy": [
+    "BBS9"
+  ],
+  "BENTA disease": [
+    "CARD11"
+  ],
+  "BEST1-related dominant retinopathy": [
+    "BEST1"
+  ],
+  "BH4-deficient hyperphenylalaninemia A": [
+    "PTS"
+  ],
+  "BMP4-related ocular growth disorder": [
+    "BMP4"
+  ],
+  "BRCA1-related cancer predisposition": [
+    "BRCA1"
+  ],
+  "BRCA2-related cancer predisposition": [
+    "BRCA2"
+  ],
+  "Bailey-Bloch congenital myopathy": [
+    "STAC3"
+  ],
+  "Bamforth-Lazarus syndrome": [
+    "FOXE1"
+  ],
+  "Baraitser-Winter cerebrofrontofacial syndrome": [
+    "ACTB"
+  ],
+  "Baraitser-winter syndrome 2": [
+    "ACTG1"
+  ],
+  "Bardet-Biedl syndrome 11": [
+    "TRIM32"
+  ],
+  "Bardet-Biedl syndrome 16": [
+    "SDCCAG8"
+  ],
+  "Barth syndrome": [
+    "TAFAZZIN"
+  ],
+  "Bartsocas-Papas syndrome 2": [
+    "CHUK"
+  ],
+  "Bartter disease type 2": [
+    "KCNJ1"
+  ],
+  "Bartter disease type 4A": [
+    "BSND"
+  ],
+  "Bartter disease type 5": [
+    "MAGED2"
+  ],
+  "Basilicata-Akhtar syndrome": [
+    "MSL3"
+  ],
+  "Beare-Stevenson cutis gyrata syndrome": [
+    "FGFR2"
+  ],
+  "Beck-Fahrner syndrome": [
+    "TET3"
+  ],
+  "Bernard-Soulier syndrome": [
+    "GP1BA",
+    "GP1BB",
+    "GP9"
+  ],
+  "Bietti crystalline corneoretinal dystrophy": [
+    "CYP4V2"
+  ],
+  "Bjornstad syndrome": [
+    "BCS1L"
+  ],
+  "Blau syndrome": [
+    "NOD2"
+  ],
+  "Bloom syndrome": [
+    "BLM"
+  ],
+  "Bohring-Opitz syndrome": [
+    "ASXL1"
+  ],
+  "Borjeson-Forssman-Lehmann syndrome": [
+    "PHF6"
+  ],
+  "Bosch-Boonstra-Schaaf optic atrophy syndrome": [
+    "NR2F1"
+  ],
+  "Bowen-Conradi syndrome": [
+    "EMG1"
+  ],
+  "Brooke-Spiegler syndrome": [
+    "CYLD"
+  ],
+  "Brown-Vialetto-van Laere syndrome 1": [
+    "SLC52A3"
+  ],
+  "Brown-Vialetto-van Laere syndrome 2": [
+    "SLC52A2"
+  ],
+  "Brugada syndrome": [
+    "ABCC9",
+    "ANK2",
+    "CACNA1C",
+    "FGF12",
+    "KCNE3",
+    "KCNE5",
+    "KCNH2",
+    "KCNJ8",
+    "RANGRF",
+    "SCN10A",
+    "SCN3B",
+    "SLMAP",
+    "TMEM168",
+    "TRPM4"
+  ],
+  "Brugada syndrome 1": [
+    "CACNA2D1",
+    "GPD1L",
+    "HCN4",
+    "KCND3",
+    "PKP2",
+    "SCN1B",
+    "SCN2B"
+  ],
+  "Brunner syndrome": [
+    "MAOA"
+  ],
+  "Bruton-type agammaglobulinemia": [
+    "BTK"
+  ],
+  "Bryant-Li-Bhoj neurodevelopmental syndrome 1": [
+    "H3-3A"
+  ],
+  "C syndrome": [
+    "CD96"
+  ],
+  "C1Q deficiency": [
+    "C1QB"
+  ],
+  "C3 glomerulonephritis": [
+    "C3",
+    "CFB",
+    "CFH",
+    "CFI"
+  ],
+  "CACNA1F-related retinopathy": [
+    "CACNA1F"
+  ],
+  "CACNA2D4-related retinopathy": [
+    "CACNA2D4"
+  ],
+  "CAPN5-related vitreoretinopathy": [
+    "CAPN5"
+  ],
+  "CBL-related disorder": [
+    "CBL"
+  ],
+  "CCDC115-CDG": [
+    "CCDC115"
+  ],
+  "CDH1-related diffuse gastric and lobular breast cancer syndrome": [
+    "CDH1"
+  ],
+  "CDKL5 disorder": [
+    "CDKL5"
+  ],
+  "CEBALID syndrome": [
+    "MN1"
+  ],
+  "CEP164-related ciliopathy": [
+    "CEP164"
+  ],
+  "CEP290-related ciliopathy": [
+    "CEP290"
+  ],
+  "CERKL-related retinopathy": [
+    "CERKL"
+  ],
+  "CHARGE syndrome": [
+    "CHD7"
+  ],
+  "CHEK2-related cancer predisposition": [
+    "CHEK2"
+  ],
+  "CHRNG-associated hypo-akinesia disorder of prenatal onset": [
+    "CHRNG"
+  ],
+  "CK syndrome": [
+    "NSDHL"
+  ],
+  "CNGA1-related retinopathy": [
+    "CNGA1"
+  ],
+  "CNGA3-related retinopathy": [
+    "CNGA3"
+  ],
+  "CNGB1-related retinopathy": [
+    "CNGB1"
+  ],
+  "CNGB3-related retinopathy": [
+    "CNGB3"
+  ],
+  "COG1-congenital disorder of glycosylation": [
+    "COG1"
+  ],
+  "COG4-congenital disorder of glycosylation": [
+    "COG4"
+  ],
+  "COG5-congenital disorder of glycosylation": [
+    "COG5"
+  ],
+  "COG6-congenital disorder of glycosylation": [
+    "COG6"
+  ],
+  "COG7-congenital disorder of glycosylation": [
+    "COG7"
+  ],
+  "COL1A1-related Ehlers-Danlos syndrome": [
+    "COL1A1"
+  ],
+  "COL1A2-related Ehlers-Danlos syndrome": [
+    "COL1A2"
+  ],
+  "COL1A2-related osteogenesis imperfecta": [
+    "COL1A2"
+  ],
+  "COL2A1-related spondyloepiphyseal dysplasia": [
+    "COL2A1"
+  ],
+  "COMP-related skeletal dysplasia": [
+    "COMP"
+  ],
+  "CPOX-related hereditary coproporphyria": [
+    "CPOX"
+  ],
+  "CTNNA1-related diffuse gastric and lobular breast cancer syndrome": [
+    "CTNNA1"
+  ],
+  "CTNNB1-related neurodevelopmental disorder and/or vitreoretinopathy": [
+    "CTNNB1"
+  ],
+  "CTR9-related neurodevelopmental disorder": [
+    "CTR9"
+  ],
+  "CYP1B1-related glaucoma with or without anterior segment dysgenesis": [
+    "CYP1B1"
+  ],
+  "CYP7B1-related disorder of oxysterol accumulation": [
+    "CYP7B1"
+  ],
+  "Caffey disease": [
+    "COL1A1"
+  ],
+  "Canavan disease": [
+    "ASPA"
+  ],
+  "Carney complex, type 1": [
+    "PRKAR1A"
+  ],
+  "Catel-Manzke syndrome": [
+    "TGDS"
+  ],
+  "Cenani-Lenz syndactyly syndrome": [
+    "LRP4"
+  ],
+  "Cernunnos-XLF deficiency": [
+    "NHEJ1"
+  ],
+  "Charcot-Marie-Tooth disease": [
+    "DNM2",
+    "EGR2",
+    "FGD4",
+    "FIG4",
+    "GDAP1",
+    "GNB4",
+    "HINT1",
+    "LITAF",
+    "MARS1",
+    "MPZ",
+    "NEFL",
+    "PMP2",
+    "SORD",
+    "YARS1"
+  ],
+  "Charcot-Marie-Tooth disease X-linked dominant 1": [
+    "GJB1"
+  ],
+  "Charcot-Marie-Tooth disease X-linked dominant 6": [
+    "PDK3"
+  ],
+  "Charcot-Marie-Tooth disease axonal type 2CC": [
+    "NEFH"
+  ],
+  "Charcot-Marie-Tooth disease axonal type 2F": [
+    "HSPB1"
+  ],
+  "Charcot-Marie-Tooth disease axonal type 2N": [
+    "AARS1"
+  ],
+  "Charcot-Marie-Tooth disease axonal type 2P": [
+    "LRSAM1"
+  ],
+  "Charcot-Marie-Tooth disease axonal type 2T": [
+    "DNAJB2",
+    "MME"
+  ],
+  "Charcot-Marie-Tooth disease axonal type 2Z": [
+    "MORC2"
+  ],
+  "Charcot-Marie-Tooth disease dominant intermediate E": [
+    "INF2"
+  ],
+  "Charcot-Marie-Tooth disease type 1A": [
+    "PMP22"
+  ],
+  "Charcot-Marie-Tooth disease type 2": [
+    "NEFL",
+    "RAB7A"
+  ],
+  "Charcot-Marie-Tooth disease type 2A1": [
+    "KIF1B"
+  ],
+  "Charcot-Marie-Tooth disease type 2B2": [
+    "MED25"
+  ],
+  "Charcot-Marie-Tooth disease type 2D": [
+    "GARS1"
+  ],
+  "Charcot-Marie-Tooth disease type 4": [
+    "PRX"
+  ],
+  "Charcot-Marie-Tooth disease type 4B2": [
+    "SBF2"
+  ],
+  "Charcot-Marie-Tooth disease type 4B3": [
+    "SBF1"
+  ],
+  "Chediak-Higashi syndrome": [
+    "LYST"
+  ],
+  "Christianson syndrome": [
+    "SLC9A6"
+  ],
+  "Chudley-McCullough syndrome": [
+    "GPSM2"
+  ],
+  "Clouston syndrome": [
+    "GJB6"
+  ],
+  "Cockayne spectrum with or without cerebrooculofacioskeletal syndrome": [
+    "ERCC6"
+  ],
+  "Cockayne syndrome type 1": [
+    "ERCC8"
+  ],
+  "Coffin-Lowry syndrome": [
+    "RPS6KA3"
+  ],
+  "Coffin-Siris syndrome": [
+    "ARID1A",
+    "ARID1B",
+    "ARID2",
+    "BICRA",
+    "DPF2",
+    "SMARCA4",
+    "SMARCB1",
+    "SMARCC2",
+    "SMARCE1"
+  ],
+  "Cohen syndrome": [
+    "VPS13B"
+  ],
+  "Cohen-Gibson syndrome": [
+    "EED"
+  ],
+  "Cooks syndrome": [
+    "SOX9"
+  ],
+  "Cornelia de Lange syndrome": [
+    "HDAC8",
+    "NIPBL",
+    "RAD21",
+    "SMC3"
+  ],
+  "Costello syndrome": [
+    "BRAF",
+    "HRAS",
+    "KRAS",
+    "MAP2K1",
+    "NRAS",
+    "PTPN11",
+    "RAF1",
+    "SHOC2",
+    "SOS1"
+  ],
+  "Cowden syndrome 6": [
+    "AKT1"
+  ],
+  "Crouzon syndrome": [
+    "FGFR2"
+  ],
+  "Crouzon syndrome-acanthosis nigricans syndrome": [
+    "FGFR3"
+  ],
+  "D-glyceric aciduria": [
+    "GLYCTK"
+  ],
+  "DDOST-congenital disorder of glycosylation": [
+    "DDOST"
+  ],
+  "DDX41-related hematologic malignancy predisposition syndrome": [
+    "DDX41"
+  ],
+  "DHDDS-CDG": [
+    "DHDDS"
+  ],
+  "DIAPH1-related sensorineural hearing loss-thrombocytopenia syndrome": [
+    "DIAPH1"
+  ],
+  "DICER1-related tumor predisposition": [
+    "DICER1"
+  ],
+  "DK1-congenital disorder of glycosylation": [
+    "DOLK"
+  ],
+  "DKC1-related disorder": [
+    "DKC1"
+  ],
+  "DNA ligase IV deficiency": [
+    "LIG4"
+  ],
+  "DOCK2 deficiency": [
+    "DOCK2"
+  ],
+  "DOORS syndrome": [
+    "TBC1D24"
+  ],
+  "DPAGT1-congenital disorder of glycosylation": [
+    "DPAGT1"
+  ],
+  "DPM3-congenital disorder of glycosylation": [
+    "DPM3"
+  ],
+  "Danon disease": [
+    "LAMP2"
+  ],
+  "DeSanto-Shinawi syndrome": [
+    "WAC"
+  ],
+  "Dent disease type 1": [
+    "CLCN5"
+  ],
+  "Denys-Drash syndrome": [
+    "WT1"
+  ],
+  "Desbuquois dysplasia 1": [
+    "CANT1"
+  ],
+  "Diamond-Blackfan anemia": [
+    "RPS10",
+    "RPS19",
+    "RPS24"
+  ],
+  "Diamond-Blackfan anemia 6": [
+    "RPL5"
+  ],
+  "Dias-Logan syndrome": [
+    "BCL11A"
+  ],
+  "Dorfman-Chanarin disease": [
+    "ABHD5"
+  ],
+  "Dowling-Degos disease 2": [
+    "POFUT1"
+  ],
+  "Doyne honeycomb retinal dystrophy": [
+    "EFEMP1"
+  ],
+  "Dravet syndrome": [
+    "SCN1A"
+  ],
+  "Duane retraction syndrome 2": [
+    "CHN1"
+  ],
+  "EAST syndrome": [
+    "KCNJ10"
+  ],
+  "EEM syndrome": [
+    "CDH3"
+  ],
+  "EGLN1-related erythrocytosis and pheochromocytoma/paraganglioma predisposition": [
+    "EGLN1"
+  ],
+  "ELOVL4-related maculopathy": [
+    "ELOVL4"
+  ],
+  "EPHB4-associated vascular malformation spectrum": [
+    "EPHB4"
+  ],
+  "EYS-related retinopathy": [
+    "EYS"
+  ],
+  "Ehlers-Danlos syndrome, cardiac valvular type": [
+    "COL1A2"
+  ],
+  "Ehlers-Danlos syndrome, classic type": [
+    "COL5A1",
+    "COL5A2"
+  ],
+  "Ehlers-Danlos syndrome, musculocontractural type 2": [
+    "DSE"
+  ],
+  "Ehlers-Danlos syndrome, spondylocheirodysplastic type": [
+    "SLC39A13"
+  ],
+  "Ehlers-Danlos syndrome, spondylodysplastic type, 1": [
+    "B4GALT7"
+  ],
+  "Ehlers-Danlos syndrome, vascular type": [
+    "COL3A1"
+  ],
+  "Elsahy-Waters syndrome": [
+    "CDH11"
+  ],
+  "FAM111A-related skeletal dysplasia": [
+    "FAM111A"
+  ],
+  "FANCM Fanconi-like genomic instability disorder": [
+    "FANCM"
+  ],
+  "FAT4-related neurodevelopmental disorder": [
+    "FAT4"
+  ],
+  "FDXR-related optic atrophy mitochondrial dysfunction syndrome": [
+    "FDXR"
+  ],
+  "FLNB-associated autosomal dominant filamin related bone disorder": [
+    "FLNB"
+  ],
+  "FLVCR1-related retinopathy with or without ataxia": [
+    "FLVCR1"
+  ],
+  "FNIP1-associated syndrome": [
+    "FNIP1"
+  ],
+  "FOXC1-related anterior segment dysgenesis": [
+    "FOXC1"
+  ],
+  "FOXG1 disorder": [
+    "FOXG1"
+  ],
+  "FZD4-related exudative vitreoretinopathy": [
+    "FZD4"
+  ],
+  "Fabry disease": [
+    "GLA"
+  ],
+  "Fanconi anemia": [
+    "FANCM"
+  ],
+  "Fanconi anemia complementation group A": [
+    "FANCA"
+  ],
+  "Fanconi anemia complementation group B": [
+    "FANCB"
+  ],
+  "Fanconi anemia complementation group C": [
+    "FANCC"
+  ],
+  "Fanconi anemia complementation group D1": [
+    "BRCA2"
+  ],
+  "Fanconi anemia complementation group D2": [
+    "FANCD2"
+  ],
+  "Fanconi anemia complementation group E": [
+    "FANCE"
+  ],
+  "Fanconi anemia complementation group F": [
+    "FANCF"
+  ],
+  "Fanconi anemia complementation group G": [
+    "FANCG"
+  ],
+  "Fanconi anemia complementation group I": [
+    "FANCI"
+  ],
+  "Fanconi anemia complementation group J": [
+    "BRIP1"
+  ],
+  "Fanconi anemia complementation group L": [
+    "FANCL"
+  ],
+  "Fanconi anemia complementation group N": [
+    "PALB2"
+  ],
+  "Fanconi anemia complementation group O": [
+    "RAD51C"
+  ],
+  "Fanconi anemia complementation group P": [
+    "SLX4"
+  ],
+  "Fanconi anemia complementation group U": [
+    "XRCC2"
+  ],
+  "Fanconi anemia, complementation group S": [
+    "BRCA1"
+  ],
+  "Fanconi renotubular syndrome 2": [
+    "SLC34A1"
+  ],
+  "Fanconi renotubular syndrome 3": [
+    "EHHADH"
+  ],
+  "Floating-Harbor syndrome": [
+    "SRCAP"
+  ],
+  "Fontaine progeroid syndrome": [
+    "SLC25A24"
+  ],
+  "Frank-Ter Haar syndrome": [
+    "SH3PXD2B"
+  ],
+  "Fraser syndrome": [
+    "FRAS1"
+  ],
+  "Fraser syndrome 3": [
+    "GRIP1"
+  ],
+  "Friedreich ataxia": [
+    "FXN"
+  ],
+  "G6PD deficiency": [
+    "G6PD"
+  ],
+  "GAPO syndrome": [
+    "ANTXR1"
+  ],
+  "GATA1-Related X-Linked Cytopenia": [
+    "GATA1"
+  ],
+  "GATA2 deficiency with susceptibility to MDS/AML": [
+    "GATA2"
+  ],
+  "GATA6-related congenital heart disease with or without pancreatic agenesis or neonatal diabetes": [
+    "GATA6"
+  ],
+  "GLUT1 deficiency syndrome": [
+    "SLC2A1"
+  ],
+  "GM1 gangliosidosis": [
+    "GLB1"
+  ],
+  "GM3 synthase deficiency": [
+    "ST3GAL5"
+  ],
+  "GNAT2-related retinopathy": [
+    "GNAT2"
+  ],
+  "GNPTAB-mucolipidosis": [
+    "GNPTAB"
+  ],
+  "GNPTG-mucolipidosis": [
+    "GNPTG"
+  ],
+  "GPR143-related foveal hypoplasia": [
+    "GPR143"
+  ],
+  "GPR179-related retinopathy": [
+    "GPR179"
+  ],
+  "GRM6-related retinopathy": [
+    "GRM6"
+  ],
+  "GTP cyclohydrolase I deficiency": [
+    "GCH1"
+  ],
+  "GUCY2D-related dominant retinopathy": [
+    "GUCY2D"
+  ],
+  "GUCY2D-related recessive retinopathy": [
+    "GUCY2D"
+  ],
+  "Gaucher disease": [
+    "GBA1"
+  ],
+  "Gaucher disease due to saposin C deficiency": [
+    "PSAP"
+  ],
+  "Glanzmann thrombasthenia": [
+    "ITGA2B",
+    "ITGB3"
+  ],
+  "Goldberg-Shprintzen syndrome": [
+    "KIFBP"
+  ],
+  "Greenberg dysplasia": [
+    "LBR"
+  ],
+  "Griscelli syndrome type 1": [
+    "MYO5A"
+  ],
+  "Griscelli syndrome type 2": [
+    "RAB27A"
+  ],
+  "H syndrome": [
+    "SLC29A3"
+  ],
+  "HAND2 related congenital heart defect": [
+    "HAND2"
+  ],
+  "HAVCR2-related cancer predisposition": [
+    "HAVCR2"
+  ],
+  "HBA1-related alpha thalassemia spectrum": [
+    "HBA1"
+  ],
+  "HBA2-related alpha thalassemia spectrum": [
+    "HBA2"
+  ],
+  "HELIOS deficiency": [
+    "IKZF2"
+  ],
+  "HSD10 mitochondrial disease": [
+    "HSD17B10"
+  ],
+  "Haddad syndrome": [
+    "PHOX2B"
+  ],
+  "Hao-Fountain syndrome": [
+    "USP7"
+  ],
+  "Hartnup disease": [
+    "SLC6A19"
+  ],
+  "Hartsfield-Bixler-Demyer syndrome": [
+    "FGFR1"
+  ],
+  "Hermansky-Pudlak syndrome 1": [
+    "HPS1"
+  ],
+  "Hermansky-Pudlak syndrome 10": [
+    "AP3D1"
+  ],
+  "Hermansky-Pudlak syndrome 11": [
+    "BLOC1S5"
+  ],
+  "Hermansky-Pudlak syndrome 2": [
+    "AP3B1"
+  ],
+  "Hermansky-Pudlak syndrome 3": [
+    "HPS3"
+  ],
+  "Hermansky-Pudlak syndrome 4": [
+    "HPS4"
+  ],
+  "Hermansky-Pudlak syndrome 5": [
+    "HPS5"
+  ],
+  "Hermansky-Pudlak syndrome 6": [
+    "HPS6"
+  ],
+  "Hermansky-Pudlak syndrome 7": [
+    "DTNBP1"
+  ],
+  "Hermansky-Pudlak syndrome 8": [
+    "BLOC1S3"
+  ],
+  "Hermansky-Pudlak syndrome 9": [
+    "BLOC1S6"
+  ],
+  "Heyn-Sproul-Jackson syndrome": [
+    "DNMT3A"
+  ],
+  "Holt-Oram syndrome": [
+    "TBX5"
+  ],
+  "Huntington disease": [
+    "HTT"
+  ],
+  "IDH3B-related retinopathy": [
+    "IDH3B"
+  ],
+  "IFAP syndrome 1, with or without BRESHECK syndrome": [
+    "MBTPS2"
+  ],
+  "IFIH1-related type 1 interferonopathy": [
+    "IFIH1"
+  ],
+  "IFT140-related recessive ciliopathy": [
+    "IFT140"
+  ],
+  "IKBKG-related immunodeficiency with or without ectodermal dysplasia": [
+    "IKBKG"
+  ],
+  "IL21-related infantile inflammatory bowel disease": [
+    "IL21"
+  ],
+  "IMPDH1-related retinopathy": [
+    "IMPDH1"
+  ],
+  "IMPG1-related dominant retinopathy": [
+    "IMPG1"
+  ],
+  "IMPG1-related recessive retinopathy": [
+    "IMPG1"
+  ],
+  "IMPG2-related recessive retinopathy": [
+    "IMPG2"
+  ],
+  "INTU-related skeletal ciliopathy": [
+    "INTU"
+  ],
+  "IRIDA syndrome": [
+    "TMPRSS6"
+  ],
+  "ITPKB deficiency": [
+    "ITPKB"
+  ],
+  "Jaberi-Elahi syndrome": [
+    "GTPBP2"
+  ],
+  "Jalili syndrome": [
+    "CNNM4"
+  ],
+  "Jervell and Lange-Nielsen syndrome": [
+    "KCNQ1"
+  ],
+  "Joubert syndrome": [
+    "ARL13B"
+  ],
+  "Joubert syndrome 1": [
+    "INPP5E"
+  ],
+  "Joubert syndrome 14": [
+    "TMEM237"
+  ],
+  "Joubert syndrome 17": [
+    "CPLANE1"
+  ],
+  "Joubert syndrome 21": [
+    "CSPP1"
+  ],
+  "Joubert syndrome 24": [
+    "TCTN2"
+  ],
+  "Joubert syndrome 3": [
+    "AHI1"
+  ],
+  "Joubert syndrome 30": [
+    "ARMC9"
+  ],
+  "KAT6B-related multiple congenital anomalies syndrome": [
+    "KAT6B"
+  ],
+  "KBG syndrome": [
+    "ANKRD11"
+  ],
+  "KCNH1 associated disorder": [
+    "KCNH1"
+  ],
+  "KIZ-related retinopathy": [
+    "KIZ"
+  ],
+  "Kabuki syndrome 1": [
+    "KMT2D"
+  ],
+  "Kabuki syndrome 2": [
+    "KDM6A"
+  ],
+  "Kaya-Barakat-Masson syndrome": [
+    "YIF1B"
+  ],
+  "Kennedy disease": [
+    "AR"
+  ],
+  "Keutel syndrome": [
+    "MGP"
+  ],
+  "Khan-Khan-Katsanis syndrome": [
+    "NCAPG2"
+  ],
+  "Kleefstra syndrome": [
+    "EHMT1"
+  ],
+  "Klippel-Feil anomaly-myopathy-facial dysmorphism syndrome": [
+    "MYO18B"
+  ],
+  "Kniest dysplasia": [
+    "COL2A1"
+  ],
+  "Knobloch syndrome 1": [
+    "COL18A1"
+  ],
+  "Koolen-de Vries syndrome": [
+    "KANSL1"
+  ],
+  "Krabbe disease": [
+    "GALC"
+  ],
+  "Krabbe disease due to saposin A deficiency": [
+    "PSAP"
+  ],
+  "Kufor-Rakeb syndrome": [
+    "ATP13A2"
+  ],
+  "L1 syndrome": [
+    "L1CAM"
+  ],
+  "LADD syndrome": [
+    "FGFR2"
+  ],
+  "LAMA2-related muscular dystrophy": [
+    "LAMA2"
+  ],
+  "LAMA5-related multisystemic syndrome": [
+    "LAMA5"
+  ],
+  "LCA5-related retinopathy": [
+    "LCA5"
+  ],
+  "LIPE-related familial partial lipodystrophy": [
+    "LIPE"
+  ],
+  "LRP5-related exudative vitreoretinopathy": [
+    "LRP5"
+  ],
+  "LZTFL1-related ciliopathy": [
+    "LZTFL1"
+  ],
+  "Lafora disease": [
+    "EPM2A",
+    "NHLRC1"
+  ],
+  "Lamb-Shaffer syndrome": [
+    "SOX5"
+  ],
+  "Leber congenital amaurosis 15": [
+    "TULP1"
+  ],
+  "Legius syndrome": [
+    "SPRED1"
+  ],
+  "Leigh syndrome": [
+    "ADAR",
+    "AIFM1",
+    "ATP5MK",
+    "BCS1L",
+    "BTD",
+    "CLPB",
+    "COQ9",
+    "COX10",
+    "COX15",
+    "COX4I1",
+    "COX8A",
+    "DLAT",
+    "DLD",
+    "DNM1L",
+    "EARS2",
+    "ECHS1",
+    "ETHE1",
+    "FARS2",
+    "FBXL4",
+    "FOXRED1",
+    "GFM1",
+    "GFM2",
+    "GTPBP3",
+    "HIBCH",
+    "HPDL",
+    "IARS2",
+    "LIAS",
+    "LIPT1",
+    "LONP1",
+    "LRPPRC",
+    "MECR",
+    "MFF",
+    "MORC2",
+    "MRPS34",
+    "MT-ATP6",
+    "MT-CO1",
+    "MT-CO2",
+    "MT-CO3",
+    "MT-ND1",
+    "MT-ND2",
+    "MT-ND3",
+    "MT-ND4",
+    "MT-ND5",
+    "MT-ND6",
+    "MT-TI",
+    "MT-TK",
+    "MT-TL1",
+    "MT-TL2",
+    "MT-TV",
+    "MT-TW",
+    "MTFMT",
+    "MTRFR",
+    "NARS2",
+    "NAXE",
+    "NDUFA1",
+    "NDUFA10",
+    "NDUFA12",
+    "NDUFA13",
+    "NDUFA2",
+    "NDUFA4",
+    "NDUFA9",
+    "NDUFAF2",
+    "NDUFAF4",
+    "NDUFAF5",
+    "NDUFAF6",
+    "NDUFAF8",
+    "NDUFB8",
+    "NDUFC2",
+    "NDUFS1",
+    "NDUFS2",
+    "NDUFS3",
+    "NDUFS4",
+    "NDUFS7",
+    "NDUFS8",
+    "NDUFV1",
+    "NDUFV2",
+    "NUBPL",
+    "NUP62",
+    "OPA1",
+    "PDHA1",
+    "PDHB",
+    "PDHX",
+    "PDSS2",
+    "PET100",
+    "PET117",
+    "PNPT1",
+    "POLG",
+    "PTCD3",
+    "RANBP2",
+    "RNASEH1",
+    "SCO2",
+    "SDHA",
+    "SDHAF1",
+    "SERAC1",
+    "SLC19A3",
+    "SLC25A19",
+    "SLC25A4",
+    "SLC25A46",
+    "SLC39A8",
+    "SQOR",
+    "SSBP1",
+    "SUCLA2",
+    "SUCLG1",
+    "SURF1",
+    "TACO1",
+    "TARS2",
+    "TIMMDC1",
+    "TPK1",
+    "TRMU",
+    "TSFM",
+    "TTC19",
+    "UQCRQ",
+    "VPS13D"
+  ],
+  "Lesch-Nyhan syndrome": [
+    "HPRT1"
+  ],
+  "Lessel-Kreienkamp syndrome": [
+    "AGO2"
+  ],
+  "Li-Fraumeni syndrome": [
+    "TP53"
+  ],
+  "Liberfarb syndrome": [
+    "PISD"
+  ],
+  "Lichtenstein-Knorr syndrome": [
+    "SLC9A1"
+  ],
+  "Liddle syndrome": [
+    "SCNN1G"
+  ],
+  "Loeys-Dietz syndrome": [
+    "TGFBR1"
+  ],
+  "Loeys-Dietz syndrome 2": [
+    "TGFBR2"
+  ],
+  "Loeys-Dietz syndrome 6": [
+    "SMAD2"
+  ],
+  "Lynch syndrome": [
+    "EPCAM",
+    "EXO1",
+    "MLH1",
+    "MSH2",
+    "MSH3",
+    "MSH6",
+    "PMS1",
+    "PMS2",
+    "RPS20",
+    "SEMA4A"
+  ],
+  "MAK-related retinopathy": [
+    "MAK"
+  ],
+  "MAN1B1-congenital disorder of glycosylation": [
+    "MAN1B1"
+  ],
+  "MAN2B2 deficiency": [
+    "MAN2B2"
+  ],
+  "MECOM-associated syndrome": [
+    "MECOM"
+  ],
+  "MED12-related intellectual disability syndrome": [
+    "MED12"
+  ],
+  "MEDNIK syndrome": [
+    "AP1S1"
+  ],
+  "MEGF10-related myopathy": [
+    "MEGF10"
+  ],
+  "MEGF8-related Carpenter syndrome": [
+    "MEGF8"
+  ],
+  "MEHMO syndrome": [
+    "EIF2S3"
+  ],
+  "MEND syndrome": [
+    "EBP"
+  ],
+  "MERTK-related retinopathy": [
+    "MERTK"
+  ],
+  "MGAT2-congenital disorder of glycosylation": [
+    "MGAT2"
+  ],
+  "MHC class I deficiency": [
+    "TAP1",
+    "TAP2",
+    "TAPBP"
+  ],
+  "MHC class II deficiency": [
+    "CIITA",
+    "RFX5",
+    "RFXANK",
+    "RFXAP"
+  ],
+  "MKKS-related ciliopathy": [
+    "MKKS"
+  ],
+  "MOGS-congenital disorder of glycosylation": [
+    "MOGS"
+  ],
+  "MORM syndrome": [
+    "INPP5E"
+  ],
+  "MPDU1-congenital disorder of glycosylation": [
+    "MPDU1"
+  ],
+  "MPI-congenital disorder of glycosylation": [
+    "MPI"
+  ],
+  "MYH-6 related congenital heart defects": [
+    "MYH6"
+  ],
+  "MYH7-related skeletal myopathy": [
+    "MYH7"
+  ],
+  "MYPN-related myopathy": [
+    "MYPN"
+  ],
+  "Majeed syndrome": [
+    "LPIN2"
+  ],
+  "Malan overgrowth syndrome": [
+    "NFIX"
+  ],
+  "Marfan syndrome": [
+    "FBN1"
+  ],
+  "Marinesco-Sjogren syndrome": [
+    "SIL1"
+  ],
+  "Marshall-Smith syndrome": [
+    "NFIX"
+  ],
+  "Meier-Gorlin syndrome 2": [
+    "ORC4"
+  ],
+  "Meier-Gorlin syndrome 3": [
+    "ORC6"
+  ],
+  "Meier-Gorlin syndrome 4": [
+    "CDT1"
+  ],
+  "Meier-Gorlin syndrome 5": [
+    "CDC6"
+  ],
+  "Meier-Gorlin syndrome 6": [
+    "GMNN"
+  ],
+  "Meier-Gorlin syndrome 7": [
+    "CDC45"
+  ],
+  "Mendelian susceptibility to mycobacterial diseases due to partial STAT1 deficiency": [
+    "STAT1"
+  ],
+  "Menkes disease": [
+    "ATP7A"
+  ],
+  "Mitchell syndrome": [
+    "ACOX1"
+  ],
+  "Mowat-Wilson syndrome": [
+    "ZEB2"
+  ],
+  "Muenke syndrome": [
+    "FGFR3"
+  ],
+  "Myhre syndrome": [
+    "SMAD4"
+  ],
+  "N-acetylaspartate deficiency": [
+    "NAT8L"
+  ],
+  "NAA10-related syndrome": [
+    "NAA10"
+  ],
+  "NACC1-related neurodevelopmental disorder with epilepsy, cataracts and episodic irritability": [
+    "NACC1"
+  ],
+  "NIK deficiency": [
+    "MAP3K14"
+  ],
+  "NKX2-1 related choreoathetosis and congenital hypothyroidism with or without pulmonary dysfunction": [
+    "NKX2-1"
+  ],
+  "NKX2.5-related congenital, conduction and myopathic heart disease": [
+    "NKX2-5"
+  ],
+  "NMNAT1-related retinopathy": [
+    "NMNAT1"
+  ],
+  "NOG-related symphalangism spectrum disorder": [
+    "NOG"
+  ],
+  "NOTCH1-related AOS spectrum disorder": [
+    "NOTCH1"
+  ],
+  "NR2F2 related multiple congenital anomalies/dysmorphic syndrome": [
+    "NR2F2"
+  ],
+  "NTHL1-deficiency tumor predisposition syndrome": [
+    "NTHL1"
+  ],
+  "NYX-related retinopathy": [
+    "NYX"
+  ],
+  "Nance-Horan syndrome": [
+    "NHS"
+  ],
+  "Nestor-Guillermo progeria syndrome": [
+    "BANF1"
+  ],
+  "Niemann-Pick disease, type C1": [
+    "NPC1"
+  ],
+  "Niemann-Pick disease, type C2": [
+    "NPC2"
+  ],
+  "Nijmegen breakage syndrome": [
+    "NBN"
+  ],
+  "Nizon-Isidor syndrome": [
+    "MED12L"
+  ],
+  "Noonan syndrome": [
+    "A2ML1",
+    "BRAF",
+    "KRAS",
+    "LZTR1",
+    "MAP2K1",
+    "MAP2K2",
+    "MRAS",
+    "NRAS",
+    "PTPN11",
+    "RAF1",
+    "RASA1",
+    "RASA2",
+    "RIT1",
+    "RRAS",
+    "RRAS2",
+    "SHOC2",
+    "SOS1",
+    "SOS2"
+  ],
+  "Noonan syndrome with multiple lentigines": [
+    "BRAF",
+    "MAP2K1",
+    "NRAS",
+    "PTPN11",
+    "RAF1"
+  ],
+  "Noonan syndrome-like disorder with loose anagen hair": [
+    "HRAS",
+    "PPP1CB",
+    "SHOC2"
+  ],
+  "Norrie disease": [
+    "NDP"
+  ],
+  "OFD1-related ciliopathy": [
+    "OFD1"
+  ],
+  "OPA1-related optic atrophy with or without extraocular features": [
+    "OPA1"
+  ],
+  "Oguchi disease": [
+    "GRK1"
+  ],
+  "P5CS deficiency": [
+    "ALDH18A1"
+  ],
+  "PALB2-related cancer predisposition": [
+    "PALB2"
+  ],
+  "PAX5-related B lymphopenia and autism spectrum disorder": [
+    "PAX5"
+  ],
+  "PAX6-related ocular dysgenesis": [
+    "PAX6"
+  ],
+  "PCARE-related retinopathy": [
+    "PCARE"
+  ],
+  "PDE6A-related retinopathy": [
+    "PDE6A"
+  ],
+  "PDE6C-related retinopathy": [
+    "PDE6C"
+  ],
+  "PDE6G-related retinopathy": [
+    "PDE6G"
+  ],
+  "PGM1-congenital disorder of glycosylation": [
+    "PGM1"
+  ],
+  "PHARC syndrome": [
+    "ABHD12"
+  ],
+  "PHIP-related behavioral problems-intellectual disability-obesity-dysmorphic features syndrome": [
+    "PHIP"
+  ],
+  "PIEZO1-related generalized lymphatic dysplasia with non-immune hydrops fetalis": [
+    "PIEZO1"
+  ],
+  "PIK3R1-related immunodeficiency and SHORT syndrome": [
+    "PIK3R1"
+  ],
+  "PLA2G6-associated neurodegeneration": [
+    "PLA2G6"
+  ],
+  "PLD1-related congenital heart disease": [
+    "PLD1"
+  ],
+  "PLEC-related muscular dystrophy-epidermolysis bullosa simplex spectrum disorder": [
+    "PLEC"
+  ],
+  "PLIN1-related familial partial lipodystrophy": [
+    "PLIN1"
+  ],
+  "PMM2-congenital disorder of glycosylation": [
+    "PMM2"
+  ],
+  "PNPLA6-related spastic paraplegia with or without ataxia": [
+    "PNPLA6"
+  ],
+  "POLD1-related polyposis and colorectal cancer syndrome": [
+    "POLD1"
+  ],
+  "POLE-related polyposis and colorectal cancer syndrome": [
+    "POLE"
+  ],
+  "POLR1C-related disorder": [
+    "POLR1C"
+  ],
+  "POLR3A-related disorder": [
+    "POLR3A"
+  ],
+  "POLR3B-related disorder": [
+    "POLR3B"
+  ],
+  "PRKAG2-related cardiomyopathy": [
+    "PRKAG2"
+  ],
+  "PROM1-related dominant retinopathy": [
+    "PROM1"
+  ],
+  "PROM1-related recessive retinopathy": [
+    "PROM1"
+  ],
+  "PRPF31-related retinopathy": [
+    "PRPF31"
+  ],
+  "PRPF8-related retinopathy": [
+    "PRPF8"
+  ],
+  "PRPH2-related retinopathy": [
+    "PRPH2"
+  ],
+  "PRPS1 deficiency disorder": [
+    "PRPS1"
+  ],
+  "PTEN hamartoma tumor syndrome": [
+    "PTEN"
+  ],
+  "Parkinson disease": [
+    "GBA1",
+    "LRRK2",
+    "PARK7",
+    "PINK1",
+    "PRKN",
+    "SNCA",
+    "VPS35"
+  ],
+  "Pelizeaus-Merzbacher spectrum disorder": [
+    "PLP1"
+  ],
+  "Pendred syndrome": [
+    "SLC26A4"
+  ],
+  "Perlman syndrome": [
+    "DIS3L2"
+  ],
+  "Perrault syndrome": [
+    "HSD17B4",
+    "LARS2"
+  ],
+  "Perrault syndrome 2": [
+    "HARS2"
+  ],
+  "Perrault syndrome 3": [
+    "CLPP"
+  ],
+  "Perrault syndrome 5": [
+    "TWNK"
+  ],
+  "Peters plus syndrome": [
+    "B3GLCT"
+  ],
+  "Peutz-Jeghers syndrome": [
+    "STK11"
+  ],
+  "Pfeiffer syndrome": [
+    "FGFR2"
+  ],
+  "Pfeiffer syndrome type 1": [
+    "FGFR1"
+  ],
+  "Phelan-McDermid syndrome": [
+    "SHANK3"
+  ],
+  "Pitt-Hopkins syndrome": [
+    "TCF4"
+  ],
+  "Poirier-Bienvenu neurodevelopmental syndrome": [
+    "CSNK2B"
+  ],
+  "Primrose syndrome": [
+    "ZBTB20"
+  ],
+  "Quebec platelet disorder": [
+    "PLAU"
+  ],
+  "RAB23-related Carpenter syndrome": [
+    "RAB23"
+  ],
+  "RAB28-related retinopathy": [
+    "RAB28"
+  ],
+  "RAD51C-related cancer predisposition": [
+    "RAD51C"
+  ],
+  "RAD51D-related cancer predisposition": [
+    "RAD51D"
+  ],
+  "RASopathy": [
+    "KAT6B",
+    "NSUN2"
+  ],
+  "RCBTB1-related retinopathy": [
+    "RCBTB1"
+  ],
+  "RD3-related retinopathy": [
+    "RD3"
+  ],
+  "RDH12-related dominant retinopathy": [
+    "RDH12"
+  ],
+  "RDH12-related recessive retinopathy": [
+    "RDH12"
+  ],
+  "RDH5-related retinopathy": [
+    "RDH5"
+  ],
+  "RFT1-congenital disorder of glycosylation": [
+    "RFT1"
+  ],
+  "RIDDLE syndrome": [
+    "RNF168"
+  ],
+  "RIN2 syndrome": [
+    "RIN2"
+  ],
+  "RLBP1-related retinopathy": [
+    "RLBP1"
+  ],
+  "RNASEH2A-related type 1 interferonopathy": [
+    "RNASEH2A"
+  ],
+  "RNASEH2B-related type 1 interferonopathy": [
+    "RNASEH2B"
+  ],
+  "RNASEH2C-related type 1 interferonopathy": [
+    "RNASEH2C"
+  ],
+  "RNU4ATAC spectrum disorder": [
+    "RNU4ATAC"
+  ],
+  "RNU5B-1 related neurodevelopmental disorder with seizures and joint laxity": [
+    "RNU5B-1"
+  ],
+  "RP1-related dominant retinopathy": [
+    "RP1"
+  ],
+  "RP1-related recessive retinopathy": [
+    "RP1"
+  ],
+  "RP2-related retinopathy": [
+    "RP2"
+  ],
+  "RPE65-related dominant retinopathy": [
+    "RPE65"
+  ],
+  "RPE65-related recessive retinopathy": [
+    "RPE65"
+  ],
+  "RPGR-related retinopathy": [
+    "RPGR"
+  ],
+  "RYR1-related myopathy": [
+    "RYR1"
+  ],
+  "Radio-Tartaglia syndrome": [
+    "SPEN"
+  ],
+  "Renpenning syndrome": [
+    "PQBP1"
+  ],
+  "Rett syndrome": [
+    "MECP2"
+  ],
+  "Ritscher-Schinzel syndrome 1": [
+    "WASHC5"
+  ],
+  "Ritscher-Schinzel syndrome 2": [
+    "CCDC22"
+  ],
+  "Roberts-SC phocomelia syndrome": [
+    "ESCO2"
+  ],
+  "Rothmund-Thomson syndrome": [
+    "RECQL4"
+  ],
+  "Rothmund-Thomson syndrome type 1": [
+    "ANAPC1"
+  ],
+  "Rubinstein-Taybi syndrome": [
+    "CREBBP"
+  ],
+  "Rubinstein-Taybi syndrome due to EP300 haploinsufficiency": [
+    "EP300"
+  ],
+  "SAMD9-related spectrum and myeloid neoplasm risk": [
+    "SAMD9"
+  ],
+  "SAMD9L-related spectrum and myeloid neoplasm risk": [
+    "SAMD9L"
+  ],
+  "SAMHD1-related type 1 interferonopathy": [
+    "SAMHD1"
+  ],
+  "SATB2 associated disorder": [
+    "SATB2"
+  ],
+  "SCN4A-related myopathy, autosomal recessive": [
+    "SCN4A"
+  ],
+  "SCN5A-related cardiac rhythm disorder": [
+    "SCN5A"
+  ],
+  "SEC61A1 deficiency": [
+    "SEC61A1"
+  ],
+  "SEC61B-related polycystic liver disease": [
+    "SEC61B"
+  ],
+  "SELENON-related myopathy": [
+    "SELENON"
+  ],
+  "SETD2-related microcephaly-severe intellectual disability-multiple congenital anomalies syndrome": [
+    "SETD2"
+  ],
+  "SETD2-related neurodevelopmental disorder without or with macrocephaly/overgrowth": [
+    "SETD2"
+  ],
+  "SF3B4-related acrofacial dysostosis": [
+    "SF3B4"
+  ],
+  "SFTPC- related interstitial lung disease": [
+    "SFTPC"
+  ],
+  "SIN3A-related intellectual disability syndrome": [
+    "SIN3A"
+  ],
+  "SLC26A2-related skeletal dysplasia": [
+    "SLC26A2"
+  ],
+  "SLC35A1-congenital disorder of glycosylation": [
+    "SLC35A1"
+  ],
+  "SLC6A3-related dopamine transporter deficiency syndrome": [
+    "SLC6A3"
+  ],
+  "SMARCC1-associated developmental dysgenesis syndrome": [
+    "SMARCC1"
+  ],
+  "SNRNP200-related dominant retinopathy": [
+    "SNRNP200"
+  ],
+  "SNUPN-related muscular dystrophy with or without multi-system involvement": [
+    "SNUPN"
+  ],
+  "SOX3-related X-linked pituitary hormone deficiency with or without intellectual developmental disorder": [
+    "SOX3"
+  ],
+  "SRD5A3-congenital disorder of glycosylation": [
+    "SRD5A3"
+  ],
+  "STAT3-related early-onset multisystem autoimmune disease": [
+    "STAT3"
+  ],
+  "STT3A-congenital disorder of glycosylation": [
+    "STT3A"
+  ],
+  "SYNCRIP-related neurodevelopmental disorder": [
+    "SYNCRIP"
+  ],
+  "Saethre-Chotzen syndrome": [
+    "TWIST1"
+  ],
+  "Sandhoff disease": [
+    "HEXB"
+  ],
+  "Schaaf-Yang syndrome": [
+    "MAGEL2"
+  ],
+  "Schimke immuno-osseous dysplasia": [
+    "SMARCAL1"
+  ],
+  "Schinzel-Giedion syndrome": [
+    "SETBP1"
+  ],
+  "Schmid metaphyseal chondrodysplasia": [
+    "COL10A1"
+  ],
+  "Schuurs-Hoeijmakers syndrome": [
+    "PACS1"
+  ],
+  "Schwartz-Jampel syndrome type 1": [
+    "HSPG2"
+  ],
+  "Scott syndrome": [
+    "ANO6"
+  ],
+  "Seckel syndrome 10": [
+    "NSMCE2"
+  ],
+  "Shprintzen-Goldberg syndrome": [
+    "FBN1",
+    "SKI"
+  ],
+  "Shukla-Vernon syndrome": [
+    "BCORL1"
+  ],
+  "Shwachman-Diamond syndrome": [
+    "SBDS"
+  ],
+  "Siddiqi syndrome": [
+    "FITM2"
+  ],
+  "Silver-Russell syndrome 3": [
+    "IGF2"
+  ],
+  "Silver-Russell syndrome 5": [
+    "HMGA2"
+  ],
+  "Silverman-Handmaker type dyssegmental dysplasia": [
+    "HSPG2"
+  ],
+  "Simpson-Golabi-Behmel syndrome": [
+    "GPC3"
+  ],
+  "Skraban-Deardorff syndrome": [
+    "WDR26"
+  ],
+  "Smith-Lemli-Opitz syndrome": [
+    "DHCR7"
+  ],
+  "Smith-Magenis syndrome": [
+    "RAI1"
+  ],
+  "Snijders Blok-Campeau syndrome": [
+    "CHD3"
+  ],
+  "Sorsby fundus dystrophy": [
+    "TIMP3"
+  ],
+  "Sotos syndrome": [
+    "NSD1"
+  ],
+  "Stankiewicz-Isidor syndrome": [
+    "PSMD12"
+  ],
+  "Stickler syndrome": [
+    "COL9A2",
+    "COL9A3"
+  ],
+  "Stickler syndrome type 1": [
+    "COL2A1"
+  ],
+  "Stickler syndrome, type 4": [
+    "COL9A1"
+  ],
+  "Sweeney-Cox syndrome": [
+    "TWIST1"
+  ],
+  "T-B+ severe combined immunodeficiency due to JAK3 deficiency": [
+    "JAK3"
+  ],
+  "T-B+ severe combined immunodeficiency due to gamma chain deficiency": [
+    "IL2RG"
+  ],
+  "T-cell immunodeficiency": [
+    "FOXI3"
+  ],
+  "T-cell immunodeficiency, congenital alopecia, and nail dystrophy": [
+    "FOXN1"
+  ],
+  "TCF12-related craniosynostosis": [
+    "TCF12"
+  ],
+  "TCR-alpha-beta-positive T-cell deficiency": [
+    "TRAC"
+  ],
+  "TEK-related primary glaucoma": [
+    "TEK"
+  ],
+  "TELO2-related intellectual disability-neurodevelopmental disorder": [
+    "TELO2"
+  ],
+  "TFAP2B-related congenital heart disease spectrum disorder": [
+    "TFAP2B"
+  ],
+  "TFRC-related combined immunodeficiency": [
+    "TFRC"
+  ],
+  "THOC6-related developmental delay-microcephaly-facial dysmorphism syndrome": [
+    "THOC6"
+  ],
+  "TNF receptor 1-associated periodic fever syndrome": [
+    "TNFRSF1A"
+  ],
+  "TOPORS-related retinopathy": [
+    "TOPORS"
+  ],
+  "TOR1AIP1-related multisystem disorder": [
+    "TOR1AIP1"
+  ],
+  "TOR1AIP1-related myopathy": [
+    "TOR1AIP1"
+  ],
+  "TPM2-related myopathy": [
+    "TPM2"
+  ],
+  "TPM3-related myopathy": [
+    "TPM3"
+  ],
+  "TPM4-related platelet disorder": [
+    "TPM4"
+  ],
+  "TRAF3 haploinsufficiency": [
+    "TRAF3"
+  ],
+  "TREX1-related type 1 interferonopathy": [
+    "TREX1"
+  ],
+  "TRIP11-related skeletal dysplasia": [
+    "TRIP11"
+  ],
+  "TRPM1-related retinopathy": [
+    "TRPM1"
+  ],
+  "TRPV4-related bone disorder": [
+    "TRPV4"
+  ],
+  "TSPAN12-related exudative vitreoretinopathy": [
+    "TSPAN12"
+  ],
+  "TTC8-related ciliopathy": [
+    "TTC8"
+  ],
+  "TTLL5-related retinopathy": [
+    "TTLL5"
+  ],
+  "TTN-related myopathy": [
+    "TTN"
+  ],
+  "TUBB3-related tubulinopathy": [
+    "TUBB3"
+  ],
+  "TUBB4A-related neurologic disorder": [
+    "TUBB4A"
+  ],
+  "TUBB4B-related ciliopathy": [
+    "TUBB4B"
+  ],
+  "TWIST1-related craniosynostosis": [
+    "TWIST1"
+  ],
+  "Tatton-Brown-Rahman overgrowth syndrome": [
+    "DNMT3A"
+  ],
+  "Tay-Sachs disease": [
+    "HEXA"
+  ],
+  "Tay-Sachs disease AB variant": [
+    "GM2A"
+  ],
+  "Teebi hypertelorism syndrome 2": [
+    "CDH11"
+  ],
+  "Tessadori-Van Haaften neurodevelopmental syndrome 3": [
+    "H4C5"
+  ],
+  "Timothy syndrome": [
+    "CACNA1C"
+  ],
+  "Treacher Collins syndrome 2": [
+    "POLR1D"
+  ],
+  "Treacher Collins syndrome 3": [
+    "POLR1C"
+  ],
+  "Treacher Collins syndrome 4": [
+    "POLR1B"
+  ],
+  "Treacher-Collins syndrome": [
+    "TCOF1"
+  ],
+  "Troyer syndrome": [
+    "SPART"
+  ],
+  "UROD-related inherited porphyria": [
+    "UROD"
+  ],
+  "Unverricht-Lundborg syndrome": [
+    "CSTB"
+  ],
+  "Usher syndrome type 1": [
+    "CDH23",
+    "CIB2",
+    "MYO7A",
+    "PCDH15",
+    "USH1C",
+    "USH1G"
+  ],
+  "Usher syndrome type 2": [
+    "ADGRV1",
+    "USH2A"
+  ],
+  "Usher syndrome type 2D": [
+    "WHRN"
+  ],
+  "Usher syndrome type 3": [
+    "CLRN1",
+    "HARS1"
+  ],
+  "VPS11-related neurological disorder": [
+    "VPS11"
+  ],
+  "Vici syndrome": [
+    "EPG5"
+  ],
+  "WHIM syndrome": [
+    "CXCR4"
+  ],
+  "Waardenburg syndrome": [
+    "PAX3",
+    "SNAI2"
+  ],
+  "Waardenburg syndrome type 2": [
+    "MITF"
+  ],
+  "Waardenburg syndrome type 4A": [
+    "EDNRB"
+  ],
+  "Waardenburg syndrome type 4B": [
+    "EDN3"
+  ],
+  "Waardenburg syndrome type 4C": [
+    "SOX10"
+  ],
+  "Wagner disease": [
+    "VCAN"
+  ],
+  "Warburg micro syndrome": [
+    "RAB18",
+    "RAB3GAP1",
+    "RAB3GAP2"
+  ],
+  "Warsaw breakage syndrome": [
+    "DDX11"
+  ],
+  "Weaver syndrome": [
+    "EZH2"
+  ],
+  "Weiss-Kruszka syndrome": [
+    "ZNF462"
+  ],
+  "Werner syndrome": [
+    "WRN"
+  ],
+  "Wiedemann-Steiner syndrome": [
+    "KMT2A"
+  ],
+  "Wilms tumor 1": [
+    "WT1"
+  ],
+  "Wilson disease": [
+    "ATP7B"
+  ],
+  "Wiskott-Aldrich syndrome": [
+    "WAS"
+  ],
+  "Wiskott-Aldrich syndrome 2": [
+    "WIPF1"
+  ],
+  "Wolfram syndrome": [
+    "CISD2",
+    "WFS1"
+  ],
+  "Wolfram-like syndrome": [
+    "WFS1"
+  ],
+  "Woodhouse-Sakati syndrome": [
+    "DCAF17"
+  ],
+  "X-linked Opitz G/BBB syndrome": [
+    "MID1"
+  ],
+  "X-linked chondrodysplasia punctata 1": [
+    "ARSL"
+  ],
+  "X-linked complex neurodevelopmental disorder": [
+    "AGTR2",
+    "ARHGEF9",
+    "ARX",
+    "CDK16",
+    "CLIC2",
+    "CNKSR2",
+    "FAAH2",
+    "FRMPD4",
+    "FTSJ1",
+    "GRIA3",
+    "HNRNPH2",
+    "IQSEC2",
+    "NEXMIF",
+    "NLGN3",
+    "NLGN4X",
+    "PCDH19",
+    "SHROOM4",
+    "SLC35A2",
+    "SMC1A",
+    "SYN1",
+    "THOC2",
+    "UPF3B",
+    "WDR45",
+    "ZDHHC15",
+    "ZNF711"
+  ],
+  "X-linked distal spinal muscular atrophy type 3": [
+    "ATP7A"
+  ],
+  "X-linked dominant hypophosphatemic rickets": [
+    "PHEX"
+  ],
+  "X-linked erythropoietic protoporphyria": [
+    "ALAS2"
+  ],
+  "X-linked hereditary sensory and autonomic neuropathy with hearing loss": [
+    "AIFM1"
+  ],
+  "X-linked immunodeficiency with magnesium defect, Epstein-Barr virus infection and neoplasia": [
+    "MAGT1"
+  ],
+  "X-linked intellectual disability": [
+    "HCFC1",
+    "MAGT1",
+    "SMARCA1",
+    "USP27X",
+    "ZNF674",
+    "ZNF81"
+  ],
+  "X-linked intellectual disability, Cabezas type": [
+    "CUL4B"
+  ],
+  "X-linked intellectual disability-cerebellar hypoplasia syndrome": [
+    "OPHN1"
+  ],
+  "X-linked lymphoproliferative disease due to SH2D1A deficiency": [
+    "SH2D1A"
+  ],
+  "X-linked myotubular myopathy": [
+    "MTM1"
+  ],
+  "X-linked reticulate pigmentary disorder": [
+    "POLA1"
+  ],
+  "X-linked retinoschisis": [
+    "RS1"
+  ],
+  "X-linked severe congenital neutropenia": [
+    "WAS"
+  ],
+  "X-linked syndromic complex neurodevelopmental disorder": [
+    "AP1S2",
+    "TFE3",
+    "ZFX"
+  ],
+  "X-linked syndromic intellectual disability": [
+    "BRWD3",
+    "CASK",
+    "DDX3X",
+    "KDM5C",
+    "LAS1L",
+    "NONO",
+    "PAK3",
+    "RAB40AL",
+    "RPL10",
+    "USP9X",
+    "ZC4H2"
+  ],
+  "ZTTK syndrome": [
+    "SON"
+  ],
+  "acatalasia": [
+    "CAT"
+  ],
+  "aceruloplasminemia": [
+    "CP"
+  ],
+  "acetyl-CoA acetyltransferase-2 deficiency": [
+    "ACAT2"
+  ],
+  "achondrogenesis type II": [
+    "COL2A1"
+  ],
+  "achondroplasia": [
+    "FGFR3"
+  ],
+  "acid sphingomyelinase deficiency": [
+    "SMPD1"
+  ],
+  "acrodermatitis enteropathica": [
+    "SLC39A4"
+  ],
+  "acromelic frontonasal dysostosis": [
+    "ZSWIM6"
+  ],
+  "acroosteolysis dominant type": [
+    "NOTCH2"
+  ],
+  "acute intermittent porphyria": [
+    "HMBS"
+  ],
+  "acute myeloid leukemia": [
+    "CEBPA"
+  ],
+  "acyl-CoA binding domain containing protein 5 deficiency": [
+    "ACBD5"
+  ],
+  "acyl-CoA dehydrogenase 9 deficiency": [
+    "ACAD9"
+  ],
+  "adenosine kinase deficiency": [
+    "ADK"
+  ],
+  "adenylosuccinate lyase deficiency": [
+    "ADSL"
+  ],
+  "adrenoleukodystrophy": [
+    "ABCD1"
+  ],
+  "adult neuronal ceroid lipofuscinosis": [
+    "CTSF",
+    "DNAJC5"
+  ],
+  "agammaglobulinemia": [
+    "BRWD1",
+    "LRRC8A",
+    "POU2AF1",
+    "SLC39A7"
+  ],
+  "agammaglobulinemia 10, autosomal dominant": [
+    "SPI1"
+  ],
+  "agammaglobulinemia 2, autosomal recessive": [
+    "IGLL1"
+  ],
+  "agammaglobulinemia 3, autosomal recessive": [
+    "CD79A"
+  ],
+  "agammaglobulinemia 4, autosomal recessive": [
+    "BLNK"
+  ],
+  "agammaglobulinemia 6, autosomal recessive": [
+    "CD79B"
+  ],
+  "agammaglobulinemia 7, autosomal recessive": [
+    "PIK3R1"
+  ],
+  "age related macular degeneration 2": [
+    "ABCA4"
+  ],
+  "alacrima, achalasia, and intellectual disability syndrome": [
+    "GMPPA"
+  ],
+  "alanine glyoxylate aminotransferase deficiency": [
+    "AGXT"
+  ],
+  "alkaptonuria": [
+    "HGD"
+  ],
+  "alkylglycerone-phosphate synthase deficiency": [
+    "AGPS"
+  ],
+  "alpha-2-plasmin inhibitor deficiency": [
+    "SERPINF2"
+  ],
+  "alpha-N-acetylgalactosaminidase deficiency": [
+    "NAGA"
+  ],
+  "alpha-actinopathy": [
+    "ACTA1"
+  ],
+  "alpha-mannosidosis": [
+    "MAN2B1"
+  ],
+  "alpha-methylacyl-CoA racemase deficiency": [
+    "AMACR"
+  ],
+  "amelocerebrohypohidrotic syndrome": [
+    "ROGDI"
+  ],
+  "amelogenesis imperfecta": [
+    "WDR72"
+  ],
+  "aminoacylase 1 deficiency": [
+    "ACY1"
+  ],
+  "amyotrophic lateral sclerosis": [
+    "ARHGEF28",
+    "ARPP21",
+    "CAV1",
+    "CAV2",
+    "CFAP410",
+    "DAO",
+    "DCTN1",
+    "DNAJC7",
+    "EWSR1",
+    "GLE1",
+    "GLT8D1",
+    "LGALSL",
+    "NEFH",
+    "NUP50",
+    "PRPH",
+    "SPTLC2",
+    "SS18L1",
+    "TAF15"
+  ],
+  "amyotrophic lateral sclerosis 26 with or without frontotemporal dementia": [
+    "TIA1"
+  ],
+  "amyotrophic lateral sclerosis type 1": [
+    "SOD1"
+  ],
+  "amyotrophic lateral sclerosis type 10": [
+    "TARDBP"
+  ],
+  "amyotrophic lateral sclerosis type 11": [
+    "FIG4"
+  ],
+  "amyotrophic lateral sclerosis type 12": [
+    "OPTN"
+  ],
+  "amyotrophic lateral sclerosis type 15": [
+    "UBQLN2"
+  ],
+  "amyotrophic lateral sclerosis type 18": [
+    "PFN1"
+  ],
+  "amyotrophic lateral sclerosis type 19": [
+    "ERBB4"
+  ],
+  "amyotrophic lateral sclerosis type 22": [
+    "TUBA4A"
+  ],
+  "amyotrophic lateral sclerosis type 23": [
+    "ANXA11"
+  ],
+  "amyotrophic lateral sclerosis type 6": [
+    "FUS"
+  ],
+  "amyotrophic lateral sclerosis type 8": [
+    "VAPB"
+  ],
+  "amyotrophic lateral sclerosis type 9": [
+    "ANG"
+  ],
+  "amyotrophic lateral sclerosis, susceptibility to, 24": [
+    "NEK1"
+  ],
+  "amyotrophic lateral sclerosis, susceptibility to, 25": [
+    "KIF5A"
+  ],
+  "anemia, congenital dyserythropoietic, type 1a": [
+    "CDAN1"
+  ],
+  "anemia, nonspherocytic hemolytic, due to G6PD deficiency": [
+    "G6PD"
+  ],
+  "aneurysm-osteoarthritis syndrome": [
+    "SMAD3"
+  ],
+  "aniridia": [
+    "FOXD3"
+  ],
+  "aniridia 3": [
+    "TRIM44"
+  ],
+  "aniridia-cerebellar ataxia-intellectual disability syndrome": [
+    "ITPR1"
+  ],
+  "antecubital pterygium syndrome": [
+    "PSD3"
+  ],
+  "anterior segment dysgenesis": [
+    "FOXE3"
+  ],
+  "anterior segment dysgenesis 7": [
+    "PXDN"
+  ],
+  "anterior segment dysgenesis 8": [
+    "CPAMD8"
+  ],
+  "aortic valve disease 3": [
+    "ROBO4"
+  ],
+  "apparent mineralocorticoid excess": [
+    "HSD11B2"
+  ],
+  "argininosuccinic aciduria": [
+    "ASL"
+  ],
+  "arhinia, choanal atresia, and microphthalmia": [
+    "SMCHD1"
+  ],
+  "aromatic L-amino acid decarboxylase deficiency": [
+    "DDC"
+  ],
+  "arrhythmogenic cardiomyopathy with variable ectodermal abnormalities": [
+    "PPP1R13L"
+  ],
+  "arrhythmogenic cardiomyopathy with wooly hair and keratoderma": [
+    "DSP"
+  ],
+  "arrhythmogenic right ventricular cardiomyopathy": [
+    "ACTC1",
+    "CDH2",
+    "CTNNA3",
+    "DES",
+    "DSG2",
+    "LDB3",
+    "LMNA",
+    "MYBPC3",
+    "MYH7",
+    "MYL2",
+    "MYL3",
+    "PKP2",
+    "PLN",
+    "RYR2",
+    "SCN5A",
+    "TGFB3",
+    "TJP1",
+    "TNNC1",
+    "TNNI3",
+    "TNNT2",
+    "TPM1",
+    "TTN"
+  ],
+  "arrhythmogenic right ventricular dysplasia 5": [
+    "TMEM43"
+  ],
+  "arterial calcification, generalized, of infancy, 1": [
+    "ENPP1"
+  ],
+  "arterial tortuosity syndrome": [
+    "SLC2A10"
+  ],
+  "arterial tortuosity-bone fragility syndrome": [
+    "EMILIN1"
+  ],
+  "arthrogryposis multiplex congenita": [
+    "VPS8"
+  ],
+  "arthrogryposis multiplex congenita 3, myogenic type": [
+    "SYNE1"
+  ],
+  "arthrogryposis syndrome": [
+    "MYO9A"
+  ],
+  "arthrogryposis, renal dysfunction, and cholestasis 1": [
+    "VPS33B"
+  ],
+  "arthrogryposis, renal dysfunction, and cholestasis 2": [
+    "VIPAS39"
+  ],
+  "aspartylglucosaminuria": [
+    "AGA"
+  ],
+  "asphyxiating thoracic dystrophy 2": [
+    "IFT80"
+  ],
+  "asphyxiating thoracic dystrophy 3": [
+    "DYNC2H1"
+  ],
+  "ataxia telangiectasia": [
+    "ATM"
+  ],
+  "ataxia with oculomotor apraxia type 3": [
+    "PIK3R5"
+  ],
+  "atransferrinemia": [
+    "TF"
+  ],
+  "atrial fibrillation": [
+    "SCN3B"
+  ],
+  "atypical glycine encephalopathy": [
+    "SLC6A9"
+  ],
+  "atypical hemolytic-uremic syndrome": [
+    "CD46",
+    "CFH",
+    "CFI",
+    "THBD"
+  ],
+  "atypical hemolytic-uremic syndrome with B factor anomaly": [
+    "CFB"
+  ],
+  "atypical hemolytic-uremic syndrome with C3 anomaly": [
+    "C3"
+  ],
+  "atypical hemolytic-uremic syndrome with DGKE deficiency": [
+    "DGKE"
+  ],
+  "auditory neuropathy": [
+    "DIAPH3"
+  ],
+  "aural atresia, congenital": [
+    "TSHZ1"
+  ],
+  "auriculocondylar syndrome": [
+    "EDN1",
+    "HDAC9"
+  ],
+  "auriculocondylar syndrome 2": [
+    "PLCB4"
+  ],
+  "autism spectrum disorder": [
+    "AVPR1A",
+    "SLC6A4",
+    "SLC9A9",
+    "TMLHE"
+  ],
+  "autoimmune disease": [
+    "IKZF1",
+    "NEIL3",
+    "PDCD1"
+  ],
+  "autoimmune enteropathy and endocrinopathy - susceptibility to chronic infections syndrome": [
+    "STAT1"
+  ],
+  "autoimmune lymphoproliferative syndrome due to CTLA4 haploinsufficiency": [
+    "CTLA4"
+  ],
+  "autoimmune lymphoproliferative syndrome type 1": [
+    "FASLG"
+  ],
+  "autoimmune lymphoproliferative syndrome type 2A": [
+    "CASP10"
+  ],
+  "autoimmune polyendocrine syndrome type 1": [
+    "AIRE"
+  ],
+  "autoinflammation, immune dysregulation, and eosinophilia": [
+    "JAK1"
+  ],
+  "autoinflammatory disease, multisystem, with immune dysregulation, X-linked": [
+    "DOCK11"
+  ],
+  "autoinflammatory syndrome with immunodeficiency": [
+    "SOCS1"
+  ],
+  "autoinflammatory syndrome, familial, X-linked, Behcet-like 2": [
+    "ELF4"
+  ],
+  "autosomal agammaglobulinemia": [
+    "TCF3"
+  ],
+  "autosomal dominant Robinow syndrome": [
+    "WNT5A"
+  ],
+  "autosomal dominant centronuclear myopathy": [
+    "DNM2"
+  ],
+  "autosomal dominant cerebellar ataxia": [
+    "NPTX1"
+  ],
+  "autosomal dominant cerebellar ataxia, deafness and narcolepsy": [
+    "DNMT1"
+  ],
+  "autosomal dominant combined immunodeficiency due to ERBIN deficiency": [
+    "ERBIN"
+  ],
+  "autosomal dominant epilepsy with auditory features": [
+    "LGI1"
+  ],
+  "autosomal dominant hypocalcemia 1": [
+    "CASR"
+  ],
+  "autosomal dominant macrothrombocytopenia": [
+    "TUBA4A"
+  ],
+  "autosomal dominant medullary cystic kidney disease with or without hyperuricemia": [
+    "APOA4",
+    "UMOD"
+  ],
+  "autosomal dominant nebulin-related myopathy": [
+    "NEB"
+  ],
+  "autosomal dominant nonsyndromic hearing loss": [
+    "ABCC1",
+    "ATP11A",
+    "ATP2B2",
+    "CD164",
+    "COL11A1",
+    "LMX1A",
+    "RIPOR2"
+  ],
+  "autosomal dominant osteopetrosis 2": [
+    "CLCN7"
+  ],
+  "autosomal dominant polycystic kidney disease": [
+    "ALG5",
+    "ALG8",
+    "DNAJB11",
+    "IFT140",
+    "NEK8",
+    "PKD1",
+    "PKD2"
+  ],
+  "autosomal dominant pseudohypoaldosteronism type 1": [
+    "NR3C2"
+  ],
+  "autosomal dominant slowed nerve conduction velocity": [
+    "ARHGEF10"
+  ],
+  "autosomal recessive agammaglobulinemia 1": [
+    "IGHM"
+  ],
+  "autosomal recessive ataxia, Beauce type": [
+    "SYNE1"
+  ],
+  "autosomal recessive cerebellar ataxia": [
+    "CWF19L1"
+  ],
+  "autosomal recessive cutis laxa type 2A": [
+    "ATP6V0A2"
+  ],
+  "autosomal recessive cutis laxa type 2B": [
+    "PYCR1"
+  ],
+  "autosomal recessive cutis laxa type 2C": [
+    "ATP6V1E1"
+  ],
+  "autosomal recessive cutis laxa type 2D": [
+    "ATP6V1A"
+  ],
+  "autosomal recessive limb-girdle muscular dystrophy": [
+    "ANO5",
+    "BVES",
+    "CAPN3",
+    "DYSF",
+    "HMGCR",
+    "JAG2",
+    "LIMS2",
+    "POGLUT1",
+    "POPDC3",
+    "SGCA",
+    "SGCB",
+    "SGCD",
+    "SGCG",
+    "TCAP",
+    "TRAPPC11",
+    "TRIM32"
+  ],
+  "autosomal recessive nonsyndromic hearing loss 102": [
+    "EPS8"
+  ],
+  "autosomal recessive nonsyndromic hearing loss 63": [
+    "LRTOMT"
+  ],
+  "autosomal recessive nonsyndromic hearing loss 7": [
+    "TMC1"
+  ],
+  "autosomal recessive nonsyndromic hearing loss 9": [
+    "OTOF"
+  ],
+  "autosomal recessive optic atrophy, OPA7 type": [
+    "TMEM126A"
+  ],
+  "autosomal recessive osteopetrosis 1": [
+    "TCIRG1"
+  ],
+  "autosomal recessive osteopetrosis 2": [
+    "TNFSF11"
+  ],
+  "autosomal recessive osteopetrosis 3": [
+    "CA2"
+  ],
+  "autosomal recessive osteopetrosis 4": [
+    "CLCN7"
+  ],
+  "autosomal recessive osteopetrosis 5": [
+    "OSTM1"
+  ],
+  "autosomal recessive osteopetrosis 6": [
+    "PLEKHM1"
+  ],
+  "autosomal recessive osteopetrosis 8": [
+    "SNX10"
+  ],
+  "autosomal recessive polycystic kidney disease": [
+    "DZIP1L",
+    "PKD1",
+    "PKHD1"
+  ],
+  "autosomal recessive primary microcephaly": [
+    "ASPM",
+    "CDK5RAP2",
+    "CENPE",
+    "STIL"
+  ],
+  "autosomal recessive severe congenital neutropenia due to G6PC3 deficiency": [
+    "G6PC3"
+  ],
+  "autosomal recessive spinocerebellar ataxia 10": [
+    "ANO10"
+  ],
+  "autosomal recessive spinocerebellar ataxia 20": [
+    "SNX14"
+  ],
+  "autosomal systemic lupus erythematosus type 16": [
+    "DNASE1L3"
+  ],
+  "band heterotopia of brain": [
+    "EML1"
+  ],
+  "benign familial infantile epilepsy": [
+    "CHRNA2"
+  ],
+  "bent bone dysplasia syndrome 1": [
+    "FGFR2"
+  ],
+  "beta-ketothiolase deficiency": [
+    "ACAT1"
+  ],
+  "beta-mannosidosis": [
+    "MANBA"
+  ],
+  "beta-thalassemia HBB/LCRB": [
+    "HBB"
+  ],
+  "bilateral frontoparietal polymicrogyria": [
+    "ADGRG1"
+  ],
+  "bile acid CoA:amino acid N-acyltransferase deficiency": [
+    "BAAT"
+  ],
+  "biotinidase deficiency": [
+    "BTD"
+  ],
+  "bleeding disorder, platelet-type, 21": [
+    "FLI1"
+  ],
+  "bleeding disorder, platelet-type, 22": [
+    "EPHB2"
+  ],
+  "blepharocheilodontic syndrome 2": [
+    "CTNND1"
+  ],
+  "bone marrow failure syndrome": [
+    "NPM1"
+  ],
+  "bone marrow failure syndrome 3": [
+    "DNAJC21"
+  ],
+  "bone marrow failure syndrome 4": [
+    "MYSM1"
+  ],
+  "bone marrow failure syndrome 6": [
+    "MDM4"
+  ],
+  "bradyopsia": [
+    "RGS9"
+  ],
+  "brain dopamine-serotonin vesicular transport disease": [
+    "SLC18A2"
+  ],
+  "brain malformations with or without urinary tract defects": [
+    "NFIA"
+  ],
+  "brain small vessel disease 3": [
+    "COLGALT1"
+  ],
+  "branched-chain keto acid dehydrogenase kinase deficiency": [
+    "BCKDK"
+  ],
+  "branchio-oto-renal syndrome": [
+    "EYA1",
+    "SIX1",
+    "SIX5"
+  ],
+  "campomelic dysplasia": [
+    "SOX9"
+  ],
+  "camptodactyly-arthropathy-coxa vara-pericarditis syndrome": [
+    "PRG4"
+  ],
+  "camptodactyly-tall stature-scoliosis-hearing loss syndrome": [
+    "FGFR3"
+  ],
+  "carbamoyl phosphate synthetase I deficiency disease": [
+    "CPS1"
+  ],
+  "cardiofaciocutaneous syndrome": [
+    "BRAF",
+    "KRAS",
+    "MAP2K1",
+    "MAP2K2",
+    "NRAS",
+    "PTPN11",
+    "RAF1",
+    "SHOC2",
+    "SOS1"
+  ],
+  "cardiofacioneurodevelopmental syndrome": [
+    "CCDC32"
+  ],
+  "cardiogenetic disease": [
+    "CACNB2"
+  ],
+  "carnitine palmitoyl transferase 1A deficiency": [
+    "CPT1A"
+  ],
+  "carnitine palmitoyltransferase II deficiency": [
+    "CPT2"
+  ],
+  "carnitine-acylcarnitine translocase deficiency": [
+    "SLC25A20"
+  ],
+  "cartilage-hair hypoplasia": [
+    "RMRP"
+  ],
+  "cataract 50 with or without glaucoma": [
+    "TRPM3"
+  ],
+  "catecholaminergic polymorphic ventricular tachycardia": [
+    "ANK2",
+    "CALM1",
+    "CALM2",
+    "CALM3",
+    "CASQ2",
+    "KCNJ2",
+    "PKP2",
+    "RYR2",
+    "TECRL",
+    "TRDN"
+  ],
+  "caveolinopathy": [
+    "CAV3"
+  ],
+  "central hypoventilation syndrome, congenital, 1, with or without Hirschsprung disease": [
+    "PHOX2B"
+  ],
+  "centronuclear myopathy": [
+    "BIN1",
+    "CCDC78"
+  ],
+  "cerebellar ataxia": [
+    "CA8"
+  ],
+  "cerebellar ataxia with neuropathy and bilateral vestibular areflexia syndrome": [
+    "RFC1"
+  ],
+  "cerebellar ataxia, intellectual disability, and dysequilibrium": [
+    "ATP8A2"
+  ],
+  "cerebellar ataxia, intellectual disability, and dysequilibrium syndrome 1": [
+    "VLDLR"
+  ],
+  "cerebellar dysfunction with variable cognitive and behavioral abnormalities": [
+    "CAMTA1"
+  ],
+  "cerebellar, ocular, craniofacial, and genital syndrome": [
+    "MAB21L1"
+  ],
+  "cerebral amyloid angiopathy, APP-related": [
+    "APP"
+  ],
+  "cerebral cavernous malformation 2": [
+    "CCM2"
+  ],
+  "cerebroretinal microangiopathy with calcifications and cysts 1": [
+    "CTC1"
+  ],
+  "cerebrotendinous xanthomatosis": [
+    "CYP27A1"
+  ],
+  "charcot-marie-tooth disease, axonal, type 2DD": [
+    "ATP1A1"
+  ],
+  "childhood-onset epilepsy syndrome": [
+    "KCNT1"
+  ],
+  "childhood-onset motor and cognitive regression syndrome with extrapyramidal movement disorder": [
+    "UBTF"
+  ],
+  "childhood-onset nemaline myopathy": [
+    "TNNI1"
+  ],
+  "choanal atresia-hearing loss-cardiac defects-craniofacial dysmorphism syndrome": [
+    "TXNL4A"
+  ],
+  "chondrodysplasia with joint dislocations, gPAPP type": [
+    "BPNT2"
+  ],
+  "choroideremia": [
+    "CHM"
+  ],
+  "ciliary dyskinesia, primary, 36, X-linked": [
+    "DNAAF6"
+  ],
+  "ciliary dyskinesia, primary, 38": [
+    "CFAP300"
+  ],
+  "ciliary dyskinesia, primary, 39": [
+    "LRRC56"
+  ],
+  "ciliary dyskinesia, primary, 40": [
+    "DNAH9"
+  ],
+  "ciliary dyskinesia, primary, 41": [
+    "GAS2L2"
+  ],
+  "ciliary dyskinesia, primary, 42": [
+    "MCIDAS"
+  ],
+  "ciliary dyskinesia, primary, 43": [
+    "FOXJ1"
+  ],
+  "ciliary dyskinesia, primary, 44": [
+    "NEK10"
+  ],
+  "ciliary dyskinesia, primary, 45": [
+    "TTC12"
+  ],
+  "ciliary dyskinesia, primary, 46": [
+    "STK36"
+  ],
+  "ciliary dyskinesia, primary, 47, and lissencephaly": [
+    "TP73"
+  ],
+  "ciliary dyskinesia, primary, 48, without situs inversus": [
+    "NME5"
+  ],
+  "ciliary dyskinesia, primary, 49, without situs inversus": [
+    "CFAP74"
+  ],
+  "ciliary dyskinesia, primary, 53": [
+    "CLXN"
+  ],
+  "ciliary dyskinesia, primary, 54": [
+    "CFAP54"
+  ],
+  "ciliopathy": [
+    "ADAMTS9",
+    "ARL2BP",
+    "ARL6",
+    "B9D1",
+    "B9D2",
+    "CC2D2A",
+    "CEP104",
+    "CFAP418",
+    "DCDC2",
+    "DNAJB11",
+    "IFT172",
+    "IFT27",
+    "IFT74",
+    "IQCB1",
+    "KATNIP",
+    "MKS1",
+    "PIBF1",
+    "RPGRIP1L",
+    "SUFU",
+    "TCTN3",
+    "TMEM138",
+    "TMEM216",
+    "TMEM231",
+    "TMEM67",
+    "TRAF3IP1",
+    "TULP3",
+    "TXNDC15",
+    "WDPCP",
+    "WDR19",
+    "ZNF423"
+  ],
+  "citrin deficiency": [
+    "SLC25A13"
+  ],
+  "citrullinemia type I": [
+    "ASS1"
+  ],
+  "classic homocystinuria": [
+    "CBS"
+  ],
+  "classic or attenuated familial adenomatous polyposis": [
+    "APC"
+  ],
+  "cleft lip/palate-ectodermal dysplasia syndrome": [
+    "NECTIN1"
+  ],
+  "cleft palate with or without ankyloglossia, X-linked": [
+    "TBX22"
+  ],
+  "cobblestone lissencephaly without muscular or ocular involvement": [
+    "LAMB1"
+  ],
+  "collagen 6-related myopathy": [
+    "COL6A1",
+    "COL6A2",
+    "COL6A3"
+  ],
+  "colobomatous microphthalmia-rhizomelic dysplasia syndrome": [
+    "MAB21L2"
+  ],
+  "colorectal cancer": [
+    "BLM",
+    "BUB1",
+    "MUTYH"
+  ],
+  "colorectal cancer, hereditary nonpolyposis, type 7": [
+    "MLH3"
+  ],
+  "colorectal cancer, susceptibility to, 1": [
+    "GALNT12"
+  ],
+  "combined PSAP deficiency": [
+    "PSAP"
+  ],
+  "combined immunodeficiency": [
+    "CRACR2A",
+    "ICOSLG",
+    "IRF4"
+  ],
+  "combined immunodeficiency due to CD3gamma deficiency": [
+    "CD3G"
+  ],
+  "combined immunodeficiency due to DOCK8 deficiency": [
+    "DOCK8"
+  ],
+  "combined immunodeficiency due to LRBA deficiency": [
+    "LRBA"
+  ],
+  "combined immunodeficiency due to MALT1 deficiency": [
+    "MALT1"
+  ],
+  "combined immunodeficiency due to OX40 deficiency": [
+    "TNFRSF4"
+  ],
+  "combined immunodeficiency due to RELA haploinsufficiency": [
+    "RELA"
+  ],
+  "combined immunodeficiency due to STIM1 deficiency": [
+    "STIM1"
+  ],
+  "combined immunodeficiency due to STK4 deficiency": [
+    "STK4"
+  ],
+  "combined immunodeficiency due to ZAP70 deficiency": [
+    "ZAP70"
+  ],
+  "combined immunodeficiency due to moesin deficiency": [
+    "MSN"
+  ],
+  "combined immunodeficiency, X-linked": [
+    "SASH3"
+  ],
+  "combined malonic and methylmalonic acidemia": [
+    "ACSF3"
+  ],
+  "combined pituitary hormone deficiencies, genetic form": [
+    "FOXA2"
+  ],
+  "common variable immunodeficiency": [
+    "CTNNBL1",
+    "ICOS",
+    "TNFSF12",
+    "TNFSF13"
+  ],
+  "complex cortical dysplasia with other brain malformations": [
+    "KIF26A",
+    "TUBB2B"
+  ],
+  "complex cortical dysplasia with other brain malformations 2": [
+    "KIF5C"
+  ],
+  "complex hereditary spastic paraplegia": [
+    "B4GALNT1",
+    "DSTYK",
+    "ENTPD1",
+    "GBA2",
+    "MAG",
+    "NT5C2",
+    "VPS37A"
+  ],
+  "complex movement disorder with or without neurodevelopmental features": [
+    "HPCA"
+  ],
+  "complex neurodevelopmental disorder": [
+    "AGO1",
+    "ANK2",
+    "AP1G1",
+    "AP2M1",
+    "BAZ2B",
+    "BRSK2",
+    "CACNA1D",
+    "CACNA2D2",
+    "CACNG2",
+    "CAMK2A",
+    "CC2D1A",
+    "CHAMP1",
+    "CHD1",
+    "CHD2",
+    "CHD8",
+    "CIC",
+    "CNOT1",
+    "CNOT3",
+    "CNOT9",
+    "CNTN2",
+    "CNTN4",
+    "CNTN6",
+    "CNTNAP2",
+    "CNTNAP5",
+    "CSDE1",
+    "CUL3",
+    "CYFIP2",
+    "DDX23",
+    "DLG4",
+    "DLGAP2",
+    "DPP6",
+    "DYRK1A",
+    "EEF1A2",
+    "EN2",
+    "EPB41L1",
+    "EXOC2",
+    "EXOC7",
+    "GABBR2",
+    "GABRB2",
+    "GABRD",
+    "GNAI1",
+    "GRIA1",
+    "GRIK2",
+    "GRIN1",
+    "GRIN2A",
+    "GRIN2B",
+    "GRIN2D",
+    "HECW2",
+    "HNRNPD",
+    "HNRNPU",
+    "KATNAL2",
+    "KCNB1",
+    "KCNC1",
+    "KCNQ2",
+    "KCNQ3",
+    "KIRREL3",
+    "KLHL20",
+    "KMT2E",
+    "KMT5B",
+    "KPTN",
+    "LAMC3",
+    "LINS1",
+    "MBD5",
+    "MBOAT7",
+    "MED13",
+    "MEF2C",
+    "MET",
+    "NBEA",
+    "NCKAP1",
+    "NOVA2",
+    "NR4A2",
+    "NRXN1",
+    "NTNG1",
+    "OTUD7A",
+    "PHF12",
+    "PHF21A",
+    "PIGA",
+    "PIGO",
+    "POU3F3",
+    "PPP2CA",
+    "PPP2R1A",
+    "PPP2R5D",
+    "PRICKLE2",
+    "PURA",
+    "RALA",
+    "RELN",
+    "RFX3",
+    "RFX7",
+    "RHOBTB2",
+    "RORB",
+    "SATB1",
+    "SCAF4",
+    "SCN2A",
+    "SCN8A",
+    "SETBP1",
+    "SETD1B",
+    "SHANK1",
+    "SHANK2",
+    "SLC4A10",
+    "SLC7A5",
+    "SMARCA5",
+    "SOX6",
+    "ST3GAL3",
+    "STAG1",
+    "SYNGAP1",
+    "TBL1XR1",
+    "TBR1",
+    "TCF7L2",
+    "TLK2",
+    "TNRC6B",
+    "TRIP12",
+    "YY1",
+    "ZBTB18",
+    "ZMIZ1",
+    "ZNF292"
+  ],
+  "complex neurodevelopmental disorder with motor features": [
+    "ADD3",
+    "CACNA1B",
+    "EMC1",
+    "KMT2B"
+  ],
+  "complex neurodevelopmental disorder with or without congenital anomalies": [
+    "KIF4A",
+    "MYH10",
+    "RERE",
+    "TRRAP"
+  ],
+  "cone dystrophy 3": [
+    "GUCA1A"
+  ],
+  "cone-rod dystrophy 2": [
+    "CRX"
+  ],
+  "cone-rod dystrophy 20": [
+    "POC1B"
+  ],
+  "cone-rod dystrophy and hearing loss": [
+    "CEP78"
+  ],
+  "cone-rod dystrophy and hearing loss 2": [
+    "CEP250"
+  ],
+  "congenital amegakaryocytic thrombocytopenia": [
+    "THPO"
+  ],
+  "congenital amegakaryocytic thrombocytopenia 1": [
+    "MPL"
+  ],
+  "congenital analbuminemia": [
+    "ALB"
+  ],
+  "congenital anomalies of kidney and urinary tract syndrome with or without hearing loss, abnormal ears, or developmental delay": [
+    "PBX1"
+  ],
+  "congenital anomaly of kidney and urinary tract": [
+    "CHD1L",
+    "UPK3A"
+  ],
+  "congenital bile acid synthesis defect 1": [
+    "HSD3B7"
+  ],
+  "congenital bile acid synthesis defect 2": [
+    "AKR1D1"
+  ],
+  "congenital bile acid synthesis defect 5": [
+    "ABCD3"
+  ],
+  "congenital bile acid synthesis defect 6": [
+    "ACOX2"
+  ],
+  "congenital brain dysgenesis due to glutamine synthetase deficiency": [
+    "GLUL"
+  ],
+  "congenital disorder of deglycosylation 1": [
+    "NGLY1"
+  ],
+  "congenital disorder of deglycosylation 2": [
+    "MAN2C1"
+  ],
+  "congenital disorder of glycosylation": [
+    "ALG10",
+    "ALG14",
+    "COG3",
+    "FAM20B",
+    "GFUS",
+    "MAN2A2",
+    "POFUT1"
+  ],
+  "congenital disorder of glycosylation type 1E": [
+    "DPM1"
+  ],
+  "congenital disorder of glycosylation type II": [
+    "ATP6AP1"
+  ],
+  "congenital disorder of glycosylation with defective fucosylation 1": [
+    "FUT8"
+  ],
+  "congenital disorder of glycosylation with defective fucosylation 2": [
+    "FCSK"
+  ],
+  "congenital disorder of glycosylation, type 2v": [
+    "EDEM3"
+  ],
+  "congenital disorder of glycosylation, type IIq": [
+    "COG2"
+  ],
+  "congenital disorder of glycosylation, type IIz": [
+    "CAMLG"
+  ],
+  "congenital disorder of glycosylation, type Iw, autosomal dominant": [
+    "STT3A"
+  ],
+  "congenital disorder of glycosylation, type iit": [
+    "GALNT2"
+  ],
+  "congenital dyserythropoietic anemia type 2": [
+    "SEC23B"
+  ],
+  "congenital factor V deficiency": [
+    "F5"
+  ],
+  "congenital factor X deficiency": [
+    "F10"
+  ],
+  "congenital factor XI deficiency": [
+    "F11"
+  ],
+  "congenital factor XII deficiency": [
+    "F12"
+  ],
+  "congenital fibrinogen deficiency": [
+    "FGA",
+    "FGB",
+    "FGG"
+  ],
+  "congenital fibrosis of extraocular muscles": [
+    "KIF21A"
+  ],
+  "congenital generalized lipodystrophy type 3": [
+    "CAV1"
+  ],
+  "congenital heart defects, multiple types, 7": [
+    "FLT4"
+  ],
+  "congenital heart disease": [
+    "ACVR1",
+    "ADAM17",
+    "ADAMTS19",
+    "ANKRD1",
+    "ATE1",
+    "BCL9",
+    "BMP10",
+    "BMPR2",
+    "CASZ1",
+    "CHRD",
+    "CITED2",
+    "COL1A2",
+    "CRELD1",
+    "CRIPTO",
+    "CRKL",
+    "CSRP1",
+    "CTNNA3",
+    "DAND5",
+    "DCHS1",
+    "DTNA",
+    "ETS1",
+    "FBLN2",
+    "FGF8",
+    "FMO5",
+    "FOXL1",
+    "FOXP1",
+    "GJA1",
+    "GJA5",
+    "HAND1",
+    "HAS2",
+    "HDAC1",
+    "HEY1",
+    "HEY2",
+    "ID2",
+    "IRX4",
+    "ISL1",
+    "KCNJ2",
+    "KDM5A",
+    "KIF20A",
+    "KLF13",
+    "LEFTY2",
+    "LRP2",
+    "MAML2",
+    "MED13L",
+    "MESP1",
+    "MYBPC3",
+    "MYH11",
+    "MYH7",
+    "NFATC1",
+    "NFATC2",
+    "NKX2-6",
+    "NRP1",
+    "NTRK3",
+    "OSR1",
+    "PCSK6",
+    "PDGFRA",
+    "PRKD1",
+    "PROX1",
+    "RAI2",
+    "RBFOX2",
+    "RECQL4",
+    "RNF40",
+    "ROBO1",
+    "ROCK2",
+    "RXRA",
+    "SCN5A",
+    "SMAD1",
+    "SMAD2",
+    "SMAD7",
+    "SNAI1",
+    "SOX7",
+    "SRF",
+    "TBX20",
+    "TCF21",
+    "TLL1",
+    "UGDH",
+    "USP34",
+    "USP44",
+    "VEGFA",
+    "WDR5",
+    "ZFPM1"
+  ],
+  "congenital high-molecular-weight kininogen deficiency": [
+    "KNG1"
+  ],
+  "congenital hypothalamic hamartoma syndrome": [
+    "SMO"
+  ],
+  "congenital microcephaly - severe encephalopathy - progressive cerebral atrophy syndrome": [
+    "ASNS"
+  ],
+  "congenital muscular dystrophy with intellectual disability and severe epilepsy": [
+    "DPM2"
+  ],
+  "congenital myasthenic syndrome 10": [
+    "DOK7"
+  ],
+  "congenital myasthenic syndrome 12": [
+    "GFPT1"
+  ],
+  "congenital myasthenic syndrome 17": [
+    "LRP4"
+  ],
+  "congenital myasthenic syndrome 2A": [
+    "CHRNB1"
+  ],
+  "congenital myasthenic syndrome 2C": [
+    "CHRNB1"
+  ],
+  "congenital myasthenic syndrome 6": [
+    "CHAT"
+  ],
+  "congenital myasthenic syndrome 7": [
+    "SYT2"
+  ],
+  "congenital myasthenic syndrome 8": [
+    "AGRN"
+  ],
+  "congenital myopathy": [
+    "HACD1",
+    "MYL1",
+    "RYR3"
+  ],
+  "congenital myopathy with myasthenic-like onset": [
+    "PAX7"
+  ],
+  "congenital nephrotic syndrome, Finnish type": [
+    "NPHS1"
+  ],
+  "congenital nervous system disorder": [
+    "UNC13A"
+  ],
+  "congenital plasminogen activator inhibitor type 1 deficiency": [
+    "SERPINE1"
+  ],
+  "congenital prothrombin deficiency": [
+    "F2"
+  ],
+  "congenital sideroblastic anemia-B-cell immunodeficiency-periodic fever-developmental delay syndrome": [
+    "TRNT1"
+  ],
+  "congenital thrombotic thrombocytopenic purpura": [
+    "ADAMTS13"
+  ],
+  "corpus callosum agenesis-intellectual disability-coloboma-micrognathia syndrome": [
+    "IGBP1"
+  ],
+  "cranioectodermal dysplasia 1": [
+    "IFT122"
+  ],
+  "cranioectodermal dysplasia 2": [
+    "WDR35"
+  ],
+  "craniofrontonasal syndrome": [
+    "EFNB1"
+  ],
+  "craniosynostosis 2": [
+    "MSX2"
+  ],
+  "craniosynostosis 4": [
+    "ERF"
+  ],
+  "craniosynostosis 6": [
+    "ZIC1"
+  ],
+  "craniosynostosis and dental anomalies": [
+    "IL11RA"
+  ],
+  "creatine transporter deficiency": [
+    "SLC6A8"
+  ],
+  "cutaneous porphyria": [
+    "UROS"
+  ],
+  "cutis laxa, autosomal dominant 1": [
+    "ELN"
+  ],
+  "cutis laxa, autosomal recessive, type 1B": [
+    "EFEMP2"
+  ],
+  "cystathioninuria": [
+    "CTH"
+  ],
+  "cystic kidney disease": [
+    "ALG6"
+  ],
+  "cystinosis": [
+    "CTNS"
+  ],
+  "cystinuria": [
+    "SLC3A1",
+    "SLC7A9"
+  ],
+  "cytosolic phospholipase-A2 alpha deficiency associated bleeding disorder": [
+    "PLA2G4A"
+  ],
+  "d-bifunctional protein deficiency": [
+    "HSD17B4"
+  ],
+  "deafness dystonia syndrome": [
+    "TIMM8A"
+  ],
+  "deafness with labyrinthine aplasia, microtia, and microdontia": [
+    "FGF3"
+  ],
+  "deficiency of adenosine deaminase 2": [
+    "ADA2"
+  ],
+  "dehydrated hereditary stomatocytosis with or without pseudohyperkalemia and/or perinatal edema": [
+    "PIEZO1"
+  ],
+  "demyelinating hereditary motor and sensory neuropathy": [
+    "FBLN5",
+    "MTMR2"
+  ],
+  "dentinogenesis imperfecta": [
+    "DSPP"
+  ],
+  "desmosterolosis": [
+    "DHCR24"
+  ],
+  "developmental and epileptic encephalopathy": [
+    "ABAT",
+    "ALG13",
+    "CACNA1E",
+    "CSTB",
+    "CUX2",
+    "DNM1",
+    "DOCK7",
+    "FGF12",
+    "FRRS1L",
+    "GABRB1",
+    "GABRB3",
+    "GLUL",
+    "GNAO1",
+    "ITPA",
+    "KCNA2",
+    "KCNC2",
+    "KCNQ3",
+    "NECAP1",
+    "PACS2",
+    "PLCB1",
+    "RYR3",
+    "SCN1B",
+    "SCN3A",
+    "SLC12A5",
+    "SLC25A22",
+    "SPTAN1",
+    "STXBP1",
+    "SYNJ1",
+    "SZT2",
+    "WWOX"
+  ],
+  "developmental and epileptic encephalopathy, 29": [
+    "AARS1"
+  ],
+  "developmental and epileptic encephalopathy, 41": [
+    "SLC1A2"
+  ],
+  "developmental and epileptic encephalopathy, 50": [
+    "CAD"
+  ],
+  "developmental and epileptic encephalopathy, 55": [
+    "PIGP"
+  ],
+  "developmental and epileptic encephalopathy, 77": [
+    "PIGQ"
+  ],
+  "developmental and epileptic encephalopathy, 80": [
+    "PIGB"
+  ],
+  "developmental delay with short stature, dysmorphic facial features, and sparse hair": [
+    "DPH1"
+  ],
+  "developmental delay with variable intellectual disability and dysmorphic facies": [
+    "JARID2"
+  ],
+  "developmental delay with variable intellectual impairment and behavioral abnormalities": [
+    "TCF20"
+  ],
+  "developmental delay, impaired speech, and behavioral abnormalities": [
+    "SPTBN1"
+  ],
+  "diaphyseal medullary stenosis-bone malignancy syndrome": [
+    "MTAP"
+  ],
+  "dicarboxylic aminoaciduria": [
+    "SLC1A1"
+  ],
+  "diencephalic-mesencephalic junction dysplasia syndrome 2": [
+    "GSX2"
+  ],
+  "diffuse cerebral and cerebellar atrophy - intractable seizures - progressive microcephaly syndrome": [
+    "QARS1"
+  ],
+  "dihydropteridine reductase deficiency": [
+    "QDPR"
+  ],
+  "dilated cardiomyopathy": [
+    "ABCC9",
+    "ACTC1",
+    "ANKRD1",
+    "BAG3",
+    "BAG5",
+    "CDH2",
+    "CSRP3",
+    "CTF1",
+    "DES",
+    "DSG2",
+    "DTNA",
+    "FBXO32",
+    "FLII",
+    "FLNC",
+    "GATA6",
+    "GATAD1",
+    "GET3",
+    "ILK",
+    "JPH2",
+    "LAMA4",
+    "LDB3",
+    "LMNA",
+    "LMOD2",
+    "LRRC10",
+    "MIB1",
+    "MYBPC3",
+    "MYH6",
+    "MYH7",
+    "MYL2",
+    "MYL3",
+    "MYLK3",
+    "MYPN",
+    "MYZAP",
+    "NEBL",
+    "NEXN",
+    "NPPA",
+    "NRAP",
+    "OBSCN",
+    "PDLIM3",
+    "PKP2",
+    "PLEKHM2",
+    "PPA2",
+    "PRDM16",
+    "PSEN1",
+    "PSEN2",
+    "RBM20",
+    "RPL3L",
+    "RTKN2",
+    "RYR2",
+    "SCN5A",
+    "SGCD",
+    "TBX20",
+    "TCAP",
+    "TMOD1",
+    "TNNC1",
+    "TNNI3",
+    "TNNI3K",
+    "TNNT2",
+    "TPM1",
+    "TTN",
+    "VCL",
+    "VEZF1"
+  ],
+  "dilated cardiomyopathy 1J": [
+    "EYA4"
+  ],
+  "dimethylglycine dehydrogenase deficiency": [
+    "DMGDH"
+  ],
+  "disorder of copper metabolism": [
+    "CCS"
+  ],
+  "distal hereditary motor neuropathy": [
+    "BSCL2",
+    "FBXO38",
+    "SETX",
+    "WARS1"
+  ],
+  "distal myopathy with vocal cord weakness": [
+    "MATR3"
+  ],
+  "dominant beta-thalassemia": [
+    "HBB"
+  ],
+  "dopa-responsive dystonia due to sepiapterin reductase deficiency": [
+    "SPR"
+  ],
+  "dyschromatosis universalis hereditaria 3": [
+    "ABCB6"
+  ],
+  "dyskeratosis congenita": [
+    "WRAP53"
+  ],
+  "dyskeratosis congenita and related telomere biology disorder": [
+    "RPA1"
+  ],
+  "dyskeratosis congenita, X-linked": [
+    "DKC1"
+  ],
+  "dyskeratosis congenita, autosomal dominant 1": [
+    "TERC"
+  ],
+  "dyskeratosis congenita, autosomal dominant 2": [
+    "TERT"
+  ],
+  "dyskeratosis congenita, autosomal dominant 3": [
+    "TINF2"
+  ],
+  "dyskeratosis congenita, autosomal recessive 2": [
+    "NHP2"
+  ],
+  "dyskinesia with orofacial involvement": [
+    "ADCY5"
+  ],
+  "dysosteosclerosis": [
+    "TCIRG1"
+  ],
+  "dysplasia of the proximal femoral epiphyses": [
+    "COL2A1"
+  ],
+  "dystonia 27": [
+    "COL6A3"
+  ],
+  "early-onset parkinsonism-intellectual disability syndrome": [
+    "RAB39B"
+  ],
+  "early-onset progressive diffuse brain atrophy-microcephaly-muscle weakness-optic atrophy syndrome": [
+    "TBCD"
+  ],
+  "ectodermal dysplasia 12, hypohidrotic/hair/tooth/nail type": [
+    "KDF1"
+  ],
+  "ectodermal dysplasia WNT10A related": [
+    "WNT10A"
+  ],
+  "ectodermal dysplasia and immunodeficiency 2": [
+    "NFKBIA"
+  ],
+  "ectrodactyly, ectodermal dysplasia, and cleft lip-palate syndrome 3": [
+    "TP63"
+  ],
+  "encephalopathy due to beta-mercaptolactate-cysteine disulfiduria": [
+    "MPST"
+  ],
+  "encephalopathy due to mitochondrial and peroxisomal fission defect": [
+    "DNM1L",
+    "MFF"
+  ],
+  "encephalopathy, progressive, with amyotrophy and optic atrophy": [
+    "TBCE"
+  ],
+  "enhanced S-cone syndrome": [
+    "NR2E3"
+  ],
+  "enlarged vestibular aqueduct syndrome": [
+    "FOXI1",
+    "KCNJ10"
+  ],
+  "epidermodysplasia verruciformis, susceptibility to, 4": [
+    "RHOH"
+  ],
+  "epidermolysis bullosa, junctional 7, with interstitial lung disease and nephrotic syndrome": [
+    "ITGA3"
+  ],
+  "epilepsy": [
+    "ADRA2B",
+    "CACNB4",
+    "CASR",
+    "CHRNA7",
+    "CLCN2",
+    "CPA6",
+    "CRH",
+    "EFHC1",
+    "GABRA1",
+    "GABRD",
+    "GABRG2",
+    "KPNA7",
+    "MAGI2",
+    "PRICKLE1",
+    "PRIMA1",
+    "RBFOX3",
+    "SCN9A",
+    "SRPX2",
+    "USP25"
+  ],
+  "episodic ataxia type 1": [
+    "KCNA1"
+  ],
+  "episodic ataxia type 6": [
+    "SLC1A3"
+  ],
+  "erythrocytosis, familial, 6": [
+    "HBB"
+  ],
+  "erythrocytosis, familial, 7": [
+    "HBA1",
+    "HBA2"
+  ],
+  "erythrokeratodermia variabilis": [
+    "GJB3"
+  ],
+  "erythrokeratodermia variabilis et progressiva 4": [
+    "KDSR"
+  ],
+  "exostoses, multiple, type 1": [
+    "EXT1"
+  ],
+  "exostoses, multiple, type 2": [
+    "EXT2"
+  ],
+  "extraoral halitosis due to methanethiol oxidase deficiency": [
+    "SELENBP1"
+  ],
+  "facial dysmorphism, hypertrichosis, epilepsy, intellectual/developmental delay, and gingival overgrowth syndrome": [
+    "KCNK4"
+  ],
+  "factor 5 and Factor VIII, combined deficiency of, 2": [
+    "MCFD2"
+  ],
+  "factor V and factor VIII, combined deficiency of, type 1": [
+    "LMAN1"
+  ],
+  "factor VII deficiency": [
+    "F7"
+  ],
+  "factor XIII, A subunit, deficiency of": [
+    "F13A1"
+  ],
+  "factor XIII, b subunit, deficiency of": [
+    "F13B"
+  ],
+  "familial Mediterranean fever": [
+    "MEFV"
+  ],
+  "familial acute necrotizing encephalopathy": [
+    "RANBP2"
+  ],
+  "familial adenomatous polyposis 2": [
+    "MUTYH"
+  ],
+  "familial adenomatous polyposis 4": [
+    "MSH3"
+  ],
+  "familial hemiplegic migraine": [
+    "SCN1A"
+  ],
+  "familial hemophagocytic lymphohistiocytosis 2": [
+    "PRF1"
+  ],
+  "familial hemophagocytic lymphohistiocytosis 3": [
+    "UNC13D"
+  ],
+  "familial hemophagocytic lymphohistiocytosis 4": [
+    "STX11"
+  ],
+  "familial hemophagocytic lymphohistiocytosis 5": [
+    "STXBP2"
+  ],
+  "familial hyperaldosteronism type III": [
+    "KCNJ5"
+  ],
+  "familial hyperreninemic hypoaldosteronism type 2": [
+    "CYP11B2"
+  ],
+  "familial hypertryptophanemia": [
+    "TDO2"
+  ],
+  "familial hypobetalipoproteinemia 1": [
+    "APOB"
+  ],
+  "familial hypobetalipoproteinemia 2": [
+    "ANGPTL3"
+  ],
+  "familial hypocalciuric hypercalcemia 1": [
+    "CASR"
+  ],
+  "familial isolated arrhythmogenic right ventricular dysplasia": [
+    "DSC2"
+  ],
+  "familial juvenile hyperuricemic nephropathy type 2": [
+    "REN"
+  ],
+  "familial meningioma": [
+    "SMARCE1"
+  ],
+  "familial ovarian cancer": [
+    "BARD1",
+    "BRIP1",
+    "CDH1",
+    "CHEK1",
+    "CHEK2",
+    "GEN1",
+    "MCPH1",
+    "MRE11",
+    "MUTYH",
+    "NF1",
+    "PIK3CA",
+    "RAD50",
+    "RECQL",
+    "RINT1",
+    "SLX4",
+    "STK11",
+    "XRCC2"
+  ],
+  "familial thoracic aortic aneurysm and aortic dissection": [
+    "BGN",
+    "FBN1",
+    "FLNA",
+    "FOXE3",
+    "LOX",
+    "MAT2A",
+    "MFAP5",
+    "MYH11",
+    "MYLK",
+    "PRKG1",
+    "TGFB2",
+    "TGFB3"
+  ],
+  "fatty acyl-CoA reductase 1 deficiency": [
+    "FAR1"
+  ],
+  "fatty acyl-CoA reductase 1 upregulation": [
+    "FAR1"
+  ],
+  "fetal akinesia, respiratory insufficiency, microcephaly, polymicrogyria, and dysmorphic facies": [
+    "ATP1A2"
+  ],
+  "fibrodysplasia ossificans progressiva": [
+    "ACVR1"
+  ],
+  "focal dermal hypoplasia": [
+    "PORCN"
+  ],
+  "focal epilepsy": [
+    "DEPDC5",
+    "NPRL2",
+    "NPRL3"
+  ],
+  "focal segmental glomerulosclerosis": [
+    "FAT1",
+    "SYNPO"
+  ],
+  "focal segmental glomerulosclerosis 3, susceptibility to": [
+    "CD2AP"
+  ],
+  "focal segmental glomerulosclerosis 4, susceptibility to": [
+    "APOL1"
+  ],
+  "focal segmental glomerulosclerosis 7": [
+    "PAX2"
+  ],
+  "focal segmental glomerulosclerosis 9": [
+    "CRB2"
+  ],
+  "focal segmental glomerulosclerosis and neurodevelopmental syndrome": [
+    "TRIM8"
+  ],
+  "foveal hypoplasia - optic nerve decussation defect - anterior segment dysgenesis syndrome": [
+    "SLC38A8"
+  ],
+  "fragile X syndrome": [
+    "FMR1"
+  ],
+  "free sialic acid storage disease": [
+    "SLC17A5"
+  ],
+  "frontonasal dysplasia - severe microphthalmia - severe facial clefting syndrome": [
+    "ALX1"
+  ],
+  "frontonasal dysplasia with alopecia and genital anomaly": [
+    "ALX4"
+  ],
+  "frontorhiny": [
+    "ALX3"
+  ],
+  "frontotemporal dementia and/or amyotrophic lateral sclerosis": [
+    "GRN"
+  ],
+  "frontotemporal dementia and/or amyotrophic lateral sclerosis 1": [
+    "C9orf72"
+  ],
+  "frontotemporal dementia and/or amyotrophic lateral sclerosis 2": [
+    "CHCHD10"
+  ],
+  "frontotemporal dementia and/or amyotrophic lateral sclerosis 3": [
+    "SQSTM1"
+  ],
+  "frontotemporal dementia and/or amyotrophic lateral sclerosis 4": [
+    "TBK1"
+  ],
+  "frontotemporal dementia and/or amyotrophic lateral sclerosis 5": [
+    "CCNF"
+  ],
+  "frontotemporal dementia and/or amyotrophic lateral sclerosis 7": [
+    "CHMP2B"
+  ],
+  "frontotemporal dementia and/or amyotrophic lateral sclerosis 8": [
+    "CYLD"
+  ],
+  "fructose-1,6-bisphosphatase deficiency": [
+    "FBP1"
+  ],
+  "fucosidosis": [
+    "FUCA1"
+  ],
+  "galactokinase deficiency": [
+    "GALK1"
+  ],
+  "galactose epimerase deficiency": [
+    "GALE"
+  ],
+  "galactosemia 4": [
+    "GALM"
+  ],
+  "galactosialidosis": [
+    "CTSA"
+  ],
+  "gastric adenocarcinoma and proximal polyposis of the stomach": [
+    "APC"
+  ],
+  "gastrointestinal stromal tumor": [
+    "KIT",
+    "PDGFRA"
+  ],
+  "gaze palsy, familial horizontal, with progressive scoliosis 1": [
+    "ROBO3"
+  ],
+  "generalized epilepsy with febrile seizures plus": [
+    "HCN1",
+    "SCN1A",
+    "SCN1B",
+    "STX1B"
+  ],
+  "generalized epilepsy-paroxysmal dyskinesia syndrome": [
+    "KCNMA1"
+  ],
+  "genetic developmental and epileptic encephalopathy": [
+    "ARX",
+    "SCN1A",
+    "SIK1",
+    "SNAP25",
+    "UBA5"
+  ],
+  "genitourinary and/or brain malformation syndrome": [
+    "PPP1R12A"
+  ],
+  "geroderma osteodysplastica": [
+    "GORAB"
+  ],
+  "ghosal hematodiaphyseal dysplasia": [
+    "TBXAS1"
+  ],
+  "giant axonal neuropathy 1": [
+    "GAN"
+  ],
+  "glaucoma 1, open angle, O": [
+    "NTF4"
+  ],
+  "glaucoma 3, primary congenital, D": [
+    "LTBP2"
+  ],
+  "glaucoma, normal tension, susceptibility to": [
+    "OPTN"
+  ],
+  "glomerulopathy with fibronectin deposits 2": [
+    "FN1"
+  ],
+  "glutamate pyruvate transaminase 2 deficiency": [
+    "GPT2"
+  ],
+  "glutaminase deficiency": [
+    "GLS"
+  ],
+  "glutaric acidemia type 3": [
+    "SUGCT"
+  ],
+  "glutaryl-CoA dehydrogenase deficiency": [
+    "GCDH"
+  ],
+  "glyceronephosphate O-acyltransferase deficiency": [
+    "GNPAT"
+  ],
+  "glycine N-methyltransferase deficiency": [
+    "GNMT"
+  ],
+  "glycine encephalopathy": [
+    "AMT",
+    "GLDC"
+  ],
+  "glycogen storage disease I": [
+    "G6PC1"
+  ],
+  "glycogen storage disease II": [
+    "GAA"
+  ],
+  "glycogen storage disease III": [
+    "AGL"
+  ],
+  "glycogen storage disease IXb": [
+    "PHKB"
+  ],
+  "glycogen storage disease IXc": [
+    "PHKG2"
+  ],
+  "glycogen storage disease IXd": [
+    "PHKA1"
+  ],
+  "glycogen storage disease V": [
+    "PYGM"
+  ],
+  "glycogen storage disease VI": [
+    "PYGL"
+  ],
+  "glycogen storage disease due to glycogen branching enzyme deficiency": [
+    "GBE1"
+  ],
+  "glycogen storage disease due to muscle and heart glycogen synthase deficiency": [
+    "GYS1"
+  ],
+  "glycogen storage disorder due to hepatic glycogen synthase deficiency": [
+    "GYS2"
+  ],
+  "glycosylphosphatidylinositol biosynthesis defect 15": [
+    "GPAA1"
+  ],
+  "glycosylphosphatidylinositol biosynthesis defect 16": [
+    "PIGC"
+  ],
+  "glycosylphosphatidylinositol biosynthesis defect 17": [
+    "PIGH"
+  ],
+  "glycosylphosphatidylinositol biosynthesis defect 18": [
+    "PIGS"
+  ],
+  "glycosylphosphatidylinositol biosynthesis defect 21": [
+    "PIGU"
+  ],
+  "gnathodiaphyseal dysplasia": [
+    "ANO5"
+  ],
+  "granulocytopenia with immunoglobulin abnormality": [
+    "HYOU1"
+  ],
+  "gray platelet syndrome": [
+    "NBEAL2"
+  ],
+  "growth hormone insensitivity with immune dysregulation 1, autosomal recessive": [
+    "STAT5B"
+  ],
+  "guanidinoacetate methyltransferase deficiency": [
+    "GAMT"
+  ],
+  "hand-foot-genital syndrome": [
+    "HOXA13"
+  ],
+  "hawkinsinuria": [
+    "HPD"
+  ],
+  "hearing impairment and infertile male syndrome": [
+    "CDC14A"
+  ],
+  "hearing loss disorder": [
+    "FOXI1"
+  ],
+  "hearing loss, X-linked 6": [
+    "COL4A6"
+  ],
+  "hearing loss, autosomal recessive": [
+    "PDZD7",
+    "PPIP5K2",
+    "PTPRQ",
+    "SLC22A4",
+    "TMEM132E",
+    "TRIOBP",
+    "WBP2"
+  ],
+  "hearing loss, autosomal recessive 119": [
+    "AFG2B"
+  ],
+  "heme oxygenase 1 deficiency": [
+    "HMOX1"
+  ],
+  "hemiplegic migraine-developmental and epileptic encephalopathy spectrum": [
+    "ATP1A2"
+  ],
+  "hemochromatosis type 1": [
+    "HFE"
+  ],
+  "hemochromatosis type 2A": [
+    "HJV"
+  ],
+  "hemochromatosis type 2B": [
+    "HAMP"
+  ],
+  "hemochromatosis type 3": [
+    "TFR2"
+  ],
+  "hemochromatosis type 5": [
+    "FTH1"
+  ],
+  "hemoglobin M disease": [
+    "HBB"
+  ],
+  "hemolytic uremic syndrome, atypical, 8, with rhizomelic short stature": [
+    "C1GALT1C1"
+  ],
+  "hemophagocytic lymphohistiocytosis due to RhoG deficiency": [
+    "RHOG"
+  ],
+  "hemophilia A": [
+    "F8"
+  ],
+  "hemophilia B": [
+    "F9"
+  ],
+  "heparin cofactor 2 deficiency": [
+    "SERPIND1"
+  ],
+  "hepatic veno-occlusive disease-immunodeficiency syndrome": [
+    "SP110"
+  ],
+  "hereditary angioedema type 3": [
+    "F12"
+  ],
+  "hereditary angioedema with C1Inh deficiency": [
+    "SERPING1"
+  ],
+  "hereditary antithrombin deficiency": [
+    "SERPINC1"
+  ],
+  "hereditary ataxia": [
+    "PCNA"
+  ],
+  "hereditary breast carcinoma": [
+    "ATRIP",
+    "BRIP1",
+    "CHEK1",
+    "EPCAM",
+    "FANCM",
+    "GEN1",
+    "MCPH1",
+    "MLH1",
+    "MRE11",
+    "MSH2",
+    "MSH6",
+    "MUTYH",
+    "NBN",
+    "PIK3CA",
+    "PMS2",
+    "RAD50",
+    "RECQL",
+    "RINT1",
+    "SLX4",
+    "XRCC2"
+  ],
+  "hereditary chronic pancreatitis": [
+    "PRSS1"
+  ],
+  "hereditary fructose intolerance": [
+    "ALDOB"
+  ],
+  "hereditary leiomyomatosis and renal cell cancer": [
+    "FH"
+  ],
+  "hereditary mixed polyposis syndrome": [
+    "GREM1"
+  ],
+  "hereditary neuropathy with liability to pressure palsies": [
+    "PMP22"
+  ],
+  "hereditary nonpolyposis colon cancer": [
+    "CDKN1B",
+    "CHEK2",
+    "CTNNA1",
+    "EPHX1",
+    "FAN1",
+    "NFKBIZ",
+    "PTPRJ",
+    "SMARCA4",
+    "XRCC4"
+  ],
+  "hereditary peripheral neuropathy": [
+    "IGHMBP2"
+  ],
+  "hereditary pheochromocytoma-paraganglioma": [
+    "MAX",
+    "SDHA",
+    "SDHAF2",
+    "SDHB",
+    "SDHC",
+    "SDHD",
+    "TMEM127"
+  ],
+  "hereditary sclerosing poikiloderma with tendon and pulmonary involvement": [
+    "FAM111B"
+  ],
+  "hereditary sensory and autonomic neuropathy": [
+    "NGF",
+    "RETREG1"
+  ],
+  "hereditary sensory and autonomic neuropathy type 4": [
+    "NTRK1"
+  ],
+  "hereditary sensory and autonomic neuropathy type 6": [
+    "DST"
+  ],
+  "hereditary spastic paraplegia": [
+    "AP5Z1",
+    "ARL6IP1",
+    "CPT1C",
+    "CYP2U1",
+    "DDHD1",
+    "UCHL1"
+  ],
+  "hereditary spastic paraplegia 11": [
+    "SPG11"
+  ],
+  "hereditary spastic paraplegia 18": [
+    "ERLIN2"
+  ],
+  "hereditary spastic paraplegia 33": [
+    "ZFYVE27"
+  ],
+  "hereditary spastic paraplegia 35": [
+    "FA2H"
+  ],
+  "hereditary spastic paraplegia 62": [
+    "ERLIN1"
+  ],
+  "hereditary spastic paraplegia 8": [
+    "WASHC5"
+  ],
+  "hereditary spherocytosis": [
+    "ANK1"
+  ],
+  "hereditary thrombocytopenia and hematologic cancer predisposition syndrome": [
+    "RUNX1"
+  ],
+  "hereditary thrombophilia due to congenital histidine-rich (poly-L) glycoprotein deficiency": [
+    "HRG"
+  ],
+  "hereditary thrombophilia due to congenital protein C deficiency": [
+    "PROC"
+  ],
+  "hereditary von Willebrand disease": [
+    "VWF"
+  ],
+  "high myopia-sensorineural deafness syndrome": [
+    "SLITRK6"
+  ],
+  "histidinemia": [
+    "HAL"
+  ],
+  "holocarboxylase synthetase deficiency": [
+    "HLCS"
+  ],
+  "holoprosencephaly": [
+    "DISP1",
+    "GAS1"
+  ],
+  "holoprosencephaly 12 with or without pancreatic agenesis": [
+    "CNOT1"
+  ],
+  "homocystinuria due to methylene tetrahydrofolate reductase deficiency": [
+    "MTHFR"
+  ],
+  "hyaline fibromatosis syndrome": [
+    "ANTXR2"
+  ],
+  "hydrolethalus syndrome": [
+    "HYLS1"
+  ],
+  "hydroxyprolinemia": [
+    "PRODH2"
+  ],
+  "hyper-IgE recurrent infection syndrome 1, autosomal dominant": [
+    "STAT3"
+  ],
+  "hyper-IgE recurrent infection syndrome 3, autosomal recessive": [
+    "ZNF341"
+  ],
+  "hyper-IgE recurrent infection syndrome 5, autosomal recessive": [
+    "IL6R"
+  ],
+  "hyper-IgE syndrome 6, autosomal dominant, with recurrent infections": [
+    "STAT6"
+  ],
+  "hyper-IgM syndrome type 1": [
+    "CD40LG"
+  ],
+  "hyper-IgM syndrome type 2": [
+    "AICDA"
+  ],
+  "hyper-IgM syndrome type 3": [
+    "CD40"
+  ],
+  "hyper-IgM syndrome type 5": [
+    "UNG"
+  ],
+  "hyperammonemia due to N-acetylglutamate synthase deficiency": [
+    "NAGS"
+  ],
+  "hyperammonemic encephalopathy due to carbonic anhydrase VA deficiency": [
+    "CA5A"
+  ],
+  "hyperargininemia": [
+    "ARG1"
+  ],
+  "hyperbiliverdinemia": [
+    "BLVRA"
+  ],
+  "hypercalcemia, infantile, 2": [
+    "SLC34A1"
+  ],
+  "hypercholesterolemia, autosomal dominant, 3": [
+    "PCSK9"
+  ],
+  "hypercholesterolemia, autosomal dominant, type B": [
+    "APOB"
+  ],
+  "hypercholesterolemia, familial, 1": [
+    "LDLR"
+  ],
+  "hypercholesterolemia, familial, 4": [
+    "LDLRAP1"
+  ],
+  "hypercoagulability syndrome due to glycosylphosphatidylinositol deficiency": [
+    "PIGM"
+  ],
+  "hyperinsulinemic hypoglycemia with polycystic kidney disease": [
+    "PMM2"
+  ],
+  "hyperinsulinemic hypoglycemia, familial, 1": [
+    "ABCC8"
+  ],
+  "hyperinsulinism": [
+    "ABCC8"
+  ],
+  "hyperinsulinism-hyperammonemia syndrome": [
+    "GLUD1"
+  ],
+  "hyperlysinemia": [
+    "AASS"
+  ],
+  "hypermethioninemia with deficiency of S-adenosylhomocysteine hydrolase": [
+    "AHCY"
+  ],
+  "hyperparathyroidism 2 with jaw tumors": [
+    "CDC73"
+  ],
+  "hyperphenylalaninemia due to DNAJC12 deficiency": [
+    "DNAJC12"
+  ],
+  "hyperphosphatasia with intellectual disability syndrome 1": [
+    "PIGV"
+  ],
+  "hyperphosphatasia with intellectual disability syndrome 4": [
+    "PGAP3"
+  ],
+  "hyperphosphatasia with intellectual disability syndrome 5": [
+    "PIGW"
+  ],
+  "hyperphosphatasia with intellectual disability syndrome 6": [
+    "PIGY"
+  ],
+  "hyperprolinemia type 1": [
+    "PRODH"
+  ],
+  "hyperprolinemia type 2": [
+    "ALDH4A1"
+  ],
+  "hyperthyroxinemia, familial dysalbuminemic": [
+    "ALB"
+  ],
+  "hypertrichotic osteochondrodysplasia Cantu type": [
+    "ABCC9"
+  ],
+  "hypertrophic cardiomyopathy": [
+    "ACTC1",
+    "ALPK3",
+    "ANKRD1",
+    "CALR3",
+    "CASQ2",
+    "CSRP3",
+    "DSP",
+    "FHOD3",
+    "JPH2",
+    "KCNQ1",
+    "KLF10",
+    "KLHL24",
+    "LDB3",
+    "MT-TI",
+    "MYBPC3",
+    "MYH6",
+    "MYH7",
+    "MYL2",
+    "MYL3",
+    "MYLK2",
+    "MYOM1",
+    "MYOZ2",
+    "MYPN",
+    "NEXN",
+    "OBSCN",
+    "PDLIM3",
+    "RBM20",
+    "RPS6KB1",
+    "RYR2",
+    "TCAP",
+    "TMPO",
+    "TNNC1",
+    "TNNC2",
+    "TNNI3",
+    "TNNT2",
+    "TPM1",
+    "TRIM63",
+    "TTN",
+    "VCL"
+  ],
+  "hypervalinemia and hyperleucine-isoleucinemia": [
+    "BCAT2"
+  ],
+  "hypochondroplasia": [
+    "FGFR3"
+  ],
+  "hypogonadotropic hypogonadism 1 with or without anosmia": [
+    "ANOS1"
+  ],
+  "hypogonadotropic hypogonadism 3 with or without anosmia": [
+    "PROKR2"
+  ],
+  "hypogonadotropic hypogonadism 4 with or without anosmia": [
+    "PROK2"
+  ],
+  "hypokalemic alkalosis, familial, with specific renal tubulopathy": [
+    "KCNJ16"
+  ],
+  "hypomagnesemia, seizures, and intellectual disability 1": [
+    "CNNM2"
+  ],
+  "hypomyelinating leukodystrophy 13": [
+    "HIKESHI"
+  ],
+  "hypomyelinating leukodystrophy 2": [
+    "GJC2"
+  ],
+  "hypomyelinating leukodystrophy 3": [
+    "AIMP1"
+  ],
+  "hypomyelinating leukodystrophy 5": [
+    "HYCC1"
+  ],
+  "hypoparathyroidism-deafness-renal disease syndrome": [
+    "GATA3"
+  ],
+  "hypopigmentation, organomegaly, and delayed myelination and development": [
+    "CLCN7"
+  ],
+  "hypopigmentation-punctate palmoplantar keratoderma syndrome": [
+    "ENPP1"
+  ],
+  "hypoplasminogenemia": [
+    "PLG"
+  ],
+  "hypoproteinemia, hypercatabolic": [
+    "B2M"
+  ],
+  "hypotaurinemic retinal degeneration and cardiomyopathy": [
+    "SLC6A6"
+  ],
+  "hypotonia, ataxia, and delayed development syndrome": [
+    "EBF3"
+  ],
+  "hypotonia, infantile, with psychomotor retardation and characteristic facies 2": [
+    "UNC80"
+  ],
+  "ichthyosiform erythroderma, corneal involvement, and hearing loss": [
+    "AP1B1"
+  ],
+  "idiopathic multidrug-resistant nephrotic syndrome": [
+    "DAAM2"
+  ],
+  "idiopathic pulmonary fibrosis": [
+    "ELMOD2"
+  ],
+  "iminoglycinuria": [
+    "SLC36A2"
+  ],
+  "immune dysregulation, autoimmunity, and autoinflammation": [
+    "PLCG1"
+  ],
+  "immune dysregulation-inflammatory bowel disease-arthritis-recurrent infections syndrome": [
+    "IL10"
+  ],
+  "immune dysregulation-polyendocrinopathy-enteropathy-X-linked syndrome": [
+    "FOXP3"
+  ],
+  "immunodeficiency 104": [
+    "IL7R",
+    "PTPRC"
+  ],
+  "immunodeficiency 106, susceptibility to viral infections": [
+    "IFNAR1"
+  ],
+  "immunodeficiency 109 with lymphoproliferation": [
+    "TNFRSF9"
+  ],
+  "immunodeficiency 114, folate-responsive": [
+    "SLC19A1"
+  ],
+  "immunodeficiency 115 with autoinflammation": [
+    "RNF31"
+  ],
+  "immunodeficiency 11b with atopic dermatitis": [
+    "CARD11"
+  ],
+  "immunodeficiency 121 with autoinflammation": [
+    "PSMB10"
+  ],
+  "immunodeficiency 122": [
+    "POLD3"
+  ],
+  "immunodeficiency 123 with HPV-related verrucosis": [
+    "CD28"
+  ],
+  "immunodeficiency 14": [
+    "PIK3CD"
+  ],
+  "immunodeficiency 14b, autosomal recessive": [
+    "PIK3CD"
+  ],
+  "immunodeficiency 15a": [
+    "IKBKB"
+  ],
+  "immunodeficiency 18": [
+    "CD3E"
+  ],
+  "immunodeficiency 19": [
+    "CD3D"
+  ],
+  "immunodeficiency 23": [
+    "PGM3"
+  ],
+  "immunodeficiency 25": [
+    "CD247"
+  ],
+  "immunodeficiency 31B": [
+    "STAT1"
+  ],
+  "immunodeficiency 37": [
+    "BCL10"
+  ],
+  "immunodeficiency 53": [
+    "RELB"
+  ],
+  "immunodeficiency 57": [
+    "RIPK1"
+  ],
+  "immunodeficiency 60": [
+    "BACH2"
+  ],
+  "immunodeficiency 61": [
+    "SH3KBP1"
+  ],
+  "immunodeficiency 62": [
+    "ARHGEF1"
+  ],
+  "immunodeficiency 63 with lymphoproliferation and autoimmunity": [
+    "IL2RB"
+  ],
+  "immunodeficiency 64": [
+    "RASGRP1"
+  ],
+  "immunodeficiency 73b with defective neutrophil chemotaxis and lymphopenia": [
+    "RAC2"
+  ],
+  "immunodeficiency 73c with defective neutrophil chemotaxis and hypogammaglobulinemia": [
+    "RAC2"
+  ],
+  "immunodeficiency 76": [
+    "FCHO1"
+  ],
+  "immunodeficiency 78 with autoimmunity and developmental delay": [
+    "TPP2"
+  ],
+  "immunodeficiency 80 with or without congenital cardiomyopathy": [
+    "MCM10"
+  ],
+  "immunodeficiency 81": [
+    "LCP2"
+  ],
+  "immunodeficiency 84": [
+    "IKZF3"
+  ],
+  "immunodeficiency 87 and autoimmunity": [
+    "DEF6"
+  ],
+  "immunodeficiency 92": [
+    "REL"
+  ],
+  "immunodeficiency 96": [
+    "LIG1"
+  ],
+  "immunodeficiency 97 with autoinflammation": [
+    "PIK3CG"
+  ],
+  "immunodeficiency disease": [
+    "IL21R"
+  ],
+  "immunodeficiency due to CD25 deficiency": [
+    "IL2RA"
+  ],
+  "immunodeficiency, common variable, 1": [
+    "INO80"
+  ],
+  "immunodeficiency, common variable, 10": [
+    "NFKB2"
+  ],
+  "immunodeficiency, common variable, 12": [
+    "NFKB1"
+  ],
+  "immunodeficiency, common variable, 14": [
+    "IRF2BP2"
+  ],
+  "immunodeficiency, common variable, 2": [
+    "TNFRSF13B"
+  ],
+  "immunodeficiency, common variable, 3": [
+    "CD19"
+  ],
+  "immunodeficiency, common variable, 4": [
+    "TNFRSF13C"
+  ],
+  "immunodeficiency, common variable, 5": [
+    "MS4A1"
+  ],
+  "immunodeficiency, common variable, 6": [
+    "CD81"
+  ],
+  "immunodeficiency, common variable, 7": [
+    "CR2"
+  ],
+  "immunodeficiency, developmental delay, and hypohomocysteinemia": [
+    "NFE2L2"
+  ],
+  "immunodeficiency-centromeric instability-facial anomalies syndrome 1": [
+    "DNMT3B"
+  ],
+  "immunodeficiency-centromeric instability-facial anomalies syndrome 2": [
+    "ZBTB24"
+  ],
+  "immunodeficiency-centromeric instability-facial anomalies syndrome 3": [
+    "CDCA7"
+  ],
+  "immunodeficiency-centromeric instability-facial anomalies syndrome 4": [
+    "HELLS"
+  ],
+  "inborn disorder of cobalamin metabolism and transport": [
+    "MMADHC"
+  ],
+  "inborn disorder of lysine and hydroxylysine metabolism": [
+    "HYKK"
+  ],
+  "inborn glycerol kinase deficiency": [
+    "GK"
+  ],
+  "inclusion body myopathy with Paget disease of bone and frontotemporal dementia": [
+    "VCP"
+  ],
+  "inclusion body myopathy with early-onset Paget disease with or without frontotemporal dementia 2": [
+    "HNRNPA2B1"
+  ],
+  "incontinentia pigmenti": [
+    "IKBKG"
+  ],
+  "infantile cataract, skin abnormalities, glutamate excess, and impaired intellectual development": [
+    "GLS"
+  ],
+  "infantile convulsions and choreoathetosis": [
+    "PRRT2"
+  ],
+  "infantile-onset epilepsy": [
+    "KCNH5"
+  ],
+  "inflammatory bowel disease": [
+    "ANKZF1"
+  ],
+  "inflammatory bowel disease 25": [
+    "IL10RB"
+  ],
+  "inflammatory bowel disease 28": [
+    "IL10RA"
+  ],
+  "inflammatory bowel disease, immunodeficiency, and encephalopathy": [
+    "TGFB1"
+  ],
+  "inherited blood coagulation disorder": [
+    "APOLD1"
+  ],
+  "inherited fatty acid metabolism disorder": [
+    "CPT1B"
+  ],
+  "inherited focal segmental glomerulosclerosis": [
+    "CD2AP"
+  ],
+  "inherited glutathione synthetase deficiency": [
+    "GSS"
+  ],
+  "inherited neurodegenerative disorder": [
+    "KIF5A"
+  ],
+  "inherited prekallikrein deficiency": [
+    "KLKB1"
+  ],
+  "inherited pseudoxanthoma elasticum": [
+    "ABCC6"
+  ],
+  "inherited retinal dystrophy": [
+    "AGBL5",
+    "AIPL1",
+    "ARHGEF18",
+    "C1QTNF5",
+    "GNAT1",
+    "HGSNAT",
+    "KCNJ13",
+    "KCNV2",
+    "NR2E3",
+    "PDE6B",
+    "PRPF4",
+    "REEP6",
+    "RHO",
+    "SLC24A1",
+    "SPATA7"
+  ],
+  "inherited thrombocytopenia": [
+    "NOTCH3"
+  ],
+  "intellectual developmental disorder 59": [
+    "CAMK2G"
+  ],
+  "intellectual developmental disorder with autistic features and language delay, with or without seizures": [
+    "TANC2"
+  ],
+  "intellectual developmental disorder with cardiac defects and dysmorphic facies": [
+    "TMEM94"
+  ],
+  "intellectual developmental disorder with speech delay and axonal peripheral neuropathy": [
+    "NEMF"
+  ],
+  "intellectual developmental disorder with speech delay, dysmorphic facies, and t-cell abnormalities": [
+    "BCL11B"
+  ],
+  "intellectual developmental disorder, autosomal dominant 65": [
+    "KDM4B"
+  ],
+  "intellectual developmental disorder, autosomal recessive 75, with neuropsychiatric features and variant lissencephaly": [
+    "PIDD1"
+  ],
+  "intellectual disability": [
+    "ANK3",
+    "CDH15",
+    "CRBN",
+    "KDM5B",
+    "SET",
+    "TECR",
+    "TUSC3",
+    "ZC3H14"
+  ],
+  "intellectual disability, X-linked 106": [
+    "OGT"
+  ],
+  "intellectual disability, X-linked 107": [
+    "STEEP1"
+  ],
+  "intellectual disability, autosomal dominant 42": [
+    "GNB1"
+  ],
+  "intellectual disability, autosomal recessive 61": [
+    "RUSC2"
+  ],
+  "intellectual disability-microcephaly-strabismus-behavioral abnormalities syndrome": [
+    "POGZ"
+  ],
+  "intellectual disability-obesity-brain malformations-facial dysmorphism syndrome": [
+    "TRAPPC9"
+  ],
+  "intellectual disability-severe speech delay-mild dysmorphism syndrome": [
+    "FOXP1"
+  ],
+  "intellectual disability-sparse hair-brachydactyly syndrome": [
+    "SMARCA2"
+  ],
+  "intellectual disability-strabismus syndrome": [
+    "ADAT3"
+  ],
+  "interstitial lung disease 1": [
+    "SFTPA1"
+  ],
+  "interstitial lung disease 2": [
+    "SFTPA2"
+  ],
+  "interstitial lung disease due to ABCA3 deficiency": [
+    "ABCA3"
+  ],
+  "intestinal polyposis syndrome": [
+    "MLH3"
+  ],
+  "intrinsic cardiomyopathy": [
+    "PLN"
+  ],
+  "iron overload, susceptibility to": [
+    "BMP6"
+  ],
+  "isobutyryl-CoA dehydrogenase deficiency": [
+    "ACAD8"
+  ],
+  "isolated Pierre-Robin syndrome": [
+    "SOX9"
+  ],
+  "isolated growth hormone deficiency type III": [
+    "BTK"
+  ],
+  "isolated sulfite oxidase deficiency": [
+    "SUOX"
+  ],
+  "isovaleric acidemia": [
+    "IVD"
+  ],
+  "juvenile polyposis syndrome": [
+    "BMPR1A",
+    "ENG"
+  ],
+  "juvenile polyposis/hereditary hemorrhagic telangiectasia syndrome": [
+    "SMAD4"
+  ],
+  "kidney disorder": [
+    "SLC41A1"
+  ],
+  "lethal osteosclerotic bone dysplasia": [
+    "FAM20C"
+  ],
+  "leukemia, acute lymphoblastic, susceptibility to, 3": [
+    "PAX5"
+  ],
+  "leukocyte adhesion deficiency 3": [
+    "FERMT3"
+  ],
+  "leukocyte adhesion deficiency type II": [
+    "SLC35C1"
+  ],
+  "leukodystrophy, hypomyelinating, 17": [
+    "AIMP2"
+  ],
+  "leukodystrophy, hypomyelinating, 18": [
+    "DEGS1"
+  ],
+  "leukodystrophy, hypomyelinating, 21": [
+    "POLR3K"
+  ],
+  "leukoencephalopathy with vanishing white matter 1": [
+    "EIF2B1"
+  ],
+  "leukoencephalopathy with vanishing white matter 2": [
+    "EIF2B2"
+  ],
+  "leukoencephalopathy with vanishing white matter 3": [
+    "EIF2B3"
+  ],
+  "leukoencephalopathy with vanishing white matter 4": [
+    "EIF2B4"
+  ],
+  "leukoencephalopathy with vanishing white matter 5": [
+    "EIF2B5"
+  ],
+  "leukoencephalopathy, diffuse hereditary, with spheroids 1": [
+    "CSF1R"
+  ],
+  "lipodystrophy": [
+    "AGPAT2",
+    "BSCL2",
+    "CAV1",
+    "CAVIN1",
+    "LMNA",
+    "PPARG"
+  ],
+  "lissencephaly 10": [
+    "CEP85L"
+  ],
+  "lissencephaly spectrum disorder with complex brainstem malformation": [
+    "MACF1"
+  ],
+  "lissencephaly spectrum disorders": [
+    "APC2",
+    "DCX",
+    "TUBG1"
+  ],
+  "lissencephaly with cerebellar hypoplasia": [
+    "CDK5",
+    "RELN"
+  ],
+  "long QT syndrome": [
+    "AKAP9",
+    "ALG10B",
+    "ANK2",
+    "CACNA1C",
+    "CALM1",
+    "CALM2",
+    "CALM3",
+    "CAV3",
+    "KCNE2",
+    "KCNH2",
+    "KCNJ2",
+    "KCNJ5",
+    "KCNQ1",
+    "SCN4B",
+    "SNTA1",
+    "TRDN"
+  ],
+  "long QT syndrome 5": [
+    "KCNE1"
+  ],
+  "long chain 3-hydroxyacyl-CoA dehydrogenase deficiency": [
+    "HADHA"
+  ],
+  "long chain acyl-CoA dehydrogenase deficiency": [
+    "ACADL"
+  ],
+  "lung disease, immunodeficiency, and chromosome breakage syndrome;": [
+    "NSMCE3"
+  ],
+  "lymphatic malformation 1": [
+    "FLT4"
+  ],
+  "lymphedema-distichiasis syndrome": [
+    "FOXC2"
+  ],
+  "lymphoproliferative syndrome": [
+    "FAAP24"
+  ],
+  "lymphoproliferative syndrome 1": [
+    "ITK"
+  ],
+  "lysinuric protein intolerance": [
+    "SLC7A7"
+  ],
+  "lysosomal acid lipase deficiency": [
+    "LIPA"
+  ],
+  "lysosomal storage disease": [
+    "SLC38A9"
+  ],
+  "macrothrombocytopenia and granulocyte inclusions with or without nephritis or sensorineural hearing loss": [
+    "MYH9"
+  ],
+  "macrothrombocytopenia, isolated": [
+    "GNE",
+    "TRPM7"
+  ],
+  "macrothrombocytopenia, isolated, 1, autosomal dominant": [
+    "TUBB1"
+  ],
+  "macrothrombocytopenia-lymphedema-developmental delay-facial dysmorphism-camptodactyly syndrome": [
+    "CDC42"
+  ],
+  "maleylacetoacetate isomerase deficiency": [
+    "GSTZ1"
+  ],
+  "malignant hyperthermia, susceptibility to, 1": [
+    "RYR1"
+  ],
+  "malignant hyperthermia, susceptibility to, 5": [
+    "CACNA1S"
+  ],
+  "malonic aciduria": [
+    "MLYCD"
+  ],
+  "mandibular hypoplasia-deafness-progeroid syndrome": [
+    "POLD1"
+  ],
+  "mandibuloacral dysplasia progeroid syndrome": [
+    "MTX2"
+  ],
+  "mandibuloacral dysplasia with type B lipodystrophy": [
+    "ZMPSTE24"
+  ],
+  "mandibulofacial dysostosis-microcephaly syndrome": [
+    "EFTUD2"
+  ],
+  "maple syrup urine disease": [
+    "DBT"
+  ],
+  "maple syrup urine disease type 1A": [
+    "BCKDHA"
+  ],
+  "maple syrup urine disease type 1B": [
+    "BCKDHB"
+  ],
+  "maple syrup urine disease, mild variant": [
+    "PPM1K"
+  ],
+  "maternal riboflavin deficiency": [
+    "SLC52A1"
+  ],
+  "maturity-onset diabetes of the young type 8": [
+    "CEL"
+  ],
+  "medium chain acyl-CoA dehydrogenase deficiency": [
+    "ACADM"
+  ],
+  "medulloblastoma": [
+    "SUFU"
+  ],
+  "megalencephalic leukoencephalopathy with subcortical cysts 1": [
+    "MLC1"
+  ],
+  "megalencephalic leukoencephalopathy with subcortical cysts 2A": [
+    "HEPACAM"
+  ],
+  "megalencephalic leukoencephalopathy with subcortical cysts 2B, remitting, with or without intellectual disability": [
+    "HEPACAM"
+  ],
+  "megalencephaly-polymicrogyria-polydactyly-hydrocephalus syndrome 3": [
+    "CCND2"
+  ],
+  "melanoma, cutaneous malignant, susceptibility to, 3": [
+    "CDK4"
+  ],
+  "melanoma-pancreatic cancer syndrome": [
+    "CDKN2A"
+  ],
+  "membranoproliferative glomerulonephritis": [
+    "DGKE"
+  ],
+  "metachromatic leukodystrophy": [
+    "ARSA"
+  ],
+  "metachromatic leukodystrophy due to saposin B deficiency": [
+    "PSAP"
+  ],
+  "metaphyseal chondrodysplasia-retinitis pigmentosa syndrome": [
+    "CWC27"
+  ],
+  "methemoglobinemia due to deficiency of methemoglobin reductase": [
+    "CYB5R3"
+  ],
+  "methemoglobinemia type 4": [
+    "CYB5A"
+  ],
+  "methemoglobinemia, alpha type": [
+    "HBA1",
+    "HBA2"
+  ],
+  "methionine adenosyltransferase deficiency": [
+    "MAT1A"
+  ],
+  "methylcobalamin deficiency type cblE": [
+    "MTRR"
+  ],
+  "methylcobalamin deficiency type cblG": [
+    "MTR"
+  ],
+  "methylmalonate semialdehyde dehydrogenase deficiency": [
+    "ALDH6A1"
+  ],
+  "methylmalonic acidemia due to methylmalonyl-CoA epimerase deficiency": [
+    "MCEE"
+  ],
+  "methylmalonic acidemia due to transcobalamin receptor defect": [
+    "CD320"
+  ],
+  "methylmalonic acidemia with homocystinuria, type cblJ": [
+    "ABCD4"
+  ],
+  "methylmalonic aciduria and homocystinuria": [
+    "THAP11",
+    "ZNF143"
+  ],
+  "methylmalonic aciduria and homocystinuria type cblC": [
+    "MMACHC"
+  ],
+  "methylmalonic aciduria and homocystinuria type cblF": [
+    "LMBRD1"
+  ],
+  "methylmalonic aciduria due to methylmalonyl-CoA mutase deficiency": [
+    "MMUT"
+  ],
+  "methylmalonic aciduria, cblA type": [
+    "MMAA"
+  ],
+  "methylmalonic aciduria, cblB type": [
+    "MMAB"
+  ],
+  "mevalonate kinase deficiency": [
+    "MVK"
+  ],
+  "microcephalic osteodysplastic dysplasia, Saul-Wilson type": [
+    "COG4"
+  ],
+  "microcephalic osteodysplastic primordial dwarfism type II": [
+    "PCNT"
+  ],
+  "microcephalic primordial dwarfism due to RTTN deficiency": [
+    "RTTN"
+  ],
+  "microcephaly": [
+    "AKT3"
+  ],
+  "microcephaly 2, primary, autosomal recessive, with or without cortical malformations": [
+    "WDR62"
+  ],
+  "microcephaly 26, primary, autosomal dominant": [
+    "LMNB1"
+  ],
+  "microcephaly 6 with or without short stature": [
+    "CENPJ"
+  ],
+  "microcephaly and chorioretinopathy 1": [
+    "TUBGCP6"
+  ],
+  "microcephaly with intellectual disability": [
+    "MCPH1"
+  ],
+  "microcephaly with lissencephaly and/or hydranencephaly": [
+    "NDE1"
+  ],
+  "microcephaly with or without chorioretinopathy, lymphedema, or intellectual disability": [
+    "KIF11"
+  ],
+  "microcephaly with or without short stature": [
+    "CEP152"
+  ],
+  "microcephaly, seizures, and developmental delay": [
+    "PNKP"
+  ],
+  "microcornea-myopic chorioretinal atrophy": [
+    "ADAMTS18"
+  ],
+  "microcytic anemia with liver iron overload": [
+    "SLC11A2"
+  ],
+  "microphthalmia, isolated, with coloboma 7": [
+    "ABCB6"
+  ],
+  "microphthalmia, syndromic 12": [
+    "RARB"
+  ],
+  "microphthalmia, syndromic 2": [
+    "BCOR"
+  ],
+  "mirror movements 1 and/or agenesis of the corpus callosum": [
+    "DCC"
+  ],
+  "mismatch repair cancer syndrome 1": [
+    "MLH1",
+    "MSH2",
+    "MSH6",
+    "PMS2"
+  ],
+  "mitochondrial DNA depletion syndrome 12B (cardiomyopathic type), autosomal recessive": [
+    "SLC25A4"
+  ],
+  "mitochondrial disease": [
+    "AARS2",
+    "ABCB7",
+    "ACO2",
+    "AGK",
+    "ATP5MK",
+    "ATP5PO",
+    "ATPAF2",
+    "BCS1L",
+    "BOLA3",
+    "C1QBP",
+    "CARS2",
+    "CHCHD10",
+    "COA3",
+    "COA5",
+    "COA6",
+    "COA7",
+    "COA8",
+    "COQ2",
+    "COQ4",
+    "COQ5",
+    "COQ8B",
+    "COQ9",
+    "COX10",
+    "COX11",
+    "COX14",
+    "COX15",
+    "COX16",
+    "COX20",
+    "COX4I1",
+    "COX4I2",
+    "COX5A",
+    "COX6A1",
+    "COX6A2",
+    "COX6B1",
+    "COX8A",
+    "CYC1",
+    "D2HGDH",
+    "DARS2",
+    "DGUOK",
+    "EARS2",
+    "ELAC2",
+    "FARS2",
+    "FASTKD2",
+    "FBXL4",
+    "FOXRED1",
+    "GFER",
+    "GTPBP3",
+    "IARS2",
+    "IBA57",
+    "IDH2",
+    "ISCA2",
+    "ISCU",
+    "L2HGDH",
+    "LIAS",
+    "LIG3",
+    "LIPT2",
+    "LRPPRC",
+    "LYRM7",
+    "MARS2",
+    "MGME1",
+    "MICOS13",
+    "MICU1",
+    "MICU2",
+    "MIEF2",
+    "MIPEP",
+    "MPC1",
+    "MPV17",
+    "MRPL3",
+    "MRPL39",
+    "MRPL44",
+    "MRPS14",
+    "MRPS16",
+    "MRPS22",
+    "MRPS25",
+    "MRPS28",
+    "MRPS7",
+    "MSTO1",
+    "MT-ATP6",
+    "MT-ATP8",
+    "MT-CO1",
+    "MT-CO2",
+    "MT-CO3",
+    "MT-CYB",
+    "MT-ND1",
+    "MT-ND2",
+    "MT-ND3",
+    "MT-ND4",
+    "MT-ND4L",
+    "MT-ND5",
+    "MT-ND6",
+    "MT-RNR1",
+    "MT-RNR2",
+    "MT-TA",
+    "MT-TC",
+    "MT-TD",
+    "MT-TE",
+    "MT-TF",
+    "MT-TG",
+    "MT-TH",
+    "MT-TI",
+    "MT-TK",
+    "MT-TL1",
+    "MT-TL2",
+    "MT-TM",
+    "MT-TN",
+    "MT-TP",
+    "MT-TQ",
+    "MT-TR",
+    "MT-TS1",
+    "MT-TS2",
+    "MT-TT",
+    "MT-TV",
+    "MT-TW",
+    "MT-TY",
+    "MTO1",
+    "MTPAP",
+    "MTRFR",
+    "NARS2",
+    "NAXD",
+    "NAXE",
+    "NDUFA1",
+    "NDUFA10",
+    "NDUFA11",
+    "NDUFA12",
+    "NDUFA13",
+    "NDUFA2",
+    "NDUFA6",
+    "NDUFA8",
+    "NDUFA9",
+    "NDUFAF1",
+    "NDUFAF2",
+    "NDUFAF3",
+    "NDUFAF4",
+    "NDUFAF5",
+    "NDUFAF6",
+    "NDUFAF7",
+    "NDUFB10",
+    "NDUFB11",
+    "NDUFB3",
+    "NDUFB7",
+    "NDUFB8",
+    "NDUFB9",
+    "NDUFC2",
+    "NDUFS1",
+    "NDUFS2",
+    "NDUFS3",
+    "NDUFS4",
+    "NDUFS6",
+    "NDUFS7",
+    "NDUFS8",
+    "NDUFV2",
+    "NFU1",
+    "NNT",
+    "NUBPL",
+    "OXA1L",
+    "OXCT1",
+    "PARS2",
+    "PDHA1",
+    "PDHX",
+    "PDSS1",
+    "PET100",
+    "PMPCA",
+    "PRORP",
+    "PUS1",
+    "RARS2",
+    "RMND1",
+    "SARS2",
+    "SCO1",
+    "SDHA",
+    "SDHAF1",
+    "SDHB",
+    "SDHC",
+    "SDHD",
+    "SFXN4",
+    "SLC25A1",
+    "SLC25A10",
+    "SLC25A12",
+    "SLC25A26",
+    "SLC25A3",
+    "SURF1",
+    "TACO1",
+    "TARS2",
+    "TIMM22",
+    "TIMMDC1",
+    "TK2",
+    "TMEM126A",
+    "TMEM126B",
+    "TMEM65",
+    "TMEM70",
+    "TRIT1",
+    "TRMT10C",
+    "TRMT5",
+    "TRMU",
+    "TSFM",
+    "TTC19",
+    "TUFM",
+    "TYMP",
+    "UQCC3",
+    "UQCRC2",
+    "UQCRH",
+    "VARS2",
+    "WARS2",
+    "YARS2",
+    "YME1L1"
+  ],
+  "mitochondrial short-chain Enoyl-Coa hydratase 1 deficiency": [
+    "ECHS1"
+  ],
+  "mitochondrial trifunctional protein deficiency": [
+    "HADHB"
+  ],
+  "monogenic diabetes": [
+    "ABCC8",
+    "APPL1",
+    "BLK",
+    "GCK",
+    "HNF1A",
+    "HNF4A",
+    "INS",
+    "KCNJ11",
+    "KLF11",
+    "NEUROD1",
+    "PAX4",
+    "PDX1",
+    "RFX6",
+    "SIRT1"
+  ],
+  "mosaic SMO syndrome": [
+    "SMO"
+  ],
+  "mosaic variegated aneuploidy syndrome 1": [
+    "BUB1B"
+  ],
+  "mosaic variegated aneuploidy syndrome 2": [
+    "CEP57"
+  ],
+  "movement disorder": [
+    "GNAO1"
+  ],
+  "mucolipidosis type IV": [
+    "MCOLN1"
+  ],
+  "mucopolysaccharidosis type 1": [
+    "IDUA"
+  ],
+  "mucopolysaccharidosis type 2": [
+    "IDS"
+  ],
+  "mucopolysaccharidosis type 3A": [
+    "SGSH"
+  ],
+  "mucopolysaccharidosis type 3B": [
+    "NAGLU"
+  ],
+  "mucopolysaccharidosis type 3C": [
+    "HGSNAT"
+  ],
+  "mucopolysaccharidosis type 3D": [
+    "GNS"
+  ],
+  "mucopolysaccharidosis type 4A": [
+    "GALNS"
+  ],
+  "mucopolysaccharidosis type 4B": [
+    "GLB1"
+  ],
+  "mucopolysaccharidosis type 6": [
+    "ARSB"
+  ],
+  "mucopolysaccharidosis type 7": [
+    "GUSB"
+  ],
+  "mucopolysaccharidosis type 9": [
+    "HYAL1"
+  ],
+  "mucopolysaccharidosis-plus syndrome": [
+    "VPS33A"
+  ],
+  "mucosulfatidosis": [
+    "SUMF1"
+  ],
+  "mulibrey nanism": [
+    "TRIM37"
+  ],
+  "multiple acyl-CoA dehydrogenase deficiency": [
+    "ETFA",
+    "ETFB",
+    "ETFDH"
+  ],
+  "multiple congenital anomalies-hypotonia-seizures syndrome 1": [
+    "PIGN"
+  ],
+  "multiple congenital anomalies-hypotonia-seizures syndrome 3": [
+    "PIGT"
+  ],
+  "multiple congenital anomalies-neurodevelopmental syndrome, X-linked": [
+    "OTUD5"
+  ],
+  "multiple endocrine neoplasia type 1": [
+    "MEN1"
+  ],
+  "multiple endocrine neoplasia type 2A": [
+    "RET"
+  ],
+  "multiple endocrine neoplasia type 2B": [
+    "RET"
+  ],
+  "multiple endocrine neoplasia type 4": [
+    "CDKN1B"
+  ],
+  "multiple intestinal atresia": [
+    "TTC7A"
+  ],
+  "multiple mitochondrial dysfunctions syndrome 7": [
+    "GCSH"
+  ],
+  "multiple self-healing squamous epithelioma": [
+    "TGFBR1"
+  ],
+  "multiple symmetric lipomatosis with partial lipodystrophy": [
+    "MFN2"
+  ],
+  "multiple synostoses syndrome": [
+    "FGF9"
+  ],
+  "multisystemic smooth muscle dysfunction syndrome": [
+    "ACTA2"
+  ],
+  "muscle-eye-brain disease": [
+    "RXYLT1"
+  ],
+  "muscular dystrophy, limb-girdle, autosomal dominant": [
+    "CAPN3",
+    "DNAJB6",
+    "HNRNPDL",
+    "TNPO3"
+  ],
+  "muscular dystrophy-dystroglycanopathy": [
+    "LARGE1"
+  ],
+  "muscular dystrophy-dystroglycanopathy (congenital with brain and eye anomalies), type A13": [
+    "B4GAT1"
+  ],
+  "muscular dystrophy-dystroglycanopathy (congenital with brain and eye anomalies), type a, 11": [
+    "B3GALNT2"
+  ],
+  "myofibrillar myopathy": [
+    "BAG3",
+    "FLNC"
+  ],
+  "myofibrillar myopathy 8": [
+    "PYROXD1"
+  ],
+  "myoglobinuria, acute recurrent, autosomal recessive": [
+    "LPIN1"
+  ],
+  "myopathy caused by variation in CRPPA": [
+    "CRPPA"
+  ],
+  "myopathy caused by variation in FKRP": [
+    "FKRP"
+  ],
+  "myopathy caused by variation in FKTN": [
+    "FKTN"
+  ],
+  "myopathy caused by variation in GMPPB": [
+    "GMPPB"
+  ],
+  "myopathy caused by variation in POMGNT1": [
+    "POMGNT1"
+  ],
+  "myopathy caused by variation in POMGNT2": [
+    "POMGNT2"
+  ],
+  "myopathy caused by variation in POMT1": [
+    "POMT1"
+  ],
+  "myopathy caused by variation in POMT2": [
+    "POMT2"
+  ],
+  "myopathy with abnormal lipid metabolism": [
+    "FLAD1"
+  ],
+  "myopathy, centronuclear, 5": [
+    "SPEG"
+  ],
+  "myopathy, centronuclear, 6, with fiber-type disproportion": [
+    "MAP3K20"
+  ],
+  "myopathy, myofibrillar, 9, with early respiratory failure": [
+    "TTN"
+  ],
+  "myopathy, proximal, and ophthalmoplegia": [
+    "MYH2"
+  ],
+  "nail-patella syndrome": [
+    "LMX1B"
+  ],
+  "nanophthalmos 4": [
+    "TMEM98"
+  ],
+  "nemaline myopathy": [
+    "TNNI1",
+    "TNNT1",
+    "TNNT3"
+  ],
+  "nemaline myopathy 10": [
+    "LMOD3"
+  ],
+  "nemaline myopathy 2": [
+    "NEB"
+  ],
+  "nemaline myopathy 5": [
+    "TNNT1"
+  ],
+  "nemaline myopathy 6": [
+    "KBTBD13"
+  ],
+  "nemaline myopathy 7": [
+    "CFL2"
+  ],
+  "nemaline myopathy 8": [
+    "KLHL40"
+  ],
+  "nemaline myopathy 9": [
+    "KLHL41"
+  ],
+  "neonatal encephalopathy with non-epileptic myoclonus": [
+    "KCNQ2"
+  ],
+  "neonatal severe primary hyperparathyroidism": [
+    "CASR"
+  ],
+  "neonatal-onset developmental and epileptic encephalopathy": [
+    "KCNQ2"
+  ],
+  "neonatal-onset encephalopathy with rigidity and seizures": [
+    "BRAT1"
+  ],
+  "nephronophthisis": [
+    "NPHP3"
+  ],
+  "nephronophthisis 1": [
+    "NPHP1"
+  ],
+  "nephronophthisis 12": [
+    "TTC21B"
+  ],
+  "nephronophthisis 16": [
+    "ANKS6"
+  ],
+  "nephronophthisis 2": [
+    "INVS"
+  ],
+  "nephronophthisis 20": [
+    "MAPKBP1"
+  ],
+  "nephronophthisis 4": [
+    "NPHP4"
+  ],
+  "nephronophthisis 7": [
+    "GLIS2"
+  ],
+  "nephronophthisis-like nephropathy 1": [
+    "XPNPEP3"
+  ],
+  "nephrotic syndrome 14": [
+    "SGPL1"
+  ],
+  "nephrotic syndrome, type 12": [
+    "NUP93"
+  ],
+  "nephrotic syndrome, type 13": [
+    "NUP205"
+  ],
+  "nephrotic syndrome, type 18": [
+    "NUP133"
+  ],
+  "nephrotic syndrome, type 19": [
+    "NUP160"
+  ],
+  "nephrotic syndrome, type 20": [
+    "TBC1D8B"
+  ],
+  "nephrotic syndrome, type 21": [
+    "AVIL"
+  ],
+  "nephrotic syndrome, type 3": [
+    "PLCE1"
+  ],
+  "nephrotic syndrome, type 8": [
+    "ARHGDIA"
+  ],
+  "neuralgic amyotrophy": [
+    "SEPTIN9"
+  ],
+  "neuroblastoma, susceptibility to, 3": [
+    "ALK"
+  ],
+  "neurodegeneration with brain iron accumulation 4": [
+    "C19orf12"
+  ],
+  "neurodegeneration with brain iron accumulation 9": [
+    "FTH1"
+  ],
+  "neurodegeneration, childhood-onset, with cerebellar atrophy": [
+    "AGTPBP1"
+  ],
+  "neurodegeneration, childhood-onset, with hypotonia, respiratory insufficiency, and brain imaging abnormalities": [
+    "CLCN6"
+  ],
+  "neurodegenerative disease": [
+    "IRF2BPL"
+  ],
+  "neurodegenerative syndrome due to cerebral folate transport deficiency": [
+    "FOLR1"
+  ],
+  "neurodevelopmental disorder with cardiomyopathy, spasticity, and brain abnormalities": [
+    "SHMT2"
+  ],
+  "neurodevelopmental disorder with cerebellar atrophy and motor dysfunction": [
+    "GEMIN5"
+  ],
+  "neurodevelopmental disorder with cerebellar atrophy and with or without seizures": [
+    "BRAT1"
+  ],
+  "neurodevelopmental disorder with epilepsy, spasticity, and brain atrophy": [
+    "TRAPPC4"
+  ],
+  "neurodevelopmental disorder with hypotonia and variable intellectual and behavioral abnormalities": [
+    "POLR2A"
+  ],
+  "neurodevelopmental disorder with hypotonia, brain anomalies, distinctive facies, and absent language": [
+    "RNU4-2"
+  ],
+  "neurodevelopmental disorder with hypotonia, facial dysmorphism, and brain abnormalities": [
+    "PPP1R21"
+  ],
+  "neurodevelopmental disorder with hypotonia, neuropathy, and deafness": [
+    "SPTBN4"
+  ],
+  "neurodevelopmental disorder with language impairment and behavioral abnormalities": [
+    "GRIA2"
+  ],
+  "neurodevelopmental disorder with microcephaly and dysmorphic facies": [
+    "SPOP"
+  ],
+  "neurodevelopmental disorder with microcephaly, ataxia, and seizures": [
+    "SARS1"
+  ],
+  "neurodevelopmental disorder with microcephaly, epilepsy, and brain atrophy": [
+    "TRAPPC6B"
+  ],
+  "neurodevelopmental disorder with microcephaly, impaired language, and gait abnormalities": [
+    "NARS1"
+  ],
+  "neurodevelopmental disorder with microcephaly, impaired language, epilepsy, and gait abnormalities": [
+    "NARS1"
+  ],
+  "neurodevelopmental disorder with microcephaly, seizures, and cortical atrophy": [
+    "VARS1"
+  ],
+  "neurodevelopmental disorder with nonspecific brain abnormalities and with or without seizures": [
+    "DLL1"
+  ],
+  "neurodevelopmental disorder with or without seizures and gait abnormalities": [
+    "GRIA4"
+  ],
+  "neurodevelopmental disorder with or without variable brain abnormalities; NEDBA": [
+    "MAPK8IP3"
+  ],
+  "neurodevelopmental disorder with relative macrocephaly and with or without cardiac or endocrine anomalies": [
+    "SPOP"
+  ],
+  "neurodevelopmental disorder with severe motor impairment and absent language": [
+    "DHX30"
+  ],
+  "neurodevelopmental disorder with short stature, prominent forehead, and feeding difficulties": [
+    "DPH5"
+  ],
+  "neurodevelopmental disorder with spasticity, cataracts, and cerebellar hypoplasia": [
+    "MED27"
+  ],
+  "neurodevelopmental disorder with spasticity, seizures, and brain abnormalities": [
+    "NSRP1"
+  ],
+  "neurodevelopmental disorder, nonprogressive, with spasticity and transient opisthotonus": [
+    "TNR"
+  ],
+  "neurodevelopmental disorder-craniofacial dysmorphism-cardiac defect-hip dysplasia syndrome": [
+    "HNRNPK"
+  ],
+  "neurofibromatosis type 1": [
+    "NF1"
+  ],
+  "neurofibromatosis type 2": [
+    "NF2"
+  ],
+  "neurometabolic disorder due to serine deficiency": [
+    "PHGDH",
+    "PSAT1",
+    "PSPH"
+  ],
+  "neuromuscular disease": [
+    "PLEKHG5",
+    "TRPV4"
+  ],
+  "neuronal ceroid lipofuscinosis": [
+    "CLN3",
+    "CLN5",
+    "CLN6",
+    "CLN8",
+    "CTSD",
+    "GRN",
+    "MFSD8",
+    "PPT1",
+    "TPP1"
+  ],
+  "neuronopathy, distal hereditary motor, autosomal dominant": [
+    "HSPB8"
+  ],
+  "neuronopathy, distal hereditary motor, type 7A": [
+    "SLC5A7"
+  ],
+  "neuroocular syndrome": [
+    "PRR12"
+  ],
+  "neurooculocardiogenitourinary syndrome": [
+    "WDR37"
+  ],
+  "neuropathy, hereditary motor and sensory, type 6B": [
+    "SLC25A46"
+  ],
+  "neuropathy, hereditary sensory and autonomic, type 1C": [
+    "SPTLC2"
+  ],
+  "neuropathy, hereditary sensory and autonomic, type 2A": [
+    "WNK1"
+  ],
+  "neuropathy, hereditary sensory, type 1D": [
+    "ATL1"
+  ],
+  "neuropathy, hereditary sensory, type 1F": [
+    "ATL3"
+  ],
+  "neutral lipid storage myopathy": [
+    "PNPLA2"
+  ],
+  "neutropenia": [
+    "ELANE"
+  ],
+  "neutrophil immunodeficiency syndrome": [
+    "RAC2"
+  ],
+  "nevoid basal cell carcinoma syndrome": [
+    "PTCH1",
+    "PTCH2"
+  ],
+  "non-severe combined immunodeficiency due to COPG1 deficiency": [
+    "COPG1"
+  ],
+  "non-severe combined immunodeficiency due to polymerase delta deficiency": [
+    "POLD1",
+    "POLD2"
+  ],
+  "non-small cell lung carcinoma": [
+    "EGFR"
+  ],
+  "non-syndromic X-linked intellectual disability": [
+    "ACSL4",
+    "AFF2",
+    "ARHGEF6",
+    "CLCN4",
+    "DLG3",
+    "GDI1",
+    "HUWE1",
+    "IL1RAPL1",
+    "PTCHD1",
+    "SYP",
+    "TSPAN7",
+    "ZNF41"
+  ],
+  "non-syndromic intellectual disability": [
+    "PRSS12"
+  ],
+  "nonsyndromic genetic hearing loss": [
+    "ACTG1",
+    "ADCY1",
+    "ADGRV1",
+    "BDP1",
+    "CABP2",
+    "CCDC50",
+    "CDC14A",
+    "CDH23",
+    "CEACAM16",
+    "CEMIP",
+    "CIB2",
+    "CLDN14",
+    "CLRN2",
+    "COCH",
+    "COL11A2",
+    "CRYM",
+    "DCDC2",
+    "DIABLO",
+    "DMXL2",
+    "ELMOD3",
+    "EPS8L2",
+    "ESPN",
+    "ESRP1",
+    "ESRRB",
+    "EYA4",
+    "GIPC3",
+    "GJA1",
+    "GJB2",
+    "GJB3",
+    "GJB6",
+    "GRAP",
+    "GRHL2",
+    "GRXCR1",
+    "GRXCR2",
+    "GSDME",
+    "HGF",
+    "HOMER2",
+    "ILDR1",
+    "KARS1",
+    "KCNQ4",
+    "KITLG",
+    "LHFPL5",
+    "LOXHD1",
+    "MARVELD2",
+    "MCM2",
+    "MET",
+    "MIR96",
+    "MPZL2",
+    "MSRB3",
+    "MYH14",
+    "MYO15A",
+    "MYO1A",
+    "MYO1C",
+    "MYO1F",
+    "MYO3A",
+    "MYO6",
+    "MYO7A",
+    "NARS2",
+    "OSBPL2",
+    "OTOA",
+    "OTOG",
+    "OTOGL",
+    "P2RX2",
+    "PCDH15",
+    "PJVK",
+    "POU3F4",
+    "POU4F3",
+    "RDX",
+    "RIPOR2",
+    "ROR1",
+    "S1PR2",
+    "SERPINB6",
+    "SLC17A8",
+    "SLC26A5",
+    "SLC44A4",
+    "SMPX",
+    "STRC",
+    "SYNE4",
+    "TBC1D24",
+    "TECTA",
+    "TJP2",
+    "TMC1",
+    "TMIE",
+    "TMPRSS3",
+    "TMTC2",
+    "TNC",
+    "TPRN",
+    "TSPEAR",
+    "USH1C",
+    "USH1G",
+    "WFS1",
+    "WHRN"
+  ],
+  "normal pressure hydrocephalus": [
+    "CFAP43"
+  ],
+  "normophosphatemic familial tumoral calcinosis": [
+    "SAMD9"
+  ],
+  "obsolete Birt-Hogg-Dube syndrome": [
+    "FLCN"
+  ],
+  "obsolete Carey-Fineman-Ziter syndrome": [
+    "MYMK"
+  ],
+  "obsolete St\u00fcve-Wiedemann syndrome": [
+    "LIFR"
+  ],
+  "obsolete antenatal Bartter syndrome": [
+    "SLC12A1"
+  ],
+  "obsolete autosomal dominant hereditary sensory and autonomic neuropathy": [
+    "SCN11A"
+  ],
+  "obsolete autosomal recessive hereditary demyelinating motor and sensory neuropathy": [
+    "SH3TC2"
+  ],
+  "obsolete axonal hereditary motor and sensory neuropathy": [
+    "MFN2"
+  ],
+  "obsolete early infantile epileptic encephalopathy": [
+    "GAD1"
+  ],
+  "obsolete familial isolated dilated cardiomyopathy": [
+    "TMPO"
+  ],
+  "obsolete glaucoma 1, open angle, F": [
+    "ASB10"
+  ],
+  "obsolete glaucoma 1, open angle, G": [
+    "WDR36"
+  ],
+  "obsolete hereditary ATTR amyloidosis": [
+    "TTR"
+  ],
+  "obsolete hyperinsulinism due to short chain 3-hydroxylacyl-CoA dehydrogenase deficiency": [
+    "HADH"
+  ],
+  "obsolete lethal restrictive dermopathy": [
+    "ZMPSTE24"
+  ],
+  "obsolete neuronopathy, distal hereditary motor": [
+    "DYNC1H1"
+  ],
+  "obsolete sickle cell disease and related diseases": [
+    "HBB"
+  ],
+  "ocular dysgenesis caused by defects in PAX6 regulation": [
+    "ELP4"
+  ],
+  "oculoauricular syndrome": [
+    "HMX1"
+  ],
+  "oculocerebrofacial syndrome, Kaufman type": [
+    "UBE3B"
+  ],
+  "oculocerebrorenal syndrome": [
+    "OCRL"
+  ],
+  "oculocutaneous albinism type 1": [
+    "TYR"
+  ],
+  "oculocutaneous albinism type 2": [
+    "OCA2"
+  ],
+  "oculopharyngodistal myopathy 1": [
+    "LRP12"
+  ],
+  "oligodontia-cancer predisposition syndrome": [
+    "AXIN2"
+  ],
+  "onychodystrophy, osteodystrophy, impaired intellectual development, and seizures syndrome": [
+    "PIGF"
+  ],
+  "open-angle glaucoma": [
+    "EFEMP1",
+    "MYOC",
+    "TP53BP2"
+  ],
+  "optic atrophy 11": [
+    "YME1L1"
+  ],
+  "optic atrophy 12": [
+    "AFG3L2"
+  ],
+  "optic atrophy 13 with retinal and foveal abnormalities": [
+    "SSBP1"
+  ],
+  "optic atrophy 15": [
+    "MCAT"
+  ],
+  "optic atrophy 3": [
+    "OPA3"
+  ],
+  "optic atrophy 9": [
+    "ACO2"
+  ],
+  "ornithine aminotransferase deficiency": [
+    "OAT"
+  ],
+  "ornithine carbamoyltransferase deficiency": [
+    "OTC"
+  ],
+  "ornithine translocase deficiency": [
+    "SLC25A15"
+  ],
+  "orofacial cleft": [
+    "ARHGAP29"
+  ],
+  "orofaciodigital syndrome type 14": [
+    "C2CD3"
+  ],
+  "osteogenesis imperfecta": [
+    "COL1A1"
+  ],
+  "osteoglophonic dwarfism": [
+    "FGFR1"
+  ],
+  "osteopathia striata with cranial sclerosis": [
+    "AMER1"
+  ],
+  "osteopetrosis, autosomal dominant 3": [
+    "PLEKHM1"
+  ],
+  "otofaciocervical syndrome 2": [
+    "PAX1"
+  ],
+  "otospondylomegaepiphyseal dysplasia": [
+    "COL11A2"
+  ],
+  "overgrowth syndrome and/or cerebral malformations due to abnormalities in MTOR pathway genes": [
+    "AKT3",
+    "MTOR",
+    "PIK3CA",
+    "PIK3R2"
+  ],
+  "palmoplantar keratoderma-esophageal carcinoma syndrome": [
+    "RHBDF2"
+  ],
+  "pancreatic agenesis 1": [
+    "PDX1"
+  ],
+  "pancytopenia due to IKZF1 mutations": [
+    "IKZF1"
+  ],
+  "papillary renal cell carcinoma": [
+    "MET"
+  ],
+  "parietal foramina": [
+    "MSX2"
+  ],
+  "pediatric systemic lupus erythematosus": [
+    "SAT1"
+  ],
+  "pellagra": [
+    "KMO"
+  ],
+  "peripheral neuropathy, autosomal recessive, with or without impaired intellectual development": [
+    "MCM3AP"
+  ],
+  "periventricular heterotopia with microcephaly, autosomal recessive": [
+    "ARFGEF2"
+  ],
+  "periventricular nodular heterotopia": [
+    "ARF1",
+    "ERMARD",
+    "FLNA",
+    "MAP1B"
+  ],
+  "periventricular nodular heterotopia 7": [
+    "NEDD4L"
+  ],
+  "peroxisomal acyl-CoA oxidase deficiency": [
+    "ACOX1"
+  ],
+  "peroxisome biogenesis disorder": [
+    "PEX1",
+    "PEX10",
+    "PEX11A",
+    "PEX11B",
+    "PEX11G",
+    "PEX12",
+    "PEX13",
+    "PEX14",
+    "PEX16",
+    "PEX19",
+    "PEX2",
+    "PEX26",
+    "PEX3",
+    "PEX5",
+    "PEX6",
+    "PEX7"
+  ],
+  "phenylketonuria": [
+    "PAH"
+  ],
+  "phosphohydroxylysinuria": [
+    "PHYKPL"
+  ],
+  "phosphoribosylpyrophosphate synthetase superactivity": [
+    "PRPS1"
+  ],
+  "phytanoyl-CoA hydroxylase deficiency": [
+    "PHYH"
+  ],
+  "pili torti-developmental delay-neurological abnormalities syndrome": [
+    "HEPHL1"
+  ],
+  "platelet abnormalities with eosinophilia and immune-mediated inflammatory disease": [
+    "ARPC1B"
+  ],
+  "platelet-type bleeding disorder 11": [
+    "GP6"
+  ],
+  "platelet-type bleeding disorder 12": [
+    "PTGS1"
+  ],
+  "platelet-type bleeding disorder 15": [
+    "ACTN1"
+  ],
+  "platelet-type bleeding disorder 16": [
+    "ITGA2B",
+    "ITGB3"
+  ],
+  "platelet-type bleeding disorder 17": [
+    "GFI1B"
+  ],
+  "platelet-type bleeding disorder 18": [
+    "RASGRP2"
+  ],
+  "platelet-type bleeding disorder 19": [
+    "PRKACG"
+  ],
+  "platelet-type bleeding disorder 20": [
+    "SLFN14"
+  ],
+  "platelet-type bleeding disorder 8": [
+    "P2RY12"
+  ],
+  "platelet-type von Willebrand disease": [
+    "GP1BA"
+  ],
+  "platyspondylic dysplasia, Torrance type": [
+    "COL2A1"
+  ],
+  "polycystic kidney disease": [
+    "CFAP47",
+    "CYS1"
+  ],
+  "polycystic kidney disease 3 with or without polycystic liver disease": [
+    "GANAB"
+  ],
+  "polycystic liver disease 1": [
+    "PRKCSH"
+  ],
+  "polycystic liver disease 2": [
+    "SEC63"
+  ],
+  "polyglucosan body myopathy type 2": [
+    "GYG1"
+  ],
+  "polymicrogyria with optic nerve hypoplasia": [
+    "TUBA8"
+  ],
+  "porphyria due to ALA dehydratase deficiency": [
+    "ALAD"
+  ],
+  "primary angle-closure glaucoma": [
+    "SPATA13"
+  ],
+  "primary ciliary dyskinesia": [
+    "AK7",
+    "BRWD1",
+    "CFAP221",
+    "CFAP43",
+    "CFAP46",
+    "CFAP57",
+    "DAW1",
+    "DNAH1",
+    "DNAH10",
+    "DNAH14",
+    "DNAH6",
+    "DNAH7",
+    "DNAH8",
+    "MNS1",
+    "NME8",
+    "SPEF2",
+    "TEKT1"
+  ],
+  "primary ciliary dyskinesia 1": [
+    "DNAI1"
+  ],
+  "primary ciliary dyskinesia 10": [
+    "DNAAF2"
+  ],
+  "primary ciliary dyskinesia 11": [
+    "RSPH4A"
+  ],
+  "primary ciliary dyskinesia 12": [
+    "RSPH9"
+  ],
+  "primary ciliary dyskinesia 13": [
+    "DNAAF1"
+  ],
+  "primary ciliary dyskinesia 14": [
+    "CCDC39"
+  ],
+  "primary ciliary dyskinesia 15": [
+    "CCDC40"
+  ],
+  "primary ciliary dyskinesia 16": [
+    "DNAL1"
+  ],
+  "primary ciliary dyskinesia 17": [
+    "DNAAF19"
+  ],
+  "primary ciliary dyskinesia 18": [
+    "DNAAF5"
+  ],
+  "primary ciliary dyskinesia 19": [
+    "DNAAF11"
+  ],
+  "primary ciliary dyskinesia 2": [
+    "DNAAF3"
+  ],
+  "primary ciliary dyskinesia 20": [
+    "ODAD1"
+  ],
+  "primary ciliary dyskinesia 21": [
+    "DRC1"
+  ],
+  "primary ciliary dyskinesia 22": [
+    "ZMYND10"
+  ],
+  "primary ciliary dyskinesia 23": [
+    "ODAD2"
+  ],
+  "primary ciliary dyskinesia 24": [
+    "RSPH1"
+  ],
+  "primary ciliary dyskinesia 25": [
+    "DNAAF4"
+  ],
+  "primary ciliary dyskinesia 26": [
+    "CFAP298"
+  ],
+  "primary ciliary dyskinesia 27": [
+    "DRC2"
+  ],
+  "primary ciliary dyskinesia 28": [
+    "SPAG1"
+  ],
+  "primary ciliary dyskinesia 29": [
+    "CCNO"
+  ],
+  "primary ciliary dyskinesia 3": [
+    "DNAH5"
+  ],
+  "primary ciliary dyskinesia 30": [
+    "ODAD3"
+  ],
+  "primary ciliary dyskinesia 32": [
+    "RSPH3"
+  ],
+  "primary ciliary dyskinesia 33": [
+    "DRC4"
+  ],
+  "primary ciliary dyskinesia 34": [
+    "DNAJB13"
+  ],
+  "primary ciliary dyskinesia 35": [
+    "ODAD4"
+  ],
+  "primary ciliary dyskinesia 5": [
+    "HYDIN"
+  ],
+  "primary ciliary dyskinesia 7": [
+    "DNAH11"
+  ],
+  "primary ciliary dyskinesia 9": [
+    "DNAI2"
+  ],
+  "primary coenzyme Q10 deficiency 8": [
+    "COQ6"
+  ],
+  "primary congenital glaucoma": [
+    "ANGPT1"
+  ],
+  "primary hyperoxaluria type 3": [
+    "HOGA1"
+  ],
+  "primary immunodeficiency with natural-killer cell deficiency and adrenal insufficiency": [
+    "MCM4"
+  ],
+  "primordial dwarfism-immunodeficiency-lipodystrophy syndrome": [
+    "PRIM1"
+  ],
+  "progressive encephalopathy with leukodystrophy due to DECR deficiency": [
+    "DECR1",
+    "NADK2"
+  ],
+  "progressive familial intrahepatic cholestasis type 3": [
+    "ABCB4"
+  ],
+  "progressive microcephaly-seizures-cortical blindness-developmental delay syndrome": [
+    "DIAPH1"
+  ],
+  "progressive muscular dystrophy": [
+    "DMD"
+  ],
+  "progressive myoclonus epilepsy": [
+    "CERS1",
+    "GOSR2",
+    "KCNC1",
+    "KCTD7",
+    "NUS1",
+    "PRICKLE1",
+    "SCARB2",
+    "SEMA6B",
+    "SERPINI1"
+  ],
+  "progressive pseudorheumatoid arthropathy of childhood": [
+    "CCN6"
+  ],
+  "prolidase deficiency": [
+    "PEPD"
+  ],
+  "propionic acidemia": [
+    "PCCA",
+    "PCCB"
+  ],
+  "protein S deficiency": [
+    "PROS1"
+  ],
+  "protoporphyria, erythropoietic, 1": [
+    "FECH"
+  ],
+  "pseudohyperaldosteronism type 2": [
+    "NR3C2"
+  ],
+  "pseudohypoaldosteronism type 2E": [
+    "CUL3"
+  ],
+  "pseudohypoaldosteronism, type IB1, autosomal recessive": [
+    "SCNN1A"
+  ],
+  "psychomotor regression-oculomotor apraxia-movement disorder-nephropathy syndrome": [
+    "SLC30A9"
+  ],
+  "pterin-4 alpha-carbinolamine dehydratase 1 deficiency": [
+    "PCBD1"
+  ],
+  "pulmonary arterial hypertension": [
+    "ABCC8",
+    "AQP1",
+    "ATP13A3",
+    "BMP10",
+    "BMPR1A",
+    "BMPR1B",
+    "BMPR2",
+    "CAV1",
+    "FBLN2",
+    "GDF2",
+    "GGCX",
+    "KCNK3",
+    "KDR",
+    "KLF2",
+    "KLK1",
+    "NOTCH3",
+    "PDGFD",
+    "SMAD1",
+    "SMAD4",
+    "SMAD9",
+    "SOX17",
+    "TBX4",
+    "TET2",
+    "TOPBP1"
+  ],
+  "pulmonary fibrosis and/or bone marrow failure syndrome, telomere-related, 7": [
+    "NAF1"
+  ],
+  "pulmonary fibrosis and/or bone marrow failure syndrome, telomere-related, 9": [
+    "NOP10"
+  ],
+  "pulmonary fibrosis and/or bone marrow failure, Telomere-related, 3": [
+    "RTEL1"
+  ],
+  "pulmonary fibrosis and/or bone marrow failure, Telomere-related, 4": [
+    "PARN"
+  ],
+  "pulmonary fibrosis and/or bone marrow failure, telomere-related, 5": [
+    "ZCCHC8"
+  ],
+  "pulmonary veno-occlusive disease and/or pulmonary capillary haemangiomatosis": [
+    "EIF2AK4"
+  ],
+  "purine nucleoside phosphorylase deficiency": [
+    "PNP"
+  ],
+  "pycnodysostosis": [
+    "CTSK"
+  ],
+  "pyridoxal phosphate-responsive seizures": [
+    "PNPO"
+  ],
+  "pyridoxine-dependent epilepsy": [
+    "ALDH7A1"
+  ],
+  "pyruvate dehydrogenase E3 deficiency": [
+    "DLD"
+  ],
+  "pyruvate kinase deficiency of red cells": [
+    "PKLR"
+  ],
+  "qualitative or quantitative defects of alpha-dystroglycan": [
+    "DAG1"
+  ],
+  "qualitative platelet defect": [
+    "ABCC4",
+    "TBXA2R"
+  ],
+  "radioulnar synostosis with amegakaryocytic thrombocytopenia 1": [
+    "HOXA11"
+  ],
+  "recessive dystrophic epidermolysis bullosa": [
+    "COL7A1"
+  ],
+  "recombinase activating gene 1 deficiency": [
+    "RAG1"
+  ],
+  "recombinase activating gene 2 deficiency": [
+    "RAG2"
+  ],
+  "recurrent infections associated with rare immunoglobulin isotypes deficiency": [
+    "IGKC"
+  ],
+  "red color blindness": [
+    "OPN1LW"
+  ],
+  "red-green color blindness": [
+    "OPN1MW"
+  ],
+  "regressive spondylometaphyseal dysplasia": [
+    "LBR"
+  ],
+  "renal cysts and diabetes syndrome": [
+    "HNF1B"
+  ],
+  "renal hypomagnesemia 2": [
+    "FXYD2"
+  ],
+  "renal hypomagnesemia 3": [
+    "CLDN16"
+  ],
+  "renal hypomagnesemia 4": [
+    "EGF"
+  ],
+  "renal tubular acidosis, distal, 2, with progressive sensorineural hearing loss": [
+    "ATP6V1B1",
+    "SLC12A7"
+  ],
+  "renal tubular dysgenesis - ACE": [
+    "ACE"
+  ],
+  "renal tubular dysgenesis of genetic origin": [
+    "REN"
+  ],
+  "renal-hepatic-pancreatic dysplasia 2": [
+    "NEK8"
+  ],
+  "reticular dysgenesis": [
+    "AK2"
+  ],
+  "retinal dystrophy-ataxia-pituitary hormone abnormality-hypogonadism syndrome": [
+    "PNPLA6"
+  ],
+  "retinal vasculopathy with cerebral leukoencephalopathy and systemic manifestations": [
+    "TREX1"
+  ],
+  "retinitis pigmentosa 18": [
+    "PRPF3"
+  ],
+  "retinitis pigmentosa 27": [
+    "NRL"
+  ],
+  "retinitis pigmentosa 65": [
+    "CDHR1"
+  ],
+  "retinitis pigmentosa 86": [
+    "KIAA1549"
+  ],
+  "retinitis pigmentosa 9": [
+    "RP9"
+  ],
+  "retinoblastoma": [
+    "RB1"
+  ],
+  "rhabdoid tumor predisposition syndrome 1": [
+    "SMARCB1"
+  ],
+  "rhabdoid tumor predisposition syndrome 2": [
+    "SMARCA4"
+  ],
+  "sandestig-stefanova syndrome": [
+    "NUP188"
+  ],
+  "sarcosinemia": [
+    "SARDH"
+  ],
+  "schizencephaly": [
+    "EMX2"
+  ],
+  "schneckenbecken dysplasia": [
+    "SLC35D1"
+  ],
+  "seizures, early-onset, with neurodegeneration and brain calcifications": [
+    "NRROS"
+  ],
+  "self-limited familial neonatal epilepsy": [
+    "KCNQ3"
+  ],
+  "sessile serrated polyposis cancer syndrome": [
+    "RNF43"
+  ],
+  "severe achondroplasia-developmental delay-acanthosis nigricans syndrome": [
+    "FGFR3"
+  ],
+  "severe combined immunodeficiency": [
+    "NUDCD3"
+  ],
+  "severe combined immunodeficiency due to CARD11 deficiency": [
+    "CARD11"
+  ],
+  "severe combined immunodeficiency due to CARMIL2 deficiency": [
+    "CARMIL2"
+  ],
+  "severe combined immunodeficiency due to CD70 deficiency": [
+    "CD70"
+  ],
+  "severe combined immunodeficiency due to CORO1A deficiency": [
+    "CORO1A"
+  ],
+  "severe combined immunodeficiency due to CTPS1 deficiency": [
+    "CTPS1"
+  ],
+  "severe combined immunodeficiency due to DCLRE1C deficiency": [
+    "DCLRE1C"
+  ],
+  "severe combined immunodeficiency due to DNA-PKcs deficiency": [
+    "PRKDC"
+  ],
+  "severe combined immunodeficiency due to IKK2 deficiency": [
+    "IKBKB"
+  ],
+  "severe combined immunodeficiency due to LAT deficiency": [
+    "LAT"
+  ],
+  "severe combined immunodeficiency due to LCK deficiency": [
+    "LCK"
+  ],
+  "severe combined immunodeficiency, autosomal recessive, T cell-negative, B cell-negative, NK cell-negative, due to adenosine deaminase deficiency": [
+    "ADA"
+  ],
+  "severe congenital hypochromic anemia with ringed sideroblasts": [
+    "STEAP3"
+  ],
+  "severe intellectual disability-poor language-strabismus-grimacing face-long fingers syndrome": [
+    "GATAD2B"
+  ],
+  "severe motor and intellectual disabilities-sensorineural deafness-dystonia syndrome": [
+    "BCAP31"
+  ],
+  "short QT syndrome": [
+    "CACNA1C",
+    "CACNA2D1",
+    "KCNH2",
+    "KCNJ2",
+    "KCNQ1",
+    "SLC22A5",
+    "SLC4A3"
+  ],
+  "short chain acyl-CoA dehydrogenase deficiency": [
+    "ACADS"
+  ],
+  "short stature, amelogenesis imperfecta, and skeletal dysplasia with scoliosis": [
+    "SLC10A7"
+  ],
+  "short-rib thoracic dysplasia 11 with or without polydactyly": [
+    "DYNC2I2"
+  ],
+  "short-rib thoracic dysplasia 16 with or without polydactyly": [
+    "IFT52"
+  ],
+  "short-rib thoracic dysplasia 19 with or without polydactyly": [
+    "IFT81"
+  ],
+  "short-rib thoracic dysplasia 7 with or without polydactyly": [
+    "WDR35"
+  ],
+  "short-rib thoracic dysplasia 8 with or without polydactyly": [
+    "DYNC2I1"
+  ],
+  "sialidosis": [
+    "NEU1"
+  ],
+  "sick sinus syndrome 2, autosomal dominant": [
+    "HCN4"
+  ],
+  "sinoatrial node dysfunction and deafness": [
+    "CACNA1D"
+  ],
+  "sitosterolemia": [
+    "ABCG5",
+    "ABCG8"
+  ],
+  "skeletal dysplasia, mild, with joint laxity and advanced bone age": [
+    "CSGALNACT1"
+  ],
+  "sleep-related hypermotor epilepsy": [
+    "CHRNA2",
+    "CHRNA4",
+    "CHRNB2"
+  ],
+  "snowflake vitreoretinal degeneration": [
+    "KCNJ13"
+  ],
+  "spastic paraplegia, intellectual disability, nystagmus, and obesity": [
+    "KIDINS220"
+  ],
+  "spastic tetraplegia-thin corpus callosum-progressive postnatal microcephaly syndrome": [
+    "SLC1A4"
+  ],
+  "specific language disorder": [
+    "FOXP2"
+  ],
+  "spermatogenic failure": [
+    "AK7",
+    "DNAH12",
+    "DNAH6"
+  ],
+  "spermatogenic failure 18": [
+    "DNAH1"
+  ],
+  "spermatogenic failure 19": [
+    "CFAP43"
+  ],
+  "spermatogenic failure 38": [
+    "ARMC2"
+  ],
+  "spermatogenic failure 39": [
+    "DNAH17"
+  ],
+  "spermatogenic failure 46": [
+    "DNAH8"
+  ],
+  "spermatogenic failure 56": [
+    "DNAH10"
+  ],
+  "spermatogenic failure, X-linked, 3": [
+    "CFAP47"
+  ],
+  "spinocerebellar ataxia type 13": [
+    "KCNC3"
+  ],
+  "spinocerebellar ataxia type 2": [
+    "ATXN2"
+  ],
+  "spinocerebellar ataxia type 29": [
+    "ITPR1"
+  ],
+  "spinocerebellar ataxia type 5": [
+    "SPTBN2"
+  ],
+  "spinocerebellar ataxia, autosomal recessive 25": [
+    "ATG5"
+  ],
+  "spinocerebellar ataxia, autosomal recessive 27": [
+    "GDAP2"
+  ],
+  "spinocerebellar ataxia, autosomal recessive 28": [
+    "THG1L"
+  ],
+  "spinocerebellar ataxia, autosomal recessive 31": [
+    "ATG7"
+  ],
+  "spondyloepimetaphyseal dysplasia with joint laxity, type 3": [
+    "EXOC6B"
+  ],
+  "spondyloepimetaphyseal dysplasia, Genevieve type": [
+    "NANS"
+  ],
+  "spondyloepimetaphyseal dysplasia-short limb-abnormal calcification syndrome": [
+    "DDR2"
+  ],
+  "spondyloepiphyseal dysplasia with congenital joint dislocations": [
+    "CHST3"
+  ],
+  "spondyloepiphyseal dysplasia, Stanescu type": [
+    "COL2A1"
+  ],
+  "spondyloepiphyseal dysplasia, kondo-fu type": [
+    "MBTPS1"
+  ],
+  "spondylometaphyseal dysplasia, 'corner fracture' type": [
+    "FN1"
+  ],
+  "spondylometaphyseal dysplasia-cone-rod dystrophy syndrome": [
+    "PCYT1A"
+  ],
+  "spondyloperipheral dysplasia": [
+    "COL2A1"
+  ],
+  "sterol carrier protein 2 deficiency": [
+    "SCP2"
+  ],
+  "structural congenital heart disease, multiple types - GATA4": [
+    "GATA4"
+  ],
+  "succinic semialdehyde dehydrogenase deficiency": [
+    "ALDH5A1"
+  ],
+  "sulfite oxidase deficiency due to molybdenum cofactor deficiency type A": [
+    "MOCS1"
+  ],
+  "sulfite oxidase deficiency due to molybdenum cofactor deficiency type B": [
+    "MOCS2"
+  ],
+  "sulfite oxidase deficiency due to molybdenum cofactor deficiency type C": [
+    "GPHN"
+  ],
+  "surfactant metabolism dysfunction, pulmonary, 1": [
+    "SFTPB"
+  ],
+  "surfactant metabolism dysfunction, pulmonary, 4": [
+    "CSF2RA"
+  ],
+  "surfactant metabolism dysfunction, pulmonary, 5": [
+    "CSF2RB"
+  ],
+  "susceptibility to respiratory infections associated with CD8alpha chain mutation": [
+    "CD8A"
+  ],
+  "syndactyly-telecanthus-anogenital and renal malformations syndrome": [
+    "CCNQ"
+  ],
+  "syndromic X-linked intellectual disability Nascimento type": [
+    "UBE2A"
+  ],
+  "syndromic X-linked intellectual disability Raymond type": [
+    "ZDHHC9"
+  ],
+  "syndromic X-linked intellectual disability Siderius type": [
+    "PHF8"
+  ],
+  "syndromic X-linked intellectual disability Snyder type": [
+    "SMS"
+  ],
+  "syndromic complex neurodevelopmental disorder": [
+    "AFG2A",
+    "ANKRD17",
+    "ASH1L",
+    "BRPF1",
+    "MYT1L",
+    "NFIB",
+    "QRICH1",
+    "SETD5",
+    "TBCK",
+    "TRAF7",
+    "TRPM3",
+    "ZMYND11",
+    "ZMYND8"
+  ],
+  "syndromic congenital heart disease": [
+    "PCSK5"
+  ],
+  "syndromic craniosynostosis": [
+    "SMAD6"
+  ],
+  "syndromic intellectual disability": [
+    "ASXL2",
+    "ASXL3",
+    "AUTS2",
+    "BPTF",
+    "BRD4",
+    "CDK13",
+    "CHD4",
+    "CRADD",
+    "CSNK2A1",
+    "CTCF",
+    "EIF3F",
+    "H1-4",
+    "HNRNPH1",
+    "HNRNPR",
+    "HOXA1",
+    "KAT6A",
+    "KDM3B",
+    "KDM6B",
+    "KIF1A",
+    "KMT2C",
+    "MED13L",
+    "MED23",
+    "MEIS2",
+    "NAA15",
+    "NSD2",
+    "NSUN2",
+    "OTUD6B",
+    "PIGL",
+    "PPM1D",
+    "PUF60",
+    "RAC1",
+    "SOBP",
+    "TAOK1",
+    "TRIO",
+    "WDFY3"
+  ],
+  "syndromic multisystem autoimmune disease due to ITCH deficiency": [
+    "ITCH"
+  ],
+  "systemic lupus erythematosus": [
+    "DNASE1",
+    "PRKCD",
+    "UNC93B1"
+  ],
+  "systemic lupus erythematosus 17": [
+    "TLR7"
+  ],
+  "systemic lupus erythematosus 18": [
+    "PLD4"
+  ],
+  "systemic lupus erythematosus related to C1QA": [
+    "C1QA"
+  ],
+  "systemic lupus erythematosus, susceptibility to, 1": [
+    "TLR5"
+  ],
+  "systemic primary carnitine deficiency disease": [
+    "SLC22A5"
+  ],
+  "telangiectasia, hereditary hemorrhagic, type 1": [
+    "ENG"
+  ],
+  "telangiectasia, hereditary hemorrhagic, type 2": [
+    "ACVRL1"
+  ],
+  "telangiectasia, hereditary hemorrhagic, type 5": [
+    "GDF2"
+  ],
+  "telomere syndrome": [
+    "WRAP53"
+  ],
+  "thanatophoric dysplasia": [
+    "FGFR3"
+  ],
+  "thrombocythemia 1": [
+    "THPO"
+  ],
+  "thrombocythemia 2": [
+    "MPL"
+  ],
+  "thrombocytopenia": [
+    "MASTL",
+    "NFE2"
+  ],
+  "thrombocytopenia 10": [
+    "PTPRJ"
+  ],
+  "thrombocytopenia 11 with multiple congenital anomalies and dysmorphic facies": [
+    "RAP1B"
+  ],
+  "thrombocytopenia 2": [
+    "ANKRD26"
+  ],
+  "thrombocytopenia 3": [
+    "FYB1"
+  ],
+  "thrombocytopenia 4": [
+    "CYCS"
+  ],
+  "thrombocytopenia 5": [
+    "ETV6"
+  ],
+  "thrombocytopenia 6": [
+    "SRC"
+  ],
+  "thrombocytopenia 7": [
+    "IKZF5"
+  ],
+  "thrombocytopenia, anemia, and myelofibrosis": [
+    "MPIG6B"
+  ],
+  "thrombocytopenia-absent radius syndrome": [
+    "RBM8A"
+  ],
+  "thrombomodulin-related bleeding disorder": [
+    "THBD"
+  ],
+  "thrombophilia due to activated protein C resistance": [
+    "F5"
+  ],
+  "thrombophilia due to thrombin defect": [
+    "F2"
+  ],
+  "thrombophilia, X-linked, due to factor 9 defect": [
+    "F9"
+  ],
+  "thrombophilia, familial, due to decreased release of tissue plasminogen activator": [
+    "PLAT"
+  ],
+  "thrombotic disease": [
+    "MAST2"
+  ],
+  "tibial muscular dystrophy": [
+    "TTN"
+  ],
+  "tooth agenesis, selective, 1": [
+    "MSX1"
+  ],
+  "tooth agenesis, selective, 3": [
+    "PAX9"
+  ],
+  "tooth agenesis, selective, 9": [
+    "GREM2"
+  ],
+  "tooth and nail syndrome": [
+    "MSX1"
+  ],
+  "transcobalamin II deficiency": [
+    "TCN2"
+  ],
+  "trichohepatoenteric syndrome 1": [
+    "SKIC3"
+  ],
+  "trichohepatoenteric syndrome 2": [
+    "SKIC2"
+  ],
+  "trimethylaminuria": [
+    "FMO3"
+  ],
+  "tuberous sclerosis": [
+    "TSC1",
+    "TSC2"
+  ],
+  "tubular aggregate myopathy": [
+    "ORAI1",
+    "STIM1"
+  ],
+  "tubulinopathy": [
+    "TUBA1A",
+    "TUBB2A"
+  ],
+  "tubulointerstitial kidney disease, autosomal dominant, 2": [
+    "MUC1"
+  ],
+  "tumor predisposition syndrome 2": [
+    "MBD4"
+  ],
+  "tumor predisposition syndrome 3": [
+    "POT1"
+  ],
+  "tumoral calcinosis, hyperphosphatemic, familial, 1": [
+    "GALNT3"
+  ],
+  "turnpenny-fry syndrome": [
+    "PCGF2"
+  ],
+  "tyrosine hydroxylase deficiency": [
+    "TH"
+  ],
+  "tyrosinemia type I": [
+    "FAH"
+  ],
+  "tyrosinemia type II": [
+    "TAT"
+  ],
+  "tyrosinemia type III": [
+    "HPD"
+  ],
+  "ulnar-mammary syndrome": [
+    "TBX3"
+  ],
+  "unstable hemoglobin disease": [
+    "HBA1",
+    "HBA2",
+    "HBB"
+  ],
+  "urocanic aciduria": [
+    "UROC1"
+  ],
+  "van Maldergem syndrome": [
+    "DCHS1"
+  ],
+  "variegate porphyria": [
+    "PPOX"
+  ],
+  "ventriculomegaly and arthrogryposis": [
+    "KIDINS220"
+  ],
+  "vertebral, cardiac, renal, and limb defects syndrome 1": [
+    "HAAO"
+  ],
+  "vertebral, cardiac, renal, and limb defects syndrome 2": [
+    "KYNU"
+  ],
+  "very long chain acyl-CoA dehydrogenase deficiency": [
+    "ACADVL"
+  ],
+  "visceral heterotaxy": [
+    "DAW1"
+  ],
+  "vitamin K-dependent clotting factors, combined deficiency of, type 1": [
+    "GGCX"
+  ],
+  "vitamin K-dependent clotting factors, combined deficiency of, type 2": [
+    "VKORC1"
+  ],
+  "von Hippel-Lindau disease": [
+    "VHL"
+  ],
+  "von Willebrand disease type 2B": [
+    "VWF"
+  ],
+  "warburg-cinotti syndrome": [
+    "DDR2"
+  ],
+  "xanthinuria type II": [
+    "MOCOS"
+  ],
+  "xeroderma pigmentosum group A": [
+    "XPA"
+  ],
+  "xeroderma pigmentosum group B": [
+    "ERCC3"
+  ],
+  "xeroderma pigmentosum group C": [
+    "XPC"
+  ],
+  "xeroderma pigmentosum group D": [
+    "ERCC2"
+  ],
+  "xeroderma pigmentosum group E": [
+    "DDB2"
+  ],
+  "xeroderma pigmentosum group F": [
+    "ERCC4"
+  ],
+  "xeroderma pigmentosum group G": [
+    "ERCC5"
+  ],
+  "xeroderma pigmentosum variant type": [
+    "POLH"
+  ],
+  "zinc deficiency, transient neonatal": [
+    "SLC30A2"
+  ]
+}

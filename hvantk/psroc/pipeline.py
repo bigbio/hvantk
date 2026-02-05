@@ -781,7 +781,7 @@ class PSROCPipeline:
             ht = ht.filter(ht.label != "Uncertain/Conflicting")
 
         logger.info(
-            f"   ✓ Assigned labels: {ht.aggregate(hl.count_distinct(ht.label))} classes"
+            f"   ✓ Assigned labels: {len(ht.aggregate(hl.agg.collect_as_set(ht.label)))} classes"
         )
 
         # Update instance variable so downstream stages see the labeled table

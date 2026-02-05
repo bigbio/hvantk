@@ -9,6 +9,11 @@ from .gene_sets import (
     load_marker_genes,
     load_sample_chd_gene_set,
 )
+from .mondo_parser import (
+    MondoOntology,
+    MONDO_DISEASE_CATEGORIES,
+    download_mondo_obo,
+)
 
 __all__ = [
     "contig_recoding",
@@ -20,4 +25,8 @@ __all__ = [
     "load_gene_sets_from_dict",
     "load_marker_genes",
     "load_sample_chd_gene_set",
+    # MONDO ontology parser
+    "MondoOntology",
+    "MONDO_DISEASE_CATEGORIES",
+    "download_mondo_obo",
 ]

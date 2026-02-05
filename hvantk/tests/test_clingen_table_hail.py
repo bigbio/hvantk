@@ -75,6 +75,7 @@ def test_create_clingen_gene_disease_tb_gene_keying():
     # Check aggregated fields exist
     row_fields = list(tb.row.dtype)
     assert "disease_labels" in row_fields
+    assert "disease_mondo_pairs" in row_fields
     assert "mondo_ids" in row_fields
     assert "classifications" in row_fields
     assert "n_diseases" in row_fields

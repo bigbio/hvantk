@@ -7,6 +7,7 @@ This module provides builder functions that convert raw annotation sources
 
 import hail as hl
 import logging
+import os
 from typing import Optional, List, Callable
 from hvantk.utils.table_utils import get_row_fields
 
@@ -98,6 +99,36 @@ __all__ = [
     "create_clingen_gene_disease_tb",
     "create_hgnc_gene_tb",
 ]
+
+
+def _cleanup_temp_file(tmp_path: Optional[str]) -> None:
+    """Best-effort cleanup for local or Hadoop/S3/GS temp files."""
+    if not tmp_path:
+        return
+    try:
+        import hailtop.fs as hfs
+
+        if hfs.exists(tmp_path):
+            if hfs.is_dir(tmp_path):
+                hfs.rmtree(tmp_path)
+            else:
+                hfs.remove(tmp_path)
+        return
+    except Exception:
+        logger.debug(
+            "Failed to remove temp path via hailtop.fs: %s", tmp_path, exc_info=True
+        )
+
+    try:
+        local_path = tmp_path
+        if local_path.startswith("file://"):
+            local_path = local_path[len("file://") :]
+        if os.path.exists(local_path):
+            os.remove(local_path)
+    except Exception:
+        logger.debug(
+            "Failed to remove temp path via os.remove: %s", tmp_path, exc_info=True
+        )
 
 
 def create_gnomad_constraint_gene_metrics_tb(
@@ -658,6 +689,7 @@ def create_clingen_gene_disease_tb(
 
     When key_by="gene", diseases are aggregated per gene with fields:
     - disease_labels: set of disease labels
+    - disease_mondo_pairs: set of (disease_label, mondo_id) pairs
     - mondo_ids: set of MONDO IDs
     - classifications: set of classification levels
     - max_classification_level: numeric level of highest classification
@@ -679,32 +711,43 @@ def create_clingen_gene_disease_tb(
             f"got: {min_classification}"
         )
 
-    # Preprocess CSV to skip header lines using Hadoop filesystem API
-    # ClinGen files have 6 metadata lines before the actual header
+    # Preprocess CSV to extract header and data rows
+    # ClinGen files have varying metadata lines before the actual header
+    # The header row starts with "GENE SYMBOL" and separator rows contain "++++++"
     # Use Hadoop API to support cloud URIs (gs://, s3://) and distributed Spark clusters
-    logger.info(
-        f"Preprocessing ClinGen CSV to skip {CLINGEN_HEADER_SKIP_LINES} header lines"
-    )
+    logger.info("Preprocessing ClinGen CSV: finding header and filtering metadata")
 
     # Use Hail's temp file utility to create a Hadoop-accessible temp file
-    tmp_path = hl.utils.new_temp_file(suffix=".csv")
+    tmp_path = hl.utils.new_temp_file(prefix="clingen_", extension=".csv")
     try:
-        # Stream the file line-by-line to skip headers efficiently
-        # Use nested context managers for single-pass streaming
+        # Stream the file line-by-line to find header and skip metadata/separators
         with hl.hadoop_open(input_path, "r") as f:
             with hl.hadoop_open(tmp_path, "w") as out:
-                for i, line in enumerate(f):
-                    if i >= CLINGEN_HEADER_SKIP_LINES:
-                        out.write(line)
+                found_header = False
+                for line in f:
+                    # Skip separator lines (contain "++++++")
+                    if "++++++" in line:
+                        continue
+                    # Look for header row (starts with "GENE SYMBOL" in quotes or unquoted)
+                    if not found_header:
+                        if '"GENE SYMBOL"' in line or line.startswith("GENE SYMBOL"):
+                            found_header = True
+                            out.write(line)
+                        # Skip metadata lines before header
+                        continue
+                    # Write all data lines after header
+                    out.write(line)
+
+                if not found_header:
+                    raise RuntimeError(
+                        f'ClinGen header "GENE SYMBOL" not found in {input_path}'
+                    )
 
         logger.info(f"Preprocessed file written to {tmp_path}")
 
     except Exception as e:
         # Clean up temp file if preprocessing fails
-        try:
-            hl.hadoop_remove(tmp_path)
-        except Exception:
-            pass
+        _cleanup_temp_file(tmp_path)
         raise RuntimeError(f"Failed to preprocess ClinGen CSV: {e}") from e
 
     try:
@@ -777,6 +820,11 @@ def create_clingen_gene_disease_tb(
                     ht.group_by("hgnc_id", "gene_symbol")
                     .aggregate(
                         disease_labels=hl.agg.collect_as_set(ht.disease_label),
+                        disease_mondo_pairs=hl.agg.collect_as_set(
+                            hl.struct(
+                                disease_label=ht.disease_label, mondo_id=ht.mondo_id
+                            )
+                        ),
                         mondo_ids=hl.agg.collect_as_set(ht.mondo_id),
                         classifications=hl.agg.collect_as_set(ht.classification),
                         modes_of_inheritance=hl.agg.collect_as_set(
@@ -814,12 +862,8 @@ def create_clingen_gene_disease_tb(
         return clingen_tb
 
     finally:
-        # Clean up temp file using Hadoop filesystem API
-        try:
-            hl.hadoop_remove(tmp_path)
-            logger.info(f"Cleaned up temp file: {tmp_path}")
-        except Exception as e:
-            logger.warning(f"Failed to clean up temp file {tmp_path}: {e}")
+        # Clean up temp file
+        _cleanup_temp_file(tmp_path)
 
 
 def create_hgnc_gene_tb(
