@@ -101,6 +101,36 @@ __all__ = [
 ]
 
 
+def _cleanup_temp_file(tmp_path: Optional[str]) -> None:
+    """Best-effort cleanup for local or Hadoop/S3/GS temp files."""
+    if not tmp_path:
+        return
+    try:
+        import hailtop.fs as hfs
+
+        if hfs.exists(tmp_path):
+            if hfs.is_dir(tmp_path):
+                hfs.rmtree(tmp_path)
+            else:
+                hfs.remove(tmp_path)
+        return
+    except Exception:
+        logger.debug(
+            "Failed to remove temp path via hailtop.fs: %s", tmp_path, exc_info=True
+        )
+
+    try:
+        local_path = tmp_path
+        if local_path.startswith("file://"):
+            local_path = local_path[len("file://") :]
+        if os.path.exists(local_path):
+            os.remove(local_path)
+    except Exception:
+        logger.debug(
+            "Failed to remove temp path via os.remove: %s", tmp_path, exc_info=True
+        )
+
+
 def create_gnomad_constraint_gene_metrics_tb(
     input_path: str,
     output_path: str,
@@ -659,6 +689,7 @@ def create_clingen_gene_disease_tb(
 
     When key_by="gene", diseases are aggregated per gene with fields:
     - disease_labels: set of disease labels
+    - disease_mondo_pairs: set of (disease_label, mondo_id) pairs
     - mondo_ids: set of MONDO IDs
     - classifications: set of classification levels
     - max_classification_level: numeric level of highest classification
@@ -784,6 +815,11 @@ def create_clingen_gene_disease_tb(
                     ht.group_by("hgnc_id", "gene_symbol")
                     .aggregate(
                         disease_labels=hl.agg.collect_as_set(ht.disease_label),
+                        disease_mondo_pairs=hl.agg.collect_as_set(
+                            hl.struct(
+                                disease_label=ht.disease_label, mondo_id=ht.mondo_id
+                            )
+                        ),
                         mondo_ids=hl.agg.collect_as_set(ht.mondo_id),
                         classifications=hl.agg.collect_as_set(ht.classification),
                         modes_of_inheritance=hl.agg.collect_as_set(
