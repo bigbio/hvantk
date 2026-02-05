@@ -7,6 +7,7 @@ This module provides builder functions that convert raw annotation sources
 
 import hail as hl
 import logging
+import os
 from typing import Optional, List, Callable
 from hvantk.utils.table_utils import get_row_fields
 
@@ -679,32 +680,38 @@ def create_clingen_gene_disease_tb(
             f"got: {min_classification}"
         )
 
-    # Preprocess CSV to skip header lines using Hadoop filesystem API
-    # ClinGen files have 6 metadata lines before the actual header
+    # Preprocess CSV to extract header and data rows
+    # ClinGen files have varying metadata lines before the actual header
+    # The header row starts with "GENE SYMBOL" and separator rows contain "++++++"
     # Use Hadoop API to support cloud URIs (gs://, s3://) and distributed Spark clusters
-    logger.info(
-        f"Preprocessing ClinGen CSV to skip {CLINGEN_HEADER_SKIP_LINES} header lines"
-    )
+    logger.info("Preprocessing ClinGen CSV: finding header and filtering metadata")
 
     # Use Hail's temp file utility to create a Hadoop-accessible temp file
-    tmp_path = hl.utils.new_temp_file(suffix=".csv")
+    tmp_path = hl.utils.new_temp_file(prefix="clingen_", extension=".csv")
     try:
-        # Stream the file line-by-line to skip headers efficiently
-        # Use nested context managers for single-pass streaming
+        # Stream the file line-by-line to find header and skip metadata/separators
         with hl.hadoop_open(input_path, "r") as f:
             with hl.hadoop_open(tmp_path, "w") as out:
-                for i, line in enumerate(f):
-                    if i >= CLINGEN_HEADER_SKIP_LINES:
-                        out.write(line)
+                found_header = False
+                for line in f:
+                    # Skip separator lines (contain "++++++")
+                    if "++++++" in line:
+                        continue
+                    # Look for header row (starts with "GENE SYMBOL" in quotes or unquoted)
+                    if not found_header:
+                        if '"GENE SYMBOL"' in line or line.startswith("GENE SYMBOL"):
+                            found_header = True
+                            out.write(line)
+                        # Skip metadata lines before header
+                        continue
+                    # Write all data lines after header
+                    out.write(line)
 
         logger.info(f"Preprocessed file written to {tmp_path}")
 
     except Exception as e:
         # Clean up temp file if preprocessing fails
-        try:
-            hl.hadoop_remove(tmp_path)
-        except Exception:
-            pass
+        _cleanup_temp_file(tmp_path)
         raise RuntimeError(f"Failed to preprocess ClinGen CSV: {e}") from e
 
     try:
@@ -814,12 +821,8 @@ def create_clingen_gene_disease_tb(
         return clingen_tb
 
     finally:
-        # Clean up temp file using Hadoop filesystem API
-        try:
-            hl.hadoop_remove(tmp_path)
-            logger.info(f"Cleaned up temp file: {tmp_path}")
-        except Exception as e:
-            logger.warning(f"Failed to clean up temp file {tmp_path}: {e}")
+        # Clean up temp file
+        _cleanup_temp_file(tmp_path)
 
 
 def create_hgnc_gene_tb(
