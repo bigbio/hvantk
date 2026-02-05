@@ -738,6 +738,11 @@ def create_clingen_gene_disease_tb(
                     # Write all data lines after header
                     out.write(line)
 
+                if not found_header:
+                    raise RuntimeError(
+                        f'ClinGen header "GENE SYMBOL" not found in {input_path}'
+                    )
+
         logger.info(f"Preprocessed file written to {tmp_path}")
 
     except Exception as e:

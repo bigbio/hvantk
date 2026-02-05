@@ -432,9 +432,8 @@ class ClinGenStreamer(HailDataStreamer):
             (row.gene_symbol, row.n_diseases) for row in top_genes_rows
         ]
 
-        # Get most recent classification date (dates are ISO format strings, so max() works)
-        dates = ht.aggregate(hl.agg.collect_as_set(ht.classification_date))
-        last_update = max(dates) if dates else None
+        # Get most recent classification date using Hail aggregator (ignores missing)
+        last_update = ht.aggregate(hl.agg.max(ht.classification_date))
 
         return {
             "total_associations": total_associations,
