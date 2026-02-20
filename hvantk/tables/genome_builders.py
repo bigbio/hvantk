@@ -38,7 +38,7 @@ _CHROM_ORDER.update({"X": 23, "Y": 24, "M": 25, "MT": 26})
 # Recognise tokens like chr1, Chr22, CHR_X, chrX, chrY, chrM, chrMT
 _CHROM_PATTERN = re.compile(r"(?i)chr[_]?(\d+|X|Y|M|MT)\b")
 
-_STANDARD_CHROMOSOMES = [f"chr{c}" for c in list(range(1, 23)) + ["X", "Y"]]
+_STANDARD_CHROMOSOMES = [f"chr{c}" for c in [*range(1, 23), "X", "Y"]]
 
 
 def _extract_chrom_token(filepath: str) -> Optional[str]:
@@ -96,14 +96,6 @@ def discover_vcf_files(
             "Ensure files are bgzipped (.vcf.gz) and located directly in that directory."
         )
 
-    # Validate .tbi indexes
-    missing_indexes = [f for f in vcf_files if not os.path.exists(f + ".tbi")]
-    if missing_indexes:
-        raise FileNotFoundError(
-            "The following VCF files are missing a .tbi tabix index:\n"
-            + "\n".join(f"  {f}" for f in missing_indexes)
-        )
-
     # Apply chromosome filter
     if chromosomes is not None:
         requested = {c.upper() for c in chromosomes}
@@ -117,15 +109,24 @@ def discover_vcf_files(
                 "Check that the filenames contain chromosome tokens like 'chr1', 'chrX'."
             )
 
-    # Warn about standard chromosomes that are absent
-    found_tokens = {(_extract_chrom_token(f) or "").lower() for f in vcf_files}
-    missing_chroms = [c for c in _STANDARD_CHROMOSOMES if c.lower() not in found_tokens]
-    if missing_chroms:
-        logger.warning(
-            "The following standard chromosomes were not found in '%s': %s",
-            input_dir,
-            ", ".join(missing_chroms),
+    # Validate .tbi indexes on the (possibly filtered) file list
+    missing_indexes = [f for f in vcf_files if not os.path.exists(f + ".tbi")]
+    if missing_indexes:
+        raise FileNotFoundError(
+            "The following VCF files are missing a .tbi tabix index:\n"
+            + "\n".join(f"  {f}" for f in missing_indexes)
         )
+
+    # Warn about missing standard chromosomes only when no explicit filter was applied
+    if chromosomes is None:
+        found_tokens = {(_extract_chrom_token(f) or "").lower() for f in vcf_files}
+        missing_chroms = [c for c in _STANDARD_CHROMOSOMES if c.lower() not in found_tokens]
+        if missing_chroms:
+            logger.warning(
+                "The following standard chromosomes were not found in '%s': %s",
+                input_dir,
+                ", ".join(missing_chroms),
+            )
 
     vcf_files = sorted(vcf_files, key=_chrom_sort_key)
     return vcf_files
@@ -216,6 +217,7 @@ def build_1k_genome_mt(
     reference_genome: str = "GRCh38",
     chromosomes: Optional[List[str]] = None,
     overwrite: bool = False,
+    sample_id_col: Optional[str] = None,
 ) -> "hl.MatrixTable":  # noqa: F821
     """Build a Hail MatrixTable from local 1000 Genomes high-coverage VCF files.
 
@@ -240,6 +242,9 @@ def build_1k_genome_mt(
         restrict the import.  When *None*, all discovered chromosomes are included.
     overwrite:
         If *True*, overwrite *output_mt* if it already exists.
+    sample_id_col:
+        Name of the sample ID column in *phenotype* TSV.  When *None*, common
+        column names are tried automatically (see :func:`_join_phenotype`).
 
     Returns
     -------
@@ -280,7 +285,7 @@ def build_1k_genome_mt(
 
     # --- Step 3: Optional phenotype join ---
     if phenotype is not None:
-        mt = _join_phenotype(mt, phenotype)
+        mt = _join_phenotype(mt, phenotype, sample_id_col=sample_id_col)
 
     # --- Step 4: Checkpoint ---
     logger.info("Writing MatrixTable to '%s'", output_mt)
