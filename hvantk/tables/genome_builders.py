@@ -188,7 +188,7 @@ def _join_phenotype(
 
     # Check overlap between samples
     mt_samples = set(mt.s.collect())
-    pheno_samples = set(pheno_ht.key.collect())
+    pheno_samples = set(pheno_ht[sample_id_col].collect())
     overlap = mt_samples & pheno_samples
     if not overlap:
         logger.warning(
