@@ -42,22 +42,30 @@ def mkmatrix_group():
 
 @mkmatrix_group.command("ucsc")
 @click.option(
+    "-e",
     "--expression-matrix",
     "expression_matrix",
     required=True,
     type=click.Path(exists=True),
 )
-@click.option("--metadata", required=True, type=click.Path(exists=True))
-@click.option("--output-mt", "output_mt", required=True, type=click.Path())
-@click.option("--gene-column", default="gene", show_default=True)
-@click.option("--metadata-index-col", default=0, type=int, show_default=True)
-@click.option("--delimiter", default="\t", show_default=True)
-@click.option("--min-partitions", default=50, type=int, show_default=True)
+@click.option("-m", "--metadata", required=True, type=click.Path(exists=True))
+@click.option("-o", "--output-mt", "output_mt", required=True, type=click.Path())
+@click.option("-g", "--gene-column", default="gene", show_default=True)
+@click.option(
+    "--ix",
+    "--metadata-index-col",
+    "metadata_index_col",
+    default=0,
+    type=int,
+    show_default=True,
+)
+@click.option("-d", "--delimiter", default="\t", show_default=True)
+@click.option("-p", "--min-partitions", default=50, type=int, show_default=True)
 @click.option("--force-bgz/--no-force-bgz", default=True, show_default=True)
 @click.option(
     "--split-gene-field/--no-split-gene-field", default=True, show_default=True
 )
-@click.option("--overwrite", is_flag=True)
+@click.option("-w", "--overwrite", is_flag=True)
 def mkmatrix_ucsc(
     expression_matrix,
     metadata,
@@ -89,19 +97,26 @@ def mkmatrix_ucsc(
 
 @mkmatrix_group.command("expression-atlas")
 @click.option(
+    "-e",
     "--expression-matrix",
     "expression_matrix",
     required=True,
     type=click.Path(exists=True),
 )
-@click.option("--sdrf", required=True, type=click.Path(exists=True))
-@click.option("--output-mt", "output_mt", required=True, type=click.Path())
-@click.option("--gene-column", default="Gene ID", show_default=True)
-@click.option("--sample-id-column", default="sample_id", show_default=True)
-@click.option("--delimiter", default="\t", show_default=True)
-@click.option("--min-partitions", default=50, type=int, show_default=True)
+@click.option("-s", "--sdrf", required=True, type=click.Path(exists=True))
+@click.option("-o", "--output-mt", "output_mt", required=True, type=click.Path())
+@click.option("-g", "--gene-column", default="Gene ID", show_default=True)
+@click.option(
+    "--sid",
+    "--sample-id-column",
+    "sample_id_column",
+    default="sample_id",
+    show_default=True,
+)
+@click.option("-d", "--delimiter", default="\t", show_default=True)
+@click.option("-p", "--min-partitions", default=50, type=int, show_default=True)
 @click.option("--force-bgz/--no-force-bgz", default=False, show_default=True)
-@click.option("--overwrite", is_flag=True)
+@click.option("-w", "--overwrite", is_flag=True)
 def mkmatrix_expression_atlas(
     expression_matrix,
     sdrf,
@@ -131,31 +146,41 @@ def mkmatrix_expression_atlas(
 
 @mkmatrix_group.command("cptac")
 @click.option(
+    "-e",
     "--expression",
     required=True,
     type=click.Path(exists=True),
     help="Path to CPTAC expression TSV/CSV",
 )
 @click.option(
+    "-m",
     "--metadata",
     required=True,
     type=click.Path(exists=True),
     help="Path to CPTAC metadata TSV/CSV",
 )
-@click.option("--output-mt", "output_mt", required=True, type=click.Path())
-@click.option("--gene-id-col", default="GeneID", show_default=True)
-@click.option("--gene-name-col", default="Gene Name", show_default=True)
-@click.option("--sample-id-col", default="SampleID", show_default=True)
-@click.option("--expression-col", default="Expression", show_default=True)
+@click.option("-o", "--output-mt", "output_mt", required=True, type=click.Path())
+@click.option("-g", "--gene-id-col", default="GeneID", show_default=True)
+@click.option("-n", "--gene-name-col", default="Gene Name", show_default=True)
 @click.option(
+    "--sid",
+    "--sample-id-col",
+    "sample_id_col",
+    default="SampleID",
+    show_default=True,
+)
+@click.option("-x", "--expression-col", default="Expression", show_default=True)
+@click.option(
+    "-c",
     "--categorical-cols",
     default=None,
     help="Comma-separated categorical metadata columns",
 )
 @click.option(
+    "-u",
     "--numeric-cols", default=None, help="Comma-separated numeric metadata columns"
 )
-@click.option("--overwrite", is_flag=True)
+@click.option("-w", "--overwrite", is_flag=True)
 def mkmatrix_cptac(
     expression,
     metadata,
