@@ -20,9 +20,10 @@ pycares = ">=3.0.0"
 name = "aiohappyeyeballs"
 version = "2.6.1"
 description = "Happy Eyeballs for asyncio"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
+markers = "extra == \"hgc\" or python_version < \"3.13\""
 files = [
     {file = "aiohappyeyeballs-2.6.1-py3-none-any.whl", hash = "sha256:f349ba8f4b75cb25c99c5c2d84e997e485204d2902a9597802b0371f09331fb8"},
     {file = "aiohappyeyeballs-2.6.1.tar.gz", hash = "sha256:c3f9d0113123803ccadfdf3f0faa505bc78e6a72d1cc4806cbd719826e943558"},
@@ -32,9 +33,10 @@ files = [
 name = "aiohttp"
 version = "3.11.18"
 description = "Async http client/server framework (asyncio)"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
+markers = "extra == \"hgc\" or python_version < \"3.13\""
 files = [
     {file = "aiohttp-3.11.18-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:96264854fedbea933a9ca4b7e0c745728f01380691687b7365d18d9e977179c4"},
     {file = "aiohttp-3.11.18-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:9602044ff047043430452bc3a2089743fa85da829e6fc9ee0025351d66c332b6"},
@@ -136,9 +138,10 @@ speedups = ["Brotli ; platform_python_implementation == \"CPython\"", "aiodns (>
 name = "aiosignal"
 version = "1.3.2"
 description = "aiosignal: a list of registered asynchronous callbacks"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
+markers = "extra == \"hgc\" or python_version < \"3.13\""
 files = [
     {file = "aiosignal-1.3.2-py2.py3-none-any.whl", hash = "sha256:45cde58e409a301715980c2b01d0c28bdde3770d8290b5eb2173759d9acb31a5"},
     {file = "aiosignal-1.3.2.tar.gz", hash = "sha256:a8c255c66fafb1e499c9351d0bf32ff2d8a0321595ebac3b93713656d2436f54"},
@@ -151,9 +154,10 @@ frozenlist = ">=1.1.0"
 name = "annoy"
 version = "1.17.3"
 description = "Approximate Nearest Neighbors in C++/Python optimized for memory usage and loading/saving to disk."
-optional = false
+optional = true
 python-versions = "*"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "annoy-1.17.3-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:c33a5d4d344c136c84976bfb2825760142a8bb25335165e24e11c9afbfa8c2e9"},
     {file = "annoy-1.17.3.tar.gz", hash = "sha256:9cbfebefe0a5f843eba29c6be4c84d601f4f41ad4ded0486f1b88c3b07739c15"},
@@ -163,9 +167,10 @@ files = [
 name = "asttokens"
 version = "3.0.0"
 description = "Annotate AST trees with source code positions"
-optional = false
+optional = true
 python-versions = ">=3.8"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "asttokens-3.0.0-py3-none-any.whl", hash = "sha256:e3078351a059199dd5138cb1c706e6430c05eff2ff136af5eb4790f9d28932e2"},
     {file = "asttokens-3.0.0.tar.gz", hash = "sha256:0dcd8baa8d62b0c1d118b399b2ddba3c4aff271d0d7a9e0d4c1681c79035bbc7"},
@@ -208,9 +213,10 @@ dev = ["pylint (>=2.1,<3.0)", "pytest (>=3.6,<4.0)"]
 name = "attrs"
 version = "25.3.0"
 description = "Classes Without Boilerplate"
-optional = false
+optional = true
 python-versions = ">=3.8"
 groups = ["main"]
+markers = "extra == \"hgc\" or python_version < \"3.13\""
 files = [
     {file = "attrs-25.3.0-py3-none-any.whl", hash = "sha256:427318ce031701fea540783410126f03899a97ffc6f61596ad581ac2e40e3bc3"},
     {file = "attrs-25.3.0.tar.gz", hash = "sha256:75d7cefc7fb576747b2c81b4442d4d4a1ce0900973527c011d1030fd3bf4af1b"},
@@ -308,9 +314,10 @@ aio = ["azure-core[aio] (>=1.30.0)"]
 name = "biocommons-seqrepo"
 version = "0.6.11"
 description = "Non-redundant, compressed, journalled, file-based storage for biological sequences"
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "biocommons.seqrepo-0.6.11-py3-none-any.whl", hash = "sha256:55378e7acaf08e8dc9d2a95027a0b5d85047e021ace358a3bf3e8a4b3daa8180"},
     {file = "biocommons_seqrepo-0.6.11.tar.gz", hash = "sha256:b5d5e0faab4f0702cecfca898f38bfe85a519bfa1a2e680317f40c434857c98e"},
@@ -335,9 +342,10 @@ tests = ["pytest (>=7.1,<8.0)", "pytest-cov (>=4.1,<5.0)", "pytest-optional-test
 name = "bioutils"
 version = "0.6.1"
 description = "miscellaneous simple bioinformatics utilities and lookup tables"
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "bioutils-0.6.1-py3-none-any.whl", hash = "sha256:9928297331b9fc0a4fd4235afdef9a80a0916d8b5c2811ab781bded0dad4b9b6"},
     {file = "bioutils-0.6.1.tar.gz", hash = "sha256:6ad7a9b6da73beea798a935499339d8b60a434edc37dfc803474d2e93e0e64aa"},
@@ -480,9 +488,10 @@ files = [
 name = "canonicaljson"
 version = "2.0.0"
 description = "Canonical JSON"
-optional = false
+optional = true
 python-versions = ">=3.7"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "canonicaljson-2.0.0-py3-none-any.whl", hash = "sha256:c38a315de3b5a0532f1ec1f9153cd3d716abfc565a558d00a4835428a34fca5b"},
     {file = "canonicaljson-2.0.0.tar.gz", hash = "sha256:e2fdaef1d7fadc5d9cb59bd3d0d41b064ddda697809ac4325dced721d12f113f"},
@@ -709,15 +718,16 @@ files = [
     {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
     {file = "colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"},
 ]
-markers = {main = "sys_platform == \"win32\" or platform_system == \"Windows\"", dev = "platform_system == \"Windows\" or sys_platform == \"win32\""}
+markers = {main = "extra == \"hgc\" and sys_platform == \"win32\" or platform_system == \"Windows\"", dev = "platform_system == \"Windows\" or sys_platform == \"win32\""}
 
 [[package]]
 name = "coloredlogs"
 version = "15.0.1"
 description = "Colored terminal output for Python's logging module"
-optional = false
+optional = true
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "coloredlogs-15.0.1-py2.py3-none-any.whl", hash = "sha256:612ee75c546f53e92e70049c9dbfcc18c935a2b9a53b66085ce9ef6a6e5c0934"},
     {file = "coloredlogs-15.0.1.tar.gz", hash = "sha256:7c991aa71a4577af2f82600d8f8f3a89f936baeaf9b50a9c197da014e5bf16b0"},
@@ -733,9 +743,10 @@ cron = ["capturer (>=2.4)"]
 name = "comm"
 version = "0.2.3"
 description = "Jupyter Python Comm implementation, for usage in ipykernel, xeus-python etc."
-optional = false
+optional = true
 python-versions = ">=3.8"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "comm-0.2.3-py3-none-any.whl", hash = "sha256:c615d91d75f7f04f095b30d1c1711babd43bdc6419c1be9886a85f2f4e489417"},
     {file = "comm-0.2.3.tar.gz", hash = "sha256:2dc8048c10962d55d7ad693be1e7045d891b7ce8d999c97963a5e3e99c055971"},
@@ -764,9 +775,10 @@ test = ["flake8 (==3.7.8)", "hypothesis (==3.55.3)"]
 name = "configparser"
 version = "7.2.0"
 description = "Updated configparser from stdlib for earlier Pythons."
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "configparser-7.2.0-py3-none-any.whl", hash = "sha256:fee5e1f3db4156dcd0ed95bc4edfa3580475537711f67a819c966b389d09ce62"},
     {file = "configparser-7.2.0.tar.gz", hash = "sha256:b629cc8ae916e3afbd36d1b3d093f34193d851e11998920fdcfc4552218b7b70"},
@@ -1033,9 +1045,10 @@ tests = ["pytest", "pytest-cov", "pytest-xdist"]
 name = "decorator"
 version = "4.4.2"
 description = "Decorators for Humans"
-optional = false
+optional = true
 python-versions = ">=2.6, !=3.0.*, !=3.1.*"
 groups = ["main"]
+markers = "extra == \"hgc\" or python_version < \"3.13\""
 files = [
     {file = "decorator-4.4.2-py2.py3-none-any.whl", hash = "sha256:41fa54c2a0cc4ba648be4fd43cff00aedf5b9465c9bf18d64325bc225f08f760"},
     {file = "decorator-4.4.2.tar.gz", hash = "sha256:e3a62f0520172440ca0dcc823749319382e377f37f140a0b99ef45fecb84bfe7"},
@@ -1084,11 +1097,11 @@ description = "Backport of PEP 654 (exception groups)"
 optional = false
 python-versions = ">=3.7"
 groups = ["main", "dev"]
-markers = "python_version == \"3.10\""
 files = [
     {file = "exceptiongroup-1.2.2-py3-none-any.whl", hash = "sha256:3111b9d131c238bec2f8f516e123e14ba243563fb135d3fe885990585aa7795b"},
     {file = "exceptiongroup-1.2.2.tar.gz", hash = "sha256:47c2edf7c6738fafb49fd34290706d1a1a2f4d1c6df275526b62cbb4aa5393cc"},
 ]
+markers = {main = "extra == \"hgc\" and python_version == \"3.10\"", dev = "python_version == \"3.10\""}
 
 [package.extras]
 test = ["pytest (>=6)"]
@@ -1097,9 +1110,10 @@ test = ["pytest (>=6)"]
 name = "executing"
 version = "2.2.1"
 description = "Get the currently executing AST node of a frame, and other information"
-optional = false
+optional = true
 python-versions = ">=3.8"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "executing-2.2.1-py2.py3-none-any.whl", hash = "sha256:760643d3452b4d777d295bb167ccc74c64a81df23fb5e08eff250c425a4b2017"},
     {file = "executing-2.2.1.tar.gz", hash = "sha256:3632cc370565f6648cc328b32435bd120a1e4ebb20c77e3fdde9a13cd1e533c4"},
@@ -1129,9 +1143,10 @@ pyflakes = ">=3.1.0,<3.2.0"
 name = "flatbuffers"
 version = "25.9.23"
 description = "The FlatBuffers serialization format for Python"
-optional = false
+optional = true
 python-versions = "*"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "flatbuffers-25.9.23-py2.py3-none-any.whl", hash = "sha256:255538574d6cb6d0a79a17ec8bc0d30985913b87513a01cce8bcdb6b4c44d0e2"},
     {file = "flatbuffers-25.9.23.tar.gz", hash = "sha256:676f9fa62750bb50cf531b42a0a2a118ad8f7f797a511eda12881c016f093b12"},
@@ -1215,9 +1230,10 @@ woff = ["brotli (>=1.0.1) ; platform_python_implementation == \"CPython\"", "bro
 name = "frozenlist"
 version = "1.6.0"
 description = "A list-like structure which implements collections.abc.MutableSequence"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
+markers = "extra == \"hgc\" or python_version < \"3.13\""
 files = [
     {file = "frozenlist-1.6.0-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:e6e558ea1e47fd6fa8ac9ccdad403e5dd5ecc6ed8dda94343056fa4277d5c65e"},
     {file = "frozenlist-1.6.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:f4b3cd7334a4bbc0c472164f3744562cb72d05002cc6fcf58adb104630bbc352"},
@@ -1329,9 +1345,10 @@ files = [
 name = "ga4gh-vrs"
 version = "0.8.4"
 description = "\"GA4GH Variation Representation Specification (VRS) reference implementation (https://github.com/ga4gh/vrs-python/)\""
-optional = false
+optional = true
 python-versions = ">=3.6"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "ga4gh.vrs-0.8.4-py2.py3-none-any.whl", hash = "sha256:fc2ca9ea7a5d8de08190f045d8bb1ec78ad7c42483f5cf02e6015346facd3202"},
     {file = "ga4gh.vrs-0.8.4.tar.gz", hash = "sha256:60c503bd1decbe0de99ab47b5a71712dead416d6d200311e053dcf1314762487"},
@@ -1363,9 +1380,10 @@ notebooks = ["ipython", "jupyter", "tabulate"]
 name = "gnomad"
 version = "0.8.2"
 description = "Hail utilities for the Genome Aggregation Database"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "gnomad-0.8.2-py3-none-any.whl", hash = "sha256:d9a46b7123f7f5b2fc6a6a6e8ff4b2e3311985fb16c80ffad5860a2d8f4b3fc7"},
     {file = "gnomad-0.8.2.tar.gz", hash = "sha256:ab6fd6960ff59a6758f5baf9f66c4cd03f70fc931876cba6a8741a74bfc9baf9"},
@@ -1635,9 +1653,10 @@ uvloop = {version = ">=0.16.0,<1", markers = "sys_platform != \"win32\""}
 name = "hdbscan"
 version = "0.8.40"
 description = "Clustering based on density with variable density clusters"
-optional = false
+optional = true
 python-versions = "*"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "hdbscan-0.8.40-cp310-cp310-macosx_12_0_x86_64.whl", hash = "sha256:811a248e57353a4aa815019176879fd16bace55ed633583a6b47734edcb5397c"},
     {file = "hdbscan-0.8.40-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:0a1b062cdee7f847c1a49e343b1cf0d0c7d570f60aca961c7f5ff3bdd6fe4be7"},
@@ -1670,9 +1689,10 @@ scipy = ">=1.0"
 name = "hgvs"
 version = "1.5.6"
 description = "HGVS Parser, Formatter, Mapper, Validator"
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "hgvs-1.5.6-py3-none-any.whl", hash = "sha256:7ca4f9fc7be3afca29f5caf1bc5256083fc581a59c6801b7e9654a15d8d2d376"},
     {file = "hgvs-1.5.6.tar.gz", hash = "sha256:663755fd5db38a897c447dd1ec0a2bfc8157a28ad30378a08489746e3aa61ff2"},
@@ -1695,9 +1715,10 @@ dev = ["black", "flake8", "ipython", "isort", "jupyter", "pre-commit (>=3.4,<4.0
 name = "humanfriendly"
 version = "10.0"
 description = "Human friendly output for text interfaces using Python"
-optional = false
+optional = true
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "humanfriendly-10.0-py2.py3-none-any.whl", hash = "sha256:1697e1a8a8f550fd43c2865cd84542fc175a61dcb779b6fee18cf6b6ccba1477"},
     {file = "humanfriendly-10.0.tar.gz", hash = "sha256:6b0b831ce8f15f7300721aa49829fc4e83921a9a301cc7f606be6686a2288ddc"},
@@ -1756,9 +1777,10 @@ all = ["flake8 (>=7.1.1)", "mypy (>=1.11.2)", "pytest (>=8.3.2)", "ruff (>=0.6.2
 name = "importlib-metadata"
 version = "8.7.0"
 description = "Read metadata from Python packages"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "importlib_metadata-8.7.0-py3-none-any.whl", hash = "sha256:e5dd1551894c77868a30651cef00984d50e1002d06942a7101d34870c5f02afd"},
     {file = "importlib_metadata-8.7.0.tar.gz", hash = "sha256:d13b81ad223b890aa16c5471f2ac3056cf76c5f10f82d6f9292f0b415f389000"},
@@ -1780,9 +1802,10 @@ type = ["pytest-mypy"]
 name = "importlib-resources"
 version = "6.5.2"
 description = "Read resources from Python packages"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "importlib_resources-6.5.2-py3-none-any.whl", hash = "sha256:789cfdc3ed28c78b67a06acb8126751ced69a3d5f79c095a98298cd8a760ccec"},
     {file = "importlib_resources-6.5.2.tar.gz", hash = "sha256:185f87adef5bcc288449d98fb4fba07cea78bc036455dd44c5fc4a2fe78fed2c"},
@@ -1800,9 +1823,10 @@ type = ["pytest-mypy"]
 name = "inflection"
 version = "0.5.1"
 description = "A port of Ruby on Rails inflector to Python"
-optional = false
+optional = true
 python-versions = ">=3.5"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "inflection-0.5.1-py2.py3-none-any.whl", hash = "sha256:f38b2b640938a4f35ade69ac3d053042959b62a0f1076a5bbaa1b9526605a8a2"},
     {file = "inflection-0.5.1.tar.gz", hash = "sha256:1a29730d366e996aaacffb2f1f1cb9593dc38e2ddd30c91250c6dde09ea9b417"},
@@ -1824,9 +1848,10 @@ files = [
 name = "ipython"
 version = "8.37.0"
 description = "IPython: Productive Interactive Computing"
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "ipython-8.37.0-py3-none-any.whl", hash = "sha256:ed87326596b878932dbcb171e3e698845434d8c61b8d8cd474bf663041a9dcf2"},
     {file = "ipython-8.37.0.tar.gz", hash = "sha256:ca815841e1a41a1e6b73a0b08f3038af9b2252564d01fc405356d34033012216"},
@@ -1863,9 +1888,10 @@ test-extra = ["curio", "ipython[test]", "jupyter_ai", "matplotlib (!=3.2.0)", "n
 name = "ipywidgets"
 version = "8.1.7"
 description = "Jupyter interactive widgets"
-optional = false
+optional = true
 python-versions = ">=3.7"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "ipywidgets-8.1.7-py3-none-any.whl", hash = "sha256:764f2602d25471c213919b8a1997df04bef869251db4ca8efba1b76b1bd9f7bb"},
     {file = "ipywidgets-8.1.7.tar.gz", hash = "sha256:15f1ac050b9ccbefd45dccfbb2ef6bed0029d8278682d569d71b8dd96bee0376"},
@@ -1914,9 +1940,10 @@ typing-extensions = ">=3.7.4.3"
 name = "jedi"
 version = "0.19.2"
 description = "An autocompletion tool for Python that can be used for text editors."
-optional = false
+optional = true
 python-versions = ">=3.6"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "jedi-0.19.2-py2.py3-none-any.whl", hash = "sha256:a8ef22bde8490f57fe5c7681a3c83cb58874daf72b4784de3cce5b6ef6edb5b9"},
     {file = "jedi-0.19.2.tar.gz", hash = "sha256:4770dc3de41bde3966b02eb84fbcf557fb33cce26ad23da12c742fb50ecb11f0"},
@@ -1978,9 +2005,10 @@ files = [
 name = "jsonschema"
 version = "3.2.0"
 description = "An implementation of JSON Schema validation for Python"
-optional = false
+optional = true
 python-versions = "*"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "jsonschema-3.2.0-py2.py3-none-any.whl", hash = "sha256:4e5b3cf8216f577bee9ce139cbe72eca3ea4f292ec60928ff24758ce626cd163"},
     {file = "jsonschema-3.2.0.tar.gz", hash = "sha256:c8a85b28d377cc7737e46e2d9f2b4f44ee3c0e1deac6bf46ddefc7187d30797a"},
@@ -2000,9 +2028,10 @@ format-nongpl = ["idna", "jsonpointer (>1.13)", "rfc3339-validator", "rfc3986-va
 name = "jupyterlab-widgets"
 version = "3.0.15"
 description = "Jupyter interactive widgets for JupyterLab"
-optional = false
+optional = true
 python-versions = ">=3.7"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "jupyterlab_widgets-3.0.15-py3-none-any.whl", hash = "sha256:d59023d7d7ef71400d51e6fee9a88867f6e65e10a4201605d2d7f3e8f012a31c"},
     {file = "jupyterlab_widgets-3.0.15.tar.gz", hash = "sha256:2920888a0c2922351a9202817957a68c07d99673504d6cd37345299e971bb08b"},
@@ -2124,9 +2153,10 @@ markers = {main = "extra == \"viz\" or extra == \"hgc\" or extra == \"psroc\""}
 name = "markdown"
 version = "3.9"
 description = "Python implementation of John Gruber's Markdown."
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "markdown-3.9-py3-none-any.whl", hash = "sha256:9f4d91ed810864ea88a6f32c07ba8bee1346c0cc1f6b1f9f6c822f2a9667d280"},
     {file = "markdown-3.9.tar.gz", hash = "sha256:d2900fe1782bd33bdbbd56859defef70c2e78fc46668f8eb9df3128138f2cb6a"},
@@ -2292,9 +2322,10 @@ dev = ["meson-python (>=0.13.1,<0.17.0)", "pybind11 (>=2.13.2,!=2.13.3)", "setup
 name = "matplotlib-inline"
 version = "0.2.1"
 description = "Inline Matplotlib backend for Jupyter"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "matplotlib_inline-0.2.1-py3-none-any.whl", hash = "sha256:d56ce5156ba6085e00a9d54fead6ed29a9c47e215cd1bba2e976ef39f5710a76"},
     {file = "matplotlib_inline-0.2.1.tar.gz", hash = "sha256:e1ee949c340d771fc39e241ea75683deb94762c8fa5f2927ec57c83c4dffa9fe"},
@@ -2322,9 +2353,10 @@ files = [
 name = "mpmath"
 version = "1.3.0"
 description = "Python library for arbitrary-precision floating-point arithmetic"
-optional = false
+optional = true
 python-versions = "*"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "mpmath-1.3.0-py3-none-any.whl", hash = "sha256:a0b2b9fe80bbcd81a6647ff13108738cfb482d481d826cc0e02f5b35e5c88d2c"},
     {file = "mpmath-1.3.0.tar.gz", hash = "sha256:7a28eb2a9774d00c7bc92411c19a89209d5da7c4c9a9e227be8330a23a25b91f"},
@@ -2380,9 +2412,10 @@ portalocker = ["portalocker (>=1.4,<4)"]
 name = "multidict"
 version = "6.4.3"
 description = "multidict implementation"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
+markers = "extra == \"hgc\" or python_version < \"3.13\""
 files = [
     {file = "multidict-6.4.3-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:32a998bd8a64ca48616eac5a8c1cc4fa38fb244a3facf2eeb14abe186e0f6cc5"},
     {file = "multidict-6.4.3-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:a54ec568f1fc7f3c313c2f3b16e5db346bf3660e1309746e7fccbbfded856188"},
@@ -2522,10 +2555,10 @@ files = [
 name = "networkx"
 version = "3.4.2"
 description = "Python package for creating and manipulating graphs and networks"
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
-markers = "python_version == \"3.10\""
+markers = "python_version == \"3.10\" and extra == \"hgc\""
 files = [
     {file = "networkx-3.4.2-py3-none-any.whl", hash = "sha256:df5d4365b724cf81b8c6a7312509d0c22386097011ad1abe274afd5e9d3bbc5f"},
     {file = "networkx-3.4.2.tar.gz", hash = "sha256:307c3669428c5362aab27c8a1260aa8f47c4e91d3891f48be0141738d8d053e1"},
@@ -2543,10 +2576,10 @@ test = ["pytest (>=7.2)", "pytest-cov (>=4.0)"]
 name = "networkx"
 version = "3.5"
 description = "Python package for creating and manipulating graphs and networks"
-optional = false
+optional = true
 python-versions = ">=3.11"
 groups = ["main"]
-markers = "python_version >= \"3.11\""
+markers = "python_version >= \"3.11\" and extra == \"hgc\""
 files = [
     {file = "networkx-3.5-py3-none-any.whl", hash = "sha256:0030d386a9a06dee3565298b4a734b68589749a544acbb6c412dc9e2489ec6ec"},
     {file = "networkx-3.5.tar.gz", hash = "sha256:d4c6f9cf81f52d69230866796b82afbccdec3db7ae4fbd1b65ea750feed50037"},
@@ -2667,9 +2700,10 @@ files = [
 name = "onnx"
 version = "1.17.0"
 description = "Open Neural Network Exchange"
-optional = false
+optional = true
 python-versions = ">=3.8"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "onnx-1.17.0-cp310-cp310-macosx_12_0_universal2.whl", hash = "sha256:38b5df0eb22012198cdcee527cc5f917f09cce1f88a69248aaca22bd78a7f023"},
     {file = "onnx-1.17.0-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:d545335cb49d4d8c47cc803d3a805deb7ad5d9094dc67657d66e568610a36d7d"},
@@ -2710,9 +2744,10 @@ reference = ["Pillow", "google-re2"]
 name = "onnxruntime"
 version = "1.23.2"
 description = "ONNX Runtime is a runtime accelerator for Machine Learning models"
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "onnxruntime-1.23.2-cp310-cp310-macosx_13_0_arm64.whl", hash = "sha256:a7730122afe186a784660f6ec5807138bf9d792fa1df76556b27307ea9ebcbe3"},
     {file = "onnxruntime-1.23.2-cp310-cp310-macosx_13_0_x86_64.whl", hash = "sha256:b28740f4ecef1738ea8f807461dd541b8287d5650b5be33bca7b474e3cbd1f36"},
@@ -2840,6 +2875,7 @@ files = [
     {file = "packaging-25.0-py3-none-any.whl", hash = "sha256:29572ef2b1f17581046b3a2227d5c611fb25ec70ca1ba8554b24b0e69331a484"},
     {file = "packaging-25.0.tar.gz", hash = "sha256:d443872c98d677bf60f6a1f2f8c1cb748e8fe762d2bf9d3148b5599295b0fc4f"},
 ]
+markers = {main = "extra == \"hgc\" or extra == \"viz\" or extra == \"psroc\" or extra == \"interactive\" or python_version < \"3.13\""}
 
 [[package]]
 name = "pandas"
@@ -3026,9 +3062,10 @@ regex = ">=2022.3.15"
 name = "parsley"
 version = "1.3"
 description = "Parsing and pattern matching made easy."
-optional = false
+optional = true
 python-versions = "*"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "Parsley-1.3-py2.py3-none-any.whl", hash = "sha256:c3bc417b8c7e3a96c87c0f2f751bfd784ed5156ffccebe2f84330df5685f8dc3"},
     {file = "Parsley-1.3.tar.gz", hash = "sha256:9444278d47161d5f2be76a767809a3cbe6db4db822f46a4fd7481d4057208d41"},
@@ -3038,9 +3075,10 @@ files = [
 name = "parso"
 version = "0.8.5"
 description = "A Python Parser"
-optional = false
+optional = true
 python-versions = ">=3.6"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "parso-0.8.5-py2.py3-none-any.whl", hash = "sha256:646204b5ee239c396d040b90f9e272e9a8017c630092bf59980beb62fd033887"},
     {file = "parso-0.8.5.tar.gz", hash = "sha256:034d7354a9a018bdce352f48b2a8a450f05e9d6ee85db84764e9b6bd96dafe5a"},
@@ -3066,9 +3104,10 @@ files = [
 name = "patsy"
 version = "1.0.2"
 description = "A Python package for describing statistical models and for building design matrices."
-optional = false
+optional = true
 python-versions = ">=3.6"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "patsy-1.0.2-py2.py3-none-any.whl", hash = "sha256:37bfddbc58fcf0362febb5f54f10743f8b21dd2aa73dec7e7ef59d1b02ae668a"},
     {file = "patsy-1.0.2.tar.gz", hash = "sha256:cdc995455f6233e90e22de72c37fcadb344e7586fb83f06696f54d92f8ce74c0"},
@@ -3084,10 +3123,10 @@ test = ["pytest", "pytest-cov", "scipy"]
 name = "pexpect"
 version = "4.9.0"
 description = "Pexpect allows easy control of interactive console applications."
-optional = false
+optional = true
 python-versions = "*"
 groups = ["main"]
-markers = "sys_platform != \"win32\" and sys_platform != \"emscripten\""
+markers = "extra == \"hgc\" and sys_platform != \"win32\" and sys_platform != \"emscripten\""
 files = [
     {file = "pexpect-4.9.0-py2.py3-none-any.whl", hash = "sha256:7236d1e080e4936be2dc3e326cec0af72acf9212a7e1d060210e70a47e253523"},
     {file = "pexpect-4.9.0.tar.gz", hash = "sha256:ee7d41123f3c9911050ea2c2dac107568dc43b2d3b0c7557a33212c398ead30f"},
@@ -3251,9 +3290,10 @@ testing = ["pytest", "pytest-benchmark"]
 name = "prompt-toolkit"
 version = "3.0.52"
 description = "Library for building powerful interactive command lines in Python"
-optional = false
+optional = true
 python-versions = ">=3.8"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "prompt_toolkit-3.0.52-py3-none-any.whl", hash = "sha256:9aac639a3bbd33284347de5ad8d68ecc044b91a762dc39b7c21095fcd6a19955"},
     {file = "prompt_toolkit-3.0.52.tar.gz", hash = "sha256:28cde192929c8e7321de85de1ddbe736f1375148b02f2e17edd840042b1be855"},
@@ -3266,9 +3306,10 @@ wcwidth = "*"
 name = "propcache"
 version = "0.3.1"
 description = "Accelerated property cache"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
+markers = "extra == \"hgc\" or python_version < \"3.13\""
 files = [
     {file = "propcache-0.3.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:f27785888d2fdd918bc36de8b8739f2d6c791399552333721b58193f68ea3e98"},
     {file = "propcache-0.3.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:d4e89cde74154c7b5957f87a355bb9c8ec929c167b59c83d90654ea36aeb6180"},
@@ -3393,9 +3434,10 @@ testing = ["google-api-core (>=1.31.5)"]
 name = "protobuf"
 version = "3.20.2"
 description = "Protocol Buffers"
-optional = false
+optional = true
 python-versions = ">=3.7"
 groups = ["main"]
+markers = "extra == \"hgc\" or python_version < \"3.13\""
 files = [
     {file = "protobuf-3.20.2-cp310-cp310-manylinux2014_aarch64.whl", hash = "sha256:09e25909c4297d71d97612f04f41cea8fa8510096864f2835ad2f3b3df5a5559"},
     {file = "protobuf-3.20.2-cp310-cp310-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:e8fbc522303e09036c752a0afcc5c0603e917222d8bedc02813fd73b4b4ed804"},
@@ -3448,9 +3490,10 @@ test = ["pytest", "pytest-instafail", "pytest-subtests", "pytest-xdist", "pywin3
 name = "psycopg2"
 version = "2.9.11"
 description = "psycopg2 - Python-PostgreSQL Database Adapter"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "psycopg2-2.9.11-cp310-cp310-win_amd64.whl", hash = "sha256:103e857f46bb76908768ead4e2d0ba1d1a130e7b8ed77d3ae91e8b33481813e8"},
     {file = "psycopg2-2.9.11-cp311-cp311-win_amd64.whl", hash = "sha256:210daed32e18f35e3140a1ebe059ac29209dd96468f2f7559aa59f75ee82a5cb"},
@@ -3465,9 +3508,10 @@ files = [
 name = "psycopg2-binary"
 version = "2.9.11"
 description = "psycopg2 - Python-PostgreSQL Database Adapter"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "psycopg2-binary-2.9.11.tar.gz", hash = "sha256:b6aed9e096bf63f9e75edf2581aa9a7e7186d97ab5c177aa6c87797cd591236c"},
     {file = "psycopg2_binary-2.9.11-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:d6fe6b47d0b42ce1c9f1fa3e35bb365011ca22e39db37074458f27921dca40f2"},
@@ -3542,10 +3586,10 @@ files = [
 name = "ptyprocess"
 version = "0.7.0"
 description = "Run a subprocess in a pseudo terminal"
-optional = false
+optional = true
 python-versions = "*"
 groups = ["main"]
-markers = "sys_platform != \"win32\" and sys_platform != \"emscripten\""
+markers = "extra == \"hgc\" and sys_platform != \"win32\" and sys_platform != \"emscripten\""
 files = [
     {file = "ptyprocess-0.7.0-py2.py3-none-any.whl", hash = "sha256:4b41f3967fce3af57cc7e94b888626c18bf37a083e3651ca8feeb66d492fef35"},
     {file = "ptyprocess-0.7.0.tar.gz", hash = "sha256:5c5d0a3b48ceee0b48485e0c26037c0acd7d29765ca3fbb5cb3831d347423220"},
@@ -3555,9 +3599,10 @@ files = [
 name = "pure-eval"
 version = "0.2.3"
 description = "Safely evaluate AST nodes without side effects"
-optional = false
+optional = true
 python-versions = "*"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "pure_eval-0.2.3-py3-none-any.whl", hash = "sha256:1db8e35b67b3d218d818ae653e27f06c3aa420901fa7b081ca98cbedc874e0d0"},
     {file = "pure_eval-0.2.3.tar.gz", hash = "sha256:5f4e983f40564c576c7c8635ae88db5956bb2229d7e9237d03b3c0b0190eaf42"},
@@ -3737,9 +3782,10 @@ files = [
 name = "pygments"
 version = "2.19.1"
 description = "Pygments is a syntax highlighting package written in Python."
-optional = false
+optional = true
 python-versions = ">=3.8"
 groups = ["main"]
+markers = "extra == \"hgc\" or python_version < \"3.13\""
 files = [
     {file = "pygments-2.19.1-py3-none-any.whl", hash = "sha256:9ea1544ad55cecf4b8242fab6dd35a93bbce657034b0611ee383099054ab6d8c"},
     {file = "pygments-2.19.1.tar.gz", hash = "sha256:61c16d2a8576dc0649d9f39e089b5f02bcd27fba10d8fb4dcc28173f7a45151f"},
@@ -3790,10 +3836,10 @@ diagrams = ["jinja2", "railroad-diagrams"]
 name = "pyreadline3"
 version = "3.5.4"
 description = "A python implementation of GNU readline."
-optional = false
+optional = true
 python-versions = ">=3.8"
 groups = ["main"]
-markers = "sys_platform == \"win32\""
+markers = "sys_platform == \"win32\" and extra == \"hgc\""
 files = [
     {file = "pyreadline3-3.5.4-py3-none-any.whl", hash = "sha256:eaf8e6cc3c49bcccf145fc6067ba8643d1df34d604a1ec0eccbf7a18e6d3fae6"},
     {file = "pyreadline3-3.5.4.tar.gz", hash = "sha256:8d57d53039a1c75adba8e50dd3d992b28143480816187ea5efbd5c78e6c885b7"},
@@ -3806,9 +3852,10 @@ dev = ["build", "flake8", "mypy", "pytest", "twine"]
 name = "pyrsistent"
 version = "0.20.0"
 description = "Persistent/Functional/Immutable data structures"
-optional = false
+optional = true
 python-versions = ">=3.8"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "pyrsistent-0.20.0-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:8c3aba3e01235221e5b229a6c05f585f344734bd1ad42a8ac51493d74722bbce"},
     {file = "pyrsistent-0.20.0-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:c1beb78af5423b879edaf23c5591ff292cf7c33979734c99aa66d5914ead880f"},
@@ -3848,9 +3895,10 @@ files = [
 name = "pysam"
 version = "0.23.3"
 description = "Package for reading, manipulating, and writing genomic data"
-optional = false
+optional = true
 python-versions = ">=3.8"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "pysam-0.23.3-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:a0b99d875f293fad0bd9c9c923e8910c03af62d291ebb7d20e69ceaf39e383d4"},
     {file = "pysam-0.23.3-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:725a32970cf4ce322f4ab2a52b755163297027a0349f0d151537fe16bdf525e5"},
@@ -3967,9 +4015,10 @@ files = [
 name = "python-jsonschema-objects"
 version = "0.4.6"
 description = "An object wrapper for JSON Schema definitions"
-optional = false
+optional = true
 python-versions = "*"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "python_jsonschema_objects-0.4.6-py2.py3-none-any.whl", hash = "sha256:918ab5dd413499cba2441c7bfe8ae07d2f159aa8199aa09345287677a57b3fb6"},
     {file = "python_jsonschema_objects-0.4.6.tar.gz", hash = "sha256:7d4405d7346362d18be61058fde20b7b3d9c1dbb1104904d2e907d14de6a34b2"},
@@ -4441,9 +4490,10 @@ stats = ["scipy (>=1.7)", "statsmodels (>=0.12)"]
 name = "setuptools"
 version = "80.3.1"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
+markers = "extra == \"hgc\" or python_version < \"3.13\""
 files = [
     {file = "setuptools-80.3.1-py3-none-any.whl", hash = "sha256:ea8e00d7992054c4c592aeb892f6ad51fe1b4d90cc6947cc45c45717c40ec537"},
     {file = "setuptools-80.3.1.tar.gz", hash = "sha256:31e2c58dbb67c99c289f51c16d899afedae292b978f8051efaf6262d8212f927"},
@@ -4474,9 +4524,10 @@ files = [
 name = "skl2onnx"
 version = "1.19.1"
 description = "Convert scikit-learn models to ONNX"
-optional = false
+optional = true
 python-versions = ">=3.8"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "skl2onnx-1.19.1-py3-none-any.whl", hash = "sha256:fddf2f49e3ffc355f332e676b43c6fec5e63797627925b279d9f5b2c4d0c81a7"},
     {file = "skl2onnx-1.19.1.tar.gz", hash = "sha256:0c105f2a3b87a624dd218d1fb98fdd19cf1bf6217190d25ce7e15484127d0e5d"},
@@ -4490,9 +4541,10 @@ scikit-learn = ">=1.1"
 name = "slackclient"
 version = "2.5.0"
 description = "Slack API clients for Web API and RTM API"
-optional = false
+optional = true
 python-versions = ">=3.6.0"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "slackclient-2.5.0-py2.py3-none-any.whl", hash = "sha256:16ebbfa1c34374fa8c508d0c8e5c670e41bba4a3f62c469ab1ee1b8225a939fa"},
     {file = "slackclient-2.5.0.tar.gz", hash = "sha256:d37e4f91be9cf9d5c1a1698f44a37671fc92823ff01146cd827415f35fabe636"},
@@ -4521,9 +4573,10 @@ files = [
 name = "sqlparse"
 version = "0.5.3"
 description = "A non-validating SQL parser."
-optional = false
+optional = true
 python-versions = ">=3.8"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "sqlparse-0.5.3-py3-none-any.whl", hash = "sha256:cf2196ed3418f3ba5de6af7e82c694a9fbdbfecccdfc72e281548517081f16ca"},
     {file = "sqlparse-0.5.3.tar.gz", hash = "sha256:09f67787f56a0b16ecdbde1bfc7f5d9c3371ca683cfeaa8e6ff60b4807ec9272"},
@@ -4537,9 +4590,10 @@ doc = ["sphinx"]
 name = "stack-data"
 version = "0.6.3"
 description = "Extract data from python stack frames and tracebacks for informative displays"
-optional = false
+optional = true
 python-versions = "*"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "stack_data-0.6.3-py3-none-any.whl", hash = "sha256:d5558e0c25a4cb0853cddad3d77da9891a08cb85dd9f9f91b9f8cd66e511e695"},
     {file = "stack_data-0.6.3.tar.gz", hash = "sha256:836a778de4fec4dcd1dcd89ed8abff8a221f58308462e1c4aa2a3cf30148f0b9"},
@@ -4557,9 +4611,10 @@ tests = ["cython", "littleutils", "pygments", "pytest", "typeguard"]
 name = "statsmodels"
 version = "0.14.5"
 description = "Statistical computations and models for Python"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "statsmodels-0.14.5-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:9fc2b5cdc0c95cba894849651fec1fa1511d365e3eb72b0cc75caac44077cd48"},
     {file = "statsmodels-0.14.5-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:b8d96b0bbaeabd3a557c35cc7249baa9cfbc6dd305c32a9f2cbdd7f46c037e7f"},
@@ -4615,9 +4670,10 @@ docs = ["ipykernel", "jupyter_client", "matplotlib", "nbconvert", "nbformat", "n
 name = "sympy"
 version = "1.14.0"
 description = "Computer algebra system (CAS) in Python"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "sympy-1.14.0-py3-none-any.whl", hash = "sha256:e091cc3e99d2141a0ba2847328f5479b05d94a6635cb96148ccb3f34671bd8f5"},
     {file = "sympy-1.14.0.tar.gz", hash = "sha256:d3d3fe8df1e5a0b42f0e7bdf50541697dbe7d23746e894990c030e2b05e72517"},
@@ -4633,9 +4689,10 @@ dev = ["hypothesis (>=6.70.0)", "pytest (>=7.1.0)"]
 name = "tabulate"
 version = "0.9.0"
 description = "Pretty-print tabular data"
-optional = false
+optional = true
 python-versions = ">=3.7"
 groups = ["main"]
+markers = "extra == \"hgc\" or python_version < \"3.13\""
 files = [
     {file = "tabulate-0.9.0-py3-none-any.whl", hash = "sha256:024ca478df22e9340661486f85298cff5f6dcdba14f3813e8830015b9ed1948f"},
     {file = "tabulate-0.9.0.tar.gz", hash = "sha256:0095b12bf5966de529c0feb1fa08671671b3368eec77d7ef7ab114be2c068b3c"},
@@ -4764,9 +4821,10 @@ telegram = ["requests"]
 name = "traitlets"
 version = "5.14.3"
 description = "Traitlets Python configuration system"
-optional = false
+optional = true
 python-versions = ">=3.8"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "traitlets-5.14.3-py3-none-any.whl", hash = "sha256:b74e89e397b1ed28cc831db7aea759ba6640cb3de13090ca145426688ff1ac4f"},
     {file = "traitlets-5.14.3.tar.gz", hash = "sha256:9ed0579d3502c94b4b3732ac120375cda96f923114522847de4b3bb98b96b6b7"},
@@ -4780,14 +4838,14 @@ test = ["argcomplete (>=3.0.3)", "mypy (>=1.7.0)", "pre-commit", "pytest (>=7.0,
 name = "typing-extensions"
 version = "4.13.2"
 description = "Backported and Experimental Type Hints for Python 3.8+"
-optional = false
+optional = true
 python-versions = ">=3.8"
 groups = ["main", "dev"]
 files = [
     {file = "typing_extensions-4.13.2-py3-none-any.whl", hash = "sha256:a439e7c04b49fec3e5d3e2beaa21755cadbbdc391694e28ccdd36ca4a1408f8c"},
     {file = "typing_extensions-4.13.2.tar.gz", hash = "sha256:e6c81219bd689f51865d9e372991c540bda33a0379d5573cddb9a3a23f7caaef"},
 ]
-markers = {dev = "python_version == \"3.10\""}
+markers = {main = "extra == \"hgc\" or python_version < \"3.13\"", dev = "python_version == \"3.10\""}
 
 [[package]]
 name = "tzdata"
@@ -4876,9 +4934,10 @@ test = ["aiohttp (>=3.10.5)", "flake8 (>=5.0,<6.0)", "mypy (>=0.800)", "psutil",
 name = "wcwidth"
 version = "0.2.14"
 description = "Measures the displayed width of unicode strings in a terminal"
-optional = false
+optional = true
 python-versions = ">=3.6"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "wcwidth-0.2.14-py2.py3-none-any.whl", hash = "sha256:a7bb560c8aee30f9957e5f9895805edd20602f2d7f720186dfd906e82b4982e1"},
     {file = "wcwidth-0.2.14.tar.gz", hash = "sha256:4d478375d31bc5395a3c55c40ccdf3354688364cd61c4f6adacaa9215d0b3605"},
@@ -4888,9 +4947,10 @@ files = [
 name = "widgetsnbextension"
 version = "4.0.14"
 description = "Jupyter interactive widgets for Jupyter Notebook"
-optional = false
+optional = true
 python-versions = ">=3.7"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "widgetsnbextension-4.0.14-py3-none-any.whl", hash = "sha256:4875a9eaf72fbf5079dc372a51a9f268fc38d46f767cbf85c43a36da5cb9b575"},
     {file = "widgetsnbextension-4.0.14.tar.gz", hash = "sha256:a3629b04e3edb893212df862038c7232f62973373869db5084aed739b437b5af"},
@@ -4990,9 +5050,10 @@ files = [
 name = "yarl"
 version = "1.20.0"
 description = "Yet another URL library"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
+markers = "extra == \"hgc\" or python_version < \"3.13\""
 files = [
     {file = "yarl-1.20.0-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:f1f6670b9ae3daedb325fa55fbe31c22c8228f6e0b513772c2e1c623caa6ab22"},
     {file = "yarl-1.20.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:85a231fa250dfa3308f3c7896cc007a47bc76e9e8e8595c20b7426cac4884c62"},
@@ -5109,9 +5170,10 @@ propcache = ">=0.2.1"
 name = "yoyo-migrations"
 version = "9.0.0"
 description = "Database migrations with SQL"
-optional = false
+optional = true
 python-versions = "*"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "yoyo_migrations-9.0.0-py3-none-any.whl", hash = "sha256:fc65d3a6d9449c1c54d64ff2ff98e32a27da356057c60e3471010bfb19ede081"},
 ]
@@ -5130,9 +5192,10 @@ pyodbc = ["pyodbc"]
 name = "zipp"
 version = "3.23.0"
 description = "Backport of pathlib-compatible object wrapper for zip files"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
+markers = "extra == \"hgc\""
 files = [
     {file = "zipp-3.23.0-py3-none-any.whl", hash = "sha256:071652d6115ed432f5ce1d34c336c0adfd6a884660d1e9712a256d3d3bd4b14e"},
     {file = "zipp-3.23.0.tar.gz", hash = "sha256:a07157588a12518c9d4034df3fbbee09c814741a33ff63c05fa29d26a2404166"},
@@ -5147,7 +5210,7 @@ test = ["big-O", "jaraco.functools", "jaraco.itertools", "jaraco.test", "more_it
 type = ["pytest-mypy"]
 
 [extras]
-hgc = ["matplotlib", "plotly", "seaborn"]
+hgc = ["gnomad", "matplotlib", "plotly", "seaborn"]
 interactive = ["plotly"]
 psroc = ["matplotlib", "plotly"]
 viz = ["matplotlib", "plotly", "seaborn"]
@@ -5155,4 +5218,4 @@ viz = ["matplotlib", "plotly", "seaborn"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10.0"
-content-hash = "c8b55c9ca16e809a160005358115819c7073d22358f965ddf67751f6e633f90e"
+content-hash = "719f85f5681d893821526540a132d6f2e95ea827e7d1f4253266ca0d9ac376eb"
