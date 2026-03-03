@@ -60,11 +60,10 @@ def convert_ucsc_metadata_to_hail_table(
     # Load the metadata file into a Pandas DataFrame
     df = pd.read_csv(metadata_path, sep=sep, index_col=index_col)
 
-    # Annotate the index as a column
+    # Annotate the index as a column and rename it to the expected key name
+    original_index_name = df.index.name or "index"
     df.reset_index(inplace=True)
-
-    # Rename the index column
-    df.rename(columns={"index": index_name}, inplace=True)
+    df.rename(columns={original_index_name: index_name}, inplace=True)
 
     # Replace dots in column names with underscores
     df = _replace_dots_in_column_names(df)
