@@ -22,7 +22,7 @@
 git clone https://github.com/bigbio/hvantk
 cd hvantk
 poetry install
-source $(poetry env activate)
+eval $(poetry env activate)
 ```
 
 ### Using pip
