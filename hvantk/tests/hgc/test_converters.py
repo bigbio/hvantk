@@ -2,7 +2,7 @@ import pytest
 import shutil
 from pathlib import Path
 
-from hvantk.hgc.converters import convert_vds_to_mt, convert_mt_to_multi_sample_vcf
+from hvantk.hgc.converters import convert_vds_to_mt, convert_mt_to_multi_sample_vcf, GNOMAD_AVAILABLE
 from hvantk.data.file_utils import compress_files, decompress_files
 
 TESTS_DIR = Path(__file__).parent.parent / "testdata" / "hgc_data"
@@ -10,6 +10,7 @@ TESTS_DIR = Path(__file__).parent.parent / "testdata" / "hgc_data"
 
 # @pytest.mark.hail
 @pytest.mark.order3
+@pytest.mark.skipif(not GNOMAD_AVAILABLE, reason="gnomad package not installed")
 def test_convert_vds_to_mt():
     """
     Test the convert_vds_to_mt function by converting a VDS to a MatrixTable.
