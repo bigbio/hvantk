@@ -43,6 +43,18 @@ hvantk mktable gnomad-metrics \
   --output-ht /out/gnomad.ht
 ```
 
+- dbNSFP variant annotations (TSV keyed by locus, alleles)
+
+```bash
+hvantk mktable dbnsfp \
+  --raw-input /data/dbNSFP4_variant.bgz \
+  --output-ht /out/dbnsfp.ht \
+  --ref-genome GRCh38 \
+  --auto-convert-bgz
+```
+
+> **Tip:** If your dbNSFP file is standard gzip (`.gz`) rather than BGZF, add `--auto-convert-bgz` to automatically convert it before import.
+
 - Ensembl gene annotations (Biomart TSV keyed by gene_id)
 
 ```bash
@@ -114,6 +126,16 @@ hvantk mkmatrix ucsc \
   --overwrite
 ```
 
+If your expression matrix is a plain `.gz` file, add `--auto-convert-bgz`:
+
+```bash
+hvantk mkmatrix ucsc \
+  --expression-matrix /data/ucsc/expr.tsv.gz \
+  --metadata /data/ucsc/meta.tsv \
+  --output-mt /out/ucsc.mt \
+  --auto-convert-bgz
+```
+
 - Expression Atlas (TSV matrix + SDRF TSV)
 
 ```bash
@@ -124,6 +146,16 @@ hvantk mkmatrix expression-atlas \
   --gene-column "Gene ID" \
   --sample-id-column sample_id \
   --overwrite
+```
+
+If your expression matrix is a plain `.gz` file, add `--auto-convert-bgz`:
+
+```bash
+hvantk mkmatrix expression-atlas \
+  --expression-matrix /data/atlas/matrix.tsv.gz \
+  --sdrf /data/atlas/atlas.sdrf.tsv \
+  --output-mt /out/atlas.mt \
+  --auto-convert-bgz
 ```
 
 - CPTAC (TSV/CSV expression + TSV/CSV metadata)
@@ -336,12 +368,43 @@ streamer.export_for_enrichex(
 )
 ```
 
+## File Format Conversion
+
+Hail requires block gzip (BGZF) compressed files for parallel import. Standard gzip (`.gz`) files are not directly supported. hvantk provides two ways to handle this:
+
+### Automatic conversion with `--auto-convert-bgz`
+
+Several CLI commands support the `--auto-convert-bgz` flag, which detects plain `.gz` files and converts them to BGZF before import:
+
+```bash
+hvantk mktable dbnsfp --raw-input data.gz --output-ht out.ht --auto-convert-bgz
+hvantk mkmatrix ucsc -e expr.tsv.gz -m meta.tsv -o out.mt --auto-convert-bgz
+hvantk mkmatrix expression-atlas -e matrix.tsv.gz -s atlas.sdrf.tsv -o out.mt --auto-convert-bgz
+```
+
+The converted `.bgz` file is written alongside the original (e.g., `data.gz` → `data.bgz`) and reused on subsequent runs.
+
+### Standalone conversion with `convert-bgz`
+
+For batch or one-off conversion:
+
+```bash
+# Default: replaces .gz extension with .bgz
+hvantk convert-bgz input.tsv.gz
+
+# Custom output path and thread count
+hvantk convert-bgz input.tsv.gz -o output.tsv.bgz --threads 4
+```
+
+The command auto-detects whether the file is already BGZF and skips conversion if so.
+
 ## Tips & troubleshooting
 
 - Use `--overwrite` to replace an existing output. Without it, builders abort if the output exists.
 - For JSON vs YAML: JSON works out of the box; YAML recipes require `PyYAML` installed.
 - For UCSC, gene labels may be pipe-delimited (e.g., A|B); `--split-gene-field` defaults to true.
 - MatrixTables typically store sample/cell metadata under `mt.col_key` and cols metadata; inspect with `mt.describe()` in Python or logs from CLI.
+- **gzip vs BGZF**: Hail cannot read standard gzip files in parallel. If you get errors importing `.gz` files, use `--auto-convert-bgz` or run `hvantk convert-bgz` first.
 
 ## See also
 
