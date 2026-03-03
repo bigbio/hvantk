@@ -69,6 +69,12 @@ def convert_ucsc_metadata_to_hail_table(
     # Replace dots in column names with underscores
     df = _replace_dots_in_column_names(df)
 
+    # Handle None/NA values to ensure proper type inference
+    # For object (string-like) columns with NA values, replace with empty string
+    for col in df.select_dtypes(include="object").columns:
+        if df[col].isna().any():
+            df[col] = df[col].fillna("")
+
     # Convert Pandas DataFrame to Hail Table with the specified key
     ht = hl.Table.from_pandas(df, key=index_name)
 
