@@ -273,6 +273,11 @@ def mktable_ensembl_gene(
     default=None,
     help="Comma-separated prefixes to group into structs (default: gnomAD,ExAC,1000Gp3,ESP6500,clinvar)",
 )
+@click.option(
+    "--auto-convert-bgz",
+    is_flag=True,
+    help="Automatically convert plain gzip files to BGZF before import",
+)
 def mktable_dbnsfp(
     raw_input: str,
     output_ht: str,
@@ -281,6 +286,7 @@ def mktable_dbnsfp(
     ref_genome: str,
     no_parse_transcript_scores: bool,
     group_prefixes: Optional[str],
+    auto_convert_bgz: bool,
 ):
     """Build a dbNSFP variant annotation Table from a TSV/BGZ (keyed by locus, alleles)."""
     prefixes = None
@@ -296,6 +302,7 @@ def mktable_dbnsfp(
         export_tsv=export_tsv,
         parse_transcript_scores=not no_parse_transcript_scores,
         group_prefixes=prefixes,
+        auto_convert_bgz=auto_convert_bgz,
     )
     click.echo(f"dbNSFP table created at {output_ht}")
 

@@ -9,6 +9,7 @@ import os
 import hail as hl
 import pandas as pd
 
+from hvantk.data.file_utils import resolve_compression
 from hvantk.utils.expressions import split_field_expr
 from hvantk.core.constants import UCSC_CELL_ID_COLUMN, UCSC_GENE_COLUMN
 
@@ -91,6 +92,7 @@ def create_mt_from_ucsc_expression_matrix(
     force_bgz: bool = True,
     overwrite: bool = True,
     metadata_ht: hl.Table = None,
+    auto_convert_bgz: bool = False,
 ) -> hl.MatrixTable:
     """
     Creates a Hail MatrixTable from a given UCSC expression matrix file.
@@ -106,6 +108,7 @@ def create_mt_from_ucsc_expression_matrix(
     :param force_bgz: Whether to force BGZF compression for the input file.
     :param overwrite: Whether to allow overwriting existing files at the output path.
     :param metadata_ht: Optional Hail Table containing metadata for annotating columns. Keys must match.
+    :param auto_convert_bgz: If True, automatically convert plain gzip files to BGZF before import.
     :return: The Hail MatrixTable generated from the expression matrix file.
     :rtype: Hail MatrixTable
     :raises FileNotFoundError: If the specified expression matrix file does not exist.
@@ -128,6 +131,13 @@ def create_mt_from_ucsc_expression_matrix(
         raise FileExistsError(
             f"Output path already exists: {output_path}. Set overwrite=True to overwrite."
         )
+
+    # Resolve compression: detect gz vs bgzf, optionally convert
+    expression_matrix_path, force_bgz = resolve_compression(
+        expression_matrix_path,
+        force_bgz=force_bgz,
+        auto_convert=auto_convert_bgz,
+    )
 
     # Import the matrix table with the specified parameters
     mt = hl.import_matrix_table(

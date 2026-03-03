@@ -5,6 +5,7 @@ Examples:
   hvantk mkmatrix ucsc -e /path/to/expr.tsv.bgz -m /path/to/meta.tsv -o /out/mt
   hvantk mkmatrix expression-atlas -e /path/to/matrix.tsv -s /path/to/atlas.sdrf.tsv -o /out/atlas.mt
   hvantk mkmatrix cptac --expression /path/expr.tsv --metadata /path/meta.tsv -o /out/cptac.mt
+  hvantk convert-bgz input.tsv.gz -o output.tsv.bgz --threads 4
 """
 
 import logging
@@ -66,6 +67,11 @@ def mkmatrix_group():
     "--split-gene-field/--no-split-gene-field", default=True, show_default=True
 )
 @click.option("-w", "--overwrite", is_flag=True)
+@click.option(
+    "--auto-convert-bgz",
+    is_flag=True,
+    help="Automatically convert plain gzip files to BGZF before import",
+)
 def mkmatrix_ucsc(
     expression_matrix,
     metadata,
@@ -77,6 +83,7 @@ def mkmatrix_ucsc(
     force_bgz,
     split_gene_field,
     overwrite,
+    auto_convert_bgz,
 ):
     """Build a MatrixTable from UCSC Cell Browser expression + metadata files."""
     logger.info("Building UCSC MatrixTable")
@@ -91,6 +98,7 @@ def mkmatrix_ucsc(
         force_bgz=force_bgz,
         split_gene_field=split_gene_field,
         overwrite=overwrite,
+        auto_convert_bgz=auto_convert_bgz,
     )
     click.echo(f"MatrixTable created at {output_mt}")
 
@@ -117,6 +125,11 @@ def mkmatrix_ucsc(
 @click.option("-p", "--min-partitions", default=50, type=int, show_default=True)
 @click.option("--force-bgz/--no-force-bgz", default=False, show_default=True)
 @click.option("-w", "--overwrite", is_flag=True)
+@click.option(
+    "--auto-convert-bgz",
+    is_flag=True,
+    help="Automatically convert plain gzip files to BGZF before import",
+)
 def mkmatrix_expression_atlas(
     expression_matrix,
     sdrf,
@@ -127,6 +140,7 @@ def mkmatrix_expression_atlas(
     min_partitions,
     force_bgz,
     overwrite,
+    auto_convert_bgz,
 ):
     """Build a MatrixTable from Expression Atlas matrix + SDRF metadata."""
     logger.info("Building Expression Atlas MatrixTable")
@@ -140,6 +154,7 @@ def mkmatrix_expression_atlas(
         min_partitions=min_partitions,
         force_bgz=force_bgz,
         overwrite=overwrite,
+        auto_convert_bgz=auto_convert_bgz,
     )
     click.echo(f"MatrixTable created at {output_mt}")
 

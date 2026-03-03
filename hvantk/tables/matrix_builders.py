@@ -32,6 +32,7 @@ def build_ucsc_mt(
     force_bgz: bool = True,
     split_gene_field: bool = True,
     overwrite: bool = False,
+    auto_convert_bgz: bool = False,
 ) -> hl.MatrixTable:
     """
     Build a MatrixTable from UCSC Cell Browser expression + metadata files.
@@ -64,6 +65,7 @@ def build_ucsc_mt(
         force_bgz=force_bgz,
         overwrite=overwrite,
         metadata_ht=metadata_ht,
+        auto_convert_bgz=auto_convert_bgz,
     )
     return mt
 
@@ -78,6 +80,7 @@ def build_expression_atlas_mt(
     min_partitions: int = 50,
     force_bgz: bool = False,
     overwrite: bool = False,
+    auto_convert_bgz: bool = False,
 ) -> hl.MatrixTable:
     """
     Build a MatrixTable from Expression Atlas matrix + SDRF metadata.
@@ -111,6 +114,7 @@ def build_expression_atlas_mt(
         force_bgz=force_bgz,
         overwrite=overwrite,
         metadata_ht=metadata_ht,
+        auto_convert_bgz=auto_convert_bgz,
     )
     return mt
 

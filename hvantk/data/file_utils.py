@@ -1,12 +1,16 @@
+import gzip
+import logging
 import os
+import os.path as path
 import shutil
+import struct
+import subprocess
+import time
 import zipfile
+import zlib
 
 import requests
 from tqdm import tqdm
-import os.path as path
-
-import logging
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)  # Set default log level to DEBUG
@@ -167,3 +171,344 @@ def decompress_files(
     if remove_originals:
         os.remove(zip_path)
         logger.info(f"Removed archive file '{zip_path}' after decompression.")
+
+
+# ---------------------------------------------------------------------------
+# BGZF / GZIP detection and conversion
+# ---------------------------------------------------------------------------
+
+# BGZF block size: max uncompressed payload per block (64 KiB - overhead)
+_BGZF_BLOCK_SIZE = 65280
+
+
+def is_gzipped(filepath: str) -> bool:
+    """Check if a file starts with the gzip magic bytes (``\\x1f\\x8b``).
+
+    Parameters
+    ----------
+    filepath : str
+        Path to the file to check.
+
+    Returns
+    -------
+    bool
+        True if the file begins with the gzip magic number.
+
+    Raises
+    ------
+    FileNotFoundError
+        If *filepath* does not exist.
+    """
+    if not os.path.exists(filepath):
+        raise FileNotFoundError(f"File not found: {filepath}")
+    with open(filepath, "rb") as f:
+        magic = f.read(2)
+    return magic == b"\x1f\x8b"
+
+
+def is_bgzf(filepath: str) -> bool:
+    """Check if a file is block-gzip (BGZF) compressed.
+
+    BGZF is detected by reading the first 18 bytes and verifying the gzip
+    magic, deflate method, FEXTRA flag, and the ``BC`` subfield marker.
+
+    Parameters
+    ----------
+    filepath : str
+        Path to the file to check.
+
+    Returns
+    -------
+    bool
+        True if the file conforms to BGZF format.
+
+    Raises
+    ------
+    FileNotFoundError
+        If *filepath* does not exist.
+    """
+    if not os.path.exists(filepath):
+        raise FileNotFoundError(f"File not found: {filepath}")
+    with open(filepath, "rb") as f:
+        header = f.read(18)
+    return (
+        len(header) >= 18
+        and header[0:2] == b"\x1f\x8b"  # gzip magic
+        and header[2:3] == b"\x08"  # deflate method
+        and (header[3] & 0x04) != 0  # FEXTRA flag set
+        and header[12:14] == b"BC"  # BGZF subfield marker
+    )
+
+
+def detect_compression(filepath: str) -> str:
+    """Detect the compression type of a file.
+
+    Parameters
+    ----------
+    filepath : str
+        Path to the file to check.
+
+    Returns
+    -------
+    str
+        One of ``'bgzf'``, ``'gzip'``, or ``'none'``.
+
+    Raises
+    ------
+    FileNotFoundError
+        If *filepath* does not exist.
+    """
+    if is_bgzf(filepath):
+        return "bgzf"
+    if is_gzipped(filepath):
+        return "gzip"
+    return "none"
+
+
+# ---------------------------------------------------------------------------
+# Conversion: standard gzip → BGZF
+# ---------------------------------------------------------------------------
+
+
+def _get_conversion_backend() -> str:
+    """Detect the best available backend for gz-to-bgz conversion.
+
+    Returns
+    -------
+    str
+        ``'bgzip'`` if the system ``bgzip`` binary is on PATH,
+        ``'pysam'`` if the ``pysam`` package is importable, or
+        ``'python'`` as the stdlib-only fallback.
+    """
+    if shutil.which("bgzip"):
+        return "bgzip"
+    try:
+        import pysam  # noqa: F401
+
+        return "pysam"
+    except ImportError:
+        return "python"
+
+
+def _convert_with_bgzip(input_path: str, output_path: str, threads: int) -> None:
+    """Convert using system ``bgzip`` via subprocess pipe."""
+    with open(output_path, "wb") as f_out:
+        p1 = subprocess.Popen(
+            ["gzip", "-dc", input_path],
+            stdout=subprocess.PIPE,
+        )
+        p2 = subprocess.Popen(
+            ["bgzip", "-c", f"-@{threads}"],
+            stdin=p1.stdout,
+            stdout=f_out,
+        )
+        p1.stdout.close()  # allow p1 to receive SIGPIPE if p2 exits
+        p2.communicate()
+        p1.wait()
+    if p2.returncode != 0:
+        raise RuntimeError(
+            f"bgzip conversion failed with return code {p2.returncode}"
+        )
+
+
+def _convert_with_pysam(input_path: str, output_path: str) -> None:
+    """Convert using pysam's ``BGZFile`` writer.
+
+    Since ``pysam.tabix_compress`` reads the input file as raw bytes (which
+    would double-compress a ``.gz`` input), we decompress with ``gzip`` and
+    write through ``pysam.BGZFile`` in write mode.
+    """
+    import pysam
+
+    with gzip.open(input_path, "rb") as fin, pysam.BGZFile(output_path, "wb") as fout:
+        while True:
+            chunk = fin.read(_BGZF_BLOCK_SIZE)
+            if not chunk:
+                break
+            fout.write(chunk)
+
+
+def _make_bgzf_block(data: bytes) -> bytes:
+    """Compress *data* into a single BGZF block.
+
+    Parameters
+    ----------
+    data : bytes
+        Uncompressed payload (must be <= 65280 bytes).
+
+    Returns
+    -------
+    bytes
+        A complete BGZF block ready for concatenation.
+    """
+    compressor = zlib.compressobj(
+        zlib.Z_DEFAULT_COMPRESSION, zlib.DEFLATED, -15
+    )
+    compressed = compressor.compress(data) + compressor.flush()
+    # BGZF block = gzip header (18) + compressed data + CRC32 (4) + ISIZE (4)
+    bsize = 18 + len(compressed) + 8 - 1  # BSIZE = total block size - 1
+    # Build gzip header with FEXTRA
+    header = b"\x1f\x8b"  # ID1, ID2
+    header += b"\x08"  # CM = deflate
+    header += b"\x04"  # FLG = FEXTRA
+    header += b"\x00\x00\x00\x00"  # MTIME
+    header += b"\x00"  # XFL
+    header += b"\xff"  # OS = unknown
+    header += struct.pack("<H", 6)  # XLEN = 6
+    header += b"BC"  # subfield ID
+    header += struct.pack("<H", 2)  # subfield length
+    header += struct.pack("<H", bsize)  # BSIZE
+    # Trailer
+    crc = zlib.crc32(data) & 0xFFFFFFFF
+    trailer = struct.pack("<I", crc) + struct.pack("<I", len(data) & 0xFFFFFFFF)
+    return header + compressed + trailer
+
+
+def _convert_with_python(input_path: str, output_path: str) -> None:
+    """Convert using pure Python ``zlib`` BGZF block writing."""
+    with gzip.open(input_path, "rb") as fin, open(output_path, "wb") as fout:
+        while True:
+            chunk = fin.read(_BGZF_BLOCK_SIZE)
+            if not chunk:
+                break
+            fout.write(_make_bgzf_block(chunk))
+        # Write the empty EOF block required by BGZF
+        fout.write(_make_bgzf_block(b""))
+
+
+def convert_gz_to_bgz(
+    input_path: str,
+    output_path: str | None = None,
+    threads: int = 4,
+) -> str:
+    """Convert a standard gzip file to block gzip (BGZF).
+
+    Uses a tiered strategy, automatically selecting the best available
+    method:
+
+    1. System ``bgzip`` via subprocess (fastest, multi-threaded).
+    2. ``pysam.tabix_compress()`` (fast C implementation).
+    3. Pure Python ``zlib`` BGZF block writer (stdlib-only fallback).
+
+    Parameters
+    ----------
+    input_path : str
+        Path to the input ``.gz`` file.
+    output_path : str, optional
+        Path for the output ``.bgz`` file.  Defaults to *input_path*
+        with ``.gz`` replaced by ``.bgz``.
+    threads : int, optional
+        Number of threads for system ``bgzip`` (default 4).  Ignored by
+        other backends.
+
+    Returns
+    -------
+    str
+        Path to the converted ``.bgz`` file.
+
+    Raises
+    ------
+    FileNotFoundError
+        If *input_path* does not exist.
+    RuntimeError
+        If conversion fails.
+    """
+    if not os.path.exists(input_path):
+        raise FileNotFoundError(f"File not found: {input_path}")
+
+    if output_path is None:
+        if input_path.endswith(".gz"):
+            output_path = input_path[:-3] + ".bgz"
+        else:
+            output_path = input_path + ".bgz"
+
+    backend = _get_conversion_backend()
+    t0 = time.time()
+
+    if backend == "bgzip":
+        logger.info(
+            "Converting '%s' to BGZF using system bgzip with %d threads...",
+            input_path,
+            threads,
+        )
+        _convert_with_bgzip(input_path, output_path, threads)
+    elif backend == "pysam":
+        logger.info(
+            "Converting '%s' to BGZF using pysam (system bgzip not found)...",
+            input_path,
+        )
+        _convert_with_pysam(input_path, output_path)
+    else:
+        logger.info(
+            "Converting '%s' to BGZF using pure Python (pysam and bgzip not available)...",
+            input_path,
+        )
+        _convert_with_python(input_path, output_path)
+
+    elapsed = time.time() - t0
+    logger.info("Converted to '%s' (%.1fs, backend=%s)", output_path, elapsed, backend)
+    return output_path
+
+
+# ---------------------------------------------------------------------------
+# Smart import wrapper
+# ---------------------------------------------------------------------------
+
+
+def resolve_compression(
+    filepath: str,
+    force_bgz: bool = True,
+    auto_convert: bool = False,
+    threads: int = 4,
+) -> tuple[str, bool]:
+    """Resolve file compression for Hail import.
+
+    Detects whether *filepath* is BGZF, standard gzip, or uncompressed, and
+    returns the (possibly converted) path together with the appropriate
+    ``force_bgz`` flag for ``hl.import_*``.
+
+    Parameters
+    ----------
+    filepath : str
+        Path to the input file.
+    force_bgz : bool
+        Desired ``force_bgz`` setting (only honoured when the file is
+        actually BGZF).
+    auto_convert : bool
+        When True and the file is plain gzip, automatically convert it to
+        BGZF before import.
+    threads : int
+        Thread count passed to :func:`convert_gz_to_bgz` when converting.
+
+    Returns
+    -------
+    tuple[str, bool]
+        ``(filepath, force_bgz)`` ready to pass to ``hl.import_*``.
+    """
+    compression = detect_compression(filepath)
+
+    if compression == "bgzf":
+        return filepath, True
+
+    if compression == "gzip":
+        if auto_convert:
+            logger.info(
+                "File '%s' is standard gzip. Converting to BGZF for parallel reading...",
+                filepath,
+            )
+            bgz_path = convert_gz_to_bgz(filepath, threads=threads)
+            return bgz_path, True
+        else:
+            logger.warning(
+                "File '%s' is standard gzip, not block gzip (BGZF). "
+                "Hail will read this file on a single core, which is significantly slower. "
+                "For parallel multi-core reading, convert to BGZF:\n"
+                "  hvantk convert-bgz %s\n"
+                "Or re-run with --auto-convert-bgz to convert automatically.",
+                filepath,
+                filepath,
+            )
+            return filepath, False
+
+    # Uncompressed
+    return filepath, False

@@ -2,6 +2,8 @@ import pandas as pd
 import hail as hl
 import os
 
+from hvantk.data.file_utils import resolve_compression
+
 __all__ = [
     "convert_sdrf_to_hail_table",
     "create_mt_from_expression_atlas_matrix",
@@ -203,6 +205,7 @@ def create_mt_from_expression_atlas_matrix(
     force_bgz: bool = True,
     overwrite: bool = True,
     metadata_ht: hl.Table = None,
+    auto_convert_bgz: bool = False,
 ) -> hl.MatrixTable:
     """
     Creates a Hail MatrixTable from an expression atlas matrix file with optional metadata.
@@ -227,6 +230,8 @@ def create_mt_from_expression_atlas_matrix(
         Whether to allow overwriting existing files at the output path
     metadata_ht : hl.Table, optional
         Hail Table containing metadata for annotating columns
+    auto_convert_bgz : bool, default=False
+        If True, automatically convert plain gzip files to BGZF before import
 
     Returns
     -------
@@ -257,6 +262,13 @@ def create_mt_from_expression_atlas_matrix(
         raise FileExistsError(
             f"Output path already exists: {output_path}. Set overwrite=True to overwrite."
         )
+
+    # Resolve compression: detect gz vs bgzf, optionally convert
+    expression_matrix_path, force_bgz = resolve_compression(
+        expression_matrix_path,
+        force_bgz=force_bgz,
+        auto_convert=auto_convert_bgz,
+    )
 
     # Import the matrix table
     mt = hl.import_matrix_table(

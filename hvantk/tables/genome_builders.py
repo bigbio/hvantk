@@ -218,6 +218,7 @@ def build_1k_genome_mt(
     chromosomes: Optional[List[str]] = None,
     overwrite: bool = False,
     sample_id_col: Optional[str] = None,
+    auto_convert_bgz: bool = False,
 ) -> "hl.MatrixTable":  # noqa: F821
     """Build a Hail MatrixTable from local 1000 Genomes high-coverage VCF files.
 
@@ -245,6 +246,9 @@ def build_1k_genome_mt(
     sample_id_col:
         Name of the sample ID column in *phenotype* TSV.  When *None*, common
         column names are tried automatically (see :func:`_join_phenotype`).
+    auto_convert_bgz:
+        If *True*, automatically convert plain gzip VCF files to BGZF before
+        import.  Default is *False*.
 
     Returns
     -------
@@ -261,6 +265,8 @@ def build_1k_genome_mt(
     """
     import hail as hl
 
+    from hvantk.data.file_utils import resolve_compression
+
     # --- Step 1: Discover input files ---
     logger.info("Discovering VCF files in '%s'", input_vcfs)
     vcf_files = discover_vcf_files(input_vcfs, chromosomes=chromosomes)
@@ -270,15 +276,26 @@ def build_1k_genome_mt(
         [os.path.basename(f) for f in vcf_files],
     )
 
-    # --- Step 2: Import VCFs ---
+    # --- Step 2: Resolve compression for each VCF file ---
+    resolved_files = []
+    force_bgz = True
+    for vcf in vcf_files:
+        resolved_path, file_force_bgz = resolve_compression(
+            vcf, force_bgz=True, auto_convert=auto_convert_bgz
+        )
+        resolved_files.append(resolved_path)
+        if not file_force_bgz:
+            force_bgz = False
+
+    # --- Step 3: Import VCFs ---
     logger.info(
         "Importing %d VCF file(s) with reference genome '%s'",
-        len(vcf_files),
+        len(resolved_files),
         reference_genome,
     )
     mt = hl.import_vcf(
-        vcf_files,
-        force_bgz=True,
+        resolved_files,
+        force_bgz=force_bgz,
         reference_genome=reference_genome,
         array_elements_required=False,
     )

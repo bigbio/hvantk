@@ -21,6 +21,7 @@ from hvantk.core.constants import (
     HGNC_GENE_FIELDS,
     HGNC_PIPE_SEPARATED_FIELDS,
 )
+from hvantk.data.file_utils import resolve_compression
 from hvantk.utils.genome import contig_recoding  # correct module import
 
 
@@ -446,6 +447,7 @@ def create_dbnsfp_tb(
     force_bgz: bool = True,
     parse_transcript_scores: bool = True,
     group_prefixes: Optional[List[str]] = None,
+    auto_convert_bgz: bool = False,
 ) -> "hl.Table":
     """
     Create a Hail Table from a dbNSFP variant TSV/BGZ file keyed by (locus, alleles).
@@ -476,6 +478,8 @@ def create_dbnsfp_tb(
         If True, parse transcript-specific scores into dicts (default: True).
     group_prefixes : list of str, optional
         List of field prefixes to group into structs (default: common population/annotation prefixes).
+    auto_convert_bgz : bool, optional
+        If True, automatically convert plain gzip files to BGZF before import (default: False).
 
     Returns
     -------
@@ -491,6 +495,13 @@ def create_dbnsfp_tb(
     - Optionally map transcript-specific scores ending with '_score' or 'CADD_phred' to dict
     - Optionally group common prefixes (e.g., gnomAD, ExAC) into structs
     """
+
+    # Resolve compression: detect gz vs bgzf, optionally convert
+    input_path, force_bgz = resolve_compression(
+        input_path,
+        force_bgz=force_bgz,
+        auto_convert=auto_convert_bgz,
+    )
 
     def transform(ht: hl.Table) -> hl.Table:
         # Normalize chromosome field and construct variant key

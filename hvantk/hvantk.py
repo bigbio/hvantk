@@ -18,6 +18,7 @@ from hvantk.commands.psroc_cli import psroc_cmd
 from hvantk.commands.enrichex_cli import enrichex_group
 from hvantk.commands.ancestry_cli import ancestry_inference_cmd
 from hvantk.commands.build_1k_genome_cli import build_1k_genome_cmd
+from hvantk.commands.convert_bgz_cli import convert_bgz_cmd
 
 # Main CLI entry point for the package (hvantk)
 
@@ -52,6 +53,7 @@ cli.add_command(psroc_cmd)  # PSROC prediction score ROC analysis
 cli.add_command(enrichex_group)  # EnrichEx gene set enrichment analysis
 cli.add_command(ancestry_inference_cmd)  # Ancestry inference pipeline
 cli.add_command(build_1k_genome_cmd)  # 1000 Genomes MatrixTable builder
+cli.add_command(convert_bgz_cmd)  # GZ → BGZF conversion utility
 
 
 def main():
