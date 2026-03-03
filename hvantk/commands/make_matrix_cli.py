@@ -87,7 +87,7 @@ def mkmatrix_ucsc(
 ):
     """Build a MatrixTable from UCSC Cell Browser expression + metadata files."""
     logger.info("Building UCSC MatrixTable")
-    _build_ucsc_mt(
+    mt = _build_ucsc_mt(
         expression_matrix_path=expression_matrix,
         metadata_path=metadata,
         output_mt=output_mt,
@@ -101,6 +101,7 @@ def mkmatrix_ucsc(
         auto_convert_bgz=auto_convert_bgz,
     )
     click.echo(f"MatrixTable created at {output_mt}")
+    mt.describe()
 
 
 @mkmatrix_group.command("expression-atlas")
@@ -144,7 +145,7 @@ def mkmatrix_expression_atlas(
 ):
     """Build a MatrixTable from Expression Atlas matrix + SDRF metadata."""
     logger.info("Building Expression Atlas MatrixTable")
-    _build_expression_atlas_mt(
+    mt = _build_expression_atlas_mt(
         expression_matrix_path=expression_matrix,
         sdrf_file=sdrf,
         output_mt=output_mt,
@@ -157,6 +158,7 @@ def mkmatrix_expression_atlas(
         auto_convert_bgz=auto_convert_bgz,
     )
     click.echo(f"MatrixTable created at {output_mt}")
+    mt.describe()
 
 
 @mkmatrix_group.command("cptac")
@@ -217,7 +219,7 @@ def mkmatrix_cptac(
         parts = [x.strip() for x in val.split(",") if x.strip()]
         return parts or None
 
-    _build_cptac_mt(
+    mt = _build_cptac_mt(
         expression_path=expression,
         metadata_path=metadata,
         output_mt=output_mt,
@@ -230,3 +232,4 @@ def mkmatrix_cptac(
         overwrite=overwrite,
     )
     click.echo(f"MatrixTable created at {output_mt}")
+    mt.describe()
