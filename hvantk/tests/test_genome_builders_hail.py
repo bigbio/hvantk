@@ -32,10 +32,16 @@ _VCF_TEMPLATE = textwrap.dedent("""\
     chr1\t11008\t.\tC\tG\t.\tPASS\t.\tGT\t0/0\t0/1
 """)
 
-_PHENO_TSV = textwrap.dedent("""\
+_SAMPLE_ANNOT_TSV = textwrap.dedent("""\
     sample_id\tpopulation\tsuper_population
     NA12878\tCEU\tEUR
     NA12879\tCEU\tEUR
+""")
+
+_SAMPLE_ANNOT_SPACE = textwrap.dedent("""\
+    sample_id population super_population
+    NA12878 CEU EUR
+    NA12879 CEU EUR
 """)
 
 
@@ -90,20 +96,39 @@ def test_build_basic_mt(vcf_dir):
     assert "s" in mt.col_key.dtype
 
 
-def test_build_with_phenotype(vcf_dir, tmp_path):
-    """Phenotype TSV is joined to column annotations."""
-    pheno_file = tmp_path / "pheno.tsv"
-    pheno_file.write_text(_PHENO_TSV)
-    output_mt = str(TMP_DIR / "out_pheno.mt")
+def test_build_with_sample_annotations(vcf_dir, tmp_path):
+    """Sample annotations TSV is joined to column annotations."""
+    annot_file = tmp_path / "annotations.tsv"
+    annot_file.write_text(_SAMPLE_ANNOT_TSV)
+    output_mt = str(TMP_DIR / "out_annot.mt")
 
     mt = build_1k_genome_mt(
         input_vcfs=str(vcf_dir),
         output_mt=output_mt,
-        phenotype=str(pheno_file),
+        sample_annotations=str(annot_file),
         overwrite=True,
     )
-    assert "phenotype" in mt.col.dtype
-    col_fields = list(mt.col.dtype["phenotype"])
+    assert "sample_annotations" in mt.col.dtype
+    col_fields = list(mt.col.dtype["sample_annotations"])
+    assert "population" in col_fields
+    assert "super_population" in col_fields
+
+
+def test_build_with_space_delimited_annotations(vcf_dir, tmp_path):
+    """Space-delimited annotations file (e.g. PED format) is parsed correctly."""
+    annot_file = tmp_path / "annotations.ped"
+    annot_file.write_text(_SAMPLE_ANNOT_SPACE)
+    output_mt = str(TMP_DIR / "out_annot_space.mt")
+
+    mt = build_1k_genome_mt(
+        input_vcfs=str(vcf_dir),
+        output_mt=output_mt,
+        sample_annotations=str(annot_file),
+        sample_annotations_delimiter=" ",
+        overwrite=True,
+    )
+    assert "sample_annotations" in mt.col.dtype
+    col_fields = list(mt.col.dtype["sample_annotations"])
     assert "population" in col_fields
     assert "super_population" in col_fields
 
