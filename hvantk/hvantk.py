@@ -59,8 +59,8 @@ try:
     from hvantk.commands.convert_bgz_cli import convert_bgz_cmd
 
     cli.add_command(convert_bgz_cmd)  # GZ → BGZF conversion utility
-except ImportError:
-    pass
+except ImportError as e:
+    logger.debug("Could not load convert-bgz command (%s): %s", "hvantk.commands.convert_bgz_cli", e)
 
 
 def main():
