@@ -29,7 +29,29 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "build_1k_genome_mt",
     "discover_vcf_files",
+    "resolve_delimiter",
+    "DELIMITER_ALIASES",
 ]
+
+# Named delimiter aliases — used by CLIs to avoid ambiguous quoted strings.
+DELIMITER_ALIASES: dict[str, str] = {
+    "space": " ",
+    "tab": "\t",
+    "comma": ",",
+    "semicolon": ";",
+}
+
+
+def resolve_delimiter(value: Optional[str]) -> Optional[str]:
+    """Resolve a delimiter value that may be a named alias or a literal character.
+
+    Recognised aliases: ``space``, ``tab``, ``comma``, ``semicolon``.
+    Any other string is returned unchanged (allows literal characters).
+    *None* passes through as *None*.
+    """
+    if value is None:
+        return None
+    return DELIMITER_ALIASES.get(value.lower(), value)
 
 # Chromosome sort order: autosomes first, then sex chromosomes
 _CHROM_ORDER = {str(i): i for i in range(1, 23)}

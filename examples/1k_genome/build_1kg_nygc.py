@@ -16,7 +16,7 @@ Example usage::
         --output-mt /data/1kg/out.mt \\
         --chromosomes chr1,chr2,chrX \\
         --sample-annotations samples.ped \\
-        --sample-annotations-delimiter " " \\
+        --sample-annotations-delimiter space \\
         --overwrite
 """
 
@@ -96,7 +96,11 @@ def _stage_vcfs(vcf_dir: str, stage_dir: str) -> int:
     "--sample-annotations-delimiter",
     default=None,
     type=str,
-    help='Field delimiter for the annotations file (default: tab). Use " " for PED.',
+    help=(
+        "Field delimiter for the annotations file. "
+        "Accepts named aliases: 'space', 'tab', 'comma', 'semicolon', "
+        "or any literal character. Defaults to tab."
+    ),
 )
 @click.option(
     "--reference-genome",
@@ -111,6 +115,15 @@ def _stage_vcfs(vcf_dir: str, stage_dir: str) -> int:
     default=False,
     help="Overwrite the output MatrixTable if it already exists.",
 )
+@click.option(
+    "--auto-convert-bgz",
+    is_flag=True,
+    default=False,
+    help=(
+        "Automatically convert plain-gzip VCF files to BGZF before import. "
+        "Required when VCF files are gzip-compressed but not block-gzipped."
+    ),
+)
 def main(
     vcf_dir: str,
     output_mt: str,
@@ -119,6 +132,7 @@ def main(
     sample_annotations_delimiter: str | None,
     reference_genome: str,
     overwrite: bool,
+    auto_convert_bgz: bool,
 ) -> None:
     """Build a Hail MatrixTable from NYGC 1000 Genomes VCF files.
 
@@ -165,16 +179,17 @@ def main(
             )
 
         # -- Build MatrixTable --
-        from hvantk.tables.genome_builders import build_1k_genome_mt
+        from hvantk.tables.genome_builders import build_1k_genome_mt, resolve_delimiter
 
         mt = build_1k_genome_mt(
             input_vcfs=stage_dir,
             output_mt=output_mt,
             sample_annotations=sample_annotations_path,
-            sample_annotations_delimiter=sample_annotations_delimiter,
+            sample_annotations_delimiter=resolve_delimiter(sample_annotations_delimiter),
             reference_genome=reference_genome,
             chromosomes=chrom_list,
             overwrite=overwrite,
+            auto_convert_bgz=auto_convert_bgz,
         )
 
         n_variants = mt.count_rows()

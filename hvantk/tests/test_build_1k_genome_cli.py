@@ -91,6 +91,7 @@ def test_cli_basic_invocation(tmp_path):
         reference_genome="GRCh38",
         chromosomes=None,
         overwrite=False,
+        auto_convert_bgz=False,
     )
     assert "1000 Genomes MatrixTable created" in result.output
 

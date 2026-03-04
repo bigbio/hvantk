@@ -16,7 +16,7 @@ Example usage::
         --output-mt /data/1kg/out.mt \\
         --chromosomes chr1,chr2,chrX \\
         --sample-annotations samples.ped \\
-        --sample-annotations-delimiter " " \\
+        --sample-annotations-delimiter space \\
         --overwrite
 """
 
@@ -97,7 +97,11 @@ def _stage_vcfs(vcf_dir: str, stage_dir: str) -> int:
     "--sample-annotations-delimiter",
     default=None,
     type=str,
-    help='Field delimiter for the annotations file (default: tab). Use " " for PED.',
+    help=(
+        "Field delimiter for the annotations file. "
+        "Accepts named aliases: 'space', 'tab', 'comma', 'semicolon', "
+        "or any literal character. Defaults to tab."
+    ),
 )
 @click.option(
     "--reference-genome",
@@ -112,6 +116,15 @@ def _stage_vcfs(vcf_dir: str, stage_dir: str) -> int:
     default=False,
     help="Overwrite the output MatrixTable if it already exists.",
 )
+@click.option(
+    "--auto-convert-bgz",
+    is_flag=True,
+    default=False,
+    help=(
+        "Automatically convert plain-gzip VCF files to BGZF before import. "
+        "Required when VCF files are gzip-compressed but not block-gzipped."
+    ),
+)
 def main(
     vcf_dir: str,
     output_mt: str,
@@ -120,6 +133,7 @@ def main(
     sample_annotations_delimiter: str | None,
     reference_genome: str,
     overwrite: bool,
+    auto_convert_bgz: bool,
 ) -> None:
     """Build a Hail MatrixTable from NYGC 1000 Genomes VCFs via the hvantk CLI.
 
@@ -172,10 +186,12 @@ def main(
             cmd += ["--chromosomes", chromosomes]
         if sample_annotations_path:
             cmd += ["--sample-annotations", sample_annotations_path]
-        if sample_annotations_delimiter:
+        if sample_annotations_delimiter is not None:
             cmd += ["--sample-annotations-delimiter", sample_annotations_delimiter]
         if overwrite:
             cmd.append("--overwrite")
+        if auto_convert_bgz:
+            cmd.append("--auto-convert-bgz")
 
         logger.info("Running: %s", " ".join(cmd))
         result = subprocess.run(cmd, check=False)
