@@ -370,7 +370,7 @@ streamer.export_for_enrichex(
 
 ## File Format Conversion
 
-Hail requires block gzip (BGZF) compressed files for parallel import. Standard gzip (`.gz`) files are not directly supported. hvantk provides two ways to handle this:
+Hail supports standard gzip (`.gz`) and uncompressed files but processes them single-threaded. Block gzip (BGZF) `.bgz` files enable parallel import and are strongly recommended for large datasets. hvantk provides two ways to convert:
 
 ### Automatic conversion with `--auto-convert-bgz`
 
@@ -404,7 +404,7 @@ The command auto-detects whether the file is already BGZF and skips conversion i
 - For JSON vs YAML: JSON works out of the box; YAML recipes require `PyYAML` installed.
 - For UCSC, gene labels may be pipe-delimited (e.g., A|B); `--split-gene-field` defaults to true.
 - MatrixTables typically store sample/cell metadata under `mt.col_key` and cols metadata; inspect with `mt.describe()` in Python or logs from CLI.
-- **gzip vs BGZF**: Hail cannot read standard gzip files in parallel. If you get errors importing `.gz` files, use `--auto-convert-bgz` or run `hvantk convert-bgz` first.
+- **gzip vs BGZF**: Hail reads standard gzip files single-threaded, which is significantly slower for large files. Convert to BGZF with `--auto-convert-bgz` or `hvantk convert-bgz` for parallel import.
 
 ## See also
 
