@@ -5,7 +5,6 @@ Examples:
   hvantk mkmatrix ucsc -e /path/to/expr.tsv.bgz -m /path/to/meta.tsv -o /out/mt
   hvantk mkmatrix expression-atlas -e /path/to/matrix.tsv -s /path/to/atlas.sdrf.tsv -o /out/atlas.mt
   hvantk mkmatrix cptac --expression /path/expr.tsv --metadata /path/meta.tsv -o /out/cptac.mt
-  hvantk convert-bgz input.tsv.gz -o output.tsv.bgz --threads 4
 """
 
 import logging
