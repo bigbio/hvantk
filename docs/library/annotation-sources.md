@@ -6,7 +6,7 @@ List of raw sources and URL to download the data.
 
 ## File format note
 
-Hail requires **block gzip (BGZF)** compressed files (`.bgz`) for parallel import. Standard gzip (`.gz`) files will fail. If your downloaded files are `.gz`, either:
+Hail supports standard gzip (`.gz`) and uncompressed files but processes them single-threaded. **Block gzip (BGZF)** compressed files (`.bgz`) enable parallel import and are strongly recommended. If your downloaded files are `.gz`, either:
 
 1. Use `--auto-convert-bgz` in supported commands to convert on-the-fly
 2. Run `hvantk convert-bgz input.gz` to convert before import
