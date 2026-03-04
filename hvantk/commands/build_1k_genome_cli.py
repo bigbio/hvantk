@@ -7,13 +7,20 @@ Example usage::
         --input-vcfs /data/1kg/vcfs/ \\
         --output-mt /data/1kg/1kg_genomes.mt
 
-    # With phenotype annotations and chromosome subset
+    # With sample annotations and chromosome subset
     hvantk build-1k-genome \\
         --input-vcfs /data/1kg/vcfs/ \\
         --output-mt /data/1kg/1kg_genomes.mt \\
-        --phenotype /data/1kg/igsr_samples.tsv \\
+        --sample-annotations /data/1kg/igsr_samples.tsv \\
         --chromosomes chr1,chr2,chr22,chrX \\
         --overwrite
+
+    # With space-delimited PED file
+    hvantk build-1k-genome \\
+        --input-vcfs /data/1kg/vcfs/ \\
+        --output-mt /data/1kg/1kg_genomes.mt \\
+        --sample-annotations /data/1kg/samples.ped \\
+        --sample-annotations-delimiter " "
 """
 
 import logging
@@ -51,14 +58,25 @@ def _build_1k_genome_mt(**kwargs):
     help="Output path for the generated Hail MatrixTable (.mt).",
 )
 @click.option(
-    "--phenotype",
-    "phenotype",
+    "--sample-annotations",
+    "sample_annotations",
     default=None,
     type=click.Path(exists=True, file_okay=True, dir_okay=False, resolve_path=True),
     help=(
-        "Optional TSV file with sample metadata/phenotype information. "
-        "Must contain a column whose values match the sample IDs in the VCFs. "
-        "All columns are joined as a 'phenotype' struct on the MatrixTable columns."
+        "Optional delimited file with sample metadata/annotations (e.g. population, "
+        "sex, family). Must contain a column whose values match the sample IDs in "
+        "the VCFs. All columns are joined as a 'sample_annotations' struct on the "
+        "MatrixTable columns."
+    ),
+)
+@click.option(
+    "--sample-annotations-delimiter",
+    "sample_annotations_delimiter",
+    default=None,
+    type=str,
+    help=(
+        "Field delimiter for the sample annotations file. "
+        "Defaults to tab. Use ' ' (space) for space-delimited files such as PED."
     ),
 )
 @click.option(
@@ -89,7 +107,8 @@ def _build_1k_genome_mt(**kwargs):
 def build_1k_genome_cmd(
     input_vcfs: str,
     output_mt: str,
-    phenotype: str | None,
+    sample_annotations: str | None,
+    sample_annotations_delimiter: str | None,
     reference_genome: str,
     chromosomes: str | None,
     overwrite: bool,
@@ -118,7 +137,8 @@ def build_1k_genome_cmd(
     mt = _build_1k_genome_mt(
         input_vcfs=input_vcfs,
         output_mt=output_mt,
-        phenotype=phenotype,
+        sample_annotations=sample_annotations,
+        sample_annotations_delimiter=sample_annotations_delimiter,
         reference_genome=reference_genome,
         chromosomes=chrom_list,
         overwrite=overwrite,
