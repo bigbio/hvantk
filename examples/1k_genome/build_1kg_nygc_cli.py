@@ -27,7 +27,6 @@ import logging
 import os
 import shutil
 import subprocess
-import sys
 import tempfile
 from datetime import datetime
 
@@ -90,8 +89,8 @@ def _stage_vcfs(vcf_dir: str, stage_dir: str) -> int:
     default=None,
     type=str,
     help=(
-        "Filename of a sample annotations file inside --vcf-dir "
-        "(e.g. samples.tsv, samples.ped)."
+        "Path to a sample annotations file. Can be an absolute path or a "
+        "filename relative to --vcf-dir (e.g. samples.tsv, samples.ped)."
     ),
 )
 @click.option(
@@ -129,10 +128,13 @@ def main(
     into a temporary directory, excluding annotated and "others" contig files,
     then invokes ``hvantk build-1k-genome`` as a subprocess.
     """
-    # Resolve sample annotations relative to vcf_dir
+    # Resolve sample annotations: absolute path used as-is, otherwise relative to vcf_dir
     sample_annotations_path = None
     if sample_annotations is not None:
-        sample_annotations_path = os.path.join(vcf_dir, sample_annotations)
+        if os.path.isabs(sample_annotations):
+            sample_annotations_path = sample_annotations
+        else:
+            sample_annotations_path = os.path.join(vcf_dir, sample_annotations)
         if not os.path.isfile(sample_annotations_path):
             raise click.BadParameter(
                 f"File not found: {sample_annotations_path}",
@@ -161,7 +163,7 @@ def main(
 
         # -- Build CLI command --
         cmd = [
-            sys.executable, "-m", "hvantk", "build-1k-genome",
+            "hvantk", "build-1k-genome",
             "--input-vcfs", stage_dir,
             "--output-mt", output_mt,
             "--reference-genome", reference_genome,
