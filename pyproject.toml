@@ -21,13 +21,14 @@ include = [
 [tool.poetry.dependencies]
 python = ">=3.10.0"
 hail = "*"
-gnomad = "*"
 click = "^8.1.3"
 requests = "*"
 tqdm = "*"
 pandas = "^2.0.0"
 PyYAML = "*"
 psutil = "*"
+pysam = ">=0.22"
+gnomad = { version = "*", optional = true }
 scikit-learn = "^1.3.0"
 matplotlib = { version = "*", optional = true }
 seaborn = { version = "*", optional = true }
@@ -36,7 +37,7 @@ plotly = { version = "*", optional = true }
 [tool.poetry.extras]
 viz = ["matplotlib", "seaborn", "plotly"]
 interactive = ["plotly"]
-hgc = ["matplotlib", "seaborn", "plotly"]
+hgc = ["matplotlib", "seaborn", "plotly", "gnomad"]
 psroc = ["matplotlib", "plotly"]
 
 [tool.poetry.group.dev.dependencies]

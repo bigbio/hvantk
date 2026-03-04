@@ -53,6 +53,15 @@ cli.add_command(enrichex_group)  # EnrichEx gene set enrichment analysis
 cli.add_command(ancestry_inference_cmd)  # Ancestry inference pipeline
 cli.add_command(build_1k_genome_cmd)  # 1000 Genomes MatrixTable builder
 
+# Lazy import: convert-bgz is a new command that may not be installed yet
+# in existing editable installs until `poetry install` is re-run.
+try:
+    from hvantk.commands.convert_bgz_cli import convert_bgz_cmd
+
+    cli.add_command(convert_bgz_cmd)  # GZ → BGZF conversion utility
+except ImportError as e:
+    logger.debug("Could not load convert-bgz command (%s): %s", "hvantk.commands.convert_bgz_cli", e)
+
 
 def main():
     """

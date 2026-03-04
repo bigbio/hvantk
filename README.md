@@ -22,7 +22,7 @@
 git clone https://github.com/bigbio/hvantk
 cd hvantk
 poetry install
-poetry shell
+eval $(poetry env activate)
 ```
 
 ### Using pip
@@ -146,6 +146,16 @@ hvantk mkmatrix-batch --recipe matrices_recipe.json
 
 📖 **[Expression Guide](docs/library/usage.md#3-build-a-single-matrixtable-mt)**
 
+### File Format Conversion
+
+Convert standard gzip files to BGZF for Hail parallel import:
+
+```bash
+hvantk convert-bgz input.tsv.gz -o output.tsv.bgz --threads 4
+```
+
+Or use `--auto-convert-bgz` in supported commands (`mktable dbnsfp`, `mkmatrix ucsc`, `mkmatrix expression-atlas`) to convert on-the-fly.
+
 ### Data Downloaders
 
 Download curated datasets from public repositories.
@@ -162,6 +172,9 @@ hvantk ucsc-downloader --dataset adultPancreas --output-dir data/ucsc
 # Download and process expression data
 hvantk ucsc-downloader --dataset adultPancreas --output-dir data/ucsc
 hvantk mkmatrix ucsc -e data/ucsc/exprMatrix.tsv.bgz -m data/ucsc/meta.tsv -o data/ucsc/adultPancreas.mt
+
+# If expression matrix is plain gzip (.gz), use --auto-convert-bgz
+hvantk mkmatrix ucsc -e data/ucsc/exprMatrix.tsv.gz -m data/ucsc/meta.tsv -o data/ucsc/adultPancreas.mt --auto-convert-bgz
 
 # Build annotation tables
 hvantk mktable clinvar --raw-input clinvar.vcf.bgz --output-ht clinvar.ht --ref-genome GRCh38

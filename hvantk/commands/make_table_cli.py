@@ -118,7 +118,7 @@ def mktable_clinvar(
 ):
     """Build a ClinVar Hail Table from a VCF (keyed by locus, alleles)."""
     logger.info("Building ClinVar table")
-    _create_clinvar_tb(
+    ht = _create_clinvar_tb(
         input_path=raw_input,
         output_path=output_ht,
         overwrite=overwrite,
@@ -126,6 +126,7 @@ def mktable_clinvar(
         reference_genome=ref_genome,
     )
     click.echo(f"ClinVar table created at {output_ht}")
+    ht.describe()
 
 
 @mktable_group.command("interactome")
@@ -139,7 +140,7 @@ def mktable_interactome(
 ):
     """Build an interactome Table from a BED (keyed by interval)."""
     logger.info("Building interactome table")
-    _create_interactome_tb(
+    ht = _create_interactome_tb(
         input_path=raw_input,
         output_path=output_ht,
         overwrite=overwrite,
@@ -147,6 +148,7 @@ def mktable_interactome(
         reference_genome=ref_genome,
     )
     click.echo(f"Interactome table created at {output_ht}")
+    ht.describe()
 
 
 @mktable_group.command("gevir")
@@ -172,7 +174,7 @@ def mktable_gevir(
         [f.strip() for f in fields.split(",")] if fields else None
     )
     logger.info("Building GeVIR table")
-    _create_gevir_tb(
+    ht = _create_gevir_tb(
         input_path=raw_input,
         output_path=output_ht,
         fields=selected,
@@ -180,6 +182,7 @@ def mktable_gevir(
         export_tsv=export_tsv,
     )
     click.echo(f"GEVIR table created at {output_ht}")
+    ht.describe()
 
 
 @mktable_group.command("gnomad-metrics")
@@ -205,7 +208,7 @@ def mktable_gnomad_metrics(
         [f.strip() for f in fields.split(",")] if fields else None
     )
     logger.info("Building gnomAD metrics table")
-    _create_gnomad_constraint_gene_metrics_tb(
+    ht = _create_gnomad_constraint_gene_metrics_tb(
         input_path=raw_input,
         output_path=output_ht,
         fields=selected,
@@ -213,6 +216,7 @@ def mktable_gnomad_metrics(
         export_tsv=export_tsv,
     )
     click.echo(f"gnomAD metrics table created at {output_ht}")
+    ht.describe()
 
 
 @mktable_group.command("ensembl-gene")
@@ -245,7 +249,7 @@ def mktable_ensembl_gene(
         [f.strip() for f in fields.split(",")] if fields else None
     )
     logger.info("Building Ensembl gene table")
-    _create_ensembl_gene_tb(
+    ht = _create_ensembl_gene_tb(
         input_path=raw_input,
         output_path=output_ht,
         fields=selected,
@@ -254,6 +258,7 @@ def mktable_ensembl_gene(
         export_tsv=export_tsv,
     )
     click.echo(f"Ensembl gene table created at {output_ht}")
+    ht.describe()
 
 
 @mktable_group.command("dbnsfp")
@@ -273,6 +278,11 @@ def mktable_ensembl_gene(
     default=None,
     help="Comma-separated prefixes to group into structs (default: gnomAD,ExAC,1000Gp3,ESP6500,clinvar)",
 )
+@click.option(
+    "--auto-convert-bgz",
+    is_flag=True,
+    help="Automatically convert plain gzip files to BGZF before import",
+)
 def mktable_dbnsfp(
     raw_input: str,
     output_ht: str,
@@ -281,6 +291,7 @@ def mktable_dbnsfp(
     ref_genome: str,
     no_parse_transcript_scores: bool,
     group_prefixes: Optional[str],
+    auto_convert_bgz: bool,
 ):
     """Build a dbNSFP variant annotation Table from a TSV/BGZ (keyed by locus, alleles)."""
     prefixes = None
@@ -288,7 +299,7 @@ def mktable_dbnsfp(
         prefixes = [p.strip() for p in group_prefixes.split(",") if p.strip()]
 
     logger.info("Building dbNSFP table")
-    _create_dbnsfp_tb(
+    ht = _create_dbnsfp_tb(
         input_path=raw_input,
         output_path=output_ht,
         reference_genome=ref_genome,
@@ -296,8 +307,10 @@ def mktable_dbnsfp(
         export_tsv=export_tsv,
         parse_transcript_scores=not no_parse_transcript_scores,
         group_prefixes=prefixes,
+        auto_convert_bgz=auto_convert_bgz,
     )
     click.echo(f"dbNSFP table created at {output_ht}")
+    ht.describe()
 
 
 @mktable_group.command("clingen-gene-disease")
@@ -341,7 +354,7 @@ def mktable_clingen_gene_disease(
         [f.strip() for f in fields.split(",")] if fields else None
     )
     logger.info("Building ClinGen Gene-Disease table")
-    _create_clingen_gene_disease_tb(
+    ht = _create_clingen_gene_disease_tb(
         input_path=raw_input,
         output_path=output_ht,
         key_by=key_by.lower(),
@@ -351,6 +364,7 @@ def mktable_clingen_gene_disease(
         export_tsv=export_tsv,
     )
     click.echo(f"ClinGen Gene-Disease table created at {output_ht}")
+    ht.describe()
 
 
 @mktable_group.command("hgnc")
@@ -382,7 +396,7 @@ def mktable_hgnc(
         [f.strip() for f in fields.split(",")] if fields else None
     )
     logger.info("Building HGNC gene table")
-    _create_hgnc_gene_tb(
+    ht = _create_hgnc_gene_tb(
         input_path=raw_input,
         output_path=output_ht,
         include_withdrawn=include_withdrawn,
@@ -391,3 +405,4 @@ def mktable_hgnc(
         export_tsv=export_tsv,
     )
     click.echo(f"HGNC gene table created at {output_ht}")
+    ht.describe()
