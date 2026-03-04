@@ -296,18 +296,34 @@ def _convert_with_bgzip(input_path: str, output_path: str, threads: int) -> None
         p1 = subprocess.Popen(
             ["gzip", "-dc", input_path],
             stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
         )
         p2 = subprocess.Popen(
             ["bgzip", "-c", f"-@{threads}"],
             stdin=p1.stdout,
             stdout=f_out,
+            stderr=subprocess.PIPE,
         )
         p1.stdout.close()  # allow p1 to receive SIGPIPE if p2 exits
-        p2.communicate()
+        _, p2_stderr = p2.communicate()
         p1.wait()
+        p1_stderr = p1.stderr.read()
+        p1.stderr.close()
+    errors = []
+    if p1.returncode != 0:
+        errors.append(
+            f"gzip -dc failed (rc={p1.returncode}): {p1_stderr.decode(errors='replace').strip()}"
+        )
     if p2.returncode != 0:
+        errors.append(
+            f"bgzip failed (rc={p2.returncode}): {p2_stderr.decode(errors='replace').strip()}"
+        )
+    if errors:
+        # Remove partial output
+        if os.path.exists(output_path):
+            os.remove(output_path)
         raise RuntimeError(
-            f"bgzip conversion failed with return code {p2.returncode}"
+            "bgzip conversion failed:\n" + "\n".join(errors)
         )
 
 
@@ -422,6 +438,11 @@ def convert_gz_to_bgz(
         else:
             output_path = input_path + ".bgz"
 
+    # Reuse existing output if it's already valid BGZF
+    if os.path.exists(output_path) and detect_compression(output_path) == "bgzf":
+        logger.info("Reusing existing BGZF file '%s'", output_path)
+        return output_path
+
     backend = _get_conversion_backend()
     t0 = time.time()
 
@@ -488,7 +509,7 @@ def resolve_compression(
     compression = detect_compression(filepath)
 
     if compression == "bgzf":
-        return filepath, True
+        return filepath, force_bgz
 
     if compression == "gzip":
         if auto_convert:
