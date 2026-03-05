@@ -7,13 +7,20 @@ Example usage::
         --input-vcfs /data/1kg/vcfs/ \\
         --output-mt /data/1kg/1kg_genomes.mt
 
-    # With phenotype annotations and chromosome subset
+    # With sample annotations and chromosome subset
     hvantk build-1k-genome \\
         --input-vcfs /data/1kg/vcfs/ \\
         --output-mt /data/1kg/1kg_genomes.mt \\
-        --phenotype /data/1kg/igsr_samples.tsv \\
+        --sample-annotations /data/1kg/igsr_samples.tsv \\
         --chromosomes chr1,chr2,chr22,chrX \\
         --overwrite
+
+    # With space-delimited PED file
+    hvantk build-1k-genome \\
+        --input-vcfs /data/1kg/vcfs/ \\
+        --output-mt /data/1kg/1kg_genomes.mt \\
+        --sample-annotations /data/1kg/samples.ped \\
+        --sample-annotations-delimiter space
 """
 
 import logging
@@ -51,14 +58,26 @@ def _build_1k_genome_mt(**kwargs):
     help="Output path for the generated Hail MatrixTable (.mt).",
 )
 @click.option(
-    "--phenotype",
-    "phenotype",
+    "--sample-annotations",
+    "sample_annotations",
     default=None,
     type=click.Path(exists=True, file_okay=True, dir_okay=False, resolve_path=True),
     help=(
-        "Optional TSV file with sample metadata/phenotype information. "
-        "Must contain a column whose values match the sample IDs in the VCFs. "
-        "All columns are joined as a 'phenotype' struct on the MatrixTable columns."
+        "Optional delimited file with sample metadata/annotations (e.g. population, "
+        "sex, family). Must contain a column whose values match the sample IDs in "
+        "the VCFs. All columns are joined as a 'sample_annotations' struct on the "
+        "MatrixTable columns."
+    ),
+)
+@click.option(
+    "--sample-annotations-delimiter",
+    "sample_annotations_delimiter",
+    default=None,
+    type=str,
+    help=(
+        "Field delimiter for the sample annotations file. "
+        "Accepts named aliases: 'space', 'tab', 'comma', 'semicolon', "
+        "or any literal character. Defaults to tab."
     ),
 )
 @click.option(
@@ -86,13 +105,26 @@ def _build_1k_genome_mt(**kwargs):
     default=False,
     help="Overwrite the output MatrixTable if it already exists.",
 )
+@click.option(
+    "--auto-convert-bgz",
+    "auto_convert_bgz",
+    is_flag=True,
+    default=False,
+    help=(
+        "Convert all gzip-family VCF files (including ones detected as BGZF) "
+        "to a clean BGZF file before import. Use this when VCF files cause "
+        "ZipException errors in Hail, even if they appear to be valid BGZF."
+    ),
+)
 def build_1k_genome_cmd(
     input_vcfs: str,
     output_mt: str,
-    phenotype: str | None,
+    sample_annotations: str | None,
+    sample_annotations_delimiter: str | None,
     reference_genome: str,
     chromosomes: str | None,
     overwrite: bool,
+    auto_convert_bgz: bool,
 ) -> None:
     """Build a Hail MatrixTable from local 1000 Genomes high-coverage VCF files.
 
@@ -114,14 +146,18 @@ def build_1k_genome_cmd(
         else None
     )
 
+    from hvantk.tables.genome_builders import resolve_delimiter
+
     logger.info("Starting 1000 Genomes MatrixTable build")
     mt = _build_1k_genome_mt(
         input_vcfs=input_vcfs,
         output_mt=output_mt,
-        phenotype=phenotype,
+        sample_annotations=sample_annotations,
+        sample_annotations_delimiter=resolve_delimiter(sample_annotations_delimiter),
         reference_genome=reference_genome,
         chromosomes=chrom_list,
         overwrite=overwrite,
+        auto_convert_bgz=auto_convert_bgz,
     )
 
     n_variants = mt.count_rows()

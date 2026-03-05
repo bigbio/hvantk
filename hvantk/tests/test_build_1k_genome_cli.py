@@ -86,18 +86,20 @@ def test_cli_basic_invocation(tmp_path):
     mock_build.assert_called_once_with(
         input_vcfs=str(vcf_dir),
         output_mt=str(tmp_path / "out.mt"),
-        phenotype=None,
+        sample_annotations=None,
+        sample_annotations_delimiter=None,
         reference_genome="GRCh38",
         chromosomes=None,
         overwrite=False,
+        auto_convert_bgz=False,
     )
     assert "1000 Genomes MatrixTable created" in result.output
 
 
 def test_cli_all_options(tmp_path):
     vcf_dir = _make_vcf_dir(tmp_path, ["chr1", "chr2"])
-    pheno_file = tmp_path / "pheno.tsv"
-    pheno_file.write_text("sample_id\tpopulation\nNA12878\tCEU\n")
+    annot_file = tmp_path / "annotations.tsv"
+    annot_file.write_text("sample_id\tpopulation\nNA12878\tCEU\n")
 
     mock_mt = MagicMock()
     mock_mt.count_rows.return_value = 50
@@ -113,7 +115,7 @@ def test_cli_all_options(tmp_path):
             [
                 "--input-vcfs", str(vcf_dir),
                 "--output-mt", str(tmp_path / "out.mt"),
-                "--phenotype", str(pheno_file),
+                "--sample-annotations", str(annot_file),
                 "--reference-genome", "GRCh37",
                 "--chromosomes", "chr1, chr2",
                 "--overwrite",
@@ -125,4 +127,38 @@ def test_cli_all_options(tmp_path):
     assert kw["reference_genome"] == "GRCh37"
     assert kw["chromosomes"] == ["chr1", "chr2"]
     assert kw["overwrite"] is True
-    assert kw["phenotype"] == str(pheno_file)
+    assert kw["sample_annotations"] == str(annot_file)
+    assert kw["sample_annotations_delimiter"] is None
+
+
+def test_cli_sample_annotations_delimiter(tmp_path):
+    """The --sample-annotations-delimiter option is passed through."""
+    vcf_dir = _make_vcf_dir(tmp_path, ["chr1"])
+    annot_file = tmp_path / "annotations.ped"
+    annot_file.write_text("sample_id population\nNA12878 CEU\n")
+
+    mock_mt = MagicMock()
+    mock_mt.count_rows.return_value = 100
+    mock_mt.count_cols.return_value = 5
+
+    runner = CliRunner()
+    with patch(
+        "hvantk.commands.build_1k_genome_cli._build_1k_genome_mt",
+        return_value=mock_mt,
+    ) as mock_build:
+        result = runner.invoke(
+            build_1k_genome_cmd,
+            [
+                "--input-vcfs", str(vcf_dir),
+                "--output-mt", str(tmp_path / "out.mt"),
+                "--sample-annotations", str(annot_file),
+                "--sample-annotations-delimiter", " ",
+            ],
+        )
+
+    assert result.exit_code == 0, result.output
+    kw = mock_build.call_args.kwargs
+    assert kw["sample_annotations"] == str(annot_file)
+    assert kw["sample_annotations_delimiter"] == " "
+
+

@@ -14,6 +14,7 @@ from hvantk.data.file_utils import (
     is_gzipped,
     resolve_compression,
     _get_conversion_backend,
+    _is_bgzf_header,
     _make_bgzf_block,
     _convert_with_python,
 )
@@ -107,6 +108,22 @@ def empty_file(tmp_path):
     return str(empty_path)
 
 
+@pytest.fixture
+def hybrid_bgzf_gz_file(tmp_path):
+    """Create a file with a valid BGZF first block followed by plain gzip.
+
+    This mimics files whose header passes a single-block BGZF check but are
+    not truly block-gzipped throughout (the scenario that causes
+    ``ZipException`` in Hail).
+    """
+    hybrid_path = tmp_path / "hybrid.vcf.gz"
+    bgzf_block = _make_bgzf_block(b"first block data\n")
+    # Append a plain gzip stream (not BGZF)
+    plain_gz = gzip.compress(b"second block data\n")
+    hybrid_path.write_bytes(bgzf_block + plain_gz)
+    return str(hybrid_path)
+
+
 # ---------------------------------------------------------------------------
 # Detection tests
 # ---------------------------------------------------------------------------
@@ -147,6 +164,16 @@ class TestIsBgzf:
         with pytest.raises(FileNotFoundError):
             is_bgzf("/nonexistent/file.gz")
 
+    def test_hybrid_bgzf_then_plain_gz(self, hybrid_bgzf_gz_file):
+        """A file with a valid BGZF first block but plain gzip after must be
+        detected as NOT BGZF (multi-block validation)."""
+        assert is_bgzf(hybrid_bgzf_gz_file) is False
+
+    def test_single_block_check_would_be_fooled(self, hybrid_bgzf_gz_file):
+        """Confirm that checking only the first block would give a false
+        positive — validates that multi-block checking is necessary."""
+        assert is_bgzf(hybrid_bgzf_gz_file, num_blocks=1) is True
+
 
 class TestDetectCompression:
     def test_plain_gz(self, plain_gz_file):
@@ -160,6 +187,11 @@ class TestDetectCompression:
 
     def test_empty_file(self, empty_file):
         assert detect_compression(empty_file) == "none"
+
+    def test_hybrid_detected_as_gzip(self, hybrid_bgzf_gz_file):
+        """A hybrid file (BGZF first block + plain gzip) should be detected
+        as 'gzip', not 'bgzf'."""
+        assert detect_compression(hybrid_bgzf_gz_file) == "gzip"
 
 
 # ---------------------------------------------------------------------------
@@ -270,6 +302,23 @@ class TestResolveCompression:
     def test_plain_gz_auto_convert(self, plain_gz_file):
         path, force = resolve_compression(plain_gz_file, auto_convert=True)
         assert path != plain_gz_file
+        assert path.endswith(".bgz")
+        assert force is True
+        assert is_bgzf(path)
+
+    def test_hybrid_auto_convert(self, hybrid_bgzf_gz_file):
+        """A hybrid file must be detected as gzip and converted when
+        auto_convert is True — the fix for the ZipException false positive."""
+        path, force = resolve_compression(hybrid_bgzf_gz_file, auto_convert=True)
+        assert path != hybrid_bgzf_gz_file
+        assert path.endswith(".bgz")
+        assert force is True
+        assert is_bgzf(path)
+
+    def test_auto_convert_reconverts_bgzf(self, bgzf_file):
+        """auto_convert=True re-converts even valid BGZF files."""
+        path, force = resolve_compression(bgzf_file, auto_convert=True)
+        assert path != bgzf_file
         assert path.endswith(".bgz")
         assert force is True
         assert is_bgzf(path)

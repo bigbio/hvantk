@@ -206,16 +206,30 @@ def is_gzipped(filepath: str) -> bool:
     return magic == b"\x1f\x8b"
 
 
-def is_bgzf(filepath: str) -> bool:
+def _is_bgzf_header(header: bytes) -> bool:
+    """Return True if *header* (>= 18 bytes) is a valid BGZF block header."""
+    return (
+        len(header) >= 18
+        and header[0:2] == b"\x1f\x8b"  # gzip magic
+        and header[2:3] == b"\x08"  # deflate method
+        and (header[3] & 0x04) != 0  # FEXTRA flag set
+        and header[12:14] == b"BC"  # BGZF subfield marker
+    )
+
+
+def is_bgzf(filepath: str, num_blocks: int = 3) -> bool:
     """Check if a file is block-gzip (BGZF) compressed.
 
-    BGZF is detected by reading the first 18 bytes and verifying the gzip
-    magic, deflate method, FEXTRA flag, and the ``BC`` subfield marker.
+    Validates up to *num_blocks* consecutive BGZF blocks to avoid false
+    positives from files whose first block header matches BGZF but whose
+    remaining content is standard gzip.
 
     Parameters
     ----------
     filepath : str
         Path to the file to check.
+    num_blocks : int
+        Number of consecutive blocks to validate (default 3).
 
     Returns
     -------
@@ -227,17 +241,29 @@ def is_bgzf(filepath: str) -> bool:
     FileNotFoundError
         If *filepath* does not exist.
     """
+    if num_blocks < 1:
+        raise ValueError(f"num_blocks must be >= 1, got {num_blocks}")
     if not os.path.exists(filepath):
         raise FileNotFoundError(f"File not found: {filepath}")
+    file_size = os.path.getsize(filepath)
+    checked = 0
     with open(filepath, "rb") as f:
-        header = f.read(18)
-    return (
-        len(header) >= 18
-        and header[0:2] == b"\x1f\x8b"  # gzip magic
-        and header[2:3] == b"\x08"  # deflate method
-        and (header[3] & 0x04) != 0  # FEXTRA flag set
-        and header[12:14] == b"BC"  # BGZF subfield marker
-    )
+        for _ in range(num_blocks):
+            block_start = f.tell()
+            header = f.read(18)
+            if len(header) < 18:
+                # EOF — valid only if we checked at least one block
+                return checked > 0
+            if not _is_bgzf_header(header):
+                return False
+            checked += 1
+            # BSIZE (little-endian uint16 at offset 16) = total block size - 1
+            bsize = int.from_bytes(header[16:18], byteorder="little")
+            block_end = block_start + bsize + 1
+            if block_end > file_size:
+                return False  # truncated/corrupt block
+            f.seek(block_end)
+    return True
 
 
 def detect_compression(filepath: str) -> str:
@@ -496,8 +522,10 @@ def resolve_compression(
         Desired ``force_bgz`` setting (only honoured when the file is
         actually BGZF).
     auto_convert : bool
-        When True and the file is plain gzip, automatically convert it to
-        BGZF before import.
+        When True, convert all gzip-family files (both standard gzip and
+        BGZF) to a clean BGZF file before import.  This ensures Hail
+        compatibility even when files pass header-level BGZF checks but
+        contain corrupted blocks deeper in the file.
     threads : int
         Thread count passed to :func:`convert_gz_to_bgz` when converting.
 
@@ -508,28 +536,30 @@ def resolve_compression(
     """
     compression = detect_compression(filepath)
 
+    if auto_convert and compression in ("gzip", "bgzf"):
+        logger.info(
+            "File '%s' detected as %s. Converting to BGZF (auto_convert=True)...",
+            filepath,
+            compression,
+        )
+        bgz_path = convert_gz_to_bgz(filepath, threads=threads)
+        return bgz_path, True
+
     if compression == "bgzf":
+        logger.debug("File '%s' detected as BGZF — no conversion needed.", filepath)
         return filepath, force_bgz
 
     if compression == "gzip":
-        if auto_convert:
-            logger.info(
-                "File '%s' is standard gzip. Converting to BGZF for parallel reading...",
-                filepath,
-            )
-            bgz_path = convert_gz_to_bgz(filepath, threads=threads)
-            return bgz_path, True
-        else:
-            logger.warning(
-                "File '%s' is standard gzip, not block gzip (BGZF). "
-                "Hail will read this file on a single core, which is significantly slower. "
-                "For parallel multi-core reading, convert to BGZF:\n"
-                "  hvantk convert-bgz %s\n"
-                "Or re-run with --auto-convert-bgz to convert automatically.",
-                filepath,
-                filepath,
-            )
-            return filepath, False
+        logger.warning(
+            "File '%s' is standard gzip, not block gzip (BGZF). "
+            "Hail will read this file on a single core, which is significantly slower. "
+            "For parallel multi-core reading, convert to BGZF:\n"
+            "  hvantk convert-bgz %s\n"
+            "Or re-run with --auto-convert-bgz to convert automatically.",
+            filepath,
+            filepath,
+        )
+        return filepath, False
 
     # Uncompressed
     return filepath, False

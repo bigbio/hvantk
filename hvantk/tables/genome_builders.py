@@ -2,7 +2,7 @@
 MatrixTable builder for the 1000 Genomes Project high-coverage genotype VCFs.
 
 Discovers per-chromosome VCF files in a local directory, imports them as a single
-Hail MatrixTable, and optionally joins sample phenotype/metadata.
+Hail MatrixTable, and optionally joins sample annotations/metadata.
 
 Expected input layout:
     /path/to/vcfs/
@@ -22,6 +22,7 @@ import glob
 import logging
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Optional
 
 logger = logging.getLogger(__name__)
@@ -29,7 +30,29 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "build_1k_genome_mt",
     "discover_vcf_files",
+    "resolve_delimiter",
+    "DELIMITER_ALIASES",
 ]
+
+# Named delimiter aliases — used by CLIs to avoid ambiguous quoted strings.
+DELIMITER_ALIASES: dict[str, str] = {
+    "space": " ",
+    "tab": "\t",
+    "comma": ",",
+    "semicolon": ";",
+}
+
+
+def resolve_delimiter(value: Optional[str]) -> Optional[str]:
+    """Resolve a delimiter value that may be a named alias or a literal character.
+
+    Recognised aliases: ``space``, ``tab``, ``comma``, ``semicolon``.
+    Any other string is returned unchanged (allows literal characters).
+    *None* passes through as *None*.
+    """
+    if value is None:
+        return None
+    return DELIMITER_ALIASES.get(value.lower(), value)
 
 # Chromosome sort order: autosomes first, then sex chromosomes
 _CHROM_ORDER = {str(i): i for i in range(1, 23)}
@@ -132,44 +155,51 @@ def discover_vcf_files(
     return vcf_files
 
 
-def _join_phenotype(
+def _join_sample_annotations(
     mt,
-    phenotype_path: str,
+    annotations_path: str,
     sample_id_col: Optional[str] = None,
+    delimiter: Optional[str] = None,
 ) -> "hl.MatrixTable":  # noqa: F821
-    """Import a phenotype TSV and left-join it to the MatrixTable columns.
+    """Import a sample-annotations file and left-join it to the MatrixTable columns.
 
-    The phenotype table is keyed by *sample_id_col*. Each column (sample) in *mt*
-    receives a ``phenotype`` struct annotation containing all phenotype fields.
-    Samples absent from the phenotype file get a ``null`` struct.
+    The annotations table is keyed by *sample_id_col*. Each column (sample) in *mt*
+    receives a ``sample_annotations`` struct annotation containing all fields.
+    Samples absent from the annotations file get a ``null`` struct.
 
     Parameters
     ----------
     mt:
         Input MatrixTable whose column key is ``s`` (sample ID).
-    phenotype_path:
-        Path to a TSV file with a sample ID column.
+    annotations_path:
+        Path to a delimited file with a sample ID column.
     sample_id_col:
-        Name of the sample ID column in the phenotype file.  When *None*, the
+        Name of the sample ID column in the annotations file.  When *None*, the
         function tries common names (``sample_id``, ``sample``, ``s``, ``ID``); if
         none match, the first column is used and a warning is emitted.
+    delimiter:
+        Field delimiter for the annotations file.  When *None*, Hail's default
+        tab delimiter is used.
 
     Returns
     -------
     hl.MatrixTable
-        The input MatrixTable with an added ``phenotype`` column annotation.
+        The input MatrixTable with an added ``sample_annotations`` column annotation.
     """
     import hail as hl
 
-    logger.info("Reading phenotype file from %s", phenotype_path)
-    pheno_ht = hl.import_table(phenotype_path, impute=True)
+    logger.info("Reading sample annotations file from %s", annotations_path)
+    import_kwargs = {"impute": True}
+    if delimiter is not None:
+        import_kwargs["delimiter"] = delimiter
+    annot_ht = hl.import_table(annotations_path, **import_kwargs)
 
     # Detect sample ID column
-    available_cols = list(pheno_ht.row.dtype)
+    available_cols = list(annot_ht.row.dtype)
     if sample_id_col is not None:
         if sample_id_col not in available_cols:
             raise ValueError(
-                f"Sample ID column '{sample_id_col}' not found in phenotype file. "
+                f"Sample ID column '{sample_id_col}' not found in annotations file. "
                 f"Available columns: {available_cols}"
             )
     else:
@@ -178,47 +208,48 @@ def _join_phenotype(
         if sample_id_col is None:
             sample_id_col = available_cols[0]
             logger.warning(
-                "No standard sample ID column found in phenotype file. "
+                "No standard sample ID column found in annotations file. "
                 "Using the first column: '%s'",
                 sample_id_col,
             )
         else:
-            logger.info("Using '%s' as sample ID column in phenotype file", sample_id_col)
+            logger.info("Using '%s' as sample ID column in annotations file", sample_id_col)
 
-    pheno_ht = pheno_ht.key_by(sample_id_col)
+    annot_ht = annot_ht.key_by(sample_id_col)
 
     # Check overlap between samples
     mt_samples = set(mt.s.collect())
-    pheno_samples = set(pheno_ht[sample_id_col].collect())
-    overlap = mt_samples & pheno_samples
+    annot_samples = set(annot_ht[sample_id_col].collect())
+    overlap = mt_samples & annot_samples
     if not overlap:
         logger.warning(
-            "No samples overlap between the VCF (n=%d) and the phenotype file (n=%d). "
-            "All phenotype annotations will be null.",
+            "No samples overlap between the VCF (n=%d) and the annotations file (n=%d). "
+            "All sample annotations will be null.",
             len(mt_samples),
-            len(pheno_samples),
+            len(annot_samples),
         )
     elif len(overlap) < len(mt_samples):
         missing_n = len(mt_samples) - len(overlap)
         logger.warning(
-            "%d sample(s) in the VCF have no matching entry in the phenotype file "
+            "%d sample(s) in the VCF have no matching entry in the annotations file "
             "and will receive null annotations.",
             missing_n,
         )
 
-    mt = mt.annotate_cols(phenotype=pheno_ht[mt.s])
+    mt = mt.annotate_cols(sample_annotations=annot_ht[mt.s])
     return mt
 
 
 def build_1k_genome_mt(
     input_vcfs: str,
     output_mt: str,
-    phenotype: Optional[str] = None,
+    sample_annotations: Optional[str] = None,
     reference_genome: str = "GRCh38",
     chromosomes: Optional[List[str]] = None,
     overwrite: bool = False,
     sample_id_col: Optional[str] = None,
     auto_convert_bgz: bool = False,
+    sample_annotations_delimiter: Optional[str] = None,
 ) -> "hl.MatrixTable":  # noqa: F821
     """Build a Hail MatrixTable from local 1000 Genomes high-coverage VCF files.
 
@@ -232,10 +263,11 @@ def build_1k_genome_mt(
         (``*.vcf.gz.tbi``).  One file per chromosome is expected.
     output_mt:
         Output path for the generated Hail MatrixTable.
-    phenotype:
-        Optional path to a TSV file with sample phenotype / metadata.  The file must
-        contain a column whose values match the sample IDs in the VCF.  All columns
-        are joined as a ``phenotype`` struct on the MatrixTable columns.
+    sample_annotations:
+        Optional path to a delimited file with sample metadata / annotations.  The
+        file must contain a column whose values match the sample IDs in the VCF.
+        All columns are joined as a ``sample_annotations`` struct on the MatrixTable
+        columns.
     reference_genome:
         Reference genome for VCF import.  Defaults to ``"GRCh38"``.
     chromosomes:
@@ -244,16 +276,23 @@ def build_1k_genome_mt(
     overwrite:
         If *True*, overwrite *output_mt* if it already exists.
     sample_id_col:
-        Name of the sample ID column in *phenotype* TSV.  When *None*, common
-        column names are tried automatically (see :func:`_join_phenotype`).
+        Name of the sample ID column in *sample_annotations* file.  When *None*,
+        common column names are tried automatically (see
+        :func:`_join_sample_annotations`).
     auto_convert_bgz:
-        If *True*, automatically convert plain gzip VCF files to BGZF before
-        import.  Default is *False*.
+        If *True*, convert all gzip-family VCF files (both standard gzip and
+        BGZF) to a clean BGZF file before import.  This ensures Hail
+        compatibility even when files pass header-level BGZF checks but
+        contain corrupted blocks deeper in the file.  Default is *False*.
+    sample_annotations_delimiter:
+        Field delimiter for the sample annotations file.  When *None*, Hail's
+        default tab delimiter is used.  Use ``" "`` for space-delimited files
+        (e.g. PED format).
 
     Returns
     -------
     hl.MatrixTable
-        The imported and (optionally phenotype-annotated) MatrixTable, checkpointed
+        The imported and (optionally annotated) MatrixTable, checkpointed
         to *output_mt*.
 
     Raises
@@ -276,16 +315,24 @@ def build_1k_genome_mt(
         [os.path.basename(f) for f in vcf_files],
     )
 
-    # --- Step 2: Resolve compression for each VCF file ---
-    resolved_files = []
+    # --- Step 2: Resolve compression for each VCF file (parallel) ---
+    n_files = len(vcf_files)
+    max_workers = min(n_files, os.cpu_count() or 4)
+    resolved_files = [None] * n_files
     force_bgz = True
-    for vcf in vcf_files:
-        resolved_path, file_force_bgz = resolve_compression(
-            vcf, force_bgz=True, auto_convert=auto_convert_bgz
-        )
-        resolved_files.append(resolved_path)
-        if not file_force_bgz:
-            force_bgz = False
+
+    def _resolve_one(idx: int, vcf: str) -> tuple[int, str, bool]:
+        logger.info("Converting file %d/%d: %s", idx + 1, n_files, os.path.basename(vcf))
+        path, fbgz = resolve_compression(vcf, force_bgz=True, auto_convert=auto_convert_bgz)
+        return idx, path, fbgz
+
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        futures = [pool.submit(_resolve_one, i, vcf) for i, vcf in enumerate(vcf_files)]
+        for future in as_completed(futures):
+            idx, resolved_path, file_force_bgz = future.result()
+            resolved_files[idx] = resolved_path
+            if not file_force_bgz:
+                force_bgz = False
 
     # --- Step 3: Import VCFs ---
     logger.info(
@@ -300,9 +347,14 @@ def build_1k_genome_mt(
         array_elements_required=False,
     )
 
-    # --- Step 3: Optional phenotype join ---
-    if phenotype is not None:
-        mt = _join_phenotype(mt, phenotype, sample_id_col=sample_id_col)
+    # --- Step 3: Optional sample annotations join ---
+    if sample_annotations is not None:
+        mt = _join_sample_annotations(
+            mt,
+            sample_annotations,
+            sample_id_col=sample_id_col,
+            delimiter=sample_annotations_delimiter,
+        )
 
     # --- Step 4: Checkpoint ---
     logger.info("Writing MatrixTable to '%s'", output_mt)
