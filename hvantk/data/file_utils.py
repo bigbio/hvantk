@@ -241,6 +241,8 @@ def is_bgzf(filepath: str, num_blocks: int = 3) -> bool:
     FileNotFoundError
         If *filepath* does not exist.
     """
+    if num_blocks < 1:
+        raise ValueError(f"num_blocks must be >= 1, got {num_blocks}")
     if not os.path.exists(filepath):
         raise FileNotFoundError(f"File not found: {filepath}")
     checked = 0

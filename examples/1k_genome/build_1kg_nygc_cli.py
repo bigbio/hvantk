@@ -195,7 +195,10 @@ def main(
             cmd.append("--auto-convert-bgz")
 
         logger.info("Running: %s", " ".join(cmd))
-        result = subprocess.run(cmd, check=False)
+        try:
+            result = subprocess.run(cmd, check=False)
+        except FileNotFoundError as e:
+            raise click.ClickException(f"hvantk executable not found: {e}")
 
         if result.returncode != 0:
             raise click.ClickException(
