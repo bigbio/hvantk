@@ -22,6 +22,7 @@ import glob
 import logging
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Optional
 
 logger = logging.getLogger(__name__)
@@ -248,7 +249,6 @@ def build_1k_genome_mt(
     overwrite: bool = False,
     sample_id_col: Optional[str] = None,
     auto_convert_bgz: bool = False,
-    force_reconvert_bgz: bool = False,
     sample_annotations_delimiter: Optional[str] = None,
 ) -> "hl.MatrixTable":  # noqa: F821
     """Build a Hail MatrixTable from local 1000 Genomes high-coverage VCF files.
@@ -280,12 +280,10 @@ def build_1k_genome_mt(
         common column names are tried automatically (see
         :func:`_join_sample_annotations`).
     auto_convert_bgz:
-        If *True*, automatically convert plain gzip VCF files to BGZF before
-        import.  Default is *False*.
-    force_reconvert_bgz:
-        If *True*, re-convert to BGZF even if the file is already detected as
-        BGZF.  Useful when files pass header-level BGZF checks but still fail
-        in Hail's stricter block reader.  Default is *False*.
+        If *True*, convert all gzip-family VCF files (both standard gzip and
+        BGZF) to a clean BGZF file before import.  This ensures Hail
+        compatibility even when files pass header-level BGZF checks but
+        contain corrupted blocks deeper in the file.  Default is *False*.
     sample_annotations_delimiter:
         Field delimiter for the sample annotations file.  When *None*, Hail's
         default tab delimiter is used.  Use ``" "`` for space-delimited files
@@ -317,19 +315,24 @@ def build_1k_genome_mt(
         [os.path.basename(f) for f in vcf_files],
     )
 
-    # --- Step 2: Resolve compression for each VCF file ---
-    resolved_files = []
+    # --- Step 2: Resolve compression for each VCF file (parallel) ---
+    n_files = len(vcf_files)
+    max_workers = min(n_files, os.cpu_count() or 4)
+    resolved_files = [None] * n_files
     force_bgz = True
-    for vcf in vcf_files:
-        resolved_path, file_force_bgz = resolve_compression(
-            vcf,
-            force_bgz=True,
-            auto_convert=auto_convert_bgz,
-            force_reconvert=force_reconvert_bgz,
-        )
-        resolved_files.append(resolved_path)
-        if not file_force_bgz:
-            force_bgz = False
+
+    def _resolve_one(idx: int, vcf: str) -> tuple[int, str, bool]:
+        logger.info("Converting file %d/%d: %s", idx + 1, n_files, os.path.basename(vcf))
+        path, fbgz = resolve_compression(vcf, force_bgz=True, auto_convert=auto_convert_bgz)
+        return idx, path, fbgz
+
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        futures = [pool.submit(_resolve_one, i, vcf) for i, vcf in enumerate(vcf_files)]
+        for future in as_completed(futures):
+            idx, resolved_path, file_force_bgz = future.result()
+            resolved_files[idx] = resolved_path
+            if not file_force_bgz:
+                force_bgz = False
 
     # --- Step 3: Import VCFs ---
     logger.info(

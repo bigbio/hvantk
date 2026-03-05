@@ -500,7 +500,6 @@ def resolve_compression(
     filepath: str,
     force_bgz: bool = True,
     auto_convert: bool = False,
-    force_reconvert: bool = False,
     threads: int = 4,
 ) -> tuple[str, bool]:
     """Resolve file compression for Hail import.
@@ -517,12 +516,10 @@ def resolve_compression(
         Desired ``force_bgz`` setting (only honoured when the file is
         actually BGZF).
     auto_convert : bool
-        When True and the file is plain gzip, automatically convert it to
-        BGZF before import.
-    force_reconvert : bool
-        When True, re-convert to BGZF even if the file is already detected
-        as BGZF.  Useful when files pass header-level BGZF checks but still
-        fail in Hail's stricter block reader.
+        When True, convert all gzip-family files (both standard gzip and
+        BGZF) to a clean BGZF file before import.  This ensures Hail
+        compatibility even when files pass header-level BGZF checks but
+        contain corrupted blocks deeper in the file.
     threads : int
         Thread count passed to :func:`convert_gz_to_bgz` when converting.
 
@@ -533,37 +530,30 @@ def resolve_compression(
     """
     compression = detect_compression(filepath)
 
-    if compression == "bgzf" and not force_reconvert:
-        logger.debug("File '%s' detected as BGZF — no conversion needed.", filepath)
-        return filepath, force_bgz
-
-    if compression == "bgzf" and force_reconvert:
+    if auto_convert and compression in ("gzip", "bgzf"):
         logger.info(
-            "File '%s' detected as BGZF but force_reconvert is set. Re-converting...",
+            "File '%s' detected as %s. Converting to BGZF (auto_convert=True)...",
             filepath,
+            compression,
         )
         bgz_path = convert_gz_to_bgz(filepath, threads=threads)
         return bgz_path, True
 
+    if compression == "bgzf":
+        logger.debug("File '%s' detected as BGZF — no conversion needed.", filepath)
+        return filepath, force_bgz
+
     if compression == "gzip":
-        if auto_convert:
-            logger.info(
-                "File '%s' is standard gzip. Converting to BGZF for parallel reading...",
-                filepath,
-            )
-            bgz_path = convert_gz_to_bgz(filepath, threads=threads)
-            return bgz_path, True
-        else:
-            logger.warning(
-                "File '%s' is standard gzip, not block gzip (BGZF). "
-                "Hail will read this file on a single core, which is significantly slower. "
-                "For parallel multi-core reading, convert to BGZF:\n"
-                "  hvantk convert-bgz %s\n"
-                "Or re-run with --auto-convert-bgz to convert automatically.",
-                filepath,
-                filepath,
-            )
-            return filepath, False
+        logger.warning(
+            "File '%s' is standard gzip, not block gzip (BGZF). "
+            "Hail will read this file on a single core, which is significantly slower. "
+            "For parallel multi-core reading, convert to BGZF:\n"
+            "  hvantk convert-bgz %s\n"
+            "Or re-run with --auto-convert-bgz to convert automatically.",
+            filepath,
+            filepath,
+        )
+        return filepath, False
 
     # Uncompressed
     return filepath, False

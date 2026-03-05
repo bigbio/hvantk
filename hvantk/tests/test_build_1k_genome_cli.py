@@ -92,7 +92,6 @@ def test_cli_basic_invocation(tmp_path):
         chromosomes=None,
         overwrite=False,
         auto_convert_bgz=False,
-        force_reconvert_bgz=False,
     )
     assert "1000 Genomes MatrixTable created" in result.output
 
@@ -163,28 +162,3 @@ def test_cli_sample_annotations_delimiter(tmp_path):
     assert kw["sample_annotations_delimiter"] == " "
 
 
-def test_cli_force_reconvert_bgz(tmp_path):
-    """The --force-reconvert-bgz option is passed through."""
-    vcf_dir = _make_vcf_dir(tmp_path, ["chr1"])
-
-    mock_mt = MagicMock()
-    mock_mt.count_rows.return_value = 100
-    mock_mt.count_cols.return_value = 5
-
-    runner = CliRunner()
-    with patch(
-        "hvantk.commands.build_1k_genome_cli._build_1k_genome_mt",
-        return_value=mock_mt,
-    ) as mock_build:
-        result = runner.invoke(
-            build_1k_genome_cmd,
-            [
-                "--input-vcfs", str(vcf_dir),
-                "--output-mt", str(tmp_path / "out.mt"),
-                "--force-reconvert-bgz",
-            ],
-        )
-
-    assert result.exit_code == 0, result.output
-    kw = mock_build.call_args.kwargs
-    assert kw["force_reconvert_bgz"] is True

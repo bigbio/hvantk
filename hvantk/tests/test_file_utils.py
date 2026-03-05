@@ -315,9 +315,9 @@ class TestResolveCompression:
         assert force is True
         assert is_bgzf(path)
 
-    def test_force_reconvert_bgzf(self, bgzf_file):
-        """force_reconvert=True re-converts even valid BGZF files."""
-        path, force = resolve_compression(bgzf_file, force_reconvert=True)
+    def test_auto_convert_reconverts_bgzf(self, bgzf_file):
+        """auto_convert=True re-converts even valid BGZF files."""
+        path, force = resolve_compression(bgzf_file, auto_convert=True)
         assert path != bgzf_file
         assert path.endswith(".bgz")
         assert force is True
