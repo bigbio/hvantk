@@ -245,6 +245,7 @@ def is_bgzf(filepath: str, num_blocks: int = 3) -> bool:
         raise ValueError(f"num_blocks must be >= 1, got {num_blocks}")
     if not os.path.exists(filepath):
         raise FileNotFoundError(f"File not found: {filepath}")
+    file_size = os.path.getsize(filepath)
     checked = 0
     with open(filepath, "rb") as f:
         for _ in range(num_blocks):
@@ -258,7 +259,10 @@ def is_bgzf(filepath: str, num_blocks: int = 3) -> bool:
             checked += 1
             # BSIZE (little-endian uint16 at offset 16) = total block size - 1
             bsize = int.from_bytes(header[16:18], byteorder="little")
-            f.seek(block_start + bsize + 1)
+            block_end = block_start + bsize + 1
+            if block_end > file_size:
+                return False  # truncated/corrupt block
+            f.seek(block_end)
     return True
 
 
