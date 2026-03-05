@@ -206,16 +206,30 @@ def is_gzipped(filepath: str) -> bool:
     return magic == b"\x1f\x8b"
 
 
-def is_bgzf(filepath: str) -> bool:
+def _is_bgzf_header(header: bytes) -> bool:
+    """Return True if *header* (>= 18 bytes) is a valid BGZF block header."""
+    return (
+        len(header) >= 18
+        and header[0:2] == b"\x1f\x8b"  # gzip magic
+        and header[2:3] == b"\x08"  # deflate method
+        and (header[3] & 0x04) != 0  # FEXTRA flag set
+        and header[12:14] == b"BC"  # BGZF subfield marker
+    )
+
+
+def is_bgzf(filepath: str, num_blocks: int = 3) -> bool:
     """Check if a file is block-gzip (BGZF) compressed.
 
-    BGZF is detected by reading the first 18 bytes and verifying the gzip
-    magic, deflate method, FEXTRA flag, and the ``BC`` subfield marker.
+    Validates up to *num_blocks* consecutive BGZF blocks to avoid false
+    positives from files whose first block header matches BGZF but whose
+    remaining content is standard gzip.
 
     Parameters
     ----------
     filepath : str
         Path to the file to check.
+    num_blocks : int
+        Number of consecutive blocks to validate (default 3).
 
     Returns
     -------
@@ -229,15 +243,21 @@ def is_bgzf(filepath: str) -> bool:
     """
     if not os.path.exists(filepath):
         raise FileNotFoundError(f"File not found: {filepath}")
+    checked = 0
     with open(filepath, "rb") as f:
-        header = f.read(18)
-    return (
-        len(header) >= 18
-        and header[0:2] == b"\x1f\x8b"  # gzip magic
-        and header[2:3] == b"\x08"  # deflate method
-        and (header[3] & 0x04) != 0  # FEXTRA flag set
-        and header[12:14] == b"BC"  # BGZF subfield marker
-    )
+        for _ in range(num_blocks):
+            block_start = f.tell()
+            header = f.read(18)
+            if len(header) < 18:
+                # EOF — valid only if we checked at least one block
+                return checked > 0
+            if not _is_bgzf_header(header):
+                return False
+            checked += 1
+            # BSIZE (little-endian uint16 at offset 16) = total block size - 1
+            bsize = int.from_bytes(header[16:18], byteorder="little")
+            f.seek(block_start + bsize + 1)
+    return True
 
 
 def detect_compression(filepath: str) -> str:
@@ -509,6 +529,7 @@ def resolve_compression(
     compression = detect_compression(filepath)
 
     if compression == "bgzf":
+        logger.debug("File '%s' detected as BGZF — no conversion needed.", filepath)
         return filepath, force_bgz
 
     if compression == "gzip":
