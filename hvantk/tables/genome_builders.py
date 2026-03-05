@@ -248,6 +248,7 @@ def build_1k_genome_mt(
     overwrite: bool = False,
     sample_id_col: Optional[str] = None,
     auto_convert_bgz: bool = False,
+    force_reconvert_bgz: bool = False,
     sample_annotations_delimiter: Optional[str] = None,
 ) -> "hl.MatrixTable":  # noqa: F821
     """Build a Hail MatrixTable from local 1000 Genomes high-coverage VCF files.
@@ -281,6 +282,10 @@ def build_1k_genome_mt(
     auto_convert_bgz:
         If *True*, automatically convert plain gzip VCF files to BGZF before
         import.  Default is *False*.
+    force_reconvert_bgz:
+        If *True*, re-convert to BGZF even if the file is already detected as
+        BGZF.  Useful when files pass header-level BGZF checks but still fail
+        in Hail's stricter block reader.  Default is *False*.
     sample_annotations_delimiter:
         Field delimiter for the sample annotations file.  When *None*, Hail's
         default tab delimiter is used.  Use ``" "`` for space-delimited files
@@ -317,7 +322,10 @@ def build_1k_genome_mt(
     force_bgz = True
     for vcf in vcf_files:
         resolved_path, file_force_bgz = resolve_compression(
-            vcf, force_bgz=True, auto_convert=auto_convert_bgz
+            vcf,
+            force_bgz=True,
+            auto_convert=auto_convert_bgz,
+            force_reconvert=force_reconvert_bgz,
         )
         resolved_files.append(resolved_path)
         if not file_force_bgz:

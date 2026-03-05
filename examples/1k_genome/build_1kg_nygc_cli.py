@@ -125,6 +125,16 @@ def _stage_vcfs(vcf_dir: str, stage_dir: str) -> int:
         "Required when VCF files are gzip-compressed but not block-gzipped."
     ),
 )
+@click.option(
+    "--force-reconvert-bgz",
+    is_flag=True,
+    default=False,
+    help=(
+        "Re-convert VCF files to BGZF even if they are already detected as "
+        "block-gzipped. Use when files pass header checks but still cause "
+        "ZipException errors in Hail."
+    ),
+)
 def main(
     vcf_dir: str,
     output_mt: str,
@@ -134,6 +144,7 @@ def main(
     reference_genome: str,
     overwrite: bool,
     auto_convert_bgz: bool,
+    force_reconvert_bgz: bool,
 ) -> None:
     """Build a Hail MatrixTable from NYGC 1000 Genomes VCFs via the hvantk CLI.
 
@@ -192,6 +203,8 @@ def main(
             cmd.append("--overwrite")
         if auto_convert_bgz:
             cmd.append("--auto-convert-bgz")
+        if force_reconvert_bgz:
+            cmd.append("--force-reconvert-bgz")
 
         logger.info("Running: %s", " ".join(cmd))
         result = subprocess.run(cmd, check=False)

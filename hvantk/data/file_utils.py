@@ -500,6 +500,7 @@ def resolve_compression(
     filepath: str,
     force_bgz: bool = True,
     auto_convert: bool = False,
+    force_reconvert: bool = False,
     threads: int = 4,
 ) -> tuple[str, bool]:
     """Resolve file compression for Hail import.
@@ -518,6 +519,10 @@ def resolve_compression(
     auto_convert : bool
         When True and the file is plain gzip, automatically convert it to
         BGZF before import.
+    force_reconvert : bool
+        When True, re-convert to BGZF even if the file is already detected
+        as BGZF.  Useful when files pass header-level BGZF checks but still
+        fail in Hail's stricter block reader.
     threads : int
         Thread count passed to :func:`convert_gz_to_bgz` when converting.
 
@@ -528,9 +533,17 @@ def resolve_compression(
     """
     compression = detect_compression(filepath)
 
-    if compression == "bgzf":
+    if compression == "bgzf" and not force_reconvert:
         logger.debug("File '%s' detected as BGZF — no conversion needed.", filepath)
         return filepath, force_bgz
+
+    if compression == "bgzf" and force_reconvert:
+        logger.info(
+            "File '%s' detected as BGZF but force_reconvert is set. Re-converting...",
+            filepath,
+        )
+        bgz_path = convert_gz_to_bgz(filepath, threads=threads)
+        return bgz_path, True
 
     if compression == "gzip":
         if auto_convert:

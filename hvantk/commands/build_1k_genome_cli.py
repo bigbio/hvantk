@@ -115,6 +115,17 @@ def _build_1k_genome_mt(**kwargs):
         "Required when VCF files are gzip-compressed but not block-gzipped."
     ),
 )
+@click.option(
+    "--force-reconvert-bgz",
+    "force_reconvert_bgz",
+    is_flag=True,
+    default=False,
+    help=(
+        "Re-convert VCF files to BGZF even if they are already detected as "
+        "block-gzipped. Use when files pass header checks but still cause "
+        "ZipException errors in Hail."
+    ),
+)
 def build_1k_genome_cmd(
     input_vcfs: str,
     output_mt: str,
@@ -124,6 +135,7 @@ def build_1k_genome_cmd(
     chromosomes: str | None,
     overwrite: bool,
     auto_convert_bgz: bool,
+    force_reconvert_bgz: bool,
 ) -> None:
     """Build a Hail MatrixTable from local 1000 Genomes high-coverage VCF files.
 
@@ -157,6 +169,7 @@ def build_1k_genome_cmd(
         chromosomes=chrom_list,
         overwrite=overwrite,
         auto_convert_bgz=auto_convert_bgz,
+        force_reconvert_bgz=force_reconvert_bgz,
     )
 
     n_variants = mt.count_rows()
