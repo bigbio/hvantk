@@ -13,6 +13,8 @@ Hail supports standard gzip (`.gz`) and uncompressed files but processes them si
 
 See the [Usage Guide](usage.md#file-format-conversion) for details.
 
+For download instructions (built-in downloaders and manual download steps), see the [Data Acquisition Guide](data-acquisition.md).
+
 ## Annotation sources
 
 - Variants and genomic regions
