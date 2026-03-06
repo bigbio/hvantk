@@ -188,7 +188,10 @@ class ClinVarDataset:
             raise RuntimeError(f"Failed to fetch MD5 checksum: {e}") from e
 
         # NCBI .md5 files contain lines like: "d41d8cd9...  clinvar.vcf.gz"
-        expected_hash = md5_content.split()[0].lower()
+        parts = md5_content.split()
+        if not parts:
+            raise RuntimeError(f"MD5 file is empty or malformed: {md5_url}")
+        expected_hash = parts[0].lower()
 
         logger.info(f"Computing MD5 of {file_path}")
         md5 = hashlib.md5()
