@@ -304,4 +304,9 @@ def download_experiments(config_path, accession, download_path, list_datasets):
 
 
 if __name__ == "__main__":
+    if not logging.getLogger().handlers:
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        )
     download_experiments()
