@@ -3,11 +3,11 @@
 This page covers how to obtain raw data for every annotation source supported by hvantk. Sources are split into two categories: those with **built-in downloaders** (automated) and those that require **manual download** (too large, license-gated, or fragile URLs).
 
 For annotation source descriptions, see [Annotation Sources](annotation-sources.md).
-For building Hail Tables from downloaded data, see the [Usage Guide](usage.md).
+For building Hail Tables and MatrixTables from downloaded data, see the [Usage Guide](usage.md).
 
 ## File format note
 
-Downloaded `.gz` files may be standard gzip (single-threaded in Hail) rather than BGZF (parallel). Use `--auto-convert-bgz` during table builds or pre-convert with:
+Downloaded `.gz` files may be standard gzip (single-threaded in Hail) rather than BGZF (parallel). Use `--auto-convert-bgz` during table or matrix builds, or pre-convert with:
 
 ```bash
 hvantk convert-bgz input.gz
@@ -21,7 +21,7 @@ hvantk convert-bgz input.gz
 | ClinGen | `hvantk clingen-downloader` | ~5 MB |
 | HGNC | `hvantk hgnc-downloader` | ~20 MB |
 | UCSC Cell Browser | `hvantk ucsc-downloader` | varies |
-| Expression Atlas | `hvantk download-experiments` | varies |
+| Expression Atlas | `hvantk expression-atlas-downloader` | varies |
 
 ### ClinVar
 
@@ -67,7 +67,7 @@ hvantk ucsc-downloader --dataset hoc --output-dir data/ucsc
 
 ```bash
 # Download bulk RNA-seq experiments
-hvantk download-experiments --output-dir data/expression_atlas
+hvantk expression-atlas-downloader --download_path data/expression_atlas
 ```
 
 ## Manual download sources
