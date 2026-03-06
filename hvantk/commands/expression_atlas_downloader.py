@@ -304,5 +304,4 @@ def download_experiments(config_path, accession, download_path, list_datasets):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
     download_experiments()

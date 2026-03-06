@@ -17,20 +17,6 @@ from hvantk.core.config import CONTEXT_SETTINGS
 logger = logging.getLogger(__name__)
 
 
-def setup_logging(log_level: str) -> None:
-    """Configure logging for EnrichEx commands.
-
-    Parameters
-    ----------
-    log_level : str
-        Log level (DEBUG, INFO, WARNING, ERROR)
-    """
-    logging.basicConfig(
-        level=getattr(logging, log_level),
-        format="%(levelname)s (%(name)s): %(message)s",
-    )
-
-
 @click.group(
     name="enrichex",
     help="Gene set enrichment analysis commands.",
@@ -60,7 +46,6 @@ def enrichex_group(ctx, log_level):
     """
     ctx.ensure_object(dict)
     ctx.obj["log_level"] = log_level
-    setup_logging(log_level)
 
 
 # Import and register subcommands
