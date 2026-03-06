@@ -148,6 +148,12 @@ HGNC_PIPE_SEPARATED_FIELDS = [
 
 logger.debug(f"HGNC download URL: {HGNC_DOWNLOAD_URL}")
 
+# ClinVar VCF downloads
+CLINVAR_FTP_BASE = "https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38"
+CLINVAR_FTP_BASE_GRCh37 = "https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh37"
+
+logger.debug(f"ClinVar FTP base URL: {CLINVAR_FTP_BASE}")
+
 # Explicit public API for this module
 __all__ = [
     "BASE_DIR",
@@ -172,4 +178,6 @@ __all__ = [
     "HGNC_INFO_URL",
     "HGNC_GENE_FIELDS",
     "HGNC_PIPE_SEPARATED_FIELDS",
+    "CLINVAR_FTP_BASE",
+    "CLINVAR_FTP_BASE_GRCh37",
 ]

@@ -23,17 +23,8 @@ from hvantk.datasets.dataset_creation_registry import (
 logger = logging.getLogger(__name__)
 
 
-def setup_logging(verbose: bool = False):
-    """Setup logging configuration."""
-    level = logging.DEBUG if verbose else logging.INFO
-    logging.basicConfig(
-        level=level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
-
-
 def validate_datasets_command(args):
     """Handle the validate-datasets command."""
-    setup_logging(args.verbose)
 
     # Initialize validator
     validator = DatasetValidator(
@@ -199,7 +190,6 @@ def validate_datasets_command(args):
 
 def report_command(args):
     """Handle the report command."""
-    setup_logging(args.verbose)
 
     validator = DatasetValidator(registry_file=args.registry_file)
 
@@ -213,7 +203,6 @@ def report_command(args):
 
 def list_datasets_command(args):
     """Handle the list-datasets command."""
-    setup_logging(args.verbose)
 
     if args.source == "ucsc":
         from hvantk.datasets.ucsc_cell_datasets import load_ucsc_datasets
@@ -257,7 +246,6 @@ def list_datasets_command(args):
 
 def status_command(args):
     """Handle the status command."""
-    setup_logging(args.verbose)
 
     validator = DatasetValidator(registry_file=args.registry_file)
     stats = validator.registry.get_summary_stats()
@@ -299,7 +287,6 @@ def status_command(args):
 
 def registry_command(args):
     """Handle the registry command for creation registry management."""
-    setup_logging(args.verbose)
 
     # Initialize creation registry
     creation_registry = DatasetCreationRegistry(

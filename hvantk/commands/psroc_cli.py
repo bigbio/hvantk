@@ -224,12 +224,6 @@ def psroc_cmd(
       {prefix}_annotated.tsv      TSV export (if --export-tsv)
       plots/{prefix}_*.png        Visualization plots (unless --no-plots)
     """
-    # Set up logging
-    logging.basicConfig(
-        level=getattr(logging, log_level),
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
-
     try:
         from hvantk.psroc.pipeline import PSROCConfig, PSROCPipeline
 

@@ -4,7 +4,7 @@
   "description": "Schema for genomics datasets extending the common schema",
   "type": "object",
   "additionalProperties": false,
-  "required": ["title", "accession", "description", "files", "data_source", "genome_build", "variant_types"],
+  "required": ["title", "accession", "description", "files", "data_source", "genome_build"],
   "properties": {
     "title": {
       "type": "string",

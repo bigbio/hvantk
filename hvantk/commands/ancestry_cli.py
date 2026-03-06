@@ -311,11 +311,6 @@ def ancestry_inference_cmd(
       0.75  Balanced choice (default)
       0.90  Conservative; more "unassigned" but higher confidence
     """
-    # Set up logging
-    logging.basicConfig(
-        level=getattr(logging, log_level),
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
 
     try:
         # Import Hail and pipeline after logging is configured
