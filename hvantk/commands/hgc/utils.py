@@ -20,9 +20,22 @@ def setup_logging_for_hgc(log_level="INFO"):
     """Set up logging for HGC operations.
 
     .. note::
-        Root logging is now configured centrally in ``hvantk.hvantk.setup_logging``.
-        This function is kept for backward compatibility but is a no-op.
+        Root logging (handlers/formatters) is configured centrally in
+        ``hvantk.hvantk.setup_logging``. This helper applies the requested
+        log level to the root logger.
     """
+    if isinstance(log_level, str):
+        level = getattr(logging, log_level.upper(), None)
+        if level is None:
+            logger.warning(
+                "Unknown log level '%s' requested for HGC; defaulting to INFO.",
+                log_level,
+            )
+            level = logging.INFO
+    else:
+        level = log_level
+
+    logging.getLogger().setLevel(level)
 
 
 def expand_file_patterns(patterns):
