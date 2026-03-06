@@ -47,6 +47,10 @@ def enrichex_group(ctx, log_level):
     ctx.ensure_object(dict)
     ctx.obj["log_level"] = log_level
 
+    # Apply the selected log level to the root logger
+    numeric_level = getattr(logging, log_level.upper(), logging.INFO)
+    logging.getLogger().setLevel(numeric_level)
+
 
 # Import and register subcommands
 from hvantk.commands.enrichex_cli.burden_cli import register_burden_commands
