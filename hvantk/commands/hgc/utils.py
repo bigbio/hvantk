@@ -17,12 +17,12 @@ DEFAULT_TEMP_DIR = os.environ.get("HGC_TEMP_DIR", tempfile.gettempdir())
 
 
 def setup_logging_for_hgc(log_level="INFO"):
-    """Set up logging for HGC operations."""
-    numeric_level = getattr(logging, log_level.upper(), logging.INFO)
-    logging.basicConfig(
-        level=numeric_level,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
+    """Set up logging for HGC operations.
+
+    .. note::
+        Root logging is now configured centrally in ``hvantk.hvantk.setup_logging``.
+        This function is kept for backward compatibility but is a no-op.
+    """
 
 
 def expand_file_patterns(patterns):

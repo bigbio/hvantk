@@ -23,20 +23,59 @@ from hvantk.commands.build_1k_genome_cli import build_1k_genome_cmd
 # Main CLI entry point for the package (hvantk)
 
 
+def setup_logging(verbosity: int = 0, log_file: str | None = None):
+    """Configure centralized logging for the hvantk CLI.
+
+    Parameters
+    ----------
+    verbosity : int
+        Verbosity level: 0 = WARNING (default), 1 = INFO, 2+ = DEBUG.
+    log_file : str or None
+        Optional path to a file where log output will be written.
+    """
+    level = {0: logging.WARNING, 1: logging.INFO, 2: logging.DEBUG}.get(
+        verbosity, logging.DEBUG
+    )
+
+    handlers: list[logging.Handler] = [logging.StreamHandler()]
+    if log_file:
+        handlers.append(logging.FileHandler(log_file))
+
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s %(name)s [%(levelname)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        handlers=handlers,
+        force=True,
+    )
+
+
 @click.group(
     "hvantk",
     help="A python package for gene and variant annotation with joint genotyping capabilities.",
     context_settings=CONTEXT_SETTINGS,
 )
-def cli():
+@click.option(
+    "-v",
+    "--verbose",
+    count=True,
+    help="Increase verbosity (-v: INFO, -vv: DEBUG)",
+)
+@click.option(
+    "--log-file",
+    type=click.Path(),
+    default=None,
+    help="Write logs to file",
+)
+def cli(verbose, log_file):
     """
     Entry point for the hvantk command-line interface.
 
     Serves as the root CLI group for gene and variant annotation commands
     with integrated joint genotyping workflows.
     """
+    setup_logging(verbose, log_file)
     logger.info("Starting hvantk CLI")
-    pass
 
 
 cli.add_command(ucsc_downloader)
