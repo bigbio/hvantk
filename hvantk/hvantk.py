@@ -8,6 +8,7 @@ from hvantk.commands.ucsc_downloader import ucsc_downloader
 from hvantk.commands.expression_atlas_downloader import download_experiments
 from hvantk.commands.clingen_downloader import clingen_downloader
 from hvantk.commands.hgnc_downloader import hgnc_downloader
+from hvantk.commands.clinvar_downloader import clinvar_downloader
 from hvantk.commands.make_table_cli import mktable_group
 from hvantk.commands.make_table_batch_cli import mktable_batch_cli
 from hvantk.commands.make_matrix_cli import mkmatrix_group
@@ -42,6 +43,7 @@ cli.add_command(ucsc_downloader)
 cli.add_command(download_experiments)
 cli.add_command(clingen_downloader)
 cli.add_command(hgnc_downloader)
+cli.add_command(clinvar_downloader)
 cli.add_command(mktable_group)  # per-table builder
 cli.add_command(mktable_batch_cli)  # batch builder from recipe
 cli.add_command(mkmatrix_group)  # per-matrix builder
