@@ -4,6 +4,8 @@ This guide shows practical, copy-pasteable examples to build Hail Tables (HT) an
 
 If you haven’t installed hvantk yet, see the main README for install steps.
 
+For downloading raw data files (built-in downloaders and manual steps), see the [Data Acquisition Guide](data-acquisition.md).
+
 ## 1) Build a single annotation Table (HT)
 
 Build one table at a time with explicit inputs and options.
