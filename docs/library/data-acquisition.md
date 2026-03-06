@@ -1,0 +1,174 @@
+# Data Acquisition Guide
+
+This page covers how to obtain raw data for every annotation source supported by hvantk. Sources are split into two categories: those with **built-in downloaders** (automated) and those that require **manual download** (too large, license-gated, or fragile URLs).
+
+For annotation source descriptions, see [Annotation Sources](annotation-sources.md).
+For building Hail Tables from downloaded data, see the [Usage Guide](usage.md).
+
+## File format note
+
+Downloaded `.gz` files may be standard gzip (single-threaded in Hail) rather than BGZF (parallel). Use `--auto-convert-bgz` during table builds or pre-convert with:
+
+```bash
+hvantk convert-bgz input.gz
+```
+
+## Sources with built-in downloaders
+
+| Source | Command | Approx. Size |
+|---|---|---|
+| ClinVar | `hvantk clinvar-downloader` | ~500 MB |
+| ClinGen | `hvantk clingen-downloader` | ~5 MB |
+| HGNC | `hvantk hgnc-downloader` | ~20 MB |
+| UCSC Cell Browser | `hvantk ucsc-downloader` | varies |
+| Expression Atlas | `hvantk download-experiments` | varies |
+
+### ClinVar
+
+```bash
+# Download latest ClinVar VCF (GRCh38) with tabix index
+hvantk clinvar-downloader --output-dir data/clinvar
+
+# Download a specific archived version
+hvantk clinvar-downloader --version 20260101 --output-dir data/clinvar
+
+# Download GRCh37 build, verify checksum
+hvantk clinvar-downloader --genome-build GRCh37 --verify-md5
+```
+
+### ClinGen
+
+```bash
+# Download latest ClinGen Gene-Disease Validity CSV
+hvantk clingen-downloader --output-dir data/clingen
+
+# Download a specific version
+hvantk clingen-downloader --version 2026-01-15 --output-dir data/clingen
+
+# List available versions
+hvantk clingen-downloader --list-versions
+```
+
+### HGNC
+
+```bash
+# Download HGNC complete gene nomenclature set
+hvantk hgnc-downloader --output-dir data/hgnc
+```
+
+### UCSC Cell Browser
+
+```bash
+# Download a specific single-cell dataset
+hvantk ucsc-downloader --dataset hoc --output-dir data/ucsc
+```
+
+### Expression Atlas
+
+```bash
+# Download bulk RNA-seq experiments
+hvantk download-experiments --output-dir data/expression_atlas
+```
+
+## Manual download sources
+
+These sources are too large, require license acceptance, or have complex download procedures. Follow the instructions below, then use `hvantk mktable` to build Hail Tables.
+
+### dbNSFP (~45 GB)
+
+Comprehensive functional prediction scores for human missense variants.
+
+**Download**: Requires academic license acceptance. Download from the project page:
+https://sites.google.com/site/jpopgen/dbNSFP
+
+**Pre-processing**: The downloaded file is standard gzip (`.gz`), not BGZF. Convert before import or use the auto-convert flag:
+
+```bash
+# Option 1: Pre-convert to BGZF
+hvantk convert-bgz dbNSFP4.9a_variant.chr1.gz
+
+# Option 2: Auto-convert during build
+hvantk mktable dbnsfp \
+  --raw-input dbNSFP4.9a_variant.chr1.gz \
+  --output-ht dbnsfp.ht \
+  --auto-convert-bgz
+```
+
+**Build**:
+
+```bash
+hvantk mktable dbnsfp \
+  --raw-input dbNSFP4.9a_variant.chr1.bgz \
+  --output-ht dbnsfp.ht
+```
+
+### gnomAD constraint metrics (~50 MB for gene-level)
+
+Gene-level constraint metrics (pLI, LOEUF, missense Z-score) from gnomAD v4.1.
+
+**Download**:
+
+```bash
+wget https://storage.googleapis.com/gcp-public-data--gnomad/release/4.1/constraint/gnomad.v4.1.constraint_metrics.tsv
+```
+
+**Build**:
+
+```bash
+hvantk mktable gnomad-metrics \
+  --raw-input gnomad.v4.1.constraint_metrics.tsv \
+  --output-ht gnomad_metrics.ht
+```
+
+### INSIDER interactome (~100 MB)
+
+Protein-protein interaction sites from the INSIDER database.
+
+**Download**: Visit http://interactomeinsider.yulab.org/downloads.html and download the interaction site BED file.
+
+**Build**:
+
+```bash
+hvantk mktable interactome \
+  --raw-input insider_interaction_sites.bed.bgz \
+  --output-ht interactome.ht
+```
+
+### Ensembl gene annotations (~800 MB)
+
+Gene annotations from Ensembl BioMart (gene name, gene ID, biotype, transcript ID).
+
+**Download**: Export from BioMart with the required attributes matching `ENSEMBL_BIOMART_FIELDS` in `hvantk/core/constants.py`. Alternatively, download from the Ensembl FTP:
+https://www.ensembl.org/info/data/ftp/index.html
+
+**Build**:
+
+```bash
+hvantk mktable ensembl-gene \
+  --raw-input biomart_export.tsv.bgz \
+  --output-ht ensembl_gene.ht
+```
+
+### GeVIR (~20 GB)
+
+Gene variation intolerance ranking scores.
+
+**Download**: Supplementary data from the Nature publication:
+https://www.nature.com/articles/s41588-019-0560-2
+
+**Build**:
+
+```bash
+hvantk mktable gevir \
+  --raw-input gevir_metrics.tsv.bgz \
+  --output-ht gevir.ht
+```
+
+### CCR - Coding-Constrained Regions (~50 MB)
+
+Highly constrained coding regions in the human genome.
+
+**Download**: Supplementary data from the Nature publication:
+https://www.nature.com/articles/s41588-018-0294-6
+
+**Note**: No builder is currently available for CCR. This is planned for a future release.
