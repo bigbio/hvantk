@@ -61,6 +61,23 @@ BENIGN_LABELS = [
     "Benign",
 ]
 
+# ClinVar CLNREVSTAT string → review-star mapping
+# See: https://www.ncbi.nlm.nih.gov/clinvar/docs/review_status/
+CLNREVSTAT_STAR_MAP = {
+    "practice_guideline": 4,
+    "reviewed_by_expert_panel": 3,
+    "criteria_provided,_multiple_submitters,_no_conflicts": 2,
+    "criteria_provided,_conflicting_classifications": 1,
+    "criteria_provided,_conflicting_interpretations": 1,
+    "criteria_provided,_single_submitter": 1,
+    "no_assertion_for_the_individual_variant": 0,
+    "no_assertion_criteria_provided": 0,
+    "no_classification_provided": 0,
+    "no_assertion_provided": 0,
+    "no_classifications_from_unflagged_records": 0,
+    "flagged_submission": 0,
+}
+
 
 class PSROCStage(Enum):
     """Enumeration of PSROC pipeline stages."""
@@ -96,10 +113,11 @@ class PSROCConfig:
         output_prefix: Prefix for output file names.
     """
 
-    # Input sources (one of genes/genes_file/variants_path required)
+    # Input sources (one of genes/genes_file/variants_path/gene_set_collection required)
     genes: Optional[List[str]] = None
     genes_file: Optional[str] = None
     variants_path: Optional[str] = None
+    gene_set_collection: Optional[Dict[str, Set[str]]] = None
 
     # Required table paths
     clinvar_ht: str = ""
@@ -136,15 +154,18 @@ class PSROCConfig:
             self.genes is not None and len(self.genes) > 0,
             self.genes_file is not None,
             self.variants_path is not None,
+            self.gene_set_collection is not None
+            and len(self.gene_set_collection) > 0,
         ]
         if sum(sources) == 0:
             errors.append(
-                "Must provide at least one of: --genes, --genes-file, or --variants"
+                "Must provide at least one of: --genes, --genes-file, "
+                "--variants, or --gene-sets"
             )
         if sum(sources) > 1:
             errors.append(
                 "Cannot provide multiple variant sources. Use only one of: "
-                "--genes, --genes-file, or --variants"
+                "--genes, --genes-file, --variants, or --gene-sets"
             )
 
         # Check required table paths
@@ -172,6 +193,18 @@ class PSROCConfig:
 
         if self.variants_path and not Path(self.variants_path).exists():
             errors.append(f"Variants file not found: {self.variants_path}")
+
+        if self.gene_set_collection is not None:
+            empty_groups = [
+                name
+                for name, genes in self.gene_set_collection.items()
+                if not genes
+            ]
+            if empty_groups:
+                errors.append(
+                    f"Gene set collection contains empty groups: "
+                    f"{', '.join(empty_groups)}"
+                )
 
         # Validate thresholds
         if not 0.0 <= self.max_missingness <= 1.0:
@@ -549,14 +582,24 @@ class PSROCPipeline:
         print("\n" + "=" * 70 + "\n")
 
     def run(self) -> PSROCResult:
-        """Execute the PSROC pipeline.
+        """Execute the PSROC pipeline for a single gene set.
+
+        For multi-group analysis with ``gene_set_collection``, use
+        ``run_collection()`` instead.
 
         Returns:
             PSROCResult with computed metrics and output paths.
 
         Raises:
+            ValueError: If gene_set_collection is the active source.
             Exception: If pipeline execution fails.
         """
+        if self.config.gene_set_collection:
+            raise ValueError(
+                "Config uses gene_set_collection. "
+                "Use run_collection() for multi-group execution."
+            )
+
         self.state.start_time = datetime.now().isoformat()
         logger.info("Starting PSROC pipeline execution")
 
@@ -595,6 +638,92 @@ class PSROCPipeline:
 
         finally:
             self.state.save(Path(self.paths["state"]))
+
+    def run_collection(self) -> Dict[str, PSROCResult]:
+        """Execute PSROC pipeline independently for each named gene set.
+
+        Requires ``gene_set_collection`` to be set in the config.  For each
+        group, a per-group ``PSROCConfig`` is created with the group's genes
+        and a dedicated output subdirectory, then the standard ``run()``
+        pipeline is executed.
+
+        Groups that yield zero ClinVar variants (or otherwise fail) are
+        skipped with a warning.
+
+        Returns:
+            Dictionary mapping group names to their PSROCResult.
+
+        Raises:
+            ValueError: If ``gene_set_collection`` is not configured.
+            RuntimeError: If all groups fail.
+        """
+        collection = self.config.gene_set_collection
+        if not collection:
+            raise ValueError(
+                "gene_set_collection is not configured. "
+                "Use run() for single gene set execution."
+            )
+
+        results: Dict[str, PSROCResult] = {}
+        failed_groups: List[str] = []
+
+        for group_name in sorted(collection):
+            gene_set = collection[group_name]
+            logger.info(
+                f"Running PSROC for group '{group_name}' "
+                f"({len(gene_set)} genes)"
+            )
+
+            group_config = PSROCConfig(
+                genes=sorted(gene_set),
+                clinvar_ht=self.config.clinvar_ht,
+                dbnsfp_ht=self.config.dbnsfp_ht,
+                scores=list(self.config.scores),
+                output_dir=str(Path(self.config.output_dir) / group_name),
+                output_prefix=f"{self.config.output_prefix}_{group_name}",
+                reference_genome=self.config.reference_genome,
+                min_stars=self.config.min_stars,
+                max_missingness=self.config.max_missingness,
+                threshold_method=self.config.threshold_method,
+                export_tsv=self.config.export_tsv,
+                overwrite=self.config.overwrite,
+                generate_plots=self.config.generate_plots,
+            )
+
+            try:
+                pipeline = PSROCPipeline(group_config)
+                result = pipeline.run()
+                results[group_name] = result
+                logger.info(
+                    f"Group '{group_name}' completed: "
+                    f"{result.n_total} variants, "
+                    f"{len(result.scores_included)} scores"
+                )
+            except Exception as e:
+                logger.warning(
+                    f"Group '{group_name}' failed: {e}"
+                )
+                failed_groups.append(group_name)
+                continue
+
+        if not results:
+            raise RuntimeError(
+                "All gene set groups failed. "
+                f"Failed groups: {', '.join(failed_groups)}"
+            )
+
+        if failed_groups:
+            logger.warning(
+                f"{len(failed_groups)} group(s) failed: "
+                f"{', '.join(failed_groups)}"
+            )
+
+        logger.info(
+            f"Gene set collection complete: "
+            f"{len(results)}/{len(collection)} groups succeeded"
+        )
+
+        return results
 
     def _run_stage(self, stage: PSROCStage) -> Any:
         """Execute a single pipeline stage.
@@ -659,11 +788,22 @@ class PSROCPipeline:
 
         # Extract gene from GENEINFO field if available
         if "info" in ht.row and "GENEINFO" in ht.info:
+            geneinfo_dtype = ht.info.GENEINFO.dtype
+            if isinstance(geneinfo_dtype, hl.tarray):
+                # VCF import with Number=. → array<str>: take first element
+                geneinfo_str = hl.or_missing(
+                    hl.is_defined(ht.info.GENEINFO)
+                    & (hl.len(ht.info.GENEINFO) > 0),
+                    ht.info.GENEINFO[0],
+                )
+            else:
+                # Plain string field
+                geneinfo_str = ht.info.GENEINFO
+
             ht = ht.annotate(
-                gene=hl.if_else(
-                    hl.is_defined(ht.info.GENEINFO) & (hl.len(ht.info.GENEINFO) > 0),
-                    ht.info.GENEINFO[0].split(":")[0],
-                    hl.missing(hl.tstr),
+                gene=hl.or_missing(
+                    hl.is_defined(geneinfo_str) & (geneinfo_str != ""),
+                    geneinfo_str.split(":")[0],
                 )
             )
 
@@ -730,7 +870,12 @@ class PSROCPipeline:
         return ht
 
     def _filter_by_review_stars(self, ht: hl.Table) -> hl.Table:
-        """Filter ClinVar variants by review status stars (CLNREVSTAT)."""
+        """Filter ClinVar variants by review status stars (CLNREVSTAT).
+
+        CLNREVSTAT is imported from VCF as a string (or array<str>)
+        describing the review status. This method maps it to an integer
+        star count using CLNREVSTAT_STAR_MAP and filters accordingly.
+        """
         min_stars = self.config.min_stars
 
         # Convert min_stars to integer if it's a string (e.g., from CLI)
@@ -742,9 +887,24 @@ class PSROCPipeline:
 
         logger.info(f"   Filtering ClinVar variants with review stars >= {min_stars}")
 
-        # Filter based on the presence of info.CLNREVSTAT and its value
+        star_map = hl.literal(CLNREVSTAT_STAR_MAP)
+
+        # Normalize CLNREVSTAT: extract string from array if needed
+        clnrevstat_dtype = ht.info.CLNREVSTAT.dtype
+        if isinstance(clnrevstat_dtype, hl.tarray):
+            clnrevstat_str = hl.or_missing(
+                hl.is_defined(ht.info.CLNREVSTAT)
+                & (hl.len(ht.info.CLNREVSTAT) > 0),
+                ht.info.CLNREVSTAT[0],
+            )
+        else:
+            clnrevstat_str = ht.info.CLNREVSTAT
+
+        # Map string to star count, default 0 for unknown values
+        stars_expr = star_map.get(clnrevstat_str, 0)
+
         return ht.filter(
-            (hl.is_defined(ht.info.CLNREVSTAT)) & (ht.info.CLNREVSTAT >= min_stars)
+            hl.is_defined(clnrevstat_str) & (stars_expr >= min_stars)
         )
 
     def _assign_labels(self) -> hl.Table:
@@ -758,19 +918,30 @@ class PSROCPipeline:
 
         ht = self._labeled_ht
 
+        # Normalize CLNSIG: extract string from array if needed
+        clnsig_dtype = ht.info.CLNSIG.dtype
+        if isinstance(clnsig_dtype, hl.tarray):
+            clnsig = hl.or_missing(
+                hl.is_defined(ht.info.CLNSIG)
+                & (hl.len(ht.info.CLNSIG) > 0),
+                ht.info.CLNSIG[0],
+            )
+        else:
+            clnsig = ht.info.CLNSIG
+
         # Assign labels based on CLNSIG values
         ht = ht.annotate(
             label=hl.case()
             .when(
-                hl.is_defined(ht.info.CLNSIG)
-                & (ht.info.CLNSIG != "")  # Exclude empty CLNSIG
-                & hl.literal(PATHOGENIC_LABELS).contains(ht.info.CLNSIG),
+                hl.is_defined(clnsig)
+                & (clnsig != "")
+                & hl.literal(PATHOGENIC_LABELS).contains(clnsig),
                 "Pathogenic",
             )
             .when(
-                hl.is_defined(ht.info.CLNSIG)
-                & (ht.info.CLNSIG != "")  # Exclude empty CLNSIG
-                & hl.literal(BENIGN_LABELS).contains(ht.info.CLNSIG),
+                hl.is_defined(clnsig)
+                & (clnsig != "")
+                & hl.literal(BENIGN_LABELS).contains(clnsig),
                 "Benign",
             )
             .otherwise("Uncertain/Conflicting"),
@@ -802,16 +973,43 @@ class PSROCPipeline:
 
         ht = self._labeled_ht
 
-        # Join with dbNSFP scores
-        ht = ht.key_by("variant").join(self._dbnsfp_ht.key_by("variant"), how="left")
+        # Left-join annotation on shared (locus, alleles) key
+        ht = ht.annotate(**self._dbnsfp_ht[ht.key])
 
-        # Keep only relevant score fields
-        score_fields = [f for f in ht.row if f.startswith("dbnsfp.")]
-        ht = ht.select("variant", "label", *score_fields)
+        # Identify requested score fields that exist in the annotated table
+        available_fields = set(ht.row)
+        score_fields = [s for s in self.config.scores if s in available_fields]
 
-        logger.info(f"   ✓ Annotated with dbNSFP scores: {ht.count()} variants")
+        if not score_fields:
+            raise RuntimeError(
+                f"None of the requested scores {self.config.scores} were found "
+                f"in the dbNSFP table. Available fields: "
+                f"{sorted(available_fields - {'locus', 'alleles'})}"
+            )
 
-        # Update instance variable so downstream stages see the annotated table
+        # Resolve dict-typed transcript scores to scalar (max across transcripts)
+        resolve_ann = {}
+        for sf in score_fields:
+            dtype = ht[sf].dtype
+            if isinstance(dtype, hl.tdict):
+                resolve_ann[sf] = hl.or_missing(
+                    hl.is_defined(ht[sf]),
+                    hl.max(ht[sf].values()),
+                )
+        if resolve_ann:
+            logger.info(
+                f"   Resolving {len(resolve_ann)} dict-typed scores to scalar (max)"
+            )
+            ht = ht.annotate(**resolve_ann)
+
+        # Keep only label and score fields
+        ht = ht.select("label", *score_fields)
+
+        logger.info(
+            f"   ✓ Annotated with {len(score_fields)} dbNSFP scores: "
+            f"{ht.count()} variants"
+        )
+
         self._annotated_ht = ht
         return ht
 
@@ -824,51 +1022,35 @@ class PSROCPipeline:
 
         ht = self._annotated_ht
 
-        # Compute total count once to avoid repeated materialization
-        ht_count = ht.count()
+        # Identify score fields from config that are present in the table
+        score_fields = [s for s in self.config.scores if s in ht.row]
 
-        # Compute missingness for each score field
-        missingness_results = {}
-        for field in ht.row:
-            if field.startswith("dbnsfp."):
-                # Calculate missingness statistics
-                n_missing = ht.filter(hl.is_missing(ht[field])).count()
-                n_present = ht_count - n_missing
-                missingness_rate = n_missing / ht_count if ht_count > 0 else 0.0
-                included_in_analysis = missingness_rate <= self.config.max_missingness
+        # Single materialization: select scores, convert to pandas
+        df = ht.select(*score_fields).to_pandas()
 
-                missingness_results[field] = ScoreMissingness(
-                    score_name=field,
-                    n_total=ht_count,
-                    n_present=n_present,
-                    n_missing=n_missing,
-                    missingness_rate=missingness_rate,
-                    included_in_analysis=included_in_analysis,
-                    exclusion_reason=(
-                        (
-                            f"missingness_rate ({missingness_rate:.2f}) exceeds "
-                            f"max_missingness ({self.config.max_missingness:.2f})"
-                        )
-                        if not included_in_analysis
-                        else None
-                    ),
-                )
+        # Build numpy arrays for each score
+        scores_np = {sf: df[sf].to_numpy(dtype=float) for sf in score_fields}
 
-        # Filter out scores exceeding the missingness threshold
-        filtered_scores = {
-            k: v
-            for k, v in missingness_results.items()
-            if v.missingness_rate <= self.config.max_missingness
-        }
+        # Compute missingness using existing roc.py utility (single pass)
+        missingness_results = compute_all_missingness(
+            scores_np, max_missingness=self.config.max_missingness
+        )
+
+        scores_included, scores_excluded = filter_scores_by_missingness(
+            missingness_results, max_missingness=self.config.max_missingness
+        )
 
         logger.info(
-            f"   ✓ Computed missingness statistics for {len(missingness_results)} scores"
+            f"   ✓ Computed missingness for {len(missingness_results)} scores"
         )
-        logger.info(f"   ✓ Scores passed missingness filter: {len(filtered_scores)}")
+        logger.info(
+            f"   ✓ Included: {len(scores_included)}, "
+            f"Excluded: {len(scores_excluded)}"
+        )
 
-        self.state.outputs["missingness"] = filtered_scores
+        self.state.outputs["missingness"] = missingness_results
 
-        return filtered_scores
+        return missingness_results
 
     def _compute_roc_metrics(self) -> Dict[str, ROCResult]:
         """Stage 6: Compute ROC metrics for included scores."""
@@ -882,12 +1064,14 @@ class PSROCPipeline:
         # Filter to pathogenic/benign only (exclude uncertain/conflicting)
         ht = ht.filter((ht.label == "Pathogenic") | (ht.label == "Benign"))
 
-        # Get score fields (only those that passed missingness threshold)
+        # Get score fields that passed missingness threshold
+        missingness = self.state.outputs.get("missingness", {})
         score_fields = [
-            f
-            for f in ht.row
-            if f.startswith("dbnsfp.")
-            and f in self.state.outputs.get("missingness", {})
+            s
+            for s in self.config.scores
+            if s in ht.row
+            and s in missingness
+            and missingness[s].included_in_analysis
         ]
 
         if not score_fields:
@@ -960,10 +1144,14 @@ class PSROCPipeline:
             n_excluded=ht.filter(ht.label == "Uncertain/Conflicting").count(),
             n_total=ht.count(),
             scores_included=[
-                s for s in ht.row if s.startswith("dbnsfp.") and s in missingness
+                s
+                for s in self.config.scores
+                if s in missingness and missingness[s].included_in_analysis
             ],
             scores_excluded=[
-                s for s in ht.row if s.startswith("dbnsfp.") and s not in missingness
+                s
+                for s in self.config.scores
+                if s not in missingness or not missingness[s].included_in_analysis
             ],
             max_missingness_threshold=self.config.max_missingness,
             output_dir=self.config.output_dir,
