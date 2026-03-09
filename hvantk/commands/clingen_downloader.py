@@ -22,19 +22,19 @@ logger = logging.getLogger(__name__)
 
 
 def _print_available_versions():
-    """Print available ClinGen Gene-Disease dataset versions."""
+    """Print ClinGen Gene-Disease dataset availability info."""
     from hvantk.datasets.clingen_datasets import get_available_versions
 
     versions = get_available_versions()
     if not versions:
-        click.echo("Unable to retrieve available versions. Check network connection.")
+        click.echo("Unable to reach ClinGen endpoint. Check network connection.")
         return
 
-    click.echo("Available ClinGen Gene-Disease Validity versions:")
-    for version in versions[:20]:  # Show most recent 20
-        click.echo(f"  {version}")
-    if len(versions) > 20:
-        click.echo(f"  ... and {len(versions) - 20} more")
+    click.echo("ClinGen Gene-Disease Validity download is available.")
+    click.echo(
+        "Note: ClinGen now provides real-time snapshots (no versioned archives)."
+    )
+    click.echo(f"  Download will be labeled with today's date: {versions[0]}")
 
 
 @click.command(
