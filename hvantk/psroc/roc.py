@@ -325,10 +325,13 @@ def compute_roc_metrics(
         )
 
     if len(results) == 0 and len(scores) > 0:
+        import logging as _logging
+
         excluded_scores = list(scores.keys())
-        raise ValueError(
-            f"All scores were excluded due to high missingness: {excluded_scores}. "
-            f"Consider increasing --max-missingness threshold."
+        _logging.getLogger(__name__).warning(
+            "All scores were excluded due to high missingness: %s. "
+            "Consider increasing --max-missingness threshold.",
+            excluded_scores,
         )
 
     return results
