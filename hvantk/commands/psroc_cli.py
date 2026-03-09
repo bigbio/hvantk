@@ -120,6 +120,14 @@ def _display_collection_results(results, output_dir) -> None:
     "Runs PSROC independently for each named gene set.",
 )
 @click.option(
+    "--hgnc",
+    type=click.Path(exists=True),
+    default=None,
+    help="Path to HGNC data file (TSV or .ht) for gene alias resolution. "
+    "When provided, the gene set is expanded to include known aliases "
+    "and previous symbols.",
+)
+@click.option(
     "--clinvar-ht",
     type=click.Path(exists=True),
     required=True,
@@ -213,6 +221,7 @@ def psroc_cmd(
     genes_file,
     variants,
     gene_sets,
+    hgnc,
     clinvar_ht,
     dbnsfp_ht,
     scores,
@@ -356,6 +365,7 @@ def psroc_cmd(
             min_stars=min_stars,
             max_missingness=max_missingness,
             threshold_method=threshold_method,
+            hgnc_path=hgnc,
             export_tsv=export_tsv,
             overwrite=overwrite,
             generate_plots=not no_plots,
