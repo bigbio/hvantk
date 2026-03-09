@@ -118,13 +118,13 @@ def main():
 
     # Get categorization results
     results = streamer.categorize_by_ontology(
-        mondo_obo_path=mondo_obo,
+        ontology=mondo_obo,
         min_classification="Limited",  # Include Limited and above
     )
 
     # Get summary DataFrame
     summary_df = streamer.categorize_by_ontology_summary(
-        mondo_obo_path=mondo_obo,
+        ontology=mondo_obo,
         min_classification="Limited",
     )
 
