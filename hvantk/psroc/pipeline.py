@@ -107,6 +107,7 @@ class PSROCConfig:
         min_stars: Minimum ClinVar review status stars (default: 1).
         max_missingness: Maximum allowed missingness rate per score (default: 0.3).
         threshold_method: Method for finding optimal threshold (default: "youden").
+        hgnc_path: Path to HGNC data (TSV or .ht) for gene alias resolution.
         export_tsv: Whether to export annotated variants as TSV.
         overwrite: Whether to overwrite existing output files.
         generate_plots: Whether to generate visualization plots.
@@ -135,6 +136,7 @@ class PSROCConfig:
     min_stars: int = 1
     max_missingness: float = 0.3
     threshold_method: str = "youden"
+    hgnc_path: Optional[str] = None
 
     # Output options
     export_tsv: bool = False
@@ -205,6 +207,9 @@ class PSROCConfig:
                     f"Gene set collection contains empty groups: "
                     f"{', '.join(empty_groups)}"
                 )
+
+        if self.hgnc_path and not Path(self.hgnc_path).exists():
+            errors.append(f"HGNC data not found: {self.hgnc_path}")
 
         # Validate thresholds
         if not 0.0 <= self.max_missingness <= 1.0:
@@ -359,6 +364,7 @@ class PSROCResult:
         n_benign: Number of benign variants.
         n_excluded: Number of excluded variants (uncertain/conflicting).
         n_total: Total number of variants processed.
+        n_out_of_scope: Variants dropped with no dbNSFP scores (non-missense).
         scores_included: Scores that passed the missingness threshold.
         scores_excluded: Scores excluded due to high missingness.
         max_missingness_threshold: The threshold used for this run.
@@ -372,6 +378,7 @@ class PSROCResult:
     n_benign: int
     n_excluded: int
     n_total: int
+    n_out_of_scope: int
     scores_included: List[str]
     scores_excluded: List[str]
     max_missingness_threshold: float
@@ -387,6 +394,7 @@ class PSROCResult:
             "n_benign": self.n_benign,
             "n_excluded": self.n_excluded,
             "n_total": self.n_total,
+            "n_out_of_scope": self.n_out_of_scope,
             "scores_included": self.scores_included,
             "scores_excluded": self.scores_excluded,
             "max_missingness_threshold": self.max_missingness_threshold,
@@ -404,6 +412,7 @@ class PSROCResult:
             f"  Pathogenic: {self.n_pathogenic}",
             f"  Benign: {self.n_benign}",
             f"  Excluded: {self.n_excluded}",
+            f"  Out of scope (no dbNSFP scores): {self.n_out_of_scope}",
             "",
             f"Scores requested: {len(self.missingness)}",
             f"  Included: {len(self.scores_included)}",
@@ -509,6 +518,7 @@ class PSROCPipeline:
         self._dbnsfp_ht: Optional[hl.Table] = None
         self._labeled_ht: Optional[hl.Table] = None
         self._annotated_ht: Optional[hl.Table] = None
+        self._n_out_of_scope: int = 0
 
     def _setup_output_paths(self) -> None:
         """Initialize output directory structure."""
@@ -577,6 +587,8 @@ class PSROCPipeline:
         print(f"  Min review stars: {self.config.min_stars}")
         print(f"  Max missingness: {self.config.max_missingness:.0%}")
         print(f"  Threshold method: {self.config.threshold_method}")
+        if self.config.hgnc_path:
+            print(f"  HGNC alias resolution: {self.config.hgnc_path}")
 
         print("\n📊 Stages to execute:")
         stages = [
@@ -706,6 +718,7 @@ class PSROCPipeline:
                 min_stars=self.config.min_stars,
                 max_missingness=self.config.max_missingness,
                 threshold_method=self.config.threshold_method,
+                hgnc_path=self.config.hgnc_path,
                 export_tsv=self.config.export_tsv,
                 overwrite=self.config.overwrite,
                 generate_plots=self.config.generate_plots,
@@ -836,6 +849,23 @@ class PSROCPipeline:
             # Filter by gene set
             gene_set = self.config.get_gene_set()
             if gene_set:
+                # Expand with HGNC aliases if configured
+                if self.config.hgnc_path:
+                    from hvantk.utils.gene_aliases import (
+                        expand_gene_set_with_aliases,
+                    )
+
+                    gene_set, alias_map = expand_gene_set_with_aliases(
+                        list(gene_set), self.config.hgnc_path
+                    )
+                    if alias_map:
+                        logger.info(
+                            f"   Expanded gene set with {len(alias_map)} "
+                            f"aliases from HGNC"
+                        )
+                        for alias, canonical in sorted(alias_map.items()):
+                            logger.info(f"     {alias} → {canonical}")
+
                 logger.info(f"   Filtering to {len(gene_set)} genes")
                 gene_literal = hl.literal(gene_set)
                 ht = ht.filter(gene_literal.contains(ht.gene))
@@ -1026,11 +1056,23 @@ class PSROCPipeline:
         # Keep only label and score fields
         ht = ht.select("label", *score_fields)
 
+        # Drop variants outside dbNSFP domain (all scores null)
+        n_before = ht.count()
+        score_defined = [hl.is_defined(ht[sf]) for sf in score_fields]
+        ht = ht.filter(hl.any(lambda x: x, score_defined))
+        n_after = ht.count()
+        n_dropped = n_before - n_after
+
+        logger.info(
+            f"   Dropped {n_dropped} variants with no dbNSFP scores "
+            f"(out of scope for score evaluation)"
+        )
         logger.info(
             f"   ✓ Annotated with {len(score_fields)} dbNSFP scores: "
-            f"{ht.count()} variants"
+            f"{n_after} variants in score domain"
         )
 
+        self._n_out_of_scope = n_dropped
         self._annotated_ht = ht
         return ht
 
@@ -1114,19 +1156,20 @@ class PSROCPipeline:
             scores_dict[score_field] = df[score_field].to_numpy(dtype=float, na_value=np.nan)
 
         # Compute ROC metrics for all scores at once
-        try:
-            roc_results = compute_roc_metrics(
-                labels=labels,
-                scores=scores_dict,
-                max_missingness=self.config.max_missingness,
-                pos_label=1,
-                threshold_method=self.config.threshold_method,
-            )
-        except Exception as e:
-            logger.error(f"   ✗ Failed to compute ROC metrics: {e}")
-            raise
+        roc_results = compute_roc_metrics(
+            labels=labels,
+            scores=scores_dict,
+            max_missingness=self.config.max_missingness,
+            pos_label=1,
+            threshold_method=self.config.threshold_method,
+        )
 
-        logger.info(f"   ✓ Computed ROC metrics for {len(roc_results)} scores")
+        if roc_results:
+            logger.info(f"   ✓ Computed ROC metrics for {len(roc_results)} scores")
+        else:
+            logger.warning(
+                "   ⚠ No scores produced ROC metrics after filtering to P/B variants"
+            )
 
         self.state.outputs["roc_metrics"] = roc_results
 
@@ -1164,6 +1207,7 @@ class PSROCPipeline:
             n_benign=ht.filter(ht.label == "Benign").count(),
             n_excluded=ht.filter(ht.label == "Uncertain/Conflicting").count(),
             n_total=ht.count(),
+            n_out_of_scope=self._n_out_of_scope,
             scores_included=[
                 s
                 for s in self.config.scores
