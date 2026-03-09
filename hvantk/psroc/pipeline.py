@@ -1029,7 +1029,7 @@ class PSROCPipeline:
         df = ht.select(*score_fields).to_pandas()
 
         # Build numpy arrays for each score
-        scores_np = {sf: df[sf].to_numpy(dtype=float) for sf in score_fields}
+        scores_np = {sf: df[sf].to_numpy(dtype=float, na_value=np.nan) for sf in score_fields}
 
         # Compute missingness using existing roc.py utility (single pass)
         missingness_results = compute_all_missingness(
