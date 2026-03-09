@@ -557,27 +557,28 @@ class ClinGenStreamer(HailDataStreamer):
 
     def categorize_by_ontology(
         self,
-        mondo_obo_path: str,
+        ontology: Union[str, "BaseOboOntology"],
         min_classification: Optional[str] = None,
         categories: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Dict[str, Set[str]]]:
         """
-        Categorize diseases using MONDO ontology hierarchy.
+        Categorize diseases using an ontology hierarchy.
 
-        This method uses the MONDO disease ontology to properly categorize
-        diseases based on their ontological relationships (is_a hierarchy),
+        Uses an OBO ontology (MONDO by default) to categorize diseases
+        based on their ontological relationships (is_a hierarchy),
         rather than keyword matching.
 
         Parameters
         ----------
-        mondo_obo_path : str
-            Path to the MONDO OBO file. Can be downloaded using:
-            `hvantk.utils.mondo_parser.download_mondo_obo()`
+        ontology : str or BaseOboOntology
+            Either a path to an OBO file (backward-compatible: creates a
+            MondoOntology), or a pre-loaded :class:`BaseOboOntology` instance.
         min_classification : str, optional
             Filter to minimum classification level.
         categories : dict, optional
-            Custom category mapping {MONDO_ID: category_name}.
-            If None, uses default MONDO_DISEASE_CATEGORIES.
+            Custom category mapping {term_id: category_name}.
+            If None and ontology is MondoOntology, uses MONDO_DISEASE_CATEGORIES.
+            Must be provided for non-MONDO ontologies.
 
         Returns
         -------
@@ -595,8 +596,27 @@ class ClinGenStreamer(HailDataStreamer):
         >>> results = streamer.categorize_by_ontology("mondo.obo")
         >>> print(results["cardiovascular disease"]["genes"])
         {'TTN', 'MYH7', 'MYBPC3', ...}
+
+        Using a pre-loaded ontology instance:
+
+        >>> from hvantk.utils import MondoOntology
+        >>> mondo = MondoOntology("mondo.obo")
+        >>> results = streamer.categorize_by_ontology(mondo)
         """
+        from hvantk.utils.obo_parser import BaseOboOntology
         from hvantk.utils.mondo_parser import MondoOntology, MONDO_DISEASE_CATEGORIES
+
+        # Resolve ontology: string path -> MondoOntology (backward compat)
+        if isinstance(ontology, str):
+            logger.info(f"Loading MONDO ontology from {ontology}")
+            onto = MondoOntology(ontology)
+        elif isinstance(ontology, BaseOboOntology):
+            onto = ontology
+        else:
+            raise TypeError(
+                f"ontology must be a file path (str) or BaseOboOntology instance, "
+                f"got {type(ontology).__name__}"
+            )
 
         self._ensure_table_loaded()
         ht = self._table
@@ -608,13 +628,14 @@ class ClinGenStreamer(HailDataStreamer):
             min_classification = self._normalize_classification(min_classification)
             ht = self._apply_min_classification_filter(ht, min_classification)
 
-        # Load the MONDO ontology
-        logger.info(f"Loading MONDO ontology from {mondo_obo_path}")
-        mondo = MondoOntology(mondo_obo_path)
-
         # Use default categories if not provided
         if categories is None:
-            categories = MONDO_DISEASE_CATEGORIES
+            if isinstance(onto, MondoOntology):
+                categories = MONDO_DISEASE_CATEGORIES
+            else:
+                raise ValueError(
+                    "categories must be provided for non-MONDO ontologies"
+                )
 
         # Collect all gene-disease-mondo associations
         if self._keying_mode == "gene_disease":
@@ -665,7 +686,7 @@ class ClinGenStreamer(HailDataStreamer):
                 mondo_id = f"MONDO:{mondo_id}"
 
             # Get categories for this disease
-            matched_cats = mondo.categorize(mondo_id, categories)
+            matched_cats = onto.categorize(mondo_id, categories)
 
             if matched_cats:
                 for cat_id, cat_name in matched_cats:
@@ -686,7 +707,7 @@ class ClinGenStreamer(HailDataStreamer):
 
     def categorize_by_ontology_summary(
         self,
-        mondo_obo_path: str,
+        ontology: Union[str, "BaseOboOntology"],
         min_classification: Optional[str] = None,
         categories: Optional[Dict[str, str]] = None,
     ) -> pd.DataFrame:
@@ -695,12 +716,13 @@ class ClinGenStreamer(HailDataStreamer):
 
         Parameters
         ----------
-        mondo_obo_path : str
-            Path to the MONDO OBO file.
+        ontology : str or BaseOboOntology
+            Either a path to an OBO file or a pre-loaded ontology instance.
+            See :meth:`categorize_by_ontology` for details.
         min_classification : str, optional
             Filter to minimum classification level.
         categories : dict, optional
-            Custom category mapping {MONDO_ID: category_name}.
+            Custom category mapping {term_id: category_name}.
 
         Returns
         -------
@@ -708,7 +730,7 @@ class ClinGenStreamer(HailDataStreamer):
             Summary with columns: category, n_genes, n_diseases, sample_genes
         """
         results = self.categorize_by_ontology(
-            mondo_obo_path, min_classification, categories
+            ontology, min_classification, categories
         )
 
         summary_data = []
@@ -725,7 +747,7 @@ class ClinGenStreamer(HailDataStreamer):
 
     def get_genes_by_ontology_category(
         self,
-        mondo_obo_path: str,
+        ontology: Union[str, "BaseOboOntology"],
         category_id: str,
         min_classification: Optional[str] = None,
         as_set: bool = True,
@@ -735,10 +757,11 @@ class ClinGenStreamer(HailDataStreamer):
 
         Parameters
         ----------
-        mondo_obo_path : str
-            Path to the MONDO OBO file.
+        ontology : str or BaseOboOntology
+            Either a path to an OBO file or a pre-loaded ontology instance.
+            See :meth:`categorize_by_ontology` for details.
         category_id : str
-            MONDO ID of the category (e.g., "MONDO:0004995" for cardiovascular).
+            Term ID of the category (e.g., ``"MONDO:0004995"`` for cardiovascular).
         min_classification : str, optional
             Filter to minimum classification level.
         as_set : bool
@@ -750,7 +773,19 @@ class ClinGenStreamer(HailDataStreamer):
         set or list
             Genes in the specified category.
         """
+        from hvantk.utils.obo_parser import BaseOboOntology
         from hvantk.utils.mondo_parser import MondoOntology
+
+        # Resolve ontology: string path -> MondoOntology (backward compat)
+        if isinstance(ontology, str):
+            onto = MondoOntology(ontology)
+        elif isinstance(ontology, BaseOboOntology):
+            onto = ontology
+        else:
+            raise TypeError(
+                f"ontology must be a file path (str) or BaseOboOntology instance, "
+                f"got {type(ontology).__name__}"
+            )
 
         self._ensure_table_loaded()
         ht = self._table
@@ -761,11 +796,8 @@ class ClinGenStreamer(HailDataStreamer):
             min_classification = self._normalize_classification(min_classification)
             ht = self._apply_min_classification_filter(ht, min_classification)
 
-        # Load ontology
-        mondo = MondoOntology(mondo_obo_path)
-
         # Get all descendants of the category (all diseases under this category)
-        category_diseases = mondo.get_descendants(category_id, include_self=True)
+        category_diseases = onto.get_descendants(category_id, include_self=True)
 
         # Collect genes from ClinGen data (can't select key fields directly)
         genes = set()
