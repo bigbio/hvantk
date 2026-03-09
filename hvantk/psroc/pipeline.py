@@ -944,7 +944,7 @@ class PSROCPipeline:
                 & hl.literal(BENIGN_LABELS).contains(clnsig),
                 "Benign",
             )
-            .otherwise("Uncertain/Conflicting"),
+            .default("Uncertain/Conflicting"),
         )
 
         # Filter out uncertain/conflicting variants by default
