@@ -255,6 +255,27 @@ class PSROCState:
     start_time: Optional[str] = None
     end_time: Optional[str] = None
 
+    @staticmethod
+    def _serialize_outputs(outputs: Dict[str, Any]) -> Dict[str, Any]:
+        """Convert pipeline outputs to JSON-serializable form.
+
+        Handles ScoreMissingness, ROCResult, and dicts thereof by calling
+        their ``.to_dict()`` method.  Scalars and strings pass through
+        unchanged.
+        """
+        serialized: Dict[str, Any] = {}
+        for key, value in outputs.items():
+            if hasattr(value, "to_dict"):
+                serialized[key] = value.to_dict()
+            elif isinstance(value, dict):
+                serialized[key] = {
+                    k: v.to_dict() if hasattr(v, "to_dict") else v
+                    for k, v in value.items()
+                }
+            else:
+                serialized[key] = value
+        return serialized
+
     def save(self, path: Path) -> None:
         """Save pipeline state to JSON file.
 
@@ -265,7 +286,7 @@ class PSROCState:
             "config": asdict(self.config),
             "current_stage": self.current_stage.value if self.current_stage else None,
             "completed_stages": self.completed_stages,
-            "outputs": self.outputs,
+            "outputs": self._serialize_outputs(self.outputs),
             "errors": self.errors,
             "start_time": self.start_time,
             "end_time": self.end_time,
@@ -1090,7 +1111,7 @@ class PSROCPipeline:
         # Extract scores into dictionary of NumPy arrays
         scores_dict = {}
         for score_field in score_fields:
-            scores_dict[score_field] = df[score_field].to_numpy(dtype=float)
+            scores_dict[score_field] = df[score_field].to_numpy(dtype=float, na_value=np.nan)
 
         # Compute ROC metrics for all scores at once
         try:
