@@ -88,10 +88,7 @@ allows you to run the complete pipeline without needing real ClinVar or dbNSFP t
 ### Running the Example
 
 ```bash
-# First, generate the synthetic test data (if not already present)
-python scripts/generate_psroc_testdata.py
-
-# Run the example script (builds tables and runs full pipeline)
+# Run the example script (builds Hail Tables from synthetic TSVs and runs full pipeline)
 python examples/psroc/run_psroc_example.py --output-dir /tmp/psroc_example
 ```
 
@@ -128,13 +125,11 @@ Located in `hvantk/tests/testdata/psroc/`:
 - `test_genes.txt` - Gene list for `--genes-file` testing
 - `test_variants.txt` - Variant list for `--variants` testing
 
-To regenerate test data, run: `python scripts/generate_psroc_testdata.py`
-
 ## Detailed Usage
 
 ### Input Sources
 
-PSROC requires one of three input sources to select variants for analysis:
+PSROC requires exactly one input source to select variants for analysis:
 
 #### Option 1: Gene Symbols
 
@@ -160,6 +155,23 @@ chr2:67890:G:C
 chr17:41245466:G:A
 ```
 
+#### Option 3: Named Gene Set Collection (Multi-Group Analysis)
+
+Run PSROC independently for each named gene set in a collection. Each group
+gets its own output subdirectory with per-group metrics and plots.
+
+```bash
+# From a JSON gene set collection
+hvantk psroc --gene-sets /data/disease_gene_sets.json ...
+
+# From a GMT file (e.g., MSigDB pathways)
+hvantk psroc --gene-sets /data/pathways.gmt ...
+```
+
+Gene set collections can be prepared from various sources using hvantk's
+streamer layer. See [Preparing Gene Set Collections](#preparing-gene-set-collections)
+and the example script `examples/psroc/prepare_gene_sets.py`.
+
 ### Required Tables
 
 PSROC requires pre-built Hail Tables for ClinVar and dbNSFP:
@@ -170,9 +182,9 @@ hvantk mktable clinvar \
   --raw-input /data/clinvar.vcf.bgz \
   --output-ht /data/clinvar_grch38.ht
 
-# Build dbNSFP table
+# Build dbNSFP table (from concatenated BGZF — see Deployment Guide)
 hvantk mktable dbnsfp \
-  --raw-input /data/dbNSFP4.4a_variant.chr.gz \
+  --raw-input /data/dbNSFP4.9a_variant.bgz \
   --output-ht /data/dbnsfp_grch38.ht
 ```
 
@@ -442,6 +454,7 @@ Input Sources (exactly one required):
   --genes TEXT              Comma-separated gene symbols
   --genes-file PATH         File with gene symbols (one per line)
   --variants PATH           Variant list (chr:pos:ref:alt format)
+  --gene-sets PATH          Gene set collection (JSON/GMT) for multi-group analysis
 
 Required:
   --clinvar-ht PATH         Path to ClinVar Hail Table
@@ -519,6 +532,7 @@ config = PSROCConfig(
     genes=["BRCA1", "BRCA2"],        # Gene symbols
     genes_file=None,                  # Path to gene file
     variants_path=None,               # Path to variant file
+    gene_set_collection=None,         # Dict[str, Set[str]] for multi-group
 
     # Required paths
     clinvar_ht="/data/clinvar.ht",
@@ -562,8 +576,30 @@ pipeline = PSROCPipeline(config)
 # Preview execution plan
 pipeline.show_plan()
 
-# Run pipeline
+# Run single gene set pipeline
 result = pipeline.run()
+
+# --- Multi-group analysis ---
+from hvantk.psroc import PSROCConfig, PSROCPipeline
+
+collection_config = PSROCConfig(
+    gene_set_collection={
+        "cardiac": {"MYH7", "TNNT2", "LMNA"},
+        "neuro": {"SCN1A", "SCN2A", "KCNQ2"},
+    },
+    clinvar_ht="/data/clinvar.ht",
+    dbnsfp_ht="/data/dbnsfp.ht",
+    scores=["CADD_phred", "REVEL_score"],
+    output_dir="/results/multi_group",
+)
+
+pipeline = PSROCPipeline(collection_config)
+results = pipeline.run_collection()  # Dict[str, PSROCResult]
+
+for group_name, result in results.items():
+    print(f"{group_name}: {result.n_total} variants")
+    for name, roc in result.metrics.items():
+        print(f"  {name}: AUC={roc.auc:.3f}")
 ```
 
 #### PSROCResult
@@ -664,6 +700,195 @@ fig = plot_psroc_summary_dashboard(
     max_missingness_threshold=0.3,
 )
 ```
+
+## End-to-End Deployment Guide
+
+This section walks through running the full PSROC pipeline on a fresh host,
+from installation through results.
+
+### Prerequisites
+
+| Requirement | Version | Notes |
+|-------------|---------|-------|
+| Python | >= 3.10 | |
+| Java | 8 or 11 | Required by Hail/Spark |
+| Disk space | ~50 GB | dbNSFP (~45 GB) + intermediate tables |
+
+Verify Java is available:
+
+```bash
+java -version   # Should show 1.8 or 11
+```
+
+### Step 1: Install hvantk
+
+```bash
+pip install hvantk
+# or from source:
+git clone https://github.com/bigbio/hvantk
+cd hvantk && poetry install
+```
+
+### Step 2: Download Data (Layer 1 — Downloaders)
+
+**ClinVar** (automated):
+
+```bash
+hvantk clinvar-downloader --output-dir /data/clinvar
+# Downloads clinvar.vcf.gz (~80 MB) + .tbi index
+```
+
+**dbNSFP** (manual — ~45 GB, license-gated):
+
+1. Visit https://sites.google.com/site/jpaboreno/dbNSFP
+2. Download the `dbNSFP4.x` archive and extract the per-chromosome `.gz` files
+3. Concatenate into a single BGZF file (the builder expects one file):
+   ```bash
+   head -1 <(zcat dbNSFP4.9a_variant.chr1.gz) > /tmp/dbnsfp_header.txt
+   (cat /tmp/dbnsfp_header.txt && for f in dbNSFP4.9a_variant.chr*.gz; do zcat "$f" | tail -n +2; done) \
+     | bgzip -@ 4 > /data/dbnsfp/dbNSFP4.9a_variant.bgz
+   ```
+
+**ClinGen** (automated, for gene set extraction):
+
+```bash
+hvantk clingen-downloader --output-dir /data/clingen
+# Downloads gene_curation_list CSV
+```
+
+### Step 3: Build Hail Tables (Layer 1 — Builders)
+
+```bash
+# Build ClinVar table
+hvantk mktable clinvar \
+  --raw-input /data/clinvar/clinvar.vcf.gz \
+  --output-ht /data/tables/clinvar_grch38.ht
+
+# Build dbNSFP table (from the concatenated BGZF file prepared in Step 2)
+hvantk mktable dbnsfp \
+  --raw-input /data/dbnsfp/dbNSFP4.9a_variant.bgz \
+  --output-ht /data/tables/dbnsfp_grch38.ht
+
+# Build ClinGen table (for gene set extraction)
+hvantk mktable clingen-gene-disease \
+  --raw-input /data/clingen/gene_curation_list.csv \
+  --output-ht /data/tables/clingen.ht
+```
+
+### Step 4: Prepare Gene Sets (Layer 2 — Streamers)
+
+Extract named gene set collections from ClinGen or other sources. See
+[Preparing Gene Set Collections](#preparing-gene-set-collections) below.
+
+```bash
+# Example: extract disease-category gene sets from ClinGen
+python examples/psroc/prepare_gene_sets.py \
+  --clingen-ht /data/tables/clingen.ht \
+  --output /data/gene_sets/disease_categories.json
+```
+
+### Step 5: Run PSROC (Layer 3 — Pipeline)
+
+```bash
+# Single gene set
+hvantk psroc \
+  --genes BRCA1,BRCA2,TP53 \
+  --clinvar-ht /data/tables/clinvar_grch38.ht \
+  --dbnsfp-ht /data/tables/dbnsfp_grch38.ht \
+  --scores "CADD_phred,REVEL_score,MetaLR_score,VEST4_score" \
+  --output-dir /results/psroc \
+  --min-stars 1
+
+# Multi-group analysis with gene set collection
+hvantk psroc \
+  --gene-sets /data/gene_sets/disease_categories.json \
+  --clinvar-ht /data/tables/clinvar_grch38.ht \
+  --dbnsfp-ht /data/tables/dbnsfp_grch38.ht \
+  --scores "CADD_phred,REVEL_score,MetaLR_score" \
+  --output-dir /results/psroc_multi
+```
+
+### Step 6: Review Results
+
+```
+/results/psroc_multi/
+├── cardiac/
+│   ├── psroc_cardiac_metrics.json
+│   ├── plots/
+│   │   ├── psroc_cardiac_roc_curves.png
+│   │   └── psroc_cardiac_dashboard.png
+│   └── ...
+├── neurological/
+│   └── ...
+└── ...
+```
+
+---
+
+## Preparing Gene Set Collections
+
+Gene set collections are `Dict[str, Set[str]]` mappings from a group name to
+a set of gene symbols. They can be loaded from JSON or GMT files.
+
+### From ClinGen Disease Categories
+
+Use `ClinGenStreamer.aggregate_by_disease_category()` with keyword-based
+category definitions:
+
+```python
+from hvantk.data.clingen_streamer import ClinGenStreamer
+from hvantk.utils.gene_sets import GeneSetCollection, GeneSet
+
+streamer = ClinGenStreamer(table_path="/data/tables/clingen.ht")
+streamer.setup()
+
+categories = {
+    "cardiac": ["cardiomyopathy", "arrhythmia", "long_qt"],
+    "neurological": ["epilepsy", "neuropathy", "ataxia"],
+    "cancer": ["cancer", "tumor", "neoplasm"],
+}
+
+gene_sets = streamer.aggregate_by_disease_category(categories)
+# gene_sets = {"cardiac": {"MYH7", "TNNT2", ...}, ...}
+```
+
+### From ClinGen Ontology (MONDO)
+
+For ontology-based grouping using the MONDO disease hierarchy:
+
+```python
+result = streamer.categorize_by_ontology(
+    ontology="/data/mondo.obo",
+)
+# Returns nested dict: {category: {disease: {genes}}}
+# Flatten to gene set collection:
+gene_sets = {cat: set().union(*diseases.values()) for cat, diseases in result.items()}
+```
+
+### From GMT Files
+
+Standard GMT files (e.g., MSigDB pathways) can be loaded directly:
+
+```python
+from hvantk.utils.gene_sets import load_gene_sets
+
+collection = load_gene_sets("/data/pathways.gmt")
+gene_set_dict = {gs.name: gs.genes for gs in collection}
+```
+
+### Saving for CLI Use
+
+```python
+from hvantk.utils.gene_sets import load_gene_sets_from_dict
+
+collection = load_gene_sets_from_dict(gene_sets)
+collection.save("/data/gene_sets/my_collection.json")
+# Then: hvantk psroc --gene-sets /data/gene_sets/my_collection.json ...
+```
+
+See `examples/psroc/prepare_gene_sets.py` for a complete working example.
+
+---
 
 ## Interpreting Results
 
