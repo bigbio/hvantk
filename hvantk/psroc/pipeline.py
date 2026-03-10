@@ -144,6 +144,9 @@ class PSROCConfig:
     generate_plots: bool = True
     group_name: Optional[str] = None
 
+    # Minimum number of labeled (P + B) variants required for ROC analysis
+    min_variants: int = 10
+
     def validate(self) -> List[str]:
         """Validate configuration and return list of errors.
 
@@ -716,13 +719,18 @@ class PSROCPipeline:
                 f"({len(gene_set)} genes)"
             )
 
+            # Sanitize group name for filesystem paths
+            safe_name = (
+                group_name.replace("/", "_").replace("\\", "_").replace(" ", "_")
+            )
+
             group_config = PSROCConfig(
                 genes=sorted(gene_set),
                 clinvar_ht=self.config.clinvar_ht,
                 dbnsfp_ht=self.config.dbnsfp_ht,
                 scores=list(self.config.scores),
-                output_dir=str(Path(self.config.output_dir) / group_name),
-                output_prefix=f"{self.config.output_prefix}_{group_name}",
+                output_dir=str(Path(self.config.output_dir) / safe_name),
+                output_prefix=f"{self.config.output_prefix}_{safe_name}",
                 reference_genome=self.config.reference_genome,
                 min_stars=self.config.min_stars,
                 max_missingness=self.config.max_missingness,
@@ -732,6 +740,7 @@ class PSROCPipeline:
                 overwrite=self.config.overwrite,
                 generate_plots=self.config.generate_plots,
                 group_name=group_name,
+                min_variants=self.config.min_variants,
             )
 
             try:
@@ -1138,6 +1147,14 @@ class PSROCPipeline:
         # Filter to pathogenic/benign only (exclude uncertain/conflicting)
         ht = ht.filter((ht.label == "Pathogenic") | (ht.label == "Benign"))
 
+        n_labeled = ht.count()
+        if n_labeled < self.config.min_variants:
+            raise ValueError(
+                f"Too few labeled variants ({n_labeled}) for meaningful ROC analysis. "
+                f"Minimum required: {self.config.min_variants}. "
+                f"Consider lowering min_variants or using a larger gene panel."
+            )
+
         # Get score fields that passed missingness threshold
         missingness = self.state.outputs.get("missingness", {})
         score_fields = [
@@ -1201,6 +1218,14 @@ class PSROCPipeline:
                 f"   Exporting annotated variants to TSV: {self.paths['annotated_tsv']}"
             )
             ht.export(self.paths["annotated_tsv"])
+
+        # Reduce excessive partitions inherited from source tables.
+        # naive_coalesce merges adjacent partitions without a data shuffle,
+        # unlike repartition() which would do a full re-balance.
+        # n_partitions() is free (metadata only, no Hail action triggered).
+        n_parts = ht.n_partitions()
+        if n_parts > 10:
+            ht = ht.naive_coalesce(10)
 
         # Write the annotated Hail Table to disk
         logger.info(f"   Writing annotated Hail Table: {self.paths['annotated_ht']}")
