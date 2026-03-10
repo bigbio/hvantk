@@ -366,6 +366,7 @@ class PSROCResult:
         n_excluded: Number of excluded variants (uncertain/conflicting).
         n_total: Total number of variants processed.
         n_out_of_scope: Variants dropped with no dbNSFP scores (non-missense).
+        n_genes: Number of genes in the panel.
         scores_included: Scores that passed the missingness threshold.
         scores_excluded: Scores excluded due to high missingness.
         max_missingness_threshold: The threshold used for this run.
@@ -379,11 +380,12 @@ class PSROCResult:
     n_benign: int
     n_excluded: int
     n_total: int
-    n_out_of_scope: int
     scores_included: List[str]
     scores_excluded: List[str]
     max_missingness_threshold: float
     output_dir: str
+    n_out_of_scope: int = 0
+    n_genes: int = 0
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert results to a dictionary for JSON serialization."""
@@ -396,6 +398,7 @@ class PSROCResult:
             "n_excluded": self.n_excluded,
             "n_total": self.n_total,
             "n_out_of_scope": self.n_out_of_scope,
+            "n_genes": self.n_genes,
             "scores_included": self.scores_included,
             "scores_excluded": self.scores_excluded,
             "max_missingness_threshold": self.max_missingness_threshold,
@@ -409,9 +412,13 @@ class PSROCResult:
             "PSROC Analysis Summary",
             "=" * 60,
             "",
+            f"Gene panel size: {self.n_genes}",
             f"Variants analyzed: {self.n_total}",
-            f"  Pathogenic: {self.n_pathogenic}",
-            f"  Benign: {self.n_benign}",
+            f"  Pathogenic (P): {self.n_pathogenic}",
+            f"  Benign (B): {self.n_benign}",
+            f"  B/P ratio: {self.n_benign / self.n_pathogenic:.1f}:1"
+            if self.n_pathogenic > 0
+            else "  B/P ratio: N/A",
             f"  Excluded: {self.n_excluded}",
             f"  Out of scope (no dbNSFP scores): {self.n_out_of_scope}",
             "",
@@ -520,6 +527,7 @@ class PSROCPipeline:
         self._labeled_ht: Optional[hl.Table] = None
         self._annotated_ht: Optional[hl.Table] = None
         self._n_out_of_scope: int = 0
+        self._n_genes: int = 0
 
     def _setup_output_paths(self) -> None:
         """Initialize output directory structure."""
@@ -868,7 +876,8 @@ class PSROCPipeline:
                         for alias, canonical in sorted(alias_map.items()):
                             logger.info(f"     {alias} → {canonical}")
 
-                logger.info(f"   Filtering to {len(gene_set)} genes")
+                self._n_genes = len(gene_set)
+                logger.info(f"   Filtering to {self._n_genes} genes")
                 gene_literal = hl.literal(gene_set)
                 ht = ht.filter(gene_literal.contains(ht.gene))
 
@@ -1210,6 +1219,7 @@ class PSROCPipeline:
             n_excluded=ht.filter(ht.label == "Uncertain/Conflicting").count(),
             n_total=ht.count(),
             n_out_of_scope=self._n_out_of_scope,
+            n_genes=self._n_genes,
             scores_included=[
                 s
                 for s in self.config.scores
@@ -1296,6 +1306,9 @@ class PSROCPipeline:
                     result.missingness,
                     output_path=base_dashboard_path,
                     max_missingness_threshold=result.max_missingness_threshold,
+                    n_genes=result.n_genes,
+                    n_pathogenic=result.n_pathogenic,
+                    n_benign=result.n_benign,
                     title=f"PSROC Analysis Summary{suffix}",
                 )
                 logger.info(f"   ✓ Dashboard plot: {self.paths['dashboard_png']}")

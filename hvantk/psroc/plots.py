@@ -562,7 +562,8 @@ def plot_missingness_summary(
     ax.set_yticks(y_pos)
     ax.set_yticklabels(names)
     ax.set_xlabel("Missingness Rate (%)", fontsize=12)
-    ax.set_xlim([0, max(rates) * 1.1 if rates else 100])
+    max_rate = max(rates) if rates else 0
+    ax.set_xlim([0, max(max_rate * 1.1, 1)])
 
     # Add value annotations
     for bar, rate, inc in zip(bars, rates, included):
@@ -615,7 +616,10 @@ def plot_missingness_summary(
 
     ax.legend(handles=legend_elements, loc="lower right", fontsize=10)
 
-    plt.tight_layout()
+    try:
+        plt.tight_layout()
+    except ValueError:
+        pass  # save_figure uses bbox_inches="tight" as fallback
 
     if output_path:
         save_figure(fig, str(output_path), **kwargs)
@@ -630,6 +634,9 @@ def plot_psroc_summary_dashboard(
     title: str = "PSROC Analysis Summary",
     figsize: Tuple[float, float] = (16, 12),
     max_missingness_threshold: Optional[float] = None,
+    n_genes: int = 0,
+    n_pathogenic: int = 0,
+    n_benign: int = 0,
     style: str = "default",
     **kwargs,
 ) -> plt.Figure:
@@ -651,6 +658,12 @@ def plot_psroc_summary_dashboard(
         Figure size (width, height) in inches.
     max_missingness_threshold : float, optional
         If provided, shows threshold line on missingness plot.
+    n_genes : int
+        Number of genes in the panel.
+    n_pathogenic : int
+        Number of pathogenic variants used.
+    n_benign : int
+        Number of benign variants used.
     style : str
         Matplotlib style.
     **kwargs
@@ -759,6 +772,16 @@ def plot_psroc_summary_dashboard(
 
     summary_text = "PSROC Analysis Summary\n" + "=" * 40 + "\n\n"
 
+    # Panel and variant info
+    if n_genes > 0:
+        summary_text += f"GENE PANEL: {n_genes} genes\n"
+    if n_pathogenic > 0 or n_benign > 0:
+        total_labeled = n_pathogenic + n_benign
+        bp_ratio = f"{n_benign / n_pathogenic:.1f}:1" if n_pathogenic > 0 else "N/A"
+        summary_text += f"VARIANTS: {total_labeled} (P={n_pathogenic}, B={n_benign})\n"
+        summary_text += f"B/P RATIO: {bp_ratio}\n"
+    summary_text += "\n"
+
     if results:
         best_score = max(results.items(), key=lambda x: x[1].auc)
         worst_score = min(results.items(), key=lambda x: x[1].auc)
@@ -776,14 +799,10 @@ def plot_psroc_summary_dashboard(
             summary_text += f"  {worst_score[0]}\n"
             summary_text += f"  AUC: {worst_score[1].auc:.3f}\n\n"
 
-        # Variants info from first result
-        first_result = next(iter(results.values()))
-        summary_text += f"Variants Used: {first_result.n_variants_used}\n"
-
     if missingness:
         n_included = sum(1 for m in missingness.values() if m.included_in_analysis)
         n_excluded = len(missingness) - n_included
-        summary_text += "\nMISSINGNESS:\n"
+        summary_text += "MISSINGNESS:\n"
         summary_text += f"  Scores Included: {n_included}\n"
         summary_text += f"  Scores Excluded: {n_excluded}\n"
         if max_missingness_threshold is not None:
