@@ -775,16 +775,26 @@ hvantk mktable clingen-gene-disease \
   --output-ht /data/tables/clingen.ht
 ```
 
-### Step 4: Prepare Gene Sets (Layer 2 — Streamers)
+### Step 4: Prepare Gene Sets
 
 Extract named gene set collections from ClinGen or other sources. See
 [Preparing Gene Set Collections](#preparing-gene-set-collections) below.
 
 ```bash
-# Example: extract disease-category gene sets from ClinGen
-python examples/psroc/prepare_gene_sets.py \
+# GCEP-based gene sets (recommended — broader, biologically coherent panels)
+hvantk clingen-genesets \
   --clingen-ht /data/tables/clingen.ht \
-  --output /data/gene_sets/disease_categories.json
+  --group-by gcep \
+  --min-classification Moderate \
+  --min-genes 20 \
+  -o /data/gene_sets/clingen_gcep.json
+
+# Or keyword-based disease categories
+hvantk clingen-genesets \
+  --clingen-ht /data/tables/clingen.ht \
+  --group-by keyword \
+  --categories-json /data/my_categories.json \
+  -o /data/gene_sets/clingen_keywords.json
 ```
 
 ### Step 5: Run PSROC (Layer 3 — Pipeline)
@@ -830,39 +840,59 @@ hvantk psroc \
 Gene set collections are `Dict[str, Set[str]]` mappings from a group name to
 a set of gene symbols. They can be loaded from JSON or GMT files.
 
-### From ClinGen Disease Categories
+### From ClinGen (CLI)
 
-Use `ClinGenStreamer.aggregate_by_disease_category()` with keyword-based
-category definitions:
+The `hvantk clingen-genesets` command extracts gene sets from ClinGen data:
+
+```bash
+# GCEP-based gene sets (recommended — broader panels, 20-300 genes each)
+hvantk clingen-genesets \
+  --clingen-ht /data/tables/clingen.ht \
+  --group-by gcep \
+  --min-classification Moderate \
+  --min-genes 20 \
+  -o /data/gene_sets/clingen_gcep.json
+
+# Keyword-based disease categories
+hvantk clingen-genesets \
+  --clingen-ht /data/tables/clingen.ht \
+  --group-by keyword \
+  --categories-json /data/my_categories.json \
+  -o /data/gene_sets/clingen_keywords.json
+
+# Disease-level grouping (fine-grained — most have 1-3 genes)
+hvantk clingen-genesets \
+  --clingen-ht /data/tables/clingen.ht \
+  --group-by disease \
+  --min-genes 5 \
+  -o /data/gene_sets/clingen_diseases.json
+```
+
+### From ClinGen (Python API)
 
 ```python
 from hvantk.data.clingen_streamer import ClinGenStreamer
-from hvantk.utils.gene_sets import GeneSetCollection, GeneSet
 
 streamer = ClinGenStreamer(table_path="/data/tables/clingen.ht")
 streamer.setup()
 
-categories = {
+# GCEP-based (recommended)
+gene_sets = streamer.get_geneset_per_gcep(
+    min_classification="Moderate", min_genes=20
+)
+
+# Keyword-based
+gene_sets = streamer.aggregate_by_disease_category({
     "cardiac": ["cardiomyopathy", "arrhythmia", "long_qt"],
     "neurological": ["epilepsy", "neuropathy", "ataxia"],
     "cancer": ["cancer", "tumor", "neoplasm"],
+})
+
+# MONDO ontology-based
+result = streamer.categorize_by_ontology(ontology="/data/mondo.obo")
+gene_sets = {
+    cat: data["genes"] for cat, data in result.items()
 }
-
-gene_sets = streamer.aggregate_by_disease_category(categories)
-# gene_sets = {"cardiac": {"MYH7", "TNNT2", ...}, ...}
-```
-
-### From ClinGen Ontology (MONDO)
-
-For ontology-based grouping using the MONDO disease hierarchy:
-
-```python
-result = streamer.categorize_by_ontology(
-    ontology="/data/mondo.obo",
-)
-# Returns nested dict: {category: {disease: {genes}}}
-# Flatten to gene set collection:
-gene_sets = {cat: set().union(*diseases.values()) for cat, diseases in result.items()}
 ```
 
 ### From GMT Files
@@ -885,8 +915,6 @@ collection = load_gene_sets_from_dict(gene_sets)
 collection.save("/data/gene_sets/my_collection.json")
 # Then: hvantk psroc --gene-sets /data/gene_sets/my_collection.json ...
 ```
-
-See `examples/psroc/prepare_gene_sets.py` for a complete working example.
 
 ---
 
