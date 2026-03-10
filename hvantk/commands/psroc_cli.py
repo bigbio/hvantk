@@ -51,8 +51,14 @@ def _display_single_result(result, pipeline) -> None:
                 result.metrics.items(), key=lambda x: x[1].auc, reverse=True
             )
             for name, roc in sorted_metrics:
+                auc_str = f"AUC={roc.auc:.3f}"
+                if roc.auc_ci_lower is not None:
+                    auc_str += (
+                        f" [{roc.auc_ci_lower:.3f}"
+                        f"\u2013{roc.auc_ci_upper:.3f}]"
+                    )
                 click.echo(
-                    f"    {name}: AUC={roc.auc:.3f}, "
+                    f"    {name}: {auc_str}, "
                     f"threshold={roc.optimal_threshold:.3f}"
                 )
 
@@ -210,6 +216,13 @@ def _display_collection_results(results, output_dir) -> None:
     "Groups below this threshold are skipped [default: 10]",
 )
 @click.option(
+    "--n-bootstrap",
+    type=int,
+    default=2000,
+    help="Number of bootstrap resamples for AUC 95%% confidence intervals. "
+    "Set to 0 to disable [default: 2000]",
+)
+@click.option(
     "--dry-run",
     is_flag=True,
     default=False,
@@ -242,6 +255,7 @@ def psroc_cmd(
     no_plots,
     overwrite,
     min_variants,
+    n_bootstrap,
     dry_run,
     log_level,
 ):
@@ -378,6 +392,7 @@ def psroc_cmd(
             overwrite=overwrite,
             generate_plots=not no_plots,
             min_variants=min_variants,
+            n_bootstrap=n_bootstrap,
         )
 
         # Validate configuration

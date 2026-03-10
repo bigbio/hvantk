@@ -147,6 +147,9 @@ class PSROCConfig:
     # Minimum number of labeled (P + B) variants required for ROC analysis
     min_variants: int = 10
 
+    # Bootstrap confidence interval for AUC
+    n_bootstrap: int = 2000
+
     def validate(self) -> List[str]:
         """Validate configuration and return list of errors.
 
@@ -741,6 +744,7 @@ class PSROCPipeline:
                 generate_plots=self.config.generate_plots,
                 group_name=group_name,
                 min_variants=self.config.min_variants,
+                n_bootstrap=self.config.n_bootstrap,
             )
 
             try:
@@ -1190,6 +1194,7 @@ class PSROCPipeline:
             max_missingness=self.config.max_missingness,
             pos_label=1,
             threshold_method=self.config.threshold_method,
+            n_bootstrap=self.config.n_bootstrap,
         )
 
         if roc_results:

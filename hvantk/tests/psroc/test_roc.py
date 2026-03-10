@@ -11,6 +11,7 @@ import pytest
 from hvantk.psroc.roc import (
     ROCResult,
     ScoreMissingness,
+    bootstrap_auc_ci,
     compute_roc_metrics,
     find_optimal_threshold,
 )
@@ -273,16 +274,16 @@ class TestComputeROCMetrics:
         with pytest.raises(ValueError, match="only one class"):
             compute_roc_metrics(labels, scores, max_missingness=1.0)
 
-    def test_all_scores_excluded_raises_error(self):
-        """Test error when all scores exceed missingness threshold."""
+    def test_all_scores_excluded_returns_empty(self):
+        """Test that all scores excluded returns empty dict with warning."""
         labels = np.array([0, 0, 1, 1])
         scores = {
             "score1": np.array([np.nan, np.nan, np.nan, 0.5]),  # 75% missing
             "score2": np.array([np.nan, np.nan, 0.5, np.nan]),  # 75% missing
         }
 
-        with pytest.raises(ValueError, match="All scores were excluded"):
-            compute_roc_metrics(labels, scores, max_missingness=0.3)
+        results = compute_roc_metrics(labels, scores, max_missingness=0.3)
+        assert results == {}
 
     def test_optimal_threshold_included(self):
         """Test that optimal threshold is computed and included."""
@@ -308,6 +309,126 @@ class TestComputeROCMetrics:
 
         assert "score" in results
         assert results["score"].auc == pytest.approx(1.0)
+
+
+class TestBootstrapAUCCI:
+    """Test bootstrap AUC confidence interval computation."""
+
+    def test_perfect_separator_tight_ci(self):
+        """Test that perfect separation yields CI close to 1.0."""
+        labels = np.array([0] * 50 + [1] * 50)
+        scores = np.concatenate([
+            np.linspace(0.0, 0.4, 50),
+            np.linspace(0.6, 1.0, 50),
+        ])
+
+        ci_lower, ci_upper = bootstrap_auc_ci(labels, scores, n_resamples=500)
+
+        assert ci_lower > 0.9
+        assert ci_upper <= 1.0
+        assert ci_lower <= ci_upper
+
+    def test_random_classifier_wide_ci(self):
+        """Test that random scores yield CI around 0.5."""
+        rng = np.random.default_rng(42)
+        labels = np.array([0] * 50 + [1] * 50)
+        scores = rng.random(100)
+
+        ci_lower, ci_upper = bootstrap_auc_ci(labels, scores, n_resamples=500)
+
+        # CI should bracket ~0.5
+        assert ci_lower < 0.6
+        assert ci_upper > 0.4
+        # CI width should be non-trivial
+        assert (ci_upper - ci_lower) > 0.05
+
+    def test_ci_contains_point_estimate(self):
+        """Test that CI contains the point AUC estimate."""
+        from sklearn.metrics import roc_auc_score
+
+        labels = np.array([0] * 30 + [1] * 30)
+        scores = np.concatenate([
+            np.linspace(0.1, 0.6, 30),
+            np.linspace(0.4, 0.9, 30),
+        ])
+
+        auc = roc_auc_score(labels, scores)
+        ci_lower, ci_upper = bootstrap_auc_ci(labels, scores, n_resamples=1000)
+
+        assert ci_lower <= auc <= ci_upper
+
+    def test_reproducibility_with_seed(self):
+        """Test that same seed produces same results."""
+        labels = np.array([0] * 20 + [1] * 20)
+        scores = np.linspace(0, 1, 40)
+
+        ci1 = bootstrap_auc_ci(labels, scores, seed=123)
+        ci2 = bootstrap_auc_ci(labels, scores, seed=123)
+
+        assert ci1[0] == ci2[0]
+        assert ci1[1] == ci2[1]
+
+    def test_different_seeds_produce_different_results(self):
+        """Test that different seeds produce different results."""
+        labels = np.array([0] * 30 + [1] * 30)
+        scores = np.concatenate([
+            np.linspace(0.1, 0.6, 30),
+            np.linspace(0.4, 0.9, 30),
+        ])
+
+        ci1 = bootstrap_auc_ci(labels, scores, seed=1)
+        ci2 = bootstrap_auc_ci(labels, scores, seed=2)
+
+        # Very unlikely to be identical
+        assert ci1 != ci2
+
+    def test_compute_roc_metrics_with_bootstrap(self):
+        """Test that compute_roc_metrics populates CI fields when n_bootstrap > 0."""
+        labels = np.array([0] * 20 + [1] * 20)
+        scores = {
+            "score_a": np.linspace(0, 1, 40),
+        }
+
+        results = compute_roc_metrics(labels, scores, n_bootstrap=500)
+
+        result = results["score_a"]
+        assert result.auc_ci_lower is not None
+        assert result.auc_ci_upper is not None
+        assert result.auc_ci_lower <= result.auc <= result.auc_ci_upper
+
+    def test_compute_roc_metrics_without_bootstrap(self):
+        """Test that CI fields are None when n_bootstrap=0."""
+        labels = np.array([0] * 20 + [1] * 20)
+        scores = {"score_a": np.linspace(0, 1, 40)}
+
+        results = compute_roc_metrics(labels, scores, n_bootstrap=0)
+
+        result = results["score_a"]
+        assert result.auc_ci_lower is None
+        assert result.auc_ci_upper is None
+
+    def test_ci_in_to_dict(self):
+        """Test that CI fields appear in to_dict when present."""
+        labels = np.array([0] * 20 + [1] * 20)
+        scores = {"score_a": np.linspace(0, 1, 40)}
+
+        results = compute_roc_metrics(labels, scores, n_bootstrap=500)
+        d = results["score_a"].to_dict()
+
+        assert "auc_ci_lower" in d
+        assert "auc_ci_upper" in d
+        assert d["auc_ci_lower"] <= d["auc"] <= d["auc_ci_upper"]
+
+    def test_ci_not_in_to_dict_when_absent(self):
+        """Test that CI fields are absent from to_dict when not computed."""
+        labels = np.array([0] * 20 + [1] * 20)
+        scores = {"score_a": np.linspace(0, 1, 40)}
+
+        results = compute_roc_metrics(labels, scores, n_bootstrap=0)
+        d = results["score_a"].to_dict()
+
+        assert "auc_ci_lower" not in d
+        assert "auc_ci_upper" not in d
 
 
 class TestScoreMissingness:

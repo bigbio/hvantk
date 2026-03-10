@@ -145,7 +145,14 @@ def plot_roc_curves(
 
         # Create label
         if show_auc_in_legend:
-            label = f"{score_name} (AUC = {roc_result.auc:.3f})"
+            if roc_result.auc_ci_lower is not None:
+                label = (
+                    f"{score_name} (AUC = {roc_result.auc:.3f} "
+                    f"[{roc_result.auc_ci_lower:.3f}\u2013"
+                    f"{roc_result.auc_ci_upper:.3f}])"
+                )
+            else:
+                label = f"{score_name} (AUC = {roc_result.auc:.3f})"
         else:
             label = score_name
 
@@ -324,9 +331,15 @@ def plot_roc_curve_single(
 
     # Add statistics box
     if show_stats:
+        auc_line = f"AUC: {roc_result.auc:.3f}"
+        if roc_result.auc_ci_lower is not None:
+            auc_line += (
+                f" [{roc_result.auc_ci_lower:.3f}"
+                f"\u2013{roc_result.auc_ci_upper:.3f}]"
+            )
         stats_text = (
             f"Score: {roc_result.score_name}\n"
-            f"AUC: {roc_result.auc:.3f}\n"
+            f"{auc_line}\n"
             f"Optimal Threshold: {roc_result.optimal_threshold:.3f}\n"
             f"Sensitivity: {roc_result.sensitivity_at_optimal:.3f}\n"
             f"Specificity: {roc_result.specificity_at_optimal:.3f}\n"
@@ -423,7 +436,27 @@ def plot_auc_comparison(
 
     if horizontal:
         y_pos = np.arange(len(names))
-        bars = ax.barh(y_pos, aucs, color=colors, edgecolor="black", linewidth=0.5)
+
+        for i, (name, roc_result) in enumerate(sorted_items):
+            ci_lower = roc_result.auc_ci_lower
+            ci_upper = roc_result.auc_ci_upper
+            xerr = (
+                [[roc_result.auc - ci_lower], [ci_upper - roc_result.auc]]
+                if ci_lower is not None
+                else None
+            )
+            ax.errorbar(
+                roc_result.auc, y_pos[i],
+                xerr=xerr,
+                fmt="o",
+                color=colors[i],
+                markersize=8,
+                capsize=4,
+                capthick=1.5,
+                elinewidth=2,
+                zorder=5,
+            )
+
         ax.set_yticks(y_pos)
         ax.set_yticklabels(names)
         ax.set_xlabel("AUC (Area Under ROC Curve)", fontsize=12)
@@ -431,14 +464,19 @@ def plot_auc_comparison(
 
         # Add value annotations
         if show_values:
-            for bar, auc in zip(bars, aucs):
-                ax.text(
-                    bar.get_width() + 0.02,
-                    bar.get_y() + bar.get_height() / 2,
-                    f"{auc:.3f}",
-                    va="center",
-                    fontsize=10,
-                )
+            for i, (name, roc_result) in enumerate(sorted_items):
+                ci_lower = roc_result.auc_ci_lower
+                ci_upper = roc_result.auc_ci_upper
+                if ci_lower is not None:
+                    text = (
+                        f"{roc_result.auc:.3f} "
+                        f"[{ci_lower:.3f}\u2013{ci_upper:.3f}]"
+                    )
+                    x_text = ci_upper + 0.02
+                else:
+                    text = f"{roc_result.auc:.3f}"
+                    x_text = roc_result.auc + 0.02
+                ax.text(x_text, y_pos[i], text, va="center", fontsize=10)
 
         # Add reference lines
         ax.axvline(
@@ -458,7 +496,27 @@ def plot_auc_comparison(
 
     else:
         x_pos = np.arange(len(names))
-        bars = ax.bar(x_pos, aucs, color=colors, edgecolor="black", linewidth=0.5)
+
+        for i, (name, roc_result) in enumerate(sorted_items):
+            ci_lower = roc_result.auc_ci_lower
+            ci_upper = roc_result.auc_ci_upper
+            yerr = (
+                [[roc_result.auc - ci_lower], [ci_upper - roc_result.auc]]
+                if ci_lower is not None
+                else None
+            )
+            ax.errorbar(
+                x_pos[i], roc_result.auc,
+                yerr=yerr,
+                fmt="o",
+                color=colors[i],
+                markersize=8,
+                capsize=4,
+                capthick=1.5,
+                elinewidth=2,
+                zorder=5,
+            )
+
         ax.set_xticks(x_pos)
         ax.set_xticklabels(names, rotation=45, ha="right")
         ax.set_ylabel("AUC (Area Under ROC Curve)", fontsize=12)
@@ -466,14 +524,19 @@ def plot_auc_comparison(
 
         # Add value annotations
         if show_values:
-            for bar, auc in zip(bars, aucs):
-                ax.text(
-                    bar.get_x() + bar.get_width() / 2,
-                    bar.get_height() + 0.02,
-                    f"{auc:.3f}",
-                    ha="center",
-                    fontsize=10,
-                )
+            for i, (name, roc_result) in enumerate(sorted_items):
+                ci_lower = roc_result.auc_ci_lower
+                ci_upper = roc_result.auc_ci_upper
+                if ci_lower is not None:
+                    text = (
+                        f"{roc_result.auc:.3f}\n"
+                        f"[{ci_lower:.3f}\u2013{ci_upper:.3f}]"
+                    )
+                    y_text = ci_upper + 0.02
+                else:
+                    text = f"{roc_result.auc:.3f}"
+                    y_text = roc_result.auc + 0.02
+                ax.text(x_pos[i], y_text, text, ha="center", fontsize=10)
 
         # Add reference lines
         ax.axhline(
@@ -692,12 +755,20 @@ def plot_psroc_summary_dashboard(
 
         sorted_results = sorted(results.items(), key=lambda x: x[1].auc, reverse=True)
         for score_name, roc_result in sorted_results:
+            if roc_result.auc_ci_lower is not None:
+                legend_label = (
+                    f"{score_name} ({roc_result.auc:.3f} "
+                    f"[{roc_result.auc_ci_lower:.3f}\u2013"
+                    f"{roc_result.auc_ci_upper:.3f}])"
+                )
+            else:
+                legend_label = f"{score_name} ({roc_result.auc:.3f})"
             ax1.plot(
                 roc_result.fpr,
                 roc_result.tpr,
                 color=colors[score_name],
                 linewidth=2,
-                label=f"{score_name} ({roc_result.auc:.3f})",
+                label=legend_label,
             )
 
         ax1.plot(
@@ -714,16 +785,31 @@ def plot_psroc_summary_dashboard(
         ax1.text(0.5, 0.5, "No ROC Results\nAvailable", ha="center", va="center")
         ax1.set_title("ROC Curves")
 
-    # Top right: AUC comparison bar chart
+    # Top right: AUC comparison (dot + CI)
     ax2 = fig.add_subplot(gs[0, 1])
     if results:
         sorted_items = sorted(results.items(), key=lambda x: x[1].auc, reverse=True)
         names = [item[0] for item in sorted_items]
-        aucs = [item[1].auc for item in sorted_items]
-        colors_bar = [_get_auc_color(auc) for auc in aucs]
+        colors_bar = [_get_auc_color(item[1].auc) for item in sorted_items]
 
         y_pos = np.arange(len(names))
-        ax2.barh(y_pos, aucs, color=colors_bar, edgecolor="black", linewidth=0.5)
+        for i, (name, roc) in enumerate(sorted_items):
+            xerr = (
+                [[roc.auc - roc.auc_ci_lower], [roc.auc_ci_upper - roc.auc]]
+                if roc.auc_ci_lower is not None
+                else None
+            )
+            ax2.errorbar(
+                roc.auc, y_pos[i],
+                xerr=xerr,
+                fmt="o",
+                color=colors_bar[i],
+                markersize=6,
+                capsize=3,
+                capthick=1,
+                elinewidth=1.5,
+                zorder=5,
+            )
         ax2.set_yticks(y_pos)
         ax2.set_yticklabels(names, fontsize=9)
         ax2.set_xlabel("AUC")
@@ -793,7 +879,13 @@ def plot_psroc_summary_dashboard(
         summary_text += f"SCORES ANALYZED: {len(results)}\n\n"
         summary_text += "Best Score:\n"
         summary_text += f"  {best_score[0]}\n"
-        summary_text += f"  AUC: {best_score[1].auc:.3f}\n"
+        best_auc_line = f"  AUC: {best_score[1].auc:.3f}"
+        if best_score[1].auc_ci_lower is not None:
+            best_auc_line += (
+                f" [{best_score[1].auc_ci_lower:.3f}"
+                f"\u2013{best_score[1].auc_ci_upper:.3f}]"
+            )
+        summary_text += best_auc_line + "\n"
         summary_text += f"  Optimal Threshold: {best_score[1].optimal_threshold:.3f}\n"
         summary_text += f"  Sensitivity: {best_score[1].sensitivity_at_optimal:.3f}\n"
         summary_text += f"  Specificity: {best_score[1].specificity_at_optimal:.3f}\n\n"
