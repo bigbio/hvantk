@@ -106,7 +106,15 @@ def compute_score_missingness(
         ValueError: If values array is empty.
     """
     if len(values) == 0:
-        raise ValueError(f"Cannot compute missingness for empty array: {score_name}")
+        return ScoreMissingness(
+            score_name=score_name,
+            n_total=0,
+            n_present=0,
+            n_missing=0,
+            missingness_rate=1.0,
+            included_in_analysis=False,
+            exclusion_reason="no variants available for this score",
+        )
 
     n_total = len(values)
     n_missing = int(np.sum(np.isnan(values.astype(float))))

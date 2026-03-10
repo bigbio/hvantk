@@ -97,11 +97,12 @@ class TestComputeScoreMissingness:
         assert result.included_in_analysis is False
 
     def test_empty_array_raises_error(self):
-        """Test that empty array raises ValueError."""
-        with pytest.raises(
-            ValueError, match="Cannot compute missingness for empty array"
-        ):
-            compute_score_missingness(np.array([]), "test_score")
+        """Test that empty array returns excluded result with 100% missingness."""
+        result = compute_score_missingness(np.array([]), "test_score")
+        assert result.n_total == 0
+        assert result.missingness_rate == 1.0
+        assert result.included_in_analysis is False
+        assert result.exclusion_reason is not None
 
     def test_custom_threshold(self):
         """Test with custom missingness threshold."""
