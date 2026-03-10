@@ -524,6 +524,77 @@ class ClinGenStreamer(HailDataStreamer):
             "n_associations", ascending=False
         )
 
+    def get_geneset_per_gcep(
+        self,
+        min_classification: Optional[str] = None,
+        min_genes: int = 0,
+        shorten_names: bool = True,
+    ) -> Dict[str, Set[str]]:
+        """
+        Get genesets grouped by Gene Curation Expert Panel (GCEP).
+
+        Returns a dictionary where each key is a GCEP name and the value
+        is a set of gene symbols curated by that panel.
+
+        Parameters
+        ----------
+        min_classification : str, optional
+            Filter to minimum classification level before grouping
+            (e.g., ``"Moderate"`` keeps Definitive, Strong, and Moderate).
+        min_genes : int
+            Exclude GCEPs with fewer than this many genes (default: 0,
+            i.e., keep all).
+        shorten_names : bool
+            If True (default), remove the ``" Gene Curation Expert Panel"``
+            suffix from GCEP names to produce cleaner keys.
+
+        Returns
+        -------
+        dict
+            Mapping of GCEP name -> set of gene symbols.
+
+        Examples
+        --------
+        >>> streamer = ClinGenStreamer("clingen.ht")
+        >>> streamer.setup()
+        >>> genesets = streamer.get_geneset_per_gcep(
+        ...     min_classification="Moderate", min_genes=20
+        ... )
+        >>> print(len(genesets["Hereditary Cancer"]))
+        104
+        """
+        self._ensure_gene_disease_mode("get_geneset_per_gcep")
+        ht = self._table
+        if ht is None:
+            raise ValueError("ClinGen table not loaded.")
+
+        if min_classification:
+            min_classification = self._normalize_classification(min_classification)
+            ht = self._apply_min_classification_filter(ht, min_classification)
+
+        grouped = ht.group_by(
+            gcep=ht.gene_curation_expert_panel
+        ).aggregate(genes=hl.agg.collect_as_set(ht.gene_symbol))
+        rows = grouped.collect()
+
+        result: Dict[str, Set[str]] = {}
+        for row in rows:
+            gcep_name = row.gcep
+            genes = set(row.genes)
+            if len(genes) < min_genes:
+                continue
+            if shorten_names:
+                gcep_name = gcep_name.replace(
+                    " Gene Curation Expert Panel", ""
+                )
+            result[gcep_name] = genes
+
+        logger.info(
+            f"Built {len(result)} GCEP-based gene sets"
+            + (f" (min_genes={min_genes})" if min_genes > 0 else "")
+        )
+        return result
+
     def aggregate_by_disease_category(
         self,
         categories: Dict[str, List[str]],
