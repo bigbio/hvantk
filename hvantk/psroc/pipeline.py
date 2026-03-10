@@ -1153,11 +1153,14 @@ class PSROCPipeline:
 
         n_labeled = ht.count()
         if n_labeled < self.config.min_variants:
-            raise ValueError(
-                f"Too few labeled variants ({n_labeled}) for meaningful ROC analysis. "
-                f"Minimum required: {self.config.min_variants}. "
-                f"Consider lowering min_variants or using a larger gene panel."
+            logger.warning(
+                "   ⚠ Too few labeled variants (%d) for ROC analysis "
+                "(minimum: %d). Skipping ROC computation.",
+                n_labeled,
+                self.config.min_variants,
             )
+            self.state.outputs["roc_metrics"] = {}
+            return {}
 
         # Get score fields that passed missingness threshold
         missingness = self.state.outputs.get("missingness", {})

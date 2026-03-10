@@ -384,8 +384,8 @@ class TestPSROCResult:
         summary = result.summary()
 
         assert "Variants analyzed: 100" in summary
-        assert "Pathogenic: 50" in summary
-        assert "Benign: 45" in summary
+        assert "Pathogenic (P): 50" in summary
+        assert "Benign (B): 45" in summary
         assert "CADD_phred" in summary
         assert "AUC=0.850" in summary
 
