@@ -203,6 +203,13 @@ def _display_collection_results(results, output_dir) -> None:
     help="Overwrite existing output files",
 )
 @click.option(
+    "--min-variants",
+    type=int,
+    default=10,
+    help="Minimum labeled (P+B) variants required for ROC analysis. "
+    "Groups below this threshold are skipped [default: 10]",
+)
+@click.option(
     "--dry-run",
     is_flag=True,
     default=False,
@@ -234,6 +241,7 @@ def psroc_cmd(
     export_tsv,
     no_plots,
     overwrite,
+    min_variants,
     dry_run,
     log_level,
 ):
@@ -369,6 +377,7 @@ def psroc_cmd(
             export_tsv=export_tsv,
             overwrite=overwrite,
             generate_plots=not no_plots,
+            min_variants=min_variants,
         )
 
         # Validate configuration
