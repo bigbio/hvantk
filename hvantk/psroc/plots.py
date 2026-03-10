@@ -205,6 +205,7 @@ def plot_roc_curves(
     # Save figure if path provided
     if output_path:
         save_figure(fig, str(output_path), **kwargs)
+        plt.close(fig)
 
     return fig
 
@@ -357,6 +358,7 @@ def plot_roc_curve_single(
 
     if output_path:
         save_figure(fig, str(output_path), **kwargs)
+        plt.close(fig)
 
     return fig
 
@@ -497,6 +499,7 @@ def plot_auc_comparison(
 
     if output_path:
         save_figure(fig, str(output_path), **kwargs)
+        plt.close(fig)
 
     return fig
 
@@ -623,6 +626,7 @@ def plot_missingness_summary(
 
     if output_path:
         save_figure(fig, str(output_path), **kwargs)
+        plt.close(fig)
 
     return fig
 
@@ -823,5 +827,6 @@ def plot_psroc_summary_dashboard(
 
     if output_path:
         save_figure(fig, str(output_path), **kwargs)
+        plt.close(fig)
 
     return fig
