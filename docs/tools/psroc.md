@@ -196,14 +196,87 @@ Specify dbNSFP score fields to evaluate:
 --scores "CADD_phred,REVEL_score,MetaLR_score,VEST4_score,ClinPred_score"
 ```
 
-Common prediction scores available in dbNSFP:
-- `CADD_phred` - Combined Annotation Dependent Depletion
-- `REVEL_score` - Rare Exome Variant Ensemble Learner
-- `MetaLR_score` - Meta-analytic logistic regression
-- `VEST4_score` - Variant Effect Scoring Tool v4
-- `ClinPred_score` - Clinical Prediction score
-- `PrimateAI_score` - Primate AI pathogenicity prediction
-- `DANN_score` - Deep Annotation Neural Network
+#### dbNSFP Score Reference
+
+The table below lists commonly used prediction scores available in dbNSFP 4.x.
+Field names are case-sensitive and must match the dbNSFP column names exactly.
+
+> **Important:** PSROC assumes **higher score = more pathogenic**. Scores marked
+> with inverted directionality (lower = pathogenic) will produce AUC < 0.5 and
+> should not be used directly. Use `_rankscore` variants instead (see note below).
+
+**Ensemble / meta-predictor scores** (recommended — combine multiple signals):
+
+| Field name | Description | Range | Direction |
+|------------|-------------|-------|-----------|
+| `REVEL_score` | Rare Exome Variant Ensemble Learner | 0–1 | Higher = pathogenic |
+| `MetaLR_score` | Meta-analytic logistic regression | 0–1 | Higher = pathogenic |
+| `MetaSVM_score` | Meta-analytic support vector machine | unbounded | Higher = pathogenic |
+| `MetaRNN_score` | Meta-analytic recurrent neural network | 0–1 | Higher = pathogenic |
+| `ClinPred_score` | Clinical pathogenicity prediction | 0–1 | Higher = pathogenic |
+| `BayesDel_addAF_score` | BayesDel with allele frequency features | −1 to 1 | Higher = pathogenic |
+| `BayesDel_noAF_score` | BayesDel without allele frequency | −1 to 1 | Higher = pathogenic |
+| `CADD_phred` | CADD Phred-scaled C-score | 0–60+ | Higher = pathogenic |
+
+**Individual predictor scores** (higher = pathogenic):
+
+| Field name | Description | Range | Direction |
+|------------|-------------|-------|-----------|
+| `VEST4_score` | Variant Effect Scoring Tool v4 | 0–1 | Higher = pathogenic |
+| `MVP_score` | Missense Variant Pathogenicity | 0–1 | Higher = pathogenic |
+| `gMVP_score` | Generalized MVP | 0–1 | Higher = pathogenic |
+| `MPC_score` | Missense badness, PolyPhen-2, Constraint | 0–5 | Higher = pathogenic |
+| `PrimateAI_score` | Primate AI deep learning | 0–1 | Higher = pathogenic |
+| `DEOGEN2_score` | DEOGEN2 pathogenicity prediction | 0–1 | Higher = pathogenic |
+| `DANN_score` | Deep Annotation Neural Network | 0–1 | Higher = pathogenic |
+| `M-CAP_score` | Mendelian Clinically Applicable Pathogenicity | 0–1 | Higher = pathogenic |
+| `LIST-S2_score` | LIST variant-specific score | 0–1 | Higher = pathogenic |
+| `AlphaMissense_score` | AlphaMissense deep learning | 0–1 | Higher = pathogenic |
+| `EVE_score` | Evolutionary model of Variant Effect | 0–1 | Higher = pathogenic |
+| `VARITY_R_score` | VARITY regular | 0–1 | Higher = pathogenic |
+| `VARITY_ER_score` | VARITY extended regular | 0–1 | Higher = pathogenic |
+| `Polyphen2_HDIV_score` | PolyPhen-2 HumDiv | 0–1 | Higher = pathogenic |
+| `Polyphen2_HVAR_score` | PolyPhen-2 HumVar | 0–1 | Higher = pathogenic |
+| `MutationAssessor_score` | Mutation Assessor functional impact | −5.5 to 6.5 | Higher = pathogenic |
+
+**Scores with inverted directionality** (do NOT use directly with PSROC):
+
+| Field name | Description | Range | Direction |
+|------------|-------------|-------|-----------|
+| `SIFT_score` | Sorting Intolerant From Tolerant | 0–1 | **Lower** = pathogenic |
+| `PROVEAN_score` | Protein Variation Effect Analyzer | unbounded | **More negative** = pathogenic |
+| `FATHMM_score` | Functional Analysis Through HMMs | unbounded | **More negative** = pathogenic |
+| `LRT_score` | Likelihood Ratio Test | 0–1 | **Lower** = pathogenic |
+
+> **Tip — using `_rankscore` variants:** dbNSFP provides normalized rank scores
+> (e.g., `SIFT_converted_rankscore`, `FATHMM_converted_rankscore`) where
+> higher = more damaging for all scores. These work directly with PSROC and are
+> a good alternative when you want to include scores with inverted directionality.
+>
+> Rank scores are valid for ROC analysis: AUC values and score comparisons are
+> correct because the monotonic ranking is preserved. However, the optimal
+> threshold reported by PSROC will be in **rank space** (e.g., 0.85) rather than
+> the original score units (e.g., SIFT 0.05). This means rank-score thresholds
+> are useful for benchmarking which scores discriminate best, but cannot be used
+> directly as clinical cutoffs in the native score scale.
+
+**Conservation scores** (measure evolutionary constraint, not variant-specific):
+
+| Field name | Description | Range | Direction |
+|------------|-------------|-------|-----------|
+| `GERP++_RS` | GERP rejected substitutions | −12 to 6.2 | Higher = conserved |
+| `phyloP100way_vertebrate` | phyloP 100-way vertebrate | −20 to 11.2 | Higher = conserved |
+| `phastCons100way_vertebrate` | phastCons 100-way vertebrate | 0–1 | Higher = conserved |
+
+The exact set of available scores depends on the dbNSFP version used to build
+the Hail Table. To list all score fields in your table, run:
+
+```python
+import hail as hl
+ht = hl.read_table('/path/to/dbnsfp.ht')
+score_fields = sorted(f for f in ht.row if f.endswith('_score') or f.endswith('_phred'))
+print(score_fields)
+```
 
 ### Missingness Handling
 
@@ -805,7 +878,7 @@ hvantk psroc \
   --genes BRCA1,BRCA2,TP53 \
   --clinvar-ht /data/tables/clinvar_grch38.ht \
   --dbnsfp-ht /data/tables/dbnsfp_grch38.ht \
-  --scores "CADD_phred,REVEL_score,MetaLR_score,VEST4_score" \
+  --scores "CADD_phred,REVEL_score,MetaLR_score,VEST4_score,AlphaMissense_score" \
   --output-dir /results/psroc \
   --min-stars 1
 
@@ -814,7 +887,7 @@ hvantk psroc \
   --gene-sets /data/gene_sets/disease_categories.json \
   --clinvar-ht /data/tables/clinvar_grch38.ht \
   --dbnsfp-ht /data/tables/dbnsfp_grch38.ht \
-  --scores "CADD_phred,REVEL_score,MetaLR_score" \
+  --scores "CADD_phred,REVEL_score,MetaLR_score,AlphaMissense_score" \
   --output-dir /results/psroc_multi
 ```
 

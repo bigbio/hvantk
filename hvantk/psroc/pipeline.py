@@ -142,6 +142,7 @@ class PSROCConfig:
     export_tsv: bool = False
     overwrite: bool = False
     generate_plots: bool = True
+    group_name: Optional[str] = None
 
     def validate(self) -> List[str]:
         """Validate configuration and return list of errors.
@@ -722,6 +723,7 @@ class PSROCPipeline:
                 export_tsv=self.config.export_tsv,
                 overwrite=self.config.overwrite,
                 generate_plots=self.config.generate_plots,
+                group_name=group_name,
             )
 
             try:
@@ -1247,6 +1249,10 @@ class PSROCPipeline:
 
         matplotlib.use("Agg")  # Non-interactive backend
 
+        # Build title suffix from group name (e.g., " — Hereditary Cancer")
+        name = self.config.group_name
+        suffix = f" — {name}" if name else ""
+
         try:
             # ROC curves
             if result.metrics:
@@ -1254,7 +1260,7 @@ class PSROCPipeline:
                 plot_roc_curves(
                     result.metrics,
                     output_path=base_roc_path,
-                    title=f"PSROC: ROC Curves ({len(result.metrics)} scores)",
+                    title=f"PSROC: ROC Curves ({len(result.metrics)} scores){suffix}",
                 )
                 logger.info(f"   ✓ ROC curves plot: {self.paths['roc_curves_png']}")
 
@@ -1263,6 +1269,7 @@ class PSROCPipeline:
                 plot_auc_comparison(
                     result.metrics,
                     output_path=base_auc_path,
+                    title=f"AUC Comparison{suffix}",
                 )
                 logger.info(
                     f"   ✓ AUC comparison plot: {self.paths['auc_comparison_png']}"
@@ -1277,6 +1284,7 @@ class PSROCPipeline:
                     result.missingness,
                     output_path=base_missingness_path,
                     max_missingness_threshold=result.max_missingness_threshold,
+                    title=f"Score Missingness{suffix}",
                 )
                 logger.info(f"   ✓ Missingness plot: {self.paths['missingness_png']}")
 
@@ -1288,6 +1296,7 @@ class PSROCPipeline:
                     result.missingness,
                     output_path=base_dashboard_path,
                     max_missingness_threshold=result.max_missingness_threshold,
+                    title=f"PSROC Analysis Summary{suffix}",
                 )
                 logger.info(f"   ✓ Dashboard plot: {self.paths['dashboard_png']}")
 
