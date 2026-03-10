@@ -43,6 +43,7 @@ from hvantk.psroc.plots import (
     plot_auc_comparison,
     plot_missingness_summary,
     plot_psroc_summary_dashboard,
+    plot_collection_heatmap,
 )
 from hvantk.utils.gene_sets import load_gene_set
 
@@ -780,7 +781,47 @@ class PSROCPipeline:
             f"{len(results)}/{len(collection)} groups succeeded"
         )
 
+        # Generate cross-panel heatmap if plots are enabled and we have results
+        if self.config.generate_plots and len(results) >= 2:
+            self._generate_collection_heatmap(results)
+
         return results
+
+    def _generate_collection_heatmap(
+        self, results: Dict[str, "PSROCResult"]
+    ) -> None:
+        """Generate a cross-panel AUC heatmap from run_collection results."""
+        import matplotlib
+        matplotlib.use("Agg")
+
+        collection_metrics = {
+            name: result.metrics
+            for name, result in results.items()
+            if result.metrics
+        }
+
+        if len(collection_metrics) < 2:
+            logger.info(
+                "Skipping collection heatmap: fewer than 2 groups with metrics"
+            )
+            return
+
+        output_dir = Path(self.config.output_dir)
+        plots_dir = output_dir / "plots"
+        plots_dir.mkdir(exist_ok=True)
+        heatmap_path = str(
+            plots_dir / f"{self.config.output_prefix}_collection_heatmap"
+        )
+
+        try:
+            plot_collection_heatmap(
+                collection_metrics,
+                output_path=heatmap_path,
+                title="AUC Across Gene Set Panels",
+            )
+            logger.info(f"Collection heatmap saved: {heatmap_path}.png")
+        except Exception as e:
+            logger.warning(f"Collection heatmap generation failed: {e}")
 
     def _run_stage(self, stage: PSROCStage) -> Any:
         """Execute a single pipeline stage.

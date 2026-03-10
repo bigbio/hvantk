@@ -10,6 +10,7 @@ Main Functions:
     - plot_roc_curve_single: Single score ROC curve with detailed annotations
     - plot_auc_comparison: Bar chart comparing AUC across scores
     - plot_missingness_summary: Missingness rates visualization
+    - plot_collection_heatmap: Cross-panel AUC heatmap for run_collection results
 """
 
 import logging
@@ -916,6 +917,195 @@ def plot_psroc_summary_dashboard(
     )
 
     fig.suptitle(title, fontsize=16, fontweight="bold")
+
+    if output_path:
+        save_figure(fig, str(output_path), **kwargs)
+        plt.close(fig)
+
+    return fig
+
+
+def plot_collection_heatmap(
+    collection_metrics: Dict[str, Dict[str, ROCResult]],
+    output_path: Optional[Union[str, Path]] = None,
+    title: str = "AUC Across Gene Set Panels",
+    figsize: Optional[Tuple[float, float]] = None,
+    show_ci: bool = True,
+    show_values: bool = True,
+    sort_scores_by: str = "mean_auc",
+    cmap: str = "RdYlGn",
+    vmin: float = 0.5,
+    vmax: float = 1.0,
+    style: str = "default",
+    **kwargs,
+) -> plt.Figure:
+    """
+    Create a heatmap of AUC values across gene set panels and scores.
+
+    Provides a single summary view of ``run_collection()`` results with
+    rows = prediction scores, columns = gene set groups, and cells colored
+    by AUC.  Optionally annotates each cell with the AUC value and 95% CI.
+
+    Parameters
+    ----------
+    collection_metrics : Dict[str, Dict[str, ROCResult]]
+        Outer key = group name, inner key = score name, value = ROCResult.
+        Typically built as ``{name: result.metrics for name, result in
+        run_collection_results.items()}``.
+    output_path : str or Path, optional
+        Path to save the figure (without extension).
+    title : str
+        Plot title.
+    figsize : tuple, optional
+        Figure size (width, height) in inches.  If None, auto-sized based
+        on the number of groups and scores.
+    show_ci : bool
+        Whether to show 95% CI below the AUC value in each cell.
+    show_values : bool
+        Whether to annotate cells with AUC values at all.
+    sort_scores_by : str
+        How to order rows.  ``"mean_auc"`` (default) sorts by mean AUC
+        across panels (descending).  ``"name"`` sorts alphabetically.
+    cmap : str
+        Matplotlib colormap name.
+    vmin : float
+        Minimum value for color scale.
+    vmax : float
+        Maximum value for color scale.
+    style : str
+        Matplotlib style.
+    **kwargs
+        Additional keyword arguments passed to ``save_figure()``.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        The created figure object.
+
+    Raises
+    ------
+    ValueError
+        If ``collection_metrics`` is empty.
+    """
+    set_default_style(style)
+
+    if not collection_metrics:
+        raise ValueError("No collection metrics to plot")
+
+    # Collect all group names and score names
+    group_names = sorted(collection_metrics.keys())
+    score_names_set: set = set()
+    for metrics in collection_metrics.values():
+        score_names_set.update(metrics.keys())
+
+    if not score_names_set:
+        raise ValueError("No scores found in collection metrics")
+
+    # Sort scores
+    score_names = sorted(score_names_set)
+    if sort_scores_by == "mean_auc":
+        def _mean_auc(score: str) -> float:
+            aucs = [
+                collection_metrics[g][score].auc
+                for g in group_names
+                if score in collection_metrics[g]
+            ]
+            return np.mean(aucs) if aucs else 0.0
+
+        score_names = sorted(score_names, key=_mean_auc, reverse=True)
+
+    n_scores = len(score_names)
+    n_groups = len(group_names)
+
+    # Build AUC matrix (scores x groups), NaN where missing
+    auc_matrix = np.full((n_scores, n_groups), np.nan)
+    for j, group in enumerate(group_names):
+        for i, score in enumerate(score_names):
+            if score in collection_metrics[group]:
+                auc_matrix[i, j] = collection_metrics[group][score].auc
+
+    # Auto-size figure if not provided
+    if figsize is None:
+        width = max(8, 2.0 + n_groups * 1.8)
+        height = max(4, 1.5 + n_scores * 0.7)
+        figsize = (width, height)
+
+    fig, ax = plt.subplots(figsize=figsize)
+
+    # Plot heatmap
+    masked = np.ma.array(auc_matrix, mask=np.isnan(auc_matrix))
+    colormap = plt.get_cmap(cmap)
+    colormap.set_bad(color="#e0e0e0")
+
+    im = ax.imshow(
+        masked,
+        cmap=colormap,
+        vmin=vmin,
+        vmax=vmax,
+        aspect="auto",
+        interpolation="nearest",
+    )
+
+    # Add colorbar
+    cbar = fig.colorbar(im, ax=ax, shrink=0.8, pad=0.02)
+    cbar.set_label("AUC", fontsize=11)
+
+    # Set tick labels
+    ax.set_xticks(np.arange(n_groups))
+    ax.set_yticks(np.arange(n_scores))
+    ax.set_xticklabels(group_names, rotation=45, ha="right", fontsize=9)
+    ax.set_yticklabels(score_names, fontsize=10)
+
+    # Annotate cells
+    if show_values:
+        for i, score in enumerate(score_names):
+            for j, group in enumerate(group_names):
+                if score not in collection_metrics[group]:
+                    ax.text(
+                        j, i, "n/a",
+                        ha="center", va="center",
+                        fontsize=8, color="#999999", style="italic",
+                    )
+                    continue
+
+                roc = collection_metrics[group][score]
+                auc_val = roc.auc
+
+                # Choose text color for readability against cell color
+                text_color = (
+                    "white" if auc_val < (vmin + vmax) / 2 else "black"
+                )
+
+                if show_ci and roc.auc_ci_lower is not None:
+                    cell_text = (
+                        f"{auc_val:.3f}\n"
+                        f"[{roc.auc_ci_lower:.3f}\u2013{roc.auc_ci_upper:.3f}]"
+                    )
+                    ax.text(
+                        j, i, cell_text,
+                        ha="center", va="center",
+                        fontsize=8, color=text_color,
+                        fontweight="bold",
+                        linespacing=1.4,
+                    )
+                else:
+                    ax.text(
+                        j, i, f"{auc_val:.3f}",
+                        ha="center", va="center",
+                        fontsize=9, color=text_color,
+                        fontweight="bold",
+                    )
+
+    # Grid lines between cells
+    ax.set_xticks(np.arange(n_groups + 1) - 0.5, minor=True)
+    ax.set_yticks(np.arange(n_scores + 1) - 0.5, minor=True)
+    ax.grid(which="minor", color="white", linewidth=2)
+    ax.tick_params(which="minor", bottom=False, left=False)
+
+    ax.set_title(title, fontsize=14, fontweight="bold", pad=12)
+    ax.set_xlabel("Gene Set Panel", fontsize=11)
+
+    plt.tight_layout()
 
     if output_path:
         save_figure(fig, str(output_path), **kwargs)
