@@ -122,10 +122,13 @@ def extract_expression_for_wilcoxon(
     group_labels = np.array(labels_list, dtype=str)
 
     # --- Collect gene IDs and names ---
-    row_fields = [gene_id_field]
+    # Exclude key fields from select() — Hail includes them automatically
+    row_key_fields = set(mt.row_key)
+    row_fields = []
     has_names = gene_name_field and gene_name_field in mt.row
-    if has_names:
-        row_fields.append(gene_name_field)
+    for f in [gene_id_field] + ([gene_name_field] if has_names else []):
+        if f not in row_key_fields:
+            row_fields.append(f)
 
     row_data = mt.rows().select(*row_fields)
     rows_pd = row_data.to_pandas()
