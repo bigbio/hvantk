@@ -209,9 +209,9 @@ def expand_gene_set_with_aliases(
         elif gene in alias_to_canonical:
             # User provided an alias → add the canonical symbol
             canonical = alias_to_canonical[gene]
+            alias_map[gene] = canonical
             if canonical not in expanded:
                 expanded.add(canonical)
-                alias_map[gene] = canonical
             # Also add other aliases of the same canonical symbol
             for alias in canonical_to_aliases.get(canonical, []):
                 if alias not in expanded:

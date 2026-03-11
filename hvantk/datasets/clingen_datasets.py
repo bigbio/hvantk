@@ -6,15 +6,11 @@ Validity datasets. ClinGen curates gene-disease associations with evidence-based
 classifications (Definitive, Strong, Moderate, Limited, etc.).
 
 Example usage:
-    # Get latest dataset
+    # Get latest dataset (today's snapshot)
     dataset = ClinGenGeneDiseaseDataset.from_latest()
     dataset.download("/data/clingen")
 
-    # Get specific version by date
-    dataset = ClinGenGeneDiseaseDataset.from_date("2026-01-15")
-    dataset.download("/data/clingen")
-
-    # List available versions
+    # Check availability
     versions = get_available_versions()
 """
 
@@ -80,11 +76,11 @@ class ClinGenGeneDiseaseDataset:
 
         today = datetime.now().strftime("%Y-%m-%d")
         if version_date != today:
-            logger.warning(
-                "ClinGen does not provide archival snapshots. "
-                "The download will contain today's data regardless of the "
-                f"requested date ({version_date}). "
-                f"The file will be labeled with {version_date}."
+            raise ValueError(
+                f"ClinGen does not provide archival snapshots. "
+                f"The requested date ({version_date}) does not match today "
+                f"({today}). The download endpoint always returns the current "
+                f"live data. Use from_latest() or pass today's date instead."
             )
 
         file_name = f"{CLINGEN_FILE_PREFIX}-{version_date}.csv"

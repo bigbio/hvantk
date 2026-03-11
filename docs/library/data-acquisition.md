@@ -39,13 +39,11 @@ hvantk clinvar-downloader --genome-build GRCh37 --verify-md5
 ### ClinGen
 
 ```bash
-# Download latest ClinGen Gene-Disease Validity CSV
+# Download today's ClinGen Gene-Disease Validity snapshot
+# Output: Clingen-Gene-Disease-Summary-<YYYY-MM-DD>.csv
 hvantk clingen-downloader --output-dir data/clingen
 
-# Download a specific version
-hvantk clingen-downloader --version 2026-01-15 --output-dir data/clingen
-
-# List available versions
+# Check download availability
 hvantk clingen-downloader --list-versions
 ```
 

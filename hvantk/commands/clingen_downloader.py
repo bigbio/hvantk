@@ -2,13 +2,10 @@
 CLI command for downloading ClinGen Gene-Disease Validity data.
 
 Examples:
-    # Download latest version
+    # Download today's snapshot
     hvantk clingen-downloader --output-dir data/clingen
 
-    # Download specific version
-    hvantk clingen-downloader --version 2026-01-15 --output-dir data/clingen
-
-    # List available versions
+    # Check download availability
     hvantk clingen-downloader --list-versions
 """
 
@@ -46,7 +43,8 @@ def _print_available_versions():
     type=str,
     default="latest",
     show_default=True,
-    help="Version date (YYYY-MM-DD) or 'latest' for most recent.",
+    help="'latest' to download today's snapshot (only option; "
+    "ClinGen does not provide archival versions).",
 )
 @click.option(
     "--output-dir",
@@ -78,15 +76,11 @@ def clingen_downloader(ctx, version_date, output_dir, overwrite, list_versions):
 
     Examples:
 
-        # Download the latest version
+        # Download today's snapshot
 
         hvantk clingen-downloader --output-dir data/clingen
 
-        # Download a specific version by date
-
-        hvantk clingen-downloader --version 2026-01-15 --output-dir data/clingen
-
-        # List available versions
+        # Check download availability
 
         hvantk clingen-downloader --list-versions
     """

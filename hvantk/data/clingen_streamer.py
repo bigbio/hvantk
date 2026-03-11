@@ -7,6 +7,7 @@ import os
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
 if TYPE_CHECKING:
+    from hvantk.utils.mondo_parser import MondoOntology
     from hvantk.utils.obo_parser import BaseOboOntology
 
 import hail as hl
@@ -624,22 +625,23 @@ class ClinGenStreamer(HailDataStreamer):
 
     def categorize_by_ontology(
         self,
-        ontology: Union[str, BaseOboOntology],
+        ontology: Union[str, MondoOntology],
         min_classification: Optional[str] = None,
         categories: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Dict[str, Set[str]]]:
         """
-        Categorize diseases using an ontology hierarchy.
+        Categorize diseases using MONDO ontology hierarchy.
 
-        Uses an OBO ontology (MONDO by default) to categorize diseases
-        based on their ontological relationships (is_a hierarchy),
-        rather than keyword matching.
+        Uses the MONDO ontology to categorize diseases based on their
+        ontological relationships (is_a hierarchy), rather than keyword
+        matching. Only MondoOntology is supported because ClinGen data
+        uses MONDO disease IDs.
 
         Parameters
         ----------
-        ontology : str or BaseOboOntology
-            Either a path to an OBO file (backward-compatible: creates a
-            MondoOntology), or a pre-loaded :class:`BaseOboOntology` instance.
+        ontology : str or MondoOntology
+            Either a path to a MONDO OBO file, or a pre-loaded
+            :class:`MondoOntology` instance.
         min_classification : str, optional
             Filter to minimum classification level.
         categories : dict, optional
@@ -677,11 +679,19 @@ class ClinGenStreamer(HailDataStreamer):
         if isinstance(ontology, str):
             logger.info(f"Loading MONDO ontology from {ontology}")
             onto = MondoOntology(ontology)
-        elif isinstance(ontology, BaseOboOntology):
+        elif isinstance(ontology, MondoOntology):
             onto = ontology
+        elif isinstance(ontology, BaseOboOntology):
+            raise TypeError(
+                "categorize_by_ontology requires a MondoOntology instance "
+                "because ClinGen data uses MONDO disease IDs. "
+                "Non-MONDO ontologies cannot be matched against ClinGen's "
+                "MONDO-based disease annotations. Pass a MondoOntology or "
+                "a path to a MONDO OBO file instead."
+            )
         else:
             raise TypeError(
-                f"ontology must be a file path (str) or BaseOboOntology instance, "
+                f"ontology must be a file path (str) or MondoOntology instance, "
                 f"got {type(ontology).__name__}"
             )
 
@@ -697,10 +707,7 @@ class ClinGenStreamer(HailDataStreamer):
 
         # Use default categories if not provided
         if categories is None:
-            if isinstance(onto, MondoOntology):
-                categories = MONDO_DISEASE_CATEGORIES
-            else:
-                raise ValueError("categories must be provided for non-MONDO ontologies")
+            categories = MONDO_DISEASE_CATEGORIES
 
         # Collect all gene-disease-mondo associations
         if self._keying_mode == "gene_disease":
@@ -778,7 +785,7 @@ class ClinGenStreamer(HailDataStreamer):
 
     def categorize_by_ontology_summary(
         self,
-        ontology: Union[str, BaseOboOntology],
+        ontology: Union[str, MondoOntology],
         min_classification: Optional[str] = None,
         categories: Optional[Dict[str, str]] = None,
     ) -> pd.DataFrame:
@@ -787,9 +794,9 @@ class ClinGenStreamer(HailDataStreamer):
 
         Parameters
         ----------
-        ontology : str or BaseOboOntology
-            Either a path to an OBO file or a pre-loaded ontology instance.
-            See :meth:`categorize_by_ontology` for details.
+        ontology : str or MondoOntology
+            Either a path to a MONDO OBO file or a pre-loaded MondoOntology
+            instance. See :meth:`categorize_by_ontology` for details.
         min_classification : str, optional
             Filter to minimum classification level.
         categories : dict, optional
@@ -821,7 +828,7 @@ class ClinGenStreamer(HailDataStreamer):
 
     def get_genes_by_ontology_category(
         self,
-        ontology: Union[str, BaseOboOntology],
+        ontology: Union[str, MondoOntology],
         category_id: str,
         min_classification: Optional[str] = None,
         as_set: bool = True,
@@ -831,9 +838,9 @@ class ClinGenStreamer(HailDataStreamer):
 
         Parameters
         ----------
-        ontology : str or BaseOboOntology
-            Either a path to an OBO file or a pre-loaded ontology instance.
-            See :meth:`categorize_by_ontology` for details.
+        ontology : str or MondoOntology
+            Either a path to a MONDO OBO file or a pre-loaded MondoOntology
+            instance. See :meth:`categorize_by_ontology` for details.
         category_id : str
             Term ID of the category (e.g., ``"MONDO:0004995"`` for cardiovascular).
         min_classification : str, optional
@@ -853,11 +860,17 @@ class ClinGenStreamer(HailDataStreamer):
         # Resolve ontology: string path -> MondoOntology (backward compat)
         if isinstance(ontology, str):
             onto = MondoOntology(ontology)
-        elif isinstance(ontology, BaseOboOntology):
+        elif isinstance(ontology, MondoOntology):
             onto = ontology
+        elif isinstance(ontology, BaseOboOntology):
+            raise TypeError(
+                "get_genes_by_ontology_category requires a MondoOntology "
+                "instance because ClinGen data uses MONDO disease IDs. "
+                "Pass a MondoOntology or a path to a MONDO OBO file instead."
+            )
         else:
             raise TypeError(
-                f"ontology must be a file path (str) or BaseOboOntology instance, "
+                f"ontology must be a file path (str) or MondoOntology instance, "
                 f"got {type(ontology).__name__}"
             )
 

@@ -24,6 +24,7 @@ from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Optional, Dict, Any, List, Set
 from enum import Enum
+import hashlib
 import json
 import logging
 import re
@@ -730,7 +731,8 @@ class PSROCPipeline:
             safe_name = re.sub(r"[^A-Za-z0-9_-]", "_", group_name)
             safe_name = re.sub(r"_+", "_", safe_name).strip("_")
             if not safe_name or safe_name in (".", ".."):
-                safe_name = f"group_{abs(hash(group_name)) % 10**8}"
+                slug = hashlib.sha256(group_name.encode()).hexdigest()[:8]
+                safe_name = f"group_{slug}"
 
             group_config = PSROCConfig(
                 genes=sorted(gene_set),
@@ -1087,16 +1089,18 @@ class PSROCPipeline:
         # Left-join annotation on shared (locus, alleles) key
         ht = ht.annotate(**self._dbnsfp_ht[ht.key])
 
-        # Identify requested score fields that exist in the annotated table
+        # Verify all requested score fields exist in the annotated table
         available_fields = set(ht.row)
-        score_fields = [s for s in self.config.scores if s in available_fields]
+        missing = [s for s in self.config.scores if s not in available_fields]
 
-        if not score_fields:
+        if missing:
             raise RuntimeError(
-                f"None of the requested scores {self.config.scores} were found "
-                f"in the dbNSFP table. Available fields: "
+                f"Requested scores not found in dbNSFP table: {missing}. "
+                f"Available score-like fields: "
                 f"{sorted(available_fields - {'locus', 'alleles'})}"
             )
+
+        score_fields = list(self.config.scores)
 
         # Resolve dict-typed transcript scores to scalar (max across transcripts)
         resolve_ann = {}

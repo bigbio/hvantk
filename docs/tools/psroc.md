@@ -827,13 +827,16 @@ hvantk clinvar-downloader --output-dir /data/clinvar
 
 ```bash
 hvantk clingen-downloader --output-dir /data/clingen
-# Downloads gene_curation_list CSV
+# Downloads Clingen-Gene-Disease-Summary-<YYYY-MM-DD>.csv
 ```
 
 ### Step 3: Build Hail Tables (Layer 1 — Builders)
 
 ```bash
 # Build ClinVar table
+# Note: ClinVar distributes standard gzip (.vcf.gz), which Hail reads
+# single-threaded. For parallel reads, recompress as BGZF first:
+#   gunzip -c clinvar.vcf.gz | bgzip -@ 4 > clinvar.vcf.bgz
 hvantk mktable clinvar \
   --raw-input /data/clinvar/clinvar.vcf.gz \
   --output-ht /data/tables/clinvar_grch38.ht
@@ -844,8 +847,9 @@ hvantk mktable dbnsfp \
   --output-ht /data/tables/dbnsfp_grch38.ht
 
 # Build ClinGen table (for gene set extraction)
+# The filename includes today's date, e.g., Clingen-Gene-Disease-Summary-2026-03-11.csv
 hvantk mktable clingen-gene-disease \
-  --raw-input /data/clingen/gene_curation_list.csv \
+  --raw-input /data/clingen/Clingen-Gene-Disease-Summary-*.csv \
   --output-ht /data/tables/clingen.ht
 ```
 
