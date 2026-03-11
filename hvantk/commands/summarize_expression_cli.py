@@ -277,6 +277,13 @@ def summarize_expression_cmd(
     help="Minimum cells per group (wilcoxon).",
 )
 @click.option(
+    "--max-candidates",
+    type=int,
+    default=2000,
+    show_default=True,
+    help="Maximum candidate genes to test after pre-filtering (wilcoxon).",
+)
+@click.option(
     "--correction",
     type=click.Choice(["benjamini-hochberg", "bonferroni", "none"]),
     default="benjamini-hochberg",
@@ -322,6 +329,7 @@ def markers_cmd(
     gene_id_field,
     gene_name_field,
     min_cells,
+    max_candidates,
     correction,
     alpha,
     results_tsv,
@@ -433,6 +441,7 @@ def markers_cmd(
         params = WilcoxonParams(
             min_fold_change=min_fold_change,
             min_fraction_expressed=min_fraction_expressed,
+            max_candidates=max_candidates,
             top_n=top_n,
             correction_method=correction,
             alpha=alpha,

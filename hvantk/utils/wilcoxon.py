@@ -106,7 +106,7 @@ class WilcoxonParams:
 
     min_fold_change: float = 1.5
     min_fraction_expressed: float = 0.1
-    max_candidates: int = 5000
+    max_candidates: int = 2000
     top_n: int = 200
     correction_method: str = "benjamini-hochberg"
     alpha: float = 0.05
