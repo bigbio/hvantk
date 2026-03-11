@@ -183,9 +183,7 @@ def summarize_expression_cmd(
     click.echo(f"  Genes:  {n_genes:,}")
     click.echo(f"  Groups: {len(group_labels)} (from {list(group_by)})")
     click.echo("")
-    click.echo("Schema:")
-    click.echo("  Key:    gene_id (str)")
-    click.echo("  Fields: stats -> dict<group_label, struct{mean, fraction_expressed, n_cells}>")
+    tb.describe()
     click.echo("")
     if group_labels:
         click.echo(f"Group labels ({len(group_labels)}):")
