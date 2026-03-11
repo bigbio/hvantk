@@ -74,15 +74,6 @@ class ClinGenGeneDiseaseDataset:
                 f"Invalid version_date format: {version_date}. Expected YYYY-MM-DD"
             )
 
-        today = datetime.now().strftime("%Y-%m-%d")
-        if version_date != today:
-            raise ValueError(
-                f"ClinGen does not provide archival snapshots. "
-                f"The requested date ({version_date}) does not match today "
-                f"({today}). The download endpoint always returns the current "
-                f"live data. Use from_latest() or pass today's date instead."
-            )
-
         file_name = f"{CLINGEN_FILE_PREFIX}-{version_date}.csv"
 
         return cls(
