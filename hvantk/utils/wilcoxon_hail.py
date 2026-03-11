@@ -2,9 +2,17 @@
 Hail adapter for Wilcoxon rank-sum marker gene detection.
 
 Thin bridge between Hail MatrixTables and the pure numpy/scipy
-implementation in :mod:`hvantk.utils.wilcoxon`.  Handles data extraction
-from a MatrixTable (Phase 1 pre-filter + dense matrix collection) and
-delegates all statistical computation to the core module.
+implementation in :mod:`hvantk.utils.wilcoxon`.  Handles:
+
+- Column filtering and group label construction via Hail expressions.
+- Optional Phase 1 candidate pre-filtering from a pre-computed summary
+  table (see :func:`hvantk.utils.matrix_utils.summarize_expression`).
+- Dense expression matrix extraction via ``hl.agg.collect()``.
+
+All statistical computation (ranking, U statistic, p-values, correction)
+is delegated to :mod:`hvantk.utils.wilcoxon`.
+
+See :mod:`hvantk.utils.wilcoxon` for full references.
 """
 
 from __future__ import annotations
@@ -178,9 +186,10 @@ def wilcoxon_markers_from_mt(
 
     Two-phase approach:
 
-    1. **Pre-filter** (Hail): If a summary table is provided, use it to
-       identify candidate genes by fold-change and fraction expressed.
-       Otherwise, pass all genes (limited by ``max_candidates``).
+    1. **Pre-filter** (Hail): Identify candidate genes by fold-change and
+       fraction expressed.  Uses a pre-computed summary table when provided;
+       otherwise computes per-group stats on-the-fly via
+       ``hl.agg.group_by``.  Candidates are capped at ``max_candidates``.
     2. **Wilcoxon** (numpy/scipy): Extract dense matrix for candidates,
        run vectorised rank-sum tests, correct p-values.
 
@@ -215,14 +224,33 @@ def wilcoxon_markers_from_mt(
     if isinstance(group_by, str):
         group_by = [group_by]
 
-    # --- Phase 1: Identify candidates via summary (optional) ---
-    candidate_gene_ids = None
+    # Total gene count *before* any pre-filtering — used as the
+    # denominator for multiple-testing correction (Seurat-style).
+    n_total_genes = mt.count_rows()
+    logger.info("Total genes in MatrixTable: %d", n_total_genes)
+
+    # --- Phase 1: Identify candidate genes ---
     if summary is not None:
         candidate_gene_ids = _candidates_from_summary(
             summary, params, gene_id_field, gene_name_field,
         )
         logger.info(
-            "Pre-filter from summary: %d candidate genes",
+            "Pre-filter from summary table: %d candidate genes",
+            len(candidate_gene_ids),
+        )
+    else:
+        candidate_gene_ids = _candidates_on_the_fly(
+            mt,
+            group_by=group_by,
+            params=params,
+            expr_field=expr_field,
+            gene_id_field=gene_id_field,
+            metadata_field=metadata_field,
+            filter_by=filter_by,
+            min_cells_per_group=min_cells_per_group,
+        )
+        logger.info(
+            "Pre-filter on-the-fly: %d candidate genes",
             len(candidate_gene_ids),
         )
 
@@ -240,8 +268,12 @@ def wilcoxon_markers_from_mt(
     )
 
     # --- Phase 2: Wilcoxon rank-sum ---
+    # Pass n_total_genes so that multiple-testing correction uses the
+    # full gene universe as denominator, not just the pre-filtered
+    # candidates (Seurat-style: p.adjust(p, n = nrow(object))).
     results_df = rank_genes_groups(
         expression, group_labels, gene_ids, gene_names, params,
+        n_total_genes=n_total_genes,
     )
 
     # --- Convert to GeneSetCollection ---
@@ -256,6 +288,115 @@ def wilcoxon_markers_from_mt(
     )
 
     return results_df, collection
+
+
+def _candidates_on_the_fly(
+    mt: hl.MatrixTable,
+    group_by: List[str],
+    params: WilcoxonParams,
+    expr_field: str,
+    gene_id_field: str,
+    metadata_field: str,
+    filter_by: Optional[Dict[str, Union[str, List[str]]]] = None,
+    min_cells_per_group: int = 3,
+) -> Set[str]:
+    """Compute candidate genes on-the-fly using Hail aggregations.
+
+    Used when no pre-computed summary table is provided.  Computes per-group
+    mean expression and fraction expressed for each gene via
+    ``hl.agg.group_by``, then applies fold-change and fraction-expressed
+    thresholds to select candidates.  Caps at ``params.max_candidates``.
+    """
+    # --- Apply column filters ---
+    if filter_by:
+        from hvantk.utils.matrix_utils import filter_by_metadata
+        mt = filter_by_metadata(mt, filter_by)
+
+    # --- Build group label ---
+    if len(group_by) == 1:
+        label_expr = hl.str(mt[metadata_field][group_by[0]])
+    else:
+        label_expr = hl.delimit(
+            [hl.str(mt[metadata_field][f]) for f in group_by], "_"
+        )
+    mt = mt.annotate_cols(_group_label=label_expr)
+
+    # --- Filter groups by min cells ---
+    group_counts = mt.aggregate_cols(hl.agg.counter(mt._group_label))
+    valid_groups = {
+        g for g, n in group_counts.items() if n >= min_cells_per_group
+    }
+    if not valid_groups:
+        raise ValueError(
+            f"No groups have >= {min_cells_per_group} cells. "
+            f"Group sizes: {group_counts}"
+        )
+    mt = mt.filter_cols(hl.literal(valid_groups).contains(mt._group_label))
+
+    # --- Per-gene per-group mean and fraction expressed ---
+    logger.info(
+        "Computing per-gene per-group stats for %d groups (on-the-fly)...",
+        len(valid_groups),
+    )
+    mt = mt.annotate_rows(
+        _gstats=hl.agg.group_by(
+            mt._group_label,
+            hl.struct(
+                mean=hl.agg.mean(mt[expr_field]),
+                frac=hl.agg.fraction(mt[expr_field] > 0),
+            ),
+        )
+    )
+
+    # Collect gene-level stats (lightweight: one dict per gene)
+    row_key_fields = set(mt.row_key)
+    select_fields = ["_gstats"]
+    if gene_id_field not in row_key_fields:
+        select_fields = [gene_id_field] + select_fields
+
+    stats_rows = mt.rows().select(*select_fields).collect()
+
+    # --- Filter by FC and fraction expressed ---
+    candidates = set()
+    gene_max_fc: Dict[str, float] = {}
+
+    for row in stats_rows:
+        gene_id = row[gene_id_field]
+        gstats = row["_gstats"]
+        if not gstats:
+            continue
+
+        means = {g: s.mean for g, s in gstats.items() if s.mean is not None}
+        fracs = {g: s.frac for g, s in gstats.items() if s.frac is not None}
+        if not means:
+            continue
+
+        max_fc = 0.0
+        for g in means:
+            if fracs.get(g, 0) < params.min_fraction_expressed:
+                continue
+            other = [m for g2, m in means.items() if g2 != g]
+            if not other:
+                continue
+            other_mean = sum(other) / len(other)
+            fc = means[g] / max(other_mean, 1e-10)
+            if fc >= params.min_fold_change:
+                max_fc = max(max_fc, fc)
+
+        if max_fc > 0:
+            candidates.add(gene_id)
+            gene_max_fc[gene_id] = max_fc
+
+    # --- Cap at max_candidates (top by max fold-change) ---
+    if len(candidates) > params.max_candidates:
+        sorted_genes = sorted(gene_max_fc, key=gene_max_fc.get, reverse=True)
+        candidates = set(sorted_genes[: params.max_candidates])
+        logger.info(
+            "Capped candidates from %d to %d (max_candidates)",
+            len(gene_max_fc), params.max_candidates,
+        )
+
+    return candidates
 
 
 def _candidates_from_summary(

@@ -1,35 +1,54 @@
 """
-Wilcoxon rank-sum marker gene detection for scRNA-seq data.
+Wilcoxon rank-sum marker gene detection for expression data.
 
 Implements vectorised one-vs-rest Wilcoxon rank-sum tests (Mann–Whitney U)
 with tie correction and multiple-testing correction.  Designed as the
 statistical backend for ``hvantk expression markers --method wilcoxon``.
 
 The implementation follows the two-phase approach used by Seurat's
-``FindAllMarkers``:
+``FindAllMarkers`` (Stuart et al., 2019):
 
-1. **Pre-filter** candidate genes (fold-change + fraction-expressed cutoffs).
-2. **Rank-sum test** all candidates in a single vectorised pass.
+1. **Pre-filter** candidate genes by fold-change and fraction-expressed
+   cutoffs, reducing the computational cost of the rank-sum test.
+2. **Rank-sum test** all candidates in a single vectorised pass using the
+   normal approximation to the Mann–Whitney U statistic with tie correction.
+
+Multiple-testing correction (Benjamini–Hochberg by default) uses the
+**total number of genes in the dataset** as the number of hypotheses,
+not just the number of pre-filtered candidates.  This matches Seurat's
+``FindMarkers`` behaviour, which passes ``n = nrow(object)`` to R's
+``p.adjust()`` (see ``R/differential_expression.R`` in satijalab/seurat).
+Scanpy takes a different approach: it tests all genes without pre-filtering
+and applies BH to the full set.  Our Seurat-style approach is a pragmatic
+middle ground — computationally efficient (only candidates are tested) yet
+statistically conservative (correction accounts for the full gene universe).
+
+The Wilcoxon rank-sum test is the method used by both Scanpy (Wolf et al.,
+2018) and Seurat (Stuart et al., 2019) for marker gene detection.  It is
+also applicable to bulk RNA-seq datasets, though users should be aware that
+the normal approximation may be less reliable for very small sample sizes
+(n < 20 per group).
 
 All functions in this module are pure numpy/scipy — no Hail dependency.
 
 References
 ----------
-- Pullin JM, McCarthy DJ. "A comparison of marker gene selection methods for
-  single-cell RNA sequencing data". *Genome Biology* 25, 56 (2024).
-- Luecken MD, Theis FJ. "Current best practices in single-cell RNA-seq
-  analysis: a tutorial". *Mol Syst Biol* 15, e8746 (2019).
-- Squair JW et al. "Confronting false discoveries in single-cell
-  differential expression". *Nat Commun* 12, 5692 (2021).
-- Stuart T et al. "Comprehensive Integration of Single-Cell Data". *Cell*
-  177, 1888–1902 (2019). [Seurat v3]
-- Wolf FA et al. "SCANPY: large-scale single-cell gene expression data
-  analysis". *Genome Biol* 19, 15 (2018).
-- Benjamini Y, Hochberg Y. "Controlling the false discovery rate: a
-  practical and powerful approach to multiple testing". *JRSS B* 57,
-  289–300 (1995).
-- Mann HB, Whitney DR. "On a test of whether one of two random variables is
-  stochastically larger than the other". *Ann Math Stat* 18, 50–60 (1947).
+.. [1] Luecken MD, Theis FJ. "Current best practices in single-cell
+   RNA-seq analysis: a tutorial". *Mol Syst Biol* 15, e8746 (2019).
+   PMID: 31217225
+.. [2] Squair JW et al. "Confronting false discoveries in single-cell
+   differential expression". *Nat Commun* 12, 5692 (2021).
+   PMID: 34584091
+.. [3] Stuart T et al. "Comprehensive Integration of Single-Cell Data".
+   *Cell* 177, 1888–1902 (2019). PMID: 31178118
+.. [4] Wolf FA et al. "SCANPY: large-scale single-cell gene expression
+   data analysis". *Genome Biol* 19, 15 (2018). PMID: 29409532
+.. [5] Benjamini Y, Hochberg Y. "Controlling the false discovery rate:
+   a practical and powerful approach to multiple testing". *J R Stat Soc
+   Ser B* 57, 289–300 (1995). DOI: 10.1111/j.2517-6161.1995.tb02031.x
+.. [6] Mann HB, Whitney DR. "On a test of whether one of two random
+   variables is stochastically larger than the other". *Ann Math Stat*
+   18, 50–60 (1947). DOI: 10.1214/aoms/1177730491
 """
 
 from __future__ import annotations
@@ -225,8 +244,16 @@ def rank_genes_groups(
     gene_ids: np.ndarray,
     gene_names: Optional[np.ndarray] = None,
     params: Optional[WilcoxonParams] = None,
+    n_total_genes: Optional[int] = None,
 ) -> pd.DataFrame:
     """Wilcoxon rank-sum marker gene detection (one-vs-rest).
+
+    For each group, genes are pre-filtered by fold-change and fraction
+    expressed before the rank-sum test.  Multiple-testing correction is
+    applied using ``n_total_genes`` as the number of hypotheses (matching
+    Seurat's ``FindMarkers`` which uses ``n = nrow(object)`` in
+    ``p.adjust``).  This ensures the correction accounts for the full
+    gene universe even though only pre-filtered candidates are tested.
 
     Parameters
     ----------
@@ -240,6 +267,12 @@ def rank_genes_groups(
         Gene names ``(n_genes,)``.  Carried through to output.
     params : WilcoxonParams, optional
         Test parameters.  Defaults to ``WilcoxonParams()``.
+    n_total_genes : int, optional
+        Total number of genes in the dataset *before* any pre-filtering.
+        Used as the denominator for multiple-testing correction.  When
+        ``None``, defaults to ``expression.shape[1]`` (the number of
+        genes in the input matrix, which may itself be a pre-filtered
+        subset).
 
     Returns
     -------
@@ -256,9 +289,15 @@ def rank_genes_groups(
     n_cells, n_genes = expression.shape
     groups = np.unique(group_labels)
 
+    # Total gene count for multiple-testing correction (Seurat-style):
+    # use the full gene universe, not just the candidates that passed
+    # per-group pre-filtering.
+    _n_total = n_total_genes if n_total_genes is not None else n_genes
+
     logger.info(
-        "Wilcoxon rank-sum: %d cells, %d genes, %d groups",
-        n_cells, n_genes, len(groups),
+        "Wilcoxon rank-sum: %d cells, %d genes (%d total for correction), "
+        "%d groups",
+        n_cells, n_genes, _n_total, len(groups),
     )
 
     # --- Compute ranks and tie correction once ---
@@ -315,9 +354,14 @@ def rank_genes_groups(
 
         U, z, p = _wilcoxon_one_vs_rest(ranks_sub, mask, n_cells, tc_sub)
 
-        # Multiple testing correction
+        # Multiple testing correction — use total gene count as the number
+        # of hypotheses, matching Seurat's p.adjust(p, n=nrow(object))
         p_adj = np.array(
-            apply_correction(p.tolist(), method=params.correction_method)
+            apply_correction(
+                p.tolist(),
+                method=params.correction_method,
+                n_total=_n_total,
+            )
         )
 
         # Build results for this group
