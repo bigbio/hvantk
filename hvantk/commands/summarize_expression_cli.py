@@ -174,9 +174,27 @@ def summarize_expression_cmd(
         overwrite=overwrite,
     )
 
-    click.echo(f"Summary table written to: {output}")
-    click.echo(f"  Genes: {tb.count()}")
-    click.echo(f"  Groups: {list(group_by)}")
+    n_genes = tb.count()
+    # Collect group labels and sample sizes from one row
+    sample_stats = hl.eval(tb.take(1)[0].stats) if n_genes > 0 else {}
+    group_labels = sorted(sample_stats.keys())
+
+    click.echo(f"\nSummary table written to: {output}")
+    click.echo(f"  Genes:  {n_genes:,}")
+    click.echo(f"  Groups: {len(group_labels)} (from {list(group_by)})")
+    click.echo("")
+    click.echo("Schema:")
+    click.echo("  Key:    gene_id (str)")
+    click.echo("  Fields: stats -> dict<group_label, struct{mean, fraction_expressed, n_cells}>")
+    click.echo("")
+    if group_labels:
+        click.echo(f"Group labels ({len(group_labels)}):")
+        # Show first few with cell counts
+        for label in group_labels[:10]:
+            info = sample_stats[label]
+            click.echo(f"  {label:<40s}  {info.n_cells:>6,} cells")
+        if len(group_labels) > 10:
+            click.echo(f"  ... and {len(group_labels) - 10} more")
 
 
 @expression_group.command("markers")
