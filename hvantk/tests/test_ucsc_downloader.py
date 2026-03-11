@@ -151,8 +151,10 @@ class TestListDatasetsSearch:
             ucsc_downloader,
             ["--list_datasets"],
         )
-        assert "Available datasets" in result.output
+        assert "UCSC Cell Browser Datasets" in result.output
         assert "adultPancreas" in result.output
+        assert "Downloadable datasets" in result.output
+        assert "Collections" in result.output
 
     def test_list_datasets_with_search(self):
         """--list_datasets --search filters results."""

@@ -23,6 +23,20 @@ def cli():
     pass
 
 
+def _format_facets(ds, max_items: int = 3) -> str:
+    """Build a short facet string, truncating long lists."""
+    facets = []
+    if ds.organisms:
+        facets.extend(ds.organisms)
+    if ds.body_parts:
+        facets.extend(ds.body_parts)
+    if not facets:
+        return ""
+    if len(facets) <= max_items:
+        return ", ".join(facets)
+    return ", ".join(facets[:max_items]) + f" (+{len(facets) - max_items} more)"
+
+
 def _print_dataset_names(search: str = None):
     """
     Prints the names of all available UCSC datasets in a formatted list.
@@ -43,28 +57,50 @@ def _print_dataset_names(search: str = None):
                 click.echo("No datasets available.")
             return
 
-        total = len(collection.datasets)
-        header = "Available datasets"
+        leaves = [ds for ds in collection.datasets if not ds.isCollection]
+        collections = [ds for ds in collection.datasets if ds.isCollection]
+
+        # Header
+        header = "UCSC Cell Browser Datasets"
         if search:
             header += f' (filtered by "{search}")'
-        click.echo(f"{header}: {total}")
+        click.echo(header)
+        click.echo(
+            f"  Total: {len(collection.datasets)}  "
+            f"({len(leaves)} downloadable, {len(collections)} collections)"
+        )
+        click.echo("")
 
-        for ds in collection.datasets:
-            parts = [f"  {ds.name}"]
-            if ds.isCollection:
-                count = ds.datasetCount or "?"
-                parts.append(f"(collection, {count} datasets)")
-            elif ds.sampleCount:
-                parts.append(f"({ds.sampleCount:,} cells)")
-            # Facets
-            facets = []
-            if ds.organisms:
-                facets.extend(ds.organisms)
-            if ds.body_parts:
-                facets.extend(ds.body_parts)
-            if facets:
-                parts.append(f"[{', '.join(facets)}]")
-            click.echo("  ".join(parts))
+        # Compute column width for alignment
+        all_names = [ds.name for ds in collection.datasets]
+        name_width = min(max((len(n) for n in all_names), default=20), 40)
+
+        # Leaf datasets
+        if leaves:
+            click.echo(f"Downloadable datasets ({len(leaves)}):")
+            click.echo(f"  {'NAME':<{name_width}}  {'CELLS':>10}  ORGANISM / TISSUE")
+            click.echo(f"  {'-' * name_width}  {'-' * 10}  {'-' * 30}")
+            for ds in leaves:
+                cells = f"{ds.sampleCount:,}" if ds.sampleCount else "-"
+                facets = _format_facets(ds)
+                click.echo(f"  {ds.name:<{name_width}}  {cells:>10}  {facets}")
+            click.echo("")
+
+        # Collections
+        if collections:
+            click.echo(f"Collections ({len(collections)}):")
+            click.echo(f"  {'NAME':<{name_width}}  {'DATASETS':>10}  ORGANISM / TISSUE")
+            click.echo(f"  {'-' * name_width}  {'-' * 10}  {'-' * 30}")
+            for ds in collections:
+                count = str(ds.datasetCount) if ds.datasetCount else "?"
+                facets = _format_facets(ds)
+                click.echo(f"  {ds.name:<{name_width}}  {count:>10}  {facets}")
+            click.echo("")
+
+        click.echo(
+            "Tip: Use --search <term> to filter. "
+            "Collections require a child path (e.g., hoc/all-heart)."
+        )
     except ValueError as e:
         click.echo(f"Error: {e}")
 
