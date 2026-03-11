@@ -330,13 +330,19 @@ def markers_cmd(
 ):
     """Extract top marker genes per group from expression data.
 
-    Supports three methods:
+    Three scoring methods are available, operating on different inputs:
 
     \b
-    - fold_change / specificity: ratio-based scoring from a pre-computed
-      summary table (requires --summary).
-    - wilcoxon: Wilcoxon rank-sum statistical test with p-value correction
-      (requires --matrix-table and --group-by).
+    fold_change / specificity (ratio-based, from summary table):
+      Requires --summary (-s) pointing to a pre-computed summary Hail Table
+      produced by 'hvantk expression summarize'. Fast, no statistical test.
+
+    \b
+    wilcoxon (statistical test, from MatrixTable):
+      Requires --matrix-table (-m) and --group-by. Runs a one-vs-rest
+      Wilcoxon rank-sum test (Mann-Whitney U) with tie correction and
+      Benjamini-Hochberg p-value adjustment. Optionally accepts --summary
+      for Phase 1 candidate pre-filtering to reduce compute.
 
     \b
     Examples:
@@ -355,6 +361,14 @@ def markers_cmd(
           --group-by cell_type \\
           --top-n 200 --alpha 0.05 \\
           --results-tsv results/wilcoxon_full.tsv \\
+          -o gene_sets/heart_wilcoxon.json
+
+      # Wilcoxon with summary pre-filter (faster on large datasets)
+      hvantk expression markers \\
+          -m data/heart_sc.mt \\
+          -s data/heart_celltype_summary.ht \\
+          --method wilcoxon \\
+          --group-by cell_type \\
           -o gene_sets/heart_wilcoxon.json
     """
     from pathlib import Path
