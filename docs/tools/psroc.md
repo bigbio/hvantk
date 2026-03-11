@@ -785,6 +785,7 @@ from installation through results.
 |-------------|---------|-------|
 | Python | >= 3.10 | |
 | Java | 8 or 11 | Required by Hail/Spark |
+| HTSlib / bgzip | >= 1.10 | Required for BGZF compression in Step 2 |
 | Disk space | ~50 GB | dbNSFP (~45 GB) + intermediate tables |
 
 Verify Java is available:
@@ -893,7 +894,7 @@ hvantk psroc \
 
 ### Step 6: Review Results
 
-```
+```text
 /results/psroc_multi/
 ├── cardiac/
 │   ├── psroc_cardiac_metrics.json

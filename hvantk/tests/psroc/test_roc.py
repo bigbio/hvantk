@@ -369,18 +369,21 @@ class TestBootstrapAUCCI:
         assert ci1[1] == ci2[1]
 
     def test_different_seeds_produce_different_results(self):
-        """Test that different seeds produce different results."""
+        """Test determinism for same seed and variability across seeds."""
         labels = np.array([0] * 30 + [1] * 30)
         scores = np.concatenate([
             np.linspace(0.1, 0.6, 30),
             np.linspace(0.4, 0.9, 30),
         ])
 
-        ci1 = bootstrap_auc_ci(labels, scores, seed=1)
-        ci2 = bootstrap_auc_ci(labels, scores, seed=2)
+        # Same seed must be deterministic
+        ci_a = bootstrap_auc_ci(labels, scores, seed=1)
+        ci_b = bootstrap_auc_ci(labels, scores, seed=1)
+        assert ci_a == ci_b
 
-        # Very unlikely to be identical
-        assert ci1 != ci2
+        # Across multiple seeds, not all CIs should be identical
+        cis = {bootstrap_auc_ci(labels, scores, seed=s) for s in range(1, 6)}
+        assert len(cis) > 1
 
     def test_compute_roc_metrics_with_bootstrap(self):
         """Test that compute_roc_metrics populates CI fields when n_bootstrap > 0."""

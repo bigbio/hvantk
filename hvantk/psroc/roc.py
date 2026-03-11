@@ -261,7 +261,28 @@ def bootstrap_auc_ci(
 
     Returns:
         Tuple of (ci_lower, ci_upper).
+
+    Raises:
+        ValueError: If inputs are invalid (mismatched lengths, single class,
+            bad n_resamples or confidence_level).
     """
+    labels = np.asarray(labels).ravel()
+    scores = np.asarray(scores).ravel()
+
+    if len(labels) != len(scores):
+        raise ValueError(
+            f"labels and scores must have same length, "
+            f"got {len(labels)} and {len(scores)}"
+        )
+    if not isinstance(n_resamples, int) or n_resamples < 1:
+        raise ValueError("n_resamples must be an integer > 0")
+    if not (0 < confidence_level < 1):
+        raise ValueError("confidence_level must be between 0 and 1 (exclusive)")
+
+    unique = np.unique(labels)
+    if len(unique) < 2 or 0 not in unique or 1 not in unique:
+        raise ValueError("labels must contain both classes 0 and 1")
+
     rng = np.random.default_rng(seed)
 
     idx_pos = np.where(labels == 1)[0]

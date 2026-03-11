@@ -99,7 +99,11 @@ hvantk mktable dbnsfp \
   --raw-input dbNSFP4.9a_variant.bgz \
   --output-ht dbnsfp.ht
 
-# Option 2: Auto-convert during build (if you skipped bgzip above)
+# Option 2: Auto-convert during build (requires a single already-merged .gz)
+# This only works if you have already concatenated the per-chromosome files
+# into a single gzip file (e.g., dbNSFP4.9a_variant.gz).
+# --auto-convert-bgz re-compresses the single .gz as BGZF; it does NOT
+# assemble per-chromosome files.
 hvantk mktable dbnsfp \
   --raw-input dbNSFP4.9a_variant.gz \
   --output-ht dbnsfp.ht \

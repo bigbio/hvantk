@@ -58,7 +58,8 @@ class ClinGenGeneDiseaseDataset:
 
         Note: ClinGen now provides a single real-time download endpoint.
         The date is used only for labeling the output file. The downloaded
-        content will always be the current snapshot.
+        content will always be the current snapshot regardless of the date
+        provided.
 
         Args:
             version_date: Date string in YYYY-MM-DD format
@@ -71,10 +72,19 @@ class ClinGenGeneDiseaseDataset:
         """
         # Validate date format
         try:
-            datetime.strptime(version_date, "%Y-%m-%d")
+            parsed = datetime.strptime(version_date, "%Y-%m-%d")
         except ValueError:
             raise ValueError(
                 f"Invalid version_date format: {version_date}. Expected YYYY-MM-DD"
+            )
+
+        today = datetime.now().strftime("%Y-%m-%d")
+        if version_date != today:
+            logger.warning(
+                "ClinGen does not provide archival snapshots. "
+                "The download will contain today's data regardless of the "
+                f"requested date ({version_date}). "
+                f"The file will be labeled with {version_date}."
             )
 
         file_name = f"{CLINGEN_FILE_PREFIX}-{version_date}.csv"

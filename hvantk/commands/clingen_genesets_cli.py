@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 )
 @click.option(
     "--min-genes",
-    type=int,
+    type=click.IntRange(min=0),
     default=0,
     help="Exclude groups with fewer than this many genes [default: 0]",
 )
@@ -202,10 +202,12 @@ def clingen_genesets_cmd(
 
         click.echo(f"\nSaved to: {output_path}")
 
+    except click.exceptions.Exit:
+        raise
     except ValueError as e:
         click.echo(f"Error: {e}", err=True)
-        ctx.exit(1)
+        raise SystemExit(1)
     except Exception as e:
         logger.exception(f"Failed: {e}")
         click.echo(f"Error: {e}", err=True)
-        ctx.exit(1)
+        raise SystemExit(1)

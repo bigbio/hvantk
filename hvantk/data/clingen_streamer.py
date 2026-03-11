@@ -580,6 +580,8 @@ class ClinGenStreamer(HailDataStreamer):
         result: Dict[str, Set[str]] = {}
         for row in rows:
             gcep_name = row.gcep
+            if not gcep_name:
+                continue
             genes = set(row.genes)
             if len(genes) < min_genes:
                 continue
@@ -866,6 +868,10 @@ class ClinGenStreamer(HailDataStreamer):
         if min_classification:
             min_classification = self._normalize_classification(min_classification)
             ht = self._apply_min_classification_filter(ht, min_classification)
+
+        # Normalize MONDO IDs: bare numeric IDs → prefixed form
+        if category_id.isdigit():
+            category_id = f"MONDO:{category_id}"
 
         # Get all descendants of the category (all diseases under this category)
         category_diseases = onto.get_descendants(category_id, include_self=True)

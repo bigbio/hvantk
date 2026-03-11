@@ -26,6 +26,7 @@ from typing import Optional, Dict, Any, List, Set
 from enum import Enum
 import json
 import logging
+import re
 from datetime import datetime
 
 import numpy as np
@@ -233,6 +234,12 @@ class PSROCConfig:
                 f"Invalid threshold_method: {self.threshold_method}. "
                 f"Must be one of: {valid_methods}"
             )
+
+        # Validate min_variants and n_bootstrap
+        if self.min_variants < 1:
+            errors.append("min_variants must be >= 1")
+        if self.n_bootstrap < 0:
+            errors.append("n_bootstrap must be >= 0")
 
         return errors
 
@@ -724,9 +731,10 @@ class PSROCPipeline:
             )
 
             # Sanitize group name for filesystem paths
-            safe_name = (
-                group_name.replace("/", "_").replace("\\", "_").replace(" ", "_")
-            )
+            safe_name = re.sub(r"[^A-Za-z0-9_-]", "_", group_name)
+            safe_name = re.sub(r"_+", "_", safe_name).strip("_")
+            if not safe_name or safe_name in (".", ".."):
+                safe_name = f"group_{abs(hash(group_name)) % 10**8}"
 
             group_config = PSROCConfig(
                 genes=sorted(gene_set),
@@ -919,18 +927,20 @@ class PSROCPipeline:
                         expand_gene_set_with_aliases,
                     )
 
+                    pre_expand_count = len(gene_set)
                     gene_set, alias_map = expand_gene_set_with_aliases(
                         list(gene_set), self.config.hgnc_path
                     )
                     if alias_map:
                         logger.info(
                             f"   Expanded gene set with {len(alias_map)} "
-                            f"aliases from HGNC"
+                            f"aliases from HGNC "
+                            f"({pre_expand_count} → {len(gene_set)} symbols)"
                         )
                         for alias, canonical in sorted(alias_map.items()):
                             logger.info(f"     {alias} → {canonical}")
 
-                self._n_genes = len(gene_set)
+                self._n_genes = pre_expand_count if self.config.hgnc_path else len(gene_set)
                 logger.info(f"   Filtering to {self._n_genes} genes")
                 gene_literal = hl.literal(gene_set)
                 ht = ht.filter(gene_literal.contains(ht.gene))
@@ -1302,7 +1312,7 @@ class PSROCPipeline:
             scores_excluded=[
                 s
                 for s in self.config.scores
-                if s not in missingness or not missingness[s].included_in_analysis
+                if s in missingness and not missingness[s].included_in_analysis
             ],
             max_missingness_threshold=self.config.max_missingness,
             output_dir=self.config.output_dir,

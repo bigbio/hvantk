@@ -96,7 +96,7 @@ class TestComputeScoreMissingness:
         assert result.missingness_rate == pytest.approx(0.4)
         assert result.included_in_analysis is False
 
-    def test_empty_array_raises_error(self):
+    def test_empty_array_returns_excluded_result(self):
         """Test that empty array returns excluded result with 100% missingness."""
         result = compute_score_missingness(np.array([]), "test_score")
         assert result.n_total == 0

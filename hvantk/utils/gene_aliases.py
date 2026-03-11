@@ -57,9 +57,13 @@ def _load_from_hail_table(
     alias_to_canonical: Dict[str, str] = {}
     canonical_to_aliases: Dict[str, List[str]] = {}
 
+    # Pass 1: collect all canonical symbols
+    for row in data:
+        canonical_symbols.add(row.gene_symbol)
+
+    # Pass 2: build alias mappings (canonical set is complete)
     for row in data:
         symbol = row.gene_symbol
-        canonical_symbols.add(symbol)
         all_aliases: List[str] = []
 
         if "alias_symbols" in fields_to_select and row.alias_symbols:
@@ -112,12 +116,19 @@ def _load_from_tsv(
     alias_to_canonical: Dict[str, str] = {}
     canonical_to_aliases: Dict[str, List[str]] = {}
 
+    # Pass 1: collect all canonical symbols
+    for _, row in df.iterrows():
+        symbol = row.get("gene_symbol")
+        if not symbol or pd.isna(symbol):
+            continue
+        canonical_symbols.add(str(symbol).strip())
+
+    # Pass 2: build alias mappings (canonical set is complete)
     for _, row in df.iterrows():
         symbol = row.get("gene_symbol")
         if not symbol or pd.isna(symbol):
             continue
         symbol = str(symbol).strip()
-        canonical_symbols.add(symbol)
 
         all_aliases: List[str] = []
 

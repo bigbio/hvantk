@@ -63,7 +63,7 @@ def _print_available_versions():
 @click.option(
     "--list-versions",
     is_flag=True,
-    help="List available dataset versions and exit.",
+    help="Check download availability and show the current snapshot date.",
 )
 @click.pass_context
 def clingen_downloader(ctx, version_date, output_dir, overwrite, list_versions):
