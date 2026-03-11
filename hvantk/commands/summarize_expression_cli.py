@@ -200,15 +200,35 @@ def summarize_expression_cmd(
     "-s",
     "--summary",
     type=click.Path(),
-    required=True,
-    help="Path to an expression summary Hail Table (.ht) from 'expression summarize'.",
+    default=None,
+    help="Path to an expression summary Hail Table (.ht) from 'expression summarize'. "
+    "Required for fold_change/specificity methods; optional for wilcoxon (pre-filter).",
+)
+@click.option(
+    "-m",
+    "--matrix-table",
+    type=click.Path(),
+    default=None,
+    help="Path to expression MatrixTable (.mt). Required for wilcoxon method.",
 )
 @click.option(
     "--method",
-    type=click.Choice(["fold_change", "specificity"]),
+    type=click.Choice(["fold_change", "specificity", "wilcoxon"]),
     default="fold_change",
     show_default=True,
     help="Marker scoring method.",
+)
+@click.option(
+    "--group-by",
+    multiple=True,
+    default=None,
+    help="Metadata field(s) for grouping. Required for wilcoxon method.",
+)
+@click.option(
+    "--filter-by",
+    multiple=True,
+    default=None,
+    help="Pre-filter columns: FIELD=VALUE (repeatable). For wilcoxon method.",
 )
 @click.option(
     "--top-n",
@@ -232,6 +252,51 @@ def summarize_expression_cmd(
     help="Minimum fraction of cells expressing a gene in the group.",
 )
 @click.option(
+    "--expr-field",
+    default="x",
+    show_default=True,
+    help="Entry field containing expression values (wilcoxon).",
+)
+@click.option(
+    "--gene-id-field",
+    default="GeneID",
+    show_default=True,
+    help="Row field for gene IDs (wilcoxon).",
+)
+@click.option(
+    "--gene-name-field",
+    default="Gene Name",
+    show_default=True,
+    help="Row field for gene names (wilcoxon; use '' to omit).",
+)
+@click.option(
+    "--min-cells",
+    type=int,
+    default=3,
+    show_default=True,
+    help="Minimum cells per group (wilcoxon).",
+)
+@click.option(
+    "--correction",
+    type=click.Choice(["benjamini-hochberg", "bonferroni", "none"]),
+    default="benjamini-hochberg",
+    show_default=True,
+    help="Multiple testing correction method (wilcoxon).",
+)
+@click.option(
+    "--alpha",
+    type=float,
+    default=0.05,
+    show_default=True,
+    help="Adjusted p-value threshold (wilcoxon).",
+)
+@click.option(
+    "--results-tsv",
+    type=click.Path(),
+    default=None,
+    help="Save full Wilcoxon results table to TSV.",
+)
+@click.option(
     "-o",
     "--output",
     type=click.Path(),
@@ -246,33 +311,69 @@ def summarize_expression_cmd(
 )
 def markers_cmd(
     summary,
+    matrix_table,
     method,
+    group_by,
+    filter_by,
     top_n,
     min_fold_change,
     min_fraction_expressed,
+    expr_field,
+    gene_id_field,
+    gene_name_field,
+    min_cells,
+    correction,
+    alpha,
+    results_tsv,
     output,
     overwrite,
 ):
-    """Extract top marker genes per group from an expression summary Table.
+    """Extract top marker genes per group from expression data.
+
+    Supports three methods:
+
+    \b
+    - fold_change / specificity: ratio-based scoring from a pre-computed
+      summary table (requires --summary).
+    - wilcoxon: Wilcoxon rank-sum statistical test with p-value correction
+      (requires --matrix-table and --group-by).
 
     \b
     Examples:
 
+      # Fold-change markers from summary table
       hvantk expression markers \\
           -s data/heart_celltype_summary.ht \\
           --method fold_change \\
           --top-n 200 \\
           -o gene_sets/heart_cell_types.json
 
-      # GMT output for GSEA compatibility
+      # Wilcoxon rank-sum markers from MatrixTable
       hvantk expression markers \\
-          -s data/heart_celltype_summary.ht \\
-          --top-n 200 \\
-          -o gene_sets/heart_cell_types.gmt
+          -m data/heart_sc.mt \\
+          --method wilcoxon \\
+          --group-by cell_type \\
+          --top-n 200 --alpha 0.05 \\
+          --results-tsv results/wilcoxon_full.tsv \\
+          -o gene_sets/heart_wilcoxon.json
     """
     from pathlib import Path
 
-    from hvantk.utils.gene_sets import extract_marker_gene_sets
+    # --- Validate method-specific requirements ---
+    if method in ("fold_change", "specificity"):
+        if summary is None:
+            raise click.UsageError(
+                f"--summary is required for method '{method}'."
+            )
+    elif method == "wilcoxon":
+        if matrix_table is None:
+            raise click.UsageError(
+                "--matrix-table is required for method 'wilcoxon'."
+            )
+        if not group_by:
+            raise click.UsageError(
+                "--group-by is required for method 'wilcoxon'."
+            )
 
     output_path = Path(output)
     if output_path.exists() and not overwrite:
@@ -283,13 +384,65 @@ def markers_cmd(
         )
         raise SystemExit(1)
 
-    collection = extract_marker_gene_sets(
-        summary=summary,
-        n_markers=top_n,
-        min_fold_change=min_fold_change,
-        min_fraction_expressed=min_fraction_expressed,
-        method=method,
-    )
+    # --- Dispatch ---
+    if method in ("fold_change", "specificity"):
+        from hvantk.utils.gene_sets import extract_marker_gene_sets
+
+        collection = extract_marker_gene_sets(
+            summary=summary,
+            n_markers=top_n,
+            min_fold_change=min_fold_change,
+            min_fraction_expressed=min_fraction_expressed,
+            method=method,
+        )
+
+    else:  # wilcoxon
+        import hail as hl
+        from hvantk.utils.wilcoxon import WilcoxonParams
+        from hvantk.utils.wilcoxon_hail import wilcoxon_markers_from_mt
+
+        # Parse filter_by
+        filters = None
+        if filter_by:
+            filters = {}
+            for item in filter_by:
+                if "=" not in item:
+                    raise click.BadParameter(
+                        f"Expected FIELD=VALUE format, got: '{item}'",
+                        param_hint="--filter-by",
+                    )
+                key, value = item.split("=", 1)
+                filters[key.strip()] = value.strip()
+
+        gene_name = gene_name_field if gene_name_field else None
+
+        params = WilcoxonParams(
+            min_fold_change=min_fold_change,
+            min_fraction_expressed=min_fraction_expressed,
+            top_n=top_n,
+            correction_method=correction,
+            alpha=alpha,
+        )
+
+        mt = hl.read_matrix_table(matrix_table)
+        results_df, collection = wilcoxon_markers_from_mt(
+            mt,
+            group_by=list(group_by),
+            filter_by=filters,
+            summary=summary,
+            params=params,
+            expr_field=expr_field,
+            gene_id_field=gene_id_field,
+            gene_name_field=gene_name,
+            min_cells_per_group=min_cells,
+        )
+
+        # Save full results TSV if requested
+        if results_tsv:
+            tsv_path = Path(results_tsv)
+            tsv_path.parent.mkdir(parents=True, exist_ok=True)
+            results_df.to_csv(str(tsv_path), sep="\t", index=False)
+            click.echo(f"Full results table: {tsv_path} ({len(results_df):,} rows)")
 
     if not collection.gene_sets:
         click.echo("Error: No marker gene sets produced.", err=True)

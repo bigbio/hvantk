@@ -15,6 +15,11 @@ from .mondo_parser import (
     MONDO_DISEASE_CATEGORIES,
     download_mondo_obo,
 )
+from .wilcoxon import (
+    WilcoxonParams,
+    rank_genes_groups,
+    results_to_gene_set_collection,
+)
 
 __all__ = [
     "contig_recoding",
@@ -32,4 +37,8 @@ __all__ = [
     "MondoOntology",
     "MONDO_DISEASE_CATEGORIES",
     "download_mondo_obo",
+    # Wilcoxon rank-sum marker detection
+    "WilcoxonParams",
+    "rank_genes_groups",
+    "results_to_gene_set_collection",
 ]
