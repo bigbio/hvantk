@@ -88,6 +88,9 @@ def _print_dataset_names(search: str = None):
 
         # Collections
         if collections:
+            # When searching, resolve children from UCSC API so users
+            # can discover the downloadable child paths.
+            expand = search is not None
             click.echo(f"Collections ({len(collections)}):")
             click.echo(f"  {'NAME':<{name_width}}  {'DATASETS':>10}  ORGANISM / TISSUE")
             click.echo(f"  {'-' * name_width}  {'-' * 10}  {'-' * 30}")
@@ -95,6 +98,20 @@ def _print_dataset_names(search: str = None):
                 count = str(ds.datasetCount) if ds.datasetCount else "?"
                 facets = _format_facets(ds)
                 click.echo(f"  {ds.name:<{name_width}}  {count:>10}  {facets}")
+                if expand:
+                    children = ds.fetch_children()
+                    if children:
+                        for i, child in enumerate(children):
+                            is_last = i == len(children) - 1
+                            prefix = "  └── " if is_last else "  ├── "
+                            cells = (
+                                f"({child.sampleCount:,} cells)"
+                                if child.sampleCount
+                                else ""
+                            )
+                            click.echo(f"  {prefix}{child.name}  {cells}")
+                    else:
+                        click.echo("    (could not fetch children)")
             click.echo("")
 
         click.echo(

@@ -2,7 +2,7 @@ import os
 import pytest
 import tempfile
 import shutil
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from click.testing import CliRunner
 from hvantk.data.file_utils import download_file
 from hvantk.commands.ucsc_downloader import ucsc_downloader
@@ -183,3 +183,25 @@ class TestListDatasetsSearch:
             ["--list_datasets", "--search", "hoc"],
         )
         assert "collection" in result.output.lower()
+
+    def test_list_datasets_search_expands_children(self):
+        """--search expands collections to show child datasets (mocked)."""
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {
+            "datasets": [
+                {
+                    "shortLabel": "All Heart",
+                    "name": "hoc/all-heart",
+                    "sampleCount": 142946,
+                },
+                {"shortLabel": "Blood", "name": "hoc/blood", "sampleCount": 12345},
+            ]
+        }
+        runner = CliRunner()
+        with patch("requests.get", return_value=mock_resp):
+            result = runner.invoke(
+                ucsc_downloader,
+                ["--list_datasets", "--search", "hoc"],
+            )
+        assert "hoc/all-heart" in result.output
+        assert "hoc/blood" in result.output

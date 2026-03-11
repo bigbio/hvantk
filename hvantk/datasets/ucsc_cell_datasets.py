@@ -73,6 +73,7 @@ class UCSCDataset:
     isCollection: Optional[bool] = False
     collectionCount: Optional[int] = None
     datasetCount: Optional[int] = None
+    children: Optional[List["UCSCDataset"]] = field(default=None, repr=False)
 
     def __post_init__(self):
         if self.facets is None:
@@ -152,6 +153,51 @@ class UCSCDataset:
             raise ValueError(
                 f"Failed to download metadata for {self.name}: {str(e)}"
             ) from e
+
+    def fetch_children(self) -> List["UCSCDataset"]:
+        """Fetch child datasets from UCSC API for a collection.
+
+        Makes a single HTTP request to ``{base_url}/{name}/dataset.json``
+        and parses the ``datasets`` array.  Results are cached on the
+        ``children`` attribute so subsequent calls are free.
+
+        Returns empty list if not a collection or if the fetch fails.
+        """
+        if not self.isCollection:
+            return []
+
+        if self.children is not None:
+            return self.children
+
+        import requests
+
+        url = f"{UCSC_CELL_BROWSER_BASE_URL}/{self.name}/dataset.json"
+        try:
+            resp = requests.get(url, timeout=15)
+            resp.raise_for_status()
+            data = resp.json()
+        except Exception as exc:
+            logger.warning("Failed to fetch children for %s: %s", self.name, exc)
+            return []
+
+        children = []
+        for child in data.get("datasets", []):
+            children.append(
+                UCSCDataset(
+                    shortLabel=child.get("shortLabel", ""),
+                    name=child.get("name", ""),
+                    md5=child.get("md5", ""),
+                    sampleCount=child.get("sampleCount"),
+                    isCollection=child.get("isCollection", False),
+                    datasetCount=child.get("datasetCount"),
+                    body_parts=child.get("body_parts", []),
+                    organisms=child.get("organisms", []),
+                    diseases=child.get("diseases", []),
+                )
+            )
+
+        self.children = children
+        return children
 
 
 @dataclass
