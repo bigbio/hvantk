@@ -20,6 +20,7 @@ from hvantk.psroc.pipeline import (
     PSROCStage,
     PATHOGENIC_LABELS,
     BENIGN_LABELS,
+    CLNREVSTAT_STAR_MAP,
     parse_variant_list,
 )
 from hvantk.psroc.roc import ROCResult, ScoreMissingness
@@ -81,6 +82,52 @@ class TestPSROCConfig:
 
         errors = config.validate()
         assert any("Cannot provide multiple variant sources" in e for e in errors)
+
+    def test_config_with_gene_set_collection(self):
+        """Test config accepts gene_set_collection as valid source."""
+        collection = {
+            "cardiac": {"BRCA1", "TP53"},
+            "neuro": {"SCN1A", "SCN2A"},
+        }
+        config = PSROCConfig(
+            gene_set_collection=collection,
+            clinvar_ht="/data/clinvar.ht",
+            dbnsfp_ht="/data/dbnsfp.ht",
+            scores=["CADD_phred"],
+            output_dir="/results",
+        )
+
+        assert config.gene_set_collection == collection
+        # Should not produce source-related errors (table paths won't exist)
+        errors = config.validate()
+        assert not any("--genes" in e and "Must provide" in e for e in errors)
+
+    def test_validation_gene_set_collection_with_genes_is_error(self):
+        """Test validation rejects gene_set_collection + genes together."""
+        config = PSROCConfig(
+            genes=["BRCA1"],
+            gene_set_collection={"cardiac": {"TP53"}},
+            clinvar_ht="/data/clinvar.ht",
+            dbnsfp_ht="/data/dbnsfp.ht",
+            scores=["CADD_phred"],
+            output_dir="/results",
+        )
+
+        errors = config.validate()
+        assert any("Cannot provide multiple variant sources" in e for e in errors)
+
+    def test_validation_gene_set_collection_empty_groups(self):
+        """Test validation catches empty groups in gene_set_collection."""
+        config = PSROCConfig(
+            gene_set_collection={"cardiac": {"BRCA1"}, "empty": set()},
+            clinvar_ht="/data/clinvar.ht",
+            dbnsfp_ht="/data/dbnsfp.ht",
+            scores=["CADD_phred"],
+            output_dir="/results",
+        )
+
+        errors = config.validate()
+        assert any("empty groups" in e for e in errors)
 
     def test_validation_missing_clinvar_path(self):
         """Test validation fails when clinvar_ht not provided."""
@@ -337,8 +384,8 @@ class TestPSROCResult:
         summary = result.summary()
 
         assert "Variants analyzed: 100" in summary
-        assert "Pathogenic: 50" in summary
-        assert "Benign: 45" in summary
+        assert "Pathogenic (P): 50" in summary
+        assert "Benign (B): 45" in summary
         assert "CADD_phred" in summary
         assert "AUC=0.850" in summary
 
@@ -357,8 +404,8 @@ class TestPSROCStage:
         assert PSROCStage.GENERATE_OUTPUTS.value == "generate_outputs"
 
 
-class TestLabelConstants:
-    """Test label mapping constants."""
+class TestConstants:
+    """Test pipeline constants (labels, star map)."""
 
     def test_pathogenic_labels(self):
         """Test pathogenic label list."""
@@ -373,6 +420,32 @@ class TestLabelConstants:
         assert "Likely_benign" in BENIGN_LABELS
         assert "Benign/Likely_benign" in BENIGN_LABELS
         assert len(BENIGN_LABELS) == 3
+
+    def test_clnrevstat_star_map_known_values(self):
+        """Test CLNREVSTAT star map assigns correct star counts."""
+        assert CLNREVSTAT_STAR_MAP["practice_guideline"] == 4
+        assert CLNREVSTAT_STAR_MAP["reviewed_by_expert_panel"] == 3
+        assert (
+            CLNREVSTAT_STAR_MAP["criteria_provided,_multiple_submitters,_no_conflicts"]
+            == 2
+        )
+        assert CLNREVSTAT_STAR_MAP["criteria_provided,_single_submitter"] == 1
+        assert CLNREVSTAT_STAR_MAP["no_assertion_criteria_provided"] == 0
+
+    def test_clnrevstat_star_map_values_in_range(self):
+        """Test all star values are valid (0-4)."""
+        for status, stars in CLNREVSTAT_STAR_MAP.items():
+            assert 0 <= stars <= 4, f"{status} has invalid star count {stars}"
+
+    def test_clnrevstat_star_map_conflicting_classifications(self):
+        """Test both ClinVar conflicting status variants are mapped."""
+        # ClinVar has used both naming conventions across versions
+        assert "criteria_provided,_conflicting_classifications" in CLNREVSTAT_STAR_MAP
+        assert "criteria_provided,_conflicting_interpretations" in CLNREVSTAT_STAR_MAP
+        assert (
+            CLNREVSTAT_STAR_MAP["criteria_provided,_conflicting_classifications"]
+            == CLNREVSTAT_STAR_MAP["criteria_provided,_conflicting_interpretations"]
+        )
 
 
 class TestPSROCPipelineValidation:
@@ -416,6 +489,56 @@ class TestPSROCPipelineValidation:
             assert "metrics_json" in pipeline.paths
             assert "roc_curves_png" in pipeline.paths
             assert pipeline.paths["annotated_ht"].endswith("test_annotated.ht")
+
+    @patch("hvantk.psroc.pipeline.hl")
+    @patch("hvantk.psroc.pipeline.Path.exists")
+    def test_run_raises_when_gene_set_collection(self, mock_exists, mock_hl):
+        """Test run() raises ValueError when gene_set_collection is active."""
+        mock_exists.return_value = True
+        mock_hl.current_backend.return_value = Mock()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = PSROCConfig(
+                gene_set_collection={"cardiac": {"BRCA1", "TP53"}},
+                clinvar_ht=f"{tmpdir}/clinvar.ht",
+                dbnsfp_ht=f"{tmpdir}/dbnsfp.ht",
+                scores=["CADD_phred"],
+                output_dir=tmpdir,
+            )
+
+            Path(f"{tmpdir}/clinvar.ht").mkdir()
+            Path(f"{tmpdir}/dbnsfp.ht").mkdir()
+
+            pipeline = PSROCPipeline(config)
+
+            with pytest.raises(ValueError, match="run_collection"):
+                pipeline.run()
+
+    @patch("hvantk.psroc.pipeline.hl")
+    @patch("hvantk.psroc.pipeline.Path.exists")
+    def test_run_collection_raises_without_collection(self, mock_exists, mock_hl):
+        """Test run_collection() raises when gene_set_collection not set."""
+        mock_exists.return_value = True
+        mock_hl.current_backend.return_value = Mock()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = PSROCConfig(
+                genes=["BRCA1"],
+                clinvar_ht=f"{tmpdir}/clinvar.ht",
+                dbnsfp_ht=f"{tmpdir}/dbnsfp.ht",
+                scores=["CADD_phred"],
+                output_dir=tmpdir,
+            )
+
+            Path(f"{tmpdir}/clinvar.ht").mkdir()
+            Path(f"{tmpdir}/dbnsfp.ht").mkdir()
+
+            pipeline = PSROCPipeline(config)
+
+            with pytest.raises(
+                ValueError, match="gene_set_collection is not configured"
+            ):
+                pipeline.run_collection()
 
 
 class TestVariantFileParsing:
@@ -491,43 +614,3 @@ class TestShowPlan:
             assert "REVEL_score" in captured.out
             assert "Load Hail Tables" in captured.out
             assert "Compute ROC" in captured.out
-
-
-if __name__ == "__main__":
-    print("Running PSROC pipeline tests...")
-
-    print("\n1. Testing PSROCConfig")
-    test_config = TestPSROCConfig()
-    test_config.test_config_creation_with_genes()
-    print("  ✓ Config creation with genes works")
-    test_config.test_validation_missing_variant_source()
-    print("  ✓ Validation catches missing variant source")
-    test_config.test_validation_invalid_max_missingness()
-    print("  ✓ Validation catches invalid max_missingness")
-
-    print("\n2. Testing PSROCState")
-    test_state = TestPSROCState()
-    test_state.test_state_creation()
-    print("  ✓ State creation works")
-    test_state.test_mark_stage_complete()
-    print("  ✓ Stage completion tracking works")
-    test_state.test_save_and_load()
-    print("  ✓ State save/load works")
-
-    print("\n3. Testing PSROCResult")
-    test_result = TestPSROCResult()
-    test_result.test_result_creation()
-    print("  ✓ Result creation works")
-    test_result.test_result_to_dict()
-    print("  ✓ Result to_dict works")
-    test_result.test_result_summary()
-    print("  ✓ Result summary generation works")
-
-    print("\n4. Testing label constants")
-    test_labels = TestLabelConstants()
-    test_labels.test_pathogenic_labels()
-    print("  ✓ Pathogenic labels correct")
-    test_labels.test_benign_labels()
-    print("  ✓ Benign labels correct")
-
-    print("\n✅ All tests passed!")

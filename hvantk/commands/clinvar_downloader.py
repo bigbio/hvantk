@@ -24,9 +24,7 @@ from hvantk.core.config import CONTEXT_SETTINGS
 logger = logging.getLogger(__name__)
 
 
-@click.command(
-    "clinvar-downloader", short_help="Download ClinVar VCF data from NCBI"
-)
+@click.command("clinvar-downloader", short_help="Download ClinVar VCF data from NCBI")
 @click.option(
     "--version",
     "version_date",
@@ -98,9 +96,7 @@ def clinvar_downloader(
             dataset = ClinVarDataset.latest(genome_build=genome_build)
             click.echo(f"Using latest ClinVar release ({genome_build})")
         else:
-            dataset = ClinVarDataset.from_date(
-                version_date, genome_build=genome_build
-            )
+            dataset = ClinVarDataset.from_date(version_date, genome_build=genome_build)
 
         click.echo(f"File: {dataset.file_name}")
         click.echo(f"URL: {dataset.download_url}")

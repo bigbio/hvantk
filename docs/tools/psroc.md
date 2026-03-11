@@ -88,10 +88,7 @@ allows you to run the complete pipeline without needing real ClinVar or dbNSFP t
 ### Running the Example
 
 ```bash
-# First, generate the synthetic test data (if not already present)
-python scripts/generate_psroc_testdata.py
-
-# Run the example script (builds tables and runs full pipeline)
+# Run the example script (builds Hail Tables from synthetic TSVs and runs full pipeline)
 python examples/psroc/run_psroc_example.py --output-dir /tmp/psroc_example
 ```
 
@@ -128,13 +125,11 @@ Located in `hvantk/tests/testdata/psroc/`:
 - `test_genes.txt` - Gene list for `--genes-file` testing
 - `test_variants.txt` - Variant list for `--variants` testing
 
-To regenerate test data, run: `python scripts/generate_psroc_testdata.py`
-
 ## Detailed Usage
 
 ### Input Sources
 
-PSROC requires one of three input sources to select variants for analysis:
+PSROC requires exactly one input source to select variants for analysis:
 
 #### Option 1: Gene Symbols
 
@@ -160,6 +155,23 @@ chr2:67890:G:C
 chr17:41245466:G:A
 ```
 
+#### Option 3: Named Gene Set Collection (Multi-Group Analysis)
+
+Run PSROC independently for each named gene set in a collection. Each group
+gets its own output subdirectory with per-group metrics and plots.
+
+```bash
+# From a JSON gene set collection
+hvantk psroc --gene-sets /data/disease_gene_sets.json ...
+
+# From a GMT file (e.g., MSigDB pathways)
+hvantk psroc --gene-sets /data/pathways.gmt ...
+```
+
+Gene set collections can be prepared from various sources using hvantk's
+streamer layer. See [Preparing Gene Set Collections](#preparing-gene-set-collections)
+and the example script `examples/psroc/prepare_gene_sets.py`.
+
 ### Required Tables
 
 PSROC requires pre-built Hail Tables for ClinVar and dbNSFP:
@@ -170,9 +182,9 @@ hvantk mktable clinvar \
   --raw-input /data/clinvar.vcf.bgz \
   --output-ht /data/clinvar_grch38.ht
 
-# Build dbNSFP table
+# Build dbNSFP table (from concatenated BGZF — see Deployment Guide)
 hvantk mktable dbnsfp \
-  --raw-input /data/dbNSFP4.4a_variant.chr.gz \
+  --raw-input /data/dbNSFP4.9a_variant.bgz \
   --output-ht /data/dbnsfp_grch38.ht
 ```
 
@@ -184,14 +196,87 @@ Specify dbNSFP score fields to evaluate:
 --scores "CADD_phred,REVEL_score,MetaLR_score,VEST4_score,ClinPred_score"
 ```
 
-Common prediction scores available in dbNSFP:
-- `CADD_phred` - Combined Annotation Dependent Depletion
-- `REVEL_score` - Rare Exome Variant Ensemble Learner
-- `MetaLR_score` - Meta-analytic logistic regression
-- `VEST4_score` - Variant Effect Scoring Tool v4
-- `ClinPred_score` - Clinical Prediction score
-- `PrimateAI_score` - Primate AI pathogenicity prediction
-- `DANN_score` - Deep Annotation Neural Network
+#### dbNSFP Score Reference
+
+The table below lists commonly used prediction scores available in dbNSFP 4.x.
+Field names are case-sensitive and must match the dbNSFP column names exactly.
+
+> **Important:** PSROC assumes **higher score = more pathogenic**. Scores marked
+> with inverted directionality (lower = pathogenic) will produce AUC < 0.5 and
+> should not be used directly. Use `_rankscore` variants instead (see note below).
+
+**Ensemble / meta-predictor scores** (recommended — combine multiple signals):
+
+| Field name | Description | Range | Direction |
+|------------|-------------|-------|-----------|
+| `REVEL_score` | Rare Exome Variant Ensemble Learner | 0–1 | Higher = pathogenic |
+| `MetaLR_score` | Meta-analytic logistic regression | 0–1 | Higher = pathogenic |
+| `MetaSVM_score` | Meta-analytic support vector machine | unbounded | Higher = pathogenic |
+| `MetaRNN_score` | Meta-analytic recurrent neural network | 0–1 | Higher = pathogenic |
+| `ClinPred_score` | Clinical pathogenicity prediction | 0–1 | Higher = pathogenic |
+| `BayesDel_addAF_score` | BayesDel with allele frequency features | −1 to 1 | Higher = pathogenic |
+| `BayesDel_noAF_score` | BayesDel without allele frequency | −1 to 1 | Higher = pathogenic |
+| `CADD_phred` | CADD Phred-scaled C-score | 0–60+ | Higher = pathogenic |
+
+**Individual predictor scores** (higher = pathogenic):
+
+| Field name | Description | Range | Direction |
+|------------|-------------|-------|-----------|
+| `VEST4_score` | Variant Effect Scoring Tool v4 | 0–1 | Higher = pathogenic |
+| `MVP_score` | Missense Variant Pathogenicity | 0–1 | Higher = pathogenic |
+| `gMVP_score` | Generalized MVP | 0–1 | Higher = pathogenic |
+| `MPC_score` | Missense badness, PolyPhen-2, Constraint | 0–5 | Higher = pathogenic |
+| `PrimateAI_score` | Primate AI deep learning | 0–1 | Higher = pathogenic |
+| `DEOGEN2_score` | DEOGEN2 pathogenicity prediction | 0–1 | Higher = pathogenic |
+| `DANN_score` | Deep Annotation Neural Network | 0–1 | Higher = pathogenic |
+| `M-CAP_score` | Mendelian Clinically Applicable Pathogenicity | 0–1 | Higher = pathogenic |
+| `LIST-S2_score` | LIST variant-specific score | 0–1 | Higher = pathogenic |
+| `AlphaMissense_score` | AlphaMissense deep learning | 0–1 | Higher = pathogenic |
+| `EVE_score` | Evolutionary model of Variant Effect | 0–1 | Higher = pathogenic |
+| `VARITY_R_score` | VARITY regular | 0–1 | Higher = pathogenic |
+| `VARITY_ER_score` | VARITY extended regular | 0–1 | Higher = pathogenic |
+| `Polyphen2_HDIV_score` | PolyPhen-2 HumDiv | 0–1 | Higher = pathogenic |
+| `Polyphen2_HVAR_score` | PolyPhen-2 HumVar | 0–1 | Higher = pathogenic |
+| `MutationAssessor_score` | Mutation Assessor functional impact | −5.5 to 6.5 | Higher = pathogenic |
+
+**Scores with inverted directionality** (do NOT use directly with PSROC):
+
+| Field name | Description | Range | Direction |
+|------------|-------------|-------|-----------|
+| `SIFT_score` | Sorting Intolerant From Tolerant | 0–1 | **Lower** = pathogenic |
+| `PROVEAN_score` | Protein Variation Effect Analyzer | unbounded | **More negative** = pathogenic |
+| `FATHMM_score` | Functional Analysis Through HMMs | unbounded | **More negative** = pathogenic |
+| `LRT_score` | Likelihood Ratio Test | 0–1 | **Lower** = pathogenic |
+
+> **Tip — using `_rankscore` variants:** dbNSFP provides normalized rank scores
+> (e.g., `SIFT_converted_rankscore`, `FATHMM_converted_rankscore`) where
+> higher = more damaging for all scores. These work directly with PSROC and are
+> a good alternative when you want to include scores with inverted directionality.
+>
+> Rank scores are valid for ROC analysis: AUC values and score comparisons are
+> correct because the monotonic ranking is preserved. However, the optimal
+> threshold reported by PSROC will be in **rank space** (e.g., 0.85) rather than
+> the original score units (e.g., SIFT 0.05). This means rank-score thresholds
+> are useful for benchmarking which scores discriminate best, but cannot be used
+> directly as clinical cutoffs in the native score scale.
+
+**Conservation scores** (measure evolutionary constraint, not variant-specific):
+
+| Field name | Description | Range | Direction |
+|------------|-------------|-------|-----------|
+| `GERP++_RS` | GERP rejected substitutions | −12 to 6.2 | Higher = conserved |
+| `phyloP100way_vertebrate` | phyloP 100-way vertebrate | −20 to 11.2 | Higher = conserved |
+| `phastCons100way_vertebrate` | phastCons 100-way vertebrate | 0–1 | Higher = conserved |
+
+The exact set of available scores depends on the dbNSFP version used to build
+the Hail Table. To list all score fields in your table, run:
+
+```python
+import hail as hl
+ht = hl.read_table('/path/to/dbnsfp.ht')
+score_fields = sorted(f for f in ht.row if f.endswith('_score') or f.endswith('_phred'))
+print(score_fields)
+```
 
 ### Missingness Handling
 
@@ -442,6 +527,7 @@ Input Sources (exactly one required):
   --genes TEXT              Comma-separated gene symbols
   --genes-file PATH         File with gene symbols (one per line)
   --variants PATH           Variant list (chr:pos:ref:alt format)
+  --gene-sets PATH          Gene set collection (JSON/GMT) for multi-group analysis
 
 Required:
   --clinvar-ht PATH         Path to ClinVar Hail Table
@@ -519,6 +605,7 @@ config = PSROCConfig(
     genes=["BRCA1", "BRCA2"],        # Gene symbols
     genes_file=None,                  # Path to gene file
     variants_path=None,               # Path to variant file
+    gene_set_collection=None,         # Dict[str, Set[str]] for multi-group
 
     # Required paths
     clinvar_ht="/data/clinvar.ht",
@@ -562,8 +649,30 @@ pipeline = PSROCPipeline(config)
 # Preview execution plan
 pipeline.show_plan()
 
-# Run pipeline
+# Run single gene set pipeline
 result = pipeline.run()
+
+# --- Multi-group analysis ---
+from hvantk.psroc import PSROCConfig, PSROCPipeline
+
+collection_config = PSROCConfig(
+    gene_set_collection={
+        "cardiac": {"MYH7", "TNNT2", "LMNA"},
+        "neuro": {"SCN1A", "SCN2A", "KCNQ2"},
+    },
+    clinvar_ht="/data/clinvar.ht",
+    dbnsfp_ht="/data/dbnsfp.ht",
+    scores=["CADD_phred", "REVEL_score"],
+    output_dir="/results/multi_group",
+)
+
+pipeline = PSROCPipeline(collection_config)
+results = pipeline.run_collection()  # Dict[str, PSROCResult]
+
+for group_name, result in results.items():
+    print(f"{group_name}: {result.n_total} variants")
+    for name, roc in result.metrics.items():
+        print(f"  {name}: AUC={roc.auc:.3f}")
 ```
 
 #### PSROCResult
@@ -664,6 +773,228 @@ fig = plot_psroc_summary_dashboard(
     max_missingness_threshold=0.3,
 )
 ```
+
+## End-to-End Deployment Guide
+
+This section walks through running the full PSROC pipeline on a fresh host,
+from installation through results.
+
+### Prerequisites
+
+| Requirement | Version | Notes |
+|-------------|---------|-------|
+| Python | >= 3.10 | |
+| Java | 8 or 11 | Required by Hail/Spark |
+| HTSlib / bgzip | >= 1.10 | Required for BGZF compression in Step 2 |
+| Disk space | ~50 GB | dbNSFP (~45 GB) + intermediate tables |
+
+Verify Java is available:
+
+```bash
+java -version   # Should show 1.8 or 11
+```
+
+### Step 1: Install hvantk
+
+```bash
+pip install hvantk
+# or from source:
+git clone https://github.com/bigbio/hvantk
+cd hvantk && poetry install
+```
+
+### Step 2: Download Data (Layer 1 — Downloaders)
+
+**ClinVar** (automated):
+
+```bash
+hvantk clinvar-downloader --output-dir /data/clinvar
+# Downloads clinvar.vcf.gz (~80 MB) + .tbi index
+```
+
+**dbNSFP** (manual — ~45 GB, license-gated):
+
+1. Visit https://sites.google.com/site/jpaboreno/dbNSFP
+2. Download the `dbNSFP4.x` archive and extract the per-chromosome `.gz` files
+3. Concatenate into a single BGZF file (the builder expects one file):
+   ```bash
+   head -1 <(zcat dbNSFP4.9a_variant.chr1.gz) > /tmp/dbnsfp_header.txt
+   (cat /tmp/dbnsfp_header.txt && for f in dbNSFP4.9a_variant.chr*.gz; do zcat "$f" | tail -n +2; done) \
+     | bgzip -@ 4 > /data/dbnsfp/dbNSFP4.9a_variant.bgz
+   ```
+
+**ClinGen** (automated, for gene set extraction):
+
+```bash
+hvantk clingen-downloader --output-dir /data/clingen
+# Downloads Clingen-Gene-Disease-Summary-<YYYY-MM-DD>.csv
+```
+
+### Step 3: Build Hail Tables (Layer 1 — Builders)
+
+```bash
+# Build ClinVar table
+# Note: ClinVar distributes standard gzip (.vcf.gz), which Hail reads
+# single-threaded. For parallel reads, recompress as BGZF first:
+#   gunzip -c clinvar.vcf.gz | bgzip -@ 4 > clinvar.vcf.bgz
+hvantk mktable clinvar \
+  --raw-input /data/clinvar/clinvar.vcf.gz \
+  --output-ht /data/tables/clinvar_grch38.ht
+
+# Build dbNSFP table (from the concatenated BGZF file prepared in Step 2)
+hvantk mktable dbnsfp \
+  --raw-input /data/dbnsfp/dbNSFP4.9a_variant.bgz \
+  --output-ht /data/tables/dbnsfp_grch38.ht
+
+# Build ClinGen table (for gene set extraction)
+# The filename includes today's date, e.g., Clingen-Gene-Disease-Summary-2026-03-11.csv
+hvantk mktable clingen-gene-disease \
+  --raw-input /data/clingen/Clingen-Gene-Disease-Summary-*.csv \
+  --output-ht /data/tables/clingen.ht
+```
+
+### Step 4: Prepare Gene Sets
+
+Extract named gene set collections from ClinGen or other sources. See
+[Preparing Gene Set Collections](#preparing-gene-set-collections) below.
+
+```bash
+# GCEP-based gene sets (recommended — broader, biologically coherent panels)
+hvantk clingen-genesets \
+  --clingen-ht /data/tables/clingen.ht \
+  --group-by gcep \
+  --min-classification Moderate \
+  --min-genes 20 \
+  -o /data/gene_sets/clingen_gcep.json
+
+# Or keyword-based disease categories
+hvantk clingen-genesets \
+  --clingen-ht /data/tables/clingen.ht \
+  --group-by keyword \
+  --categories-json /data/my_categories.json \
+  -o /data/gene_sets/clingen_keywords.json
+```
+
+### Step 5: Run PSROC (Layer 3 — Pipeline)
+
+```bash
+# Single gene set
+hvantk psroc \
+  --genes BRCA1,BRCA2,TP53 \
+  --clinvar-ht /data/tables/clinvar_grch38.ht \
+  --dbnsfp-ht /data/tables/dbnsfp_grch38.ht \
+  --scores "CADD_phred,REVEL_score,MetaLR_score,VEST4_score,AlphaMissense_score" \
+  --output-dir /results/psroc \
+  --min-stars 1
+
+# Multi-group analysis with gene set collection
+hvantk psroc \
+  --gene-sets /data/gene_sets/disease_categories.json \
+  --clinvar-ht /data/tables/clinvar_grch38.ht \
+  --dbnsfp-ht /data/tables/dbnsfp_grch38.ht \
+  --scores "CADD_phred,REVEL_score,MetaLR_score,AlphaMissense_score" \
+  --output-dir /results/psroc_multi
+```
+
+### Step 6: Review Results
+
+```text
+/results/psroc_multi/
+├── cardiac/
+│   ├── psroc_cardiac_metrics.json
+│   ├── plots/
+│   │   ├── psroc_cardiac_roc_curves.png
+│   │   └── psroc_cardiac_dashboard.png
+│   └── ...
+├── neurological/
+│   └── ...
+└── ...
+```
+
+---
+
+## Preparing Gene Set Collections
+
+Gene set collections are `Dict[str, Set[str]]` mappings from a group name to
+a set of gene symbols. They can be loaded from JSON or GMT files.
+
+### From ClinGen (CLI)
+
+The `hvantk clingen-genesets` command extracts gene sets from ClinGen data:
+
+```bash
+# GCEP-based gene sets (recommended — broader panels, 20-300 genes each)
+hvantk clingen-genesets \
+  --clingen-ht /data/tables/clingen.ht \
+  --group-by gcep \
+  --min-classification Moderate \
+  --min-genes 20 \
+  -o /data/gene_sets/clingen_gcep.json
+
+# Keyword-based disease categories
+hvantk clingen-genesets \
+  --clingen-ht /data/tables/clingen.ht \
+  --group-by keyword \
+  --categories-json /data/my_categories.json \
+  -o /data/gene_sets/clingen_keywords.json
+
+# Disease-level grouping (fine-grained — most have 1-3 genes)
+hvantk clingen-genesets \
+  --clingen-ht /data/tables/clingen.ht \
+  --group-by disease \
+  --min-genes 5 \
+  -o /data/gene_sets/clingen_diseases.json
+```
+
+### From ClinGen (Python API)
+
+```python
+from hvantk.data.clingen_streamer import ClinGenStreamer
+
+streamer = ClinGenStreamer(table_path="/data/tables/clingen.ht")
+streamer.setup()
+
+# GCEP-based (recommended)
+gene_sets = streamer.get_geneset_per_gcep(
+    min_classification="Moderate", min_genes=20
+)
+
+# Keyword-based
+gene_sets = streamer.aggregate_by_disease_category({
+    "cardiac": ["cardiomyopathy", "arrhythmia", "long_qt"],
+    "neurological": ["epilepsy", "neuropathy", "ataxia"],
+    "cancer": ["cancer", "tumor", "neoplasm"],
+})
+
+# MONDO ontology-based
+result = streamer.categorize_by_ontology(ontology="/data/mondo.obo")
+gene_sets = {
+    cat: data["genes"] for cat, data in result.items()
+}
+```
+
+### From GMT Files
+
+Standard GMT files (e.g., MSigDB pathways) can be loaded directly:
+
+```python
+from hvantk.utils.gene_sets import load_gene_sets
+
+collection = load_gene_sets("/data/pathways.gmt")
+gene_set_dict = {gs.name: gs.genes for gs in collection}
+```
+
+### Saving for CLI Use
+
+```python
+from hvantk.utils.gene_sets import load_gene_sets_from_dict
+
+collection = load_gene_sets_from_dict(gene_sets)
+collection.save("/data/gene_sets/my_collection.json")
+# Then: hvantk psroc --gene-sets /data/gene_sets/my_collection.json ...
+```
+
+---
 
 ## Interpreting Results
 

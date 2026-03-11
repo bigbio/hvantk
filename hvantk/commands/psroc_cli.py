@@ -27,6 +27,76 @@ def _parse_comma_separated(value: str) -> list:
     return [v.strip() for v in value.split(",") if v.strip()]
 
 
+def _display_single_result(result, pipeline) -> None:
+    """Display results for a single PSROC run."""
+    click.echo("\n" + "=" * 70)
+    if pipeline.state.errors:
+        click.echo("Pipeline completed with errors:")
+        for error in pipeline.state.errors:
+            click.echo(f"  - {error}")
+        click.echo("=" * 70 + "\n")
+    else:
+        click.echo("Pipeline completed successfully!")
+        click.echo("=" * 70)
+
+        click.echo("\nResults Summary:")
+        click.echo(f"  Variants analyzed: {result.n_total}")
+        click.echo(f"    Pathogenic: {result.n_pathogenic}")
+        click.echo(f"    Benign: {result.n_benign}")
+        click.echo(f"    Excluded: {result.n_excluded}")
+
+        click.echo(f"\n  Scores evaluated: {len(result.metrics)}")
+        if result.metrics:
+            sorted_metrics = sorted(
+                result.metrics.items(), key=lambda x: x[1].auc, reverse=True
+            )
+            for name, roc in sorted_metrics:
+                auc_str = f"AUC={roc.auc:.3f}"
+                if roc.auc_ci_lower is not None:
+                    auc_str += (
+                        f" [{roc.auc_ci_lower:.3f}" f"\u2013{roc.auc_ci_upper:.3f}]"
+                    )
+                click.echo(
+                    f"    {name}: {auc_str}, " f"threshold={roc.optimal_threshold:.3f}"
+                )
+
+        if result.scores_excluded:
+            click.echo(
+                f"\n  Scores excluded (high missingness): "
+                f"{len(result.scores_excluded)}"
+            )
+            for name in result.scores_excluded:
+                miss = result.missingness[name]
+                click.echo(f"    {name}: {miss.missingness_rate:.1%} missing")
+
+        click.echo(f"\nOutput directory: {result.output_dir}")
+        click.echo("")
+
+
+def _display_collection_results(results, output_dir) -> None:
+    """Display results for a multi-group PSROC run."""
+    click.echo("\n" + "=" * 70)
+    click.echo("Gene Set Collection - PSROC Results")
+    click.echo("=" * 70)
+
+    for group_name, result in sorted(results.items()):
+        click.echo(f"\n  [{group_name}]")
+        click.echo(
+            f"    Variants: {result.n_total} "
+            f"(P={result.n_pathogenic}, B={result.n_benign})"
+        )
+        if result.metrics:
+            sorted_metrics = sorted(
+                result.metrics.items(), key=lambda x: x[1].auc, reverse=True
+            )
+            for name, roc in sorted_metrics:
+                click.echo(f"    {name}: AUC={roc.auc:.3f}")
+
+    click.echo(f"\n  Groups completed: {len(results)}")
+    click.echo(f"  Output directory: {output_dir}")
+    click.echo("=" * 70 + "\n")
+
+
 @click.command(name="psroc")
 @click.option(
     "--genes",
@@ -45,6 +115,21 @@ def _parse_comma_separated(value: str) -> list:
     type=click.Path(exists=True),
     default=None,
     help="Path to variant list file (chr:pos:ref:alt format, one per line)",
+)
+@click.option(
+    "--gene-sets",
+    type=click.Path(exists=True),
+    default=None,
+    help="Path to a gene set collection file (JSON or GMT). "
+    "Runs PSROC independently for each named gene set.",
+)
+@click.option(
+    "--hgnc",
+    type=click.Path(exists=True),
+    default=None,
+    help="Path to HGNC data file (TSV or .ht) for gene alias resolution. "
+    "When provided, the gene set is expanded to include known aliases "
+    "and previous symbols.",
 )
 @click.option(
     "--clinvar-ht",
@@ -122,6 +207,20 @@ def _parse_comma_separated(value: str) -> list:
     help="Overwrite existing output files",
 )
 @click.option(
+    "--min-variants",
+    type=int,
+    default=10,
+    help="Minimum labeled (P+B) variants required for ROC analysis. "
+    "Groups below this threshold are skipped [default: 10]",
+)
+@click.option(
+    "--n-bootstrap",
+    type=int,
+    default=2000,
+    help="Number of bootstrap resamples for AUC 95%% confidence intervals. "
+    "Set to 0 to disable [default: 2000]",
+)
+@click.option(
     "--dry-run",
     is_flag=True,
     default=False,
@@ -139,6 +238,8 @@ def psroc_cmd(
     genes,
     genes_file,
     variants,
+    gene_sets,
+    hgnc,
     clinvar_ht,
     dbnsfp_ht,
     scores,
@@ -151,6 +252,8 @@ def psroc_cmd(
     export_tsv,
     no_plots,
     overwrite,
+    min_variants,
+    n_bootstrap,
     dry_run,
     log_level,
 ):
@@ -176,6 +279,7 @@ def psroc_cmd(
       --genes         Comma-separated gene symbols
       --genes-file    File with gene symbols (one per line)
       --variants      File with variants (chr:pos:ref:alt format)
+      --gene-sets     Gene set collection file (JSON/GMT) for multi-group analysis
 
     \b
     Examples:
@@ -236,27 +340,38 @@ def psroc_cmd(
             ctx.exit(1)
 
         # Validate input sources
-        sources = [genes_list, genes_file, variants]
+        sources = [genes_list, genes_file, variants, gene_sets]
         provided = [s for s in sources if s]
         if len(provided) == 0:
             click.echo(
-                "Error: Must provide exactly one of: --genes, --genes-file, or --variants",
+                "Error: Must provide exactly one of: "
+                "--genes, --genes-file, --variants, or --gene-sets",
                 err=True,
             )
             ctx.exit(1)
         if len(provided) > 1:
             click.echo(
                 "Error: Cannot provide multiple variant sources. "
-                "Use only one of: --genes, --genes-file, or --variants",
+                "Use only one of: --genes, --genes-file, --variants, or --gene-sets",
                 err=True,
             )
             ctx.exit(1)
+
+        # Load gene set collection if provided
+        gene_set_collection = None
+        if gene_sets:
+            from hvantk.utils.gene_sets import load_gene_sets
+
+            collection = load_gene_sets(gene_sets)
+            gene_set_collection = {gs.name: gs.genes for gs in collection}
+            click.echo(f"Loaded {len(gene_set_collection)} gene sets from {gene_sets}")
 
         # Create configuration
         config = PSROCConfig(
             genes=genes_list,
             genes_file=genes_file,
             variants_path=variants,
+            gene_set_collection=gene_set_collection,
             clinvar_ht=clinvar_ht,
             dbnsfp_ht=dbnsfp_ht,
             scores=scores_list,
@@ -266,9 +381,12 @@ def psroc_cmd(
             min_stars=min_stars,
             max_missingness=max_missingness,
             threshold_method=threshold_method,
+            hgnc_path=hgnc,
             export_tsv=export_tsv,
             overwrite=overwrite,
             generate_plots=not no_plots,
+            min_variants=min_variants,
+            n_bootstrap=n_bootstrap,
         )
 
         # Validate configuration
@@ -293,49 +411,12 @@ def psroc_cmd(
         click.echo("=" * 70 + "\n")
 
         # Run pipeline
-        result = pipeline.run()
-
-        # Display results
-        click.echo("\n" + "=" * 70)
-        if pipeline.state.errors:
-            click.echo("Pipeline completed with errors:")
-            for error in pipeline.state.errors:
-                click.echo(f"  - {error}")
-            click.echo("=" * 70 + "\n")
-            ctx.exit(1)
+        if config.gene_set_collection:
+            results = pipeline.run_collection()
+            _display_collection_results(results, output_dir)
         else:
-            click.echo("Pipeline completed successfully!")
-            click.echo("=" * 70)
-
-            # Show summary
-            click.echo("\nResults Summary:")
-            click.echo(f"  Variants analyzed: {result.n_total}")
-            click.echo(f"    Pathogenic: {result.n_pathogenic}")
-            click.echo(f"    Benign: {result.n_benign}")
-            click.echo(f"    Excluded: {result.n_excluded}")
-
-            click.echo(f"\n  Scores evaluated: {len(result.metrics)}")
-            if result.metrics:
-                # Sort by AUC descending
-                sorted_metrics = sorted(
-                    result.metrics.items(), key=lambda x: x[1].auc, reverse=True
-                )
-                for name, roc in sorted_metrics:
-                    click.echo(
-                        f"    {name}: AUC={roc.auc:.3f}, "
-                        f"threshold={roc.optimal_threshold:.3f}"
-                    )
-
-            if result.scores_excluded:
-                click.echo(
-                    f"\n  Scores excluded (high missingness): {len(result.scores_excluded)}"
-                )
-                for name in result.scores_excluded:
-                    miss = result.missingness[name]
-                    click.echo(f"    {name}: {miss.missingness_rate:.1%} missing")
-
-            click.echo(f"\nOutput directory: {result.output_dir}")
-            click.echo("")
+            result = pipeline.run()
+            _display_single_result(result, pipeline)
 
     except ValueError as e:
         logger.error(f"Configuration error: {e}")

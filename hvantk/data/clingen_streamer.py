@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
+
+if TYPE_CHECKING:
+    from hvantk.utils.mondo_parser import MondoOntology
+    from hvantk.utils.obo_parser import BaseOboOntology
 
 import hail as hl
 import pandas as pd
@@ -178,9 +182,7 @@ class ClinGenStreamer(HailDataStreamer):
         if self._keying_mode == "gene_disease":
             match_expr = self._match_disease_expr(ht.disease_label, terms, match_mode)
         else:
-            labels = hl.or_else(
-                hl.array(ht.disease_labels), hl.empty_array(hl.tstr)
-            )
+            labels = hl.or_else(hl.array(ht.disease_labels), hl.empty_array(hl.tstr))
             match_expr = labels.any(
                 lambda label: self._match_disease_expr(label, terms, match_mode)
             )
@@ -220,7 +222,9 @@ class ClinGenStreamer(HailDataStreamer):
         if ht is None:
             raise ValueError("ClinGen table not loaded.")
 
-        normalized_ids = {self._normalize_mondo_id(m) for m in self._ensure_list(mondo_ids)}
+        normalized_ids = {
+            self._normalize_mondo_id(m) for m in self._ensure_list(mondo_ids)
+        }
         mondo_set = hl.literal(normalized_ids)
         if self._keying_mode == "gene_disease":
             ht = ht.filter(mondo_set.contains(ht.mondo_id))
@@ -335,8 +339,7 @@ class ClinGenStreamer(HailDataStreamer):
                 )
                 rows = grouped.collect()
                 return {
-                    (row.disease_label, row.mondo_id): set(row.genes)
-                    for row in rows
+                    (row.disease_label, row.mondo_id): set(row.genes) for row in rows
                 }
             else:
                 grouped = ht.group_by("disease_label").aggregate(
@@ -406,17 +409,13 @@ class ClinGenStreamer(HailDataStreamer):
         gcep_counts = ht.aggregate(hl.agg.counter(ht.gene_curation_expert_panel))
 
         genes_per_classification = ht.aggregate(
-            hl.agg.group_by(
-                ht.classification, hl.agg.collect_as_set(ht.gene_symbol)
-            )
+            hl.agg.group_by(ht.classification, hl.agg.collect_as_set(ht.gene_symbol))
         )
         genes_per_classification = {
             k: len(v) for k, v in genes_per_classification.items()
         }
         diseases_per_classification = ht.aggregate(
-            hl.agg.group_by(
-                ht.classification, hl.agg.collect_as_set(ht.disease_label)
-            )
+            hl.agg.group_by(ht.classification, hl.agg.collect_as_set(ht.disease_label))
         )
         diseases_per_classification = {
             k: len(v) for k, v in diseases_per_classification.items()
@@ -504,9 +503,7 @@ class ClinGenStreamer(HailDataStreamer):
         if ht is None:
             raise ValueError("ClinGen table not loaded.")
 
-        summary_ht = ht.group_by(
-            gcep=ht.gene_curation_expert_panel
-        ).aggregate(
+        summary_ht = ht.group_by(gcep=ht.gene_curation_expert_panel).aggregate(
             n_associations=hl.agg.count(),
             genes=hl.agg.collect_as_set(ht.gene_symbol),
             diseases=hl.agg.collect_as_set(ht.disease_label),
@@ -520,9 +517,80 @@ class ClinGenStreamer(HailDataStreamer):
         df["top_classification"] = df["classification_counts"].apply(
             lambda counts: max(counts, key=counts.get) if counts else None
         )
-        return df.drop(columns=["classification_counts", "genes", "diseases"]).sort_values(
-            "n_associations", ascending=False
+        return df.drop(
+            columns=["classification_counts", "genes", "diseases"]
+        ).sort_values("n_associations", ascending=False)
+
+    def get_geneset_per_gcep(
+        self,
+        min_classification: Optional[str] = None,
+        min_genes: int = 0,
+        shorten_names: bool = True,
+    ) -> Dict[str, Set[str]]:
+        """
+        Get genesets grouped by Gene Curation Expert Panel (GCEP).
+
+        Returns a dictionary where each key is a GCEP name and the value
+        is a set of gene symbols curated by that panel.
+
+        Parameters
+        ----------
+        min_classification : str, optional
+            Filter to minimum classification level before grouping
+            (e.g., ``"Moderate"`` keeps Definitive, Strong, and Moderate).
+        min_genes : int
+            Exclude GCEPs with fewer than this many genes (default: 0,
+            i.e., keep all).
+        shorten_names : bool
+            If True (default), remove the ``" Gene Curation Expert Panel"``
+            suffix from GCEP names to produce cleaner keys.
+
+        Returns
+        -------
+        dict
+            Mapping of GCEP name -> set of gene symbols.
+
+        Examples
+        --------
+        >>> streamer = ClinGenStreamer("clingen.ht")
+        >>> streamer.setup()
+        >>> genesets = streamer.get_geneset_per_gcep(
+        ...     min_classification="Moderate", min_genes=20
+        ... )
+        >>> print(len(genesets["Hereditary Cancer"]))
+        104
+        """
+        self._ensure_gene_disease_mode("get_geneset_per_gcep")
+        ht = self._table
+        if ht is None:
+            raise ValueError("ClinGen table not loaded.")
+
+        if min_classification:
+            min_classification = self._normalize_classification(min_classification)
+            ht = self._apply_min_classification_filter(ht, min_classification)
+
+        grouped = ht.group_by(gcep=ht.gene_curation_expert_panel).aggregate(
+            genes=hl.agg.collect_as_set(ht.gene_symbol)
         )
+        rows = grouped.collect()
+
+        result: Dict[str, Set[str]] = {}
+        for row in rows:
+            gcep_name = row.gcep
+            if not gcep_name:
+                continue
+            genes = set(row.genes)
+            if len(genes) < min_genes:
+                continue
+            if shorten_names:
+                gcep_name = gcep_name.replace(" Gene Curation Expert Panel", "")
+            result[gcep_name] = genes
+
+        logger.info(
+            f"Built {len(result)} GCEP-based gene sets"
+            + (f" (min_genes={min_genes})" if min_genes > 0 else "")
+        )
+        return result
 
     def aggregate_by_disease_category(
         self,
@@ -557,27 +625,29 @@ class ClinGenStreamer(HailDataStreamer):
 
     def categorize_by_ontology(
         self,
-        mondo_obo_path: str,
+        ontology: Union[str, MondoOntology],
         min_classification: Optional[str] = None,
         categories: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Dict[str, Set[str]]]:
         """
         Categorize diseases using MONDO ontology hierarchy.
 
-        This method uses the MONDO disease ontology to properly categorize
-        diseases based on their ontological relationships (is_a hierarchy),
-        rather than keyword matching.
+        Uses the MONDO ontology to categorize diseases based on their
+        ontological relationships (is_a hierarchy), rather than keyword
+        matching. Only MondoOntology is supported because ClinGen data
+        uses MONDO disease IDs.
 
         Parameters
         ----------
-        mondo_obo_path : str
-            Path to the MONDO OBO file. Can be downloaded using:
-            `hvantk.utils.mondo_parser.download_mondo_obo()`
+        ontology : str or MondoOntology
+            Either a path to a MONDO OBO file, or a pre-loaded
+            :class:`MondoOntology` instance.
         min_classification : str, optional
             Filter to minimum classification level.
         categories : dict, optional
-            Custom category mapping {MONDO_ID: category_name}.
-            If None, uses default MONDO_DISEASE_CATEGORIES.
+            Custom category mapping {term_id: category_name}.
+            If None and ontology is MondoOntology, uses MONDO_DISEASE_CATEGORIES.
+            Must be provided for non-MONDO ontologies.
 
         Returns
         -------
@@ -595,8 +665,35 @@ class ClinGenStreamer(HailDataStreamer):
         >>> results = streamer.categorize_by_ontology("mondo.obo")
         >>> print(results["cardiovascular disease"]["genes"])
         {'TTN', 'MYH7', 'MYBPC3', ...}
+
+        Using a pre-loaded ontology instance:
+
+        >>> from hvantk.utils import MondoOntology
+        >>> mondo = MondoOntology("mondo.obo")
+        >>> results = streamer.categorize_by_ontology(mondo)
         """
+        from hvantk.utils.obo_parser import BaseOboOntology
         from hvantk.utils.mondo_parser import MondoOntology, MONDO_DISEASE_CATEGORIES
+
+        # Resolve ontology: string path -> MondoOntology (backward compat)
+        if isinstance(ontology, str):
+            logger.info(f"Loading MONDO ontology from {ontology}")
+            onto = MondoOntology(ontology)
+        elif isinstance(ontology, MondoOntology):
+            onto = ontology
+        elif isinstance(ontology, BaseOboOntology):
+            raise TypeError(
+                "categorize_by_ontology requires a MondoOntology instance "
+                "because ClinGen data uses MONDO disease IDs. "
+                "Non-MONDO ontologies cannot be matched against ClinGen's "
+                "MONDO-based disease annotations. Pass a MondoOntology or "
+                "a path to a MONDO OBO file instead."
+            )
+        else:
+            raise TypeError(
+                f"ontology must be a file path (str) or MondoOntology instance, "
+                f"got {type(ontology).__name__}"
+            )
 
         self._ensure_table_loaded()
         ht = self._table
@@ -607,10 +704,6 @@ class ClinGenStreamer(HailDataStreamer):
         if min_classification:
             min_classification = self._normalize_classification(min_classification)
             ht = self._apply_min_classification_filter(ht, min_classification)
-
-        # Load the MONDO ontology
-        logger.info(f"Loading MONDO ontology from {mondo_obo_path}")
-        mondo = MondoOntology(mondo_obo_path)
 
         # Use default categories if not provided
         if categories is None:
@@ -651,9 +744,15 @@ class ClinGenStreamer(HailDataStreamer):
         uncategorized = {"genes": set(), "diseases": set(), "mondo_ids": set()}
 
         for row in rows:
-            gene = row.gene_symbol if hasattr(row, 'gene_symbol') else row["gene_symbol"]
-            disease = row.disease_label if hasattr(row, 'disease_label') else row["disease_label"]
-            mondo_id = row.mondo_id if hasattr(row, 'mondo_id') else row["mondo_id"]
+            gene = (
+                row.gene_symbol if hasattr(row, "gene_symbol") else row["gene_symbol"]
+            )
+            disease = (
+                row.disease_label
+                if hasattr(row, "disease_label")
+                else row["disease_label"]
+            )
+            mondo_id = row.mondo_id if hasattr(row, "mondo_id") else row["mondo_id"]
 
             if not mondo_id:
                 uncategorized["genes"].add(gene)
@@ -665,7 +764,7 @@ class ClinGenStreamer(HailDataStreamer):
                 mondo_id = f"MONDO:{mondo_id}"
 
             # Get categories for this disease
-            matched_cats = mondo.categorize(mondo_id, categories)
+            matched_cats = onto.categorize(mondo_id, categories)
 
             if matched_cats:
                 for cat_id, cat_name in matched_cats:
@@ -686,7 +785,7 @@ class ClinGenStreamer(HailDataStreamer):
 
     def categorize_by_ontology_summary(
         self,
-        mondo_obo_path: str,
+        ontology: Union[str, MondoOntology],
         min_classification: Optional[str] = None,
         categories: Optional[Dict[str, str]] = None,
     ) -> pd.DataFrame:
@@ -695,37 +794,41 @@ class ClinGenStreamer(HailDataStreamer):
 
         Parameters
         ----------
-        mondo_obo_path : str
-            Path to the MONDO OBO file.
+        ontology : str or MondoOntology
+            Either a path to a MONDO OBO file or a pre-loaded MondoOntology
+            instance. See :meth:`categorize_by_ontology` for details.
         min_classification : str, optional
             Filter to minimum classification level.
         categories : dict, optional
-            Custom category mapping {MONDO_ID: category_name}.
+            Custom category mapping {term_id: category_name}.
 
         Returns
         -------
         pd.DataFrame
             Summary with columns: category, n_genes, n_diseases, sample_genes
         """
-        results = self.categorize_by_ontology(
-            mondo_obo_path, min_classification, categories
-        )
+        results = self.categorize_by_ontology(ontology, min_classification, categories)
 
         summary_data = []
-        for category, data in sorted(results.items(), key=lambda x: -len(x[1]["genes"])):
+        for category, data in sorted(
+            results.items(), key=lambda x: -len(x[1]["genes"])
+        ):
             genes = data["genes"]
-            summary_data.append({
-                "category": category,
-                "n_genes": len(genes),
-                "n_diseases": len(data["diseases"]),
-                "sample_genes": ", ".join(sorted(genes)[:10]) + ("..." if len(genes) > 10 else ""),
-            })
+            summary_data.append(
+                {
+                    "category": category,
+                    "n_genes": len(genes),
+                    "n_diseases": len(data["diseases"]),
+                    "sample_genes": ", ".join(sorted(genes)[:10])
+                    + ("..." if len(genes) > 10 else ""),
+                }
+            )
 
         return pd.DataFrame(summary_data)
 
     def get_genes_by_ontology_category(
         self,
-        mondo_obo_path: str,
+        ontology: Union[str, MondoOntology],
         category_id: str,
         min_classification: Optional[str] = None,
         as_set: bool = True,
@@ -735,10 +838,11 @@ class ClinGenStreamer(HailDataStreamer):
 
         Parameters
         ----------
-        mondo_obo_path : str
-            Path to the MONDO OBO file.
+        ontology : str or MondoOntology
+            Either a path to a MONDO OBO file or a pre-loaded MondoOntology
+            instance. See :meth:`categorize_by_ontology` for details.
         category_id : str
-            MONDO ID of the category (e.g., "MONDO:0004995" for cardiovascular).
+            Term ID of the category (e.g., ``"MONDO:0004995"`` for cardiovascular).
         min_classification : str, optional
             Filter to minimum classification level.
         as_set : bool
@@ -750,7 +854,25 @@ class ClinGenStreamer(HailDataStreamer):
         set or list
             Genes in the specified category.
         """
+        from hvantk.utils.obo_parser import BaseOboOntology
         from hvantk.utils.mondo_parser import MondoOntology
+
+        # Resolve ontology: string path -> MondoOntology (backward compat)
+        if isinstance(ontology, str):
+            onto = MondoOntology(ontology)
+        elif isinstance(ontology, MondoOntology):
+            onto = ontology
+        elif isinstance(ontology, BaseOboOntology):
+            raise TypeError(
+                "get_genes_by_ontology_category requires a MondoOntology "
+                "instance because ClinGen data uses MONDO disease IDs. "
+                "Pass a MondoOntology or a path to a MONDO OBO file instead."
+            )
+        else:
+            raise TypeError(
+                f"ontology must be a file path (str) or MondoOntology instance, "
+                f"got {type(ontology).__name__}"
+            )
 
         self._ensure_table_loaded()
         ht = self._table
@@ -761,11 +883,12 @@ class ClinGenStreamer(HailDataStreamer):
             min_classification = self._normalize_classification(min_classification)
             ht = self._apply_min_classification_filter(ht, min_classification)
 
-        # Load ontology
-        mondo = MondoOntology(mondo_obo_path)
+        # Normalize MONDO IDs: bare numeric IDs → prefixed form
+        if category_id.isdigit():
+            category_id = f"MONDO:{category_id}"
 
         # Get all descendants of the category (all diseases under this category)
-        category_diseases = mondo.get_descendants(category_id, include_self=True)
+        category_diseases = onto.get_descendants(category_id, include_self=True)
 
         # Collect genes from ClinGen data (can't select key fields directly)
         genes = set()
@@ -804,9 +927,7 @@ class ClinGenStreamer(HailDataStreamer):
 
                     if mondo_id in category_diseases:
                         genes.add(gene_symbol)
-                        full_results.append(
-                            (gene_symbol, pair.disease_label, mondo_id)
-                        )
+                        full_results.append((gene_symbol, pair.disease_label, mondo_id))
 
         if as_set:
             return genes
@@ -841,7 +962,9 @@ class ClinGenStreamer(HailDataStreamer):
         gceps = sorted(
             ht.aggregate(hl.agg.collect_as_set(ht.gene_curation_expert_panel))
         )
-        return {gcep: ht.filter(ht.gene_curation_expert_panel == gcep) for gcep in gceps}
+        return {
+            gcep: ht.filter(ht.gene_curation_expert_panel == gcep) for gcep in gceps
+        }
 
     def pivot_genes_by_classification(self) -> pd.DataFrame:
         """
@@ -1155,7 +1278,9 @@ class ClinGenStreamer(HailDataStreamer):
             self._filtered_cache[cache_key] = filtered
         return filtered
 
-    def _return_gene_symbols(self, ht: hl.Table, as_set: bool) -> Union[Set[str], hl.Table]:
+    def _return_gene_symbols(
+        self, ht: hl.Table, as_set: bool
+    ) -> Union[Set[str], hl.Table]:
         if not as_set:
             return ht
         return self._collect_set(ht, ht.gene_symbol)

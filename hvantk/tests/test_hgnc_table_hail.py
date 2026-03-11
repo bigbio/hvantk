@@ -207,7 +207,9 @@ class TestGeneMapper:
 
     def test_map_to_hgnc_from_symbol(self, mapper):
         """Test mapping gene symbols to HGNC IDs."""
-        result = mapper.map_to_hgnc(["BRCA1", "BRCA2", "UNKNOWN"], source_type="gene_symbol")
+        result = mapper.map_to_hgnc(
+            ["BRCA1", "BRCA2", "UNKNOWN"], source_type="gene_symbol"
+        )
 
         assert result["BRCA1"] == "HGNC:1100"
         assert result["BRCA2"] == "HGNC:1101"
@@ -288,11 +290,13 @@ class TestGeneMapper:
         import hail as hl
 
         # Create a simple table with Ensembl IDs
-        ht = hl.Table.parallelize([
-            {"ensembl_id": "ENSG00000012048"},
-            {"ensembl_id": "ENSG00000139618"},
-            {"ensembl_id": "ENSG00000000000"},  # Unknown
-        ]).key_by("ensembl_id")
+        ht = hl.Table.parallelize(
+            [
+                {"ensembl_id": "ENSG00000012048"},
+                {"ensembl_id": "ENSG00000139618"},
+                {"ensembl_id": "ENSG00000000000"},  # Unknown
+            ]
+        ).key_by("ensembl_id")
 
         # Annotate
         result = mapper.annotate_table(

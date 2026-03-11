@@ -186,7 +186,9 @@ def main(
             input_vcfs=stage_dir,
             output_mt=output_mt,
             sample_annotations=sample_annotations_path,
-            sample_annotations_delimiter=resolve_delimiter(sample_annotations_delimiter),
+            sample_annotations_delimiter=resolve_delimiter(
+                sample_annotations_delimiter
+            ),
             reference_genome=reference_genome,
             chromosomes=chrom_list,
             overwrite=overwrite,

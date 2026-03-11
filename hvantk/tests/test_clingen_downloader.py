@@ -27,7 +27,7 @@ class TestClinGenGeneDiseaseDataset:
         dataset = ClinGenGeneDiseaseDataset.from_date("2026-01-15")
         assert dataset.version_date == "2026-01-15"
         assert "2026-01-15" in dataset.file_name
-        assert "2026-01-15" in dataset.download_url
+        assert dataset.download_url  # URL should be set
 
     def test_from_date_invalid_format(self):
         """Test that invalid date format raises ValueError."""
@@ -97,32 +97,20 @@ class TestClinGenGeneDiseaseDataset:
 class TestGetAvailableVersions:
     """Tests for get_available_versions function."""
 
-    def test_get_available_versions_mocked(self):
-        """Test version parsing with mocked HTML response."""
-        mock_html = """
-        <html>
-        <body>
-        <a href="?file=Clingen-Gene-Disease-Summary-2026-01-15.csv">2026-01-15</a>
-        <a href="?file=Clingen-Gene-Disease-Summary-2026-01-01.csv">2026-01-01</a>
-        <a href="?file=Clingen-Gene-Disease-Summary-2025-12-15.csv">2025-12-15</a>
-        </body>
-        </html>
-        """
-
+    def test_get_available_versions_reachable(self):
+        """Test version check when endpoint is reachable."""
         with patch("urllib.request.urlopen") as mock_urlopen:
             mock_response = MagicMock()
-            mock_response.read.return_value = mock_html.encode("utf-8")
+            mock_response.status = 200
             mock_response.__enter__ = MagicMock(return_value=mock_response)
             mock_response.__exit__ = MagicMock(return_value=False)
             mock_urlopen.return_value = mock_response
 
             versions = get_available_versions()
 
-            assert len(versions) == 3
-            # Should be sorted newest first
-            assert versions[0] == "2026-01-15"
-            assert versions[1] == "2026-01-01"
-            assert versions[2] == "2025-12-15"
+            assert len(versions) == 1
+            # Should return today's date
+            assert len(versions[0].split("-")) == 3
 
     def test_get_available_versions_network_error(self):
         """Test handling of network errors."""
@@ -137,10 +125,10 @@ class TestGetAvailableVersions:
         with patch(
             "hvantk.datasets.clingen_datasets.get_available_versions"
         ) as mock_versions:
-            mock_versions.return_value = ["2026-01-15", "2026-01-01"]
+            mock_versions.return_value = ["2026-03-09"]
 
             latest = get_latest_version()
-            assert latest == "2026-01-15"
+            assert latest == "2026-03-09"
 
     def test_get_latest_version_empty(self):
         """Test get_latest_version when no versions available."""
@@ -162,13 +150,13 @@ class TestClinGenDownloaderCLI:
         with patch(
             "hvantk.datasets.clingen_datasets.get_available_versions"
         ) as mock_versions:
-            mock_versions.return_value = ["2026-01-15", "2026-01-01"]
+            mock_versions.return_value = ["2026-03-09"]
 
             result = runner.invoke(clingen_downloader, ["--list-versions"])
 
             assert result.exit_code == 0
-            assert "2026-01-15" in result.output
-            assert "2026-01-01" in result.output
+            assert "real-time" in result.output
+            assert "2026-03-09" in result.output
 
     def test_download_specific_version(self):
         """Test downloading a specific version."""
@@ -191,28 +179,23 @@ class TestClinGenDownloaderCLI:
                 mock_download.assert_called_once()
 
     def test_download_latest_version(self):
-        """Test downloading latest version."""
+        """Test downloading latest version (real-time snapshot)."""
         runner = CliRunner()
         with tempfile.TemporaryDirectory() as tmpdir:
             with patch(
-                "hvantk.datasets.clingen_datasets.get_available_versions"
-            ) as mock_versions:
-                mock_versions.return_value = ["2026-01-15"]
+                "hvantk.datasets.clingen_datasets.download_file"
+            ) as mock_download:
+                mock_download.return_value = os.path.join(
+                    tmpdir, "Clingen-Gene-Disease-Summary-2026-03-09.csv"
+                )
 
-                with patch(
-                    "hvantk.datasets.clingen_datasets.download_file"
-                ) as mock_download:
-                    mock_download.return_value = os.path.join(
-                        tmpdir, "Clingen-Gene-Disease-Summary-2026-01-15.csv"
-                    )
+                result = runner.invoke(
+                    clingen_downloader,
+                    ["--version", "latest", "--output-dir", tmpdir],
+                )
 
-                    result = runner.invoke(
-                        clingen_downloader,
-                        ["--version", "latest", "--output-dir", tmpdir],
-                    )
-
-                    assert result.exit_code == 0
-                    mock_download.assert_called_once()
+                assert result.exit_code == 0
+                mock_download.assert_called_once()
 
     def test_invalid_version_format(self):
         """Test error on invalid version format."""

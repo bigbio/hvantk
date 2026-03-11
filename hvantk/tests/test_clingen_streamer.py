@@ -54,6 +54,48 @@ def test_compute_stats(clingen_table_path):
     assert "Definitive" in stats["classification_counts"]
 
 
+def test_get_geneset_per_gcep(clingen_table_path):
+    streamer = ClinGenStreamer(clingen_table_path)
+    result = streamer.get_geneset_per_gcep()
+    # Test data has 4 distinct GCEPs
+    assert len(result) >= 3
+    # "Hereditary Cancer GCEP" should be shortened to "Hereditary Cancer"
+    assert "Hereditary Cancer" in result
+    assert "TP53" in result["Hereditary Cancer"]
+    assert "PTEN" in result["Hereditary Cancer"]
+    assert "CDH1" in result["Hereditary Cancer"]
+    # Breast/Ovarian panel
+    hereditary_bop = "Hereditary Breast, Ovarian and Pancreatic Cancer"
+    assert hereditary_bop in result
+    assert "BRCA1" in result[hereditary_bop]
+    assert "BRCA2" in result[hereditary_bop]
+
+
+def test_get_geneset_per_gcep_min_genes(clingen_table_path):
+    streamer = ClinGenStreamer(clingen_table_path)
+    # Require at least 3 genes per GCEP — should filter out small panels
+    result = streamer.get_geneset_per_gcep(min_genes=3)
+    for genes in result.values():
+        assert len(genes) >= 3
+
+
+def test_get_geneset_per_gcep_min_classification(clingen_table_path):
+    streamer = ClinGenStreamer(clingen_table_path)
+    result_all = streamer.get_geneset_per_gcep()
+    result_definitive = streamer.get_geneset_per_gcep(min_classification="Definitive")
+    # Filtering to Definitive should yield fewer or equal genes
+    for gcep in result_definitive:
+        if gcep in result_all:
+            assert result_definitive[gcep] <= result_all[gcep]
+
+
+def test_get_geneset_per_gcep_shorten_names_false(clingen_table_path):
+    streamer = ClinGenStreamer(clingen_table_path)
+    result = streamer.get_geneset_per_gcep(shorten_names=False)
+    # Should contain the full GCEP name
+    assert any("GCEP" in name for name in result)
+
+
 def test_aggregate_by_disease_category(clingen_table_path):
     streamer = ClinGenStreamer(clingen_table_path)
     categories = {"cancer": ["cancer"]}

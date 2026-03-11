@@ -39,13 +39,11 @@ hvantk clinvar-downloader --genome-build GRCh37 --verify-md5
 ### ClinGen
 
 ```bash
-# Download latest ClinGen Gene-Disease Validity CSV
+# Download today's ClinGen Gene-Disease Validity snapshot
+# Output: Clingen-Gene-Disease-Summary-<YYYY-MM-DD>.csv
 hvantk clingen-downloader --output-dir data/clingen
 
-# Download a specific version
-hvantk clingen-downloader --version 2026-01-15 --output-dir data/clingen
-
-# List available versions
+# Check download availability
 hvantk clingen-downloader --list-versions
 ```
 
@@ -81,25 +79,33 @@ Comprehensive functional prediction scores for human missense variants.
 **Download**: Requires academic license acceptance. Download from the project page:
 https://sites.google.com/site/jpopgen/dbNSFP
 
-**Pre-processing**: The downloaded file is standard gzip (`.gz`), not BGZF. Convert before import or use the auto-convert flag:
+**Pre-processing**: dbNSFP is distributed as per-chromosome `.gz` files (standard gzip, not BGZF). The builder expects a **single combined file**, so concatenate and BGZF-compress first:
 
 ```bash
-# Option 1: Pre-convert to BGZF
-hvantk convert-bgz dbNSFP4.9a_variant.chr1.gz
-
-# Option 2: Auto-convert during build
-hvantk mktable dbnsfp \
-  --raw-input dbNSFP4.9a_variant.chr1.gz \
-  --output-ht dbnsfp.ht \
-  --auto-convert-bgz
+# Concatenate per-chromosome files into a single BGZF file
+# (header is taken from chr1; remaining files skip the header line)
+head -1 <(zcat dbNSFP4.9a_variant.chr1.gz) > /tmp/dbnsfp_header.txt
+(cat /tmp/dbnsfp_header.txt && for f in dbNSFP4.9a_variant.chr*.gz; do zcat "$f" | tail -n +2; done) \
+  | bgzip -@ 4 > dbNSFP4.9a_variant.bgz
 ```
 
 **Build**:
 
 ```bash
+# Option 1: Pre-converted BGZF (recommended)
 hvantk mktable dbnsfp \
-  --raw-input dbNSFP4.9a_variant.chr1.bgz \
+  --raw-input dbNSFP4.9a_variant.bgz \
   --output-ht dbnsfp.ht
+
+# Option 2: Auto-convert during build (requires a single already-merged .gz)
+# This only works if you have already concatenated the per-chromosome files
+# into a single gzip file (e.g., dbNSFP4.9a_variant.gz).
+# --auto-convert-bgz re-compresses the single .gz as BGZF; it does NOT
+# assemble per-chromosome files.
+hvantk mktable dbnsfp \
+  --raw-input dbNSFP4.9a_variant.gz \
+  --output-ht dbnsfp.ht \
+  --auto-convert-bgz
 ```
 
 ### gnomAD constraint metrics (~50 MB for gene-level)

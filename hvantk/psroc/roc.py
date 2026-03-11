@@ -73,10 +73,12 @@ class ROCResult:
     specificity_at_optimal: float
     n_variants_used: int
     missingness: ScoreMissingness
+    auc_ci_lower: Optional[float] = None
+    auc_ci_upper: Optional[float] = None
 
     def to_dict(self) -> Dict:
         """Convert to dictionary for JSON serialization (excludes arrays)."""
-        return {
+        d = {
             "score_name": self.score_name,
             "auc": float(self.auc),
             "optimal_threshold": float(self.optimal_threshold),
@@ -85,6 +87,10 @@ class ROCResult:
             "n_variants_used": self.n_variants_used,
             "missingness": self.missingness.to_dict(),
         }
+        if self.auc_ci_lower is not None:
+            d["auc_ci_lower"] = float(self.auc_ci_lower)
+            d["auc_ci_upper"] = float(self.auc_ci_upper)
+        return d
 
 
 def compute_score_missingness(
@@ -106,7 +112,15 @@ def compute_score_missingness(
         ValueError: If values array is empty.
     """
     if len(values) == 0:
-        raise ValueError(f"Cannot compute missingness for empty array: {score_name}")
+        return ScoreMissingness(
+            score_name=score_name,
+            n_total=0,
+            n_present=0,
+            n_missing=0,
+            missingness_rate=1.0,
+            included_in_analysis=False,
+            exclusion_reason="no variants available for this score",
+        )
 
     n_total = len(values)
     n_missing = int(np.sum(np.isnan(values.astype(float))))
@@ -224,12 +238,80 @@ def find_optimal_threshold(
     return float(optimal_threshold), float(sensitivity), float(specificity)
 
 
+def bootstrap_auc_ci(
+    labels: np.ndarray,
+    scores: np.ndarray,
+    n_resamples: int = 2000,
+    confidence_level: float = 0.95,
+    seed: int = 42,
+) -> Tuple[float, float]:
+    """Compute bootstrap confidence interval for AUC.
+
+    Uses stratified resampling: resamples within each class independently
+    so that both classes are always represented, eliminating degenerate
+    resamples. AUC is computed via sklearn's ``roc_auc_score`` on each
+    resample.
+
+    Args:
+        labels: Binary labels (0/1).
+        scores: Prediction scores (same length as labels).
+        n_resamples: Number of bootstrap resamples (default: 2000).
+        confidence_level: Confidence level for the interval (default: 0.95).
+        seed: Random seed for reproducibility (default: 42).
+
+    Returns:
+        Tuple of (ci_lower, ci_upper).
+
+    Raises:
+        ValueError: If inputs are invalid (mismatched lengths, single class,
+            bad n_resamples or confidence_level).
+    """
+    labels = np.asarray(labels).ravel()
+    scores = np.asarray(scores).ravel()
+
+    if len(labels) != len(scores):
+        raise ValueError(
+            f"labels and scores must have same length, "
+            f"got {len(labels)} and {len(scores)}"
+        )
+    if not isinstance(n_resamples, int) or n_resamples < 1:
+        raise ValueError("n_resamples must be an integer > 0")
+    if not (0 < confidence_level < 1):
+        raise ValueError("confidence_level must be between 0 and 1 (exclusive)")
+
+    unique = np.unique(labels)
+    if len(unique) < 2 or 0 not in unique or 1 not in unique:
+        raise ValueError("labels must contain both classes 0 and 1")
+
+    rng = np.random.default_rng(seed)
+
+    idx_pos = np.where(labels == 1)[0]
+    idx_neg = np.where(labels == 0)[0]
+    n_pos = len(idx_pos)
+    n_neg = len(idx_neg)
+
+    aucs = np.empty(n_resamples)
+    for i in range(n_resamples):
+        boot_pos = idx_pos[rng.integers(0, n_pos, size=n_pos)]
+        boot_neg = idx_neg[rng.integers(0, n_neg, size=n_neg)]
+        boot_idx = np.concatenate([boot_pos, boot_neg])
+        aucs[i] = roc_auc_score(labels[boot_idx], scores[boot_idx])
+
+    alpha = 1 - confidence_level
+    ci_lower = float(np.percentile(aucs, 100 * alpha / 2))
+    ci_upper = float(np.percentile(aucs, 100 * (1 - alpha / 2)))
+
+    return (ci_lower, ci_upper)
+
+
 def compute_roc_metrics(
     labels: np.ndarray,
     scores: Dict[str, np.ndarray],
     max_missingness: float = 0.3,
     pos_label: int = 1,
     threshold_method: str = "youden",
+    n_bootstrap: int = 0,
+    confidence_level: float = 0.95,
 ) -> Dict[str, ROCResult]:
     """Compute ROC metrics for multiple prediction scores.
 
@@ -243,6 +325,9 @@ def compute_roc_metrics(
         max_missingness: Maximum allowed missingness rate per score (default: 0.3).
         pos_label: Label value considered positive (default: 1).
         threshold_method: Method for finding optimal threshold (default: "youden").
+        n_bootstrap: Number of bootstrap resamples for AUC confidence intervals.
+            Set to 0 to disable (default: 0).
+        confidence_level: Confidence level for bootstrap CI (default: 0.95).
 
     Returns:
         Dict mapping score name to ROCResult. Only scores that pass the
@@ -311,6 +396,17 @@ def compute_roc_metrics(
             fpr, tpr, thresholds, method=threshold_method
         )
 
+        # Bootstrap CI for AUC
+        auc_ci_lower = None
+        auc_ci_upper = None
+        if n_bootstrap > 0:
+            auc_ci_lower, auc_ci_upper = bootstrap_auc_ci(
+                binary_labels,
+                valid_scores,
+                n_resamples=n_bootstrap,
+                confidence_level=confidence_level,
+            )
+
         results[score_name] = ROCResult(
             score_name=score_name,
             fpr=fpr,
@@ -322,13 +418,18 @@ def compute_roc_metrics(
             specificity_at_optimal=specificity,
             n_variants_used=n_variants_used,
             missingness=missingness,
+            auc_ci_lower=auc_ci_lower,
+            auc_ci_upper=auc_ci_upper,
         )
 
     if len(results) == 0 and len(scores) > 0:
+        import logging as _logging
+
         excluded_scores = list(scores.keys())
-        raise ValueError(
-            f"All scores were excluded due to high missingness: {excluded_scores}. "
-            f"Consider increasing --max-missingness threshold."
+        _logging.getLogger(__name__).warning(
+            "All scores were excluded due to high missingness: %s. "
+            "Consider increasing --max-missingness threshold.",
+            excluded_scores,
         )
 
     return results

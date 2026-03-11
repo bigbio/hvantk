@@ -37,7 +37,6 @@ Annotate variant table with features from multiple sources.
 
 
 def check_variant_tb(t: hl.Table, gene_col: str):
-
     expected_fields = ["locus", "alleles", gene_col]
     if all([f in t.row for f in expected_fields]):
         pass
@@ -134,7 +133,6 @@ def main(args):
 
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser()
 
     parser.add_argument(

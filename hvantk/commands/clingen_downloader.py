@@ -2,13 +2,10 @@
 CLI command for downloading ClinGen Gene-Disease Validity data.
 
 Examples:
-    # Download latest version
+    # Download today's snapshot
     hvantk clingen-downloader --output-dir data/clingen
 
-    # Download specific version
-    hvantk clingen-downloader --version 2026-01-15 --output-dir data/clingen
-
-    # List available versions
+    # Check download availability
     hvantk clingen-downloader --list-versions
 """
 
@@ -22,19 +19,19 @@ logger = logging.getLogger(__name__)
 
 
 def _print_available_versions():
-    """Print available ClinGen Gene-Disease dataset versions."""
+    """Print ClinGen Gene-Disease dataset availability info."""
     from hvantk.datasets.clingen_datasets import get_available_versions
 
     versions = get_available_versions()
     if not versions:
-        click.echo("Unable to retrieve available versions. Check network connection.")
+        click.echo("Unable to reach ClinGen endpoint. Check network connection.")
         return
 
-    click.echo("Available ClinGen Gene-Disease Validity versions:")
-    for version in versions[:20]:  # Show most recent 20
-        click.echo(f"  {version}")
-    if len(versions) > 20:
-        click.echo(f"  ... and {len(versions) - 20} more")
+    click.echo("ClinGen Gene-Disease Validity download is available.")
+    click.echo(
+        "Note: ClinGen now provides real-time snapshots (no versioned archives)."
+    )
+    click.echo(f"  Download will be labeled with today's date: {versions[0]}")
 
 
 @click.command(
@@ -46,7 +43,8 @@ def _print_available_versions():
     type=str,
     default="latest",
     show_default=True,
-    help="Version date (YYYY-MM-DD) or 'latest' for most recent.",
+    help="'latest' to download today's snapshot (only option; "
+    "ClinGen does not provide archival versions).",
 )
 @click.option(
     "--output-dir",
@@ -63,7 +61,7 @@ def _print_available_versions():
 @click.option(
     "--list-versions",
     is_flag=True,
-    help="List available dataset versions and exit.",
+    help="Check download availability and show the current snapshot date.",
 )
 @click.pass_context
 def clingen_downloader(ctx, version_date, output_dir, overwrite, list_versions):
@@ -78,15 +76,11 @@ def clingen_downloader(ctx, version_date, output_dir, overwrite, list_versions):
 
     Examples:
 
-        # Download the latest version
+        # Download today's snapshot
 
         hvantk clingen-downloader --output-dir data/clingen
 
-        # Download a specific version by date
-
-        hvantk clingen-downloader --version 2026-01-15 --output-dir data/clingen
-
-        # List available versions
+        # Check download availability
 
         hvantk clingen-downloader --list-versions
     """

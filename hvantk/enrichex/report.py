@@ -271,7 +271,9 @@ def _create_burden_section(
         if effect_col == "odds_ratio":
             if pd.isna(effect_value):
                 beta = row.get("beta")
-                effect_value = math.exp(beta) if beta is not None and not pd.isna(beta) else beta
+                effect_value = (
+                    math.exp(beta) if beta is not None and not pd.isna(beta) else beta
+                )
         table_rows.append(
             {
                 "gene_set_name": row.get("gene_set_name"),

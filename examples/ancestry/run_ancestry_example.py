@@ -210,27 +210,21 @@ def main(output_dir: str = "./examples/ancestry/results") -> int:
         min_af=0.05,
         max_af=0.95,
         min_call_rate=0.95,
-
         # Skip LD pruning for synthetic data (already independent)
         skip_ld_pruning=True,
-
         # PCA settings
         n_pcs=15,
         n_pcs_classify=10,
-
         # Classification
         n_estimators=100,
         min_prob=0.70,  # Lower threshold for more assignments
         random_seed=42,
-
         # Validation
         validate_model=True,
         n_cv_folds=5,
         min_samples_per_pop=10,
-
         # Merge settings
         min_shared_variants=100,
-
         # Checkpointing (optional, for large datasets)
         checkpoint_path=str(output_path / "checkpoints"),
         overwrite_checkpoints=True,
@@ -295,7 +289,9 @@ def main(output_dir: str = "./examples/ancestry/results") -> int:
 
     # Ancestry distribution
     print("\n  Predicted ancestry distribution (query samples):")
-    for ancestry, count in query_predictions["predicted_ancestry"].value_counts().items():
+    for ancestry, count in (
+        query_predictions["predicted_ancestry"].value_counts().items()
+    ):
         pct = 100 * count / len(query_predictions)
         print(f"    {ancestry}: {count} ({pct:.1f}%)")
 
@@ -313,7 +309,9 @@ def main(output_dir: str = "./examples/ancestry/results") -> int:
     stats = result.pipeline_stats
     print("\n  Pipeline statistics:")
     print(f"    Shared variants: {stats['n_shared_variants']}")
-    print(f"    Variants after filtering: {stats.get('n_variants_after_filter', 'N/A')}")
+    print(
+        f"    Variants after filtering: {stats.get('n_variants_after_filter', 'N/A')}"
+    )
     print(f"    Training samples: {stats['n_training_samples']}")
     print(f"    Populations: {', '.join(stats['populations'])}")
 
@@ -338,7 +336,9 @@ def main(output_dir: str = "./examples/ancestry/results") -> int:
         correct = (assigned["predicted_ancestry"] == assigned["true_ancestry"]).sum()
         inference_accuracy = correct / len(assigned)
         print(f"\n  Inference accuracy (assigned samples): {inference_accuracy:.2%}")
-        print(f"  Samples assigned: {len(assigned)}/{len(query_pred)} ({100*len(assigned)/len(query_pred):.1f}%)")
+        print(
+            f"  Samples assigned: {len(assigned)}/{len(query_pred)} ({100*len(assigned)/len(query_pred):.1f}%)"
+        )
 
         # Per-population accuracy
         print("\n  Per-population accuracy:")
@@ -384,6 +384,7 @@ def main(output_dir: str = "./examples/ancestry/results") -> int:
     fig.savefig(pca_path, dpi=150, bbox_inches="tight")
     print(f"  PCA scatter plot: {pca_path}")
     import matplotlib.pyplot as plt
+
     plt.close(fig)
 
     # PCA scatter plot (PC1 vs PC3)

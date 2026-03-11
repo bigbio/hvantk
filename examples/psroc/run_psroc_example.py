@@ -29,6 +29,66 @@ Output:
 import argparse
 import sys
 from pathlib import Path
+from typing import Tuple
+
+
+def build_hail_tables(
+    clinvar_tsv: str, dbnsfp_tsv: str, output_dir: str
+) -> Tuple[str, str]:
+    """Build ClinVar and dbNSFP Hail Tables from synthetic flat TSV files.
+
+    The synthetic TSVs have flat columns (chr, pos, ref, alt, ...), but the
+    PSROC pipeline expects ClinVar data with an ``info`` struct (matching
+    VCF import schema) and dbNSFP keyed by ``(locus, alleles)``.
+
+    Returns:
+        Tuple of (clinvar_ht_path, dbnsfp_ht_path).
+    """
+    import hail as hl
+
+    ht_dir = Path(output_dir)
+    ht_dir.mkdir(parents=True, exist_ok=True)
+
+    clinvar_ht_path = str(ht_dir / "clinvar.ht")
+    dbnsfp_ht_path = str(ht_dir / "dbnsfp.ht")
+
+    # --- ClinVar table ---
+    # Import flat TSV and reshape to match VCF-imported schema (info struct)
+    ht = hl.import_table(clinvar_tsv, impute=True, types={"pos": hl.tint32})
+    ht = ht.annotate(
+        locus=hl.locus(ht.chr, ht.pos, reference_genome="GRCh38"),
+        alleles=hl.array([ht.ref, ht.alt]),
+    )
+    # Nest clinical fields under info struct to match VCF import schema
+    ht = ht.annotate(
+        info=hl.struct(
+            CLNSIG=ht.CLNSIG,
+            CLNREVSTAT=ht.CLNREVSTAT,
+            GENEINFO=ht.GENEINFO,
+        )
+    )
+    ht = ht.key_by("locus", "alleles")
+    ht = ht.select("info")
+    ht.write(clinvar_ht_path, overwrite=True)
+    print(f"  ClinVar HT written: {clinvar_ht_path} ({ht.count()} variants)")
+
+    # --- dbNSFP table ---
+    ht = hl.import_table(
+        dbnsfp_tsv,
+        impute=True,
+        missing="",
+        types={"pos": hl.tint32},
+    )
+    ht = ht.annotate(
+        locus=hl.locus(ht.chr, ht.pos, reference_genome="GRCh38"),
+        alleles=hl.array([ht.ref, ht.alt]),
+    )
+    ht = ht.key_by("locus", "alleles")
+    ht = ht.drop("chr", "pos", "ref", "alt")
+    ht.write(dbnsfp_ht_path, overwrite=True)
+    print(f"  dbNSFP HT written: {dbnsfp_ht_path} ({ht.count()} variants)")
+
+    return clinvar_ht_path, dbnsfp_ht_path
 
 
 def main(output_dir: str = "/tmp/psroc_example") -> int:
@@ -48,7 +108,7 @@ def main(output_dir: str = "/tmp/psroc_example") -> int:
 
     if not clinvar_tsv.exists() or not dbnsfp_tsv.exists():
         print("ERROR: Synthetic test data not found.")
-        print("Please run: python scripts/generate_psroc_testdata.py")
+        print(f"Expected at: {testdata_dir}")
         return 1
 
     print(f"Test data directory: {testdata_dir}")
@@ -68,11 +128,6 @@ def main(output_dir: str = "/tmp/psroc_example") -> int:
     # Initialize Hail
     print("Initializing Hail...")
     init_hail(quiet=True)
-
-    # Import the data generation module
-    scripts_dir = repo_root / "scripts"
-    sys.path.insert(0, str(scripts_dir))
-    from generate_psroc_testdata import build_hail_tables
 
     # Build Hail Tables from TSV files
     print()

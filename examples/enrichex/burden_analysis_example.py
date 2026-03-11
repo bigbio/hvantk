@@ -335,7 +335,8 @@ def main():
     logger.info("INTERPRETATION GUIDE")
     logger.info("=" * 60)
 
-    logger.info("""
+    logger.info(
+        """
 Binary Phenotype (Case/Control):
 - Odds Ratio (OR): Effect size
   - OR > 1: Cases have more burden than controls (risk factor)
@@ -372,13 +373,15 @@ Next Steps:
 3. Test different variant filters (AF, CADD thresholds)
 4. Perform stratified analyses (by sex, age, ancestry)
 5. Combine with expression data for functional validation
-    """)
+    """
+    )
 
     logger.info("\n" + "=" * 60)
     logger.info("ALTERNATIVE GENOTYPE AGGREGATION METHODS")
     logger.info("=" * 60)
 
-    logger.info("""
+    logger.info(
+        """
 You can test different genetic models by changing --genotype-aggregation:
 
 1. Heterozygous (default): --genotype-aggregation hets
@@ -399,13 +402,15 @@ You can test different genetic models by changing --genotype-aggregation:
 
 Example:
     hvantk enrichex burden ... --genotype-aggregation chets
-    """)
+    """
+    )
 
     logger.info("\n" + "=" * 60)
     logger.info("VARIANT FILTERING STRATEGIES")
     logger.info("=" * 60)
 
-    logger.info("""
+    logger.info(
+        """
 Conservative (high confidence):
     --max-af 0.0001 --min-cadd 30 --consequences frameshift_variant,stop_gained
     Use for: Rare disease studies, high-penetrance variants
@@ -417,7 +422,8 @@ Moderate (balanced):
 Permissive (exploratory):
     --max-af 0.01 --min-cadd 20 --consequences missense_variant,synonymous_variant
     Use for: Exploratory analyses, large cohorts
-    """)
+    """
+    )
 
     logger.info("\n" + "=" * 60)
     logger.info("Analysis complete!")
@@ -427,7 +433,8 @@ Permissive (exploratory):
     logger.info(f"  - Binary results: {binary_results_path}")
     logger.info(f"  - Continuous results: {continuous_results_path}")
 
-    logger.info("""
+    logger.info(
+        """
 \nTo run with your own data:
 
 # Python API:
@@ -447,7 +454,8 @@ hvantk enrichex burden \\
   --min-cadd 25 \\
   --covariates PC1,PC2,PC3,age,sex \\
   -o results.tsv
-    """)
+    """
+    )
 
 
 if __name__ == "__main__":

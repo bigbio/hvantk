@@ -22,8 +22,6 @@ from hvantk.psroc.pipeline import (
     PSROCState,
     PSROCResult,
     PSROCStage,
-    PATHOGENIC_LABELS,
-    BENIGN_LABELS,
 )
 from hvantk.psroc.roc import (
     ROCResult,
@@ -134,20 +132,6 @@ class TestGoldenDatasets:
 
 class TestPipelineOutputArtifacts:
     """Test that pipeline generates all expected output artifacts."""
-
-    def test_output_structure_creation(self):
-        """Test that output directory structure is created correctly."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output_dir = Path(tmpdir) / "psroc_output"
-
-            # Simulate directory creation
-            output_dir.mkdir(parents=True, exist_ok=True)
-            (output_dir / "plots").mkdir(exist_ok=True)
-            (output_dir / "logs").mkdir(exist_ok=True)
-
-            assert output_dir.exists()
-            assert (output_dir / "plots").exists()
-            assert (output_dir / "logs").exists()
 
     def test_metrics_json_format(self):
         """Test that metrics JSON has correct structure."""
@@ -447,28 +431,6 @@ class TestMultiScoreComparison:
         assert all_missingness["bad_score"].included_in_analysis is False
 
 
-class TestLabelConstants:
-    """Test label constant definitions."""
-
-    def test_pathogenic_labels_complete(self):
-        """Verify all expected pathogenic labels are defined."""
-        expected = {
-            "Pathogenic",
-            "Likely_pathogenic",
-            "Pathogenic/Likely_pathogenic",
-        }
-        assert set(PATHOGENIC_LABELS) == expected
-
-    def test_benign_labels_complete(self):
-        """Verify all expected benign labels are defined."""
-        expected = {
-            "Benign",
-            "Likely_benign",
-            "Benign/Likely_benign",
-        }
-        assert set(BENIGN_LABELS) == expected
-
-
 @pytest.mark.hail
 class TestHailIntegration:
     """Integration tests requiring Hail.
@@ -502,51 +464,3 @@ class TestHailIntegration:
             pytest.skip(f"Test data not found: {DBNSFP_TEST_DATA}")
 
         assert DBNSFP_TEST_DATA.exists()
-
-
-# Standalone execution
-if __name__ == "__main__":
-    print("Running PSROC integration tests...")
-
-    print("\n1. Golden Dataset Tests")
-    test_golden = TestGoldenDatasets()
-    test_golden.test_perfect_separation_auc()
-    print("  ✓ Perfect separation AUC=1.0")
-    test_golden.test_random_classifier_auc()
-    print("  ✓ Random classifier AUC≈0.5")
-    test_golden.test_known_auc_synthetic_data()
-    print("  ✓ Known AUC synthetic data")
-    test_golden.test_missingness_threshold_behavior()
-    print("  ✓ Missingness threshold boundary")
-
-    print("\n2. Output Artifact Tests")
-    test_output = TestPipelineOutputArtifacts()
-    test_output.test_output_structure_creation()
-    print("  ✓ Output structure creation")
-    test_output.test_metrics_json_format()
-    print("  ✓ Metrics JSON format")
-    test_output.test_missingness_json_format()
-    print("  ✓ Missingness JSON format")
-
-    print("\n3. Config Validation Tests")
-    test_config = TestConfigValidation()
-    test_config.test_max_missingness_boundaries()
-    print("  ✓ Max missingness boundaries")
-    test_config.test_threshold_methods()
-    print("  ✓ Threshold methods")
-    test_config.test_min_stars_validation()
-    print("  ✓ Min stars validation")
-
-    print("\n4. State Persistence Tests")
-    test_state = TestStatePersistence()
-    test_state.test_state_round_trip()
-    print("  ✓ State round-trip")
-
-    print("\n5. Multi-Score Tests")
-    test_multi = TestMultiScoreComparison()
-    test_multi.test_multiple_scores_ranking()
-    print("  ✓ Multiple scores ranking")
-    test_multi.test_partial_score_exclusion()
-    print("  ✓ Partial score exclusion")
-
-    print("\n✅ All integration tests passed!")

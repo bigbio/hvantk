@@ -7,6 +7,7 @@ from hvantk.core.config import CONTEXT_SETTINGS
 from hvantk.commands.ucsc_downloader import ucsc_downloader
 from hvantk.commands.expression_atlas_downloader import download_experiments
 from hvantk.commands.clingen_downloader import clingen_downloader
+from hvantk.commands.clingen_genesets_cli import clingen_genesets_cmd
 from hvantk.commands.hgnc_downloader import hgnc_downloader
 from hvantk.commands.clinvar_downloader import clinvar_downloader
 from hvantk.commands.make_table_cli import mktable_group
@@ -81,6 +82,7 @@ def cli(verbose, log_file):
 cli.add_command(ucsc_downloader)
 cli.add_command(download_experiments)
 cli.add_command(clingen_downloader)
+cli.add_command(clingen_genesets_cmd)  # ClinGen gene set extraction
 cli.add_command(hgnc_downloader)
 cli.add_command(clinvar_downloader)
 cli.add_command(mktable_group)  # per-table builder
@@ -101,7 +103,11 @@ try:
 
     cli.add_command(convert_bgz_cmd)  # GZ → BGZF conversion utility
 except ImportError as e:
-    logger.debug("Could not load convert-bgz command (%s): %s", "hvantk.commands.convert_bgz_cli", e)
+    logger.debug(
+        "Could not load convert-bgz command (%s): %s",
+        "hvantk.commands.convert_bgz_cli",
+        e,
+    )
 
 
 def main():

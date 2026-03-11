@@ -2,7 +2,11 @@ import pytest
 import shutil
 from pathlib import Path
 
-from hvantk.hgc.converters import convert_vds_to_mt, convert_mt_to_multi_sample_vcf, GNOMAD_AVAILABLE
+from hvantk.hgc.converters import (
+    convert_vds_to_mt,
+    convert_mt_to_multi_sample_vcf,
+    GNOMAD_AVAILABLE,
+)
 from hvantk.data.file_utils import compress_files, decompress_files
 
 TESTS_DIR = Path(__file__).parent.parent / "testdata" / "hgc_data"

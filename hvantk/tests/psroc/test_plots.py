@@ -26,6 +26,7 @@ from hvantk.psroc.plots import (
     plot_auc_comparison,
     plot_missingness_summary,
     plot_psroc_summary_dashboard,
+    plot_collection_heatmap,
 )
 
 
@@ -313,6 +314,136 @@ class TestPlotPSROCSummaryDashboard:
 
             assert (Path(tmpdir) / "dashboard.png").exists()
             plt.close(fig)
+
+
+@pytest.fixture
+def sample_collection_metrics():
+    """Create sample collection metrics (multi-panel) for testing."""
+    labels = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1])
+    scores_a = {
+        "CADD_phred": np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]),
+        "REVEL_score": np.array([0.2, 0.3, 0.5, 0.6, 0.7, 0.4, 0.5, 0.8, 0.9, 0.95]),
+    }
+    scores_b = {
+        "CADD_phred": np.array([0.3, 0.2, 0.4, 0.5, 0.45, 0.55, 0.65, 0.75, 0.85, 0.9]),
+        "REVEL_score": np.array([0.1, 0.15, 0.2, 0.3, 0.35, 0.7, 0.8, 0.85, 0.9, 0.95]),
+    }
+    scores_c = {
+        "CADD_phred": np.array([0.5, 0.4, 0.6, 0.5, 0.55, 0.45, 0.5, 0.55, 0.6, 0.5]),
+        "REVEL_score": np.array([0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.7, 0.75, 0.8]),
+    }
+    return {
+        "Hereditary Cancer": compute_roc_metrics(labels, scores_a),
+        "Cardiomyopathy": compute_roc_metrics(labels, scores_b),
+        "Epilepsy": compute_roc_metrics(labels, scores_c),
+    }
+
+
+class TestPlotCollectionHeatmap:
+    """Test plot_collection_heatmap function."""
+
+    def test_basic_heatmap(self, sample_collection_metrics):
+        """Test basic heatmap creation."""
+        fig = plot_collection_heatmap(sample_collection_metrics)
+
+        assert fig is not None
+        assert isinstance(fig, plt.Figure)
+        plt.close(fig)
+
+    def test_heatmap_without_ci(self, sample_collection_metrics):
+        """Test heatmap without CI annotations."""
+        fig = plot_collection_heatmap(sample_collection_metrics, show_ci=False)
+
+        assert fig is not None
+        plt.close(fig)
+
+    def test_heatmap_without_values(self, sample_collection_metrics):
+        """Test heatmap without value annotations."""
+        fig = plot_collection_heatmap(sample_collection_metrics, show_values=False)
+
+        assert fig is not None
+        plt.close(fig)
+
+    def test_heatmap_sort_by_name(self, sample_collection_metrics):
+        """Test heatmap with scores sorted alphabetically."""
+        fig = plot_collection_heatmap(sample_collection_metrics, sort_scores_by="name")
+
+        assert fig is not None
+        plt.close(fig)
+
+    def test_heatmap_custom_figsize(self, sample_collection_metrics):
+        """Test heatmap with custom figure size."""
+        fig = plot_collection_heatmap(sample_collection_metrics, figsize=(14, 6))
+
+        assert fig is not None
+        plt.close(fig)
+
+    def test_save_to_file(self, sample_collection_metrics):
+        """Test saving heatmap to file."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_path = Path(tmpdir) / "heatmap"
+            fig = plot_collection_heatmap(
+                sample_collection_metrics, output_path=output_path
+            )
+
+            assert (Path(tmpdir) / "heatmap.png").exists()
+            plt.close(fig)
+
+    def test_empty_collection_raises_error(self):
+        """Test that empty collection raises ValueError."""
+        with pytest.raises(ValueError, match="No collection metrics"):
+            plot_collection_heatmap({})
+
+    def test_no_scores_raises_error(self):
+        """Test that collection with no scores raises ValueError."""
+        with pytest.raises(ValueError, match="No scores found"):
+            plot_collection_heatmap({"group_a": {}, "group_b": {}})
+
+    def test_missing_score_in_group(self):
+        """Test heatmap where a score is missing from one group."""
+        labels = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1])
+        scores_full = {
+            "CADD_phred": np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]),
+            "REVEL_score": np.array(
+                [0.2, 0.3, 0.5, 0.6, 0.7, 0.4, 0.5, 0.8, 0.9, 0.95]
+            ),
+        }
+        scores_partial = {
+            "CADD_phred": np.array(
+                [0.3, 0.2, 0.4, 0.5, 0.45, 0.55, 0.65, 0.75, 0.85, 0.9]
+            ),
+        }
+
+        collection = {
+            "Panel_A": compute_roc_metrics(labels, scores_full),
+            "Panel_B": compute_roc_metrics(labels, scores_partial),
+        }
+
+        fig = plot_collection_heatmap(collection)
+        assert fig is not None
+        plt.close(fig)
+
+    def test_with_bootstrap_ci(self):
+        """Test heatmap with bootstrap CI values populated."""
+        labels = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1])
+        scores = {
+            "score_a": np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]),
+        }
+
+        collection = {
+            "Group_1": compute_roc_metrics(labels, scores, n_bootstrap=100),
+            "Group_2": compute_roc_metrics(labels, scores, n_bootstrap=100),
+        }
+
+        # Verify CI values exist
+        for metrics in collection.values():
+            for roc in metrics.values():
+                assert roc.auc_ci_lower is not None
+                assert roc.auc_ci_upper is not None
+
+        fig = plot_collection_heatmap(collection, show_ci=True)
+        assert fig is not None
+        plt.close(fig)
 
 
 class TestPlotIntegration:

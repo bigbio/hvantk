@@ -21,7 +21,8 @@ TEST_DIR = Path(__file__).parent / "testdata"
 TMP_DIR = Path(__file__).parent / "tmp" / "genome_builders"
 
 # Minimal VCF header + variants for chr1 (GRCh38 coordinates)
-_VCF_TEMPLATE = textwrap.dedent("""\
+_VCF_TEMPLATE = textwrap.dedent(
+    """\
     ##fileformat=VCFv4.1
     ##FILTER=<ID=PASS,Description="All filters passed">
     ##contig=<ID=chr1,length=248956422>
@@ -30,19 +31,24 @@ _VCF_TEMPLATE = textwrap.dedent("""\
     chr1\t10177\t.\tA\tAC\t.\tPASS\t.\tGT\t0/1\t0/0
     chr1\t10352\t.\tT\tTA\t.\tPASS\t.\tGT\t1/1\t0/1
     chr1\t11008\t.\tC\tG\t.\tPASS\t.\tGT\t0/0\t0/1
-""")
+"""
+)
 
-_SAMPLE_ANNOT_TSV = textwrap.dedent("""\
+_SAMPLE_ANNOT_TSV = textwrap.dedent(
+    """\
     sample_id\tpopulation\tsuper_population
     NA12878\tCEU\tEUR
     NA12879\tCEU\tEUR
-""")
+"""
+)
 
-_SAMPLE_ANNOT_SPACE = textwrap.dedent("""\
+_SAMPLE_ANNOT_SPACE = textwrap.dedent(
+    """\
     sample_id population super_population
     NA12878 CEU EUR
     NA12879 CEU EUR
-""")
+"""
+)
 
 
 def _make_vcf(vcf_dir: Path, chrom: str, content: str) -> Path:
@@ -140,14 +146,16 @@ def test_build_chromosome_filter(tmp_path):
 
     # chr1 has 3 variants; chr2 has 1 variant
     _make_vcf(vcf_dir, "chr1", _VCF_TEMPLATE)
-    chr2_content = textwrap.dedent("""\
+    chr2_content = textwrap.dedent(
+        """\
         ##fileformat=VCFv4.1
         ##FILTER=<ID=PASS,Description="All filters passed">
         ##contig=<ID=chr2,length=242193529>
         ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
         #CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tNA12878\tNA12879
         chr2\t10000\t.\tA\tT\t.\tPASS\t.\tGT\t0/1\t0/0
-    """)
+    """
+    )
     _make_vcf(vcf_dir, "chr2", chr2_content)
 
     output_mt = str(TMP_DIR / "out_filtered.mt")

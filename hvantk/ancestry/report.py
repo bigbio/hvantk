@@ -226,18 +226,24 @@ def _create_ancestry_table(predictions_df: pd.DataFrame) -> str:
         pct = 100 * count / total
         pop_name = POPULATION_NAMES.get(ancestry, ancestry)
         # Whitelist allowed ancestry codes for badge_class to prevent XSS
-        badge_class = f"ancestry-{ancestry}" if ancestry in ["AFR", "AMR", "EAS", "EUR", "SAS", "unassigned"] else "ancestry-unassigned"
+        badge_class = (
+            f"ancestry-{ancestry}"
+            if ancestry in ["AFR", "AMR", "EAS", "EUR", "SAS", "unassigned"]
+            else "ancestry-unassigned"
+        )
         # Escape user-controlled strings
         ancestry_escaped = html.escape(str(ancestry))
         pop_name_escaped = html.escape(str(pop_name))
-        rows.append(f"""
+        rows.append(
+            f"""
         <tr>
             <td><span class="ancestry-badge {badge_class}">{ancestry_escaped}</span></td>
             <td>{pop_name_escaped}</td>
             <td>{count:,}</td>
             <td>{pct:.1f}%</td>
         </tr>
-        """)
+        """
+        )
 
     return f"""
     <table>
@@ -301,10 +307,16 @@ def _create_predictions_table(predictions_df: pd.DataFrame, max_rows: int = 100)
             )
 
     # Build table
-    headers = "<tr>" + "".join(f"<th>{html.escape(str(c))}</th>" for c in display_df.columns) + "</tr>"
+    headers = (
+        "<tr>"
+        + "".join(f"<th>{html.escape(str(c))}</th>" for c in display_df.columns)
+        + "</tr>"
+    )
     rows = []
     for _, row in display_df.iterrows():
-        cells = "".join(f"<td>{html.escape(str(row[c]))}</td>" for c in display_df.columns)
+        cells = "".join(
+            f"<td>{html.escape(str(row[c]))}</td>" for c in display_df.columns
+        )
         rows.append(f"<tr>{cells}</tr>")
 
     return f"""
@@ -320,7 +332,9 @@ def _create_config_table(config_dict: Dict[str, Any]) -> str:
     """Create configuration table."""
     rows = []
     for key, value in config_dict.items():
-        rows.append(f"<tr><td>{html.escape(str(key))}</td><td>{html.escape(str(value))}</td></tr>")
+        rows.append(
+            f"<tr><td>{html.escape(str(key))}</td><td>{html.escape(str(value))}</td></tr>"
+        )
 
     return f"""
     <table class="config-table">
@@ -361,7 +375,10 @@ def _create_validation_section(
     """
 
     # Add confusion matrix if available
-    if include_confusion_matrix and result.classification_result.confusion_matrix is not None:
+    if (
+        include_confusion_matrix
+        and result.classification_result.confusion_matrix is not None
+    ):
         try:
             y_true = result.classification_result.confusion_matrix_labels[0]
             y_pred = result.classification_result.confusion_matrix_labels[1]
@@ -432,14 +449,22 @@ def generate_ancestry_report(
     n_assigned = (query_df[PREDICTED_ANCESTRY_COL] != "unassigned").sum()
     n_unassigned = (query_df[PREDICTED_ANCESTRY_COL] == "unassigned").sum()
 
-    summary_cards = "".join([
-        _create_summary_card(f"{stats.get('n_query_samples', len(query_df)):,}", "Query Samples"),
-        _create_summary_card(f"{stats.get('n_reference_samples', 0):,}", "Reference Samples"),
-        _create_summary_card(f"{n_assigned:,}", "Assigned"),
-        _create_summary_card(f"{n_unassigned:,}", "Unassigned"),
-        _create_summary_card(f"{stats.get('n_populations', 0)}", "Populations"),
-        _create_summary_card(f"{stats.get('n_shared_variants', 0):,}", "Shared Variants"),
-    ])
+    summary_cards = "".join(
+        [
+            _create_summary_card(
+                f"{stats.get('n_query_samples', len(query_df)):,}", "Query Samples"
+            ),
+            _create_summary_card(
+                f"{stats.get('n_reference_samples', 0):,}", "Reference Samples"
+            ),
+            _create_summary_card(f"{n_assigned:,}", "Assigned"),
+            _create_summary_card(f"{n_unassigned:,}", "Unassigned"),
+            _create_summary_card(f"{stats.get('n_populations', 0)}", "Populations"),
+            _create_summary_card(
+                f"{stats.get('n_shared_variants', 0):,}", "Shared Variants"
+            ),
+        ]
+    )
 
     # Generate ancestry section
     ancestry_section = _create_ancestry_table(predictions_df)
@@ -504,7 +529,9 @@ def generate_ancestry_report(
         logger.warning(f"Could not generate probability plot: {e}")
 
     # Generate predictions table
-    predictions_section = _create_predictions_table(predictions_df, max_rows=max_table_rows)
+    predictions_section = _create_predictions_table(
+        predictions_df, max_rows=max_table_rows
+    )
 
     # Generate config section
     config_section = _create_config_table(config.to_dict())

@@ -237,12 +237,17 @@ class TestPredictAncestry:
 
         # Assert rows below threshold are unassigned
         low_conf_mask = max_probs < 0.99
-        assert (predictions_high.loc[low_conf_mask, PREDICTED_ANCESTRY_COL] == "unassigned").all()
+        assert (
+            predictions_high.loc[low_conf_mask, PREDICTED_ANCESTRY_COL] == "unassigned"
+        ).all()
 
         # Assert rows at/above threshold are NOT unassigned (if any exist)
         high_conf_mask = max_probs >= 0.99
         if high_conf_mask.any():
-            assert (predictions_high.loc[high_conf_mask, PREDICTED_ANCESTRY_COL] != "unassigned").all()
+            assert (
+                predictions_high.loc[high_conf_mask, PREDICTED_ANCESTRY_COL]
+                != "unassigned"
+            ).all()
 
     def test_probability_columns_created(self, trained_model, synthetic_scores):
         """Should create per-class probability columns."""

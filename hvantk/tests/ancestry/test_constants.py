@@ -144,7 +144,9 @@ class TestPopulationMappings:
 
     def test_superpop_to_subpops_keys_match_all_superpops(self):
         """Keys should match ALL_1KG_SUPERPOPS."""
-        assert set(constants.SUPERPOP_TO_SUBPOPS.keys()) == set(constants.ALL_1KG_SUPERPOPS)
+        assert set(constants.SUPERPOP_TO_SUBPOPS.keys()) == set(
+            constants.ALL_1KG_SUPERPOPS
+        )
 
     def test_all_subpops_count(self):
         """Should have 26 sub-populations in 1KG Phase 3."""

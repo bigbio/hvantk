@@ -260,9 +260,7 @@ def main():
     print(f"\nTests passed: {passed}/{total}")
 
     if passed == total:
-        print(
-            "\n🎉 All tests passed! The dataset validation framework is ready to use."
-        )
+        print("\n🎉 All tests passed! The dataset validation framework is ready to use.")
         print("\nNext steps:")
         print("1. Try: python -m hvantk.commands.dataset_validation_cli list")
         print(

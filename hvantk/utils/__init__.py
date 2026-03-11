@@ -9,6 +9,7 @@ from .gene_sets import (
     load_marker_genes,
     load_sample_chd_gene_set,
 )
+from .obo_parser import BaseOboOntology
 from .mondo_parser import (
     MondoOntology,
     MONDO_DISEASE_CATEGORIES,
@@ -25,6 +26,8 @@ __all__ = [
     "load_gene_sets_from_dict",
     "load_marker_genes",
     "load_sample_chd_gene_set",
+    # OBO ontology parser (base class)
+    "BaseOboOntology",
     # MONDO ontology parser
     "MondoOntology",
     "MONDO_DISEASE_CATEGORIES",

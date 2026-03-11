@@ -54,6 +54,7 @@ def resolve_delimiter(value: Optional[str]) -> Optional[str]:
         return None
     return DELIMITER_ALIASES.get(value.lower(), value)
 
+
 # Chromosome sort order: autosomes first, then sex chromosomes
 _CHROM_ORDER = {str(i): i for i in range(1, 23)}
 _CHROM_ORDER.update({"X": 23, "Y": 24, "M": 25, "MT": 26})
@@ -123,8 +124,7 @@ def discover_vcf_files(
     if chromosomes is not None:
         requested = {c.upper() for c in chromosomes}
         vcf_files = [
-            f for f in vcf_files
-            if (_extract_chrom_token(f) or "").upper() in requested
+            f for f in vcf_files if (_extract_chrom_token(f) or "").upper() in requested
         ]
         if not vcf_files:
             raise ValueError(
@@ -143,7 +143,9 @@ def discover_vcf_files(
     # Warn about missing standard chromosomes only when no explicit filter was applied
     if chromosomes is None:
         found_tokens = {(_extract_chrom_token(f) or "").lower() for f in vcf_files}
-        missing_chroms = [c for c in _STANDARD_CHROMOSOMES if c.lower() not in found_tokens]
+        missing_chroms = [
+            c for c in _STANDARD_CHROMOSOMES if c.lower() not in found_tokens
+        ]
         if missing_chroms:
             logger.warning(
                 "The following standard chromosomes were not found in '%s': %s",
@@ -213,7 +215,9 @@ def _join_sample_annotations(
                 sample_id_col,
             )
         else:
-            logger.info("Using '%s' as sample ID column in annotations file", sample_id_col)
+            logger.info(
+                "Using '%s' as sample ID column in annotations file", sample_id_col
+            )
 
     annot_ht = annot_ht.key_by(sample_id_col)
 
@@ -322,8 +326,12 @@ def build_1k_genome_mt(
     force_bgz = True
 
     def _resolve_one(idx: int, vcf: str) -> tuple[int, str, bool]:
-        logger.info("Converting file %d/%d: %s", idx + 1, n_files, os.path.basename(vcf))
-        path, fbgz = resolve_compression(vcf, force_bgz=True, auto_convert=auto_convert_bgz)
+        logger.info(
+            "Converting file %d/%d: %s", idx + 1, n_files, os.path.basename(vcf)
+        )
+        path, fbgz = resolve_compression(
+            vcf, force_bgz=True, auto_convert=auto_convert_bgz
+        )
         return idx, path, fbgz
 
     with ThreadPoolExecutor(max_workers=max_workers) as pool:

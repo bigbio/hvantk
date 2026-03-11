@@ -14,8 +14,7 @@ import pandas as pd
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -46,7 +45,9 @@ def main():
     if not INPUT_CSV.exists():
         print(f"ERROR: ClinGen data file not found at {INPUT_CSV}")
         print("Please download it first with:")
-        print('  curl -L -k "https://search.clinicalgenome.org/kb/gene-validity/download" -o examples/clingen/data/clingen_gene_disease.csv')
+        print(
+            '  curl -L -k "https://search.clinicalgenome.org/kb/gene-validity/download" -o examples/clingen/data/clingen_gene_disease.csv'
+        )
         return
 
     # Step 1: Build the ClinGen Hail Table
@@ -97,14 +98,55 @@ def main():
 
     # Define disease categories
     categories = {
-        "Cancer/Tumor": ["cancer", "carcinoma", "tumor", "neoplasm", "melanoma", "leukemia", "lymphoma"],
-        "Cardiovascular": ["cardiac", "heart", "arrhythmia", "cardiomyopathy", "aortic", "vascular"],
-        "Neurological": ["neurological", "brain", "epilepsy", "seizure", "ataxia", "neuropathy", "encephalopathy"],
-        "Metabolic": ["metabolic", "diabetes", "hypercholesterolemia", "lipid", "obesity"],
-        "Developmental": ["developmental", "intellectual disability", "autism", "congenital"],
+        "Cancer/Tumor": [
+            "cancer",
+            "carcinoma",
+            "tumor",
+            "neoplasm",
+            "melanoma",
+            "leukemia",
+            "lymphoma",
+        ],
+        "Cardiovascular": [
+            "cardiac",
+            "heart",
+            "arrhythmia",
+            "cardiomyopathy",
+            "aortic",
+            "vascular",
+        ],
+        "Neurological": [
+            "neurological",
+            "brain",
+            "epilepsy",
+            "seizure",
+            "ataxia",
+            "neuropathy",
+            "encephalopathy",
+        ],
+        "Metabolic": [
+            "metabolic",
+            "diabetes",
+            "hypercholesterolemia",
+            "lipid",
+            "obesity",
+        ],
+        "Developmental": [
+            "developmental",
+            "intellectual disability",
+            "autism",
+            "congenital",
+        ],
         "Immunological": ["immune", "immunodeficiency", "autoimmune", "inflammatory"],
         "Hereditary Syndromes": ["syndrome", "hereditary", "familial"],
-        "Eye/Vision": ["retinal", "retinopathy", "macular", "blindness", "optic", "eye"],
+        "Eye/Vision": [
+            "retinal",
+            "retinopathy",
+            "macular",
+            "blindness",
+            "optic",
+            "eye",
+        ],
         "Hearing": ["hearing", "deafness", "auditory"],
         "Kidney/Renal": ["kidney", "renal", "nephropathy", "nephrotic"],
     }
@@ -114,11 +156,14 @@ def main():
     # Build summary DataFrame
     summary_data = []
     for category, genes in sorted(category_genesets.items(), key=lambda x: -len(x[1])):
-        summary_data.append({
-            "category": category,
-            "n_genes": len(genes),
-            "sample_genes": ", ".join(sorted(genes)[:10]) + ("..." if len(genes) > 10 else ""),
-        })
+        summary_data.append(
+            {
+                "category": category,
+                "n_genes": len(genes),
+                "sample_genes": ", ".join(sorted(genes)[:10])
+                + ("..." if len(genes) > 10 else ""),
+            }
+        )
 
     df = pd.DataFrame(summary_data)
     print("\n" + df.to_string(index=False))
@@ -152,7 +197,7 @@ def main():
     print(f"Last updated: {stats['last_update']}")
 
     print("\nTop 10 genes by number of associated diseases:")
-    for gene, n_diseases in stats['top_genes_by_diseases']:
+    for gene, n_diseases in stats["top_genes_by_diseases"]:
         print(f"  {gene}: {n_diseases} diseases")
 
     # Final summary

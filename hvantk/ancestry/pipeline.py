@@ -373,8 +373,7 @@ class AncestryInferenceResult:
         scores_ht = self.pc_scores
         n_pcs = self.config.n_pcs_classify
         pc_annotations = {
-            f"PC{i + 1}": scores_ht[mt.col_key][f"PC{i + 1}"]
-            for i in range(n_pcs)
+            f"PC{i + 1}": scores_ht[mt.col_key][f"PC{i + 1}"] for i in range(n_pcs)
         }
         mt = mt.annotate_cols(**pc_annotations)
 
@@ -623,6 +622,7 @@ class AncestryInferenceResult:
 
         # Save pipeline stats as JSON
         import json
+
         stats_path = output_dir / "pipeline_stats.json"
         # Convert config to serializable format
         stats_to_save = {
@@ -688,6 +688,7 @@ def _dataframe_to_hail_table(
     # Register cleanup for when Python exits (temp files cleaned up by OS anyway)
     def cleanup():
         import shutil
+
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
     atexit.register(cleanup)
@@ -802,10 +803,12 @@ def run_ancestry_inference(
             f"n_pcs_classify ({config.n_pcs_classify}) > n_pcs ({config.n_pcs}). "
             f"Reducing n_pcs_classify to {config.n_pcs}."
         )
-        config = PipelineConfig.from_dict({
-            **config.to_dict(),
-            "n_pcs_classify": config.n_pcs,
-        })
+        config = PipelineConfig.from_dict(
+            {
+                **config.to_dict(),
+                "n_pcs_classify": config.n_pcs,
+            }
+        )
 
     # Initialize pipeline stats
     stats: Dict[str, Any] = {}

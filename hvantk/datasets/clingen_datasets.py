@@ -6,28 +6,22 @@ Validity datasets. ClinGen curates gene-disease associations with evidence-based
 classifications (Definitive, Strong, Moderate, Limited, etc.).
 
 Example usage:
-    # Get latest dataset
+    # Get latest dataset (today's snapshot)
     dataset = ClinGenGeneDiseaseDataset.from_latest()
     dataset.download("/data/clingen")
 
-    # Get specific version by date
-    dataset = ClinGenGeneDiseaseDataset.from_date("2026-01-15")
-    dataset.download("/data/clingen")
-
-    # List available versions
+    # Check availability
     versions = get_available_versions()
 """
 
 import logging
 import os
-import re
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, List, Optional
 
 from hvantk.core.constants import (
     CLINGEN_BASE_URL,
-    CLINGEN_DOWNLOADS_URL,
     CLINGEN_FILE_PREFIX,
 )
 from hvantk.data.file_utils import download_file
@@ -56,7 +50,12 @@ class ClinGenGeneDiseaseDataset:
     @classmethod
     def from_date(cls, version_date: str) -> "ClinGenGeneDiseaseDataset":
         """
-        Create a dataset reference for a specific version date.
+        Create a dataset reference labeled with a specific date.
+
+        Note: ClinGen now provides a single real-time download endpoint.
+        The date is used only for labeling the output file. The downloaded
+        content will always be the current snapshot regardless of the date
+        provided.
 
         Args:
             version_date: Date string in YYYY-MM-DD format
@@ -69,45 +68,35 @@ class ClinGenGeneDiseaseDataset:
         """
         # Validate date format
         try:
-            datetime.strptime(version_date, "%Y-%m-%d")
+            parsed = datetime.strptime(version_date, "%Y-%m-%d")
         except ValueError:
             raise ValueError(
                 f"Invalid version_date format: {version_date}. Expected YYYY-MM-DD"
             )
 
         file_name = f"{CLINGEN_FILE_PREFIX}-{version_date}.csv"
-        download_url = f"{CLINGEN_BASE_URL}?file={file_name}"
 
         return cls(
             version_date=version_date,
-            download_url=download_url,
+            download_url=CLINGEN_BASE_URL,
             file_name=file_name,
         )
 
     @classmethod
     def from_latest(cls) -> "ClinGenGeneDiseaseDataset":
         """
-        Create a dataset reference for the latest available version.
+        Create a dataset reference for the latest available snapshot.
 
-        This method fetches available versions from the ClinGen portal
-        and returns the most recent one.
+        ClinGen provides a real-time download endpoint that generates
+        the CSV on-the-fly with current data. The version date is set
+        to today's date.
 
         Returns:
-            ClinGenGeneDiseaseDataset instance for the latest version
-
-        Raises:
-            RuntimeError: If unable to determine the latest version
+            ClinGenGeneDiseaseDataset instance for today's snapshot
         """
-        versions = get_available_versions()
-        if not versions:
-            raise RuntimeError(
-                "Unable to determine available ClinGen versions. "
-                "Network may be unavailable or ClinGen portal structure changed."
-            )
-
-        latest_date = versions[0]  # Versions are sorted newest first
-        logger.info(f"Latest ClinGen Gene-Disease version: {latest_date}")
-        return cls.from_date(latest_date)
+        today = datetime.now().strftime("%Y-%m-%d")
+        logger.info(f"Using ClinGen real-time download, labeling as {today}")
+        return cls.from_date(today)
 
     def download(self, output_dir: str, overwrite: bool = False) -> str:
         """
@@ -169,46 +158,43 @@ class ClinGenGeneDiseaseDataset:
 
 def get_available_versions() -> List[str]:
     """
-    Fetch available ClinGen Gene-Disease dataset versions.
+    Check ClinGen Gene-Disease dataset availability.
 
-    Scrapes the ClinGen downloads page to find available version dates.
-    Returns dates sorted from newest to oldest.
+    ClinGen no longer provides versioned archives on their downloads page.
+    The Gene-Disease Validity CSV is generated in real-time from the endpoint.
+    This function verifies the download endpoint is reachable and returns
+    today's date as the available version.
 
     Returns:
-        List of version dates in YYYY-MM-DD format, sorted newest first
+        List with today's date if the endpoint is reachable, empty list otherwise
 
     Note:
-        This function requires network access. Returns empty list if
-        the ClinGen portal is unavailable or format has changed.
+        This function requires network access.
     """
     try:
         import urllib.request
 
-        logger.info(f"Fetching available versions from {CLINGEN_DOWNLOADS_URL}")
+        logger.info(f"Checking ClinGen download endpoint: {CLINGEN_BASE_URL}")
 
         req = urllib.request.Request(
-            CLINGEN_DOWNLOADS_URL,
+            CLINGEN_BASE_URL,
+            method="HEAD",
             headers={"User-Agent": "hvantk/1.0"},
         )
 
         with urllib.request.urlopen(req, timeout=30) as response:
-            html = response.read().decode("utf-8")
+            if response.status == 200:
+                today = datetime.now().strftime("%Y-%m-%d")
+                logger.info(
+                    "ClinGen endpoint is reachable. "
+                    "Dataset is generated in real-time (no versioned archives)."
+                )
+                return [today]
 
-        # Extract dates from file names like "Clingen-Gene-Disease-Summary-YYYY-MM-DD.csv"
-        pattern = rf"{CLINGEN_FILE_PREFIX}-(\d{{4}}-\d{{2}}-\d{{2}})\.csv"
-        matches = re.findall(pattern, html)
-
-        if not matches:
-            logger.warning("No ClinGen versions found on downloads page")
-            return []
-
-        # Remove duplicates and sort newest first
-        unique_dates = sorted(set(matches), reverse=True)
-        logger.info(f"Found {len(unique_dates)} ClinGen versions")
-        return unique_dates
+        return []
 
     except Exception as e:
-        logger.error(f"Failed to fetch ClinGen versions: {e}")
+        logger.error(f"Failed to reach ClinGen endpoint: {e}")
         return []
 
 
@@ -216,8 +202,11 @@ def get_latest_version() -> Optional[str]:
     """
     Get the latest available ClinGen Gene-Disease dataset version date.
 
+    Since ClinGen now provides real-time snapshots, this returns today's
+    date if the endpoint is reachable.
+
     Returns:
-        Version date string (YYYY-MM-DD) or None if unavailable
+        Today's date string (YYYY-MM-DD) or None if endpoint is unavailable
     """
     versions = get_available_versions()
     return versions[0] if versions else None

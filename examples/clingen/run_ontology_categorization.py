@@ -23,8 +23,7 @@ import pandas as pd
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -44,19 +43,31 @@ def ensure_data_files():
 
     if not INPUT_CSV.exists():
         print("Downloading ClinGen data...")
-        subprocess.run([
-            "curl", "-L", "-k",
-            "https://search.clinicalgenome.org/kb/gene-validity/download",
-            "-o", str(INPUT_CSV)
-        ], check=True)
+        subprocess.run(
+            [
+                "curl",
+                "-L",
+                "-k",
+                "https://search.clinicalgenome.org/kb/gene-validity/download",
+                "-o",
+                str(INPUT_CSV),
+            ],
+            check=True,
+        )
 
     if not MONDO_OBO.exists():
         print("Downloading MONDO ontology...")
-        subprocess.run([
-            "curl", "-L", "-k",
-            "https://github.com/monarch-initiative/mondo/releases/latest/download/mondo.obo",
-            "-o", str(MONDO_OBO)
-        ], check=True)
+        subprocess.run(
+            [
+                "curl",
+                "-L",
+                "-k",
+                "https://github.com/monarch-initiative/mondo/releases/latest/download/mondo.obo",
+                "-o",
+                str(MONDO_OBO),
+            ],
+            check=True,
+        )
 
 
 def main():
@@ -118,13 +129,13 @@ def main():
 
     # Get categorization results
     results = streamer.categorize_by_ontology(
-        mondo_obo_path=mondo_obo,
+        ontology=mondo_obo,
         min_classification="Limited",  # Include Limited and above
     )
 
     # Get summary DataFrame
     summary_df = streamer.categorize_by_ontology_summary(
-        mondo_obo_path=mondo_obo,
+        ontology=mondo_obo,
         min_classification="Limited",
     )
 
@@ -162,7 +173,11 @@ def main():
     category_mapping = {
         "Cancer/Tumor": ["cancer", "neoplasm"],
         "Cardiovascular": ["cardiovascular disease", "cardiogenetic disease"],
-        "Neurological": ["nervous system disease", "hereditary neurological disease", "neurodevelopmental disorder"],
+        "Neurological": [
+            "nervous system disease",
+            "hereditary neurological disease",
+            "neurodevelopmental disorder",
+        ],
         "Metabolic": ["metabolic disease"],
     }
 
@@ -201,7 +216,7 @@ def main():
             print(f"  Genes: {len(data['genes'])}")
             print(f"  Diseases: {len(data['diseases'])}")
             print(f"  Sample genes: {', '.join(sorted(data['genes'])[:15])}")
-            if len(data['genes']) > 15:
+            if len(data["genes"]) > 15:
                 print(f"    ... and {len(data['genes']) - 15} more")
 
     # Step 6: Save detailed results
@@ -210,9 +225,7 @@ def main():
     print("=" * 70)
 
     # Save genes per category
-    genes_by_category = {
-        cat: sorted(data["genes"]) for cat, data in results.items()
-    }
+    genes_by_category = {cat: sorted(data["genes"]) for cat, data in results.items()}
     genes_path = OUTPUT_DIR / "genes_by_ontology_category.json"
     with open(genes_path, "w") as f:
         json.dump(genes_by_category, f, indent=2)

@@ -37,9 +37,7 @@ class TestClassificationWithPCA:
         samples_df = synthetic_reference_mt.cols().to_pandas()
 
         # Merge to get labels
-        scores_with_labels = scores_df.merge(
-            samples_df[["s", "ancestry"]], on="s"
-        )
+        scores_with_labels = scores_df.merge(samples_df[["s", "ancestry"]], on="s")
         scores_with_labels = scores_with_labels.set_index("s")
 
         # Train classifier
@@ -124,9 +122,7 @@ class TestClassificationEdgeCases:
         scores_df = pca_result.get_scores_df()
         samples_df = synthetic_reference_mt_single_pop.cols().to_pandas()
 
-        scores_with_labels = scores_df.merge(
-            samples_df[["s", "ancestry"]], on="s"
-        )
+        scores_with_labels = scores_df.merge(samples_df[["s", "ancestry"]], on="s")
         scores_with_labels = scores_with_labels.set_index("s")
 
         # Should raise because only one population
@@ -214,9 +210,7 @@ class TestFullAncestryWorkflow:
         pred_counts = predictions[PREDICTED_ANCESTRY_COL].value_counts()
         assert len(pred_counts) > 0
 
-    def test_workflow_with_different_thresholds(
-        self, hail_session, small_merged_mt
-    ):
+    def test_workflow_with_different_thresholds(self, hail_session, small_merged_mt):
         """Test prediction behavior with different probability thresholds."""
         # Filter and compute PCA
         mt = filter_variants_for_ancestry(small_merged_mt)

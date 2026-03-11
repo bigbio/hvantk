@@ -124,9 +124,9 @@ def _prepare_sample_qc_data(sample_df: pd.DataFrame) -> pd.DataFrame:
 
                 # Update the previous occurrence
                 prev_idx = seen_names[base_name]
-                new_columns[prev_idx] = (
-                    f"{df.columns[prev_idx].split('.')[-2]}_{base_name}"
-                )
+                new_columns[
+                    prev_idx
+                ] = f"{df.columns[prev_idx].split('.')[-2]}_{base_name}"
 
                 new_columns.append(context_name)
             else:

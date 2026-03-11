@@ -364,7 +364,8 @@ def main():
     logger.info("=" * 60)
 
     if len(significant[significant["gene_set_name"] == "Microglia"]) > 0:
-        logger.info("""
+        logger.info(
+            """
 Microglia Enrichment Detected!
 
 This finding supports the immune/neuroinflammatory hypothesis of Alzheimer's
@@ -383,9 +384,11 @@ Next Steps:
 2. Test for rare variant burden in microglia genes (see burden_analysis_example.py)
 3. Perform functional studies in microglia cell lines
 4. Screen for microglia-modulating compounds
-        """)
+        """
+        )
     else:
-        logger.info("""
+        logger.info(
+            """
 No significant microglia enrichment detected in this example.
 
 This could indicate:
@@ -398,7 +401,8 @@ Consider:
 - Running burden analysis on sequencing data
 - Testing additional gene sets
 - Combining with expression data
-        """)
+        """
+        )
 
     logger.info("\n" + "=" * 60)
     logger.info("Analysis complete!")

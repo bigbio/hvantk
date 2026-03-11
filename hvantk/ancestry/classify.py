@@ -125,15 +125,12 @@ def validate_training_data(
         )
 
     insufficient = {
-        pop: count
-        for pop, count in pop_counts.items()
-        if count < min_samples_per_pop
+        pop: count for pop, count in pop_counts.items() if count < min_samples_per_pop
     }
 
     if insufficient:
         msg = "; ".join(
-            f"'{pop}' has {count} samples"
-            for pop, count in insufficient.items()
+            f"'{pop}' has {count} samples" for pop, count in insufficient.items()
         )
         raise ValueError(
             f"Populations with insufficient samples (need at least "
@@ -353,13 +350,10 @@ def predict_ancestry(
     # Validate PC columns exist
     missing_cols = set(pc_cols) - set(scores_df.columns)
     if missing_cols:
-        raise ValueError(
-            f"Missing PC columns in scores_df: {sorted(missing_cols)}"
-        )
+        raise ValueError(f"Missing PC columns in scores_df: {sorted(missing_cols)}")
 
     logger.info(
-        f"Predicting ancestry for {len(scores_df)} samples "
-        f"with min_prob={min_prob}"
+        f"Predicting ancestry for {len(scores_df)} samples " f"with min_prob={min_prob}"
     )
 
     return _create_predictions_df(
@@ -478,9 +472,7 @@ def get_training_samples(
     # Filter scores to match
     train_scores = train_df.loc[labels.index]
 
-    logger.info(
-        f"Extracted {len(train_scores)} training samples with known ancestry"
-    )
+    logger.info(f"Extracted {len(train_scores)} training samples with known ancestry")
 
     return train_scores, labels
 
@@ -518,9 +510,7 @@ def get_query_samples(
     query_df = scores_df[mask].copy()
 
     if len(query_df) == 0:
-        raise ValueError(
-            f"No query samples found with {source_col}='{source_value}'"
-        )
+        raise ValueError(f"No query samples found with {source_col}='{source_value}'")
 
     logger.info(f"Extracted {len(query_df)} query samples for prediction")
 
