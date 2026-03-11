@@ -270,39 +270,23 @@ class TestRankGenesGroups:
         assert "gene_name" not in results.columns
         assert "gene_id" in results.columns
 
-    def test_filtering(self, two_group_data):
-        """Strict pre-filter should reduce result size."""
+    def test_all_genes_tested(self, two_group_data):
+        """All input genes should be tested for all groups (no per-group pre-filter)."""
         X, labels, gene_ids, gene_names = two_group_data
-        lenient = rank_genes_groups(
-            X, labels, gene_ids, gene_names,
-            WilcoxonParams(min_fold_change=1.0, min_fraction_expressed=0.0),
-        )
-        strict = rank_genes_groups(
-            X, labels, gene_ids, gene_names,
-            WilcoxonParams(min_fold_change=3.0, min_fraction_expressed=0.5),
-        )
-        assert len(strict) <= len(lenient)
+        params = WilcoxonParams()
+        results = rank_genes_groups(X, labels, gene_ids, gene_names, params)
+        n_groups = len(np.unique(labels))
+        n_genes = len(gene_ids)
+        assert len(results) == n_groups * n_genes
 
-    def test_empty_result(self):
-        """Impossible thresholds → empty DataFrame with correct columns."""
-        X = np.random.rand(10, 3)
-        labels = np.array(["A"] * 5 + ["B"] * 5)
-        gene_ids = np.array(["G0", "G1", "G2"])
-        params = WilcoxonParams(min_fold_change=1000.0)
-        results = rank_genes_groups(X, labels, gene_ids, params=params)
+    def test_skip_small_group(self):
+        """Groups with < 2 cells should be skipped → empty if all too small."""
+        X = np.random.rand(3, 2)
+        labels = np.array(["A", "B", "C"])  # 1 cell each
+        gene_ids = np.array(["G0", "G1"])
+        results = rank_genes_groups(X, labels, gene_ids)
         assert len(results) == 0
         assert "group" in results.columns
-
-    def test_max_candidates(self, two_group_data):
-        """max_candidates should limit genes tested per group."""
-        X, labels, gene_ids, gene_names = two_group_data
-        params = WilcoxonParams(
-            min_fold_change=0.0, min_fraction_expressed=0.0, max_candidates=2,
-        )
-        results = rank_genes_groups(X, labels, gene_ids, gene_names, params)
-        for grp in results["group"].unique():
-            grp_rows = results[results["group"] == grp]
-            assert len(grp_rows) <= 2
 
     def test_n_total_genes_correction(self, two_group_data):
         """Passing n_total_genes should make adjusted p-values more

@@ -323,7 +323,8 @@ def rank_genes_groups(
             )
             continue
 
-        # Per-gene fold change and fraction expressed (pre-filter)
+        # Per-gene fold change and fraction expressed (informational —
+        # candidate selection was already done upstream in Phase 1)
         mean_in = expression[mask].mean(axis=0)
         mean_out = expression[~mask].mean(axis=0)
         frac_in = (expression[mask] > 0).mean(axis=0)
@@ -331,28 +332,7 @@ def rank_genes_groups(
         denom = np.where(mean_out > 0, mean_out, 1e-10)
         fc = mean_in / denom
 
-        # Pre-filter candidates
-        candidate_mask = (fc >= params.min_fold_change) & (
-            frac_in >= params.min_fraction_expressed
-        )
-        candidate_idx = np.where(candidate_mask)[0]
-
-        if len(candidate_idx) == 0:
-            logger.info(
-                "Group '%s': no candidates passed pre-filter.", group
-            )
-            continue
-
-        # Limit candidates by fold change rank
-        if len(candidate_idx) > params.max_candidates:
-            top_order = np.argsort(-fc[candidate_idx])[: params.max_candidates]
-            candidate_idx = candidate_idx[top_order]
-
-        # Subset ranks and tie-correction for candidates
-        ranks_sub = ranks[:, candidate_idx]
-        tc_sub = tc[candidate_idx]
-
-        U, z, p = _wilcoxon_one_vs_rest(ranks_sub, mask, n_cells, tc_sub)
+        U, z, p = _wilcoxon_one_vs_rest(ranks, mask, n_cells, tc)
 
         # Multiple testing correction — use total gene count as the number
         # of hypotheses, matching Seurat's p.adjust(p, n=nrow(object))
@@ -364,28 +344,25 @@ def rank_genes_groups(
             )
         )
 
-        # Build results for this group
-        n_cand = len(candidate_idx)
-        gids = gene_ids[candidate_idx]
-        log2fc = np.log2(np.maximum(fc[candidate_idx], 1e-300))
+        log2fc = np.log2(np.maximum(fc, 1e-300))
 
         group_df = pd.DataFrame(
             {
-                "group": [str(group)] * n_cand,
-                "gene_id": gids,
+                "group": [str(group)] * n_genes,
+                "gene_id": gene_ids,
                 "u_statistic": U,
                 "z_score": z,
                 "pvalue": p,
                 "pvalue_adj": p_adj,
-                "fold_change": fc[candidate_idx],
+                "fold_change": fc,
                 "log2_fold_change": log2fc,
-                "fraction_expressed": frac_in[candidate_idx],
-                "fraction_expressed_rest": frac_out[candidate_idx],
+                "fraction_expressed": frac_in,
+                "fraction_expressed_rest": frac_out,
             }
         )
 
         if gene_names is not None:
-            group_df.insert(2, "gene_name", gene_names[candidate_idx])
+            group_df.insert(2, "gene_name", gene_names)
 
         all_results.append(group_df)
 
