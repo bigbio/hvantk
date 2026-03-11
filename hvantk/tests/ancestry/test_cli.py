@@ -127,7 +127,10 @@ class TestAncestryCLIValidation:
             )
 
             assert result.exit_code != 0
-            assert "Missing option" in result.output or "reference" in result.output.lower()
+            assert (
+                "Missing option" in result.output
+                or "reference" in result.output.lower()
+            )
 
     def test_missing_output_ht(self):
         """Test error when --output-ht not provided."""
@@ -150,7 +153,9 @@ class TestAncestryCLIValidation:
             )
 
             assert result.exit_code != 0
-            assert "Missing option" in result.output or "output" in result.output.lower()
+            assert (
+                "Missing option" in result.output or "output" in result.output.lower()
+            )
 
     def test_nonexistent_query_mt(self):
         """Test error when query MT doesn't exist."""

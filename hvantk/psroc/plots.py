@@ -447,7 +447,8 @@ def plot_auc_comparison(
                 else None
             )
             ax.errorbar(
-                roc_result.auc, y_pos[i],
+                roc_result.auc,
+                y_pos[i],
                 xerr=xerr,
                 fmt="o",
                 color=colors[i],
@@ -470,8 +471,7 @@ def plot_auc_comparison(
                 ci_upper = roc_result.auc_ci_upper
                 if ci_lower is not None:
                     text = (
-                        f"{roc_result.auc:.3f} "
-                        f"[{ci_lower:.3f}\u2013{ci_upper:.3f}]"
+                        f"{roc_result.auc:.3f} " f"[{ci_lower:.3f}\u2013{ci_upper:.3f}]"
                     )
                     x_text = ci_upper + 0.02
                 else:
@@ -507,7 +507,8 @@ def plot_auc_comparison(
                 else None
             )
             ax.errorbar(
-                x_pos[i], roc_result.auc,
+                x_pos[i],
+                roc_result.auc,
                 yerr=yerr,
                 fmt="o",
                 color=colors[i],
@@ -801,7 +802,8 @@ def plot_psroc_summary_dashboard(
                 else None
             )
             ax2.errorbar(
-                roc.auc, y_pos[i],
+                roc.auc,
+                y_pos[i],
                 xerr=xerr,
                 fmt="o",
                 color=colors_bar[i],
@@ -1004,6 +1006,7 @@ def plot_collection_heatmap(
     # Sort scores
     score_names = sorted(score_names_set)
     if sort_scores_by == "mean_auc":
+
         def _mean_auc(score: str) -> float:
             aucs = [
                 collection_metrics[g][score].auc
@@ -1062,9 +1065,14 @@ def plot_collection_heatmap(
             for j, group in enumerate(group_names):
                 if score not in collection_metrics[group]:
                     ax.text(
-                        j, i, "n/a",
-                        ha="center", va="center",
-                        fontsize=8, color="#999999", style="italic",
+                        j,
+                        i,
+                        "n/a",
+                        ha="center",
+                        va="center",
+                        fontsize=8,
+                        color="#999999",
+                        style="italic",
                     )
                     continue
 
@@ -1072,9 +1080,7 @@ def plot_collection_heatmap(
                 auc_val = roc.auc
 
                 # Choose text color for readability against cell color
-                text_color = (
-                    "white" if auc_val < (vmin + vmax) / 2 else "black"
-                )
+                text_color = "white" if auc_val < (vmin + vmax) / 2 else "black"
 
                 if show_ci and roc.auc_ci_lower is not None:
                     cell_text = (
@@ -1082,17 +1088,25 @@ def plot_collection_heatmap(
                         f"[{roc.auc_ci_lower:.3f}\u2013{roc.auc_ci_upper:.3f}]"
                     )
                     ax.text(
-                        j, i, cell_text,
-                        ha="center", va="center",
-                        fontsize=8, color=text_color,
+                        j,
+                        i,
+                        cell_text,
+                        ha="center",
+                        va="center",
+                        fontsize=8,
+                        color=text_color,
                         fontweight="bold",
                         linespacing=1.4,
                     )
                 else:
                     ax.text(
-                        j, i, f"{auc_val:.3f}",
-                        ha="center", va="center",
-                        fontsize=9, color=text_color,
+                        j,
+                        i,
+                        f"{auc_val:.3f}",
+                        ha="center",
+                        va="center",
+                        fontsize=9,
+                        color=text_color,
                         fontweight="bold",
                     )
 

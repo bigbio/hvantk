@@ -47,6 +47,7 @@ def _get_matplotlib():
         import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
         from matplotlib.lines import Line2D
+
         return plt, mpatches, Line2D
     except ImportError as e:
         raise ImportError(
@@ -180,7 +181,9 @@ def plot_pca_scatter(
     pc_y_col = f"PC{pc_y}"
 
     if pc_x_col not in scores_df.columns or pc_y_col not in scores_df.columns:
-        raise ValueError(f"PC columns {pc_x_col} and/or {pc_y_col} not found in DataFrame")
+        raise ValueError(
+            f"PC columns {pc_x_col} and/or {pc_y_col} not found in DataFrame"
+        )
 
     # Work with a copy
     df = scores_df.copy()
@@ -190,16 +193,14 @@ def plot_pca_scatter(
         # Reference: known ancestry, Query: predicted (or undefined)
         if show_query_as_undefined:
             df["_plot_color"] = np.where(
-                df[SOURCE_COL] == "reference",
-                df[KNOWN_ANCESTRY_COL],
-                undefined_label
+                df[SOURCE_COL] == "reference", df[KNOWN_ANCESTRY_COL], undefined_label
             )
         else:
             # Use predicted ancestry for query, known for reference
             df["_plot_color"] = np.where(
                 df[SOURCE_COL] == "reference",
                 df[KNOWN_ANCESTRY_COL],
-                df.get(PREDICTED_ANCESTRY_COL, undefined_label)
+                df.get(PREDICTED_ANCESTRY_COL, undefined_label),
             )
     elif color_by == "source":
         df["_plot_color"] = df[SOURCE_COL]
@@ -215,16 +216,15 @@ def plot_pca_scatter(
 
     if filter_populations is not None:
         # Filter by either known or predicted ancestry
-        mask = (
-            df[KNOWN_ANCESTRY_COL].isin(filter_populations) |
-            df.get(PREDICTED_ANCESTRY_COL, pd.Series(dtype=str)).isin(filter_populations)
-        )
+        mask = df[KNOWN_ANCESTRY_COL].isin(filter_populations) | df.get(
+            PREDICTED_ANCESTRY_COL, pd.Series(dtype=str)
+        ).isin(filter_populations)
         df = df[mask]
 
     if len(df) == 0:
         logger.warning("No samples to plot after filtering")
         fig, ax_plot = plt.subplots(figsize=figsize)
-        ax_plot.text(0.5, 0.5, "No samples to display", ha='center', va='center')
+        ax_plot.text(0.5, 0.5, "No samples to display", ha="center", va="center")
         return fig
 
     # Create figure if needed
@@ -262,8 +262,8 @@ def plot_pca_scatter(
                     s=size,
                     alpha=alpha,
                     label=None,  # We'll add custom legend
-                    edgecolors='none' if marker == 'o' else None,
-                    linewidths=1.5 if marker == 'x' else None,
+                    edgecolors="none" if marker == "o" else None,
+                    linewidths=1.5 if marker == "x" else None,
                 )
     else:
         # No shape distinction
@@ -318,19 +318,20 @@ def plot_pca_scatter(
         # Source legend (shapes) - only if shape_by="source"
         if shape_by == "source" and len(plotted_sources) > 1:
             # Add separator
-            legend_handles.append(mpatches.Patch(color='none', label=''))
+            legend_handles.append(mpatches.Patch(color="none", label=""))
 
             for source in ["reference", "query"]:
                 if source in plotted_sources:
                     marker = markers.get(source, "o")
                     label = reference_label if source == "reference" else query_label
                     line = Line2D(
-                        [0], [0],
+                        [0],
+                        [0],
                         marker=marker,
-                        color='gray',
-                        linestyle='None',
+                        color="gray",
+                        linestyle="None",
                         markersize=8,
-                        label=label
+                        label=label,
                     )
                     legend_handles.append(line)
 
@@ -440,24 +441,26 @@ def plot_variance_explained(
         fig = ax_plot.figure
 
     # Bar plot for individual variance
-    bars = ax_plot.bar(pcs, var_explained, color='steelblue', alpha=0.7, label='Individual')
-    ax_plot.set_xlabel('Principal Component', fontsize=12)
-    ax_plot.set_ylabel('Variance Explained', fontsize=12)
-    ax_plot.set_title('Variance Explained by Principal Components', fontsize=14)
+    bars = ax_plot.bar(
+        pcs, var_explained, color="steelblue", alpha=0.7, label="Individual"
+    )
+    ax_plot.set_xlabel("Principal Component", fontsize=12)
+    ax_plot.set_ylabel("Variance Explained", fontsize=12)
+    ax_plot.set_title("Variance Explained by Principal Components", fontsize=14)
 
     # Cumulative line
     if cumulative:
         cumvar = np.cumsum(var_explained)
         ax2 = ax_plot.twinx()
-        ax2.plot(pcs, cumvar, 'r-o', markersize=5, label='Cumulative')
-        ax2.set_ylabel('Cumulative Variance Explained', fontsize=12, color='red')
-        ax2.tick_params(axis='y', labelcolor='red')
+        ax2.plot(pcs, cumvar, "r-o", markersize=5, label="Cumulative")
+        ax2.set_ylabel("Cumulative Variance Explained", fontsize=12, color="red")
+        ax2.tick_params(axis="y", labelcolor="red")
         ax2.set_ylim(0, 1.05)
 
         # Combined legend
         lines1, labels1 = ax_plot.get_legend_handles_labels()
         lines2, labels2 = ax2.get_legend_handles_labels()
-        ax_plot.legend(lines1 + lines2, labels1 + labels2, loc='center right')
+        ax_plot.legend(lines1 + lines2, labels1 + labels2, loc="center right")
 
     ax_plot.set_xticks(pcs)
 
@@ -520,7 +523,7 @@ def plot_ancestry_proportions(
     sorted_pops = [p for p in pop_order if p in proportions.index]
     sorted_pops += [p for p in proportions.index if p not in pop_order]
 
-    bar_colors = [colors.get(p, '#7f7f7f') for p in sorted_pops]
+    bar_colors = [colors.get(p, "#7f7f7f") for p in sorted_pops]
     bar_values = [proportions[p] for p in sorted_pops]
 
     bars = ax_plot.bar(sorted_pops, bar_values, color=bar_colors, alpha=0.8)
@@ -532,15 +535,15 @@ def plot_ancestry_proportions(
         ax_plot.text(
             bar.get_x() + bar.get_width() / 2,
             bar.get_height() + 0.01,
-            f'{count}\n({pct:.1f}%)',
-            ha='center',
-            va='bottom',
+            f"{count}\n({pct:.1f}%)",
+            ha="center",
+            va="bottom",
             fontsize=10,
         )
 
-    ax_plot.set_xlabel('Predicted Ancestry', fontsize=12)
-    ax_plot.set_ylabel('Proportion', fontsize=12)
-    ax_plot.set_title('Ancestry Distribution', fontsize=14)
+    ax_plot.set_xlabel("Predicted Ancestry", fontsize=12)
+    ax_plot.set_ylabel("Proportion", fontsize=12)
+    ax_plot.set_title("Ancestry Distribution", fontsize=14)
     ax_plot.set_ylim(0, max(bar_values) * 1.2)
 
     plt.tight_layout()
@@ -591,12 +594,14 @@ def plot_probability_distribution(
         ax_plot = ax
         fig = ax_plot.figure
 
-    ax_plot.hist(probs, bins=bins, color='steelblue', alpha=0.7, edgecolor='black')
-    ax_plot.axvline(x=0.75, color='red', linestyle='--', label='Default threshold (0.75)')
+    ax_plot.hist(probs, bins=bins, color="steelblue", alpha=0.7, edgecolor="black")
+    ax_plot.axvline(
+        x=0.75, color="red", linestyle="--", label="Default threshold (0.75)"
+    )
 
-    ax_plot.set_xlabel('Prediction Probability', fontsize=12)
-    ax_plot.set_ylabel('Count', fontsize=12)
-    ax_plot.set_title('Distribution of Ancestry Prediction Probabilities', fontsize=14)
+    ax_plot.set_xlabel("Prediction Probability", fontsize=12)
+    ax_plot.set_ylabel("Count", fontsize=12)
+    ax_plot.set_title("Distribution of Ancestry Prediction Probabilities", fontsize=14)
     ax_plot.legend()
 
     plt.tight_layout()
@@ -609,7 +614,7 @@ def plot_confusion_matrix(
     labels: Optional[List[str]] = None,
     normalize: bool = True,
     figsize: Tuple[float, float] = (8, 6),
-    cmap: str = 'Blues',
+    cmap: str = "Blues",
     ax: Optional[Any] = None,
 ) -> Any:
     """Plot confusion matrix heatmap.
@@ -645,7 +650,7 @@ def plot_confusion_matrix(
     cm = sk_confusion_matrix(y_true, y_pred, labels=labels)
 
     if normalize:
-        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        cm = cm.astype("float") / cm.sum(axis=1)[:, np.newaxis]
         cm = np.nan_to_num(cm)
 
     if ax is None:
@@ -654,7 +659,7 @@ def plot_confusion_matrix(
         ax_plot = ax
         fig = ax_plot.figure
 
-    im = ax_plot.imshow(cm, interpolation='nearest', cmap=cmap)
+    im = ax_plot.imshow(cm, interpolation="nearest", cmap=cmap)
     ax_plot.figure.colorbar(im, ax=ax_plot)
 
     # Show labels
@@ -663,32 +668,35 @@ def plot_confusion_matrix(
         yticks=np.arange(len(labels)),
         xticklabels=labels,
         yticklabels=labels,
-        ylabel='True Ancestry',
-        xlabel='Predicted Ancestry',
+        ylabel="True Ancestry",
+        xlabel="Predicted Ancestry",
     )
 
     # Rotate x labels
     plt.setp(ax_plot.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
 
     # Add text annotations
-    fmt = '.2f' if normalize else 'd'
-    thresh = cm.max() / 2.
+    fmt = ".2f" if normalize else "d"
+    thresh = cm.max() / 2.0
     for i in range(len(labels)):
         for j in range(len(labels)):
             ax_plot.text(
-                j, i, format(cm[i, j], fmt),
-                ha="center", va="center",
-                color="white" if cm[i, j] > thresh else "black"
+                j,
+                i,
+                format(cm[i, j], fmt),
+                ha="center",
+                va="center",
+                color="white" if cm[i, j] > thresh else "black",
             )
 
-    title = 'Confusion Matrix (Normalized)' if normalize else 'Confusion Matrix'
+    title = "Confusion Matrix (Normalized)" if normalize else "Confusion Matrix"
     ax_plot.set_title(title, fontsize=14)
 
     plt.tight_layout()
     return fig
 
 
-def encode_figure_to_base64(fig, format: str = 'png', dpi: int = 150) -> str:
+def encode_figure_to_base64(fig, format: str = "png", dpi: int = 150) -> str:
     """Encode matplotlib figure to base64 string for HTML embedding.
 
     Parameters
@@ -706,9 +714,9 @@ def encode_figure_to_base64(fig, format: str = 'png', dpi: int = 150) -> str:
         Base64-encoded image string.
     """
     buffer = BytesIO()
-    fig.savefig(buffer, format=format, dpi=dpi, bbox_inches='tight')
+    fig.savefig(buffer, format=format, dpi=dpi, bbox_inches="tight")
     buffer.seek(0)
-    img_str = base64.b64encode(buffer.read()).decode('utf-8')
+    img_str = base64.b64encode(buffer.read()).decode("utf-8")
     buffer.close()
     return f"data:image/{format};base64,{img_str}"
 

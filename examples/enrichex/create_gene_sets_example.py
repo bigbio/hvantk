@@ -507,7 +507,8 @@ def main():
     logger.info("SUMMARY")
     logger.info("=" * 60)
 
-    logger.info("""
+    logger.info(
+        """
 Gene sets created in multiple formats:
 1. From Seurat FindAllMarkers output
 2. Manual curation from literature
@@ -538,13 +539,15 @@ hvantk enrichex burden \\
 # Python API
 from hvantk.enrichex import GeneSetCollection
 gene_sets = GeneSetCollection.load("enrichex_gene_sets/seurat_gene_sets.json")
-    """)
+    """
+    )
 
     logger.info("\n" + "=" * 60)
     logger.info("BEST PRACTICES")
     logger.info("=" * 60)
 
-    logger.info("""
+    logger.info(
+        """
 1. Gene Set Size:
    - Minimum: 20 genes (for statistical power)
    - Maximum: 500 genes (avoid overly broad sets)
@@ -574,13 +577,15 @@ gene_sets = GeneSetCollection.load("enrichex_gene_sets/seurat_gene_sets.json")
    - Date your gene sets
    - Track which version was used in analyses
    - Archive gene sets with results
-    """)
+    """
+    )
 
     logger.info("\n" + "=" * 60)
     logger.info("ADDITIONAL RESOURCES")
     logger.info("=" * 60)
 
-    logger.info("""
+    logger.info(
+        """
 Gene Set Databases:
 - MSigDB: https://www.gsea-msigdb.org/gsea/msigdb/
 - Gene Ontology: http://geneontology.org/
@@ -593,7 +598,8 @@ Single-Cell Marker Tools:
 - Seurat: https://satijalab.org/seurat/
 - Scanpy: https://scanpy.readthedocs.io/
 - scRNA-tools: https://www.scrna-tools.org/
-    """)
+    """
+    )
 
 
 if __name__ == "__main__":

@@ -167,7 +167,9 @@ def download_mondo_obo(output_path: str, overwrite: bool = False) -> str:
         logger.info(f"MONDO OBO file already exists at {output_path}")
         return str(output_path)
 
-    url = "https://github.com/monarch-initiative/mondo/releases/latest/download/mondo.obo"
+    url = (
+        "https://github.com/monarch-initiative/mondo/releases/latest/download/mondo.obo"
+    )
     logger.info(f"Downloading MONDO ontology from {url}")
 
     # Create SSL context that doesn't verify (for environments with cert issues)
@@ -182,7 +184,7 @@ def download_mondo_obo(output_path: str, overwrite: bool = False) -> str:
     except Exception:
         # Try with unverified SSL
         with urllib.request.urlopen(url, context=ssl_context) as response:
-            with open(output_path, 'wb') as f:
+            with open(output_path, "wb") as f:
                 f.write(response.read())
 
     logger.info(f"Downloaded MONDO ontology to {output_path}")

@@ -59,7 +59,9 @@ def test_mkmatrix_expression_atlas_short_options(tmp_path: Path):
     out_mt = tmp_path / "atlas.mt"
 
     runner = CliRunner()
-    with patch("hvantk.commands.make_matrix_cli._build_expression_atlas_mt") as mock_build:
+    with patch(
+        "hvantk.commands.make_matrix_cli._build_expression_atlas_mt"
+    ) as mock_build:
         result = runner.invoke(
             mkmatrix_group,
             [

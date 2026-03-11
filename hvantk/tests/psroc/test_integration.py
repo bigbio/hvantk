@@ -464,4 +464,3 @@ class TestHailIntegration:
             pytest.skip(f"Test data not found: {DBNSFP_TEST_DATA}")
 
         assert DBNSFP_TEST_DATA.exists()
-

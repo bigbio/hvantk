@@ -306,9 +306,7 @@ class TestAncestryInferenceResult:
     """Tests for AncestryInferenceResult methods."""
 
     @pytest.fixture
-    def pipeline_result(
-        self, hail_session, synthetic_query_mt, synthetic_reference_mt
-    ):
+    def pipeline_result(self, hail_session, synthetic_query_mt, synthetic_reference_mt):
         """Run pipeline to get result for testing."""
         return run_ancestry_inference(
             query_mt=synthetic_query_mt,
@@ -366,6 +364,7 @@ class TestAncestryInferenceResult:
 
             # Check TSV content
             import pandas as pd
+
             tsv_df = pd.read_csv(saved_paths["predictions_tsv"], sep="\t")
             assert PREDICTED_ANCESTRY_COL in tsv_df.columns
 

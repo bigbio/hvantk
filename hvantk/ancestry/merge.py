@@ -273,7 +273,9 @@ def merge_matrixtables(
     query_only, ref_only, n_shared = get_shared_variants_stats(query_mt, reference_mt)
 
     # Set minimum threshold
-    min_variants = min_shared_variants if min_shared_variants is not None else MIN_SHARED_VARIANTS
+    min_variants = (
+        min_shared_variants if min_shared_variants is not None else MIN_SHARED_VARIANTS
+    )
 
     # Validate sufficient shared variants
     if n_shared == 0:

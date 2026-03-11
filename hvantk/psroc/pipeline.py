@@ -165,8 +165,7 @@ class PSROCConfig:
             self.genes is not None and len(self.genes) > 0,
             self.genes_file is not None,
             self.variants_path is not None,
-            self.gene_set_collection is not None
-            and len(self.gene_set_collection) > 0,
+            self.gene_set_collection is not None and len(self.gene_set_collection) > 0,
         ]
         if sum(sources) == 0:
             errors.append(
@@ -207,9 +206,7 @@ class PSROCConfig:
 
         if self.gene_set_collection is not None:
             empty_groups = [
-                name
-                for name, genes in self.gene_set_collection.items()
-                if not genes
+                name for name, genes in self.gene_set_collection.items() if not genes
             ]
             if empty_groups:
                 errors.append(
@@ -726,8 +723,7 @@ class PSROCPipeline:
         for group_name in sorted(collection):
             gene_set = collection[group_name]
             logger.info(
-                f"Running PSROC for group '{group_name}' "
-                f"({len(gene_set)} genes)"
+                f"Running PSROC for group '{group_name}' " f"({len(gene_set)} genes)"
             )
 
             # Sanitize group name for filesystem paths
@@ -766,9 +762,7 @@ class PSROCPipeline:
                     f"{len(result.scores_included)} scores"
                 )
             except Exception as e:
-                logger.warning(
-                    f"Group '{group_name}' failed: {e}"
-                )
+                logger.warning(f"Group '{group_name}' failed: {e}")
                 failed_groups.append(group_name)
                 continue
 
@@ -780,8 +774,7 @@ class PSROCPipeline:
 
         if failed_groups:
             logger.warning(
-                f"{len(failed_groups)} group(s) failed: "
-                f"{', '.join(failed_groups)}"
+                f"{len(failed_groups)} group(s) failed: " f"{', '.join(failed_groups)}"
             )
 
         logger.info(
@@ -795,23 +788,18 @@ class PSROCPipeline:
 
         return results
 
-    def _generate_collection_heatmap(
-        self, results: Dict[str, "PSROCResult"]
-    ) -> None:
+    def _generate_collection_heatmap(self, results: Dict[str, "PSROCResult"]) -> None:
         """Generate a cross-panel AUC heatmap from run_collection results."""
         import matplotlib
+
         matplotlib.use("Agg")
 
         collection_metrics = {
-            name: result.metrics
-            for name, result in results.items()
-            if result.metrics
+            name: result.metrics for name, result in results.items() if result.metrics
         }
 
         if len(collection_metrics) < 2:
-            logger.info(
-                "Skipping collection heatmap: fewer than 2 groups with metrics"
-            )
+            logger.info("Skipping collection heatmap: fewer than 2 groups with metrics")
             return
 
         output_dir = Path(self.config.output_dir)
@@ -898,8 +886,7 @@ class PSROCPipeline:
             if isinstance(geneinfo_dtype, hl.tarray):
                 # VCF import with Number=. → array<str>: take first element
                 geneinfo_str = hl.or_missing(
-                    hl.is_defined(ht.info.GENEINFO)
-                    & (hl.len(ht.info.GENEINFO) > 0),
+                    hl.is_defined(ht.info.GENEINFO) & (hl.len(ht.info.GENEINFO) > 0),
                     ht.info.GENEINFO[0],
                 )
             else:
@@ -940,7 +927,9 @@ class PSROCPipeline:
                         for alias, canonical in sorted(alias_map.items()):
                             logger.info(f"     {alias} → {canonical}")
 
-                self._n_genes = pre_expand_count if self.config.hgnc_path else len(gene_set)
+                self._n_genes = (
+                    pre_expand_count if self.config.hgnc_path else len(gene_set)
+                )
                 logger.info(f"   Filtering to {self._n_genes} genes")
                 gene_literal = hl.literal(gene_set)
                 ht = ht.filter(gene_literal.contains(ht.gene))
@@ -1019,8 +1008,7 @@ class PSROCPipeline:
         clnrevstat_dtype = ht.info.CLNREVSTAT.dtype
         if isinstance(clnrevstat_dtype, hl.tarray):
             clnrevstat_str = hl.or_missing(
-                hl.is_defined(ht.info.CLNREVSTAT)
-                & (hl.len(ht.info.CLNREVSTAT) > 0),
+                hl.is_defined(ht.info.CLNREVSTAT) & (hl.len(ht.info.CLNREVSTAT) > 0),
                 ht.info.CLNREVSTAT[0],
             )
         else:
@@ -1029,9 +1017,7 @@ class PSROCPipeline:
         # Map string to star count, default 0 for unknown values
         stars_expr = star_map.get(clnrevstat_str, 0)
 
-        return ht.filter(
-            hl.is_defined(clnrevstat_str) & (stars_expr >= min_stars)
-        )
+        return ht.filter(hl.is_defined(clnrevstat_str) & (stars_expr >= min_stars))
 
     def _assign_labels(self) -> hl.Table:
         """Stage 3: Assign binary labels to ClinVar variants."""
@@ -1048,8 +1034,7 @@ class PSROCPipeline:
         clnsig_dtype = ht.info.CLNSIG.dtype
         if isinstance(clnsig_dtype, hl.tarray):
             clnsig = hl.or_missing(
-                hl.is_defined(ht.info.CLNSIG)
-                & (hl.len(ht.info.CLNSIG) > 0),
+                hl.is_defined(ht.info.CLNSIG) & (hl.len(ht.info.CLNSIG) > 0),
                 ht.info.CLNSIG[0],
             )
         else:
@@ -1167,7 +1152,9 @@ class PSROCPipeline:
         df = ht.select(*score_fields).to_pandas()
 
         # Build numpy arrays for each score
-        scores_np = {sf: df[sf].to_numpy(dtype=float, na_value=np.nan) for sf in score_fields}
+        scores_np = {
+            sf: df[sf].to_numpy(dtype=float, na_value=np.nan) for sf in score_fields
+        }
 
         # Compute missingness using existing roc.py utility (single pass)
         missingness_results = compute_all_missingness(
@@ -1178,9 +1165,7 @@ class PSROCPipeline:
             missingness_results, max_missingness=self.config.max_missingness
         )
 
-        logger.info(
-            f"   ✓ Computed missingness for {len(missingness_results)} scores"
-        )
+        logger.info(f"   ✓ Computed missingness for {len(missingness_results)} scores")
         logger.info(
             f"   ✓ Included: {len(scores_included)}, "
             f"Excluded: {len(scores_excluded)}"
@@ -1218,9 +1203,7 @@ class PSROCPipeline:
         score_fields = [
             s
             for s in self.config.scores
-            if s in ht.row
-            and s in missingness
-            and missingness[s].included_in_analysis
+            if s in ht.row and s in missingness and missingness[s].included_in_analysis
         ]
 
         if not score_fields:
@@ -1239,7 +1222,9 @@ class PSROCPipeline:
         # Extract scores into dictionary of NumPy arrays
         scores_dict = {}
         for score_field in score_fields:
-            scores_dict[score_field] = df[score_field].to_numpy(dtype=float, na_value=np.nan)
+            scores_dict[score_field] = df[score_field].to_numpy(
+                dtype=float, na_value=np.nan
+            )
 
         # Compute ROC metrics for all scores at once
         roc_results = compute_roc_metrics(

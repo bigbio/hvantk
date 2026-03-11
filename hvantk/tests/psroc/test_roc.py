@@ -317,10 +317,12 @@ class TestBootstrapAUCCI:
     def test_perfect_separator_tight_ci(self):
         """Test that perfect separation yields CI close to 1.0."""
         labels = np.array([0] * 50 + [1] * 50)
-        scores = np.concatenate([
-            np.linspace(0.0, 0.4, 50),
-            np.linspace(0.6, 1.0, 50),
-        ])
+        scores = np.concatenate(
+            [
+                np.linspace(0.0, 0.4, 50),
+                np.linspace(0.6, 1.0, 50),
+            ]
+        )
 
         ci_lower, ci_upper = bootstrap_auc_ci(labels, scores, n_resamples=500)
 
@@ -347,10 +349,12 @@ class TestBootstrapAUCCI:
         from sklearn.metrics import roc_auc_score
 
         labels = np.array([0] * 30 + [1] * 30)
-        scores = np.concatenate([
-            np.linspace(0.1, 0.6, 30),
-            np.linspace(0.4, 0.9, 30),
-        ])
+        scores = np.concatenate(
+            [
+                np.linspace(0.1, 0.6, 30),
+                np.linspace(0.4, 0.9, 30),
+            ]
+        )
 
         auc = roc_auc_score(labels, scores)
         ci_lower, ci_upper = bootstrap_auc_ci(labels, scores, n_resamples=1000)
@@ -371,10 +375,12 @@ class TestBootstrapAUCCI:
     def test_different_seeds_produce_different_results(self):
         """Test determinism for same seed and variability across seeds."""
         labels = np.array([0] * 30 + [1] * 30)
-        scores = np.concatenate([
-            np.linspace(0.1, 0.6, 30),
-            np.linspace(0.4, 0.9, 30),
-        ])
+        scores = np.concatenate(
+            [
+                np.linspace(0.1, 0.6, 30),
+                np.linspace(0.4, 0.9, 30),
+            ]
+        )
 
         # Same seed must be deterministic
         ci_a = bootstrap_auc_ci(labels, scores, seed=1)

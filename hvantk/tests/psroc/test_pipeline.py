@@ -425,7 +425,10 @@ class TestConstants:
         """Test CLNREVSTAT star map assigns correct star counts."""
         assert CLNREVSTAT_STAR_MAP["practice_guideline"] == 4
         assert CLNREVSTAT_STAR_MAP["reviewed_by_expert_panel"] == 3
-        assert CLNREVSTAT_STAR_MAP["criteria_provided,_multiple_submitters,_no_conflicts"] == 2
+        assert (
+            CLNREVSTAT_STAR_MAP["criteria_provided,_multiple_submitters,_no_conflicts"]
+            == 2
+        )
         assert CLNREVSTAT_STAR_MAP["criteria_provided,_single_submitter"] == 1
         assert CLNREVSTAT_STAR_MAP["no_assertion_criteria_provided"] == 0
 
@@ -532,7 +535,9 @@ class TestPSROCPipelineValidation:
 
             pipeline = PSROCPipeline(config)
 
-            with pytest.raises(ValueError, match="gene_set_collection is not configured"):
+            with pytest.raises(
+                ValueError, match="gene_set_collection is not configured"
+            ):
                 pipeline.run_collection()
 
 
@@ -609,5 +614,3 @@ class TestShowPlan:
             assert "REVEL_score" in captured.out
             assert "Load Hail Tables" in captured.out
             assert "Compute ROC" in captured.out
-
-

@@ -57,9 +57,7 @@ class TestSetupLogging:
         log_path = str(tmp_path / "test.log")
         setup_logging(verbosity=1, log_file=log_path)
         root = logging.getLogger()
-        file_handlers = [
-            h for h in root.handlers if isinstance(h, logging.FileHandler)
-        ]
+        file_handlers = [h for h in root.handlers if isinstance(h, logging.FileHandler)]
         assert len(file_handlers) >= 1
 
     def test_log_file_receives_messages(self, tmp_path):

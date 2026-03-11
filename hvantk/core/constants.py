@@ -91,9 +91,7 @@ CLINGEN_CLASSIFICATION_LEVELS = [
 logger.debug(f"ClinGen base URL: {CLINGEN_BASE_URL}")
 
 # HGNC Gene Nomenclature
-HGNC_DOWNLOAD_URL = (
-    "https://storage.googleapis.com/public-download-files/hgnc/tsv/tsv/hgnc_complete_set.txt"
-)
+HGNC_DOWNLOAD_URL = "https://storage.googleapis.com/public-download-files/hgnc/tsv/tsv/hgnc_complete_set.txt"
 HGNC_INFO_URL = "https://www.genenames.org/download/statistics-and-files/"
 
 HGNC_GENE_FIELDS = {

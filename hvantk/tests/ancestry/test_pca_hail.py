@@ -135,9 +135,7 @@ class TestPCAResult:
 class TestPcaPopulationStructure:
     """Tests verifying PCA captures population structure."""
 
-    def test_populations_cluster_separately(
-        self, hail_session, synthetic_reference_mt
-    ):
+    def test_populations_cluster_separately(self, hail_session, synthetic_reference_mt):
         """Reference populations should form distinct clusters in PC space."""
         from hvantk.ancestry.filter import filter_variants_for_ancestry
 
@@ -149,9 +147,7 @@ class TestPcaPopulationStructure:
 
         # Join with sample metadata to get ancestry
         samples = synthetic_reference_mt.cols().to_pandas()
-        scores_with_ancestry = scores_df.merge(
-            samples[["s", "ancestry"]], on="s"
-        )
+        scores_with_ancestry = scores_df.merge(samples[["s", "ancestry"]], on="s")
 
         # Check that populations have distinct PC1 and PC2 means
         pop_means = scores_with_ancestry.groupby("ancestry")[["PC1", "PC2"]].mean()
@@ -162,9 +158,9 @@ class TestPcaPopulationStructure:
         pc2_range = pop_means["PC2"].max() - pop_means["PC2"].min()
 
         # At least one PC should show meaningful separation
-        assert pc1_range > 0.1 or pc2_range > 0.1, (
-            "Populations should show separation in PC space"
-        )
+        assert (
+            pc1_range > 0.1 or pc2_range > 0.1
+        ), "Populations should show separation in PC space"
 
 
 @pytest.mark.hail
@@ -184,9 +180,7 @@ class TestProjectSamples:
         pca_result = compute_pca(ref_filtered, n_pcs=5, compute_loadings=True)
 
         # Filter query to same variants
-        query_filtered = synthetic_query_mt.semi_join_rows(
-            ref_filtered.rows().select()
-        )
+        query_filtered = synthetic_query_mt.semi_join_rows(ref_filtered.rows().select())
 
         # Project query onto reference PC space
         projected = project_samples(

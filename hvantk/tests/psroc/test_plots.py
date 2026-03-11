@@ -352,36 +352,28 @@ class TestPlotCollectionHeatmap:
 
     def test_heatmap_without_ci(self, sample_collection_metrics):
         """Test heatmap without CI annotations."""
-        fig = plot_collection_heatmap(
-            sample_collection_metrics, show_ci=False
-        )
+        fig = plot_collection_heatmap(sample_collection_metrics, show_ci=False)
 
         assert fig is not None
         plt.close(fig)
 
     def test_heatmap_without_values(self, sample_collection_metrics):
         """Test heatmap without value annotations."""
-        fig = plot_collection_heatmap(
-            sample_collection_metrics, show_values=False
-        )
+        fig = plot_collection_heatmap(sample_collection_metrics, show_values=False)
 
         assert fig is not None
         plt.close(fig)
 
     def test_heatmap_sort_by_name(self, sample_collection_metrics):
         """Test heatmap with scores sorted alphabetically."""
-        fig = plot_collection_heatmap(
-            sample_collection_metrics, sort_scores_by="name"
-        )
+        fig = plot_collection_heatmap(sample_collection_metrics, sort_scores_by="name")
 
         assert fig is not None
         plt.close(fig)
 
     def test_heatmap_custom_figsize(self, sample_collection_metrics):
         """Test heatmap with custom figure size."""
-        fig = plot_collection_heatmap(
-            sample_collection_metrics, figsize=(14, 6)
-        )
+        fig = plot_collection_heatmap(sample_collection_metrics, figsize=(14, 6))
 
         assert fig is not None
         plt.close(fig)
@@ -412,10 +404,14 @@ class TestPlotCollectionHeatmap:
         labels = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1])
         scores_full = {
             "CADD_phred": np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]),
-            "REVEL_score": np.array([0.2, 0.3, 0.5, 0.6, 0.7, 0.4, 0.5, 0.8, 0.9, 0.95]),
+            "REVEL_score": np.array(
+                [0.2, 0.3, 0.5, 0.6, 0.7, 0.4, 0.5, 0.8, 0.9, 0.95]
+            ),
         }
         scores_partial = {
-            "CADD_phred": np.array([0.3, 0.2, 0.4, 0.5, 0.45, 0.55, 0.65, 0.75, 0.85, 0.9]),
+            "CADD_phred": np.array(
+                [0.3, 0.2, 0.4, 0.5, 0.45, 0.55, 0.65, 0.75, 0.85, 0.9]
+            ),
         }
 
         collection = {

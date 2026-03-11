@@ -57,9 +57,7 @@ def create_synthetic_data(output_dir: Path):
         n_variants=5000,
         n_partitions=4,
     )
-    query_mt = query_mt.annotate_cols(
-        s=hl.str("query_") + hl.str(query_mt.sample_idx)
-    )
+    query_mt = query_mt.annotate_cols(s=hl.str("query_") + hl.str(query_mt.sample_idx))
     query_mt = query_mt.key_cols_by("s")
     query_mt = query_mt.key_rows_by("locus", "alleles")
     query_mt.write(query_path, overwrite=True)
@@ -166,7 +164,9 @@ def run_ancestry_inference_example(
 
     # Ancestry distribution
     logger.info("\nAncestry distribution (query samples):")
-    for ancestry, count in query_predictions["predicted_ancestry"].value_counts().items():
+    for ancestry, count in (
+        query_predictions["predicted_ancestry"].value_counts().items()
+    ):
         pct = 100 * count / len(query_predictions)
         logger.info(f"  {ancestry}: {count} ({pct:.1f}%)")
 
@@ -305,7 +305,9 @@ def main():
         query_mt_path, reference_mt_path = create_synthetic_data(output_dir)
     else:
         if args.query_mt is None or args.reference_mt is None:
-            parser.error("Both --query-mt and --reference-mt required unless using synthetic data")
+            parser.error(
+                "Both --query-mt and --reference-mt required unless using synthetic data"
+            )
         query_mt_path = args.query_mt
         reference_mt_path = args.reference_mt
 

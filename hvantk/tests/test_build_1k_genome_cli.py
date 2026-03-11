@@ -12,7 +12,9 @@ from hvantk.commands.build_1k_genome_cli import build_1k_genome_cmd
 from hvantk.tables.genome_builders import _extract_chrom_token, discover_vcf_files
 
 
-def _make_vcf_dir(tmp_path: Path, chroms: list[str], include_index: bool = True) -> Path:
+def _make_vcf_dir(
+    tmp_path: Path, chroms: list[str], include_index: bool = True
+) -> Path:
     vcf_dir = tmp_path / "vcfs"
     vcf_dir.mkdir()
     for chrom in chroms:
@@ -113,11 +115,16 @@ def test_cli_all_options(tmp_path):
         result = runner.invoke(
             build_1k_genome_cmd,
             [
-                "--input-vcfs", str(vcf_dir),
-                "--output-mt", str(tmp_path / "out.mt"),
-                "--sample-annotations", str(annot_file),
-                "--reference-genome", "GRCh37",
-                "--chromosomes", "chr1, chr2",
+                "--input-vcfs",
+                str(vcf_dir),
+                "--output-mt",
+                str(tmp_path / "out.mt"),
+                "--sample-annotations",
+                str(annot_file),
+                "--reference-genome",
+                "GRCh37",
+                "--chromosomes",
+                "chr1, chr2",
                 "--overwrite",
             ],
         )
@@ -149,10 +156,14 @@ def test_cli_sample_annotations_delimiter(tmp_path):
         result = runner.invoke(
             build_1k_genome_cmd,
             [
-                "--input-vcfs", str(vcf_dir),
-                "--output-mt", str(tmp_path / "out.mt"),
-                "--sample-annotations", str(annot_file),
-                "--sample-annotations-delimiter", " ",
+                "--input-vcfs",
+                str(vcf_dir),
+                "--output-mt",
+                str(tmp_path / "out.mt"),
+                "--sample-annotations",
+                str(annot_file),
+                "--sample-annotations-delimiter",
+                " ",
             ],
         )
 
@@ -160,5 +171,3 @@ def test_cli_sample_annotations_delimiter(tmp_path):
     kw = mock_build.call_args.kwargs
     assert kw["sample_annotations"] == str(annot_file)
     assert kw["sample_annotations_delimiter"] == " "
-
-

@@ -348,9 +348,7 @@ def _convert_with_bgzip(input_path: str, output_path: str, threads: int) -> None
         # Remove partial output
         if os.path.exists(output_path):
             os.remove(output_path)
-        raise RuntimeError(
-            "bgzip conversion failed:\n" + "\n".join(errors)
-        )
+        raise RuntimeError("bgzip conversion failed:\n" + "\n".join(errors))
 
 
 def _convert_with_pysam(input_path: str, output_path: str) -> None:
@@ -383,9 +381,7 @@ def _make_bgzf_block(data: bytes) -> bytes:
     bytes
         A complete BGZF block ready for concatenation.
     """
-    compressor = zlib.compressobj(
-        zlib.Z_DEFAULT_COMPRESSION, zlib.DEFLATED, -15
-    )
+    compressor = zlib.compressobj(zlib.Z_DEFAULT_COMPRESSION, zlib.DEFLATED, -15)
     compressed = compressor.compress(data) + compressor.flush()
     # BGZF block = gzip header (18) + compressed data + CRC32 (4) + ISIZE (4)
     bsize = 18 + len(compressed) + 8 - 1  # BSIZE = total block size - 1

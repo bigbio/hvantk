@@ -41,6 +41,7 @@ class TestDownloadHgnc:
         output_path = tmp_path / "nested" / "dir" / "hgnc_complete_set.txt"
 
         with patch("urllib.request.urlretrieve") as mock_retrieve:
+
             def create_file(_url, path):
                 Path(path).write_text("test content")
                 return (path, None)
@@ -66,6 +67,7 @@ class TestDownloadHgnc:
         output_path.write_text("existing content")
 
         with patch("urllib.request.urlretrieve") as mock_retrieve:
+
             def create_file(_url, path):
                 Path(path).write_text("new content")
                 return (path, None)
@@ -141,7 +143,9 @@ class TestHgncDownloaderCli:
         output_path.write_text("existing")
 
         with patch("hvantk.commands.hgnc_downloader.download_hgnc") as mock_download:
-            mock_download.side_effect = FileExistsError(f"File already exists: {output_path}")
+            mock_download.side_effect = FileExistsError(
+                f"File already exists: {output_path}"
+            )
 
             runner = CliRunner()
             result = runner.invoke(hgnc_downloader, ["--output", str(output_path)])

@@ -82,9 +82,7 @@ def test_get_geneset_per_gcep_min_genes(clingen_table_path):
 def test_get_geneset_per_gcep_min_classification(clingen_table_path):
     streamer = ClinGenStreamer(clingen_table_path)
     result_all = streamer.get_geneset_per_gcep()
-    result_definitive = streamer.get_geneset_per_gcep(
-        min_classification="Definitive"
-    )
+    result_definitive = streamer.get_geneset_per_gcep(min_classification="Definitive")
     # Filtering to Definitive should yield fewer or equal genes
     for gcep in result_definitive:
         if gcep in result_all:

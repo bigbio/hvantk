@@ -145,7 +145,9 @@ def compute_pca(
     n_variants = mt.count_rows()
     n_samples = mt.count_cols()
 
-    logger.info(f"Computing PCA with {n_pcs} PCs on {n_variants} variants, {n_samples} samples")
+    logger.info(
+        f"Computing PCA with {n_pcs} PCs on {n_variants} variants, {n_samples} samples"
+    )
 
     # Check for sufficient data to compute requested number of PCs
     # Mathematically, we can compute at most min(n_variants, n_samples) - 1 PCs
@@ -213,9 +215,7 @@ def compute_pca(
             f"Variance explained by first 5 PCs: "
             f"{', '.join(f'{v:.2%}' for v in var_explained)}"
         )
-        logger.info(
-            f"Cumulative variance (PC1-5): {sum(var_explained):.2%}"
-        )
+        logger.info(f"Cumulative variance (PC1-5): {sum(var_explained):.2%}")
 
     return PCAResult(
         eigenvalues=list(eigenvalues),

@@ -330,13 +330,12 @@ def ancestry_inference_cmd(
         # Validate input paths (cloud-aware)
         if not fs.exists(query_mt):
             raise click.BadParameter(
-                f"Query MatrixTable does not exist: {query_mt}",
-                param_hint="--query-mt"
+                f"Query MatrixTable does not exist: {query_mt}", param_hint="--query-mt"
             )
         if not fs.exists(reference_mt):
             raise click.BadParameter(
                 f"Reference MatrixTable does not exist: {reference_mt}",
-                param_hint="--reference-mt"
+                param_hint="--reference-mt",
             )
 
         # Validate parameters
@@ -460,6 +459,7 @@ def ancestry_inference_cmd(
 
         if save_model:
             import pickle
+
             model_path = output_path / "rf_model.pkl"
             with open(model_path, "wb") as f:
                 pickle.dump(result.model, f)
@@ -473,6 +473,7 @@ def ancestry_inference_cmd(
         if generate_report:
             try:
                 from hvantk.ancestry.report import generate_ancestry_report
+
                 report_path = output_path / "ancestry_report.html"
                 generate_ancestry_report(result, report_path)
                 click.echo(f"  Generated report: {report_path}")
@@ -484,6 +485,7 @@ def ancestry_inference_cmd(
 
         # Save pipeline statistics
         import json
+
         stats_path = output_path / "pipeline_stats.json"
         stats_to_save = {
             **result.pipeline_stats,
@@ -496,6 +498,7 @@ def ancestry_inference_cmd(
         # Print summary
         predictions_df = result.get_predictions_df()
         from hvantk.ancestry.constants import SOURCE_COL, PREDICTED_ANCESTRY_COL
+
         query_preds = predictions_df[predictions_df[SOURCE_COL] == "query"]
 
         click.echo("\n" + "=" * 70)
@@ -514,7 +517,9 @@ def ancestry_inference_cmd(
         if len(query_preds) == 0:
             click.echo("  No query samples to display")
         else:
-            for pop, count in query_preds[PREDICTED_ANCESTRY_COL].value_counts().items():
+            for pop, count in (
+                query_preds[PREDICTED_ANCESTRY_COL].value_counts().items()
+            ):
                 pct = 100 * count / len(query_preds)
                 click.echo(f"  {pop}: {count} ({pct:.1f}%)")
 

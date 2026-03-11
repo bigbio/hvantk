@@ -465,7 +465,8 @@ def generate_sample_metrics_table(sample_df: pd.DataFrame) -> str:
                     min_str = f"{min_val:.1f}"
                     max_str = f"{max_val:.1f}"
 
-                rows.append(f"""
+                rows.append(
+                    f"""
                     <tr>
                         <td>{label}</td>
                         <td>{mean_str}</td>
@@ -473,7 +474,8 @@ def generate_sample_metrics_table(sample_df: pd.DataFrame) -> str:
                         <td>{max_str}</td>
                         <td>{status}</td>
                     </tr>
-                """)
+                """
+                )
 
     return "".join(rows)
 
@@ -520,7 +522,8 @@ def generate_variant_metrics_table(variant_df: pd.DataFrame) -> str:
                     min_str = f"{min_val:.1f}"
                     max_str = f"{max_val:.1f}"
 
-                rows.append(f"""
+                rows.append(
+                    f"""
                     <tr>
                         <td>{label}</td>
                         <td>{mean_str}</td>
@@ -528,7 +531,8 @@ def generate_variant_metrics_table(variant_df: pd.DataFrame) -> str:
                         <td>{max_str}</td>
                         <td>{status}</td>
                     </tr>
-                """)
+                """
+                )
 
     return "".join(rows)
 
@@ -547,24 +551,30 @@ def generate_recommendations(
             low_call_rate_samples = (sample_call_rates < 0.85).sum()
             if low_call_rate_samples > 0:
                 pct = low_call_rate_samples / len(sample_call_rates) * 100
-                recommendations.append(f"""
+                recommendations.append(
+                    f"""
                     <div class="alert alert-warning">
                         <strong>⚠️ Sample Call Rates:</strong> {low_call_rate_samples} samples ({pct:.1f}%) 
                         have call rates below 85%. Consider removing these samples from analysis.
                     </div>
-                """)
+                """
+                )
             else:
-                recommendations.append("""
+                recommendations.append(
+                    """
                     <div class="alert alert-success">
                         <strong>✅ Sample Call Rates:</strong> All samples have acceptable call rates (≥85%).
                     </div>
-                """)
+                """
+                )
     else:
-        recommendations.append("""
+        recommendations.append(
+            """
             <div class="alert alert-info">
                 <strong>ℹ️ Sample QC:</strong> Sample QC metrics not available - consider running sample QC analysis.
             </div>
-        """)
+        """
+        )
 
     # Variant recommendations - only if variant QC data is available
     if variant_df is not None:
@@ -574,18 +584,22 @@ def generate_recommendations(
             low_call_rate_variants = (variant_call_rates < 0.80).sum()
             if low_call_rate_variants > 0:
                 pct = low_call_rate_variants / len(variant_call_rates) * 100
-                recommendations.append(f"""
+                recommendations.append(
+                    f"""
                     <div class="alert alert-warning">
                         <strong>⚠️ Variant Call Rates:</strong> {low_call_rate_variants:,} variants ({pct:.1f}%) 
                         have call rates below 80%. Consider filtering these variants.
                     </div>
-                """)
+                """
+                )
             else:
-                recommendations.append("""
+                recommendations.append(
+                    """
                     <div class="alert alert-success">
                         <strong>✅ Variant Call Rates:</strong> Most variants have acceptable call rates (≥80%).
                     </div>
-                """)
+                """
+                )
 
         # HWE recommendations - only if variant QC data is available
         if "p_value_hwe" in variant_data.columns:
@@ -593,26 +607,32 @@ def generate_recommendations(
             hwe_failing = (hwe_pvals < 1e-6).sum()
             if hwe_failing > 0:
                 pct = hwe_failing / len(hwe_pvals) * 100
-                recommendations.append(f"""
+                recommendations.append(
+                    f"""
                     <div class="alert alert-info">
                         <strong>ℹ️ Hardy-Weinberg Equilibrium:</strong> {hwe_failing:,} variants ({pct:.1f}%) 
                         fail HWE test (p < 1e-6). Review these for potential genotyping errors.
                     </div>
-                """)
+                """
+                )
     else:
-        recommendations.append("""
+        recommendations.append(
+            """
             <div class="alert alert-info">
                 <strong>ℹ️ Variant QC:</strong> Variant QC metrics not available - consider running variant QC analysis.
             </div>
-        """)
+        """
+        )
 
     if not recommendations:
-        recommendations.append("""
+        recommendations.append(
+            """
             <div class="alert alert-success">
                 <strong>✅ Overall Quality:</strong> No major quality issues detected. 
                 Dataset appears to be of good quality for downstream analysis.
             </div>
-        """)
+        """
+        )
 
     return "".join(recommendations)
 
@@ -853,41 +873,49 @@ def generate_qc_report(
     if sample_data is not None and "call_rate" in sample_data.columns:
         sample_cr = sample_data["call_rate"].mean()
         status = get_status_badge(sample_cr, 0.95, 0.85, True)
-        overview_metrics.append(f"""
+        overview_metrics.append(
+            f"""
             <tr>
                 <td>Mean Sample Call Rate</td>
                 <td>{sample_cr:.3f}</td>
                 <td>{status}</td>
             </tr>
-        """)
+        """
+        )
     else:
-        overview_metrics.append(f"""
+        overview_metrics.append(
+            f"""
             <tr>
                 <td>Mean Sample Call Rate</td>
                 <td>N/A</td>
                 <td><span class="badge badge-warning">No QC Data</span></td>
             </tr>
-        """)
+        """
+        )
 
     # Variant QC metrics - only if variant QC is available
     if variant_data is not None and "call_rate" in variant_data.columns:
         variant_cr = variant_data["call_rate"].mean()
         status = get_status_badge(variant_cr, 0.90, 0.80, True)
-        overview_metrics.append(f"""
+        overview_metrics.append(
+            f"""
             <tr>
                 <td>Mean Variant Call Rate</td>
                 <td>{variant_cr:.3f}</td>
                 <td>{status}</td>
             </tr>
-        """)
+        """
+        )
     else:
-        overview_metrics.append(f"""
+        overview_metrics.append(
+            f"""
             <tr>
                 <td>Mean Variant Call Rate</td>
                 <td>N/A</td>
                 <td><span class="badge badge-warning">No QC Data</span></td>
             </tr>
-        """)
+        """
+        )
 
     # Overall quality assessment with fallback logic
     sample_quality = (

@@ -157,13 +157,15 @@ class GeneMapper:
             self._ensembl_to_hgnc = {}
             return
 
-        data = self._ht.filter(
-            hl.is_defined(self._ht.ensembl_gene_id)
-            & (self._ht.ensembl_gene_id != "")
-        ).select("ensembl_gene_id").collect()
-        self._ensembl_to_hgnc = {
-            row.ensembl_gene_id: row.hgnc_id for row in data
-        }
+        data = (
+            self._ht.filter(
+                hl.is_defined(self._ht.ensembl_gene_id)
+                & (self._ht.ensembl_gene_id != "")
+            )
+            .select("ensembl_gene_id")
+            .collect()
+        )
+        self._ensembl_to_hgnc = {row.ensembl_gene_id: row.hgnc_id for row in data}
 
     def _build_entrez_lookup(self) -> None:
         """Build entrez_id -> hgnc_id lookup dictionary."""
@@ -176,9 +178,13 @@ class GeneMapper:
             self._entrez_to_hgnc = {}
             return
 
-        data = self._ht.filter(
-            hl.is_defined(self._ht.entrez_id) & (self._ht.entrez_id != "")
-        ).select("entrez_id").collect()
+        data = (
+            self._ht.filter(
+                hl.is_defined(self._ht.entrez_id) & (self._ht.entrez_id != "")
+            )
+            .select("entrez_id")
+            .collect()
+        )
         self._entrez_to_hgnc = {row.entrez_id: row.hgnc_id for row in data}
 
     def _build_uniprot_lookup(self) -> None:
@@ -450,10 +456,14 @@ class GeneMapper:
             )
         elif source_type == "ensembl_gene_id":
             # Re-key HGNC table by ensembl_gene_id for join
-            hgnc_rekey = self._ht.filter(
-                hl.is_defined(self._ht.ensembl_gene_id)
-                & (self._ht.ensembl_gene_id != "")
-            ).key_by("ensembl_gene_id").select(*fields_to_add)
+            hgnc_rekey = (
+                self._ht.filter(
+                    hl.is_defined(self._ht.ensembl_gene_id)
+                    & (self._ht.ensembl_gene_id != "")
+                )
+                .key_by("ensembl_gene_id")
+                .select(*fields_to_add)
+            )
             ht = ht.annotate(
                 **{f"hgnc_{f}": hgnc_rekey[ht[source_field]][f] for f in fields_to_add}
             )
@@ -465,9 +475,13 @@ class GeneMapper:
             )
         elif source_type == "entrez_id":
             # Re-key HGNC table by entrez_id for join
-            hgnc_rekey = self._ht.filter(
-                hl.is_defined(self._ht.entrez_id) & (self._ht.entrez_id != "")
-            ).key_by("entrez_id").select(*fields_to_add)
+            hgnc_rekey = (
+                self._ht.filter(
+                    hl.is_defined(self._ht.entrez_id) & (self._ht.entrez_id != "")
+                )
+                .key_by("entrez_id")
+                .select(*fields_to_add)
+            )
             ht = ht.annotate(
                 **{f"hgnc_{f}": hgnc_rekey[ht[source_field]][f] for f in fields_to_add}
             )
@@ -609,8 +623,7 @@ class GeneMapper:
 
         if "uniprot_ids" in row_fields:
             stats["with_uniprot"] = self._ht.filter(
-                hl.is_defined(self._ht.uniprot_ids)
-                & (hl.len(self._ht.uniprot_ids) > 0)
+                hl.is_defined(self._ht.uniprot_ids) & (hl.len(self._ht.uniprot_ids) > 0)
             ).count()
 
         if "omim_id" in row_fields:

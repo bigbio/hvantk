@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
+
+if TYPE_CHECKING:
+    from hvantk.utils.obo_parser import BaseOboOntology
 
 import hail as hl
 import pandas as pd
@@ -178,9 +181,7 @@ class ClinGenStreamer(HailDataStreamer):
         if self._keying_mode == "gene_disease":
             match_expr = self._match_disease_expr(ht.disease_label, terms, match_mode)
         else:
-            labels = hl.or_else(
-                hl.array(ht.disease_labels), hl.empty_array(hl.tstr)
-            )
+            labels = hl.or_else(hl.array(ht.disease_labels), hl.empty_array(hl.tstr))
             match_expr = labels.any(
                 lambda label: self._match_disease_expr(label, terms, match_mode)
             )
@@ -220,7 +221,9 @@ class ClinGenStreamer(HailDataStreamer):
         if ht is None:
             raise ValueError("ClinGen table not loaded.")
 
-        normalized_ids = {self._normalize_mondo_id(m) for m in self._ensure_list(mondo_ids)}
+        normalized_ids = {
+            self._normalize_mondo_id(m) for m in self._ensure_list(mondo_ids)
+        }
         mondo_set = hl.literal(normalized_ids)
         if self._keying_mode == "gene_disease":
             ht = ht.filter(mondo_set.contains(ht.mondo_id))
@@ -335,8 +338,7 @@ class ClinGenStreamer(HailDataStreamer):
                 )
                 rows = grouped.collect()
                 return {
-                    (row.disease_label, row.mondo_id): set(row.genes)
-                    for row in rows
+                    (row.disease_label, row.mondo_id): set(row.genes) for row in rows
                 }
             else:
                 grouped = ht.group_by("disease_label").aggregate(
@@ -406,17 +408,13 @@ class ClinGenStreamer(HailDataStreamer):
         gcep_counts = ht.aggregate(hl.agg.counter(ht.gene_curation_expert_panel))
 
         genes_per_classification = ht.aggregate(
-            hl.agg.group_by(
-                ht.classification, hl.agg.collect_as_set(ht.gene_symbol)
-            )
+            hl.agg.group_by(ht.classification, hl.agg.collect_as_set(ht.gene_symbol))
         )
         genes_per_classification = {
             k: len(v) for k, v in genes_per_classification.items()
         }
         diseases_per_classification = ht.aggregate(
-            hl.agg.group_by(
-                ht.classification, hl.agg.collect_as_set(ht.disease_label)
-            )
+            hl.agg.group_by(ht.classification, hl.agg.collect_as_set(ht.disease_label))
         )
         diseases_per_classification = {
             k: len(v) for k, v in diseases_per_classification.items()
@@ -504,9 +502,7 @@ class ClinGenStreamer(HailDataStreamer):
         if ht is None:
             raise ValueError("ClinGen table not loaded.")
 
-        summary_ht = ht.group_by(
-            gcep=ht.gene_curation_expert_panel
-        ).aggregate(
+        summary_ht = ht.group_by(gcep=ht.gene_curation_expert_panel).aggregate(
             n_associations=hl.agg.count(),
             genes=hl.agg.collect_as_set(ht.gene_symbol),
             diseases=hl.agg.collect_as_set(ht.disease_label),
@@ -520,9 +516,9 @@ class ClinGenStreamer(HailDataStreamer):
         df["top_classification"] = df["classification_counts"].apply(
             lambda counts: max(counts, key=counts.get) if counts else None
         )
-        return df.drop(columns=["classification_counts", "genes", "diseases"]).sort_values(
-            "n_associations", ascending=False
-        )
+        return df.drop(
+            columns=["classification_counts", "genes", "diseases"]
+        ).sort_values("n_associations", ascending=False)
 
     def get_geneset_per_gcep(
         self,
@@ -572,9 +568,9 @@ class ClinGenStreamer(HailDataStreamer):
             min_classification = self._normalize_classification(min_classification)
             ht = self._apply_min_classification_filter(ht, min_classification)
 
-        grouped = ht.group_by(
-            gcep=ht.gene_curation_expert_panel
-        ).aggregate(genes=hl.agg.collect_as_set(ht.gene_symbol))
+        grouped = ht.group_by(gcep=ht.gene_curation_expert_panel).aggregate(
+            genes=hl.agg.collect_as_set(ht.gene_symbol)
+        )
         rows = grouped.collect()
 
         result: Dict[str, Set[str]] = {}
@@ -586,9 +582,7 @@ class ClinGenStreamer(HailDataStreamer):
             if len(genes) < min_genes:
                 continue
             if shorten_names:
-                gcep_name = gcep_name.replace(
-                    " Gene Curation Expert Panel", ""
-                )
+                gcep_name = gcep_name.replace(" Gene Curation Expert Panel", "")
             result[gcep_name] = genes
 
         logger.info(
@@ -630,7 +624,7 @@ class ClinGenStreamer(HailDataStreamer):
 
     def categorize_by_ontology(
         self,
-        ontology: Union[str, "BaseOboOntology"],
+        ontology: Union[str, BaseOboOntology],
         min_classification: Optional[str] = None,
         categories: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Dict[str, Set[str]]]:
@@ -706,9 +700,7 @@ class ClinGenStreamer(HailDataStreamer):
             if isinstance(onto, MondoOntology):
                 categories = MONDO_DISEASE_CATEGORIES
             else:
-                raise ValueError(
-                    "categories must be provided for non-MONDO ontologies"
-                )
+                raise ValueError("categories must be provided for non-MONDO ontologies")
 
         # Collect all gene-disease-mondo associations
         if self._keying_mode == "gene_disease":
@@ -745,9 +737,15 @@ class ClinGenStreamer(HailDataStreamer):
         uncategorized = {"genes": set(), "diseases": set(), "mondo_ids": set()}
 
         for row in rows:
-            gene = row.gene_symbol if hasattr(row, 'gene_symbol') else row["gene_symbol"]
-            disease = row.disease_label if hasattr(row, 'disease_label') else row["disease_label"]
-            mondo_id = row.mondo_id if hasattr(row, 'mondo_id') else row["mondo_id"]
+            gene = (
+                row.gene_symbol if hasattr(row, "gene_symbol") else row["gene_symbol"]
+            )
+            disease = (
+                row.disease_label
+                if hasattr(row, "disease_label")
+                else row["disease_label"]
+            )
+            mondo_id = row.mondo_id if hasattr(row, "mondo_id") else row["mondo_id"]
 
             if not mondo_id:
                 uncategorized["genes"].add(gene)
@@ -780,7 +778,7 @@ class ClinGenStreamer(HailDataStreamer):
 
     def categorize_by_ontology_summary(
         self,
-        ontology: Union[str, "BaseOboOntology"],
+        ontology: Union[str, BaseOboOntology],
         min_classification: Optional[str] = None,
         categories: Optional[Dict[str, str]] = None,
     ) -> pd.DataFrame:
@@ -802,25 +800,28 @@ class ClinGenStreamer(HailDataStreamer):
         pd.DataFrame
             Summary with columns: category, n_genes, n_diseases, sample_genes
         """
-        results = self.categorize_by_ontology(
-            ontology, min_classification, categories
-        )
+        results = self.categorize_by_ontology(ontology, min_classification, categories)
 
         summary_data = []
-        for category, data in sorted(results.items(), key=lambda x: -len(x[1]["genes"])):
+        for category, data in sorted(
+            results.items(), key=lambda x: -len(x[1]["genes"])
+        ):
             genes = data["genes"]
-            summary_data.append({
-                "category": category,
-                "n_genes": len(genes),
-                "n_diseases": len(data["diseases"]),
-                "sample_genes": ", ".join(sorted(genes)[:10]) + ("..." if len(genes) > 10 else ""),
-            })
+            summary_data.append(
+                {
+                    "category": category,
+                    "n_genes": len(genes),
+                    "n_diseases": len(data["diseases"]),
+                    "sample_genes": ", ".join(sorted(genes)[:10])
+                    + ("..." if len(genes) > 10 else ""),
+                }
+            )
 
         return pd.DataFrame(summary_data)
 
     def get_genes_by_ontology_category(
         self,
-        ontology: Union[str, "BaseOboOntology"],
+        ontology: Union[str, BaseOboOntology],
         category_id: str,
         min_classification: Optional[str] = None,
         as_set: bool = True,
@@ -913,9 +914,7 @@ class ClinGenStreamer(HailDataStreamer):
 
                     if mondo_id in category_diseases:
                         genes.add(gene_symbol)
-                        full_results.append(
-                            (gene_symbol, pair.disease_label, mondo_id)
-                        )
+                        full_results.append((gene_symbol, pair.disease_label, mondo_id))
 
         if as_set:
             return genes
@@ -950,7 +949,9 @@ class ClinGenStreamer(HailDataStreamer):
         gceps = sorted(
             ht.aggregate(hl.agg.collect_as_set(ht.gene_curation_expert_panel))
         )
-        return {gcep: ht.filter(ht.gene_curation_expert_panel == gcep) for gcep in gceps}
+        return {
+            gcep: ht.filter(ht.gene_curation_expert_panel == gcep) for gcep in gceps
+        }
 
     def pivot_genes_by_classification(self) -> pd.DataFrame:
         """
@@ -1264,7 +1265,9 @@ class ClinGenStreamer(HailDataStreamer):
             self._filtered_cache[cache_key] = filtered
         return filtered
 
-    def _return_gene_symbols(self, ht: hl.Table, as_set: bool) -> Union[Set[str], hl.Table]:
+    def _return_gene_symbols(
+        self, ht: hl.Table, as_set: bool
+    ) -> Union[Set[str], hl.Table]:
         if not as_set:
             return ht
         return self._collect_set(ht, ht.gene_symbol)

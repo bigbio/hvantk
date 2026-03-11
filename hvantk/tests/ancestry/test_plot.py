@@ -31,16 +31,18 @@ def sample_predictions_df():
     # Reference samples (30 each from EUR, AFR, EAS)
     for pop in ["EUR", "AFR", "EAS"]:
         for i in range(30):
-            data.append({
-                "s": f"ref_{pop}_{i}",
-                "PC1": pc1_means[pop] + np.random.normal(0, 1),
-                "PC2": pc2_means[pop] + np.random.normal(0, 1),
-                "PC3": np.random.normal(0, 1),
-                PREDICTED_ANCESTRY_COL: pop,
-                ANCESTRY_PROB_COL: np.random.uniform(0.85, 0.99),
-                KNOWN_ANCESTRY_COL: pop,
-                SOURCE_COL: "reference",
-            })
+            data.append(
+                {
+                    "s": f"ref_{pop}_{i}",
+                    "PC1": pc1_means[pop] + np.random.normal(0, 1),
+                    "PC2": pc2_means[pop] + np.random.normal(0, 1),
+                    "PC3": np.random.normal(0, 1),
+                    PREDICTED_ANCESTRY_COL: pop,
+                    ANCESTRY_PROB_COL: np.random.uniform(0.85, 0.99),
+                    KNOWN_ANCESTRY_COL: pop,
+                    SOURCE_COL: "reference",
+                }
+            )
 
     # Query samples (randomly distributed)
     pops = ["EUR", "AFR", "EAS"]
@@ -50,16 +52,18 @@ def sample_predictions_df():
         prob = np.random.uniform(0.5, 0.95)
         predicted = assigned_pop if prob >= 0.75 else "unassigned"
 
-        data.append({
-            "s": f"query_{i}",
-            "PC1": pc1_means[assigned_pop] + np.random.normal(0, 2),
-            "PC2": pc2_means[assigned_pop] + np.random.normal(0, 2),
-            "PC3": np.random.normal(0, 1),
-            PREDICTED_ANCESTRY_COL: predicted,
-            ANCESTRY_PROB_COL: prob,
-            KNOWN_ANCESTRY_COL: None,
-            SOURCE_COL: "query",
-        })
+        data.append(
+            {
+                "s": f"query_{i}",
+                "PC1": pc1_means[assigned_pop] + np.random.normal(0, 2),
+                "PC2": pc2_means[assigned_pop] + np.random.normal(0, 2),
+                "PC3": np.random.normal(0, 1),
+                PREDICTED_ANCESTRY_COL: predicted,
+                ANCESTRY_PROB_COL: prob,
+                KNOWN_ANCESTRY_COL: None,
+                SOURCE_COL: "query",
+            }
+        )
 
     return pd.DataFrame(data)
 
@@ -68,7 +72,7 @@ def sample_predictions_df():
 def sample_eigenvalues():
     """Create sample eigenvalues for variance explained plot."""
     # Eigenvalues that decrease exponentially
-    eigenvalues = [10 * (0.7 ** i) for i in range(20)]
+    eigenvalues = [10 * (0.7**i) for i in range(20)]
     return eigenvalues
 
 
@@ -326,9 +330,16 @@ class TestPlotEdgeCases:
         """Test plotting with empty DataFrame."""
         from hvantk.ancestry.plot import plot_pca_scatter
 
-        empty_df = pd.DataFrame(columns=[
-            "s", "PC1", "PC2", PREDICTED_ANCESTRY_COL, SOURCE_COL, KNOWN_ANCESTRY_COL
-        ])
+        empty_df = pd.DataFrame(
+            columns=[
+                "s",
+                "PC1",
+                "PC2",
+                PREDICTED_ANCESTRY_COL,
+                SOURCE_COL,
+                KNOWN_ANCESTRY_COL,
+            ]
+        )
 
         # Should not raise, may produce empty plot
         fig = plot_pca_scatter(empty_df)

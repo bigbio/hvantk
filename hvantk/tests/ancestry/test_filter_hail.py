@@ -130,11 +130,7 @@ class TestFilterVariantsForAncestry:
         # Check all remaining variants meet AF criteria
         # Collect AF values - use rows table directly with its own field reference
         rows_ht = mt_filtered.rows()
-        af_values = (
-            rows_ht
-            .select(af=rows_ht.variant_qc.AF[1])
-            .to_pandas()["af"]
-        )
+        af_values = rows_ht.select(af=rows_ht.variant_qc.AF[1]).to_pandas()["af"]
 
         assert (af_values >= min_af).all()
         assert (af_values <= max_af).all()
@@ -151,11 +147,7 @@ class TestFilterVariantsForAncestry:
         # Check all remaining variants meet call rate criteria
         # Use rows table directly with its own field reference
         rows_ht = mt_filtered.rows()
-        call_rates = (
-            rows_ht
-            .select(cr=rows_ht.variant_qc.call_rate)
-            .to_pandas()["cr"]
-        )
+        call_rates = rows_ht.select(cr=rows_ht.variant_qc.call_rate).to_pandas()["cr"]
 
         assert (call_rates >= min_call_rate).all()
 

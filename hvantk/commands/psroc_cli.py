@@ -54,12 +54,10 @@ def _display_single_result(result, pipeline) -> None:
                 auc_str = f"AUC={roc.auc:.3f}"
                 if roc.auc_ci_lower is not None:
                     auc_str += (
-                        f" [{roc.auc_ci_lower:.3f}"
-                        f"\u2013{roc.auc_ci_upper:.3f}]"
+                        f" [{roc.auc_ci_lower:.3f}" f"\u2013{roc.auc_ci_upper:.3f}]"
                     )
                 click.echo(
-                    f"    {name}: {auc_str}, "
-                    f"threshold={roc.optimal_threshold:.3f}"
+                    f"    {name}: {auc_str}, " f"threshold={roc.optimal_threshold:.3f}"
                 )
 
         if result.scores_excluded:
@@ -83,16 +81,16 @@ def _display_collection_results(results, output_dir) -> None:
 
     for group_name, result in sorted(results.items()):
         click.echo(f"\n  [{group_name}]")
-        click.echo(f"    Variants: {result.n_total} "
-                    f"(P={result.n_pathogenic}, B={result.n_benign})")
+        click.echo(
+            f"    Variants: {result.n_total} "
+            f"(P={result.n_pathogenic}, B={result.n_benign})"
+        )
         if result.metrics:
             sorted_metrics = sorted(
                 result.metrics.items(), key=lambda x: x[1].auc, reverse=True
             )
             for name, roc in sorted_metrics:
-                click.echo(
-                    f"    {name}: AUC={roc.auc:.3f}"
-                )
+                click.echo(f"    {name}: AUC={roc.auc:.3f}")
 
     click.echo(f"\n  Groups completed: {len(results)}")
     click.echo(f"  Output directory: {output_dir}")
@@ -365,12 +363,8 @@ def psroc_cmd(
             from hvantk.utils.gene_sets import load_gene_sets
 
             collection = load_gene_sets(gene_sets)
-            gene_set_collection = {
-                gs.name: gs.genes for gs in collection
-            }
-            click.echo(
-                f"Loaded {len(gene_set_collection)} gene sets from {gene_sets}"
-            )
+            gene_set_collection = {gs.name: gs.genes for gs in collection}
+            click.echo(f"Loaded {len(gene_set_collection)} gene sets from {gene_sets}")
 
         # Create configuration
         config = PSROCConfig(

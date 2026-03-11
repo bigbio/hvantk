@@ -104,8 +104,7 @@ def prepare_reference_panel(
     # Filter populations with insufficient samples
     current_counts = mt.aggregate_cols(hl.agg.counter(mt[ancestry_col]))
     pops_to_keep = [
-        pop for pop, count in current_counts.items()
-        if count >= min_samples_per_pop
+        pop for pop, count in current_counts.items() if count >= min_samples_per_pop
     ]
 
     if len(pops_to_keep) < len(current_counts):
@@ -182,19 +181,15 @@ def run_with_custom_reference(
         min_af=0.01,
         max_af=0.99,
         min_call_rate=0.98,
-
         # LD pruning
         ld_r2=0.2,
         ld_window=500000,
-
         # PCA - may need more PCs for diverse references
         n_pcs=20,
         n_pcs_classify=10,
-
         # Classification
         n_estimators=100,
         min_prob=0.75,
-
         # Validation
         validate_model=True,
         n_cv_folds=5,

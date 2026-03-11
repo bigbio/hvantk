@@ -119,8 +119,7 @@ class BaseOboOntology:
         # Filter is_a parents by prefix if configured
         if self.id_prefix:
             term["is_a"] = [
-                p for p in term.get("is_a", [])
-                if p.startswith(self.id_prefix)
+                p for p in term.get("is_a", []) if p.startswith(self.id_prefix)
             ]
 
         self.terms[term_id] = term
@@ -262,9 +261,7 @@ class BaseOboOntology:
 
         return dict(result)
 
-    def search_by_name(
-        self, query: str, exact: bool = False
-    ) -> List[Tuple[str, str]]:
+    def search_by_name(self, query: str, exact: bool = False) -> List[Tuple[str, str]]:
         """
         Search for terms by name.
 

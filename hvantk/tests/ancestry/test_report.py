@@ -29,16 +29,18 @@ def sample_predictions_df():
     # Reference samples (30 each from EUR, AFR, EAS)
     for pop in ["EUR", "AFR", "EAS"]:
         for i in range(30):
-            data.append({
-                "s": f"ref_{pop}_{i}",
-                "PC1": np.random.normal(0, 1),
-                "PC2": np.random.normal(0, 1),
-                "PC3": np.random.normal(0, 1),
-                PREDICTED_ANCESTRY_COL: pop,
-                ANCESTRY_PROB_COL: np.random.uniform(0.85, 0.99),
-                KNOWN_ANCESTRY_COL: pop,
-                SOURCE_COL: "reference",
-            })
+            data.append(
+                {
+                    "s": f"ref_{pop}_{i}",
+                    "PC1": np.random.normal(0, 1),
+                    "PC2": np.random.normal(0, 1),
+                    "PC3": np.random.normal(0, 1),
+                    PREDICTED_ANCESTRY_COL: pop,
+                    ANCESTRY_PROB_COL: np.random.uniform(0.85, 0.99),
+                    KNOWN_ANCESTRY_COL: pop,
+                    SOURCE_COL: "reference",
+                }
+            )
 
     # Query samples
     for i in range(50):
@@ -46,16 +48,18 @@ def sample_predictions_df():
         prob = np.random.uniform(0.5, 0.95)
         predicted = assigned_pop if prob >= 0.75 else "unassigned"
 
-        data.append({
-            "s": f"query_{i}",
-            "PC1": np.random.normal(0, 2),
-            "PC2": np.random.normal(0, 2),
-            "PC3": np.random.normal(0, 1),
-            PREDICTED_ANCESTRY_COL: predicted,
-            ANCESTRY_PROB_COL: prob,
-            KNOWN_ANCESTRY_COL: None,
-            SOURCE_COL: "query",
-        })
+        data.append(
+            {
+                "s": f"query_{i}",
+                "PC1": np.random.normal(0, 2),
+                "PC2": np.random.normal(0, 2),
+                "PC3": np.random.normal(0, 1),
+                PREDICTED_ANCESTRY_COL: predicted,
+                ANCESTRY_PROB_COL: prob,
+                KNOWN_ANCESTRY_COL: None,
+                SOURCE_COL: "query",
+            }
+        )
 
     return pd.DataFrame(data)
 
@@ -91,11 +95,13 @@ def mock_classification_result():
         y_pred[idx] = np.random.choice(wrong_classes)
 
     result = MagicMock()
-    result.confusion_matrix = np.array([
-        [27, 2, 1],
-        [1, 28, 1],
-        [0, 2, 28],
-    ])
+    result.confusion_matrix = np.array(
+        [
+            [27, 2, 1],
+            [1, 28, 1],
+            [0, 2, 28],
+        ]
+    )
     result.confusion_matrix_labels = (y_true, y_pred)
     result.classes = classes
     result.validation_metrics = {"accuracy": 0.9}
@@ -103,13 +109,15 @@ def mock_classification_result():
 
 
 @pytest.fixture
-def mock_ancestry_result(sample_predictions_df, mock_config, mock_classification_result):
+def mock_ancestry_result(
+    sample_predictions_df, mock_config, mock_classification_result
+):
     """Create mock AncestryInferenceResult."""
     result = MagicMock()
     result.get_predictions_df.return_value = sample_predictions_df
     result.config = mock_config
     result.classification_result = mock_classification_result
-    result.eigenvalues = [10 * (0.7 ** i) for i in range(20)]
+    result.eigenvalues = [10 * (0.7**i) for i in range(20)]
     result.pipeline_stats = {
         "n_query_samples": 50,
         "n_reference_samples": 90,

@@ -395,9 +395,7 @@ class TestGMTFormat:
         gmt_path = tmp_path / "test.gmt"
         gmt_path.write_text(gmt_content)
 
-        collection = GeneSetCollection.load_gmt(
-            gmt_path, background_strategy="none"
-        )
+        collection = GeneSetCollection.load_gmt(gmt_path, background_strategy="none")
 
         assert collection.background_genes == set()
 

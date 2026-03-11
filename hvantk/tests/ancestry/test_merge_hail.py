@@ -188,9 +188,7 @@ class TestMergeMatrixtables:
 class TestCheckSampleOverlap:
     """Tests for check_sample_overlap function."""
 
-    def test_no_overlap(
-        self, hail_session, synthetic_query_mt, synthetic_reference_mt
-    ):
+    def test_no_overlap(self, hail_session, synthetic_query_mt, synthetic_reference_mt):
         """Query and reference with different IDs should have no overlap."""
         n_overlap, overlap_table = check_sample_overlap(
             synthetic_query_mt, synthetic_reference_mt

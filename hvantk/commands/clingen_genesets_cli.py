@@ -32,9 +32,16 @@ logger = logging.getLogger(__name__)
 )
 @click.option(
     "--min-classification",
-    type=click.Choice([
-        "Definitive", "Strong", "Moderate", "Limited", "Disputed", "Refuted",
-    ]),
+    type=click.Choice(
+        [
+            "Definitive",
+            "Strong",
+            "Moderate",
+            "Limited",
+            "Disputed",
+            "Refuted",
+        ]
+    ),
     default="Moderate",
     help="Minimum ClinGen classification level [default: Moderate]",
 )
@@ -138,9 +145,7 @@ def clingen_genesets_cmd(
                 min_classification=min_classification,
             )
             if min_genes > 0:
-                gene_sets = {
-                    k: v for k, v in gene_sets.items() if len(v) >= min_genes
-                }
+                gene_sets = {k: v for k, v in gene_sets.items() if len(v) >= min_genes}
         else:  # keyword
             with open(categories_json) as f:
                 categories = json.load(f)
@@ -149,9 +154,7 @@ def clingen_genesets_cmd(
                 min_classification=min_classification,
             )
             if min_genes > 0:
-                gene_sets = {
-                    k: v for k, v in gene_sets.items() if len(v) >= min_genes
-                }
+                gene_sets = {k: v for k, v in gene_sets.items() if len(v) >= min_genes}
 
         # Remove empty groups
         empty = [k for k, v in gene_sets.items() if not v]

@@ -178,10 +178,14 @@ def main(
 
         # -- Build CLI command --
         cmd = [
-            "hvantk", "build-1k-genome",
-            "--input-vcfs", stage_dir,
-            "--output-mt", output_mt,
-            "--reference-genome", reference_genome,
+            "hvantk",
+            "build-1k-genome",
+            "--input-vcfs",
+            stage_dir,
+            "--output-mt",
+            output_mt,
+            "--reference-genome",
+            reference_genome,
         ]
         if chromosomes:
             cmd += ["--chromosomes", chromosomes]

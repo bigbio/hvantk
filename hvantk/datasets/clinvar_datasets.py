@@ -151,9 +151,7 @@ class ClinVarDataset:
             )
             logger.info(f"Downloaded ClinVar VCF to {output_path}")
         except Exception as e:
-            raise RuntimeError(
-                f"Failed to download ClinVar VCF: {e}"
-            ) from e
+            raise RuntimeError(f"Failed to download ClinVar VCF: {e}") from e
 
         if download_index:
             self._download_index(output_dir, overwrite)
@@ -179,9 +177,7 @@ class ClinVarDataset:
         logger.info(f"Fetching MD5 checksum from {md5_url}")
 
         try:
-            req = urllib.request.Request(
-                md5_url, headers={"User-Agent": "hvantk/1.0"}
-            )
+            req = urllib.request.Request(md5_url, headers={"User-Agent": "hvantk/1.0"})
             with urllib.request.urlopen(req, timeout=30) as response:
                 md5_content = response.read().decode("utf-8").strip()
         except Exception as e:
@@ -204,9 +200,7 @@ class ClinVarDataset:
             logger.info("MD5 checksum verified successfully")
             return True
         else:
-            logger.warning(
-                f"MD5 mismatch: expected {expected_hash}, got {actual_hash}"
-            )
+            logger.warning(f"MD5 mismatch: expected {expected_hash}, got {actual_hash}")
             return False
 
     def get_metadata(self) -> Dict[str, Optional[str]]:

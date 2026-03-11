@@ -194,7 +194,9 @@ def mkmatrix_expression_atlas(
 )
 @click.option(
     "-u",
-    "--numeric-cols", default=None, help="Comma-separated numeric metadata columns"
+    "--numeric-cols",
+    default=None,
+    help="Comma-separated numeric metadata columns",
 )
 @click.option("-w", "--overwrite", is_flag=True)
 def mkmatrix_cptac(

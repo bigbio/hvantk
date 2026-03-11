@@ -189,9 +189,11 @@ def expand_gene_set_with_aliases(
     if not hgnc_path:
         return set(genes), {}
 
-    canonical_symbols, alias_to_canonical, canonical_to_aliases = (
-        _load_hgnc_symbol_maps(hgnc_path)
-    )
+    (
+        canonical_symbols,
+        alias_to_canonical,
+        canonical_to_aliases,
+    ) = _load_hgnc_symbol_maps(hgnc_path)
 
     expanded: Set[str] = set(genes)
     alias_map: Dict[str, str] = {}

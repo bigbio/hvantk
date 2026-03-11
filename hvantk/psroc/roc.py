@@ -401,7 +401,8 @@ def compute_roc_metrics(
         auc_ci_upper = None
         if n_bootstrap > 0:
             auc_ci_lower, auc_ci_upper = bootstrap_auc_ci(
-                binary_labels, valid_scores,
+                binary_labels,
+                valid_scores,
                 n_resamples=n_bootstrap,
                 confidence_level=confidence_level,
             )

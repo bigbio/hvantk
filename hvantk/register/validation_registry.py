@@ -267,9 +267,9 @@ class ValidationResult:
     tier1_details: Optional[Dict[str, Any]] = None
     tier2_details: Optional[Dict[str, Any]] = None
     tier3_details: Optional[Dict[str, Any]] = None
-    sample_file_paths: Optional[Dict[str, str]] = (
-        None  # paths to generated sample files
-    )
+    sample_file_paths: Optional[
+        Dict[str, str]
+    ] = None  # paths to generated sample files
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
