@@ -20,6 +20,7 @@ from hvantk.commands.psroc_cli import psroc_cmd
 from hvantk.commands.enrichex_cli import enrichex_group
 from hvantk.commands.ancestry_cli import ancestry_inference_cmd
 from hvantk.commands.build_1k_genome_cli import build_1k_genome_cmd
+from hvantk.commands.summarize_expression_cli import expression_group
 
 # Main CLI entry point for the package (hvantk)
 
@@ -95,6 +96,7 @@ cli.add_command(psroc_cmd)  # PSROC prediction score ROC analysis
 cli.add_command(enrichex_group)  # EnrichEx gene set enrichment analysis
 cli.add_command(ancestry_inference_cmd)  # Ancestry inference pipeline
 cli.add_command(build_1k_genome_cmd)  # 1000 Genomes MatrixTable builder
+cli.add_command(expression_group)  # Expression analysis (describe, summarize, markers)
 
 # Lazy import: convert-bgz is a new command that may not be installed yet
 # in existing editable installs until `poetry install` is re-run.

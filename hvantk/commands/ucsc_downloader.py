@@ -54,7 +54,8 @@ def _is_valid_url(url: str) -> bool:
 @click.option(
     "--dataset",
     type=str,
-    required=True,
+    required=False,
+    default=None,
     help="Dataset to download from UCSC Cell Browser.",
 )
 @click.option(
@@ -92,6 +93,9 @@ def ucsc_downloader(ctx, dataset, output_dir, base_url, list_datasets):
         _print_dataset_names()
         logger.info("Listing available datasets completed.")
         ctx.exit(0)
+
+    if not dataset:
+        raise click.UsageError("Missing option '--dataset' (required for download).")
 
     # Dataset validation (prevent path traversal / malformed URLs) BEFORE using it anywhere
     invalid = (
