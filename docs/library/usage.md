@@ -119,23 +119,26 @@ tables:
 
 - UCSC Cell Browser (TSV matrix + TSV metadata)
 
+First, find and download the dataset you need:
+
 ```bash
-hvantk mkmatrix ucsc \
-  --expression-matrix /data/ucsc/expr.tsv.bgz \
-  --metadata /data/ucsc/meta.tsv \
-  --output-mt /out/ucsc.mt \
-  --gene-column gene \
-  --overwrite
+# Search for datasets by tissue or keyword
+hvantk ucsc-downloader --list_datasets --search heart
+
+# Download a dataset (use child path for collections)
+hvantk ucsc-downloader --dataset hoc/all-heart --output-dir data/ucsc
 ```
 
-If your expression matrix is a plain `.gz` file, add `--auto-convert-bgz`:
+Then build the MatrixTable:
 
 ```bash
 hvantk mkmatrix ucsc \
-  --expression-matrix /data/ucsc/expr.tsv.gz \
-  --metadata /data/ucsc/meta.tsv \
+  --expression-matrix data/ucsc/hoc/all-heart/exprMatrix.tsv.gz \
+  --metadata data/ucsc/hoc/all-heart/meta.tsv \
   --output-mt /out/ucsc.mt \
-  --auto-convert-bgz
+  --gene-column gene \
+  --auto-convert-bgz \
+  --overwrite
 ```
 
 - Expression Atlas (TSV matrix + SDRF TSV)

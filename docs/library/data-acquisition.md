@@ -56,10 +56,28 @@ hvantk hgnc-downloader --output-dir data/hgnc
 
 ### UCSC Cell Browser
 
+The UCSC Cell Browser hosts 267+ datasets. About half are **collections** (groups of
+related datasets with no expression matrix at the top level). Use `--list_datasets`
+and `--search` to discover downloadable datasets.
+
 ```bash
-# Download a specific single-cell dataset
-hvantk ucsc-downloader --dataset hoc --output-dir data/ucsc
+# Discover available datasets
+hvantk ucsc-downloader --list_datasets
+
+# Search by name, organism, or tissue (expands collections to show children)
+hvantk ucsc-downloader --list_datasets --search heart
+hvantk ucsc-downloader --list_datasets --search pancreas
+
+# Download a leaf dataset directly
+hvantk ucsc-downloader --dataset adultPancreas --output-dir data/ucsc
+
+# Download a child dataset from a collection (use the full path)
+hvantk ucsc-downloader --dataset hoc/all-heart --output-dir data/ucsc
 ```
+
+> **Note:** Collection names (e.g., `hoc`) cannot be downloaded directly — they
+> contain no expression matrix. Use `--search` to find child dataset paths like
+> `hoc/all-heart`, then download those.
 
 ### Expression Atlas
 
