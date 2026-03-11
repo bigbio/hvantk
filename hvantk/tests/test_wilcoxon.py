@@ -304,6 +304,38 @@ class TestRankGenesGroups:
             grp_rows = results[results["group"] == grp]
             assert len(grp_rows) <= 2
 
+    def test_n_total_genes_correction(self, two_group_data):
+        """Passing n_total_genes should make adjusted p-values more
+        conservative (Seurat-style: p.adjust uses total gene count)."""
+        X, labels, gene_ids, gene_names = two_group_data
+        params = WilcoxonParams(
+            min_fold_change=1.0, min_fraction_expressed=0.0,
+        )
+        # Without n_total_genes (correction uses n_candidates only)
+        results_default = rank_genes_groups(
+            X, labels, gene_ids, gene_names, params,
+        )
+        # With n_total_genes >> n_genes (simulating pre-filtered subset)
+        results_total = rank_genes_groups(
+            X, labels, gene_ids, gene_names, params,
+            n_total_genes=30000,
+        )
+
+        # Merge on (group, gene_id) to compare adjusted p-values
+        merged = results_default.merge(
+            results_total, on=["group", "gene_id"],
+            suffixes=("_default", "_total"),
+        )
+        assert len(merged) > 0
+        # Raw p-values should be identical
+        np.testing.assert_allclose(
+            merged["pvalue_default"], merged["pvalue_total"]
+        )
+        # Adjusted p-values with n_total_genes should be >= default
+        assert (
+            merged["pvalue_adj_total"] >= merged["pvalue_adj_default"] - 1e-12
+        ).all()
+
 
 # ---------------------------------------------------------------------------
 # TestResultsToGeneSetCollection

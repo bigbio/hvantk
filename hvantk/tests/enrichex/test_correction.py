@@ -96,6 +96,36 @@ class TestApplyCorrection:
         with pytest.raises(ValueError, match="Unknown correction method"):
             apply_correction([0.01], method="invalid")
 
+    def test_n_total_bonferroni(self):
+        """n_total makes Bonferroni use the given denominator."""
+        p_values = [0.001, 0.01]
+        # Default: n_tests = 2
+        adj_default = apply_correction(p_values, method="bonferroni")
+        # n_total = 20000 (simulating pre-filtered subset of 20k genes)
+        adj_total = apply_correction(
+            p_values, method="bonferroni", n_total=20000
+        )
+        assert adj_default == [0.002, 0.02]
+        assert adj_total == [min(1.0, 0.001 * 20000), min(1.0, 0.01 * 20000)]
+
+    def test_n_total_bh(self):
+        """n_total makes BH correction more conservative."""
+        p_values = [0.001, 0.01, 0.05]
+        adj_default = apply_correction(
+            p_values, method="benjamini-hochberg"
+        )
+        adj_total = apply_correction(
+            p_values, method="benjamini-hochberg", n_total=30000
+        )
+        # With larger n_total, adjusted p-values should be >= default
+        for d, t in zip(adj_default, adj_total):
+            assert t >= d - 1e-12
+
+    def test_n_total_less_than_len_raises(self):
+        """n_total < len(p_values) should raise ValueError."""
+        with pytest.raises(ValueError, match="n_total"):
+            apply_correction([0.01, 0.02, 0.03], method="bonferroni", n_total=2)
+
 
 class TestFDRThreshold:
     """Tests for fdr_threshold function."""
