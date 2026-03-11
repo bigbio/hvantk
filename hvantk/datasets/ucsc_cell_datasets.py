@@ -227,6 +227,32 @@ class UCSCDataSetCollection:
         """
         return [dataset.name for dataset in self.datasets]
 
+    def search(self, query: str) -> "UCSCDataSetCollection":
+        """
+        Filter datasets by case-insensitive query across name, label, and facets.
+
+        Args:
+            query: Search term to match against dataset fields
+
+        Returns:
+            New collection containing only matching datasets
+        """
+        q = query.lower()
+        matches = []
+        for ds in self.datasets:
+            searchable = " ".join(
+                [
+                    ds.name,
+                    ds.shortLabel,
+                    " ".join(ds.body_parts or []),
+                    " ".join(ds.organisms or []),
+                    " ".join(ds.diseases or []),
+                ]
+            ).lower()
+            if q in searchable:
+                matches.append(ds)
+        return UCSCDataSetCollection(datasets=matches)
+
     def filter_by_organism(self, organism: str) -> "UCSCDataSetCollection":
         """
         Filter datasets by organism.

@@ -23,24 +23,48 @@ def cli():
     pass
 
 
-def _print_dataset_names():
+def _print_dataset_names(search: str = None):
     """
     Prints the names of all available UCSC datasets in a formatted list.
 
-    :raises FileNotFoundError: If the JSON file containing UCSC dataset
-                               information is not found at the specified
-                               path.
-    :raises JSONDecodeError: If the JSON file contains invalid JSON format.
+    If a search term is provided, filters datasets by name, label, body parts,
+    organisms, and diseases (case-insensitive).
     """
     try:
         collection = UCSCDataSetCollection.from_json(UCSC_JSON_FILE_PATH)
-        dataset_names = collection.list_dataset_names()
-        if not dataset_names:
-            click.echo("No datasets available.")
-        else:
-            click.echo("Available datasets:")
-            for name in dataset_names:
-                click.echo(f"- {name}")
+
+        if search:
+            collection = collection.search(search)
+
+        if not collection.datasets:
+            if search:
+                click.echo(f'No datasets matching "{search}".')
+            else:
+                click.echo("No datasets available.")
+            return
+
+        total = len(collection.datasets)
+        header = "Available datasets"
+        if search:
+            header += f' (filtered by "{search}")'
+        click.echo(f"{header}: {total}")
+
+        for ds in collection.datasets:
+            parts = [f"  {ds.name}"]
+            if ds.isCollection:
+                count = ds.datasetCount or "?"
+                parts.append(f"(collection, {count} datasets)")
+            elif ds.sampleCount:
+                parts.append(f"({ds.sampleCount:,} cells)")
+            # Facets
+            facets = []
+            if ds.organisms:
+                facets.extend(ds.organisms)
+            if ds.body_parts:
+                facets.extend(ds.body_parts)
+            if facets:
+                parts.append(f"[{', '.join(facets)}]")
+            click.echo("  ".join(parts))
     except ValueError as e:
         click.echo(f"Error: {e}")
 
@@ -78,8 +102,14 @@ def _is_valid_url(url: str) -> bool:
     required=False,
     help="List all available datasets in the UCSC collection.",
 )
+@click.option(
+    "--search",
+    type=str,
+    default=None,
+    help="Filter dataset names and labels by search term (case-insensitive). Use with --list_datasets.",
+)
 @click.pass_context
-def ucsc_downloader(ctx, dataset, output_dir, base_url, list_datasets):
+def ucsc_downloader(ctx, dataset, output_dir, base_url, list_datasets, search):
     """
     Downloads expression matrix and metadata files for a specified UCSC Cell Browser dataset.
 
@@ -90,7 +120,7 @@ def ucsc_downloader(ctx, dataset, output_dir, base_url, list_datasets):
     """
 
     if list_datasets:
-        _print_dataset_names()
+        _print_dataset_names(search=search)
         logger.info("Listing available datasets completed.")
         ctx.exit(0)
 
@@ -98,17 +128,35 @@ def ucsc_downloader(ctx, dataset, output_dir, base_url, list_datasets):
         raise click.UsageError("Missing option '--dataset' (required for download).")
 
     # Dataset validation (prevent path traversal / malformed URLs) BEFORE using it anywhere
+    # Allow forward slashes: UCSC child datasets use paths like "hoc/all-heart"
     invalid = (
-        (".." in dataset)
-        or any(ch in dataset for ch in ["/", "\\"])
-        or any(ch.isspace() for ch in dataset)
+        (".." in dataset) or ("\\" in dataset) or any(ch.isspace() for ch in dataset)
     )
     if invalid:
         click.echo(
-            f"Invalid dataset value: '{dataset}'. Datasets must not contain '..', slashes, or whitespace."
+            f"Invalid dataset value: '{dataset}'. Datasets must not contain '..', backslashes, or whitespace."
         )
         logger.error(f"Rejected invalid dataset value: '{dataset}'")
         ctx.exit(1)
+
+    # Warn if the dataset name matches a known collection (no downloadable files at top level)
+    try:
+        collection = UCSCDataSetCollection.from_json(UCSC_JSON_FILE_PATH)
+        ds_entry = collection.get_by_name(dataset)
+        if ds_entry and ds_entry.isCollection:
+            child_count = ds_entry.datasetCount or "unknown number of"
+            click.echo(
+                f'Warning: "{dataset}" is a collection with {child_count} child datasets.\n'
+                f"Collections have no expression matrix at the top level.\n"
+                f'Try a child dataset path instead (e.g., "{dataset}/<child-name>").\n'
+                f"Use --list_datasets --search {dataset} to find children."
+            )
+            logger.warning(
+                f"Dataset '{dataset}' is a collection with {child_count} children"
+            )
+            ctx.exit(1)
+    except ValueError:
+        pass  # Catalog unavailable — continue with download attempt
 
     # Validate base_url
     if not _is_valid_url(base_url):

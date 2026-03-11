@@ -133,13 +133,32 @@ def test_ucsc_downloader_invalid_dataset_traversal(mock_download_file):
     assert "Invalid dataset value" in result.output
 
 
-def test_ucsc_downloader_invalid_dataset_slash(mock_download_file):
+def test_ucsc_downloader_slash_allowed(mock_download_file):
+    """Forward slashes are now allowed for UCSC child dataset paths (e.g., hoc/all-heart)."""
     runner = CliRunner()
     result = runner.invoke(
         ucsc_downloader,
         [
             "--dataset",
             "bad/name",
+            "--output-dir",
+            "dummy_path",
+            "--base_url",
+            "http://localhost:9999",
+        ],
+    )
+    # Slashes pass validation (no "Invalid dataset value" error)
+    assert "Invalid dataset value" not in result.output
+
+
+def test_ucsc_downloader_invalid_dataset_backslash(mock_download_file):
+    """Backslashes are still rejected."""
+    runner = CliRunner()
+    result = runner.invoke(
+        ucsc_downloader,
+        [
+            "--dataset",
+            "bad\\name",
             "--output-dir",
             "dummy_path",
         ],
