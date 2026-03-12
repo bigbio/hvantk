@@ -97,6 +97,31 @@ def test_encode_figure_to_base64_returns_string():
     plt.close(fig)
 
 
-def test_plot_enrichment_dotplot_empty_df_raises():
-    with pytest.raises(ValueError):
-        plot_enrichment_dotplot(pd.DataFrame(), output_path="out.png")
+def test_plot_enrichment_dotplot_empty_df_returns_placeholder(tmp_path):
+    """Empty DataFrame returns a placeholder figure instead of raising."""
+    output_path = tmp_path / "empty_dotplot.png"
+    fig = plot_enrichment_dotplot(pd.DataFrame(), output_path=str(output_path))
+    assert fig is not None
+    assert output_path.exists()
+    plt.close(fig)
+
+
+def test_plot_burden_forest_empty_df_returns_placeholder(tmp_path):
+    """Empty DataFrame returns a placeholder figure instead of raising."""
+    output_path = tmp_path / "empty_forest.png"
+    df = pd.DataFrame(
+        columns=["gene_set_name", "odds_ratio", "ci_lower", "ci_upper", "p_value"]
+    )
+    fig = plot_burden_forest(df, output_path=str(output_path))
+    assert fig is not None
+    assert output_path.exists()
+    plt.close(fig)
+
+
+def test_plot_enrichment_barplot_empty_df_returns_placeholder(tmp_path):
+    """Empty DataFrame returns a placeholder figure instead of raising."""
+    output_path = tmp_path / "empty_bar.png"
+    fig = plot_enrichment_barplot(pd.DataFrame(), output_path=str(output_path))
+    assert fig is not None
+    assert output_path.exists()
+    plt.close(fig)
