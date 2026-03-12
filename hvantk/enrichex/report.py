@@ -216,17 +216,21 @@ def _create_overlap_section(
         )
 
     plot_path = output_dir / "enrichex_overlap.png"
-    fig = plot_enrichment_dotplot(
-        df,
-        output_path=str(plot_path),
-        top_n=top_n,
-        sort_by=p_col,
-        title="Overlap Enrichment",
-    )
-    plot_src = plot_path.name
-    if embed_static_plots:
-        plot_src = f"data:image/png;base64,{encode_figure_to_base64(fig)}"
-    plt.close(fig)
+    try:
+        fig = plot_enrichment_dotplot(
+            df,
+            output_path=str(plot_path),
+            top_n=top_n,
+            sort_by=p_col,
+            title="Overlap Enrichment",
+        )
+        plot_src = plot_path.name
+        if embed_static_plots:
+            plot_src = f"data:image/png;base64,{encode_figure_to_base64(fig)}"
+        plt.close(fig)
+    except Exception:
+        logger.warning("Failed to generate overlap plot, skipping.")
+        plot_src = None
 
     gene_lists = None
     if include_gene_lists and "overlap_genes" in df.columns:
@@ -288,28 +292,32 @@ def _create_burden_section(
 
     plot_path = output_dir / "enrichex_burden.png"
     phenotype_type = "binary" if "odds_ratio" in df.columns else "continuous"
-    if phenotype_type == "continuous":
-        fig = plot_burden_forest(
-            df,
-            output_path=str(plot_path),
-            top_n=top_n,
-            phenotype_type=phenotype_type,
-            sort_by=p_col,
-            ascending=True,
-            title="Burden Testing",
-        )
-    else:
-        fig = plot_burden_forest(
-            df,
-            output_path=str(plot_path),
-            top_n=top_n,
-            phenotype_type=phenotype_type,
-            title="Burden Testing",
-        )
-    plot_src = plot_path.name
-    if embed_static_plots:
-        plot_src = f"data:image/png;base64,{encode_figure_to_base64(fig)}"
-    plt.close(fig)
+    try:
+        if phenotype_type == "continuous":
+            fig = plot_burden_forest(
+                df,
+                output_path=str(plot_path),
+                top_n=top_n,
+                phenotype_type=phenotype_type,
+                sort_by=p_col,
+                ascending=True,
+                title="Burden Testing",
+            )
+        else:
+            fig = plot_burden_forest(
+                df,
+                output_path=str(plot_path),
+                top_n=top_n,
+                phenotype_type=phenotype_type,
+                title="Burden Testing",
+            )
+        plot_src = plot_path.name
+        if embed_static_plots:
+            plot_src = f"data:image/png;base64,{encode_figure_to_base64(fig)}"
+        plt.close(fig)
+    except Exception:
+        logger.warning("Failed to generate burden plot, skipping.")
+        plot_src = None
 
     return {
         "title": "Burden Testing",
@@ -453,7 +461,7 @@ def _build_overlap_section(section: Dict[str, Any]) -> str:
         )
 
     plot_html = ""
-    if section["plot_src"]:
+    if section.get("plot_src"):
         plot_html = (
             f"<img src='{section['plot_src']}' alt='Overlap Enrichment Plot' "
             "class='embedded-image'/>"
@@ -502,7 +510,7 @@ def _build_burden_section(section: Dict[str, Any]) -> str:
         )
 
     plot_html = ""
-    if section["plot_src"]:
+    if section.get("plot_src"):
         plot_html = f"<img src='{section['plot_src']}' alt='Burden Plot' class='embedded-image'/>"
 
     table_html = (
