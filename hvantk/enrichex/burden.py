@@ -966,7 +966,7 @@ def build_variant_classes_from_presets(
     class_names: List[str],
     base_filter: Optional["VariantFilter"] = None,
 ) -> Dict[str, "VariantFilter"]:
-    """Build variant class filters from preset names.
+    """Build variant class filters from preset or custom names.
 
     Each preset defines the consequence filter (and optionally a score
     threshold) for a variant class.  Non-consequence settings (max_af,
@@ -974,12 +974,18 @@ def build_variant_classes_from_presets(
     provided, or default to permissive values (no filtering) since the
     MatrixTable is expected to be pre-filtered.
 
+    Names not found in ``VARIANT_CLASS_PRESETS`` are treated as custom
+    classes: the name itself is used as the consequence value.  This
+    allows filtering on pre-computed consequence group fields (e.g.,
+    ``csq_group`` with values ``hcLOF``, ``missC``, ``syn``).
+
     Parameters
     ----------
     class_names : List[str]
-        Names of variant classes from ``VARIANT_CLASS_PRESETS``.
-        Available presets: ``"lof"``, ``"missense_constrained"``,
-        ``"synonymous"``.
+        Names of variant classes.  Recognised preset names:
+        ``"lof"``, ``"missense_constrained"``, ``"synonymous"``.
+        Any other name is treated as a custom class whose single
+        qualifying consequence equals the name itself.
     base_filter : VariantFilter, optional
         Base filter whose non-consequence settings are inherited.  If
         *None*, uses permissive defaults (``max_af=1.0``,
@@ -990,33 +996,48 @@ def build_variant_classes_from_presets(
     Dict[str, VariantFilter]
         Mapping of class name to configured VariantFilter.
 
-    Raises
-    ------
-    ValueError
-        If a class name is not found in ``VARIANT_CLASS_PRESETS``.
-
     Examples
     --------
+    >>> # Using presets (VEP consequence terms)
     >>> classes = build_variant_classes_from_presets(
     ...     ["lof", "missense_constrained", "synonymous"]
     ... )
     >>> classes["lof"].consequences
     ['stop_gained', 'frameshift_variant', 'splice_donor_variant', 'splice_acceptor_variant']
+
+    >>> # Using custom names (pre-computed csq_group values)
+    >>> from hvantk.enrichex.burden import VariantFilter
+    >>> base = VariantFilter(consequence_field="csq_group", af_field="internal_af")
+    >>> classes = build_variant_classes_from_presets(
+    ...     ["hcLOF", "missC", "syn"], base_filter=base
+    ... )
+    >>> classes["hcLOF"].consequences
+    ['hcLOF']
     """
     result: Dict[str, VariantFilter] = {}
     for name in class_names:
-        if name not in VARIANT_CLASS_PRESETS:
-            raise ValueError(
-                f"Unknown variant class preset '{name}'. "
-                f"Available: {list(VARIANT_CLASS_PRESETS.keys())}"
+        preset = VARIANT_CLASS_PRESETS.get(name)
+
+        if preset is not None:
+            # Known preset — use its consequence list and optional score
+            consequences = preset.get("consequences")
+            min_score = preset.get("min_score", base_filter.min_score if base_filter else None)
+        else:
+            # Custom class — name IS the consequence value
+            logger.info(
+                "Variant class '%s' is not a preset; treating as custom "
+                "class with consequence=['%s']",
+                name,
+                name,
             )
-        preset = VARIANT_CLASS_PRESETS[name]
+            consequences = [name]
+            min_score = base_filter.min_score if base_filter else None
 
         if base_filter is not None:
             vf = VariantFilter(
                 max_af=base_filter.max_af,
-                min_score=preset.get("min_score", base_filter.min_score),
-                consequences=preset.get("consequences"),
+                min_score=min_score,
+                consequences=consequences,
                 pass_only=base_filter.pass_only,
                 min_gq=base_filter.min_gq,
                 min_dp=base_filter.min_dp,
@@ -1027,8 +1048,8 @@ def build_variant_classes_from_presets(
         else:
             vf = VariantFilter(
                 max_af=1.0,
-                min_score=preset.get("min_score"),
-                consequences=preset.get("consequences"),
+                min_score=min_score,
+                consequences=consequences,
                 pass_only=False,
                 min_gq=0,
                 min_dp=0,

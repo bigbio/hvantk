@@ -826,8 +826,12 @@ def burden_test(
     "--variant-classes",
     type=str,
     default=None,
-    help="Comma-separated variant class presets "
-    "(e.g., 'lof,missense_constrained,synonymous'). "
+    help="Comma-separated variant class names for stratified analysis. "
+    "Preset names (lof, missense_constrained, synonymous) use built-in VEP "
+    "consequence lists. Any other name is treated as a custom class whose "
+    "consequence value equals the name itself — ideal for pre-computed "
+    "consequence group fields (e.g., 'hcLOF,missC,miss,syn' with "
+    "--consequence-field csq_group). "
     "If omitted, a single unstratified run is performed.",
 )
 @click.option(
@@ -912,6 +916,13 @@ def burden_test(
     "Supports dot notation for nested structs.",
 )
 @click.option(
+    "--min-score",
+    type=float,
+    default=None,
+    help="Minimum prediction score threshold. Applied to all variant classes. "
+    "None (default) disables score filtering entirely.",
+)
+@click.option(
     "--consequence-field",
     type=str,
     default="consequence",
@@ -971,6 +982,7 @@ def burden_pipeline_cmd(
     gene_lengths,
     af_field,
     score_field,
+    min_score,
     consequence_field,
     max_af,
     pass_only,
@@ -1014,6 +1026,17 @@ def burden_pipeline_cmd(
             --phenotype-field phe.is_case \\
             --covariates phe.PC1,phe.PC2,phe.sex \\
             -o results/burden/
+
+        # Custom consequence groups (pre-computed csq_group field)
+        hvantk enrichex burden-pipeline \\
+            -m cohort.mt \\
+            --gene-sets heart:heart.json \\
+            --phenotype-field phe.is_case \\
+            --variant-classes hcLOF,missC,miss,syn \\
+            --consequence-field csq_group \\
+            --af-field internal_af --max-af 0.001 \\
+            --no-pass-only \\
+            -o results/burden/
     """
     from hvantk.enrichex.pipeline import BurdenConfig, BurdenPipeline
 
@@ -1040,7 +1063,7 @@ def burden_pipeline_cmd(
         class_names = [c.strip() for c in variant_classes.split(",")]
         base_filter = VariantFilter(
             max_af=max_af,
-            min_score=None,
+            min_score=min_score,
             consequences=None,
             pass_only=pass_only,
             min_gq=0,
