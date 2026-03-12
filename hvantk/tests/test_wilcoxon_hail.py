@@ -63,15 +63,11 @@ def synthetic_mt():
     flat_expr = [float(v) for v in expr.flatten()]
 
     mt = hl.utils.range_matrix_table(n_rows=n_genes, n_cols=n_cells)
-    mt = mt.annotate_entries(
-        x=hl.literal(flat_expr)[mt.row_idx * n_cells + mt.col_idx]
-    )
+    mt = mt.annotate_entries(x=hl.literal(flat_expr)[mt.row_idx * n_cells + mt.col_idx])
     mt = mt.annotate_rows(
         GeneID=hl.literal(gene_ids)[mt.row_idx],
     )
-    mt = mt.annotate_rows(
-        **{"Gene Name": hl.literal(gene_names)[mt.row_idx]}
-    )
+    mt = mt.annotate_rows(**{"Gene Name": hl.literal(gene_names)[mt.row_idx]})
     mt = mt.annotate_cols(
         sample_id=hl.literal(cell_ids)[mt.col_idx],
         metadata=hl.struct(

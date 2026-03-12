@@ -385,7 +385,9 @@ def compute_geneset_burden_mt(
         raise ValueError(f"Gene field '{gene_field}' not found in MatrixTable")
 
     # Resolve variant filtering
-    _has_legacy_params = max_af is not None or min_score is not None or consequences is not None
+    _has_legacy_params = (
+        max_af is not None or min_score is not None or consequences is not None
+    )
 
     if variant_filter is not None:
         if _has_legacy_params:
@@ -443,10 +445,8 @@ def compute_geneset_burden_mt(
                 "CDS-based normalization)"
             )
             _rows = mt.rows()
-            _gene_length_ht = (
-                _rows
-                .group_by(gene=_rows[gene_field])
-                .aggregate(_gene_length=hl.float64(hl.agg.count()))
+            _gene_length_ht = _rows.group_by(gene=_rows[gene_field]).aggregate(
+                _gene_length=hl.float64(hl.agg.count())
             )
 
     # Create gene → gene_sets mapping
@@ -565,9 +565,7 @@ def compute_geneset_burden_mt(
     )
 
     # Check for gene sets with zero burden across all samples
-    _burden_sums = mt_burden.annotate_rows(
-        _total_burden=hl.agg.sum(mt_burden.burden)
-    )
+    _burden_sums = mt_burden.annotate_rows(_total_burden=hl.agg.sum(mt_burden.burden))
     n_zero = _burden_sums.filter_rows(_burden_sums._total_burden == 0).count_rows()
     if n_zero > 0:
         logger.warning(
@@ -1446,9 +1444,7 @@ def permutation_burden_test(
 
     # Step 1: Compute per-gene burden MT (all genes, not just gene set genes)
     logger.info("Computing per-gene burden matrix...")
-    mt_genes = compute_per_gene_burden_mt(
-        cohort_mt, gene_field, variant_filter
-    )
+    mt_genes = compute_per_gene_burden_mt(cohort_mt, gene_field, variant_filter)
 
     # Determine qualification expression
     if genotype_aggregation == "hets":
@@ -1465,12 +1461,8 @@ def permutation_burden_test(
     # Step 2: Annotate with phenotype and collect to local
     logger.info("Annotating with phenotype data...")
     col_key_name = list(mt_genes.col_key)[0]
-    mt_genes = mt_genes.annotate_cols(
-        **phenotype_ht[mt_genes[col_key_name]]
-    )
-    mt_genes = mt_genes.filter_cols(
-        hl.is_defined(mt_genes[phenotype_field])
-    )
+    mt_genes = mt_genes.annotate_cols(**phenotype_ht[mt_genes[col_key_name]])
+    mt_genes = mt_genes.filter_cols(hl.is_defined(mt_genes[phenotype_field]))
 
     row_key_name = list(mt_genes.row_key)[0]
 
@@ -1508,9 +1500,7 @@ def permutation_burden_test(
         )
 
     # Get all background genes
-    all_genes_list = mt_genes.aggregate_rows(
-        hl.agg.collect(mt_genes[row_key_name])
-    )
+    all_genes_list = mt_genes.aggregate_rows(hl.agg.collect(mt_genes[row_key_name]))
     gene_to_idx = {g: i for i, g in enumerate(sorted(all_genes_list))}
     n_genes = len(gene_to_idx)
     logger.info("  %d background genes", n_genes)
@@ -1538,14 +1528,11 @@ def permutation_burden_test(
             logger.info("Normalizing qualifying matrix by variant site count proxy")
             _cohort_rows = cohort_mt.rows()
             gene_site_map = (
-                _cohort_rows
-                .group_by(gene=_cohort_rows[gene_field])
+                _cohort_rows.group_by(gene=_cohort_rows[gene_field])
                 .aggregate(_n_sites=hl.agg.count())
                 .to_pandas()
             )
-            site_dict = dict(
-                zip(gene_site_map["gene"], gene_site_map["_n_sites"])
-            )
+            site_dict = dict(zip(gene_site_map["gene"], gene_site_map["_n_sites"]))
             norm_arr = np.array(
                 [float(site_dict.get(g, 1.0)) for g in sorted_genes],
                 dtype=np.float64,
@@ -1564,13 +1551,9 @@ def permutation_burden_test(
         n_bins = min(DEFAULT_N_LENGTH_BINS, n_genes // 5)
         if n_bins < 2:
             length_matched = False
-            logger.warning(
-                "Too few genes for length-matched sampling, using uniform"
-            )
+            logger.warning("Too few genes for length-matched sampling, using uniform")
         else:
-            bin_edges = np.percentile(
-                gene_qual_counts, np.linspace(0, 100, n_bins + 1)
-            )
+            bin_edges = np.percentile(gene_qual_counts, np.linspace(0, 100, n_bins + 1))
             gene_bins = np.digitize(gene_qual_counts, bin_edges[1:-1])
             bin_to_indices: Dict[int, List[int]] = {}
             for idx in range(n_genes):
@@ -1583,9 +1566,7 @@ def permutation_burden_test(
     y = np.array(samples_df[phenotype_field], dtype=np.float64)
     intercept = np.ones(n_samples, dtype=np.float64)
     if covariate_fields:
-        cov_cols = [
-            np.array(samples_df[c], dtype=np.float64) for c in covariate_fields
-        ]
+        cov_cols = [np.array(samples_df[c], dtype=np.float64) for c in covariate_fields]
         cov_matrix = np.column_stack([intercept] + cov_cols)
     else:
         cov_matrix = intercept.reshape(-1, 1)
@@ -1603,9 +1584,7 @@ def permutation_burden_test(
     for gs_name, gs_genes in gene_sets.items():
         logger.info("Testing gene set: %s (%d genes)", gs_name, len(gs_genes))
 
-        gs_indices = np.array(
-            [gene_to_idx[g] for g in gs_genes if g in gene_to_idx]
-        )
+        gs_indices = np.array([gene_to_idx[g] for g in gs_genes if g in gene_to_idx])
         if len(gs_indices) == 0:
             logger.warning(
                 "  No genes from '%s' found in background, skipping", gs_name
@@ -1637,9 +1616,7 @@ def permutation_burden_test(
                     gs_indices, gene_bins, bin_to_indices, rng
                 )
             else:
-                perm_indices = rng.choice(
-                    n_genes, size=n_gs_genes, replace=False
-                )
+                perm_indices = rng.choice(n_genes, size=n_gs_genes, replace=False)
 
             perm_mask = np.zeros(n_genes, dtype=np.float64)
             perm_mask[perm_indices] = 1.0
@@ -1648,9 +1625,7 @@ def permutation_burden_test(
             X_perm = np.column_stack([perm_burden, cov_matrix])
             perm_stat = _compute_test_statistic(X_perm, y, phenotype_type)
 
-            if not np.isnan(perm_stat) and abs(perm_stat) >= abs(
-                observed_stat
-            ):
+            if not np.isnan(perm_stat) and abs(perm_stat) >= abs(observed_stat):
                 n_exceeded += 1
 
             # Log progress at 25% milestones

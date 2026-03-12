@@ -87,29 +87,26 @@ def extract_expression_for_wilcoxon(
     # --- Apply column filters ---
     if filter_by:
         from hvantk.utils.matrix_utils import filter_by_metadata
+
         mt = filter_by_metadata(mt, filter_by)
 
     # --- Build group label ---
     if len(group_by) == 1:
         label_expr = hl.str(mt[metadata_field][group_by[0]])
     else:
-        label_expr = hl.delimit(
-            [hl.str(mt[metadata_field][f]) for f in group_by], "_"
-        )
+        label_expr = hl.delimit([hl.str(mt[metadata_field][f]) for f in group_by], "_")
     mt = mt.annotate_cols(_group_label=label_expr)
 
     # --- Filter groups by min cells ---
     group_counts = mt.aggregate_cols(hl.agg.counter(mt._group_label))
-    valid_groups = {
-        g for g, n in group_counts.items() if n >= min_cells_per_group
-    }
-    skipped = {
-        g: n for g, n in group_counts.items() if n < min_cells_per_group
-    }
+    valid_groups = {g for g, n in group_counts.items() if n >= min_cells_per_group}
+    skipped = {g: n for g, n in group_counts.items() if n < min_cells_per_group}
     if skipped:
         logger.warning(
             "Skipping %d group(s) with fewer than %d cells: %s",
-            len(skipped), min_cells_per_group, skipped,
+            len(skipped),
+            min_cells_per_group,
+            skipped,
         )
     if not valid_groups:
         raise ValueError(
@@ -120,9 +117,7 @@ def extract_expression_for_wilcoxon(
 
     # --- Filter rows to candidate genes ---
     if candidate_gene_ids is not None:
-        mt = mt.filter_rows(
-            hl.literal(candidate_gene_ids).contains(mt[gene_id_field])
-        )
+        mt = mt.filter_rows(hl.literal(candidate_gene_ids).contains(mt[gene_id_field]))
 
     # --- Collect group labels ---
     col_data = mt.cols().select("_group_label")
@@ -145,15 +140,11 @@ def extract_expression_for_wilcoxon(
 
     n_genes = len(gene_ids)
     n_cells = len(group_labels)
-    logger.info(
-        "Extracting dense matrix: %d genes x %d cells", n_genes, n_cells
-    )
+    logger.info("Extracting dense matrix: %d genes x %d cells", n_genes, n_cells)
 
     # --- Collect expression values per gene row ---
     # Aggregate per-row: collect all expression values across cells
-    expr_per_gene = mt.annotate_rows(
-        _expr_values=hl.agg.collect(mt[expr_field])
-    )
+    expr_per_gene = mt.annotate_rows(_expr_values=hl.agg.collect(mt[expr_field]))
     expr_lists = expr_per_gene.rows().select("_expr_values")
     expr_pd = expr_lists.to_pandas()
 
@@ -164,7 +155,8 @@ def extract_expression_for_wilcoxon(
 
     logger.info(
         "Extracted expression matrix: shape %s, %d groups",
-        expression.shape, len(valid_groups),
+        expression.shape,
+        len(valid_groups),
     )
 
     return expression, group_labels, gene_ids, gene_names
@@ -232,7 +224,10 @@ def wilcoxon_markers_from_mt(
     # --- Phase 1: Identify candidate genes ---
     if summary is not None:
         candidate_gene_ids = _candidates_from_summary(
-            summary, params, gene_id_field, gene_name_field,
+            summary,
+            params,
+            gene_id_field,
+            gene_name_field,
         )
         logger.info(
             "Pre-filter from summary table: %d candidate genes",
@@ -272,7 +267,11 @@ def wilcoxon_markers_from_mt(
     # full gene universe as denominator, not just the pre-filtered
     # candidates (Seurat-style: p.adjust(p, n = nrow(object))).
     results_df = rank_genes_groups(
-        expression, group_labels, gene_ids, gene_names, params,
+        expression,
+        group_labels,
+        gene_ids,
+        gene_names,
+        params,
         n_total_genes=n_total_genes,
     )
 
@@ -310,22 +309,19 @@ def _candidates_on_the_fly(
     # --- Apply column filters ---
     if filter_by:
         from hvantk.utils.matrix_utils import filter_by_metadata
+
         mt = filter_by_metadata(mt, filter_by)
 
     # --- Build group label ---
     if len(group_by) == 1:
         label_expr = hl.str(mt[metadata_field][group_by[0]])
     else:
-        label_expr = hl.delimit(
-            [hl.str(mt[metadata_field][f]) for f in group_by], "_"
-        )
+        label_expr = hl.delimit([hl.str(mt[metadata_field][f]) for f in group_by], "_")
     mt = mt.annotate_cols(_group_label=label_expr)
 
     # --- Filter groups by min cells ---
     group_counts = mt.aggregate_cols(hl.agg.counter(mt._group_label))
-    valid_groups = {
-        g for g, n in group_counts.items() if n >= min_cells_per_group
-    }
+    valid_groups = {g for g, n in group_counts.items() if n >= min_cells_per_group}
     if not valid_groups:
         raise ValueError(
             f"No groups have >= {min_cells_per_group} cells. "
@@ -393,7 +389,8 @@ def _candidates_on_the_fly(
         candidates = set(sorted_genes[: params.max_candidates])
         logger.info(
             "Capped candidates from %d to %d (max_candidates)",
-            len(gene_max_fc), params.max_candidates,
+            len(gene_max_fc),
+            params.max_candidates,
         )
 
     return candidates

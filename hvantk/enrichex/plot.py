@@ -101,7 +101,9 @@ def plot_enrichment_dotplot(
     """
     if results_df.empty:
         logger.warning("No enrichment results available to plot.")
-        return _empty_figure(output_path, format=format, dpi=dpi, title=title or "Enrichment Dot Plot")
+        return _empty_figure(
+            output_path, format=format, dpi=dpi, title=title or "Enrichment Dot Plot"
+        )
 
     required_cols = {"gene_set_name", size_by}
     _check_dataframe(results_df, required_cols)
@@ -112,7 +114,9 @@ def plot_enrichment_dotplot(
         df = df[df["n_overlap"] >= max(min_overlap, 0)]
     if df.empty:
         logger.warning("No enrichment results available to plot.")
-        return _empty_figure(output_path, format=format, dpi=dpi, title=title or "Enrichment Dot Plot")
+        return _empty_figure(
+            output_path, format=format, dpi=dpi, title=title or "Enrichment Dot Plot"
+        )
 
     if sort_by not in df.columns:
         raise ValueError(f"Column '{sort_by}' not found in results.")
@@ -122,7 +126,9 @@ def plot_enrichment_dotplot(
         df = df.head(top_n)
     if df.empty:
         logger.warning("Filtering removed all rows to plot.")
-        return _empty_figure(output_path, format=format, dpi=dpi, title=title or "Enrichment Dot Plot")
+        return _empty_figure(
+            output_path, format=format, dpi=dpi, title=title or "Enrichment Dot Plot"
+        )
 
     df["plot_order"] = range(len(df))
 
@@ -261,7 +267,9 @@ def plot_burden_forest(
     """
     if results_df.empty:
         logger.warning("No burden results available to plot.")
-        return _empty_figure(output_path, format=format, dpi=dpi, title=title or "Burden Forest Plot")
+        return _empty_figure(
+            output_path, format=format, dpi=dpi, title=title or "Burden Forest Plot"
+        )
 
     required_columns = {"gene_set_name", sort_by}
     effect_col = "odds_ratio" if phenotype_type == "binary" else "beta"
@@ -278,7 +286,9 @@ def plot_burden_forest(
         df = df.head(top_n)
     if df.empty:
         logger.warning("No burden results available to plot.")
-        return _empty_figure(output_path, format=format, dpi=dpi, title=title or "Burden Forest Plot")
+        return _empty_figure(
+            output_path, format=format, dpi=dpi, title=title or "Burden Forest Plot"
+        )
 
     if sns is not None:
         sns.set_style("whitegrid")
@@ -443,7 +453,9 @@ def plot_enrichment_barplot(
         raise ValueError("orientation must be 'horizontal' or 'vertical'.")
     if results_df.empty:
         logger.warning("No enrichment results available to plot.")
-        return _empty_figure(output_path, format=format, dpi=dpi, title=title or "Enrichment Bar Plot")
+        return _empty_figure(
+            output_path, format=format, dpi=dpi, title=title or "Enrichment Bar Plot"
+        )
     _check_dataframe(results_df, {"gene_set_name"})
     df = results_df.copy()
     p_col = _resolve_pvalue_column(df)
@@ -459,7 +471,9 @@ def plot_enrichment_barplot(
     df = df.sort_values(value, ascending=orientation == "vertical")
     if df.empty:
         logger.warning("No enrichment results available to plot.")
-        return _empty_figure(output_path, format=format, dpi=dpi, title=title or "Enrichment Bar Plot")
+        return _empty_figure(
+            output_path, format=format, dpi=dpi, title=title or "Enrichment Bar Plot"
+        )
 
     color_values, color_config = _resolve_color_encoding(
         df,
@@ -807,7 +821,9 @@ def plot_burden_volcano(
         "s": 40,
     }
     if color_config["mode"] == "continuous":
-        ax.scatter(x_values, neg_log_p, c=color_values, cmap="viridis", **scatter_kwargs)
+        ax.scatter(
+            x_values, neg_log_p, c=color_values, cmap="viridis", **scatter_kwargs
+        )
     else:
         point_colors = [color_config["mapping"][val] for val in color_values]
         ax.scatter(x_values, neg_log_p, c=point_colors, **scatter_kwargs)
@@ -850,7 +866,12 @@ def plot_burden_volcano(
             loc = df.index.get_loc(idx)
             ax.annotate(
                 row["gene_set_name"],
-                xy=(x_values[loc] if isinstance(x_values, np.ndarray) else x_values.iloc[loc], neg_log_p.iloc[loc]),
+                xy=(
+                    x_values[loc]
+                    if isinstance(x_values, np.ndarray)
+                    else x_values.iloc[loc],
+                    neg_log_p.iloc[loc],
+                ),
                 xytext=(5, 5),
                 textcoords="offset points",
                 fontsize=8,

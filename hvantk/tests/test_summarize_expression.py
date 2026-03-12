@@ -79,17 +79,13 @@ def synthetic_mt():
     mt = hl.utils.range_matrix_table(n_rows=n_genes, n_cols=n_cells)
 
     # Annotate entries first (row_idx / col_idx still available)
-    mt = mt.annotate_entries(
-        x=hl.literal(flat_expr)[mt.row_idx * n_cells + mt.col_idx]
-    )
+    mt = mt.annotate_entries(x=hl.literal(flat_expr)[mt.row_idx * n_cells + mt.col_idx])
 
     # Annotate rows
     mt = mt.annotate_rows(
         GeneID=hl.literal(gene_ids)[mt.row_idx],
     )
-    mt = mt.annotate_rows(
-        **{"Gene Name": hl.literal(gene_names)[mt.row_idx]}
-    )
+    mt = mt.annotate_rows(**{"Gene Name": hl.literal(gene_names)[mt.row_idx]})
 
     # Annotate cols
     mt = mt.annotate_cols(
@@ -144,9 +140,7 @@ class TestAnnotateColumnSummary:
 
     def test_high_cardinality_truncation(self, synthetic_mt):
         """With max_levels=1, all categorical fields should be truncated."""
-        mt = annotate_column_summary(
-            synthetic_mt, max_levels=1, top_n_levels=1
-        )
+        mt = annotate_column_summary(synthetic_mt, max_levels=1, top_n_levels=1)
         summary = hl.eval(mt.column_summary)
         ct = summary["cell_type"]
         assert ct.truncated is True

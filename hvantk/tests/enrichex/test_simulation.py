@@ -85,7 +85,6 @@ class TestCheckTypeIError:
 
 @pytest.mark.hail
 class TestSyntheticCohort:
-
     def test_basic_generation(self, hail_session):
         """Test basic cohort generation dimensions."""
         mt, pheno_ht, gene_sets = generate_synthetic_burden_cohort(

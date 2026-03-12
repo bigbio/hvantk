@@ -44,7 +44,9 @@ def parse_args():
         required=True,
         help="name:/path/to/collection.json (repeatable)",
     )
-    p.add_argument("--output-dir", default="results/chd_burden", help="Output directory")
+    p.add_argument(
+        "--output-dir", default="results/chd_burden", help="Output directory"
+    )
     p.add_argument(
         "--phenotype-field",
         default="phe.is_case",
@@ -55,13 +57,28 @@ def parse_args():
         default=None,
         help="Comma-separated covariate fields from MT cols (dot notation ok)",
     )
-    p.add_argument("--max-af", type=float, default=0.001, help="Max gnomAD AF (default: 0.001)")
-    p.add_argument("--min-cadd", type=float, default=None, help="Min CADD PHRED (optional)")
-    p.add_argument("--min-carriers", type=int, default=5, help="Min carriers per gene set")
-    p.add_argument("--competitive", action="store_true", help="Run permutation competitive test")
-    p.add_argument("--n-permutations", type=int, default=10000, help="Permutations for competitive test")
+    p.add_argument(
+        "--max-af", type=float, default=0.001, help="Max gnomAD AF (default: 0.001)"
+    )
+    p.add_argument(
+        "--min-cadd", type=float, default=None, help="Min CADD PHRED (optional)"
+    )
+    p.add_argument(
+        "--min-carriers", type=int, default=5, help="Min carriers per gene set"
+    )
+    p.add_argument(
+        "--competitive", action="store_true", help="Run permutation competitive test"
+    )
+    p.add_argument(
+        "--n-permutations",
+        type=int,
+        default=10000,
+        help="Permutations for competitive test",
+    )
     p.add_argument("--dry-run", action="store_true", help="Show plan without running")
-    p.add_argument("--generate-report", action="store_true", help="Generate HTML report")
+    p.add_argument(
+        "--generate-report", action="store_true", help="Generate HTML report"
+    )
     return p.parse_args()
 
 
@@ -81,9 +98,9 @@ def build_variant_classes(max_af: float, min_score: float = None) -> Dict:
         score_field="vep.CADD_PHRED",
         consequence_field="Consequence",
         max_af=max_af,
-        pass_only=False,   # no 'filters' field in this MT
-        min_gq=0,          # no GQ in entries
-        min_dp=0,          # no DP in entries
+        pass_only=False,  # no 'filters' field in this MT
+        min_gq=0,  # no GQ in entries
+        min_dp=0,  # no DP in entries
     )
 
     classes = {
@@ -202,7 +219,11 @@ def main():
         )
         cols = ["gene_set_name", "collection", "p_adjusted"]
         display_cols = [c for c in cols if c in syn_sig.columns]
-        print(syn_sig.sort_values("p_adjusted")[display_cols].head(10).to_string(index=False))
+        print(
+            syn_sig.sort_values("p_adjusted")[display_cols]
+            .head(10)
+            .to_string(index=False)
+        )
 
     logger.info("\nOutputs in: %s", args.output_dir)
 

@@ -280,6 +280,7 @@ class TestBurdenPipelineShowPlan:
 # Integration tests (Hail required)
 # ---------------------------------------------------------------------------
 
+
 def _create_test_data(tmp_path):
     """Create and write synthetic MT, phenotype HT, and gene sets to disk."""
     import hail as hl
@@ -295,9 +296,7 @@ def _create_test_data(tmp_path):
         ),
         gnomad_af=hl.rand_unif(0, 0.05),
         cadd_phred=hl.rand_unif(15, 30),
-        consequence=hl.if_else(
-            mt.row_idx % 3 == 0, "stop_gained", "missense_variant"
-        ),
+        consequence=hl.if_else(mt.row_idx % 3 == 0, "stop_gained", "missense_variant"),
     )
     mt = mt.annotate_entries(
         GT=hl.call(hl.int(hl.rand_bool(0.3)), hl.int(hl.rand_bool(0.1))),
@@ -347,9 +346,7 @@ def _create_test_data_with_nested_cols(tmp_path):
         ),
         gnomad_af=hl.rand_unif(0, 0.05),
         cadd_phred=hl.rand_unif(15, 30),
-        consequence=hl.if_else(
-            mt.row_idx % 3 == 0, "stop_gained", "missense_variant"
-        ),
+        consequence=hl.if_else(mt.row_idx % 3 == 0, "stop_gained", "missense_variant"),
     )
     mt = mt.annotate_entries(
         GT=hl.call(hl.int(hl.rand_bool(0.3)), hl.int(hl.rand_bool(0.1))),
@@ -495,7 +492,10 @@ class TestBurdenPipelineRun:
         # Gene sets with non-existent genes
         gs_data = {
             "gene_sets": {
-                "empty_set": {"name": "empty_set", "genes": ["NONEXISTENT1", "NONEXISTENT2"]},
+                "empty_set": {
+                    "name": "empty_set",
+                    "genes": ["NONEXISTENT1", "NONEXISTENT2"],
+                },
             },
             "background_genes": ["NONEXISTENT1", "NONEXISTENT2"],
         }

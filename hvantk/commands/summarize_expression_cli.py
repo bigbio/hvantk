@@ -384,18 +384,12 @@ def markers_cmd(
     # --- Validate method-specific requirements ---
     if method in ("fold_change", "specificity"):
         if summary is None:
-            raise click.UsageError(
-                f"--summary is required for method '{method}'."
-            )
+            raise click.UsageError(f"--summary is required for method '{method}'.")
     elif method == "wilcoxon":
         if matrix_table is None:
-            raise click.UsageError(
-                "--matrix-table is required for method 'wilcoxon'."
-            )
+            raise click.UsageError("--matrix-table is required for method 'wilcoxon'.")
         if not group_by:
-            raise click.UsageError(
-                "--group-by is required for method 'wilcoxon'."
-            )
+            raise click.UsageError("--group-by is required for method 'wilcoxon'.")
 
     output_path = Path(output)
     if output_path.exists() and not overwrite:
@@ -472,9 +466,7 @@ def markers_cmd(
         raise SystemExit(1)
 
     # Report
-    click.echo(
-        f"Extracted markers for {len(collection)} groups (method={method})"
-    )
+    click.echo(f"Extracted markers for {len(collection)} groups (method={method})")
     for gs in sorted(collection, key=lambda g: -g.n_genes):
         click.echo(f"  {gs.name}: {gs.n_genes} markers")
 

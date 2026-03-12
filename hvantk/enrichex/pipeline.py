@@ -172,18 +172,14 @@ class BurdenConfig:
         # are extracted from MT column fields.
         if self.phenotype_ht_path:
             if not Path(self.phenotype_ht_path).exists():
-                errors.append(
-                    f"Phenotype file not found: {self.phenotype_ht_path}"
-                )
+                errors.append(f"Phenotype file not found: {self.phenotype_ht_path}")
 
         if not self.gene_set_collections:
             errors.append("At least one gene_set_collection is required.")
         else:
             for name, path in self.gene_set_collections.items():
                 if not Path(path).exists():
-                    errors.append(
-                        f"Gene set collection '{name}' not found: {path}"
-                    )
+                    errors.append(f"Gene set collection '{name}' not found: {path}")
 
         if self.phenotype_type not in PHENOTYPE_TYPES:
             errors.append(
@@ -192,9 +188,7 @@ class BurdenConfig:
             )
 
         agg = self.genotype_aggregation
-        valid_agg = GENOTYPE_AGGREGATION_METHODS + list(
-            _DEPRECATED_AGGREGATION_ALIASES
-        )
+        valid_agg = GENOTYPE_AGGREGATION_METHODS + list(_DEPRECATED_AGGREGATION_ALIASES)
         if agg not in valid_agg:
             errors.append(
                 f"Invalid genotype_aggregation '{agg}'. "
@@ -208,9 +202,7 @@ class BurdenConfig:
             )
 
         if self.gene_lengths_path and not Path(self.gene_lengths_path).exists():
-            errors.append(
-                f"Gene lengths file not found: {self.gene_lengths_path}"
-            )
+            errors.append(f"Gene lengths file not found: {self.gene_lengths_path}")
 
         if self.min_carriers < 0:
             errors.append("min_carriers must be >= 0.")
@@ -356,17 +348,23 @@ class BurdenPipeline:
         lines.append(f"  Genotype aggregation:    {cfg.genotype_aggregation}")
         lines.append(f"  Min carriers:            {cfg.min_carriers}")
         if cfg.covariate_fields:
-            lines.append(f"  Covariates:              {', '.join(cfg.covariate_fields)}")
+            lines.append(
+                f"  Covariates:              {', '.join(cfg.covariate_fields)}"
+            )
         if cfg.normalize_by_length:
             src = cfg.gene_lengths_path or "variant site count proxy"
             lines.append(f"  Length normalisation:     {src}")
         lines.append(f"  Correction:              {cfg.correction_method}")
         lines.append(f"  Alpha:                   {cfg.alpha}")
         if cfg.competitive:
-            lines.append(f"  Competitive testing:     {cfg.n_permutations} permutations")
+            lines.append(
+                f"  Competitive testing:     {cfg.n_permutations} permutations"
+            )
 
         lines.append("")
-        lines.append(f"Total runs: {n_runs}  ({len(vc_names)} classes x {len(coll_names)} collections)")
+        lines.append(
+            f"Total runs: {n_runs}  ({len(vc_names)} classes x {len(coll_names)} collections)"
+        )
         lines.append(f"Output dir: {cfg.output_dir}")
         lines.append("=" * 70)
         lines.append("")
@@ -517,24 +515,18 @@ class BurdenPipeline:
 
             annotations = {}
             pheno_leaf = self._leaf_name(pheno_field)
-            annotations[pheno_leaf] = self._resolve_nested_field(
-                cols_ht, pheno_field
-            )
+            annotations[pheno_leaf] = self._resolve_nested_field(cols_ht, pheno_field)
 
             for cov in cov_fields:
                 cov_leaf = self._leaf_name(cov)
-                annotations[cov_leaf] = self._resolve_nested_field(
-                    cols_ht, cov
-                )
+                annotations[cov_leaf] = self._resolve_nested_field(cols_ht, cov)
 
             self._phenotype_ht = cols_ht.select(**annotations)
 
             # Update config fields to use flattened leaf names so downstream
             # regression uses the correct field names in the phenotype HT.
             self.config.phenotype_field = pheno_leaf
-            self.config.covariate_fields = [
-                self._leaf_name(c) for c in cov_fields
-            ]
+            self.config.covariate_fields = [self._leaf_name(c) for c in cov_fields]
 
             logger.info(
                 "  Extracted phenotype '%s' and %d covariates from MT cols",
@@ -546,9 +538,9 @@ class BurdenPipeline:
             self._phenotype_ht = hl.read_table(path)
         else:
             logger.info("Loading phenotypes: %s", path)
-            self._phenotype_ht = hl.import_table(
-                path, impute=True
-            ).key_by(self.config.sample_id_field)
+            self._phenotype_ht = hl.import_table(path, impute=True).key_by(
+                self.config.sample_id_field
+            )
 
         logger.info("  %d samples", self._phenotype_ht.count())
 
@@ -668,10 +660,7 @@ class BurdenPipeline:
             if not perm_df.empty:
                 perm_df["variant_class"] = vc_name
                 perm_df["collection"] = coll_name
-                perm_path = (
-                    self._per_run_dir
-                    / f"permutation_{coll_name}_{vc_name}.tsv"
-                )
+                perm_path = self._per_run_dir / f"permutation_{coll_name}_{vc_name}.tsv"
                 perm_df.to_csv(perm_path, sep="\t", index=False)
                 logger.info("  Wrote %s", perm_path.name)
 
@@ -700,11 +689,7 @@ class BurdenPipeline:
 
     def _generate_summary(self) -> pd.DataFrame:
         """Combine all run results and write summary."""
-        dfs = [
-            r.results_df
-            for r in self._run_results
-            if not r.results_df.empty
-        ]
+        dfs = [r.results_df for r in self._run_results if not r.results_df.empty]
         if not dfs:
             logger.warning("No runs produced results.")
             return pd.DataFrame()

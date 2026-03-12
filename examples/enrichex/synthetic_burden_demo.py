@@ -91,8 +91,13 @@ def main():
         gs_dir = tmp_dir / "gene_sets"
         gs_dir.mkdir()
         for tissue_name, gs_dict in [
-            ("heart", {"cardiomyocytes": signal_sets["cardiomyocytes"],
-                       "fibroblasts": signal_sets["fibroblasts"]}),
+            (
+                "heart",
+                {
+                    "cardiomyocytes": signal_sets["cardiomyocytes"],
+                    "fibroblasts": signal_sets["fibroblasts"],
+                },
+            ),
             ("brain", {"neurons": null_set["neurons"]}),
         ]:
             coll_data = {
@@ -126,17 +131,26 @@ def main():
                 "lof": VariantFilter(
                     consequences=["stop_gained"],
                     max_af=1.0,  # no AF filtering on synthetic data
-                    pass_only=False, min_gq=0, min_dp=0, min_score=None,
+                    pass_only=False,
+                    min_gq=0,
+                    min_dp=0,
+                    min_score=None,
                 ),
                 "missense": VariantFilter(
                     consequences=["missense_variant"],
                     max_af=1.0,
-                    pass_only=False, min_gq=0, min_dp=0, min_score=None,
+                    pass_only=False,
+                    min_gq=0,
+                    min_dp=0,
+                    min_score=None,
                 ),
                 "synonymous": VariantFilter(
                     consequences=["synonymous_variant"],
                     max_af=1.0,
-                    pass_only=False, min_gq=0, min_dp=0, min_score=None,
+                    pass_only=False,
+                    min_gq=0,
+                    min_dp=0,
+                    min_score=None,
                 ),
             },
             min_carriers=0,
@@ -154,11 +168,20 @@ def main():
         logger.info("Combined results shape: %s", combined_df.shape)
         if not combined_df.empty:
             logger.info("\nTop results by p-value:")
-            cols = ["gene_set_name", "variant_class", "collection",
-                    "p_value", "p_adjusted", "significant"]
+            cols = [
+                "gene_set_name",
+                "variant_class",
+                "collection",
+                "p_value",
+                "p_adjusted",
+                "significant",
+            ]
             display_cols = [c for c in cols if c in combined_df.columns]
-            print(combined_df.sort_values("p_value")[display_cols].head(15)
-                  .to_string(index=False))
+            print(
+                combined_df.sort_values("p_value")[display_cols]
+                .head(15)
+                .to_string(index=False)
+            )
 
         # ── 3. Generate plots ─────────────────────────────────────────
         logger.info("")
@@ -177,6 +200,7 @@ def main():
                 title="Synthetic Burden Heatmap",
             )
             import matplotlib.pyplot as plt
+
             plt.close(fig)
             logger.info("Wrote heatmap: %s", plots_dir / "heatmap.png")
 
@@ -212,9 +236,7 @@ def main():
                 plt.close(fig)
                 logger.info("Wrote forest: %s", plots_dir / "forest.png")
             else:
-                logger.info(
-                    "Skipping forest plot (missing ci_lower/ci_upper columns)"
-                )
+                logger.info("Skipping forest plot (missing ci_lower/ci_upper columns)")
 
         # ── 4. Type-I error check on synonymous ───────────────────────
         logger.info("")
@@ -228,8 +250,11 @@ def main():
                 syn_pvals = syn["p_value"].dropna().tolist()
                 cal = check_type_i_error(syn_pvals)
                 logger.info("Synonymous p-values: %d tests", cal["n_tests"])
-                logger.info("  Rejection rate: %.3f (expected: %.3f)",
-                            cal["rejection_rate"], cal["expected_rate"])
+                logger.info(
+                    "  Rejection rate: %.3f (expected: %.3f)",
+                    cal["rejection_rate"],
+                    cal["expected_rate"],
+                )
                 logger.info("  KS p-value:     %.4f", cal["ks_pvalue"])
                 logger.info("  Calibrated:      %s", cal["calibrated"])
             else:
@@ -238,7 +263,9 @@ def main():
             lof = combined_df[combined_df["variant_class"] == "lof"]
             if not lof.empty:
                 logger.info("")
-                logger.info("LoF results (expect signal in cardiomyocytes/fibroblasts):")
+                logger.info(
+                    "LoF results (expect signal in cardiomyocytes/fibroblasts):"
+                )
                 lof_display = lof.sort_values("p_value")[display_cols].head(5)
                 print(lof_display.to_string(index=False))
 

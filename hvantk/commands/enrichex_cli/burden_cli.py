@@ -72,7 +72,9 @@ def register_burden_commands(group):
 )
 @click.option(
     "--genotype-aggregation",
-    type=click.Choice(["hets", "homs", "multi_het", "homs_multi_het", "chets", "homs_chets"]),
+    type=click.Choice(
+        ["hets", "homs", "multi_het", "homs_multi_het", "chets", "homs_chets"]
+    ),
     default="hets",
     show_default=True,
     help="Genotype aggregation method. 'multi_het' counts genes with >= 2 het variants "
@@ -328,7 +330,9 @@ def burden_test(
         if max_af is not None:
             click.echo(f"  Max AF: {max_af} (field: {af_field})")
         if min_score is not None:
-            click.echo(f"  Min score: {min_score if min_score > 0 else 'disabled'} (field: {score_field})")
+            click.echo(
+                f"  Min score: {min_score if min_score > 0 else 'disabled'} (field: {score_field})"
+            )
         if consequences:
             click.echo(f"  Consequences: {consequences} (field: {consequence_field})")
         if max_af is None and min_score is None and not consequences:
@@ -451,7 +455,9 @@ def burden_test(
                 consequence_field=consequence_field,
             )
 
-        vc_dict = build_variant_classes_from_presets(class_names, base_filter=base_filter)
+        vc_dict = build_variant_classes_from_presets(
+            class_names, base_filter=base_filter
+        )
 
         click.echo("\n" + "=" * 60)
         click.echo("RUNNING STRATIFIED BURDEN ANALYSIS")
@@ -509,7 +515,9 @@ def burden_test(
         click.echo("STRATIFIED BURDEN ANALYSIS SUMMARY")
         click.echo("=" * 60)
         for class_name in stratified_results:
-            class_df = next(df for df in all_dfs if df["variant_class"].iloc[0] == class_name)
+            class_df = next(
+                df for df in all_dfs if df["variant_class"].iloc[0] == class_name
+            )
             n_sig = class_df["significant"].sum()
             click.echo(
                 f"  {class_name}: {len(class_df)} gene sets tested, "
@@ -1024,7 +1032,10 @@ def burden_pipeline_cmd(
     # Parse variant classes
     vc_dict = {}
     if variant_classes:
-        from hvantk.enrichex.burden import VariantFilter, build_variant_classes_from_presets
+        from hvantk.enrichex.burden import (
+            VariantFilter,
+            build_variant_classes_from_presets,
+        )
 
         class_names = [c.strip() for c in variant_classes.split(",")]
         base_filter = VariantFilter(
@@ -1038,7 +1049,9 @@ def burden_pipeline_cmd(
             score_field=score_field,
             consequence_field=consequence_field,
         )
-        vc_dict = build_variant_classes_from_presets(class_names, base_filter=base_filter)
+        vc_dict = build_variant_classes_from_presets(
+            class_names, base_filter=base_filter
+        )
 
     covar_list = [c.strip() for c in covariates.split(",")] if covariates else []
 

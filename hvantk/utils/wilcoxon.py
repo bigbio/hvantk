@@ -295,9 +295,11 @@ def rank_genes_groups(
     _n_total = n_total_genes if n_total_genes is not None else n_genes
 
     logger.info(
-        "Wilcoxon rank-sum: %d cells, %d genes (%d total for correction), "
-        "%d groups",
-        n_cells, n_genes, _n_total, len(groups),
+        "Wilcoxon rank-sum: %d cells, %d genes (%d total for correction), " "%d groups",
+        n_cells,
+        n_genes,
+        _n_total,
+        len(groups),
     )
 
     # --- Compute ranks and tie correction once ---
@@ -319,7 +321,9 @@ def rank_genes_groups(
         if n_in < 2 or n_out < 2:
             logger.warning(
                 "Group '%s' has %d cells (rest=%d) — skipping.",
-                group, n_in, n_out,
+                group,
+                n_in,
+                n_out,
             )
             continue
 
@@ -368,9 +372,16 @@ def rank_genes_groups(
 
     if not all_results:
         cols = [
-            "group", "gene_id", "u_statistic", "z_score", "pvalue",
-            "pvalue_adj", "fold_change", "log2_fold_change",
-            "fraction_expressed", "fraction_expressed_rest",
+            "group",
+            "gene_id",
+            "u_statistic",
+            "z_score",
+            "pvalue",
+            "pvalue_adj",
+            "fold_change",
+            "log2_fold_change",
+            "fraction_expressed",
+            "fraction_expressed_rest",
         ]
         if gene_names is not None:
             cols.insert(2, "gene_name")
@@ -439,18 +450,16 @@ def results_to_gene_set_collection(
         sig = sig.sort_values("fold_change", ascending=False).head(top_n)
 
         if sig.empty:
-            logger.info("Group '%s': no significant markers at alpha=%.3f", group, alpha)
+            logger.info(
+                "Group '%s': no significant markers at alpha=%.3f", group, alpha
+            )
             continue
 
         genes = set(sig[gene_col].tolist())
         scores = {
-            row[gene_col]: round(row["fold_change"], 4)
-            for _, row in sig.iterrows()
+            row[gene_col]: round(row["fold_change"], 4) for _, row in sig.iterrows()
         }
-        pvals = {
-            row[gene_col]: float(row["pvalue_adj"])
-            for _, row in sig.iterrows()
-        }
+        pvals = {row[gene_col]: float(row["pvalue_adj"]) for _, row in sig.iterrows()}
 
         gene_sets[str(group)] = GeneSet(
             name=str(group),

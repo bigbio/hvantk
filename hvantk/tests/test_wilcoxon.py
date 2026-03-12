@@ -155,8 +155,18 @@ class TestWilcoxonOneVsRest:
     def test_perfect_separation(self):
         """Groups with no overlap should give very small p-values."""
         X = np.array(
-            [[0.0], [0.0], [0.0], [0.0], [0.0],   # group 0
-             [10.0], [10.0], [10.0], [10.0], [10.0]]  # group 1
+            [
+                [0.0],
+                [0.0],
+                [0.0],
+                [0.0],
+                [0.0],  # group 0
+                [10.0],
+                [10.0],
+                [10.0],
+                [10.0],
+                [10.0],
+            ]  # group 1
         )
         ranks = _compute_rank_matrix(X)
         tc = _compute_tie_correction(X, 10)
@@ -234,9 +244,7 @@ class TestRankGenesGroups:
 
     def test_three_groups(self, three_group_data):
         X, labels, gene_ids, gene_names = three_group_data
-        params = WilcoxonParams(
-            min_fold_change=1.0, min_fraction_expressed=0.0
-        )
+        params = WilcoxonParams(min_fold_change=1.0, min_fraction_expressed=0.0)
         results = rank_genes_groups(X, labels, gene_ids, gene_names, params)
         groups_found = set(results["group"].unique())
         assert groups_found == {"X", "Y", "Z"}
@@ -249,23 +257,17 @@ class TestRankGenesGroups:
         )
         results = rank_genes_groups(X, labels, gene_ids, gene_names, params)
 
-        a_sig = results[
-            (results["group"] == "A") & (results["pvalue_adj"] <= 0.05)
-        ]
+        a_sig = results[(results["group"] == "A") & (results["pvalue_adj"] <= 0.05)]
         assert "G0" in a_sig["gene_name"].values
         assert "G1" in a_sig["gene_name"].values
 
-        b_sig = results[
-            (results["group"] == "B") & (results["pvalue_adj"] <= 0.05)
-        ]
+        b_sig = results[(results["group"] == "B") & (results["pvalue_adj"] <= 0.05)]
         assert "G2" in b_sig["gene_name"].values
         assert "G3" in b_sig["gene_name"].values
 
     def test_output_columns_no_gene_names(self, two_group_data):
         X, labels, gene_ids, _ = two_group_data
-        params = WilcoxonParams(
-            min_fold_change=1.0, min_fraction_expressed=0.0
-        )
+        params = WilcoxonParams(min_fold_change=1.0, min_fraction_expressed=0.0)
         results = rank_genes_groups(X, labels, gene_ids, gene_names=None, params=params)
         assert "gene_name" not in results.columns
         assert "gene_id" in results.columns
@@ -293,28 +295,36 @@ class TestRankGenesGroups:
         conservative (Seurat-style: p.adjust uses total gene count)."""
         X, labels, gene_ids, gene_names = two_group_data
         params = WilcoxonParams(
-            min_fold_change=1.0, min_fraction_expressed=0.0,
+            min_fold_change=1.0,
+            min_fraction_expressed=0.0,
         )
         # Without n_total_genes (correction uses n_candidates only)
         results_default = rank_genes_groups(
-            X, labels, gene_ids, gene_names, params,
+            X,
+            labels,
+            gene_ids,
+            gene_names,
+            params,
         )
         # With n_total_genes >> n_genes (simulating pre-filtered subset)
         results_total = rank_genes_groups(
-            X, labels, gene_ids, gene_names, params,
+            X,
+            labels,
+            gene_ids,
+            gene_names,
+            params,
             n_total_genes=30000,
         )
 
         # Merge on (group, gene_id) to compare adjusted p-values
         merged = results_default.merge(
-            results_total, on=["group", "gene_id"],
+            results_total,
+            on=["group", "gene_id"],
             suffixes=("_default", "_total"),
         )
         assert len(merged) > 0
         # Raw p-values should be identical
-        np.testing.assert_allclose(
-            merged["pvalue_default"], merged["pvalue_total"]
-        )
+        np.testing.assert_allclose(merged["pvalue_default"], merged["pvalue_total"])
         # Adjusted p-values with n_total_genes should be >= default
         assert (
             merged["pvalue_adj_total"] >= merged["pvalue_adj_default"] - 1e-12
@@ -330,13 +340,19 @@ class TestResultsToGeneSetCollection:
     def test_basic_conversion(self, two_group_data):
         X, labels, gene_ids, gene_names = two_group_data
         params = WilcoxonParams(
-            min_fold_change=1.0, min_fraction_expressed=0.0, alpha=0.05,
+            min_fold_change=1.0,
+            min_fraction_expressed=0.0,
+            alpha=0.05,
         )
         results = rank_genes_groups(X, labels, gene_ids, gene_names, params)
         bg = set(gene_names)
 
         collection = results_to_gene_set_collection(
-            results, bg, top_n=10, alpha=0.05, gene_col="gene_name",
+            results,
+            bg,
+            top_n=10,
+            alpha=0.05,
+            gene_col="gene_name",
         )
         assert isinstance(collection, GeneSetCollection)
         assert len(collection.background_genes) == len(bg)
@@ -344,16 +360,23 @@ class TestResultsToGeneSetCollection:
     def test_alpha_filtering(self, two_group_data):
         X, labels, gene_ids, gene_names = two_group_data
         params = WilcoxonParams(
-            min_fold_change=1.0, min_fraction_expressed=0.0,
+            min_fold_change=1.0,
+            min_fraction_expressed=0.0,
         )
         results = rank_genes_groups(X, labels, gene_ids, gene_names, params)
         bg = set(gene_names)
 
         strict = results_to_gene_set_collection(
-            results, bg, top_n=100, alpha=1e-10,
+            results,
+            bg,
+            top_n=100,
+            alpha=1e-10,
         )
         lenient = results_to_gene_set_collection(
-            results, bg, top_n=100, alpha=0.5,
+            results,
+            bg,
+            top_n=100,
+            alpha=0.5,
         )
         strict_total = sum(gs.n_genes for gs in strict)
         lenient_total = sum(gs.n_genes for gs in lenient)
@@ -362,13 +385,17 @@ class TestResultsToGeneSetCollection:
     def test_top_n(self, two_group_data):
         X, labels, gene_ids, gene_names = two_group_data
         params = WilcoxonParams(
-            min_fold_change=1.0, min_fraction_expressed=0.0,
+            min_fold_change=1.0,
+            min_fraction_expressed=0.0,
         )
         results = rank_genes_groups(X, labels, gene_ids, gene_names, params)
         bg = set(gene_names)
 
         collection = results_to_gene_set_collection(
-            results, bg, top_n=1, alpha=1.0,
+            results,
+            bg,
+            top_n=1,
+            alpha=1.0,
         )
         for gs in collection:
             assert gs.n_genes <= 1
@@ -376,14 +403,19 @@ class TestResultsToGeneSetCollection:
     def test_fallback_to_gene_id(self, two_group_data):
         X, labels, gene_ids, _ = two_group_data
         params = WilcoxonParams(
-            min_fold_change=1.0, min_fraction_expressed=0.0,
+            min_fold_change=1.0,
+            min_fraction_expressed=0.0,
         )
         results = rank_genes_groups(X, labels, gene_ids, gene_names=None, params=params)
         bg = set(gene_ids)
 
         # gene_col="gene_name" not in results → should fall back to gene_id
         collection = results_to_gene_set_collection(
-            results, bg, top_n=10, alpha=1.0, gene_col="gene_name",
+            results,
+            bg,
+            top_n=10,
+            alpha=1.0,
+            gene_col="gene_name",
         )
         # Verify genes are gene_ids
         for gs in collection:
@@ -392,13 +424,17 @@ class TestResultsToGeneSetCollection:
     def test_metadata_fields(self, two_group_data):
         X, labels, gene_ids, gene_names = two_group_data
         params = WilcoxonParams(
-            min_fold_change=1.0, min_fraction_expressed=0.0,
+            min_fold_change=1.0,
+            min_fraction_expressed=0.0,
         )
         results = rank_genes_groups(X, labels, gene_ids, gene_names, params)
         bg = set(gene_names)
 
         collection = results_to_gene_set_collection(
-            results, bg, top_n=10, alpha=1.0,
+            results,
+            bg,
+            top_n=10,
+            alpha=1.0,
         )
         for gs in collection:
             assert "fold_changes" in gs.metadata

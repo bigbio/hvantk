@@ -200,17 +200,14 @@ def generate_synthetic_burden_cohort(
     # ------------------------------------------------------------------
     # 7. Build phenotype Table
     # ------------------------------------------------------------------
-    pheno_rows = [
-        hl.struct(s=str(i), is_case=(i < n_cases)) for i in range(n_samples)
-    ]
+    pheno_rows = [hl.struct(s=str(i), is_case=(i < n_cases)) for i in range(n_samples)]
     phenotype_ht = hl.Table.parallelize(
         pheno_rows,
         schema=hl.tstruct(s=hl.tstr, is_case=hl.tbool),
     ).key_by("s")
 
     logger.info(
-        "Synthetic cohort: %d cases, %d controls, %d genes, "
-        "%d signal gene sets",
+        "Synthetic cohort: %d cases, %d controls, %d genes, " "%d signal gene sets",
         n_cases,
         n_controls,
         n_genes,

@@ -76,9 +76,7 @@ def annotate_column_summary(
         is_num = hl.is_numeric(field_type)
 
         if is_num:
-            stats = mt.aggregate_cols(
-                hl.agg.stats(mt[metadata_field][field])
-            )
+            stats = mt.aggregate_cols(hl.agg.stats(mt[metadata_field][field]))
             summaries[field] = {
                 "dtype": "numeric",
                 "n_levels": -1,
@@ -90,9 +88,7 @@ def annotate_column_summary(
                 "mean_val": float(stats.mean) if stats.mean is not None else 0.0,
             }
         else:
-            counter = mt.aggregate_cols(
-                hl.agg.counter(mt[metadata_field][field])
-            )
+            counter = mt.aggregate_cols(hl.agg.counter(mt[metadata_field][field]))
             n_levels = len(counter)
 
             if n_levels <= max_levels:
@@ -108,13 +104,9 @@ def annotate_column_summary(
                     "mean_val": 0.0,
                 }
             else:
-                sorted_by_freq = sorted(
-                    counter.items(), key=lambda x: -x[1]
-                )
+                sorted_by_freq = sorted(counter.items(), key=lambda x: -x[1])
                 top = [
-                    str(k)
-                    for k, _v in sorted_by_freq[:top_n_levels]
-                    if k is not None
+                    str(k) for k, _v in sorted_by_freq[:top_n_levels] if k is not None
                 ]
                 summaries[field] = {
                     "dtype": "categorical",
@@ -146,9 +138,7 @@ def annotate_column_summary(
     summary_dict = hl.dict(entries)
     mt = mt.annotate_globals(column_summary=summary_dict)
 
-    logger.info(
-        "Annotated column_summary with %d metadata fields", len(summaries)
-    )
+    logger.info("Annotated column_summary with %d metadata fields", len(summaries))
     return mt
 
 
@@ -265,7 +255,8 @@ def _validate_group_by(
             info = summary[field]
             if info.dtype == "numeric":
                 cat_fields = [
-                    f for f in available
+                    f
+                    for f in available
                     if summary.get(f) and summary[f].dtype == "categorical"
                 ]
                 raise ValueError(
@@ -355,19 +346,13 @@ def summarize_expression(
     if len(group_by) == 1:
         label_expr = hl.str(mt[metadata_field][group_by[0]])
     else:
-        label_expr = hl.delimit(
-            [hl.str(mt[metadata_field][f]) for f in group_by], "_"
-        )
+        label_expr = hl.delimit([hl.str(mt[metadata_field][f]) for f in group_by], "_")
     mt = mt.annotate_cols(_group_label=label_expr)
 
     # --- Filter groups by min cells ---
     group_counts = mt.aggregate_cols(hl.agg.counter(mt._group_label))
-    valid_groups = {
-        g for g, n in group_counts.items() if n >= min_cells_per_group
-    }
-    skipped = {
-        g: n for g, n in group_counts.items() if n < min_cells_per_group
-    }
+    valid_groups = {g for g, n in group_counts.items() if n >= min_cells_per_group}
+    skipped = {g: n for g, n in group_counts.items() if n < min_cells_per_group}
     if skipped:
         logger.warning(
             "Skipping %d group(s) with fewer than %d cells: %s",
@@ -394,14 +379,16 @@ def summarize_expression(
     grouped_mt = grouped_mt.annotate_rows(
         stats=hl.dict(
             hl.agg.collect(
-                hl.tuple([
-                    grouped_mt._group_label,
-                    hl.struct(
-                        mean=grouped_mt.mean,
-                        fraction_expressed=grouped_mt.fraction_expressed,
-                        n_cells=hl.int32(grouped_mt.n_cells),
-                    ),
-                ])
+                hl.tuple(
+                    [
+                        grouped_mt._group_label,
+                        hl.struct(
+                            mean=grouped_mt.mean,
+                            fraction_expressed=grouped_mt.fraction_expressed,
+                            n_cells=hl.int32(grouped_mt.n_cells),
+                        ),
+                    ]
+                )
             )
         )
     )

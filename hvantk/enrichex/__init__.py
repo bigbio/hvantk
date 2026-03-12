@@ -100,9 +100,7 @@ from hvantk.enrichex.simulation import check_type_i_error
 
 try:
     from hvantk.enrichex.simulation import generate_synthetic_burden_cohort
-except (
-    ModuleNotFoundError
-):  # pragma: no cover - depends on optional Hail install
+except ModuleNotFoundError:  # pragma: no cover - depends on optional Hail install
     generate_synthetic_burden_cohort = VariantFilter  # type: ignore[assignment]
 
 __all__ = [

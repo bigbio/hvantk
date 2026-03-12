@@ -643,9 +643,7 @@ def extract_marker_gene_sets(
         raise ValueError("No groups found in summary table.")
 
     # Build wide arrays for vectorised computation
-    means = pd.DataFrame(
-        {g: df[f"{g}_mean"] for g in groups}, index=df.index
-    )
+    means = pd.DataFrame({g: df[f"{g}_mean"] for g in groups}, index=df.index)
     fracs = pd.DataFrame(
         {g: df[f"{g}_fraction_expressed"] for g in groups}, index=df.index
     )
@@ -678,9 +676,7 @@ def extract_marker_gene_sets(
         candidates["_fc"] = fc[mask]
 
         # Rank and take top N
-        candidates = candidates.sort_values("_fc", ascending=False).head(
-            n_markers
-        )
+        candidates = candidates.sort_values("_fc", ascending=False).head(n_markers)
 
         if candidates.empty:
             logger.warning("Group '%s': no markers passed filters.", group)
@@ -693,8 +689,7 @@ def extract_marker_gene_sets(
 
         # Store per-gene scores in metadata
         scores = {
-            row[gene_col]: round(row["_fc"], 4)
-            for _, row in candidates.iterrows()
+            row[gene_col]: round(row["_fc"], 4) for _, row in candidates.iterrows()
         }
 
         gene_sets[group] = GeneSet(
@@ -763,9 +758,7 @@ def _summary_to_dataframe(
                     flat[f"{group}_n_cells"] = s.n_cells
                 elif isinstance(s, dict):
                     flat[f"{group}_mean"] = s.get("mean", 0)
-                    flat[f"{group}_fraction_expressed"] = s.get(
-                        "fraction_expressed", 0
-                    )
+                    flat[f"{group}_fraction_expressed"] = s.get("fraction_expressed", 0)
                     flat[f"{group}_n_cells"] = s.get("n_cells", 0)
         rows.append(flat)
 

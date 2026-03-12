@@ -103,9 +103,7 @@ class TestComputeGenesetBurdenMt:
 
         gene_sets = {"set1": ["GENE1", "GENE2"], "set2": ["GENE3"]}
 
-        mt_burden = compute_geneset_burden_mt(
-            mt, gene_sets, gene_field="SYMBOL"
-        )
+        mt_burden = compute_geneset_burden_mt(mt, gene_sets, gene_field="SYMBOL")
 
         # Should have 2 gene sets (rows) and 10 samples (cols)
         n_rows, n_cols = mt_burden.count()
@@ -171,9 +169,7 @@ class TestComputeGenesetBurdenMt:
         mt = self.setup_test_mt()
         gene_sets = {"set1": ["GENE1", "GENE2"], "set2": ["GENE3"]}
 
-        mt_burden = compute_geneset_burden_mt(
-            mt, gene_sets, gene_field="SYMBOL"
-        )
+        mt_burden = compute_geneset_burden_mt(mt, gene_sets, gene_field="SYMBOL")
 
         n_rows, n_cols = mt_burden.count()
         assert n_rows == 2
@@ -184,7 +180,9 @@ class TestComputeGenesetBurdenMt:
         mt = self.setup_test_mt()
         gene_sets = {"set1": ["GENE1", "GENE2"]}
 
-        vf = VariantFilter(max_af=0.1, min_score=None, pass_only=False, min_gq=0, min_dp=0)
+        vf = VariantFilter(
+            max_af=0.1, min_score=None, pass_only=False, min_gq=0, min_dp=0
+        )
         mt_burden = compute_geneset_burden_mt(
             mt, gene_sets, gene_field="SYMBOL", variant_filter=vf
         )
@@ -196,7 +194,9 @@ class TestComputeGenesetBurdenMt:
         mt = self.setup_test_mt()
         gene_sets = {"set1": ["GENE1"]}
 
-        vf = VariantFilter(max_af=0.0001, min_score=None, pass_only=False, min_gq=0, min_dp=0)
+        vf = VariantFilter(
+            max_af=0.0001, min_score=None, pass_only=False, min_gq=0, min_dp=0
+        )
         result = compute_geneset_burden_mt(
             mt,
             gene_sets,
@@ -974,9 +974,7 @@ class TestNormalizeByLength:
             SYMBOL=hl.literal(gene_names)[mt.row_idx // 10],
         )
         mt = mt.annotate_entries(
-            GT=hl.call(
-                hl.int(hl.rand_bool(0.3)), hl.int(hl.rand_bool(0.1))
-            ),
+            GT=hl.call(hl.int(hl.rand_bool(0.3)), hl.int(hl.rand_bool(0.1))),
         )
 
         ht = hl.utils.range_table(80)
@@ -1147,9 +1145,7 @@ class TestPermutationBurdenTest:
         )
 
         mt = mt.annotate_entries(
-            GT=hl.call(
-                hl.int(hl.rand_bool(0.3)), hl.int(hl.rand_bool(0.1))
-            ),
+            GT=hl.call(hl.int(hl.rand_bool(0.3)), hl.int(hl.rand_bool(0.1))),
         )
         return mt
 
@@ -1256,8 +1252,13 @@ class TestPermutationBurdenTest:
         result1 = permutation_burden_test(**kwargs)
         result2 = permutation_burden_test(**kwargs)
 
-        assert result1.iloc[0]["empirical_p_value"] == result2.iloc[0]["empirical_p_value"]
-        assert result1.iloc[0]["observed_statistic"] == result2.iloc[0]["observed_statistic"]
+        assert (
+            result1.iloc[0]["empirical_p_value"] == result2.iloc[0]["empirical_p_value"]
+        )
+        assert (
+            result1.iloc[0]["observed_statistic"]
+            == result2.iloc[0]["observed_statistic"]
+        )
 
     def test_permutation_length_matched(self, hail_session):
         """Test permutation test with length-matched sampling."""

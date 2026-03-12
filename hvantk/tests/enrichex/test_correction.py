@@ -102,18 +102,14 @@ class TestApplyCorrection:
         # Default: n_tests = 2
         adj_default = apply_correction(p_values, method="bonferroni")
         # n_total = 20000 (simulating pre-filtered subset of 20k genes)
-        adj_total = apply_correction(
-            p_values, method="bonferroni", n_total=20000
-        )
+        adj_total = apply_correction(p_values, method="bonferroni", n_total=20000)
         assert adj_default == [0.002, 0.02]
         assert adj_total == [min(1.0, 0.001 * 20000), min(1.0, 0.01 * 20000)]
 
     def test_n_total_bh(self):
         """n_total makes BH correction more conservative."""
         p_values = [0.001, 0.01, 0.05]
-        adj_default = apply_correction(
-            p_values, method="benjamini-hochberg"
-        )
+        adj_default = apply_correction(p_values, method="benjamini-hochberg")
         adj_total = apply_correction(
             p_values, method="benjamini-hochberg", n_total=30000
         )
