@@ -27,10 +27,14 @@ logger = logging.getLogger(__name__)
 try:
     from hvantk.enrichex.burden import (
         VariantFilter,
+        build_variant_classes_from_presets,
+        permutation_burden_test,
         compute_geneset_burden_mt,
+        compute_per_gene_burden_mt,
         linear_burden_test,
         logistic_burden_test,
         run_burden_analysis,
+        run_stratified_burden_analysis,
     )
 except (
     ModuleNotFoundError
@@ -49,18 +53,25 @@ except (
                 "Install hvantk with the 'hail' requirements."
             ) from _exc
 
+    build_variant_classes_from_presets = VariantFilter  # type: ignore[assignment]
+    permutation_burden_test = VariantFilter  # type: ignore[assignment]
     compute_geneset_burden_mt = VariantFilter  # type: ignore[assignment]
+    compute_per_gene_burden_mt = VariantFilter  # type: ignore[assignment]
     linear_burden_test = VariantFilter  # type: ignore[assignment]
     logistic_burden_test = VariantFilter  # type: ignore[assignment]
     run_burden_analysis = VariantFilter  # type: ignore[assignment]
+    run_stratified_burden_analysis = VariantFilter  # type: ignore[assignment]
 from hvantk.enrichex.constants import (
     CORRECTION_METHODS,
     DEFAULT_ALPHA,
     DEFAULT_CORRECTION_METHOD,
     DEFAULT_MAX_AF,
-    DEFAULT_MIN_CADD,
+    DEFAULT_MIN_SCORE,
+    DEFAULT_N_PERMUTATIONS,
     GENOTYPE_AGGREGATION_METHODS,
     PHENOTYPE_TYPES,
+    VARIANT_CLASS_PRESETS,
+    _DEPRECATED_AGGREGATION_ALIASES,
 )
 from hvantk.enrichex.correction import apply_correction, fdr_threshold
 from hvantk.utils.gene_sets import (
@@ -72,6 +83,9 @@ from hvantk.utils.gene_sets import (
 from hvantk.enrichex.plot import (
     encode_figure_to_base64,
     plot_burden_forest,
+    plot_burden_volcano,
+    plot_celltype_burden_heatmap,
+    plot_celltype_forest,
     plot_enrichment_barplot,
     plot_enrichment_dotplot,
 )
@@ -80,7 +94,16 @@ from hvantk.enrichex.overlap import (
     compute_overlap_enrichment,
     compute_overlap_enrichment_pandas,
 )
+from hvantk.enrichex.pipeline import BurdenConfig, BurdenPipeline, BurdenRunResult
 from hvantk.enrichex.report import generate_report
+from hvantk.enrichex.simulation import check_type_i_error
+
+try:
+    from hvantk.enrichex.simulation import generate_synthetic_burden_cohort
+except (
+    ModuleNotFoundError
+):  # pragma: no cover - depends on optional Hail install
+    generate_synthetic_burden_cohort = VariantFilter  # type: ignore[assignment]
 
 __all__ = [
     # Core data structures
@@ -95,10 +118,14 @@ __all__ = [
     "compute_overlap_enrichment_pandas",
     # Burden testing
     "VariantFilter",
+    "build_variant_classes_from_presets",
+    "permutation_burden_test",
     "compute_geneset_burden_mt",
+    "compute_per_gene_burden_mt",
     "logistic_burden_test",
     "linear_burden_test",
     "run_burden_analysis",
+    "run_stratified_burden_analysis",
     # Multiple testing correction
     "apply_correction",
     "fdr_threshold",
@@ -106,17 +133,28 @@ __all__ = [
     "plot_enrichment_dotplot",
     "plot_enrichment_barplot",
     "plot_burden_forest",
+    "plot_burden_volcano",
+    "plot_celltype_burden_heatmap",
+    "plot_celltype_forest",
     "encode_figure_to_base64",
+    # Pipeline orchestration
+    "BurdenConfig",
+    "BurdenPipeline",
+    "BurdenRunResult",
     # Reporting
     "generate_report",
+    # Simulation / Validation
+    "generate_synthetic_burden_cohort",
+    "check_type_i_error",
     # Constants
     "DEFAULT_ALPHA",
     "DEFAULT_CORRECTION_METHOD",
     "DEFAULT_MAX_AF",
-    "DEFAULT_MIN_CADD",
+    "DEFAULT_MIN_SCORE",
     "CORRECTION_METHODS",
     "GENOTYPE_AGGREGATION_METHODS",
     "PHENOTYPE_TYPES",
+    "VARIANT_CLASS_PRESETS",
 ]
 
 __version__ = "0.1.0"
