@@ -20,7 +20,7 @@ include = [
 
 [tool.poetry.dependencies]
 python = ">=3.10.0"
-hail = ">=0.2.150"
+hail = ">=0.2.132"
 click = "^8.1.3"
 requests = "*"
 tqdm = "*"
