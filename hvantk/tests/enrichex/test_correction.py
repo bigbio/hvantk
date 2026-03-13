@@ -5,7 +5,7 @@ Tests for multiple testing correction methods.
 import pytest
 import numpy as np
 
-from hvantk.enrichex.correction import apply_correction, fdr_threshold
+from hvantk.utils.correction import apply_correction, fdr_threshold
 
 
 class TestApplyCorrection:
