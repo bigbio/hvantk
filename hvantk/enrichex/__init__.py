@@ -73,7 +73,7 @@ from hvantk.enrichex.constants import (
     VARIANT_CLASS_PRESETS,
     _DEPRECATED_AGGREGATION_ALIASES,
 )
-from hvantk.enrichex.correction import apply_correction, fdr_threshold
+from hvantk.utils.correction import apply_correction, fdr_threshold
 from hvantk.utils.gene_sets import (
     GeneSet,
     GeneSetCollection,

@@ -9,6 +9,7 @@ from .gene_sets import (
     load_marker_genes,
     load_sample_chd_gene_set,
 )
+from .correction import apply_correction, fdr_threshold
 from .obo_parser import BaseOboOntology
 from .mondo_parser import (
     MondoOntology,
@@ -22,6 +23,9 @@ from .wilcoxon import (
 )
 
 __all__ = [
+    # Multiple testing correction
+    "apply_correction",
+    "fdr_threshold",
     "contig_recoding",
     # Gene set classes and functions
     "GeneSet",
