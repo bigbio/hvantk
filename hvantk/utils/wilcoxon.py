@@ -61,7 +61,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import norm, rankdata
 
-from hvantk.enrichex.correction import apply_correction
+from hvantk.utils.correction import apply_correction
 from hvantk.utils.gene_sets import GeneSet, GeneSetCollection
 
 logger = logging.getLogger(__name__)
