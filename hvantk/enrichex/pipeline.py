@@ -100,6 +100,9 @@ class BurdenConfig:
         TSV with columns ``gene`` and ``length_bp``.
     min_carriers : int
         Minimum carriers per gene set for regression.
+    min_gene_set_size : int
+        Minimum genes per gene set.  Smaller sets are dropped before
+        burden computation.
     correction_method : str
         Multiple testing correction method.
     alpha : float
@@ -140,6 +143,7 @@ class BurdenConfig:
     normalize_by_length: bool = False
     gene_lengths_path: Optional[str] = None
     min_carriers: int = 5
+    min_gene_set_size: int = 0
 
     # -- Correction --
     correction_method: str = "benjamini-hochberg"
@@ -207,6 +211,9 @@ class BurdenConfig:
 
         if self.min_carriers < 0:
             errors.append("min_carriers must be >= 0.")
+
+        if self.min_gene_set_size < 0:
+            errors.append("min_gene_set_size must be >= 0.")
 
         if not 0 < self.alpha <= 1:
             errors.append("alpha must be in (0, 1].")
@@ -348,6 +355,8 @@ class BurdenPipeline:
         lines.append(f"  Gene field:              {cfg.gene_field}")
         lines.append(f"  Genotype aggregation:    {cfg.genotype_aggregation}")
         lines.append(f"  Min carriers:            {cfg.min_carriers}")
+        if cfg.min_gene_set_size > 0:
+            lines.append(f"  Min gene set size:       {cfg.min_gene_set_size}")
         if cfg.covariate_fields:
             lines.append(
                 f"  Covariates:              {', '.join(cfg.covariate_fields)}"
@@ -569,9 +578,14 @@ class BurdenPipeline:
             permutation_burden_test,
             run_burden_analysis,
         )
-        from hvantk.enrichex.correction import apply_correction
+        from hvantk.utils.correction import apply_correction
 
         t_run = time.time()
+
+        # Capture original gene set count before any filtering so that
+        # multiple testing correction accounts for all hypotheses tested
+        # (not just those surviving min_gene_set_size / min_carriers).
+        n_gene_sets_total = len(gene_sets_dict)
 
         result_ht = run_burden_analysis(
             cohort_mt=self._mt,
@@ -586,6 +600,7 @@ class BurdenPipeline:
             normalize_by_length=self.config.normalize_by_length,
             gene_lengths=self._gene_lengths,
             min_carriers=self.config.min_carriers,
+            min_gene_set_size=self.config.min_gene_set_size,
         )
 
         if result_ht is None:
@@ -609,13 +624,17 @@ class BurdenPipeline:
         # Coerce p_value to float (Hail may produce pandas NA)
         df["p_value"] = pd.to_numeric(df["p_value"], errors="coerce")
 
-        # Apply correction only to non-NaN p-values
+        # Apply correction only to non-NaN p-values.
+        # Use n_gene_sets_total so the correction accounts for all gene sets
+        # that were candidates (before min_gene_set_size / min_carriers
+        # filtering), matching R's p.adjust(p, method, n) behaviour.
         valid_mask = df["p_value"].notna()
         df["p_adjusted"] = float("nan")
         if valid_mask.any():
             p_adjusted = apply_correction(
                 df.loc[valid_mask, "p_value"].tolist(),
                 method=self.config.correction_method,
+                n_total=n_gene_sets_total,
             )
             df.loc[valid_mask, "p_adjusted"] = p_adjusted
         df["significant"] = df["p_adjusted"] < self.config.alpha

@@ -262,6 +262,7 @@ def compute_geneset_burden_mt(
     consequences: Optional[List[str]] = None,
     normalize_by_length: bool = False,
     gene_lengths: Optional[Dict[str, float]] = None,
+    min_gene_set_size: int = 0,
 ) -> Optional["hl.MatrixTable"]:
     """Compute per-sample burden for each gene set, returning a MatrixTable.
 
@@ -305,13 +306,20 @@ def compute_geneset_burden_mt(
         Gene symbol to CDS length in bases.  When *None* and
         ``normalize_by_length=True``, uses qualifying variant site count
         per gene as proxy.
+    min_gene_set_size : int
+        Minimum number of genes required per gene set.  Gene sets smaller
+        than this are dropped before burden computation.  Default 0 (no
+        filtering).
 
     Returns
     -------
     Optional[hl.MatrixTable]
-        MatrixTable with rows = gene sets, cols = samples, entry = burden
-        (int).  Returns ``None`` when no qualifying variants are found in
-        gene set genes.
+        MatrixTable with rows = gene sets, cols = samples, entry = burden.
+        Row fields include ``gene_set_size`` (original size),
+        ``n_genes_found`` (genes with qualifying variants in the cohort),
+        and ``gene_coverage_pct`` (``n_genes_found / gene_set_size * 100``).
+        Returns ``None`` when no qualifying variants are found in gene set
+        genes.
 
     Examples
     --------
@@ -329,6 +337,25 @@ def compute_geneset_burden_mt(
 
     # Resolve deprecated aliases
     genotype_aggregation = _resolve_genotype_aggregation(genotype_aggregation)
+
+    # Pre-filter gene sets by minimum size
+    if min_gene_set_size > 0:
+        n_before = len(gene_sets)
+        gene_sets = {k: v for k, v in gene_sets.items() if len(v) >= min_gene_set_size}
+        n_dropped = n_before - len(gene_sets)
+        if n_dropped > 0:
+            logger.info(
+                "Filtered %d/%d gene sets with fewer than %d genes",
+                n_dropped,
+                n_before,
+                min_gene_set_size,
+            )
+        if not gene_sets:
+            logger.warning(
+                "All gene sets filtered out by min_gene_set_size=%d",
+                min_gene_set_size,
+            )
+            return None
 
     gs_sizes = sorted(len(g) for g in gene_sets.values())
     n_gs = len(gene_sets)
@@ -525,8 +552,37 @@ def compute_geneset_burden_mt(
             hl.agg.sum(hl.if_else(mt_genes.multi_het | (mt_genes.homs > 0), 1, 0))
         )
 
+    # Count genes found per gene set (before grouping collapses gene info)
+    _genes_per_set_ht = (
+        mt_genes.rows()
+        .group_by(gene_set_name=mt_genes.gene_set_ids)
+        .aggregate(n_genes_found=hl.agg.count())
+    )
+
     mt_burden = mt_genes.group_rows_by(gene_set_name=mt_genes.gene_set_ids).aggregate(
         burden=agg_expr
+    )
+
+    # Annotate with gene set metrics
+    _gene_set_size_ht = hl.Table.parallelize(
+        [
+            hl.struct(gene_set_name=name, gene_set_size=len(genes))
+            for name, genes in gene_sets.items()
+        ],
+        schema=hl.tstruct(gene_set_name=hl.tstr, gene_set_size=hl.tint32),
+    ).key_by("gene_set_name")
+
+    mt_burden = mt_burden.annotate_rows(
+        gene_set_size=_gene_set_size_ht[mt_burden.gene_set_name].gene_set_size,
+        n_genes_found=hl.int32(
+            _genes_per_set_ht[mt_burden.gene_set_name].n_genes_found
+        ),
+    )
+    mt_burden = mt_burden.annotate_rows(
+        gene_coverage_pct=hl.format(
+            "%.1f",
+            hl.float64(mt_burden.n_genes_found) / mt_burden.gene_set_size * 100,
+        )
     )
 
     n_gene_sets_final = mt_burden.count_rows()
@@ -534,6 +590,18 @@ def compute_geneset_burden_mt(
     logger.info(
         f"Burden matrix created: {n_gene_sets_final} gene sets × {n_samples} samples"
     )
+
+    # Warn about low-coverage gene sets
+    n_low_cov = mt_burden.filter_rows(
+        mt_burden.n_genes_found < (mt_burden.gene_set_size / 2)
+    ).count_rows()
+    if n_low_cov > 0:
+        logger.warning(
+            "%d/%d gene sets have <50%% gene coverage in the cohort — "
+            "results may be unreliable for these sets",
+            n_low_cov,
+            n_gene_sets_final,
+        )
 
     # Check for gene sets with zero burden across all samples
     _burden_sums = mt_burden.annotate_rows(_total_burden=hl.agg.sum(mt_burden.burden))
@@ -763,6 +831,7 @@ def run_burden_analysis(
     normalize_by_length: bool = False,
     gene_lengths: Optional[Dict[str, float]] = None,
     min_carriers: int = 0,
+    min_gene_set_size: int = 0,
 ) -> Optional["hl.Table"]:
     """Complete burden analysis pipeline.
 
@@ -810,11 +879,16 @@ def run_burden_analysis(
         set to be included in regression.  Gene sets with fewer carriers
         are filtered out (regression would be uninformative).  Default 0
         (no filtering).
+    min_gene_set_size : int
+        Minimum number of genes required per gene set.  Gene sets smaller
+        than this are dropped before burden computation.  Default 0.
 
     Returns
     -------
     Optional[hl.Table]
         Results with p-values, odds ratios, etc. for each gene set.
+        Includes ``gene_set_size``, ``n_genes_found``, and
+        ``gene_coverage_pct`` columns.
         Returns ``None`` when no testable gene sets remain (e.g., no
         qualifying variants, no phenotype overlap, or all gene sets
         filtered by ``min_carriers``).
@@ -857,6 +931,7 @@ def run_burden_analysis(
         consequences=consequences,
         normalize_by_length=normalize_by_length,
         gene_lengths=gene_lengths,
+        min_gene_set_size=min_gene_set_size,
     )
     logger.info("  Burden computation took %.1fs", time.time() - t_burden)
 
@@ -916,13 +991,21 @@ def run_burden_analysis(
     logger.info(f"\n[3/3] Running {phenotype_type} regression...")
     t_regression = time.time()
 
+    _pass_through = ["gene_set_size", "n_genes_found", "gene_coverage_pct"]
+
     if phenotype_type == "binary":
         result = logistic_burden_test(
-            mt_burden, phenotype_field=phenotype_field, covariates=covariate_fields
+            mt_burden,
+            phenotype_field=phenotype_field,
+            covariates=covariate_fields,
+            pass_through=_pass_through,
         )
     else:
         result = linear_burden_test(
-            mt_burden, phenotype_field=phenotype_field, covariates=covariate_fields
+            mt_burden,
+            phenotype_field=phenotype_field,
+            covariates=covariate_fields,
+            pass_through=_pass_through,
         )
     logger.info("  Regression took %.1fs", time.time() - t_regression)
 
@@ -1075,6 +1158,7 @@ def run_stratified_burden_analysis(
     normalize_by_length: bool = False,
     gene_lengths: Optional[Dict[str, float]] = None,
     min_carriers: int = 0,
+    min_gene_set_size: int = 0,
 ) -> Dict[str, "hl.Table"]:
     """Run burden analysis stratified by variant class.
 
@@ -1174,6 +1258,7 @@ def run_stratified_burden_analysis(
             normalize_by_length=normalize_by_length,
             gene_lengths=gene_lengths,
             min_carriers=min_carriers,
+            min_gene_set_size=min_gene_set_size,
         )
         if result is not None:
             result = result.annotate(variant_class=class_name)

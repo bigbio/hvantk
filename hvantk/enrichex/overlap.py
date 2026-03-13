@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 
 from scipy.stats import fisher_exact
 
-from hvantk.enrichex.correction import apply_correction
+from hvantk.utils.correction import apply_correction
 from hvantk.utils.gene_sets import GeneSetCollection
 
 logger = logging.getLogger(__name__)
