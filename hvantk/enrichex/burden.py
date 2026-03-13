@@ -33,6 +33,7 @@ from hvantk.enrichex.constants import (
     VARIANT_CLASS_PRESETS,
     _DEPRECATED_AGGREGATION_ALIASES,
 )
+from hvantk.utils.table_utils import field_exists, resolve_field
 
 logger = logging.getLogger(__name__)
 
@@ -71,36 +72,6 @@ def _require_hail() -> None:
             "Install hvantk with the 'hail' extra."
         ) from _HAIL_IMPORT_ERROR
 
-
-def _resolve_field(obj: Any, field_path: str) -> Any:
-    """Navigate a dot-delimited field path on a Hail expression.
-
-    In Hail, ``mt["vep.CADD_PHRED"]`` looks for a field literally named
-    ``"vep.CADD_PHRED"``; it does **not** traverse into a struct.
-    Use ``mt["vep"]["CADD_PHRED"]`` (chained bracket access) instead.
-
-    This helper splits on ``.`` and chains ``[]`` calls, so
-    ``_resolve_field(mt, "vep.CADD_PHRED")`` → ``mt["vep"]["CADD_PHRED"]``.
-    """
-    expr = obj
-    for part in field_path.split("."):
-        expr = expr[part]
-    return expr
-
-
-def _field_exists(struct_expr: Any, field_path: str) -> bool:
-    """Check whether a dot-delimited path exists in a Hail StructExpression.
-
-    Uses ``StructExpression.keys()`` at each level to verify the field
-    exists before descending.
-    """
-    parts = field_path.split(".")
-    cur = struct_expr
-    for part in parts:
-        if not hasattr(cur, "keys") or part not in cur.keys():
-            return False
-        cur = cur[part]
-    return True
 
 
 @dataclass
@@ -170,24 +141,24 @@ class VariantFilter:
         # Row-level filters
         # Allele frequency filter
         if self.max_af is not None and self.max_af < 1.0:
-            if _field_exists(mt.row, self.af_field):
-                filters.append(_resolve_field(mt, self.af_field) <= self.max_af)
+            if field_exists(mt.row, self.af_field):
+                filters.append(resolve_field(mt, self.af_field) <= self.max_af)
             else:
                 logger.warning(f"AF field '{self.af_field}' not found in MT")
 
         # Prediction score filter (CADD, REVEL, etc.)
         if self.min_score is not None:
-            if _field_exists(mt.row, self.score_field):
-                filters.append(_resolve_field(mt, self.score_field) >= self.min_score)
+            if field_exists(mt.row, self.score_field):
+                filters.append(resolve_field(mt, self.score_field) >= self.min_score)
             else:
                 logger.warning(f"Score field '{self.score_field}' not found in MT")
 
         # Consequence filter
         if self.consequences:
-            if _field_exists(mt.row, self.consequence_field):
+            if field_exists(mt.row, self.consequence_field):
                 filters.append(
                     hl.literal(self.consequences).contains(
-                        _resolve_field(mt, self.consequence_field)
+                        resolve_field(mt, self.consequence_field)
                     )
                 )
             else:

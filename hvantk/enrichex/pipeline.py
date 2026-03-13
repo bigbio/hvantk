@@ -51,6 +51,7 @@ from hvantk.enrichex.constants import (
     PHENOTYPE_TYPES,
     _DEPRECATED_AGGREGATION_ALIASES,
 )
+from hvantk.utils.table_utils import leaf_name, resolve_field, validate_fields
 
 logger = logging.getLogger(__name__)
 
@@ -479,28 +480,6 @@ class BurdenPipeline:
         n_rows, n_cols = self._mt.count()
         logger.info("  %d variants, %d samples", n_rows, n_cols)
 
-    @staticmethod
-    def _resolve_nested_field(obj: Any, field_path: str) -> Any:
-        """Resolve a field path on a Hail table/struct.
-
-        When ``field_path`` contains dots (e.g. ``"phe.is_case"``), this
-        navigates the nested struct: ``obj["phe"]["is_case"]``.
-
-        This is necessary because Hail's ``obj["phe.is_case"]`` looks up
-        a single field literally named ``"phe.is_case"`` — it does NOT
-        traverse into a struct named ``phe``.  Our convention is that
-        dots always mean struct navigation.
-        """
-        expr = obj
-        for part in field_path.split("."):
-            expr = expr[part]
-        return expr
-
-    @staticmethod
-    def _leaf_name(field_path: str) -> str:
-        """Return the last component of a dot-delimited path."""
-        return field_path.rsplit(".", 1)[-1]
-
     def _load_phenotypes(self) -> None:
         path = self.config.phenotype_ht_path
 
@@ -513,20 +492,31 @@ class BurdenPipeline:
             # Get cols table first, then resolve fields against it
             cols_ht = self._mt.cols()
 
+            # Validate all requested fields up-front
+            all_fields = [pheno_field] + list(cov_fields)
+            errors = validate_fields(
+                cols_ht, all_fields, context="MT column fields"
+            )
+            if errors:
+                raise LookupError(
+                    "Cannot extract phenotype/covariates from MT:\n"
+                    + "\n".join(f"  - {e}" for e in errors)
+                )
+
             annotations = {}
-            pheno_leaf = self._leaf_name(pheno_field)
-            annotations[pheno_leaf] = self._resolve_nested_field(cols_ht, pheno_field)
+            pheno_leaf = leaf_name(pheno_field)
+            annotations[pheno_leaf] = resolve_field(cols_ht, pheno_field)
 
             for cov in cov_fields:
-                cov_leaf = self._leaf_name(cov)
-                annotations[cov_leaf] = self._resolve_nested_field(cols_ht, cov)
+                cov_leaf = leaf_name(cov)
+                annotations[cov_leaf] = resolve_field(cols_ht, cov)
 
             self._phenotype_ht = cols_ht.select(**annotations)
 
             # Update config fields to use flattened leaf names so downstream
             # regression uses the correct field names in the phenotype HT.
             self.config.phenotype_field = pheno_leaf
-            self.config.covariate_fields = [self._leaf_name(c) for c in cov_fields]
+            self.config.covariate_fields = [leaf_name(c) for c in cov_fields]
 
             logger.info(
                 "  Extracted phenotype '%s' and %d covariates from MT cols",
