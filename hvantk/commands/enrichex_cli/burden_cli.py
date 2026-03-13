@@ -198,6 +198,13 @@ def register_burden_commands(group):
     "set to be included in regression. Gene sets with fewer carriers are "
     "skipped (regression would be uninformative).",
 )
+@click.option(
+    "--min-gene-set-size",
+    type=int,
+    default=0,
+    show_default=True,
+    help="Minimum genes per gene set. Smaller sets are dropped before computation.",
+)
 @click.option("--dry-run", is_flag=True, help="Show execution plan without running")
 @click.option(
     "--generate-report",
@@ -232,6 +239,7 @@ def burden_test(
     normalize_by_length,
     gene_lengths,
     min_carriers,
+    min_gene_set_size,
     dry_run,
     generate_report,
 ):
@@ -363,7 +371,7 @@ def burden_test(
     import pandas as pd
 
     from hvantk.enrichex.burden import VariantFilter, run_burden_analysis
-    from hvantk.enrichex.correction import apply_correction
+    from hvantk.utils.correction import apply_correction
     from hvantk.utils.gene_sets import GeneSetCollection
 
     # Load inputs
@@ -477,6 +485,7 @@ def burden_test(
             normalize_by_length=normalize_by_length,
             gene_lengths=gene_lengths_dict,
             min_carriers=min_carriers,
+            min_gene_set_size=min_gene_set_size,
         )
 
         if not stratified_results:
@@ -489,12 +498,17 @@ def burden_test(
             click.echo(f"\n  Empty results written to: {results_path}")
             return
 
-        # Convert to pandas, apply correction, write per-class TSVs
+        # Convert to pandas, apply correction, write per-class TSVs.
+        # Use original gene set count for correction so that pre-filtering
+        # (min_gene_set_size, min_carriers) does not deflate the penalty.
+        n_gene_sets_total = len(gene_sets_dict)
         all_dfs = []
         for class_name, result_ht in stratified_results.items():
             df = result_ht.to_pandas()
             p_values = df["p_value"].tolist()
-            p_adjusted = apply_correction(p_values, method=correction)
+            p_adjusted = apply_correction(
+                p_values, method=correction, n_total=n_gene_sets_total,
+            )
             df["p_adjusted"] = p_adjusted
             df["significant"] = df["p_adjusted"] < alpha
             df = df.sort_values("p_value")
@@ -565,6 +579,7 @@ def burden_test(
             normalize_by_length=normalize_by_length,
             gene_lengths=gene_lengths_dict,
             min_carriers=min_carriers,
+            min_gene_set_size=min_gene_set_size,
         )
 
         if result_ht is None:
@@ -582,10 +597,15 @@ def burden_test(
         click.echo("\nConverting results to pandas...")
         result_df = result_ht.to_pandas()
 
-        # Apply multiple testing correction
+        # Apply multiple testing correction.
+        # Use original gene set count so pre-filtering does not deflate
+        # the multiple testing penalty.
         click.echo(f"Applying {correction} correction...")
+        n_gene_sets_total = len(gene_sets_dict)
         p_values = result_df["p_value"].tolist()
-        p_adjusted = apply_correction(p_values, method=correction)
+        p_adjusted = apply_correction(
+            p_values, method=correction, n_total=n_gene_sets_total,
+        )
         result_df["p_adjusted"] = p_adjusted
         result_df["significant"] = result_df["p_adjusted"] < alpha
 
@@ -872,6 +892,13 @@ def burden_test(
     help="Minimum carriers per gene set for regression.",
 )
 @click.option(
+    "--min-gene-set-size",
+    type=int,
+    default=0,
+    show_default=True,
+    help="Minimum genes per gene set. Smaller sets are dropped before computation.",
+)
+@click.option(
     "--competitive",
     is_flag=True,
     help="Run permutation-based competitive testing.",
@@ -975,6 +1002,7 @@ def burden_pipeline_cmd(
     correction,
     alpha,
     min_carriers,
+    min_gene_set_size,
     competitive,
     n_permutations,
     permutation_seed,
@@ -1092,6 +1120,7 @@ def burden_pipeline_cmd(
         normalize_by_length=normalize_by_length,
         gene_lengths_path=gene_lengths,
         min_carriers=min_carriers,
+        min_gene_set_size=min_gene_set_size,
         correction_method=correction,
         alpha=alpha,
         competitive=competitive,
