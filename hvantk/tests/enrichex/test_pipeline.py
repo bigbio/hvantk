@@ -8,6 +8,7 @@ import pandas as pd
 import pytest
 
 from hvantk.enrichex.pipeline import BurdenConfig, BurdenPipeline, BurdenRunResult
+from hvantk.utils.table_utils import leaf_name
 
 
 # ---------------------------------------------------------------------------
@@ -125,16 +126,16 @@ class TestBurdenConfig:
 
 
 class TestBurdenPipelineHelpers:
-    """Test BurdenPipeline static helper methods."""
+    """Test helper utilities used by BurdenPipeline."""
 
     def test_leaf_name_simple(self):
-        assert BurdenPipeline._leaf_name("is_case") == "is_case"
+        assert leaf_name("is_case") == "is_case"
 
     def test_leaf_name_nested(self):
-        assert BurdenPipeline._leaf_name("phe.is_case") == "is_case"
+        assert leaf_name("phe.is_case") == "is_case"
 
     def test_leaf_name_deeply_nested(self):
-        assert BurdenPipeline._leaf_name("a.b.c") == "c"
+        assert leaf_name("a.b.c") == "c"
 
 
 class TestBurdenRunResult:
