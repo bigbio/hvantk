@@ -552,10 +552,13 @@ def compute_geneset_burden_mt(
             hl.agg.sum(hl.if_else(mt_genes.multi_het | (mt_genes.homs > 0), 1, 0))
         )
 
-    # Count genes found per gene set (before grouping collapses gene info)
+    # Count genes found per gene set (before grouping collapses gene info).
+    # Must use the rows Table's own field reference — not mt_genes — to
+    # avoid "Cannot combine expressions from different source objects".
+    _rows_ht = mt_genes.rows()
     _genes_per_set_ht = (
-        mt_genes.rows()
-        .group_by(gene_set_name=mt_genes.gene_set_ids)
+        _rows_ht
+        .group_by(gene_set_name=_rows_ht.gene_set_ids)
         .aggregate(n_genes_found=hl.agg.count())
     )
 
