@@ -29,10 +29,6 @@ Documentation for developers and contributors:
 - **[Architecture](ARCHITECTURE.md)** - System design, protocols, and extension points
 - **[Contributing](../CONTRIBUTING.md)** - Development workflow and contribution guidelines
 
-### 📊 Registry (`registry/`)
-
-Dataset registry and web interface for browsing available datasets.
-
 ## Quick Links
 
 ### Getting Started

@@ -131,12 +131,10 @@ hvantk/
 │   ├── file_utils.py      # File I/O utilities
 │   └── data_streamer.py   # DataStreamer base classes & StreamProcessor
 │
-├── datasets/              # L2: Dataset definitions and validation
+├── datasets/              # L2: Dataset definitions
 │   ├── ucsc_cell_datasets.py        # UCSC Cell Browser datasets
 │   ├── expression_atlas_datasets.py # Expression Atlas datasets
-│   ├── clingen_datasets.py          # ClinGen datasets
-│   ├── dataset_validator.py         # Dataset validation
-│   └── validation_registry.py       # Validation registry
+│   └── clingen_datasets.py          # ClinGen datasets
 │
 ├── tables/                # L2-L3: Table and matrix builders
 │   ├── table_builders.py  # Variant/gene annotation builders (ClinVar, dbNSFP, Ensembl, etc.)
@@ -218,11 +216,6 @@ hvantk/
 │   ├── interactive_qc.py  # Interactive QC dashboards
 │   └── expression/        # Expression-specific visualizations
 │       └── hail.py        # Hail-based expression plots
-│
-├── register/              # Registry management
-│   ├── manager.py         # Registry manager
-│   ├── config.py          # Registry configuration
-│   └── api_generator.py   # API documentation generator
 │
 ├── resources/             # Data catalog and schemas
 │   ├── catalog.yaml       # Dataset registry
