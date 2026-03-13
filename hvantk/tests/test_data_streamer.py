@@ -70,33 +70,3 @@ class TestClinvarLabels:
         assert ClinvarDataStreamer.BENIGN_LABELS == expected_labels
 
 
-def test_integration_example():
-    example_usage = """
-    processor = create_clinvar_training_set_streamer(
-        clinvar_path="./data/clinvar/clinvar_20220403.vcf.gz",
-        output_dir="./data/training_set"
-    )
-    training_set = processor.process()
-    if training_set:
-        print(f"Generated {training_set.count()} training examples")
-    """
-    assert "processor = create_clinvar_training_set_streamer" in example_usage
-
-
-if __name__ == "__main__":
-    test_suite = TestDataStreamer()
-    test_suite.test_load_sample_gene_set()
-    test_suite.test_clinvar_streamer_init()
-    test_suite.test_factory_function()
-    test_suite.test_stream_processor_init()
-    label_tests = TestClinvarLabels()
-    label_tests.test_pathogenic_labels()
-    label_tests.test_benign_labels()
-    test_integration_example()
-    print("✅ All basic tests passed!")
-    print("📋 Data streamer implementation is ready for use")
-    print("\nNext steps:")
-    print("1. Add your actual Clinvar VCF file path")
-    print("2. Implement real CHD gene loading logic")
-    print("3. Test with real data")
-    print("4. Extend with additional streamers for other data sources")

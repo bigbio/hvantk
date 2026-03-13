@@ -345,6 +345,45 @@ annotated_mt = result.annotate_matrixtable(query_mt)
 
 📖 **[Full Ancestry Documentation](../tools/ancestry.md)** | **[Examples](../../examples/ancestry/)**
 
+## Prepare Custom Gene Sets
+
+Convert plain-text gene panels into `GeneSetCollection` JSON files for use
+with `hvantk psroc`, `hvantk enrichex burden`, and `hvantk enrichex overlap`.
+
+### CLI
+
+```bash
+# Format: headerless two-column TSV (gene_set_name<TAB>gene_symbol)
+hvantk prepare-geneset -i panels.tsv -o panels.json
+
+# With HGNC validation and alias resolution (recommended)
+hvantk prepare-geneset -i panels.tsv -o panels.json --hgnc /data/hgnc.ht
+
+# Filter small sets and provide explicit background
+hvantk prepare-geneset -i panels.tsv -o panels.json \
+  --hgnc /data/hgnc.ht --min-genes 5 --background bg_genes.txt
+
+# Also export as GMT for GSEA compatibility
+hvantk prepare-geneset -i panels.tsv -o panels.json --export-gmt panels.gmt
+```
+
+### Python API
+
+```python
+from hvantk.utils.geneset_io import parse_geneset_tsv, validate_with_hgnc
+from hvantk.utils.gene_sets import load_gene_sets_from_dict
+
+# Parse TSV
+result = parse_geneset_tsv("panels.tsv")
+
+# Optional: validate against HGNC
+vr = validate_with_hgnc(result.gene_sets, "/data/hgnc.ht")
+
+# Build and save collection
+collection = load_gene_sets_from_dict(vr.gene_sets, source="prepare-geneset")
+collection.save("panels.json")
+```
+
 ## ClinGen Gene-Disease streamer
 
 ```python

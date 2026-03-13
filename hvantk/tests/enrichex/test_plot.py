@@ -1,10 +1,18 @@
+"""Tests for enrichex visualization functions (core + phase 4)."""
+
+import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 import pytest
 
+matplotlib.use("Agg")
+
 from hvantk.enrichex.plot import (
     encode_figure_to_base64,
     plot_burden_forest,
+    plot_burden_volcano,
+    plot_celltype_burden_heatmap,
+    plot_celltype_forest,
     plot_enrichment_barplot,
     plot_enrichment_dotplot,
 )
@@ -43,47 +51,64 @@ def _mock_burden_df() -> pd.DataFrame:
     )
 
 
+def _make_burden_results():
+    """Create a realistic combined burden results DataFrame for phase 4 tests."""
+    rows = []
+    for collection in ["heart", "brain"]:
+        for vc in ["lof", "missense", "synonymous"]:
+            for gs in [f"celltype_{i}" for i in range(5)]:
+                rows.append(
+                    {
+                        "gene_set_name": gs,
+                        "variant_class": vc,
+                        "collection": collection,
+                        "p_value": 0.001 + len(gs) * 0.01,
+                        "p_adjusted": 0.005 + len(gs) * 0.02,
+                        "odds_ratio": 1.5 + len(gs) * 0.1,
+                        "beta": 0.3 + len(gs) * 0.05,
+                        "ci_lower": 1.1,
+                        "ci_upper": 2.2,
+                        "n_carriers": 15,
+                    }
+                )
+    return pd.DataFrame(rows)
+
+
+# --- Core plot tests ---
+
+
 def test_plot_enrichment_dotplot(tmp_path):
-    df = _mock_enrichment_df()
-    output_path = tmp_path / "dotplot.png"
     fig = plot_enrichment_dotplot(
-        df,
-        output_path=str(output_path),
-        top_n=3,
-        label_top_n=2,
+        _mock_enrichment_df(), output_path=str(tmp_path / "dotplot.png"), top_n=3, label_top_n=2
     )
-    assert output_path.exists()
+    assert (tmp_path / "dotplot.png").exists()
     assert fig.get_axes()
     plt.close(fig)
 
 
 def test_plot_burden_forest(tmp_path):
-    df = _mock_burden_df()
-    output_path = tmp_path / "forest.png"
     fig = plot_burden_forest(
-        df,
-        output_path=str(output_path),
+        _mock_burden_df(),
+        output_path=str(tmp_path / "forest.png"),
         phenotype_type="binary",
         top_n=2,
         color_by="significant",
         show_values=True,
     )
-    assert output_path.exists()
+    assert (tmp_path / "forest.png").exists()
     assert fig.get_axes()
     plt.close(fig)
 
 
 def test_plot_enrichment_barplot(tmp_path):
-    df = _mock_enrichment_df()
-    output_path = tmp_path / "bar.png"
     fig = plot_enrichment_barplot(
-        df,
-        output_path=str(output_path),
+        _mock_enrichment_df(),
+        output_path=str(tmp_path / "bar.png"),
         value="-log10_p",
         top_n=2,
         orientation="vertical",
     )
-    assert output_path.exists()
+    assert (tmp_path / "bar.png").exists()
     assert fig.get_axes()
     plt.close(fig)
 
@@ -97,31 +122,87 @@ def test_encode_figure_to_base64_returns_string():
     plt.close(fig)
 
 
-def test_plot_enrichment_dotplot_empty_df_returns_placeholder(tmp_path):
-    """Empty DataFrame returns a placeholder figure instead of raising."""
-    output_path = tmp_path / "empty_dotplot.png"
-    fig = plot_enrichment_dotplot(pd.DataFrame(), output_path=str(output_path))
+# --- Phase 4 plot tests ---
+
+
+def test_celltype_burden_heatmap(tmp_path):
+    fig = plot_celltype_burden_heatmap(_make_burden_results(), str(tmp_path / "heatmap.png"))
     assert fig is not None
-    assert output_path.exists()
     plt.close(fig)
 
 
-def test_plot_burden_forest_empty_df_returns_placeholder(tmp_path):
-    """Empty DataFrame returns a placeholder figure instead of raising."""
-    output_path = tmp_path / "empty_forest.png"
-    df = pd.DataFrame(
-        columns=["gene_set_name", "odds_ratio", "ci_lower", "ci_upper", "p_value"]
+def test_celltype_burden_heatmap_custom_variant_classes(tmp_path):
+    fig = plot_celltype_burden_heatmap(
+        _make_burden_results(),
+        str(tmp_path / "heatmap.png"),
+        variant_classes=["lof", "missense"],
     )
-    fig = plot_burden_forest(df, output_path=str(output_path))
     assert fig is not None
-    assert output_path.exists()
     plt.close(fig)
 
 
-def test_plot_enrichment_barplot_empty_df_returns_placeholder(tmp_path):
-    """Empty DataFrame returns a placeholder figure instead of raising."""
-    output_path = tmp_path / "empty_bar.png"
-    fig = plot_enrichment_barplot(pd.DataFrame(), output_path=str(output_path))
+def test_burden_volcano(tmp_path):
+    fig = plot_burden_volcano(_make_burden_results(), str(tmp_path / "volcano.png"))
     assert fig is not None
-    assert output_path.exists()
+    plt.close(fig)
+
+
+def test_burden_volcano_color_by_collection(tmp_path):
+    fig = plot_burden_volcano(
+        _make_burden_results(), str(tmp_path / "volcano.png"), color_by="collection"
+    )
+    assert fig is not None
+    plt.close(fig)
+
+
+def test_celltype_forest(tmp_path):
+    fig = plot_celltype_forest(
+        _make_burden_results(), str(tmp_path / "forest.png"), cell_type="celltype_1"
+    )
+    assert fig is not None
+    plt.close(fig)
+
+
+def test_celltype_forest_missing_celltype(tmp_path):
+    fig = plot_celltype_forest(
+        _make_burden_results(), str(tmp_path / "forest.png"), cell_type="nonexistent"
+    )
+    assert fig is not None
+    plt.close(fig)
+
+
+# --- Empty DataFrame placeholder tests (all plot functions) ---
+
+
+@pytest.mark.parametrize(
+    "plot_fn,kwargs",
+    [
+        (plot_enrichment_dotplot, {}),
+        (plot_enrichment_barplot, {}),
+        (plot_burden_forest, {}),
+        (plot_celltype_burden_heatmap, {}),
+        (plot_burden_volcano, {}),
+        (plot_celltype_forest, {"cell_type": "foo"}),
+    ],
+    ids=[
+        "dotplot",
+        "barplot",
+        "forest",
+        "heatmap",
+        "volcano",
+        "celltype_forest",
+    ],
+)
+def test_empty_df_returns_placeholder(tmp_path, plot_fn, kwargs):
+    """All plot functions handle empty DataFrames gracefully."""
+    output_path = tmp_path / "empty.png"
+    # burden_forest needs specific columns to avoid KeyError
+    if plot_fn == plot_burden_forest:
+        df = pd.DataFrame(
+            columns=["gene_set_name", "odds_ratio", "ci_lower", "ci_upper", "p_value"]
+        )
+    else:
+        df = pd.DataFrame()
+    fig = plot_fn(df, str(output_path), **kwargs)
+    assert fig is not None
     plt.close(fig)

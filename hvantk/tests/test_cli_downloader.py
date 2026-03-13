@@ -118,65 +118,25 @@ def test_ucsc_downloader_download_failure(mock_download_file, test_output_dir):
     assert "Download failed" in result.output
 
 
-def test_ucsc_downloader_invalid_dataset_traversal(mock_download_file):
+@pytest.mark.parametrize(
+    "dataset,expect_invalid",
+    [
+        ("../etc/passwd", True),
+        ("bad\\name", True),
+        ("bad name", True),
+        ("hoc/all-heart", False),  # forward slashes allowed for child dataset paths
+    ],
+    ids=["traversal", "backslash", "whitespace", "slash-allowed"],
+)
+def test_ucsc_downloader_dataset_validation(mock_download_file, dataset, expect_invalid):
+    """Test dataset name validation (traversal, backslash, whitespace rejected; slash allowed)."""
     runner = CliRunner()
     result = runner.invoke(
         ucsc_downloader,
-        [
-            "--dataset",
-            "../etc/passwd",
-            "--output-dir",
-            "dummy_path",
-        ],
+        ["--dataset", dataset, "--output-dir", "dummy_path", "--base_url", "http://localhost:9999"],
     )
-    assert result.exit_code != 0
-    assert "Invalid dataset value" in result.output
-
-
-def test_ucsc_downloader_slash_allowed(mock_download_file):
-    """Forward slashes are now allowed for UCSC child dataset paths (e.g., hoc/all-heart)."""
-    runner = CliRunner()
-    result = runner.invoke(
-        ucsc_downloader,
-        [
-            "--dataset",
-            "bad/name",
-            "--output-dir",
-            "dummy_path",
-            "--base_url",
-            "http://localhost:9999",
-        ],
-    )
-    # Slashes pass validation (no "Invalid dataset value" error)
-    assert "Invalid dataset value" not in result.output
-
-
-def test_ucsc_downloader_invalid_dataset_backslash(mock_download_file):
-    """Backslashes are still rejected."""
-    runner = CliRunner()
-    result = runner.invoke(
-        ucsc_downloader,
-        [
-            "--dataset",
-            "bad\\name",
-            "--output-dir",
-            "dummy_path",
-        ],
-    )
-    assert result.exit_code != 0
-    assert "Invalid dataset value" in result.output
-
-
-def test_ucsc_downloader_invalid_dataset_whitespace(mock_download_file):
-    runner = CliRunner()
-    result = runner.invoke(
-        ucsc_downloader,
-        [
-            "--dataset",
-            "bad name",
-            "--output-dir",
-            "dummy_path",
-        ],
-    )
-    assert result.exit_code != 0
-    assert "Invalid dataset value" in result.output
+    if expect_invalid:
+        assert result.exit_code != 0
+        assert "Invalid dataset value" in result.output
+    else:
+        assert "Invalid dataset value" not in result.output

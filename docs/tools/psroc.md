@@ -918,6 +918,47 @@ hvantk psroc \
 Gene set collections are `Dict[str, Set[str]]` mappings from a group name to
 a set of gene symbols. They can be loaded from JSON or GMT files.
 
+### From Custom Gene Panels
+
+If you have gene panels as text files or spreadsheet exports, use
+`hvantk prepare-geneset` to convert them:
+
+1. Format your panels as a headerless two-column TSV
+   (gene_set_name<TAB>gene_symbol), one gene per line:
+
+   ```
+   cardiac	MYH7
+   cardiac	TNNT2
+   cardiac	LMNA
+   epilepsy	SCN1A
+   epilepsy	SCN2A
+   ```
+
+2. Convert to gene set JSON:
+
+   ```bash
+   # Basic conversion
+   hvantk prepare-geneset -i panels.tsv -o panels.json
+
+   # With HGNC validation (recommended)
+   hvantk prepare-geneset -i panels.tsv -o panels.json --hgnc /data/hgnc.ht
+   ```
+
+3. Run PSROC:
+
+   ```bash
+   hvantk psroc --gene-sets panels.json \
+     --clinvar-ht /data/clinvar.ht \
+     --dbnsfp-ht /data/dbnsfp.ht \
+     --scores "CADD_phred,REVEL_score" \
+     -o /results/psroc
+   ```
+
+**Gene identifier requirements:**
+- Use HGNC-approved human gene symbols (e.g., BRCA1, TP53, SCN1A).
+- Ensembl IDs, mouse symbols, and Entrez IDs are not accepted.
+- Use `--hgnc` to automatically resolve outdated aliases (e.g., FANCD1 → BRCA2).
+
 ### From ClinGen (CLI)
 
 The `hvantk clingen-genesets` command extracts gene sets from ClinGen data:

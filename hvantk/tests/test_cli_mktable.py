@@ -1,5 +1,6 @@
 from unittest.mock import patch, MagicMock
 
+import pytest
 from click.testing import CliRunner
 
 from hvantk.commands.make_table_cli import mktable_group
@@ -167,3 +168,94 @@ def test_mktable_dbnsfp_cli_invokes_builder():
         # parse_transcript_scores defaults to True
         assert kwargs["parse_transcript_scores"] is True
         assert "dbNSFP table created" in result.output
+
+
+def test_mktable_clingen_gene_disease_default_options():
+    """Test ClinGen CLI with default options."""
+    runner = CliRunner()
+    with patch(
+        "hvantk.commands.make_table_cli._create_clingen_gene_disease_tb"
+    ) as mock_create:
+        result = runner.invoke(
+            mktable_group,
+            [
+                "clingen-gene-disease",
+                "--raw-input",
+                "/path/to/clingen.csv",
+                "--output-ht",
+                "/out/clingen.ht",
+            ],
+        )
+        assert result.exit_code == 0
+        mock_create.assert_called_once_with(
+            input_path="/path/to/clingen.csv",
+            output_path="/out/clingen.ht",
+            key_by="gene_disease",
+            min_classification=None,
+            fields=None,
+            overwrite=False,
+            export_tsv=False,
+        )
+        assert "ClinGen Gene-Disease table created" in result.output
+
+
+def test_mktable_clingen_gene_disease_all_options():
+    """Test ClinGen CLI with all options specified."""
+    runner = CliRunner()
+    with patch(
+        "hvantk.commands.make_table_cli._create_clingen_gene_disease_tb"
+    ) as mock_create:
+        result = runner.invoke(
+            mktable_group,
+            [
+                "clingen-gene-disease",
+                "--raw-input",
+                "/path/to/clingen.csv",
+                "--output-ht",
+                "/out/clingen.ht",
+                "--key-by",
+                "gene",
+                "--min-classification",
+                "Strong",
+                "--fields",
+                "hgnc_id, gene_symbol, classification",
+                "--overwrite",
+                "--export-tsv",
+            ],
+        )
+        assert result.exit_code == 0
+        mock_create.assert_called_once_with(
+            input_path="/path/to/clingen.csv",
+            output_path="/out/clingen.ht",
+            key_by="gene",
+            min_classification="Strong",
+            fields=["hgnc_id", "gene_symbol", "classification"],
+            overwrite=True,
+            export_tsv=True,
+        )
+
+
+@pytest.mark.parametrize(
+    "option,value",
+    [
+        ("--min-classification", "Invalid"),
+        ("--key-by", "invalid"),
+    ],
+)
+def test_mktable_clingen_gene_disease_rejects_invalid_values(option, value):
+    """Test ClinGen CLI rejects invalid option values."""
+    runner = CliRunner()
+    result = runner.invoke(
+        mktable_group,
+        [
+            "clingen-gene-disease",
+            "--raw-input",
+            "/path/to/clingen.csv",
+            "--output-ht",
+            "/out/clingen.ht",
+            option,
+            value,
+        ],
+    )
+    assert result.exit_code != 0
+    assert "Invalid value" in result.output

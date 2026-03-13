@@ -1,0 +1,11 @@
+# This is a comment line
+# Gene panels for testing
+
+cardiac_panel	MYH7
+cardiac_panel	TNNT2
+
+# Another comment
+cardiac_panel	LMNA
+
+epilepsy_panel	SCN1A
+epilepsy_panel	SCN2A

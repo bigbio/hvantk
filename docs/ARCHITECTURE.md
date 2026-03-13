@@ -11,162 +11,108 @@
 
 ## Architecture Diagram
 
-**Figure 1. hvantk layered architecture for multi-omics variant annotation and analysis.**
+**Figure 1. hvantk workflow architecture for multi-omics variant annotation and analysis.**
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'fontFamily': 'Arial'}}}%%
-flowchart BT
-  %% ══════════════════════════════════════════════════════════════════════════
-  %% LAYER 0: Runtime Foundation
-  %% ══════════════════════════════════════════════════════════════════════════
-  subgraph L0["<b>L0 · Runtime</b>"]
-    HAIL["Hail + Apache Spark"]
-  end
-
-  %% ══════════════════════════════════════════════════════════════════════════
-  %% LAYER 1: Core Infrastructure
-  %% ══════════════════════════════════════════════════════════════════════════
-  subgraph L1["<b>L1 · Core Infrastructure</b>"]
-    direction LR
-    PROTO["Protocols<br/><i>Builder · Streamer · Downloader</i>"]
-    UTILS["Utilities<br/><i>config · hail_context</i>"]
-  end
-
-  %% ══════════════════════════════════════════════════════════════════════════
-  %% LAYER 2: Data Acquisition (Downloaders + Builders)
-  %% ══════════════════════════════════════════════════════════════════════════
-  subgraph L2["<b>L2 · Data Acquisition</b>"]
-    direction LR
-    DL["Downloaders"]
-    BD["Builders"]
-  end
-
-  %% ══════════════════════════════════════════════════════════════════════════
-  %% LAYER 3: Data Products (Hail Tables / MatrixTables)
-  %% ══════════════════════════════════════════════════════════════════════════
-  subgraph L3["<b>L3 · Data Products</b>"]
-    direction LR
-    VARIANTS["<b>Variants HT</b><br/>ClinVar · dbNSFP · gnomAD"]
-    GENES["<b>Genes HT</b><br/>Ensembl · GeVIR"]
-    EXPR["<b>Expression MT</b><br/>scRNA · Bulk RNA"]
-    %% Invisible links to force horizontal layout
-    VARIANTS ~~~ GENES ~~~ EXPR
-  end
-
-  %% ══════════════════════════════════════════════════════════════════════════
-  %% LAYER 4: DataStreamers (Transform & Compose)
-  %% ══════════════════════════════════════════════════════════════════════════
-  subgraph L4["<b>L4 · DataStreamers</b>"]
-    direction LR
-    S1["VariantStreamer"]
-    S2["GeneStreamer"]
-    S3["ExpressionStreamer"]
-  end
-
-  %% ══════════════════════════════════════════════════════════════════════════
-  %% LAYER 5: Analysis Pipelines / Workflows
-  %% ══════════════════════════════════════════════════════════════════════════
-  subgraph L5["<b>L5 · Analysis Pipelines</b>"]
-    direction LR
-    P1["<b>HGC</b><br/><i>Joint genotyping<br/>& Ancestry</i>"]
-    P2["<b>PSROC</b><br/><i>Score evaluation</i>"]
-    P3["<b>EnrichEx</b><br/><i>Enrichment</i>"]
-  end
-
-  %% ══════════════════════════════════════════════════════════════════════════
-  %% USER DATA (External input to HGC)
-  %% ══════════════════════════════════════════════════════════════════════════
-  UD["<b>User Data</b><br/><i>GVCFs · Cohort MT</i>"]
-
-  %% ══════════════════════════════════════════════════════════════════════════
-  %% INTERFACES (CLI & API)
-  %% ══════════════════════════════════════════════════════════════════════════
-  subgraph IF["<b>Interfaces</b>"]
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '13px', 'fontFamily': 'Arial'}}}%%
+flowchart LR
+  %% ═══════════════════════════════════════════
+  %% DATA SOURCES (row 1)
+  %% ═══════════════════════════════════════════
+  subgraph sources[" Data Sources "]
     direction TB
-    CLI["CLI · Python API"]
+    VARDB["<b>Variant & Gene DBs</b><br/>ClinVar · gnomAD · dbNSFP<br/>Ensembl · GeVIR · CCR"]
+    EXPRDB["<b>Expression</b><br/>UCSC Cell Browser<br/>Expression Atlas"]
+    USERDATA["<b>User Data</b><br/>GVCFs · Cohort MT<br/>Gene Sets · Phenotypes"]
   end
 
-  %% ══════════════════════════════════════════════════════════════════════════
-  %% VERTICAL DATA FLOW (bottom → top)
-  %% ══════════════════════════════════════════════════════════════════════════
-  L0 --> L1 --> L2
-  DL --> BD
-  BD --> L3
-  L3 --> L4
-  L4 --> L5
+  %% ═══════════════════════════════════════════
+  %% ACQUISITION & BUILDING (row 2)
+  %% ═══════════════════════════════════════════
+  subgraph acquire[" Acquisition & Building "]
+    direction TB
+    DL["<b>Downloaders</b><br/>ClinVar · ClinGen · HGNC<br/>UCSC · Expression Atlas"]
+    BD["<b>Builders</b><br/>Table Builders · Matrix Builders"]
+    DL --> BD
+  end
 
-  %% ══════════════════════════════════════════════════════════════════════════
-  %% USER DATA INPUT TO HGC
-  %% ══════════════════════════════════════════════════════════════════════════
-  UD --> P1
+  %% ═══════════════════════════════════════════
+  %% HAIL DATA PRODUCTS (row 3)
+  %% ═══════════════════════════════════════════
+  subgraph products[" Hail Data Products "]
+    direction TB
+    VHT["<b>Variant Tables</b><br/>locus, alleles"]
+    GHT["<b>Gene Tables</b><br/>gene_id"]
+    EMT["<b>Expression Matrices</b><br/>genes × samples"]
+  end
 
-  %% ══════════════════════════════════════════════════════════════════════════
-  %% STREAMER REUSE (key architectural concept)
-  %% ══════════════════════════════════════════════════════════════════════════
-  S1 -.-> P1
-  S1 -.-> P2
-  S2 -.-> P2
-  S2 -.-> P3
-  S3 -.-> P3
+  %% ═══════════════════════════════════════════
+  %% ANALYSIS PIPELINES (row 4)
+  %% ═══════════════════════════════════════════
+  subgraph pipelines[" Analysis Pipelines "]
+    direction TB
+    HGC["<b>HGC</b><br/>Joint Genotyping & QC"]
+    ANC["<b>Ancestry</b><br/>PCA & Classification"]
+    ENR["<b>EnrichEx</b><br/>Burden & Overlap"]
+    PSR["<b>PS-ROC</b><br/>Score Evaluation"]
+  end
 
-  %% ══════════════════════════════════════════════════════════════════════════
-  %% INTERFACE ACCESS
-  %% ══════════════════════════════════════════════════════════════════════════
-  IF ---- L5
-  IF ---- L2
+  %% ═══════════════════════════════════════════
+  %% RESULTS (row 5)
+  %% ═══════════════════════════════════════════
+  subgraph results[" Results & Reporting "]
+    direction TB
+    OUT_T["Annotated<br/>Hail Tables"]
+    OUT_R["HTML Reports<br/>& Plots"]
+    OUT_S["Statistical<br/>Results"]
+  end
 
-  %% ══════════════════════════════════════════════════════════════════════════
+  %% ═══════════════════════════════════════════
+  %% CONNECTIONS
+  %% ═══════════════════════════════════════════
+  VARDB --> DL
+  EXPRDB --> DL
+  BD --> products
+  products --> pipelines
+  USERDATA -.->|direct| pipelines
+  pipelines --> results
+
+  %% ═══════════════════════════════════════════
   %% STYLING
-  %% ══════════════════════════════════════════════════════════════════════════
-  classDef runtime fill:#e8f4f8,stroke:#0077b6,stroke-width:2px
-  classDef core fill:#f0f4f8,stroke:#495057,stroke-width:1px
-  classDef acquisition fill:#fff3cd,stroke:#856404,stroke-width:1px
-  classDef dataproducts fill:#f9f9f9,stroke:#666,stroke-width:1px
-  classDef variants fill:#f8d7da,stroke:#721c24,stroke-width:1px
-  classDef genes fill:#d4edda,stroke:#155724,stroke-width:1px
-  classDef expression fill:#e2d5f1,stroke:#5a3d8a,stroke-width:1px
-  classDef streamers fill:#cce5ff,stroke:#004085,stroke-width:1px
-  classDef pipelines fill:#d1ecf1,stroke:#0c5460,stroke-width:2px
-  classDef interfaces fill:#f5f5f5,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5
-  classDef userdata fill:#fff,stroke:#e67e22,stroke-width:2px,stroke-dasharray: 5 5
+  %% ═══════════════════════════════════════════
+  classDef src fill:#f8f9fa,stroke:#6c757d,stroke-width:1px
+  classDef acq fill:#fff3cd,stroke:#856404,stroke-width:1px
+  classDef prod fill:#cce5ff,stroke:#004085,stroke-width:1px
+  classDef pipe fill:#d1ecf1,stroke:#0c5460,stroke-width:2px
+  classDef res fill:#d4edda,stroke:#155724,stroke-width:1px
 
-  class L0 runtime
-  class L1 core
-  class L2 acquisition
-  class VARIANTS variants
-  class GENES genes
-  class EXPR expression
-  class L3 dataproducts
-  class L4 streamers
-  class L5 pipelines
-  class IF interfaces
-  class UD userdata
+  class sources src
+  class acquire acq
+  class products prod
+  class pipelines pipe
+  class results res
 ```
 
 <details>
 <summary><b>Legend</b></summary>
 
-| Layer | Description |
+| Row | Description |
 | --- | --- |
-| **L0 · Runtime** | Hail + Apache Spark distributed computing foundation |
-| **L1 · Core** | Protocol definitions (Builder, Streamer, Downloader) and shared utilities |
-| **L2 · Acquisition** | Downloaders fetch remote datasets; Builders create Hail Tables/MatrixTables |
-| **L3 · Data Products** | Domain-organized Hail objects: Variants, Genes, Expression |
-| **L4 · DataStreamers** | Reusable components that filter, annotate, join, and aggregate data |
-| **L5 · Pipelines** | End-to-end workflows: HGC, PSROC, EnrichEx |
-| **User Data** | User-provided GVCFs or cohort MatrixTables (external input to HGC) |
-| **Interfaces** | CLI (`hvantk`) and Python API |
+| **Data Sources** | External databases (variant, gene, expression) and user-provided cohort data |
+| **Acquisition & Building** | Downloaders fetch remote datasets; Builders convert raw files (VCF, TSV, BED) into Hail Tables and MatrixTables |
+| **Hail Data Products** | Domain-organized Hail objects keyed by biological entity (locus/alleles, gene_id, or genes-by-samples) |
+| **Analysis Pipelines** | HGC (joint genotyping & QC), Ancestry (PCA & classification), EnrichEx (gene-set burden & overlap testing), PS-ROC (pathogenicity score evaluation) |
+| **Results & Reporting** | Annotated Hail Tables, HTML reports with embedded plots, and statistical results (TSV) |
 
 **Visual notation:**
-- **Solid arrows**: Primary data flow (bottom → top)
-- **Dashed arrows**: DataStreamer reuse across multiple pipelines
-- **Dashed border (orange)**: External user-provided data
+- **Solid arrows** — primary data flow (left to right)
+- **Dashed arrow** — user data feeds directly into analysis pipelines (bypasses acquisition for pre-built cohorts)
+
+**Foundation:** All distributed computation runs on Hail / Apache Spark. All operations are accessible via the `hvantk` CLI and Python API.
 
 </details>
 
-**Caption:** *hvantk implements a six-layer architecture for scalable multi-omics variant annotation. Built on Hail/Spark (L0), the toolkit provides extensibility protocols (L1) for data acquisition (L2) that produces domain-organized Hail Tables and MatrixTables (L3). DataStreamers (L4) are reusable transformation components (dashed arrows) that can be composed into analysis pipelines (L5). The HGC pipeline additionally accepts user-provided cohort data (GVCFs or MatrixTables) for joint genotyping and ancestry inference. CLI and Python APIs provide access at multiple levels.*
-
-Editable PowerPoint version: `docs/figures/hvantk_architecture.pptx`.
+**Caption:** *hvantk workflow architecture for scalable multi-omics variant annotation and analysis. External variant, gene, and expression databases are acquired through built-in downloaders and converted to domain-organized Hail Tables and MatrixTables via the builder framework. User cohort data (GVCFs, MatrixTables, gene sets, phenotypes) feeds directly into analysis pipelines. Four specialized pipelines — HGC (joint genotyping and quality control), Ancestry (PCA-based population inference), EnrichEx (gene-set burden and overlap testing), and PS-ROC (pathogenicity score evaluation) — produce annotated tables, HTML reports with embedded plots, and statistical results. All operations are distributed via Hail on Apache Spark, accessible through the `hvantk` CLI and Python API.*
 
 ## Project Structure
 

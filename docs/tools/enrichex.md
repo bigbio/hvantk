@@ -474,6 +474,29 @@ gene_set_collection = GeneSetCollection(
 gene_set_collection.save("brain_markers.json")
 ```
 
+### From Custom Gene Panels (CLI)
+
+For plain text gene panels (e.g., from spreadsheet exports or lab lists),
+use the `hvantk prepare-geneset` command:
+
+```bash
+# Basic: convert two-column TSV to GeneSetCollection JSON
+hvantk prepare-geneset -i panels.tsv -o panels.json
+
+# With HGNC validation and alias resolution
+hvantk prepare-geneset -i panels.tsv -o panels.json --hgnc /data/hgnc.ht
+
+# With minimum gene set size and explicit background
+hvantk prepare-geneset -i panels.tsv -o panels.json \
+  --hgnc /data/hgnc.ht --min-genes 5 --background protein_coding_genes.txt
+```
+
+Input format: headerless two-column TSV (`gene_set_name<TAB>gene_symbol`),
+one gene per line. Only HGNC human gene symbols are accepted.
+
+The output JSON is directly compatible with `hvantk enrichex burden -s`
+and `hvantk enrichex overlap -s`.
+
 ## Detailed Usage
 
 ### Overlap Enrichment
