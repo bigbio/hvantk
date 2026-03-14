@@ -2,7 +2,7 @@
 
 This guide shows practical, copy-pasteable examples to build Hail Tables (HT) and MatrixTables (MT) from explicit raw files and from recipes (JSON/YAML).
 
-If you haven’t installed hvantk yet, see the main README for install steps.
+If you haven't installed hvantk yet, see the main README for install steps.
 
 For downloading raw data files (built-in downloaders and manual steps), see the [Data Acquisition Guide](data-acquisition.md).
 
@@ -343,7 +343,7 @@ annotated_mt = result.annotate_matrixtable(query_mt)
 | `rf_model.pkl` | Trained model (with `--save-model`) |
 | `pca_loadings.ht` | PCA loadings (with `--save-loadings`) |
 
-📖 **[Full Ancestry Documentation](../tools/ancestry.md)** | **[Examples](../../examples/ancestry/)**
+**[Full Ancestry Documentation](../tools/ancestry.md)** | **[Examples](../examples/ancestry.md)**
 
 ## Prepare Custom Gene Sets
 
@@ -452,6 +452,6 @@ The command auto-detects whether the file is already BGZF and skips conversion i
 
 ## See also
 
-- [Architecture](../ARCHITECTURE.md) – system design and extension points
-- [Contributing](../../CONTRIBUTING.md) – development workflow and contribution guidelines
-- [Recipe Examples](../../examples/recipes/) – ready-to-edit recipe templates
+- [Architecture](../architecture.md) – system design and extension points
+- [Contributing](../contributing.md) – development workflow and contribution guidelines
+- [Recipe Examples](https://github.com/bigbio/hvantk/tree/main/examples/recipes/) – ready-to-edit recipe templates

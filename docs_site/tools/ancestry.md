@@ -124,7 +124,7 @@ Variants are filtered to retain high-quality, informative markers:
 | Autosomes only | chr1-22 | Avoid sex chromosome complications |
 | Biallelic | 2 alleles | Simplify analysis |
 | SNPs only | `is_snp()` | More reliable than indels |
-| Call rate | ≥ 98% | Ensure data quality |
+| Call rate | >= 98% | Ensure data quality |
 | Minor allele frequency | 1-99% | Common variants informative for ancestry |
 | HWE (optional) | p > 1e-6 | Remove potential genotyping errors |
 
@@ -132,7 +132,7 @@ Variants are filtered to retain high-quality, informative markers:
 
 Linkage disequilibrium pruning removes correlated variants:
 
-- Default r² threshold: 0.2
+- Default r2 threshold: 0.2
 - Default window size: 500 kb
 - Typically reduces to 50,000-200,000 independent variants
 
@@ -193,7 +193,7 @@ Options:
     --hwe-p FLOAT                HWE p-value threshold [default: 1e-6]
 
   LD Pruning:
-    --ld-r2 FLOAT                LD pruning r² threshold [default: 0.2]
+    --ld-r2 FLOAT                LD pruning r2 threshold [default: 0.2]
     --ld-window INTEGER          LD pruning window in bp [default: 500000]
     --skip-ld-pruning            Skip LD pruning step
 
@@ -233,7 +233,7 @@ Options:
 - Same structure as query MT
 - Must have ancestry label column annotation
 - Labels should be categorical (e.g., "EUR", "AFR", "EAS", "SAS", "AMR")
-- Recommend ≥30 samples per population
+- Recommend >=30 samples per population
 
 ### Supported Reference Panels
 
@@ -488,5 +488,5 @@ eur_mt = annotated_mt.filter_cols(
 ## See Also
 
 - [HGC Joint Genotyping](hgc.md) - Joint genotyping pipeline
-- [Usage Examples](../library/usage.md) - General usage documentation
-- [Architecture](../ARCHITECTURE.md) - Project architecture
+- [Usage Examples](../guide/usage.md) - General usage documentation
+- [Architecture](../architecture.md) - Project architecture

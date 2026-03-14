@@ -627,19 +627,19 @@ hvantk enrichex burden ... --min-gq 10 --min-dp 5
 **Heterozygous model (default):**
 ```bash
 hvantk enrichex burden ... --genotype-aggregation hets
-# Counts genes with ≥1 heterozygous variant per sample
+# Counts genes with >=1 heterozygous variant per sample
 ```
 
 **Homozygous model:**
 ```bash
 hvantk enrichex burden ... --genotype-aggregation homs
-# Counts genes with ≥1 homozygous variant per sample
+# Counts genes with >=1 homozygous variant per sample
 ```
 
 **Compound heterozygous model:**
 ```bash
 hvantk enrichex burden ... --genotype-aggregation chets
-# Counts genes with ≥2 heterozygous variants per sample
+# Counts genes with >=2 heterozygous variants per sample
 ```
 
 **Combined recessive model:**

@@ -14,7 +14,7 @@ This directory contains end-to-end workflow examples demonstrating how to use hv
 
 ### HGC (Joint Genotyping)
 
-**Directory:** [`hgc/`](hgc/)
+**Directory:** [`hgc/`](https://github.com/bigbio/hvantk/tree/main/examples/hgc/)
 
 Complete pipeline for joint genotyping of GVCF cohorts with quality control and benchmarking.
 
@@ -30,13 +30,13 @@ python examples/hgc/hgc_qc_example.py
 
 **Outputs:** QC reports (HTML), dashboards (PNG), metrics (JSON)
 
-**Documentation:** [HGC README](hgc/README.md) | [HGC Docs](../docs_site/tools/hgc.md)
+**Documentation:** [HGC Examples](hgc.md) | [HGC Docs](../tools/hgc.md)
 
 ---
 
 ### PSROC (Prediction Score ROC Analysis)
 
-**Directory:** [`psroc/`](psroc/)
+**Directory:** [`psroc/`](https://github.com/bigbio/hvantk/tree/main/examples/psroc/)
 
 ROC curve analysis for evaluating variant pathogenicity prediction scores using ClinVar labels.
 
@@ -50,13 +50,13 @@ python examples/psroc/run_psroc_example.py
 
 **Outputs:** ROC curves (PNG), AUC metrics (JSON), annotated variants (TSV)
 
-**Documentation:** [PSROC README](psroc/README.md) | [PSROC Docs](../docs_site/tools/psroc.md)
+**Documentation:** [PSROC Examples](psroc.md) | [PSROC Docs](../tools/psroc.md)
 
 ---
 
 ### EnrichEx (Gene Set Enrichment)
 
-**Directory:** [`enrichex/`](enrichex/)
+**Directory:** [`enrichex/`](https://github.com/bigbio/hvantk/tree/main/examples/enrichex/)
 
 Gene set enrichment analysis using overlap testing (Fisher's exact) and case-control burden testing (Hail regression).
 
@@ -80,13 +80,13 @@ python examples/enrichex/overlap_enrichment_example.py
 
 **Outputs:** Results (TSV), plots (PNG), HTML reports
 
-**Documentation:** [EnrichEx README](enrichex/README.md) | [EnrichEx Docs](../docs_site/tools/enrichex.md)
+**Documentation:** [EnrichEx Examples](enrichex.md) | [EnrichEx Docs](../tools/enrichex.md)
 
 ---
 
 ### ClinVar Data Streaming
 
-**Directory:** [`clinvar/`](clinvar/)
+**Directory:** [`clinvar/`](https://github.com/bigbio/hvantk/tree/main/examples/clinvar/)
 
 Examples for filtering and processing ClinVar variant annotations.
 
@@ -100,13 +100,13 @@ python examples/clinvar/clinvar_streamer_example.py
 
 **Outputs:** Filtered variant tables (TSV/VCF)
 
-**Documentation:** [ClinVar README](clinvar/README.md)
+**Documentation:** [ClinVar Examples](clinvar.md)
 
 ---
 
 ## Recipe Templates
 
-**Directory:** [`recipes/`](recipes/)
+**Directory:** [`recipes/`](https://github.com/bigbio/hvantk/tree/main/examples/recipes/)
 
 Ready-to-use recipe templates for batch processing annotation tables and expression matrices.
 
@@ -389,94 +389,6 @@ init_hail()
 
 ### Getting Help
 
-- **Documentation**: See [`docs/`](../docs_site/)
-- **Usage Guide**: [`docs/library/usage.md`](../docs_site/guide/usage.md)
-- **Architecture**: [`docs/ARCHITECTURE.md`](../docs_site/architecture.md)
+- **Usage Guide**: [Usage Guide](../guide/usage.md)
+- **Architecture**: [Architecture Overview](../architecture.md)
 - **Issues**: [GitHub Issues](https://github.com/bigbio/hvantk/issues)
-
----
-
-## Contributing Examples
-
-Have a useful example? Please contribute!
-
-1. Create a new workflow directory: `examples/<workflow>/`
-2. Add your example scripts and README
-3. Include sample data or reference test data in `hvantk/tests/testdata/`
-4. Update this README with a link
-5. Submit a pull request
-
-See [`CONTRIBUTING.md`](../CONTRIBUTING.md) for guidelines.
-
----
-
-## Additional Resources
-
-### Documentation
-
-- [Library Usage Guide](../docs_site/guide/usage.md)
-- [Annotation Sources](../docs_site/guide/annotation-sources.md)
-- [HGC Documentation](../docs_site/tools/hgc.md)
-- [PSROC Documentation](../docs_site/tools/psroc.md)
-- [EnrichEx Documentation](../docs_site/tools/enrichex.md)
-- [Architecture Overview](../docs_site/architecture.md)
-
-### External Resources
-
-- [Hail Documentation](https://hail.is/docs/0.2/)
-- [ClinVar Database](https://www.ncbi.nlm.nih.gov/clinvar/)
-- [gnomAD Browser](https://gnomad.broadinstitute.org/)
-- [UCSC Cell Browser](https://cells.ucsc.edu/)
-
----
-
-## Directory Contents
-
-```
-examples/
-├── README.md                    # This file
-│
-├── hgc/                         # HGC joint genotyping workflow
-│   ├── README.md
-│   ├── README_scalability.md
-│   ├── hgc_qc_example.py
-│   ├── hgc_cpu_scaling_benchmark.py
-│   ├── hgc_scalability_benchmark.py
-│   ├── test_benchmark_setup.py
-│   ├── scripts/                 # Supporting scripts
-│   └── results/                 # Example outputs
-│
-├── psroc/                       # PSROC ROC analysis workflow
-│   ├── README.md
-│   ├── run_psroc_example.py
-│   └── results/                 # Example outputs
-│       ├── *.json              # Metrics
-│       ├── *.tsv               # Annotated variants
-│       └── plots/              # ROC curves and dashboards
-│
-├── enrichex/                    # EnrichEx gene set enrichment
-│   ├── README.md
-│   ├── synthetic_gene_sets.json # Example gene sets
-│   ├── overlap_enrichment_example.py
-│   ├── burden_analysis_example.py
-│   ├── create_gene_sets_example.py
-│   └── results/                 # Example outputs
-│       ├── *.tsv               # Results tables
-│       ├── *.png               # Plots
-│       └── *.html              # Reports
-│
-├── clinvar/                     # ClinVar data streaming
-│   ├── README.md
-│   └── clinvar_streamer_example.py
-│
-└── recipes/                     # Recipe templates
-    ├── tables.example.json
-    ├── matrices.example.json
-    └── cptac.example.json
-```
-
----
-
-## License
-
-See [`LICENSE`](../LICENSE) for details.

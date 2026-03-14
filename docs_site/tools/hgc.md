@@ -1081,7 +1081,7 @@ pytest hvantk/tests/hgc/test_gvcf_combiner.py -v
 - **hail** - Core Hail library for genomic data processing
 - **gnomad** - Optional, required for adjusted genotype annotations
 - **click** - For CLI interface
-- **Python** ≥ 3.10
+- **Python** >= 3.10
 
 ## Contributing
 
@@ -1100,7 +1100,7 @@ Contributions are welcome! Please ensure:
 
 ## License
 
-HGC is part of hvantk, released under the MIT License. See [LICENSE](../../LICENSE) for details.
+HGC is part of hvantk, released under the MIT License. See [LICENSE](https://github.com/bigbio/hvantk/blob/main/LICENSE) for details.
 
 ---
 

@@ -51,7 +51,7 @@ Follow these guidelines:
 - Use fixtures in `hvantk/tests/testdata` for test data
 
 #### Documentation
-- Update relevant documentation in `docs_site/`
+- Update relevant documentation in `docs/`
 - Add docstrings to new functions and classes
 - Include usage examples where appropriate
 - Update README.md if adding major features
@@ -118,7 +118,7 @@ Follow this workflow when adding a new annotation source:
    ```python
    def build_my_datasource(raw_input: str, output_ht: str, **kwargs):
        """Build Hail Table from raw data source.
-       
+
        Args:
            raw_input: Path to raw input file
            output_ht: Path for output Hail Table
@@ -138,10 +138,10 @@ Follow this workflow when adding a new annotation source:
    - Test with various input scenarios
 
 5. **Update documentation**
-   - Add to [Annotation Sources](docs_site/guide/annotation-sources.md)
-   - Add usage example to [Usage Guide](docs_site/guide/usage.md)
+   - Add to [Annotation Sources](guide/annotation-sources.md)
+   - Add usage example to [Usage Guide](guide/usage.md)
 
-See [Architecture](docs_site/architecture.md) for detailed information on system design and extension points.
+See [Architecture](architecture.md) for detailed information on system design and extension points.
 
 ## Code Review Process
 
@@ -172,8 +172,8 @@ All submissions require review:
 
 ## Questions?
 
-- **Documentation**: See [docs_site/](docs_site/)
-- **Architecture**: See [docs_site/architecture.md](docs_site/architecture.md)
+- **Documentation**: See the [guide](guide/) section
+- **Architecture**: See [architecture.md](architecture.md)
 - **Issues**: [GitHub Issues](https://github.com/bigbio/hvantk/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/bigbio/hvantk/discussions)
 

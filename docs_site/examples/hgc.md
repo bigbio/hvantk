@@ -86,7 +86,7 @@ Tests how HGC performance scales with cohort size:
 - Measures timing for each step
 - Generates scaling plots
 
-See [scalability/README.md](scalability/README.md) for detailed documentation.
+See the [scalability benchmark documentation](https://github.com/bigbio/hvantk/tree/main/examples/hgc/scalability) for detailed documentation.
 
 ### CPU Scaling Benchmark (`cpu_scaling/`)
 
@@ -98,10 +98,10 @@ Tests strong scaling (speedup vs. CPU count):
 ### Common Utilities (`common/`)
 
 Shared scripts for all benchmarks:
-- **test_benchmark_setup.py** - Validates environment setup
-- **setup_hvantk_env.sh** - Creates conda environment
-- **extract_timing.py** - Extracts timing data from logs
-- **generate_sample_list.sh** - Generates sample lists from GVCF directory
+- **[test_benchmark_setup.py](https://github.com/bigbio/hvantk/tree/main/examples/hgc/common/test_benchmark_setup.py)** - Validates environment setup
+- **[setup_hvantk_env.sh](https://github.com/bigbio/hvantk/tree/main/examples/hgc/common/setup_hvantk_env.sh)** - Creates conda environment
+- **[extract_timing.py](https://github.com/bigbio/hvantk/tree/main/examples/hgc/common/extract_timing.py)** - Extracts timing data from logs
+- **[generate_sample_list.sh](https://github.com/bigbio/hvantk/tree/main/examples/hgc/common/generate_sample_list.sh)** - Generates sample lists from GVCF directory
 
 ## Expected Outputs
 
@@ -118,9 +118,9 @@ Shared scripts for all benchmarks:
 
 ## Documentation
 
-- [HGC Documentation](../../docs_site/tools/hgc.md)
-- [Architecture Overview](../../docs_site/architecture.md)
-- [Scalability Guide](scalability/README.md)
+- [HGC Documentation](../tools/hgc.md)
+- [Architecture Overview](../architecture.md)
+- [Scalability Guide](https://github.com/bigbio/hvantk/tree/main/examples/hgc/scalability)
 
 ## Requirements
 

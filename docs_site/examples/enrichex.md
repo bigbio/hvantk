@@ -77,9 +77,9 @@ Example gene sets for brain cell types (Microglia, Astrocytes, Oligodendrocytes,
 
 | Script | Description |
 |--------|-------------|
-| `overlap_enrichment_example.py` | Run overlap enrichment using Python API |
-| `burden_analysis_example.py` | Run burden testing using Python API with synthetic data |
-| `create_gene_sets_example.py` | Create gene set collections from various formats |
+| [`overlap_enrichment_example.py`](https://github.com/bigbio/hvantk/tree/main/examples/enrichex/overlap_enrichment_example.py) | Run overlap enrichment using Python API |
+| [`burden_analysis_example.py`](https://github.com/bigbio/hvantk/tree/main/examples/enrichex/burden_analysis_example.py) | Run burden testing using Python API with synthetic data |
+| [`create_gene_sets_example.py`](https://github.com/bigbio/hvantk/tree/main/examples/enrichex/create_gene_sets_example.py) | Create gene set collections from various formats |
 
 Run examples:
 ```bash
@@ -221,6 +221,6 @@ Key options:
 
 ## Documentation
 
-- **Full documentation**: [docs/tools/enrichex.md](../../docs_site/tools/enrichex.md)
+- **Full documentation**: [EnrichEx Docs](../tools/enrichex.md)
 - **CLI help**: `hvantk enrichex --help`
 - **Issues**: [GitHub Issues](https://github.com/bigbio/hvantk/issues)

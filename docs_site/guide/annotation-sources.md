@@ -76,4 +76,3 @@ For download instructions (built-in downloaders and manual download steps), see 
   - **Human heart cell atlas (HCA)**
     Description: Adult human heart cell atlas (https://doi.org/10.1038/s41586-020-2797-4).\
     URL: https://cells.ucsc.edu/?bp=heart&ds=heart-cell-atlas
-

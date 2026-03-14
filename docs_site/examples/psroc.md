@@ -8,7 +8,7 @@ PSROC analyzes prediction scores (CADD, REVEL, MetaLR, etc.) using ClinVar label
 
 ## Contents
 
-**`run_psroc_example.py`** - Complete PSROC workflow example
+**[`run_psroc_example.py`](https://github.com/bigbio/hvantk/tree/main/examples/psroc/run_psroc_example.py)** - Complete PSROC workflow example
 
 Demonstrates:
 - Building Hail Tables from TSV data
@@ -117,7 +117,7 @@ REVEL_score: 2.0% missing → INCLUDED
 
 ### Use Your Own Data
 
-Modify `run_psroc_example.py`:
+Modify [`run_psroc_example.py`](https://github.com/bigbio/hvantk/tree/main/examples/psroc/run_psroc_example.py):
 
 ```python
 # Change input paths
@@ -162,13 +162,13 @@ The PSROC pipeline runs through 7 stages:
 6. **Compute ROC** - Generate ROC curves and AUC metrics
 7. **Generate Outputs** - Create plots, metrics JSON, and TSV exports
 
-See the [workflow diagram](../../docs_site/tools/psroc.md#workflow) for a visual representation.
+See the [PSROC workflow diagram](../tools/psroc.md#workflow) for a visual representation.
 
 ## Documentation
 
-- [PSROC Documentation](../../docs_site/tools/psroc.md)
-- [Usage Guide](../../docs_site/guide/usage.md)
-- [Architecture](../../docs_site/architecture.md)
+- [PSROC Documentation](../tools/psroc.md)
+- [Usage Guide](../guide/usage.md)
+- [Architecture](../architecture.md)
 
 ## Troubleshooting
 

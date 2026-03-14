@@ -268,10 +268,10 @@ from hvantk.core.protocols import Builder
 class MyBuilder:
     def build(self, input_path: str, **params) -> hl.Table:
         """Convert raw file to Hail Table"""
-        
+
     def validate_schema(self, ht: hl.Table) -> bool:
         """Validate output schema"""
-        
+
     def get_metadata(self) -> Dict[str, Any]:
         """Return builder metadata"""
 ```
@@ -285,10 +285,10 @@ from hvantk.core.protocols import Streamer
 class MyStreamer:
     def transform(self, input_data: hl.Table, **params) -> hl.Table:
         """Transform input data"""
-        
+
     def validate_input(self, input_data: hl.Table) -> bool:
         """Validate input schema"""
-        
+
     def get_metadata(self) -> Dict[str, Any]:
         """Return streamer metadata"""
 ```
@@ -303,10 +303,10 @@ from pathlib import Path
 class MyDownloader:
     def download(self, dataset_id: str, output_dir: Path, **params) -> Path:
         """Download dataset"""
-        
+
     def verify_checksum(self, file_path: Path, expected: str) -> bool:
         """Verify file integrity"""
-        
+
     def get_metadata(self, dataset_id: str) -> Dict[str, Any]:
         """Return dataset metadata"""
 ```
@@ -498,24 +498,24 @@ tests/
    ```python
    # hvantk/tables/table_builders.py (for variants/genes)
    # OR hvantk/tables/matrix_builders.py (for expression)
-   
+
    import hail as hl
-   
+
    def create_my_source_tb(input_path: str, output_path: str, **kwargs) -> hl.Table:
        """
        Create a Hail Table from my data source.
-       
+
        Follows the Builder protocol pattern.
        """
        # Import data
        ht = hl.import_table(input_path, ...)
-       
+
        # Key appropriately (locus/alleles for variants, gene_id for genes)
        ht = ht.key_by(...)
-       
+
        # Checkpoint to disk
        ht = ht.checkpoint(output_path, overwrite=kwargs.get('overwrite', False))
-       
+
        return ht
    ```
 
@@ -528,7 +528,7 @@ tests/
    def mktable_my_source(raw_input: str, output_ht: str, overwrite: bool):
        """Build a MySource Hail Table."""
        from hvantk.tables.table_builders import create_my_source_tb
-       
+
        create_my_source_tb(
            input_path=raw_input,
            output_path=output_ht,

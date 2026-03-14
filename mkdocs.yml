@@ -1,0 +1,78 @@
+site_name: hvantk
+site_description: Hail-based toolkit for multi-omics variant annotation and analysis
+site_url: https://bigbio.github.io/hvantk
+repo_url: https://github.com/bigbio/hvantk
+repo_name: bigbio/hvantk
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.tabs.link
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - tables
+  - toc:
+      permalink: true
+
+docs_dir: docs_site
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Quick Start: getting-started/quickstart.md
+  - User Guide:
+    - Building Tables: guide/usage.md
+    - Annotation Sources: guide/annotation-sources.md
+    - Data Acquisition: guide/data-acquisition.md
+  - Tools:
+    - HGC - Joint Genotyping: tools/hgc.md
+    - EnrichEx - Enrichment Analysis: tools/enrichex.md
+    - PS-ROC - Score Evaluation: tools/psroc.md
+    - Ancestry Inference: tools/ancestry.md
+  - Examples:
+    - Overview: examples/index.md
+    - HGC: examples/hgc.md
+    - EnrichEx: examples/enrichex.md
+    - PS-ROC: examples/psroc.md
+    - Ancestry: examples/ancestry.md
+    - ClinVar Streaming: examples/clinvar.md
+    - ClinGen: examples/clingen.md
+    - Recipes: examples/recipes.md
+  - Architecture: architecture.md
+  - Contributing: contributing.md

@@ -21,7 +21,7 @@ This generates outputs in `examples/ancestry/results/` including:
 
 ## Examples
 
-### 1. End-to-End Example (`run_ancestry_example.py`) ⭐
+### 1. End-to-End Example (`run_ancestry_example.py`)
 
 **Recommended starting point.** Complete runnable workflow:
 - Generates synthetic data (5 populations, 300 samples)
@@ -46,7 +46,7 @@ Demonstrates basic ancestry inference workflow:
 
 Shows how to use a custom reference panel:
 - Preparing a custom reference MatrixTable
-- Population label mapping (e.g., CEU → EUR)
+- Population label mapping (e.g., CEU -> EUR)
 - Configuring pipeline parameters
 - Custom visualization colors
 
@@ -117,4 +117,4 @@ query_mt = combined_mt.filter_cols(combined_mt.sample_idx >= 200)
 
 ## Documentation
 
-For full documentation, see [docs/tools/ancestry.md](../../docs_site/tools/ancestry.md).
+For full documentation, see [Ancestry Documentation](../tools/ancestry.md).

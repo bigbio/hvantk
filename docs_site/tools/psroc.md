@@ -214,8 +214,8 @@ Field names are case-sensitive and must match the dbNSFP column names exactly.
 | `MetaSVM_score` | Meta-analytic support vector machine | unbounded | Higher = pathogenic |
 | `MetaRNN_score` | Meta-analytic recurrent neural network | 0–1 | Higher = pathogenic |
 | `ClinPred_score` | Clinical pathogenicity prediction | 0–1 | Higher = pathogenic |
-| `BayesDel_addAF_score` | BayesDel with allele frequency features | −1 to 1 | Higher = pathogenic |
-| `BayesDel_noAF_score` | BayesDel without allele frequency | −1 to 1 | Higher = pathogenic |
+| `BayesDel_addAF_score` | BayesDel with allele frequency features | -1 to 1 | Higher = pathogenic |
+| `BayesDel_noAF_score` | BayesDel without allele frequency | -1 to 1 | Higher = pathogenic |
 | `CADD_phred` | CADD Phred-scaled C-score | 0–60+ | Higher = pathogenic |
 
 **Individual predictor scores** (higher = pathogenic):
@@ -237,7 +237,7 @@ Field names are case-sensitive and must match the dbNSFP column names exactly.
 | `VARITY_ER_score` | VARITY extended regular | 0–1 | Higher = pathogenic |
 | `Polyphen2_HDIV_score` | PolyPhen-2 HumDiv | 0–1 | Higher = pathogenic |
 | `Polyphen2_HVAR_score` | PolyPhen-2 HumVar | 0–1 | Higher = pathogenic |
-| `MutationAssessor_score` | Mutation Assessor functional impact | −5.5 to 6.5 | Higher = pathogenic |
+| `MutationAssessor_score` | Mutation Assessor functional impact | -5.5 to 6.5 | Higher = pathogenic |
 
 **Scores with inverted directionality** (do NOT use directly with PSROC):
 
@@ -264,8 +264,8 @@ Field names are case-sensitive and must match the dbNSFP column names exactly.
 
 | Field name | Description | Range | Direction |
 |------------|-------------|-------|-----------|
-| `GERP++_RS` | GERP rejected substitutions | −12 to 6.2 | Higher = conserved |
-| `phyloP100way_vertebrate` | phyloP 100-way vertebrate | −20 to 11.2 | Higher = conserved |
+| `GERP++_RS` | GERP rejected substitutions | -12 to 6.2 | Higher = conserved |
+| `phyloP100way_vertebrate` | phyloP 100-way vertebrate | -20 to 11.2 | Higher = conserved |
 | `phastCons100way_vertebrate` | phastCons 100-way vertebrate | 0–1 | Higher = conserved |
 
 The exact set of available scores depends on the dbNSFP version used to build
@@ -1155,7 +1155,7 @@ pytest hvantk/tests/psroc/ --cov=hvantk.psroc
 
 ## License
 
-PSROC is part of hvantk, released under the MIT License. See [LICENSE](../../LICENSE) for details.
+PSROC is part of hvantk, released under the MIT License. See [LICENSE](https://github.com/bigbio/hvantk/blob/main/LICENSE) for details.
 
 ## Support
 

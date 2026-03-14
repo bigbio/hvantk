@@ -47,6 +47,8 @@ black = "^23.7.0"
 matplotlib = "*"
 seaborn = "*"
 plotly = "*"
+mkdocs = "*"
+mkdocs-material = "*"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

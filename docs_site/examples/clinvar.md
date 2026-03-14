@@ -4,7 +4,7 @@ This directory contains examples for working with ClinVar variant annotations us
 
 ## Contents
 
-**`clinvar_streamer_example.py`** - ClinVar data streaming and chunk processing
+**[`clinvar_streamer_example.py`](https://github.com/bigbio/hvantk/tree/main/examples/clinvar/clinvar_streamer_example.py)** - ClinVar data streaming and chunk processing
 
 Demonstrates:
 - Loading ClinVar annotation tables
@@ -156,9 +156,8 @@ if result:
 
 ## Documentation
 
-- [ClinVar Table Builder](../../docs_site/guide/usage.md)
-- [Table Builders Guide](../../docs_site/guide/usage.md)
-- [Architecture](../../docs_site/architecture.md)
+- [Usage Guide](../guide/usage.md)
+- [Architecture](../architecture.md)
 
 ## Resources
 
