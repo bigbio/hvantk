@@ -19,7 +19,11 @@ import logging
 import time
 import warnings
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+if TYPE_CHECKING:
+    import numpy as np
+    import pandas as pd
 
 try:  # Optional dependency for burden analysis
     import hail as hl
