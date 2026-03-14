@@ -22,8 +22,7 @@ logger = logging.getLogger(__name__)
     type=click.Path(exists=True),
     required=True,
     help=(
-        "Input TSV file (headerless, two columns: "
-        "gene_set_name<TAB>gene_symbol)."
+        "Input TSV file (headerless, two columns: " "gene_set_name<TAB>gene_symbol)."
     ),
 )
 @click.option(
@@ -38,8 +37,7 @@ logger = logging.getLogger(__name__)
     type=click.Path(exists=True),
     default=None,
     help=(
-        "Path to HGNC data (.ht or .tsv) for symbol validation "
-        "and alias resolution."
+        "Path to HGNC data (.ht or .tsv) for symbol validation " "and alias resolution."
     ),
 )
 @click.option(
@@ -145,9 +143,7 @@ def prepare_geneset_cmd(
         for set_name, genes in gene_sets.items():
             n_set = len(genes)
             set_aliases = {
-                old: new
-                for old, new in aliases_resolved.items()
-                if new in set(genes)
+                old: new for old, new in aliases_resolved.items() if new in set(genes)
             }
             n_aliases = len(set_aliases)
             set_unrec = [g for g in genes if g in vr.unrecognized]
@@ -187,13 +183,9 @@ def prepare_geneset_cmd(
     # 3. Filter by --min-genes.
     if min_genes > 0:
         before = len(gene_sets)
-        removed = [
-            name for name, genes in gene_sets.items() if len(genes) < min_genes
-        ]
+        removed = [name for name, genes in gene_sets.items() if len(genes) < min_genes]
         gene_sets = {
-            name: genes
-            for name, genes in gene_sets.items()
-            if len(genes) >= min_genes
+            name: genes for name, genes in gene_sets.items() if len(genes) >= min_genes
         }
         if removed:
             click.echo(

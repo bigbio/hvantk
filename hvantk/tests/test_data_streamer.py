@@ -68,5 +68,3 @@ class TestClinvarLabels:
     def test_benign_labels(self):
         expected_labels = ["Benign/Likely_benign", "Likely_benign", "Benign"]
         assert ClinvarDataStreamer.BENIGN_LABELS == expected_labels
-
-

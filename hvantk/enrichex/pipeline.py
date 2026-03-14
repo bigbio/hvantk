@@ -503,9 +503,7 @@ class BurdenPipeline:
 
             # Validate all requested fields up-front
             all_fields = [pheno_field] + list(cov_fields)
-            errors = validate_fields(
-                cols_ht, all_fields, context="MT column fields"
-            )
+            errors = validate_fields(cols_ht, all_fields, context="MT column fields")
             if errors:
                 raise LookupError(
                     "Cannot extract phenotype/covariates from MT:\n"

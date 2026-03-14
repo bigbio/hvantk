@@ -20,7 +20,12 @@ class TestSetupLogging:
 
     @pytest.mark.parametrize(
         "verbosity,expected_level",
-        [(0, logging.WARNING), (1, logging.INFO), (2, logging.DEBUG), (5, logging.DEBUG)],
+        [
+            (0, logging.WARNING),
+            (1, logging.INFO),
+            (2, logging.DEBUG),
+            (5, logging.DEBUG),
+        ],
         ids=["default-WARNING", "v-INFO", "vv-DEBUG", "vvvvv-DEBUG"],
     )
     def test_verbosity_levels(self, verbosity, expected_level):

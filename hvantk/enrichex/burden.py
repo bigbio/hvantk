@@ -73,7 +73,6 @@ def _require_hail() -> None:
         ) from _HAIL_IMPORT_ERROR
 
 
-
 @dataclass
 class VariantFilter:
     """Criteria for qualifying variants in burden analysis.
@@ -556,11 +555,9 @@ def compute_geneset_burden_mt(
     # Must use the rows Table's own field reference — not mt_genes — to
     # avoid "Cannot combine expressions from different source objects".
     _rows_ht = mt_genes.rows()
-    _genes_per_set_ht = (
-        _rows_ht
-        .group_by(gene_set_name=_rows_ht.gene_set_ids)
-        .aggregate(n_genes_found=hl.agg.count())
-    )
+    _genes_per_set_ht = _rows_ht.group_by(
+        gene_set_name=_rows_ht.gene_set_ids
+    ).aggregate(n_genes_found=hl.agg.count())
 
     mt_burden = mt_genes.group_rows_by(gene_set_name=mt_genes.gene_set_ids).aggregate(
         burden=agg_expr
@@ -1078,7 +1075,9 @@ def build_variant_classes_from_presets(
         if preset is not None:
             # Known preset — use its consequence list and optional score
             consequences = preset.get("consequences")
-            min_score = preset.get("min_score", base_filter.min_score if base_filter else None)
+            min_score = preset.get(
+                "min_score", base_filter.min_score if base_filter else None
+            )
         else:
             # Custom class — name IS the consequence value
             logger.info(

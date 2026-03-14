@@ -50,9 +50,16 @@ TESTDATA_ENRICHEX = Path(__file__).parent / "testdata"
         ("TP", "symbol"),  # short symbols not classified as mouse
     ],
     ids=[
-        "ensembl_gene", "ensembl_gene_versioned", "ensembl_transcript",
-        "ensembl_transcript_versioned", "entrez", "mouse", "whitespace",
-        "symbol", "symbol_hyphen", "short_symbol",
+        "ensembl_gene",
+        "ensembl_gene_versioned",
+        "ensembl_transcript",
+        "ensembl_transcript_versioned",
+        "entrez",
+        "mouse",
+        "whitespace",
+        "symbol",
+        "symbol_hyphen",
+        "short_symbol",
     ],
 )
 def test_detect_id_type(token, expected):
@@ -65,9 +72,7 @@ def test_detect_id_type(token, expected):
 
 
 def test_validate_gene_ids_mixed():
-    valid, problems = validate_gene_ids(
-        ["BRCA1", "ENSG00000141510", "7157", "TP53"]
-    )
+    valid, problems = validate_gene_ids(["BRCA1", "ENSG00000141510", "7157", "TP53"])
     assert valid == ["BRCA1", "TP53"]
     assert "ensembl_gene" in problems
     assert "entrez" in problems
@@ -80,8 +85,18 @@ def test_validate_gene_ids_mixed():
 
 def test_parse_geneset_tsv_valid():
     result = parse_geneset_tsv(TESTDATA_GENESET / "valid_panels.tsv")
-    assert set(result.gene_sets.keys()) == {"cardiac_panel", "epilepsy_panel", "ras_pathway"}
-    assert result.gene_sets["cardiac_panel"] == ["MYH7", "TNNT2", "LMNA", "SCN5A", "TTN"]
+    assert set(result.gene_sets.keys()) == {
+        "cardiac_panel",
+        "epilepsy_panel",
+        "ras_pathway",
+    }
+    assert result.gene_sets["cardiac_panel"] == [
+        "MYH7",
+        "TNNT2",
+        "LMNA",
+        "SCN5A",
+        "TTN",
+    ]
     assert result.n_lines_parsed == 15
     assert result.n_duplicates == 0
 
@@ -90,7 +105,10 @@ def test_parse_geneset_tsv_valid():
     "content,error_match",
     [
         ("panel_a\tBRCA1\npanel_a\tTP53\textra\n", "expected 2 tab-separated columns"),
-        ("panel_a\tENSG00000141510\npanel_a\tENSG00000012048\npanel_b\tBRCA1\n", "Ensembl gene IDs"),
+        (
+            "panel_a\tENSG00000141510\npanel_a\tENSG00000012048\npanel_b\tBRCA1\n",
+            "Ensembl gene IDs",
+        ),
         ("panel_a\tTrp53\npanel_a\tScn1a\npanel_a\tBrca1\n", "mouse gene symbols"),
         ("panel_a\t7157\npanel_a\t672\npanel_a\t1956\n", "Entrez Gene IDs"),
     ],
@@ -105,7 +123,9 @@ def test_parse_geneset_tsv_rejects_invalid(tmp_path, content, error_match):
 
 def test_parse_geneset_tsv_deduplicates(tmp_path):
     tsv = tmp_path / "dupes.tsv"
-    tsv.write_text("panel_a\tBRCA1\npanel_a\tTP53\npanel_a\tBRCA1\npanel_b\tEGFR\npanel_b\tEGFR\npanel_b\tKRAS\n")
+    tsv.write_text(
+        "panel_a\tBRCA1\npanel_a\tTP53\npanel_a\tBRCA1\npanel_b\tEGFR\npanel_b\tEGFR\npanel_b\tKRAS\n"
+    )
     result = parse_geneset_tsv(tsv)
     assert result.gene_sets["panel_a"] == ["BRCA1", "TP53"]
     assert result.n_duplicates == 2
@@ -120,7 +140,11 @@ def test_parse_geneset_tsv_deduplicates(tmp_path):
 def _mock_hgnc_maps():
     canonical = {"BRCA1", "BRCA2", "TP53", "EGFR", "ERCC1"}
     alias_to_canonical = {"FANCD1": "BRCA2", "ERCC11": "ERCC1", "RNF53": "BRCA1"}
-    canonical_to_aliases = {"BRCA2": ["FANCD1"], "ERCC1": ["ERCC11"], "BRCA1": ["RNF53"]}
+    canonical_to_aliases = {
+        "BRCA2": ["FANCD1"],
+        "ERCC1": ["ERCC11"],
+        "BRCA1": ["RNF53"],
+    }
     return canonical, alias_to_canonical, canonical_to_aliases
 
 
@@ -227,6 +251,8 @@ def test_load_marker_genes():
     test_file = TESTDATA_ENRICHEX / "marker_genes.tsv"
     if not test_file.exists():
         pytest.skip("Test data file not found")
-    collection = load_marker_genes(test_file, cluster_column="cluster", gene_column="gene")
+    collection = load_marker_genes(
+        test_file, cluster_column="cluster", gene_column="gene"
+    )
     assert len(collection) == 4
     assert "CD3D" in collection.get("T_cell").genes

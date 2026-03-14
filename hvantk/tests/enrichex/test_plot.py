@@ -79,7 +79,10 @@ def _make_burden_results():
 
 def test_plot_enrichment_dotplot(tmp_path):
     fig = plot_enrichment_dotplot(
-        _mock_enrichment_df(), output_path=str(tmp_path / "dotplot.png"), top_n=3, label_top_n=2
+        _mock_enrichment_df(),
+        output_path=str(tmp_path / "dotplot.png"),
+        top_n=3,
+        label_top_n=2,
     )
     assert (tmp_path / "dotplot.png").exists()
     assert fig.get_axes()
@@ -126,7 +129,9 @@ def test_encode_figure_to_base64_returns_string():
 
 
 def test_celltype_burden_heatmap(tmp_path):
-    fig = plot_celltype_burden_heatmap(_make_burden_results(), str(tmp_path / "heatmap.png"))
+    fig = plot_celltype_burden_heatmap(
+        _make_burden_results(), str(tmp_path / "heatmap.png")
+    )
     assert fig is not None
     plt.close(fig)
 

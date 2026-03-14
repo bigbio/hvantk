@@ -40,7 +40,10 @@ def temp_dir():
 def test_ucsc_metadata_to_hail_table(temp_dir):
     """Test conversion of UCSC metadata to Hail Table."""
     ht = convert_ucsc_metadata_to_hail_table(
-        str(UCSC_DIR / "meta.test.tsv"), sep="\t", index_col=0, index_name=UCSC_CELL_ID_COLUMN
+        str(UCSC_DIR / "meta.test.tsv"),
+        sep="\t",
+        index_col=0,
+        index_name=UCSC_CELL_ID_COLUMN,
     )
     assert ht.count() == 9999
 
@@ -49,7 +52,10 @@ def test_ucsc_expression_matrix_to_mt(temp_dir):
     """Test UCSC expression matrix → MatrixTable with metadata."""
     output_path = Path(temp_dir) / "ucsc_expression_matrix.mt"
     metadata_ht = convert_ucsc_metadata_to_hail_table(
-        str(UCSC_DIR / "meta.test.tsv"), sep="\t", index_col=0, index_name=UCSC_CELL_ID_COLUMN
+        str(UCSC_DIR / "meta.test.tsv"),
+        sep="\t",
+        index_col=0,
+        index_name=UCSC_CELL_ID_COLUMN,
     )
     mt = create_mt_from_ucsc_expression_matrix(
         expression_matrix_path=str(UCSC_DIR / "exprMatrix.test.tsv.bgz"),

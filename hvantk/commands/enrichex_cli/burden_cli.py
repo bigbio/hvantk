@@ -507,7 +507,9 @@ def burden_test(
             df = result_ht.to_pandas()
             p_values = df["p_value"].tolist()
             p_adjusted = apply_correction(
-                p_values, method=correction, n_total=n_gene_sets_total,
+                p_values,
+                method=correction,
+                n_total=n_gene_sets_total,
             )
             df["p_adjusted"] = p_adjusted
             df["significant"] = df["p_adjusted"] < alpha
@@ -604,7 +606,9 @@ def burden_test(
         n_gene_sets_total = len(gene_sets_dict)
         p_values = result_df["p_value"].tolist()
         p_adjusted = apply_correction(
-            p_values, method=correction, n_total=n_gene_sets_total,
+            p_values,
+            method=correction,
+            n_total=n_gene_sets_total,
         )
         result_df["p_adjusted"] = p_adjusted
         result_df["significant"] = result_df["p_adjusted"] < alpha

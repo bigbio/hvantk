@@ -128,12 +128,21 @@ def test_ucsc_downloader_download_failure(mock_download_file, test_output_dir):
     ],
     ids=["traversal", "backslash", "whitespace", "slash-allowed"],
 )
-def test_ucsc_downloader_dataset_validation(mock_download_file, dataset, expect_invalid):
+def test_ucsc_downloader_dataset_validation(
+    mock_download_file, dataset, expect_invalid
+):
     """Test dataset name validation (traversal, backslash, whitespace rejected; slash allowed)."""
     runner = CliRunner()
     result = runner.invoke(
         ucsc_downloader,
-        ["--dataset", dataset, "--output-dir", "dummy_path", "--base_url", "http://localhost:9999"],
+        [
+            "--dataset",
+            dataset,
+            "--output-dir",
+            "dummy_path",
+            "--base_url",
+            "http://localhost:9999",
+        ],
     )
     if expect_invalid:
         assert result.exit_code != 0

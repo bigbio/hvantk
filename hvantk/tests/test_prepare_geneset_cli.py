@@ -30,7 +30,11 @@ def test_valid_tsv_produces_complete_json(runner, tmp_path):
     # Structure
     assert data["n_gene_sets"] == 3
     assert data["metadata"]["hgnc_validated"] is False
-    assert set(data["gene_sets"].keys()) == {"cardiac_panel", "epilepsy_panel", "ras_pathway"}
+    assert set(data["gene_sets"].keys()) == {
+        "cardiac_panel",
+        "epilepsy_panel",
+        "ras_pathway",
+    }
 
     # Gene set contents
     cardiac = data["gene_sets"]["cardiac_panel"]
@@ -67,9 +71,13 @@ def test_cli_rejects_invalid_input(runner, tmp_path):
 def test_overwrite_flag(runner, tmp_path):
     """Refuse overwrite without flag; allow with --overwrite."""
     out = str(tmp_path / "out.json")
-    runner.invoke(prepare_geneset_cmd, ["-i", str(TESTDATA / "valid_panels.tsv"), "-o", out])
+    runner.invoke(
+        prepare_geneset_cmd, ["-i", str(TESTDATA / "valid_panels.tsv"), "-o", out]
+    )
     # Without --overwrite → fail
-    result = runner.invoke(prepare_geneset_cmd, ["-i", str(TESTDATA / "valid_panels.tsv"), "-o", out])
+    result = runner.invoke(
+        prepare_geneset_cmd, ["-i", str(TESTDATA / "valid_panels.tsv"), "-o", out]
+    )
     assert result.exit_code != 0
     assert "already exists" in result.output
     # With --overwrite → succeed
@@ -84,10 +92,26 @@ def test_overwrite_flag(runner, tmp_path):
 def test_hgnc_validation_resolves_aliases(mock_load, runner, tmp_path):
     """HGNC validation flag resolves aliases in output."""
     canonical = {
-        "BRCA1", "BRCA2", "TP53", "EGFR", "ERCC1",
-        "MYH7", "TNNT2", "LMNA", "SCN5A", "TTN",
-        "SCN1A", "SCN2A", "KCNQ2", "STXBP1", "GABRA1",
-        "BRAF", "KRAS", "NRAS", "HRAS", "MAP2K1",
+        "BRCA1",
+        "BRCA2",
+        "TP53",
+        "EGFR",
+        "ERCC1",
+        "MYH7",
+        "TNNT2",
+        "LMNA",
+        "SCN5A",
+        "TTN",
+        "SCN1A",
+        "SCN2A",
+        "KCNQ2",
+        "STXBP1",
+        "GABRA1",
+        "BRAF",
+        "KRAS",
+        "NRAS",
+        "HRAS",
+        "MAP2K1",
     }
     mock_load.return_value = (
         canonical,
@@ -97,8 +121,14 @@ def test_hgnc_validation_resolves_aliases(mock_load, runner, tmp_path):
     out = str(tmp_path / "out.json")
     result = runner.invoke(
         prepare_geneset_cmd,
-        ["-i", str(TESTDATA / "with_aliases.tsv"), "-o", out,
-         "--hgnc", str(TESTDATA / "valid_panels.tsv")],
+        [
+            "-i",
+            str(TESTDATA / "with_aliases.tsv"),
+            "-o",
+            out,
+            "--hgnc",
+            str(TESTDATA / "valid_panels.tsv"),
+        ],
     )
     assert result.exit_code == 0, result.output
     data = json.loads(Path(out).read_text())
@@ -113,7 +143,14 @@ def test_export_gmt(runner, tmp_path):
     out_gmt = str(tmp_path / "out.gmt")
     result = runner.invoke(
         prepare_geneset_cmd,
-        ["-i", str(TESTDATA / "valid_panels.tsv"), "-o", out_json, "--export-gmt", out_gmt],
+        [
+            "-i",
+            str(TESTDATA / "valid_panels.tsv"),
+            "-o",
+            out_json,
+            "--export-gmt",
+            out_gmt,
+        ],
     )
     assert result.exit_code == 0, result.output
     lines = Path(out_gmt).read_text().strip().split("\n")
