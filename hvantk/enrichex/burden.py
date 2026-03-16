@@ -1598,6 +1598,26 @@ def permutation_burden_test(
                     qual_mat[gene_to_idx[g], j] = 1
     qual_mat = csr_matrix(qual_mat)
 
+    # Length-matched bins — compute from raw (unnormalized) qualifying counts
+    # so bins reflect actual gene variant density, not normalized burden.
+    if length_matched:
+        gene_qual_counts = np.asarray(qual_mat.sum(axis=1)).flatten()
+        from hvantk.enrichex.constants import DEFAULT_N_LENGTH_BINS
+
+        n_bins = min(DEFAULT_N_LENGTH_BINS, n_genes // 5)
+        if n_bins < 2:
+            length_matched = False
+            logger.warning("Too few genes for length-matched sampling, using uniform")
+        else:
+            bin_edges = np.percentile(gene_qual_counts, np.linspace(0, 100, n_bins + 1))
+            gene_bins = np.digitize(gene_qual_counts, bin_edges[1:-1])
+            bin_to_indices: Dict[int, List[int]] = {}
+            for idx in range(n_genes):
+                b = int(gene_bins[idx])
+                if b not in bin_to_indices:
+                    bin_to_indices[b] = []
+                bin_to_indices[b].append(idx)
+
     # Gene-length normalization: weight qualifying entries by 1/gene_length
     if normalize_by_length:
         sorted_genes = sorted(gene_to_idx.keys(), key=lambda g: gene_to_idx[g])
@@ -1625,25 +1645,6 @@ def permutation_burden_test(
 
         qual_mat = diags(1.0 / norm_arr) @ qual_mat
         qual_mat = csr_matrix(qual_mat)
-
-    # Length-matched bins
-    if length_matched:
-        gene_qual_counts = np.asarray(qual_mat.sum(axis=1)).flatten()
-        from hvantk.enrichex.constants import DEFAULT_N_LENGTH_BINS
-
-        n_bins = min(DEFAULT_N_LENGTH_BINS, n_genes // 5)
-        if n_bins < 2:
-            length_matched = False
-            logger.warning("Too few genes for length-matched sampling, using uniform")
-        else:
-            bin_edges = np.percentile(gene_qual_counts, np.linspace(0, 100, n_bins + 1))
-            gene_bins = np.digitize(gene_qual_counts, bin_edges[1:-1])
-            bin_to_indices: Dict[int, List[int]] = {}
-            for idx in range(n_genes):
-                b = int(gene_bins[idx])
-                if b not in bin_to_indices:
-                    bin_to_indices[b] = []
-                bin_to_indices[b].append(idx)
 
     # Prepare phenotype and covariate arrays
     y = np.array(samples_df[phenotype_field], dtype=np.float64)
