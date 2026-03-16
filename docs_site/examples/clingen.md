@@ -100,14 +100,14 @@ genesets = streamer.get_geneset_per_disease(min_classification="Moderate")
 
 # Ontology-based categorization (requires MONDO OBO file)
 results = streamer.categorize_by_ontology(
-    mondo_obo_path="data/mondo.obo",
+    ontology="data/mondo.obo",
     min_classification="Limited"
 )
 # results["cardiovascular disease"]["genes"] -> set of genes
 
 # Get summary DataFrame of ontology categories
 summary_df = streamer.categorize_by_ontology_summary(
-    mondo_obo_path="data/mondo.obo"
+    ontology="data/mondo.obo"
 )
 
 # Get summary statistics
