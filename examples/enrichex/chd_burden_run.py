@@ -163,7 +163,7 @@ def main():
         gene_set_collections=gene_set_collections,
         variant_classes=build_variant_classes(
             max_af=args.max_af,
-            min_score=args.min_score,
+            min_score=args.min_cadd,
         ),
         gene_field="SYMBOL",
         min_carriers=args.min_carriers,
