@@ -39,16 +39,16 @@ def test_validate_vcfs_paths():
 
 @pytest.mark.hail
 @pytest.mark.order2
-def test_combine_gvcfs():
+def test_combine_gvcfs(tmp_path):
     """Test combining GVCFs into a VDS."""
     gvcf_dir = TESTS_DIR / "gvcfs"
-    vds_output_path = TESTS_DIR / "vds/cohort.vds"
-    tmp_path = TESTS_DIR.parent / "local/tmp"
-    plan_path = tmp_path / "combiner_plan.json"
+    vds_output_path = tmp_path / "cohort.vds"
+    combiner_tmp = tmp_path / "tmp"
+    plan_path = combiner_tmp / "combiner_plan.json"
     combine_gvcfs(
         gvcf_dir=str(gvcf_dir),
         vds_output_path=str(vds_output_path),
-        tmp_path=str(tmp_path),
+        tmp_path=str(combiner_tmp),
         save_path=str(plan_path),
         vdses=[],
         kwargs={},
@@ -58,13 +58,9 @@ def test_combine_gvcfs():
 
     compress_files(
         source_dir=str(vds_output_path),
-        output_zip=str(vds_output_path.with_suffix(".vds.zip")),
+        output_zip=str(tmp_path / "cohort.vds.zip"),
         remove_originals=True,
     )
-    if vds_output_path.exists():
-        shutil.rmtree(vds_output_path)
-    if tmp_path.exists():
-        shutil.rmtree(tmp_path)
 
 
 @pytest.mark.order3
