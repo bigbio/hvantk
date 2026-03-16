@@ -4,7 +4,13 @@ Tests for table_utils module.
 
 import pytest
 import hail as hl
-from hvantk.utils.table_utils import get_row_fields
+from hvantk.utils.table_utils import (
+    field_exists,
+    get_row_fields,
+    leaf_name,
+    resolve_field,
+    validate_fields,
+)
 
 # Mark as Hail-dependent
 pytestmark = pytest.mark.hail
@@ -286,3 +292,137 @@ def test_get_entry_fields_empty():
     # Check that it returns an empty set
     assert isinstance(fields, set)
     assert len(fields) == 0
+
+
+# ---------------------------------------------------------------------------
+# Tests for resolve_field / field_exists / validate_fields
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def table_with_struct():
+    """Table with a nested struct field."""
+    data = [
+        {"id": 1, "phe": hl.Struct(is_case=True, age=25)},
+        {"id": 2, "phe": hl.Struct(is_case=False, age=30)},
+    ]
+    return hl.Table.parallelize(data, key="id")
+
+
+@pytest.fixture
+def table_with_dotted_field():
+    """Table with a flat field whose name contains a dot (as from flatten())."""
+    ht = hl.Table.parallelize(
+        [{"id": 1, "phe": hl.Struct(is_case=True, age=25)}],
+        key="id",
+    )
+    # flatten() converts struct fields into dot-delimited flat fields
+    return ht.flatten()
+
+
+def test_resolve_field_flat(sample_table):
+    """resolve_field finds a plain top-level field."""
+    expr = resolve_field(sample_table, "name")
+    assert expr.dtype == hl.tstr
+
+
+def test_resolve_field_flat_dotted(table_with_dotted_field):
+    """resolve_field finds a flat field whose name contains a dot."""
+    # After flatten(), the field is literally named "phe.is_case"
+    expr = resolve_field(table_with_dotted_field, "phe.is_case")
+    assert expr.dtype == hl.tbool
+
+
+def test_resolve_field_struct_navigation(table_with_struct):
+    """resolve_field navigates into a struct when no flat match exists."""
+    expr = resolve_field(table_with_struct, "phe.is_case")
+    assert expr.dtype == hl.tbool
+
+
+def test_resolve_field_struct_navigation_deep():
+    """resolve_field navigates multiple struct levels."""
+    data = [
+        {"id": 1, "a": hl.Struct(b=hl.Struct(c=42))},
+    ]
+    ht = hl.Table.parallelize(data, key="id")
+    expr = resolve_field(ht, "a.b.c")
+    assert hl.eval(expr.collect()[0]) == 42
+
+
+def test_resolve_field_missing_raises(sample_table):
+    """resolve_field raises LookupError with available fields listed."""
+    with pytest.raises(LookupError, match="not found"):
+        resolve_field(sample_table, "nonexistent")
+
+
+def test_resolve_field_missing_dotted_raises(sample_table):
+    """resolve_field raises when both literal and struct navigation fail."""
+    with pytest.raises(LookupError, match="not found"):
+        resolve_field(sample_table, "no.such.field")
+
+
+def test_resolve_field_on_struct_expr(table_with_struct):
+    """resolve_field works directly on a StructExpression (e.g., mt.row)."""
+    expr = resolve_field(table_with_struct.row, "phe.is_case")
+    assert expr.dtype == hl.tbool
+
+
+def test_field_exists_true(sample_table):
+    """field_exists returns True for an existing field."""
+    assert field_exists(sample_table, "name") is True
+
+
+def test_field_exists_struct(table_with_struct):
+    """field_exists returns True for a nested struct path."""
+    assert field_exists(table_with_struct, "phe.is_case") is True
+
+
+def test_field_exists_false(sample_table):
+    """field_exists returns False for a missing field."""
+    assert field_exists(sample_table, "nonexistent") is False
+
+
+def test_validate_fields_all_valid(sample_table):
+    """validate_fields returns empty list when all fields exist."""
+    errors = validate_fields(sample_table, ["name", "age", "score"])
+    assert errors == []
+
+
+def test_validate_fields_some_missing(sample_table):
+    """validate_fields returns errors for missing fields only."""
+    errors = validate_fields(
+        sample_table,
+        ["name", "missing1", "age", "missing2"],
+        context="test table",
+    )
+    assert len(errors) == 2
+    assert "missing1" in errors[0]
+    assert "test table" in errors[0]
+    assert "missing2" in errors[1]
+
+
+def test_validate_fields_struct_path(table_with_struct):
+    """validate_fields accepts dotted struct paths."""
+    errors = validate_fields(table_with_struct, ["phe.is_case", "phe.age"])
+    assert errors == []
+
+
+# ---------------------------------------------------------------------------
+# Tests for leaf_name (no Hail needed)
+# ---------------------------------------------------------------------------
+
+
+class TestLeafName:
+    """Tests for leaf_name — pure string utility, no Hail required."""
+
+    def test_dotted_path(self):
+        assert leaf_name("phe.is_case") == "is_case"
+
+    def test_multi_level(self):
+        assert leaf_name("a.b.c") == "c"
+
+    def test_no_dots(self):
+        assert leaf_name("status") == "status"
+
+    def test_empty_string(self):
+        assert leaf_name("") == ""

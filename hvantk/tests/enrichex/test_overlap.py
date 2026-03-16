@@ -1,5 +1,7 @@
 """
 Tests for overlap enrichment analysis.
+
+These tests no longer require Hail — overlap enrichment uses scipy.
 """
 
 import pytest
@@ -16,7 +18,6 @@ from hvantk.enrichex.overlap import (
 )
 
 
-@pytest.mark.hail
 class TestOverlapResult:
     """Tests for OverlapResult dataclass."""
 
@@ -64,11 +65,10 @@ class TestOverlapResult:
         assert d["overlap_genes"] == ["A", "B"]
 
 
-@pytest.mark.hail
 class TestComputeOverlapEnrichment:
     """Tests for compute_overlap_enrichment function."""
 
-    def test_simple_enrichment(self, hail_session):
+    def test_simple_enrichment(self):
         """Test basic enrichment calculation."""
         # Create gene sets
         gene_sets_dict = {
@@ -106,7 +106,7 @@ class TestComputeOverlapEnrichment:
         # Odds ratio for enriched should be > 1
         assert enriched.odds_ratio > 1
 
-    def test_no_enrichment(self, hail_session):
+    def test_no_enrichment(self):
         """Test case with no enrichment."""
         gene_sets_dict = {
             "set1": ["A", "B", "C"],
@@ -130,7 +130,7 @@ class TestComputeOverlapEnrichment:
         for r in results:
             assert r.n_overlap == 0
 
-    def test_multiple_testing_correction(self, hail_session):
+    def test_multiple_testing_correction(self):
         """Test that multiple testing correction is applied."""
         gene_sets_dict = {
             "set1": ["A", "B", "C"],
@@ -169,7 +169,7 @@ class TestComputeOverlapEnrichment:
                 or abs(r_bonf.p_adjusted - r_bh.p_adjusted) < 1e-10
             )
 
-    def test_results_sorted_by_pvalue(self, hail_session):
+    def test_results_sorted_by_pvalue(self):
         """Test that results are sorted by p-value."""
         gene_sets_dict = {
             "high_overlap": ["A", "B", "C", "D", "E"],  # 5 genes
@@ -195,7 +195,7 @@ class TestComputeOverlapEnrichment:
         # First result should be high_overlap
         assert results[0].gene_set_name == "high_overlap"
 
-    def test_background_filtering(self, hail_session):
+    def test_background_filtering(self):
         """Test that genes not in background are filtered out."""
         gene_sets_dict = {
             "set1": ["A", "B", "C"],
@@ -217,7 +217,7 @@ class TestComputeOverlapEnrichment:
         # Only A and B should be counted (2 genes, not 3)
         assert results[0].n_query == 2
 
-    def test_empty_query(self, hail_session):
+    def test_empty_query(self):
         """Test with empty query list."""
         gene_sets_dict = {"set1": ["A", "B", "C"]}
         background = set("ABCDEFGHIJ")
@@ -234,7 +234,7 @@ class TestComputeOverlapEnrichment:
         # Should return empty results
         assert len(results) == 0
 
-    def test_query_not_in_background(self, hail_session):
+    def test_query_not_in_background(self):
         """Test when no query genes are in background."""
         gene_sets_dict = {"set1": ["A", "B", "C"]}
         background = {"A", "B", "C", "D", "E"}
@@ -252,7 +252,7 @@ class TestComputeOverlapEnrichment:
         # Should return empty (warning logged)
         assert len(results) == 0
 
-    def test_overlap_genes_list(self, hail_session):
+    def test_overlap_genes_list(self):
         """Test that overlap_genes contains correct genes."""
         gene_sets_dict = {
             "set1": ["A", "B", "C", "D"],
@@ -275,11 +275,10 @@ class TestComputeOverlapEnrichment:
         assert results[0].overlap_genes == sorted(results[0].overlap_genes)
 
 
-@pytest.mark.hail
 class TestComputeOverlapEnrichmentPandas:
     """Tests for compute_overlap_enrichment_pandas function."""
 
-    def test_pandas_output_format(self, hail_session):
+    def test_pandas_output_format(self):
         """Test that pandas function returns DataFrame."""
         gene_sets_dict = {
             "set1": ["A", "B", "C"],
@@ -319,7 +318,7 @@ class TestComputeOverlapEnrichmentPandas:
         for col in expected_columns:
             assert col in df.columns
 
-    def test_pandas_significant_column(self, hail_session):
+    def test_pandas_significant_column(self):
         """Test that significant column is correctly computed."""
         gene_sets_dict = {
             "enriched": ["A", "B", "C", "D", "E"],
@@ -345,7 +344,7 @@ class TestComputeOverlapEnrichmentPandas:
         enriched_row = df[df["gene_set_name"] == "enriched"].iloc[0]
         assert enriched_row["significant"] == True
 
-    def test_pandas_overlap_genes_string(self, hail_session):
+    def test_pandas_overlap_genes_string(self):
         """Test that overlap_genes is comma-separated string in DataFrame."""
         gene_sets_dict = {"set1": ["A", "B", "C"]}
         background = set("ABCDEFGHIJ")
@@ -368,7 +367,7 @@ class TestComputeOverlapEnrichmentPandas:
         genes = overlap_str.split(",")
         assert set(genes) == {"A", "B"}
 
-    def test_pandas_empty_results(self, hail_session):
+    def test_pandas_empty_results(self):
         """Test DataFrame structure with empty results."""
         gene_sets_dict = {"set1": ["A", "B", "C"]}
         background = {"A", "B", "C"}
@@ -389,11 +388,10 @@ class TestComputeOverlapEnrichmentPandas:
         assert "p_value" in df.columns
 
 
-@pytest.mark.hail
 class TestOverlapEnrichmentIntegration:
     """Integration tests for overlap enrichment."""
 
-    def test_realistic_scenario(self, hail_session):
+    def test_realistic_scenario(self):
         """Test realistic gene set enrichment scenario."""
         # Simulate cell-type marker genes
         gene_sets_dict = {

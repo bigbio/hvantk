@@ -20,7 +20,11 @@ import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Set, Union
+from typing import Any, Dict, Iterable, List, Optional, Set, TYPE_CHECKING, Union
+
+if TYPE_CHECKING:
+    import hail as hl
+    import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +36,8 @@ __all__ = [
     "load_gene_sets_from_dict",
     "load_marker_genes",
     "load_gene_sets",
+    # Marker extraction
+    "extract_marker_gene_sets",
     # Simple utilities
     "load_gene_set",
     "load_sample_chd_gene_set",
@@ -572,6 +578,191 @@ def load_gene_sets(
         raise ValueError(
             f"Unknown gene set file format: {suffix}. " "Supported formats: .json, .gmt"
         )
+
+
+# =============================================================================
+# Marker Gene Extraction
+# =============================================================================
+
+
+def extract_marker_gene_sets(
+    summary: Union["hl.Table", "pd.DataFrame", str],
+    n_markers: int = 200,
+    min_fold_change: float = 1.5,
+    min_fraction_expressed: float = 0.1,
+    method: str = "fold_change",
+    gene_id_field: str = "gene_id",
+    gene_name_field: Optional[str] = "gene_name",
+) -> GeneSetCollection:
+    """Extract top marker genes per group from an expression summary Table.
+
+    Operates on the summary Table produced by
+    :func:`~hvantk.utils.matrix_utils.summarize_expression`.  The summary
+    Table is small (one row per gene) so this function works entirely in
+    pandas — no Hail needed after the initial conversion.
+
+    Parameters
+    ----------
+    summary : hl.Table, pd.DataFrame, or str
+        Summary Table (or path to ``.ht``) with a ``stats`` dict mapping
+        group labels to ``struct{mean, fraction_expressed, n_cells}``.
+        Also accepts an already-converted pandas DataFrame.
+    n_markers : int
+        Maximum markers per group.
+    min_fold_change : float
+        Minimum fold change to qualify as a marker.
+    min_fraction_expressed : float
+        Minimum fraction of cells expressing a gene in the group.
+    method : str
+        ``"fold_change"`` (mean_in_group / mean_in_other_groups) or
+        ``"specificity"`` (mean_in_group / mean_across_all).
+    gene_id_field : str
+        Column name for gene IDs in the summary.
+    gene_name_field : str or None
+        Column name for gene names.  None to omit.
+
+    Returns
+    -------
+    GeneSetCollection
+        One GeneSet per group, with per-gene fold-change scores in metadata.
+    """
+    import pandas as pd
+
+    if method not in ("fold_change", "specificity"):
+        raise ValueError(
+            f"Unknown method '{method}'. Use 'fold_change' or 'specificity'."
+        )
+
+    df = _summary_to_dataframe(summary, gene_id_field, gene_name_field)
+
+    # Discover groups from the stats columns (prefixed by the group label)
+    stat_cols = [c for c in df.columns if c.endswith("_mean")]
+    groups = [c.rsplit("_mean", 1)[0] for c in stat_cols]
+
+    if not groups:
+        raise ValueError("No groups found in summary table.")
+
+    # Build wide arrays for vectorised computation
+    means = pd.DataFrame({g: df[f"{g}_mean"] for g in groups}, index=df.index)
+    fracs = pd.DataFrame(
+        {g: df[f"{g}_fraction_expressed"] for g in groups}, index=df.index
+    )
+
+    all_genes = set(df[gene_id_field].tolist())
+    gene_sets: Dict[str, GeneSet] = {}
+
+    for group in groups:
+        group_mean = means[group]
+        group_frac = fracs[group]
+
+        # Compute fold change
+        if method == "fold_change":
+            other_cols = [g for g in groups if g != group]
+            if other_cols:
+                other_mean = means[other_cols].mean(axis=1)
+            else:
+                other_mean = group_mean  # single group edge case
+            # Avoid division by zero
+            denom = other_mean.replace(0, 1e-10)
+            fc = group_mean / denom
+        else:  # specificity
+            global_mean = means.mean(axis=1)
+            denom = global_mean.replace(0, 1e-10)
+            fc = group_mean / denom
+
+        # Apply filters
+        mask = (group_frac >= min_fraction_expressed) & (fc >= min_fold_change)
+        candidates = df.loc[mask].copy()
+        candidates["_fc"] = fc[mask]
+
+        # Rank and take top N
+        candidates = candidates.sort_values("_fc", ascending=False).head(n_markers)
+
+        if candidates.empty:
+            logger.warning("Group '%s': no markers passed filters.", group)
+            continue
+
+        # Use gene names if available, else gene IDs
+        use_names = gene_name_field and gene_name_field in candidates.columns
+        gene_col = gene_name_field if use_names else gene_id_field
+        genes = set(candidates[gene_col].tolist())
+
+        # Store per-gene scores in metadata
+        scores = {
+            row[gene_col]: round(row["_fc"], 4) for _, row in candidates.iterrows()
+        }
+
+        gene_sets[group] = GeneSet(
+            name=group,
+            genes=genes,
+            source=f"marker:{group}",
+            metadata={"fold_changes": scores, "method": method},
+        )
+
+    logger.info(
+        "Extracted markers for %d/%d groups (method=%s, top_n=%d)",
+        len(gene_sets),
+        len(groups),
+        method,
+        n_markers,
+    )
+
+    return GeneSetCollection(
+        gene_sets=gene_sets,
+        background_genes=all_genes,
+        source_description=(
+            f"Marker genes extracted via {method} "
+            f"(n={n_markers}, min_fc={min_fold_change}, "
+            f"min_frac={min_fraction_expressed})"
+        ),
+    )
+
+
+def _summary_to_dataframe(
+    summary,
+    gene_id_field: str = "gene_id",
+    gene_name_field: Optional[str] = "gene_name",
+) -> "pd.DataFrame":
+    """Convert a summary Table/path/DataFrame to a wide pandas DataFrame.
+
+    The ``stats`` dict column is exploded into ``{group}_mean``,
+    ``{group}_fraction_expressed``, ``{group}_n_cells`` columns.
+    """
+    import pandas as pd
+
+    if isinstance(summary, str):
+        import hail as hl
+
+        summary = hl.read_table(summary)
+
+    if not isinstance(summary, pd.DataFrame):
+        # Assume Hail Table
+        summary = summary.to_pandas()
+
+    if "stats" not in summary.columns:
+        # Already a wide DataFrame — return as-is
+        return summary
+
+    # Explode the stats dict into wide columns
+    rows = []
+    for _, row in summary.iterrows():
+        flat = {gene_id_field: row.get(gene_id_field)}
+        if gene_name_field and gene_name_field in row.index:
+            flat[gene_name_field] = row.get(gene_name_field)
+        stats = row["stats"]
+        if isinstance(stats, dict):
+            for group, s in stats.items():
+                if hasattr(s, "mean"):
+                    flat[f"{group}_mean"] = s.mean
+                    flat[f"{group}_fraction_expressed"] = s.fraction_expressed
+                    flat[f"{group}_n_cells"] = s.n_cells
+                elif isinstance(s, dict):
+                    flat[f"{group}_mean"] = s.get("mean", 0)
+                    flat[f"{group}_fraction_expressed"] = s.get("fraction_expressed", 0)
+                    flat[f"{group}_n_cells"] = s.get("n_cells", 0)
+        rows.append(flat)
+
+    return pd.DataFrame(rows)
 
 
 # =============================================================================

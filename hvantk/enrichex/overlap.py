@@ -2,24 +2,19 @@
 Overlap enrichment analysis using Fisher's exact test.
 
 This module provides functions for testing whether a query gene list is
-enriched in gene sets using Fisher's exact test via Hail.
+enriched in gene sets using Fisher's exact test via scipy.
 """
 
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-try:  # Optional dependency: Hail is only needed for actual enrichment tests
-    import hail as hl
-except ModuleNotFoundError as exc:  # pragma: no cover - depends on env
-    hl = None  # type: ignore
-    _HAIL_IMPORT_ERROR = exc
-else:
-    _HAIL_IMPORT_ERROR = None
+from scipy.stats import fisher_exact
 
-from hvantk.enrichex.correction import apply_correction
+from hvantk.utils.correction import apply_correction
 from hvantk.utils.gene_sets import GeneSetCollection
 
 logger = logging.getLogger(__name__)
@@ -97,7 +92,7 @@ def compute_overlap_enrichment(
 ) -> List[OverlapResult]:
     """Test enrichment of query genes in each gene set using Fisher's exact test.
 
-    This function uses Hail's fisher_exact_test() to compute enrichment
+    This function uses scipy's fisher_exact() to compute enrichment
     statistics for each gene set in the collection.
 
     The test uses a 2x2 contingency table:
@@ -134,7 +129,6 @@ def compute_overlap_enrichment(
     >>> for r in results[:5]:
     ...     print(f"{r.gene_set_name}: p={r.p_adjusted:.2e}, OR={r.odds_ratio:.2f}")
     """
-    _require_hail()
     query_set = set(query_genes)
     background = gene_set_collection.background_genes
 
@@ -186,9 +180,21 @@ def compute_overlap_enrichment(
             )
             continue
 
-        # Fisher's exact test using Hail
+        # Fisher's exact test using scipy
         try:
-            fisher_result = hl.eval(hl.fisher_exact_test(a, b, c, d))
+            table = [[a, b], [c, d]]
+            odds_ratio, p_value = fisher_exact(table, alternative="two-sided")
+
+            # 95% CI for odds ratio using log-OR normal approximation
+            # When any cell is zero, CI is unbounded
+            if a > 0 and b > 0 and c > 0 and d > 0:
+                log_or = math.log(odds_ratio)
+                se_log_or = math.sqrt(1 / a + 1 / b + 1 / c + 1 / d)
+                ci_lower = math.exp(log_or - 1.96 * se_log_or)
+                ci_upper = math.exp(log_or + 1.96 * se_log_or)
+            else:
+                ci_lower = 0.0
+                ci_upper = float("inf")
 
             results.append(
                 OverlapResult(
@@ -197,10 +203,10 @@ def compute_overlap_enrichment(
                     n_gene_set=n_gene_set,
                     n_overlap=n_overlap,
                     n_background=n_background,
-                    p_value=fisher_result.p_value,
-                    odds_ratio=fisher_result.odds_ratio,
-                    ci_lower=fisher_result.ci_95_lower,
-                    ci_upper=fisher_result.ci_95_upper,
+                    p_value=p_value,
+                    odds_ratio=odds_ratio,
+                    ci_lower=ci_lower,
+                    ci_upper=ci_upper,
                     overlap_genes=sorted(overlap),
                 )
             )
@@ -261,7 +267,6 @@ def compute_overlap_enrichment_pandas(
     >>> df = compute_overlap_enrichment_pandas(query_genes, gene_sets)
     >>> df[df['significant']].sort_values('p_adjusted')
     """
-    _require_hail()
     import pandas as pd
 
     results = compute_overlap_enrichment(
@@ -292,11 +297,3 @@ def compute_overlap_enrichment_pandas(
     df["significant"] = df["p_adjusted"] < 0.05
 
     return df
-
-
-def _require_hail() -> None:
-    if hl is None:  # pragma: no cover - depends on env
-        raise ImportError(
-            "Hail is required for overlap enrichment. "
-            "Install hvantk with the 'hail' extra."
-        ) from _HAIL_IMPORT_ERROR

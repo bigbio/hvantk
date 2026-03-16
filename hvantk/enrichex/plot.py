@@ -14,7 +14,7 @@ import io
 import logging
 from itertools import cycle
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
@@ -99,6 +99,12 @@ def plot_enrichment_dotplot(
     matplotlib.figure.Figure
         The created figure (left open for further customization).
     """
+    if results_df.empty:
+        logger.warning("No enrichment results available to plot.")
+        return _empty_figure(
+            output_path, format=format, dpi=dpi, title=title or "Enrichment Dot Plot"
+        )
+
     required_cols = {"gene_set_name", size_by}
     _check_dataframe(results_df, required_cols)
     p_col = _resolve_pvalue_column(results_df)
@@ -107,7 +113,10 @@ def plot_enrichment_dotplot(
     if "n_overlap" in df.columns:
         df = df[df["n_overlap"] >= max(min_overlap, 0)]
     if df.empty:
-        raise ValueError("No enrichment results available to plot.")
+        logger.warning("No enrichment results available to plot.")
+        return _empty_figure(
+            output_path, format=format, dpi=dpi, title=title or "Enrichment Dot Plot"
+        )
 
     if sort_by not in df.columns:
         raise ValueError(f"Column '{sort_by}' not found in results.")
@@ -116,7 +125,10 @@ def plot_enrichment_dotplot(
     if top_n is not None:
         df = df.head(top_n)
     if df.empty:
-        raise ValueError("Filtering removed all rows to plot.")
+        logger.warning("Filtering removed all rows to plot.")
+        return _empty_figure(
+            output_path, format=format, dpi=dpi, title=title or "Enrichment Dot Plot"
+        )
 
     df["plot_order"] = range(len(df))
 
@@ -253,6 +265,12 @@ def plot_burden_forest(
 
     Parameters mirror the implementation plan documented under section 3.2.
     """
+    if results_df.empty:
+        logger.warning("No burden results available to plot.")
+        return _empty_figure(
+            output_path, format=format, dpi=dpi, title=title or "Burden Forest Plot"
+        )
+
     required_columns = {"gene_set_name", sort_by}
     effect_col = "odds_ratio" if phenotype_type == "binary" else "beta"
     required_columns.update({effect_col, "ci_lower", "ci_upper"})
@@ -267,7 +285,10 @@ def plot_burden_forest(
     if top_n is not None:
         df = df.head(top_n)
     if df.empty:
-        raise ValueError("No burden results available to plot.")
+        logger.warning("No burden results available to plot.")
+        return _empty_figure(
+            output_path, format=format, dpi=dpi, title=title or "Burden Forest Plot"
+        )
 
     if sns is not None:
         sns.set_style("whitegrid")
@@ -430,6 +451,11 @@ def plot_enrichment_barplot(
     orientation = orientation.lower()
     if orientation not in {"horizontal", "vertical"}:
         raise ValueError("orientation must be 'horizontal' or 'vertical'.")
+    if results_df.empty:
+        logger.warning("No enrichment results available to plot.")
+        return _empty_figure(
+            output_path, format=format, dpi=dpi, title=title or "Enrichment Bar Plot"
+        )
     _check_dataframe(results_df, {"gene_set_name"})
     df = results_df.copy()
     p_col = _resolve_pvalue_column(df)
@@ -444,7 +470,10 @@ def plot_enrichment_barplot(
     df = df.nsmallest(top_n, p_col)
     df = df.sort_values(value, ascending=orientation == "vertical")
     if df.empty:
-        raise ValueError("No enrichment results available to plot.")
+        logger.warning("No enrichment results available to plot.")
+        return _empty_figure(
+            output_path, format=format, dpi=dpi, title=title or "Enrichment Bar Plot"
+        )
 
     color_values, color_config = _resolve_color_encoding(
         df,
@@ -535,6 +564,484 @@ def plot_enrichment_barplot(
     return fig
 
 
+def plot_celltype_burden_heatmap(
+    results_df: pd.DataFrame,
+    output_path: str,
+    variant_classes: Optional[List[str]] = None,
+    significance_threshold: float = 0.05,
+    figsize: Tuple[int, int] = (12, 10),
+    dpi: int = 300,
+    cmap: str = "RdYlBu_r",
+    title: Optional[str] = None,
+    format: str = "png",
+) -> plt.Figure:
+    """
+    Create a cross-tissue cell-type burden heatmap.
+
+    Parameters
+    ----------
+    results_df : pd.DataFrame
+        Combined burden results with columns: gene_set_name, variant_class,
+        collection (tissue), p_adjusted, p_value.
+    output_path : str
+        Output file path.
+    variant_classes : Optional[List[str]]
+        Variant classes to include as columns. Auto-detected if None.
+    significance_threshold : float
+        Significance threshold for star annotations.
+    figsize : Tuple[int, int]
+        Figure size in inches.
+    dpi : int
+        Resolution for raster formats.
+    cmap : str
+        Matplotlib colormap name.
+    title : Optional[str]
+        Plot title. Defaults to "Cell-Type Burden Heatmap".
+    format : str
+        Export format (png, pdf, svg, ...).
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        The created figure.
+    """
+    if results_df.empty:
+        fig = _empty_figure(
+            title=title or "Cell-Type Burden Heatmap",
+            message="No data available",
+            figsize=figsize,
+        )
+        _save_figure(fig, output_path, format=format, dpi=dpi)
+        return fig
+
+    required_cols = {"gene_set_name", "variant_class", "collection"}
+    _check_dataframe(results_df, required_cols)
+    p_col = _resolve_pvalue_column(results_df)
+
+    df = results_df.copy()
+
+    # Determine variant classes
+    if variant_classes is None:
+        variant_classes = sorted(df["variant_class"].unique().tolist())
+    else:
+        df = df[df["variant_class"].isin(variant_classes)]
+
+    if df.empty:
+        fig = _empty_figure(
+            title=title or "Cell-Type Burden Heatmap",
+            message="No data after filtering by variant classes",
+            figsize=figsize,
+        )
+        _save_figure(fig, output_path, format=format, dpi=dpi)
+        return fig
+
+    # Sort by collection then gene_set_name for grouping
+    df = df.sort_values(["collection", "gene_set_name"])
+
+    # Build row labels: (collection, gene_set_name) pairs
+    row_keys = (
+        df[["collection", "gene_set_name"]]
+        .drop_duplicates()
+        .sort_values(["collection", "gene_set_name"])
+    )
+    row_labels = [
+        f"{row['collection']} | {row['gene_set_name']}"
+        for _, row in row_keys.iterrows()
+    ]
+    n_rows = len(row_labels)
+    n_cols = len(variant_classes)
+
+    # Build heatmap matrix and significance matrix
+    heatmap_data = np.full((n_rows, n_cols), np.nan)
+    pvalue_data = np.full((n_rows, n_cols), np.nan)
+
+    row_index_map = {
+        (row["collection"], row["gene_set_name"]): i
+        for i, (_, row) in enumerate(row_keys.iterrows())
+    }
+    col_index_map = {vc: j for j, vc in enumerate(variant_classes)}
+
+    for _, row in df.iterrows():
+        r = row_index_map.get((row["collection"], row["gene_set_name"]))
+        c = col_index_map.get(row["variant_class"])
+        if r is not None and c is not None:
+            pval = row[p_col]
+            heatmap_data[r, c] = min(-np.log10(max(pval, 1e-300)), 10.0)
+            pvalue_data[r, c] = pval
+
+    if sns is not None:
+        sns.set_style("whitegrid")
+
+    fig, ax = plt.subplots(figsize=figsize)
+    im = ax.imshow(
+        heatmap_data,
+        aspect="auto",
+        cmap=cmap,
+        interpolation="nearest",
+        vmin=0,
+        vmax=10,
+    )
+
+    # Add colorbar
+    fig.colorbar(im, ax=ax, label="-log10(p-adjusted)", shrink=0.6)
+
+    # Add significance stars
+    for i in range(n_rows):
+        for j in range(n_cols):
+            pval = pvalue_data[i, j]
+            if np.isnan(pval):
+                continue
+            if pval < 0.001:
+                marker = "***"
+            elif pval < 0.01:
+                marker = "**"
+            elif pval < significance_threshold:
+                marker = "*"
+            else:
+                marker = ""
+            if marker:
+                ax.text(
+                    j,
+                    i,
+                    marker,
+                    ha="center",
+                    va="center",
+                    color="black",
+                    fontsize=8,
+                    fontweight="bold",
+                )
+
+    # Axis labels
+    ax.set_xticks(np.arange(n_cols))
+    ax.set_xticklabels(variant_classes, rotation=45, ha="right")
+    ax.set_yticks(np.arange(n_rows))
+    ax.set_yticklabels(row_labels, fontsize=8)
+
+    # Add horizontal separators between tissues
+    collections = row_keys["collection"].tolist()
+    for i in range(1, len(collections)):
+        if collections[i] != collections[i - 1]:
+            ax.axhline(i - 0.5, color="white", linewidth=2)
+
+    ax.set_title(title or "Cell-Type Burden Heatmap")
+    fig.tight_layout()
+
+    _save_figure(fig, output_path, format=format, dpi=dpi)
+    return fig
+
+
+def plot_burden_volcano(
+    results_df: pd.DataFrame,
+    output_path: str,
+    effect_col: str = "beta",
+    top_n_labels: int = 10,
+    significance_threshold: float = 0.05,
+    color_by: str = "variant_class",
+    figsize: Tuple[int, int] = (10, 8),
+    dpi: int = 300,
+    title: Optional[str] = None,
+    format: str = "png",
+) -> plt.Figure:
+    """
+    Create a volcano plot for burden test results.
+
+    Parameters
+    ----------
+    results_df : pd.DataFrame
+        Burden results with columns for effect size and p-values.
+    output_path : str
+        Output file path.
+    effect_col : str
+        Column for x-axis effect size (e.g. "beta" or "odds_ratio").
+    top_n_labels : int
+        Number of most significant points to label.
+    significance_threshold : float
+        Threshold for significance line.
+    color_by : str
+        Column for point coloring (variant_class, collection, or "significant").
+    figsize : Tuple[int, int]
+        Figure size in inches.
+    dpi : int
+        Resolution for raster formats.
+    title : Optional[str]
+        Plot title. Defaults to "Burden Volcano Plot".
+    format : str
+        Export format (png, pdf, svg, ...).
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        The created figure.
+    """
+    if results_df.empty:
+        fig = _empty_figure(
+            title=title or "Burden Volcano Plot",
+            message="No data available",
+            figsize=figsize,
+        )
+        _save_figure(fig, output_path, format=format, dpi=dpi)
+        return fig
+
+    p_col = _resolve_pvalue_column(results_df)
+    required_cols = {effect_col}
+    _check_dataframe(results_df, required_cols)
+
+    df = results_df.copy()
+
+    if sns is not None:
+        sns.set_style("whitegrid")
+
+    # Compute -log10(p)
+    neg_log_p = -np.log10(df[p_col].clip(lower=1e-300))
+
+    # Determine x-axis values
+    if effect_col == "odds_ratio":
+        x_values = np.log2(df[effect_col].clip(lower=1e-300))
+        x_label = "log2(Odds Ratio)"
+        null_value = 0.0  # log2(1) = 0
+    else:
+        x_values = df[effect_col].to_numpy(dtype=float)
+        x_label = effect_col.replace("_", " ").title()
+        null_value = 0.0
+
+    # Resolve colors
+    color_values, color_config = _resolve_color_encoding(
+        df,
+        color_by=color_by,
+        alpha_threshold=significance_threshold,
+        p_col=p_col,
+    )
+
+    fig, ax = plt.subplots(figsize=figsize)
+
+    scatter_kwargs = {
+        "alpha": 0.7,
+        "edgecolor": "black",
+        "linewidth": 0.3,
+        "s": 40,
+    }
+    if color_config["mode"] == "continuous":
+        ax.scatter(
+            x_values, neg_log_p, c=color_values, cmap="viridis", **scatter_kwargs
+        )
+    else:
+        point_colors = [color_config["mapping"][val] for val in color_values]
+        ax.scatter(x_values, neg_log_p, c=point_colors, **scatter_kwargs)
+        handles = [
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="w",
+                markerfacecolor=color_config["mapping"][val],
+                markeredgecolor="black",
+                markersize=8,
+                label=_format_color_label(
+                    color_by=color_by,
+                    value=val,
+                    alpha_threshold=significance_threshold,
+                ),
+            )
+            for val in color_config["order"]
+        ]
+        ax.legend(handles=handles, loc="upper left", frameon=False)
+
+    # Significance threshold line
+    threshold_y = -np.log10(max(significance_threshold, 1e-300))
+    ax.axhline(
+        threshold_y,
+        color="#666666",
+        linestyle="--",
+        linewidth=1,
+        label=f"p = {significance_threshold:g}",
+    )
+
+    # Null effect line
+    ax.axvline(null_value, color="#666666", linestyle="--", linewidth=1)
+
+    # Label top N most significant hits
+    if top_n_labels > 0 and "gene_set_name" in df.columns:
+        label_df = df.nsmallest(top_n_labels, p_col)
+        for idx, row in label_df.iterrows():
+            loc = df.index.get_loc(idx)
+            ax.annotate(
+                row["gene_set_name"],
+                xy=(
+                    x_values[loc]
+                    if isinstance(x_values, np.ndarray)
+                    else x_values.iloc[loc],
+                    neg_log_p.iloc[loc],
+                ),
+                xytext=(5, 5),
+                textcoords="offset points",
+                fontsize=8,
+                ha="left",
+                va="bottom",
+            )
+
+    ax.set_xlabel(x_label)
+    ax.set_ylabel("-log10(p-value)")
+    ax.set_title(title or "Burden Volcano Plot")
+    fig.tight_layout()
+
+    _save_figure(fig, output_path, format=format, dpi=dpi)
+    return fig
+
+
+def plot_celltype_forest(
+    results_df: pd.DataFrame,
+    output_path: str,
+    cell_type: str,
+    effect_col: str = "odds_ratio",
+    figsize: Tuple[int, int] = (10, 6),
+    dpi: int = 300,
+    log_scale: bool = True,
+    title: Optional[str] = None,
+    format: str = "png",
+) -> plt.Figure:
+    """
+    Create a forest plot for a single cell type stratified by variant class.
+
+    Parameters
+    ----------
+    results_df : pd.DataFrame
+        Burden results with columns: gene_set_name, variant_class,
+        effect size column, ci_lower, ci_upper.
+    output_path : str
+        Output file path.
+    cell_type : str
+        Cell type (gene_set_name) to filter for.
+    effect_col : str
+        Column for effect size (odds_ratio or beta).
+    figsize : Tuple[int, int]
+        Figure size in inches.
+    dpi : int
+        Resolution for raster formats.
+    log_scale : bool
+        Use log scale for x-axis when effect_col is odds_ratio.
+    title : Optional[str]
+        Plot title. Defaults to "Forest Plot: {cell_type}".
+    format : str
+        Export format (png, pdf, svg, ...).
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        The created figure.
+    """
+    default_title = f"Forest Plot: {cell_type}"
+
+    if results_df.empty:
+        fig = _empty_figure(
+            title=title or default_title,
+            message="No data available",
+            figsize=figsize,
+        )
+        _save_figure(fig, output_path, format=format, dpi=dpi)
+        return fig
+
+    # Filter to the requested cell type
+    if "gene_set_name" not in results_df.columns:
+        fig = _empty_figure(
+            title=title or default_title,
+            message="Missing gene_set_name column",
+            figsize=figsize,
+        )
+        _save_figure(fig, output_path, format=format, dpi=dpi)
+        return fig
+
+    df = results_df[results_df["gene_set_name"] == cell_type].copy()
+    if df.empty:
+        fig = _empty_figure(
+            title=title or default_title,
+            message=f"No data for cell type '{cell_type}'",
+            figsize=figsize,
+        )
+        _save_figure(fig, output_path, format=format, dpi=dpi)
+        return fig
+
+    required_cols = {"variant_class", effect_col, "ci_lower", "ci_upper"}
+    _check_dataframe(df, required_cols)
+
+    if sns is not None:
+        sns.set_style("whitegrid")
+
+    df = df.sort_values("variant_class")
+    df.reset_index(drop=True, inplace=True)
+    positions = np.arange(len(df))
+
+    # Assign colors by variant class
+    variant_classes_list = df["variant_class"].tolist()
+    palette = _categorical_palette(variant_classes_list)
+    colors = [palette[vc] for vc in variant_classes_list]
+
+    # Null value
+    null_value = 1.0 if effect_col == "odds_ratio" else 0.0
+
+    fig, ax = plt.subplots(figsize=figsize)
+
+    # Error bars (CI)
+    ci_lower = df["ci_lower"].to_numpy(dtype=float)
+    ci_upper = df["ci_upper"].to_numpy(dtype=float)
+    effect_values = df[effect_col].to_numpy(dtype=float)
+
+    ax.hlines(
+        y=positions,
+        xmin=ci_lower,
+        xmax=ci_upper,
+        color="#444444",
+        linewidth=1.5,
+    )
+
+    # Scatter points
+    ax.scatter(
+        effect_values,
+        positions,
+        c=colors,
+        s=100,
+        alpha=0.9,
+        edgecolor="black",
+        linewidth=0.5,
+        zorder=5,
+    )
+
+    # Null reference line
+    ax.axvline(null_value, color="#555555", linestyle="--", linewidth=1)
+
+    # Labels
+    ax.set_yticks(positions)
+    ax.set_yticklabels(variant_classes_list)
+    ax.set_ylabel("Variant Class")
+
+    if log_scale and effect_col == "odds_ratio":
+        ax.set_xscale("log")
+        ax.set_xlabel("Odds Ratio (log scale)")
+    else:
+        ax.set_xlabel(effect_col.replace("_", " ").title())
+
+    ax.set_title(title or default_title)
+
+    # Add legend
+    handles = [
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="w",
+            markerfacecolor=palette[vc],
+            markeredgecolor="black",
+            markersize=8,
+            label=vc,
+        )
+        for vc in variant_classes_list
+    ]
+    ax.legend(handles=handles, loc="best", frameon=False)
+
+    fig.tight_layout()
+    _save_figure(fig, output_path, format=format, dpi=dpi)
+    return fig
+
+
 def encode_figure_to_base64(
     fig: plt.Figure,
     format: str = "png",
@@ -547,6 +1054,37 @@ def encode_figure_to_base64(
     fig.savefig(buffer, format=format, dpi=dpi, bbox_inches="tight")
     buffer.seek(0)
     return base64.b64encode(buffer.read()).decode("utf-8")
+
+
+def _empty_figure(
+    output_path: Optional[str] = None,
+    format: str = "png",
+    dpi: int = 300,
+    title: str = "No Data",
+    message: str = "No data available",
+    figsize: Tuple[int, int] = (8, 4),
+) -> plt.Figure:
+    """Create a placeholder figure when there is no data to plot."""
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.text(
+        0.5,
+        0.5,
+        message,
+        ha="center",
+        va="center",
+        fontsize=14,
+        color="#888888",
+        transform=ax.transAxes,
+    )
+    ax.set_title(title)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+    fig.tight_layout()
+    if output_path is not None:
+        _save_figure(fig, output_path, format=format, dpi=dpi)
+    return fig
 
 
 def _check_dataframe(df: pd.DataFrame, columns: Iterable[str]) -> None:

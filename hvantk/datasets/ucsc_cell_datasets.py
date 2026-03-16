@@ -73,6 +73,7 @@ class UCSCDataset:
     isCollection: Optional[bool] = False
     collectionCount: Optional[int] = None
     datasetCount: Optional[int] = None
+    children: Optional[List["UCSCDataset"]] = field(default=None, repr=False)
 
     def __post_init__(self):
         if self.facets is None:
@@ -153,6 +154,51 @@ class UCSCDataset:
                 f"Failed to download metadata for {self.name}: {str(e)}"
             ) from e
 
+    def fetch_children(self) -> List["UCSCDataset"]:
+        """Fetch child datasets from UCSC API for a collection.
+
+        Makes a single HTTP request to ``{base_url}/{name}/dataset.json``
+        and parses the ``datasets`` array.  Results are cached on the
+        ``children`` attribute so subsequent calls are free.
+
+        Returns empty list if not a collection or if the fetch fails.
+        """
+        if not self.isCollection:
+            return []
+
+        if self.children is not None:
+            return self.children
+
+        import requests
+
+        url = f"{UCSC_CELL_BROWSER_BASE_URL}/{self.name}/dataset.json"
+        try:
+            resp = requests.get(url, timeout=15)
+            resp.raise_for_status()
+            data = resp.json()
+        except Exception as exc:
+            logger.warning("Failed to fetch children for %s: %s", self.name, exc)
+            return []
+
+        children = []
+        for child in data.get("datasets", []):
+            children.append(
+                UCSCDataset(
+                    shortLabel=child.get("shortLabel", ""),
+                    name=child.get("name", ""),
+                    md5=child.get("md5", ""),
+                    sampleCount=child.get("sampleCount"),
+                    isCollection=child.get("isCollection", False),
+                    datasetCount=child.get("datasetCount"),
+                    body_parts=child.get("body_parts", []),
+                    organisms=child.get("organisms", []),
+                    diseases=child.get("diseases", []),
+                )
+            )
+
+        self.children = children
+        return children
+
 
 @dataclass
 class UCSCDataSetCollection:
@@ -226,6 +272,32 @@ class UCSCDataSetCollection:
             List of names for all datasets in the collection
         """
         return [dataset.name for dataset in self.datasets]
+
+    def search(self, query: str) -> "UCSCDataSetCollection":
+        """
+        Filter datasets by case-insensitive query across name, label, and facets.
+
+        Args:
+            query: Search term to match against dataset fields
+
+        Returns:
+            New collection containing only matching datasets
+        """
+        q = query.lower()
+        matches = []
+        for ds in self.datasets:
+            searchable = " ".join(
+                [
+                    ds.name,
+                    ds.shortLabel,
+                    " ".join(ds.body_parts or []),
+                    " ".join(ds.organisms or []),
+                    " ".join(ds.diseases or []),
+                ]
+            ).lower()
+            if q in searchable:
+                matches.append(ds)
+        return UCSCDataSetCollection(datasets=matches)
 
     def filter_by_organism(self, organism: str) -> "UCSCDataSetCollection":
         """

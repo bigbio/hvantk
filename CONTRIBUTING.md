@@ -51,7 +51,7 @@ Follow these guidelines:
 - Use fixtures in `hvantk/tests/testdata` for test data
 
 #### Documentation
-- Update relevant documentation in `docs/`
+- Update relevant documentation in `docs_site/`
 - Add docstrings to new functions and classes
 - Include usage examples where appropriate
 - Update README.md if adding major features
@@ -138,10 +138,10 @@ Follow this workflow when adding a new annotation source:
    - Test with various input scenarios
 
 5. **Update documentation**
-   - Add to [Annotation Sources](docs/library/annotation-sources.md)
-   - Add usage example to [Usage Guide](docs/library/usage.md)
+   - Add to [Annotation Sources](docs_site/guide/annotation-sources.md)
+   - Add usage example to [Usage Guide](docs_site/guide/usage.md)
 
-See [Architecture](docs/ARCHITECTURE.md) for detailed information on system design and extension points.
+See [Architecture](docs_site/architecture.md) for detailed information on system design and extension points.
 
 ## Code Review Process
 
@@ -172,8 +172,8 @@ All submissions require review:
 
 ## Questions?
 
-- **Documentation**: See [docs/](docs/)
-- **Architecture**: See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- **Documentation**: See [docs_site/](docs_site/)
+- **Architecture**: See [docs_site/architecture.md](docs_site/architecture.md)
 - **Issues**: [GitHub Issues](https://github.com/bigbio/hvantk/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/bigbio/hvantk/discussions)
 

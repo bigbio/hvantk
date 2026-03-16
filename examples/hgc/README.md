@@ -118,8 +118,8 @@ Shared scripts for all benchmarks:
 
 ## Documentation
 
-- [HGC Documentation](../../docs/tools/hgc.md)
-- [Architecture Overview](../../docs/ARCHITECTURE.md)
+- [HGC Documentation](../../docs_site/tools/hgc.md)
+- [Architecture Overview](../../docs_site/architecture.md)
 - [Scalability Guide](scalability/README.md)
 
 ## Requirements

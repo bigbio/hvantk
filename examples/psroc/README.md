@@ -162,13 +162,13 @@ The PSROC pipeline runs through 7 stages:
 6. **Compute ROC** - Generate ROC curves and AUC metrics
 7. **Generate Outputs** - Create plots, metrics JSON, and TSV exports
 
-See the [workflow diagram](../../docs/tools/psroc.md#workflow) for a visual representation.
+See the [workflow diagram](../../docs_site/tools/psroc.md#workflow) for a visual representation.
 
 ## Documentation
 
-- [PSROC Documentation](../../docs/tools/psroc.md)
-- [Usage Guide](../../docs/library/usage.md)
-- [Architecture](../../docs/ARCHITECTURE.md)
+- [PSROC Documentation](../../docs_site/tools/psroc.md)
+- [Usage Guide](../../docs_site/guide/usage.md)
+- [Architecture](../../docs_site/architecture.md)
 
 ## Troubleshooting
 

@@ -221,6 +221,6 @@ Key options:
 
 ## Documentation
 
-- **Full documentation**: [docs/tools/enrichex.md](../../docs/tools/enrichex.md)
+- **Full documentation**: [docs/tools/enrichex.md](../../docs_site/tools/enrichex.md)
 - **CLI help**: `hvantk enrichex --help`
 - **Issues**: [GitHub Issues](https://github.com/bigbio/hvantk/issues)

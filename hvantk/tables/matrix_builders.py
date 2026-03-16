@@ -56,7 +56,7 @@ def build_ucsc_mt(
     logger.info("Creating MatrixTable from UCSC expression matrix")
     mt = create_mt_from_ucsc_expression_matrix(
         expression_matrix_path=expression_matrix_path,
-        output_path=output_mt,
+        output_path=None,  # checkpoint after column summary annotation
         delimiter=delimiter,
         row_fields={gene_column: hl.tstr},
         row_key=gene_column,
@@ -67,6 +67,14 @@ def build_ucsc_mt(
         metadata_ht=metadata_ht,
         auto_convert_bgz=auto_convert_bgz,
     )
+
+    from hvantk.utils.matrix_utils import annotate_column_summary
+
+    mt = annotate_column_summary(mt)
+
+    if output_mt:
+        mt = mt.checkpoint(output_mt, overwrite=overwrite)
+
     return mt
 
 
@@ -106,7 +114,7 @@ def build_expression_atlas_mt(
     logger.info("Creating MatrixTable from Expression Atlas matrix")
     mt = create_mt_from_expression_atlas_matrix(
         expression_matrix_path=expression_matrix_path,
-        output_path=output_mt,
+        output_path=None,  # checkpoint after column summary annotation
         delimiter=delimiter,
         row_fields={gene_column: hl.tstr},
         row_key=gene_column,
@@ -116,6 +124,14 @@ def build_expression_atlas_mt(
         metadata_ht=metadata_ht,
         auto_convert_bgz=auto_convert_bgz,
     )
+
+    from hvantk.utils.matrix_utils import annotate_column_summary
+
+    mt = annotate_column_summary(mt)
+
+    if output_mt:
+        mt = mt.checkpoint(output_mt, overwrite=overwrite)
+
     return mt
 
 
@@ -163,6 +179,10 @@ def build_cptac_mt(
         categorical_cols=categorical_cols,
         numeric_cols=numeric_cols,
     )
+
+    from hvantk.utils.matrix_utils import annotate_column_summary
+
+    mt = annotate_column_summary(mt)
 
     if output_mt:
         logger.info("Checkpointing CPTAC MatrixTable to %s", output_mt)

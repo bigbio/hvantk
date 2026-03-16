@@ -1,0 +1,15 @@
+cardiac_panel	MYH7
+cardiac_panel	TNNT2
+cardiac_panel	LMNA
+cardiac_panel	SCN5A
+cardiac_panel	TTN
+epilepsy_panel	SCN1A
+epilepsy_panel	SCN2A
+epilepsy_panel	KCNQ2
+epilepsy_panel	STXBP1
+epilepsy_panel	GABRA1
+ras_pathway	BRAF
+ras_pathway	KRAS
+ras_pathway	NRAS
+ras_pathway	HRAS
+ras_pathway	MAP2K1

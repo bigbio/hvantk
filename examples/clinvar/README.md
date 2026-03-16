@@ -156,9 +156,9 @@ if result:
 
 ## Documentation
 
-- [ClinVar Table Builder](../../docs/library/usage.md)
-- [Table Builders Guide](../../docs/library/usage.md)
-- [Architecture](../../docs/ARCHITECTURE.md)
+- [ClinVar Table Builder](../../docs_site/guide/usage.md)
+- [Table Builders Guide](../../docs_site/guide/usage.md)
+- [Architecture](../../docs_site/architecture.md)
 
 ## Resources
 

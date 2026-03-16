@@ -30,7 +30,7 @@ python examples/hgc/hgc_qc_example.py
 
 **Outputs:** QC reports (HTML), dashboards (PNG), metrics (JSON)
 
-**Documentation:** [HGC README](hgc/README.md) | [HGC Docs](../docs/tools/hgc.md)
+**Documentation:** [HGC README](hgc/README.md) | [HGC Docs](../docs_site/tools/hgc.md)
 
 ---
 
@@ -50,7 +50,7 @@ python examples/psroc/run_psroc_example.py
 
 **Outputs:** ROC curves (PNG), AUC metrics (JSON), annotated variants (TSV)
 
-**Documentation:** [PSROC README](psroc/README.md) | [PSROC Docs](../docs/tools/psroc.md)
+**Documentation:** [PSROC README](psroc/README.md) | [PSROC Docs](../docs_site/tools/psroc.md)
 
 ---
 
@@ -80,7 +80,7 @@ python examples/enrichex/overlap_enrichment_example.py
 
 **Outputs:** Results (TSV), plots (PNG), HTML reports
 
-**Documentation:** [EnrichEx README](enrichex/README.md) | [EnrichEx Docs](../docs/tools/enrichex.md)
+**Documentation:** [EnrichEx README](enrichex/README.md) | [EnrichEx Docs](../docs_site/tools/enrichex.md)
 
 ---
 
@@ -389,9 +389,9 @@ init_hail()
 
 ### Getting Help
 
-- **Documentation**: See [`docs/`](../docs/)
-- **Usage Guide**: [`docs/library/usage.md`](../docs/library/usage.md)
-- **Architecture**: [`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md)
+- **Documentation**: See [`docs/`](../docs_site/)
+- **Usage Guide**: [`docs/library/usage.md`](../docs_site/guide/usage.md)
+- **Architecture**: [`docs/ARCHITECTURE.md`](../docs_site/architecture.md)
 - **Issues**: [GitHub Issues](https://github.com/bigbio/hvantk/issues)
 
 ---
@@ -414,12 +414,12 @@ See [`CONTRIBUTING.md`](../CONTRIBUTING.md) for guidelines.
 
 ### Documentation
 
-- [Library Usage Guide](../docs/library/usage.md)
-- [Annotation Sources](../docs/library/annotation-sources.md)
-- [HGC Documentation](../docs/tools/hgc.md)
-- [PSROC Documentation](../docs/tools/psroc.md)
-- [EnrichEx Documentation](../docs/tools/enrichex.md)
-- [Architecture Overview](../docs/ARCHITECTURE.md)
+- [Library Usage Guide](../docs_site/guide/usage.md)
+- [Annotation Sources](../docs_site/guide/annotation-sources.md)
+- [HGC Documentation](../docs_site/tools/hgc.md)
+- [PSROC Documentation](../docs_site/tools/psroc.md)
+- [EnrichEx Documentation](../docs_site/tools/enrichex.md)
+- [Architecture Overview](../docs_site/architecture.md)
 
 ### External Resources
 

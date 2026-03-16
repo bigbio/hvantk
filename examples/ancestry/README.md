@@ -117,4 +117,4 @@ query_mt = combined_mt.filter_cols(combined_mt.sample_idx >= 200)
 
 ## Documentation
 
-For full documentation, see [docs/tools/ancestry.md](../../docs/tools/ancestry.md).
+For full documentation, see [docs/tools/ancestry.md](../../docs_site/tools/ancestry.md).

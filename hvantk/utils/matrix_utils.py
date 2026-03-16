@@ -3,6 +3,8 @@ Utilities for working with Hail MatrixTable objects, specifically for gene expre
 
 This module provides functions for:
 - Summarizing MatrixTable contents
+- Column metadata summarization (annotate_column_summary, describe_expression_mt)
+- Expression summarization (summarize_expression)
 - Filtering MatrixTables based on various criteria
 
 Visualization utilities have been moved to hvantk.visualization.hail_expression.
@@ -13,11 +15,408 @@ The functions are designed to work with MatrixTables having the following struct
 - Entry fields: x (expression values)
 """
 
-from typing import List, Dict, Union, Optional
+import logging
+from typing import Any, List, Dict, Union, Optional
 
 import hail as hl
 import numpy as np
 import pandas as pd
+
+logger = logging.getLogger(__name__)
+
+
+def annotate_column_summary(
+    mt: hl.MatrixTable,
+    metadata_field: str = "metadata",
+    max_levels: int = 100,
+    top_n_levels: int = 10,
+) -> hl.MatrixTable:
+    """Annotate MatrixTable globals with a column metadata summary.
+
+    Computes a one-time summary of each column metadata field (type,
+    cardinality, value range) and stores it in ``mt.globals.column_summary``.
+    Reading the summary back is instant (no Spark job) because globals are
+    stored in the MatrixTable header.
+
+    Parameters
+    ----------
+    mt : hl.MatrixTable
+        Input MatrixTable with a ``metadata`` column struct.
+    metadata_field : str
+        Name of the column struct containing sample/cell metadata.
+    max_levels : int
+        Categorical fields with at most this many unique values have their
+        full level list stored.  Fields exceeding this threshold store only
+        the top *top_n_levels* by frequency.
+    top_n_levels : int
+        Number of most-frequent levels to store for high-cardinality
+        categorical fields.
+
+    Returns
+    -------
+    hl.MatrixTable
+        The input MatrixTable with an additional ``column_summary`` global.
+    """
+    if metadata_field not in mt.col:
+        logger.warning(
+            "No '%s' field in column schema — skipping column summary",
+            metadata_field,
+        )
+        return mt
+
+    metadata_fields = list(mt.col[metadata_field].dtype)
+    if not metadata_fields:
+        logger.warning("Metadata struct is empty — skipping column summary")
+        return mt
+
+    summaries: Dict[str, Dict[str, Any]] = {}
+
+    for field in metadata_fields:
+        field_type = mt.col[metadata_field][field].dtype
+        is_num = hl.is_numeric(field_type)
+
+        if is_num:
+            stats = mt.aggregate_cols(hl.agg.stats(mt[metadata_field][field]))
+            summaries[field] = {
+                "dtype": "numeric",
+                "n_levels": -1,
+                "levels": hl.empty_array(hl.tstr),
+                "top_levels": hl.empty_array(hl.tstr),
+                "truncated": False,
+                "min_val": float(stats.min) if stats.min is not None else 0.0,
+                "max_val": float(stats.max) if stats.max is not None else 0.0,
+                "mean_val": float(stats.mean) if stats.mean is not None else 0.0,
+            }
+        else:
+            counter = mt.aggregate_cols(hl.agg.counter(mt[metadata_field][field]))
+            n_levels = len(counter)
+
+            if n_levels <= max_levels:
+                levels = sorted(str(k) for k in counter.keys() if k is not None)
+                summaries[field] = {
+                    "dtype": "categorical",
+                    "n_levels": n_levels,
+                    "levels": levels,
+                    "top_levels": hl.empty_array(hl.tstr),
+                    "truncated": False,
+                    "min_val": 0.0,
+                    "max_val": 0.0,
+                    "mean_val": 0.0,
+                }
+            else:
+                sorted_by_freq = sorted(counter.items(), key=lambda x: -x[1])
+                top = [
+                    str(k) for k, _v in sorted_by_freq[:top_n_levels] if k is not None
+                ]
+                summaries[field] = {
+                    "dtype": "categorical",
+                    "n_levels": n_levels,
+                    "levels": hl.empty_array(hl.tstr),
+                    "top_levels": top,
+                    "truncated": True,
+                    "min_val": 0.0,
+                    "max_val": 0.0,
+                    "mean_val": 0.0,
+                }
+
+    # Build a Hail struct for each field, then wrap in a dict global.
+    # Using hl.struct per entry ensures uniform schema for the dict values.
+    entries = []
+    for field_name, info in summaries.items():
+        entry = hl.struct(
+            dtype=info["dtype"],
+            n_levels=hl.int32(info["n_levels"]),
+            levels=info["levels"],
+            top_levels=info["top_levels"],
+            truncated=info["truncated"],
+            min_val=hl.float64(info["min_val"]),
+            max_val=hl.float64(info["max_val"]),
+            mean_val=hl.float64(info["mean_val"]),
+        )
+        entries.append((field_name, entry))
+
+    summary_dict = hl.dict(entries)
+    mt = mt.annotate_globals(column_summary=summary_dict)
+
+    logger.info("Annotated column_summary with %d metadata fields", len(summaries))
+    return mt
+
+
+def describe_expression_mt(
+    mt: Union[hl.MatrixTable, str],
+    metadata_field: str = "metadata",
+) -> Dict[str, Any]:
+    """Return a human-readable description of an expression MatrixTable.
+
+    Reads ``column_summary`` from globals (instant, no Spark job).  If the
+    global is missing (older MT), falls back to computing it on the fly and
+    logs a warning suggesting a rebuild.
+
+    Parameters
+    ----------
+    mt : hl.MatrixTable or str
+        MatrixTable object or path to a checkpointed ``.mt`` on disk.
+    metadata_field : str
+        Name of the column struct containing sample/cell metadata.
+
+    Returns
+    -------
+    dict
+        Dictionary with keys ``n_genes``, ``n_cols``, ``fields`` (list of
+        per-field info dicts).
+    """
+    if isinstance(mt, str):
+        mt = hl.read_matrix_table(mt)
+
+    n_rows, n_cols = mt.count()
+
+    # Check if pre-computed summary exists in globals (instant read)
+    has_summary = "column_summary" in mt.globals.dtype
+
+    if has_summary:
+        raw_summary = hl.eval(mt.column_summary)
+    else:
+        logger.warning(
+            "column_summary not found in globals — computing on the fly. "
+            "Rebuild the MT with annotate_column_summary() for instant access."
+        )
+        mt_tmp = annotate_column_summary(mt, metadata_field=metadata_field)
+        raw_summary = hl.eval(mt_tmp.column_summary)
+
+    fields_info: List[Dict[str, Any]] = []
+    lines = [f"Expression MatrixTable: {n_rows:,} genes x {n_cols:,} cells"]
+    lines.append("Column metadata fields:")
+
+    for field_name, info in sorted(raw_summary.items()):
+        entry: Dict[str, Any] = {"name": field_name, "dtype": info.dtype}
+        if info.dtype == "categorical":
+            entry["n_levels"] = info.n_levels
+            if info.truncated:
+                entry["top_levels"] = list(info.top_levels)
+                preview = ", ".join(info.top_levels[:5])
+                lines.append(
+                    f"  {field_name:<18s} categorical   "
+                    f"{info.n_levels} levels  [{preview}, ...] (truncated)"
+                )
+            else:
+                entry["levels"] = list(info.levels)
+                preview = ", ".join(info.levels[:5])
+                suffix = ", ..." if len(info.levels) > 5 else ""
+                lines.append(
+                    f"  {field_name:<18s} categorical   "
+                    f"{info.n_levels} levels  [{preview}{suffix}]"
+                )
+        else:
+            entry["min"] = info.min_val
+            entry["max"] = info.max_val
+            entry["mean"] = info.mean_val
+            lines.append(
+                f"  {field_name:<18s} numeric       "
+                f"range {info.min_val:.4g}\u2013{info.max_val:.4g}  "
+                f"mean {info.mean_val:.4g}"
+            )
+        fields_info.append(entry)
+
+    description = "\n".join(lines)
+    logger.info(description)
+    print(description)
+
+    return {"n_genes": n_rows, "n_cols": n_cols, "fields": fields_info}
+
+
+def _validate_group_by(
+    mt: hl.MatrixTable,
+    group_by: Union[str, List[str]],
+    metadata_field: str,
+) -> None:
+    """Validate group_by fields using column_summary if available.
+
+    Raises clear errors if fields are missing, numeric, or very
+    high-cardinality.
+    """
+    if isinstance(group_by, str):
+        group_by = [group_by]
+
+    meta_dtype = mt.col[metadata_field].dtype
+    available = list(meta_dtype)
+
+    # Use column_summary for richer validation when present
+    has_summary = "column_summary" in mt.globals.dtype
+    summary = hl.eval(mt.column_summary) if has_summary else None
+
+    for field in group_by:
+        if field not in meta_dtype:
+            raise ValueError(
+                f"Field '{field}' not found in {metadata_field}. "
+                f"Available fields: {available}"
+            )
+
+        if summary and field in summary:
+            info = summary[field]
+            if info.dtype == "numeric":
+                cat_fields = [
+                    f
+                    for f in available
+                    if summary.get(f) and summary[f].dtype == "categorical"
+                ]
+                raise ValueError(
+                    f"Field '{field}' is numeric "
+                    f"(range {info.min_val:.4g}–{info.max_val:.4g}), "
+                    f"not categorical. "
+                    f"Categorical fields available for group_by: "
+                    f"{cat_fields}"
+                )
+            if info.dtype == "categorical" and info.n_levels > 100:
+                logger.warning(
+                    "Field '%s' has %d groups — this will produce %d "
+                    "columns in the summary table.",
+                    field,
+                    info.n_levels,
+                    info.n_levels,
+                )
+        else:
+            # Fallback: check type without column_summary
+            if hl.is_numeric(meta_dtype[field]):
+                raise ValueError(
+                    f"Field '{field}' is numeric, not categorical. "
+                    f"Available fields: {available}"
+                )
+
+
+def summarize_expression(
+    mt: hl.MatrixTable,
+    group_by: Union[str, List[str]],
+    filter_by: Optional[Dict[str, Union[str, List[str]]]] = None,
+    expr_field: str = "x",
+    gene_id_field: str = "GeneID",
+    gene_name_field: Optional[str] = "Gene Name",
+    min_cells_per_group: int = 50,
+    metadata_field: str = "metadata",
+    output_path: Optional[str] = None,
+    overwrite: bool = False,
+) -> hl.Table:
+    """Collapse an expression MatrixTable into a gene-level summary Table.
+
+    Groups cells/samples by one or more metadata fields and computes
+    per-gene expression statistics (mean, fraction expressed, cell count)
+    for each group.
+
+    Parameters
+    ----------
+    mt : hl.MatrixTable
+        Expression MatrixTable (rows = genes, columns = cells/samples).
+    group_by : str or list of str
+        One or more column metadata fields to group by.  Multiple fields
+        are concatenated (e.g., ``["cell_type", "region"]`` → ``"CM_LV"``).
+    filter_by : dict, optional
+        Pre-filter on column metadata before grouping.  Keys are metadata
+        field names; values are a single value or list of values to keep.
+    expr_field : str
+        Entry field containing expression values (default ``"x"``).
+    gene_id_field : str
+        Row field for gene IDs (becomes the Table key).
+    gene_name_field : str or None
+        Row field for gene names.  Set to None to omit.
+    min_cells_per_group : int
+        Skip groups with fewer cells than this threshold.
+    metadata_field : str
+        Column struct containing sample/cell metadata.
+    output_path : str, optional
+        If provided, checkpoint the Table to this path.
+    overwrite : bool
+        Overwrite existing output if ``output_path`` is given.
+
+    Returns
+    -------
+    hl.Table
+        Table keyed by ``gene_id`` with a ``stats`` dict mapping group
+        labels to ``struct{mean, fraction_expressed, n_cells}``.
+    """
+    if isinstance(group_by, str):
+        group_by = [group_by]
+
+    # --- Validate ---
+    _validate_group_by(mt, group_by, metadata_field)
+
+    # --- Filter columns ---
+    if filter_by:
+        mt = filter_by_metadata(mt, filter_by)
+
+    # --- Build group label ---
+    if len(group_by) == 1:
+        label_expr = hl.str(mt[metadata_field][group_by[0]])
+    else:
+        label_expr = hl.delimit([hl.str(mt[metadata_field][f]) for f in group_by], "_")
+    mt = mt.annotate_cols(_group_label=label_expr)
+
+    # --- Filter groups by min cells ---
+    group_counts = mt.aggregate_cols(hl.agg.counter(mt._group_label))
+    valid_groups = {g for g, n in group_counts.items() if n >= min_cells_per_group}
+    skipped = {g: n for g, n in group_counts.items() if n < min_cells_per_group}
+    if skipped:
+        logger.warning(
+            "Skipping %d group(s) with fewer than %d cells: %s",
+            len(skipped),
+            min_cells_per_group,
+            skipped,
+        )
+    if not valid_groups:
+        raise ValueError(
+            f"No groups have >= {min_cells_per_group} cells. "
+            f"Group sizes: {group_counts}"
+        )
+
+    mt = mt.filter_cols(hl.literal(valid_groups).contains(mt._group_label))
+
+    # --- Group and aggregate ---
+    grouped_mt = mt.group_cols_by(mt._group_label).aggregate(
+        mean=hl.agg.mean(mt[expr_field]),
+        fraction_expressed=hl.agg.fraction(mt[expr_field] > 0),
+        n_cells=hl.agg.count(),
+    )
+
+    # --- Collect per-gene stats into a dict ---
+    grouped_mt = grouped_mt.annotate_rows(
+        stats=hl.dict(
+            hl.agg.collect(
+                hl.tuple(
+                    [
+                        grouped_mt._group_label,
+                        hl.struct(
+                            mean=grouped_mt.mean,
+                            fraction_expressed=grouped_mt.fraction_expressed,
+                            n_cells=hl.int32(grouped_mt.n_cells),
+                        ),
+                    ]
+                )
+            )
+        )
+    )
+
+    # --- Build output Table ---
+    row_fields = {gene_id_field: mt.row[gene_id_field]}
+    if gene_name_field and gene_name_field in mt.row:
+        row_fields[gene_name_field] = mt.row[gene_name_field]
+
+    tb = grouped_mt.rows()
+    select_exprs = {"gene_id": tb[gene_id_field], "stats": tb.stats}
+    if gene_name_field and gene_name_field in tb.row:
+        select_exprs["gene_name"] = tb[gene_name_field]
+
+    tb = tb.select(**select_exprs)
+    tb = tb.key_by("gene_id")
+
+    if output_path:
+        logger.info("Checkpointing summary table to %s", output_path)
+        tb = tb.checkpoint(output_path, overwrite=overwrite)
+
+    logger.info(
+        "Summarized %d genes across %d groups (group_by=%s)",
+        tb.count(),
+        len(valid_groups),
+        group_by,
+    )
+    return tb
 
 
 def summarize_matrix(mt: hl.MatrixTable) -> Dict:

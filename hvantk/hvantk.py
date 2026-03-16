@@ -8,6 +8,7 @@ from hvantk.commands.ucsc_downloader import ucsc_downloader
 from hvantk.commands.expression_atlas_downloader import download_experiments
 from hvantk.commands.clingen_downloader import clingen_downloader
 from hvantk.commands.clingen_genesets_cli import clingen_genesets_cmd
+from hvantk.commands.prepare_geneset_cli import prepare_geneset_cmd
 from hvantk.commands.hgnc_downloader import hgnc_downloader
 from hvantk.commands.clinvar_downloader import clinvar_downloader
 from hvantk.commands.make_table_cli import mktable_group
@@ -20,6 +21,8 @@ from hvantk.commands.psroc_cli import psroc_cmd
 from hvantk.commands.enrichex_cli import enrichex_group
 from hvantk.commands.ancestry_cli import ancestry_inference_cmd
 from hvantk.commands.build_1k_genome_cli import build_1k_genome_cmd
+from hvantk.commands.summarize_expression_cli import expression_group
+from hvantk.commands.check_install_cli import check_install_cmd
 
 # Main CLI entry point for the package (hvantk)
 
@@ -83,6 +86,7 @@ cli.add_command(ucsc_downloader)
 cli.add_command(download_experiments)
 cli.add_command(clingen_downloader)
 cli.add_command(clingen_genesets_cmd)  # ClinGen gene set extraction
+cli.add_command(prepare_geneset_cmd)  # Custom gene set preparation
 cli.add_command(hgnc_downloader)
 cli.add_command(clinvar_downloader)
 cli.add_command(mktable_group)  # per-table builder
@@ -95,6 +99,8 @@ cli.add_command(psroc_cmd)  # PSROC prediction score ROC analysis
 cli.add_command(enrichex_group)  # EnrichEx gene set enrichment analysis
 cli.add_command(ancestry_inference_cmd)  # Ancestry inference pipeline
 cli.add_command(build_1k_genome_cmd)  # 1000 Genomes MatrixTable builder
+cli.add_command(expression_group)  # Expression analysis (describe, summarize, markers)
+cli.add_command(check_install_cmd)  # Post-install smoke test
 
 # Lazy import: convert-bgz is a new command that may not be installed yet
 # in existing editable installs until `poetry install` is re-run.

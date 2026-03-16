@@ -51,7 +51,7 @@ hvantk hgc vds2mt -i cohort.vds -o cohort.mt
 hvantk hgc qc-report -i cohort.mt -o qc_report.html
 ```
 
-📖 **[Full HGC Documentation](docs/tools/hgc.md)**
+📖 **[Full HGC Documentation](docs_site/tools/hgc.md)**
 
 ### PSROC: Variant Score Evaluation
 
@@ -67,7 +67,7 @@ hvantk psroc \
   --output-dir results/
 ```
 
-📖 **[PSROC Documentation](docs/tools/psroc.md)** | **[Example](examples/psroc/)**
+📖 **[PSROC Documentation](docs_site/tools/psroc.md)** | **[Example](examples/psroc/)**
 
 ### EnrichEx: Gene Set Enrichment
 
@@ -90,7 +90,7 @@ hvantk enrichex burden \
   --generate-report
 ```
 
-📖 **[EnrichEx Documentation](docs/tools/enrichex.md)** | **[Example](examples/enrichex/)**
+📖 **[EnrichEx Documentation](docs_site/tools/enrichex.md)** | **[Example](examples/enrichex/)**
 
 ### Ancestry Inference
 
@@ -116,7 +116,7 @@ hvantk ancestry-inference \
   --export-tsv
 ```
 
-📖 **[Ancestry Documentation](docs/tools/ancestry.md)** | **[Example](examples/ancestry/)**
+📖 **[Ancestry Documentation](docs_site/tools/ancestry.md)** | **[Example](examples/ancestry/)**
 
 ### Annotation Tables
 
@@ -130,7 +130,7 @@ hvantk mktable clinvar --raw-input clinvar.vcf.bgz --output-ht clinvar.ht
 hvantk mktable-batch --recipe tables_recipe.json
 ```
 
-📖 **[Tables Guide](docs/library/usage.md#1-build-a-single-annotation-table-ht)**
+📖 **[Tables Guide](docs_site/guide/usage.md#1-build-a-single-annotation-table-ht)**
 
 ### Expression Matrices
 
@@ -144,7 +144,7 @@ hvantk mkmatrix ucsc -e expr.tsv.bgz -m metadata.tsv -o ucsc.mt
 hvantk mkmatrix-batch --recipe matrices_recipe.json
 ```
 
-📖 **[Expression Guide](docs/library/usage.md#3-build-a-single-matrixtable-mt)**
+📖 **[Expression Guide](docs_site/guide/usage.md#3-build-a-single-matrixtable-mt)**
 
 ### File Format Conversion
 
@@ -164,7 +164,7 @@ Download curated datasets from public repositories.
 hvantk ucsc-downloader --dataset adultPancreas --output-dir data/ucsc
 ```
 
-📖 **[Data Sources](docs/library/annotation-sources.md)**
+📖 **[Data Sources](docs_site/guide/annotation-sources.md)**
 
 ## Quick Start
 
@@ -185,14 +185,17 @@ hvantk mktable-batch --recipe recipe.json
 
 ## Documentation
 
-- **[Usage Guide](docs/library/usage.md)** - Examples and recipes
-- **[HGC Tool](docs/tools/hgc.md)** - Joint genotyping pipeline
-- **[PSROC Tool](docs/tools/psroc.md)** - Variant score evaluation
-- **[EnrichEx Tool](docs/tools/enrichex.md)** - Gene set enrichment analysis
-- **[Ancestry Tool](docs/tools/ancestry.md)** - Genetic ancestry inference
-- **[Data Sources](docs/library/annotation-sources.md)** - Available annotations
-- **[Architecture](docs/ARCHITECTURE.md)** - Design and extension points
-- **[Full Index](docs/README.md)** - Complete documentation
+**Browse the full documentation site:** [https://bigbio.github.io/hvantk](https://bigbio.github.io/hvantk)
+
+Or read the source markdown directly:
+
+- **[Usage Guide](docs_site/guide/usage.md)** - Examples and recipes
+- **[HGC Tool](docs_site/tools/hgc.md)** - Joint genotyping pipeline
+- **[PSROC Tool](docs_site/tools/psroc.md)** - Variant score evaluation
+- **[EnrichEx Tool](docs_site/tools/enrichex.md)** - Gene set enrichment analysis
+- **[Ancestry Tool](docs_site/tools/ancestry.md)** - Genetic ancestry inference
+- **[Data Sources](docs_site/guide/annotation-sources.md)** - Available annotations
+- **[Architecture](docs_site/architecture.md)** - Design and extension points
 
 ## Citation
 
@@ -231,7 +234,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Issues**: [GitHub Issues](https://github.com/bigbio/hvantk/issues)
 - **Questions**: Open a discussion on GitHub
-- **Documentation**: [docs/](docs/)
+- **Documentation**: [docs_site/](docs_site/)
 
 ## Acknowledgments
 

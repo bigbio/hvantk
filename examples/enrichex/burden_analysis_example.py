@@ -258,7 +258,7 @@ def main():
         phenotype_type="binary",
         covariate_fields=["PC1", "PC2", "PC3", "PC4", "PC5", "age", "sex"],
         max_af=0.001,  # Rare variants (AF < 0.1%)
-        min_cadd=25.0,  # High CADD scores
+        min_score=25.0,  # High CADD scores
         genotype_aggregation="hets",
     )
 
@@ -301,7 +301,7 @@ def main():
         phenotype_type="continuous",
         covariate_fields=["PC1", "PC2", "PC3", "PC4", "PC5", "age", "sex"],
         max_af=0.001,
-        min_cadd=25.0,
+        min_score=25.0,
         genotype_aggregation="hets",
     )
 

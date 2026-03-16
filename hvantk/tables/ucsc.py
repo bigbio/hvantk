@@ -7,7 +7,6 @@ into Hail Tables and MatrixTables for downstream genetic and single-cell analysi
 
 import os
 import hail as hl
-import pandas as pd
 
 from hvantk.data.file_utils import resolve_compression
 from hvantk.utils.expressions import split_field_expr
@@ -19,19 +18,6 @@ __all__ = [
 ]
 
 
-def _replace_dots_in_column_names(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Replaces dots in the column names of a DataFrame with underscores.
-
-    :param df: Input DataFrame with column names containing dots.
-    :type df: pd.DataFrame
-    :return: DataFrame with dots replaced by underscores in column names.
-    :rtype: pd.DataFrame
-    """
-    df.columns = df.columns.str.replace(".", "_", regex=False)
-    return df
-
-
 def convert_ucsc_metadata_to_hail_table(
     metadata_path: str,
     sep: str = "\t",
@@ -40,6 +26,10 @@ def convert_ucsc_metadata_to_hail_table(
 ) -> hl.Table:
     """
     Converts a tabular metadata file from UCSC expression matrix into a Hail Table.
+
+    Uses ``hl.import_table`` directly (no pandas dependency), which avoids
+    the ``np.bool`` compatibility issue with newer NumPy versions and is
+    faster for large metadata files.
 
     :param metadata_path: Path to the metadata file to be converted.
     :type metadata_path: str
@@ -58,25 +48,32 @@ def convert_ucsc_metadata_to_hail_table(
     if not os.path.exists(metadata_path):
         raise FileNotFoundError(f"Metadata file not found: {metadata_path}")
 
-    # Load the metadata file into a Pandas DataFrame
-    df = pd.read_csv(metadata_path, sep=sep, index_col=index_col)
+    # Import directly with Hail — no pandas intermediate
+    ht = hl.import_table(
+        metadata_path,
+        delimiter=sep,
+        impute=True,
+    )
 
-    # Annotate the index as a column and rename it to the expected key name
-    original_index_name = df.index.name or "index"
-    df.reset_index(inplace=True)
-    df.rename(columns={original_index_name: index_name}, inplace=True)
+    # Build rename map: first column → index_name, dots → underscores
+    fields = list(ht.row)
+    first_field = fields[index_col]
+    rename_map = {}
 
-    # Replace dots in column names with underscores
-    df = _replace_dots_in_column_names(df)
+    if first_field != index_name:
+        rename_map[first_field] = index_name
 
-    # Handle None/NA values to ensure proper type inference
-    # For object (string-like) columns with NA values, replace with empty string
-    for col in df.select_dtypes(include="object").columns:
-        if df[col].isna().any():
-            df[col] = df[col].fillna("")
+    for f in fields:
+        if f == first_field:
+            continue
+        new_name = f.replace(".", "_")
+        if new_name != f:
+            rename_map[f] = new_name
 
-    # Convert Pandas DataFrame to Hail Table with the specified key
-    ht = hl.Table.from_pandas(df, key=index_name)
+    if rename_map:
+        ht = ht.rename(rename_map)
+
+    ht = ht.key_by(index_name)
 
     return ht
 

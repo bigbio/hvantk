@@ -118,11 +118,6 @@ def overlap_test(
         Gene sets: JSON file with GeneSetCollection format
             Created by: GeneSetCollection.save(path)
     """
-    from hvantk.core.hail_context import init_hail
-
-    # Initialize Hail (required for Fisher's exact test)
-    init_hail()
-
     from hvantk.enrichex.overlap import compute_overlap_enrichment_pandas
     from hvantk.utils.gene_sets import GeneSetCollection, load_gene_set
 
