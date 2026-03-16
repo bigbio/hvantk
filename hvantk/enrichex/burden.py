@@ -1425,7 +1425,7 @@ def _sample_length_matched(
         b = int(gene_bins[idx])
         candidates = bin_to_indices.get(b, [int(idx)])
         sampled.append(rng.choice(candidates))
-    return sampled
+    return np.asarray(sampled, dtype=np.intp)
 
 
 def permutation_burden_test(
