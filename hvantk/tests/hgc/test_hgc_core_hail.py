@@ -7,7 +7,6 @@ Tests are ordered to reflect the pipeline: combine → convert → combine MTs �
 """
 
 import random
-import shutil
 from pathlib import Path
 
 import pytest
@@ -65,15 +64,15 @@ def test_combine_gvcfs(tmp_path):
 
 @pytest.mark.order3
 @pytest.mark.skipif(not GNOMAD_AVAILABLE, reason="gnomad package not installed")
-def test_convert_vds_to_mt():
+def test_convert_vds_to_mt(tmp_path):
     """Test VDS → MatrixTable conversion."""
     decompress_files(
         zip_path=str(TESTS_DIR / "vds/cohort.vds.zip"),
-        extract_to=str(TESTS_DIR / "vds/cohort.vds"),
+        extract_to=str(tmp_path / "cohort.vds"),
         remove_originals=False,
     )
-    vds_path = TESTS_DIR / "vds/cohort.vds"
-    mt_output_path = TESTS_DIR / "mts/cohort.mt"
+    vds_path = tmp_path / "cohort.vds"
+    mt_output_path = tmp_path / "cohort.mt"
     convert_vds_to_mt(
         vds_path=str(vds_path),
         output_path=str(mt_output_path),
@@ -85,28 +84,18 @@ def test_convert_vds_to_mt():
     )
     assert mt_output_path.joinpath("_SUCCESS").exists()
 
-    compress_files(
-        source_dir=str(mt_output_path),
-        output_zip=str(mt_output_path.with_suffix(".mt.zip")),
-        remove_originals=True,
-    )
-    if vds_path.exists():
-        shutil.rmtree(vds_path)
-    if mt_output_path.exists():
-        shutil.rmtree(mt_output_path)
-
 
 @pytest.mark.hail
 @pytest.mark.order4
-def test_convert_mt_to_cvcf():
+def test_convert_mt_to_cvcf(tmp_path):
     """Test MatrixTable → multi-sample VCF conversion."""
     decompress_files(
         zip_path=str(TESTS_DIR / "mts/cohort.mt.zip"),
-        extract_to=str(TESTS_DIR / "mts/cohort.mt"),
+        extract_to=str(tmp_path / "cohort.mt"),
         remove_originals=False,
     )
-    mt_path = TESTS_DIR / "mts/cohort.mt"
-    vcf_output_path = TESTS_DIR / "vcf/cohort.vcf.bgz"
+    mt_path = tmp_path / "cohort.mt"
+    vcf_output_path = tmp_path / "cohort.vcf.bgz"
     convert_mt_to_multi_sample_vcf(
         mt_path=str(mt_path),
         vcf_path=str(vcf_output_path),
@@ -115,21 +104,19 @@ def test_convert_mt_to_cvcf():
         split_multi=True,
     )
     assert vcf_output_path.exists()
-    if mt_path.exists():
-        shutil.rmtree(mt_path)
 
 
 @pytest.mark.hail
 @pytest.mark.order5
-def test_combine_matrix_table_rows():
+def test_combine_matrix_table_rows(tmp_path):
     """Test combining rows of two MatrixTables."""
     decompress_files(
         zip_path=str(TESTS_DIR / "mts/cohort.mt.zip"),
-        extract_to=str(TESTS_DIR / "mts/test.mt"),
+        extract_to=str(tmp_path / "test.mt"),
         remove_originals=False,
     )
-    mt1_path = TESTS_DIR / "mts/test.mt"
-    mt_output_path = TESTS_DIR / "mts/combined.mt"
+    mt1_path = tmp_path / "test.mt"
+    mt_output_path = tmp_path / "combined.mt"
     combine_matrix_table_rows(
         mt_paths=[str(mt1_path), str(mt1_path)],
         output_path=str(mt_output_path),
@@ -141,21 +128,19 @@ def test_combine_matrix_table_rows():
         hl.read_matrix_table(str(mt_output_path)).count_rows()
         == 2 * hl.read_matrix_table(str(mt1_path)).count_rows()
     )
-    shutil.rmtree(mt1_path)
-    shutil.rmtree(mt_output_path)
 
 
 @pytest.mark.hail
 @pytest.mark.order6
-def test_combine_matrix_table_cols():
+def test_combine_matrix_table_cols(tmp_path):
     """Test combining columns of two MatrixTables."""
     decompress_files(
         zip_path=str(TESTS_DIR / "mts/cohort.mt.zip"),
-        extract_to=str(TESTS_DIR / "mts/test.mt"),
+        extract_to=str(tmp_path / "test.mt"),
         remove_originals=False,
     )
-    mt1_path = TESTS_DIR / "mts/test.mt"
-    mt_output_path = TESTS_DIR / "mts/combined.mt"
+    mt1_path = tmp_path / "test.mt"
+    mt_output_path = tmp_path / "combined.mt"
     combine_matrix_table_cols(
         mt_paths=[str(mt1_path), str(mt1_path)],
         output_path=str(mt_output_path),
@@ -167,24 +152,24 @@ def test_combine_matrix_table_cols():
         hl.read_matrix_table(str(mt_output_path)).count_cols()
         == 2 * hl.read_matrix_table(str(mt1_path)).count_cols()
     )
-    shutil.rmtree(mt1_path)
-    shutil.rmtree(mt_output_path)
 
 
 @pytest.mark.hail
 @pytest.mark.order7
-def test_sort_mts_cols():
+def test_sort_mts_cols(tmp_path):
     """Test sorting column order of MatrixTables for union_rows."""
     decompress_files(
         zip_path=str(TESTS_DIR / "mts/cohort.mt.zip"),
-        extract_to=str(TESTS_DIR / "mts/cohort.mt"),
+        extract_to=str(tmp_path / "cohort.mt"),
         remove_originals=False,
     )
-    mt1_path = TESTS_DIR / "mts/cohort.mt"
+    mt1_path = tmp_path / "cohort.mt"
     mt1 = hl.read_matrix_table(str(mt1_path))
 
-    idx = list(range(mt1.count_cols()))
-    random.shuffle(idx)
+    identity = list(range(mt1.count_cols()))
+    idx = identity.copy()
+    while idx == identity:
+        random.shuffle(idx)
     mt2 = mt1.choose_cols(idx)
 
     sorted_mts = sort_mts_cols([mt1, mt2])
@@ -192,6 +177,3 @@ def test_sort_mts_cols():
 
     assert mt.count_rows() == mt1.count_rows() + mt2.count_rows()
     assert mt.count_cols() == mt1.count_cols() == mt2.count_cols()
-
-    if mt1_path.exists():
-        shutil.rmtree(mt1_path)
