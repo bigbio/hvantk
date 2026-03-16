@@ -20,10 +20,10 @@ cd examples/clingen
 mkdir -p data
 
 # Download ClinGen Gene-Disease Validity CSV
-curl -L -k "https://search.clinicalgenome.org/kb/gene-validity/download" -o data/clingen_gene_disease.csv
+curl -L --fail "https://search.clinicalgenome.org/kb/gene-validity/download" -o data/clingen_gene_disease.csv
 
 # Download MONDO ontology (for ontology-based categorization)
-curl -L -k "https://github.com/monarch-initiative/mondo/releases/latest/download/mondo.obo" -o data/mondo.obo
+curl -L --fail "https://github.com/monarch-initiative/mondo/releases/latest/download/mondo.obo" -o data/mondo.obo
 
 # Run example with real data
 python run_with_real_data.py
