@@ -62,6 +62,7 @@ def test_combine_gvcfs(tmp_path):
     )
 
 
+@pytest.mark.hail
 @pytest.mark.order3
 @pytest.mark.skipif(not GNOMAD_AVAILABLE, reason="gnomad package not installed")
 def test_convert_vds_to_mt(tmp_path):
@@ -166,10 +167,14 @@ def test_sort_mts_cols(tmp_path):
     mt1_path = tmp_path / "cohort.mt"
     mt1 = hl.read_matrix_table(str(mt1_path))
 
-    identity = list(range(mt1.count_cols()))
-    idx = identity.copy()
-    while idx == identity:
-        random.shuffle(idx)
+    n = mt1.count_cols()
+    if n <= 1:
+        idx = list(range(n))
+    else:
+        identity = list(range(n))
+        idx = identity.copy()
+        while idx == identity:
+            random.shuffle(idx)
     mt2 = mt1.choose_cols(idx)
 
     sorted_mts = sort_mts_cols([mt1, mt2])

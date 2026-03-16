@@ -1420,6 +1420,8 @@ def _sample_length_matched(
     np.ndarray
         Indices of the sampled genes.
     """
+    import numpy as np
+
     sampled = []
     for idx in target_indices:
         b = int(gene_bins[idx])
