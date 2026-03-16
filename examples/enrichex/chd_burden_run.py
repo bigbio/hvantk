@@ -25,7 +25,7 @@ import logging
 import sys
 import time
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
 logging.basicConfig(
     level=logging.INFO,
@@ -82,7 +82,7 @@ def parse_args():
     return p.parse_args()
 
 
-def build_variant_classes(max_af: float, min_score: float = None) -> Dict:
+def build_variant_classes(max_af: float, min_score: Optional[float] = None) -> Dict:
     """Build variant class filters for the CHD schema.
 
     Maps to the CHD MT fields:
