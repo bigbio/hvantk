@@ -8,7 +8,7 @@ Run the end-to-end example with synthetic data:
 
 ```bash
 # Activate environment
-poetry shell
+eval $(poetry env activate)
 
 # Run end-to-end example (generates synthetic data automatically)
 python examples/ancestry/run_ancestry_example.py

@@ -26,17 +26,6 @@ The ancestry inference pipeline follows standard population genetics practices:
 - **Probability Thresholds**: Samples below confidence threshold are marked "unassigned"
 - **CLI and Python API**: Use via command-line or directly in Python scripts
 
-## Installation
-
-Ancestry inference is part of the hvantk package:
-
-```bash
-git clone https://github.com/bigbio/hvantk
-cd hvantk
-poetry install
-poetry shell
-```
-
 ## Quick Start
 
 ### Command-Line Interface
@@ -494,3 +483,7 @@ eur_mt = annotated_mt.filter_cols(
 - [HGC Joint Genotyping](hgc.md) - Joint genotyping pipeline
 - [Usage Examples](../guide/usage.md) - General usage documentation
 - [Architecture](../architecture.md) - Project architecture
+
+---
+
+See [Installation](../getting-started/installation.md) for setup, [Contributing](../contributing.md) for development workflow.

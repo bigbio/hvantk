@@ -25,17 +25,6 @@ The PSROC module provides an end-to-end pipeline for benchmarking variant pathog
 - **Flexible Input** - Filter by genes, gene lists, or specific variants
 - **Comprehensive Outputs** - JSON metrics, TSV exports, and visualization plots
 
-## Installation
-
-PSROC is part of the hvantk package. Install using Poetry:
-
-```bash
-git clone https://github.com/bigbio/hvantk
-cd hvantk
-poetry install
-poetry shell
-```
-
 ## Quick Start
 
 ### Command-Line Interface
@@ -348,78 +337,6 @@ The PSROC pipeline executes seven stages:
 | 5. Compute Missingness | Calculate per-score missingness statistics |
 | 6. Compute ROC | Compute ROC metrics for qualifying scores |
 | 7. Generate Outputs | Create plots, metrics JSON, and reports |
-
-### Pipeline Workflow Diagram
-
-```mermaid
-flowchart TB
-    subgraph Inputs["Inputs"]
-        CV[("ClinVar HT<br/>locus, alleles<br/>info.CLNSIG")]
-        DB[("dbNSFP HT<br/>locus, alleles<br/>score fields")]
-        GS["Gene List /<br/>Variant List"]
-    end
-
-    subgraph Stage1["1. Load Tables"]
-        L1["Load ClinVar"]
-        L2["Load dbNSFP"]
-    end
-
-    subgraph Stage2["2. Filter ClinVar"]
-        F1["Filter by<br/>genes/variants"]
-        F2["Filter by<br/>review stars"]
-    end
-
-    subgraph Stage3["3. Assign Labels"]
-        A1{"CLNSIG<br/>value?"}
-        A2["Label = 1<br/>(Pathogenic)"]
-        A3["Label = 0<br/>(Benign)"]
-        A4["Exclude<br/>(VUS)"]
-    end
-
-    subgraph Stage4["4. Annotate Scores"]
-        J1["Join on<br/>locus, alleles"]
-    end
-
-    subgraph Stage5["5. Compute Missingness"]
-        M1["Calculate<br/>per-score"]
-        M2{"Rate ><br/>threshold?"}
-        M3["Include"]
-        M4["Exclude"]
-    end
-
-    subgraph Stage6["6. Compute ROC"]
-        R1["FPR, TPR<br/>curves"]
-        R2["AUC +<br/>threshold"]
-    end
-
-    subgraph Stage7["7. Generate Outputs"]
-        O1["Plots"]
-        O2["Metrics JSON"]
-        O3["Hail Table"]
-    end
-
-    CV --> L1
-    DB --> L2
-    GS --> F1
-    L1 --> F1
-    F1 --> F2
-    F2 --> A1
-    A1 -->|"P/LP"| A2
-    A1 -->|"B/LB"| A3
-    A1 -->|"VUS"| A4
-    A2 --> J1
-    A3 --> J1
-    L2 --> J1
-    J1 --> M1
-    M1 --> M2
-    M2 -->|"No"| M3
-    M2 -->|"Yes"| M4
-    M3 --> R1
-    R1 --> R2
-    R2 --> O1
-    R2 --> O2
-    R2 --> O3
-```
 
 ### Label Assignment
 
@@ -1126,30 +1043,6 @@ Solution: Check score field names match dbNSFP column names:
 - Verify dbNSFP table version includes the score
 ```
 
-## Testing
-
-Run PSROC tests:
-
-```bash
-# Run all PSROC tests
-pytest hvantk/tests/psroc/ -v
-
-# Run specific test module
-pytest hvantk/tests/psroc/test_pipeline.py -v
-
-# Run with coverage
-pytest hvantk/tests/psroc/ --cov=hvantk.psroc
-```
-
-## Dependencies
-
-- **hail** - Genomic data processing
-- **scikit-learn** - ROC curve computation
-- **matplotlib** - Static plotting
-- **numpy** - Numerical operations
-- **click** - CLI interface
-- **Python** >= 3.10
-
 ## References
 
 - [ClinVar Database](https://www.ncbi.nlm.nih.gov/clinvar/)
@@ -1157,11 +1050,6 @@ pytest hvantk/tests/psroc/ --cov=hvantk.psroc
 - [ROC Analysis in Clinical Research](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3755824/)
 - [ACMG/AMP Guidelines for Variant Classification](https://www.acmg.net/ACMG/Medical-Genetics-Practice-Resources/Practice-Guidelines.aspx)
 
-## License
+---
 
-PSROC is part of hvantk, released under the MIT License. See [LICENSE](https://github.com/bigbio/hvantk/blob/main/LICENSE) for details.
-
-## Support
-
-- **Issues**: [GitHub Issues](https://github.com/bigbio/hvantk/issues)
-- **Documentation**: [hvantk Documentation](https://github.com/bigbio/hvantk/tree/main/docs)
+See [Installation](../getting-started/installation.md) for setup, [Contributing](../contributing.md) for development workflow.

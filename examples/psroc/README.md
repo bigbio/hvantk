@@ -21,7 +21,7 @@ Demonstrates:
 
 ```bash
 # Activate environment
-poetry shell
+eval $(poetry env activate)
 
 # Run the example (uses synthetic test data)
 python examples/psroc/run_psroc_example.py

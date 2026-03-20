@@ -30,12 +30,16 @@ hvantk/
 ├── data/                  # L1: Data management utilities
 │   ├── dataset.py         # Dataset handling
 │   ├── file_utils.py      # File I/O utilities
-│   └── data_streamer.py   # DataStreamer base classes & StreamProcessor
+│   ├── data_streamer.py   # DataStreamer base classes & StreamProcessor
+│   ├── clinvar_streamer.py# ClinVar data source streamer
+│   ├── clingen_streamer.py# ClinGen data source streamer
+│   └── gene_mapper.py     # Gene ID/symbol mapping utilities
 │
 ├── datasets/              # L2: Dataset definitions
-│   ├── ucsc_cell_datasets.py        # UCSC Cell Browser datasets
+│   ├── clingen_datasets.py          # ClinGen datasets
+│   ├── clinvar_datasets.py          # ClinVar datasets
 │   ├── expression_atlas_datasets.py # Expression Atlas datasets
-│   └── clingen_datasets.py          # ClinGen datasets
+│   └── ucsc_cell_datasets.py        # UCSC Cell Browser datasets
 │
 ├── tables/                # L2-L3: Table and matrix builders
 │   ├── table_builders.py  # Variant/gene annotation builders (ClinVar, dbNSFP, Ensembl, etc.)
@@ -76,7 +80,6 @@ hvantk/
 ├── enrichex/              # L5: EnrichEx - Gene set enrichment
 │   ├── overlap.py         # Overlap enrichment (Fisher's exact)
 │   ├── burden.py          # Burden testing (rare variant regression)
-│   ├── gene_sets.py       # Gene set handling
 │   ├── correction.py      # Multiple testing correction
 │   ├── plot.py            # Enrichment visualization
 │   └── report.py          # HTML report generation
@@ -107,8 +110,7 @@ hvantk/
 │   ├── genome.py          # Genome/contig utilities
 │   ├── gene_sets.py       # Gene set utilities
 │   ├── expressions.py     # Expression data utilities
-│   ├── catalog.py         # Catalog utilities
-│   └── clinvar_streamer.py# ClinVar-specific streamer
+│   └── catalog.py         # Catalog utilities
 │
 ├── visualization/         # Visualization and reporting
 │   ├── base.py            # Base visualization classes
@@ -163,53 +165,68 @@ Three core protocols define how components interact:
 #### Builder Protocol
 Converts raw data files → Hail Tables/MatrixTables
 
+Builders follow a functional pattern using `_create_table_base()` to eliminate boilerplate:
+
 ```python
-from hvantk.core.protocols import Builder
+from hvantk.tables.table_builders import _create_table_base
 
-class MyBuilder:
-    def build(self, input_path: str, **params) -> hl.Table:
-        """Convert raw file to Hail Table"""
-
-    def validate_schema(self, ht: hl.Table) -> bool:
-        """Validate output schema"""
-
-    def get_metadata(self) -> Dict[str, Any]:
-        """Return builder metadata"""
+def create_my_source_tb(input_path: str, output_path: str, **kwargs) -> hl.Table:
+    """Build a Hail Table from MySource data."""
+    return _create_table_base(
+        source_name="MySource",
+        input_path=input_path,
+        output_path=output_path,
+        import_func=lambda: hl.import_table(input_path, ...),
+        transform_func=lambda ht: ht.key_by(locus, alleles),
+        overwrite=kwargs.get('overwrite', False),
+        export_tsv=kwargs.get('export_tsv', False),
+    )
 ```
 
 #### Streamer Protocol
 Transforms Hail data structures (filter, join, aggregate)
 
+Streamers extend `HailDataStreamer` from `hvantk/data/data_streamer.py`:
+
 ```python
-from hvantk.core.protocols import Streamer
+from hvantk.data.data_streamer import HailDataStreamer
 
-class MyStreamer:
-    def transform(self, input_data: hl.Table, **params) -> hl.Table:
-        """Transform input data"""
+class MySourceStreamer(HailDataStreamer):
+    def __init__(self, table_path: str, chunk_size: int = 10000):
+        super().__init__("MySourceStreamer", chunk_size=chunk_size)
+        self.table_path = table_path
 
-    def validate_input(self, input_data: hl.Table) -> bool:
-        """Validate input schema"""
+    def setup(self) -> None:
+        super().setup()
+        self._table = hl.read_table(self.table_path)
 
-    def get_metadata(self) -> Dict[str, Any]:
-        """Return streamer metadata"""
+    def stream(self) -> Iterator[hl.Table]:
+        # Yield chunks of data
+        ...
 ```
 
 #### Downloader Protocol
 Fetches external datasets with verification
 
+Downloaders use dataset dataclasses with a `download()` method:
+
 ```python
-from hvantk.core.protocols import Downloader
+from dataclasses import dataclass
 from pathlib import Path
 
-class MyDownloader:
-    def download(self, dataset_id: str, output_dir: Path, **params) -> Path:
-        """Download dataset"""
+@dataclass
+class MyDataset:
+    url: str
+    output_dir: Path
 
-    def verify_checksum(self, file_path: Path, expected: str) -> bool:
-        """Verify file integrity"""
+    def download(self, overwrite: bool = False) -> Path:
+        """Download and verify dataset."""
+        ...
 
-    def get_metadata(self, dataset_id: str) -> Dict[str, Any]:
-        """Return dataset metadata"""
+    @classmethod
+    def latest(cls, output_dir: Path) -> "MyDataset":
+        """Create instance for the latest available version."""
+        ...
 ```
 
 ### 3. CLI-First Design
@@ -349,7 +366,7 @@ annotated = variants.annotate(
 - `make_table_batch_cli.py` - Batch table building from recipes
 - `make_matrix_batch_cli.py` - Batch matrix building from recipes
 - `catalog_cli.py` - Data catalog operations
-- `hgc_cli.py` - HGC joint genotyping commands
+- `hgc/` - HGC joint genotyping subcommands (combine, convert, QC, pipeline)
 
 ### HGC Module (`hgc/`)
 
@@ -377,18 +394,14 @@ annotated = variants.annotate(
 Tests are organized to mirror the module structure:
 
 ```
-tests/
-├── unit/                # Unit tests for individual components
-│   ├── builders/       # Builder tests
-│   ├── test_core.py   # Core utilities
-│   └── test_commands.py # CLI commands
-│
-├── integration/         # Integration tests for workflows
-│   └── test_workflows.py
-│
-└── testdata/            # Test fixtures
-    ├── raw/            # Sample raw data files
-    └── expected/       # Expected output schemas
+hvantk/tests/
+├── conftest.py        # Pytest fixtures (hail_session, etc.)
+├── test_*.py          # Unit and integration tests
+├── hgc/               # HGC module tests
+├── ancestry/          # Ancestry module tests
+├── psroc/             # PSROC module tests
+├── enrichex/          # EnrichEx module tests
+└── testdata/          # Test data fixtures
 ```
 
 ## Extension Points
@@ -467,14 +480,6 @@ tests/
 - **Checkpointing**: Large intermediate results are checkpointed
 - **Memory**: HGC module optimized for memory-efficient large cohort processing
 - **Caching**: Hail's lazy evaluation allows for optimization
-
-## Future Directions
-
-1. **More data sources**: Add support for additional variant/gene databases
-2. **Streamers library**: Build reusable transformation components
-3. **Pipeline DAGs**: Support for complex multi-step workflows
-4. **Cloud integration**: Better support for S3/GCS data sources
-5. **Web API**: Optional REST API for programmatic access
 
 ## References
 
