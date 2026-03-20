@@ -2,6 +2,10 @@
 
 HGC is a module within hvantk that provides high-performance tools for joint genotyping workflows using [Hail](https://hail.is/). It enables efficient combination of genomic variant call format (GVCF) files, conversion between different Hail data formats (VDS, MatrixTable), and export to standard VCF format.
 
+![HGC workflow](../images/hvantk-hgc-workflow.svg)
+
+**Figure 1.** *HGC joint genotyping pipeline — from GVCF combination through format conversion, quality control, and validated VCF export.*
+
 ## Overview
 
 The HGC module implements a complete joint genotyping pipeline with integrated quality control:

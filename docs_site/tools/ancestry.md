@@ -2,6 +2,10 @@
 
 The ancestry inference module provides tools to predict genetic ancestry for samples using PCA-based projection and Random Forest classification against a labeled reference panel (e.g., 1000 Genomes, HapMap).
 
+![Ancestry workflow](../images/hvantk-ancestry-workflow.svg)
+
+**Figure 4.** *Ancestry inference pipeline — from reference panel merge through variant filtering, LD pruning, PCA, Random Forest training, and ancestry prediction.*
+
 ## Overview
 
 The ancestry inference pipeline follows standard population genetics practices:

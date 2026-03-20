@@ -2,6 +2,10 @@
 
 EnrichEx is a module within hvantk that provides comprehensive tools for gene set enrichment analysis and burden testing. It enables cell-type enrichment analysis of gene lists and case-control burden testing with Hail-native regression for large-scale cohorts.
 
+![EnrichEx workflow](../images/hvantk-enrichex-workflow.svg)
+
+**Figure 3.** *EnrichEx dual-mode framework — (A) Overlap enrichment via Fisher's exact test and (B) Burden testing via Hail regression with optional stratified and permutation branches.*
+
 ## Overview
 
 The EnrichEx module implements two complementary analysis approaches:

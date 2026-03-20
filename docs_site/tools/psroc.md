@@ -2,6 +2,10 @@
 
 PSROC is a module within hvantk that evaluates variant pathogenicity prediction scores using ROC (Receiver Operating Characteristic) curve analysis. It compares prediction scores from databases like dbNSFP against ClinVar truth labels to assess their discriminative power.
 
+![PS-ROC workflow](../images/hvantk-psroc-workflow.svg)
+
+**Figure 2.** *PS-ROC pipeline — from ClinVar/dbNSFP table loading through label assignment, score annotation, missingness filtering, ROC computation, and output generation.*
+
 ## Overview
 
 The PSROC module provides an end-to-end pipeline for benchmarking variant pathogenicity prediction scores:
