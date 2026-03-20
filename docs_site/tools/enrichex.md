@@ -4,7 +4,7 @@ EnrichEx is a module within hvantk that provides comprehensive tools for gene se
 
 ![EnrichEx workflow](../images/hvantk-enrichex-workflow.svg)
 
-**Figure 3.** *EnrichEx dual-mode framework — (A) Overlap enrichment via Fisher's exact test and (B) Burden testing via Hail regression with optional stratified and permutation branches.*
+**Figure 1.** *EnrichEx dual-mode framework — (A) Overlap enrichment via Fisher's exact test and (B) Burden testing via Hail regression with optional stratified and permutation branches.*
 
 ## Overview
 

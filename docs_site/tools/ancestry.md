@@ -4,7 +4,7 @@ The ancestry inference module provides tools to predict genetic ancestry for sam
 
 ![Ancestry workflow](../images/hvantk-ancestry-workflow.svg)
 
-**Figure 4.** *Ancestry inference pipeline — from reference panel merge through variant filtering, LD pruning, PCA, Random Forest training, and ancestry prediction.*
+*Ancestry inference pipeline — from reference panel merge through variant filtering, LD pruning, PCA, Random Forest training, and ancestry prediction.*
 
 ## Overview
 

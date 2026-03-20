@@ -159,7 +159,7 @@ Demonstrates:
 poetry install
 
 # Activate environment
-eval $(poetry env activate)
+eval "$(poetry env activate)"
 ```
 
 ### Basic Usage
@@ -359,7 +359,7 @@ hvantk mkmatrix ucsc \
 **Import errors:**
 ```bash
 # Ensure environment is activated
-eval $(poetry env activate)
+eval "$(poetry env activate)"
 
 # Reinstall if needed
 poetry install
