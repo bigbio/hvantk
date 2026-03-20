@@ -168,16 +168,20 @@ Converts raw data files → Hail Tables/MatrixTables
 Builders follow a functional pattern using `_create_table_base()` to eliminate boilerplate:
 
 ```python
+import hail as hl
 from hvantk.tables.table_builders import _create_table_base
 
 def create_my_source_tb(input_path: str, output_path: str, **kwargs) -> hl.Table:
-    """Build a Hail Table from MySource data."""
+    """Build a Hail Table from MySource data.
+
+    Assumes imported records contain `locus` and `alleles` fields.
+    """
     return _create_table_base(
         source_name="MySource",
         input_path=input_path,
         output_path=output_path,
         import_func=lambda: hl.import_table(input_path, ...),
-        transform_func=lambda ht: ht.key_by(locus, alleles),
+        transform_func=lambda ht: ht.key_by(ht.locus, ht.alleles),
         overwrite=kwargs.get('overwrite', False),
         export_tsv=kwargs.get('export_tsv', False),
     )
@@ -189,6 +193,8 @@ Transforms Hail data structures (filter, join, aggregate)
 Streamers extend `HailDataStreamer` from `hvantk/data/data_streamer.py`:
 
 ```python
+from typing import Iterator
+import hail as hl
 from hvantk.data.data_streamer import HailDataStreamer
 
 class MySourceStreamer(HailDataStreamer):

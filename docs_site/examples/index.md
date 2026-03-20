@@ -159,7 +159,7 @@ Demonstrates:
 poetry install
 
 # Activate environment
-eval $(poetry env activate)
+eval "$(poetry env activate)"
 ```
 
 ### Basic Usage

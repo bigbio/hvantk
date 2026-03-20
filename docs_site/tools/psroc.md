@@ -4,7 +4,7 @@ PSROC is a module within hvantk that evaluates variant pathogenicity prediction 
 
 ![PS-ROC workflow](../images/hvantk-psroc-workflow.svg)
 
-**Figure 2.** *PS-ROC pipeline — from ClinVar/dbNSFP table loading through label assignment, score annotation, missingness filtering, ROC computation, and output generation.*
+**Figure 1.** *PS-ROC pipeline — from ClinVar/dbNSFP table loading through label assignment, score annotation, missingness filtering, ROC computation, and output generation.*
 
 ## Overview
 
