@@ -1,8 +1,7 @@
-# Data Acquisition Guide
+# Data Sources
 
-This page covers how to obtain raw data for every annotation source supported by hvantk. Sources are split into two categories: those with **built-in downloaders** (automated) and those that require **manual download** (too large, license-gated, or fragile URLs).
+This page covers all annotation and expression data sources supported by hvantk: what they are, where to get them, and how to build Hail Tables from the raw data. Sources are split into two categories: those with **built-in downloaders** (automated) and those that require **manual download** (too large, license-gated, or fragile URLs).
 
-For annotation source descriptions, see [Annotation Sources](annotation-sources.md).
 For building Hail Tables and MatrixTables from downloaded data, see the [Usage Guide](usage.md).
 
 ## File format note
@@ -24,6 +23,9 @@ hvantk convert-bgz input.gz
 | Expression Atlas | `hvantk expression-atlas-downloader` | varies |
 
 ### ClinVar
+
+Clinically relevant variants and their annotations (e.g. Pathogenic, Benign, VUS).
+URL: https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/
 
 ```bash
 # Download latest ClinVar VCF (GRCh38) with tabix index
@@ -92,7 +94,8 @@ These sources are too large, require license acceptance, or have complex downloa
 
 ### dbNSFP (~45 GB)
 
-Comprehensive functional prediction scores for human missense variants.
+A database of functional prediction scores for human missense variants.
+URL: https://sites.google.com/site/jpopgen/dbNSFP
 
 **Download**: Requires academic license acceptance. Download from the project page:
 https://sites.google.com/site/jpopgen/dbNSFP
@@ -129,6 +132,7 @@ hvantk mktable dbnsfp \
 ### gnomAD constraint metrics (~50 MB for gene-level)
 
 Gene-level constraint metrics (pLI, LOEUF, missense Z-score) from gnomAD v4.1.
+URL: https://storage.googleapis.com/gcp-public-data--gnomad/release/4.1/constraint/gnomad.v4.1.constraint_metrics.tsv
 
 **Download**:
 
@@ -147,6 +151,7 @@ hvantk mktable gnomad-metrics \
 ### INSIDER interactome (~100 MB)
 
 Protein-protein interaction sites from the INSIDER database.
+URL: http://interactomeinsider.yulab.org/downloads.html
 
 **Download**: Visit http://interactomeinsider.yulab.org/downloads.html and download the interaction site BED file.
 
@@ -160,7 +165,8 @@ hvantk mktable interactome \
 
 ### Ensembl gene annotations (~800 MB)
 
-Gene annotations from Ensembl BioMart (gene name, gene ID, biotype, transcript ID).
+Ensembl gene annotations (gene name, gene ID, biotype, transcript ID).
+URL: https://www.ensembl.org/info/data/ftp/index.html
 
 **Download**: Export from BioMart with the required attributes matching `ENSEMBL_BIOMART_FIELDS` in `hvantk/core/constants.py`. Alternatively, download from the Ensembl FTP:
 https://www.ensembl.org/info/data/ftp/index.html
@@ -176,6 +182,7 @@ hvantk mktable ensembl-gene \
 ### GeVIR (~20 GB)
 
 Gene variation intolerance ranking scores.
+URL: https://www.nature.com/articles/s41588-019-0560-2
 
 **Download**: Supplementary data from the Nature publication:
 https://www.nature.com/articles/s41588-019-0560-2
@@ -191,8 +198,26 @@ hvantk mktable gevir \
 ### CCR - Coding-Constrained Regions (~50 MB)
 
 Highly constrained coding regions in the human genome.
+URL: https://www.nature.com/articles/s41588-018-0294-6
 
-**Download**: Supplementary data from the Nature publication:
-https://www.nature.com/articles/s41588-018-0294-6
+**Download**: Supplementary data from the Nature publication above.
 
 **Note**: No builder is currently available for CCR. This is planned for a future release.
+
+## Expression data sources
+
+These datasets are used to build expression MatrixTables via the UCSC Cell Browser and Expression Atlas downloaders.
+
+### Bulk RNA-seq
+
+- **Human tissue expression E-MTAB-6814** — Human tissue gene expression (brain, heart, liver, kidney), multiple developmental time points.
+  URL: https://www.ebi.ac.uk/biostudies/arrayexpress/studies/E-MTAB-6814
+
+### Single-cell RNA-seq
+
+- **Human heart scRNA-seq (Asp 2019)** — Embryonic human heart single-cell RNA-seq data 6.5 wpc (PMID:31835037).
+  URL: https://data.mendeley.com/datasets/mbvhhf8m62/2
+- **Human heart scRNA-seq (Farah 2024)** — Single-cell RNA-seq data of the developing human heart, 9-15 wpc.
+  URL: https://cells.ucsc.edu/?bp=heart&ds=hoc
+- **Human heart cell atlas (HCA)** — Adult human heart cell atlas (https://doi.org/10.1038/s41586-020-2797-4).
+  URL: https://cells.ucsc.edu/?bp=heart&ds=heart-cell-atlas

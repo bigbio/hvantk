@@ -159,7 +159,7 @@ Demonstrates:
 poetry install
 
 # Activate environment
-poetry shell
+eval "$(poetry env activate)"
 ```
 
 ### Basic Usage
@@ -359,7 +359,7 @@ hvantk mkmatrix ucsc \
 **Import errors:**
 ```bash
 # Ensure environment is activated
-poetry shell
+eval "$(poetry env activate)"
 
 # Reinstall if needed
 poetry install
@@ -415,7 +415,7 @@ See [`CONTRIBUTING.md`](../CONTRIBUTING.md) for guidelines.
 ### Documentation
 
 - [Library Usage Guide](../docs_site/guide/usage.md)
-- [Annotation Sources](../docs_site/guide/annotation-sources.md)
+- [Data Sources](../docs_site/guide/data-sources.md)
 - [HGC Documentation](../docs_site/tools/hgc.md)
 - [PSROC Documentation](../docs_site/tools/psroc.md)
 - [EnrichEx Documentation](../docs_site/tools/enrichex.md)

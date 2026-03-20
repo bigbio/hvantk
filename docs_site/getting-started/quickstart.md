@@ -117,7 +117,7 @@ Download curated datasets from public repositories.
 hvantk ucsc-downloader --dataset adultPancreas --output-dir data/ucsc
 ```
 
-[Data Sources](../guide/annotation-sources.md){ .md-button }
+[Data Sources](../guide/data-sources.md){ .md-button }
 
 ## Full Quick Start Example
 

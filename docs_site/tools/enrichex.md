@@ -2,6 +2,10 @@
 
 EnrichEx is a module within hvantk that provides comprehensive tools for gene set enrichment analysis and burden testing. It enables cell-type enrichment analysis of gene lists and case-control burden testing with Hail-native regression for large-scale cohorts.
 
+![EnrichEx workflow](../images/hvantk-enrichex-workflow.svg)
+
+**Figure 1.** *EnrichEx dual-mode framework — (A) Overlap enrichment via Fisher's exact test and (B) Burden testing via Hail regression with optional stratified and permutation branches.*
+
 ## Overview
 
 The EnrichEx module implements two complementary analysis approaches:
@@ -37,17 +41,6 @@ The EnrichEx module implements two complementary analysis approaches:
 
 ### Interface Options
 - **CLI and Python API** - Use via command-line interface or directly in Python scripts
-
-## Installation
-
-EnrichEx is part of the hvantk package. Install using Poetry:
-
-```bash
-git clone https://github.com/bigbio/hvantk
-cd hvantk
-poetry install
-poetry shell
-```
 
 ## Quick Start
 
@@ -1326,33 +1319,6 @@ for i in range(0, len(all_gene_sets), batch_size):
 results_ht.export("results.parquet")
 ```
 
-## Testing
+---
 
-Run EnrichEx tests:
-
-```bash
-# Run all EnrichEx tests (non-Hail)
-pytest hvantk/tests/enrichex/ -v -m "not hail"
-
-# Run Hail-dependent tests
-pytest hvantk/tests/enrichex/ -v -m hail
-
-# Run all tests
-pytest hvantk/tests/enrichex/ -v
-
-# Run specific test file
-pytest hvantk/tests/enrichex/test_overlap.py -v
-
-# Run with coverage
-pytest hvantk/tests/enrichex/ --cov=hvantk.enrichex --cov-report=html
-```
-
-## Example Workflows
-
-See the `examples/enrichex/` directory for complete workflow examples:
-
-- `overlap_enrichment_example.py` - Gene list enrichment analysis
-- `burden_analysis_example.py` - Case-control burden testing
-- `create_gene_sets_example.py` - Creating gene sets from marker files
-
-## Dependencies
+See [Installation](../getting-started/installation.md) for setup, [Contributing](../contributing.md) for development workflow.

@@ -16,7 +16,7 @@ Demonstrates:
 
 ```bash
 # Activate environment
-poetry shell
+eval "$(poetry env activate)"
 
 # Run the example
 python examples/clinvar/clinvar_streamer_example.py

@@ -22,7 +22,7 @@
 git clone https://github.com/bigbio/hvantk
 cd hvantk
 poetry install
-eval $(poetry env activate)
+eval "$(poetry env activate)"
 ```
 
 ### Using pip
@@ -37,151 +37,27 @@ pip install -e .
 
 ## Core Workflows
 
-### HGC: Joint Genotyping Pipeline
-
-High-performance joint genotyping for large cohorts. Combines thousands of GVCF files with integrated QC.
-
 ```bash
-# End-to-end pipeline
+# Joint genotyping pipeline
 hvantk hgc pipeline -i /data/gvcfs -o /output
 
-# Or run individual steps
-hvantk hgc gvcf-combine -g /data/gvcfs -o cohort.vds
-hvantk hgc vds2mt -i cohort.vds -o cohort.mt
-hvantk hgc qc-report -i cohort.mt -o qc_report.html
-```
+# Pathogenicity score ROC analysis
+hvantk psroc --genes BRCA1,BRCA2 --clinvar-ht clinvar.ht --dbnsfp-ht dbnsfp.ht --scores "CADD_phred,REVEL_score" -o results/
 
-📖 **[Full HGC Documentation](docs_site/tools/hgc.md)**
+# Gene set enrichment (overlap + burden)
+hvantk enrichex overlap -g genes.txt -s gene_sets.json -o overlap.tsv
+hvantk enrichex burden -m cohort.mt -p phenotypes.ht -s gene_sets.json -o burden.tsv
 
-### PSROC: Variant Score Evaluation
+# Ancestry inference
+hvantk ancestry-inference -q cohort.mt -r 1kg_reference.mt --ancestry-col super_pop -o ancestry.ht
 
-Evaluate pathogenicity prediction scores (CADD, REVEL, MetaLR) using ClinVar truth labels. Generate ROC curves and performance metrics.
-
-```bash
-# Run ROC analysis
-hvantk psroc \
-  --genes-file genes.txt \
-  --clinvar-ht clinvar.ht \
-  --dbnsfp-ht dbnsfp.ht \
-  --scores "CADD_phred,REVEL_score" \
-  --output-dir results/
-```
-
-📖 **[PSROC Documentation](docs_site/tools/psroc.md)** | **[Example](examples/psroc/)**
-
-### EnrichEx: Gene Set Enrichment
-
-Test gene set enrichment using overlap analysis (Fisher's exact test) and case-control burden testing (rare variant regression).
-
-```bash
-# Overlap enrichment - test if GWAS genes are enriched in cell types
-hvantk enrichex overlap \
-  -g gwas_genes.txt \
-  -s gene_sets.json \
-  -o overlap_results.tsv \
-  --generate-report
-
-# Burden testing - test if cases have excess rare variants
-hvantk enrichex burden \
-  -m cohort.mt \
-  -p phenotypes.ht \
-  -s gene_sets.json \
-  -o burden_results.tsv \
-  --generate-report
-```
-
-📖 **[EnrichEx Documentation](docs_site/tools/enrichex.md)** | **[Example](examples/enrichex/)**
-
-### Ancestry Inference
-
-Predict genetic ancestry for samples using PCA and Random Forest classification against a labeled reference panel (e.g., 1000 Genomes).
-
-```bash
-# Basic ancestry inference
-hvantk ancestry-inference \
-  -q cohort.mt \
-  -r 1kg_reference.mt \
-  --ancestry-col super_pop \
-  -o ancestry_predictions.ht \
-  --generate-report
-
-# Conservative assignment with higher confidence threshold
-hvantk ancestry-inference \
-  -q cohort.mt \
-  -r 1kg_reference.mt \
-  --ancestry-col super_pop \
-  -o ancestry_predictions.ht \
-  --min-prob 0.90 \
-  --generate-report \
-  --export-tsv
-```
-
-📖 **[Ancestry Documentation](docs_site/tools/ancestry.md)** | **[Example](examples/ancestry/)**
-
-### Annotation Tables
-
-Create Hail Tables from public databases (ClinVar, gnomAD, Ensembl).
-
-```bash
-# Single table
+# Annotation tables and expression matrices
 hvantk mktable clinvar --raw-input clinvar.vcf.bgz --output-ht clinvar.ht
-
-# Batch processing
-hvantk mktable-batch --recipe tables_recipe.json
-```
-
-📖 **[Tables Guide](docs_site/guide/usage.md#1-build-a-single-annotation-table-ht)**
-
-### Expression Matrices
-
-Build Hail MatrixTables from bulk and single-cell expression data.
-
-```bash
-# UCSC Cell Browser data
 hvantk mkmatrix ucsc -e expr.tsv.bgz -m metadata.tsv -o ucsc.mt
-
-# Batch processing
-hvantk mkmatrix-batch --recipe matrices_recipe.json
-```
-
-📖 **[Expression Guide](docs_site/guide/usage.md#3-build-a-single-matrixtable-mt)**
-
-### File Format Conversion
-
-Convert standard gzip files to BGZF for Hail parallel import:
-
-```bash
-hvantk convert-bgz input.tsv.gz -o output.tsv.bgz --threads 4
-```
-
-Or use `--auto-convert-bgz` in supported commands (`mktable dbnsfp`, `mkmatrix ucsc`, `mkmatrix expression-atlas`) to convert on-the-fly.
-
-### Data Downloaders
-
-Download curated datasets from public repositories.
-
-```bash
-hvantk ucsc-downloader --dataset adultPancreas --output-dir data/ucsc
-```
-
-📖 **[Data Sources](docs_site/guide/annotation-sources.md)**
-
-## Quick Start
-
-```bash
-# Download and process expression data
-hvantk ucsc-downloader --dataset adultPancreas --output-dir data/ucsc
-hvantk mkmatrix ucsc -e data/ucsc/exprMatrix.tsv.bgz -m data/ucsc/meta.tsv -o data/ucsc/adultPancreas.mt
-
-# If expression matrix is plain gzip (.gz), use --auto-convert-bgz
-hvantk mkmatrix ucsc -e data/ucsc/exprMatrix.tsv.gz -m data/ucsc/meta.tsv -o data/ucsc/adultPancreas.mt --auto-convert-bgz
-
-# Build annotation tables
-hvantk mktable clinvar --raw-input clinvar.vcf.bgz --output-ht clinvar.ht --ref-genome GRCh38
-
-# Or use batch processing with recipes (see examples/recipes/)
 hvantk mktable-batch --recipe recipe.json
 ```
+
+See the [Quick Start Guide](docs_site/getting-started/quickstart.md) for detailed walkthroughs.
 
 ## Documentation
 
@@ -194,7 +70,7 @@ Or read the source markdown directly:
 - **[PSROC Tool](docs_site/tools/psroc.md)** - Variant score evaluation
 - **[EnrichEx Tool](docs_site/tools/enrichex.md)** - Gene set enrichment analysis
 - **[Ancestry Tool](docs_site/tools/ancestry.md)** - Genetic ancestry inference
-- **[Data Sources](docs_site/guide/annotation-sources.md)** - Available annotations
+- **[Data Sources](docs_site/guide/data-sources.md)** - Available annotations
 - **[Architecture](docs_site/architecture.md)** - Design and extension points
 
 ## Citation

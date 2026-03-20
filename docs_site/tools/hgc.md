@@ -2,6 +2,10 @@
 
 HGC is a module within hvantk that provides high-performance tools for joint genotyping workflows using [Hail](https://hail.is/). It enables efficient combination of genomic variant call format (GVCF) files, conversion between different Hail data formats (VDS, MatrixTable), and export to standard VCF format.
 
+![HGC workflow](../images/hvantk-hgc-workflow.svg)
+
+**Figure 1.** *HGC joint genotyping pipeline — from GVCF combination through format conversion, quality control, and validated VCF export.*
+
 ## Overview
 
 The HGC module implements a complete joint genotyping pipeline with integrated quality control:
@@ -50,17 +54,6 @@ The HGC module implements a complete joint genotyping pipeline with integrated q
 
 ### Interface Options
 - **CLI and Python API**: Use via command-line interface or directly in Python scripts
-
-## Installation
-
-HGC is part of the hvantk package. Install using Poetry:
-
-```bash
-git clone https://github.com/bigbio/hvantk
-cd hvantk
-poetry install
-poetry shell
-```
 
 ## Quick Start
 
@@ -642,74 +635,6 @@ hvantk hgc pipeline -i /data/gvcfs -o /data/output --n-partitions 1000
 - 500 samples: ~2-4 hours
 - 1000 samples: ~4-8 hours
 
-## Typical Workflow
-
-### Recommended: Using the Pipeline Command
-
-For most use cases, use the integrated pipeline (see [Pipeline Orchestration](#pipeline-orchestration)):
-
-```bash
-hvantk hgc pipeline \
-  -i /data/gvcfs \
-  -o /data/output \
-  --apply-qc-filters \
-  --generate-qc-report
-```
-
-### Alternative: Manual Step-by-Step
-
-For advanced users requiring fine-grained control, individual commands can be used:
-
-#### Core Joint Genotyping Pipeline
-
-```bash
-# Step 1: Combine individual GVCF files
-hvantk hgc gvcf-combine \
-  -g /data/gvcfs \
-  -o cohort.vds \
-  --temp-dir /tmp/hail
-
-# Step 2: Convert to MatrixTable for analysis
-hvantk hgc vds2mt \
-  -i cohort.vds \
-  -o cohort.mt \
-  --adjust-genotypes
-
-# Step 3: Export results to VCF
-hvantk hgc mt2vcf \
-  -i cohort.mt \
-  -o cohort_joint_called.vcf.gz \
-  --filter-adj \
-  --min-ac 2
-```
-
-### Optional: Post-Combination Quality Control
-
-```bash
-# Step 4: Compute QC metrics for combined cohort
-hvantk hgc compute-qc \
-  -i cohort.mt \
-  -o cohort_qc.mt
-
-# Step 5: Generate QC report
-hvantk hgc qc-report \
-  -i cohort_qc.mt \
-  -o cohort_qc_report.html
-
-# Step 6: Filter based on QC (optional)
-hvantk hgc filter-qc \
-  -i cohort_qc.mt \
-  -o cohort_filtered.mt \
-  --min-sample-call-rate 0.95 \
-  --min-variant-call-rate 0.90
-
-# Step 7: Export filtered results
-hvantk hgc mt2vcf \
-  -i cohort_filtered.mt \
-  -o cohort_filtered.vcf.gz \
-  --filter-adj
-```
-
 ## Data Formats
 
 ### GVCF (Genomic VCF)
@@ -814,42 +739,7 @@ tabix -p vcf input.g.vcf.gz
 
 ## Examples
 
-### Example 1: Basic Joint Genotyping Pipeline
-
-```python
-import hail as hl
-from hvantk.hgc import combine_gvcfs, convert_vds_to_mt, convert_mt_to_multi_sample_vcf
-
-# Initialize Hail
-hl.init()
-
-# Combine GVCFs
-combine_gvcfs(
-    gvcf_dir="data/gvcfs",
-    vds_output_path="output/cohort.vds",
-    tmp_path="tmp",
-    save_path="output/plan.json",
-    vdses=[],
-    kwargs={'use_genome_default_intervals': True}
-)
-
-# Convert to MatrixTable
-convert_vds_to_mt(
-    vds_path="output/cohort.vds",
-    output_path="output/cohort.mt",
-    adjust_genotypes=True
-)
-
-# Export to VCF
-convert_mt_to_multi_sample_vcf(
-    mt_path="output/cohort.mt",
-    vcf_path="output/cohort.vcf.gz",
-    filter_adj_genotypes=True,
-    min_ac=1
-)
-```
-
-### Example 2: Incremental Cohort Building
+### Example 1: Incremental Cohort Building
 
 ```python
 from hvantk.hgc import combine_gvcfs, combine_vdses
@@ -916,125 +806,34 @@ mt.write("cohort_filtered.mt")
 
 ## API Reference
 
+> For detailed parameter descriptions, usage examples, and notes, see [Detailed Usage](#detailed-usage) and [Pipeline Orchestration](#pipeline-orchestration).
+
 ### Main Functions
 
-#### `combine_gvcfs(gvcf_dir, vds_output_path, tmp_path, save_path, vdses, kwargs, reference_genome='GRCh38')`
-Combine GVCF files into a VDS using Hail's GVCF combiner.
-
-**Parameters:**
-- `gvcf_dir` (str): Directory containing GVCF files
-- `vds_output_path` (str): Output VDS path
-- `tmp_path` (str): Temporary directory path
-- `save_path` (str): Path to save combiner plan
-- `vdses` (List[str]): List of existing VDS paths to combine
-- `kwargs` (Dict): Additional parameters for Hail's combiner
-- `reference_genome` (str): Reference genome (default: 'GRCh38')
-
-**Returns:** None
-
-#### `combine_vdses(vdses_dir, output_path, validate=True, overwrite=False)`
-Combine multiple VDS directories into a single VDS.
-
-**Parameters:**
-- `vdses_dir` (str): Directory containing VDS subdirectories
-- `output_path` (str): Output merged VDS path
-- `validate` (bool): Validate combined VDS (default: True)
-- `overwrite` (bool): Overwrite existing output (default: False)
-
-**Returns:** None
-
-#### `convert_vds_to_mt(vds_path, output_path, adjust_genotypes=True, skip_split_multi=False, convert_lgt_to_gt=True, skip_keying_by_cols=False, overwrite=False)`
-Convert a VDS to dense MatrixTable format.
-
-**Parameters:**
-- `vds_path` (str): Input VDS path
-- `output_path` (str): Output MatrixTable path
-- `adjust_genotypes` (bool): Annotate with adjusted genotypes (default: True)
-- `skip_split_multi` (bool): Skip splitting multi-allelic variants (default: False)
-- `convert_lgt_to_gt` (bool): Convert LGT to GT after splitting (default: True)
-- `skip_keying_by_cols` (bool): Skip column keying (default: False)
-- `overwrite` (bool): Overwrite existing output (default: False)
-
-**Returns:** None
-
-#### `convert_mt_to_multi_sample_vcf(mt_path, vcf_path, filter_adj_genotypes=True, min_ac=1, split_multi=True)`
-Convert a MatrixTable to multi-sample VCF format.
-
-**Parameters:**
-- `mt_path` (str): Input MatrixTable path
-- `vcf_path` (str): Output VCF file path
-- `filter_adj_genotypes` (bool): Filter to adjusted genotypes (default: True)
-- `min_ac` (int): Minimum alternate allele count (default: 1)
-- `split_multi` (bool): Split multi-allelic variants (default: True)
-
-**Returns:** None
+| Function | Description | Returns |
+|----------|-------------|---------|
+| `combine_gvcfs(gvcf_dir, vds_output_path, tmp_path, save_path, vdses, kwargs, reference_genome='GRCh38')` | Combine GVCF files into a VDS. See [GVCF Combination](#gvcf-combination). | None |
+| `combine_vdses(vdses_dir, output_path, validate=True, overwrite=False)` | Merge multiple VDS directories. See [VDS Combination](#vds-combination). | None |
+| `convert_vds_to_mt(vds_path, output_path, adjust_genotypes=True, skip_split_multi=False, convert_lgt_to_gt=True, skip_keying_by_cols=False, overwrite=False)` | Convert VDS to dense MatrixTable. See [VDS to MatrixTable Conversion](#vds-to-matrixtable-conversion). | None |
+| `convert_mt_to_multi_sample_vcf(mt_path, vcf_path, filter_adj_genotypes=True, min_ac=1, split_multi=True)` | Export MatrixTable to VCF. See [MatrixTable to VCF Export](#matrixtable-to-vcf-export). | None |
 
 ### Utility Functions
 
-#### `validate_vcfs_paths(directory, pattern=None)`
-Retrieve and validate GVCF file paths in a directory.
-
-**Parameters:**
-- `directory` (str): Directory to search for GVCF files
-- `pattern` (str): Glob pattern for matching files (default: None)
-
-**Returns:** List[str] - List of validated GVCF file paths
-
-#### `validate_vds_paths(vdses)`
-Validate VDS directory paths.
-
-**Parameters:**
-- `vdses` (Union[str, List[str]]): Directory or list of VDS paths
-
-**Returns:** List[str] - List of validated VDS paths
-
-#### `check_path_exists_and_readable(path)`
-Check if a file or directory exists and is readable.
-
-**Parameters:**
-- `path` (str): Path to check
-
-**Returns:** str - The validated path
-
-**Raises:** FileNotFoundError, PermissionError
-
-#### `sort_mts_cols(mts, ref_index=0)`
-Sort the column order of MatrixTables to match a reference.
-
-**Parameters:**
-- `mts` (List[hl.MatrixTable]): List of MatrixTables to sort
-- `ref_index` (int): Index of reference MatrixTable (default: 0)
-
-**Returns:** List[hl.MatrixTable] - Sorted MatrixTables
+| Function | Description | Returns |
+|----------|-------------|---------|
+| `validate_vcfs_paths(directory, pattern=None)` | Retrieve and validate GVCF file paths | List[str] |
+| `validate_vds_paths(vdses)` | Validate VDS directory paths | List[str] |
+| `check_path_exists_and_readable(path)` | Verify file accessibility | str |
+| `sort_mts_cols(mts, ref_index=0)` | Sort MatrixTable columns to match reference | List[hl.MatrixTable] |
 
 ### Advanced Functions
 
 These functions require direct import from `hvantk.hgc.combiners`:
 
-#### `combine_matrix_table_rows(mt_paths, output_path, n_partitions, force_sort_cols=False, overwrite=False, kwargs=None)`
-Combine multiple MatrixTables by rows (variants).
-
-**Parameters:**
-- `mt_paths` (List[str]): List of MatrixTable paths
-- `output_path` (str): Output path for combined MatrixTable
-- `n_partitions` (int): Number of partitions for output
-- `force_sort_cols` (bool): Sort columns before combining (default: False)
-- `overwrite` (bool): Overwrite existing output (default: False)
-- `kwargs` (dict): Additional arguments for Hail's union_rows
-
-**Returns:** None
-
-#### `combine_matrix_table_cols(mt_paths, output_path, n_partitions, overwrite=False, kwargs=None)`
-Combine multiple MatrixTables by columns (samples).
-
-**Parameters:**
-- `mt_paths` (List[str]): List of MatrixTable paths
-- `output_path` (str): Output path for combined MatrixTable
-- `n_partitions` (int): Number of partitions for output
-- `overwrite` (bool): Overwrite existing output (default: False)
-- `kwargs` (dict): Additional arguments for Hail's union_cols
-
-**Returns:** None
+| Function | Description | Returns |
+|----------|-------------|---------|
+| `combine_matrix_table_rows(mt_paths, output_path, n_partitions, force_sort_cols=False, overwrite=False, kwargs=None)` | Combine MatrixTables by rows (variants) | None |
+| `combine_matrix_table_cols(mt_paths, output_path, n_partitions, overwrite=False, kwargs=None)` | Combine MatrixTables by columns (samples) | None |
 
 ## Constants
 
@@ -1064,33 +863,6 @@ The module defines commonly used constants in `hvantk.hgc.constants`:
 
 **Note:** MatrixTable files use the `.mt` extension, but this is a directory structure convention rather than a defined constant in the module.
 
-## Testing
-
-Run HGC tests:
-
-```bash
-# Run all HGC tests
-pytest hvantk/tests/hgc/ -v
-
-# Run specific test
-pytest hvantk/tests/hgc/test_gvcf_combiner.py -v
-```
-
-## Dependencies
-
-- **hail** - Core Hail library for genomic data processing
-- **gnomad** - Optional, required for adjusted genotype annotations
-- **click** - For CLI interface
-- **Python** >= 3.10
-
-## Contributing
-
-Contributions are welcome! Please ensure:
-1. Code follows existing style patterns
-2. Tests are added for new functionality
-3. Documentation is updated
-4. All tests pass
-
 ## References
 
 - [Hail Documentation](https://hail.is/docs/0.2/)
@@ -1098,16 +870,6 @@ Contributions are welcome! Please ensure:
 - [VDS Format Details](https://hail.is/docs/0.2/vds/index.html)
 - [Joint Genotyping Best Practices](https://gatk.broadinstitute.org/hc/en-us/articles/360035890431-The-logic-of-joint-calling-for-germline-short-variants)
 
-## License
-
-HGC is part of hvantk, released under the MIT License. See [LICENSE](https://github.com/bigbio/hvantk/blob/main/LICENSE) for details.
-
 ---
 
-**Note:** This documentation integrates content from the standalone pipeline documentation files (`hgc-pipeline.md` and `hgc-pipeline-quickref.md`). All pipeline functionality is now documented in the [Pipeline Orchestration](#pipeline-orchestration) section above.
-
-## Support
-
-- **Issues**: [GitHub Issues](https://github.com/bigbio/hvantk/issues)
-- **Documentation**: [hvantk Documentation](https://github.com/bigbio/hvantk/tree/main/docs)
-- **Examples**: [hvantk Examples](https://github.com/bigbio/hvantk/tree/main/examples)
+See [Installation](../getting-started/installation.md) for setup, [Contributing](../contributing.md) for development workflow.

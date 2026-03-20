@@ -40,7 +40,7 @@ python examples/hgc/common/test_benchmark_setup.py
 
 ```bash
 # Activate environment
-poetry shell
+eval "$(poetry env activate)"
 
 # Run QC workflow (uses test data)
 python examples/hgc/qc/hgc_qc_example.py

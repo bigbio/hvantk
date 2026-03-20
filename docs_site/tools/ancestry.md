@@ -2,6 +2,10 @@
 
 The ancestry inference module provides tools to predict genetic ancestry for samples using PCA-based projection and Random Forest classification against a labeled reference panel (e.g., 1000 Genomes, HapMap).
 
+![Ancestry workflow](../images/hvantk-ancestry-workflow.svg)
+
+*Ancestry inference pipeline — from reference panel merge through variant filtering, LD pruning, PCA, Random Forest training, and ancestry prediction.*
+
 ## Overview
 
 The ancestry inference pipeline follows standard population genetics practices:
@@ -21,17 +25,6 @@ The ancestry inference pipeline follows standard population genetics practices:
 - **HTML Reports**: Comprehensive reports with PCA plots, ancestry distributions, and metrics
 - **Probability Thresholds**: Samples below confidence threshold are marked "unassigned"
 - **CLI and Python API**: Use via command-line or directly in Python scripts
-
-## Installation
-
-Ancestry inference is part of the hvantk package:
-
-```bash
-git clone https://github.com/bigbio/hvantk
-cd hvantk
-poetry install
-poetry shell
-```
 
 ## Quick Start
 
@@ -490,3 +483,7 @@ eur_mt = annotated_mt.filter_cols(
 - [HGC Joint Genotyping](hgc.md) - Joint genotyping pipeline
 - [Usage Examples](../guide/usage.md) - General usage documentation
 - [Architecture](../architecture.md) - Project architecture
+
+---
+
+See [Installation](../getting-started/installation.md) for setup, [Contributing](../contributing.md) for development workflow.

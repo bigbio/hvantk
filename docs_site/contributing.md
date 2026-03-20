@@ -13,7 +13,7 @@ Thank you for your interest in contributing to hvantk! This guide will help you 
 2. **Set up the development environment**
    ```bash
    poetry install
-   poetry shell
+   eval "$(poetry env activate)"
    ```
 
 3. **Run tests to verify setup**
@@ -116,7 +116,7 @@ Follow this workflow when adding a new annotation source:
 
 2. **Write the builder function**
    ```python
-   def build_my_datasource(raw_input: str, output_ht: str, **kwargs):
+   def create_my_datasource_tb(raw_input: str, output_ht: str, **kwargs):
        """Build Hail Table from raw data source.
 
        Args:
@@ -138,7 +138,7 @@ Follow this workflow when adding a new annotation source:
    - Test with various input scenarios
 
 5. **Update documentation**
-   - Add to [Annotation Sources](guide/annotation-sources.md)
+   - Add to [Data Sources](guide/data-sources.md)
    - Add usage example to [Usage Guide](guide/usage.md)
 
 See [Architecture](architecture.md) for detailed information on system design and extension points.

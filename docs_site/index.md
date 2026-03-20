@@ -24,8 +24,7 @@
 ## Documentation
 
 - [Building Tables](guide/usage.md) — examples and recipes
-- [Annotation Sources](guide/annotation-sources.md) — available data sources
-- [Data Acquisition](guide/data-acquisition.md) — downloading raw data
+- [Data Sources](guide/data-sources.md) — available data sources and acquisition
 - [Architecture](architecture.md) — design and extension points
 - [Examples](examples/index.md) — end-to-end workflow examples
 - [Contributing](contributing.md) — development workflow
@@ -51,5 +50,8 @@ This project is licensed under the MIT License — see the [LICENSE](https://git
 
 - **Issues**: [GitHub Issues](https://github.com/bigbio/hvantk/issues)
 - **Questions**: Open a discussion on GitHub
+
+## Acknowledgments
+
 - Built on [Hail](https://hail.is/) for distributed genomic data processing
 - Integrates data from ClinVar, gnomAD, Ensembl, UCSC, and other public resources

@@ -58,8 +58,7 @@ nav:
     - Quick Start: getting-started/quickstart.md
   - User Guide:
     - Building Tables: guide/usage.md
-    - Annotation Sources: guide/annotation-sources.md
-    - Data Acquisition: guide/data-acquisition.md
+    - Data Sources: guide/data-sources.md
   - Tools:
     - HGC - Joint Genotyping: tools/hgc.md
     - EnrichEx - Enrichment Analysis: tools/enrichex.md
