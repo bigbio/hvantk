@@ -17,8 +17,6 @@ from .combine_cli import register_combine_commands
 from .convert_cli import register_convert_commands
 from .qc_cli import register_qc_commands
 from .pipeline_cli import register_pipeline_command
-from .utils import setup_logging_for_hgc
-
 logger = logging.getLogger(__name__)
 
 
@@ -26,24 +24,15 @@ logger = logging.getLogger(__name__)
     name="hgc",
     help="HGC (Hail-based Genotype Combiner) commands for joint genotyping workflows",
 )
-@click.option(
-    "--log-level",
-    default="INFO",
-    type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"]),
-    help="Set logging level",
-)
 @click.pass_context
-def hgc_group(ctx, log_level):
+def hgc_group(ctx):
     """
     HGC command group for joint genotyping operations.
-    """
-    # Ensure that ctx.obj exists and is a dict
-    ctx.ensure_object(dict)
-    ctx.obj["log_level"] = log_level
 
-    # Set up logging for HGC operations
-    setup_logging_for_hgc(log_level)
-    logger.info(f"Starting HGC command with log level: {log_level}")
+    Logging is configured centrally via ``hvantk -v`` / ``hvantk --log-file``.
+    """
+    ctx.ensure_object(dict)
+    logger.info("Starting HGC command")
 
 
 # Register all command groups
