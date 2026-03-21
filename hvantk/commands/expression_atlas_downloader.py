@@ -247,7 +247,11 @@ def download_experiments(config_path, accession, download_path, list_datasets):
                     logger.info("Downloading all files from the given accession.")
 
                 # Download each file with retry logic
-                for file in files:
+                for file in tqdm(
+                    files,
+                    desc=f"Files ({experiment_id})",
+                    unit="file",
+                ):
                     file_path = os.path.join(download_path, file)
                     _download_file_with_retry(ftp, file, file_path, ftp_url, ftp_path)
 
@@ -255,7 +259,11 @@ def download_experiments(config_path, accession, download_path, list_datasets):
                 with open(config_path, "r") as f:
                     config = json.load(f)
 
-                for experiment in config:
+                for experiment in tqdm(
+                    config,
+                    desc="Experiments",
+                    unit="exp",
+                ):
                     experiment_id = experiment["accession"]
                     ftp_path = f"/pub/databases/microarray/data/atlas/experiments/{experiment_id}/"
                     logger.info(
@@ -286,7 +294,12 @@ def download_experiments(config_path, accession, download_path, list_datasets):
                         )
 
                     # Download each file with retry logic
-                    for file in files:
+                    for file in tqdm(
+                        files,
+                        desc=f"Files ({experiment_id})",
+                        unit="file",
+                        leave=False,
+                    ):
                         file_path = os.path.join(download_path, file)
                         _download_file_with_retry(
                             ftp, file, file_path, ftp_url, ftp_path
@@ -304,9 +317,4 @@ def download_experiments(config_path, accession, download_path, list_datasets):
 
 
 if __name__ == "__main__":
-    if not logging.getLogger().handlers:
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        )
     download_experiments()

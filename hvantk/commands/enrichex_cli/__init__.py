@@ -22,19 +22,11 @@ logger = logging.getLogger(__name__)
     help="Gene set enrichment analysis commands.",
     context_settings=CONTEXT_SETTINGS,
 )
-@click.option(
-    "--log-level",
-    default="INFO",
-    type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"]),
-    help="Set logging level",
-)
 @click.pass_context
-def enrichex_group(ctx, log_level):
+def enrichex_group(ctx):
     """EnrichEx command group for gene set enrichment analysis.
 
-    This command group provides tools for testing gene set enrichment
-    using overlap analysis (Fisher's exact test) and burden testing
-    (case-control association tests).
+    Logging is configured centrally via ``hvantk -v`` / ``hvantk --log-file``.
 
     Examples
     --------
@@ -45,11 +37,6 @@ def enrichex_group(ctx, log_level):
         hvantk enrichex burden -m cohort.mt -p pheno.ht -s gene_sets.json -o results.tsv
     """
     ctx.ensure_object(dict)
-    ctx.obj["log_level"] = log_level
-
-    # Apply the selected log level to the root logger
-    numeric_level = getattr(logging, log_level.upper(), logging.INFO)
-    logging.getLogger().setLevel(numeric_level)
 
 
 # Import and register subcommands

@@ -12,6 +12,8 @@ from typing import Optional, Dict, List
 
 import hail as hl
 
+from hvantk.core.metadata import build_matrix_metadata
+
 logger = logging.getLogger(__name__)
 
 __all__ = [
@@ -71,6 +73,9 @@ def build_ucsc_mt(
     from hvantk.utils.matrix_utils import annotate_column_summary
 
     mt = annotate_column_summary(mt)
+    mt = mt.annotate_globals(
+        hvantk_metadata=build_matrix_metadata("UCSC", expression_matrix_path, mt)
+    )
 
     if output_mt:
         mt = mt.checkpoint(output_mt, overwrite=overwrite)
@@ -128,6 +133,11 @@ def build_expression_atlas_mt(
     from hvantk.utils.matrix_utils import annotate_column_summary
 
     mt = annotate_column_summary(mt)
+    mt = mt.annotate_globals(
+        hvantk_metadata=build_matrix_metadata(
+            "ExpressionAtlas", expression_matrix_path, mt
+        )
+    )
 
     if output_mt:
         mt = mt.checkpoint(output_mt, overwrite=overwrite)
@@ -183,6 +193,9 @@ def build_cptac_mt(
     from hvantk.utils.matrix_utils import annotate_column_summary
 
     mt = annotate_column_summary(mt)
+    mt = mt.annotate_globals(
+        hvantk_metadata=build_matrix_metadata("CPTAC", expression_path, mt)
+    )
 
     if output_mt:
         logger.info("Checkpointing CPTAC MatrixTable to %s", output_mt)

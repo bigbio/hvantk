@@ -10,6 +10,7 @@ import logging
 import os
 from typing import Optional, List, Callable
 from hvantk.utils.table_utils import get_row_fields
+from hvantk.core.metadata import build_table_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -43,8 +44,9 @@ def _create_table_base(
     2. Execute import function
     3. Apply optional transformations
     4. Apply optional field selection
-    5. Checkpoint with logging
-    6. Optional TSV export
+    5. Annotate globals with provenance metadata
+    6. Checkpoint with logging
+    7. Optional TSV export
 
     Parameters
     ----------
@@ -79,6 +81,10 @@ def _create_table_base(
     if fields is not None:
         logger.info(f"Selecting fields: {fields}")
         ht = ht.select(*fields)
+
+    ht = ht.annotate_globals(
+        hvantk_metadata=build_table_metadata(source_name, input_path, ht)
+    )
 
     logger.info(f"Checkpointing table to {output_path}")
     ht = ht.checkpoint(output=output_path, overwrite=overwrite)

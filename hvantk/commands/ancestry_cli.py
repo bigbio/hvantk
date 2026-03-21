@@ -204,13 +204,6 @@ logger = logging.getLogger(__name__)
     default=False,
     help="Overwrite existing outputs and checkpoints",
 )
-# Logging
-@click.option(
-    "--log-level",
-    type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"]),
-    default="INFO",
-    help="Set logging level [default: INFO]",
-)
 @click.pass_context
 def ancestry_inference_cmd(
     ctx,
@@ -241,7 +234,6 @@ def ancestry_inference_cmd(
     save_loadings: bool,
     checkpoint_path: str,
     overwrite: bool,
-    log_level: str,
 ):
     """
     Infer genetic ancestry using PCA and Random Forest classification.

@@ -226,12 +226,6 @@ def _display_collection_results(results, output_dir) -> None:
     default=False,
     help="Show execution plan without running the pipeline",
 )
-@click.option(
-    "--log-level",
-    type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"]),
-    default="INFO",
-    help="Set logging level [default: INFO]",
-)
 @click.pass_context
 def psroc_cmd(
     ctx,
@@ -255,7 +249,6 @@ def psroc_cmd(
     min_variants,
     n_bootstrap,
     dry_run,
-    log_level,
 ):
     """
     PSROC: Prediction Score ROC Analysis
