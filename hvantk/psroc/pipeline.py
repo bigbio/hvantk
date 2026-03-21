@@ -64,6 +64,53 @@ BENIGN_LABELS = [
     "Benign",
 ]
 
+# Score directionality: True means higher values indicate pathogenicity.
+# Scores not in this map default to higher_is_pathogenic=True.
+SCORE_DIRECTIONALITY: Dict[str, bool] = {
+    # Higher = pathogenic
+    "CADD_phred": True,
+    "CADD_raw": True,
+    "REVEL_score": True,
+    "MetaLR_score": True,
+    "MetaSVM_score": True,
+    "MetaRNN_score": True,
+    "M-CAP_score": True,
+    "MPC_score": True,
+    "PrimateAI_score": True,
+    "DEOGEN2_score": True,
+    "BayesDel_addAF_score": True,
+    "BayesDel_noAF_score": True,
+    "ClinPred_score": True,
+    "VEST4_score": True,
+    "Eigen-raw_coding": True,
+    "Eigen-PC-raw_coding": True,
+    "GenoCanyon_score": True,
+    "integrated_fitCons_score": True,
+    "GM12878_fitCons_score": True,
+    "H1-hESC_fitCons_score": True,
+    "HUVEC_fitCons_score": True,
+    "LINSIGHT": True,
+    "GERP++_RS": True,
+    "phyloP100way_vertebrate": True,
+    "phyloP30way_mammalian": True,
+    "phyloP17way_primate": True,
+    "phastCons100way_vertebrate": True,
+    "phastCons30way_mammalian": True,
+    "phastCons17way_primate": True,
+    "fathmm-MKL_coding_score": True,
+    "fathmm-XF_coding_score": True,
+    "MutationAssessor_score": True,
+    "MutPred_score": True,
+    "MVP_score": True,
+    "gMVP_score": True,
+    # Lower = pathogenic
+    "SIFT_score": False,
+    "SIFT4G_score": False,
+    "PROVEAN_score": False,
+    "FATHMM_score": False,
+    "LRT_score": False,
+}
+
 # ClinVar CLNREVSTAT string → review-star mapping
 # See: https://www.ncbi.nlm.nih.gov/clinvar/docs/review_status/
 CLNREVSTAT_STAR_MAP = {
@@ -129,6 +176,7 @@ class PSROCConfig:
 
     # Score configuration
     scores: List[str] = field(default_factory=list)
+    score_directions: Optional[Dict[str, bool]] = None  # per-score override: True=higher_is_pathogenic
 
     # Output configuration
     output_dir: str = ""
@@ -1102,18 +1150,30 @@ class PSROCPipeline:
 
         score_fields = list(self.config.scores)
 
-        # Resolve dict-typed transcript scores to scalar (max across transcripts)
+        # Resolve dict-typed transcript scores to scalar, respecting directionality.
+        # Higher-is-pathogenic scores use max(); lower-is-pathogenic use min().
+        directions = dict(SCORE_DIRECTIONALITY)
+        if self.config.score_directions:
+            directions.update(self.config.score_directions)
+
         resolve_ann = {}
         for sf in score_fields:
             dtype = ht[sf].dtype
             if isinstance(dtype, hl.tdict):
+                higher_is_pathogenic = directions.get(sf, True)
+                agg_func = hl.max if higher_is_pathogenic else hl.min
                 resolve_ann[sf] = hl.or_missing(
                     hl.is_defined(ht[sf]),
-                    hl.max(ht[sf].values()),
+                    agg_func(ht[sf].values()),
                 )
         if resolve_ann:
+            agg_summary = {
+                sf: ("max" if directions.get(sf, True) else "min")
+                for sf in resolve_ann
+            }
             logger.info(
-                f"   Resolving {len(resolve_ann)} dict-typed scores to scalar (max)"
+                f"   Resolving {len(resolve_ann)} dict-typed scores to scalar: "
+                f"{agg_summary}"
             )
             ht = ht.annotate(**resolve_ann)
 
