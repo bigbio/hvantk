@@ -412,9 +412,11 @@ streamer.export_for_enrichex(
 )
 
 # Translate output to Ensembl IDs using GeneMapper
+import hail as hl
 from hvantk.data.gene_mapper import GeneMapper
 
-mapper = GeneMapper("/data/hgnc/hgnc.ht")
+hgnc_ht = hl.read_table("/data/hgnc/hgnc.ht")
+mapper = GeneMapper(hgnc_ht)
 
 ensembl_ids = streamer.get_genes_by_classification(
     "Definitive",

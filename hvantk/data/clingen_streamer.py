@@ -1065,6 +1065,12 @@ class ClinGenStreamer(HailDataStreamer):
 
         ht = self._apply_min_classification_filter(ht, min_classification)
 
+        if output_id_type and gene_mapper is None:
+            raise ValueError(
+                "output_id_type was provided but no gene_mapper was supplied. "
+                "A GeneMapper instance is required when requesting ID translation."
+            )
+
         # If gene_mapper and output_id_type are provided, use them
         if gene_mapper is not None and output_id_type:
             symbols = self._collect_set(ht, ht.gene_symbol)
@@ -1335,6 +1341,11 @@ class ClinGenStreamer(HailDataStreamer):
     ) -> Union[Set[str], hl.Table]:
         if not as_set:
             return ht
+        if output_id_type and gene_mapper is None:
+            raise ValueError(
+                "output_id_type was provided but no gene_mapper was supplied. "
+                "A GeneMapper instance is required when requesting ID translation."
+            )
         symbols = self._collect_set(ht, ht.gene_symbol)
         if gene_mapper is not None and output_id_type:
             return self._translate_gene_ids(symbols, gene_mapper, output_id_type)

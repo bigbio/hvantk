@@ -18,9 +18,9 @@ def test_build_table_metadata_fields(tmp_path):
     ht = hl.import_table(input_path, types={"score": hl.tfloat64}).key_by("gene")
     metadata = build_table_metadata("TestSource", input_path, ht)
 
-    # Annotate and collect
+    # Annotate and evaluate globals
     ht = ht.annotate_globals(hvantk_metadata=metadata)
-    meta = ht.hvantk_metadata.collect()[0]
+    meta = hl.eval(ht.hvantk_metadata)
 
     assert meta.source_name == "TestSource"
     assert meta.raw_input_path == input_path
@@ -45,9 +45,34 @@ def test_build_table_metadata_with_locus():
 
     metadata = build_table_metadata("LocusTest", "/fake/path.vcf", ht)
     ht = ht.annotate_globals(hvantk_metadata=metadata)
-    meta = ht.hvantk_metadata.collect()[0]
+    meta = hl.eval(ht.hvantk_metadata)
 
     assert meta.reference_genome == "GRCh38"
+
+
+def test_build_matrix_metadata_fields(tmp_path):
+    """Test that build_matrix_metadata produces correct struct fields."""
+    import hail as hl
+    from hvantk.core.metadata import build_matrix_metadata
+
+    mt = hl.utils.range_matrix_table(2, 3)
+    mt = mt.annotate_rows(rid=mt.row_idx).key_rows_by("rid")
+    mt = mt.annotate_cols(sample=hl.str(mt.col_idx)).key_cols_by("sample")
+
+    input_path = str(tmp_path / "matrix.tsv")
+    metadata = build_matrix_metadata("ExpressionAtlas", input_path, mt)
+    mt = mt.annotate_globals(hvantk_metadata=metadata)
+    meta = hl.eval(mt.hvantk_metadata)
+
+    assert meta.source_name == "ExpressionAtlas"
+    assert meta.source_description != ""
+    assert meta.raw_input_path == input_path
+    assert "rid" in meta.row_schema
+    assert "sample" in meta.col_schema
+    assert meta.key_fields == ["rid"]
+    assert meta.n_row_fields >= 1
+    assert meta.n_col_fields >= 1
+    assert meta.n_cols is None
 
 
 def test_get_hvantk_version():
