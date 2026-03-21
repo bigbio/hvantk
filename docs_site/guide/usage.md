@@ -410,6 +410,24 @@ streamer.export_for_enrichex(
     "/out/clingen_gene_sets.json",
     min_classification="Moderate",
 )
+
+# Translate output to Ensembl IDs using GeneMapper
+from hvantk.data.gene_mapper import GeneMapper
+
+mapper = GeneMapper("/data/hgnc/hgnc.ht")
+
+ensembl_ids = streamer.get_genes_by_classification(
+    "Definitive",
+    gene_mapper=mapper,
+    output_id_type="ensembl_gene_id",
+)
+
+# Or translate to HGNC IDs
+hgnc_ids = streamer.to_gene_set(
+    min_classification="Moderate",
+    gene_mapper=mapper,
+    output_id_type="hgnc_id",
+)
 ```
 
 ## File Format Conversion
