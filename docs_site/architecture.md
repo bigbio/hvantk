@@ -30,13 +30,16 @@ hvantk/
 ├── data/                  # L1: Data management utilities
 │   ├── dataset.py         # Dataset handling
 │   ├── file_utils.py      # File I/O utilities
-│   ├── data_streamer.py   # DataStreamer base classes & StreamProcessor
-│   ├── clinvar_streamer.py# ClinVar data source streamer
-│   ├── clingen_streamer.py# ClinGen data source streamer
-│   └── gene_mapper.py     # Gene ID/symbol mapping utilities
+│   ├── data_streamer.py            # DataStreamer base classes & StreamProcessor
+│   ├── gene_disease_streamer.py    # GeneDiseaseValidityStreamer base class
+│   ├── clinvar_streamer.py         # ClinVar data source streamer
+│   ├── clingen_streamer.py         # ClinGen streamer (subclass of GeneDiseaseValidityStreamer)
+│   ├── gencc_streamer.py           # GenCC streamer (subclass of GeneDiseaseValidityStreamer)
+│   └── gene_mapper.py              # Gene ID/symbol mapping utilities
 │
 ├── datasets/              # L2: Dataset definitions
 │   ├── clingen_datasets.py          # ClinGen datasets
+│   ├── gencc_datasets.py            # GenCC datasets
 │   ├── clinvar_datasets.py          # ClinVar datasets
 │   ├── expression_atlas_datasets.py # Expression Atlas datasets
 │   └── ucsc_cell_datasets.py        # UCSC Cell Browser datasets
@@ -95,6 +98,8 @@ hvantk/
 │   ├── ucsc_downloader.py       # UCSC downloader
 │   ├── expression_atlas_downloader.py # Expression Atlas downloader
 │   ├── clingen_downloader.py    # ClinGen downloader
+│   ├── gencc_downloader.py     # GenCC downloader
+│   ├── genesets_cli.py         # Unified gene set extraction/preparation
 │   ├── hgc/                     # HGC CLI subcommands
 │   │   ├── combine_cli.py       # gvcf-combine, mt-combine
 │   │   ├── convert_cli.py       # vds2mt, mt2vcf

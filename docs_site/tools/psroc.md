@@ -781,16 +781,16 @@ Extract named gene set collections from ClinGen or other sources. See
 
 ```bash
 # GCEP-based gene sets (recommended — broader, biologically coherent panels)
-hvantk clingen-genesets \
-  --clingen-ht /data/tables/clingen.ht \
+hvantk genesets clingen \
+  --ht /data/tables/clingen.ht \
   --group-by gcep \
   --min-classification Moderate \
   --min-genes 20 \
   -o /data/gene_sets/clingen_gcep.json
 
 # Or keyword-based disease categories
-hvantk clingen-genesets \
-  --clingen-ht /data/tables/clingen.ht \
+hvantk genesets clingen \
+  --ht /data/tables/clingen.ht \
   --group-by keyword \
   --categories-json /data/my_categories.json \
   -o /data/gene_sets/clingen_keywords.json
@@ -842,7 +842,7 @@ a set of gene symbols. They can be loaded from JSON or GMT files.
 ### From Custom Gene Panels
 
 If you have gene panels as text files or spreadsheet exports, use
-`hvantk prepare-geneset` to convert them:
+`hvantk genesets prepare` to convert them:
 
 1. Format your panels as a headerless two-column TSV
    (gene_set_name<TAB>gene_symbol), one gene per line:
@@ -859,10 +859,10 @@ If you have gene panels as text files or spreadsheet exports, use
 
    ```bash
    # Basic conversion
-   hvantk prepare-geneset -i panels.tsv -o panels.json
+   hvantk genesets prepare -i panels.tsv -o panels.json
 
    # With HGNC validation (recommended)
-   hvantk prepare-geneset -i panels.tsv -o panels.json --hgnc /data/hgnc.ht
+   hvantk genesets prepare -i panels.tsv -o panels.json --hgnc /data/hgnc.ht
    ```
 
 3. Run PSROC:
@@ -882,27 +882,27 @@ If you have gene panels as text files or spreadsheet exports, use
 
 ### From ClinGen (CLI)
 
-The `hvantk clingen-genesets` command extracts gene sets from ClinGen data:
+The `hvantk genesets clingen` command extracts gene sets from ClinGen data:
 
 ```bash
 # GCEP-based gene sets (recommended — broader panels, 20-300 genes each)
-hvantk clingen-genesets \
-  --clingen-ht /data/tables/clingen.ht \
+hvantk genesets clingen \
+  --ht /data/tables/clingen.ht \
   --group-by gcep \
   --min-classification Moderate \
   --min-genes 20 \
   -o /data/gene_sets/clingen_gcep.json
 
 # Keyword-based disease categories
-hvantk clingen-genesets \
-  --clingen-ht /data/tables/clingen.ht \
+hvantk genesets clingen \
+  --ht /data/tables/clingen.ht \
   --group-by keyword \
   --categories-json /data/my_categories.json \
   -o /data/gene_sets/clingen_keywords.json
 
 # Disease-level grouping (fine-grained — most have 1-3 genes)
-hvantk clingen-genesets \
-  --clingen-ht /data/tables/clingen.ht \
+hvantk genesets clingen \
+  --ht /data/tables/clingen.ht \
   --group-by disease \
   --min-genes 5 \
   -o /data/gene_sets/clingen_diseases.json

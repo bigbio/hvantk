@@ -470,17 +470,17 @@ gene_set_collection.save("brain_markers.json")
 ### From Custom Gene Panels (CLI)
 
 For plain text gene panels (e.g., from spreadsheet exports or lab lists),
-use the `hvantk prepare-geneset` command:
+use the `hvantk genesets prepare` command:
 
 ```bash
 # Basic: convert two-column TSV to GeneSetCollection JSON
-hvantk prepare-geneset -i panels.tsv -o panels.json
+hvantk genesets prepare -i panels.tsv -o panels.json
 
 # With HGNC validation and alias resolution
-hvantk prepare-geneset -i panels.tsv -o panels.json --hgnc /data/hgnc.ht
+hvantk genesets prepare -i panels.tsv -o panels.json --hgnc /data/hgnc.ht
 
 # With minimum gene set size and explicit background
-hvantk prepare-geneset -i panels.tsv -o panels.json \
+hvantk genesets prepare -i panels.tsv -o panels.json \
   --hgnc /data/hgnc.ht --min-genes 5 --background protein_coding_genes.txt
 ```
 

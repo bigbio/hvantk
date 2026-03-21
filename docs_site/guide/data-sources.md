@@ -18,6 +18,7 @@ hvantk convert-bgz input.gz
 |---|---|---|
 | ClinVar | `hvantk clinvar-downloader` | ~500 MB |
 | ClinGen | `hvantk clingen-downloader` | ~5 MB |
+| GenCC | `hvantk gencc-downloader` | ~10 MB |
 | HGNC | `hvantk hgnc-downloader` | ~20 MB |
 | UCSC Cell Browser | `hvantk ucsc-downloader` | varies |
 | Expression Atlas | `hvantk expression-atlas-downloader` | varies |
@@ -47,6 +48,18 @@ hvantk clingen-downloader --output-dir data/clingen
 
 # Check download availability
 hvantk clingen-downloader --list-versions
+```
+
+### GenCC
+
+GenCC (Gene Curation Coalition) aggregates gene-disease validity assertions from 12+ submitting organizations (ClinGen, PanelApp, G2P, Orphanet, etc.).
+
+```bash
+# Download today's GenCC submissions snapshot
+hvantk gencc-downloader --output-dir data/gencc
+
+# Check download availability
+hvantk gencc-downloader --list-versions
 ```
 
 ### HGNC
