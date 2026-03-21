@@ -7,6 +7,7 @@ import os
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
 if TYPE_CHECKING:
+    from hvantk.data.gene_mapper import GeneMapper
     from hvantk.utils.mondo_parser import MondoOntology
     from hvantk.utils.obo_parser import BaseOboOntology
 
@@ -101,6 +102,8 @@ class ClinGenStreamer(HailDataStreamer):
         min_classification: str = "Moderate",
         classifications: Optional[List[str]] = None,
         as_set: bool = True,
+        gene_mapper: Optional[GeneMapper] = None,
+        output_id_type: Optional[str] = None,
     ) -> Union[Set[str], hl.Table]:
         """
         Get genes filtered by classification level(s).
@@ -116,11 +119,16 @@ class ClinGenStreamer(HailDataStreamer):
         as_set : bool
             If True, return a Python set of gene symbols.
             If False, return filtered Hail Table.
+        gene_mapper : GeneMapper, optional
+            GeneMapper instance for ID translation. Requires as_set=True.
+        output_id_type : str, optional
+            Target ID type (e.g., "ensembl_gene_id", "hgnc_id", "entrez_id").
+            Requires gene_mapper. Defaults to "gene_symbol" (no translation).
 
         Returns
         -------
         set[str] or hl.Table
-            Gene symbols matching criteria, or filtered table.
+            Gene identifiers matching criteria, or filtered table.
         """
         self._ensure_table_loaded()
         ht = self._table
@@ -138,7 +146,9 @@ class ClinGenStreamer(HailDataStreamer):
             min_classification = self._normalize_classification(min_classification)
             ht = self._apply_min_classification_filter(ht, min_classification)
 
-        return self._return_gene_symbols(ht, as_set=as_set)
+        return self._return_gene_symbols(
+            ht, as_set=as_set, gene_mapper=gene_mapper, output_id_type=output_id_type
+        )
 
     def get_genes_by_disease(
         self,
@@ -146,6 +156,8 @@ class ClinGenStreamer(HailDataStreamer):
         match_mode: str = "contains",
         min_classification: Optional[str] = None,
         as_set: bool = True,
+        gene_mapper: Optional[GeneMapper] = None,
+        output_id_type: Optional[str] = None,
     ) -> Union[Set[str], hl.Table]:
         """
         Get genes associated with disease(s) matching given terms.
@@ -163,6 +175,10 @@ class ClinGenStreamer(HailDataStreamer):
             Filter to minimum classification level.
         as_set : bool
             If True, return Python set of gene symbols.
+        gene_mapper : GeneMapper, optional
+            GeneMapper instance for ID translation.
+        output_id_type : str, optional
+            Target ID type (e.g., "ensembl_gene_id").
 
         Returns
         -------
@@ -192,13 +208,17 @@ class ClinGenStreamer(HailDataStreamer):
             min_classification = self._normalize_classification(min_classification)
             ht = self._apply_min_classification_filter(ht, min_classification)
 
-        return self._return_gene_symbols(ht, as_set=as_set)
+        return self._return_gene_symbols(
+            ht, as_set=as_set, gene_mapper=gene_mapper, output_id_type=output_id_type
+        )
 
     def get_genes_by_mondo_id(
         self,
         mondo_ids: Union[str, List[str]],
         min_classification: Optional[str] = None,
         as_set: bool = True,
+        gene_mapper: Optional[GeneMapper] = None,
+        output_id_type: Optional[str] = None,
     ) -> Union[Set[str], hl.Table]:
         """
         Get genes associated with specific MONDO disease ID(s).
@@ -211,6 +231,10 @@ class ClinGenStreamer(HailDataStreamer):
             Filter to minimum classification level.
         as_set : bool
             If True, return Python set of gene symbols.
+        gene_mapper : GeneMapper, optional
+            GeneMapper instance for ID translation.
+        output_id_type : str, optional
+            Target ID type (e.g., "ensembl_gene_id").
 
         Returns
         -------
@@ -235,13 +259,17 @@ class ClinGenStreamer(HailDataStreamer):
             min_classification = self._normalize_classification(min_classification)
             ht = self._apply_min_classification_filter(ht, min_classification)
 
-        return self._return_gene_symbols(ht, as_set=as_set)
+        return self._return_gene_symbols(
+            ht, as_set=as_set, gene_mapper=gene_mapper, output_id_type=output_id_type
+        )
 
     def get_genes_by_moi(
         self,
         modes: Union[str, List[str]],
         min_classification: Optional[str] = None,
         as_set: bool = True,
+        gene_mapper: Optional[GeneMapper] = None,
+        output_id_type: Optional[str] = None,
     ) -> Union[Set[str], hl.Table]:
         """
         Get genes by mode of inheritance.
@@ -255,6 +283,10 @@ class ClinGenStreamer(HailDataStreamer):
             Filter to minimum classification level.
         as_set : bool
             If True, return Python set of gene symbols.
+        gene_mapper : GeneMapper, optional
+            GeneMapper instance for ID translation.
+        output_id_type : str, optional
+            Target ID type (e.g., "ensembl_gene_id").
 
         Returns
         -------
@@ -287,7 +319,9 @@ class ClinGenStreamer(HailDataStreamer):
             min_classification = self._normalize_classification(min_classification)
             ht = self._apply_min_classification_filter(ht, min_classification)
 
-        return self._return_gene_symbols(ht, as_set=as_set)
+        return self._return_gene_symbols(
+            ht, as_set=as_set, gene_mapper=gene_mapper, output_id_type=output_id_type
+        )
 
     def get_geneset_per_disease(
         self,
@@ -998,6 +1032,8 @@ class ClinGenStreamer(HailDataStreamer):
         self,
         min_classification: str = "Moderate",
         id_type: str = "symbol",
+        gene_mapper: Optional[GeneMapper] = None,
+        output_id_type: Optional[str] = None,
     ) -> Set[str]:
         """
         Export as gene set for integration with other hvantk components.
@@ -1008,16 +1044,19 @@ class ClinGenStreamer(HailDataStreamer):
             Minimum classification level to include.
         id_type : str
             Type of gene identifier: "symbol", "hgnc_id", or "both".
+            Used when gene_mapper is not provided.
+        gene_mapper : GeneMapper, optional
+            GeneMapper instance for ID translation. When provided with
+            output_id_type, overrides id_type.
+        output_id_type : str, optional
+            Target ID type (e.g., "ensembl_gene_id", "entrez_id").
+            Requires gene_mapper.
 
         Returns
         -------
         set[str]
             Gene identifiers meeting criteria.
         """
-        id_type = id_type.lower()
-        if id_type not in ("symbol", "hgnc_id", "both"):
-            raise ValueError("id_type must be one of: symbol, hgnc_id, both")
-
         min_classification = self._normalize_classification(min_classification)
         self._ensure_table_loaded()
         ht = self._table
@@ -1025,6 +1064,15 @@ class ClinGenStreamer(HailDataStreamer):
             raise ValueError("ClinGen table not loaded.")
 
         ht = self._apply_min_classification_filter(ht, min_classification)
+
+        # If gene_mapper and output_id_type are provided, use them
+        if gene_mapper is not None and output_id_type:
+            symbols = self._collect_set(ht, ht.gene_symbol)
+            return self._translate_gene_ids(symbols, gene_mapper, output_id_type)
+
+        id_type = id_type.lower()
+        if id_type not in ("symbol", "hgnc_id", "both"):
+            raise ValueError("id_type must be one of: symbol, hgnc_id, both")
 
         if id_type == "symbol":
             return self._collect_set(ht, ht.gene_symbol)
@@ -1279,11 +1327,34 @@ class ClinGenStreamer(HailDataStreamer):
         return filtered
 
     def _return_gene_symbols(
-        self, ht: hl.Table, as_set: bool
+        self,
+        ht: hl.Table,
+        as_set: bool,
+        gene_mapper: Optional[GeneMapper] = None,
+        output_id_type: Optional[str] = None,
     ) -> Union[Set[str], hl.Table]:
         if not as_set:
             return ht
-        return self._collect_set(ht, ht.gene_symbol)
+        symbols = self._collect_set(ht, ht.gene_symbol)
+        if gene_mapper is not None and output_id_type:
+            return self._translate_gene_ids(symbols, gene_mapper, output_id_type)
+        return symbols
+
+    @staticmethod
+    def _translate_gene_ids(
+        symbols: Set[str],
+        gene_mapper: GeneMapper,
+        output_id_type: str,
+    ) -> Set[str]:
+        """Translate gene symbols to a target ID type via GeneMapper."""
+        if output_id_type == "gene_symbol":
+            return symbols
+        mapping = gene_mapper.map_ids(
+            list(symbols),
+            source_type="gene_symbol",
+            target_type=output_id_type,
+        )
+        return {v for v in mapping.values() if v is not None}
 
     def _collect_set(self, ht: hl.Table, expr: hl.expr.Expression) -> Set[str]:
         return set(ht.aggregate(hl.agg.collect_as_set(expr)))
