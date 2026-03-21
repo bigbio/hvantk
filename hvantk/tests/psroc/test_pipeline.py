@@ -21,6 +21,7 @@ from hvantk.psroc.pipeline import (
     PATHOGENIC_LABELS,
     BENIGN_LABELS,
     CLNREVSTAT_STAR_MAP,
+    SCORE_DIRECTIONALITY,
     parse_variant_list,
 )
 from hvantk.psroc.roc import ROCResult, ScoreMissingness
@@ -446,6 +447,37 @@ class TestConstants:
             CLNREVSTAT_STAR_MAP["criteria_provided,_conflicting_classifications"]
             == CLNREVSTAT_STAR_MAP["criteria_provided,_conflicting_interpretations"]
         )
+
+    def test_score_directionality_higher_is_pathogenic(self):
+        """Test higher-is-pathogenic scores are marked True."""
+        assert SCORE_DIRECTIONALITY["CADD_phred"] is True
+        assert SCORE_DIRECTIONALITY["REVEL_score"] is True
+        assert SCORE_DIRECTIONALITY["MetaLR_score"] is True
+
+    def test_score_directionality_lower_is_pathogenic(self):
+        """Test lower-is-pathogenic scores are marked False."""
+        assert SCORE_DIRECTIONALITY["SIFT_score"] is False
+        assert SCORE_DIRECTIONALITY["SIFT4G_score"] is False
+        assert SCORE_DIRECTIONALITY["PROVEAN_score"] is False
+        assert SCORE_DIRECTIONALITY["FATHMM_score"] is False
+        assert SCORE_DIRECTIONALITY["LRT_score"] is False
+
+    def test_score_directionality_values_are_bool(self):
+        """Test all direction values are bool."""
+        for score, direction in SCORE_DIRECTIONALITY.items():
+            assert isinstance(direction, bool), f"{score} has non-bool direction"
+
+    def test_config_score_directions_override(self):
+        """Test user-provided score_directions override defaults."""
+        config = PSROCConfig(
+            genes=["BRCA1"],
+            clinvar_ht="/data/clinvar.ht",
+            dbnsfp_ht="/data/dbnsfp.ht",
+            scores=["CADD_phred", "SIFT_score"],
+            output_dir="/results",
+            score_directions={"SIFT_score": True},  # override
+        )
+        assert config.score_directions == {"SIFT_score": True}
 
 
 class TestPSROCPipelineValidation:
