@@ -111,7 +111,7 @@ def build_matrix_metadata(
     mt : hl.MatrixTable
         The Hail MatrixTable (used to extract schema info).
     include_n_cols : bool, optional
-        Whether to materialize and include the number of columns via ``count_cols``.
+        Whether to materialize and include the number of columns.
         Defaults to False to avoid triggering an expensive action; when False,
         ``n_cols`` is set to a missing int64 value.
 

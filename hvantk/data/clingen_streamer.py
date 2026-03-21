@@ -1350,7 +1350,7 @@ class ClinGenStreamer(HailDataStreamer):
         if output_id_type and gene_mapper is None:
             raise ValueError(
                 "output_id_type was provided but no gene_mapper was supplied. "
-                "A GeneMapper instance is required when requesting ID translation."
+                "A GeneMapper instance is required for ID translation."
             )
 
     @staticmethod

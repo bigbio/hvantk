@@ -160,8 +160,10 @@ def test_gene_mapper_none_does_not_translate(clingen_table_path):
     assert all(not v.startswith("ENSG") for v in result)
 
 
-def test_get_genes_by_classification_output_id_requires_gene_mapper(clingen_table_path):
-    """output_id_type without gene_mapper should raise ValueError."""
+def test_get_genes_by_classification_output_id_requires_gene_mapper(
+    clingen_table_path,
+):
+    """output_id_type without gene_mapper raises ValueError."""
     streamer = ClinGenStreamer(clingen_table_path)
     with pytest.raises(ValueError, match="output_id_type was provided"):
         streamer.get_genes_by_classification(
@@ -171,7 +173,7 @@ def test_get_genes_by_classification_output_id_requires_gene_mapper(clingen_tabl
 
 
 def test_to_gene_set_output_id_requires_gene_mapper(clingen_table_path):
-    """to_gene_set should enforce gene_mapper when output_id_type is requested."""
+    """to_gene_set requires gene_mapper when output_id_type is used."""
     streamer = ClinGenStreamer(clingen_table_path)
     with pytest.raises(ValueError, match="output_id_type was provided"):
         streamer.to_gene_set(
