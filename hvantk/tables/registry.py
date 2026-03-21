@@ -261,6 +261,9 @@ TABLE_BUILDERS: Dict[str, Callable[[str, str, Dict[str, Any] | None], None]] = {
     "clingen-gene-disease": create_table_adapter(
         "hvantk.tables.table_builders", "create_clingen_gene_disease_tb"
     ),
+    "gencc-submissions": create_table_adapter(
+        "hvantk.tables.table_builders", "create_gencc_submissions_tb"
+    ),
 }
 
 
