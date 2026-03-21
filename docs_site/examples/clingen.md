@@ -74,6 +74,10 @@ From highest to lowest confidence:
 
 ## Using the ClinGenStreamer API
 
+`ClinGenStreamer` inherits from `GeneDiseaseValidityStreamer`, which provides all
+generic query, aggregation, and integration methods. The same API is available
+via `GenCCStreamer` for GenCC data.
+
 ```python
 from hvantk.data.clingen_streamer import ClinGenStreamer
 
