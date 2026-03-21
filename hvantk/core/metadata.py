@@ -20,6 +20,31 @@ SOURCE_DESCRIPTIONS = {
 }
 
 
+def _normalize_source_name(source_name: str) -> str:
+    """Normalize source names for case/format-insensitive description lookup.
+
+    The normalization lowercases the input and removes non-alphanumeric
+    characters so aliases that differ by case, spaces, hyphens, or punctuation
+    resolve to the same metadata key.
+
+    Parameters
+    ----------
+    source_name : str
+        Raw source name to normalize.
+
+    Returns
+    -------
+    str
+        Lowercase alphanumeric normalization of ``source_name``.
+    """
+    return "".join(ch for ch in source_name.lower() if ch.isalnum())
+
+
+_NORMALIZED_SOURCE_DESCRIPTIONS = {
+    _normalize_source_name(k): v for k, v in SOURCE_DESCRIPTIONS.items()
+}
+
+
 def _get_hvantk_version() -> str:
     """Get hvantk version from package metadata."""
     try:
@@ -54,7 +79,9 @@ def build_table_metadata(
     return hl.struct(
         hvantk_version=_get_hvantk_version(),
         source_name=source_name,
-        source_description=SOURCE_DESCRIPTIONS.get(source_name, ""),
+        source_description=_NORMALIZED_SOURCE_DESCRIPTIONS.get(
+            _normalize_source_name(source_name), ""
+        ),
         raw_input_path=input_path,
         build_date=datetime.now().isoformat(),
         reference_genome=str(ht.locus.dtype.reference_genome)
@@ -71,6 +98,7 @@ def build_matrix_metadata(
     source_name: str,
     input_path: str,
     mt: hl.MatrixTable,
+    include_n_cols: bool = False,
 ) -> hl.struct:
     """Build an hvantk_metadata struct for a Hail MatrixTable.
 
@@ -82,6 +110,10 @@ def build_matrix_metadata(
         Path to the raw input file.
     mt : hl.MatrixTable
         The Hail MatrixTable (used to extract schema info).
+    include_n_cols : bool, optional
+        Whether to materialize and include the number of columns.
+        Defaults to False to avoid triggering an expensive action; when False,
+        ``n_cols`` is set to a missing int64 value.
 
     Returns
     -------
@@ -91,7 +123,9 @@ def build_matrix_metadata(
     return hl.struct(
         hvantk_version=_get_hvantk_version(),
         source_name=source_name,
-        source_description=SOURCE_DESCRIPTIONS.get(source_name, ""),
+        source_description=_NORMALIZED_SOURCE_DESCRIPTIONS.get(
+            _normalize_source_name(source_name), ""
+        ),
         raw_input_path=input_path,
         build_date=datetime.now().isoformat(),
         row_schema=str(mt.row.dtype),
@@ -101,5 +135,5 @@ def build_matrix_metadata(
         key_fields=list(mt.row_key),
         n_row_fields=len(mt.row),
         n_col_fields=len(mt.col),
-        n_cols=mt.count_cols(),
+        n_cols=mt.count_cols() if include_n_cols else hl.missing(hl.tint64),
     )

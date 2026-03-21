@@ -10,7 +10,7 @@ import logging
 import os
 from typing import Optional, List, Callable
 from hvantk.utils.table_utils import get_row_fields
-from hvantk.core.metadata import build_table_metadata, _get_hvantk_version
+from hvantk.core.metadata import build_table_metadata
 
 logger = logging.getLogger(__name__)
 
