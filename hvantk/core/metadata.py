@@ -21,7 +21,22 @@ SOURCE_DESCRIPTIONS = {
 
 
 def _normalize_source_name(source_name: str) -> str:
-    """Normalize source names to improve lookup robustness."""
+    """Normalize source names for case/format-insensitive description lookup.
+
+    The normalization lowercases the input and removes non-alphanumeric
+    characters so aliases that differ by case, spaces, hyphens, or punctuation
+    resolve to the same metadata key.
+
+    Parameters
+    ----------
+    source_name : str
+        Raw source name to normalize.
+
+    Returns
+    -------
+    str
+        Lowercase alphanumeric normalization of ``source_name``.
+    """
     return "".join(ch for ch in source_name.lower() if ch.isalnum())
 
 
@@ -97,7 +112,8 @@ def build_matrix_metadata(
         The Hail MatrixTable (used to extract schema info).
     include_n_cols : bool, optional
         Whether to materialize and include the number of columns via ``count_cols``.
-        Defaults to False to avoid triggering an expensive action.
+        Defaults to False to avoid triggering an expensive action; when False,
+        ``n_cols`` is set to a missing int64 value.
 
     Returns
     -------
