@@ -62,11 +62,6 @@ logger = logging.getLogger(__name__)
     help="Additionally export as GMT file.",
 )
 @click.option("--overwrite", is_flag=True, help="Overwrite output if exists.")
-@click.option(
-    "--log-level",
-    type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"]),
-    default="INFO",
-)
 def prepare_geneset_cmd(
     input_path,
     output,
@@ -75,7 +70,6 @@ def prepare_geneset_cmd(
     background,
     export_gmt,
     overwrite,
-    log_level,
 ):
     """Prepare a GeneSetCollection JSON from a plain TSV file.
 
@@ -94,8 +88,6 @@ def prepare_geneset_cmd(
     Example:
       hvantk prepare-geneset -i panels.tsv -o panels.json --hgnc /data/hgnc.ht
     """
-    logging.getLogger("hvantk").setLevel(getattr(logging, log_level))
-
     from hvantk.utils.gene_sets import load_gene_set, load_gene_sets_from_dict
     from hvantk.utils.geneset_io import parse_geneset_tsv, validate_with_hgnc
 
