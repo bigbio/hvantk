@@ -4,6 +4,21 @@ from datetime import datetime
 
 import hail as hl
 
+SOURCE_DESCRIPTIONS = {
+    "ClinVar": "Clinically relevant variant-disease associations from NCBI",
+    "ClinGen": "Gene-disease validity curations from ClinGen",
+    "dbNSFP": "Functional prediction and conservation scores for coding variants",
+    "Ensembl": "Gene annotations from Ensembl BioMart",
+    "GeVIR": "Gene-level intolerance metrics (VIRLoF, LOEUF)",
+    "gnomAD": "Population allele frequency and constraint metrics from gnomAD",
+    "CCR": "Constrained coding regions from Havrilla et al.",
+    "Interactome": "Protein-protein interaction interface intervals from INSIDER",
+    "HGNC": "HUGO Gene Nomenclature Committee gene identifiers and mappings",
+    "UCSC": "Single-cell expression data from UCSC Cell Browser",
+    "ExpressionAtlas": "Bulk/single-cell RNA-seq from EMBL-EBI Expression Atlas",
+    "CPTAC": "Proteomics expression data from the Clinical Proteomic Tumor Analysis Consortium",
+}
+
 
 def _get_hvantk_version() -> str:
     """Get hvantk version from package metadata."""
@@ -39,6 +54,7 @@ def build_table_metadata(
     return hl.struct(
         hvantk_version=_get_hvantk_version(),
         source_name=source_name,
+        source_description=SOURCE_DESCRIPTIONS.get(source_name, ""),
         raw_input_path=input_path,
         build_date=datetime.now().isoformat(),
         reference_genome=str(ht.locus.dtype.reference_genome)
@@ -75,6 +91,7 @@ def build_matrix_metadata(
     return hl.struct(
         hvantk_version=_get_hvantk_version(),
         source_name=source_name,
+        source_description=SOURCE_DESCRIPTIONS.get(source_name, ""),
         raw_input_path=input_path,
         build_date=datetime.now().isoformat(),
         row_schema=str(mt.row.dtype),
@@ -84,4 +101,5 @@ def build_matrix_metadata(
         key_fields=list(mt.row_key),
         n_row_fields=len(mt.row),
         n_col_fields=len(mt.col),
+        n_cols=mt.count_cols(),
     )
