@@ -102,3 +102,59 @@ def test_aggregate_by_disease_category(clingen_table_path):
     result = streamer.aggregate_by_disease_category(categories)
     assert "cancer" in result
     assert "BRCA1" in result["cancer"]
+
+
+def test_get_genes_by_classification_with_gene_mapper(clingen_table_path, tmp_path):
+    """Test GeneMapper integration translates gene symbols to HGNC IDs."""
+    from unittest.mock import Mock
+
+    streamer = ClinGenStreamer(clingen_table_path)
+
+    # Get baseline symbols
+    symbols = streamer.get_genes_by_classification("Definitive")
+    assert len(symbols) > 0
+
+    # Mock GeneMapper to verify it's called correctly
+    mock_mapper = Mock()
+    mock_mapper.map_ids.return_value = {s: f"HGNC:{i}" for i, s in enumerate(symbols)}
+
+    result = streamer.get_genes_by_classification(
+        "Definitive",
+        gene_mapper=mock_mapper,
+        output_id_type="hgnc_id",
+    )
+
+    mock_mapper.map_ids.assert_called_once()
+    call_args = mock_mapper.map_ids.call_args
+    assert call_args.kwargs["source_type"] == "gene_symbol"
+    assert call_args.kwargs["target_type"] == "hgnc_id"
+    # Results should be the mapped HGNC IDs
+    assert all(v.startswith("HGNC:") for v in result)
+
+
+def test_to_gene_set_with_gene_mapper(clingen_table_path):
+    """Test to_gene_set with GeneMapper translates IDs."""
+    from unittest.mock import Mock
+
+    streamer = ClinGenStreamer(clingen_table_path)
+
+    mock_mapper = Mock()
+    mock_mapper.map_ids.return_value = {"BRCA1": "ENSG00000012048"}
+
+    result = streamer.to_gene_set(
+        min_classification="Definitive",
+        gene_mapper=mock_mapper,
+        output_id_type="ensembl_gene_id",
+    )
+
+    mock_mapper.map_ids.assert_called_once()
+    assert "ENSG00000012048" in result
+
+
+def test_gene_mapper_none_does_not_translate(clingen_table_path):
+    """Test that without gene_mapper, symbols are returned as-is."""
+    streamer = ClinGenStreamer(clingen_table_path)
+    result = streamer.get_genes_by_classification("Definitive")
+    # Should be gene symbols, not HGNC IDs or Ensembl IDs
+    assert all(not v.startswith("HGNC:") for v in result)
+    assert all(not v.startswith("ENSG") for v in result)
