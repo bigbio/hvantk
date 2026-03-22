@@ -512,7 +512,9 @@ def validate_bgzf(filepath: str, full: bool = True) -> tuple[bool, int, str]:
     Returns
     -------
     tuple[bool, int, str]
-        (is_valid, num_blocks, message)
+        (is_valid, block_number, message).  On success *block_number* is the
+        total number of validated blocks; on failure it is the 1-based index
+        of the failing block.
     """
     filesize = os.path.getsize(filepath)
     block_num = 0
@@ -528,43 +530,53 @@ def validate_bgzf(filepath: str, full: bool = True) -> tuple[bool, int, str]:
             if len(header) < 18:
                 return (
                     False,
-                    block_num,
+                    block_num + 1,
                     f"Truncated header ({len(header)} bytes) at offset {block_start}",
                 )
 
             if header[0:2] != b"\x1f\x8b":
                 return (
                     False,
-                    block_num,
+                    block_num + 1,
                     f"Bad gzip magic at offset {block_start} (got {header[0:2].hex()})",
                 )
             if header[2] != 0x08:
                 return (
                     False,
-                    block_num,
+                    block_num + 1,
                     f"Bad compression method at offset {block_start}",
                 )
             if (header[3] & 0x04) == 0:
                 return (
                     False,
-                    block_num,
+                    block_num + 1,
                     f"FEXTRA flag not set at offset {block_start}",
                 )
             if header[12:14] != b"BC":
                 return (
                     False,
-                    block_num,
+                    block_num + 1,
                     f"Missing BC subfield at offset {block_start} (got {header[12:14].hex()})",
                 )
 
             xlen = int.from_bytes(header[10:12], "little")
+            if xlen < 6:
+                return (
+                    False,
+                    block_num + 1,
+                    (
+                        f"Invalid BGZF header at offset {block_start}: "
+                        f"xlen too small ({xlen}, expected >= 6)"
+                    ),
+                )
+
             bsize = int.from_bytes(header[16:18], "little")
             block_size = bsize + 1
 
             if block_start + block_size > filesize:
                 return (
                     False,
-                    block_num,
+                    block_num + 1,
                     (
                         f"Block extends past EOF at offset {block_start} "
                         f"(block_size={block_size}, remaining={filesize - block_start})"
@@ -577,11 +589,21 @@ def validate_bgzf(filepath: str, full: bool = True) -> tuple[bool, int, str]:
                 if len(block_data) != block_size:
                     return (
                         False,
-                        block_num,
+                        block_num + 1,
                         f"Truncated block at offset {block_start}",
                     )
 
                 header_size = 12 + xlen
+                if header_size + 8 > block_size:
+                    return (
+                        False,
+                        block_num + 1,
+                        (
+                            f"Invalid BGZF header at offset {block_start}: "
+                            f"header_size ({header_size}) + footer exceeds "
+                            f"block_size ({block_size})"
+                        ),
+                    )
                 cdata = block_data[header_size:-8]
                 stored_crc = struct.unpack("<I", block_data[-8:-4])[0]
                 stored_isize = struct.unpack("<I", block_data[-4:])[0]
@@ -591,7 +613,7 @@ def validate_bgzf(filepath: str, full: bool = True) -> tuple[bool, int, str]:
                 except zlib.error as e:
                     return (
                         False,
-                        block_num,
+                        block_num + 1,
                         f"Decompression error at offset {block_start}: {e}",
                     )
 
@@ -599,7 +621,7 @@ def validate_bgzf(filepath: str, full: bool = True) -> tuple[bool, int, str]:
                 if calc_crc != stored_crc:
                     return (
                         False,
-                        block_num,
+                        block_num + 1,
                         (
                             f"CRC32 mismatch at offset {block_start} "
                             f"(stored={stored_crc:#010x}, calc={calc_crc:#010x})"
@@ -610,7 +632,7 @@ def validate_bgzf(filepath: str, full: bool = True) -> tuple[bool, int, str]:
                 if calc_isize != stored_isize:
                     return (
                         False,
-                        block_num,
+                        block_num + 1,
                         (
                             f"ISIZE mismatch at offset {block_start} "
                             f"(stored={stored_isize}, calc={calc_isize})"
