@@ -164,6 +164,7 @@ cython_debug/
 /local
 /testscripts
 .DS_Store
+/examples/clingen/data
 
 # HVANTK Dataset Validation Framework - Temporary Files
 dataset_validation/
@@ -181,7 +182,6 @@ validation_test/
 real_registry_output/
 real_test_output/
 workflow_test_output/
-*.log
 hail-*.log
 
 # Temporary development files
