@@ -354,17 +354,17 @@ with `hvantk psroc`, `hvantk enrichex burden`, and `hvantk enrichex overlap`.
 
 ```bash
 # Format: headerless two-column TSV (gene_set_name<TAB>gene_symbol)
-hvantk prepare-geneset -i panels.tsv -o panels.json
+hvantk genesets prepare -i panels.tsv -o panels.json
 
 # With HGNC validation and alias resolution (recommended)
-hvantk prepare-geneset -i panels.tsv -o panels.json --hgnc /data/hgnc.ht
+hvantk genesets prepare -i panels.tsv -o panels.json --hgnc /data/hgnc.ht
 
 # Filter small sets and provide explicit background
-hvantk prepare-geneset -i panels.tsv -o panels.json \
+hvantk genesets prepare -i panels.tsv -o panels.json \
   --hgnc /data/hgnc.ht --min-genes 5 --background bg_genes.txt
 
 # Also export as GMT for GSEA compatibility
-hvantk prepare-geneset -i panels.tsv -o panels.json --export-gmt panels.gmt
+hvantk genesets prepare -i panels.tsv -o panels.json --export-gmt panels.gmt
 ```
 
 ### Python API

@@ -1,0 +1,16 @@
+sgc_id	gene_curie	gene_symbol	disease_curie	disease_title	disease_original_curie	disease_original_title	classification_title	moi_title	submitter_title	submitted_as_date	submitted_as_public_report_url	submitted_as_pmids
+SGC-001	HGNC:1100	BRCA1	MONDO:0005144	breast-ovarian cancer, familial 1	MONDO:0005144	breast-ovarian cancer, familial 1	Definitive	Autosomal dominant	ClinGen	2025-06-15	https://example.com/1	12345678
+SGC-002	HGNC:1100	BRCA1	MONDO:0005144	breast-ovarian cancer, familial 1	MONDO:0005144	breast-ovarian cancer, familial 1	Strong	Autosomal dominant	Genomics England PanelApp	2025-07-01	https://example.com/2	23456789
+SGC-003	HGNC:1101	BRCA2	MONDO:0005145	breast-ovarian cancer, familial 2	MONDO:0005145	breast-ovarian cancer, familial 2	Definitive	Autosomal dominant	ClinGen	2025-06-16	https://example.com/3	34567890
+SGC-004	HGNC:1101	BRCA2	MONDO:0005145	breast-ovarian cancer, familial 2	MONDO:0005145	breast-ovarian cancer, familial 2	Definitive	Autosomal dominant	Genomics England PanelApp	2025-06-20	https://example.com/4	45678901
+SGC-005	HGNC:11998	TP53	MONDO:0007903	Li-Fraumeni syndrome	MONDO:0007903	Li-Fraumeni syndrome	Definitive	Autosomal dominant	ClinGen	2025-05-20	https://example.com/5	56789012
+SGC-006	HGNC:11998	TP53	MONDO:0007903	Li-Fraumeni syndrome	MONDO:0007903	Li-Fraumeni syndrome	Strong	Autosomal dominant	Orphanet	2025-04-15	https://example.com/6	67890123
+SGC-007	HGNC:9588	PTEN	MONDO:0008021	Cowden syndrome 1	MONDO:0008021	Cowden syndrome 1	Strong	Autosomal dominant	ClinGen	2025-04-10	https://example.com/7	78901234
+SGC-008	HGNC:9588	PTEN	MONDO:0008021	Cowden syndrome 1	MONDO:0008021	Cowden syndrome 1	Moderate	Autosomal dominant	G2P	2025-03-30	https://example.com/8	89012345
+SGC-009	HGNC:7127	MLH1	MONDO:0012255	Lynch syndrome I	MONDO:0012255	Lynch syndrome I	Definitive	Autosomal dominant	ClinGen	2025-07-01	https://example.com/9	90123456
+SGC-010	HGNC:7325	MSH2	MONDO:0012256	Lynch syndrome II	MONDO:0012256	Lynch syndrome II	Definitive	Autosomal dominant	ClinGen	2025-07-02	https://example.com/10	01234567
+SGC-011	HGNC:583	APC	MONDO:0021056	familial adenomatous polyposis 1	MONDO:0021056	familial adenomatous polyposis 1	Definitive	Autosomal dominant	Genomics England PanelApp	2025-02-15	https://example.com/11	11223344
+SGC-012	HGNC:6547	LDLR	MONDO:0007750	familial hypercholesterolemia 1	MONDO:0007750	familial hypercholesterolemia 1	Moderate	Autosomal dominant	ClinGen	2025-08-10	https://example.com/12	22334455
+SGC-013	HGNC:1100	BRCA1	MONDO:0013683	pancreatic cancer, susceptibility to, 4	MONDO:0013683	pancreatic cancer, susceptibility to, 4	Supportive	Autosomal dominant	G2P	2025-09-01	https://example.com/13	33445566
+SGC-014	HGNC:603	APOB	MONDO:0007751	familial hypercholesterolemia 2	MONDO:0007751	familial hypercholesterolemia 2	Limited	Autosomal dominant	Orphanet	2025-08-11	https://example.com/14	44556677
+SGC-015	HGNC:1748	CDH1	MONDO:0008594	hereditary diffuse gastric cancer	MONDO:0008594	hereditary diffuse gastric cancer	Strong	Autosomal dominant	ClinGen	2025-03-22	https://example.com/15	55667788

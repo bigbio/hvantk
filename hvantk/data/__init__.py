@@ -2,7 +2,8 @@
 
 Data management utilities including:
 - Base streamer classes (DataStreamer, HailDataStreamer, StreamProcessor)
-- Data source streamers (ClinvarDataStreamer, ClinGenStreamer)
+- Gene-disease validity base (GeneDiseaseValidityStreamer)
+- Data source streamers (ClinvarDataStreamer, ClinGenStreamer, GenCCStreamer)
 - Gene ID mapping utility (GeneMapper)
 """
 
@@ -17,15 +18,21 @@ from hvantk.data.data_streamer import (
     HailDataStreamer,
     StreamProcessor,
 )
+from hvantk.data.gene_disease_streamer import GeneDiseaseValidityStreamer
 from hvantk.data.gene_mapper import GeneMapper
+from hvantk.data.gencc_streamer import GenCCStreamer
+from hvantk.data.cosmic_cgc_streamer import CosmicCGCStreamer
 
 __all__ = [
     # Base classes
     "DataStreamer",
     "HailDataStreamer",
     "StreamProcessor",
+    "GeneDiseaseValidityStreamer",
     # Data source streamers
     "ClinGenStreamer",
+    "GenCCStreamer",
+    "CosmicCGCStreamer",
     "ClinvarDataStreamer",
     "ClinvarTrainingSetProcessor",
     "create_clinvar_training_set_streamer",

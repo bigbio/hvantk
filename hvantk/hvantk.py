@@ -7,8 +7,8 @@ from hvantk.core.config import CONTEXT_SETTINGS
 from hvantk.commands.ucsc_downloader import ucsc_downloader
 from hvantk.commands.expression_atlas_downloader import download_experiments
 from hvantk.commands.clingen_downloader import clingen_downloader
-from hvantk.commands.clingen_genesets_cli import clingen_genesets_cmd
-from hvantk.commands.prepare_geneset_cli import prepare_geneset_cmd
+from hvantk.commands.gencc_downloader import gencc_downloader
+from hvantk.commands.genesets_cli import genesets_group
 from hvantk.commands.hgnc_downloader import hgnc_downloader
 from hvantk.commands.clinvar_downloader import clinvar_downloader
 from hvantk.commands.make_table_cli import mktable_group
@@ -85,8 +85,8 @@ def cli(verbose, log_file):
 cli.add_command(ucsc_downloader)
 cli.add_command(download_experiments)
 cli.add_command(clingen_downloader)
-cli.add_command(clingen_genesets_cmd)  # ClinGen gene set extraction
-cli.add_command(prepare_geneset_cmd)  # Custom gene set preparation
+cli.add_command(gencc_downloader)
+cli.add_command(genesets_group)  # Unified gene set extraction/preparation
 cli.add_command(hgnc_downloader)
 cli.add_command(clinvar_downloader)
 cli.add_command(mktable_group)  # per-table builder

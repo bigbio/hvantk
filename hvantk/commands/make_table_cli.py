@@ -65,6 +65,12 @@ def _create_clingen_gene_disease_tb(*args, **kwargs):
     return create_clingen_gene_disease_tb(*args, **kwargs)
 
 
+def _create_gencc_submissions_tb(*args, **kwargs):
+    from hvantk.tables.table_builders import create_gencc_submissions_tb
+
+    return create_gencc_submissions_tb(*args, **kwargs)
+
+
 def _create_hgnc_gene_tb(*args, **kwargs):
     from hvantk.tables.table_builders import create_hgnc_gene_tb
 
@@ -364,6 +370,123 @@ def mktable_clingen_gene_disease(
         export_tsv=export_tsv,
     )
     click.echo(f"ClinGen Gene-Disease table created at {output_ht}")
+    ht.describe()
+
+
+@mktable_group.command("gencc-submissions")
+@_raw_input_opt
+@_output_ht_opt
+@_overwrite_opt
+@_export_tsv_opt
+@click.option(
+    "--key-by",
+    type=click.Choice(
+        ["gene_disease_submitter", "gene_disease", "gene"], case_sensitive=False
+    ),
+    default="gene_disease_submitter",
+    show_default=True,
+    help=(
+        "Keying strategy: 'gene_disease_submitter' (full granularity), "
+        "'gene_disease' (aggregate submitters), or 'gene' (aggregate by gene)"
+    ),
+)
+@click.option(
+    "--min-classification",
+    type=click.Choice(
+        [
+            "Definitive",
+            "Strong",
+            "Moderate",
+            "Supportive",
+            "Limited",
+            "Disputed Evidence",
+            "Refuted Evidence",
+        ],
+        case_sensitive=True,
+    ),
+    default=None,
+    help="Filter to classifications at or above this level",
+)
+@click.option(
+    "--fields",
+    type=str,
+    default=None,
+    help="Comma-separated list of fields to retain (optional)",
+)
+def mktable_gencc_submissions(
+    raw_input: str,
+    output_ht: str,
+    overwrite: bool,
+    export_tsv: bool,
+    key_by: str,
+    min_classification: Optional[str],
+    fields: Optional[str],
+):
+    """Build a GenCC Submissions Table from a TSV (keyed by gene, gene-disease, or gene-disease-submitter)."""
+    selected: Optional[List[str]] = (
+        [f.strip() for f in fields.split(",")] if fields else None
+    )
+    logger.info("Building GenCC Submissions table")
+    ht = _create_gencc_submissions_tb(
+        input_path=raw_input,
+        output_path=output_ht,
+        key_by=key_by.lower(),
+        min_classification=min_classification,
+        fields=selected,
+        overwrite=overwrite,
+        export_tsv=export_tsv,
+    )
+    click.echo(f"GenCC Submissions table created at {output_ht}")
+    ht.describe()
+
+
+@mktable_group.command("cosmic-cgc")
+@_raw_input_opt
+@_output_ht_opt
+@_overwrite_opt
+@_export_tsv_opt
+@click.option(
+    "--hgnc-path",
+    type=str,
+    default=None,
+    help="Path to HGNC Hail Table (.ht) for gene symbol -> HGNC ID resolution",
+)
+@click.option(
+    "--mutation-context",
+    type=click.Choice(["somatic", "germline", "both"]),
+    default="both",
+    show_default=True,
+    help="Filter genes by somatic/germline mutation context",
+)
+@click.option(
+    "--min-classification",
+    type=click.Choice(["Tier 1", "Tier 2"], case_sensitive=True),
+    default=None,
+    help="Filter to classifications at or above this level",
+)
+def mktable_cosmic_cgc(
+    raw_input: str,
+    output_ht: str,
+    overwrite: bool,
+    export_tsv: bool,
+    hgnc_path: Optional[str],
+    mutation_context: str,
+    min_classification: Optional[str],
+):
+    """Build a COSMIC Cancer Gene Census Hail Table from the downloaded TSV."""
+    logger.info("Building COSMIC CGC table")
+    from hvantk.tables.table_builders import create_cosmic_cgc_tb
+
+    ht = create_cosmic_cgc_tb(
+        input_path=raw_input,
+        output_path=output_ht,
+        hgnc_path=hgnc_path,
+        min_classification=min_classification,
+        mutation_context=mutation_context,
+        overwrite=overwrite,
+        export_tsv=export_tsv,
+    )
+    click.echo(f"COSMIC CGC table created at {output_ht}")
     ht.describe()
 
 

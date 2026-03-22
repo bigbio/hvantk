@@ -19,8 +19,13 @@ from hvantk.core.constants import (
     CLINGEN_GENE_DISEASE_FIELDS,
     CLINGEN_CLASSIFICATION_LEVELS,
     CLINGEN_HEADER_SKIP_LINES,
+    GENCC_SUBMISSION_FIELDS,
+    GENCC_CLASSIFICATION_LEVELS,
     HGNC_GENE_FIELDS,
     HGNC_PIPE_SEPARATED_FIELDS,
+    COSMIC_CGC_FIELDS,
+    COSMIC_CGC_CLASSIFICATION_LEVELS,
+    COSMIC_MUTATION_CONTEXTS,
 )
 from hvantk.data.file_utils import resolve_compression
 from hvantk.utils.genome import contig_recoding  # correct module import
@@ -881,6 +886,401 @@ def create_clingen_gene_disease_tb(
     finally:
         # Clean up temp file
         _cleanup_temp_file(tmp_path)
+
+
+def create_gencc_submissions_tb(
+    input_path: str,
+    output_path: str,
+    key_by: str = "gene_disease_submitter",
+    min_classification: Optional[str] = None,
+    fields: Optional[List[str]] = None,
+    overwrite: bool = False,
+    export_tsv: bool = False,
+) -> "hl.Table":
+    """
+    Create a Hail Table from a GenCC submissions TSV file.
+
+    GenCC aggregates gene-disease validity assertions from 12+ submitting
+    organizations (ClinGen, PanelApp, G2P, Orphanet, etc.).
+
+    Parameters
+    ----------
+    input_path : str
+        Path to the GenCC submissions TSV file.
+    output_path : str
+        Path to write the output Hail Table.
+    key_by : str, optional
+        Keying strategy:
+        - "gene_disease_submitter" (default): Key by (hgnc_id, mondo_id, submitter)
+        - "gene_disease": Aggregate across submitters, key by (hgnc_id, mondo_id)
+        - "gene": Aggregate all diseases per gene, key by hgnc_id
+    min_classification : str, optional
+        Filter to classifications at or above this level.
+    fields : list of str, optional
+        List of fields to select from the table (default: None, keeps all).
+    overwrite : bool, optional
+        Whether to overwrite the output file if it exists (default: False).
+    export_tsv : bool, optional
+        If True, also export a TSV version (default: False).
+
+    Returns
+    -------
+    hl.Table
+        Hail Table with GenCC gene-disease-submitter validity annotations.
+    """
+    valid_keys = ("gene_disease_submitter", "gene_disease", "gene")
+    if key_by not in valid_keys:
+        raise ValueError(f"key_by must be one of {valid_keys}, got: {key_by}")
+
+    if (
+        min_classification is not None
+        and min_classification not in GENCC_CLASSIFICATION_LEVELS
+    ):
+        raise ValueError(
+            f"min_classification must be one of {GENCC_CLASSIFICATION_LEVELS}, "
+            f"got: {min_classification}"
+        )
+
+    def import_func():
+        return hl.import_table(
+            paths=input_path,
+            delimiter="\t",
+            impute=False,
+            min_partitions=10,
+        )
+
+    def transform(ht: hl.Table) -> hl.Table:
+        # Rename fields to standardized names
+        logger.info("Renaming GenCC fields to standardized names")
+        rename_map = {
+            k: v
+            for k, v in GENCC_SUBMISSION_FIELDS.items()
+            if k in get_row_fields(ht)
+        }
+        ht = ht.rename(rename_map)
+
+        # Clean HGNC ID (strip "HGNC:" prefix)
+        row_fields = get_row_fields(ht)
+        if "hgnc_id" in row_fields:
+            ht = ht.annotate(
+                hgnc_id=hl.if_else(
+                    ht.hgnc_id.startswith("HGNC:"),
+                    ht.hgnc_id.replace("HGNC:", ""),
+                    ht.hgnc_id,
+                )
+            )
+
+        # Clean MONDO ID (strip "MONDO:" prefix if present)
+        if "mondo_id" in row_fields:
+            ht = ht.annotate(
+                mondo_id=hl.if_else(
+                    ht.mondo_id.startswith("MONDO:"),
+                    ht.mondo_id.replace("MONDO:", ""),
+                    ht.mondo_id,
+                )
+            )
+
+        # Add classification level as numeric for filtering/sorting
+        classification_order = {
+            level: i for i, level in enumerate(GENCC_CLASSIFICATION_LEVELS)
+        }
+        ht = ht.annotate(
+            classification_level=hl.literal(classification_order).get(
+                ht.classification, hl.len(GENCC_CLASSIFICATION_LEVELS)
+            )
+        )
+
+        # Apply min_classification filter if specified
+        if min_classification is not None:
+            min_level = classification_order[min_classification]
+            logger.info(
+                f"Filtering to classifications >= {min_classification} "
+                f"(level {min_level})"
+            )
+            ht = ht.filter(ht.classification_level <= min_level)
+
+        # Apply keying strategy
+        if key_by == "gene_disease_submitter":
+            logger.info("Keying by (hgnc_id, mondo_id, submitter)")
+            ht = ht.key_by("hgnc_id", "mondo_id", "submitter")
+        elif key_by == "gene_disease":
+            logger.info("Aggregating by gene-disease (hgnc_id, mondo_id)")
+            ht = (
+                ht.group_by("hgnc_id", "mondo_id", "gene_symbol", "disease_label")
+                .aggregate(
+                    submitters=hl.agg.collect_as_set(ht.submitter),
+                    classifications=hl.agg.collect_as_set(ht.classification),
+                    modes_of_inheritance=hl.agg.collect_as_set(
+                        ht.mode_of_inheritance
+                    ),
+                    max_classification_level=hl.agg.min(ht.classification_level),
+                )
+                .key_by("hgnc_id", "mondo_id")
+            )
+            ht = ht.annotate(n_submitters=hl.len(ht.submitters))
+            classification_labels = hl.literal(GENCC_CLASSIFICATION_LEVELS)
+            safe_index = hl.min(
+                ht.max_classification_level, hl.len(classification_labels) - 1
+            )
+            ht = ht.annotate(
+                max_classification_label=classification_labels[safe_index],
+                classification=classification_labels[safe_index],
+                classification_level=ht.max_classification_level,
+            )
+        else:  # key_by == "gene"
+            logger.info("Aggregating by gene (hgnc_id)")
+            ht = (
+                ht.group_by("hgnc_id", "gene_symbol")
+                .aggregate(
+                    disease_labels=hl.agg.collect_as_set(ht.disease_label),
+                    disease_mondo_pairs=hl.agg.collect_as_set(
+                        hl.struct(
+                            disease_label=ht.disease_label, mondo_id=ht.mondo_id
+                        )
+                    ),
+                    mondo_ids=hl.agg.collect_as_set(ht.mondo_id),
+                    classifications=hl.agg.collect_as_set(ht.classification),
+                    modes_of_inheritance=hl.agg.collect_as_set(
+                        ht.mode_of_inheritance
+                    ),
+                    submitters=hl.agg.collect_as_set(ht.submitter),
+                    max_classification_level=hl.agg.min(ht.classification_level),
+                )
+                .key_by("hgnc_id")
+            )
+            ht = ht.annotate(
+                n_diseases=hl.len(ht.mondo_ids),
+                n_submitters=hl.len(ht.submitters),
+            )
+            classification_labels = hl.literal(GENCC_CLASSIFICATION_LEVELS)
+            safe_index = hl.min(
+                ht.max_classification_level, hl.len(classification_labels) - 1
+            )
+            ht = ht.annotate(
+                max_classification_label=classification_labels[safe_index]
+            )
+
+        return ht
+
+    gencc_tb = _create_table_base(
+        source_name="GenCC Submissions",
+        input_path=input_path,
+        output_path=output_path,
+        import_func=import_func,
+        transform_func=transform,
+        fields=fields,
+        overwrite=overwrite,
+        export_tsv=export_tsv,
+    )
+
+    return gencc_tb
+
+
+def create_cosmic_cgc_tb(
+    input_path: str,
+    output_path: str,
+    hgnc_path: Optional[str] = None,
+    min_classification: Optional[str] = None,
+    mutation_context: str = "both",
+    fields: Optional[List[str]] = None,
+    overwrite: bool = False,
+    export_tsv: bool = False,
+) -> "hl.Table":
+    """Create a Hail Table from COSMIC Cancer Gene Census (CGC) data.
+
+    Parameters
+    ----------
+    input_path : str
+        Path to the CGC TSV file (e.g. ``Cosmic_Genes_v98_GRCh38.tsv.gz``).
+    output_path : str
+        Path to write the output Hail Table.
+    hgnc_path : str, optional
+        Path to an HGNC Hail Table for gene symbol -> hgnc_id resolution.
+        If not provided, the table is keyed by gene_symbol.
+    min_classification : str, optional
+        Filter to Tier at or above this level (``"Tier 1"`` or ``"Tier 2"``).
+    mutation_context : str
+        Filter genes by mutation context: ``"somatic"``, ``"germline"``, or
+        ``"both"`` (default).
+    fields : list of str, optional
+        Fields to retain in the output table.
+    overwrite : bool
+        Overwrite existing output.
+    export_tsv : bool
+        Also export a TSV version.
+
+    Returns
+    -------
+    hl.Table
+        Gene-keyed Hail Table with COSMIC CGC annotations.
+    """
+    if mutation_context not in COSMIC_MUTATION_CONTEXTS:
+        raise ValueError(
+            f"mutation_context must be one of {COSMIC_MUTATION_CONTEXTS}, "
+            f"got: {mutation_context}"
+        )
+
+    if (
+        min_classification is not None
+        and min_classification not in COSMIC_CGC_CLASSIFICATION_LEVELS
+    ):
+        raise ValueError(
+            f"min_classification must be one of "
+            f"{COSMIC_CGC_CLASSIFICATION_LEVELS}, got: {min_classification}"
+        )
+
+    def import_func():
+        return hl.import_table(
+            paths=input_path,
+            delimiter="\t",
+            impute=False,
+            min_partitions=10,
+        )
+
+    def transform(ht: hl.Table) -> hl.Table:
+        # Rename fields to standardized names
+        logger.info("Renaming COSMIC CGC fields to standardized names")
+        rename_map = {
+            k: v
+            for k, v in COSMIC_CGC_FIELDS.items()
+            if k in get_row_fields(ht)
+        }
+        ht = ht.rename(rename_map)
+
+        # Normalize Tier: raw "1"/"2" -> "Tier 1"/"Tier 2"
+        logger.info("Normalizing tier classification values")
+        ht = ht.annotate(
+            classification=hl.if_else(
+                ht.classification.matches(r"^\d+$"),
+                hl.literal("Tier ") + ht.classification,
+                ht.classification,
+            )
+        )
+
+        # Add classification_level numeric field
+        classification_order = {
+            level: i
+            for i, level in enumerate(COSMIC_CGC_CLASSIFICATION_LEVELS)
+        }
+        ht = ht.annotate(
+            classification_level=hl.literal(classification_order).get(
+                ht.classification,
+                hl.len(COSMIC_CGC_CLASSIFICATION_LEVELS),
+            )
+        )
+
+        # Normalize boolean fields: "yes"/"Yes" -> True, else False
+        for bool_field in ("somatic", "germline", "hallmark"):
+            if bool_field in get_row_fields(ht):
+                ht = ht.annotate(
+                    **{
+                        bool_field: hl.if_else(
+                            hl.is_defined(ht[bool_field])
+                            & (ht[bool_field].lower() == "yes"),
+                            True,
+                            False,
+                        )
+                    }
+                )
+
+        # Parse comma-separated multi-value fields into arrays
+        multi_value_fields = [
+            "tumour_types_somatic",
+            "tumour_types_germline",
+            "role_in_cancer",
+            "mutation_types",
+        ]
+        for mv_field in multi_value_fields:
+            if mv_field in get_row_fields(ht):
+                ht = ht.annotate(
+                    **{
+                        mv_field: hl.if_else(
+                            hl.is_defined(ht[mv_field])
+                            & (ht[mv_field] != ""),
+                            ht[mv_field]
+                            .split(",")
+                            .map(lambda x: x.strip())
+                            .filter(lambda x: x != ""),
+                            hl.empty_array(hl.tstr),
+                        )
+                    }
+                )
+
+        # Apply mutation_context filter
+        if mutation_context == "somatic":
+            logger.info("Filtering to somatic genes")
+            ht = ht.filter(ht.somatic)
+        elif mutation_context == "germline":
+            logger.info("Filtering to germline genes")
+            ht = ht.filter(ht.germline)
+
+        # Apply min_classification filter
+        if min_classification is not None:
+            min_level = classification_order[min_classification]
+            logger.info(
+                f"Filtering to classifications >= {min_classification} "
+                f"(level {min_level})"
+            )
+            ht = ht.filter(ht.classification_level <= min_level)
+
+        # Resolve gene_symbol -> hgnc_id if HGNC table is available
+        if hgnc_path is not None:
+            logger.info(
+                f"Resolving gene symbols to HGNC IDs using {hgnc_path}"
+            )
+            from hvantk.data.gene_mapper import GeneMapper
+
+            hgnc_ht = hl.read_table(hgnc_path)
+            mapper = GeneMapper(hgnc_ht)
+            symbols = set(
+                ht.aggregate(hl.agg.collect_as_set(ht.gene_symbol))
+            )
+            mapping = mapper.map_to_hgnc(
+                list(symbols), source_type="gene_symbol"
+            )
+            mapping_literal = hl.literal(mapping)
+            ht = ht.annotate(
+                hgnc_id=mapping_literal.get(ht.gene_symbol)
+            )
+            # Strip "HGNC:" prefix to match convention used by other builders
+            ht = ht.annotate(
+                hgnc_id=hl.if_else(
+                    hl.is_defined(ht.hgnc_id) & ht.hgnc_id.startswith("HGNC:"),
+                    ht.hgnc_id.replace("HGNC:", ""),
+                    ht.hgnc_id,
+                )
+            )
+            n_mapped = len([v for v in mapping.values() if v])
+            n_unmapped = len(symbols) - n_mapped
+            logger.info(
+                f"Mapped {n_mapped}/{len(symbols)} gene symbols to HGNC IDs"
+            )
+            if n_unmapped > 0:
+                logger.warning(
+                    f"{n_unmapped} genes could not be mapped to HGNC IDs "
+                    "and will be excluded from the keyed output"
+                )
+            ht = ht.filter(hl.is_defined(ht.hgnc_id) & (ht.hgnc_id != ""))
+            ht = ht.key_by("hgnc_id")
+        else:
+            logger.warning(
+                "No HGNC path provided; keying by gene_symbol. "
+                "Provide --hgnc-path for HGNC ID resolution."
+            )
+            ht = ht.key_by("gene_symbol")
+
+        return ht
+
+    return _create_table_base(
+        source_name="COSMIC CGC",
+        input_path=input_path,
+        output_path=output_path,
+        import_func=import_func,
+        transform_func=transform,
+        fields=fields,
+        overwrite=overwrite,
+        export_tsv=export_tsv,
+    )
 
 
 def create_hgnc_gene_tb(

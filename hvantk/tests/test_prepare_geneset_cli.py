@@ -1,4 +1,4 @@
-"""Tests for the hvantk prepare-geneset CLI command."""
+"""Tests for the hvantk genesets prepare CLI command."""
 
 import json
 from pathlib import Path
@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 from click.testing import CliRunner
 
-from hvantk.commands.prepare_geneset_cli import prepare_geneset_cmd
+from hvantk.commands.genesets_cli import genesets_prepare as prepare_geneset_cmd
 
 TESTDATA = Path(__file__).parent / "testdata" / "prepare_geneset"
 
