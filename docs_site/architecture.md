@@ -25,6 +25,7 @@ hvantk/
 │   ├── config.py          # Configuration management
 │   ├── constants.py       # Shared constants
 │   ├── hail_context.py    # Hail session management (thread-safe init)
+│   ├── metadata.py        # Metadata structs and source descriptions
 │   └── protocols.py       # Protocol definitions (Builder, Streamer, Downloader)
 │
 ├── data/                  # L1: Data management utilities
@@ -35,6 +36,7 @@ hvantk/
 │   ├── clinvar_streamer.py         # ClinVar data source streamer
 │   ├── clingen_streamer.py         # ClinGen streamer (subclass of GeneDiseaseValidityStreamer)
 │   ├── gencc_streamer.py           # GenCC streamer (subclass of GeneDiseaseValidityStreamer)
+│   ├── cosmic_cgc_streamer.py     # COSMIC CGC data streamer
 │   └── gene_mapper.py              # Gene ID/symbol mapping utilities
 │
 ├── datasets/              # L2: Dataset definitions
@@ -47,6 +49,7 @@ hvantk/
 ├── tables/                # L2-L3: Table and matrix builders
 │   ├── table_builders.py  # Variant/gene annotation builders (ClinVar, dbNSFP, Ensembl, etc.)
 │   ├── matrix_builders.py # Expression matrix builders
+│   ├── genome_builders.py # Reference genome builders (e.g., 1000 Genomes)
 │   ├── ucsc.py            # UCSC Cell Browser builders
 │   ├── expression_atlas.py# Expression Atlas builders
 │   ├── cptac.py           # CPTAC proteomics builders
@@ -85,7 +88,9 @@ hvantk/
 │   ├── burden.py          # Burden testing (rare variant regression)
 │   ├── correction.py      # Multiple testing correction
 │   ├── plot.py            # Enrichment visualization
-│   └── report.py          # HTML report generation
+│   ├── report.py          # HTML report generation
+│   ├── constants.py       # Enrichex-specific constants
+│   └── simulation.py      # Synthetic cohort generator for burden testing
 │
 ├── commands/              # CLI command implementations
 │   ├── make_table_cli.py        # mktable commands
@@ -95,13 +100,20 @@ hvantk/
 │   ├── catalog_cli.py           # Data catalog commands
 │   ├── ancestry_cli.py          # Ancestry CLI
 │   ├── psroc_cli.py             # PSROC CLI
+│   ├── download_cli.py          # Unified download command group
+│   ├── utils_cli.py             # Unified utils command group
+│   ├── check_install_cli.py     # Installation verification
+│   ├── validate_bgzf_cli.py     # BGZF validation
+│   ├── summarize_expression_cli.py # Expression analysis commands
 │   ├── ucsc_downloader.py       # UCSC downloader
 │   ├── expression_atlas_downloader.py # Expression Atlas downloader
 │   ├── clingen_downloader.py    # ClinGen downloader
-│   ├── gencc_downloader.py     # GenCC downloader
-│   ├── genesets_cli.py         # Unified gene set extraction/preparation
+│   ├── gencc_downloader.py      # GenCC downloader
+│   ├── clinvar_downloader.py    # ClinVar downloader
+│   ├── hgnc_downloader.py       # HGNC downloader
+│   ├── genesets_cli.py          # Unified gene set extraction/preparation
 │   ├── hgc/                     # HGC CLI subcommands
-│   │   ├── combine_cli.py       # gvcf-combine, mt-combine
+│   │   ├── combine_cli.py       # gvcf-combine, vds-combine
 │   │   ├── convert_cli.py       # vds2mt, mt2vcf
 │   │   ├── qc_cli.py            # compute-qc, qc-report
 │   │   └── pipeline_cli.py      # pipeline (end-to-end)
@@ -114,7 +126,14 @@ hvantk/
 │   ├── matrix_utils.py    # MatrixTable utilities
 │   ├── genome.py          # Genome/contig utilities
 │   ├── gene_sets.py       # Gene set utilities
+│   ├── geneset_io.py      # Gene set I/O and validation
+│   ├── gene_aliases.py    # Gene alias expansion (HGNC)
 │   ├── expressions.py     # Expression data utilities
+│   ├── correction.py      # Multiple testing correction
+│   ├── mondo_parser.py    # MONDO ontology parser
+│   ├── obo_parser.py      # OBO ontology parser
+│   ├── wilcoxon.py        # Wilcoxon rank-sum tests
+│   ├── wilcoxon_hail.py   # Hail-based Wilcoxon implementation
 │   └── catalog.py         # Catalog utilities
 │
 ├── visualization/         # Visualization and reporting
@@ -356,6 +375,10 @@ annotated = variants.annotate(
   - **GeVIR** - Gene-level viability scores (TSV → Table)
   - **gnomAD Metrics** - Gene constraint metrics (TSV → Table)
   - **INSIDER** - Protein-protein interaction sites (BED → Table)
+  - **ClinGen Gene-Disease** - Gene-disease validity (CSV → Table)
+  - **GenCC Submissions** - Gene-disease assertions (CSV → Table)
+  - **COSMIC CGC** - Cancer Gene Census (TSV → Table)
+  - **HGNC** - Gene nomenclature (TSV → Table)
 
 - `matrix_builders.py` - Expression matrix builders:
   - **UCSC** - Single-cell RNA-seq (TSV → MatrixTable)

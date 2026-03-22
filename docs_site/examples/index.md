@@ -7,7 +7,10 @@ This directory contains end-to-end workflow examples demonstrating how to use hv
 - [HGC (Joint Genotyping)](#hgc-joint-genotyping)
 - [PSROC (Prediction Score ROC Analysis)](#psroc-prediction-score-roc-analysis)
 - [EnrichEx (Gene Set Enrichment)](#enrichex-gene-set-enrichment)
+- [Ancestry Inference](#ancestry-inference)
 - [ClinVar Data Streaming](#clinvar-data-streaming)
+- [ClinGen Streaming](#clingen-streaming)
+- [1000 Genomes Reference Build](#1000-genomes-reference-build)
 - [Recipe Templates](#recipe-templates)
 
 ## Workflow Examples
@@ -19,13 +22,13 @@ This directory contains end-to-end workflow examples demonstrating how to use hv
 Complete pipeline for joint genotyping of GVCF cohorts with quality control and benchmarking.
 
 **Key scripts:**
-- `hgc_qc_example.py` - QC workflow with visualization
-- `hgc_cpu_scaling_benchmark.py` - CPU scalability testing
-- `hgc_scalability_benchmark.py` - Sample size scalability
+- `qc/hgc_qc_example.py` - QC workflow with visualization
+- `cpu_scaling/benchmark.py` - CPU scalability testing
+- `scalability/benchmark.py` - Sample size scalability
 
 **Quick start:**
 ```bash
-python examples/hgc/hgc_qc_example.py
+python examples/hgc/qc/hgc_qc_example.py
 ```
 
 **Outputs:** QC reports (HTML), dashboards (PNG), metrics (JSON)
@@ -101,6 +104,59 @@ python examples/clinvar/clinvar_streamer_example.py
 **Outputs:** Filtered variant tables (TSV/VCF)
 
 **Documentation:** [ClinVar Examples](clinvar.md)
+
+---
+
+### Ancestry Inference
+
+**Directory:** [`ancestry/`](https://github.com/bigbio/hvantk/tree/main/examples/ancestry/)
+
+Predict genetic ancestry for samples using PCA and Random Forest classification against a labeled reference panel.
+
+**Key scripts:**
+- `basic_inference.py` - Basic ancestry inference workflow
+- `custom_reference.py` - Using a custom reference panel
+- `run_ancestry_example.py` - End-to-end example with reporting
+
+**Quick start:**
+```bash
+python examples/ancestry/basic_inference.py
+```
+
+**Outputs:** Ancestry predictions (HT/TSV), PCA plots (PNG), HTML reports
+
+**Documentation:** [Ancestry Examples](ancestry.md) | [Ancestry Docs](../tools/ancestry.md)
+
+---
+
+### ClinGen Streaming
+
+**Directory:** [`clingen/`](https://github.com/bigbio/hvantk/tree/main/examples/clingen/)
+
+Examples for querying ClinGen gene-disease validity data and categorizing by ontology.
+
+**Key scripts:**
+- `run_with_real_data.py` - ClinGen streamer with real data
+- `run_ontology_categorization.py` - Disease ontology categorization
+
+**Quick start:**
+```bash
+python examples/clingen/run_with_real_data.py
+```
+
+**Documentation:** [ClinGen Examples](clingen.md)
+
+---
+
+### 1000 Genomes Reference Build
+
+**Directory:** [`1k_genome/`](https://github.com/bigbio/hvantk/tree/main/examples/1k_genome/)
+
+Scripts for building a Hail MatrixTable from 1000 Genomes NYGC high-coverage data for use as a reference panel.
+
+**Key scripts:**
+- `build_1kg_nygc.py` - Build reference MatrixTable from 1000 Genomes
+- `build_1kg_nygc_cli.py` - CLI wrapper for the build script
 
 ---
 

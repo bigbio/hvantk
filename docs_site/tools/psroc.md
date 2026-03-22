@@ -163,7 +163,18 @@ hvantk psroc --gene-sets /data/pathways.gmt ...
 
 Gene set collections can be prepared from various sources using hvantk's
 streamer layer. See [Preparing Gene Set Collections](#preparing-gene-set-collections)
-and the example script `examples/psroc/prepare_gene_sets.py`.
+and the CLI commands below:
+
+```bash
+# Prepare gene sets from ClinGen
+hvantk genesets clingen --ht /data/clingen.ht --group-by gcep -o gene_sets.json
+
+# From COSMIC Cancer Gene Census
+hvantk genesets cosmic --ht /data/cosmic_cgc.ht -o cosmic_gene_sets.json
+
+# Or from custom panels
+hvantk genesets prepare -i panels.tsv -o panels.json --hgnc /data/hgnc.ht
+```
 
 ### Required Tables
 
