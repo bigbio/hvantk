@@ -9,19 +9,19 @@ For building Hail Tables and MatrixTables from downloaded data, see the [Usage G
 Downloaded `.gz` files may be standard gzip (single-threaded in Hail) rather than BGZF (parallel). Use `--auto-convert-bgz` during table or matrix builds, or pre-convert with:
 
 ```bash
-hvantk convert-bgz input.gz
+hvantk utils convert-bgz input.gz
 ```
 
 ## Sources with built-in downloaders
 
 | Source | Command | Approx. Size |
 |---|---|---|
-| ClinVar | `hvantk clinvar-downloader` | ~500 MB |
-| ClinGen | `hvantk clingen-downloader` | ~5 MB |
-| GenCC | `hvantk gencc-downloader` | ~10 MB |
-| HGNC | `hvantk hgnc-downloader` | ~20 MB |
-| UCSC Cell Browser | `hvantk ucsc-downloader` | varies |
-| Expression Atlas | `hvantk expression-atlas-downloader` | varies |
+| ClinVar | `hvantk download clinvar` | ~500 MB |
+| ClinGen | `hvantk download clingen` | ~5 MB |
+| GenCC | `hvantk download gencc` | ~10 MB |
+| HGNC | `hvantk download hgnc` | ~20 MB |
+| UCSC Cell Browser | `hvantk download ucsc` | varies |
+| Expression Atlas | `hvantk download expression-atlas` | varies |
 
 ### ClinVar
 
@@ -30,13 +30,13 @@ URL: https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/
 
 ```bash
 # Download latest ClinVar VCF (GRCh38) with tabix index
-hvantk clinvar-downloader --output-dir data/clinvar
+hvantk download clinvar --output-dir data/clinvar
 
 # Download a specific archived version
-hvantk clinvar-downloader --version 20260101 --output-dir data/clinvar
+hvantk download clinvar --version 20260101 --output-dir data/clinvar
 
 # Download GRCh37 build, verify checksum
-hvantk clinvar-downloader --genome-build GRCh37 --verify-md5
+hvantk download clinvar --genome-build GRCh37 --verify-md5
 ```
 
 ### ClinGen
@@ -44,10 +44,10 @@ hvantk clinvar-downloader --genome-build GRCh37 --verify-md5
 ```bash
 # Download today's ClinGen Gene-Disease Validity snapshot
 # Output: Clingen-Gene-Disease-Summary-<YYYY-MM-DD>.csv
-hvantk clingen-downloader --output-dir data/clingen
+hvantk download clingen --output-dir data/clingen
 
 # Check download availability
-hvantk clingen-downloader --list-versions
+hvantk download clingen --list-versions
 ```
 
 ### GenCC
@@ -56,17 +56,17 @@ GenCC (Gene Curation Coalition) aggregates gene-disease validity assertions from
 
 ```bash
 # Download today's GenCC submissions snapshot
-hvantk gencc-downloader --output-dir data/gencc
+hvantk download gencc --output-dir data/gencc
 
 # Check download availability
-hvantk gencc-downloader --list-versions
+hvantk download gencc --list-versions
 ```
 
 ### HGNC
 
 ```bash
 # Download HGNC complete gene nomenclature set
-hvantk hgnc-downloader --output-dir data/hgnc
+hvantk download hgnc --output-dir data/hgnc
 ```
 
 ### UCSC Cell Browser
@@ -77,17 +77,17 @@ and `--search` to discover downloadable datasets.
 
 ```bash
 # Discover available datasets
-hvantk ucsc-downloader --list_datasets
+hvantk download ucsc --list_datasets
 
 # Search by name, organism, or tissue (expands collections to show children)
-hvantk ucsc-downloader --list_datasets --search heart
-hvantk ucsc-downloader --list_datasets --search pancreas
+hvantk download ucsc --list_datasets --search heart
+hvantk download ucsc --list_datasets --search pancreas
 
 # Download a leaf dataset directly
-hvantk ucsc-downloader --dataset adultPancreas --output-dir data/ucsc
+hvantk download ucsc --dataset adultPancreas --output-dir data/ucsc
 
 # Download a child dataset from a collection (use the full path)
-hvantk ucsc-downloader --dataset hoc/all-heart --output-dir data/ucsc
+hvantk download ucsc --dataset hoc/all-heart --output-dir data/ucsc
 ```
 
 > **Note:** Collection names (e.g., `hoc`) cannot be downloaded directly — they
@@ -98,7 +98,7 @@ hvantk ucsc-downloader --dataset hoc/all-heart --output-dir data/ucsc
 
 ```bash
 # Download bulk RNA-seq experiments
-hvantk expression-atlas-downloader --download_path data/expression_atlas
+hvantk download expression-atlas --download_path data/expression_atlas
 ```
 
 ## Manual download sources

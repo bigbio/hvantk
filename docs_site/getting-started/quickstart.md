@@ -104,7 +104,7 @@ hvantk mkmatrix-batch --recipe matrices_recipe.json
 Convert standard gzip files to BGZF for Hail parallel import:
 
 ```bash
-hvantk convert-bgz input.tsv.gz -o output.tsv.bgz --threads 4
+hvantk utils convert-bgz input.tsv.gz -o output.tsv.bgz --threads 4
 ```
 
 Or use `--auto-convert-bgz` in supported commands to convert on-the-fly.
@@ -114,7 +114,7 @@ Or use `--auto-convert-bgz` in supported commands to convert on-the-fly.
 Download curated datasets from public repositories.
 
 ```bash
-hvantk ucsc-downloader --dataset adultPancreas --output-dir data/ucsc
+hvantk download ucsc --dataset adultPancreas --output-dir data/ucsc
 ```
 
 [Data Sources](../guide/data-sources.md){ .md-button }
@@ -123,7 +123,7 @@ hvantk ucsc-downloader --dataset adultPancreas --output-dir data/ucsc
 
 ```bash
 # Download and process expression data
-hvantk ucsc-downloader --dataset adultPancreas --output-dir data/ucsc
+hvantk download ucsc --dataset adultPancreas --output-dir data/ucsc
 hvantk mkmatrix ucsc -e data/ucsc/exprMatrix.tsv.bgz -m data/ucsc/meta.tsv -o data/ucsc/adultPancreas.mt
 
 # If expression matrix is plain gzip (.gz), use --auto-convert-bgz

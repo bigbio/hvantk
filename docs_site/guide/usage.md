@@ -123,10 +123,10 @@ First, find and download the dataset you need:
 
 ```bash
 # Search for datasets by tissue or keyword
-hvantk ucsc-downloader --list_datasets --search heart
+hvantk download ucsc --list_datasets --search heart
 
 # Download a dataset (use child path for collections)
-hvantk ucsc-downloader --dataset hoc/all-heart --output-dir data/ucsc
+hvantk download ucsc --dataset hoc/all-heart --output-dir data/ucsc
 ```
 
 Then build the MatrixTable:
@@ -448,16 +448,16 @@ hvantk mkmatrix expression-atlas -e matrix.tsv.gz -s atlas.sdrf.tsv -o out.mt --
 
 The converted `.bgz` file is written alongside the original (e.g., `data.gz` → `data.bgz`) and reused on subsequent runs.
 
-### Standalone conversion with `convert-bgz`
+### Standalone conversion with `utils convert-bgz`
 
 For batch or one-off conversion:
 
 ```bash
 # Default: replaces .gz extension with .bgz
-hvantk convert-bgz input.tsv.gz
+hvantk utils convert-bgz input.tsv.gz
 
 # Custom output path and thread count
-hvantk convert-bgz input.tsv.gz -o output.tsv.bgz --threads 4
+hvantk utils convert-bgz input.tsv.gz -o output.tsv.bgz --threads 4
 ```
 
 The command auto-detects whether the file is already BGZF and skips conversion if so.
@@ -468,7 +468,7 @@ The command auto-detects whether the file is already BGZF and skips conversion i
 - For JSON vs YAML: JSON works out of the box; YAML recipes require `PyYAML` installed.
 - For UCSC, gene labels may be pipe-delimited (e.g., A|B); `--split-gene-field` defaults to true.
 - MatrixTables typically store sample/cell metadata under `mt.col_key` and cols metadata; inspect with `mt.describe()` in Python or logs from CLI.
-- **gzip vs BGZF**: Hail reads standard gzip files single-threaded, which is significantly slower for large files. Convert to BGZF with `--auto-convert-bgz` or `hvantk convert-bgz` for parallel import.
+- **gzip vs BGZF**: Hail reads standard gzip files single-threaded, which is significantly slower for large files. Convert to BGZF with `--auto-convert-bgz` or `hvantk utils convert-bgz` for parallel import.
 
 ## See also
 
