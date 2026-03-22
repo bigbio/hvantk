@@ -246,7 +246,7 @@ The primary interface is a well-structured CLI with domain-specific commands:
 
 ```bash
 # Download data
-hvantk ucsc-downloader --dataset adultPancreas --output-dir data/
+hvantk download ucsc --dataset adultPancreas --output-dir data/
 
 # Build individual tables
 hvantk mktable clinvar --raw-input clinvar.vcf.bgz --output-ht clinvar.ht

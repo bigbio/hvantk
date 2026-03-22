@@ -729,7 +729,7 @@ cd hvantk && poetry install
 **ClinVar** (automated):
 
 ```bash
-hvantk clinvar-downloader --output-dir /data/clinvar
+hvantk download clinvar --output-dir /data/clinvar
 # Downloads clinvar.vcf.gz (~80 MB) + .tbi index
 ```
 
@@ -747,7 +747,7 @@ hvantk clinvar-downloader --output-dir /data/clinvar
 **ClinGen** (automated, for gene set extraction):
 
 ```bash
-hvantk clingen-downloader --output-dir /data/clingen
+hvantk download clingen --output-dir /data/clingen
 # Downloads Clingen-Gene-Disease-Summary-<YYYY-MM-DD>.csv
 ```
 
