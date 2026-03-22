@@ -1014,10 +1014,10 @@ def create_gencc_submissions_tb(
                         ht.mode_of_inheritance
                     ),
                     max_classification_level=hl.agg.min(ht.classification_level),
-                    n_submitters=hl.agg.count(),
                 )
                 .key_by("hgnc_id", "mondo_id")
             )
+            ht = ht.annotate(n_submitters=hl.len(ht.submitters))
             classification_labels = hl.literal(GENCC_CLASSIFICATION_LEVELS)
             safe_index = hl.min(
                 ht.max_classification_level, hl.len(classification_labels) - 1
@@ -1045,10 +1045,12 @@ def create_gencc_submissions_tb(
                     ),
                     submitters=hl.agg.collect_as_set(ht.submitter),
                     max_classification_level=hl.agg.min(ht.classification_level),
-                    n_diseases=hl.agg.count(),
-                    n_submitters=hl.agg.count(),
                 )
                 .key_by("hgnc_id")
+            )
+            ht = ht.annotate(
+                n_diseases=hl.len(ht.mondo_ids),
+                n_submitters=hl.len(ht.submitters),
             )
             classification_labels = hl.literal(GENCC_CLASSIFICATION_LEVELS)
             safe_index = hl.min(
@@ -1238,12 +1240,27 @@ def create_cosmic_cgc_tb(
             )
             mapping_literal = hl.literal(mapping)
             ht = ht.annotate(
-                hgnc_id=mapping_literal.get(ht.gene_symbol, "")
+                hgnc_id=mapping_literal.get(ht.gene_symbol)
+            )
+            # Strip "HGNC:" prefix to match convention used by other builders
+            ht = ht.annotate(
+                hgnc_id=hl.if_else(
+                    hl.is_defined(ht.hgnc_id) & ht.hgnc_id.startswith("HGNC:"),
+                    ht.hgnc_id.replace("HGNC:", ""),
+                    ht.hgnc_id,
+                )
             )
             n_mapped = len([v for v in mapping.values() if v])
+            n_unmapped = len(symbols) - n_mapped
             logger.info(
                 f"Mapped {n_mapped}/{len(symbols)} gene symbols to HGNC IDs"
             )
+            if n_unmapped > 0:
+                logger.warning(
+                    f"{n_unmapped} genes could not be mapped to HGNC IDs "
+                    "and will be excluded from the keyed output"
+                )
+            ht = ht.filter(hl.is_defined(ht.hgnc_id) & (ht.hgnc_id != ""))
             ht = ht.key_by("hgnc_id")
         else:
             logger.warning(

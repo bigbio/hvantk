@@ -265,7 +265,6 @@ class GenCCStreamer(GeneDiseaseValidityStreamer):
             ht = self._apply_min_classification_filter(ht, min_classification)
 
         grouped = ht.group_by(ht.gene_symbol).aggregate(
-            n_submitters=hl.agg.count(),
             submitters=hl.agg.collect_as_set(ht.submitter),
         )
         # Filter by number of distinct submitters
@@ -334,10 +333,9 @@ class GenCCStreamer(GeneDiseaseValidityStreamer):
     # ------------------------------------------------------------------
 
     def _ensure_submitter_mode(self, method: str) -> None:
-        """Ensure table is in a mode with per-row submitter access."""
+        """Ensure table is in a mode with per-row scalar submitter access."""
         self._ensure_table_loaded()
-        if self._keying_mode not in ("gene_disease_submitter", "gene_disease"):
+        if self._keying_mode != "gene_disease_submitter":
             raise ValueError(
-                f"{method} requires a GenCC table keyed by gene_disease_submitter "
-                "or gene_disease."
+                f"{method} requires a GenCC table keyed by gene_disease_submitter."
             )

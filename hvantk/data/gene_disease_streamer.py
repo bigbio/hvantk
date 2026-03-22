@@ -44,6 +44,9 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
     classification_levels: List[str] = []
     annotation_prefix: str = ""
 
+    # Keying modes with per-assertion (non-aggregated) rows
+    _PER_ASSERTION_MODES = {"gene_disease", "gene_disease_submitter"}
+
     _MOI_ALIASES = {
         "AD": "Autosomal dominant",
         "AR": "Autosomal recessive",
@@ -122,10 +125,21 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
         if classifications:
             normalized = [self._normalize_classification(c) for c in classifications]
             desired = hl.literal(set(normalized))
-            if self._keying_mode == "gene_disease":
+            if self._keying_mode in self._PER_ASSERTION_MODES:
                 ht = ht.filter(desired.contains(ht.classification))
             else:
-                ht = ht.filter(hl.len(ht.classifications.intersection(desired)) > 0)
+                row_fields = set(get_row_fields(ht))
+                if "classifications" in row_fields:
+                    ht = ht.filter(
+                        hl.len(ht.classifications.intersection(desired)) > 0
+                    )
+                elif "classification" in row_fields:
+                    ht = ht.filter(desired.contains(ht.classification))
+                else:
+                    raise ValueError(
+                        f"{self.source_name} table does not have 'classification' or "
+                        f"'classifications' field required for filtering."
+                    )
         else:
             min_classification = self._normalize_classification(min_classification)
             ht = self._apply_min_classification_filter(ht, min_classification)
@@ -154,7 +168,7 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
         if match_mode not in ("exact", "contains", "regex"):
             raise ValueError("match_mode must be one of: exact, contains, regex")
 
-        if self._keying_mode == "gene_disease":
+        if self._keying_mode in self._PER_ASSERTION_MODES:
             match_expr = self._match_disease_expr(ht.disease_label, terms, match_mode)
         else:
             labels = hl.or_else(hl.array(ht.disease_labels), hl.empty_array(hl.tstr))
@@ -189,7 +203,7 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
             self._normalize_mondo_id(m) for m in self._ensure_list(mondo_ids)
         }
         mondo_set = hl.literal(normalized_ids)
-        if self._keying_mode == "gene_disease":
+        if self._keying_mode in self._PER_ASSERTION_MODES:
             ht = ht.filter(mondo_set.contains(ht.mondo_id))
         else:
             ht = ht.filter(hl.len(ht.mondo_ids.intersection(mondo_set)) > 0)
@@ -219,7 +233,7 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
         normalized = self._normalize_moi_terms(modes)
         normalized_set = hl.literal(normalized)
 
-        if self._keying_mode == "gene_disease":
+        if self._keying_mode in self._PER_ASSERTION_MODES:
             ht = ht.filter(
                 normalized_set.contains(hl.str(ht.mode_of_inheritance).lower())
             )
@@ -260,7 +274,7 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
             min_classification = self._normalize_classification(min_classification)
             ht = self._apply_min_classification_filter(ht, min_classification)
 
-        if self._keying_mode == "gene_disease":
+        if self._keying_mode in self._PER_ASSERTION_MODES:
             if include_mondo_id:
                 grouped = ht.group_by("disease_label", "mondo_id").aggregate(
                     genes=hl.agg.collect_as_set(ht.gene_symbol)
@@ -361,7 +375,7 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
         if categories is None:
             categories = MONDO_DISEASE_CATEGORIES
 
-        if self._keying_mode == "gene_disease":
+        if self._keying_mode in self._PER_ASSERTION_MODES:
             rows = ht.collect()
         else:
             row_fields = get_row_fields(ht)
@@ -412,7 +426,7 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
             matched_cats = onto.categorize(mondo_id, categories)
 
             if matched_cats:
-                for cat_id, cat_name in matched_cats:
+                for _cat_id, cat_name in matched_cats:
                     results[cat_name]["genes"].add(gene)
                     results[cat_name]["diseases"].add(disease)
                     results[cat_name]["mondo_ids"].add(mondo_id)
@@ -497,7 +511,7 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
         genes = set()
         full_results = []
 
-        if self._keying_mode == "gene_disease":
+        if self._keying_mode in self._PER_ASSERTION_MODES:
             rows = ht.collect()
             for row in rows:
                 mondo_id = row.mondo_id
@@ -775,7 +789,7 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
             raise ValueError(f"{self.source_name} table not loaded.")
 
         row_fields = set(ht.row)
-        if self._keying_mode == "gene_disease":
+        if self._keying_mode in self._PER_ASSERTION_MODES:
             required = {
                 "hgnc_id",
                 "mondo_id",
@@ -877,7 +891,7 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
 
     def _ensure_gene_disease_mode(self, method: str) -> None:
         self._ensure_table_loaded()
-        if self._keying_mode != "gene_disease":
+        if self._keying_mode not in self._PER_ASSERTION_MODES:
             raise ValueError(
                 f"{method} requires a {self.source_name} table keyed by gene-disease."
             )
@@ -908,7 +922,7 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
             cached = self._filtered_cache.get(cache_key)
             if cached is not None:
                 return cached
-        if self._keying_mode == "gene_disease":
+        if self._keying_mode in self._PER_ASSERTION_MODES:
             filtered = ht.filter(ht.classification_level <= min_level)
         else:
             filtered = ht.filter(ht.max_classification_level <= min_level)
@@ -1022,10 +1036,10 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
                 classifications=hl.agg.collect_as_set(ht.classification),
                 modes_of_inheritance=hl.agg.collect_as_set(ht.mode_of_inheritance),
                 max_classification_level=hl.agg.min(ht.classification_level),
-                n_diseases=hl.agg.count(),
             )
             .key_by("hgnc_id")
         )
+        gene_ht = gene_ht.annotate(n_diseases=hl.len(gene_ht.mondo_ids))
         classification_labels = hl.literal(self.classification_levels)
         safe_index = hl.min(
             gene_ht.max_classification_level, hl.len(classification_labels) - 1
@@ -1074,5 +1088,5 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
             for name, genes in gene_sets.items():
                 if not genes:
                     continue
-                line = [name, self.source_name] + sorted(genes)
+                line = [name, self.source_name, *sorted(genes)]
                 handle.write("\t".join(line) + "\n")

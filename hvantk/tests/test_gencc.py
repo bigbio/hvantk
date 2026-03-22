@@ -46,8 +46,6 @@ class TestGenCCSubmissionsDataset:
 
 # --- Streamer tests (require Hail) ---
 
-pytestmark_hail = [pytest.mark.hail, pytest.mark.slow]
-
 TEST_DIR = Path(__file__).parent / "testdata"
 
 

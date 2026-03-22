@@ -101,10 +101,7 @@ def gencc_downloader(ctx, version_date, output_dir, overwrite, list_versions):
         click.echo(f"Dataset version: {dataset.version_date}")
         click.echo(f"File: {dataset.file_name}")
 
-    except ValueError as e:
-        click.echo(f"Error: {e}", err=True)
-        ctx.exit(1)
-    except RuntimeError as e:
+    except (ValueError, RuntimeError) as e:
         click.echo(f"Error: {e}", err=True)
         ctx.exit(1)
 

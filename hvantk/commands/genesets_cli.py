@@ -227,11 +227,11 @@ def genesets_clingen(
         raise
     except ValueError as e:
         click.echo(f"Error: {e}", err=True)
-        raise SystemExit(1)
+        raise SystemExit(1) from e
     except Exception as e:
         logger.exception(f"Failed: {e}")
         click.echo(f"Error: {e}", err=True)
-        raise SystemExit(1)
+        raise SystemExit(1) from e
 
 
 # ------------------------------------------------------------------
@@ -351,11 +351,11 @@ def genesets_gencc(
         raise
     except ValueError as e:
         click.echo(f"Error: {e}", err=True)
-        raise SystemExit(1)
+        raise SystemExit(1) from e
     except Exception as e:
         logger.exception(f"Failed: {e}")
         click.echo(f"Error: {e}", err=True)
-        raise SystemExit(1)
+        raise SystemExit(1) from e
 
 
 # ------------------------------------------------------------------
@@ -489,11 +489,11 @@ def genesets_cosmic(
         raise
     except ValueError as e:
         click.echo(f"Error: {e}", err=True)
-        raise SystemExit(1)
+        raise SystemExit(1) from e
     except Exception as e:
         logger.exception(f"Failed: {e}")
         click.echo(f"Error: {e}", err=True)
-        raise SystemExit(1)
+        raise SystemExit(1) from e
 
 
 # ------------------------------------------------------------------

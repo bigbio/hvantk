@@ -62,7 +62,7 @@ class GenCCSubmissionsDataset:
         except ValueError:
             raise ValueError(
                 f"Invalid version_date format: {version_date}. Expected YYYY-MM-DD"
-            )
+            ) from None
 
         file_name = f"{GENCC_FILE_PREFIX}-{version_date}.tsv"
 
@@ -115,7 +115,7 @@ class GenCCSubmissionsDataset:
             logger.info(f"Downloaded GenCC dataset to {output_path}")
             return output_path
         except Exception as e:
-            raise RuntimeError(f"Failed to download GenCC dataset: {str(e)}") from e
+            raise RuntimeError(f"Failed to download GenCC dataset: {e!s}") from e
 
     def get_metadata(self) -> Dict[str, str]:
         """Get metadata about this dataset."""
@@ -147,8 +147,14 @@ def get_available_versions() -> List[str]:
     """
     try:
         import urllib.request
+        from urllib.parse import urlparse
 
         logger.info(f"Checking GenCC download endpoint: {GENCC_BASE_URL}")
+
+        parsed = urlparse(GENCC_BASE_URL)
+        if parsed.scheme not in ("http", "https"):
+            logger.error(f"Invalid URL scheme: {parsed.scheme}")
+            return []
 
         req = urllib.request.Request(
             GENCC_BASE_URL,
@@ -156,7 +162,7 @@ def get_available_versions() -> List[str]:
             headers={"User-Agent": "hvantk/1.0"},
         )
 
-        with urllib.request.urlopen(req, timeout=30) as response:
+        with urllib.request.urlopen(req, timeout=30) as response:  # noqa: S310
             if response.status == 200:
                 today = datetime.now().strftime("%Y-%m-%d")
                 logger.info(
