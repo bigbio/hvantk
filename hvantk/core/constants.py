@@ -125,6 +125,46 @@ GENCC_CLASSIFICATION_LEVELS = [
 
 logger.debug(f"GenCC base URL: {GENCC_BASE_URL}")
 
+# COSMIC Cancer Gene Census (CGC)
+COSMIC_CGC_FILE_PREFIX = "cosmic-cgc"
+
+COSMIC_CGC_FIELDS = {
+    "Gene Symbol": "gene_symbol",
+    "Name": "gene_name",
+    "Entrez GeneId": "entrez_id",
+    "Genome Location": "genome_location",
+    "Tier": "classification",
+    "Hallmark": "hallmark",
+    "Chr Band": "chr_band",
+    "Somatic": "somatic",
+    "Germline": "germline",
+    "Tumour Types(Somatic)": "tumour_types_somatic",
+    "Tumour Types(Germline)": "tumour_types_germline",
+    "Cancer Syndrome": "cancer_syndrome",
+    "Tissue Type": "tissue_type",
+    "Molecular Genetics": "molecular_genetics",
+    "Role in Cancer": "role_in_cancer",
+    "Mutation Types": "mutation_types",
+    "Translocation Partner": "translocation_partner",
+    "Other Germline Mut": "other_germline_mut",
+    "Other Syndrome": "other_syndrome",
+    "Synonyms": "synonyms",
+}
+
+COSMIC_CGC_CLASSIFICATION_LEVELS = [
+    "Tier 1",
+    "Tier 2",
+]
+
+COSMIC_TISSUE_TYPES = {
+    "E": "Epithelial",
+    "L": "Lymphoid",
+    "M": "Mesenchymal",
+    "O": "Other",
+}
+
+COSMIC_MUTATION_CONTEXTS = ["somatic", "germline", "both"]
+
 # HGNC Gene Nomenclature
 HGNC_DOWNLOAD_URL = "https://storage.googleapis.com/public-download-files/hgnc/tsv/tsv/hgnc_complete_set.txt"
 HGNC_INFO_URL = "https://www.genenames.org/download/statistics-and-files/"
@@ -215,6 +255,11 @@ __all__ = [
     "GENCC_FILE_PREFIX",
     "GENCC_SUBMISSION_FIELDS",
     "GENCC_CLASSIFICATION_LEVELS",
+    "COSMIC_CGC_FILE_PREFIX",
+    "COSMIC_CGC_FIELDS",
+    "COSMIC_CGC_CLASSIFICATION_LEVELS",
+    "COSMIC_TISSUE_TYPES",
+    "COSMIC_MUTATION_CONTEXTS",
     "CLINVAR_FTP_BASE",
     "CLINVAR_FTP_BASE_GRCh37",
 ]

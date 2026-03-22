@@ -359,6 +359,144 @@ def genesets_gencc(
 
 
 # ------------------------------------------------------------------
+# cosmic subcommand
+# ------------------------------------------------------------------
+
+
+@genesets_group.command("cosmic")
+@click.option(
+    "--ht",
+    "cosmic_ht",
+    type=click.Path(exists=True),
+    required=True,
+    help="Path to COSMIC CGC Hail Table (.ht) built with "
+    "'hvantk mktable cosmic-cgc'.",
+)
+@click.option(
+    "--group-by",
+    type=click.Choice(["tumour-type", "role", "tissue", "keyword"]),
+    default="tumour-type",
+    help="Grouping strategy [default: tumour-type]",
+)
+@click.option(
+    "--min-classification",
+    type=click.Choice(["Tier 1", "Tier 2"]),
+    default="Tier 1",
+    help="Minimum classification level [default: Tier 1]",
+)
+@click.option(
+    "--mutation-context",
+    type=click.Choice(["somatic", "germline", "both"]),
+    default="both",
+    help="Filter genes by somatic/germline mutation context [default: both]",
+)
+@click.option(
+    "--min-genes",
+    type=click.IntRange(min=0),
+    default=0,
+    help="Exclude groups with fewer than this many genes [default: 0]",
+)
+@click.option(
+    "--categories-json",
+    type=click.Path(exists=True),
+    default=None,
+    help="JSON file with keyword categories for --group-by keyword.",
+)
+@click.option(
+    "-o", "--output", type=click.Path(), required=True, help="Output path (.json or .gmt)"
+)
+@click.option("--overwrite", is_flag=True, help="Overwrite existing output file")
+@click.pass_context
+def genesets_cosmic(
+    ctx,
+    cosmic_ht,
+    group_by,
+    min_classification,
+    mutation_context,
+    min_genes,
+    categories_json,
+    output,
+    overwrite,
+):
+    """Extract gene set collections from COSMIC Cancer Gene Census data.
+
+    \b
+    Grouping Strategies:
+      tumour-type  Tumour type (explodes multi-value field, default)
+      role         Role in cancer (oncogene, TSG, fusion)
+      tissue       Tissue type (E, L, M, O)
+      keyword      User-defined keyword categories (requires --categories-json)
+
+    \b
+    Examples:
+      hvantk genesets cosmic \\
+          --ht /data/tables/cosmic_cgc.ht \\
+          --group-by tumour-type \\
+          --mutation-context somatic \\
+          --min-classification "Tier 1" \\
+          -o /data/gene_sets/cosmic_somatic_by_tumour.json
+    """
+    import json
+
+    _check_overwrite(output, overwrite, ctx)
+
+    if group_by == "keyword" and not categories_json:
+        click.echo(
+            "Error: --categories-json is required when --group-by keyword",
+            err=True,
+        )
+        ctx.exit(1)
+
+    try:
+        from hvantk.data.cosmic_cgc_streamer import CosmicCGCStreamer
+
+        streamer = CosmicCGCStreamer(cosmic_ht)
+
+        if group_by == "tumour-type":
+            gene_sets = streamer.get_geneset_per_tumour_type(
+                min_classification=min_classification,
+                min_genes=min_genes,
+                mutation_context=mutation_context,
+            )
+        elif group_by == "role":
+            gene_sets = streamer.get_geneset_per_role(
+                min_classification=min_classification,
+                min_genes=min_genes,
+                mutation_context=mutation_context,
+            )
+        elif group_by == "tissue":
+            gene_sets = streamer.get_geneset_per_tissue(
+                min_classification=min_classification,
+                min_genes=min_genes,
+                mutation_context=mutation_context,
+            )
+        else:  # keyword
+            with open(categories_json) as f:
+                categories = json.load(f)
+            gene_sets = streamer.aggregate_by_disease_category(
+                categories=categories,
+                min_classification=min_classification,
+            )
+            if min_genes > 0:
+                gene_sets = {k: v for k, v in gene_sets.items() if len(v) >= min_genes}
+
+        _save_and_report(
+            gene_sets, output, group_by, min_classification, min_genes,
+            f"cosmic_{group_by}", ctx,
+        )
+
+    except click.exceptions.Exit:
+        raise
+    except ValueError as e:
+        click.echo(f"Error: {e}", err=True)
+        raise SystemExit(1)
+    except Exception as e:
+        logger.exception(f"Failed: {e}")
+        click.echo(f"Error: {e}", err=True)
+        raise SystemExit(1)
+
+
+# ------------------------------------------------------------------
 # prepare subcommand (migrated from prepare_geneset_cli.py)
 # ------------------------------------------------------------------
 

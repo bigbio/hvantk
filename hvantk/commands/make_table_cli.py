@@ -440,6 +440,56 @@ def mktable_gencc_submissions(
     ht.describe()
 
 
+@mktable_group.command("cosmic-cgc")
+@_raw_input_opt
+@_output_ht_opt
+@_overwrite_opt
+@_export_tsv_opt
+@click.option(
+    "--hgnc-path",
+    type=str,
+    default=None,
+    help="Path to HGNC Hail Table (.ht) for gene symbol -> HGNC ID resolution",
+)
+@click.option(
+    "--mutation-context",
+    type=click.Choice(["somatic", "germline", "both"]),
+    default="both",
+    show_default=True,
+    help="Filter genes by somatic/germline mutation context",
+)
+@click.option(
+    "--min-classification",
+    type=click.Choice(["Tier 1", "Tier 2"], case_sensitive=True),
+    default=None,
+    help="Filter to classifications at or above this level",
+)
+def mktable_cosmic_cgc(
+    raw_input: str,
+    output_ht: str,
+    overwrite: bool,
+    export_tsv: bool,
+    hgnc_path: Optional[str],
+    mutation_context: str,
+    min_classification: Optional[str],
+):
+    """Build a COSMIC Cancer Gene Census Hail Table from the downloaded TSV."""
+    logger.info("Building COSMIC CGC table")
+    from hvantk.tables.table_builders import create_cosmic_cgc_tb
+
+    ht = create_cosmic_cgc_tb(
+        input_path=raw_input,
+        output_path=output_ht,
+        hgnc_path=hgnc_path,
+        min_classification=min_classification,
+        mutation_context=mutation_context,
+        overwrite=overwrite,
+        export_tsv=export_tsv,
+    )
+    click.echo(f"COSMIC CGC table created at {output_ht}")
+    ht.describe()
+
+
 @mktable_group.command("hgnc")
 @_raw_input_opt
 @_output_ht_opt
