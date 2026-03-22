@@ -273,12 +273,14 @@ A complete synthetic dataset (overlap, burden, and gene set JSON) lives under
 pipeline without reaching for large real inputs. Run the example scripts:
 
 ```bash
-# Generate plots in plots/synthetic_enrichex/
-python examples/enrichex/plot_example.py
+# Run overlap enrichment with synthetic data
+python examples/enrichex/overlap_enrichment_example.py
 
-# Build an HTML report with inline PNGs
-python examples/enrichex/report_example.py \
-  --output reports/synthetic_enrichex_report.html
+# Run burden analysis with synthetic data
+python examples/enrichex/burden_analysis_example.py
+
+# Create gene set collections from various formats
+python examples/enrichex/create_gene_sets_example.py
 ```
 
 When running in headless or sandboxed environments, set `MPLBACKEND=Agg` and

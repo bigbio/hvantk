@@ -51,7 +51,7 @@ Follow these guidelines:
 - Use fixtures in `hvantk/tests/testdata` for test data
 
 #### Documentation
-- Update relevant documentation in `docs/`
+- Update relevant documentation in `docs_site/`
 - Add docstrings to new functions and classes
 - Include usage examples where appropriate
 - Update README.md if adding major features

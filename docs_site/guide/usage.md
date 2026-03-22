@@ -66,6 +66,39 @@ hvantk mktable ensembl-gene \
   --no-canonical
 ```
 
+- ClinGen Gene-Disease validity (CSV keyed by gene_id + disease_id)
+
+```bash
+hvantk mktable clingen-gene-disease \
+  --raw-input /data/clingen/Clingen-Gene-Disease-Summary-2026-03-22.csv \
+  --output-ht /out/clingen_gene_disease.ht
+```
+
+- GenCC submissions (CSV keyed by gene_id + disease_id)
+
+```bash
+hvantk mktable gencc-submissions \
+  --raw-input /data/gencc/gencc-submissions.csv \
+  --output-ht /out/gencc_submissions.ht
+```
+
+- COSMIC Cancer Gene Census (TSV keyed by gene_id)
+
+```bash
+hvantk mktable cosmic-cgc \
+  --raw-input /data/cosmic/cancer_gene_census.tsv \
+  --output-ht /out/cosmic_cgc.ht \
+  --mutation-context somatic
+```
+
+- HGNC gene nomenclature (TSV keyed by hgnc_id)
+
+```bash
+hvantk mktable hgnc \
+  --raw-input /data/hgnc/hgnc_complete_set.tsv \
+  --output-ht /out/hgnc.ht
+```
+
 ## 2) Batch-create Tables (HT) from a recipe
 
 Use a recipe to build many tables at once. JSON and YAML are both supported (YAML requires PyYAML installed).
@@ -345,6 +378,44 @@ annotated_mt = result.annotate_matrixtable(query_mt)
 
 **[Full Ancestry Documentation](../tools/ancestry.md)** | **[Examples](../examples/ancestry.md)**
 
+## Expression Analysis
+
+Inspect, summarize, and extract markers from expression MatrixTables.
+
+```bash
+# Inspect column metadata fields
+hvantk expression describe -m /data/heart_sc.mt
+
+# Collapse into gene-level summary grouped by cell type
+hvantk expression summarize \
+  -m /data/heart_sc.mt \
+  --group-by cell_type \
+  -o /out/heart_celltype_summary.ht
+
+# Multi-field grouping with pre-filtering
+hvantk expression summarize \
+  -m /data/heart_sc.mt \
+  --group-by cell_type --group-by region \
+  --filter-by time_point=9wpc \
+  --min-cells 50 \
+  -o /out/heart_summary.ht
+
+# Extract marker genes (fold-change method)
+hvantk expression markers \
+  -s /out/heart_celltype_summary.ht \
+  --method fold_change \
+  --top-n 200 \
+  -o /out/heart_markers.json
+
+# Extract markers using Wilcoxon rank-sum test
+hvantk expression markers \
+  -m /data/heart_sc.mt \
+  --method wilcoxon \
+  --group-by cell_type \
+  --top-n 200 \
+  -o /out/heart_wilcoxon_markers.json
+```
+
 ## Prepare Custom Gene Sets
 
 Convert plain-text gene panels into `GeneSetCollection` JSON files for use
@@ -365,6 +436,9 @@ hvantk genesets prepare -i panels.tsv -o panels.json \
 
 # Also export as GMT for GSEA compatibility
 hvantk genesets prepare -i panels.tsv -o panels.json --export-gmt panels.gmt
+
+# Extract gene sets from COSMIC Cancer Gene Census
+hvantk genesets cosmic --ht /data/cosmic_cgc.ht -o cosmic_gene_sets.json
 ```
 
 ### Python API

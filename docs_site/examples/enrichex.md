@@ -58,6 +58,8 @@ examples/enrichex/
 ├── overlap_enrichment_example.py     # Python API example for overlap
 ├── burden_analysis_example.py        # Python API example for burden
 ├── create_gene_sets_example.py       # How to create gene set collections
+├── synthetic_burden_demo.py          # Synthetic cohort burden testing demo
+├── chd_burden_run.py                 # CHD burden analysis workflow
 └── results/                          # Example output from test runs
     ├── overlap_results.tsv           # Overlap enrichment results
     ├── enrichex_overlap.png          # Overlap enrichment dot plot
@@ -80,6 +82,8 @@ Example gene sets for brain cell types (Microglia, Astrocytes, Oligodendrocytes,
 | [`overlap_enrichment_example.py`](https://github.com/bigbio/hvantk/tree/main/examples/enrichex/overlap_enrichment_example.py) | Run overlap enrichment using Python API |
 | [`burden_analysis_example.py`](https://github.com/bigbio/hvantk/tree/main/examples/enrichex/burden_analysis_example.py) | Run burden testing using Python API with synthetic data |
 | [`create_gene_sets_example.py`](https://github.com/bigbio/hvantk/tree/main/examples/enrichex/create_gene_sets_example.py) | Create gene set collections from various formats |
+| [`synthetic_burden_demo.py`](https://github.com/bigbio/hvantk/tree/main/examples/enrichex/synthetic_burden_demo.py) | Synthetic cohort burden testing demo |
+| [`chd_burden_run.py`](https://github.com/bigbio/hvantk/tree/main/examples/enrichex/chd_burden_run.py) | CHD burden analysis workflow |
 
 Run examples:
 ```bash

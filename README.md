@@ -9,11 +9,14 @@
 
 **Core Capabilities:**
 - Variant annotations (ClinVar, dbNSFP, gnomAD, CCR scores)
-- Gene annotations (Ensembl, GeVIR, gene constraints)
+- Gene annotations (Ensembl, GeVIR, gene constraints, HGNC, COSMIC CGC)
 - Protein annotations (INSIDER protein-protein interactions)
 - Expression data (bulk & single-cell RNA-seq from UCSC, GTEx)
 - Joint genotyping workflows (GVCF combining, QC, format conversion)
 - Ancestry inference (PCA + Random Forest classification)
+- Enrichment analysis (EnrichEx: overlap + burden testing)
+- Pathogenicity score evaluation (PS-ROC)
+- Expression analysis (summarize, marker extraction)
 - Recipe-based batch processing
 
 ## Installation

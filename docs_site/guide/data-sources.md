@@ -69,6 +69,14 @@ hvantk download gencc --list-versions
 hvantk download hgnc --output-dir data/hgnc
 ```
 
+**Build Hail Table**:
+
+```bash
+hvantk mktable hgnc \
+  --raw-input data/hgnc/hgnc_complete_set.tsv \
+  --output-ht hgnc.ht
+```
+
 ### UCSC Cell Browser
 
 The UCSC Cell Browser hosts 267+ datasets. About half are **collections** (groups of
@@ -216,6 +224,21 @@ URL: https://www.nature.com/articles/s41588-018-0294-6
 **Download**: Supplementary data from the Nature publication above.
 
 **Note**: No builder is currently available for CCR. This is planned for a future release.
+
+### COSMIC Cancer Gene Census
+
+Gene-level cancer annotations from the COSMIC Cancer Gene Census.
+URL: https://cancer.sanger.ac.uk/census
+
+**Download**: Requires COSMIC account. Download the Cancer Gene Census TSV from the COSMIC website.
+
+**Build**:
+
+```bash
+hvantk mktable cosmic-cgc \
+  --raw-input cancer_gene_census.tsv \
+  --output-ht cosmic_cgc.ht
+```
 
 ## Expression data sources
 

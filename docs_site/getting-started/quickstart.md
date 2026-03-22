@@ -99,6 +99,23 @@ hvantk mkmatrix-batch --recipe matrices_recipe.json
 
 [Expression Guide](../guide/usage.md){ .md-button }
 
+## Expression Analysis
+
+Inspect, summarize, and extract marker genes from expression MatrixTables.
+
+```bash
+# Inspect metadata
+hvantk expression describe -m ucsc.mt
+
+# Summarize by cell type
+hvantk expression summarize -m ucsc.mt --group-by cell_type -o summary.ht
+
+# Extract marker genes
+hvantk expression markers -s summary.ht --method fold_change -o markers.json
+```
+
+[Expression Guide](../guide/usage.md){ .md-button }
+
 ## File Format Conversion
 
 Convert standard gzip files to BGZF for Hail parallel import:
