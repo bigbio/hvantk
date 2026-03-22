@@ -209,7 +209,7 @@ def genesets_clingen(
             if min_genes > 0:
                 gene_sets = {k: v for k, v in gene_sets.items() if len(v) >= min_genes}
         else:  # keyword
-            with open(categories_json) as f:
+            with open(categories_json, encoding="utf-8") as f:
                 categories = json.load(f)
             gene_sets = streamer.aggregate_by_disease_category(
                 categories=categories,
@@ -333,7 +333,7 @@ def genesets_gencc(
             if min_genes > 0:
                 gene_sets = {k: v for k, v in gene_sets.items() if len(v) >= min_genes}
         else:  # keyword
-            with open(categories_json) as f:
+            with open(categories_json, encoding="utf-8") as f:
                 categories = json.load(f)
             gene_sets = streamer.aggregate_by_disease_category(
                 categories=categories,
@@ -471,7 +471,7 @@ def genesets_cosmic(
                 mutation_context=mutation_context,
             )
         else:  # keyword
-            with open(categories_json) as f:
+            with open(categories_json, encoding="utf-8") as f:
                 categories = json.load(f)
             gene_sets = streamer.aggregate_by_disease_category(
                 categories=categories,
