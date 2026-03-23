@@ -1,4 +1,6 @@
+import csv
 import gzip
+import io
 import logging
 import os
 import os.path as path
@@ -67,6 +69,60 @@ def download_file(url: str, out_dir: str, file_name: str):
             os.remove(local_path)
         logger.exception(f"Failed to download {url}: {str(e)}")
         raise Exception(f"Failed to download {url}: {str(e)}")
+
+
+def sanitize_tsv(filepath: str, *, delimiter: str = "\t") -> int:
+    """Sanitize a delimited text file in-place for Hail compatibility.
+
+    Handles two common problems that ``hl.import_table`` cannot deal with:
+
+    1. **Blank lines** — removed entirely.
+    2. **Multiline quoted fields** — newlines inside quoted values are
+       replaced with spaces so every logical record occupies exactly one line.
+
+    The file is rewritten atomically (write to temp, then rename).
+
+    Parameters
+    ----------
+    filepath : str
+        Path to the file to sanitize.
+    delimiter : str
+        Column delimiter (default: tab).
+
+    Returns
+    -------
+    int
+        Number of data rows in the cleaned file (excluding header).
+    """
+    logger.info("Sanitizing %s (delimiter=%r)", filepath, delimiter)
+    rows = []
+    with open(filepath, newline="") as fh:
+        reader = csv.reader(fh, delimiter=delimiter, quotechar='"')
+        for row in reader:
+            if any(cell.strip() for cell in row):
+                rows.append(row)
+
+    if not rows:
+        logger.warning("sanitize_tsv: file %s is empty after cleanup", filepath)
+        return 0
+
+    n_cols = len(rows[0])
+    tmp_path = filepath + ".sanitized.tmp"
+    with open(tmp_path, "w", newline="") as fh:
+        for row in rows:
+            # Flatten any embedded newlines within cells
+            cleaned = [
+                cell.replace("\n", " ").replace("\r", " ").replace(delimiter, " ")
+                for cell in row
+            ]
+            fh.write(delimiter.join(cleaned) + "\n")
+
+    os.replace(tmp_path, filepath)
+    n_data = len(rows) - 1
+    logger.info(
+        "Sanitized %s: %d columns, %d data rows", filepath, n_cols, n_data
+    )
+    return n_data
 
 
 # define a function to test if a given url exists

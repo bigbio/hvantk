@@ -9,7 +9,7 @@ import hail as hl
 import logging
 import os
 from typing import Optional, List, Callable
-from hvantk.utils.table_utils import get_row_fields
+from hvantk.utils.table_utils import get_row_fields, build_rename_map, str_to_bool
 from hvantk.core.metadata import build_table_metadata
 
 logger = logging.getLogger(__name__)
@@ -1129,22 +1129,25 @@ def create_cosmic_cgc_tb(
             f"{COSMIC_CGC_CLASSIFICATION_LEVELS}, got: {min_classification}"
         )
 
+    resolved_path, force_bgz = resolve_compression(input_path)
+
     def import_func():
-        return hl.import_table(
-            paths=input_path,
+        kwargs = dict(
+            paths=resolved_path,
             delimiter="\t",
             impute=False,
             min_partitions=10,
         )
+        if force_bgz:
+            kwargs["force_bgz"] = True
+        elif resolved_path.endswith(".gz"):
+            kwargs["force"] = True
+        return hl.import_table(**kwargs)
 
     def transform(ht: hl.Table) -> hl.Table:
-        # Rename fields to standardized names
+        # Rename fields to standardized names using flexible matching
         logger.info("Renaming COSMIC CGC fields to standardized names")
-        rename_map = {
-            k: v
-            for k, v in COSMIC_CGC_FIELDS.items()
-            if k in get_row_fields(ht)
-        }
+        rename_map = build_rename_map(COSMIC_CGC_FIELDS, get_row_fields(ht))
         ht = ht.rename(rename_map)
 
         # Normalize Tier: raw "1"/"2" -> "Tier 1"/"Tier 2"
@@ -1169,18 +1172,11 @@ def create_cosmic_cgc_tb(
             )
         )
 
-        # Normalize boolean fields: "yes"/"Yes" -> True, else False
+        # Normalize boolean fields using general-purpose str_to_bool
         for bool_field in ("somatic", "germline", "hallmark"):
             if bool_field in get_row_fields(ht):
                 ht = ht.annotate(
-                    **{
-                        bool_field: hl.if_else(
-                            hl.is_defined(ht[bool_field])
-                            & (ht[bool_field].lower() == "yes"),
-                            True,
-                            False,
-                        )
-                    }
+                    **{bool_field: str_to_bool(ht[bool_field])}
                 )
 
         # Parse comma-separated multi-value fields into arrays

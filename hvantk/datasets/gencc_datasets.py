@@ -19,7 +19,7 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 from hvantk.core.constants import GENCC_BASE_URL, GENCC_FILE_PREFIX
-from hvantk.data.file_utils import download_file
+from hvantk.data.file_utils import download_file, sanitize_tsv
 
 logger = logging.getLogger(__name__)
 
@@ -112,6 +112,9 @@ class GenCCSubmissionsDataset:
                 out_dir=output_dir,
                 file_name=self.file_name,
             )
+            # GenCC TSV may contain multiline quoted fields and blank lines
+            # that hl.import_table cannot handle — sanitize in-place.
+            sanitize_tsv(output_path)
             logger.info(f"Downloaded GenCC dataset to {output_path}")
             return output_path
         except Exception as e:
