@@ -52,17 +52,11 @@ from hvantk.utils.gene_sets import load_gene_set
 logger = logging.getLogger(__name__)
 
 
-# Label mapping constants (matching ClinvarDataStreamer in clinvar_streamer.py)
-PATHOGENIC_LABELS = [
-    "Pathogenic/Likely_pathogenic",
-    "Likely_pathogenic",
-    "Pathogenic",
-]
-BENIGN_LABELS = [
-    "Benign/Likely_benign",
-    "Likely_benign",
-    "Benign",
-]
+# Re-export from core for backward compatibility
+from hvantk.core.constants import (  # noqa: E402
+    CLINVAR_PATHOGENIC_LABELS as PATHOGENIC_LABELS,
+    CLINVAR_BENIGN_LABELS as BENIGN_LABELS,
+)
 
 # Score directionality: True means higher values indicate pathogenicity.
 # Scores not in this map default to higher_is_pathogenic=True.
