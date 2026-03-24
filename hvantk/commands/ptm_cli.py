@@ -198,8 +198,9 @@ def ptm_annotate(ctx, variants_ht, ptm_ht, output_ht, flanking_codons, overwrite
 @click.option("--ptm-ht", type=str, required=True, help="Path to PTM sites Hail Table")
 @click.option("-o", "--output", type=click.Path(), required=True, help="Output directory")
 @click.option("--flanking-codons", type=int, default=5, show_default=True)
+@click.option("--save-plots", is_flag=True, help="Save plots alongside JSON output")
 @click.pass_context
-def ptm_landscape_cmd(ctx, clinvar_ht, ptm_ht, output, flanking_codons):
+def ptm_landscape_cmd(ctx, clinvar_ht, ptm_ht, output, flanking_codons, save_plots):
     """PTM-variant overlap and enrichment analysis (Q1).
 
     \b
@@ -210,12 +211,15 @@ def ptm_landscape_cmd(ctx, clinvar_ht, ptm_ht, output, flanking_codons):
     \b
     Output:
       landscape_summary.json — counts, enrichment, per-category overlaps
+      *.png (with --save-plots) — landscape summary, category, distance plots
 
     \b
     Examples:
       hvantk ptm landscape --clinvar-ht clinvar.ht --ptm-ht ptm_sites.ht -o results/landscape/
+      hvantk ptm landscape --clinvar-ht clinvar.ht --ptm-ht ptm_sites.ht -o results/ --save-plots
     """
     try:
+        import os
         import hail as hl
         from hvantk.ptm.analysis import ptm_landscape
 
@@ -224,6 +228,20 @@ def ptm_landscape_cmd(ctx, clinvar_ht, ptm_ht, output, flanking_codons):
 
         result = ptm_landscape(clinvar, ptm, output, flanking_codons=flanking_codons)
         click.echo(result.summary())
+
+        if save_plots:
+            from hvantk.ptm.plot import (
+                plot_landscape_summary,
+                plot_overlap_by_category,
+                plot_distance_distribution,
+            )
+            import matplotlib
+            matplotlib.use("Agg")
+
+            plot_landscape_summary(result, os.path.join(output, "landscape_summary.png"))
+            plot_overlap_by_category(result, os.path.join(output, "overlap_by_category.png"))
+            plot_distance_distribution(result, os.path.join(output, "distance_distribution.png"))
+            click.echo(f"Plots saved to {output}")
 
     except Exception as e:
         logger.exception(f"PTM landscape failed: {e}")
@@ -276,8 +294,9 @@ def ptm_export_strata(ctx, annotated_ht, output):
 @click.option("--af-field", type=str, default="AF", show_default=True, help="AF field name in gnomAD table")
 @click.option("-o", "--output", type=click.Path(), required=True, help="Output directory")
 @click.option("--flanking-codons", type=int, default=5, show_default=True)
+@click.option("--save-plots", is_flag=True, help="Save AF comparison plot alongside JSON output")
 @click.pass_context
-def ptm_population_cmd(ctx, gnomad_ht, ptm_ht, ccr_ht, af_field, output, flanking_codons):
+def ptm_population_cmd(ctx, gnomad_ht, ptm_ht, ccr_ht, af_field, output, flanking_codons, save_plots):
     """Population-level PTM-variant allele frequency analysis (Q3).
 
     \b
@@ -288,6 +307,7 @@ def ptm_population_cmd(ctx, gnomad_ht, ptm_ht, ccr_ht, af_field, output, flankin
     \b
     Output:
       population_summary.json — AF statistics, counts, CCR comparison
+      *.png (with --save-plots) — AF comparison plot
 
     \b
     Examples:
@@ -295,6 +315,7 @@ def ptm_population_cmd(ctx, gnomad_ht, ptm_ht, ccr_ht, af_field, output, flankin
       hvantk ptm population --gnomad-ht gnomad.ht --ptm-ht ptm_sites.ht --ccr-ht ccr.ht -o results/population/
     """
     try:
+        import os
         import hail as hl
         from hvantk.ptm.analysis import ptm_population
 
@@ -308,6 +329,14 @@ def ptm_population_cmd(ctx, gnomad_ht, ptm_ht, ccr_ht, af_field, output, flankin
         )
         click.echo(result.summary())
 
+        if save_plots:
+            from hvantk.ptm.plot import plot_population_af
+            import matplotlib
+            matplotlib.use("Agg")
+
+            plot_population_af(result, os.path.join(output, "population_af.png"))
+            click.echo(f"Plot saved to {output}")
+
     except Exception as e:
         logger.exception(f"PTM population analysis failed: {e}")
         click.echo(f"Error: {e}", err=True)
@@ -315,9 +344,84 @@ def ptm_population_cmd(ctx, gnomad_ht, ptm_ht, ccr_ht, af_field, output, flankin
 
 
 @ptm_group.command("report")
-@click.option("-o", "--output", type=click.Path(), required=True)
+@click.option("-o", "--output", type=click.Path(), required=True, help="Output HTML report path")
+@click.option("--landscape-json", type=click.Path(exists=True), default=None,
+              help="Path to landscape_summary.json (from 'hvantk ptm landscape')")
+@click.option("--population-json", type=click.Path(exists=True), default=None,
+              help="Path to population_summary.json (from 'hvantk ptm population')")
+@click.option("--title", type=str, default="PTM-Variant Analysis Report")
+@click.option("--description", type=str, default=None)
 @click.pass_context
-def ptm_report(ctx, output):
-    """Generate PTM analysis summary report."""
-    click.echo("PTM report generation not yet implemented (Phase 5).")
-    ctx.exit(0)
+def ptm_report(ctx, output, landscape_json, population_json, title, description):
+    """Generate PTM analysis summary HTML report.
+
+    \b
+    Combines landscape (Q1) and/or population (Q3) results into a single
+    HTML report with embedded plots and summary tables.
+
+    \b
+    Examples:
+      hvantk ptm report -o report.html --landscape-json results/landscape/landscape_summary.json
+      hvantk ptm report -o report.html \\
+          --landscape-json results/landscape/landscape_summary.json \\
+          --population-json results/population/population_summary.json
+    """
+    if not landscape_json and not population_json:
+        click.echo("Error: at least one of --landscape-json or --population-json is required.", err=True)
+        ctx.exit(1)
+
+    try:
+        import json
+        from hvantk.ptm.analysis import PTMLandscapeResult, PTMPopulationResult
+        from hvantk.ptm.report import generate_report
+
+        landscape_result = None
+        if landscape_json:
+            with open(landscape_json) as f:
+                data = json.load(f)
+            landscape_result = PTMLandscapeResult(
+                n_variants=data.get("n_variants", 0),
+                n_pathogenic=data.get("n_pathogenic", 0),
+                n_benign=data.get("n_benign", 0),
+                n_ptm_site_pathogenic=data.get("ptm_site", {}).get("pathogenic", 0),
+                n_ptm_proximal_pathogenic=data.get("ptm_proximal", {}).get("pathogenic", 0),
+                n_ptm_site_benign=data.get("ptm_site", {}).get("benign", 0),
+                n_ptm_proximal_benign=data.get("ptm_proximal", {}).get("benign", 0),
+                enrichment_odds_ratio=data.get("enrichment", {}).get("odds_ratio", 0.0),
+                enrichment_p_value=data.get("enrichment", {}).get("p_value", 1.0),
+                overlap_by_category=data.get("overlap_by_category", {}),
+                distance_distribution={
+                    int(k): v for k, v in data.get("distance_distribution", {}).items()
+                },
+            )
+
+        population_result = None
+        if population_json:
+            with open(population_json) as f:
+                data = json.load(f)
+            population_result = PTMPopulationResult(
+                n_variants=data.get("n_variants", 0),
+                n_ptm_site=data.get("n_ptm_site", 0),
+                n_ptm_proximal=data.get("n_ptm_proximal", 0),
+                n_non_ptm=data.get("n_non_ptm", 0),
+                mean_af_ptm_site=data.get("mean_af", {}).get("ptm_site", 0.0),
+                mean_af_ptm_proximal=data.get("mean_af", {}).get("ptm_proximal", 0.0),
+                mean_af_non_ptm=data.get("mean_af", {}).get("non_ptm", 0.0),
+                n_zero_af_ptm=data.get("n_zero_af_ptm", 0),
+                ccr_mean_ptm=data.get("ccr_mean_ptm"),
+                ccr_mean_non_ptm=data.get("ccr_mean_non_ptm"),
+            )
+
+        generate_report(
+            output_path=output,
+            landscape_result=landscape_result,
+            population_result=population_result,
+            title=title,
+            description=description,
+        )
+        click.echo(f"Report: {output}")
+
+    except Exception as e:
+        logger.exception(f"PTM report failed: {e}")
+        click.echo(f"Error: {e}", err=True)
+        ctx.exit(1)

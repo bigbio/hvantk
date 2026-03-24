@@ -40,6 +40,16 @@ from hvantk.ptm.analysis import (
     ptm_population,
     export_ptm_strata,
 )
+from hvantk.ptm.plot import (
+    plot_landscape_summary,
+    plot_overlap_by_category,
+    plot_distance_distribution,
+    plot_population_af,
+    encode_figure_to_base64,
+)
+from hvantk.ptm.report import (
+    generate_report,
+)
 from hvantk.ptm.constants import (
     UNIPROT_API_URL,
     UNIPROT_API_FIELDS,
@@ -74,6 +84,14 @@ __all__ = [
     "map_residue_to_genomic",
     "map_protein_sites",
     "resolve_transcript",
+    # Visualization
+    "plot_landscape_summary",
+    "plot_overlap_by_category",
+    "plot_distance_distribution",
+    "plot_population_af",
+    "encode_figure_to_base64",
+    # Report
+    "generate_report",
     # Constants
     "UNIPROT_API_URL",
     "UNIPROT_API_FIELDS",
