@@ -77,6 +77,12 @@ def _create_hgnc_gene_tb(*args, **kwargs):
     return create_hgnc_gene_tb(*args, **kwargs)
 
 
+def _create_ptm_sites_tb(*args, **kwargs):
+    from hvantk.tables.table_builders import create_ptm_sites_tb
+
+    return create_ptm_sites_tb(*args, **kwargs)
+
+
 @click.group("mktable", context_settings=CONTEXT_SETTINGS)
 def mktable_group():
     """Create a single annotation Table/MatrixTable from a raw input file."""
@@ -528,4 +534,39 @@ def mktable_hgnc(
         export_tsv=export_tsv,
     )
     click.echo(f"HGNC gene table created at {output_ht}")
+    ht.describe()
+
+
+@mktable_group.command("ptm-sites")
+@_raw_input_opt
+@_output_ht_opt
+@_overwrite_opt
+@_export_tsv_opt
+@_ref_genome_opt
+@click.option(
+    "--flanking-codons",
+    type=int,
+    default=5,
+    show_default=True,
+    help="Number of flanking codons for proximal window",
+)
+def mktable_ptm_sites(
+    raw_input: str,
+    output_ht: str,
+    overwrite: bool,
+    export_tsv: bool,
+    ref_genome: str,
+    flanking_codons: int,
+):
+    """Build a PTM sites Hail Table from mapped coordinates (keyed by locus)."""
+    logger.info("Building PTM sites table")
+    ht = _create_ptm_sites_tb(
+        input_path=raw_input,
+        output_path=output_ht,
+        reference_genome=ref_genome,
+        flanking_codons=flanking_codons,
+        overwrite=overwrite,
+        export_tsv=export_tsv,
+    )
+    click.echo(f"PTM sites table created at {output_ht}")
     ht.describe()
