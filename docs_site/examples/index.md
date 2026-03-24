@@ -7,6 +7,7 @@ This directory contains end-to-end workflow examples demonstrating how to use hv
 - [HGC (Joint Genotyping)](#hgc-joint-genotyping)
 - [PSROC (Prediction Score ROC Analysis)](#psroc-prediction-score-roc-analysis)
 - [EnrichEx (Gene Set Enrichment)](#enrichex-gene-set-enrichment)
+- [PTM (Post-Translational Modification)](#ptm-post-translational-modification)
 - [Ancestry Inference](#ancestry-inference)
 - [ClinVar Data Streaming](#clinvar-data-streaming)
 - [ClinGen Streaming](#clingen-streaming)
@@ -84,6 +85,23 @@ python examples/enrichex/overlap_enrichment_example.py
 **Outputs:** Results (TSV), plots (PNG), HTML reports
 
 **Documentation:** [EnrichEx Examples](enrichex.md) | [EnrichEx Docs](../tools/enrichex.md)
+
+---
+
+### PTM (Post-Translational Modification)
+
+Map UniProt PTM sites to genomic coordinates, cross-reference with ClinVar and gnomAD variants, and analyze PTM-variant enrichment.
+
+**Quick start:**
+```bash
+hvantk ptm build --output-dir data/ptm/ --output-ht data/ptm/ptm_sites.ht
+hvantk ptm landscape --clinvar-ht clinvar.ht --ptm-ht ptm_sites.ht -o results/landscape/ --save-plots
+hvantk ptm report -o report.html --landscape-json results/landscape/landscape_summary.json
+```
+
+**Outputs:** PTM sites table (HT), landscape/population JSON summaries, plots (PNG), HTML report
+
+**Documentation:** [PTM Examples](ptm.md) | [PTM Docs](../tools/ptm.md)
 
 ---
 

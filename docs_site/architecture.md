@@ -92,6 +92,15 @@ hvantk/
 │   ├── constants.py       # Enrichex-specific constants
 │   └── simulation.py      # Synthetic cohort generator for burden testing
 │
+├── ptm/                   # L5: PTM - Post-translational modification analysis
+│   ├── constants.py       # PTM-specific constants (URLs, categories)
+│   ├── mapper.py          # GTF parser and residue-to-genomic mapper
+│   ├── pipeline.py        # Build pipeline orchestration (Phases 1-2)
+│   ├── annotate.py        # Variant-PTM annotation (Phase 3)
+│   ├── analysis.py        # Landscape and population analysis (Phase 4)
+│   ├── plot.py            # PTM-specific visualization
+│   └── report.py          # HTML report generation
+│
 ├── commands/              # CLI command implementations
 │   ├── make_table_cli.py        # mktable commands
 │   ├── make_matrix_cli.py       # mkmatrix commands
@@ -100,6 +109,7 @@ hvantk/
 │   ├── catalog_cli.py           # Data catalog commands
 │   ├── ancestry_cli.py          # Ancestry CLI
 │   ├── psroc_cli.py             # PSROC CLI
+│   ├── ptm_cli.py               # PTM CLI
 │   ├── download_cli.py          # Unified download command group
 │   ├── utils_cli.py             # Unified utils command group
 │   ├── check_install_cli.py     # Installation verification
@@ -156,7 +166,8 @@ hvantk/
     ├── hgc/               # HGC tests
     ├── ancestry/          # Ancestry tests
     ├── psroc/             # PSROC tests
-    └── enrichex/          # EnrichEx tests
+    ├── enrichex/          # EnrichEx tests
+    └── test_ptm.py        # PTM tests
 ```
 
 ## Design Principles
@@ -175,6 +186,7 @@ The codebase is organized by function and biological domain:
 - `ancestry/` - Population ancestry inference
 - `psroc/` - Pathogenicity score evaluation
 - `enrichex/` - Gene set enrichment analysis
+- `ptm/` - Post-translational modification variant classification
 
 **Data Product Keying**:
 - **Variants** - Keyed by `(locus, alleles)`

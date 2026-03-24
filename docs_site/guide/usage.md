@@ -99,6 +99,16 @@ hvantk mktable hgnc \
   --output-ht /out/hgnc.ht
 ```
 
+- PTM sites (UniProt PTM → genomic coordinates, keyed by locus)
+
+```bash
+hvantk ptm build \
+  --output-dir /data/ptm/ \
+  --output-ht /out/ptm_sites.ht
+```
+
+> **Note:** The PTM build command downloads Ensembl GTF and UniProt PTM data automatically. Use `--gtf-path` and `--ptm-tsv` to provide pre-downloaded files.
+
 ## 2) Batch-create Tables (HT) from a recipe
 
 Use a recipe to build many tables at once. JSON and YAML are both supported (YAML requires PyYAML installed).
