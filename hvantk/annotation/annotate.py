@@ -32,13 +32,15 @@ def annotate_clinvar_clnsig(t: hl.Table) -> hl.Table:
     logger.info("Annotating ClinVar CLNSIG")
     clinvar_ht = get_clinvar_ht()
 
-    # Pre-calculate conditions for better readability and performance
+    # First annotate clinvar_clnsig from the ClinVar table
+    t = t.annotate(clinvar_clnsig=clinvar_ht[t.key].info.CLNSIG)
+
+    # Now compute conditions using the annotated field
     is_pathogenic = t.clinvar_clnsig.any(
         lambda x: hl.set(CLINVAR_PATHOGENIC_LABELS).contains(x)
     )
     is_benign = t.clinvar_clnsig.any(lambda x: hl.set(CLINVAR_BENIGN_LABELS).contains(x))
 
-    t = t.annotate(clinvar_clnsig=clinvar_ht[t.key].info.CLNSIG)
     t = t.annotate(
         clinvar_clnsig=hl.case()
         .when(is_pathogenic, "P")

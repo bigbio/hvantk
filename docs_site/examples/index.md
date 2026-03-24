@@ -95,7 +95,7 @@ Map UniProt PTM sites to genomic coordinates, cross-reference with ClinVar and g
 **Quick start:**
 ```bash
 hvantk ptm build --output-dir data/ptm/ --output-ht data/ptm/ptm_sites.ht
-hvantk ptm landscape --clinvar-ht clinvar.ht --ptm-ht ptm_sites.ht -o results/landscape/ --save-plots
+hvantk ptm landscape --clinvar-ht clinvar.ht --ptm-ht data/ptm/ptm_sites.ht -o results/landscape/ --save-plots
 hvantk ptm report -o report.html --landscape-json results/landscape/landscape_summary.json
 ```
 

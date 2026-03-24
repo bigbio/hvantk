@@ -250,9 +250,11 @@ The `hvantk ptm build` command downloads PTM data automatically via the UniProt 
 **Download** (optional, for offline use):
 
 ```bash
-# The build command handles this automatically, but you can pre-download:
-# 1. UniProt PTM TSV via REST API query
-# 2. Ensembl GTF for coordinate mapping
+# UniProt PTM TSV via REST API
+hvantk download uniprot-ptm --output-dir data/ptm/
+
+# Ensembl GTF for coordinate mapping (download manually)
+# wget https://ftp.ensembl.org/pub/current_gtf/homo_sapiens/Homo_sapiens.GRCh38.*.gtf.gz -P data/ref/
 ```
 
 **Build**:

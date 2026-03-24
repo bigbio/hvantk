@@ -95,30 +95,52 @@ def sanitize_tsv(filepath: str, *, delimiter: str = "\t") -> int:
         Number of data rows in the cleaned file (excluding header).
     """
     logger.info("Sanitizing %s (delimiter=%r)", filepath, delimiter)
-    rows = []
-    with open(filepath, newline="") as fh:
-        reader = csv.reader(fh, delimiter=delimiter, quotechar='"')
-        for row in reader:
-            if any(cell.strip() for cell in row):
-                rows.append(row)
-
-    if not rows:
-        logger.warning("sanitize_tsv: file %s is empty after cleanup", filepath)
-        return 0
-
-    n_cols = len(rows[0])
     tmp_path = filepath + ".sanitized.tmp"
-    with open(tmp_path, "w", newline="") as fh:
-        for row in rows:
-            # Flatten any embedded newlines within cells
+    n_cols = None
+    n_data = 0
+
+    with open(filepath, newline="") as fh_in, \
+         open(tmp_path, "w", newline="") as fh_out:
+        reader = csv.reader(fh_in, delimiter=delimiter, quotechar='"')
+        writer = csv.writer(
+            fh_out, delimiter=delimiter, quotechar='"', lineterminator="\n",
+        )
+        for row_index, row in enumerate(reader):
+            if not any(cell.strip() for cell in row):
+                continue
+
+            if n_cols is None:
+                n_cols = len(row)
+
+            # Pad or truncate to match header column count
+            if len(row) < n_cols:
+                logger.warning(
+                    "sanitize_tsv: row %d has %d columns, expected %d; padding",
+                    row_index, len(row), n_cols,
+                )
+                row = row + [""] * (n_cols - len(row))
+            elif len(row) > n_cols:
+                logger.warning(
+                    "sanitize_tsv: row %d has %d columns, expected %d; truncating",
+                    row_index, len(row), n_cols,
+                )
+                row = row[:n_cols]
+
+            # Flatten embedded newlines within cells
             cleaned = [
-                cell.replace("\n", " ").replace("\r", " ").replace(delimiter, " ")
+                cell.replace("\n", " ").replace("\r", " ")
                 for cell in row
             ]
-            fh.write(delimiter.join(cleaned) + "\n")
+            writer.writerow(cleaned)
+            n_data += 1
+
+    if n_cols is None:
+        logger.warning("sanitize_tsv: file %s is empty after cleanup", filepath)
+        os.remove(tmp_path)
+        return 0
 
     os.replace(tmp_path, filepath)
-    n_data = len(rows) - 1
+    n_data -= 1  # exclude header row
     logger.info(
         "Sanitized %s: %d columns, %d data rows", filepath, n_cols, n_data
     )

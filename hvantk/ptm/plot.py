@@ -251,7 +251,7 @@ def plot_population_af(
     bars = ax.bar(x, af_values, color=colors, edgecolor="black", linewidth=0.5)
 
     # Annotate counts on bars
-    for bar, n in zip(bars, n_values):
+    for bar, n in zip(bars, n_values, strict=True):
         ax.text(
             bar.get_x() + bar.get_width() / 2, bar.get_height(),
             f"n={n:,}", ha="center", va="bottom", fontsize=9,

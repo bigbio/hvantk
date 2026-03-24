@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
     "--date",
     type=str,
     default=None,
-    help="Version date label in YYYY-MM-DD format (default: today)",
+    help="Version date label in YYYY-MM-DD format (default: latest UniProt snapshot)",
 )
 @click.option(
     "--overwrite",

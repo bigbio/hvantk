@@ -228,7 +228,7 @@ class UniProtPTMDataset:
         except ValueError:
             raise ValueError(
                 f"Invalid version_date format: {version_date}. Expected YYYY-MM-DD"
-            )
+            ) from None
 
         file_name = f"uniprot-ptm-human-{version_date}.tsv"
 

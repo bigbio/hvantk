@@ -5,7 +5,7 @@ This module provides CLI commands for the PTM variant classification pipeline:
 - build: Download PTM data, map coordinates, build Hail Table
 - annotate: Annotate a variant table with PTM site information
 - landscape: PTM-variant overlap analysis (Q1)
-- evaluate: Predictor performance at PTM sites (Q2)
+- export-strata: Export PTM/non-PTM variant strata for predictor evaluation (Q2)
 - population: Population-level PTM-variant burden (Q3)
 - report: Generate summary report
 """
@@ -118,6 +118,7 @@ def ptm_build(ctx, output_dir, output_ht, gtf_path, ptm_tsv, flanking_codons, ov
 
         errors = config.validate()
         if errors:
+            click.echo("Configuration validation failed:", err=True)
             for error in errors:
                 click.echo(f"  - {error}", err=True)
             ctx.exit(1)
@@ -178,13 +179,16 @@ def ptm_annotate(ctx, variants_ht, ptm_ht, output_ht, flanking_codons, overwrite
         )
         result = result.checkpoint(output_ht, overwrite=overwrite)
 
-        n_total = result.count()
-        n_ptm_site = result.filter(result.is_ptm_site).count()
-        n_proximal = result.filter(result.is_ptm_proximal).count()
+        import hail as hl
+        counts = result.aggregate(hl.struct(
+            n_total=hl.agg.count(),
+            n_ptm_site=hl.agg.filter(result.is_ptm_site, hl.agg.count()),
+            n_proximal=hl.agg.filter(result.is_ptm_proximal, hl.agg.count()),
+        ))
 
-        click.echo(f"Annotated {n_total:,} variants:")
-        click.echo(f"  PTM site:  {n_ptm_site:,}")
-        click.echo(f"  Proximal:  {n_proximal:,}")
+        click.echo(f"Annotated {counts.n_total:,} variants:")
+        click.echo(f"  PTM site:  {counts.n_ptm_site:,}")
+        click.echo(f"  Proximal:  {counts.n_proximal:,}")
         click.echo(f"Output: {output_ht}")
 
     except Exception as e:
@@ -230,13 +234,13 @@ def ptm_landscape_cmd(ctx, clinvar_ht, ptm_ht, output, flanking_codons, save_plo
         click.echo(result.summary())
 
         if save_plots:
+            import matplotlib
+            matplotlib.use("Agg")
             from hvantk.ptm.plot import (
                 plot_landscape_summary,
                 plot_overlap_by_category,
                 plot_distance_distribution,
             )
-            import matplotlib
-            matplotlib.use("Agg")
 
             plot_landscape_summary(result, os.path.join(output, "landscape_summary.png"))
             plot_overlap_by_category(result, os.path.join(output, "overlap_by_category.png"))
@@ -330,9 +334,9 @@ def ptm_population_cmd(ctx, gnomad_ht, ptm_ht, ccr_ht, af_field, output, flankin
         click.echo(result.summary())
 
         if save_plots:
-            from hvantk.ptm.plot import plot_population_af
             import matplotlib
             matplotlib.use("Agg")
+            from hvantk.ptm.plot import plot_population_af
 
             plot_population_af(result, os.path.join(output, "population_af.png"))
             click.echo(f"Plot saved to {output}")

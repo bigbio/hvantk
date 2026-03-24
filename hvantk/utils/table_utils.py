@@ -51,10 +51,16 @@ def build_rename_map(
         ``{actual_field: target_name}`` for every matched field.
         Fields already matching a target name are skipped.
     """
-    # Index actual fields by their normalized form
+    # Index actual fields by their normalized form, detecting ambiguity
     norm_to_actual: Dict[str, str] = {}
     for f in actual_fields:
-        norm_to_actual[_normalize_field_name(f)] = f
+        nk = _normalize_field_name(f)
+        if nk in norm_to_actual:
+            logger.warning(
+                "build_rename_map: ambiguous headers %r and %r normalize to the same key",
+                norm_to_actual[nk], f,
+            )
+        norm_to_actual[nk] = f
 
     target_names = set(field_map.values())
     rename = {}
@@ -62,9 +68,10 @@ def build_rename_map(
         norm = _normalize_field_name(canonical_raw)
         actual = norm_to_actual.get(norm)
         if actual is not None and actual != target:
-            # Skip if actual field name already equals the target or
-            # if the target name is already taken by another field
-            if actual not in target_names:
+            # Skip if actual field name already equals the target,
+            # if the target name is already taken by another field,
+            # or if the target already exists in actual fields
+            if actual not in target_names and target not in actual_fields:
                 rename[actual] = target
         # Also try matching by the target name's normalized form
         # (handles cases where actual headers already use the target naming)
@@ -72,7 +79,7 @@ def build_rename_map(
             norm_target = _normalize_field_name(target)
             actual_by_target = norm_to_actual.get(norm_target)
             if actual_by_target is not None and actual_by_target != target:
-                if actual_by_target not in target_names:
+                if actual_by_target not in target_names and target not in actual_fields:
                     rename[actual_by_target] = target
 
     if rename:

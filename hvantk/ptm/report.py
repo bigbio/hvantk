@@ -202,7 +202,7 @@ def _build_population_section(
     )
 
     ccr_html = ""
-    if result.ccr_mean_ptm is not None:
+    if result.ccr_mean_ptm is not None and result.ccr_mean_non_ptm is not None:
         ccr_html = (
             "<div class='card'>"
             "<h3>CCR Comparison</h3>"
@@ -256,7 +256,7 @@ def _render_plot(plot_func, result, output_path: Path, embed: bool) -> str:
         plt.close(fig)
         return f"<img src='{src}' alt='{output_path.stem}' class='embedded-image'/>"
     except Exception:
-        logger.warning("Failed to generate plot %s, skipping.", output_path.stem)
+        logger.warning("Failed to generate plot %s, skipping.", output_path.stem, exc_info=True)
         return ""
 
 

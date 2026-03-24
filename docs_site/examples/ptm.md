@@ -41,7 +41,7 @@ hvantk ptm build \
 ```
 
 **Expected output:**
-```
+```text
 Mapping complete: 55422/56120 mapped (98.7%), 698 failed
 Resolution: {'ensembl_canonical': 48231, 'longest_cds': 7191}
 Mapped TSV: data/ptm/ptm_mapped.tsv
@@ -60,7 +60,7 @@ hvantk ptm annotate \
 ```
 
 **Expected output:**
-```
+```text
 Annotated 200,000 variants:
   PTM site:  1,234
   Proximal:  5,678
@@ -80,7 +80,7 @@ hvantk ptm landscape \
 ```
 
 **Expected output:**
-```
+```text
 PTM-Variant Landscape:
   Variants: 200,000 total, 50,000 P/LP, 30,000 B/LB
   P/LP at PTM site: 1,234
@@ -147,7 +147,7 @@ hvantk ptm population \
 ```
 
 **Expected output:**
-```
+```text
 PTM Population Analysis:
   Total variants: 5,000,000
   At PTM site: 12,345 (mean AF=1.23e-04)

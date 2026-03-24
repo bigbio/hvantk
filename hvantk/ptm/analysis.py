@@ -41,7 +41,7 @@ class PTMLandscapeResult:
 
     def summary(self) -> str:
         lines = [
-            f"PTM-Variant Landscape:",
+            "PTM-Variant Landscape:",
             f"  Variants: {self.n_variants:,} total, "
             f"{self.n_pathogenic:,} P/LP, {self.n_benign:,} B/LB",
             f"  P/LP at PTM site: {self.n_ptm_site_pathogenic:,}",
@@ -76,7 +76,7 @@ class PTMPopulationResult:
 
     def summary(self) -> str:
         lines = [
-            f"PTM Population Analysis:",
+            "PTM Population Analysis:",
             f"  Total variants: {self.n_variants:,}",
             f"  At PTM site: {self.n_ptm_site:,} (mean AF={self.mean_af_ptm_site:.2e})",
             f"  Proximal: {self.n_ptm_proximal:,} (mean AF={self.mean_af_ptm_proximal:.2e})",

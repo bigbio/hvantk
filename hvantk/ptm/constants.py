@@ -29,9 +29,9 @@ PTM_TYPE_CATEGORIES = {
     "N-linked (GlcNAc...) asparagine": "n_glycosylation",
     "O-linked (GalNAc...) threonine": "o_glycosylation",
     "O-linked (GalNAc...) serine": "o_glycosylation",
-    "Glycyl lysine isopeptide (Lys-Gly)": "ubiquitination",
     "Glycyl lysine isopeptide (Lys-Gly) (interchain with G-Cter in SUMO)": "sumoylation",
     "Glycyl lysine isopeptide (Lys-Gly) (interchain with G-Cter in SUMO2)": "sumoylation",
+    "Glycyl lysine isopeptide (Lys-Gly)": "ubiquitination",
 }
 
 # Default flanking window sizes to test (in residues)

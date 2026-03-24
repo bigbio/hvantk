@@ -1142,7 +1142,7 @@ def create_cosmic_cgc_tb(
         if force_bgz:
             kwargs["force_bgz"] = True
         elif resolved_path.endswith(".gz"):
-            kwargs["force"] = True
+            kwargs["force_bgz"] = True
         return hl.import_table(**kwargs)
 
     def transform(ht: hl.Table) -> hl.Table:
@@ -1401,8 +1401,8 @@ def create_ptm_sites_tb(
     gene_symbol, residue_pos, amino_acid, ptm_type, ptm_category,
     source_db, evidence_type.
 
-    The table is keyed by a genomic interval covering the PTM codon,
-    enabling interval-based joins with variant tables.
+    The table is keyed by locus (codon start position), with a
+    ``flanking_interval`` field for proximity-based annotation joins.
 
     Parameters
     ----------
@@ -1424,9 +1424,10 @@ def create_ptm_sites_tb(
     Returns
     -------
     hl.Table
-        The checkpointed Hail Table keyed by locus interval.
+        The checkpointed Hail Table keyed by locus.
     """
-    from hvantk.ptm.constants import PTM_TYPE_CATEGORIES
+    if flanking_codons < 0:
+        raise ValueError(f"flanking_codons must be >= 0, got {flanking_codons}")
 
     def transform(ht):
         # Remap contig names to match GRCh38 (e.g., MT -> M for chrM)

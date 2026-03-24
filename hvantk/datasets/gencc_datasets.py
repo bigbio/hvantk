@@ -114,7 +114,11 @@ class GenCCSubmissionsDataset:
             )
             # GenCC TSV may contain multiline quoted fields and blank lines
             # that hl.import_table cannot handle — sanitize in-place.
-            sanitize_tsv(output_path)
+            n_rows = sanitize_tsv(output_path)
+            if n_rows == 0:
+                raise RuntimeError(
+                    f"GenCC TSV at {output_path} is empty after sanitization"
+                )
             logger.info(f"Downloaded GenCC dataset to {output_path}")
             return output_path
         except Exception as e:
