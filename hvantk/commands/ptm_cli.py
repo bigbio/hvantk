@@ -30,12 +30,18 @@ def ptm_group(ctx):
 
     \b
     Workflow:
-      1. hvantk ptm build       — Download PTM data + map coordinates + build Hail Table
-      2. hvantk ptm annotate    — Annotate variants with PTM site information
-      3. hvantk ptm landscape   — PTM-variant overlap analysis (Q1)
-      4. hvantk ptm evaluate    — Predictor performance at PTM sites (Q2)
-      5. hvantk ptm population  — Population-level PTM-variant burden (Q3)
-      6. hvantk ptm report      — Generate summary report
+      1. hvantk ptm build          — Download PTM data + map coordinates + build Hail Table
+      2. hvantk ptm annotate       — Annotate variants with PTM site information
+      3. hvantk ptm landscape      — PTM-variant overlap analysis (Q1)
+      4. hvantk ptm export-strata  — Export PTM/non-PTM variant lists for PSROC (Q2)
+      5. hvantk ptm population     — Population-level PTM-variant burden (Q3)
+      6. hvantk ptm report         — Generate summary report
+
+    \b
+    For predictor evaluation (Q2), compose with PSROC:
+      hvantk ptm export-strata --annotated-ht clinvar_ptm.ht -o strata/
+      hvantk psroc --variants strata/ptm_variants.txt --clinvar-ht clinvar.ht ...
+      hvantk psroc --variants strata/non_ptm_variants.txt --clinvar-ht clinvar.ht ...
 
     \b
     Examples:
@@ -188,38 +194,124 @@ def ptm_annotate(ctx, variants_ht, ptm_ht, output_ht, flanking_codons, overwrite
 
 
 @ptm_group.command("landscape")
-@click.option("--clinvar-ht", type=str, required=True)
-@click.option("--ptm-ht", type=str, required=True)
-@click.option("-o", "--output", type=click.Path(), required=True)
+@click.option("--clinvar-ht", type=str, required=True, help="Path to ClinVar Hail Table")
+@click.option("--ptm-ht", type=str, required=True, help="Path to PTM sites Hail Table")
+@click.option("-o", "--output", type=click.Path(), required=True, help="Output directory")
+@click.option("--flanking-codons", type=int, default=5, show_default=True)
 @click.pass_context
-def ptm_landscape(ctx, clinvar_ht, ptm_ht, output):
-    """PTM-variant overlap analysis (Q1)."""
-    click.echo("PTM landscape analysis not yet implemented (Phase 4a).")
-    ctx.exit(0)
+def ptm_landscape_cmd(ctx, clinvar_ht, ptm_ht, output, flanking_codons):
+    """PTM-variant overlap and enrichment analysis (Q1).
+
+    \b
+    Cross-references ClinVar P/LP variants with PTM sites, computes overlap
+    counts per PTM category, enrichment (Fisher's exact test), and distance
+    distribution.
+
+    \b
+    Output:
+      landscape_summary.json — counts, enrichment, per-category overlaps
+
+    \b
+    Examples:
+      hvantk ptm landscape --clinvar-ht clinvar.ht --ptm-ht ptm_sites.ht -o results/landscape/
+    """
+    try:
+        import hail as hl
+        from hvantk.ptm.analysis import ptm_landscape
+
+        clinvar = hl.read_table(clinvar_ht)
+        ptm = hl.read_table(ptm_ht)
+
+        result = ptm_landscape(clinvar, ptm, output, flanking_codons=flanking_codons)
+        click.echo(result.summary())
+
+    except Exception as e:
+        logger.exception(f"PTM landscape failed: {e}")
+        click.echo(f"Error: {e}", err=True)
+        ctx.exit(1)
 
 
-@ptm_group.command("evaluate")
-@click.option("--clinvar-ht", type=str, required=True)
-@click.option("--dbnsfp-ht", type=str, required=True)
-@click.option("--ptm-ht", type=str, required=True)
-@click.option("-o", "--output", type=click.Path(), required=True)
+@ptm_group.command("export-strata")
+@click.option("--annotated-ht", type=str, required=True, help="Path to PTM-annotated variant Hail Table")
+@click.option("-o", "--output", type=click.Path(), required=True, help="Output directory for variant lists")
 @click.pass_context
-def ptm_evaluate(ctx, clinvar_ht, dbnsfp_ht, ptm_ht, output):
-    """Predictor performance at PTM sites (Q2)."""
-    click.echo("PTM predictor evaluation not yet implemented (Phase 4b).")
-    ctx.exit(0)
+def ptm_export_strata(ctx, annotated_ht, output):
+    """Export PTM-stratified variant lists for downstream analysis (Q2).
+
+    \b
+    Takes a PTM-annotated variant table (output of 'hvantk ptm annotate') and
+    exports two variant lists in chr:pos:ref:alt format:
+      ptm_variants.txt     — variants at or proximal to PTM sites
+      non_ptm_variants.txt — variants not near PTM sites
+
+    \b
+    These lists can be fed to hvantk psroc for stratified predictor evaluation:
+      hvantk psroc --variants ptm_variants.txt --clinvar-ht clinvar.ht ...
+
+    \b
+    Examples:
+      hvantk ptm annotate --variants-ht clinvar.ht --ptm-ht ptm_sites.ht -o clinvar_ptm.ht
+      hvantk ptm export-strata --annotated-ht clinvar_ptm.ht -o strata/
+    """
+    try:
+        import hail as hl
+        from hvantk.ptm.analysis import export_ptm_strata
+
+        ht = hl.read_table(annotated_ht)
+        paths = export_ptm_strata(ht, output)
+
+        for name, path in paths.items():
+            click.echo(f"  {name}: {path}")
+
+    except Exception as e:
+        logger.exception(f"PTM export-strata failed: {e}")
+        click.echo(f"Error: {e}", err=True)
+        ctx.exit(1)
 
 
 @ptm_group.command("population")
-@click.option("--gnomad-ht", type=str, required=True)
-@click.option("--ptm-ht", type=str, required=True)
-@click.option("--ccr-ht", type=str, default=None)
-@click.option("-o", "--output", type=click.Path(), required=True)
+@click.option("--gnomad-ht", type=str, required=True, help="Path to gnomAD Hail Table")
+@click.option("--ptm-ht", type=str, required=True, help="Path to PTM sites Hail Table")
+@click.option("--ccr-ht", type=str, default=None, help="Path to CCR Hail Table (optional)")
+@click.option("--af-field", type=str, default="AF", show_default=True, help="AF field name in gnomAD table")
+@click.option("-o", "--output", type=click.Path(), required=True, help="Output directory")
+@click.option("--flanking-codons", type=int, default=5, show_default=True)
 @click.pass_context
-def ptm_population(ctx, gnomad_ht, ptm_ht, ccr_ht, output):
-    """Population-level PTM-variant burden (Q3)."""
-    click.echo("PTM population analysis not yet implemented (Phase 4c).")
-    ctx.exit(0)
+def ptm_population_cmd(ctx, gnomad_ht, ptm_ht, ccr_ht, af_field, output, flanking_codons):
+    """Population-level PTM-variant allele frequency analysis (Q3).
+
+    \b
+    Compares allele frequency distributions at PTM sites vs non-PTM coding
+    positions in gnomAD. Identifies PTM sites under purifying selection
+    (zero or near-zero AF). Optionally cross-references with CCR scores.
+
+    \b
+    Output:
+      population_summary.json — AF statistics, counts, CCR comparison
+
+    \b
+    Examples:
+      hvantk ptm population --gnomad-ht gnomad.ht --ptm-ht ptm_sites.ht -o results/population/
+      hvantk ptm population --gnomad-ht gnomad.ht --ptm-ht ptm_sites.ht --ccr-ht ccr.ht -o results/population/
+    """
+    try:
+        import hail as hl
+        from hvantk.ptm.analysis import ptm_population
+
+        gnomad = hl.read_table(gnomad_ht)
+        ptm = hl.read_table(ptm_ht)
+        ccr = hl.read_table(ccr_ht) if ccr_ht else None
+
+        result = ptm_population(
+            gnomad, ptm, output,
+            ccr_ht=ccr, af_field=af_field, flanking_codons=flanking_codons,
+        )
+        click.echo(result.summary())
+
+    except Exception as e:
+        logger.exception(f"PTM population analysis failed: {e}")
+        click.echo(f"Error: {e}", err=True)
+        ctx.exit(1)
 
 
 @ptm_group.command("report")
