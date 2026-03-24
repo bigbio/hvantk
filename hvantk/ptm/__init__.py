@@ -33,6 +33,13 @@ from hvantk.ptm.pipeline import (
 from hvantk.ptm.annotate import (
     annotate_variants_with_ptm,
 )
+from hvantk.ptm.analysis import (
+    PTMLandscapeResult,
+    PTMPopulationResult,
+    ptm_landscape,
+    ptm_population,
+    export_ptm_strata,
+)
 from hvantk.ptm.constants import (
     UNIPROT_API_URL,
     UNIPROT_API_FIELDS,
@@ -46,6 +53,12 @@ from hvantk.ptm.constants import (
 __all__ = [
     # Annotation
     "annotate_variants_with_ptm",
+    # Analysis (Q1, Q3)
+    "PTMLandscapeResult",
+    "PTMPopulationResult",
+    "ptm_landscape",
+    "ptm_population",
+    "export_ptm_strata",
     # Pipeline API
     "PTMBuildConfig",
     "PTMBuildResult",
