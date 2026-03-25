@@ -9,7 +9,7 @@ import hail as hl
 import logging
 import os
 from typing import Optional, List, Callable
-from hvantk.utils.table_utils import get_row_fields
+from hvantk.utils.table_utils import get_row_fields, build_rename_map, str_to_bool
 from hvantk.core.metadata import build_table_metadata
 
 logger = logging.getLogger(__name__)
@@ -110,6 +110,7 @@ __all__ = [
     "create_dbnsfp_tb",
     "create_clingen_gene_disease_tb",
     "create_hgnc_gene_tb",
+    "create_ptm_sites_tb",
 ]
 
 
@@ -1129,22 +1130,23 @@ def create_cosmic_cgc_tb(
             f"{COSMIC_CGC_CLASSIFICATION_LEVELS}, got: {min_classification}"
         )
 
+    resolved_path, force_bgz = resolve_compression(input_path)
+
     def import_func():
-        return hl.import_table(
-            paths=input_path,
+        kwargs = dict(
+            paths=resolved_path,
             delimiter="\t",
             impute=False,
             min_partitions=10,
         )
+        if force_bgz:
+            kwargs["force_bgz"] = True
+        return hl.import_table(**kwargs)
 
     def transform(ht: hl.Table) -> hl.Table:
-        # Rename fields to standardized names
+        # Rename fields to standardized names using flexible matching
         logger.info("Renaming COSMIC CGC fields to standardized names")
-        rename_map = {
-            k: v
-            for k, v in COSMIC_CGC_FIELDS.items()
-            if k in get_row_fields(ht)
-        }
+        rename_map = build_rename_map(COSMIC_CGC_FIELDS, get_row_fields(ht))
         ht = ht.rename(rename_map)
 
         # Normalize Tier: raw "1"/"2" -> "Tier 1"/"Tier 2"
@@ -1169,18 +1171,11 @@ def create_cosmic_cgc_tb(
             )
         )
 
-        # Normalize boolean fields: "yes"/"Yes" -> True, else False
+        # Normalize boolean fields using general-purpose str_to_bool
         for bool_field in ("somatic", "germline", "hallmark"):
             if bool_field in get_row_fields(ht):
                 ht = ht.annotate(
-                    **{
-                        bool_field: hl.if_else(
-                            hl.is_defined(ht[bool_field])
-                            & (ht[bool_field].lower() == "yes"),
-                            True,
-                            False,
-                        )
-                    }
+                    **{bool_field: str_to_bool(ht[bool_field])}
                 )
 
         # Parse comma-separated multi-value fields into arrays
@@ -1379,6 +1374,120 @@ def create_hgnc_gene_tb(
             impute=False,
             min_partitions=10,
             missing="",
+        ),
+        transform_func=transform,
+        fields=fields,
+        overwrite=overwrite,
+        export_tsv=export_tsv,
+    )
+
+
+def create_ptm_sites_tb(
+    input_path: str,
+    output_path: str,
+    reference_genome: str = "GRCh38",
+    flanking_codons: int = 5,
+    overwrite: bool = False,
+    export_tsv: bool = False,
+    fields: Optional[List[str]] = None,
+) -> "hl.Table":
+    """
+    Create a Hail Table of PTM sites in genomic coordinates.
+
+    Input is a TSV produced by the PTM coordinate mapper (Phase 1 output)
+    with columns: chrom, codon_start, codon_end, strand, uniprot_id,
+    gene_symbol, residue_pos, amino_acid, ptm_type, ptm_category,
+    source_db, evidence_type.
+
+    The table is keyed by locus (codon start position), with a
+    ``flanking_interval`` field for proximity-based annotation joins.
+
+    Parameters
+    ----------
+    input_path : str
+        Path to the mapped PTM sites TSV file.
+    output_path : str
+        Path to write the output Hail Table.
+    reference_genome : str, optional
+        Reference genome (default: "GRCh38").
+    flanking_codons : int, optional
+        Number of flanking codons for proximal window (default: 5).
+    overwrite : bool, optional
+        Whether to overwrite existing file (default: False).
+    export_tsv : bool, optional
+        If True, also export TSV version (default: False).
+    fields : list of str, optional
+        List of fields to select (default: None, keeps all).
+
+    Returns
+    -------
+    hl.Table
+        The checkpointed Hail Table keyed by locus.
+    """
+    if flanking_codons < 0:
+        raise ValueError(f"flanking_codons must be >= 0, got {flanking_codons}")
+
+    def transform(ht):
+        # Remap contig names to match GRCh38 (e.g., MT -> M for chrM)
+        contig_remap = hl.dict({"MT": "M"})
+        ht = ht.annotate(
+            _contig=hl.str("chr") + contig_remap.get(ht.chrom, ht.chrom),
+        )
+
+        # Filter to valid contigs in the reference genome
+        valid_contigs = hl.set(
+            hl.literal(hl.get_reference(reference_genome).contigs)
+        )
+        ht = ht.filter(valid_contigs.contains(ht._contig))
+
+        # Parse locus from contig + codon_start
+        ht = ht.annotate(
+            locus=hl.locus(
+                ht._contig,
+                hl.int32(ht.codon_start),
+                reference_genome=reference_genome,
+            ),
+        )
+
+        # Cast numeric fields
+        ht = ht.annotate(
+            codon_start=hl.int32(ht.codon_start),
+            codon_end=hl.int32(ht.codon_end),
+            residue_pos=hl.int32(ht.residue_pos),
+        )
+
+        # Add flanking interval (codon ± flanking_codons * 3 bp)
+        flank_bp = flanking_codons * 3
+        ref = hl.get_reference(reference_genome)
+        chrom_lengths = hl.dict(
+            hl.literal({c: ref.lengths[c] for c in ref.contigs})
+        )
+        ht = ht.annotate(
+            flanking_interval=hl.locus_interval(
+                ht._contig,
+                hl.max(1, ht.codon_start - flank_bp),
+                hl.min(chrom_lengths.get(ht._contig), ht.codon_end + flank_bp),
+                reference_genome=reference_genome,
+                includes_end=True,
+            ),
+        )
+
+        ht = ht.drop("_contig")
+        ht = ht.key_by("locus")
+        return ht
+
+    return _create_table_base(
+        source_name="PTM sites",
+        input_path=input_path,
+        output_path=output_path,
+        import_func=lambda: hl.import_table(
+            paths=input_path,
+            impute=False,
+            types={
+                "codon_start": hl.tstr,
+                "codon_end": hl.tstr,
+                "residue_pos": hl.tstr,
+            },
         ),
         transform_func=transform,
         fields=fields,

@@ -240,6 +240,48 @@ hvantk mktable cosmic-cgc \
   --output-ht cosmic_cgc.ht
 ```
 
+### UniProt PTM Sites
+
+Curated post-translational modification sites (phosphorylation, ubiquitination, acetylation, etc.) for reviewed human proteins from UniProt/Swiss-Prot.
+URL: https://www.uniprot.org/
+
+The `hvantk ptm build` command downloads PTM data automatically via the UniProt REST API. For pre-download or manual acquisition:
+
+**Download** (optional, for offline use):
+
+```bash
+# UniProt PTM TSV via REST API
+hvantk download uniprot-ptm --output-dir data/ptm/
+
+# Ensembl GTF for coordinate mapping (download manually)
+# wget https://ftp.ensembl.org/pub/current_gtf/homo_sapiens/Homo_sapiens.GRCh38.*.gtf.gz -P data/ref/
+```
+
+**Build**:
+
+```bash
+# Automatic download and build
+hvantk ptm build --output-dir data/ptm/ --output-ht data/ptm/ptm_sites.ht
+
+# With pre-downloaded files
+hvantk ptm build \
+  --gtf-path data/ref/Homo_sapiens.GRCh38.113.gtf.gz \
+  --ptm-tsv data/ptm/uniprot-ptm-human.tsv \
+  --output-dir data/ptm/ \
+  --output-ht data/ptm/ptm_sites.ht
+```
+
+### Ensembl GTF (~50 MB compressed)
+
+Gene annotation with exon coordinates and CDS phases, used by the PTM mapper for residue-to-genomic coordinate mapping.
+URL: https://ftp.ensembl.org/pub/release-113/gtf/homo_sapiens/
+
+**Download**: Auto-downloaded by `hvantk ptm build`. For manual download:
+
+```bash
+wget https://ftp.ensembl.org/pub/release-113/gtf/homo_sapiens/Homo_sapiens.GRCh38.113.gtf.gz
+```
+
 ## Expression data sources
 
 These datasets are used to build expression MatrixTables via the UCSC Cell Browser and Expression Atlas downloaders.

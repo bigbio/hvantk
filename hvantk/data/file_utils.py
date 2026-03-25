@@ -1,4 +1,6 @@
+import csv
 import gzip
+import io
 import logging
 import os
 import os.path as path
@@ -67,6 +69,82 @@ def download_file(url: str, out_dir: str, file_name: str):
             os.remove(local_path)
         logger.exception(f"Failed to download {url}: {str(e)}")
         raise Exception(f"Failed to download {url}: {str(e)}")
+
+
+def sanitize_tsv(filepath: str, *, delimiter: str = "\t") -> int:
+    """Sanitize a delimited text file in-place for Hail compatibility.
+
+    Handles two common problems that ``hl.import_table`` cannot deal with:
+
+    1. **Blank lines** — removed entirely.
+    2. **Multiline quoted fields** — newlines inside quoted values are
+       replaced with spaces so every logical record occupies exactly one line.
+
+    The file is rewritten atomically (write to temp, then rename).
+
+    Parameters
+    ----------
+    filepath : str
+        Path to the file to sanitize.
+    delimiter : str
+        Column delimiter (default: tab).
+
+    Returns
+    -------
+    int
+        Number of data rows in the cleaned file (excluding header).
+    """
+    logger.info("Sanitizing %s (delimiter=%r)", filepath, delimiter)
+    tmp_path = filepath + ".sanitized.tmp"
+    n_cols = None
+    n_data = 0
+
+    with open(filepath, newline="") as fh_in, \
+         open(tmp_path, "w", newline="") as fh_out:
+        reader = csv.reader(fh_in, delimiter=delimiter, quotechar='"')
+        writer = csv.writer(
+            fh_out, delimiter=delimiter, quotechar='"', lineterminator="\n",
+        )
+        for row_index, row in enumerate(reader):
+            if not any(cell.strip() for cell in row):
+                continue
+
+            if n_cols is None:
+                n_cols = len(row)
+
+            # Pad or truncate to match header column count
+            if len(row) < n_cols:
+                logger.warning(
+                    "sanitize_tsv: row %d has %d columns, expected %d; padding",
+                    row_index, len(row), n_cols,
+                )
+                row = row + [""] * (n_cols - len(row))
+            elif len(row) > n_cols:
+                logger.warning(
+                    "sanitize_tsv: row %d has %d columns, expected %d; truncating",
+                    row_index, len(row), n_cols,
+                )
+                row = row[:n_cols]
+
+            # Flatten embedded newlines within cells
+            cleaned = [
+                cell.replace("\n", " ").replace("\r", " ")
+                for cell in row
+            ]
+            writer.writerow(cleaned)
+            n_data += 1
+
+    if n_cols is None:
+        logger.warning("sanitize_tsv: file %s is empty after cleanup", filepath)
+        os.remove(tmp_path)
+        return 0
+
+    os.replace(tmp_path, filepath)
+    n_data -= 1  # exclude header row
+    logger.info(
+        "Sanitized %s: %d columns, %d data rows", filepath, n_cols, n_data
+    )
+    return n_data
 
 
 # define a function to test if a given url exists

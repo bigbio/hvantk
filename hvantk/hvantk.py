@@ -16,6 +16,7 @@ from hvantk.commands.psroc_cli import psroc_cmd
 from hvantk.commands.enrichex_cli import enrichex_group
 from hvantk.commands.ancestry_cli import ancestry_inference_cmd
 from hvantk.commands.summarize_expression_cli import expression_group
+from hvantk.commands.ptm_cli import ptm_group
 
 # Main CLI entry point for the package (hvantk)
 
@@ -87,6 +88,7 @@ cli.add_command(psroc_cmd)
 cli.add_command(enrichex_group)
 cli.add_command(ancestry_inference_cmd)
 cli.add_command(expression_group)
+cli.add_command(ptm_group)
 
 
 def main():

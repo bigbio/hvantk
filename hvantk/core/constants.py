@@ -225,6 +225,18 @@ logger.debug(f"HGNC download URL: {HGNC_DOWNLOAD_URL}")
 CLINVAR_FTP_BASE = "https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38"
 CLINVAR_FTP_BASE_GRCh37 = "https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh37"
 
+# ClinVar clinical significance labels
+CLINVAR_PATHOGENIC_LABELS = [
+    "Pathogenic/Likely_pathogenic",
+    "Likely_pathogenic",
+    "Pathogenic",
+]
+CLINVAR_BENIGN_LABELS = [
+    "Benign/Likely_benign",
+    "Likely_benign",
+    "Benign",
+]
+
 logger.debug(f"ClinVar FTP base URL: {CLINVAR_FTP_BASE}")
 
 # Explicit public API for this module
@@ -262,4 +274,6 @@ __all__ = [
     "COSMIC_MUTATION_CONTEXTS",
     "CLINVAR_FTP_BASE",
     "CLINVAR_FTP_BASE_GRCh37",
+    "CLINVAR_PATHOGENIC_LABELS",
+    "CLINVAR_BENIGN_LABELS",
 ]

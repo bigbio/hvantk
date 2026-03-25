@@ -5,7 +5,8 @@ General-purpose Hail Table/MatrixTable utilities for field and schema handling.
 from __future__ import annotations
 
 import logging
-from typing import Any, List, Optional, Sequence, Union
+import re
+from typing import Any, Dict, List, Optional, Sequence, Union
 
 import hail as hl
 
@@ -15,6 +16,75 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Field introspection
 # ---------------------------------------------------------------------------
+
+
+def _normalize_field_name(name: str) -> str:
+    """Normalize a field name for case/separator-insensitive comparison.
+
+    Strips all non-alphanumeric characters and lowercases, so that
+    ``"Gene Symbol"``, ``"GENE_SYMBOL"``, and ``"gene_symbol"`` all
+    produce the same key ``"genesymbol"``.
+    """
+    return re.sub(r"[^a-z0-9]", "", name.lower())
+
+
+def build_rename_map(
+    field_map: Dict[str, str],
+    actual_fields: set[str],
+) -> Dict[str, str]:
+    """Build a rename map from *field_map* to match *actual_fields*.
+
+    Performs **case-insensitive, separator-insensitive** matching so that
+    rename maps written for one header convention (e.g. title-case with
+    spaces) also work for other conventions (e.g. UPPER_SNAKE_CASE).
+
+    Parameters
+    ----------
+    field_map : dict
+        Canonical rename map ``{raw_header: target_name}``.
+    actual_fields : set of str
+        Field names actually present in the table.
+
+    Returns
+    -------
+    dict
+        ``{actual_field: target_name}`` for every matched field.
+        Fields already matching a target name are skipped.
+    """
+    # Index actual fields by their normalized form, detecting ambiguity
+    norm_to_actual: Dict[str, str] = {}
+    for f in actual_fields:
+        nk = _normalize_field_name(f)
+        if nk in norm_to_actual:
+            logger.warning(
+                "build_rename_map: ambiguous headers %r and %r normalize to the same key",
+                norm_to_actual[nk], f,
+            )
+        norm_to_actual[nk] = f
+
+    target_names = set(field_map.values())
+    rename = {}
+    for canonical_raw, target in field_map.items():
+        norm = _normalize_field_name(canonical_raw)
+        actual = norm_to_actual.get(norm)
+        if actual is not None and actual != target:
+            # Skip if actual field name already equals the target,
+            # if the target name is already taken by another field,
+            # or if the target already exists in actual fields
+            if actual not in target_names and target not in actual_fields:
+                rename[actual] = target
+        # Also try matching by the target name's normalized form
+        # (handles cases where actual headers already use the target naming)
+        if actual is None:
+            norm_target = _normalize_field_name(target)
+            actual_by_target = norm_to_actual.get(norm_target)
+            if actual_by_target is not None and actual_by_target != target:
+                if actual_by_target not in target_names and target not in actual_fields:
+                    rename[actual_by_target] = target
+
+    if rename:
+        logger.debug("Header rename map: %s", rename)
+    return rename
 
 
 def get_row_fields(ht: Union[hl.Table, hl.MatrixTable]) -> set[str]:
@@ -56,6 +126,35 @@ def get_entry_fields(mt: hl.MatrixTable) -> set[str]:
         A set of entry field names as strings.
     """
     return set(mt.entry.dtype.fields)
+
+
+# ---------------------------------------------------------------------------
+# String → Boolean coercion
+# ---------------------------------------------------------------------------
+
+_TRUTHY_VALUES = hl.set({"yes", "y", "true", "1"})
+
+
+def str_to_bool(expr: hl.StringExpression) -> hl.BooleanExpression:
+    """Coerce a string field to boolean using common truthy values.
+
+    Recognises (case-insensitive): ``"yes"``, ``"y"``, ``"true"``, ``"1"``.
+    Missing or any other value maps to ``False``.
+
+    Parameters
+    ----------
+    expr : hl.StringExpression
+        The string field to convert.
+
+    Returns
+    -------
+    hl.BooleanExpression
+    """
+    return hl.if_else(
+        hl.is_defined(expr) & _TRUTHY_VALUES.contains(expr.lower()),
+        True,
+        False,
+    )
 
 
 # ---------------------------------------------------------------------------

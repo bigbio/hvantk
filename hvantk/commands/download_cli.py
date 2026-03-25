@@ -7,6 +7,7 @@ from hvantk.commands.clingen_downloader import clingen_downloader
 from hvantk.commands.gencc_downloader import gencc_downloader
 from hvantk.commands.hgnc_downloader import hgnc_downloader
 from hvantk.commands.clinvar_downloader import clinvar_downloader
+from hvantk.commands.uniprot_ptm_downloader import uniprot_ptm_downloader
 
 
 @click.group("download", context_settings=CONTEXT_SETTINGS)
@@ -20,3 +21,4 @@ download_group.add_command(clingen_downloader, "clingen")
 download_group.add_command(gencc_downloader, "gencc")
 download_group.add_command(hgnc_downloader, "hgnc")
 download_group.add_command(clinvar_downloader, "clinvar")
+download_group.add_command(uniprot_ptm_downloader, "uniprot-ptm")

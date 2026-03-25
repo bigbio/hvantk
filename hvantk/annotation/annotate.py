@@ -27,24 +27,20 @@ def annotate_clinvar_clnsig(t: hl.Table) -> hl.Table:
 
     Variants are annotated with a clinical significance label based on ClinVar data: "P" for pathogenic, "B" for benign, or missing if neither applies. The annotation is determined by matching ClinVar CLNSIG values against predefined sets of pathogenic and benign labels.
     """
+    from hvantk.core.constants import CLINVAR_PATHOGENIC_LABELS, CLINVAR_BENIGN_LABELS
+
     logger.info("Annotating ClinVar CLNSIG")
     clinvar_ht = get_clinvar_ht()
-    # Benign labels from Clinvar
-    benign_label_clinvar = ["Benign/Likely_benign", "Likely_benign", "Benign"]
-    # Pathogenic labels from Clinvar
-    pathogenic_label_clinvar = [
-        "Pathogenic/Likely_pathogenic",
-        "Likely_pathogenic",
-        "Pathogenic",
-    ]
 
-    # Pre-calculate conditions for better readability and performance
-    is_pathogenic = t.clinvar_clnsig.any(
-        lambda x: hl.set(pathogenic_label_clinvar).contains(x)
-    )
-    is_benign = t.clinvar_clnsig.any(lambda x: hl.set(benign_label_clinvar).contains(x))
-
+    # First annotate clinvar_clnsig from the ClinVar table
     t = t.annotate(clinvar_clnsig=clinvar_ht[t.key].info.CLNSIG)
+
+    # Now compute conditions using the annotated field
+    is_pathogenic = t.clinvar_clnsig.any(
+        lambda x: hl.set(CLINVAR_PATHOGENIC_LABELS).contains(x)
+    )
+    is_benign = t.clinvar_clnsig.any(lambda x: hl.set(CLINVAR_BENIGN_LABELS).contains(x))
+
     t = t.annotate(
         clinvar_clnsig=hl.case()
         .when(is_pathogenic, "P")
