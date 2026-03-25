@@ -43,12 +43,12 @@ PTM_COLORS = {
 def plot_landscape_summary(
     result: PTMLandscapeResult,
     output_path: str,
-    figsize: Tuple[int, int] = (8, 5),
+    figsize: Tuple[int, int] = (13, 5),
     dpi: int = 300,
     title: Optional[str] = None,
     format: str = "png",
 ) -> plt.Figure:
-    """Grouped bar chart of P/LP and B/LB counts at PTM site, proximal, and non-PTM.
+    """Two-panel landscape plot: variant counts (left) and % P/LP (right).
 
     Parameters
     ----------
@@ -84,34 +84,69 @@ def plot_landscape_summary(
         result.n_ptm_proximal_benign,
         result.n_benign - result.n_ptm_site_benign - result.n_ptm_proximal_benign,
     ]
+    totals = [p + b for p, b in zip(path_counts, benign_counts)]
+    pct_plp = [100 * p / t if t > 0 else 0 for p, t in zip(path_counts, totals)]
 
     if sns is not None:
         sns.set_style("whitegrid")
 
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize)
     x = np.arange(len(categories))
     width = 0.35
 
-    fig, ax = plt.subplots(figsize=figsize)
-    ax.bar(x - width / 2, path_counts, width, label="P/LP",
-           color=PTM_COLORS["pathogenic"], edgecolor="black", linewidth=0.5)
-    ax.bar(x + width / 2, benign_counts, width, label="B/LB",
-           color=PTM_COLORS["benign"], edgecolor="black", linewidth=0.5)
+    # Left panel: grouped bar chart of counts
+    bars_p = ax1.bar(x - width / 2, path_counts, width, label="P/LP",
+                     color=PTM_COLORS["pathogenic"], edgecolor="black", linewidth=0.5)
+    bars_b = ax1.bar(x + width / 2, benign_counts, width, label="B/LB",
+                     color=PTM_COLORS["benign"], edgecolor="black", linewidth=0.5)
 
-    ax.set_xticks(x)
-    ax.set_xticklabels(categories)
-    ax.set_ylabel("Variant count")
-    ax.set_title(title or "PTM-Variant Landscape Summary")
-    ax.legend(frameon=False)
+    for bar, n in zip(bars_p, path_counts):
+        if n > 0:
+            ax1.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
+                     str(n), ha="center", va="bottom", fontsize=8)
+    for bar, n in zip(bars_b, benign_counts):
+        if n > 0:
+            ax1.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
+                     str(n), ha="center", va="bottom", fontsize=8)
 
-    # Annotate enrichment result
-    ax.text(
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(categories)
+    ax1.set_ylabel("Variant count")
+    ax1.set_title("Variant Counts")
+    ax1.legend(frameon=False)
+    ci_hi_str = (
+        f"{result.enrichment_ci_high:.2f}"
+        if result.enrichment_ci_high < 1e6 else "∞"
+    )
+    ax1.text(
         0.98, 0.95,
-        f"Fisher OR={result.enrichment_odds_ratio:.2f}, p={result.enrichment_p_value:.2e}",
-        transform=ax.transAxes, ha="right", va="top", fontsize=9,
+        f"OR={result.enrichment_odds_ratio:.2f} "
+        f"({result.enrichment_ci_low:.2f}–{ci_hi_str})\n"
+        f"p={result.enrichment_p_value:.2e}",
+        transform=ax1.transAxes, ha="right", va="top", fontsize=9,
         bbox=dict(boxstyle="round,pad=0.3", facecolor="wheat", alpha=0.5),
     )
+    ax1.grid(axis="y", linestyle="--", alpha=0.4)
 
-    ax.grid(axis="y", linestyle="--", alpha=0.4)
+    # Right panel: % P/LP per stratum
+    bar_colors = [PTM_COLORS["ptm_site"], PTM_COLORS["proximal"], PTM_COLORS["non_ptm"]]
+    bars = ax2.bar(x, pct_plp, color=bar_colors, edgecolor="black", linewidth=0.5)
+    for bar, pct, tot in zip(bars, pct_plp, totals):
+        ax2.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 1,
+                 f"{pct:.0f}%\n(n={tot})", ha="center", va="bottom", fontsize=9)
+    ax2.set_xticks(x)
+    ax2.set_xticklabels(categories)
+    ax2.set_ylabel("% Pathogenic (P/LP)")
+    ax2.set_title("Pathogenic Proportion")
+    ax2.set_ylim(0, min(max(pct_plp) * 1.35, 100))
+    ax2.axhline(
+        y=100 * result.n_pathogenic / max(result.n_pathogenic + result.n_benign, 1),
+        color="gray", linestyle="--", linewidth=1, label="Overall rate",
+    )
+    ax2.legend(frameon=False, fontsize=8)
+    ax2.grid(axis="y", linestyle="--", alpha=0.4)
+
+    fig.suptitle(title or "PTM-Variant Landscape Summary", fontsize=13, fontweight="bold")
     fig.tight_layout()
     _save_figure(fig, output_path, format=format, dpi=dpi)
     return fig
@@ -212,19 +247,34 @@ def plot_distance_distribution(
 def plot_population_af(
     result: PTMPopulationResult,
     output_path: str,
-    figsize: Tuple[int, int] = (7, 5),
+    figsize: Tuple[int, int] = (13, 5),
     dpi: int = 300,
     title: Optional[str] = None,
     format: str = "png",
+    ultra_rare_threshold: float = 1e-4,
 ) -> plt.Figure:
-    """Grouped bar chart comparing mean allele frequency across PTM strata.
+    """Two-panel population AF plot: strip plot (left) and % ultra-rare (right).
+
+    Left panel shows individual variant AF values per stratum on a log10 y-axis
+    with median lines. Right panel shows % of variants below the ultra-rare
+    threshold per stratum.
 
     Parameters
     ----------
     result : PTMPopulationResult
-        Output of ptm_population.
+        Output of ptm_population (must include per-variant AF arrays).
     output_path : str
         Output file path.
+    figsize : Tuple[int, int]
+        Figure size in inches.
+    dpi : int
+        Resolution for raster formats.
+    title : Optional[str]
+        Plot title.
+    format : str
+        Export format (png, pdf, svg).
+    ultra_rare_threshold : float
+        AF threshold for "ultra-rare" classification (default: 1e-4).
 
     Returns
     -------
@@ -234,34 +284,70 @@ def plot_population_af(
         return _empty_figure(output_path, format=format, dpi=dpi,
                              title=title or "Allele Frequency at PTM Sites")
 
-    categories = ["PTM site", "Proximal", "Non-PTM"]
-    af_values = [
-        result.mean_af_ptm_site,
-        result.mean_af_ptm_proximal,
-        result.mean_af_non_ptm,
+    labels = ["PTM site", "Proximal", "Non-PTM"]
+    af_arrays = [
+        np.array(result.ptm_site_afs),
+        np.array(result.proximal_afs),
+        np.array(result.non_ptm_afs),
     ]
-    n_values = [result.n_ptm_site, result.n_ptm_proximal, result.n_non_ptm]
     colors = [PTM_COLORS["ptm_site"], PTM_COLORS["proximal"], PTM_COLORS["non_ptm"]]
 
     if sns is not None:
         sns.set_style("whitegrid")
 
-    fig, ax = plt.subplots(figsize=figsize)
-    x = np.arange(len(categories))
-    bars = ax.bar(x, af_values, color=colors, edgecolor="black", linewidth=0.5)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize)
 
-    # Annotate counts on bars
-    for bar, n in zip(bars, n_values, strict=True):
-        ax.text(
-            bar.get_x() + bar.get_width() / 2, bar.get_height(),
-            f"n={n:,}", ha="center", va="bottom", fontsize=9,
+    # --- Left panel: strip plot on log10 scale ---
+    af_floor = 1e-7  # floor for log display of zero/near-zero values
+    for i, (afs, color, label) in enumerate(zip(af_arrays, colors, labels)):
+        if len(afs) == 0:
+            continue
+        afs_plot = np.maximum(afs, af_floor)
+        jitter = np.random.default_rng(42).uniform(-0.15, 0.15, size=len(afs_plot))
+        ax1.scatter(
+            np.full(len(afs_plot), i) + jitter, afs_plot,
+            color=color, alpha=0.5, s=18, edgecolors="none", label=label,
         )
+        median_val = np.median(afs_plot)
+        ax1.hlines(median_val, i - 0.3, i + 0.3, color="black", linewidth=2)
+        ax1.text(i + 0.35, median_val, f"med={median_val:.1e}",
+                 va="center", fontsize=8)
 
-    ax.set_xticks(x)
-    ax.set_xticklabels(categories)
-    ax.set_ylabel("Mean allele frequency")
-    ax.set_title(title or "Mean Allele Frequency by PTM Proximity")
-    ax.grid(axis="y", linestyle="--", alpha=0.4)
+    ax1.set_yscale("log")
+    ax1.set_xticks(range(len(labels)))
+    ax1.set_xticklabels(labels)
+    ax1.set_ylabel("Allele frequency (log scale)")
+    ax1.set_title("Per-Variant AF Distribution")
+    n_labels = [f"n={len(a)}" for a in af_arrays]
+    for i, nl in enumerate(n_labels):
+        ax1.text(i, ax1.get_ylim()[0], nl, ha="center", va="top", fontsize=8,
+                 color="gray")
+    ax1.grid(axis="y", linestyle="--", alpha=0.3)
+
+    # --- Right panel: % ultra-rare per stratum ---
+    pct_ultra_rare = []
+    for afs in af_arrays:
+        if len(afs) > 0:
+            pct_ultra_rare.append(100 * np.mean(afs < ultra_rare_threshold))
+        else:
+            pct_ultra_rare.append(0)
+
+    x = np.arange(len(labels))
+    bars = ax2.bar(x, pct_ultra_rare, color=colors, edgecolor="black", linewidth=0.5)
+    for bar, pct, afs in zip(bars, pct_ultra_rare, af_arrays):
+        n_below = int(np.sum(afs < ultra_rare_threshold)) if len(afs) > 0 else 0
+        ax2.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 1,
+                 f"{pct:.0f}%\n({n_below}/{len(afs)})",
+                 ha="center", va="bottom", fontsize=9)
+    ax2.set_xticks(x)
+    ax2.set_xticklabels(labels)
+    ax2.set_ylabel(f"% variants with AF < {ultra_rare_threshold:.0e}")
+    ax2.set_title("Constraint (% Ultra-Rare)")
+    ax2.set_ylim(0, min(max(pct_ultra_rare) * 1.3 + 5, 105))
+    ax2.grid(axis="y", linestyle="--", alpha=0.4)
+
+    fig.suptitle(title or "Population Allele Frequency by PTM Proximity",
+                 fontsize=13, fontweight="bold")
     fig.tight_layout()
     _save_figure(fig, output_path, format=format, dpi=dpi)
     return fig
