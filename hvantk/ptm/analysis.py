@@ -83,11 +83,15 @@ class PTMPopulationResult:
             f"  Non-PTM: {self.n_non_ptm:,} (mean AF={self.mean_af_non_ptm:.2e})",
             f"  PTM sites with zero AF: {self.n_zero_af_ptm:,}",
         ]
-        if self.ccr_mean_ptm is not None:
+        if self.ccr_mean_ptm is not None and self.ccr_mean_non_ptm is not None:
             lines.append(
                 f"  Mean CCR: PTM={self.ccr_mean_ptm:.1f}, "
                 f"non-PTM={self.ccr_mean_non_ptm:.1f}"
             )
+        elif self.ccr_mean_ptm is not None:
+            lines.append(f"  Mean CCR: PTM={self.ccr_mean_ptm:.1f}")
+        elif self.ccr_mean_non_ptm is not None:
+            lines.append(f"  Mean CCR: non-PTM={self.ccr_mean_non_ptm:.1f}")
         return "\n".join(lines)
 
 
