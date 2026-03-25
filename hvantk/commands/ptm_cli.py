@@ -392,8 +392,11 @@ def ptm_report(ctx, output, landscape_json, population_json, title, description)
                 n_ptm_site_benign=data.get("ptm_site", {}).get("benign", 0),
                 n_ptm_proximal_benign=data.get("ptm_proximal", {}).get("benign", 0),
                 enrichment_odds_ratio=data.get("enrichment", {}).get("odds_ratio", 0.0),
+                enrichment_ci_low=data.get("enrichment", {}).get("ci_low", 0.0),
+                enrichment_ci_high=data.get("enrichment", {}).get("ci_high", float("inf")),
                 enrichment_p_value=data.get("enrichment", {}).get("p_value", 1.0),
                 overlap_by_category=data.get("overlap_by_category", {}),
+                category_enrichment=data.get("category_enrichment", {}),
                 distance_distribution={
                     int(k): v for k, v in data.get("distance_distribution", {}).items()
                 },
