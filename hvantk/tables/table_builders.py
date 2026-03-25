@@ -1141,8 +1141,6 @@ def create_cosmic_cgc_tb(
         )
         if force_bgz:
             kwargs["force_bgz"] = True
-        elif resolved_path.endswith(".gz"):
-            kwargs["force_bgz"] = True
         return hl.import_table(**kwargs)
 
     def transform(ht: hl.Table) -> hl.Table:
@@ -1460,11 +1458,15 @@ def create_ptm_sites_tb(
 
         # Add flanking interval (codon ± flanking_codons * 3 bp)
         flank_bp = flanking_codons * 3
+        ref = hl.get_reference(reference_genome)
+        chrom_lengths = hl.dict(
+            hl.literal({c: ref.lengths[c] for c in ref.contigs})
+        )
         ht = ht.annotate(
             flanking_interval=hl.locus_interval(
                 ht._contig,
                 hl.max(1, ht.codon_start - flank_bp),
-                ht.codon_end + flank_bp,
+                hl.min(chrom_lengths.get(ht._contig), ht.codon_end + flank_bp),
                 reference_genome=reference_genome,
                 includes_end=True,
             ),
