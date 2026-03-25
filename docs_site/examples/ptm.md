@@ -43,8 +43,8 @@ hvantk ptm build \
 **Expected output:**
 ```text
 Mapping complete: 55422/56120 mapped (98.7%), 698 failed
-Resolution: {'ensembl_canonical': 48231, 'longest_cds': 7191}
-Mapped TSV: data/ptm/ptm_mapped.tsv
+Resolution: {'xref_mane': 48231, 'xref_any': 7191}
+Mapped TSV: data/ptm/ptm_sites_mapped.tsv
 Hail Table: data/ptm/ptm_sites.ht
 ```
 
