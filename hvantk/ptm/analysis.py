@@ -13,7 +13,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 import hail as hl
 
@@ -34,8 +34,11 @@ class PTMLandscapeResult:
     n_ptm_site_benign: int = 0
     n_ptm_proximal_benign: int = 0
     enrichment_odds_ratio: float = 0.0
+    enrichment_ci_low: float = 0.0
+    enrichment_ci_high: float = float("inf")
     enrichment_p_value: float = 1.0
     overlap_by_category: Dict[str, int] = field(default_factory=dict)
+    category_enrichment: Dict[str, dict] = field(default_factory=dict)
     distance_distribution: Dict[int, int] = field(default_factory=dict)
     output_dir: str = ""
 
@@ -70,6 +73,9 @@ class PTMPopulationResult:
     mean_af_ptm_proximal: float = 0.0
     mean_af_non_ptm: float = 0.0
     n_zero_af_ptm: int = 0
+    ptm_site_afs: List[float] = field(default_factory=list)
+    proximal_afs: List[float] = field(default_factory=list)
+    non_ptm_afs: List[float] = field(default_factory=list)
     ccr_mean_ptm: Optional[float] = None
     ccr_mean_non_ptm: Optional[float] = None
     output_dir: str = ""
@@ -122,6 +128,55 @@ def _label_clinvar(ht: hl.Table) -> hl.Table:
         .when(hl.is_defined(clnsig) & b_labels.contains(clnsig), "B")
         .default("other")
     )
+
+
+def _odds_ratio_with_ci(table, confidence_level=0.95):
+    """Compute OR, CI, and p-value from a 2x2 contingency table.
+
+    Uses scipy.stats.contingency.odds_ratio (exact conditional) when
+    available (scipy >= 1.8), otherwise falls back to Fisher's exact
+    test for OR/p and Woolf's logit method for CI.
+
+    Parameters
+    ----------
+    table : list of list
+        2x2 contingency table [[a, b], [c, d]].
+    confidence_level : float
+        Confidence level for CI (default: 0.95).
+
+    Returns
+    -------
+    tuple of (odds_ratio, ci_low, ci_high, p_value)
+    """
+    import math
+    from scipy.stats import fisher_exact
+
+    try:
+        from scipy.stats.contingency import odds_ratio as scipy_or
+        result = scipy_or(table, kind="conditional")
+        ci = result.confidence_interval(confidence_level)
+        _, p_value = fisher_exact(table)
+        return float(result.statistic), float(ci.low), float(ci.high), float(p_value)
+    except ImportError:
+        pass
+
+    # Fallback: Fisher OR + Woolf logit CI
+    or_val, p_value = fisher_exact(table)
+    a, b = table[0]
+    c, d = table[1]
+    # Apply 0.5 continuity correction if any cell is zero
+    if 0 in (a, b, c, d):
+        a, b, c, d = a + 0.5, b + 0.5, c + 0.5, d + 0.5
+    try:
+        log_or = math.log(a * d / (b * c))
+        se = math.sqrt(1 / a + 1 / b + 1 / c + 1 / d)
+        from scipy.stats import norm
+        z = norm.ppf(1 - (1 - confidence_level) / 2)
+        ci_low = math.exp(log_or - z * se)
+        ci_high = math.exp(log_or + z * se)
+    except (ValueError, ZeroDivisionError):
+        ci_low, ci_high = 0.0, float("inf")
+    return float(or_val), ci_low, ci_high, float(p_value)
 
 
 def export_ptm_strata(
@@ -213,7 +268,6 @@ def ptm_landscape(
     -------
     PTMLandscapeResult
     """
-    from scipy.stats import fisher_exact
     from hvantk.ptm.annotate import annotate_variants_with_ptm
 
     os.makedirs(output_dir, exist_ok=True)
@@ -246,12 +300,12 @@ def ptm_landscape(
         )
     )
 
-    # Fisher's exact test: (P/B) x (PTM/non-PTM)
+    # Fisher's exact test with CI: (P/B) x (PTM/non-PTM)
     a = stats.n_path_site + stats.n_path_prox
     b = stats.n_benign_site + stats.n_benign_prox
     c = stats.n_path - a
     d = stats.n_benign - b
-    odds_ratio, p_value = fisher_exact([[a, b], [c, d]])
+    odds_ratio, ci_low, ci_high, p_value = _odds_ratio_with_ci([[a, b], [c, d]])
 
     # Per-category overlap counts (P/LP at PTM sites, by category)
     ptm_path = annotated.filter(
@@ -263,6 +317,37 @@ def ptm_landscape(
         hl.agg.counter(ptm_path_exp.ptm_types)
     )
     category_counts = {k: v for k, v in category_counts.items() if k is not None}
+
+    # Per-category enrichment (Fisher's test per PTM type)
+    # For each category: 2x2 table of (P/B) x (this_category / not_this_category)
+    cat_benign = annotated.filter(
+        (annotated._label == "B")
+        & (annotated.is_ptm_site | annotated.is_ptm_proximal)
+    )
+    cat_benign_exp = cat_benign.explode("ptm_types")
+    benign_cat_counts = cat_benign_exp.aggregate(
+        hl.agg.counter(cat_benign_exp.ptm_types)
+    )
+    benign_cat_counts = {k: v for k, v in benign_cat_counts.items() if k is not None}
+
+    category_enrichment = {}
+    total_ptm_path = a  # P/LP at PTM (site + proximal)
+    total_ptm_benign = b  # B/LB at PTM (site + proximal)
+    for cat, n_path_cat in category_counts.items():
+        n_benign_cat = benign_cat_counts.get(cat, 0)
+        # 2x2: (P in cat, B in cat) vs (P not in cat, B not in cat)
+        cat_or, cat_ci_lo, cat_ci_hi, cat_p = _odds_ratio_with_ci([
+            [n_path_cat, n_benign_cat],
+            [total_ptm_path - n_path_cat, max(total_ptm_benign - n_benign_cat, 0)],
+        ])
+        category_enrichment[cat] = {
+            "n_pathogenic": n_path_cat,
+            "n_benign": n_benign_cat,
+            "odds_ratio": float(cat_or),
+            "ci_low": float(cat_ci_lo),
+            "ci_high": float(cat_ci_hi),
+            "p_value": float(cat_p),
+        }
 
     # Distance distribution (P/LP variants near PTM sites)
     near_ptm = annotated.filter(
@@ -280,8 +365,11 @@ def ptm_landscape(
         n_ptm_site_benign=stats.n_benign_site,
         n_ptm_proximal_benign=stats.n_benign_prox,
         enrichment_odds_ratio=float(odds_ratio),
+        enrichment_ci_low=float(ci_low),
+        enrichment_ci_high=float(ci_high),
         enrichment_p_value=float(p_value),
         overlap_by_category=category_counts,
+        category_enrichment=category_enrichment,
         distance_distribution=distance_dist,
         output_dir=output_dir,
     )
@@ -303,9 +391,12 @@ def ptm_landscape(
                 },
                 "enrichment": {
                     "odds_ratio": result.enrichment_odds_ratio,
+                    "ci_low": result.enrichment_ci_low,
+                    "ci_high": result.enrichment_ci_high,
                     "p_value": result.enrichment_p_value,
                 },
                 "overlap_by_category": result.overlap_by_category,
+                "category_enrichment": result.category_enrichment,
                 "distance_distribution": {
                     str(k): v for k, v in result.distance_distribution.items()
                 },
@@ -387,6 +478,9 @@ def ptm_population(
             af_ptm_prox=hl.agg.filter(is_prox, hl.agg.stats(af)),
             af_non_ptm=hl.agg.filter(is_non_ptm, hl.agg.stats(af)),
             n_zero_af_ptm=hl.agg.filter(is_ptm & (af == 0), hl.agg.count()),
+            afs_ptm_site=hl.agg.filter(is_ptm, hl.agg.collect(af)),
+            afs_ptm_prox=hl.agg.filter(is_prox, hl.agg.collect(af)),
+            afs_non_ptm=hl.agg.filter(is_non_ptm, hl.agg.collect(af)),
         )
     )
 
@@ -426,6 +520,9 @@ def ptm_population(
             stats.af_non_ptm.mean if stats.af_non_ptm.n > 0 else 0.0
         ),
         n_zero_af_ptm=stats.n_zero_af_ptm,
+        ptm_site_afs=[float(x) for x in stats.afs_ptm_site],
+        proximal_afs=[float(x) for x in stats.afs_ptm_prox],
+        non_ptm_afs=[float(x) for x in stats.afs_non_ptm],
         ccr_mean_ptm=ccr_ptm,
         ccr_mean_non_ptm=ccr_non_ptm,
         output_dir=output_dir,
