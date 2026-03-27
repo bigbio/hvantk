@@ -6,7 +6,6 @@ from typing import Iterator, Optional, Set, Iterable
 from hvantk.data.data_streamer import HailDataStreamer, StreamProcessor
 import logging
 
-from hvantk.tables.table_builders import create_clinvar_tb
 from hvantk.utils.gene_sets import load_gene_set
 
 logger = logging.getLogger(__name__)
@@ -67,6 +66,8 @@ class ClinvarDataStreamer(HailDataStreamer):
             output_path = self.table_output_path or hl.utils.new_temp_file(
                 "clinvar", "ht"
             )
+            from hvantk.tables.table_builders import create_clinvar_tb
+
             self.clinvar_ht = create_clinvar_tb(
                 input_path=self.clinvar_path,
                 output_path=output_path,

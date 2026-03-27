@@ -77,6 +77,8 @@ def generate_report(
         date=analysis_date or datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     ))
 
+    sections.append(_build_key_findings(landscape_result, population_result))
+
     if landscape_result:
         sections.append(_build_landscape_section(
             landscape_result, output_path.parent, embed_plots,
@@ -129,13 +131,18 @@ def _build_landscape_section(
     embed: bool,
 ) -> str:
     # Overview card
+    ci_hi_str = (
+        f"{result.enrichment_ci_high:.2f}"
+        if result.enrichment_ci_high < 1e6 else "∞"
+    )
     overview = (
         "<div class='card-grid'>"
         f"<div class='card'><h3>Variants</h3>"
         f"<p>{result.n_variants:,} total</p>"
         f"<p>{result.n_pathogenic:,} P/LP, {result.n_benign:,} B/LB</p></div>"
         f"<div class='card'><h3>PTM Enrichment</h3>"
-        f"<p>OR = {result.enrichment_odds_ratio:.2f}</p>"
+        f"<p>OR = {result.enrichment_odds_ratio:.2f} "
+        f"(95% CI: {result.enrichment_ci_low:.2f}–{ci_hi_str})</p>"
         f"<p>p = {result.enrichment_p_value:.2e}</p></div>"
         "</div>"
     )
@@ -158,9 +165,31 @@ def _build_landscape_section(
         output_dir / "ptm_distance_distribution.png", embed,
     )
 
-    # Category table
+    # Per-category enrichment table
     table_html = ""
-    if result.overlap_by_category:
+    if result.category_enrichment:
+        rows = ""
+        for cat, info in sorted(
+            result.category_enrichment.items(), key=lambda x: x[1]["p_value"]
+        ):
+            sig = "*" if info["p_value"] < 0.05 else ""
+            ci_lo = info.get("ci_low", 0)
+            ci_hi = info.get("ci_high", float("inf"))
+            ci_hi_str = f"{ci_hi:.2f}" if ci_hi < 1e6 else "∞"
+            rows += (
+                f"<tr><td>{html.escape(cat)}</td>"
+                f"<td>{info['n_pathogenic']:,}</td>"
+                f"<td>{info['n_benign']:,}</td>"
+                f"<td>{info['odds_ratio']:.2f} ({ci_lo:.2f}–{ci_hi_str})</td>"
+                f"<td>{info['p_value']:.2e} {sig}</td></tr>"
+            )
+        table_html = (
+            "<table><thead><tr><th>PTM Category</th>"
+            "<th>P/LP</th><th>B/LB</th>"
+            "<th>OR (95% CI)</th><th>p-value</th></tr></thead>"
+            f"<tbody>{rows}</tbody></table>"
+        )
+    elif result.overlap_by_category:
         rows = ""
         for cat, n in sorted(result.overlap_by_category.items(), key=lambda x: -x[1]):
             rows += f"<tr><td>{html.escape(cat)}</td><td>{n:,}</td></tr>"
@@ -172,7 +201,8 @@ def _build_landscape_section(
 
     return (
         "<section><h2>Landscape Analysis (Q1)</h2>"
-        f"{overview}{summary_img}{category_img}{table_html}{distance_img}"
+        f"{overview}"
+        f"{summary_img}{category_img}{table_html}{distance_img}"
         "</section>"
     )
 
@@ -218,21 +248,115 @@ def _build_population_section(
     )
 
 
+def _build_key_findings(
+    landscape: Optional[PTMLandscapeResult],
+    population: Optional[PTMPopulationResult],
+) -> str:
+    """Build a top-level Key Findings summary card."""
+    bullets = []
+    if landscape and landscape.n_variants > 0:
+        sig = "significant" if landscape.enrichment_p_value < 0.05 else "non-significant"
+        ci_hi_str = (
+            f"{landscape.enrichment_ci_high:.1f}"
+            if landscape.enrichment_ci_high < 1e6 else "∞"
+        )
+        if landscape.enrichment_odds_ratio > 1:
+            effect = f"{landscape.enrichment_odds_ratio:.1f}x enrichment"
+        elif 0 < landscape.enrichment_odds_ratio < 1:
+            effect = f"{1 / landscape.enrichment_odds_ratio:.1f}x depletion"
+        else:
+            effect = "no measurable enrichment"
+        bullets.append(
+            f"Pathogenic variants show <strong>{effect}</strong> at/near PTM sites "
+            f"(95% CI: {landscape.enrichment_ci_low:.1f}–{ci_hi_str}; "
+            f"{sig}, p={landscape.enrichment_p_value:.1e})."
+        )
+        if landscape.category_enrichment:
+            top_cat = min(
+                landscape.category_enrichment.items(),
+                key=lambda x: (x[1]["p_value"], -x[1]["odds_ratio"]),
+            )
+            if top_cat[1]["p_value"] < 0.05:
+                bullets.append(
+                    f"Strongest per-category signal: <strong>{html.escape(top_cat[0])}</strong> "
+                    f"(OR={top_cat[1]['odds_ratio']:.1f}, "
+                    f"p={top_cat[1]['p_value']:.1e})."
+                )
+    if (
+        population
+        and population.n_ptm_site > 0
+        and population.n_non_ptm > 0
+        and population.mean_af_non_ptm > 0
+    ):
+        if population.mean_af_ptm_site > 0:
+            if population.mean_af_non_ptm > population.mean_af_ptm_site:
+                fold = population.mean_af_non_ptm / population.mean_af_ptm_site
+                bullets.append(
+                    f"PTM-site variants are <strong>{fold:.1f}x rarer</strong> "
+                    f"in the population than non-PTM coding variants "
+                    f"(mean AF {population.mean_af_ptm_site:.1e} vs "
+                    f"{population.mean_af_non_ptm:.1e})."
+                )
+            elif population.mean_af_non_ptm < population.mean_af_ptm_site:
+                fold = population.mean_af_ptm_site / population.mean_af_non_ptm
+                bullets.append(
+                    f"PTM-site variants are <strong>{fold:.1f}x more common</strong> "
+                    f"in the population than non-PTM coding variants "
+                    f"(mean AF {population.mean_af_ptm_site:.1e} vs "
+                    f"{population.mean_af_non_ptm:.1e})."
+                )
+            else:
+                bullets.append(
+                    f"PTM-site and non-PTM coding variants have similar mean AF "
+                    f"({population.mean_af_ptm_site:.1e})."
+                )
+        else:
+            bullets.append(
+                f"No non-zero AFs observed at PTM sites "
+                f"(non-PTM mean AF {population.mean_af_non_ptm:.1e})."
+            )
+    if not bullets:
+        return ""
+    items = "".join(f"<li>{b}</li>" for b in bullets)
+    return (
+        "<section class='key-findings'>"
+        "<h2>Key Findings</h2>"
+        f"<ul>{items}</ul>"
+        "</section>"
+    )
+
+
 def _build_methods_section(has_landscape: bool, has_population: bool) -> str:
     paragraphs = []
     if has_landscape:
         paragraphs.append(
             "<p><strong>Landscape (Q1):</strong> ClinVar P/LP and B/LB variants "
-            "were cross-referenced with UniProt PTM sites using position-based "
-            "annotation. Enrichment was tested with Fisher's exact test on the "
-            "2x2 table of (P/B) x (PTM/non-PTM).</p>"
+            "were cross-referenced with UniProt PTM sites mapped to GRCh38 genomic "
+            "coordinates via Ensembl GTF (release 113). A variant is classified as "
+            "'PTM site' if it overlaps a PTM-modified codon, 'proximal' if within "
+            "the flanking window (default: 5 codons / 15 bp), or 'non-PTM' otherwise. "
+            "Overall enrichment was tested with Fisher's exact test on the 2×2 table "
+            "of (P/B) × (PTM/non-PTM). Per-category enrichment tests each PTM type "
+            "against all other PTM-proximal variants.</p>"
         )
     if has_population:
         paragraphs.append(
             "<p><strong>Population (Q3):</strong> gnomAD variant allele frequencies "
             "were compared between PTM-site, proximal, and non-PTM coding positions. "
-            "Lower mean AF at PTM sites suggests purifying selection.</p>"
+            "Lower mean AF at PTM sites suggests purifying selection. The '% ultra-rare' "
+            "metric shows the fraction of variants with AF &lt; 10<sup>-4</sup>.</p>"
         )
+    paragraphs.append(
+        "<p><strong>PTM categories:</strong> UniProt MOD_RES descriptions are mapped "
+        "to categories (phosphorylation, acetylation, methylation, ubiquitination, "
+        "glycosylation, sumoylation) by prefix matching. Unrecognized descriptions "
+        "are classified as 'other'.</p>"
+    )
+    paragraphs.append(
+        "<p><strong>Data sources:</strong> PTM sites from UniProt/Swiss-Prot "
+        "(reviewed human proteins). Gene models from Ensembl GRCh38 release 113. "
+        "Transcript resolution prioritizes MANE Select cross-references.</p>"
+    )
     return "<section><h2>Methods</h2>" + "".join(paragraphs) + "</section>"
 
 
@@ -318,6 +442,17 @@ def _get_css(colors: Dict[str, str]) -> str:
             margin: 15px auto;
             border: 1px solid #eee;
             border-radius: 4px;
+        }}
+        .key-findings {{
+            background-color: #eef4ff;
+            border-left: 4px solid {colors['secondary']};
+        }}
+        .key-findings ul {{
+            margin: 10px 0;
+            padding-left: 20px;
+        }}
+        .key-findings li {{
+            margin-bottom: 8px;
         }}
         footer {{
             text-align: center;

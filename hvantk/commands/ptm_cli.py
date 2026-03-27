@@ -392,8 +392,11 @@ def ptm_report(ctx, output, landscape_json, population_json, title, description)
                 n_ptm_site_benign=data.get("ptm_site", {}).get("benign", 0),
                 n_ptm_proximal_benign=data.get("ptm_proximal", {}).get("benign", 0),
                 enrichment_odds_ratio=data.get("enrichment", {}).get("odds_ratio", 0.0),
+                enrichment_ci_low=data.get("enrichment", {}).get("ci_low", 0.0),
+                enrichment_ci_high=data.get("enrichment", {}).get("ci_high", float("inf")),
                 enrichment_p_value=data.get("enrichment", {}).get("p_value", 1.0),
                 overlap_by_category=data.get("overlap_by_category", {}),
+                category_enrichment=data.get("category_enrichment", {}),
                 distance_distribution={
                     int(k): v for k, v in data.get("distance_distribution", {}).items()
                 },
@@ -412,6 +415,9 @@ def ptm_report(ctx, output, landscape_json, population_json, title, description)
                 mean_af_ptm_proximal=data.get("mean_af", {}).get("ptm_proximal", 0.0),
                 mean_af_non_ptm=data.get("mean_af", {}).get("non_ptm", 0.0),
                 n_zero_af_ptm=data.get("n_zero_af_ptm", 0),
+                ptm_site_afs=data.get("ptm_site_afs", []),
+                proximal_afs=data.get("proximal_afs", []),
+                non_ptm_afs=data.get("non_ptm_afs", []),
                 ccr_mean_ptm=data.get("ccr_mean_ptm"),
                 ccr_mean_non_ptm=data.get("ccr_mean_non_ptm"),
             )

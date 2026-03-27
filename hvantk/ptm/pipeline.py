@@ -313,7 +313,6 @@ def ptm_build_pipeline(config: PTMBuildConfig) -> PTMBuildResult:
 
     # Step 5: Build Hail Table
     logger.info(f"Building Hail Table at {config.output_ht}...")
-    import hvantk.data.file_utils  # noqa: F401 — pre-load to avoid circular import
     from hvantk.tables.table_builders import create_ptm_sites_tb
 
     create_ptm_sites_tb(
