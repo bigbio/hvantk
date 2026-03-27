@@ -415,6 +415,9 @@ def ptm_report(ctx, output, landscape_json, population_json, title, description)
                 mean_af_ptm_proximal=data.get("mean_af", {}).get("ptm_proximal", 0.0),
                 mean_af_non_ptm=data.get("mean_af", {}).get("non_ptm", 0.0),
                 n_zero_af_ptm=data.get("n_zero_af_ptm", 0),
+                ptm_site_afs=data.get("ptm_site_afs", []),
+                proximal_afs=data.get("proximal_afs", []),
+                non_ptm_afs=data.get("non_ptm_afs", []),
                 ccr_mean_ptm=data.get("ccr_mean_ptm"),
                 ccr_mean_non_ptm=data.get("ccr_mean_non_ptm"),
             )
