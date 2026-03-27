@@ -316,9 +316,10 @@ def plot_population_af(
             np.full(len(afs_plot), i) + jitter, afs_plot,
             color=color, alpha=0.5, s=18, edgecolors="none", label=label,
         )
-        median_val = np.median(afs_plot)
-        ax1.hlines(median_val, i - 0.3, i + 0.3, color="black", linewidth=2)
-        ax1.text(i + 0.35, median_val, f"med={median_val:.1e}",
+        median_raw = float(np.median(afs))
+        median_plot = max(median_raw, af_floor)
+        ax1.hlines(median_plot, i - 0.3, i + 0.3, color="black", linewidth=2)
+        ax1.text(i + 0.35, median_plot, f"med={median_raw:.1e}",
                  va="center", fontsize=8)
 
     ax1.set_yscale("log")
@@ -326,7 +327,8 @@ def plot_population_af(
     ax1.set_xticklabels(labels)
     ax1.set_ylabel("Allele frequency (log scale)")
     ax1.set_title("Per-Variant AF Distribution")
-    n_labels = [f"n={len(a)}" for a in af_arrays]
+    stratum_counts = [result.n_ptm_site, result.n_ptm_proximal, result.n_non_ptm]
+    n_labels = [f"n={n:,}" for n in stratum_counts]
     for i, nl in enumerate(n_labels):
         ax1.text(i, ax1.get_ylim()[0], nl, ha="center", va="top", fontsize=8,
                  color="gray")
@@ -342,10 +344,9 @@ def plot_population_af(
 
     x = np.arange(len(labels))
     bars = ax2.bar(x, pct_ultra_rare, color=colors, edgecolor="black", linewidth=0.5)
-    for bar, pct, afs in zip(bars, pct_ultra_rare, af_arrays):
-        n_below = int(np.sum(afs < ultra_rare_threshold)) if len(afs) > 0 else 0
+    for bar, pct, n_total in zip(bars, pct_ultra_rare, stratum_counts):
         ax2.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 1,
-                 f"{pct:.0f}%\n({n_below}/{len(afs)})",
+                 f"{pct:.0f}%\n(n={n_total:,})",
                  ha="center", va="bottom", fontsize=9)
     ax2.set_xticks(x)
     ax2.set_xticklabels(labels)

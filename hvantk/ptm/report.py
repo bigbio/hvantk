@@ -261,21 +261,22 @@ def _build_key_findings(
             if landscape.enrichment_ci_high < 1e6 else "∞"
         )
         bullets.append(
-            f"Pathogenic variants are <strong>{landscape.enrichment_odds_ratio:.1f}-fold "
-            f"enriched</strong> at PTM sites "
+            f"Pathogenic variants show a <strong>{landscape.enrichment_odds_ratio:.1f}x "
+            f"enrichment</strong> at/near PTM sites "
             f"(95% CI: {landscape.enrichment_ci_low:.1f}–{ci_hi_str}; "
             f"{sig}, p={landscape.enrichment_p_value:.1e})."
         )
         if landscape.category_enrichment:
-            top_cat = max(
+            top_cat = min(
                 landscape.category_enrichment.items(),
-                key=lambda x: x[1]["odds_ratio"],
+                key=lambda x: (x[1]["p_value"], -x[1]["odds_ratio"]),
             )
-            bullets.append(
-                f"Strongest per-category signal: <strong>{html.escape(top_cat[0])}</strong> "
-                f"(OR={top_cat[1]['odds_ratio']:.1f}, "
-                f"p={top_cat[1]['p_value']:.1e})."
-            )
+            if top_cat[1]["p_value"] < 0.05:
+                bullets.append(
+                    f"Strongest per-category signal: <strong>{html.escape(top_cat[0])}</strong> "
+                    f"(OR={top_cat[1]['odds_ratio']:.1f}, "
+                    f"p={top_cat[1]['p_value']:.1e})."
+                )
     if (
         population
         and population.n_ptm_site > 0
