@@ -260,9 +260,14 @@ def _build_key_findings(
             f"{landscape.enrichment_ci_high:.1f}"
             if landscape.enrichment_ci_high < 1e6 else "∞"
         )
+        if landscape.enrichment_odds_ratio > 1:
+            effect = f"{landscape.enrichment_odds_ratio:.1f}x enrichment"
+        elif 0 < landscape.enrichment_odds_ratio < 1:
+            effect = f"{1 / landscape.enrichment_odds_ratio:.1f}x depletion"
+        else:
+            effect = "no measurable enrichment"
         bullets.append(
-            f"Pathogenic variants show a <strong>{landscape.enrichment_odds_ratio:.1f}x "
-            f"enrichment</strong> at/near PTM sites "
+            f"Pathogenic variants show <strong>{effect}</strong> at/near PTM sites "
             f"(95% CI: {landscape.enrichment_ci_low:.1f}–{ci_hi_str}; "
             f"{sig}, p={landscape.enrichment_p_value:.1e})."
         )
@@ -284,13 +289,27 @@ def _build_key_findings(
         and population.mean_af_non_ptm > 0
     ):
         if population.mean_af_ptm_site > 0:
-            fold = population.mean_af_non_ptm / population.mean_af_ptm_site
-            bullets.append(
-                f"PTM-site variants are <strong>{fold:.0f}x rarer</strong> "
-                f"in the population than non-PTM coding variants "
-                f"(mean AF {population.mean_af_ptm_site:.1e} vs "
-                f"{population.mean_af_non_ptm:.1e})."
-            )
+            if population.mean_af_non_ptm > population.mean_af_ptm_site:
+                fold = population.mean_af_non_ptm / population.mean_af_ptm_site
+                bullets.append(
+                    f"PTM-site variants are <strong>{fold:.1f}x rarer</strong> "
+                    f"in the population than non-PTM coding variants "
+                    f"(mean AF {population.mean_af_ptm_site:.1e} vs "
+                    f"{population.mean_af_non_ptm:.1e})."
+                )
+            elif population.mean_af_non_ptm < population.mean_af_ptm_site:
+                fold = population.mean_af_ptm_site / population.mean_af_non_ptm
+                bullets.append(
+                    f"PTM-site variants are <strong>{fold:.1f}x more common</strong> "
+                    f"in the population than non-PTM coding variants "
+                    f"(mean AF {population.mean_af_ptm_site:.1e} vs "
+                    f"{population.mean_af_non_ptm:.1e})."
+                )
+            else:
+                bullets.append(
+                    f"PTM-site and non-PTM coding variants have similar mean AF "
+                    f"({population.mean_af_ptm_site:.1e})."
+                )
         else:
             bullets.append(
                 f"No non-zero AFs observed at PTM sites "

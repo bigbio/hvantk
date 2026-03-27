@@ -120,6 +120,7 @@ def plot_landscape_summary(
     )
     ax1.text(
         0.98, 0.95,
+        "PTM site + proximal vs non-PTM\n"
         f"OR={result.enrichment_odds_ratio:.2f} "
         f"({result.enrichment_ci_low:.2f}–{ci_hi_str})\n"
         f"p={result.enrichment_p_value:.2e}",
@@ -138,7 +139,9 @@ def plot_landscape_summary(
     ax2.set_xticklabels(categories)
     ax2.set_ylabel("% Pathogenic (P/LP)")
     ax2.set_title("Pathogenic Proportion")
-    ax2.set_ylim(0, max(min(max(pct_plp) * 1.35, 100), 1))
+    y_max = max(pct_plp)
+    upper = max(y_max * 1.35, y_max + 3, 1)
+    ax2.set_ylim(0, min(upper, 105))
     ax2.axhline(
         y=100 * result.n_pathogenic / max(result.n_pathogenic + result.n_benign, 1),
         color="gray", linestyle="--", linewidth=1, label="Overall rate",
