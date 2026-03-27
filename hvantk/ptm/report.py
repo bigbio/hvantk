@@ -131,6 +131,10 @@ def _build_landscape_section(
     embed: bool,
 ) -> str:
     # Overview card
+    ci_hi_str = (
+        f"{result.enrichment_ci_high:.2f}"
+        if result.enrichment_ci_high < 1e6 else "∞"
+    )
     overview = (
         "<div class='card-grid'>"
         f"<div class='card'><h3>Variants</h3>"
@@ -138,7 +142,7 @@ def _build_landscape_section(
         f"<p>{result.n_pathogenic:,} P/LP, {result.n_benign:,} B/LB</p></div>"
         f"<div class='card'><h3>PTM Enrichment</h3>"
         f"<p>OR = {result.enrichment_odds_ratio:.2f} "
-        f"(95% CI: {result.enrichment_ci_low:.2f}–{result.enrichment_ci_high:.2f})</p>"
+        f"(95% CI: {result.enrichment_ci_low:.2f}–{ci_hi_str})</p>"
         f"<p>p = {result.enrichment_p_value:.2e}</p></div>"
         "</div>"
     )
@@ -272,14 +276,25 @@ def _build_key_findings(
                 f"(OR={top_cat[1]['odds_ratio']:.1f}, "
                 f"p={top_cat[1]['p_value']:.1e})."
             )
-    if population and population.n_variants > 0 and population.mean_af_non_ptm > 0:
-        fold = population.mean_af_non_ptm / max(population.mean_af_ptm_site, 1e-10)
-        bullets.append(
-            f"PTM-site variants are <strong>{fold:.0f}x rarer</strong> "
-            f"in the population than non-PTM coding variants "
-            f"(mean AF {population.mean_af_ptm_site:.1e} vs "
-            f"{population.mean_af_non_ptm:.1e})."
-        )
+    if (
+        population
+        and population.n_ptm_site > 0
+        and population.n_non_ptm > 0
+        and population.mean_af_non_ptm > 0
+    ):
+        if population.mean_af_ptm_site > 0:
+            fold = population.mean_af_non_ptm / population.mean_af_ptm_site
+            bullets.append(
+                f"PTM-site variants are <strong>{fold:.0f}x rarer</strong> "
+                f"in the population than non-PTM coding variants "
+                f"(mean AF {population.mean_af_ptm_site:.1e} vs "
+                f"{population.mean_af_non_ptm:.1e})."
+            )
+        else:
+            bullets.append(
+                f"No non-zero AFs observed at PTM sites "
+                f"(non-PTM mean AF {population.mean_af_non_ptm:.1e})."
+            )
     if not bullets:
         return ""
     items = "".join(f"<li>{b}</li>" for b in bullets)
