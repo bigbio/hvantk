@@ -138,7 +138,7 @@ def plot_landscape_summary(
     ax2.set_xticklabels(categories)
     ax2.set_ylabel("% Pathogenic (P/LP)")
     ax2.set_title("Pathogenic Proportion")
-    ax2.set_ylim(0, min(max(pct_plp) * 1.35, 100))
+    ax2.set_ylim(0, max(min(max(pct_plp) * 1.35, 100), 1))
     ax2.axhline(
         y=100 * result.n_pathogenic / max(result.n_pathogenic + result.n_benign, 1),
         color="gray", linestyle="--", linewidth=1, label="Overall rate",
@@ -291,6 +291,14 @@ def plot_population_af(
         np.array(result.non_ptm_afs),
     ]
     colors = [PTM_COLORS["ptm_site"], PTM_COLORS["proximal"], PTM_COLORS["non_ptm"]]
+
+    # Fall back to empty figure when AF data is not available (e.g., old JSON)
+    if all(len(a) == 0 for a in af_arrays):
+        return _empty_figure(
+            output_path, format=format, dpi=dpi,
+            title=title or "Allele Frequency at PTM Sites",
+            message="Per-variant AF data not available (mean AF shown in overview)",
+        )
 
     if sns is not None:
         sns.set_style("whitegrid")
