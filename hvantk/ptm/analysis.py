@@ -156,12 +156,16 @@ def _odds_ratio_with_ci(table, confidence_level=0.95):
         result = scipy_or(table, kind="conditional")
         ci = result.confidence_interval(confidence_level)
         _, p_value = fisher_exact(table)
+        logger.debug("Using scipy.stats.contingency.odds_ratio for CI")
         return float(result.statistic), float(ci.low), float(ci.high), float(p_value)
     except ImportError:
-        pass
+        logger.debug("scipy odds_ratio not available; falling back to Fisher/Woolf")
+    except Exception as exc:
+        logger.debug("scipy odds_ratio failed (%s); falling back to Fisher/Woolf",
+                      type(exc).__name__)
 
-    # Fallback: Fisher OR + Woolf logit CI
-    or_val, p_value = fisher_exact(table)
+    # Fallback: Fisher p-value + Woolf logit OR and CI (consistent estimator)
+    _, p_value = fisher_exact(table)
     a, b = table[0]
     c, d = table[1]
     # Apply 0.5 continuity correction if any cell is zero
@@ -169,12 +173,14 @@ def _odds_ratio_with_ci(table, confidence_level=0.95):
         a, b, c, d = a + 0.5, b + 0.5, c + 0.5, d + 0.5
     try:
         log_or = math.log(a * d / (b * c))
+        or_val = math.exp(log_or)
         se = math.sqrt(1 / a + 1 / b + 1 / c + 1 / d)
         from scipy.stats import norm
         z = norm.ppf(1 - (1 - confidence_level) / 2)
         ci_low = math.exp(log_or - z * se)
         ci_high = math.exp(log_or + z * se)
     except (ValueError, ZeroDivisionError):
+        or_val = 0.0
         ci_low, ci_high = 0.0, float("inf")
     return float(or_val), ci_low, ci_high, float(p_value)
 
@@ -333,12 +339,13 @@ def ptm_landscape(
     category_enrichment = {}
     total_ptm_path = a  # P/LP at PTM (site + proximal)
     total_ptm_benign = b  # B/LB at PTM (site + proximal)
-    for cat, n_path_cat in category_counts.items():
+    for cat in sorted(set(category_counts) | set(benign_cat_counts)):
+        n_path_cat = category_counts.get(cat, 0)
         n_benign_cat = benign_cat_counts.get(cat, 0)
         # 2x2: (P in cat, B in cat) vs (P not in cat, B not in cat)
         cat_or, cat_ci_lo, cat_ci_hi, cat_p = _odds_ratio_with_ci([
             [n_path_cat, n_benign_cat],
-            [total_ptm_path - n_path_cat, max(total_ptm_benign - n_benign_cat, 0)],
+            [max(total_ptm_path - n_path_cat, 0), max(total_ptm_benign - n_benign_cat, 0)],
         ])
         category_enrichment[cat] = {
             "n_pathogenic": n_path_cat,
@@ -478,9 +485,9 @@ def ptm_population(
             af_ptm_prox=hl.agg.filter(is_prox, hl.agg.stats(af)),
             af_non_ptm=hl.agg.filter(is_non_ptm, hl.agg.stats(af)),
             n_zero_af_ptm=hl.agg.filter(is_ptm & (af == 0), hl.agg.count()),
-            afs_ptm_site=hl.agg.filter(is_ptm, hl.agg.collect(af)),
-            afs_ptm_prox=hl.agg.filter(is_prox, hl.agg.collect(af)),
-            afs_non_ptm=hl.agg.filter(is_non_ptm, hl.agg.collect(af)),
+            afs_ptm_site=hl.agg.filter(is_ptm, hl.agg.take(af, 5000)),
+            afs_ptm_prox=hl.agg.filter(is_prox, hl.agg.take(af, 5000)),
+            afs_non_ptm=hl.agg.filter(is_non_ptm, hl.agg.take(af, 5000)),
         )
     )
 
@@ -542,6 +549,9 @@ def ptm_population(
                     "non_ptm": result.mean_af_non_ptm,
                 },
                 "n_zero_af_ptm": result.n_zero_af_ptm,
+                "ptm_site_afs": result.ptm_site_afs,
+                "proximal_afs": result.proximal_afs,
+                "non_ptm_afs": result.non_ptm_afs,
                 "ccr_mean_ptm": result.ccr_mean_ptm,
                 "ccr_mean_non_ptm": result.ccr_mean_non_ptm,
             },
