@@ -36,8 +36,9 @@ def build_cascade_gene_summary(
         Path to a gnomAD constraint table keyed by ``gene_id``.
         Expected field: ``oe_lof_upper`` (LOEUF).
     disease_genes_ht_path : str, optional
-        Path to a disease-gene table keyed by ``gene_id``
-        (e.g., ClinGen gene-disease table keyed by hgnc_id).
+        Path to a disease-gene table keyed by ``gene_id`` (Ensembl gene ID).
+        Must match the cascade table's gene_id key.  ClinGen/GenCC tables
+        are typically keyed by gene_symbol — transform them before passing.
     coloc_df : pd.DataFrame, optional
         Coloc results with columns ``gene_id``, ``H4``, ``tissue``.
     overwrite : bool
