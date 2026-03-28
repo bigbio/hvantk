@@ -661,11 +661,18 @@ def mktable_eqtl(
 )
 @click.option("--tissue", type=str, default=None, help="Restrict to this tissue")
 @click.option(
-    "--gene-map-ht",
+    "--hgnc-ht",
     type=str,
     default=None,
-    help="Gene mapping HT (gene_id key, gene_name field) for "
-    "symbol → Ensembl ID conversion",
+    help="HGNC Hail Table (built by 'hvantk mktable hgnc-gene') for "
+    "gene symbol → Ensembl ID mapping. Required unless --no-gene-map.",
+)
+@click.option(
+    "--no-gene-map",
+    is_flag=True,
+    default=False,
+    help="Skip Ensembl mapping — key by raw gene symbol. "
+    "The table will NOT join with eQTL tables in cascade analysis.",
 )
 @click.option(
     "--p-threshold",
@@ -681,7 +688,8 @@ def mktable_pqtl(
     ref_genome: str,
     source: str,
     tissue: str,
-    gene_map_ht: str,
+    hgnc_ht: str,
+    no_gene_map: bool,
     p_threshold: float,
 ):
     """Build a pQTL Hail Table (keyed by locus, alleles, gene_id)."""
@@ -692,7 +700,8 @@ def mktable_pqtl(
         reference_genome=ref_genome,
         source=source,
         tissue=tissue,
-        gene_map_ht=gene_map_ht,
+        hgnc_ht=hgnc_ht,
+        no_gene_map=no_gene_map,
         p_threshold=p_threshold,
         overwrite=overwrite,
         export_tsv=export_tsv,

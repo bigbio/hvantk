@@ -62,10 +62,15 @@ def test_mktable_eqtl_cli_with_options():
         )
 
 
-def test_mktable_pqtl_cli_default():
+def test_mktable_pqtl_cli_requires_hgnc_or_opt_out():
+    """pQTL builder must fail when neither --hgnc-ht nor --no-gene-map is given."""
     runner = CliRunner()
-    mock_ht = MagicMock()
-    with patch("hvantk.commands.make_table_cli._create_pqtl_tb", return_value=mock_ht):
+    error = ValueError(
+        "Ensembl gene mapping is required for cascade-compatible pQTL tables."
+    )
+    with patch(
+        "hvantk.commands.make_table_cli._create_pqtl_tb", side_effect=error
+    ):
         result = runner.invoke(
             mktable_group,
             [
@@ -76,11 +81,46 @@ def test_mktable_pqtl_cli_default():
                 "/out/pqtl.ht",
             ],
         )
+        # Should fail because hgnc_ht is required (no_gene_map defaults to False)
+        assert result.exit_code != 0, result.output
+        assert "Ensembl gene mapping is required" in str(result.exception)
+
+
+def test_mktable_pqtl_cli_no_gene_map():
+    """--no-gene-map lets the user skip Ensembl mapping explicitly."""
+    runner = CliRunner()
+    mock_ht = MagicMock()
+    with patch(
+        "hvantk.commands.make_table_cli._create_pqtl_tb", return_value=mock_ht
+    ) as mock_create:
+        result = runner.invoke(
+            mktable_group,
+            [
+                "pqtl",
+                "--raw-input",
+                "/data/fang_pqtl/",
+                "--output-ht",
+                "/out/pqtl.ht",
+                "--no-gene-map",
+            ],
+        )
         assert result.exit_code == 0, result.output
         assert "pQTL table created" in result.output
+        mock_create.assert_called_once_with(
+            input_path="/data/fang_pqtl/",
+            output_path="/out/pqtl.ht",
+            reference_genome="GRCh38",
+            source="gtex_fang",
+            tissue=None,
+            hgnc_ht=None,
+            no_gene_map=True,
+            p_threshold=None,
+            overwrite=False,
+            export_tsv=False,
+        )
 
 
-def test_mktable_pqtl_cli_with_gene_map():
+def test_mktable_pqtl_cli_with_hgnc_ht():
     runner = CliRunner()
     mock_ht = MagicMock()
     with patch(
@@ -96,8 +136,8 @@ def test_mktable_pqtl_cli_with_gene_map():
                 "/out/pqtl_liver.ht",
                 "--tissue",
                 "Liver",
-                "--gene-map-ht",
-                "/data/ensembl_gene.ht",
+                "--hgnc-ht",
+                "/data/hgnc.ht",
                 "--overwrite",
             ],
         )
@@ -108,7 +148,8 @@ def test_mktable_pqtl_cli_with_gene_map():
             reference_genome="GRCh38",
             source="gtex_fang",
             tissue="Liver",
-            gene_map_ht="/data/ensembl_gene.ht",
+            hgnc_ht="/data/hgnc.ht",
+            no_gene_map=False,
             p_threshold=None,
             overwrite=True,
             export_tsv=False,
