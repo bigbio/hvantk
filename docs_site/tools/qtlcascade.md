@@ -105,7 +105,7 @@ The cascade join classifies each variant–gene pair into one of four mechanisti
 
 The classification logic:
 
-```
+```text
 eqtl_mediated:  eQTL_beta × pQTL_beta > 0  (concordant direction)
 discordant:     both present, product ≤ 0   (opposite direction)
 eqtl_only:      eQTL defined, pQTL missing
@@ -116,7 +116,7 @@ pqtl_only:      pQTL defined, eQTL missing
 
 For `eqtl_mediated` pairs, the pipeline computes the attenuation ratio:
 
-```
+```text
 attenuation_ratio = 1 - |pQTL_beta| / |eQTL_beta|
 ```
 
@@ -129,8 +129,8 @@ The cascade pipeline executes four stages:
 | Stage | Enum | Description |
 |-------|------|-------------|
 | 1 | `BUILD_CASCADE` | Outer-join eQTL ⊕ pQTL on `(locus, alleles, gene_id)`, classify pairs |
-| 2 | `BUILD_GENE_SUMMARY` | Aggregate to gene level with variant counts and p-values |
-| 3 | `RUN_COLOC` | Colocalization ABF per gene (optional — requires allpairs tables) |
+| 2 | `RUN_COLOC` | Colocalization ABF per gene (optional — requires allpairs tables) |
+| 3 | `BUILD_GENE_SUMMARY` | Aggregate to gene level with variant counts, p-values, and coloc overlay |
 | 4 | `GENERATE_OUTPUTS` | Plots, TSV exports, HTML report |
 
 ## Colocalization ABF
@@ -153,7 +153,7 @@ P(H4) > 0.8 is the default threshold for declaring colocalization.
 
 Per-variant log ABF (Wakefield 2009, Eq. 2):
 
-```
+```text
 r = W / (W + se²)
 log_ABF = 0.5 × (log(1 - r) + r × z²)    where z = beta / se
 ```
@@ -212,7 +212,7 @@ for tissue, res in results.items():
 
 ## Output Files
 
-```
+```text
 output_dir/
 ├── per_tissue/
 │   ├── liver/
@@ -244,7 +244,7 @@ The cascade Hail Table (`cascade.ht`) is keyed by `(locus, alleles, gene_id)`:
 | `pqtl_se` | float64 | pQTL standard error |
 | `pqtl_pvalue` | float64 | pQTL p-value |
 | `cascade_class` | str | One of: eqtl_mediated, discordant, eqtl_only, pqtl_only |
-| `attenuation_ratio` | float64 | 1 - |pQTL_beta|/|eQTL_beta| (eqtl_mediated only) |
+| `attenuation_ratio` | float64 | 1 - \|pQTL_beta\|/\|eQTL_beta\| (eqtl_mediated only) |
 | `tissue` | str | Tissue label |
 
 ### Gene Summary Table Schema
@@ -282,7 +282,7 @@ The coloc results TSV (`coloc_results.tsv`):
 
 Build the eQTL ⊕ pQTL outer join with cascade classification.
 
-```
+```text
 hvantk qtlcascade cascade [OPTIONS]
 
 Required:
@@ -301,7 +301,7 @@ Optional:
 
 Run colocalization ABF on a set of cascade genes.
 
-```
+```text
 hvantk qtlcascade coloc [OPTIONS]
 
 Required:
@@ -319,7 +319,7 @@ Optional:
 
 Full pipeline: cascade + gene summary + coloc + report.
 
-```
+```text
 hvantk qtlcascade run [OPTIONS]
 
 Required:
@@ -350,7 +350,7 @@ Optional (execution):
 
 Generate HTML report from existing results.
 
-```
+```text
 hvantk qtlcascade report [OPTIONS]
 
 Required:
