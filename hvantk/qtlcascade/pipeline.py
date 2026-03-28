@@ -100,8 +100,8 @@ class CascadeStage(Enum):
     """Pipeline stages executed in order."""
 
     BUILD_CASCADE = "build_cascade"
-    BUILD_GENE_SUMMARY = "build_gene_summary"
     RUN_COLOC = "run_coloc"
+    BUILD_GENE_SUMMARY = "build_gene_summary"
     GENERATE_OUTPUTS = "generate_outputs"
 
 
@@ -209,12 +209,13 @@ class CascadePipeline:
             # Stage 1: Build cascade
             result = self._stage_build_cascade(result, tissue, tissue_dir)
 
-            # Stage 2: Gene summary
-            result = self._stage_gene_summary(result, tissue_dir)
-
-            # Stage 3: Coloc (optional)
+            # Stage 2: Coloc (optional — must run before gene summary
+            # so coloc posteriors can be overlaid on the gene table)
             if self.config.eqtl_allpairs_ht and self.config.pqtl_allpairs_ht:
                 result = self._stage_coloc(result, tissue)
+
+            # Stage 3: Gene summary
+            result = self._stage_gene_summary(result, tissue_dir)
 
             # Stage 4: Outputs
             result = self._stage_outputs(result, safe_name)
@@ -336,15 +337,17 @@ class CascadePipeline:
         from hvantk.qtlcascade.coloc import run_coloc_per_gene
         import hail as hl
 
-        # Get cascade gene IDs (genes with both eQTL and pQTL)
+        # Get cascade gene IDs (genes with both eQTL and pQTL signals —
+        # includes both eqtl_mediated and discordant classes)
         ht = hl.read_table(result.cascade_ht_path)
+        both_classes = hl.set(["eqtl_mediated", "discordant"])
         cascade_genes = list(
-            ht.filter(ht.cascade_class == "eqtl_mediated").aggregate(
+            ht.filter(both_classes.contains(ht.cascade_class)).aggregate(
                 hl.agg.collect_as_set(ht.gene_id)
             )
         )
         if not cascade_genes:
-            logger.info("No eqtl_mediated genes — skipping coloc")
+            logger.info("No genes with both eQTL and pQTL — skipping coloc")
             return result
 
         logger.info("Running coloc for %d cascade genes", len(cascade_genes))
@@ -381,6 +384,9 @@ class CascadePipeline:
 
         if self.config.generate_plots:
             self._generate_tissue_plots(result, safe_name)
+
+        if self.config.generate_report:
+            self._generate_single_tissue_report(result)
 
         return result
 
@@ -423,9 +429,9 @@ class CascadePipeline:
                 for cls, cnt in res.class_counts.items():
                     rows.append(
                         {
-                            "gene_id": cls,
+                            "cascade_class": cls,
                             "tissue": tissue,
-                            "n_concordant": cnt,
+                            "count": cnt,
                         }
                     )
         if not rows:
@@ -435,11 +441,38 @@ class CascadePipeline:
             df = pd.DataFrame(rows)
             qtl_plot.plot_cross_tissue_heatmap(
                 df,
+                index_col="cascade_class",
+                value_col="count",
                 output_path=str(self._plots_dir / "cross_tissue_heatmap.png"),
                 title="Cascade Counts Across Tissues",
             )
         except Exception as exc:
             logger.warning("Cross-tissue heatmap failed: %s", exc)
+
+    def _generate_single_tissue_report(self, result):
+        """Generate an HTML report for a single-tissue run."""
+        from hvantk.qtlcascade.report import generate_report
+        import hail as hl
+
+        gene_df = None
+        if result.gene_summary_ht_path:
+            try:
+                gene_df = hl.read_table(result.gene_summary_ht_path).to_pandas()
+            except Exception:
+                pass
+
+        plot_paths = {}
+        for p in self._plots_dir.glob("*.png"):
+            plot_paths[p.stem] = str(p)
+
+        generate_report(
+            output_path=str(self._output_dir / "qtlcascade_report.html"),
+            gene_summary_df=gene_df,
+            coloc_df=result.coloc_df,
+            class_counts=result.class_counts,
+            plot_paths=plot_paths,
+            tissues=[result.tissue],
+        )
 
     def _generate_collection_report(self, results):
         from hvantk.qtlcascade.report import generate_report
