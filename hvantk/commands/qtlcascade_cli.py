@@ -14,6 +14,7 @@ import logging
 import click
 
 from hvantk.core.config import CONTEXT_SETTINGS
+from hvantk.qtlcascade.constants import DEFAULT_COLOC_H4_THRESHOLD
 
 logger = logging.getLogger(__name__)
 
@@ -246,7 +247,8 @@ def run_cmd(
     pipeline = CascadePipeline(config)
 
     if dry_run:
-        pipeline.show_plan()
+        plan = pipeline.show_plan()
+        click.echo(plan)
         return
 
     click.echo("\n" + "=" * 70)
@@ -259,7 +261,7 @@ def run_cmd(
         for tissue, res in results.items():
             n_pass = 0
             if res.coloc_df is not None and not res.coloc_df.empty:
-                n_pass = (res.coloc_df["H4"] > 0.8).sum()
+                n_pass = (res.coloc_df["H4"] > DEFAULT_COLOC_H4_THRESHOLD).sum()
             click.echo(
                 f"  {tissue}: {res.n_cascade_genes} genes, " f"{n_pass} colocalised"
             )
