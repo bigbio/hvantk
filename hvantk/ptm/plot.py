@@ -151,7 +151,7 @@ def plot_landscape_summary(
         0.95,
         "PTM site + proximal vs non-PTM\n"
         f"OR={result.enrichment_odds_ratio:.2f} "
-        f"({result.enrichment_ci_low:.2f}–{ci_hi_str})\n"
+        f"({result.enrichment_ci_low:.2f}-{ci_hi_str})\n"
         f"p={result.enrichment_p_value:.2e}",
         transform=ax1.transAxes,
         ha="right",
