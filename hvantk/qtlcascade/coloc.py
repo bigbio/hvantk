@@ -29,7 +29,6 @@ import numpy as np
 import pandas as pd
 
 from hvantk.qtlcascade.constants import (
-    DEFAULT_COLOC_H4_THRESHOLD,
     DEFAULT_COLOC_P1,
     DEFAULT_COLOC_P2,
     DEFAULT_COLOC_P12,

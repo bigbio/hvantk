@@ -18,7 +18,6 @@ from hvantk.core.constants import (
     ENSEMBL_BIOMART_FIELDS,
     CLINGEN_GENE_DISEASE_FIELDS,
     CLINGEN_CLASSIFICATION_LEVELS,
-    CLINGEN_HEADER_SKIP_LINES,
     GENCC_SUBMISSION_FIELDS,
     GENCC_CLASSIFICATION_LEVELS,
     HGNC_GENE_FIELDS,
@@ -719,9 +718,6 @@ def create_clingen_gene_disease_tb(
     - max_classification_label: label of highest classification
     - n_diseases: count of associated diseases
     """
-    import tempfile
-    import os
-
     if key_by not in ("gene_disease", "gene"):
         raise ValueError(f"key_by must be 'gene_disease' or 'gene', got: {key_by}")
 

@@ -1,14 +1,20 @@
+import sys
 from unittest.mock import patch, MagicMock
 
 from click.testing import CliRunner
 
 from hvantk.commands.qtlcascade_cli import qtlcascade_group
 
+_MOCK_HAIL_CONTEXT = MagicMock()
+
 
 def test_cascade_cmd():
     runner = CliRunner()
     mock_ht = MagicMock()
-    with patch("hvantk.core.hail_context.init_hail"), patch(
+    with patch.dict(
+        sys.modules,
+        {"hail": MagicMock(), "hvantk.core.hail_context": _MOCK_HAIL_CONTEXT},
+    ), patch(
         "hvantk.qtlcascade.cascade.build_cascade", return_value=mock_ht
     ) as mock_build:
         result = runner.invoke(
@@ -50,7 +56,10 @@ def test_coloc_cmd(tmp_path):
         }
     )
 
-    with patch("hvantk.core.hail_context.init_hail"), patch(
+    with patch.dict(
+        sys.modules,
+        {"hail": MagicMock(), "hvantk.core.hail_context": _MOCK_HAIL_CONTEXT},
+    ), patch(
         "hvantk.qtlcascade.coloc.run_coloc_per_gene", return_value=mock_df
     ):
         result = runner.invoke(
