@@ -83,6 +83,18 @@ def _create_ptm_sites_tb(*args, **kwargs):
     return create_ptm_sites_tb(*args, **kwargs)
 
 
+def _create_eqtl_tb(*args, **kwargs):
+    from hvantk.tables.table_builders import create_eqtl_tb
+
+    return create_eqtl_tb(*args, **kwargs)
+
+
+def _create_pqtl_tb(*args, **kwargs):
+    from hvantk.tables.table_builders import create_pqtl_tb
+
+    return create_pqtl_tb(*args, **kwargs)
+
+
 @click.group("mktable", context_settings=CONTEXT_SETTINGS)
 def mktable_group():
     """Create a single annotation Table/MatrixTable from a raw input file."""
@@ -569,4 +581,130 @@ def mktable_ptm_sites(
         export_tsv=export_tsv,
     )
     click.echo(f"PTM sites table created at {output_ht}")
+    ht.describe()
+
+
+# ---------------------------------------------------------------------------
+# eQTL builder
+# ---------------------------------------------------------------------------
+
+
+@mktable_group.command("eqtl")
+@_raw_input_opt
+@_output_ht_opt
+@_overwrite_opt
+@_export_tsv_opt
+@_ref_genome_opt
+@click.option(
+    "--source",
+    type=click.Choice(["gtex_v11", "gtex_v8", "eqtlgen"]),
+    default="gtex_v11",
+    show_default=True,
+    help="eQTL data source format",
+)
+@click.option(
+    "--tissue",
+    type=str,
+    default=None,
+    help="Restrict import to files matching this tissue name",
+)
+@click.option(
+    "--p-threshold",
+    type=float,
+    default=5e-8,
+    show_default=True,
+    help="P-value threshold (0 to keep all pairs for coloc)",
+)
+def mktable_eqtl(
+    raw_input: str,
+    output_ht: str,
+    overwrite: bool,
+    export_tsv: bool,
+    ref_genome: str,
+    source: str,
+    tissue: str,
+    p_threshold: float,
+):
+    """Build an eQTL Hail Table (keyed by locus, alleles, gene_id)."""
+    logger.info("Building eQTL table (source=%s)", source)
+    ht = _create_eqtl_tb(
+        input_path=raw_input,
+        output_path=output_ht,
+        reference_genome=ref_genome,
+        source=source,
+        tissue=tissue,
+        p_threshold=p_threshold,
+        overwrite=overwrite,
+        export_tsv=export_tsv,
+    )
+    click.echo(f"eQTL table created at {output_ht}")
+    ht.describe()
+
+
+# ---------------------------------------------------------------------------
+# pQTL builder
+# ---------------------------------------------------------------------------
+
+
+@mktable_group.command("pqtl")
+@_raw_input_opt
+@_output_ht_opt
+@_overwrite_opt
+@_export_tsv_opt
+@_ref_genome_opt
+@click.option(
+    "--source",
+    type=click.Choice(["gtex_fang"]),
+    default="gtex_fang",
+    show_default=True,
+    help="pQTL data source format",
+)
+@click.option("--tissue", type=str, default=None, help="Restrict to this tissue")
+@click.option(
+    "--hgnc-ht",
+    type=str,
+    default=None,
+    help="HGNC Hail Table (built by 'hvantk mktable hgnc-gene') for "
+    "gene symbol → Ensembl ID mapping. Required unless --no-gene-map.",
+)
+@click.option(
+    "--no-gene-map",
+    is_flag=True,
+    default=False,
+    help="Skip Ensembl mapping — key by raw gene symbol. "
+    "The table will NOT join with eQTL tables in cascade analysis.",
+)
+@click.option(
+    "--p-threshold",
+    type=float,
+    default=None,
+    help="P-value threshold (omit to keep all pairs)",
+)
+def mktable_pqtl(
+    raw_input: str,
+    output_ht: str,
+    overwrite: bool,
+    export_tsv: bool,
+    ref_genome: str,
+    source: str,
+    tissue: str,
+    hgnc_ht: str,
+    no_gene_map: bool,
+    p_threshold: float,
+):
+    """Build a pQTL Hail Table (keyed by locus, alleles, gene_id)."""
+    logger.info("Building pQTL table (source=%s)", source)
+    ht = _create_pqtl_tb(
+        input_path=raw_input,
+        output_path=output_ht,
+        reference_genome=ref_genome,
+        source=source,
+        tissue=tissue,
+        hgnc_ht=hgnc_ht,
+        no_gene_map=no_gene_map,
+        p_threshold=p_threshold,
+        overwrite=overwrite,
+        export_tsv=export_tsv,
+    )
+    click.echo(f"pQTL table created at {output_ht}")
     ht.describe()
