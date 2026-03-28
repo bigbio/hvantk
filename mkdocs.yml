@@ -72,6 +72,8 @@ nav:
     - Ancestry: examples/ancestry.md
     - ClinVar Streaming: examples/clinvar.md
     - ClinGen: examples/clingen.md
+    - QTL Cascade: examples/qtlcascade.md
+    - PTM: examples/ptm.md
     - Recipes: examples/recipes.md
   - Architecture: architecture.md
   - Contributing: contributing.md

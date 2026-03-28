@@ -1,130 +1,66 @@
-# HGC (Hail Genotype Combiner) Examples
+# HGC Examples
 
-This directory contains examples and benchmarks for the HGC joint genotyping pipeline.
+The HGC (Hail Genotype Combiner) pipeline provides joint genotyping for GVCF cohorts with quality control and benchmarking support.
 
-## Directory Structure
+See the [HGC reference](../tools/hgc.md) for full CLI options and architecture details.
 
-```
-examples/hgc/
-├── README.md                  # This file
-├── qc/                        # Quality control examples
-│   └── hgc_qc_example.py     # QC workflow for joint-called cohorts
-├── scalability/               # Sample size scalability benchmark
-│   ├── README.md             # Scalability benchmark documentation
-│   ├── benchmark.py          # Python workflow runner
-│   ├── benchmark.sh          # Shell orchestration script
-│   ├── plot_results.py       # Results visualization
-│   └── run_example.sh        # Quick start script
-├── cpu_scaling/               # CPU scaling benchmark
-│   ├── benchmark.py          # Python workflow runner
-│   ├── benchmark.sh          # Shell orchestration script
-│   ├── plot_results.py       # Results visualization
-│   └── run_example.sh        # Quick start script
-├── common/                    # Shared utilities
-│   ├── test_benchmark_setup.py  # Environment validation
-│   ├── setup_hvantk_env.sh      # Environment setup
-│   ├── extract_timing.py        # Timing utilities
-│   └── generate_sample_list.sh  # Sample list generation
-└── results/                   # Example output files
-```
+## QC Workflow
 
-## Quick Start
-
-### 1. Validate Environment
+Compute quality metrics and generate reports for a joint-called cohort:
 
 ```bash
-python examples/hgc/common/test_benchmark_setup.py
+# Using the CLI pipeline (recommended)
+hvantk hgc pipeline -i /path/to/gvcfs -o /path/to/output
+
+# Or step by step
+hvantk hgc gvcf-combine -g /data/gvcfs -o cohort.vds
+hvantk hgc vds2mt -i cohort.vds -o cohort.mt --adjust-genotypes
+hvantk hgc compute-qc -i cohort.mt -o cohort_qc.mt
+hvantk hgc qc-report -i cohort_qc.mt -o report.html
 ```
 
-### 2. Run QC Example
+### Python API
 
-```bash
-# Activate environment
-eval "$(poetry env activate)"
+```python
+from hvantk.hgc.pipeline import run_hgc_pipeline
 
-# Run QC workflow (uses test data)
-python examples/hgc/qc/hgc_qc_example.py
-
-# Check outputs
-ls examples/hgc/results/
+run_hgc_pipeline(
+    gvcf_dir="/data/gvcfs",
+    output_dir="/data/output",
+)
 ```
 
-### 3. Run Benchmarks
-
-**Scalability benchmark** (tests performance vs. sample count):
-
-```bash
-cd examples/hgc/scalability
-bash run_example.sh
-# Or run directly:
-bash benchmark.sh --gvcf-dir /path/to/gvcfs --output-dir ./results
-```
-
-**CPU scaling benchmark** (tests performance vs. CPU count):
-
-```bash
-cd examples/hgc/cpu_scaling
-bash run_example.sh
-# Or run directly:
-bash benchmark.sh --gvcf-list samples.txt --output-dir ./results
-```
-
-## Components
-
-### QC Workflow (`qc/`)
-
-Demonstrates quality control for joint-called cohorts:
-- Computing QC metrics
-- Generating visualizations
-- Creating HTML reports
-- Quality-based filtering strategies
-
-### Scalability Benchmark (`scalability/`)
-
-Tests how HGC performance scales with cohort size:
-- Runs HGC workflow with varying sample counts
-- Measures timing for each step
-- Generates scaling plots
-
-See the [scalability benchmark documentation](https://github.com/bigbio/hvantk/tree/main/examples/hgc/scalability) for detailed documentation.
-
-### CPU Scaling Benchmark (`cpu_scaling/`)
-
-Tests strong scaling (speedup vs. CPU count):
-- Runs HGC workflow with fixed cohort size
-- Varies CPU core count
-- Measures speedup and efficiency
-
-### Common Utilities (`common/`)
-
-Shared scripts for all benchmarks:
-- **[test_benchmark_setup.py](https://github.com/bigbio/hvantk/tree/main/examples/hgc/common/test_benchmark_setup.py)** - Validates environment setup
-- **[setup_hvantk_env.sh](https://github.com/bigbio/hvantk/tree/main/examples/hgc/common/setup_hvantk_env.sh)** - Creates conda environment
-- **[extract_timing.py](https://github.com/bigbio/hvantk/tree/main/examples/hgc/common/extract_timing.py)** - Extracts timing data from logs
-- **[generate_sample_list.sh](https://github.com/bigbio/hvantk/tree/main/examples/hgc/common/generate_sample_list.sh)** - Generates sample lists from GVCF directory
-
-## Expected Outputs
-
-### QC Workflow
+### Expected Outputs
 
 - `qc_report_*.html` - Interactive HTML report
 - `qc_dashboard_*.png` - Multi-panel QC visualization
 
-### Benchmarks
+## Scalability Benchmarks
 
-- Timing metrics (JSON/CSV format)
-- Performance plots (PNG format)
-- Scalability analysis summaries
+Two benchmark suites are included:
 
-## Documentation
+**Sample scalability** - measures performance as cohort size grows:
 
-- [HGC Documentation](../tools/hgc.md)
-- [Architecture Overview](../architecture.md)
-- [Scalability Guide](https://github.com/bigbio/hvantk/tree/main/examples/hgc/scalability)
+```bash
+cd examples/hgc/scalability
+bash benchmark.sh --gvcf-dir /path/to/gvcfs --output-dir ./results
+```
+
+**CPU scaling** - measures strong scaling (speedup vs. CPU count):
+
+```bash
+cd examples/hgc/cpu_scaling
+bash benchmark.sh --gvcf-list samples.txt --output-dir ./results
+```
+
+Both produce timing metrics (JSON/CSV) and scaling plots (PNG).
 
 ## Requirements
 
-- Hail 0.2.x
-- Spark configured with appropriate resources
-- For benchmarks: sufficient CPU cores and memory
-- For QC: MatrixTable with sample and variant data
+- Hail 0.2.x with Spark configured
+- Sufficient CPU cores and memory for benchmarks
+- MatrixTable with sample and variant data for QC
+
+## Runnable Scripts
+
+See the [`examples/hgc/`](https://github.com/bigbio/hvantk/tree/main/examples/hgc/) directory for all scripts and benchmark utilities.
