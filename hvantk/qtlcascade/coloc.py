@@ -77,6 +77,14 @@ def _logsumexp(x: np.ndarray) -> float:
     return float(m + np.log(np.sum(np.exp(x - m))))
 
 
+def _logdiff(a: float, b: float) -> float:
+    """Compute ``log(exp(a) - exp(b))`` in log-space (requires ``a > b``).
+
+    Matches ``logdiff`` in the R coloc package (``R/claudia.R``).
+    """
+    return a + np.log1p(-np.exp(b - a))
+
+
 def coloc_abf(
     eqtl_beta: np.ndarray,
     eqtl_se: np.ndarray,
@@ -128,9 +136,12 @@ def coloc_abf(
     log_h0 = 0.0
     log_h1 = np.log(p1) + sum_abf1
     log_h2 = np.log(p2) + sum_abf2
-    log_h3 = np.log(p1) + np.log(p2) + sum_abf1 + sum_abf2
     log_abf_both = log_abf1 + log_abf2
-    log_h4 = np.log(p12) + _logsumexp(log_abf_both)
+    sum_abf_both = _logsumexp(log_abf_both)
+    # H3: two independent causal variants (subtract shared diagonal).
+    # Matches R coloc: logdiff(logsum(l1) + logsum(l2), logsum(l1 + l2))
+    log_h3 = np.log(p1) + np.log(p2) + _logdiff(sum_abf1 + sum_abf2, sum_abf_both)
+    log_h4 = np.log(p12) + sum_abf_both
 
     # Posterior via softmax
     all_log = np.array([log_h0, log_h1, log_h2, log_h3, log_h4])
@@ -205,11 +216,20 @@ def run_coloc_per_gene(
     eqtl_ht = eqtl_ht.filter(gene_set.contains(eqtl_ht.gene_id))
     pqtl_ht = pqtl_ht.filter(gene_set.contains(pqtl_ht.gene_id))
 
+    eqtl_has_tissue = "tissue" in list(eqtl_ht.row)
+    pqtl_has_tissue = "tissue" in list(pqtl_ht.row)
+
     if tissue:
-        if "tissue" in list(eqtl_ht.row):
+        if eqtl_has_tissue:
             eqtl_ht = eqtl_ht.filter(eqtl_ht.tissue == tissue)
-        if "tissue" in list(pqtl_ht.row):
+        if pqtl_has_tissue:
             pqtl_ht = pqtl_ht.filter(pqtl_ht.tissue == tissue)
+    elif eqtl_has_tissue or pqtl_has_tissue:
+        logger.warning(
+            "No tissue filter provided but allpairs table(s) contain a "
+            "'tissue' field. Inner join on (locus, alleles, gene_id) may "
+            "cross-multiply rows from different tissues."
+        )
 
     # Select fields for join; annotate position for windowing
     eqtl_sel = eqtl_ht.select(
