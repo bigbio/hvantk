@@ -170,9 +170,7 @@ class PSROCConfig:
 
     # Score configuration
     scores: List[str] = field(default_factory=list)
-    score_directions: Optional[
-        Dict[str, bool]
-    ] = None  # per-score override: True=higher_is_pathogenic
+    score_directions: Optional[Dict[str, bool]] = None  # per-score override: True=higher_is_pathogenic
 
     # Output configuration
     output_dir: str = ""
@@ -1164,7 +1162,8 @@ class PSROCPipeline:
                 )
         if resolve_ann:
             agg_summary = {
-                sf: ("max" if directions.get(sf, True) else "min") for sf in resolve_ann
+                sf: ("max" if directions.get(sf, True) else "min")
+                for sf in resolve_ann
             }
             logger.info(
                 f"   Resolving {len(resolve_ann)} dict-typed scores to scalar: "

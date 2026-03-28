@@ -18,6 +18,7 @@ from hvantk.core.constants import (
     ENSEMBL_BIOMART_FIELDS,
     CLINGEN_GENE_DISEASE_FIELDS,
     CLINGEN_CLASSIFICATION_LEVELS,
+    CLINGEN_HEADER_SKIP_LINES,
     GENCC_SUBMISSION_FIELDS,
     GENCC_CLASSIFICATION_LEVELS,
     HGNC_GENE_FIELDS,
@@ -718,6 +719,9 @@ def create_clingen_gene_disease_tb(
     - max_classification_label: label of highest classification
     - n_diseases: count of associated diseases
     """
+    import tempfile
+    import os
+
     if key_by not in ("gene_disease", "gene"):
         raise ValueError(f"key_by must be 'gene_disease' or 'gene', got: {key_by}")
 
@@ -950,7 +954,9 @@ def create_gencc_submissions_tb(
         # Rename fields to standardized names
         logger.info("Renaming GenCC fields to standardized names")
         rename_map = {
-            k: v for k, v in GENCC_SUBMISSION_FIELDS.items() if k in get_row_fields(ht)
+            k: v
+            for k, v in GENCC_SUBMISSION_FIELDS.items()
+            if k in get_row_fields(ht)
         }
         ht = ht.rename(rename_map)
 
@@ -1005,7 +1011,9 @@ def create_gencc_submissions_tb(
                 .aggregate(
                     submitters=hl.agg.collect_as_set(ht.submitter),
                     classifications=hl.agg.collect_as_set(ht.classification),
-                    modes_of_inheritance=hl.agg.collect_as_set(ht.mode_of_inheritance),
+                    modes_of_inheritance=hl.agg.collect_as_set(
+                        ht.mode_of_inheritance
+                    ),
                     max_classification_level=hl.agg.min(ht.classification_level),
                 )
                 .key_by("hgnc_id", "mondo_id")
@@ -1027,11 +1035,15 @@ def create_gencc_submissions_tb(
                 .aggregate(
                     disease_labels=hl.agg.collect_as_set(ht.disease_label),
                     disease_mondo_pairs=hl.agg.collect_as_set(
-                        hl.struct(disease_label=ht.disease_label, mondo_id=ht.mondo_id)
+                        hl.struct(
+                            disease_label=ht.disease_label, mondo_id=ht.mondo_id
+                        )
                     ),
                     mondo_ids=hl.agg.collect_as_set(ht.mondo_id),
                     classifications=hl.agg.collect_as_set(ht.classification),
-                    modes_of_inheritance=hl.agg.collect_as_set(ht.mode_of_inheritance),
+                    modes_of_inheritance=hl.agg.collect_as_set(
+                        ht.mode_of_inheritance
+                    ),
                     submitters=hl.agg.collect_as_set(ht.submitter),
                     max_classification_level=hl.agg.min(ht.classification_level),
                 )
@@ -1045,7 +1057,9 @@ def create_gencc_submissions_tb(
             safe_index = hl.min(
                 ht.max_classification_level, hl.len(classification_labels) - 1
             )
-            ht = ht.annotate(max_classification_label=classification_labels[safe_index])
+            ht = ht.annotate(
+                max_classification_label=classification_labels[safe_index]
+            )
 
         return ht
 
@@ -1147,7 +1161,8 @@ def create_cosmic_cgc_tb(
 
         # Add classification_level numeric field
         classification_order = {
-            level: i for i, level in enumerate(COSMIC_CGC_CLASSIFICATION_LEVELS)
+            level: i
+            for i, level in enumerate(COSMIC_CGC_CLASSIFICATION_LEVELS)
         }
         ht = ht.annotate(
             classification_level=hl.literal(classification_order).get(
@@ -1159,7 +1174,9 @@ def create_cosmic_cgc_tb(
         # Normalize boolean fields using general-purpose str_to_bool
         for bool_field in ("somatic", "germline", "hallmark"):
             if bool_field in get_row_fields(ht):
-                ht = ht.annotate(**{bool_field: str_to_bool(ht[bool_field])})
+                ht = ht.annotate(
+                    **{bool_field: str_to_bool(ht[bool_field])}
+                )
 
         # Parse comma-separated multi-value fields into arrays
         multi_value_fields = [
@@ -1173,7 +1190,8 @@ def create_cosmic_cgc_tb(
                 ht = ht.annotate(
                     **{
                         mv_field: hl.if_else(
-                            hl.is_defined(ht[mv_field]) & (ht[mv_field] != ""),
+                            hl.is_defined(ht[mv_field])
+                            & (ht[mv_field] != ""),
                             ht[mv_field]
                             .split(",")
                             .map(lambda x: x.strip())
@@ -1202,15 +1220,23 @@ def create_cosmic_cgc_tb(
 
         # Resolve gene_symbol -> hgnc_id if HGNC table is available
         if hgnc_path is not None:
-            logger.info(f"Resolving gene symbols to HGNC IDs using {hgnc_path}")
+            logger.info(
+                f"Resolving gene symbols to HGNC IDs using {hgnc_path}"
+            )
             from hvantk.data.gene_mapper import GeneMapper
 
             hgnc_ht = hl.read_table(hgnc_path)
             mapper = GeneMapper(hgnc_ht)
-            symbols = set(ht.aggregate(hl.agg.collect_as_set(ht.gene_symbol)))
-            mapping = mapper.map_to_hgnc(list(symbols), source_type="gene_symbol")
+            symbols = set(
+                ht.aggregate(hl.agg.collect_as_set(ht.gene_symbol))
+            )
+            mapping = mapper.map_to_hgnc(
+                list(symbols), source_type="gene_symbol"
+            )
             mapping_literal = hl.literal(mapping)
-            ht = ht.annotate(hgnc_id=mapping_literal.get(ht.gene_symbol))
+            ht = ht.annotate(
+                hgnc_id=mapping_literal.get(ht.gene_symbol)
+            )
             # Strip "HGNC:" prefix to match convention used by other builders
             ht = ht.annotate(
                 hgnc_id=hl.if_else(
@@ -1221,7 +1247,9 @@ def create_cosmic_cgc_tb(
             )
             n_mapped = len([v for v in mapping.values() if v])
             n_unmapped = len(symbols) - n_mapped
-            logger.info(f"Mapped {n_mapped}/{len(symbols)} gene symbols to HGNC IDs")
+            logger.info(
+                f"Mapped {n_mapped}/{len(symbols)} gene symbols to HGNC IDs"
+            )
             if n_unmapped > 0:
                 logger.warning(
                     f"{n_unmapped} genes could not be mapped to HGNC IDs "
@@ -1407,7 +1435,9 @@ def create_ptm_sites_tb(
         )
 
         # Filter to valid contigs in the reference genome
-        valid_contigs = hl.set(hl.literal(hl.get_reference(reference_genome).contigs))
+        valid_contigs = hl.set(
+            hl.literal(hl.get_reference(reference_genome).contigs)
+        )
         ht = ht.filter(valid_contigs.contains(ht._contig))
 
         # Parse locus from contig + codon_start
@@ -1429,7 +1459,9 @@ def create_ptm_sites_tb(
         # Add flanking interval (codon ± flanking_codons * 3 bp)
         flank_bp = flanking_codons * 3
         ref = hl.get_reference(reference_genome)
-        chrom_lengths = hl.dict(hl.literal({c: ref.lengths[c] for c in ref.contigs}))
+        chrom_lengths = hl.dict(
+            hl.literal({c: ref.lengths[c] for c in ref.contigs})
+        )
         ht = ht.annotate(
             flanking_interval=hl.locus_interval(
                 ht._contig,
@@ -1457,405 +1489,6 @@ def create_ptm_sites_tb(
                 "residue_pos": hl.tstr,
             },
         ),
-        transform_func=transform,
-        fields=fields,
-        overwrite=overwrite,
-        export_tsv=export_tsv,
-    )
-
-
-# ---------------------------------------------------------------------------
-# QTL Table Builder Helpers
-# ---------------------------------------------------------------------------
-
-
-def _parse_gtex_variant_id(
-    ht, variant_id_field="variant_id", reference_genome="GRCh38"
-):
-    """Parse GTEx variant IDs into ``locus`` and ``alleles``.
-
-    Format: ``chr1_1000050_C_T_b38`` — the build suffix is discarded.
-    Used by both eQTL and pQTL builders (GTEx/Fang share the same ID format).
-
-    Contig names are normalised to match the reference genome:
-    GRCh38 contigs use ``chr`` prefix, GRCh37 contigs omit it.
-    """
-    parts = ht[variant_id_field].split("_")
-    raw_contig = parts[0]
-    # Normalise contig for the target reference genome
-    bare = hl.if_else(raw_contig.startswith("chr"), raw_contig[3:], raw_contig)
-    contig = hl.if_else(
-        hl.literal(reference_genome).startswith("GRCh38"),
-        "chr" + bare,
-        bare,
-    )
-    return ht.annotate(
-        locus=hl.locus(contig, hl.int32(parts[1]), reference_genome=reference_genome),
-        alleles=hl.array([parts[2], parts[3]]),
-    )
-
-
-def _strip_ensembl_version(gene_id_expr):
-    """Strip Ensembl version suffix (``ENSG00000000003.15`` → ``ENSG00000000003``)."""
-    return gene_id_expr.split("\\.")[0]
-
-
-def _scan_tissue_files(input_path, extensions):
-    """Return ``[(file_path, tissue_name), ...]`` from *input_path*.
-
-    Tissue name is inferred from the filename prefix before the first dot
-    (e.g. ``Brain_Cortex.v8.signif_variant_gene_pairs.txt.gz`` → ``Brain_Cortex``).
-    Accepts a single file or a directory.
-    """
-    from pathlib import Path
-
-    p = Path(input_path)
-    if p.is_file():
-        return [(str(p), p.stem.split(".")[0])]
-    if not p.is_dir():
-        raise FileNotFoundError(f"Not a file or directory: {input_path}")
-    matches = []
-    for ext in extensions:
-        matches.extend(sorted(p.glob(f"*{ext}")))
-    if not matches:
-        raise FileNotFoundError(f"No files matching {extensions} in {input_path}")
-    return [(str(f), f.stem.split(".")[0]) for f in matches]
-
-
-# ---------------------------------------------------------------------------
-# eQTL Builder
-# ---------------------------------------------------------------------------
-
-
-def _import_eqtl_gtex_parquet(input_path, tissue, reference_genome):
-    """Import GTEx v11 eQTL parquet files via ``spark.read.parquet``."""
-    from pathlib import Path
-    from pyspark.sql import SparkSession
-
-    files = _scan_tissue_files(input_path, [".parquet"])
-    spark = SparkSession.builder.getOrCreate()
-
-    tables = []
-    for fp, tname in files:
-        if tissue and tname != tissue:
-            continue
-        logger.info("Importing eQTL parquet: %s (tissue: %s)", fp, tname)
-        # Spark requires absolute paths for parquet (prototype lesson #4).
-        sdf = spark.read.parquet(str(Path(fp).resolve()))
-        ht_part = hl.Table.from_spark(sdf)
-        row_fields = list(ht_part.row)
-        ht_part = ht_part.select(
-            gene_id_raw=ht_part.phenotype_id,
-            variant_id=ht_part.variant_id,
-            beta=hl.float64(ht_part.slope),
-            se=hl.float64(ht_part.slope_se),
-            p_value=hl.float64(ht_part.pval_nominal),
-            maf=(
-                hl.float64(ht_part.maf)
-                if "maf" in row_fields
-                else hl.missing(hl.tfloat64)
-            ),
-            tissue=tname,
-            gene_symbol=hl.missing(hl.tstr),
-        )
-        tables.append(ht_part)
-
-    if not tables:
-        raise FileNotFoundError(f"No eQTL parquet files matched (tissue={tissue})")
-    return tables[0].union(*tables[1:]) if len(tables) > 1 else tables[0]
-
-
-def _import_eqtl_gtex_tsv(input_path, tissue):
-    """Import GTEx v8 eQTL TSV files via ``hl.import_table``."""
-    files = _scan_tissue_files(input_path, [".txt.gz", ".tsv.gz"])
-
-    tables = []
-    for fp, tname in files:
-        if tissue and tname != tissue:
-            continue
-        logger.info("Importing eQTL TSV: %s (tissue: %s)", fp, tname)
-        ht_part = hl.import_table(
-            fp,
-            force=True,
-            types={
-                "slope": hl.tfloat64,
-                "slope_se": hl.tfloat64,
-                "pval_nominal": hl.tfloat64,
-                "maf": hl.tfloat64,
-            },
-        )
-        row_fields = list(ht_part.row)
-        ht_part = ht_part.select(
-            gene_id_raw=ht_part.gene_id,
-            variant_id=ht_part.variant_id,
-            beta=ht_part.slope,
-            se=ht_part.slope_se,
-            p_value=ht_part.pval_nominal,
-            maf=(ht_part.maf if "maf" in row_fields else hl.missing(hl.tfloat64)),
-            tissue=tname,
-            gene_symbol=hl.missing(hl.tstr),
-        )
-        tables.append(ht_part)
-
-    if not tables:
-        raise FileNotFoundError(f"No eQTL TSV files matched (tissue={tissue})")
-    return tables[0].union(*tables[1:]) if len(tables) > 1 else tables[0]
-
-
-def _import_eqtl_eqtlgen(input_path, reference_genome):
-    """Import eQTLGen cis-eQTL summary statistics."""
-    logger.info("Importing eQTLGen: %s", input_path)
-    ht = hl.import_table(
-        input_path,
-        force=True,
-        types={"Pvalue": hl.tfloat64, "Zscore": hl.tfloat64},
-    )
-    # Construct a GTEx-format variant_id so the shared parser can handle it.
-    if reference_genome.startswith("GRCh38"):
-        contig = hl.format("chr%s", ht.SNPChr)
-    else:
-        contig = ht.SNPChr
-    ht = ht.select(
-        gene_id_raw=ht.Gene,
-        variant_id=hl.delimit(
-            [contig, ht.SNPPos, ht.OtherAllele, ht.AssessedAllele, "b37"],
-            "_",
-        ),
-        beta=hl.missing(hl.tfloat64),  # eQTLGen provides Z-score, not beta
-        se=hl.missing(hl.tfloat64),
-        p_value=ht.Pvalue,
-        maf=hl.missing(hl.tfloat64),
-        tissue="Blood",
-        gene_symbol=ht.GeneSymbol,
-    )
-    return ht
-
-
-def create_eqtl_tb(
-    input_path: str,
-    output_path: str,
-    reference_genome: str = "GRCh38",
-    source: str = "gtex_v11",
-    tissue: Optional[str] = None,
-    p_threshold: float = 5e-8,
-    overwrite: bool = False,
-    export_tsv: bool = False,
-    fields: Optional[List[str]] = None,
-) -> "hl.Table":
-    """Build an eQTL Hail Table keyed by ``(locus, alleles, gene_id)``.
-
-    One variant can be an eQTL for multiple genes; the ``gene_id`` key
-    prevents information loss and enables correct cascade joins.
-
-    Input can be a single file or a directory of per-tissue files.  Tissue
-    name is inferred from the filename prefix before the first dot (e.g.
-    ``Brain_Cortex.v8.signif_variant_gene_pairs.txt.gz`` → ``Brain_Cortex``).
-
-    Supported sources:
-
-    * ``gtex_v11`` — Parquet signif_pairs (``spark.read.parquet`` →
-      ``hl.Table.from_spark``).
-    * ``gtex_v8``  — TSV ``signif_variant_gene_pairs.txt.gz``
-      (``hl.import_table``).
-    * ``eqtlgen`` — TSV cis-eQTLs (single file, different column names).
-
-    Gene-ID version suffixes are stripped for cross-table compatibility
-    (``ENSG00000000003.15`` → ``ENSG00000000003``).
-
-    Parameters
-    ----------
-    input_path : str
-        Single file or directory of per-tissue eQTL files.
-    output_path : str
-        Output Hail Table path.
-    reference_genome : str
-        ``GRCh38`` or ``GRCh37``.
-    source : str
-        Data-source identifier.
-    tissue : str, optional
-        Restrict import to files matching this tissue name.
-    p_threshold : float
-        P-value cutoff.  Set to ``0`` to keep all pairs (for coloc).
-    overwrite, export_tsv, fields
-        Standard builder parameters.
-    """
-    from hvantk.qtlcascade.constants import EQTL_SOURCES
-
-    if source not in EQTL_SOURCES:
-        raise ValueError(f"Unknown eQTL source: {source!r}. Supported: {EQTL_SOURCES}")
-
-    def import_func():
-        if source == "gtex_v11":
-            return _import_eqtl_gtex_parquet(input_path, tissue, reference_genome)
-        if source == "gtex_v8":
-            return _import_eqtl_gtex_tsv(input_path, tissue)
-        return _import_eqtl_eqtlgen(input_path, reference_genome)
-
-    def transform(ht):
-        ht = _parse_gtex_variant_id(ht, "variant_id", reference_genome)
-        ht = ht.annotate(gene_id=_strip_ensembl_version(ht.gene_id_raw))
-        ht = ht.drop("gene_id_raw", "variant_id")
-        if p_threshold > 0:
-            ht = ht.filter(ht.p_value <= p_threshold)
-        ht = ht.annotate(source=source, is_cis=True)
-        ht = ht.key_by("locus", "alleles", "gene_id")
-        return ht
-
-    return _create_table_base(
-        source_name=f"eQTL ({source})",
-        input_path=input_path,
-        output_path=output_path,
-        import_func=import_func,
-        transform_func=transform,
-        fields=fields,
-        overwrite=overwrite,
-        export_tsv=export_tsv,
-    )
-
-
-# ---------------------------------------------------------------------------
-# pQTL Builder
-# ---------------------------------------------------------------------------
-
-
-def _import_pqtl_gtex_fang(input_path, tissue):
-    """Import Fang et al. (2025) pQTL allpairs (space-delimited gzip).
-
-    Columns: ``gene_name  SNP  CHR  BP  A1  NMISS  BETA  STAT  P``.
-    Rows where ``STAT = 0`` are removed (cannot derive SE).
-    """
-    files = _scan_tissue_files(input_path, [".txt.gz", ".tsv.gz"])
-
-    tables = []
-    for fp, tname in files:
-        if tissue and tname != tissue:
-            continue
-        logger.info("Importing pQTL allpairs: %s (tissue: %s)", fp, tname)
-        ht_part = hl.import_table(
-            fp,
-            delimiter=" ",
-            force=True,
-            types={
-                "BETA": hl.tfloat64,
-                "STAT": hl.tfloat64,
-                "P": hl.tfloat64,
-            },
-        )
-        # STAT = 0 → SE undefined
-        ht_part = ht_part.filter(ht_part.STAT != 0.0)
-        ht_part = ht_part.select(
-            gene_symbol=ht_part.gene_name,
-            variant_id=ht_part.SNP,
-            beta=ht_part.BETA,
-            stat=ht_part.STAT,  # kept for SE derivation in transform
-            p_value=ht_part.P,
-            tissue=tname,
-        )
-        tables.append(ht_part)
-
-    if not tables:
-        raise FileNotFoundError(f"No pQTL allpairs files matched (tissue={tissue})")
-    return tables[0].union(*tables[1:]) if len(tables) > 1 else tables[0]
-
-
-def create_pqtl_tb(
-    input_path: str,
-    output_path: str,
-    reference_genome: str = "GRCh38",
-    source: str = "gtex_fang",
-    tissue: Optional[str] = None,
-    gene_map_ht: Optional[str] = None,
-    p_threshold: Optional[float] = None,
-    overwrite: bool = False,
-    export_tsv: bool = False,
-    fields: Optional[List[str]] = None,
-) -> "hl.Table":
-    """Build a pQTL Hail Table keyed by ``(locus, alleles, gene_id)``.
-
-    For ``source='gtex_fang'``: Fang et al. (2025) allpairs files
-    (space-delimited gzip, TMT mass spectrometry, 5 tissues).
-    SE is derived as ``|BETA / STAT|`` (Fang files lack an SE column).
-
-    If *gene_map_ht* is provided, gene symbols are mapped to Ensembl
-    gene IDs via a Hail Table join.  The mapping table should be keyed by
-    ``gene_id`` and have a ``gene_name`` field (e.g. the Ensembl gene
-    table built by ``create_ensembl_gene_tb``).  Without it, the original
-    ``gene_name`` is used as ``gene_id``.
-
-    Parameters
-    ----------
-    input_path : str
-        Single file or directory of per-tissue pQTL files.
-    output_path : str
-        Output Hail Table path.
-    reference_genome : str
-        ``GRCh38`` or ``GRCh37``.
-    source : str
-        Data-source identifier.  Only ``gtex_fang`` is currently supported.
-    tissue : str, optional
-        Restrict to this tissue.
-    gene_map_ht : str, optional
-        Path to gene-mapping Hail Table (``gene_id`` key, ``gene_name``
-        field).
-    p_threshold : float, optional
-        P-value cutoff.  ``None`` keeps all pairs (for coloc).
-    overwrite, export_tsv, fields
-        Standard builder parameters.
-    """
-    from hvantk.qtlcascade.constants import PQTL_SOURCES
-
-    if source not in PQTL_SOURCES:
-        raise ValueError(f"Unknown pQTL source: {source!r}. Supported: {PQTL_SOURCES}")
-    if source != "gtex_fang":
-        raise NotImplementedError(
-            f"pQTL source {source!r} is not yet implemented. "
-            "Only 'gtex_fang' (Fang et al. 2025) is currently supported."
-        )
-
-    def import_func():
-        return _import_pqtl_gtex_fang(input_path, tissue)
-
-    def transform(ht):
-        ht = _parse_gtex_variant_id(ht, "variant_id", reference_genome)
-
-        # SE = |BETA / STAT| (prototype lesson #5)
-        ht = ht.annotate(se=hl.abs(ht.beta / ht.stat))
-        ht = ht.drop("stat", "variant_id")
-
-        # Gene-symbol → Ensembl-ID mapping (prototype lesson #2:
-        # use Hail Table join, NOT hl.literal, to avoid IR poisoning).
-        if gene_map_ht:
-            logger.info("Mapping gene symbols → Ensembl IDs via %s", gene_map_ht)
-            gm = hl.read_table(gene_map_ht)
-            rev = (
-                gm.key_by()
-                .select("gene_id", "gene_name")
-                .key_by("gene_name")
-                .distinct()
-            )
-            ht = ht.annotate(
-                gene_id=hl.or_else(rev[ht.gene_symbol].gene_id, ht.gene_symbol),
-            )
-        else:
-            logger.warning(
-                "No gene_map_ht provided — using gene symbols as gene_id. "
-                "pQTL table will NOT join correctly with eQTL tables in "
-                "cascade analysis (eQTL uses Ensembl IDs)."
-            )
-            ht = ht.annotate(gene_id=ht.gene_symbol)
-
-        if p_threshold is not None and p_threshold > 0:
-            ht = ht.filter(ht.p_value <= p_threshold)
-
-        ht = ht.annotate(source=source, is_cis=True)
-        ht = ht.key_by("locus", "alleles", "gene_id")
-        return ht
-
-    return _create_table_base(
-        source_name=f"pQTL ({source})",
-        input_path=input_path,
-        output_path=output_path,
-        import_func=import_func,
         transform_func=transform,
         fields=fields,
         overwrite=overwrite,

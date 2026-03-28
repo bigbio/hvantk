@@ -40,18 +40,9 @@ DEFAULT_FLANKING_CODONS = 5
 
 # Output TSV column names
 PTM_OUTPUT_COLUMNS = [
-    "chrom",
-    "codon_start",
-    "codon_end",
-    "strand",
-    "uniprot_id",
-    "gene_symbol",
-    "residue_pos",
-    "amino_acid",
-    "ptm_type",
-    "ptm_category",
-    "source_db",
-    "evidence_type",
+    "chrom", "codon_start", "codon_end", "strand",
+    "uniprot_id", "gene_symbol", "residue_pos", "amino_acid",
+    "ptm_type", "ptm_category", "source_db", "evidence_type",
 ]
 
 # Transcript resolution method names (for logging/QC)

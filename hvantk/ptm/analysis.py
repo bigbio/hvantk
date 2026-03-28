@@ -54,7 +54,9 @@ class PTMLandscapeResult:
         ]
         if self.overlap_by_category:
             lines.append("  By PTM category (P/LP):")
-            for cat, n in sorted(self.overlap_by_category.items(), key=lambda x: -x[1]):
+            for cat, n in sorted(
+                self.overlap_by_category.items(), key=lambda x: -x[1]
+            ):
                 lines.append(f"    {cat}: {n:,}")
         return "\n".join(lines)
 
@@ -151,7 +153,6 @@ def _odds_ratio_with_ci(table, confidence_level=0.95):
 
     try:
         from scipy.stats.contingency import odds_ratio as scipy_or
-
         result = scipy_or(table, kind="conditional")
         ci = result.confidence_interval(confidence_level)
         _, p_value = fisher_exact(table)
@@ -160,10 +161,8 @@ def _odds_ratio_with_ci(table, confidence_level=0.95):
     except ImportError:
         logger.debug("scipy odds_ratio not available; falling back to Fisher/Woolf")
     except Exception as exc:
-        logger.debug(
-            "scipy odds_ratio failed (%s); falling back to Fisher/Woolf",
-            type(exc).__name__,
-        )
+        logger.debug("scipy odds_ratio failed (%s); falling back to Fisher/Woolf",
+                      type(exc).__name__)
 
     # Fallback: Fisher p-value + Woolf logit OR and CI (consistent estimator)
     _, p_value = fisher_exact(table)
@@ -177,7 +176,6 @@ def _odds_ratio_with_ci(table, confidence_level=0.95):
         or_val = math.exp(log_or)
         se = math.sqrt(1 / a + 1 / b + 1 / c + 1 / d)
         from scipy.stats import norm
-
         z = norm.ppf(1 - (1 - confidence_level) / 2)
         ci_low = math.exp(log_or - z * se)
         ci_high = math.exp(log_or + z * se)
@@ -317,16 +315,20 @@ def ptm_landscape(
 
     # Per-category overlap counts (P/LP at PTM sites, by category)
     ptm_path = annotated.filter(
-        (annotated._label == "P") & (annotated.is_ptm_site | annotated.is_ptm_proximal)
+        (annotated._label == "P")
+        & (annotated.is_ptm_site | annotated.is_ptm_proximal)
     )
     ptm_path_exp = ptm_path.explode("ptm_types")
-    category_counts = ptm_path_exp.aggregate(hl.agg.counter(ptm_path_exp.ptm_types))
+    category_counts = ptm_path_exp.aggregate(
+        hl.agg.counter(ptm_path_exp.ptm_types)
+    )
     category_counts = {k: v for k, v in category_counts.items() if k is not None}
 
     # Per-category enrichment (Fisher's test per PTM type)
     # For each category: 2x2 table of (P/B) x (this_category / not_this_category)
     cat_benign = annotated.filter(
-        (annotated._label == "B") & (annotated.is_ptm_site | annotated.is_ptm_proximal)
+        (annotated._label == "B")
+        & (annotated.is_ptm_site | annotated.is_ptm_proximal)
     )
     cat_benign_exp = cat_benign.explode("ptm_types")
     benign_cat_counts = cat_benign_exp.aggregate(
@@ -341,15 +343,10 @@ def ptm_landscape(
         n_path_cat = category_counts.get(cat, 0)
         n_benign_cat = benign_cat_counts.get(cat, 0)
         # 2x2: (P in cat, B in cat) vs (P not in cat, B not in cat)
-        cat_or, cat_ci_lo, cat_ci_hi, cat_p = _odds_ratio_with_ci(
-            [
-                [n_path_cat, n_benign_cat],
-                [
-                    max(total_ptm_path - n_path_cat, 0),
-                    max(total_ptm_benign - n_benign_cat, 0),
-                ],
-            ]
-        )
+        cat_or, cat_ci_lo, cat_ci_hi, cat_p = _odds_ratio_with_ci([
+            [n_path_cat, n_benign_cat],
+            [max(total_ptm_path - n_path_cat, 0), max(total_ptm_benign - n_benign_cat, 0)],
+        ])
         category_enrichment[cat] = {
             "n_pathogenic": n_path_cat,
             "n_benign": n_benign_cat,
@@ -467,7 +464,9 @@ def ptm_population(
 
     # Optionally annotate with CCR
     if ccr_ht is not None:
-        annotated = annotated.annotate(_ccr_pct=ccr_ht[annotated.locus].ccr_pct)
+        annotated = annotated.annotate(
+            _ccr_pct=ccr_ht[annotated.locus].ccr_pct
+        )
 
     af = annotated[af_field]
 
@@ -518,11 +517,15 @@ def ptm_population(
         n_ptm_site=stats.n_ptm_site,
         n_ptm_proximal=stats.n_ptm_prox,
         n_non_ptm=stats.n_non_ptm,
-        mean_af_ptm_site=(stats.af_ptm_site.mean if stats.af_ptm_site.n > 0 else 0.0),
+        mean_af_ptm_site=(
+            stats.af_ptm_site.mean if stats.af_ptm_site.n > 0 else 0.0
+        ),
         mean_af_ptm_proximal=(
             stats.af_ptm_prox.mean if stats.af_ptm_prox.n > 0 else 0.0
         ),
-        mean_af_non_ptm=(stats.af_non_ptm.mean if stats.af_non_ptm.n > 0 else 0.0),
+        mean_af_non_ptm=(
+            stats.af_non_ptm.mean if stats.af_non_ptm.n > 0 else 0.0
+        ),
         n_zero_af_ptm=stats.n_zero_af_ptm,
         ptm_site_afs=[float(x) for x in stats.afs_ptm_site],
         proximal_afs=[float(x) for x in stats.afs_ptm_prox],

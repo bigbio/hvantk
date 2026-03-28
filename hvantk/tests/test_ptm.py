@@ -60,9 +60,9 @@ def gtf_data(tp53_cds_lookup):
 
 # Ground truth from Phase 0 pilot and Phase 0.5 validation (Ensembl REST API)
 _TP53_GROUND_TRUTH = [
-    (6, "17", 7676577, 7676579),
-    (15, "17", 7676550, 7676552),
-    (46, "17", 7676231, 7676233),
+    (6,   "17", 7676577, 7676579),
+    (15,  "17", 7676550, 7676552),
+    (46,  "17", 7676231, 7676233),
     (150, "17", 7675162, 7675164),
     (315, "17", 7673583, 7673585),  # Ser315 — key PTM site
     (382, "17", 7669645, 7669647),
@@ -70,9 +70,7 @@ _TP53_GROUND_TRUTH = [
 
 
 @pytest.mark.parametrize("residue_pos,exp_chrom,exp_start,exp_end", _TP53_GROUND_TRUTH)
-def test_mapper_tp53_positions(
-    tp53_cds_lookup, residue_pos, exp_chrom, exp_start, exp_end
-):
+def test_mapper_tp53_positions(tp53_cds_lookup, residue_pos, exp_chrom, exp_start, exp_end):
     """Mapper reproduces Phase 0/0.5 ground truth for TP53 positions."""
     result = map_residue_to_genomic("ENST00000269305", residue_pos, tp53_cds_lookup)
     assert result is not None
@@ -95,11 +93,12 @@ def test_mapper_unknown_transcript(tp53_cds_lookup):
 
 # ---------- Test 2: Transcript resolution cascade ----------
 
-
 def test_resolve_transcript_cascade(gtf_data):
     """3-strategy resolution cascade works as documented."""
     # Strategy 1: MANE Select xref (versioned ID — strip suffix)
-    enst, method = resolve_transcript([{"id": "ENST00000269305.8"}], "TP53", gtf_data)
+    enst, method = resolve_transcript(
+        [{"id": "ENST00000269305.8"}], "TP53", gtf_data
+    )
     assert enst == "ENST00000269305"
     assert method == "xref_mane"
 
@@ -129,7 +128,6 @@ def test_resolve_transcript_cascade(gtf_data):
 
 # ---------- Test 3: map_ptm_sites round-trip ----------
 
-
 def test_map_ptm_sites_roundtrip(tmp_path, gtf_data):
     """map_ptm_sites reads a UniProt TSV and writes a mapped TSV with correct output."""
     # Create a minimal input TSV (UniProt format)
@@ -137,40 +135,29 @@ def test_map_ptm_sites_roundtrip(tmp_path, gtf_data):
     with open(input_tsv, "w", newline="") as f:
         writer = csv.DictWriter(
             f,
-            fieldnames=[
-                "accession",
-                "gene_symbol",
-                "position",
-                "description",
-                "amino_acid",
-                "ensembl_xrefs",
-                "sequence_length",
-            ],
+            fieldnames=["accession", "gene_symbol", "position", "description",
+                         "amino_acid", "ensembl_xrefs", "sequence_length"],
             delimiter="\t",
         )
         writer.writeheader()
-        writer.writerow(
-            {
-                "accession": "P04637",
-                "gene_symbol": "TP53",
-                "position": "315",
-                "description": "Phosphoserine",
-                "amino_acid": "S",
-                "ensembl_xrefs": "ENST00000269305.8",
-                "sequence_length": "393",
-            }
-        )
-        writer.writerow(
-            {
-                "accession": "P04637",
-                "gene_symbol": "TP53",
-                "position": "6",
-                "description": "Phosphoserine",
-                "amino_acid": "S",
-                "ensembl_xrefs": "ENST00000269305.8",
-                "sequence_length": "393",
-            }
-        )
+        writer.writerow({
+            "accession": "P04637",
+            "gene_symbol": "TP53",
+            "position": "315",
+            "description": "Phosphoserine",
+            "amino_acid": "S",
+            "ensembl_xrefs": "ENST00000269305.8",
+            "sequence_length": "393",
+        })
+        writer.writerow({
+            "accession": "P04637",
+            "gene_symbol": "TP53",
+            "position": "6",
+            "description": "Phosphoserine",
+            "amino_acid": "S",
+            "ensembl_xrefs": "ENST00000269305.8",
+            "sequence_length": "393",
+        })
 
     output_tsv = tmp_path / "mapped.tsv"
     result = map_ptm_sites(str(input_tsv), gtf_data, str(output_tsv))
@@ -201,7 +188,6 @@ def test_map_ptm_sites_roundtrip(tmp_path, gtf_data):
 
 # ---------- Test 4: CLI registration ----------
 
-
 def test_ptm_cli_help():
     """PTM command group is registered and renders help."""
     from hvantk.commands.ptm_cli import ptm_group
@@ -229,5 +215,7 @@ def test_ptm_build_config_validation():
     assert any("output_dir" in e for e in errors)
     assert any("output_ht" in e for e in errors)
 
-    config2 = PTMBuildConfig(output_dir="/tmp/test", output_ht="/tmp/test/out.ht")
+    config2 = PTMBuildConfig(
+        output_dir="/tmp/test", output_ht="/tmp/test/out.ht"
+    )
     assert config2.validate() == []

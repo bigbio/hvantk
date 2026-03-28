@@ -53,8 +53,7 @@ def ptm_group(ctx):
 
 @ptm_group.command("build")
 @click.option(
-    "--output-dir",
-    "-o",
+    "--output-dir", "-o",
     type=click.Path(),
     required=True,
     help="Directory for intermediate files (GTF, UniProt TSV, mapped TSV)",
@@ -85,14 +84,10 @@ def ptm_group(ctx):
     help="Number of flanking codons for proximal window",
 )
 @click.option(
-    "--overwrite",
-    is_flag=True,
-    help="Overwrite existing outputs",
+    "--overwrite", is_flag=True, help="Overwrite existing outputs",
 )
 @click.pass_context
-def ptm_build(
-    ctx, output_dir, output_ht, gtf_path, ptm_tsv, flanking_codons, overwrite
-):
+def ptm_build(ctx, output_dir, output_ht, gtf_path, ptm_tsv, flanking_codons, overwrite):
     """Download PTM data, map coordinates to genome, and build a Hail Table.
 
     \b
@@ -146,13 +141,9 @@ def ptm_build(
 
 
 @ptm_group.command("annotate")
-@click.option(
-    "--variants-ht", type=str, required=True, help="Path to variant Hail Table"
-)
+@click.option("--variants-ht", type=str, required=True, help="Path to variant Hail Table")
 @click.option("--ptm-ht", type=str, required=True, help="Path to PTM sites Hail Table")
-@click.option(
-    "-o", "--output-ht", type=str, required=True, help="Path to write annotated Table"
-)
+@click.option("-o", "--output-ht", type=str, required=True, help="Path to write annotated Table")
 @click.option("--flanking-codons", type=int, default=5, show_default=True)
 @click.option("--overwrite", is_flag=True)
 @click.pass_context
@@ -189,14 +180,11 @@ def ptm_annotate(ctx, variants_ht, ptm_ht, output_ht, flanking_codons, overwrite
         result = result.checkpoint(output_ht, overwrite=overwrite)
 
         import hail as hl
-
-        counts = result.aggregate(
-            hl.struct(
-                n_total=hl.agg.count(),
-                n_ptm_site=hl.agg.filter(result.is_ptm_site, hl.agg.count()),
-                n_proximal=hl.agg.filter(result.is_ptm_proximal, hl.agg.count()),
-            )
-        )
+        counts = result.aggregate(hl.struct(
+            n_total=hl.agg.count(),
+            n_ptm_site=hl.agg.filter(result.is_ptm_site, hl.agg.count()),
+            n_proximal=hl.agg.filter(result.is_ptm_proximal, hl.agg.count()),
+        ))
 
         click.echo(f"Annotated {counts.n_total:,} variants:")
         click.echo(f"  PTM site:  {counts.n_ptm_site:,}")
@@ -210,13 +198,9 @@ def ptm_annotate(ctx, variants_ht, ptm_ht, output_ht, flanking_codons, overwrite
 
 
 @ptm_group.command("landscape")
-@click.option(
-    "--clinvar-ht", type=str, required=True, help="Path to ClinVar Hail Table"
-)
+@click.option("--clinvar-ht", type=str, required=True, help="Path to ClinVar Hail Table")
 @click.option("--ptm-ht", type=str, required=True, help="Path to PTM sites Hail Table")
-@click.option(
-    "-o", "--output", type=click.Path(), required=True, help="Output directory"
-)
+@click.option("-o", "--output", type=click.Path(), required=True, help="Output directory")
 @click.option("--flanking-codons", type=int, default=5, show_default=True)
 @click.option("--save-plots", is_flag=True, help="Save plots alongside JSON output")
 @click.pass_context
@@ -251,7 +235,6 @@ def ptm_landscape_cmd(ctx, clinvar_ht, ptm_ht, output, flanking_codons, save_plo
 
         if save_plots:
             import matplotlib
-
             matplotlib.use("Agg")
             from hvantk.ptm.plot import (
                 plot_landscape_summary,
@@ -259,15 +242,9 @@ def ptm_landscape_cmd(ctx, clinvar_ht, ptm_ht, output, flanking_codons, save_plo
                 plot_distance_distribution,
             )
 
-            plot_landscape_summary(
-                result, os.path.join(output, "landscape_summary.png")
-            )
-            plot_overlap_by_category(
-                result, os.path.join(output, "overlap_by_category.png")
-            )
-            plot_distance_distribution(
-                result, os.path.join(output, "distance_distribution.png")
-            )
+            plot_landscape_summary(result, os.path.join(output, "landscape_summary.png"))
+            plot_overlap_by_category(result, os.path.join(output, "overlap_by_category.png"))
+            plot_distance_distribution(result, os.path.join(output, "distance_distribution.png"))
             click.echo(f"Plots saved to {output}")
 
     except Exception as e:
@@ -277,19 +254,8 @@ def ptm_landscape_cmd(ctx, clinvar_ht, ptm_ht, output, flanking_codons, save_plo
 
 
 @ptm_group.command("export-strata")
-@click.option(
-    "--annotated-ht",
-    type=str,
-    required=True,
-    help="Path to PTM-annotated variant Hail Table",
-)
-@click.option(
-    "-o",
-    "--output",
-    type=click.Path(),
-    required=True,
-    help="Output directory for variant lists",
-)
+@click.option("--annotated-ht", type=str, required=True, help="Path to PTM-annotated variant Hail Table")
+@click.option("-o", "--output", type=click.Path(), required=True, help="Output directory for variant lists")
 @click.pass_context
 def ptm_export_strata(ctx, annotated_ht, output):
     """Export PTM-stratified variant lists for downstream analysis (Q2).
@@ -328,27 +294,13 @@ def ptm_export_strata(ctx, annotated_ht, output):
 @ptm_group.command("population")
 @click.option("--gnomad-ht", type=str, required=True, help="Path to gnomAD Hail Table")
 @click.option("--ptm-ht", type=str, required=True, help="Path to PTM sites Hail Table")
-@click.option(
-    "--ccr-ht", type=str, default=None, help="Path to CCR Hail Table (optional)"
-)
-@click.option(
-    "--af-field",
-    type=str,
-    default="AF",
-    show_default=True,
-    help="AF field name in gnomAD table",
-)
-@click.option(
-    "-o", "--output", type=click.Path(), required=True, help="Output directory"
-)
+@click.option("--ccr-ht", type=str, default=None, help="Path to CCR Hail Table (optional)")
+@click.option("--af-field", type=str, default="AF", show_default=True, help="AF field name in gnomAD table")
+@click.option("-o", "--output", type=click.Path(), required=True, help="Output directory")
 @click.option("--flanking-codons", type=int, default=5, show_default=True)
-@click.option(
-    "--save-plots", is_flag=True, help="Save AF comparison plot alongside JSON output"
-)
+@click.option("--save-plots", is_flag=True, help="Save AF comparison plot alongside JSON output")
 @click.pass_context
-def ptm_population_cmd(
-    ctx, gnomad_ht, ptm_ht, ccr_ht, af_field, output, flanking_codons, save_plots
-):
+def ptm_population_cmd(ctx, gnomad_ht, ptm_ht, ccr_ht, af_field, output, flanking_codons, save_plots):
     """Population-level PTM-variant allele frequency analysis (Q3).
 
     \b
@@ -376,18 +328,13 @@ def ptm_population_cmd(
         ccr = hl.read_table(ccr_ht) if ccr_ht else None
 
         result = ptm_population(
-            gnomad,
-            ptm,
-            output,
-            ccr_ht=ccr,
-            af_field=af_field,
-            flanking_codons=flanking_codons,
+            gnomad, ptm, output,
+            ccr_ht=ccr, af_field=af_field, flanking_codons=flanking_codons,
         )
         click.echo(result.summary())
 
         if save_plots:
             import matplotlib
-
             matplotlib.use("Agg")
             from hvantk.ptm.plot import plot_population_af
 
@@ -401,21 +348,11 @@ def ptm_population_cmd(
 
 
 @ptm_group.command("report")
-@click.option(
-    "-o", "--output", type=click.Path(), required=True, help="Output HTML report path"
-)
-@click.option(
-    "--landscape-json",
-    type=click.Path(exists=True),
-    default=None,
-    help="Path to landscape_summary.json (from 'hvantk ptm landscape')",
-)
-@click.option(
-    "--population-json",
-    type=click.Path(exists=True),
-    default=None,
-    help="Path to population_summary.json (from 'hvantk ptm population')",
-)
+@click.option("-o", "--output", type=click.Path(), required=True, help="Output HTML report path")
+@click.option("--landscape-json", type=click.Path(exists=True), default=None,
+              help="Path to landscape_summary.json (from 'hvantk ptm landscape')")
+@click.option("--population-json", type=click.Path(exists=True), default=None,
+              help="Path to population_summary.json (from 'hvantk ptm population')")
 @click.option("--title", type=str, default="PTM-Variant Analysis Report")
 @click.option("--description", type=str, default=None)
 @click.pass_context
@@ -434,10 +371,7 @@ def ptm_report(ctx, output, landscape_json, population_json, title, description)
           --population-json results/population/population_summary.json
     """
     if not landscape_json and not population_json:
-        click.echo(
-            "Error: at least one of --landscape-json or --population-json is required.",
-            err=True,
-        )
+        click.echo("Error: at least one of --landscape-json or --population-json is required.", err=True)
         ctx.exit(1)
 
     try:
@@ -454,16 +388,12 @@ def ptm_report(ctx, output, landscape_json, population_json, title, description)
                 n_pathogenic=data.get("n_pathogenic", 0),
                 n_benign=data.get("n_benign", 0),
                 n_ptm_site_pathogenic=data.get("ptm_site", {}).get("pathogenic", 0),
-                n_ptm_proximal_pathogenic=data.get("ptm_proximal", {}).get(
-                    "pathogenic", 0
-                ),
+                n_ptm_proximal_pathogenic=data.get("ptm_proximal", {}).get("pathogenic", 0),
                 n_ptm_site_benign=data.get("ptm_site", {}).get("benign", 0),
                 n_ptm_proximal_benign=data.get("ptm_proximal", {}).get("benign", 0),
                 enrichment_odds_ratio=data.get("enrichment", {}).get("odds_ratio", 0.0),
                 enrichment_ci_low=data.get("enrichment", {}).get("ci_low", 0.0),
-                enrichment_ci_high=data.get("enrichment", {}).get(
-                    "ci_high", float("inf")
-                ),
+                enrichment_ci_high=data.get("enrichment", {}).get("ci_high", float("inf")),
                 enrichment_p_value=data.get("enrichment", {}).get("p_value", 1.0),
                 overlap_by_category=data.get("overlap_by_category", {}),
                 category_enrichment=data.get("category_enrichment", {}),

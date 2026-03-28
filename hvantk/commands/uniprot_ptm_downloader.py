@@ -14,8 +14,7 @@ logger = logging.getLogger(__name__)
 
 @click.command(name="uniprot-ptm")
 @click.option(
-    "-o",
-    "--output-dir",
+    "-o", "--output-dir",
     type=click.Path(),
     required=True,
     help="Directory to save the downloaded PTM TSV file",

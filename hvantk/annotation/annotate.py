@@ -39,9 +39,7 @@ def annotate_clinvar_clnsig(t: hl.Table) -> hl.Table:
     is_pathogenic = t.clinvar_clnsig.any(
         lambda x: hl.set(CLINVAR_PATHOGENIC_LABELS).contains(x)
     )
-    is_benign = t.clinvar_clnsig.any(
-        lambda x: hl.set(CLINVAR_BENIGN_LABELS).contains(x)
-    )
+    is_benign = t.clinvar_clnsig.any(lambda x: hl.set(CLINVAR_BENIGN_LABELS).contains(x))
 
     t = t.annotate(
         clinvar_clnsig=hl.case()

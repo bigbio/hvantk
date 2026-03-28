@@ -52,7 +52,9 @@ def annotate_variants_with_ptm(
     )
 
     # Cap codon_end for split codons (exon boundary): treat as contiguous 3bp
-    ptm = ptm_ht.annotate(_eff_end=hl.min(ptm_ht.codon_end, ptm_ht.codon_start + 2))
+    ptm = ptm_ht.annotate(
+        _eff_end=hl.min(ptm_ht.codon_end, ptm_ht.codon_start + 2)
+    )
 
     # Expand each PTM site to all positions in its flanking window
     ptm = ptm.annotate(
