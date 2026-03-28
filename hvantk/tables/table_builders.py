@@ -1764,7 +1764,8 @@ def create_pqtl_tb(
     reference_genome: str = "GRCh38",
     source: str = "gtex_fang",
     tissue: Optional[str] = None,
-    gene_map_ht: Optional[str] = None,
+    hgnc_ht: Optional[str] = None,
+    no_gene_map: bool = False,
     p_threshold: Optional[float] = None,
     overwrite: bool = False,
     export_tsv: bool = False,
@@ -1776,11 +1777,14 @@ def create_pqtl_tb(
     (space-delimited gzip, TMT mass spectrometry, 5 tissues).
     SE is derived as ``|BETA / STAT|`` (Fang files lack an SE column).
 
-    If *gene_map_ht* is provided, gene symbols are mapped to Ensembl
-    gene IDs via a Hail Table join.  The mapping table should be keyed by
-    ``gene_id`` and have a ``gene_name`` field (e.g. the Ensembl gene
-    table built by ``create_ensembl_gene_tb``).  Without it, the original
-    ``gene_name`` is used as ``gene_id``.
+    Gene symbols are mapped to Ensembl gene IDs via the HGNC table
+    and :class:`~hvantk.data.gene_mapper.GeneMapper`.  This is
+    **required** because the cascade join uses ``(locus, alleles,
+    gene_id)`` with Ensembl IDs on the eQTL side; raw gene symbols
+    would produce zero matches.
+
+    Pass ``no_gene_map=True`` to opt out of mapping for non-cascade
+    use cases (the table will be keyed by raw gene symbol).
 
     Parameters
     ----------
@@ -1794,13 +1798,21 @@ def create_pqtl_tb(
         Data-source identifier.  Only ``gtex_fang`` is currently supported.
     tissue : str, optional
         Restrict to this tissue.
-    gene_map_ht : str, optional
-        Path to gene-mapping Hail Table (``gene_id`` key, ``gene_name``
-        field).
+    hgnc_ht : str, optional
+        Path to HGNC Hail Table (built by ``create_hgnc_gene_tb``).
+        Required unless ``no_gene_map=True``.
+    no_gene_map : bool
+        Skip Ensembl mapping and key by raw gene symbol.  The resulting
+        table will **not** join with eQTL tables in cascade analysis.
     p_threshold : float, optional
         P-value cutoff.  ``None`` keeps all pairs (for coloc).
     overwrite, export_tsv, fields
         Standard builder parameters.
+
+    Raises
+    ------
+    ValueError
+        If ``hgnc_ht`` is not provided and ``no_gene_map`` is ``False``.
     """
     from hvantk.qtlcascade.constants import PQTL_SOURCES
 
@@ -1810,6 +1822,14 @@ def create_pqtl_tb(
         raise NotImplementedError(
             f"pQTL source {source!r} is not yet implemented. "
             "Only 'gtex_fang' (Fang et al. 2025) is currently supported."
+        )
+
+    if not hgnc_ht and not no_gene_map:
+        raise ValueError(
+            "Ensembl gene mapping is required for cascade-compatible pQTL "
+            "tables. Provide --hgnc-ht <path> (HGNC Hail Table built by "
+            "'hvantk mktable hgnc-gene'). If you intentionally want a "
+            "symbol-keyed table for non-cascade use, pass --no-gene-map."
         )
 
     def import_func():
@@ -1822,25 +1842,36 @@ def create_pqtl_tb(
         ht = ht.annotate(se=hl.abs(ht.beta / ht.stat))
         ht = ht.drop("stat", "variant_id")
 
-        # Gene-symbol → Ensembl-ID mapping (prototype lesson #2:
-        # use Hail Table join, NOT hl.literal, to avoid IR poisoning).
-        if gene_map_ht:
-            logger.info("Mapping gene symbols → Ensembl IDs via %s", gene_map_ht)
-            gm = hl.read_table(gene_map_ht)
-            rev = (
-                gm.key_by()
-                .select("gene_id", "gene_name")
-                .key_by("gene_name")
-                .distinct()
+        # Gene-symbol → Ensembl-ID mapping via GeneMapper
+        # (prototype lesson #2: use Hail Table join, NOT hl.literal,
+        # to avoid IR poisoning).
+        if hgnc_ht:
+            from hvantk.data.gene_mapper import GeneMapper
+
+            logger.info(
+                "Mapping gene symbols → Ensembl IDs via GeneMapper (%s)",
+                hgnc_ht,
+            )
+            hgnc_table = hl.read_table(hgnc_ht)
+            mapper = GeneMapper(hgnc_table)
+            ht = mapper.annotate_table(
+                ht,
+                source_field="gene_symbol",
+                source_type="gene_symbol",
+                fields_to_add=["ensembl_gene_id"],
             )
             ht = ht.annotate(
-                gene_id=hl.or_else(rev[ht.gene_symbol].gene_id, ht.gene_symbol),
+                gene_id=hl.or_else(
+                    ht.hgnc_ensembl_gene_id, ht.gene_symbol
+                ),
             )
+            ht = ht.drop("hgnc_ensembl_gene_id")
         else:
+            # no_gene_map=True path
             logger.warning(
-                "No gene_map_ht provided — using gene symbols as gene_id. "
-                "pQTL table will NOT join correctly with eQTL tables in "
-                "cascade analysis (eQTL uses Ensembl IDs)."
+                "--no-gene-map: using gene symbols as gene_id. "
+                "This table will NOT join with eQTL tables in cascade "
+                "analysis."
             )
             ht = ht.annotate(gene_id=ht.gene_symbol)
 
