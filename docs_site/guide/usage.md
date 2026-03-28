@@ -109,6 +109,50 @@ hvantk ptm build \
 
 > **Note:** The PTM build command downloads Ensembl GTF and UniProt PTM data automatically. Use `--gtf-path` and `--ptm-tsv` to provide pre-downloaded files.
 
+- eQTL (keyed by locus, alleles, gene_id)
+
+```bash
+# GTEx v11 significant pairs (Parquet)
+hvantk mktable eqtl \
+  --raw-input /data/gtex_v11/Liver.v11.signif_pairs.parquet \
+  --output-ht /out/eqtl_liver.ht \
+  --source gtex_v11 \
+  --tissue Liver
+
+# GTEx v8 (TSV)
+hvantk mktable eqtl \
+  --raw-input /data/gtex_v8/Liver.v8.signif_variant_gene_pairs.txt.gz \
+  --output-ht /out/eqtl_liver.ht \
+  --source gtex_v8
+
+# eQTLGen (blood cis-eQTLs)
+hvantk mktable eqtl \
+  --raw-input /data/eqtlgen/cis-eQTLs_full.txt.gz \
+  --output-ht /out/eqtl_blood.ht \
+  --source eqtlgen
+
+# Allpairs for coloc (set p-threshold to 0)
+hvantk mktable eqtl \
+  --raw-input /data/gtex_v11/allpairs/Liver/ \
+  --output-ht /out/eqtl_allpairs_liver.ht \
+  --source gtex_v11 --tissue Liver --p-threshold 0
+```
+
+- pQTL (keyed by locus, alleles, gene_id)
+
+```bash
+# Fang et al. 2025 (space-delimited allpairs)
+hvantk mktable pqtl \
+  --raw-input /data/fang_pqtl/Liver_allpairs.txt.gz \
+  --output-ht /out/pqtl_liver.ht \
+  --source gtex_fang \
+  --tissue Liver \
+  --gene-map-ht /data/ensembl_gene.ht \
+  --p-threshold 5e-8
+```
+
+> **Note:** Fang pQTL data uses gene symbols. Provide `--gene-map-ht` (Ensembl gene table with `gene_name` field) for symbol → Ensembl ID mapping.
+
 ## 2) Batch-create Tables (HT) from a recipe
 
 Use a recipe to build many tables at once. JSON and YAML are both supported (YAML requires PyYAML installed).

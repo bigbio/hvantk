@@ -71,28 +71,40 @@ def generate_report(
     logger.info("Generating PTM report at %s", output_path)
 
     sections: List[str] = []
-    sections.append(_build_header(
-        title=title,
-        description=description,
-        date=analysis_date or datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-    ))
+    sections.append(
+        _build_header(
+            title=title,
+            description=description,
+            date=analysis_date or datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        )
+    )
 
     sections.append(_build_key_findings(landscape_result, population_result))
 
     if landscape_result:
-        sections.append(_build_landscape_section(
-            landscape_result, output_path.parent, embed_plots,
-        ))
+        sections.append(
+            _build_landscape_section(
+                landscape_result,
+                output_path.parent,
+                embed_plots,
+            )
+        )
 
     if population_result:
-        sections.append(_build_population_section(
-            population_result, output_path.parent, embed_plots,
-        ))
+        sections.append(
+            _build_population_section(
+                population_result,
+                output_path.parent,
+                embed_plots,
+            )
+        )
 
-    sections.append(_build_methods_section(
-        has_landscape=landscape_result is not None,
-        has_population=population_result is not None,
-    ))
+    sections.append(
+        _build_methods_section(
+            has_landscape=landscape_result is not None,
+            has_population=population_result is not None,
+        )
+    )
     sections.append(_build_footer())
 
     css = _get_css(_DEFAULT_COLORS)
@@ -113,8 +125,7 @@ def generate_report(
 
 def _build_header(title: str, description: Optional[str], date: str) -> str:
     desc_html = (
-        f"<p class='description'>{html.escape(description)}</p>"
-        if description else ""
+        f"<p class='description'>{html.escape(description)}</p>" if description else ""
     )
     return (
         "<header>"
@@ -132,8 +143,7 @@ def _build_landscape_section(
 ) -> str:
     # Overview card
     ci_hi_str = (
-        f"{result.enrichment_ci_high:.2f}"
-        if result.enrichment_ci_high < 1e6 else "∞"
+        f"{result.enrichment_ci_high:.2f}" if result.enrichment_ci_high < 1e6 else "∞"
     )
     overview = (
         "<div class='card-grid'>"
@@ -149,20 +159,26 @@ def _build_landscape_section(
 
     # Landscape summary plot
     summary_img = _render_plot(
-        plot_landscape_summary, result,
-        output_dir / "ptm_landscape_summary.png", embed,
+        plot_landscape_summary,
+        result,
+        output_dir / "ptm_landscape_summary.png",
+        embed,
     )
 
     # Category overlap plot
     category_img = _render_plot(
-        plot_overlap_by_category, result,
-        output_dir / "ptm_overlap_by_category.png", embed,
+        plot_overlap_by_category,
+        result,
+        output_dir / "ptm_overlap_by_category.png",
+        embed,
     )
 
     # Distance distribution plot
     distance_img = _render_plot(
-        plot_distance_distribution, result,
-        output_dir / "ptm_distance_distribution.png", embed,
+        plot_distance_distribution,
+        result,
+        output_dir / "ptm_distance_distribution.png",
+        embed,
     )
 
     # Per-category enrichment table
@@ -227,8 +243,10 @@ def _build_population_section(
     )
 
     af_img = _render_plot(
-        plot_population_af, result,
-        output_dir / "ptm_population_af.png", embed,
+        plot_population_af,
+        result,
+        output_dir / "ptm_population_af.png",
+        embed,
     )
 
     ccr_html = ""
@@ -255,10 +273,13 @@ def _build_key_findings(
     """Build a top-level Key Findings summary card."""
     bullets = []
     if landscape and landscape.n_variants > 0:
-        sig = "significant" if landscape.enrichment_p_value < 0.05 else "non-significant"
+        sig = (
+            "significant" if landscape.enrichment_p_value < 0.05 else "non-significant"
+        )
         ci_hi_str = (
             f"{landscape.enrichment_ci_high:.1f}"
-            if landscape.enrichment_ci_high < 1e6 else "∞"
+            if landscape.enrichment_ci_high < 1e6
+            else "∞"
         )
         if landscape.enrichment_odds_ratio > 1:
             effect = f"{landscape.enrichment_odds_ratio:.1f}x enrichment"
@@ -380,7 +401,9 @@ def _render_plot(plot_func, result, output_path: Path, embed: bool) -> str:
         plt.close(fig)
         return f"<img src='{src}' alt='{output_path.stem}' class='embedded-image'/>"
     except Exception:
-        logger.warning("Failed to generate plot %s, skipping.", output_path.stem, exc_info=True)
+        logger.warning(
+            "Failed to generate plot %s, skipping.", output_path.stem, exc_info=True
+        )
         return ""
 
 

@@ -28,15 +28,11 @@ def _print_available_versions():
         return
 
     click.echo("GenCC submissions download is available.")
-    click.echo(
-        "Note: GenCC provides real-time snapshots (no versioned archives)."
-    )
+    click.echo("Note: GenCC provides real-time snapshots (no versioned archives).")
     click.echo(f"  Download will be labeled with today's date: {versions[0]}")
 
 
-@click.command(
-    "gencc-downloader", short_help="Download GenCC submissions data"
-)
+@click.command("gencc-downloader", short_help="Download GenCC submissions data")
 @click.option(
     "--version",
     "version_date",

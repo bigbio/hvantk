@@ -222,20 +222,22 @@ def map_ptm_sites(
                         ptm_category = cat
                         break
 
-                writer.writerow({
-                    "chrom": m.chrom,
-                    "codon_start": m.codon_start,
-                    "codon_end": m.codon_end,
-                    "strand": m.strand,
-                    "uniprot_id": rec.get("accession", ""),
-                    "gene_symbol": gene,
-                    "residue_pos": pos,
-                    "amino_acid": rec.get("amino_acid", ""),
-                    "ptm_type": desc,
-                    "ptm_category": ptm_category,
-                    "source_db": "UniProt",
-                    "evidence_type": "curated",
-                })
+                writer.writerow(
+                    {
+                        "chrom": m.chrom,
+                        "codon_start": m.codon_start,
+                        "codon_end": m.codon_end,
+                        "strand": m.strand,
+                        "uniprot_id": rec.get("accession", ""),
+                        "gene_symbol": gene,
+                        "residue_pos": pos,
+                        "amino_acid": rec.get("amino_acid", ""),
+                        "ptm_type": desc,
+                        "ptm_category": ptm_category,
+                        "source_db": "UniProt",
+                        "evidence_type": "curated",
+                    }
+                )
                 n_mapped += 1
 
         for row in reader:

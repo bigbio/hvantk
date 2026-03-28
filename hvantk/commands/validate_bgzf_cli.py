@@ -11,7 +11,9 @@ from hvantk.data.file_utils import validate_bgzf
 
 @click.command("validate-bgzf", context_settings=CONTEXT_SETTINGS)
 @click.argument("path", type=click.Path(exists=True))
-@click.option("--quick", is_flag=True, help="Header-only check, skip CRC/ISIZE verification")
+@click.option(
+    "--quick", is_flag=True, help="Header-only check, skip CRC/ISIZE verification"
+)
 def validate_bgzf_cmd(path, quick):
     """Validate BGZF block integrity of BGZF-compressed files."""
     full = not quick

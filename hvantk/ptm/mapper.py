@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 class CodonMapping(NamedTuple):
     """Result of mapping a protein residue to genomic coordinates."""
+
     chrom: str
     codon_start: int
     codon_end: int
@@ -25,10 +26,13 @@ class CodonMapping(NamedTuple):
 
 class GTFData(NamedTuple):
     """Parsed GTF data for coordinate mapping."""
-    cds_by_transcript: Dict[str, List[Tuple]]  # ENST -> [(chrom, start, end, strand, phase)]
-    mane_transcripts: set                        # set of ENST IDs tagged as MANE Select
-    gene_to_mane: Dict[str, str]                 # gene_symbol -> ENST (MANE Select)
-    transcript_to_gene: Dict[str, str]           # ENST -> gene_symbol
+
+    cds_by_transcript: Dict[
+        str, List[Tuple]
+    ]  # ENST -> [(chrom, start, end, strand, phase)]
+    mane_transcripts: set  # set of ENST IDs tagged as MANE Select
+    gene_to_mane: Dict[str, str]  # gene_symbol -> ENST (MANE Select)
+    transcript_to_gene: Dict[str, str]  # ENST -> gene_symbol
 
 
 def parse_ensembl_gtf(gtf_path: str) -> GTFData:
@@ -49,39 +53,39 @@ def parse_ensembl_gtf(gtf_path: str) -> GTFData:
     gene_to_mane = {}
     transcript_to_gene = {}
 
-    opener = gzip.open if gtf_path.endswith('.gz') else open
-    with opener(gtf_path, 'rt') as f:
+    opener = gzip.open if gtf_path.endswith(".gz") else open
+    with opener(gtf_path, "rt") as f:
         for line in f:
-            if line.startswith('#'):
+            if line.startswith("#"):
                 continue
-            fields = line.strip().split('\t')
+            fields = line.strip().split("\t")
             if len(fields) < 9:
                 continue
 
-            if fields[2] == 'transcript':
+            if fields[2] == "transcript":
                 m_tid = re.search(r'transcript_id "([^"]+)"', fields[8])
                 m_gene = re.search(r'gene_name "([^"]+)"', fields[8])
                 if m_tid and m_gene:
-                    enst = m_tid.group(1).split('.')[0]
+                    enst = m_tid.group(1).split(".")[0]
                     gene = m_gene.group(1)
                     transcript_to_gene[enst] = gene
                     if 'tag "MANE_Select"' in fields[8]:
                         mane_transcripts.add(enst)
                         gene_to_mane[gene] = enst
 
-            if fields[2] != 'CDS':
+            if fields[2] != "CDS":
                 continue
 
             chrom = fields[0]
             start = int(fields[3])  # 1-based inclusive
-            end = int(fields[4])    # 1-based inclusive
+            end = int(fields[4])  # 1-based inclusive
             strand = fields[6]
             phase = int(fields[7])
 
             m = re.search(r'transcript_id "([^"]+)"', fields[8])
             if not m:
                 continue
-            enst = m.group(1).split('.')[0]
+            enst = m.group(1).split(".")[0]
             cds_by_transcript[enst].append((chrom, start, end, strand, phase))
 
     # Sort exons by genomic position within each transcript
@@ -131,7 +135,7 @@ def map_residue_to_genomic(
     strand = exons[0][3]
 
     # Order exons in CDS reading direction (5'->3' of mRNA)
-    if strand == '+':
+    if strand == "+":
         ordered = sorted(exons, key=lambda x: x[1])
     else:
         ordered = sorted(exons, key=lambda x: x[1], reverse=True)
@@ -139,7 +143,7 @@ def map_residue_to_genomic(
     # Build flat genomic position list in CDS order
     positions = []
     for _, start, end, s, _ in ordered:
-        if s == '+':
+        if s == "+":
             positions.extend(range(start, end + 1))
         else:
             positions.extend(range(end, start - 1, -1))
@@ -149,7 +153,7 @@ def map_residue_to_genomic(
     if idx + 3 > len(positions):
         return None  # out-of-bounds: protein longer than CDS
 
-    codon_pos = positions[idx:idx + 3]
+    codon_pos = positions[idx : idx + 3]
     return CodonMapping(
         chrom=chrom,
         codon_start=min(codon_pos),
@@ -188,14 +192,14 @@ def map_protein_sites(
     chrom = exons[0][0]
     strand = exons[0][3]
 
-    if strand == '+':
+    if strand == "+":
         ordered = sorted(exons, key=lambda x: x[1])
     else:
         ordered = sorted(exons, key=lambda x: x[1], reverse=True)
 
     positions = []
     for _, start, end, s, _ in ordered:
-        if s == '+':
+        if s == "+":
             positions.extend(range(start, end + 1))
         else:
             positions.extend(range(end, start - 1, -1))
@@ -206,13 +210,18 @@ def map_protein_sites(
         if idx + 3 > len(positions):
             results.append((p, None))
         else:
-            codon_pos = positions[idx:idx + 3]
-            results.append((p, CodonMapping(
-                chrom=chrom,
-                codon_start=min(codon_pos),
-                codon_end=max(codon_pos),
-                strand=strand,
-            )))
+            codon_pos = positions[idx : idx + 3]
+            results.append(
+                (
+                    p,
+                    CodonMapping(
+                        chrom=chrom,
+                        codon_start=min(codon_pos),
+                        codon_end=max(codon_pos),
+                        strand=strand,
+                    ),
+                )
+            )
     return results
 
 
@@ -244,13 +253,16 @@ def resolve_transcript(
     """
     # Strategy 1: Prefer MANE Select
     for xref in ensembl_xrefs:
-        candidate = xref.get('id', '').split('.')[0]
-        if candidate in gtf_data.mane_transcripts and candidate in gtf_data.cds_by_transcript:
+        candidate = xref.get("id", "").split(".")[0]
+        if (
+            candidate in gtf_data.mane_transcripts
+            and candidate in gtf_data.cds_by_transcript
+        ):
             return candidate, "xref_mane"
 
     # Strategy 2: Any xref with CDS data
     for xref in ensembl_xrefs:
-        candidate = xref.get('id', '').split('.')[0]
+        candidate = xref.get("id", "").split(".")[0]
         if candidate in gtf_data.cds_by_transcript:
             return candidate, "xref_any"
 

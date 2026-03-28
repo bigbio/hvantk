@@ -320,9 +320,7 @@ class UniProtPTMDataset:
             # Clean up partial file on failure
             if os.path.exists(output_path):
                 os.remove(output_path)
-            raise RuntimeError(
-                f"Failed to download UniProt PTM data: {str(e)}"
-            ) from e
+            raise RuntimeError(f"Failed to download UniProt PTM data: {str(e)}") from e
 
     def get_metadata(self) -> Dict[str, str]:
         """

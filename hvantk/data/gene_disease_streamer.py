@@ -87,7 +87,9 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
     def stream(self):
         self._ensure_table_loaded()
         if self._table is None:
-            raise ValueError(f"{self.source_name} table not loaded. Call setup() first.")
+            raise ValueError(
+                f"{self.source_name} table not loaded. Call setup() first."
+            )
         total = self._table.count()
         if total == 0:
             return
@@ -130,9 +132,7 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
             else:
                 row_fields = set(get_row_fields(ht))
                 if "classifications" in row_fields:
-                    ht = ht.filter(
-                        hl.len(ht.classifications.intersection(desired)) > 0
-                    )
+                    ht = ht.filter(hl.len(ht.classifications.intersection(desired)) > 0)
                 elif "classification" in row_fields:
                     ht = ht.filter(desired.contains(ht.classification))
                 else:
@@ -542,9 +542,7 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
                         mondo_id = f"MONDO:{mondo_id}"
                     if mondo_id in category_diseases:
                         genes.add(gene_symbol)
-                        full_results.append(
-                            (gene_symbol, pair.disease_label, mondo_id)
-                        )
+                        full_results.append((gene_symbol, pair.disease_label, mondo_id))
 
         if as_set:
             return genes
@@ -845,16 +843,12 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
         Override in subclasses (e.g. ``"gene_curation_expert_panel"`` for
         ClinGen, ``"submitter"`` for GenCC).
         """
-        raise NotImplementedError(
-            "Subclasses must define _grouping_field"
-        )
+        raise NotImplementedError("Subclasses must define _grouping_field")
 
     @property
     def _grouping_field_short(self) -> str:
         """Short label for the grouping field (used as dict key in stats)."""
-        raise NotImplementedError(
-            "Subclasses must define _grouping_field_short"
-        )
+        raise NotImplementedError("Subclasses must define _grouping_field_short")
 
     @property
     def _date_field(self) -> Optional[str]:
@@ -1075,11 +1069,7 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
             )
         prefix = self.annotation_prefix
         mapped = gene_table.annotate(
-            **{
-                f"{prefix}gene_symbol": gene_ann_ht[
-                    gene_table[gene_id_field]
-                ].gene_name
-            }
+            **{f"{prefix}gene_symbol": gene_ann_ht[gene_table[gene_id_field]].gene_name}
         )
         return mapped, mapped[f"{prefix}gene_symbol"], "gene_symbol"
 

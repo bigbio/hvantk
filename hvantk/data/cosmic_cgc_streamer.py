@@ -86,8 +86,7 @@ class CosmicCGCStreamer(GeneDiseaseValidityStreamer):
         missing = sorted(required - row_fields)
         if missing:
             raise ValueError(
-                f"COSMIC CGC table missing required fields: "
-                f"{', '.join(missing)}"
+                f"COSMIC CGC table missing required fields: " f"{', '.join(missing)}"
             )
         return True
 
@@ -134,8 +133,7 @@ class CosmicCGCStreamer(GeneDiseaseValidityStreamer):
         """
         if context not in COSMIC_MUTATION_CONTEXTS:
             raise ValueError(
-                f"context must be one of {COSMIC_MUTATION_CONTEXTS}, "
-                f"got: {context}"
+                f"context must be one of {COSMIC_MUTATION_CONTEXTS}, " f"got: {context}"
             )
         self._ensure_table_loaded()
         ht = self._table
@@ -168,9 +166,7 @@ class CosmicCGCStreamer(GeneDiseaseValidityStreamer):
         ht = self.filter_by_mutation_context(mutation_context)
 
         if min_classification:
-            min_classification = self._normalize_classification(
-                min_classification
-            )
+            min_classification = self._normalize_classification(min_classification)
             ht = self._apply_min_classification_filter(ht, min_classification)
 
         # Select the tumour types field(s) based on context
@@ -191,19 +187,16 @@ class CosmicCGCStreamer(GeneDiseaseValidityStreamer):
                 if "tumour_types_germline" in row_fields
                 else hl.empty_array(hl.tstr)
             )
-            ht = ht.annotate(
-                _tumour_types=hl.array(hl.set(somatic.extend(germline)))
-            )
+            ht = ht.annotate(_tumour_types=hl.array(hl.set(somatic.extend(germline))))
 
         # Explode and group
         exploded = ht.explode("_tumour_types")
         exploded = exploded.filter(
-            hl.is_defined(exploded._tumour_types)
-            & (exploded._tumour_types != "")
+            hl.is_defined(exploded._tumour_types) & (exploded._tumour_types != "")
         )
-        grouped = exploded.group_by(
-            tumour_type=exploded._tumour_types
-        ).aggregate(genes=hl.agg.collect_as_set(exploded.gene_symbol))
+        grouped = exploded.group_by(tumour_type=exploded._tumour_types).aggregate(
+            genes=hl.agg.collect_as_set(exploded.gene_symbol)
+        )
         rows = grouped.collect()
 
         result: Dict[str, Set[str]] = {}
@@ -232,9 +225,7 @@ class CosmicCGCStreamer(GeneDiseaseValidityStreamer):
         ht = self.filter_by_mutation_context(mutation_context)
 
         if min_classification:
-            min_classification = self._normalize_classification(
-                min_classification
-            )
+            min_classification = self._normalize_classification(min_classification)
             ht = self._apply_min_classification_filter(ht, min_classification)
 
         row_fields = set(ht.row)
@@ -244,12 +235,11 @@ class CosmicCGCStreamer(GeneDiseaseValidityStreamer):
 
         exploded = ht.explode("role_in_cancer")
         exploded = exploded.filter(
-            hl.is_defined(exploded.role_in_cancer)
-            & (exploded.role_in_cancer != "")
+            hl.is_defined(exploded.role_in_cancer) & (exploded.role_in_cancer != "")
         )
-        grouped = exploded.group_by(
-            role=exploded.role_in_cancer
-        ).aggregate(genes=hl.agg.collect_as_set(exploded.gene_symbol))
+        grouped = exploded.group_by(role=exploded.role_in_cancer).aggregate(
+            genes=hl.agg.collect_as_set(exploded.gene_symbol)
+        )
         rows = grouped.collect()
 
         result: Dict[str, Set[str]] = {}
@@ -278,9 +268,7 @@ class CosmicCGCStreamer(GeneDiseaseValidityStreamer):
         ht = self.filter_by_mutation_context(mutation_context)
 
         if min_classification:
-            min_classification = self._normalize_classification(
-                min_classification
-            )
+            min_classification = self._normalize_classification(min_classification)
             ht = self._apply_min_classification_filter(ht, min_classification)
 
         row_fields = set(ht.row)
@@ -288,9 +276,9 @@ class CosmicCGCStreamer(GeneDiseaseValidityStreamer):
             logger.warning("tissue_type field not found in table")
             return {}
 
-        grouped = ht.group_by(
-            tissue=ht.tissue_type
-        ).aggregate(genes=hl.agg.collect_as_set(ht.gene_symbol))
+        grouped = ht.group_by(tissue=ht.tissue_type).aggregate(
+            genes=hl.agg.collect_as_set(ht.gene_symbol)
+        )
         rows = grouped.collect()
 
         result: Dict[str, Set[str]] = {}
@@ -355,15 +343,16 @@ class CosmicCGCStreamer(GeneDiseaseValidityStreamer):
 
         exploded = ht.explode("role_in_cancer")
         exploded = exploded.filter(
-            hl.is_defined(exploded.role_in_cancer)
-            & (exploded.role_in_cancer != "")
+            hl.is_defined(exploded.role_in_cancer) & (exploded.role_in_cancer != "")
         )
-        grouped = exploded.group_by(
-            role=exploded.role_in_cancer
-        ).aggregate(n_genes=hl.agg.count())
-        return grouped.to_pandas().sort_values(
-            "n_genes", ascending=False
-        ).reset_index(drop=True)
+        grouped = exploded.group_by(role=exploded.role_in_cancer).aggregate(
+            n_genes=hl.agg.count()
+        )
+        return (
+            grouped.to_pandas()
+            .sort_values("n_genes", ascending=False)
+            .reset_index(drop=True)
+        )
 
     # ------------------------------------------------------------------
     # Inherited methods that work as-is
@@ -394,9 +383,7 @@ class CosmicCGCStreamer(GeneDiseaseValidityStreamer):
         )
 
     def categorize_by_ontology_summary(self, *args, **kwargs):
-        raise NotImplementedError(
-            "COSMIC CGC does not use MONDO ontology IDs."
-        )
+        raise NotImplementedError("COSMIC CGC does not use MONDO ontology IDs.")
 
     # Override base methods that assume disease_label / mode_of_inheritance
     def get_genes_by_disease(self, *args, **kwargs):
@@ -434,9 +421,7 @@ class CosmicCGCStreamer(GeneDiseaseValidityStreamer):
             raise ValueError("COSMIC CGC table not loaded.")
 
         if min_classification:
-            min_classification = self._normalize_classification(
-                min_classification
-            )
+            min_classification = self._normalize_classification(min_classification)
             ht = self._apply_min_classification_filter(ht, min_classification)
 
         row_fields = set(ht.row)
@@ -450,9 +435,7 @@ class CosmicCGCStreamer(GeneDiseaseValidityStreamer):
             if "tumour_types_germline" in row_fields
             else hl.empty_array(hl.tstr)
         )
-        ht = ht.annotate(
-            _all_tumour_types=hl.array(hl.set(somatic.extend(germline)))
-        )
+        ht = ht.annotate(_all_tumour_types=hl.array(hl.set(somatic.extend(germline))))
         rows = ht.select("gene_symbol", "_all_tumour_types").collect()
 
         gene_sets: Dict[str, Set[str]] = {}
@@ -476,9 +459,7 @@ class CosmicCGCStreamer(GeneDiseaseValidityStreamer):
             raise ValueError("COSMIC CGC table not loaded.")
 
         total = ht.count()
-        classification_counts = ht.aggregate(
-            hl.agg.counter(ht.classification)
-        )
+        classification_counts = ht.aggregate(hl.agg.counter(ht.classification))
 
         return {
             "total_genes": total,

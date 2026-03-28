@@ -50,8 +50,7 @@ def _save_and_report(
 
     if not gene_sets:
         click.echo(
-            "Error: No gene sets produced. "
-            "Check data and filter settings.",
+            "Error: No gene sets produced. " "Check data and filter settings.",
             err=True,
         )
         ctx.exit(1)
@@ -159,12 +158,23 @@ def genesets_group():
     help="JSON file with keyword categories for --group-by keyword.",
 )
 @click.option(
-    "-o", "--output", type=click.Path(), required=True, help="Output path (.json or .gmt)"
+    "-o",
+    "--output",
+    type=click.Path(),
+    required=True,
+    help="Output path (.json or .gmt)",
 )
 @click.option("--overwrite", is_flag=True, help="Overwrite existing output file")
 @click.pass_context
 def genesets_clingen(
-    ctx, clingen_ht, group_by, min_classification, min_genes, categories_json, output, overwrite
+    ctx,
+    clingen_ht,
+    group_by,
+    min_classification,
+    min_genes,
+    categories_json,
+    output,
+    overwrite,
 ):
     """Extract gene set collections from ClinGen gene-disease data.
 
@@ -219,8 +229,13 @@ def genesets_clingen(
                 gene_sets = {k: v for k, v in gene_sets.items() if len(v) >= min_genes}
 
         _save_and_report(
-            gene_sets, output, group_by, min_classification, min_genes,
-            f"clingen_{group_by}", ctx,
+            gene_sets,
+            output,
+            group_by,
+            min_classification,
+            min_genes,
+            f"clingen_{group_by}",
+            ctx,
         )
 
     except click.exceptions.Exit:
@@ -283,12 +298,23 @@ def genesets_clingen(
     help="JSON file with keyword categories for --group-by keyword.",
 )
 @click.option(
-    "-o", "--output", type=click.Path(), required=True, help="Output path (.json or .gmt)"
+    "-o",
+    "--output",
+    type=click.Path(),
+    required=True,
+    help="Output path (.json or .gmt)",
 )
 @click.option("--overwrite", is_flag=True, help="Overwrite existing output file")
 @click.pass_context
 def genesets_gencc(
-    ctx, gencc_ht, group_by, min_classification, min_genes, categories_json, output, overwrite
+    ctx,
+    gencc_ht,
+    group_by,
+    min_classification,
+    min_genes,
+    categories_json,
+    output,
+    overwrite,
 ):
     """Extract gene set collections from GenCC submissions data.
 
@@ -343,8 +369,13 @@ def genesets_gencc(
                 gene_sets = {k: v for k, v in gene_sets.items() if len(v) >= min_genes}
 
         _save_and_report(
-            gene_sets, output, group_by, min_classification, min_genes,
-            f"gencc_{group_by}", ctx,
+            gene_sets,
+            output,
+            group_by,
+            min_classification,
+            min_genes,
+            f"gencc_{group_by}",
+            ctx,
         )
 
     except click.exceptions.Exit:
@@ -403,7 +434,11 @@ def genesets_gencc(
     help="JSON file with keyword categories for --group-by keyword.",
 )
 @click.option(
-    "-o", "--output", type=click.Path(), required=True, help="Output path (.json or .gmt)"
+    "-o",
+    "--output",
+    type=click.Path(),
+    required=True,
+    help="Output path (.json or .gmt)",
 )
 @click.option("--overwrite", is_flag=True, help="Overwrite existing output file")
 @click.pass_context
@@ -481,8 +516,13 @@ def genesets_cosmic(
                 gene_sets = {k: v for k, v in gene_sets.items() if len(v) >= min_genes}
 
         _save_and_report(
-            gene_sets, output, group_by, min_classification, min_genes,
-            f"cosmic_{group_by}", ctx,
+            gene_sets,
+            output,
+            group_by,
+            min_classification,
+            min_genes,
+            f"cosmic_{group_by}",
+            ctx,
         )
 
     except click.exceptions.Exit:

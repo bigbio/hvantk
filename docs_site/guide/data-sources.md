@@ -282,6 +282,85 @@ URL: https://ftp.ensembl.org/pub/release-113/gtf/homo_sapiens/
 wget https://ftp.ensembl.org/pub/release-113/gtf/homo_sapiens/Homo_sapiens.GRCh38.113.gtf.gz
 ```
 
+## QTL data
+
+These datasets are used to build eQTL and pQTL Hail Tables for the QTL cascade pipeline.
+
+### GTEx eQTL data
+
+Expression quantitative trait loci from the GTEx project. Available as significant pairs (genome-wide significant associations) and allpairs (full summary statistics for coloc).
+
+**GTEx v11** (recommended):
+URL: https://www.gtexportal.org/home/downloads/adult-gtex/qtl
+
+```bash
+# Download significant pairs (Parquet format, ~50 MB per tissue)
+# Navigate to GTEx Portal → Downloads → Adult GTEx → QTL → eQTL → Significant pairs
+
+# Build significant-pairs table
+hvantk mktable eqtl \
+  --raw-input /data/gtex_v11/Liver.v11.signif_pairs.parquet \
+  --output-ht eqtl_liver.ht \
+  --source gtex_v11 \
+  --tissue Liver
+
+# Build allpairs table for coloc (set p-threshold to 0)
+hvantk mktable eqtl \
+  --raw-input /data/gtex_v11/allpairs/Liver/ \
+  --output-ht eqtl_allpairs_liver.ht \
+  --source gtex_v11 \
+  --tissue Liver \
+  --p-threshold 0
+```
+
+**GTEx v8** (TSV format):
+
+```bash
+# Download from GTEx Portal v8 archive
+hvantk mktable eqtl \
+  --raw-input /data/gtex_v8/Liver.v8.signif_variant_gene_pairs.txt.gz \
+  --output-ht eqtl_liver_v8.ht \
+  --source gtex_v8
+```
+
+**eQTLGen** (blood eQTLs):
+URL: https://www.eqtlgen.org/cis-eqtls.html
+
+```bash
+# Download cis-eQTL full results (~2 GB)
+hvantk mktable eqtl \
+  --raw-input /data/eqtlgen/cis-eQTLs_full.txt.gz \
+  --output-ht eqtl_blood.ht \
+  --source eqtlgen
+```
+
+### Fang et al. (2025) pQTL data
+
+Protein quantitative trait loci from Fang et al. (2025), covering 5 tissues (Colon, Heart, Liver, Lung, Thyroid). Space-delimited allpairs format with columns: `gene_name SNP CHR BP A1 NMISS BETA STAT P`. SE is derived as `|BETA/STAT|` (rows with `STAT = 0` are filtered out).
+
+URL: Contact authors or GTEx Portal supplementary data.
+
+> **Note:** Fang pQTL data uses gene symbols. Provide a `--gene-map-ht` (Ensembl gene table) for symbol → Ensembl ID mapping.
+
+```bash
+# Build pQTL table with gene mapping
+hvantk mktable pqtl \
+  --raw-input /data/fang_pqtl/Liver_allpairs.txt.gz \
+  --output-ht pqtl_liver.ht \
+  --source gtex_fang \
+  --tissue Liver \
+  --gene-map-ht ensembl_gene.ht \
+  --p-threshold 5e-8
+
+# Allpairs for coloc (omit p-threshold)
+hvantk mktable pqtl \
+  --raw-input /data/fang_pqtl/Liver_allpairs.txt.gz \
+  --output-ht pqtl_allpairs_liver.ht \
+  --source gtex_fang \
+  --tissue Liver \
+  --gene-map-ht ensembl_gene.ht
+```
+
 ## Expression data sources
 
 These datasets are used to build expression MatrixTables via the UCSC Cell Browser and Expression Atlas downloaders.

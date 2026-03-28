@@ -17,6 +17,7 @@ from .combine_cli import register_combine_commands
 from .convert_cli import register_convert_commands
 from .qc_cli import register_qc_commands
 from .pipeline_cli import register_pipeline_command
+
 logger = logging.getLogger(__name__)
 
 

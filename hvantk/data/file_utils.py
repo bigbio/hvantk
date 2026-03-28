@@ -99,11 +99,13 @@ def sanitize_tsv(filepath: str, *, delimiter: str = "\t") -> int:
     n_cols = None
     n_data = 0
 
-    with open(filepath, newline="") as fh_in, \
-         open(tmp_path, "w", newline="") as fh_out:
+    with open(filepath, newline="") as fh_in, open(tmp_path, "w", newline="") as fh_out:
         reader = csv.reader(fh_in, delimiter=delimiter, quotechar='"')
         writer = csv.writer(
-            fh_out, delimiter=delimiter, quotechar='"', lineterminator="\n",
+            fh_out,
+            delimiter=delimiter,
+            quotechar='"',
+            lineterminator="\n",
         )
         for row_index, row in enumerate(reader):
             if not any(cell.strip() for cell in row):
@@ -116,21 +118,22 @@ def sanitize_tsv(filepath: str, *, delimiter: str = "\t") -> int:
             if len(row) < n_cols:
                 logger.warning(
                     "sanitize_tsv: row %d has %d columns, expected %d; padding",
-                    row_index, len(row), n_cols,
+                    row_index,
+                    len(row),
+                    n_cols,
                 )
                 row = row + [""] * (n_cols - len(row))
             elif len(row) > n_cols:
                 logger.warning(
                     "sanitize_tsv: row %d has %d columns, expected %d; truncating",
-                    row_index, len(row), n_cols,
+                    row_index,
+                    len(row),
+                    n_cols,
                 )
                 row = row[:n_cols]
 
             # Flatten embedded newlines within cells
-            cleaned = [
-                cell.replace("\n", " ").replace("\r", " ")
-                for cell in row
-            ]
+            cleaned = [cell.replace("\n", " ").replace("\r", " ") for cell in row]
             writer.writerow(cleaned)
             n_data += 1
 
@@ -141,9 +144,7 @@ def sanitize_tsv(filepath: str, *, delimiter: str = "\t") -> int:
 
     os.replace(tmp_path, filepath)
     n_data -= 1  # exclude header row
-    logger.info(
-        "Sanitized %s: %d columns, %d data rows", filepath, n_cols, n_data
-    )
+    logger.info("Sanitized %s: %d columns, %d data rows", filepath, n_cols, n_data)
     return n_data
 
 
