@@ -20,21 +20,20 @@ hvantk psroc \
 ## Python API
 
 ```python
-from hvantk.psroc.pipeline import PSROCConfig, run_psroc_pipeline
+from hvantk.psroc import PSROCConfig, PSROCPipeline
 
 config = PSROCConfig(
     genes=["BRCA1", "BRCA2", "TP53"],
+    clinvar_ht="clinvar.ht",
+    dbnsfp_ht="dbnsfp.ht",
+    output_dir="results/",
     scores=["CADD_phred", "REVEL_score", "MetaLR_score"],
     max_missingness=0.3,
     threshold_method="youden",
 )
 
-run_psroc_pipeline(
-    clinvar_ht_path="clinvar.ht",
-    dbnsfp_ht_path="dbnsfp.ht",
-    output_dir="results/",
-    config=config,
-)
+pipeline = PSROCPipeline(config)
+result = pipeline.run()
 ```
 
 ## Pipeline Stages
@@ -53,7 +52,7 @@ run_psroc_pipeline(
 
 **Missingness filtering**: Scores with >30% missing values are automatically excluded:
 
-```
+```text
 VEST4_score: 42.2% missing -> EXCLUDED
 REVEL_score: 2.0% missing  -> INCLUDED
 ```

@@ -22,12 +22,14 @@ hvantk hgc qc-report -i cohort_qc.mt -o report.html
 ### Python API
 
 ```python
-from hvantk.hgc.pipeline import run_hgc_pipeline
+from hvantk.hgc.pipeline import PipelineConfig, PipelineRunner
 
-run_hgc_pipeline(
-    gvcf_dir="/data/gvcfs",
+config = PipelineConfig(
+    input_dir="/data/gvcfs",
     output_dir="/data/output",
 )
+runner = PipelineRunner(config)
+runner.run()
 ```
 
 ### Expected Outputs

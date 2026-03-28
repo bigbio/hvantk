@@ -19,7 +19,7 @@ hvantk ancestry-inference \
   --reference-mt 1kg_reference.mt \
   --output-dir results/ \
   --n-pcs 20 \
-  --ancestry-field pop \
+  --ancestry-col pop \
   --generate-report
 ```
 

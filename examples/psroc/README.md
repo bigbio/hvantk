@@ -27,7 +27,7 @@ Uses synthetic data from `hvantk/tests/testdata/psroc/`:
 
 ## Expected Outputs
 
-```
+```text
 results/
 ├── plots/
 │   ├── psroc_example_roc_curves.png

@@ -6,7 +6,7 @@ For full documentation, see the [EnrichEx docs](https://bigbio.github.io/hvantk/
 
 ## Directory Structure
 
-```
+```text
 examples/enrichex/
 ├── synthetic_gene_sets.json          # Example gene sets for testing
 ├── overlap_enrichment_example.py     # Python API: overlap enrichment

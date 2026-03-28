@@ -6,7 +6,7 @@ For full documentation, see the [HGC docs](https://bigbio.github.io/hvantk/tools
 
 ## Directory Structure
 
-```
+```text
 examples/hgc/
 ├── qc/                        # Quality control examples
 │   └── hgc_qc_example.py     # QC workflow for joint-called cohorts

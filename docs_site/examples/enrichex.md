@@ -21,14 +21,14 @@ hvantk enrichex overlap \
 ### Python API
 
 ```python
-from hvantk.enrichex.overlap import run_overlap_enrichment
+from hvantk.enrichex import GeneSetCollection, compute_overlap_enrichment
 
-results = run_overlap_enrichment(
-    gene_list_path="my_genes.txt",
-    gene_sets_path="gene_sets.json",
-    output_path="results/overlap_results.tsv",
-    correction="benjamini-hochberg",
-    generate_report=True,
+query_genes = ["BRCA1", "TP53", "EGFR"]  # or load from my_genes.txt
+gene_sets = GeneSetCollection.load("gene_sets.json")
+results = compute_overlap_enrichment(
+    query_genes=query_genes,
+    gene_set_collection=gene_sets,
+    correction_method="benjamini-hochberg",
 )
 ```
 
