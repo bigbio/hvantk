@@ -87,6 +87,16 @@ def build_cascade(
     if pqtl_p_threshold > 0:
         pqtl_ht = pqtl_ht.filter(pqtl_ht.p_value <= pqtl_p_threshold)
 
+    # Warn about multi-tissue data without a tissue filter
+    eqtl_has_tissue = "tissue" in list(eqtl_ht.row)
+    pqtl_has_tissue = "tissue" in list(pqtl_ht.row)
+    if not tissue and (eqtl_has_tissue or pqtl_has_tissue):
+        logger.warning(
+            "No tissue filter provided but input table(s) contain a 'tissue' "
+            "field. The outer join on (locus, alleles, gene_id) may cross-"
+            "multiply rows from different tissues. Consider providing --tissue."
+        )
+
     # Select and prefix fields to avoid name collisions
     eqtl_ht = eqtl_ht.select(
         eqtl_beta=eqtl_ht.beta,
