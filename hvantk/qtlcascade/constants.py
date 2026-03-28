@@ -75,4 +75,5 @@ FANG_TISSUE_EQTL_MAPPING = {
 # ---------------------------------------------------------------------------
 
 EQTL_SOURCES = ("gtex_v11", "gtex_v8", "eqtlgen")
-PQTL_SOURCES = ("gtex_fang", "ukb_ppp", "decode", "sun_2018")
+# Only gtex_fang is currently implemented; others are planned.
+PQTL_SOURCES = ("gtex_fang",)
