@@ -270,12 +270,8 @@ TABLE_BUILDERS: Dict[str, Callable[[str, str, Dict[str, Any] | None], None]] = {
     "ptm-sites": create_table_adapter(
         "hvantk.tables.table_builders", "create_ptm_sites_tb"
     ),
-    "eqtl": create_table_adapter(
-        "hvantk.tables.table_builders", "create_eqtl_tb"
-    ),
-    "pqtl": create_table_adapter(
-        "hvantk.tables.table_builders", "create_pqtl_tb"
-    ),
+    "eqtl": create_table_adapter("hvantk.tables.table_builders", "create_eqtl_tb"),
+    "pqtl": create_table_adapter("hvantk.tables.table_builders", "create_pqtl_tb"),
 }
 
 

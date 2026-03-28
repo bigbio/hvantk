@@ -98,6 +98,7 @@ class CascadeConfig:
 
 class CascadeStage(Enum):
     """Pipeline stages executed in order."""
+
     BUILD_CASCADE = "build_cascade"
     BUILD_GENE_SUMMARY = "build_gene_summary"
     RUN_COLOC = "run_coloc"
@@ -112,6 +113,7 @@ class CascadeStage(Enum):
 @dataclass
 class CascadeResult:
     """Per-tissue cascade results."""
+
     tissue: str
     cascade_ht_path: str = ""
     gene_summary_ht_path: str = ""
@@ -222,9 +224,7 @@ class CascadePipeline:
             raise
 
         elapsed = time.time() - t0
-        logger.info(
-            "QTL CASCADE — COMPLETE (tissue: %s, %.1fs)", tissue_label, elapsed
-        )
+        logger.info("QTL CASCADE — COMPLETE (tissue: %s, %.1fs)", tissue_label, elapsed)
         return result
 
     def run_collection(self) -> Dict[str, CascadeResult]:
@@ -244,7 +244,9 @@ class CascadePipeline:
         for i, tissue in enumerate(sorted(self.config.tissues), 1):
             logger.info(
                 "[%d/%d] Running cascade for tissue: %s",
-                i, len(self.config.tissues), tissue,
+                i,
+                len(self.config.tissues),
+                tissue,
             )
             try:
                 results[tissue] = self.run(tissue=tissue)
@@ -253,13 +255,9 @@ class CascadePipeline:
                 failed.append(tissue)
 
         if not results:
-            raise RuntimeError(
-                f"All tissues failed: {', '.join(failed)}"
-            )
+            raise RuntimeError(f"All tissues failed: {', '.join(failed)}")
         if failed:
-            logger.warning(
-                "%d tissue(s) failed: %s", len(failed), ", ".join(failed)
-            )
+            logger.warning("%d tissue(s) failed: %s", len(failed), ", ".join(failed))
 
         # Cross-tissue outputs
         if self.config.generate_plots and len(results) >= 2:
@@ -271,7 +269,9 @@ class CascadePipeline:
         elapsed = time.time() - t0
         logger.info(
             "Collection complete: %d/%d tissues (%.1fs)",
-            len(results), len(self.config.tissues), elapsed,
+            len(results),
+            len(self.config.tissues),
+            elapsed,
         )
         return results
 
@@ -297,6 +297,7 @@ class CascadePipeline:
 
         # Collect class counts
         import hail as hl
+
         counts = dict(
             ht.group_by(ht.cascade_class)
             .aggregate(n=hl.agg.count())
@@ -338,8 +339,9 @@ class CascadePipeline:
         # Get cascade gene IDs (genes with both eQTL and pQTL)
         ht = hl.read_table(result.cascade_ht_path)
         cascade_genes = list(
-            ht.filter(ht.cascade_class == "eqtl_mediated")
-            .aggregate(hl.agg.collect_as_set(ht.gene_id))
+            ht.filter(ht.cascade_class == "eqtl_mediated").aggregate(
+                hl.agg.collect_as_set(ht.gene_id)
+            )
         )
         if not cascade_genes:
             logger.info("No eqtl_mediated genes — skipping coloc")
@@ -362,7 +364,9 @@ class CascadePipeline:
         n_pass = (coloc_df["H4"] > DEFAULT_COLOC_H4_THRESHOLD).sum()
         logger.info(
             "Coloc: %d/%d genes with P(H4) > %.1f",
-            n_pass, len(coloc_df), DEFAULT_COLOC_H4_THRESHOLD,
+            n_pass,
+            len(coloc_df),
+            DEFAULT_COLOC_H4_THRESHOLD,
         )
 
         # Save coloc results
@@ -417,11 +421,13 @@ class CascadePipeline:
         for tissue, res in results.items():
             if res.class_counts:
                 for cls, cnt in res.class_counts.items():
-                    rows.append({
-                        "gene_id": cls,
-                        "tissue": tissue,
-                        "n_concordant": cnt,
-                    })
+                    rows.append(
+                        {
+                            "gene_id": cls,
+                            "tissue": tissue,
+                            "n_concordant": cnt,
+                        }
+                    )
         if not rows:
             return
 
@@ -440,6 +446,7 @@ class CascadePipeline:
 
         # Combine gene summaries
         import hail as hl
+
         gene_dfs = []
         for tissue, res in results.items():
             if res.gene_summary_ht_path:
@@ -453,7 +460,8 @@ class CascadePipeline:
 
         # Combine coloc
         coloc_dfs = [
-            res.coloc_df for res in results.values()
+            res.coloc_df
+            for res in results.values()
             if res.coloc_df is not None and not res.coloc_df.empty
         ]
         coloc_df = pd.concat(coloc_dfs, ignore_index=True) if coloc_dfs else None
@@ -486,10 +494,12 @@ class CascadePipeline:
     def _initialize_hail(self):
         try:
             import hail as hl
+
             hl.current_backend()
             logger.info("Hail already initialised")
         except Exception:
             from hvantk.core.hail_context import init_hail
+
             init_hail()
 
 

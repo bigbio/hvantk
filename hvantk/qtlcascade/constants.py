@@ -40,9 +40,9 @@ DEFAULT_PQTL_P_THRESHOLD = 5e-8
 # Colocalization priors — Giambartolomei et al. (2014) Table 1
 # ---------------------------------------------------------------------------
 
-DEFAULT_COLOC_P1 = 1e-4    # P(variant causal for trait 1 only)
-DEFAULT_COLOC_P2 = 1e-4    # P(variant causal for trait 2 only)
-DEFAULT_COLOC_P12 = 1e-5   # P(variant causal for both traits)
+DEFAULT_COLOC_P1 = 1e-4  # P(variant causal for trait 1 only)
+DEFAULT_COLOC_P2 = 1e-4  # P(variant causal for trait 2 only)
+DEFAULT_COLOC_P12 = 1e-5  # P(variant causal for both traits)
 
 # Prior variance on true effect size — Wakefield (2009)
 # 0.04 is appropriate for quantitative-trait QTLs

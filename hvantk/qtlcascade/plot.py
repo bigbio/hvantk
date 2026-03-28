@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 try:
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 except ImportError:  # pragma: no cover
@@ -125,8 +126,15 @@ def plot_attenuation(
     if both.empty:
         logger.warning("No concordant/discordant pairs for attenuation plot")
         fig, ax = plt.subplots(figsize=figsize)
-        ax.text(0.5, 0.5, "No data", transform=ax.transAxes,
-                ha="center", va="center", fontsize=14)
+        ax.text(
+            0.5,
+            0.5,
+            "No data",
+            transform=ax.transAxes,
+            ha="center",
+            va="center",
+            fontsize=14,
+        )
         return fig
 
     fig, ax = plt.subplots(figsize=figsize)
@@ -135,20 +143,37 @@ def plot_attenuation(
         if subset.empty:
             continue
         ax.scatter(
-            subset["eqtl_beta"], subset["pqtl_beta"],
+            subset["eqtl_beta"],
+            subset["pqtl_beta"],
             c=CASCADE_CLASS_COLORS[cls],
             label=CASCADE_CLASS_LABELS[cls],
-            alpha=0.6, edgecolor="black", linewidth=0.3, s=20,
+            alpha=0.6,
+            edgecolor="black",
+            linewidth=0.3,
+            s=20,
         )
 
-    lim = max(abs(both["eqtl_beta"].max()), abs(both["pqtl_beta"].max()),
-              abs(both["eqtl_beta"].min()), abs(both["pqtl_beta"].min())) * 1.1
+    lim = (
+        max(
+            abs(both["eqtl_beta"].max()),
+            abs(both["pqtl_beta"].max()),
+            abs(both["eqtl_beta"].min()),
+            abs(both["pqtl_beta"].min()),
+        )
+        * 1.1
+    )
     ax.set_xlim(-lim, lim)
     ax.set_ylim(-lim, lim)
     ax.axhline(0, color="grey", linewidth=0.5, linestyle="--")
     ax.axvline(0, color="grey", linewidth=0.5, linestyle="--")
-    ax.plot([-lim, lim], [-lim, lim], color="black", linewidth=0.8,
-            linestyle=":", label="y = x")
+    ax.plot(
+        [-lim, lim],
+        [-lim, lim],
+        color="black",
+        linewidth=0.8,
+        linestyle=":",
+        label="y = x",
+    )
     ax.set_xlabel("eQTL beta (slope)", fontsize=12)
     ax.set_ylabel("pQTL beta", fontsize=12)
     ax.set_title(title, fontsize=14, fontweight="bold")
@@ -180,19 +205,27 @@ def plot_coloc_posteriors(
 
     fig, ax = plt.subplots(figsize=figsize)
     ax.hist(
-        coloc_df["H4"], bins=30, color="#2196F3", edgecolor="black",
-        linewidth=0.5, alpha=0.85,
+        coloc_df["H4"],
+        bins=30,
+        color="#2196F3",
+        edgecolor="black",
+        linewidth=0.5,
+        alpha=0.85,
     )
     ax.axvline(
-        DEFAULT_COLOC_H4_THRESHOLD, color="#F44336", linewidth=1.5,
-        linestyle="--", label=f"Threshold = {DEFAULT_COLOC_H4_THRESHOLD}",
+        DEFAULT_COLOC_H4_THRESHOLD,
+        color="#F44336",
+        linewidth=1.5,
+        linestyle="--",
+        label=f"Threshold = {DEFAULT_COLOC_H4_THRESHOLD}",
     )
     n_pass = (coloc_df["H4"] > DEFAULT_COLOC_H4_THRESHOLD).sum()
     ax.set_xlabel("P(H4) — shared causal variant", fontsize=12)
     ax.set_ylabel("Number of genes", fontsize=12)
     ax.set_title(
         f"{title}  ({n_pass}/{len(coloc_df)} genes pass threshold)",
-        fontsize=14, fontweight="bold",
+        fontsize=14,
+        fontweight="bold",
     )
     ax.legend(fontsize=10)
     fig.tight_layout()
@@ -227,8 +260,11 @@ def plot_cross_tissue_heatmap(
     _require_matplotlib()
 
     pivot = gene_tissue_df.pivot_table(
-        index="gene_id", columns="tissue", values=value_col,
-        aggfunc="sum", fill_value=0,
+        index="gene_id",
+        columns="tissue",
+        values=value_col,
+        aggfunc="sum",
+        fill_value=0,
     )
     # Select top genes
     pivot["_total"] = pivot.sum(axis=1)
@@ -267,15 +303,16 @@ def plot_loeuf_by_cascade_class(
     """
     _require_matplotlib()
 
-    classes = [c for c in CASCADE_CLASSES
-               if c in df["cascade_class"].unique()]
-    data = [df.loc[df["cascade_class"] == c, "oe_lof_upper"].dropna()
-            for c in classes]
+    classes = [c for c in CASCADE_CLASSES if c in df["cascade_class"].unique()]
+    data = [df.loc[df["cascade_class"] == c, "oe_lof_upper"].dropna() for c in classes]
     colors = [CASCADE_CLASS_COLORS[c] for c in classes]
 
     fig, ax = plt.subplots(figsize=figsize)
     bp = ax.boxplot(
-        data, vert=True, patch_artist=True, showfliers=False,
+        data,
+        vert=True,
+        patch_artist=True,
+        showfliers=False,
         medianprops=dict(color="black", linewidth=1.5),
     )
     for patch, color in zip(bp["boxes"], colors):
@@ -284,7 +321,9 @@ def plot_loeuf_by_cascade_class(
 
     ax.set_xticklabels(
         [CASCADE_CLASS_LABELS[c] for c in classes],
-        rotation=30, ha="right", fontsize=9,
+        rotation=30,
+        ha="right",
+        fontsize=9,
     )
     ax.set_ylabel("LOEUF (oe_lof_upper)", fontsize=12)
     ax.set_title(title, fontsize=14, fontweight="bold")

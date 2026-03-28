@@ -954,9 +954,7 @@ def create_gencc_submissions_tb(
         # Rename fields to standardized names
         logger.info("Renaming GenCC fields to standardized names")
         rename_map = {
-            k: v
-            for k, v in GENCC_SUBMISSION_FIELDS.items()
-            if k in get_row_fields(ht)
+            k: v for k, v in GENCC_SUBMISSION_FIELDS.items() if k in get_row_fields(ht)
         }
         ht = ht.rename(rename_map)
 
@@ -1011,9 +1009,7 @@ def create_gencc_submissions_tb(
                 .aggregate(
                     submitters=hl.agg.collect_as_set(ht.submitter),
                     classifications=hl.agg.collect_as_set(ht.classification),
-                    modes_of_inheritance=hl.agg.collect_as_set(
-                        ht.mode_of_inheritance
-                    ),
+                    modes_of_inheritance=hl.agg.collect_as_set(ht.mode_of_inheritance),
                     max_classification_level=hl.agg.min(ht.classification_level),
                 )
                 .key_by("hgnc_id", "mondo_id")
@@ -1035,15 +1031,11 @@ def create_gencc_submissions_tb(
                 .aggregate(
                     disease_labels=hl.agg.collect_as_set(ht.disease_label),
                     disease_mondo_pairs=hl.agg.collect_as_set(
-                        hl.struct(
-                            disease_label=ht.disease_label, mondo_id=ht.mondo_id
-                        )
+                        hl.struct(disease_label=ht.disease_label, mondo_id=ht.mondo_id)
                     ),
                     mondo_ids=hl.agg.collect_as_set(ht.mondo_id),
                     classifications=hl.agg.collect_as_set(ht.classification),
-                    modes_of_inheritance=hl.agg.collect_as_set(
-                        ht.mode_of_inheritance
-                    ),
+                    modes_of_inheritance=hl.agg.collect_as_set(ht.mode_of_inheritance),
                     submitters=hl.agg.collect_as_set(ht.submitter),
                     max_classification_level=hl.agg.min(ht.classification_level),
                 )
@@ -1057,9 +1049,7 @@ def create_gencc_submissions_tb(
             safe_index = hl.min(
                 ht.max_classification_level, hl.len(classification_labels) - 1
             )
-            ht = ht.annotate(
-                max_classification_label=classification_labels[safe_index]
-            )
+            ht = ht.annotate(max_classification_label=classification_labels[safe_index])
 
         return ht
 
@@ -1161,8 +1151,7 @@ def create_cosmic_cgc_tb(
 
         # Add classification_level numeric field
         classification_order = {
-            level: i
-            for i, level in enumerate(COSMIC_CGC_CLASSIFICATION_LEVELS)
+            level: i for i, level in enumerate(COSMIC_CGC_CLASSIFICATION_LEVELS)
         }
         ht = ht.annotate(
             classification_level=hl.literal(classification_order).get(
@@ -1174,9 +1163,7 @@ def create_cosmic_cgc_tb(
         # Normalize boolean fields using general-purpose str_to_bool
         for bool_field in ("somatic", "germline", "hallmark"):
             if bool_field in get_row_fields(ht):
-                ht = ht.annotate(
-                    **{bool_field: str_to_bool(ht[bool_field])}
-                )
+                ht = ht.annotate(**{bool_field: str_to_bool(ht[bool_field])})
 
         # Parse comma-separated multi-value fields into arrays
         multi_value_fields = [
@@ -1190,8 +1177,7 @@ def create_cosmic_cgc_tb(
                 ht = ht.annotate(
                     **{
                         mv_field: hl.if_else(
-                            hl.is_defined(ht[mv_field])
-                            & (ht[mv_field] != ""),
+                            hl.is_defined(ht[mv_field]) & (ht[mv_field] != ""),
                             ht[mv_field]
                             .split(",")
                             .map(lambda x: x.strip())
@@ -1220,23 +1206,15 @@ def create_cosmic_cgc_tb(
 
         # Resolve gene_symbol -> hgnc_id if HGNC table is available
         if hgnc_path is not None:
-            logger.info(
-                f"Resolving gene symbols to HGNC IDs using {hgnc_path}"
-            )
+            logger.info(f"Resolving gene symbols to HGNC IDs using {hgnc_path}")
             from hvantk.data.gene_mapper import GeneMapper
 
             hgnc_ht = hl.read_table(hgnc_path)
             mapper = GeneMapper(hgnc_ht)
-            symbols = set(
-                ht.aggregate(hl.agg.collect_as_set(ht.gene_symbol))
-            )
-            mapping = mapper.map_to_hgnc(
-                list(symbols), source_type="gene_symbol"
-            )
+            symbols = set(ht.aggregate(hl.agg.collect_as_set(ht.gene_symbol)))
+            mapping = mapper.map_to_hgnc(list(symbols), source_type="gene_symbol")
             mapping_literal = hl.literal(mapping)
-            ht = ht.annotate(
-                hgnc_id=mapping_literal.get(ht.gene_symbol)
-            )
+            ht = ht.annotate(hgnc_id=mapping_literal.get(ht.gene_symbol))
             # Strip "HGNC:" prefix to match convention used by other builders
             ht = ht.annotate(
                 hgnc_id=hl.if_else(
@@ -1247,9 +1225,7 @@ def create_cosmic_cgc_tb(
             )
             n_mapped = len([v for v in mapping.values() if v])
             n_unmapped = len(symbols) - n_mapped
-            logger.info(
-                f"Mapped {n_mapped}/{len(symbols)} gene symbols to HGNC IDs"
-            )
+            logger.info(f"Mapped {n_mapped}/{len(symbols)} gene symbols to HGNC IDs")
             if n_unmapped > 0:
                 logger.warning(
                     f"{n_unmapped} genes could not be mapped to HGNC IDs "
@@ -1435,9 +1411,7 @@ def create_ptm_sites_tb(
         )
 
         # Filter to valid contigs in the reference genome
-        valid_contigs = hl.set(
-            hl.literal(hl.get_reference(reference_genome).contigs)
-        )
+        valid_contigs = hl.set(hl.literal(hl.get_reference(reference_genome).contigs))
         ht = ht.filter(valid_contigs.contains(ht._contig))
 
         # Parse locus from contig + codon_start
@@ -1459,9 +1433,7 @@ def create_ptm_sites_tb(
         # Add flanking interval (codon ± flanking_codons * 3 bp)
         flank_bp = flanking_codons * 3
         ref = hl.get_reference(reference_genome)
-        chrom_lengths = hl.dict(
-            hl.literal({c: ref.lengths[c] for c in ref.contigs})
-        )
+        chrom_lengths = hl.dict(hl.literal({c: ref.lengths[c] for c in ref.contigs}))
         ht = ht.annotate(
             flanking_interval=hl.locus_interval(
                 ht._contig,
@@ -1501,8 +1473,9 @@ def create_ptm_sites_tb(
 # ---------------------------------------------------------------------------
 
 
-def _parse_gtex_variant_id(ht, variant_id_field="variant_id",
-                            reference_genome="GRCh38"):
+def _parse_gtex_variant_id(
+    ht, variant_id_field="variant_id", reference_genome="GRCh38"
+):
     """Parse GTEx variant IDs into ``locus`` and ``alleles``.
 
     Format: ``chr1_1000050_C_T_b38`` — the build suffix is discarded.
@@ -1510,8 +1483,7 @@ def _parse_gtex_variant_id(ht, variant_id_field="variant_id",
     """
     parts = ht[variant_id_field].split("_")
     return ht.annotate(
-        locus=hl.locus(parts[0], hl.int32(parts[1]),
-                        reference_genome=reference_genome),
+        locus=hl.locus(parts[0], hl.int32(parts[1]), reference_genome=reference_genome),
         alleles=hl.array([parts[2], parts[3]]),
     )
 
@@ -1539,9 +1511,7 @@ def _scan_tissue_files(input_path, extensions):
     for ext in extensions:
         matches.extend(sorted(p.glob(f"*{ext}")))
     if not matches:
-        raise FileNotFoundError(
-            f"No files matching {extensions} in {input_path}"
-        )
+        raise FileNotFoundError(f"No files matching {extensions} in {input_path}")
     return [(str(f), f.stem.split(".")[0]) for f in matches]
 
 
@@ -1573,18 +1543,18 @@ def _import_eqtl_gtex_parquet(input_path, tissue, reference_genome):
             beta=hl.float64(ht_part.slope),
             se=hl.float64(ht_part.slope_se),
             p_value=hl.float64(ht_part.pval_nominal),
-            maf=(hl.float64(ht_part.maf)
-                 if "maf" in row_fields
-                 else hl.missing(hl.tfloat64)),
+            maf=(
+                hl.float64(ht_part.maf)
+                if "maf" in row_fields
+                else hl.missing(hl.tfloat64)
+            ),
             tissue=tname,
             gene_symbol=hl.missing(hl.tstr),
         )
         tables.append(ht_part)
 
     if not tables:
-        raise FileNotFoundError(
-            f"No eQTL parquet files matched (tissue={tissue})"
-        )
+        raise FileNotFoundError(f"No eQTL parquet files matched (tissue={tissue})")
     return tables[0].union(*tables[1:]) if len(tables) > 1 else tables[0]
 
 
@@ -1598,7 +1568,8 @@ def _import_eqtl_gtex_tsv(input_path, tissue):
             continue
         logger.info("Importing eQTL TSV: %s (tissue: %s)", fp, tname)
         ht_part = hl.import_table(
-            fp, force=True,
+            fp,
+            force=True,
             types={
                 "slope": hl.tfloat64,
                 "slope_se": hl.tfloat64,
@@ -1613,17 +1584,14 @@ def _import_eqtl_gtex_tsv(input_path, tissue):
             beta=ht_part.slope,
             se=ht_part.slope_se,
             p_value=ht_part.pval_nominal,
-            maf=(ht_part.maf if "maf" in row_fields
-                 else hl.missing(hl.tfloat64)),
+            maf=(ht_part.maf if "maf" in row_fields else hl.missing(hl.tfloat64)),
             tissue=tname,
             gene_symbol=hl.missing(hl.tstr),
         )
         tables.append(ht_part)
 
     if not tables:
-        raise FileNotFoundError(
-            f"No eQTL TSV files matched (tissue={tissue})"
-        )
+        raise FileNotFoundError(f"No eQTL TSV files matched (tissue={tissue})")
     return tables[0].union(*tables[1:]) if len(tables) > 1 else tables[0]
 
 
@@ -1631,7 +1599,8 @@ def _import_eqtl_eqtlgen(input_path, reference_genome):
     """Import eQTLGen cis-eQTL summary statistics."""
     logger.info("Importing eQTLGen: %s", input_path)
     ht = hl.import_table(
-        input_path, force=True,
+        input_path,
+        force=True,
         types={"Pvalue": hl.tfloat64, "Zscore": hl.tfloat64},
     )
     # Construct a GTEx-format variant_id so the shared parser can handle it.
@@ -1645,7 +1614,7 @@ def _import_eqtl_eqtlgen(input_path, reference_genome):
             [contig, ht.SNPPos, ht.OtherAllele, ht.AssessedAllele, "b37"],
             "_",
         ),
-        beta=hl.missing(hl.tfloat64),   # eQTLGen provides Z-score, not beta
+        beta=hl.missing(hl.tfloat64),  # eQTLGen provides Z-score, not beta
         se=hl.missing(hl.tfloat64),
         p_value=ht.Pvalue,
         maf=hl.missing(hl.tfloat64),
@@ -1706,14 +1675,11 @@ def create_eqtl_tb(
     from hvantk.qtlcascade.constants import EQTL_SOURCES
 
     if source not in EQTL_SOURCES:
-        raise ValueError(
-            f"Unknown eQTL source: {source!r}. Supported: {EQTL_SOURCES}"
-        )
+        raise ValueError(f"Unknown eQTL source: {source!r}. Supported: {EQTL_SOURCES}")
 
     def import_func():
         if source == "gtex_v11":
-            return _import_eqtl_gtex_parquet(input_path, tissue,
-                                              reference_genome)
+            return _import_eqtl_gtex_parquet(input_path, tissue, reference_genome)
         if source == "gtex_v8":
             return _import_eqtl_gtex_tsv(input_path, tissue)
         return _import_eqtl_eqtlgen(input_path, reference_genome)
@@ -1774,16 +1740,14 @@ def _import_pqtl_gtex_fang(input_path, tissue):
             gene_symbol=ht_part.gene_name,
             variant_id=ht_part.SNP,
             beta=ht_part.BETA,
-            stat=ht_part.STAT,           # kept for SE derivation in transform
+            stat=ht_part.STAT,  # kept for SE derivation in transform
             p_value=ht_part.P,
             tissue=tname,
         )
         tables.append(ht_part)
 
     if not tables:
-        raise FileNotFoundError(
-            f"No pQTL allpairs files matched (tissue={tissue})"
-        )
+        raise FileNotFoundError(f"No pQTL allpairs files matched (tissue={tissue})")
     return tables[0].union(*tables[1:]) if len(tables) > 1 else tables[0]
 
 
@@ -1834,9 +1798,7 @@ def create_pqtl_tb(
     from hvantk.qtlcascade.constants import PQTL_SOURCES
 
     if source not in PQTL_SOURCES:
-        raise ValueError(
-            f"Unknown pQTL source: {source!r}. Supported: {PQTL_SOURCES}"
-        )
+        raise ValueError(f"Unknown pQTL source: {source!r}. Supported: {PQTL_SOURCES}")
     if source != "gtex_fang":
         raise NotImplementedError(
             f"pQTL source {source!r} is not yet implemented. "
@@ -1856,17 +1818,16 @@ def create_pqtl_tb(
         # Gene-symbol → Ensembl-ID mapping (prototype lesson #2:
         # use Hail Table join, NOT hl.literal, to avoid IR poisoning).
         if gene_map_ht:
-            logger.info("Mapping gene symbols → Ensembl IDs via %s",
-                        gene_map_ht)
+            logger.info("Mapping gene symbols → Ensembl IDs via %s", gene_map_ht)
             gm = hl.read_table(gene_map_ht)
-            rev = (gm.key_by()
-                   .select("gene_id", "gene_name")
-                   .key_by("gene_name")
-                   .distinct())
+            rev = (
+                gm.key_by()
+                .select("gene_id", "gene_name")
+                .key_by("gene_name")
+                .distinct()
+            )
             ht = ht.annotate(
-                gene_id=hl.or_else(
-                    rev[ht.gene_symbol].gene_id, ht.gene_symbol
-                ),
+                gene_id=hl.or_else(rev[ht.gene_symbol].gene_id, ht.gene_symbol),
             )
         else:
             ht = ht.annotate(gene_id=ht.gene_symbol)

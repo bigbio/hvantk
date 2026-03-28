@@ -272,8 +272,7 @@ class GenCCStreamer(GeneDiseaseValidityStreamer):
         genes = set(filtered.aggregate(hl.agg.collect_as_set(filtered.gene_symbol)))
 
         logger.info(
-            f"Found {len(genes)} consensus genes "
-            f"(min_submitters={min_submitters})"
+            f"Found {len(genes)} consensus genes " f"(min_submitters={min_submitters})"
         )
         return genes
 

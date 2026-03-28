@@ -110,11 +110,11 @@ def build_cascade(
 
     ht = ht.annotate(
         cascade_class=hl.case()
-            .when(same_dir, "eqtl_mediated")
-            .when(has_eqtl & has_pqtl, "discordant")
-            .when(has_eqtl, "eqtl_only")
-            .when(has_pqtl, "pqtl_only")
-            .or_missing(),
+        .when(same_dir, "eqtl_mediated")
+        .when(has_eqtl & has_pqtl, "discordant")
+        .when(has_eqtl, "eqtl_only")
+        .when(has_pqtl, "pqtl_only")
+        .or_missing(),
         attenuation_ratio=hl.if_else(
             same_dir,
             1.0 - hl.abs(ht.pqtl_beta) / hl.abs(ht.eqtl_beta),

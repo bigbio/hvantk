@@ -35,24 +35,32 @@ def qtlcascade_group(ctx):
 
 
 @qtlcascade_group.command("cascade")
-@click.option("--eqtl-ht", required=True, type=str,
-              help="Path to eQTL Hail Table.")
-@click.option("--pqtl-ht", required=True, type=str,
-              help="Path to pQTL Hail Table.")
-@click.option("-o", "--output", required=True, type=str,
-              help="Output cascade Hail Table path.")
-@click.option("--tissue", type=str, default=None,
-              help="Filter to this tissue.")
-@click.option("--eqtl-p", type=float, default=5e-8, show_default=True,
-              help="eQTL p-value threshold.")
-@click.option("--pqtl-p", type=float, default=5e-8, show_default=True,
-              help="pQTL p-value threshold.")
+@click.option("--eqtl-ht", required=True, type=str, help="Path to eQTL Hail Table.")
+@click.option("--pqtl-ht", required=True, type=str, help="Path to pQTL Hail Table.")
+@click.option(
+    "-o", "--output", required=True, type=str, help="Output cascade Hail Table path."
+)
+@click.option("--tissue", type=str, default=None, help="Filter to this tissue.")
+@click.option(
+    "--eqtl-p",
+    type=float,
+    default=5e-8,
+    show_default=True,
+    help="eQTL p-value threshold.",
+)
+@click.option(
+    "--pqtl-p",
+    type=float,
+    default=5e-8,
+    show_default=True,
+    help="pQTL p-value threshold.",
+)
 @click.option("--overwrite", is_flag=True, help="Overwrite existing output.")
 @click.pass_context
-def cascade_cmd(ctx, eqtl_ht, pqtl_ht, output, tissue,
-                eqtl_p, pqtl_p, overwrite):
+def cascade_cmd(ctx, eqtl_ht, pqtl_ht, output, tissue, eqtl_p, pqtl_p, overwrite):
     """Build the QTL cascade (eQTL ⊕ pQTL outer join + classification)."""
     from hvantk.core.hail_context import init_hail
+
     init_hail()
 
     from hvantk.qtlcascade.cascade import build_cascade
@@ -76,25 +84,40 @@ def cascade_cmd(ctx, eqtl_ht, pqtl_ht, output, tissue,
 
 
 @qtlcascade_group.command("coloc")
-@click.option("--eqtl-allpairs", required=True, type=str,
-              help="Path to allpairs eQTL Hail Table.")
-@click.option("--pqtl-allpairs", required=True, type=str,
-              help="Path to allpairs pQTL Hail Table.")
-@click.option("--cascade-genes", required=True, type=str,
-              help="File with one gene_id per line (cascade genes).")
-@click.option("--tissue", type=str, default=None,
-              help="Filter allpairs to this tissue.")
-@click.option("--window-kb", type=int, default=500, show_default=True,
-              help="Regional window (±kb) for coloc.")
-@click.option("-o", "--output", required=True, type=str,
-              help="Output TSV path for coloc results.")
+@click.option(
+    "--eqtl-allpairs", required=True, type=str, help="Path to allpairs eQTL Hail Table."
+)
+@click.option(
+    "--pqtl-allpairs", required=True, type=str, help="Path to allpairs pQTL Hail Table."
+)
+@click.option(
+    "--cascade-genes",
+    required=True,
+    type=str,
+    help="File with one gene_id per line (cascade genes).",
+)
+@click.option(
+    "--tissue", type=str, default=None, help="Filter allpairs to this tissue."
+)
+@click.option(
+    "--window-kb",
+    type=int,
+    default=500,
+    show_default=True,
+    help="Regional window (±kb) for coloc.",
+)
+@click.option(
+    "-o", "--output", required=True, type=str, help="Output TSV path for coloc results."
+)
 @click.pass_context
-def coloc_cmd(ctx, eqtl_allpairs, pqtl_allpairs, cascade_genes,
-              tissue, window_kb, output):
+def coloc_cmd(
+    ctx, eqtl_allpairs, pqtl_allpairs, cascade_genes, tissue, window_kb, output
+):
     """Run colocalization ABF on cascade genes."""
     from pathlib import Path
 
     from hvantk.core.hail_context import init_hail
+
     init_hail()
 
     from hvantk.qtlcascade.coloc import run_coloc_per_gene
@@ -122,37 +145,76 @@ def coloc_cmd(ctx, eqtl_allpairs, pqtl_allpairs, cascade_genes,
 
 
 @qtlcascade_group.command("run")
-@click.option("--eqtl-ht", required=True, type=str,
-              help="Path to eQTL Hail Table.")
-@click.option("--pqtl-ht", required=True, type=str,
-              help="Path to pQTL Hail Table.")
-@click.option("--eqtl-allpairs", type=str, default="",
-              help="Path to allpairs eQTL HT (for coloc).")
-@click.option("--pqtl-allpairs", type=str, default="",
-              help="Path to allpairs pQTL HT (for coloc).")
-@click.option("--constraint-ht", type=str, default="",
-              help="Path to gnomAD constraint HT (LOEUF overlay).")
-@click.option("--disease-genes-ht", type=str, default="",
-              help="Path to disease-gene HT.")
-@click.option("--tissues", type=str, default="",
-              help="Comma-separated tissue list for multi-tissue run.")
-@click.option("-o", "--output-dir", required=True, type=str,
-              help="Output directory.")
-@click.option("--eqtl-p", type=float, default=5e-8, show_default=True,
-              help="eQTL p-value threshold.")
-@click.option("--pqtl-p", type=float, default=5e-8, show_default=True,
-              help="pQTL p-value threshold.")
-@click.option("--window-kb", type=int, default=500, show_default=True,
-              help="Coloc window (±kb).")
+@click.option("--eqtl-ht", required=True, type=str, help="Path to eQTL Hail Table.")
+@click.option("--pqtl-ht", required=True, type=str, help="Path to pQTL Hail Table.")
+@click.option(
+    "--eqtl-allpairs",
+    type=str,
+    default="",
+    help="Path to allpairs eQTL HT (for coloc).",
+)
+@click.option(
+    "--pqtl-allpairs",
+    type=str,
+    default="",
+    help="Path to allpairs pQTL HT (for coloc).",
+)
+@click.option(
+    "--constraint-ht",
+    type=str,
+    default="",
+    help="Path to gnomAD constraint HT (LOEUF overlay).",
+)
+@click.option(
+    "--disease-genes-ht", type=str, default="", help="Path to disease-gene HT."
+)
+@click.option(
+    "--tissues",
+    type=str,
+    default="",
+    help="Comma-separated tissue list for multi-tissue run.",
+)
+@click.option("-o", "--output-dir", required=True, type=str, help="Output directory.")
+@click.option(
+    "--eqtl-p",
+    type=float,
+    default=5e-8,
+    show_default=True,
+    help="eQTL p-value threshold.",
+)
+@click.option(
+    "--pqtl-p",
+    type=float,
+    default=5e-8,
+    show_default=True,
+    help="pQTL p-value threshold.",
+)
+@click.option(
+    "--window-kb", type=int, default=500, show_default=True, help="Coloc window (±kb)."
+)
 @click.option("--no-plots", is_flag=True, help="Skip plot generation.")
 @click.option("--no-report", is_flag=True, help="Skip HTML report.")
 @click.option("--overwrite", is_flag=True, help="Overwrite existing outputs.")
 @click.option("--dry-run", is_flag=True, help="Show plan without executing.")
 @click.pass_context
-def run_cmd(ctx, eqtl_ht, pqtl_ht, eqtl_allpairs, pqtl_allpairs,
-            constraint_ht, disease_genes_ht, tissues, output_dir,
-            eqtl_p, pqtl_p, window_kb, no_plots, no_report,
-            overwrite, dry_run):
+def run_cmd(
+    ctx,
+    eqtl_ht,
+    pqtl_ht,
+    eqtl_allpairs,
+    pqtl_allpairs,
+    constraint_ht,
+    disease_genes_ht,
+    tissues,
+    output_dir,
+    eqtl_p,
+    pqtl_p,
+    window_kb,
+    no_plots,
+    no_report,
+    overwrite,
+    dry_run,
+):
     """Run the full QTL cascade pipeline."""
     from hvantk.qtlcascade.pipeline import CascadeConfig, CascadePipeline
 
@@ -199,8 +261,7 @@ def run_cmd(ctx, eqtl_ht, pqtl_ht, eqtl_allpairs, pqtl_allpairs,
             if res.coloc_df is not None and not res.coloc_df.empty:
                 n_pass = (res.coloc_df["H4"] > 0.8).sum()
             click.echo(
-                f"  {tissue}: {res.n_cascade_genes} genes, "
-                f"{n_pass} colocalised"
+                f"  {tissue}: {res.n_cascade_genes} genes, " f"{n_pass} colocalised"
             )
     else:
         result = pipeline.run()
@@ -216,16 +277,15 @@ def run_cmd(ctx, eqtl_ht, pqtl_ht, eqtl_allpairs, pqtl_allpairs,
 
 
 @qtlcascade_group.command("report")
-@click.option("--gene-summary", type=str, default=None,
-              help="Gene summary TSV.")
-@click.option("--coloc-results", type=str, default=None,
-              help="Coloc results TSV.")
-@click.option("--plots-dir", type=str, default=None,
-              help="Directory containing plot PNGs.")
-@click.option("-o", "--output", required=True, type=str,
-              help="Output HTML path.")
-@click.option("--title", type=str, default="QTL Cascade Analysis Report",
-              help="Report title.")
+@click.option("--gene-summary", type=str, default=None, help="Gene summary TSV.")
+@click.option("--coloc-results", type=str, default=None, help="Coloc results TSV.")
+@click.option(
+    "--plots-dir", type=str, default=None, help="Directory containing plot PNGs."
+)
+@click.option("-o", "--output", required=True, type=str, help="Output HTML path.")
+@click.option(
+    "--title", type=str, default="QTL Cascade Analysis Report", help="Report title."
+)
 @click.pass_context
 def report_cmd(ctx, gene_summary, coloc_results, plots_dir, output, title):
     """Generate an HTML report from existing cascade results."""

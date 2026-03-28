@@ -602,8 +602,12 @@ def mktable_ptm_sites(
     show_default=True,
     help="eQTL data source format",
 )
-@click.option("--tissue", type=str, default=None,
-              help="Restrict to this tissue (or override inferred name)")
+@click.option(
+    "--tissue",
+    type=str,
+    default=None,
+    help="Restrict to this tissue (or override inferred name)",
+)
 @click.option(
     "--p-threshold",
     type=float,
@@ -655,13 +659,20 @@ def mktable_eqtl(
     show_default=True,
     help="pQTL data source format",
 )
-@click.option("--tissue", type=str, default=None,
-              help="Restrict to this tissue")
-@click.option("--gene-map-ht", type=str, default=None,
-              help="Gene mapping HT (gene_id key, gene_name field) for "
-                   "symbol → Ensembl ID conversion")
-@click.option("--p-threshold", type=float, default=None,
-              help="P-value threshold (omit to keep all pairs)")
+@click.option("--tissue", type=str, default=None, help="Restrict to this tissue")
+@click.option(
+    "--gene-map-ht",
+    type=str,
+    default=None,
+    help="Gene mapping HT (gene_id key, gene_name field) for "
+    "symbol → Ensembl ID conversion",
+)
+@click.option(
+    "--p-threshold",
+    type=float,
+    default=None,
+    help="P-value threshold (omit to keep all pairs)",
+)
 def mktable_pqtl(
     raw_input: str,
     output_ht: str,

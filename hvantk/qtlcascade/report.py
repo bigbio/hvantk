@@ -54,9 +54,13 @@ def generate_report(
     logger.info("Generating QTL cascade report at %s", output_path)
 
     sections = []
-    sections.append(_overview_section(
-        class_counts, tissues, cascade_summary_df,
-    ))
+    sections.append(
+        _overview_section(
+            class_counts,
+            tissues,
+            cascade_summary_df,
+        )
+    )
 
     if gene_summary_df is not None and not gene_summary_df.empty:
         sections.append(_gene_table_section(gene_summary_df))
@@ -89,11 +93,14 @@ def _overview_section(class_counts, tissues, cascade_summary_df):
         for cls, cnt in class_counts.items():
             pct = cnt / total * 100 if total else 0
             rows.append(
-                f"<tr><td>&nbsp;&nbsp;{cls}</td>"
-                f"<td>{cnt:,} ({pct:.1f}%)</td></tr>"
+                f"<tr><td>&nbsp;&nbsp;{cls}</td>" f"<td>{cnt:,} ({pct:.1f}%)</td></tr>"
             )
     if cascade_summary_df is not None:
-        n_genes = cascade_summary_df["gene_id"].nunique() if "gene_id" in cascade_summary_df.columns else "?"
+        n_genes = (
+            cascade_summary_df["gene_id"].nunique()
+            if "gene_id" in cascade_summary_df.columns
+            else "?"
+        )
         rows.append(f"<tr><td>Unique genes</td><td>{n_genes}</td></tr>")
 
     table = f"<table class='summary'>{''.join(rows)}</table>" if rows else ""
@@ -101,13 +108,28 @@ def _overview_section(class_counts, tissues, cascade_summary_df):
 
 
 def _gene_table_section(df, top_n=50):
-    cols_display = [c for c in [
-        "gene_id", "gene_symbol", "n_concordant", "n_eqtl_variants",
-        "n_pqtl_variants", "best_eqtl_pvalue", "best_pqtl_pvalue",
-        "oe_lof_upper", "has_complete_cascade", "coloc_max_h4",
-    ] if c in df.columns]
+    cols_display = [
+        c
+        for c in [
+            "gene_id",
+            "gene_symbol",
+            "n_concordant",
+            "n_eqtl_variants",
+            "n_pqtl_variants",
+            "best_eqtl_pvalue",
+            "best_pqtl_pvalue",
+            "oe_lof_upper",
+            "has_complete_cascade",
+            "coloc_max_h4",
+        ]
+        if c in df.columns
+    ]
 
-    display = df.nlargest(top_n, "n_concordant") if "n_concordant" in df.columns else df.head(top_n)
+    display = (
+        df.nlargest(top_n, "n_concordant")
+        if "n_concordant" in df.columns
+        else df.head(top_n)
+    )
     display = display[cols_display]
 
     header = "".join(f"<th>{c}</th>" for c in display.columns)
@@ -158,9 +180,9 @@ def _plots_section(plot_paths):
         b64 = __import__("base64").b64encode(data).decode("utf-8")
         imgs.append(
             f'<div class="plot">'
-            f'<h3>{name}</h3>'
+            f"<h3>{name}</h3>"
             f'<img src="data:image/png;base64,{b64}" alt="{name}"/>'
-            f'</div>'
+            f"</div>"
         )
     return f"<h2>Plots</h2>\n{''.join(imgs)}" if imgs else ""
 

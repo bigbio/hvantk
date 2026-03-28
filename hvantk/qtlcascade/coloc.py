@@ -109,8 +109,13 @@ def coloc_abf(
     n = len(eqtl_beta)
     if n == 0:
         return {
-            "H0": 1.0, "H1": 0.0, "H2": 0.0, "H3": 0.0, "H4": 0.0,
-            "n_variants": 0, "lead_snp_h4_idx": -1,
+            "H0": 1.0,
+            "H1": 0.0,
+            "H2": 0.0,
+            "H3": 0.0,
+            "H4": 0.0,
+            "n_variants": 0,
+            "lead_snp_h4_idx": -1,
         }
 
     log_abf1 = compute_log_abf(eqtl_beta, eqtl_se, W)
@@ -228,8 +233,13 @@ def run_coloc_per_gene(
         pos=joined.locus.position,
     )
     joined = joined.select(
-        "gene_id", "pos", "eqtl_beta", "eqtl_se", "eqtl_p",
-        "pqtl_beta", "pqtl_se",
+        "gene_id",
+        "pos",
+        "eqtl_beta",
+        "eqtl_se",
+        "eqtl_p",
+        "pqtl_beta",
+        "pqtl_se",
     )
 
     logger.info(
@@ -258,7 +268,10 @@ def run_coloc_per_gene(
             eqtl_se=region["eqtl_se"].values,
             pqtl_beta=region["pqtl_beta"].values,
             pqtl_se=region["pqtl_se"].values,
-            p1=p1, p2=p2, p12=p12, W=W,
+            p1=p1,
+            p2=p2,
+            p12=p12,
+            W=W,
         )
         row["gene_id"] = gene_id
         row["tissue"] = tissue or "unknown"

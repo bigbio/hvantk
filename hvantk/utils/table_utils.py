@@ -58,7 +58,8 @@ def build_rename_map(
         if nk in norm_to_actual:
             logger.warning(
                 "build_rename_map: ambiguous headers %r and %r normalize to the same key",
-                norm_to_actual[nk], f,
+                norm_to_actual[nk],
+                f,
             )
         norm_to_actual[nk] = f
 
