@@ -8,6 +8,7 @@ This directory contains end-to-end workflow examples demonstrating how to use hv
 - [PSROC (Prediction Score ROC Analysis)](#psroc-prediction-score-roc-analysis)
 - [EnrichEx (Gene Set Enrichment)](#enrichex-gene-set-enrichment)
 - [PTM (Post-Translational Modification)](#ptm-post-translational-modification)
+- [QTL Cascade (Molecular QTL Integration)](#qtl-cascade-molecular-qtl-integration)
 - [Ancestry Inference](#ancestry-inference)
 - [ClinVar Data Streaming](#clinvar-data-streaming)
 - [ClinGen Streaming](#clingen-streaming)
@@ -102,6 +103,26 @@ hvantk ptm report -o report.html --landscape-json results/landscape/landscape_su
 **Outputs:** PTM sites table (HT), landscape/population JSON summaries, plots (PNG), HTML report
 
 **Documentation:** [PTM Examples](ptm.md) | [PTM Docs](../tools/ptm.md)
+
+---
+
+### QTL Cascade (Molecular QTL Integration)
+
+Trace variant effects across molecular layers — from DNA to RNA (eQTL) to protein (pQTL) — using outer-join cascade classification and colocalization ABF analysis.
+
+**Quick start:**
+```bash
+# Build eQTL and pQTL tables
+hvantk mktable eqtl --raw-input /data/gtex_v11/signif_pairs/ --output-ht eqtl.ht --source gtex_v11 --tissue Liver
+hvantk mktable pqtl --raw-input /data/fang_pqtl/Liver_allpairs.txt.gz --output-ht pqtl.ht --source gtex_fang --gene-map-ht ensembl.ht
+
+# Run cascade pipeline
+hvantk qtlcascade run --eqtl-ht eqtl.ht --pqtl-ht pqtl.ht -o results/cascade/
+```
+
+**Outputs:** Cascade Hail Table, gene summary (HT + TSV), coloc results (TSV), plots (PNG), HTML report
+
+**Documentation:** [QTL Cascade Examples](qtlcascade.md) | [QTL Cascade Docs](../tools/qtlcascade.md)
 
 ---
 
