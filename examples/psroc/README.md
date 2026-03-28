@@ -1,29 +1,17 @@
-# PSROC (Prediction Score ROC Analysis) Example
+# PSROC Example
 
-This directory contains an end-to-end example demonstrating the PSROC pipeline for evaluating variant pathogenicity prediction scores.
+End-to-end example of the PSROC pipeline for evaluating variant pathogenicity prediction scores.
 
-## Overview
-
-PSROC analyzes prediction scores (CADD, REVEL, MetaLR, etc.) using ClinVar labels to generate ROC curves and performance metrics. This example uses synthetic test data to demonstrate the complete workflow.
+For full documentation, see the [PSROC docs](https://bigbio.github.io/hvantk/tools/psroc/) and [PSROC examples guide](https://bigbio.github.io/hvantk/examples/psroc/).
 
 ## Contents
 
-**`run_psroc_example.py`** - Complete PSROC workflow example
-
-Demonstrates:
-- Building Hail Tables from TSV data
-- Configuring PSROC pipeline
-- Running ROC analysis across multiple scores
-- Generating visualizations and metrics
-- Handling missing data and score filtering
+- **`run_psroc_example.py`** - Complete workflow using synthetic test data
 
 ## Quick Start
 
 ```bash
-# Activate environment
-eval "$(poetry env activate)"
-
-# Run the example (uses synthetic test data)
+# Run the example (uses synthetic test data from hvantk/tests/testdata/psroc/)
 python examples/psroc/run_psroc_example.py
 
 # View results
@@ -32,167 +20,21 @@ ls examples/psroc/results/
 
 ## Test Data
 
-The example uses synthetic data from `hvantk/tests/testdata/psroc/`:
+Uses synthetic data from `hvantk/tests/testdata/psroc/`:
 
-| File | Description | Size |
-|------|-------------|------|
-| `synthetic_clinvar.tsv` | ClinVar-like variant labels | 100 variants |
-| `synthetic_dbnsfp.tsv` | Prediction scores (CADD, REVEL, MetaLR, VEST4) | 100 variants |
-| `test_genes.txt` | Gene list (BRCA1, BRCA2, TP53) | 3 genes |
-
-### Dataset Characteristics
-
-- **50 pathogenic variants** (Pathogenic/Likely_pathogenic)
-- **40 benign variants** (Benign/Likely_benign)
-- **10 VUS variants** (excluded from analysis)
-- **3 genes**: BRCA1 (chr17), BRCA2 (chr13), TP53 (chr17)
-
-### Prediction Scores
-
-| Score | Expected AUC | Missingness | Status |
-|-------|--------------|-------------|--------|
-| REVEL_score | ~0.95 | ~2% | Included |
-| CADD_phred | ~0.90 | ~5% | Included |
-| MetaLR_score | ~0.75 | ~10% | Included |
-| VEST4_score | N/A | ~40% | Excluded (>30%) |
+- 50 pathogenic + 40 benign + 10 VUS variants across BRCA1, BRCA2, TP53
+- 4 prediction scores: REVEL (~0.95 AUC), CADD (~0.90), MetaLR (~0.75), VEST4 (excluded, >30% missing)
 
 ## Expected Outputs
 
-The example generates outputs in `results/`:
-
-### Plots (`results/plots/`)
-
-1. **`psroc_example_roc_curves.png`** - ROC curves for all included scores
-2. **`psroc_example_auc_comparison.png`** - AUC comparison bar chart
-3. **`psroc_example_missingness.png`** - Missingness rates by score
-4. **`psroc_example_dashboard.png`** - Combined dashboard view
-
-### Metrics (`results/`)
-
-- **`psroc_example_metrics.json`** - AUC values and optimal thresholds
-- **`psroc_example_missingness.json`** - Missing data rates per score
-- **`psroc_example_annotated.tsv`** - Annotated variants with scores and labels
-
-## Understanding the Results
-
-### ROC Curves
-
-- **Higher AUC = Better discriminator** (1.0 = perfect, 0.5 = random)
-- Curves closer to top-left corner indicate better performance
-- Optimal thresholds marked on curves (Youden's index by default)
-
-### Missingness Filtering
-
-Scores with >30% missing values are automatically excluded:
+```text
+results/
+├── plots/
+│   ├── psroc_example_roc_curves.png
+│   ├── psroc_example_auc_comparison.png
+│   ├── psroc_example_missingness.png
+│   └── psroc_example_dashboard.png
+├── psroc_example_metrics.json
+├── psroc_example_missingness.json
+└── psroc_example_annotated.tsv
 ```
-VEST4_score: 42.2% missing → EXCLUDED
-REVEL_score: 2.0% missing → INCLUDED
-```
-
-### Metrics JSON
-
-```json
-{
-  "REVEL_score": {
-    "score_name": "REVEL_score",
-    "auc": 0.998,
-    "optimal_threshold": 0.7337,
-    "sensitivity_at_optimal": 0.98,
-    "specificity_at_optimal": 0.95,
-    "n_variants_used": 5000,
-    "missingness": {
-      "score_name": "REVEL_score",
-      "n_total": 5100,
-      "n_present": 5000,
-      "n_missing": 100,
-      "missingness_rate": 0.02,
-      "included_in_analysis": true
-    }
-  },
-  ...
-}
-```
-
-## Customization
-
-### Use Your Own Data
-
-Modify `run_psroc_example.py`:
-
-```python
-# Change input paths
-clinvar_tsv = "path/to/your/clinvar.tsv"
-dbnsfp_tsv = "path/to/your/dbnsfp.tsv"
-
-# Configure pipeline
-config = PSROCConfig(
-    genes=["YOUR_GENE1", "YOUR_GENE2"],  # Or use genes_file
-    scores=["CADD_phred", "REVEL_score", "YOUR_SCORE"],
-    max_missingness=0.3,  # Adjust threshold
-    threshold_method="youden",  # Or "closest_to_corner", "f1"
-)
-```
-
-### CLI Usage
-
-You can also run PSROC via command line:
-
-```bash
-hvantk psroc \
-  --genes-file test_genes.txt \
-  --clinvar-ht clinvar.ht \
-  --dbnsfp-ht dbnsfp.ht \
-  --scores "CADD_phred,REVEL_score,MetaLR_score" \
-  --output-dir results/ \
-  --max-missingness 0.3 \
-  --threshold-method youden
-```
-
-*Note: Plots are generated by default. Use `--no-plots` to skip visualization.*
-
-## Pipeline Stages
-
-The PSROC pipeline runs through 7 stages:
-
-1. **Load Tables** - Load ClinVar and dbNSFP Hail Tables
-2. **Filter ClinVar** - Filter by genes/variants and review status
-3. **Assign Labels** - Convert CLNSIG to binary labels (1=pathogenic, 0=benign)
-4. **Annotate Scores** - Join prediction scores from dbNSFP
-5. **Compute Missingness** - Calculate missing data rates per score
-6. **Compute ROC** - Generate ROC curves and AUC metrics
-7. **Generate Outputs** - Create plots, metrics JSON, and TSV exports
-
-See the [workflow diagram](../../docs_site/tools/psroc.md#workflow) for a visual representation.
-
-## Documentation
-
-- [PSROC Documentation](../../docs_site/tools/psroc.md)
-- [Usage Guide](../../docs_site/guide/usage.md)
-- [Architecture](../../docs_site/architecture.md)
-
-## Troubleshooting
-
-### No variants after filtering
-
-Check that:
-- Gene names match those in ClinVar (use `--genes-file`)
-- Review status threshold is appropriate (`--min-stars`)
-- Input tables contain overlapping variants
-
-### Scores excluded due to missingness
-
-- Adjust `--max-missingness` threshold (default: 0.3)
-- Check data quality in dbNSFP table
-- Some scores have high missingness by design
-
-### Plots not generating
-
-Ensure:
-- Plots are enabled (default behavior; remove `--no-plots` flag if present)
-- `generate_plots=True` in config (Python API)
-- Matplotlib backend is properly configured
-- Output directory is writable
-
-## Contributing
-
-Found an issue or have an improvement? Please submit a pull request or open an issue on GitHub.
