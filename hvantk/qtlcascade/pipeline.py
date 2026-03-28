@@ -459,10 +459,16 @@ class CascadePipeline:
             try:
                 gene_df = hl.read_table(result.gene_summary_ht_path).to_pandas()
             except Exception:
-                pass
+                logger.warning(
+                    "Failed to load gene summary for report: %s",
+                    result.gene_summary_ht_path,
+                    exc_info=True,
+                )
 
+        # Scope to plots generated for this tissue only
+        safe = _sanitize(result.tissue)
         plot_paths = {}
-        for p in self._plots_dir.glob("*.png"):
+        for p in self._plots_dir.glob(f"{safe}_*.png"):
             plot_paths[p.stem] = str(p)
 
         generate_report(
@@ -488,7 +494,11 @@ class CascadePipeline:
                     df["tissue"] = tissue
                     gene_dfs.append(df)
                 except Exception:
-                    pass
+                    logger.warning(
+                        "Failed to load gene summary for collection report: %s",
+                        res.gene_summary_ht_path,
+                        exc_info=True,
+                    )
         gene_df = pd.concat(gene_dfs, ignore_index=True) if gene_dfs else None
 
         # Combine coloc
