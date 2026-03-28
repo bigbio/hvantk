@@ -81,6 +81,22 @@ def plot_cascade_classes(
 
     classes = [c for c in CASCADE_CLASSES if c in class_counts]
     counts = [class_counts[c] for c in classes]
+
+    if not counts:
+        fig, ax = plt.subplots(figsize=figsize)
+        ax.text(
+            0.5,
+            0.5,
+            "No data",
+            transform=ax.transAxes,
+            ha="center",
+            va="center",
+            fontsize=14,
+        )
+        ax.set_title(title, fontsize=14, fontweight="bold")
+        _save_figure(fig, output_path)
+        return fig
+
     colors = [CASCADE_CLASS_COLORS[c] for c in classes]
     labels = [CASCADE_CLASS_LABELS[c] for c in classes]
 
@@ -135,6 +151,7 @@ def plot_attenuation(
             va="center",
             fontsize=14,
         )
+        _save_figure(fig, output_path)
         return fig
 
     fig, ax = plt.subplots(figsize=figsize)
@@ -240,27 +257,30 @@ def plot_coloc_posteriors(
 
 def plot_cross_tissue_heatmap(
     gene_tissue_df: pd.DataFrame,
+    index_col: str = "gene_id",
     value_col: str = "n_concordant",
     output_path: Optional[str] = None,
     title: str = "Cascade Evidence Across Tissues",
     figsize: tuple = (10, 8),
     top_n: int = 30,
 ) -> "plt.Figure":
-    """Heatmap of genes (rows) × tissues (columns).
+    """Heatmap of rows (genes or cascade classes) × tissues (columns).
 
     Parameters
     ----------
     gene_tissue_df : pd.DataFrame
-        Long-format with columns ``gene_id``, ``tissue``, and *value_col*.
+        Long-format with columns *index_col*, ``tissue``, and *value_col*.
+    index_col : str
+        Column to use as row index (e.g. ``gene_id`` or ``cascade_class``).
     value_col : str
         Column to display in the heatmap cells.
     top_n : int
-        Show only the top-N genes by total across tissues.
+        Show only the top-N rows by total across tissues.
     """
     _require_matplotlib()
 
     pivot = gene_tissue_df.pivot_table(
-        index="gene_id",
+        index=index_col,
         columns="tissue",
         values=value_col,
         aggfunc="sum",
