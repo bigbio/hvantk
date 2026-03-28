@@ -5,6 +5,7 @@ Produces a self-contained static HTML file with embedded CSS, summary
 statistics, gene tables, and base64-encoded plots.
 """
 
+import html as html_mod
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -86,14 +87,17 @@ def generate_report(
 def _overview_section(class_counts, tissues, cascade_summary_df):
     rows = []
     if tissues:
-        rows.append(f"<tr><td>Tissues</td><td>{', '.join(tissues)}</td></tr>")
+        safe_tissues = html_mod.escape(", ".join(tissues))
+        rows.append(f"<tr><td>Tissues</td><td>{safe_tissues}</td></tr>")
     if class_counts:
         total = sum(class_counts.values())
         rows.append(f"<tr><td>Total variant-gene pairs</td><td>{total:,}</td></tr>")
         for cls, cnt in class_counts.items():
             pct = cnt / total * 100 if total else 0
+            safe_cls = html_mod.escape(str(cls))
             rows.append(
-                f"<tr><td>&nbsp;&nbsp;{cls}</td>" f"<td>{cnt:,} ({pct:.1f}%)</td></tr>"
+                f"<tr><td>&nbsp;&nbsp;{safe_cls}</td>"
+                f"<td>{cnt:,} ({pct:.1f}%)</td></tr>"
             )
     if cascade_summary_df is not None:
         n_genes = (
@@ -132,7 +136,7 @@ def _gene_table_section(df, top_n=50):
     )
     display = display[cols_display]
 
-    header = "".join(f"<th>{c}</th>" for c in display.columns)
+    header = "".join(f"<th>{html_mod.escape(str(c))}</th>" for c in display.columns)
     body_rows = []
     for _, row in display.iterrows():
         cells = []
@@ -141,7 +145,7 @@ def _gene_table_section(df, top_n=50):
             if isinstance(val, float):
                 cells.append(f"<td>{val:.4g}</td>")
             else:
-                cells.append(f"<td>{val}</td>")
+                cells.append(f"<td>{html_mod.escape(str(val))}</td>")
         body_rows.append(f"<tr>{''.join(cells)}</tr>")
     body = "".join(body_rows)
 
@@ -178,10 +182,11 @@ def _plots_section(plot_paths):
             continue
         data = p.read_bytes()
         b64 = __import__("base64").b64encode(data).decode("utf-8")
+        safe_name = html_mod.escape(name)
         imgs.append(
             f'<div class="plot">'
-            f"<h3>{name}</h3>"
-            f'<img src="data:image/png;base64,{b64}" alt="{name}"/>'
+            f"<h3>{safe_name}</h3>"
+            f'<img src="data:image/png;base64,{b64}" alt="{safe_name}"/>'
             f"</div>"
         )
     return f"<h2>Plots</h2>\n{''.join(imgs)}" if imgs else ""
@@ -210,14 +215,16 @@ def _methods_section():
 
 def _render_html(title, description, sections):
     date_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    desc_html = f"<p class='desc'>{description}</p>" if description else ""
+    safe_title = html_mod.escape(title) if title else ""
+    safe_desc = html_mod.escape(description) if description else ""
+    desc_html = f"<p class='desc'>{safe_desc}</p>" if description else ""
     body = "\n".join(sections)
 
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<title>{title}</title>
+<title>{safe_title}</title>
 <style>
 body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
         Roboto, Helvetica, sans-serif; max-width: 1100px;
@@ -237,7 +244,7 @@ table.summary td:first-child {{ font-weight: bold; padding-right: 2em; }}
 </style>
 </head>
 <body>
-<h1>{title}</h1>
+<h1>{safe_title}</h1>
 {desc_html}
 {body}
 <div class="footer">
