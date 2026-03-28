@@ -1480,10 +1480,21 @@ def _parse_gtex_variant_id(
 
     Format: ``chr1_1000050_C_T_b38`` — the build suffix is discarded.
     Used by both eQTL and pQTL builders (GTEx/Fang share the same ID format).
+
+    Contig names are normalised to match the reference genome:
+    GRCh38 contigs use ``chr`` prefix, GRCh37 contigs omit it.
     """
     parts = ht[variant_id_field].split("_")
+    raw_contig = parts[0]
+    # Normalise contig for the target reference genome
+    bare = hl.if_else(raw_contig.startswith("chr"), raw_contig[3:], raw_contig)
+    contig = hl.if_else(
+        hl.literal(reference_genome).startswith("GRCh38"),
+        "chr" + bare,
+        bare,
+    )
     return ht.annotate(
-        locus=hl.locus(parts[0], hl.int32(parts[1]), reference_genome=reference_genome),
+        locus=hl.locus(contig, hl.int32(parts[1]), reference_genome=reference_genome),
         alleles=hl.array([parts[2], parts[3]]),
     )
 
@@ -1666,7 +1677,7 @@ def create_eqtl_tb(
     source : str
         Data-source identifier.
     tissue : str, optional
-        Restrict to this tissue (or override inferred tissue name).
+        Restrict import to files matching this tissue name.
     p_threshold : float
         P-value cutoff.  Set to ``0`` to keep all pairs (for coloc).
     overwrite, export_tsv, fields
@@ -1830,6 +1841,11 @@ def create_pqtl_tb(
                 gene_id=hl.or_else(rev[ht.gene_symbol].gene_id, ht.gene_symbol),
             )
         else:
+            logger.warning(
+                "No gene_map_ht provided — using gene symbols as gene_id. "
+                "pQTL table will NOT join correctly with eQTL tables in "
+                "cascade analysis (eQTL uses Ensembl IDs)."
+            )
             ht = ht.annotate(gene_id=ht.gene_symbol)
 
         if p_threshold is not None and p_threshold > 0:
