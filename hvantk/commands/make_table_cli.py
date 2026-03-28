@@ -606,7 +606,7 @@ def mktable_ptm_sites(
     "--tissue",
     type=str,
     default=None,
-    help="Restrict to this tissue (or override inferred name)",
+    help="Restrict import to files matching this tissue name",
 )
 @click.option(
     "--p-threshold",
