@@ -120,7 +120,7 @@ hvantk mktable pqtl --raw-input /data/fang_pqtl/Liver_allpairs.txt.gz --output-h
 hvantk qtlcascade run --eqtl-ht eqtl.ht --pqtl-ht pqtl.ht -o results/cascade/
 ```
 
-**Outputs:** Cascade Hail Table, gene summary (HT + TSV), coloc results (TSV), plots (PNG), HTML report
+**Outputs:** Cascade Hail Table, gene summary (HT + TSV), plots (PNG), HTML report. Coloc results (TSV) are included when `--eqtl-allpairs` and `--pqtl-allpairs` are provided.
 
 **Documentation:** [QTL Cascade Examples](qtlcascade.md) | [QTL Cascade Docs](../tools/qtlcascade.md)
 
