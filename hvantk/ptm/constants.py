@@ -15,7 +15,7 @@ ENSEMBL_GTF_URL = (
 ENSEMBL_GTF_FILENAME = f"Homo_sapiens.GRCh38.{ENSEMBL_RELEASE}.gtf.gz"
 
 # PeptideAtlas Phospho Build
-PEPTIDEATLAS_PHOSPHO_BASE_URL = "http://www.peptideatlas.org/builds"
+PEPTIDEATLAS_PHOSPHO_BASE_URL = "https://peptideatlas.org/builds/human/phospho"
 PEPTIDEATLAS_LATEST_BUILD_DATE = "202512"
 PEPTIDEATLAS_LATEST_BUILD_ID = "606"
 
