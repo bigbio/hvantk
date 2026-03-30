@@ -1369,7 +1369,7 @@ def create_ptm_sites_tb(
     Input is a TSV produced by the PTM coordinate mapper (Phase 1 output)
     with columns: chrom, codon_start, codon_end, strand, uniprot_id,
     gene_symbol, residue_pos, amino_acid, ptm_type, ptm_category,
-    source_db, evidence_type.
+    source_db, evidence_type, n_observations.
 
     The table is keyed by locus (codon start position), with a
     ``flanking_interval`` field for proximity-based annotation joins.
@@ -1424,6 +1424,7 @@ def create_ptm_sites_tb(
             codon_start=hl.int32(ht.codon_start),
             codon_end=hl.int32(ht.codon_end),
             residue_pos=hl.int32(ht.residue_pos),
+            n_observations=hl.int32(ht.n_observations),
         )
 
         # Add flanking interval (codon ± flanking_codons * 3 bp)
@@ -1455,6 +1456,7 @@ def create_ptm_sites_tb(
                 "codon_start": hl.tstr,
                 "codon_end": hl.tstr,
                 "residue_pos": hl.tstr,
+                "n_observations": hl.tstr,
             },
         ),
         transform_func=transform,
