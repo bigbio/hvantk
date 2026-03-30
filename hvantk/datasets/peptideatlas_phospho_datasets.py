@@ -77,65 +77,70 @@ def _find_table_in_zip(zf: zipfile.ZipFile, table_name: str) -> Optional[str]:
     return None
 
 
-def _read_tsv_from_zip(zf: zipfile.ZipFile, table_name: str) -> List[Dict[str, str]]:
-    """Read a TSV table from within a zip file, returning list of row dicts."""
+def _iter_tsv_from_zip(zf: zipfile.ZipFile, table_name: str):
+    """Iterate over rows of a TSV table inside a zip without loading all into memory."""
+    import io
+
     member = _find_table_in_zip(zf, table_name)
     if member is None:
         logger.warning("Table %s not found in zip archive", table_name)
-        return []
+        return
+
     with zf.open(member) as f:
-        text = f.read().decode("utf-8")
-    reader = csv.DictReader(text.splitlines(), delimiter="\t")
-    return list(reader)
+        text = io.TextIOWrapper(f, encoding="utf-8")
+        reader = csv.DictReader(text, delimiter="\t")
+        for row in reader:
+            yield row
 
 
-def _extract_phospho_offsets(modified_sequence: str) -> List[int]:
-    """Extract 0-based offsets of phosphorylated S/T/Y within a peptide.
+def _extract_phospho_offsets(modified_sequence: str) -> List[tuple]:
+    """Extract 0-based offsets and amino acids of phosphorylated S/T/Y.
 
-    PeptideAtlas notation: ``AAAAAS[167]AAAAA`` where ``[167]`` indicates
-    a phospho modification on the preceding residue.
+    PeptideAtlas uses two notations for modifications:
+      - Text: ``S[Phospho]``, ``T[Phospho]``, ``Y[Phospho]``
+      - Numeric mass: ``S[167]``, ``T[181]``, ``Y[243]``
 
-    Returns a list of 0-based residue positions within the peptide.
+    N-terminal labels like ``[TMT6plex]-`` are skipped (no preceding residue).
+
+    Returns a list of (0-based_offset, amino_acid) tuples for phospho sites.
     """
     offsets = []
     residue_index = -1  # will be incremented to 0 for first AA
+    last_aa = None  # track the preceding amino acid
     i = 0
     seq = modified_sequence
     while i < len(seq):
         ch = seq[i]
         if ch == "[":
-            # Extract the mass inside brackets
-            end = seq.index("]", i)
-            mass_str = seq[i + 1 : end]
             try:
-                mass = float(mass_str)
+                end = seq.index("]", i)
             except ValueError:
-                i = end + 1
-                continue
-            # Check if this is a phospho modification
-            if abs(mass - _PHOSPHO_BRACKET_MASS) <= _PHOSPHO_BRACKET_TOLERANCE:
-                # The modification applies to the preceding residue
-                if residue_index >= 0:
-                    preceding_aa = None
-                    # Walk back to find the preceding AA character
-                    # residue_index is the 0-based index of the last AA seen
-                    # We need the actual character
-                    aa_count = 0
-                    for c in modified_sequence:
-                        if c == "[":
-                            break_at = modified_sequence.index("]", modified_sequence.index("[")) + 1
-                        if c.isalpha():
-                            if aa_count == residue_index:
-                                preceding_aa = c
-                                break
-                            aa_count += 1
-                    if preceding_aa and preceding_aa.upper() in _PHOSPHO_AA_DESC:
-                        offsets.append(residue_index)
+                break  # Malformed — unclosed bracket
+            bracket_content = seq[i + 1 : end]
+            is_phospho = (
+                bracket_content == "Phospho"
+                or bracket_content.startswith("Phospho:")
+            )
+            # Also handle numeric mass notation (~167 Da)
+            if not is_phospho:
+                try:
+                    mass = float(bracket_content)
+                    if abs(mass - _PHOSPHO_BRACKET_MASS) <= _PHOSPHO_BRACKET_TOLERANCE:
+                        is_phospho = True
+                except ValueError:
+                    pass
+
+            # Only accept phospho on S, T, Y residues
+            if is_phospho and residue_index >= 0 and last_aa in _PHOSPHO_AA_DESC:
+                offsets.append((residue_index, last_aa))
+
             i = end + 1
-        elif ch.isalpha():
+        elif ch.isalpha() and ch.isupper():
             residue_index += 1
+            last_aa = ch
             i += 1
         else:
+            # Skip lowercase, digits, dashes, etc.
             i += 1
     return offsets
 
@@ -147,6 +152,11 @@ def parse_peptideatlas_zip(zip_path: str) -> List[dict]:
     modified_peptide_instance tables. Filters out DECOY_ and CONTAM_
     prefixed accessions. Aggregates observation counts for the same
     protein site across multiple peptide instances.
+
+    Uses a streaming approach: builds lightweight lookup dicts for
+    smaller tables (biosequence, peptide_instance), then streams the
+    large tables (peptide_mapping, modified_peptide_instance) without
+    loading them fully into memory.
 
     Parameters
     ----------
@@ -160,80 +170,93 @@ def parse_peptideatlas_zip(zip_path: str) -> List[dict]:
         description, ensembl_xrefs, sequence_length, n_observations.
     """
     with zipfile.ZipFile(zip_path, "r") as zf:
-        biosequences = _read_tsv_from_zip(zf, "biosequence.tsv")
-        peptide_instances = _read_tsv_from_zip(zf, "peptide_instance.tsv")
-        peptide_mappings = _read_tsv_from_zip(zf, "peptide_mapping.tsv")
-        modified_peptides = _read_tsv_from_zip(zf, "modified_peptide_instance.tsv")
+        # Step 1: Index biosequences (smaller table, ~600K rows but only keep non-DECOY)
+        # Store minimal info: {biosequence_id: (accession, gene_name, seq_len)}
+        logger.info("Indexing biosequences...")
+        bioseq_by_id: Dict[str, tuple] = {}
+        n_bio = 0
+        for row in _iter_tsv_from_zip(zf, "biosequence.tsv"):
+            n_bio += 1
+            acc = row.get("biosequence_accession", "")
+            if acc.startswith("DECOY_") or acc.startswith("CONTAM_"):
+                continue
+            bioseq_by_id[row["biosequence_id"]] = (
+                acc,
+                row.get("biosequence_gene_name", ""),
+                str(len(row.get("biosequence_seq", ""))),
+            )
+        logger.info("Indexed %d biosequences (%d non-decoy)", n_bio, len(bioseq_by_id))
 
-    # Index biosequences by id, filtering DECOY_ and CONTAM_
-    bioseq_by_id: Dict[str, dict] = {}
-    for bs in biosequences:
-        acc = bs.get("biosequence_accession", "")
-        if acc.startswith("DECOY_") or acc.startswith("CONTAM_"):
-            continue
-        bioseq_by_id[bs["biosequence_id"]] = bs
+        # Step 2: Index peptide_instance (381K rows)
+        # Store: {peptide_instance_id: n_observations}
+        logger.info("Indexing peptide instances...")
+        pi_obs: Dict[str, int] = {}
+        for row in _iter_tsv_from_zip(zf, "peptide_instance.tsv"):
+            pi_obs[row["peptide_instance_id"]] = int(row.get("n_observations", "0"))
+        logger.info("Indexed %d peptide instances", len(pi_obs))
 
-    # Index peptide instances by id
-    pi_by_id: Dict[str, dict] = {}
-    for pi in peptide_instances:
-        pi_by_id[pi["peptide_instance_id"]] = pi
+        # Step 3: Stream peptide_mapping (15M rows) — build a compact index
+        # Store: {peptide_instance_id: [(biosequence_id, start_in_biosequence), ...]}
+        logger.info("Streaming peptide mappings...")
+        mapping_by_pi: Dict[str, List[tuple]] = defaultdict(list)
+        n_mappings = 0
+        for row in _iter_tsv_from_zip(zf, "peptide_mapping.tsv"):
+            n_mappings += 1
+            pi_id = row["peptide_instance_id"]
+            bs_id = row.get("matched_biosequence_id", "")
+            if bs_id in bioseq_by_id:  # Only keep mappings to non-decoy proteins
+                start = int(row["start_in_biosequence"])
+                mapping_by_pi[pi_id].append((bs_id, start))
+            if n_mappings % 5_000_000 == 0:
+                logger.info("  ...processed %dM peptide mappings", n_mappings // 1_000_000)
+        logger.info("Processed %d peptide mappings, %d with valid proteins",
+                     n_mappings, len(mapping_by_pi))
 
-    # Index peptide mappings by peptide_instance_id
-    mapping_by_pi: Dict[str, List[dict]] = defaultdict(list)
-    for pm in peptide_mappings:
-        mapping_by_pi[pm["peptide_instance_id"]].append(pm)
+        # Step 4: Stream modified_peptide_instance (3M rows) — extract phospho sites
+        logger.info("Extracting phospho sites from modified peptide instances...")
+        site_obs: Dict[tuple, int] = defaultdict(int)
+        site_info: Dict[tuple, dict] = {}
+        n_mpi = 0
+        n_with_phospho = 0
 
-    # Aggregate phospho sites: key = (accession, position) -> total observations
-    site_obs: Dict[tuple, int] = defaultdict(int)
-    site_info: Dict[tuple, dict] = {}
-
-    for mp in modified_peptides:
-        pi_id = mp["peptide_instance_id"]
-        if pi_id not in pi_by_id:
-            continue
-
-        offsets = _extract_phospho_offsets(mp["modified_peptide_sequence"])
-        if not offsets:
-            continue
-
-        n_obs = int(pi_by_id[pi_id].get("n_observations", 0))
-        mappings = mapping_by_pi.get(pi_id, [])
-
-        for mapping in mappings:
-            bs_id = mapping["matched_biosequence_id"]
-            if bs_id not in bioseq_by_id:
+        for mp in _iter_tsv_from_zip(zf, "modified_peptide_instance.tsv"):
+            n_mpi += 1
+            pi_id = mp["peptide_instance_id"]
+            if pi_id not in pi_obs:
                 continue
 
-            bs = bioseq_by_id[bs_id]
-            start = int(mapping["start_in_biosequence"])
-            acc = bs["biosequence_accession"]
+            mod_seq = mp.get("modified_peptide_sequence", "")
+            phospho_sites = _extract_phospho_offsets(mod_seq)
+            if not phospho_sites:
+                continue
 
-            for offset in offsets:
-                site_pos = start + offset
-                key = (acc, site_pos)
-                site_obs[key] += n_obs
+            n_with_phospho += 1
+            n_obs = pi_obs[pi_id]
+            mappings = mapping_by_pi.get(pi_id, [])
 
-                if key not in site_info:
-                    # Determine the amino acid at this offset
-                    mod_seq = mp["modified_peptide_sequence"]
-                    aa_count = 0
-                    aa_char = "S"  # default
-                    for c in mod_seq:
-                        if c.isalpha():
-                            if aa_count == offset:
-                                aa_char = c.upper()
-                                break
-                            aa_count += 1
+            for bs_id, start in mappings:
+                bs = bioseq_by_id[bs_id]
+                acc, gene_name, seq_len = bs
 
-                    site_info[key] = {
-                        "accession": acc,
-                        "gene_symbol": bs.get("biosequence_gene_name", ""),
-                        "position": site_pos,
-                        "amino_acid": aa_char,
-                        "description": _PHOSPHO_AA_DESC.get(aa_char, "Phosphorylation"),
-                        "ensembl_xrefs": "",
-                        "sequence_length": len(bs.get("biosequence_seq", "")),
-                    }
+                for offset, aa_char in phospho_sites:
+                    site_pos = start + offset
+                    key = (acc, site_pos)
+                    site_obs[key] += n_obs
+
+                    if key not in site_info:
+                        site_info[key] = {
+                            "accession": acc,
+                            "gene_symbol": gene_name,
+                            "position": site_pos,
+                            "amino_acid": aa_char,
+                            "description": _PHOSPHO_AA_DESC.get(aa_char, "Phosphorylation"),
+                            "ensembl_xrefs": "",
+                            "sequence_length": seq_len,
+                        }
+
+            if n_mpi % 1_000_000 == 0:
+                logger.info("  ...processed %dM modified peptides (%d with phospho)",
+                             n_mpi // 1_000_000, n_with_phospho)
 
     # Build final list
     sites = []
@@ -242,7 +265,8 @@ def parse_peptideatlas_zip(zip_path: str) -> List[dict]:
         site["n_observations"] = site_obs[key]
         sites.append(site)
 
-    logger.info("Parsed %d phospho sites from %s", len(sites), zip_path)
+    logger.info("Parsed %d distinct phospho sites from %d modified peptides "
+                 "(%d with phospho)", len(sites), n_mpi, n_with_phospho)
     return sites
 
 
