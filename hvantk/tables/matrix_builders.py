@@ -20,6 +20,7 @@ __all__ = [
     "build_ucsc_mt",
     "build_expression_atlas_mt",
     "build_cptac_mt",
+    "build_cptac_phospho_mt",
 ]
 
 
@@ -199,6 +200,113 @@ def build_cptac_mt(
 
     if output_mt:
         logger.info("Checkpointing CPTAC MatrixTable to %s", output_mt)
+        mt = mt.checkpoint(output_mt, overwrite=overwrite)
+
+    return mt
+
+
+def build_cptac_phospho_mt(
+    expression_path: str,
+    metadata_path: str,
+    output_mt: Optional[str] = None,
+    site_id_col: str = "SiteID",
+    sample_id_col: str = "SampleID",
+    categorical_cols: Optional[List[str]] = None,
+    numeric_cols: Optional[List[str]] = None,
+    overwrite: bool = False,
+) -> "hl.MatrixTable":
+    """Build a CPTAC phospho MatrixTable from a sites-by-samples matrix.
+
+    Parameters
+    ----------
+    expression_path : str
+        Path to matrix CSV (sites x samples, from cptac_phospho_datasets).
+    metadata_path : str
+        Path to metadata CSV (sample clinical info).
+    output_mt : str, optional
+        Path to checkpoint the MatrixTable.
+    site_id_col : str
+        Column name for site identifiers (default: "SiteID").
+    sample_id_col : str
+        Column name for sample identifiers in metadata (default: "SampleID").
+    categorical_cols : list of str, optional
+        Metadata columns to cast as string.
+    numeric_cols : list of str, optional
+        Metadata columns to cast as float.
+    overwrite : bool
+        If True, overwrite existing output.
+
+    Returns
+    -------
+    hl.MatrixTable
+    """
+    import pandas as pd
+
+    from hvantk.utils.matrix_utils import annotate_column_summary
+
+    logger.info("Building CPTAC phospho MatrixTable")
+
+    # Read expression matrix (sites x samples)
+    expr_df = pd.read_csv(expression_path, index_col=0)
+    logger.info("Expression matrix: %d sites x %d samples", *expr_df.shape)
+
+    # Melt to coordinate format: SiteID, SampleID, Intensity
+    expr_long = expr_df.stack(dropna=False).reset_index()
+    expr_long.columns = [site_id_col, sample_id_col, "Intensity"]
+    expr_long[site_id_col] = expr_long[site_id_col].astype(str)
+    expr_long[sample_id_col] = expr_long[sample_id_col].astype(str)
+
+    # Parse site ID into gene_symbol, amino_acid, residue_pos
+    def _parse_site_id(sid):
+        parts = sid.rsplit("_", 1)
+        if len(parts) == 2:
+            gene = parts[0]
+            site = parts[1]
+            if site and site[0] in "STY" and site[1:].isdigit():
+                return gene, site[0], int(site[1:])
+        return sid, "", 0
+
+    site_info = {sid: _parse_site_id(sid) for sid in expr_long[site_id_col].unique()}
+    expr_long["gene_symbol"] = expr_long[site_id_col].map(lambda s: site_info[s][0])
+    expr_long["amino_acid"] = expr_long[site_id_col].map(lambda s: site_info[s][1])
+    expr_long["residue_pos"] = expr_long[site_id_col].map(lambda s: site_info[s][2])
+
+    # Create Hail Table from long-format expression
+    ht_expr = hl.Table.from_pandas(expr_long)
+    ht_expr = ht_expr.key_by(site_id_col, sample_id_col)
+
+    # Convert to MatrixTable
+    mt = ht_expr.to_matrix_table(
+        row_key=[site_id_col],
+        col_key=[sample_id_col],
+        row_fields=["gene_symbol", "amino_acid", "residue_pos"],
+    )
+
+    # Read and join metadata
+    meta_df = pd.read_csv(metadata_path, index_col=0)
+    meta_df.index = meta_df.index.astype(str)
+    meta_df.index.name = sample_id_col
+
+    if categorical_cols:
+        for c in categorical_cols:
+            if c in meta_df.columns:
+                meta_df[c] = meta_df[c].astype(str)
+    if numeric_cols:
+        for c in numeric_cols:
+            if c in meta_df.columns:
+                meta_df[c] = pd.to_numeric(meta_df[c], errors="coerce")
+
+    ht_meta = hl.Table.from_pandas(meta_df.reset_index())
+    ht_meta = ht_meta.key_by(sample_id_col)
+    mt = mt.annotate_cols(**ht_meta[mt.col_key])
+
+    mt = annotate_column_summary(mt)
+    mt = mt.annotate_globals(
+        hvantk_metadata=build_matrix_metadata("CPTAC-phospho", expression_path, mt)
+    )
+
+    if output_mt:
+        logger.info("Checkpointing CPTAC phospho MatrixTable to %s", output_mt)
         mt = mt.checkpoint(output_mt, overwrite=overwrite)
 
     return mt

@@ -34,6 +34,12 @@ def _build_cptac_mt(**kwargs):
     return build_cptac_mt(**kwargs)
 
 
+def _build_cptac_phospho_mt(**kwargs):
+    from hvantk.tables.matrix_builders import build_cptac_phospho_mt
+
+    return build_cptac_phospho_mt(**kwargs)
+
+
 @click.group("mkmatrix", context_settings=CONTEXT_SETTINGS)
 def mkmatrix_group():
     """Create a single Hail MatrixTable from a raw input file."""
@@ -228,6 +234,67 @@ def mkmatrix_cptac(
         gene_name_col=gene_name_col,
         sample_id_col=sample_id_col,
         expression_col=expression_col,
+        categorical_cols=_split(categorical_cols),
+        numeric_cols=_split(numeric_cols),
+        overwrite=overwrite,
+    )
+    click.echo(f"MatrixTable created at {output_mt}")
+    mt.describe()
+
+
+@mkmatrix_group.command("cptac-phospho")
+@click.option(
+    "-e",
+    "--expression",
+    required=True,
+    type=click.Path(exists=True),
+    help="Path to CPTAC phospho matrix CSV (sites x samples)",
+)
+@click.option(
+    "-m",
+    "--metadata",
+    required=True,
+    type=click.Path(exists=True),
+    help="Path to CPTAC phospho metadata CSV",
+)
+@click.option("-o", "--output-mt", "output_mt", required=True, type=click.Path())
+@click.option("--sid", "--sample-id-col", "sample_id_col", default="SampleID", show_default=True)
+@click.option(
+    "-c",
+    "--categorical-cols",
+    default=None,
+    help="Comma-separated categorical metadata columns",
+)
+@click.option(
+    "-u",
+    "--numeric-cols",
+    default=None,
+    help="Comma-separated numeric metadata columns",
+)
+@click.option("-w", "--overwrite", is_flag=True)
+def mkmatrix_cptac_phospho(
+    expression,
+    metadata,
+    output_mt,
+    sample_id_col,
+    categorical_cols,
+    numeric_cols,
+    overwrite,
+):
+    """Build a CPTAC phospho MatrixTable from site intensities and metadata."""
+    logger.info("Building CPTAC phospho MatrixTable")
+
+    def _split(val):
+        if not val:
+            return None
+        parts = [x.strip() for x in val.split(",") if x.strip()]
+        return parts or None
+
+    mt = _build_cptac_phospho_mt(
+        expression_path=expression,
+        metadata_path=metadata,
+        output_mt=output_mt,
+        sample_id_col=sample_id_col,
         categorical_cols=_split(categorical_cols),
         numeric_cols=_split(numeric_cols),
         overwrite=overwrite,
