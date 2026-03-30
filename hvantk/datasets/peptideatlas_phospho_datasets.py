@@ -170,22 +170,34 @@ def parse_peptideatlas_zip(zip_path: str) -> List[dict]:
         description, ensembl_xrefs, sequence_length, n_observations.
     """
     with zipfile.ZipFile(zip_path, "r") as zf:
-        # Step 1: Index biosequences (smaller table, ~600K rows but only keep non-DECOY)
+        # Step 0: Index canonical proteins from protein_identification table
+        # presence_level_id=1 is "canonical" in PeptideAtlas
+        logger.info("Indexing canonical proteins...")
+        canonical_bs_ids: set = set()
+        for row in _iter_tsv_from_zip(zf, "protein_identification.tsv"):
+            if row.get("presence_level_id") == "1":
+                canonical_bs_ids.add(row["biosequence_id"])
+        logger.info("Found %d canonical proteins", len(canonical_bs_ids))
+
+        # Step 1: Index biosequences — only keep canonical, non-DECOY proteins
         # Store minimal info: {biosequence_id: (accession, gene_name, seq_len)}
         logger.info("Indexing biosequences...")
         bioseq_by_id: Dict[str, tuple] = {}
         n_bio = 0
         for row in _iter_tsv_from_zip(zf, "biosequence.tsv"):
             n_bio += 1
+            bs_id = row["biosequence_id"]
             acc = row.get("biosequence_accession", "")
             if acc.startswith("DECOY_") or acc.startswith("CONTAM_"):
                 continue
-            bioseq_by_id[row["biosequence_id"]] = (
+            if canonical_bs_ids and bs_id not in canonical_bs_ids:
+                continue
+            bioseq_by_id[bs_id] = (
                 acc,
                 row.get("biosequence_gene_name", ""),
                 str(len(row.get("biosequence_seq", ""))),
             )
-        logger.info("Indexed %d biosequences (%d non-decoy)", n_bio, len(bioseq_by_id))
+        logger.info("Indexed %d biosequences (%d canonical)", n_bio, len(bioseq_by_id))
 
         # Step 2: Index peptide_instance (381K rows)
         # Store: {peptide_instance_id: n_observations}
