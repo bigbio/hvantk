@@ -38,8 +38,12 @@ _PHOSPHO_AA_DESC = {
     "Y": "Phosphotyrosine",
 }
 
-# Phospho modification mass in PeptideAtlas bracket notation (e.g. S[167])
-_PHOSPHO_BRACKET_MASS = 167.0
+# Phospho modification masses in PeptideAtlas bracket notation.
+# These are total modified residue masses (amino acid + HPO3):
+#   Phosphoserine:   S(87.03) + HPO3(79.97) ≈ 167.0
+#   Phosphothreonine: T(101.05) + HPO3(79.97) ≈ 181.0
+#   Phosphotyrosine:  Y(163.06) + HPO3(79.97) ≈ 243.0
+_PHOSPHO_MASS_TARGETS = [167.0, 181.0, 243.0]
 _PHOSPHO_BRACKET_TOLERANCE = 1.0
 
 # Output TSV column order for intermediate file
@@ -121,11 +125,12 @@ def _extract_phospho_offsets(modified_sequence: str) -> List[tuple]:
                 bracket_content == "Phospho"
                 or bracket_content.startswith("Phospho:")
             )
-            # Also handle numeric mass notation (~167 Da)
+            # Also handle numeric mass notation (~167/181/243 Da)
             if not is_phospho:
                 try:
                     mass = float(bracket_content)
-                    if abs(mass - _PHOSPHO_BRACKET_MASS) <= _PHOSPHO_BRACKET_TOLERANCE:
+                    if any(abs(mass - t) <= _PHOSPHO_BRACKET_TOLERANCE
+                           for t in _PHOSPHO_MASS_TARGETS):
                         is_phospho = True
                 except ValueError:
                     pass
@@ -349,7 +354,7 @@ class PeptideAtlasPhosphoDataset:
             Build numeric ID, e.g. ``"606"``.
         """
         zip_url = (
-            f"{PEPTIDEATLAS_PHOSPHO_BASE_URL}/phospho/{build_date}/"
+            f"{PEPTIDEATLAS_PHOSPHO_BASE_URL}/{build_date}/"
             f"atlas_build_{build_id}.tsv.zip"
         )
         return cls(
@@ -359,34 +364,49 @@ class PeptideAtlasPhosphoDataset:
         )
 
     def download(self, output_dir: str, overwrite: bool = False) -> str:
-        """Download the PeptideAtlas zip to output_dir.
+        """Download PeptideAtlas phospho build and produce intermediate TSV.
+
+        Downloads the TSV zip, parses phospho sites with observation counts
+        from canonical proteins, and writes an intermediate TSV compatible
+        with the PTM pipeline mapper.
 
         Parameters
         ----------
         output_dir : str
-            Directory to save the zip file.
+            Directory to save files (zip + intermediate TSV).
         overwrite : bool
-            If True, re-download even if the file exists.
+            If True, re-download and re-parse even if files exist.
 
         Returns
         -------
         str
-            Path to the downloaded zip file.
+            Path to the intermediate TSV file.
         """
         import urllib.request
 
         os.makedirs(output_dir, exist_ok=True)
-        filename = f"atlas_build_{self.build_id}.tsv.zip"
-        output_path = os.path.join(output_dir, filename)
+        zip_filename = f"atlas_build_{self.build_id}.tsv.zip"
+        zip_path = os.path.join(output_dir, zip_filename)
+        tsv_path = os.path.join(output_dir, f"peptideatlas-phospho-{self.build_date}.tsv")
 
-        if os.path.exists(output_path) and not overwrite:
-            logger.info("File already exists: %s", output_path)
-            return output_path
+        if os.path.exists(tsv_path) and not overwrite:
+            logger.info("Intermediate TSV already exists: %s", tsv_path)
+            return tsv_path
 
-        logger.info("Downloading %s -> %s", self.zip_url, output_path)
-        urllib.request.urlretrieve(self.zip_url, output_path)
-        logger.info("Download complete: %s", output_path)
-        return output_path
+        # Download zip if needed
+        if not os.path.exists(zip_path) or overwrite:
+            logger.info("Downloading %s -> %s", self.zip_url, zip_path)
+            urllib.request.urlretrieve(self.zip_url, zip_path)
+            logger.info("Download complete: %s", zip_path)
+        else:
+            logger.info("Using cached zip: %s", zip_path)
+
+        # Parse and write intermediate TSV
+        logger.info("Parsing phospho sites from zip...")
+        sites = parse_peptideatlas_zip(zip_path)
+        write_intermediate_tsv(sites, tsv_path)
+
+        return tsv_path
 
     def get_metadata(self) -> dict:
         """Return metadata about this dataset."""
