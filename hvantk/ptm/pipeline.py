@@ -55,6 +55,7 @@ class PTMBuildConfig:
     output_ht: str = ""
     gtf_path: Optional[str] = None
     ptm_tsv: Optional[str] = None
+    peptideatlas_tsv: Optional[str] = None
     flanking_codons: int = 5
     reference_genome: str = "GRCh38"
     overwrite: bool = False
@@ -70,6 +71,8 @@ class PTMBuildConfig:
             errors.append(f"GTF file not found: {self.gtf_path}")
         if self.ptm_tsv and not os.path.exists(self.ptm_tsv):
             errors.append(f"PTM TSV file not found: {self.ptm_tsv}")
+        if self.peptideatlas_tsv and not os.path.exists(self.peptideatlas_tsv):
+            errors.append(f"PeptideAtlas TSV file not found: {self.peptideatlas_tsv}")
         return errors
 
 
@@ -313,6 +316,39 @@ def ptm_build_pipeline(config: PTMBuildConfig) -> PTMBuildResult:
     # Step 4: Map PTM sites to genomic coordinates
     mapped_path = os.path.join(config.output_dir, "ptm_sites_mapped.tsv")
     result = map_ptm_sites(ptm_tsv, gtf_data, mapped_path)
+
+    # Step 4b: Map PeptideAtlas sites (if provided)
+    if config.peptideatlas_tsv:
+        logger.info("Mapping PeptideAtlas phospho sites...")
+        pa_mapped_path = os.path.join(config.output_dir, "peptideatlas_sites_mapped.tsv")
+        pa_result = map_ptm_sites(config.peptideatlas_tsv, gtf_data, pa_mapped_path)
+
+        # Concatenate mapped TSVs
+        combined_path = os.path.join(config.output_dir, "ptm_sites_combined.tsv")
+        with open(combined_path, "w", newline="") as fout:
+            writer = csv.DictWriter(
+                fout, fieldnames=PTM_OUTPUT_COLUMNS, delimiter="\t", lineterminator="\n"
+            )
+            writer.writeheader()
+            for src_path in [mapped_path, pa_mapped_path]:
+                with open(src_path) as fin:
+                    reader = csv.DictReader(fin, delimiter="\t")
+                    for row in reader:
+                        writer.writerow(row)
+
+        mapped_path = combined_path
+        result.n_total += pa_result.n_total
+        result.n_mapped += pa_result.n_mapped
+        result.n_failed += pa_result.n_failed
+        for method, count in pa_result.resolution_counts.items():
+            result.resolution_counts[method] = (
+                result.resolution_counts.get(method, 0) + count
+            )
+
+        logger.info(
+            f"Combined: {result.n_mapped} total mapped sites "
+            f"(UniProt + PeptideAtlas)"
+        )
 
     # Step 5: Build Hail Table
     logger.info(f"Building Hail Table at {config.output_ht}...")
