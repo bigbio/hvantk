@@ -234,8 +234,9 @@ def map_ptm_sites(
                         "amino_acid": rec.get("amino_acid", ""),
                         "ptm_type": desc,
                         "ptm_category": ptm_category,
-                        "source_db": "UniProt",
-                        "evidence_type": "curated",
+                        "source_db": rec.get("source_db", "UniProt"),
+                        "evidence_type": rec.get("evidence_type", "curated"),
+                        "n_observations": rec.get("n_observations", "0"),
                     }
                 )
                 n_mapped += 1

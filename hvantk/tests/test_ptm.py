@@ -194,6 +194,8 @@ def test_map_ptm_sites_roundtrip(tmp_path, gtf_data):
     assert ser315["ptm_category"] == "phosphorylation"
     assert ser315["gene_symbol"] == "TP53"
     assert ser315["source_db"] == "UniProt"
+    assert ser315["evidence_type"] == "curated"
+    assert ser315["n_observations"] == "0"
 
     # Check all expected columns are present
     assert set(reader.fieldnames) == set(PTM_OUTPUT_COLUMNS)
