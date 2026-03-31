@@ -15,16 +15,23 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import yaml
 
+from hvantk.core.constants import (
+    ALPHAGENOME_DEFAULT_INTERVAL_SIZE,
+    ALPHAGENOME_DEFAULT_DENSITY_WINDOW,
+    ALPHAGENOME_DEFAULT_MAX_RETRIES,
+    ALPHAGENOME_DEFAULT_REQUEST_TIMEOUT,
+    ALPHAGENOME_DEFAULT_RETRY_BACKOFF,
+)
 from hvantk.data.data_streamer import HailDataStreamer
 
 logger = logging.getLogger(__name__)
 
 _REQUIRED_SECTIONS = ("api", "ontology")
 _DEFAULT_INTERVALS = {
-    "default_size": 1_048_576,
+    "default_size": ALPHAGENOME_DEFAULT_INTERVAL_SIZE,
     "adaptive": True,
-    "adaptive_max_size": 1_048_576,
-    "density_window": 50_000,
+    "adaptive_max_size": ALPHAGENOME_DEFAULT_INTERVAL_SIZE,
+    "density_window": ALPHAGENOME_DEFAULT_DENSITY_WINDOW,
 }
 
 
@@ -236,7 +243,7 @@ class CheckpointManager:
         self.output_dir = output_dir
         self._checkpoint_dir = os.path.join(output_dir, "_checkpoints")
         self._state_path = os.path.join(self._checkpoint_dir, "state.json")
-        self.completed_intervals: List[str] = []
+        self.completed_intervals: set = set()
         self.failed_variants: List[Dict[str, Any]] = []
         self._load_existing_state()
 
@@ -244,7 +251,7 @@ class CheckpointManager:
         if os.path.isfile(self._state_path):
             with open(self._state_path) as f:
                 state = json.load(f)
-            self.completed_intervals = state.get("completed_intervals", [])
+            self.completed_intervals = set(state.get("completed_intervals", []))
             self.failed_variants = state.get("failed_variants", [])
             logger.info(
                 f"Resumed checkpoint: {len(self.completed_intervals)} intervals complete, "
@@ -254,7 +261,7 @@ class CheckpointManager:
     def save_state(self) -> None:
         os.makedirs(self._checkpoint_dir, exist_ok=True)
         state = {
-            "completed_intervals": self.completed_intervals,
+            "completed_intervals": sorted(self.completed_intervals),
             "failed_variants": self.failed_variants,
         }
         with open(self._state_path, "w") as f:
@@ -269,7 +276,7 @@ class CheckpointManager:
             json.dump(data, f)
 
     def mark_interval_complete(self, interval_key: str) -> None:
-        self.completed_intervals.append(interval_key)
+        self.completed_intervals.add(interval_key)
 
     def is_interval_complete(self, interval_key: str) -> bool:
         return interval_key in self.completed_intervals
@@ -282,7 +289,7 @@ class CheckpointManager:
         )
 
     def clear(self) -> None:
-        self.completed_intervals = []
+        self.completed_intervals = set()
         self.failed_variants = []
         if os.path.isdir(self._checkpoint_dir):
             import shutil
@@ -304,9 +311,9 @@ class RateLimitedCaller:
     def __init__(self, model: Any, config: Dict[str, Any]):
         self._model = model
         api_cfg = config["api"]
-        self._max_retries = api_cfg.get("max_retries", 3)
-        self._retry_backoff = api_cfg.get("retry_backoff", 2.0)
-        self._request_timeout = api_cfg.get("request_timeout", 120)
+        self._max_retries = api_cfg.get("max_retries", ALPHAGENOME_DEFAULT_MAX_RETRIES)
+        self._retry_backoff = api_cfg.get("retry_backoff", ALPHAGENOME_DEFAULT_RETRY_BACKOFF)
+        self._request_timeout = api_cfg.get("request_timeout", ALPHAGENOME_DEFAULT_REQUEST_TIMEOUT)
         self._consecutive_rate_limits = 0
         self._total_calls = 0
         self._total_failures = 0
@@ -358,6 +365,7 @@ class RateLimitedCaller:
                     variant=variant,
                     ontology_terms=ontology_terms,
                     requested_outputs=output_types,
+                    timeout=self._request_timeout,
                 )
                 self._consecutive_rate_limits = 0
                 time.sleep(self._BASE_DELAY)
@@ -404,14 +412,8 @@ def _import_alphagenome() -> Tuple[Any, Any]:
 
 def _create_dna_client(api_key: str) -> Any:
     """Create an AlphaGenome DNA client. Isolated for mocking."""
-    try:
-        from alphagenome.models import dna_client
-    except ImportError:
-        raise ImportError(
-            "alphagenome package not installed. "
-            "Install with: pip install alphagenome"
-        )
-    return dna_client.create(api_key)
+    _, ag_client = _import_alphagenome()
+    return ag_client.create(api_key)
 
 
 def _load_variants_from_tsv(tsv_path: str) -> List[VariantRecord]:
@@ -432,6 +434,32 @@ def _load_variants_from_tsv(tsv_path: str) -> List[VariantRecord]:
 def _interval_key(interval: GenomicInterval) -> str:
     """Create a string key for checkpoint tracking."""
     return f"{interval.chrom}:{interval.start}-{interval.end}"
+
+
+def _serialize_prediction(result: Any) -> Dict[str, Any]:
+    """Serialize an AlphaGenome prediction result for JSON checkpointing.
+
+    Extracts reference and alternate prediction data from the API response.
+    Falls back to string representation if the structure is unexpected.
+    """
+    try:
+        serialized: Dict[str, Any] = {}
+        if hasattr(result, "reference") and hasattr(result, "alternate"):
+            for attr_name in ("reference", "alternate"):
+                attr = getattr(result, attr_name)
+                if hasattr(attr, "__dict__"):
+                    serialized[attr_name] = {
+                        k: v.tolist() if hasattr(v, "tolist") else v
+                        for k, v in vars(attr).items()
+                        if not k.startswith("_")
+                    }
+                else:
+                    serialized[attr_name] = str(attr)
+        else:
+            serialized["raw"] = str(result)
+        return serialized
+    except Exception:
+        return {"raw": str(result)}
 
 
 class AlphaGenomeStreamer(HailDataStreamer):
@@ -575,7 +603,7 @@ class AlphaGenomeStreamer(HailDataStreamer):
 
             batch_num = batch_idx // self.chunk_size
             self._checkpoint.save_batch(batch_num, {
-                k: str(v) for k, v in batch_results.items()
+                k: _serialize_prediction(v) for k, v in batch_results.items()
             })
             self._checkpoint.save_state()
 
@@ -593,9 +621,13 @@ class AlphaGenomeStreamer(HailDataStreamer):
         return chunk
 
     def teardown(self) -> None:
+        """Log summary and assemble per-modality outputs from checkpoints."""
         elapsed = time.time() - self._start_time
         stats = self._caller.stats if self._caller else {}
         failed_count = len(self._checkpoint.failed_variants) if self._checkpoint else 0
+
+        self._assemble_outputs()
+
         self.logger.info(
             f"AlphaGenome run complete. "
             f"API calls: {stats.get('total_calls', 0)}, "
@@ -604,3 +636,40 @@ class AlphaGenomeStreamer(HailDataStreamer):
             f"runtime: {elapsed:.0f}s"
         )
         super().teardown()
+
+    def _assemble_outputs(self) -> None:
+        """Assemble predictions from batch checkpoint files.
+
+        Merges all batch_NNN.json files into a consolidated predictions.json.
+        Full assembly into per-modality Hail Tables requires the AlphaGenome
+        SDK to inspect prediction structure and is deferred until the SDK
+        is available for validation.
+        """
+        if not self._checkpoint:
+            return
+
+        checkpoint_dir = self._checkpoint._checkpoint_dir
+        if not os.path.isdir(checkpoint_dir):
+            return
+
+        batch_files = sorted(
+            f for f in os.listdir(checkpoint_dir)
+            if f.startswith("batch_") and f.endswith(".json")
+        )
+        if not batch_files:
+            return
+
+        all_predictions: Dict[str, Any] = {}
+        for batch_file in batch_files:
+            batch_path = os.path.join(checkpoint_dir, batch_file)
+            with open(batch_path) as f:
+                batch_data = json.load(f)
+            all_predictions.update(batch_data)
+
+        merged_path = os.path.join(self.output_dir, "predictions.json")
+        os.makedirs(self.output_dir, exist_ok=True)
+        with open(merged_path, "w") as f:
+            json.dump(all_predictions, f, indent=2)
+        self.logger.info(
+            f"Assembled {len(all_predictions)} variant predictions to {merged_path}"
+        )

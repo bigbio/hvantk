@@ -21,7 +21,7 @@ from typing import Dict, List, Optional
 import pandas as pd
 
 from hvantk.core.backends import get_algorithm_meta
-from hvantk.core.router import BackendRouter, ReaderFactory
+from hvantk.core.router import BackendRouter
 
 from hvantk.qtlcascade.constants import (
     DEFAULT_COLOC_H4_THRESHOLD,
@@ -155,7 +155,6 @@ class CascadePipeline:
         if config.generate_plots:
             self._plots_dir.mkdir(exist_ok=True)
         self._router = BackendRouter()
-        self._reader_factory = ReaderFactory()
 
     # ------------------------------------------------------------------
     # Public API

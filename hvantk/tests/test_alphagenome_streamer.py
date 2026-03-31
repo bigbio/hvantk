@@ -180,7 +180,7 @@ class TestCheckpointManager:
         from hvantk.data.alphagenome_streamer import CheckpointManager
 
         mgr = CheckpointManager(str(tmp_path / "out"))
-        assert mgr.completed_intervals == []
+        assert mgr.completed_intervals == set()
         assert mgr.failed_variants == []
 
     def test_save_and_reload_state(self, tmp_path):
@@ -228,7 +228,7 @@ class TestCheckpointManager:
         mgr.save_batch(0, {"data": True})
         mgr.save_state()
         mgr.clear()
-        assert mgr.completed_intervals == []
+        assert mgr.completed_intervals == set()
         assert not os.path.isfile(
             os.path.join(out_dir, "_checkpoints", "state.json")
         )

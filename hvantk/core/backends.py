@@ -6,7 +6,7 @@ and the data format they expect, enabling the BackendRouter to select
 the best execution strategy at runtime.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from functools import wraps
 from typing import Callable, List, Optional
