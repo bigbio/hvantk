@@ -127,6 +127,7 @@ def test_write_intermediate_tsv(mock_phospho_df, tmp_path):
         "accession", "gene_symbol", "position", "description",
         "amino_acid", "ensembl_xrefs", "sequence_length",
         "n_observations", "source_db", "evidence_type",
+        "tissue_type", "cancer_type", "mean_intensity",
     }
     assert set(reader.fieldnames) == expected_cols
 
@@ -134,6 +135,9 @@ def test_write_intermediate_tsv(mock_phospho_df, tmp_path):
     assert row_s315["source_db"] == "CPTAC"
     assert row_s315["evidence_type"] == "mass_spectrometry"
     assert row_s315["description"] == "Phosphoserine"
+    assert row_s315["tissue_type"] == "tumor"
+    assert row_s315["cancer_type"] == "brca"
+    assert float(row_s315["mean_intensity"]) != 0
 
 
 # ---------- Test 4: Matrix CSV output ----------

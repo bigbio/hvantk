@@ -47,6 +47,9 @@ _TSV_COLUMNS = [
     "n_observations",
     "source_db",
     "evidence_type",
+    "tissue_type",
+    "cancer_type",
+    "mean_intensity",
 ]
 
 
@@ -71,6 +74,7 @@ def parse_phospho_site(site_str: str) -> List[Tuple[str, int]]:
 def extract_phospho_sites(
     phospho_df,
     cancer_type: str,
+    tissue_type: str = "tumor",
 ) -> List[dict]:
     """Extract phospho sites from a CPTAC multi-index DataFrame.
 
@@ -81,6 +85,8 @@ def extract_phospho_sites(
         two levels are *Gene* and *Site*.
     cancer_type : str
         CPTAC cancer type identifier (e.g. ``"brca"``).
+    tissue_type : str
+        Tissue type label (``"tumor"`` or ``"normal"``).
 
     Returns
     -------
@@ -106,8 +112,6 @@ def extract_phospho_sites(
         for aa, pos in parsed:
             key = (gene, aa, pos)
             if key in agg:
-                # Merge observations from multiple columns mapping to the
-                # same site (unlikely but defensive).
                 existing = agg[key]
                 total_obs = existing["n_observations"] + n_obs
                 if total_obs > 0:
@@ -126,9 +130,10 @@ def extract_phospho_sites(
                     "ensembl_xrefs": "",
                     "sequence_length": "",
                     "n_observations": n_obs,
-                    "mean_intensity": mean_val,
+                    "mean_intensity": round(mean_val, 4),
                     "source_db": "CPTAC",
                     "evidence_type": "mass_spectrometry",
+                    "tissue_type": tissue_type,
                     "cancer_type": cancer_type,
                 }
 
@@ -235,48 +240,96 @@ class CPTACPhosphoDataset:
     def download(self, output_dir: str, overwrite: bool = False) -> Dict[str, str]:
         """Download and process CPTAC phospho data into *output_dir*.
 
-        Produces three files:
-        - ``cptac-phospho-{cancer_type}.tsv``  (intermediate site table)
-        - ``cptac-phospho-{cancer_type}-matrix.csv``   (intensity matrix)
-        - ``cptac-phospho-{cancer_type}-metadata.csv`` (clinical metadata)
+        Fetches tumor and normal tissue separately. Produces:
+        - ``cptac-phospho-{cancer_type}.tsv``           (combined site table with tissue_type + mean_intensity)
+        - ``cptac-phospho-{cancer_type}-tumor.tsv``     (tumor-only sites)
+        - ``cptac-phospho-{cancer_type}-normal.tsv``    (normal-only sites, if available)
+        - ``cptac-phospho-{cancer_type}-matrix.csv``    (intensity matrix, all samples)
+        - ``cptac-phospho-{cancer_type}-metadata.csv``  (clinical metadata with tissue_type)
 
         Returns
         -------
         dict
-            Paths to output files: {"tsv": ..., "matrix": ..., "metadata": ...}
+            Paths to output files.
         """
         os.makedirs(output_dir, exist_ok=True)
+        ct = self.cancer_type
 
-        tsv_path = os.path.join(output_dir, f"cptac-phospho-{self.cancer_type}.tsv")
-        matrix_path = os.path.join(output_dir, f"cptac-phospho-{self.cancer_type}-matrix.csv")
-        metadata_path = os.path.join(output_dir, f"cptac-phospho-{self.cancer_type}-metadata.csv")
+        tsv_path = os.path.join(output_dir, f"cptac-phospho-{ct}.tsv")
+        tumor_tsv = os.path.join(output_dir, f"cptac-phospho-{ct}-tumor.tsv")
+        normal_tsv = os.path.join(output_dir, f"cptac-phospho-{ct}-normal.tsv")
+        matrix_path = os.path.join(output_dir, f"cptac-phospho-{ct}-matrix.csv")
+        metadata_path = os.path.join(output_dir, f"cptac-phospho-{ct}-metadata.csv")
 
-        if all(os.path.exists(p) for p in [tsv_path, matrix_path, metadata_path]) and not overwrite:
-            logger.info("All output files exist for %s, skipping", self.cancer_type)
-            return {"tsv": tsv_path, "matrix": matrix_path, "metadata": metadata_path}
+        if os.path.exists(tsv_path) and not overwrite:
+            logger.info("Output files exist for %s, skipping", ct)
+            return {
+                "tsv": tsv_path, "tumor_tsv": tumor_tsv,
+                "normal_tsv": normal_tsv, "matrix": matrix_path,
+                "metadata": metadata_path,
+            }
 
-        logger.info("Loading CPTAC %s dataset...", self.cancer_type)
-        ds = _load_cptac_dataset(self.cancer_type)
+        logger.info("Loading CPTAC %s dataset...", ct)
+        ds = _load_cptac_dataset(ct)
 
-        logger.info("Fetching phosphoproteomics data...")
-        # Specify source='umich' to avoid a bug in cptac when multiple
-        # sources exist and no source is specified (generator has no len()).
-        phospho_df = ds.get_phosphoproteomics(source="umich")
-        logger.info("Phospho DataFrame: %d samples x %d columns", *phospho_df.shape)
+        # Fetch tumor phospho data
+        logger.info("Fetching tumor phosphoproteomics...")
+        tumor_df = ds.get_phosphoproteomics(source="umich", tissue_type="tumor")
+        logger.info("Tumor: %d samples x %d columns", *tumor_df.shape)
+        tumor_sites = extract_phospho_sites(tumor_df, ct, tissue_type="tumor")
+        write_intermediate_tsv(tumor_sites, tumor_tsv)
 
+        # Fetch normal phospho data (may be empty for some cancer types)
+        normal_sites = []
+        try:
+            normal_df = ds.get_phosphoproteomics(source="umich", tissue_type="normal")
+            if len(normal_df) > 0:
+                logger.info("Normal: %d samples x %d columns", *normal_df.shape)
+                normal_sites = extract_phospho_sites(normal_df, ct, tissue_type="normal")
+                write_intermediate_tsv(normal_sites, normal_tsv)
+            else:
+                logger.info("No normal samples available for %s", ct)
+        except Exception as e:
+            logger.info("No normal tissue data for %s: %s", ct, e)
+
+        # Combined TSV (tumor + normal)
+        all_sites = tumor_sites + normal_sites
+        write_intermediate_tsv(all_sites, tsv_path)
+
+        # Matrix CSV (all samples — tumor + normal combined)
+        both_df = ds.get_phosphoproteomics(source="umich")
+        write_matrix_csv(both_df, matrix_path)
+
+        # Clinical metadata with tissue_type per sample
         logger.info("Fetching clinical metadata...")
-        # Specify source='mssm' to avoid the same multi-source bug.
         clinical_df = ds.get_clinical(source="mssm")
 
-        sites = extract_phospho_sites(phospho_df, self.cancer_type)
-        write_intermediate_tsv(sites, tsv_path)
-        write_matrix_csv(phospho_df, matrix_path)
-        write_metadata_csv(clinical_df, self.cancer_type, metadata_path)
+        # Tag samples with tissue_type based on sample ID suffix
+        sample_tissue = {}
+        for sid in both_df.index:
+            sid_str = str(sid)
+            if sid_str.endswith(".N"):
+                sample_tissue[sid_str] = "normal"
+            else:
+                sample_tissue[sid_str] = "tumor"
 
-        logger.info(
-            "CPTAC %s download complete: %d sites from %d samples",
-            self.cancer_type,
-            len(sites),
-            len(phospho_df),
+        clinical_copy = clinical_df.copy()
+        clinical_copy["tissue_type"] = clinical_copy.index.map(
+            lambda s: sample_tissue.get(str(s), "unknown")
         )
-        return {"tsv": tsv_path, "matrix": matrix_path, "metadata": metadata_path}
+        write_metadata_csv(clinical_copy, ct, metadata_path)
+
+        n_tumor = len(tumor_sites)
+        n_normal = len(normal_sites)
+        logger.info(
+            "CPTAC %s complete: %d tumor sites, %d normal sites, "
+            "%d samples (%d tumor, %d normal)",
+            ct, n_tumor, n_normal, len(both_df),
+            len(tumor_df), len(normal_df) if normal_sites else 0,
+        )
+
+        return {
+            "tsv": tsv_path, "tumor_tsv": tumor_tsv,
+            "normal_tsv": normal_tsv, "matrix": matrix_path,
+            "metadata": metadata_path,
+        }
