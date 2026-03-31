@@ -734,10 +734,10 @@ def mktable_pqtl(
 )
 @_overwrite_opt
 def mktable_alphagenome(input_path, output_dir, config_path, no_resume, overwrite):
-    """Build per-modality Hail Tables from AlphaGenome variant predictions."""
+    """Run AlphaGenome variant effect predictions."""
     from hvantk.tables.table_builders import create_alphagenome_tb
 
-    logger.info("Building AlphaGenome prediction tables")
+    logger.info("Running AlphaGenome variant predictions")
     create_alphagenome_tb(
         input_path=input_path,
         output_path=output_dir,
@@ -745,4 +745,4 @@ def mktable_alphagenome(input_path, output_dir, config_path, no_resume, overwrit
         no_resume=no_resume,
         overwrite=overwrite,
     )
-    click.echo(f"AlphaGenome tables created at {output_dir}")
+    click.echo(f"AlphaGenome predictions written to {output_dir}")

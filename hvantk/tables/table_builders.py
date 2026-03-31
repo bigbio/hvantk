@@ -1906,23 +1906,25 @@ def create_alphagenome_tb(
     no_resume: bool = False,
     overwrite: bool = False,
 ) -> None:
-    """Build per-modality Hail Tables from AlphaGenome variant predictions.
+    """Run AlphaGenome variant effect predictions and write JSON outputs.
 
     Runs the AlphaGenomeStreamer to call the API for each variant, then
-    writes per-modality Hail Tables to output_path (a directory).
+    writes predictions.json and checkpoint files to output_path (a
+    directory). Per-modality Hail Table assembly will be added once the
+    AlphaGenome SDK response structure is validated.
 
     Parameters
     ----------
     input_path : str
         Path to Hail Table (.ht) or TSV with chrom/pos/ref/alt columns.
     output_path : str
-        Output directory for per-modality Hail Tables.
+        Output directory for prediction JSON outputs.
     config_path : str
         Path to AlphaGenome YAML config file.
     no_resume : bool
         If True, discard existing checkpoints and restart.
     overwrite : bool
-        If True, overwrite existing output tables.
+        If True, overwrite existing output directory contents.
     """
     from hvantk.data.alphagenome_streamer import AlphaGenomeStreamer
 

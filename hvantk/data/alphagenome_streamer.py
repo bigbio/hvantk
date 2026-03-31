@@ -1,7 +1,9 @@
 """AlphaGenome variant prediction streamer.
 
 Streams variant positions through the AlphaGenome API and produces
-per-modality Hail Tables with full multimodal predictions.
+multimodal variant effect predictions. Outputs are currently written as
+consolidated JSON (predictions.json); per-modality Hail Table assembly
+will be added once the AlphaGenome SDK response structure is validated.
 """
 
 import csv as csv_module
@@ -62,6 +64,12 @@ def load_config(config_path: str) -> Dict[str, Any]:
 
     with open(config_path) as f:
         config = yaml.safe_load(f)
+
+    if not isinstance(config, dict):
+        raise ValueError(
+            f"Config file is empty or malformed (expected a YAML mapping, "
+            f"got {type(config).__name__}): {config_path}"
+        )
 
     for section in _REQUIRED_SECTIONS:
         if section not in config or config[section] is None:
@@ -467,8 +475,9 @@ class AlphaGenomeStreamer(HailDataStreamer):
 
     Reads variants from a Hail Table or TSV, groups them into genomic
     intervals, calls the AlphaGenome predict_variant API with rate
-    limiting and checkpoint-based resumption, and assembles per-modality
-    Hail Tables as output.
+    limiting and checkpoint-based resumption, and writes consolidated
+    JSON predictions. Per-modality Hail Table assembly is deferred
+    until the SDK response structure is validated.
 
     Parameters
     ----------
@@ -542,10 +551,25 @@ class AlphaGenomeStreamer(HailDataStreamer):
             self.logger.info(f"Resuming: skipping {skipped} completed intervals")
         self._interval_groups = pending
 
+    _MAX_VARIANTS_COLLECT = 100_000
+
     def _load_variants_from_hail_table(self) -> List[VariantRecord]:
+        """Load variants from a Hail Table keyed by (locus, alleles).
+
+        Uses .collect() which materializes all rows on the driver.
+        Raises ValueError if the table exceeds _MAX_VARIANTS_COLLECT rows
+        to prevent driver OOM on unexpectedly large inputs.
+        """
         import hail as hl
 
         ht = hl.read_table(self.input_path)
+        n_variants = ht.count()
+        if n_variants > self._MAX_VARIANTS_COLLECT:
+            raise ValueError(
+                f"Input table has {n_variants} variants, exceeding the "
+                f"maximum of {self._MAX_VARIANTS_COLLECT} for API-bound "
+                f"prediction. Use a smaller variant set or export to TSV."
+            )
         rows = ht.select(
             chrom=ht.locus.contig,
             pos=ht.locus.position,
@@ -562,7 +586,17 @@ class AlphaGenomeStreamer(HailDataStreamer):
 
         ontology_terms = self._config["ontology"].get("terms", [])
         output_types_raw = self._config["ontology"].get("output_types", [])
-        output_types = [getattr(ag_client.OutputType, ot) for ot in output_types_raw]
+
+        # Validate output types against SDK before starting long-running job
+        output_types = []
+        for ot in output_types_raw:
+            if not hasattr(ag_client.OutputType, ot):
+                allowed = [n for n in dir(ag_client.OutputType) if not n.startswith("_")]
+                raise ValueError(
+                    f"Invalid AlphaGenome OutputType in config: '{ot}'. "
+                    f"Allowed values: {', '.join(sorted(allowed))}"
+                )
+            output_types.append(getattr(ag_client.OutputType, ot))
 
         total = len(self._interval_groups)
         processed_variants = 0
