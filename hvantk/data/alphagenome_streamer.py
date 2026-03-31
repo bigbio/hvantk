@@ -4,6 +4,7 @@ Streams variant positions through the AlphaGenome API and produces
 per-modality Hail Tables with full multimodal predictions.
 """
 
+import csv as csv_module
 import json
 import logging
 import os
@@ -386,3 +387,220 @@ class RateLimitedCaller:
             "total_calls": self._total_calls,
             "total_failures": self._total_failures,
         }
+
+
+def _import_alphagenome() -> Tuple[Any, Any]:
+    """Import alphagenome modules. Isolated for mocking."""
+    try:
+        from alphagenome.data import genome as ag_genome
+        from alphagenome.models import dna_client as ag_client
+    except ImportError:
+        raise ImportError(
+            "alphagenome package not installed. "
+            "Install with: pip install alphagenome"
+        )
+    return ag_genome, ag_client
+
+
+def _create_dna_client(api_key: str) -> Any:
+    """Create an AlphaGenome DNA client. Isolated for mocking."""
+    try:
+        from alphagenome.models import dna_client
+    except ImportError:
+        raise ImportError(
+            "alphagenome package not installed. "
+            "Install with: pip install alphagenome"
+        )
+    return dna_client.create(api_key)
+
+
+def _load_variants_from_tsv(tsv_path: str) -> List[VariantRecord]:
+    """Load variants from a TSV file with chrom/pos/ref/alt columns."""
+    variants = []
+    with open(tsv_path) as f:
+        reader = csv_module.DictReader(f, delimiter="\t")
+        for row in reader:
+            variants.append(VariantRecord(
+                chrom=row["chrom"],
+                pos=int(row["pos"]),
+                ref=row["ref"],
+                alt=row["alt"],
+            ))
+    return variants
+
+
+def _interval_key(interval: GenomicInterval) -> str:
+    """Create a string key for checkpoint tracking."""
+    return f"{interval.chrom}:{interval.start}-{interval.end}"
+
+
+class AlphaGenomeStreamer(HailDataStreamer):
+    """Streams variant predictions from the AlphaGenome API.
+
+    Reads variants from a Hail Table or TSV, groups them into genomic
+    intervals, calls the AlphaGenome predict_variant API with rate
+    limiting and checkpoint-based resumption, and assembles per-modality
+    Hail Tables as output.
+
+    Parameters
+    ----------
+    input_path : str
+        Path to a Hail Table (.ht) or TSV file with chrom/pos/ref/alt columns.
+    output_dir : str
+        Directory for output Hail Tables and checkpoints.
+    config_path : str
+        Path to AlphaGenome YAML config file.
+    no_resume : bool
+        If True, clear existing checkpoints and start fresh.
+    chunk_size : int
+        Number of intervals to process per batch before checkpointing.
+    """
+
+    def __init__(
+        self,
+        input_path: str,
+        output_dir: str,
+        config_path: str,
+        no_resume: bool = False,
+        chunk_size: int = 50,
+    ):
+        super().__init__(name="AlphaGenomeStreamer", chunk_size=chunk_size,
+                         init_hail=input_path.endswith(".ht"))
+        self.input_path = input_path
+        self.output_dir = output_dir
+        self.config_path = config_path
+        self.no_resume = no_resume
+
+        self._config: Dict[str, Any] = {}
+        self._model: Any = None
+        self._caller: Optional[RateLimitedCaller] = None
+        self._variants: List[VariantRecord] = []
+        self._interval_groups: List[Tuple[GenomicInterval, List[VariantRecord]]] = []
+        self._checkpoint: Optional[CheckpointManager] = None
+        self._start_time: float = 0.0
+
+    def setup(self) -> None:
+        super().setup()
+        self._start_time = time.time()
+
+        self._config = load_config(self.config_path)
+        self.logger.info(f"Config loaded from {self.config_path}")
+
+        self._model = _create_dna_client(self._config["api"]["key"])
+        self._caller = RateLimitedCaller(self._model, self._config)
+        self.logger.info("AlphaGenome client authenticated")
+
+        if self.no_resume:
+            mgr = CheckpointManager(self.output_dir)
+            mgr.clear()
+            self.logger.info("Cleared existing checkpoints (--no-resume)")
+        self._checkpoint = CheckpointManager(self.output_dir)
+
+        if self.input_path.endswith(".ht"):
+            self._variants = self._load_variants_from_hail_table()
+        else:
+            self._variants = _load_variants_from_tsv(self.input_path)
+        self.logger.info(f"Loaded {len(self._variants)} variants from {self.input_path}")
+
+        self._interval_groups = compute_intervals(self._variants, self._config)
+        self.logger.info(f"Computed {len(self._interval_groups)} intervals")
+
+        pending = [
+            (iv, vs) for iv, vs in self._interval_groups
+            if not self._checkpoint.is_interval_complete(_interval_key(iv))
+        ]
+        skipped = len(self._interval_groups) - len(pending)
+        if skipped > 0:
+            self.logger.info(f"Resuming: skipping {skipped} completed intervals")
+        self._interval_groups = pending
+
+    def _load_variants_from_hail_table(self) -> List[VariantRecord]:
+        import hail as hl
+
+        ht = hl.read_table(self.input_path)
+        rows = ht.select(
+            chrom=ht.locus.contig,
+            pos=ht.locus.position,
+            ref=ht.alleles[0],
+            alt=ht.alleles[1],
+        ).collect()
+        return [
+            VariantRecord(chrom=r.chrom, pos=r.pos, ref=r.ref, alt=r.alt)
+            for r in rows
+        ]
+
+    def stream(self) -> Iterator[Dict[str, Any]]:
+        ag_genome, ag_client = _import_alphagenome()
+
+        ontology_terms = self._config["ontology"].get("terms", [])
+        output_types_raw = self._config["ontology"].get("output_types", [])
+        output_types = [getattr(ag_client.OutputType, ot) for ot in output_types_raw]
+
+        total = len(self._interval_groups)
+        processed_variants = 0
+
+        for batch_idx in range(0, total, self.chunk_size):
+            batch = self._interval_groups[batch_idx:batch_idx + self.chunk_size]
+            batch_results: Dict[str, Any] = {}
+
+            for interval, variants in batch:
+                ag_interval = ag_genome.Interval(
+                    chromosome=interval.chrom,
+                    start=interval.start,
+                    end=interval.end,
+                )
+                for v in variants:
+                    ag_variant = ag_genome.Variant(
+                        chromosome=v.chrom,
+                        position=v.pos,
+                        reference_bases=v.ref,
+                        alternate_bases=v.alt,
+                    )
+                    result = self._caller.call_predict_variant(
+                        interval=ag_interval,
+                        variant=ag_variant,
+                        ontology_terms=ontology_terms,
+                        output_types=output_types,
+                    )
+                    variant_key = f"{v.chrom}:{v.pos}:{v.ref}>{v.alt}"
+                    if result is not None:
+                        batch_results[variant_key] = result
+                        processed_variants += 1
+                    else:
+                        self._checkpoint.record_failed_variant(
+                            v.chrom, v.pos, v.ref, v.alt, "max retries exceeded"
+                        )
+
+                self._checkpoint.mark_interval_complete(_interval_key(interval))
+
+            batch_num = batch_idx // self.chunk_size
+            self._checkpoint.save_batch(batch_num, {
+                k: str(v) for k, v in batch_results.items()
+            })
+            self._checkpoint.save_state()
+
+            elapsed = time.time() - self._start_time
+            self.logger.info(
+                f"Batch {batch_num}: {len(batch)} intervals, "
+                f"{processed_variants} variants processed, "
+                f"elapsed {elapsed:.0f}s"
+            )
+
+            yield batch_results
+
+    def process_chunk(self, chunk: Any) -> Any:
+        """Identity — processing happens in stream()."""
+        return chunk
+
+    def teardown(self) -> None:
+        elapsed = time.time() - self._start_time
+        stats = self._caller.stats if self._caller else {}
+        failed_count = len(self._checkpoint.failed_variants) if self._checkpoint else 0
+        self.logger.info(
+            f"AlphaGenome run complete. "
+            f"API calls: {stats.get('total_calls', 0)}, "
+            f"failures: {stats.get('total_failures', 0)}, "
+            f"failed variants: {failed_count}, "
+            f"runtime: {elapsed:.0f}s"
+        )
+        super().teardown()

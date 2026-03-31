@@ -300,3 +300,101 @@ class TestRateLimitedCaller:
         assert caller._should_cooldown() is True
         caller._consecutive_rate_limits = 2
         assert caller._should_cooldown() is False
+
+
+class TestAlphaGenomeStreamer:
+    def _make_variant_tsv(self, tmp_path, variants):
+        """Write a TSV with chrom/pos/ref/alt columns."""
+        tsv_path = tmp_path / "variants.tsv"
+        lines = ["chrom\tpos\tref\talt\n"]
+        for v in variants:
+            lines.append(f"{v[0]}\t{v[1]}\t{v[2]}\t{v[3]}\n")
+        tsv_path.write_text("".join(lines))
+        return str(tsv_path)
+
+    def _make_config_file(self, tmp_path, overrides=None):
+        cfg = {
+            "api": {"key": "test-key", "max_retries": 2,
+                    "retry_backoff": 0.01, "request_timeout": 5},
+            "ontology": {"terms": ["UBERON:0001157"],
+                         "output_types": ["RNA_SEQ"]},
+            "intervals": {"default_size": 100_000, "adaptive": False,
+                          "adaptive_max_size": 100_000, "density_window": 50_000},
+        }
+        if overrides:
+            for section, vals in overrides.items():
+                cfg.setdefault(section, {}).update(vals)
+        cfg_path = tmp_path / "config.yaml"
+        cfg_path.write_text(yaml.dump(cfg))
+        return str(cfg_path)
+
+    @patch("hvantk.data.alphagenome_streamer._create_dna_client")
+    def test_setup_loads_tsv_input(self, mock_create_client, tmp_path):
+        from hvantk.data.alphagenome_streamer import AlphaGenomeStreamer
+
+        mock_create_client.return_value = MagicMock()
+        tsv = self._make_variant_tsv(tmp_path, [("chr1", 500000, "A", "T")])
+        cfg = self._make_config_file(tmp_path)
+        out = str(tmp_path / "output")
+
+        streamer = AlphaGenomeStreamer(
+            input_path=tsv, output_dir=out, config_path=cfg,
+        )
+        streamer.setup()
+        assert len(streamer._variants) == 1
+        assert streamer._variants[0].chrom == "chr1"
+        streamer.teardown()
+
+    @patch("hvantk.data.alphagenome_streamer._import_alphagenome")
+    @patch("hvantk.data.alphagenome_streamer._create_dna_client")
+    def test_stream_calls_api_per_variant(self, mock_create_client, mock_import, tmp_path):
+        from hvantk.data.alphagenome_streamer import AlphaGenomeStreamer
+
+        mock_model = MagicMock()
+        mock_result = MagicMock()
+        mock_result.reference = MagicMock()
+        mock_result.alternate = MagicMock()
+        mock_model.predict_variant.return_value = mock_result
+        mock_create_client.return_value = mock_model
+
+        mock_ag_genome = MagicMock()
+        mock_ag_client = MagicMock()
+        mock_import.return_value = (mock_ag_genome, mock_ag_client)
+
+        tsv = self._make_variant_tsv(
+            tmp_path,
+            [("chr1", 500000, "A", "T"), ("chr2", 600000, "G", "C")],
+        )
+        cfg = self._make_config_file(tmp_path)
+        out = str(tmp_path / "output")
+
+        streamer = AlphaGenomeStreamer(
+            input_path=tsv, output_dir=out, config_path=cfg,
+        )
+        streamer.setup()
+        batches = list(streamer.stream())
+        assert mock_model.predict_variant.call_count == 2
+        streamer.teardown()
+
+    @patch("hvantk.data.alphagenome_streamer._create_dna_client")
+    def test_no_resume_clears_checkpoints(self, mock_create_client, tmp_path):
+        from hvantk.data.alphagenome_streamer import AlphaGenomeStreamer
+
+        mock_create_client.return_value = MagicMock()
+        tsv = self._make_variant_tsv(tmp_path, [("chr1", 500000, "A", "T")])
+        cfg = self._make_config_file(tmp_path)
+        out = str(tmp_path / "output")
+
+        # Create a fake checkpoint
+        ckpt_dir = os.path.join(out, "_checkpoints")
+        os.makedirs(ckpt_dir, exist_ok=True)
+        state_path = os.path.join(ckpt_dir, "state.json")
+        with open(state_path, "w") as f:
+            json.dump({"completed_intervals": ["chr1:450000-550000"], "failed_variants": []}, f)
+
+        streamer = AlphaGenomeStreamer(
+            input_path=tsv, output_dir=out, config_path=cfg, no_resume=True,
+        )
+        streamer.setup()
+        assert not os.path.isfile(state_path)
+        streamer.teardown()
