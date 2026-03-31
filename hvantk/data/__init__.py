@@ -22,6 +22,7 @@ from hvantk.data.gene_disease_streamer import GeneDiseaseValidityStreamer
 from hvantk.data.gene_mapper import GeneMapper
 from hvantk.data.gencc_streamer import GenCCStreamer
 from hvantk.data.cosmic_cgc_streamer import CosmicCGCStreamer
+from hvantk.data.alphagenome_streamer import AlphaGenomeStreamer
 
 __all__ = [
     # Base classes
@@ -36,6 +37,8 @@ __all__ = [
     "ClinvarDataStreamer",
     "ClinvarTrainingSetProcessor",
     "create_clinvar_training_set_streamer",
+    # AlphaGenome streamer
+    "AlphaGenomeStreamer",
     # Gene ID mapping
     "GeneMapper",
 ]
