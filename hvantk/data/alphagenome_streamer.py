@@ -81,3 +81,148 @@ def load_config(config_path: str) -> Dict[str, Any]:
             config["intervals"].setdefault(k, v)
 
     return config
+
+
+@dataclass
+class VariantRecord:
+    """A single variant position for AlphaGenome prediction."""
+    chrom: str
+    pos: int
+    ref: str
+    alt: str
+
+
+@dataclass
+class GenomicInterval:
+    """A genomic interval for an AlphaGenome API call."""
+    chrom: str
+    start: int
+    end: int
+
+
+def compute_intervals(
+    variants: List[Any],
+    config: Dict[str, Any],
+) -> List[Tuple[GenomicInterval, List[Any]]]:
+    """Group variants into genomic intervals for API calls.
+
+    In adaptive mode, nearby variants on the same chromosome are grouped
+    into shared intervals to minimize API calls. In fixed mode, each
+    variant gets its own interval.
+
+    Parameters
+    ----------
+    variants : list
+        Variant objects with .chrom, .pos, .ref, .alt attributes.
+    config : dict
+        Config dict with 'intervals' section.
+
+    Returns
+    -------
+    list of (GenomicInterval, list of variants)
+        Each tuple is an interval and the variants it contains.
+    """
+    if not variants:
+        return []
+
+    interval_cfg = config["intervals"]
+    default_size = interval_cfg["default_size"]
+    adaptive = interval_cfg.get("adaptive", True)
+
+    if not adaptive:
+        return _compute_fixed_intervals(variants, default_size)
+
+    adaptive_max_size = interval_cfg.get("adaptive_max_size", default_size)
+    density_window = interval_cfg.get("density_window", 50_000)
+    return _compute_adaptive_intervals(
+        variants, default_size, adaptive_max_size, density_window
+    )
+
+
+def _center_interval(pos: int, size: int) -> Tuple[int, int]:
+    """Return (start, end) centered on pos with given size."""
+    half = size // 2
+    start = max(0, pos - half)
+    end = start + size
+    return start, end
+
+
+def _compute_fixed_intervals(
+    variants: List[Any], default_size: int
+) -> List[Tuple[GenomicInterval, List[Any]]]:
+    """One interval per variant, centered on variant position."""
+    result = []
+    for v in variants:
+        start, end = _center_interval(v.pos, default_size)
+        interval = GenomicInterval(chrom=v.chrom, start=start, end=end)
+        result.append((interval, [v]))
+    return result
+
+
+def _compute_adaptive_intervals(
+    variants: List[Any],
+    default_size: int,
+    max_size: int,
+    density_window: int,
+) -> List[Tuple[GenomicInterval, List[Any]]]:
+    """Group nearby variants into shared intervals."""
+    sorted_variants = sorted(variants, key=lambda v: (v.chrom, v.pos))
+
+    groups: List[List[Any]] = []
+    current_group: List[Any] = [sorted_variants[0]]
+
+    for v in sorted_variants[1:]:
+        prev = current_group[-1]
+        if v.chrom == prev.chrom and (v.pos - prev.pos) <= density_window:
+            current_group.append(v)
+        else:
+            groups.append(current_group)
+            current_group = [v]
+    groups.append(current_group)
+
+    result: List[Tuple[GenomicInterval, List[Any]]] = []
+    for group in groups:
+        span_start = group[0].pos
+        span_end = group[-1].pos
+        span = span_end - span_start
+
+        if span <= max_size:
+            midpoint = (span_start + span_end) // 2
+            size = max(default_size, span + density_window)
+            size = min(size, max_size)
+            start, end = _center_interval(midpoint, size)
+            interval = GenomicInterval(chrom=group[0].chrom, start=start, end=end)
+            result.append((interval, group))
+        else:
+            sub_group: List[Any] = [group[0]]
+            for v in group[1:]:
+                if (v.pos - sub_group[0].pos) <= max_size:
+                    sub_group.append(v)
+                else:
+                    _emit_subgroup(
+                        sub_group, default_size, max_size, density_window, result
+                    )
+                    sub_group = [v]
+            _emit_subgroup(
+                sub_group, default_size, max_size, density_window, result
+            )
+
+    return result
+
+
+def _emit_subgroup(
+    sub_group: List[Any],
+    default_size: int,
+    max_size: int,
+    density_window: int,
+    result: List[Tuple[GenomicInterval, List[Any]]],
+) -> None:
+    """Create an interval for a sub-group and append to result."""
+    sg_start = sub_group[0].pos
+    sg_end = sub_group[-1].pos
+    midpoint = (sg_start + sg_end) // 2
+    size = max(default_size, (sg_end - sg_start) + density_window)
+    size = min(size, max_size)
+    start, end = _center_interval(midpoint, size)
+    interval = GenomicInterval(chrom=sub_group[0].chrom, start=start, end=end)
+    result.append((interval, sub_group))
