@@ -232,26 +232,43 @@ class CPTACPhosphoDataset:
             "class_name": CPTAC_CANCER_CLASS_MAP[self.cancer_type],
         }
 
-    def download(self, output_dir: str) -> None:
+    def download(self, output_dir: str, overwrite: bool = False) -> Dict[str, str]:
         """Download and process CPTAC phospho data into *output_dir*.
 
         Produces three files:
-        - ``cptac_{cancer_type}_phospho.tsv``  (intermediate site table)
-        - ``cptac_{cancer_type}_matrix.csv``   (intensity matrix)
-        - ``cptac_{cancer_type}_metadata.csv`` (clinical metadata)
+        - ``cptac-phospho-{cancer_type}.tsv``  (intermediate site table)
+        - ``cptac-phospho-{cancer_type}-matrix.csv``   (intensity matrix)
+        - ``cptac-phospho-{cancer_type}-metadata.csv`` (clinical metadata)
+
+        Returns
+        -------
+        dict
+            Paths to output files: {"tsv": ..., "matrix": ..., "metadata": ...}
         """
         os.makedirs(output_dir, exist_ok=True)
+
+        tsv_path = os.path.join(output_dir, f"cptac-phospho-{self.cancer_type}.tsv")
+        matrix_path = os.path.join(output_dir, f"cptac-phospho-{self.cancer_type}-matrix.csv")
+        metadata_path = os.path.join(output_dir, f"cptac-phospho-{self.cancer_type}-metadata.csv")
+
+        if all(os.path.exists(p) for p in [tsv_path, matrix_path, metadata_path]) and not overwrite:
+            logger.info("All output files exist for %s, skipping", self.cancer_type)
+            return {"tsv": tsv_path, "matrix": matrix_path, "metadata": metadata_path}
+
+        logger.info("Loading CPTAC %s dataset...", self.cancer_type)
         ds = _load_cptac_dataset(self.cancer_type)
 
+        logger.info("Fetching phosphoproteomics data...")
         phospho_df = ds.get_phosphoproteomics()
+        logger.info("Phospho DataFrame: %d samples x %d columns", *phospho_df.shape)
+
+        logger.info("Fetching clinical metadata...")
         clinical_df = ds.get_clinical()
 
         sites = extract_phospho_sites(phospho_df, self.cancer_type)
-
-        prefix = f"cptac_{self.cancer_type}"
-        write_intermediate_tsv(sites, os.path.join(output_dir, f"{prefix}_phospho.tsv"))
-        write_matrix_csv(phospho_df, os.path.join(output_dir, f"{prefix}_matrix.csv"))
-        write_metadata_csv(clinical_df, self.cancer_type, os.path.join(output_dir, f"{prefix}_metadata.csv"))
+        write_intermediate_tsv(sites, tsv_path)
+        write_matrix_csv(phospho_df, matrix_path)
+        write_metadata_csv(clinical_df, self.cancer_type, metadata_path)
 
         logger.info(
             "CPTAC %s download complete: %d sites from %d samples",
@@ -259,3 +276,4 @@ class CPTACPhosphoDataset:
             len(sites),
             len(phospho_df),
         )
+        return {"tsv": tsv_path, "matrix": matrix_path, "metadata": metadata_path}

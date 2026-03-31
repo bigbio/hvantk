@@ -21,14 +21,13 @@ PEPTIDEATLAS_LATEST_BUILD_ID = "606"
 
 # CPTAC Phospho (via cptac Python package)
 CPTAC_CANCER_TYPES = [
-    "brca", "ccrcc", "colon", "endometrial", "gbm",
+    "brca", "ccrcc", "coad", "gbm",
     "hnscc", "lscc", "luad", "ov", "pdac", "ucec",
 ]
 CPTAC_CANCER_CLASS_MAP = {
     "brca": "Brca",
     "ccrcc": "Ccrcc",
-    "colon": "Colon",
-    "endometrial": "Endometrial",
+    "coad": "Coad",
     "gbm": "Gbm",
     "hnscc": "Hnscc",
     "lscc": "Lscc",
