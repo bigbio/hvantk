@@ -36,7 +36,12 @@ from hvantk.qtlcascade.cascade import build_cascade
 from hvantk.qtlcascade.gene_summary import build_cascade_gene_summary
 
 # Colocalization (pure NumPy — always available)
-from hvantk.qtlcascade.coloc import coloc_abf, compute_log_abf, run_coloc_per_gene
+from hvantk.qtlcascade.coloc import (
+    coloc_abf,
+    compute_log_abf,
+    prepare_coloc_data,
+    run_coloc_per_gene,
+)
 
 # Constants
 from hvantk.qtlcascade.constants import (
@@ -80,6 +85,7 @@ __all__ = [
     # Coloc
     "compute_log_abf",
     "coloc_abf",
+    "prepare_coloc_data",
     "run_coloc_per_gene",
     # Pipeline
     "CascadeConfig",

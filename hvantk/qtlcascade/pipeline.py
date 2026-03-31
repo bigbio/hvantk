@@ -20,6 +20,9 @@ from typing import Dict, List, Optional
 
 import pandas as pd
 
+from hvantk.core.backends import get_algorithm_meta
+from hvantk.core.router import BackendRouter, ReaderFactory
+
 from hvantk.qtlcascade.constants import (
     DEFAULT_COLOC_H4_THRESHOLD,
     DEFAULT_COLOC_P1,
@@ -151,6 +154,8 @@ class CascadePipeline:
         self._per_tissue_dir.mkdir(exist_ok=True)
         if config.generate_plots:
             self._plots_dir.mkdir(exist_ok=True)
+        self._router = BackendRouter()
+        self._reader_factory = ReaderFactory()
 
     # ------------------------------------------------------------------
     # Public API
@@ -336,6 +341,13 @@ class CascadePipeline:
         logger.info("Stage: %s", CascadeStage.RUN_COLOC.value)
         from hvantk.qtlcascade.coloc import run_coloc_per_gene
         import hail as hl
+
+        meta = get_algorithm_meta(run_coloc_per_gene)
+        backend = self._router.resolve(
+            meta,
+            [self.config.eqtl_allpairs_ht, self.config.pqtl_allpairs_ht],
+        )
+        logger.info("Coloc backend: %s", backend.value)
 
         # Get cascade gene IDs (genes with both eQTL and pQTL signals —
         # includes both eqtl_mediated and discordant classes)
