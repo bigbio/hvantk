@@ -13,9 +13,17 @@ import pandas as pd
 
 from hvantk.qtlcascade.constants import DEFAULT_COLOC_H4_THRESHOLD
 
+from hvantk.core.backends import Backend, algorithm
+
 logger = logging.getLogger(__name__)
 
 
+@algorithm(
+    backends=[Backend.HAIL, Backend.DUCKDB],
+    input_format="table",
+    output_format="table",
+    key_fields=["gene_id"],
+)
 def build_cascade_gene_summary(
     cascade_ht_path: str,
     output_path: str,

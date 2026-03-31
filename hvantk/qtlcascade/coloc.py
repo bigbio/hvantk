@@ -28,6 +28,7 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
+from hvantk.core.backends import Backend, algorithm
 from hvantk.qtlcascade.constants import (
     DEFAULT_COLOC_P1,
     DEFAULT_COLOC_P2,
@@ -44,6 +45,11 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
+@algorithm(
+    backends=[Backend.PANDAS],
+    input_format="array",
+    output_format="array",
+)
 def compute_log_abf(
     beta: np.ndarray,
     se: np.ndarray,
@@ -84,6 +90,11 @@ def _logdiff(a: float, b: float) -> float:
     return a + np.log1p(-np.exp(b - a))
 
 
+@algorithm(
+    backends=[Backend.PANDAS],
+    input_format="array",
+    output_format="dataframe",
+)
 def coloc_abf(
     eqtl_beta: np.ndarray,
     eqtl_se: np.ndarray,
@@ -159,25 +170,26 @@ def coloc_abf(
 
 
 # ---------------------------------------------------------------------------
-# Per-gene coloc driver (Hail + NumPy hybrid)
+# Per-gene coloc driver
 # ---------------------------------------------------------------------------
 
 
-def run_coloc_per_gene(
+@algorithm(
+    backends=[Backend.HAIL],
+    input_format="table",
+    output_format="dataframe",
+)
+def prepare_coloc_data(
     eqtl_allpairs_ht_path: str,
     pqtl_allpairs_ht_path: str,
     cascade_genes: list,
     tissue: Optional[str] = None,
-    window_kb: int = DEFAULT_COLOC_WINDOW_KB,
-    p1: float = DEFAULT_COLOC_P1,
-    p2: float = DEFAULT_COLOC_P2,
-    p12: float = DEFAULT_COLOC_P12,
-    W: float = DEFAULT_COLOC_W,
 ) -> pd.DataFrame:
-    """Run coloc for all cascade genes.
+    """Load and join allpairs eQTL/pQTL data for coloc.
 
-    Uses Hail for bulk data extraction (one Spark job) and NumPy for
-    per-gene ABF computation.
+    Reads both allpairs Hail Tables, filters to cascade genes,
+    inner-joins on ``(locus, alleles, gene_id)``, and flattens to a
+    pandas DataFrame.
 
     Parameters
     ----------
@@ -189,23 +201,14 @@ def run_coloc_per_gene(
         Gene IDs with both eQTL and pQTL evidence.
     tissue : str, optional
         Filter allpairs tables to this tissue.
-    window_kb : int
-        Window (±kb) around lead variant for regional extraction.
-    p1, p2, p12, W : float
-        Coloc prior parameters.
 
     Returns
     -------
     pd.DataFrame
-        Columns: gene_id, tissue, H0–H4, n_variants.
+        Columns: gene_id, pos, eqtl_beta, eqtl_se, eqtl_p, pqtl_beta,
+        pqtl_se.
     """
     import hail as hl
-
-    result_cols = ["gene_id", "tissue", "H0", "H1", "H2", "H3", "H4", "n_variants"]
-    empty = pd.DataFrame(columns=result_cols)
-
-    if not cascade_genes:
-        return empty
 
     eqtl_ht = hl.read_table(eqtl_allpairs_ht_path)
     pqtl_ht = hl.read_table(pqtl_allpairs_ht_path)
@@ -264,7 +267,63 @@ def run_coloc_per_gene(
     logger.info(
         "Exporting joined allpairs for coloc (%d cascade genes)", len(cascade_genes)
     )
-    df = joined.to_pandas()
+    return joined.to_pandas()
+
+
+@algorithm(
+    backends=[Backend.HAIL],
+    input_format="table",
+    output_format="dataframe",
+    key_fields=["gene_id"],
+)
+def run_coloc_per_gene(
+    eqtl_allpairs_ht_path: str,
+    pqtl_allpairs_ht_path: str,
+    cascade_genes: list,
+    tissue: Optional[str] = None,
+    window_kb: int = DEFAULT_COLOC_WINDOW_KB,
+    p1: float = DEFAULT_COLOC_P1,
+    p2: float = DEFAULT_COLOC_P2,
+    p12: float = DEFAULT_COLOC_P12,
+    W: float = DEFAULT_COLOC_W,
+) -> pd.DataFrame:
+    """Run coloc for all cascade genes.
+
+    Uses ``prepare_coloc_data`` for bulk data extraction and NumPy for
+    per-gene ABF computation.
+
+    Parameters
+    ----------
+    eqtl_allpairs_ht_path : str
+        Path to allpairs eQTL Hail Table.
+    pqtl_allpairs_ht_path : str
+        Path to allpairs pQTL Hail Table.
+    cascade_genes : list[str]
+        Gene IDs with both eQTL and pQTL evidence.
+    tissue : str, optional
+        Filter allpairs tables to this tissue.
+    window_kb : int
+        Window (±kb) around lead variant for regional extraction.
+    p1, p2, p12, W : float
+        Coloc prior parameters.
+
+    Returns
+    -------
+    pd.DataFrame
+        Columns: gene_id, tissue, H0–H4, n_variants.
+    """
+    result_cols = ["gene_id", "tissue", "H0", "H1", "H2", "H3", "H4", "n_variants"]
+    empty = pd.DataFrame(columns=result_cols)
+
+    if not cascade_genes:
+        return empty
+
+    df = prepare_coloc_data(
+        eqtl_allpairs_ht_path=eqtl_allpairs_ht_path,
+        pqtl_allpairs_ht_path=pqtl_allpairs_ht_path,
+        cascade_genes=cascade_genes,
+        tissue=tissue,
+    )
 
     if df.empty:
         logger.warning("No overlapping variants found between allpairs tables")

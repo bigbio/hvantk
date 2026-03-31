@@ -1892,3 +1892,55 @@ def create_pqtl_tb(
         overwrite=overwrite,
         export_tsv=export_tsv,
     )
+
+
+# ---------------------------------------------------------------------------
+# AlphaGenome Builder
+# ---------------------------------------------------------------------------
+
+
+def create_alphagenome_tb(
+    input_path: str,
+    output_path: str,
+    config_path: str,
+    no_resume: bool = False,
+    overwrite: bool = False,
+) -> None:
+    """Run AlphaGenome variant effect predictions and write JSON outputs.
+
+    Runs the AlphaGenomeStreamer to call the API for each variant, then
+    writes predictions.json and checkpoint files to output_path (a
+    directory). Per-modality Hail Table assembly will be added once the
+    AlphaGenome SDK response structure is validated.
+
+    Parameters
+    ----------
+    input_path : str
+        Path to Hail Table (.ht) or TSV with chrom/pos/ref/alt columns.
+    output_path : str
+        Output directory for prediction JSON outputs.
+    config_path : str
+        Path to AlphaGenome YAML config file.
+    no_resume : bool
+        If True, discard existing checkpoints and restart.
+    overwrite : bool
+        If True, overwrite existing output directory contents.
+    """
+    from hvantk.data.alphagenome_streamer import AlphaGenomeStreamer
+
+    if overwrite and os.path.isdir(output_path):
+        import shutil
+        shutil.rmtree(output_path)
+
+    streamer = AlphaGenomeStreamer(
+        input_path=input_path,
+        output_dir=output_path,
+        config_path=config_path,
+        no_resume=no_resume,
+    )
+    streamer.setup()
+    try:
+        for _batch in streamer.stream():
+            pass  # checkpointing handled internally
+    finally:
+        streamer.teardown()

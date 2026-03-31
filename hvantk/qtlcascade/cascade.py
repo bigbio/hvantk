@@ -26,9 +26,17 @@ from hvantk.qtlcascade.constants import (
     DEFAULT_PQTL_P_THRESHOLD,
 )
 
+from hvantk.core.backends import Backend, algorithm
+
 logger = logging.getLogger(__name__)
 
 
+@algorithm(
+    backends=[Backend.HAIL, Backend.DUCKDB],
+    input_format="table",
+    output_format="table",
+    key_fields=["locus", "alleles", "gene_id"],
+)
 def build_cascade(
     eqtl_ht_path: str,
     pqtl_ht_path: str,

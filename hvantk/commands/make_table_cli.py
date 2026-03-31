@@ -708,3 +708,41 @@ def mktable_pqtl(
     )
     click.echo(f"pQTL table created at {output_ht}")
     ht.describe()
+
+
+# ---------------------------------------------------------------------------
+# AlphaGenome builder
+# ---------------------------------------------------------------------------
+
+
+@mktable_group.command("alphagenome")
+@click.option(
+    "--input", "input_path", required=True, type=str,
+    help="Path to Hail Table (.ht) or TSV with chrom/pos/ref/alt columns",
+)
+@click.option(
+    "--output-dir", required=True, type=str,
+    help="Output directory for per-modality Hail Tables",
+)
+@click.option(
+    "--config", "config_path", required=True, type=str,
+    help="Path to AlphaGenome YAML config file",
+)
+@click.option(
+    "--no-resume", is_flag=True,
+    help="Discard existing checkpoints and restart from scratch",
+)
+@_overwrite_opt
+def mktable_alphagenome(input_path, output_dir, config_path, no_resume, overwrite):
+    """Run AlphaGenome variant effect predictions."""
+    from hvantk.tables.table_builders import create_alphagenome_tb
+
+    logger.info("Running AlphaGenome variant predictions")
+    create_alphagenome_tb(
+        input_path=input_path,
+        output_path=output_dir,
+        config_path=config_path,
+        no_resume=no_resume,
+        overwrite=overwrite,
+    )
+    click.echo(f"AlphaGenome predictions written to {output_dir}")
