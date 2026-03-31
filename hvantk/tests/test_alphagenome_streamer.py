@@ -1,6 +1,7 @@
 import json
 import os
 from dataclasses import dataclass
+from unittest.mock import MagicMock, patch
 
 import pytest
 import yaml
@@ -231,3 +232,71 @@ class TestCheckpointManager:
         assert not os.path.isfile(
             os.path.join(out_dir, "_checkpoints", "state.json")
         )
+
+
+class TestRateLimitedCaller:
+    def _make_api_config(self, max_retries=3, retry_backoff=0.01, request_timeout=5):
+        return {
+            "api": {
+                "key": "test-key",
+                "max_retries": max_retries,
+                "retry_backoff": retry_backoff,
+                "request_timeout": request_timeout,
+            }
+        }
+
+    def test_successful_call(self):
+        from hvantk.data.alphagenome_streamer import RateLimitedCaller
+
+        mock_model = MagicMock()
+        mock_model.predict_variant.return_value = {"rna_seq": [1.0]}
+        caller = RateLimitedCaller(mock_model, self._make_api_config())
+
+        result = caller.call_predict_variant(
+            interval=MagicMock(), variant=MagicMock(),
+            ontology_terms=["UBERON:0001157"], output_types=["RNA_SEQ"],
+        )
+        assert result == {"rna_seq": [1.0]}
+        mock_model.predict_variant.assert_called_once()
+
+    def test_retry_on_transient_error(self):
+        from hvantk.data.alphagenome_streamer import RateLimitedCaller
+
+        mock_model = MagicMock()
+        mock_model.predict_variant.side_effect = [
+            Exception("503 Server Error"),
+            Exception("503 Server Error"),
+            {"rna_seq": [1.0]},
+        ]
+        caller = RateLimitedCaller(mock_model, self._make_api_config())
+        result = caller.call_predict_variant(
+            interval=MagicMock(), variant=MagicMock(),
+            ontology_terms=[], output_types=[],
+        )
+        assert result == {"rna_seq": [1.0]}
+        assert mock_model.predict_variant.call_count == 3
+
+    def test_max_retries_exceeded_returns_none(self):
+        from hvantk.data.alphagenome_streamer import RateLimitedCaller
+
+        mock_model = MagicMock()
+        mock_model.predict_variant.side_effect = Exception("503 Server Error")
+        caller = RateLimitedCaller(
+            mock_model, self._make_api_config(max_retries=2)
+        )
+        result = caller.call_predict_variant(
+            interval=MagicMock(), variant=MagicMock(),
+            ontology_terms=[], output_types=[],
+        )
+        assert result is None
+        assert mock_model.predict_variant.call_count == 2
+
+    def test_cooldown_after_consecutive_rate_limits(self):
+        from hvantk.data.alphagenome_streamer import RateLimitedCaller
+
+        mock_model = MagicMock()
+        caller = RateLimitedCaller(mock_model, self._make_api_config())
+        caller._consecutive_rate_limits = 3
+        assert caller._should_cooldown() is True
+        caller._consecutive_rate_limits = 2
+        assert caller._should_cooldown() is False

@@ -287,3 +287,102 @@ class CheckpointManager:
             import shutil
 
             shutil.rmtree(self._checkpoint_dir)
+
+
+class RateLimitedCaller:
+    """Wraps AlphaGenome model with retry logic and adaptive throttling.
+
+    Retries transient errors (429, 5xx) with exponential backoff + jitter.
+    Enters cooldown after consecutive rate-limit hits.
+    """
+
+    _COOLDOWN_THRESHOLD = 3
+    _COOLDOWN_SECONDS = 60.0
+    _BASE_DELAY = 0.5
+
+    def __init__(self, model: Any, config: Dict[str, Any]):
+        self._model = model
+        api_cfg = config["api"]
+        self._max_retries = api_cfg.get("max_retries", 3)
+        self._retry_backoff = api_cfg.get("retry_backoff", 2.0)
+        self._request_timeout = api_cfg.get("request_timeout", 120)
+        self._consecutive_rate_limits = 0
+        self._total_calls = 0
+        self._total_failures = 0
+
+    def _should_cooldown(self) -> bool:
+        return self._consecutive_rate_limits >= self._COOLDOWN_THRESHOLD
+
+    def _is_rate_limit_error(self, exc: Exception) -> bool:
+        msg = str(exc).lower()
+        return "429" in msg or "rate limit" in msg
+
+    def _is_transient_error(self, exc: Exception) -> bool:
+        msg = str(exc).lower()
+        return (
+            self._is_rate_limit_error(exc)
+            or "500" in msg
+            or "502" in msg
+            or "503" in msg
+            or "504" in msg
+            or "server error" in msg
+            or "timeout" in msg
+            or "connection" in msg
+        )
+
+    def call_predict_variant(
+        self,
+        interval: Any,
+        variant: Any,
+        ontology_terms: List[str],
+        output_types: List[str],
+    ) -> Optional[Any]:
+        """Call model.predict_variant with retry and backoff.
+
+        Returns the API response on success, or None if all retries fail.
+        """
+        if self._should_cooldown():
+            logger.warning(
+                f"Cooldown: {self._COOLDOWN_THRESHOLD} consecutive rate limits. "
+                f"Pausing {self._COOLDOWN_SECONDS}s."
+            )
+            time.sleep(self._COOLDOWN_SECONDS)
+            self._consecutive_rate_limits = 0
+
+        for attempt in range(1, self._max_retries + 1):
+            try:
+                self._total_calls += 1
+                result = self._model.predict_variant(
+                    interval=interval,
+                    variant=variant,
+                    ontology_terms=ontology_terms,
+                    requested_outputs=output_types,
+                )
+                self._consecutive_rate_limits = 0
+                time.sleep(self._BASE_DELAY)
+                return result
+
+            except Exception as exc:
+                if self._is_rate_limit_error(exc):
+                    self._consecutive_rate_limits += 1
+
+                if self._is_transient_error(exc) and attempt < self._max_retries:
+                    delay = self._retry_backoff ** attempt * (
+                        1 + random.random() * 0.5
+                    )
+                    logger.warning(
+                        f"Transient error (attempt {attempt}/{self._max_retries}): "
+                        f"{exc}. Retrying in {delay:.1f}s."
+                    )
+                    time.sleep(delay)
+                else:
+                    self._total_failures += 1
+                    logger.error(f"Failed after {attempt} attempt(s): {exc}")
+                    return None
+
+    @property
+    def stats(self) -> Dict[str, int]:
+        return {
+            "total_calls": self._total_calls,
+            "total_failures": self._total_failures,
+        }
