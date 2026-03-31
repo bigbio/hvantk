@@ -259,11 +259,14 @@ class CPTACPhosphoDataset:
         ds = _load_cptac_dataset(self.cancer_type)
 
         logger.info("Fetching phosphoproteomics data...")
-        phospho_df = ds.get_phosphoproteomics()
+        # Specify source='umich' to avoid a bug in cptac when multiple
+        # sources exist and no source is specified (generator has no len()).
+        phospho_df = ds.get_phosphoproteomics(source="umich")
         logger.info("Phospho DataFrame: %d samples x %d columns", *phospho_df.shape)
 
         logger.info("Fetching clinical metadata...")
-        clinical_df = ds.get_clinical()
+        # Specify source='mssm' to avoid the same multi-source bug.
+        clinical_df = ds.get_clinical(source="mssm")
 
         sites = extract_phospho_sites(phospho_df, self.cancer_type)
         write_intermediate_tsv(sites, tsv_path)
