@@ -111,11 +111,15 @@ class DuckDBReader:
 
         self._con = duckdb.connect()
 
-    def read(self, path: str):
+    @staticmethod
+    def _safe_glob(path: str) -> str:
+        """Build a parquet glob path with escaped single quotes."""
         parts_glob = os.path.join(_parts_path(path), "*.parquet")
-        return self._con.sql(
-            f"SELECT * FROM read_parquet('{parts_glob}')"
-        )
+        return parts_glob.replace("'", "''")
+
+    def read(self, path: str):
+        safe = self._safe_glob(path)
+        return self._con.sql(f"SELECT * FROM read_parquet('{safe}')")
 
     def as_dataframe(self, path: str) -> pd.DataFrame:
         return self.read(path).fetchdf()
@@ -127,9 +131,9 @@ class DuckDBReader:
 
     def row_count_hint(self, path: str) -> Optional[int]:
         try:
-            parts_glob = os.path.join(_parts_path(path), "*.parquet")
+            safe = self._safe_glob(path)
             result = self._con.sql(
-                f"SELECT count(*) AS n FROM read_parquet('{parts_glob}')"
+                f"SELECT count(*) AS n FROM read_parquet('{safe}')"
             ).fetchone()
             return result[0] if result else None
         except Exception:

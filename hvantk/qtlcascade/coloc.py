@@ -47,8 +47,8 @@ logger = logging.getLogger(__name__)
 
 @algorithm(
     backends=[Backend.PANDAS],
-    input_format="dataframe",
-    output_format="dataframe",
+    input_format="array",
+    output_format="array",
 )
 def compute_log_abf(
     beta: np.ndarray,
@@ -92,7 +92,7 @@ def _logdiff(a: float, b: float) -> float:
 
 @algorithm(
     backends=[Backend.PANDAS],
-    input_format="dataframe",
+    input_format="array",
     output_format="dataframe",
 )
 def coloc_abf(
@@ -271,8 +271,8 @@ def prepare_coloc_data(
 
 
 @algorithm(
-    backends=[Backend.PANDAS],
-    input_format="dataframe",
+    backends=[Backend.HAIL],
+    input_format="table",
     output_format="dataframe",
     key_fields=["gene_id"],
 )
