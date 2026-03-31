@@ -7,9 +7,12 @@ them via any reader.
 """
 
 import logging
-from typing import List, Optional, Union
+from typing import TYPE_CHECKING, List, Optional, Union
 
 import pandas as pd
+
+if TYPE_CHECKING:
+    import hail as hl
 
 logger = logging.getLogger(__name__)
 
