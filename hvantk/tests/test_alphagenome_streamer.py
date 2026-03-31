@@ -398,3 +398,129 @@ class TestAlphaGenomeStreamer:
         streamer.setup()
         assert not os.path.isfile(state_path)
         streamer.teardown()
+
+
+class TestEndToEnd:
+    """End-to-end test with mocked AlphaGenome API."""
+
+    @patch("hvantk.data.alphagenome_streamer._import_alphagenome")
+    @patch("hvantk.data.alphagenome_streamer._create_dna_client")
+    def test_full_pipeline_tsv_input(self, mock_create_client, mock_import_ag, tmp_path):
+        from hvantk.data.alphagenome_streamer import AlphaGenomeStreamer
+
+        # Setup mock model
+        mock_model = MagicMock()
+        mock_result = MagicMock()
+        mock_result.reference = MagicMock()
+        mock_result.alternate = MagicMock()
+        mock_model.predict_variant.return_value = mock_result
+        mock_create_client.return_value = mock_model
+
+        # Setup mock alphagenome module
+        mock_ag_genome = MagicMock()
+        mock_ag_client = MagicMock()
+        mock_ag_client.OutputType = MagicMock()
+        mock_ag_client.OutputType.RNA_SEQ = "RNA_SEQ"
+        mock_import_ag.return_value = (mock_ag_genome, mock_ag_client)
+
+        # Write variant TSV
+        tsv_path = tmp_path / "variants.tsv"
+        tsv_path.write_text(
+            "chrom\tpos\tref\talt\n"
+            "chr1\t100000\tA\tT\n"
+            "chr1\t120000\tG\tC\n"
+            "chr2\t500000\tC\tG\n"
+        )
+
+        # Write config
+        cfg = {
+            "api": {"key": "test-key", "max_retries": 2,
+                    "retry_backoff": 0.01, "request_timeout": 5},
+            "ontology": {"terms": ["UBERON:0001157"],
+                         "output_types": ["RNA_SEQ"]},
+            "intervals": {"default_size": 100_000, "adaptive": True,
+                          "adaptive_max_size": 100_000, "density_window": 50_000},
+        }
+        cfg_path = tmp_path / "config.yaml"
+        cfg_path.write_text(yaml.dump(cfg))
+
+        out_dir = str(tmp_path / "output")
+
+        # Run streamer
+        streamer = AlphaGenomeStreamer(
+            input_path=str(tsv_path),
+            output_dir=out_dir,
+            config_path=str(cfg_path),
+        )
+        streamer.setup()
+        batches = list(streamer.stream())
+        streamer.teardown()
+
+        # Verify
+        assert mock_model.predict_variant.call_count == 3
+        assert len(batches) >= 1
+        # Checkpoint state should exist
+        state_path = os.path.join(out_dir, "_checkpoints", "state.json")
+        assert os.path.isfile(state_path)
+        with open(state_path) as f:
+            state = json.load(f)
+        assert len(state["completed_intervals"]) > 0
+
+    @patch("hvantk.data.alphagenome_streamer._import_alphagenome")
+    @patch("hvantk.data.alphagenome_streamer._create_dna_client")
+    def test_resume_skips_completed(self, mock_create_client, mock_import_ag, tmp_path):
+        from hvantk.data.alphagenome_streamer import AlphaGenomeStreamer
+
+        mock_model = MagicMock()
+        mock_result = MagicMock()
+        mock_result.reference = MagicMock()
+        mock_result.alternate = MagicMock()
+        mock_model.predict_variant.return_value = mock_result
+        mock_create_client.return_value = mock_model
+
+        mock_ag_genome = MagicMock()
+        mock_ag_client = MagicMock()
+        mock_ag_client.OutputType = MagicMock()
+        mock_ag_client.OutputType.RNA_SEQ = "RNA_SEQ"
+        mock_import_ag.return_value = (mock_ag_genome, mock_ag_client)
+
+        tsv_path = tmp_path / "variants.tsv"
+        tsv_path.write_text(
+            "chrom\tpos\tref\talt\n"
+            "chr1\t100000\tA\tT\n"
+            "chr2\t500000\tC\tG\n"
+        )
+        cfg = {
+            "api": {"key": "test-key", "max_retries": 2,
+                    "retry_backoff": 0.01, "request_timeout": 5},
+            "ontology": {"terms": ["UBERON:0001157"],
+                         "output_types": ["RNA_SEQ"]},
+            "intervals": {"default_size": 100_000, "adaptive": False,
+                          "adaptive_max_size": 100_000, "density_window": 50_000},
+        }
+        cfg_path = tmp_path / "config.yaml"
+        cfg_path.write_text(yaml.dump(cfg))
+        out_dir = str(tmp_path / "output")
+
+        # Run first time
+        streamer = AlphaGenomeStreamer(
+            input_path=str(tsv_path), output_dir=out_dir,
+            config_path=str(cfg_path),
+        )
+        streamer.setup()
+        list(streamer.stream())
+        streamer.teardown()
+        first_call_count = mock_model.predict_variant.call_count
+
+        # Run again — should skip all intervals
+        mock_model.predict_variant.reset_mock()
+        streamer2 = AlphaGenomeStreamer(
+            input_path=str(tsv_path), output_dir=out_dir,
+            config_path=str(cfg_path),
+        )
+        streamer2.setup()
+        batches = list(streamer2.stream())
+        streamer2.teardown()
+
+        assert mock_model.predict_variant.call_count == 0
+        assert len(batches) == 0
