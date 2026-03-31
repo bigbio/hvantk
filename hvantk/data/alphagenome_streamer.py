@@ -226,3 +226,64 @@ def _emit_subgroup(
     start, end = _center_interval(midpoint, size)
     interval = GenomicInterval(chrom=sub_group[0].chrom, start=start, end=end)
     result.append((interval, sub_group))
+
+
+class CheckpointManager:
+    """Manages checkpoint state for resumable AlphaGenome API runs."""
+
+    def __init__(self, output_dir: str):
+        self.output_dir = output_dir
+        self._checkpoint_dir = os.path.join(output_dir, "_checkpoints")
+        self._state_path = os.path.join(self._checkpoint_dir, "state.json")
+        self.completed_intervals: List[str] = []
+        self.failed_variants: List[Dict[str, Any]] = []
+        self._load_existing_state()
+
+    def _load_existing_state(self) -> None:
+        if os.path.isfile(self._state_path):
+            with open(self._state_path) as f:
+                state = json.load(f)
+            self.completed_intervals = state.get("completed_intervals", [])
+            self.failed_variants = state.get("failed_variants", [])
+            logger.info(
+                f"Resumed checkpoint: {len(self.completed_intervals)} intervals complete, "
+                f"{len(self.failed_variants)} failed variants"
+            )
+
+    def save_state(self) -> None:
+        os.makedirs(self._checkpoint_dir, exist_ok=True)
+        state = {
+            "completed_intervals": self.completed_intervals,
+            "failed_variants": self.failed_variants,
+        }
+        with open(self._state_path, "w") as f:
+            json.dump(state, f, indent=2)
+
+    def save_batch(self, batch_index: int, data: Any) -> None:
+        os.makedirs(self._checkpoint_dir, exist_ok=True)
+        batch_path = os.path.join(
+            self._checkpoint_dir, f"batch_{batch_index:03d}.json"
+        )
+        with open(batch_path, "w") as f:
+            json.dump(data, f)
+
+    def mark_interval_complete(self, interval_key: str) -> None:
+        self.completed_intervals.append(interval_key)
+
+    def is_interval_complete(self, interval_key: str) -> bool:
+        return interval_key in self.completed_intervals
+
+    def record_failed_variant(
+        self, chrom: str, pos: int, ref: str, alt: str, reason: str
+    ) -> None:
+        self.failed_variants.append(
+            {"chrom": chrom, "pos": pos, "ref": ref, "alt": alt, "reason": reason}
+        )
+
+    def clear(self) -> None:
+        self.completed_intervals = []
+        self.failed_variants = []
+        if os.path.isdir(self._checkpoint_dir):
+            import shutil
+
+            shutil.rmtree(self._checkpoint_dir)

@@ -1,3 +1,4 @@
+import json
 import os
 from dataclasses import dataclass
 
@@ -171,3 +172,62 @@ class TestComputeIntervals:
 
         result = compute_intervals([], self._make_config())
         assert result == []
+
+
+class TestCheckpointManager:
+    def test_fresh_start_no_checkpoints(self, tmp_path):
+        from hvantk.data.alphagenome_streamer import CheckpointManager
+
+        mgr = CheckpointManager(str(tmp_path / "out"))
+        assert mgr.completed_intervals == []
+        assert mgr.failed_variants == []
+
+    def test_save_and_reload_state(self, tmp_path):
+        from hvantk.data.alphagenome_streamer import CheckpointManager
+
+        out_dir = str(tmp_path / "out")
+        mgr = CheckpointManager(out_dir)
+        mgr.mark_interval_complete("chr1:100000-200000")
+        mgr.record_failed_variant("chr1", 150000, "A", "T", "timeout")
+        mgr.save_state()
+
+        mgr2 = CheckpointManager(out_dir)
+        assert "chr1:100000-200000" in mgr2.completed_intervals
+        assert len(mgr2.failed_variants) == 1
+        assert mgr2.failed_variants[0]["chrom"] == "chr1"
+
+    def test_save_batch_data(self, tmp_path):
+        from hvantk.data.alphagenome_streamer import CheckpointManager
+
+        out_dir = str(tmp_path / "out")
+        mgr = CheckpointManager(out_dir)
+        batch_data = {"variant_1": {"rna_seq": [1.0, 2.0]}}
+        mgr.save_batch(0, batch_data)
+
+        batch_path = os.path.join(out_dir, "_checkpoints", "batch_000.json")
+        assert os.path.isfile(batch_path)
+        with open(batch_path) as f:
+            loaded = json.load(f)
+        assert loaded == batch_data
+
+    def test_is_interval_complete(self, tmp_path):
+        from hvantk.data.alphagenome_streamer import CheckpointManager
+
+        mgr = CheckpointManager(str(tmp_path / "out"))
+        mgr.mark_interval_complete("chr1:100-200")
+        assert mgr.is_interval_complete("chr1:100-200") is True
+        assert mgr.is_interval_complete("chr2:100-200") is False
+
+    def test_clear_checkpoints(self, tmp_path):
+        from hvantk.data.alphagenome_streamer import CheckpointManager
+
+        out_dir = str(tmp_path / "out")
+        mgr = CheckpointManager(out_dir)
+        mgr.mark_interval_complete("chr1:100-200")
+        mgr.save_batch(0, {"data": True})
+        mgr.save_state()
+        mgr.clear()
+        assert mgr.completed_intervals == []
+        assert not os.path.isfile(
+            os.path.join(out_dir, "_checkpoints", "state.json")
+        )
