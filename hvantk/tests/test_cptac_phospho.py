@@ -144,7 +144,7 @@ def test_write_intermediate_tsv(mock_phospho_df, tmp_path):
 
 
 def test_write_matrix_csv(mock_phospho_df, tmp_path):
-    """Matrix CSV has sites as rows and samples as columns."""
+    """Matrix CSV has one row per individual site and samples as columns."""
     from hvantk.datasets.cptac_phospho_datasets import write_matrix_csv
 
     output_path = str(tmp_path / "matrix.csv")
@@ -152,7 +152,22 @@ def test_write_matrix_csv(mock_phospho_df, tmp_path):
 
     df = pd.read_csv(output_path, index_col=0)
     assert set(df.columns) == {"Sample_01", "Sample_02", "Sample_03"}
+
+    # Single-site entries preserved
     assert "TP53_S315" in df.index.tolist()
+    assert "TP53_S6" in df.index.tolist()
+    assert "EIF4EBP1_S65" in df.index.tolist()
+
+    # Multi-site entry MAPK1_T185_Y187 is split into individual sites
+    assert "MAPK1_T185" in df.index.tolist()
+    assert "MAPK1_Y187" in df.index.tolist()
+    assert "MAPK1_T185_Y187" not in df.index.tolist()
+
+    # Each row has per-sample intensities (no summarisation across samples)
+    row = df.loc["TP53_S315"]
+    assert row["Sample_01"] == pytest.approx(1.5)
+    assert pd.isna(row["Sample_02"])
+    assert row["Sample_03"] == pytest.approx(0.7)
 
 
 # ---------- Test 5: Metadata CSV output ----------

@@ -257,13 +257,14 @@ def build_cptac_phospho_mt(
     expr_long[sample_id_col] = expr_long[sample_id_col].astype(str)
 
     # Parse site ID into gene_symbol, amino_acid, residue_pos
+    # Expected format: Gene_AminoAcidPosition (e.g. TP53_S315, MAPK1_T185)
+    import re
+    _site_id_re = re.compile(r"^(.+)_([STY])(\d+)$")
+
     def _parse_site_id(sid):
-        parts = sid.rsplit("_", 1)
-        if len(parts) == 2:
-            gene = parts[0]
-            site = parts[1]
-            if site and site[0] in "STY" and site[1:].isdigit():
-                return gene, site[0], int(site[1:])
+        m = _site_id_re.match(sid)
+        if m:
+            return m.group(1), m.group(2), int(m.group(3))
         return sid, "", 0
 
     site_info = {sid: _parse_site_id(sid) for sid in expr_long[site_id_col].unique()}

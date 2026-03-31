@@ -158,17 +158,46 @@ def write_intermediate_tsv(sites: List[dict], output_path: str) -> None:
 def write_matrix_csv(phospho_df, output_path: str) -> None:
     """Write phospho DataFrame as a matrix CSV (sites x samples).
 
-    The multi-index columns are flattened to ``Gene_Site`` labels and the
-    DataFrame is transposed so that sites become rows and samples become
-    columns.
+    Multi-index columns are flattened to ``Gene_AminoAcid Position`` labels.
+    Multi-site entries (e.g. ``T185_Y187``) are expanded so that each
+    individual site becomes its own row.  When a site label appears more than
+    once (e.g. same gene and site from different peptides), intensities are
+    averaged across duplicates.
+
+    The resulting CSV has one row per unique modification site and one column
+    per sample, with raw intensity values (no summarisation across samples).
     """
-    df = phospho_df.copy()
-    df.columns = [f"{c[0]}_{c[1]}" for c in df.columns]
+    import pandas as pd
+
+    rows = []
+    for col in phospho_df.columns:
+        gene = col[0]
+        site_str = col[1]
+        parsed = parse_phospho_site(site_str)
+        if not parsed:
+            # Keep raw label when site string is not parseable
+            rows.append((f"{gene}_{site_str}", phospho_df[col]))
+            continue
+        for aa, pos in parsed:
+            label = f"{gene}_{aa}{pos}"
+            rows.append((label, phospho_df[col]))
+
+    # Build a DataFrame with site labels as columns, then transpose
+    labels = [r[0] for r in rows]
+    series = [r[1] for r in rows]
+    df = pd.DataFrame(dict(enumerate(series)))
+    df.columns = labels
+    df.index = phospho_df.index
+
+    # Average duplicate site labels (same gene + site from different peptides)
     df = df.T
     df.index.name = "Site"
+    df = df.groupby(level=0).mean()
+
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
     df.to_csv(output_path)
-    logger.info("Wrote matrix CSV to %s", output_path)
+    logger.info("Wrote matrix CSV (%d sites x %d samples) to %s",
+                len(df), len(df.columns), output_path)
 
 
 def write_metadata_csv(clinical_df, cancer_type: str, output_path: str) -> None:
