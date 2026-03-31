@@ -9,6 +9,7 @@ Plot functions:
     - plot_overlap_by_category: P/LP overlap counts per PTM category
     - plot_distance_distribution: P/LP variant distance from nearest PTM site
     - plot_population_af: Mean allele frequency comparison across PTM strata
+    - plot_source_overlap: UniProt vs PeptideAtlas site overlap and observation counts
 """
 
 from __future__ import annotations
@@ -430,6 +431,178 @@ def plot_population_af(
 
     fig.suptitle(
         title or "Population Allele Frequency by PTM Proximity",
+        fontsize=13,
+        fontweight="bold",
+    )
+    fig.tight_layout()
+    _save_figure(fig, output_path, format=format, dpi=dpi)
+    return fig
+
+
+def plot_source_overlap(
+    mapped_tsv: str,
+    output_path: str,
+    figsize: Tuple[int, int] = (14, 5),
+    dpi: int = 300,
+    title: Optional[str] = None,
+    format: str = "png",
+) -> plt.Figure:
+    """Three-panel plot comparing UniProt-curated vs PeptideAtlas-observed phospho sites.
+
+    Left panel: site counts by source overlap category (UniProt-only, both, PA-only).
+    Center panel: box plot of log10(n_observations) for sites in both sources vs PA-only.
+    Right panel: cumulative distribution of PeptideAtlas observation counts, split by
+    whether the site is also in UniProt.
+
+    Parameters
+    ----------
+    mapped_tsv : str
+        Path to the combined 13-column mapped TSV (output of ptm build with both sources).
+    output_path : str
+        Output file path.
+    figsize : Tuple[int, int]
+        Figure size in inches.
+    dpi : int
+        Resolution for raster formats.
+    title : Optional[str]
+        Plot title.
+    format : str
+        Export format (png, pdf, svg).
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+    """
+    import csv
+    from collections import defaultdict
+
+    # Read the combined TSV and group by (uniprot_id, residue_pos)
+    site_sources: dict = defaultdict(lambda: {"sources": set(), "n_obs": 0})
+
+    with open(mapped_tsv) as f:
+        reader = csv.DictReader(f, delimiter="\t")
+        for row in reader:
+            key = (row["uniprot_id"], row["residue_pos"])
+            site_sources[key]["sources"].add(row["source_db"])
+            n_obs = int(row.get("n_observations", "0"))
+            if n_obs > 0:
+                site_sources[key]["n_obs"] = max(site_sources[key]["n_obs"], n_obs)
+
+    if not site_sources:
+        return _empty_figure(
+            output_path,
+            format=format,
+            dpi=dpi,
+            title=title or "Source Overlap",
+            message="No sites found in mapped TSV",
+        )
+
+    # Categorize sites
+    uniprot_only = []
+    both_sources = []
+    pa_only = []
+
+    for _key, info in site_sources.items():
+        has_up = "UniProt" in info["sources"]
+        has_pa = "PeptideAtlas" in info["sources"]
+        if has_up and has_pa:
+            both_sources.append(info["n_obs"])
+        elif has_up:
+            uniprot_only.append(info["n_obs"])
+        elif has_pa:
+            pa_only.append(info["n_obs"])
+
+    n_up = len(uniprot_only)
+    n_both = len(both_sources)
+    n_pa = len(pa_only)
+
+    if sns is not None:
+        sns.set_style("whitegrid")
+
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=figsize)
+
+    # Color scheme
+    c_up = "#2196F3"       # blue - UniProt
+    c_both = "#9C27B0"     # purple - overlap
+    c_pa = "#FF9800"       # orange - PeptideAtlas
+
+    # --- Left panel: site counts by category ---
+    categories = ["UniProt\nonly", "Both", "PeptideAtlas\nonly"]
+    counts = [n_up, n_both, n_pa]
+    colors = [c_up, c_both, c_pa]
+    bars = ax1.bar(categories, counts, color=colors, edgecolor="black", linewidth=0.5)
+    for bar, n in zip(bars, counts):
+        ax1.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height(),
+            f"{n:,}",
+            ha="center",
+            va="bottom",
+            fontsize=9,
+            fontweight="bold",
+        )
+    ax1.set_ylabel("Number of phospho sites")
+    ax1.set_title("Site Overlap")
+    ax1.grid(axis="y", linestyle="--", alpha=0.4)
+
+    # --- Center panel: box plot of n_observations ---
+    obs_both = np.array(both_sources, dtype=float)
+    obs_pa = np.array(pa_only, dtype=float)
+
+    box_data = []
+    box_labels = []
+    box_colors = []
+    if len(obs_both) > 0:
+        box_data.append(np.log10(np.maximum(obs_both, 1)))
+        box_labels.append(f"Both\n(n={n_both:,})")
+        box_colors.append(c_both)
+    if len(obs_pa) > 0:
+        box_data.append(np.log10(np.maximum(obs_pa, 1)))
+        box_labels.append(f"PA only\n(n={n_pa:,})")
+        box_colors.append(c_pa)
+
+    if box_data:
+        bp = ax2.boxplot(
+            box_data,
+            labels=box_labels,
+            patch_artist=True,
+            widths=0.5,
+            showfliers=True,
+            flierprops=dict(marker=".", markersize=3, alpha=0.3),
+        )
+        for patch, color in zip(bp["boxes"], box_colors):
+            patch.set_facecolor(color)
+            patch.set_alpha(0.6)
+        for median in bp["medians"]:
+            median.set_color("black")
+            median.set_linewidth(2)
+    else:
+        ax2.text(0.5, 0.5, "No PeptideAtlas\ndata", ha="center", va="center",
+                 transform=ax2.transAxes, fontsize=12, color="#888888")
+
+    ax2.set_ylabel("log$_{10}$(n_observations)")
+    ax2.set_title("PeptideAtlas Evidence")
+    ax2.grid(axis="y", linestyle="--", alpha=0.4)
+
+    # --- Right panel: CDF of n_observations ---
+    if len(obs_both) > 0:
+        sorted_both = np.sort(obs_both)
+        cdf_both = np.arange(1, len(sorted_both) + 1) / len(sorted_both)
+        ax3.step(sorted_both, cdf_both, color=c_both, linewidth=2, label="Both sources")
+    if len(obs_pa) > 0:
+        sorted_pa = np.sort(obs_pa)
+        cdf_pa = np.arange(1, len(sorted_pa) + 1) / len(sorted_pa)
+        ax3.step(sorted_pa, cdf_pa, color=c_pa, linewidth=2, label="PA only")
+
+    ax3.set_xscale("log")
+    ax3.set_xlabel("n_observations")
+    ax3.set_ylabel("Cumulative fraction")
+    ax3.set_title("Observation Count CDF")
+    ax3.legend(frameon=False, fontsize=9)
+    ax3.grid(True, linestyle="--", alpha=0.4)
+
+    fig.suptitle(
+        title or "UniProt vs PeptideAtlas Phospho Site Comparison",
         fontsize=13,
         fontweight="bold",
     )

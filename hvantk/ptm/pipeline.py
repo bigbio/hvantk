@@ -55,6 +55,8 @@ class PTMBuildConfig:
     output_ht: str = ""
     gtf_path: Optional[str] = None
     ptm_tsv: Optional[str] = None
+    peptideatlas_tsv: Optional[str] = None
+    cptac_tsv: Optional[str] = None
     flanking_codons: int = 5
     reference_genome: str = "GRCh38"
     overwrite: bool = False
@@ -70,6 +72,10 @@ class PTMBuildConfig:
             errors.append(f"GTF file not found: {self.gtf_path}")
         if self.ptm_tsv and not os.path.exists(self.ptm_tsv):
             errors.append(f"PTM TSV file not found: {self.ptm_tsv}")
+        if self.peptideatlas_tsv and not os.path.exists(self.peptideatlas_tsv):
+            errors.append(f"PeptideAtlas TSV file not found: {self.peptideatlas_tsv}")
+        if self.cptac_tsv and not os.path.exists(self.cptac_tsv):
+            errors.append(f"CPTAC TSV file not found: {self.cptac_tsv}")
         return errors
 
 
@@ -234,8 +240,9 @@ def map_ptm_sites(
                         "amino_acid": rec.get("amino_acid", ""),
                         "ptm_type": desc,
                         "ptm_category": ptm_category,
-                        "source_db": "UniProt",
-                        "evidence_type": "curated",
+                        "source_db": rec.get("source_db", "UniProt"),
+                        "evidence_type": rec.get("evidence_type", "curated"),
+                        "n_observations": rec.get("n_observations", "0"),
                     }
                 )
                 n_mapped += 1
@@ -312,6 +319,72 @@ def ptm_build_pipeline(config: PTMBuildConfig) -> PTMBuildResult:
     # Step 4: Map PTM sites to genomic coordinates
     mapped_path = os.path.join(config.output_dir, "ptm_sites_mapped.tsv")
     result = map_ptm_sites(ptm_tsv, gtf_data, mapped_path)
+
+    # Step 4b: Map PeptideAtlas sites (if provided)
+    if config.peptideatlas_tsv:
+        logger.info("Mapping PeptideAtlas phospho sites...")
+        pa_mapped_path = os.path.join(config.output_dir, "peptideatlas_sites_mapped.tsv")
+        pa_result = map_ptm_sites(config.peptideatlas_tsv, gtf_data, pa_mapped_path)
+
+        # Concatenate mapped TSVs
+        combined_path = os.path.join(config.output_dir, "ptm_sites_combined.tsv")
+        with open(combined_path, "w", newline="") as fout:
+            writer = csv.DictWriter(
+                fout, fieldnames=PTM_OUTPUT_COLUMNS, delimiter="\t", lineterminator="\n"
+            )
+            writer.writeheader()
+            for src_path in [mapped_path, pa_mapped_path]:
+                with open(src_path) as fin:
+                    reader = csv.DictReader(fin, delimiter="\t")
+                    for row in reader:
+                        writer.writerow(row)
+
+        mapped_path = combined_path
+        result.n_total += pa_result.n_total
+        result.n_mapped += pa_result.n_mapped
+        result.n_failed += pa_result.n_failed
+        for method, count in pa_result.resolution_counts.items():
+            result.resolution_counts[method] = (
+                result.resolution_counts.get(method, 0) + count
+            )
+
+        logger.info(
+            f"Combined: {result.n_mapped} total mapped sites "
+            f"(UniProt + PeptideAtlas)"
+        )
+
+    # Step 4c: Map CPTAC sites (if provided)
+    if config.cptac_tsv:
+        logger.info("Mapping CPTAC phospho sites...")
+        cptac_mapped_path = os.path.join(config.output_dir, "cptac_sites_mapped.tsv")
+        cptac_result = map_ptm_sites(config.cptac_tsv, gtf_data, cptac_mapped_path)
+
+        # Concatenate with existing mapped TSV
+        combined_path = os.path.join(config.output_dir, "ptm_sites_combined.tsv")
+        with open(combined_path, "w", newline="") as fout:
+            writer = csv.DictWriter(
+                fout, fieldnames=PTM_OUTPUT_COLUMNS, delimiter="\t", lineterminator="\n"
+            )
+            writer.writeheader()
+            for src_path in [mapped_path, cptac_mapped_path]:
+                with open(src_path) as fin:
+                    reader = csv.DictReader(fin, delimiter="\t")
+                    for row in reader:
+                        writer.writerow(row)
+
+        mapped_path = combined_path
+        result.n_total += cptac_result.n_total
+        result.n_mapped += cptac_result.n_mapped
+        result.n_failed += cptac_result.n_failed
+        for method, count in cptac_result.resolution_counts.items():
+            result.resolution_counts[method] = (
+                result.resolution_counts.get(method, 0) + count
+            )
+
+        logger.info(
+            f"Combined: {result.n_mapped} total mapped sites "
+            f"(including CPTAC)"
+        )
 
     # Step 5: Build Hail Table
     logger.info(f"Building Hail Table at {config.output_ht}...")

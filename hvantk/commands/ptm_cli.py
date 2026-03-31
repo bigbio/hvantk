@@ -78,6 +78,18 @@ def ptm_group(ctx):
     help="Path to pre-downloaded UniProt PTM TSV (skips API query if provided)",
 )
 @click.option(
+    "--peptideatlas-tsv",
+    type=click.Path(exists=True),
+    default=None,
+    help="Path to PeptideAtlas phospho intermediate TSV (from 'hvantk download peptideatlas-phospho')",
+)
+@click.option(
+    "--cptac-tsv",
+    type=click.Path(exists=True),
+    default=None,
+    help="Path to CPTAC phospho intermediate TSV (from 'hvantk download cptac-phospho')",
+)
+@click.option(
     "--flanking-codons",
     type=int,
     default=5,
@@ -91,7 +103,7 @@ def ptm_group(ctx):
 )
 @click.pass_context
 def ptm_build(
-    ctx, output_dir, output_ht, gtf_path, ptm_tsv, flanking_codons, overwrite
+    ctx, output_dir, output_ht, gtf_path, ptm_tsv, peptideatlas_tsv, cptac_tsv, flanking_codons, overwrite
 ):
     """Download PTM data, map coordinates to genome, and build a Hail Table.
 
@@ -117,6 +129,8 @@ def ptm_build(
             output_ht=output_ht,
             gtf_path=gtf_path,
             ptm_tsv=ptm_tsv,
+            peptideatlas_tsv=peptideatlas_tsv,
+            cptac_tsv=cptac_tsv,
             flanking_codons=flanking_codons,
             overwrite=overwrite,
         )
