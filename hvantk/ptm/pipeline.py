@@ -125,10 +125,17 @@ def download_ensembl_gtf(output_dir: str, overwrite: bool = False) -> str:
 
     parsed = urllib.parse.urlparse(ENSEMBL_GTF_URL)
     if parsed.scheme != "https":
-        raise ValueError(f"Invalid Ensembl GTF URL scheme: {ENSEMBL_GTF_URL}")
+        raise ValueError(
+            "Invalid Ensembl GTF URL scheme (expected https): %s"
+            % ENSEMBL_GTF_URL
+        )
     host = parsed.hostname or ""
     if host != "ftp.ensembl.org" and not host.endswith(".ensembl.org"):
-        raise ValueError(f"Invalid Ensembl GTF URL host: {ENSEMBL_GTF_URL}")
+        raise ValueError(
+            "Invalid Ensembl GTF URL host "
+            "(expected trusted Ensembl host, e.g. ftp.ensembl.org or *.ensembl.org): %s"
+            % ENSEMBL_GTF_URL
+        )
 
     logger.info("Downloading Ensembl GTF to %s...", gtf_path)
     urllib.request.urlretrieve(ENSEMBL_GTF_URL, gtf_path)  # nosec B310

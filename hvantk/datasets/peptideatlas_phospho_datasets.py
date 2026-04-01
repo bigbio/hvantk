@@ -356,10 +356,17 @@ class PeptideAtlasPhosphoDataset:
         """Validate that download URL uses HTTPS and points to peptideatlas.org."""
         parsed = urllib.parse.urlparse(url)
         if parsed.scheme != "https":
-            raise ValueError(f"Only HTTPS download URLs are allowed: {url}")
+            raise ValueError(
+                "Only HTTPS download URLs are allowed (got %s): %s"
+                % (parsed.scheme or "<empty>", url)
+            )
         host = parsed.hostname or ""
         if host != "peptideatlas.org" and not host.endswith(".peptideatlas.org"):
-            raise ValueError(f"Unexpected download host for PeptideAtlas URL: {url}")
+            raise ValueError(
+                "Unexpected download host for PeptideAtlas URL "
+                "(expected peptideatlas.org or *.peptideatlas.org): %s"
+                % url
+            )
 
     @classmethod
     def from_latest(cls) -> "PeptideAtlasPhosphoDataset":
