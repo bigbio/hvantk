@@ -38,8 +38,13 @@ _PHOSPHO_AA_DESC = {
     "Y": "Phosphotyrosine",
 }
 
-# Phospho modification mass in PeptideAtlas bracket notation (e.g. S[167])
-_PHOSPHO_BRACKET_MASS = 167.0
+# Phospho modification masses in PeptideAtlas bracket notation
+# (e.g. S[167], T[181], Y[243]).
+_PHOSPHO_BRACKET_MASS_BY_AA = {
+    "S": 167.0,
+    "T": 181.0,
+    "Y": 243.0,
+}
 _PHOSPHO_BRACKET_TOLERANCE = 1.0
 
 # Output TSV column order for intermediate file
@@ -121,11 +126,15 @@ def _extract_phospho_offsets(modified_sequence: str) -> List[tuple]:
                 bracket_content == "Phospho"
                 or bracket_content.startswith("Phospho:")
             )
-            # Also handle numeric mass notation (~167 Da)
+            # Also handle numeric mass notation for S/T/Y.
             if not is_phospho:
                 try:
                     mass = float(bracket_content)
-                    if abs(mass - _PHOSPHO_BRACKET_MASS) <= _PHOSPHO_BRACKET_TOLERANCE:
+                    expected_mass = _PHOSPHO_BRACKET_MASS_BY_AA.get(last_aa)
+                    if (
+                        expected_mass is not None
+                        and abs(mass - expected_mass) <= _PHOSPHO_BRACKET_TOLERANCE
+                    ):
                         is_phospho = True
                 except ValueError:
                     pass
@@ -170,6 +179,19 @@ def parse_peptideatlas_zip(zip_path: str) -> List[dict]:
         description, ensembl_xrefs, sequence_length, n_observations.
     """
     with zipfile.ZipFile(zip_path, "r") as zf:
+        required_tables = [
+            "biosequence.tsv",
+            "peptide_instance.tsv",
+            "peptide_mapping.tsv",
+            "modified_peptide_instance.tsv",
+        ]
+        missing = [t for t in required_tables if _find_table_in_zip(zf, t) is None]
+        if missing:
+            raise FileNotFoundError(
+                f"Missing required table(s) in {zip_path}: {', '.join(missing)}. "
+                f"Available files: {zf.namelist()}"
+            )
+
         # Step 0: Index canonical proteins from protein_identification table
         # presence_level_id=1 is "canonical" in PeptideAtlas
         logger.info("Indexing canonical proteins...")
@@ -349,7 +371,7 @@ class PeptideAtlasPhosphoDataset:
             Build numeric ID, e.g. ``"606"``.
         """
         zip_url = (
-            f"{PEPTIDEATLAS_PHOSPHO_BASE_URL}/phospho/{build_date}/"
+            f"{PEPTIDEATLAS_PHOSPHO_BASE_URL}/{build_date}/"
             f"atlas_build_{build_id}.tsv.zip"
         )
         return cls(
@@ -359,7 +381,7 @@ class PeptideAtlasPhosphoDataset:
         )
 
     def download(self, output_dir: str, overwrite: bool = False) -> str:
-        """Download the PeptideAtlas zip to output_dir.
+        """Download, parse, and write an intermediate TSV to output_dir.
 
         Parameters
         ----------
@@ -371,22 +393,30 @@ class PeptideAtlasPhosphoDataset:
         Returns
         -------
         str
-            Path to the downloaded zip file.
+            Path to the intermediate TSV file.
         """
         import urllib.request
 
         os.makedirs(output_dir, exist_ok=True)
-        filename = f"atlas_build_{self.build_id}.tsv.zip"
-        output_path = os.path.join(output_dir, filename)
+        zip_filename = f"atlas_build_{self.build_id}.tsv.zip"
+        zip_path = os.path.join(output_dir, zip_filename)
+        tsv_filename = f"peptideatlas-phospho-{self.build_date}-{self.build_id}.tsv"
+        tsv_path = os.path.join(output_dir, tsv_filename)
 
-        if os.path.exists(output_path) and not overwrite:
-            logger.info("File already exists: %s", output_path)
-            return output_path
+        if not os.path.exists(zip_path) or overwrite:
+            logger.info("Downloading %s -> %s", self.zip_url, zip_path)
+            urllib.request.urlretrieve(self.zip_url, zip_path)
+            logger.info("Download complete: %s", zip_path)
+        else:
+            logger.info("File already exists: %s", zip_path)
 
-        logger.info("Downloading %s -> %s", self.zip_url, output_path)
-        urllib.request.urlretrieve(self.zip_url, output_path)
-        logger.info("Download complete: %s", output_path)
-        return output_path
+        if os.path.exists(tsv_path) and not overwrite:
+            logger.info("Intermediate TSV already exists: %s", tsv_path)
+            return tsv_path
+
+        sites = parse_peptideatlas_zip(zip_path)
+        write_intermediate_tsv(sites, tsv_path)
+        return tsv_path
 
     def get_metadata(self) -> dict:
         """Return metadata about this dataset."""
