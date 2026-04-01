@@ -15,12 +15,15 @@ Example usage:
 """
 
 import csv
+import io
 import logging
 import os
 import re
+import urllib.parse
+import urllib.request
 import zipfile
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, List, Optional
 
 from hvantk.ptm.constants import (
@@ -84,8 +87,6 @@ def _find_table_in_zip(zf: zipfile.ZipFile, table_name: str) -> Optional[str]:
 
 def _iter_tsv_from_zip(zf: zipfile.ZipFile, table_name: str):
     """Iterate over rows of a TSV table inside a zip without loading all into memory."""
-    import io
-
     member = _find_table_in_zip(zf, table_name)
     if member is None:
         logger.warning("Table %s not found in zip archive", table_name)
@@ -94,8 +95,7 @@ def _iter_tsv_from_zip(zf: zipfile.ZipFile, table_name: str):
     with zf.open(member) as f:
         text = io.TextIOWrapper(f, encoding="utf-8")
         reader = csv.DictReader(text, delimiter="\t")
-        for row in reader:
-            yield row
+        yield from reader
 
 
 def _extract_phospho_offsets(modified_sequence: str) -> List[tuple]:
@@ -154,7 +154,7 @@ def _extract_phospho_offsets(modified_sequence: str) -> List[tuple]:
     return offsets
 
 
-def parse_peptideatlas_zip(zip_path: str) -> List[dict]:
+def parse_peptideatlas_zip(zip_path: str) -> List[dict]:  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
     """Parse a PeptideAtlas TSV zip and extract phospho sites.
 
     Joins biosequence, peptide_instance, peptide_mapping, and
@@ -321,7 +321,7 @@ def write_intermediate_tsv(sites: List[dict], output_path: str) -> str:
     """
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
 
-    with open(output_path, "w", newline="") as f:
+    with open(output_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(
             f,
             fieldnames=_TSV_COLUMNS,
@@ -350,6 +350,16 @@ class PeptideAtlasPhosphoDataset:
     build_date: str
     build_id: str
     zip_url: str
+
+    @staticmethod
+    def _validate_zip_url(url: str) -> None:
+        """Validate that download URL uses HTTPS and points to peptideatlas.org."""
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme != "https":
+            raise ValueError(f"Only HTTPS download URLs are allowed: {url}")
+        host = parsed.hostname or ""
+        if host != "peptideatlas.org" and not host.endswith(".peptideatlas.org"):
+            raise ValueError(f"Unexpected download host for PeptideAtlas URL: {url}")
 
     @classmethod
     def from_latest(cls) -> "PeptideAtlasPhosphoDataset":
@@ -400,8 +410,6 @@ class PeptideAtlasPhosphoDataset:
         str
             Path to the intermediate TSV file.
         """
-        import urllib.request
-
         os.makedirs(output_dir, exist_ok=True)
         zip_filename = f"atlas_build_{self.build_id}.tsv.zip"
         zip_path = os.path.join(output_dir, zip_filename)
@@ -409,8 +417,9 @@ class PeptideAtlasPhosphoDataset:
         tsv_path = os.path.join(output_dir, tsv_filename)
 
         if not os.path.exists(zip_path) or overwrite:
+            self._validate_zip_url(self.zip_url)
             logger.info("Downloading %s -> %s", self.zip_url, zip_path)
-            urllib.request.urlretrieve(self.zip_url, zip_path)
+            urllib.request.urlretrieve(self.zip_url, zip_path)  # nosec B310
             logger.info("Download complete: %s", zip_path)
         else:
             logger.info("File already exists: %s", zip_path)
