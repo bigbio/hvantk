@@ -373,7 +373,6 @@ class RateLimitedCaller:
                     variant=variant,
                     ontology_terms=ontology_terms,
                     requested_outputs=output_types,
-                    timeout=self._request_timeout,
                 )
                 self._consecutive_rate_limits = 0
                 time.sleep(self._BASE_DELAY)
@@ -418,10 +417,13 @@ def _import_alphagenome() -> Tuple[Any, Any]:
     return ag_genome, ag_client
 
 
-def _create_dna_client(api_key: str) -> Any:
+def _create_dna_client(api_key: str, timeout: Optional[float] = None) -> Any:
     """Create an AlphaGenome DNA client. Isolated for mocking."""
     _, ag_client = _import_alphagenome()
-    return ag_client.create(api_key)
+    kwargs: Dict[str, Any] = {}
+    if timeout is not None:
+        kwargs["timeout"] = timeout
+    return ag_client.create(api_key, **kwargs)
 
 
 def _load_variants_from_tsv(tsv_path: str) -> List[VariantRecord]:
@@ -444,28 +446,52 @@ def _interval_key(interval: GenomicInterval) -> str:
     return f"{interval.chrom}:{interval.start}-{interval.end}"
 
 
-def _serialize_prediction(result: Any) -> Dict[str, Any]:
-    """Serialize an AlphaGenome prediction result for JSON checkpointing.
+def _serialize_value(obj: Any) -> Any:
+    """Recursively convert an SDK object to a JSON-serializable structure.
 
-    Extracts reference and alternate prediction data from the API response.
-    Falls back to string representation if the structure is unexpected.
+    Handles numpy arrays, pandas DataFrames, dataclass-like SDK objects
+    (TrackData, Interval, Output), and plain Python types.
+    """
+    if obj is None:
+        return None
+    # numpy array → nested list
+    if hasattr(obj, "tolist"):
+        return obj.tolist()
+    # pandas DataFrame → list of dicts
+    if hasattr(obj, "to_dict") and hasattr(obj, "iterrows"):
+        return obj.to_dict(orient="records")
+    # Plain JSON types
+    if isinstance(obj, (str, int, float, bool)):
+        return obj
+    if isinstance(obj, (list, tuple)):
+        return [_serialize_value(item) for item in obj]
+    if isinstance(obj, dict):
+        return {str(k): _serialize_value(v) for k, v in obj.items()}
+    # Dataclass / SDK objects — recurse into public attributes
+    if hasattr(obj, "__dict__"):
+        return {
+            k: _serialize_value(v)
+            for k, v in vars(obj).items()
+            if not k.startswith("_")
+        }
+    # Fallback
+    return str(obj)
+
+
+def _serialize_prediction(result: Any) -> Dict[str, Any]:
+    """Serialize an AlphaGenome VariantOutput for JSON checkpointing.
+
+    Recursively converts the reference/alternate Output objects —
+    including nested TrackData (numpy arrays, pandas metadata) and
+    Interval objects — into JSON-safe dicts.
     """
     try:
-        serialized: Dict[str, Any] = {}
         if hasattr(result, "reference") and hasattr(result, "alternate"):
-            for attr_name in ("reference", "alternate"):
-                attr = getattr(result, attr_name)
-                if hasattr(attr, "__dict__"):
-                    serialized[attr_name] = {
-                        k: v.tolist() if hasattr(v, "tolist") else v
-                        for k, v in vars(attr).items()
-                        if not k.startswith("_")
-                    }
-                else:
-                    serialized[attr_name] = str(attr)
-        else:
-            serialized["raw"] = str(result)
-        return serialized
+            return {
+                "reference": _serialize_value(result.reference),
+                "alternate": _serialize_value(result.alternate),
+            }
+        return {"raw": str(result)}
     except Exception:
         return {"raw": str(result)}
 
@@ -523,7 +549,10 @@ class AlphaGenomeStreamer(HailDataStreamer):
         self._config = load_config(self.config_path)
         self.logger.info(f"Config loaded from {self.config_path}")
 
-        self._model = _create_dna_client(self._config["api"]["key"])
+        self._model = _create_dna_client(
+            self._config["api"]["key"],
+            timeout=self._config["api"].get("request_timeout"),
+        )
         self._caller = RateLimitedCaller(self._model, self._config)
         self.logger.info("AlphaGenome client authenticated")
 
