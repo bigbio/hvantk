@@ -369,6 +369,11 @@ class PeptideAtlasPhosphoDataset:
             Build date string, e.g. ``"202512"``.
         build_id : str
             Build numeric ID, e.g. ``"606"``.
+
+        Notes
+        -----
+        The generated URL follows:
+        ``{PEPTIDEATLAS_PHOSPHO_BASE_URL}/{build_date}/atlas_build_{build_id}.tsv.zip``.
         """
         zip_url = (
             f"{PEPTIDEATLAS_PHOSPHO_BASE_URL}/{build_date}/"
