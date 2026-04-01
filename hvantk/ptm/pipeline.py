@@ -2,7 +2,7 @@
 PTM Build Pipeline — orchestrates PTM data acquisition, coordinate mapping, and table building.
 
 This module exposes the build workflow as a Python API so it can be used
-programmatically (notebooks, scripts) or from the CLI.
+programmatically (notebooks, alphagenome) or from the CLI.
 
 Example:
     >>> from hvantk.ptm.pipeline import PTMBuildConfig, ptm_build_pipeline

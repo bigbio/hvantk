@@ -133,13 +133,13 @@ def main():
     all_ok &= gvcf_ok
     print()
 
-    print("Checking benchmark scripts...")
+    print("Checking benchmark alphagenome...")
     common_dir = Path(__file__).parent
     hgc_dir = common_dir.parent
     scalability_dir = hgc_dir / "scalability"
     cpu_scaling_dir = hgc_dir / "cpu_scaling"
 
-    # Check scalability benchmark scripts
+    # Check scalability benchmark alphagenome
     print("\nScalability benchmark:")
     scalability_scripts = [
         ("benchmark.py", scalability_dir),
@@ -154,7 +154,7 @@ def main():
             print(f"  ✗ {script} NOT found")
             all_ok = False
 
-    # Check CPU scaling benchmark scripts
+    # Check CPU scaling benchmark alphagenome
     print("\nCPU scaling benchmark:")
     cpu_scaling_scripts = [
         ("benchmark.py", cpu_scaling_dir),
