@@ -1907,13 +1907,14 @@ def create_alphagenome_tb(
     config_path: str,
     no_resume: bool = False,
     overwrite: bool = False,
-) -> None:
-    """Run AlphaGenome variant effect predictions and write JSON outputs.
+) -> "hl.Table":
+    """Run AlphaGenome variant effect predictions and return a checkpointed table.
 
     Runs the AlphaGenomeStreamer to call the API for each variant, then
     writes predictions.json and checkpoint files to output_path (a
-    directory). Per-modality Hail Table assembly will be added once the
-    AlphaGenome SDK response structure is validated.
+    directory), then builds a minimal checkpointed Hail Table keyed by
+    ``(locus, alleles)`` from the input variants for builder-protocol
+    compatibility.
 
     Parameters
     ----------
@@ -1927,6 +1928,10 @@ def create_alphagenome_tb(
         If True, discard existing checkpoints and restart.
     overwrite : bool
         If True, overwrite existing output directory contents.
+    Returns
+    -------
+    hl.Table
+        Checkpointed Hail Table keyed by ``(locus, alleles)``.
     """
     from hvantk.data.alphagenome_streamer import AlphaGenomeStreamer
 
@@ -1946,3 +1951,43 @@ def create_alphagenome_tb(
             pass  # checkpointing handled internally
     finally:
         streamer.teardown()
+
+    logger.info("Creating AlphaGenome variants table from %s", input_path)
+
+    if input_path.endswith(".ht"):
+        ht = hl.read_table(input_path)
+        if "locus" not in ht.row or "alleles" not in ht.row:
+            raise ValueError(
+                "Input Hail Table must contain 'locus' and 'alleles' fields for "
+                "AlphaGenome table builder output."
+            )
+    else:
+        resolved_path, force_bgz = resolve_compression(input_path)
+        import_kwargs = {"impute": True}
+        if force_bgz:
+            import_kwargs["force_bgz"] = True
+        ht = hl.import_table(
+            resolved_path,
+            **import_kwargs,
+        )
+        required = {"chrom", "pos", "ref", "alt"}
+        missing = required.difference(set(ht.row))
+        if missing:
+            raise ValueError(
+                f"TSV input missing required columns for AlphaGenome: "
+                f"{', '.join(sorted(missing))}"
+            )
+        ht = ht.annotate(
+            locus=hl.locus(ht.chrom, hl.int(ht.pos), reference_genome="GRCh38"),
+            alleles=[ht.ref, ht.alt],
+        ).key_by("locus", "alleles")
+
+    ht = ht.annotate_globals(
+        hvantk_metadata=build_table_metadata("AlphaGenome", input_path, ht)
+    )
+    if os.path.isdir(output_path):
+        table_output_path = os.path.join(output_path, "alphagenome_variants.ht")
+    else:
+        table_output_path = output_path
+    logger.info("Checkpointing AlphaGenome variants table to %s", table_output_path)
+    return ht.checkpoint(output=table_output_path, overwrite=overwrite)

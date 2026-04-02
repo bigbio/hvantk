@@ -11,6 +11,7 @@ import json
 import logging
 import os
 import random
+import re
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, Iterator, List, Optional, Tuple
@@ -35,6 +36,9 @@ _DEFAULT_INTERVALS = {
     "adaptive_max_size": ALPHAGENOME_DEFAULT_INTERVAL_SIZE,
     "density_window": ALPHAGENOME_DEFAULT_DENSITY_WINDOW,
 }
+_CHR_X_ORDER = 23
+_CHR_Y_ORDER = 24
+_CHR_M_ORDER = 25
 
 
 def load_config(config_path: str) -> Dict[str, Any]:
@@ -182,7 +186,24 @@ def _compute_adaptive_intervals(
     density_window: int,
 ) -> List[Tuple[GenomicInterval, List[Any]]]:
     """Group nearby variants into shared intervals."""
-    sorted_variants = sorted(variants, key=lambda v: (v.chrom, v.pos))
+    def _chrom_sort_key(chrom: str) -> Tuple[int, Any]:
+        c = chrom.lower()
+        if c.startswith("chr"):
+            c = c[3:]
+        if c.isdigit():
+            return (0, int(c))
+        if c == "x":
+            return (1, _CHR_X_ORDER)
+        if c == "y":
+            return (1, _CHR_Y_ORDER)
+        if c in {"m", "mt"}:
+            return (1, _CHR_M_ORDER)
+        m = re.match(r"^(\d+)(.*)$", c)
+        if m:
+            return (2, int(m.group(1)), m.group(2))
+        return (3, c)
+
+    sorted_variants = sorted(variants, key=lambda v: (_chrom_sort_key(v.chrom), v.pos))
 
     groups: List[List[Any]] = []
     current_group: List[Any] = [sorted_variants[0]]
@@ -454,12 +475,6 @@ def _serialize_value(obj: Any) -> Any:
     """
     if obj is None:
         return None
-    # numpy array → nested list
-    if hasattr(obj, "tolist"):
-        return obj.tolist()
-    # pandas DataFrame → list of dicts
-    if hasattr(obj, "to_dict") and hasattr(obj, "iterrows"):
-        return obj.to_dict(orient="records")
     # Plain JSON types
     if isinstance(obj, (str, int, float, bool)):
         return obj
@@ -467,12 +482,29 @@ def _serialize_value(obj: Any) -> Any:
         return [_serialize_value(item) for item in obj]
     if isinstance(obj, dict):
         return {str(k): _serialize_value(v) for k, v in obj.items()}
+    if obj.__class__.__module__.startswith("unittest.mock"):
+        return str(obj)
+    # numpy array-like → nested list
+    tolist = getattr(obj, "tolist", None)
+    if callable(tolist):
+        try:
+            return _serialize_value(tolist())
+        except Exception:
+            pass
+    # pandas DataFrame-like → list of dicts
+    to_dict = getattr(obj, "to_dict", None)
+    iterrows = getattr(obj, "iterrows", None)
+    if callable(to_dict) and callable(iterrows):
+        try:
+            return _serialize_value(to_dict(orient="records"))
+        except Exception:
+            pass
     # Dataclass / SDK objects — recurse into public attributes
     if hasattr(obj, "__dict__"):
         return {
             k: _serialize_value(v)
             for k, v in vars(obj).items()
-            if not k.startswith("_")
+            if not k.startswith("_") and not callable(v)
         }
     # Fallback
     return str(obj)

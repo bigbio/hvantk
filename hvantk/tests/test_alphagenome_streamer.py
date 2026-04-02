@@ -174,6 +174,19 @@ class TestComputeIntervals:
         result = compute_intervals([], self._make_config())
         assert result == []
 
+    def test_chromosome_numeric_sort_order_keeps_chr2_before_chr10(self):
+        from hvantk.data.alphagenome_streamer import compute_intervals
+
+        variants = [
+            SimpleVariant("chr10", 100_000, "A", "T"),
+            SimpleVariant("chr2", 100_000, "G", "C"),
+        ]
+        config = self._make_config(adaptive=True, density_window=50_000)
+        result = compute_intervals(variants, config)
+        assert len(result) == 2
+        assert result[0][0].chrom == "chr2"
+        assert result[1][0].chrom == "chr10"
+
 
 class TestCheckpointManager:
     def test_fresh_start_no_checkpoints(self, tmp_path):

@@ -21,7 +21,6 @@ from typing import Dict, List, Optional
 import pandas as pd
 
 from hvantk.core.backends import get_algorithm_meta
-from hvantk.core.router import BackendRouter
 
 from hvantk.qtlcascade.constants import (
     DEFAULT_COLOC_H4_THRESHOLD,
@@ -154,7 +153,6 @@ class CascadePipeline:
         self._per_tissue_dir.mkdir(exist_ok=True)
         if config.generate_plots:
             self._plots_dir.mkdir(exist_ok=True)
-        self._router = BackendRouter()
 
     # ------------------------------------------------------------------
     # Public API
@@ -342,10 +340,7 @@ class CascadePipeline:
         import hail as hl
 
         meta = get_algorithm_meta(run_coloc_per_gene)
-        backend = self._router.resolve(
-            meta,
-            [self.config.eqtl_allpairs_ht, self.config.pqtl_allpairs_ht],
-        )
+        backend = meta.backends[0]
         logger.info("Coloc backend: %s", backend.value)
 
         # Get cascade gene IDs (genes with both eQTL and pQTL signals —

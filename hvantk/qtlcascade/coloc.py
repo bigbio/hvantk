@@ -271,7 +271,7 @@ def prepare_coloc_data(
 
 
 @algorithm(
-    backends=[Backend.HAIL],
+    backends=[Backend.PANDAS],
     input_format="table",
     output_format="dataframe",
     key_fields=["gene_id"],

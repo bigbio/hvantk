@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 @algorithm(
-    backends=[Backend.HAIL, Backend.DUCKDB],
+    backends=[Backend.HAIL],
     input_format="table",
     output_format="table",
     key_fields=["gene_id"],
