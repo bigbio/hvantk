@@ -14,6 +14,11 @@ ENSEMBL_GTF_URL = (
 )
 ENSEMBL_GTF_FILENAME = f"Homo_sapiens.GRCh38.{ENSEMBL_RELEASE}.gtf.gz"
 
+# PeptideAtlas Phospho Build
+PEPTIDEATLAS_PHOSPHO_BASE_URL = "https://peptideatlas.org/builds/human/phospho"
+PEPTIDEATLAS_LATEST_BUILD_DATE = "202512"
+PEPTIDEATLAS_LATEST_BUILD_ID = "606"
+
 # PTM type categories (UniProt MOD_RES description prefixes)
 PTM_TYPE_CATEGORIES = {
     "Phosphoserine": "phosphorylation",
@@ -52,6 +57,7 @@ PTM_OUTPUT_COLUMNS = [
     "ptm_category",
     "source_db",
     "evidence_type",
+    "n_observations",
 ]
 
 # Transcript resolution method names (for logging/QC)

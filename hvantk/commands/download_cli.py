@@ -8,6 +8,7 @@ from hvantk.commands.gencc_downloader import gencc_downloader
 from hvantk.commands.hgnc_downloader import hgnc_downloader
 from hvantk.commands.clinvar_downloader import clinvar_downloader
 from hvantk.commands.uniprot_ptm_downloader import uniprot_ptm_downloader
+from hvantk.commands.peptideatlas_phospho_downloader import peptideatlas_phospho_downloader
 
 
 @click.group("download", context_settings=CONTEXT_SETTINGS)
@@ -22,3 +23,4 @@ download_group.add_command(gencc_downloader, "gencc")
 download_group.add_command(hgnc_downloader, "hgnc")
 download_group.add_command(clinvar_downloader, "clinvar")
 download_group.add_command(uniprot_ptm_downloader, "uniprot-ptm")
+download_group.add_command(peptideatlas_phospho_downloader, "peptideatlas-phospho")
