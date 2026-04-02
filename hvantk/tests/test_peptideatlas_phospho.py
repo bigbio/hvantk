@@ -5,6 +5,8 @@ Covers:
 2. Observation count aggregation (multiple peptides -> same site)
 3. Dataset class construction and metadata
 4. Intermediate TSV output format
+5. _extract_phospho_offsets parser (text/numeric notation, edge cases)
+6. Canonical protein filtering via protein_identification table
 """
 
 import csv
@@ -212,12 +214,46 @@ def test_write_intermediate_tsv(mock_pa_zip, tmp_path):
     assert row315["description"] == "Phosphoserine"
 
 
-def test_extract_phospho_offsets_supports_numeric_t_and_y():
-    """Numeric phospho tags for T[181] and Y[243] are detected."""
+# ---------- Test 5: _extract_phospho_offsets ----------
+
+
+@pytest.mark.parametrize(
+    "mod_seq, expected",
+    [
+        # Text notation
+        ("DSY[Phospho]VGDEAQSK", [(2, "Y")]),
+        ("DTC[Carbamidomethyl]YS[Phospho]PK", [(4, "S")]),
+        ("TVT[Phospho]PLNQVANPNSAIFGGARPR", [(2, "T")]),
+        # Numeric mass notation (modified residue masses)
+        ("AAAAAS[167]AAAAA", [(5, "S")]),
+        ("AAAAT[181]AAAAA", [(4, "T")]),
+        ("AAAAY[243]AAAAA", [(4, "Y")]),
+        # N-terminal label skipped (no preceding residue)
+        ("[TMT6plex]-DSY[Phospho]VGDEAQSK", [(2, "Y")]),
+        ("[iTRAQ4plex]-AAST[Phospho]R", [(3, "T")]),
+        # Non-S/T/Y residue — should NOT be phospho
+        ("A[167]R", []),
+        ("DVA[Phospho]TPLNQR", []),
+        # Multiple modifications on same peptide
+        ("AS[Phospho]AT[Phospho]Y", [(1, "S"), (3, "T")]),
+        ("S[Phospho]T[Phospho]Y[Phospho]", [(0, "S"), (1, "T"), (2, "Y")]),
+        # Malformed bracket — should not crash
+        ("AS[", []),
+        # No modifications
+        ("PEPTIDER", []),
+        # Empty string
+        ("", []),
+    ],
+)
+def test_extract_phospho_offsets(mod_seq, expected):
+    """_extract_phospho_offsets handles all PeptideAtlas notations."""
     from hvantk.datasets.peptideatlas_phospho_datasets import _extract_phospho_offsets
 
-    offsets = _extract_phospho_offsets("AT[181]CY[243]D")
-    assert offsets == [(1, "T"), (3, "Y")]
+    result = _extract_phospho_offsets(mod_seq)
+    assert result == expected
+
+
+# ---------- Test 6: Missing tables ----------
 
 
 def test_parse_raises_when_required_tables_missing(tmp_path):
@@ -230,6 +266,9 @@ def test_parse_raises_when_required_tables_missing(tmp_path):
 
     with pytest.raises(FileNotFoundError):
         parse_peptideatlas_zip(str(zip_path))
+
+
+# ---------- Test 7: Dataset download ----------
 
 
 def test_dataset_download_returns_intermediate_tsv(tmp_path, mock_pa_zip):
@@ -249,3 +288,102 @@ def test_dataset_download_returns_intermediate_tsv(tmp_path, mock_pa_zip):
 
     assert tsv_path.endswith("peptideatlas-phospho-202512-606.tsv")
     assert os.path.exists(tsv_path)
+
+
+# ---------- Test 8: Canonical protein filtering ----------
+
+
+def test_canonical_protein_filtering(tmp_path):
+    """Only canonical proteins (presence_level_id=1) are included."""
+    from hvantk.datasets.peptideatlas_phospho_datasets import parse_peptideatlas_zip
+
+    tables_dir = tmp_path / "tables"
+    tables_dir.mkdir()
+
+    # biosequence: two proteins
+    _write_tsv(
+        tables_dir / "biosequence.tsv",
+        ["biosequence_id", "biosequence_name", "biosequence_accession",
+         "biosequence_gene_name", "biosequence_seq", "organism_id"],
+        [
+            {"biosequence_id": "100", "biosequence_name": "TP53_HUMAN",
+             "biosequence_accession": "P04637", "biosequence_gene_name": "TP53",
+             "biosequence_seq": "M" * 393, "organism_id": "9606"},
+            {"biosequence_id": "300", "biosequence_name": "FOO_HUMAN",
+             "biosequence_accession": "Q99999", "biosequence_gene_name": "FOO",
+             "biosequence_seq": "M" * 200, "organism_id": "9606"},
+        ],
+    )
+
+    # protein_identification: only biosequence 100 is canonical
+    _write_tsv(
+        tables_dir / "protein_identification.tsv",
+        ["biosequence_id", "presence_level_id", "protein_identification_id"],
+        [
+            {"biosequence_id": "100", "presence_level_id": "1",
+             "protein_identification_id": "1"},
+            {"biosequence_id": "300", "presence_level_id": "3",
+             "protein_identification_id": "2"},
+        ],
+    )
+
+    # peptide_instance
+    _write_tsv(
+        tables_dir / "peptide_instance.tsv",
+        ["peptide_instance_id", "peptide_id", "n_observations", "n_samples"],
+        [
+            {"peptide_instance_id": "1", "peptide_id": "10",
+             "n_observations": "50", "n_samples": "5"},
+        ],
+    )
+
+    # peptide_mapping: peptide maps to BOTH proteins
+    _write_tsv(
+        tables_dir / "peptide_mapping.tsv",
+        ["peptide_instance_id", "matched_biosequence_id",
+         "start_in_biosequence", "end_in_biosequence"],
+        [
+            {"peptide_instance_id": "1", "matched_biosequence_id": "100",
+             "start_in_biosequence": "310", "end_in_biosequence": "320"},
+            {"peptide_instance_id": "1", "matched_biosequence_id": "300",
+             "start_in_biosequence": "50", "end_in_biosequence": "60"},
+        ],
+    )
+
+    # modified_peptide_instance: phospho at offset 5
+    _write_tsv(
+        tables_dir / "modified_peptide_instance.tsv",
+        ["modified_peptide_instance_id", "peptide_instance_id",
+         "modified_peptide_sequence", "modification_mass"],
+        [
+            {"modified_peptide_instance_id": "1001", "peptide_instance_id": "1",
+             "modified_peptide_sequence": "AAAAAS[Phospho]AAAAA",
+             "modification_mass": "79.9663"},
+        ],
+    )
+
+    zip_path = tmp_path / "atlas_build_canonical_test.tsv.zip"
+    with zipfile.ZipFile(zip_path, "w") as zf:
+        for tsv_file in tables_dir.glob("*.tsv"):
+            zf.write(tsv_file, tsv_file.name)
+
+    sites = parse_peptideatlas_zip(str(zip_path))
+
+    # Only canonical protein P04637 should have sites, not Q99999
+    accessions = {s["accession"] for s in sites}
+    assert "P04637" in accessions
+    assert "Q99999" not in accessions
+    assert len(sites) == 1
+    assert sites[0]["position"] == 315
+
+
+# ---------- Test 9: URL construction ----------
+
+
+def test_url_no_doubled_phospho():
+    """from_build() URL should not contain doubled /phospho/."""
+    from hvantk.datasets.peptideatlas_phospho_datasets import PeptideAtlasPhosphoDataset
+
+    dataset = PeptideAtlasPhosphoDataset.from_build("202512", "606")
+    assert "/phospho/phospho/" not in dataset.zip_url
+    assert "202512/atlas_build_606.tsv.zip" in dataset.zip_url

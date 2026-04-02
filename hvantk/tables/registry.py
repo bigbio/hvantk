@@ -312,6 +312,11 @@ MATRIX_BUILDERS: Dict[
         "build_cptac_mt",
         required_inputs=["expression", "metadata"],
     ),
+    "cptac-phospho": create_matrix_adapter(
+        "hvantk.tables.matrix_builders",
+        "build_cptac_phospho_mt",
+        required_inputs=["expression", "metadata"],
+    ),
 }
 
 

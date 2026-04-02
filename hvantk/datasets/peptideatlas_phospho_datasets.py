@@ -41,8 +41,11 @@ _PHOSPHO_AA_DESC = {
     "Y": "Phosphotyrosine",
 }
 
-# Phospho modification masses in PeptideAtlas bracket notation
-# (e.g. S[167], T[181], Y[243]).
+# Phospho modification masses in PeptideAtlas bracket notation.
+# These are total modified residue masses (amino acid + HPO3):
+#   Phosphoserine:   S(87.03) + HPO3(79.97) ≈ 167.0
+#   Phosphothreonine: T(101.05) + HPO3(79.97) ≈ 181.0
+#   Phosphotyrosine:  Y(163.06) + HPO3(79.97) ≈ 243.0
 _PHOSPHO_BRACKET_MASS_BY_AA = {
     "S": 167.0,
     "T": 181.0,
@@ -403,14 +406,18 @@ class PeptideAtlasPhosphoDataset:
         )
 
     def download(self, output_dir: str, overwrite: bool = False) -> str:
-        """Download, parse, and write an intermediate TSV to output_dir.
+        """Download PeptideAtlas phospho build and produce intermediate TSV.
+
+        Downloads the TSV zip, parses phospho sites with observation counts
+        from canonical proteins, and writes an intermediate TSV compatible
+        with the PTM pipeline mapper.
 
         Parameters
         ----------
         output_dir : str
-            Directory to save the zip file.
+            Directory to save files (zip + intermediate TSV).
         overwrite : bool
-            If True, re-download even if the file exists.
+            If True, re-download and re-parse even if files exist.
 
         Returns
         -------
@@ -423,18 +430,21 @@ class PeptideAtlasPhosphoDataset:
         tsv_filename = f"peptideatlas-phospho-{self.build_date}-{self.build_id}.tsv"
         tsv_path = os.path.join(output_dir, tsv_filename)
 
+        if os.path.exists(tsv_path) and not overwrite:
+            logger.info("Intermediate TSV already exists: %s", tsv_path)
+            return tsv_path
+
+        # Download zip if needed
         if not os.path.exists(zip_path) or overwrite:
             self._validate_zip_url(self.zip_url)
             logger.info("Downloading %s -> %s", self.zip_url, zip_path)
             urllib.request.urlretrieve(self.zip_url, zip_path)  # nosec B310
             logger.info("Download complete: %s", zip_path)
         else:
-            logger.info("File already exists: %s", zip_path)
+            logger.info("Using cached zip: %s", zip_path)
 
-        if os.path.exists(tsv_path) and not overwrite:
-            logger.info("Intermediate TSV already exists: %s", tsv_path)
-            return tsv_path
-
+        # Parse and write intermediate TSV
+        logger.info("Parsing phospho sites from zip...")
         sites = parse_peptideatlas_zip(zip_path)
         write_intermediate_tsv(sites, tsv_path)
         return tsv_path

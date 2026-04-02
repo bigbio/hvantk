@@ -195,6 +195,7 @@ local_test_*
 *.aux
 
 # Ignore large data files
+data/
 checkpoints/
 # Hail table files
 *.ht/
