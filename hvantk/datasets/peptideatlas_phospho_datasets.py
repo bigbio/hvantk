@@ -15,12 +15,15 @@ Example usage:
 """
 
 import csv
+import io
 import logging
 import os
 import re
+import urllib.parse
+import urllib.request
 import zipfile
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, List, Optional
 
 from hvantk.ptm.constants import (
@@ -43,7 +46,11 @@ _PHOSPHO_AA_DESC = {
 #   Phosphoserine:   S(87.03) + HPO3(79.97) ≈ 167.0
 #   Phosphothreonine: T(101.05) + HPO3(79.97) ≈ 181.0
 #   Phosphotyrosine:  Y(163.06) + HPO3(79.97) ≈ 243.0
-_PHOSPHO_MASS_TARGETS = [167.0, 181.0, 243.0]
+_PHOSPHO_BRACKET_MASS_BY_AA = {
+    "S": 167.0,
+    "T": 181.0,
+    "Y": 243.0,
+}
 _PHOSPHO_BRACKET_TOLERANCE = 1.0
 
 # Output TSV column order for intermediate file
@@ -83,8 +90,6 @@ def _find_table_in_zip(zf: zipfile.ZipFile, table_name: str) -> Optional[str]:
 
 def _iter_tsv_from_zip(zf: zipfile.ZipFile, table_name: str):
     """Iterate over rows of a TSV table inside a zip without loading all into memory."""
-    import io
-
     member = _find_table_in_zip(zf, table_name)
     if member is None:
         logger.warning("Table %s not found in zip archive", table_name)
@@ -93,8 +98,7 @@ def _iter_tsv_from_zip(zf: zipfile.ZipFile, table_name: str):
     with zf.open(member) as f:
         text = io.TextIOWrapper(f, encoding="utf-8")
         reader = csv.DictReader(text, delimiter="\t")
-        for row in reader:
-            yield row
+        yield from reader
 
 
 def _extract_phospho_offsets(modified_sequence: str) -> List[tuple]:
@@ -125,12 +129,15 @@ def _extract_phospho_offsets(modified_sequence: str) -> List[tuple]:
                 bracket_content == "Phospho"
                 or bracket_content.startswith("Phospho:")
             )
-            # Also handle numeric mass notation (~167/181/243 Da)
+            # Also handle numeric mass notation for S/T/Y.
             if not is_phospho:
                 try:
                     mass = float(bracket_content)
-                    if any(abs(mass - t) <= _PHOSPHO_BRACKET_TOLERANCE
-                           for t in _PHOSPHO_MASS_TARGETS):
+                    expected_mass = _PHOSPHO_BRACKET_MASS_BY_AA.get(last_aa)
+                    if (
+                        expected_mass is not None
+                        and abs(mass - expected_mass) <= _PHOSPHO_BRACKET_TOLERANCE
+                    ):
                         is_phospho = True
                 except ValueError:
                     pass
@@ -150,7 +157,7 @@ def _extract_phospho_offsets(modified_sequence: str) -> List[tuple]:
     return offsets
 
 
-def parse_peptideatlas_zip(zip_path: str) -> List[dict]:
+def parse_peptideatlas_zip(zip_path: str) -> List[dict]:  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
     """Parse a PeptideAtlas TSV zip and extract phospho sites.
 
     Joins biosequence, peptide_instance, peptide_mapping, and
@@ -175,6 +182,19 @@ def parse_peptideatlas_zip(zip_path: str) -> List[dict]:
         description, ensembl_xrefs, sequence_length, n_observations.
     """
     with zipfile.ZipFile(zip_path, "r") as zf:
+        required_tables = [
+            "biosequence.tsv",
+            "peptide_instance.tsv",
+            "peptide_mapping.tsv",
+            "modified_peptide_instance.tsv",
+        ]
+        missing = [t for t in required_tables if _find_table_in_zip(zf, t) is None]
+        if missing:
+            raise FileNotFoundError(
+                f"Missing required table(s) in {zip_path}: {', '.join(missing)}. "
+                f"Available files: {zf.namelist()}"
+            )
+
         # Step 0: Index canonical proteins from protein_identification table
         # presence_level_id=1 is "canonical" in PeptideAtlas
         logger.info("Indexing canonical proteins...")
@@ -304,7 +324,7 @@ def write_intermediate_tsv(sites: List[dict], output_path: str) -> str:
     """
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
 
-    with open(output_path, "w", newline="") as f:
+    with open(output_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(
             f,
             fieldnames=_TSV_COLUMNS,
@@ -334,6 +354,23 @@ class PeptideAtlasPhosphoDataset:
     build_id: str
     zip_url: str
 
+    @staticmethod
+    def _validate_zip_url(url: str) -> None:
+        """Validate that download URL uses HTTPS and points to peptideatlas.org."""
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme != "https":
+            raise ValueError(
+                "Only HTTPS download URLs are allowed (got %s): %s"
+                % (parsed.scheme or "<empty>", url)
+            )
+        host = parsed.hostname or ""
+        if host != "peptideatlas.org" and not host.endswith(".peptideatlas.org"):
+            raise ValueError(
+                "Unexpected download host for PeptideAtlas URL "
+                "(expected peptideatlas.org or *.peptideatlas.org): %s"
+                % url
+            )
+
     @classmethod
     def from_latest(cls) -> "PeptideAtlasPhosphoDataset":
         """Create a dataset pointing to the latest known build."""
@@ -352,6 +389,11 @@ class PeptideAtlasPhosphoDataset:
             Build date string, e.g. ``"202512"``.
         build_id : str
             Build numeric ID, e.g. ``"606"``.
+
+        Notes
+        -----
+        The generated URL follows:
+        ``{PEPTIDEATLAS_PHOSPHO_BASE_URL}/{build_date}/atlas_build_{build_id}.tsv.zip``.
         """
         zip_url = (
             f"{PEPTIDEATLAS_PHOSPHO_BASE_URL}/{build_date}/"
@@ -382,12 +424,11 @@ class PeptideAtlasPhosphoDataset:
         str
             Path to the intermediate TSV file.
         """
-        import urllib.request
-
         os.makedirs(output_dir, exist_ok=True)
         zip_filename = f"atlas_build_{self.build_id}.tsv.zip"
         zip_path = os.path.join(output_dir, zip_filename)
-        tsv_path = os.path.join(output_dir, f"peptideatlas-phospho-{self.build_date}.tsv")
+        tsv_filename = f"peptideatlas-phospho-{self.build_date}-{self.build_id}.tsv"
+        tsv_path = os.path.join(output_dir, tsv_filename)
 
         if os.path.exists(tsv_path) and not overwrite:
             logger.info("Intermediate TSV already exists: %s", tsv_path)
@@ -395,8 +436,9 @@ class PeptideAtlasPhosphoDataset:
 
         # Download zip if needed
         if not os.path.exists(zip_path) or overwrite:
+            self._validate_zip_url(self.zip_url)
             logger.info("Downloading %s -> %s", self.zip_url, zip_path)
-            urllib.request.urlretrieve(self.zip_url, zip_path)
+            urllib.request.urlretrieve(self.zip_url, zip_path)  # nosec B310
             logger.info("Download complete: %s", zip_path)
         else:
             logger.info("Using cached zip: %s", zip_path)
@@ -405,7 +447,6 @@ class PeptideAtlasPhosphoDataset:
         logger.info("Parsing phospho sites from zip...")
         sites = parse_peptideatlas_zip(zip_path)
         write_intermediate_tsv(sites, tsv_path)
-
         return tsv_path
 
     def get_metadata(self) -> dict:

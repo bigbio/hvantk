@@ -5,7 +5,7 @@ This module provides functions for computing per-sample burden scores
 for gene sets and testing their association with phenotypes using
 Hail's native logistic and linear regression functions.
 
-The implementation follows the pattern from scripts/logreg_burden_test.py,
+The implementation follows the pattern from alphagenome/logreg_burden_test.py,
 which uses a two-step aggregation:
 1. Variants → Genes (per sample)
 2. Genes → Gene Sets (per sample)
@@ -629,7 +629,7 @@ def logistic_burden_test(
     """Run Hail-native logistic regression for burden testing.
 
     Uses hl.logistic_regression_rows() internally, following the pattern
-    from scripts/logreg_burden_test.py and hvantk/utils/stats.py.
+    from alphagenome/logreg_burden_test.py and hvantk/utils/stats.py.
 
     Parameters
     ----------

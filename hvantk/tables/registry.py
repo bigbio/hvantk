@@ -272,6 +272,9 @@ TABLE_BUILDERS: Dict[str, Callable[[str, str, Dict[str, Any] | None], None]] = {
     ),
     "eqtl": create_table_adapter("hvantk.tables.table_builders", "create_eqtl_tb"),
     "pqtl": create_table_adapter("hvantk.tables.table_builders", "create_pqtl_tb"),
+    "alphagenome": create_table_adapter(
+        "hvantk.tables.table_builders", "create_alphagenome_tb"
+    ),
 }
 
 

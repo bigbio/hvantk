@@ -20,6 +20,8 @@ from typing import Dict, List, Optional
 
 import pandas as pd
 
+from hvantk.core.backends import get_algorithm_meta
+
 from hvantk.qtlcascade.constants import (
     DEFAULT_COLOC_H4_THRESHOLD,
     DEFAULT_COLOC_P1,
@@ -336,6 +338,10 @@ class CascadePipeline:
         logger.info("Stage: %s", CascadeStage.RUN_COLOC.value)
         from hvantk.qtlcascade.coloc import run_coloc_per_gene
         import hail as hl
+
+        meta = get_algorithm_meta(run_coloc_per_gene)
+        backend = meta.backends[0]
+        logger.info("Coloc backend: %s", backend.value)
 
         # Get cascade gene IDs (genes with both eQTL and pQTL signals —
         # includes both eqtl_mediated and discordant classes)

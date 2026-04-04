@@ -2,7 +2,7 @@
 PTM Build Pipeline — orchestrates PTM data acquisition, coordinate mapping, and table building.
 
 This module exposes the build workflow as a Python API so it can be used
-programmatically (notebooks, scripts) or from the CLI.
+programmatically (notebooks, alphagenome) or from the CLI.
 
 Example:
     >>> from hvantk.ptm.pipeline import PTMBuildConfig, ptm_build_pipeline
@@ -17,6 +17,8 @@ Example:
 import csv
 import logging
 import os
+import urllib.parse
+import urllib.request
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
@@ -121,14 +123,26 @@ def download_ensembl_gtf(output_dir: str, overwrite: bool = False) -> str:
     gtf_path = os.path.join(output_dir, ENSEMBL_GTF_FILENAME)
 
     if os.path.exists(gtf_path) and not overwrite:
-        logger.info(f"Using cached GTF: {gtf_path}")
+        logger.info("Using cached GTF: %s", gtf_path)
         return gtf_path
 
-    logger.info(f"Downloading Ensembl GTF to {gtf_path}...")
-    from urllib.request import urlretrieve
+    parsed = urllib.parse.urlparse(ENSEMBL_GTF_URL)
+    if parsed.scheme != "https":
+        raise ValueError(
+            "Invalid Ensembl GTF URL scheme (expected https): %s"
+            % ENSEMBL_GTF_URL
+        )
+    host = parsed.hostname or ""
+    if host != "ftp.ensembl.org" and not host.endswith(".ensembl.org"):
+        raise ValueError(
+            "Invalid Ensembl GTF URL host "
+            "(expected trusted Ensembl host, e.g. ftp.ensembl.org or *.ensembl.org): %s"
+            % ENSEMBL_GTF_URL
+        )
 
-    urlretrieve(ENSEMBL_GTF_URL, gtf_path)
-    logger.info(f"Downloaded: {gtf_path}")
+    logger.info("Downloading Ensembl GTF to %s...", gtf_path)
+    urllib.request.urlretrieve(ENSEMBL_GTF_URL, gtf_path)  # nosec B310
+    logger.info("Downloaded: %s", gtf_path)
     return gtf_path
 
 
@@ -182,7 +196,9 @@ def map_ptm_sites(
     n_failed = 0
     n_total = 0
 
-    with open(ptm_tsv) as fin, open(output_path, "w", newline="") as fout:
+    with open(ptm_tsv, encoding="utf-8") as fin, open(
+        output_path, "w", newline="", encoding="utf-8"
+    ) as fout:
         reader = csv.DictReader(fin, delimiter="\t")
         writer = csv.DictWriter(
             fout, fieldnames=PTM_OUTPUT_COLUMNS, delimiter="\t", lineterminator="\n"
@@ -258,10 +274,13 @@ def map_ptm_sites(
         flush_protein(current_records)
 
     logger.info(
-        f"Mapping complete: {n_mapped}/{n_total} mapped "
-        f"({100 * n_mapped / max(n_total, 1):.1f}%), {n_failed} failed"
+        "Mapping complete: %d/%d mapped (%.1f%%), %d failed",
+        n_mapped,
+        n_total,
+        100 * n_mapped / max(n_total, 1),
+        n_failed,
     )
-    logger.info(f"Resolution: {dict(resolution_counts)}")
+    logger.info("Resolution: %s", dict(resolution_counts))
 
     return PTMBuildResult(
         n_total=n_total,
@@ -328,18 +347,19 @@ def ptm_build_pipeline(config: PTMBuildConfig) -> PTMBuildResult:
 
         # Concatenate mapped TSVs
         combined_path = os.path.join(config.output_dir, "ptm_sites_combined.tsv")
-        with open(combined_path, "w", newline="") as fout:
+        with open(combined_path, "w", newline="", encoding="utf-8") as fout:
             writer = csv.DictWriter(
                 fout, fieldnames=PTM_OUTPUT_COLUMNS, delimiter="\t", lineterminator="\n"
             )
             writer.writeheader()
             for src_path in [mapped_path, pa_mapped_path]:
-                with open(src_path) as fin:
+                with open(src_path, encoding="utf-8") as fin:
                     reader = csv.DictReader(fin, delimiter="\t")
                     for row in reader:
                         writer.writerow(row)
 
         mapped_path = combined_path
+        result.mapped_tsv_path = combined_path
         result.n_total += pa_result.n_total
         result.n_mapped += pa_result.n_mapped
         result.n_failed += pa_result.n_failed
@@ -349,8 +369,8 @@ def ptm_build_pipeline(config: PTMBuildConfig) -> PTMBuildResult:
             )
 
         logger.info(
-            f"Combined: {result.n_mapped} total mapped sites "
-            f"(UniProt + PeptideAtlas)"
+            "Combined: %d total mapped sites (UniProt + PeptideAtlas)",
+            result.n_mapped,
         )
 
     # Step 4c: Map CPTAC sites (if provided)
@@ -387,7 +407,7 @@ def ptm_build_pipeline(config: PTMBuildConfig) -> PTMBuildResult:
         )
 
     # Step 5: Build Hail Table
-    logger.info(f"Building Hail Table at {config.output_ht}...")
+    logger.info("Building Hail Table at %s...", config.output_ht)
     from hvantk.tables.table_builders import create_ptm_sites_tb
 
     create_ptm_sites_tb(
@@ -405,5 +425,5 @@ def ptm_build_pipeline(config: PTMBuildConfig) -> PTMBuildResult:
         "genes_with_mane": len(gtf_data.gene_to_mane),
     }
 
-    logger.info(f"PTM build pipeline complete: {result.n_mapped} sites mapped")
+    logger.info("PTM build pipeline complete: %d sites mapped", result.n_mapped)
     return result

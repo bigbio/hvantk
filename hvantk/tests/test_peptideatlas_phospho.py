@@ -12,6 +12,7 @@ Covers:
 import csv
 import os
 import zipfile
+from unittest import mock
 
 import pytest
 
@@ -177,6 +178,7 @@ def test_dataset_from_build():
     assert dataset.build_date == "202204"
     assert dataset.build_id == "500"
     assert "202204" in dataset.zip_url
+    assert "/phospho/202204/" in dataset.zip_url
 
 
 # ---------- Test 4: Intermediate TSV output ----------
@@ -251,7 +253,44 @@ def test_extract_phospho_offsets(mod_seq, expected):
     assert result == expected
 
 
-# ---------- Test 6: Canonical protein filtering ----------
+# ---------- Test 6: Missing tables ----------
+
+
+def test_parse_raises_when_required_tables_missing(tmp_path):
+    """Missing required tables should raise FileNotFoundError."""
+    from hvantk.datasets.peptideatlas_phospho_datasets import parse_peptideatlas_zip
+
+    zip_path = tmp_path / "missing_tables.zip"
+    with zipfile.ZipFile(zip_path, "w") as zf:
+        zf.writestr("biosequence.tsv", "biosequence_id\tbiosequence_accession\n1\tP12345\n")
+
+    with pytest.raises(FileNotFoundError):
+        parse_peptideatlas_zip(str(zip_path))
+
+
+# ---------- Test 7: Dataset download ----------
+
+
+def test_dataset_download_returns_intermediate_tsv(tmp_path, mock_pa_zip):
+    """download() returns generated intermediate TSV path."""
+    from hvantk.datasets.peptideatlas_phospho_datasets import PeptideAtlasPhosphoDataset
+
+    dataset = PeptideAtlasPhosphoDataset.from_build("202512", "606")
+    output_dir = tmp_path / "out"
+
+    def _fake_urlretrieve(url, path):
+        with open(mock_pa_zip, "rb") as src, open(path, "wb") as dst:
+            dst.write(src.read())
+        return path, None
+
+    with mock.patch("urllib.request.urlretrieve", side_effect=_fake_urlretrieve):
+        tsv_path = dataset.download(str(output_dir), overwrite=True)
+
+    assert tsv_path.endswith("peptideatlas-phospho-202512-606.tsv")
+    assert os.path.exists(tsv_path)
+
+
+# ---------- Test 8: Canonical protein filtering ----------
 
 
 def test_canonical_protein_filtering(tmp_path):
@@ -338,7 +377,7 @@ def test_canonical_protein_filtering(tmp_path):
     assert sites[0]["position"] == 315
 
 
-# ---------- Test 7: URL construction ----------
+# ---------- Test 9: URL construction ----------
 
 
 def test_url_no_doubled_phospho():

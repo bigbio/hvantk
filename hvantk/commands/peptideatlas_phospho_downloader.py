@@ -8,6 +8,7 @@ Example:
 import logging
 
 import click
+from hvantk.datasets.peptideatlas_phospho_datasets import PeptideAtlasPhosphoDataset
 
 logger = logging.getLogger(__name__)
 
@@ -46,8 +47,6 @@ def peptideatlas_phospho_downloader(ctx, output_dir, build_date, build_id, overw
     TSV compatible with the PTM pipeline.
     """
     try:
-        from hvantk.datasets.peptideatlas_phospho_datasets import PeptideAtlasPhosphoDataset
-
         if build_date and build_id:
             dataset = PeptideAtlasPhosphoDataset.from_build(build_date, build_id)
         else:
@@ -57,7 +56,7 @@ def peptideatlas_phospho_downloader(ctx, output_dir, build_date, build_id, overw
         output_path = dataset.download(output_dir, overwrite=overwrite)
         click.echo(f"Downloaded to: {output_path}")
 
-    except Exception as e:
-        logger.exception(f"Download failed: {e}")
+    except (OSError, ValueError, RuntimeError) as e:
+        logger.exception("Download failed: %s", e)
         click.echo(f"Error: {e}", err=True)
         ctx.exit(1)

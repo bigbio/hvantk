@@ -248,7 +248,7 @@ def burden_test(
     This command tests whether cases have excess rare damaging variants in
     gene set genes using Hail's native logistic_regression_rows() or
     linear_regression_rows() functions. The implementation follows the
-    pattern from scripts/logreg_burden_test.py.
+    pattern from alphagenome/logreg_burden_test.py.
 
     Gene sets should be prepared in advance using external tools or
     programmatically. The gene sets file should be in JSON format as
