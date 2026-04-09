@@ -1,12 +1,19 @@
 """
-Hail-backed expression visualization utilities.
+Expression visualization utilities.
 
-This module contains plotting functions that operate on Hail MatrixTable objects.
+This module contains plotting functions that operate on Hail MatrixTable
+objects and AnnData objects.
 """
 
-import hail as hl
+from __future__ import annotations
+
 import matplotlib.pyplot as plt
 import numpy as np
+
+try:
+    import hail as hl
+except ImportError:  # pragma: no cover
+    hl = None  # type: ignore[assignment]
 
 
 def visualize_expression_distribution(
@@ -81,6 +88,45 @@ def visualize_expression_distribution(
         align="edge",
         edgecolor="black",
     )
+    ax.set_title(title)
+    ax.set_xlabel(x_label)
+    ax.set_ylabel("Frequency")
+    return fig
+
+
+def visualize_expression_distribution_ad(
+    adata: "ad.AnnData",
+    n_bins: int = 50,
+    log_scale: bool = True,
+    title: str = "Expression Value Distribution",
+) -> "plt.Figure":
+    """
+    Visualize the distribution of expression values in an AnnData object.
+
+    Args:
+        adata: AnnData object containing expression data in X.
+        n_bins: Number of histogram bins.
+        log_scale: Whether to apply log1p transformation before plotting.
+        title: Plot title.
+
+    Returns:
+        Matplotlib figure with the expression histogram.
+    """
+    import scipy.sparse
+
+    X = adata.X
+    if scipy.sparse.issparse(X):
+        X = X.toarray()
+    values = np.asarray(X).flatten()
+
+    if log_scale:
+        values = np.log1p(values)
+        x_label = "log1p(Expression)"
+    else:
+        x_label = "Expression"
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.hist(values, bins=n_bins, edgecolor="black")
     ax.set_title(title)
     ax.set_xlabel(x_label)
     ax.set_ylabel("Frequency")

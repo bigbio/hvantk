@@ -2,6 +2,7 @@
 
 import anndata as ad
 import numpy as np
+import pandas as pd
 import pytest
 
 
@@ -296,3 +297,20 @@ class TestBuildCptacPhosphoAd:
         assert (tmp_path / "output.h5ad").exists()
         assert "hvantk_metadata" in adata.uns
         assert adata.uns["hvantk_metadata"]["source_name"] == "CPTAC"
+
+
+class TestVisualizeExpressionAd:
+    def test_returns_matplotlib_figure(self):
+        from hvantk.visualization.expression.hail import visualize_expression_distribution_ad
+        import matplotlib
+        matplotlib.use("Agg")  # non-interactive backend
+        import matplotlib.pyplot as plt
+
+        adata = ad.AnnData(
+            X=np.random.rand(50, 20).astype(np.float32),
+            obs=pd.DataFrame(index=[f"c_{i}" for i in range(50)]),
+            var=pd.DataFrame(index=[f"g_{i}" for i in range(20)]),
+        )
+        fig = visualize_expression_distribution_ad(adata)
+        assert isinstance(fig, plt.Figure)
+        plt.close(fig)
