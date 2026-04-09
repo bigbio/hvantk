@@ -8,10 +8,6 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import pytest
 
-from hvantk.tables.ucsc import (
-    convert_ucsc_metadata_to_hail_table,
-    create_mt_from_ucsc_expression_matrix,
-)
 from hvantk.core.constants import UCSC_CELL_ID_COLUMN, UCSC_GENE_COLUMN
 from hvantk.utils.matrix_utils import (
     summarize_matrix,
@@ -43,29 +39,53 @@ def temp_dir():
 @pytest.fixture
 def sample_matrix_table(temp_dir):
     """
-    Create a sample MatrixTable for testing using the UCSC test data
+    Create a sample MatrixTable for testing using the UCSC test data.
+
+    Builds the MT directly via Hail import functions (the old UCSC wrapper
+    functions have been removed in favour of AnnData builders).
     """
-    # Define output path
     output_path = Path(temp_dir) / "test_matrix_utils.mt"
 
-    # Import metadata file to Hail Table
-    metadata_ht = convert_ucsc_metadata_to_hail_table(
-        str(METADATA_FILE_PATH), sep="\t", index_col=0, index_name=UCSC_CELL_ID_COLUMN
-    )
+    # Import metadata
+    ht = hl.import_table(str(METADATA_FILE_PATH), delimiter="\t", impute=True)
+    fields = list(ht.row)
+    first_field = fields[0]
+    rename_map = {}
+    if first_field != UCSC_CELL_ID_COLUMN:
+        rename_map[first_field] = UCSC_CELL_ID_COLUMN
+    for f in fields:
+        if f == first_field:
+            continue
+        new_name = f.replace(".", "_")
+        if new_name != f:
+            rename_map[f] = new_name
+    if rename_map:
+        ht = ht.rename(rename_map)
+    metadata_ht = ht.key_by(UCSC_CELL_ID_COLUMN)
 
-    # Create the MatrixTable from the expression matrix file
-    mt = create_mt_from_ucsc_expression_matrix(
-        expression_matrix_path=str(EXPRESSION_MATRIX_FILE_PATH),
-        output_path=str(output_path),
+    # Import expression matrix
+    mt = hl.import_matrix_table(
+        str(EXPRESSION_MATRIX_FILE_PATH),
         delimiter="\t",
-        row_fields=None,
+        row_fields={UCSC_GENE_COLUMN: hl.tstr},
         row_key=UCSC_GENE_COLUMN,
-        split_gene_field=True,
         min_partitions=5,
         force_bgz=True,
-        overwrite=True,
-        metadata_ht=metadata_ht,
     )
+    mt = mt.rename({"col_id": UCSC_CELL_ID_COLUMN})
+
+    # Split gene field (pipe-separated)
+    from hvantk.utils.expressions import split_field_expr
+
+    mt = mt.key_rows_by()
+    mt = mt.annotate_rows(
+        **{UCSC_GENE_COLUMN: split_field_expr(mt, field_name=UCSC_GENE_COLUMN)}
+    )
+    mt = mt.key_rows_by(mt[UCSC_GENE_COLUMN])
+
+    # Annotate with metadata
+    mt = mt.annotate_cols(metadata=metadata_ht[mt.col_key])
+    mt = mt.checkpoint(str(output_path), overwrite=True)
 
     return mt
 
