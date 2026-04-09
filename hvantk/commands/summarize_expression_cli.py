@@ -1,12 +1,12 @@
 """
-CLI commands for expression MatrixTable analysis.
+CLI commands for expression AnnData analysis.
 
 Grouped under ``hvantk expression``:
 
-- ``hvantk expression describe``: inspect metadata fields in an expression MT
-- ``hvantk expression summarize``: collapse an expression MT into a gene-level
-  summary Table grouped by metadata fields
-- ``hvantk expression markers``: extract marker genes from a summary Table
+- ``hvantk expression describe``: inspect metadata fields in an expression .h5ad
+- ``hvantk expression summarize``: collapse an expression .h5ad into a gene-level
+  summary DataFrame saved as Parquet
+- ``hvantk expression markers``: extract marker genes using scanpy rank_genes_groups
 """
 
 import logging
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 @click.group("expression", context_settings=CONTEXT_SETTINGS)
 def expression_group():
-    """Expression MatrixTable analysis commands."""
+    """Expression AnnData analysis commands."""
     pass
 
 
@@ -28,63 +28,66 @@ def expression_group():
 @click.option(
     "-m",
     "--matrix-table",
-    type=click.Path(),
+    "matrix_path",
+    type=click.Path(exists=True),
     required=True,
-    help="Path to an expression MatrixTable (.mt).",
+    help="Path to an expression AnnData file (.h5ad).",
 )
-def describe_expression_cmd(matrix_table):
-    """Inspect column metadata fields in an expression MatrixTable.
+def describe_expression_cmd(matrix_path):
+    """Inspect observation metadata fields in an expression AnnData.
 
     Prints available grouping variables, their types, and level counts.
-    Uses pre-computed column_summary when available (instant, no Spark job).
+    Uses pre-computed column_summary when available (instant, no compute).
 
     \b
     Example:
-      hvantk expression describe -m data/heart_sc.mt
+      hvantk expression describe -m data/heart_sc.h5ad
     """
-    from hvantk.utils.matrix_utils import describe_expression_mt
+    from hvantk.core.anndata_utils import load_anndata
+    from hvantk.utils.matrix_utils import describe_expression_ad
 
-    describe_expression_mt(matrix_table)
+    adata = load_anndata(matrix_path)
+    info = describe_expression_ad(adata)
+
+    click.echo(f"\nExpression AnnData: {matrix_path}")
+    click.echo(f"  Observations (cells/samples): {info['n_obs']:,}")
+    click.echo(f"  Variables (genes):            {info['n_vars']:,}")
+    click.echo("")
+    if info["fields"]:
+        click.echo("Metadata fields:")
+        for f in info["fields"]:
+            if f["dtype"] == "categorical":
+                click.echo(f"  {f['name']:<40s}  categorical  ({f.get('n_unique', '?')} levels)")
+            else:
+                click.echo(
+                    f"  {f['name']:<40s}  numeric      "
+                    f"[{f.get('min', '?')}, {f.get('max', '?')}]"
+                )
+    else:
+        click.echo("  (no metadata fields found)")
 
 
 @expression_group.command("summarize")
 @click.option(
     "-m",
     "--matrix-table",
-    type=click.Path(),
+    "matrix_path",
+    type=click.Path(exists=True),
     required=True,
-    help="Path to an expression MatrixTable (.mt).",
+    help="Path to an expression AnnData file (.h5ad).",
 )
 @click.option(
     "--group-by",
     multiple=True,
     required=True,
-    help="Column metadata field(s) to group by. Repeat for multi-field grouping.",
+    help="Observation metadata field(s) to group by. Repeat for multi-field grouping.",
 )
 @click.option(
     "--filter-by",
     multiple=True,
     default=None,
-    help="Pre-filter columns: FIELD=VALUE (repeatable). "
+    help="Pre-filter observations: FIELD=VALUE (repeatable). "
     "Example: --filter-by time_point=9wpc --filter-by region=LV",
-)
-@click.option(
-    "--expr-field",
-    default="x",
-    show_default=True,
-    help="Entry field containing expression values.",
-)
-@click.option(
-    "--gene-id-field",
-    default="GeneID",
-    show_default=True,
-    help="Row field for gene IDs.",
-)
-@click.option(
-    "--gene-name-field",
-    default="Gene Name",
-    show_default=True,
-    help="Row field for gene names (use '' to omit).",
 )
 @click.option(
     "--min-cells",
@@ -98,7 +101,7 @@ def describe_expression_cmd(matrix_table):
     "--output",
     type=click.Path(),
     required=True,
-    help="Output path for the summary Hail Table (.ht).",
+    help="Output path for the summary (.parquet).",
 )
 @click.option(
     "--overwrite",
@@ -107,43 +110,42 @@ def describe_expression_cmd(matrix_table):
     help="Overwrite existing output.",
 )
 def summarize_expression_cmd(
-    matrix_table,
+    matrix_path,
     group_by,
     filter_by,
-    expr_field,
-    gene_id_field,
-    gene_name_field,
     min_cells,
     output,
     overwrite,
 ):
-    """Collapse an expression MatrixTable into a gene-level summary Table.
+    """Collapse an expression AnnData into a gene-level summary DataFrame.
 
     \b
     Examples:
 
       # Single-field grouping
       hvantk expression summarize \\
-          -m data/heart_sc.mt \\
+          -m data/heart_sc.h5ad \\
           --group-by cell_type \\
-          -o data/heart_celltype_summary.ht
+          -o data/heart_celltype_summary.parquet
 
       # Multi-field grouping
       hvantk expression summarize \\
-          -m data/heart_sc.mt \\
+          -m data/heart_sc.h5ad \\
           --group-by cell_type --group-by region \\
-          -o data/heart_celltype_region_summary.ht
+          -o data/heart_celltype_region_summary.parquet
 
       # With pre-filtering
       hvantk expression summarize \\
-          -m data/heart_sc.mt \\
+          -m data/heart_sc.h5ad \\
           --group-by cell_type \\
           --filter-by time_point=9wpc --filter-by region=LV \\
           --min-cells 50 \\
-          -o data/heart_9wpc_LV_summary.ht
+          -o data/heart_9wpc_LV_summary.parquet
     """
-    import hail as hl
-    from hvantk.utils.matrix_utils import summarize_expression
+    from pathlib import Path
+
+    from hvantk.core.anndata_utils import load_anndata
+    from hvantk.utils.matrix_utils import summarize_expression_ad
 
     # Parse filter_by from "field=value" strings
     filters = None
@@ -158,77 +160,71 @@ def summarize_expression_cmd(
             key, value = item.split("=", 1)
             filters[key.strip()] = value.strip()
 
-    gene_name = gene_name_field if gene_name_field else None
+    output_path = Path(output)
+    if output_path.exists() and not overwrite:
+        click.echo(
+            f"Error: Output file already exists: {output_path}\n"
+            "Use --overwrite to replace it.",
+            err=True,
+        )
+        raise SystemExit(1)
 
-    mt = hl.read_matrix_table(matrix_table)
+    adata = load_anndata(matrix_path)
 
-    tb = summarize_expression(
-        mt,
+    summary_df = summarize_expression_ad(
+        adata,
         group_by=list(group_by),
         filter_by=filters,
-        expr_field=expr_field,
-        gene_id_field=gene_id_field,
-        gene_name_field=gene_name,
         min_cells_per_group=min_cells,
-        output_path=output,
-        overwrite=overwrite,
     )
 
-    n_genes = tb.count()
-    # Collect group labels and sample sizes from one row
-    sample_stats = hl.eval(tb.take(1)[0].stats) if n_genes > 0 else {}
-    group_labels = sorted(sample_stats.keys())
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    summary_df.to_parquet(str(output_path))
+
+    n_genes = summary_df["gene_id"].nunique() if len(summary_df) > 0 else 0
+    group_labels = sorted(summary_df["group"].unique().tolist()) if len(summary_df) > 0 else []
 
     click.echo(f"\nSummary table written to: {output}")
     click.echo(f"  Genes:  {n_genes:,}")
     click.echo(f"  Groups: {len(group_labels)} (from {list(group_by)})")
     click.echo("")
-    tb.describe()
-    click.echo("")
     if group_labels:
         click.echo(f"Group labels ({len(group_labels)}):")
-        # Show first few with cell counts
         for label in group_labels[:10]:
-            info = sample_stats[label]
-            click.echo(f"  {label:<40s}  {info.n_cells:>6,} cells")
+            # Show cell count for this group
+            grp_rows = summary_df[summary_df["group"] == label]
+            n_cells = int(grp_rows["n_cells"].iloc[0]) if len(grp_rows) > 0 else 0
+            click.echo(f"  {label:<40s}  {n_cells:>6,} cells")
         if len(group_labels) > 10:
             click.echo(f"  ... and {len(group_labels) - 10} more")
 
 
 @expression_group.command("markers")
 @click.option(
-    "-s",
-    "--summary",
-    type=click.Path(),
-    default=None,
-    help="Path to an expression summary Hail Table (.ht) from 'expression summarize'. "
-    "Required for fold_change/specificity methods; optional for wilcoxon (pre-filter).",
-)
-@click.option(
     "-m",
     "--matrix-table",
-    type=click.Path(),
-    default=None,
-    help="Path to expression MatrixTable (.mt). Required for wilcoxon method.",
-)
-@click.option(
-    "--method",
-    type=click.Choice(["fold_change", "specificity", "wilcoxon"]),
-    default="fold_change",
-    show_default=True,
-    help="Marker scoring method.",
+    "matrix_path",
+    type=click.Path(exists=True),
+    required=True,
+    help="Path to expression AnnData (.h5ad).",
 )
 @click.option(
     "--group-by",
-    multiple=True,
-    default=None,
-    help="Metadata field(s) for grouping. Required for wilcoxon method.",
+    required=True,
+    help="Observation metadata field to group by for differential expression.",
 )
 @click.option(
     "--filter-by",
     multiple=True,
     default=None,
-    help="Pre-filter columns: FIELD=VALUE (repeatable). For wilcoxon method.",
+    help="Pre-filter observations: FIELD=VALUE (repeatable).",
+)
+@click.option(
+    "--method",
+    type=click.Choice(["wilcoxon", "t-test", "t-test_overestim_var", "logreg"]),
+    default="wilcoxon",
+    show_default=True,
+    help="Scoring method (passed to scanpy.tl.rank_genes_groups).",
 )
 @click.option(
     "--top-n",
@@ -238,77 +234,17 @@ def summarize_expression_cmd(
     help="Maximum markers per group.",
 )
 @click.option(
-    "--min-fold-change",
-    type=float,
-    default=1.5,
-    show_default=True,
-    help="Minimum fold change to qualify as marker.",
-)
-@click.option(
-    "--min-fraction-expressed",
-    type=float,
-    default=0.1,
-    show_default=True,
-    help="Minimum fraction of cells expressing a gene in the group.",
-)
-@click.option(
-    "--expr-field",
-    default="x",
-    show_default=True,
-    help="Entry field containing expression values (wilcoxon).",
-)
-@click.option(
-    "--gene-id-field",
-    default="GeneID",
-    show_default=True,
-    help="Row field for gene IDs (wilcoxon).",
-)
-@click.option(
-    "--gene-name-field",
-    default="Gene Name",
-    show_default=True,
-    help="Row field for gene names (wilcoxon; use '' to omit).",
-)
-@click.option(
-    "--min-cells",
-    type=int,
-    default=3,
-    show_default=True,
-    help="Minimum cells per group (wilcoxon).",
-)
-@click.option(
-    "--max-candidates",
-    type=int,
-    default=2000,
-    show_default=True,
-    help="Maximum candidate genes to test after pre-filtering (wilcoxon).",
-)
-@click.option(
-    "--correction",
-    type=click.Choice(["benjamini-hochberg", "bonferroni", "none"]),
-    default="benjamini-hochberg",
-    show_default=True,
-    help="Multiple testing correction method (wilcoxon).",
-)
-@click.option(
-    "--alpha",
-    type=float,
-    default=0.05,
-    show_default=True,
-    help="Adjusted p-value threshold (wilcoxon).",
-)
-@click.option(
-    "--results-tsv",
-    type=click.Path(),
-    default=None,
-    help="Save full Wilcoxon results table to TSV.",
-)
-@click.option(
     "-o",
     "--output",
     type=click.Path(),
     required=True,
     help="Output path (.json or .gmt).",
+)
+@click.option(
+    "--results-tsv",
+    type=click.Path(),
+    default=None,
+    help="Save full results table to TSV.",
 )
 @click.option(
     "--overwrite",
@@ -317,79 +253,44 @@ def summarize_expression_cmd(
     help="Overwrite existing output.",
 )
 def markers_cmd(
-    summary,
-    matrix_table,
-    method,
+    matrix_path,
     group_by,
     filter_by,
+    method,
     top_n,
-    min_fold_change,
-    min_fraction_expressed,
-    expr_field,
-    gene_id_field,
-    gene_name_field,
-    min_cells,
-    max_candidates,
-    correction,
-    alpha,
-    results_tsv,
     output,
+    results_tsv,
     overwrite,
 ):
-    """Extract top marker genes per group from expression data.
+    """Extract top marker genes per group from an expression AnnData.
 
-    Three scoring methods are available, operating on different inputs:
-
-    \b
-    fold_change / specificity (ratio-based, from summary table):
-      Requires --summary (-s) pointing to a pre-computed summary Hail Table
-      produced by 'hvantk expression summarize'. Fast, no statistical test.
-
-    \b
-    wilcoxon (statistical test, from MatrixTable):
-      Requires --matrix-table (-m) and --group-by. Runs a one-vs-rest
-      Wilcoxon rank-sum test (Mann-Whitney U) with tie correction and
-      Benjamini-Hochberg p-value adjustment. Optionally accepts --summary
-      for Phase 1 candidate pre-filtering to reduce compute.
+    Uses scanpy.tl.rank_genes_groups for differential expression testing.
 
     \b
     Examples:
 
-      # Fold-change markers from summary table
+      # Wilcoxon markers
       hvantk expression markers \\
-          -s data/heart_celltype_summary.ht \\
-          --method fold_change \\
+          -m data/heart_sc.h5ad \\
+          --group-by cell_type \\
           --top-n 200 \\
-          -o gene_sets/heart_cell_types.json
+          -o gene_sets/heart_markers.json
 
-      # Wilcoxon rank-sum markers from MatrixTable
+      # t-test with pre-filtering
       hvantk expression markers \\
-          -m data/heart_sc.mt \\
-          --method wilcoxon \\
+          -m data/heart_sc.h5ad \\
           --group-by cell_type \\
-          --top-n 200 --alpha 0.05 \\
-          --results-tsv results/wilcoxon_full.tsv \\
-          -o gene_sets/heart_wilcoxon.json
-
-      # Wilcoxon with summary pre-filter (faster on large datasets)
-      hvantk expression markers \\
-          -m data/heart_sc.mt \\
-          -s data/heart_celltype_summary.ht \\
-          --method wilcoxon \\
-          --group-by cell_type \\
-          -o gene_sets/heart_wilcoxon.json
+          --method t-test \\
+          --filter-by region=LV \\
+          -o gene_sets/heart_LV_markers.json
     """
     from pathlib import Path
 
-    # --- Validate method-specific requirements ---
-    if method in ("fold_change", "specificity"):
-        if summary is None:
-            raise click.UsageError(f"--summary is required for method '{method}'.")
-    elif method == "wilcoxon":
-        if matrix_table is None:
-            raise click.UsageError("--matrix-table is required for method 'wilcoxon'.")
-        if not group_by:
-            raise click.UsageError("--group-by is required for method 'wilcoxon'.")
+    import scanpy as sc
+
+    from hvantk.core.anndata_utils import load_anndata
+    from hvantk.utils.matrix_utils import filter_by_metadata_ad
+    from hvantk.utils.gene_sets import GeneSet, GeneSetCollection
 
     output_path = Path(output)
     if output_path.exists() and not overwrite:
@@ -400,66 +301,41 @@ def markers_cmd(
         )
         raise SystemExit(1)
 
-    # --- Dispatch ---
-    if method in ("fold_change", "specificity"):
-        from hvantk.utils.gene_sets import extract_marker_gene_sets
+    adata = load_anndata(matrix_path)
 
-        collection = extract_marker_gene_sets(
-            summary=summary,
-            n_markers=top_n,
-            min_fold_change=min_fold_change,
-            min_fraction_expressed=min_fraction_expressed,
-            method=method,
-        )
+    # Apply pre-filters
+    if filter_by:
+        filters = {}
+        for item in filter_by:
+            if "=" not in item:
+                raise click.BadParameter(
+                    f"Expected FIELD=VALUE format, got: '{item}'",
+                    param_hint="--filter-by",
+                )
+            key, value = item.split("=", 1)
+            filters[key.strip()] = value.strip()
+        adata = filter_by_metadata_ad(adata, filters)
 
-    else:  # wilcoxon
-        import hail as hl
-        from hvantk.utils.wilcoxon import WilcoxonParams
-        from hvantk.utils.wilcoxon_hail import wilcoxon_markers_from_mt
+    # Run differential expression
+    sc.tl.rank_genes_groups(adata, groupby=group_by, method=method, n_genes=top_n)
+    result_df = sc.get.rank_genes_groups_df(adata, group=None)
 
-        # Parse filter_by
-        filters = None
-        if filter_by:
-            filters = {}
-            for item in filter_by:
-                if "=" not in item:
-                    raise click.BadParameter(
-                        f"Expected FIELD=VALUE format, got: '{item}'",
-                        param_hint="--filter-by",
-                    )
-                key, value = item.split("=", 1)
-                filters[key.strip()] = value.strip()
+    # Save full results if requested
+    if results_tsv:
+        tsv_path = Path(results_tsv)
+        tsv_path.parent.mkdir(parents=True, exist_ok=True)
+        result_df.to_csv(str(tsv_path), sep="\t", index=False)
+        click.echo(f"Full results table: {tsv_path} ({len(result_df):,} rows)")
 
-        gene_name = gene_name_field if gene_name_field else None
+    # Build gene set collection from top markers per group
+    gene_sets_dict = {}
+    for grp, grp_df in result_df.groupby("group"):
+        top_genes = grp_df.head(top_n)["names"].tolist()
+        if top_genes:
+            gs = GeneSet(name=str(grp), genes=set(top_genes))
+            gene_sets_dict[str(grp)] = gs
 
-        params = WilcoxonParams(
-            min_fold_change=min_fold_change,
-            min_fraction_expressed=min_fraction_expressed,
-            max_candidates=max_candidates,
-            top_n=top_n,
-            correction_method=correction,
-            alpha=alpha,
-        )
-
-        mt = hl.read_matrix_table(matrix_table)
-        results_df, collection = wilcoxon_markers_from_mt(
-            mt,
-            group_by=list(group_by),
-            filter_by=filters,
-            summary=summary,
-            params=params,
-            expr_field=expr_field,
-            gene_id_field=gene_id_field,
-            gene_name_field=gene_name,
-            min_cells_per_group=min_cells,
-        )
-
-        # Save full results TSV if requested
-        if results_tsv:
-            tsv_path = Path(results_tsv)
-            tsv_path.parent.mkdir(parents=True, exist_ok=True)
-            results_df.to_csv(str(tsv_path), sep="\t", index=False)
-            click.echo(f"Full results table: {tsv_path} ({len(results_df):,} rows)")
+    collection = GeneSetCollection(gene_sets=gene_sets_dict, background_genes=set())
 
     if not collection.gene_sets:
         click.echo("Error: No marker gene sets produced.", err=True)

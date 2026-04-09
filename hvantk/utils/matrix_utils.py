@@ -15,12 +15,23 @@ The functions are designed to work with MatrixTables having the following struct
 - Entry fields: x (expression values)
 """
 
+from __future__ import annotations
+
 import logging
 from typing import Any, List, Dict, Union, Optional
 
-import hail as hl
+try:
+    import hail as hl
+except ImportError:  # allow AnnData-only usage when Hail is not installed
+    hl = None  # type: ignore[assignment]
+
 import numpy as np
 import pandas as pd
+
+try:
+    import anndata as ad
+except ImportError:  # AnnData is optional
+    ad = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -722,3 +733,153 @@ def get_top_expressed_genes(
         df = pd.concat(result_dfs)
 
     return df
+
+
+# ---------------------------------------------------------------------------
+# AnnData-based expression analysis functions
+# ---------------------------------------------------------------------------
+
+
+def describe_expression_ad(adata: "ad.AnnData") -> Dict[str, Any]:
+    """Return a summary dict describing an AnnData expression object.
+
+    Parameters
+    ----------
+    adata : anndata.AnnData
+        Annotated data matrix.
+
+    Returns
+    -------
+    dict
+        Dictionary with keys ``n_obs``, ``n_vars``, ``fields`` (list of
+        per-field info dicts with at least ``name`` and ``dtype``).
+    """
+    fields_info: List[Dict[str, Any]] = []
+
+    if "column_summary" in adata.uns:
+        raw_summary = adata.uns["column_summary"]
+        for field_name, info in sorted(raw_summary.items()):
+            entry: Dict[str, Any] = {"name": field_name, "dtype": info["dtype"]}
+            if info["dtype"] == "categorical":
+                entry["n_unique"] = info.get("n_unique")
+            else:
+                entry["min"] = info.get("min")
+                entry["max"] = info.get("max")
+            fields_info.append(entry)
+    else:
+        for col in adata.obs.columns:
+            series = adata.obs[col]
+            if pd.api.types.is_numeric_dtype(series):
+                fields_info.append(
+                    {
+                        "name": col,
+                        "dtype": "numeric",
+                        "min": float(np.nanmin(series.values)),
+                        "max": float(np.nanmax(series.values)),
+                    }
+                )
+            else:
+                fields_info.append(
+                    {
+                        "name": col,
+                        "dtype": "categorical",
+                        "n_unique": int(series.nunique()),
+                    }
+                )
+
+    return {"n_obs": adata.n_obs, "n_vars": adata.n_vars, "fields": fields_info}
+
+
+def filter_by_metadata_ad(
+    adata: "ad.AnnData",
+    filters: Dict[str, Union[str, List[str]]],
+) -> "ad.AnnData":
+    """Filter an AnnData object by obs metadata.
+
+    Parameters
+    ----------
+    adata : anndata.AnnData
+        Annotated data matrix.
+    filters : dict
+        Mapping of obs column name to a value or list of values to keep.
+
+    Returns
+    -------
+    anndata.AnnData
+        Filtered copy of the input.
+    """
+    mask = np.ones(adata.n_obs, dtype=bool)
+    for col, values in filters.items():
+        if not isinstance(values, list):
+            values = [values]
+        mask &= adata.obs[col].isin(values).values
+    return adata[mask].copy()
+
+
+def summarize_expression_ad(
+    adata: "ad.AnnData",
+    group_by: Union[str, List[str]],
+    filter_by: Optional[Dict[str, Union[str, List[str]]]] = None,
+    min_cells_per_group: int = 1,
+) -> pd.DataFrame:
+    """Collapse an AnnData expression matrix into a gene-level summary.
+
+    Parameters
+    ----------
+    adata : anndata.AnnData
+        Expression AnnData (obs = cells, var = genes).
+    group_by : str or list of str
+        One or more obs columns to group by.  Multiple columns are
+        concatenated with ``"_"`` to form a composite label.
+    filter_by : dict, optional
+        Pre-filter on obs metadata before grouping (passed to
+        :func:`filter_by_metadata_ad`).
+    min_cells_per_group : int
+        Discard groups with fewer cells than this threshold.
+
+    Returns
+    -------
+    pd.DataFrame
+        Long-form DataFrame with columns ``gene_id``, ``group``,
+        ``mean``, ``fraction_expressed``, ``n_cells``.
+    """
+    if filter_by:
+        adata = filter_by_metadata_ad(adata, filter_by)
+
+    if isinstance(group_by, str):
+        group_by = [group_by]
+
+    # Build composite group labels
+    if len(group_by) == 1:
+        labels = adata.obs[group_by[0]].astype(str)
+    else:
+        labels = adata.obs[group_by[0]].astype(str)
+        for col in group_by[1:]:
+            labels = labels + "_" + adata.obs[col].astype(str)
+
+    adata.obs["_group_label"] = labels.values
+
+    gene_ids = adata.var_names.tolist()
+    X = adata.X
+
+    records: List[Dict[str, Any]] = []
+    for group_name, idx in adata.obs.groupby("_group_label").groups.items():
+        n_cells = len(idx)
+        if n_cells < min_cells_per_group:
+            continue
+        positions = [adata.obs.index.get_loc(i) for i in idx]
+        sub = X[positions, :]
+        means = np.asarray(sub.mean(axis=0)).ravel()
+        frac_expr = np.asarray((sub > 0).mean(axis=0)).ravel()
+        for j, gid in enumerate(gene_ids):
+            records.append(
+                {
+                    "gene_id": gid,
+                    "group": group_name,
+                    "mean": float(means[j]),
+                    "fraction_expressed": float(frac_expr[j]),
+                    "n_cells": n_cells,
+                }
+            )
+
+    return pd.DataFrame(records)
