@@ -7,6 +7,7 @@ and normalize options and naming.
 
 from __future__ import annotations
 
+import anndata as ad
 import logging
 from typing import Optional, List
 
