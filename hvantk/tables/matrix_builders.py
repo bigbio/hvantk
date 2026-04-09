@@ -10,14 +10,11 @@ from __future__ import annotations
 import logging
 from typing import Optional, Dict, List
 
-import hail as hl
-
-from hvantk.core.metadata import build_matrix_metadata
-
 logger = logging.getLogger(__name__)
 
 __all__ = [
     "build_ucsc_mt",
+    "build_ucsc_ad",
     "build_expression_atlas_mt",
     "build_cptac_mt",
     "build_cptac_phospho_mt",
@@ -44,6 +41,8 @@ def build_ucsc_mt(
     specified gene_column (default: 'gene'). If output_mt is provided, checkpoint
     is written there.
     """
+    import hail as hl
+    from hvantk.core.metadata import build_matrix_metadata
     from hvantk.tables.ucsc import (
         convert_ucsc_metadata_to_hail_table,
         create_mt_from_ucsc_expression_matrix,
@@ -84,6 +83,71 @@ def build_ucsc_mt(
     return mt
 
 
+def build_ucsc_ad(
+    expression_matrix_path: str,
+    metadata_path: str,
+    output_path: Optional[str] = None,
+    gene_column: str = "gene",
+    delimiter: str = "\t",
+    split_gene_field: bool = True,
+    overwrite: bool = False,
+) -> "ad.AnnData":
+    """Build an AnnData object from UCSC Cell Browser expression + metadata.
+
+    Parameters
+    ----------
+    expression_matrix_path : str
+        Path to expression TSV (genes x cells).
+    metadata_path : str
+        Path to metadata TSV.
+    output_path : str, optional
+        If provided, save the AnnData as ``.h5ad``.
+    gene_column : str
+        Name of the gene identifier column (default ``"gene"``).
+    delimiter : str
+        Column delimiter (default tab).
+    split_gene_field : bool
+        Split pipe-separated gene names, keeping the first element.
+    overwrite : bool
+        Allow overwriting *output_path* if it exists.
+
+    Returns
+    -------
+    ad.AnnData
+        Expression AnnData with metadata in ``obs`` and provenance in ``uns``.
+    """
+    import anndata as ad
+
+    from hvantk.tables.ucsc import load_ucsc_metadata, create_anndata_from_ucsc_matrix
+    from hvantk.core.anndata_utils import (
+        build_anndata_metadata,
+        annotate_column_summary_ad,
+        save_anndata,
+    )
+
+    logger.info("Loading UCSC metadata from %s", metadata_path)
+    metadata_df = load_ucsc_metadata(metadata_path)
+
+    logger.info("Creating AnnData from UCSC expression matrix")
+    adata = create_anndata_from_ucsc_matrix(
+        expression_matrix_path=expression_matrix_path,
+        metadata_df=metadata_df,
+        gene_column=gene_column,
+        delimiter=delimiter,
+        split_gene_field=split_gene_field,
+    )
+
+    adata.uns["hvantk_metadata"] = build_anndata_metadata(
+        "UCSC", expression_matrix_path
+    )
+    annotate_column_summary_ad(adata)
+
+    if output_path:
+        save_anndata(adata, output_path, overwrite=overwrite)
+
+    return adata
+
+
 def build_expression_atlas_mt(
     expression_matrix_path: str,
     sdrf_file: str,
@@ -103,6 +167,8 @@ def build_expression_atlas_mt(
     the specified gene_column (default: 'Gene ID'). If output_mt is provided,
     checkpoint is written there.
     """
+    import hail as hl
+    from hvantk.core.metadata import build_matrix_metadata
     from hvantk.tables.expression_atlas import (
         convert_sdrf_to_hail_table,
         create_mt_from_expression_atlas_matrix,
@@ -165,6 +231,7 @@ def build_cptac_mt(
     hvantk.tables.cptac helpers, and optionally checkpoints to output_mt.
     """
     import pandas as pd
+    from hvantk.core.metadata import build_matrix_metadata
     from hvantk.tables.cptac import create_cptac_matrix_table
 
     logger.info("Reading CPTAC expression table from %s", expression_path)
@@ -240,8 +307,10 @@ def build_cptac_phospho_mt(
     -------
     hl.MatrixTable
     """
+    import hail as hl
     import pandas as pd
 
+    from hvantk.core.metadata import build_matrix_metadata
     from hvantk.utils.matrix_utils import annotate_column_summary
 
     logger.info("Building CPTAC phospho MatrixTable")
