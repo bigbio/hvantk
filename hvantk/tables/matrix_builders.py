@@ -16,6 +16,7 @@ __all__ = [
     "build_ucsc_mt",
     "build_ucsc_ad",
     "build_expression_atlas_mt",
+    "build_expression_atlas_ad",
     "build_cptac_mt",
     "build_cptac_phospho_mt",
 ]
@@ -210,6 +211,73 @@ def build_expression_atlas_mt(
         mt = mt.checkpoint(output_mt, overwrite=overwrite)
 
     return mt
+
+
+def build_expression_atlas_ad(
+    expression_matrix_path: str,
+    sdrf_file: str,
+    output_path: Optional[str] = None,
+    gene_column: str = "Gene ID",
+    gene_name_column: str = "Gene Name",
+    delimiter: str = "\t",
+    overwrite: bool = False,
+) -> "ad.AnnData":
+    """Build an AnnData object from Expression Atlas expression + SDRF metadata.
+
+    Parameters
+    ----------
+    expression_matrix_path : str
+        Path to Expression Atlas expression TSV (genes x samples).
+    sdrf_file : str
+        Path to SDRF metadata file.
+    output_path : str, optional
+        If provided, save the AnnData as ``.h5ad``.
+    gene_column : str
+        Name of the gene identifier column (default ``"Gene ID"``).
+    gene_name_column : str
+        Name of the gene name column (default ``"Gene Name"``).
+    delimiter : str
+        Column delimiter (default tab).
+    overwrite : bool
+        Allow overwriting *output_path* if it exists.
+
+    Returns
+    -------
+    ad.AnnData
+        Expression AnnData with SDRF metadata in ``obs`` and provenance in
+        ``uns``.
+    """
+    from hvantk.tables.expression_atlas import (
+        convert_sdrf_to_dataframe,
+        create_anndata_from_expression_atlas,
+    )
+    from hvantk.core.anndata_utils import (
+        build_anndata_metadata,
+        annotate_column_summary_ad,
+        save_anndata,
+    )
+
+    logger.info("Loading SDRF metadata from %s", sdrf_file)
+    metadata_df = convert_sdrf_to_dataframe(sdrf_file)
+
+    logger.info("Creating AnnData from Expression Atlas matrix")
+    adata = create_anndata_from_expression_atlas(
+        expression_matrix_path=expression_matrix_path,
+        metadata_df=metadata_df,
+        gene_id_column=gene_column,
+        gene_name_column=gene_name_column,
+        delimiter=delimiter,
+    )
+
+    adata.uns["hvantk_metadata"] = build_anndata_metadata(
+        "ExpressionAtlas", expression_matrix_path
+    )
+    annotate_column_summary_ad(adata)
+
+    if output_path:
+        save_anndata(adata, output_path, overwrite=overwrite)
+
+    return adata
 
 
 def build_cptac_mt(
