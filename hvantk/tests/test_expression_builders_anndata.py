@@ -1,4 +1,4 @@
-"""Tests for AnnData-based expression builders (UCSC Cell Browser)."""
+"""Tests for AnnData-based expression builders (UCSC, Expression Atlas, CPTAC)."""
 
 import anndata as ad
 import numpy as np
@@ -216,3 +216,83 @@ class TestBuildExpressionAtlasAd:
         # X should be (samples x genes), so X[0] = [1.0, 3.0] (s1 across G1, G2)
         np.testing.assert_array_almost_equal(adata.X[0], [1.0, 3.0])
         np.testing.assert_array_almost_equal(adata.X[1], [2.0, 4.0])
+
+
+class TestBuildCptacAd:
+    """Tests for build_cptac_ad in matrix_builders."""
+
+    def test_builds_anndata_from_long_format(self, tmp_path):
+        """Build AnnData from long-format CPTAC expression + metadata."""
+        expr_path = str(tmp_path / "expr.tsv")
+        meta_path = str(tmp_path / "meta.tsv")
+        out_path = str(tmp_path / "output.h5ad")
+
+        # Long-format expression: GeneID, Gene Name, SampleID, Expression
+        with open(expr_path, "w") as fh:
+            fh.write("GeneID\tGene Name\tSampleID\tExpression\n")
+            fh.write("G1\tTP53\tS1\t1.5\n")
+            fh.write("G1\tTP53\tS2\t2.5\n")
+            fh.write("G2\tBRCA1\tS1\t3.5\n")
+            fh.write("G2\tBRCA1\tS2\t4.5\n")
+
+        # Metadata with tumor_type
+        with open(meta_path, "w") as fh:
+            fh.write("SampleID\ttumor_type\n")
+            fh.write("S1\tLUAD\n")
+            fh.write("S2\tBRCA\n")
+
+        from hvantk.tables.matrix_builders import build_cptac_ad
+
+        adata = build_cptac_ad(
+            expression_path=expr_path,
+            metadata_path=meta_path,
+            output_path=out_path,
+        )
+
+        assert isinstance(adata, ad.AnnData)
+        # 2 samples x 2 genes
+        assert adata.shape == (2, 2)
+        assert "tumor_type" in adata.obs.columns
+        assert (tmp_path / "output.h5ad").exists()
+        assert "hvantk_metadata" in adata.uns
+        assert adata.uns["hvantk_metadata"]["source_name"] == "CPTAC"
+        assert "column_summary" in adata.uns
+
+
+class TestBuildCptacPhosphoAd:
+    """Tests for build_cptac_phospho_ad in matrix_builders."""
+
+    def test_builds_anndata_from_sites_matrix(self, tmp_path):
+        """Build AnnData from wide-format CPTAC phospho matrix + metadata."""
+        expr_path = str(tmp_path / "phospho.tsv")
+        meta_path = str(tmp_path / "meta.tsv")
+        out_path = str(tmp_path / "output.h5ad")
+
+        # Wide format: SiteID, S1, S2
+        with open(expr_path, "w") as fh:
+            fh.write("SiteID\tS1\tS2\n")
+            fh.write("TP53_S315\t100.0\t200.0\n")
+            fh.write("EGFR_Y1068\t300.0\t400.0\n")
+
+        # Metadata with tumor_type
+        with open(meta_path, "w") as fh:
+            fh.write("SampleID\ttumor_type\n")
+            fh.write("S1\tLUAD\n")
+            fh.write("S2\tBRCA\n")
+
+        from hvantk.tables.matrix_builders import build_cptac_phospho_ad
+
+        adata = build_cptac_phospho_ad(
+            expression_path=expr_path,
+            metadata_path=meta_path,
+            output_path=out_path,
+        )
+
+        assert isinstance(adata, ad.AnnData)
+        # 2 samples x 2 sites
+        assert adata.shape == (2, 2)
+        assert "gene_symbol" in adata.var.columns
+        assert "tumor_type" in adata.obs.columns
+        assert (tmp_path / "output.h5ad").exists()
+        assert "hvantk_metadata" in adata.uns
+        assert adata.uns["hvantk_metadata"]["source_name"] == "CPTAC"
