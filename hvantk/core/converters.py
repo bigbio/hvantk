@@ -16,6 +16,13 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 
+# Workaround: Hail 0.2.x references np.bool which raises AttributeError
+# in numpy >= 1.24. Restore the alias globally so Hail's internal code works.
+try:
+    _ = np.bool  # type: ignore[attr-defined]
+except AttributeError:
+    np.bool = np.bool_  # type: ignore[attr-defined]
+
 logger = logging.getLogger(__name__)
 
 
@@ -138,7 +145,10 @@ def anndata_to_hail_mt(
         "Converting AnnData (%d obs x %d var) to MT", adata.n_obs, adata.n_vars
     )
 
-    # Convert to Hail Table, then to MatrixTable
+    # Convert to Hail Table, then to MatrixTable.
+    long_df[col_key] = long_df[col_key].astype(str)
+    long_df[row_key] = long_df[row_key].astype(str)
+    long_df[entry_field] = long_df[entry_field].astype("float64")
     ht = hl.Table.from_pandas(long_df)
     mt = ht.to_matrix_table(
         row_key=[row_key],
