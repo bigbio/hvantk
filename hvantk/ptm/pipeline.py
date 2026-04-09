@@ -17,8 +17,10 @@ Example:
 import csv
 import logging
 import os
+import shutil
 import urllib.parse
-import urllib.request
+
+import requests
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
@@ -141,7 +143,10 @@ def download_ensembl_gtf(output_dir: str, overwrite: bool = False) -> str:
         )
 
     logger.info("Downloading Ensembl GTF to %s...", gtf_path)
-    urllib.request.urlretrieve(ENSEMBL_GTF_URL, gtf_path)  # nosec B310
+    with requests.get(ENSEMBL_GTF_URL, stream=True, timeout=600) as resp:
+        resp.raise_for_status()
+        with open(gtf_path, "wb") as fout:
+            shutil.copyfileobj(resp.raw, fout)
     logger.info("Downloaded: %s", gtf_path)
     return gtf_path
 
