@@ -198,7 +198,6 @@ def create_anndata_from_expression_atlas(
     ad.AnnData
         Expression AnnData with genes in ``var`` and samples in ``obs``.
     """
-    import anndata as ad
     import numpy as np
 
     df = pd.read_csv(expression_matrix_path, sep=delimiter)

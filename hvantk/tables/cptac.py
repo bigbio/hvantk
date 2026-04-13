@@ -62,8 +62,6 @@ def create_anndata_from_cptac_long(
     ad.AnnData
         Expression AnnData (samples x genes) with float32 X.
     """
-    import anndata as ad
-
     logger.info("Creating AnnData from CPTAC long-format expression")
 
     required_cols = [gene_id_col, sample_id_col, expression_col]
@@ -130,8 +128,6 @@ def create_anndata_from_cptac_phospho(
         Expression AnnData (samples x sites) with parsed site annotations
         in ``var``.
     """
-    import anndata as ad
-
     logger.info("Creating AnnData from CPTAC phospho wide-format data")
 
     # Set site IDs as index, transpose to samples x sites

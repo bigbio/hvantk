@@ -7,21 +7,11 @@ import pytest
 import anndata as ad
 
 from hvantk.core.anndata_utils import annotate_column_summary_ad
-import importlib.util
-import sys
-from pathlib import Path
-
-# Load matrix_utils directly to sidestep hvantk.utils.__init__ which imports
-# modules using Python 3.10+ syntax (e.g. ``int | None`` in correction.py).
-_mu_path = str(Path(__file__).resolve().parent.parent / "utils" / "matrix_utils.py")
-_spec = importlib.util.spec_from_file_location("_matrix_utils_direct", _mu_path)
-_mod = importlib.util.module_from_spec(_spec)
-sys.modules[_spec.name] = _mod
-_spec.loader.exec_module(_mod)
-
-describe_expression_ad = _mod.describe_expression_ad
-filter_by_metadata_ad = _mod.filter_by_metadata_ad
-summarize_expression_ad = _mod.summarize_expression_ad
+from hvantk.utils.matrix_utils import (
+    describe_expression_ad,
+    filter_by_metadata_ad,
+    summarize_expression_ad,
+)
 
 
 @pytest.fixture

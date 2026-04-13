@@ -54,8 +54,6 @@ def build_ucsc_ad(
     ad.AnnData
         Expression AnnData with metadata in ``obs`` and provenance in ``uns``.
     """
-    import anndata as ad
-
     from hvantk.tables.ucsc import load_ucsc_metadata, create_anndata_from_ucsc_matrix
     from hvantk.core.anndata_utils import (
         build_anndata_metadata,
