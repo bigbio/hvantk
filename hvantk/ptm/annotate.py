@@ -23,6 +23,9 @@ def annotate_variants_with_ptm(
     - is_ptm_proximal: bool (variant within flanking window but not at codon)
     - ptm_types: set<str> (PTM categories at overlapping/proximal sites)
     - ptm_distance: int (approximate distance in residues to nearest PTM site)
+    - ptm_evidence: array<struct> (per-site evidence metadata for the nearest
+      PTM sites, with fields: source_db, evidence_type, n_observations,
+      uniprot_id, gene_symbol, residue_pos, amino_acid, ptm_type)
 
     The approach expands each PTM site's flanking window to individual genomic
     positions, aggregates by locus, then joins with the variant table. This
@@ -34,7 +37,9 @@ def annotate_variants_with_ptm(
         Variant table keyed by locus (and optionally alleles).
     ptm_ht : hl.Table
         PTM sites table from create_ptm_sites_tb, keyed by locus. Must have
-        fields: codon_start, codon_end, ptm_category.
+        fields: codon_start, codon_end, ptm_category. Optional evidence fields:
+        source_db, evidence_type, n_observations, uniprot_id, gene_symbol,
+        residue_pos, amino_acid, ptm_type.
     flanking_codons : int
         Number of flanking codons for the proximal window (default: 5).
 
@@ -78,12 +83,45 @@ def annotate_variants_with_ptm(
         _join_locus=hl.locus(ptm.locus.contig, ptm._positions, ref_genome),
     )
 
+    # Detect which evidence fields are available in the PTM table
+    ptm_fields = set(ptm.row)
+    evidence_fields = [
+        "source_db", "evidence_type", "n_observations",
+        "uniprot_id", "gene_symbol", "residue_pos", "amino_acid", "ptm_type",
+    ]
+    available_evidence = [f for f in evidence_fields if f in ptm_fields]
+    has_evidence = len(available_evidence) > 0
+
+    if has_evidence:
+        logger.info(f"Evidence fields available: {available_evidence}")
+        # Build a per-row evidence struct from available fields
+        ptm = ptm.annotate(
+            _evidence=hl.struct(**{f: ptm[f] for f in available_evidence})
+        )
+
     # Aggregate by genomic position (handles multiple PTM sites at same position)
-    ptm_by_pos = ptm.group_by(locus=ptm._join_locus).aggregate(
+    agg_exprs = dict(
         _any_codon=hl.agg.any(ptm._in_codon),
         ptm_categories=hl.agg.collect_as_set(ptm.ptm_category),
         _min_bp_dist=hl.agg.min(ptm._bp_dist),
     )
+    if has_evidence:
+        # Collect evidence structs, keeping only the closest PTM sites
+        agg_exprs["_evidence_all"] = hl.agg.collect(
+            hl.struct(_bp_dist=ptm._bp_dist, _in_codon=ptm._in_codon,
+                      evidence=ptm._evidence)
+        )
+
+    ptm_by_pos = ptm.group_by(locus=ptm._join_locus).aggregate(**agg_exprs)
+
+    if has_evidence:
+        # Keep only evidence from the nearest PTM site(s) at each position
+        ptm_by_pos = ptm_by_pos.annotate(
+            _nearest_evidence=ptm_by_pos._evidence_all.filter(
+                lambda x: x._bp_dist == ptm_by_pos._min_bp_dist
+            ).map(lambda x: x.evidence)
+        )
+        ptm_by_pos = ptm_by_pos.drop("_evidence_all")
 
     # Join with variant table
     ann = ptm_by_pos[variants_ht.locus]
@@ -97,6 +135,13 @@ def annotate_variants_with_ptm(
             (ann._min_bp_dist + 2) // 3,
             hl.missing(hl.tint32),
         ),
+        **({
+            "ptm_evidence": hl.if_else(
+                hl.is_defined(ann),
+                ann._nearest_evidence,
+                hl.missing(ann._nearest_evidence.dtype),
+            )
+        } if has_evidence else {}),
     )
 
     logger.info("PTM annotation complete")
