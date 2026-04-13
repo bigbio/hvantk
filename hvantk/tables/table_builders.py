@@ -1452,6 +1452,7 @@ def create_ptm_sites_tb(
         import_func=lambda: hl.import_table(
             paths=input_path,
             impute=False,
+            min_partitions=16,
             types={
                 "codon_start": hl.tstr,
                 "codon_end": hl.tstr,
