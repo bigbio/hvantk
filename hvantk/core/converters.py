@@ -16,13 +16,6 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 
-# Workaround: Hail 0.2.x references np.bool which raises AttributeError
-# in numpy >= 1.24. Restore the alias globally so Hail's internal code works.
-try:
-    _ = np.bool  # type: ignore[attr-defined]
-except AttributeError:
-    np.bool = np.bool_  # type: ignore[attr-defined]
-
 logger = logging.getLogger(__name__)
 
 
@@ -56,7 +49,8 @@ def hail_mt_to_anndata(
     ad.AnnData
         AnnData object with X as float32.
     """
-    import hail as hl  # noqa: F811 – lazy import keeps module importable without Hail
+    # Lazy Hail import (via hail_context to apply numpy compat shim first)
+    from hvantk.core.hail_context import hl  # noqa: F811
 
     # Resolve keys
     if row_key is None:
@@ -116,39 +110,29 @@ def anndata_to_hail_mt(
     hl.MatrixTable
         MatrixTable keyed by *row_key* and *col_key*.
     """
-    import hail as hl
+    from hvantk.core.hail_context import hl
 
     # Handle sparse X
     X = adata.X
     if sp.issparse(X):
         X = X.toarray()
 
-    # Build long-format DataFrame
-    obs_names = adata.obs.index.tolist()
-    var_names = adata.var.index.tolist()
-
     n_obs, n_var = X.shape
-    rows_list = []
-    for i in range(n_obs):
-        for j in range(n_var):
-            rows_list.append(
-                {
-                    col_key: obs_names[i],
-                    row_key: var_names[j],
-                    entry_field: float(X[i, j]),
-                }
-            )
-
-    long_df = pd.DataFrame(rows_list)
+    obs_names = np.asarray(adata.obs.index, dtype=str)
+    var_names = np.asarray(adata.var.index, dtype=str)
 
     logger.info(
         "Converting AnnData (%d obs x %d var) to MT", adata.n_obs, adata.n_vars
     )
 
-    # Convert to Hail Table, then to MatrixTable.
-    long_df[col_key] = long_df[col_key].astype(str)
-    long_df[row_key] = long_df[row_key].astype(str)
-    long_df[entry_field] = long_df[entry_field].astype("float64")
+    # Vectorized long-format build (rows ordered obs-major, var-minor).
+    long_df = pd.DataFrame(
+        {
+            col_key: np.repeat(obs_names, n_var),
+            row_key: np.tile(var_names, n_obs),
+            entry_field: np.asarray(X, dtype="float64").ravel(),
+        }
+    )
     ht = hl.Table.from_pandas(long_df)
     mt = ht.to_matrix_table(
         row_key=[row_key],

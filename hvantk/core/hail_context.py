@@ -22,7 +22,15 @@ import os
 import threading
 import logging
 from typing import Dict, Any
-import hail as hl
+
+import numpy as np
+
+# Hail 0.2.x references ``np.bool``, removed in NumPy 1.24+. Restore the alias
+# before importing Hail so its internal modules don't AttributeError on import.
+if not hasattr(np, "bool"):
+    np.bool = np.bool_  # type: ignore[attr-defined]
+
+import hail as hl  # noqa: E402
 
 _logger = logging.getLogger(__name__)
 
