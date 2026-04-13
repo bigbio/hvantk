@@ -447,6 +447,51 @@ def _convert_with_pysam(input_path: str, output_path: str) -> None:
             fout.write(chunk)
 
 
+class BgzfWriter:
+    """Buffered BGZF text writer for producing block-gzipped files.
+
+    Accumulates text in memory and flushes as BGZF blocks when the buffer
+    reaches ``_BGZF_BLOCK_SIZE``.  Writes the mandatory empty EOF block on
+    close.  Usable as a context manager::
+
+        with BgzfWriter("out.tsv.bgz") as w:
+            w.write("col1\\tcol2\\n")
+            w.write("val1\\tval2\\n")
+    """
+
+    def __init__(self, path: str, encoding: str = "utf-8") -> None:
+        self._path = path
+        self._encoding = encoding
+        self._fout = open(path, "wb")
+        self._buf = bytearray()
+
+    # --- context manager ---------------------------------------------------
+    def __enter__(self) -> "BgzfWriter":
+        return self
+
+    def __exit__(self, *exc) -> None:
+        self.close()
+
+    # --- public API ---------------------------------------------------------
+    def write(self, text: str) -> None:
+        """Append *text* to the buffer, flushing full blocks as needed."""
+        self._buf.extend(text.encode(self._encoding))
+        while len(self._buf) >= _BGZF_BLOCK_SIZE:
+            chunk = bytes(self._buf[:_BGZF_BLOCK_SIZE])
+            self._buf = self._buf[_BGZF_BLOCK_SIZE:]
+            self._fout.write(_make_bgzf_block(chunk))
+
+    def close(self) -> None:
+        """Flush remaining data and write the EOF block."""
+        if self._fout.closed:
+            return
+        if self._buf:
+            self._fout.write(_make_bgzf_block(bytes(self._buf)))
+            self._buf.clear()
+        self._fout.write(_make_bgzf_block(b""))  # EOF block
+        self._fout.close()
+
+
 def _make_bgzf_block(data: bytes) -> bytes:
     """Compress *data* into a single BGZF block.
 
