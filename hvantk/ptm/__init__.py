@@ -53,6 +53,14 @@ _LAZY_MODULES = {
     "ptm_landscape": ("hvantk.ptm.analysis", "ptm_landscape"),
     "ptm_population": ("hvantk.ptm.analysis", "ptm_population"),
     "export_ptm_strata": ("hvantk.ptm.analysis", "export_ptm_strata"),
+    # constraint (stratified AF depletion; requires Hail at runtime)
+    "PTMConstraintConfig": ("hvantk.ptm.constraint", "PTMConstraintConfig"),
+    "PTMConstraintResult": ("hvantk.ptm.constraint", "PTMConstraintResult"),
+    "run_ptm_constraint": ("hvantk.ptm.constraint", "run_ptm_constraint"),
+    "load_gene_by_group_matrix": (
+        "hvantk.ptm.constraint_expression",
+        "load_gene_by_group_matrix",
+    ),
     # plot
     "plot_landscape_summary": ("hvantk.ptm.plot", "plot_landscape_summary"),
     "plot_overlap_by_category": ("hvantk.ptm.plot", "plot_overlap_by_category"),
@@ -82,6 +90,11 @@ __all__ = [
     "ptm_landscape",
     "ptm_population",
     "export_ptm_strata",
+    # Constraint (stratified AF depletion)
+    "PTMConstraintConfig",
+    "PTMConstraintResult",
+    "run_ptm_constraint",
+    "load_gene_by_group_matrix",
     # Pipeline API
     "PTMBuildConfig",
     "PTMBuildResult",

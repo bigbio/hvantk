@@ -35,7 +35,8 @@ def ptm_group(ctx):
       3. hvantk ptm landscape      — PTM-variant overlap analysis (Q1)
       4. hvantk ptm export-strata  — Export PTM/non-PTM variant lists for PSROC (Q2)
       5. hvantk ptm population     — Population-level PTM-variant burden (Q3)
-      6. hvantk ptm report         — Generate summary report
+      6. hvantk ptm constraint     — Stratified AF depletion at PTM codons (by tissue/cell-type)
+      7. hvantk ptm report         — Generate summary report
 
     \b
     For predictor evaluation (Q2), compose with PSROC:
@@ -517,5 +518,176 @@ def ptm_report(ctx, output, landscape_json, population_json, title, description)
 
     except Exception as e:
         logger.exception(f"PTM report failed: {e}")
+        click.echo(f"Error: {e}", err=True)
+        ctx.exit(1)
+
+
+@ptm_group.command("constraint")
+@click.option(
+    "--variants-ht",
+    type=str,
+    required=True,
+    help="Path to PTM-annotated variant Hail Table (from `hvantk ptm annotate`).",
+)
+@click.option(
+    "--expression-source",
+    type=click.Choice(["hail-mt", "anndata", "tabular"], case_sensitive=False),
+    required=True,
+    help="Expression data backend.",
+)
+@click.option(
+    "--expression-path",
+    type=click.Path(exists=True),
+    required=True,
+    help="Path to the expression data (.mt / .h5ad / .parquet|.pkl|.tsv).",
+)
+@click.option(
+    "--grouping",
+    type=str,
+    required=True,
+    help="Metadata field to stratify by (e.g. SMTSD, major_cell_class).",
+)
+@click.option(
+    "-o",
+    "--output-dir",
+    type=click.Path(),
+    required=True,
+    help="Directory for TSVs, plots, and HTML report.",
+)
+@click.option(
+    "--label-filter",
+    type=click.Choice(["TN", "TP", "all"], case_sensitive=False),
+    default="TN",
+    show_default=True,
+    help="Label subset to include (default: TN = benign/likely-benign).",
+)
+@click.option("--label-field", type=str, default="rf_label", show_default=True)
+@click.option("--gene-field", type=str, default="gene_symbol", show_default=True)
+@click.option("--af-field", type=str, default="gnomad_af_genomes", show_default=True)
+@click.option("--loeuf-field", type=str, default="loeuf", show_default=True)
+@click.option("--ptm-category-field", type=str, default="ptm_types", show_default=True)
+@click.option(
+    "--gene-id-mapping",
+    type=click.Path(exists=True),
+    default=None,
+    help="Optional two-column TSV mapping expression gene IDs to symbols.",
+)
+@click.option(
+    "--expression-metric",
+    type=click.Choice(["median", "mean", "median_nonzero"], case_sensitive=False),
+    default="median",
+    show_default=True,
+)
+@click.option(
+    "--min-cells-per-group",
+    type=int,
+    default=50,
+    show_default=True,
+    help="Drop groups with fewer cells/samples (AnnData/Hail MT only).",
+)
+@click.option(
+    "--min-variants-per-group",
+    type=int,
+    default=20,
+    show_default=True,
+    help="Skip groups with fewer than N variants across PTM + non-PTM.",
+)
+@click.option("--flanking-codons", type=int, default=7, show_default=True)
+@click.option(
+    "--expressed-threshold",
+    type=float,
+    default=1.0,
+    show_default=True,
+    help="Keep only genes whose max group expression meets this floor.",
+)
+@click.option("--overwrite", is_flag=True)
+@click.pass_context
+def ptm_constraint(
+    ctx,
+    variants_ht,
+    expression_source,
+    expression_path,
+    grouping,
+    output_dir,
+    label_filter,
+    label_field,
+    gene_field,
+    af_field,
+    loeuf_field,
+    ptm_category_field,
+    gene_id_mapping,
+    expression_metric,
+    min_cells_per_group,
+    min_variants_per_group,
+    flanking_codons,
+    expressed_threshold,
+    overwrite,
+):
+    """Stratified PTM constraint analysis across groups (tissue / cell type).
+
+    \b
+    Compares gnomAD allele-frequency distributions between PTM-proximal and
+    non-PTM variants, stratified by a metadata field from the expression
+    dataset. Runs five tests (per-group ranking, tau quartile, LOEUF x group
+    factorial, PTM category x group heatmap, within-gene Wilcoxon) and emits
+    TSVs, four PNG panels, and one self-contained HTML report.
+
+    \b
+    Note: this is a stratified DEPLETION analysis — not a per-variant scorer.
+    For per-site PTM flags use `hvantk ptm annotate`.
+
+    \b
+    Examples:
+      hvantk ptm constraint \\
+          --variants-ht clinvar_ptm.ht \\
+          --expression-source hail-mt \\
+          --expression-path /data/GTEX_v7.mt \\
+          --grouping SMTSD \\
+          --output-dir results/ptm-gtex/
+
+      hvantk ptm constraint \\
+          --variants-ht clinvar_ptm.ht \\
+          --expression-source anndata \\
+          --expression-path /data/farah_2024.h5ad \\
+          --grouping major_cell_class \\
+          --output-dir results/ptm-farah/
+    """
+    try:
+        from hvantk.ptm.constraint import PTMConstraintConfig, run_ptm_constraint
+
+        config = PTMConstraintConfig(
+            variants_ht_path=variants_ht,
+            expression_source=expression_source.lower(),
+            expression_path=expression_path,
+            grouping=grouping,
+            output_dir=output_dir,
+            label_filter=label_filter.upper() if label_filter != "all" else "all",
+            label_field=label_field,
+            gene_field=gene_field,
+            af_field=af_field,
+            loeuf_field=loeuf_field,
+            ptm_category_field=ptm_category_field,
+            gene_id_mapping=gene_id_mapping,
+            expression_metric=expression_metric.lower(),
+            min_cells_per_group=min_cells_per_group,
+            min_variants_per_group=min_variants_per_group,
+            flanking_codons=flanking_codons,
+            expressed_threshold=expressed_threshold,
+            overwrite=overwrite,
+        )
+
+        errors = config.validate()
+        if errors:
+            click.echo("Configuration validation failed:", err=True)
+            for err in errors:
+                click.echo(f"  - {err}", err=True)
+            ctx.exit(1)
+
+        result = run_ptm_constraint(config)
+        click.echo(result.summary())
+        click.echo(f"Output: {config.output_dir}")
+
+    except Exception as e:
+        logger.exception(f"PTM constraint failed: {e}")
         click.echo(f"Error: {e}", err=True)
         ctx.exit(1)
