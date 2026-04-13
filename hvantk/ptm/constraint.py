@@ -291,8 +291,16 @@ def _load_variants(config: PTMConstraintConfig) -> pd.DataFrame:
 
     ht = ht.select(**select)
 
-    if config.label_filter != "all" and config.label_field in row_fields:
-        ht = ht.filter(ht.label == config.label_filter)
+    if config.label_filter != "all":
+        if config.label_field in row_fields:
+            ht = ht.filter(ht.label == config.label_filter)
+        else:
+            raise ValueError(
+                f"--label-filter '{config.label_filter}' requested but label "
+                f"field '{config.label_field}' is absent from the variants HT. "
+                "Pass --label-filter all to disable filtering or supply the "
+                "correct --label-field."
+            )
 
     df = ht.to_pandas()
 

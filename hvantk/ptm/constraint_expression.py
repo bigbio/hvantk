@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Literal, Optional
+from typing import Dict, Literal, Optional
 
 import numpy as np
 import pandas as pd
@@ -169,7 +169,13 @@ def _load_from_anndata(
     aggfunc: AggFunc,
     min_cells_per_group: int,
 ) -> pd.DataFrame:
-    """Load an AnnData ``.h5ad`` and aggregate to a gene x group matrix."""
+    """Load an AnnData ``.h5ad`` and aggregate to a gene x group matrix.
+
+    ``summarize_expression_ad`` only emits per-group means. For the
+    ``median`` / ``median_nonzero`` paths we fall back to a direct numpy
+    aggregation over ``adata.X`` so the CLI's ``--expression-metric`` flag
+    is honoured instead of silently collapsing to the mean.
+    """
     from hvantk.core.anndata_utils import load_anndata
     from hvantk.utils.matrix_utils import summarize_expression_ad
 
@@ -180,33 +186,78 @@ def _load_from_anndata(
             f"Available: {list(adata.obs.columns)[:20]}"
         )
 
-    long_df = summarize_expression_ad(
-        adata,
-        group_by=grouping,
-        min_cells_per_group=min_cells_per_group,
-    )
-    if long_df.empty:
+    if aggfunc == "mean":
+        long_df = summarize_expression_ad(
+            adata,
+            group_by=grouping,
+            min_cells_per_group=min_cells_per_group,
+        )
+        if long_df.empty:
+            raise ValueError(
+                f"No groups survived min_cells_per_group={min_cells_per_group}."
+            )
+        wide = long_df.pivot(index="gene_id", columns="group", values="mean")
+        wide.columns.name = None
+        return wide
+
+    if aggfunc in {"median", "median_nonzero"}:
+        return _aggregate_anndata_direct(adata, grouping, aggfunc, min_cells_per_group)
+
+    raise ValueError(f"Unknown aggfunc '{aggfunc}'.")
+
+
+def _aggregate_anndata_direct(
+    adata,
+    grouping: str,
+    aggfunc: AggFunc,
+    min_cells_per_group: int,
+) -> pd.DataFrame:
+    """Aggregate AnnData cells → groups with median or median_nonzero per gene."""
+    import scipy.sparse as sp
+
+    labels = adata.obs[grouping].astype(str).to_numpy()
+    unique_groups = [g for g in sorted(set(labels))]
+
+    gene_ids = list(adata.var_names)
+    X = adata.X
+    is_sparse = sp.issparse(X)
+
+    columns: Dict[str, np.ndarray] = {}
+    for grp in unique_groups:
+        mask = labels == grp
+        n = int(mask.sum())
+        if n < min_cells_per_group:
+            logger.info(
+                "Dropping group '%s' (n=%d < min_cells_per_group=%d)",
+                grp,
+                n,
+                min_cells_per_group,
+            )
+            continue
+        sub = X[mask, :]
+        if is_sparse:
+            dense = sub.toarray()
+        else:
+            dense = np.asarray(sub)
+
+        if aggfunc == "median_nonzero":
+            with np.errstate(invalid="ignore"):
+                dense = dense.astype(float)
+                dense[dense <= 0] = np.nan
+                col_values = np.nanmedian(dense, axis=0)
+                col_values = np.nan_to_num(col_values, nan=0.0)
+        else:
+            col_values = np.median(dense, axis=0)
+
+        columns[grp] = col_values
+
+    if not columns:
         raise ValueError(
             f"No groups survived min_cells_per_group={min_cells_per_group}."
         )
 
-    value_col = _anndata_value_column(long_df, aggfunc)
-    wide = long_df.pivot(index="gene_id", columns="group", values=value_col)
-    wide.columns.name = None
-    return wide
-
-
-def _anndata_value_column(long_df: pd.DataFrame, aggfunc: AggFunc) -> str:
-    """Pick the column of ``summarize_expression_ad`` output matching *aggfunc*."""
-    if aggfunc == "mean":
-        return "mean"
-    if aggfunc == "median":
-        return "mean"
-    if aggfunc == "median_nonzero":
-        if "fraction_expressed" in long_df.columns and "mean" in long_df.columns:
-            return "mean"
-        return "mean"
-    raise ValueError(f"Unknown aggfunc '{aggfunc}'.")
+    df = pd.DataFrame(columns, index=pd.Index(gene_ids, name="gene_id"))
+    return df
 
 
 def _load_from_hail_mt(
