@@ -278,12 +278,24 @@ def test_dataset_download_returns_intermediate_tsv(tmp_path, mock_pa_zip):
     dataset = PeptideAtlasPhosphoDataset.from_build("202512", "606")
     output_dir = tmp_path / "out"
 
-    def _fake_urlretrieve(url, path):
-        with open(mock_pa_zip, "rb") as src, open(path, "wb") as dst:
-            dst.write(src.read())
-        return path, None
+    class _FakeResp:
+        def __init__(self, src_path):
+            self._src = open(src_path, "rb")
+            self.raw = self._src
 
-    with mock.patch("urllib.request.urlretrieve", side_effect=_fake_urlretrieve):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            self._src.close()
+
+        def raise_for_status(self):
+            return None
+
+    with mock.patch(
+        "requests.get",
+        side_effect=lambda url, **kwargs: _FakeResp(mock_pa_zip),
+    ):
         tsv_path = dataset.download(str(output_dir), overwrite=True)
 
     assert tsv_path.endswith("peptideatlas-phospho-202512-606.tsv")
