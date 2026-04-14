@@ -21,3 +21,10 @@ dependencies:
       - anthropic
       - google-genai
       - RestrictedPython
+      - anndata>=0.10.0
+      - scanpy>=1.10.0
+      - pysam>=0.22
+      - PyYAML
+      - psutil
+      - scikit-learn
+      - tspex
