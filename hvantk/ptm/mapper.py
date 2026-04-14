@@ -119,16 +119,19 @@ def parse_ensembl_gtf(gtf_path: str) -> GTFData:
     opener = gzip.open if gtf_path.endswith(".gz") else open
     with opener(gtf_path, "rt") as f:
         for line in f:
-            if line[0] == "#":
+            if not line or line.startswith("#") or "\t" not in line:
                 continue
 
             # Quick scan for feature type before full split — skip the ~80%
             # of lines that are gene/exon/UTR/start_codon/stop_codon/etc.
             # GTF columns are tab-separated; feature type is in column 3.
-            tab1 = line.index("\t")
-            tab2 = line.index("\t", tab1 + 1)
-            tab3 = line.index("\t", tab2 + 1)
-            feature = line[tab2 + 1 : tab3]
+            try:
+                tab1 = line.index("\t")
+                tab2 = line.index("\t", tab1 + 1)
+                tab3 = line.index("\t", tab2 + 1)
+            except ValueError:
+                continue
+            feature = line[tab2 + 1:tab3]
 
             if feature != "transcript" and feature != "CDS":
                 continue

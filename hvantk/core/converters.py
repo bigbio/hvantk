@@ -24,6 +24,7 @@ def hail_mt_to_anndata(
     entry_field: str = "x",
     col_key: Optional[str] = None,
     row_key: Optional[str] = None,
+    max_dense_entries: int = 5_000_000,
 ) -> ad.AnnData:
     """Convert a Hail MatrixTable to AnnData.
 
@@ -43,6 +44,8 @@ def hail_mt_to_anndata(
     row_key : str, optional
         Row key field name. If *None*, uses the first key from
         ``mt.row_key``.
+    max_dense_entries : int
+        Maximum allowed ``n_rows * n_cols`` before refusing dense conversion.
 
     Returns
     -------
@@ -64,6 +67,15 @@ def hail_mt_to_anndata(
         col_key,
         entry_field,
     )
+
+    n_rows = mt.count_rows()
+    n_cols = mt.count_cols()
+    if n_rows * n_cols > max_dense_entries:
+        raise ValueError(
+            "hail_mt_to_anndata builds a dense matrix in memory and is intended "
+            f"for small MatrixTables only. Got {n_rows}x{n_cols} "
+            f"({n_rows * n_cols:,} entries), limit is {max_dense_entries:,}."
+        )
 
     # Collect row (var) and col (obs) annotations
     row_df = mt.rows().to_pandas()

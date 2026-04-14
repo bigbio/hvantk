@@ -33,18 +33,28 @@ def visualize_expression_distribution(
         Matplotlib figure containing the histogram.
     """
     X = adata.X
+    zero_count = 0
     if sp.issparse(X):
-        X = X.toarray()
-    values = np.asarray(X).ravel()
+        values = np.asarray(X.data).ravel()
+        zero_count = int(X.shape[0] * X.shape[1] - values.size)
+    else:
+        values = np.asarray(X).ravel()
 
     if log_scale:
         values = np.log1p(values)
         x_label = "log1p(Expression)"
+        zero_value = 0.0
     else:
         x_label = "Expression"
+        zero_value = 0.0
 
     fig, ax = plt.subplots(figsize=(10, 6))
-    ax.hist(values, bins=n_bins, edgecolor="black")
+    if zero_count > 0:
+        hist_values = np.concatenate(([zero_value], values))
+        hist_weights = np.concatenate(([zero_count], np.ones(values.size)))
+        ax.hist(hist_values, bins=n_bins, weights=hist_weights, edgecolor="black")
+    else:
+        ax.hist(values, bins=n_bins, edgecolor="black")
     ax.set_title(title)
     ax.set_xlabel(x_label)
     ax.set_ylabel("Frequency")

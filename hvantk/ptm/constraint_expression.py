@@ -302,12 +302,11 @@ def _load_from_hail_mt(
     entry = mt[entry_field]
     if aggfunc == "mean":
         agg_expr = hl.agg.mean(entry)
-    elif aggfunc == "median":
-        agg_expr = hl.median(hl.agg.collect(entry))
-    elif aggfunc == "median_nonzero":
-        agg_expr = hl.median(hl.agg.filter(entry > 0, hl.agg.collect(entry)))
     else:
-        raise ValueError(f"Unknown aggfunc '{aggfunc}'.")
+        raise ValueError(
+            "Hail MT backend currently supports only aggfunc='mean'. "
+            "Use AnnData or tabular backends for median-based aggregation."
+        )
 
     grouped = mt.group_cols_by(mt[grouping]).aggregate(
         _agg=agg_expr,

@@ -4,6 +4,7 @@ import anndata as ad
 import numpy as np
 import pandas as pd
 import pytest
+from scipy import sparse
 
 
 class TestBuildUcscAd:
@@ -111,6 +112,28 @@ class TestBuildUcscAd:
         assert "BRCA1" in adata.var.index.tolist()
         # Pipe-separated versions should NOT be present
         assert "TP53|TP53L1" not in adata.var.index.tolist()
+
+    def test_ucsc_respects_delimiter_for_metadata(self, tmp_path):
+        expr_path = str(tmp_path / "expr.csv")
+        meta_path = str(tmp_path / "meta.csv")
+        with open(expr_path, "w") as fh:
+            fh.write("gene,cell_A,cell_B\n")
+            fh.write("TP53,1.0,2.0\n")
+            fh.write("BRCA1,3.0,4.0\n")
+        with open(meta_path, "w") as fh:
+            fh.write("cell_id,cell_type\n")
+            fh.write("cell_A,neuron\n")
+            fh.write("cell_B,glia\n")
+
+        from hvantk.tables.matrix_builders import build_ucsc_ad
+
+        adata = build_ucsc_ad(
+            expression_matrix_path=expr_path,
+            metadata_path=meta_path,
+            delimiter=",",
+        )
+        assert adata.shape == (2, 2)
+        assert "cell_type" in adata.obs.columns
 
 
 class TestBuildExpressionAtlasAd:
@@ -259,6 +282,27 @@ class TestBuildCptacAd:
         assert adata.uns["hvantk_metadata"]["source_name"] == "CPTAC"
         assert "column_summary" in adata.uns
 
+    def test_builds_from_csv_long_format(self, tmp_path):
+        expr_path = str(tmp_path / "expr.csv")
+        meta_path = str(tmp_path / "meta.csv")
+
+        with open(expr_path, "w") as fh:
+            fh.write("GeneID,Gene Name,SampleID,Expression\n")
+            fh.write("G1,TP53,S1,1.5\n")
+            fh.write("G1,TP53,S2,2.5\n")
+            fh.write("G2,BRCA1,S1,3.5\n")
+            fh.write("G2,BRCA1,S2,4.5\n")
+
+        with open(meta_path, "w") as fh:
+            fh.write("SampleID,tumor_type\n")
+            fh.write("S1,LUAD\n")
+            fh.write("S2,BRCA\n")
+
+        from hvantk.tables.matrix_builders import build_cptac_ad
+
+        adata = build_cptac_ad(expression_path=expr_path, metadata_path=meta_path)
+        assert adata.shape == (2, 2)
+
 
 class TestBuildCptacPhosphoAd:
     """Tests for build_cptac_phospho_ad in matrix_builders."""
@@ -297,6 +341,25 @@ class TestBuildCptacPhosphoAd:
         assert (tmp_path / "output.h5ad").exists()
         assert "hvantk_metadata" in adata.uns
         assert adata.uns["hvantk_metadata"]["source_name"] == "CPTAC"
+
+    def test_builds_anndata_from_csv_sites_matrix(self, tmp_path):
+        expr_path = str(tmp_path / "phospho.csv")
+        meta_path = str(tmp_path / "meta.csv")
+
+        with open(expr_path, "w") as fh:
+            fh.write("SiteID,S1,S2\n")
+            fh.write("TP53_S315,100.0,200.0\n")
+            fh.write("EGFR_Y1068,300.0,400.0\n")
+
+        with open(meta_path, "w") as fh:
+            fh.write("SampleID,tumor_type\n")
+            fh.write("S1,LUAD\n")
+            fh.write("S2,BRCA\n")
+
+        from hvantk.tables.matrix_builders import build_cptac_phospho_ad
+
+        adata = build_cptac_phospho_ad(expression_path=expr_path, metadata_path=meta_path)
+        assert adata.shape == (2, 2)
 
 
 class TestMkmatrixCli:
@@ -392,6 +455,23 @@ class TestVisualizeExpressionAd:
             X=np.random.rand(50, 20).astype(np.float32),
             obs=pd.DataFrame(index=[f"c_{i}" for i in range(50)]),
             var=pd.DataFrame(index=[f"g_{i}" for i in range(20)]),
+        )
+        fig = visualize_expression_distribution(adata)
+        assert isinstance(fig, plt.Figure)
+        plt.close(fig)
+
+    def test_returns_matplotlib_figure_sparse(self):
+        from hvantk.visualization.expression.anndata import (
+            visualize_expression_distribution,
+        )
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+
+        adata = ad.AnnData(
+            X=sparse.csr_matrix(np.array([[0.0, 1.0], [0.0, 2.0]], dtype=np.float32)),
+            obs=pd.DataFrame(index=["c1", "c2"]),
+            var=pd.DataFrame(index=["g1", "g2"]),
         )
         fig = visualize_expression_distribution(adata)
         assert isinstance(fig, plt.Figure)

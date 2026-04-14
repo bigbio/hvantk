@@ -16,7 +16,6 @@ Example:
 
 import csv
 import gzip
-import io
 import logging
 import os
 import shutil
@@ -27,68 +26,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
-import struct
-import zlib
-
-# ---------------------------------------------------------------------------
-# Lightweight BGZF writer (stdlib-only, no Hail dependency).
-#
-# Mirrors hvantk.data.file_utils.BgzfWriter but lives here so the PTM
-# pipeline's pure-Python stages never trigger hvantk.data.__init__, which
-# eagerly imports Hail.
-# ---------------------------------------------------------------------------
-
-_BGZF_BLOCK_SIZE = 65280  # max uncompressed payload per BGZF block
-
-
-def _make_bgzf_block(data: bytes) -> bytes:
-    """Compress *data* into a single BGZF block."""
-    comp = zlib.compressobj(zlib.Z_DEFAULT_COMPRESSION, zlib.DEFLATED, -15)
-    compressed = comp.compress(data) + comp.flush()
-    bsize = 18 + len(compressed) + 8 - 1
-    header = (
-        b"\x1f\x8b\x08\x04"
-        b"\x00\x00\x00\x00"
-        b"\x00\xff"
-        + struct.pack("<H", 6)
-        + b"BC"
-        + struct.pack("<H", 2)
-        + struct.pack("<H", bsize)
-    )
-    crc = zlib.crc32(data) & 0xFFFFFFFF
-    trailer = struct.pack("<I", crc) + struct.pack("<I", len(data) & 0xFFFFFFFF)
-    return header + compressed + trailer
-
-
-class BgzfWriter:
-    """Buffered BGZF text writer for producing block-gzipped TSV files."""
-
-    def __init__(self, path: str, encoding: str = "utf-8") -> None:
-        self._fout = open(path, "wb")
-        self._encoding = encoding
-        self._buf = bytearray()
-
-    def __enter__(self) -> "BgzfWriter":
-        return self
-
-    def __exit__(self, *exc) -> None:
-        self.close()
-
-    def write(self, text: str) -> None:
-        self._buf.extend(text.encode(self._encoding))
-        while len(self._buf) >= _BGZF_BLOCK_SIZE:
-            chunk = bytes(self._buf[:_BGZF_BLOCK_SIZE])
-            self._buf = self._buf[_BGZF_BLOCK_SIZE:]
-            self._fout.write(_make_bgzf_block(chunk))
-
-    def close(self) -> None:
-        if self._fout.closed:
-            return
-        if self._buf:
-            self._fout.write(_make_bgzf_block(bytes(self._buf)))
-            self._buf.clear()
-        self._fout.write(_make_bgzf_block(b""))
-        self._fout.close()
+from hvantk.core.bgzf import BgzfWriter
 from hvantk.ptm.constants import (
     ENSEMBL_GTF_URL,
     ENSEMBL_GTF_FILENAME,

@@ -4,6 +4,7 @@ gnomad
 requests
 tqdm
 pandas
+anndata
 matplotlib
 seaborn
 numpy

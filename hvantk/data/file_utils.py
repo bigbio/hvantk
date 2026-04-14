@@ -13,9 +13,14 @@ import zlib
 
 import requests
 from tqdm import tqdm
+from hvantk.core.bgzf import BGZF_BLOCK_SIZE, BgzfWriter, make_bgzf_block
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)  # Set default log level to DEBUG
+
+# Backward-compatible aliases for internal helpers used in tests/downstream code.
+_BGZF_BLOCK_SIZE = BGZF_BLOCK_SIZE
+_make_bgzf_block = make_bgzf_block
 
 
 def download_file(url: str, out_dir: str, file_name: str):
@@ -256,10 +261,6 @@ def decompress_files(
 # BGZF / GZIP detection and conversion
 # ---------------------------------------------------------------------------
 
-# BGZF block size: max uncompressed payload per block (64 KiB - overhead)
-_BGZF_BLOCK_SIZE = 65280
-
-
 def is_gzipped(filepath: str) -> bool:
     """Check if a file starts with the gzip magic bytes (``\\x1f\\x8b``).
 
@@ -441,101 +442,22 @@ def _convert_with_pysam(input_path: str, output_path: str) -> None:
 
     with gzip.open(input_path, "rb") as fin, pysam.BGZFile(output_path, "wb") as fout:
         while True:
-            chunk = fin.read(_BGZF_BLOCK_SIZE)
+            chunk = fin.read(BGZF_BLOCK_SIZE)
             if not chunk:
                 break
             fout.write(chunk)
-
-
-class BgzfWriter:
-    """Buffered BGZF text writer for producing block-gzipped files.
-
-    Accumulates text in memory and flushes as BGZF blocks when the buffer
-    reaches ``_BGZF_BLOCK_SIZE``.  Writes the mandatory empty EOF block on
-    close.  Usable as a context manager::
-
-        with BgzfWriter("out.tsv.bgz") as w:
-            w.write("col1\\tcol2\\n")
-            w.write("val1\\tval2\\n")
-    """
-
-    def __init__(self, path: str, encoding: str = "utf-8") -> None:
-        self._path = path
-        self._encoding = encoding
-        self._fout = open(path, "wb")
-        self._buf = bytearray()
-
-    # --- context manager ---------------------------------------------------
-    def __enter__(self) -> "BgzfWriter":
-        return self
-
-    def __exit__(self, *exc) -> None:
-        self.close()
-
-    # --- public API ---------------------------------------------------------
-    def write(self, text: str) -> None:
-        """Append *text* to the buffer, flushing full blocks as needed."""
-        self._buf.extend(text.encode(self._encoding))
-        while len(self._buf) >= _BGZF_BLOCK_SIZE:
-            chunk = bytes(self._buf[:_BGZF_BLOCK_SIZE])
-            self._buf = self._buf[_BGZF_BLOCK_SIZE:]
-            self._fout.write(_make_bgzf_block(chunk))
-
-    def close(self) -> None:
-        """Flush remaining data and write the EOF block."""
-        if self._fout.closed:
-            return
-        if self._buf:
-            self._fout.write(_make_bgzf_block(bytes(self._buf)))
-            self._buf.clear()
-        self._fout.write(_make_bgzf_block(b""))  # EOF block
-        self._fout.close()
-
-
-def _make_bgzf_block(data: bytes) -> bytes:
-    """Compress *data* into a single BGZF block.
-
-    Parameters
-    ----------
-    data : bytes
-        Uncompressed payload (must be <= 65280 bytes).
-
-    Returns
-    -------
-    bytes
-        A complete BGZF block ready for concatenation.
-    """
-    compressor = zlib.compressobj(zlib.Z_DEFAULT_COMPRESSION, zlib.DEFLATED, -15)
-    compressed = compressor.compress(data) + compressor.flush()
-    # BGZF block = gzip header (18) + compressed data + CRC32 (4) + ISIZE (4)
-    bsize = 18 + len(compressed) + 8 - 1  # BSIZE = total block size - 1
-    # Build gzip header with FEXTRA
-    header = b"\x1f\x8b"  # ID1, ID2
-    header += b"\x08"  # CM = deflate
-    header += b"\x04"  # FLG = FEXTRA
-    header += b"\x00\x00\x00\x00"  # MTIME
-    header += b"\x00"  # XFL
-    header += b"\xff"  # OS = unknown
-    header += struct.pack("<H", 6)  # XLEN = 6
-    header += b"BC"  # subfield ID
-    header += struct.pack("<H", 2)  # subfield length
-    header += struct.pack("<H", bsize)  # BSIZE
-    # Trailer
-    crc = zlib.crc32(data) & 0xFFFFFFFF
-    trailer = struct.pack("<I", crc) + struct.pack("<I", len(data) & 0xFFFFFFFF)
-    return header + compressed + trailer
 
 
 def _convert_with_python(input_path: str, output_path: str) -> None:
     """Convert using pure Python ``zlib`` BGZF block writing."""
     with gzip.open(input_path, "rb") as fin, open(output_path, "wb") as fout:
         while True:
-            chunk = fin.read(_BGZF_BLOCK_SIZE)
+            chunk = fin.read(BGZF_BLOCK_SIZE)
             if not chunk:
                 break
-            fout.write(_make_bgzf_block(chunk))
+            fout.write(make_bgzf_block(chunk))
         # Write the empty EOF block required by BGZF
-        fout.write(_make_bgzf_block(b""))
+        fout.write(make_bgzf_block(b""))
 
 
 def convert_gz_to_bgz(

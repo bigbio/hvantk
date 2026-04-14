@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import anndata as ad
 import logging
-from typing import Optional, List
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ def build_ucsc_ad(
     )
 
     logger.info("Loading UCSC metadata from %s", metadata_path)
-    metadata_df = load_ucsc_metadata(metadata_path)
+    metadata_df = load_ucsc_metadata(metadata_path, sep=delimiter)
 
     logger.info("Creating AnnData from UCSC expression matrix")
     adata = create_anndata_from_ucsc_matrix(
@@ -197,10 +197,10 @@ def build_cptac_ad(
     )
 
     logger.info("Reading CPTAC expression from %s", expression_path)
-    expr_df = pd.read_csv(expression_path, sep="\t")
+    expr_df = pd.read_csv(expression_path, sep=None, engine="python")
 
     logger.info("Reading CPTAC metadata from %s", metadata_path)
-    meta_df = pd.read_csv(metadata_path, sep="\t")
+    meta_df = pd.read_csv(metadata_path, sep=None, engine="python")
     meta_df = meta_df.set_index(sample_id_col)
 
     logger.info("Building CPTAC AnnData")
@@ -263,10 +263,10 @@ def build_cptac_phospho_ad(
     )
 
     logger.info("Reading CPTAC phospho expression from %s", expression_path)
-    expr_df = pd.read_csv(expression_path, sep="\t")
+    expr_df = pd.read_csv(expression_path, sep=None, engine="python")
 
     logger.info("Reading CPTAC phospho metadata from %s", metadata_path)
-    meta_df = pd.read_csv(metadata_path, sep="\t")
+    meta_df = pd.read_csv(metadata_path, sep=None, engine="python")
     meta_df = meta_df.set_index(sample_id_col)
 
     logger.info("Building CPTAC phospho AnnData")
