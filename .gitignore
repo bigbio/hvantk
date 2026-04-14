@@ -208,3 +208,12 @@ checkpoints/
 
 # Manuscript build files
 manuscript/
+
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Visual Studio Code settings
+.vscode/
+
+# Claude AI files
+.claude/

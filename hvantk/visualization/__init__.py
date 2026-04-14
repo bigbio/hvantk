@@ -15,7 +15,7 @@ from .base import (
 
 
 def visualize_expression_distribution(*args, **kwargs):
-    from .expression.hail import visualize_expression_distribution as _impl
+    from .expression.anndata import visualize_expression_distribution as _impl
 
     return _impl(*args, **kwargs)
 

@@ -19,8 +19,8 @@ import io
 import logging
 import os
 import re
+import shutil
 import urllib.parse
-import urllib.request
 import zipfile
 from collections import defaultdict
 from dataclasses import dataclass
@@ -438,7 +438,12 @@ class PeptideAtlasPhosphoDataset:
         if not os.path.exists(zip_path) or overwrite:
             self._validate_zip_url(self.zip_url)
             logger.info("Downloading %s -> %s", self.zip_url, zip_path)
-            urllib.request.urlretrieve(self.zip_url, zip_path)  # nosec B310
+            import requests
+
+            with requests.get(self.zip_url, stream=True, timeout=600) as resp:
+                resp.raise_for_status()
+                with open(zip_path, "wb") as fout:
+                    shutil.copyfileobj(resp.raw, fout)
             logger.info("Download complete: %s", zip_path)
         else:
             logger.info("Using cached zip: %s", zip_path)

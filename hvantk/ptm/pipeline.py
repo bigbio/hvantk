@@ -15,14 +15,18 @@ Example:
 """
 
 import csv
+import gzip
 import logging
 import os
+import shutil
 import urllib.parse
-import urllib.request
+
+import requests
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
+from hvantk.core.bgzf import BgzfWriter
 from hvantk.ptm.constants import (
     ENSEMBL_GTF_URL,
     ENSEMBL_GTF_FILENAME,
@@ -141,7 +145,10 @@ def download_ensembl_gtf(output_dir: str, overwrite: bool = False) -> str:
         )
 
     logger.info("Downloading Ensembl GTF to %s...", gtf_path)
-    urllib.request.urlretrieve(ENSEMBL_GTF_URL, gtf_path)  # nosec B310
+    with requests.get(ENSEMBL_GTF_URL, stream=True, timeout=600) as resp:
+        resp.raise_for_status()
+        with open(gtf_path, "wb") as fout:
+            shutil.copyfileobj(resp.raw, fout)
     logger.info("Downloaded: %s", gtf_path)
     return gtf_path
 
@@ -171,6 +178,7 @@ def map_ptm_sites(
     ptm_tsv: str,
     gtf_data: GTFData,
     output_path: str,
+    transcript_cache: Optional[Dict] = None,
 ) -> PTMBuildResult:
     """Map PTM sites from protein coordinates to genomic coordinates.
 
@@ -185,20 +193,28 @@ def map_ptm_sites(
         Parsed Ensembl GTF data.
     output_path : str
         Path to write the mapped TSV.
+    transcript_cache : dict, optional
+        Shared TranscriptCDS cache for cross-call reuse. If None, a local
+        cache is created for this call only.
 
     Returns
     -------
     PTMBuildResult
         Mapping statistics.
     """
+    if transcript_cache is None:
+        transcript_cache = {}
+
     resolution_counts: Dict[str, int] = defaultdict(int)
     n_mapped = 0
     n_failed = 0
     n_total = 0
 
-    with open(ptm_tsv, encoding="utf-8") as fin, open(
-        output_path, "w", newline="", encoding="utf-8"
-    ) as fout:
+    # Write BGZF so Hail can import in parallel across Spark partitions.
+    if not output_path.endswith((".bgz", ".gz")):
+        output_path += ".bgz"
+
+    with open(ptm_tsv, encoding="utf-8") as fin, BgzfWriter(output_path) as fout:
         reader = csv.DictReader(fin, delimiter="\t")
         writer = csv.DictWriter(
             fout, fieldnames=PTM_OUTPUT_COLUMNS, delimiter="\t", lineterminator="\n"
@@ -226,7 +242,9 @@ def map_ptm_sites(
                 return
 
             positions = [int(r["position"]) for r in records]
-            mappings = map_protein_sites(enst, positions, gtf_data.cds_by_transcript)
+            mappings = map_protein_sites(
+                enst, positions, gtf_data.cds_by_transcript, cache=transcript_cache
+            )
             pos_to_mapping = dict(mappings)
 
             for rec in records:
@@ -291,6 +309,30 @@ def map_ptm_sites(
     )
 
 
+def _concat_bgz_tsvs(src_paths: List[str], dest_path: str) -> None:
+    """Concatenate multiple BGZF TSV files into a single BGZF TSV.
+
+    Reads each source with ``gzip.open`` (which handles BGZF transparently),
+    writes a single header from the first file, and streams data rows into a
+    new BGZF file via :class:`BgzfWriter`.
+    """
+    with BgzfWriter(dest_path) as fout:
+        writer = None
+        for src_path in src_paths:
+            with gzip.open(src_path, "rt", encoding="utf-8") as fin:
+                reader = csv.DictReader(fin, delimiter="\t")
+                if writer is None:
+                    writer = csv.DictWriter(
+                        fout,
+                        fieldnames=reader.fieldnames,
+                        delimiter="\t",
+                        lineterminator="\n",
+                    )
+                    writer.writeheader()
+                for row in reader:
+                    writer.writerow(row)
+
+
 def ptm_build_pipeline(config: PTMBuildConfig) -> PTMBuildResult:
     """Run the full PTM build pipeline.
 
@@ -335,28 +377,28 @@ def ptm_build_pipeline(config: PTMBuildConfig) -> PTMBuildResult:
     if ptm_tsv is None:
         ptm_tsv = download_uniprot_ptm(config.output_dir, config.overwrite)
 
+    # Shared transcript cache across all mapping calls — avoids rebuilding
+    # TranscriptCDS objects when the same ENST appears in multiple sources.
+    transcript_cache: Dict = {}
+
     # Step 4: Map PTM sites to genomic coordinates
-    mapped_path = os.path.join(config.output_dir, "ptm_sites_mapped.tsv")
-    result = map_ptm_sites(ptm_tsv, gtf_data, mapped_path)
+    mapped_path = os.path.join(config.output_dir, "ptm_sites_mapped.tsv.bgz")
+    result = map_ptm_sites(ptm_tsv, gtf_data, mapped_path, transcript_cache)
 
     # Step 4b: Map PeptideAtlas sites (if provided)
     if config.peptideatlas_tsv:
         logger.info("Mapping PeptideAtlas phospho sites...")
-        pa_mapped_path = os.path.join(config.output_dir, "peptideatlas_sites_mapped.tsv")
-        pa_result = map_ptm_sites(config.peptideatlas_tsv, gtf_data, pa_mapped_path)
+        pa_mapped_path = os.path.join(
+            config.output_dir, "peptideatlas_sites_mapped.tsv.bgz"
+        )
+        pa_result = map_ptm_sites(
+            config.peptideatlas_tsv, gtf_data, pa_mapped_path, transcript_cache
+        )
 
-        # Concatenate mapped TSVs
-        combined_path = os.path.join(config.output_dir, "ptm_sites_combined.tsv")
-        with open(combined_path, "w", newline="", encoding="utf-8") as fout:
-            writer = csv.DictWriter(
-                fout, fieldnames=PTM_OUTPUT_COLUMNS, delimiter="\t", lineterminator="\n"
-            )
-            writer.writeheader()
-            for src_path in [mapped_path, pa_mapped_path]:
-                with open(src_path, encoding="utf-8") as fin:
-                    reader = csv.DictReader(fin, delimiter="\t")
-                    for row in reader:
-                        writer.writerow(row)
+        combined_path = os.path.join(
+            config.output_dir, "ptm_sites_combined.tsv.bgz"
+        )
+        _concat_bgz_tsvs([mapped_path, pa_mapped_path], combined_path)
 
         mapped_path = combined_path
         result.mapped_tsv_path = combined_path
@@ -376,23 +418,21 @@ def ptm_build_pipeline(config: PTMBuildConfig) -> PTMBuildResult:
     # Step 4c: Map CPTAC sites (if provided)
     if config.cptac_tsv:
         logger.info("Mapping CPTAC phospho sites...")
-        cptac_mapped_path = os.path.join(config.output_dir, "cptac_sites_mapped.tsv")
-        cptac_result = map_ptm_sites(config.cptac_tsv, gtf_data, cptac_mapped_path)
+        cptac_mapped_path = os.path.join(
+            config.output_dir, "cptac_sites_mapped.tsv.bgz"
+        )
+        cptac_result = map_ptm_sites(
+            config.cptac_tsv, gtf_data, cptac_mapped_path, transcript_cache
+        )
 
-        # Concatenate with existing mapped TSV
-        combined_path = os.path.join(config.output_dir, "ptm_sites_combined.tsv")
-        with open(combined_path, "w", newline="") as fout:
-            writer = csv.DictWriter(
-                fout, fieldnames=PTM_OUTPUT_COLUMNS, delimiter="\t", lineterminator="\n"
-            )
-            writer.writeheader()
-            for src_path in [mapped_path, cptac_mapped_path]:
-                with open(src_path) as fin:
-                    reader = csv.DictReader(fin, delimiter="\t")
-                    for row in reader:
-                        writer.writerow(row)
+        # Use a distinct filename to avoid truncating mapped_path when it
+        # points to ptm_sites_combined.tsv.bgz from step 4b.
+        all_combined_path = os.path.join(
+            config.output_dir, "ptm_sites_all_combined.tsv.bgz"
+        )
+        _concat_bgz_tsvs([mapped_path, cptac_mapped_path], all_combined_path)
 
-        mapped_path = combined_path
+        mapped_path = all_combined_path
         result.n_total += cptac_result.n_total
         result.n_mapped += cptac_result.n_mapped
         result.n_failed += cptac_result.n_failed

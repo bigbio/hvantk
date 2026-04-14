@@ -6,6 +6,7 @@ to genomic coordinates (chromosome + codon interval) using Ensembl GTF data.
 Validated on 100 proteins in Phase 0.5 (99.1% mapping rate, 0.076s for 449 sites).
 """
 
+import bisect
 import gzip
 import logging
 import re
@@ -35,6 +36,64 @@ class GTFData(NamedTuple):
     transcript_to_gene: Dict[str, str]  # ENST -> gene_symbol
 
 
+class TranscriptCDS:
+    """Pre-computed CDS structure for O(log n) residue-to-genomic mapping.
+
+    Instead of materializing a list of every CDS genomic position (O(CDS length)),
+    this stores cumulative exon offsets and uses binary search to resolve a CDS
+    offset to a genomic coordinate in O(log exons) time.
+    """
+
+    __slots__ = ("chrom", "strand", "_cum_starts", "_exon_genomic", "_total_length")
+
+    def __init__(self, exons: List[Tuple]) -> None:
+        self.chrom: str = exons[0][0]
+        self.strand: str = exons[0][3]
+
+        if self.strand == "+":
+            ordered = sorted(exons, key=lambda x: x[1])
+        else:
+            ordered = sorted(exons, key=lambda x: x[1], reverse=True)
+
+        cum_starts: List[int] = []
+        exon_genomic: List[Tuple[int, int]] = []
+        cum = 0
+        for _, start, end, s, _ in ordered:
+            cum_starts.append(cum)
+            length = end - start + 1
+            if s == "+":
+                exon_genomic.append((start, 1))
+            else:
+                exon_genomic.append((end, -1))
+            cum += length
+
+        self._cum_starts = cum_starts
+        self._exon_genomic = exon_genomic
+        self._total_length = cum
+
+    def _cds_offset_to_genomic(self, cds_offset: int) -> int:
+        """Map a 0-based CDS offset to a 1-based genomic position."""
+        exon_idx = bisect.bisect_right(self._cum_starts, cds_offset) - 1
+        offset_in_exon = cds_offset - self._cum_starts[exon_idx]
+        base, direction = self._exon_genomic[exon_idx]
+        return base + direction * offset_in_exon
+
+    def map_residue(self, residue_pos: int) -> Optional[CodonMapping]:
+        """Map a 1-based residue position to genomic codon coordinates."""
+        idx = (residue_pos - 1) * 3
+        if idx + 3 > self._total_length:
+            return None
+        p0 = self._cds_offset_to_genomic(idx)
+        p1 = self._cds_offset_to_genomic(idx + 1)
+        p2 = self._cds_offset_to_genomic(idx + 2)
+        return CodonMapping(
+            chrom=self.chrom,
+            codon_start=min(p0, p1, p2),
+            codon_end=max(p0, p1, p2),
+            strand=self.strand,
+        )
+
+
 def parse_ensembl_gtf(gtf_path: str) -> GTFData:
     """Parse Ensembl GTF in a single pass to extract CDS exons, MANE Select tags, and gene names.
 
@@ -53,36 +112,56 @@ def parse_ensembl_gtf(gtf_path: str) -> GTFData:
     gene_to_mane = {}
     transcript_to_gene = {}
 
+    # Pre-compile regexes — avoids recompilation on every line (~3.5M lines)
+    _re_tid = re.compile(r'transcript_id "([^"]+)"')
+    _re_gene = re.compile(r'gene_name "([^"]+)"')
+
     opener = gzip.open if gtf_path.endswith(".gz") else open
     with opener(gtf_path, "rt") as f:
         for line in f:
-            if line.startswith("#"):
-                continue
-            fields = line.strip().split("\t")
-            if len(fields) < 9:
+            if not line or line.startswith("#") or "\t" not in line:
                 continue
 
-            if fields[2] == "transcript":
-                m_tid = re.search(r'transcript_id "([^"]+)"', fields[8])
-                m_gene = re.search(r'gene_name "([^"]+)"', fields[8])
+            # Quick scan for feature type before full split — skip the ~80%
+            # of lines that are gene/exon/UTR/start_codon/stop_codon/etc.
+            # GTF columns are tab-separated; feature type is in column 3.
+            try:
+                tab1 = line.index("\t")
+                tab2 = line.index("\t", tab1 + 1)
+                tab3 = line.index("\t", tab2 + 1)
+            except ValueError:
+                continue
+            feature = line[tab2 + 1:tab3]
+
+            if feature != "transcript" and feature != "CDS":
+                continue
+
+            # Only split for transcript + CDS lines (~5% of total)
+            fields = line.split("\t", 9)
+            if len(fields) < 9:
+                continue
+            attrs = fields[8]
+
+            if feature == "transcript":
+                m_tid = _re_tid.search(attrs)
+                m_gene = _re_gene.search(attrs)
                 if m_tid and m_gene:
                     enst = m_tid.group(1).split(".")[0]
                     gene = m_gene.group(1)
                     transcript_to_gene[enst] = gene
-                    if 'tag "MANE_Select"' in fields[8]:
+                    if 'tag "MANE_Select"' in attrs:
                         mane_transcripts.add(enst)
                         gene_to_mane[gene] = enst
-
-            if fields[2] != "CDS":
                 continue
 
+            # CDS line
             chrom = fields[0]
             start = int(fields[3])  # 1-based inclusive
             end = int(fields[4])  # 1-based inclusive
             strand = fields[6]
             phase = int(fields[7])
 
-            m = re.search(r'transcript_id "([^"]+)"', fields[8])
+            m = _re_tid.search(attrs)
             if not m:
                 continue
             enst = m.group(1).split(".")[0]
@@ -106,10 +185,28 @@ def parse_ensembl_gtf(gtf_path: str) -> GTFData:
     )
 
 
+def _get_transcript_cds(
+    enst_id: str,
+    cds_lookup: Dict[str, List[Tuple]],
+    cache: Optional[Dict[str, TranscriptCDS]] = None,
+) -> Optional[TranscriptCDS]:
+    """Get or create a cached TranscriptCDS for the given transcript."""
+    if cache is not None and enst_id in cache:
+        return cache[enst_id]
+    exons = cds_lookup.get(enst_id)
+    if not exons:
+        return None
+    tcds = TranscriptCDS(exons)
+    if cache is not None:
+        cache[enst_id] = tcds
+    return tcds
+
+
 def map_residue_to_genomic(
     enst_id: str,
     residue_pos: int,
     cds_lookup: Dict[str, List[Tuple]],
+    cache: Optional[Dict[str, TranscriptCDS]] = None,
 ) -> Optional[CodonMapping]:
     """Map a single protein residue to its genomic codon coordinates.
 
@@ -121,55 +218,30 @@ def map_residue_to_genomic(
         1-based protein residue position.
     cds_lookup : dict
         Mapping of ENST -> sorted list of (chrom, start, end, strand, phase).
+    cache : dict, optional
+        Shared TranscriptCDS cache for cross-call reuse.
 
     Returns
     -------
     CodonMapping or None
         Genomic coordinates of the codon, or None if mapping fails.
     """
-    exons = cds_lookup.get(enst_id)
-    if not exons:
+    tcds = _get_transcript_cds(enst_id, cds_lookup, cache)
+    if tcds is None:
         return None
-
-    chrom = exons[0][0]
-    strand = exons[0][3]
-
-    # Order exons in CDS reading direction (5'->3' of mRNA)
-    if strand == "+":
-        ordered = sorted(exons, key=lambda x: x[1])
-    else:
-        ordered = sorted(exons, key=lambda x: x[1], reverse=True)
-
-    # Build flat genomic position list in CDS order
-    positions = []
-    for _, start, end, s, _ in ordered:
-        if s == "+":
-            positions.extend(range(start, end + 1))
-        else:
-            positions.extend(range(end, start - 1, -1))
-
-    # Get 3 positions for the codon
-    idx = (residue_pos - 1) * 3
-    if idx + 3 > len(positions):
-        return None  # out-of-bounds: protein longer than CDS
-
-    codon_pos = positions[idx : idx + 3]
-    return CodonMapping(
-        chrom=chrom,
-        codon_start=min(codon_pos),
-        codon_end=max(codon_pos),
-        strand=strand,
-    )
+    return tcds.map_residue(residue_pos)
 
 
 def map_protein_sites(
     enst_id: str,
     residue_positions: List[int],
     cds_lookup: Dict[str, List[Tuple]],
+    cache: Optional[Dict[str, TranscriptCDS]] = None,
 ) -> List[Tuple[int, Optional[CodonMapping]]]:
     """Batch-map multiple residue positions for one protein.
 
-    Builds the position list once and reuses it for all positions.
+    Uses a pre-computed TranscriptCDS with binary search (O(log exons) per
+    residue) instead of materializing the full CDS position list.
 
     Parameters
     ----------
@@ -179,50 +251,18 @@ def map_protein_sites(
         1-based protein residue positions to map.
     cds_lookup : dict
         Mapping of ENST -> sorted list of (chrom, start, end, strand, phase).
+    cache : dict, optional
+        Shared TranscriptCDS cache for cross-call reuse.
 
     Returns
     -------
     list of (int, CodonMapping or None)
         Tuples of (residue_pos, mapping_or_None).
     """
-    exons = cds_lookup.get(enst_id)
-    if not exons:
+    tcds = _get_transcript_cds(enst_id, cds_lookup, cache)
+    if tcds is None:
         return [(p, None) for p in residue_positions]
-
-    chrom = exons[0][0]
-    strand = exons[0][3]
-
-    if strand == "+":
-        ordered = sorted(exons, key=lambda x: x[1])
-    else:
-        ordered = sorted(exons, key=lambda x: x[1], reverse=True)
-
-    positions = []
-    for _, start, end, s, _ in ordered:
-        if s == "+":
-            positions.extend(range(start, end + 1))
-        else:
-            positions.extend(range(end, start - 1, -1))
-
-    results = []
-    for p in residue_positions:
-        idx = (p - 1) * 3
-        if idx + 3 > len(positions):
-            results.append((p, None))
-        else:
-            codon_pos = positions[idx : idx + 3]
-            results.append(
-                (
-                    p,
-                    CodonMapping(
-                        chrom=chrom,
-                        codon_start=min(codon_pos),
-                        codon_end=max(codon_pos),
-                        strand=strand,
-                    ),
-                )
-            )
-    return results
+    return [(p, tcds.map_residue(p)) for p in residue_positions]
 
 
 def resolve_transcript(

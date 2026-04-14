@@ -4,6 +4,7 @@ gnomad
 requests
 tqdm
 pandas
+anndata
 matplotlib
 seaborn
 numpy
@@ -12,3 +13,4 @@ anthropic
 google-genai
 RestrictedPython
 pyyaml
+tspex

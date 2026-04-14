@@ -299,22 +299,22 @@ MATRIX_BUILDERS: Dict[
 ] = {
     "ucsc": create_matrix_adapter(
         "hvantk.tables.matrix_builders",
-        "build_ucsc_mt",
+        "build_ucsc_ad",
         required_inputs=["expression_matrix", "metadata"],
     ),
     "expression-atlas": create_matrix_adapter(
         "hvantk.tables.matrix_builders",
-        "build_expression_atlas_mt",
+        "build_expression_atlas_ad",
         required_inputs=["expression_matrix", "sdrf"],
     ),
     "cptac": create_matrix_adapter(
         "hvantk.tables.matrix_builders",
-        "build_cptac_mt",
+        "build_cptac_ad",
         required_inputs=["expression", "metadata"],
     ),
     "cptac-phospho": create_matrix_adapter(
         "hvantk.tables.matrix_builders",
-        "build_cptac_phospho_mt",
+        "build_cptac_phospho_ad",
         required_inputs=["expression", "metadata"],
     ),
 }

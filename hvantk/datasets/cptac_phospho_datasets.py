@@ -301,9 +301,19 @@ class CPTACPhosphoDataset:
         logger.info("Loading CPTAC %s dataset...", ct)
         ds = _load_cptac_dataset(ct)
 
+        def _get_phospho(tissue_type="both", source="umich"):
+            """Try *source* first; fall back to default if unavailable."""
+            try:
+                return ds.get_phosphoproteomics(source=source, tissue_type=tissue_type)
+            except Exception:
+                logger.info(
+                    "Source '%s' unavailable for %s, falling back to default", source, ct
+                )
+                return ds.get_phosphoproteomics(tissue_type=tissue_type)
+
         # Fetch tumor phospho data
         logger.info("Fetching tumor phosphoproteomics...")
-        tumor_df = ds.get_phosphoproteomics(source="umich", tissue_type="tumor")
+        tumor_df = _get_phospho(tissue_type="tumor")
         logger.info("Tumor: %d samples x %d columns", *tumor_df.shape)
         tumor_sites = extract_phospho_sites(tumor_df, ct, tissue_type="tumor")
         write_intermediate_tsv(tumor_sites, tumor_tsv)
@@ -311,7 +321,7 @@ class CPTACPhosphoDataset:
         # Fetch normal phospho data (may be empty for some cancer types)
         normal_sites = []
         try:
-            normal_df = ds.get_phosphoproteomics(source="umich", tissue_type="normal")
+            normal_df = _get_phospho(tissue_type="normal")
             if len(normal_df) > 0:
                 logger.info("Normal: %d samples x %d columns", *normal_df.shape)
                 normal_sites = extract_phospho_sites(normal_df, ct, tissue_type="normal")
@@ -326,12 +336,16 @@ class CPTACPhosphoDataset:
         write_intermediate_tsv(all_sites, tsv_path)
 
         # Matrix CSV (all samples — tumor + normal combined)
-        both_df = ds.get_phosphoproteomics(source="umich")
+        both_df = _get_phospho()
         write_matrix_csv(both_df, matrix_path)
 
         # Clinical metadata with tissue_type per sample
         logger.info("Fetching clinical metadata...")
-        clinical_df = ds.get_clinical(source="mssm")
+        try:
+            clinical_df = ds.get_clinical(source="mssm")
+        except Exception:
+            logger.info("Source 'mssm' unavailable for %s clinical, using default", ct)
+            clinical_df = ds.get_clinical()
 
         # Tag samples with tissue_type based on sample ID suffix
         sample_tissue = {}

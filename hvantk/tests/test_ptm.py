@@ -172,16 +172,17 @@ def test_map_ptm_sites_roundtrip(tmp_path, gtf_data):
             }
         )
 
-    output_tsv = tmp_path / "mapped.tsv"
-    result = map_ptm_sites(str(input_tsv), gtf_data, str(output_tsv))
+    output_bgz = tmp_path / "mapped.tsv.bgz"
+    result = map_ptm_sites(str(input_tsv), gtf_data, str(output_bgz))
 
     assert result.n_total == 2
     assert result.n_mapped == 2
     assert result.n_failed == 0
     assert result.resolution_counts["xref_mane"] == 1
 
-    # Read back and verify
-    with open(output_tsv) as f:
+    # Read back and verify (BGZF is gzip-compatible)
+    import gzip
+    with gzip.open(output_bgz, "rt") as f:
         reader = csv.DictReader(f, delimiter="\t")
         rows = list(reader)
 
