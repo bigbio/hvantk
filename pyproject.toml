@@ -37,6 +37,7 @@ seaborn = { version = "*", optional = true }
 plotly = { version = "*", optional = true }
 duckdb = { version = ">=0.9.0", optional = true }
 cptac = { version = "*", optional = true }
+tspex = { version = ">=0.6.0", optional = true }
 
 [tool.poetry.extras]
 viz = ["matplotlib", "seaborn", "plotly"]
@@ -45,6 +46,7 @@ interactive = ["plotly"]
 hgc = ["matplotlib", "seaborn", "plotly", "gnomad"]
 psroc = ["matplotlib", "plotly"]
 ptm = ["cptac"]
+constraint = ["tspex", "matplotlib", "seaborn"]
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
@@ -53,6 +55,7 @@ black = "^23.7.0"
 matplotlib = "*"
 seaborn = "*"
 plotly = "*"
+tspex = "*"
 mkdocs = "*"
 mkdocs-material = "*"
 ipykernel = "^7.2.0"

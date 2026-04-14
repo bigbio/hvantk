@@ -109,6 +109,23 @@ hvantk ptm build \
 
 > **Note:** The PTM build command downloads Ensembl GTF and UniProt PTM data automatically. Use `--gtf-path` and `--ptm-tsv` to provide pre-downloaded files.
 
+- PTM constraint (stratified AF depletion at PTM codons, by tissue / cell type)
+
+```bash
+# 1. Annotate variants with PTM flags first
+hvantk ptm annotate --variants-ht clinvar.ht --ptm-ht /out/ptm_sites.ht -o clinvar_ptm.ht
+
+# 2. Run stratified constraint analysis
+hvantk ptm constraint \
+  --variants-ht clinvar_ptm.ht \
+  --expression-source anndata \
+  --expression-path /data/farah_2024.h5ad \
+  --grouping major_cell_class \
+  --output-dir /out/ptm-farah/
+```
+
+> **Note:** See [`tools/ptm-constraint.md`](../tools/ptm-constraint.md) for the full flag reference and backend-specific notes (Hail MT / AnnData / tabular).
+
 - eQTL (keyed by locus, alleles, gene_id)
 
 ```bash

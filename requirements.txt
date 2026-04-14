@@ -12,3 +12,4 @@ anthropic
 google-genai
 RestrictedPython
 pyyaml
+tspex

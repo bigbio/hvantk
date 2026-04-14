@@ -381,7 +381,9 @@ class TestMkmatrixCli:
 
 class TestVisualizeExpressionAd:
     def test_returns_matplotlib_figure(self):
-        from hvantk.visualization.expression.hail import visualize_expression_distribution_ad
+        from hvantk.visualization.expression.anndata import (
+            visualize_expression_distribution,
+        )
         import matplotlib
         matplotlib.use("Agg")  # non-interactive backend
         import matplotlib.pyplot as plt
@@ -391,6 +393,6 @@ class TestVisualizeExpressionAd:
             obs=pd.DataFrame(index=[f"c_{i}" for i in range(50)]),
             var=pd.DataFrame(index=[f"g_{i}" for i in range(20)]),
         )
-        fig = visualize_expression_distribution_ad(adata)
+        fig = visualize_expression_distribution(adata)
         assert isinstance(fig, plt.Figure)
         plt.close(fig)

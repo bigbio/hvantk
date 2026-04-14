@@ -594,12 +594,18 @@ def extract_marker_gene_sets(
     gene_id_field: str = "gene_id",
     gene_name_field: Optional[str] = "gene_name",
 ) -> GeneSetCollection:
-    """Extract top marker genes per group from an expression summary Table.
+    """Extract top marker genes per group from a wide-format expression summary.
 
-    Operates on the summary Table produced by
-    :func:`~hvantk.utils.matrix_utils.summarize_expression`.  The summary
-    Table is small (one row per gene) so this function works entirely in
-    pandas — no Hail needed after the initial conversion.
+    Expects a summary table (Hail Table, pandas DataFrame, or path to a
+    legacy ``.ht``) with one row per gene and per-group statistics encoded
+    as flat columns ``{group}_mean`` and ``{group}_fraction_expressed``.
+
+    Note
+    ----
+    The current AnnData summarizer
+    (:func:`hvantk.utils.matrix_utils.summarize_expression_ad`) returns
+    *long*-format output; convert with ``pivot`` before passing here, or
+    use scanpy's ``rank_genes_groups`` for marker discovery.
 
     Parameters
     ----------

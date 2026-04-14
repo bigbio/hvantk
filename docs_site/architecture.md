@@ -98,6 +98,10 @@ hvantk/
 │   ├── pipeline.py        # Build pipeline orchestration (Phases 1-2)
 │   ├── annotate.py        # Variant-PTM annotation (Phase 3)
 │   ├── analysis.py        # Landscape and population analysis (Phase 4)
+│   ├── constraint.py      # Stratified PTM AF-depletion analysis (by tissue/cell-type)
+│   ├── constraint_expression.py # Expression-source adapter (Hail MT / AnnData / tabular)
+│   ├── constraint_plots.py      # Four-panel figure renderer
+│   ├── constraint_report.py     # Constraint HTML report
 │   ├── plot.py            # PTM-specific visualization
 │   └── report.py          # HTML report generation
 │
@@ -186,7 +190,10 @@ The codebase is organized by function and biological domain:
 - `ancestry/` - Population ancestry inference
 - `psroc/` - Pathogenicity score evaluation
 - `enrichex/` - Gene set enrichment analysis
-- `ptm/` - Post-translational modification variant classification
+- `ptm/` - Post-translational modification variant classification. Includes
+  `constraint.py` + helpers for the stratified AF-depletion analysis
+  (`hvantk ptm constraint`), a tissue/cell-type-aware complement to
+  `landscape` and `population`.
 
 **Data Product Keying**:
 - **Variants** - Keyed by `(locus, alleles)`
