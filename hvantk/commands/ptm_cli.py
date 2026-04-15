@@ -691,3 +691,337 @@ def ptm_constraint(
         logger.exception(f"PTM constraint failed: {e}")
         click.echo(f"Error: {e}", err=True)
         ctx.exit(1)
+
+
+# ---------------------------------------------------------------------------
+# Phase-2 subcommands: atlas (atlas assembly facade) and test (LMM runners)
+# ---------------------------------------------------------------------------
+
+
+@ptm_group.command("atlas")
+@click.option(
+    "--output-dir",
+    "-o",
+    type=click.Path(),
+    required=True,
+    help="Directory for intermediate + combined TSV output.",
+)
+@click.option(
+    "--output-ht",
+    type=str,
+    required=True,
+    help="Path to the final PTM sites Hail Table (.ht).",
+)
+@click.option(
+    "--sources",
+    type=str,
+    default="uniprot,peptideatlas",
+    show_default=True,
+    help=(
+        "Comma-separated subset of {uniprot,peptideatlas,cptac}. "
+        "CPTAC is off by default (optional dependency)."
+    ),
+)
+@click.option(
+    "--uniprot-tsv",
+    type=click.Path(exists=True),
+    default=None,
+    help="Pre-downloaded UniProt PTM TSV (optional; auto-downloaded if omitted).",
+)
+@click.option(
+    "--peptideatlas-tsv",
+    type=click.Path(exists=True),
+    default=None,
+    help="Pre-downloaded PeptideAtlas phospho intermediate TSV.",
+)
+@click.option(
+    "--cptac-tsv",
+    type=click.Path(exists=True),
+    default=None,
+    help="Pre-downloaded CPTAC phospho combined TSV.",
+)
+@click.option(
+    "--gtf-path",
+    type=click.Path(exists=True),
+    default=None,
+    help="Pre-downloaded Ensembl GTF (auto-downloaded if omitted).",
+)
+@click.option(
+    "--flanking-codons",
+    type=int,
+    default=7,
+    show_default=True,
+    help="Flanking-codon window (Phase-2 default matches notebook A).",
+)
+@click.option("--overwrite", is_flag=True)
+@click.pass_context
+def ptm_atlas(
+    ctx,
+    output_dir,
+    output_ht,
+    sources,
+    uniprot_tsv,
+    peptideatlas_tsv,
+    cptac_tsv,
+    gtf_path,
+    flanking_codons,
+    overwrite,
+):
+    """Phase-2 PTM atlas assembly (notebook A facade).
+
+    \b
+    Delegates to hvantk.ptm.atlas.build_atlas, which in turn delegates to
+    ptm_build_pipeline. Produces ptm_sites_combined.tsv.bgz (UniProt +
+    PeptideAtlas) or ptm_sites_all_combined.tsv.bgz (when --sources includes
+    cptac).
+
+    \b
+    Example:
+      hvantk ptm atlas -o data/ptm/ --output-ht data/ptm/ptm_sites.ht
+    """
+    try:
+        from hvantk.ptm.atlas import PTMAtlasConfig, build_atlas
+
+        source_list = [s.strip().lower() for s in sources.split(",") if s.strip()]
+        config = PTMAtlasConfig(
+            output_dir=output_dir,
+            output_ht=output_ht,
+            sources=source_list,
+            uniprot_tsv=uniprot_tsv,
+            peptideatlas_tsv=peptideatlas_tsv,
+            cptac_tsv=cptac_tsv,
+            gtf_path=gtf_path,
+            flanking_codons=flanking_codons,
+            overwrite=overwrite,
+        )
+        errors = config.validate()
+        if errors:
+            click.echo("Configuration validation failed:", err=True)
+            for err in errors:
+                click.echo(f"  - {err}", err=True)
+            ctx.exit(1)
+
+        result = build_atlas(config)
+        click.echo(f"Sources used: {', '.join(result.sources_used)}")
+        click.echo(f"Sites mapped: {result.n_sites:,}")
+        click.echo(f"Combined TSV: {result.combined_tsv}")
+        click.echo(f"Hail Table:   {result.output_ht}")
+
+    except Exception as e:
+        logger.exception(f"PTM atlas failed: {e}")
+        click.echo(f"Error: {e}", err=True)
+        ctx.exit(1)
+
+
+def _read_variants_table(path: str):
+    """Load a variant table from CSV/TSV with transparent gzip/bgz support."""
+    import pandas as _pd
+
+    p = str(path)
+    # pandas infers compression from extension (.gz / .bgz handled via gzip).
+    sep = "\t" if p.endswith((".tsv", ".tsv.gz", ".tsv.bgz", ".tab")) else None
+    if sep is None:
+        # Fall back to comma separator if neither .tsv nor .csv explicit.
+        sep = "," if p.endswith((".csv", ".csv.gz")) else "\t"
+    return _pd.read_csv(p, sep=sep, low_memory=False)
+
+
+def _read_expression_wide(pkl_path, tsv_path):
+    """Load a gene x stratum expression matrix from a pandas pickle or TSV."""
+    import pandas as _pd
+
+    if pkl_path:
+        wide = _pd.read_pickle(pkl_path)
+    else:
+        wide = _pd.read_csv(tsv_path, sep="\t", index_col=0, low_memory=False)
+    return wide
+
+
+@ptm_group.command("test")
+@click.option(
+    "--test",
+    "test_mode",
+    type=click.Choice(["lmm", "lmm-binned"], case_sensitive=False),
+    required=True,
+    help="LMM variant to run (notebook M = lmm, notebook K = lmm-binned).",
+)
+@click.option(
+    "--input",
+    "input_path",
+    type=click.Path(exists=True),
+    required=True,
+    help="Variant table (CSV/TSV) with gene / AF / is_ptm plus the stratum column.",
+)
+@click.option(
+    "--stratum-col",
+    type=str,
+    required=True,
+    help=(
+        "Column in the input table identifying strata (one row per unique "
+        "value in the output)."
+    ),
+)
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(),
+    required=True,
+    help="Destination TSV for per-stratum results.",
+)
+@click.option("--gene-col", type=str, default="gene", show_default=True)
+@click.option("--af-col", type=str, default="af_filled", show_default=True)
+@click.option("--is-ptm-col", type=str, default="is_ptm", show_default=True)
+@click.option(
+    "--expression-pkl",
+    type=click.Path(exists=True),
+    default=None,
+    help=(
+        "lmm-binned only: pandas-pickled DataFrame (gene x stratum) with "
+        "expression values. Missing strata are skipped."
+    ),
+)
+@click.option(
+    "--expression-tsv",
+    type=click.Path(exists=True),
+    default=None,
+    help=(
+        "lmm-binned only: TSV alternative to --expression-pkl "
+        "(first column = gene, remaining columns = strata)."
+    ),
+)
+@click.pass_context
+def ptm_test(
+    ctx,
+    test_mode,
+    input_path,
+    stratum_col,
+    output,
+    gene_col,
+    af_col,
+    is_ptm_col,
+    expression_pkl,
+    expression_tsv,
+):
+    """Run per-stratum PTM constraint tests (notebook M / K).
+
+    \b
+    --test lmm        Per-stratum log_af ~ is_ptm + (1|gene) (notebook M).
+    --test lmm-binned Per-stratum log_af ~ is_ptm * C(expr_bin) + (1|gene)
+                      using an expression matrix keyed gene x stratum (notebook K).
+
+    \b
+    Output TSV columns:
+      stratum, n_variants, n_ptm, ... and (for lmm) beta_ptm/se_ptm/p_ptm
+      converged, note. For lmm-binned the beta/SE/p columns are emitted per
+      realized bin (b0_none, b1_Q1, ...).
+
+    \b
+    Examples:
+      hvantk ptm test --test lmm \\
+          --input variants.tsv --stratum-col primary_tissue_broad \\
+          -o results/tissue_lmm.tsv
+
+      hvantk ptm test --test lmm-binned \\
+          --input variants.tsv --stratum-col cell_type \\
+          --expression-pkl brain_gene_celltype_median_expr.pkl \\
+          -o results/celltype_binned.tsv
+    """
+    try:
+        import os as _os
+
+        import pandas as _pd
+
+        df = _read_variants_table(input_path)
+        if stratum_col not in df.columns:
+            click.echo(f"Error: stratum column '{stratum_col}' not in input.", err=True)
+            ctx.exit(1)
+
+        mode = test_mode.lower()
+        out_dir = _os.path.dirname(_os.path.abspath(output))
+        if out_dir:
+            _os.makedirs(out_dir, exist_ok=True)
+
+        strata = [s for s in df[stratum_col].dropna().unique()]
+        click.echo(f"Running {mode} for {len(strata)} strata...")
+
+        if mode == "lmm":
+            from hvantk.ptm.test import run_lmm
+
+            rows = []
+            for s in strata:
+                sub = df[df[stratum_col] == s]
+                r = run_lmm(
+                    sub,
+                    stratum=str(s),
+                    gene_col=gene_col,
+                    af_col=af_col,
+                    is_ptm_col=is_ptm_col,
+                )
+                rows.append({
+                    "stratum": r.stratum,
+                    "n_variants": r.n_variants,
+                    "n_ptm": r.n_ptm,
+                    "n_nonptm": r.n_nonptm,
+                    "n_genes": r.n_genes,
+                    "n_mixed_genes": r.n_mixed_genes,
+                    "beta_ptm": r.beta_ptm,
+                    "se_ptm": r.se_ptm,
+                    "p_ptm": r.p_ptm,
+                    "converged": r.converged,
+                    "note": r.note,
+                })
+            _pd.DataFrame(rows).to_csv(output, sep="\t", index=False)
+        else:  # lmm-binned
+            if not (expression_pkl or expression_tsv):
+                click.echo(
+                    "Error: --expression-pkl or --expression-tsv is required "
+                    "for --test lmm-binned.",
+                    err=True,
+                )
+                ctx.exit(1)
+            from hvantk.ptm.test import run_binned_interaction_lmm
+
+            wide = _read_expression_wide(expression_pkl, expression_tsv)
+            rows = []
+            for s in strata:
+                sub = df[df[stratum_col] == s]
+                if s not in wide.columns:
+                    rows.append({
+                        "stratum": str(s),
+                        "n_variants": int(len(sub)),
+                        "n_genes": int(sub[gene_col].nunique()) if len(sub) else 0,
+                        "bin_levels": "",
+                        "converged": False,
+                        "note": f"stratum '{s}' not found in expression matrix",
+                    })
+                    continue
+                r = run_binned_interaction_lmm(
+                    sub,
+                    expr_series=wide[s],
+                    stratum=str(s),
+                    gene_col=gene_col,
+                    af_col=af_col,
+                    is_ptm_col=is_ptm_col,
+                )
+                row = {
+                    "stratum": r.stratum,
+                    "n_variants": r.n_variants,
+                    "n_genes": r.n_genes,
+                    "bin_levels": ",".join(r.bin_levels),
+                    "converged": r.converged,
+                    "note": r.note,
+                }
+                for b in r.bin_levels:
+                    if b in r.bin_betas:
+                        row[f"beta_{b}"] = r.bin_betas[b]
+                        row[f"se_{b}"] = r.bin_ses.get(b)
+                        row[f"p_{b}"] = r.bin_pvalues.get(b)
+                rows.append(row)
+            _pd.DataFrame(rows).to_csv(output, sep="\t", index=False)
+
+        click.echo(f"Wrote {len(rows)} rows to {output}")
+
+    except Exception as e:
+        logger.exception(f"PTM test failed: {e}")
+        click.echo(f"Error: {e}", err=True)
+        ctx.exit(1)
