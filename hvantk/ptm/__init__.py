@@ -24,6 +24,15 @@ from hvantk.ptm.constants import (
     PTM_TYPE_CATEGORIES,
     DEFAULT_FLANKING_CODONS,
     PTM_OUTPUT_COLUMNS,
+    PROXIMAL_BP,
+    DEFAULT_MAF_THRESHOLDS,
+    EXPRESSION_BIN_LABELS,
+    LOG_AF_EPSILON,
+    LMM_MIN_N_PTM,
+    LMM_MIN_N_NONPTM,
+    LMM_MIN_MIXED_GENES,
+    LMM_BINNED_MIN_POS_EXPR,
+    LMM_BINNED_MIN_CELL_N,
 )
 
 # Lazy imports for Hail-dependent and heavy modules (PEP 562).
@@ -69,6 +78,25 @@ _LAZY_MODULES = {
     "encode_figure_to_base64": ("hvantk.ptm.plot", "encode_figure_to_base64"),
     # report
     "generate_report": ("hvantk.ptm.report", "generate_report"),
+    # Phase-2 atlas facade
+    "PTMAtlasConfig": ("hvantk.ptm.atlas", "PTMAtlasConfig"),
+    "PTMAtlasResult": ("hvantk.ptm.atlas", "PTMAtlasResult"),
+    "build_atlas": ("hvantk.ptm.atlas", "build_atlas"),
+    # Phase-2 SYMBOL-based annotation (pandas)
+    "annotate_variants_by_symbol": (
+        "hvantk.ptm.annotate",
+        "annotate_variants_by_symbol",
+    ),
+    # Phase-2 constraint tests (statsmodels)
+    "LMMResult": ("hvantk.ptm.test", "LMMResult"),
+    "BinnedLMMResult": ("hvantk.ptm.test", "BinnedLMMResult"),
+    "run_lmm": ("hvantk.ptm.test", "run_lmm"),
+    "run_binned_interaction_lmm": (
+        "hvantk.ptm.test",
+        "run_binned_interaction_lmm",
+    ),
+    # Phase-2 report writer
+    "generate_phase2_report": ("hvantk.ptm.report", "generate_phase2_report"),
 }
 
 
@@ -126,4 +154,26 @@ __all__ = [
     "PTM_TYPE_CATEGORIES",
     "DEFAULT_FLANKING_CODONS",
     "PTM_OUTPUT_COLUMNS",
+    "PROXIMAL_BP",
+    "DEFAULT_MAF_THRESHOLDS",
+    "EXPRESSION_BIN_LABELS",
+    "LOG_AF_EPSILON",
+    "LMM_MIN_N_PTM",
+    "LMM_MIN_N_NONPTM",
+    "LMM_MIN_MIXED_GENES",
+    "LMM_BINNED_MIN_POS_EXPR",
+    "LMM_BINNED_MIN_CELL_N",
+    # Phase-2 atlas
+    "PTMAtlasConfig",
+    "PTMAtlasResult",
+    "build_atlas",
+    # Phase-2 SYMBOL annotation
+    "annotate_variants_by_symbol",
+    # Phase-2 tests
+    "LMMResult",
+    "BinnedLMMResult",
+    "run_lmm",
+    "run_binned_interaction_lmm",
+    # Phase-2 report
+    "generate_phase2_report",
 ]

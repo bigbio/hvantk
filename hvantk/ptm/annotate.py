@@ -3,10 +3,23 @@
 Annotates a variant Hail Table with PTM site proximity information using
 position expansion and locus-based joins. This avoids Hail's interval join
 limitations with overlapping intervals (common for adjacent PTM sites).
+
+Also exposes a pandas-based SYMBOL+chrom annotator
+(``annotate_variants_by_symbol``) that reproduces notebook N's Cell 4 / 11
+semantics for the CHD case-control workflow.
 """
 
-import hail as hl
+from __future__ import annotations
+
 import logging
+from typing import TYPE_CHECKING
+
+import pandas as pd
+
+from hvantk.ptm.constants import PROXIMAL_BP
+
+if TYPE_CHECKING:
+    import hail as hl
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +61,8 @@ def annotate_variants_with_ptm(
     hl.Table
         Input table with PTM annotation fields added.
     """
+    import hail as hl
+
     ref_genome = variants_ht.locus.dtype.reference_genome.name
     flank_bp = flanking_codons * 3
 
@@ -146,3 +161,125 @@ def annotate_variants_with_ptm(
 
     logger.info("PTM annotation complete")
     return result
+
+
+def annotate_variants_by_symbol(
+    variants_df: pd.DataFrame,
+    ptm_df: pd.DataFrame,
+    proximal_bp: int = PROXIMAL_BP,
+    variant_gene_col: str = "SYMBOL",
+    variant_chrom_col: str = "chrom",
+    variant_pos_col: str = "pos",
+    atlas_gene_col: str = "gene_symbol",
+    atlas_chrom_col: str = "chrom",
+) -> pd.DataFrame:
+    """Per-variant ``is_ptm_site`` / ``is_ptm_proximal`` via SYMBOL + chrom merge.
+
+    Reproduces notebook_n Cell 4 / Cell 11 semantics exactly. Both flags can
+    be True simultaneously (``is_ptm_proximal`` is NOT exclusive of
+    ``is_ptm_site``).
+
+    The routine:
+
+    1. Strips ``^chr`` from ``variant_chrom_col`` and ``atlas_chrom_col``.
+    2. Drops atlas rows with null ``atlas_gene_col``, ``codon_start``, or
+       ``codon_end``.
+    3. Casts ``codon_start`` / ``codon_end`` to ``int``.
+    4. Does an inner merge on ``(variant_gene_col, variant_chrom_col) ==
+       (atlas_gene_col, atlas_chrom_col)``, then filters by
+       ``codon_start <= pos <= codon_end`` to flag ``is_ptm_site``.
+    5. Repeats the merge against the expanded window
+       ``[codon_start - proximal_bp, codon_end + proximal_bp]`` to flag
+       ``is_ptm_proximal``.
+
+    Parameters
+    ----------
+    variants_df : pandas.DataFrame
+        Variants with at minimum ``variant_gene_col``, ``variant_chrom_col``,
+        and ``variant_pos_col`` columns.
+    ptm_df : pandas.DataFrame
+        PTM atlas rows (e.g. parsed from ``ptm_sites_combined.tsv.bgz``) with
+        ``atlas_gene_col``, ``atlas_chrom_col``, ``codon_start``, and
+        ``codon_end`` columns.
+    proximal_bp : int
+        Flank (in base pairs) applied to both ends of the codon interval for
+        ``is_ptm_proximal``. Default: :data:`PROXIMAL_BP` (21 bp).
+    variant_gene_col, variant_chrom_col, variant_pos_col : str
+        Column names in ``variants_df``.
+    atlas_gene_col, atlas_chrom_col : str
+        Column names in ``ptm_df``; codon columns are always named
+        ``codon_start`` / ``codon_end`` to match the Phase-2 atlas TSV.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A copy of ``variants_df`` with ``is_ptm_site`` and ``is_ptm_proximal``
+        boolean columns added. Existing columns are preserved unchanged.
+    """
+    required_variant_cols = {variant_gene_col, variant_chrom_col, variant_pos_col}
+    missing = required_variant_cols - set(variants_df.columns)
+    if missing:
+        raise KeyError(
+            f"variants_df is missing required columns: {sorted(missing)}"
+        )
+    required_atlas_cols = {atlas_gene_col, atlas_chrom_col, "codon_start", "codon_end"}
+    missing = required_atlas_cols - set(ptm_df.columns)
+    if missing:
+        raise KeyError(
+            f"ptm_df is missing required columns: {sorted(missing)}"
+        )
+
+    out = variants_df.copy()
+
+    # --- Normalize chromosome notation: strip 'chr' prefix on both sides ---
+    out[variant_chrom_col] = (
+        out[variant_chrom_col].astype(str).str.replace(r"^chr", "", regex=True)
+    )
+
+    atlas = ptm_df.copy()
+    atlas[atlas_chrom_col] = (
+        atlas[atlas_chrom_col].astype(str).str.replace(r"^chr", "", regex=True)
+    )
+
+    # Drop atlas rows with null keys / codon bounds, cast codon cols to int.
+    atlas = atlas.dropna(subset=[atlas_gene_col, "codon_start", "codon_end"])
+    atlas["codon_start"] = atlas["codon_start"].astype(int)
+    atlas["codon_end"] = atlas["codon_end"].astype(int)
+
+    # --- Cell 4: is_ptm_site (inside codon interval) ---
+    left = (
+        out[[variant_gene_col, variant_chrom_col, variant_pos_col]]
+        .reset_index()
+        .rename(columns={"index": "_var_ix"})
+    )
+    joined_site = left.merge(
+        atlas[[atlas_gene_col, atlas_chrom_col, "codon_start", "codon_end"]],
+        how="inner",
+        left_on=[variant_gene_col, variant_chrom_col],
+        right_on=[atlas_gene_col, atlas_chrom_col],
+    )
+    hit_site = joined_site[
+        (joined_site[variant_pos_col] >= joined_site["codon_start"])
+        & (joined_site[variant_pos_col] <= joined_site["codon_end"])
+    ]
+    ptm_var_ix = set(hit_site["_var_ix"].unique())
+    out["is_ptm_site"] = out.index.isin(ptm_var_ix)
+
+    # --- Cell 11: is_ptm_proximal (inside expanded codon interval) ---
+    atlas_prox = atlas.copy()
+    atlas_prox["prox_start"] = atlas_prox["codon_start"] - int(proximal_bp)
+    atlas_prox["prox_end"] = atlas_prox["codon_end"] + int(proximal_bp)
+    joined_prox = left.merge(
+        atlas_prox[[atlas_gene_col, atlas_chrom_col, "prox_start", "prox_end"]],
+        how="inner",
+        left_on=[variant_gene_col, variant_chrom_col],
+        right_on=[atlas_gene_col, atlas_chrom_col],
+    )
+    hit_prox = joined_prox[
+        (joined_prox[variant_pos_col] >= joined_prox["prox_start"])
+        & (joined_prox[variant_pos_col] <= joined_prox["prox_end"])
+    ]
+    prox_var_ix = set(hit_prox["_var_ix"].unique())
+    out["is_ptm_proximal"] = out.index.isin(prox_var_ix)
+
+    return out
