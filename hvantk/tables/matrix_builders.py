@@ -29,6 +29,7 @@ def build_ucsc_ad(
     delimiter: str = "\t",
     split_gene_field: bool = True,
     overwrite: bool = False,
+    chunk_size: int = 500,
 ) -> "ad.AnnData":
     """Build an AnnData object from UCSC Cell Browser expression + metadata.
 
@@ -48,6 +49,8 @@ def build_ucsc_ad(
         Split pipe-separated gene names, keeping the first element.
     overwrite : bool
         Allow overwriting *output_path* if it exists.
+    chunk_size : int
+        Gene rows per streaming chunk (default 500).
 
     Returns
     -------
@@ -71,6 +74,7 @@ def build_ucsc_ad(
         gene_column=gene_column,
         delimiter=delimiter,
         split_gene_field=split_gene_field,
+        chunk_size=chunk_size,
     )
 
     adata.uns["hvantk_metadata"] = build_anndata_metadata(
