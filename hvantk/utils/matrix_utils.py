@@ -95,68 +95,55 @@ def summarize_expression_ad(
     adata: ad.AnnData,
     group_by: Union[str, List[str]],
     filter_by: Optional[Dict[str, Union[str, List[str]]]] = None,
-    min_cells_per_group: int = 1,
-) -> pd.DataFrame:
-    """Collapse an AnnData expression matrix into a per-group, per-gene summary.
+    min_cells_per_group: int = 10,
+) -> ad.AnnData:
+    """Collapse an AnnData expression matrix into a per-group, per-gene AnnData.
+
+    Thin wrapper around :func:`scanpy.get.aggregate` that also derives
+    ``fraction_expressed`` and attaches per-group cell counts.
 
     Parameters
     ----------
     adata
         Expression AnnData (obs = cells/samples, var = genes).
     group_by
-        One or more obs columns. Multiple columns are joined with ``_``.
+        One or more obs columns to group by. Multi-column groupings produce
+        ``obs_names`` joined with ``_`` (matches ``scanpy.get.aggregate``).
     filter_by
         Optional pre-filter passed to :func:`filter_by_metadata_ad`.
     min_cells_per_group
-        Drop groups with fewer cells than this threshold.
+        Drop groups with fewer than this many cells.
 
     Returns
     -------
-    pd.DataFrame
-        Long-form with columns ``gene_id, group, mean, fraction_expressed,
-        n_cells``.
-
-    Notes
-    -----
-    Does not mutate *adata*. Uses ``groupby(...).indices`` for O(n_cells)
-    group splitting (no per-row index lookups).
+    ad.AnnData
+        Shape ``(n_groups, n_genes)`` with layers ``mean``, ``sum``,
+        ``count_nonzero``, ``fraction_expressed``. ``obs["n_cells"]`` stores
+        the per-group cell count.
     """
+    import scanpy as sc
+
     if filter_by:
         adata = filter_by_metadata_ad(adata, filter_by)
 
-    if isinstance(group_by, str):
-        group_by = [group_by]
+    by = [group_by] if isinstance(group_by, str) else list(group_by)
 
-    if len(group_by) == 1:
-        labels = adata.obs[group_by[0]].astype(str)
-    else:
-        labels = adata.obs[group_by[0]].astype(str)
-        for col in group_by[1:]:
-            labels = labels + "_" + adata.obs[col].astype(str)
+    agg = sc.get.aggregate(
+        adata,
+        by=by,
+        func=["mean", "sum", "count_nonzero"],
+    )
 
-    # Local Series — does not touch adata.obs.
-    label_series = pd.Series(labels.values, index=np.arange(adata.n_obs))
+    # sc.get.aggregate does not stash per-group cell counts; compute from the
+    # pre-aggregate adata, joining group_by columns with "_" to match
+    # agg.obs_names.
+    group_labels = adata.obs[by].astype(str).agg("_".join, axis=1)
+    n_cells = group_labels.value_counts().reindex(agg.obs_names).astype(int)
 
-    gene_ids = adata.var_names.tolist()
-    X = adata.X
+    agg.obs["n_cells"] = n_cells.values
+    agg.layers["fraction_expressed"] = (
+        np.asarray(agg.layers["count_nonzero"]) / n_cells.values[:, None]
+    )
 
-    records: List[Dict[str, Any]] = []
-    for group_name, positions in label_series.groupby(label_series).groups.items():
-        n_cells = len(positions)
-        if n_cells < min_cells_per_group:
-            continue
-        sub = X[np.asarray(positions), :]
-        means = np.asarray(sub.mean(axis=0)).ravel()
-        frac_expr = np.asarray((sub > 0).mean(axis=0)).ravel()
-        for j, gid in enumerate(gene_ids):
-            records.append(
-                {
-                    "gene_id": gid,
-                    "group": group_name,
-                    "mean": float(means[j]),
-                    "fraction_expressed": float(frac_expr[j]),
-                    "n_cells": n_cells,
-                }
-            )
-
-    return pd.DataFrame(records)
+    keep = agg.obs["n_cells"].values >= min_cells_per_group
+    return agg[keep].copy()
