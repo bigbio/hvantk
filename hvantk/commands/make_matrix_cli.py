@@ -68,6 +68,13 @@ def mkmatrix_group():
 @click.option(
     "--split-gene-field/--no-split-gene-field", default=True, show_default=True
 )
+@click.option(
+    "--chunk-size",
+    type=int,
+    default=500,
+    show_default=True,
+    help="Gene rows per streaming chunk. Lower ⇒ less peak RAM, slower.",
+)
 @click.option("-w", "--overwrite", is_flag=True)
 def mkmatrix_ucsc(
     expression_matrix,
@@ -76,6 +83,7 @@ def mkmatrix_ucsc(
     gene_column,
     delimiter,
     split_gene_field,
+    chunk_size,
     overwrite,
 ):
     """Build an AnnData object from UCSC Cell Browser expression + metadata files."""
@@ -87,6 +95,7 @@ def mkmatrix_ucsc(
         gene_column=gene_column,
         delimiter=delimiter,
         split_gene_field=split_gene_field,
+        chunk_size=chunk_size,
         overwrite=overwrite,
     )
     click.echo(f"AnnData created at {output_path}")
