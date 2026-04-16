@@ -877,7 +877,8 @@ def _read_expression_wide(pkl_path, tsv_path):
     default=None,
     help=(
         "lmm-binned only: pandas-pickled DataFrame (gene x stratum) with "
-        "expression values. Missing strata are skipped."
+        "expression values. Missing strata are skipped. "
+        "Only load pickle files from trusted sources."
     ),
 )
 @click.option(

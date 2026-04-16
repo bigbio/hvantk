@@ -120,7 +120,7 @@ def run_lmm(
         Filter thresholds (notebook M defaults).
     """
     # Drop rows missing any required column (match notebook M's dropna).
-    sub = df.dropna(subset=[af_col, gene_col]).copy()
+    sub = df.dropna(subset=[af_col, gene_col, is_ptm_col]).copy()
     sub = sub[sub[af_col] > 0].copy()
     sub["log_af"] = np.log10(sub[af_col] + eps)
     sub["is_ptm"] = sub[is_ptm_col].astype(int)
@@ -225,8 +225,8 @@ def run_binned_interaction_lmm(
     min_cell_n : int
         Minimum count per ``(expr_bin, is_ptm)`` cell to proceed with the fit.
     """
-    # Drop rows missing AF/gene, then af > 0 (matches notebook K).
-    dfx = df.dropna(subset=[af_col, gene_col]).copy()
+    # Drop rows missing AF/gene/is_ptm, then af > 0 (matches notebook K).
+    dfx = df.dropna(subset=[af_col, gene_col, is_ptm_col]).copy()
     dfx = dfx[dfx[af_col] > 0].copy()
     dfx["log_af"] = np.log10(dfx[af_col] + eps)
     dfx["is_ptm"] = dfx[is_ptm_col].astype(int)

@@ -89,7 +89,7 @@ class PTMAtlasConfig:
             errors.append("output_ht is required")
         if not self.sources:
             errors.append("at least one source is required")
-        unknown = [s for s in self.sources if s not in _KNOWN_SOURCES]
+        unknown = [s for s in self.sources if s.lower() not in _KNOWN_SOURCES]
         if unknown:
             errors.append(
                 f"unknown source(s): {unknown}; must be subset of {sorted(_KNOWN_SOURCES)}"
@@ -205,11 +205,15 @@ def build_atlas(config: PTMAtlasConfig) -> PTMAtlasResult:
         if os.path.exists(expected):
             combined_tsv = expected
 
+    actual_sources = list(sources)
+    if "uniprot" not in actual_sources:
+        actual_sources.insert(0, "uniprot")
+
     return PTMAtlasResult(
         output_ht=build_result.output_ht,
         combined_tsv=combined_tsv,
         n_sites=build_result.n_mapped,
-        sources_used=list(sources),
+        sources_used=actual_sources,
     )
 
 

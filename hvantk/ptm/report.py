@@ -549,9 +549,9 @@ def generate_phase2_report(
         sections.append(_build_phase2_atlas_section(atlas_result))
     if annotation_summary is not None:
         sections.append(_build_phase2_annotation_section(annotation_summary))
-    if lmm_results:
+    if lmm_results is not None:
         sections.append(_build_phase2_lmm_section(lmm_results))
-    if binned_lmm_results:
+    if binned_lmm_results is not None:
         sections.append(_build_phase2_binned_section(binned_lmm_results))
 
     sections.append(_build_footer())

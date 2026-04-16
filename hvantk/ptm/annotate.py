@@ -9,12 +9,17 @@ Also exposes a pandas-based SYMBOL+chrom annotator
 semantics for the CHD case-control workflow.
 """
 
-import hail as hl
+from __future__ import annotations
+
 import logging
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
 from hvantk.ptm.constants import PROXIMAL_BP
+
+if TYPE_CHECKING:
+    import hail as hl
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +61,8 @@ def annotate_variants_with_ptm(
     hl.Table
         Input table with PTM annotation fields added.
     """
+    import hail as hl
+
     ref_genome = variants_ht.locus.dtype.reference_genome.name
     flank_bp = flanking_codons * 3
 
