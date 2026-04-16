@@ -133,7 +133,7 @@ def create_anndata_from_ucsc_matrix(
         index_col=0,
         chunksize=chunk_size,
     )
-    for chunk in reader:
+    for chunk_idx, chunk in enumerate(reader):
         if cell_ids is None:
             cell_ids = list(chunk.columns)
 
@@ -152,7 +152,7 @@ def create_anndata_from_ucsc_matrix(
 
         sparse_chunks.append(sparse.csr_matrix(chunk_values))
         n_seen += len(chunk_genes)
-        if n_seen % (chunk_size * 10) == 0:
+        if (chunk_idx + 1) % 10 == 0:
             logger.info("  streamed %d genes", n_seen)
 
     if not sparse_chunks:
