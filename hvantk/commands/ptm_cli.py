@@ -816,13 +816,22 @@ def ptm_atlas(
 def _read_variants_table(path: str):
     """Load a variant table from CSV/TSV with transparent gzip/bgz support."""
     import pandas as _pd
+    from pathlib import Path
 
     p = str(path)
-    # pandas infers compression from extension (.gz / .bgz handled via gzip).
-    sep = "\t" if p.endswith((".tsv", ".tsv.gz", ".tsv.bgz", ".tab")) else None
-    if sep is None:
-        # Fall back to comma separator if neither .tsv nor .csv explicit.
-        sep = "," if p.endswith((".csv", ".csv.gz")) else "\t"
+    # Derive the delimiter from the last non-compression suffix so inputs like
+    # ``variants.csv.bgz`` are parsed as CSV, not TSV.
+    compression_suffixes = {".gz", ".bgz", ".bz2"}
+    base_suffix = next(
+        (s.lower() for s in reversed(Path(p).suffixes) if s.lower() not in compression_suffixes),
+        "",
+    )
+    if base_suffix in {".tsv", ".tab"}:
+        sep = "\t"
+    elif base_suffix == ".csv":
+        sep = ","
+    else:
+        sep = "\t"
     return _pd.read_csv(p, sep=sep, low_memory=False)
 
 
