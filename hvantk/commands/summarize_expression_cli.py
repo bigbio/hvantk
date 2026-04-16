@@ -4,8 +4,9 @@ CLI commands for expression AnnData analysis.
 Grouped under ``hvantk expression``:
 
 - ``hvantk expression describe``: inspect metadata fields in an expression .h5ad
-- ``hvantk expression summarize``: collapse an expression .h5ad into a gene-level
-  summary DataFrame saved as Parquet
+- ``hvantk expression summarize``: aggregate an expression .h5ad into a
+  per-group × per-gene AnnData (saved as .h5ad) with mean / sum /
+  count_nonzero / fraction_expressed in layers
 - ``hvantk expression markers``: extract marker genes using scanpy rank_genes_groups
 """
 
