@@ -272,7 +272,14 @@ def run_binned_interaction_lmm(
     dfx["expr_bin"] = pd.Categorical(assigned, categories=ordered, ordered=True)
 
     # Sparsity gate: every (expr_bin, is_ptm) cell must have >= min_cell_n.
-    bc = dfx.groupby(["expr_bin", "is_ptm"], observed=False).size().unstack(fill_value=0)
+    # Reindex columns to [0, 1] so strata missing an entire PTM class still
+    # fail the gate instead of squeezing through on a degenerate design.
+    bc = (
+        dfx.groupby(["expr_bin", "is_ptm"], observed=False)
+        .size()
+        .unstack(fill_value=0)
+        .reindex(columns=[0, 1], fill_value=0)
+    )
     if (bc < min_cell_n).any().any():
         return _skipped("skipped: sparse bins", bin_levels=ordered)
 
