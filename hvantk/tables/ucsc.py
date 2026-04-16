@@ -72,64 +72,104 @@ def create_anndata_from_ucsc_matrix(
     gene_column: str = UCSC_GENE_COLUMN,
     delimiter: str = "\t",
     split_gene_field: bool = True,
+    chunk_size: int = 500,
 ) -> ad.AnnData:
     """Create an AnnData object from a UCSC Cell Browser expression matrix.
 
-    The input file has genes as rows and cells as columns.  The function
-    transposes the data to the AnnData convention (obs = cells, var = genes)
-    and stores the expression values as a ``scipy.sparse.csr_matrix`` in
-    ``float32``.
+    The input file has genes as rows and cells as columns. This function
+    streams the file in chunks of ``chunk_size`` genes, converts each chunk
+    to a ``scipy.sparse.csr_matrix``, and vstacks them, so peak RAM stays
+    roughly ``chunk_size × n_cells × 4 B`` plus the growing sparse result.
+    The stacked matrix is transposed to the AnnData convention
+    (obs = cells, var = genes) and stored as ``float32`` CSR.
 
     Parameters
     ----------
     expression_matrix_path : str
-        Path to the expression TSV (genes x cells).
+        Path to the expression TSV or `.tsv.gz` (genes x cells).
     metadata_df : pd.DataFrame, optional
-        Cell metadata to join into ``adata.obs``.  Index must match cell ids.
+        Cell metadata to join into ``adata.obs``. Index must match cell ids.
     gene_column : str
         Name of the first column containing gene identifiers.
     delimiter : str
         Column delimiter (default tab).
     split_gene_field : bool
         If True, split gene names on ``|`` and keep only the first element.
+    chunk_size : int
+        Gene rows per streaming chunk. Lower ⇒ less peak RAM, slower.
 
     Returns
     -------
     ad.AnnData
-        AnnData with shape (n_cells, n_genes).
+        AnnData with shape (n_cells, n_genes), sparse CSR X.
 
     Raises
     ------
     FileNotFoundError
         If *expression_matrix_path* does not exist.
+    ValueError
+        If a chunk fails float32 conversion (names the offending gene row).
     """
     if not os.path.exists(expression_matrix_path):
         raise FileNotFoundError(
             f"Expression matrix file not found: {expression_matrix_path}"
         )
 
-    logger.info("Reading expression matrix from %s", expression_matrix_path)
-    expr_df = pd.read_csv(
-        expression_matrix_path, sep=delimiter, index_col=0
+    logger.info(
+        "Streaming expression matrix from %s (chunk_size=%d)",
+        expression_matrix_path,
+        chunk_size,
     )
 
-    # gene names are in the index after index_col=0
-    gene_names = expr_df.index.astype(str)
-    if split_gene_field:
-        gene_names = gene_names.str.split("|").str[0]
-    expr_df.index = gene_names
+    gene_name_chunks = []
+    sparse_chunks = []
+    cell_ids = None
+    n_seen = 0
 
-    # Transpose: genes x cells -> cells x genes
-    X = sparse.csr_matrix(expr_df.values.T.astype(np.float32))
+    reader = pd.read_csv(
+        expression_matrix_path,
+        sep=delimiter,
+        header=0,
+        index_col=0,
+        chunksize=chunk_size,
+    )
+    for chunk in reader:
+        if cell_ids is None:
+            cell_ids = list(chunk.columns)
+
+        chunk_genes = chunk.index.astype(str)
+        if split_gene_field:
+            chunk_genes = chunk_genes.str.split("|").str[0]
+        gene_name_chunks.append(np.asarray(chunk_genes))
+
+        try:
+            chunk_values = chunk.to_numpy(dtype=np.float32, copy=False)
+        except (ValueError, TypeError) as exc:
+            bad_gene = chunk_genes[0] if len(chunk_genes) else "<unknown>"
+            raise ValueError(
+                f"Non-numeric value in chunk starting at gene {bad_gene!r}: {exc}"
+            ) from exc
+
+        sparse_chunks.append(sparse.csr_matrix(chunk_values))
+        n_seen += len(chunk_genes)
+        if n_seen % (chunk_size * 10) == 0:
+            logger.info("  streamed %d genes", n_seen)
+
+    if not sparse_chunks:
+        raise ValueError(
+            f"Expression matrix {expression_matrix_path!r} contained no data rows."
+        )
+
+    # Genes-x-cells sparse → cells-x-genes AnnData convention.
+    X = sparse.vstack(sparse_chunks, format="csr").T.tocsr()
+    gene_names = np.concatenate(gene_name_chunks)
 
     var = pd.DataFrame(index=pd.Index(gene_names, name=gene_column))
-    obs = pd.DataFrame(index=pd.Index(expr_df.columns, name=UCSC_CELL_ID_COLUMN))
+    obs = pd.DataFrame(index=pd.Index(cell_ids, name=UCSC_CELL_ID_COLUMN))
 
     adata = ad.AnnData(X=X, obs=obs, var=var)
 
-    # Join metadata into obs if provided
     if metadata_df is not None:
-        # Align metadata to obs index
         common = adata.obs.index.intersection(metadata_df.index)
         if len(common) == 0:
             logger.warning(
@@ -139,4 +179,5 @@ def create_anndata_from_ucsc_matrix(
         for col in meta_aligned.columns:
             adata.obs[col] = meta_aligned[col].values
 
+    logger.info("Built AnnData: %d cells × %d genes", adata.shape[0], adata.shape[1])
     return adata
