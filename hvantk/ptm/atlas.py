@@ -89,6 +89,11 @@ class PTMAtlasConfig:
             errors.append("output_ht is required")
         if not self.sources:
             errors.append("at least one source is required")
+        if self.sources and "uniprot" not in {s.lower() for s in self.sources}:
+            errors.append(
+                "'uniprot' is required: the underlying ptm_build_pipeline "
+                "always runs UniProt as the primary source"
+            )
         unknown = [s for s in self.sources if s.lower() not in _KNOWN_SOURCES]
         if unknown:
             errors.append(
@@ -156,24 +161,13 @@ def build_atlas(config: PTMAtlasConfig) -> PTMAtlasResult:
         raise ValueError(f"Invalid PTMAtlasConfig: {'; '.join(errors)}")
 
     sources = [s.lower() for s in config.sources]
-    include_uniprot = "uniprot" in sources
     include_peptideatlas = "peptideatlas" in sources
     include_cptac = "cptac" in sources
 
     # Translate the Phase-2 config into the legacy PTMBuildConfig. Unselected
     # sources are passed as None, which disables the corresponding pipeline
-    # step. UniProt is always the primary source in the legacy pipeline; if
-    # the caller opted it out, we fall back to the REST download anyway
-    # (pipeline.ptm_build_pipeline requires ptm_tsv to run).
-    if not include_uniprot:
-        # The shipped pipeline treats UniProt as the mandatory primary source
-        # (step 3 always runs). Warn rather than silently including it.
-        logger.warning(
-            "uniprot not listed in sources; pipeline still runs UniProt "
-            "as the mandatory primary source. Add 'uniprot' to sources "
-            "to suppress this warning."
-        )
-
+    # step. UniProt is enforced in ``PTMAtlasConfig.validate()`` because the
+    # shipped pipeline always runs it as the primary source.
     build_cfg = PTMBuildConfig(
         output_dir=config.output_dir,
         output_ht=config.output_ht,
@@ -205,15 +199,11 @@ def build_atlas(config: PTMAtlasConfig) -> PTMAtlasResult:
         if os.path.exists(expected):
             combined_tsv = expected
 
-    actual_sources = list(sources)
-    if "uniprot" not in actual_sources:
-        actual_sources.insert(0, "uniprot")
-
     return PTMAtlasResult(
         output_ht=build_result.output_ht,
         combined_tsv=combined_tsv,
         n_sites=build_result.n_mapped,
-        sources_used=actual_sources,
+        sources_used=list(sources),
     )
 
 
