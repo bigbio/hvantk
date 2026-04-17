@@ -25,6 +25,7 @@ __all__ = [
     "load_ucsc_metadata",
     "create_anndata_from_ucsc_matrix",
     "build_ucsc_atlas_backed",
+    "summarize_ucsc_streaming",
 ]
 
 logger = logging.getLogger(__name__)
@@ -407,3 +408,185 @@ def build_ucsc_atlas_backed(
         n_cells, n_appended, output_path,
     )
     return output_path
+
+
+def summarize_ucsc_streaming(
+    expression_matrix_path: str,
+    metadata_df: pd.DataFrame,
+    group_by: str | list[str],
+    filter_by: dict[str, str | list[str]] | None = None,
+    min_cells_per_group: int = 10,
+    gene_column: str = UCSC_GENE_COLUMN,
+    delimiter: str = "\t",
+    split_gene_field: bool = True,
+) -> ad.AnnData:
+    """Stream a UCSC expression matrix and aggregate per-group per-gene
+    statistics in one pass.
+
+    Returns an AnnData of shape ``(n_groups, n_genes)`` with ``X`` set to
+    the per-group mean (float32) and ``layers`` containing ``sum``,
+    ``count_nonzero``, ``fraction_expressed``. ``obs`` includes the
+    original group-by columns plus ``n_cells``.
+
+    Memory: one ``float32[n_cells]`` row buffer + accumulators of size
+    ``n_groups × n_genes × 16 B`` (sum float64 + count_nz int64). Independent
+    of ``n_cells`` past the single-row buffer.
+    """
+    by = [group_by] if isinstance(group_by, str) else list(group_by)
+
+    # Apply filter on the DataFrame before factorizing groups.
+    work = metadata_df.copy()
+    if filter_by:
+        for field, value in filter_by.items():
+            if field not in work.columns:
+                raise ValueError(
+                    f"filter_by field {field!r} not in metadata columns: "
+                    f"{sorted(work.columns)}"
+                )
+            if isinstance(value, (list, tuple, set)):
+                work = work[work[field].isin(list(value))]
+            else:
+                work = work[work[field] == value]
+        if work.empty:
+            raise ValueError("filter_by produced zero cells.")
+
+    for col in by:
+        if col not in work.columns:
+            raise ValueError(
+                f"group_by column {col!r} not in metadata columns: "
+                f"{sorted(work.columns)}"
+            )
+
+    cell_ids, row_iter = _iter_ucsc_rows(
+        expression_matrix_path,
+        delimiter=delimiter,
+        split_gene_field=split_gene_field,
+    )
+    n_cells = len(cell_ids)
+
+    # Align metadata to expression header order, keep only cells present
+    # in both, and drop NaN-in-group rows.
+    aligned = work.reindex(cell_ids)
+    keep_mask = aligned[by].notna().all(axis=1).to_numpy()
+    if not keep_mask.any():
+        raise ValueError(
+            "No cells overlap between metadata (post-filter) and expression header."
+        )
+    # Count cells present in post-filter metadata that were dropped due to
+    # NaN in any group-by column (excludes cells absent from metadata entirely).
+    n_dropped_nan = int((~keep_mask & aligned.index.isin(work.index)).sum())
+    if n_dropped_nan:
+        example = cell_ids[int(np.where(~keep_mask)[0][0])]
+        logger.info(
+            "Dropped %d cells with NaN in group-by columns (example: %s).",
+            n_dropped_nan, example,
+        )
+
+    labels = (
+        aligned.loc[keep_mask, by].astype(str).agg("_".join, axis=1)
+        if len(by) > 1
+        else aligned.loc[keep_mask, by[0]].astype(str)
+    )
+    codes, uniques = pd.factorize(labels, sort=True)
+    n_groups = len(uniques)
+
+    # group_idx per cell in expression-header order, -1 for dropped cells.
+    group_idx = np.full(n_cells, -1, dtype=np.int64)
+    group_idx[keep_mask] = codes
+    valid = group_idx >= 0
+    n_cells_per_group = np.bincount(group_idx[valid], minlength=n_groups).astype(np.int64)
+
+    sum_matrix = np.zeros((n_groups, 0), dtype=np.float64)
+    count_nz_matrix = np.zeros((n_groups, 0), dtype=np.int64)
+    gene_names: list[str] = []
+
+    # Pre-size buffers in chunks to avoid per-gene resize; column-extend
+    # accumulators lazily.
+    BLOCK = 1024
+    sum_block = np.zeros((n_groups, BLOCK), dtype=np.float64)
+    count_block = np.zeros((n_groups, BLOCK), dtype=np.int64)
+    block_fill = 0
+
+    def _flush_block():
+        nonlocal sum_matrix, count_nz_matrix, block_fill
+        if block_fill == 0:
+            return
+        sum_matrix = np.concatenate([sum_matrix, sum_block[:, :block_fill]], axis=1)
+        count_nz_matrix = np.concatenate(
+            [count_nz_matrix, count_block[:, :block_fill]], axis=1
+        )
+        block_fill = 0
+
+    for gene, row in row_iter:
+        row_valid = row[valid]
+        sum_block[:, block_fill] = np.bincount(
+            group_idx[valid], weights=row_valid, minlength=n_groups
+        )
+        count_block[:, block_fill] = np.bincount(
+            group_idx[valid],
+            weights=(row_valid != 0).astype(np.float64),
+            minlength=n_groups,
+        ).astype(np.int64)
+        gene_names.append(gene)
+        block_fill += 1
+        if block_fill == BLOCK:
+            _flush_block()
+    _flush_block()
+
+    if len(gene_names) == 0:
+        raise ValueError(
+            f"Expression matrix {expression_matrix_path!r} contained no data rows."
+        )
+
+    n_cells_col = n_cells_per_group[:, None]
+    with np.errstate(divide="ignore", invalid="ignore"):
+        mean = np.where(n_cells_col > 0, sum_matrix / n_cells_col, 0.0).astype(np.float32)
+        fraction_expressed = np.where(
+            n_cells_col > 0, count_nz_matrix / n_cells_col, 0.0
+        ).astype(np.float32)
+
+    # Build per-field obs columns from the source DataFrame rather than
+    # splitting the composite label — values containing "_" would corrupt
+    # the split. Take one representative row per code from the pre-aggregate
+    # metadata and reindex to the code range (0..n_groups-1), which matches
+    # ``uniques`` order because pd.factorize(sort=True) returns codes that
+    # index into the sorted uniques.
+    by_src = aligned.loc[keep_mask, by].copy()
+    by_src["_code"] = codes
+    per_group = (
+        by_src.groupby("_code", sort=True).first().reindex(np.arange(n_groups))
+    )
+
+    obs = pd.DataFrame({"n_cells": n_cells_per_group}, index=pd.Index(uniques))
+    for col in by:
+        obs[col] = per_group[col].values
+
+    var = pd.DataFrame(index=pd.Index(gene_names, name=gene_column))
+
+    keep_groups = obs["n_cells"].to_numpy() >= min_cells_per_group
+    if not keep_groups.any():
+        # Build a short report for the error message.
+        report = "; ".join(
+            f"{u}={int(n)}" for u, n in zip(uniques, n_cells_per_group)
+        )
+        raise ValueError(
+            f"All groups fell below min_cells_per_group={min_cells_per_group}. "
+            f"Observed: {report}"
+        )
+
+    adata = ad.AnnData(
+        X=mean[keep_groups],
+        obs=obs[keep_groups].copy(),
+        var=var,
+        layers={
+            "sum": sum_matrix[keep_groups].astype(np.float32),
+            "count_nonzero": count_nz_matrix[keep_groups].astype(np.int64),
+            "fraction_expressed": fraction_expressed[keep_groups],
+            "mean": mean[keep_groups],
+        },
+    )
+    logger.info(
+        "Aggregated AnnData: %d groups × %d genes (dropped %d groups below min_cells)",
+        adata.n_obs, adata.n_vars, int((~keep_groups).sum()),
+    )
+    return adata
