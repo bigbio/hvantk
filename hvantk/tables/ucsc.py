@@ -7,7 +7,15 @@ into pandas DataFrames and AnnData objects for downstream analysis.
 
 from __future__ import annotations
 
+import gzip
+import logging
 import os
+from typing import Iterator
+
+import anndata as ad
+import numpy as np
+import pandas as pd
+from scipy import sparse
 
 from hvantk.core.constants import UCSC_CELL_ID_COLUMN, UCSC_GENE_COLUMN
 
@@ -16,15 +24,85 @@ __all__ = [
     "create_anndata_from_ucsc_matrix",
 ]
 
-
-import logging
-
-import numpy as np
-import pandas as pd
-import anndata as ad
-from scipy import sparse
-
 logger = logging.getLogger(__name__)
+
+
+def _open_text(path: str):
+    """Open a plain or gzipped text file for reading."""
+    if path.endswith(".gz"):
+        return gzip.open(path, "rt")
+    return open(path, "rt")
+
+
+def _iter_ucsc_rows(
+    expression_matrix_path: str,
+    delimiter: str = "\t",
+    split_gene_field: bool = True,
+) -> tuple[list[str], Iterator[tuple[str, np.ndarray]]]:
+    """Open a UCSC expression TSV (plain or gzipped) and return
+    ``(cell_ids, row_iterator)``.
+
+    ``cell_ids`` is the header's cell-column list, extracted eagerly.
+    ``row_iterator`` yields ``(gene_name, row_values_float32)`` per data
+    line and closes the underlying handle when exhausted.
+
+    The caller must iterate the returned generator to completion or call
+    its ``.close()`` method; otherwise the underlying file handle only
+    closes at generator finalization, which is GC-timing-dependent.
+
+    Raises
+    ------
+    FileNotFoundError
+        If ``expression_matrix_path`` does not exist.
+    ValueError
+        If the file is empty or a row has the wrong number of values.
+    """
+    if not os.path.exists(expression_matrix_path):
+        raise FileNotFoundError(
+            f"Expression matrix file not found: {expression_matrix_path}"
+        )
+
+    fh = _open_text(expression_matrix_path)
+    try:
+        header = fh.readline().rstrip("\n").rstrip("\r")
+        if not header:
+            fh.close()
+            raise ValueError(
+                f"Expression matrix {expression_matrix_path!r} is empty."
+            )
+        header_fields = header.split(delimiter)
+        cell_ids = header_fields[1:]
+        n_cells = len(cell_ids)
+    except Exception:
+        fh.close()
+        raise
+
+    def _rows() -> Iterator[tuple[str, np.ndarray]]:
+        try:
+            for line in fh:
+                line = line.rstrip("\n").rstrip("\r")
+                if not line:
+                    continue
+                tab = line.find(delimiter)
+                if tab < 0:
+                    continue
+                gene = line[:tab]
+                if split_gene_field:
+                    gene = gene.split("|", 1)[0]
+                row = np.fromstring(
+                    line[tab + 1:], sep=delimiter, dtype=np.float32
+                )
+                if row.shape[0] != n_cells:
+                    raise ValueError(
+                        f"Row for gene {gene!r} has {row.shape[0]} parseable "
+                        f"float values; expected {n_cells}. This usually "
+                        f"means a short row or a non-numeric token in the row."
+                    )
+                yield gene, row
+        finally:
+            fh.close()
+
+    return cell_ids, _rows()
 
 
 def load_ucsc_metadata(
@@ -77,11 +155,17 @@ def create_anndata_from_ucsc_matrix(
     """Create an AnnData object from a UCSC Cell Browser expression matrix.
 
     The input file has genes as rows and cells as columns. This function
-    streams the file in chunks of ``chunk_size`` genes, converts each chunk
-    to a ``scipy.sparse.csr_matrix``, and vstacks them, so peak RAM stays
+    streams the file row-by-row via ``gzip``/``open`` and parses each row
+    into a ``float32`` numpy array with ``np.fromstring``. Every
+    ``chunk_size`` gene rows are flushed into a ``scipy.sparse.csr_matrix``
+    chunk; the chunks are then vstacked and transposed to the AnnData
+    convention (obs = cells, var = genes). Peak RAM during streaming stays
     roughly ``chunk_size × n_cells × 4 B`` plus the growing sparse result.
-    The stacked matrix is transposed to the AnnData convention
-    (obs = cells, var = genes) and stored as ``float32`` CSR.
+
+    A row-oriented parser is used here rather than ``pandas.read_csv`` or
+    ``pyarrow.csv``: single-cell matrices from UCSC can have ~500k columns,
+    and both pandas' C engine (on gzip streams) and pyarrow's
+    column-oriented batches become orders-of-magnitude slower at that width.
 
     Parameters
     ----------
@@ -108,52 +192,46 @@ def create_anndata_from_ucsc_matrix(
     FileNotFoundError
         If *expression_matrix_path* does not exist.
     ValueError
-        If a chunk fails float32 conversion (names the offending gene row).
+        If a row fails float32 conversion (names the offending gene).
     """
-    if not os.path.exists(expression_matrix_path):
-        raise FileNotFoundError(
-            f"Expression matrix file not found: {expression_matrix_path}"
-        )
-
     logger.info(
         "Streaming expression matrix from %s (chunk_size=%d)",
         expression_matrix_path,
         chunk_size,
     )
 
-    gene_name_chunks = []
-    sparse_chunks = []
-    cell_ids = None
-    n_seen = 0
-
-    reader = pd.read_csv(
+    cell_ids, row_iter = _iter_ucsc_rows(
         expression_matrix_path,
-        sep=delimiter,
-        header=0,
-        index_col=0,
-        chunksize=chunk_size,
+        delimiter=delimiter,
+        split_gene_field=split_gene_field,
     )
-    for chunk_idx, chunk in enumerate(reader):
-        if cell_ids is None:
-            cell_ids = list(chunk.columns)
 
-        chunk_genes = chunk.index.astype(str)
-        if split_gene_field:
-            chunk_genes = chunk_genes.str.split("|").str[0]
-        gene_name_chunks.append(np.asarray(chunk_genes))
+    gene_name_chunks: list[np.ndarray] = []
+    sparse_chunks: list[sparse.csr_matrix] = []
+    buf_rows: list[np.ndarray] = []
+    buf_genes: list[str] = []
+    n_seen = 0
+    n_chunks = 0
 
-        try:
-            chunk_values = chunk.to_numpy(dtype=np.float32, copy=False)
-        except (ValueError, TypeError) as exc:
-            bad_gene = chunk_genes[0] if len(chunk_genes) else "<unknown>"
-            raise ValueError(
-                f"Non-numeric value in chunk starting at gene {bad_gene!r}: {exc}"
-            ) from exc
-
-        sparse_chunks.append(sparse.csr_matrix(chunk_values))
-        n_seen += len(chunk_genes)
-        if (chunk_idx + 1) % 10 == 0:
+    def _flush() -> None:
+        nonlocal n_chunks
+        if not buf_rows:
+            return
+        sparse_chunks.append(sparse.csr_matrix(np.vstack(buf_rows)))
+        gene_name_chunks.append(np.asarray(buf_genes))
+        buf_rows.clear()
+        buf_genes.clear()
+        n_chunks += 1
+        if n_chunks % 10 == 0:
             logger.info("  streamed %d genes", n_seen)
+
+    for gene, row in row_iter:
+        buf_rows.append(row)
+        buf_genes.append(gene)
+        n_seen += 1
+        if len(buf_rows) >= chunk_size:
+            _flush()
+    _flush()
 
     if not sparse_chunks:
         raise ValueError(
@@ -172,8 +250,9 @@ def create_anndata_from_ucsc_matrix(
     if metadata_df is not None:
         common = adata.obs.index.intersection(metadata_df.index)
         if len(common) == 0:
-            logger.warning(
-                "No overlapping cell ids between expression matrix and metadata"
+            raise ValueError(
+                f"No overlapping cell ids between expression matrix "
+                f"{expression_matrix_path!r} and metadata."
             )
         meta_aligned = metadata_df.reindex(adata.obs.index)
         for col in meta_aligned.columns:
