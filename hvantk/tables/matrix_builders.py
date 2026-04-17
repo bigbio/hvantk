@@ -76,6 +76,7 @@ def build_ucsc_ad(
         load_ucsc_metadata,
         create_anndata_from_ucsc_matrix,
         build_ucsc_atlas_backed,
+        coerce_obs_for_h5ad,
     )
     from hvantk.core.anndata_utils import (
         build_anndata_metadata,
@@ -133,6 +134,10 @@ def build_ucsc_ad(
         "UCSC", expression_matrix_path
     )
     annotate_column_summary_ad(adata)
+    # Coerce object-dtype obs columns before any write_h5ad — anndata's
+    # vlen-string HDF5 writer chokes on NaN mixed with strings. Matches
+    # the invariant enforced by build_ucsc_atlas_backed.
+    adata.obs = coerce_obs_for_h5ad(adata.obs)
     if output_path:
         save_anndata(adata, output_path, overwrite=overwrite)
     return adata

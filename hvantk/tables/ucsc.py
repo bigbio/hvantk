@@ -10,6 +10,7 @@ from __future__ import annotations
 import gzip
 import logging
 import os
+import tempfile
 from typing import Iterator
 
 import anndata as ad
@@ -26,6 +27,8 @@ __all__ = [
     "create_anndata_from_ucsc_matrix",
     "build_ucsc_atlas_backed",
     "summarize_ucsc_streaming",
+    "finalize_partial_atlas",
+    "coerce_obs_for_h5ad",
 ]
 
 logger = logging.getLogger(__name__)
@@ -107,6 +110,81 @@ def _iter_ucsc_rows(
             fh.close()
 
     return cell_ids, _rows()
+
+
+def _iter_ucsc_gene_names_only(
+    expression_matrix_path: str,
+    delimiter: str = "\t",
+    split_gene_field: bool = True,
+) -> tuple[list[str], list[str]]:
+    """Fast pass over a UCSC expression TSV that reads the header and the
+    first column of every data row, skipping the float parse entirely.
+
+    Returns ``(cell_ids, gene_names)``. Useful for recovery paths where the
+    per-cell float data is already on disk and only the row labels are
+    needed.
+    """
+    if not os.path.exists(expression_matrix_path):
+        raise FileNotFoundError(
+            f"Expression matrix file not found: {expression_matrix_path}"
+        )
+    fh = _open_text(expression_matrix_path)
+    try:
+        header = fh.readline().rstrip("\n").rstrip("\r")
+        if not header:
+            raise ValueError(
+                f"Expression matrix {expression_matrix_path!r} is empty."
+            )
+        cell_ids = header.split(delimiter)[1:]
+        gene_names: list[str] = []
+        for line in fh:
+            tab = line.find(delimiter)
+            if tab < 0:
+                continue
+            gene = line[:tab]
+            if split_gene_field:
+                gene = gene.split("|", 1)[0]
+            gene_names.append(gene)
+    finally:
+        fh.close()
+    return cell_ids, gene_names
+
+
+def coerce_obs_for_h5ad(obs: pd.DataFrame) -> pd.DataFrame:
+    """Normalize a ``DataFrame`` so it can be written to h5ad.
+
+    ``anndata``'s vlen-string HDF5 writer raises ``TypeError`` when an
+    ``object``-dtype column contains NaN (which pandas stores as ``float``)
+    mixed with strings — the implicit ``float → str`` conversion never
+    happens. Coerce every ``object`` column through
+    ``.where(notna, "").astype(str)`` so NaN becomes the empty string and
+    every remaining value is a Python ``str``. Numeric, boolean,
+    categorical, and datetime columns are left untouched.
+
+    Returns a copy; does not mutate the input.
+    """
+    obs = obs.copy()
+    for col in obs.select_dtypes(include=["object"]).columns:
+        obs[col] = obs[col].where(obs[col].notna(), "").astype(str)
+    return obs
+
+
+def _probe_write_elem(elem, key: str) -> None:
+    """Write *elem* to a throwaway HDF5 file under *key* to verify it
+    serializes. Raises the underlying error (unchanged) so the caller
+    learns *before* committing to a long-running stream that a metadata
+    column won't serialize.
+
+    Cheap — writes to a temp file that is removed on exit.
+    """
+    with tempfile.NamedTemporaryFile(suffix=".h5", delete=False) as tmp:
+        tmp_path = tmp.name
+    try:
+        with h5py.File(tmp_path, "w") as probe:
+            write_elem(probe, key, elem)
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
 
 
 def load_ucsc_metadata(
@@ -332,6 +410,19 @@ def build_ucsc_atlas_backed(
                 f"{expression_matrix_path!r} and metadata."
             )
 
+    # Build the full obs DataFrame now (before the stream) so we can
+    # probe its h5ad-serializability in <1s. This catches cases like
+    # object columns with NaN mixed with strings — which anndata's
+    # vlen-string writer cannot coerce — before we commit hours of I/O
+    # to the X stream only to fail at the closing write_elem.
+    obs = pd.DataFrame(index=pd.Index(cell_ids, name=UCSC_CELL_ID_COLUMN))
+    if metadata_df is not None:
+        meta_aligned = metadata_df.reindex(obs.index)
+        for col in meta_aligned.columns:
+            obs[col] = meta_aligned[col].values
+    obs = coerce_obs_for_h5ad(obs)
+    _probe_write_elem(obs, "obs")
+
     logger.info(
         "Backed-write atlas → %s (n_cells=%d, column_batch=%d)",
         output_path, n_cells, column_batch,
@@ -381,19 +472,6 @@ def build_ucsc_atlas_backed(
                 f"Expression matrix {expression_matrix_path!r} contained no data rows."
             )
 
-        # obs: cell_ids + optional metadata join (reject zero-overlap).
-        obs = pd.DataFrame(index=pd.Index(cell_ids, name=UCSC_CELL_ID_COLUMN))
-        if metadata_df is not None:
-            common = obs.index.intersection(metadata_df.index)
-            if len(common) == 0:
-                raise ValueError(
-                    f"No overlapping cell ids between expression matrix "
-                    f"{expression_matrix_path!r} and metadata."
-                )
-            meta_aligned = metadata_df.reindex(obs.index)
-            for col in meta_aligned.columns:
-                obs[col] = meta_aligned[col].values
-
         var = pd.DataFrame(index=pd.Index(gene_names, name=gene_column))
 
         write_elem(f, "obs", obs)
@@ -406,6 +484,110 @@ def build_ucsc_atlas_backed(
     logger.info(
         "Backed atlas written: %d cells × %d genes → %s",
         n_cells, n_appended, output_path,
+    )
+    return output_path
+
+
+def finalize_partial_atlas(
+    output_path: str,
+    expression_matrix_path: str,
+    metadata_df: pd.DataFrame | None = None,
+    gene_column: str = UCSC_GENE_COLUMN,
+    delimiter: str = "\t",
+    split_gene_field: bool = True,
+    uns: dict | None = None,
+) -> str:
+    """Finish writing ``/obs``, ``/var``, ``/uns`` into a partially-written
+    backed ``.h5ad`` produced by :func:`build_ucsc_atlas_backed`.
+
+    Recovers files whose ``/X`` group was streamed to completion but whose
+    metadata write failed or was interrupted (crash, out-of-memory on
+    the post-stream serialization, ``write_elem`` type error, etc.). The
+    expensive ``X`` data is preserved; we re-parse only the source gzip's
+    row labels (first column of each line — minutes, not hours) to
+    rebuild ``var``, then write a fresh ``obs`` (coerced via
+    :func:`coerce_obs_for_h5ad`) and optional ``uns`` provenance.
+
+    Parameters
+    ----------
+    output_path : str
+        Partial ``.h5ad`` produced by ``build_ucsc_atlas_backed``. Must
+        contain a complete ``/X`` group (shape matches source dims).
+    expression_matrix_path : str
+        The same source TSV/gz that produced the partial file. Used to
+        re-derive ``cell_ids`` (header) and ``var`` (first column of each
+        row). Source cell count and gene count must match ``/X``'s
+        ``shape`` attribute.
+    metadata_df : pd.DataFrame, optional
+        Cell metadata to rebuild ``/obs`` from. Same shape + coercion as
+        ``build_ucsc_atlas_backed``.
+    gene_column, delimiter, split_gene_field : see ``build_ucsc_atlas_backed``.
+    uns : dict, optional
+        Provenance dict to write as ``/uns``.
+
+    Raises
+    ------
+    ValueError
+        If ``/X`` is missing, or source cell/gene counts disagree with
+        ``/X``'s shape (the source is not the same one that built this
+        partial file — refuse to clobber with mismatched labels).
+    """
+    with h5py.File(output_path, "r") as f:
+        if "X" not in f:
+            raise ValueError(
+                f"{output_path!r} has no /X group; nothing to recover — "
+                f"re-run build_ucsc_atlas_backed from scratch."
+            )
+        x_shape = tuple(int(s) for s in f["X"].attrs["shape"])
+    n_cells_x, n_genes_x = x_shape
+    logger.info(
+        "Finalizing partial atlas at %s (/X shape=%d × %d)",
+        output_path, n_cells_x, n_genes_x,
+    )
+
+    cell_ids, gene_names = _iter_ucsc_gene_names_only(
+        expression_matrix_path,
+        delimiter=delimiter,
+        split_gene_field=split_gene_field,
+    )
+    if len(cell_ids) != n_cells_x:
+        raise ValueError(
+            f"Source cell count ({len(cell_ids)}) does not match the "
+            f"partial atlas /X rows ({n_cells_x}). The partial file was "
+            f"likely built from a different source — refusing to finalize."
+        )
+    if len(gene_names) != n_genes_x:
+        raise ValueError(
+            f"Source gene count ({len(gene_names)}) does not match the "
+            f"partial atlas /X columns ({n_genes_x}). The source and "
+            f"partial file disagree — refusing to finalize."
+        )
+
+    obs = pd.DataFrame(index=pd.Index(cell_ids, name=UCSC_CELL_ID_COLUMN))
+    if metadata_df is not None:
+        if len(obs.index.intersection(metadata_df.index)) == 0:
+            raise ValueError(
+                f"No overlapping cell ids between {expression_matrix_path!r} "
+                f"header and the provided metadata_df."
+            )
+        meta_aligned = metadata_df.reindex(obs.index)
+        for col in meta_aligned.columns:
+            obs[col] = meta_aligned[col].values
+    obs = coerce_obs_for_h5ad(obs)
+    var = pd.DataFrame(index=pd.Index(gene_names, name=gene_column))
+
+    with h5py.File(output_path, "a") as f:
+        for key in ("obs", "var", "uns"):
+            if key in f:
+                del f[key]
+        write_elem(f, "obs", obs)
+        write_elem(f, "var", var)
+        if uns is not None:
+            write_elem(f, "uns", uns)
+
+    logger.info(
+        "Finalized partial atlas at %s (%d cells × %d genes)",
+        output_path, n_cells_x, n_genes_x,
     )
     return output_path
 
