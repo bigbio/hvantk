@@ -378,3 +378,177 @@ def markers_cmd(
         collection.save(str(output_path))
 
     click.echo(f"\nSaved to: {output_path}")
+
+
+@expression_group.command("summarize-ucsc")
+@click.option(
+    "-e",
+    "--expression-matrix",
+    "expression_matrix",
+    type=click.Path(exists=True),
+    required=True,
+    help="Path to the UCSC expression TSV (plain or gzipped).",
+)
+@click.option(
+    "-m",
+    "--metadata",
+    "metadata_path",
+    type=click.Path(exists=True),
+    required=True,
+    help="Path to the UCSC cell metadata TSV.",
+)
+@click.option(
+    "--group-by",
+    multiple=True,
+    required=True,
+    help="Metadata column(s) to group by. Repeat for multi-field grouping.",
+)
+@click.option(
+    "--filter-by",
+    multiple=True,
+    default=None,
+    help=(
+        "Pre-filter cells: FIELD=VALUE (repeatable). "
+        "Example: --filter-by Region=Cortex --filter-by TimePoint=9wpc"
+    ),
+)
+@click.option(
+    "--min-cells",
+    type=int,
+    default=10,
+    show_default=True,
+    help="Drop groups with fewer cells than this threshold.",
+)
+@click.option(
+    "--gene-column",
+    default="gene",
+    show_default=True,
+)
+@click.option(
+    "--delimiter",
+    default="\t",
+    show_default=True,
+)
+@click.option(
+    "--split-gene-field/--no-split-gene-field",
+    default=True,
+    show_default=True,
+)
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(),
+    required=True,
+    help="Output path for the aggregated AnnData (.h5ad).",
+)
+@click.option(
+    "--overwrite",
+    is_flag=True,
+    default=False,
+    help="Overwrite existing output.",
+)
+def summarize_ucsc_cmd(
+    expression_matrix,
+    metadata_path,
+    group_by,
+    filter_by,
+    min_cells,
+    gene_column,
+    delimiter,
+    split_gene_field,
+    output,
+    overwrite,
+):
+    """Fused stream-and-aggregate: UCSC expression + metadata → groups × genes .h5ad.
+
+    Skips the intermediate cells × genes atlas.h5ad — streams the expression
+    matrix row-by-row and accumulates per-group per-gene statistics in a
+    single pass. Output schema matches `hvantk expression summarize`, so
+    downstream consumers do not branch on which path produced the summary.
+
+    \b
+    Examples:
+
+      # Single-field grouping
+      hvantk expression summarize-ucsc \\
+          -e exprMatrix.tsv.gz -m meta.tsv \\
+          --group-by Class \\
+          -o class_summary.h5ad
+
+      # Multi-field grouping + pre-filter
+      hvantk expression summarize-ucsc \\
+          -e exprMatrix.tsv.gz -m meta.tsv \\
+          --group-by Region --group-by TimePoint \\
+          --filter-by Region=Cortex \\
+          --min-cells 10 \\
+          -o region_timepoint_summary.h5ad
+    """
+    from pathlib import Path
+
+    from hvantk.tables.ucsc import load_ucsc_metadata, summarize_ucsc_streaming
+
+    output_path = Path(output)
+    if output_path.suffix != ".h5ad":
+        raise click.BadParameter(
+            f"Output must end in '.h5ad' (got {output_path.suffix!r}).",
+            param_hint="--output",
+        )
+
+    if output_path.exists() and not overwrite:
+        click.echo(
+            f"Error: Output file already exists: {output_path}\n"
+            "Use --overwrite to replace it.",
+            err=True,
+        )
+        raise SystemExit(1)
+
+    filters = None
+    if filter_by:
+        filters = {}
+        for item in filter_by:
+            if "=" not in item:
+                raise click.BadParameter(
+                    f"Expected FIELD=VALUE format, got: {item!r}",
+                    param_hint="--filter-by",
+                )
+            key, value = item.split("=", 1)
+            filters[key.strip()] = value.strip()
+
+    metadata_df = load_ucsc_metadata(metadata_path, sep=delimiter)
+
+    missing = [col for col in group_by if col not in metadata_df.columns]
+    if missing:
+        raise click.BadParameter(
+            f"--group-by column(s) not in metadata: {missing}. "
+            f"Available: {sorted(metadata_df.columns)}",
+            param_hint="--group-by",
+        )
+
+    summary = summarize_ucsc_streaming(
+        expression_matrix_path=expression_matrix,
+        metadata_df=metadata_df,
+        group_by=list(group_by),
+        filter_by=filters,
+        min_cells_per_group=min_cells,
+        gene_column=gene_column,
+        delimiter=delimiter,
+        split_gene_field=split_gene_field,
+    )
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    summary.write_h5ad(str(output_path))
+
+    n_cells = summary.obs["n_cells"].astype(int)
+    click.echo(f"\nSummary AnnData written to: {output_path}")
+    click.echo(f"  Shape:  {summary.n_obs} groups × {summary.n_vars} genes")
+    click.echo(f"  Layers: {sorted(summary.layers.keys())}")
+    click.echo(
+        f"  Cells per group: min={int(n_cells.min())}, "
+        f"max={int(n_cells.max())}, total={int(n_cells.sum())}"
+    )
+    click.echo("")
+    click.echo(f"Group labels ({summary.n_obs}):")
+    for label, n in list(zip(summary.obs_names, n_cells))[:10]:
+        click.echo(f"  {label:<40s}  {int(n):>8,} cells")
+    if summary.n_obs > 10:
+        click.echo(f"  ... and {summary.n_obs - 10} more")
