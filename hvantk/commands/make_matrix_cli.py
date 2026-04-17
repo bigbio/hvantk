@@ -75,6 +75,22 @@ def mkmatrix_group():
     show_default=True,
     help="Gene rows per streaming chunk. Lower ⇒ less peak RAM, slower.",
 )
+@click.option(
+    "--backed/--no-backed",
+    default=None,
+    help=(
+        "Use the incremental backed-write builder (CSC columns appended to "
+        ".h5ad on disk; no RAM materialization). Default: auto — backed if "
+        "the input is larger than ~1 GiB."
+    ),
+)
+@click.option(
+    "--column-batch",
+    type=int,
+    default=64,
+    show_default=True,
+    help="Gene columns per backed-append block (backed mode only).",
+)
 @click.option("-w", "--overwrite", is_flag=True)
 def mkmatrix_ucsc(
     expression_matrix,
@@ -84,6 +100,8 @@ def mkmatrix_ucsc(
     delimiter,
     split_gene_field,
     chunk_size,
+    backed,
+    column_batch,
     overwrite,
 ):
     """Build an AnnData object from UCSC Cell Browser expression + metadata files."""
@@ -96,6 +114,8 @@ def mkmatrix_ucsc(
         delimiter=delimiter,
         split_gene_field=split_gene_field,
         chunk_size=chunk_size,
+        backed=backed,
+        column_batch=column_batch,
         overwrite=overwrite,
     )
     click.echo(f"AnnData created at {output_path}")
