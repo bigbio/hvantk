@@ -9,9 +9,13 @@ from __future__ import annotations
 
 import anndata as ad
 import logging
+import os
 from typing import Optional
 
 logger = logging.getLogger(__name__)
+
+# Auto-select the backed builder for UCSC inputs larger than this threshold.
+BACKED_BUILDER_THRESHOLD_BYTES = 1 * 1024 * 1024 * 1024  # 1 GiB
 
 __all__ = [
     "build_ucsc_ad",
@@ -30,6 +34,8 @@ def build_ucsc_ad(
     split_gene_field: bool = True,
     overwrite: bool = False,
     chunk_size: int = 500,
+    backed: bool | None = None,
+    column_batch: int = 64,
 ) -> "ad.AnnData":
     """Build an AnnData object from UCSC Cell Browser expression + metadata.
 
@@ -51,13 +57,26 @@ def build_ucsc_ad(
         Allow overwriting *output_path* if it exists.
     chunk_size : int
         Gene rows per streaming chunk (default 500).
+    backed : bool, optional
+        Force the backed-write builder. When ``None`` (default), auto-select
+        based on the expression matrix file size (``> BACKED_BUILDER_THRESHOLD_BYTES``
+        triggers backed mode). When ``True``, ``output_path`` is required.
+    column_batch : int
+        Cell-column batch size used by the backed builder (default 64).
 
     Returns
     -------
     ad.AnnData
         Expression AnnData with metadata in ``obs`` and provenance in ``uns``.
+        In backed mode, returns a read-backed AnnData handle (``backed='r'``).
     """
-    from hvantk.tables.ucsc import load_ucsc_metadata, create_anndata_from_ucsc_matrix
+    import anndata as ad
+
+    from hvantk.tables.ucsc import (
+        load_ucsc_metadata,
+        create_anndata_from_ucsc_matrix,
+        build_ucsc_atlas_backed,
+    )
     from hvantk.core.anndata_utils import (
         build_anndata_metadata,
         annotate_column_summary_ad,
@@ -67,7 +86,41 @@ def build_ucsc_ad(
     logger.info("Loading UCSC metadata from %s", metadata_path)
     metadata_df = load_ucsc_metadata(metadata_path, sep=delimiter)
 
-    logger.info("Creating AnnData from UCSC expression matrix")
+    # Auto-select backed mode by input size unless caller forces.
+    if backed is None:
+        size = os.path.getsize(expression_matrix_path)
+        backed = size > BACKED_BUILDER_THRESHOLD_BYTES
+        logger.info(
+            "build_ucsc_ad: auto-selected backed=%s (input size %.2f GiB, threshold %.2f GiB)",
+            backed, size / (1024**3), BACKED_BUILDER_THRESHOLD_BYTES / (1024**3),
+        )
+
+    if backed:
+        if output_path is None:
+            raise ValueError("backed=True requires output_path (writes directly to disk).")
+        provenance = {"hvantk_metadata": build_anndata_metadata("UCSC", expression_matrix_path)}
+        build_ucsc_atlas_backed(
+            expression_matrix_path=expression_matrix_path,
+            output_path=output_path,
+            metadata_df=metadata_df,
+            gene_column=gene_column,
+            delimiter=delimiter,
+            split_gene_field=split_gene_field,
+            column_batch=column_batch,
+            overwrite=overwrite,
+            uns=provenance,
+        )
+        # Return a backed-mode handle — shape + obs/var without materializing X.
+        # annotate_column_summary_ad would need to scan the full X matrix and
+        # is intentionally skipped for backed atlases (v1 trade-off).
+        logger.info(
+            "Backed atlas built at %s; skipping annotate_column_summary_ad "
+            "(would materialize X). Returning a backed AnnData handle.",
+            output_path,
+        )
+        return ad.read_h5ad(output_path, backed="r")
+
+    logger.info("Creating AnnData from UCSC expression matrix (in-memory)")
     adata = create_anndata_from_ucsc_matrix(
         expression_matrix_path=expression_matrix_path,
         metadata_df=metadata_df,
@@ -76,15 +129,12 @@ def build_ucsc_ad(
         split_gene_field=split_gene_field,
         chunk_size=chunk_size,
     )
-
     adata.uns["hvantk_metadata"] = build_anndata_metadata(
         "UCSC", expression_matrix_path
     )
     annotate_column_summary_ad(adata)
-
     if output_path:
         save_anndata(adata, output_path, overwrite=overwrite)
-
     return adata
 
 
