@@ -13,8 +13,10 @@ import os
 from typing import Iterator
 
 import anndata as ad
+import h5py
 import numpy as np
 import pandas as pd
+from anndata.io import sparse_dataset, write_elem
 from scipy import sparse
 
 from hvantk.core.constants import UCSC_CELL_ID_COLUMN, UCSC_GENE_COLUMN
@@ -22,6 +24,7 @@ from hvantk.core.constants import UCSC_CELL_ID_COLUMN, UCSC_GENE_COLUMN
 __all__ = [
     "load_ucsc_metadata",
     "create_anndata_from_ucsc_matrix",
+    "build_ucsc_atlas_backed",
 ]
 
 logger = logging.getLogger(__name__)
@@ -260,3 +263,147 @@ def create_anndata_from_ucsc_matrix(
 
     logger.info("Built AnnData: %d cells × %d genes", adata.shape[0], adata.shape[1])
     return adata
+
+
+def build_ucsc_atlas_backed(
+    expression_matrix_path: str,
+    output_path: str,
+    metadata_df: pd.DataFrame | None = None,
+    gene_column: str = UCSC_GENE_COLUMN,
+    delimiter: str = "\t",
+    split_gene_field: bool = True,
+    column_batch: int = 64,
+    overwrite: bool = False,
+    uns: dict | None = None,
+) -> str:
+    """Stream-build an AnnData .h5ad file on disk, appending one batch of
+    genes (CSC columns) at a time. Never materializes the full
+    ``cells × genes`` matrix.
+
+    Parameters
+    ----------
+    expression_matrix_path : str
+        Path to the UCSC expression TSV (plain or gzipped).
+    output_path : str
+        Destination ``.h5ad`` path.
+    metadata_df : pd.DataFrame, optional
+        Cell metadata; reindexed to expression header ``cell_ids``.
+    gene_column : str
+        Name for the ``var`` index.
+    delimiter : str
+        Column delimiter in the expression TSV.
+    split_gene_field : bool
+        If True, split gene ids on ``|`` and keep the first element.
+    column_batch : int
+        Number of gene columns buffered before a CSC append to disk.
+        Peak per-batch RAM ≈ ``column_batch × n_cells × 4 B``
+        (≈16 MB at the default for a 520k-cell atlas).
+    overwrite : bool
+        If False and ``output_path`` exists, raise ``FileExistsError``.
+    uns : dict, optional
+        Opaque dict written to the h5ad's ``uns`` group (e.g. provenance
+        metadata). Callers remain responsible for the dict's structure.
+
+    Returns
+    -------
+    str
+        ``output_path``.
+    """
+    if os.path.exists(output_path) and not overwrite:
+        raise FileExistsError(
+            f"{output_path!r} already exists; pass overwrite=True to replace."
+        )
+
+    cell_ids, row_iter = _iter_ucsc_rows(
+        expression_matrix_path,
+        delimiter=delimiter,
+        split_gene_field=split_gene_field,
+    )
+    n_cells = len(cell_ids)
+
+    # Check metadata overlap BEFORE streaming: if zero overlap, raise now
+    # rather than after writing gigabytes of X to disk only to leave a
+    # half-written h5ad that blocks re-runs.
+    if metadata_df is not None:
+        if len(pd.Index(cell_ids).intersection(metadata_df.index)) == 0:
+            raise ValueError(
+                f"No overlapping cell ids between expression matrix "
+                f"{expression_matrix_path!r} and metadata."
+            )
+
+    logger.info(
+        "Backed-write atlas → %s (n_cells=%d, column_batch=%d)",
+        output_path, n_cells, column_batch,
+    )
+
+    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+
+    # h5py.File(..., "w") truncates any existing file, so no pre-remove needed.
+    f = h5py.File(output_path, "w")
+    try:
+        # Seed X as an empty (n_cells, 0) CSC; pass indptr dtype via
+        # dataset_kwargs so large atlases don't overflow int32.
+        seed = sparse.csc_matrix((n_cells, 0), dtype=np.float32)
+        write_elem(f, "X", seed, dataset_kwargs={"indptr_dtype": "int64"})
+        X = sparse_dataset(f["X"])
+
+        gene_names: list[str] = []
+        buf_cols: list[np.ndarray] = []
+        buf_genes: list[str] = []
+        n_appended = 0
+        n_batches = 0
+
+        def _flush() -> None:
+            nonlocal n_appended, n_batches
+            if not buf_cols:
+                return
+            # Stack column-vectors into (n_cells, batch_width) CSC block.
+            dense_block = np.column_stack(buf_cols)  # (n_cells, batch_width)
+            X.append(sparse.csc_matrix(dense_block))
+            gene_names.extend(buf_genes)
+            n_appended += len(buf_cols)
+            n_batches += 1
+            buf_cols.clear()
+            buf_genes.clear()
+            if n_batches % 20 == 0:
+                logger.info("  appended %d genes", n_appended)
+
+        for gene, row in row_iter:
+            buf_cols.append(row)
+            buf_genes.append(gene)
+            if len(buf_cols) >= column_batch:
+                _flush()
+        _flush()
+
+        if n_appended == 0:
+            raise ValueError(
+                f"Expression matrix {expression_matrix_path!r} contained no data rows."
+            )
+
+        # obs: cell_ids + optional metadata join (reject zero-overlap).
+        obs = pd.DataFrame(index=pd.Index(cell_ids, name=UCSC_CELL_ID_COLUMN))
+        if metadata_df is not None:
+            common = obs.index.intersection(metadata_df.index)
+            if len(common) == 0:
+                raise ValueError(
+                    f"No overlapping cell ids between expression matrix "
+                    f"{expression_matrix_path!r} and metadata."
+                )
+            meta_aligned = metadata_df.reindex(obs.index)
+            for col in meta_aligned.columns:
+                obs[col] = meta_aligned[col].values
+
+        var = pd.DataFrame(index=pd.Index(gene_names, name=gene_column))
+
+        write_elem(f, "obs", obs)
+        write_elem(f, "var", var)
+        if uns is not None:
+            write_elem(f, "uns", uns)
+    finally:
+        f.close()
+
+    logger.info(
+        "Backed atlas written: %d cells × %d genes → %s",
+        n_cells, n_appended, output_path,
+    )
+    return output_path
