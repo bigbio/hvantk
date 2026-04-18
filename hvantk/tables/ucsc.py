@@ -35,8 +35,13 @@ logger = logging.getLogger(__name__)
 
 
 def _open_text(path: str):
-    """Open a plain or gzipped text file for reading."""
-    if path.endswith(".gz"):
+    """Open a plain, gzipped, or bgzipped text file for reading.
+
+    ``.bgz`` (bgzip) is the block-gzip format used by htslib/Hail. It is
+    gzip-compatible at the decompressor level, so ``gzip.open`` handles it
+    transparently.
+    """
+    if path.endswith((".gz", ".bgz")):
         return gzip.open(path, "rt")
     return open(path, "rt")
 
@@ -223,6 +228,22 @@ def load_ucsc_metadata(
     df = pd.read_csv(metadata_path, sep=sep, index_col=index_col)
     df.index.name = index_name
     df.columns = [c.replace(".", "_") for c in df.columns]
+
+    # Guard against duplicate cell_id rows (seen in some UCSC/source TSVs with
+    # unquoted embedded newlines in string fields, e.g. Asp_2019 celltype).
+    # Downstream reindex/join calls raise a cryptic "cannot reindex on an axis
+    # with duplicate labels" — dedup here with a clear warning instead.
+    n_dup = int(df.index.duplicated().sum())
+    if n_dup > 0:
+        n_before = len(df)
+        df = df.loc[~df.index.duplicated(keep="first")]
+        logger.warning(
+            "Metadata %s has %d duplicate %s row(s) (%d rows \u2192 %d unique). "
+            "Keeping first occurrence of each %s. This often indicates an "
+            "upstream parsing issue (e.g. unquoted newlines in string fields); "
+            "dedupe the source file if this masks real inconsistencies.",
+            metadata_path, n_dup, index_name, n_before, len(df), index_name,
+        )
     return df
 
 
