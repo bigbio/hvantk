@@ -645,6 +645,10 @@ def summarize_ucsc_streaming(
         split_gene_field=split_gene_field,
     )
     n_cells = len(cell_ids)
+    logger.info(
+        "Fused aggregate stream → %s (n_cells=%d, group_by=%s)",
+        expression_matrix_path, n_cells, by,
+    )
 
     # Align metadata to expression header order, keep only cells present
     # in both, and drop NaN-in-group rows.
@@ -699,6 +703,11 @@ def summarize_ucsc_streaming(
         )
         block_fill = 0
 
+    # Heartbeat every PROGRESS_EVERY genes so long-running streams show
+    # progress; matches the cadence of the backed builder.
+    PROGRESS_EVERY = 5000
+    n_streamed = 0
+
     for gene, row in row_iter:
         row_valid = row[valid]
         sum_block[:, block_fill] = np.bincount(
@@ -711,8 +720,11 @@ def summarize_ucsc_streaming(
         ).astype(np.int64)
         gene_names.append(gene)
         block_fill += 1
+        n_streamed += 1
         if block_fill == BLOCK:
             _flush_block()
+        if n_streamed % PROGRESS_EVERY == 0:
+            logger.info("  streamed %d genes", n_streamed)
     _flush_block()
 
     if len(gene_names) == 0:
