@@ -128,17 +128,33 @@ def summarize_expression_ad(
 
     by = [group_by] if isinstance(group_by, str) else list(group_by)
 
+    # Drop cells with NaN in any group_by column; otherwise astype(str) below
+    # (and scanpy.get.aggregate internally) would produce a real "nan" group.
+    na_mask = adata.obs[by].isna().any(axis=1).to_numpy()
+    if na_mask.any():
+        logger.warning(
+            "Dropped %d cells with NaN in group_by columns %s before aggregation",
+            int(na_mask.sum()), by,
+        )
+        adata = adata[~na_mask].copy()
+
     agg = sc.get.aggregate(
         adata,
         by=by,
         func=["mean", "sum", "count_nonzero"],
     )
 
-    # sc.get.aggregate does not stash per-group cell counts; compute from the
-    # pre-aggregate adata, joining group_by columns with "_" to match
-    # agg.obs_names.
-    group_labels = adata.obs[by].astype(str).agg("_".join, axis=1)
-    n_cells = group_labels.value_counts().reindex(agg.obs_names).astype(int)
+    # Count cells per group on the raw tuple (not the "_"-joined label) so
+    # values containing "_" don't collide; re-encode to match agg.obs_names,
+    # which scanpy built with "_".join.
+    group_sizes = adata.obs.groupby(by, observed=True, dropna=True).size()
+    if len(by) > 1:
+        group_sizes.index = pd.Index(
+            ["_".join(str(v) for v in idx) for idx in group_sizes.index]
+        )
+    else:
+        group_sizes.index = group_sizes.index.astype(str)
+    n_cells = group_sizes.reindex(agg.obs_names).fillna(0).astype(int)
 
     agg.obs["n_cells"] = n_cells.values
     agg.layers["fraction_expressed"] = (

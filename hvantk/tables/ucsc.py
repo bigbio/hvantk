@@ -689,12 +689,17 @@ def summarize_ucsc_streaming(
             n_dropped_nan, example,
         )
 
-    labels = (
-        aligned.loc[keep_mask, by].astype(str).agg("_".join, axis=1)
-        if len(by) > 1
-        else aligned.loc[keep_mask, by[0]].astype(str)
-    )
-    codes, uniques = pd.factorize(labels, sort=True)
+    # Factorize on the tuple of group-by values so ("T_cell","donor1") and
+    # ("T","cell_donor1") remain distinct; plain "_".join collapses them.
+    by_vals = aligned.loc[keep_mask, by].astype(str).to_numpy()
+    if len(by) > 1:
+        tuple_arr = np.empty(by_vals.shape[0], dtype=object)
+        tuple_arr[:] = [tuple(r) for r in by_vals]
+        codes, uniques = pd.factorize(tuple_arr, sort=True)
+        label_strs = ["_".join(t) for t in uniques]
+    else:
+        codes, uniques = pd.factorize(by_vals[:, 0], sort=True)
+        label_strs = list(uniques)
     n_groups = len(uniques)
 
     # group_idx per cell in expression-header order, -1 for dropped cells.
@@ -772,7 +777,7 @@ def summarize_ucsc_streaming(
         by_src.groupby("_code", sort=True).first().reindex(np.arange(n_groups))
     )
 
-    obs = pd.DataFrame({"n_cells": n_cells_per_group}, index=pd.Index(uniques))
+    obs = pd.DataFrame({"n_cells": n_cells_per_group}, index=pd.Index(label_strs))
     for col in by:
         obs[col] = per_group[col].values
 
@@ -782,7 +787,7 @@ def summarize_ucsc_streaming(
     if not keep_groups.any():
         # Build a short report for the error message.
         report = "; ".join(
-            f"{u}={int(n)}" for u, n in zip(uniques, n_cells_per_group)
+            f"{u}={int(n)}" for u, n in zip(label_strs, n_cells_per_group)
         )
         raise ValueError(
             f"All groups fell below min_cells_per_group={min_cells_per_group}. "
