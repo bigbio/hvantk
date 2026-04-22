@@ -76,47 +76,47 @@ PTM_OUTPUT_COLUMNS = [
     "source_db",
     "evidence_type",
     "n_observations",
+    "tissue_type",
 ]
 
 # Transcript resolution method names (for logging/QC)
 RESOLUTION_METHODS = ["xref_mane", "xref_any", "gene_mane"]
 
 # ---------------------------------------------------------------------------
-# Phase-2 defaults (notebook A / M / K / N)
+# Variant-annotation and LMM defaults
+# (consumed by hvantk.ptm.annotate and hvantk.ptm.test).
 # ---------------------------------------------------------------------------
 
-# Proximal flanking window for SYMBOL-based variant annotation:
-# ±7 aa in codon space ≈ ±21 bp in genomic coordinates (notebook N Cell 11).
-# One-sided; applied to both codon_start and codon_end (see ptm.annotate).
+# Proximal flanking window for gene-symbol variant annotation:
+# 7 codons * 3 bp = 21 bp, applied one-sided to codon_start and codon_end.
 PROXIMAL_BP = 21
 
-# Default MAF thresholds referenced by Phase-2 documentation.
-# Notebooks M and K do NOT apply MAF cut-offs (they work from ClinVar B/LB
-# variants only). Notebook N uses MAF <= 0.001 on an internal CHD cohort.
-# These values are kept as Phase-2 defaults/placeholders for any
-# caller that wants a consistent set of bins (common/rare/ultra-rare);
-# callers that need the exact notebook-N rare filter should pass
-# ``rare=1e-3`` explicitly.
+# Default MAF bins (common / rare / ultra-rare) for callers that want a
+# consistent set of cut-offs. Callers with source-specific thresholds
+# should pass them explicitly.
 DEFAULT_MAF_THRESHOLDS = {
     "common": 0.01,
     "rare": 0.001,
     "ultra_rare": 1e-5,
 }
 
-# Ordered category for the binned-interaction LMM (notebook K).
+# Ordered categories for the binned-interaction LMM.
 # "b0_none" is the reference (zero-expression) bin; Q1-Q4 are quartiles of
-# log2(expr + 1) across positive-expression variants. Actual bin count in
-# a fit may be smaller when pd.qcut collapses ties (duplicates="drop").
+# log2(expr + 1) across positive-expression variants. Realised bin count
+# may be smaller when pd.qcut collapses ties (duplicates="drop").
 EXPRESSION_BIN_LABELS = ["b0_none", "b1_Q1", "b2_Q2", "b3_Q3", "b4_Q4"]
 
-# Pseudocount for log10(AF + eps) transformation used by notebooks K and M.
+# Pseudocount for the log10(AF + eps) transformation used in LMM fits.
 LOG_AF_EPSILON = 1e-8
 
-# Per-stratum filter thresholds for the constraint LMM (notebook M Cell 5).
+# Minimum per-stratum sample counts for the constraint LMM
+# (hvantk.ptm.test.fit_constraint_lmm). Below these the per-gene estimate
+# is unstable.
 LMM_MIN_N_PTM = 30
 LMM_MIN_N_NONPTM = 30
 LMM_MIN_MIXED_GENES = 10
 
-# Sparsity gates for the binned-interaction LMM (notebook K Cell 4d).
+# Sparsity gates for the binned-interaction LMM
+# (hvantk.ptm.test.fit_binned_interaction_lmm).
 LMM_BINNED_MIN_POS_EXPR = 100
 LMM_BINNED_MIN_CELL_N = 5
