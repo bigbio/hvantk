@@ -7,6 +7,7 @@ import pytest
 from scipy import sparse
 
 
+@pytest.mark.parametrize("backed", [False, True])
 class TestBuildUcscAd:
     """Tests for build_ucsc_ad in matrix_builders."""
 
@@ -24,7 +25,7 @@ class TestBuildUcscAd:
             for cid, ct in zip(cell_ids, cell_types):
                 fh.write(f"{cid}\t{ct}\n")
 
-    def test_builds_anndata_from_tsv(self, tmp_path):
+    def test_builds_anndata_from_tsv(self, tmp_path, backed):
         """Build AnnData from minimal expression matrix + metadata."""
         cells = ["cell_A", "cell_B", "cell_C", "cell_D"]
         genes = ["TP53", "BRCA1", "EGFR"]
@@ -47,6 +48,8 @@ class TestBuildUcscAd:
             expression_matrix_path=expr_path,
             metadata_path=meta_path,
             output_path=out_path,
+            backed=backed,
+            overwrite=True,
         )
 
         assert isinstance(adata, ad.AnnData)
@@ -60,17 +63,19 @@ class TestBuildUcscAd:
         # Provenance metadata stored
         assert "hvantk_metadata" in adata.uns
         assert adata.uns["hvantk_metadata"]["source_name"] == "UCSC"
-        # Column summary computed
-        assert "column_summary" in adata.uns
+        # Column summary computed (skipped in backed mode by design)
+        if not backed:
+            assert "column_summary" in adata.uns
 
-    def test_no_output_path(self, tmp_path):
-        """Build AnnData without writing to disk."""
+    def test_minimal_two_by_two(self, tmp_path, backed):
+        """Build AnnData from a minimal 2x2 matrix and verify shape."""
         cells = ["cell_A", "cell_B"]
         genes = ["TP53", "BRCA1"]
         values = [[1.0, 2.0], [3.0, 4.0]]
 
         expr_path = str(tmp_path / "expr.tsv")
         meta_path = str(tmp_path / "meta.tsv")
+        out_path = str(tmp_path / "output.h5ad")
 
         self._write_expression_matrix(expr_path, genes, cells, values)
         self._write_metadata(meta_path, cells, ["neuron", "glia"])
@@ -80,12 +85,15 @@ class TestBuildUcscAd:
         adata = build_ucsc_ad(
             expression_matrix_path=expr_path,
             metadata_path=meta_path,
+            output_path=out_path,
+            backed=backed,
+            overwrite=True,
         )
 
         assert isinstance(adata, ad.AnnData)
         assert adata.shape == (2, 2)
 
-    def test_split_gene_field(self, tmp_path):
+    def test_split_gene_field(self, tmp_path, backed):
         """Pipe-separated gene names are split to first element."""
         cells = ["cell_A", "cell_B"]
         genes = ["TP53|TP53L1", "BRCA1|BRCA1P1"]
@@ -96,6 +104,7 @@ class TestBuildUcscAd:
 
         expr_path = str(tmp_path / "expr.tsv")
         meta_path = str(tmp_path / "meta.tsv")
+        out_path = str(tmp_path / "output.h5ad")
 
         self._write_expression_matrix(expr_path, genes, cells, values)
         self._write_metadata(meta_path, cells, ["neuron", "glia"])
@@ -106,6 +115,9 @@ class TestBuildUcscAd:
             expression_matrix_path=expr_path,
             metadata_path=meta_path,
             split_gene_field=True,
+            output_path=out_path,
+            backed=backed,
+            overwrite=True,
         )
 
         assert "TP53" in adata.var.index.tolist()
@@ -113,9 +125,10 @@ class TestBuildUcscAd:
         # Pipe-separated versions should NOT be present
         assert "TP53|TP53L1" not in adata.var.index.tolist()
 
-    def test_ucsc_respects_delimiter_for_metadata(self, tmp_path):
+    def test_ucsc_respects_delimiter_for_metadata(self, tmp_path, backed):
         expr_path = str(tmp_path / "expr.csv")
         meta_path = str(tmp_path / "meta.csv")
+        out_path = str(tmp_path / "output.h5ad")
         with open(expr_path, "w") as fh:
             fh.write("gene,cell_A,cell_B\n")
             fh.write("TP53,1.0,2.0\n")
@@ -131,6 +144,9 @@ class TestBuildUcscAd:
             expression_matrix_path=expr_path,
             metadata_path=meta_path,
             delimiter=",",
+            output_path=out_path,
+            backed=backed,
+            overwrite=True,
         )
         assert adata.shape == (2, 2)
         assert "cell_type" in adata.obs.columns

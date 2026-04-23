@@ -2,7 +2,7 @@
 PTM Build Pipeline — orchestrates PTM data acquisition, coordinate mapping, and table building.
 
 This module exposes the build workflow as a Python API so it can be used
-programmatically (notebooks, alphagenome) or from the CLI.
+programmatically or from the CLI.
 
 Example:
     >>> from hvantk.ptm.pipeline import PTMBuildConfig, ptm_build_pipeline
@@ -154,7 +154,7 @@ def download_ensembl_gtf(output_dir: str, overwrite: bool = False) -> str:
 
 
 def download_uniprot_ptm(output_dir: str, overwrite: bool = False) -> str:
-    """Download UniProt PTM data via the REST API.
+    """Download the latest UniProt PTM TSV via :class:`UniProtPTMDataset`.
 
     Parameters
     ----------
@@ -277,6 +277,7 @@ def map_ptm_sites(
                         "source_db": rec.get("source_db", "UniProt"),
                         "evidence_type": rec.get("evidence_type", "curated"),
                         "n_observations": rec.get("n_observations", "0"),
+                        "tissue_type": rec.get("tissue_type", ""),
                     }
                 )
                 n_mapped += 1
@@ -385,65 +386,45 @@ def ptm_build_pipeline(config: PTMBuildConfig) -> PTMBuildResult:
     mapped_path = os.path.join(config.output_dir, "ptm_sites_mapped.tsv.bgz")
     result = map_ptm_sites(ptm_tsv, gtf_data, mapped_path, transcript_cache)
 
-    # Step 4b: Map PeptideAtlas sites (if provided)
+    # Step 4b: Map additional PTM sources (PeptideAtlas, CPTAC) and
+    # merge everything into a single canonical combined TSV.
+    extra_sources: List[tuple] = []
     if config.peptideatlas_tsv:
-        logger.info("Mapping PeptideAtlas phospho sites...")
-        pa_mapped_path = os.path.join(
-            config.output_dir, "peptideatlas_sites_mapped.tsv.bgz"
+        extra_sources.append(
+            ("PeptideAtlas", config.peptideatlas_tsv, "peptideatlas_sites_mapped.tsv.bgz")
         )
-        pa_result = map_ptm_sites(
-            config.peptideatlas_tsv, gtf_data, pa_mapped_path, transcript_cache
+    if config.cptac_tsv:
+        extra_sources.append(
+            ("CPTAC", config.cptac_tsv, "cptac_sites_mapped.tsv.bgz")
         )
 
+    source_paths = [mapped_path]
+    for source_name, source_tsv, source_filename in extra_sources:
+        logger.info("Mapping %s phospho sites...", source_name)
+        source_mapped_path = os.path.join(config.output_dir, source_filename)
+        source_result = map_ptm_sites(
+            source_tsv, gtf_data, source_mapped_path, transcript_cache
+        )
+        source_paths.append(source_mapped_path)
+        result.n_total += source_result.n_total
+        result.n_mapped += source_result.n_mapped
+        result.n_failed += source_result.n_failed
+        for method, count in source_result.resolution_counts.items():
+            result.resolution_counts[method] = (
+                result.resolution_counts.get(method, 0) + count
+            )
+
+    if len(source_paths) > 1:
         combined_path = os.path.join(
             config.output_dir, "ptm_sites_combined.tsv.bgz"
         )
-        _concat_bgz_tsvs([mapped_path, pa_mapped_path], combined_path)
-
+        _concat_bgz_tsvs(source_paths, combined_path)
         mapped_path = combined_path
         result.mapped_tsv_path = combined_path
-        result.n_total += pa_result.n_total
-        result.n_mapped += pa_result.n_mapped
-        result.n_failed += pa_result.n_failed
-        for method, count in pa_result.resolution_counts.items():
-            result.resolution_counts[method] = (
-                result.resolution_counts.get(method, 0) + count
-            )
-
         logger.info(
-            "Combined: %d total mapped sites (UniProt + PeptideAtlas)",
+            "Combined: %d total mapped sites across %d sources",
             result.n_mapped,
-        )
-
-    # Step 4c: Map CPTAC sites (if provided)
-    if config.cptac_tsv:
-        logger.info("Mapping CPTAC phospho sites...")
-        cptac_mapped_path = os.path.join(
-            config.output_dir, "cptac_sites_mapped.tsv.bgz"
-        )
-        cptac_result = map_ptm_sites(
-            config.cptac_tsv, gtf_data, cptac_mapped_path, transcript_cache
-        )
-
-        # Use a distinct filename to avoid truncating mapped_path when it
-        # points to ptm_sites_combined.tsv.bgz from step 4b.
-        all_combined_path = os.path.join(
-            config.output_dir, "ptm_sites_all_combined.tsv.bgz"
-        )
-        _concat_bgz_tsvs([mapped_path, cptac_mapped_path], all_combined_path)
-
-        mapped_path = all_combined_path
-        result.n_total += cptac_result.n_total
-        result.n_mapped += cptac_result.n_mapped
-        result.n_failed += cptac_result.n_failed
-        for method, count in cptac_result.resolution_counts.items():
-            result.resolution_counts[method] = (
-                result.resolution_counts.get(method, 0) + count
-            )
-
-        logger.info(
-            f"Combined: {result.n_mapped} total mapped sites "
-            f"(including CPTAC)"
+            len(source_paths),
         )
 
     # Step 5: Build Hail Table

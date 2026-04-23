@@ -1366,10 +1366,15 @@ def create_ptm_sites_tb(
     """
     Create a Hail Table of PTM sites in genomic coordinates.
 
-    Input is a TSV produced by the PTM coordinate mapper (Phase 1 output)
-    with columns: chrom, codon_start, codon_end, strand, uniprot_id,
-    gene_symbol, residue_pos, amino_acid, ptm_type, ptm_category,
-    source_db, evidence_type, n_observations.
+    Input is a TSV produced by the PTM coordinate mapper
+    (see ``hvantk.ptm.pipeline.map_ptm_sites``) with columns: chrom,
+    codon_start, codon_end, strand, uniprot_id, gene_symbol, residue_pos,
+    amino_acid, ptm_type, ptm_category, source_db, evidence_type,
+    n_observations, tissue_type.
+
+    ``tissue_type`` carries sample provenance for sources that distinguish
+    it (e.g. CPTAC ``"normal"``/``"tumor"``); curated or bulk-MS sources
+    emit an empty string.
 
     The table is keyed by locus (codon start position), with a
     ``flanking_interval`` field for proximity-based annotation joins.

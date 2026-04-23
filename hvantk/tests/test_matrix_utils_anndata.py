@@ -64,15 +64,49 @@ class TestFilterByMetadataAd:
 
 
 class TestSummarizeExpressionAd:
-    def test_returns_dataframe(self, test_adata):
+    def test_returns_anndata(self, test_adata):
         result = summarize_expression_ad(test_adata, group_by="cell_type")
-        assert isinstance(result, pd.DataFrame)
+        assert isinstance(result, ad.AnnData)
 
-    def test_has_expected_columns(self, test_adata):
+    def test_shape_is_groups_by_genes(self, test_adata):
         result = summarize_expression_ad(test_adata, group_by="cell_type")
-        expected_cols = {"gene_id", "group", "mean", "fraction_expressed", "n_cells"}
-        assert expected_cols == set(result.columns)
+        expected_groups = len(set(test_adata.obs["cell_type"]))
+        assert result.shape == (expected_groups, test_adata.n_vars)
+
+    def test_has_required_layers(self, test_adata):
+        result = summarize_expression_ad(test_adata, group_by="cell_type")
+        expected_layers = {"mean", "sum", "count_nonzero", "fraction_expressed"}
+        assert expected_layers.issubset(set(result.layers.keys()))
+
+    def test_obs_has_n_cells(self, test_adata):
+        result = summarize_expression_ad(test_adata, group_by="cell_type")
+        assert "n_cells" in result.obs.columns
+        assert (result.obs["n_cells"] > 0).all()
+        assert int(result.obs["n_cells"].sum()) == test_adata.n_obs
 
     def test_groups_match_unique_cell_types(self, test_adata):
         result = summarize_expression_ad(test_adata, group_by="cell_type")
-        assert set(result["group"].unique()) == {"neuron", "astrocyte", "microglia"}
+        assert set(result.obs_names) == {"neuron", "astrocyte", "microglia"}
+
+    def test_fraction_expressed_between_0_and_1(self, test_adata):
+        result = summarize_expression_ad(test_adata, group_by="cell_type")
+        frac = np.asarray(result.layers["fraction_expressed"])
+        assert frac.min() >= 0.0
+        assert frac.max() <= 1.0
+
+    def test_min_cells_filters_small_groups(self, test_adata):
+        # all three cell types should be well above n=5 in the fixture (100 cells / 3),
+        # but at min_cells=10_000 we should drop every group.
+        result = summarize_expression_ad(
+            test_adata, group_by="cell_type", min_cells_per_group=10_000
+        )
+        assert result.n_obs == 0
+
+    def test_fraction_expressed_finite_with_min_cells_zero(self, test_adata):
+        # Guard against regressing to a plain division that yields inf/NaN
+        # when any group's n_cells is 0 (possible via reindex().fillna(0)).
+        result = summarize_expression_ad(
+            test_adata, group_by="cell_type", min_cells_per_group=0
+        )
+        frac = np.asarray(result.layers["fraction_expressed"])
+        assert np.isfinite(frac).all()

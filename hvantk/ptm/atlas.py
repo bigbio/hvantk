@@ -120,9 +120,10 @@ class PTMAtlasResult:
     output_ht : str
         Path to the final PTM sites Hail Table.
     combined_tsv : str
-        Path to the combined BGZ TSV produced by the pipeline:
-        ``ptm_sites_combined.tsv.bgz`` when CPTAC is disabled, or
-        ``ptm_sites_all_combined.tsv.bgz`` when CPTAC is included.
+        Path to the combined BGZ TSV produced by the pipeline
+        (``ptm_sites_combined.tsv.bgz``) when more than one source is
+        included. When only UniProt is used, this is the mapped TSV
+        (``ptm_sites_mapped.tsv.bgz``).
     n_sites : int
         Number of PTM sites successfully mapped (summed across sources).
     sources_used : list[str]
@@ -188,16 +189,8 @@ def build_atlas(config: PTMAtlasConfig) -> PTMAtlasResult:
 
     # The pipeline emits:
     #   - ptm_sites_mapped.tsv.bgz when only UniProt is used
-    #   - ptm_sites_combined.tsv.bgz when UniProt + PeptideAtlas
-    #   - ptm_sites_all_combined.tsv.bgz when CPTAC is also included
-    # Report the final combined TSV path for reproducibility with notebook A.
+    #   - ptm_sites_combined.tsv.bgz when multiple sources are merged
     combined_tsv = build_result.mapped_tsv_path
-    if include_cptac:
-        # ptm_build_pipeline points mapped_tsv_path at the combined (no-CPTAC)
-        # TSV; the CPTAC-augmented file has a distinct name.
-        expected = os.path.join(config.output_dir, "ptm_sites_all_combined.tsv.bgz")
-        if os.path.exists(expected):
-            combined_tsv = expected
 
     return PTMAtlasResult(
         output_ht=build_result.output_ht,

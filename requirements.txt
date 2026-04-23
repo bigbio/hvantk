@@ -5,6 +5,7 @@ requests
 tqdm
 pandas
 anndata
+scanpy
 matplotlib
 seaborn
 numpy
