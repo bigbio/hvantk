@@ -101,3 +101,12 @@ class TestSummarizeExpressionAd:
             test_adata, group_by="cell_type", min_cells_per_group=10_000
         )
         assert result.n_obs == 0
+
+    def test_fraction_expressed_finite_with_min_cells_zero(self, test_adata):
+        # Guard against regressing to a plain division that yields inf/NaN
+        # when any group's n_cells is 0 (possible via reindex().fillna(0)).
+        result = summarize_expression_ad(
+            test_adata, group_by="cell_type", min_cells_per_group=0
+        )
+        frac = np.asarray(result.layers["fraction_expressed"])
+        assert np.isfinite(frac).all()

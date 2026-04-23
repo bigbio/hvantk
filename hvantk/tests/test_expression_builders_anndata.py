@@ -67,8 +67,8 @@ class TestBuildUcscAd:
         if not backed:
             assert "column_summary" in adata.uns
 
-    def test_no_output_path(self, tmp_path, backed):
-        """Build AnnData without writing to disk."""
+    def test_minimal_two_by_two(self, tmp_path, backed):
+        """Build AnnData from a minimal 2x2 matrix and verify shape."""
         cells = ["cell_A", "cell_B"]
         genes = ["TP53", "BRCA1"]
         values = [[1.0, 2.0], [3.0, 4.0]]

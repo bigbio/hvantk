@@ -397,7 +397,7 @@ def build_ucsc_atlas_backed(
     column_batch : int
         Number of gene columns buffered before a CSC append to disk.
         Peak per-batch RAM ≈ ``column_batch × n_cells × 4 B``
-        (≈16 MB at the default for a 520k-cell atlas).
+        (≈127 MiB at the default for a 520k-cell atlas).
     overwrite : bool
         If False and ``output_path`` exists, raise ``FileExistsError``.
     uns : dict, optional
@@ -708,25 +708,25 @@ def summarize_ucsc_streaming(
     valid = group_idx >= 0
     n_cells_per_group = np.bincount(group_idx[valid], minlength=n_groups).astype(np.int64)
 
-    sum_matrix = np.zeros((n_groups, 0), dtype=np.float64)
-    count_nz_matrix = np.zeros((n_groups, 0), dtype=np.int64)
+    # Collect filled blocks into lists and concatenate once at the end to
+    # avoid O(n_genes^2) cost from repeated np.concatenate on the growing
+    # accumulator.
+    sum_blocks: list[np.ndarray] = []
+    count_nz_blocks: list[np.ndarray] = []
     gene_names: list[str] = []
 
-    # Pre-size buffers in chunks to avoid per-gene resize; column-extend
-    # accumulators lazily.
+    # Pre-size buffers in chunks to avoid per-gene resize.
     BLOCK = 1024
     sum_block = np.zeros((n_groups, BLOCK), dtype=np.float64)
     count_block = np.zeros((n_groups, BLOCK), dtype=np.int64)
     block_fill = 0
 
     def _flush_block():
-        nonlocal sum_matrix, count_nz_matrix, block_fill
+        nonlocal block_fill
         if block_fill == 0:
             return
-        sum_matrix = np.concatenate([sum_matrix, sum_block[:, :block_fill]], axis=1)
-        count_nz_matrix = np.concatenate(
-            [count_nz_matrix, count_block[:, :block_fill]], axis=1
-        )
+        sum_blocks.append(sum_block[:, :block_fill].copy())
+        count_nz_blocks.append(count_block[:, :block_fill].copy())
         block_fill = 0
 
     # Heartbeat every PROGRESS_EVERY genes so long-running streams show
@@ -757,6 +757,9 @@ def summarize_ucsc_streaming(
         raise ValueError(
             f"Expression matrix {expression_matrix_path!r} contained no data rows."
         )
+
+    sum_matrix = np.concatenate(sum_blocks, axis=1)
+    count_nz_matrix = np.concatenate(count_nz_blocks, axis=1)
 
     n_cells_col = n_cells_per_group[:, None]
     with np.errstate(divide="ignore", invalid="ignore"):

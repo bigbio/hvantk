@@ -177,7 +177,15 @@ def summarize_expression_cmd(
                     param_hint="--filter-by",
                 )
             key, value = item.split("=", 1)
-            filters[key.strip()] = value.strip()
+            key = key.strip()
+            value = value.strip()
+            existing = filters.get(key)
+            if existing is None:
+                filters[key] = value
+            elif isinstance(existing, list):
+                existing.append(value)
+            else:
+                filters[key] = [existing, value]
 
     adata = load_anndata(matrix_path)
 
@@ -512,7 +520,15 @@ def summarize_ucsc_cmd(
                     param_hint="--filter-by",
                 )
             key, value = item.split("=", 1)
-            filters[key.strip()] = value.strip()
+            key = key.strip()
+            value = value.strip()
+            existing = filters.get(key)
+            if existing is None:
+                filters[key] = value
+            elif isinstance(existing, list):
+                existing.append(value)
+            else:
+                filters[key] = [existing, value]
 
     metadata_df = load_ucsc_metadata(metadata_path, sep=delimiter)
 

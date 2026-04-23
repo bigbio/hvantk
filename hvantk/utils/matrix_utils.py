@@ -157,9 +157,11 @@ def summarize_expression_ad(
     n_cells = group_sizes.reindex(agg.obs_names).fillna(0).astype(int)
 
     agg.obs["n_cells"] = n_cells.values
-    agg.layers["fraction_expressed"] = (
-        np.asarray(agg.layers["count_nonzero"]) / n_cells.values[:, None]
-    )
+    count_nz = np.asarray(agg.layers["count_nonzero"], dtype=np.float64)
+    denom = n_cells.values[:, None].astype(np.float64)
+    fraction = np.zeros_like(count_nz)
+    np.divide(count_nz, denom, out=fraction, where=denom > 0)
+    agg.layers["fraction_expressed"] = fraction
 
     keep = agg.obs["n_cells"].values >= min_cells_per_group
     return agg[keep].copy()

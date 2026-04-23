@@ -62,7 +62,8 @@ def build_ucsc_ad(
         based on the expression matrix file size (``> BACKED_BUILDER_THRESHOLD_BYTES``
         triggers backed mode). When ``True``, ``output_path`` is required.
     column_batch : int
-        Cell-column batch size used by the backed builder (default 64).
+        Gene-column batch size used by the backed builder (default 64).
+        Peak RAM scales with ``n_cells × column_batch``.
 
     Returns
     -------
