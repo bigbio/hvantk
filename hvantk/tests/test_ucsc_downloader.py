@@ -73,14 +73,21 @@ def test_download_metadata(temp_dir):
 class TestDatasetValidation:
     """Tests for dataset name validation (Phase 0.1)."""
 
-    def test_slashed_child_dataset_passes_validation(self):
+    def test_slashed_child_dataset_passes_validation(self, tmp_path):
         """Forward slashes are allowed for UCSC child dataset paths."""
         runner = CliRunner()
         # Use a non-UCSC base_url to skip URL existence checks;
         # the validation happens before URL construction.
         result = runner.invoke(
             ucsc_downloader,
-            ["--dataset", "hoc/all-heart", "--base_url", "http://localhost:9999"],
+            [
+                "--dataset",
+                "hoc/all-heart",
+                "--base_url",
+                "http://localhost:9999",
+                "--output-dir",
+                str(tmp_path),
+            ],
             catch_exceptions=False,
         )
         # Should NOT see the "Invalid dataset value" error
@@ -127,13 +134,20 @@ class TestCollectionWarning:
         assert "collection" in result.output.lower()
         assert "child dataset" in result.output.lower()
 
-    def test_leaf_dataset_no_warning(self):
+    def test_leaf_dataset_no_warning(self, tmp_path):
         """A leaf dataset like 'adultPancreas' does not trigger the collection warning."""
         runner = CliRunner()
         # Use non-UCSC base_url to avoid network calls
         result = runner.invoke(
             ucsc_downloader,
-            ["--dataset", "adultPancreas", "--base_url", "http://localhost:9999"],
+            [
+                "--dataset",
+                "adultPancreas",
+                "--base_url",
+                "http://localhost:9999",
+                "--output-dir",
+                str(tmp_path),
+            ],
             catch_exceptions=False,
         )
         assert (

@@ -47,7 +47,7 @@ def test_ucsc_downloader_success(mock_download_file, test_output_dir):
     assert "Data downloaded to" in result.output
 
 
-def test_ucsc_downloader_invalid_base_url(mock_download_file):
+def test_ucsc_downloader_invalid_base_url(mock_download_file, tmp_path):
     runner = CliRunner()
     result = runner.invoke(
         ucsc_downloader,
@@ -55,7 +55,7 @@ def test_ucsc_downloader_invalid_base_url(mock_download_file):
             "--dataset",
             "test_dataset",
             "--output-dir",
-            "dummy_path",
+            str(tmp_path),
             "--base_url",
             "invalid_url",
         ],
@@ -64,11 +64,11 @@ def test_ucsc_downloader_invalid_base_url(mock_download_file):
     assert "Invalid URL" in result.output
 
 
-def test_ucsc_downloader_missing_dataset(mock_download_file):
+def test_ucsc_downloader_missing_dataset(mock_download_file, tmp_path):
     runner = CliRunner()
     result = runner.invoke(
         ucsc_downloader,
-        ["--output-dir", "dummy_path", "--base_url", "http://example.com"],
+        ["--output-dir", str(tmp_path), "--base_url", "http://example.com"],
     )
     assert result.exit_code != 0
     assert "Error: Missing option '--dataset'" in result.output
@@ -129,7 +129,7 @@ def test_ucsc_downloader_download_failure(mock_download_file, test_output_dir):
     ids=["traversal", "backslash", "whitespace", "slash-allowed"],
 )
 def test_ucsc_downloader_dataset_validation(
-    mock_download_file, dataset, expect_invalid
+    mock_download_file, tmp_path, dataset, expect_invalid
 ):
     """Test dataset name validation (traversal, backslash, whitespace rejected; slash allowed)."""
     runner = CliRunner()
@@ -139,7 +139,7 @@ def test_ucsc_downloader_dataset_validation(
             "--dataset",
             dataset,
             "--output-dir",
-            "dummy_path",
+            str(tmp_path),
             "--base_url",
             "http://localhost:9999",
         ],
