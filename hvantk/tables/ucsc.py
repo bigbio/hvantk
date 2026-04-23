@@ -676,14 +676,18 @@ def summarize_ucsc_streaming(
     aligned = work.reindex(cell_ids)
     keep_mask = aligned[by].notna().all(axis=1).to_numpy()
     if not keep_mask.any():
+        # Close the generator so its underlying file handle is released
+        # before we raise — otherwise it lingers until GC.
+        row_iter.close()
         raise ValueError(
             "No cells overlap between metadata (post-filter) and expression header."
         )
     # Count cells present in post-filter metadata that were dropped due to
     # NaN in any group-by column (excludes cells absent from metadata entirely).
-    n_dropped_nan = int((~keep_mask & aligned.index.isin(work.index)).sum())
+    dropped_nan_mask = ~keep_mask & aligned.index.isin(work.index)
+    n_dropped_nan = int(dropped_nan_mask.sum())
     if n_dropped_nan:
-        example = cell_ids[int(np.where(~keep_mask)[0][0])]
+        example = cell_ids[int(np.where(dropped_nan_mask)[0][0])]
         logger.info(
             "Dropped %d cells with NaN in group-by columns (example: %s).",
             n_dropped_nan, example,
