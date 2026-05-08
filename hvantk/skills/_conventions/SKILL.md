@@ -16,7 +16,7 @@ These conventions apply to every per-resource skill. Per-resource skills MAY ass
 - `hvantk/commands/` — Click CLI entry points; `make_table_cli.py` and `make_matrix_cli.py` are the dispatch hubs
 - `hvantk/datasets/` — provider-specific dataset classes (download + versioning)
 - `hvantk/resources/catalog.yaml` — provider catalog (URLs, version cadence, license)
-- `hvantk/resources/registry/<domain>/<source>.yaml` — per-source structured metadata
+- `hvantk/resources/registry/<domain>/datasets.json` — per-domain JSON registry with one entry per dataset (find your source by `accession` or `title`)
 - `hvantk/core/hail_context.py` — Hail initialization (idempotent, thread-safe)
 - `hvantk/tests/testdata/<source>/` — fixtures
 - `hvantk/tests/snapshots/<source>/` — schema + sample rows snapshots
@@ -26,7 +26,7 @@ When in doubt, READ existing code under these paths before inferring shape.
 
 ## 2. Authoritative spec sources
 
-`resources/catalog.yaml` and `resources/registry/<domain>/<source>.yaml` are the source of truth for provider metadata: URLs, version strings, license, citation, release cadence. NEVER restate this content in a skill. Reference the catalog instead.
+`resources/catalog.yaml` and `resources/registry/<domain>/datasets.json` are the source of truth for provider metadata: URLs, version strings, license, citation, release cadence. NEVER restate this content in a skill. Reference the catalog instead.
 
 ## 3. Keying conventions per data domain
 
