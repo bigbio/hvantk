@@ -1,0 +1,41 @@
+import json
+from pathlib import Path
+
+import pytest
+
+from hvantk.tests._snapshot_utils import (
+    hail_schema_to_dict,
+    collect_sample_rows,
+    load_snapshot,
+)
+
+
+@pytest.mark.hail
+def test_hail_schema_to_dict_roundtrips_table(hail_session, tmp_path):
+    import hail as hl
+
+    ht = hl.utils.range_table(3).annotate(value=hl.str("hello"))
+    schema = hail_schema_to_dict(ht)
+    assert schema["key"] == ["idx"]
+    assert schema["row"]["idx"] == "int32"
+    assert schema["row"]["value"] == "str"
+    # JSON-roundtrippable
+    json.loads(json.dumps(schema))
+
+
+@pytest.mark.hail
+def test_collect_sample_rows_matches_by_key(hail_session):
+    import hail as hl
+
+    ht = hl.utils.range_table(5).annotate(value=hl.str("v"))
+    rows = collect_sample_rows(ht, keys=[{"idx": 0}, {"idx": 2}])
+    assert len(rows) == 2
+    assert rows[0]["key"] == {"idx": 0}
+    assert rows[1]["key"] == {"idx": 2}
+
+
+def test_load_snapshot_reads_json(tmp_path):
+    p = tmp_path / "schema.json"
+    p.write_text(json.dumps({"key": ["idx"], "row": {"idx": "int32"}}))
+    data = load_snapshot(p)
+    assert data == {"key": ["idx"], "row": {"idx": "int32"}}
