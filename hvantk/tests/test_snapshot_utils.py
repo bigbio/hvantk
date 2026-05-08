@@ -125,3 +125,77 @@ def test_collect_sample_rows_handles_array_keys(hail_session):
     assert len(rows) == 1
     assert rows[0]["key"] == {"locus": "chr1:100", "alleles": ["A", "G"]}
     assert rows[0]["row"] == {"score": 1}
+
+
+def test_anndata_schema_to_dict():
+    import anndata as ad
+    import numpy as np
+    import pandas as pd
+    from hvantk.tests._snapshot_utils import anndata_schema_to_dict
+
+    X = np.zeros((3, 4), dtype=np.float32)
+    obs = pd.DataFrame({"sample_id": ["s1", "s2", "s3"], "celltype": ["A", "B", "A"]})
+    obs.index = obs["sample_id"]
+    var = pd.DataFrame({"gene_id": ["g1", "g2", "g3", "g4"]})
+    var.index = var["gene_id"]
+    a = ad.AnnData(X=X, obs=obs, var=var)
+
+    schema = anndata_schema_to_dict(a)
+    assert schema["n_obs"] == 3
+    assert schema["n_vars"] == 4
+    assert "sample_id" in schema["obs_columns"]
+    assert "celltype" in schema["obs_columns"]
+    assert "gene_id" in schema["var_columns"]
+    assert schema["X_dtype"] == "float32"
+    assert "ndarray" in schema["X_format"] or "array" in schema["X_format"].lower()
+    assert schema["layers"] == []
+
+
+def test_anndata_sample_rows():
+    import anndata as ad
+    import numpy as np
+    import pandas as pd
+    from hvantk.tests._snapshot_utils import anndata_sample_rows
+
+    X = np.arange(12, dtype=np.float32).reshape(3, 4)
+    obs = pd.DataFrame({"celltype": ["A", "B", "C"]}, index=["c1", "c2", "c3"])
+    var = pd.DataFrame({"gene_id": ["g1", "g2", "g3", "g4"]}, index=["g1", "g2", "g3", "g4"])
+    a = ad.AnnData(X=X, obs=obs, var=var)
+
+    rows = anndata_sample_rows(a, n=2)
+    assert len(rows["obs_head"]) == 2
+    assert rows["obs_head"][0]["celltype"] == "A"
+    assert len(rows["var_head"]) == 2
+    assert rows["var_head"][0]["gene_id"] == "g1"
+    assert rows["X_corner"] == [[0.0, 1.0], [4.0, 5.0]]
+
+
+def test_regenerate_snapshots_dispatches_on_anndata(tmp_path):
+    """Builders returning AnnData write anndata-shape snapshots, not Hail-shape."""
+    import json
+    import anndata as ad
+    import numpy as np
+    import pandas as pd
+    from hvantk.tests._snapshot_utils import regenerate_snapshots
+
+    def fake_builder(expr_path: str, output_path: str):
+        X = np.zeros((2, 3), dtype=np.float32)
+        obs = pd.DataFrame({"celltype": ["A", "B"]}, index=["c1", "c2"])
+        var = pd.DataFrame({"gene_id": ["g1", "g2", "g3"]}, index=["g1", "g2", "g3"])
+        return ad.AnnData(X=X, obs=obs, var=var)
+
+    snapshot_dir = tmp_path / "snap"
+    regenerate_snapshots(
+        builder_fn=fake_builder,
+        fixture_path="ignored.tsv",
+        snapshot_dir=snapshot_dir,
+        builder_kwargs={"output_path": str(tmp_path / "out.h5ad")},
+        input_path_kwarg="expr_path",
+    )
+    schema = json.loads((snapshot_dir / "schema.json").read_text())
+    assert schema["n_obs"] == 2
+    assert schema["n_vars"] == 3
+    rows = json.loads((snapshot_dir / "sample_rows.json").read_text())
+    assert "obs_head" in rows
+    assert "var_head" in rows
+    assert "X_corner" in rows

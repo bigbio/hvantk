@@ -15,6 +15,8 @@ __all__ = [
     "collect_sample_rows",
     "load_snapshot",
     "regenerate_snapshots",
+    "anndata_schema_to_dict",
+    "anndata_sample_rows",
 ]
 
 
@@ -122,6 +124,58 @@ def _to_jsonable(value: Any) -> Any:
     return str(value)
 
 
+def anndata_schema_to_dict(adata: Any) -> dict:
+    """Serialize an AnnData object's schema to a JSON-stable dict.
+
+    Captures `n_obs`, `n_vars`, sorted `obs_columns` / `var_columns`, the
+    dtype and Python-class name of `X`, and the list of layer names. Plain
+    `int` casts are used (numpy ints are not JSON-stable).
+    """
+    import anndata as ad  # noqa: F401  (lazy-import for parity with hl)
+
+    if adata.X is None:
+        x_dtype: Any = None
+        x_format = "None"
+    else:
+        x_dtype = str(adata.X.dtype)
+        x_format = type(adata.X).__name__
+
+    return {
+        "n_obs": int(adata.n_obs),
+        "n_vars": int(adata.n_vars),
+        "obs_columns": sorted(adata.obs.columns.tolist()),
+        "var_columns": sorted(adata.var.columns.tolist()),
+        "X_dtype": x_dtype,
+        "X_format": x_format,
+        "layers": sorted(list(adata.layers.keys())),
+    }
+
+
+def anndata_sample_rows(adata: Any, n: int = 5) -> dict:
+    """Collect a JSON-stable head sample from an AnnData.
+
+    Returns a dict with three keys:
+      - `obs_head`: first n rows of `adata.obs` as records (index column preserved).
+      - `var_head`: first n rows of `adata.var` as records (index column preserved).
+      - `X_corner`: first n×n slice of `adata.X` as a nested Python list, or
+        `None` if `adata.X is None`. Sparse matrices are densified via `.toarray()`.
+    """
+    import anndata as ad  # noqa: F401
+
+    obs_head = adata.obs.head(n).reset_index().to_dict(orient="records")
+    var_head = adata.var.head(n).reset_index().to_dict(orient="records")
+
+    if adata.X is None:
+        x_corner: Any = None
+    else:
+        sub = adata.X[:n, :n]
+        if hasattr(sub, "toarray"):
+            sub = sub.toarray()
+        x_corner = sub.tolist()
+
+    return {"obs_head": obs_head, "var_head": var_head, "X_corner": x_corner}
+
+
 def load_snapshot(path: str | Path) -> Any:
     """Load a snapshot JSON file."""
     return json.loads(Path(path).read_text())
@@ -131,32 +185,86 @@ def regenerate_snapshots(
     builder_fn: Callable[..., Any],
     fixture_path: str,
     snapshot_dir: str | Path,
-    keys: Iterable[dict],
+    keys: Iterable[dict] | None = None,
     builder_kwargs: dict | None = None,
+    input_path_kwarg: str = "input_path",
 ) -> None:
     """Run the builder against the fixture and write canonical snapshots.
 
-    Assumes the builder produces a Hail Table written to `output_path`.
-    MatrixTable / anndata builders need a different helper (added when
-    those resource types are introduced — see Task 14 of the pilot plan).
+    Dispatches on the builder return type:
+      - If the builder returns an `anndata.AnnData`, writes anndata-shape
+        snapshots via `anndata_schema_to_dict` + `anndata_sample_rows`.
+      - Otherwise, falls back to reading a Hail Table from `output_path` and
+        writing Hail-shape snapshots via `hail_schema_to_dict` +
+        `collect_sample_rows`.
+
+    Parameters
+    ----------
+    builder_fn:
+        Builder function under test.
+    fixture_path:
+        Path to the input fixture file. Passed to the builder under the kwarg
+        named by `input_path_kwarg`.
+    snapshot_dir:
+        Directory where `schema.json` and `sample_rows.json` are written.
+    keys:
+        For Hail-Table builders, the list of key dicts to extract via
+        `collect_sample_rows`. Ignored on the AnnData path. Defaults to an
+        empty list when omitted.
+    builder_kwargs:
+        Extra kwargs to pass to the builder. If `output_path` is present in
+        this mapping, it is used as-is (typical for AnnData builders that
+        write `.h5ad`). Otherwise a temporary `.ht` path is created and used.
+    input_path_kwarg:
+        Name of the builder's input-path argument. Defaults to `"input_path"`,
+        matching the Hail Table builder convention. UCSC's `build_ucsc_ad`
+        uses `"expression_matrix_path"`, for example.
 
     Writes:
       - <snapshot_dir>/schema.json
       - <snapshot_dir>/sample_rows.json
     """
-    import hail as hl
     from tempfile import TemporaryDirectory
 
     snapshot_dir = Path(snapshot_dir)
     snapshot_dir.mkdir(parents=True, exist_ok=True)
 
     with TemporaryDirectory() as tmp:
-        output_path = str(Path(tmp) / "out.ht")
-        builder_fn(input_path=fixture_path, output_path=output_path, **(builder_kwargs or {}))
-        ht = hl.read_table(output_path)
+        # Build call kwargs. The Hail path defaults output_path to <tmp>/out.ht;
+        # the AnnData path's output_path is supplied by the caller via builder_kwargs.
+        call_kwargs: dict[str, Any] = {input_path_kwarg: fixture_path}
+        if builder_kwargs and "output_path" in builder_kwargs:
+            call_kwargs.update(builder_kwargs)
+        else:
+            call_kwargs["output_path"] = str(Path(tmp) / "out.ht")
+            if builder_kwargs:
+                call_kwargs.update(builder_kwargs)
 
+        result = builder_fn(**call_kwargs)
+
+        # Dispatch on return type.
+        try:
+            import anndata as ad
+
+            if isinstance(result, ad.AnnData):
+                schema = anndata_schema_to_dict(result)
+                (snapshot_dir / "schema.json").write_text(
+                    json.dumps(schema, indent=2, sort_keys=True)
+                )
+                rows = anndata_sample_rows(result)
+                (snapshot_dir / "sample_rows.json").write_text(
+                    json.dumps(rows, indent=2, sort_keys=True)
+                )
+                return
+        except ImportError:
+            pass
+
+        # Hail Table fallback (existing logic).
+        import hail as hl
+
+        ht = hl.read_table(call_kwargs["output_path"])
         schema = hail_schema_to_dict(ht)
         (snapshot_dir / "schema.json").write_text(json.dumps(schema, indent=2, sort_keys=True))
 
-        rows = collect_sample_rows(ht, keys=list(keys))
+        rows = collect_sample_rows(ht, keys=list(keys or []))
         (snapshot_dir / "sample_rows.json").write_text(json.dumps(rows, indent=2, sort_keys=True))
