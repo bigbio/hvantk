@@ -1,0 +1,81 @@
+---
+name: hvantk:resource-clinvar
+description: Onboard, build, or update the ClinVar resource for hvantk
+status: provisional
+backend: hail
+domain: variants
+---
+
+# ClinVar resource skill
+
+## 1. Status & scope
+
+This skill covers BUILD and UPDATE of the ClinVar Hail Table. It does NOT cover download (see `hvantk/commands/clinvar_downloader.py`) or downstream analysis.
+
+## 2. Source identity
+
+Provider metadata (URL, version cadence, license, citation) lives in `hvantk/resources/catalog.yaml` and `hvantk/resources/registry/genomics/clinvar.yaml`. Read those files; do not restate.
+
+Stable note (not in catalog): ClinVar releases monthly. New INFO fields are uncommon but do occur (e.g., the addition of `ONCOGENICITY` in the oncogenicity supplement).
+
+## 3. Backend choice + reasoning
+
+Hail Table keyed by `(locus, alleles)`. Reasoning: ClinVar is variant-keyed and joins with other variant tables (gnomAD, dbNSFP) downstream. A single Hail Table is the natural fit; nothing about ClinVar requires anndata or pandas.
+
+## 4. Raw format & gotchas
+
+- File format: bgzipped VCF (`.vcf.bgz` with `.tbi` index).
+- Reference genome: GRCh38 by default. The `contig_recoding()` helper from `hvantk/tables/table_builders.py` maps numeric contigs to `chr*` names.
+- Import: use `hl.import_vcf(path, force=True, reference_genome=..., contig_recoding=..., skip_invalid_loci=True)`. The `force=True` flag is required because ClinVar VCFs contain non-standard headers.
+- Keying: after `.rows()`, repartition (typical: 100) and key by `(locus, alleles)`.
+- INFO fields commonly used: `CLNSIG`, `CLNREVSTAT`, `CLNDN`, `CLNDISDB`, `RS`, `MC`, `GENEINFO`. The full list comes from the VCF header — read it, do not assume.
+- Encoding gotchas:
+  - Spaces in INFO values are encoded as `_` (e.g., `Likely_pathogenic`).
+  - Multi-value INFO fields use `,` or `|` depending on the field.
+  - `CLNDISDB` uses `,` between databases and `|` between IDs within a database.
+
+## 5. Output contract
+
+Hail Table at `<output_path>.ht`. Schema is defined by `hvantk/tests/snapshots/clinvar/schema.json` (canonical). Human summary: keyed by `(locus, alleles)`; row contains `rsid`, `qual`, `filters`, and an `info` struct with the ClinVar-specific INFO fields parsed by `hl.import_vcf`.
+
+## 6. hvantk integration points
+
+- Builder: `create_clinvar_tb` in `hvantk/tables/table_builders.py`
+- CLI: `hvantk mktable clinvar` in `hvantk/commands/make_table_cli.py`
+- Registry: registered in `hvantk/tables/registry.py` as `TABLE_BUILDERS["clinvar"]`
+- Test: `hvantk/tests/test_clinvar_builder.py`
+
+Read the existing files at these paths as ground truth for shape. This skill does not restate code.
+
+## 7. Workflow steps
+
+When invoked to build or update:
+
+1. Verify Hail is available (defer to the SessionStart hook).
+2. Confirm input is a ClinVar VCF: read the `#CHROM` header line of the input file.
+3. Use `_create_table_base()` from `hvantk/tables/table_builders.py` with:
+   - `import_func = lambda: hl.import_vcf(input_path, force=True, reference_genome=reference_genome, contig_recoding=contig_recoding(), skip_invalid_loci=True).rows()`
+   - `transform_func = lambda ht: ht.repartition(100).key_by("locus", "alleles")`
+4. Apply the parsing rules from § 4 (force, contig_recoding, skip_invalid_loci).
+5. Run validation: `pytest hvantk/tests/test_clinvar_builder.py -m hail`.
+6. Report: schema diff, sample-row diff, test pass/fail.
+
+## 8. Update playbook
+
+When ClinVar releases a new monthly version:
+
+1. Fetch the new release: `hvantk download clinvar --release latest --output-dir /tmp/clinvar`.
+2. Regenerate the fixture: extract a small representative slice (≥ 2 chromosomes, mix of CLNSIG values, multi-allelic site, multi-CLNDN row). Replace `hvantk/tests/testdata/clinvar/clinvar_mini.vcf.bgz` and rebuild the `.tbi` index.
+3. Run snapshot regeneration: `pytest hvantk/tests/test_clinvar_builder.py -m hail --regenerate-snapshots`.
+4. Inspect the snapshot diff:
+   - **Expected diff** (new INFO field, additional CLNSIG value): commit the regenerated snapshots with explanation.
+   - **Unexpected diff** (schema regression, missing field): STOP. Investigate before committing.
+5. If a parsing gotcha was introduced (e.g., new encoding), add it to § 4.
+6. Open PR; reviewer checks the snapshot diff narrative.
+
+## 9. Validation contract
+
+- `fixture`: `hvantk/tests/testdata/clinvar/clinvar_mini.vcf.bgz`
+- `schema_snapshot`: `hvantk/tests/snapshots/clinvar/schema.json`
+- `row_snapshot`: `hvantk/tests/snapshots/clinvar/sample_rows.json`
+- `test_command`: `pytest hvantk/tests/test_clinvar_builder.py -m hail`
