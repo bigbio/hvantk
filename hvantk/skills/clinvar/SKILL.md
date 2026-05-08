@@ -58,8 +58,9 @@ When invoked to build or update:
    - `import_func = lambda: hl.import_vcf(input_path, force=True, reference_genome=reference_genome, contig_recoding=contig_recoding(), skip_invalid_loci=True).rows()`
    - `transform_func = lambda ht: ht.repartition(100).key_by("locus", "alleles")`
 4. Apply the parsing rules from § 4 (force, contig_recoding, skip_invalid_loci).
-5. Run validation: `pytest hvantk/tests/test_clinvar_builder.py -m hail`.
-6. Report: schema diff, sample-row diff, test pass/fail.
+5. Preserve the flatten-before-export branch from § 4 — pass `export_tsv=False` to `_create_table_base` and run `<table>.flatten().export(...)` after. The round-trip test does NOT exercise `export_tsv=True`, so a regression here would land silently.
+6. Run validation: `pytest hvantk/tests/test_clinvar_builder.py -m hail`.
+7. Report: schema diff, sample-row diff, test pass/fail.
 
 ## 8. Update playbook
 
