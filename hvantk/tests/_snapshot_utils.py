@@ -95,10 +95,11 @@ def collect_sample_rows(table: Any, keys: list[dict]) -> list[dict]:
 def _to_jsonable(value: Any) -> Any:
     """Convert Hail-collected values into JSON-stable Python primitives.
 
-    Hail Locus is rendered as "<contig>:<position>". All other Hail-specific
-    types (Call, Interval, Struct) fall through to repr via str(). Sets are
-    sorted by their JSON-converted values; this assumes elements are
-    orderable scalars (Hail set element types are typed scalars).
+    Hail Locus is rendered as "<contig>:<position>". Hail Struct is rendered
+    as a nested dict by recursively converting each field. Other Hail-specific
+    types (Call, Interval) fall through to repr via str(). Sets are sorted by
+    their JSON-converted values; this assumes elements are orderable scalars
+    (Hail set element types are typed scalars).
     """
     if value is None:
         return None
@@ -114,6 +115,8 @@ def _to_jsonable(value: Any) -> Any:
         import hail as hl
         if isinstance(value, hl.Locus):
             return f"{value.contig}:{value.position}"
+        if isinstance(value, hl.Struct):
+            return {k: _to_jsonable(v) for k, v in dict(value).items()}
     except ImportError:
         pass
     return str(value)

@@ -81,6 +81,15 @@ def test_to_jsonable_renders_hail_locus(hail_session):
 
 
 @pytest.mark.hail
+def test_to_jsonable_renders_hail_struct_as_nested_dict(hail_session):
+    import hail as hl
+    from hvantk.tests._snapshot_utils import _to_jsonable
+
+    s = hl.Struct(a=1, b="x", nested=hl.Struct(c=[1, 2]))
+    assert _to_jsonable(s) == {"a": 1, "b": "x", "nested": {"c": [1, 2]}}
+
+
+@pytest.mark.hail
 def test_collect_sample_rows_raises_on_missing_key(hail_session):
     import hail as hl
     from hvantk.tests._snapshot_utils import collect_sample_rows
