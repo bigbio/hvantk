@@ -131,3 +131,20 @@ def hail_session(tmp_path_factory, request):
             hl.stop()
         except Exception:
             pass
+
+
+# ----------------------------
+# Skill snapshot regeneration flag
+# ----------------------------
+def pytest_addoption(parser):
+    parser.addoption(
+        "--regenerate-snapshots",
+        action="store_true",
+        default=False,
+        help="Regenerate skill snapshot files in place instead of asserting against them.",
+    )
+
+
+@pytest.fixture
+def regenerate_snapshots(request) -> bool:
+    return request.config.getoption("--regenerate-snapshots")
