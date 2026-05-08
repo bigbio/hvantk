@@ -33,6 +33,7 @@ Hail Table keyed by `(locus, alleles)`. Reasoning: ClinVar is variant-keyed and 
   - Spaces in INFO values are encoded as `_` (e.g., `Likely_pathogenic`).
   - Multi-value INFO fields use `,` or `|` depending on the field.
   - `CLNDISDB` uses `,` between databases and `|` between IDs within a database.
+- TSV export gotcha: when `export_tsv=True`, ClinVar's TSV is **flattened** before export so nested struct fields become flat columns. Do NOT pass `export_tsv` straight through to `_create_table_base` — instead, force `export_tsv=False` in the helper call and run `<table>.flatten().export(f"{output_path}.tsv.bgz")` after the helper returns. Other builders may forward `export_tsv` directly; ClinVar is special because of the deeply nested INFO struct.
 
 ## 5. Output contract
 
