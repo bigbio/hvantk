@@ -40,8 +40,10 @@ When in doubt, READ existing code under these paths before inferring shape.
 ## 4. Required helpers
 
 - `_create_table_base()` — defined in `hvantk/tables/table_builders.py`. Use this for variant/gene Table builders to avoid boilerplate (import, transform, checkpoint, optional TSV export).
-- `create_table_adapter()` — `hvantk/tables/registry.py`. Use to register a builder in the recipe system via introspection-based parameter mapping.
+- `create_table_adapter()` — `hvantk/tables/registry.py`. Use to register a Hail Table builder in the recipe system via introspection-based parameter mapping.
+- `create_matrix_adapter()` — `hvantk/tables/registry.py`. Same role for MatrixTable / anndata builders that take multi-input shapes (e.g., expression matrix + metadata).
 - `init_hail()` — `hvantk/core/hail_context.py`. Use to ensure Hail is initialized once. Tests use the session-scoped `hail_session` fixture instead.
+- AnnData helpers — `hvantk/core/anndata_utils.py` exposes `build_anndata_metadata`, `save_anndata`, `coerce_obs_for_h5ad`, `annotate_column_summary_ad`. Use for anndata-backed builders.
 
 NEVER paste these helpers' source into a skill. Reference them by path.
 
@@ -54,11 +56,15 @@ NEVER paste these helpers' source into a skill. Reference them by path.
 
 ## 6. Registry registration
 
-A builder is registered in `hvantk/tables/registry.py` (or `matrix_builders.py`) only if it is intended for batch / recipe use. Adapter pattern:
+A builder is registered in `hvantk/tables/registry.py` only if it is intended for batch / recipe use. Adapter pattern:
 
 ```python
 TABLE_BUILDERS["<source>"] = create_table_adapter(
     "hvantk.tables.table_builders", "create_<source>_tb"
+)
+# Anndata / multi-input matrix builders use the parallel registry:
+MATRIX_BUILDERS["<source>"] = create_matrix_adapter(
+    "hvantk.tables.matrix_builders", "build_<source>_ad"
 )
 ```
 
