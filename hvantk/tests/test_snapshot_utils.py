@@ -11,7 +11,7 @@ from hvantk.tests._snapshot_utils import (
 
 
 @pytest.mark.hail
-def test_hail_schema_to_dict_roundtrips_table(hail_session, tmp_path):
+def test_hail_schema_to_dict_roundtrips_table(hail_session):
     import hail as hl
 
     ht = hl.utils.range_table(3).annotate(value=hl.str("hello"))
@@ -39,3 +39,52 @@ def test_load_snapshot_reads_json(tmp_path):
     p.write_text(json.dumps({"key": ["idx"], "row": {"idx": "int32"}}))
     data = load_snapshot(p)
     assert data == {"key": ["idx"], "row": {"idx": "int32"}}
+
+
+def test_to_jsonable_handles_primitives():
+    from hvantk.tests._snapshot_utils import _to_jsonable
+
+    assert _to_jsonable(None) is None
+    assert _to_jsonable("hello") == "hello"
+    assert _to_jsonable(42) == 42
+    assert _to_jsonable(3.14) == 3.14
+    assert _to_jsonable(True) is True
+
+
+def test_to_jsonable_handles_collections():
+    from hvantk.tests._snapshot_utils import _to_jsonable
+
+    assert _to_jsonable([1, 2, 3]) == [1, 2, 3]
+    assert _to_jsonable((1, 2)) == [1, 2]
+    assert _to_jsonable({"b": 2, "a": 1}) == {"b": 2, "a": 1}
+    assert _to_jsonable({3, 1, 2}) == [1, 2, 3]
+    assert _to_jsonable([{1, 2}, {3, 4}]) == [[1, 2], [3, 4]]
+
+
+def test_to_jsonable_falls_back_to_str_for_unknown():
+    from hvantk.tests._snapshot_utils import _to_jsonable
+
+    class Weird:
+        def __str__(self):
+            return "weird-repr"
+
+    assert _to_jsonable(Weird()) == "weird-repr"
+
+
+@pytest.mark.hail
+def test_to_jsonable_renders_hail_locus(hail_session):
+    import hail as hl
+    from hvantk.tests._snapshot_utils import _to_jsonable
+
+    locus = hl.Locus("chr1", 12345, reference_genome="GRCh38")
+    assert _to_jsonable(locus) == "chr1:12345"
+
+
+@pytest.mark.hail
+def test_collect_sample_rows_raises_on_missing_key(hail_session):
+    import hail as hl
+    from hvantk.tests._snapshot_utils import collect_sample_rows
+
+    ht = hl.utils.range_table(3)
+    with pytest.raises(KeyError, match="not found"):
+        collect_sample_rows(ht, keys=[{"idx": 999}])
