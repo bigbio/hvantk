@@ -65,7 +65,7 @@ When invoked to build or update:
 When ClinVar releases a new monthly version:
 
 1. Fetch the new release: `hvantk download clinvar --release latest --output-dir /tmp/clinvar`.
-2. Regenerate the fixture: extract a small representative slice (≥ 2 chromosomes, mix of CLNSIG values, multi-allelic site, multi-CLNDN row). Replace `hvantk/tests/testdata/clinvar/clinvar_mini.vcf.bgz` and rebuild the `.tbi` index.
+2. Regenerate the fixture: extract a small representative slice (mix of CLNSIG values, multi-allelic site, multi-CLNDN row). The current pilot fixture is a single-chromosome slice (`hvantk/tests/testdata/raw/clinvar/clinvar_20220403_chr20.vcf.bgz`) — this is adequate because ClinVar parsing is INFO-field driven, not chromosome-dependent. Replace the file (re-bgzip if needed). A `.tbi` index is optional; `hl.import_vcf(force=True)` reads `.bgz` directly.
 3. Run snapshot regeneration: `pytest hvantk/tests/test_clinvar_builder.py -m hail --regenerate-snapshots`.
 4. Inspect the snapshot diff:
    - **Expected diff** (new INFO field, additional CLNSIG value): commit the regenerated snapshots with explanation.
@@ -75,7 +75,7 @@ When ClinVar releases a new monthly version:
 
 ## 9. Validation contract
 
-- `fixture`: `hvantk/tests/testdata/clinvar/clinvar_mini.vcf.bgz`
+- `fixture`: `hvantk/tests/testdata/raw/clinvar/clinvar_20220403_chr20.vcf.bgz`
 - `schema_snapshot`: `hvantk/tests/snapshots/clinvar/schema.json`
 - `row_snapshot`: `hvantk/tests/snapshots/clinvar/sample_rows.json`
 - `test_command`: `pytest hvantk/tests/test_clinvar_builder.py -m hail`
