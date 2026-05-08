@@ -88,3 +88,31 @@ def test_collect_sample_rows_raises_on_missing_key(hail_session):
     ht = hl.utils.range_table(3)
     with pytest.raises(KeyError, match="not found"):
         collect_sample_rows(ht, keys=[{"idx": 999}])
+
+
+@pytest.mark.hail
+def test_collect_sample_rows_handles_array_keys(hail_session):
+    """Variant tables key on (locus, alleles) where alleles is array<str>.
+
+    Regression: list values inside the key tuple must be coerced to tuples
+    so the dict-key path is hashable.
+    """
+    import hail as hl
+    from hvantk.tests._snapshot_utils import collect_sample_rows
+
+    ht = hl.Table.parallelize(
+        [
+            {"locus": hl.Locus("chr1", 100, reference_genome="GRCh38"), "alleles": ["A", "G"], "score": 1},
+            {"locus": hl.Locus("chr1", 200, reference_genome="GRCh38"), "alleles": ["C", "T"], "score": 2},
+        ],
+        schema=hl.tstruct(
+            locus=hl.tlocus("GRCh38"),
+            alleles=hl.tarray(hl.tstr),
+            score=hl.tint32,
+        ),
+        key=["locus", "alleles"],
+    )
+    rows = collect_sample_rows(ht, keys=[{"locus": "chr1:100", "alleles": ["A", "G"]}])
+    assert len(rows) == 1
+    assert rows[0]["key"] == {"locus": "chr1:100", "alleles": ["A", "G"]}
+    assert rows[0]["row"] == {"score": 1}

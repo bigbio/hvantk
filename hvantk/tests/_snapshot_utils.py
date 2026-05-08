@@ -45,6 +45,20 @@ def hail_schema_to_dict(table_or_mt: Any) -> dict:
     }
 
 
+def _to_hashable(value: Any) -> Any:
+    """Convert a JSON-converted value into a hashable form for dict-key use.
+
+    Variant tables key on `(locus, alleles)` where alleles is `array<str>`,
+    which `_to_jsonable` returns as a Python list. Lists are unhashable, so
+    they cannot appear inside a tuple used as a dict key without conversion.
+    """
+    if isinstance(value, list):
+        return tuple(_to_hashable(v) for v in value)
+    if isinstance(value, dict):
+        return tuple(sorted((k, _to_hashable(v)) for k, v in value.items()))
+    return value
+
+
 def collect_sample_rows(table: Any, keys: list[dict]) -> list[dict]:
     """Collect rows whose key fields match one of the provided dicts.
 
@@ -60,7 +74,7 @@ def collect_sample_rows(table: Any, keys: list[dict]) -> list[dict]:
     by_key: dict[tuple, dict] = {}
     for row in collected:
         row_dict = dict(row)
-        key_tuple = tuple(_to_jsonable(row_dict[k]) for k in key_field_names)
+        key_tuple = tuple(_to_hashable(_to_jsonable(row_dict[k])) for k in key_field_names)
         by_key[key_tuple] = {
             "key": {k: _to_jsonable(row_dict[k]) for k in key_field_names},
             "row": {k: _to_jsonable(v) for k, v in row_dict.items() if k not in key_field_names},
@@ -68,7 +82,7 @@ def collect_sample_rows(table: Any, keys: list[dict]) -> list[dict]:
 
     out: list[dict] = []
     for k in keys:
-        key_tuple = tuple(_to_jsonable(k[name]) for name in key_field_names)
+        key_tuple = tuple(_to_hashable(_to_jsonable(k[name])) for name in key_field_names)
         if key_tuple not in by_key:
             raise KeyError(
                 f"collect_sample_rows: requested key {k!r} not found in table; "
