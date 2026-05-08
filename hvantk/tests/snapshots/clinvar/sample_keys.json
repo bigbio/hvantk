@@ -1,0 +1,10 @@
+[
+  {"locus": "chr20:289563", "alleles": ["T", "C"]},
+  {"locus": "chr20:8132666", "alleles": ["A", "T"]},
+  {"locus": "chr20:21215630", "alleles": ["G", "T"]},
+  {"locus": "chr20:34989865", "alleles": ["T", "C"]},
+  {"locus": "chr20:44626468", "alleles": ["C", "T"]},
+  {"locus": "chr20:50894815", "alleles": ["C", "T"]},
+  {"locus": "chr20:63202482", "alleles": ["A", "G"]},
+  {"locus": "chr20:63692857", "alleles": ["C", "G"]}
+]
