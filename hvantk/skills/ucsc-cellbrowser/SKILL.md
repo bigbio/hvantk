@@ -33,7 +33,7 @@ Gotchas:
 
 - **Pipe-encoded gene names.** Some UCSC collections format gene IDs as `<symbol>|<ensembl_id>`. The builder's default `split_gene_field=True` keeps only the part before the `|`. If a collection ships fully-qualified IDs, set `split_gene_field=False` to retain the full string.
 - **Cell ID alignment.** The expression matrix header (cell IDs) and the metadata TSV's cell-ID column must align. Mismatches surface only when `obs` is constructed; the builder does not silently re-key.
-- **Backed-vs-in-memory auto-selection.** `build_ucsc_ad(backed=None, ...)` chooses based on input size compared with the threshold defined at `hvantk/tables/matrix_builders.py:BACKED_BUILDER_THRESHOLD_BYTES`. Backed mode requires `output_path`. Backed-mode `obs` writes are guarded by `coerce_obs_for_h5ad()` because anndata's vlen-string HDF5 writer chokes on object-dtype columns mixing strings and `NaN`; the in-memory path applies the same coercion before saving.
+- **Backed-vs-in-memory auto-selection.** `build_ucsc_ad(backed=None, ...)` chooses based on input size compared with the threshold defined at `hvantk/tables/matrix_builders.py:BACKED_BUILDER_THRESHOLD_BYTES` (default: 1 GiB). Backed mode requires `output_path`. Backed-mode `obs` writes are guarded by `coerce_obs_for_h5ad()` because anndata's vlen-string HDF5 writer chokes on object-dtype columns mixing strings and `NaN`; the in-memory path applies the same coercion before saving.
 - **Backed mode skips column-summary annotation.** `annotate_column_summary_ad` is only called in the in-memory branch — for atlas-scale inputs it would force a full X scan. When auditing a backed build, do not assume the per-column summary fields exist on the returned handle.
 - **Streaming row iterator.** `_iter_ucsc_rows` (in `hvantk/tables/ucsc.py`) wraps a file handle that closes on generator exhaustion. Partial iteration leaks the handle until GC; full iteration is the contract.
 
@@ -62,9 +62,10 @@ When invoked to build or update:
 2. Confirm the expression input is a UCSC matrix: read the first line; the leading column should be a gene identifier (e.g., `gene`/`geneId`/`Symbol`), not a cell ID. The remaining header fields should be cell IDs that match the metadata TSV's cell-ID column.
 3. Confirm the metadata input: read the first line of the metadata TSV; the cell-ID column is whatever `UCSC_CELL_ID_COLUMN` resolves to (see `hvantk/core/constants.py`); other columns become `obs` fields.
 4. Call `build_ucsc_ad(expression_matrix_path=..., metadata_path=..., output_path=..., gene_column=..., split_gene_field=..., overwrite=..., backed=None, column_batch=64)`. The function auto-selects backed mode based on file size; pass `backed=True` to force.
-5. If backed mode is selected (auto or forced), `output_path` is required — the builder writes CSC columns directly to disk and returns a `backed='r'` handle. Per § 4, do not rely on `annotate_column_summary_ad`-derived fields in this branch.
-6. Run validation: `pytest hvantk/tests/test_ucsc_cellbrowser_builder.py` (this test is NOT marked `@pytest.mark.hail` — it does not require a Hail session).
-7. Report: schema diff, head sample-row diff, test pass/fail.
+5. If backed mode is selected (auto or forced), `output_path` is required. Division of responsibility: `build_ucsc_atlas_backed` writes CSC columns directly to disk (no return value of interest); `build_ucsc_ad` re-opens the written file via `anndata.read_h5ad(output_path, backed='r')` and returns that read-backed handle. Per § 4, do not rely on `annotate_column_summary_ad`-derived fields in this branch — the backed path skips that pass.
+6. Backed-path operation order is fixed: coerce `obs` via `coerce_obs_for_h5ad` → pre-flight via `_probe_write_elem` (catches obs-serialization failures BEFORE streaming any X columns) → stream X column-batches via `write_elem` + `sparse_dataset(...).append(...)` → finalize by writing `/obs`, `/var`, `/uns`. Reordering risks committing a partial atlas to disk before discovering an obs failure.
+7. Run validation: `pytest hvantk/tests/test_ucsc_cellbrowser_builder.py` (this test is NOT marked `@pytest.mark.hail` — it does not require a Hail session).
+8. Report: schema diff, head sample-row diff, test pass/fail.
 
 ## 8. Update playbook
 
