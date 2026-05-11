@@ -7479,5 +7479,56 @@
         "description": "Expression matrix for Chicken RNA-seq time-series of the development of seven major organs"
       }
     ]
+  },
+  {
+    "accession": "adult_ctx_meta_atlas_class_summary",
+    "title": "Adult Cortex Meta-Atlas (class-level summary)",
+    "description": "Class-level expression summary derived from the UCSC Cell Browser 'Adult Cortex Meta-Atlas' collection (parent accession: adult-ctx-meta-atlas). Rows = genes, columns = cell-class meta-cells (e.g. Astrocyte, IT, PVALB).",
+    "data_source": "UCSC",
+    "url": "https://cells.ucsc.edu/?ds=adult-ctx-meta-atlas",
+    "last_updated": "2026-05-11",
+    "organism": "Homo sapiens",
+    "tissue_type": ["brain", "cortex"],
+    "expression_unit": "normalized",
+    "platform_type": "single-cell RNA-seq",
+    "data_level": "gene",
+    "gene_column": "gene",
+    "split_gene_field": true,
+    "pre_normalized": true,
+    "expected_obs_columns": ["Class", "n_cells"]
+  },
+  {
+    "accession": "dev_ctx_meta_atlas_type_v2_summary",
+    "title": "Developing Cortex Meta-Atlas (Type_v2 summary)",
+    "description": "Type_v2 cell-type-level expression summary derived from the UCSC Cell Browser 'Developing Cortex Meta-Atlas' collection (parent accession: dev-ctx-meta-atlas). Rows = genes, columns = Type_v2 meta-cells (e.g. Astrocyte, Excitatory Neuron, Microglia, RG).",
+    "data_source": "UCSC",
+    "url": "https://cells.ucsc.edu/?ds=dev-ctx-meta-atlas",
+    "last_updated": "2026-05-11",
+    "organism": "Homo sapiens",
+    "tissue_type": ["brain", "cortex"],
+    "expression_unit": "normalized",
+    "platform_type": "single-cell RNA-seq",
+    "data_level": "gene",
+    "gene_column": "gene",
+    "split_gene_field": true,
+    "pre_normalized": true,
+    "expected_obs_columns": ["Type_v2", "n_cells"]
+  },
+  {
+    "accession": "asp_2019_celltype_summary",
+    "title": "Asp 2019 Developing Heart (cell-type summary)",
+    "description": "Cell-type-level expression summary derived from Asp et al. 2019 developing human heart scRNA-seq (PMID:31835037). Rows = genes, columns = cell-type meta-cells (e.g. Atrial cardiomyocytes, Capillary endothelium, Cardiac neural crest cells).",
+    "data_source": "UCSC",
+    "url": "https://cells.ucsc.edu/?ds=heart-dev-asp2019",
+    "last_updated": "2026-05-11",
+    "organism": "Homo sapiens",
+    "tissue_type": ["heart"],
+    "expression_unit": "normalized",
+    "platform_type": "single-cell RNA-seq",
+    "data_level": "gene",
+    "gene_column": "gene",
+    "split_gene_field": true,
+    "pre_normalized": true,
+    "expected_obs_columns": ["celltype", "n_cells"]
   }
 ]

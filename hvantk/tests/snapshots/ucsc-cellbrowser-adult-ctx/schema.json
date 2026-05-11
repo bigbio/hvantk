@@ -1,0 +1,12 @@
+{
+  "X_dtype": "float32",
+  "X_format": "csr_matrix",
+  "layers": [],
+  "n_obs": 19,
+  "n_vars": 250,
+  "obs_columns": [
+    "Class",
+    "n_cells"
+  ],
+  "var_columns": []
+}
