@@ -1,0 +1,37 @@
+{
+  "key": [
+    "locus",
+    "alleles"
+  ],
+  "row": {
+    "alleles": "array<str>",
+    "filters": "set<str>",
+    "info": {
+      "AF_ESP": "float64",
+      "AF_EXAC": "float64",
+      "AF_TGP": "float64",
+      "ALLELEID": "int32",
+      "CLNDISDB": "array<str>",
+      "CLNDISDBINCL": "array<str>",
+      "CLNDN": "array<str>",
+      "CLNDNINCL": "array<str>",
+      "CLNHGVS": "array<str>",
+      "CLNREVSTAT": "array<str>",
+      "CLNSIG": "array<str>",
+      "CLNSIGCONF": "array<str>",
+      "CLNSIGINCL": "array<str>",
+      "CLNVC": "str",
+      "CLNVCSO": "str",
+      "CLNVI": "array<str>",
+      "DBVARID": "array<str>",
+      "GENEINFO": "str",
+      "MC": "array<str>",
+      "ORIGIN": "array<str>",
+      "RS": "array<str>",
+      "SSR": "int32"
+    },
+    "locus": "locus<GRCh38>",
+    "qual": "float64",
+    "rsid": "str"
+  }
+}
