@@ -18,7 +18,7 @@ These conventions apply to every per-resource skill. Per-resource skills MAY ass
 - `hvantk/resources/catalog.yaml` — provider catalog (URLs, version cadence, license)
 - `hvantk/resources/registry/<domain>/datasets.json` — per-domain JSON registry with one entry per dataset (find your source by `accession` or `title`)
 - `hvantk/core/hail_context.py` — Hail initialization (idempotent, thread-safe)
-- `hvantk/tests/testdata/<source>/` — fixtures
+- `hvantk/tests/testdata/raw/<source>/` — fixtures
 - `hvantk/tests/snapshots/<source>/` — schema + sample rows snapshots
 - `hvantk/skills/<source>/SKILL.md` — per-resource skill
 
@@ -79,7 +79,7 @@ New commands live under `hvantk/commands/make_table_cli.py` (or `make_matrix_cli
 - Round-trip test file: `hvantk/tests/test_<source>_builder.py`.
 - Mark with `@pytest.mark.hail` if Hail is required.
 - Use the `hail_session` fixture (session-scoped, auto-applied via `conftest.py`).
-- Fixtures: `hvantk/tests/testdata/<source>/`. Snapshots: `hvantk/tests/snapshots/<source>/`.
+- Fixtures: `hvantk/tests/testdata/raw/<source>/`. Snapshots: `hvantk/tests/snapshots/<source>/`.
 - Assert against snapshots using `hvantk.tests._snapshot_utils`. The `--regenerate-snapshots` pytest flag rewrites snapshots in place.
 
 ## 9. Validation contract
@@ -89,7 +89,7 @@ Every per-resource SKILL.md MUST declare, by path:
 - `fixture`: input file used by the round-trip test
 - `schema_snapshot`: `hvantk/tests/snapshots/<source>/schema.json`
 - `row_snapshot`: `hvantk/tests/snapshots/<source>/sample_rows.json`
-- `test_command`: `pytest hvantk/tests/test_<source>_builder.py -m hail`
+- `test_command`: `pytest hvantk/tests/test_<source>_builder.py` (append `-m hail` only when the test is marked `hail`)
 
 ## 10. Hard guardrails
 

@@ -61,6 +61,33 @@ def _to_hashable(value: Any) -> Any:
     return value
 
 
+def _jsonable_to_hail_python(value: Any, dtype: Any) -> Any:
+    """Convert JSON-stable snapshot keys back into Hail-compatible values."""
+    import hail as hl
+
+    if value is None:
+        return None
+    if isinstance(dtype, hl.tlocus):
+        contig, position = str(value).rsplit(":", 1)
+        rg = getattr(dtype.reference_genome, "name", dtype.reference_genome)
+        return hl.Locus(contig, int(position), reference_genome=rg)
+    if isinstance(dtype, hl.tarray):
+        return [_jsonable_to_hail_python(v, dtype.element_type) for v in value]
+    if isinstance(dtype, hl.tset):
+        return {_jsonable_to_hail_python(v, dtype.element_type) for v in value}
+    if isinstance(dtype, hl.ttuple):
+        return tuple(
+            _jsonable_to_hail_python(v, t)
+            for v, t in zip(value, dtype.types)
+        )
+    if isinstance(dtype, hl.tstruct):
+        return {
+            name: _jsonable_to_hail_python(value[name], dtype[name])
+            for name in dtype
+        }
+    return value
+
+
 def collect_sample_rows(table: Any, keys: list[dict]) -> list[dict]:
     """Collect rows whose key fields match one of the provided dicts.
 
@@ -71,15 +98,38 @@ def collect_sample_rows(table: Any, keys: list[dict]) -> list[dict]:
     """
     import hail as hl
 
+    if not keys:
+        return []
+
     key_field_names = list(table.key)
-    collected = table.collect()
+    key_dtype = table.key.dtype
+    key_rows = [
+        {
+            name: _jsonable_to_hail_python(k[name], key_dtype[name])
+            for name in key_field_names
+        }
+        for k in keys
+    ]
+    requested_keys = hl.Table.parallelize(
+        key_rows,
+        schema=key_dtype,
+        key=key_field_names,
+    )
+    collected = table.semi_join(requested_keys).collect()
     by_key: dict[tuple, dict] = {}
     for row in collected:
         row_dict = dict(row)
-        key_tuple = tuple(_to_hashable(_to_jsonable(row_dict[k])) for k in key_field_names)
+        key_tuple = tuple(
+            _to_hashable(_to_jsonable(row_dict[k]))
+            for k in key_field_names
+        )
         by_key[key_tuple] = {
             "key": {k: _to_jsonable(row_dict[k]) for k in key_field_names},
-            "row": {k: _to_jsonable(v) for k, v in row_dict.items() if k not in key_field_names},
+            "row": {
+                k: _to_jsonable(v)
+                for k, v in row_dict.items()
+                if k not in key_field_names
+            },
         }
 
     out: list[dict] = []

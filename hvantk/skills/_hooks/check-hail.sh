@@ -2,7 +2,7 @@
 # Verify Hail and Java are available for skill-driven sessions.
 
 if ! command -v java >/dev/null 2>&1; then
-  echo "[hvantk-skills] WARNING: java not found. Install JDK 11 or run /sdrf:setup-equivalent."
+  echo "[hvantk-skills] WARNING: java not found. Install JDK 11 via your OS package manager, then restart the shell."
   exit 0
 fi
 

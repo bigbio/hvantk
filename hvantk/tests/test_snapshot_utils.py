@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 
 import pytest
 
@@ -39,6 +38,14 @@ def test_load_snapshot_reads_json(tmp_path):
     p.write_text(json.dumps({"key": ["idx"], "row": {"idx": "int32"}}))
     data = load_snapshot(p)
     assert data == {"key": ["idx"], "row": {"idx": "int32"}}
+
+
+@pytest.mark.hail
+def test_collect_sample_rows_returns_empty_for_empty_key_list(hail_session):
+    import hail as hl
+
+    ht = hl.utils.range_table(3).annotate(value=hl.str("v"))
+    assert collect_sample_rows(ht, keys=[]) == []
 
 
 def test_to_jsonable_handles_primitives():

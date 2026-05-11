@@ -25,6 +25,8 @@ Do not invoke an agent against a `deprecated` skill.
 When a builder change legitimately changes output:
 
 ```bash
+poetry run pytest hvantk/tests/test_<source>_builder.py --regenerate-snapshots
+# For Hail-marked builders only:
 poetry run pytest hvantk/tests/test_<source>_builder.py -m hail --regenerate-snapshots
 ```
 
