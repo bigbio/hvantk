@@ -2083,10 +2083,12 @@ def create_gwas_catalog_tb(
 
         # Judgment call #2 (skill §4): drop rows with no risk allele.
         ht = ht.filter(~ht.strongest_snp_risk_allele.endswith("-?"))
-        # Judgment call #3 (skill §4): drop multi-chromosome / haplotype rows.
-        ht = ht.filter(~ht.chr_id.contains(";"))
-        # Require a parseable chr_pos.
-        ht = ht.filter((ht.chr_pos != "") & (ht.chr_id != ""))
+        # Judgment call #3 (skill §4): drop non-canonical contigs — covers
+        # ';'-separated haplotype rows ("6;7"), interaction pairs ("1 x 10"),
+        # and any other malformed shapes. Replaces the narrower contains(';')
+        # check from the initial tier-3 implementation; an empty CHR_ID also
+        # fails the regex so no separate empty-string guard is needed.
+        ht = ht.filter(ht.chr_id.matches("^(chr)?(\\d+|X|Y|MT?)$"))
 
         # Type coercions (everything arrives as string from impute=False).
         ht = ht.annotate(
