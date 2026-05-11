@@ -7513,5 +7513,22 @@
     "split_gene_field": true,
     "pre_normalized": true,
     "expected_obs_columns": ["Type_v2", "n_cells"]
+  },
+  {
+    "accession": "asp_2019_celltype_summary",
+    "title": "Asp 2019 Developing Heart (cell-type summary)",
+    "description": "Cell-type-level expression summary derived from Asp et al. 2019 developing human heart scRNA-seq (PMID:31835037). Rows = genes, columns = cell-type meta-cells (e.g. Atrial cardiomyocytes, Capillary endothelium, Cardiac neural crest cells).",
+    "data_source": "UCSC",
+    "url": "https://cells.ucsc.edu/?ds=heart-dev-asp2019",
+    "last_updated": "2026-05-11",
+    "organism": "Homo sapiens",
+    "tissue_type": ["heart"],
+    "expression_unit": "normalized",
+    "platform_type": "single-cell RNA-seq",
+    "data_level": "gene",
+    "gene_column": "gene",
+    "split_gene_field": true,
+    "pre_normalized": true,
+    "expected_obs_columns": ["celltype", "n_cells"]
   }
 ]
