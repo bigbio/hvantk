@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
@@ -18,6 +17,19 @@ from hvantk.tests._snapshot_utils import regenerate_snapshots as regenerate_snap
 FIXTURE = "hvantk/tests/testdata/raw/clinvar/clinvar_20220403_chr20.vcf.bgz"
 SNAPSHOT_DIR = Path("hvantk/tests/snapshots/clinvar")
 
+# (locus, alleles) is unique-in-table for ClinVar, so keys are inlined here
+# rather than maintained in a separate sample_keys.json (per conventions §9).
+SAMPLE_KEYS = [
+    {"locus": "chr20:289563", "alleles": ["T", "C"]},
+    {"locus": "chr20:8132666", "alleles": ["A", "T"]},
+    {"locus": "chr20:21215630", "alleles": ["G", "T"]},
+    {"locus": "chr20:34989865", "alleles": ["T", "C"]},
+    {"locus": "chr20:44626468", "alleles": ["C", "T"]},
+    {"locus": "chr20:50894815", "alleles": ["C", "T"]},
+    {"locus": "chr20:63202482", "alleles": ["A", "G"]},
+    {"locus": "chr20:63692857", "alleles": ["C", "G"]},
+]
+
 
 @pytest.mark.hail
 def test_clinvar_round_trip(hail_session, tmp_path, regenerate_snapshots):
@@ -25,7 +37,7 @@ def test_clinvar_round_trip(hail_session, tmp_path, regenerate_snapshots):
     import hail as hl
     from hvantk.tables.table_builders import create_clinvar_tb
 
-    keys = json.loads((SNAPSHOT_DIR / "sample_keys.json").read_text())
+    keys = SAMPLE_KEYS
 
     if regenerate_snapshots:
         regenerate_snapshots_fn(

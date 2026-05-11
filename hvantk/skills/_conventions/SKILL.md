@@ -28,6 +28,20 @@ When in doubt, READ existing code under these paths before inferring shape.
 
 `resources/catalog.yaml` and `resources/registry/<domain>/datasets.json` are the source of truth for provider metadata: URLs, version strings, license, citation, release cadence. NEVER restate this content in a skill. Reference the catalog instead.
 
+Every per-resource `SKILL.md` MUST cover the following nine sections, in order, with these exact headings:
+
+1. `## 1. Status & scope`
+2. `## 2. Source identity`
+3. `## 3. Backend choice + reasoning`
+4. `## 4. Raw format & gotchas`
+5. `## 5. Output contract`
+6. `## 6. hvantk integration points`
+7. `## 7. Workflow steps`
+8. `## 8. Update playbook`
+9. `## 9. Validation contract`
+
+Optional sections (use only if they add information not covered above): `## 10. Cross-reference notes` (interactions with other resources) and/or `## 11. Performance notes` (only when the resource has unusual cost characteristics).
+
 ## 3. Keying conventions per data domain
 
 - Variants → key `(locus, alleles)`, Hail Table or MatrixTable
@@ -39,7 +53,7 @@ When in doubt, READ existing code under these paths before inferring shape.
 
 ## 4. Required helpers
 
-- `_create_table_base()` — defined in `hvantk/tables/table_builders.py`. Use this for variant/gene Table builders to avoid boilerplate (import, transform, checkpoint, optional TSV export).
+- `_create_table_base()` — defined in `hvantk/tables/table_builders.py`. Use this for variant/gene Table builders to avoid boilerplate (import, transform, checkpoint, optional TSV export). Its `import_func` parameter accepts any `Callable[[], hl.Table]`, including `hl.import_table` (delimited files), `hl.import_vcf().rows()` (VCFs), and `hl.import_lines` (variable-width or line-oriented files like GMT) — pick whichever fits the raw format.
 - `create_table_adapter()` — `hvantk/tables/registry.py`. Use to register a Hail Table builder in the recipe system via introspection-based parameter mapping.
 - `create_matrix_adapter()` — `hvantk/tables/registry.py`. Same role for MatrixTable / anndata builders that take multi-input shapes (e.g., expression matrix + metadata).
 - `init_hail()` — `hvantk/core/hail_context.py`. Use to ensure Hail is initialized once. Tests use the session-scoped `hail_session` fixture instead.
