@@ -278,6 +278,9 @@ TABLE_BUILDERS: Dict[str, Callable[[str, str, Dict[str, Any] | None], None]] = {
     "gwas-catalog": create_table_adapter(
         "hvantk.tables.table_builders", "create_gwas_catalog_tb"
     ),
+    "msigdb": create_table_adapter(
+        "hvantk.tables.table_builders", "create_msigdb_tb"
+    ),
 }
 
 

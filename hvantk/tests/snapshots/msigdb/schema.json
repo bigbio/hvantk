@@ -1,0 +1,10 @@
+{
+  "key": [
+    "set_name"
+  ],
+  "row": {
+    "genes": "array<str>",
+    "set_name": "str",
+    "source_url": "str"
+  }
+}
