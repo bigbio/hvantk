@@ -88,7 +88,7 @@ Every per-resource SKILL.md MUST declare, by path:
 
 - `fixture`: input file used by the round-trip test
 - `schema_snapshot`: `hvantk/tests/snapshots/<source>/schema.json`
-- `row_snapshot`: `hvantk/tests/snapshots/<source>/sample_rows.json`
+- `row_snapshot`: `hvantk/tests/snapshots/<source>/sample_rows.json`. Keys used to select the snapshot rows must be unique-in-table — `_snapshot_utils.collect_sample_rows` does not deduplicate, so a duplicated key yields non-deterministic snapshots. For builders that legitimately produce multi-row keys (e.g., multi-association rows like GWAS Catalog), maintain `hvantk/tests/snapshots/<source>/sample_keys.json` alongside listing the singleton-key subset to sample.
 - `test_command`: `pytest hvantk/tests/test_<source>_builder.py` (append `-m hail` only when the test is marked `hail`)
 
 ## 10. Hard guardrails

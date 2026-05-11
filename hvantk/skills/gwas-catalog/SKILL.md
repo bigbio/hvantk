@@ -47,7 +47,7 @@ Type coercions in transform (all string at import):
 | Gotcha | Frequency | Where it bites |
 |---|---|---|
 | `STRONGEST SNP-RISK ALLELE = "rsXXX-?"` | ~30% of rows | Judgment call #2 |
-| Multi-chrom / haplotype: `CHR_ID = "6;7"` or `"2;2"`; `SNPS = "rsA; rsB"` | small | `CHR_POS` int cast + locus parse fail — judgment call #3 |
+| Multi-chrom / haplotype / interaction: `CHR_ID = "6;7"`, `"2;2"`, or `"1 x 10"` | small | `CHR_POS` int cast + locus parse fail — judgment call #3 |
 | Same rsID × many trait rows (rs704 × 591 in 100k) | high; normal shape | Drives judgment call #1 |
 | `P-VALUE` scientific notation | universal | `hl.float` handles it; benign |
 | `OR or BETA` single column, mutually exclusive | universal | Carry as-is; callers disambiguate |
@@ -59,7 +59,7 @@ Type coercions in transform (all string at import):
 
 ### Judgment call #3 — Multi-chromosome / haplotype rows
 
-**Decision: A — Drop.** Filter rows where `CHR_ID` contains `;`. Haplotype associations are silently lost; one locus per row keeps the `(locus, alleles)` key clean.
+**Decision: A — Drop.** Filter rows where `CHR_ID` is NOT a canonical single contig — i.e., does not match `^(chr)?(\d+|X|Y|MT?)$`. This drops `;`-separated multi-chromosome rows (`"6;7"`, `"2;2"`), interaction-pair rows (`"1 x 10"` with `x`-separator), and any other malformed contig shape encountered in the wild. Haplotype / interaction associations are silently lost; one locus per row keeps the `(locus, alleles)` key clean. Implement as `ht.filter(ht.chr_id.matches("^(chr)?(\\d+|X|Y|MT?)$"))`.
 
 ### Judgment call #4 — Trait ontology
 
@@ -87,9 +87,9 @@ Type coercions in transform (all string at import):
 3. **Transform** (`transform_func` passed to `_create_table_base`):
    - Rename the 34 columns to snake_case 1:1 (do not drop).
    - Filter rows where `STRONGEST SNP-RISK ALLELE` ends in `-?` (judgment call #2).
-   - Filter rows where `CHR_ID` contains `;` (judgment call #3).
+   - Filter rows where `CHR_ID` is not canonical (no match against `^(chr)?(\d+|X|Y|MT?)$`) — drops `;`-separated and `x`-separated malformed shapes (judgment call #3).
    - Cast numerics (`chr_pos`, `p_value`, `pvalue_mlog`, `or_or_beta`, `risk_allele_frequency`, `upstream_gene_distance`, `downstream_gene_distance`).
-   - `locus = hl.parse_locus(chr_id + ':' + hl.str(chr_pos), reference_genome=reference_genome)`.
+   - Recode `chr_id` to GRCh38 contig form: the catalog ships bare contigs (`"7"`, `"12"`), but Hail's `GRCh38` reference expects `"chr7"` etc. Use `contig = hl.if_else(chr_id.startswith("chr"), chr_id, "chr" + chr_id)`, then `locus = hl.parse_locus(contig + ':' + hl.str(chr_pos), reference_genome=reference_genome)`.
    - Extract `risk_allele` from `STRONGEST SNP-RISK ALLELE` (split on `-`, take suffix).
    - Construct `alleles = [risk_allele, "N"]` and `key_by(locus, alleles)`.
 4. **Checkpoint + globals + optional TSV.** Handled by `_create_table_base` via `overwrite` and `export_tsv` kwargs.
@@ -110,6 +110,7 @@ Per conventions §9:
 - **fixture:** `hvantk/tests/testdata/raw/gwas-catalog/gwas-catalog-sample.tsv`. Agent #2 slices from the 556 MB local file (path from orchestrator). Target ≤ 100 KB, ~50–100 rows. Fixture must exercise **surviving rows only** — no `STRONGEST SNP-RISK ALLELE` ending in `-?`, no `CHR_ID` containing `;`. Must include: multi-trait-per-variant rows (same `(locus, alleles)` × multiple traits), scientific-notation p-values, and at least one row with `OR or BETA` populated plus one without.
 - **schema_snapshot:** `hvantk/tests/snapshots/gwas-catalog/schema.json`.
 - **row_snapshot:** `hvantk/tests/snapshots/gwas-catalog/sample_rows.json`.
+- **sample_keys:** `hvantk/tests/snapshots/gwas-catalog/sample_keys.json`. Lists the `(locus, alleles)` keys used for `row_snapshot` assertions. These keys MUST be unique-in-table — `_snapshot_utils.collect_sample_rows` does not deduplicate, so a duplicated key produces non-deterministic snapshots. Multi-trait-per-variant rows in this catalog routinely share keys; the snapshot subset must use singleton-key rows.
 - **test_command:** `pytest hvantk/tests/test_gwas_catalog_builder.py -m hail`.
 
 Round-trip test asserts: builder idempotent with `overwrite=True`; checkpointed schema matches `schema.json`; deterministic sorted row slice matches `sample_rows.json`. Regenerate via `--regenerate-snapshots` when a judgment call resolves or the schema changes.
