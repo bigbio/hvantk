@@ -12,14 +12,14 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes every conve
 
 ## 1. Status & scope
 
-- **Status:** provisional. No builder, fixture, snapshot, or test yet — this skill is the design contract for agent #2.
+- **Status:** provisional. The builder, fixture, snapshots, and round-trip test now exist; this skill remains the design contract and update reference for future agents.
 - **In scope:** raw GWAS Catalog v1.0 full-associations TSV → single Hail Table, checkpointed, keyed for variant joins.
 - **Out of scope:** downloader; v1.0.2 schema (EFO URIs — possible follow-on); trait-aware enrichment / burden / PS-ROC; cross-source joins.
 
 ## 2. Source identity
 
 - **Provider:** EBI GWAS Catalog. **Schema pinned by this skill:** v1.0 (34 columns, no `MAPPED_TRAIT_URI`).
-- **Catalog entry:** **none yet.** Neither `hvantk/resources/catalog.yaml` (`datasets.genomics.count: 7`) nor `hvantk/resources/registry/genomics/datasets.json` contain a GWAS Catalog entry. Agent #2 must add one to `registry/genomics/datasets.json` with `accession` encoding the release tag (e.g. `GWAS_Catalog_v1.0_e115_r2026-04-27`) and bump `datasets.genomics.count` in `catalog.yaml`. URLs / cadence / license / citation live there — not here.
+- **Catalog entry:** present. `hvantk/resources/registry/genomics/datasets.json` contains `GWAS_Catalog_v1.0_e115_r2026-04-27`, and `hvantk/resources/catalog.yaml` records `datasets.genomics.count: 9`. URLs / cadence / license / citation live in the catalog and registry — not here.
 
 ## 3. Backend choice + reasoning
 
