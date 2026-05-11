@@ -59,7 +59,7 @@ datasets:
         min: 1
         max: 1
   genomics:
-    count: 7
+    count: 9
     schemas: schemas/genomics_schema.json
     data_file: registry/genomics/datasets.json
     summary:
@@ -81,5 +81,5 @@ datasets:
         min: 0
         max: 0
 summary:
-  total_datasets: 306
+  total_datasets: 308
   omics_types: 3
