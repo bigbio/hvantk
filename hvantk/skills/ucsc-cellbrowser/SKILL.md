@@ -86,3 +86,16 @@ UCSC datasets are per-collection. To refresh a collection's build:
 - `schema_snapshot`: `hvantk/tests/snapshots/ucsc-cellbrowser/schema.json`
 - `row_snapshot`: `hvantk/tests/snapshots/ucsc-cellbrowser/sample_rows.json`
 - `test_command`: `pytest hvantk/tests/test_ucsc_cellbrowser_builder.py`
+
+## 10. Onboarding a new dataset within UCSC Cell Browser
+
+When a new collection appears, follow this triage before deciding what to add:
+
+1. **Inspect metadata TSV header.** Identify the cell-ID column and classify the others as categorical, numeric, or ontology-coded.
+2. **Inspect expression TSV header.** Determine the gene-column name (`gene`, `geneId`, `geneSymbol`, etc.). Note pipe-encoded gene names if present.
+3. **Sniff a sample of X values.** Integer-typed values (large dynamic range) indicate raw counts; small float values (~0–10) indicate normalized.
+4. **Add a registry entry** to `hvantk/resources/registry/transcriptomics/datasets.json` with:
+   - `accession`, `data_source: "UCSC"`, `url`, `last_updated`
+   - Per-dataset build params: `gene_column`, `split_gene_field`, `pre_normalized`, `expected_obs_columns` (for drift detection)
+5. **Decide whether to add a snapshot test.** Add one if the dataset's obs columns differ structurally from already-snapshotted datasets. Skip if obs/var schema matches an existing snapshot — registry params + existing snapshot suffice.
+6. **Run the builder** with registry-derived params and verify smoke output.
