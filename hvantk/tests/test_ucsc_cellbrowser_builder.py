@@ -42,6 +42,13 @@ _UCSC_CASES = [
         {},
         id="adult-ctx-meta-atlas-class-summary",
     ),
+    pytest.param(
+        "hvantk/tests/testdata/raw/ucsc-cellbrowser-dev-ctx/expression_matrix.tsv",
+        "hvantk/tests/testdata/raw/ucsc-cellbrowser-dev-ctx/metadata.tsv",
+        Path("hvantk/tests/snapshots/ucsc-cellbrowser-dev-ctx"),
+        {},
+        id="dev-ctx-meta-atlas-type-v2-summary",
+    ),
 ]
 
 

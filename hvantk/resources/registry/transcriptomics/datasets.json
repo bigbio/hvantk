@@ -7496,5 +7496,22 @@
     "split_gene_field": true,
     "pre_normalized": true,
     "expected_obs_columns": ["Class", "n_cells"]
+  },
+  {
+    "accession": "dev_ctx_meta_atlas_type_v2_summary",
+    "title": "Developing Cortex Meta-Atlas (Type_v2 summary)",
+    "description": "Type_v2 cell-type-level expression summary derived from the UCSC Cell Browser 'Developing Cortex Meta-Atlas' collection (parent accession: dev-ctx-meta-atlas). Rows = genes, columns = Type_v2 meta-cells (e.g. Astrocyte, Excitatory Neuron, Microglia, RG).",
+    "data_source": "UCSC",
+    "url": "https://cells.ucsc.edu/?ds=dev-ctx-meta-atlas",
+    "last_updated": "2026-05-11",
+    "organism": "Homo sapiens",
+    "tissue_type": ["brain", "cortex"],
+    "expression_unit": "normalized",
+    "platform_type": "single-cell RNA-seq",
+    "data_level": "gene",
+    "gene_column": "gene",
+    "split_gene_field": true,
+    "pre_normalized": true,
+    "expected_obs_columns": ["Type_v2", "n_cells"]
   }
 ]
