@@ -1,0 +1,62 @@
+[
+  {
+    "key": {
+      "alleles": [
+        "G",
+        "A"
+      ],
+      "gene_id": "ENSG00000268903",
+      "locus": "chr1:63671"
+    },
+    "row": {
+      "beta": 0.4454253017902374,
+      "gene_symbol": null,
+      "is_cis": true,
+      "maf": null,
+      "p_value": 1.1453683341615171e-05,
+      "se": 0.09902859479188919,
+      "source": "gtex_v11",
+      "tissue": "Liver"
+    }
+  },
+  {
+    "key": {
+      "alleles": [
+        "C",
+        "A"
+      ],
+      "gene_id": "ENSG00000268903",
+      "locus": "chr1:282564"
+    },
+    "row": {
+      "beta": 0.8857221603393555,
+      "gene_symbol": null,
+      "is_cis": true,
+      "maf": null,
+      "p_value": 0.00013538133844707113,
+      "se": 0.22770489752292633,
+      "source": "gtex_v11",
+      "tissue": "Liver"
+    }
+  },
+  {
+    "key": {
+      "alleles": [
+        "A",
+        "C"
+      ],
+      "gene_id": "ENSG00000308579",
+      "locus": "chr1:64649"
+    },
+    "row": {
+      "beta": 0.7264492511749268,
+      "gene_symbol": null,
+      "is_cis": true,
+      "maf": null,
+      "p_value": 0.00011948140328781536,
+      "se": 0.18521295487880707,
+      "source": "gtex_v11",
+      "tissue": "Liver"
+    }
+  }
+]
