@@ -137,7 +137,7 @@ def _cleanup_temp_file(tmp_path: Optional[str]) -> None:
     try:
         local_path = tmp_path
         if local_path.startswith("file://"):
-            local_path = local_path[len("file://") :]
+            local_path = local_path[len("file://"):]
         if os.path.exists(local_path):
             os.remove(local_path)
     except Exception:
@@ -201,6 +201,11 @@ def create_gnomad_constraint_gene_metrics_tb(
 _TRACK_NAME_RE = re.compile(r'name=([^\s]+)')
 
 
+def _normalize_hadoop_path(path: str) -> str:
+    """Normalize local file URIs for filesystem APIs."""
+    return path[len("file://"):] if path.startswith("file://") else path
+
+
 def _parse_insider_bed_to_temp_tsv(input_path: str) -> str:
     """Pre-process an Interactome Insider BED into a TSV with ppi_id column.
 
@@ -220,34 +225,35 @@ def _parse_insider_bed_to_temp_tsv(input_path: str) -> str:
 
     Returns the path to a Hail-managed temp file (extension `tsv`).
     """
+    import hailtop.fs as hfs
+
     out_path = hl.utils.new_temp_file(extension="tsv")
-    # new_temp_file returns a path Hail will clean up at session end. Open as a
-    # regular file (Hail wraps for hadoop URLs; for local paths it's just str).
     current_ppi_id: Optional[str] = None
     n_rows_written = 0
-    with open(input_path) as src, open(out_path, "w") as dst:
-        dst.write("contig\tstart\tend\tppi_id\n")
-        for line in src:
-            if line.startswith("browser"):
-                continue
-            if line.startswith("track"):
-                match = _TRACK_NAME_RE.search(line)
-                current_ppi_id = match.group(1) if match else None
-                continue
-            if current_ppi_id is None:
-                continue
-            fields = line.rstrip("\n").split("\t")
-            if len(fields) < 3:
-                continue
-            try:
-                start = int(fields[1])
-                end = int(fields[2])
-            except ValueError:
-                continue
-            if start >= end:
-                continue
-            dst.write(f"{fields[0]}\t{start}\t{end}\t{current_ppi_id}\n")
-            n_rows_written += 1
+    with hfs.open(_normalize_hadoop_path(input_path), "r") as src:
+        with hfs.open(_normalize_hadoop_path(out_path), "w") as dst:
+            dst.write("contig\tstart\tend\tppi_id\n")
+            for line in src:
+                if line.startswith("browser"):
+                    continue
+                if line.startswith("track"):
+                    match = _TRACK_NAME_RE.search(line)
+                    current_ppi_id = match.group(1) if match else None
+                    continue
+                if current_ppi_id is None:
+                    continue
+                fields = line.rstrip("\n").split("\t")
+                if len(fields) < 3:
+                    continue
+                try:
+                    start = int(fields[1])
+                    end = int(fields[2])
+                except ValueError:
+                    continue
+                if start >= end:
+                    continue
+                dst.write(f"{fields[0]}\t{start}\t{end}\t{current_ppi_id}\n")
+                n_rows_written += 1
     logger.info(
         "Parsed INSIDER BED %s into %s (%d data rows after filtering)",
         input_path,

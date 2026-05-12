@@ -54,9 +54,10 @@ def test_insider_round_trip(hail_session, tmp_path, regenerate_snapshots):
         )
 
     output_path = str(tmp_path / "insider.ht")
-    create_interactome_tb(input_path=FIXTURE, output_path=output_path, **builder_kwargs)
+    fixture_uri = Path(FIXTURE).resolve().as_uri()
+    create_interactome_tb(input_path=fixture_uri, output_path=output_path, **builder_kwargs)
     # Idempotency: rebuild with overwrite=True should succeed.
-    create_interactome_tb(input_path=FIXTURE, output_path=output_path, **builder_kwargs)
+    create_interactome_tb(input_path=fixture_uri, output_path=output_path, **builder_kwargs)
     ht = hl.read_table(output_path)
 
     expected_schema = load_snapshot(SNAPSHOT_DIR / "schema.json")
