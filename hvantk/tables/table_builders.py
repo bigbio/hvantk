@@ -2260,7 +2260,12 @@ def create_gwas_catalog_tb(
         risk_allele = ht.strongest_snp_risk_allele.split("-")[-1]
         # GRCh38 contigs are 'chrN'; the catalog stores bare 'N' — prepend
         # 'chr' for autosomes/sex chroms unless the file already uses it.
-        contig = hl.if_else(ht.chr_id.startswith("chr"), ht.chr_id, "chr" + ht.chr_id)
+        # Mitochondria: GRCh38 uses 'chrM' (not 'chrMT'); the catalog stores
+        # 'MT', so normalize before prefixing.
+        chr_id_norm = hl.case() \
+            .when((ht.chr_id == "MT") | (ht.chr_id == "chrMT"), "M") \
+            .default(ht.chr_id)
+        contig = hl.if_else(chr_id_norm.startswith("chr"), chr_id_norm, "chr" + chr_id_norm)
         ht = ht.annotate(
             risk_allele=risk_allele,
             locus=hl.parse_locus(
