@@ -103,6 +103,7 @@ def test_create_interactome_tb_cleans_up_temp_tsv_on_success(
     table_builders_module, monkeypatch
 ):
     cleanup_calls = []
+    parse_calls = []
 
     fake_hail = types.SimpleNamespace(
         tint32=object(),
@@ -113,7 +114,7 @@ def test_create_interactome_tb_cleans_up_temp_tsv_on_success(
     monkeypatch.setattr(
         table_builders_module,
         "_parse_insider_bed_to_temp_tsv",
-        lambda input_path: "insider-temp.tsv",
+        lambda input_path: parse_calls.append(input_path) or "insider-temp.tsv",
     )
     monkeypatch.setattr(
         table_builders_module,
@@ -133,6 +134,7 @@ def test_create_interactome_tb_cleans_up_temp_tsv_on_success(
     )
 
     assert result == "ok"
+    assert parse_calls == ["insider.bed"]
     assert cleanup_calls == ["insider-temp.tsv"]
 
 
@@ -140,6 +142,7 @@ def test_create_interactome_tb_cleans_up_temp_tsv_on_failure(
     table_builders_module, monkeypatch
 ):
     cleanup_calls = []
+    parse_calls = []
 
     fake_hail = types.SimpleNamespace(
         tint32=object(),
@@ -150,7 +153,7 @@ def test_create_interactome_tb_cleans_up_temp_tsv_on_failure(
     monkeypatch.setattr(
         table_builders_module,
         "_parse_insider_bed_to_temp_tsv",
-        lambda input_path: "insider-temp.tsv",
+        lambda input_path: parse_calls.append(input_path) or "insider-temp.tsv",
     )
     monkeypatch.setattr(
         table_builders_module,
@@ -170,4 +173,5 @@ def test_create_interactome_tb_cleans_up_temp_tsv_on_failure(
             output_path="insider.ht",
         )
 
+    assert parse_calls == ["insider.bed"]
     assert cleanup_calls == ["insider-temp.tsv"]

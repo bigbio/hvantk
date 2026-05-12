@@ -346,7 +346,7 @@ def create_interactome_tb(
             export_tsv=export_tsv,
         )
     finally:
-        if tsv_path:
+        if tsv_path is not None:
             _cleanup_temp_file(tsv_path)
 
 
