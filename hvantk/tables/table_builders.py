@@ -8,11 +8,13 @@ This module provides builder functions that convert raw annotation sources
 import hail as hl
 import logging
 import os
+import re
 from typing import Optional, List, Callable
 from hvantk.utils.table_utils import get_row_fields, build_rename_map, str_to_bool
 from hvantk.core.metadata import build_table_metadata
 
 logger = logging.getLogger(__name__)
+_FILE_URI_PREFIX = "file://"
 
 from hvantk.core.constants import (
     ENSEMBL_BIOMART_FIELDS,
@@ -135,8 +137,8 @@ def _cleanup_temp_file(tmp_path: Optional[str]) -> None:
 
     try:
         local_path = tmp_path
-        if local_path.startswith("file://"):
-            local_path = local_path[len("file://") :]
+        if local_path.startswith(_FILE_URI_PREFIX):
+            local_path = local_path[len(_FILE_URI_PREFIX):]
         if os.path.exists(local_path):
             os.remove(local_path)
     except Exception:
@@ -197,6 +199,71 @@ def create_gnomad_constraint_gene_metrics_tb(
     )
 
 
+_TRACK_NAME_RE = re.compile(r'name=([^\s]+)')
+
+
+def _normalize_hadoop_path(path: str) -> str:
+    """Normalize local file URIs for filesystem APIs."""
+    return path[len(_FILE_URI_PREFIX):] if path.startswith(_FILE_URI_PREFIX) else path
+
+
+def _parse_insider_bed_to_temp_tsv(input_path: str) -> str:
+    """Pre-process an Interactome Insider BED into a TSV with ppi_id column.
+
+    The INSIDER BED is segmented by `track name=<P1>_ppi_<P2> ...` directives,
+    each followed by per-residue BED data rows. `hl.import_bed` silently skips
+    the track headers, dropping PPI identity. This helper iterates the BED
+    line-by-line, tracks the current PPI from each `track name=...` header, and
+    writes a 4-column TSV (`contig\\tstart\\tend\\tppi_id`) for downstream
+    `hl.import_table`.
+
+    Filters applied:
+      - `browser` lines are ignored.
+      - Track headers with no parseable `name=...` are skipped (current_ppi_id
+        becomes None, so subsequent rows until the next valid track are dropped).
+      - Zero-length intervals (`start == end`) are dropped — matches the prior
+        builder's `skip_invalid_intervals=True` behavior.
+
+    Returns the path to a Hail-managed temp file (extension `tsv`).
+    """
+    import hailtop.fs as hfs
+
+    out_path = hl.utils.new_temp_file(extension="tsv")
+    current_ppi_id: Optional[str] = None
+    n_rows_written = 0
+    with hfs.open(_normalize_hadoop_path(input_path), "r") as src:
+        with hfs.open(_normalize_hadoop_path(out_path), "w") as dst:
+            dst.write("contig\tstart\tend\tppi_id\n")
+            for line in src:
+                if line.startswith("browser"):
+                    continue
+                if line.startswith("track"):
+                    match = _TRACK_NAME_RE.search(line)
+                    current_ppi_id = match.group(1) if match else None
+                    continue
+                if current_ppi_id is None:
+                    continue
+                fields = line.rstrip("\n").split("\t")
+                if len(fields) < 3:
+                    continue
+                try:
+                    start = int(fields[1])
+                    end = int(fields[2])
+                except ValueError:
+                    continue
+                if start >= end:
+                    continue
+                dst.write(f"{fields[0]}\t{start}\t{end}\t{current_ppi_id}\n")
+                n_rows_written += 1
+    logger.info(
+        "Parsed INSIDER BED %s into %s (%d data rows after filtering)",
+        input_path,
+        out_path,
+        n_rows_written,
+    )
+    return out_path
+
+
 def create_interactome_tb(
     input_path: str,
     output_path: str,
@@ -205,18 +272,25 @@ def create_interactome_tb(
     reference_genome: str = "GRCh38",
 ) -> "hl.Table":
     """
-    Create a Hail Table from a protein-protein interaction BED file.
+    Create a Hail Table from an Interactome Insider per-residue BED file.
+
+    The BED is segmented by `track name=<P1>_ppi_<P2>` directives; this builder
+    parses those headers and preserves PPI identity as a `ppi_ids: array<str>`
+    field per interval. Intervals appearing in multiple PPI tracks are
+    aggregated (collected as a sorted, deduplicated array).
 
     Example usage:
         ht = create_interactome_tb(
-            input_path="/path/to/interactome.bed",
+            input_path="/path/to/Whole_Human_Interactome_Interface_hg38.bed",
             output_path="/path/to/output.ht"
         )
 
     Parameters
     ----------
     input_path : str
-        Path to the protein-protein interaction BED input file.
+        Path to the INSIDER BED input file (must contain `track name=...`
+        directives to identify PPIs; plain BEDs without tracks produce
+        empty output).
     output_path : str
         Path to write the output Hail Table.
     overwrite : bool, optional
@@ -229,18 +303,41 @@ def create_interactome_tb(
     Returns
     -------
     hl.Table
-        Hail Table with protein-protein interactions.
+        Hail Table keyed by `interval<locus<rg>>` with field
+        `ppi_ids: array<str>` carrying the PPI identifiers from track headers.
     """
+    def _import() -> "hl.Table":
+        tsv_path = _parse_insider_bed_to_temp_tsv(input_path)
+        ht = hl.import_table(
+            tsv_path,
+            types={"start": hl.tint32, "end": hl.tint32},
+            min_partitions=4,
+        )
+        # BED is 0-based half-open; Hail loci are 1-based. Match hl.import_bed's
+        # conversion by shifting both endpoints by +1 (so a BED row [100, 200)
+        # becomes Hail interval [chr:101, chr:201)).
+        ht = ht.annotate(
+            interval=hl.locus_interval(
+                ht.contig,
+                ht.start + 1,
+                ht.end + 1,
+                reference_genome=reference_genome,
+            )
+        )
+        return ht.select("interval", "ppi_id")
+
+    def _transform(ht: "hl.Table") -> "hl.Table":
+        grouped = ht.group_by(ht.interval).aggregate(
+            ppi_ids=hl.agg.collect_as_set(ht.ppi_id)
+        )
+        return grouped.annotate(ppi_ids=hl.sorted(hl.array(grouped.ppi_ids)))
+
     return _create_table_base(
         source_name="interactome",
         input_path=input_path,
         output_path=output_path,
-        import_func=lambda: hl.import_bed(
-            path=input_path,
-            skip_invalid_intervals=True,
-            reference_genome=reference_genome,
-        ),
-        transform_func=lambda ht: ht.repartition(100).distinct(),
+        import_func=_import,
+        transform_func=_transform,
         overwrite=overwrite,
         export_tsv=export_tsv,
     )

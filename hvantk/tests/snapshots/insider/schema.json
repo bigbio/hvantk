@@ -1,0 +1,9 @@
+{
+  "key": [
+    "interval"
+  ],
+  "row": {
+    "interval": "interval<locus<GRCh38>>",
+    "ppi_ids": "array<str>"
+  }
+}
