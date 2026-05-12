@@ -4,6 +4,6 @@
   ],
   "row": {
     "interval": "interval<locus<GRCh38>>",
-    "target": "str"
+    "ppi_ids": "array<str>"
   }
 }

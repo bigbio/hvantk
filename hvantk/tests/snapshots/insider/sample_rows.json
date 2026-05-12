@@ -7,7 +7,9 @@
       }
     },
     "row": {
-      "target": "."
+      "ppi_ids": [
+        "A0A0A6YYG9_ppi_O15143"
+      ]
     }
   },
   {
@@ -18,7 +20,9 @@
       }
     },
     "row": {
-      "target": "."
+      "ppi_ids": [
+        "A0A0A6YYG9_ppi_O15143"
+      ]
     }
   },
   {
@@ -29,7 +33,9 @@
       }
     },
     "row": {
-      "target": "."
+      "ppi_ids": [
+        "A0A0A6YYG9_ppi_O15145"
+      ]
     }
   }
 ]
