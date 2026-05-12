@@ -8,11 +8,13 @@ This module provides builder functions that convert raw annotation sources
 import hail as hl
 import logging
 import os
+import re
 from typing import Optional, List, Callable
 from hvantk.utils.table_utils import get_row_fields, build_rename_map, str_to_bool
 from hvantk.core.metadata import build_table_metadata
 
 logger = logging.getLogger(__name__)
+_FILE_URI_PREFIX = "file://"
 
 from hvantk.core.constants import (
     ENSEMBL_BIOMART_FIELDS,
@@ -110,6 +112,8 @@ __all__ = [
     "create_clingen_gene_disease_tb",
     "create_hgnc_gene_tb",
     "create_ptm_sites_tb",
+    "create_gwas_catalog_tb",
+    "create_msigdb_tb",
 ]
 
 
@@ -133,8 +137,8 @@ def _cleanup_temp_file(tmp_path: Optional[str]) -> None:
 
     try:
         local_path = tmp_path
-        if local_path.startswith("file://"):
-            local_path = local_path[len("file://") :]
+        if local_path.startswith(_FILE_URI_PREFIX):
+            local_path = local_path[len(_FILE_URI_PREFIX):]
         if os.path.exists(local_path):
             os.remove(local_path)
     except Exception:
@@ -195,6 +199,71 @@ def create_gnomad_constraint_gene_metrics_tb(
     )
 
 
+_TRACK_NAME_RE = re.compile(r'name=([^\s]+)')
+
+
+def _normalize_hadoop_path(path: str) -> str:
+    """Normalize local file URIs for filesystem APIs."""
+    return path[len(_FILE_URI_PREFIX):] if path.startswith(_FILE_URI_PREFIX) else path
+
+
+def _parse_insider_bed_to_temp_tsv(input_path: str) -> str:
+    """Pre-process an Interactome Insider BED into a TSV with ppi_id column.
+
+    The INSIDER BED is segmented by `track name=<P1>_ppi_<P2> ...` directives,
+    each followed by per-residue BED data rows. `hl.import_bed` silently skips
+    the track headers, dropping PPI identity. This helper iterates the BED
+    line-by-line, tracks the current PPI from each `track name=...` header, and
+    writes a 4-column TSV (`contig\\tstart\\tend\\tppi_id`) for downstream
+    `hl.import_table`.
+
+    Filters applied:
+      - `browser` lines are ignored.
+      - Track headers with no parseable `name=...` are skipped (current_ppi_id
+        becomes None, so subsequent rows until the next valid track are dropped).
+      - Zero-length intervals (`start == end`) are dropped — matches the prior
+        builder's `skip_invalid_intervals=True` behavior.
+
+    Returns the path to a Hail-managed temp file (extension `tsv`).
+    """
+    import hailtop.fs as hfs
+
+    out_path = hl.utils.new_temp_file(extension="tsv")
+    current_ppi_id: Optional[str] = None
+    n_rows_written = 0
+    with hfs.open(_normalize_hadoop_path(input_path), "r") as src:
+        with hfs.open(_normalize_hadoop_path(out_path), "w") as dst:
+            dst.write("contig\tstart\tend\tppi_id\n")
+            for line in src:
+                if line.startswith("browser"):
+                    continue
+                if line.startswith("track"):
+                    match = _TRACK_NAME_RE.search(line)
+                    current_ppi_id = match.group(1) if match else None
+                    continue
+                if current_ppi_id is None:
+                    continue
+                fields = line.rstrip("\n").split("\t")
+                if len(fields) < 3:
+                    continue
+                try:
+                    start = int(fields[1])
+                    end = int(fields[2])
+                except ValueError:
+                    continue
+                if start >= end:
+                    continue
+                dst.write(f"{fields[0]}\t{start}\t{end}\t{current_ppi_id}\n")
+                n_rows_written += 1
+    logger.info(
+        "Parsed INSIDER BED %s into %s (%d data rows after filtering)",
+        input_path,
+        out_path,
+        n_rows_written,
+    )
+    return out_path
+
+
 def create_interactome_tb(
     input_path: str,
     output_path: str,
@@ -203,18 +272,25 @@ def create_interactome_tb(
     reference_genome: str = "GRCh38",
 ) -> "hl.Table":
     """
-    Create a Hail Table from a protein-protein interaction BED file.
+    Create a Hail Table from an Interactome Insider per-residue BED file.
+
+    The BED is segmented by `track name=<P1>_ppi_<P2>` directives; this builder
+    parses those headers and preserves PPI identity as a `ppi_ids: array<str>`
+    field per interval. Intervals appearing in multiple PPI tracks are
+    aggregated (collected as a sorted, deduplicated array).
 
     Example usage:
         ht = create_interactome_tb(
-            input_path="/path/to/interactome.bed",
+            input_path="/path/to/Whole_Human_Interactome_Interface_hg38.bed",
             output_path="/path/to/output.ht"
         )
 
     Parameters
     ----------
     input_path : str
-        Path to the protein-protein interaction BED input file.
+        Path to the INSIDER BED input file (must contain `track name=...`
+        directives to identify PPIs; plain BEDs without tracks produce
+        empty output).
     output_path : str
         Path to write the output Hail Table.
     overwrite : bool, optional
@@ -227,21 +303,51 @@ def create_interactome_tb(
     Returns
     -------
     hl.Table
-        Hail Table with protein-protein interactions.
+        Hail Table keyed by `interval<locus<rg>>` with field
+        `ppi_ids: array<str>` carrying the PPI identifiers from track headers.
     """
-    return _create_table_base(
-        source_name="interactome",
-        input_path=input_path,
-        output_path=output_path,
-        import_func=lambda: hl.import_bed(
-            path=input_path,
-            skip_invalid_intervals=True,
-            reference_genome=reference_genome,
-        ),
-        transform_func=lambda ht: ht.repartition(100).distinct(),
-        overwrite=overwrite,
-        export_tsv=export_tsv,
-    )
+    tsv_path = None
+
+    def _import() -> "hl.Table":
+        nonlocal tsv_path
+        tsv_path = _parse_insider_bed_to_temp_tsv(input_path)
+        ht = hl.import_table(
+            tsv_path,
+            types={"start": hl.tint32, "end": hl.tint32},
+            min_partitions=4,
+        )
+        # BED is 0-based half-open; Hail loci are 1-based. Match hl.import_bed's
+        # conversion by shifting both endpoints by +1 (so a BED row [100, 200)
+        # becomes Hail interval [chr:101, chr:201)).
+        ht = ht.annotate(
+            interval=hl.locus_interval(
+                ht.contig,
+                ht.start + 1,
+                ht.end + 1,
+                reference_genome=reference_genome,
+            )
+        )
+        return ht.select("interval", "ppi_id")
+
+    def _transform(ht: "hl.Table") -> "hl.Table":
+        grouped = ht.group_by(ht.interval).aggregate(
+            ppi_ids=hl.agg.collect_as_set(ht.ppi_id)
+        )
+        return grouped.annotate(ppi_ids=hl.sorted(hl.array(grouped.ppi_ids)))
+
+    try:
+        return _create_table_base(
+            source_name="interactome",
+            input_path=input_path,
+            output_path=output_path,
+            import_func=_import,
+            transform_func=_transform,
+            overwrite=overwrite,
+            export_tsv=export_tsv,
+        )
+    finally:
+        if tsv_path is not None:
+            _cleanup_temp_file(tsv_path)
 
 
 def create_clinvar_tb(
@@ -1552,17 +1658,30 @@ def _import_eqtl_gtex_parquet(input_path, tissue, reference_genome):
         sdf = spark.read.parquet(str(Path(fp).resolve()))
         ht_part = hl.Table.from_spark(sdf)
         row_fields = list(ht_part.row)
+        # v11 parquet has 'af' (ALT allele frequency, in-sample), not 'maf'.
+        # 'maf' is derived as min(af, 1-af). Both are exposed so downstream
+        # consumers can choose: af preserves direction (slope is per-ALT);
+        # maf is the symmetric population frequency used in coloc / filtering.
+        af_expr = (
+            hl.float64(ht_part.af)
+            if "af" in row_fields
+            else (
+                # Forward-compat: if a future release renames af → maf, fall
+                # back to maf as the AF proxy (acknowledging the direction
+                # loss — same caveat as v8).
+                hl.float64(ht_part.maf)
+                if "maf" in row_fields
+                else hl.missing(hl.tfloat64)
+            )
+        )
         ht_part = ht_part.select(
             gene_id_raw=ht_part.phenotype_id,
             variant_id=ht_part.variant_id,
             beta=hl.float64(ht_part.slope),
             se=hl.float64(ht_part.slope_se),
             p_value=hl.float64(ht_part.pval_nominal),
-            maf=(
-                hl.float64(ht_part.maf)
-                if "maf" in row_fields
-                else hl.missing(hl.tfloat64)
-            ),
+            af=af_expr,
+            maf=hl.min(af_expr, 1.0 - af_expr),
             tissue=tname,
             gene_symbol=hl.missing(hl.tstr),
         )
@@ -1593,13 +1712,23 @@ def _import_eqtl_gtex_tsv(input_path, tissue):
             },
         )
         row_fields = list(ht_part.row)
+        # v8 TSV has 'maf' (minor allele frequency) directly, NOT 'af'.
+        # We expose both fields for schema consistency with v11, but af is
+        # set equal to maf as an approximation — v8 doesn't carry directional
+        # (REF/ALT) allele-frequency info. Downstream consumers that need
+        # true ALT-direction info should use v11 inputs. The skill §4
+        # documents this caveat.
+        maf_expr = (
+            ht_part.maf if "maf" in row_fields else hl.missing(hl.tfloat64)
+        )
         ht_part = ht_part.select(
             gene_id_raw=ht_part.gene_id,
             variant_id=ht_part.variant_id,
             beta=ht_part.slope,
             se=ht_part.slope_se,
             p_value=ht_part.pval_nominal,
-            maf=(ht_part.maf if "maf" in row_fields else hl.missing(hl.tfloat64)),
+            af=maf_expr,
+            maf=maf_expr,
             tissue=tname,
             gene_symbol=hl.missing(hl.tstr),
         )
@@ -1632,6 +1761,7 @@ def _import_eqtl_eqtlgen(input_path, reference_genome):
         beta=hl.missing(hl.tfloat64),  # eQTLGen provides Z-score, not beta
         se=hl.missing(hl.tfloat64),
         p_value=ht.Pvalue,
+        af=hl.missing(hl.tfloat64),  # eQTLGen doesn't distribute af / maf
         maf=hl.missing(hl.tfloat64),
         tissue="Blood",
         gene_symbol=ht.GeneSymbol,
@@ -1869,9 +1999,7 @@ def create_pqtl_tb(
                 fields_to_add=["ensembl_gene_id"],
             )
             ht = ht.annotate(
-                gene_id=hl.or_else(
-                    ht.hgnc_ensembl_gene_id, ht.gene_symbol
-                ),
+                gene_id=hl.or_else(ht.hgnc_ensembl_gene_id, ht.gene_symbol),
             )
             ht = ht.drop("hgnc_ensembl_gene_id")
         else:
@@ -1943,6 +2071,7 @@ def create_alphagenome_tb(
 
     if overwrite and os.path.isdir(output_path):
         import shutil
+
         shutil.rmtree(output_path)
 
     streamer = AlphaGenomeStreamer(
@@ -1997,3 +2126,239 @@ def create_alphagenome_tb(
         table_output_path = output_path
     logger.info("Checkpointing AlphaGenome variants table to %s", table_output_path)
     return ht.checkpoint(output=table_output_path, overwrite=overwrite)
+
+
+# Map from raw GWAS Catalog v1.0 column names (whitespace + slash + brackets)
+# to snake_case fields. See hvantk/skills/gwas-catalog/SKILL.md §4 + §7.
+_GWAS_CATALOG_RENAME = {
+    "DATE ADDED TO CATALOG": "date_added_to_catalog",
+    "PUBMEDID": "pubmedid",
+    "FIRST AUTHOR": "first_author",
+    "DATE": "date",
+    "JOURNAL": "journal",
+    "LINK": "link",
+    "STUDY": "study",
+    "DISEASE/TRAIT": "disease_trait",
+    "INITIAL SAMPLE SIZE": "initial_sample_size",
+    "REPLICATION SAMPLE SIZE": "replication_sample_size",
+    "REGION": "region",
+    "CHR_ID": "chr_id",
+    "CHR_POS": "chr_pos",
+    "REPORTED GENE(S)": "reported_genes",
+    "MAPPED_GENE": "mapped_gene",
+    "UPSTREAM_GENE_ID": "upstream_gene_id",
+    "DOWNSTREAM_GENE_ID": "downstream_gene_id",
+    "SNP_GENE_IDS": "snp_gene_ids",
+    "UPSTREAM_GENE_DISTANCE": "upstream_gene_distance",
+    "DOWNSTREAM_GENE_DISTANCE": "downstream_gene_distance",
+    "STRONGEST SNP-RISK ALLELE": "strongest_snp_risk_allele",
+    "SNPS": "snps",
+    "MERGED": "merged",
+    "SNP_ID_CURRENT": "snp_id_current",
+    "CONTEXT": "context",
+    "INTERGENIC": "intergenic",
+    "RISK ALLELE FREQUENCY": "risk_allele_frequency",
+    "P-VALUE": "p_value",
+    "PVALUE_MLOG": "pvalue_mlog",
+    "P-VALUE (TEXT)": "p_value_text",
+    "OR or BETA": "or_or_beta",
+    "95% CI (TEXT)": "ci_95_text",
+    "PLATFORM [SNPS PASSING QC]": "platform",
+    "CNV": "cnv",
+}
+
+
+def create_gwas_catalog_tb(
+    input_path: str,
+    output_path: str,
+    overwrite: bool = False,
+    export_tsv: bool = False,
+    reference_genome: str = "GRCh38",
+) -> "hl.Table":
+    """Create a Hail Table from the EBI GWAS Catalog v1.0 full-associations TSV.
+
+    Implements the contract in ``hvantk/skills/gwas-catalog/SKILL.md`` (v1.0,
+    34 columns, no ``MAPPED_TRAIT_URI``). Rows are keyed by ``(locus, alleles)``
+    with ``alleles = [<risk_allele>, "N"]`` (sentinel ALT, judgment call #1).
+
+    Two filters drop rows the schema cannot express cleanly (judgment calls
+    #2 + #3): ``STRONGEST SNP-RISK ALLELE`` ending in ``-?`` (no risk allele
+    recorded) and ``CHR_ID`` containing ``;`` (multi-chromosome / haplotype
+    associations). Both losses are documented in the skill.
+
+    Parameters
+    ----------
+    input_path : str
+        Path to the unzipped GWAS Catalog full-associations TSV.
+    output_path : str
+        Path to write the output Hail Table (``.ht`` directory).
+    overwrite : bool, optional
+        Overwrite the output if present (default: False).
+    export_tsv : bool, optional
+        If True, also export a flattened TSV alongside the HT (default: False).
+    reference_genome : str, optional
+        Reference genome for ``hl.parse_locus`` (default: "GRCh38").
+
+    Returns
+    -------
+    hl.Table
+        Hail Table keyed by ``(locus, alleles)`` with 34 snake_case fields
+        (plus the synthesized ``locus``, ``alleles``, and ``risk_allele``).
+    """
+
+    def transform(ht: hl.Table) -> hl.Table:
+        logger.info("Renaming GWAS Catalog columns to snake_case")
+        ht = ht.rename(_GWAS_CATALOG_RENAME)
+
+        # Judgment call #2 (skill §4): drop rows with no risk allele.
+        ht = ht.filter(~ht.strongest_snp_risk_allele.endswith("-?"))
+        # Judgment call #3 (skill §4): drop non-canonical contigs — covers
+        # ';'-separated haplotype rows ("6;7"), interaction pairs ("1 x 10"),
+        # and any other malformed shapes. Replaces the narrower contains(';')
+        # check from the initial tier-3 implementation; an empty CHR_ID also
+        # fails the regex so no separate empty-string guard is needed.
+        ht = ht.filter(ht.chr_id.matches("^(chr)?(\\d+|X|Y|MT?)$"))
+
+        # Type coercions (everything arrives as string from impute=False).
+        ht = ht.annotate(
+            chr_pos=hl.int32(ht.chr_pos),
+            p_value=hl.float64(ht.p_value),
+            pvalue_mlog=hl.if_else(
+                ht.pvalue_mlog == "",
+                hl.missing(hl.tfloat64),
+                hl.float64(ht.pvalue_mlog),
+            ),
+            or_or_beta=hl.if_else(
+                ht.or_or_beta == "", hl.missing(hl.tfloat64), hl.float64(ht.or_or_beta)
+            ),
+            risk_allele_frequency=hl.if_else(
+                ht.risk_allele_frequency == "",
+                hl.missing(hl.tfloat64),
+                # Coerce non-numeric tokens (e.g. "NR") to NA.
+                hl.parse_float64(ht.risk_allele_frequency),
+            ),
+            upstream_gene_distance=hl.if_else(
+                ht.upstream_gene_distance == "",
+                hl.missing(hl.tfloat64),
+                hl.float64(ht.upstream_gene_distance),
+            ),
+            downstream_gene_distance=hl.if_else(
+                ht.downstream_gene_distance == "",
+                hl.missing(hl.tfloat64),
+                hl.float64(ht.downstream_gene_distance),
+            ),
+            pubmedid=hl.if_else(
+                ht.pubmedid == "", hl.missing(hl.tint32), hl.int32(ht.pubmedid)
+            ),
+            snp_id_current=hl.if_else(
+                ht.snp_id_current == "",
+                hl.missing(hl.tint32),
+                # snp_id_current sometimes holds non-int tokens; coerce gracefully.
+                hl.parse_int32(ht.snp_id_current),
+            ),
+            merged=hl.if_else(
+                ht.merged == "", hl.missing(hl.tint32), hl.int32(ht.merged)
+            ),
+            intergenic=str_to_bool(ht.intergenic),
+            cnv=str_to_bool(ht.cnv),
+        )
+
+        # Synthesize key: locus + (risk_allele, "N") sentinel ALT.
+        risk_allele = ht.strongest_snp_risk_allele.split("-")[-1]
+        # GRCh38 contigs are 'chrN'; the catalog stores bare 'N' — prepend
+        # 'chr' for autosomes/sex chroms unless the file already uses it.
+        # Mitochondria: GRCh38 uses 'chrM' (not 'chrMT'); the catalog stores
+        # 'MT', so normalize before prefixing.
+        chr_id_norm = hl.case() \
+            .when((ht.chr_id == "MT") | (ht.chr_id == "chrMT"), "M") \
+            .default(ht.chr_id)
+        contig = hl.if_else(chr_id_norm.startswith("chr"), chr_id_norm, "chr" + chr_id_norm)
+        ht = ht.annotate(
+            risk_allele=risk_allele,
+            locus=hl.parse_locus(
+                contig + ":" + hl.str(ht.chr_pos), reference_genome=reference_genome
+            ),
+        )
+        ht = ht.annotate(alleles=[ht.risk_allele, "N"])
+        ht = ht.key_by("locus", "alleles")
+        return ht
+
+    return _create_table_base(
+        source_name="GWAS Catalog",
+        input_path=input_path,
+        output_path=output_path,
+        import_func=lambda: hl.import_table(
+            paths=input_path,
+            delimiter="\t",
+            quote=None,
+            missing="",
+            impute=False,
+            min_partitions=4,
+        ),
+        transform_func=transform,
+        overwrite=overwrite,
+        export_tsv=export_tsv,
+    )
+
+
+def create_msigdb_tb(
+    input_path: str,
+    output_path: str,
+    overwrite: bool = False,
+    export_tsv: bool = False,
+) -> "hl.Table":
+    """Create a Hail Table from an MSigDB GMT gene-set file keyed by set_name.
+
+    Implements the contract in ``hvantk/skills/msigdb/SKILL.md``. The GMT
+    format is tab-separated with variable-width rows: each row is one gene
+    set, column 1 is the set name, column 2 is a description (a gsea-msigdb
+    URL in MSigDB-issued files), and columns 3..N are gene members.
+
+    Imported via ``hl.import_lines`` (one row per line, single ``text``
+    field) because ``hl.import_table`` rejects variable column counts.
+    The transform splits the line on ``\\t`` and slices the gene members
+    into an ``array<str>``.
+
+    Parameters
+    ----------
+    input_path : str
+        Path to the GMT file (e.g., ``c2.cp.v2026.1.Hs.symbols.gmt``).
+    output_path : str
+        Path to write the output Hail Table (``.ht`` directory).
+    overwrite : bool, optional
+        Overwrite the output if present (default: False).
+    export_tsv : bool, optional
+        If True, also export a TSV alongside the HT (default: False).
+
+    Returns
+    -------
+    hl.Table
+        Hail Table keyed by ``set_name`` with fields:
+          - ``set_name: str``
+          - ``source_url: str`` (the GMT description column, verbatim)
+          - ``genes: array<str>`` (gene members; symbols for ``.Hs.symbols.gmt``)
+    """
+
+    def transform(ht: hl.Table) -> hl.Table:
+        # hl.import_lines yields rows with `file: str` and `text: str`.
+        # Split on tab; slice [2:] for the variable-width gene-member tail.
+        parts = ht.text.split("\t")
+        ht = ht.select(
+            set_name=parts[0],
+            source_url=parts[1],
+            genes=parts[2:],
+        )
+        # Defensive: drop blank lines (parts would be a 1-element array).
+        ht = ht.filter(ht.set_name != "")
+        ht = ht.key_by("set_name")
+        return ht
+
+    return _create_table_base(
+        source_name="MSigDB gene sets",
+        input_path=input_path,
+        output_path=output_path,
+        import_func=lambda: hl.import_lines(paths=input_path, min_partitions=4),
+        transform_func=transform,
+        overwrite=overwrite,
+        export_tsv=export_tsv,
+    )

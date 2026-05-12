@@ -1,0 +1,83 @@
+{
+  "X_corner": [
+    [
+      0.031849998980760574,
+      0.019109999760985374,
+      0.02548000030219555,
+      0.00636899983510375,
+      0.00636899983510375
+    ],
+    [
+      0.028230000287294388,
+      0.013369999825954437,
+      0.011889999732375145,
+      0.013369999825954437,
+      0.025259999558329582
+    ],
+    [
+      0.03999999910593033,
+      0.013330000452697277,
+      0.0,
+      0.013330000452697277,
+      0.013330000452697277
+    ],
+    [
+      0.03816999867558479,
+      0.0076339999213814735,
+      0.0,
+      0.0076339999213814735,
+      0.02290000021457672
+    ],
+    [
+      0.07299000024795532,
+      0.007298999931663275,
+      0.0,
+      0.029200000688433647,
+      0.0364999994635582
+    ]
+  ],
+  "obs_head": [
+    {
+      "cell_id": "Atrial cardiomyocytes",
+      "celltype": "Atrial cardiomyocytes",
+      "n_cells": 157
+    },
+    {
+      "cell_id": "Capillary endothelium",
+      "celltype": "Capillary endothelium",
+      "n_cells": 673
+    },
+    {
+      "cell_id": "Cardiac neural crest cells",
+      "celltype": "Cardiac neural crest cells",
+      "n_cells": 75
+    },
+    {
+      "cell_id": "Endothelium / pericytes",
+      "celltype": "Endothelium / pericytes",
+      "n_cells": 131
+    },
+    {
+      "cell_id": "Epicardial cells",
+      "celltype": "Epicardial cells",
+      "n_cells": 137
+    }
+  ],
+  "var_head": [
+    {
+      "gene": "FO538757.1"
+    },
+    {
+      "gene": "AP006222.2"
+    },
+    {
+      "gene": "RP4-669L17.10"
+    },
+    {
+      "gene": "RP11-206L10.9"
+    },
+    {
+      "gene": "LINC00115"
+    }
+  ]
+}

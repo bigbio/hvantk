@@ -1,0 +1,444 @@
+[
+  {
+    "key": {
+      "alleles": [
+        "T",
+        "C"
+      ],
+      "locus": "chr20:289563"
+    },
+    "row": {
+      "filters": null,
+      "info": {
+        "AF_ESP": 0.01384,
+        "AF_EXAC": 0.00372,
+        "AF_TGP": 0.01558,
+        "ALLELEID": 716893,
+        "CLNDISDB": [
+          "MedGen:CN517202"
+        ],
+        "CLNDISDBINCL": null,
+        "CLNDN": [
+          "not_provided"
+        ],
+        "CLNDNINCL": null,
+        "CLNHGVS": [
+          "NC_000020.11:g.289563T>C"
+        ],
+        "CLNREVSTAT": [
+          "criteria_provided",
+          "_single_submitter"
+        ],
+        "CLNSIG": [
+          "Benign"
+        ],
+        "CLNSIGCONF": null,
+        "CLNSIGINCL": null,
+        "CLNVC": "single_nucleotide_variant",
+        "CLNVCSO": "SO:0001483",
+        "CLNVI": null,
+        "DBVARID": null,
+        "GENEINFO": "C20orf96:140680",
+        "MC": [
+          "SO:0001819|synonymous_variant"
+        ],
+        "ORIGIN": [
+          "1"
+        ],
+        "RS": [
+          "114292813"
+        ],
+        "SSR": null
+      },
+      "qual": null,
+      "rsid": "783855"
+    }
+  },
+  {
+    "key": {
+      "alleles": [
+        "A",
+        "T"
+      ],
+      "locus": "chr20:8132666"
+    },
+    "row": {
+      "filters": null,
+      "info": {
+        "AF_ESP": null,
+        "AF_EXAC": 1e-05,
+        "AF_TGP": null,
+        "ALLELEID": 492416,
+        "CLNDISDB": [
+          "MedGen:CN517202"
+        ],
+        "CLNDISDBINCL": null,
+        "CLNDN": [
+          "not_provided"
+        ],
+        "CLNDNINCL": null,
+        "CLNHGVS": [
+          "NC_000020.11:g.8132666A>T"
+        ],
+        "CLNREVSTAT": [
+          "criteria_provided",
+          "_single_submitter"
+        ],
+        "CLNSIG": [
+          "Uncertain_significance"
+        ],
+        "CLNSIGCONF": null,
+        "CLNSIGINCL": null,
+        "CLNVC": "single_nucleotide_variant",
+        "CLNVCSO": "SO:0001483",
+        "CLNVI": null,
+        "DBVARID": null,
+        "GENEINFO": "PLCB1:23236",
+        "MC": [
+          "SO:0001583|missense_variant"
+        ],
+        "ORIGIN": [
+          "1"
+        ],
+        "RS": [
+          "781650706"
+        ],
+        "SSR": null
+      },
+      "qual": null,
+      "rsid": "500992"
+    }
+  },
+  {
+    "key": {
+      "alleles": [
+        "G",
+        "T"
+      ],
+      "locus": "chr20:21215630"
+    },
+    "row": {
+      "filters": null,
+      "info": {
+        "AF_ESP": null,
+        "AF_EXAC": null,
+        "AF_TGP": null,
+        "ALLELEID": 1196231,
+        "CLNDISDB": [
+          "MedGen:CN517202"
+        ],
+        "CLNDISDBINCL": null,
+        "CLNDN": [
+          "not_provided"
+        ],
+        "CLNDNINCL": null,
+        "CLNHGVS": [
+          "NC_000020.11:g.21215630G>T"
+        ],
+        "CLNREVSTAT": [
+          "no_assertion_criteria_provided"
+        ],
+        "CLNSIG": [
+          "Uncertain_significance"
+        ],
+        "CLNSIGCONF": null,
+        "CLNSIGINCL": null,
+        "CLNVC": "single_nucleotide_variant",
+        "CLNVCSO": "SO:0001483",
+        "CLNVI": null,
+        "DBVARID": null,
+        "GENEINFO": "KIZ:55857|KIZ-AS1:101929591",
+        "MC": [
+          "SO:0001583|missense_variant"
+        ],
+        "ORIGIN": [
+          "1"
+        ],
+        "RS": null,
+        "SSR": null
+      },
+      "qual": null,
+      "rsid": "1206287"
+    }
+  },
+  {
+    "key": {
+      "alleles": [
+        "T",
+        "C"
+      ],
+      "locus": "chr20:34989865"
+    },
+    "row": {
+      "filters": null,
+      "info": {
+        "AF_ESP": 0.00239,
+        "AF_EXAC": 0.0008,
+        "AF_TGP": 0.0026,
+        "ALLELEID": 742367,
+        "CLNDISDB": [
+          "MedGen:CN517202"
+        ],
+        "CLNDISDBINCL": null,
+        "CLNDN": [
+          "not_provided"
+        ],
+        "CLNDNINCL": null,
+        "CLNHGVS": [
+          "NC_000020.11:g.34989865T>C"
+        ],
+        "CLNREVSTAT": [
+          "criteria_provided",
+          "_single_submitter"
+        ],
+        "CLNSIG": [
+          "Benign"
+        ],
+        "CLNSIGCONF": null,
+        "CLNSIGINCL": null,
+        "CLNVC": "single_nucleotide_variant",
+        "CLNVCSO": "SO:0001483",
+        "CLNVI": null,
+        "DBVARID": null,
+        "GENEINFO": "MYH7B:57644",
+        "MC": [
+          "SO:0001819|synonymous_variant"
+        ],
+        "ORIGIN": [
+          "1"
+        ],
+        "RS": [
+          "144507206"
+        ],
+        "SSR": null
+      },
+      "qual": null,
+      "rsid": "734871"
+    }
+  },
+  {
+    "key": {
+      "alleles": [
+        "C",
+        "T"
+      ],
+      "locus": "chr20:44626468"
+    },
+    "row": {
+      "filters": null,
+      "info": {
+        "AF_ESP": null,
+        "AF_EXAC": 3e-05,
+        "AF_TGP": null,
+        "ALLELEID": 549389,
+        "CLNDISDB": [
+          "MONDO:MONDO:0007064",
+          "MedGen:C1863236",
+          "OMIM:102700",
+          "Orphanet:ORPHA277"
+        ],
+        "CLNDISDBINCL": null,
+        "CLNDN": [
+          "Severe_combined_immunodeficiency_due_to_ADA_deficiency"
+        ],
+        "CLNDNINCL": null,
+        "CLNHGVS": [
+          "NC_000020.11:g.44626468C>T"
+        ],
+        "CLNREVSTAT": [
+          "criteria_provided",
+          "_multiple_submitters",
+          "_no_conflicts"
+        ],
+        "CLNSIG": [
+          "Pathogenic/Likely_pathogenic"
+        ],
+        "CLNSIGCONF": null,
+        "CLNSIGINCL": null,
+        "CLNVC": "single_nucleotide_variant",
+        "CLNVCSO": "SO:0001483",
+        "CLNVI": null,
+        "DBVARID": null,
+        "GENEINFO": "ADA:100",
+        "MC": [
+          "SO:0001583|missense_variant",
+          "SO:0001587|nonsense",
+          "SO:0001619|non-coding_transcript_variant"
+        ],
+        "ORIGIN": [
+          "1"
+        ],
+        "RS": [
+          "749484894"
+        ],
+        "SSR": null
+      },
+      "qual": null,
+      "rsid": "554749"
+    }
+  },
+  {
+    "key": {
+      "alleles": [
+        "C",
+        "T"
+      ],
+      "locus": "chr20:50894815"
+    },
+    "row": {
+      "filters": null,
+      "info": {
+        "AF_ESP": null,
+        "AF_EXAC": null,
+        "AF_TGP": null,
+        "ALLELEID": 1261971,
+        "CLNDISDB": [
+          "MedGen:CN517202"
+        ],
+        "CLNDISDBINCL": null,
+        "CLNDN": [
+          "not_provided"
+        ],
+        "CLNDNINCL": null,
+        "CLNHGVS": [
+          "NC_000020.11:g.50894815C>T"
+        ],
+        "CLNREVSTAT": [
+          "criteria_provided",
+          "_single_submitter"
+        ],
+        "CLNSIG": [
+          "Benign"
+        ],
+        "CLNSIGCONF": null,
+        "CLNSIGINCL": null,
+        "CLNVC": "single_nucleotide_variant",
+        "CLNVCSO": "SO:0001483",
+        "CLNVI": null,
+        "DBVARID": null,
+        "GENEINFO": "ADNP:23394",
+        "MC": [
+          "SO:0001627|intron_variant"
+        ],
+        "ORIGIN": [
+          "1"
+        ],
+        "RS": null,
+        "SSR": null
+      },
+      "qual": null,
+      "rsid": "1272506"
+    }
+  },
+  {
+    "key": {
+      "alleles": [
+        "A",
+        "G"
+      ],
+      "locus": "chr20:63202482"
+    },
+    "row": {
+      "filters": null,
+      "info": {
+        "AF_ESP": 0.00238,
+        "AF_EXAC": 0.00065,
+        "AF_TGP": 0.0016,
+        "ALLELEID": 742528,
+        "CLNDISDB": [
+          "MedGen:CN517202"
+        ],
+        "CLNDISDBINCL": null,
+        "CLNDN": [
+          "not_provided"
+        ],
+        "CLNDNINCL": null,
+        "CLNHGVS": [
+          "NC_000020.11:g.63202482A>G"
+        ],
+        "CLNREVSTAT": [
+          "criteria_provided",
+          "_single_submitter"
+        ],
+        "CLNSIG": [
+          "Benign"
+        ],
+        "CLNSIGCONF": null,
+        "CLNSIGINCL": null,
+        "CLNVC": "single_nucleotide_variant",
+        "CLNVCSO": "SO:0001483",
+        "CLNVI": null,
+        "DBVARID": null,
+        "GENEINFO": "YTHDF1:54915",
+        "MC": [
+          "SO:0001819|synonymous_variant"
+        ],
+        "ORIGIN": [
+          "1"
+        ],
+        "RS": [
+          "149892728"
+        ],
+        "SSR": null
+      },
+      "qual": null,
+      "rsid": "733707"
+    }
+  },
+  {
+    "key": {
+      "alleles": [
+        "C",
+        "G"
+      ],
+      "locus": "chr20:63692857"
+    },
+    "row": {
+      "filters": null,
+      "info": {
+        "AF_ESP": null,
+        "AF_EXAC": null,
+        "AF_TGP": null,
+        "ALLELEID": 430394,
+        "CLNDISDB": [
+          "MedGen:CN169374"
+        ],
+        "CLNDISDBINCL": null,
+        "CLNDN": [
+          "not_specified"
+        ],
+        "CLNDNINCL": null,
+        "CLNHGVS": [
+          "NC_000020.11:g.63692857C>G"
+        ],
+        "CLNREVSTAT": [
+          "criteria_provided",
+          "_single_submitter"
+        ],
+        "CLNSIG": [
+          "Uncertain_significance"
+        ],
+        "CLNSIGCONF": null,
+        "CLNSIGINCL": null,
+        "CLNVC": "single_nucleotide_variant",
+        "CLNVCSO": "SO:0001483",
+        "CLNVI": null,
+        "DBVARID": null,
+        "GENEINFO": "RTEL1:51750|RTEL1-TNFRSF6B:100533107",
+        "MC": [
+          "SO:0001583|missense_variant",
+          "SO:0001619|non-coding_transcript_variant"
+        ],
+        "ORIGIN": [
+          "1"
+        ],
+        "RS": [
+          "1394884130"
+        ],
+        "SSR": null
+      },
+      "qual": null,
+      "rsid": "436592"
+    }
+  }
+]

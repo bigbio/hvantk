@@ -100,29 +100,30 @@
     ]
   },
   {
-    "title": "INSIDER - Interaction Network of Structured Domains in Proteins",
+    "title": "INSIDER - Interactome Insider (protein-protein interface residues, hg38)",
     "accession": "INSIDER_v1.0",
-    "description": "Database of protein-protein interaction sites and interfaces derived from structural data. Provides information about interaction residues, binding sites, and functional domains involved in protein-protein interactions.",
+    "description": "Interactome Insider (Wei et al., Nat Methods 2017). Predicted (ECLAIR), structural (PDB), and homology-derived (I3D) protein-protein interaction interface residues. Distributed as two complementary products: (1) Whole_Human_Interactome_Interface_hg38.bed — UCSC-style BED with 208,448 named PPI tracks projecting interface residues onto GRCh38 coordinates (this file path), and (2) H_sapiens_interfacesALL.txt — per protein-pair residue arrays with Source provenance (a separately-onboardable product, not in this catalog entry). Built by a custom track-aware BED parser plus hl.import_table into an interval-keyed Hail Table that preserves PPI IDs from track names; see hvantk/skills/insider/SKILL.md. Used for variant-interval intersection (does a variant fall in any predicted PPI interface?).",
     "pubmedid": "29036289",
     "data_source": "Custom",
     "last_updated": "2025-09-23T16:30:00.000000",
     "update_frequency": "irregular",
     "organism": "Homo sapiens",
     "tissue_type": "all",
-    "sample_count": 50000,
+    "sample_count": 208448,
     "license": "Academic use",
-    "doi": "10.1093/nar/gkx1044",
+    "doi": "10.1093/nmeth.4540",
     "genome_build": "GRCh38",
     "variant_types": ["SNV"],
     "frequency_data": false,
     "clinical_significance": false,
-    "annotation_sources": ["PDB", "InterPro", "Pfam"],
+    "annotation_sources": ["ECLAIR", "PDB", "I3D"],
     "files": [
       {
-        "path": "insider_interaction_sites.tsv",
-        "format": "tsv",
-        "size_bytes": 100000000,
-        "description": "Protein-protein interaction site annotations"
+        "path": "Whole_Human_Interactome_Interface_hg38.bed",
+        "format": "bed",
+        "size_bytes": 1171586071,
+        "url": "http://interactomeinsider.yulab.org/downloads.html",
+        "description": "UCSC-style BED with 208,448 'track name=<P1>_ppi_<P2>' headers; 18.6M data rows representing per-residue genomic intervals (typically 1-3 bp) for predicted/experimental protein-protein interface positions. >1 GB; manual acquisition per CLAUDE.md downloader strategy. The track-aware INSIDER builder preserves track-name metadata as PPI IDs during import."
       }
     ]
   },
@@ -243,6 +244,88 @@
         "description": "Gene-disease validity classifications with evidence levels"
       }
     ]
+  },
+  {
+    "title": "GWAS Catalog - NHGRI-EBI Catalog of human genome-wide association studies",
+    "accession": "GWAS_Catalog_v1.0_e115_r2026-04-27",
+    "description": "Manually curated collection of all published genome-wide association studies. Each row is a SNP-trait association with study provenance, p-value, effect size (OR or BETA), and risk-allele frequency. v1.0 schema (34 columns, no MAPPED_TRAIT_URI). Built into a Hail Table keyed by (locus, alleles) with a sentinel ALT for variant-annotation joins; see hvantk/skills/gwas-catalog/SKILL.md.",
+    "pubmedid": "30445434",
+    "data_source": "Custom",
+    "last_updated": "2026-04-27T00:00:00.000000",
+    "update_frequency": "quarterly",
+    "organism": "Homo sapiens",
+    "tissue_type": "all",
+    "sample_count": 1100000,
+    "license": "CC0 1.0",
+    "doi": "10.1093/nar/gky1120",
+    "genome_build": "GRCh38",
+    "variant_types": ["SNV"],
+    "frequency_data": true,
+    "clinical_significance": false,
+    "annotation_sources": ["GWAS Catalog", "Ensembl"],
+    "files": [
+      {
+        "path": "gwas-catalog-download-associations-v1.0-full.tsv",
+        "format": "tsv",
+        "size_bytes": 556245182,
+        "url": "https://www.ebi.ac.uk/gwas/api/search/downloads/full",
+        "description": "Full associations TSV (v1.0, 34 columns) from the EBI GWAS Catalog e115 / r2026-04-27 release."
+      }
+    ]
+  },
+  {
+    "title": "MSigDB - Molecular Signatures Database (C2 Canonical Pathways, human, gene symbols)",
+    "accession": "MSigDB_C2_CP_v2026.1.Hs.symbols",
+    "description": "Broad Institute Molecular Signatures Database. Collection C2 (curated gene sets) sub-collection CP (Canonical Pathways) — pathway gene sets curated from online resources (BIOCARTA, KEGG, PID, REACTOME, WP, SA). Human gene-symbol variant. GMT format: tab-separated variable-width rows where column 1 is set_name, column 2 is a gsea-msigdb URL, and columns 3..N are gene symbols. Built into a Hail Table keyed by set_name with genes as array<str>; see hvantk/skills/msigdb/SKILL.md. Used for gene-set lookup in enrichment / burden / overlap analyses.",
+    "pubmedid": "16199517",
+    "data_source": "Custom",
+    "last_updated": "2026-01-01T00:00:00.000000",
+    "update_frequency": "annually",
+    "organism": "Homo sapiens",
+    "tissue_type": "all",
+    "sample_count": 4115,
+    "license": "CC Attribution 4.0 (academic) / commercial license required",
+    "doi": "10.1073/pnas.0506580102",
+    "genome_build": "GRCh38",
+    "frequency_data": false,
+    "clinical_significance": false,
+    "annotation_sources": ["MSigDB", "BIOCARTA", "KEGG", "PID", "REACTOME", "WikiPathways", "SignalingAlliance"],
+    "files": [
+      {
+        "path": "c2.cp.v2026.1.Hs.symbols.gmt",
+        "format": "gmt",
+        "size_bytes": 1677390,
+        "url": "https://www.gsea-msigdb.org/gsea/msigdb/human/collections.jsp",
+        "description": "C2 Canonical Pathways collection, human gene symbols, v2026.1. 4,115 gene sets ranging from 5 to ~1500 members per set."
+      }
+    ]
+  },
+  {
+    "title": "GTEx v11 cis-eQTL significant variant-gene pairs (per-tissue)",
+    "accession": "GTEx_v11_eQTL_signif_pairs",
+    "description": "GTEx Consortium release v11 cis-eQTL significant variant-gene pairs, one parquet file per tissue. 12 source columns: phenotype_id, variant_id (chr_pos_ref_alt_b38), start_distance, af, ma_samples, ma_count, pval_nominal, slope, slope_se, pval_nominal_threshold, min_pval_nominal, pval_beta. Built into a Hail Table keyed by (locus, alleles, gene_id) via spark.read.parquet → hl.Table.from_spark; see hvantk/skills/gtex-eqtl/SKILL.md. Used as eQTL input to hvantk/qtlcascade/ and variant annotation.",
+    "pubmedid": "32913098",
+    "data_source": "Custom",
+    "last_updated": "2024-12-01T00:00:00.000000",
+    "update_frequency": "irregular",
+    "organism": "Homo sapiens",
+    "tissue_type": "all",
+    "sample_count": 1000,
+    "license": "Public (summary statistics); dbGaP-controlled for individual-level data",
+    "doi": "10.1126/science.aaz1776",
+    "genome_build": "GRCh38",
+    "variant_types": ["SNV"],
+    "frequency_data": true,
+    "clinical_significance": false,
+    "annotation_sources": ["GTEx", "GENCODE", "Ensembl"],
+    "files": [
+      {
+        "path": "Liver.v11.eQTLs.signif_pairs.parquet",
+        "format": "parquet",
+        "size_bytes": 27912129,
+        "url": "https://gtexportal.org/home/downloads/adult-gtex/qtl",
+        "description": "Liver tissue v11 cis-eQTL significant variant-gene pairs (Apache Parquet). One file per tissue; the skill anchors against Liver as the smallest v11 tissue (~28 MB). Same schema across all 49 tissues."
+      }
+    ]
   }
 ]
-

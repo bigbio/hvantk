@@ -95,6 +95,18 @@ def _create_pqtl_tb(*args, **kwargs):
     return create_pqtl_tb(*args, **kwargs)
 
 
+def _create_gwas_catalog_tb(*args, **kwargs):
+    from hvantk.tables.table_builders import create_gwas_catalog_tb
+
+    return create_gwas_catalog_tb(*args, **kwargs)
+
+
+def _create_msigdb_tb(*args, **kwargs):
+    from hvantk.tables.table_builders import create_msigdb_tb
+
+    return create_msigdb_tb(*args, **kwargs)
+
+
 @click.group("mktable", context_settings=CONTEXT_SETTINGS)
 def mktable_group():
     """Create a single annotation Table/MatrixTable from a raw input file."""
@@ -717,19 +729,28 @@ def mktable_pqtl(
 
 @mktable_group.command("alphagenome")
 @click.option(
-    "--input", "input_path", required=True, type=str,
+    "--input",
+    "input_path",
+    required=True,
+    type=str,
     help="Path to Hail Table (.ht) or TSV with chrom/pos/ref/alt columns",
 )
 @click.option(
-    "--output-dir", required=True, type=str,
+    "--output-dir",
+    required=True,
+    type=str,
     help="Output directory for per-modality Hail Tables",
 )
 @click.option(
-    "--config", "config_path", required=True, type=str,
+    "--config",
+    "config_path",
+    required=True,
+    type=str,
     help="Path to AlphaGenome YAML config file",
 )
 @click.option(
-    "--no-resume", is_flag=True,
+    "--no-resume",
+    is_flag=True,
     help="Discard existing checkpoints and restart from scratch",
 )
 @_overwrite_opt
@@ -746,3 +767,45 @@ def mktable_alphagenome(input_path, output_dir, config_path, no_resume, overwrit
         overwrite=overwrite,
     )
     click.echo(f"AlphaGenome predictions written to {output_dir}")
+
+
+@mktable_group.command("gwas-catalog")
+@_raw_input_opt
+@_output_ht_opt
+@_overwrite_opt
+@_export_tsv_opt
+@_ref_genome_opt
+def mktable_gwas_catalog(
+    raw_input: str, output_ht: str, overwrite: bool, export_tsv: bool, ref_genome: str
+):
+    """Build a GWAS Catalog Hail Table from the v1.0 full-associations TSV (keyed by locus, alleles)."""
+    logger.info("Building GWAS Catalog table")
+    ht = _create_gwas_catalog_tb(
+        input_path=raw_input,
+        output_path=output_ht,
+        overwrite=overwrite,
+        export_tsv=export_tsv,
+        reference_genome=ref_genome,
+    )
+    click.echo(f"GWAS Catalog table created at {output_ht}")
+    ht.describe()
+
+
+@mktable_group.command("msigdb")
+@_raw_input_opt
+@_output_ht_opt
+@_overwrite_opt
+@_export_tsv_opt
+def mktable_msigdb(
+    raw_input: str, output_ht: str, overwrite: bool, export_tsv: bool
+):
+    """Build an MSigDB Hail Table from a GMT file (keyed by set_name)."""
+    logger.info("Building MSigDB table")
+    ht = _create_msigdb_tb(
+        input_path=raw_input,
+        output_path=output_ht,
+        overwrite=overwrite,
+        export_tsv=export_tsv,
+    )
+    click.echo(f"MSigDB table created at {output_ht}")
+    ht.describe()

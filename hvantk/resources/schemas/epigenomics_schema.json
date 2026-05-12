@@ -12,7 +12,7 @@
     "accession": {
       "type": "string",
       "description": "Unique identifier/accession number for the dataset",
-      "pattern": "^[A-Za-z0-9_-]+$"
+      "pattern": "^[A-Za-z0-9._-]+$"
     },
     "pubmedid": {
       "type": ["string", "null"],
@@ -181,7 +181,7 @@
         "format": {
           "type": "string",
           "description": "File format",
-          "enum": ["tsv", "csv", "json", "parquet", "vcf", "bcf", "bam", "sam", "fastq", "fasta", "bed", "gff", "gtf", "h5", "hdf5", "xlsx", "txt", "zip", "tar.gz"]
+          "enum": ["tsv", "csv", "json", "parquet", "vcf", "bcf", "bam", "sam", "fastq", "fasta", "bed", "gff", "gtf", "h5", "hdf5", "xlsx", "txt", "zip", "tar.gz", "gmt"]
         },
         "size_bytes": {
           "type": "integer",

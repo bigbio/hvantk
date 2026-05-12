@@ -1,0 +1,41 @@
+[
+  {
+    "key": {
+      "interval": {
+        "end": "chr3:9801673",
+        "start": "chr3:9801671"
+      }
+    },
+    "row": {
+      "ppi_ids": [
+        "A0A0A6YYG9_ppi_O15143"
+      ]
+    }
+  },
+  {
+    "key": {
+      "interval": {
+        "end": "chr3:9801706",
+        "start": "chr3:9801704"
+      }
+    },
+    "row": {
+      "ppi_ids": [
+        "A0A0A6YYG9_ppi_O15143"
+      ]
+    }
+  },
+  {
+    "key": {
+      "interval": {
+        "end": "chr3:9812988",
+        "start": "chr3:9812986"
+      }
+    },
+    "row": {
+      "ppi_ids": [
+        "A0A0A6YYG9_ppi_O15145"
+      ]
+    }
+  }
+]

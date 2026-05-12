@@ -1,0 +1,21 @@
+{
+  "key": [
+    "locus",
+    "alleles",
+    "gene_id"
+  ],
+  "row": {
+    "af": "float64",
+    "alleles": "array<str>",
+    "beta": "float64",
+    "gene_id": "str",
+    "gene_symbol": "str",
+    "is_cis": "bool",
+    "locus": "locus<GRCh38>",
+    "maf": "float64",
+    "p_value": "float64",
+    "se": "float64",
+    "source": "str",
+    "tissue": "str"
+  }
+}

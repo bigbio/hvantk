@@ -3,8 +3,7 @@
 `hvantk ptm constraint` is a stratified depletion analysis that compares gnomAD
 allele-frequency distributions between PTM-proximal and non-PTM variants,
 grouped by tissue, cell type, or any categorical field found in an expression
-dataset. It is the CLI incarnation of the multi-dataset EDA consolidated in
-`local/notebooks/ptm-eda/PTM-EDA_Consolidated_Report.md` (Notebooks E–I).
+dataset.
 
 > **Not a per-variant scorer.** For per-site PTM flags use `hvantk ptm annotate`.
 > This command produces *stratified group-level* statistics.
