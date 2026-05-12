@@ -1651,17 +1651,30 @@ def _import_eqtl_gtex_parquet(input_path, tissue, reference_genome):
         sdf = spark.read.parquet(str(Path(fp).resolve()))
         ht_part = hl.Table.from_spark(sdf)
         row_fields = list(ht_part.row)
+        # v11 parquet has 'af' (ALT allele frequency, in-sample), not 'maf'.
+        # 'maf' is derived as min(af, 1-af). Both are exposed so downstream
+        # consumers can choose: af preserves direction (slope is per-ALT);
+        # maf is the symmetric population frequency used in coloc / filtering.
+        af_expr = (
+            hl.float64(ht_part.af)
+            if "af" in row_fields
+            else (
+                # Forward-compat: if a future release renames af → maf, fall
+                # back to maf as the AF proxy (acknowledging the direction
+                # loss — same caveat as v8).
+                hl.float64(ht_part.maf)
+                if "maf" in row_fields
+                else hl.missing(hl.tfloat64)
+            )
+        )
         ht_part = ht_part.select(
             gene_id_raw=ht_part.phenotype_id,
             variant_id=ht_part.variant_id,
             beta=hl.float64(ht_part.slope),
             se=hl.float64(ht_part.slope_se),
             p_value=hl.float64(ht_part.pval_nominal),
-            maf=(
-                hl.float64(ht_part.maf)
-                if "maf" in row_fields
-                else hl.missing(hl.tfloat64)
-            ),
+            af=af_expr,
+            maf=hl.min(af_expr, 1.0 - af_expr),
             tissue=tname,
             gene_symbol=hl.missing(hl.tstr),
         )
@@ -1692,13 +1705,23 @@ def _import_eqtl_gtex_tsv(input_path, tissue):
             },
         )
         row_fields = list(ht_part.row)
+        # v8 TSV has 'maf' (minor allele frequency) directly, NOT 'af'.
+        # We expose both fields for schema consistency with v11, but af is
+        # set equal to maf as an approximation — v8 doesn't carry directional
+        # (REF/ALT) allele-frequency info. Downstream consumers that need
+        # true ALT-direction info should use v11 inputs. The skill §4
+        # documents this caveat.
+        maf_expr = (
+            ht_part.maf if "maf" in row_fields else hl.missing(hl.tfloat64)
+        )
         ht_part = ht_part.select(
             gene_id_raw=ht_part.gene_id,
             variant_id=ht_part.variant_id,
             beta=ht_part.slope,
             se=ht_part.slope_se,
             p_value=ht_part.pval_nominal,
-            maf=(ht_part.maf if "maf" in row_fields else hl.missing(hl.tfloat64)),
+            af=maf_expr,
+            maf=maf_expr,
             tissue=tname,
             gene_symbol=hl.missing(hl.tstr),
         )
@@ -1731,6 +1754,7 @@ def _import_eqtl_eqtlgen(input_path, reference_genome):
         beta=hl.missing(hl.tfloat64),  # eQTLGen provides Z-score, not beta
         se=hl.missing(hl.tfloat64),
         p_value=ht.Pvalue,
+        af=hl.missing(hl.tfloat64),  # eQTLGen doesn't distribute af / maf
         maf=hl.missing(hl.tfloat64),
         tissue="Blood",
         gene_symbol=ht.GeneSymbol,

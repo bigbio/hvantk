@@ -5,6 +5,7 @@
     "gene_id"
   ],
   "row": {
+    "af": "float64",
     "alleles": "array<str>",
     "beta": "float64",
     "gene_id": "str",
