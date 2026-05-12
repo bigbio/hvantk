@@ -71,6 +71,13 @@ def _jsonable_to_hail_python(value: Any, dtype: Any) -> Any:
         contig, position = str(value).rsplit(":", 1)
         rg = getattr(dtype.reference_genome, "name", dtype.reference_genome)
         return hl.Locus(contig, int(position), reference_genome=rg)
+    if isinstance(dtype, hl.tinterval):
+        # Stored as {"start": "<contig>:<pos>", "end": "<contig>:<pos>"} per
+        # _to_jsonable. Reconstruct each point via the point-type's branch
+        # (recurses into tlocus above for locus<rg>-typed intervals).
+        start = _jsonable_to_hail_python(value["start"], dtype.point_type)
+        end = _jsonable_to_hail_python(value["end"], dtype.point_type)
+        return hl.Interval(start=start, end=end, includes_start=True, includes_end=False)
     if isinstance(dtype, hl.tarray):
         return [_jsonable_to_hail_python(v, dtype.element_type) for v in value]
     if isinstance(dtype, hl.tset):
@@ -169,6 +176,13 @@ def _to_jsonable(value: Any) -> Any:
             return f"{value.contig}:{value.position}"
         if isinstance(value, hl.Struct):
             return {k: _to_jsonable(v) for k, v in dict(value).items()}
+        if isinstance(value, hl.Interval):
+            # Render as {"start": "<contig>:<pos>", "end": "<contig>:<pos>"} —
+            # symmetric with locus serialization, unambiguous, round-trippable
+            # via _jsonable_to_hail_python's hl.tinterval branch. Assumes the
+            # standard half-open BED convention (includes_start=True,
+            # includes_end=False).
+            return {"start": _to_jsonable(value.start), "end": _to_jsonable(value.end)}
     except ImportError:
         pass
     return str(value)
