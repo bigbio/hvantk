@@ -1,0 +1,35 @@
+[
+  {
+    "key": {
+      "interval": {
+        "end": "chr3:9801673",
+        "start": "chr3:9801671"
+      }
+    },
+    "row": {
+      "target": "."
+    }
+  },
+  {
+    "key": {
+      "interval": {
+        "end": "chr3:9801706",
+        "start": "chr3:9801704"
+      }
+    },
+    "row": {
+      "target": "."
+    }
+  },
+  {
+    "key": {
+      "interval": {
+        "end": "chr3:9812988",
+        "start": "chr3:9812986"
+      }
+    },
+    "row": {
+      "target": "."
+    }
+  }
+]
