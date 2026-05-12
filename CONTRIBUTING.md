@@ -4,7 +4,7 @@ See the full contributing guide at [docs_site/contributing.md](docs_site/contrib
 
 ## Skill maintenance (resource-centric skills)
 
-`hvantk/skills/` contains agent-readable methodology for maintaining stable resources. Pilot scope: ClinVar and UCSC Cell Browser. See `local/planning/2026-05-07-hvantk-resource-skills-design.md` for the full design.
+`hvantk/skills/` contains agent-readable methodology for maintaining stable resources. Each per-resource `SKILL.md` is a design contract (source identity, output schema, builder + CLI + registry wiring, validation contract) that the round-trip test pins down. Shared conventions live in `hvantk/skills/_conventions/SKILL.md` — read that first before any per-resource skill.
 
 ### When you change builder code
 

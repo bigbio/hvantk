@@ -21,7 +21,7 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes every conve
 
 - **Provider:** GTEx Consortium. **Variant pinned by this skill:** v11 / cis-eQTL / signif_pairs / per-tissue parquet.
 - **Catalog entry:** present. `hvantk/resources/registry/genomics/datasets.json` contains `GTEx_v11_eQTL_signif_pairs`. URLs / cadence / license / citation live in the registry — not here.
-- **Source schema documentation:** `local/data/qtl_data/README_eQTL_v11.txt` (ships with the GTEx v11 release). The skill cites this README as the authoritative format reference; do NOT restate column definitions here.
+- **Source schema documentation:** the `README_eQTL_v11.txt` that GTEx ships inside the v11 cis-QTL release archive (download via the GTEx portal). The skill cites this README as the authoritative format reference; do NOT restate column definitions here.
 
 Stable note (not in catalog): GTEx ships per-tissue parquet files named `<Tissue>.v11.eQTLs.signif_pairs.parquet`. The builder scans a directory and infers tissue from the filename prefix before the first dot (e.g., `Liver.v11.eQTLs.signif_pairs.parquet` → `Liver`). Single-file input is also accepted.
 
@@ -43,7 +43,7 @@ The post-import `transform_func` is shared across all three: variant ID parsing,
 
 ## 4. Raw format & gotchas
 
-The v11 `*.signif_pairs.parquet` actually contains 12 columns. Cite `local/data/qtl_data/README_eQTL_v11.txt` for the canonical schema, but be aware of two README/file drifts (observed when slicing the Liver fixture):
+The v11 `*.signif_pairs.parquet` actually contains 12 columns. Cite the upstream `README_eQTL_v11.txt` (shipped in the GTEx v11 cis-QTL release archive) for the canonical schema, but be aware of two README/file drifts (observed when slicing the Liver fixture):
 
 **Drift 1: column name `start_distance`, not `tss_distance`.** The README documents column 4 as `tss_distance`; the actual parquet column is named `start_distance`. The builder does NOT read this column (only `phenotype_id`, `variant_id`, `slope`, `slope_se`, `pval_nominal`, and optionally `maf` — see Gap 1 below), so the output Hail Table is unaffected. Documentation drift, harmless.
 
@@ -140,7 +140,7 @@ GTEx releases major versions every few years (v8 → v9 → v10 → v11). Per re
 
 Per `_conventions` § 9:
 
-- **fixture:** `hvantk/tests/testdata/raw/gtex-eqtl/Liver.v11.eQTLs.signif_pairs.parquet`. 800 rows sliced from the v11 Liver source via `local/planning/skills-gtex-eqtl-fixture-slicer.py` (gitignored). ~36 KB. Preserves the parquet binary format (deterministic via `pq.Table.slice(0, N)`).
+- **fixture:** `hvantk/tests/testdata/raw/gtex-eqtl/Liver.v11.eQTLs.signif_pairs.parquet`. 800 rows sliced from the v11 Liver source via `pyarrow.parquet.read_table(...).slice(0, 800)` and `pq.write_table` — deterministic because row-group order is preserved. ~36 KB. Keeps the parquet binary format so the test exercises the real `spark.read.parquet → hl.Table.from_spark` ingestion path.
 - **schema_snapshot:** `hvantk/tests/snapshots/gtex-eqtl/schema.json`.
 - **row_snapshot:** `hvantk/tests/snapshots/gtex-eqtl/sample_rows.json`. Triple key `(locus, alleles, gene_id)` is unique-in-table for signif_pairs, so the test inlines a small key list and no `sample_keys.json` is maintained (per `_conventions` § 9 post-#101).
 - **test_command:** `pytest hvantk/tests/test_gtex_eqtl_builder.py -m hail`.

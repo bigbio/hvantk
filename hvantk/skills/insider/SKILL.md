@@ -111,7 +111,7 @@ INSIDER updates are irregular. To onboard a new release:
 
 Per `_conventions` § 9:
 
-- **fixture:** `hvantk/tests/testdata/raw/insider/insider_sample.bed`. 5 PPI tracks (~21 raw data rows; 17 valid after zero-length filtering). ~1.9 KB. Sliced via `local/planning/skills-insider-fixture-slicer.py` (gitignored) which preserves track headers (a custom BED-aware slicer rather than `head -N` to maintain structural integrity).
+- **fixture:** `hvantk/tests/testdata/raw/insider/insider_sample.bed`. 5 PPI tracks (~21 raw data rows; 17 valid after zero-length filtering). ~1.9 KB. Sliced from the full BED by a track-aware sub-sampler (keeps the `browser` directive plus the first N `track` blocks, each header paired with its data rows) — a plain `head -N` would split a track block and produce an invalid BED.
 - **schema_snapshot:** `hvantk/tests/snapshots/insider/schema.json`. Records the `{interval, ppi_ids: array<str>}` shape.
 - **row_snapshot:** `hvantk/tests/snapshots/insider/sample_rows.json`. Intervals are unique-in-table after the aggregation; test inlines 3 sample keys (per `_conventions` § 9 post-#101 rule — unique-key skills inline).
 - **test_command:** `pytest hvantk/tests/test_insider_builder.py -m hail`.

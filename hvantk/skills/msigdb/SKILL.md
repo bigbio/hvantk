@@ -87,7 +87,7 @@ MSigDB releases ~annually (versioned `v<year>.<n>`, e.g., `v2026.1`, `v2025.1`).
 
 Per `_conventions` § 9:
 
-- **fixture:** `hvantk/tests/testdata/raw/msigdb/c2.cp-sample.gmt`. 20 gene sets, ~24 KB, sliced from the v2026.1 C2 CP source via `local/planning/skills-tier3.5-msigdb-fixture-slicer.py` (gitignored — see `local/planning/`). Exercises the short edge (size 5: BIOCARTA, SA), medium sets (60-330 genes), a long set (`REACTOME_CELL_CYCLE`, 688 genes), and the extra-long tail (`REACTOME_POST_TRANSLATIONAL_PROTEIN_MODIFICATION`, 1,497 genes). All 20 fixture rows have a `https://www.gsea-msigdb.org/` URL in column 2 (matches the live-file invariant).
+- **fixture:** `hvantk/tests/testdata/raw/msigdb/c2.cp-sample.gmt`. 20 gene sets, ~24 KB, sampled from the v2026.1 C2 CP source by picking representative rows by line index (the GMT format is line-oriented, so a deterministic line subset is a valid sub-GMT). Exercises the short edge (size 5: BIOCARTA, SA), medium sets (60-330 genes), a long set (`REACTOME_CELL_CYCLE`, 688 genes), and the extra-long tail (`REACTOME_POST_TRANSLATIONAL_PROTEIN_MODIFICATION`, 1,497 genes). All 20 fixture rows have a `https://www.gsea-msigdb.org/` URL in column 2 (matches the live-file invariant).
 - **schema_snapshot:** `hvantk/tests/snapshots/msigdb/schema.json`.
 - **row_snapshot:** `hvantk/tests/snapshots/msigdb/sample_rows.json`. `set_name` keys are unique-in-table, so no `sample_keys.json` is maintained per `_conventions` § 9 (post-#101). The round-trip test inlines the small key list.
 - **test_command:** `pytest hvantk/tests/test_msigdb_builder.py -m hail`.

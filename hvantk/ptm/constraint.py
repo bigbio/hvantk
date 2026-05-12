@@ -2,9 +2,7 @@
 
 Compares gnomAD allele-frequency distributions between PTM-proximal and
 non-PTM variants, stratified by tissue, cell type, or any categorical
-metadata field derived from an expression dataset. The five statistical
-tests mirror the EDA prototyped in Notebooks E through I
-(see ``local/notebooks/ptm-eda/PTM-EDA_Consolidated_Report.md``).
+metadata field derived from an expression dataset.
 
 This module is an **orchestrator**, not a per-variant scorer. For per-site
 PTM flags use :func:`hvantk.ptm.annotate.annotate_variants_with_ptm`.
