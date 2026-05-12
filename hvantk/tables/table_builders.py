@@ -38,7 +38,6 @@ def _create_table_base(
     output_path: str,
     import_func: Callable[[], hl.Table],
     transform_func: Optional[Callable[[hl.Table], hl.Table]] = None,
-    cleanup_func: Optional[Callable[[], None]] = None,
     fields: Optional[List[str]] = None,
     overwrite: bool = False,
     export_tsv: bool = False,
@@ -67,9 +66,6 @@ def _create_table_base(
         Function that returns the imported Hail Table.
     transform_func : Callable, optional
         Function to transform the table after import (default: None).
-    cleanup_func : Callable, optional
-        Cleanup hook run after checkpoint/export finish, even on failure
-        (default: None).
     fields : list of str, optional
         List of fields to select from the table (default: None, keeps all).
     overwrite : bool, optional
@@ -82,32 +78,28 @@ def _create_table_base(
     hl.Table
         The checkpointed Hail Table.
     """
-    try:
-        logger.info(f"Creating {source_name} table from {input_path}")
-        ht = import_func()
+    logger.info(f"Creating {source_name} table from {input_path}")
+    ht = import_func()
 
-        if transform_func is not None:
-            ht = transform_func(ht)
+    if transform_func is not None:
+        ht = transform_func(ht)
 
-        if fields is not None:
-            logger.info(f"Selecting fields: {fields}")
-            ht = ht.select(*fields)
+    if fields is not None:
+        logger.info(f"Selecting fields: {fields}")
+        ht = ht.select(*fields)
 
-        ht = ht.annotate_globals(
-            hvantk_metadata=build_table_metadata(source_name, input_path, ht)
-        )
+    ht = ht.annotate_globals(
+        hvantk_metadata=build_table_metadata(source_name, input_path, ht)
+    )
 
-        logger.info(f"Checkpointing table to {output_path}")
-        ht = ht.checkpoint(output=output_path, overwrite=overwrite)
+    logger.info(f"Checkpointing table to {output_path}")
+    ht = ht.checkpoint(output=output_path, overwrite=overwrite)
 
-        if export_tsv:
-            logger.info(f"Exporting table to {output_path}.tsv.bgz")
-            ht.export(output_path + ".tsv.bgz")
+    if export_tsv:
+        logger.info(f"Exporting table to {output_path}.tsv.bgz")
+        ht.export(output_path + ".tsv.bgz")
 
-        return ht
-    finally:
-        if cleanup_func is not None:
-            cleanup_func()
+    return ht
 
 
 __all__ = [
@@ -343,16 +335,19 @@ def create_interactome_tb(
         )
         return grouped.annotate(ppi_ids=hl.sorted(hl.array(grouped.ppi_ids)))
 
-    return _create_table_base(
-        source_name="interactome",
-        input_path=input_path,
-        output_path=output_path,
-        import_func=_import,
-        transform_func=_transform,
-        cleanup_func=lambda: _cleanup_temp_file(tsv_path) if tsv_path else None,
-        overwrite=overwrite,
-        export_tsv=export_tsv,
-    )
+    try:
+        return _create_table_base(
+            source_name="interactome",
+            input_path=input_path,
+            output_path=output_path,
+            import_func=_import,
+            transform_func=_transform,
+            overwrite=overwrite,
+            export_tsv=export_tsv,
+        )
+    finally:
+        if tsv_path:
+            _cleanup_temp_file(tsv_path)
 
 
 def create_clinvar_tb(
