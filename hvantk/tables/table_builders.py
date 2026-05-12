@@ -14,6 +14,7 @@ from hvantk.utils.table_utils import get_row_fields, build_rename_map, str_to_bo
 from hvantk.core.metadata import build_table_metadata
 
 logger = logging.getLogger(__name__)
+_FILE_URI_PREFIX = "file://"
 
 from hvantk.core.constants import (
     ENSEMBL_BIOMART_FIELDS,
@@ -136,8 +137,8 @@ def _cleanup_temp_file(tmp_path: Optional[str]) -> None:
 
     try:
         local_path = tmp_path
-        if local_path.startswith("file://"):
-            local_path = local_path[len("file://"):]
+        if local_path.startswith(_FILE_URI_PREFIX):
+            local_path = local_path[len(_FILE_URI_PREFIX):]
         if os.path.exists(local_path):
             os.remove(local_path)
     except Exception:
@@ -203,7 +204,7 @@ _TRACK_NAME_RE = re.compile(r'name=([^\s]+)')
 
 def _normalize_hadoop_path(path: str) -> str:
     """Normalize local file URIs for filesystem APIs."""
-    return path[len("file://"):] if path.startswith("file://") else path
+    return path[len(_FILE_URI_PREFIX):] if path.startswith(_FILE_URI_PREFIX) else path
 
 
 def _parse_insider_bed_to_temp_tsv(input_path: str) -> str:
