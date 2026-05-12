@@ -15,9 +15,9 @@ from hvantk.tests._snapshot_utils import (
 # Aliased to avoid shadowing the fixture name `regenerate_snapshots` in the test signature
 from hvantk.tests._snapshot_utils import regenerate_snapshots as regenerate_snapshots_fn
 
-FIXTURE_FILE = "hvantk/tests/testdata/raw/gtex_eqtl/Liver.v11.eQTLs.signif_pairs.parquet"
+FIXTURE_FILE = "hvantk/tests/testdata/raw/gtex-eqtl/Liver.v11.eQTLs.signif_pairs.parquet"
 FIXTURE_DIR = str(Path(FIXTURE_FILE).parent)
-SNAPSHOT_DIR = Path("hvantk/tests/snapshots/gtex_eqtl")
+SNAPSHOT_DIR = Path("hvantk/tests/snapshots/gtex-eqtl")
 
 # (locus, alleles, gene_id) is unique-in-table for v11 signif_pairs (per skill §5),
 # so keys are inlined here rather than maintained in a separate sample_keys.json

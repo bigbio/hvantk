@@ -134,9 +134,9 @@ GTEx releases major versions every few years (v8 → v9 → v10 → v11). Per re
 
 Per `_conventions` § 9:
 
-- **fixture:** `hvantk/tests/testdata/raw/gtex_eqtl/Liver.v11.eQTLs.signif_pairs.parquet`. 800 rows sliced from the v11 Liver source via `local/planning/skills-gtex-eqtl-fixture-slicer.py` (gitignored). ~36 KB. Preserves the parquet binary format (deterministic via `pq.Table.slice(0, N)`).
-- **schema_snapshot:** `hvantk/tests/snapshots/gtex_eqtl/schema.json`.
-- **row_snapshot:** `hvantk/tests/snapshots/gtex_eqtl/sample_rows.json`. Triple key `(locus, alleles, gene_id)` is unique-in-table for signif_pairs, so the test inlines a small key list and no `sample_keys.json` is maintained (per `_conventions` § 9 post-#101).
+- **fixture:** `hvantk/tests/testdata/raw/gtex-eqtl/Liver.v11.eQTLs.signif_pairs.parquet`. 800 rows sliced from the v11 Liver source via `local/planning/skills-gtex-eqtl-fixture-slicer.py` (gitignored). ~36 KB. Preserves the parquet binary format (deterministic via `pq.Table.slice(0, N)`).
+- **schema_snapshot:** `hvantk/tests/snapshots/gtex-eqtl/schema.json`.
+- **row_snapshot:** `hvantk/tests/snapshots/gtex-eqtl/sample_rows.json`. Triple key `(locus, alleles, gene_id)` is unique-in-table for signif_pairs, so the test inlines a small key list and no `sample_keys.json` is maintained (per `_conventions` § 9 post-#101).
 - **test_command:** `pytest hvantk/tests/test_gtex_eqtl_builder.py -m hail`.
 
 Round-trip test asserts: builder idempotent with `overwrite=True`; checkpointed schema matches `schema.json`; deterministic sample-row slice matches `sample_rows.json`. Test uses `source="gtex_v11"`, `tissue="Liver"`, `p_threshold=0` (retain all rows in the fixture). Spark session is initialized on demand by `_import_eqtl_gtex_parquet`; the `hail_session` fixture ensures Hail (and therefore Spark) is up.

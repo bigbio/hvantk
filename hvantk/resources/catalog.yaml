@@ -1,5 +1,5 @@
 version: '2.0'
-generated: '2025-10-16T11:53:17.977662'
+generated: '2026-05-12T08:37:59.302733'
 description: Unified catalog of all omics datasets in hvantk registry
 registry_structure:
   schemas: hvantk/resources/schemas/
@@ -9,40 +9,40 @@ registry_structure:
   epigenomics: hvantk/resources/registry/epigenomics/
 datasets:
   transcriptomics:
-    count: 297
+    count: 300
     schemas: schemas/transcriptomics_schema.json
     data_file: registry/transcriptomics/datasets.json
     summary:
       data_sources:
       - Custom
-      - UCSC
       - Expression_Atlas
+      - UCSC
       organisms:
-      - Fruit Fly (D. melanogaster)
-      - Human (H. sapiens)
-      - Gallus gallus
-      - Mus musculus
-      - Freshwater Hydra (H. vulgaris)
-      - Sea Squirt (C. robusta)
-      - Sea urchin (S. purpuratus)
-      - Dog (C. familiaris)
       - African Clawed Frog (X. laevis)
-      - Rat (R. norvegicus)
-      - Brine Shrimp (A. franciscana)
-      - Mouse lemur (T. microcebus)
-      - Sea Squirt (C. intestinalis)
+      - Sea urchin (S. purpuratus)
       - Blood Fluke (S. mansoni)
-      - Human-Mouse Xenograft
-      - Horse (E. caballus)
-      - Freshwater Worm (P. leidyi)
-      - Marmoset (C. jacchus)
-      - Fruit fly (D. melanogaster)
+      - Starlet Sea Anemone (N. vectensis)
+      - Brine Shrimp (A. franciscana)
+      - Rat (R. norvegicus)
       - Mosquito (A. aegypti)
       - Colonial Hydroid (H. symbiolongicarpus)
-      - X. tropicalis
-      - Zebrafish (D. rerio)
+      - Freshwater Worm (P. leidyi)
+      - Dog (C. familiaris)
+      - Human-Mouse Xenograft
+      - Human (H. sapiens)
+      - Fruit Fly (D. melanogaster)
+      - Mouse lemur (T. microcebus)
       - Homo sapiens
-      - Starlet Sea Anemone (N. vectensis)
+      - Sea Squirt (C. robusta)
+      - X. tropicalis
+      - Freshwater Hydra (H. vulgaris)
+      - Fruit fly (D. melanogaster)
+      - Gallus gallus
+      - Sea Squirt (C. intestinalis)
+      - Horse (E. caballus)
+      - Marmoset (C. jacchus)
+      - Mus musculus
+      - Zebrafish (D. rerio)
       sample_range:
         min: 0
         max: 2058652
@@ -68,7 +68,7 @@ datasets:
       organisms:
       - Homo sapiens
       sample_range:
-        min: 20000
+        min: 1000
         max: 700000000
   epigenomics:
     count: 0
@@ -81,5 +81,5 @@ datasets:
         min: 0
         max: 0
 summary:
-  total_datasets: 310
+  total_datasets: 313
   omics_types: 3
