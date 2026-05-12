@@ -26,7 +26,9 @@ def table_builders_module(monkeypatch):
     hail.tint32 = object()
     hail.tfloat64 = object()
     hail.tstr = object()
-    hail.utils = types.SimpleNamespace(new_temp_file=lambda *args, **kwargs: "tmp.tsv")
+    hail.utils = types.SimpleNamespace(
+        new_temp_file=lambda *args, **kwargs: f"{uuid.uuid4().hex}.tsv"
+    )
     hail.import_table = lambda *args, **kwargs: None
     hail.locus_interval = lambda *args, **kwargs: None
 

@@ -349,7 +349,7 @@ def create_interactome_tb(
         output_path=output_path,
         import_func=_import,
         transform_func=_transform,
-        cleanup_func=lambda: _cleanup_temp_file(tsv_path),
+        cleanup_func=lambda: _cleanup_temp_file(tsv_path) if tsv_path else None,
         overwrite=overwrite,
         export_tsv=export_tsv,
     )
