@@ -49,10 +49,15 @@ The v11 `*.signif_pairs.parquet` actually contains 12 columns. Cite `local/data/
 
 **Drift 2: no `gene_id` column in signif_pairs.parquet.** The README schema for signif_pairs lists both `gene_id` and `phenotype_id` as separate columns. The actual file has only `phenotype_id`. For eQTL files this is fine (`phenotype_id ≡ gene_id` for eQTLs per the README), but **sQTL / apaQTL files use `phenotype_id` to encode intron coordinates or transcript-cluster IDs**, NOT bare gene IDs. The builder reads `phenotype_id` as the gene-ID source unconditionally — applying it to sQTL/apaQTL signif_pairs without modification would produce wrong gene keys. The skill scope (§ 1) is cis-eQTL only; sQTL/apaQTL would need a separate skill or a builder branch.
 
-**Gap 1 (real builder bug, TODO follow-up): `maf` vs `af`.** `_import_eqtl_gtex_parquet` (in `hvantk/tables/table_builders.py:1563-1567`) probes for a column named `maf` and falls back to `hl.missing(hl.tfloat64)` if absent. v11 signif_pairs has `af` (ALT allele frequency, in-sample), **not `maf`** (minor allele frequency). Output `maf` field is therefore always null for v11 input. Real bug — but the round-trip snapshot will fix this null-`maf` shape as the recorded contract for the v11 source. Follow-up PR should:
-- Read `af` from v11 parquet, optionally derive `maf` as `min(af, 1-af)` if downstream cares.
-- Verify v8 path: v8 TSV signif_variant_gene_pairs may have `maf` directly — `_import_eqtl_gtex_tsv` should retain the existing probe.
-- Cite: `hvantk/tables/table_builders.py:1563-1567` for the probe; `hvantk/tables/table_builders.py:1597-1620` for the v8 select.
+**Gap 1 (fixed in cleanup PR): `maf` vs `af`.** Historical state — `_import_eqtl_gtex_parquet` probed for a column named `maf` and fell back to `hl.missing(hl.tfloat64)` if absent. v11 signif_pairs has `af` (ALT allele frequency, in-sample), **not `maf`** — so the output `maf` field was always null for v11 input.
+
+The cleanup PR rewrites the v11 select to read `af` directly and **expose both fields**:
+- `af: float64` — read from the v11 parquet's `af` column. Preserves directional info (slope is reported per ALT allele; consumers wanting direction-aware analysis need `af`, not `maf`).
+- `maf: float64` — derived as `hl.min(af, 1 - af)`. Half-symmetric: matches the conventional MAF definition for downstream coloc / frequency-filter use.
+
+For v8 (`_import_eqtl_gtex_tsv`), the source TSV carries `maf` directly (not `af`); the cleanup sets both fields equal to the TSV's `maf` value as an approximation, since v8 doesn't carry directional info — a real caveat documented here: **v8 inputs lose direction**. Downstream code that depends on directional ALT frequency should use v11.
+
+For eqtlgen, both `af` and `maf` remain `hl.missing` (the source distributes neither).
 
 **Gene ID versioning.** `gene_id` (read from `phenotype_id`) is a versioned GENCODE/Ensembl ID like `ENSG00000268903.1`. The shared `transform_func` strips the version suffix via `_strip_ensembl_version(ht.gene_id_raw)` before keying, producing `ENSG00000268903`. This is required for cross-table joins (e.g., HGNC, Ensembl gene metrics) that key on unversioned Ensembl IDs.
 
@@ -72,7 +77,8 @@ The v11 `*.signif_pairs.parquet` actually contains 12 columns. Cite `local/data/
   - `beta: float64` — regression slope from `slope`.
   - `se: float64` — SE of slope from `slope_se`.
   - `p_value: float64` — nominal p-value from `pval_nominal`.
-  - `maf: float64` — **always null for v11** (Gap 1). Populated for v8 and eqtlgen.
+  - `af: float64` — ALT allele frequency. For v11: read directly from the `af` parquet column. For v8: set equal to the v8 TSV's `maf` (approximation; v8 loses direction). For eqtlgen: null.
+  - `maf: float64` — minor allele frequency, `min(af, 1-af)`. For v11: derived from `af`. For v8: read directly from the v8 TSV's `maf` column. For eqtlgen: null.
   - `tissue: str` — inferred from filename prefix (e.g., `Liver`).
   - `gene_symbol: str` — always null for v11/v8 (`hl.missing(hl.tstr)` in the parquet importer); populated for eqtlgen.
   - `source: str` — value of the `source` parameter (e.g., `gtex_v11`).
@@ -96,7 +102,7 @@ The v11 `*.signif_pairs.parquet` actually contains 12 columns. Cite `local/data/
 ## 7. Workflow steps
 
 1. **Resolve raw path.** Caller passes either a single parquet file (`Liver.v11.eQTLs.signif_pairs.parquet`) or a directory containing per-tissue parquet files. Acquire from the GTEx portal (https://gtexportal.org) — manual download, no skill-side acquisition.
-2. **Import (v11 path).** `_import_eqtl_gtex_parquet` scans `.parquet` files under `input_path`, optionally filters by `tissue`, reads each via `spark.read.parquet`, converts via `hl.Table.from_spark`, and unions the per-tissue tables. Source columns selected: `phenotype_id`, `variant_id`, `slope`, `slope_se`, `pval_nominal`, optionally `maf` (null in v11 — see Gap 1).
+2. **Import (v11 path).** `_import_eqtl_gtex_parquet` scans `.parquet` files under `input_path`, optionally filters by `tissue`, reads each via `spark.read.parquet`, converts via `hl.Table.from_spark`, and unions the per-tissue tables. Source columns selected: `phenotype_id`, `variant_id`, `slope`, `slope_se`, `pval_nominal`, `af` (yields output `af`; `maf` is derived in the same select via `hl.min(af, 1-af)`).
 3. **Transform** (shared `transform_func` in `create_eqtl_tb`):
    - `_parse_gtex_variant_id(ht, "variant_id", reference_genome)` — yields `locus`, `alleles`, drops the raw `variant_id` after annotation.
    - `gene_id = _strip_ensembl_version(ht.gene_id_raw)` — strips `.N` version suffix.
@@ -126,7 +132,7 @@ GTEx releases major versions every few years (v8 → v9 → v10 → v11). Per re
 2. **Check format.** Compare the new release's `README_eQTL_*.txt` against the v11 schema documented in this skill. If columns added/removed: extend `_import_eqtl_gtex_parquet` and re-record the snapshot.
 3. **Add a new source constant** to `EQTL_SOURCES` (e.g., `"gtex_v12"`); add a `gtex_v12` branch in `create_eqtl_tb.import_func` if the import shape diverges from v11; bump the registry entry's `accession` (`GTEx_v11_eQTL_signif_pairs` → `GTEx_v12_eQTL_signif_pairs`).
 4. **Re-run round-trip (§ 9).** If schema changes, regenerate snapshots via `--regenerate-snapshots`.
-5. **Resolve Gap 1 (maf / af).** Until the follow-up PR lands, every new v11+ release will continue to produce null `maf`. The follow-up should fix the probe to read `af` and optionally derive `maf`.
+5. **`af` / `maf` (post-cleanup PR).** v11 now reads `af` directly and derives `maf = min(af, 1-af)`. If a future release renames `af` → something else, the `af_expr` probe in `_import_eqtl_gtex_parquet` falls back to `maf` (yielding null direction info, matching v8 behavior). Update the probe order if needed.
 
 **Cross-source compatibility:** v8 TSV → v11 parquet was a breaking format change (text → columnar binary). v11 → future releases may break again. Anchor each release to its own source constant rather than reusing `gtex_v11` after the next migration.
 
@@ -143,5 +149,4 @@ Round-trip test asserts: builder idempotent with `overwrite=True`; checkpointed 
 
 Regenerate via `--regenerate-snapshots` when:
 - The shared `transform_func` adds / removes / renames fields.
-- Gap 1 (maf/af) is fixed — the `maf` field will start carrying real values, breaking the current snapshot's null-`maf` contract.
 - A new GTEx release is anchored that changes the input schema (per § 8).
