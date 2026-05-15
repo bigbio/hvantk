@@ -15,7 +15,13 @@ keywords = [
     "joint-genotyping"
 ]
 include = [
-  { path = "hvantk/resources/catalog.yaml", format = ["sdist", "wheel"] }
+  { path = "hvantk/resources/catalog.yaml", format = ["sdist", "wheel"] },
+  { path = "hvantk/skills/**/plugin.yaml", format = ["sdist", "wheel"] },
+  { path = "hvantk/skills/**/*.py", format = ["sdist", "wheel"] },
+  { path = "hvantk/skills/**/SKILL.md", format = ["sdist", "wheel"] },
+]
+exclude = [
+    "hvantk/skills/**/tests/**",
 ]
 
 [tool.poetry.dependencies]
@@ -60,6 +66,14 @@ tspex = "*"
 mkdocs = "*"
 mkdocs-material = "*"
 ipykernel = "^7.2.0"
+
+[tool.poetry.plugins."hvantk.providers"]
+# In-tree plugins register themselves the same way as external ones.
+# Only providers migrated to the plugin layout appear here.
+# Task 11 adds the first entry (hgnc); follow-up plans add the rest.
+
+[tool.pytest.ini_options]
+testpaths = ["hvantk/tests", "hvantk/skills"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
