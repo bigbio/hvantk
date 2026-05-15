@@ -36,14 +36,23 @@ def drift_cmd(dataset, all_flag, domain, as_json, regenerate, timeout):
     if regenerate:
         if all_flag:
             raise click.UsageError("--regenerate requires a specific dataset name")
-        _regenerate_fingerprint(reg, dataset)
+        try:
+            _regenerate_fingerprint(reg, dataset)
+        except KeyError:
+            click.echo(f"unknown dataset: {dataset}", err=True)
+            raise SystemExit(EXIT_REGISTRY_ERROR)
         click.echo(f"regenerated: {dataset}")
         return
 
-    targets = (
-        reg.list_datasets(domain=domain) if all_flag else [reg.get_dataset(dataset)]
-    )
-    results = [drift_runner._run_drift_check_with_spec(spec, timeout=timeout) for spec in targets]
+    try:
+        targets = (
+            reg.list_datasets(domain=domain) if all_flag else [reg.get_dataset(dataset)]
+        )
+    except KeyError:
+        click.echo(f"unknown dataset: {dataset}", err=True)
+        raise SystemExit(EXIT_REGISTRY_ERROR)
+
+    results = [drift_runner.run_drift_check(spec.name, timeout=timeout) for spec in targets]
 
     if as_json:
         click.echo(json.dumps([_serialize(r) for r in results], indent=2, default=str))
@@ -53,6 +62,8 @@ def drift_cmd(dataset, all_flag, domain, as_json, regenerate, timeout):
             if r.diff:
                 click.echo(json.dumps(r.diff, indent=2, default=str))
 
+    # Priority: probe_failed(2) > drifted(1) > clean(0). Infra failure trumps
+    # drift because drifted output is only meaningful if the probe actually ran.
     exit_codes = {EXIT_CLEAN}
     for r in results:
         if r.status == "drifted":

@@ -67,3 +67,16 @@ def test_drift_regenerate_overwrites_fingerprint(tmp_path: Path, monkeypatch):
     new = json.loads(fp_path.read_text())
     assert "stale" not in new
     assert new["probe_version"] == old["probe_version"]
+
+
+def test_unknown_dataset_returns_registry_error_exit_code():
+    runner = CliRunner()
+    result = runner.invoke(drift_cmd, ["does:not:exist"])
+    assert result.exit_code == 3  # EXIT_REGISTRY_ERROR
+    assert "unknown dataset" in result.output.lower() or "unknown dataset" in (result.stderr or "")
+
+
+def test_regenerate_unknown_dataset_returns_registry_error_exit_code():
+    runner = CliRunner()
+    result = runner.invoke(drift_cmd, ["--regenerate", "does:not:exist"])
+    assert result.exit_code == 3
