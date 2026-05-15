@@ -342,3 +342,59 @@ def run_matrix_builder(
         f"Running matrix builder '{name}' with inputs={inputs} output={output_mt} params={params}"
     )
     MATRIX_BUILDERS[name](inputs, output_mt, params or {})
+
+
+# --- Plugin-driven registrations (added by feat/data-handlers-refactoring) ---
+
+
+def _apply_plugin_registrations(reg) -> None:
+    """Add plugin-discovered builders to the legacy TABLE_BUILDERS/MATRIX_BUILDERS
+    dicts.
+
+    Coexistence: this runs ALONGSIDE the create_table_adapter() block above.
+    As each provider migrates to the plugin layout in follow-up plans, its
+    create_table_adapter line is removed in the same migration commit; this
+    function continues to populate the dict from the plugin.
+    """
+    from hvantk.core.plugin_api import DatasetSpec  # local import to avoid cycle
+
+    def _wrap_builder(spec: "DatasetSpec"):
+        if spec.backend == "hail":
+            def adapter(input_path, output_path, params=None):
+                spec.builder(input_path, output_path, **(params or {}))
+            return adapter
+        if spec.backend == "anndata":
+            def adapter(inputs, output_mt, params=None):
+                # AnnData builders take multi-input dicts — Phase 0 simplification:
+                # the input dict is expanded directly as kwargs. New plugin builders
+                # MUST name their kwargs to match the input dict keys.
+                spec.builder(**inputs, output_path=output_mt, **(params or {}))
+            return adapter
+        # pandas backend: same signature as hail for now.
+        def adapter(input_path, output_path, params=None):
+            spec.builder(input_path, output_path, **(params or {}))
+        return adapter
+
+    for ds in reg.list_datasets(backend="hail"):
+        TABLE_BUILDERS[ds.name] = _wrap_builder(ds)
+    for ds in reg.list_datasets(backend="anndata"):
+        MATRIX_BUILDERS[ds.name] = _wrap_builder(ds)
+
+
+def _initialize_plugin_registrations() -> None:
+    """Wire the module-level PluginRegistry into TABLE_BUILDERS / MATRIX_BUILDERS.
+
+    Called once at module import time. Safe to call repeatedly; subsequent
+    calls are no-ops because the registry is a module-level singleton.
+    """
+    from hvantk.core import plugin_loader
+
+    try:
+        reg = plugin_loader.get_registry()
+    except Exception as exc:  # noqa: BLE001 — never let plugin failure break hvantk import
+        logger.warning("plugin loader failed to initialize: %s", exc)
+        return
+    _apply_plugin_registrations(reg)
+
+
+_initialize_plugin_registrations()
