@@ -19,6 +19,15 @@ class PluginLoadError(Exception):
     """Raised when a plugin fails the protocol or its runtime requirements."""
 
 
+class PluginNameCollision(PluginLoadError):
+    """Raised when a plugin's name conflicts with an already-registered plugin.
+
+    Subclass of PluginLoadError so callers that catch PluginLoadError still
+    see collisions, but loaders that want to distinguish 'hard-fail collision'
+    from 'soft-fail per-plugin failure' can catch this specifically.
+    """
+
+
 class DriftProbeError(Exception):
     """Raised by a drift probe on transient failure (network, timeout, parse).
 

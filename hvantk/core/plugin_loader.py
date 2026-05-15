@@ -22,6 +22,7 @@ import yaml
 from .plugin_api import (
     DatasetSpec,
     PluginLoadError,
+    PluginNameCollision,
     Provider,
     TestPaths,
 )
@@ -93,12 +94,15 @@ class PluginRegistry:
             manifest = self._read_and_validate_manifest(plugin_dir / "plugin.yaml")
             provider = self._build_provider(manifest, plugin_dir)
             self._register(provider, plugin_id)
+        except PluginNameCollision:
+            # Hard error: silent shadowing is the worst failure mode.
+            raise
         except PluginLoadError as exc:
-            if "collision" in str(exc):
-                raise
             self._load_errors.append((plugin_id, exc))
         except Exception as exc:  # noqa: BLE001
-            self._load_errors.append((plugin_id, PluginLoadError(str(exc))))
+            err = PluginLoadError(str(exc))
+            err.__cause__ = exc
+            self._load_errors.append((plugin_id, err))
 
     def load_from_entry_points(self) -> None:
         """Iterate hvantk.providers entry points and load each."""
@@ -111,12 +115,12 @@ class PluginRegistry:
                 module = ep.load()
                 module_path = Path(module.__file__).resolve().parent
                 self.load_from_directory(module_path)
-            except PluginLoadError:
+            except PluginNameCollision:
                 raise
             except Exception as exc:  # noqa: BLE001
-                self._load_errors.append(
-                    (f"entry-point:{ep.name}", PluginLoadError(str(exc)))
-                )
+                err = PluginLoadError(str(exc))
+                err.__cause__ = exc
+                self._load_errors.append((f"entry-point:{ep.name}", err))
 
     # --- Internal helpers ---
 
@@ -204,14 +208,16 @@ class PluginRegistry:
 
     def _register(self, provider: Provider, plugin_id: str) -> None:
         if provider.name in self._providers:
-            raise PluginLoadError(
+            raise PluginNameCollision(
                 f"provider name collision: '{provider.name}' already registered "
                 f"(new attempt from {plugin_id})"
             )
         self._providers[provider.name] = provider
         for ds in provider.datasets:
             if ds.name in self._datasets:
-                raise PluginLoadError(
+                # Defensive: with compound keys this is unreachable when the
+                # provider-name check above passes. Kept as a backstop.
+                raise PluginNameCollision(
                     f"dataset name collision: '{ds.name}'"
                 )
             self._datasets[ds.name] = ds

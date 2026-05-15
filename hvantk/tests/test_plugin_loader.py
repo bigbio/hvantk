@@ -95,3 +95,45 @@ def test_drift_probe_is_invokable():
     fp = ds.drift_probe()
     assert fp["probe_version"] == 1
     assert fp["headers"]["a.tsv"] == ["col1", "col2"]
+
+
+def test_load_from_skills_root_scans_subdirectories(tmp_path: Path):
+    """load_from_skills_root finds plugin.yaml in non-underscore subdirs only."""
+    import shutil
+    # Set up: tmp_path/plugins/{normal_plugin, _skipped_plugin}
+    skills_root = tmp_path / "skills"
+    normal = skills_root / "normal_plugin"
+    skipped = skills_root / "_skipped_plugin"
+    shutil.copytree(FIXTURE_ROOT / "fake_plugin", normal)
+    shutil.copytree(FIXTURE_ROOT / "fake_plugin", skipped)
+    reg = PluginRegistry()
+    reg.load_from_skills_root(skills_root)
+    # Both copies declare provider name "fake"; only one (the non-underscored
+    # one) should be loaded.
+    assert [p.name for p in reg.list_providers()] == ["fake"]
+
+
+def test_load_from_skills_root_missing_dir_is_noop(tmp_path: Path):
+    """If the skills root doesn't exist, load_from_skills_root is a no-op."""
+    reg = PluginRegistry()
+    reg.load_from_skills_root(tmp_path / "does-not-exist")
+    assert reg.list_providers() == []
+    assert reg.load_errors() == []
+
+
+def test_dedicated_collision_exception_class():
+    """PluginNameCollision is a PluginLoadError subclass."""
+    from hvantk.core.plugin_api import PluginLoadError, PluginNameCollision
+    assert issubclass(PluginNameCollision, PluginLoadError)
+    import shutil
+    # Reuse the collision setup to verify the dedicated class is raised.
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        a = Path(tmp) / "a"
+        b = Path(tmp) / "b"
+        shutil.copytree(FIXTURE_ROOT / "fake_plugin", a)
+        shutil.copytree(FIXTURE_ROOT / "fake_plugin", b)
+        reg = PluginRegistry()
+        reg.load_from_directory(a)
+        with pytest.raises(PluginNameCollision):
+            reg.load_from_directory(b)
