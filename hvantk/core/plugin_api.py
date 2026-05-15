@@ -9,7 +9,10 @@ instantiated by plugin authors.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Literal, Mapping
+
+Domain = Literal["genomics", "transcriptomics", "proteomics", "epigenomics", "mapping"]
+Backend = Literal["hail", "anndata", "pandas"]
 
 
 class PluginLoadError(Exception):
@@ -32,6 +35,8 @@ class TestPaths:
     know where the plugin folder lives.
     """
 
+    __test__ = False  # not a pytest test class; pytest sees the leading "Test" and tries to collect
+
     command: str
     fixture: str
     schema_snapshot: str
@@ -49,8 +54,8 @@ class DatasetSpec:
     """
 
     name: str
-    domain: str  # genomics | transcriptomics | proteomics | epigenomics | mapping
-    backend: str  # hail | anndata | pandas
+    domain: Domain
+    backend: Backend
     builder: Callable[..., Any]
     drift_probe: Callable[[], Mapping[str, Any]]
     skill_path: str

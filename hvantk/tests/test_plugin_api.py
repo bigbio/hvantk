@@ -1,13 +1,15 @@
 """Tests for hvantk.core.plugin_api dataclasses and error types."""
 
+import dataclasses
+
 import pytest
 
 from hvantk.core.plugin_api import (
     DatasetSpec,
+    DriftProbeError,
     PluginLoadError,
     Provider,
     TestPaths,
-    DriftProbeError,
 )
 
 
@@ -31,7 +33,7 @@ def test_dataset_spec_is_frozen():
         skill_path="/abs/SKILL.md",
         test_paths=_make_test_paths(),
     )
-    with pytest.raises(Exception):
+    with pytest.raises(dataclasses.FrozenInstanceError):
         spec.name = "other"  # type: ignore[misc]
 
 
@@ -48,6 +50,22 @@ def test_provider_holds_datasets_tuple():
     provider = Provider(name="hgnc", version="0.1.0", datasets=(spec,))
     assert provider.datasets == (spec,)
     assert isinstance(provider.datasets, tuple)
+
+
+def test_provider_structural_equality():
+    spec = DatasetSpec(
+        name="hgnc:lookup",
+        domain="genomics",
+        backend="hail",
+        builder=lambda **kw: None,
+        drift_probe=lambda: {"probe_version": 1},
+        skill_path="/abs/SKILL.md",
+        test_paths=_make_test_paths(),
+    )
+    p1 = Provider(name="hgnc", version="0.1.0", datasets=(spec,))
+    p2 = Provider(name="hgnc", version="0.1.0", datasets=(spec,))
+    assert p1 == p2
+    assert hash(p1) == hash(p2)
 
 
 def test_plugin_load_error_is_exception():
