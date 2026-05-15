@@ -18,6 +18,8 @@ from hvantk.commands.ancestry_cli import ancestry_inference_cmd
 from hvantk.commands.summarize_expression_cli import expression_group
 from hvantk.commands.ptm_cli import ptm_group
 from hvantk.commands.qtlcascade_cli import qtlcascade_group
+from hvantk.commands.plugins_cli import plugins_group
+from hvantk.commands.drift_cli import drift_cmd
 
 # Main CLI entry point for the package (hvantk)
 
@@ -91,6 +93,8 @@ cli.add_command(ancestry_inference_cmd)
 cli.add_command(expression_group)
 cli.add_command(ptm_group)
 cli.add_command(qtlcascade_group)
+cli.add_command(plugins_group)
+cli.add_command(drift_cmd)
 
 
 def main():
