@@ -122,3 +122,56 @@ def test_run_drift_check_resolves_dataset_from_registry(monkeypatch, tmp_path: P
     monkeypatch.setattr(plugin_loader, "get_registry", lambda: FakeReg())
     result = drift_runner.run_drift_check("fake:default")
     assert result.status == "clean"
+
+
+def test_drift_diff_reports_added_keys(tmp_path: Path):
+    fp_path = tmp_path / "fp.json"
+    _write_fingerprint(
+        fp_path, {"probe_version": 1, "headers": {}, "checksums": {}}
+    )
+    observed = {
+        "probe_version": 1,
+        "headers": {},
+        "checksums": {},
+        "source_version": "v2",  # new key
+    }
+    spec = _make_spec(probe_return=observed, fingerprint_path=fp_path)
+    result = _run_with_spec(spec)
+    assert result.status == "drifted"
+    assert result.diff["added"] == {"source_version": "v2"}
+    assert result.diff["removed"] == {}
+    assert result.diff["changed"] == {}
+
+
+def test_drift_diff_reports_removed_keys(tmp_path: Path):
+    fp_path = tmp_path / "fp.json"
+    _write_fingerprint(
+        fp_path,
+        {
+            "probe_version": 1,
+            "headers": {},
+            "checksums": {},
+            "source_version": "v1",
+        },
+    )
+    observed = {"probe_version": 1, "headers": {}, "checksums": {}}
+    spec = _make_spec(probe_return=observed, fingerprint_path=fp_path)
+    result = _run_with_spec(spec)
+    assert result.status == "drifted"
+    assert result.diff["added"] == {}
+    assert result.diff["removed"] == {"source_version": "v1"}
+    assert result.diff["changed"] == {}
+
+
+def test_probe_returning_non_mapping_surfaces_clear_error(tmp_path: Path):
+    fp_path = tmp_path / "fp.json"
+    _write_fingerprint(fp_path, {"probe_version": 1, "headers": {}, "checksums": {}})
+    spec = _make_spec(
+        probe_return=lambda: ["not", "a", "dict"],
+        fingerprint_path=fp_path,
+    )
+    result = _run_with_spec(spec)
+    assert result.status == "probe_failed"
+    # The error message must mention the actual type so debuggers know what
+    # the probe returned, not a cryptic dict() TypeError.
+    assert "non-mapping" in str(result.probe_error) or "list" in str(result.probe_error)

@@ -16,7 +16,7 @@ from .plugin_api import DatasetSpec, DriftProbeError
 _IGNORED_KEYS = frozenset({"fetched_at"})
 
 
-@dataclass
+@dataclass(frozen=True)
 class DriftResult:
     dataset_name: str
     status: str  # clean | drifted | probe_failed
@@ -86,9 +86,14 @@ def _run_drift_check_with_spec(
 
 def _invoke_with_timeout(fn, *, timeout: int) -> dict:
     """Run fn() under a signal-based timeout (POSIX). Falls back to no
-    timeout on platforms where SIGALRM is unavailable."""
+    timeout on platforms where SIGALRM is unavailable.
+
+    Caveat: on POSIX this overwrites any pre-existing SIGALRM handler and
+    cancels any pending alarm. Safe to use in CLI entrypoints; nesting calls
+    or running alongside other alarm-using code is not supported.
+    """
     if not hasattr(signal, "SIGALRM"):
-        return dict(fn())
+        return _coerce_fingerprint(fn())
 
     def _handler(signum, frame):
         raise DriftProbeError(f"probe timed out after {timeout}s")
@@ -97,10 +102,24 @@ def _invoke_with_timeout(fn, *, timeout: int) -> dict:
     try:
         signal.alarm(timeout)
         result = fn()
-        return dict(result)
+        return _coerce_fingerprint(result)
     finally:
         signal.alarm(0)
         signal.signal(signal.SIGALRM, prev)
+
+
+def _coerce_fingerprint(result) -> dict:
+    """Convert a probe's return value to a plain dict, raising a clear
+    DriftProbeError if the value isn't dict-like."""
+    if isinstance(result, dict):
+        return result
+    try:
+        return dict(result)
+    except (TypeError, ValueError) as exc:
+        raise DriftProbeError(
+            f"probe returned non-mapping value: {type(result).__name__} "
+            f"({result!r})"
+        ) from exc
 
 
 def _compare_fingerprints(
