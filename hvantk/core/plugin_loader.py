@@ -49,6 +49,7 @@ class PluginRegistry:
         self._providers: dict[str, Provider] = {}
         self._datasets: dict[str, DatasetSpec] = {}
         self._load_errors: list[tuple[str, Exception]] = []
+        self._loaded_dirs: set[Path] = set()
         self._schema = _load_schema()
 
     # --- Public lookup API ---
@@ -88,12 +89,22 @@ class PluginRegistry:
                     self.load_from_directory(child)
 
     def load_from_directory(self, plugin_dir: Path) -> None:
-        """Load a single plugin from its directory."""
+        """Load a single plugin from its directory.
+
+        Idempotent: loading the same resolved directory twice is a no-op. This
+        prevents double-registration (and a spurious PluginNameCollision) when
+        a plugin is discovered via both load_from_skills_root and
+        load_from_entry_points after `poetry install` exposes the entry point.
+        """
+        plugin_dir = Path(plugin_dir).resolve()
+        if plugin_dir in self._loaded_dirs:
+            return
         plugin_id = str(plugin_dir)
         try:
             manifest = self._read_and_validate_manifest(plugin_dir / "plugin.yaml")
             provider = self._build_provider(manifest, plugin_dir)
             self._register(provider, plugin_id)
+            self._loaded_dirs.add(plugin_dir)
         except PluginNameCollision:
             # Hard error: silent shadowing is the worst failure mode.
             raise

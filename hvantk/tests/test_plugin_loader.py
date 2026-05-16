@@ -78,6 +78,22 @@ def test_collision_raises_hard_error(tmp_path: Path):
         reg.load_from_directory(b)
 
 
+def test_loading_same_directory_twice_is_idempotent():
+    """Loading the same plugin directory twice must not raise a collision.
+
+    The skills-root scan and the entry-point scan can both surface the same
+    in-tree plugin once it is listed in pyproject.toml's
+    `[tool.poetry.plugins."hvantk.providers"]` table. The loader must dedupe
+    so this discovery overlap does not crash every CLI invocation.
+    """
+    reg = PluginRegistry()
+    reg.load_from_directory(FIXTURE_ROOT / "fake_plugin")
+    reg.load_from_directory(FIXTURE_ROOT / "fake_plugin")
+    providers = reg.list_providers()
+    assert [p.name for p in providers] == ["fake"]
+    assert reg.load_errors() == []
+
+
 def test_builder_is_invokable_through_dataset_spec():
     reg = PluginRegistry()
     reg.load_from_directory(FIXTURE_ROOT / "fake_plugin")
