@@ -1,6 +1,6 @@
-api_version: 1
+api_version: 2
 name: hgnc
-version: 0.1.0
+version: 0.2.0
 status: provisional
 description: HGNC complete-set TSV - Hail Table
 
@@ -12,17 +12,24 @@ datasets:
     domain: mapping
     backend: hail
     builder:
-      # During Phase 0 the builder still lives in table_builders.py.
-      # Migrating it into this folder happens in a follow-up plan.
-      module: hvantk.tables.table_builders
+      module: hvantk.skills.hgnc.builder
       function: create_hgnc_gene_tb
     drift_probe:
       module: hvantk.skills.hgnc.drift_probe
       function: fetch_fingerprint
+    lifecycle:
+      download:
+        module: hvantk.skills.hgnc.cli
+        function: download_dataset
     skill: SKILL.md
     tests:
-      command: pytest hvantk/tests/test_hgnc_table_hail.py -m hail
-      fixture: ../../tests/testdata/raw/hgnc
-      schema_snapshot: ../../tests/snapshots/hgnc/schema.json
-      row_snapshot: ../../tests/snapshots/hgnc/sample_rows.json
+      command: pytest hvantk/skills/hgnc/tests -m hail
+      fixture: tests/testdata/raw/hgnc
+      schema_snapshot: tests/snapshots/schema.json
+      row_snapshot: tests/snapshots/sample_rows.json
       drift_fingerprint: tests/drift_fingerprint.json
+
+cli:
+  - command: hgnc-download
+    module: hvantk.skills.hgnc.cli
+    function: download_cmd

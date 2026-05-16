@@ -10,7 +10,7 @@ from unittest.mock import patch, MagicMock
 import tempfile
 import shutil
 
-from hvantk.commands.hgnc_downloader import download_hgnc
+from hvantk.skills.hgnc.cli import download_hgnc
 from hvantk.core.constants import HGNC_DOWNLOAD_URL
 
 
@@ -98,7 +98,7 @@ class TestHgncDownloaderCli:
     def test_cli_help(self):
         """Test that CLI help works."""
         from click.testing import CliRunner
-        from hvantk.commands.hgnc_downloader import hgnc_downloader
+        from hvantk.skills.hgnc.cli import download_cmd as hgnc_downloader
 
         runner = CliRunner()
         result = runner.invoke(hgnc_downloader, ["--help"])
@@ -109,7 +109,7 @@ class TestHgncDownloaderCli:
     def test_cli_requires_output(self):
         """Test that CLI requires --output option."""
         from click.testing import CliRunner
-        from hvantk.commands.hgnc_downloader import hgnc_downloader
+        from hvantk.skills.hgnc.cli import download_cmd as hgnc_downloader
 
         runner = CliRunner()
         result = runner.invoke(hgnc_downloader, [])
@@ -120,11 +120,11 @@ class TestHgncDownloaderCli:
     def test_cli_download_success(self, tmp_path):
         """Test successful CLI download."""
         from click.testing import CliRunner
-        from hvantk.commands.hgnc_downloader import hgnc_downloader
+        from hvantk.skills.hgnc.cli import download_cmd as hgnc_downloader
 
         output_path = tmp_path / "hgnc_complete_set.txt"
 
-        with patch("hvantk.commands.hgnc_downloader.download_hgnc") as mock_download:
+        with patch("hvantk.skills.hgnc.cli.download_hgnc") as mock_download:
             mock_download.return_value = str(output_path)
 
             runner = CliRunner()
@@ -137,12 +137,12 @@ class TestHgncDownloaderCli:
     def test_cli_file_exists_error(self, tmp_path):
         """Test CLI handles file exists error."""
         from click.testing import CliRunner
-        from hvantk.commands.hgnc_downloader import hgnc_downloader
+        from hvantk.skills.hgnc.cli import download_cmd as hgnc_downloader
 
         output_path = tmp_path / "hgnc_complete_set.txt"
         output_path.write_text("existing")
 
-        with patch("hvantk.commands.hgnc_downloader.download_hgnc") as mock_download:
+        with patch("hvantk.skills.hgnc.cli.download_hgnc") as mock_download:
             mock_download.side_effect = FileExistsError(
                 f"File already exists: {output_path}"
             )

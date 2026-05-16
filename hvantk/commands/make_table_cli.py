@@ -72,7 +72,7 @@ def _create_gencc_submissions_tb(*args, **kwargs):
 
 
 def _create_hgnc_gene_tb(*args, **kwargs):
-    from hvantk.tables.table_builders import create_hgnc_gene_tb
+    from hvantk.skills.hgnc.builder import create_hgnc_gene_tb
 
     return create_hgnc_gene_tb(*args, **kwargs)
 

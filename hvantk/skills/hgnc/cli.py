@@ -1,12 +1,12 @@
 """
-CLI command for downloading HGNC gene nomenclature data.
+CLI command and lifecycle entry point for downloading HGNC gene nomenclature data.
 
 Examples:
-    # Download to default location
-    hvantk hgnc-downloader --output data/hgnc/hgnc_complete_set.txt
+    # Download via the Click command
+    hvantk hgnc-download --output data/hgnc/hgnc_complete_set.txt
 
     # Download with overwrite
-    hvantk hgnc-downloader --output data/hgnc/hgnc_complete_set.txt --overwrite
+    hvantk hgnc-download --output data/hgnc/hgnc_complete_set.txt --overwrite
 """
 
 import logging
@@ -14,10 +14,15 @@ from pathlib import Path
 
 import click
 
-from hvantk.core.config import CONTEXT_SETTINGS
-from hvantk.core.constants import HGNC_DOWNLOAD_URL, HGNC_INFO_URL
+from hvantk.core.config import CONTEXT_SETTINGS  # noqa: F401  (kept for parity with sibling CLIs)
+from hvantk.core.constants import HGNC_DOWNLOAD_URL, HGNC_INFO_URL  # noqa: F401
 
 logger = logging.getLogger(__name__)
+
+# Canonical filename for the HGNC complete-set TSV. Used both by the bare CLI
+# (as a sensible default file name) and by the lifecycle ``download_dataset``
+# wrapper to know where to drop the raw file inside ``raw_dir``.
+HGNC_COMPLETE_SET_FILENAME = "hgnc_complete_set.txt"
 
 
 def download_hgnc(output_path: str, overwrite: bool = False) -> str:
@@ -66,7 +71,36 @@ def download_hgnc(output_path: str, overwrite: bool = False) -> str:
         raise RuntimeError(f"Failed to write file: {e}") from e
 
 
-@click.command("hgnc-downloader", short_help="Download HGNC gene nomenclature data")
+def download_dataset(raw_dir: str, overwrite: bool = False, **kwargs) -> str:
+    """Lifecycle entry point for the plugin loader.
+
+    Per the ``DatasetSpec`` contract documented in ``hvantk.core.plugin_api``,
+    a lifecycle ``download_fn`` accepts ``raw_dir=<path>`` and writes the raw
+    upstream files under that directory. For HGNC there is exactly one
+    artifact, the complete-set TSV, written as
+    ``<raw_dir>/hgnc_complete_set.txt``.
+
+    Parameters
+    ----------
+    raw_dir : str
+        Directory under which raw upstream files are placed.
+    overwrite : bool, optional
+        Whether to overwrite an existing file (default: False).
+    **kwargs
+        Reserved for future lifecycle keyword arguments; ignored today.
+
+    Returns
+    -------
+    str
+        Path to the downloaded raw file.
+    """
+    raw = Path(raw_dir)
+    raw.mkdir(parents=True, exist_ok=True)
+    target = raw / HGNC_COMPLETE_SET_FILENAME
+    return download_hgnc(str(target), overwrite=overwrite)
+
+
+@click.command("hgnc-download", short_help="Download HGNC gene nomenclature data")
 @click.option(
     "--output",
     "output_path",
@@ -80,7 +114,7 @@ def download_hgnc(output_path: str, overwrite: bool = False) -> str:
     help="Overwrite existing file if present.",
 )
 @click.pass_context
-def hgnc_downloader(ctx, output_path, overwrite):
+def download_cmd(ctx, output_path, overwrite):
     """
     Download the HGNC complete gene nomenclature dataset.
 
@@ -97,11 +131,11 @@ def hgnc_downloader(ctx, output_path, overwrite):
 
         # Download HGNC data
 
-        hvantk hgnc-downloader --output data/hgnc/hgnc_complete_set.txt
+        hvantk hgnc-download --output data/hgnc/hgnc_complete_set.txt
 
         # Overwrite existing file
 
-        hvantk hgnc-downloader --output data/hgnc/hgnc_complete_set.txt --overwrite
+        hvantk hgnc-download --output data/hgnc/hgnc_complete_set.txt --overwrite
     """
     click.echo("Downloading HGNC gene nomenclature data...")
     click.echo(f"Source: {HGNC_DOWNLOAD_URL}")
@@ -119,5 +153,12 @@ def hgnc_downloader(ctx, output_path, overwrite):
         ctx.exit(1)
 
 
+# Backward-compatible alias for the legacy public name. The umbrella
+# ``hvantk/commands/download_cli.py`` still imports the Click command under
+# this name; once the auto-attach for ``cli:`` manifest blocks lands, the
+# alias and the umbrella's import can be removed together.
+hgnc_downloader = download_cmd
+
+
 if __name__ == "__main__":
-    hgnc_downloader()
+    download_cmd()
