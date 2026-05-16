@@ -57,6 +57,7 @@ constraint = ["tspex", "matplotlib", "seaborn"]
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
+requests-mock = "^1.11"
 flake8 = "^6.0.0"
 black = "^23.7.0"
 matplotlib = "*"
