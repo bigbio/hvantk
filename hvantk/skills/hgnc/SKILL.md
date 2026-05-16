@@ -51,6 +51,7 @@ Summary: one row per approved gene (≈43k in the live release; 5 in the fixture
 
 ## 6. hvantk integration points
 
+- Plugin manifest: `hvantk/skills/hgnc/plugin.yaml` (drives loader registration and `hvantk drift hgnc:lookup`).
 - Builder: `create_hgnc_gene_tb` in `hvantk/tables/table_builders.py` (uses `_create_table_base()` per `_conventions` § 4).
 - CLI: `hvantk mktable hgnc` defined in `hvantk/commands/make_table_cli.py` (`mktable_hgnc`). Supports `--include-withdrawn`, `--fields`, `--overwrite`, `--export-tsv`.
 - Constants: `HGNC_GENE_FIELDS`, `HGNC_PIPE_SEPARATED_FIELDS`, `HGNC_DOWNLOAD_URL`, `HGNC_INFO_URL` in `hvantk/core/constants.py`.
