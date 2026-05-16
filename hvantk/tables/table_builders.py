@@ -104,7 +104,6 @@ def _create_table_base(
 
 __all__ = [
     "create_gnomad_constraint_gene_metrics_tb",
-    "create_interactome_tb",
     "create_clinvar_tb",
     "create_gevir_tb",
     "create_ensembl_gene_tb",
@@ -263,92 +262,6 @@ def _parse_insider_bed_to_temp_tsv(input_path: str) -> str:
         n_rows_written,
     )
     return out_path
-
-
-def create_interactome_tb(
-    input_path: str,
-    output_path: str,
-    overwrite: bool = False,
-    export_tsv: bool = False,
-    reference_genome: str = "GRCh38",
-) -> "hl.Table":
-    """
-    Create a Hail Table from an Interactome Insider per-residue BED file.
-
-    The BED is segmented by `track name=<P1>_ppi_<P2>` directives; this builder
-    parses those headers and preserves PPI identity as a `ppi_ids: array<str>`
-    field per interval. Intervals appearing in multiple PPI tracks are
-    aggregated (collected as a sorted, deduplicated array).
-
-    Example usage:
-        ht = create_interactome_tb(
-            input_path="/path/to/Whole_Human_Interactome_Interface_hg38.bed",
-            output_path="/path/to/output.ht"
-        )
-
-    Parameters
-    ----------
-    input_path : str
-        Path to the INSIDER BED input file (must contain `track name=...`
-        directives to identify PPIs; plain BEDs without tracks produce
-        empty output).
-    output_path : str
-        Path to write the output Hail Table.
-    overwrite : bool, optional
-        Whether to overwrite the output file if it exists (default: False).
-    export_tsv : bool, optional
-        If True, also export a TSV version (default: False).
-    reference_genome : str, optional
-        Reference genome to use for parsing intervals (default: "GRCh38").
-
-    Returns
-    -------
-    hl.Table
-        Hail Table keyed by `interval<locus<rg>>` with field
-        `ppi_ids: array<str>` carrying the PPI identifiers from track headers.
-    """
-    tsv_path = None
-
-    def _import() -> "hl.Table":
-        nonlocal tsv_path
-        tsv_path = _parse_insider_bed_to_temp_tsv(input_path)
-        ht = hl.import_table(
-            tsv_path,
-            types={"start": hl.tint32, "end": hl.tint32},
-            min_partitions=4,
-        )
-        # BED is 0-based half-open; Hail loci are 1-based. Match hl.import_bed's
-        # conversion by shifting both endpoints by +1 (so a BED row [100, 200)
-        # becomes Hail interval [chr:101, chr:201)).
-        ht = ht.annotate(
-            interval=hl.locus_interval(
-                ht.contig,
-                ht.start + 1,
-                ht.end + 1,
-                reference_genome=reference_genome,
-            )
-        )
-        return ht.select("interval", "ppi_id")
-
-    def _transform(ht: "hl.Table") -> "hl.Table":
-        grouped = ht.group_by(ht.interval).aggregate(
-            ppi_ids=hl.agg.collect_as_set(ht.ppi_id)
-        )
-        return grouped.annotate(ppi_ids=hl.sorted(hl.array(grouped.ppi_ids)))
-
-    try:
-        return _create_table_base(
-            source_name="interactome",
-            input_path=input_path,
-            output_path=output_path,
-            import_func=_import,
-            transform_func=_transform,
-            overwrite=overwrite,
-            export_tsv=export_tsv,
-        )
-    finally:
-        if tsv_path is not None:
-            _cleanup_temp_file(tsv_path)
 
 
 def create_clinvar_tb(

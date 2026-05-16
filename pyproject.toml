@@ -75,6 +75,7 @@ hgnc = "hvantk.skills.hgnc"
 msigdb = "hvantk.skills.msigdb"
 gtex-eqtl = "hvantk.skills.gtex_eqtl"
 gwas-catalog = "hvantk.skills.gwas_catalog"
+insider = "hvantk.skills.insider"
 
 [tool.pytest.ini_options]
 testpaths = ["hvantk/tests", "hvantk/skills"]

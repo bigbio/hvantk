@@ -15,8 +15,8 @@ from hvantk.tests._snapshot_utils import (
 # Aliased to avoid shadowing the fixture name `regenerate_snapshots` in the test signature
 from hvantk.tests._snapshot_utils import regenerate_snapshots as regenerate_snapshots_fn
 
-FIXTURE = "hvantk/tests/testdata/raw/insider/insider_sample.bed"
-SNAPSHOT_DIR = Path("hvantk/tests/snapshots/insider")
+FIXTURE = "hvantk/skills/insider/tests/testdata/raw/insider/insider_sample.bed"
+SNAPSHOT_DIR = Path("hvantk/skills/insider/tests/snapshots")
 
 # `interval` is unique-in-table after .distinct() (per skill §5), so keys are
 # inlined here. Picked from observed fixture rows on chr3 (the first track was
@@ -34,7 +34,7 @@ SAMPLE_KEYS = [
 def test_insider_round_trip(hail_session, tmp_path, regenerate_snapshots):
     """Build INSIDER BED from fixture; assert schema and sample-row stability."""
     import hail as hl
-    from hvantk.tables.table_builders import create_interactome_tb
+    from hvantk.skills.insider.builder import create_interactome_tb
 
     builder_kwargs = {
         "reference_genome": "GRCh38",

@@ -4,7 +4,7 @@ Registry and adapters for table builders.
 Allows running named builders with a unified interface from recipes.
 
 Contract per entry:
-- name: str (e.g., "clinvar", "interactome", "gevir", "gnomad-metrics", "ensembl-gene")
+- name: str (e.g., "clinvar", "insider:variants", "gevir", "gnomad-metrics", "ensembl-gene")
 - input_path: str
 - output_path: str
 - params: dict (optional) – builder-specific parameters
@@ -246,9 +246,6 @@ def create_matrix_adapter(
 TABLE_BUILDERS: Dict[str, Callable[[str, str, Dict[str, Any] | None], None]] = {
     "clinvar": create_table_adapter(
         "hvantk.tables.table_builders", "create_clinvar_tb"
-    ),
-    "interactome": create_table_adapter(
-        "hvantk.tables.table_builders", "create_interactome_tb"
     ),
     "gevir": create_table_adapter("hvantk.tables.table_builders", "create_gevir_tb"),
     "gnomad-metrics": create_table_adapter(

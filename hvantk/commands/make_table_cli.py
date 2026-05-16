@@ -30,7 +30,7 @@ def _create_clinvar_tb(*args, **kwargs):
 
 
 def _create_interactome_tb(*args, **kwargs):
-    from hvantk.tables.table_builders import create_interactome_tb
+    from hvantk.skills.insider.builder import create_interactome_tb
 
     return create_interactome_tb(*args, **kwargs)
 

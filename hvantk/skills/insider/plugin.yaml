@@ -1,0 +1,26 @@
+api_version: 2
+name: insider
+version: 0.1.0
+status: provisional
+description: INSIDER protein-protein interactome BED - Hail Table
+
+source:
+  catalog_ref: insider
+
+datasets:
+  - name: variants
+    domain: genomics
+    backend: hail
+    builder:
+      module: hvantk.skills.insider.builder
+      function: create_interactome_tb
+    drift_probe:
+      module: hvantk.skills.insider.drift_probe
+      function: fetch_fingerprint
+    skill: SKILL.md
+    tests:
+      command: pytest hvantk/skills/insider/tests -m hail
+      fixture: tests/testdata/raw/insider
+      schema_snapshot: tests/snapshots/schema.json
+      row_snapshot: tests/snapshots/sample_rows.json
+      drift_fingerprint: tests/drift_fingerprint.json

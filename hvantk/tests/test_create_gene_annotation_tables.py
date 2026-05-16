@@ -4,11 +4,11 @@ from pathlib import Path
 
 from hvantk.tables.table_builders import (
     create_gnomad_constraint_gene_metrics_tb,
-    create_interactome_tb,
     create_clinvar_tb,
     create_gevir_tb,
     create_ensembl_gene_tb,
 )
+from hvantk.skills.insider.builder import create_interactome_tb
 
 # Mark as Hail-dependent and slow
 pytestmark = [pytest.mark.hail, pytest.mark.slow]
