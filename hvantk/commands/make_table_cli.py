@@ -96,7 +96,7 @@ def _create_pqtl_tb(*args, **kwargs):
 
 
 def _create_gwas_catalog_tb(*args, **kwargs):
-    from hvantk.tables.table_builders import create_gwas_catalog_tb
+    from hvantk.skills.gwas_catalog.builder import create_gwas_catalog_tb
 
     return create_gwas_catalog_tb(*args, **kwargs)
 

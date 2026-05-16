@@ -274,9 +274,6 @@ TABLE_BUILDERS: Dict[str, Callable[[str, str, Dict[str, Any] | None], None]] = {
     "alphagenome": create_table_adapter(
         "hvantk.tables.table_builders", "create_alphagenome_tb"
     ),
-    "gwas-catalog": create_table_adapter(
-        "hvantk.tables.table_builders", "create_gwas_catalog_tb"
-    ),
 }
 
 

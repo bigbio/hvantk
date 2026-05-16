@@ -75,8 +75,8 @@ Type coercions in transform (all string at import):
 
 ## 6. hvantk integration points
 
-- **Builder:** `create_gwas_catalog_tb` in `hvantk/tables/table_builders.py`, via `_create_table_base()`. Signature per conventions §5.
-- **Registry:** `TABLE_BUILDERS["gwas-catalog"] = create_table_adapter("hvantk.tables.table_builders", "create_gwas_catalog_tb")` in `hvantk/tables/registry.py`.
+- **Builder:** `create_gwas_catalog_tb` in `hvantk/skills/gwas_catalog/builder.py`, via `_create_table_base()`. Signature per conventions §5. A re-export shim in `hvantk/tables/table_builders.py` keeps the old import path working.
+- **Registry:** registered via the plugin manifest at `hvantk/skills/gwas_catalog/plugin.yaml` (`gwas-catalog:associations`). Plugin discovery wires it into `TABLE_BUILDERS` at import time.
 - **CLI:** `mktable_gwas_catalog` in `hvantk/commands/make_table_cli.py` (command name `gwas-catalog`), decorated with `@_raw_input_opt` / `@_output_ht_opt`.
 - **Catalog wiring:** see §2. **Downloader:** out of scope.
 
@@ -107,10 +107,10 @@ Releases ~quarterly (tags like `e116_r2026-08-xx`). Per release:
 
 Per conventions §9:
 
-- **fixture:** `hvantk/tests/testdata/raw/gwas-catalog/gwas-catalog-sample.tsv`. Agent #2 slices from the 556 MB local file (path from orchestrator). Target ≤ 100 KB, ~50–100 rows. Fixture must exercise **surviving rows only** — no `STRONGEST SNP-RISK ALLELE` ending in `-?`, no `CHR_ID` containing `;`. Must include: multi-trait-per-variant rows (same `(locus, alleles)` × multiple traits), scientific-notation p-values, and at least one row with `OR or BETA` populated plus one without.
-- **schema_snapshot:** `hvantk/tests/snapshots/gwas-catalog/schema.json`.
-- **row_snapshot:** `hvantk/tests/snapshots/gwas-catalog/sample_rows.json`.
-- **sample_keys:** `hvantk/tests/snapshots/gwas-catalog/sample_keys.json`. Lists the `(locus, alleles)` keys used for `row_snapshot` assertions. These keys MUST be unique-in-table — `_snapshot_utils.collect_sample_rows` does not deduplicate, so a duplicated key produces non-deterministic snapshots. Multi-trait-per-variant rows in this catalog routinely share keys; the snapshot subset must use singleton-key rows.
-- **test_command:** `pytest hvantk/tests/test_gwas_catalog_builder.py -m hail`.
+- **fixture:** `hvantk/skills/gwas_catalog/tests/testdata/raw/gwas-catalog/gwas-catalog-sample.tsv`. Agent #2 slices from the 556 MB local file (path from orchestrator). Target ≤ 100 KB, ~50–100 rows. Fixture must exercise **surviving rows only** — no `STRONGEST SNP-RISK ALLELE` ending in `-?`, no `CHR_ID` containing `;`. Must include: multi-trait-per-variant rows (same `(locus, alleles)` × multiple traits), scientific-notation p-values, and at least one row with `OR or BETA` populated plus one without.
+- **schema_snapshot:** `hvantk/skills/gwas_catalog/tests/snapshots/schema.json`.
+- **row_snapshot:** `hvantk/skills/gwas_catalog/tests/snapshots/sample_rows.json`.
+- **sample_keys:** `hvantk/skills/gwas_catalog/tests/snapshots/sample_keys.json`. Lists the `(locus, alleles)` keys used for `row_snapshot` assertions. These keys MUST be unique-in-table — `_snapshot_utils.collect_sample_rows` does not deduplicate, so a duplicated key produces non-deterministic snapshots. Multi-trait-per-variant rows in this catalog routinely share keys; the snapshot subset must use singleton-key rows.
+- **test_command:** `pytest hvantk/skills/gwas_catalog/tests -m hail`.
 
 Round-trip test asserts: builder idempotent with `overwrite=True`; checkpointed schema matches `schema.json`; deterministic sorted row slice matches `sample_rows.json`. Regenerate via `--regenerate-snapshots` when a judgment call resolves or the schema changes.

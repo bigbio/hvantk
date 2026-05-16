@@ -16,15 +16,15 @@ from hvantk.tests._snapshot_utils import (
 # Aliased to avoid shadowing the fixture name `regenerate_snapshots` in the test signature
 from hvantk.tests._snapshot_utils import regenerate_snapshots as regenerate_snapshots_fn
 
-FIXTURE = "hvantk/tests/testdata/raw/gwas-catalog/gwas-catalog-sample.tsv"
-SNAPSHOT_DIR = Path("hvantk/tests/snapshots/gwas-catalog")
+FIXTURE = "hvantk/skills/gwas_catalog/tests/testdata/raw/gwas-catalog/gwas-catalog-sample.tsv"
+SNAPSHOT_DIR = Path("hvantk/skills/gwas_catalog/tests/snapshots")
 
 
 @pytest.mark.hail
 def test_gwas_catalog_round_trip(hail_session, tmp_path, regenerate_snapshots):
     """Build GWAS Catalog from fixture; assert schema and sample-row stability."""
     import hail as hl
-    from hvantk.tables.table_builders import create_gwas_catalog_tb
+    from hvantk.skills.gwas_catalog.builder import create_gwas_catalog_tb
 
     keys = json.loads((SNAPSHOT_DIR / "sample_keys.json").read_text())
 
