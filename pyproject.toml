@@ -72,6 +72,7 @@ ipykernel = "^7.2.0"
 # In-tree plugins register themselves the same way as external ones.
 # Only providers migrated to the plugin layout appear here.
 hgnc = "hvantk.skills.hgnc"
+msigdb = "hvantk.skills.msigdb"
 
 [tool.pytest.ini_options]
 testpaths = ["hvantk/tests", "hvantk/skills"]

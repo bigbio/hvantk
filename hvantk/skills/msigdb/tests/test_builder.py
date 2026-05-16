@@ -15,8 +15,9 @@ from hvantk.tests._snapshot_utils import (
 # Aliased to avoid shadowing the fixture name `regenerate_snapshots` in the test signature
 from hvantk.tests._snapshot_utils import regenerate_snapshots as regenerate_snapshots_fn
 
-FIXTURE = "hvantk/tests/testdata/raw/msigdb/c2.cp-sample.gmt"
-SNAPSHOT_DIR = Path("hvantk/tests/snapshots/msigdb")
+_TESTS_DIR = Path(__file__).parent
+FIXTURE = str(_TESTS_DIR / "testdata/raw/msigdb/c2.cp-sample.gmt")
+SNAPSHOT_DIR = _TESTS_DIR / "snapshots"
 
 # Set names are unique-in-table (per skill §5), so keys are inlined here
 # rather than maintained in a separate sample_keys.json (per conventions §9).
@@ -34,7 +35,7 @@ SAMPLE_KEYS = [
 def test_msigdb_round_trip(hail_session, tmp_path, regenerate_snapshots):
     """Build MSigDB from fixture; assert schema and sample-row stability."""
     import hail as hl
-    from hvantk.tables.table_builders import create_msigdb_tb
+    from hvantk.skills.msigdb.builder import create_msigdb_tb
 
     if regenerate_snapshots:
         regenerate_snapshots_fn(

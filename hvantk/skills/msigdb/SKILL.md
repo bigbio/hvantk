@@ -58,8 +58,8 @@ Per `_conventions` § 9, set names are unique-in-table for a single GMT, so **no
 
 ## 6. hvantk integration points
 
-- **Builder:** `create_msigdb_tb` in `hvantk/tables/table_builders.py`, via `_create_table_base()`. Signature per `_conventions` § 5: `(input_path, output_path, overwrite=False, export_tsv=False)`.
-- **Registry:** `TABLE_BUILDERS["msigdb"] = create_table_adapter("hvantk.tables.table_builders", "create_msigdb_tb")` in `hvantk/tables/registry.py`.
+- **Builder:** `create_msigdb_tb` in `hvantk/skills/msigdb/builder.py`, via `_create_table_base()`. Signature per `_conventions` § 5: `(input_path, output_path, overwrite=False, export_tsv=False)`. A re-export shim in `hvantk/tables/table_builders.py` keeps the old import path working.
+- **Registry:** registered via the plugin manifest at `hvantk/skills/msigdb/plugin.yaml` (`msigdb:genesets`). Plugin discovery wires it into `TABLE_BUILDERS` at import time.
 - **CLI:** `mktable_msigdb` in `hvantk/commands/make_table_cli.py` (command name `msigdb`), decorated with `@_raw_input_opt` / `@_output_ht_opt` / `@_overwrite_opt` / `@_export_tsv_opt`. No `--ref-genome` flag (gene-set membership is genome-independent).
 - **Catalog wiring:** see § 2. **Downloader:** out of scope (manual acquisition).
 
@@ -87,9 +87,9 @@ MSigDB releases ~annually (versioned `v<year>.<n>`, e.g., `v2026.1`, `v2025.1`).
 
 Per `_conventions` § 9:
 
-- **fixture:** `hvantk/tests/testdata/raw/msigdb/c2.cp-sample.gmt`. 20 gene sets, ~24 KB, sampled from the v2026.1 C2 CP source by picking representative rows by line index (the GMT format is line-oriented, so a deterministic line subset is a valid sub-GMT). Exercises the short edge (size 5: BIOCARTA, SA), medium sets (60-330 genes), a long set (`REACTOME_CELL_CYCLE`, 688 genes), and the extra-long tail (`REACTOME_POST_TRANSLATIONAL_PROTEIN_MODIFICATION`, 1,497 genes). All 20 fixture rows have a `https://www.gsea-msigdb.org/` URL in column 2 (matches the live-file invariant).
-- **schema_snapshot:** `hvantk/tests/snapshots/msigdb/schema.json`.
-- **row_snapshot:** `hvantk/tests/snapshots/msigdb/sample_rows.json`. `set_name` keys are unique-in-table, so no `sample_keys.json` is maintained per `_conventions` § 9 (post-#101). The round-trip test inlines the small key list.
-- **test_command:** `pytest hvantk/tests/test_msigdb_builder.py -m hail`.
+- **fixture:** `hvantk/skills/msigdb/tests/testdata/raw/msigdb/c2.cp-sample.gmt`. 20 gene sets, ~24 KB, sampled from the v2026.1 C2 CP source by picking representative rows by line index (the GMT format is line-oriented, so a deterministic line subset is a valid sub-GMT). Exercises the short edge (size 5: BIOCARTA, SA), medium sets (60-330 genes), a long set (`REACTOME_CELL_CYCLE`, 688 genes), and the extra-long tail (`REACTOME_POST_TRANSLATIONAL_PROTEIN_MODIFICATION`, 1,497 genes). All 20 fixture rows have a `https://www.gsea-msigdb.org/` URL in column 2 (matches the live-file invariant).
+- **schema_snapshot:** `hvantk/skills/msigdb/tests/snapshots/schema.json`.
+- **row_snapshot:** `hvantk/skills/msigdb/tests/snapshots/sample_rows.json`. `set_name` keys are unique-in-table, so no `sample_keys.json` is maintained per `_conventions` § 9 (post-#101). The round-trip test inlines the small key list.
+- **test_command:** `pytest hvantk/skills/msigdb/tests -m hail`.
 
 Round-trip test asserts: builder idempotent with `overwrite=True`; checkpointed schema matches `schema.json`; deterministic sorted row slice matches `sample_rows.json`. Regenerate via `--regenerate-snapshots` when the schema changes (rare — see § 8).

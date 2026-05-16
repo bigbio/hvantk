@@ -102,7 +102,7 @@ def _create_gwas_catalog_tb(*args, **kwargs):
 
 
 def _create_msigdb_tb(*args, **kwargs):
-    from hvantk.tables.table_builders import create_msigdb_tb
+    from hvantk.skills.msigdb.builder import create_msigdb_tb
 
     return create_msigdb_tb(*args, **kwargs)
 
