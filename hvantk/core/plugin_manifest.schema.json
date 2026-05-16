@@ -6,7 +6,7 @@
   "required": ["api_version", "name", "version", "datasets"],
   "additionalProperties": false,
   "properties": {
-    "api_version": { "const": 1 },
+    "api_version": { "enum": [1, 2] },
     "name": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9-]*$"
@@ -57,6 +57,14 @@
           },
           "builder": { "$ref": "#/$defs/callable_ref" },
           "drift_probe": { "$ref": "#/$defs/callable_ref" },
+          "lifecycle": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "download": { "$ref": "#/$defs/callable_ref" },
+              "parse": { "$ref": "#/$defs/callable_ref" }
+            }
+          },
           "skill": { "type": "string" },
           "tests": {
             "type": "object",

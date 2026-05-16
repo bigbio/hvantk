@@ -124,3 +124,37 @@ def test_unknown_top_level_property_rejected(schema: dict):
     m["extra_unexpected_key"] = "should not be allowed"
     with pytest.raises(jsonschema.ValidationError):
         jsonschema.validate(m, schema)
+
+
+def test_api_version_2_validates(schema: dict):
+    """api_version 2 with a lifecycle block validates."""
+    m = _minimal_manifest()
+    m["api_version"] = 2
+    m["datasets"][0]["lifecycle"] = {
+        "download": {
+            "module": "hvantk.tests.testdata.raw.plugins.fake_plugin.builder",
+            "function": "build",
+        },
+        "parse": {
+            "module": "hvantk.tests.testdata.raw.plugins.fake_plugin.builder",
+            "function": "build",
+        },
+    }
+    jsonschema.validate(m, schema)
+
+
+def test_lifecycle_unknown_field_rejected(schema: dict):
+    m = _minimal_manifest()
+    m["api_version"] = 2
+    m["datasets"][0]["lifecycle"] = {
+        "publish": {"module": "x", "function": "y"},
+    }
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(m, schema)
+
+
+def test_lifecycle_optional_for_api_version_1(schema: dict):
+    """api_version 1 manifests with no lifecycle block still validate."""
+    m = _minimal_manifest()
+    assert "lifecycle" not in m["datasets"][0]
+    jsonschema.validate(m, schema)

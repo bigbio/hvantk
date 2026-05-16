@@ -188,6 +188,21 @@ class PluginRegistry:
             drift_fingerprint=str((plugin_dir / tests["drift_fingerprint"]).resolve()),
         )
         skill_path = str((plugin_dir / ds_manifest["skill"]).resolve())
+
+        lifecycle = ds_manifest.get("lifecycle") or {}
+        download_fn = None
+        parse_fn = None
+        if "download" in lifecycle:
+            download_fn = self._resolve_callable(
+                lifecycle["download"]["module"],
+                lifecycle["download"]["function"],
+            )
+        if "parse" in lifecycle:
+            parse_fn = self._resolve_callable(
+                lifecycle["parse"]["module"],
+                lifecycle["parse"]["function"],
+            )
+
         return DatasetSpec(
             name=compound,
             domain=ds_manifest["domain"],
@@ -196,6 +211,8 @@ class PluginRegistry:
             drift_probe=probe,
             skill_path=skill_path,
             test_paths=test_paths,
+            download_fn=download_fn,
+            parse_fn=parse_fn,
         )
 
     def _resolve_callable(self, module_path: str, func_name: str) -> Callable[..., Any]:

@@ -60,6 +60,20 @@ class DatasetSpec:
     `name` is the compound key (e.g. "hgnc:lookup"), composed by the loader
     from plugin.name + ":" + dataset.name. Plugin authors only write the
     bare dataset name in the manifest.
+
+    Optional lifecycle callables (`download_fn`, `parse_fn`) are wired in by
+    the loader when a manifest declares an api_version >= 2 `lifecycle:` block.
+    Plugin contract for keyword arguments:
+
+      download_fn(raw_dir=<path>)
+          Fetch upstream data and write raw files under `raw_dir`.
+      parse_fn(raw_dir=<path>, output_path=<path>)
+          Read the raw files produced by `download_fn` from `raw_dir` and
+          write the intermediate representation that the builder consumes
+          to `output_path`.
+
+    Both default to None for backward compatibility with api_version 1
+    manifests; callers must check for None before invoking.
     """
 
     name: str
@@ -69,6 +83,8 @@ class DatasetSpec:
     drift_probe: Callable[[], Mapping[str, Any]]
     skill_path: str
     test_paths: TestPaths
+    download_fn: Callable[..., Any] | None = None
+    parse_fn: Callable[..., Any] | None = None
 
 
 @dataclass(frozen=True)

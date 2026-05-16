@@ -20,6 +20,7 @@ from hvantk.commands.ptm_cli import ptm_group
 from hvantk.commands.qtlcascade_cli import qtlcascade_group
 from hvantk.commands.plugins_cli import plugins_group
 from hvantk.commands.drift_cli import drift_cmd
+from hvantk.commands.reprocess_cli import reprocess_cmd
 
 # Main CLI entry point for the package (hvantk)
 
@@ -95,6 +96,7 @@ cli.add_command(ptm_group)
 cli.add_command(qtlcascade_group)
 cli.add_command(plugins_group)
 cli.add_command(drift_cmd)
+cli.add_command(reprocess_cmd)
 
 
 def main():
