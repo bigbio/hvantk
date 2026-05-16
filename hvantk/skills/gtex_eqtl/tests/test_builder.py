@@ -15,9 +15,10 @@ from hvantk.tests._snapshot_utils import (
 # Aliased to avoid shadowing the fixture name `regenerate_snapshots` in the test signature
 from hvantk.tests._snapshot_utils import regenerate_snapshots as regenerate_snapshots_fn
 
-FIXTURE_FILE = "hvantk/tests/testdata/raw/gtex-eqtl/Liver.v11.eQTLs.signif_pairs.parquet"
-FIXTURE_DIR = str(Path(FIXTURE_FILE).parent)
-SNAPSHOT_DIR = Path("hvantk/tests/snapshots/gtex-eqtl")
+_TESTS_DIR = Path(__file__).parent
+FIXTURE_FILE = _TESTS_DIR / "testdata/raw/gtex-eqtl/Liver.v11.eQTLs.signif_pairs.parquet"
+FIXTURE_DIR = str(FIXTURE_FILE.parent)
+SNAPSHOT_DIR = _TESTS_DIR / "snapshots"
 
 # (locus, alleles, gene_id) is unique-in-table for v11 signif_pairs (per skill §5),
 # so keys are inlined here rather than maintained in a separate sample_keys.json
@@ -34,7 +35,7 @@ SAMPLE_KEYS = [
 def test_gtex_eqtl_round_trip(hail_session, tmp_path, regenerate_snapshots):
     """Build GTEx v11 eQTL from Liver fixture; assert schema and sample-row stability."""
     import hail as hl
-    from hvantk.tables.table_builders import create_eqtl_tb
+    from hvantk.skills.gtex_eqtl.builder import create_eqtl_tb
 
     builder_kwargs = {
         "reference_genome": "GRCh38",

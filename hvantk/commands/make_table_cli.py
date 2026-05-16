@@ -84,7 +84,7 @@ def _create_ptm_sites_tb(*args, **kwargs):
 
 
 def _create_eqtl_tb(*args, **kwargs):
-    from hvantk.tables.table_builders import create_eqtl_tb
+    from hvantk.skills.gtex_eqtl.builder import create_eqtl_tb
 
     return create_eqtl_tb(*args, **kwargs)
 

@@ -1,0 +1,26 @@
+api_version: 2
+name: gtex-eqtl
+version: 0.1.0
+status: provisional
+description: GTEx tissue-specific eQTL summary statistics - Hail Table
+
+source:
+  catalog_ref: gtex-eqtl
+
+datasets:
+  - name: eqtls
+    domain: genomics
+    backend: hail
+    builder:
+      module: hvantk.skills.gtex_eqtl.builder
+      function: create_eqtl_tb
+    drift_probe:
+      module: hvantk.skills.gtex_eqtl.drift_probe
+      function: fetch_fingerprint
+    skill: SKILL.md
+    tests:
+      command: pytest hvantk/skills/gtex_eqtl/tests -m hail
+      fixture: tests/testdata/raw/gtex-eqtl
+      schema_snapshot: tests/snapshots/schema.json
+      row_snapshot: tests/snapshots/sample_rows.json
+      drift_fingerprint: tests/drift_fingerprint.json

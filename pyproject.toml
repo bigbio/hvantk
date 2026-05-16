@@ -73,6 +73,7 @@ ipykernel = "^7.2.0"
 # Only providers migrated to the plugin layout appear here.
 hgnc = "hvantk.skills.hgnc"
 msigdb = "hvantk.skills.msigdb"
+gtex-eqtl = "hvantk.skills.gtex_eqtl"
 
 [tool.pytest.ini_options]
 testpaths = ["hvantk/tests", "hvantk/skills"]
