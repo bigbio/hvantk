@@ -29,13 +29,13 @@ def _build_expression_atlas_ad(**kwargs):
 
 
 def _build_cptac_ad(**kwargs):
-    from hvantk.tables.matrix_builders import build_cptac_ad
+    from hvantk.skills.cptac.expression.builder import build_cptac_ad
 
     return build_cptac_ad(**kwargs)
 
 
 def _build_cptac_phospho_ad(**kwargs):
-    from hvantk.tables.matrix_builders import build_cptac_phospho_ad
+    from hvantk.skills.cptac.phospho.builder import build_cptac_phospho_ad
 
     return build_cptac_phospho_ad(**kwargs)
 

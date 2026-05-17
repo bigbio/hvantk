@@ -376,3 +376,70 @@ class CPTACPhosphoDataset:
             "normal_tsv": normal_tsv, "matrix": matrix_path,
             "metadata": metadata_path,
         }
+
+
+def parse_raw_dir(raw_dir: str, output_path: str, cancer_type: Optional[str] = None, **kwargs) -> str:
+    """Lifecycle ``parse`` entry point for the plugin loader.
+
+    Per the ``DatasetSpec`` contract in :mod:`hvantk.core.plugin_api`, a
+    lifecycle ``parse_fn`` reads files written by ``download_fn`` from
+    ``raw_dir`` and writes an intermediate representation to ``output_path``.
+
+    CPTAC data lives in pre-parsed per-cancer-type TSVs already written by
+    ``CPTACPhosphoDataset.download``. This function consolidates any
+    ``cptac-phospho-*.tsv`` files found under ``raw_dir`` into a single
+    pan-cancer TSV at ``output_path``.
+
+    Parameters
+    ----------
+    raw_dir : str
+        Directory containing one or more ``cptac-phospho-<cancer_type>.tsv``
+        files produced by :class:`CPTACPhosphoDataset`.
+    output_path : str
+        Destination consolidated TSV path.
+    cancer_type : str, optional
+        If provided, only include the matching cancer type's TSV (this is the
+        single-source case where ``parse_raw_dir`` simply copies the existing
+        per-cancer TSV to ``output_path``).
+    **kwargs
+        Reserved for future lifecycle keyword arguments.
+
+    Returns
+    -------
+    str
+        The output TSV path.
+    """
+    if cancer_type is not None:
+        pattern_names = [f"cptac-phospho-{cancer_type}.tsv"]
+    else:
+        pattern_names = [
+            name for name in os.listdir(raw_dir)
+            if name.startswith("cptac-phospho-")
+            and name.endswith(".tsv")
+            and "-tumor" not in name
+            and "-normal" not in name
+            and not name.endswith("-pancancer.tsv")
+        ]
+
+    if not pattern_names:
+        raise FileNotFoundError(
+            f"No cptac-phospho-*.tsv files found in {raw_dir!r}. "
+            "Run `hvantk download cptac-phospho` first."
+        )
+
+    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+    with open(output_path, "w", newline="") as fout:
+        writer = csv.DictWriter(
+            fout, fieldnames=_TSV_COLUMNS, delimiter="\t", lineterminator="\n",
+            extrasaction="ignore",
+        )
+        writer.writeheader()
+        for name in pattern_names:
+            tsv_path = os.path.join(raw_dir, name)
+            with open(tsv_path) as fin:
+                reader = csv.DictReader(fin, delimiter="\t")
+                for row in reader:
+                    writer.writerow(row)
+
+    logger.info("Consolidated %d cancer-type TSV(s) into %s", len(pattern_names), output_path)
+    return output_path

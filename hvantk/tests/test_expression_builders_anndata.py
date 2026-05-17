@@ -263,7 +263,7 @@ class TestBuildExpressionAtlasAd:
 
 
 class TestBuildCptacAd:
-    """Tests for build_cptac_ad in matrix_builders."""
+    """Tests for build_cptac_ad in the cptac expression plugin."""
 
     def test_builds_anndata_from_long_format(self, tmp_path):
         """Build AnnData from long-format CPTAC expression + metadata."""
@@ -285,7 +285,7 @@ class TestBuildCptacAd:
             fh.write("S1\tLUAD\n")
             fh.write("S2\tBRCA\n")
 
-        from hvantk.tables.matrix_builders import build_cptac_ad
+        from hvantk.skills.cptac.expression.builder import build_cptac_ad
 
         adata = build_cptac_ad(
             expression_path=expr_path,
@@ -318,14 +318,14 @@ class TestBuildCptacAd:
             fh.write("S1,LUAD\n")
             fh.write("S2,BRCA\n")
 
-        from hvantk.tables.matrix_builders import build_cptac_ad
+        from hvantk.skills.cptac.expression.builder import build_cptac_ad
 
         adata = build_cptac_ad(expression_path=expr_path, metadata_path=meta_path)
         assert adata.shape == (2, 2)
 
 
 class TestBuildCptacPhosphoAd:
-    """Tests for build_cptac_phospho_ad in matrix_builders."""
+    """Tests for build_cptac_phospho_ad in the cptac phospho plugin."""
 
     def test_builds_anndata_from_sites_matrix(self, tmp_path):
         """Build AnnData from wide-format CPTAC phospho matrix + metadata."""
@@ -345,7 +345,7 @@ class TestBuildCptacPhosphoAd:
             fh.write("S1\tLUAD\n")
             fh.write("S2\tBRCA\n")
 
-        from hvantk.tables.matrix_builders import build_cptac_phospho_ad
+        from hvantk.skills.cptac.phospho.builder import build_cptac_phospho_ad
 
         adata = build_cptac_phospho_ad(
             expression_path=expr_path,
@@ -376,7 +376,7 @@ class TestBuildCptacPhosphoAd:
             fh.write("S1,LUAD\n")
             fh.write("S2,BRCA\n")
 
-        from hvantk.tables.matrix_builders import build_cptac_phospho_ad
+        from hvantk.skills.cptac.phospho.builder import build_cptac_phospho_ad
 
         adata = build_cptac_phospho_ad(expression_path=expr_path, metadata_path=meta_path)
         assert adata.shape == (2, 2)

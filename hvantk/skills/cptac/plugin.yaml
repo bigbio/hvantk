@@ -1,0 +1,55 @@
+api_version: 2
+name: cptac
+version: 0.1.0
+status: provisional
+description: CPTAC clinical proteomic tumor analysis - AnnData
+
+source:
+  catalog_ref: cptac
+
+datasets:
+  - name: expression
+    domain: proteomics
+    backend: anndata
+    builder:
+      module: hvantk.skills.cptac.expression.builder
+      function: build_cptac_ad
+    drift_probe:
+      module: hvantk.skills.cptac.expression.drift_probe
+      function: fetch_fingerprint
+    skill: expression/SKILL.md
+    tests:
+      command: pytest hvantk/skills/cptac/expression/tests
+      fixture: expression/tests/testdata/raw/cptac-expression
+      schema_snapshot: expression/tests/snapshots/schema.json
+      row_snapshot: expression/tests/snapshots/sample_rows.json
+      drift_fingerprint: expression/tests/drift_fingerprint.json
+
+  - name: phospho
+    domain: proteomics
+    backend: anndata
+    builder:
+      module: hvantk.skills.cptac.phospho.builder
+      function: build_cptac_phospho_ad
+    drift_probe:
+      module: hvantk.skills.cptac.phospho.drift_probe
+      function: fetch_fingerprint
+    skill: phospho/SKILL.md
+    tests:
+      command: pytest hvantk/skills/cptac/phospho/tests
+      fixture: phospho/tests/testdata/raw/cptac-phospho
+      schema_snapshot: phospho/tests/snapshots/schema.json
+      row_snapshot: phospho/tests/snapshots/sample_rows.json
+      drift_fingerprint: phospho/tests/drift_fingerprint.json
+    lifecycle:
+      download:
+        module: hvantk.skills.cptac.phospho.cli
+        function: download_dataset
+      parse:
+        module: hvantk.skills.cptac.shared.datasets
+        function: parse_raw_dir
+
+cli:
+  - command: cptac-phospho-download
+    module: hvantk.skills.cptac.phospho.cli
+    function: download_cmd

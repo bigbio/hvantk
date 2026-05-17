@@ -1,7 +1,7 @@
 {
   "matrices": [
     {
-      "name": "cptac",
+      "name": "cptac:expression",
       "inputs": {
         "expression": "/data/cptac/expression.tsv",
         "metadata": "/data/cptac/metadata.tsv"

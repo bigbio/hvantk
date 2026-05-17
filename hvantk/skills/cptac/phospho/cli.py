@@ -1,14 +1,15 @@
-"""
-CLI command to download CPTAC phosphoproteomics data.
+"""CLI command and lifecycle entry point for downloading CPTAC phospho data.
 
-Example:
+Examples:
     hvantk download cptac-phospho --cancer-type brca -o data/cptac/
     hvantk download cptac-phospho --all -o data/cptac/
     hvantk download cptac-phospho --list-cancers
 """
 
+import csv
 import logging
 import os
+from typing import Optional
 
 import click
 
@@ -17,7 +18,53 @@ from hvantk.ptm.constants import CPTAC_CANCER_TYPES
 logger = logging.getLogger(__name__)
 
 
-@click.command(name="cptac-phospho")
+def download_dataset(
+    raw_dir: str,
+    cancer_type: Optional[str] = None,
+    overwrite: bool = False,
+    **kwargs,
+) -> dict:
+    """Lifecycle entry point for the plugin loader.
+
+    Per the ``DatasetSpec`` contract documented in
+    :mod:`hvantk.core.plugin_api`, a lifecycle ``download_fn`` accepts
+    ``raw_dir=<path>`` and writes the raw upstream files under that
+    directory.
+
+    For CPTAC phospho, "raw" means the per-cancer-type intermediate TSV
+    plus matrix and metadata CSVs already produced by
+    :class:`CPTACPhosphoDataset` -- the upstream ``cptac`` Python package
+    fetches into memory only.
+
+    Parameters
+    ----------
+    raw_dir : str
+        Directory under which the per-cancer-type files are placed.
+    cancer_type : str, optional
+        Single cancer type from :data:`CPTAC_CANCER_TYPES`. If omitted, all
+        cancer types are downloaded.
+    overwrite : bool
+        If True, re-download even if files already exist.
+    **kwargs
+        Reserved for future lifecycle keyword arguments; ignored today.
+
+    Returns
+    -------
+    dict
+        Mapping of cancer-type to per-cancer output-file dict (the dict
+        returned by :meth:`CPTACPhosphoDataset.download`).
+    """
+    from hvantk.skills.cptac.shared.datasets import CPTACPhosphoDataset
+
+    cancer_types = [cancer_type] if cancer_type else CPTAC_CANCER_TYPES
+    results: dict = {}
+    for ct in cancer_types:
+        dataset = CPTACPhosphoDataset(cancer_type=ct)
+        results[ct] = dataset.download(raw_dir, overwrite=overwrite)
+    return results
+
+
+@click.command(name="cptac-phospho-download")
 @click.option(
     "-o",
     "--output-dir",
@@ -48,7 +95,7 @@ logger = logging.getLogger(__name__)
     help="Overwrite existing files",
 )
 @click.pass_context
-def cptac_phospho_downloader(ctx, output_dir, cancer_type, download_all, list_cancers, overwrite):
+def download_cmd(ctx, output_dir, cancer_type, download_all, list_cancers, overwrite):
     """Download CPTAC phosphoproteomics data.
 
     Downloads phospho site intensities from the CPTAC Python package,
@@ -77,8 +124,7 @@ def cptac_phospho_downloader(ctx, output_dir, cancer_type, download_all, list_ca
         ctx.exit(1)
 
     try:
-        import csv
-        from hvantk.datasets.cptac_phospho_datasets import CPTACPhosphoDataset, _TSV_COLUMNS
+        from hvantk.skills.cptac.shared.datasets import CPTACPhosphoDataset, _TSV_COLUMNS
 
         cancer_types = CPTAC_CANCER_TYPES if download_all else [cancer_type]
 
@@ -117,3 +163,9 @@ def cptac_phospho_downloader(ctx, output_dir, cancer_type, download_all, list_ca
         logger.exception(f"Download failed: {e}")
         click.echo(f"Error: {e}", err=True)
         ctx.exit(1)
+
+
+# Backwards-compatible alias so existing imports continue to work while
+# still pointing at the new plugin module. New code should import
+# ``download_cmd`` directly.
+cptac_phospho_downloader = download_cmd

@@ -9,7 +9,7 @@ from hvantk.skills.hgnc.cli import download_cmd as hgnc_downloader
 from hvantk.skills.clinvar.cli import clinvar_downloader
 from hvantk.commands.uniprot_ptm_downloader import uniprot_ptm_downloader
 from hvantk.skills.peptideatlas.phospho.cli import peptideatlas_phospho_downloader
-from hvantk.commands.cptac_phospho_downloader import cptac_phospho_downloader
+from hvantk.skills.cptac.phospho.cli import cptac_phospho_downloader
 
 
 @click.group("download", context_settings=CONTEXT_SETTINGS)
