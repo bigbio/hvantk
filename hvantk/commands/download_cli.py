@@ -2,7 +2,7 @@ import click
 
 from hvantk.core.config import CONTEXT_SETTINGS
 from hvantk.commands.ucsc_downloader import ucsc_downloader
-from hvantk.commands.expression_atlas_downloader import download_experiments
+from hvantk.skills.expression_atlas.cli import download_experiments
 from hvantk.commands.clingen_downloader import clingen_downloader
 from hvantk.commands.gencc_downloader import gencc_downloader
 from hvantk.skills.hgnc.cli import download_cmd as hgnc_downloader

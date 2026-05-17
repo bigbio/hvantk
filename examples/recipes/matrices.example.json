@@ -10,7 +10,7 @@
       "params": {"gene_column": "gene", "overwrite": true}
     },
     {
-      "name": "expression-atlas",
+      "name": "expression-atlas:dataset",
       "inputs": {
         "expression_matrix": "/data/atlas/matrix.tsv",
         "sdrf": "/data/atlas/atlas.sdrf.tsv"

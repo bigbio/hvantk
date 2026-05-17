@@ -295,11 +295,6 @@ MATRIX_BUILDERS: Dict[
         "build_ucsc_ad",
         required_inputs=["expression_matrix", "metadata"],
     ),
-    "expression-atlas": create_matrix_adapter(
-        "hvantk.tables.matrix_builders",
-        "build_expression_atlas_ad",
-        required_inputs=["expression_matrix", "sdrf"],
-    ),
     "cptac": create_matrix_adapter(
         "hvantk.tables.matrix_builders",
         "build_cptac_ad",

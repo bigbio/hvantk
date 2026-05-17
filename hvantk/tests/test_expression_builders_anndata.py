@@ -153,7 +153,7 @@ class TestBuildUcscAd:
 
 
 class TestBuildExpressionAtlasAd:
-    """Tests for build_expression_atlas_ad in matrix_builders."""
+    """Tests for build_expression_atlas_ad in hvantk.skills.expression_atlas.builder."""
 
     def _write_expression_tsv(self, path, gene_ids, gene_names, samples, values):
         """Write an Expression Atlas-style expression TSV."""
@@ -193,7 +193,7 @@ class TestBuildExpressionAtlasAd:
             ("E-MTAB-0001", "", "sample_2", "characteristic", "tissue", "liver"),
         ])
 
-        from hvantk.tables.matrix_builders import build_expression_atlas_ad
+        from hvantk.skills.expression_atlas.builder import build_expression_atlas_ad
 
         adata = build_expression_atlas_ad(
             expression_matrix_path=expr_path,
@@ -228,7 +228,9 @@ class TestBuildExpressionAtlasAd:
         expr_path = str(tmp_path / "expr.tsv")
         self._write_expression_tsv(expr_path, gene_ids, gene_names, samples, values)
 
-        from hvantk.tables.expression_atlas import create_anndata_from_expression_atlas
+        from hvantk.skills.expression_atlas.shared.expression_atlas import (
+            create_anndata_from_expression_atlas,
+        )
 
         adata = create_anndata_from_expression_atlas(
             expression_matrix_path=expr_path,
@@ -249,7 +251,9 @@ class TestBuildExpressionAtlasAd:
         expr_path = str(tmp_path / "expr.tsv")
         self._write_expression_tsv(expr_path, gene_ids, gene_names, samples, values)
 
-        from hvantk.tables.expression_atlas import create_anndata_from_expression_atlas
+        from hvantk.skills.expression_atlas.shared.expression_atlas import (
+            create_anndata_from_expression_atlas,
+        )
 
         adata = create_anndata_from_expression_atlas(expression_matrix_path=expr_path)
 

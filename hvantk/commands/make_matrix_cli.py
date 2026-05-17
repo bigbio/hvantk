@@ -23,7 +23,7 @@ def _build_ucsc_ad(**kwargs):
 
 
 def _build_expression_atlas_ad(**kwargs):
-    from hvantk.tables.matrix_builders import build_expression_atlas_ad
+    from hvantk.skills.expression_atlas.builder import build_expression_atlas_ad
 
     return build_expression_atlas_ad(**kwargs)
 

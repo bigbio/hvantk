@@ -1,6 +1,6 @@
 import json
 
-from hvantk.datasets.expression_atlas_datasets import (
+from hvantk.skills.expression_atlas.shared.datasets import (
     ExpressionAtlasDatasetCollection,
     ExpressionAtlasDataset,
 )

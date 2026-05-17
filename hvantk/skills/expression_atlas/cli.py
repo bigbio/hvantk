@@ -1,5 +1,14 @@
-"""
-Downloader and transformer for Expression Atlas datasets.
+"""CLI command and lifecycle entry point for downloading Expression Atlas datasets.
+
+Examples:
+    # List available accessions configured in the bundled registry
+    hvantk expression-atlas-download --list_datasets --download_path data/atlas
+
+    # Download a single accession's files
+    hvantk expression-atlas-download --accession E-MTAB-6798 --download_path data/atlas
+
+    # Download every experiment listed in a JSON config file
+    hvantk expression-atlas-download --config_path /path/to/expression_atlas.json --download_path data/atlas
 """
 
 import click
@@ -12,7 +21,9 @@ import time
 import random
 from tqdm import tqdm
 
-from hvantk.datasets.expression_atlas_datasets import ExpressionAtlasDatasetCollection
+from hvantk.skills.expression_atlas.shared.datasets import (
+    ExpressionAtlasDatasetCollection,
+)
 from hvantk.core.constants import EXPRESSION_ATLAS_JSON_FILE_PATH
 
 logger = logging.getLogger(__name__)
@@ -147,8 +158,57 @@ def _print_dataset_accessions():
         click.echo(f"Error: {e}")
 
 
+def download_dataset(
+    raw_dir: str,
+    accession: str | None = None,
+    config_path: str | None = None,
+    **kwargs,
+) -> str:
+    """Lifecycle entry point for the plugin loader.
+
+    Per the ``DatasetSpec`` contract documented in
+    :mod:`hvantk.core.plugin_api`, a lifecycle ``download_fn`` accepts
+    ``raw_dir=<path>`` and writes the raw upstream files under that
+    directory. For Expression Atlas an additional ``accession`` (and/or
+    ``config_path``) is required because the provider hosts many per-accession
+    experiments — there is no single canonical "latest" Expression Atlas
+    file the way there is for ClinVar.
+
+    Parameters
+    ----------
+    raw_dir : str
+        Directory under which raw upstream files are placed.
+    accession : str, optional
+        Single Expression Atlas accession (e.g. ``E-MTAB-6798``) to fetch.
+    config_path : str, optional
+        Path to a JSON config listing multiple accessions / files to fetch.
+        Either ``accession`` or ``config_path`` MUST be supplied.
+    **kwargs
+        Reserved for future lifecycle keyword arguments; ignored today.
+
+    Returns
+    -------
+    str
+        Path to the directory containing the downloaded raw files.
+    """
+    if accession is None and config_path is None:
+        raise ValueError(
+            "download_dataset requires either accession= or config_path= "
+            "(Expression Atlas datasets are per-accession)."
+        )
+    # Reuse the Click implementation by invoking the underlying callback
+    # directly with the documented option names.
+    download_experiments.callback(
+        config_path=config_path,
+        accession=accession,
+        download_path=raw_dir,
+        list_datasets=False,
+    )
+    return raw_dir
+
+
 @click.command(
-    "expression-atlas-downloader", short_help="Download Expression Atlas dataset"
+    "expression-atlas-download", short_help="Download Expression Atlas dataset"
 )
 @click.option(
     "--config_path",

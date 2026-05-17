@@ -11,7 +11,7 @@ Recipe format (JSON or YAML):
       "params": {"gene_column": "gene", "overwrite": true}
     },
     {
-      "name": "expression-atlas",
+      "name": "expression-atlas:dataset",
       "inputs": {"expression_matrix": "/path/matrix.tsv", "sdrf": "/path/atlas.sdrf.tsv"},
       "output": "/out/atlas.mt",
       "params": {"gene_column": "Gene ID"}

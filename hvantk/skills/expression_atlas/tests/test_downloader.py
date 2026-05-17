@@ -5,11 +5,14 @@ from unittest.mock import Mock
 
 import pytest
 from click.testing import CliRunner
-from hvantk.commands import expression_atlas_downloader
-from hvantk.commands.expression_atlas_downloader import _download_file_with_retry
+from hvantk.skills.expression_atlas import cli as expression_atlas_downloader
+from hvantk.skills.expression_atlas.cli import _download_file_with_retry
 
-# Define the test directory path
-TEST_DIR = Path(__file__).parent.parent
+# Define the path to the bundled resources used by the optional config-driven
+# integration tests. The original test lived under hvantk/tests/, so TEST_DIR
+# pointed at hvantk/; from the new plugin tests directory we need three
+# parents to reach the hvantk/ package root.
+TEST_DIR = Path(__file__).resolve().parents[3]
 
 
 @pytest.fixture
