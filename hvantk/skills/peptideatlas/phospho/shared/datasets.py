@@ -462,3 +462,47 @@ class PeptideAtlasPhosphoDataset:
             "build_id": self.build_id,
             "zip_url": self.zip_url,
         }
+
+
+def parse_raw_dir(raw_dir: str, output_path: str, **kwargs) -> str:
+    """Lifecycle ``parse`` entry point for the plugin loader.
+
+    Per the ``DatasetSpec`` contract in :mod:`hvantk.core.plugin_api`, a
+    lifecycle ``parse_fn`` reads the raw files written by ``download_fn``
+    (here, a PeptideAtlas ``atlas_build_<id>.tsv.zip``) from ``raw_dir`` and
+    writes an intermediate representation to ``output_path``.
+
+    The intermediate is the same wide TSV consumed by the PTM pipeline
+    (``hvantk/ptm/pipeline.py`` ``peptideatlas_tsv`` argument).
+
+    Parameters
+    ----------
+    raw_dir : str
+        Directory that contains exactly one ``atlas_build_*.tsv.zip`` file
+        written by ``download_dataset``.
+    output_path : str
+        Destination intermediate TSV path.
+    **kwargs
+        Reserved for future lifecycle keyword arguments.
+
+    Returns
+    -------
+    str
+        The output TSV path.
+    """
+    candidates = [
+        os.path.join(raw_dir, name)
+        for name in os.listdir(raw_dir)
+        if name.startswith("atlas_build_") and name.endswith(".tsv.zip")
+    ]
+    if not candidates:
+        raise FileNotFoundError(
+            f"No PeptideAtlas atlas_build_*.tsv.zip found in {raw_dir!r}"
+        )
+    if len(candidates) > 1:
+        raise RuntimeError(
+            f"Multiple PeptideAtlas zip archives found in {raw_dir!r}: "
+            f"{candidates}. Lifecycle parse expects exactly one."
+        )
+    sites = parse_peptideatlas_zip(candidates[0])
+    return write_intermediate_tsv(sites, output_path)

@@ -1,0 +1,38 @@
+api_version: 2
+name: peptideatlas
+version: 0.1.0
+status: provisional
+description: PeptideAtlas human phospho-proteome builds - pandas intermediate TSV
+
+source:
+  catalog_ref: peptideatlas
+
+datasets:
+  - name: phospho
+    domain: proteomics
+    backend: pandas
+    builder:
+      module: hvantk.skills.peptideatlas.phospho.builder
+      function: build_peptideatlas_phospho_tb
+    drift_probe:
+      module: hvantk.skills.peptideatlas.phospho.drift_probe
+      function: fetch_fingerprint
+    skill: phospho/SKILL.md
+    tests:
+      command: pytest hvantk/skills/peptideatlas/phospho/tests
+      fixture: phospho/tests/testdata/raw/peptideatlas-phospho
+      schema_snapshot: phospho/tests/snapshots/schema.json
+      row_snapshot: phospho/tests/snapshots/sample_rows.json
+      drift_fingerprint: phospho/tests/drift_fingerprint.json
+    lifecycle:
+      download:
+        module: hvantk.skills.peptideatlas.phospho.cli
+        function: download_dataset
+      parse:
+        module: hvantk.skills.peptideatlas.phospho.shared.datasets
+        function: parse_raw_dir
+
+cli:
+  - command: peptideatlas-phospho-download
+    module: hvantk.skills.peptideatlas.phospho.cli
+    function: download_cmd

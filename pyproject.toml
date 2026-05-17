@@ -78,6 +78,7 @@ gwas-catalog = "hvantk.skills.gwas_catalog"
 insider = "hvantk.skills.insider"
 clinvar = "hvantk.skills.clinvar"
 expression-atlas = "hvantk.skills.expression_atlas"
+peptideatlas = "hvantk.skills.peptideatlas"
 
 [tool.pytest.ini_options]
 testpaths = ["hvantk/tests", "hvantk/skills"]

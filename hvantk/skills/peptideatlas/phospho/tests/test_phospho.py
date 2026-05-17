@@ -1,4 +1,4 @@
-"""Tests for hvantk.datasets.peptideatlas_phospho_datasets module.
+"""Tests for hvantk.skills.peptideatlas.phospho.shared.datasets module.
 
 Covers:
 1. Phospho site extraction from mock PeptideAtlas TSV tables
@@ -126,7 +126,7 @@ def mock_pa_zip(tmp_path):
 
 def test_parse_phospho_sites(mock_pa_zip, tmp_path):
     """Phospho sites are correctly extracted with positions and counts."""
-    from hvantk.datasets.peptideatlas_phospho_datasets import parse_peptideatlas_zip
+    from hvantk.skills.peptideatlas.phospho.shared.datasets import parse_peptideatlas_zip
 
     sites = parse_peptideatlas_zip(str(mock_pa_zip))
 
@@ -149,7 +149,7 @@ def test_parse_phospho_sites(mock_pa_zip, tmp_path):
 
 def test_decoy_sequences_filtered(mock_pa_zip):
     """DECOY and contaminant sequences are excluded."""
-    from hvantk.datasets.peptideatlas_phospho_datasets import parse_peptideatlas_zip
+    from hvantk.skills.peptideatlas.phospho.shared.datasets import parse_peptideatlas_zip
 
     sites = parse_peptideatlas_zip(str(mock_pa_zip))
     accessions = {s["accession"] for s in sites}
@@ -161,7 +161,7 @@ def test_decoy_sequences_filtered(mock_pa_zip):
 
 def test_dataset_from_latest():
     """from_latest() creates a dataset with current build defaults."""
-    from hvantk.datasets.peptideatlas_phospho_datasets import PeptideAtlasPhosphoDataset
+    from hvantk.skills.peptideatlas.phospho.shared.datasets import PeptideAtlasPhosphoDataset
 
     dataset = PeptideAtlasPhosphoDataset.from_latest()
     assert dataset.build_date == "202512"
@@ -172,7 +172,7 @@ def test_dataset_from_latest():
 
 def test_dataset_from_build():
     """from_build() creates a dataset with specified build parameters."""
-    from hvantk.datasets.peptideatlas_phospho_datasets import PeptideAtlasPhosphoDataset
+    from hvantk.skills.peptideatlas.phospho.shared.datasets import PeptideAtlasPhosphoDataset
 
     dataset = PeptideAtlasPhosphoDataset.from_build("202204", "500")
     assert dataset.build_date == "202204"
@@ -186,7 +186,7 @@ def test_dataset_from_build():
 
 def test_write_intermediate_tsv(mock_pa_zip, tmp_path):
     """write_intermediate_tsv produces correctly formatted TSV."""
-    from hvantk.datasets.peptideatlas_phospho_datasets import (
+    from hvantk.skills.peptideatlas.phospho.shared.datasets import (
         parse_peptideatlas_zip,
         write_intermediate_tsv,
     )
@@ -247,7 +247,7 @@ def test_write_intermediate_tsv(mock_pa_zip, tmp_path):
 )
 def test_extract_phospho_offsets(mod_seq, expected):
     """_extract_phospho_offsets handles all PeptideAtlas notations."""
-    from hvantk.datasets.peptideatlas_phospho_datasets import _extract_phospho_offsets
+    from hvantk.skills.peptideatlas.phospho.shared.datasets import _extract_phospho_offsets
 
     result = _extract_phospho_offsets(mod_seq)
     assert result == expected
@@ -258,7 +258,7 @@ def test_extract_phospho_offsets(mod_seq, expected):
 
 def test_parse_raises_when_required_tables_missing(tmp_path):
     """Missing required tables should raise FileNotFoundError."""
-    from hvantk.datasets.peptideatlas_phospho_datasets import parse_peptideatlas_zip
+    from hvantk.skills.peptideatlas.phospho.shared.datasets import parse_peptideatlas_zip
 
     zip_path = tmp_path / "missing_tables.zip"
     with zipfile.ZipFile(zip_path, "w") as zf:
@@ -273,7 +273,7 @@ def test_parse_raises_when_required_tables_missing(tmp_path):
 
 def test_dataset_download_returns_intermediate_tsv(tmp_path, mock_pa_zip):
     """download() returns generated intermediate TSV path."""
-    from hvantk.datasets.peptideatlas_phospho_datasets import PeptideAtlasPhosphoDataset
+    from hvantk.skills.peptideatlas.phospho.shared.datasets import PeptideAtlasPhosphoDataset
 
     dataset = PeptideAtlasPhosphoDataset.from_build("202512", "606")
     output_dir = tmp_path / "out"
@@ -307,7 +307,7 @@ def test_dataset_download_returns_intermediate_tsv(tmp_path, mock_pa_zip):
 
 def test_canonical_protein_filtering(tmp_path):
     """Only canonical proteins (presence_level_id=1) are included."""
-    from hvantk.datasets.peptideatlas_phospho_datasets import parse_peptideatlas_zip
+    from hvantk.skills.peptideatlas.phospho.shared.datasets import parse_peptideatlas_zip
 
     tables_dir = tmp_path / "tables"
     tables_dir.mkdir()
@@ -394,7 +394,7 @@ def test_canonical_protein_filtering(tmp_path):
 
 def test_url_no_doubled_phospho():
     """from_build() URL should not contain doubled /phospho/."""
-    from hvantk.datasets.peptideatlas_phospho_datasets import PeptideAtlasPhosphoDataset
+    from hvantk.skills.peptideatlas.phospho.shared.datasets import PeptideAtlasPhosphoDataset
 
     dataset = PeptideAtlasPhosphoDataset.from_build("202512", "606")
     assert "/phospho/phospho/" not in dataset.zip_url
