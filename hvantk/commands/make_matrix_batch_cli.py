@@ -5,7 +5,7 @@ Recipe format (JSON or YAML):
 {
   "matrices": [
     {
-      "name": "ucsc",
+      "name": "ucsc-cellbrowser:default",
       "inputs": {"expression_matrix": "/path/expr.tsv.bgz", "metadata": "/path/meta.tsv"},
       "output": "/out/ucsc.mt",
       "params": {"gene_column": "gene", "overwrite": true}

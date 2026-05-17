@@ -288,7 +288,7 @@ Example JSON recipe (save as examples/recipes/matrices.example.json):
 {
   "matrices": [
     {
-      "name": "ucsc",
+      "name": "ucsc-cellbrowser:default",
       "inputs": {
         "expression_matrix": "/data/ucsc/expr.tsv.bgz",
         "metadata": "/data/ucsc/meta.tsv"

@@ -493,7 +493,10 @@ def summarize_ucsc_cmd(
     """
     from pathlib import Path
 
-    from hvantk.tables.ucsc import load_ucsc_metadata, summarize_ucsc_streaming
+    from hvantk.skills.ucsc_cellbrowser.shared.ucsc import (
+        load_ucsc_metadata,
+        summarize_ucsc_streaming,
+    )
 
     output_path = Path(output)
     if output_path.suffix != ".h5ad":

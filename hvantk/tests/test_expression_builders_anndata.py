@@ -42,7 +42,7 @@ class TestBuildUcscAd:
         self._write_expression_matrix(expr_path, genes, cells, values)
         self._write_metadata(meta_path, cells, ["neuron", "glia", "neuron", "glia"])
 
-        from hvantk.tables.matrix_builders import build_ucsc_ad
+        from hvantk.skills.ucsc_cellbrowser.builder import build_ucsc_ad
 
         adata = build_ucsc_ad(
             expression_matrix_path=expr_path,
@@ -80,7 +80,7 @@ class TestBuildUcscAd:
         self._write_expression_matrix(expr_path, genes, cells, values)
         self._write_metadata(meta_path, cells, ["neuron", "glia"])
 
-        from hvantk.tables.matrix_builders import build_ucsc_ad
+        from hvantk.skills.ucsc_cellbrowser.builder import build_ucsc_ad
 
         adata = build_ucsc_ad(
             expression_matrix_path=expr_path,
@@ -109,7 +109,7 @@ class TestBuildUcscAd:
         self._write_expression_matrix(expr_path, genes, cells, values)
         self._write_metadata(meta_path, cells, ["neuron", "glia"])
 
-        from hvantk.tables.matrix_builders import build_ucsc_ad
+        from hvantk.skills.ucsc_cellbrowser.builder import build_ucsc_ad
 
         adata = build_ucsc_ad(
             expression_matrix_path=expr_path,
@@ -138,7 +138,7 @@ class TestBuildUcscAd:
             fh.write("cell_A,neuron\n")
             fh.write("cell_B,glia\n")
 
-        from hvantk.tables.matrix_builders import build_ucsc_ad
+        from hvantk.skills.ucsc_cellbrowser.builder import build_ucsc_ad
 
         adata = build_ucsc_ad(
             expression_matrix_path=expr_path,

@@ -3,11 +3,12 @@
 Parametrized over per-collection fixtures so adding a new UCSC collection
 that ships a structurally distinct ``obs`` schema only requires:
 
-  1. Dropping raw TSVs under ``hvantk/tests/testdata/raw/<source>/``.
+  1. Dropping raw TSVs under
+     ``hvantk/skills/ucsc_cellbrowser/tests/testdata/raw/<source>/``.
   2. Appending a case to ``_UCSC_CASES`` below.
   3. Running ``pytest <this file> --regenerate-snapshots`` once.
 
-The builder, snapshot helpers, and registry entry stay shared.
+The builder, snapshot helpers, and plugin manifest entry stay shared.
 """
 
 from __future__ import annotations
@@ -24,28 +25,32 @@ from hvantk.tests._snapshot_utils import (
 from hvantk.tests._snapshot_utils import regenerate_snapshots as regenerate_snapshots_fn
 
 
-# Per-collection cases. ``builder_kwargs`` carries registry-derived overrides
+_FIXTURE_ROOT = Path("hvantk/skills/ucsc_cellbrowser/tests/testdata/raw")
+_SNAPSHOT_ROOT = Path("hvantk/skills/ucsc_cellbrowser/tests/snapshots")
+
+
+# Per-collection cases. ``builder_kwargs`` carries plugin-derived overrides
 # (e.g. ``gene_column``, ``split_gene_field``) when a dataset deviates from
 # ``build_ucsc_ad`` defaults; the default values produce empty dicts.
 _UCSC_CASES = [
     pytest.param(
-        "hvantk/tests/testdata/raw/ucsc-cellbrowser/expression_matrix.tsv",
-        "hvantk/tests/testdata/raw/ucsc-cellbrowser/metadata.tsv",
-        Path("hvantk/tests/snapshots/ucsc-cellbrowser"),
+        str(_FIXTURE_ROOT / "ucsc-cellbrowser" / "expression_matrix.tsv"),
+        str(_FIXTURE_ROOT / "ucsc-cellbrowser" / "metadata.tsv"),
+        _SNAPSHOT_ROOT / "ucsc-cellbrowser",
         {},
         id="asp_2019-celltype-summary",
     ),
     pytest.param(
-        "hvantk/tests/testdata/raw/ucsc-cellbrowser-adult-ctx/expression_matrix.tsv",
-        "hvantk/tests/testdata/raw/ucsc-cellbrowser-adult-ctx/metadata.tsv",
-        Path("hvantk/tests/snapshots/ucsc-cellbrowser-adult-ctx"),
+        str(_FIXTURE_ROOT / "ucsc-cellbrowser-adult-ctx" / "expression_matrix.tsv"),
+        str(_FIXTURE_ROOT / "ucsc-cellbrowser-adult-ctx" / "metadata.tsv"),
+        _SNAPSHOT_ROOT / "ucsc-cellbrowser-adult-ctx",
         {},
         id="adult-ctx-meta-atlas-class-summary",
     ),
     pytest.param(
-        "hvantk/tests/testdata/raw/ucsc-cellbrowser-dev-ctx/expression_matrix.tsv",
-        "hvantk/tests/testdata/raw/ucsc-cellbrowser-dev-ctx/metadata.tsv",
-        Path("hvantk/tests/snapshots/ucsc-cellbrowser-dev-ctx"),
+        str(_FIXTURE_ROOT / "ucsc-cellbrowser-dev-ctx" / "expression_matrix.tsv"),
+        str(_FIXTURE_ROOT / "ucsc-cellbrowser-dev-ctx" / "metadata.tsv"),
+        _SNAPSHOT_ROOT / "ucsc-cellbrowser-dev-ctx",
         {},
         id="dev-ctx-meta-atlas-type-v2-summary",
     ),
@@ -65,7 +70,7 @@ def test_ucsc_cellbrowser_round_trip(
     builder_kwargs,
 ):
     """Build UCSC sc AnnData from fixture; assert schema and head sample stability."""
-    from hvantk.tables.matrix_builders import build_ucsc_ad
+    from hvantk.skills.ucsc_cellbrowser.builder import build_ucsc_ad
 
     call_kwargs = {
         "metadata_path": meta_fixture,

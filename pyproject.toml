@@ -80,6 +80,7 @@ clinvar = "hvantk.skills.clinvar"
 expression-atlas = "hvantk.skills.expression_atlas"
 peptideatlas = "hvantk.skills.peptideatlas"
 cptac = "hvantk.skills.cptac"
+ucsc-cellbrowser = "hvantk.skills.ucsc_cellbrowser"
 
 [tool.pytest.ini_options]
 testpaths = ["hvantk/tests", "hvantk/skills"]

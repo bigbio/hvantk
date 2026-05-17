@@ -10,7 +10,7 @@ domain: expression
 
 ## 1. Status & scope
 
-This skill covers BUILD and UPDATE of a UCSC Cell Browser single-cell AnnData (`.h5ad`) from raw expression + metadata TSVs. It does NOT cover download (see `hvantk/commands/ucsc_downloader.py`), scanpy-based downstream analysis, or atlas-level merging across multiple UCSC collections.
+This skill covers BUILD and UPDATE of a UCSC Cell Browser single-cell AnnData (`.h5ad`) from raw expression + metadata TSVs. It does NOT cover download (see `hvantk/skills/ucsc_cellbrowser/cli.py`), scanpy-based downstream analysis, or atlas-level merging across multiple UCSC collections.
 
 ## 2. Source identity
 
@@ -33,9 +33,9 @@ Gotchas:
 
 - **Pipe-encoded gene names.** Some UCSC collections format gene IDs as `<symbol>|<ensembl_id>`. The builder's default `split_gene_field=True` keeps only the part before the `|`. If a collection ships fully-qualified IDs, set `split_gene_field=False` to retain the full string.
 - **Cell ID alignment.** The expression matrix header (cell IDs) and the metadata TSV's cell-ID column must align. Mismatches surface only when `obs` is constructed; the builder does not silently re-key.
-- **Backed-vs-in-memory auto-selection.** `build_ucsc_ad(backed=None, ...)` chooses based on input size compared with the threshold defined at `hvantk/tables/matrix_builders.py:BACKED_BUILDER_THRESHOLD_BYTES` (default: 1 GiB). Backed mode requires `output_path`. Backed-mode `obs` writes are guarded by `coerce_obs_for_h5ad()` because anndata's vlen-string HDF5 writer chokes on object-dtype columns mixing strings and `NaN`; the in-memory path applies the same coercion before saving.
+- **Backed-vs-in-memory auto-selection.** `build_ucsc_ad(backed=None, ...)` chooses based on input size compared with the threshold defined at `hvantk/skills/ucsc_cellbrowser/builder.py:BACKED_BUILDER_THRESHOLD_BYTES` (default: 1 GiB). Backed mode requires `output_path`. Backed-mode `obs` writes are guarded by `coerce_obs_for_h5ad()` because anndata's vlen-string HDF5 writer chokes on object-dtype columns mixing strings and `NaN`; the in-memory path applies the same coercion before saving.
 - **Backed mode skips column-summary annotation.** `annotate_column_summary_ad` is only called in the in-memory branch — for atlas-scale inputs it would force a full X scan. When auditing a backed build, do not assume the per-column summary fields exist on the returned handle.
-- **Streaming row iterator.** `_iter_ucsc_rows` (in `hvantk/tables/ucsc.py`) wraps a file handle that closes on generator exhaustion. Partial iteration leaks the handle until GC; full iteration is the contract.
+- **Streaming row iterator.** `_iter_ucsc_rows` (in `hvantk/skills/ucsc_cellbrowser/shared/ucsc.py`) wraps a file handle that closes on generator exhaustion. Partial iteration leaks the handle until GC; full iteration is the contract.
 
 ## 5. Output contract
 
@@ -43,14 +43,14 @@ Gotchas:
 
 ## 6. hvantk integration points
 
-- Builder entry point: `build_ucsc_ad` in `hvantk/tables/matrix_builders.py`.
-- In-memory helper: `create_anndata_from_ucsc_matrix` in `hvantk/tables/ucsc.py`.
-- Backed-write helper: `build_ucsc_atlas_backed` in `hvantk/tables/ucsc.py`.
-- Metadata loader: `load_ucsc_metadata` in `hvantk/tables/ucsc.py`.
+- Builder entry point: `build_ucsc_ad` in `hvantk/skills/ucsc_cellbrowser/builder.py`.
+- In-memory helper: `create_anndata_from_ucsc_matrix` in `hvantk/skills/ucsc_cellbrowser/shared/ucsc.py`.
+- Backed-write helper: `build_ucsc_atlas_backed` in `hvantk/skills/ucsc_cellbrowser/shared/ucsc.py`.
+- Metadata loader: `load_ucsc_metadata` in `hvantk/skills/ucsc_cellbrowser/shared/ucsc.py`.
 - Provenance / save helpers: `build_anndata_metadata`, `save_anndata`, `annotate_column_summary_ad` in `hvantk/core/anndata_utils.py`.
 - CLI: `hvantk mkmatrix ucsc` in `hvantk/commands/make_matrix_cli.py` (`mkmatrix_ucsc`).
-- Registry: registered for batch / recipe use as `MATRIX_BUILDERS["ucsc"]` in `hvantk/tables/registry.py` (note the matrix registry is separate from `TABLE_BUILDERS`; conventions § 6 covers Tables — for matrix builders, the analogous helper is `create_matrix_adapter()`).
-- Test: `hvantk/tests/test_ucsc_cellbrowser_builder.py`.
+- Registry: registered for batch / recipe use as `MATRIX_BUILDERS["ucsc-cellbrowser:default"]` (and the `adult-ctx` / `dev-ctx` siblings) via the plugin manifest at `hvantk/skills/ucsc_cellbrowser/plugin.yaml`; the legacy bare `"ucsc"` key was retired with the plugin migration.
+- Test: `hvantk/skills/ucsc_cellbrowser/tests/test_builder.py`.
 
 Read the existing files at these paths as ground truth for shape. This skill does not restate code.
 
@@ -64,16 +64,16 @@ When invoked to build or update:
 4. Call `build_ucsc_ad(expression_matrix_path=..., metadata_path=..., output_path=..., gene_column=..., split_gene_field=..., overwrite=..., backed=None, column_batch=64)`. The function auto-selects backed mode based on file size; pass `backed=True` to force.
 5. If backed mode is selected (auto or forced), `output_path` is required. Division of responsibility: `build_ucsc_atlas_backed` writes CSC columns directly to disk (no return value of interest); `build_ucsc_ad` re-opens the written file via `anndata.read_h5ad(output_path, backed='r')` and returns that read-backed handle. Per § 4, do not rely on `annotate_column_summary_ad`-derived fields in this branch — the backed path skips that pass.
 6. Backed-path operation order is fixed: coerce `obs` via `coerce_obs_for_h5ad` → pre-flight via `_probe_write_elem` (catches obs-serialization failures BEFORE streaming any X columns) → stream X column-batches via `write_elem` + `sparse_dataset(...).append(...)` → finalize by writing `/obs`, `/var`, `/uns`. Reordering risks committing a partial atlas to disk before discovering an obs failure.
-7. Run validation: `pytest hvantk/tests/test_ucsc_cellbrowser_builder.py` (this test is NOT marked `@pytest.mark.hail` — it does not require a Hail session).
+7. Run validation: `pytest hvantk/skills/ucsc_cellbrowser/tests/test_builder.py` (this test is NOT marked `@pytest.mark.hail` — it does not require a Hail session).
 8. Report: schema diff, head sample-row diff, test pass/fail.
 
 ## 8. Update playbook
 
 UCSC datasets are per-collection. To refresh a collection's build:
 
-1. Re-fetch the collection's expression and metadata TSVs via `hvantk/commands/ucsc_downloader.py` (or replace the fixture by hand if regenerating from a stored slice).
-2. If updating the round-trip fixture, replace `hvantk/tests/testdata/raw/ucsc-cellbrowser/expression_matrix.tsv` and `metadata.tsv`. The current pilot fixture is a 12 cells × 250 genes slice from `asp_2019_celltype_summary.h5ad`; keep slices small but representative (mix of cell types, sparse rows, at least one gene with pipe-encoded ID if relevant).
-3. Run snapshot regeneration: `pytest hvantk/tests/test_ucsc_cellbrowser_builder.py --regenerate-snapshots`. (No `-m hail`; this builder is not Hail-backed.)
+1. Re-fetch the collection's expression and metadata TSVs via `hvantk/skills/ucsc_cellbrowser/cli.py` (or replace the fixture by hand if regenerating from a stored slice).
+2. If updating the round-trip fixture, replace `hvantk/skills/ucsc_cellbrowser/tests/testdata/raw/ucsc-cellbrowser/expression_matrix.tsv` and `metadata.tsv`. The current pilot fixture is a 12 cells × 250 genes slice from `asp_2019_celltype_summary.h5ad`; keep slices small but representative (mix of cell types, sparse rows, at least one gene with pipe-encoded ID if relevant).
+3. Run snapshot regeneration: `pytest hvantk/skills/ucsc_cellbrowser/tests/test_builder.py --regenerate-snapshots`. (No `-m hail`; this builder is not Hail-backed.)
 4. Inspect the snapshot diff:
    - **Expected diff** — new `obs_columns` (added metadata field), changed `n_obs` / `n_vars` (different fixture shape), new `layers` if a downstream caller starts populating one. Commit the regenerated snapshots with explanation.
    - **Unexpected diff** — `X_dtype` shifts away from `float32` (likely a cast regression), `X_format` changes between `csr_matrix` / `csc_matrix` for the same code path, missing or renamed `obs_columns` (data loss). STOP and investigate before committing.
@@ -82,10 +82,10 @@ UCSC datasets are per-collection. To refresh a collection's build:
 
 ## 9. Validation contract
 
-- `fixture`: `hvantk/tests/testdata/raw/ucsc-cellbrowser/expression_matrix.tsv` (primary) and `hvantk/tests/testdata/raw/ucsc-cellbrowser/metadata.tsv` (secondary).
-- `schema_snapshot`: `hvantk/tests/snapshots/ucsc-cellbrowser/schema.json`
-- `row_snapshot`: `hvantk/tests/snapshots/ucsc-cellbrowser/sample_rows.json`
-- `test_command`: `pytest hvantk/tests/test_ucsc_cellbrowser_builder.py`
+- `fixture`: `hvantk/skills/ucsc_cellbrowser/tests/testdata/raw/ucsc-cellbrowser/expression_matrix.tsv` (primary) and `hvantk/skills/ucsc_cellbrowser/tests/testdata/raw/ucsc-cellbrowser/metadata.tsv` (secondary).
+- `schema_snapshot`: `hvantk/skills/ucsc_cellbrowser/tests/snapshots/ucsc-cellbrowser/schema.json`
+- `row_snapshot`: `hvantk/skills/ucsc_cellbrowser/tests/snapshots/ucsc-cellbrowser/sample_rows.json`
+- `test_command`: `pytest hvantk/skills/ucsc_cellbrowser/tests/test_builder.py`
 
 ## 10. Onboarding a new dataset within UCSC Cell Browser
 

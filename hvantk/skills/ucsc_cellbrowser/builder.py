@@ -1,8 +1,17 @@
-"""
-AnnData builders for converting raw expression sources into AnnData (.h5ad) objects.
+"""AnnData builder for UCSC Cell Browser collections.
 
-This module provides unified builders that wrap existing per-source functions
-and normalize options and naming.
+This module owns ``build_ucsc_ad``, the canonical builder that turns a UCSC
+Cell Browser expression TSV plus its metadata file into an ``anndata.AnnData``
+object (cells x genes). It was migrated out of
+``hvantk/tables/matrix_builders.py`` so that everything UCSC-specific
+(builder, streaming/backed helpers, downloader, dataset class, tests,
+fixtures, SKILL) lives under the plugin folder at
+:mod:`hvantk.skills.ucsc_cellbrowser`.
+
+The shared AnnData helpers (``build_anndata_metadata``,
+``annotate_column_summary_ad``, ``save_anndata``) intentionally stay in
+``hvantk/core/anndata_utils.py`` because they are reused by every anndata
+builder (Expression Atlas, CPTAC, ...).
 """
 
 from __future__ import annotations
@@ -19,6 +28,7 @@ BACKED_BUILDER_THRESHOLD_BYTES = 1 * 1024 * 1024 * 1024  # 1 GiB
 
 __all__ = [
     "build_ucsc_ad",
+    "BACKED_BUILDER_THRESHOLD_BYTES",
 ]
 
 
@@ -70,7 +80,7 @@ def build_ucsc_ad(
     """
     import anndata as ad
 
-    from hvantk.tables.ucsc import (
+    from hvantk.skills.ucsc_cellbrowser.shared.ucsc import (
         load_ucsc_metadata,
         create_anndata_from_ucsc_matrix,
         build_ucsc_atlas_backed,

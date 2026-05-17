@@ -59,7 +59,7 @@ This demonstrates:
 {
   "matrices": [
     {
-      "name": "ucsc",
+      "name": "ucsc-cellbrowser:default",
       "inputs": {
         "expression_matrix": "/data/ucsc/expr.tsv.bgz",
         "metadata": "/data/ucsc/meta.tsv"

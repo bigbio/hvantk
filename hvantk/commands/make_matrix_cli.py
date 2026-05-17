@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 def _build_ucsc_ad(**kwargs):
-    from hvantk.tables.matrix_builders import build_ucsc_ad
+    from hvantk.skills.ucsc_cellbrowser.builder import build_ucsc_ad
 
     return build_ucsc_ad(**kwargs)
 

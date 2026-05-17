@@ -287,15 +287,11 @@ def run_table_builder(
 
 
 # Matrix builders - automatically generated adapters using factory
+# All entries now come from the plugin registry via
+# ``_initialize_plugin_registrations`` below.
 MATRIX_BUILDERS: Dict[
     str, Callable[[Dict[str, str], str, Dict[str, Any] | None], None]
-] = {
-    "ucsc": create_matrix_adapter(
-        "hvantk.tables.matrix_builders",
-        "build_ucsc_ad",
-        required_inputs=["expression_matrix", "metadata"],
-    ),
-}
+] = {}
 
 
 def run_matrix_builder(

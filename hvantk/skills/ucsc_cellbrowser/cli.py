@@ -1,3 +1,10 @@
+"""CLI command and lifecycle entry point for downloading UCSC Cell Browser data.
+
+Examples:
+    hvantk download ucsc --dataset adultPancreas -o data/ucsc/
+    hvantk download ucsc --list_datasets --search heart
+"""
+
 import click
 import os
 from urllib.parse import urlparse
@@ -6,7 +13,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from hvantk.datasets.ucsc_cell_datasets import UCSCDataSetCollection
+from hvantk.skills.ucsc_cellbrowser.shared.datasets import UCSCDataSetCollection
 from hvantk.core.config import CONTEXT_SETTINGS
 import hvantk.data.file_utils as file_utils
 from hvantk.core.constants import (
@@ -287,6 +294,64 @@ def ucsc_downloader(ctx, dataset, output_dir, base_url, list_datasets, search):
     click.echo(f"Data downloaded to {target_dir}")
     logger.info(f"Data downloaded to {target_dir}")
     ctx.exit(0)
+
+
+# Backwards-compatible alias so existing imports continue to work while
+# still pointing at the new plugin module. New code should import
+# ``download_cmd`` directly.
+download_cmd = ucsc_downloader
+
+
+def download_dataset(
+    raw_dir: str,
+    dataset: str | None = None,
+    base_url: str = UCSC_CELL_BROWSER_BASE_URL,
+    **kwargs,
+) -> dict:
+    """Lifecycle entry point for the plugin loader.
+
+    Per the ``DatasetSpec`` contract documented in
+    :mod:`hvantk.core.plugin_api`, a lifecycle ``download_fn`` accepts
+    ``raw_dir=<path>`` and writes the raw upstream files under that
+    directory.
+
+    For UCSC Cell Browser, "raw" means the per-collection expression
+    matrix TSV plus the metadata TSV. This wrapper invokes the
+    underlying ``UCSCDataset`` helpers so the click CLI's interactive
+    prompts/output are bypassed.
+
+    Parameters
+    ----------
+    raw_dir : str
+        Directory under which the dataset's files are placed.
+    dataset : str
+        UCSC dataset name (e.g. ``"adultPancreas"`` or
+        ``"hoc/all-heart"``). Required.
+    base_url : str
+        Base URL of the UCSC Cell Browser data root.
+    **kwargs
+        Reserved for future lifecycle keyword arguments; ignored today.
+
+    Returns
+    -------
+    dict
+        Mapping with keys ``expression_matrix`` and ``metadata`` pointing
+        to the downloaded files.
+    """
+    if not dataset:
+        raise ValueError("download_dataset requires `dataset` (UCSC collection name)")
+
+    target_dir = os.path.join(raw_dir, dataset)
+    os.makedirs(target_dir, exist_ok=True)
+
+    expr_url = f"{base_url}/{dataset}/{EXPRESSION_MATRIX_FILE_NAME}"
+    meta_url = f"{base_url}/{dataset}/{METADATA_FILE_NAME}"
+
+    expr_path = file_utils.download_file(
+        expr_url, target_dir, EXPRESSION_MATRIX_FILE_NAME
+    )
+    meta_path = file_utils.download_file(meta_url, target_dir, METADATA_FILE_NAME)
+    return {"expression_matrix": expr_path, "metadata": meta_path}
 
 
 if __name__ == "__main__":

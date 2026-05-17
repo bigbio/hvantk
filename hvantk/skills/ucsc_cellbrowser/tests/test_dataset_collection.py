@@ -1,7 +1,10 @@
 import json
 from unittest.mock import patch, MagicMock
 
-from hvantk.datasets.ucsc_cell_datasets import UCSCDataSetCollection, UCSCDataset
+from hvantk.skills.ucsc_cellbrowser.shared.datasets import (
+    UCSCDataSetCollection,
+    UCSCDataset,
+)
 from hvantk.core.constants import UCSC_JSON_FILE_PATH
 
 

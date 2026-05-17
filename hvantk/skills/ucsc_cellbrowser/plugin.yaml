@@ -1,0 +1,69 @@
+api_version: 2
+name: ucsc-cellbrowser
+version: 0.1.0
+status: provisional
+description: UCSC Cell Browser single-cell expression collections - AnnData
+
+source:
+  catalog_ref: ucsc-cellbrowser
+
+datasets:
+  - name: default
+    domain: transcriptomics
+    backend: anndata
+    builder:
+      module: hvantk.skills.ucsc_cellbrowser.builder
+      function: build_ucsc_ad
+    drift_probe:
+      module: hvantk.skills.ucsc_cellbrowser.drift_probe
+      function: fetch_fingerprint
+    skill: SKILL.md
+    tests:
+      command: pytest hvantk/skills/ucsc_cellbrowser/tests
+      fixture: tests/testdata/raw/ucsc-cellbrowser
+      schema_snapshot: tests/snapshots/ucsc-cellbrowser/schema.json
+      row_snapshot: tests/snapshots/ucsc-cellbrowser/sample_rows.json
+      drift_fingerprint: tests/drift_fingerprint.json
+    lifecycle:
+      download:
+        module: hvantk.skills.ucsc_cellbrowser.cli
+        function: download_dataset
+
+  - name: adult-ctx
+    domain: transcriptomics
+    backend: anndata
+    builder:
+      module: hvantk.skills.ucsc_cellbrowser.builder
+      function: build_ucsc_ad
+    drift_probe:
+      module: hvantk.skills.ucsc_cellbrowser.drift_probe
+      function: fetch_fingerprint
+    skill: SKILL.md
+    tests:
+      command: pytest hvantk/skills/ucsc_cellbrowser/tests
+      fixture: tests/testdata/raw/ucsc-cellbrowser-adult-ctx
+      schema_snapshot: tests/snapshots/ucsc-cellbrowser-adult-ctx/schema.json
+      row_snapshot: tests/snapshots/ucsc-cellbrowser-adult-ctx/sample_rows.json
+      drift_fingerprint: tests/drift_fingerprint.json
+
+  - name: dev-ctx
+    domain: transcriptomics
+    backend: anndata
+    builder:
+      module: hvantk.skills.ucsc_cellbrowser.builder
+      function: build_ucsc_ad
+    drift_probe:
+      module: hvantk.skills.ucsc_cellbrowser.drift_probe
+      function: fetch_fingerprint
+    skill: SKILL.md
+    tests:
+      command: pytest hvantk/skills/ucsc_cellbrowser/tests
+      fixture: tests/testdata/raw/ucsc-cellbrowser-dev-ctx
+      schema_snapshot: tests/snapshots/ucsc-cellbrowser-dev-ctx/schema.json
+      row_snapshot: tests/snapshots/ucsc-cellbrowser-dev-ctx/sample_rows.json
+      drift_fingerprint: tests/drift_fingerprint.json
+
+cli:
+  - command: ucsc-cellbrowser-download
+    module: hvantk.skills.ucsc_cellbrowser.cli
+    function: download_cmd
