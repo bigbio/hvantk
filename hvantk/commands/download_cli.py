@@ -6,7 +6,7 @@ from hvantk.commands.expression_atlas_downloader import download_experiments
 from hvantk.commands.clingen_downloader import clingen_downloader
 from hvantk.commands.gencc_downloader import gencc_downloader
 from hvantk.skills.hgnc.cli import download_cmd as hgnc_downloader
-from hvantk.commands.clinvar_downloader import clinvar_downloader
+from hvantk.skills.clinvar.cli import clinvar_downloader
 from hvantk.commands.uniprot_ptm_downloader import uniprot_ptm_downloader
 from hvantk.commands.peptideatlas_phospho_downloader import peptideatlas_phospho_downloader
 from hvantk.commands.cptac_phospho_downloader import cptac_phospho_downloader

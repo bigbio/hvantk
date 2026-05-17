@@ -12,8 +12,8 @@ from unittest.mock import patch, MagicMock
 import pytest
 from click.testing import CliRunner
 
-from hvantk.commands.clinvar_downloader import clinvar_downloader
-from hvantk.datasets.clinvar_datasets import ClinVarDataset
+from hvantk.skills.clinvar.cli import clinvar_downloader
+from hvantk.skills.clinvar.shared.datasets import ClinVarDataset
 
 
 class TestClinVarDataset:
@@ -88,7 +88,7 @@ class TestClinVarDataset:
             output_dir = os.path.join(tmpdir, "new_subdir", "clinvar")
             ds = ClinVarDataset.latest()
 
-            with patch("hvantk.datasets.clinvar_datasets.download_file") as mock_dl:
+            with patch("hvantk.skills.clinvar.shared.datasets.download_file") as mock_dl:
                 mock_dl.return_value = os.path.join(output_dir, ds.file_name)
                 ds.download(output_dir, download_index=False)
                 assert os.path.exists(output_dir)
@@ -114,7 +114,7 @@ class TestClinVarDataset:
             with open(file_path, "w") as f:
                 f.write("test")
 
-            with patch("hvantk.datasets.clinvar_datasets.download_file") as mock_dl:
+            with patch("hvantk.skills.clinvar.shared.datasets.download_file") as mock_dl:
                 mock_dl.return_value = file_path
                 result = ds.download(tmpdir, overwrite=True, download_index=False)
                 assert result == file_path
@@ -125,7 +125,7 @@ class TestClinVarDataset:
         with tempfile.TemporaryDirectory() as tmpdir:
             ds = ClinVarDataset.latest()
 
-            with patch("hvantk.datasets.clinvar_datasets.download_file") as mock_dl:
+            with patch("hvantk.skills.clinvar.shared.datasets.download_file") as mock_dl:
                 ds.download(tmpdir, download_index=True)
                 # Two calls: one for VCF, one for .tbi
                 assert mock_dl.call_count == 2
@@ -137,7 +137,7 @@ class TestClinVarDataset:
         with tempfile.TemporaryDirectory() as tmpdir:
             ds = ClinVarDataset.latest()
 
-            with patch("hvantk.datasets.clinvar_datasets.download_file") as mock_dl:
+            with patch("hvantk.skills.clinvar.shared.datasets.download_file") as mock_dl:
                 ds.download(tmpdir, download_index=False)
                 mock_dl.assert_called_once()
 
@@ -192,7 +192,7 @@ class TestClinVarDownloaderCLI:
         """Test default invocation downloads latest."""
         runner = CliRunner()
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch("hvantk.datasets.clinvar_datasets.download_file") as mock_dl:
+            with patch("hvantk.skills.clinvar.shared.datasets.download_file") as mock_dl:
                 result = runner.invoke(
                     clinvar_downloader,
                     ["--output-dir", tmpdir],
@@ -205,7 +205,7 @@ class TestClinVarDownloaderCLI:
         """Test --version YYYYMMDD works."""
         runner = CliRunner()
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch("hvantk.datasets.clinvar_datasets.download_file") as mock_dl:
+            with patch("hvantk.skills.clinvar.shared.datasets.download_file") as mock_dl:
                 result = runner.invoke(
                     clinvar_downloader,
                     ["--version", "20260101", "--output-dir", tmpdir],
@@ -217,7 +217,7 @@ class TestClinVarDownloaderCLI:
         """Test --genome-build GRCh37 works."""
         runner = CliRunner()
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch("hvantk.datasets.clinvar_datasets.download_file") as mock_dl:
+            with patch("hvantk.skills.clinvar.shared.datasets.download_file") as mock_dl:
                 result = runner.invoke(
                     clinvar_downloader,
                     ["--genome-build", "GRCh37", "--output-dir", tmpdir],
@@ -229,7 +229,7 @@ class TestClinVarDownloaderCLI:
         """Test --no-index skips .tbi download."""
         runner = CliRunner()
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch("hvantk.datasets.clinvar_datasets.download_file") as mock_dl:
+            with patch("hvantk.skills.clinvar.shared.datasets.download_file") as mock_dl:
                 result = runner.invoke(
                     clinvar_downloader,
                     ["--no-index", "--output-dir", tmpdir],
@@ -277,7 +277,7 @@ class TestClinVarDownloaderCLI:
         """Test --verify-md5 triggers checksum verification."""
         runner = CliRunner()
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch("hvantk.datasets.clinvar_datasets.download_file"):
+            with patch("hvantk.skills.clinvar.shared.datasets.download_file"):
                 with patch.object(
                     ClinVarDataset, "verify_md5", return_value=True
                 ) as mock_md5:

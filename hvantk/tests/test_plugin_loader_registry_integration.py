@@ -11,7 +11,7 @@ from hvantk.core import plugin_loader
 def test_legacy_registrations_still_present():
     from hvantk.tables.registry import TABLE_BUILDERS
     # Sanity: an existing legacy builder is still registered.
-    assert "clinvar" in TABLE_BUILDERS
+    assert "gevir" in TABLE_BUILDERS
 
 
 def test_plugin_loader_populates_table_builders(monkeypatch, tmp_path):
@@ -33,4 +33,4 @@ def test_plugin_loader_populates_table_builders(monkeypatch, tmp_path):
     tables_registry._apply_plugin_registrations(reg)
     assert "fake:default" in tables_registry.TABLE_BUILDERS
     # Legacy entry still intact.
-    assert "clinvar" in tables_registry.TABLE_BUILDERS
+    assert "gevir" in tables_registry.TABLE_BUILDERS

@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 def _create_clinvar_tb(*args, **kwargs):
-    from hvantk.tables.table_builders import create_clinvar_tb
+    from hvantk.skills.clinvar.builder import create_clinvar_tb
 
     return create_clinvar_tb(*args, **kwargs)
 

@@ -4,10 +4,10 @@ from pathlib import Path
 
 from hvantk.tables.table_builders import (
     create_gnomad_constraint_gene_metrics_tb,
-    create_clinvar_tb,
     create_gevir_tb,
     create_ensembl_gene_tb,
 )
+from hvantk.skills.clinvar.builder import create_clinvar_tb
 from hvantk.skills.insider.builder import create_interactome_tb
 
 # Mark as Hail-dependent and slow
@@ -84,7 +84,16 @@ def test_create_interactome_tb():
 
 
 def test_create_clinvar_tb():
-    input_path = TEST_DIR / "raw/clinvar/clinvar_20220403_chr20.vcf.bgz"
+    input_path = (
+        Path(__file__).parent.parent
+        / "skills"
+        / "clinvar"
+        / "tests"
+        / "testdata"
+        / "raw"
+        / "clinvar"
+        / "clinvar_20220403_chr20.vcf.bgz"
+    )
     output_path = TMP_DIR / "clinvar_20220403_chr20.ht"
     overwrite = True
     export_tsv = True

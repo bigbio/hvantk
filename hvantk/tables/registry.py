@@ -244,9 +244,6 @@ def create_matrix_adapter(
 
 # Table builders - automatically generated adapters using factory
 TABLE_BUILDERS: Dict[str, Callable[[str, str, Dict[str, Any] | None], None]] = {
-    "clinvar": create_table_adapter(
-        "hvantk.tables.table_builders", "create_clinvar_tb"
-    ),
     "gevir": create_table_adapter("hvantk.tables.table_builders", "create_gevir_tb"),
     "gnomad-metrics": create_table_adapter(
         "hvantk.tables.table_builders", "create_gnomad_constraint_gene_metrics_tb"

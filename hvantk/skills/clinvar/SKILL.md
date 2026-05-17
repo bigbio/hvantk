@@ -10,7 +10,7 @@ domain: variants
 
 ## 1. Status & scope
 
-This skill covers BUILD and UPDATE of the ClinVar Hail Table. It does NOT cover download (see `hvantk/commands/clinvar_downloader.py`) or downstream analysis.
+This skill covers BUILD and UPDATE of the ClinVar Hail Table. It does NOT cover download (see `hvantk/skills/clinvar/cli.py`) or downstream analysis.
 
 ## 2. Source identity
 
@@ -41,10 +41,12 @@ Hail Table at `<output_path>.ht`. Schema is defined by `hvantk/tests/snapshots/c
 
 ## 6. hvantk integration points
 
-- Builder: `create_clinvar_tb` in `hvantk/tables/table_builders.py`
-- CLI: `hvantk mktable clinvar` in `hvantk/commands/make_table_cli.py`
-- Registry: registered in `hvantk/tables/registry.py` as `TABLE_BUILDERS["clinvar"]`
-- Test: `hvantk/tests/test_clinvar_builder.py`
+- Builder: `create_clinvar_tb` in `hvantk/skills/clinvar/builder.py`
+- Downloader CLI: `clinvar_downloader` in `hvantk/skills/clinvar/cli.py` (registered as `hvantk download clinvar`)
+- Dataset class: `ClinVarDataset` in `hvantk/skills/clinvar/shared/datasets.py`
+- Build CLI: `hvantk mktable clinvar` in `hvantk/commands/make_table_cli.py`
+- Plugin manifest: `hvantk/skills/clinvar/plugin.yaml` (drives loader registration; compound dataset key `clinvar:variants`)
+- Test: `hvantk/skills/clinvar/tests/test_builder.py`
 
 Read the existing files at these paths as ground truth for shape. This skill does not restate code.
 
@@ -59,16 +61,16 @@ When invoked to build or update:
    - `transform_func = lambda ht: ht.repartition(100).key_by("locus", "alleles")`
 4. Apply the parsing rules from § 4 (force, contig_recoding, skip_invalid_loci).
 5. Preserve the flatten-before-export branch from § 4 — pass `export_tsv=False` to `_create_table_base` and run `<table>.flatten().export(...)` after. The round-trip test does NOT exercise `export_tsv=True`, so a regression here would land silently.
-6. Run validation: `pytest hvantk/tests/test_clinvar_builder.py -m hail`.
+6. Run validation: `pytest hvantk/skills/clinvar/tests/test_builder.py -m hail`.
 7. Report: schema diff, sample-row diff, test pass/fail.
 
 ## 8. Update playbook
 
 When ClinVar releases a new monthly version:
 
-1. Fetch the new release: `hvantk download clinvar --release latest --output-dir /tmp/clinvar`.
-2. Regenerate the fixture: extract a small representative slice (mix of CLNSIG values, multi-allelic site, multi-CLNDN row). The current pilot fixture is a single-chromosome slice (`hvantk/tests/testdata/raw/clinvar/clinvar_20220403_chr20.vcf.bgz`) — this is adequate because ClinVar parsing is INFO-field driven, not chromosome-dependent. Replace the file (re-bgzip if needed). A `.tbi` index is optional; `hl.import_vcf(force=True)` reads `.bgz` directly.
-3. Run snapshot regeneration: `pytest hvantk/tests/test_clinvar_builder.py -m hail --regenerate-snapshots`.
+1. Fetch the new release: `hvantk download clinvar --output-dir /tmp/clinvar`.
+2. Regenerate the fixture: extract a small representative slice (mix of CLNSIG values, multi-allelic site, multi-CLNDN row). The current pilot fixture is a single-chromosome slice (`hvantk/skills/clinvar/tests/testdata/raw/clinvar/clinvar_20220403_chr20.vcf.bgz`) — this is adequate because ClinVar parsing is INFO-field driven, not chromosome-dependent. Replace the file (re-bgzip if needed). A `.tbi` index is optional; `hl.import_vcf(force=True)` reads `.bgz` directly.
+3. Run snapshot regeneration: `pytest hvantk/skills/clinvar/tests/test_builder.py -m hail --regenerate-snapshots`.
 4. Inspect the snapshot diff:
    - **Expected diff** (new INFO field, additional CLNSIG value): commit the regenerated snapshots with explanation.
    - **Unexpected diff** (schema regression, missing field): STOP. Investigate before committing.
@@ -77,7 +79,7 @@ When ClinVar releases a new monthly version:
 
 ## 9. Validation contract
 
-- `fixture`: `hvantk/tests/testdata/raw/clinvar/clinvar_20220403_chr20.vcf.bgz`
-- `schema_snapshot`: `hvantk/tests/snapshots/clinvar/schema.json`
-- `row_snapshot`: `hvantk/tests/snapshots/clinvar/sample_rows.json`
-- `test_command`: `pytest hvantk/tests/test_clinvar_builder.py -m hail`
+- `fixture`: `hvantk/skills/clinvar/tests/testdata/raw/clinvar/clinvar_20220403_chr20.vcf.bgz`
+- `schema_snapshot`: `hvantk/skills/clinvar/tests/snapshots/schema.json`
+- `row_snapshot`: `hvantk/skills/clinvar/tests/snapshots/sample_rows.json`
+- `test_command`: `pytest hvantk/skills/clinvar/tests/test_builder.py -m hail`

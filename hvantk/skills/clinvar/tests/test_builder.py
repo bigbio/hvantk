@@ -14,8 +14,8 @@ from hvantk.tests._snapshot_utils import (
 # Aliased to avoid shadowing the fixture name `regenerate_snapshots` in the test signature
 from hvantk.tests._snapshot_utils import regenerate_snapshots as regenerate_snapshots_fn
 
-FIXTURE = "hvantk/tests/testdata/raw/clinvar/clinvar_20220403_chr20.vcf.bgz"
-SNAPSHOT_DIR = Path("hvantk/tests/snapshots/clinvar")
+FIXTURE = "hvantk/skills/clinvar/tests/testdata/raw/clinvar/clinvar_20220403_chr20.vcf.bgz"
+SNAPSHOT_DIR = Path("hvantk/skills/clinvar/tests/snapshots")
 
 # (locus, alleles) is unique-in-table for ClinVar, so keys are inlined here
 # rather than maintained in a separate sample_keys.json (per conventions §9).
@@ -35,7 +35,7 @@ SAMPLE_KEYS = [
 def test_clinvar_round_trip(hail_session, tmp_path, regenerate_snapshots):
     """Build ClinVar from fixture; assert schema and sample-row stability."""
     import hail as hl
-    from hvantk.tables.table_builders import create_clinvar_tb
+    from hvantk.skills.clinvar.builder import create_clinvar_tb
 
     keys = SAMPLE_KEYS
 

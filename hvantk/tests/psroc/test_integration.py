@@ -33,7 +33,16 @@ from hvantk.psroc.roc import (
 # Test data paths
 TEST_DATA_DIR = Path(__file__).parent.parent / "testdata"
 PSROC_TEST_DATA = TEST_DATA_DIR / "psroc"
-CLINVAR_TEST_DATA = TEST_DATA_DIR / "raw" / "clinvar" / "clinvar_20220403_chr20.vcf.bgz"
+CLINVAR_TEST_DATA = (
+    Path(__file__).parent.parent.parent
+    / "skills"
+    / "clinvar"
+    / "tests"
+    / "testdata"
+    / "raw"
+    / "clinvar"
+    / "clinvar_20220403_chr20.vcf.bgz"
+)
 DBNSFP_TEST_DATA = (
     TEST_DATA_DIR / "raw" / "dbnsfp" / "dbNSFP4_v49a_example_variants.bgz"
 )

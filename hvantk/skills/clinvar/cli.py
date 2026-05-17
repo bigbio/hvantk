@@ -1,30 +1,81 @@
 """
-CLI command for downloading ClinVar VCF data.
+CLI command and lifecycle entry point for downloading ClinVar VCF data.
 
 Examples:
     # Download latest ClinVar VCF (GRCh38)
-    hvantk clinvar-downloader --output-dir data/clinvar
+    hvantk clinvar-download --output-dir data/clinvar
 
     # Download a specific archived version
-    hvantk clinvar-downloader --version 20260101 --output-dir data/clinvar
+    hvantk clinvar-download --version 20260101 --output-dir data/clinvar
 
     # Download GRCh37 build without tabix index
-    hvantk clinvar-downloader --genome-build GRCh37 --no-index
+    hvantk clinvar-download --genome-build GRCh37 --no-index
 
     # Download and verify MD5 checksum
-    hvantk clinvar-downloader --verify-md5
+    hvantk clinvar-download --verify-md5
 """
 
 import logging
 
 import click
 
-from hvantk.core.config import CONTEXT_SETTINGS
+from hvantk.core.config import CONTEXT_SETTINGS  # noqa: F401  (kept for parity with sibling CLIs)
+from hvantk.skills.clinvar.shared.datasets import ClinVarDataset
 
 logger = logging.getLogger(__name__)
 
 
-@click.command("clinvar-downloader", short_help="Download ClinVar VCF data from NCBI")
+def download_dataset(
+    raw_dir: str,
+    overwrite: bool = False,
+    genome_build: str = "GRCh38",
+    version_date: str = "latest",
+    download_index: bool = True,
+    **kwargs,
+) -> str:
+    """Lifecycle entry point for the plugin loader.
+
+    Per the ``DatasetSpec`` contract documented in
+    :mod:`hvantk.core.plugin_api`, a lifecycle ``download_fn`` accepts
+    ``raw_dir=<path>`` and writes the raw upstream files under that
+    directory. For ClinVar that is the VCF (and, by default, the ``.tbi``
+    index) for the requested genome build / release.
+
+    Parameters
+    ----------
+    raw_dir : str
+        Directory under which raw upstream files are placed.
+    overwrite : bool, optional
+        Whether to overwrite an existing file (default: False).
+    genome_build : str, optional
+        Reference genome build, ``"GRCh38"`` or ``"GRCh37"``
+        (default: ``"GRCh38"``).
+    version_date : str, optional
+        Version date (``YYYYMMDD``) or ``"latest"`` for the current release
+        (default: ``"latest"``).
+    download_index : bool, optional
+        Whether to also download the ``.tbi`` tabix index (default: True).
+    **kwargs
+        Reserved for future lifecycle keyword arguments; ignored today.
+
+    Returns
+    -------
+    str
+        Path to the downloaded raw VCF file.
+    """
+    if version_date == "latest":
+        dataset = ClinVarDataset.latest(genome_build=genome_build)
+    else:
+        dataset = ClinVarDataset.from_date(version_date, genome_build=genome_build)
+
+    return dataset.download(
+        output_dir=raw_dir,
+        overwrite=overwrite,
+        download_index=download_index,
+    )
+
+
+@click.command("clinvar-download", short_help="Download ClinVar VCF data from NCBI")
 @click.option(
     "--version",
     "version_date",
@@ -78,18 +129,16 @@ def clinvar_downloader(
 
         # Download the latest ClinVar VCF
 
-        hvantk clinvar-downloader --output-dir data/clinvar
+        hvantk clinvar-download --output-dir data/clinvar
 
         # Download a specific archived version
 
-        hvantk clinvar-downloader --version 20260101 --output-dir data/clinvar
+        hvantk clinvar-download --version 20260101 --output-dir data/clinvar
 
         # Download GRCh37 build
 
-        hvantk clinvar-downloader --genome-build GRCh37
+        hvantk clinvar-download --genome-build GRCh37
     """
-    from hvantk.datasets.clinvar_datasets import ClinVarDataset
-
     # Create dataset reference
     try:
         if version_date == "latest":

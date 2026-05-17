@@ -1,7 +1,7 @@
 {
   "tables": [
     {
-      "name": "clinvar",
+      "name": "clinvar:variants",
       "input": "/data/clinvar_2024.vcf.bgz",
       "output": "/out/clinvar.ht",
       "params": {"reference_genome": "GRCh38", "export_tsv": true}

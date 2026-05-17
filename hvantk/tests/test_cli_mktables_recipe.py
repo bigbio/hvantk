@@ -9,7 +9,7 @@ def test_mktables_recipe_success(tmp_path):
     recipe = {
         "tables": [
             {
-                "name": "clinvar",
+                "name": "clinvar:variants",
                 "input": "/data/clin.vcf.bgz",
                 "output": "/out/clinvar.ht",
                 "params": {"reference_genome": "GRCh38", "export_tsv": True},
@@ -35,7 +35,7 @@ def test_mktables_recipe_success(tmp_path):
         # Two calls
         assert mock_runner.call_count == 2
         mock_runner.assert_any_call(
-            "clinvar",
+            "clinvar:variants",
             "/data/clin.vcf.bgz",
             "/out/clinvar.ht",
             {"reference_genome": "GRCh38", "export_tsv": True},

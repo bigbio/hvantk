@@ -66,7 +66,7 @@ class ClinvarDataStreamer(HailDataStreamer):
             output_path = self.table_output_path or hl.utils.new_temp_file(
                 "clinvar", "ht"
             )
-            from hvantk.tables.table_builders import create_clinvar_tb
+            from hvantk.skills.clinvar.builder import create_clinvar_tb
 
             self.clinvar_ht = create_clinvar_tb(
                 input_path=self.clinvar_path,
