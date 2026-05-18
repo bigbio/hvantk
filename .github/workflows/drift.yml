@@ -32,7 +32,7 @@ jobs:
     # Schedule events on forks run with the upstream token but we still want to
     # be defensive: only run on the canonical repo to avoid surprise pushes
     # from fork-triggered manual dispatches.
-    if: github.repository == 'ypriverol/hvantk' || github.event_name == 'workflow_dispatch'
+    if: github.repository == 'bigbio/hvantk' || github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Checkout base branch
