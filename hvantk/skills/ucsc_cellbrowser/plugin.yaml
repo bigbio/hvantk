@@ -4,6 +4,8 @@ version: 0.1.0
 status: provisional
 description: UCSC Cell Browser single-cell expression collections - AnnData
 
+catalog: catalog/datasets.json
+
 source:
   catalog_ref: ucsc-cellbrowser
 

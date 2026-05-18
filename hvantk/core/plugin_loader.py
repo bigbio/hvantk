@@ -162,10 +162,27 @@ class PluginRegistry:
                 self._load_errors.append(
                     (f"{manifest['name']}:{ds_manifest.get('name', '?')}", exc)
                 )
+        catalog_rel = manifest.get("catalog")
+        catalog_path = (
+            str((plugin_dir / catalog_rel).resolve()) if catalog_rel else None
+        )
+        # Derive the manifest's primary domain independently of builder
+        # imports so catalog routing still works when a builder cannot
+        # be imported (e.g. hail missing in a non-hail dev env).
+        manifest_domains: dict[str, int] = {}
+        for ds in manifest.get("datasets", []):
+            d = ds.get("domain")
+            if d:
+                manifest_domains[d] = manifest_domains.get(d, 0) + 1
+        primary_domain = (
+            max(manifest_domains, key=manifest_domains.get) if manifest_domains else None
+        )
         return Provider(
             name=manifest["name"],
             version=manifest["version"],
             datasets=tuple(datasets),
+            catalog_path=catalog_path,
+            primary_domain=primary_domain,
         )
 
     def _build_dataset_spec(

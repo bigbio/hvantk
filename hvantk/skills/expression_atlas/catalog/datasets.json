@@ -1,0 +1,811 @@
+[
+  {
+    "title": "The Genotype-Tissue Expression (GTEx) project v8",
+    "accession": "E-GTEX-8",
+    "description": "",
+    "pubmedid": "35922509",
+    "data_source": "Expression_Atlas",
+    "last_updated": "2025-09-23T15:25:47.124153",
+    "update_frequency": "static",
+    "organism": "Homo sapiens",
+    "expression_unit": "TPM",
+    "platform_type": "RNA-seq",
+    "data_level": "transcript",
+    "files": [
+      {
+        "path": "E-GTEX-8.condensed-sdrf.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: sdrf"
+      },
+      {
+        "path": "E-GTEX-8-transcripts-tpms.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: transcript-tpm"
+      }
+    ]
+  },
+  {
+    "title": "Human RNA-seq time-series of the development of seven major organs",
+    "accession": "E-MTAB-6814",
+    "description": "This dataset covers the development of 7 organs (brain, cerebellum, heart, kidney, liver, ovary and testis) from 4 weeks post conception to adulthood (including ageing).",
+    "pubmedid": "31243369",
+    "data_source": "Expression_Atlas",
+    "last_updated": "2025-09-23T15:25:47.128465",
+    "update_frequency": "static",
+    "organism": "Homo sapiens",
+    "expression_unit": "TPM",
+    "platform_type": "RNA-seq",
+    "data_level": "transcript",
+    "files": [
+      {
+        "path": "E-MTAB-6814.condensed-sdrf.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: sdrf"
+      },
+      {
+        "path": "E-MTAB-6814-transcripts-tpms.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: transcript-tpm"
+      }
+    ]
+  },
+  {
+    "title": "Chicken RNA-seq time-series of the development of seven major organs",
+    "accession": "E-MTAB-6769",
+    "description": "This dataset covers the development of 7 organs (brain, cerebellum, heart, kidney, liver, ovary and testis) from day 10 post-conception to day 155 post-hatch in Gallus gallus.",
+    "pubmedid": "31243369",
+    "data_source": "Expression_Atlas",
+    "last_updated": "2025-09-23T15:25:47.132344",
+    "update_frequency": "static",
+    "organism": "Homo sapiens",
+    "expression_unit": "TPM",
+    "platform_type": "RNA-seq",
+    "data_level": "transcript",
+    "files": [
+      {
+        "path": "E-MTAB-6769.condensed-sdrf.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: sdrf"
+      },
+      {
+        "path": "E-MTAB-6769-transcripts-tpms.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: transcript-tpm"
+      }
+    ]
+  },
+  {
+    "title": "Opossum RNA-seq time-series of the development of seven major organs",
+    "accession": "E-MTAB-6833",
+    "description": "This dataset covers the development of 7 organs (brain, cerebellum, heart, kidney, liver, ovary and testis) from embryonic day 13.5 to adulthood in Monodelphis domestica.",
+    "pubmedid": "31243369",
+    "data_source": "Expression_Atlas",
+    "last_updated": "2025-09-23T15:25:47.136119",
+    "update_frequency": "static",
+    "organism": "Homo sapiens",
+    "expression_unit": "TPM",
+    "platform_type": "RNA-seq",
+    "data_level": "transcript",
+    "files": [
+      {
+        "path": "E-MTAB-6833.condensed-sdrf.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: sdrf"
+      },
+      {
+        "path": "E-MTAB-6833-transcripts-tpms.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: transcript-tpm"
+      }
+    ]
+  },
+  {
+    "title": "Mouse RNA-seq time-series of the development of seven major organs",
+    "accession": "E-MTAB-6798",
+    "description": "This dataset covers the development of 7 organs (brain, cerebellum, heart, kidney, liver, ovary and testis) from embryonic day 10.5 to adulthood in Mus musculus.",
+    "pubmedid": "31243369",
+    "data_source": "Expression_Atlas",
+    "last_updated": "2025-09-23T15:25:47.139828",
+    "update_frequency": "static",
+    "organism": "Homo sapiens",
+    "expression_unit": "TPM",
+    "platform_type": "RNA-seq",
+    "data_level": "transcript",
+    "files": [
+      {
+        "path": "E-MTAB-6798.condensed-sdrf.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: sdrf"
+      },
+      {
+        "path": "E-MTAB-6798-transcripts-tpms.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: transcript-tpm"
+      }
+    ]
+  },
+  {
+    "title": "Rabbit RNA-seq time-series of the development of seven major organs",
+    "accession": "E-MTAB-6782",
+    "description": "This dataset covers the development of 7 organs (brain, cerebellum, heart, kidney, liver, ovary and testis) from embryonic day 12 to adulthood in Oryctolagus cuniculus.",
+    "pubmedid": "31243369",
+    "data_source": "Expression_Atlas",
+    "last_updated": "2025-09-23T15:25:47.143702",
+    "update_frequency": "static",
+    "organism": "Homo sapiens",
+    "expression_unit": "TPM",
+    "platform_type": "RNA-seq",
+    "data_level": "transcript",
+    "files": [
+      {
+        "path": "E-MTAB-6782.condensed-sdrf.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: sdrf"
+      },
+      {
+        "path": "E-MTAB-6782-transcripts-tpms.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: transcript-tpm"
+      }
+    ]
+  },
+  {
+    "title": "Rat RNA-seq time-series of the development of seven major organs",
+    "accession": "E-MTAB-6811",
+    "description": "This dataset covers the development of 7 organs (brain, cerebellum, heart, kidney, liver, ovary and testis) from embryonic day 11 to adulthood in Rattus norvegicus.",
+    "pubmedid": "31243369",
+    "data_source": "Expression_Atlas",
+    "last_updated": "2025-09-23T15:25:47.147993",
+    "update_frequency": "static",
+    "organism": "Homo sapiens",
+    "expression_unit": "TPM",
+    "platform_type": "RNA-seq",
+    "data_level": "transcript",
+    "files": [
+      {
+        "path": "E-MTAB-6811.condensed-sdrf.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: sdrf"
+      },
+      {
+        "path": "E-MTAB-6811-transcripts-tpms.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: transcript-tpm"
+      }
+    ]
+  },
+  {
+    "title": "Human protein atlas - Normal tissue proteomics",
+    "accession": "E-ERAD-475",
+    "description": "Protein expression data from the Human Protein Atlas covering normal human tissues using mass spectrometry and immunohistochemistry approaches.",
+    "pubmedid": "25613900",
+    "data_source": "Expression_Atlas",
+    "last_updated": "2025-09-23T15:25:47.152249",
+    "update_frequency": "static",
+    "organism": "Homo sapiens",
+    "expression_unit": "TPM",
+    "platform_type": "RNA-seq",
+    "data_level": "transcript",
+    "files": [
+      {
+        "path": "E-ERAD-475.condensed-sdrf.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: sdrf"
+      },
+      {
+        "path": "E-ERAD-475-protein-abundance.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: protein-abundance"
+      }
+    ]
+  },
+  {
+    "title": "RNA-seq of human individual tissues and mixture of tissues",
+    "accession": "E-MTAB-2770",
+    "description": "RNA sequencing of 95 human individuals representing 27 different tissues to study tissue-specific gene expression patterns and individual variation.",
+    "pubmedid": "24705247",
+    "data_source": "Expression_Atlas",
+    "last_updated": "2025-09-23T15:25:47.156033",
+    "update_frequency": "static",
+    "organism": "Homo sapiens",
+    "expression_unit": "TPM",
+    "platform_type": "RNA-seq",
+    "data_level": "transcript",
+    "files": [
+      {
+        "path": "E-MTAB-2770.condensed-sdrf.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: sdrf"
+      },
+      {
+        "path": "E-MTAB-2770-transcripts-tpms.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: transcript-tpm"
+      }
+    ]
+  },
+  {
+    "title": "RNA-seq of mouse tissues",
+    "accession": "E-MTAB-2706",
+    "description": "RNA sequencing analysis of multiple mouse tissues to characterize baseline gene expression patterns across different organ systems in Mus musculus.",
+    "pubmedid": "24705247",
+    "data_source": "Expression_Atlas",
+    "last_updated": "2025-09-23T15:25:47.163779",
+    "update_frequency": "static",
+    "organism": "Homo sapiens",
+    "expression_unit": "TPM",
+    "platform_type": "RNA-seq",
+    "data_level": "transcript",
+    "files": [
+      {
+        "path": "E-MTAB-2706.condensed-sdrf.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: sdrf"
+      },
+      {
+        "path": "E-MTAB-2706-transcripts-tpms.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: transcript-tpm"
+      }
+    ]
+  },
+  {
+    "title": "Expression data from mouse tissues",
+    "accession": "E-GEOD-5615",
+    "description": "Microarray gene expression profiling of various mouse tissues using Affymetrix arrays to establish baseline expression reference in Mus musculus.",
+    "pubmedid": "17576787",
+    "data_source": "Expression_Atlas",
+    "last_updated": "2025-09-23T15:25:47.167595",
+    "update_frequency": "static",
+    "organism": "Homo sapiens",
+    "expression_unit": "TPM",
+    "platform_type": "microarray",
+    "data_level": "transcript",
+    "files": [
+      {
+        "path": "E-GEOD-5615.condensed-sdrf.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: sdrf"
+      },
+      {
+        "path": "E-GEOD-5615-transcripts-tpms.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: transcript-tpm"
+      }
+    ]
+  },
+  {
+    "title": "Illumina Body Map 2.0",
+    "accession": "E-MTAB-513",
+    "description": "RNA-seq expression profiling of 16 human tissues using Illumina HiSeq 2000 platform providing comprehensive human tissue gene expression reference.",
+    "pubmedid": "22955987",
+    "data_source": "Expression_Atlas",
+    "last_updated": "2025-09-23T15:25:47.171383",
+    "update_frequency": "static",
+    "organism": "Homo sapiens",
+    "expression_unit": "TPM",
+    "platform_type": "RNA-seq",
+    "data_level": "transcript",
+    "files": [
+      {
+        "path": "E-MTAB-513.condensed-sdrf.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: sdrf"
+      },
+      {
+        "path": "E-MTAB-513-transcripts-tpms.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: transcript-tpm"
+      }
+    ]
+  },
+  {
+    "title": "Human Protein Atlas - Cancer proteomics",
+    "accession": "E-MTAB-2836",
+    "description": "Protein expression analysis in human cancer tissues from the Human Protein Atlas project using mass spectrometry and immunohistochemistry approaches.",
+    "pubmedid": "25613900",
+    "data_source": "Expression_Atlas",
+    "last_updated": "2025-09-23T15:25:47.175184",
+    "update_frequency": "static",
+    "organism": "Homo sapiens",
+    "expression_unit": "TPM",
+    "platform_type": "RNA-seq",
+    "data_level": "transcript",
+    "files": [
+      {
+        "path": "E-MTAB-2836.condensed-sdrf.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: sdrf"
+      },
+      {
+        "path": "E-MTAB-2836-protein-abundance.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: protein-abundance"
+      }
+    ]
+  },
+  {
+    "title": "RNA-seq of human brain regions",
+    "accession": "E-MTAB-3579",
+    "description": "Transcriptome analysis of different human brain regions to understand regional gene expression differences and brain-specific expression patterns.",
+    "pubmedid": "25954002",
+    "data_source": "Expression_Atlas",
+    "last_updated": "2025-09-23T15:25:47.178884",
+    "update_frequency": "static",
+    "organism": "Homo sapiens",
+    "expression_unit": "TPM",
+    "platform_type": "RNA-seq",
+    "data_level": "transcript",
+    "files": [
+      {
+        "path": "E-MTAB-3579.condensed-sdrf.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: sdrf"
+      },
+      {
+        "path": "E-MTAB-3579-transcripts-tpms.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: transcript-tpm"
+      }
+    ]
+  },
+  {
+    "title": "RNA-seq of human lung tissue",
+    "accession": "E-MTAB-3827",
+    "description": "RNA sequencing analysis of human lung tissue samples for baseline gene expression characterization and pulmonary-specific expression patterns.",
+    "pubmedid": "26343147",
+    "data_source": "Expression_Atlas",
+    "last_updated": "2025-09-23T15:25:47.182486",
+    "update_frequency": "static",
+    "organism": "Homo sapiens",
+    "expression_unit": "TPM",
+    "platform_type": "RNA-seq",
+    "data_level": "transcript",
+    "files": [
+      {
+        "path": "E-MTAB-3827.condensed-sdrf.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: sdrf"
+      },
+      {
+        "path": "E-MTAB-3827-transcripts-tpms.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: transcript-tpm"
+      }
+    ]
+  },
+  {
+    "title": "RNA-seq of zebrafish developmental stages",
+    "accession": "E-MTAB-3358",
+    "description": "Time-course RNA sequencing analysis of zebrafish development from early embryonic to adult stages to study developmental gene expression programs.",
+    "pubmedid": "25954002",
+    "data_source": "Expression_Atlas",
+    "last_updated": "2025-09-23T15:25:47.186095",
+    "update_frequency": "static",
+    "organism": "Homo sapiens",
+    "expression_unit": "TPM",
+    "platform_type": "RNA-seq",
+    "data_level": "transcript",
+    "files": [
+      {
+        "path": "E-MTAB-3358.condensed-sdrf.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: sdrf"
+      },
+      {
+        "path": "E-MTAB-3358-transcripts-tpms.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: transcript-tpm"
+      }
+    ]
+  },
+  {
+    "title": "RNA-seq of human thyroid tissue",
+    "accession": "E-MTAB-2801",
+    "description": "RNA sequencing analysis of human thyroid tissue samples for baseline expression profiling and endocrine-specific gene expression patterns.",
+    "pubmedid": "24705247",
+    "data_source": "Expression_Atlas",
+    "last_updated": "2025-09-23T15:25:47.189687",
+    "update_frequency": "static",
+    "organism": "Homo sapiens",
+    "expression_unit": "TPM",
+    "platform_type": "RNA-seq",
+    "data_level": "transcript",
+    "files": [
+      {
+        "path": "E-MTAB-2801.condensed-sdrf.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: sdrf"
+      },
+      {
+        "path": "E-MTAB-2801-transcripts-tpms.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: transcript-tpm"
+      }
+    ]
+  },
+  {
+    "title": "RNA-seq of human pancreatic islets",
+    "accession": "E-MTAB-4840",
+    "description": "Transcriptome analysis of human pancreatic islet cells to study diabetes-related gene expression and beta-cell specific expression programs.",
+    "pubmedid": "27399492",
+    "data_source": "Expression_Atlas",
+    "last_updated": "2025-09-23T15:25:47.193314",
+    "update_frequency": "static",
+    "organism": "Homo sapiens",
+    "expression_unit": "TPM",
+    "platform_type": "RNA-seq",
+    "data_level": "transcript",
+    "files": [
+      {
+        "path": "E-MTAB-4840.condensed-sdrf.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: sdrf"
+      },
+      {
+        "path": "E-MTAB-4840-transcripts-tpms.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: transcript-tpm"
+      }
+    ]
+  },
+  {
+    "title": "Expression data from human breast cancer cell lines",
+    "accession": "E-GEOD-19520",
+    "description": "Microarray expression profiling of human breast cancer cell lines using Affymetrix arrays to characterize cancer-specific expression patterns.",
+    "pubmedid": "20505153",
+    "data_source": "Expression_Atlas",
+    "last_updated": "2025-09-23T15:25:47.196993",
+    "update_frequency": "static",
+    "organism": "Homo sapiens",
+    "expression_unit": "TPM",
+    "platform_type": "microarray",
+    "data_level": "transcript",
+    "files": [
+      {
+        "path": "E-GEOD-19520.condensed-sdrf.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: sdrf"
+      },
+      {
+        "path": "E-GEOD-19520-transcripts-tpms.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: transcript-tpm"
+      }
+    ]
+  },
+  {
+    "title": "RNA-seq of human keratinocytes",
+    "accession": "E-GEOD-66048",
+    "description": "RNA sequencing analysis of primary human keratinocytes under different conditions to study skin-specific gene expression.",
+    "pubmedid": "26059913",
+    "data_source": "Expression_Atlas",
+    "last_updated": "2025-09-23T15:25:47.200784",
+    "update_frequency": "static",
+    "organism": "Homo sapiens",
+    "expression_unit": "TPM",
+    "platform_type": "RNA-seq",
+    "data_level": "transcript",
+    "files": [
+      {
+        "path": "E-GEOD-66048.condensed-sdrf.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: sdrf"
+      },
+      {
+        "path": "E-GEOD-66048-transcripts-tpms.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: transcript-tpm"
+      }
+    ]
+  },
+  {
+    "title": "RNA-seq of human skin tissue",
+    "accession": "E-MTAB-3578",
+    "description": "Transcriptome analysis of human skin tissue samples across different anatomical sites to characterize skin-specific expression patterns.",
+    "pubmedid": "25954002",
+    "data_source": "Expression_Atlas",
+    "last_updated": "2025-09-23T15:25:47.204861",
+    "update_frequency": "static",
+    "organism": "Homo sapiens",
+    "expression_unit": "TPM",
+    "platform_type": "RNA-seq",
+    "data_level": "transcript",
+    "files": [
+      {
+        "path": "E-MTAB-3578.condensed-sdrf.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: sdrf"
+      },
+      {
+        "path": "E-MTAB-3578-transcripts-tpms.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: transcript-tpm"
+      }
+    ]
+  },
+  {
+    "title": "Expression data from human tissues",
+    "accession": "E-GEOD-26284",
+    "description": "Microarray-based gene expression analysis across multiple human tissues and cell types using Affymetrix platform.",
+    "pubmedid": "21483801",
+    "data_source": "Expression_Atlas",
+    "last_updated": "2025-09-23T15:25:47.212548",
+    "update_frequency": "static",
+    "organism": "Homo sapiens",
+    "expression_unit": "TPM",
+    "platform_type": "microarray",
+    "data_level": "transcript",
+    "files": [
+      {
+        "path": "E-GEOD-26284.condensed-sdrf.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: sdrf"
+      },
+      {
+        "path": "E-GEOD-26284-transcripts-tpms.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: transcript-tpm"
+      }
+    ]
+  },
+  {
+    "title": "RNA-seq of human immune cell populations",
+    "accession": "E-MTAB-4344",
+    "description": "RNA sequencing analysis of purified human immune cell populations to characterize cell-type specific expression and immune system gene expression patterns.",
+    "pubmedid": "27499199",
+    "data_source": "Expression_Atlas",
+    "last_updated": "2025-09-23T15:25:47.216207",
+    "update_frequency": "static",
+    "organism": "Homo sapiens",
+    "expression_unit": "TPM",
+    "platform_type": "RNA-seq",
+    "data_level": "transcript",
+    "files": [
+      {
+        "path": "E-MTAB-4344.condensed-sdrf.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: sdrf"
+      },
+      {
+        "path": "E-MTAB-4344-transcripts-tpms.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: transcript-tpm"
+      }
+    ]
+  },
+  {
+    "title": "RNA-seq of human fetal tissues",
+    "accession": "E-MTAB-1733",
+    "description": "Transcriptome analysis of human fetal tissues across different developmental stages to study prenatal gene expression programs.",
+    "pubmedid": "24705247",
+    "data_source": "Expression_Atlas",
+    "last_updated": "2025-09-23T15:25:47.219783",
+    "update_frequency": "static",
+    "organism": "Homo sapiens",
+    "expression_unit": "TPM",
+    "platform_type": "RNA-seq",
+    "data_level": "transcript",
+    "files": [
+      {
+        "path": "E-MTAB-1733.condensed-sdrf.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: sdrf"
+      },
+      {
+        "path": "E-MTAB-1733-transcripts-tpms.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: transcript-tpm"
+      }
+    ]
+  },
+  {
+    "title": "RNA-seq of human liver tissue",
+    "accession": "E-MTAB-2800",
+    "description": "RNA sequencing analysis of human liver tissue samples for baseline hepatic gene expression and liver-specific expression patterns.",
+    "pubmedid": "24705247",
+    "data_source": "Expression_Atlas",
+    "last_updated": "2025-09-23T15:25:47.223559",
+    "update_frequency": "static",
+    "organism": "Homo sapiens",
+    "expression_unit": "TPM",
+    "platform_type": "RNA-seq",
+    "data_level": "transcript",
+    "files": [
+      {
+        "path": "E-MTAB-2800.condensed-sdrf.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: sdrf"
+      },
+      {
+        "path": "E-MTAB-2800-transcripts-tpms.tsv",
+        "format": "tsv",
+        "size_bytes": 0,
+        "description": "File type: transcript-tpm"
+      }
+    ]
+  },
+  {
+    "title": "The Genotype-Tissue Expression (GTEx) project v8",
+    "accession": "E-GTEX-8",
+    "description": "Comprehensive RNA-seq dataset from GTEx project version 8, covering multiple human tissues and providing baseline expression data.",
+    "data_source": "Custom",
+    "last_updated": "2025-09-23T15:25:48.249747",
+    "update_frequency": "static",
+    "organism": "Human (H. sapiens)",
+    "tissue_type": "multi-tissue",
+    "sample_count": 1,
+    "expression_unit": "TPM",
+    "platform_type": "RNA-seq",
+    "data_level": "gene",
+    "files": [
+      {
+        "path": "E-GTEX-8_expression.tsv",
+        "format": "tsv",
+        "size_bytes": 2097152000,
+        "description": "Expression matrix for The Genotype-Tissue Expression (GTEx) project v8"
+      }
+    ]
+  },
+  {
+    "title": "Human RNA-seq time-series of the development of seven major organs",
+    "accession": "E-MTAB-6814",
+    "description": "Time-series RNA-seq data covering development of 7 organs (brain, cerebellum, heart, kidney, liver, ovary, testis) from 4 weeks post conception to adulthood.",
+    "data_source": "Custom",
+    "last_updated": "2025-09-23T15:25:48.253201",
+    "update_frequency": "static",
+    "organism": "Human (H. sapiens)",
+    "tissue_type": "multi-organ",
+    "sample_count": 1,
+    "expression_unit": "TPM",
+    "platform_type": "RNA-seq",
+    "data_level": "gene",
+    "files": [
+      {
+        "path": "E-MTAB-6814_expression.tsv",
+        "format": "tsv",
+        "size_bytes": 838860800,
+        "description": "Expression matrix for Human RNA-seq time-series of the development of seven major organs"
+      }
+    ]
+  },
+  {
+    "title": "Chicken RNA-seq time-series of the development of seven major organs",
+    "accession": "E-MTAB-6769",
+    "description": "Time-series RNA-seq data from Gallus gallus covering development of 7 organs from day 10 post-conception to day 155 post-hatch.",
+    "data_source": "Custom",
+    "last_updated": "2025-09-23T15:25:48.256686",
+    "update_frequency": "static",
+    "organism": "Gallus gallus",
+    "tissue_type": "multi-organ",
+    "sample_count": 1,
+    "expression_unit": "TPM",
+    "platform_type": "RNA-seq",
+    "data_level": "gene",
+    "files": [
+      {
+        "path": "E-MTAB-6769_expression.tsv",
+        "format": "tsv",
+        "size_bytes": 629145600,
+        "description": "Expression matrix for Chicken RNA-seq time-series of the development of seven major organs"
+      }
+    ]
+  },
+  {
+    "title": "Human Protein Atlas - Normal tissue proteomics",
+    "accession": "E-PROT-13",
+    "description": "Mass spectrometry-based protein expression profiling of normal human tissues from the Human Protein Atlas providing quantitative protein abundance data.",
+    "pubmedid": "31665441",
+    "data_source": "Expression_Atlas",
+    "last_updated": "2025-09-23T16:06:05.621609",
+    "update_frequency": "static",
+    "organism": "Homo sapiens",
+    "tissue_type": "",
+    "sample_count": 1,
+    "license": "CC BY-SA 4.0",
+    "doi": "10.1093/nar/gkz935",
+    "contact": "contact@proteinatlas.org",
+    "quantification_method": "intensity_based",
+    "protein_inference_method": "parsimony",
+    "abundance_unit": "intensity",
+    "protein_database": "UniProt",
+    "database_version": "current",
+    "files": [
+      {
+        "path": "E-PROT-13.condensed-sdrf.tsv",
+        "format": "tsv",
+        "size_bytes": null,
+        "description": "File type: sdrf"
+      },
+      {
+        "path": "E-PROT-13-protein-abundance.tsv",
+        "format": "tsv",
+        "size_bytes": null,
+        "description": "File type: protein-abundance"
+      }
+    ]
+  },
+  {
+    "title": "Human Protein Atlas - Subcellular proteomics",
+    "accession": "E-PROT-3",
+    "description": "Subcellular protein localization data from the Human Protein Atlas using immunofluorescence microscopy to map protein subcellular distribution.",
+    "pubmedid": "28495876",
+    "data_source": "Expression_Atlas",
+    "last_updated": "2025-09-23T16:06:05.621670",
+    "update_frequency": "static",
+    "organism": "Homo sapiens",
+    "tissue_type": "",
+    "sample_count": 1,
+    "license": "CC BY-SA 4.0",
+    "doi": "10.1126/science.aal3321",
+    "contact": "contact@proteinatlas.org",
+    "quantification_method": "intensity_based",
+    "protein_inference_method": "parsimony",
+    "abundance_unit": "intensity",
+    "protein_database": "UniProt",
+    "database_version": "current",
+    "files": [
+      {
+        "path": "E-PROT-3.condensed-sdrf.tsv",
+        "format": "tsv",
+        "size_bytes": null,
+        "description": "File type: sdrf"
+      },
+      {
+        "path": "E-PROT-3-protein-abundance.tsv",
+        "format": "tsv",
+        "size_bytes": null,
+        "description": "File type: protein-abundance"
+      }
+    ]
+  }
+]

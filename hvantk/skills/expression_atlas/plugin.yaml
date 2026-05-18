@@ -4,6 +4,8 @@ version: 0.1.0
 status: provisional
 description: EBI Expression Atlas baseline bulk-RNA-seq matrix - AnnData
 
+catalog: catalog/datasets.json
+
 source:
   catalog_ref: expression-atlas
 

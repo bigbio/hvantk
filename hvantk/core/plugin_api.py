@@ -94,8 +94,21 @@ class Provider:
     Constructed by the loader; not subclassed or instantiated by plugin
     authors. Equality is structural (frozen dataclass), so two Provider
     objects with the same fields compare equal - useful in tests.
+
+    `catalog_path` is the absolute path to the plugin's per-plugin
+    `catalog/datasets.json` (or None if the plugin does not ship one).
+    Consumers load it lazily via JSON to avoid forcing a parse cost on
+    plugin discovery.
+
+    `primary_domain` records the manifest-declared dataset domain for the
+    provider (the most common `datasets[].domain` value in plugin.yaml).
+    It is populated independently of whether each builder import
+    succeeded, so catalog-consumers can route entries even when a
+    plugin's runtime dependencies (e.g. hail) are unavailable.
     """
 
     name: str
     version: str
     datasets: tuple[DatasetSpec, ...]
+    catalog_path: str | None = None
+    primary_domain: str | None = None

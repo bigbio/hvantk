@@ -158,3 +158,18 @@ def test_lifecycle_optional_for_api_version_1(schema: dict):
     m = _minimal_manifest()
     assert "lifecycle" not in m["datasets"][0]
     jsonschema.validate(m, schema)
+
+
+def test_optional_catalog_field_validates(schema: dict):
+    """Top-level optional `catalog` string field is accepted."""
+    m = _minimal_manifest()
+    m["catalog"] = "catalog/datasets.json"
+    jsonschema.validate(m, schema)
+
+
+def test_catalog_field_must_be_string(schema: dict):
+    """`catalog` rejects non-string types (avoids accidental list/dict)."""
+    m = _minimal_manifest()
+    m["catalog"] = ["catalog/datasets.json"]
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(m, schema)

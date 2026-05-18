@@ -24,6 +24,10 @@
       "items": { "type": "string" }
     },
     "description": { "type": "string" },
+    "catalog": {
+      "type": "string",
+      "description": "Path (relative to the plugin folder) to a JSON file listing the accessions/datasets this plugin can build."
+    },
     "source": {
       "type": "object",
       "additionalProperties": false,
