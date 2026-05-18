@@ -1,0 +1,51 @@
+api_version: 1
+name: mktable
+domain: build
+type: command_group
+description: Build a single Hail Table from a raw input file.
+cli:
+  module: hvantk.tools.build.make_table_cli
+  function: mktable_group
+purpose:
+  short: Create one annotation Hail Table per invocation from a raw file.
+  long: |
+    Each subcommand targets one upstream source (ClinVar, dbNSFP, GeVIR, etc.)
+    and writes a typed, keyed Hail Table to disk, optionally exporting a
+    flattened TSV.bgz alongside it. Builder functions are imported lazily so
+    `--help` does not pull Hail. Use `mktable-batch` for recipe-driven builds.
+subcommands:
+  - name: clinvar
+    description: Build a ClinVar Hail Table from a VCF (keyed by locus, alleles)
+  - name: interactome
+    description: Build an interactome Table from a BED (keyed by interval)
+  - name: gevir
+    description: Build a GeVIR gene-level Table from a TSV (keyed by gene_id)
+  - name: gnomad-metrics
+    description: Build a gnomAD constraint metrics gene Table from a TSV
+  - name: ensembl-gene
+    description: Build an Ensembl gene annotation Table from a Biomart TSV
+  - name: dbnsfp
+    description: Build a dbNSFP variant Table from a TSV/BGZ (keyed by locus, alleles)
+  - name: clingen-gene-disease
+    description: Build a ClinGen Gene-Disease Validity Table from a CSV
+  - name: gencc-submissions
+    description: Build a GenCC Submissions Table from a TSV
+  - name: cosmic-cgc
+    description: Build a COSMIC Cancer Gene Census Hail Table from the downloaded TSV
+  - name: hgnc
+    description: Build an HGNC gene nomenclature Table from a TSV (keyed by hgnc_id)
+  - name: ptm-sites
+    description: Build a PTM sites Hail Table from mapped coordinates (keyed by locus)
+  - name: eqtl
+    description: Build an eQTL Hail Table (keyed by locus, alleles, gene_id)
+  - name: pqtl
+    description: Build a pQTL Hail Table (keyed by locus, alleles, gene_id)
+  - name: alphagenome
+    description: Run AlphaGenome variant effect predictions and write per-modality HTs
+  - name: gwas-catalog
+    description: Build a GWAS Catalog Hail Table from the v1.0 full-associations TSV
+  - name: msigdb
+    description: Build an MSigDB Hail Table from a GMT file (keyed by set_name)
+requires:
+  hail: true
+  network: false

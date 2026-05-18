@@ -1,0 +1,38 @@
+api_version: 1
+name: expression
+domain: expression
+type: command_group
+description: Expression AnnData analysis commands (describe, summarize, markers).
+cli:
+  module: hvantk.tools.expression.summarize_expression_cli
+  function: expression_group
+purpose:
+  short: Inspect, aggregate, and extract markers from expression .h5ad files.
+  long: |
+    Operates on expression AnnData objects (built via `hvantk mkmatrix`).
+    `describe` lists obs metadata fields; `summarize` aggregates cells into
+    groups x genes layers (mean/sum/count_nonzero/fraction_expressed);
+    `markers` runs scanpy.tl.rank_genes_groups and emits a GeneSetCollection;
+    `summarize-ucsc` streams a UCSC TSV directly into the summary schema
+    without building an intermediate atlas.
+subcommands:
+  - name: describe
+    description: Inspect observation metadata fields in an expression AnnData
+    inputs:
+      - name: matrix-table
+        type: path
+        required: true
+        description: Path to an expression AnnData file (.h5ad)
+    outputs: ["stdout: shape + metadata fields (categorical levels, numeric ranges)"]
+  - name: summarize
+    description: Aggregate an expression AnnData into a per-group x per-gene AnnData
+    outputs: ["file: aggregated .h5ad with mean/sum/count_nonzero/fraction_expressed layers"]
+  - name: markers
+    description: Extract top marker genes per group using scanpy rank_genes_groups
+    outputs: ["file: GeneSetCollection .json or .gmt"]
+  - name: summarize-ucsc
+    description: Stream UCSC expression TSV + metadata directly into a summary .h5ad
+    outputs: ["file: aggregated .h5ad with summary layers"]
+requires:
+  hail: false
+  network: false

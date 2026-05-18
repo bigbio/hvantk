@@ -1,0 +1,38 @@
+api_version: 1
+name: ptm
+domain: ptm
+type: command_group
+description: Post-translational modification variant classification pipeline.
+cli:
+  module: hvantk.tools.ptm.ptm_cli
+  function: ptm_group
+purpose:
+  short: Build, annotate, and analyze PTM-variant overlap and constraint.
+  long: |
+    Wraps the full PTM analysis workflow: download UniProt/PeptideAtlas/CPTAC
+    PTM sources, map sites to genomic coordinates, annotate variant tables,
+    run landscape / population / per-stratum constraint tests, and emit
+    HTML summary reports. Composable with `hvantk psroc` for predictor
+    stratification on PTM vs non-PTM variant lists.
+subcommands:
+  - name: build
+    description: Download PTM data, map coordinates, build a PTM-sites Hail Table
+  - name: annotate
+    description: Annotate a variant Hail Table with PTM site information
+  - name: landscape
+    description: PTM-variant overlap and enrichment analysis (Q1)
+  - name: export-strata
+    description: Export PTM / non-PTM variant lists for downstream PSROC (Q2)
+  - name: population
+    description: Population-level PTM-variant allele frequency analysis (Q3)
+  - name: report
+    description: Generate a PTM analysis HTML summary report
+  - name: constraint
+    description: Stratified PTM constraint across groups (tissue / cell-type)
+  - name: atlas
+    description: Phase-2 PTM atlas assembly (UniProt + PeptideAtlas + optional CPTAC)
+  - name: test
+    description: Per-stratum LMM PTM constraint tests (lmm or lmm-binned)
+requires:
+  hail: true
+  network: true

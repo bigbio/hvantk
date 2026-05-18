@@ -1,0 +1,46 @@
+api_version: 1
+name: tools
+domain: plugins
+type: command_group
+description: Inspect the hvantk tool manifest registry.
+cli:
+  module: hvantk.tools.plugins.tools_cli
+  function: tools_group
+purpose:
+  short: Discover, describe, and validate hvantk tool manifests.
+  long: |
+    The tools command exposes the tool registry materialised from
+    `hvantk/tools/**/*.tool.yaml`. Use it to list every manifested tool,
+    show one tool's full metadata, dump per-manifest load errors, or
+    validate a tool.yaml file offline against the JSON schema. Mirrors
+    the `plugins` group but targets tool manifests instead of provider
+    manifests.
+subcommands:
+  - name: list
+    description: Tabular list of registered tools (NAME / DOMAIN / TYPE)
+    inputs:
+      - name: domain
+        type: str
+        required: false
+        description: Optional domain filter (plugins, build, expression, etc.)
+    outputs: ["stdout: NAME / DOMAIN / TYPE / DESCRIPTION columns"]
+  - name: describe
+    description: Full details for one tool by name
+    inputs:
+      - name: name
+        type: str
+        required: true
+        description: Tool name (e.g., plugins, drift, mktable)
+    outputs: ["stdout: tool metadata + subcommand list"]
+  - name: errors
+    description: Print per-manifest load errors with cause
+  - name: validate
+    description: Validate a tool.yaml file against the manifest schema (offline)
+    inputs:
+      - name: manifest_path
+        type: path
+        required: true
+        description: Absolute or relative path to a tool.yaml file
+requires:
+  hail: false
+  network: false

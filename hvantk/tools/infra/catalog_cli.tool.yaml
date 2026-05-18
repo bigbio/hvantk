@@ -1,0 +1,36 @@
+api_version: 1
+name: catalog
+domain: infra
+type: command_group
+description: Inspect and invoke entries in the hvantk artifact catalog.
+cli:
+  module: hvantk.tools.infra.catalog_cli
+  function: catalog
+purpose:
+  short: List, show, and build entries from the packaged catalog.yaml.
+  long: |
+    Loads `hvantk/resources/catalog.yaml` (or a user-supplied file) and exposes
+    three subcommands: `list` enumerates entry IDs, `show` dumps the full YAML
+    block for one entry, and `build` resolves the entry's `provenance.builder`
+    dotted path, applies declared args plus `--override key=value` flags, and
+    invokes the builder. Used by the data-build CI and ad-hoc rebuilds.
+subcommands:
+  - name: list
+    description: List available catalog entry IDs
+  - name: show
+    description: Show the full YAML body for one entry
+    inputs:
+      - name: key
+        type: str
+        required: true
+        description: Catalog entry ID
+  - name: build
+    description: Invoke the builder declared on a catalog entry (experimental)
+    inputs:
+      - name: key
+        type: str
+        required: true
+        description: Catalog entry ID
+requires:
+  hail: true
+  network: false

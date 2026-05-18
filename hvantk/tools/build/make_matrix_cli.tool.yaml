@@ -1,0 +1,28 @@
+api_version: 1
+name: mkmatrix
+domain: build
+type: command_group
+description: Build a single AnnData (.h5ad) expression object from a raw input.
+cli:
+  module: hvantk.tools.build.make_matrix_cli
+  function: mkmatrix_group
+purpose:
+  short: Create one AnnData expression object per invocation from raw inputs.
+  long: |
+    Each subcommand targets one upstream expression source (UCSC Cell Browser,
+    Expression Atlas, CPTAC bulk/phospho) and writes an .h5ad with obs/var
+    aligned to the source's metadata. Streaming/backed-write modes keep memory
+    bounded for large UCSC matrices. Use the corresponding `download` subcommand
+    to fetch raw inputs first.
+subcommands:
+  - name: ucsc
+    description: Build an AnnData from UCSC Cell Browser expression + metadata
+  - name: expression-atlas
+    description: Build an AnnData from Expression Atlas matrix + SDRF metadata
+  - name: cptac
+    description: Build a CPTAC AnnData from expression and metadata tables
+  - name: cptac-phospho
+    description: Build a CPTAC phospho AnnData from site intensities and metadata
+requires:
+  hail: false
+  network: false

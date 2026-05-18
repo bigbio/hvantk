@@ -1,0 +1,20 @@
+api_version: 1
+name: convert-bgz
+domain: infra
+type: command
+description: Convert a standard gzip (.gz) file to block gzip (.bgz) for Hail.
+cli:
+  module: hvantk.tools.infra.convert_bgz_cli
+  function: convert_bgz_cmd
+purpose:
+  short: Re-compress a gzip stream as BGZF so Hail can parallel-import it.
+  long: |
+    Detects the input's compression, no-ops if already BGZF, errors out if the
+    input is not gzip, and otherwise streams it through `bgzip` (or a pure-Python
+    fallback) into a `.bgz` output. Thread count is configurable when the
+    system `bgzip` backend is in use. Useful when upstream sources ship gzip
+    instead of BGZF and Hail's `import_table` / `import_vcf` need block-level
+    seekability.
+requires:
+  hail: false
+  network: false

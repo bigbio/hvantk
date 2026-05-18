@@ -1,0 +1,21 @@
+api_version: 1
+name: psroc
+domain: ptm
+type: command
+description: Per-gene-set ROC evaluation of dbNSFP predictors against ClinVar.
+cli:
+  module: hvantk.tools.ptm.psroc_cli
+  function: psroc_cmd
+purpose:
+  short: Compute ROC/AUC per gene set for dbNSFP scores using ClinVar labels.
+  long: |
+    Joins a ClinVar Hail Table with a dbNSFP Hail Table, selects pathogenic
+    vs benign variants (filtered by review-status stars), and computes per-score
+    ROC curves and AUC with bootstrap confidence intervals. Variants can be
+    scoped to a gene list, an explicit variant file, or every named set in a
+    GeneSetCollection (JSON or GMT) — the last mode iterates and writes one
+    result subdirectory per set. Optionally exports annotated variants as
+    TSV and renders plots.
+requires:
+  hail: true
+  network: false

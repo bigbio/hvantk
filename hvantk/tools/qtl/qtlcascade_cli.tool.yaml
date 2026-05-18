@@ -1,0 +1,29 @@
+api_version: 1
+name: qtlcascade
+domain: qtl
+type: command_group
+description: Molecular QTL cascade analysis (eQTL -> pQTL -> disease).
+cli:
+  module: hvantk.tools.qtl.qtlcascade_cli
+  function: qtlcascade_group
+purpose:
+  short: Build eQTL/pQTL cascade joins, run colocalisation, summarise + report.
+  long: |
+    Composes eQTL and pQTL Hail Tables built by `hvantk mktable eqtl/pqtl`
+    into a cascade join, runs per-gene colocalisation (ABF) on candidate
+    cascade genes, overlays constraint + disease-gene annotations, and emits
+    summary TSVs, plots, and an HTML report. The `run` subcommand orchestrates
+    the full pipeline; the others target individual stages or rebuild a
+    report from previously computed outputs.
+subcommands:
+  - name: cascade
+    description: Build the QTL cascade (eQTL plus pQTL outer join and classification)
+  - name: coloc
+    description: Run colocalization ABF on cascade genes
+  - name: run
+    description: Run the full QTL cascade pipeline (cascade + coloc + summary + report)
+  - name: report
+    description: Generate an HTML report from existing cascade results
+requires:
+  hail: true
+  network: false
