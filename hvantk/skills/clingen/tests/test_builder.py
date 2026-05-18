@@ -8,7 +8,7 @@ import pytest
 import shutil
 from pathlib import Path
 
-from hvantk.tables.table_builders import create_clingen_gene_disease_tb
+from hvantk.skills.clingen.builder import create_clingen_gene_disease_tb
 
 # Mark as Hail-dependent and slow
 pytestmark = [pytest.mark.hail, pytest.mark.slow]

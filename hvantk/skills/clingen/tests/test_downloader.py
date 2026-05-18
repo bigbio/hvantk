@@ -11,8 +11,8 @@ from unittest.mock import patch, MagicMock
 import pytest
 from click.testing import CliRunner
 
-from hvantk.commands.clingen_downloader import clingen_downloader
-from hvantk.datasets.clingen_datasets import (
+from hvantk.skills.clingen.cli import clingen_downloader
+from hvantk.skills.clingen.shared.datasets import (
     ClinGenGeneDiseaseDataset,
     get_available_versions,
     get_latest_version,
@@ -59,7 +59,7 @@ class TestClinGenGeneDiseaseDataset:
             output_dir = os.path.join(tmpdir, "new_subdir", "clingen")
             dataset = ClinGenGeneDiseaseDataset.from_date("2026-01-15")
 
-            with patch("hvantk.datasets.clingen_datasets.download_file") as mock_dl:
+            with patch("hvantk.skills.clingen.shared.datasets.download_file") as mock_dl:
                 mock_dl.return_value = os.path.join(output_dir, dataset.file_name)
                 dataset.download(output_dir)
                 assert os.path.exists(output_dir)
@@ -87,7 +87,7 @@ class TestClinGenGeneDiseaseDataset:
             with open(file_path, "w") as f:
                 f.write("test")
 
-            with patch("hvantk.datasets.clingen_datasets.download_file") as mock_dl:
+            with patch("hvantk.skills.clingen.shared.datasets.download_file") as mock_dl:
                 mock_dl.return_value = file_path
                 result = dataset.download(tmpdir, overwrite=True)
                 assert result == file_path
@@ -123,7 +123,7 @@ class TestGetAvailableVersions:
     def test_get_latest_version_mocked(self):
         """Test get_latest_version with mocked versions."""
         with patch(
-            "hvantk.datasets.clingen_datasets.get_available_versions"
+            "hvantk.skills.clingen.shared.datasets.get_available_versions"
         ) as mock_versions:
             mock_versions.return_value = ["2026-03-09"]
 
@@ -133,7 +133,7 @@ class TestGetAvailableVersions:
     def test_get_latest_version_empty(self):
         """Test get_latest_version when no versions available."""
         with patch(
-            "hvantk.datasets.clingen_datasets.get_available_versions"
+            "hvantk.skills.clingen.shared.datasets.get_available_versions"
         ) as mock_versions:
             mock_versions.return_value = []
 
@@ -148,7 +148,7 @@ class TestClinGenDownloaderCLI:
         """Test --list-versions flag."""
         runner = CliRunner()
         with patch(
-            "hvantk.datasets.clingen_datasets.get_available_versions"
+            "hvantk.skills.clingen.shared.datasets.get_available_versions"
         ) as mock_versions:
             mock_versions.return_value = ["2026-03-09"]
 
@@ -163,7 +163,7 @@ class TestClinGenDownloaderCLI:
         runner = CliRunner()
         with tempfile.TemporaryDirectory() as tmpdir:
             with patch(
-                "hvantk.datasets.clingen_datasets.download_file"
+                "hvantk.skills.clingen.shared.datasets.download_file"
             ) as mock_download:
                 mock_download.return_value = os.path.join(
                     tmpdir, "Clingen-Gene-Disease-Summary-2026-01-15.csv"
@@ -183,7 +183,7 @@ class TestClinGenDownloaderCLI:
         runner = CliRunner()
         with tempfile.TemporaryDirectory() as tmpdir:
             with patch(
-                "hvantk.datasets.clingen_datasets.download_file"
+                "hvantk.skills.clingen.shared.datasets.download_file"
             ) as mock_download:
                 mock_download.return_value = os.path.join(
                     tmpdir, "Clingen-Gene-Disease-Summary-2026-03-09.csv"

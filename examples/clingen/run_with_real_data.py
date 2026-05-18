@@ -28,7 +28,7 @@ INPUT_CSV = DATA_DIR / "clingen_gene_disease.csv"
 def main():
     """Main workflow with real ClinGen data."""
     import hail as hl
-    from hvantk.tables.table_builders import create_clingen_gene_disease_tb
+    from hvantk.skills.clingen.builder import create_clingen_gene_disease_tb
     from hvantk.data.clingen_streamer import ClinGenStreamer
 
     # Initialize Hail

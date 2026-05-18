@@ -7,16 +7,26 @@ from pathlib import Path
 import pytest
 
 from hvantk.data.clingen_streamer import ClinGenStreamer
-from hvantk.tables.table_builders import create_clingen_gene_disease_tb
+from hvantk.skills.clingen.builder import create_clingen_gene_disease_tb
 
 pytestmark = [pytest.mark.hail, pytest.mark.slow]
 
-TEST_DIR = Path(__file__).parent / "testdata"
+# Fixture lives under the clingen plugin folder after the Phase 2 migration.
+TEST_FIXTURE = (
+    Path(__file__).resolve().parents[1]
+    / "skills"
+    / "clingen"
+    / "tests"
+    / "testdata"
+    / "raw"
+    / "clingen"
+    / "clingen_test_sample.csv"
+)
 
 
 @pytest.fixture
 def clingen_table_path(tmp_path):
-    input_path = TEST_DIR / "raw/clingen/clingen_test_sample.csv"
+    input_path = TEST_FIXTURE
     output_path = tmp_path / "clingen_test.ht"
     create_clingen_gene_disease_tb(
         input_path=str(input_path),

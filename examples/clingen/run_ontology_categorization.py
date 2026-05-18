@@ -73,7 +73,7 @@ def ensure_data_files():
 def main():
     """Main workflow with ontology-based categorization."""
     import hail as hl
-    from hvantk.tables.table_builders import create_clingen_gene_disease_tb
+    from hvantk.skills.clingen.builder import create_clingen_gene_disease_tb
     from hvantk.data.clingen_streamer import ClinGenStreamer
     from hvantk.utils.mondo_parser import MONDO_DISEASE_CATEGORIES
 

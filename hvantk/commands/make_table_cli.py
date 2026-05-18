@@ -60,7 +60,7 @@ def _create_dbnsfp_tb(*args, **kwargs):
 
 
 def _create_clingen_gene_disease_tb(*args, **kwargs):
-    from hvantk.tables.table_builders import create_clingen_gene_disease_tb
+    from hvantk.skills.clingen.builder import create_clingen_gene_disease_tb
 
     return create_clingen_gene_disease_tb(*args, **kwargs)
 

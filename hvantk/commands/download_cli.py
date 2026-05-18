@@ -3,7 +3,7 @@ import click
 from hvantk.core.config import CONTEXT_SETTINGS
 from hvantk.skills.ucsc_cellbrowser.cli import ucsc_downloader
 from hvantk.skills.expression_atlas.cli import download_experiments
-from hvantk.commands.clingen_downloader import clingen_downloader
+from hvantk.skills.clingen.cli import clingen_downloader
 from hvantk.commands.gencc_downloader import gencc_downloader
 from hvantk.skills.hgnc.cli import download_cmd as hgnc_downloader
 from hvantk.skills.clinvar.cli import clinvar_downloader
