@@ -1,7 +1,15 @@
 {
-  "probe_version": 0,
-  "source_version": "gwas-catalog drift probe not implemented; track upstream release manually",
-  "headers": {},
-  "checksums": {},
-  "fetched_at": "1970-01-01T00:00:00Z"
+  "probe_version": 1,
+  "source_version": "Tue, 28 Apr 2026 11:02:27 GMT",
+  "headers": {
+    "gwas-catalog-associations-full.zip": [
+      "ETag",
+      "Content-Length",
+      "Last-Modified"
+    ]
+  },
+  "checksums": {
+    "gwas-catalog-associations-full.zip": "10b1dfa16264605b4a1d10b690b99f57e13147b1dccb10cbe93fd0d2d9103d1a"
+  },
+  "fetched_at": "2026-05-18T09:52:48.536067+00:00"
 }
