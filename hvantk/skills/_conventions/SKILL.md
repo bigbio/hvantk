@@ -147,6 +147,20 @@ Each dataset declares a `drift_probe.module` + `function` in `plugin.yaml`. The 
 
 The expected fingerprint lives at `hvantk/skills/<provider>/[<dataset>/]tests/drift_fingerprint.json`. `hvantk drift <provider:dataset>` compares the live probe output against this file. Update the fingerprint when an intentional upstream change has been validated; do not silently regenerate it in the same PR as a behavioural change.
 
+### Automated drift workflow
+
+A scheduled GitHub Actions workflow (`.github/workflows/drift.yml`) runs `hvantk drift --all --json` daily at 06:00 UTC. For each plugin reporting `status: drifted`, the workflow:
+
+1. Branches `drift/<provider>-<dataset>` from the base branch (`env.BASE_BRANCH`, defaulting to `dev`).
+2. Regenerates `drift_fingerprint.json` via `hvantk drift --regenerate <provider:dataset>`.
+3. Opens (or updates) a draft PR via `gh pr create` / `gh pr edit`, with the structured diff embedded in the body and the regenerated fingerprint already committed. If the plugin's `plugin.yaml` declares `maintainers:` whose entries look like GitHub handles, those handles are `cc`'d in the PR body.
+
+The branch is bot-owned and uses `--force-with-lease`, so if the same dataset drifts again before the previous PR is merged the same branch is updated in place rather than spawning a new PR. Datasets reporting `status: probe_failed` are logged to the job summary but never trigger a PR -- those are infrastructure failures, not data drift.
+
+An agent or human reviews the PR to decide whether the change is a compatible upstream update (just merge the snapshot bump), a breaking schema change (also update `builder.py`), or a spurious probe difference (fix the probe).
+
+The workflow's `workflow_dispatch` trigger accepts a `dry_run` input that runs the helper in `--dry-run` mode, so an operator can validate the workflow plumbing without making real commits.
+
 ## 13. Lifecycle stages
 
 Manifests MAY declare `lifecycle.download` and `lifecycle.parse` callables. `hvantk reprocess <provider:dataset>` chains:
