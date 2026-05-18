@@ -81,3 +81,9 @@ When ClinGen publishes an updated snapshot (any download is effectively a new sn
 - `fixture`: `hvantk/skills/clingen/tests/testdata/raw/clingen/clingen_test_sample.csv`
 - `drift_fingerprint`: `hvantk/skills/clingen/tests/drift_fingerprint.json`
 - `test_command`: `pytest hvantk/skills/clingen/tests -m hail`
+
+> **Snapshot status:** schema.json and sample_rows.json have NOT yet been seeded
+> for this plugin. On first round-trip run in a hail-enabled environment, use
+> `pytest hvantk/skills/clingen/tests/test_builder.py --regenerate-snapshots`
+> to bootstrap them, then commit. Until seeded, the round-trip test cannot verify
+> output against a fixed schema.

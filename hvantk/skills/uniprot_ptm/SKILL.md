@@ -81,3 +81,9 @@ When UniProt releases a new monthly snapshot (typically late in the month):
 - `fixture`: `hvantk/skills/uniprot_ptm/tests/testdata/raw/uniprot-ptm/` (placeholder; integration coverage lives in `hvantk/tests/test_ptm.py`)
 - `drift_fingerprint`: `hvantk/skills/uniprot_ptm/tests/drift_fingerprint.json`
 - `test_command`: `pytest hvantk/skills/uniprot_ptm/tests -m hail`
+
+> **Snapshot status:** schema.json and sample_rows.json have NOT yet been seeded
+> for this plugin. On first round-trip run in a hail-enabled environment, use
+> `pytest hvantk/skills/uniprot_ptm/tests/test_builder.py --regenerate-snapshots`
+> to bootstrap them, then commit. Until seeded, the round-trip test cannot verify
+> output against a fixed schema.

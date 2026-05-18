@@ -81,3 +81,9 @@ When GenCC publishes an updated snapshot (any download is effectively a new snap
 - `fixture`: `hvantk/skills/gencc/tests/testdata/raw/gencc/gencc_test_sample.tsv`
 - `drift_fingerprint`: `hvantk/skills/gencc/tests/drift_fingerprint.json`
 - `test_command`: `pytest hvantk/skills/gencc/tests -m hail`
+
+> **Snapshot status:** schema.json and sample_rows.json have NOT yet been seeded
+> for this plugin. On first round-trip run in a hail-enabled environment, use
+> `pytest hvantk/skills/gencc/tests/test_builder.py --regenerate-snapshots`
+> to bootstrap them, then commit. Until seeded, the round-trip test cannot verify
+> output against a fixed schema.

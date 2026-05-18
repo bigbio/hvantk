@@ -92,3 +92,9 @@ Per `_conventions` § 9:
 - **test_command:** `pytest hvantk/skills/expression_atlas/tests`.
 
 The plugin manifest already declares these paths so the loader contract holds. The downloader unit tests + drift-probe placeholder test pass today; the builder round-trip is the gap to close in a follow-up PR.
+
+> **Snapshot status:** schema.json and sample_rows.json have NOT yet been seeded
+> for this plugin. On first round-trip run in a hail-enabled environment, use
+> `pytest hvantk/skills/expression_atlas/tests/test_builder.py --regenerate-snapshots`
+> to bootstrap them, then commit. Until seeded, the round-trip test cannot verify
+> output against a fixed schema.

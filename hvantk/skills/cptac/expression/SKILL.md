@@ -84,3 +84,9 @@ Per `_conventions` § 9:
 - **drift_fingerprint:** `hvantk/skills/cptac/expression/tests/drift_fingerprint.json` (placeholder shape; refresh via the update playbook).
 
 The plugin manifest declares these paths so the loader contract holds. Drift-probe sanity test passes today; the builder round-trip snapshot is the gap to close in a follow-up.
+
+> **Snapshot status:** schema.json and sample_rows.json have NOT yet been seeded
+> for this plugin. On first round-trip run in a hail-enabled environment, use
+> `pytest hvantk/skills/cptac/expression/tests/test_builder.py --regenerate-snapshots`
+> to bootstrap them, then commit. Until seeded, the round-trip test cannot verify
+> output against a fixed schema.

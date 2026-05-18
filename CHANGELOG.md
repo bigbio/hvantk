@@ -20,3 +20,12 @@
 - Per-provider downloader modules under `hvantk/commands/*_downloader.py` for migrated providers (moved into their plugin folder's `cli.py`).
 - Per-provider dataset classes under `hvantk/datasets/*_datasets.py` for migrated providers (moved into `hvantk/skills/<provider>/shared/`).
 - Per-provider builder functions in `hvantk/tables/table_builders.py` and `matrix_builders.py` for migrated providers (moved into `hvantk/skills/<provider>/[<dataset>/]builder.py`).
+
+### Known gaps before first stable release
+
+- The following plugins reference snapshot files (`schema.json`, `sample_rows.json`)
+  in their `plugin.yaml` manifests that have not yet been seeded on disk:
+  `clingen`, `gencc`, `hgnc`, `uniprot-ptm`, `expression-atlas`, `peptideatlas:phospho`,
+  `cptac:expression`, and `cptac:phospho`. The first hail-enabled CI run with
+  `--regenerate-snapshots` will bootstrap them. All `ucsc-cellbrowser` variants
+  (`default`, `adult-ctx`, `dev-ctx`) already have populated snapshot dirs.

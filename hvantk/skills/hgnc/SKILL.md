@@ -90,3 +90,9 @@ Triggered when HGNC publishes an updated complete-set file or when an upstream s
 - `test_command`: `pytest hvantk/tests/test_hgnc_builder.py -m hail`
 
 The snapshot directory and round-trip test file are declared but not yet created — initial run uses `pytest … --regenerate-snapshots` to seed them, per `_conventions` § 8.
+
+> **Snapshot status:** schema.json and sample_rows.json have NOT yet been seeded
+> for this plugin. On first round-trip run in a hail-enabled environment, use
+> `pytest hvantk/skills/hgnc/tests/test_builder.py --regenerate-snapshots`
+> to bootstrap them, then commit. Until seeded, the round-trip test cannot verify
+> output against a fixed schema.
