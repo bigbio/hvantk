@@ -51,3 +51,32 @@ def test_genomics_still_loaded_from_legacy_path():
     # The legacy registry/genomics/datasets.json was NOT migrated; should
     # still have its in-tree entries.
     assert len(entries) >= 5
+
+
+def test_search_organism_filter_uses_substring_match():
+    """`--organism Homo` must match "Homo sapiens" without requiring the canonical form."""
+    reg = _fresh_registry()
+    partial = reg.search(query="", organism="Homo")
+    exact = reg.search(query="", organism="Homo sapiens")
+    # Substring `Homo` must include the canonical `Homo sapiens` results
+    # (and may also include any other organism whose name contains `Homo`).
+    assert len(partial) >= len(exact) > 0
+    assert {e.get("accession") for e in exact} <= {e.get("accession") for e in partial}
+
+
+def test_search_data_source_filter_uses_substring_match():
+    """`--data-source UCSC` should match data_source values containing `UCSC` (case-insensitive)."""
+    reg = _fresh_registry()
+    upper = reg.search(query="", data_source="UCSC")
+    lower = reg.search(query="", data_source="ucsc")
+    assert len(upper) > 0
+    # Case-insensitive: lowercase needle yields the same matches.
+    assert {e.get("accession") for e in upper} == {e.get("accession") for e in lower}
+
+
+def test_search_filters_with_missing_field_are_skipped():
+    """Entries with `organism: None` or missing the field must not crash the filter."""
+    reg = _fresh_registry()
+    # Filtering by a needle that no record has — must return empty without raising.
+    results = reg.search(query="", organism="NotAnOrganismValue")
+    assert results == []

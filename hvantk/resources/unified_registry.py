@@ -181,27 +181,39 @@ class HvantkRegistry:
         organism: Optional[str] = None,
         data_source: Optional[str] = None,
     ) -> List[Dict]:
-        """Search datasets with various filters."""
+        """Search datasets with various filters.
+
+        All filters are case-insensitive substring matches. ``query`` matches
+        against title + description + accession; ``organism`` and ``data_source``
+        match against their named fields. Substring semantics keep the CLI's
+        ``--organism Homo`` ergonomic without forcing callers to know the exact
+        canonical form (e.g. ``Homo sapiens``).
+        """
         results = []
         search_types = [omics_type] if omics_type else self.omics_types
+        organism_lc = organism.lower() if organism else None
+        data_source_lc = data_source.lower() if data_source else None
+        query_lc = query.lower() if query else None
 
         for otype in search_types:
             for dataset in self._cache.get(otype, []):
-                # Text search in title, description, accession
-                if query:
-                    searchable = f"{dataset.get('title', '')} {dataset.get('description', '')} {dataset.get('accession', '')}".lower()
-                    if query.lower() not in searchable:
+                if query_lc:
+                    searchable = (
+                        f"{dataset.get('title', '')} "
+                        f"{dataset.get('description', '')} "
+                        f"{dataset.get('accession', '')}"
+                    ).lower()
+                    if query_lc not in searchable:
                         continue
 
-                # Filter by organism
-                if organism and dataset.get("organism", "").lower() != organism.lower():
+                if organism_lc and organism_lc not in (
+                    dataset.get("organism") or ""
+                ).lower():
                     continue
 
-                # Filter by data source
-                if (
-                    data_source
-                    and dataset.get("data_source", "").lower() != data_source.lower()
-                ):
+                if data_source_lc and data_source_lc not in (
+                    dataset.get("data_source") or ""
+                ).lower():
                     continue
 
                 result = dataset.copy()

@@ -33,21 +33,6 @@ logger = logging.getLogger(__name__)
 _OMICS_CHOICES = ["transcriptomics", "proteomics", "genomics", "epigenomics"]
 
 
-def _filter_substring(entries, field, needle):
-    """Substring (case-insensitive) filter applied on the CLI side.
-
-    ``HvantkRegistry.search()`` does an exact case-insensitive equality
-    match on ``organism`` and ``data_source``; the CLI advertises substring
-    semantics for ergonomics (e.g. ``--organism Homo`` should match
-    ``Homo sapiens``), so we apply the substring filter here instead of
-    passing the kwarg through to ``search``.
-    """
-    if not needle:
-        return entries
-    needle_lc = needle.lower()
-    return [e for e in entries if needle_lc in (e.get(field) or "").lower()]
-
-
 @click.group(
     "catalog",
     context_settings=CONTEXT_SETTINGS,
@@ -88,9 +73,12 @@ def catalog():
 def list_entries(omics_type, data_source, organism, limit):
     """List catalog entries with optional filters."""
     reg = HvantkRegistry()
-    entries = reg.search(query="", omics_type=omics_type)
-    entries = _filter_substring(entries, "data_source", data_source)
-    entries = _filter_substring(entries, "organism", organism)
+    entries = reg.search(
+        query="",
+        omics_type=omics_type,
+        organism=organism,
+        data_source=data_source,
+    )
 
     if not entries:
         click.echo("(no entries match)")
