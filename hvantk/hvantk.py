@@ -19,6 +19,7 @@ from hvantk.tools.expression.summarize_expression_cli import expression_group
 from hvantk.tools.ptm.ptm_cli import ptm_group
 from hvantk.tools.qtl.qtlcascade_cli import qtlcascade_group
 from hvantk.tools.plugins.plugins_cli import plugins_group
+from hvantk.tools.plugins.tools_cli import tools_group
 from hvantk.tools.plugins.drift_cli import drift_cmd
 from hvantk.tools.plugins.reprocess_cli import reprocess_cmd
 
@@ -95,6 +96,7 @@ cli.add_command(expression_group)
 cli.add_command(ptm_group)
 cli.add_command(qtlcascade_group)
 cli.add_command(plugins_group)
+cli.add_command(tools_group)
 cli.add_command(drift_cmd)
 cli.add_command(reprocess_cmd)
 

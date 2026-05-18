@@ -1,0 +1,18 @@
+api_version: 1
+name: drift
+domain: plugins
+type: command
+description: Run plugin drift probes against committed expected fingerprints.
+cli:
+  module: hvantk.tools.plugins.drift_cli
+  function: drift_cmd
+purpose:
+  short: Detect upstream data-source drift for one or more plugins.
+  long: |
+    Compares each plugin's live drift-probe output against its committed
+    drift_fingerprint.json. Status values: clean (no change), drifted
+    (structured diff captured), probe_failed (infra/network failure).
+    Exit codes: 0 clean, 1 drifted, 2 probe_failed, 3 registry error.
+requires:
+  hail: true
+  network: true

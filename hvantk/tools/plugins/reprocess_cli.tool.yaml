@@ -1,0 +1,18 @@
+api_version: 1
+name: reprocess
+domain: plugins
+type: command
+description: Chain download -> parse -> build -> drift-check for a plugin dataset.
+cli:
+  module: hvantk.tools.plugins.reprocess_cli
+  function: reprocess_cmd
+purpose:
+  short: Orchestrate the full plugin lifecycle for one dataset.
+  long: |
+    Reads the plugin's lifecycle.download and lifecycle.parse declarations and
+    chains them with the builder. Stages can be skipped with --skip-download,
+    --skip-parse, --skip-build. Useful for both fresh rebuilds and resuming
+    mid-pipeline after a failure.
+requires:
+  hail: true
+  network: true
