@@ -1,0 +1,35 @@
+api_version: 2
+name: uniprot-ptm
+version: 0.1.0
+status: provisional
+description: UniProt post-translational modification site annotations - Hail Table
+
+source:
+  catalog_ref: uniprot-ptm
+
+datasets:
+  - name: sites
+    domain: proteomics
+    backend: hail
+    builder:
+      module: hvantk.skills.uniprot_ptm.builder
+      function: create_ptm_sites_tb
+    drift_probe:
+      module: hvantk.skills.uniprot_ptm.drift_probe
+      function: fetch_fingerprint
+    skill: SKILL.md
+    tests:
+      command: pytest hvantk/skills/uniprot_ptm/tests -m hail
+      fixture: tests/testdata/raw/uniprot-ptm
+      schema_snapshot: tests/snapshots/schema.json
+      row_snapshot: tests/snapshots/sample_rows.json
+      drift_fingerprint: tests/drift_fingerprint.json
+    lifecycle:
+      download:
+        module: hvantk.skills.uniprot_ptm.cli
+        function: download_dataset
+
+cli:
+  - command: uniprot-ptm-download
+    module: hvantk.skills.uniprot_ptm.cli
+    function: download_cmd

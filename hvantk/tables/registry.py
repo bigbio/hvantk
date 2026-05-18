@@ -255,9 +255,6 @@ TABLE_BUILDERS: Dict[str, Callable[[str, str, Dict[str, Any] | None], None]] = {
     "cosmic-cgc": create_table_adapter(
         "hvantk.tables.table_builders", "create_cosmic_cgc_tb"
     ),
-    "ptm-sites": create_table_adapter(
-        "hvantk.tables.table_builders", "create_ptm_sites_tb"
-    ),
     "pqtl": create_table_adapter("hvantk.tables.table_builders", "create_pqtl_tb"),
     "alphagenome": create_table_adapter(
         "hvantk.tables.table_builders", "create_alphagenome_tb"

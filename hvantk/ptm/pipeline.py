@@ -168,7 +168,7 @@ def download_uniprot_ptm(output_dir: str, overwrite: bool = False) -> str:
     str
         Path to the downloaded TSV file.
     """
-    from hvantk.datasets.uniprot_ptm_datasets import UniProtPTMDataset
+    from hvantk.skills.uniprot_ptm.shared.datasets import UniProtPTMDataset
 
     dataset = UniProtPTMDataset.from_latest()
     return dataset.download(output_dir, overwrite=overwrite)
@@ -429,7 +429,7 @@ def ptm_build_pipeline(config: PTMBuildConfig) -> PTMBuildResult:
 
     # Step 5: Build Hail Table
     logger.info("Building Hail Table at %s...", config.output_ht)
-    from hvantk.tables.table_builders import create_ptm_sites_tb
+    from hvantk.skills.uniprot_ptm.builder import create_ptm_sites_tb
 
     create_ptm_sites_tb(
         input_path=mapped_path,

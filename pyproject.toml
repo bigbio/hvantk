@@ -83,6 +83,7 @@ cptac = "hvantk.skills.cptac"
 ucsc-cellbrowser = "hvantk.skills.ucsc_cellbrowser"
 clingen = "hvantk.skills.clingen"
 gencc = "hvantk.skills.gencc"
+uniprot-ptm = "hvantk.skills.uniprot_ptm"
 
 [tool.pytest.ini_options]
 testpaths = ["hvantk/tests", "hvantk/skills"]

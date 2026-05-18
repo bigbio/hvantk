@@ -78,7 +78,7 @@ def _create_hgnc_gene_tb(*args, **kwargs):
 
 
 def _create_ptm_sites_tb(*args, **kwargs):
-    from hvantk.tables.table_builders import create_ptm_sites_tb
+    from hvantk.skills.uniprot_ptm.builder import create_ptm_sites_tb
 
     return create_ptm_sites_tb(*args, **kwargs)
 
