@@ -108,11 +108,7 @@ __all__ = [
     "create_ensembl_gene_tb",
     "create_dbnsfp_tb",
     "create_clingen_gene_disease_tb",
-    "create_hgnc_gene_tb",
     "create_ptm_sites_tb",
-    "create_gwas_catalog_tb",
-    "create_msigdb_tb",
-    "create_eqtl_tb",
 ]
 
 
@@ -1206,12 +1202,6 @@ def create_cosmic_cgc_tb(
     )
 
 
-# Re-export for backward compat. The canonical location is now
-# hvantk/skills/hgnc/builder.py. This shim can be removed once all callers
-# (e.g., hvantk/commands/make_table_cli.py) migrate to the new path.
-from hvantk.skills.hgnc.builder import create_hgnc_gene_tb  # noqa: F401,E402
-
-
 def create_ptm_sites_tb(
     input_path: str,
     output_path: str,
@@ -1796,19 +1786,3 @@ def create_alphagenome_tb(
         table_output_path = output_path
     logger.info("Checkpointing AlphaGenome variants table to %s", table_output_path)
     return ht.checkpoint(output=table_output_path, overwrite=overwrite)
-
-
-# Re-export for backward compat. The canonical location is now
-# hvantk/skills/msigdb/builder.py. This shim can be removed once all callers
-# (e.g., hvantk/commands/make_table_cli.py) migrate to the new path.
-from hvantk.skills.msigdb.builder import create_msigdb_tb  # noqa: F401,E402
-
-# Re-export for backward compat. The canonical location is now
-# hvantk/skills/gtex_eqtl/builder.py. This shim can be removed once all callers
-# (e.g., hvantk/commands/make_table_cli.py) migrate to the new path.
-from hvantk.skills.gtex_eqtl.builder import create_eqtl_tb  # noqa: F401,E402
-
-# Re-export for backward compat. The canonical location is now
-# hvantk/skills/gwas_catalog/builder.py. This shim can be removed once all
-# callers (e.g., hvantk/commands/make_table_cli.py) migrate to the new path.
-from hvantk.skills.gwas_catalog.builder import create_gwas_catalog_tb  # noqa: F401,E402
