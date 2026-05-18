@@ -14,7 +14,7 @@ This skill covers BUILD and UPDATE of a UCSC Cell Browser single-cell AnnData (`
 
 ## 2. Source identity
 
-Provider metadata (URLs, collections, organisms, per-collection sample counts) lives in `hvantk/resources/catalog.yaml` (under `datasets.transcriptomics`, `data_source: UCSC`) and `hvantk/resources/registry/transcriptomics/datasets.json` (find UCSC entries by `"data_source": "UCSC"`; per-collection key is `accession`, e.g., `cortex-dev`, `ad-multi-region`). Read those files; do not restate.
+Provider metadata (URLs, collections, organisms, per-collection sample counts) lives in `hvantk/skills/ucsc_cellbrowser/catalog/datasets.json` (per-collection key is `accession`, e.g., `cortex-dev`, `ad-multi-region`). Browse via `hvantk catalog list --data-source UCSC` or `hvantk catalog show cortex-dev`. Read those files; do not restate.
 
 Stable note (not in catalog): UCSC Cell Browser publishes per-collection (one accession at a time), not on a global monthly cadence like ClinVar. Each collection is curated independently and may be updated without warning. There is no global "release version" string — versioning is implicit in the collection's last-modified timestamp captured in the registry.
 

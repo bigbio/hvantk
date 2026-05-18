@@ -19,7 +19,7 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes every conve
 ## 2. Source identity
 
 - **Provider:** Clinical Proteomic Tumor Analysis Consortium (CPTAC) (<https://proteomics.cancer.gov/programs/cptac>).
-- **Catalog entry:** TODO. `hvantk/resources/catalog.yaml` does not currently expose a top-level `cptac` entry. The cancer-type enum + class map live in `hvantk/ptm/constants.py` (`CPTAC_CANCER_TYPES`, `CPTAC_CANCER_CLASS_MAP`). When a dedicated catalog entry lands, point this plugin's `source.catalog_ref` at it and remove this TODO.
+- **Catalog entry:** TODO. No CPTAC entry exists yet in any plugin's `catalog/datasets.json` (verify with `hvantk catalog search cptac`). The cancer-type enum + class map live in `hvantk/ptm/constants.py` (`CPTAC_CANCER_TYPES`, `CPTAC_CANCER_CLASS_MAP`). When a dedicated catalog entry lands under `hvantk/skills/cptac/catalog/datasets.json`, point this plugin's `source.catalog_ref` at it and remove this TODO.
 
 ## 3. Backend choice + reasoning
 

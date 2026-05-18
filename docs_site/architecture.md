@@ -159,10 +159,9 @@ hvantk/
 │       └── hail.py        # Hail-based expression plots
 │
 ├── resources/             # Data catalog and schemas
-│   ├── catalog.yaml       # Dataset registry
-│   ├── registry/          # Per-domain dataset metadata
+│   ├── registry/          # Surviving legacy per-domain dataset metadata (genomics only)
 │   ├── schemas/           # JSON schema definitions
-│   └── unified_registry.py# Unified registry access
+│   └── unified_registry.py# Aggregates per-plugin catalog/datasets.json + legacy registry
 │
 └── tests/                 # Test suite
     ├── conftest.py        # Pytest fixtures (hail_session, etc.)
@@ -438,8 +437,8 @@ annotated = variants.annotate(
 **Purpose**: Data catalog and schema definitions
 
 **Contents**:
-- `catalog.yaml` - Central dataset registry
-- `registry/` - Per-domain dataset metadata (genomics, transcriptomics, etc.)
+- `registry/` - Surviving legacy per-domain dataset metadata (genomics only; transcriptomics / proteomics / epigenomics moved into per-plugin `hvantk/skills/<provider>/catalog/datasets.json`)
+- `unified_registry.py` - `HvantkRegistry` aggregator surfaced via `hvantk catalog {list,show,stats,search}`
 - `schemas/` - Schema definitions for validation
 
 ## Testing Strategy

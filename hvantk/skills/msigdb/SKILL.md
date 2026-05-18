@@ -19,7 +19,7 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes every conve
 ## 2. Source identity
 
 - **Provider:** Broad Institute MSigDB. **Variant pinned by this skill's catalog entry:** C2 / CP / human / gene symbols / v2026.1.
-- **Catalog entry:** present. `hvantk/resources/registry/genomics/datasets.json` contains `MSigDB_C2_CP_v2026.1.Hs.symbols`, and `hvantk/resources/catalog.yaml` records `datasets.genomics.count: 10`. URLs / cadence / license / citation live in the catalog and registry — not here.
+- **Catalog entry:** present. `hvantk/resources/registry/genomics/datasets.json` contains `MSigDB_C2_CP_v2026.1.Hs.symbols` (surfaced via `hvantk catalog show MSigDB_C2_CP_v2026.1.Hs.symbols`). URLs / cadence / license / citation live in the registry entry — not here.
 
 Stable note (not in catalog): MSigDB ships per-collection GMT files. The GMT format is the same across collections, so this builder works for any MSigDB GMT, but each onboarded collection needs its own catalog entry to record license / version / file path.
 
@@ -27,7 +27,7 @@ Stable note (not in catalog): MSigDB ships per-collection GMT files. The GMT for
 
 **`backend: hail`, `domain: mapping`.** A C2 CP GMT is ~4k rows × variable-width gene columns. Per `_conventions` § 3 "Lookup / mapping" allows a Hail Table or pandas DataFrame. Hail wins here because downstream consumers (enrichment / burden / overlap, e.g., `hvantk/enrichex/`) join against Hail Tables keyed on gene symbols — producing a Hail Table avoids re-materialization at every join site, mirroring the HGNC decision. Key by `set_name` (string, unique-in-file).
 
-> Catalog placement note: this skill's catalog entry lives in `registry/genomics/datasets.json`, not a dedicated `mapping/` registry directory (no such directory exists today). The decision is consistent with `GWAS_Catalog_v1.0_*` (also gene-symbol / variant-adjacent annotation curation) and avoids invasive changes to `catalog.yaml registry_structure` + `hvantk/resources/unified_registry.py`. Revisit if a `mapping/` domain is later introduced.
+> Catalog placement note: this skill's catalog entry lives in `registry/genomics/datasets.json`, not a dedicated `mapping/` registry directory (no such directory exists today). The decision is consistent with `GWAS_Catalog_v1.0_*` (also gene-symbol / variant-adjacent annotation curation) and avoids invasive changes to `hvantk/resources/unified_registry.py`. Revisit if a `mapping/` domain is later introduced.
 
 ## 4. Raw format & gotchas
 

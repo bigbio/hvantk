@@ -17,14 +17,14 @@ These conventions apply to every per-resource plugin under `hvantk/skills/`. Per
 - `hvantk/tables/table_builders.py` — still the home of generic helpers (`_create_table_base`, `_cleanup_temp_file`, `_parse_insider_bed_to_temp_tsv`) and of non-migrated builders. Plugins import the helpers; they do not add new top-level builders here.
 - `hvantk/tables/registry.py` — recipe-system registry. The plugin loader populates `TABLE_BUILDERS` / `MATRIX_BUILDERS` automatically; hand-written `create_table_adapter()` calls are deprecated for migrated providers.
 - `hvantk/core/plugin_api.py`, `hvantk/core/plugin_loader.py` — plugin schema, discovery (filesystem + Python entry points), and lifecycle wiring.
-- `hvantk/tools/` — top-level CLI (`hvantk plugins`, `hvantk drift`, `hvantk reprocess`, plus legacy `mktable`, `mkmatrix`). Per-provider CLI lives in the plugin's own `cli.py` and is wired by `plugin.yaml`.
-- `hvantk/resources/catalog.yaml` — provider catalog (URLs, version cadence, license).
+- `hvantk/tools/` — top-level CLI (`hvantk plugins`, `hvantk drift`, `hvantk reprocess`, `hvantk catalog`, plus legacy `mktable`, `mkmatrix`). Per-provider CLI lives in the plugin's own `cli.py` and is wired by `plugin.yaml`.
+- `hvantk/skills/<provider>/catalog/datasets.json` — per-plugin dataset catalog (URLs, version cadence, license, per-accession metadata). Aggregated by `hvantk.resources.unified_registry.HvantkRegistry` and surfaced via `hvantk catalog {list,show,stats,search}`.
 
 When in doubt, READ existing code under these paths before inferring shape.
 
 ## 2. Authoritative spec sources
 
-`resources/catalog.yaml` is the source of truth for provider metadata: URLs, version strings, license, citation, release cadence. NEVER restate this content in a skill. Reference the catalog instead.
+Each plugin's `catalog/datasets.json` (under `hvantk/skills/<provider>/catalog/`) is the source of truth for that provider's metadata: URLs, version strings, license, citation, release cadence. NEVER restate this content in a skill. Reference the catalog file instead, or query it via `hvantk catalog show <accession>` / `hvantk catalog stats`.
 
 Every provider MUST ship a `plugin.yaml` with `api_version: 2`. Bare-name registry entries (e.g., `TABLE_BUILDERS["clinvar"]`) are deprecated; the loader installs compound keys (`provider:dataset`) automatically from the manifest. The manifest schema is enforced by `hvantk/tests/test_plugin_manifest_schema.py`.
 
@@ -121,7 +121,7 @@ Every per-resource `SKILL.md` MUST declare these paths, which MUST match the `te
 
 - NEVER invent Hail field names. Read the schema from a real run.
 - NEVER invent VCF/TSV column names. Read the file header first.
-- NEVER assume catalog content. Read `resources/catalog.yaml`.
+- NEVER assume catalog content. Read the plugin's `catalog/datasets.json` (or run `hvantk catalog show <accession>`).
 - NEVER paste code from a builder into a skill. Reference the file path.
 - When uncertain, READ existing code (cite which file).
 

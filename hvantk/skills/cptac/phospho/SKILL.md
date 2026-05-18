@@ -19,7 +19,7 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes every conve
 ## 2. Source identity
 
 - **Provider:** Clinical Proteomic Tumor Analysis Consortium (CPTAC) (<https://proteomics.cancer.gov/programs/cptac>), accessed via the [`cptac` Python package](https://pypi.org/project/cptac/) (NOT direct HTTP).
-- **Catalog entry:** TODO. `hvantk/resources/catalog.yaml` does not currently expose a top-level `cptac` entry. Cancer-type enum + class map live in `hvantk/ptm/constants.py` (`CPTAC_CANCER_TYPES`, `CPTAC_CANCER_CLASS_MAP`). The installed `cptac` package version is the de-facto release pin (fingerprinted by the drift probe).
+- **Catalog entry:** TODO. No CPTAC entry exists yet in any plugin's `catalog/datasets.json` (verify with `hvantk catalog search cptac`). Cancer-type enum + class map live in `hvantk/ptm/constants.py` (`CPTAC_CANCER_TYPES`, `CPTAC_CANCER_CLASS_MAP`). The installed `cptac` package version is the de-facto release pin (fingerprinted by the drift probe).
 
 ## 3. Backend choice + reasoning
 

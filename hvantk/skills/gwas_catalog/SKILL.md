@@ -19,7 +19,7 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes every conve
 ## 2. Source identity
 
 - **Provider:** EBI GWAS Catalog. **Schema pinned by this skill:** v1.0 (34 columns, no `MAPPED_TRAIT_URI`).
-- **Catalog entry:** present. `hvantk/resources/registry/genomics/datasets.json` contains `GWAS_Catalog_v1.0_e115_r2026-04-27`, and `hvantk/resources/catalog.yaml` records `datasets.genomics.count: 9`. URLs / cadence / license / citation live in the catalog and registry — not here.
+- **Catalog entry:** present. `hvantk/resources/registry/genomics/datasets.json` contains `GWAS_Catalog_v1.0_e115_r2026-04-27` (surfaced by `hvantk catalog show GWAS_Catalog_v1.0_e115_r2026-04-27`). URLs / cadence / license / citation live in the registry entry — not here.
 
 ## 3. Backend choice + reasoning
 

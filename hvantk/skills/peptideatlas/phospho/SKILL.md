@@ -19,7 +19,7 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes every conve
 ## 2. Source identity
 
 - **Provider:** PeptideAtlas (<https://peptideatlas.org/>).
-- **Catalog entry:** TODO. `hvantk/resources/catalog.yaml` does not currently expose a top-level `peptideatlas` entry. The pinned build coordinates live in `hvantk/ptm/constants.py` as `PEPTIDEATLAS_PHOSPHO_BASE_URL`, `PEPTIDEATLAS_LATEST_BUILD_DATE`, and `PEPTIDEATLAS_LATEST_BUILD_ID`. When a dedicated catalog entry lands, point this plugin's `source.catalog_ref` at it and remove this TODO.
+- **Catalog entry:** TODO. No PeptideAtlas entry exists yet in any plugin's `catalog/datasets.json` (verify with `hvantk catalog search peptideatlas`). The pinned build coordinates live in `hvantk/ptm/constants.py` as `PEPTIDEATLAS_PHOSPHO_BASE_URL`, `PEPTIDEATLAS_LATEST_BUILD_DATE`, and `PEPTIDEATLAS_LATEST_BUILD_ID`. When a dedicated catalog entry lands under `hvantk/skills/peptideatlas/catalog/datasets.json`, point this plugin's `source.catalog_ref` at it and remove this TODO.
 - Download URL is composed by `PeptideAtlasPhosphoDataset.from_build(build_date, build_id)` as `{base}/{build_date}/atlas_build_{build_id}.tsv.zip`. The dataset class enforces HTTPS + `*.peptideatlas.org` host validation before any GET.
 
 ## 3. Backend choice + reasoning

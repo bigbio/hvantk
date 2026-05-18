@@ -23,7 +23,7 @@ Out of scope for this skill (per `_conventions` § 11):
 
 HGNC = HUGO Gene Nomenclature Committee. The complete-set TSV is the authoritative reference for current approved human gene symbols, IDs, and curated cross-references.
 
-> Catalog gap: HGNC is **not yet registered** in `hvantk/resources/catalog.yaml` or any `hvantk/resources/registry/<domain>/datasets.json` (verified 2026-05-10). Until it is, the URL/version constants live in `hvantk/core/constants.py` (`HGNC_DOWNLOAD_URL`, `HGNC_INFO_URL`). Do **not** restate them here. When HGNC is added to the catalog, drop this paragraph and reference the catalog entry.
+> Catalog gap: HGNC is **not yet registered** in any plugin's `catalog/datasets.json` or in `hvantk/resources/registry/genomics/datasets.json` (verified 2026-05-10; re-check with `hvantk catalog search HGNC`). Until it is, the URL/version constants live in `hvantk/core/constants.py` (`HGNC_DOWNLOAD_URL`, `HGNC_INFO_URL`). Do **not** restate them here. When HGNC is added to the catalog, drop this paragraph and reference the catalog entry.
 
 Stable provider notes the catalog will not capture:
 - HGNC publishes a single rolling "complete set" (no dated versions in the URL); freshness is determined by the file's HTTP `Last-Modified` header.

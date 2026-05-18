@@ -16,7 +16,7 @@ This skill covers BUILD and UPDATE of the ClinGen Gene-Disease Validity Hail Tab
 
 ## 2. Source identity
 
-Provider metadata (URL, license, citation) lives in `hvantk/resources/catalog.yaml` (entry `clingen`). The URL/version constants live in `hvantk/core/constants.py` (`CLINGEN_BASE_URL`, `CLINGEN_DOWNLOADS_URL`, `CLINGEN_FILE_PREFIX`, `CLINGEN_HEADER_SKIP_LINES`). Read those files; do not restate.
+Provider metadata (URL, license, citation) lives in the plugin's `catalog/datasets.json` (or query it with `hvantk catalog show <accession>` once a ClinGen catalog entry exists). The URL/version constants live in `hvantk/core/constants.py` (`CLINGEN_BASE_URL`, `CLINGEN_DOWNLOADS_URL`, `CLINGEN_FILE_PREFIX`, `CLINGEN_HEADER_SKIP_LINES`). Read those files; do not restate.
 
 Stable provider notes the catalog will not capture:
 - ClinGen serves a single rolling Gene-Disease Validity CSV; there are no dated archives. Freshness is determined by the file's HTTP `Last-Modified` header (when present) and by the values in the leading metadata block.

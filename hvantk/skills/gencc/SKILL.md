@@ -16,7 +16,7 @@ This skill covers BUILD and UPDATE of the GenCC Submissions Hail Table. It does 
 
 ## 2. Source identity
 
-Provider metadata (URL, license, citation) lives in `hvantk/resources/catalog.yaml` (entry `gencc`). The URL/version constants live in `hvantk/core/constants.py` (`GENCC_BASE_URL`, `GENCC_FILE_PREFIX`). Read those files; do not restate.
+Provider metadata (URL, license, citation) lives in the plugin's `catalog/datasets.json` (or query it with `hvantk catalog show <accession>` once a GenCC catalog entry exists). The URL/version constants live in `hvantk/core/constants.py` (`GENCC_BASE_URL`, `GENCC_FILE_PREFIX`). Read those files; do not restate.
 
 Stable provider notes the catalog will not capture:
 - GenCC serves a single rolling submissions TSV; there are no dated archives. Freshness is determined by the file's HTTP `Last-Modified` header (when present) and by the `submitted_as_date` values in the body.

@@ -15,7 +15,6 @@ keywords = [
     "joint-genotyping"
 ]
 include = [
-  { path = "hvantk/resources/catalog.yaml", format = ["sdist", "wheel"] },
   { path = "hvantk/skills/**/plugin.yaml", format = ["sdist", "wheel"] },
   { path = "hvantk/skills/**/*.py", format = ["sdist", "wheel"] },
   { path = "hvantk/skills/**/SKILL.md", format = ["sdist", "wheel"] },
