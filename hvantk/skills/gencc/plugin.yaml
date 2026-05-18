@@ -1,0 +1,35 @@
+api_version: 2
+name: gencc
+version: 0.1.0
+status: provisional
+description: GenCC (Gene Curation Coalition) Submissions TSV - Hail Table
+
+source:
+  catalog_ref: gencc
+
+datasets:
+  - name: submissions
+    domain: genomics
+    backend: hail
+    builder:
+      module: hvantk.skills.gencc.builder
+      function: create_gencc_submissions_tb
+    drift_probe:
+      module: hvantk.skills.gencc.drift_probe
+      function: fetch_fingerprint
+    skill: SKILL.md
+    tests:
+      command: pytest hvantk/skills/gencc/tests -m hail
+      fixture: tests/testdata/raw/gencc
+      schema_snapshot: tests/snapshots/schema.json
+      row_snapshot: tests/snapshots/sample_rows.json
+      drift_fingerprint: tests/drift_fingerprint.json
+    lifecycle:
+      download:
+        module: hvantk.skills.gencc.cli
+        function: download_dataset
+
+cli:
+  - command: gencc-download
+    module: hvantk.skills.gencc.cli
+    function: download_cmd

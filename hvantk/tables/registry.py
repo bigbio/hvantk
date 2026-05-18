@@ -252,9 +252,6 @@ TABLE_BUILDERS: Dict[str, Callable[[str, str, Dict[str, Any] | None], None]] = {
         "hvantk.tables.table_builders", "create_ensembl_gene_tb"
     ),
     "dbnsfp": create_table_adapter("hvantk.tables.table_builders", "create_dbnsfp_tb"),
-    "gencc-submissions": create_table_adapter(
-        "hvantk.tables.table_builders", "create_gencc_submissions_tb"
-    ),
     "cosmic-cgc": create_table_adapter(
         "hvantk.tables.table_builders", "create_cosmic_cgc_tb"
     ),

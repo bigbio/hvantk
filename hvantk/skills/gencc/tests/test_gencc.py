@@ -4,6 +4,11 @@ GenCC-specific tests.
 Tests GenCC dataset class (no Hail) and GenCC streamer submitter methods
 (requires Hail). Shared base-class logic is already exercised by
 test_clingen_streamer.py through ClinGenStreamer.
+
+The GenCC streamer itself (``hvantk.data.gencc_streamer``) intentionally
+lives outside this plugin folder because it is part of the cross-cutting
+``GeneDiseaseValidityStreamer`` family; the streamer tests here live with
+the builder because they depend on it to materialize the input HT.
 """
 
 from pathlib import Path
@@ -15,7 +20,7 @@ import pytest
 
 class TestGenCCSubmissionsDataset:
     def test_from_date_valid(self):
-        from hvantk.datasets.gencc_datasets import GenCCSubmissionsDataset
+        from hvantk.skills.gencc.shared.datasets import GenCCSubmissionsDataset
 
         ds = GenCCSubmissionsDataset.from_date("2025-10-15")
         assert ds.version_date == "2025-10-15"
@@ -23,20 +28,20 @@ class TestGenCCSubmissionsDataset:
         assert "thegencc.org" in ds.download_url
 
     def test_from_date_invalid_format(self):
-        from hvantk.datasets.gencc_datasets import GenCCSubmissionsDataset
+        from hvantk.skills.gencc.shared.datasets import GenCCSubmissionsDataset
 
         with pytest.raises(ValueError, match="Invalid version_date format"):
             GenCCSubmissionsDataset.from_date("15-10-2025")
 
     def test_from_latest(self):
-        from hvantk.datasets.gencc_datasets import GenCCSubmissionsDataset
+        from hvantk.skills.gencc.shared.datasets import GenCCSubmissionsDataset
 
         ds = GenCCSubmissionsDataset.from_latest()
         assert ds.version_date  # should be today's date
         assert ds.file_name.startswith("gencc-submissions-")
 
     def test_metadata(self):
-        from hvantk.datasets.gencc_datasets import GenCCSubmissionsDataset
+        from hvantk.skills.gencc.shared.datasets import GenCCSubmissionsDataset
 
         ds = GenCCSubmissionsDataset.from_date("2025-10-15")
         meta = ds.get_metadata()
@@ -52,7 +57,7 @@ TEST_DIR = Path(__file__).parent / "testdata"
 @pytest.fixture
 def gencc_table_path(tmp_path):
     """Build a GenCC Hail Table from test fixture (gene_disease_submitter keying)."""
-    from hvantk.tables.table_builders import create_gencc_submissions_tb
+    from hvantk.skills.gencc.builder import create_gencc_submissions_tb
 
     input_path = TEST_DIR / "raw/gencc/gencc_test_sample.tsv"
     output_path = tmp_path / "gencc_test.ht"

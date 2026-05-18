@@ -1,26 +1,28 @@
 """
-CLI command for downloading GenCC (Gene Curation Coalition) submissions data.
+CLI command and lifecycle entry point for downloading GenCC (Gene Curation
+Coalition) submissions data.
 
 Examples:
     # Download today's snapshot
-    hvantk gencc-downloader --output-dir data/gencc
+    hvantk gencc-download --output-dir data/gencc
 
     # Check download availability
-    hvantk gencc-downloader --list-versions
+    hvantk gencc-download --list-versions
 """
 
 import logging
 
 import click
 
-from hvantk.core.config import CONTEXT_SETTINGS
+from hvantk.core.config import CONTEXT_SETTINGS  # noqa: F401  (kept for parity with sibling CLIs)
+from hvantk.skills.gencc.shared.datasets import GenCCSubmissionsDataset
 
 logger = logging.getLogger(__name__)
 
 
 def _print_available_versions():
     """Print GenCC submissions dataset availability info."""
-    from hvantk.datasets.gencc_datasets import get_available_versions
+    from hvantk.skills.gencc.shared.datasets import get_available_versions
 
     versions = get_available_versions()
     if not versions:
@@ -32,7 +34,34 @@ def _print_available_versions():
     click.echo(f"  Download will be labeled with today's date: {versions[0]}")
 
 
-@click.command("gencc-downloader", short_help="Download GenCC submissions data")
+def download_dataset(raw_dir: str, overwrite: bool = False, **kwargs) -> str:
+    """Lifecycle entry point for the plugin loader.
+
+    Per the ``DatasetSpec`` contract documented in
+    :mod:`hvantk.core.plugin_api`, a lifecycle ``download_fn`` accepts
+    ``raw_dir=<path>`` and writes the raw upstream files under that
+    directory. For GenCC there is exactly one artifact, the real-time
+    submissions TSV, labelled with today's date.
+
+    Parameters
+    ----------
+    raw_dir : str
+        Directory under which the downloaded TSV is placed.
+    overwrite : bool, optional
+        Whether to overwrite an existing file (default: False).
+    **kwargs
+        Reserved for future lifecycle keyword arguments; ignored today.
+
+    Returns
+    -------
+    str
+        Path to the downloaded raw TSV file.
+    """
+    dataset = GenCCSubmissionsDataset.from_latest()
+    return dataset.download(output_dir=raw_dir, overwrite=overwrite)
+
+
+@click.command("gencc-download", short_help="Download GenCC submissions data")
 @click.option(
     "--version",
     "version_date",
@@ -60,7 +89,7 @@ def _print_available_versions():
     help="Check download availability and show the current snapshot date.",
 )
 @click.pass_context
-def gencc_downloader(ctx, version_date, output_dir, overwrite, list_versions):
+def download_cmd(ctx, version_date, output_dir, overwrite, list_versions):
     """
     Download GenCC (Gene Curation Coalition) submissions data.
 
@@ -75,14 +104,12 @@ def gencc_downloader(ctx, version_date, output_dir, overwrite, list_versions):
 
         # Download today's snapshot
 
-        hvantk gencc-downloader --output-dir data/gencc
+        hvantk gencc-download --output-dir data/gencc
 
         # Check download availability
 
-        hvantk gencc-downloader --list-versions
+        hvantk gencc-download --list-versions
     """
-    from hvantk.datasets.gencc_datasets import GenCCSubmissionsDataset
-
     if list_versions:
         _print_available_versions()
         ctx.exit(0)
@@ -115,5 +142,12 @@ def gencc_downloader(ctx, version_date, output_dir, overwrite, list_versions):
         ctx.exit(1)
 
 
+# Backward-compatible alias for the legacy public name. The umbrella
+# ``hvantk/commands/download_cli.py`` still imports the Click command under
+# this name; once the auto-attach for ``cli:`` manifest blocks lands, the
+# alias and the umbrella's import can be removed together.
+gencc_downloader = download_cmd
+
+
 if __name__ == "__main__":
-    gencc_downloader()
+    download_cmd()

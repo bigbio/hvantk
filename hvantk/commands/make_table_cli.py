@@ -66,7 +66,7 @@ def _create_clingen_gene_disease_tb(*args, **kwargs):
 
 
 def _create_gencc_submissions_tb(*args, **kwargs):
-    from hvantk.tables.table_builders import create_gencc_submissions_tb
+    from hvantk.skills.gencc.builder import create_gencc_submissions_tb
 
     return create_gencc_submissions_tb(*args, **kwargs)
 
