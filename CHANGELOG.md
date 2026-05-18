@@ -8,7 +8,7 @@
 - `hvantk plugins {list,describe,errors,validate}` commands for inspecting the registry.
 - `hvantk drift <provider:dataset>` for upstream-drift detection against committed expected fingerprints.
 - `hvantk reprocess <provider:dataset>` for chaining download -> parse -> build -> drift-check from a single command.
-- 10 migrated provider plugins: clinvar, cptac (expression + phospho), expression-atlas, gtex-eqtl, gwas-catalog, hgnc, insider, msigdb, peptideatlas (phospho), ucsc-cellbrowser (default / adult-ctx / dev-ctx).
+- 13 migrated provider plugins: clingen (gene-disease), clinvar, cptac (expression + phospho), expression-atlas, gencc (submissions), gtex-eqtl, gwas-catalog, hgnc, insider, msigdb, peptideatlas (phospho), ucsc-cellbrowser (default / adult-ctx / dev-ctx), uniprot-ptm (sites).
 
 ### Changed
 
