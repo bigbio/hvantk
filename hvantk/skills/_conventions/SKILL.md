@@ -17,7 +17,7 @@ These conventions apply to every per-resource plugin under `hvantk/skills/`. Per
 - `hvantk/tables/table_builders.py` — still the home of generic helpers (`_create_table_base`, `_cleanup_temp_file`, `_parse_insider_bed_to_temp_tsv`) and of non-migrated builders. Plugins import the helpers; they do not add new top-level builders here.
 - `hvantk/tables/registry.py` — recipe-system registry. The plugin loader populates `TABLE_BUILDERS` / `MATRIX_BUILDERS` automatically; hand-written `create_table_adapter()` calls are deprecated for migrated providers.
 - `hvantk/core/plugin_api.py`, `hvantk/core/plugin_loader.py` — plugin schema, discovery (filesystem + Python entry points), and lifecycle wiring.
-- `hvantk/commands/` — top-level CLI (`hvantk plugins`, `hvantk drift`, `hvantk reprocess`, plus legacy `mktable`, `mkmatrix`). Per-provider CLI lives in the plugin's own `cli.py` and is wired by `plugin.yaml`.
+- `hvantk/tools/` — top-level CLI (`hvantk plugins`, `hvantk drift`, `hvantk reprocess`, plus legacy `mktable`, `mkmatrix`). Per-provider CLI lives in the plugin's own `cli.py` and is wired by `plugin.yaml`.
 - `hvantk/resources/catalog.yaml` — provider catalog (URLs, version cadence, license).
 
 When in doubt, READ existing code under these paths before inferring shape.
@@ -97,7 +97,7 @@ cli:
     function: download_cmd
 ```
 
-The top-level `mktable` / `mkmatrix` commands in `hvantk/commands/` continue to dispatch by sub-command name (e.g., `hvantk mktable hgnc`) and import the plugin builder behind a thin shim.
+The top-level `mktable` / `mkmatrix` commands in `hvantk/tools/` continue to dispatch by sub-command name (e.g., `hvantk mktable hgnc`) and import the plugin builder behind a thin shim.
 
 ## 8. Test pattern
 

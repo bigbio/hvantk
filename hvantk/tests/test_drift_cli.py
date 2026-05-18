@@ -9,7 +9,7 @@ import pytest
 from click.testing import CliRunner
 
 from hvantk.core import plugin_loader
-from hvantk.commands.drift_cli import drift_cmd
+from hvantk.tools.plugins.drift_cli import drift_cmd
 
 
 FIXTURE_ROOT = Path(__file__).parent / "testdata" / "raw" / "plugins"

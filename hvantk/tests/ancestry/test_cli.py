@@ -12,7 +12,7 @@ from unittest.mock import patch, MagicMock
 import pytest
 from click.testing import CliRunner
 
-from hvantk.commands.ancestry_cli import ancestry_inference_cmd
+from hvantk.tools.ancestry.ancestry_cli import ancestry_inference_cmd
 
 
 class TestAncestryCLIHelp:

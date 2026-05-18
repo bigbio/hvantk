@@ -2,7 +2,7 @@ import json
 from click.testing import CliRunner
 from unittest.mock import patch
 
-from hvantk.commands.make_table_batch_cli import mktable_batch_cli
+from hvantk.tools.build.make_table_batch_cli import mktable_batch_cli
 
 
 def test_mktables_recipe_success(tmp_path):
@@ -26,8 +26,8 @@ def test_mktables_recipe_success(tmp_path):
     recipe_path.write_text(json.dumps(recipe))
 
     runner = CliRunner()
-    with patch("hvantk.commands.make_table_batch_cli._load_recipe") as mock_load, patch(
-        "hvantk.commands.make_table_batch_cli.logger"
+    with patch("hvantk.tools.build.make_table_batch_cli._load_recipe") as mock_load, patch(
+        "hvantk.tools.build.make_table_batch_cli.logger"
     ), patch("hvantk.tables.registry.run_table_builder") as mock_runner:
         mock_load.return_value = recipe
         result = runner.invoke(mktable_batch_cli, ["--recipe", str(recipe_path)])

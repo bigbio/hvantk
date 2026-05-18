@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 import pytest
 from click.testing import CliRunner
 
-from hvantk.commands.reprocess_cli import reprocess_cmd
+from hvantk.tools.plugins.reprocess_cli import reprocess_cmd
 from hvantk.core import plugin_loader
 from hvantk.core.plugin_api import DatasetSpec, TestPaths
 

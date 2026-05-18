@@ -2,13 +2,13 @@ from unittest.mock import patch, MagicMock
 
 from click.testing import CliRunner
 
-from hvantk.commands.make_table_cli import mktable_group
+from hvantk.tools.build.make_table_cli import mktable_group
 
 
 def test_mktable_eqtl_cli_default():
     runner = CliRunner()
     mock_ht = MagicMock()
-    with patch("hvantk.commands.make_table_cli._create_eqtl_tb", return_value=mock_ht):
+    with patch("hvantk.tools.build.make_table_cli._create_eqtl_tb", return_value=mock_ht):
         result = runner.invoke(
             mktable_group,
             [
@@ -27,7 +27,7 @@ def test_mktable_eqtl_cli_with_options():
     runner = CliRunner()
     mock_ht = MagicMock()
     with patch(
-        "hvantk.commands.make_table_cli._create_eqtl_tb", return_value=mock_ht
+        "hvantk.tools.build.make_table_cli._create_eqtl_tb", return_value=mock_ht
     ) as mock_create:
         result = runner.invoke(
             mktable_group,
@@ -69,7 +69,7 @@ def test_mktable_pqtl_cli_requires_hgnc_or_opt_out():
         "Ensembl gene mapping is required for cascade-compatible pQTL tables."
     )
     with patch(
-        "hvantk.commands.make_table_cli._create_pqtl_tb", side_effect=error
+        "hvantk.tools.build.make_table_cli._create_pqtl_tb", side_effect=error
     ):
         result = runner.invoke(
             mktable_group,
@@ -91,7 +91,7 @@ def test_mktable_pqtl_cli_no_gene_map():
     runner = CliRunner()
     mock_ht = MagicMock()
     with patch(
-        "hvantk.commands.make_table_cli._create_pqtl_tb", return_value=mock_ht
+        "hvantk.tools.build.make_table_cli._create_pqtl_tb", return_value=mock_ht
     ) as mock_create:
         result = runner.invoke(
             mktable_group,
@@ -124,7 +124,7 @@ def test_mktable_pqtl_cli_with_hgnc_ht():
     runner = CliRunner()
     mock_ht = MagicMock()
     with patch(
-        "hvantk.commands.make_table_cli._create_pqtl_tb", return_value=mock_ht
+        "hvantk.tools.build.make_table_cli._create_pqtl_tb", return_value=mock_ht
     ) as mock_create:
         result = runner.invoke(
             mktable_group,

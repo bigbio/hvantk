@@ -54,7 +54,7 @@ Metadata file is read with the same auto-detect logic and indexed by `SampleID` 
 - **Drift probe:** `fetch_fingerprint` in `hvantk/skills/cptac/expression/drift_probe.py` (fingerprints the installed `cptac` Python package version).
 - **Plugin manifest:** `hvantk/skills/cptac/plugin.yaml` (compound dataset key `cptac:expression`).
 - **Tests:** parser/helper coverage in `hvantk/skills/cptac/expression/tests/` (drift-probe sanity); builder coverage in `hvantk/tests/test_expression_builders_anndata.py` (`TestBuildCptacAd`).
-- **CLI:** `hvantk mkmatrix cptac` in `hvantk/commands/make_matrix_cli.py`. The user-facing command name is unchanged from the pre-plugin layout; only the internal import path moved.
+- **CLI:** `hvantk mkmatrix cptac` in `hvantk/tools/build/make_matrix_cli.py`. The user-facing command name is unchanged from the pre-plugin layout; only the internal import path moved.
 
 ## 7. Workflow steps
 

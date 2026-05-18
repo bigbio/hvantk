@@ -96,7 +96,7 @@ For eqtlgen, both `af` and `maf` remain `hl.missing` (the source distributes nei
   - `_import_eqtl_eqtlgen` (eqtlgen TSV, separate schema).
 - **Source constants:** `EQTL_SOURCES = ("gtex_v11", "gtex_v8", "eqtlgen")` in `hvantk/qtlcascade/constants.py:77`.
 - **Registry:** `TABLE_BUILDERS["eqtl"] = create_table_adapter("hvantk.tables.table_builders", "create_eqtl_tb")` in `hvantk/tables/registry.py`.
-- **CLI:** `mktable_eqtl` in `hvantk/commands/make_table_cli.py:604` (command name `eqtl`), with `--source` flag (Click choice, default `gtex_v11`), `--tissue`, `--p-threshold`, plus the standard input/output/overwrite/export options.
+- **CLI:** `mktable_eqtl` in `hvantk/tools/build/make_table_cli.py:604` (command name `eqtl`), with `--source` flag (Click choice, default `gtex_v11`), `--tissue`, `--p-threshold`, plus the standard input/output/overwrite/export options.
 - **Downstream consumer:** `hvantk/qtlcascade/` — the eQTL Hail Table is one half of the eQTL ⊕ pQTL cascade join.
 
 ## 7. Workflow steps

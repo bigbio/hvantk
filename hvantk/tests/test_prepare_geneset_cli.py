@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 from click.testing import CliRunner
 
-from hvantk.commands.genesets_cli import genesets_prepare as prepare_geneset_cmd
+from hvantk.tools.genesets.genesets_cli import genesets_prepare as prepare_geneset_cmd
 
 TESTDATA = Path(__file__).parent / "testdata" / "prepare_geneset"
 

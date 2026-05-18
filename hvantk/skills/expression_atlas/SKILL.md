@@ -57,7 +57,7 @@ Stable notes:
 - **Dataset / collection classes:** `ExpressionAtlasDataset`, `ExpressionAtlasDatasetCollection` in `hvantk/skills/expression_atlas/shared/datasets.py`.
 - **Downloader CLI:** `download_experiments` in `hvantk/skills/expression_atlas/cli.py` (registered as `hvantk expression-atlas-download` and also re-bound under `hvantk download expression-atlas`).
 - **Lifecycle entry point:** `download_dataset` in `hvantk/skills/expression_atlas/cli.py`.
-- **Build CLI:** `hvantk mkmatrix expression-atlas` in `hvantk/commands/make_matrix_cli.py` (delegates to the plugin builder).
+- **Build CLI:** `hvantk mkmatrix expression-atlas` in `hvantk/tools/build/make_matrix_cli.py` (delegates to the plugin builder).
 - **Plugin manifest:** `hvantk/skills/expression_atlas/plugin.yaml` (drives loader registration; compound dataset key `expression-atlas:dataset`).
 - **Tests:** `hvantk/skills/expression_atlas/tests/` (downloader unit + drift-probe sanity present; builder round-trip TODO).
 

@@ -11,7 +11,7 @@ from unittest.mock import patch, MagicMock
 
 from click.testing import CliRunner
 
-from hvantk.commands.psroc_cli import psroc_cmd, _parse_comma_separated
+from hvantk.tools.ptm.psroc_cli import psroc_cmd, _parse_comma_separated
 
 
 class TestParseCommaSeparated:

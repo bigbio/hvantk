@@ -401,7 +401,7 @@ class TestMkmatrixCli:
 
     def test_ucsc_produces_h5ad(self, tmp_path):
         from click.testing import CliRunner
-        from hvantk.commands.make_matrix_cli import mkmatrix_group
+        from hvantk.tools.build.make_matrix_cli import mkmatrix_group
 
         cells = ["cell_A", "cell_B", "cell_C", "cell_D"]
         genes = ["TP53", "BRCA1", "EGFR"]
@@ -432,7 +432,7 @@ class TestMkmatrixCli:
 
     def test_cptac_produces_h5ad(self, tmp_path):
         from click.testing import CliRunner
-        from hvantk.commands.make_matrix_cli import mkmatrix_group
+        from hvantk.tools.build.make_matrix_cli import mkmatrix_group
 
         expr_path = str(tmp_path / "expr.tsv")
         meta_path = str(tmp_path / "meta.tsv")

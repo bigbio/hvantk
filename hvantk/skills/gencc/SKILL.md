@@ -47,9 +47,9 @@ Default row schema includes: `sgc_id`, `hgnc_id`, `gene_symbol`, `mondo_id`, `di
 
 - Plugin manifest: `hvantk/skills/gencc/plugin.yaml` (drives loader registration; compound dataset key `gencc:submissions`).
 - Builder: `create_gencc_submissions_tb` in `hvantk/skills/gencc/builder.py` (uses `_create_table_base()` per `_conventions` § 4).
-- Downloader CLI: `download_cmd` (Click `gencc-download`) in `hvantk/skills/gencc/cli.py`; lifecycle entry-point `download_dataset(raw_dir=...)`. Wired into the umbrella `hvantk download gencc` group in `hvantk/commands/download_cli.py`.
+- Downloader CLI: `download_cmd` (Click `gencc-download`) in `hvantk/skills/gencc/cli.py`; lifecycle entry-point `download_dataset(raw_dir=...)`. Wired into the umbrella `hvantk download gencc` group in `hvantk/tools/plugins/download_cli.py`.
 - Dataset class: `GenCCSubmissionsDataset` in `hvantk/skills/gencc/shared/datasets.py`.
-- Build CLI: `hvantk mktable gencc-submissions` in `hvantk/commands/make_table_cli.py`.
+- Build CLI: `hvantk mktable gencc-submissions` in `hvantk/tools/build/make_table_cli.py`.
 - Streamer (out-of-plugin, intentionally): `hvantk/data/gencc_streamer.py` (`GenCCStreamer`, subclass of `GeneDiseaseValidityStreamer`); shared with the ClinGen/gene-disease streamer family. Re-exported through `hvantk/data/__init__.py`.
 - Constants: `GENCC_BASE_URL`, `GENCC_FILE_PREFIX`, `GENCC_SUBMISSION_FIELDS`, `GENCC_CLASSIFICATION_LEVELS` in `hvantk/core/constants.py`.
 - Tests: `hvantk/skills/gencc/tests/test_gencc.py` (dataset class + builder-driven streamer tests), `test_drift_probe.py`.

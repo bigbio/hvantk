@@ -47,9 +47,9 @@ Row schema includes: `locus`, `chrom`, `codon_start`, `codon_end`, `strand`, `un
 
 - Plugin manifest: `hvantk/skills/uniprot_ptm/plugin.yaml` (drives loader registration; compound dataset key `uniprot-ptm:sites`).
 - Builder: `create_ptm_sites_tb` in `hvantk/skills/uniprot_ptm/builder.py` (uses `_create_table_base()` per `_conventions` § 4).
-- Downloader CLI: `download_cmd` (Click `uniprot-ptm-download`) in `hvantk/skills/uniprot_ptm/cli.py`; lifecycle entry-point `download_dataset(raw_dir=...)`. Wired into the umbrella `hvantk download uniprot-ptm` group in `hvantk/commands/download_cli.py`.
+- Downloader CLI: `download_cmd` (Click `uniprot-ptm-download`) in `hvantk/skills/uniprot_ptm/cli.py`; lifecycle entry-point `download_dataset(raw_dir=...)`. Wired into the umbrella `hvantk download uniprot-ptm` group in `hvantk/tools/plugins/download_cli.py`.
 - Dataset class: `UniProtPTMDataset` in `hvantk/skills/uniprot_ptm/shared/datasets.py`.
-- Build CLI: `hvantk mktable ptm-sites` in `hvantk/commands/make_table_cli.py` (user-facing name preserved).
+- Build CLI: `hvantk mktable ptm-sites` in `hvantk/tools/build/make_table_cli.py` (user-facing name preserved).
 - PTM mapping pipeline (out-of-plugin, intentionally): `hvantk/ptm/pipeline.py` (`map_ptm_sites`, `download_uniprot_ptm`) — the analysis tooling that produces the *mapped* TSV consumed by the builder.
 - Constants: `UNIPROT_API_URL`, `UNIPROT_HUMAN_PTM_QUERY`, `UNIPROT_API_FIELDS`, `UNIPROT_BATCH_SIZE`, `PTM_OUTPUT_COLUMNS` in `hvantk/ptm/constants.py`.
 - Tests: `hvantk/skills/uniprot_ptm/tests/test_drift_probe.py`. The end-to-end builder is exercised indirectly via `hvantk/tests/test_ptm.py` (mapping + builder integration).

@@ -56,7 +56,7 @@ Aggregation gotcha: the same `(accession, position)` can be observed via multipl
 
 - **Dataset class + parser:** `PeptideAtlasPhosphoDataset`, `parse_peptideatlas_zip`, `write_intermediate_tsv`, `parse_raw_dir` in `hvantk/skills/peptideatlas/phospho/shared/datasets.py`.
 - **Builder:** `build_peptideatlas_phospho_tb` in `hvantk/skills/peptideatlas/phospho/builder.py`.
-- **Downloader CLI:** `download_cmd` in `hvantk/skills/peptideatlas/phospho/cli.py` (registered as `hvantk peptideatlas-phospho-download` and re-bound under `hvantk download peptideatlas-phospho` via `hvantk/commands/download_cli.py`).
+- **Downloader CLI:** `download_cmd` in `hvantk/skills/peptideatlas/phospho/cli.py` (registered as `hvantk peptideatlas-phospho-download` and re-bound under `hvantk download peptideatlas-phospho` via `hvantk/tools/plugins/download_cli.py`).
 - **Lifecycle entry points:** `download_dataset` and `parse_raw_dir` (loader-wired via `lifecycle.download` + `lifecycle.parse` in `plugin.yaml`).
 - **Drift probe:** `fetch_fingerprint` in `hvantk/skills/peptideatlas/phospho/drift_probe.py` (HEAD against the pinned build's zip URL).
 - **Downstream consumer:** `hvantk/ptm/pipeline.py` (`PTMBuildConfig.peptideatlas_tsv`) — reads the intermediate TSV produced here and maps PTM sites to genomic coordinates. Exposed at the user-facing level by `hvantk/ptm/atlas.py` (`PTMAtlasConfig.peptideatlas_tsv`).

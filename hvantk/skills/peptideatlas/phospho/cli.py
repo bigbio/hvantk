@@ -106,6 +106,6 @@ def download_cmd(ctx, output_dir, build_date, build_id, overwrite):
 
 
 # Backwards-compatible alias so existing imports in
-# ``hvantk/commands/download_cli.py`` continue to work while still pointing at
+# ``hvantk/tools/plugins/download_cli.py`` continue to work while still pointing at
 # the new plugin module. New code should import ``download_cmd`` directly.
 peptideatlas_phospho_downloader = download_cmd

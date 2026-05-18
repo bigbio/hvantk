@@ -3,7 +3,7 @@ from unittest.mock import patch, MagicMock
 
 from click.testing import CliRunner
 
-from hvantk.commands.qtlcascade_cli import qtlcascade_group
+from hvantk.tools.qtl.qtlcascade_cli import qtlcascade_group
 
 _MOCK_HAIL_CONTEXT = MagicMock()
 

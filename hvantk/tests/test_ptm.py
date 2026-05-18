@@ -207,7 +207,7 @@ def test_map_ptm_sites_roundtrip(tmp_path, gtf_data):
 
 def test_ptm_cli_help():
     """PTM command group is registered and renders help."""
-    from hvantk.commands.ptm_cli import ptm_group
+    from hvantk.tools.ptm.ptm_cli import ptm_group
 
     runner = CliRunner()
     result = runner.invoke(ptm_group, ["--help"])

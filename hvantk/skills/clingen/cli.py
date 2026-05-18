@@ -151,7 +151,7 @@ def download_cmd(ctx, version_date, output_dir, overwrite, list_versions):
 
 
 # Backward-compatible alias for the legacy public name. The umbrella
-# ``hvantk/commands/download_cli.py`` still imports the Click command under
+# ``hvantk/tools/plugins/download_cli.py`` still imports the Click command under
 # this name; once the auto-attach for ``cli:`` manifest blocks lands, the
 # alias and the umbrella's import can be removed together.
 clingen_downloader = download_cmd

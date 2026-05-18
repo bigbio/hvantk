@@ -40,8 +40,8 @@ def enrichex_group(ctx):
 
 
 # Import and register subcommands
-from hvantk.commands.enrichex_cli.burden_cli import register_burden_commands
-from hvantk.commands.enrichex_cli.overlap_cli import register_overlap_commands
+from hvantk.tools.enrichex.burden_cli import register_burden_commands
+from hvantk.tools.enrichex.overlap_cli import register_overlap_commands
 
 register_overlap_commands(enrichex_group)
 register_burden_commands(enrichex_group)

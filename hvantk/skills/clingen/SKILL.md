@@ -47,9 +47,9 @@ Default row schema includes: `hgnc_id`, `gene_symbol`, `disease_label`, `mondo_i
 
 - Plugin manifest: `hvantk/skills/clingen/plugin.yaml` (drives loader registration; compound dataset key `clingen:gene-disease`).
 - Builder: `create_clingen_gene_disease_tb` in `hvantk/skills/clingen/builder.py` (uses `_create_table_base()` per `_conventions` § 4).
-- Downloader CLI: `download_cmd` (Click `clingen-download`) in `hvantk/skills/clingen/cli.py`; lifecycle entry-point `download_dataset(raw_dir=...)`. Wired into the umbrella `hvantk download clingen` group in `hvantk/commands/download_cli.py`.
+- Downloader CLI: `download_cmd` (Click `clingen-download`) in `hvantk/skills/clingen/cli.py`; lifecycle entry-point `download_dataset(raw_dir=...)`. Wired into the umbrella `hvantk download clingen` group in `hvantk/tools/plugins/download_cli.py`.
 - Dataset class: `ClinGenGeneDiseaseDataset` in `hvantk/skills/clingen/shared/datasets.py`.
-- Build CLI: `hvantk mktable clingen-gene-disease` in `hvantk/commands/make_table_cli.py`.
+- Build CLI: `hvantk mktable clingen-gene-disease` in `hvantk/tools/build/make_table_cli.py`.
 - Streamer (out-of-plugin, intentionally): `hvantk/data/clingen_streamer.py` (`ClinGenStreamer`, subclass of `GeneDiseaseValidityStreamer`); shared with the GenCC/gene-disease streamer family.
 - Constants: `CLINGEN_BASE_URL`, `CLINGEN_DOWNLOADS_URL`, `CLINGEN_FILE_PREFIX`, `CLINGEN_HEADER_SKIP_LINES`, `CLINGEN_GENE_DISEASE_FIELDS`, `CLINGEN_CLASSIFICATION_LEVELS` in `hvantk/core/constants.py`.
 - Tests: `hvantk/skills/clingen/tests/test_builder.py`, `test_downloader.py`, `test_drift_probe.py`. Streamer tests stay at `hvantk/tests/test_clingen_streamer.py` (test the unmoved streamer).

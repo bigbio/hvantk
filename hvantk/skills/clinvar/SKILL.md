@@ -44,7 +44,7 @@ Hail Table at `<output_path>.ht`. Schema is defined by `hvantk/tests/snapshots/c
 - Builder: `create_clinvar_tb` in `hvantk/skills/clinvar/builder.py`
 - Downloader CLI: `clinvar_downloader` in `hvantk/skills/clinvar/cli.py` (registered as `hvantk download clinvar`)
 - Dataset class: `ClinVarDataset` in `hvantk/skills/clinvar/shared/datasets.py`
-- Build CLI: `hvantk mktable clinvar` in `hvantk/commands/make_table_cli.py`
+- Build CLI: `hvantk mktable clinvar` in `hvantk/tools/build/make_table_cli.py`
 - Plugin manifest: `hvantk/skills/clinvar/plugin.yaml` (drives loader registration; compound dataset key `clinvar:variants`)
 - Test: `hvantk/skills/clinvar/tests/test_builder.py`
 

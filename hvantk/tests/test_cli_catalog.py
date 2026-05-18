@@ -3,7 +3,7 @@ from pathlib import Path
 from click.testing import CliRunner
 import yaml
 
-from hvantk.commands.catalog_cli import catalog
+from hvantk.tools.infra.catalog_cli import catalog
 
 
 def _write_catalog(tmpdir: Path, content: str) -> Path:

@@ -126,7 +126,7 @@ def test_gene_features_compute():
 
 
 def test_cli_help_renders():
-    from hvantk.commands.ptm_cli import ptm_group
+    from hvantk.tools.ptm.ptm_cli import ptm_group
 
     runner = CliRunner()
     result = runner.invoke(ptm_group, ["constraint", "--help"])

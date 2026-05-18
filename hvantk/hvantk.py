@@ -4,23 +4,23 @@ import logging
 logger = logging.getLogger(__name__)
 
 from hvantk.core.config import CONTEXT_SETTINGS
-from hvantk.commands.download_cli import download_group
-from hvantk.commands.utils_cli import utils_group
-from hvantk.commands.genesets_cli import genesets_group
-from hvantk.commands.make_table_cli import mktable_group
-from hvantk.commands.make_table_batch_cli import mktable_batch_cli
-from hvantk.commands.make_matrix_cli import mkmatrix_group
-from hvantk.commands.make_matrix_batch_cli import mkmatrix_batch_cli
-from hvantk.commands.hgc import hgc_group
-from hvantk.commands.psroc_cli import psroc_cmd
-from hvantk.commands.enrichex_cli import enrichex_group
-from hvantk.commands.ancestry_cli import ancestry_inference_cmd
-from hvantk.commands.summarize_expression_cli import expression_group
-from hvantk.commands.ptm_cli import ptm_group
-from hvantk.commands.qtlcascade_cli import qtlcascade_group
-from hvantk.commands.plugins_cli import plugins_group
-from hvantk.commands.drift_cli import drift_cmd
-from hvantk.commands.reprocess_cli import reprocess_cmd
+from hvantk.tools.plugins.download_cli import download_group
+from hvantk.tools.infra.utils_cli import utils_group
+from hvantk.tools.genesets.genesets_cli import genesets_group
+from hvantk.tools.build.make_table_cli import mktable_group
+from hvantk.tools.build.make_table_batch_cli import mktable_batch_cli
+from hvantk.tools.build.make_matrix_cli import mkmatrix_group
+from hvantk.tools.build.make_matrix_batch_cli import mkmatrix_batch_cli
+from hvantk.tools.hgc import hgc_group
+from hvantk.tools.ptm.psroc_cli import psroc_cmd
+from hvantk.tools.enrichex import enrichex_group
+from hvantk.tools.ancestry.ancestry_cli import ancestry_inference_cmd
+from hvantk.tools.expression.summarize_expression_cli import expression_group
+from hvantk.tools.ptm.ptm_cli import ptm_group
+from hvantk.tools.qtl.qtlcascade_cli import qtlcascade_group
+from hvantk.tools.plugins.plugins_cli import plugins_group
+from hvantk.tools.plugins.drift_cli import drift_cmd
+from hvantk.tools.plugins.reprocess_cli import reprocess_cmd
 
 # Main CLI entry point for the package (hvantk)
 

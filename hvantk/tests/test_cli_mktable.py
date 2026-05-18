@@ -3,12 +3,12 @@ from unittest.mock import patch, MagicMock
 import pytest
 from click.testing import CliRunner
 
-from hvantk.commands.make_table_cli import mktable_group
+from hvantk.tools.build.make_table_cli import mktable_group
 
 
 def test_mktable_clinvar_cli():
     runner = CliRunner()
-    with patch("hvantk.commands.make_table_cli._create_clinvar_tb") as mock_create:
+    with patch("hvantk.tools.build.make_table_cli._create_clinvar_tb") as mock_create:
         result = runner.invoke(
             mktable_group,
             [
@@ -36,7 +36,7 @@ def test_mktable_clinvar_cli():
 
 def test_mktable_interactome_cli():
     runner = CliRunner()
-    with patch("hvantk.commands.make_table_cli._create_interactome_tb") as mock_create:
+    with patch("hvantk.tools.build.make_table_cli._create_interactome_tb") as mock_create:
         result = runner.invoke(
             mktable_group,
             [
@@ -62,7 +62,7 @@ def test_mktable_interactome_cli():
 
 def test_mktable_gevir_cli_with_fields():
     runner = CliRunner()
-    with patch("hvantk.commands.make_table_cli._create_gevir_tb") as mock_create:
+    with patch("hvantk.tools.build.make_table_cli._create_gevir_tb") as mock_create:
         result = runner.invoke(
             mktable_group,
             [
@@ -89,7 +89,7 @@ def test_mktable_gevir_cli_with_fields():
 def test_mktable_gnomad_metrics_cli():
     runner = CliRunner()
     with patch(
-        "hvantk.commands.make_table_cli._create_gnomad_constraint_gene_metrics_tb"
+        "hvantk.tools.build.make_table_cli._create_gnomad_constraint_gene_metrics_tb"
     ) as mock_create:
         result = runner.invoke(
             mktable_group,
@@ -114,7 +114,7 @@ def test_mktable_gnomad_metrics_cli():
 
 def test_mktable_ensembl_gene_cli_no_canonical():
     runner = CliRunner()
-    with patch("hvantk.commands.make_table_cli._create_ensembl_gene_tb") as mock_create:
+    with patch("hvantk.tools.build.make_table_cli._create_ensembl_gene_tb") as mock_create:
         result = runner.invoke(
             mktable_group,
             [
@@ -141,7 +141,7 @@ def test_mktable_ensembl_gene_cli_no_canonical():
 
 def test_mktable_dbnsfp_cli_invokes_builder():
     runner = CliRunner()
-    with patch("hvantk.commands.make_table_cli._create_dbnsfp_tb") as mock_create:
+    with patch("hvantk.tools.build.make_table_cli._create_dbnsfp_tb") as mock_create:
         result = runner.invoke(
             mktable_group,
             [
@@ -174,7 +174,7 @@ def test_mktable_clingen_gene_disease_default_options():
     """Test ClinGen CLI with default options."""
     runner = CliRunner()
     with patch(
-        "hvantk.commands.make_table_cli._create_clingen_gene_disease_tb"
+        "hvantk.tools.build.make_table_cli._create_clingen_gene_disease_tb"
     ) as mock_create:
         result = runner.invoke(
             mktable_group,
@@ -203,7 +203,7 @@ def test_mktable_clingen_gene_disease_all_options():
     """Test ClinGen CLI with all options specified."""
     runner = CliRunner()
     with patch(
-        "hvantk.commands.make_table_cli._create_clingen_gene_disease_tb"
+        "hvantk.tools.build.make_table_cli._create_clingen_gene_disease_tb"
     ) as mock_create:
         result = runner.invoke(
             mktable_group,

@@ -15,7 +15,7 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its reposit
 Provisional. Covers the HGNC complete-set TSV → Hail Table builder used as the canonical human-gene lookup across hvantk (gene-symbol ↔ HGNC ID ↔ Ensembl/Entrez/UniProt mapping; symbol-history resolution).
 
 Out of scope for this skill (per `_conventions` § 11):
-- Downloading the raw file. See `hvantk/commands/hgnc_downloader.py`.
+- Downloading the raw file. See `hvantk/tools/hgnc_downloader.py`.
 - Cross-resource mapping logic. Lives in `hvantk/data/gene_mapper.py` (`GeneMapper`).
 - Downstream consumers (ClinGen/GenCC streamers, gene-symbol resolution in PSROC). Those reference the built table by path.
 
@@ -53,9 +53,9 @@ Summary: one row per approved gene (≈43k in the live release; 5 in the fixture
 
 - Plugin manifest: `hvantk/skills/hgnc/plugin.yaml` (drives loader registration and `hvantk drift hgnc:lookup`).
 - Builder: `create_hgnc_gene_tb` in `hvantk/tables/table_builders.py` (uses `_create_table_base()` per `_conventions` § 4).
-- CLI: `hvantk mktable hgnc` defined in `hvantk/commands/make_table_cli.py` (`mktable_hgnc`). Supports `--include-withdrawn`, `--fields`, `--overwrite`, `--export-tsv`.
+- CLI: `hvantk mktable hgnc` defined in `hvantk/tools/build/make_table_cli.py` (`mktable_hgnc`). Supports `--include-withdrawn`, `--fields`, `--overwrite`, `--export-tsv`.
 - Constants: `HGNC_GENE_FIELDS`, `HGNC_PIPE_SEPARATED_FIELDS`, `HGNC_DOWNLOAD_URL`, `HGNC_INFO_URL` in `hvantk/core/constants.py`.
-- Downloader: `hvantk/commands/hgnc_downloader.py` (CLI: `hvantk download hgnc`, wired in `hvantk/commands/download_cli.py`).
+- Downloader: `hvantk/tools/hgnc_downloader.py` (CLI: `hvantk download hgnc`, wired in `hvantk/tools/plugins/download_cli.py`).
 - Registry: **not registered** in `hvantk/tables/registry.py`. HGNC is built as a one-off lookup ahead of recipe runs, not as part of a batch recipe — register only if a real recipe-driven workflow demands it.
 - Existing tests: assertion-based unit + GeneMapper tests in `hvantk/tests/test_hgnc_table_hail.py` (marked `hail` and `slow`). The snapshot round-trip test (see § 9) is a *new* file the agent should create on first run; do not extend `test_hgnc_table_hail.py` to do snapshot work — keep concerns separated.
 - Downstream consumers (read-only): `hvantk/data/gene_mapper.py` (`GeneMapper` validates the table is keyed by `hgnc_id`), `hvantk/data/gene_disease_streamer.py` (and its `clingen_streamer` / `gencc_streamer` subclasses), `hvantk/psroc/pipeline.py`, `hvantk/utils/gene_aliases.py`, `hvantk/utils/geneset_io.py`.

@@ -65,7 +65,7 @@ AnnData (`.h5ad`) builder output:
 
 - **Dataset class + parser helpers:** `CPTACPhosphoDataset`, `parse_phospho_site`, `extract_phospho_sites`, `write_intermediate_tsv`, `write_matrix_csv`, `write_metadata_csv`, `parse_raw_dir` in `hvantk/skills/cptac/shared/datasets.py`.
 - **Builder:** `build_cptac_phospho_ad` in `hvantk/skills/cptac/phospho/builder.py` (shares `create_anndata_from_cptac_phospho` in `hvantk/skills/cptac/shared/cptac.py`).
-- **Downloader CLI:** `download_cmd` in `hvantk/skills/cptac/phospho/cli.py` (registered as `hvantk cptac-phospho-download` and re-bound under `hvantk download cptac-phospho` via `hvantk/commands/download_cli.py`).
+- **Downloader CLI:** `download_cmd` in `hvantk/skills/cptac/phospho/cli.py` (registered as `hvantk cptac-phospho-download` and re-bound under `hvantk download cptac-phospho` via `hvantk/tools/plugins/download_cli.py`).
 - **Lifecycle entry points:** `download_dataset` (in `phospho/cli.py`) and `parse_raw_dir` (in `shared/datasets.py`), wired via `lifecycle.download` + `lifecycle.parse` in `plugin.yaml`.
 - **Drift probe:** `fetch_fingerprint` in `hvantk/skills/cptac/phospho/drift_probe.py` (fingerprints the installed `cptac` package version).
 - **Downstream consumer:** `hvantk/ptm/pipeline.py` (`PTMBuildConfig.cptac_tsv`) -- reads the per-cancer intermediate TSV and maps PTM sites to genomic coordinates. Exposed at the user-facing level by `hvantk/ptm/atlas.py` (`PTMAtlasConfig.cptac_tsv`).

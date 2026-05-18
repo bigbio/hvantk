@@ -9,7 +9,7 @@ import pytest
 from click.testing import CliRunner
 
 from hvantk.core import plugin_loader
-from hvantk.commands.plugins_cli import plugins_group
+from hvantk.tools.plugins.plugins_cli import plugins_group
 
 
 FIXTURE_ROOT = Path(__file__).parent / "testdata" / "raw" / "plugins"
