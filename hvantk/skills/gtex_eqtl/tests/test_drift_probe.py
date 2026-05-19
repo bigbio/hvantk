@@ -11,7 +11,7 @@ import requests
 import requests_mock
 import pytest
 
-from hvantk.core.plugin_api import DriftProbeError
+from hvantk.core.plugin.api import DriftProbeError
 from hvantk.skills.gtex_eqtl.drift_probe import (
     fetch_fingerprint,
     GTEX_PORTAL_DOWNLOAD_URL,

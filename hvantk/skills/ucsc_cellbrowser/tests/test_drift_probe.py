@@ -10,7 +10,7 @@ import requests
 import requests_mock
 import pytest
 
-from hvantk.core.plugin_api import DriftProbeError
+from hvantk.core.plugin.api import DriftProbeError
 from hvantk.skills.ucsc_cellbrowser.drift_probe import (
     fetch_fingerprint,
     UCSC_DATASET_INDEX_URL,

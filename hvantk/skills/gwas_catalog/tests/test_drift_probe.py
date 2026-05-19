@@ -10,7 +10,7 @@ import requests
 import requests_mock
 import pytest
 
-from hvantk.core.plugin_api import DriftProbeError
+from hvantk.core.plugin.api import DriftProbeError
 from hvantk.skills.gwas_catalog.drift_probe import (
     fetch_fingerprint,
     GWAS_CATALOG_FULL_URL,

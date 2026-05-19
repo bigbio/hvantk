@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 
 import requests
 
-from hvantk.core.plugin_api import DriftProbeError
+from hvantk.core.plugin.api import DriftProbeError
 from hvantk.core.constants import CLINVAR_FTP_BASE
 
 PROBE_VERSION = 1

@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 
 import requests
 
-from hvantk.core.plugin_api import DriftProbeError
+from hvantk.core.plugin.api import DriftProbeError
 
 PROBE_VERSION = 1
 GWAS_CATALOG_FULL_URL = (

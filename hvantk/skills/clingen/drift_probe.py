@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 import requests
 
 from hvantk.core.constants import CLINGEN_BASE_URL, CLINGEN_FILE_PREFIX
-from hvantk.core.plugin_api import DriftProbeError
+from hvantk.core.plugin.api import DriftProbeError
 
 PROBE_VERSION = 1
 _FILENAME = f"{CLINGEN_FILE_PREFIX}.csv"

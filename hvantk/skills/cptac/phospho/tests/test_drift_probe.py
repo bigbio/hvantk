@@ -13,7 +13,7 @@ import pytest
 import requests
 import requests_mock
 
-from hvantk.core.plugin_api import DriftProbeError
+from hvantk.core.plugin.api import DriftProbeError
 from hvantk.skills.cptac.shared import drift as shared_drift
 from hvantk.skills.cptac.phospho import drift_probe
 

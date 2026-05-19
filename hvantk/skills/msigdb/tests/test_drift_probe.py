@@ -12,7 +12,7 @@ import requests
 import requests_mock
 import pytest
 
-from hvantk.core.plugin_api import DriftProbeError
+from hvantk.core.plugin.api import DriftProbeError
 from hvantk.skills.msigdb.drift_probe import fetch_fingerprint, MSIGDB_INDEX_URL
 
 

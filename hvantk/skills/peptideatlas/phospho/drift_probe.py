@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 
 import requests
 
-from hvantk.core.plugin_api import DriftProbeError
+from hvantk.core.plugin.api import DriftProbeError
 from hvantk.skills.peptideatlas.phospho.shared.datasets import PeptideAtlasPhosphoDataset
 
 PROBE_VERSION = 1

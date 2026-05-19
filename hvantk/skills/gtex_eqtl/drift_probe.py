@@ -26,7 +26,7 @@ from datetime import datetime, timezone
 
 import requests
 
-from hvantk.core.plugin_api import DriftProbeError
+from hvantk.core.plugin.api import DriftProbeError
 
 PROBE_VERSION = 1
 GTEX_PORTAL_DOWNLOAD_URL = "https://gtexportal.org/home/downloads/adult-gtex/qtl"
