@@ -9,7 +9,7 @@ import jsonschema
 import pytest
 
 SCHEMA_PATH = (
-    Path(__file__).resolve().parents[1] / "core" / "tool_manifest.schema.json"
+    Path(__file__).resolve().parents[1] / "core" / "tool" / "manifest.schema.json"
 )
 
 

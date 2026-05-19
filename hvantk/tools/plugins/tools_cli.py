@@ -75,7 +75,7 @@ def validate_cmd(manifest_path):
     import jsonschema
 
     schema = json.loads(
-        (Path(tool_loader.__file__).parent / "tool_manifest.schema.json").read_text()
+        (Path(tool_loader.__file__).parent / "manifest.schema.json").read_text()
     )
     content = yaml.safe_load(Path(manifest_path).read_text())
     try:

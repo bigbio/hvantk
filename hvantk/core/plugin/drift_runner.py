@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .plugin_api import DatasetSpec, DriftProbeError
+from .api import DatasetSpec, DriftProbeError
 
 # Keys excluded from the fingerprint comparison.
 _IGNORED_KEYS = frozenset({"fetched_at"})
@@ -28,7 +28,7 @@ class DriftResult:
 
 def run_drift_check(dataset_name: str, *, timeout: int = 60) -> DriftResult:
     """Resolve dataset from the module registry, invoke probe, diff."""
-    from . import plugin_loader
+    from . import loader as plugin_loader
 
     reg = plugin_loader.get_registry()
     spec = reg.get_dataset(dataset_name)

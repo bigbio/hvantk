@@ -4,7 +4,7 @@ import dataclasses
 
 import pytest
 
-from hvantk.core.plugin_api import (
+from hvantk.core.plugin.api import (
     DatasetSpec,
     DriftProbeError,
     PluginLoadError,

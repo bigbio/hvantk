@@ -19,7 +19,7 @@ from pathlib import Path
 import jsonschema
 import yaml
 
-from .tool_api import (
+from .api import (
     Subcommand,
     ToolLoadError,
     ToolRequirements,
@@ -28,8 +28,8 @@ from .tool_api import (
 
 logger = logging.getLogger(__name__)
 
-_SCHEMA_PATH = Path(__file__).parent / "tool_manifest.schema.json"
-_TOOLS_ROOT = Path(__file__).resolve().parent.parent / "tools"
+_SCHEMA_PATH = Path(__file__).parent / "manifest.schema.json"
+_TOOLS_ROOT = Path(__file__).resolve().parent.parent.parent / "tools"
 
 
 def _load_schema() -> dict:

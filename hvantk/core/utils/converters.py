@@ -53,7 +53,7 @@ def hail_mt_to_anndata(
         AnnData object with X as float32.
     """
     # Lazy Hail import (via hail_context to apply numpy compat shim first)
-    from hvantk.core.hail_context import hl  # noqa: F811
+    from hvantk.core.utils.hail_context import hl  # noqa: F811
 
     # Resolve keys
     if row_key is None:
@@ -122,7 +122,7 @@ def anndata_to_hail_mt(
     hl.MatrixTable
         MatrixTable keyed by *row_key* and *col_key*.
     """
-    from hvantk.core.hail_context import hl
+    from hvantk.core.utils.hail_context import hl
 
     # Handle sparse X
     X = adata.X

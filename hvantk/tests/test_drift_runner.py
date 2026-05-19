@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from hvantk.core.drift_runner import DriftResult, run_drift_check
-from hvantk.core.plugin_api import DatasetSpec, DriftProbeError, TestPaths
+from hvantk.core.plugin.drift_runner import DriftResult, run_drift_check
+from hvantk.core.plugin.api import DatasetSpec, DriftProbeError, TestPaths
 
 
 def _make_spec(
@@ -39,7 +39,7 @@ def _write_fingerprint(path: Path, fp: dict) -> None:
 
 def _run_with_spec(spec: DatasetSpec) -> DriftResult:
     """Bypass the registry by calling the internal runner directly."""
-    from hvantk.core.drift_runner import _run_drift_check_with_spec
+    from hvantk.core.plugin.drift_runner import _run_drift_check_with_spec
     return _run_drift_check_with_spec(spec)
 
 

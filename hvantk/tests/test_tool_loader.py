@@ -7,8 +7,8 @@ from pathlib import Path
 import pytest
 
 from hvantk.core import tool_loader
-from hvantk.core.tool_api import ToolLoadError, ToolSpec
-from hvantk.core.tool_loader import ToolRegistry
+from hvantk.core.tool.api import ToolLoadError, ToolSpec
+from hvantk.core.tool.loader import ToolRegistry
 
 
 TOOLS_ROOT = Path(__file__).resolve().parents[1] / "tools"

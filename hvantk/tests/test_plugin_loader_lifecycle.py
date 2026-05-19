@@ -7,7 +7,7 @@ from pathlib import Path
 
 import yaml
 
-from hvantk.core.plugin_loader import PluginRegistry
+from hvantk.core.plugin.loader import PluginRegistry
 
 
 FIXTURE_ROOT = Path(__file__).parent / "testdata" / "raw" / "plugins"

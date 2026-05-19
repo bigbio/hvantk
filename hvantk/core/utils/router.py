@@ -9,8 +9,8 @@ import logging
 import os
 from typing import List, Optional
 
-from hvantk.core.backends import AlgorithmMeta, Backend
-from hvantk.core.readers import (
+from hvantk.core.models.backends import AlgorithmMeta, Backend
+from hvantk.core.utils.readers import (
     DataReader,
     HailReader,
     PandasReader,
@@ -138,7 +138,7 @@ class ReaderFactory:
         elif backend == Backend.PANDAS:
             return PandasReader()
         elif backend == Backend.DUCKDB:
-            from hvantk.core.readers import DuckDBReader
+            from hvantk.core.utils.readers import DuckDBReader
 
             return DuckDBReader()
         raise ValueError(f"Unknown backend: {backend}")

@@ -12,7 +12,7 @@ from typing import Optional, Protocol, runtime_checkable
 
 import pandas as pd
 
-from hvantk.core.backends import Backend
+from hvantk.core.models.backends import Backend
 
 logger = logging.getLogger(__name__)
 

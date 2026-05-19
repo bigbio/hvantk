@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from hvantk.core.plugin_api import DatasetSpec, PluginLoadError, Provider
-from hvantk.core.plugin_loader import PluginRegistry
+from hvantk.core.plugin.api import DatasetSpec, PluginLoadError, Provider
+from hvantk.core.plugin.loader import PluginRegistry
 
 
 FIXTURE_ROOT = Path(__file__).parent / "testdata" / "raw" / "plugins"
@@ -139,7 +139,7 @@ def test_load_from_skills_root_missing_dir_is_noop(tmp_path: Path):
 
 def test_dedicated_collision_exception_class():
     """PluginNameCollision is a PluginLoadError subclass."""
-    from hvantk.core.plugin_api import PluginLoadError, PluginNameCollision
+    from hvantk.core.plugin.api import PluginLoadError, PluginNameCollision
     assert issubclass(PluginNameCollision, PluginLoadError)
     import shutil
     # Reuse the collision setup to verify the dedicated class is raised.

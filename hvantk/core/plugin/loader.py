@@ -19,7 +19,7 @@ from typing import Any, Callable, Iterable
 import jsonschema
 import yaml
 
-from .plugin_api import (
+from .api import (
     DatasetSpec,
     PluginLoadError,
     PluginNameCollision,
@@ -29,8 +29,8 @@ from .plugin_api import (
 
 logger = logging.getLogger(__name__)
 
-_SCHEMA_PATH = Path(__file__).parent / "plugin_manifest.schema.json"
-_SKILLS_ROOT = Path(__file__).resolve().parent.parent / "skills"
+_SCHEMA_PATH = Path(__file__).parent / "manifest.schema.json"
+_SKILLS_ROOT = Path(__file__).resolve().parent.parent.parent / "skills"
 _ENTRY_POINT_GROUP = "hvantk.providers"
 
 

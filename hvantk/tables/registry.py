@@ -315,7 +315,7 @@ def _apply_plugin_registrations(reg) -> None:
     create_table_adapter line is removed in the same migration commit; this
     function continues to populate the dict from the plugin.
     """
-    from hvantk.core.plugin_api import DatasetSpec  # local import to avoid cycle
+    from hvantk.core.plugin.api import DatasetSpec  # local import to avoid cycle
 
     def _wrap_builder(spec: "DatasetSpec"):
         if spec.backend == "hail":
