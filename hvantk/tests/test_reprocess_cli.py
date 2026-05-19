@@ -225,3 +225,150 @@ def test_reprocess_parse_requires_intermediate_path(tmp_path: Path, monkeypatch)
     assert "--intermediate" in result.output
     parse.assert_not_called()
     builder.assert_not_called()
+
+
+def test_reprocess_skip_parse_without_intermediate_falls_back_to_raw_dir(
+    tmp_path: Path, monkeypatch
+):
+    """`--skip-parse` without `--intermediate` must feed raw_dir to the builder.
+
+    Regression test for the bug where parsed_path stayed None and crashed the
+    builder with a confusing TypeError.
+    """
+    download = MagicMock()
+    parse = MagicMock()
+    builder = MagicMock()
+    spec = _make_spec(download_fn=download, parse_fn=parse, builder=builder)
+    _install_registry(monkeypatch, spec)
+
+    raw = tmp_path / "raw"
+    output = tmp_path / "out.parquet"
+
+    runner = CliRunner()
+    result = runner.invoke(
+        reprocess_cmd,
+        [
+            "stub:default",
+            "--raw-dir",
+            str(raw),
+            "--output",
+            str(output),
+            "--skip-parse",
+            "--no-check-drift",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    download.assert_called_once_with(raw_dir=str(raw))
+    parse.assert_not_called()
+    # Builder consumes the raw dir because parse was skipped and intermediate
+    # was not provided.
+    builder.assert_called_once_with(str(raw), str(output))
+
+
+def test_reprocess_skip_parse_with_intermediate_uses_intermediate(
+    tmp_path: Path, monkeypatch
+):
+    """`--skip-parse --intermediate <path>` feeds the existing intermediate to build."""
+    download = MagicMock()
+    parse = MagicMock()
+    builder = MagicMock()
+    spec = _make_spec(download_fn=download, parse_fn=parse, builder=builder)
+    _install_registry(monkeypatch, spec)
+
+    raw = tmp_path / "raw"
+    intermediate = tmp_path / "mid.tsv"
+    output = tmp_path / "out.parquet"
+
+    runner = CliRunner()
+    result = runner.invoke(
+        reprocess_cmd,
+        [
+            "stub:default",
+            "--raw-dir",
+            str(raw),
+            "--intermediate",
+            str(intermediate),
+            "--output",
+            str(output),
+            "--skip-parse",
+            "--no-check-drift",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    parse.assert_not_called()
+    builder.assert_called_once_with(str(intermediate), str(output))
+
+
+def test_reprocess_plugin_arg_forwarded_to_download_and_parse(
+    tmp_path: Path, monkeypatch
+):
+    """`--plugin-arg KEY=VALUE` is forwarded as kwargs to download_fn and parse_fn.
+
+    Regression test for the silent default-to-all behavior in cptac:phospho's
+    download_dataset (cancer_type=None expands to ALL cancer types).
+    """
+    download = MagicMock()
+    parse = MagicMock()
+    builder = MagicMock()
+    spec = _make_spec(download_fn=download, parse_fn=parse, builder=builder)
+    _install_registry(monkeypatch, spec)
+
+    raw = tmp_path / "raw"
+    intermediate = tmp_path / "mid.tsv"
+    output = tmp_path / "out.parquet"
+
+    runner = CliRunner()
+    result = runner.invoke(
+        reprocess_cmd,
+        [
+            "stub:default",
+            "--raw-dir",
+            str(raw),
+            "--intermediate",
+            str(intermediate),
+            "--output",
+            str(output),
+            "--plugin-arg",
+            "cancer_type=brca",
+            "--plugin-arg",
+            "overwrite=true",
+            "--no-check-drift",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    download.assert_called_once_with(
+        raw_dir=str(raw), cancer_type="brca", overwrite="true"
+    )
+    parse.assert_called_once_with(
+        raw_dir=str(raw),
+        output_path=str(intermediate),
+        cancer_type="brca",
+        overwrite="true",
+    )
+
+
+def test_reprocess_plugin_arg_bad_format_errors(tmp_path: Path, monkeypatch):
+    """`--plugin-arg` without '=' is rejected as a usage error."""
+    download = MagicMock()
+    builder = MagicMock()
+    spec = _make_spec(download_fn=download, builder=builder)
+    _install_registry(monkeypatch, spec)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        reprocess_cmd,
+        [
+            "stub:default",
+            "--raw-dir",
+            str(tmp_path / "raw"),
+            "--output",
+            str(tmp_path / "out.parquet"),
+            "--plugin-arg",
+            "noequals",
+            "--no-check-drift",
+        ],
+    )
+    assert result.exit_code != 0
+    assert "KEY=VALUE" in result.output
+    download.assert_not_called()
+    builder.assert_not_called()

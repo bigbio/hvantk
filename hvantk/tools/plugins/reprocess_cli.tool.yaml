@@ -13,6 +13,14 @@ purpose:
     chains them with the builder. Stages can be skipped with --skip-download,
     --skip-parse, --skip-build. Useful for both fresh rebuilds and resuming
     mid-pipeline after a failure.
+
+    Plugin-specific kwargs (e.g. cancer_type for cptac:phospho, build_id for
+    peptideatlas:phospho) are forwarded via --plugin-arg KEY=VALUE (repeatable).
+    Values are passed as strings; the plugin's lifecycle function is
+    responsible for any coercion it requires.
+
+    When --skip-parse is set without --intermediate, the builder receives the
+    raw_dir directly (matches the no-parse-stage-declared path).
 requires:
   hail: true
   network: true

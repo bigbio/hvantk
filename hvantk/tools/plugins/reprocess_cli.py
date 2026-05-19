@@ -37,6 +37,17 @@ import click
 @click.option("--skip-parse", is_flag=True, help="Skip the parse stage")
 @click.option("--skip-build", is_flag=True, help="Skip the build stage")
 @click.option(
+    "--plugin-arg",
+    "plugin_args",
+    multiple=True,
+    metavar="KEY=VALUE",
+    help=(
+        "Plugin-specific kwarg forwarded to the lifecycle download and parse "
+        "functions (e.g. --plugin-arg cancer_type=brca for cptac:phospho). "
+        "Repeatable. Values are passed as strings; plugins coerce as needed."
+    ),
+)
+@click.option(
     "--check-drift",
     is_flag=True,
     default=True,
@@ -55,6 +66,7 @@ def reprocess_cmd(
     skip_download,
     skip_parse,
     skip_build,
+    plugin_args,
     check_drift,
     no_check_drift,
 ):
@@ -67,6 +79,22 @@ def reprocess_cmd(
     except KeyError:
         raise click.ClickException(f"unknown dataset: {dataset}")
 
+    # Parse --plugin-arg KEY=VALUE pairs into a kwargs dict forwarded to both
+    # download_fn and parse_fn. Lets operators target plugin-specific options
+    # (e.g. cancer_type for cptac:phospho) without per-plugin reprocess flags.
+    extras: dict[str, str] = {}
+    for kv in plugin_args:
+        if "=" not in kv:
+            raise click.UsageError(
+                f"--plugin-arg must be KEY=VALUE; got: {kv!r}"
+            )
+        key, value = kv.split("=", 1)
+        if not key:
+            raise click.UsageError(
+                f"--plugin-arg key must be non-empty; got: {kv!r}"
+            )
+        extras[key] = value
+
     # 1. Download stage
     if not skip_download:
         if spec.download_fn is None:
@@ -75,21 +103,25 @@ def reprocess_cmd(
                 "use --skip-download or add it to plugin.yaml"
             )
         click.echo(f"download: {dataset} -> {raw_dir}")
-        spec.download_fn(raw_dir=raw_dir)
+        spec.download_fn(raw_dir=raw_dir, **extras)
 
     # 2. Parse stage
-    parsed_path = intermediate
     if not skip_parse and spec.parse_fn is not None:
         if intermediate is None:
             raise click.UsageError(
                 "--intermediate is required when the plugin declares lifecycle.parse"
             )
         click.echo(f"parse: {raw_dir} -> {intermediate}")
-        spec.parse_fn(raw_dir=raw_dir, output_path=intermediate)
+        spec.parse_fn(raw_dir=raw_dir, output_path=intermediate, **extras)
         parsed_path = intermediate
     elif not skip_parse:
         # No parse stage declared: the builder consumes the raw dir directly.
         parsed_path = raw_dir
+    else:
+        # skip_parse=True: prefer --intermediate if given, else the raw_dir.
+        # The prior version left parsed_path as None here, which then crashed
+        # the build stage with a confusing TypeError deep inside the builder.
+        parsed_path = intermediate if intermediate is not None else raw_dir
 
     # 3. Build stage
     if not skip_build:
