@@ -479,7 +479,7 @@ class BurdenPipeline:
             hl.current_backend()
             logger.info("Hail already initialised")
         except Exception:
-            from hvantk.core.hail_context import init_hail
+            from hvantk.core.utils.hail_context import init_hail
 
             init_hail()
 

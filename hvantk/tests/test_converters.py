@@ -22,28 +22,28 @@ class TestHailMtToAnndata:
     """Tests for hail_mt_to_anndata."""
 
     def test_shape(self, simple_mt):
-        from hvantk.core.converters import hail_mt_to_anndata
+        from hvantk.core.utils.converters import hail_mt_to_anndata
 
         adata = hail_mt_to_anndata(simple_mt, entry_field="x")
         # AnnData convention: obs=samples (cols), var=genes (rows)
         assert adata.shape == (3, 5)
 
     def test_obs_index(self, simple_mt):
-        from hvantk.core.converters import hail_mt_to_anndata
+        from hvantk.core.utils.converters import hail_mt_to_anndata
 
         adata = hail_mt_to_anndata(simple_mt, entry_field="x")
         expected = {"SAMPLE_0", "SAMPLE_1", "SAMPLE_2"}
         assert set(adata.obs.index) == expected
 
     def test_var_index(self, simple_mt):
-        from hvantk.core.converters import hail_mt_to_anndata
+        from hvantk.core.utils.converters import hail_mt_to_anndata
 
         adata = hail_mt_to_anndata(simple_mt, entry_field="x")
         expected = {"GENE_0", "GENE_1", "GENE_2", "GENE_3", "GENE_4"}
         assert set(adata.var.index) == expected
 
     def test_values(self, simple_mt):
-        from hvantk.core.converters import hail_mt_to_anndata
+        from hvantk.core.utils.converters import hail_mt_to_anndata
 
         adata = hail_mt_to_anndata(simple_mt, entry_field="x")
         # Entry value = row_idx * 10 + col_idx
@@ -55,7 +55,7 @@ class TestHailMtToAnndata:
         assert adata.X[sample_0_idx, gene_2_idx] == pytest.approx(20.0)
 
     def test_dtype_float32(self, simple_mt):
-        from hvantk.core.converters import hail_mt_to_anndata
+        from hvantk.core.utils.converters import hail_mt_to_anndata
 
         adata = hail_mt_to_anndata(simple_mt, entry_field="x")
         assert adata.X.dtype == np.float32
@@ -66,7 +66,7 @@ class TestAnndataToHailMt:
     """Tests for anndata_to_hail_mt (roundtrip)."""
 
     def test_roundtrip_shape(self, simple_mt, hail_session):
-        from hvantk.core.converters import anndata_to_hail_mt, hail_mt_to_anndata
+        from hvantk.core.utils.converters import anndata_to_hail_mt, hail_mt_to_anndata
 
         adata = hail_mt_to_anndata(simple_mt, entry_field="x")
         mt2 = anndata_to_hail_mt(
@@ -75,7 +75,7 @@ class TestAnndataToHailMt:
         assert mt2.count() == (5, 3)
 
     def test_roundtrip_values(self, simple_mt, hail_session):
-        from hvantk.core.converters import anndata_to_hail_mt, hail_mt_to_anndata
+        from hvantk.core.utils.converters import anndata_to_hail_mt, hail_mt_to_anndata
 
         hl = hail_session
         adata = hail_mt_to_anndata(simple_mt, entry_field="x")

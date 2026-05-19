@@ -62,7 +62,7 @@ def build_expression_atlas_ad(
         convert_sdrf_to_dataframe,
         create_anndata_from_expression_atlas,
     )
-    from hvantk.core.anndata_utils import (
+    from hvantk.core.models.anndata_utils import (
         build_anndata_metadata,
         annotate_column_summary_ad,
         save_anndata,

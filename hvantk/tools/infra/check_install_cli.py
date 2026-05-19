@@ -77,7 +77,7 @@ def check_install_cmd() -> None:
 
     # -- 1. Hail init ----------------------------------------------------------
     click.echo("1/3  Initialising Hail ...")
-    from hvantk.core.hail_context import init_hail
+    from hvantk.core.utils.hail_context import init_hail
 
     try:
         init_hail()

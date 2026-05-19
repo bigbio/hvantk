@@ -6,7 +6,7 @@ import argparse
 import sys
 
 import hail as hl
-from hvantk.core.hail_context import init_hail, shutdown_hail
+from hvantk.core.utils.hail_context import init_hail, shutdown_hail
 
 import logging
 

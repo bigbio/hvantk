@@ -52,7 +52,7 @@ def build_cptac_phospho_ad(
     import pandas as pd
 
     from hvantk.skills.cptac.shared.cptac import create_anndata_from_cptac_phospho
-    from hvantk.core.anndata_utils import (
+    from hvantk.core.models.anndata_utils import (
         build_anndata_metadata,
         annotate_column_summary_ad,
         save_anndata,

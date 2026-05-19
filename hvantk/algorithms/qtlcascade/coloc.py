@@ -28,7 +28,7 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
-from hvantk.core.backends import Backend, algorithm
+from hvantk.core.models.backends import Backend, algorithm
 from hvantk.core.qtl_constants import (
     DEFAULT_COLOC_P1,
     DEFAULT_COLOC_P2,

@@ -25,7 +25,7 @@ logger = logging.getLogger("enrichex_demo")
 
 def main():
     import hail as hl
-    from hvantk.core.hail_context import init_hail
+    from hvantk.core.utils.hail_context import init_hail
 
     # ── 0. Init Hail ──────────────────────────────────────────────────
     init_hail(app_name="enrichex-demo")

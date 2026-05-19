@@ -13,7 +13,7 @@ import pandas as pd
 
 from hvantk.core.qtl_constants import DEFAULT_COLOC_H4_THRESHOLD
 
-from hvantk.core.backends import Backend, algorithm
+from hvantk.core.models.backends import Backend, algorithm
 
 logger = logging.getLogger(__name__)
 

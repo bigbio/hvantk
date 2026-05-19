@@ -131,7 +131,7 @@ def build_variant_classes(max_af: float, min_score: Optional[float] = None) -> D
 def main():
     args = parse_args()
 
-    from hvantk.core.hail_context import init_hail
+    from hvantk.core.utils.hail_context import init_hail
 
     init_hail(app_name="chd-burden")
 

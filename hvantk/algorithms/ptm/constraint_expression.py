@@ -176,7 +176,7 @@ def _load_from_anndata(
     aggregation over ``adata.X`` so the CLI's ``--expression-metric`` flag
     is honoured instead of silently collapsing to the mean.
     """
-    from hvantk.core.anndata_utils import load_anndata
+    from hvantk.core.models.anndata_utils import load_anndata
     from hvantk.algorithms.expression.matrix_utils import summarize_expression_ad
 
     adata = load_anndata(path)
@@ -273,7 +273,7 @@ def _load_from_hail_mt(
     Follows the Notebook E/G pattern: ``group_cols_by(...) → aggregate(...) →
     entries() → export(TSV) → pandas`` to avoid OOM from ``mt.to_pandas()``.
     """
-    from hvantk.core.hail_context import hl, init_hail
+    from hvantk.core.utils.hail_context import hl, init_hail
 
     init_hail()
 

@@ -290,7 +290,7 @@ def main():
 
     # Initialize Hail
     import hail as hl
-    from hvantk.core.hail_context import init_hail
+    from hvantk.core.utils.hail_context import init_hail
 
     logger.info("Initializing Hail...")
     try:

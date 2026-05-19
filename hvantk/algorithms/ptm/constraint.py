@@ -238,7 +238,7 @@ def _json_default(obj: Any) -> Any:
 
 def _load_variants(config: PTMConstraintConfig) -> pd.DataFrame:
     """Load the PTM-annotated variant HT into pandas, keeping the needed columns."""
-    from hvantk.core.hail_context import hl, init_hail
+    from hvantk.core.utils.hail_context import hl, init_hail
 
     init_hail()
     ht = hl.read_table(config.variants_ht_path)

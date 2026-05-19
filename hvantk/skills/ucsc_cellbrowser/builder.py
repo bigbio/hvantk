@@ -86,7 +86,7 @@ def build_ucsc_ad(
         build_ucsc_atlas_backed,
         coerce_obs_for_h5ad,
     )
-    from hvantk.core.anndata_utils import (
+    from hvantk.core.models.anndata_utils import (
         build_anndata_metadata,
         annotate_column_summary_ad,
         save_anndata,

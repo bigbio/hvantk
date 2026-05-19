@@ -318,7 +318,7 @@ def burden_test(
 
         gene_sets.json: JSON file created by GeneSetCollection.save()
     """
-    from hvantk.core.hail_context import init_hail
+    from hvantk.core.utils.hail_context import init_hail
 
     # Initialize Hail
     init_hail()
@@ -1141,7 +1141,7 @@ def burden_pipeline_cmd(
         return
 
     # Initialize Hail before running
-    from hvantk.core.hail_context import init_hail
+    from hvantk.core.utils.hail_context import init_hail
 
     init_hail()
 

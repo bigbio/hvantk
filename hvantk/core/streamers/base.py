@@ -5,7 +5,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any, Iterator, Optional, List
 import hail as hl
-from hvantk.core.hail_context import init_hail, hail_initialized
+from hvantk.core.utils.hail_context import init_hail, hail_initialized
 import os
 import json
 

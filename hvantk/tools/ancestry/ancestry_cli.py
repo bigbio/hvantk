@@ -307,7 +307,7 @@ def ancestry_inference_cmd(
     try:
         # Import Hail and pipeline after logging is configured
         import hail as hl
-        from hvantk.core.hail_context import init_hail
+        from hvantk.core.utils.hail_context import init_hail
         from hvantk.algorithms.ancestry.pipeline import run_ancestry_inference, PipelineConfig
         from hailtop import fs
 

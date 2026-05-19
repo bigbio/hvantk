@@ -27,7 +27,7 @@ def describe_expression_ad(adata: ad.AnnData) -> Dict[str, Any]:
     """Return a summary dict describing an AnnData expression object.
 
     Prefers the cached ``adata.uns["column_summary"]`` (set by
-    :func:`hvantk.core.anndata_utils.annotate_column_summary_ad`); otherwise
+    :func:`hvantk.core.models.anndata_utils.annotate_column_summary_ad`); otherwise
     computes a lightweight summary from ``adata.obs`` on the fly.
 
     Returns

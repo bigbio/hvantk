@@ -26,7 +26,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
-from hvantk.core.bgzf import BgzfWriter
+from hvantk.core.utils.bgzf import BgzfWriter
 from hvantk.core.ptm_constants import (
     ENSEMBL_GTF_URL,
     ENSEMBL_GTF_FILENAME,

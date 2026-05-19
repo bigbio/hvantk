@@ -17,7 +17,7 @@ import logging
 from pathlib import Path
 import hail as hl
 from hvantk.algorithms.enrichex import run_burden_analysis
-from hvantk.core.hail_context import init_hail
+from hvantk.core.utils.hail_context import init_hail
 
 # Configure logging
 logging.basicConfig(

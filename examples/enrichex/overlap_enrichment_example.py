@@ -15,7 +15,7 @@ from hvantk.algorithms.enrichex import (
     GeneSetCollection,
     compute_overlap_enrichment_pandas,
 )
-from hvantk.core.hail_context import init_hail
+from hvantk.core.utils.hail_context import init_hail
 
 # Configure logging
 logging.basicConfig(

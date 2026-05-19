@@ -224,7 +224,7 @@ class TestAncestryCLIParameterValidation:
     which are done lazily inside the CLI command.
     """
 
-    @patch("hvantk.core.hail_context.init_hail")
+    @patch("hvantk.core.utils.hail_context.init_hail")
     @patch("hail.read_matrix_table")
     def test_invalid_min_af_negative(self, mock_read_mt, mock_init_hail):
         """Test error when min_af is negative."""
@@ -253,7 +253,7 @@ class TestAncestryCLIParameterValidation:
             assert result.exit_code != 0
             assert "min-af" in result.output.lower() or "0" in result.output
 
-    @patch("hvantk.core.hail_context.init_hail")
+    @patch("hvantk.core.utils.hail_context.init_hail")
     @patch("hail.read_matrix_table")
     def test_invalid_min_af_too_high(self, mock_read_mt, mock_init_hail):
         """Test error when min_af is >= 0.5."""
@@ -281,7 +281,7 @@ class TestAncestryCLIParameterValidation:
 
             assert result.exit_code != 0
 
-    @patch("hvantk.core.hail_context.init_hail")
+    @patch("hvantk.core.utils.hail_context.init_hail")
     @patch("hail.read_matrix_table")
     def test_invalid_min_prob_out_of_range(self, mock_read_mt, mock_init_hail):
         """Test error when min_prob is out of range [0, 1]."""
@@ -309,7 +309,7 @@ class TestAncestryCLIParameterValidation:
 
             assert result.exit_code != 0
 
-    @patch("hvantk.core.hail_context.init_hail")
+    @patch("hvantk.core.utils.hail_context.init_hail")
     @patch("hail.read_matrix_table")
     def test_n_pcs_classify_greater_than_n_pcs_warning(
         self, mock_read_mt, mock_init_hail

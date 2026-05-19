@@ -11,7 +11,7 @@ import os
 import re
 from typing import Optional, List, Callable
 from hvantk.core.utils.table_utils import get_row_fields, build_rename_map, str_to_bool
-from hvantk.core.metadata import build_table_metadata
+from hvantk.core.models.metadata import build_table_metadata
 
 logger = logging.getLogger(__name__)
 _FILE_URI_PREFIX = "file://"

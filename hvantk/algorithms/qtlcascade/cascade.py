@@ -26,7 +26,7 @@ from hvantk.core.qtl_constants import (
     DEFAULT_PQTL_P_THRESHOLD,
 )
 
-from hvantk.core.backends import Backend, algorithm
+from hvantk.core.models.backends import Backend, algorithm
 
 logger = logging.getLogger(__name__)
 

@@ -60,7 +60,7 @@ def qtlcascade_group(ctx):
 @click.pass_context
 def cascade_cmd(ctx, eqtl_ht, pqtl_ht, output, tissue, eqtl_p, pqtl_p, overwrite):
     """Build the QTL cascade (eQTL ⊕ pQTL outer join + classification)."""
-    from hvantk.core.hail_context import init_hail
+    from hvantk.core.utils.hail_context import init_hail
 
     init_hail()
 
@@ -117,7 +117,7 @@ def coloc_cmd(
     """Run colocalization ABF on cascade genes."""
     from pathlib import Path
 
-    from hvantk.core.hail_context import init_hail
+    from hvantk.core.utils.hail_context import init_hail
 
     init_hail()
 

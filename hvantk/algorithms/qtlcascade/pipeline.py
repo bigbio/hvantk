@@ -20,7 +20,7 @@ from typing import Dict, List, Optional
 
 import pandas as pd
 
-from hvantk.core.backends import get_algorithm_meta
+from hvantk.core.models.backends import get_algorithm_meta
 
 from hvantk.core.qtl_constants import (
     DEFAULT_COLOC_H4_THRESHOLD,
@@ -547,7 +547,7 @@ class CascadePipeline:
             hl.current_backend()
             logger.info("Hail already initialised")
         except Exception:
-            from hvantk.core.hail_context import init_hail
+            from hvantk.core.utils.hail_context import init_hail
 
             init_hail()
 

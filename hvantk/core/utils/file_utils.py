@@ -13,7 +13,7 @@ import zlib
 
 import requests
 from tqdm import tqdm
-from hvantk.core.bgzf import BGZF_BLOCK_SIZE, BgzfWriter, make_bgzf_block
+from hvantk.core.utils.bgzf import BGZF_BLOCK_SIZE, BgzfWriter, make_bgzf_block
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)  # Set default log level to DEBUG

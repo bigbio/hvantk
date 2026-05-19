@@ -6,7 +6,7 @@ import pytest
 
 import anndata as ad
 
-from hvantk.core.anndata_utils import annotate_column_summary_ad
+from hvantk.core.models.anndata_utils import annotate_column_summary_ad
 from hvantk.algorithms.expression.matrix_utils import (
     describe_expression_ad,
     filter_by_metadata_ad,
