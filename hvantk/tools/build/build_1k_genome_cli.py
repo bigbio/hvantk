@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 def _build_1k_genome_mt(**kwargs):
     """Lazy import wrapper — keeps Hail out of the import-time path."""
-    from hvantk.tables.genome_builders import build_1k_genome_mt
+    from hvantk.core.builders.genome import build_1k_genome_mt
 
     return build_1k_genome_mt(**kwargs)
 
@@ -146,7 +146,7 @@ def build_1k_genome_cmd(
         else None
     )
 
-    from hvantk.tables.genome_builders import resolve_delimiter
+    from hvantk.core.builders.genome import resolve_delimiter
 
     logger.info("Starting 1000 Genomes MatrixTable build")
     mt = _build_1k_genome_mt(

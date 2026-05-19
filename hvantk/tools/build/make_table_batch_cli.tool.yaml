@@ -12,7 +12,7 @@ purpose:
     Reads a recipe file (JSON, or YAML if PyYAML is installed) with a top-level
     `tables` list. Each entry specifies a registered builder name, an input
     path, an output path, and optional per-builder params. Dispatches to the
-    table-builder registry in `hvantk.tables.registry.run_table_builder` so
+    table-builder registry in `hvantk.core.plugin.registry.run_table_builder` so
     a single recipe can stage many tables in one invocation.
 requires:
   hail: true

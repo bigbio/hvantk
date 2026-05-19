@@ -28,7 +28,7 @@ def test_mktables_recipe_success(tmp_path):
     runner = CliRunner()
     with patch("hvantk.tools.build.make_table_batch_cli._load_recipe") as mock_load, patch(
         "hvantk.tools.build.make_table_batch_cli.logger"
-    ), patch("hvantk.tables.registry.run_table_builder") as mock_runner:
+    ), patch("hvantk.core.plugin.registry.run_table_builder") as mock_runner:
         mock_load.return_value = recipe
         result = runner.invoke(mktable_batch_cli, ["--recipe", str(recipe_path)])
         assert result.exit_code == 0

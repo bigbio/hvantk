@@ -2,12 +2,12 @@
 
 This module owns ``create_msigdb_tb``, the canonical builder that turns an
 MSigDB GMT file (e.g., C2 Canonical Pathways) into a Hail Table keyed by
-``set_name``. It was migrated out of :mod:`hvantk.tables.table_builders` so
+``set_name``. It was migrated out of :mod:`hvantk.core.builders.table` so
 that everything MSigDB-specific (builder, drift probe, tests, fixtures,
 SKILL) lives under the plugin folder at :mod:`hvantk.skills.msigdb`.
 
 The shared helper ``_create_table_base`` intentionally stays in
-``hvantk.tables.table_builders`` because it is reused by every builder.
+``hvantk.core.builders.table`` because it is reused by every builder.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ import logging
 
 import hail as hl
 
-from hvantk.tables.table_builders import _create_table_base
+from hvantk.core.builders.table import _create_table_base
 
 logger = logging.getLogger(__name__)
 

@@ -2,7 +2,7 @@
 
 This module owns ``create_gencc_submissions_tb``, the canonical builder
 that turns the GenCC submissions TSV into a Hail Table. It was migrated
-out of :mod:`hvantk.tables.table_builders` so that everything
+out of :mod:`hvantk.core.builders.table` so that everything
 GenCC-specific (builder, downloader, dataset class, tests, fixtures,
 SKILL) lives under the plugin folder at :mod:`hvantk.skills.gencc`.
 
@@ -22,7 +22,7 @@ from hvantk.core.constants import (
     GENCC_CLASSIFICATION_LEVELS,
     GENCC_SUBMISSION_FIELDS,
 )
-from hvantk.tables.table_builders import _create_table_base
+from hvantk.core.builders.table import _create_table_base
 from hvantk.utils.table_utils import get_row_fields
 
 logger = logging.getLogger(__name__)

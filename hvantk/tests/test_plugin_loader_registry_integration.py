@@ -5,18 +5,18 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from hvantk.core import plugin_loader
+from hvantk.core.plugin import loader as plugin_loader
 
 
 def test_legacy_registrations_still_present():
-    from hvantk.tables.registry import TABLE_BUILDERS
+    from hvantk.core.plugin.registry import TABLE_BUILDERS
     # Sanity: an existing legacy builder is still registered.
     assert "gevir" in TABLE_BUILDERS
 
 
 def test_plugin_loader_populates_table_builders(monkeypatch, tmp_path):
     # Point the loader at the fake plugin fixture instead of the real skills dir.
-    from hvantk.tables import registry as tables_registry
+    from hvantk.core.plugin import registry as tables_registry
 
     fixture = (
         Path(__file__).parent

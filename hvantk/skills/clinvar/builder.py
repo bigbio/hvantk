@@ -2,7 +2,7 @@
 
 This module owns ``create_clinvar_tb``, the canonical builder that turns the
 ClinVar VCF into a Hail Table keyed by ``(locus, alleles)``. It was migrated
-out of :mod:`hvantk.tables.table_builders` so that everything ClinVar-specific
+out of :mod:`hvantk.core.builders.table` so that everything ClinVar-specific
 (builder, downloader, dataset class, tests, fixtures, SKILL) lives under the
 plugin folder at :mod:`hvantk.skills.clinvar`.
 
@@ -17,7 +17,7 @@ import logging
 
 import hail as hl
 
-from hvantk.tables.table_builders import _create_table_base
+from hvantk.core.builders.table import _create_table_base
 from hvantk.utils.genome import contig_recoding
 
 logger = logging.getLogger(__name__)

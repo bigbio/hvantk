@@ -59,7 +59,7 @@ def _load_recipe(recipe_path: str) -> Dict[str, Any]:
 )
 @click.pass_context
 def mkmatrix_batch_cli(ctx, recipe):
-    from hvantk.tables.registry import run_matrix_builder
+    from hvantk.core.plugin.registry import run_matrix_builder
 
     try:
         spec = _load_recipe(recipe)

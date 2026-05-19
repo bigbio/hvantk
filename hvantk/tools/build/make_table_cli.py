@@ -36,25 +36,25 @@ def _create_interactome_tb(*args, **kwargs):
 
 
 def _create_gevir_tb(*args, **kwargs):
-    from hvantk.tables.table_builders import create_gevir_tb
+    from hvantk.core.builders.table import create_gevir_tb
 
     return create_gevir_tb(*args, **kwargs)
 
 
 def _create_gnomad_constraint_gene_metrics_tb(*args, **kwargs):
-    from hvantk.tables.table_builders import create_gnomad_constraint_gene_metrics_tb
+    from hvantk.core.builders.table import create_gnomad_constraint_gene_metrics_tb
 
     return create_gnomad_constraint_gene_metrics_tb(*args, **kwargs)
 
 
 def _create_ensembl_gene_tb(*args, **kwargs):
-    from hvantk.tables.table_builders import create_ensembl_gene_tb
+    from hvantk.core.builders.table import create_ensembl_gene_tb
 
     return create_ensembl_gene_tb(*args, **kwargs)
 
 
 def _create_dbnsfp_tb(*args, **kwargs):
-    from hvantk.tables.table_builders import create_dbnsfp_tb
+    from hvantk.core.builders.table import create_dbnsfp_tb
 
     return create_dbnsfp_tb(*args, **kwargs)
 
@@ -90,7 +90,7 @@ def _create_eqtl_tb(*args, **kwargs):
 
 
 def _create_pqtl_tb(*args, **kwargs):
-    from hvantk.tables.table_builders import create_pqtl_tb
+    from hvantk.core.builders.table import create_pqtl_tb
 
     return create_pqtl_tb(*args, **kwargs)
 
@@ -505,7 +505,7 @@ def mktable_cosmic_cgc(
 ):
     """Build a COSMIC Cancer Gene Census Hail Table from the downloaded TSV."""
     logger.info("Building COSMIC CGC table")
-    from hvantk.tables.table_builders import create_cosmic_cgc_tb
+    from hvantk.core.builders.table import create_cosmic_cgc_tb
 
     ht = create_cosmic_cgc_tb(
         input_path=raw_input,
@@ -756,7 +756,7 @@ def mktable_pqtl(
 @_overwrite_opt
 def mktable_alphagenome(input_path, output_dir, config_path, no_resume, overwrite):
     """Run AlphaGenome variant effect predictions."""
-    from hvantk.tables.table_builders import create_alphagenome_tb
+    from hvantk.core.builders.table import create_alphagenome_tb
 
     logger.info("Running AlphaGenome variant predictions")
     create_alphagenome_tb(

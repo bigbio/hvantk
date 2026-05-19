@@ -5,13 +5,13 @@ the INSIDER ``Whole_Human_Interactome_Interface_hg38.bed`` (UCSC-style BED
 with ``track name=<P1>_ppi_<P2>`` headers identifying each PPI) into a Hail
 Table keyed by ``interval<locus<rg>>`` with a ``ppi_ids: array<str>`` field
 that preserves the PPI identity carried by the track headers. It was
-migrated out of :mod:`hvantk.tables.table_builders` so that everything
+migrated out of :mod:`hvantk.core.builders.table` so that everything
 INSIDER-specific (builder, drift probe, tests, fixtures, SKILL) lives under
 the plugin folder at :mod:`hvantk.skills.insider`.
 
 The shared helpers ``_create_table_base``, ``_parse_insider_bed_to_temp_tsv``,
 and ``_cleanup_temp_file`` intentionally stay in
-``hvantk.tables.table_builders`` for now -- ``_create_table_base`` and
+``hvantk.core.builders.table`` for now -- ``_create_table_base`` and
 ``_cleanup_temp_file`` are reused across many builders, and the INSIDER BED
 helper is small enough that moving it alongside is not worth the churn while
 the cleanup-tests still load ``table_builders.py`` directly with stubs.
@@ -23,7 +23,7 @@ import logging
 
 import hail as hl
 
-from hvantk.tables.table_builders import (
+from hvantk.core.builders.table import (
     _cleanup_temp_file,
     _create_table_base,
     _parse_insider_bed_to_temp_tsv,

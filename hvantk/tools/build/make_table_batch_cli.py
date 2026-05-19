@@ -45,7 +45,7 @@ def _load_recipe(recipe_path: str) -> Dict[str, Any]:
 @click.pass_context
 def mktable_batch_cli(ctx, recipe):
     """Create one or more annotation tables described in a recipe file."""
-    from hvantk.tables.registry import run_table_builder
+    from hvantk.core.plugin.registry import run_table_builder
 
     try:
         spec = _load_recipe(recipe)

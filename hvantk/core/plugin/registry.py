@@ -9,7 +9,7 @@ Contract per entry:
 - output_path: str
 - params: dict (optional) – builder-specific parameters
 
-This module adapts hvantk.tables.table_builders functions to this contract.
+This module adapts hvantk.core.builders.table functions to this contract.
 """
 
 from __future__ import annotations
@@ -82,7 +82,7 @@ def create_table_adapter(
     Parameters
     ----------
     builder_module : str
-        The module path containing the builder function (e.g., 'hvantk.tables.table_builders').
+        The module path containing the builder function (e.g., 'hvantk.core.builders.table').
     builder_function : str
         The name of the builder function (e.g., 'create_clinvar_tb').
 
@@ -94,7 +94,7 @@ def create_table_adapter(
     Example
     -------
     >>> clinvar_adapter = create_table_adapter(
-    ...     'hvantk.tables.table_builders',
+    ...     'hvantk.core.builders.table',
     ...     'create_clinvar_tb'
     ... )
     """
@@ -244,20 +244,20 @@ def create_matrix_adapter(
 
 # Table builders - automatically generated adapters using factory
 TABLE_BUILDERS: Dict[str, Callable[[str, str, Dict[str, Any] | None], None]] = {
-    "gevir": create_table_adapter("hvantk.tables.table_builders", "create_gevir_tb"),
+    "gevir": create_table_adapter("hvantk.core.builders.table", "create_gevir_tb"),
     "gnomad-metrics": create_table_adapter(
-        "hvantk.tables.table_builders", "create_gnomad_constraint_gene_metrics_tb"
+        "hvantk.core.builders.table", "create_gnomad_constraint_gene_metrics_tb"
     ),
     "ensembl-gene": create_table_adapter(
-        "hvantk.tables.table_builders", "create_ensembl_gene_tb"
+        "hvantk.core.builders.table", "create_ensembl_gene_tb"
     ),
-    "dbnsfp": create_table_adapter("hvantk.tables.table_builders", "create_dbnsfp_tb"),
+    "dbnsfp": create_table_adapter("hvantk.core.builders.table", "create_dbnsfp_tb"),
     "cosmic-cgc": create_table_adapter(
-        "hvantk.tables.table_builders", "create_cosmic_cgc_tb"
+        "hvantk.core.builders.table", "create_cosmic_cgc_tb"
     ),
-    "pqtl": create_table_adapter("hvantk.tables.table_builders", "create_pqtl_tb"),
+    "pqtl": create_table_adapter("hvantk.core.builders.table", "create_pqtl_tb"),
     "alphagenome": create_table_adapter(
-        "hvantk.tables.table_builders", "create_alphagenome_tb"
+        "hvantk.core.builders.table", "create_alphagenome_tb"
     ),
 }
 
@@ -346,7 +346,7 @@ def _initialize_plugin_registrations() -> None:
     Called once at module import time. Safe to call repeatedly; subsequent
     calls are no-ops because the registry is a module-level singleton.
     """
-    from hvantk.core import plugin_loader
+    from hvantk.core.plugin import loader as plugin_loader
 
     try:
         reg = plugin_loader.get_registry()

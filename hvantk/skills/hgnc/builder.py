@@ -2,7 +2,7 @@
 
 This module owns ``create_hgnc_gene_tb``, the canonical builder that turns the
 HGNC complete-set TSV into a Hail Table keyed by ``hgnc_id``. It was migrated
-out of :mod:`hvantk.tables.table_builders` so that everything HGNC-specific
+out of :mod:`hvantk.core.builders.table` so that everything HGNC-specific
 (builder, downloader, drift probe, tests, fixtures, SKILL) lives under the
 plugin folder at :mod:`hvantk.skills.hgnc`.
 
@@ -19,7 +19,7 @@ from typing import List, Optional
 import hail as hl
 
 from hvantk.core.constants import HGNC_GENE_FIELDS, HGNC_PIPE_SEPARATED_FIELDS
-from hvantk.tables.table_builders import _create_table_base
+from hvantk.core.builders.table import _create_table_base
 from hvantk.utils.table_utils import get_row_fields
 
 logger = logging.getLogger(__name__)

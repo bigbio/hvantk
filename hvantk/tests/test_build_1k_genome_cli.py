@@ -9,7 +9,7 @@ import pytest
 from click.testing import CliRunner
 
 from hvantk.tools.build.build_1k_genome_cli import build_1k_genome_cmd
-from hvantk.tables.genome_builders import _extract_chrom_token, discover_vcf_files
+from hvantk.core.builders.genome import _extract_chrom_token, discover_vcf_files
 
 
 def _make_vcf_dir(

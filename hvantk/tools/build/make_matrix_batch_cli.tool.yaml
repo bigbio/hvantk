@@ -12,7 +12,7 @@ purpose:
     Reads a recipe file (JSON, or YAML if PyYAML is installed) with a top-level
     `matrices` list. Each entry specifies a registered matrix-builder name,
     an `inputs` dict, an output path, and optional params. Dispatches to
-    `hvantk.tables.registry.run_matrix_builder` so multiple matrices can be
+    `hvantk.core.plugin.registry.run_matrix_builder` so multiple matrices can be
     staged in one invocation.
 requires:
   hail: true

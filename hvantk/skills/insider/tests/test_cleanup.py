@@ -23,7 +23,7 @@ def insider_builder_module(monkeypatch):
 
     The real module imports ``hl``, ``_create_table_base``,
     ``_parse_insider_bed_to_temp_tsv``, and ``_cleanup_temp_file`` from
-    ``hvantk.tables.table_builders``. We stub those at import time so the
+    ``hvantk.core.builders.table``. We stub those at import time so the
     builder can be loaded without touching Hail or the heavy table-builders
     module, then monkeypatch them per-test to assert cleanup ordering.
     """
@@ -40,14 +40,15 @@ def insider_builder_module(monkeypatch):
     hail.import_table = lambda *args, **kwargs: None
     hail.locus_interval = lambda *args, **kwargs: None
 
-    # Stub hvantk.tables.table_builders so the plugin builder's `from ... import`
+    # Stub hvantk.core.builders.table so the plugin builder's `from ... import`
     # succeeds without loading the real (Hail-heavy) module. The per-test
     # monkeypatching below rebinds these names on the loaded plugin module.
     register("hvantk", types.ModuleType("hvantk"))
-    register("hvantk.tables", types.ModuleType("hvantk.tables"))
+    register("hvantk.core", types.ModuleType("hvantk.core"))
+    register("hvantk.core.builders", types.ModuleType("hvantk.core.builders"))
     table_builders = register(
-        "hvantk.tables.table_builders",
-        types.ModuleType("hvantk.tables.table_builders"),
+        "hvantk.core.builders.table",
+        types.ModuleType("hvantk.core.builders.table"),
     )
     table_builders._create_table_base = lambda **kwargs: None
     table_builders._parse_insider_bed_to_temp_tsv = lambda input_path: "stub.tsv"

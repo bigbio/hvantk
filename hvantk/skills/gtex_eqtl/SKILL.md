@@ -92,10 +92,10 @@ For eqtlgen, both `af` and `maf` remain `hl.missing` (the source distributes nei
 - **Builder:** `create_eqtl_tb` in `hvantk/tables/table_builders.py:1644`, dispatched via `import_func` to one of three source-specific helpers. Uses `_create_table_base()` (so `overwrite` / `export_tsv` / `fields` flow through).
 - **Source-specific helpers** (private):
   - `_import_eqtl_gtex_parquet` in `hvantk/tables/table_builders.py:1540` (v11 / Spark / Parquet).
-  - `_import_eqtl_gtex_tsv` in `hvantk/tables/table_builders.py:1578` (v8 / TSV).
+  - `_import_eqtl_gtex_tsv` in `hvantk/core/builders/table.py:1578` (v8 / TSV).
   - `_import_eqtl_eqtlgen` (eqtlgen TSV, separate schema).
 - **Source constants:** `EQTL_SOURCES = ("gtex_v11", "gtex_v8", "eqtlgen")` in `hvantk/qtlcascade/constants.py:77`.
-- **Registry:** `TABLE_BUILDERS["eqtl"] = create_table_adapter("hvantk.tables.table_builders", "create_eqtl_tb")` in `hvantk/tables/registry.py`.
+- **Registry:** `TABLE_BUILDERS["eqtl"] = create_table_adapter("hvantk.core.builders.table", "create_eqtl_tb")` in `hvantk/core/plugin/registry.py`.
 - **CLI:** `mktable_eqtl` in `hvantk/tools/build/make_table_cli.py:604` (command name `eqtl`), with `--source` flag (Click choice, default `gtex_v11`), `--tissue`, `--p-threshold`, plus the standard input/output/overwrite/export options.
 - **Downstream consumer:** `hvantk/qtlcascade/` — the eQTL Hail Table is one half of the eQTL ⊕ pQTL cascade join.
 

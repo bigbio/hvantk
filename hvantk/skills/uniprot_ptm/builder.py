@@ -3,7 +3,7 @@
 This module owns ``create_ptm_sites_tb``, the canonical builder that turns the
 mapped PTM coordinates TSV (produced by
 :mod:`hvantk.ptm.pipeline.map_ptm_sites`) into a Hail Table keyed by locus. It
-was migrated out of :mod:`hvantk.tables.table_builders` so that everything
+was migrated out of :mod:`hvantk.core.builders.table` so that everything
 UniProt-PTM-specific (builder, downloader, dataset class, tests, fixtures,
 SKILL) lives under the plugin folder at :mod:`hvantk.skills.uniprot_ptm`.
 
@@ -18,7 +18,7 @@ from typing import List, Optional
 
 import hail as hl
 
-from hvantk.tables.table_builders import _create_table_base
+from hvantk.core.builders.table import _create_table_base
 
 logger = logging.getLogger(__name__)
 

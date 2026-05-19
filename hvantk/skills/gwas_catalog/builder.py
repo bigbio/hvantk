@@ -4,12 +4,12 @@ This module owns ``create_gwas_catalog_tb``, the canonical builder that turns
 the GWAS Catalog v1.0 full-associations TSV into a Hail Table keyed by
 ``(locus, alleles)`` with ``alleles = [<risk_allele>, "N"]`` (sentinel ALT,
 judgment call #1 in the skill). It was migrated out of
-:mod:`hvantk.tables.table_builders` so that everything gwas-catalog-specific
+:mod:`hvantk.core.builders.table` so that everything gwas-catalog-specific
 (builder, drift probe, tests, fixtures, SKILL) lives under the plugin folder
 at :mod:`hvantk.skills.gwas_catalog`.
 
 The shared helper ``_create_table_base`` intentionally stays in
-``hvantk.tables.table_builders`` because it is reused by builders across many
+``hvantk.core.builders.table`` because it is reused by builders across many
 data sources.
 """
 
@@ -19,7 +19,7 @@ import logging
 
 import hail as hl
 
-from hvantk.tables.table_builders import _create_table_base
+from hvantk.core.builders.table import _create_table_base
 from hvantk.utils.table_utils import str_to_bool
 
 logger = logging.getLogger(__name__)

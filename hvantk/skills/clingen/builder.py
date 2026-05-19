@@ -2,7 +2,7 @@
 
 This module owns ``create_clingen_gene_disease_tb``, the canonical builder
 that turns the ClinGen Gene-Disease Validity CSV into a Hail Table. It was
-migrated out of :mod:`hvantk.tables.table_builders` so that everything
+migrated out of :mod:`hvantk.core.builders.table` so that everything
 ClinGen-specific (builder, downloader, dataset class, tests, fixtures,
 SKILL) lives under the plugin folder at :mod:`hvantk.skills.clingen`.
 
@@ -22,7 +22,7 @@ from hvantk.core.constants import (
     CLINGEN_CLASSIFICATION_LEVELS,
     CLINGEN_GENE_DISEASE_FIELDS,
 )
-from hvantk.tables.table_builders import _cleanup_temp_file, _create_table_base
+from hvantk.core.builders.table import _cleanup_temp_file, _create_table_base
 from hvantk.utils.table_utils import get_row_fields
 
 logger = logging.getLogger(__name__)

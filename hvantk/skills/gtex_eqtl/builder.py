@@ -4,14 +4,14 @@ This module owns ``create_eqtl_tb``, the canonical builder that turns a
 directory of per-tissue GTEx v11 (parquet), GTEx v8 (TSV), or eQTLGen (TSV)
 cis-eQTL summary statistics into a Hail Table triple-keyed by
 ``(locus, alleles, gene_id)``. It was migrated out of
-:mod:`hvantk.tables.table_builders` so that everything gtex-eqtl-specific
+:mod:`hvantk.core.builders.table` so that everything gtex-eqtl-specific
 (builder, drift probe, tests, fixtures, SKILL) lives under the plugin folder
 at :mod:`hvantk.skills.gtex_eqtl`.
 
 The shared helper ``_create_table_base`` and the source-specific import
 helpers (``_import_eqtl_gtex_parquet`` / ``_import_eqtl_gtex_tsv`` /
 ``_import_eqtl_eqtlgen``) intentionally stay in
-``hvantk.tables.table_builders`` because they touch internal parsing
+``hvantk.core.builders.table`` because they touch internal parsing
 machinery shared across multiple QTL builders.
 """
 
@@ -22,7 +22,7 @@ from typing import List, Optional
 
 import hail as hl
 
-from hvantk.tables.table_builders import (
+from hvantk.core.builders.table import (
     _create_table_base,
     _import_eqtl_eqtlgen,
     _import_eqtl_gtex_parquet,
