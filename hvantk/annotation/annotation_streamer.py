@@ -486,7 +486,7 @@ def create_enhanced_clinvar_training_streamer(
 
     If no gene_set is provided, falls back to sample CHD-oriented set for sandboxing.
     """
-    from hvantk.utils.gene_sets import load_gene_set, load_sample_chd_gene_set
+    from hvantk.core.utils.gene_sets import load_gene_set, load_sample_chd_gene_set
 
     if gene_set is None and gene_set_path is None:
         gene_set = load_sample_chd_gene_set()

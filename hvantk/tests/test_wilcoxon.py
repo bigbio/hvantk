@@ -9,7 +9,7 @@ import pandas as pd
 import pytest
 from scipy.stats import mannwhitneyu
 
-from hvantk.utils.wilcoxon import (
+from hvantk.algorithms.statistics.wilcoxon import (
     WilcoxonParams,
     _compute_rank_matrix,
     _compute_tie_correction,
@@ -17,7 +17,7 @@ from hvantk.utils.wilcoxon import (
     rank_genes_groups,
     results_to_gene_set_collection,
 )
-from hvantk.utils.gene_sets import GeneSetCollection
+from hvantk.core.utils.gene_sets import GeneSetCollection
 
 
 # ---------------------------------------------------------------------------

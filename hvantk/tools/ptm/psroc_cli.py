@@ -353,7 +353,7 @@ def psroc_cmd(
         # Load gene set collection if provided
         gene_set_collection = None
         if gene_sets:
-            from hvantk.utils.gene_sets import load_gene_sets
+            from hvantk.core.utils.gene_sets import load_gene_sets
 
             collection = load_gene_sets(gene_sets)
             gene_set_collection = {gs.name: gs.genes for gs in collection}

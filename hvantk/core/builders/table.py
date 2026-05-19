@@ -10,7 +10,7 @@ import logging
 import os
 import re
 from typing import Optional, List, Callable
-from hvantk.utils.table_utils import get_row_fields, build_rename_map, str_to_bool
+from hvantk.core.utils.table_utils import get_row_fields, build_rename_map, str_to_bool
 from hvantk.core.metadata import build_table_metadata
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ from hvantk.core.constants import (
     COSMIC_MUTATION_CONTEXTS,
 )
 from hvantk.core.utils.file_utils import resolve_compression
-from hvantk.utils.genome import contig_recoding  # correct module import
+from hvantk.core.utils.genome import contig_recoding  # correct module import
 
 
 def _create_table_base(

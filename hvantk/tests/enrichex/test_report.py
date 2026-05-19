@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from hvantk.utils.gene_sets import GeneSet, GeneSetCollection
+from hvantk.core.utils.gene_sets import GeneSet, GeneSetCollection
 from hvantk.enrichex.report import generate_report
 
 

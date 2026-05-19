@@ -603,7 +603,7 @@ def extract_marker_gene_sets(
     Note
     ----
     The current AnnData summarizer
-    (:func:`hvantk.utils.matrix_utils.summarize_expression_ad`) returns
+    (:func:`hvantk.algorithms.expression.matrix_utils.summarize_expression_ad`) returns
     *long*-format output; convert with ``pivot`` before passing here, or
     use scanpy's ``rank_genes_groups`` for marker discovery.
 

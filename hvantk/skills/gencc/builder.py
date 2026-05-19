@@ -23,7 +23,7 @@ from hvantk.core.constants import (
     GENCC_SUBMISSION_FIELDS,
 )
 from hvantk.core.builders.table import _create_table_base
-from hvantk.utils.table_utils import get_row_fields
+from hvantk.core.utils.table_utils import get_row_fields
 
 logger = logging.getLogger(__name__)
 

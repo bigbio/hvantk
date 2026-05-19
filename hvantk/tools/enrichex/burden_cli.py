@@ -371,8 +371,8 @@ def burden_test(
     import pandas as pd
 
     from hvantk.enrichex.burden import VariantFilter, run_burden_analysis
-    from hvantk.utils.correction import apply_correction
-    from hvantk.utils.gene_sets import GeneSetCollection
+    from hvantk.algorithms.statistics.correction import apply_correction
+    from hvantk.core.utils.gene_sets import GeneSetCollection
 
     # Load inputs
     click.echo(f"Loading cohort: {cohort_mt}")

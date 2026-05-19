@@ -177,7 +177,7 @@ def _load_from_anndata(
     is honoured instead of silently collapsing to the mean.
     """
     from hvantk.core.anndata_utils import load_anndata
-    from hvantk.utils.matrix_utils import summarize_expression_ad
+    from hvantk.algorithms.expression.matrix_utils import summarize_expression_ad
 
     adata = load_anndata(path)
     if grouping not in adata.obs.columns:

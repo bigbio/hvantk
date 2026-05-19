@@ -11,7 +11,7 @@ from typing import Iterator, Optional, Set, Iterable
 from hvantk.core.streamers.base import HailDataStreamer, StreamProcessor
 import logging
 
-from hvantk.utils.gene_sets import load_gene_set
+from hvantk.core.utils.gene_sets import load_gene_set
 
 logger = logging.getLogger(__name__)
 

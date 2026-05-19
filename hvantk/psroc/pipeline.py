@@ -47,7 +47,7 @@ from hvantk.psroc.plots import (
     plot_psroc_summary_dashboard,
     plot_collection_heatmap,
 )
-from hvantk.utils.gene_sets import load_gene_set
+from hvantk.core.utils.gene_sets import load_gene_set
 
 logger = logging.getLogger(__name__)
 
@@ -956,7 +956,7 @@ class PSROCPipeline:
             if gene_set:
                 # Expand with HGNC aliases if configured
                 if self.config.hgnc_path:
-                    from hvantk.utils.gene_aliases import (
+                    from hvantk.core.utils.gene_aliases import (
                         expand_gene_set_with_aliases,
                     )
 

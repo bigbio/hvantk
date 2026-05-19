@@ -18,7 +18,7 @@ import logging
 import hail as hl
 
 from hvantk.core.builders.table import _create_table_base
-from hvantk.utils.genome import contig_recoding
+from hvantk.core.utils.genome import contig_recoding
 
 logger = logging.getLogger(__name__)
 

@@ -35,7 +35,7 @@ def _save_and_report(
     ctx,
 ):
     """Remove empty sets, report statistics, and save the collection."""
-    from hvantk.utils.gene_sets import load_gene_sets_from_dict
+    from hvantk.core.utils.gene_sets import load_gene_sets_from_dict
 
     # Remove empty groups
     empty = [k for k, v in gene_sets.items() if not v]
@@ -611,8 +611,8 @@ def genesets_prepare(
     Example:
       hvantk genesets prepare -i panels.tsv -o panels.json --hgnc /data/hgnc.ht
     """
-    from hvantk.utils.gene_sets import load_gene_set, load_gene_sets_from_dict
-    from hvantk.utils.geneset_io import parse_geneset_tsv, validate_with_hgnc
+    from hvantk.core.utils.gene_sets import load_gene_set, load_gene_sets_from_dict
+    from hvantk.core.utils.geneset_io import parse_geneset_tsv, validate_with_hgnc
 
     output_path = Path(output)
     if output_path.exists() and not overwrite:

@@ -1,6 +1,6 @@
 """Smoke tests for the PTM constraint pipeline (M1-M6).
 
-Minimum checks that ``hvantk.utils.tissue_specificity``,
+Minimum checks that ``hvantk.algorithms.expression.tissue_specificity``,
 ``hvantk.ptm.constraint_expression``, ``hvantk.ptm.constraint``, and the
 ``hvantk ptm constraint`` CLI subcommand import, agree with a reference
 implementation, and respect their contracts. No Hail, no network.
@@ -34,7 +34,7 @@ def _toy_expr_matrix() -> pd.DataFrame:
 
 
 def test_tspex_wrapper_matches_yanai():
-    from hvantk.utils.tissue_specificity import compute_specificity, tau_yanai_reference
+    from hvantk.algorithms.expression.tissue_specificity import compute_specificity, tau_yanai_reference
 
     df = _toy_expr_matrix()
     tspex_tau = compute_specificity(df, method="tau")

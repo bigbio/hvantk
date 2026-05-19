@@ -10,7 +10,7 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
-from hvantk.utils.obo_parser import BaseOboOntology
+from hvantk.core.utils.obo_parser import BaseOboOntology
 
 logger = logging.getLogger(__name__)
 

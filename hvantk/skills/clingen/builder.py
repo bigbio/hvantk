@@ -23,7 +23,7 @@ from hvantk.core.constants import (
     CLINGEN_GENE_DISEASE_FIELDS,
 )
 from hvantk.core.builders.table import _cleanup_temp_file, _create_table_base
-from hvantk.utils.table_utils import get_row_fields
+from hvantk.core.utils.table_utils import get_row_fields
 
 logger = logging.getLogger(__name__)
 

@@ -6,7 +6,7 @@ These tests no longer require Hail — overlap enrichment uses scipy.
 
 import pytest
 
-from hvantk.utils.gene_sets import (
+from hvantk.core.utils.gene_sets import (
     GeneSet,
     GeneSetCollection,
     load_gene_sets_from_dict,

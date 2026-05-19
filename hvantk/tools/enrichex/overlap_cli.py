@@ -119,7 +119,7 @@ def overlap_test(
             Created by: GeneSetCollection.save(path)
     """
     from hvantk.enrichex.overlap import compute_overlap_enrichment_pandas
-    from hvantk.utils.gene_sets import GeneSetCollection, load_gene_set
+    from hvantk.core.utils.gene_sets import GeneSetCollection, load_gene_set
 
     # Load query genes
     click.echo(f"Loading query genes from: {gene_list}")

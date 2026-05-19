@@ -20,7 +20,7 @@ import logging
 import hail as hl
 
 from hvantk.core.builders.table import _create_table_base
-from hvantk.utils.table_utils import str_to_bool
+from hvantk.core.utils.table_utils import str_to_bool
 
 logger = logging.getLogger(__name__)
 

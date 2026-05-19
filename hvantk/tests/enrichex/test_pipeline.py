@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 
 from hvantk.enrichex.pipeline import BurdenConfig, BurdenPipeline, BurdenRunResult
-from hvantk.utils.table_utils import leaf_name
+from hvantk.core.utils.table_utils import leaf_name
 
 
 # ---------------------------------------------------------------------------

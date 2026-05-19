@@ -45,7 +45,7 @@ def describe_expression_cmd(matrix_path):
       hvantk expression describe -m data/heart_sc.h5ad
     """
     from hvantk.core.anndata_utils import load_anndata
-    from hvantk.utils.matrix_utils import describe_expression_ad
+    from hvantk.algorithms.expression.matrix_utils import describe_expression_ad
 
     adata = load_anndata(matrix_path)
     info = describe_expression_ad(adata)
@@ -150,7 +150,7 @@ def summarize_expression_cmd(
     from pathlib import Path
 
     from hvantk.core.anndata_utils import load_anndata
-    from hvantk.utils.matrix_utils import summarize_expression_ad
+    from hvantk.algorithms.expression.matrix_utils import summarize_expression_ad
 
     output_path = Path(output)
     if output_path.suffix != ".h5ad":
@@ -321,8 +321,8 @@ def markers_cmd(
     import scanpy as sc
 
     from hvantk.core.anndata_utils import load_anndata
-    from hvantk.utils.matrix_utils import filter_by_metadata_ad
-    from hvantk.utils.gene_sets import GeneSet, GeneSetCollection
+    from hvantk.algorithms.expression.matrix_utils import filter_by_metadata_ad
+    from hvantk.core.utils.gene_sets import GeneSet, GeneSetCollection
 
     output_path = Path(output)
     if output_path.exists() and not overwrite:

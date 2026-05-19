@@ -8,7 +8,7 @@ from hvantk.hgc.constants import VCF_EXTENSION
 from hvantk.annotation.annotation_streamer import (
     create_enhanced_clinvar_training_streamer,
 )
-from hvantk.utils.gene_sets import load_sample_chd_gene_set
+from hvantk.core.utils.gene_sets import load_sample_chd_gene_set
 
 logger = logging.getLogger(__name__)
 

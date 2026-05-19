@@ -15,16 +15,16 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
 if TYPE_CHECKING:
     from hvantk.core.utils.gene_mapper import GeneMapper
-    from hvantk.utils.mondo_parser import MondoOntology
-    from hvantk.utils.obo_parser import BaseOboOntology
+    from hvantk.core.utils.mondo_parser import MondoOntology
+    from hvantk.core.utils.obo_parser import BaseOboOntology
 
 import hail as hl
 import pandas as pd
 
 from hvantk.core.streamers.base import HailDataStreamer
 from hvantk.core.models.dataset import get_gene_ann_ht
-from hvantk.utils.gene_sets import load_gene_sets_from_dict
-from hvantk.utils.table_utils import get_row_fields
+from hvantk.core.utils.gene_sets import load_gene_sets_from_dict
+from hvantk.core.utils.table_utils import get_row_fields
 
 logger = logging.getLogger(__name__)
 
@@ -341,8 +341,8 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
         categories: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Dict[str, Set[str]]]:
         """Categorize diseases using MONDO ontology hierarchy."""
-        from hvantk.utils.obo_parser import BaseOboOntology
-        from hvantk.utils.mondo_parser import MondoOntology, MONDO_DISEASE_CATEGORIES
+        from hvantk.core.utils.obo_parser import BaseOboOntology
+        from hvantk.core.utils.mondo_parser import MondoOntology, MONDO_DISEASE_CATEGORIES
 
         if isinstance(ontology, str):
             logger.info(f"Loading MONDO ontology from {ontology}")
@@ -475,8 +475,8 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
         as_set: bool = True,
     ) -> Union[Set[str], List[Tuple[str, str, str]]]:
         """Get genes belonging to a specific ontology category."""
-        from hvantk.utils.obo_parser import BaseOboOntology
-        from hvantk.utils.mondo_parser import MondoOntology
+        from hvantk.core.utils.obo_parser import BaseOboOntology
+        from hvantk.core.utils.mondo_parser import MondoOntology
 
         if isinstance(ontology, str):
             onto = MondoOntology(ontology)

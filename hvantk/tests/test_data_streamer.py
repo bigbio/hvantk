@@ -10,7 +10,7 @@ from hvantk.core.streamers.clinvar import (
     ClinvarTrainingSetProcessor,
     create_clinvar_training_set_streamer,
 )
-from hvantk.utils import load_sample_chd_gene_set
+from hvantk.core.utils.gene_sets import load_sample_chd_gene_set
 
 # Configure logging for tests
 logging.basicConfig(level=logging.INFO)

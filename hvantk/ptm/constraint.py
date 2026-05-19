@@ -21,7 +21,7 @@ import pandas as pd
 from scipy import stats
 
 from hvantk.ptm.constraint_expression import load_gene_by_group_matrix
-from hvantk.utils.tissue_specificity import compute_specificity
+from hvantk.algorithms.expression.tissue_specificity import compute_specificity
 
 logger = logging.getLogger(__name__)
 

@@ -73,8 +73,8 @@ from hvantk.enrichex.constants import (
     VARIANT_CLASS_PRESETS,
     _DEPRECATED_AGGREGATION_ALIASES,
 )
-from hvantk.utils.correction import apply_correction, fdr_threshold
-from hvantk.utils.gene_sets import (
+from hvantk.algorithms.statistics.correction import apply_correction, fdr_threshold
+from hvantk.core.utils.gene_sets import (
     GeneSet,
     GeneSetCollection,
     load_gene_sets_from_dict,

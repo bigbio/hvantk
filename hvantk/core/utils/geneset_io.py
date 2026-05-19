@@ -5,7 +5,7 @@ dictionary of {set_name: List[str]}, with format and identifier validation.
 
 Also provides HGNC-based symbol validation and alias resolution using the
 existing ``_load_hgnc_symbol_maps()`` infrastructure from
-``hvantk.utils.gene_aliases``.
+``hvantk.core.utils.gene_aliases``.
 """
 
 from dataclasses import dataclass, field
@@ -268,7 +268,7 @@ def validate_with_hgnc(
     -------
     ValidationResult
     """
-    from hvantk.utils.gene_aliases import _load_hgnc_symbol_maps
+    from hvantk.core.utils.gene_aliases import _load_hgnc_symbol_maps
 
     canonical_symbols, alias_to_canonical, _ = _load_hgnc_symbol_maps(hgnc_path)
 

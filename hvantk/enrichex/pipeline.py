@@ -51,7 +51,7 @@ from hvantk.enrichex.constants import (
     PHENOTYPE_TYPES,
     _DEPRECATED_AGGREGATION_ALIASES,
 )
-from hvantk.utils.table_utils import leaf_name, resolve_field, validate_fields
+from hvantk.core.utils.table_utils import leaf_name, resolve_field, validate_fields
 
 logger = logging.getLogger(__name__)
 
@@ -542,7 +542,7 @@ class BurdenPipeline:
         logger.info("  %d samples", self._phenotype_ht.count())
 
     def _load_gene_sets(self) -> None:
-        from hvantk.utils.gene_sets import GeneSetCollection
+        from hvantk.core.utils.gene_sets import GeneSetCollection
 
         all_genes: set = set()
         for name, path in self.config.gene_set_collections.items():
@@ -576,7 +576,7 @@ class BurdenPipeline:
             permutation_burden_test,
             run_burden_analysis,
         )
-        from hvantk.utils.correction import apply_correction
+        from hvantk.algorithms.statistics.correction import apply_correction
 
         t_run = time.time()
 

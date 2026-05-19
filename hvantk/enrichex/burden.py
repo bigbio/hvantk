@@ -37,7 +37,7 @@ from hvantk.enrichex.constants import (
     VARIANT_CLASS_PRESETS,
     _DEPRECATED_AGGREGATION_ALIASES,
 )
-from hvantk.utils.table_utils import field_exists, resolve_field
+from hvantk.core.utils.table_utils import field_exists, resolve_field
 
 logger = logging.getLogger(__name__)
 
