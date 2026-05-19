@@ -69,6 +69,7 @@ class ClassificationResult:
         -------
         float or None
             Overall accuracy if validation was performed.
+
         """
         if self.validation_metrics and "accuracy" in self.validation_metrics:
             return self.validation_metrics["accuracy"]
