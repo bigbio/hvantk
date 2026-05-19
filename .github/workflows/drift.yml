@@ -94,9 +94,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BASE_BRANCH: ${{ env.BASE_BRANCH }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
         run: |
           ARGS="--report /tmp/drift_report.json --base-branch ${BASE_BRANCH}"
-          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+          if [ "$DRY_RUN" = "true" ]; then
             ARGS="$ARGS --dry-run"
           fi
           python .github/scripts/drift_to_pr.py $ARGS
