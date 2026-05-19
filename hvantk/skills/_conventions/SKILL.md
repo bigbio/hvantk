@@ -14,8 +14,8 @@ These conventions apply to every per-resource plugin under `hvantk/skills/`. Per
 - `hvantk/skills/<provider>/<dataset>/` — for providers that ship more than one dataset (e.g., `cptac/expression/`, `cptac/phospho/`). One `plugin.yaml` per provider declares all datasets; each dataset folder owns its builder, drift probe, CLI, and tests.
 - `hvantk/skills/<provider>/shared/` — code reused across two or more datasets in the same provider (e.g., the shared CPTAC dataset class).
 - `hvantk/skills/_conventions/SKILL.md` — this file. The shared contract.
-- `hvantk/tables/table_builders.py` — still the home of generic helpers (`_create_table_base`, `_cleanup_temp_file`, `_parse_insider_bed_to_temp_tsv`) and of non-migrated builders. Plugins import the helpers; they do not add new top-level builders here.
-- `hvantk/tables/registry.py` — recipe-system registry. The plugin loader populates `TABLE_BUILDERS` / `MATRIX_BUILDERS` automatically; hand-written `create_table_adapter()` calls are deprecated for migrated providers.
+- `hvantk/core/builders/table.py` — still the home of generic helpers (`_create_table_base`, `_cleanup_temp_file`, `_parse_insider_bed_to_temp_tsv`) and of non-migrated builders. Plugins import the helpers; they do not add new top-level builders here.
+- `hvantk/core/plugin/registry.py` — recipe-system registry. The plugin loader populates `TABLE_BUILDERS` / `MATRIX_BUILDERS` automatically; hand-written `create_table_adapter()` calls are deprecated for migrated providers.
 - `hvantk/core/plugin_api.py`, `hvantk/core/plugin_loader.py` — plugin schema, discovery (filesystem + Python entry points), and lifecycle wiring.
 - `hvantk/tools/` — top-level CLI (`hvantk plugins`, `hvantk drift`, `hvantk reprocess`, `hvantk catalog`, plus legacy `mktable`, `mkmatrix`). Per-provider CLI lives in the plugin's own `cli.py` and is wired by `plugin.yaml`.
 - `hvantk/skills/<provider>/catalog/datasets.json` — per-plugin dataset catalog (URLs, version cadence, license, per-accession metadata). Aggregated by `hvantk.resources.unified_registry.HvantkRegistry` and surfaced via `hvantk catalog {list,show,stats,search}`.
@@ -53,7 +53,7 @@ Optional sections (only if they add information not covered above): `## 10. Cros
 
 ## 4. Required helpers
 
-- `_create_table_base()` — `hvantk/tables/table_builders.py`. Canonical helper for variant/gene Table builders (handles import, transform, checkpoint, optional TSV export). Its `import_func` accepts any `Callable[[], hl.Table]` — `hl.import_table` (TSV), `hl.import_vcf().rows()`, or `hl.import_lines` for line-oriented formats like GMT.
+- `_create_table_base()` — `hvantk/core/builders/table.py`. Canonical helper for variant/gene Table builders (handles import, transform, checkpoint, optional TSV export). Its `import_func` accepts any `Callable[[], hl.Table]` — `hl.import_table` (TSV), `hl.import_vcf().rows()`, or `hl.import_lines` for line-oriented formats like GMT.
 - `init_hail()` — `hvantk/core/hail_context.py`. Idempotent Hail init. Tests use the session-scoped `hail_session` fixture from `conftest.py`.
 - AnnData helpers — `hvantk/core/anndata_utils.py`: `build_anndata_metadata`, `save_anndata`, `coerce_obs_for_h5ad`, `annotate_column_summary_ad`.
 - Plugin runtime — `hvantk/core/plugin_api.py` defines `PluginSpec`, `DatasetSpec`, and `DriftProbeError`. Tests/CLI consume the populated registries via `hvantk/core/plugin_loader.py`.
@@ -84,7 +84,7 @@ datasets:
       function: create_hgnc_gene_tb
 ```
 
-This yields `TABLE_BUILDERS["hgnc:lookup"]`. The legacy adapter pattern (`create_table_adapter(...)`) is no longer used for migrated providers; do not hand-edit `hvantk/tables/registry.py` for a new plugin.
+This yields `TABLE_BUILDERS["hgnc:lookup"]`. The legacy adapter pattern (`create_table_adapter(...)`) is no longer used for migrated providers; do not hand-edit `hvantk/core/plugin/registry.py` for a new plugin.
 
 ## 7. CLI command pattern
 
@@ -128,7 +128,7 @@ Every per-resource `SKILL.md` MUST declare these paths, which MUST match the `te
 ## 11. Out of scope for any skill
 
 - Hail context init. Tests use `hail_session`; runtime uses `init_hail()`.
-- Cross-resource utilities (gene-ID mapping, locus normalization). Those live in `hvantk/utils/`.
+- Cross-resource utilities (gene-ID mapping, locus normalization). Those live in `hvantk/core/utils/`.
 - "How to use the product" — analytical guidance is downstream.
 
 ## 12. Drift probe contract

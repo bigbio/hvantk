@@ -232,7 +232,7 @@ def create_my_source_tb(input_path: str, output_path: str, **kwargs) -> hl.Table
 #### Streamer Protocol
 Transforms Hail data structures (filter, join, aggregate)
 
-Streamers extend `HailDataStreamer` from `hvantk/data/data_streamer.py`:
+Streamers extend `HailDataStreamer` from `hvantk/core/streamers/base.py`:
 
 ```python
 from typing import Iterator
@@ -460,10 +460,10 @@ hvantk/tests/
 
 ### Adding a New Data Source
 
-1. **Add builder to appropriate file** in `hvantk/tables/`:
+1. **Add builder to appropriate file** in `hvantk/core/builders/`:
    ```python
-   # hvantk/tables/table_builders.py (for variants/genes)
-   # OR hvantk/tables/matrix_builders.py (for expression)
+   # hvantk/core/builders/table.py (for variants/genes)
+   # OR hvantk/core/builders/matrix.py (for expression)
 
    import hail as hl
 
