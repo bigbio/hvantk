@@ -18,13 +18,13 @@ from pathlib import Path
 
 import pytest
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _imports_in(layer: str) -> list[tuple[Path, str]]:
     """Return (file, dotted-import) pairs for every import statement in <layer>."""
     out: list[tuple[Path, str]] = []
-    root = REPO_ROOT / layer
+    root = PACKAGE_ROOT / layer
     if not root.is_dir():
         return out
     for py in root.rglob("*.py"):
@@ -59,7 +59,7 @@ def test_core_does_not_import_upward():
     )
     assert not bad, (
         "core/ must not import from algorithms/skills/tools. Offenders:\n"
-        + "\n".join(f"  {p.relative_to(REPO_ROOT)} -> {d}" for p, d in bad)
+        + "\n".join(f"  {p.relative_to(PACKAGE_ROOT)} -> {d}" for p, d in bad)
     )
 
 
@@ -68,7 +68,7 @@ def test_algorithms_does_not_import_skills_or_tools():
     bad = _forbidden_matches("algorithms", ["hvantk.skills", "hvantk.tools"])
     assert not bad, (
         "algorithms/ must not import from skills/ or tools/. Offenders:\n"
-        + "\n".join(f"  {p.relative_to(REPO_ROOT)} -> {d}" for p, d in bad)
+        + "\n".join(f"  {p.relative_to(PACKAGE_ROOT)} -> {d}" for p, d in bad)
     )
 
 
@@ -81,7 +81,7 @@ def test_skills_does_not_import_algorithms_or_tools():
         (file, dotted)
         for file, dotted in _imports_in("skills")
         if dotted.startswith("hvantk.skills.")
-        and dotted.split(".")[2] != file.relative_to(REPO_ROOT / "skills").parts[0]
+        and dotted.split(".")[2] != file.relative_to(PACKAGE_ROOT / "skills").parts[0]
     ]
     assert not bad and not sibling_bad, (
         "skills/ must not import from algorithms/, tools/, or sibling skills/. "
