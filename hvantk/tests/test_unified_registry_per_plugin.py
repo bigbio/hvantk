@@ -14,7 +14,7 @@ owning plugins.
 
 from __future__ import annotations
 
-from hvantk.core import plugin_loader
+from hvantk.core.plugin import loader as plugin_loader
 from hvantk.resources.unified_registry import HvantkRegistry
 
 

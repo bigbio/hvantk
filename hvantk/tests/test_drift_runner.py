@@ -103,7 +103,7 @@ def test_fetched_at_is_excluded_from_comparison(tmp_path: Path):
 
 
 def test_run_drift_check_resolves_dataset_from_registry(monkeypatch, tmp_path: Path):
-    from hvantk.core import drift_runner, plugin_loader
+    from hvantk.core.plugin import drift_runner, loader as plugin_loader
 
     fp_path = tmp_path / "fp.json"
     _write_fingerprint(

@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import pytest
 
-from hvantk.core import plugin_loader
+from hvantk.core.plugin import loader as plugin_loader
 
 
 EXPECTED_PROVIDERS = {

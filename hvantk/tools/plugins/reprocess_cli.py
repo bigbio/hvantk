@@ -71,7 +71,7 @@ def reprocess_cmd(
     no_check_drift,
 ):
     """Run download -> parse -> build for a plugin dataset."""
-    from hvantk.core import drift_runner, plugin_loader
+    from hvantk.core.plugin import drift_runner, loader as plugin_loader
 
     reg = plugin_loader.get_registry()
     try:

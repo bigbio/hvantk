@@ -7,7 +7,7 @@ from pathlib import Path
 
 import click
 
-from hvantk.core import tool_loader
+from hvantk.core.tool import loader as tool_loader
 
 
 @click.group(name="tools")

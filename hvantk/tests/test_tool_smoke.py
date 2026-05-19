@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from hvantk.core import tool_loader
+from hvantk.core.tool import loader as tool_loader
 
 
 def test_all_tool_manifests_load_without_errors():

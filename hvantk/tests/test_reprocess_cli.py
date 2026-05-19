@@ -9,7 +9,7 @@ import pytest
 from click.testing import CliRunner
 
 from hvantk.tools.plugins.reprocess_cli import reprocess_cmd
-from hvantk.core import plugin_loader
+from hvantk.core.plugin import loader as plugin_loader
 from hvantk.core.plugin.api import DatasetSpec, TestPaths
 
 

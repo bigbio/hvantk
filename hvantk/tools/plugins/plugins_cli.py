@@ -7,7 +7,7 @@ from pathlib import Path
 
 import click
 
-from hvantk.core import plugin_loader
+from hvantk.core.plugin import loader as plugin_loader
 
 
 @click.group(name="plugins")

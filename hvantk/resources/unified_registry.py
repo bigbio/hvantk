@@ -100,7 +100,7 @@ class HvantkRegistry:
         try:
             # Import locally to avoid a hard dependency cycle when this module
             # is imported before the plugin loader is needed.
-            from hvantk.core import plugin_loader
+            from hvantk.core.plugin import loader as plugin_loader
 
             registry = plugin_loader.get_registry()
         except Exception as exc:  # noqa: BLE001

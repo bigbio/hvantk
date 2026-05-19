@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner
 
-from hvantk.core import tool_loader
+from hvantk.core.tool import loader as tool_loader
 from hvantk.tools.plugins.tools_cli import tools_group
 
 

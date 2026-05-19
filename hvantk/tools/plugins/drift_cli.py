@@ -8,7 +8,7 @@ from pathlib import Path
 
 import click
 
-from hvantk.core import drift_runner, plugin_loader
+from hvantk.core.plugin import drift_runner, loader as plugin_loader
 
 
 EXIT_CLEAN = 0

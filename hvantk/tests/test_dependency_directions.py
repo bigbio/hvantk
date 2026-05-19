@@ -62,7 +62,6 @@ def test_core_does_not_import_upward():
     )
 
 
-@pytest.mark.xfail(reason="enforced once algorithms/ migration lands (Phase 5)", strict=False)
 def test_algorithms_does_not_import_skills_or_tools():
     bad = _forbidden_matches("algorithms", ["hvantk.skills", "hvantk.tools"])
     assert not bad, (
