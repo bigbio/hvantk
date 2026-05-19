@@ -4,8 +4,8 @@
 import pytest
 import logging
 from unittest.mock import Mock, patch
-from hvantk.data.data_streamer import DataStreamer, HailDataStreamer, StreamProcessor
-from hvantk.data.clinvar_streamer import (
+from hvantk.core.streamers.base import DataStreamer, HailDataStreamer, StreamProcessor
+from hvantk.core.streamers.clinvar import (
     ClinvarDataStreamer,
     ClinvarTrainingSetProcessor,
     create_clinvar_training_set_streamer,

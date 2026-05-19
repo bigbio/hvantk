@@ -5,7 +5,7 @@ from unittest import mock
 
 import pytest
 
-from hvantk.data.file_utils import (
+from hvantk.core.utils.file_utils import (
     compress_files,
     convert_gz_to_bgz,
     decompress_files,
@@ -261,7 +261,7 @@ class TestConvertGzToBgz:
         except ImportError:
             pytest.skip("pysam not installed")
 
-        from hvantk.data.file_utils import _convert_with_pysam
+        from hvantk.core.utils.file_utils import _convert_with_pysam
 
         output = str(tmp_path / "pysam_output.bgz")
         _convert_with_pysam(plain_gz_file, output)
@@ -274,7 +274,7 @@ class TestConvertGzToBgz:
         if not shutil.which("bgzip"):
             pytest.skip("bgzip not on PATH")
 
-        from hvantk.data.file_utils import _convert_with_bgzip
+        from hvantk.core.utils.file_utils import _convert_with_bgzip
 
         output = str(tmp_path / "bgzip_output.bgz")
         _convert_with_bgzip(plain_gz_file, output, threads=2)

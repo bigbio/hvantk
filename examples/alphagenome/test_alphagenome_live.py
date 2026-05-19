@@ -19,7 +19,7 @@ if not os.environ.get("ALPHAGENOME_API_KEY"):
     print("ERROR: ALPHAGENOME_API_KEY environment variable not set")
     sys.exit(1)
 
-from hvantk.data.alphagenome_streamer import (
+from hvantk.core.streamers.alphagenome import (
     AlphaGenomeStreamer,
     load_config,
     _load_variants_from_tsv,

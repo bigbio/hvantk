@@ -10,7 +10,7 @@ from hvantk.core.constants import (
     EXPRESSION_MATRIX_FILE_NAME,
     METADATA_FILE_NAME,
 )
-from hvantk.data.file_utils import download_file
+from hvantk.core.utils.file_utils import download_file
 
 
 @dataclass

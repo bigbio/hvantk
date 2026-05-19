@@ -9,7 +9,7 @@ import shutil
 from pathlib import Path
 
 from hvantk.skills.hgnc.builder import create_hgnc_gene_tb
-from hvantk.data.gene_mapper import GeneMapper
+from hvantk.core.utils.gene_mapper import GeneMapper
 
 # Mark as Hail-dependent and slow
 pytestmark = [pytest.mark.hail, pytest.mark.slow]

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from hvantk.data.clingen_streamer import ClinGenStreamer
+from hvantk.core.streamers.clingen import ClinGenStreamer
 from hvantk.skills.clingen.builder import create_clingen_gene_disease_tb
 
 pytestmark = [pytest.mark.hail, pytest.mark.slow]

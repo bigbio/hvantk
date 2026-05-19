@@ -12,7 +12,7 @@ CONFIG_PATH = os.path.join(TESTDATA_DIR, "alphagenome_config.yaml")
 
 class TestLoadConfig:
     def test_load_valid_config(self):
-        from hvantk.data.alphagenome_streamer import load_config
+        from hvantk.core.streamers.alphagenome import load_config
 
         config = load_config(CONFIG_PATH)
         assert config["api"]["key"] == "test-api-key-123"
@@ -22,13 +22,13 @@ class TestLoadConfig:
         assert config["intervals"]["adaptive"] is True
 
     def test_load_config_file_not_found(self):
-        from hvantk.data.alphagenome_streamer import load_config
+        from hvantk.core.streamers.alphagenome import load_config
 
         with pytest.raises(FileNotFoundError):
             load_config("/nonexistent/path.yaml")
 
     def test_load_config_missing_api_section(self, tmp_path):
-        from hvantk.data.alphagenome_streamer import load_config
+        from hvantk.core.streamers.alphagenome import load_config
 
         bad_config = tmp_path / "bad.yaml"
         bad_config.write_text(yaml.dump({"ontology": {"terms": []}}))
@@ -36,7 +36,7 @@ class TestLoadConfig:
             load_config(str(bad_config))
 
     def test_load_config_missing_ontology_section(self, tmp_path):
-        from hvantk.data.alphagenome_streamer import load_config
+        from hvantk.core.streamers.alphagenome import load_config
 
         bad_config = tmp_path / "bad.yaml"
         bad_config.write_text(yaml.dump({"api": {"key": "x"}, "intervals": {}}))
@@ -44,7 +44,7 @@ class TestLoadConfig:
             load_config(str(bad_config))
 
     def test_resolve_api_key_from_env(self, tmp_path, monkeypatch):
-        from hvantk.data.alphagenome_streamer import load_config
+        from hvantk.core.streamers.alphagenome import load_config
 
         cfg = {
             "api": {"key": None, "max_retries": 3, "retry_backoff": 2.0, "request_timeout": 120},
@@ -59,7 +59,7 @@ class TestLoadConfig:
         assert config["api"]["key"] == "env-key-456"
 
     def test_resolve_api_key_missing_everywhere(self, tmp_path, monkeypatch):
-        from hvantk.data.alphagenome_streamer import load_config
+        from hvantk.core.streamers.alphagenome import load_config
 
         cfg = {
             "api": {"key": None, "max_retries": 3, "retry_backoff": 2.0, "request_timeout": 120},
@@ -97,7 +97,7 @@ class TestComputeIntervals:
         }
 
     def test_single_variant_fixed_mode(self):
-        from hvantk.data.alphagenome_streamer import compute_intervals
+        from hvantk.core.streamers.alphagenome import compute_intervals
 
         variants = [SimpleVariant("chr1", 500_000, "A", "T")]
         config = self._make_config(adaptive=False, default_size=100_000)
@@ -111,7 +111,7 @@ class TestComputeIntervals:
         assert len(grouped_variants) == 1
 
     def test_two_close_variants_adaptive_grouped(self):
-        from hvantk.data.alphagenome_streamer import compute_intervals
+        from hvantk.core.streamers.alphagenome import compute_intervals
 
         variants = [
             SimpleVariant("chr1", 100_000, "A", "T"),
@@ -123,7 +123,7 @@ class TestComputeIntervals:
         assert len(result[0][1]) == 2
 
     def test_two_distant_variants_adaptive_separate(self):
-        from hvantk.data.alphagenome_streamer import compute_intervals
+        from hvantk.core.streamers.alphagenome import compute_intervals
 
         variants = [
             SimpleVariant("chr1", 100_000, "A", "T"),
@@ -136,7 +136,7 @@ class TestComputeIntervals:
         assert len(result[1][1]) == 1
 
     def test_different_chromosomes_always_separate(self):
-        from hvantk.data.alphagenome_streamer import compute_intervals
+        from hvantk.core.streamers.alphagenome import compute_intervals
 
         variants = [
             SimpleVariant("chr1", 100_000, "A", "T"),
@@ -147,7 +147,7 @@ class TestComputeIntervals:
         assert len(result) == 2
 
     def test_large_cluster_split_at_max_size(self):
-        from hvantk.data.alphagenome_streamer import compute_intervals
+        from hvantk.core.streamers.alphagenome import compute_intervals
 
         variants = [SimpleVariant("chr1", i * 10_000, "A", "T") for i in range(200)]
         config = self._make_config(
@@ -159,7 +159,7 @@ class TestComputeIntervals:
             assert interval.end - interval.start <= 500_000
 
     def test_interval_centered_on_variant(self):
-        from hvantk.data.alphagenome_streamer import compute_intervals
+        from hvantk.core.streamers.alphagenome import compute_intervals
 
         variants = [SimpleVariant("chr5", 1_000_000, "A", "T")]
         config = self._make_config(adaptive=False, default_size=200_000)
@@ -169,13 +169,13 @@ class TestComputeIntervals:
         assert abs(midpoint - 1_000_000) <= 1
 
     def test_empty_variant_list(self):
-        from hvantk.data.alphagenome_streamer import compute_intervals
+        from hvantk.core.streamers.alphagenome import compute_intervals
 
         result = compute_intervals([], self._make_config())
         assert result == []
 
     def test_chromosome_numeric_sort_order_keeps_chr2_before_chr10(self):
-        from hvantk.data.alphagenome_streamer import compute_intervals
+        from hvantk.core.streamers.alphagenome import compute_intervals
 
         variants = [
             SimpleVariant("chr10", 100_000, "A", "T"),
@@ -190,14 +190,14 @@ class TestComputeIntervals:
 
 class TestCheckpointManager:
     def test_fresh_start_no_checkpoints(self, tmp_path):
-        from hvantk.data.alphagenome_streamer import CheckpointManager
+        from hvantk.core.streamers.alphagenome import CheckpointManager
 
         mgr = CheckpointManager(str(tmp_path / "out"))
         assert mgr.completed_intervals == set()
         assert mgr.failed_variants == []
 
     def test_save_and_reload_state(self, tmp_path):
-        from hvantk.data.alphagenome_streamer import CheckpointManager
+        from hvantk.core.streamers.alphagenome import CheckpointManager
 
         out_dir = str(tmp_path / "out")
         mgr = CheckpointManager(out_dir)
@@ -211,7 +211,7 @@ class TestCheckpointManager:
         assert mgr2.failed_variants[0]["chrom"] == "chr1"
 
     def test_save_batch_data(self, tmp_path):
-        from hvantk.data.alphagenome_streamer import CheckpointManager
+        from hvantk.core.streamers.alphagenome import CheckpointManager
 
         out_dir = str(tmp_path / "out")
         mgr = CheckpointManager(out_dir)
@@ -225,7 +225,7 @@ class TestCheckpointManager:
         assert loaded == batch_data
 
     def test_is_interval_complete(self, tmp_path):
-        from hvantk.data.alphagenome_streamer import CheckpointManager
+        from hvantk.core.streamers.alphagenome import CheckpointManager
 
         mgr = CheckpointManager(str(tmp_path / "out"))
         mgr.mark_interval_complete("chr1:100-200")
@@ -233,7 +233,7 @@ class TestCheckpointManager:
         assert mgr.is_interval_complete("chr2:100-200") is False
 
     def test_clear_checkpoints(self, tmp_path):
-        from hvantk.data.alphagenome_streamer import CheckpointManager
+        from hvantk.core.streamers.alphagenome import CheckpointManager
 
         out_dir = str(tmp_path / "out")
         mgr = CheckpointManager(out_dir)
@@ -259,7 +259,7 @@ class TestRateLimitedCaller:
         }
 
     def test_successful_call(self):
-        from hvantk.data.alphagenome_streamer import RateLimitedCaller
+        from hvantk.core.streamers.alphagenome import RateLimitedCaller
 
         mock_model = MagicMock()
         mock_model.predict_variant.return_value = {"rna_seq": [1.0]}
@@ -273,7 +273,7 @@ class TestRateLimitedCaller:
         mock_model.predict_variant.assert_called_once()
 
     def test_retry_on_transient_error(self):
-        from hvantk.data.alphagenome_streamer import RateLimitedCaller
+        from hvantk.core.streamers.alphagenome import RateLimitedCaller
 
         mock_model = MagicMock()
         mock_model.predict_variant.side_effect = [
@@ -290,7 +290,7 @@ class TestRateLimitedCaller:
         assert mock_model.predict_variant.call_count == 3
 
     def test_max_retries_exceeded_returns_none(self):
-        from hvantk.data.alphagenome_streamer import RateLimitedCaller
+        from hvantk.core.streamers.alphagenome import RateLimitedCaller
 
         mock_model = MagicMock()
         mock_model.predict_variant.side_effect = Exception("503 Server Error")
@@ -305,7 +305,7 @@ class TestRateLimitedCaller:
         assert mock_model.predict_variant.call_count == 2
 
     def test_cooldown_after_consecutive_rate_limits(self):
-        from hvantk.data.alphagenome_streamer import RateLimitedCaller
+        from hvantk.core.streamers.alphagenome import RateLimitedCaller
 
         mock_model = MagicMock()
         caller = RateLimitedCaller(mock_model, self._make_api_config())
@@ -341,9 +341,9 @@ class TestAlphaGenomeStreamer:
         cfg_path.write_text(yaml.dump(cfg))
         return str(cfg_path)
 
-    @patch("hvantk.data.alphagenome_streamer._create_dna_client")
+    @patch("hvantk.core.streamers.alphagenome._create_dna_client")
     def test_setup_loads_tsv_input(self, mock_create_client, tmp_path):
-        from hvantk.data.alphagenome_streamer import AlphaGenomeStreamer
+        from hvantk.core.streamers.alphagenome import AlphaGenomeStreamer
 
         mock_create_client.return_value = MagicMock()
         tsv = self._make_variant_tsv(tmp_path, [("chr1", 500000, "A", "T")])
@@ -358,10 +358,10 @@ class TestAlphaGenomeStreamer:
         assert streamer._variants[0].chrom == "chr1"
         streamer.teardown()
 
-    @patch("hvantk.data.alphagenome_streamer._import_alphagenome")
-    @patch("hvantk.data.alphagenome_streamer._create_dna_client")
+    @patch("hvantk.core.streamers.alphagenome._import_alphagenome")
+    @patch("hvantk.core.streamers.alphagenome._create_dna_client")
     def test_stream_calls_api_per_variant(self, mock_create_client, mock_import, tmp_path):
-        from hvantk.data.alphagenome_streamer import AlphaGenomeStreamer
+        from hvantk.core.streamers.alphagenome import AlphaGenomeStreamer
 
         mock_model = MagicMock()
         mock_result = MagicMock()
@@ -389,9 +389,9 @@ class TestAlphaGenomeStreamer:
         assert mock_model.predict_variant.call_count == 2
         streamer.teardown()
 
-    @patch("hvantk.data.alphagenome_streamer._create_dna_client")
+    @patch("hvantk.core.streamers.alphagenome._create_dna_client")
     def test_no_resume_clears_checkpoints(self, mock_create_client, tmp_path):
-        from hvantk.data.alphagenome_streamer import AlphaGenomeStreamer
+        from hvantk.core.streamers.alphagenome import AlphaGenomeStreamer
 
         mock_create_client.return_value = MagicMock()
         tsv = self._make_variant_tsv(tmp_path, [("chr1", 500000, "A", "T")])
@@ -416,10 +416,10 @@ class TestAlphaGenomeStreamer:
 class TestEndToEnd:
     """End-to-end test with mocked AlphaGenome API."""
 
-    @patch("hvantk.data.alphagenome_streamer._import_alphagenome")
-    @patch("hvantk.data.alphagenome_streamer._create_dna_client")
+    @patch("hvantk.core.streamers.alphagenome._import_alphagenome")
+    @patch("hvantk.core.streamers.alphagenome._create_dna_client")
     def test_full_pipeline_tsv_input(self, mock_create_client, mock_import_ag, tmp_path):
-        from hvantk.data.alphagenome_streamer import AlphaGenomeStreamer
+        from hvantk.core.streamers.alphagenome import AlphaGenomeStreamer
 
         # Setup mock model
         mock_model = MagicMock()
@@ -479,10 +479,10 @@ class TestEndToEnd:
             state = json.load(f)
         assert len(state["completed_intervals"]) > 0
 
-    @patch("hvantk.data.alphagenome_streamer._import_alphagenome")
-    @patch("hvantk.data.alphagenome_streamer._create_dna_client")
+    @patch("hvantk.core.streamers.alphagenome._import_alphagenome")
+    @patch("hvantk.core.streamers.alphagenome._create_dna_client")
     def test_resume_skips_completed(self, mock_create_client, mock_import_ag, tmp_path):
-        from hvantk.data.alphagenome_streamer import AlphaGenomeStreamer
+        from hvantk.core.streamers.alphagenome import AlphaGenomeStreamer
 
         mock_model = MagicMock()
         mock_result = MagicMock()

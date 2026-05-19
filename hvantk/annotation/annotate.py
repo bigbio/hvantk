@@ -6,7 +6,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from hvantk.data.dataset import (
+from hvantk.core.models.dataset import (
     get_ccr_ht,
     get_gevir_ht,
     get_gene_expression_ht,

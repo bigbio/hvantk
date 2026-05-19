@@ -74,7 +74,7 @@ def main():
     """Main workflow with ontology-based categorization."""
     import hail as hl
     from hvantk.skills.clingen.builder import create_clingen_gene_disease_tb
-    from hvantk.data.clingen_streamer import ClinGenStreamer
+    from hvantk.core.streamers.clingen import ClinGenStreamer
     from hvantk.utils.mondo_parser import MONDO_DISEASE_CATEGORIES
 
     # Ensure data files exist

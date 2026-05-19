@@ -308,7 +308,7 @@ def build_1k_genome_mt(
     """
     import hail as hl
 
-    from hvantk.data.file_utils import resolve_compression
+    from hvantk.core.utils.file_utils import resolve_compression
 
     # --- Step 1: Discover input files ---
     logger.info("Discovering VCF files in '%s'", input_vcfs)

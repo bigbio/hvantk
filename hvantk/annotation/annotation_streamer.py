@@ -3,8 +3,8 @@
 
 import hail as hl
 from typing import Iterator, Optional, Set
-from hvantk.data.data_streamer import HailDataStreamer, StreamProcessor
-from hvantk.data.clinvar_streamer import ClinvarDataStreamer
+from hvantk.core.streamers.base import HailDataStreamer, StreamProcessor
+from hvantk.core.streamers.clinvar import ClinvarDataStreamer
 import logging
 
 logger = logging.getLogger(__name__)
@@ -106,7 +106,7 @@ class VariantPredictionScoreStreamer(AnnotationStreamer):
 
     def load_annotation_data(self) -> hl.Table:
         """Load dbNSFP scores"""
-        from hvantk.data.dataset import get_dbnsfp_scores_ht
+        from hvantk.core.models.dataset import get_dbnsfp_scores_ht
 
         return get_dbnsfp_scores_ht()
 
@@ -174,7 +174,7 @@ class GeneExpressionStreamer(AnnotationStreamer):
 
     def load_annotation_data(self) -> hl.Table:
         """Load gene expression data"""
-        from hvantk.data.dataset import get_gene_expression_ht, get_hca_ht, get_deg_ht
+        from hvantk.core.models.dataset import get_gene_expression_ht, get_hca_ht, get_deg_ht
 
         # Load multiple expression datasets
         expr_ht = get_gene_expression_ht()  # General expression
@@ -234,7 +234,7 @@ class GeneConstraintStreamer(AnnotationStreamer):
 
     def load_annotation_data(self) -> hl.Table:
         """Load gene constraint data"""
-        from hvantk.data.dataset import get_gnomad_metrics_ht, get_gevir_ht
+        from hvantk.core.models.dataset import get_gnomad_metrics_ht, get_gevir_ht
 
         # Load constraint metrics
         gnomad_ht = get_gnomad_metrics_ht()
@@ -295,7 +295,7 @@ class PopulationFrequencyStreamer(AnnotationStreamer):
 
     def load_annotation_data(self) -> hl.Table:
         """Load population frequency data"""
-        from hvantk.data.dataset import get_gnomad_af_ht
+        from hvantk.core.models.dataset import get_gnomad_af_ht
 
         return get_gnomad_af_ht()
 

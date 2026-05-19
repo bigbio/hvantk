@@ -52,7 +52,6 @@ def _forbidden_matches(layer: str, forbidden_prefixes: list[str]) -> list[tuple[
     return bad
 
 
-@pytest.mark.xfail(reason="enforced from Phase 7 onward", strict=False)
 def test_core_does_not_import_upward():
     bad = _forbidden_matches(
         "core", ["hvantk.algorithms", "hvantk.skills", "hvantk.tools"]

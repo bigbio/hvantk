@@ -11,13 +11,13 @@ import logging
 from typing import TYPE_CHECKING, Dict, List, Optional, Set, Union
 
 if TYPE_CHECKING:
-    from hvantk.data.gene_mapper import GeneMapper
+    from hvantk.core.utils.gene_mapper import GeneMapper
 
 import hail as hl
 import pandas as pd
 
 from hvantk.core.constants import GENCC_CLASSIFICATION_LEVELS
-from hvantk.data.gene_disease_streamer import GeneDiseaseValidityStreamer
+from hvantk.core.streamers.gene_disease import GeneDiseaseValidityStreamer
 
 logger = logging.getLogger(__name__)
 

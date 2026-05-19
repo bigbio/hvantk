@@ -7,7 +7,7 @@ from urllib.parse import quote
 
 logger = logging.getLogger(__name__)
 
-from hvantk.data.file_utils import download_file
+from hvantk.core.utils.file_utils import download_file
 from hvantk.core.constants import EXPRESSION_ATLAS_BASE_URL
 
 

@@ -19,7 +19,7 @@ from hvantk.core.constants import (
     COSMIC_CGC_CLASSIFICATION_LEVELS,
     COSMIC_MUTATION_CONTEXTS,
 )
-from hvantk.data.gene_disease_streamer import GeneDiseaseValidityStreamer
+from hvantk.core.streamers.gene_disease import GeneDiseaseValidityStreamer
 
 logger = logging.getLogger(__name__)
 

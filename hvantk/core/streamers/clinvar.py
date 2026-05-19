@@ -1,9 +1,14 @@
 # Clinvar Training Set Data Streamer
 # Implements streaming processing for generating training sets from Clinvar data
+#
+# Caller contract: pass a pre-built Hail Table via the `table` parameter.
+# Build the table with hvantk.skills.clinvar.builder.create_clinvar_tb() first,
+# then construct ClinvarDataStreamer(table=ht, ...).  This keeps core/ free of
+# any dependency on skills/.
 
 import hail as hl
 from typing import Iterator, Optional, Set, Iterable
-from hvantk.data.data_streamer import HailDataStreamer, StreamProcessor
+from hvantk.core.streamers.base import HailDataStreamer, StreamProcessor
 import logging
 
 from hvantk.utils.gene_sets import load_gene_set
@@ -13,6 +18,14 @@ logger = logging.getLogger(__name__)
 
 class ClinvarDataStreamer(HailDataStreamer):
     """Streams ClinVar data for training set generation using optional gene and disease filters.
+
+    The caller is responsible for building the Hail Table and passing it via
+    the ``table`` parameter.  Example::
+
+        from hvantk.skills.clinvar.builder import create_clinvar_tb
+        ht = create_clinvar_tb(input_path="/data/clinvar.vcf.bgz",
+                               output_path="/tmp/clinvar.ht")
+        streamer = ClinvarDataStreamer(table=ht, gene_set={"GATA4"})
 
     TP criteria:
       1. Pathogenic/Likely pathogenic CLNSIG + gene in provided gene_set (if any)
@@ -29,7 +42,7 @@ class ClinvarDataStreamer(HailDataStreamer):
 
     def __init__(
         self,
-        clinvar_path: str,
+        clinvar_path: Optional[str] = None,
         gene_set: Optional[Set[str]] = None,
         disease_terms: Optional[Set[str]] = None,
         chunk_size: int = 10000,
@@ -37,7 +50,8 @@ class ClinvarDataStreamer(HailDataStreamer):
         table_output_path: Optional[str] = None,
         overwrite_table: bool = False,
         filter_to_gene_set: bool = False,
-        preserve_variant_keys: bool = False,  # New flag
+        preserve_variant_keys: bool = False,
+        table: Optional[hl.Table] = None,
     ):
         clinvar_name = "ClinvarTrainingSet"
         super().__init__(clinvar_name, chunk_size)
@@ -48,7 +62,8 @@ class ClinvarDataStreamer(HailDataStreamer):
             self._normalize_disease_term(d) for d in self.disease_terms
         }
         self.clinvar_path = clinvar_path
-        self.clinvar_ht = None
+        # Accept a pre-built table to decouple core/ from skills/
+        self.clinvar_ht = table
         self.use_table_builder = use_table_builder
         self.table_output_path = table_output_path
         self.overwrite_table = overwrite_table
@@ -61,23 +76,19 @@ class ClinvarDataStreamer(HailDataStreamer):
 
     def setup(self) -> None:
         super().setup()
-        self.logger.info(f"Loading ClinVar data from {self.clinvar_path}")
-        if self.use_table_builder:
-            output_path = self.table_output_path or hl.utils.new_temp_file(
-                "clinvar", "ht"
-            )
-            from hvantk.skills.clinvar.builder import create_clinvar_tb
-
-            self.clinvar_ht = create_clinvar_tb(
-                input_path=self.clinvar_path,
-                output_path=output_path,
-                overwrite=self.overwrite_table,
-                export_tsv=False,
-            )
-        else:
+        # If a pre-built table was provided at construction time, use it directly.
+        if self.clinvar_ht is not None:
+            self.logger.info("Using pre-built ClinVar Hail Table")
+        elif self.clinvar_path:
+            self.logger.info(f"Loading ClinVar data from {self.clinvar_path}")
             self.clinvar_ht = hl.import_vcf(
                 self.clinvar_path, reference_genome="GRCh38"
             ).rows()
+        else:
+            raise ValueError(
+                "ClinvarDataStreamer requires either 'table' (a pre-built hl.Table) "
+                "or 'clinvar_path' (a VCF path) to be provided."
+            )
         info_fields = self.clinvar_ht.row.dtype["info"].fields
         if "GENEINFO" in info_fields:
             self.clinvar_ht = self.clinvar_ht.annotate(

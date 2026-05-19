@@ -24,7 +24,7 @@ from hvantk.core.constants import (
     COSMIC_CGC_CLASSIFICATION_LEVELS,
     COSMIC_MUTATION_CONTEXTS,
 )
-from hvantk.data.file_utils import resolve_compression
+from hvantk.core.utils.file_utils import resolve_compression
 from hvantk.utils.genome import contig_recoding  # correct module import
 
 
@@ -727,7 +727,7 @@ def create_cosmic_cgc_tb(
         # Resolve gene_symbol -> hgnc_id if HGNC table is available
         if hgnc_path is not None:
             logger.info(f"Resolving gene symbols to HGNC IDs using {hgnc_path}")
-            from hvantk.data.gene_mapper import GeneMapper
+            from hvantk.core.utils.gene_mapper import GeneMapper
 
             hgnc_ht = hl.read_table(hgnc_path)
             mapper = GeneMapper(hgnc_ht)
@@ -1098,7 +1098,7 @@ def create_pqtl_tb(
         # (prototype lesson #2: use Hail Table join, NOT hl.literal,
         # to avoid IR poisoning).
         if hgnc_ht:
-            from hvantk.data.gene_mapper import GeneMapper
+            from hvantk.core.utils.gene_mapper import GeneMapper
 
             logger.info(
                 "Mapping gene symbols → Ensembl IDs via GeneMapper (%s)",
@@ -1181,7 +1181,7 @@ def create_alphagenome_tb(
     hl.Table
         Checkpointed Hail Table keyed by ``(locus, alleles)``.
     """
-    from hvantk.data.alphagenome_streamer import AlphaGenomeStreamer
+    from hvantk.core.streamers.alphagenome import AlphaGenomeStreamer
 
     if overwrite and os.path.isdir(output_path):
         import shutil

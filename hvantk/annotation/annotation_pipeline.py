@@ -3,7 +3,7 @@
 
 import hail as hl
 from typing import Iterator, Optional, List, Dict, Any, Callable
-from hvantk.data.data_streamer import HailDataStreamer, StreamProcessor
+from hvantk.core.streamers.base import HailDataStreamer, StreamProcessor
 from hvantk.hgc.constants import VCF_EXTENSION
 import logging
 import os
@@ -479,7 +479,7 @@ def create_builtin_registry() -> AnnotationRegistry:
             source_path="",  # Will be set by dataset function
             annotation_type="variant",
             loader_func=lambda _: __import__(
-                "hvantk.data.dataset", fromlist=["get_dbnsfp_scores_ht"]
+                "hvantk.core.models.dataset", fromlist=["get_dbnsfp_scores_ht"]
             ).get_dbnsfp_scores_ht(),
             feature_mapping={"CADD_phred": "cadd_score", "REVEL_score": "revel_score"},
             metadata={"category": "prediction", "data_type": "scores"},
@@ -494,7 +494,7 @@ def create_builtin_registry() -> AnnotationRegistry:
             source_path="",
             annotation_type="gene",
             loader_func=lambda _: __import__(
-                "hvantk.data.dataset", fromlist=["get_gene_expression_ht"]
+                "hvantk.core.models.dataset", fromlist=["get_gene_expression_ht"]
             ).get_gene_expression_ht(),
             metadata={"category": "expression", "data_type": "levels"},
         ),
@@ -508,7 +508,7 @@ def create_builtin_registry() -> AnnotationRegistry:
             source_path="",
             annotation_type="variant",
             loader_func=lambda _: __import__(
-                "hvantk.data.dataset", fromlist=["get_gnomad_af_ht"]
+                "hvantk.core.models.dataset", fromlist=["get_gnomad_af_ht"]
             ).get_gnomad_af_ht(),
             feature_mapping={"AF": "allele_frequency", "AC": "allele_count"},
             metadata={"category": "population", "data_type": "frequencies"},

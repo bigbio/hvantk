@@ -24,7 +24,7 @@ from hvantk.core.constants import (
     CLINGEN_BASE_URL,
     CLINGEN_FILE_PREFIX,
 )
-from hvantk.data.file_utils import download_file
+from hvantk.core.utils.file_utils import download_file
 
 logger = logging.getLogger(__name__)
 

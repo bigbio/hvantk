@@ -9,7 +9,7 @@ from hvantk.core.constants import UCSC_CELL_BROWSER_BASE_URL
 
 @pytest.fixture
 def mock_download_file():
-    with patch("hvantk.data.file_utils.download_file") as mock:
+    with patch("hvantk.core.utils.file_utils.download_file") as mock:
         yield mock
 
 

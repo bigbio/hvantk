@@ -13,7 +13,7 @@ from hvantk.hgc.file_utils import (
     validate_vds_paths,
     sort_mts_cols,
 )
-from hvantk.data.file_utils import compress_files, decompress_files
+from hvantk.core.utils.file_utils import compress_files, decompress_files
 from hvantk.hgc.qc import (
     QCMetrics,
     compute_sample_qc,

@@ -4,7 +4,7 @@ import tempfile
 import shutil
 from unittest.mock import patch, MagicMock
 from click.testing import CliRunner
-from hvantk.data.file_utils import download_file
+from hvantk.core.utils.file_utils import download_file
 from hvantk.skills.ucsc_cellbrowser.cli import ucsc_downloader
 from hvantk.core.constants import (
     UCSC_CELL_BROWSER_BASE_URL,

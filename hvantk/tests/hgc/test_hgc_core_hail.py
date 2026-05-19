@@ -24,7 +24,7 @@ from hvantk.hgc.converters import (
     GNOMAD_AVAILABLE,
 )
 from hvantk.hgc.constants import GVCF_EXTENSION
-from hvantk.data.file_utils import compress_files, decompress_files
+from hvantk.core.utils.file_utils import compress_files, decompress_files
 
 TESTS_DIR = Path(__file__).parent.parent / "testdata" / "hgc_data"
 

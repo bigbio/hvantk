@@ -6,7 +6,7 @@ from glob import glob
 import click
 
 from hvantk.core.config import CONTEXT_SETTINGS
-from hvantk.data.file_utils import validate_bgzf
+from hvantk.core.utils.file_utils import validate_bgzf
 
 
 @click.command("validate-bgzf", context_settings=CONTEXT_SETTINGS)

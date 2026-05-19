@@ -29,7 +29,7 @@ def main():
     """Main workflow with real ClinGen data."""
     import hail as hl
     from hvantk.skills.clingen.builder import create_clingen_gene_disease_tb
-    from hvantk.data.clingen_streamer import ClinGenStreamer
+    from hvantk.core.streamers.clingen import ClinGenStreamer
 
     # Initialize Hail
     logger.info("Initializing Hail...")

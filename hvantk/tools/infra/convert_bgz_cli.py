@@ -38,7 +38,7 @@ def convert_bgz_cmd(input_file: str, output_file: str, threads: int):
     if threads < 1:
         raise click.BadParameter("must be a positive integer", param_hint="'--threads'")
 
-    from hvantk.data.file_utils import convert_gz_to_bgz, detect_compression
+    from hvantk.core.utils.file_utils import convert_gz_to_bgz, detect_compression
 
     compression = detect_compression(input_file)
 

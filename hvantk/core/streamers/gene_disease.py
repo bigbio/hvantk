@@ -14,15 +14,15 @@ import os
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
 if TYPE_CHECKING:
-    from hvantk.data.gene_mapper import GeneMapper
+    from hvantk.core.utils.gene_mapper import GeneMapper
     from hvantk.utils.mondo_parser import MondoOntology
     from hvantk.utils.obo_parser import BaseOboOntology
 
 import hail as hl
 import pandas as pd
 
-from hvantk.data.data_streamer import HailDataStreamer
-from hvantk.data.dataset import get_gene_ann_ht
+from hvantk.core.streamers.base import HailDataStreamer
+from hvantk.core.models.dataset import get_gene_ann_ht
 from hvantk.utils.gene_sets import load_gene_sets_from_dict
 from hvantk.utils.table_utils import get_row_fields
 
@@ -1055,11 +1055,11 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
                 "gene_id_field must be one of: gene_id, gene_symbol, hgnc_id"
             )
 
-        from hvantk.data import dataset as dataset_module
+        from hvantk.core.models import dataset as dataset_module
 
         if not dataset_module.source_dir:
             raise ValueError(
-                "hvantk.data.dataset.source_dir is not set; cannot map gene_id to "
+                "hvantk.core.models.dataset.source_dir is not set; cannot map gene_id to "
                 "gene_symbol. Set source_dir or use gene_symbol/hgnc_id."
             )
         gene_ann_ht = get_gene_ann_ht()
