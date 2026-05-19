@@ -1066,7 +1066,7 @@ def create_pqtl_tb(
     ValueError
         If ``hgnc_ht`` is not provided and ``no_gene_map`` is ``False``.
     """
-    from hvantk.qtlcascade.constants import PQTL_SOURCES
+    from hvantk.core.qtl_constants import PQTL_SOURCES
 
     if source not in PQTL_SOURCES:
         raise ValueError(f"Unknown pQTL source: {source!r}. Supported: {PQTL_SOURCES}")

@@ -13,15 +13,15 @@ import os
 import pytest
 from click.testing import CliRunner
 
-from hvantk.ptm.mapper import (
+from hvantk.algorithms.ptm.mapper import (
     CodonMapping,
     GTFData,
     map_residue_to_genomic,
     map_protein_sites,
     resolve_transcript,
 )
-from hvantk.ptm.pipeline import PTMBuildConfig, map_ptm_sites
-from hvantk.ptm.constants import PTM_OUTPUT_COLUMNS
+from hvantk.algorithms.ptm.pipeline import PTMBuildConfig, map_ptm_sites
+from hvantk.core.ptm_constants import PTM_OUTPUT_COLUMNS
 
 
 # ---------- Fixtures ----------

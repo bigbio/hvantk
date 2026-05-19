@@ -464,7 +464,7 @@ class TestMkmatrixCli:
 
 class TestVisualizeExpressionAd:
     def test_returns_matplotlib_figure(self):
-        from hvantk.visualization.expression.anndata import (
+        from hvantk.algorithms.visualization.expression.anndata import (
             visualize_expression_distribution,
         )
         import matplotlib
@@ -481,7 +481,7 @@ class TestVisualizeExpressionAd:
         plt.close(fig)
 
     def test_returns_matplotlib_figure_sparse(self):
-        from hvantk.visualization.expression.anndata import (
+        from hvantk.algorithms.visualization.expression.anndata import (
             visualize_expression_distribution,
         )
         import matplotlib

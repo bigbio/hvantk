@@ -8,7 +8,7 @@ import logging
 import os
 import click
 
-from hvantk.hgc import combine_gvcfs, combine_vdses
+from hvantk.algorithms.hgc import combine_gvcfs, combine_vdses
 from .utils import validate_output_path, DEFAULT_TEMP_DIR
 
 logger = logging.getLogger(__name__)

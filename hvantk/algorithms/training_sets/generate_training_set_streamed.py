@@ -9,7 +9,7 @@ Generate training set from Clinvar using data streamers
 
 import logging
 import os
-from hvantk.hgc.constants import VCF_EXTENSION
+from hvantk.algorithms.hgc.constants import VCF_EXTENSION
 from hvantk.core.streamers.clinvar import create_clinvar_training_set_streamer
 from hvantk.core.utils.gene_sets import load_sample_chd_gene_set
 

@@ -19,7 +19,7 @@ import os
 logger = logging.getLogger(__name__)
 
 # Import HGC QC functionality
-from hvantk.hgc import (
+from hvantk.algorithms.hgc import (
     check_path_exists_and_readable,
     compute_full_qc,
     compute_sample_qc,
@@ -135,14 +135,14 @@ def compute_qc(
         elif sample_qc:
             click.echo("🔄 Computing sample QC metrics...")
             mt_qc = compute_sample_qc(mt, call_field=call_field)
-            from hvantk.hgc.qc import QCMetrics
+            from hvantk.algorithms.hgc.qc import QCMetrics
 
             sample_qc_table = mt_qc.cols().select("sample_qc")
             qc_results = QCMetrics(mt_qc, sample_qc_table, None)
         else:  # variant_qc only
             click.echo("🔄 Computing variant QC metrics...")
             mt_qc = compute_variant_qc(mt, call_field=call_field)
-            from hvantk.hgc.qc import QCMetrics
+            from hvantk.algorithms.hgc.qc import QCMetrics
 
             variant_qc_table = mt_qc.rows().select("variant_qc")
             qc_results = QCMetrics(mt_qc, None, variant_qc_table)
@@ -433,7 +433,7 @@ def qc_summary(ctx, qc_dir, sample_file, variant_file, output, format):
         if sample_path and sample_path.exists():
             click.echo(f"📊 Processing sample QC metrics from {sample_path}")
             sample_df = pd.read_csv(sample_path)
-            from hvantk.hgc.qc import get_qc_summary_stats
+            from hvantk.algorithms.hgc.qc import get_qc_summary_stats
 
             sample_summary = get_qc_summary_stats(sample_df)
             summary_data["sample_qc"] = {
@@ -448,7 +448,7 @@ def qc_summary(ctx, qc_dir, sample_file, variant_file, output, format):
         if variant_path and variant_path.exists():
             click.echo(f"📊 Processing variant QC metrics from {variant_path}")
             variant_df = pd.read_csv(variant_path)
-            from hvantk.hgc.qc import get_qc_summary_stats
+            from hvantk.algorithms.hgc.qc import get_qc_summary_stats
 
             variant_summary = get_qc_summary_stats(variant_df)
             summary_data["variant_qc"] = {
@@ -663,7 +663,7 @@ def plot_qc(
             ctx.exit(1)
 
         # Extract QC metrics
-        from hvantk.hgc.qc import extract_qc_metrics, QCMetrics
+        from hvantk.algorithms.hgc.qc import extract_qc_metrics, QCMetrics
 
         # Create QCMetrics object
         sample_qc = mt.cols().select("sample_qc") if "sample_qc" in mt.col else None
@@ -678,7 +678,7 @@ def plot_qc(
         # Check for interactive plotting
         if interactive:
             try:
-                from hvantk.visualization.interactive_qc import check_plotly_available
+                from hvantk.algorithms.visualization.interactive_qc import check_plotly_available
 
                 check_plotly_available()
                 click.echo("🎨 Using interactive plotly plots")
@@ -701,7 +701,7 @@ def plot_qc(
                 if use_interactive:
                     # For interactive, we'll create a dashboard instead of overview
                     fig = qc_results.plot_interactive_dashboard()
-                    from hvantk.visualization.interactive_qc import (
+                    from hvantk.algorithms.visualization.interactive_qc import (
                         save_interactive_plot,
                     )
 
@@ -731,7 +731,7 @@ def plot_qc(
                 click.echo("🎨 Creating individual sample plots...")
 
                 if use_interactive:
-                    from hvantk.visualization.interactive_qc import (
+                    from hvantk.algorithms.visualization.interactive_qc import (
                         save_interactive_plot,
                     )
 
@@ -787,7 +787,7 @@ def plot_qc(
                 click.echo("🎨 Creating individual variant plots...")
 
                 if use_interactive:
-                    from hvantk.visualization.interactive_qc import (
+                    from hvantk.algorithms.visualization.interactive_qc import (
                         save_interactive_plot,
                     )
 
@@ -837,7 +837,7 @@ def plot_qc(
             click.echo("🎨 Creating comprehensive QC dashboard...")
 
             if use_interactive:
-                from hvantk.visualization.interactive_qc import save_interactive_plot
+                from hvantk.algorithms.visualization.interactive_qc import save_interactive_plot
 
                 fig = qc_results.plot_interactive_dashboard()
                 save_interactive_plot(
@@ -952,7 +952,7 @@ def qc_report(ctx, input, output, title, include_plots, style, dry_run):
             ctx.exit(1)
 
         # Extract QC metrics and create QCMetrics object
-        from hvantk.hgc.qc import QCMetrics
+        from hvantk.algorithms.hgc.qc import QCMetrics
 
         sample_qc = mt.cols().select("sample_qc") if "sample_qc" in mt.col else None
         variant_qc = mt.rows().select("variant_qc") if "variant_qc" in mt.row else None

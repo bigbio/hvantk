@@ -15,12 +15,12 @@ import matplotlib
 matplotlib.use("Agg")  # Use non-interactive backend for tests
 import matplotlib.pyplot as plt
 
-from hvantk.psroc.roc import (
+from hvantk.algorithms.psroc.roc import (
     ScoreMissingness,
     compute_roc_metrics,
     compute_all_missingness,
 )
-from hvantk.psroc.plots import (
+from hvantk.algorithms.psroc.plots import (
     plot_roc_curves,
     plot_roc_curve_single,
     plot_auc_comparison,

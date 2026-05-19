@@ -21,7 +21,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
-from hvantk.ptm.constants import CPTAC_CANCER_TYPES, CPTAC_CANCER_CLASS_MAP
+from hvantk.core.ptm_constants import CPTAC_CANCER_TYPES, CPTAC_CANCER_CLASS_MAP
 
 logger = logging.getLogger(__name__)
 
@@ -246,7 +246,7 @@ class CPTACPhosphoDataset:
     Parameters
     ----------
     cancer_type : str
-        One of :data:`~hvantk.ptm.constants.CPTAC_CANCER_TYPES`.
+        One of :data:`~hvantk.core.ptm_constants.CPTAC_CANCER_TYPES`.
     """
 
     cancer_type: str

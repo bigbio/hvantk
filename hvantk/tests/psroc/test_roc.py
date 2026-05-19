@@ -8,7 +8,7 @@ optimal threshold finding, and handling of edge cases.
 import numpy as np
 import pytest
 
-from hvantk.psroc.roc import (
+from hvantk.algorithms.psroc.roc import (
     ROCResult,
     ScoreMissingness,
     bootstrap_auc_ci,

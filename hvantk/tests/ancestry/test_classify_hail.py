@@ -6,20 +6,20 @@ end-to-end functionality with synthetic genetic data.
 
 import pytest
 
-from hvantk.ancestry.classify import (
+from hvantk.algorithms.ancestry.classify import (
     get_query_samples,
     get_training_samples,
     predict_ancestry,
     train_classifier,
 )
-from hvantk.ancestry.constants import (
+from hvantk.algorithms.ancestry.constants import (
     ANCESTRY_PROB_COL,
     KNOWN_ANCESTRY_COL,
     PREDICTED_ANCESTRY_COL,
     SOURCE_COL,
 )
-from hvantk.ancestry.filter import filter_variants_for_ancestry
-from hvantk.ancestry.pca import compute_pca
+from hvantk.algorithms.ancestry.filter import filter_variants_for_ancestry
+from hvantk.algorithms.ancestry.pca import compute_pca
 
 
 @pytest.mark.hail
@@ -143,7 +143,7 @@ class TestFullAncestryWorkflow:
         self, hail_session, synthetic_query_mt, synthetic_reference_mt
     ):
         """Test complete workflow: merge -> filter -> PCA -> train -> predict."""
-        from hvantk.ancestry.merge import merge_matrixtables
+        from hvantk.algorithms.ancestry.merge import merge_matrixtables
 
         # Step 1: Merge
         merged_mt = merge_matrixtables(

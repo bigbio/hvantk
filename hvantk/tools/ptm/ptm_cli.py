@@ -123,7 +123,7 @@ def ptm_build(
                        --output-ht data/ptm/ptm_sites.ht --output-dir data/ptm/
     """
     try:
-        from hvantk.ptm.pipeline import PTMBuildConfig, ptm_build_pipeline
+        from hvantk.algorithms.ptm.pipeline import PTMBuildConfig, ptm_build_pipeline
 
         config = PTMBuildConfig(
             output_dir=output_dir,
@@ -193,7 +193,7 @@ def ptm_annotate(ctx, variants_ht, ptm_ht, output_ht, flanking_codons, overwrite
     """
     try:
         import hail as hl
-        from hvantk.ptm.annotate import annotate_variants_with_ptm
+        from hvantk.algorithms.ptm.annotate import annotate_variants_with_ptm
 
         variants = hl.read_table(variants_ht)
         ptm = hl.read_table(ptm_ht)
@@ -256,7 +256,7 @@ def ptm_landscape_cmd(ctx, clinvar_ht, ptm_ht, output, flanking_codons, save_plo
     try:
         import os
         import hail as hl
-        from hvantk.ptm.analysis import ptm_landscape
+        from hvantk.algorithms.ptm.analysis import ptm_landscape
 
         clinvar = hl.read_table(clinvar_ht)
         ptm = hl.read_table(ptm_ht)
@@ -268,7 +268,7 @@ def ptm_landscape_cmd(ctx, clinvar_ht, ptm_ht, output, flanking_codons, save_plo
             import matplotlib
 
             matplotlib.use("Agg")
-            from hvantk.ptm.plot import (
+            from hvantk.algorithms.ptm.plot import (
                 plot_landscape_summary,
                 plot_overlap_by_category,
                 plot_distance_distribution,
@@ -326,7 +326,7 @@ def ptm_export_strata(ctx, annotated_ht, output):
     """
     try:
         import hail as hl
-        from hvantk.ptm.analysis import export_ptm_strata
+        from hvantk.algorithms.ptm.analysis import export_ptm_strata
 
         ht = hl.read_table(annotated_ht)
         paths = export_ptm_strata(ht, output)
@@ -384,7 +384,7 @@ def ptm_population_cmd(
     try:
         import os
         import hail as hl
-        from hvantk.ptm.analysis import ptm_population
+        from hvantk.algorithms.ptm.analysis import ptm_population
 
         gnomad = hl.read_table(gnomad_ht)
         ptm = hl.read_table(ptm_ht)
@@ -404,7 +404,7 @@ def ptm_population_cmd(
             import matplotlib
 
             matplotlib.use("Agg")
-            from hvantk.ptm.plot import plot_population_af
+            from hvantk.algorithms.ptm.plot import plot_population_af
 
             plot_population_af(result, os.path.join(output, "population_af.png"))
             click.echo(f"Plot saved to {output}")
@@ -457,8 +457,8 @@ def ptm_report(ctx, output, landscape_json, population_json, title, description)
 
     try:
         import json
-        from hvantk.ptm.analysis import PTMLandscapeResult, PTMPopulationResult
-        from hvantk.ptm.report import generate_report
+        from hvantk.algorithms.ptm.analysis import PTMLandscapeResult, PTMPopulationResult
+        from hvantk.algorithms.ptm.report import generate_report
 
         landscape_result = None
         if landscape_json:
@@ -653,7 +653,7 @@ def ptm_constraint(
           --output-dir results/ptm-farah/
     """
     try:
-        from hvantk.ptm.constraint import PTMConstraintConfig, run_ptm_constraint
+        from hvantk.algorithms.ptm.constraint import PTMConstraintConfig, run_ptm_constraint
 
         config = PTMConstraintConfig(
             variants_ht_path=variants_ht,
@@ -770,7 +770,7 @@ def ptm_atlas(
     """Phase-2 PTM atlas assembly (notebook A facade).
 
     \b
-    Delegates to hvantk.ptm.atlas.build_atlas, which in turn delegates to
+    Delegates to hvantk.algorithms.ptm.atlas.build_atlas, which in turn delegates to
     ptm_build_pipeline. Produces ptm_sites_combined.tsv.bgz (UniProt +
     PeptideAtlas) or ptm_sites_all_combined.tsv.bgz (when --sources includes
     cptac).
@@ -780,7 +780,7 @@ def ptm_atlas(
       hvantk ptm atlas -o data/ptm/ --output-ht data/ptm/ptm_sites.ht
     """
     try:
-        from hvantk.ptm.atlas import PTMAtlasConfig, build_atlas
+        from hvantk.algorithms.ptm.atlas import PTMAtlasConfig, build_atlas
 
         source_list = [s.strip().lower() for s in sources.split(",") if s.strip()]
         config = PTMAtlasConfig(
@@ -955,7 +955,7 @@ def ptm_test(
         click.echo(f"Running {mode} for {len(strata)} strata...")
 
         if mode == "lmm":
-            from hvantk.ptm.test import run_lmm
+            from hvantk.algorithms.ptm.test import run_lmm
 
             rows = []
             for s in strata:
@@ -989,7 +989,7 @@ def ptm_test(
                     err=True,
                 )
                 ctx.exit(1)
-            from hvantk.ptm.test import run_binned_interaction_lmm
+            from hvantk.algorithms.ptm.test import run_binned_interaction_lmm
 
             wide = _read_expression_wide(expression_pkl, expression_tsv)
             rows = []

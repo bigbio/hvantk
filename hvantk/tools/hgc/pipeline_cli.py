@@ -191,7 +191,7 @@ def pipeline(
           --apply-qc-filters --min-sample-call-rate 0.9
     """
     try:
-        from hvantk.hgc.pipeline import PipelineConfig, PipelineRunner
+        from hvantk.algorithms.hgc.pipeline import PipelineConfig, PipelineRunner
 
         # Create configuration
         config = PipelineConfig(

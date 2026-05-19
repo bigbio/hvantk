@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 from sklearn.ensemble import RandomForestClassifier
 
-from hvantk.ancestry.classify import (
+from hvantk.algorithms.ancestry.classify import (
     ClassificationResult,
     _get_pc_columns,
     get_query_samples,
@@ -17,7 +17,7 @@ from hvantk.ancestry.classify import (
     train_classifier,
     validate_training_data,
 )
-from hvantk.ancestry.constants import (
+from hvantk.algorithms.ancestry.constants import (
     ANCESTRY_PROB_COL,
     PREDICTED_ANCESTRY_COL,
 )

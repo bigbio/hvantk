@@ -370,7 +370,7 @@ def burden_test(
     import hail as hl
     import pandas as pd
 
-    from hvantk.enrichex.burden import VariantFilter, run_burden_analysis
+    from hvantk.algorithms.enrichex.burden import VariantFilter, run_burden_analysis
     from hvantk.algorithms.statistics.correction import apply_correction
     from hvantk.core.utils.gene_sets import GeneSetCollection
 
@@ -425,7 +425,7 @@ def burden_test(
 
     # --- Stratified analysis ---
     if variant_classes:
-        from hvantk.enrichex.burden import (
+        from hvantk.algorithms.enrichex.burden import (
             build_variant_classes_from_presets,
             run_stratified_burden_analysis,
         )
@@ -723,7 +723,7 @@ def burden_test(
 
     # Run permutation test if requested
     if permutation:
-        from hvantk.enrichex.burden import permutation_burden_test
+        from hvantk.algorithms.enrichex.burden import permutation_burden_test
 
         click.echo("\n" + "=" * 60)
         click.echo("RUNNING PERMUTATION BURDEN TEST")
@@ -777,7 +777,7 @@ def burden_test(
 
     # Generate report if requested
     if generate_report:
-        from hvantk.enrichex.report import generate_report as gen_report
+        from hvantk.algorithms.enrichex.report import generate_report as gen_report
 
         click.echo("\nGenerating report...")
 
@@ -1070,7 +1070,7 @@ def burden_pipeline_cmd(
             --no-pass-only \\
             -o results/burden/
     """
-    from hvantk.enrichex.pipeline import BurdenConfig, BurdenPipeline
+    from hvantk.algorithms.enrichex.pipeline import BurdenConfig, BurdenPipeline
 
     # Parse gene set collections (name:path pairs)
     collections = {}
@@ -1087,7 +1087,7 @@ def burden_pipeline_cmd(
     # Parse variant classes
     vc_dict = {}
     if variant_classes:
-        from hvantk.enrichex.burden import (
+        from hvantk.algorithms.enrichex.burden import (
             VariantFilter,
             build_variant_classes_from_presets,
         )

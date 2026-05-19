@@ -6,7 +6,7 @@ the Balding-Nichols population genetics model.
 
 import pytest
 
-from hvantk.ancestry.filter import (
+from hvantk.algorithms.ancestry.filter import (
     filter_to_autosomes,
     filter_to_biallelic_snps,
     compute_variant_qc,

@@ -9,7 +9,7 @@ import glob
 import os
 import tempfile
 
-from hvantk.hgc import check_path_exists_and_readable, validate_vds_paths
+from hvantk.algorithms.hgc import check_path_exists_and_readable, validate_vds_paths
 
 logger = logging.getLogger(__name__)
 

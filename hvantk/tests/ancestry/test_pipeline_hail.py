@@ -8,12 +8,12 @@ import pytest
 import tempfile
 from pathlib import Path
 
-from hvantk.ancestry.pipeline import (
+from hvantk.algorithms.ancestry.pipeline import (
     PipelineConfig,
     AncestryInferenceResult,
     run_ancestry_inference,
 )
-from hvantk.ancestry.constants import (
+from hvantk.algorithms.ancestry.constants import (
     ANCESTRY_PROB_COL,
     KNOWN_ANCESTRY_COL,
     PREDICTED_ANCESTRY_COL,

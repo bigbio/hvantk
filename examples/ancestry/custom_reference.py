@@ -158,7 +158,7 @@ def run_with_custom_reference(
         Custom colors for populations in plots.
     """
     import hail as hl
-    from hvantk.ancestry import run_ancestry_inference, PipelineConfig
+    from hvantk.algorithms.ancestry import run_ancestry_inference, PipelineConfig
 
     output_dir.mkdir(parents=True, exist_ok=True)
 

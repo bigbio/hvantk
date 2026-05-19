@@ -322,7 +322,7 @@ def psroc_cmd(
       plots/{prefix}_*.png        Visualization plots (unless --no-plots)
     """
     try:
-        from hvantk.psroc.pipeline import PSROCConfig, PSROCPipeline
+        from hvantk.algorithms.psroc.pipeline import PSROCConfig, PSROCPipeline
 
         # Parse comma-separated inputs
         genes_list = _parse_comma_separated(genes) if genes else None

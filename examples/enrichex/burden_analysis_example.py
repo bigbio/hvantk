@@ -16,7 +16,7 @@ import json
 import logging
 from pathlib import Path
 import hail as hl
-from hvantk.enrichex import run_burden_analysis
+from hvantk.algorithms.enrichex import run_burden_analysis
 from hvantk.core.hail_context import init_hail
 
 # Configure logging
@@ -438,7 +438,7 @@ Permissive (exploratory):
 \nTo run with your own data:
 
 # Python API:
-from hvantk.enrichex import run_burden_analysis
+from hvantk.algorithms.enrichex import run_burden_analysis
 import hail as hl
 
 mt = hl.read_matrix_table("your_cohort.mt")

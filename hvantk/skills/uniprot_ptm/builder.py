@@ -2,7 +2,7 @@
 
 This module owns ``create_ptm_sites_tb``, the canonical builder that turns the
 mapped PTM coordinates TSV (produced by
-:mod:`hvantk.ptm.pipeline.map_ptm_sites`) into a Hail Table keyed by locus. It
+:mod:`hvantk.algorithms.ptm.pipeline.map_ptm_sites`) into a Hail Table keyed by locus. It
 was migrated out of :mod:`hvantk.core.builders.table` so that everything
 UniProt-PTM-specific (builder, downloader, dataset class, tests, fixtures,
 SKILL) lives under the plugin folder at :mod:`hvantk.skills.uniprot_ptm`.
@@ -36,7 +36,7 @@ def create_ptm_sites_tb(
     Create a Hail Table of PTM sites in genomic coordinates.
 
     Input is a TSV produced by the PTM coordinate mapper
-    (see ``hvantk.ptm.pipeline.map_ptm_sites``) with columns: chrom,
+    (see ``hvantk.algorithms.ptm.pipeline.map_ptm_sites``) with columns: chrom,
     codon_start, codon_end, strand, uniprot_id, gene_symbol, residue_pos,
     amino_acid, ptm_type, ptm_category, source_db, evidence_type,
     n_observations, tissue_type.

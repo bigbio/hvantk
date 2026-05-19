@@ -118,7 +118,7 @@ def overlap_test(
         Gene sets: JSON file with GeneSetCollection format
             Created by: GeneSetCollection.save(path)
     """
-    from hvantk.enrichex.overlap import compute_overlap_enrichment_pandas
+    from hvantk.algorithms.enrichex.overlap import compute_overlap_enrichment_pandas
     from hvantk.core.utils.gene_sets import GeneSetCollection, load_gene_set
 
     # Load query genes
@@ -162,7 +162,7 @@ def overlap_test(
     if generate_report:
         from pathlib import Path
 
-        from hvantk.enrichex.report import generate_report
+        from hvantk.algorithms.enrichex.report import generate_report
 
         click.echo("\nGenerating report...")
 

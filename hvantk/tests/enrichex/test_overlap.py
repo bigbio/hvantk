@@ -11,7 +11,7 @@ from hvantk.core.utils.gene_sets import (
     GeneSetCollection,
     load_gene_sets_from_dict,
 )
-from hvantk.enrichex.overlap import (
+from hvantk.algorithms.enrichex.overlap import (
     OverlapResult,
     compute_overlap_enrichment,
     compute_overlap_enrichment_pandas,

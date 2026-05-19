@@ -14,7 +14,7 @@ import logging
 import click
 
 from hvantk.core.config import CONTEXT_SETTINGS
-from hvantk.qtlcascade.constants import DEFAULT_COLOC_H4_THRESHOLD
+from hvantk.core.qtl_constants import DEFAULT_COLOC_H4_THRESHOLD
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ def cascade_cmd(ctx, eqtl_ht, pqtl_ht, output, tissue, eqtl_p, pqtl_p, overwrite
 
     init_hail()
 
-    from hvantk.qtlcascade.cascade import build_cascade
+    from hvantk.algorithms.qtlcascade.cascade import build_cascade
 
     ht = build_cascade(
         eqtl_ht_path=eqtl_ht,
@@ -121,7 +121,7 @@ def coloc_cmd(
 
     init_hail()
 
-    from hvantk.qtlcascade.coloc import run_coloc_per_gene
+    from hvantk.algorithms.qtlcascade.coloc import run_coloc_per_gene
 
     genes = Path(cascade_genes).read_text().strip().splitlines()
     genes = [g.strip() for g in genes if g.strip()]
@@ -217,7 +217,7 @@ def run_cmd(
     dry_run,
 ):
     """Run the full QTL cascade pipeline."""
-    from hvantk.qtlcascade.pipeline import CascadeConfig, CascadePipeline
+    from hvantk.algorithms.qtlcascade.pipeline import CascadeConfig, CascadePipeline
 
     tissue_list = [t.strip() for t in tissues.split(",") if t.strip()]
 
@@ -293,7 +293,7 @@ def report_cmd(ctx, gene_summary, coloc_results, plots_dir, output, title):
     """Generate an HTML report from existing cascade results."""
     import pandas as pd
     from pathlib import Path
-    from hvantk.qtlcascade.report import generate_report
+    from hvantk.algorithms.qtlcascade.report import generate_report
 
     gene_df = pd.read_csv(gene_summary, sep="\t") if gene_summary else None
     coloc_df = pd.read_csv(coloc_results, sep="\t") if coloc_results else None

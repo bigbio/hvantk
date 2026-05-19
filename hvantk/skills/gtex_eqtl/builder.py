@@ -82,7 +82,7 @@ def create_eqtl_tb(
     overwrite, export_tsv, fields
         Standard builder parameters.
     """
-    from hvantk.qtlcascade.constants import EQTL_SOURCES
+    from hvantk.core.qtl_constants import EQTL_SOURCES
 
     if source not in EQTL_SOURCES:
         raise ValueError(f"Unknown eQTL source: {source!r}. Supported: {EQTL_SOURCES}")

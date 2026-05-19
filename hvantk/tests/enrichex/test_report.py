@@ -3,7 +3,7 @@ from pathlib import Path
 import pandas as pd
 
 from hvantk.core.utils.gene_sets import GeneSet, GeneSetCollection
-from hvantk.enrichex.report import generate_report
+from hvantk.algorithms.enrichex.report import generate_report
 
 
 def _mock_enrichment_df() -> pd.DataFrame:

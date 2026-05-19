@@ -21,7 +21,7 @@ UniProt REST API endpoint, query, fields, and batch size live in `hvantk/ptm/con
 Stable provider notes:
 - UniProt provides a live JSON search endpoint at `https://rest.uniprot.org/uniprotkb/search`. There is no archival versioning at the query level — `Last-Modified` may be absent. The version date on the downloaded TSV is the date of download.
 - The downloader (`UniProtPTMDataset.download`) pages by cursor (HTTP `Link: <...>; rel="next"`) and writes one TSV row per MOD_RES feature. It does NOT produce mapped genomic coordinates.
-- The builder consumes the *mapped* TSV produced by `hvantk.ptm.pipeline.map_ptm_sites`, not the raw UniProt download. The mapping step joins the UniProt TSV against an Ensembl GTF (and optionally CPTAC/PeptideAtlas phospho sources) to derive `chrom`, `codon_start`, `codon_end`, `strand`, `residue_pos`, `tissue_type`, etc.
+- The builder consumes the *mapped* TSV produced by `hvantk.algorithms.ptm.pipeline.map_ptm_sites`, not the raw UniProt download. The mapping step joins the UniProt TSV against an Ensembl GTF (and optionally CPTAC/PeptideAtlas phospho sources) to derive `chrom`, `codon_start`, `codon_end`, `strand`, `residue_pos`, `tissue_type`, etc.
 
 ## 3. Backend choice + reasoning
 
@@ -60,7 +60,7 @@ When invoked to build or update:
 
 1. Verify Hail is available (defer to the SessionStart hook).
 2. Download the raw UniProt TSV: `hvantk download uniprot-ptm --output-dir <raw_dir>` (or call `UniProtPTMDataset.from_latest().download(raw_dir)`).
-3. Run the mapping pipeline to attach genomic coordinates: see `hvantk.ptm.pipeline.map_ptm_sites`. Output is the mapped TSV consumed by step 4.
+3. Run the mapping pipeline to attach genomic coordinates: see `hvantk.algorithms.ptm.pipeline.map_ptm_sites`. Output is the mapped TSV consumed by step 4.
 4. Build via Python (`create_ptm_sites_tb(input_path, output_path, reference_genome=..., flanking_codons=..., overwrite=True)`) or CLI (`hvantk mktable ptm-sites --raw-input ... --output-ht ...`).
 5. Sanity-check the output: row count plausible (hundreds of thousands across sources); `locus` populated; `flanking_interval` length is roughly `(codon_end - codon_start) + 2 * flanking_codons * 3`.
 6. Run validation: `pytest hvantk/skills/uniprot_ptm/tests -m hail`.
@@ -72,7 +72,7 @@ When UniProt releases a new monthly snapshot (typically late in the month):
 1. Re-download: `hvantk download uniprot-ptm --output-dir <raw_dir> --overwrite`. Note the date label.
 2. Diff the new raw TSV header against the previous fixture. New `_TSV_COLUMNS` entries imply a downloader schema change and require updating `shared/datasets.py`.
 3. Regenerate the drift fingerprint: invoke `fetch_fingerprint()` against the live endpoint and overwrite `tests/drift_fingerprint.json`. Inspect the `uniprot_entry_keys` field for additions or removals.
-4. Re-run the mapping pipeline (`hvantk.ptm.pipeline.map_ptm_sites`) to refresh the mapped TSV input.
+4. Re-run the mapping pipeline (`hvantk.algorithms.ptm.pipeline.map_ptm_sites`) to refresh the mapped TSV input.
 5. Re-run `pytest hvantk/skills/uniprot_ptm/tests -m hail` and the broader PTM test suite (`pytest hvantk/tests/test_ptm.py -m hail`).
 6. Open PR; reviewer checks the drift fingerprint diff and the row-count delta in the PR description.
 

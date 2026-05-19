@@ -10,7 +10,7 @@ Use Case: Test if Alzheimer's disease GWAS genes are enriched in brain cell type
 
 import logging
 from pathlib import Path
-from hvantk.enrichex import (
+from hvantk.algorithms.enrichex import (
     GeneSet,
     GeneSetCollection,
     compute_overlap_enrichment_pandas,

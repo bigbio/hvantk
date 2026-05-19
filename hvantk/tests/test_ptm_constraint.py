@@ -1,7 +1,7 @@
 """Smoke tests for the PTM constraint pipeline (M1-M6).
 
 Minimum checks that ``hvantk.algorithms.expression.tissue_specificity``,
-``hvantk.ptm.constraint_expression``, ``hvantk.ptm.constraint``, and the
+``hvantk.algorithms.ptm.constraint_expression``, ``hvantk.algorithms.ptm.constraint``, and the
 ``hvantk ptm constraint`` CLI subcommand import, agree with a reference
 implementation, and respect their contracts. No Hail, no network.
 """
@@ -44,7 +44,7 @@ def test_tspex_wrapper_matches_yanai():
 
 
 def test_tabular_adapter_contract():
-    from hvantk.ptm.constraint_expression import load_gene_by_group_matrix
+    from hvantk.algorithms.ptm.constraint_expression import load_gene_by_group_matrix
 
     df = _toy_expr_matrix()
     with tempfile.TemporaryDirectory() as tmp:
@@ -60,7 +60,7 @@ def test_tabular_adapter_contract():
 
 def test_anndata_adapter_contract():
     import anndata as ad
-    from hvantk.ptm.constraint_expression import load_gene_by_group_matrix
+    from hvantk.algorithms.ptm.constraint_expression import load_gene_by_group_matrix
 
     n_cells = 6
     n_genes = 4
@@ -88,7 +88,7 @@ def test_anndata_adapter_contract():
 
 
 def test_constraint_config_validate():
-    from hvantk.ptm.constraint import PTMConstraintConfig
+    from hvantk.algorithms.ptm.constraint import PTMConstraintConfig
 
     cfg = PTMConstraintConfig(
         variants_ht_path="/does/not/exist.ht",
@@ -109,7 +109,7 @@ def test_constraint_config_validate():
 
 
 def test_gene_features_compute():
-    from hvantk.ptm.constraint import _compute_gene_features
+    from hvantk.algorithms.ptm.constraint import _compute_gene_features
 
     df = _toy_expr_matrix()
     features = _compute_gene_features(df, expressed_threshold=1.0, gene_id_map=None)

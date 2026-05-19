@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import requests_mock
 
-from hvantk.ptm.constants import (
+from hvantk.core.ptm_constants import (
     UNIPROT_API_FIELDS,
     UNIPROT_API_URL,
     UNIPROT_HUMAN_PTM_QUERY,

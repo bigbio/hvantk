@@ -2,7 +2,7 @@
 
 PeptideAtlas does not have a dedicated Hail Table or AnnData representation
 in hvantk today - the downstream consumer is
-:func:`hvantk.ptm.pipeline.ptm_build_pipeline`, which reads the intermediate
+:func:`hvantk.algorithms.ptm.pipeline.ptm_build_pipeline`, which reads the intermediate
 wide TSV produced by the dataset class directly (see
 ``peptideatlas_tsv`` in ``PTMBuildConfig``). This builder therefore delegates
 to the existing parse code in

@@ -197,7 +197,7 @@ def test_qc_summary_cli_basic():
         sample_df = pd.DataFrame({"call_rate": [0.9, 0.95], "mean_dp": [30, 35]})
         sample_df.to_csv("qc_dir/sample_qc.csv", index=False)
 
-        with patch("hvantk.hgc.qc.get_qc_summary_stats") as mock_stats:
+        with patch("hvantk.algorithms.hgc.qc.get_qc_summary_stats") as mock_stats:
             mock_stats.return_value = pd.DataFrame()
 
             result = runner.invoke(
@@ -237,7 +237,7 @@ def test_qc_summary_cli_output_json():
         sample_df = pd.DataFrame({"call_rate": [0.9, 0.95]})
         sample_df.to_csv("qc_dir/sample_qc.csv", index=False)
 
-        with patch("hvantk.hgc.qc.get_qc_summary_stats") as mock_stats:
+        with patch("hvantk.algorithms.hgc.qc.get_qc_summary_stats") as mock_stats:
             mock_stats.return_value = pd.DataFrame()
 
             result = runner.invoke(
@@ -265,7 +265,7 @@ def test_plot_qc_cli_basic():
                 mock_mt.col = {"sample_qc": MagicMock()}
                 mock_read.return_value = mock_mt
 
-                with patch("hvantk.hgc.qc.QCMetrics") as mock_qc_metrics:
+                with patch("hvantk.algorithms.hgc.qc.QCMetrics") as mock_qc_metrics:
                     mock_qc_instance = MagicMock()
                     mock_qc_instance.has_sample_qc = True
                     mock_qc_instance.has_variant_qc = False
@@ -351,7 +351,7 @@ def test_qc_report_cli_basic():
                 mock_mt.col = {"sample_qc": MagicMock()}
                 mock_read.return_value = mock_mt
 
-                with patch("hvantk.hgc.qc.QCMetrics") as mock_qc_metrics:
+                with patch("hvantk.algorithms.hgc.qc.QCMetrics") as mock_qc_metrics:
                     from pathlib import Path
 
                     mock_qc_instance = MagicMock()
@@ -406,7 +406,7 @@ def test_qc_report_cli_custom_title():
                 mock_mt.col = {"sample_qc": MagicMock()}
                 mock_read.return_value = mock_mt
 
-                with patch("hvantk.hgc.qc.QCMetrics") as mock_qc_metrics:
+                with patch("hvantk.algorithms.hgc.qc.QCMetrics") as mock_qc_metrics:
                     from pathlib import Path
 
                     mock_qc_instance = MagicMock()

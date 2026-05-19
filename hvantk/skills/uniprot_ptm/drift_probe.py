@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 import requests
 
 from hvantk.core.plugin.api import DriftProbeError
-from hvantk.ptm.constants import (
+from hvantk.core.ptm_constants import (
     UNIPROT_API_FIELDS,
     UNIPROT_API_URL,
     UNIPROT_HUMAN_PTM_QUERY,

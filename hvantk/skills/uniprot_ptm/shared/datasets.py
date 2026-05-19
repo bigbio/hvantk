@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from hvantk.ptm.constants import (
+from hvantk.core.ptm_constants import (
     UNIPROT_API_URL,
     UNIPROT_API_FIELDS,
     UNIPROT_HUMAN_PTM_QUERY,

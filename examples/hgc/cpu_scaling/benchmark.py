@@ -28,7 +28,7 @@ from typing import Dict, List
 import hail as hl
 
 # Import HGC functions
-from hvantk.hgc import (
+from hvantk.algorithms.hgc import (
     combine_gvcfs,
     convert_vds_to_mt,
     compute_full_qc,

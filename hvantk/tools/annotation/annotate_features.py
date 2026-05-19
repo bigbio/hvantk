@@ -12,7 +12,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from hvantk.annotation.annotate import (
+from hvantk.algorithms.annotation.annotate import (
     annotate_ccr,
     annotate_gevir,
     annotate_rnaseq_expression,

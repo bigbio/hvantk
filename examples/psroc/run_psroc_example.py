@@ -119,7 +119,7 @@ def main(output_dir: str = "/tmp/psroc_example") -> int:
     print("Loading hvantk modules...")
     try:
         from hvantk.core.hail_context import init_hail
-        from hvantk.psroc import PSROCConfig, PSROCPipeline
+        from hvantk.algorithms.psroc import PSROCConfig, PSROCPipeline
     except ImportError as e:
         print(f"ERROR: Failed to import hvantk modules: {e}")
         print("Make sure hvantk is installed: poetry install")

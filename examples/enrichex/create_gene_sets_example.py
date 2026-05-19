@@ -15,7 +15,7 @@ Common sources:
 import logging
 from pathlib import Path
 import pandas as pd
-from hvantk.enrichex import (
+from hvantk.algorithms.enrichex import (
     GeneSet,
     GeneSetCollection,
     load_marker_genes,
@@ -537,7 +537,7 @@ hvantk enrichex burden \\
   -o burden_results.tsv
 
 # Python API
-from hvantk.enrichex import GeneSetCollection
+from hvantk.algorithms.enrichex import GeneSetCollection
 gene_sets = GeneSetCollection.load("enrichex_gene_sets/seurat_gene_sets.json")
     """
     )

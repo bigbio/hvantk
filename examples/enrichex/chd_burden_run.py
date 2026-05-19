@@ -90,7 +90,7 @@ def build_variant_classes(max_af: float, min_score: Optional[float] = None) -> D
       - gnomAD_AF (camelCase)
       - vep.CADD_PHRED (nested)
     """
-    from hvantk.enrichex.burden import VariantFilter
+    from hvantk.algorithms.enrichex.burden import VariantFilter
 
     # Common filter settings for this MT schema
     common = dict(
@@ -152,7 +152,7 @@ def main():
     # ── Build config ──────────────────────────────────────────────────
     # No need to manually extract phenotype — the pipeline handles
     # MT column fields natively when phenotype_ht_path is empty.
-    from hvantk.enrichex.pipeline import BurdenConfig, BurdenPipeline
+    from hvantk.algorithms.enrichex.pipeline import BurdenConfig, BurdenPipeline
 
     config = BurdenConfig(
         cohort_mt_path=args.cohort_mt,

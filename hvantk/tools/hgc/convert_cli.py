@@ -7,7 +7,7 @@ Commands for converting between different variant data formats.
 import logging
 import click
 
-from hvantk.hgc import convert_vds_to_mt, convert_mt_to_multi_sample_vcf
+from hvantk.algorithms.hgc import convert_vds_to_mt, convert_mt_to_multi_sample_vcf
 from .utils import validate_input_files, validate_output_path
 
 logger = logging.getLogger(__name__)
