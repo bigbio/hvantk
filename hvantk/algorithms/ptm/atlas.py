@@ -26,7 +26,7 @@ import os
 from dataclasses import dataclass, field
 from typing import List, Optional, Sequence
 
-from hvantk.algorithms.ptm.pipeline import PTMBuildConfig, PTMBuildResult, ptm_build_pipeline
+from hvantk.algorithms.ptm.pipeline import PTMBuildConfig, PTMBuildResult, ptm_build_pipeline_core
 
 logger = logging.getLogger(__name__)
 
@@ -185,7 +185,7 @@ def build_atlas(config: PTMAtlasConfig) -> PTMAtlasResult:
         sources,
         config.flanking_codons,
     )
-    build_result: PTMBuildResult = ptm_build_pipeline(build_cfg)
+    build_result: PTMBuildResult = ptm_build_pipeline_core(build_cfg)
 
     # The pipeline emits:
     #   - ptm_sites_mapped.tsv.bgz when only UniProt is used

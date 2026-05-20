@@ -123,7 +123,8 @@ def ptm_build(
                        --output-ht data/ptm/ptm_sites.ht --output-dir data/ptm/
     """
     try:
-        from hvantk.algorithms.ptm.pipeline import PTMBuildConfig, ptm_build_pipeline
+        from hvantk.algorithms.ptm.pipeline import PTMBuildConfig
+        from hvantk.tools.ptm.pipeline import ptm_build_pipeline
 
         config = PTMBuildConfig(
             output_dir=output_dir,

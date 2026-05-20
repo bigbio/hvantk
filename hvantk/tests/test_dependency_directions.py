@@ -62,15 +62,6 @@ def test_core_does_not_import_upward():
     )
 
 
-@pytest.mark.xfail(
-    reason=(
-        "algorithms/ptm/pipeline.py composes the uniprot-ptm skill with the PTM "
-        "analysis library; it is workflow code that conceptually belongs in "
-        "tools/ptm/pipeline.py. Tracked as a follow-up refactor; until then the "
-        "two lazy imports of hvantk.skills.uniprot_ptm.* keep this xfail."
-    ),
-    strict=False,
-)
 def test_algorithms_does_not_import_skills_or_tools():
     bad = _forbidden_matches("algorithms", ["hvantk.skills", "hvantk.tools"])
     assert not bad, (

@@ -3,15 +3,18 @@
 Provides tools for mapping PTM sites to genomic coordinates, cross-referencing
 with genetic variants, and analyzing PTM-variant landscape across the proteome.
 
-Example:
-    >>> from hvantk.algorithms.ptm import PTMBuildConfig, ptm_build_pipeline
+For the full end-to-end workflow (including UniProt download and Hail Table build),
+use :mod:`hvantk.tools.ptm.pipeline`.
+
+Example (pure mapping core):
+    >>> from hvantk.algorithms.ptm import PTMBuildConfig, ptm_build_pipeline_core
     >>> config = PTMBuildConfig(
     ...     output_dir="data/ptm/",
     ...     output_ht="data/ptm/ptm_sites.ht",
     ...     gtf_path="data/ref/Homo_sapiens.GRCh38.113.gtf.gz",
     ...     ptm_tsv="data/ptm/uniprot-ptm-human.tsv",
     ... )
-    >>> result = ptm_build_pipeline(config)
+    >>> result = ptm_build_pipeline_core(config)
 """
 
 import importlib as _importlib
@@ -50,10 +53,9 @@ _LAZY_MODULES = {
     # pipeline
     "PTMBuildConfig": ("hvantk.algorithms.ptm.pipeline", "PTMBuildConfig"),
     "PTMBuildResult": ("hvantk.algorithms.ptm.pipeline", "PTMBuildResult"),
-    "ptm_build_pipeline": ("hvantk.algorithms.ptm.pipeline", "ptm_build_pipeline"),
+    "ptm_build_pipeline_core": ("hvantk.algorithms.ptm.pipeline", "ptm_build_pipeline_core"),
     "map_ptm_sites": ("hvantk.algorithms.ptm.pipeline", "map_ptm_sites"),
     "download_ensembl_gtf": ("hvantk.algorithms.ptm.pipeline", "download_ensembl_gtf"),
-    "download_uniprot_ptm": ("hvantk.algorithms.ptm.pipeline", "download_uniprot_ptm"),
     # annotate (requires Hail)
     "annotate_variants_with_ptm": ("hvantk.algorithms.ptm.annotate", "annotate_variants_with_ptm"),
     # analysis (requires Hail)
@@ -126,10 +128,9 @@ __all__ = [
     # Pipeline API
     "PTMBuildConfig",
     "PTMBuildResult",
-    "ptm_build_pipeline",
+    "ptm_build_pipeline_core",
     "map_ptm_sites",
     "download_ensembl_gtf",
-    "download_uniprot_ptm",
     # Data classes
     "CodonMapping",
     "GTFData",

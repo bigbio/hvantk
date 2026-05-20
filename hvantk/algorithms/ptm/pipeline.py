@@ -1,16 +1,17 @@
 """
-PTM Build Pipeline — orchestrates PTM data acquisition, coordinate mapping, and table building.
+PTM Build Pipeline — pure coordinate-mapping core for PTM data acquisition.
 
-This module exposes the build workflow as a Python API so it can be used
-programmatically or from the CLI.
+This module exposes the algorithm-only (no skills) build core as a Python API.
+Skill-driven steps (UniProt download, Hail Table build) live in
+:mod:`hvantk.tools.ptm.pipeline`.
 
 Example:
-    >>> from hvantk.algorithms.ptm.pipeline import PTMBuildConfig, ptm_build_pipeline
+    >>> from hvantk.algorithms.ptm.pipeline import PTMBuildConfig, ptm_build_pipeline_core
     >>> config = PTMBuildConfig(
     ...     output_dir="data/ptm/",
     ...     output_ht="data/ptm/ptm_sites.ht",
     ... )
-    >>> result = ptm_build_pipeline(config)
+    >>> result = ptm_build_pipeline_core(config)
     >>> print(result.n_mapped, result.mapped_tsv_path)
 """
 
@@ -151,27 +152,6 @@ def download_ensembl_gtf(output_dir: str, overwrite: bool = False) -> str:
             shutil.copyfileobj(resp.raw, fout)
     logger.info("Downloaded: %s", gtf_path)
     return gtf_path
-
-
-def download_uniprot_ptm(output_dir: str, overwrite: bool = False) -> str:
-    """Download the latest UniProt PTM TSV via :class:`UniProtPTMDataset`.
-
-    Parameters
-    ----------
-    output_dir : str
-        Directory to save the TSV file.
-    overwrite : bool
-        If True, re-download even if a file exists.
-
-    Returns
-    -------
-    str
-        Path to the downloaded TSV file.
-    """
-    from hvantk.skills.uniprot_ptm.shared.datasets import UniProtPTMDataset
-
-    dataset = UniProtPTMDataset.from_latest()
-    return dataset.download(output_dir, overwrite=overwrite)
 
 
 def map_ptm_sites(
@@ -334,24 +314,28 @@ def _concat_bgz_tsvs(src_paths: List[str], dest_path: str) -> None:
                     writer.writerow(row)
 
 
-def ptm_build_pipeline(config: PTMBuildConfig) -> PTMBuildResult:
-    """Run the full PTM build pipeline.
+def ptm_build_pipeline_core(config: PTMBuildConfig) -> PTMBuildResult:
+    """Run the pure coordinate-mapping core of the PTM build pipeline.
 
     Steps:
         1. Download Ensembl GTF (if not provided)
-        2. Download UniProt PTM data (if not provided)
-        3. Parse GTF and map PTM sites to genomic coordinates
-        4. Build Hail Table from mapped coordinates
+        2. Parse GTF and map PTM sites to genomic coordinates
+
+    The UniProt download and Hail Table build steps require
+    :mod:`hvantk.skills` and are handled by the workflow layer in
+    :mod:`hvantk.tools.ptm.pipeline`.
 
     Parameters
     ----------
     config : PTMBuildConfig
-        Pipeline configuration.
+        Pipeline configuration.  ``config.ptm_tsv`` must be set to a
+        pre-downloaded UniProt TSV path; callers in the tools layer are
+        responsible for downloading it first when it is None.
 
     Returns
     -------
     PTMBuildResult
-        Mapping statistics and output paths.
+        Mapping statistics and output paths (``mapped_tsv_path`` is set).
 
     Raises
     ------
@@ -373,10 +357,14 @@ def ptm_build_pipeline(config: PTMBuildConfig) -> PTMBuildResult:
     logger.info("Parsing Ensembl GTF...")
     gtf_data = parse_ensembl_gtf(gtf_path)
 
-    # Step 3: Ensure UniProt PTM TSV is available
+    # Step 3: Caller is responsible for providing config.ptm_tsv
     ptm_tsv = config.ptm_tsv
     if ptm_tsv is None:
-        ptm_tsv = download_uniprot_ptm(config.output_dir, config.overwrite)
+        raise ValueError(
+            "config.ptm_tsv must be set before calling ptm_build_pipeline_core. "
+            "Use hvantk.tools.ptm.pipeline.ptm_build_pipeline for the full "
+            "workflow including the UniProt download step."
+        )
 
     # Shared transcript cache across all mapping calls — avoids rebuilding
     # TranscriptCDS objects when the same ENST appears in multiple sources.
@@ -427,24 +415,11 @@ def ptm_build_pipeline(config: PTMBuildConfig) -> PTMBuildResult:
             len(source_paths),
         )
 
-    # Step 5: Build Hail Table
-    logger.info("Building Hail Table at %s...", config.output_ht)
-    from hvantk.skills.uniprot_ptm.builder import create_ptm_sites_tb
-
-    create_ptm_sites_tb(
-        input_path=mapped_path,
-        output_path=config.output_ht,
-        reference_genome=config.reference_genome,
-        flanking_codons=config.flanking_codons,
-        overwrite=config.overwrite,
-    )
-
-    result.output_ht = config.output_ht
     result.gtf_stats = {
         "transcripts": len(gtf_data.cds_by_transcript),
         "mane_select": len(gtf_data.mane_transcripts),
         "genes_with_mane": len(gtf_data.gene_to_mane),
     }
 
-    logger.info("PTM build pipeline complete: %d sites mapped", result.n_mapped)
+    logger.info("PTM core mapping complete: %d sites mapped", result.n_mapped)
     return result
