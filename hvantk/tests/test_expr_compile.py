@@ -75,13 +75,13 @@ def test_pandas_unknown_column_raises(df):
 # Hail compiler tests (Task 4)
 # ---------------------------------------------------------------------------
 
-import hail as hl
-
 from hvantk.core.models._compile import compile_to_hail
 
 
 def _make_ht():
     """Build a small Hail Table mirroring the pandas fixture."""
+    import hail as hl
+
     rows = [
         {"gene_symbol": "BRCA1", "score": 0.7, "chrom": "chr17"},
         {"gene_symbol": "BRCA2", "score": 0.4, "chrom": "chr13"},
