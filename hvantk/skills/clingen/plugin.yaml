@@ -11,9 +11,11 @@ datasets:
   - name: gene-disease
     domain: genomics
     backend: hail
+    artifact_type: AnnotationTable
+    schema_id: clingen-gene-disease-v1
     builder:
       module: hvantk.skills.clingen.builder
-      function: create_clingen_gene_disease_tb
+      function: build_clingen_gene_disease
     drift_probe:
       module: hvantk.skills.clingen.drift_probe
       function: fetch_fingerprint

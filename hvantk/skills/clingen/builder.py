@@ -271,3 +271,116 @@ def create_clingen_gene_disease_tb(
     finally:
         # Clean up temp file
         _cleanup_temp_file(tmp_path)
+
+
+def build_clingen_gene_disease(
+    parsed_input,
+    ctx,
+    *,
+    key_by: str = "gene_disease",
+    min_classification=None,
+    fields=None,
+):
+    """Phase B builder — returns an AnnotationTable.
+
+    Preserves the CSV header preprocessing step from create_clingen_gene_disease_tb
+    (ClinGen files have a varying metadata header + ++++++ separator lines).
+    Only supports key_by='gene_disease' for now; the 'gene' aggregation mode
+    still requires the legacy function.
+    """
+    from hvantk.core.models import AnnotationTable
+
+    if key_by != "gene_disease":
+        raise NotImplementedError(
+            f"Phase B builder currently supports key_by='gene_disease' only; "
+            f"got {key_by}. Use the legacy create_clingen_gene_disease_tb for now."
+        )
+    if (
+        min_classification is not None
+        and min_classification not in CLINGEN_CLASSIFICATION_LEVELS
+    ):
+        raise ValueError(
+            f"min_classification must be one of {CLINGEN_CLASSIFICATION_LEVELS}, "
+            f"got: {min_classification}"
+        )
+
+    # Preprocess CSV (skip metadata + separator rows; isolate the GENE SYMBOL header)
+    tmp_path = hl.utils.new_temp_file(prefix="clingen_", extension=".csv")
+    try:
+        with hl.hadoop_open(str(parsed_input), "r") as f:
+            with hl.hadoop_open(tmp_path, "w") as out:
+                found_header = False
+                for line in f:
+                    if "++++++" in line:
+                        continue
+                    if not found_header:
+                        if '"GENE SYMBOL"' in line or line.startswith("GENE SYMBOL"):
+                            found_header = True
+                            out.write(line)
+                        continue
+                    out.write(line)
+                if not found_header:
+                    raise RuntimeError(
+                        f'ClinGen header "GENE SYMBOL" not found in {parsed_input}'
+                    )
+
+        ht = hl.import_table(
+            paths=tmp_path,
+            delimiter=",",
+            quote='"',
+            impute=False,
+            min_partitions=10,
+        )
+
+        rename_map = {
+            k: v
+            for k, v in CLINGEN_GENE_DISEASE_FIELDS.items()
+            if k in get_row_fields(ht)
+        }
+        ht = ht.rename(rename_map)
+
+        row_fields = get_row_fields(ht)
+        if "hgnc_id" in row_fields:
+            ht = ht.annotate(
+                hgnc_id=hl.if_else(
+                    ht.hgnc_id.startswith("HGNC:"),
+                    ht.hgnc_id.replace("HGNC:", ""),
+                    ht.hgnc_id,
+                )
+            )
+        if "mondo_id" in row_fields:
+            ht = ht.annotate(
+                mondo_id=hl.if_else(
+                    ht.mondo_id.startswith("MONDO:"),
+                    ht.mondo_id.replace("MONDO:", ""),
+                    ht.mondo_id,
+                )
+            )
+
+        classification_order = {
+            level: i for i, level in enumerate(CLINGEN_CLASSIFICATION_LEVELS)
+        }
+        ht = ht.annotate(
+            classification_level=hl.literal(classification_order).get(
+                ht.classification, hl.len(CLINGEN_CLASSIFICATION_LEVELS)
+            )
+        )
+
+        if min_classification is not None:
+            min_level = classification_order[min_classification]
+            ht = ht.filter(ht.classification_level <= min_level)
+
+        ht = ht.key_by("hgnc_id", "mondo_id")
+
+        if fields is not None:
+            ht = ht.select(*fields)
+
+        return AnnotationTable.from_hail(
+            ht, provenance=ctx.provenance(schema_id="clingen-gene-disease-v1")
+        )
+    except Exception:
+        _cleanup_temp_file(tmp_path)
+        raise
+    # NOTE: tmp_path is intentionally NOT cleaned up on success — Hail's lazy
+    # evaluation may read from it later when artifact.save() materializes the table.
+    # The OS will clean up the Hail temp directory at session end.
