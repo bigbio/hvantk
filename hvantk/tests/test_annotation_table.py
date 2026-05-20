@@ -69,3 +69,47 @@ def test_to_pandas_works_on_hail_backend():
     ann = AnnotationTable.from_hail(ht, provenance=_prov())
     df = ann.to_pandas()
     assert df.iloc[0]["gene"] == "BRCA1"
+
+
+# --- filter tests ---
+
+from hvantk.core.models._expr import col
+
+
+def test_filter_pandas(df):
+    ann = AnnotationTable.from_pandas(df, provenance=_prov())
+    filtered = ann.filter(col("score") > 0.5)
+    out = filtered.to_pandas()
+    assert out["gene"].tolist() == ["BRCA1"]
+    # filter is immutable
+    assert ann.to_pandas().shape[0] == 2
+
+
+@pytest.mark.hail
+def test_filter_hail():
+    import hail as hl
+
+    ht = hl.Table.parallelize(
+        [{"gene": "BRCA1", "score": 0.7}, {"gene": "BRCA2", "score": 0.4}],
+        hl.tstruct(gene=hl.tstr, score=hl.tfloat64),
+    )
+    ann = AnnotationTable.from_hail(ht, provenance=_prov())
+    filtered = ann.filter(col("score") > 0.5)
+    out = filtered.to_pandas()
+    assert out["gene"].tolist() == ["BRCA1"]
+
+
+@pytest.mark.hail
+def test_filter_parity(df):
+    """Same predicate on both backends -> same rows."""
+    import hail as hl
+
+    pandas_ann = AnnotationTable.from_pandas(df, provenance=_prov())
+    hail_ann = AnnotationTable.from_hail(
+        hl.Table.from_pandas(df), provenance=_prov()
+    )
+
+    predicate = (col("score") > 0.4) & (col("gene") == "BRCA1")
+    p = pandas_ann.filter(predicate).to_pandas()
+    h = hail_ann.filter(predicate).to_pandas()
+    assert sorted(p["gene"].tolist()) == sorted(h["gene"].tolist())

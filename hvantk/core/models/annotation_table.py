@@ -16,6 +16,7 @@ from typing import Any, Literal
 import pandas as pd
 
 from hvantk.core.models.provenance import Provenance
+from hvantk.core.models._expr import Expr  # noqa: F401 (used in type hints only)
 
 
 _BACKENDS = ("hail", "pandas")
@@ -69,6 +70,26 @@ class AnnotationTable:
         if self.backend == "hail":
             return self._table
         return hl.Table.from_pandas(self._table)
+
+    # --- query operations (immutable, return new AnnotationTable) ---
+
+    def filter(self, predicate: "Expr") -> "AnnotationTable":
+        from hvantk.core.models._compile import (
+            compile_to_hail,
+            compile_to_pandas,
+        )
+
+        if self.backend == "pandas":
+            mask = compile_to_pandas(predicate, self._table)
+            return AnnotationTable.from_pandas(
+                self._table[mask].reset_index(drop=True),
+                provenance=self.provenance,
+            )
+        # hail
+        hail_expr = compile_to_hail(predicate, self._table)
+        return AnnotationTable.from_hail(
+            self._table.filter(hail_expr), provenance=self.provenance
+        )
 
     # --- persistence (stubbed; lands in Task 13) ---
 
