@@ -97,6 +97,7 @@ def create_table_adapter(
     ...     'hvantk.core.builders.table',
     ...     'create_clinvar_tb'
     ... )
+
     """
 
     def adapter(
@@ -171,6 +172,7 @@ def create_matrix_adapter(
     -------
     Callable
         An adapter function with signature: (inputs, output_mt, params) -> None
+
     """
 
     def adapter(
@@ -307,8 +309,7 @@ def run_matrix_builder(
 
 
 def _apply_plugin_registrations(reg) -> None:
-    """Add plugin-discovered builders to the legacy TABLE_BUILDERS/MATRIX_BUILDERS
-    dicts.
+    """Add plugin-discovered builders to the legacy builder dicts.
 
     Coexistence: this runs ALONGSIDE the create_table_adapter() block above.
     As each provider migrates to the plugin layout in follow-up plans, its

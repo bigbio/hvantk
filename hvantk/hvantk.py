@@ -36,6 +36,7 @@ def setup_logging(verbosity: int = 0, log_file: str | None = None):
         Verbosity level: 0 = WARNING (default), 1 = INFO, 2+ = DEBUG.
     log_file : str or None
         Optional path to a file where log output will be written.
+
     """
     level = {0: logging.WARNING, 1: logging.INFO, 2: logging.DEBUG}.get(
         verbosity, logging.DEBUG
