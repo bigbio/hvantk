@@ -16,7 +16,7 @@ from typing import Any, Literal
 import pandas as pd
 
 from hvantk.core.models.provenance import Provenance
-from hvantk.core.models._expr import Expr  # noqa: F401 (used in type hints only)
+from hvantk.core.models._expr import AggOp, Expr  # noqa: F401
 
 
 _BACKENDS = ("hail", "pandas")
@@ -169,6 +169,9 @@ class AnnotationTable:
             self._table.head(n), provenance=self.provenance
         )
 
+    def group_by(self, *columns: str) -> "_GroupedAnnotationTable":
+        return _GroupedAnnotationTable(self, list(columns))
+
     # --- terminal operations ---
 
     def collect(self) -> list[dict]:
@@ -185,3 +188,40 @@ class AnnotationTable:
 
     def save(self, path: str | Path) -> None:
         raise NotImplementedError("save lands in Task 13 alongside core/io")
+
+
+class _GroupedAnnotationTable:
+    """Intermediate handle between group_by() and agg(). Not constructed directly."""
+
+    def __init__(self, parent: AnnotationTable, columns: list[str]) -> None:
+        self._parent = parent
+        self._columns = columns
+
+    def agg(self, **aggregations: "AggOp") -> AnnotationTable:
+        from hvantk.core.models._compile import (
+            compile_agg_to_hail,
+            compile_agg_to_pandas,
+        )
+
+        if self._parent.backend == "pandas":
+            df = self._parent._table
+            rows = []
+            for keys, group_df in df.groupby(self._columns):
+                # groupby(list) always yields a tuple of keys
+                if not isinstance(keys, tuple):
+                    keys = (keys,)
+                out = dict(zip(self._columns, keys))
+                for name, agg in aggregations.items():
+                    out[name] = compile_agg_to_pandas(agg, group_df)
+                rows.append(out)
+            result = pd.DataFrame(rows)
+            return AnnotationTable.from_pandas(
+                result, provenance=self._parent.provenance
+            )
+        # hail
+        ht = self._parent._table
+        kwargs = {
+            name: compile_agg_to_hail(agg, ht) for name, agg in aggregations.items()
+        }
+        grouped_ht = ht.group_by(*self._columns).aggregate(**kwargs)
+        return AnnotationTable.from_hail(grouped_ht, provenance=self._parent.provenance)

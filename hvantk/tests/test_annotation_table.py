@@ -234,3 +234,46 @@ def test_join_hail():
     joined = a.join(b, on="gene", how="inner").collect()
     assert len(joined) == 1
     assert joined[0]["gene"] == "BRCA1"
+
+
+# --- group_by / agg tests ---
+
+from hvantk.core.models._expr import agg_count, agg_mean, agg_sum
+
+
+def test_group_by_agg_pandas():
+    df = pd.DataFrame(
+        {"gene": ["BRCA1", "BRCA1", "TP53"], "score": [0.7, 0.3, 0.9]}
+    )
+    ann = AnnotationTable.from_pandas(df, provenance=_prov())
+    grouped = ann.group_by("gene").agg(
+        mean_score=agg_mean(col("score")),
+        n=agg_count(),
+    ).collect()
+    grouped_sorted = sorted(grouped, key=lambda r: r["gene"])
+    assert grouped_sorted == [
+        {"gene": "BRCA1", "mean_score": pytest.approx(0.5), "n": 2},
+        {"gene": "TP53", "mean_score": pytest.approx(0.9), "n": 1},
+    ]
+
+
+@pytest.mark.hail
+def test_group_by_agg_hail():
+    import hail as hl
+
+    ht = hl.Table.parallelize(
+        [
+            {"gene": "BRCA1", "score": 0.7},
+            {"gene": "BRCA1", "score": 0.3},
+            {"gene": "TP53", "score": 0.9},
+        ],
+        hl.tstruct(gene=hl.tstr, score=hl.tfloat64),
+    )
+    ann = AnnotationTable.from_hail(ht, provenance=_prov())
+    grouped = ann.group_by("gene").agg(
+        mean_score=agg_mean(col("score")),
+        n=agg_count(),
+    ).collect()
+    rows = {r["gene"]: r for r in grouped}
+    assert rows["BRCA1"]["mean_score"] == pytest.approx(0.5)
+    assert rows["BRCA1"]["n"] == 2

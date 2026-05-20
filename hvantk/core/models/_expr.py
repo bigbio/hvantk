@@ -100,6 +100,24 @@ class CallOp(Expr):
     args: tuple[Expr, ...] = ()
 
 
+@dataclass(frozen=True, eq=False)
+class AggOp(Expr):
+    name: str
+    argument: "Expr | None"  # None for count()
+
+
+def agg_mean(expr: Expr) -> AggOp:
+    return AggOp("mean", expr)
+
+
+def agg_sum(expr: Expr) -> AggOp:
+    return AggOp("sum", expr)
+
+
+def agg_count() -> AggOp:
+    return AggOp("count", None)
+
+
 def col(name: str) -> Col:
     return Col(name)
 

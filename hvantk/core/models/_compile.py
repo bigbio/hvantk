@@ -12,6 +12,7 @@ from typing import Any
 import pandas as pd
 
 from hvantk.core.models._expr import (
+    AggOp,
     BinOp,
     CallOp,
     Col,
@@ -119,3 +120,20 @@ _HAIL_BINOPS = {
     "div": lambda a, b: a / b,
     "pow": lambda a, b: a ** b,
 }
+
+
+# ---------- aggregation compilers ----------
+
+def compile_agg_to_pandas(agg: AggOp, group_df: pd.DataFrame):
+    if agg.name == "count":
+        return len(group_df)
+    series = compile_to_pandas(agg.argument, group_df)
+    return getattr(series, agg.name)()
+
+
+def compile_agg_to_hail(agg: AggOp, ht: "Any"):
+    import hail as hl
+    if agg.name == "count":
+        return hl.agg.count()
+    inner = compile_to_hail(agg.argument, ht)
+    return getattr(hl.agg, agg.name)(inner)
