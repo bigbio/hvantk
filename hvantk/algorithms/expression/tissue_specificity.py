@@ -14,6 +14,8 @@ from typing import Literal
 import numpy as np
 import pandas as pd
 
+from hvantk.core.models.backends import algorithm, Backend
+
 logger = logging.getLogger(__name__)
 
 __all__ = ["compute_specificity"]
@@ -39,6 +41,7 @@ Method = Literal[
 ]
 
 
+@algorithm(name="tissue_specificity", backends=[Backend.PANDAS])
 def compute_specificity(
     gene_x_group_df: pd.DataFrame,
     method: Method = "tau",
