@@ -72,9 +72,8 @@ def load(path: str | Path) -> Any:
     path = Path(path)
     provenance = read_manifest(path)
     if provenance is None:
-        raise ArtifactTypeError(
-            f"load: no provenance manifest at {path}; legacy shim lands in Task 16"
-        )
+        from hvantk.core.io._legacy import unknown_provenance_for
+        provenance = unknown_provenance_for(path)
     if path.name.endswith(".geneset.json"):
         return load_gene_set_json(path, provenance)
     if path.suffix == ".parquet":
