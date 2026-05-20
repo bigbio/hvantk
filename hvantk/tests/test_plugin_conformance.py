@@ -336,3 +336,37 @@ def test_insider_variants_round_trip(tmp_path):
     assert isinstance(loaded, AnnotationTable)
     assert loaded.backend == "hail"
     assert loaded.count() > 0
+
+
+# ---------- msigdb:genesets ----------
+
+
+@pytest.mark.hail
+def test_msigdb_genesets_round_trip(tmp_path):
+    plugin_loader.reset_registry_for_tests()
+    reg = plugin_loader.get_registry()
+    spec = reg.get_dataset("msigdb:genesets")
+
+    assert spec.artifact_type is AnnotationTable
+    assert spec.schema_id == "msigdb-genesets-v1"
+
+    fixture = Path("hvantk/skills/msigdb/tests/testdata/raw/msigdb/c2.cp-sample.gmt")
+    assert fixture.exists()
+
+    object.__setattr__(spec, "drift_probe", lambda: {"fingerprint": "sha256:test-msigdb"})
+
+    out = tmp_path / "genesets.ht"
+    prov = run_builder_for_spec(
+        spec,
+        parsed_input=fixture,
+        output_path=out,
+        plugin_version=spec.plugin_version,
+    )
+
+    assert prov.plugin == "msigdb"
+    assert prov.schema_id == "msigdb-genesets-v1"
+
+    loaded = core_io.load(out)
+    assert isinstance(loaded, AnnotationTable)
+    assert loaded.backend == "hail"
+    assert loaded.count() > 0

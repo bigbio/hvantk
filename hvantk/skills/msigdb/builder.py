@@ -82,3 +82,30 @@ def create_msigdb_tb(
         overwrite=overwrite,
         export_tsv=export_tsv,
     )
+
+
+def build_msigdb_genesets(
+    parsed_input,
+    ctx,
+):
+    """Phase B builder — returns an AnnotationTable.
+
+    Each row is one MSigDB gene set keyed by set_name. The genes member
+    column is an array<str>. msigdb may be promoted to a GeneSet collection
+    artifact in a future phase; for Phase B it stays as an AnnotationTable.
+    """
+    from hvantk.core.models import AnnotationTable
+
+    ht = hl.import_lines(paths=str(parsed_input), min_partitions=4)
+    parts = ht.text.split("\t")
+    ht = ht.select(
+        set_name=parts[0],
+        source_url=parts[1],
+        genes=parts[2:],
+    )
+    ht = ht.filter(ht.set_name != "")
+    ht = ht.key_by("set_name")
+
+    return AnnotationTable.from_hail(
+        ht, provenance=ctx.provenance(schema_id="msigdb-genesets-v1")
+    )

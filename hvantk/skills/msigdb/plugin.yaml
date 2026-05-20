@@ -11,9 +11,11 @@ datasets:
   - name: genesets
     domain: mapping
     backend: hail
+    artifact_type: AnnotationTable
+    schema_id: msigdb-genesets-v1
     builder:
       module: hvantk.skills.msigdb.builder
-      function: create_msigdb_tb
+      function: build_msigdb_genesets
     drift_probe:
       module: hvantk.skills.msigdb.drift_probe
       function: fetch_fingerprint
