@@ -19,11 +19,14 @@ from hvantk.core.io._errors import ArtifactTypeError, SchemaIdMismatchError
 from hvantk.core.io._formats import (
     load_annotation_table_ht,
     load_annotation_table_parquet,
+    load_expression_matrix_h5ad,
     save_annotation_table_ht,
     save_annotation_table_parquet,
+    save_expression_matrix_h5ad,
 )
 from hvantk.core.io._manifest import read_manifest, write_manifest
 from hvantk.core.models.annotation_table import AnnotationTable
+from hvantk.core.models.expression_matrix import ExpressionMatrix
 
 
 def save(artifact: Any, path: str | Path) -> None:
@@ -36,6 +39,15 @@ def save(artifact: Any, path: str | Path) -> None:
         else:
             raise ArtifactTypeError(
                 f"AnnotationTable save: unrecognized extension for {path}"
+            )
+        write_manifest(artifact.provenance, path)
+        return
+    if isinstance(artifact, ExpressionMatrix):
+        if path.suffix == ".h5ad":
+            save_expression_matrix_h5ad(artifact, path)
+        else:
+            raise ArtifactTypeError(
+                f"ExpressionMatrix save: unrecognized extension for {path}"
             )
         write_manifest(artifact.provenance, path)
         return
@@ -55,4 +67,6 @@ def load(path: str | Path) -> Any:
         return load_annotation_table_parquet(path, provenance)
     if path.suffix == ".ht" or path.name.endswith(".ht/"):
         return load_annotation_table_ht(path, provenance)
+    if path.suffix == ".h5ad":
+        return load_expression_matrix_h5ad(path, provenance)
     raise ArtifactTypeError(f"load: unrecognized extension for {path}")

@@ -7,6 +7,7 @@ from typing import Any
 import pandas as pd
 
 from hvantk.core.models.annotation_table import AnnotationTable
+from hvantk.core.models.expression_matrix import ExpressionMatrix
 from hvantk.core.models.provenance import Provenance
 
 
@@ -30,3 +31,14 @@ def load_annotation_table_ht(path: Path, provenance: Provenance) -> AnnotationTa
 
     ht = hl.read_table(str(path))
     return AnnotationTable.from_hail(ht, provenance=provenance)
+
+
+def save_expression_matrix_h5ad(em: ExpressionMatrix, path: Path) -> None:
+    em.to_anndata().write_h5ad(str(path))
+
+
+def load_expression_matrix_h5ad(path: Path, provenance: Provenance) -> ExpressionMatrix:
+    import anndata as ad
+
+    adata = ad.read_h5ad(str(path))
+    return ExpressionMatrix.from_anndata(adata, provenance=provenance)

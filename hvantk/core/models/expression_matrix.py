@@ -118,4 +118,5 @@ class ExpressionMatrix:
         raise NotImplementedError("hail-mt backend lands in Phase J")
 
     def save(self, path: str | Path) -> None:
-        raise NotImplementedError("save lands in Task 14 alongside core/io")
+        from hvantk.core import io as core_io
+        core_io.save(self, path)
