@@ -97,12 +97,16 @@ class BackendRouter:
             # Large data or unknown size → prefer Hail
             preference = [_BACKEND_HAIL, _BACKEND_DUCKDB, _BACKEND_PANDAS]
 
-        selected = next(b for b in available if _backend_value(b) == preference[0]
-                        or _backend_value(b) in preference
-                        and preference.index(_backend_value(b)) == min(
-                            preference.index(_backend_value(x)) for x in available
-                            if _backend_value(x) in preference
-                        ))
+        # Pick from `available` the backend that ranks earliest in `preference`.
+        # Backends not in `preference` are sorted to the end as a tiebreaker.
+        def _rank(b):
+            bv = _backend_value(b)
+            try:
+                return preference.index(bv)
+            except ValueError:
+                return len(preference)
+
+        selected = min(available, key=_rank)
         logger.info(
             "BackendRouter: selected %s (row_hint=%s, available=%s)",
             _backend_value(selected),
