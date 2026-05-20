@@ -86,3 +86,44 @@ def test_peptideatlas_phospho_round_trip(tmp_path, peptideatlas_phospho_parsed_t
     assert isinstance(loaded, AnnotationTable)
     assert loaded.provenance == prov
     assert loaded.count() == 2
+
+
+# ---------- clinvar:variants ----------
+
+
+@pytest.mark.hail
+def test_clinvar_variants_round_trip(tmp_path):
+    plugin_loader.reset_registry_for_tests()
+    reg = plugin_loader.get_registry()
+    spec = reg.get_dataset("clinvar:variants")
+
+    assert spec.artifact_type is AnnotationTable
+    assert spec.schema_id == "clinvar-variants-v1"
+    assert spec.plugin_version
+
+    # Use the bundled fixture VCF (chr20 subset)
+    fixture = Path("hvantk/skills/clinvar/tests/testdata/raw/clinvar/clinvar_20220403_chr20.vcf.bgz")
+    assert fixture.exists(), f"missing fixture: {fixture}"
+
+    # Avoid network calls in the drift_probe (clinvar probe hits NCBI)
+    object.__setattr__(spec, "drift_probe", lambda: {"fingerprint": "sha256:test-clinvar"})
+
+    out = tmp_path / "variants.ht"
+    prov = run_builder_for_spec(
+        spec,
+        parsed_input=fixture,
+        output_path=out,
+        plugin_version=spec.plugin_version,
+    )
+
+    assert prov.plugin == "clinvar"
+    assert prov.dataset == "clinvar:variants"
+    assert prov.schema_id == "clinvar-variants-v1"
+    assert prov.source_fingerprint == "sha256:test-clinvar"
+
+    loaded = core_io.load(out)
+    assert isinstance(loaded, AnnotationTable)
+    assert loaded.backend == "hail"
+    assert loaded.provenance == prov
+    # Sanity: fixture has > 0 variants
+    assert loaded.count() > 0

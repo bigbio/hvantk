@@ -11,9 +11,11 @@ datasets:
   - name: variants
     domain: genomics
     backend: hail
+    artifact_type: AnnotationTable
+    schema_id: clinvar-variants-v1
     builder:
       module: hvantk.skills.clinvar.builder
-      function: create_clinvar_tb
+      function: build_clinvar
     drift_probe:
       module: hvantk.skills.clinvar.drift_probe
       function: fetch_fingerprint
