@@ -78,3 +78,17 @@ def test_to_hail_mt_raises_in_phase_a(adata):
     em = ExpressionMatrix.from_anndata(adata, provenance=_prov())
     with pytest.raises(NotImplementedError):
         em.to_hail_mt()
+
+
+def test_subset_obs_using_obs_id(adata):
+    """Predicates referencing the synthetic obs_id column (exposed via .obs)
+    must also work in subset_obs. Otherwise the two APIs disagree."""
+    em = ExpressionMatrix.from_anndata(adata, provenance=_prov())
+    sub = em.subset_obs(col("obs_id") == "s1")
+    assert sub.n_obs == 1
+
+
+def test_subset_var_using_var_id(adata):
+    em = ExpressionMatrix.from_anndata(adata, provenance=_prov())
+    sub = em.subset_var(col("var_id") == "g1")
+    assert sub.n_vars == 1

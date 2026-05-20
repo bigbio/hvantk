@@ -66,7 +66,8 @@ class ExpressionMatrix:
 
     def subset_obs(self, predicate: Expr) -> "ExpressionMatrix":
         if self.backend == "anndata":
-            mask = compile_to_pandas(predicate, self._matrix.obs)
+            obs_df = self._matrix.obs.reset_index().rename(columns={"index": "obs_id"})
+            mask = compile_to_pandas(predicate, obs_df)
             return ExpressionMatrix.from_anndata(
                 self._matrix[mask.values, :].copy(), provenance=self.provenance
             )
@@ -74,7 +75,8 @@ class ExpressionMatrix:
 
     def subset_var(self, predicate: Expr) -> "ExpressionMatrix":
         if self.backend == "anndata":
-            mask = compile_to_pandas(predicate, self._matrix.var)
+            var_df = self._matrix.var.reset_index().rename(columns={"index": "var_id"})
+            mask = compile_to_pandas(predicate, var_df)
             return ExpressionMatrix.from_anndata(
                 self._matrix[:, mask.values].copy(), provenance=self.provenance
             )
