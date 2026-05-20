@@ -218,3 +218,11 @@ manuscript/
 
 # Claude AI files
 .claude/
+
+# Vscode AI rules
+.github/instructions/codacy.instructions.md
+
+# Local planning / brainstorming artifacts (not for distribution)
+docs/plans/
+docs/specs/
+docs/superpowers/
