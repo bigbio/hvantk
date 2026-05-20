@@ -68,12 +68,17 @@ def save(artifact: Any, path: str | Path) -> None:
     )
 
 
-def load(path: str | Path) -> Any:
+def load(path: str | Path, *, expected_schema_id: str | None = None) -> Any:
     path = Path(path)
     provenance = read_manifest(path)
     if provenance is None:
         from hvantk.core.io._legacy import unknown_provenance_for
         provenance = unknown_provenance_for(path)
+    elif expected_schema_id is not None and provenance.schema_id != expected_schema_id:
+        raise SchemaIdMismatchError(
+            f"schema_id mismatch at {path}: manifest has {provenance.schema_id!r}, "
+            f"caller expected {expected_schema_id!r}"
+        )
     if path.name.endswith(".geneset.json"):
         return load_gene_set_json(path, provenance)
     if path.suffix == ".parquet":

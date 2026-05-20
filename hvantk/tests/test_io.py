@@ -90,3 +90,34 @@ def test_save_load_geneset_round_trip(tmp_path):
     assert loaded.name == "brca"
     assert loaded.to_set() == {"BRCA1", "BRCA2"}
     assert loaded.provenance == gs.provenance
+
+
+def test_schema_id_mismatch_raises(tmp_path):
+    df = pd.DataFrame({"x": [1]})
+    ann = AnnotationTable.from_pandas(df, provenance=_prov("v1"))
+    out = tmp_path / "rows.parquet"
+    core_io.save(ann, out)
+
+    with pytest.raises(SchemaIdMismatchError, match="v1.*v2"):
+        core_io.load(out, expected_schema_id="v2")
+
+
+def test_schema_id_match_ok(tmp_path):
+    df = pd.DataFrame({"x": [1]})
+    ann = AnnotationTable.from_pandas(df, provenance=_prov("v1"))
+    out = tmp_path / "rows.parquet"
+    core_io.save(ann, out)
+
+    loaded = core_io.load(out, expected_schema_id="v1")
+    assert loaded.provenance.schema_id == "v1"
+
+
+def test_schema_id_check_skipped_when_not_specified(tmp_path):
+    """Default behavior: no check, any schema_id loads."""
+    df = pd.DataFrame({"x": [1]})
+    ann = AnnotationTable.from_pandas(df, provenance=_prov("anything"))
+    out = tmp_path / "rows.parquet"
+    core_io.save(ann, out)
+
+    loaded = core_io.load(out)  # no expected_schema_id
+    assert loaded.provenance.schema_id == "anything"
