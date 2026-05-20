@@ -233,3 +233,37 @@ def test_clingen_gene_disease_round_trip(tmp_path):
     assert isinstance(loaded, AnnotationTable)
     assert loaded.backend == "hail"
     assert loaded.count() > 0
+
+
+# ---------- gwas-catalog:associations ----------
+
+
+@pytest.mark.hail
+def test_gwas_catalog_associations_round_trip(tmp_path):
+    plugin_loader.reset_registry_for_tests()
+    reg = plugin_loader.get_registry()
+    spec = reg.get_dataset("gwas-catalog:associations")
+
+    assert spec.artifact_type is AnnotationTable
+    assert spec.schema_id == "gwas-catalog-associations-v1"
+
+    fixture = Path("hvantk/skills/gwas_catalog/tests/testdata/raw/gwas-catalog/gwas-catalog-sample.tsv")
+    assert fixture.exists()
+
+    object.__setattr__(spec, "drift_probe", lambda: {"fingerprint": "sha256:test-gwas"})
+
+    out = tmp_path / "associations.ht"
+    prov = run_builder_for_spec(
+        spec,
+        parsed_input=fixture,
+        output_path=out,
+        plugin_version=spec.plugin_version,
+    )
+
+    assert prov.plugin == "gwas-catalog"
+    assert prov.schema_id == "gwas-catalog-associations-v1"
+
+    loaded = core_io.load(out)
+    assert isinstance(loaded, AnnotationTable)
+    assert loaded.backend == "hail"
+    assert loaded.count() > 0

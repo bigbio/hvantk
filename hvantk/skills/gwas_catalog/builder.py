@@ -197,3 +197,96 @@ def create_gwas_catalog_tb(
         overwrite=overwrite,
         export_tsv=export_tsv,
     )
+
+
+def build_gwas_catalog_associations(
+    parsed_input,
+    ctx,
+    *,
+    reference_genome: str = "GRCh38",
+):
+    """Phase B builder — returns an AnnotationTable.
+
+    See create_gwas_catalog_tb for the transform semantics; this function
+    runs the same import + transform but returns the lazy Hail Table wrapped
+    in an AnnotationTable with Provenance.
+    """
+    from hvantk.core.models import AnnotationTable
+
+    ht = hl.import_table(
+        paths=str(parsed_input),
+        delimiter="\t",
+        quote=None,
+        missing="",
+        impute=False,
+        min_partitions=4,
+    )
+
+    # Inline the transform body verbatim from create_gwas_catalog_tb's `transform()`
+    # closure. Begin: rename → filter → type coercions → synthesize key → key_by.
+    ht = ht.rename(_GWAS_CATALOG_RENAME)
+    ht = ht.filter(~ht.strongest_snp_risk_allele.endswith("-?"))
+    ht = ht.filter(ht.chr_id.matches("^(chr)?(\\d+|X|Y|MT?)$"))
+
+    ht = ht.annotate(
+        chr_pos=hl.int32(ht.chr_pos),
+        p_value=hl.float64(ht.p_value),
+        pvalue_mlog=hl.if_else(
+            ht.pvalue_mlog == "",
+            hl.missing(hl.tfloat64),
+            hl.float64(ht.pvalue_mlog),
+        ),
+        or_or_beta=hl.if_else(
+            ht.or_or_beta == "",
+            hl.missing(hl.tfloat64),
+            hl.float64(ht.or_or_beta),
+        ),
+        risk_allele_frequency=hl.if_else(
+            ht.risk_allele_frequency == "",
+            hl.missing(hl.tfloat64),
+            hl.parse_float64(ht.risk_allele_frequency),
+        ),
+        upstream_gene_distance=hl.if_else(
+            ht.upstream_gene_distance == "",
+            hl.missing(hl.tfloat64),
+            hl.float64(ht.upstream_gene_distance),
+        ),
+        downstream_gene_distance=hl.if_else(
+            ht.downstream_gene_distance == "",
+            hl.missing(hl.tfloat64),
+            hl.float64(ht.downstream_gene_distance),
+        ),
+        pubmedid=hl.if_else(
+            ht.pubmedid == "", hl.missing(hl.tint32), hl.int32(ht.pubmedid)
+        ),
+        snp_id_current=hl.if_else(
+            ht.snp_id_current == "",
+            hl.missing(hl.tint32),
+            hl.parse_int32(ht.snp_id_current),
+        ),
+        merged=hl.if_else(
+            ht.merged == "", hl.missing(hl.tint32), hl.int32(ht.merged)
+        ),
+        intergenic=str_to_bool(ht.intergenic),
+        cnv=str_to_bool(ht.cnv),
+    )
+
+    risk_allele = ht.strongest_snp_risk_allele.split("-")[-1]
+    chr_id_norm = hl.case() \
+        .when((ht.chr_id == "MT") | (ht.chr_id == "chrMT"), "M") \
+        .default(ht.chr_id)
+    contig = hl.if_else(
+        chr_id_norm.startswith("chr"), chr_id_norm, "chr" + chr_id_norm
+    )
+    ht = ht.annotate(
+        risk_allele=risk_allele,
+        locus=hl.parse_locus(
+            contig + ":" + hl.str(ht.chr_pos), reference_genome=reference_genome
+        ),
+    )
+    ht = ht.annotate(alleles=[ht.risk_allele, "N"])
+    ht = ht.key_by("locus", "alleles")
+
+    return AnnotationTable.from_hail(
+        ht, provenance=ctx.provenance(schema_id="gwas-catalog-associations-v1")
+    )

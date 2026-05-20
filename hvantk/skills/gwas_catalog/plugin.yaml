@@ -11,9 +11,11 @@ datasets:
   - name: associations
     domain: genomics
     backend: hail
+    artifact_type: AnnotationTable
+    schema_id: gwas-catalog-associations-v1
     builder:
       module: hvantk.skills.gwas_catalog.builder
-      function: create_gwas_catalog_tb
+      function: build_gwas_catalog_associations
     drift_probe:
       module: hvantk.skills.gwas_catalog.drift_probe
       function: fetch_fingerprint
