@@ -68,7 +68,54 @@ _PANDAS_BINOPS = {
 }
 
 
-# ---------- hail compiler (stub; populated in Task 4) ----------
+# ---------- hail compiler ----------
 
 def compile_to_hail(expr: Expr, ht: "Any") -> "Any":
-    raise NotImplementedError("compile_to_hail lands in Task 4")
+    """Compile an Expr to a Hail expression resolved against `ht`."""
+    import hail as hl  # local import: avoid importing hail at module load
+
+    def go(e: Expr):
+        if isinstance(e, Col):
+            return ht[e.name]
+        if isinstance(e, Literal):
+            return hl.literal(e.value) if isinstance(e.value, (list, tuple, set)) else e.value
+        if isinstance(e, UnaryOp) and e.op == "not":
+            return ~go(e.operand)
+        if isinstance(e, BinOp):
+            left = go(e.left)
+            right = go(e.right)
+            return _HAIL_BINOPS[e.op](left, right)
+        if isinstance(e, CallOp):
+            receiver = go(e.receiver)
+            if e.name == "isin":
+                values = go(e.args[0])
+                # Hail's .contains() lives on ArrayExpression, not TupleExpression;
+                # always pass a list to hl.literal so we get an ArrayExpression.
+                if not isinstance(values, list):
+                    values = list(values)
+                return hl.literal(values).contains(receiver)
+            if e.name == "is_null":
+                return hl.is_missing(receiver)
+            if e.name == "is_not_null":
+                return hl.is_defined(receiver)
+            raise NotImplementedError(f"hail: unknown CallOp {e.name!r}")
+        raise NotImplementedError(f"hail: unknown Expr node {type(e).__name__}")
+
+    return go(expr)
+
+
+_HAIL_BINOPS = {
+    "and": lambda a, b: a & b,
+    "or":  lambda a, b: a | b,
+    "eq":  lambda a, b: a == b,
+    "ne":  lambda a, b: a != b,
+    "gt":  lambda a, b: a > b,
+    "ge":  lambda a, b: a >= b,
+    "lt":  lambda a, b: a < b,
+    "le":  lambda a, b: a <= b,
+    "add": lambda a, b: a + b,
+    "sub": lambda a, b: a - b,
+    "mul": lambda a, b: a * b,
+    "div": lambda a, b: a / b,
+    "pow": lambda a, b: a ** b,
+}
