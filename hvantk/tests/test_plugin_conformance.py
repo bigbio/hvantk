@@ -127,3 +127,39 @@ def test_clinvar_variants_round_trip(tmp_path):
     assert loaded.provenance == prov
     # Sanity: fixture has > 0 variants
     assert loaded.count() > 0
+
+
+# ---------- hgnc:lookup ----------
+
+
+@pytest.mark.hail
+def test_hgnc_lookup_round_trip(tmp_path):
+    plugin_loader.reset_registry_for_tests()
+    reg = plugin_loader.get_registry()
+    spec = reg.get_dataset("hgnc:lookup")
+
+    assert spec.artifact_type is AnnotationTable
+    assert spec.schema_id == "hgnc-lookup-v1"
+    assert spec.plugin_version
+
+    fixture = Path("hvantk/skills/hgnc/tests/testdata/raw/hgnc/hgnc_test_sample.tsv")
+    assert fixture.exists(), f"missing fixture: {fixture}"
+
+    object.__setattr__(spec, "drift_probe", lambda: {"fingerprint": "sha256:test-hgnc"})
+
+    out = tmp_path / "lookup.ht"
+    prov = run_builder_for_spec(
+        spec,
+        parsed_input=fixture,
+        output_path=out,
+        plugin_version=spec.plugin_version,
+    )
+
+    assert prov.plugin == "hgnc"
+    assert prov.dataset == "hgnc:lookup"
+    assert prov.schema_id == "hgnc-lookup-v1"
+
+    loaded = core_io.load(out)
+    assert isinstance(loaded, AnnotationTable)
+    assert loaded.backend == "hail"
+    assert loaded.count() > 0

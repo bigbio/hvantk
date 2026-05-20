@@ -11,9 +11,11 @@ datasets:
   - name: lookup
     domain: mapping
     backend: hail
+    artifact_type: AnnotationTable
+    schema_id: hgnc-lookup-v1
     builder:
       module: hvantk.skills.hgnc.builder
-      function: create_hgnc_gene_tb
+      function: build_hgnc_gene_lookup
     drift_probe:
       module: hvantk.skills.hgnc.drift_probe
       function: fetch_fingerprint
