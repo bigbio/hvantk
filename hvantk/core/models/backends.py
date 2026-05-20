@@ -26,6 +26,8 @@ class AlgorithmMeta:
 
     Attributes
     ----------
+    name : str
+        Registry name for the algorithm.
     backends : list[Backend]
         Backends the algorithm supports (hard constraint for the router).
     input_format : str
@@ -37,6 +39,7 @@ class AlgorithmMeta:
     """
 
     backends: List[Backend]
+    name: str = ""
     input_format: str = "dataframe"
     output_format: str = "dataframe"
     key_fields: Optional[List[str]] = None
@@ -51,6 +54,7 @@ _IMPLICIT_HAIL_META = AlgorithmMeta(
 
 def algorithm(
     backends: List[Backend],
+    name: str = "",
     input_format: str = "dataframe",
     output_format: str = "dataframe",
     key_fields: Optional[List[str]] = None,
@@ -65,6 +69,8 @@ def algorithm(
     ----------
     backends : list[Backend]
         Which backends can execute this algorithm.
+    name : str, optional
+        Registry name for the algorithm. Defaults to the function name.
     input_format : str
         ``"dataframe"`` or ``"table"`` — what the function receives.
     output_format : str
@@ -76,6 +82,7 @@ def algorithm(
     def decorator(fn: Callable) -> Callable:
         fn._algorithm_meta = AlgorithmMeta(
             backends=backends,
+            name=name or fn.__name__,
             input_format=input_format,
             output_format=output_format,
             key_fields=key_fields,

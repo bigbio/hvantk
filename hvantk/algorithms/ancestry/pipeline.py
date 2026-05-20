@@ -59,6 +59,7 @@ from hvantk.algorithms.ancestry.filter import (
 )
 from hvantk.algorithms.ancestry.merge import merge_matrixtables
 from hvantk.algorithms.ancestry.pca import PCAResult, compute_pca
+from hvantk.core.models.backends import Backend, algorithm
 
 logger = logging.getLogger(__name__)
 
@@ -734,6 +735,12 @@ def _checkpoint_or_load(
     return mt.checkpoint(cp_path, overwrite=overwrite)
 
 
+@algorithm(
+    name="ancestry_inference",
+    backends=[Backend.HAIL],
+    input_format="table",
+    output_format="dataframe",
+)
 def run_ancestry_inference(
     query_mt: hl.MatrixTable,
     reference_mt: hl.MatrixTable,
@@ -775,6 +782,17 @@ def run_ancestry_inference(
     ------
     ValueError
         If inputs are invalid or pipeline encounters errors.
+
+    Algorithm-side input type
+    -------------------------
+    This algorithm consumes raw ``hl.MatrixTable`` instances (genotype data)
+    rather than the platform's ``ExpressionMatrix`` artifact. The
+    ExpressionMatrix abstraction does not yet support a hail-mt backend
+    (see Phase J of the data-model platform plan), and genotype data is the
+    canonical case where the ``required_backend="hail"`` escape hatch is
+    appropriate. When the hail-mt backend lands, this signature can be
+    adapted to accept ``ExpressionMatrix`` instances and call
+    ``.to_hail_mt()`` internally.
 
     Example
     -------
