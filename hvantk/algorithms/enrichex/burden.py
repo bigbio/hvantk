@@ -37,6 +37,7 @@ from hvantk.algorithms.enrichex.constants import (
     VARIANT_CLASS_PRESETS,
     _DEPRECATED_AGGREGATION_ALIASES,
 )
+from hvantk.core.models.backends import algorithm, Backend
 from hvantk.core.utils.table_utils import field_exists, resolve_field
 
 logger = logging.getLogger(__name__)
@@ -819,6 +820,7 @@ def linear_burden_test(
     return result
 
 
+@algorithm(name="burden_analysis", backends=[Backend.HAIL])
 def run_burden_analysis(
     cohort_mt: hl.MatrixTable,
     gene_sets: Dict[str, List[str]],
@@ -1151,6 +1153,7 @@ def _check_synonymous_control(
         )
 
 
+@algorithm(name="stratified_burden_analysis", backends=[Backend.HAIL])
 def run_stratified_burden_analysis(
     cohort_mt: "hl.MatrixTable",
     gene_sets: Dict[str, List[str]],
