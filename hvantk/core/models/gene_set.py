@@ -51,4 +51,5 @@ class GeneSet:
         return set(self._members)
 
     def save(self, path: str | Path) -> None:
-        raise NotImplementedError("save lands in Task 15 alongside core/io")
+        from hvantk.core import io as core_io
+        core_io.save(self, path)

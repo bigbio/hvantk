@@ -14,6 +14,7 @@ from hvantk.core.io._errors import ArtifactTypeError, SchemaIdMismatchError
 from hvantk.core.models._expr import col
 from hvantk.core.models.annotation_table import AnnotationTable
 from hvantk.core.models.expression_matrix import ExpressionMatrix
+from hvantk.core.models.gene_set import GeneSet
 from hvantk.core.models.provenance import Provenance
 
 
@@ -74,3 +75,18 @@ def test_save_load_anndata_round_trip(tmp_path):
     assert loaded.n_obs == 1
     assert loaded.n_vars == 1
     assert loaded.provenance == em.provenance
+
+
+def test_save_load_geneset_round_trip(tmp_path):
+    gs = GeneSet(
+        name="brca", provenance=_prov("brca-v1"),
+        _members=frozenset({"BRCA1", "BRCA2"}),
+    )
+    out = tmp_path / "brca.geneset.json"
+    core_io.save(gs, out)
+
+    loaded = core_io.load(out)
+    assert isinstance(loaded, GeneSet)
+    assert loaded.name == "brca"
+    assert loaded.to_set() == {"BRCA1", "BRCA2"}
+    assert loaded.provenance == gs.provenance

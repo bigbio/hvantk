@@ -20,13 +20,16 @@ from hvantk.core.io._formats import (
     load_annotation_table_ht,
     load_annotation_table_parquet,
     load_expression_matrix_h5ad,
+    load_gene_set_json,
     save_annotation_table_ht,
     save_annotation_table_parquet,
     save_expression_matrix_h5ad,
+    save_gene_set_json,
 )
 from hvantk.core.io._manifest import read_manifest, write_manifest
 from hvantk.core.models.annotation_table import AnnotationTable
 from hvantk.core.models.expression_matrix import ExpressionMatrix
+from hvantk.core.models.gene_set import GeneSet
 
 
 def save(artifact: Any, path: str | Path) -> None:
@@ -51,6 +54,15 @@ def save(artifact: Any, path: str | Path) -> None:
             )
         write_manifest(artifact.provenance, path)
         return
+    if isinstance(artifact, GeneSet):
+        if path.name.endswith(".geneset.json"):
+            save_gene_set_json(artifact, path)
+        else:
+            raise ArtifactTypeError(
+                f"GeneSet save: must end in .geneset.json, got {path}"
+            )
+        write_manifest(artifact.provenance, path)
+        return
     raise ArtifactTypeError(
         f"save: no handler for artifact type {type(artifact).__name__}"
     )
@@ -63,6 +75,8 @@ def load(path: str | Path) -> Any:
         raise ArtifactTypeError(
             f"load: no provenance manifest at {path}; legacy shim lands in Task 16"
         )
+    if path.name.endswith(".geneset.json"):
+        return load_gene_set_json(path, provenance)
     if path.suffix == ".parquet":
         return load_annotation_table_parquet(path, provenance)
     if path.suffix == ".ht" or path.name.endswith(".ht/"):
