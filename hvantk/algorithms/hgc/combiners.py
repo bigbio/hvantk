@@ -6,8 +6,10 @@ import hail as hl
 from hvantk.algorithms.hgc.file_utils import sort_mts_cols
 from hvantk.algorithms.hgc.file_utils import validate_vcfs_paths, validate_vds_paths
 from hvantk.algorithms.hgc.constants import HG38_GENOME_REFERENCE
+from hvantk.core.models.backends import algorithm, Backend
 
 
+@algorithm(name="combine_gvcfs", backends=[Backend.HAIL])
 def combine_gvcfs(
     gvcf_dir: str,
     vds_output_path: str,
@@ -40,6 +42,10 @@ def combine_gvcfs(
 
     Raises:
         FileNotFoundError, ValueError, PermissionError: If file validations fail.
+
+    Notes:
+        This algorithm operates on raw `hl.MatrixTable` / `hl.VariantDataset` instances
+        (genotype data). ExpressionMatrix's hail-mt backend isn't available yet (Phase J).
     """
     try:
         if not (gvcf_dir or vdses):
@@ -130,6 +136,7 @@ def combine_gvcfs(
         raise
 
 
+@algorithm(name="combine_vdses", backends=[Backend.HAIL])
 def combine_vdses(
     vdses_dir: str, output_path: str, validate: bool = True, overwrite: bool = False
 ) -> None:
@@ -150,6 +157,10 @@ def combine_vdses(
     Raises:
         ValueError: If no valid VDS directories are found.
         Exception: If an error occurs during VDS combination or writing.
+
+    Notes:
+        This algorithm operates on raw `hl.MatrixTable` / `hl.VariantDataset` instances
+        (genotype data). ExpressionMatrix's hail-mt backend isn't available yet (Phase J).
     """
     try:
         # Ensure a container directory is provided and valid.

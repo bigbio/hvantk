@@ -22,6 +22,7 @@ import pandas as pd
 import numpy as np
 from typing import Optional, Dict, Tuple, List, Union
 from pathlib import Path
+from hvantk.core.models.backends import algorithm, Backend
 
 logger = logging.getLogger(__name__)
 
@@ -672,6 +673,7 @@ def compute_variant_qc(
         raise
 
 
+@algorithm(name="compute_full_qc", backends=[Backend.HAIL])
 def compute_full_qc(
     mt: hl.MatrixTable,
     sample_qc_name: str = "sample_qc",
@@ -696,6 +698,10 @@ def compute_full_qc(
         >>> qc_results = compute_full_qc(mt)
         >>> sample_df = qc_results.get_sample_metrics_df()
         >>> variant_df = qc_results.get_variant_metrics_df()
+
+    Notes:
+        This algorithm operates on raw `hl.MatrixTable` / `hl.VariantDataset` instances
+        (genotype data). ExpressionMatrix's hail-mt backend isn't available yet (Phase J).
     """
     logger.info("Computing comprehensive QC metrics for samples and variants")
 

@@ -1,6 +1,7 @@
 import logging
 import hail as hl
 from hvantk.algorithms.hgc.constants import ADJ_GT_FIELD, VCF_EXTENSION
+from hvantk.core.models.backends import algorithm, Backend
 
 # Make gnomad import optional - only required when adjust_genotypes=True
 try:
@@ -121,6 +122,7 @@ def _validate_and_fix_biallelic_entries(
     return mt
 
 
+@algorithm(name="convert_vds_to_mt", backends=[Backend.HAIL])
 def convert_vds_to_mt(
     vds_path: str,
     output_path: str,
@@ -156,6 +158,8 @@ def convert_vds_to_mt(
         - VDS-level splitting is critical for correct GT/AD/PL alignment
         - Validation can be skipped for trusted pipelines to improve performance
         - After VDS split, GT/AD are already biallelic (no manual downcoding needed)
+        - This algorithm operates on raw `hl.MatrixTable` / `hl.VariantDataset` instances
+          (genotype data). ExpressionMatrix's hail-mt backend isn't available yet (Phase J).
     """
     try:
         # Check dependencies
