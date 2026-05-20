@@ -11,9 +11,11 @@ datasets:
   - name: sites
     domain: proteomics
     backend: hail
+    artifact_type: AnnotationTable
+    schema_id: uniprot-ptm-sites-v1
     builder:
       module: hvantk.skills.uniprot_ptm.builder
-      function: create_ptm_sites_tb
+      function: build_uniprot_ptm_sites
     drift_probe:
       module: hvantk.skills.uniprot_ptm.drift_probe
       function: fetch_fingerprint

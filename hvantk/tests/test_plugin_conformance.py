@@ -370,3 +370,57 @@ def test_msigdb_genesets_round_trip(tmp_path):
     assert isinstance(loaded, AnnotationTable)
     assert loaded.backend == "hail"
     assert loaded.count() > 0
+
+
+# ---------- uniprot-ptm:sites ----------
+
+
+@pytest.fixture
+def uniprot_ptm_sites_tsv(tmp_path):
+    """Write a minimal mapped PTM coordinates TSV with the columns the builder expects."""
+    cols = [
+        "chrom", "codon_start", "codon_end", "strand", "uniprot_id", "gene_symbol",
+        "residue_pos", "amino_acid", "ptm_type", "ptm_category", "source_db",
+        "evidence_type", "n_observations", "tissue_type",
+    ]
+    rows = [
+        # Use chr17 (TP53) and chr13 (BRCA2) for plausibility
+        ["17", "7676272", "7676274", "-", "P04637", "TP53", "315", "S",
+         "phosphoserine", "phosphorylation", "uniprot", "experimental", "10", ""],
+        ["13", "32316461", "32316463", "+", "P51587", "BRCA2", "988", "S",
+         "phosphoserine", "phosphorylation", "uniprot", "experimental", "5", ""],
+    ]
+    tsv = tmp_path / "ptm_sites.tsv"
+    with open(tsv, "w") as f:
+        f.write("\t".join(cols) + "\n")
+        for r in rows:
+            f.write("\t".join(r) + "\n")
+    return tsv
+
+
+@pytest.mark.hail
+def test_uniprot_ptm_sites_round_trip(tmp_path, uniprot_ptm_sites_tsv):
+    plugin_loader.reset_registry_for_tests()
+    reg = plugin_loader.get_registry()
+    spec = reg.get_dataset("uniprot-ptm:sites")
+
+    assert spec.artifact_type is AnnotationTable
+    assert spec.schema_id == "uniprot-ptm-sites-v1"
+
+    object.__setattr__(spec, "drift_probe", lambda: {"fingerprint": "sha256:test-ptm"})
+
+    out = tmp_path / "sites.ht"
+    prov = run_builder_for_spec(
+        spec,
+        parsed_input=uniprot_ptm_sites_tsv,
+        output_path=out,
+        plugin_version=spec.plugin_version,
+    )
+
+    assert prov.plugin == "uniprot-ptm"
+    assert prov.schema_id == "uniprot-ptm-sites-v1"
+
+    loaded = core_io.load(out)
+    assert isinstance(loaded, AnnotationTable)
+    assert loaded.backend == "hail"
+    assert loaded.count() == 2
