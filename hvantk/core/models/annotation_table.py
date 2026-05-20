@@ -187,7 +187,8 @@ class AnnotationTable:
     # --- persistence (stubbed; lands in Task 13) ---
 
     def save(self, path: str | Path) -> None:
-        raise NotImplementedError("save lands in Task 13 alongside core/io")
+        from hvantk.core import io as core_io
+        core_io.save(self, path)
 
 
 class _GroupedAnnotationTable:
