@@ -85,6 +85,8 @@ class DatasetSpec:
     test_paths: TestPaths
     download_fn: Callable[..., Any] | None = None
     parse_fn: Callable[..., Any] | None = None
+    artifact_type: type | None = None
+    schema_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -112,3 +114,6 @@ class Provider:
     datasets: tuple[DatasetSpec, ...]
     catalog_path: str | None = None
     primary_domain: str | None = None
+
+
+from hvantk.core.models.build_context import BuildContext  # noqa: F401
