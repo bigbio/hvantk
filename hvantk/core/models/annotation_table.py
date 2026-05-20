@@ -91,6 +91,44 @@ class AnnotationTable:
             self._table.filter(hail_expr), provenance=self.provenance
         )
 
+    def select(self, *columns: str) -> "AnnotationTable":
+        if self.backend == "pandas":
+            return AnnotationTable.from_pandas(
+                self._table[list(columns)].copy(), provenance=self.provenance
+            )
+        return AnnotationTable.from_hail(
+            self._table.select(*columns), provenance=self.provenance
+        )
+
+    def with_columns(self, **assignments: "Expr") -> "AnnotationTable":
+        from hvantk.core.models._compile import (
+            compile_to_hail,
+            compile_to_pandas,
+        )
+
+        if self.backend == "pandas":
+            df = self._table.copy()
+            for name, expr in assignments.items():
+                df[name] = compile_to_pandas(expr, df)
+            return AnnotationTable.from_pandas(df, provenance=self.provenance)
+        # hail
+        kwargs = {
+            name: compile_to_hail(expr, self._table)
+            for name, expr in assignments.items()
+        }
+        return AnnotationTable.from_hail(
+            self._table.annotate(**kwargs), provenance=self.provenance
+        )
+
+    def rename(self, **mapping: str) -> "AnnotationTable":
+        if self.backend == "pandas":
+            return AnnotationTable.from_pandas(
+                self._table.rename(columns=mapping), provenance=self.provenance
+            )
+        return AnnotationTable.from_hail(
+            self._table.rename(mapping), provenance=self.provenance
+        )
+
     # --- persistence (stubbed; lands in Task 13) ---
 
     def save(self, path: str | Path) -> None:

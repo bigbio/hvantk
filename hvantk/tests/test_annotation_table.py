@@ -113,3 +113,51 @@ def test_filter_parity(df):
     p = pandas_ann.filter(predicate).to_pandas()
     h = hail_ann.filter(predicate).to_pandas()
     assert sorted(p["gene"].tolist()) == sorted(h["gene"].tolist())
+
+
+# --- select tests ---
+
+
+def test_select_pandas(df):
+    ann = AnnotationTable.from_pandas(df, provenance=_prov())
+    out = ann.select("gene").to_pandas()
+    assert list(out.columns) == ["gene"]
+
+
+def test_with_columns_pandas(df):
+    ann = AnnotationTable.from_pandas(df, provenance=_prov())
+    out = ann.with_columns(score_sq=col("score") * col("score")).to_pandas()
+    assert out["score_sq"].tolist() == pytest.approx([0.49, 0.16])
+
+
+def test_rename_pandas(df):
+    ann = AnnotationTable.from_pandas(df, provenance=_prov())
+    out = ann.rename(gene="gene_symbol").to_pandas()
+    assert "gene_symbol" in out.columns
+    assert "gene" not in out.columns
+
+
+@pytest.mark.hail
+def test_select_hail():
+    import hail as hl
+
+    ht = hl.Table.parallelize(
+        [{"gene": "BRCA1", "score": 0.7, "extra": 1}],
+        hl.tstruct(gene=hl.tstr, score=hl.tfloat64, extra=hl.tint32),
+    )
+    ann = AnnotationTable.from_hail(ht, provenance=_prov())
+    out = ann.select("gene", "score").to_pandas()
+    assert set(out.columns) == {"gene", "score"}
+
+
+@pytest.mark.hail
+def test_with_columns_hail():
+    import hail as hl
+
+    ht = hl.Table.parallelize(
+        [{"gene": "BRCA1", "score": 0.7}],
+        hl.tstruct(gene=hl.tstr, score=hl.tfloat64),
+    )
+    ann = AnnotationTable.from_hail(ht, provenance=_prov())
+    out = ann.with_columns(score_sq=col("score") * col("score")).to_pandas()
+    assert out["score_sq"].iloc[0] == pytest.approx(0.49)
