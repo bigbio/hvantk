@@ -3,13 +3,16 @@ Backend routing and reader factory.
 
 The BackendRouter selects the best available backend for an algorithm
 based on data size heuristics and the algorithm's declared capabilities.
+
+Note: backend values are compared as strings ("hail", "pandas", "duckdb") so
+this module stays free of hvantk.core.models imports (intra-core direction rule).
+Callers pass Backend enum instances whose .value attribute gives the string.
 """
 
 import logging
 import os
-from typing import List, Optional
+from typing import Any, List, Optional
 
-from hvantk.core.models.backends import AlgorithmMeta, Backend
 from hvantk.core.utils.readers import (
     DataReader,
     HailReader,
@@ -22,6 +25,16 @@ logger = logging.getLogger(__name__)
 # Default row-count thresholds for backend preference
 _SMALL_THRESHOLD = 500_000
 _LARGE_THRESHOLD = 5_000_000
+
+# Backend string constants (mirror Backend enum .value)
+_BACKEND_HAIL = "hail"
+_BACKEND_PANDAS = "pandas"
+_BACKEND_DUCKDB = "duckdb"
+
+
+def _backend_value(b: Any) -> str:
+    """Return the string value of a Backend enum or plain string."""
+    return b.value if hasattr(b, "value") else str(b)
 
 
 class BackendRouter:
@@ -45,9 +58,9 @@ class BackendRouter:
 
     def resolve(
         self,
-        meta: AlgorithmMeta,
+        meta: Any,
         data_paths: Optional[List[str]] = None,
-    ) -> Backend:
+    ) -> Any:
         """Pick the best backend from *meta.backends*.
 
         Parameters
@@ -77,37 +90,43 @@ class BackendRouter:
         row_hint = self._estimate_size(data_paths) if data_paths else None
 
         if row_hint is not None and row_hint < self.small_threshold:
-            preference = [Backend.PANDAS, Backend.DUCKDB, Backend.HAIL]
+            preference = [_BACKEND_PANDAS, _BACKEND_DUCKDB, _BACKEND_HAIL]
         elif row_hint is not None and row_hint < self.large_threshold:
-            preference = [Backend.DUCKDB, Backend.PANDAS, Backend.HAIL]
+            preference = [_BACKEND_DUCKDB, _BACKEND_PANDAS, _BACKEND_HAIL]
         else:
             # Large data or unknown size → prefer Hail
-            preference = [Backend.HAIL, Backend.DUCKDB, Backend.PANDAS]
+            preference = [_BACKEND_HAIL, _BACKEND_DUCKDB, _BACKEND_PANDAS]
 
-        selected = next(b for b in preference if b in available)
+        selected = next(b for b in available if _backend_value(b) == preference[0]
+                        or _backend_value(b) in preference
+                        and preference.index(_backend_value(b)) == min(
+                            preference.index(_backend_value(x)) for x in available
+                            if _backend_value(x) in preference
+                        ))
         logger.info(
             "BackendRouter: selected %s (row_hint=%s, available=%s)",
-            selected.value,
+            _backend_value(selected),
             row_hint,
-            [b.value for b in available],
+            [_backend_value(b) for b in available],
         )
         return selected
 
     @staticmethod
-    def _filter_available(backends: List[Backend]) -> List[Backend]:
+    def _filter_available(backends: List[Any]) -> List[Any]:
         """Return backends whose dependencies are importable."""
         available = []
         for b in backends:
-            if b == Backend.PANDAS:
+            bv = _backend_value(b)
+            if bv == _BACKEND_PANDAS:
                 available.append(b)  # pandas is always available
-            elif b == Backend.HAIL:
+            elif bv == _BACKEND_HAIL:
                 try:
                     import hail  # noqa: F401
 
                     available.append(b)
                 except ImportError:
                     pass
-            elif b == Backend.DUCKDB:
+            elif bv == _BACKEND_DUCKDB:
                 try:
                     import duckdb  # noqa: F401
 
@@ -132,12 +151,13 @@ class ReaderFactory:
     """Create a DataReader for a given backend."""
 
     @staticmethod
-    def create(backend: Backend) -> DataReader:
-        if backend == Backend.HAIL:
+    def create(backend: Any) -> DataReader:
+        bv = _backend_value(backend)
+        if bv == _BACKEND_HAIL:
             return HailReader()
-        elif backend == Backend.PANDAS:
+        elif bv == _BACKEND_PANDAS:
             return PandasReader()
-        elif backend == Backend.DUCKDB:
+        elif bv == _BACKEND_DUCKDB:
             from hvantk.core.utils.readers import DuckDBReader
 
             return DuckDBReader()

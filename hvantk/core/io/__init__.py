@@ -7,8 +7,8 @@ Dispatch:
   *.geneset.json       -> GeneSet [Task 15]
 
 Every saved artifact gets a sidecar <path>.provenance.json. Load returns
-the artifact with its manifest re-attached as Provenance, or
-Provenance.unknown(...) if no manifest is found [Task 16].
+the artifact with its manifest re-attached as Provenance, or a legacy
+unknown provenance if no manifest is found [Task 16].
 """
 from __future__ import annotations
 

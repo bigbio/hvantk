@@ -4,15 +4,17 @@ Backend-specific data readers for Hail Table parquet files.
 Hail Tables on disk are directories containing partitioned parquet files
 under ``rows/parts/``.  These readers allow reading that data via Hail
 (requires Spark), pandas/pyarrow (local), or DuckDB (local).
+
+Note: backend attributes are string-valued ("hail", "pandas", "duckdb") so
+this module stays free of hvantk.core.models imports (intra-core direction rule).
+Callers that need the Backend enum value can compare via .value attribute.
 """
 
 import logging
 import os
-from typing import Optional, Protocol, runtime_checkable
+from typing import Any, Optional, Protocol, runtime_checkable
 
 import pandas as pd
-
-from hvantk.core.models.backends import Backend
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +23,7 @@ logger = logging.getLogger(__name__)
 class DataReader(Protocol):
     """Protocol for reading Hail Table directories."""
 
-    backend: Backend
+    backend: str  # One of "hail", "pandas", "duckdb"
 
     def read(self, path: str):
         """Read in the backend's native format."""
@@ -63,7 +65,7 @@ def _parquet_row_count(ht_path: str) -> Optional[int]:
 class HailReader:
     """Read Hail Tables via Hail (requires a running Spark context)."""
 
-    backend = Backend.HAIL
+    backend: str = "hail"
 
     def read(self, path: str):
         import hail as hl
@@ -83,7 +85,7 @@ class HailReader:
 class PandasReader:
     """Read Hail Table parquet files directly via pyarrow — no Spark needed."""
 
-    backend = Backend.PANDAS
+    backend: str = "pandas"
 
     def read(self, path: str) -> pd.DataFrame:
         parts_dir = _parts_path(path)
@@ -104,7 +106,7 @@ class PandasReader:
 class DuckDBReader:
     """Read Hail Table parquet files via DuckDB — no Spark needed."""
 
-    backend = Backend.DUCKDB
+    backend: str = "duckdb"
 
     def __init__(self):
         import duckdb
