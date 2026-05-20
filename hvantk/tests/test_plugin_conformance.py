@@ -163,3 +163,39 @@ def test_hgnc_lookup_round_trip(tmp_path):
     assert isinstance(loaded, AnnotationTable)
     assert loaded.backend == "hail"
     assert loaded.count() > 0
+
+
+# ---------- gencc:submissions ----------
+
+
+@pytest.mark.hail
+def test_gencc_submissions_round_trip(tmp_path):
+    plugin_loader.reset_registry_for_tests()
+    reg = plugin_loader.get_registry()
+    spec = reg.get_dataset("gencc:submissions")
+
+    assert spec.artifact_type is AnnotationTable
+    assert spec.schema_id == "gencc-submissions-v1"
+    assert spec.plugin_version
+
+    fixture = Path("hvantk/skills/gencc/tests/testdata/raw/gencc/gencc_test_sample.tsv")
+    assert fixture.exists()
+
+    object.__setattr__(spec, "drift_probe", lambda: {"fingerprint": "sha256:test-gencc"})
+
+    out = tmp_path / "submissions.ht"
+    prov = run_builder_for_spec(
+        spec,
+        parsed_input=fixture,
+        output_path=out,
+        plugin_version=spec.plugin_version,
+    )
+
+    assert prov.plugin == "gencc"
+    assert prov.dataset == "gencc:submissions"
+    assert prov.schema_id == "gencc-submissions-v1"
+
+    loaded = core_io.load(out)
+    assert isinstance(loaded, AnnotationTable)
+    assert loaded.backend == "hail"
+    assert loaded.count() > 0

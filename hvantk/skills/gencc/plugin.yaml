@@ -11,9 +11,11 @@ datasets:
   - name: submissions
     domain: genomics
     backend: hail
+    artifact_type: AnnotationTable
+    schema_id: gencc-submissions-v1
     builder:
       module: hvantk.skills.gencc.builder
-      function: create_gencc_submissions_tb
+      function: build_gencc_submissions
     drift_probe:
       module: hvantk.skills.gencc.drift_probe
       function: fetch_fingerprint

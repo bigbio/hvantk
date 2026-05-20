@@ -204,3 +204,91 @@ def create_gencc_submissions_tb(
     )
 
     return gencc_tb
+
+
+def build_gencc_submissions(
+    parsed_input,
+    ctx,
+    *,
+    key_by: str = "gene_disease_submitter",
+    min_classification=None,
+    fields=None,
+):
+    """Phase B builder — returns an AnnotationTable.
+
+    See create_gencc_submissions_tb for the transform semantics; this function
+    runs the same import + transform but returns the lazy Hail Table wrapped
+    in an AnnotationTable with Provenance.
+    """
+    from hvantk.core.models import AnnotationTable
+
+    valid_keys = ("gene_disease_submitter", "gene_disease", "gene")
+    if key_by not in valid_keys:
+        raise ValueError(f"key_by must be one of {valid_keys}, got: {key_by}")
+    if (
+        min_classification is not None
+        and min_classification not in GENCC_CLASSIFICATION_LEVELS
+    ):
+        raise ValueError(
+            f"min_classification must be one of {GENCC_CLASSIFICATION_LEVELS}, "
+            f"got: {min_classification}"
+        )
+
+    ht = hl.import_table(
+        paths=str(parsed_input),
+        delimiter="\t",
+        impute=False,
+        min_partitions=10,
+    )
+
+    rename_map = {
+        k: v for k, v in GENCC_SUBMISSION_FIELDS.items() if k in get_row_fields(ht)
+    }
+    ht = ht.rename(rename_map)
+
+    row_fields = get_row_fields(ht)
+    if "hgnc_id" in row_fields:
+        ht = ht.annotate(
+            hgnc_id=hl.if_else(
+                ht.hgnc_id.startswith("HGNC:"),
+                ht.hgnc_id.replace("HGNC:", ""),
+                ht.hgnc_id,
+            )
+        )
+    if "mondo_id" in row_fields:
+        ht = ht.annotate(
+            mondo_id=hl.if_else(
+                ht.mondo_id.startswith("MONDO:"),
+                ht.mondo_id.replace("MONDO:", ""),
+                ht.mondo_id,
+            )
+        )
+
+    classification_order = {
+        level: i for i, level in enumerate(GENCC_CLASSIFICATION_LEVELS)
+    }
+    ht = ht.annotate(
+        classification_level=hl.literal(classification_order).get(
+            ht.classification, hl.len(GENCC_CLASSIFICATION_LEVELS)
+        )
+    )
+
+    if min_classification is not None:
+        min_level = classification_order[min_classification]
+        ht = ht.filter(ht.classification_level <= min_level)
+
+    # Apply default keying (gene_disease_submitter); leave aggregation modes
+    # to the legacy function for now.
+    if key_by != "gene_disease_submitter":
+        raise NotImplementedError(
+            f"Phase B builder currently supports key_by='gene_disease_submitter' only; "
+            f"got {key_by}. Use the legacy create_gencc_submissions_tb function for now."
+        )
+    ht = ht.key_by("hgnc_id", "mondo_id", "submitter")
+
+    if fields is not None:
+        ht = ht.select(*fields)
+
+    return AnnotationTable.from_hail(
+        ht, provenance=ctx.provenance(schema_id="gencc-submissions-v1")
+    )
