@@ -336,6 +336,8 @@ def _apply_plugin_registrations(reg) -> None:
 
     for ds in reg.list_datasets(backend="hail"):
         TABLE_BUILDERS[ds.name] = _wrap_builder(ds)
+    for ds in reg.list_datasets(backend="pandas"):
+        TABLE_BUILDERS[ds.name] = _wrap_builder(ds)
     for ds in reg.list_datasets(backend="anndata"):
         MATRIX_BUILDERS[ds.name] = _wrap_builder(ds)
 

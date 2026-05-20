@@ -19,9 +19,15 @@ include = [
   { path = "hvantk/skills/**/*.py", format = ["sdist", "wheel"] },
   { path = "hvantk/skills/**/SKILL.md", format = ["sdist", "wheel"] },
   { path = "hvantk/skills/**/catalog/*.json", format = ["sdist", "wheel"] },
+  { path = "hvantk/skills/**/tests/drift_fingerprint.json", format = ["sdist", "wheel"] },
 ]
 exclude = [
-    "hvantk/skills/**/tests/**",
+    "hvantk/skills/**/tests/test_*.py",
+    "hvantk/skills/**/tests/conftest.py",
+    "hvantk/skills/**/tests/__init__.py",
+    "hvantk/skills/**/tests/data/**",
+    "hvantk/skills/**/tests/snapshots/**",
+    "hvantk/skills/**/tests/fixtures/**",
 ]
 
 [tool.poetry.dependencies]

@@ -6,6 +6,7 @@ logger = logging.getLogger(__name__)
 from hvantk.core.config import CONTEXT_SETTINGS
 from hvantk.tools.plugins.download_cli import download_group
 from hvantk.tools.infra.utils_cli import utils_group
+from hvantk.tools.infra.catalog_cli import catalog as catalog_group
 from hvantk.tools.genesets.genesets_cli import genesets_group
 from hvantk.tools.build.make_table_cli import mktable_group
 from hvantk.tools.build.make_table_batch_cli import mktable_batch_cli
@@ -83,6 +84,7 @@ def cli(verbose, log_file):
 
 cli.add_command(download_group)
 cli.add_command(utils_group)
+cli.add_command(catalog_group)
 cli.add_command(genesets_group)
 cli.add_command(mktable_group)
 cli.add_command(mktable_batch_cli)

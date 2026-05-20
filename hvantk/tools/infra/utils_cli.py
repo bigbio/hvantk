@@ -13,12 +13,10 @@ def utils_group():
 
 
 from hvantk.tools.infra.check_install_cli import check_install_cmd
-from hvantk.tools.infra.catalog_cli import catalog
 from hvantk.tools.build.build_1k_genome_cli import build_1k_genome_cmd
 from hvantk.tools.infra.validate_bgzf_cli import validate_bgzf_cmd
 
 utils_group.add_command(check_install_cmd)
-utils_group.add_command(catalog)
 utils_group.add_command(build_1k_genome_cmd)
 utils_group.add_command(validate_bgzf_cmd)
 
