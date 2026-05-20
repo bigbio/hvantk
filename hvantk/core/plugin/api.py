@@ -87,6 +87,7 @@ class DatasetSpec:
     parse_fn: Callable[..., Any] | None = None
     artifact_type: type | None = None
     schema_id: str | None = None
+    plugin_version: str | None = None
 
 
 @dataclass(frozen=True)

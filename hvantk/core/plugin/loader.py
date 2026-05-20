@@ -156,6 +156,7 @@ class PluginRegistry:
                     provider_name=manifest["name"],
                     ds_manifest=ds_manifest,
                     plugin_dir=plugin_dir,
+                    plugin_version=manifest.get("version"),
                 )
                 datasets.append(ds)
             except PluginLoadError as exc:
@@ -186,7 +187,7 @@ class PluginRegistry:
         )
 
     def _build_dataset_spec(
-        self, *, provider_name: str, ds_manifest: dict, plugin_dir: Path
+        self, *, provider_name: str, ds_manifest: dict, plugin_dir: Path, plugin_version: str | None = None
     ) -> DatasetSpec:
         compound = f"{provider_name}:{ds_manifest['name']}"
         builder = self._resolve_callable(
@@ -230,6 +231,7 @@ class PluginRegistry:
             test_paths=test_paths,
             download_fn=download_fn,
             parse_fn=parse_fn,
+            plugin_version=plugin_version,
         )
 
     def _resolve_callable(self, module_path: str, func_name: str) -> Callable[..., Any]:
