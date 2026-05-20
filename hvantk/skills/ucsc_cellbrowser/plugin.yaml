@@ -13,9 +13,11 @@ datasets:
   - name: default
     domain: transcriptomics
     backend: anndata
+    artifact_type: ExpressionMatrix
+    schema_id: ucsc-cellbrowser-default-v1
     builder:
       module: hvantk.skills.ucsc_cellbrowser.builder
-      function: build_ucsc_ad
+      function: build_ucsc_cellbrowser
     drift_probe:
       module: hvantk.skills.ucsc_cellbrowser.drift_probe
       function: fetch_fingerprint
@@ -34,9 +36,11 @@ datasets:
   - name: adult-ctx
     domain: transcriptomics
     backend: anndata
+    artifact_type: ExpressionMatrix
+    schema_id: ucsc-cellbrowser-adult-ctx-v1
     builder:
       module: hvantk.skills.ucsc_cellbrowser.builder
-      function: build_ucsc_ad
+      function: build_ucsc_cellbrowser
     drift_probe:
       module: hvantk.skills.ucsc_cellbrowser.drift_probe
       function: fetch_fingerprint
@@ -51,9 +55,11 @@ datasets:
   - name: dev-ctx
     domain: transcriptomics
     backend: anndata
+    artifact_type: ExpressionMatrix
+    schema_id: ucsc-cellbrowser-dev-ctx-v1
     builder:
       module: hvantk.skills.ucsc_cellbrowser.builder
-      function: build_ucsc_ad
+      function: build_ucsc_cellbrowser
     drift_probe:
       module: hvantk.skills.ucsc_cellbrowser.drift_probe
       function: fetch_fingerprint

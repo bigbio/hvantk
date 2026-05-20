@@ -599,3 +599,67 @@ def test_cptac_phospho_round_trip(tmp_path, cptac_phospho_inputs):
     assert loaded.backend == "anndata"
     assert loaded.n_obs == 2
     assert loaded.n_vars == 2
+
+
+# ---------- ucsc-cellbrowser (3 datasets sharing one builder) ----------
+
+
+@pytest.fixture
+def ucsc_cellbrowser_inputs(tmp_path):
+    """Minimal UCSC expression matrix (genes x cells) + metadata."""
+    expr_lines = [
+        "gene\tcell1\tcell2",
+        "ENSG00000141510|TP53\t10.5\t20.3",
+        "ENSG00000139618|BRCA2\t5.2\t8.1",
+    ]
+    expr_path = tmp_path / "expression.tsv"
+    expr_path.write_text("\n".join(expr_lines) + "\n")
+
+    meta_lines = [
+        "cellId\ttissue\tcell_type",
+        "cell1\tliver\thepatocyte",
+        "cell2\tliver\tkupffer",
+    ]
+    meta_path = tmp_path / "metadata.tsv"
+    meta_path.write_text("\n".join(meta_lines) + "\n")
+
+    return {"expression_matrix": expr_path, "metadata": meta_path}
+
+
+@pytest.mark.parametrize(
+    "dataset_name,expected_schema",
+    [
+        ("default",   "ucsc-cellbrowser-default-v1"),
+        ("adult-ctx", "ucsc-cellbrowser-adult-ctx-v1"),
+        ("dev-ctx",   "ucsc-cellbrowser-dev-ctx-v1"),
+    ],
+)
+def test_ucsc_cellbrowser_round_trip(tmp_path, ucsc_cellbrowser_inputs, dataset_name, expected_schema):
+    from hvantk.core.models import ExpressionMatrix
+
+    plugin_loader.reset_registry_for_tests()
+    reg = plugin_loader.get_registry()
+    spec = reg.get_dataset(f"ucsc-cellbrowser:{dataset_name}")
+
+    assert spec.artifact_type is ExpressionMatrix
+    assert spec.schema_id == expected_schema
+
+    object.__setattr__(spec, "drift_probe", lambda: {"fingerprint": f"sha256:test-ucsc-{dataset_name}"})
+
+    out = tmp_path / f"{dataset_name}.h5ad"
+    prov = run_builder_for_spec(
+        spec,
+        parsed_input=ucsc_cellbrowser_inputs,
+        output_path=out,
+        plugin_version=spec.plugin_version,
+    )
+
+    assert prov.plugin == "ucsc-cellbrowser"
+    assert prov.dataset == f"ucsc-cellbrowser:{dataset_name}"
+    assert prov.schema_id == expected_schema
+
+    loaded = core_io.load(out)
+    assert isinstance(loaded, ExpressionMatrix)
+    assert loaded.backend == "anndata"
+    assert loaded.n_vars == 2  # 2 genes
+    assert loaded.n_obs == 2  # 2 cells

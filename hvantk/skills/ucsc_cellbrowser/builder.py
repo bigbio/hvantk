@@ -28,8 +28,16 @@ BACKED_BUILDER_THRESHOLD_BYTES = 1 * 1024 * 1024 * 1024  # 1 GiB
 
 __all__ = [
     "build_ucsc_ad",
+    "build_ucsc_cellbrowser",
     "BACKED_BUILDER_THRESHOLD_BYTES",
 ]
+
+# Map compound dataset names → Phase B schema IDs.
+_SCHEMA_IDS: dict[str, str] = {
+    "ucsc-cellbrowser:default":   "ucsc-cellbrowser-default-v1",
+    "ucsc-cellbrowser:adult-ctx": "ucsc-cellbrowser-adult-ctx-v1",
+    "ucsc-cellbrowser:dev-ctx":   "ucsc-cellbrowser-dev-ctx-v1",
+}
 
 
 def build_ucsc_ad(
@@ -149,4 +157,52 @@ def build_ucsc_ad(
     if output_path:
         save_anndata(adata, output_path, overwrite=overwrite)
     return adata
+
+
+def build_ucsc_cellbrowser(
+    parsed_input,
+    ctx,
+    *,
+    gene_column: str = "gene",
+    delimiter: str = "\t",
+    split_gene_field: bool = True,
+    chunk_size: int = 500,
+    backed=None,
+    column_batch: int = 64,
+    **params,
+):
+    """Phase B builder — returns an ExpressionMatrix.
+
+    Same dispatch as build_ucsc_ad (in-memory vs backed) but without writing.
+    The platform's run_builder_for_spec calls artifact.save() to persist.
+
+    ``parsed_input`` must contain keys ``expression_matrix`` and ``metadata``.
+    The per-dataset ``schema_id`` is resolved from ``ctx.dataset`` via
+    ``_SCHEMA_IDS`` so that all three datasets (default, adult-ctx, dev-ctx)
+    share one builder function while each stamps the correct schema.
+    """
+    from hvantk.core.models import ExpressionMatrix
+
+    expression_matrix_path = str(parsed_input["expression_matrix"])
+    metadata_path = str(parsed_input["metadata"])
+
+    # Delegate to the legacy in-memory or backed builder.
+    # output_path=None means "don't save" — the platform calls artifact.save().
+    adata = build_ucsc_ad(
+        expression_matrix_path=expression_matrix_path,
+        metadata_path=metadata_path,
+        output_path=None,
+        gene_column=gene_column,
+        delimiter=delimiter,
+        split_gene_field=split_gene_field,
+        overwrite=False,
+        chunk_size=chunk_size,
+        backed=backed,
+        column_batch=column_batch,
+    )
+
+    sid = _SCHEMA_IDS.get(ctx.dataset, "ucsc-cellbrowser-unknown-v1")
+    return ExpressionMatrix.from_anndata(
+        adata, provenance=ctx.provenance(schema_id=sid)
+    )
 
