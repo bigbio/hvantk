@@ -129,6 +129,58 @@ class AnnotationTable:
             self._table.rename(mapping), provenance=self.provenance
         )
 
+    def join(
+        self, other: "AnnotationTable", on: str | list[str], how: str = "inner"
+    ) -> "AnnotationTable":
+        if self.backend != other.backend:
+            raise ValueError(
+                f"cannot join AnnotationTables on different backends "
+                f"({self.backend} vs {other.backend}); convert one first"
+            )
+        if self.backend == "pandas":
+            merged = self._table.merge(other._table, on=on, how=how)
+            return AnnotationTable.from_pandas(merged, provenance=self.provenance)
+        # hail: rekey both sides defensively (key_by is idempotent)
+        keys = [on] if isinstance(on, str) else list(on)
+        self_keyed = self._table.key_by(*keys)
+        other_keyed = other._table.key_by(*keys)
+        joined = self_keyed.join(other_keyed, how=how)
+        return AnnotationTable.from_hail(joined, provenance=self.provenance)
+
+    def distinct(self, subset: list[str] | None = None) -> "AnnotationTable":
+        if self.backend == "pandas":
+            df = self._table.drop_duplicates(subset=subset).reset_index(drop=True)
+            return AnnotationTable.from_pandas(df, provenance=self.provenance)
+        # hail
+        if subset:
+            return AnnotationTable.from_hail(
+                self._table.key_by(*subset).distinct(), provenance=self.provenance
+            )
+        return AnnotationTable.from_hail(
+            self._table.distinct(), provenance=self.provenance
+        )
+
+    def head(self, n: int = 5) -> "AnnotationTable":
+        if self.backend == "pandas":
+            return AnnotationTable.from_pandas(
+                self._table.head(n).reset_index(drop=True), provenance=self.provenance
+            )
+        return AnnotationTable.from_hail(
+            self._table.head(n), provenance=self.provenance
+        )
+
+    # --- terminal operations ---
+
+    def collect(self) -> list[dict]:
+        if self.backend == "pandas":
+            return self._table.to_dict(orient="records")
+        return [dict(r) for r in self._table.collect()]
+
+    def count(self) -> int:
+        if self.backend == "pandas":
+            return len(self._table)
+        return self._table.count()
+
     # --- persistence (stubbed; lands in Task 13) ---
 
     def save(self, path: str | Path) -> None:

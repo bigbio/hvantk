@@ -161,3 +161,76 @@ def test_with_columns_hail():
     ann = AnnotationTable.from_hail(ht, provenance=_prov())
     out = ann.with_columns(score_sq=col("score") * col("score")).to_pandas()
     assert out["score_sq"].iloc[0] == pytest.approx(0.49)
+
+
+# --- count, collect, head, distinct, join tests ---
+
+
+def test_count_collect_head_pandas(df):
+    ann = AnnotationTable.from_pandas(df, provenance=_prov())
+    assert ann.count() == 2
+    rows = ann.collect()
+    assert rows == [
+        {"gene": "BRCA1", "score": 0.7},
+        {"gene": "BRCA2", "score": 0.4},
+    ]
+    h = ann.head(1).collect()
+    assert h == [{"gene": "BRCA1", "score": 0.7}]
+
+
+def test_distinct_pandas():
+    df = pd.DataFrame({"x": [1, 1, 2], "y": ["a", "a", "b"]})
+    ann = AnnotationTable.from_pandas(df, provenance=_prov())
+    assert ann.distinct().count() == 2
+    assert ann.distinct(subset=["x"]).count() == 2
+
+
+def test_join_pandas():
+    a = AnnotationTable.from_pandas(
+        pd.DataFrame({"gene": ["BRCA1", "BRCA2"], "score": [0.7, 0.4]}),
+        provenance=_prov(),
+    )
+    b = AnnotationTable.from_pandas(
+        pd.DataFrame({"gene": ["BRCA1", "TP53"], "chrom": ["chr17", "chr17"]}),
+        provenance=_prov(),
+    )
+    joined = a.join(b, on="gene", how="inner").collect()
+    assert joined == [{"gene": "BRCA1", "score": 0.7, "chrom": "chr17"}]
+
+
+@pytest.mark.hail
+def test_count_collect_head_hail():
+    import hail as hl
+
+    ht = hl.Table.parallelize(
+        [{"gene": "BRCA1", "score": 0.7}, {"gene": "BRCA2", "score": 0.4}],
+        hl.tstruct(gene=hl.tstr, score=hl.tfloat64),
+    )
+    ann = AnnotationTable.from_hail(ht, provenance=_prov())
+    assert ann.count() == 2
+    rows = ann.collect()
+    assert {r["gene"] for r in rows} == {"BRCA1", "BRCA2"}
+    assert len(ann.head(1).collect()) == 1
+
+
+@pytest.mark.hail
+def test_join_hail():
+    import hail as hl
+
+    a = AnnotationTable.from_hail(
+        hl.Table.parallelize(
+            [{"gene": "BRCA1", "score": 0.7}, {"gene": "BRCA2", "score": 0.4}],
+            hl.tstruct(gene=hl.tstr, score=hl.tfloat64),
+        ).key_by("gene"),
+        provenance=_prov(),
+    )
+    b = AnnotationTable.from_hail(
+        hl.Table.parallelize(
+            [{"gene": "BRCA1", "chrom": "chr17"}],
+            hl.tstruct(gene=hl.tstr, chrom=hl.tstr),
+        ).key_by("gene"),
+        provenance=_prov(),
+    )
+    joined = a.join(b, on="gene", how="inner").collect()
+    assert len(joined) == 1
+    assert joined[0]["gene"] == "BRCA1"
