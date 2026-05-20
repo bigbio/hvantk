@@ -485,3 +485,117 @@ def test_expression_atlas_dataset_round_trip(tmp_path, expression_atlas_inputs):
     assert loaded.backend == "anndata"
     assert loaded.n_vars == 2  # 2 genes
     assert loaded.n_obs == 3  # 3 samples
+
+
+# ---------- cptac:expression ----------
+
+
+@pytest.fixture
+def cptac_expression_inputs(tmp_path):
+    """Long-format CPTAC expression: rows are (sample, gene) pairs with values."""
+    expr_lines = [
+        "SampleID\tGeneID\tGene Name\tExpression",
+        "S1\tENSG00000141510\tTP53\t10.5",
+        "S1\tENSG00000139618\tBRCA2\t5.2",
+        "S2\tENSG00000141510\tTP53\t20.3",
+        "S2\tENSG00000139618\tBRCA2\t8.1",
+    ]
+    expr_path = tmp_path / "expression.tsv"
+    expr_path.write_text("\n".join(expr_lines) + "\n")
+
+    meta_lines = [
+        "SampleID\ttissue\tdisease",
+        "S1\tliver\tnormal",
+        "S2\tliver\ttumor",
+    ]
+    meta_path = tmp_path / "metadata.tsv"
+    meta_path.write_text("\n".join(meta_lines) + "\n")
+
+    return {"expression": expr_path, "metadata": meta_path}
+
+
+def test_cptac_expression_round_trip(tmp_path, cptac_expression_inputs):
+    from hvantk.core.models import ExpressionMatrix
+
+    plugin_loader.reset_registry_for_tests()
+    reg = plugin_loader.get_registry()
+    spec = reg.get_dataset("cptac:expression")
+
+    assert spec.artifact_type is ExpressionMatrix
+    assert spec.schema_id == "cptac-expression-v1"
+
+    object.__setattr__(spec, "drift_probe", lambda: {"fingerprint": "sha256:test-cptac-expr"})
+
+    out = tmp_path / "expression.h5ad"
+    prov = run_builder_for_spec(
+        spec,
+        parsed_input=cptac_expression_inputs,
+        output_path=out,
+        plugin_version=spec.plugin_version,
+    )
+
+    assert prov.plugin == "cptac"
+    assert prov.dataset == "cptac:expression"
+    assert prov.schema_id == "cptac-expression-v1"
+
+    loaded = core_io.load(out)
+    assert isinstance(loaded, ExpressionMatrix)
+    assert loaded.backend == "anndata"
+    assert loaded.n_obs == 2  # 2 samples
+    assert loaded.n_vars == 2  # 2 genes
+
+
+# ---------- cptac:phospho ----------
+
+
+@pytest.fixture
+def cptac_phospho_inputs(tmp_path):
+    """Wide-format CPTAC phospho: rows are sites, columns are samples + metadata."""
+    expr_lines = [
+        "SiteID\tS1\tS2",
+        "TP53_S315\t1.2\t3.4",
+        "BRCA2_S988\t0.5\t2.1",
+    ]
+    expr_path = tmp_path / "phospho.tsv"
+    expr_path.write_text("\n".join(expr_lines) + "\n")
+
+    meta_lines = [
+        "SampleID\ttissue\tdisease",
+        "S1\tliver\tnormal",
+        "S2\tliver\ttumor",
+    ]
+    meta_path = tmp_path / "metadata.tsv"
+    meta_path.write_text("\n".join(meta_lines) + "\n")
+
+    return {"expression": expr_path, "metadata": meta_path}
+
+
+def test_cptac_phospho_round_trip(tmp_path, cptac_phospho_inputs):
+    from hvantk.core.models import ExpressionMatrix
+
+    plugin_loader.reset_registry_for_tests()
+    reg = plugin_loader.get_registry()
+    spec = reg.get_dataset("cptac:phospho")
+
+    assert spec.artifact_type is ExpressionMatrix
+    assert spec.schema_id == "cptac-phospho-v1"
+
+    object.__setattr__(spec, "drift_probe", lambda: {"fingerprint": "sha256:test-cptac-phospho"})
+
+    out = tmp_path / "phospho.h5ad"
+    prov = run_builder_for_spec(
+        spec,
+        parsed_input=cptac_phospho_inputs,
+        output_path=out,
+        plugin_version=spec.plugin_version,
+    )
+
+    assert prov.plugin == "cptac"
+    assert prov.dataset == "cptac:phospho"
+    assert prov.schema_id == "cptac-phospho-v1"
+
+    loaded = core_io.load(out)
+    assert isinstance(loaded, ExpressionMatrix)
+    assert loaded.backend == "anndata"
+    assert loaded.n_obs == 2
+    assert loaded.n_vars == 2

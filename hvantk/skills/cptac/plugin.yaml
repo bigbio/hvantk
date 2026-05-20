@@ -11,9 +11,11 @@ datasets:
   - name: expression
     domain: proteomics
     backend: anndata
+    artifact_type: ExpressionMatrix
+    schema_id: cptac-expression-v1
     builder:
       module: hvantk.skills.cptac.expression.builder
-      function: build_cptac_ad
+      function: build_cptac_expression
     drift_probe:
       module: hvantk.skills.cptac.expression.drift_probe
       function: fetch_fingerprint
@@ -28,9 +30,11 @@ datasets:
   - name: phospho
     domain: proteomics
     backend: anndata
+    artifact_type: ExpressionMatrix
+    schema_id: cptac-phospho-v1
     builder:
       module: hvantk.skills.cptac.phospho.builder
-      function: build_cptac_phospho_ad
+      function: build_cptac_phospho
     drift_probe:
       module: hvantk.skills.cptac.phospho.drift_probe
       function: fetch_fingerprint

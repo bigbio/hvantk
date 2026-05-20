@@ -92,3 +92,49 @@ def build_cptac_ad(
         save_anndata(adata, output_path, overwrite=overwrite)
 
     return adata
+
+
+def build_cptac_expression(
+    parsed_input,
+    ctx,
+    *,
+    gene_id_col: str = "GeneID",
+    gene_name_col=None,
+    sample_id_col: str = "SampleID",
+    expression_col: str = "Expression",
+):
+    """Phase B builder — returns an ExpressionMatrix from long-format CPTAC expression + metadata."""
+    import pandas as pd
+    from hvantk.core.models import ExpressionMatrix
+    from hvantk.core.models.anndata_utils import (
+        annotate_column_summary_ad,
+        build_anndata_metadata,
+    )
+    from hvantk.skills.cptac.shared.cptac import create_anndata_from_cptac_long
+
+    expression_path = str(parsed_input["expression"])
+    metadata_path = str(parsed_input["metadata"])
+
+    expr_df = pd.read_csv(expression_path, sep=None, engine="python")
+    meta_df = pd.read_csv(metadata_path, sep=None, engine="python")
+    meta_df = meta_df.set_index(sample_id_col)
+
+    # Use the default gene_name_col from the legacy function if caller didn't override
+    if gene_name_col is None:
+        gene_name_col = "Gene Name"
+
+    adata = create_anndata_from_cptac_long(
+        expression_df=expr_df,
+        metadata_df=meta_df,
+        gene_id_col=gene_id_col,
+        gene_name_col=gene_name_col,
+        sample_id_col=sample_id_col,
+        expression_col=expression_col,
+    )
+
+    adata.uns["hvantk_metadata"] = build_anndata_metadata("CPTAC", expression_path)
+    annotate_column_summary_ad(adata)
+
+    return ExpressionMatrix.from_anndata(
+        adata, provenance=ctx.provenance(schema_id="cptac-expression-v1")
+    )
