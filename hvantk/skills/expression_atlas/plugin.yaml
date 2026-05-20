@@ -13,9 +13,11 @@ datasets:
   - name: dataset
     domain: transcriptomics
     backend: anndata
+    artifact_type: ExpressionMatrix
+    schema_id: expression-atlas-dataset-v1
     builder:
       module: hvantk.skills.expression_atlas.builder
-      function: build_expression_atlas_ad
+      function: build_expression_atlas
     drift_probe:
       module: hvantk.skills.expression_atlas.drift_probe
       function: fetch_fingerprint

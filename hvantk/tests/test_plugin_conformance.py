@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 
 from hvantk.core import io as core_io
-from hvantk.core.models import AnnotationTable
+from hvantk.core.models import AnnotationTable, ExpressionMatrix
 from hvantk.core.plugin import loader as plugin_loader
 from hvantk.core.plugin.run_builder import run_builder_for_spec
 
@@ -424,3 +424,64 @@ def test_uniprot_ptm_sites_round_trip(tmp_path, uniprot_ptm_sites_tsv):
     assert isinstance(loaded, AnnotationTable)
     assert loaded.backend == "hail"
     assert loaded.count() == 2
+
+
+# ---------- expression-atlas:dataset ----------
+
+
+@pytest.fixture
+def expression_atlas_inputs(tmp_path):
+    """Generate minimal expression matrix TSV + SDRF metadata files."""
+    # Expression matrix: 2 genes x 3 samples
+    expr_lines = [
+        "Gene ID\tGene Name\tSample1\tSample2\tSample3",
+        "ENSG00000141510\tTP53\t10.5\t20.3\t15.7",
+        "ENSG00000139618\tBRCA2\t5.2\t8.1\t3.4",
+    ]
+    expr_path = tmp_path / "expression.tsv"
+    expr_path.write_text("\n".join(expr_lines) + "\n")
+
+    # SDRF: long-format with no header.
+    # Columns: accession, unused, sample_id, column_type, column_name, column_value
+    # _import_sdrf reads exactly 6 columns in this order.
+    sdrf_lines = [
+        "E-MTAB-0001\t\tSample1\tcharacteristic\torganism\tHomo sapiens",
+        "E-MTAB-0001\t\tSample1\tfactor\tdisease\thealthy",
+        "E-MTAB-0001\t\tSample2\tcharacteristic\torganism\tHomo sapiens",
+        "E-MTAB-0001\t\tSample2\tfactor\tdisease\tcancer",
+        "E-MTAB-0001\t\tSample3\tcharacteristic\torganism\tHomo sapiens",
+        "E-MTAB-0001\t\tSample3\tfactor\tdisease\thealthy",
+    ]
+    sdrf_path = tmp_path / "metadata.sdrf.tsv"
+    sdrf_path.write_text("\n".join(sdrf_lines) + "\n")
+
+    return {"expression_matrix": expr_path, "sdrf": sdrf_path}
+
+
+def test_expression_atlas_dataset_round_trip(tmp_path, expression_atlas_inputs):
+    """First ExpressionMatrix conformance test — pandas-driven (no Hail dep)."""
+    plugin_loader.reset_registry_for_tests()
+    reg = plugin_loader.get_registry()
+    spec = reg.get_dataset("expression-atlas:dataset")
+
+    assert spec.artifact_type is ExpressionMatrix
+    assert spec.schema_id == "expression-atlas-dataset-v1"
+
+    object.__setattr__(spec, "drift_probe", lambda: {"fingerprint": "sha256:test-expr-atlas"})
+
+    out = tmp_path / "dataset.h5ad"
+    prov = run_builder_for_spec(
+        spec,
+        parsed_input=expression_atlas_inputs,
+        output_path=out,
+        plugin_version=spec.plugin_version,
+    )
+
+    assert prov.plugin == "expression-atlas"
+    assert prov.schema_id == "expression-atlas-dataset-v1"
+
+    loaded = core_io.load(out)
+    assert isinstance(loaded, ExpressionMatrix)
+    assert loaded.backend == "anndata"
+    assert loaded.n_vars == 2  # 2 genes
+    assert loaded.n_obs == 3  # 3 samples
