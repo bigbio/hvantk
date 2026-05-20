@@ -11,9 +11,11 @@ datasets:
   - name: variants
     domain: genomics
     backend: hail
+    artifact_type: AnnotationTable
+    schema_id: insider-variants-v1
     builder:
       module: hvantk.skills.insider.builder
-      function: create_interactome_tb
+      function: build_insider_interactome
     drift_probe:
       module: hvantk.skills.insider.drift_probe
       function: fetch_fingerprint

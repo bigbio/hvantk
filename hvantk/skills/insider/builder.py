@@ -116,3 +116,48 @@ def create_interactome_tb(
     finally:
         if tsv_path is not None:
             _cleanup_temp_file(tsv_path)
+
+
+def build_insider_interactome(
+    parsed_input,
+    ctx,
+    *,
+    reference_genome: str = "GRCh38",
+):
+    """Phase B builder — returns an AnnotationTable.
+
+    Parses the INSIDER BED via the existing _parse_insider_bed_to_temp_tsv,
+    imports + aggregates, and returns the lazy Hail Table wrapped with
+    Provenance. The temp TSV is intentionally NOT cleaned up here (Hail's
+    lazy evaluation holds a reference until artifact.save() materializes
+    the table); the OS cleans the Hail temp dir at session end.
+    """
+    from hvantk.core.models import AnnotationTable
+
+    tsv_path = _parse_insider_bed_to_temp_tsv(str(parsed_input))
+    try:
+        ht = hl.import_table(
+            tsv_path,
+            types={"start": hl.tint32, "end": hl.tint32},
+            min_partitions=4,
+        )
+        ht = ht.annotate(
+            interval=hl.locus_interval(
+                ht.contig,
+                ht.start + 1,
+                ht.end + 1,
+                reference_genome=reference_genome,
+            )
+        )
+        ht = ht.select("interval", "ppi_id")
+        grouped = ht.group_by(ht.interval).aggregate(
+            ppi_ids=hl.agg.collect_as_set(ht.ppi_id)
+        )
+        grouped = grouped.annotate(ppi_ids=hl.sorted(hl.array(grouped.ppi_ids)))
+        return AnnotationTable.from_hail(
+            grouped, provenance=ctx.provenance(schema_id="insider-variants-v1")
+        )
+    except Exception:
+        _cleanup_temp_file(tsv_path)
+        raise
+    # Success: temp file intentionally retained for lazy Hail materialization.

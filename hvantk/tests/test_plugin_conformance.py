@@ -302,3 +302,37 @@ def test_gtex_eqtl_eqtls_round_trip(tmp_path):
     loaded = core_io.load(out)
     assert isinstance(loaded, AnnotationTable)
     assert loaded.backend == "hail"
+
+
+# ---------- insider:variants ----------
+
+
+@pytest.mark.hail
+def test_insider_variants_round_trip(tmp_path):
+    plugin_loader.reset_registry_for_tests()
+    reg = plugin_loader.get_registry()
+    spec = reg.get_dataset("insider:variants")
+
+    assert spec.artifact_type is AnnotationTable
+    assert spec.schema_id == "insider-variants-v1"
+
+    fixture = Path("hvantk/skills/insider/tests/testdata/raw/insider/insider_sample.bed")
+    assert fixture.exists()
+
+    object.__setattr__(spec, "drift_probe", lambda: {"fingerprint": "sha256:test-insider"})
+
+    out = tmp_path / "variants.ht"
+    prov = run_builder_for_spec(
+        spec,
+        parsed_input=fixture,
+        output_path=out,
+        plugin_version=spec.plugin_version,
+    )
+
+    assert prov.plugin == "insider"
+    assert prov.schema_id == "insider-variants-v1"
+
+    loaded = core_io.load(out)
+    assert isinstance(loaded, AnnotationTable)
+    assert loaded.backend == "hail"
+    assert loaded.count() > 0
