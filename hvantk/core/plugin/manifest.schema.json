@@ -69,6 +69,14 @@
               "parse": { "$ref": "#/$defs/callable_ref" }
             }
           },
+          "artifact_type": {
+            "type": "string",
+            "description": "Phase B: the artifact class name returned by the builder (e.g. AnnotationTable)."
+          },
+          "schema_id": {
+            "type": "string",
+            "description": "Phase B: the schema identifier stamped onto the artifact's Provenance."
+          },
           "skill": { "type": "string" },
           "tests": {
             "type": "object",

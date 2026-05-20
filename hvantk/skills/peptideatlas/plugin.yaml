@@ -11,9 +11,11 @@ datasets:
   - name: phospho
     domain: proteomics
     backend: pandas
+    artifact_type: AnnotationTable
+    schema_id: peptideatlas-phospho-v1
     builder:
       module: hvantk.skills.peptideatlas.phospho.builder
-      function: build_peptideatlas_phospho_tb
+      function: build_peptideatlas_phospho
     drift_probe:
       module: hvantk.skills.peptideatlas.phospho.drift_probe
       function: fetch_fingerprint

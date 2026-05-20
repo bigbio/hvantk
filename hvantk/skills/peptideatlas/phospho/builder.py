@@ -88,3 +88,42 @@ def build_peptideatlas_phospho_tb(
 
     logger.info("Loading intermediate TSV %s", tsv_path)
     return pd.read_csv(tsv_path, sep="\t", dtype=str)
+
+
+def build_peptideatlas_phospho(
+    parsed_input,
+    ctx,
+    *,
+    overwrite: bool = False,
+):
+    """Phase B builder — returns an AnnotationTable.
+
+    ``parsed_input`` is whatever the plugin's parse_fn produced. For peptideatlas
+    this is the path to the intermediate wide TSV (peptideatlas-phospho-*.tsv)
+    that ``parse_raw_dir`` writes.
+
+    Parameters
+    ----------
+    parsed_input : str | Path
+        Path to the intermediate TSV file produced by parse_raw_dir.
+    ctx : hvantk.core.models.BuildContext
+        Platform-provided context. The plugin supplies schema_id via
+        ``ctx.provenance(schema_id=...)``.
+    overwrite : bool, optional
+        Unused under the Phase B contract (the platform handles output writing).
+        Accepted for backward compatibility only.
+
+    Returns
+    -------
+    hvantk.core.models.AnnotationTable
+        The intermediate phospho-site table wrapped with Provenance.
+    """
+    import pandas as pd
+    from hvantk.core.models import AnnotationTable
+
+    tsv_path = str(parsed_input)
+    logger.info("Loading intermediate TSV %s", tsv_path)
+    df = pd.read_csv(tsv_path, sep="\t", dtype=str)
+    return AnnotationTable.from_pandas(
+        df, provenance=ctx.provenance(schema_id="peptideatlas-phospho-v1")
+    )

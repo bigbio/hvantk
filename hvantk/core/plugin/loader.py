@@ -221,6 +221,18 @@ class PluginRegistry:
                 lifecycle["parse"]["function"],
             )
 
+        # Phase B optional fields
+        artifact_type_str = ds_manifest.get("artifact_type")
+        artifact_type = None
+        if artifact_type_str is not None:
+            from hvantk.core import models as _models
+            artifact_type = getattr(_models, artifact_type_str, None)
+            if artifact_type is None:
+                raise PluginLoadError(
+                    f"{compound}: artifact_type {artifact_type_str!r} not found "
+                    f"in hvantk.core.models"
+                )
+
         return DatasetSpec(
             name=compound,
             domain=ds_manifest["domain"],
@@ -232,6 +244,8 @@ class PluginRegistry:
             download_fn=download_fn,
             parse_fn=parse_fn,
             plugin_version=plugin_version,
+            artifact_type=artifact_type,
+            schema_id=ds_manifest.get("schema_id"),
         )
 
     def _resolve_callable(self, module_path: str, func_name: str) -> Callable[..., Any]:
