@@ -267,3 +267,38 @@ def test_gwas_catalog_associations_round_trip(tmp_path):
     assert isinstance(loaded, AnnotationTable)
     assert loaded.backend == "hail"
     assert loaded.count() > 0
+
+
+# ---------- gtex-eqtl:eqtls ----------
+
+
+@pytest.mark.hail
+def test_gtex_eqtl_eqtls_round_trip(tmp_path):
+    plugin_loader.reset_registry_for_tests()
+    reg = plugin_loader.get_registry()
+    spec = reg.get_dataset("gtex-eqtl:eqtls")
+
+    assert spec.artifact_type is AnnotationTable
+    assert spec.schema_id == "gtex-eqtl-eqtls-v1"
+
+    fixture = Path("hvantk/skills/gtex_eqtl/tests/testdata/raw/gtex-eqtl/Liver.v11.eQTLs.signif_pairs.parquet")
+    assert fixture.exists()
+
+    object.__setattr__(spec, "drift_probe", lambda: {"fingerprint": "sha256:test-gtex"})
+
+    out = tmp_path / "eqtls.ht"
+    prov = run_builder_for_spec(
+        spec,
+        parsed_input=str(fixture.parent),  # parquet importer expects DIRECTORY
+        output_path=out,
+        plugin_version=spec.plugin_version,
+        source="gtex_v11",
+        p_threshold=0,  # keep all rows (fixture has few rows)
+    )
+
+    assert prov.plugin == "gtex-eqtl"
+    assert prov.schema_id == "gtex-eqtl-eqtls-v1"
+
+    loaded = core_io.load(out)
+    assert isinstance(loaded, AnnotationTable)
+    assert loaded.backend == "hail"

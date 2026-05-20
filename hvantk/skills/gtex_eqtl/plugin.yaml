@@ -11,9 +11,11 @@ datasets:
   - name: eqtls
     domain: genomics
     backend: hail
+    artifact_type: AnnotationTable
+    schema_id: gtex-eqtl-eqtls-v1
     builder:
       module: hvantk.skills.gtex_eqtl.builder
-      function: create_eqtl_tb
+      function: build_eqtl_associations
     drift_probe:
       module: hvantk.skills.gtex_eqtl.drift_probe
       function: fetch_fingerprint

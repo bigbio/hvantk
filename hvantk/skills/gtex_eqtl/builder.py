@@ -114,3 +114,47 @@ def create_eqtl_tb(
         overwrite=overwrite,
         export_tsv=export_tsv,
     )
+
+
+def build_eqtl_associations(
+    parsed_input,
+    ctx,
+    *,
+    reference_genome: str = "GRCh38",
+    source: str = "gtex_v11",
+    tissue=None,
+    p_threshold: float = 5e-8,
+    fields=None,
+):
+    """Phase B builder — returns an AnnotationTable.
+
+    Mirrors create_eqtl_tb's import + transform but returns the lazy Hail
+    Table wrapped with Provenance, without writing to disk.
+    """
+    from hvantk.core.models import AnnotationTable
+    from hvantk.core.qtl_constants import EQTL_SOURCES
+
+    if source not in EQTL_SOURCES:
+        raise ValueError(f"Unknown eQTL source: {source!r}. Supported: {EQTL_SOURCES}")
+
+    if source == "gtex_v11":
+        ht = _import_eqtl_gtex_parquet(str(parsed_input), tissue, reference_genome)
+    elif source == "gtex_v8":
+        ht = _import_eqtl_gtex_tsv(str(parsed_input), tissue)
+    else:
+        ht = _import_eqtl_eqtlgen(str(parsed_input), reference_genome)
+
+    ht = _parse_gtex_variant_id(ht, "variant_id", reference_genome)
+    ht = ht.annotate(gene_id=_strip_ensembl_version(ht.gene_id_raw))
+    ht = ht.drop("gene_id_raw", "variant_id")
+    if p_threshold > 0:
+        ht = ht.filter(ht.p_value <= p_threshold)
+    ht = ht.annotate(source=source, is_cis=True)
+    ht = ht.key_by("locus", "alleles", "gene_id")
+
+    if fields is not None:
+        ht = ht.select(*fields)
+
+    return AnnotationTable.from_hail(
+        ht, provenance=ctx.provenance(schema_id="gtex-eqtl-eqtls-v1")
+    )
