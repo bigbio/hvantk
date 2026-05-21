@@ -18,7 +18,7 @@ from hvantk.core.models.backends import algorithm, Backend
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["compute_specificity"]
+__all__ = ["compute_specificity", "compute_specificity_artifact"]
 
 _SUPPORTED_METHODS = (
     "tau",
@@ -126,6 +126,46 @@ def compute_specificity(
         )
 
     return values
+
+
+@algorithm(
+    name="tissue_specificity_artifact",
+    backends=[Backend.PANDAS],
+    inputs={"ann": "AnnotationTable"},
+    outputs={"specificity": "AnnotationTable"},
+)
+def compute_specificity_artifact(
+    ann: "AnnotationTable",
+    method: "Method" = "tau",
+    log: bool = False,
+) -> "AnnotationTable":
+    """Phase P artifact-typed wrapper for compute_specificity.
+
+    Accepts an AnnotationTable of gene-by-tissue/cell-type expression
+    (rows = genes, columns = groups). Delegates to compute_specificity
+    via .to_pandas(); wraps the resulting pd.Series back into an
+    AnnotationTable carrying chained provenance from the input.
+
+    The legacy pd.DataFrame-typed compute_specificity stays as the
+    canonical implementation; this wrapper is the canonical entry point
+    for callers consuming the artifact contract.
+    """
+    from hvantk.core.models import AnnotationTable
+
+    df = ann.to_pandas()
+    # The gene identifier column is conventionally the index; restore it.
+    if len(df.columns) > 0 and df.columns[0] in {
+        "gene_id", "gene_symbol", "gene", "ensembl_id"
+    }:
+        df = df.set_index(df.columns[0])
+
+    result = compute_specificity(df, method=method, log=log)
+    # result is a pd.Series — promote to a 2-column DataFrame: gene + specificity
+    out_df = pd.DataFrame({
+        "gene_id": result.index,
+        "specificity": result.values,
+    })
+    return AnnotationTable.from_pandas(out_df, provenance=ann.provenance)
 
 
 def tau_yanai_reference(
