@@ -118,8 +118,9 @@ def load_native(
           - .mt/      -> hail.MatrixTable
           - .geneset.json -> list[str] of gene IDs
     provenance
-        The Provenance carried by the artifact (or Provenance.unknown(reason=...)
-        for legacy files with no sidecar manifest).
+        The Provenance carried by the artifact (or the legacy-shim
+        placeholder for files with no sidecar manifest — see
+        ``hvantk/core/io/_legacy.py``).
 
     Raises
     ------
@@ -178,9 +179,9 @@ def save_native(
       - .mt/      -> expects hail.MatrixTable (calls mt.write)
       - .geneset.json -> expects iterable[str]
 
-    Provenance is required (no Provenance.unknown shortcut; the explicit
-    intent of save_native is to carry meaningful provenance from algorithm
-    derivations).
+    Provenance is required — there's no unknown-placeholder shortcut here;
+    the explicit intent of save_native is to carry meaningful provenance
+    from algorithm derivations.
 
     Examples
     --------
