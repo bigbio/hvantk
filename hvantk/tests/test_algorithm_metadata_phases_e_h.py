@@ -74,6 +74,54 @@ def test_hgc_convert_vds_to_mt_has_metadata():
 
 # ---------- Cross-phase: every domain stays skill-free ----------
 
+def test_algorithm_meta_captures_inputs_outputs():
+    from hvantk.core.models import AnnotationTable
+    from hvantk.core.models.backends import Backend, algorithm, get_algorithm_meta
+
+    @algorithm(
+        name="typed",
+        backends=[Backend.PANDAS],
+        inputs={"ann": AnnotationTable},
+        outputs={"result": AnnotationTable},
+    )
+    def typed(ann):
+        return ann
+
+    meta = get_algorithm_meta(typed)
+    assert meta.inputs == {"ann": AnnotationTable}
+    assert meta.outputs == {"result": AnnotationTable}
+    assert meta.required_backend is None
+
+
+def test_algorithm_meta_captures_required_backend():
+    from hvantk.core.models.backends import Backend, algorithm, get_algorithm_meta
+
+    @algorithm(
+        name="hail_only",
+        backends=[Backend.HAIL],
+        required_backend="hail",
+    )
+    def hail_only():
+        pass
+
+    meta = get_algorithm_meta(hail_only)
+    assert meta.required_backend == "hail"
+
+
+def test_existing_algorithm_meta_still_works():
+    """Backward compat: algorithms without inputs/outputs kwargs continue to work."""
+    from hvantk.core.models.backends import Backend, algorithm, get_algorithm_meta
+
+    @algorithm(name="legacy_shape", backends=[Backend.HAIL])
+    def legacy():
+        pass
+
+    meta = get_algorithm_meta(legacy)
+    assert meta.name == "legacy_shape"
+    assert meta.inputs == {}
+    assert meta.outputs == {}
+
+
 @pytest.mark.parametrize("domain", ["enrichex", "expression", "qtlcascade", "hgc"])
 def test_domain_has_no_skill_imports(domain):
     root = Path(__file__).resolve().parents[1] / "algorithms" / domain

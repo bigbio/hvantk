@@ -6,10 +6,10 @@ and the data format they expect, enabling the BackendRouter to select
 the best execution strategy at runtime.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from functools import wraps
-from typing import Callable, List, Optional
+from typing import Callable
 
 
 class Backend(Enum):
@@ -26,38 +26,57 @@ class AlgorithmMeta:
 
     Attributes
     ----------
-    name : str
-        Registry name for the algorithm.
     backends : list[Backend]
         Backends the algorithm supports (hard constraint for the router).
+    name : str
+        Registry name. Defaults to the decorated function's name.
+    inputs : dict[str, type]
+        Typed input schema (param_name -> artifact type). Empty by default.
+        Populated by the decorator's ``inputs=`` argument.
+    outputs : dict[str, type]
+        Typed output schema (name -> artifact type). Empty by default.
+    required_backend : str | None
+        If set, declares a hard backend requirement (escape hatch for
+        algorithms that can't be backend-agnostic, e.g. genotype workflows
+        consuming raw hl.MatrixTable). Use sparingly; document the
+        justification in the algorithm's docstring.
     input_format : str
-        Expected input type: ``"dataframe"`` (pandas) or ``"table"`` (Hail).
+        Legacy: ``"dataframe"`` or ``"table"``. Retained for backward compat.
     output_format : str
-        Return type: ``"dataframe"`` or ``"table"``.
-    key_fields : list[str] or None
-        Fields to key the output Hail Table by when persisting.
+        Legacy: ``"dataframe"`` or ``"table"``. Retained for backward compat.
+    key_fields : list[str] | None
+        Legacy: Hail Table key fields for persisting the output.
     """
 
-    backends: List[Backend]
+    backends: list[Backend]
     name: str = ""
+    inputs: dict[str, type] = field(default_factory=dict)
+    outputs: dict[str, type] = field(default_factory=dict)
+    required_backend: str | None = None
     input_format: str = "dataframe"
     output_format: str = "dataframe"
-    key_fields: Optional[List[str]] = None
+    key_fields: list[str] | None = None
 
 
 _IMPLICIT_HAIL_META = AlgorithmMeta(
     backends=[Backend.HAIL],
+    inputs={},
+    outputs={},
+    required_backend=None,
     input_format="table",
     output_format="table",
 )
 
 
 def algorithm(
-    backends: List[Backend],
+    backends: list[Backend],
     name: str = "",
+    inputs: dict[str, type] | None = None,
+    outputs: dict[str, type] | None = None,
+    required_backend: str | None = None,
     input_format: str = "dataframe",
     output_format: str = "dataframe",
-    key_fields: Optional[List[str]] = None,
+    key_fields: list[str] | None = None,
 ) -> Callable:
     """Declare an algorithm's supported backends and I/O formats.
 
@@ -80,6 +99,12 @@ def algorithm(
         Which backends can execute this algorithm.
     name : str, optional
         Registry name for the algorithm. Defaults to the function name.
+    inputs : dict[str, type], optional
+        Typed input schema (param_name -> artifact type).
+    outputs : dict[str, type], optional
+        Typed output schema (name -> artifact type).
+    required_backend : str | None, optional
+        Hard backend requirement; use sparingly.
     input_format : str
         ``"dataframe"`` or ``"table"`` — what the function receives.
     output_format : str
@@ -92,6 +117,9 @@ def algorithm(
         fn._algorithm_meta = AlgorithmMeta(
             backends=backends,
             name=name or fn.__name__,
+            inputs=inputs or {},
+            outputs=outputs or {},
+            required_backend=required_backend,
             input_format=input_format,
             output_format=output_format,
             key_fields=key_fields,
