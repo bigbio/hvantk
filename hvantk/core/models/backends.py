@@ -62,8 +62,17 @@ def algorithm(
     """Declare an algorithm's supported backends and I/O formats.
 
     This decorator attaches an :class:`AlgorithmMeta` instance to the
-    function as ``_algorithm_meta``.  It does not alter the function's
-    runtime behaviour.
+    function as ``_algorithm_meta``.
+
+    Provenance chaining
+    -------------------
+    When the decorated function is called with Artifact inputs (objects
+    with a ``.provenance`` attribute that is a ``Provenance`` instance) and
+    returns an Artifact output, the output's ``provenance.parents`` is
+    automatically set to a tuple of the input provenances. This preserves
+    the build graph for downstream drift detection and reproducibility.
+    If the algorithm already stamped non-empty parents on the output, the
+    existing chain is preserved (the decorator does not overwrite it).
 
     Parameters
     ----------
@@ -90,7 +99,36 @@ def algorithm(
 
         @wraps(fn)
         def wrapper(*args, **kwargs):
-            return fn(*args, **kwargs)
+            # Collect input artifact provenances by introspecting args/kwargs.
+            # We treat anything with a .provenance attribute that's a Provenance
+            # instance as an Artifact. This covers AnnotationTable, ExpressionMatrix,
+            # GeneSet, and any future artifact types without requiring an explicit
+            # isinstance check (which would force an import cycle).
+            from hvantk.core.models.provenance import Provenance
+
+            input_provs: list = []
+            for arg in args:
+                prov = getattr(arg, "provenance", None)
+                if isinstance(prov, Provenance):
+                    input_provs.append(prov)
+            for kwarg in kwargs.values():
+                prov = getattr(kwarg, "provenance", None)
+                if isinstance(prov, Provenance):
+                    input_provs.append(prov)
+
+            result = fn(*args, **kwargs)
+
+            # If the result is an artifact-like object and didn't already chain
+            # provenance internally, attach the inputs' provenances as its parents.
+            if input_provs and hasattr(result, "provenance"):
+                result_prov = getattr(result, "provenance", None)
+                if isinstance(result_prov, Provenance) and result_prov.parents == ():
+                    import dataclasses
+                    result.provenance = dataclasses.replace(
+                        result_prov, parents=tuple(input_provs)
+                    )
+
+            return result
 
         wrapper._algorithm_meta = fn._algorithm_meta
         return wrapper
