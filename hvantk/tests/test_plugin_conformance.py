@@ -663,3 +663,108 @@ def test_ucsc_cellbrowser_round_trip(tmp_path, ucsc_cellbrowser_inputs, dataset_
     assert loaded.backend == "anndata"
     assert loaded.n_vars == 2  # 2 genes
     assert loaded.n_obs == 2  # 2 cells
+
+
+# ---------- Phase K plugins with fixtures ----------
+
+
+@pytest.mark.hail
+def test_gevir_metrics_round_trip(tmp_path):
+    plugin_loader.reset_registry_for_tests()
+    reg = plugin_loader.get_registry()
+    spec = reg.get_dataset("gevir:metrics")
+
+    assert spec.artifact_type is AnnotationTable
+    assert spec.schema_id == "gevir-metrics-v1"
+
+    fixture = Path("hvantk/tests/testdata/raw/gevir/gevir_metrics_pmid31873297.tsv.bgz")
+    assert fixture.exists()
+
+    object.__setattr__(spec, "drift_probe", lambda: {"source_version": "test"})
+
+    out = tmp_path / "metrics.ht"
+    prov = run_builder_for_spec(
+        spec, parsed_input=fixture, output_path=out, plugin_version=spec.plugin_version,
+    )
+    assert prov.plugin == "gevir"
+    assert prov.schema_id == "gevir-metrics-v1"
+
+    loaded = core_io.load(out)
+    assert isinstance(loaded, AnnotationTable)
+    assert loaded.count() > 0
+
+
+@pytest.mark.hail
+def test_gnomad_metrics_round_trip(tmp_path):
+    plugin_loader.reset_registry_for_tests()
+    reg = plugin_loader.get_registry()
+    spec = reg.get_dataset("gnomad-metrics:metrics")
+
+    assert spec.artifact_type is AnnotationTable
+    assert spec.schema_id == "gnomad-metrics-v1"
+
+    fixture = Path("hvantk/tests/testdata/raw/gnomad/gnomad.v2.1.1.lof_metrics.by_gene.chr20.tsv.bgz")
+    assert fixture.exists()
+
+    object.__setattr__(spec, "drift_probe", lambda: {"source_version": "test"})
+
+    out = tmp_path / "metrics.ht"
+    prov = run_builder_for_spec(
+        spec, parsed_input=fixture, output_path=out, plugin_version=spec.plugin_version,
+    )
+    assert prov.plugin == "gnomad-metrics"
+    assert prov.schema_id == "gnomad-metrics-v1"
+
+    loaded = core_io.load(out)
+    assert isinstance(loaded, AnnotationTable)
+    assert loaded.count() > 0
+
+
+@pytest.mark.hail
+def test_ensembl_gene_round_trip(tmp_path):
+    plugin_loader.reset_registry_for_tests()
+    reg = plugin_loader.get_registry()
+    spec = reg.get_dataset("ensembl-gene:genes")
+
+    assert spec.artifact_type is AnnotationTable
+    assert spec.schema_id == "ensembl-gene-v1"
+
+    fixture = Path("hvantk/tests/testdata/raw/ensembl/ensembl_gene_biomart.tsv.bgz")
+    assert fixture.exists()
+
+    object.__setattr__(spec, "drift_probe", lambda: {"source_version": "test"})
+
+    out = tmp_path / "genes.ht"
+    prov = run_builder_for_spec(
+        spec, parsed_input=fixture, output_path=out, plugin_version=spec.plugin_version,
+    )
+    assert prov.plugin == "ensembl-gene"
+
+    loaded = core_io.load(out)
+    assert isinstance(loaded, AnnotationTable)
+    assert loaded.count() > 0
+
+
+@pytest.mark.hail
+def test_dbnsfp_variants_round_trip(tmp_path):
+    plugin_loader.reset_registry_for_tests()
+    reg = plugin_loader.get_registry()
+    spec = reg.get_dataset("dbnsfp:variants")
+
+    assert spec.artifact_type is AnnotationTable
+    assert spec.schema_id == "dbnsfp-v1"
+
+    fixture = Path("hvantk/tests/testdata/raw/dbnsfp/dbNSFP4_v49a_example_variants.bgz")
+    assert fixture.exists()
+
+    object.__setattr__(spec, "drift_probe", lambda: {"source_version": "test"})
+
+    out = tmp_path / "variants.ht"
+    prov = run_builder_for_spec(
+        spec, parsed_input=fixture, output_path=out, plugin_version=spec.plugin_version,
+    )
+    assert prov.plugin == "dbnsfp"
+
+    loaded = core_io.load(out)
+    assert isinstance(loaded, AnnotationTable)
+    assert loaded.count() > 0
