@@ -357,6 +357,12 @@ def _add_phase_k_aliases() -> None:
     for old, new in aliases.items():
         if new in _TABLE_BUILDERS and old not in _TABLE_BUILDERS:
             _TABLE_BUILDERS[old] = _TABLE_BUILDERS[new]
+        elif old not in _TABLE_BUILDERS:
+            logger.warning(
+                "Phase K backward-compat alias %r skipped: target %r not in "
+                "_TABLE_BUILDERS (plugin may have failed to load)",
+                old, new,
+            )
 
 
 def _initialize_plugin_registrations() -> None:
