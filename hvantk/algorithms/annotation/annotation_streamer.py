@@ -106,9 +106,9 @@ class VariantPredictionScoreStreamer(AnnotationStreamer):
 
     def load_annotation_data(self) -> hl.Table:
         """Load dbNSFP scores"""
-        from hvantk.core.models.dataset import get_dbnsfp_scores_ht
+        from hvantk.core.io.legacy_artifacts import load_legacy_table
 
-        return get_dbnsfp_scores_ht()
+        return load_legacy_table("dbnsfp_scores")
 
     def annotate_chunk(self, chunk: hl.Table) -> hl.Table:
         """Add variant prediction scores"""
@@ -174,12 +174,15 @@ class GeneExpressionStreamer(AnnotationStreamer):
 
     def load_annotation_data(self) -> hl.Table:
         """Load gene expression data"""
-        from hvantk.core.models.dataset import get_gene_expression_ht, get_hca_ht, get_deg_ht
+        from hvantk.core.io.legacy_artifacts import (
+            load_legacy_gene_expression_table,
+            load_legacy_table,
+        )
 
         # Load multiple expression datasets
-        expr_ht = get_gene_expression_ht()  # General expression
-        hca_ht = get_hca_ht()  # Human Cell Atlas
-        deg_ht = get_deg_ht()  # Differentially expressed genes
+        expr_ht = load_legacy_gene_expression_table()  # General expression
+        hca_ht = load_legacy_table("hca")  # Human Cell Atlas
+        deg_ht = load_legacy_table("deg")  # Differentially expressed genes
 
         return expr_ht.join(hca_ht, how="outer").join(deg_ht, how="outer")
 
@@ -234,11 +237,11 @@ class GeneConstraintStreamer(AnnotationStreamer):
 
     def load_annotation_data(self) -> hl.Table:
         """Load gene constraint data"""
-        from hvantk.core.models.dataset import get_gnomad_metrics_ht, get_gevir_ht
+        from hvantk.core.io.legacy_artifacts import load_legacy_table
 
         # Load constraint metrics
-        gnomad_ht = get_gnomad_metrics_ht()
-        gevir_ht = get_gevir_ht()
+        gnomad_ht = load_legacy_table("gnomad_metrics")
+        gevir_ht = load_legacy_table("gevir")
 
         return gnomad_ht.join(gevir_ht, how="outer")
 
@@ -295,9 +298,9 @@ class PopulationFrequencyStreamer(AnnotationStreamer):
 
     def load_annotation_data(self) -> hl.Table:
         """Load population frequency data"""
-        from hvantk.core.models.dataset import get_gnomad_af_ht
+        from hvantk.core.io.legacy_artifacts import load_legacy_table
 
-        return get_gnomad_af_ht()
+        return load_legacy_table("gnomad_af")
 
     def annotate_chunk(self, chunk: hl.Table) -> hl.Table:
         """Add population frequency annotations"""

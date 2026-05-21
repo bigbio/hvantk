@@ -22,7 +22,7 @@ import hail as hl
 import pandas as pd
 
 from hvantk.core.streamers.base import HailDataStreamer
-from hvantk.core.models.dataset import get_gene_ann_ht
+from hvantk.core.io.legacy_artifacts import load_legacy_table
 from hvantk.core.utils.gene_sets import load_gene_sets_from_dict
 from hvantk.core.utils.table_utils import get_row_fields
 
@@ -1055,14 +1055,14 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
                 "gene_id_field must be one of: gene_id, gene_symbol, hgnc_id"
             )
 
-        from hvantk.core.models import dataset as dataset_module
+        from hvantk.core.io import legacy_artifacts
 
-        if not dataset_module.source_dir:
+        if not legacy_artifacts.source_dir:
             raise ValueError(
-                "hvantk.core.models.dataset.source_dir is not set; cannot map gene_id to "
-                "gene_symbol. Set source_dir or use gene_symbol/hgnc_id."
+                "hvantk.core.io.legacy_artifacts.source_dir is not set; cannot map "
+                "gene_id to gene_symbol. Set source_dir or use gene_symbol/hgnc_id."
             )
-        gene_ann_ht = get_gene_ann_ht()
+        gene_ann_ht = load_legacy_table("gene_ann")
         if "gene_name" not in gene_ann_ht.row:
             raise ValueError(
                 "Ensembl gene annotation table missing gene_name field for mapping."

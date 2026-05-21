@@ -6,18 +6,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from hvantk.core.models.dataset import (
-    get_ccr_ht,
-    get_gevir_ht,
-    get_gene_expression_ht,
-    get_ppi_ht,
-    get_gene_ann_ht,
-    get_dbnsfp_scores_ht,
-    get_gnomad_metrics_ht,
-    get_gnomad_af_ht,
-    get_deg_ht,
-    get_clinvar_ht,
-    get_hca_ht,
+from hvantk.core.io.legacy_artifacts import (
+    load_legacy_gene_expression_table,
+    load_legacy_table,
 )
 
 
@@ -30,7 +21,7 @@ def annotate_clinvar_clnsig(t: hl.Table) -> hl.Table:
     from hvantk.core.constants import CLINVAR_PATHOGENIC_LABELS, CLINVAR_BENIGN_LABELS
 
     logger.info("Annotating ClinVar CLNSIG")
-    clinvar_ht = get_clinvar_ht()
+    clinvar_ht = load_legacy_table("clinvar")
 
     # First annotate clinvar_clnsig from the ClinVar table
     t = t.annotate(clinvar_clnsig=clinvar_ht[t.key].info.CLNSIG)
@@ -60,7 +51,7 @@ def annotate_ccr(t: hl.Table) -> hl.Table:
     Adds a `ccr_pct` field to the input Hail Table by joining on the variant locus.
     """
     logger.info("Annotating CCR")
-    ccr_ht = get_ccr_ht()
+    ccr_ht = load_legacy_table("ccr")
     t = t.annotate(ccr_pct=ccr_ht[t.locus].ccr_pct)
     return t
 
@@ -75,7 +66,7 @@ def annotate_gevir(
     Adds the `gevir_pct` and `virlof_pct` fields to each row by joining on the specified gene ID column.
     """
     logger.info("Annotating GEVIR")
-    gevir_ht = get_gevir_ht().select("gevir_pct", "virlof_pct")
+    gevir_ht = load_legacy_table("gevir").select("gevir_pct", "virlof_pct")
     t = t.annotate(**gevir_ht[t[gene_id_col]])
     return t
 
@@ -94,7 +85,7 @@ def annotate_rnaseq_expression(
         The input table annotated with gene expression values from the selected organ.
     """
     logger.info("Annotating RNAseq expression")
-    gene_expression_ht = get_gene_expression_ht(organ=organ)
+    gene_expression_ht = load_legacy_gene_expression_table(organ=organ)
     t = t.annotate(**gene_expression_ht[t[gene_id_col]])
     return t
 
@@ -109,7 +100,7 @@ def annotate_ppi(t: hl.Table) -> hl.Table:
         A Hail Table with the `ppi_site` annotation.
     """
     logger.info("Annotating PPI")
-    ppi_ht = get_ppi_ht()
+    ppi_ht = load_legacy_table("ppi")
     t = t.annotate(ppi_site=hl.int(hl.is_defined(ppi_ht[t.locus])))
     return t
 
@@ -123,7 +114,7 @@ def annotate_ensembl_gene(t: hl.Table, gene_symbol_col: str) -> hl.Table:
     logger.info("Annotating Ensembl gene")
 
     # Import and prepare gene table for annotation
-    gene_ht = get_gene_ann_ht()
+    gene_ht = load_legacy_table("gene_ann")
     gene_ht = (
         gene_ht.transmute(gene_aliases=gene_ht.Gene_Synonym.add(gene_ht.Gene))
         .explode("gene_aliases", name="Gene")
@@ -152,7 +143,7 @@ def annotate_dbnsfp_scores(t: hl.Table, transcript_id_col: str) -> hl.Table:
     logger.info("Annotating dbNSFP scores")
 
     # Import and parse dbNSFP dataset with annotation scores
-    ht_scores = get_dbnsfp_scores_ht()
+    ht_scores = load_legacy_table("dbnsfp_scores")
     scores_fields = [
         f for f in ht_scores.row if f.endswith("_score") or f == "CADD_phred"
     ]
@@ -177,7 +168,7 @@ def annotate_gnomad_constraint_metrics(t: hl.Table, transcript_id_col: str) -> h
         Hail Table annotated with gnomAD constraint metrics for each transcript.
     """
     logger.info("Annotating gnomAD constraint metrics")
-    gnomad_metrics = get_gnomad_metrics_ht()
+    gnomad_metrics = load_legacy_table("gnomad_metrics")
     t = t.annotate(**gnomad_metrics[t[transcript_id_col]])
     return t
 
@@ -197,7 +188,7 @@ def annotate_degs(
         Hail Table with additional fields for each cluster, set to 1 if the gene is differentially expressed in that cluster, 0 otherwise.
     """
     logger.info("Annotating DEGs")
-    degs = get_deg_ht()
+    degs = load_legacy_table("deg")
 
     t = t.annotate(sc_cluster_id=degs[t[gene_symbol_col]].cluster_id)
 
@@ -237,7 +228,7 @@ def annotate_hca(
         Hail Table annotated with a struct of mean UMI per cell for each specified cell category under the 'hca' field.
     """
     logger.info("Annotating HCA")
-    hca_tb = get_hca_ht().select(*cell_categories)
+    hca_tb = load_legacy_table("hca").select(*cell_categories)
 
     t = t.annotate(hca=hl.struct(**hca_tb[t[gene_id_col]]))
 
@@ -253,7 +244,7 @@ def annotate_gnomad_af(t: hl.Table) -> hl.Table:
     logger.info("Annotating gnomAD AF")
 
     # import gnomad table with allele frequency annotation
-    gnomad_af = get_gnomad_af_ht()
+    gnomad_af = load_legacy_table("gnomad_af")
 
     # define allele frequency annotation expression
     ann_expr = gnomad_af[t.key].AF

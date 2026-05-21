@@ -479,8 +479,8 @@ def create_builtin_registry() -> AnnotationRegistry:
             source_path="",  # Will be set by dataset function
             annotation_type="variant",
             loader_func=lambda _: __import__(
-                "hvantk.core.models.dataset", fromlist=["get_dbnsfp_scores_ht"]
-            ).get_dbnsfp_scores_ht(),
+                "hvantk.core.io.legacy_artifacts", fromlist=["load_legacy_table"]
+            ).load_legacy_table("dbnsfp_scores"),
             feature_mapping={"CADD_phred": "cadd_score", "REVEL_score": "revel_score"},
             metadata={"category": "prediction", "data_type": "scores"},
         ),
@@ -494,8 +494,9 @@ def create_builtin_registry() -> AnnotationRegistry:
             source_path="",
             annotation_type="gene",
             loader_func=lambda _: __import__(
-                "hvantk.core.models.dataset", fromlist=["get_gene_expression_ht"]
-            ).get_gene_expression_ht(),
+                "hvantk.core.io.legacy_artifacts",
+                fromlist=["load_legacy_gene_expression_table"],
+            ).load_legacy_gene_expression_table(),
             metadata={"category": "expression", "data_type": "levels"},
         ),
         category="expression",
@@ -508,8 +509,8 @@ def create_builtin_registry() -> AnnotationRegistry:
             source_path="",
             annotation_type="variant",
             loader_func=lambda _: __import__(
-                "hvantk.core.models.dataset", fromlist=["get_gnomad_af_ht"]
-            ).get_gnomad_af_ht(),
+                "hvantk.core.io.legacy_artifacts", fromlist=["load_legacy_table"]
+            ).load_legacy_table("gnomad_af"),
             feature_mapping={"AF": "allele_frequency", "AC": "allele_count"},
             metadata={"category": "population", "data_type": "frequencies"},
         ),
