@@ -8,7 +8,7 @@ instantiated by plugin authors.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable, Literal, Mapping
 
 Domain = Literal["genomics", "transcriptomics", "proteomics", "epigenomics", "mapping"]
@@ -51,6 +51,40 @@ class TestPaths:
     schema_snapshot: str
     row_snapshot: str
     drift_fingerprint: str
+
+
+@dataclass(frozen=True)
+class DatasetManifest:
+    """Descriptive view of a dataset declaration — no resolved callables.
+
+    Populated by the loader's first pass (pure YAML reads). Catalog,
+    ``hvantk plugins list``, and any UI that needs to enumerate datasets
+    use this; it survives missing optional runtimes (e.g. hail) that
+    would otherwise prevent the corresponding DatasetSpec from binding.
+
+    To get an executable spec with resolved callables, call
+    ``registry.get_dataset(name)`` — the loader resolves callables on
+    demand and caches the resulting ``DatasetSpec``.
+    """
+
+    __test__ = False  # not a pytest test class
+
+    name: str  # compound, e.g. "clinvar:variants"
+    domain: Domain
+    backend: Backend
+    skill_path: str
+    test_paths: TestPaths
+    plugin_name: str
+    plugin_version: str | None = None
+    artifact_type_name: str | None = None  # e.g. "AnnotationTable"; resolved lazily
+    schema_id: str | None = None
+    has_download_fn: bool = False
+    has_parse_fn: bool = False
+    # Module/function references kept as strings so we can resolve lazily
+    builder_ref: tuple[str, str] = field(default=("", ""))
+    drift_probe_ref: tuple[str, str] = field(default=("", ""))
+    download_ref: tuple[str, str] | None = None
+    parse_ref: tuple[str, str] | None = None
 
 
 @dataclass(frozen=True)
@@ -108,6 +142,11 @@ class Provider:
     It is populated independently of whether each builder import
     succeeded, so catalog-consumers can route entries even when a
     plugin's runtime dependencies (e.g. hail) are unavailable.
+
+    `manifests` holds the full descriptive view for all declared datasets,
+    populated by the loader's first (pure-YAML) pass. This is always
+    populated regardless of whether callable imports succeeded.
+    `datasets` holds only the successfully-bound executable specs.
     """
 
     name: str
@@ -115,6 +154,7 @@ class Provider:
     datasets: tuple[DatasetSpec, ...]
     catalog_path: str | None = None
     primary_domain: str | None = None
+    manifests: tuple[DatasetManifest, ...] = field(default=())
 
 
 from hvantk.core.models.build_context import BuildContext  # noqa: F401

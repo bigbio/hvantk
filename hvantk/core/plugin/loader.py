@@ -4,6 +4,17 @@ Scans hvantk/skills/<provider>/plugin.yaml and the hvantk.providers entry-point
 group, validates each manifest against the schema, resolves the declared
 builder/probe callables, and constructs Provider records.
 
+Discovery is split into two passes:
+
+  Pass 1 (descriptive, eager) — reads YAML, validates against the schema, and
+  populates ``DatasetManifest`` objects.  No callables are imported.  The result
+  is always available via ``registry.list_manifests()``.
+
+  Pass 2 (executable, lazy) — on first ``get_dataset(name)`` call, resolves the
+  callables declared in the manifest via importlib and caches the resulting
+  ``DatasetSpec``.  If an import fails the manifest remains visible but
+  ``get_dataset`` raises.
+
 The module-level REGISTRY is built lazily on first access via get_registry().
 """
 
@@ -20,6 +31,7 @@ import jsonschema
 import yaml
 
 from .api import (
+    DatasetManifest,
     DatasetSpec,
     PluginLoadError,
     PluginNameCollision,
@@ -47,10 +59,15 @@ class PluginRegistry:
 
     def __init__(self) -> None:
         self._providers: dict[str, Provider] = {}
+        # Pass-1 index: all manifests (descriptive only, no callables).
+        self._manifests: dict[str, DatasetManifest] = {}
+        # Pass-2 cache: successfully-resolved executable specs.
         self._datasets: dict[str, DatasetSpec] = {}
         self._load_errors: list[tuple[str, Exception]] = []
         self._loaded_dirs: set[Path] = set()
         self._schema = _load_schema()
+        # CLI entries per plugin, keyed by plugin name.
+        self._cli_entries: dict[str, list[dict]] = {}
 
     # --- Public lookup API ---
 
@@ -58,7 +75,14 @@ class PluginRegistry:
         return self._providers[name]
 
     def get_dataset(self, name: str) -> DatasetSpec:
-        return self._datasets[name]
+        """Return the executable spec, resolving callables lazily on first call."""
+        if name in self._datasets:
+            return self._datasets[name]
+        if name not in self._manifests:
+            raise KeyError(name)
+        spec = self._resolve_spec(self._manifests[name])
+        self._datasets[name] = spec
+        return spec
 
     def list_providers(self) -> list[Provider]:
         return list(self._providers.values())
@@ -66,12 +90,28 @@ class PluginRegistry:
     def list_datasets(
         self, *, domain: str | None = None, backend: str | None = None
     ) -> list[DatasetSpec]:
-        out = list(self._datasets.values())
+        """Return successfully-bound executable specs (lazy resolution per entry).
+
+        Only specs whose callables can be imported are returned.  Use
+        ``list_manifests()`` to get a full descriptive view that survives
+        missing optional runtimes.
+        """
+        out = []
+        for name, dm in self._manifests.items():
+            try:
+                spec = self.get_dataset(name)
+            except Exception:  # noqa: BLE001
+                continue
+            out.append(spec)
         if domain is not None:
             out = [d for d in out if d.domain == domain]
         if backend is not None:
             out = [d for d in out if d.backend == backend]
         return out
+
+    def list_manifests(self) -> list[DatasetManifest]:
+        """Return ALL dataset manifests (descriptive), regardless of bind status."""
+        return list(self._manifests.values())
 
     def load_errors(self) -> list[tuple[str, Exception]]:
         return list(self._load_errors)
@@ -133,6 +173,42 @@ class PluginRegistry:
                 err.__cause__ = exc
                 self._load_errors.append((f"entry-point:{ep.name}", err))
 
+    # --- CLI wiring ---
+
+    def apply_plugin_downloaders(self, click_group: Any) -> None:
+        """Wire each plugin's downloader CLI into the given click group.
+
+        Reads the ``cli:`` block from each plugin manifest (cached at load
+        time).  For entries whose ``command`` ends in ``-download``, strips
+        the suffix to derive the subcommand name under the given group,
+        lazily resolves the function, and calls
+        ``click_group.add_command(fn, name=short_name)``.
+
+        Entries that don't end in ``-download`` are skipped — they're
+        reserved for future top-level commands.
+
+        Idempotent: skips entries whose short name is already registered.
+        """
+        for plugin_name, entries in self._cli_entries.items():
+            for entry in entries:
+                command = entry["command"]
+                if not command.endswith("-download"):
+                    continue
+                short_name = command[: -len("-download")]
+                if short_name in click_group.commands:
+                    continue
+                try:
+                    fn = self._resolve_callable(entry["module"], entry["function"])
+                except PluginLoadError as exc:
+                    logger.warning(
+                        "skipping downloader %r from plugin %r: %s",
+                        short_name,
+                        plugin_name,
+                        exc,
+                    )
+                    continue
+                click_group.add_command(fn, name=short_name)
+
     # --- Internal helpers ---
 
     def _read_and_validate_manifest(self, manifest_path: Path) -> dict:
@@ -148,55 +224,16 @@ class PluginRegistry:
             raise PluginLoadError(f"schema validation failed: {exc.message}") from exc
         return content
 
-    def _build_provider(self, manifest: dict, plugin_dir: Path) -> Provider:
-        datasets: list[DatasetSpec] = []
-        for ds_manifest in manifest["datasets"]:
-            try:
-                ds = self._build_dataset_spec(
-                    provider_name=manifest["name"],
-                    ds_manifest=ds_manifest,
-                    plugin_dir=plugin_dir,
-                    plugin_version=manifest.get("version"),
-                )
-                datasets.append(ds)
-            except PluginLoadError as exc:
-                self._load_errors.append(
-                    (f"{manifest['name']}:{ds_manifest.get('name', '?')}", exc)
-                )
-        catalog_rel = manifest.get("catalog")
-        catalog_path = (
-            str((plugin_dir / catalog_rel).resolve()) if catalog_rel else None
-        )
-        # Derive the manifest's primary domain independently of builder
-        # imports so catalog routing still works when a builder cannot
-        # be imported (e.g. hail missing in a non-hail dev env).
-        manifest_domains: dict[str, int] = {}
-        for ds in manifest.get("datasets", []):
-            d = ds.get("domain")
-            if d:
-                manifest_domains[d] = manifest_domains.get(d, 0) + 1
-        primary_domain = (
-            max(manifest_domains, key=manifest_domains.get) if manifest_domains else None
-        )
-        return Provider(
-            name=manifest["name"],
-            version=manifest["version"],
-            datasets=tuple(datasets),
-            catalog_path=catalog_path,
-            primary_domain=primary_domain,
-        )
-
-    def _build_dataset_spec(
-        self, *, provider_name: str, ds_manifest: dict, plugin_dir: Path, plugin_version: str | None = None
-    ) -> DatasetSpec:
+    def _build_dataset_manifest(
+        self,
+        *,
+        provider_name: str,
+        ds_manifest: dict,
+        plugin_dir: Path,
+        plugin_version: str | None = None,
+    ) -> DatasetManifest:
+        """Pass 1: build descriptive manifest — no callable imports."""
         compound = f"{provider_name}:{ds_manifest['name']}"
-        builder = self._resolve_callable(
-            ds_manifest["builder"]["module"], ds_manifest["builder"]["function"]
-        )
-        probe = self._resolve_callable(
-            ds_manifest["drift_probe"]["module"],
-            ds_manifest["drift_probe"]["function"],
-        )
         tests = ds_manifest["tests"]
         test_paths = TestPaths(
             command=tests["command"],
@@ -206,46 +243,143 @@ class PluginRegistry:
             drift_fingerprint=str((plugin_dir / tests["drift_fingerprint"]).resolve()),
         )
         skill_path = str((plugin_dir / ds_manifest["skill"]).resolve())
-
         lifecycle = ds_manifest.get("lifecycle") or {}
-        download_fn = None
-        parse_fn = None
-        if "download" in lifecycle:
-            download_fn = self._resolve_callable(
-                lifecycle["download"]["module"],
-                lifecycle["download"]["function"],
-            )
-        if "parse" in lifecycle:
-            parse_fn = self._resolve_callable(
-                lifecycle["parse"]["module"],
-                lifecycle["parse"]["function"],
-            )
-
-        # Phase B optional fields
-        artifact_type_str = ds_manifest.get("artifact_type")
-        artifact_type = None
-        if artifact_type_str is not None:
-            from hvantk.core import models as _models
-            artifact_type = getattr(_models, artifact_type_str, None)
-            if artifact_type is None:
-                raise PluginLoadError(
-                    f"{compound}: artifact_type {artifact_type_str!r} not found "
-                    f"in hvantk.core.models"
-                )
-
-        return DatasetSpec(
+        return DatasetManifest(
             name=compound,
             domain=ds_manifest["domain"],
             backend=ds_manifest["backend"],
-            builder=builder,
-            drift_probe=probe,
             skill_path=skill_path,
             test_paths=test_paths,
+            plugin_name=provider_name,
+            plugin_version=plugin_version,
+            artifact_type_name=ds_manifest.get("artifact_type"),
+            schema_id=ds_manifest.get("schema_id"),
+            builder_ref=(
+                ds_manifest["builder"]["module"],
+                ds_manifest["builder"]["function"],
+            ),
+            drift_probe_ref=(
+                ds_manifest["drift_probe"]["module"],
+                ds_manifest["drift_probe"]["function"],
+            ),
+            download_ref=(
+                (lifecycle["download"]["module"], lifecycle["download"]["function"])
+                if "download" in lifecycle
+                else None
+            ),
+            parse_ref=(
+                (lifecycle["parse"]["module"], lifecycle["parse"]["function"])
+                if "parse" in lifecycle
+                else None
+            ),
+            has_download_fn="download" in lifecycle,
+            has_parse_fn="parse" in lifecycle,
+        )
+
+    def _resolve_spec(self, dm: DatasetManifest) -> DatasetSpec:
+        """Pass 2: import callables and return an executable DatasetSpec."""
+        builder = self._resolve_callable(*dm.builder_ref)
+        drift_probe = self._resolve_callable(*dm.drift_probe_ref)
+        download_fn = (
+            self._resolve_callable(*dm.download_ref) if dm.download_ref else None
+        )
+        parse_fn = (
+            self._resolve_callable(*dm.parse_ref) if dm.parse_ref else None
+        )
+        artifact_type = None
+        if dm.artifact_type_name:
+            from hvantk.core import models as _models
+
+            artifact_type = getattr(_models, dm.artifact_type_name, None)
+            if artifact_type is None:
+                raise PluginLoadError(
+                    f"{dm.name}: artifact_type {dm.artifact_type_name!r} not found "
+                    f"in hvantk.core.models"
+                )
+        return DatasetSpec(
+            name=dm.name,
+            domain=dm.domain,
+            backend=dm.backend,
+            builder=builder,
+            drift_probe=drift_probe,
+            skill_path=dm.skill_path,
+            test_paths=dm.test_paths,
             download_fn=download_fn,
             parse_fn=parse_fn,
-            plugin_version=plugin_version,
+            plugin_version=dm.plugin_version,
             artifact_type=artifact_type,
-            schema_id=ds_manifest.get("schema_id"),
+            schema_id=dm.schema_id,
+        )
+
+    def _build_provider(self, manifest: dict, plugin_dir: Path) -> Provider:
+        """Build a Provider via two-pass discovery.
+
+        Pass 1 (always runs): build DatasetManifest for every declared dataset
+        and store in self._manifests.  No callable imports.
+
+        Pass 2 (attempted eagerly here, cached on demand): try to resolve
+        specs for the Provider.datasets tuple so callers that never call
+        get_dataset() still get populated Provider objects.  Failures are
+        recorded in _load_errors; the manifest entry always survives.
+        """
+        dm_list: list[DatasetManifest] = []
+        for ds_manifest in manifest["datasets"]:
+            try:
+                dm = self._build_dataset_manifest(
+                    provider_name=manifest["name"],
+                    ds_manifest=ds_manifest,
+                    plugin_dir=plugin_dir,
+                    plugin_version=manifest.get("version"),
+                )
+                dm_list.append(dm)
+                self._manifests[dm.name] = dm
+            except PluginLoadError as exc:
+                self._load_errors.append(
+                    (f"{manifest['name']}:{ds_manifest.get('name', '?')}", exc)
+                )
+
+        # Eagerly attempt to bind specs (best-effort; failures are soft).
+        datasets: list[DatasetSpec] = []
+        for dm in dm_list:
+            try:
+                spec = self._resolve_spec(dm)
+                self._datasets[dm.name] = spec
+                datasets.append(spec)
+            except PluginLoadError as exc:
+                self._load_errors.append((dm.name, exc))
+            except Exception as exc:  # noqa: BLE001
+                err = PluginLoadError(str(exc))
+                err.__cause__ = exc
+                self._load_errors.append((dm.name, err))
+
+        # Cache CLI entries for downloader wiring.
+        cli_entries = manifest.get("cli", [])
+        if cli_entries:
+            self._cli_entries[manifest["name"]] = cli_entries
+
+        catalog_rel = manifest.get("catalog")
+        catalog_path = (
+            str((plugin_dir / catalog_rel).resolve()) if catalog_rel else None
+        )
+        # Derive primary domain from YAML (not from resolved specs) so that
+        # catalog routing works even when builder imports fail.
+        manifest_domains: dict[str, int] = {}
+        for ds in manifest.get("datasets", []):
+            d = ds.get("domain")
+            if d:
+                manifest_domains[d] = manifest_domains.get(d, 0) + 1
+        primary_domain = (
+            max(manifest_domains, key=manifest_domains.get)  # type: ignore[arg-type]
+            if manifest_domains
+            else None
+        )
+        return Provider(
+            name=manifest["name"],
+            version=manifest["version"],
+            datasets=tuple(datasets),
+            catalog_path=catalog_path,
+            primary_domain=primary_domain,
+            manifests=tuple(dm_list),
         )
 
     def _resolve_callable(self, module_path: str, func_name: str) -> Callable[..., Any]:
@@ -274,14 +408,16 @@ class PluginRegistry:
                 f"(new attempt from {plugin_id})"
             )
         self._providers[provider.name] = provider
+        # Register manifests (all datasets, bind or not).
+        for dm in provider.manifests:
+            if dm.name in self._manifests:
+                # Defensive: already set during _build_provider; this is a no-op.
+                pass
+        # Register successfully-bound specs.
         for ds in provider.datasets:
             if ds.name in self._datasets:
-                # Defensive: with compound keys this is unreachable when the
-                # provider-name check above passes. Kept as a backstop.
-                raise PluginNameCollision(
-                    f"dataset name collision: '{ds.name}'"
-                )
-            self._datasets[ds.name] = ds
+                # Defensive: already cached; no action needed.
+                pass
 
 
 # --- Module-level singleton (lazy) ---
