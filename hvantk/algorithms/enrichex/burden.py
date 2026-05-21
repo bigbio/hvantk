@@ -1762,3 +1762,97 @@ def permutation_burden_test(
     logger.info("=" * 60)
 
     return pd.DataFrame(results)
+
+
+# ---------------------------------------------------------------------------
+# Phase P: artifact-typed wrappers
+# ---------------------------------------------------------------------------
+
+
+@algorithm(
+    name="burden_analysis_artifact",
+    backends=[Backend.HAIL],
+    inputs={
+        "cohort": "ExpressionMatrix",
+        "gene_sets": "dict[str, GeneSet]",
+        "phenotype": "AnnotationTable",
+    },
+    outputs={"result": "BurdenAnalysisResult"},
+    required_backend="hail",
+)
+def run_burden_analysis_artifact(
+    cohort: "ExpressionMatrix",
+    gene_sets: "Dict[str, GeneSet]",
+    phenotype: "AnnotationTable",
+    **kwargs,
+):
+    """Phase P artifact-typed wrapper for run_burden_analysis.
+
+    Accepts:
+      - cohort: ExpressionMatrix(backend='hail-mt') with genotype data
+      - gene_sets: dict of GeneSet collections
+      - phenotype: AnnotationTable(backend='hail') with sample phenotypes
+
+    Unwraps via .to_hail_mt() / .to_hail() and delegates to
+    run_burden_analysis. The legacy hl.MatrixTable-typed function stays
+    as the canonical implementation; this wrapper is the canonical entry
+    point for callers consuming the artifact contract.
+
+    All keyword arguments forward to run_burden_analysis (phenotype_field,
+    covariate_fields, phenotype_type, gene_field, etc.).
+    """
+    cohort_mt = cohort.to_hail_mt()
+    phenotype_ht = phenotype.to_hail()
+    gs_dict = {name: gs.to_list() for name, gs in gene_sets.items()}
+    return run_burden_analysis(
+        cohort_mt=cohort_mt,
+        gene_sets=gs_dict,
+        phenotype_ht=phenotype_ht,
+        **kwargs,
+    )
+
+
+@algorithm(
+    name="stratified_burden_analysis_artifact",
+    backends=[Backend.HAIL],
+    inputs={
+        "cohort": "ExpressionMatrix",
+        "gene_sets": "dict[str, GeneSet]",
+        "phenotype": "AnnotationTable",
+    },
+    outputs={"result": "dict[str, BurdenAnalysisResult]"},
+    required_backend="hail",
+)
+def run_stratified_burden_analysis_artifact(
+    cohort: "ExpressionMatrix",
+    gene_sets: "Dict[str, GeneSet]",
+    phenotype: "AnnotationTable",
+    variant_classes,
+    **kwargs,
+):
+    """Phase P artifact-typed wrapper for run_stratified_burden_analysis.
+
+    Accepts:
+      - cohort: ExpressionMatrix(backend='hail-mt') with genotype data
+      - gene_sets: dict of GeneSet collections
+      - phenotype: AnnotationTable(backend='hail') with sample phenotypes
+      - variant_classes: dict mapping class name to VariantFilter
+
+    Unwraps via .to_hail_mt() / .to_hail() and delegates to
+    run_stratified_burden_analysis. The legacy hl.MatrixTable-typed function
+    stays as the canonical implementation; this wrapper is the canonical entry
+    point for callers consuming the artifact contract.
+
+    All keyword arguments forward to run_stratified_burden_analysis
+    (phenotype_field, covariate_fields, phenotype_type, gene_field, etc.).
+    """
+    cohort_mt = cohort.to_hail_mt()
+    phenotype_ht = phenotype.to_hail()
+    gs_dict = {name: gs.to_list() for name, gs in gene_sets.items()}
+    return run_stratified_burden_analysis(
+        cohort_mt=cohort_mt,
+        gene_sets=gs_dict,
+        phenotype_ht=phenotype_ht,
+        variant_classes=variant_classes,
+        **kwargs,
+    )
