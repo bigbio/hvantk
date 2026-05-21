@@ -293,3 +293,58 @@ def test_save_load_anndata_backend_via_mt(tmp_path, hail_session):
     assert loaded.backend == "hail-mt"
     assert loaded.n_obs == 1
     assert loaded.n_vars == 1
+
+
+# ---------------------------------------------------------------------------
+# Lazy count behavior
+# ---------------------------------------------------------------------------
+
+@pytest.mark.hail
+def test_from_hail_mt_does_not_eagerly_count(monkeypatch, hail_session):
+    """from_hail_mt should not trigger count_cols / count_rows at construction."""
+    import hail as hl
+
+    rows = []
+    for r in range(3):
+        for c in range(2):
+            rows.append({"row_idx": r, "col_idx": c, "value": float(r * 10 + c)})
+    ht = hl.Table.parallelize(
+        rows,
+        hl.tstruct(row_idx=hl.tint32, col_idx=hl.tint32, value=hl.tfloat64),
+    )
+    mt = ht.to_matrix_table(row_key=["row_idx"], col_key=["col_idx"])
+
+    # Track count calls via monkeypatching the type
+    counts = {"cols": 0, "rows": 0}
+    orig_count_cols = type(mt).count_cols
+    orig_count_rows = type(mt).count_rows
+
+    def spy_count_cols(self):
+        counts["cols"] += 1
+        return orig_count_cols(self)
+
+    def spy_count_rows(self):
+        counts["rows"] += 1
+        return orig_count_rows(self)
+
+    monkeypatch.setattr(type(mt), "count_cols", spy_count_cols)
+    monkeypatch.setattr(type(mt), "count_rows", spy_count_rows)
+
+    em = ExpressionMatrix.from_hail_mt(mt, provenance=_prov())
+
+    # Construction must NOT have triggered any counts
+    assert counts == {"cols": 0, "rows": 0}, (
+        f"from_hail_mt triggered eager counts: {counts}"
+    )
+
+    # Accessing n_obs triggers exactly one count_cols call, then caches
+    _ = em.n_obs
+    _ = em.n_obs  # second access — should NOT re-count
+    assert counts["cols"] == 1, "n_obs should trigger count_cols exactly once"
+    assert counts["rows"] == 0, "n_obs must not trigger count_rows"
+
+    # Accessing n_vars triggers exactly one count_rows call, then caches
+    _ = em.n_vars
+    _ = em.n_vars  # second access — should NOT re-count
+    assert counts["rows"] == 1, "n_vars should trigger count_rows exactly once"
+    assert counts["cols"] == 1, "n_vars must not re-trigger count_cols"

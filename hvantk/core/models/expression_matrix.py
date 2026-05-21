@@ -71,13 +71,43 @@ def _entry_field_name(mt: Any) -> str:
 class ExpressionMatrix:
     backend: Literal["anndata", "hail-mt"]
     provenance: Provenance
-    n_obs: int
-    n_vars: int
     _matrix: Any = field(repr=False)
+    # Counts: eager for anndata (already cached by AnnData), lazy for hail-mt.
+    # These private fields hold the cached value (or None for hail-mt before
+    # first access); the public n_obs / n_vars properties materialize on demand.
+    _n_obs_cached: int | None = field(default=None, repr=False)
+    _n_vars_cached: int | None = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         if self.backend not in _BACKENDS:
             raise ValueError(f"backend must be one of {_BACKENDS}; got {self.backend!r}")
+
+    @property
+    def n_obs(self) -> int:
+        """Number of observations (samples / columns).
+
+        For the ``anndata`` backend this is set eagerly at construction (AnnData
+        already has it cached).  For the ``hail-mt`` backend the value is
+        computed on first access via ``mt.count_cols()`` and then cached —
+        no Hail computation is triggered at construction time.
+        """
+        if self._n_obs_cached is None:
+            # Lazy materialization for hail-mt
+            self._n_obs_cached = self._matrix.count_cols()
+        return self._n_obs_cached
+
+    @property
+    def n_vars(self) -> int:
+        """Number of variables (features / rows).
+
+        For the ``anndata`` backend this is set eagerly at construction (AnnData
+        already has it cached).  For the ``hail-mt`` backend the value is
+        computed on first access via ``mt.count_rows()`` and then cached —
+        no Hail computation is triggered at construction time.
+        """
+        if self._n_vars_cached is None:
+            self._n_vars_cached = self._matrix.count_rows()
+        return self._n_vars_cached
 
     # --- constructors ---
 
@@ -88,9 +118,9 @@ class ExpressionMatrix:
         return cls(
             backend="anndata",
             provenance=provenance,
-            n_obs=adata.n_obs,
-            n_vars=adata.n_vars,
             _matrix=adata,
+            _n_obs_cached=adata.n_obs,
+            _n_vars_cached=adata.n_vars,
         )
 
     @classmethod
@@ -100,8 +130,9 @@ class ExpressionMatrix:
         """Construct an ExpressionMatrix from a Hail MatrixTable.
 
         The MatrixTable's row fields become var metadata; column fields become
-        obs metadata.  ``n_obs`` and ``n_vars`` are resolved eagerly via
-        ``count_cols()`` / ``count_rows()`` — Hail triggers a computation here.
+        obs metadata.  ``n_obs`` and ``n_vars`` are lazily computed on first
+        access via ``mt.count_cols()`` / ``mt.count_rows()`` — no Hail
+        computation is triggered at construction time.
 
         Parameters
         ----------
@@ -113,9 +144,8 @@ class ExpressionMatrix:
         return cls(
             backend="hail-mt",
             provenance=provenance,
-            n_obs=mt.count_cols(),
-            n_vars=mt.count_rows(),
             _matrix=mt,
+            # _n_obs_cached / _n_vars_cached default to None — lazy.
         )
 
     # --- metadata accessors ---
