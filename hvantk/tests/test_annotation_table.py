@@ -283,6 +283,17 @@ def test_join_with_explicit_suffixes_allowed():
     assert out == [{"gene": "BRCA1", "score_a": 0.7, "score_b": 0.5}]
 
 
+def test_load_classmethod_round_trip(tmp_path):
+    df = pd.DataFrame({"x": [1, 2]})
+    ann = AnnotationTable.from_pandas(df, provenance=_prov())
+    out = tmp_path / "rows.parquet"
+    ann.save(out)
+
+    loaded = AnnotationTable.load(out)
+    assert isinstance(loaded, AnnotationTable)
+    assert loaded.provenance == ann.provenance
+
+
 @pytest.mark.hail
 def test_group_by_agg_hail():
     import hail as hl

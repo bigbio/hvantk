@@ -207,11 +207,22 @@ class AnnotationTable:
             return len(self._table)
         return self._table.count()
 
-    # --- persistence (stubbed; lands in Task 13) ---
+    # --- persistence ---
 
     def save(self, path: str | Path) -> None:
         from hvantk.core import io as core_io
         core_io.save(self, path)
+
+    @classmethod
+    def load(cls, path: "str | Path") -> "AnnotationTable":
+        """Read an AnnotationTable artifact from disk via core/io."""
+        from hvantk.core import io as core_io
+        result = core_io.load(path)
+        if not isinstance(result, cls):
+            raise TypeError(
+                f"{path} contains a {type(result).__name__}, not an {cls.__name__}"
+            )
+        return result
 
 
 class _GroupedAnnotationTable:

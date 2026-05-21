@@ -97,6 +97,16 @@ def test_subset_var_using_var_id(adata):
     assert sub.n_vars == 1
 
 
+def test_load_classmethod_round_trip(tmp_path, adata):
+    em = ExpressionMatrix.from_anndata(adata, provenance=_prov())
+    out = tmp_path / "expr.h5ad"
+    em.save(out)
+
+    loaded = ExpressionMatrix.load(out)
+    assert isinstance(loaded, ExpressionMatrix)
+    assert loaded.provenance == em.provenance
+
+
 def test_subset_obs_with_named_index(tmp_path):
     """When AnnData index has a name (e.g. 'sample'), obs_id is still the synthetic column."""
     obs = pd.DataFrame(

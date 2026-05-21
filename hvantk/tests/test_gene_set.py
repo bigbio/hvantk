@@ -41,3 +41,13 @@ def test_to_list_and_to_set():
     gs = GeneSet(name="g", provenance=_prov(), _members=frozenset({"B", "A"}))
     assert sorted(gs.to_list()) == ["A", "B"]
     assert gs.to_set() == {"A", "B"}
+
+
+def test_load_classmethod_round_trip(tmp_path):
+    gs = GeneSet(name="brca", provenance=_prov(), _members=frozenset({"BRCA1", "BRCA2"}))
+    out = tmp_path / "brca.geneset.json"
+    gs.save(out)
+
+    loaded = GeneSet.load(out)
+    assert isinstance(loaded, GeneSet)
+    assert loaded.provenance == gs.provenance
