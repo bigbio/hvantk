@@ -11,6 +11,8 @@ _TABLE_BUILDERS / _MATRIX_BUILDERS — those facades stay in place for Phase B c
 """
 from __future__ import annotations
 
+import hashlib
+import json
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +22,41 @@ from hvantk.core.plugin.api import DatasetSpec
 
 class BuilderContractError(RuntimeError):
     """Raised when a plugin's build_fn return value or schema_id violates the contract."""
+
+
+def _coerce_fingerprint(probe_result: Any, dataset_name: str) -> str:
+    """Build a stable fingerprint string from a drift probe's return dict.
+
+    Probes return a dict like:
+        {"probe_version": ..., "source_version": ..., "headers": {...},
+         "checksums": {...}, "fetched_at": ...}
+
+    The canonical fingerprint is a sha256 of the probe dict, EXCLUDING
+    ``fetched_at`` (which is timestamp noise). If the probe explicitly
+    returns a top-level ``fingerprint`` key, that wins (lets a probe
+    publish its own canonical fingerprint).
+
+    Raises BuilderContractError if the probe returned something other than a
+    dict.
+    """
+    if probe_result is None:
+        raise BuilderContractError(
+            f"{dataset_name}: drift probe returned None; expected dict"
+        )
+    if not isinstance(probe_result, dict):
+        raise BuilderContractError(
+            f"{dataset_name}: drift probe returned {type(probe_result).__name__}, "
+            f"expected dict"
+        )
+    if "fingerprint" in probe_result:
+        return str(probe_result["fingerprint"])
+
+    # Hash everything except fetched_at (timestamp noise) and probe_version
+    # (orthogonal metadata; bumping it shouldn't invalidate the fingerprint).
+    canonical = {k: v for k, v in probe_result.items()
+                 if k not in ("fetched_at", "probe_version")}
+    payload = json.dumps(canonical, sort_keys=True, default=str)
+    return f"sha256:{hashlib.sha256(payload.encode()).hexdigest()}"
 
 
 def run_builder_for_spec(
@@ -56,7 +93,7 @@ def run_builder_for_spec(
         )
 
     probe_result = spec.drift_probe()
-    fingerprint = probe_result.get("fingerprint", "<no-fingerprint>")
+    fingerprint = _coerce_fingerprint(probe_result, spec.name)
 
     ctx = BuildContext(
         plugin=spec.name.split(":", 1)[0],

@@ -107,3 +107,60 @@ def test_run_builder_requires_artifact_type_on_spec(tmp_path):
         run_builder_for_spec(
             spec, parsed_input=None, output_path=tmp_path / "r.parquet", plugin_version="0.1.0"
         )
+
+
+def test_run_builder_coerces_real_probe_dict(tmp_path):
+    """Real probes return source_version, headers, checksums — not 'fingerprint'."""
+    def real_probe():
+        return {
+            "probe_version": "1",
+            "source_version": "Wed, 01 Jan 2026 00:00:00 GMT",
+            "headers": {"file": {"content_length": "12345"}},
+            "checksums": {},
+            "fetched_at": "2026-01-01T00:00:00+00:00",
+        }
+
+    def build(parsed, ctx, **params):
+        df = pd.DataFrame({"x": [1]})
+        return AnnotationTable.from_pandas(df, provenance=ctx.provenance(schema_id="test-rows-v1"))
+
+    spec = _make_spec(build)
+    object.__setattr__(spec, "drift_probe", real_probe)
+    out = tmp_path / "rows.parquet"
+    prov = run_builder_for_spec(spec, parsed_input=None, output_path=out, plugin_version="0.1.0")
+
+    assert prov.source_fingerprint.startswith("sha256:")
+    assert prov.source_fingerprint != "sha256:"
+    assert "<no-fingerprint>" not in prov.source_fingerprint
+
+
+def test_run_builder_honors_explicit_fingerprint_key(tmp_path):
+    """If the probe returns a 'fingerprint' key, use it verbatim."""
+    def explicit_probe():
+        return {"fingerprint": "sha256:explicit-value", "fetched_at": "ignored"}
+
+    def build(parsed, ctx, **params):
+        df = pd.DataFrame({"x": [1]})
+        return AnnotationTable.from_pandas(df, provenance=ctx.provenance(schema_id="test-rows-v1"))
+
+    spec = _make_spec(build)
+    object.__setattr__(spec, "drift_probe", explicit_probe)
+    out = tmp_path / "rows.parquet"
+    prov = run_builder_for_spec(spec, parsed_input=None, output_path=out, plugin_version="0.1.0")
+
+    assert prov.source_fingerprint == "sha256:explicit-value"
+
+
+def test_run_builder_rejects_non_dict_probe(tmp_path):
+    """Probe returning something other than a dict raises BuilderContractError."""
+    def bad_probe():
+        return "not a dict"
+
+    def build(parsed, ctx, **params):
+        df = pd.DataFrame({"x": [1]})
+        return AnnotationTable.from_pandas(df, provenance=ctx.provenance(schema_id="test-rows-v1"))
+
+    spec = _make_spec(build)
+    object.__setattr__(spec, "drift_probe", bad_probe)
+    with pytest.raises(BuilderContractError, match="drift probe"):
+        run_builder_for_spec(spec, parsed_input=None, output_path=tmp_path / "r.parquet", plugin_version="0.1.0")
