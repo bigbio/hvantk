@@ -16,11 +16,19 @@ from datetime import datetime, timezone
 
 import pandas as pd
 import pytest
-from hypothesis import given, settings, strategies as st
 
-from hvantk.core.models._expr import col, Expr  # noqa: F401
-from hvantk.core.models.annotation_table import AnnotationTable
-from hvantk.core.models.provenance import Provenance
+# hypothesis is a dev-only dependency (see pyproject.toml's poetry.group.dev).
+# Skip the whole module if it isn't installed instead of erroring during
+# collection — CI environments that only install runtime deps shouldn't
+# fail on this file.
+hypothesis = pytest.importorskip("hypothesis")
+given = hypothesis.given
+settings = hypothesis.settings
+st = hypothesis.strategies
+
+from hvantk.core.models._expr import col, Expr  # noqa: F401,E402
+from hvantk.core.models.annotation_table import AnnotationTable  # noqa: E402
+from hvantk.core.models.provenance import Provenance  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
