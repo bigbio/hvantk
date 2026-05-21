@@ -226,3 +226,6 @@ manuscript/
 docs/plans/
 docs/specs/
 docs/superpowers/
+
+# Codacy CLI v2 local cache + config (init-generated)
+.codacy/

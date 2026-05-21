@@ -190,7 +190,11 @@ class ClinVarDataset:
         expected_hash = parts[0].lower()
 
         logger.info(f"Computing MD5 of {file_path}")
-        md5 = hashlib.md5()
+        # MD5 is the algorithm NCBI publishes for ClinVar VCF integrity (e.g.
+        # clinvar.vcf.gz.md5). We are verifying an upstream-published checksum,
+        # not generating a cryptographic signature; SHA256 cannot be substituted
+        # without the upstream switching first. Suppress the security warning.
+        md5 = hashlib.md5(usedforsecurity=False)  # noqa: S324
         with open(file_path, "rb") as f:
             for chunk in iter(lambda: f.read(8192), b""):
                 md5.update(chunk)

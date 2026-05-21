@@ -314,21 +314,23 @@ def _apply_plugin_registrations(reg) -> None:
     from hvantk.core.plugin.api import DatasetSpec  # local import to avoid cycle
 
     def _wrap_builder(spec: "DatasetSpec"):
+        # Three closures named distinctly so pylint doesn't flag
+        # function-redefined; only one is constructed per call.
         if spec.backend == "hail":
-            def adapter(input_path, output_path, params=None):
+            def _hail_adapter(input_path, output_path, params=None):
                 spec.builder(input_path, output_path, **(params or {}))
-            return adapter
+            return _hail_adapter
         if spec.backend == "anndata":
-            def adapter(inputs, output_mt, params=None):
+            def _anndata_adapter(inputs, output_mt, params=None):
                 # AnnData builders take multi-input dicts — Phase 0 simplification:
                 # the input dict is expanded directly as kwargs. New plugin builders
                 # MUST name their kwargs to match the input dict keys.
                 spec.builder(**inputs, output_path=output_mt, **(params or {}))
-            return adapter
+            return _anndata_adapter
         # pandas backend: same signature as hail for now.
-        def adapter(input_path, output_path, params=None):
+        def _pandas_adapter(input_path, output_path, params=None):
             spec.builder(input_path, output_path, **(params or {}))
-        return adapter
+        return _pandas_adapter
 
     for ds in reg.list_datasets(backend="hail"):
         _TABLE_BUILDERS[ds.name] = _wrap_builder(ds)
