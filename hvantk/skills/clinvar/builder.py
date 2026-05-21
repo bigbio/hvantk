@@ -6,7 +6,7 @@ out of :mod:`hvantk.core.builders.table` so that everything ClinVar-specific
 (builder, downloader, dataset class, tests, fixtures, SKILL) lives under the
 plugin folder at :mod:`hvantk.skills.clinvar`.
 
-The shared helper ``_create_table_base`` and the ``contig_recoding`` utility
+The shared helper ``create_table_base`` and the ``contig_recoding`` utility
 intentionally stay in their existing modules because they are reused by other
 builders.
 """
@@ -17,7 +17,7 @@ import logging
 
 import hail as hl
 
-from hvantk.core.builders.table import _create_table_base
+from hvantk.core.builders.table import create_table_base
 from hvantk.core.utils.genome import contig_recoding
 
 logger = logging.getLogger(__name__)
@@ -62,12 +62,12 @@ def create_clinvar_tb(
     Uses force=True for import which may impact performance (single-threaded processing).
     ClinVar's TSV export is special: the row schema contains a deeply nested
     ``info`` struct, so when ``export_tsv=True`` the table is flattened before
-    export. This is why we pass ``export_tsv=False`` to ``_create_table_base``
+    export. This is why we pass ``export_tsv=False`` to ``create_table_base``
     and run ``flatten().export(...)`` ourselves afterwards.
     """
     recode = contig_recoding()
 
-    clinvar_tb = _create_table_base(
+    clinvar_tb = create_table_base(
         source_name="ClinVar",
         input_path=input_path,
         output_path=output_path,

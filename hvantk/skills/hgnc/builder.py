@@ -6,7 +6,7 @@ out of :mod:`hvantk.core.builders.table` so that everything HGNC-specific
 (builder, downloader, drift probe, tests, fixtures, SKILL) lives under the
 plugin folder at :mod:`hvantk.skills.hgnc`.
 
-The shared helper ``_create_table_base`` and the field-mapping constants
+The shared helper ``create_table_base`` and the field-mapping constants
 (``HGNC_GENE_FIELDS``, ``HGNC_PIPE_SEPARATED_FIELDS``) intentionally stay in
 their existing modules because they are reused by other builders.
 """
@@ -19,7 +19,7 @@ from typing import List, Optional
 import hail as hl
 
 from hvantk.core.constants import HGNC_GENE_FIELDS, HGNC_PIPE_SEPARATED_FIELDS
-from hvantk.core.builders.table import _create_table_base
+from hvantk.core.builders.table import create_table_base
 from hvantk.core.utils.table_utils import get_row_fields
 
 logger = logging.getLogger(__name__)
@@ -112,7 +112,7 @@ def create_hgnc_gene_tb(
 
         return ht
 
-    return _create_table_base(
+    return create_table_base(
         source_name="HGNC gene nomenclature",
         input_path=input_path,
         output_path=output_path,

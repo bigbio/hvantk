@@ -9,10 +9,10 @@ migrated out of :mod:`hvantk.core.builders.table` so that everything
 INSIDER-specific (builder, drift probe, tests, fixtures, SKILL) lives under
 the plugin folder at :mod:`hvantk.skills.insider`.
 
-The shared helpers ``_create_table_base``, ``_parse_insider_bed_to_temp_tsv``,
-and ``_cleanup_temp_file`` intentionally stay in
-``hvantk.core.builders.table`` for now -- ``_create_table_base`` and
-``_cleanup_temp_file`` are reused across many builders, and the INSIDER BED
+The shared helpers ``create_table_base``, ``_parse_insider_bed_to_temp_tsv``,
+and ``cleanup_temp_file`` intentionally stay in
+``hvantk.core.builders.table`` for now -- ``create_table_base`` and
+``cleanup_temp_file`` are reused across many builders, and the INSIDER BED
 helper is small enough that moving it alongside is not worth the churn while
 the cleanup-tests still load ``table_builders.py`` directly with stubs.
 """
@@ -24,8 +24,8 @@ import logging
 import hail as hl
 
 from hvantk.core.builders.table import (
-    _cleanup_temp_file,
-    _create_table_base,
+    cleanup_temp_file,
+    create_table_base,
     _parse_insider_bed_to_temp_tsv,
 )
 
@@ -104,7 +104,7 @@ def create_interactome_tb(
         return grouped.annotate(ppi_ids=hl.sorted(hl.array(grouped.ppi_ids)))
 
     try:
-        return _create_table_base(
+        return create_table_base(
             source_name="interactome",
             input_path=input_path,
             output_path=output_path,
@@ -115,7 +115,7 @@ def create_interactome_tb(
         )
     finally:
         if tsv_path is not None:
-            _cleanup_temp_file(tsv_path)
+            cleanup_temp_file(tsv_path)
 
 
 def build_insider_interactome(
@@ -158,6 +158,6 @@ def build_insider_interactome(
             grouped, provenance=ctx.provenance(schema_id="insider-variants-v1")
         )
     except Exception:
-        _cleanup_temp_file(tsv_path)
+        cleanup_temp_file(tsv_path)
         raise
     # Success: temp file intentionally retained for lazy Hail materialization.

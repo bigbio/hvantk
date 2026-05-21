@@ -6,7 +6,7 @@ out of :mod:`hvantk.core.builders.table` so that everything
 GenCC-specific (builder, downloader, dataset class, tests, fixtures,
 SKILL) lives under the plugin folder at :mod:`hvantk.skills.gencc`.
 
-The shared helper ``_create_table_base`` and the ``get_row_fields``
+The shared helper ``create_table_base`` and the ``get_row_fields``
 utility intentionally stay in their existing modules because they are
 reused by other builders.
 """
@@ -22,7 +22,7 @@ from hvantk.core.constants import (
     GENCC_CLASSIFICATION_LEVELS,
     GENCC_SUBMISSION_FIELDS,
 )
-from hvantk.core.builders.table import _create_table_base
+from hvantk.core.builders.table import create_table_base
 from hvantk.core.utils.table_utils import get_row_fields
 
 logger = logging.getLogger(__name__)
@@ -192,7 +192,7 @@ def create_gencc_submissions_tb(
 
         return ht
 
-    gencc_tb = _create_table_base(
+    gencc_tb = create_table_base(
         source_name="GenCC Submissions",
         input_path=input_path,
         output_path=output_path,

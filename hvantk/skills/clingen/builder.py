@@ -6,7 +6,7 @@ migrated out of :mod:`hvantk.core.builders.table` so that everything
 ClinGen-specific (builder, downloader, dataset class, tests, fixtures,
 SKILL) lives under the plugin folder at :mod:`hvantk.skills.clingen`.
 
-The shared helpers ``_create_table_base`` and ``_cleanup_temp_file`` and the
+The shared helpers ``create_table_base`` and ``cleanup_temp_file`` and the
 ``get_row_fields`` utility intentionally stay in their existing modules
 because they are reused by other builders.
 """
@@ -22,7 +22,7 @@ from hvantk.core.constants import (
     CLINGEN_CLASSIFICATION_LEVELS,
     CLINGEN_GENE_DISEASE_FIELDS,
 )
-from hvantk.core.builders.table import _cleanup_temp_file, _create_table_base
+from hvantk.core.builders.table import cleanup_temp_file, create_table_base
 from hvantk.core.utils.table_utils import get_row_fields
 
 logger = logging.getLogger(__name__)
@@ -154,7 +154,7 @@ def create_clingen_gene_disease_tb(
 
     except Exception as e:
         # Clean up temp file if preprocessing fails
-        _cleanup_temp_file(tmp_path)
+        cleanup_temp_file(tmp_path)
         raise RuntimeError(f"Failed to preprocess ClinGen CSV: {e}") from e
 
     try:
@@ -255,7 +255,7 @@ def create_clingen_gene_disease_tb(
 
             return ht
 
-        clingen_tb = _create_table_base(
+        clingen_tb = create_table_base(
             source_name="ClinGen Gene-Disease Validity",
             input_path=input_path,
             output_path=output_path,
@@ -270,7 +270,7 @@ def create_clingen_gene_disease_tb(
 
     finally:
         # Clean up temp file
-        _cleanup_temp_file(tmp_path)
+        cleanup_temp_file(tmp_path)
 
 
 def build_clingen_gene_disease(
@@ -379,7 +379,7 @@ def build_clingen_gene_disease(
             ht, provenance=ctx.provenance(schema_id="clingen-gene-disease-v1")
         )
     except Exception:
-        _cleanup_temp_file(tmp_path)
+        cleanup_temp_file(tmp_path)
         raise
     # NOTE: tmp_path is intentionally NOT cleaned up on success — Hail's lazy
     # evaluation may read from it later when artifact.save() materializes the table.

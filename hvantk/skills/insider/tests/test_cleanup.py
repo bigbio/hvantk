@@ -21,8 +21,8 @@ INSIDER_BUILDER_PATH = (
 def insider_builder_module(monkeypatch):
     """Load hvantk/skills/insider/builder.py with lightweight dependency stubs.
 
-    The real module imports ``hl``, ``_create_table_base``,
-    ``_parse_insider_bed_to_temp_tsv``, and ``_cleanup_temp_file`` from
+    The real module imports ``hl``, ``create_table_base``,
+    ``_parse_insider_bed_to_temp_tsv``, and ``cleanup_temp_file`` from
     ``hvantk.core.builders.table``. We stub those at import time so the
     builder can be loaded without touching Hail or the heavy table-builders
     module, then monkeypatch them per-test to assert cleanup ordering.
@@ -50,9 +50,9 @@ def insider_builder_module(monkeypatch):
         "hvantk.core.builders.table",
         types.ModuleType("hvantk.core.builders.table"),
     )
-    table_builders._create_table_base = lambda **kwargs: None
+    table_builders.create_table_base = lambda **kwargs: None
     table_builders._parse_insider_bed_to_temp_tsv = lambda input_path: "stub.tsv"
-    table_builders._cleanup_temp_file = lambda path: None
+    table_builders.cleanup_temp_file = lambda path: None
 
     module_name = f"insider_builder_under_test_{uuid.uuid4().hex}"
     spec = importlib.util.spec_from_file_location(module_name, INSIDER_BUILDER_PATH)
@@ -95,7 +95,7 @@ def test_create_interactome_tb_cleans_up_temp_tsv_on_success(
     )
     monkeypatch.setattr(
         insider_builder_module,
-        "_cleanup_temp_file",
+        "cleanup_temp_file",
         lambda path: cleanup_calls.append(path),
     )
 
@@ -103,7 +103,7 @@ def test_create_interactome_tb_cleans_up_temp_tsv_on_success(
         kwargs["import_func"]()
         return "ok"
 
-    monkeypatch.setattr(insider_builder_module, "_create_table_base", succeed_after_import)
+    monkeypatch.setattr(insider_builder_module, "create_table_base", succeed_after_import)
 
     result = insider_builder_module.create_interactome_tb(
         input_path="insider.bed",
@@ -134,7 +134,7 @@ def test_create_interactome_tb_cleans_up_temp_tsv_on_failure(
     )
     monkeypatch.setattr(
         insider_builder_module,
-        "_cleanup_temp_file",
+        "cleanup_temp_file",
         lambda path: cleanup_calls.append(path),
     )
 
@@ -142,7 +142,7 @@ def test_create_interactome_tb_cleans_up_temp_tsv_on_failure(
         kwargs["import_func"]()
         raise RuntimeError("checkpoint failed")
 
-    monkeypatch.setattr(insider_builder_module, "_create_table_base", fail_after_import)
+    monkeypatch.setattr(insider_builder_module, "create_table_base", fail_after_import)
 
     with pytest.raises(RuntimeError, match="checkpoint failed"):
         insider_builder_module.create_interactome_tb(

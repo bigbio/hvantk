@@ -7,7 +7,7 @@ was migrated out of :mod:`hvantk.core.builders.table` so that everything
 UniProt-PTM-specific (builder, downloader, dataset class, tests, fixtures,
 SKILL) lives under the plugin folder at :mod:`hvantk.skills.uniprot_ptm`.
 
-The shared helper ``_create_table_base`` intentionally stays in its existing
+The shared helper ``create_table_base`` intentionally stays in its existing
 module because it is reused by other builders.
 """
 
@@ -18,7 +18,7 @@ from typing import List, Optional
 
 import hail as hl
 
-from hvantk.core.builders.table import _create_table_base
+from hvantk.core.builders.table import create_table_base
 
 logger = logging.getLogger(__name__)
 
@@ -118,7 +118,7 @@ def create_ptm_sites_tb(
         ht = ht.key_by("locus")
         return ht
 
-    return _create_table_base(
+    return create_table_base(
         source_name="PTM sites",
         input_path=input_path,
         output_path=output_path,

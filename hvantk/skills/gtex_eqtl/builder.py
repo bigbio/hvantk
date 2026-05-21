@@ -8,7 +8,7 @@ cis-eQTL summary statistics into a Hail Table triple-keyed by
 (builder, drift probe, tests, fixtures, SKILL) lives under the plugin folder
 at :mod:`hvantk.skills.gtex_eqtl`.
 
-The shared helper ``_create_table_base`` and the source-specific import
+The shared helper ``create_table_base`` and the source-specific import
 helpers (``_import_eqtl_gtex_parquet`` / ``_import_eqtl_gtex_tsv`` /
 ``_import_eqtl_eqtlgen``) intentionally stay in
 ``hvantk.core.builders.table`` because they touch internal parsing
@@ -23,7 +23,7 @@ from typing import List, Optional
 import hail as hl
 
 from hvantk.core.builders.table import (
-    _create_table_base,
+    create_table_base,
     _import_eqtl_eqtlgen,
     _import_eqtl_gtex_parquet,
     _import_eqtl_gtex_tsv,
@@ -104,7 +104,7 @@ def create_eqtl_tb(
         ht = ht.key_by("locus", "alleles", "gene_id")
         return ht
 
-    return _create_table_base(
+    return create_table_base(
         source_name=f"eQTL ({source})",
         input_path=input_path,
         output_path=output_path,

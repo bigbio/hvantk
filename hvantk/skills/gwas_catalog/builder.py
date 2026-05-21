@@ -8,7 +8,7 @@ judgment call #1 in the skill). It was migrated out of
 (builder, drift probe, tests, fixtures, SKILL) lives under the plugin folder
 at :mod:`hvantk.skills.gwas_catalog`.
 
-The shared helper ``_create_table_base`` intentionally stays in
+The shared helper ``create_table_base`` intentionally stays in
 ``hvantk.core.builders.table`` because it is reused by builders across many
 data sources.
 """
@@ -19,7 +19,7 @@ import logging
 
 import hail as hl
 
-from hvantk.core.builders.table import _create_table_base
+from hvantk.core.builders.table import create_table_base
 from hvantk.core.utils.table_utils import str_to_bool
 
 logger = logging.getLogger(__name__)
@@ -181,7 +181,7 @@ def create_gwas_catalog_tb(
         ht = ht.key_by("locus", "alleles")
         return ht
 
-    return _create_table_base(
+    return create_table_base(
         source_name="GWAS Catalog",
         input_path=input_path,
         output_path=output_path,

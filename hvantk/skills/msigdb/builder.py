@@ -6,7 +6,7 @@ MSigDB GMT file (e.g., C2 Canonical Pathways) into a Hail Table keyed by
 that everything MSigDB-specific (builder, drift probe, tests, fixtures,
 SKILL) lives under the plugin folder at :mod:`hvantk.skills.msigdb`.
 
-The shared helper ``_create_table_base`` intentionally stays in
+The shared helper ``create_table_base`` intentionally stays in
 ``hvantk.core.builders.table`` because it is reused by every builder.
 """
 
@@ -16,7 +16,7 @@ import logging
 
 import hail as hl
 
-from hvantk.core.builders.table import _create_table_base
+from hvantk.core.builders.table import create_table_base
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +73,7 @@ def create_msigdb_tb(
         ht = ht.key_by("set_name")
         return ht
 
-    return _create_table_base(
+    return create_table_base(
         source_name="MSigDB gene sets",
         input_path=input_path,
         output_path=output_path,

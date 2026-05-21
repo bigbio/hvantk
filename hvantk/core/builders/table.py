@@ -28,7 +28,7 @@ from hvantk.core.utils.file_utils import resolve_compression
 from hvantk.core.utils.genome import contig_recoding  # correct module import
 
 
-def _create_table_base(
+def create_table_base(
     source_name: str,
     input_path: str,
     output_path: str,
@@ -99,6 +99,8 @@ def _create_table_base(
 
 
 __all__ = [
+    "create_table_base",
+    "cleanup_temp_file",
     "create_gnomad_constraint_gene_metrics_tb",
     "create_gevir_tb",
     "create_ensembl_gene_tb",
@@ -106,7 +108,7 @@ __all__ = [
 ]
 
 
-def _cleanup_temp_file(tmp_path: Optional[str]) -> None:
+def cleanup_temp_file(tmp_path: Optional[str]) -> None:
     """Best-effort cleanup for local or Hadoop/S3/GS temp files."""
     if not tmp_path:
         return
@@ -175,7 +177,7 @@ def create_gnomad_constraint_gene_metrics_tb(
     -----
     If schema is stable, consider specifying types=... instead of impute=True.
     """
-    return _create_table_base(
+    return create_table_base(
         source_name="gnomAD constraint gene metrics",
         input_path=input_path,
         output_path=output_path,
@@ -292,7 +294,7 @@ def create_gevir_tb(
     -----
     If schema is stable, consider specifying types=... instead of impute=True.
     """
-    return _create_table_base(
+    return create_table_base(
         source_name="GEVIR",
         input_path=input_path,
         output_path=output_path,
@@ -380,7 +382,7 @@ def create_ensembl_gene_tb(
         )
         return ht
 
-    return _create_table_base(
+    return create_table_base(
         source_name="Ensembl gene",
         input_path=input_path,
         output_path=output_path,
@@ -563,7 +565,7 @@ def create_dbnsfp_tb(
 
         return ht
 
-    dbnsfp_tb = _create_table_base(
+    dbnsfp_tb = create_table_base(
         source_name="dbNSFP",
         input_path=input_path,
         output_path=output_path,
@@ -762,7 +764,7 @@ def create_cosmic_cgc_tb(
 
         return ht
 
-    return _create_table_base(
+    return create_table_base(
         source_name="COSMIC CGC",
         input_path=input_path,
         output_path=output_path,
@@ -1132,7 +1134,7 @@ def create_pqtl_tb(
         ht = ht.key_by("locus", "alleles", "gene_id")
         return ht
 
-    return _create_table_base(
+    return create_table_base(
         source_name=f"pQTL ({source})",
         input_path=input_path,
         output_path=output_path,
