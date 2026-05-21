@@ -97,8 +97,8 @@ def build_ucsc_ad(
     from hvantk.core.models.anndata_utils import (
         build_anndata_metadata,
         annotate_column_summary_ad,
-        save_anndata,
     )
+    from hvantk.core.io.anndata_io import save_anndata
 
     logger.info("Loading UCSC metadata from %s", metadata_path)
     metadata_df = load_ucsc_metadata(metadata_path, sep=delimiter)

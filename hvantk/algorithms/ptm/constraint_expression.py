@@ -176,7 +176,7 @@ def _load_from_anndata(
     aggregation over ``adata.X`` so the CLI's ``--expression-metric`` flag
     is honoured instead of silently collapsing to the mean.
     """
-    from hvantk.core.models.anndata_utils import load_anndata
+    from hvantk.core.io.anndata_io import load_anndata
     from hvantk.algorithms.expression.matrix_utils import summarize_expression_ad
 
     adata = load_anndata(path)

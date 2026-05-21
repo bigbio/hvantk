@@ -65,8 +65,8 @@ def build_cptac_ad(
     from hvantk.core.models.anndata_utils import (
         build_anndata_metadata,
         annotate_column_summary_ad,
-        save_anndata,
     )
+    from hvantk.core.io.anndata_io import save_anndata
 
     logger.info("Reading CPTAC expression from %s", expression_path)
     expr_df = pd.read_csv(expression_path, sep=None, engine="python")

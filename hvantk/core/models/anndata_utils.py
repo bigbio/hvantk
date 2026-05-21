@@ -1,7 +1,11 @@
-"""AnnData utility functions for provenance, column summaries, and I/O."""
+"""AnnData utility functions for provenance and column summaries.
+
+I/O functions (save_anndata, load_anndata) live in
+:mod:`hvantk.core.io.anndata_io` to honor the intra-core rule that
+core/models must not perform disk I/O.
+"""
 
 import logging
-import os
 from datetime import datetime
 from typing import Any, Dict
 
@@ -119,48 +123,3 @@ def annotate_column_summary_ad(
                 }
 
     adata.uns["column_summary"] = summary
-
-
-def save_anndata(
-    adata: ad.AnnData,
-    path: str,
-    overwrite: bool = True,
-) -> None:
-    """Save AnnData to ``.h5ad`` file.
-
-    Parameters
-    ----------
-    adata : ad.AnnData
-        Annotated data object to save.
-    path : str
-        Output file path (should end in ``.h5ad``).
-    overwrite : bool, optional
-        If False and *path* already exists, raise :class:`FileExistsError`.
-
-    Raises
-    ------
-    FileExistsError
-        If *overwrite* is False and *path* exists.
-    """
-    if not overwrite and os.path.exists(path):
-        raise FileExistsError(f"File already exists: {path}")
-
-    logger.info("Saving AnnData (%d obs x %d var) to %s", adata.n_obs, adata.n_vars, path)
-    adata.write_h5ad(path)
-
-
-def load_anndata(path: str) -> ad.AnnData:
-    """Load AnnData from ``.h5ad`` file.
-
-    Parameters
-    ----------
-    path : str
-        Path to the ``.h5ad`` file.
-
-    Returns
-    -------
-    ad.AnnData
-        The loaded annotated data object.
-    """
-    logger.info("Loading AnnData from %s", path)
-    return ad.read_h5ad(path)

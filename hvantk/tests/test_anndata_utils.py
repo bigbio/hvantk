@@ -122,7 +122,7 @@ class TestAnnotateColumnSummary:
 
 class TestSaveLoadAnndata:
     def test_roundtrip(self, tmp_path):
-        from hvantk.core.models.anndata_utils import load_anndata, save_anndata
+        from hvantk.core.io.anndata_io import load_anndata, save_anndata
 
         adata = _make_test_adata()
         path = str(tmp_path / "test.h5ad")
@@ -132,7 +132,7 @@ class TestSaveLoadAnndata:
         np.testing.assert_array_almost_equal(loaded.X, adata.X)
 
     def test_overwrite_false_raises(self, tmp_path):
-        from hvantk.core.models.anndata_utils import save_anndata
+        from hvantk.core.io.anndata_io import save_anndata
 
         adata = _make_test_adata()
         path = str(tmp_path / "test.h5ad")
@@ -141,7 +141,7 @@ class TestSaveLoadAnndata:
             save_anndata(adata, path, overwrite=False)
 
     def test_overwrite_true_succeeds(self, tmp_path):
-        from hvantk.core.models.anndata_utils import save_anndata
+        from hvantk.core.io.anndata_io import save_anndata
 
         adata = _make_test_adata()
         path = str(tmp_path / "test.h5ad")

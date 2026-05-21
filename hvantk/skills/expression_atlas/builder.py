@@ -65,8 +65,8 @@ def build_expression_atlas_ad(
     from hvantk.core.models.anndata_utils import (
         build_anndata_metadata,
         annotate_column_summary_ad,
-        save_anndata,
     )
+    from hvantk.core.io.anndata_io import save_anndata
 
     logger.info("Loading SDRF metadata from %s", sdrf_file)
     metadata_df = convert_sdrf_to_dataframe(sdrf_file)
