@@ -71,8 +71,52 @@ _PANDAS_BINOPS = {
 
 # ---------- hail compiler ----------
 
+def _compile_to_hail_with_field_accessor(expr: Expr, field_accessor) -> "Any":
+    """Internal: compile an Expr to Hail using a custom field accessor callable.
+
+    ``field_accessor(name)`` must return a Hail expression for the named field.
+    This indirection allows compiling against Tables (``ht["field"]``) as well
+    as against MatrixTable col/row scopes (``mt.col["field"]`` /
+    ``mt.row["field"]``).
+    """
+    import hail as hl
+
+    def go(e: Expr):
+        if isinstance(e, Col):
+            return field_accessor(e.name)
+        if isinstance(e, Literal):
+            return hl.literal(e.value) if isinstance(e.value, (list, tuple, set)) else e.value
+        if isinstance(e, UnaryOp) and e.op == "not":
+            return ~go(e.operand)
+        if isinstance(e, BinOp):
+            left = go(e.left)
+            right = go(e.right)
+            return _HAIL_BINOPS[e.op](left, right)
+        if isinstance(e, CallOp):
+            receiver = go(e.receiver)
+            if e.name == "isin":
+                values = go(e.args[0])
+                if not isinstance(values, list):
+                    values = list(values)
+                return hl.literal(values).contains(receiver)
+            if e.name == "is_null":
+                return hl.is_missing(receiver)
+            if e.name == "is_not_null":
+                return hl.is_defined(receiver)
+            raise NotImplementedError(f"hail: unknown CallOp {e.name!r}")
+        raise NotImplementedError(f"hail: unknown Expr node {type(e).__name__}")
+
+    return go(expr)
+
+
 def compile_to_hail(expr: Expr, ht: "Any") -> "Any":
-    """Compile an Expr to a Hail expression resolved against `ht`."""
+    """Compile an Expr to a Hail expression resolved against `ht`.
+
+    ``ht`` must be a Hail :class:`~hail.Table`; field references use
+    ``ht[field_name]`` which is Table-native field access.  For MatrixTable
+    col/row scopes, use :func:`compile_to_hail_mt_col` or
+    :func:`compile_to_hail_mt_row` instead.
+    """
     import hail as hl  # local import: avoid importing hail at module load
 
     def go(e: Expr):
@@ -120,6 +164,40 @@ _HAIL_BINOPS = {
     "div": lambda a, b: a / b,
     "pow": lambda a, b: a ** b,
 }
+
+
+def compile_to_hail_mt_col(expr: Expr, mt: "Any") -> "Any":
+    """Compile an Expr to a Hail expression scoped to a MatrixTable's columns.
+
+    Field references ``col("name")`` are resolved as ``mt.col["name"]``, which
+    returns an expression bound to the MatrixTable's col scope.  The result is
+    suitable for use with ``mt.filter_cols()``.
+
+    Parameters
+    ----------
+    expr:
+        An Expr tree whose ``Col`` nodes name column (obs) fields.
+    mt:
+        A ``hail.MatrixTable`` instance.
+    """
+    return _compile_to_hail_with_field_accessor(expr, lambda name: mt.col[name])
+
+
+def compile_to_hail_mt_row(expr: Expr, mt: "Any") -> "Any":
+    """Compile an Expr to a Hail expression scoped to a MatrixTable's rows.
+
+    Field references ``col("name")`` are resolved as ``mt.row["name"]``, which
+    returns an expression bound to the MatrixTable's row scope.  The result is
+    suitable for use with ``mt.filter_rows()``.
+
+    Parameters
+    ----------
+    expr:
+        An Expr tree whose ``Col`` nodes name row (var) fields.
+    mt:
+        A ``hail.MatrixTable`` instance.
+    """
+    return _compile_to_hail_with_field_accessor(expr, lambda name: mt.row[name])
 
 
 # ---------- aggregation compilers ----------

@@ -20,10 +20,12 @@ from hvantk.core.io._formats import (
     load_annotation_table_ht,
     load_annotation_table_parquet,
     load_expression_matrix_h5ad,
+    load_expression_matrix_mt,
     load_gene_set_json,
     save_annotation_table_ht,
     save_annotation_table_parquet,
     save_expression_matrix_h5ad,
+    save_expression_matrix_mt,
     save_gene_set_json,
 )
 from hvantk.core.io._manifest import read_manifest, write_manifest
@@ -48,6 +50,8 @@ def save(artifact: Any, path: str | Path) -> None:
     if isinstance(artifact, ExpressionMatrix):
         if path.suffix == ".h5ad":
             save_expression_matrix_h5ad(artifact, path)
+        elif path.suffix == ".mt" or path.name.endswith(".mt/"):
+            save_expression_matrix_mt(artifact, path)
         else:
             raise ArtifactTypeError(
                 f"ExpressionMatrix save: unrecognized extension for {path}"
@@ -87,4 +91,6 @@ def load(path: str | Path, *, expected_schema_id: str | None = None) -> Any:
         return load_annotation_table_ht(path, provenance)
     if path.suffix == ".h5ad":
         return load_expression_matrix_h5ad(path, provenance)
+    if path.suffix == ".mt" or path.name.endswith(".mt/"):
+        return load_expression_matrix_mt(path, provenance)
     raise ArtifactTypeError(f"load: unrecognized extension for {path}")

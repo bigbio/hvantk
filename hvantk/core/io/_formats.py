@@ -46,6 +46,20 @@ def load_expression_matrix_h5ad(path: Path, provenance: Provenance) -> Expressio
     return ExpressionMatrix.from_anndata(adata, provenance=provenance)
 
 
+def save_expression_matrix_mt(em: "ExpressionMatrix", path: Path) -> None:
+    """Write an ExpressionMatrix as a Hail MatrixTable directory (``.mt/``)."""
+    mt = em.to_hail_mt()
+    mt.write(str(path), overwrite=True)
+
+
+def load_expression_matrix_mt(path: Path, provenance: Provenance) -> "ExpressionMatrix":
+    """Load a Hail MatrixTable directory and wrap it as an ExpressionMatrix."""
+    import hail as hl
+
+    mt = hl.read_matrix_table(str(path))
+    return ExpressionMatrix.from_hail_mt(mt, provenance=provenance)
+
+
 def save_gene_set_json(gs: GeneSet, path: Path) -> None:
     path.write_text(_json.dumps({
         "name": gs.name,

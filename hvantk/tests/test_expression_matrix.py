@@ -74,10 +74,13 @@ def test_X_returns_array(adata):
     assert X[0, 0] == 1.0
 
 
-def test_to_hail_mt_raises_in_phase_a(adata):
+@pytest.mark.hail
+def test_to_hail_mt_returns_matrix_table(adata):
+    """Phase J: anndata backend converts to a Hail MatrixTable without error."""
     em = ExpressionMatrix.from_anndata(adata, provenance=_prov())
-    with pytest.raises(NotImplementedError):
-        em.to_hail_mt()
+    mt = em.to_hail_mt()
+    import hail as hl
+    assert isinstance(mt, hl.MatrixTable)
 
 
 def test_subset_obs_using_obs_id(adata):
