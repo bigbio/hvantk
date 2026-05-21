@@ -130,20 +130,43 @@ class AnnotationTable:
         )
 
     def join(
-        self, other: "AnnotationTable", on: str | list[str], how: str = "inner"
+        self, other: "AnnotationTable", on: str | list[str], how: str = "inner",
+        *, suffixes: tuple[str, str] | None = None,
     ) -> "AnnotationTable":
         if self.backend != other.backend:
             raise ValueError(
                 f"cannot join AnnotationTables on different backends "
                 f"({self.backend} vs {other.backend}); convert one first"
             )
+
+        # Detect overlapping non-key column names — pandas would auto-suffix,
+        # Hail would raise. Make the failure mode uniform: raise eagerly unless
+        # the caller explicitly passed `suffixes` to opt in to renaming.
+        keys = {on} if isinstance(on, str) else set(on)
+        self_cols = set(self.schema.keys()) - keys
+        other_cols = set(other.schema.keys()) - keys
+        overlap = self_cols & other_cols
+        if overlap and suffixes is None:
+            raise ValueError(
+                f"join: non-key columns overlap on both sides: {sorted(overlap)}. "
+                f"Either rename them before joining, or pass suffixes=('_left', '_right') "
+                f"to opt in to pandas-style suffixing (Hail backend does not support suffixes; "
+                f"rename is the portable fix)."
+            )
+
         if self.backend == "pandas":
-            merged = self._table.merge(other._table, on=on, how=how)
+            merge_kwargs: dict[str, Any] = {
+                "on": on if isinstance(on, str) else list(on),
+                "how": how,
+            }
+            if suffixes is not None:
+                merge_kwargs["suffixes"] = suffixes
+            merged = self._table.merge(other._table, **merge_kwargs)
             return AnnotationTable.from_pandas(merged, provenance=self.provenance)
         # hail: rekey both sides defensively (key_by is idempotent)
-        keys = [on] if isinstance(on, str) else list(on)
-        self_keyed = self._table.key_by(*keys)
-        other_keyed = other._table.key_by(*keys)
+        keys_list = [on] if isinstance(on, str) else list(on)
+        self_keyed = self._table.key_by(*keys_list)
+        other_keyed = other._table.key_by(*keys_list)
         joined = self_keyed.join(other_keyed, how=how)
         return AnnotationTable.from_hail(joined, provenance=self.provenance)
 

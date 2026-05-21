@@ -257,6 +257,32 @@ def test_group_by_agg_pandas():
     ]
 
 
+def test_join_overlapping_columns_raises():
+    a = AnnotationTable.from_pandas(
+        pd.DataFrame({"gene": ["BRCA1"], "score": [0.7]}),
+        provenance=_prov(),
+    )
+    b = AnnotationTable.from_pandas(
+        pd.DataFrame({"gene": ["BRCA1"], "score": [0.5]}),
+        provenance=_prov(),
+    )
+    with pytest.raises(ValueError, match="overlap"):
+        a.join(b, on="gene", how="inner")
+
+
+def test_join_with_explicit_suffixes_allowed():
+    a = AnnotationTable.from_pandas(
+        pd.DataFrame({"gene": ["BRCA1"], "score": [0.7]}),
+        provenance=_prov(),
+    )
+    b = AnnotationTable.from_pandas(
+        pd.DataFrame({"gene": ["BRCA1"], "score": [0.5]}),
+        provenance=_prov(),
+    )
+    out = a.join(b, on="gene", how="inner", suffixes=("_a", "_b")).collect()
+    assert out == [{"gene": "BRCA1", "score_a": 0.7, "score_b": 0.5}]
+
+
 @pytest.mark.hail
 def test_group_by_agg_hail():
     import hail as hl
