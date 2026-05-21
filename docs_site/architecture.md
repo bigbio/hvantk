@@ -143,7 +143,16 @@ The codebase is organized by function and biological domain:
 
 Three core protocols define how components interact:
 
-#### Builder Protocol
+#### Builder Protocol (legacy — pre-Phase B)
+
+> **Deprecated.** This section describes the pre-Phase B builder shape
+> (`(input_path, output_path) -> hl.Table`). New plugin authors should
+> use the Phase B contract documented in the "Adding a New Data Source"
+> section below: `(parsed_input, ctx: BuildContext, **params) -> Artifact`.
+> Legacy functions in `hvantk/core/builders/table.py` are retained for
+> backward compatibility with existing recipes; new builders live in
+> `hvantk/skills/<plugin>/builder.py` and return artifact instances.
+
 Converts raw data files → Hail Tables/MatrixTables
 
 Builders follow a functional pattern using `_create_table_base()` to eliminate boilerplate:
