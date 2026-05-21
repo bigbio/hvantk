@@ -27,8 +27,16 @@ def read_manifest(artifact_path: Path) -> Provenance | None:
     mp = manifest_path(artifact_path)
     if not mp.exists():
         return None
-    payload = json.loads(mp.read_text())
-    return _from_dict(payload)
+    try:
+        payload = json.loads(mp.read_text())
+        return _from_dict(payload)
+    except (json.JSONDecodeError, KeyError, ValueError) as e:
+        import logging
+        logging.getLogger(__name__).warning(
+            "corrupt provenance manifest at %s (%s); falling back to legacy shim",
+            mp, e,
+        )
+        return None
 
 
 def _to_dict(p: Provenance) -> dict:

@@ -47,3 +47,18 @@ def test_legacy_loaded_artifact_is_usable(tmp_path):
     ann = core_io.load(legacy_path)
     out = ann.filter(col("x") > 1).collect()
     assert out == [{"x": 2}, {"x": 3}]
+
+
+def test_corrupt_manifest_falls_back_to_legacy_shim(tmp_path):
+    """A malformed .provenance.json sidecar shouldn't crash load()."""
+    df = pd.DataFrame({"x": [1]})
+    path = tmp_path / "rows.parquet"
+    df.to_parquet(path, index=False)
+
+    # Write a truncated/malformed sidecar
+    manifest = path.with_name(path.name + ".provenance.json")
+    manifest.write_text("{ not valid json")
+
+    loaded = core_io.load(path)
+    assert isinstance(loaded, AnnotationTable)
+    assert loaded.provenance.plugin == "<unknown>"
