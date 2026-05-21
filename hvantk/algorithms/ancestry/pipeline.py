@@ -785,14 +785,16 @@ def run_ancestry_inference(
 
     Algorithm-side input type
     -------------------------
-    This algorithm consumes raw ``hl.MatrixTable`` instances (genotype data)
-    rather than the platform's ``ExpressionMatrix`` artifact. The
-    ExpressionMatrix abstraction does not yet support a hail-mt backend
-    (see Phase J of the data-model platform plan), and genotype data is the
-    canonical case where the ``required_backend="hail"`` escape hatch is
-    appropriate. When the hail-mt backend lands, this signature can be
-    adapted to accept ``ExpressionMatrix`` instances and call
-    ``.to_hail_mt()`` internally.
+    This algorithm consumes raw ``hl.MatrixTable`` instances (genotype
+    data) rather than the platform's ``ExpressionMatrix`` artifact.
+    Phase J added a ``hail-mt`` backend to ``ExpressionMatrix``, so
+    callers may wrap their MatrixTables via
+    ``ExpressionMatrix.from_hail_mt(mt, provenance=...)`` and call
+    ``em.to_hail_mt()`` to retrieve the native object; the
+    ``required_backend="hail"`` declaration on the ``@algorithm``
+    decorator still applies because the algorithm body operates
+    natively on Hail. The wrapping pattern is the canonical way to
+    participate in artifact-based provenance for genotype workflows.
 
     Example
     -------
