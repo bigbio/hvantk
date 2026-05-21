@@ -126,7 +126,22 @@ def reprocess_cmd(
     # 3. Build stage
     if not skip_build:
         click.echo(f"build: {parsed_path} -> {output}")
-        spec.builder(parsed_path, output)
+        if spec.artifact_type is None:
+            # Legacy (Phase A) plugin not yet migrated to Phase B contract.
+            # Fall back to the old shape: spec.builder(input, output) writes
+            # directly to disk. No provenance / artifact_type validation.
+            spec.builder(parsed_path, output)
+        else:
+            # Phase B contract: orchestrator handles BuildContext, validation,
+            # and save. Returns the stamped Provenance.
+            from hvantk.core.plugin.run_builder import run_builder_for_spec
+            from pathlib import Path
+            run_builder_for_spec(
+                spec,
+                parsed_input=parsed_path,
+                output_path=Path(output),
+                plugin_version=spec.plugin_version or "<unknown>",
+            )
 
     # 4. Optional drift check
     if check_drift and not no_check_drift:

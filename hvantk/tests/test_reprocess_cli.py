@@ -372,3 +372,55 @@ def test_reprocess_plugin_arg_bad_format_errors(tmp_path: Path, monkeypatch):
     assert "KEY=VALUE" in result.output
     download.assert_not_called()
     builder.assert_not_called()
+
+
+def test_reprocess_phase_b_plugin_uses_run_builder_for_spec(
+    tmp_path: Path, monkeypatch
+):
+    """A spec with artifact_type set should route through run_builder_for_spec
+    (which uses BuildContext), not the legacy spec.builder(input, output) shape."""
+    import pandas as pd
+    from hvantk.core.models import AnnotationTable, BuildContext
+
+    # Real Phase B-style builder accepting (parsed, ctx, **params)
+    captured_ctx: dict = {}
+
+    def phase_b_builder(parsed, ctx, **params):
+        captured_ctx["ctx"] = ctx
+        df = pd.DataFrame({"x": [1, 2, 3]})
+        return AnnotationTable.from_pandas(
+            df, provenance=ctx.provenance(schema_id="test-rows-v1")
+        )
+
+    spec = _make_spec(builder=phase_b_builder)
+    # Set the Phase B fields on the spec — _make_spec doesn't set them by default
+    object.__setattr__(spec, "artifact_type", AnnotationTable)
+    object.__setattr__(spec, "schema_id", "test-rows-v1")
+    object.__setattr__(spec, "plugin_version", "0.1.0")
+    object.__setattr__(spec, "drift_probe", lambda: {"source_version": "v1"})
+    _install_registry(monkeypatch, spec)
+
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    output = tmp_path / "out.parquet"
+
+    result = CliRunner().invoke(
+        reprocess_cmd,
+        [
+            "stub:default",
+            "--raw-dir",
+            str(raw),
+            "--output",
+            str(output),
+            "--skip-download",
+            "--no-check-drift",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+
+    # Confirm the builder got a real BuildContext (not a string)
+    assert isinstance(captured_ctx["ctx"], BuildContext)
+    assert captured_ctx["ctx"].source_fingerprint  # nonempty
+    # Confirm the artifact was saved (file exists + sidecar manifest exists)
+    assert output.exists()
+    assert output.with_name(output.name + ".provenance.json").exists()
