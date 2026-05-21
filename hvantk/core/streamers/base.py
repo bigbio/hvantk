@@ -1,5 +1,22 @@
-# Data Streamer Base Classes
-# Provides a streaming architecture for processing large genomic datasets
+"""Low-level chunked-IO streaming primitives.
+
+This module pre-dates the Phase A artifact contract and is intentionally
+NOT part of the artifact pipeline. Streamers handle the byte-level
+download → on-disk landing of raw upstream files (e.g. ClinVar VCF chunks,
+HGNC TSV chunks) before any parse/build step runs. The artifact pipeline
+(``hvantk/core/io`` + ``AnnotationTable``/``ExpressionMatrix``/``GeneSet``)
+starts where streamers end: at well-formed on-disk files.
+
+For algorithm-side persistence with provenance, use ``hvantk.core.io.save``
+(artifact API) or ``hvantk.core.io.save_native`` (native passthrough), NOT
+the streamer persistence methods.
+
+Streamer subclasses (``HailDataStreamer``, etc.) reason in terms of Hail
+tables, JSON, text, and bytes because that's the shape of raw upstream
+data, not because the streamer layer is platform-architectural. If a
+new upstream source needs a streamer, it adds a subclass here; if the
+source produces ready-to-build files, no streamer is needed.
+"""
 
 import logging
 from abc import ABC, abstractmethod
