@@ -10,6 +10,13 @@ Contract per entry:
 - params: dict (optional) – builder-specific parameters
 
 This module adapts hvantk.core.builders.table functions to this contract.
+
+Internal dispatch tables
+------------------------
+``_TABLE_BUILDERS`` and ``_MATRIX_BUILDERS`` are module-private implementation
+details.  External callers should use the public dispatch functions
+``run_table_builder`` / ``run_matrix_builder`` instead of importing the dicts
+directly.
 """
 
 from __future__ import annotations
@@ -245,7 +252,7 @@ def create_matrix_adapter(
 
 
 # Table builders - automatically generated adapters using factory
-TABLE_BUILDERS: Dict[str, Callable[[str, str, Dict[str, Any] | None], None]] = {
+_TABLE_BUILDERS: Dict[str, Callable[[str, str, Dict[str, Any] | None], None]] = {
     "gevir": create_table_adapter("hvantk.core.builders.table", "create_gevir_tb"),
     "gnomad-metrics": create_table_adapter(
         "hvantk.core.builders.table", "create_gnomad_constraint_gene_metrics_tb"
@@ -271,18 +278,18 @@ def run_table_builder(
 
     Raises KeyError if the builder name is unknown.
     """
-    if name not in TABLE_BUILDERS:
+    if name not in _TABLE_BUILDERS:
         raise KeyError(f"Unknown table builder: {name}")
     logger.info(
         f"Running builder '{name}' with input={input_path} output={output_path} params={params}"
     )
-    TABLE_BUILDERS[name](input_path, output_path, params or {})
+    _TABLE_BUILDERS[name](input_path, output_path, params or {})
 
 
 # Matrix builders - automatically generated adapters using factory
 # All entries now come from the plugin registry via
 # ``_initialize_plugin_registrations`` below.
-MATRIX_BUILDERS: Dict[
+_MATRIX_BUILDERS: Dict[
     str, Callable[[Dict[str, str], str, Dict[str, Any] | None], None]
 ] = {}
 
@@ -297,19 +304,19 @@ def run_matrix_builder(
 
     Raises KeyError if the builder name is unknown.
     """
-    if name not in MATRIX_BUILDERS:
+    if name not in _MATRIX_BUILDERS:
         raise KeyError(f"Unknown matrix builder: {name}")
     logger.info(
         f"Running matrix builder '{name}' with inputs={inputs} output={output_mt} params={params}"
     )
-    MATRIX_BUILDERS[name](inputs, output_mt, params or {})
+    _MATRIX_BUILDERS[name](inputs, output_mt, params or {})
 
 
 # --- Plugin-driven registrations (added by feat/data-handlers-refactoring) ---
 
 
 def _apply_plugin_registrations(reg) -> None:
-    """Add plugin-discovered builders to the legacy builder dicts.
+    """Add plugin-discovered builders to the internal dispatch dicts.
 
     Coexistence: this runs ALONGSIDE the create_table_adapter() block above.
     As each provider migrates to the plugin layout in follow-up plans, its
@@ -336,15 +343,15 @@ def _apply_plugin_registrations(reg) -> None:
         return adapter
 
     for ds in reg.list_datasets(backend="hail"):
-        TABLE_BUILDERS[ds.name] = _wrap_builder(ds)
+        _TABLE_BUILDERS[ds.name] = _wrap_builder(ds)
     for ds in reg.list_datasets(backend="pandas"):
-        TABLE_BUILDERS[ds.name] = _wrap_builder(ds)
+        _TABLE_BUILDERS[ds.name] = _wrap_builder(ds)
     for ds in reg.list_datasets(backend="anndata"):
-        MATRIX_BUILDERS[ds.name] = _wrap_builder(ds)
+        _MATRIX_BUILDERS[ds.name] = _wrap_builder(ds)
 
 
 def _initialize_plugin_registrations() -> None:
-    """Wire the module-level PluginRegistry into TABLE_BUILDERS / MATRIX_BUILDERS.
+    """Wire the module-level PluginRegistry into _TABLE_BUILDERS / _MATRIX_BUILDERS.
 
     Called once at module import time. Safe to call repeatedly; subsequent
     calls are no-ops because the registry is a module-level singleton.

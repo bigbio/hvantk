@@ -7,7 +7,7 @@ returned artifact's type matches the plugin.yaml `artifact_type`, then persists 
 `artifact.save(output_path)`.
 
 Plugins that have NOT yet migrated to this contract continue to be invoked through
-TABLE_BUILDERS / MATRIX_BUILDERS — those facades stay in place for Phase B coexistence.
+_TABLE_BUILDERS / _MATRIX_BUILDERS — those facades stay in place for Phase B coexistence.
 """
 from __future__ import annotations
 
