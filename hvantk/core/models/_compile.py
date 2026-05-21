@@ -117,36 +117,7 @@ def compile_to_hail(expr: Expr, ht: "Any") -> "Any":
     col/row scopes, use :func:`compile_to_hail_mt_col` or
     :func:`compile_to_hail_mt_row` instead.
     """
-    import hail as hl  # local import: avoid importing hail at module load
-
-    def go(e: Expr):
-        if isinstance(e, Col):
-            return ht[e.name]
-        if isinstance(e, Literal):
-            return hl.literal(e.value) if isinstance(e.value, (list, tuple, set)) else e.value
-        if isinstance(e, UnaryOp) and e.op == "not":
-            return ~go(e.operand)
-        if isinstance(e, BinOp):
-            left = go(e.left)
-            right = go(e.right)
-            return _HAIL_BINOPS[e.op](left, right)
-        if isinstance(e, CallOp):
-            receiver = go(e.receiver)
-            if e.name == "isin":
-                values = go(e.args[0])
-                # Hail's .contains() lives on ArrayExpression, not TupleExpression;
-                # always pass a list to hl.literal so we get an ArrayExpression.
-                if not isinstance(values, list):
-                    values = list(values)
-                return hl.literal(values).contains(receiver)
-            if e.name == "is_null":
-                return hl.is_missing(receiver)
-            if e.name == "is_not_null":
-                return hl.is_defined(receiver)
-            raise NotImplementedError(f"hail: unknown CallOp {e.name!r}")
-        raise NotImplementedError(f"hail: unknown Expr node {type(e).__name__}")
-
-    return go(expr)
+    return _compile_to_hail_with_field_accessor(expr, lambda name: ht[name])
 
 
 _HAIL_BINOPS = {
