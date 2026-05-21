@@ -251,24 +251,12 @@ def create_matrix_adapter(
     return adapter
 
 
-# Table builders - automatically generated adapters using factory
-_TABLE_BUILDERS: Dict[str, Callable[[str, str, Dict[str, Any] | None], None]] = {
-    "gevir": create_table_adapter("hvantk.core.builders.table", "create_gevir_tb"),
-    "gnomad-metrics": create_table_adapter(
-        "hvantk.core.builders.table", "create_gnomad_constraint_gene_metrics_tb"
-    ),
-    "ensembl-gene": create_table_adapter(
-        "hvantk.core.builders.table", "create_ensembl_gene_tb"
-    ),
-    "dbnsfp": create_table_adapter("hvantk.core.builders.table", "create_dbnsfp_tb"),
-    "cosmic-cgc": create_table_adapter(
-        "hvantk.core.builders.table", "create_cosmic_cgc_tb"
-    ),
-    "pqtl": create_table_adapter("hvantk.core.builders.table", "create_pqtl_tb"),
-    "alphagenome": create_table_adapter(
-        "hvantk.core.builders.table", "create_alphagenome_tb"
-    ),
-}
+# Table builders — populated by the plugin loader via _initialize_plugin_registrations.
+# All 7 hardcoded entries (gevir, gnomad-metrics, ensembl-gene, dbnsfp, cosmic-cgc,
+# pqtl, alphagenome) were promoted to Phase B plugins in Phase K and removed here.
+# Backward-compat short-name aliases are added by _add_phase_k_aliases() after the
+# plugin loader runs; see that function below.
+_TABLE_BUILDERS: Dict[str, Callable[[str, str, Dict[str, Any] | None], None]] = {}
 
 
 def run_table_builder(
@@ -350,6 +338,27 @@ def _apply_plugin_registrations(reg) -> None:
         _MATRIX_BUILDERS[ds.name] = _wrap_builder(ds)
 
 
+def _add_phase_k_aliases() -> None:
+    """Map the old short names to the new plugin-loaded compound keys.
+
+    Preserves backward compatibility with existing mktable-batch recipes and
+    CLI invocations that used the pre-Phase-K short names (gevir, gnomad-metrics,
+    etc.). Runs once after _apply_plugin_registrations populates the long names.
+    """
+    aliases = {
+        "gevir": "gevir:metrics",
+        "gnomad-metrics": "gnomad-metrics:metrics",
+        "ensembl-gene": "ensembl-gene:genes",
+        "dbnsfp": "dbnsfp:variants",
+        "cosmic-cgc": "cosmic-cgc:submissions",
+        "pqtl": "pqtl:metrics",
+        "alphagenome": "alphagenome:predictions",
+    }
+    for old, new in aliases.items():
+        if new in _TABLE_BUILDERS and old not in _TABLE_BUILDERS:
+            _TABLE_BUILDERS[old] = _TABLE_BUILDERS[new]
+
+
 def _initialize_plugin_registrations() -> None:
     """Wire the module-level PluginRegistry into _TABLE_BUILDERS / _MATRIX_BUILDERS.
 
@@ -364,6 +373,7 @@ def _initialize_plugin_registrations() -> None:
         logger.warning("plugin loader failed to initialize: %s", exc)
         return
     _apply_plugin_registrations(reg)
+    _add_phase_k_aliases()
 
 
 _initialize_plugin_registrations()

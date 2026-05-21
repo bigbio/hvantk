@@ -1,0 +1,28 @@
+api_version: 2
+name: pqtl
+version: 0.1.0
+status: provisional
+description: Protein quantitative trait loci (pQTL) association metrics - Hail Table
+
+source:
+  catalog_ref: pqtl
+
+datasets:
+  - name: metrics
+    domain: proteomics
+    backend: hail
+    artifact_type: AnnotationTable
+    schema_id: pqtl-v1
+    builder:
+      module: hvantk.skills.pqtl.builder
+      function: build_pqtl_metrics
+    drift_probe:
+      module: hvantk.skills.pqtl.drift_probe
+      function: fetch_fingerprint
+    skill: SKILL.md
+    tests:
+      command: pytest hvantk/skills/pqtl/tests
+      fixture: tests/testdata/raw/pqtl
+      schema_snapshot: tests/snapshots/schema.json
+      row_snapshot: tests/snapshots/sample_rows.json
+      drift_fingerprint: tests/drift_fingerprint.json

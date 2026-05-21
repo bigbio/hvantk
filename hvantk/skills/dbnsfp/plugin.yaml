@@ -1,0 +1,28 @@
+api_version: 2
+name: dbnsfp
+version: 0.1.0
+status: provisional
+description: dbNSFP variant functional annotation database - Hail Table
+
+source:
+  catalog_ref: dbnsfp
+
+datasets:
+  - name: variants
+    domain: genomics
+    backend: hail
+    artifact_type: AnnotationTable
+    schema_id: dbnsfp-v1
+    builder:
+      module: hvantk.skills.dbnsfp.builder
+      function: build_dbnsfp_variants
+    drift_probe:
+      module: hvantk.skills.dbnsfp.drift_probe
+      function: fetch_fingerprint
+    skill: SKILL.md
+    tests:
+      command: pytest hvantk/skills/dbnsfp/tests
+      fixture: tests/testdata/raw/dbnsfp
+      schema_snapshot: tests/snapshots/schema.json
+      row_snapshot: tests/snapshots/sample_rows.json
+      drift_fingerprint: tests/drift_fingerprint.json

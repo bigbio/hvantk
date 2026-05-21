@@ -1,0 +1,28 @@
+api_version: 2
+name: gevir
+version: 0.1.0
+status: provisional
+description: GeVIR gene vulnerability and intolerance rank metrics - Hail Table
+
+source:
+  catalog_ref: gevir
+
+datasets:
+  - name: metrics
+    domain: genomics
+    backend: hail
+    artifact_type: AnnotationTable
+    schema_id: gevir-metrics-v1
+    builder:
+      module: hvantk.skills.gevir.builder
+      function: build_gevir_metrics
+    drift_probe:
+      module: hvantk.skills.gevir.drift_probe
+      function: fetch_fingerprint
+    skill: SKILL.md
+    tests:
+      command: pytest hvantk/skills/gevir/tests
+      fixture: tests/testdata/raw/gevir
+      schema_snapshot: tests/snapshots/schema.json
+      row_snapshot: tests/snapshots/sample_rows.json
+      drift_fingerprint: tests/drift_fingerprint.json
