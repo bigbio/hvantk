@@ -16,7 +16,7 @@ These conventions apply to every per-resource plugin under `hvantk/skills/`. Per
 - `hvantk/skills/_conventions/SKILL.md` — this file. The shared contract.
 - `hvantk/core/builders/table.py` — still the home of generic helpers (`_create_table_base`, `_cleanup_temp_file`, `_parse_insider_bed_to_temp_tsv`) and of non-migrated builders. Plugins import the helpers; they do not add new top-level builders here.
 - `hvantk/core/plugin/registry.py` — recipe-system registry. The plugin loader populates `TABLE_BUILDERS` / `MATRIX_BUILDERS` automatically; hand-written `create_table_adapter()` calls are deprecated for migrated providers.
-- `hvantk/core/plugin_api.py`, `hvantk/core/plugin_loader.py` — plugin schema, discovery (filesystem + Python entry points), and lifecycle wiring.
+- `hvantk/core/plugin/api.py`, `hvantk/core/plugin/loader.py` — plugin schema, discovery (filesystem + Python entry points), and lifecycle wiring.
 - `hvantk/tools/` — top-level CLI (`hvantk plugins`, `hvantk drift`, `hvantk reprocess`, `hvantk catalog`, plus legacy `mktable`, `mkmatrix`). Per-provider CLI lives in the plugin's own `cli.py` and is wired by `plugin.yaml`.
 - `hvantk/skills/<provider>/catalog/datasets.json` — per-plugin dataset catalog (URLs, version cadence, license, per-accession metadata). Aggregated by `hvantk.resources.unified_registry.HvantkRegistry` and surfaced via `hvantk catalog {list,show,stats,search}`.
 
@@ -54,9 +54,20 @@ Optional sections (only if they add information not covered above): `## 10. Cros
 ## 4. Required helpers
 
 - `_create_table_base()` — `hvantk/core/builders/table.py`. Canonical helper for variant/gene Table builders (handles import, transform, checkpoint, optional TSV export). Its `import_func` accepts any `Callable[[], hl.Table]` — `hl.import_table` (TSV), `hl.import_vcf().rows()`, or `hl.import_lines` for line-oriented formats like GMT.
-- `init_hail()` — `hvantk/core/hail_context.py`. Idempotent Hail init. Tests use the session-scoped `hail_session` fixture from `conftest.py`.
-- AnnData helpers — `hvantk/core/anndata_utils.py`: `build_anndata_metadata`, `save_anndata`, `coerce_obs_for_h5ad`, `annotate_column_summary_ad`.
-- Plugin runtime — `hvantk/core/plugin_api.py` defines `PluginSpec`, `DatasetSpec`, and `DriftProbeError`. Tests/CLI consume the populated registries via `hvantk/core/plugin_loader.py`.
+- `init_hail()` — `hvantk/core/utils/hail_context.py`. Idempotent Hail init. Tests use the session-scoped `hail_session` fixture from `conftest.py`.
+- AnnData helpers — `hvantk/core/models/anndata_utils.py`: `build_anndata_metadata`, `save_anndata`, `coerce_obs_for_h5ad`, `annotate_column_summary_ad`.
+- Plugin runtime — `hvantk/core/plugin/api.py` defines `PluginSpec`, `DatasetSpec`, and `DriftProbeError`. Tests/CLI consume the populated registries via `hvantk/core/plugin/loader.py`.
+
+**Phase B builder contract (current):** plugin builders are functions
+`(parsed_input, ctx: BuildContext, **params) -> Artifact` that return
+an `AnnotationTable`, `ExpressionMatrix`, or `GeneSet` (see
+`hvantk/core/models/`). The platform invokes them via
+`hvantk.core.plugin.run_builder.run_builder_for_spec(...)` which validates
+the returned artifact's type against `plugin.yaml`'s `artifact_type` and
+stamps source-fingerprint provenance. The legacy
+`create_<dataset>_tb(input_path, output_path, ...)` functions remain in
+each plugin's `builder.py` for backward compatibility with `TABLE_BUILDERS`
+callers; they will be removed in a future cleanup phase.
 
 NEVER paste these helpers' source into a skill. Reference them by path.
 
