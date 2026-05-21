@@ -94,3 +94,130 @@ def load(path: str | Path, *, expected_schema_id: str | None = None) -> Any:
     if path.suffix == ".mt" or path.name.endswith(".mt/"):
         return load_expression_matrix_mt(path, provenance)
     raise ArtifactTypeError(f"load: unrecognized extension for {path}")
+
+
+def load_native(
+    path: str | Path,
+    *,
+    expected_schema_id: str | None = None,
+) -> "tuple[Any, Any]":
+    """Load an artifact and return its underlying native object plus provenance.
+
+    Useful for algorithms that are legitimately backend-native (e.g. Hail
+    genotype workflows, distributed cascade pipelines) and don't need the
+    portable Artifact query API. The native object is returned directly —
+    no conversion when the artifact's backend matches the file format.
+
+    Returns
+    -------
+    native_obj
+        The native object underlying the artifact:
+          - .parquet  -> pandas.DataFrame
+          - .ht/      -> hail.Table
+          - .h5ad     -> anndata.AnnData
+          - .mt/      -> hail.MatrixTable
+          - .geneset.json -> list[str] of gene IDs
+    provenance
+        The Provenance carried by the artifact (or Provenance.unknown(reason=...)
+        for legacy files with no sidecar manifest).
+
+    Raises
+    ------
+    SchemaIdMismatchError
+        If expected_schema_id is given and the manifest's schema_id differs.
+    ArtifactTypeError
+        If the file extension isn't a known artifact format.
+
+    Examples
+    --------
+    >>> ht, prov = core_io.load_native("variants.ht")
+    >>> # ht is hl.Table; use the full Hail surface
+    >>> result = ht.filter(ht.AC > 0).select("locus", "alleles")
+    >>> # Save the result with chained provenance
+    >>> core_io.save_native(result, "filtered.ht", provenance=Provenance(
+    ...     ..., parents=(prov,)
+    ... ))
+    """
+    artifact = load(path, expected_schema_id=expected_schema_id)
+
+    if isinstance(artifact, AnnotationTable):
+        if artifact.backend == "hail":
+            native = artifact.to_hail()       # zero-cost: returns self._table
+        else:
+            native = artifact.to_pandas()     # zero-cost for pandas-backed
+    elif isinstance(artifact, ExpressionMatrix):
+        if artifact.backend == "hail-mt":
+            native = artifact.to_hail_mt()    # zero-cost
+        else:
+            native = artifact.to_anndata()    # zero-cost for anndata-backed
+    elif isinstance(artifact, GeneSet):
+        native = artifact.to_list()
+    else:
+        raise ArtifactTypeError(
+            f"load_native: unhandled artifact type {type(artifact).__name__}"
+        )
+    return native, artifact.provenance
+
+
+def save_native(
+    native_obj: Any,
+    path: str | Path,
+    *,
+    provenance: Any,
+) -> None:
+    """Save a raw native object with provenance, bypassing the artifact wrapper.
+
+    Symmetric to load_native: the caller has a native object (hl.Table,
+    hl.MatrixTable, pd.DataFrame, anndata.AnnData, or list[str] for gene sets)
+    and wants to persist it with a Provenance sidecar manifest.
+
+    The format is inferred from the path extension:
+      - .parquet  -> expects pandas.DataFrame
+      - .ht/      -> expects hail.Table (calls ht.write)
+      - .h5ad     -> expects anndata.AnnData
+      - .mt/      -> expects hail.MatrixTable (calls mt.write)
+      - .geneset.json -> expects iterable[str]
+
+    Provenance is required (no Provenance.unknown shortcut; the explicit
+    intent of save_native is to carry meaningful provenance from algorithm
+    derivations).
+
+    Examples
+    --------
+    >>> filtered_ht = ht.filter(ht.AC > 0)
+    >>> core_io.save_native(filtered_ht, "filtered.ht", provenance=Provenance(
+    ...     plugin="qtlcascade", dataset="qtlcascade:filtered",
+    ...     plugin_version="0.1.0", source_fingerprint="...",
+    ...     schema_id="qtlcascade-filtered-v1",
+    ...     build_timestamp=datetime.now(timezone.utc),
+    ...     builder_commit=None,
+    ...     parents=(input_provenance,),
+    ... ))
+    """
+    path = Path(path)
+
+    # Wrap the native object in the matching artifact and call save().
+    # The artifact constructors (from_hail / from_pandas / from_anndata /
+    # from_hail_mt) are zero-cost — they just bind self._table / self._matrix
+    # to the passed object without copying.
+    if path.suffix == ".parquet":
+        # pandas.DataFrame expected
+        artifact: Any = AnnotationTable.from_pandas(native_obj, provenance=provenance)
+    elif path.suffix == ".ht" or path.name.endswith(".ht/"):
+        # hail.Table expected
+        artifact = AnnotationTable.from_hail(native_obj, provenance=provenance)
+    elif path.suffix == ".h5ad":
+        # anndata.AnnData expected
+        artifact = ExpressionMatrix.from_anndata(native_obj, provenance=provenance)
+    elif path.suffix == ".mt" or path.name.endswith(".mt/"):
+        # hail.MatrixTable expected
+        artifact = ExpressionMatrix.from_hail_mt(native_obj, provenance=provenance)
+    elif path.name.endswith(".geneset.json"):
+        members = frozenset(native_obj)
+        name = path.stem.replace(".geneset", "")
+        artifact = GeneSet(name=name, provenance=provenance, _members=members)
+    else:
+        raise ArtifactTypeError(
+            f"save_native: unrecognized extension for {path}"
+        )
+    save(artifact, path)
