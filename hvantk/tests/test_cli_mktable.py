@@ -1,3 +1,4 @@
+import warnings
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -259,3 +260,73 @@ def test_mktable_clingen_gene_disease_rejects_invalid_values(option, value):
     )
     assert result.exit_code != 0
     assert "Invalid value" in result.output
+
+
+# ---------------------------------------------------------------------------
+# Deprecation warnings
+# ---------------------------------------------------------------------------
+
+def test_mktable_clinvar_emits_deprecation_warning():
+    """mktable clinvar should emit a DeprecationWarning directing to reprocess."""
+    runner = CliRunner()
+    with patch("hvantk.tools.build.make_table_cli._create_clinvar_tb") as mock_create:
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always", DeprecationWarning)
+            result = runner.invoke(
+                mktable_group,
+                [
+                    "clinvar",
+                    "--raw-input", "/tmp/fake.vcf.bgz",
+                    "--output-ht", "/tmp/fake_out.ht",
+                ],
+            )
+    deprecation_warnings = [
+        w for w in caught
+        if issubclass(w.category, DeprecationWarning)
+        and "hvantk reprocess" in str(w.message)
+    ]
+    assert len(deprecation_warnings) >= 1, (
+        "Expected a DeprecationWarning mentioning 'hvantk reprocess' "
+        f"but got: {[str(w.message) for w in caught]}"
+    )
+
+
+def test_mktable_group_help_mentions_deprecated():
+    """The mktable group --help output should mention deprecation."""
+    runner = CliRunner()
+    result = runner.invoke(mktable_group, ["--help"])
+    assert result.exit_code == 0
+    assert "Deprecated" in result.output or "deprecated" in result.output
+
+
+def test_mkmatrix_ucsc_emits_deprecation_warning():
+    """mkmatrix ucsc should emit a DeprecationWarning directing to reprocess."""
+    from hvantk.tools.build.make_matrix_cli import mkmatrix_group
+    import os
+
+    runner = CliRunner()
+    # Create minimal stub files so click's exists=True check passes
+    with runner.isolated_filesystem():
+        open("expr.tsv", "w").close()
+        open("meta.tsv", "w").close()
+        with patch("hvantk.tools.build.make_matrix_cli._build_ucsc_ad") as mock_build:
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always", DeprecationWarning)
+                result = runner.invoke(
+                    mkmatrix_group,
+                    [
+                        "ucsc",
+                        "-e", "expr.tsv",
+                        "-m", "meta.tsv",
+                        "-o", "out.h5ad",
+                    ],
+                )
+    deprecation_warnings = [
+        w for w in caught
+        if issubclass(w.category, DeprecationWarning)
+        and "hvantk reprocess" in str(w.message)
+    ]
+    assert len(deprecation_warnings) >= 1, (
+        "Expected a DeprecationWarning mentioning 'hvantk reprocess' "
+        f"but got: {[str(w.message) for w in caught]}"
+    )

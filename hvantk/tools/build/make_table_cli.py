@@ -11,6 +11,7 @@ Examples:
 """
 
 import logging
+import warnings
 from typing import Optional, List
 
 import click
@@ -18,6 +19,21 @@ import click
 from hvantk.core.config import CONTEXT_SETTINGS
 
 logger = logging.getLogger(__name__)
+
+_DEPRECATION_NOTICE = (
+    "[deprecated] `hvantk mktable <plugin>` will be removed in a future "
+    "release. Use `hvantk reprocess <plugin>:<dataset>` instead — it "
+    "dispatches through the plugin registry and supports the Phase B "
+    "builder contract (artifact + provenance)."
+)
+
+
+def _warn_deprecated(command_name: str) -> None:
+    warnings.warn(
+        f"{_DEPRECATION_NOTICE} (called: hvantk mktable {command_name})",
+        DeprecationWarning,
+        stacklevel=2,
+    )
 
 
 # Internal wrappers so tests can mock without importing hail-heavy modules at import time
@@ -107,9 +123,18 @@ def _create_msigdb_tb(*args, **kwargs):
     return create_msigdb_tb(*args, **kwargs)
 
 
-@click.group("mktable", context_settings=CONTEXT_SETTINGS)
+@click.group(
+    "mktable",
+    context_settings=CONTEXT_SETTINGS,
+    help=(
+        "[Deprecated] Build a single annotation table from a hardcoded list "
+        "of sources. New: use `hvantk reprocess <plugin>:<dataset>` which "
+        "dispatches through the plugin registry. This group is preserved "
+        "for backward compatibility and will be removed in a future release."
+    ),
+)
 def mktable_group():
-    """Create a single annotation Table/MatrixTable from a raw input file."""
+    """Create annotation tables (deprecated; prefer reprocess)."""
     pass
 
 
@@ -153,6 +178,7 @@ def mktable_clinvar(
     raw_input: str, output_ht: str, overwrite: bool, export_tsv: bool, ref_genome: str
 ):
     """Build a ClinVar Hail Table from a VCF (keyed by locus, alleles)."""
+    _warn_deprecated("clinvar")
     logger.info("Building ClinVar table")
     ht = _create_clinvar_tb(
         input_path=raw_input,
@@ -175,6 +201,7 @@ def mktable_interactome(
     raw_input: str, output_ht: str, overwrite: bool, export_tsv: bool, ref_genome: str
 ):
     """Build an interactome Table from a BED (keyed by interval)."""
+    _warn_deprecated("interactome")
     logger.info("Building interactome table")
     ht = _create_interactome_tb(
         input_path=raw_input,
@@ -206,6 +233,7 @@ def mktable_gevir(
     fields: Optional[str],
 ):
     """Build a GeVIR gene-level Table from a TSV (keyed by gene_id)."""
+    _warn_deprecated("gevir")
     selected: Optional[List[str]] = (
         [f.strip() for f in fields.split(",")] if fields else None
     )
@@ -240,6 +268,7 @@ def mktable_gnomad_metrics(
     fields: Optional[str],
 ):
     """Build a gnomAD constraint metrics gene Table from a TSV (keyed by gene_id)."""
+    _warn_deprecated("gnomad-metrics")
     selected: Optional[List[str]] = (
         [f.strip() for f in fields.split(",")] if fields else None
     )
@@ -281,6 +310,7 @@ def mktable_ensembl_gene(
     canonical: bool,
 ):
     """Build an Ensembl gene annotation Table from a Biomart TSV (keyed by gene_id)."""
+    _warn_deprecated("ensembl-gene")
     selected: Optional[List[str]] = (
         [f.strip() for f in fields.split(",")] if fields else None
     )
@@ -330,6 +360,7 @@ def mktable_dbnsfp(
     auto_convert_bgz: bool,
 ):
     """Build a dbNSFP variant annotation Table from a TSV/BGZ (keyed by locus, alleles)."""
+    _warn_deprecated("dbnsfp")
     prefixes = None
     if group_prefixes:
         prefixes = [p.strip() for p in group_prefixes.split(",") if p.strip()]
@@ -386,6 +417,7 @@ def mktable_clingen_gene_disease(
     fields: Optional[str],
 ):
     """Build a ClinGen Gene-Disease Validity Table from a CSV (keyed by gene or gene-disease)."""
+    _warn_deprecated("clingen-gene-disease")
     selected: Optional[List[str]] = (
         [f.strip() for f in fields.split(",")] if fields else None
     )
@@ -453,6 +485,7 @@ def mktable_gencc_submissions(
     fields: Optional[str],
 ):
     """Build a GenCC Submissions Table from a TSV (keyed by gene, gene-disease, or gene-disease-submitter)."""
+    _warn_deprecated("gencc-submissions")
     selected: Optional[List[str]] = (
         [f.strip() for f in fields.split(",")] if fields else None
     )
@@ -504,6 +537,7 @@ def mktable_cosmic_cgc(
     min_classification: Optional[str],
 ):
     """Build a COSMIC Cancer Gene Census Hail Table from the downloaded TSV."""
+    _warn_deprecated("cosmic-cgc")
     logger.info("Building COSMIC CGC table")
     from hvantk.core.builders.table import create_cosmic_cgc_tb
 
@@ -545,6 +579,7 @@ def mktable_hgnc(
     fields: Optional[str],
 ):
     """Build an HGNC gene nomenclature Table from a TSV (keyed by hgnc_id)."""
+    _warn_deprecated("hgnc")
     selected: Optional[List[str]] = (
         [f.strip() for f in fields.split(",")] if fields else None
     )
@@ -583,6 +618,7 @@ def mktable_ptm_sites(
     flanking_codons: int,
 ):
     """Build a PTM sites Hail Table from mapped coordinates (keyed by locus)."""
+    _warn_deprecated("ptm-sites")
     logger.info("Building PTM sites table")
     ht = _create_ptm_sites_tb(
         input_path=raw_input,
@@ -638,6 +674,7 @@ def mktable_eqtl(
     p_threshold: float,
 ):
     """Build an eQTL Hail Table (keyed by locus, alleles, gene_id)."""
+    _warn_deprecated("eqtl")
     logger.info("Building eQTL table (source=%s)", source)
     ht = _create_eqtl_tb(
         input_path=raw_input,
@@ -705,6 +742,7 @@ def mktable_pqtl(
     p_threshold: float,
 ):
     """Build a pQTL Hail Table (keyed by locus, alleles, gene_id)."""
+    _warn_deprecated("pqtl")
     logger.info("Building pQTL table (source=%s)", source)
     ht = _create_pqtl_tb(
         input_path=raw_input,
@@ -756,6 +794,7 @@ def mktable_pqtl(
 @_overwrite_opt
 def mktable_alphagenome(input_path, output_dir, config_path, no_resume, overwrite):
     """Run AlphaGenome variant effect predictions."""
+    _warn_deprecated("alphagenome")
     from hvantk.core.builders.table import create_alphagenome_tb
 
     logger.info("Running AlphaGenome variant predictions")
@@ -779,6 +818,7 @@ def mktable_gwas_catalog(
     raw_input: str, output_ht: str, overwrite: bool, export_tsv: bool, ref_genome: str
 ):
     """Build a GWAS Catalog Hail Table from the v1.0 full-associations TSV (keyed by locus, alleles)."""
+    _warn_deprecated("gwas-catalog")
     logger.info("Building GWAS Catalog table")
     ht = _create_gwas_catalog_tb(
         input_path=raw_input,
@@ -800,6 +840,7 @@ def mktable_msigdb(
     raw_input: str, output_ht: str, overwrite: bool, export_tsv: bool
 ):
     """Build an MSigDB Hail Table from a GMT file (keyed by set_name)."""
+    _warn_deprecated("msigdb")
     logger.info("Building MSigDB table")
     ht = _create_msigdb_tb(
         input_path=raw_input,

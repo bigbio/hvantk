@@ -8,12 +8,28 @@ Examples:
 """
 
 import logging
+import warnings
 
 import click
 
 from hvantk.core.config import CONTEXT_SETTINGS
 
 logger = logging.getLogger(__name__)
+
+_DEPRECATION_NOTICE = (
+    "[deprecated] `hvantk mkmatrix <plugin>` will be removed in a future "
+    "release. Use `hvantk reprocess <plugin>:<dataset>` instead — it "
+    "dispatches through the plugin registry and supports the Phase B "
+    "builder contract (artifact + provenance)."
+)
+
+
+def _warn_deprecated(command_name: str) -> None:
+    warnings.warn(
+        f"{_DEPRECATION_NOTICE} (called: hvantk mkmatrix {command_name})",
+        DeprecationWarning,
+        stacklevel=2,
+    )
 
 
 def _build_ucsc_ad(**kwargs):
@@ -40,9 +56,19 @@ def _build_cptac_phospho_ad(**kwargs):
     return build_cptac_phospho_ad(**kwargs)
 
 
-@click.group("mkmatrix", context_settings=CONTEXT_SETTINGS)
+@click.group(
+    "mkmatrix",
+    context_settings=CONTEXT_SETTINGS,
+    help=(
+        "[Deprecated] Build a single AnnData expression object from a "
+        "hardcoded list of sources. New: use `hvantk reprocess "
+        "<plugin>:<dataset>` which dispatches through the plugin registry. "
+        "This group is preserved for backward compatibility and will be "
+        "removed in a future release."
+    ),
+)
 def mkmatrix_group():
-    """Create a single AnnData expression object (.h5ad) from a raw input file."""
+    """Create AnnData expression objects (deprecated; prefer reprocess)."""
     pass
 
 
@@ -105,6 +131,7 @@ def mkmatrix_ucsc(
     overwrite,
 ):
     """Build an AnnData object from UCSC Cell Browser expression + metadata files."""
+    _warn_deprecated("ucsc")
     logger.info("Building UCSC AnnData")
     adata = _build_ucsc_ad(
         expression_matrix_path=expression_matrix,
@@ -151,6 +178,7 @@ def mkmatrix_expression_atlas(
     overwrite,
 ):
     """Build an AnnData object from Expression Atlas matrix + SDRF metadata."""
+    _warn_deprecated("expression-atlas")
     logger.info("Building Expression Atlas AnnData")
     adata = _build_expression_atlas_ad(
         expression_matrix_path=expression_matrix,
@@ -209,6 +237,7 @@ def mkmatrix_cptac(
     overwrite,
 ):
     """Build a CPTAC AnnData object from expression and metadata tables."""
+    _warn_deprecated("cptac")
     logger.info("Building CPTAC AnnData")
 
     adata = _build_cptac_ad(
@@ -258,6 +287,7 @@ def mkmatrix_cptac_phospho(
     overwrite,
 ):
     """Build a CPTAC phospho AnnData object from site intensities and metadata."""
+    _warn_deprecated("cptac-phospho")
     logger.info("Building CPTAC phospho AnnData")
 
     adata = _build_cptac_phospho_ad(
