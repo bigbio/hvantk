@@ -153,6 +153,11 @@ class AnnotationTable:
                 f"to opt in to pandas-style suffixing (Hail backend does not support suffixes; "
                 f"rename is the portable fix)."
             )
+        if suffixes is not None and self.backend == "hail":
+            raise ValueError(
+                "join: suffixes= is not supported on the hail backend; "
+                "rename overlapping columns before joining."
+            )
 
         if self.backend == "pandas":
             merge_kwargs: dict[str, Any] = {

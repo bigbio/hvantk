@@ -283,6 +283,24 @@ def test_join_with_explicit_suffixes_allowed():
     assert out == [{"gene": "BRCA1", "score_a": 0.7, "score_b": 0.5}]
 
 
+@pytest.mark.hail
+def test_join_suffixes_on_hail_raises():
+    """suffixes= is a pandas-only kwarg; raise eagerly on the hail backend."""
+    import hail as hl
+
+    rows = [{"gene": "BRCA1", "score": 0.7}]
+    a = AnnotationTable.from_hail(
+        hl.Table.parallelize(rows, hl.tstruct(gene=hl.tstr, score=hl.tfloat64)).key_by("gene"),
+        provenance=_prov(),
+    )
+    b = AnnotationTable.from_hail(
+        hl.Table.parallelize(rows, hl.tstruct(gene=hl.tstr, score=hl.tfloat64)).key_by("gene"),
+        provenance=_prov(),
+    )
+    with pytest.raises(ValueError, match="not supported on the hail backend"):
+        a.join(b, on="gene", how="inner", suffixes=("_a", "_b"))
+
+
 def test_load_classmethod_round_trip(tmp_path):
     df = pd.DataFrame({"x": [1, 2]})
     ann = AnnotationTable.from_pandas(df, provenance=_prov())
