@@ -95,3 +95,35 @@ def test_subset_var_using_var_id(adata):
     em = ExpressionMatrix.from_anndata(adata, provenance=_prov())
     sub = em.subset_var(col("var_id") == "g1")
     assert sub.n_vars == 1
+
+
+def test_subset_obs_with_named_index(tmp_path):
+    """When AnnData index has a name (e.g. 'sample'), obs_id is still the synthetic column."""
+    obs = pd.DataFrame(
+        {"tissue": ["liver", "brain"]},
+        index=pd.Index(["s1", "s2"], name="sample"),  # NAMED index
+    )
+    var = pd.DataFrame({"gene": ["BRCA1"]}, index=["g1"])
+    adata = ad.AnnData(X=np.array([[1.0], [2.0]]), obs=obs, var=var)
+    em = ExpressionMatrix.from_anndata(adata, provenance=_prov())
+
+    # obs column should be obs_id regardless of the original index name
+    rows = em.obs.collect()
+    assert "obs_id" in rows[0]
+    assert rows[0]["obs_id"] == "s1"
+
+    sub = em.subset_obs(col("obs_id") == "s1")
+    assert sub.n_obs == 1
+
+
+def test_subset_var_with_named_index(tmp_path):
+    obs = pd.DataFrame({"tissue": ["liver"]}, index=["s1"])
+    var = pd.DataFrame(
+        {"gene": ["BRCA1", "TP53"]},
+        index=pd.Index(["g1", "g2"], name="ensembl_id"),  # NAMED index
+    )
+    adata = ad.AnnData(X=np.array([[1.0, 2.0]]), obs=obs, var=var)
+    em = ExpressionMatrix.from_anndata(adata, provenance=_prov())
+
+    sub = em.subset_var(col("var_id") == "g1")
+    assert sub.n_vars == 1

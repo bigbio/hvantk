@@ -41,6 +41,17 @@ from hvantk.core.models.provenance import Provenance
 _BACKENDS = ("anndata", "hail-mt")
 
 
+def _materialize_metadata_df(df: pd.DataFrame, axis_id_name: str) -> pd.DataFrame:
+    """Reset a metadata DataFrame's index to an explicit column named ``axis_id_name``.
+
+    AnnData obs/var DataFrames may have either a named or unnamed index.
+    This helper produces a stable schema with ``axis_id_name`` regardless.
+    """
+    out = df.copy()
+    out.index = out.index.rename(None)
+    return out.reset_index().rename(columns={"index": axis_id_name})
+
+
 def _entry_field_name(mt: Any) -> str:
     """Return the canonical entry field name from a Hail MatrixTable.
 
@@ -113,7 +124,7 @@ class ExpressionMatrix:
     def obs(self) -> AnnotationTable:
         if self.backend == "anndata":
             return AnnotationTable.from_pandas(
-                self._matrix.obs.reset_index().rename(columns={"index": "obs_id"}),
+                _materialize_metadata_df(self._matrix.obs, "obs_id"),
                 provenance=self.provenance,
             )
         # hail-mt: cols() returns a Hail Table of column metadata
@@ -124,7 +135,7 @@ class ExpressionMatrix:
     def var(self) -> AnnotationTable:
         if self.backend == "anndata":
             return AnnotationTable.from_pandas(
-                self._matrix.var.reset_index().rename(columns={"index": "var_id"}),
+                _materialize_metadata_df(self._matrix.var, "var_id"),
                 provenance=self.provenance,
             )
         # hail-mt: rows() returns a Hail Table of row metadata
@@ -135,7 +146,7 @@ class ExpressionMatrix:
 
     def subset_obs(self, predicate: Expr) -> "ExpressionMatrix":
         if self.backend == "anndata":
-            obs_df = self._matrix.obs.reset_index().rename(columns={"index": "obs_id"})
+            obs_df = _materialize_metadata_df(self._matrix.obs, "obs_id")
             mask = compile_to_pandas(predicate, obs_df)
             return ExpressionMatrix.from_anndata(
                 self._matrix[mask.values, :].copy(), provenance=self.provenance
@@ -151,7 +162,7 @@ class ExpressionMatrix:
 
     def subset_var(self, predicate: Expr) -> "ExpressionMatrix":
         if self.backend == "anndata":
-            var_df = self._matrix.var.reset_index().rename(columns={"index": "var_id"})
+            var_df = _materialize_metadata_df(self._matrix.var, "var_id")
             mask = compile_to_pandas(predicate, var_df)
             return ExpressionMatrix.from_anndata(
                 self._matrix[:, mask.values].copy(), provenance=self.provenance
