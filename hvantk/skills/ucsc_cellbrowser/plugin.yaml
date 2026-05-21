@@ -72,6 +72,6 @@ datasets:
       drift_fingerprint: tests/drift_fingerprint.json
 
 cli:
-  - command: ucsc-cellbrowser-download
+  - command: ucsc-download
     module: hvantk.skills.ucsc_cellbrowser.cli
     function: download_cmd

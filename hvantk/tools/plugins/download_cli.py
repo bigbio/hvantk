@@ -1,15 +1,18 @@
+"""hvantk download <plugin> — top-level download commands.
+
+Each plugin's downloader CLI is wired from its plugin.yaml ``cli:`` block
+by the plugin loader. Adding a new plugin downloader does not require
+editing this file — declare the entry under ``cli:`` in the plugin's
+manifest (see hvantk/skills/_conventions/SKILL.md).
+
+The loader strips the ``-download`` suffix from each ``command`` name to
+derive the subcommand name within this group (e.g. ``clinvar-download``
+becomes the ``clinvar`` subcommand under ``hvantk download``).
+"""
 import click
 
 from hvantk.core.config import CONTEXT_SETTINGS
-from hvantk.skills.ucsc_cellbrowser.cli import ucsc_downloader
-from hvantk.skills.expression_atlas.cli import download_experiments
-from hvantk.skills.clingen.cli import clingen_downloader
-from hvantk.skills.gencc.cli import gencc_downloader
-from hvantk.skills.hgnc.cli import download_cmd as hgnc_downloader
-from hvantk.skills.clinvar.cli import clinvar_downloader
-from hvantk.skills.uniprot_ptm.cli import uniprot_ptm_downloader
-from hvantk.skills.peptideatlas.phospho.cli import peptideatlas_phospho_downloader
-from hvantk.skills.cptac.phospho.cli import cptac_phospho_downloader
+from hvantk.core.plugin import loader as plugin_loader
 
 
 @click.group("download", context_settings=CONTEXT_SETTINGS)
@@ -17,12 +20,7 @@ def download_group():
     """Download external datasets."""
 
 
-download_group.add_command(ucsc_downloader, "ucsc")
-download_group.add_command(download_experiments, "expression-atlas")
-download_group.add_command(clingen_downloader, "clingen")
-download_group.add_command(gencc_downloader, "gencc")
-download_group.add_command(hgnc_downloader, "hgnc")
-download_group.add_command(clinvar_downloader, "clinvar")
-download_group.add_command(uniprot_ptm_downloader, "uniprot-ptm")
-download_group.add_command(peptideatlas_phospho_downloader, "peptideatlas-phospho")
-download_group.add_command(cptac_phospho_downloader, "cptac-phospho")
+# Manifest-driven wiring: each plugin.yaml's cli: block declares its downloader.
+# The loader strips the "-download" suffix from command names to derive the
+# subcommand name within this group.
+plugin_loader.get_registry().apply_plugin_downloaders(download_group)
