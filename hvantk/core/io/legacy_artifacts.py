@@ -19,7 +19,10 @@ attached when wrapped in an AnnotationTable.
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    import hail as hl  # noqa: F401 — referenced from string annotations
 
 logger = logging.getLogger(__name__)
 

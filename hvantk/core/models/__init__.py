@@ -8,15 +8,11 @@ from hvantk.core.models._expr import col, agg_count, agg_mean, agg_sum
 
 # Prevent underscore submodule names from leaking into the public namespace.
 # Python injects them as package attributes when importing from them;
-# deleting here keeps dir(hvantk.core.models) clean.
-try:
-    del _expr  # type: ignore[name-defined]
-except NameError:
-    pass
-try:
-    del _compile  # type: ignore[name-defined]
-except NameError:
-    pass
+# popping from globals() keeps dir(hvantk.core.models) clean. We use
+# globals().pop() instead of `del _expr` so flake8 doesn't flag the
+# names as undefined (they only exist as side-effects of the imports above).
+globals().pop("_expr", None)
+globals().pop("_compile", None)
 
 __all__ = [
     "AnnotationTable",
