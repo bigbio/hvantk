@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 740" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 640" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" role="img" aria-labelledby="title desc">
   <title id="title">hvantk platform architecture</title>
-  <desc id="desc">Four-layer platform: tools/ depends on skills/, algorithms/, and core/; skills/ depends on algorithms/ and core/; algorithms/ depends on core/. Arrows flow downward only and are enforced by tests/test_dependency_directions.py.</desc>
+  <desc id="desc">tools/, skills/, and algorithms/ are peer top-level packages. All three rest on a shared core/ substrate. Lateral arrows show that tools/ may import skills/ and algorithms/, and skills/ may import algorithms/ — but never upward. Enforced by tests/test_dependency_directions.py.</desc>
 
   <defs>
     <linearGradient id="g-tools" x1="0" y1="0" x2="0" y2="1">
@@ -30,145 +30,172 @@
     <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto">
       <path d="M0,0 L10,5 L0,10 Z" fill="#475569"/>
     </marker>
+    <marker id="arr-light" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#94a3b8"/>
+    </marker>
   </defs>
 
   <!-- Title -->
-  <text x="500" y="36" text-anchor="middle" font-size="22" font-weight="600" fill="#0f172a">hvantk — four-layer data-model platform</text>
-  <text x="500" y="58" text-anchor="middle" font-size="12.5" fill="#64748b">one-way dependency rule enforced by tests/test_dependency_directions.py</text>
+  <text x="500" y="34" text-anchor="middle" font-size="22" font-weight="600" fill="#0f172a">hvantk — peer layers on a shared core</text>
+  <text x="500" y="56" text-anchor="middle" font-size="12.5" fill="#64748b">tools/, skills/, algorithms/ are peer packages; core/ is the substrate everyone imports — enforced by test_dependency_directions.py</text>
 
-  <!-- ============== TOOLS band ============== -->
+  <!-- ============================================================ -->
+  <!-- Three peer columns (Tools | Skills | Algorithms)             -->
+  <!-- ============================================================ -->
+
+  <!-- ============== TOOLS column ============== -->
   <g filter="url(#shadow)">
-    <rect x="120" y="88" width="780" height="118" rx="14" fill="url(#g-tools)" stroke="#2563eb" stroke-width="1.5"/>
+    <rect x="50" y="86" width="280" height="240" rx="14" fill="url(#g-tools)" stroke="#2563eb" stroke-width="1.5"/>
   </g>
-  <rect x="120" y="88" width="780" height="26" rx="14" fill="#2563eb"/>
-  <rect x="120" y="100" width="780" height="14" fill="#2563eb"/>
-  <text x="136" y="106" font-size="12" font-weight="700" fill="#ffffff" letter-spacing="1.2">TOOLS</text>
-  <text x="884" y="106" text-anchor="end" font-size="11.5" fill="#dbeafe">CLI + workflow orchestration</text>
+  <rect x="50" y="86" width="280" height="28" rx="14" fill="#2563eb"/>
+  <rect x="50" y="100" width="280" height="14" fill="#2563eb"/>
+  <text x="64" y="104" font-size="12" font-weight="700" fill="#ffffff" letter-spacing="1.2">TOOLS</text>
+  <text x="316" y="104" text-anchor="end" font-size="11" fill="#dbeafe">CLI + orchestration</text>
 
   <g font-size="11.5" fill="#1e3a8a">
-    <rect x="138" y="126" width="178" height="30" rx="6" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
-    <text x="227" y="146" text-anchor="middle">reprocess · drift · catalog</text>
+    <rect x="64" y="128" width="252" height="28" rx="6" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
+    <text x="190" y="146" text-anchor="middle">reprocess · drift · catalog</text>
 
-    <rect x="324" y="126" width="178" height="30" rx="6" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
-    <text x="413" y="146" text-anchor="middle">download (manifest-driven)</text>
+    <rect x="64" y="162" width="252" height="28" rx="6" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
+    <text x="190" y="180" text-anchor="middle">download (manifest-driven)</text>
 
-    <rect x="510" y="126" width="178" height="30" rx="6" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
-    <text x="599" y="146" text-anchor="middle">hgc · ancestry · enrichex</text>
+    <rect x="64" y="196" width="252" height="28" rx="6" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
+    <text x="190" y="214" text-anchor="middle">hgc · ancestry · enrichex</text>
 
-    <rect x="696" y="126" width="186" height="30" rx="6" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
-    <text x="789" y="146" text-anchor="middle">psroc · qtlcascade · ptm</text>
+    <rect x="64" y="230" width="252" height="28" rx="6" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
+    <text x="190" y="248" text-anchor="middle">psroc · qtlcascade · ptm · expression</text>
 
-    <rect x="138" y="164" width="364" height="30" rx="6" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
-    <text x="320" y="184" text-anchor="middle">expression · genesets · drift_runner</text>
+    <rect x="64" y="264" width="252" height="28" rx="6" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
+    <text x="190" y="282" text-anchor="middle">drift_runner · genesets</text>
 
-    <rect x="510" y="164" width="372" height="30" rx="6" fill="#ffffff" stroke="#93c5fd" stroke-width="1" stroke-dasharray="3 3"/>
-    <text x="696" y="184" text-anchor="middle" font-style="italic" fill="#475569">mktable / mkmatrix (deprecated)</text>
+    <rect x="64" y="298" width="252" height="20" rx="6" fill="#dbeafe" stroke="#93c5fd" stroke-width="1" stroke-dasharray="3 3"/>
+    <text x="190" y="312" text-anchor="middle" font-size="10.5" font-style="italic" fill="#475569">mktable / mkmatrix (deprecated)</text>
   </g>
 
-  <!-- ============== SKILLS band ============== -->
+  <!-- ============== SKILLS column ============== -->
   <g filter="url(#shadow)">
-    <rect x="120" y="240" width="780" height="118" rx="14" fill="url(#g-skills)" stroke="#d97706" stroke-width="1.5"/>
+    <rect x="360" y="86" width="280" height="240" rx="14" fill="url(#g-skills)" stroke="#d97706" stroke-width="1.5"/>
   </g>
-  <rect x="120" y="240" width="780" height="26" rx="14" fill="#d97706"/>
-  <rect x="120" y="252" width="780" height="14" fill="#d97706"/>
-  <text x="136" y="258" font-size="12" font-weight="700" fill="#ffffff" letter-spacing="1.2">SKILLS</text>
-  <text x="884" y="258" text-anchor="end" font-size="11.5" fill="#fef3c7">data-source plugins · 20 today (clinvar, hgnc, gevir, dbnsfp, expression-atlas, cptac, …)</text>
+  <rect x="360" y="86" width="280" height="28" rx="14" fill="#d97706"/>
+  <rect x="360" y="100" width="280" height="14" fill="#d97706"/>
+  <text x="374" y="104" font-size="12" font-weight="700" fill="#ffffff" letter-spacing="1.2">SKILLS</text>
+  <text x="626" y="104" text-anchor="end" font-size="11" fill="#fef3c7">data-source plugins · 20 today</text>
 
   <g font-size="11.5" fill="#92400e">
-    <rect x="138" y="278" width="186" height="30" rx="6" fill="#ffffff" stroke="#fcd34d" stroke-width="1"/>
-    <text x="231" y="298" text-anchor="middle">plugin.yaml manifest</text>
+    <rect x="374" y="128" width="252" height="28" rx="6" fill="#ffffff" stroke="#fcd34d" stroke-width="1"/>
+    <text x="500" y="146" text-anchor="middle">plugin.yaml manifest</text>
 
-    <rect x="332" y="278" width="186" height="30" rx="6" fill="#ffffff" stroke="#fcd34d" stroke-width="1"/>
-    <text x="425" y="298" text-anchor="middle">builder.py → Artifact</text>
+    <rect x="374" y="162" width="252" height="28" rx="6" fill="#ffffff" stroke="#fcd34d" stroke-width="1"/>
+    <text x="500" y="180" text-anchor="middle">builder.py → Artifact</text>
 
-    <rect x="526" y="278" width="178" height="30" rx="6" fill="#ffffff" stroke="#fcd34d" stroke-width="1"/>
-    <text x="615" y="298" text-anchor="middle">drift_probe.py</text>
+    <rect x="374" y="196" width="252" height="28" rx="6" fill="#ffffff" stroke="#fcd34d" stroke-width="1"/>
+    <text x="500" y="214" text-anchor="middle">drift_probe.py</text>
 
-    <rect x="712" y="278" width="170" height="30" rx="6" fill="#ffffff" stroke="#fcd34d" stroke-width="1"/>
-    <text x="797" y="298" text-anchor="middle">cli.py (downloader)</text>
+    <rect x="374" y="230" width="252" height="28" rx="6" fill="#ffffff" stroke="#fcd34d" stroke-width="1"/>
+    <text x="500" y="248" text-anchor="middle">cli.py (downloader)</text>
 
-    <rect x="138" y="316" width="744" height="30" rx="6" fill="#ffffff" stroke="#fcd34d" stroke-width="1" stroke-dasharray="3 3"/>
-    <text x="510" y="336" text-anchor="middle" font-style="italic" fill="#475569">Optional lifecycle: download_fn → parse_fn → build_fn — orchestrated by run_builder_for_spec()</text>
+    <rect x="374" y="264" width="252" height="28" rx="6" fill="#ffffff" stroke="#fcd34d" stroke-width="1" stroke-dasharray="3 3"/>
+    <text x="500" y="282" text-anchor="middle" font-style="italic" fill="#475569">download_fn → parse_fn → build_fn</text>
+
+    <rect x="374" y="298" width="252" height="20" rx="6" fill="#fde68a" stroke="#fcd34d" stroke-width="1"/>
+    <text x="500" y="312" text-anchor="middle" font-size="10.5" fill="#92400e">clinvar · hgnc · cptac · gevir · dbnsfp · …</text>
   </g>
 
-  <!-- ============== ALGORITHMS band ============== -->
+  <!-- ============== ALGORITHMS column ============== -->
   <g filter="url(#shadow)">
-    <rect x="120" y="392" width="780" height="118" rx="14" fill="url(#g-algo)" stroke="#059669" stroke-width="1.5"/>
+    <rect x="670" y="86" width="280" height="240" rx="14" fill="url(#g-algo)" stroke="#059669" stroke-width="1.5"/>
   </g>
-  <rect x="120" y="392" width="780" height="26" rx="14" fill="#059669"/>
-  <rect x="120" y="404" width="780" height="14" fill="#059669"/>
-  <text x="136" y="410" font-size="12" font-weight="700" fill="#ffffff" letter-spacing="1.2">ALGORITHMS</text>
-  <text x="884" y="410" text-anchor="end" font-size="11.5" fill="#d1fae5">analytics · @algorithm(inputs=…, outputs=…, required_backend=…)</text>
+  <rect x="670" y="86" width="280" height="28" rx="14" fill="#059669"/>
+  <rect x="670" y="100" width="280" height="14" fill="#059669"/>
+  <text x="684" y="104" font-size="12" font-weight="700" fill="#ffffff" letter-spacing="1.2">ALGORITHMS</text>
+  <text x="936" y="104" text-anchor="end" font-size="11" fill="#d1fae5">analytics</text>
 
   <g font-size="11.5" fill="#065f46">
-    <rect x="138" y="430" width="178" height="30" rx="6" fill="#ffffff" stroke="#6ee7b7" stroke-width="1"/>
-    <text x="227" y="450" text-anchor="middle">ancestry · enrichex</text>
+    <rect x="684" y="128" width="252" height="28" rx="6" fill="#ffffff" stroke="#6ee7b7" stroke-width="1"/>
+    <text x="810" y="146" text-anchor="middle">ancestry · enrichex</text>
 
-    <rect x="324" y="430" width="178" height="30" rx="6" fill="#ffffff" stroke="#6ee7b7" stroke-width="1"/>
-    <text x="413" y="450" text-anchor="middle">expression · annotation</text>
+    <rect x="684" y="162" width="252" height="28" rx="6" fill="#ffffff" stroke="#6ee7b7" stroke-width="1"/>
+    <text x="810" y="180" text-anchor="middle">expression · annotation</text>
 
-    <rect x="510" y="430" width="178" height="30" rx="6" fill="#ffffff" stroke="#6ee7b7" stroke-width="1"/>
-    <text x="599" y="450" text-anchor="middle">hgc · ptm</text>
+    <rect x="684" y="196" width="252" height="28" rx="6" fill="#ffffff" stroke="#6ee7b7" stroke-width="1"/>
+    <text x="810" y="214" text-anchor="middle">hgc · ptm</text>
 
-    <rect x="696" y="430" width="186" height="30" rx="6" fill="#ffffff" stroke="#6ee7b7" stroke-width="1"/>
-    <text x="789" y="450" text-anchor="middle">psroc · qtlcascade</text>
+    <rect x="684" y="230" width="252" height="28" rx="6" fill="#ffffff" stroke="#6ee7b7" stroke-width="1"/>
+    <text x="810" y="248" text-anchor="middle">psroc · qtlcascade</text>
 
-    <rect x="138" y="468" width="744" height="30" rx="6" fill="#ffffff" stroke="#6ee7b7" stroke-width="1" stroke-dasharray="3 3"/>
-    <text x="510" y="488" text-anchor="middle" font-style="italic" fill="#475569">@algorithm decorator chains input → output provenance automatically</text>
+    <rect x="684" y="264" width="252" height="28" rx="6" fill="#ffffff" stroke="#6ee7b7" stroke-width="1"/>
+    <text x="810" y="282" text-anchor="middle">tissue specificity · expression atlas</text>
+
+    <rect x="684" y="298" width="252" height="20" rx="6" fill="#a7f3d0" stroke="#6ee7b7" stroke-width="1" stroke-dasharray="3 3"/>
+    <text x="810" y="312" text-anchor="middle" font-size="10.5" font-style="italic" fill="#065f46">@algorithm(inputs=…, outputs=…, required_backend=…)</text>
   </g>
 
-  <!-- ============== CORE band ============== -->
+  <!-- ============================================================ -->
+  <!-- Lateral peer dependencies (Tools→Skills, Skills→Algorithms)  -->
+  <!-- Tools→Algorithms arcs above the peer row                     -->
+  <!-- ============================================================ -->
+
+  <!-- Tools -> Skills (between columns, mid-band) -->
+  <line x1="332" y1="206" x2="358" y2="206" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="345" y="200" text-anchor="middle" font-size="9.5" fill="#475569">imports</text>
+
+  <!-- Skills -> Algorithms (between columns, mid-band) -->
+  <line x1="642" y1="206" x2="668" y2="206" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="655" y="200" text-anchor="middle" font-size="9.5" fill="#475569">imports</text>
+
+  <!-- ============================================================ -->
+  <!-- Down arrows from each peer to Core                           -->
+  <!-- ============================================================ -->
+  <line x1="190" y1="332" x2="190" y2="394" stroke="#475569" stroke-width="2.2" marker-end="url(#arr)"/>
+  <line x1="500" y1="332" x2="500" y2="394" stroke="#475569" stroke-width="2.2" marker-end="url(#arr)"/>
+  <line x1="810" y1="332" x2="810" y2="394" stroke="#475569" stroke-width="2.2" marker-end="url(#arr)"/>
+  <text x="500" y="360" text-anchor="middle" font-size="11" fill="#475569" font-weight="600">all three layers depend on core/</text>
+
+  <!-- ============================================================ -->
+  <!-- CORE foundation (wide band at the bottom)                    -->
+  <!-- ============================================================ -->
   <g filter="url(#shadow)">
-    <rect x="120" y="544" width="780" height="156" rx="14" fill="url(#g-core)" stroke="#7c3aed" stroke-width="1.5"/>
+    <rect x="50" y="400" width="900" height="190" rx="14" fill="url(#g-core)" stroke="#7c3aed" stroke-width="1.5"/>
   </g>
-  <rect x="120" y="544" width="780" height="26" rx="14" fill="#7c3aed"/>
-  <rect x="120" y="556" width="780" height="14" fill="#7c3aed"/>
-  <text x="136" y="562" font-size="12" font-weight="700" fill="#ffffff" letter-spacing="1.2">CORE</text>
-  <text x="884" y="562" text-anchor="end" font-size="11.5" fill="#ede9fe">platform substrate · no upward dependencies</text>
+  <rect x="50" y="400" width="900" height="28" rx="14" fill="#7c3aed"/>
+  <rect x="50" y="414" width="900" height="14" fill="#7c3aed"/>
+  <text x="64" y="418" font-size="12" font-weight="700" fill="#ffffff" letter-spacing="1.2">CORE</text>
+  <text x="936" y="418" text-anchor="end" font-size="11" fill="#ede9fe">platform substrate · no upward dependencies</text>
 
   <g font-size="11.5" fill="#5b21b6">
-    <rect x="138" y="582" width="244" height="48" rx="6" fill="#ffffff" stroke="#c4b5fd" stroke-width="1"/>
-    <text x="260" y="602" text-anchor="middle" font-weight="600">models/</text>
-    <text x="260" y="620" text-anchor="middle" font-size="10.5" fill="#6d28d9">AnnotationTable · ExpressionMatrix · GeneSet</text>
+    <rect x="64" y="440" width="288" height="60" rx="6" fill="#ffffff" stroke="#c4b5fd" stroke-width="1"/>
+    <text x="208" y="462" text-anchor="middle" font-weight="600">models/</text>
+    <text x="208" y="481" text-anchor="middle" font-size="10.5" fill="#6d28d9">AnnotationTable · ExpressionMatrix</text>
+    <text x="208" y="494" text-anchor="middle" font-size="10.5" fill="#6d28d9">GeneSet</text>
 
-    <rect x="390" y="582" width="244" height="48" rx="6" fill="#ffffff" stroke="#c4b5fd" stroke-width="1"/>
-    <text x="512" y="602" text-anchor="middle" font-weight="600">io/</text>
-    <text x="512" y="620" text-anchor="middle" font-size="10.5" fill="#6d28d9">save · load · save_native · load_native</text>
+    <rect x="360" y="440" width="288" height="60" rx="6" fill="#ffffff" stroke="#c4b5fd" stroke-width="1"/>
+    <text x="504" y="462" text-anchor="middle" font-weight="600">io/</text>
+    <text x="504" y="481" text-anchor="middle" font-size="10.5" fill="#6d28d9">save · load</text>
+    <text x="504" y="494" text-anchor="middle" font-size="10.5" fill="#6d28d9">save_native · load_native</text>
 
-    <rect x="642" y="582" width="240" height="48" rx="6" fill="#ffffff" stroke="#c4b5fd" stroke-width="1"/>
-    <text x="762" y="602" text-anchor="middle" font-weight="600">plugin/</text>
-    <text x="762" y="620" text-anchor="middle" font-size="10.5" fill="#6d28d9">registry · run_builder_for_spec</text>
+    <rect x="656" y="440" width="290" height="60" rx="6" fill="#ffffff" stroke="#c4b5fd" stroke-width="1"/>
+    <text x="801" y="462" text-anchor="middle" font-weight="600">plugin/</text>
+    <text x="801" y="481" text-anchor="middle" font-size="10.5" fill="#6d28d9">registry · loader</text>
+    <text x="801" y="494" text-anchor="middle" font-size="10.5" fill="#6d28d9">run_builder_for_spec</text>
 
-    <rect x="138" y="638" width="372" height="48" rx="6" fill="#ffffff" stroke="#c4b5fd" stroke-width="1"/>
-    <text x="324" y="658" text-anchor="middle" font-weight="600">Provenance · BuildContext</text>
-    <text x="324" y="676" text-anchor="middle" font-size="10.5" fill="#6d28d9">required on every artifact; chained by @algorithm</text>
+    <rect x="64" y="510" width="436" height="64" rx="6" fill="#ffffff" stroke="#c4b5fd" stroke-width="1"/>
+    <text x="282" y="532" text-anchor="middle" font-weight="600">Provenance · BuildContext</text>
+    <text x="282" y="551" text-anchor="middle" font-size="10.5" fill="#6d28d9">required on every artifact</text>
+    <text x="282" y="565" text-anchor="middle" font-size="10.5" fill="#6d28d9">parents chained automatically by @algorithm</text>
 
-    <rect x="518" y="638" width="364" height="48" rx="6" fill="#ffffff" stroke="#c4b5fd" stroke-width="1"/>
-    <text x="700" y="658" text-anchor="middle" font-weight="600">Expr DSL — col(…), agg_mean, agg_count, …</text>
-    <text x="700" y="676" text-anchor="middle" font-size="10.5" fill="#6d28d9">compiles to hail or pandas</text>
-  </g>
-
-  <!-- ============== Dependency rail (left side, between bands) ============== -->
-  <!-- Three short arrows in the gaps between adjacent bands, all on the same vertical axis -->
-  <g>
-    <!-- Tools -> Skills -->
-    <line x1="80" y1="210" x2="80" y2="236" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
-    <text x="68" y="226" text-anchor="end" font-size="10.5" fill="#475569">depends on</text>
-
-    <!-- Skills -> Algorithms -->
-    <line x1="80" y1="362" x2="80" y2="388" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
-    <text x="68" y="378" text-anchor="end" font-size="10.5" fill="#475569">depends on</text>
-
-    <!-- Algorithms -> Core -->
-    <line x1="80" y1="514" x2="80" y2="540" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
-    <text x="68" y="530" text-anchor="end" font-size="10.5" fill="#475569">depends on</text>
+    <rect x="508" y="510" width="438" height="64" rx="6" fill="#ffffff" stroke="#c4b5fd" stroke-width="1"/>
+    <text x="727" y="532" text-anchor="middle" font-weight="600">Expr DSL</text>
+    <text x="727" y="551" text-anchor="middle" font-size="10.5" fill="#6d28d9">col(…) · agg_mean · agg_count · …</text>
+    <text x="727" y="565" text-anchor="middle" font-size="10.5" fill="#6d28d9">compiles to hail or pandas at execution time</text>
   </g>
 
   <!-- Footer legend -->
   <g font-size="11" fill="#64748b">
-    <line x1="120" y1="718" x2="146" y2="718" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
-    <text x="156" y="722">direct dependency between adjacent layers</text>
+    <line x1="60" y1="620" x2="86" y2="620" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+    <text x="96" y="624">direct import</text>
 
-    <text x="884" y="722" text-anchor="end" fill="#64748b">tools/ also imports algorithms/ + core/; skills/ also imports core/ — never upward</text>
+    <text x="190" y="624">tools/ may also import algorithms/ directly (cross-peer, skips skills/)</text>
+
+    <text x="940" y="624" text-anchor="end">imports flow downward and rightward only</text>
   </g>
 </svg>
