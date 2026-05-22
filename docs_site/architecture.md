@@ -6,42 +6,9 @@
 four-layer platform with a strict one-way dependency rule enforced by
 [`hvantk/tests/test_dependency_directions.py`](https://github.com/bigbio/hvantk/blob/main/hvantk/tests/test_dependency_directions.py):
 
-```mermaid
-flowchart TB
-    subgraph Tools["tools/ &nbsp; (CLI + workflow orchestration)"]
-        T1[reprocess / drift / catalog]
-        T2[hgc / ancestry / enrichex / psroc / qtlcascade / ptm / expression]
-        T3[download &nbsp; (manifest-driven)]
-        T4[mktable / mkmatrix &nbsp; (deprecated)]
-    end
-
-    subgraph Skills["skills/ &nbsp; (data-source plugins — 20)"]
-        S1[plugin.yaml manifest]
-        S2[builder.py: returns Artifact]
-        S3[drift_probe.py]
-        S4[Optional: download / parse]
-    end
-
-    subgraph Algorithms["algorithms/ &nbsp; (analytics)"]
-        A1[ancestry / enrichex / expression]
-        A2[hgc / ptm / psroc / qtlcascade]
-        A3[Decorated with @algorithm]
-    end
-
-    subgraph Core["core/ &nbsp; (platform substrate)"]
-        C1[models/: AnnotationTable, ExpressionMatrix, GeneSet]
-        C2[io/: save, load, save_native, load_native]
-        C3[plugin/: registry, run_builder_for_spec]
-        C4[models/: Provenance, BuildContext, Expr DSL]
-    end
-
-    Tools --> Algorithms
-    Tools --> Skills
-    Skills --> Algorithms
-    Algorithms --> Core
-    Skills --> Core
-    Tools --> Core
-```
+<p align="center">
+  <img src="images/hvantk-platform-architecture.svg" alt="hvantk four-layer platform architecture: tools/ depends on skills/, algorithms/, and core/; skills/ depends on algorithms/ and core/; algorithms/ depends on core/. Arrows flow downward only." width="860">
+</p>
 
 Design priorities:
 

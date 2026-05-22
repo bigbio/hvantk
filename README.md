@@ -49,42 +49,9 @@ hvantk --help
 `hvantk` is organized in four layers with a strict one-way dependency rule
 enforced by tests in [`hvantk/tests/test_dependency_directions.py`](hvantk/tests/test_dependency_directions.py):
 
-```mermaid
-flowchart TB
-    subgraph Tools["tools/ &nbsp; (CLI + workflow orchestration)"]
-        T1[mktable / mkmatrix]
-        T2[reprocess / drift]
-        T3[hgc / ancestry / enrichex / psroc / qtlcascade / ptm]
-        T4[download]
-    end
-
-    subgraph Skills["skills/ &nbsp; (data-source adapters — 20 plugins)"]
-        S1[plugin.yaml manifest]
-        S2[builder.py: Phase B contract]
-        S3[drift_probe.py]
-        S4[Optional: download / parse]
-    end
-
-    subgraph Algorithms["algorithms/ &nbsp; (analytics)"]
-        A1[ancestry / enrichex / expression]
-        A2[hgc / ptm / psroc / qtlcascade]
-        A3[Decorated with @algorithm]
-    end
-
-    subgraph Core["core/ &nbsp; (platform contracts)"]
-        C1[models/: AnnotationTable, ExpressionMatrix, GeneSet]
-        C2[io/: save, load, save_native, load_native]
-        C3[plugin/: registry, run_builder_for_spec]
-        C4[models/: Provenance, BuildContext, Expr DSL]
-    end
-
-    Tools --> Algorithms
-    Tools --> Skills
-    Skills --> Algorithms
-    Algorithms --> Core
-    Skills --> Core
-    Tools --> Core
-```
+<p align="center">
+  <img src="docs_site/images/hvantk-platform-architecture.svg" alt="hvantk four-layer platform architecture: tools/ depends on skills/, algorithms/, and core/; skills/ depends on algorithms/ and core/; algorithms/ depends on core/. Arrows flow downward only." width="860">
+</p>
 
 **Why the directions matter:** `skills/` adapters can rot when upstream APIs
 change without algorithms breaking; `algorithms/` evolve without churning
