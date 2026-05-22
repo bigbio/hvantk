@@ -24,6 +24,15 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 if TYPE_CHECKING:
     import numpy as np
     import pandas as pd
+    # Artifact types — used only in string annotations for the Phase P
+    # artifact-typed wrappers. Imported under TYPE_CHECKING so flake8 sees
+    # the names; the wrappers themselves import lazily inside the function
+    # bodies to avoid circular import at module load.
+    from hvantk.core.models import (  # noqa: F401
+        AnnotationTable,
+        ExpressionMatrix,
+        GeneSet,
+    )
 
 try:  # Optional dependency for burden analysis
     import hail as hl

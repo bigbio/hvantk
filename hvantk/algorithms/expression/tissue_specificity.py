@@ -9,12 +9,18 @@ gene x group expression matrix.
 from __future__ import annotations
 
 import logging
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 import pandas as pd
 
 from hvantk.core.models.backends import algorithm, Backend
+
+if TYPE_CHECKING:
+    # AnnotationTable referenced in string annotations on
+    # compute_specificity_artifact; imported under TYPE_CHECKING so flake8
+    # sees the name without forcing a runtime import at module load.
+    from hvantk.core.models import AnnotationTable  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
