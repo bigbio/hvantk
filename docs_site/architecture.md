@@ -2,18 +2,58 @@
 
 ## Overview
 
-`hvantk` (Hail-based Variant Annotation Toolkit) is a modular toolkit for multi-omics variant annotation and analysis built on Hail. The architecture emphasizes:
+`hvantk` is a multi-omics variant annotation toolkit. It is organized as a
+four-layer platform with a strict one-way dependency rule enforced by
+[`hvantk/tests/test_dependency_directions.py`](https://github.com/bigbio/hvantk/blob/main/hvantk/tests/test_dependency_directions.py):
 
-1. **Domain organization** - Separate concerns for variants, genes, proteins, and expression data
-2. **Extensibility** - Protocol-based contracts for builders, streamers, and downloaders
-3. **Usability** - CLI-first design with clear command structure
-4. **Scalability** - Built on Hail for distributed processing of large datasets
+```mermaid
+flowchart TB
+    subgraph Tools["tools/ &nbsp; (CLI + workflow orchestration)"]
+        T1[reprocess / drift / catalog]
+        T2[hgc / ancestry / enrichex / psroc / qtlcascade / ptm / expression]
+        T3[download &nbsp; (manifest-driven)]
+        T4[mktable / mkmatrix &nbsp; (deprecated)]
+    end
 
-## Architecture Diagram
+    subgraph Skills["skills/ &nbsp; (data-source plugins — 20)"]
+        S1[plugin.yaml manifest]
+        S2[builder.py: returns Artifact]
+        S3[drift_probe.py]
+        S4[Optional: download / parse]
+    end
 
-![hvantk workflow architecture](images/hvantk-architecture.svg)
+    subgraph Algorithms["algorithms/ &nbsp; (analytics)"]
+        A1[ancestry / enrichex / expression]
+        A2[hgc / ptm / psroc / qtlcascade]
+        A3[Decorated with @algorithm]
+    end
 
-**Figure 1.** *hvantk workflow architecture for scalable multi-omics variant annotation and analysis. External variant, gene, and expression databases are acquired through built-in downloaders and converted to domain-organized Hail Tables and MatrixTables via the builder framework. User cohort data (GVCFs, MatrixTables, gene sets, phenotypes) feeds directly into analysis pipelines. Four specialized pipelines — HGC (joint genotyping and quality control), Ancestry (PCA-based population inference), EnrichEx (gene-set burden and overlap testing), and PS-ROC (pathogenicity score evaluation) — produce annotated tables, HTML reports with embedded plots, and statistical results. All operations are distributed via Hail on Apache Spark, accessible through the `hvantk` CLI and Python API.*
+    subgraph Core["core/ &nbsp; (platform substrate)"]
+        C1[models/: AnnotationTable, ExpressionMatrix, GeneSet]
+        C2[io/: save, load, save_native, load_native]
+        C3[plugin/: registry, run_builder_for_spec]
+        C4[models/: Provenance, BuildContext, Expr DSL]
+    end
+
+    Tools --> Algorithms
+    Tools --> Skills
+    Skills --> Algorithms
+    Algorithms --> Core
+    Skills --> Core
+    Tools --> Core
+```
+
+Design priorities:
+
+1. **Stable contracts** — algorithms consume typed artifacts; source adapters can
+   rot when upstream APIs change without breaking analysis code.
+2. **Manifest-driven** — plugins declare themselves via `plugin.yaml`; the loader
+   discovers descriptively first (no imports), binds executable callables lazily.
+3. **Provenance everywhere** — every artifact carries a `Provenance` (plugin,
+   version, source fingerprint, schema id, build timestamp, derivation parents).
+4. **Backend-portable + native escape hatch** — the artifact API works on either
+   Hail or pandas; algorithms that legitimately need raw Hail use
+   `core_io.load_native` / `save_native` (zero-cost passthrough with provenance).
 
 ## Project Structure
 
@@ -139,91 +179,133 @@ The codebase is organized by function and biological domain:
 - **Proteins** - Keyed by `protein_id` or `interval`
 - **Expression** - MatrixTables with rows=genes, columns=samples/cells
 
-### 2. Protocol-Based Extensibility
+### 2. Artifact Contract
 
-Three core protocols define how components interact:
+Every data product is one of three semantic artifact types in
+[`hvantk/core/models/`](https://github.com/bigbio/hvantk/tree/main/hvantk/core/models):
 
-#### Builder Protocol (legacy — pre-Phase B)
+| Artifact | Backends | On-disk format | Used for |
+|---|---|---|---|
+| `AnnotationTable` | `hail` / `pandas` | `.ht/` or `.parquet` | variants, gene-disease pairs, eQTLs, PTM sites |
+| `ExpressionMatrix` | `anndata` / `hail-mt` | `.h5ad` or `.mt/` | bulk + single-cell expression, proteomics matrices |
+| `GeneSet` | (in-memory `frozenset`) | `.geneset.json` | curated gene collections |
 
-> **Deprecated.** This section describes the pre-Phase B builder shape
-> (`(input_path, output_path) -> hl.Table`). New plugin authors should
-> use the Phase B contract documented in the "Adding a New Data Source"
-> section below: `(parsed_input, ctx: BuildContext, **params) -> Artifact`.
-> Legacy functions in `hvantk/core/builders/table.py` are retained for
-> backward compatibility with existing recipes; new builders live in
-> `hvantk/skills/<plugin>/builder.py` and return artifact instances.
+Each artifact carries a `Provenance` record (plugin, version, source
+fingerprint, schema id, build timestamp, derivation `parents`). The
+`@algorithm` decorator chains input provenances onto output artifacts
+automatically, so the build graph is preserved end-to-end.
 
-Converts raw data files → Hail Tables/MatrixTables
-
-Builders follow a functional pattern using `_create_table_base()` to eliminate boilerplate:
+Artifacts expose a **portable query API** (`filter`, `select`, `join`,
+`with_columns`, `group_by().agg()`) via the [`col(...)`](https://github.com/bigbio/hvantk/blob/main/hvantk/core/models/_expr.py)
+expression DSL compiled to either backend at execution time. Algorithms
+can be written backend-agnostically:
 
 ```python
+from hvantk.core.models import AnnotationTable, col
+
+def filter_high_impact(ann: AnnotationTable) -> AnnotationTable:
+    return ann.filter((col("score") > 0.5) & (col("chrom") == "chr17"))
+```
+
+When an algorithm legitimately needs the raw native object (Hail-distributed
+joins, genotype matrices), use the **native passthrough**:
+
+```python
+from hvantk.core import io as core_io
+
+# zero-cost when backend matches file format
+ht, source_prov = core_io.load_native("variants.ht")  # → hl.Table
+filtered = ht.filter(ht.AC > 0)
+core_io.save_native(filtered, "filtered.ht", provenance=Provenance(
+    ..., parents=(source_prov,)
+))
+```
+
+### 3. Plugin Contract — adding a data source
+
+Each plugin under `hvantk/skills/<plugin>/` declares itself via `plugin.yaml`
+and provides a builder that returns a typed artifact. The platform's
+`run_builder_for_spec` orchestrates the build:
+
+```mermaid
+sequenceDiagram
+    participant CLI as hvantk reprocess
+    participant Reg as plugin registry
+    participant Probe as drift_probe()
+    participant Build as build_fn(parsed, ctx)
+    participant IO as core/io
+
+    CLI->>Reg: get_dataset("clinvar:variants")
+    Reg-->>CLI: DatasetSpec (lazy bind on first access)
+    CLI->>Probe: compute source fingerprint
+    Probe-->>CLI: probe dict
+    CLI->>CLI: BuildContext(plugin, version, fingerprint, …)
+    CLI->>Build: (parsed_input, ctx, **params)
+    Build-->>CLI: Artifact(provenance=ctx.provenance(schema_id=…))
+    CLI->>CLI: validate artifact_type + schema_id
+    CLI->>IO: artifact.save(path)
+    IO-->>IO: write data + sidecar .provenance.json
+```
+
+A minimal `plugin.yaml`:
+
+```yaml
+api_version: 2
+name: my-source
+version: 0.1.0
+description: My data source — variant table
+
+datasets:
+  - name: variants
+    domain: genomics
+    backend: hail
+    artifact_type: AnnotationTable
+    schema_id: my-source-variants-v1
+    builder:
+      module: hvantk.skills.my_source.builder
+      function: build_my_source_variants
+    drift_probe:
+      module: hvantk.skills.my_source.drift_probe
+      function: fetch_fingerprint
+    skill: SKILL.md
+    tests:
+      command: pytest hvantk/skills/my_source/tests -m hail
+      fixture: tests/testdata/raw/my-source
+      schema_snapshot: tests/snapshots/schema.json
+      row_snapshot: tests/snapshots/sample_rows.json
+      drift_fingerprint: tests/drift_fingerprint.json
+
+cli:
+  - command: my-source-download
+    module: hvantk.skills.my_source.cli
+    function: download_cmd
+```
+
+A matching builder:
+
+```python
+# hvantk/skills/my_source/builder.py
 import hail as hl
-from hvantk.core.builders.table import _create_table_base
+from hvantk.core.models import AnnotationTable, BuildContext
 
-def create_my_source_tb(input_path: str, output_path: str, **kwargs) -> hl.Table:
-    """Build a Hail Table from MySource data.
-
-    Assumes imported records contain `locus` and `alleles` fields.
-    """
-    return _create_table_base(
-        source_name="MySource",
-        input_path=input_path,
-        output_path=output_path,
-        import_func=lambda: hl.import_table(input_path, ...),
-        transform_func=lambda ht: ht.key_by(ht.locus, ht.alleles),
-        overwrite=kwargs.get('overwrite', False),
-        export_tsv=kwargs.get('export_tsv', False),
+def build_my_source_variants(parsed_input, ctx: BuildContext, **params) -> AnnotationTable:
+    ht = hl.import_vcf(str(parsed_input), force=True).rows().key_by("locus", "alleles")
+    return AnnotationTable.from_hail(
+        ht, provenance=ctx.provenance(schema_id="my-source-variants-v1")
     )
 ```
 
-#### Streamer Protocol
-Transforms Hail data structures (filter, join, aggregate)
+The plugin loader (`hvantk/core/plugin/loader.py`) discovers manifests via a
+**two-pass mechanism**:
 
-Streamers extend `HailDataStreamer` from `hvantk/core/streamers/base.py`:
+1. **Pass 1 (descriptive, eager)** — reads YAML, populates `DatasetManifest`.
+   No imports. `registry.list_manifests()` works without optional runtimes.
+2. **Pass 2 (executable, lazy)** — on first `get_dataset(name)`, imports the
+   builder/probe modules and caches a `DatasetSpec`. Missing optional
+   runtimes only affect the *single* dataset that needs them.
 
-```python
-from typing import Iterator
-import hail as hl
-from hvantk.core.streamers.base import HailDataStreamer
-
-class MySourceStreamer(HailDataStreamer):
-    def __init__(self, table_path: str, chunk_size: int = 10000):
-        super().__init__("MySourceStreamer", chunk_size=chunk_size)
-        self.table_path = table_path
-
-    def setup(self) -> None:
-        super().setup()
-        self._table = hl.read_table(self.table_path)
-
-    def stream(self) -> Iterator[hl.Table]:
-        # Yield chunks of data
-        ...
-```
-
-#### Downloader Protocol
-Fetches external datasets with verification
-
-Downloaders use dataset dataclasses with a `download()` method:
-
-```python
-from dataclasses import dataclass
-from pathlib import Path
-
-@dataclass
-class MyDataset:
-    url: str
-    output_dir: Path
-
-    def download(self, overwrite: bool = False) -> Path:
-        """Download and verify dataset."""
-        ...
-
-    @classmethod
-    def latest(cls, output_dir: Path) -> "MyDataset":
-        """Create instance for the latest available version."""
-        ...
-```
+Downloader CLI commands are wired automatically from the manifest's `cli:`
+block — no manual edits in `hvantk/tools/plugins/download_cli.py` needed.
 
 ### 3. CLI-First Design
 
@@ -322,7 +404,7 @@ annotated = variants.annotate(
 
 **Purpose**: Per-provider data plugins. Each provider folder contains `plugin.yaml`, `builder.py`, `cli.py`, `drift_probe.py`, `SKILL.md`, `catalog/datasets.json`, and `tests/`. Multi-dataset providers (e.g., `cptac/`) have one sub-folder per dataset.
 
-**Current providers**: `clingen`, `clinvar`, `cptac`, `expression_atlas`, `gencc`, `gtex_eqtl`, `gwas_catalog`, `hgnc`, `insider`, `msigdb`, `peptideatlas`, `ucsc_cellbrowser`, `uniprot_ptm`.
+**Current providers** (20): `alphagenome`, `clingen`, `clinvar`, `cosmic_cgc`, `cptac`, `dbnsfp`, `ensembl_gene`, `expression_atlas`, `gencc`, `gevir`, `gnomad_metrics`, `gtex_eqtl`, `gwas_catalog`, `hgnc`, `insider`, `msigdb`, `peptideatlas`, `pqtl`, `ucsc_cellbrowser`, `uniprot_ptm`.
 
 **Builder outputs**:
 - Variant / gene tables keyed by `(locus, alleles)` or `gene_id` → `AnnotationTable`
@@ -380,51 +462,49 @@ hvantk/tests/
 
 ### Adding a New Data Source
 
-1. **Create a new plugin folder** under `hvantk/skills/<provider>/` with `plugin.yaml`, `builder.py`, `cli.py`, `drift_probe.py`, `SKILL.md`, `catalog/datasets.json`, and `tests/`. See `hvantk/skills/_conventions/SKILL.md` for the full contract.
+See the "Plugin Contract" section above for the full pattern. The minimal
+checklist:
 
-2. **Implement the builder** in `hvantk/skills/<provider>/builder.py`:
+1. Create `hvantk/skills/<provider>/` with `plugin.yaml`, `builder.py` (returns
+   `AnnotationTable` / `ExpressionMatrix` / `GeneSet` via `ctx.provenance(schema_id=…)`),
+   `drift_probe.py`, `SKILL.md`, `catalog/datasets.json`, and `tests/`.
+2. Loader picks it up automatically — no edits to `hvantk/hvantk.py` or
+   `hvantk/tools/plugins/download_cli.py` required.
+3. CLI downloader command is wired from the manifest's `cli:` block.
+4. Add a conformance test using the `run_builder_for_spec` orchestrator
+   (see `hvantk/tests/test_plugin_conformance.py` for the template).
+5. Run `hvantk plugins list` — your plugin should appear.
+
+See `hvantk/skills/_conventions/SKILL.md` for the full contract.
+
+### Adding a New Algorithm
+
+1. Place the algorithm body in `hvantk/algorithms/<domain>/`.
+2. Decorate the entry point with `@algorithm`:
    ```python
-   import hail as hl
-   from hvantk.core.builders.table import _create_table_base
-   from hvantk.core.models.build_context import BuildContext
+   from hvantk.core.models.backends import Backend, algorithm
 
-   def create_my_source_tb(parsed_input, ctx: BuildContext, **kwargs):
-       """
-       Create an AnnotationTable from my data source.
-       Returns an AnnotationTable artifact.
-       """
-       return _create_table_base(
-           source_name="MySource",
-           input_path=parsed_input.path,
-           output_path=ctx.output_path,
-           import_func=lambda: hl.import_table(parsed_input.path, ...),
-           transform_func=lambda ht: ht.key_by(ht.locus, ht.alleles),
-           overwrite=kwargs.get('overwrite', False),
-       )
+   @algorithm(
+       name="my_algorithm",
+       backends=[Backend.PANDAS],
+       inputs={"data": "AnnotationTable", "gene_set": "GeneSet"},
+       outputs={"result": "AnnotationTable"},
+   )
+   def my_algorithm(data, gene_set):
+       ...
    ```
+3. The decorator handles provenance chaining automatically. Output
+   artifacts inherit `parents = (data.provenance, gene_set.provenance)`.
+4. For Hail-native algorithms, declare `required_backend="hail"` and use
+   `core_io.load_native` to read inputs natively.
 
-3. **Add a CLI command** in `hvantk/skills/<provider>/cli.py` and declare it in `plugin.yaml`:
-   ```yaml
-   cli:
-     - command: my-source-download
-       module: hvantk.skills.my_source.cli
-       function: download_cmd
-   ```
+### Adding a New CLI Command
 
-4. **Add tests** in `hvantk/skills/<provider>/tests/`:
-   ```python
-   def test_create_my_source_tb():
-       # Test implementation
-       pass
-   ```
-
-5. **Update documentation** in README.md and USAGE.md
-
-### Adding a New Transformation
-
-1. **Implement a streamer** following the `Streamer` protocol
-2. **Add to the pipeline** (for batch processing support)
-3. **Document** the transformation parameters
+1. Place the click command in `hvantk/tools/<domain>/`.
+2. Add a `<basename>.tool.yaml` manifest for discoverability via
+   `hvantk tools list` (descriptive metadata; not authoritative for
+   wiring today — that's Phase Q follow-up).
+3. Wire the command in `hvantk/hvantk.py`'s top-level CLI group.
 
 ## Dependencies
 
