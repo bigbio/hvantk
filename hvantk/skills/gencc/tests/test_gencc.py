@@ -73,7 +73,7 @@ def gencc_table_path(tmp_path):
 @pytest.mark.hail
 @pytest.mark.slow
 def test_gencc_submitter_summary(gencc_table_path):
-    from hvantk.core.streamers.gencc import GenCCStreamer
+    from hvantk.skills.gencc.streamer import GenCCStreamer
 
     streamer = GenCCStreamer(gencc_table_path)
     summary = streamer.submitter_summary()
@@ -84,7 +84,7 @@ def test_gencc_submitter_summary(gencc_table_path):
 @pytest.mark.hail
 @pytest.mark.slow
 def test_gencc_get_geneset_per_submitter(gencc_table_path):
-    from hvantk.core.streamers.gencc import GenCCStreamer
+    from hvantk.skills.gencc.streamer import GenCCStreamer
 
     streamer = GenCCStreamer(gencc_table_path)
     result = streamer.get_geneset_per_submitter()
@@ -95,7 +95,7 @@ def test_gencc_get_geneset_per_submitter(gencc_table_path):
 @pytest.mark.hail
 @pytest.mark.slow
 def test_gencc_consensus_genes(gencc_table_path):
-    from hvantk.core.streamers.gencc import GenCCStreamer
+    from hvantk.skills.gencc.streamer import GenCCStreamer
 
     streamer = GenCCStreamer(gencc_table_path)
     # BRCA1, BRCA2, TP53, PTEN have multiple submitters in test data

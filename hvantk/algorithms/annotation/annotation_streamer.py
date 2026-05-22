@@ -3,8 +3,8 @@
 
 import hail as hl
 from typing import Iterator, Optional, Set
-from hvantk.core.streamers.base import HailDataStreamer, StreamProcessor
-from hvantk.core.streamers.clinvar import ClinvarDataStreamer
+from hvantk.core.utils.streaming import HailDataStreamer, StreamProcessor
+from hvantk.core.utils.clinvar_streamer import ClinvarDataStreamer
 import logging
 
 logger = logging.getLogger(__name__)

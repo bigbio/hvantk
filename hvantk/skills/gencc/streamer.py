@@ -17,7 +17,7 @@ import hail as hl
 import pandas as pd
 
 from hvantk.core.constants import GENCC_CLASSIFICATION_LEVELS
-from hvantk.core.streamers.gene_disease import GeneDiseaseValidityStreamer
+from hvantk.core.utils.gene_disease_streamer import GeneDiseaseValidityStreamer
 
 logger = logging.getLogger(__name__)
 

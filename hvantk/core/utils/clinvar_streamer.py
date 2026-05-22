@@ -8,7 +8,7 @@
 
 import hail as hl
 from typing import Iterator, Optional, Set, Iterable
-from hvantk.core.streamers.base import HailDataStreamer, StreamProcessor
+from hvantk.core.utils.streaming import HailDataStreamer, StreamProcessor
 import logging
 
 from hvantk.core.utils.gene_sets import load_gene_set

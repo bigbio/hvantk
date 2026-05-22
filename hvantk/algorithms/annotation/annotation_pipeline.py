@@ -3,7 +3,7 @@
 
 import hail as hl
 from typing import Iterator, Optional, List, Dict, Any, Callable
-from hvantk.core.streamers.base import HailDataStreamer, StreamProcessor
+from hvantk.core.utils.streaming import HailDataStreamer, StreamProcessor
 from hvantk.algorithms.hgc.constants import VCF_EXTENSION
 import logging
 import os

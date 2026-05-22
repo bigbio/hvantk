@@ -25,7 +25,7 @@ from hvantk.core.constants import (
     ALPHAGENOME_DEFAULT_REQUEST_TIMEOUT,
     ALPHAGENOME_DEFAULT_RETRY_BACKOFF,
 )
-from hvantk.core.streamers.base import HailDataStreamer
+from hvantk.core.utils.streaming import HailDataStreamer
 
 logger = logging.getLogger(__name__)
 

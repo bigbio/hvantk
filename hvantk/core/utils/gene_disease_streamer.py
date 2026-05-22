@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 import hail as hl
 import pandas as pd
 
-from hvantk.core.streamers.base import HailDataStreamer
+from hvantk.core.utils.streaming import HailDataStreamer
 from hvantk.core.io.legacy_artifacts import load_legacy_table
 from hvantk.core.utils.gene_sets import load_gene_sets_from_dict
 from hvantk.core.utils.table_utils import get_row_fields

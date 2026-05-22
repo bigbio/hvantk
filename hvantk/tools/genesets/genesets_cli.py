@@ -203,7 +203,7 @@ def genesets_clingen(
         ctx.exit(1)
 
     try:
-        from hvantk.core.streamers.clingen import ClinGenStreamer
+        from hvantk.skills.clingen.streamer import ClinGenStreamer
 
         streamer = ClinGenStreamer(clingen_ht)
 
@@ -343,7 +343,7 @@ def genesets_gencc(
         ctx.exit(1)
 
     try:
-        from hvantk.core.streamers.gencc import GenCCStreamer
+        from hvantk.skills.gencc.streamer import GenCCStreamer
 
         streamer = GenCCStreamer(gencc_ht)
 
@@ -483,7 +483,7 @@ def genesets_cosmic(
         ctx.exit(1)
 
     try:
-        from hvantk.core.streamers.cosmic_cgc import CosmicCGCStreamer
+        from hvantk.skills.cosmic_cgc.streamer import CosmicCGCStreamer
 
         streamer = CosmicCGCStreamer(cosmic_ht)
 
