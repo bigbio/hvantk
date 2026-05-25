@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from hvantk.core.models import BuildContext, Provenance
-from hvantk.core.plugin.api import DatasetSpec
+from hvantk.core.plugin.api import DatasetSpec, PROBE_FINGERPRINT_IGNORED_KEYS
 
 
 class BuilderContractError(RuntimeError):
@@ -51,10 +51,8 @@ def _coerce_fingerprint(probe_result: Any, dataset_name: str) -> str:
     if "fingerprint" in probe_result:
         return str(probe_result["fingerprint"])
 
-    # Hash everything except fetched_at (timestamp noise) and probe_version
-    # (orthogonal metadata; bumping it shouldn't invalidate the fingerprint).
     canonical = {k: v for k, v in probe_result.items()
-                 if k not in ("fetched_at", "probe_version")}
+                 if k not in PROBE_FINGERPRINT_IGNORED_KEYS}
     payload = json.dumps(canonical, sort_keys=True, default=str)
     return f"sha256:{hashlib.sha256(payload.encode()).hexdigest()}"
 

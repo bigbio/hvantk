@@ -14,6 +14,12 @@ from typing import Any, Callable, Literal, Mapping
 Domain = Literal["genomics", "transcriptomics", "proteomics", "epigenomics", "mapping"]
 Backend = Literal["hail", "anndata", "pandas"]
 
+# Keys excluded from both the canonical fingerprint hash (run_builder) and the
+# drift-comparison diff (drift_runner). `fetched_at` is timestamp noise.
+# `probe_version` is orthogonal probe-implementation metadata; bumping it should
+# not flip drift status or invalidate stored artifact fingerprints.
+PROBE_FINGERPRINT_IGNORED_KEYS = frozenset({"fetched_at", "probe_version"})
+
 
 class PluginLoadError(Exception):
     """Raised when a plugin fails the protocol or its runtime requirements."""

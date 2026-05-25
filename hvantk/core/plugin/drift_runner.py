@@ -10,10 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .api import DatasetSpec, DriftProbeError
-
-# Keys excluded from the fingerprint comparison.
-_IGNORED_KEYS = frozenset({"fetched_at"})
+from .api import DatasetSpec, DriftProbeError, PROBE_FINGERPRINT_IGNORED_KEYS
 
 
 @dataclass(frozen=True)
@@ -125,9 +122,9 @@ def _coerce_fingerprint(result) -> dict:
 def _compare_fingerprints(
     expected: dict[str, Any], observed: dict[str, Any]
 ) -> dict[str, Any] | None:
-    """Return None if equal (ignoring _IGNORED_KEYS), else a structured diff."""
+    """Return None if equal (ignoring PROBE_FINGERPRINT_IGNORED_KEYS), else a structured diff."""
     def strip(d: dict) -> dict:
-        return {k: v for k, v in d.items() if k not in _IGNORED_KEYS}
+        return {k: v for k, v in d.items() if k not in PROBE_FINGERPRINT_IGNORED_KEYS}
 
     e = strip(expected)
     o = strip(observed)
