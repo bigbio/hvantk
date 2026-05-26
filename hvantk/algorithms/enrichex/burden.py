@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import logging
 import time
-import warnings
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
@@ -240,9 +239,6 @@ def compute_geneset_burden_mt(
     gene_field: str = "SYMBOL",
     genotype_aggregation: str = "hets",
     variant_filter: Optional["VariantFilter"] = None,
-    max_af: Optional[float] = None,
-    min_score: Optional[float] = None,
-    consequences: Optional[List[str]] = None,
     normalize_by_length: bool = False,
     gene_lengths: Optional[Dict[str, float]] = None,
     min_gene_set_size: int = 0,
@@ -271,14 +267,7 @@ def compute_geneset_burden_mt(
         "multi_het" counts genes with >= 2 heterozygous qualifying variants
         (approximates compound-het; over-counts when variants are in cis).
     variant_filter : VariantFilter, optional
-        Variant filter criteria for variant-class selection.  When provided,
-        legacy parameters (max_af, min_score, consequences) are ignored.
-    max_af : float, optional
-        Deprecated. Use ``variant_filter`` instead.
-    min_score : float, optional
-        Deprecated. Use ``variant_filter`` instead.
-    consequences : List[str], optional
-        Deprecated. Use ``variant_filter`` instead.
+        Variant filter criteria for variant-class selection.
     normalize_by_length : bool
         If True, normalize per-gene burden by gene length before
         aggregating into gene sets.  This controls for the tendency of
@@ -361,42 +350,13 @@ def compute_geneset_burden_mt(
     if gene_field not in mt.row:
         raise ValueError(f"Gene field '{gene_field}' not found in MatrixTable")
 
-    # Resolve variant filtering
-    _has_legacy_params = (
-        max_af is not None or min_score is not None or consequences is not None
-    )
-
+    # Apply variant filtering, if requested
     if variant_filter is not None:
-        if _has_legacy_params:
-            logger.warning(
-                "Both variant_filter and legacy parameters (max_af/min_score/consequences) "
-                "provided; variant_filter takes precedence."
-            )
         logger.info("Applying variant filter:")
         filter_expr = variant_filter.to_hail_expr(mt)
         mt = mt.filter_rows(filter_expr)
         n_variants = mt.count_rows()
         logger.info(f"  {n_variants} qualifying variants after filtering")
-    elif _has_legacy_params:
-        warnings.warn(
-            "The max_af, min_score, and consequences parameters are deprecated. "
-            "Use variant_filter=VariantFilter(...) instead, or pre-filter the "
-            "MatrixTable before calling compute_geneset_burden_mt().",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        legacy_vf = VariantFilter(
-            max_af=max_af if max_af is not None else 1.0,
-            min_score=min_score,
-            consequences=consequences,
-            pass_only=False,
-            min_gq=0,
-            min_dp=0,
-        )
-        filter_expr = legacy_vf.to_hail_expr(mt)
-        mt = mt.filter_rows(filter_expr)
-        n_variants = mt.count_rows()
-        logger.info(f"  {n_variants} qualifying variants after legacy filtering")
     else:
         logger.info("No variant filtering applied (MT assumed pre-filtered)")
 
@@ -806,9 +766,6 @@ def run_burden_analysis(
     gene_field: str = "SYMBOL",
     genotype_aggregation: str = "hets",
     variant_filter: Optional["VariantFilter"] = None,
-    max_af: Optional[float] = None,
-    min_score: Optional[float] = None,
-    consequences: Optional[List[str]] = None,
     normalize_by_length: bool = False,
     gene_lengths: Optional[Dict[str, float]] = None,
     min_carriers: int = 0,
@@ -845,12 +802,6 @@ def run_burden_analysis(
         Genotype aggregation method.
     variant_filter : VariantFilter, optional
         Variant filter for variant-class selection.
-    max_af : float, optional
-        Deprecated. Use ``variant_filter`` instead.
-    min_score : float, optional
-        Deprecated. Use ``variant_filter`` instead.
-    consequences : List[str], optional
-        Deprecated. Use ``variant_filter`` instead.
     normalize_by_length : bool
         Normalize per-gene burden by gene length before aggregation.
     gene_lengths : Dict[str, float], optional
@@ -907,9 +858,6 @@ def run_burden_analysis(
         gene_field=gene_field,
         genotype_aggregation=genotype_aggregation,
         variant_filter=variant_filter,
-        max_af=max_af,
-        min_score=min_score,
-        consequences=consequences,
         normalize_by_length=normalize_by_length,
         gene_lengths=gene_lengths,
         min_gene_set_size=min_gene_set_size,
