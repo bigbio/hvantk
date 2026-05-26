@@ -46,21 +46,22 @@ hvantk/
 │   │   ├── metadata.py          # Metadata structs and source descriptions
 │   │   └── provenance.py        # Source-fingerprint provenance stamping
 │   ├── plugin/            # Plugin system
-│   │   ├── api.py         # PluginSpec, DatasetSpec, DriftProbeError
+│   │   ├── api.py         # Provider, DatasetSpec, PROBE_FINGERPRINT_IGNORED_KEYS
 │   │   ├── loader.py      # Plugin discovery (filesystem + entry points)
-│   │   ├── registry.py    # TABLE_BUILDERS / MATRIX_BUILDERS registry
-│   │   ├── run_builder.py # run_builder_for_spec() — validates artifact type
+│   │   ├── run_builder.py # run_builder_for_spec() — Phase B orchestrator
 │   │   └── drift_runner.py# Drift probe execution
-│   ├── streamers/         # Data streamers (base, gene_disease, etc.)
 │   └── utils/             # Cross-cutting utilities
-│       ├── hail_context.py  # Idempotent Hail init
-│       ├── bgzf.py          # BGZF utilities
-│       ├── file_utils.py    # File I/O helpers
-│       ├── gene_sets.py     # Gene set utilities
-│       ├── genome.py        # Genome/contig utilities
-│       ├── table_utils.py   # Hail Table manipulation helpers
-│       ├── writers.py       # HailTableWriter
-│       └── ...              # Other shared utilities
+│       ├── hail_context.py          # Idempotent Hail init
+│       ├── bgzf.py                  # BGZF utilities
+│       ├── streaming.py             # Generic DataStreamer / HailDataStreamer primitives
+│       ├── gene_disease_streamer.py # Abstract base shared by clingen/cosmic-cgc/gencc
+│       ├── clinvar_streamer.py      # ClinVar streamer (consumed by algorithms/)
+│       ├── file_utils.py            # File I/O helpers
+│       ├── gene_sets.py             # Gene set utilities
+│       ├── genome.py                # Genome/contig utilities
+│       ├── table_utils.py           # Hail Table manipulation helpers
+│       ├── writers.py               # HailTableWriter
+│       └── ...                      # Other shared utilities
 │
 ├── algorithms/            # L4-L5: Analysis pipelines
 │   ├── annotation/        # Variant annotation pipeline
@@ -273,6 +274,25 @@ The plugin loader (`hvantk/core/plugin/loader.py`) discovers manifests via a
 
 Downloader CLI commands are wired automatically from the manifest's `cli:`
 block — no manual edits in `hvantk/tools/plugins/download_cli.py` needed.
+
+### Streamer placement rule
+
+Streamers (classes that yield batches over a built table) are split by
+**who consumes them**, not by which provider produced the underlying table.
+This decouples streamer release cadence from provider release cadence and
+keeps the one-way `skills → algorithms → tools` dependency direction
+clean.
+
+| Streamer kind | Lives in | Example |
+|---|---|---|
+| Generic, no domain knowledge | `core/utils/streaming.py` | `DataStreamer`, `HailDataStreamer`, `StreamProcessor` |
+| Shared abstract base across sibling skills | `core/utils/` | `gene_disease_streamer.py` (used by `clingen`, `cosmic-cgc`, `gencc`) |
+| Consumed by `algorithms/` | `core/utils/` | `clinvar_streamer.py` (consumed by `algorithms/annotation`, `algorithms/training_sets`) |
+| Truly source-specific (only the skill itself and `tools/` consume it) | `skills/<provider>/streamer.py` | `clingen/streamer.py`, `cosmic_cgc/streamer.py`, `gencc/streamer.py`, `alphagenome/streamer.py` |
+
+The shared-base case is the one most likely to surprise: the sibling-skill
+rule (`skills/X` cannot import from `skills/Y`) forces any base class used
+by multiple skills to live above the skills layer — in `core/utils/`.
 
 ### 3. CLI-First Design
 
