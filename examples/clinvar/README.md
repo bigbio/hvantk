@@ -13,10 +13,9 @@ For full documentation, see the [ClinVar examples guide](https://bigbio.github.i
 Build a ClinVar Hail Table first:
 
 ```bash
-hvantk mktable clinvar \
-  --raw-input clinvar.vcf.bgz \
-  --output-ht clinvar.ht \
-  --reference-genome GRCh38
+hvantk reprocess clinvar:variants \
+  --raw-dir data/clinvar \
+  --output clinvar.ht
 ```
 
 ## Quick Start

@@ -1,8 +1,10 @@
 # Data Sources
 
-This page covers all annotation and expression data sources supported by hvantk: what they are, where to get them, and how to build Hail Tables from the raw data. Sources are split into two categories: those with **built-in downloaders** (automated) and those that require **manual download** (too large, license-gated, or fragile URLs).
+> **Heads up — examples below need refresh.** This page references the retired `hvantk mktable` and `hvantk mkmatrix` CLIs. The unified replacement is `hvantk reprocess <plugin>:<dataset>` — see the [Usage Guide](usage.md#1-build-a-dataset-with-hvantk-reprocess) for the current pattern. Download commands on this page are still accurate; the build commands need adapting.
 
-For building Hail Tables and MatrixTables from downloaded data, see the [Usage Guide](usage.md).
+This page covers all annotation and expression data sources supported by hvantk: what they are, where to get them, and how to build datasets from the raw data. Sources are split into two categories: those with **built-in downloaders** (automated) and those that require **manual download** (too large, license-gated, or fragile URLs).
+
+For building datasets from downloaded data, see the [Usage Guide](usage.md).
 
 ## File format note
 
