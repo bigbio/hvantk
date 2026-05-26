@@ -12,7 +12,7 @@ purpose:
     Each subcommand targets one upstream source (ClinVar, dbNSFP, GeVIR, etc.)
     and writes a typed, keyed Hail Table to disk, optionally exporting a
     flattened TSV.bgz alongside it. Builder functions are imported lazily so
-    `--help` does not pull Hail. Use `mktable-batch` for recipe-driven builds.
+    `--help` does not pull Hail.
 subcommands:
   - name: clinvar
     description: Build a ClinVar Hail Table from a VCF (keyed by locus, alleles)

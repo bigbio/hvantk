@@ -1,6 +1,6 @@
 # hvantk Usage Guide
 
-This guide shows practical, copy-pasteable examples to build Hail Tables (HT) and MatrixTables (MT) from explicit raw files and from recipes (JSON/YAML).
+This guide shows practical, copy-pasteable examples to build Hail Tables (HT) and MatrixTables (MT) from raw files using the `mktable` and `mkmatrix` CLIs.
 
 If you haven't installed hvantk yet, see the main README for install steps.
 
@@ -170,56 +170,7 @@ hvantk mktable pqtl \
 
 > **Note:** Fang pQTL data uses gene symbols. Provide `--gene-map-ht` (Ensembl gene table with `gene_name` field) for symbol → Ensembl ID mapping.
 
-## 2) Batch-create Tables (HT) from a recipe
-
-Use a recipe to build many tables at once. JSON and YAML are both supported (YAML requires PyYAML installed).
-
-Example JSON recipe (save as examples/recipes/tables.example.json):
-
-```json
-{
-  "tables": [
-    {
-      "name": "clinvar",
-      "input": "/data/clinvar_2024.vcf.bgz",
-      "output": "/out/clinvar.ht",
-      "params": {"reference_genome": "GRCh38", "export_tsv": true}
-    },
-    {
-      "name": "interactome",
-      "input": "/data/insider.bed.bgz",
-      "output": "/out/interactome.ht",
-      "params": {"reference_genome": "GRCh38"}
-    }
-  ]
-}
-```
-
-Run:
-
-```bash
-hvantk mktable-batch --recipe examples/recipes/tables.example.json
-```
-
-YAML variant (examples/recipes/tables.example.yaml):
-
-```yaml
----
-tables:
-  - name: clinvar
-    input: /data/clinvar_2024.vcf.bgz
-    output: /out/clinvar.ht
-    params:
-      reference_genome: GRCh38
-      export_tsv: true
-  - name: interactome
-    input: /data/insider.bed.bgz
-    output: /out/interactome.ht
-    params:
-      reference_genome: GRCh38
-```
-
-## 3) Build a single MatrixTable (MT)
+## 2) Build a single MatrixTable (MT)
 
 - UCSC Cell Browser (TSV matrix + TSV metadata)
 
@@ -280,96 +231,7 @@ hvantk mkmatrix cptac \
   --overwrite
 ```
 
-## 4) Batch-create MatrixTables (MT) from a recipe
-
-Example JSON recipe (save as examples/recipes/matrices.example.json):
-
-```json
-{
-  "matrices": [
-    {
-      "name": "ucsc-cellbrowser:default",
-      "inputs": {
-        "expression_matrix": "/data/ucsc/expr.tsv.bgz",
-        "metadata": "/data/ucsc/meta.tsv"
-      },
-      "output": "/out/ucsc.mt",
-      "params": {"gene_column": "gene", "overwrite": true}
-    },
-    {
-      "name": "expression-atlas",
-      "inputs": {
-        "expression_matrix": "/data/atlas/matrix.tsv",
-        "sdrf": "/data/atlas/atlas.sdrf.tsv"
-      },
-      "output": "/out/atlas.mt",
-      "params": {"gene_column": "Gene ID", "sample_id_column": "sample_id"}
-    }
-  ]
-}
-```
-
-Run:
-
-```bash
-hvantk mkmatrix-batch --recipe examples/recipes/matrices.example.json
-```
-
-YAML variant (examples/recipes/matrices.example.yaml):
-
-```yaml
----
-matrices:
-  - name: ucsc
-    inputs:
-      expression_matrix: /data/ucsc/expr.tsv.bgz
-      metadata: /data/ucsc/meta.tsv
-    output: /out/ucsc.mt
-    params:
-      gene_column: gene
-      overwrite: true
-  - name: expression-atlas
-    inputs:
-      expression_matrix: /data/atlas/matrix.tsv
-      sdrf: /data/atlas/atlas.sdrf.tsv
-    output: /out/atlas.mt
-    params:
-      gene_column: "Gene ID"
-      sample_id_column: sample_id
-```
-
-CPTAC JSON recipe (save as examples/recipes/cptac.example.json):
-
-```json
-{
-  "matrices": [
-    {
-      "name": "cptac",
-      "inputs": {
-        "expression": "/data/cptac/expression.tsv",
-        "metadata": "/data/cptac/metadata.tsv"
-      },
-      "output": "/out/cptac.mt",
-      "params": {
-        "gene_id_col": "GeneID",
-        "gene_name_col": "Gene Name",
-        "sample_id_col": "SampleID",
-        "expression_col": "Expression",
-        "categorical_cols": "TumorType,Stage",
-        "overwrite": true
-      }
-    }
-  ]
-}
-```
-
-Run:
-
-```bash
-hvantk mkmatrix-batch --recipe examples/recipes/cptac.example.json
-```
-
-## 5) Ancestry Inference
+## 3) Ancestry Inference
 
 Predict genetic ancestry for samples using PCA and Random Forest classification against a labeled reference panel.
 

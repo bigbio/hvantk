@@ -20,6 +20,5 @@ eval "$(poetry env activate)"
 | [`clingen/`](clingen/) | ClinGen gene-disease validity queries and ontology categorization | `python examples/clingen/run_with_real_data.py` |
 | [`ancestry/`](ancestry/) | Ancestry inference with PCA + Random Forest | `python examples/ancestry/run_ancestry_example.py` |
 | [`1k_genome/`](1k_genome/) | Build 1000 Genomes NYGC reference MatrixTable | `python examples/1k_genome/build_1kg_nygc.py --help` |
-| [`recipes/`](recipes/) | JSON recipe templates for batch table/matrix building | `hvantk mktable-batch --recipe examples/recipes/tables.example.json` |
 
 See each subdirectory's README for prerequisites, run instructions, and expected outputs.
