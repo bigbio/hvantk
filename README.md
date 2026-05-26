@@ -44,16 +44,19 @@ hvantk --help
 
 ## Architecture
 
-`hvantk` is organized in four layers with a strict one-way dependency rule
-enforced by tests in [`hvantk/tests/test_dependency_directions.py`](hvantk/tests/test_dependency_directions.py):
+`hvantk` is organized in four code layers (`core/`, `algorithms/`,
+`skills/`, `tools/`) plus a substrate-level data registry (`resources/`).
+A strict one-way dependency rule is enforced by tests in
+[`hvantk/tests/test_dependency_directions.py`](hvantk/tests/test_dependency_directions.py):
 
 <p align="center">
-  <img src="docs_site/images/hvantk-platform-architecture.svg" alt="hvantk four-layer platform architecture: tools/ depends on skills/, algorithms/, and core/; skills/ depends on algorithms/ and core/; algorithms/ depends on core/. Arrows flow downward only." width="860">
+  <img src="docs_site/images/hvantk-platform-architecture.svg" alt="hvantk platform architecture: tools/ depends on skills/, algorithms/, and core/; skills/ depends on algorithms/ and core/; algorithms/ depends on core/. resources/ sits at the substrate level alongside core/ and is consumed by skills/ and tools/. Arrows flow downward only." width="860">
 </p>
 
 **Why the directions matter:** `skills/` adapters can rot when upstream APIs
 change without algorithms breaking; `algorithms/` evolve without churning
-the source-adapter layer. `core/` is the stable substrate everyone depends on.
+the source-adapter layer. `core/` and `resources/` are the stable substrate
+everyone depends on — neither imports upward.
 
 ### Data model
 

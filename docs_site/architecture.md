@@ -3,12 +3,23 @@
 ## Overview
 
 `hvantk` is a multi-omics variant annotation toolkit. It is organized as a
-four-layer platform with a strict one-way dependency rule enforced by
+five-package layout — four code layers (`core/`, `algorithms/`, `skills/`,
+`tools/`) plus a substrate-level data registry (`resources/`) — with a
+strict one-way dependency rule enforced by
 [`hvantk/tests/test_dependency_directions.py`](https://github.com/bigbio/hvantk/blob/main/hvantk/tests/test_dependency_directions.py):
 
 <p align="center">
-  <img src="images/hvantk-platform-architecture.svg" alt="hvantk four-layer platform architecture: tools/ depends on skills/, algorithms/, and core/; skills/ depends on algorithms/ and core/; algorithms/ depends on core/. Arrows flow downward only." width="860">
+  <img src="images/hvantk-platform-architecture.svg" alt="hvantk platform architecture: tools/ depends on skills/, algorithms/, and core/; skills/ depends on algorithms/ and core/; algorithms/ depends on core/. resources/ sits at the substrate level alongside core/ and is consumed by skills/ and tools/. Arrows flow downward only." width="860">
 </p>
+
+`resources/` is a peer of `core/` (not a layer above it): both are
+substrate that the code layers depend on, neither imports upward.
+Placement rule: dataset-registry JSON, JSON schemas, and the validator /
+aggregator code that operates on them go in `resources/`. Per-plugin
+catalog JSON (`skills/<provider>/catalog/datasets.json`) stays with its
+plugin and is aggregated by `resources/unified_registry.py`. See the
+[Resources Module](#resources-module-resources) section below for the
+full rule.
 
 Design priorities:
 
@@ -416,12 +427,30 @@ annotated = variants.annotate(
 
 ### Resources Module (`resources/`)
 
-**Purpose**: Data catalog and schema definitions
+**Purpose**: Substrate-level data registry and schema definitions.
+Peer of `core/`, not a layer above it.
 
 **Contents**:
 - `registry/` - Surviving legacy per-domain dataset metadata (genomics only; transcriptomics / proteomics / epigenomics moved into per-plugin `hvantk/skills/<provider>/catalog/datasets.json`)
-- `unified_registry.py` - `HvantkRegistry` aggregator surfaced via `hvantk catalog {list,show,stats,search}`
-- `schemas/` - Schema definitions for validation
+- `unified_registry.py` - `HvantkRegistry` aggregator surfaced via `hvantk catalog {list,show,stats,search}`. Reads both the legacy per-domain registry above and the per-plugin catalog JSON under `skills/<provider>/catalog/`.
+- `schemas/` - JSON schema definitions used by `schema_validator.py` to validate catalog entries.
+- `schema_validator.py` - Validation entry point invoked by the unified registry.
+
+**Placement rule** (what goes here vs. nearby alternatives):
+
+| Lives in | Use for |
+|---|---|
+| `resources/registry/` | Cross-plugin / legacy per-domain catalog JSON that hasn't been migrated to a per-plugin folder. |
+| `resources/schemas/` | JSON schemas that describe catalog / dataset metadata, shared across plugins. |
+| `resources/unified_registry.py` | Code that aggregates per-plugin catalog JSON with the legacy registry. |
+| `skills/<provider>/catalog/datasets.json` | Per-plugin dataset metadata (the canonical location for new providers). |
+| `core/models/` | Artifact types (`AnnotationTable`, `ExpressionMatrix`, `GeneSet`) — runtime data shapes, not catalog metadata. |
+
+**Dependency direction**: `resources/` may be imported by `algorithms/`,
+`skills/`, and `tools/`. It must NOT import from any of those — like
+`core/`, it is substrate. This is enforced by
+`test_resources_does_not_import_upward` in
+[`hvantk/tests/test_dependency_directions.py`](https://github.com/bigbio/hvantk/blob/main/hvantk/tests/test_dependency_directions.py).
 
 ## Testing Strategy
 
