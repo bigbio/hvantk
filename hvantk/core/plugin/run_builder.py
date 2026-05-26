@@ -6,8 +6,8 @@ plugin's drift_probe, constructs a BuildContext, invokes the builder, validates 
 returned artifact's type matches the plugin.yaml `artifact_type`, then persists via
 `artifact.save(output_path)`.
 
-Plugins that have NOT yet migrated to this contract continue to be invoked through
-_TABLE_BUILDERS / _MATRIX_BUILDERS — those facades stay in place for Phase B coexistence.
+All in-tree plugins use this Phase B contract; the orchestrator is the sole
+dispatch path for `hvantk reprocess` and any other consumer of plugin builders.
 """
 from __future__ import annotations
 
