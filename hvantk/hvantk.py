@@ -9,9 +9,7 @@ from hvantk.tools.infra.utils_cli import utils_group
 from hvantk.tools.infra.catalog_cli import catalog as catalog_group
 from hvantk.tools.genesets.genesets_cli import genesets_group
 from hvantk.tools.build.make_table_cli import mktable_group
-from hvantk.tools.build.make_table_batch_cli import mktable_batch_cli
 from hvantk.tools.build.make_matrix_cli import mkmatrix_group
-from hvantk.tools.build.make_matrix_batch_cli import mkmatrix_batch_cli
 from hvantk.tools.hgc import hgc_group
 from hvantk.tools.ptm.psroc_cli import psroc_cmd
 from hvantk.tools.enrichex import enrichex_group
@@ -88,9 +86,7 @@ cli.add_command(utils_group)
 cli.add_command(catalog_group)
 cli.add_command(genesets_group)
 cli.add_command(mktable_group)
-cli.add_command(mktable_batch_cli)
 cli.add_command(mkmatrix_group)
-cli.add_command(mkmatrix_batch_cli)
 cli.add_command(hgc_group)
 cli.add_command(psroc_cmd)
 cli.add_command(enrichex_group)

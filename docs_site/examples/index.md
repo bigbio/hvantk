@@ -22,8 +22,3 @@ Runnable scripts are available in the [`examples/`](https://github.com/bigbio/hv
 | [ClinVar Streaming](clinvar.md) | Stream and filter ClinVar variant annotations |
 | [ClinGen](clingen.md) | Gene-disease validity queries and ontology categorization |
 
-## Batch Processing
-
-| Example | Description |
-|---------|-------------|
-| [Recipes](recipes.md) | JSON templates for batch table and matrix building |

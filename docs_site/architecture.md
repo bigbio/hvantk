@@ -289,10 +289,6 @@ hvantk mktable ensembl-gene --raw-input biomart.tsv --output-ht ensembl.ht
 # Build matrices
 hvantk mkmatrix ucsc -e expr.tsv.bgz -m meta.tsv -o ucsc.mt
 
-# Batch processing via recipes
-hvantk mktable-batch --recipe tables.json
-hvantk mkmatrix-batch --recipe matrices.json
-
 # Joint genotyping (HGC)
 hvantk hgc gvcf-combine -g /data/gvcfs -o cohort.vds
 hvantk hgc compute-qc -i cohort.mt -o cohort_qc.mt
@@ -383,7 +379,7 @@ annotated = variants.annotate(
 **Purpose**: Top-level CLI command implementations (replaces the legacy `commands/` directory)
 
 **Key sub-packages**:
-- `build/` - `mktable`, `mkmatrix`, `mktable-batch`, `mkmatrix-batch` commands
+- `build/` - `mktable`, `mkmatrix` commands
 - `plugins/` - `hvantk plugins list/show/reload` and `hvantk drift` commands
 - `hgc/` - HGC joint genotyping subcommands (combine, convert, QC, pipeline)
 - `ancestry/`, `enrichex/`, `ptm/`, `qtl/` - Per-pipeline CLI subcommands

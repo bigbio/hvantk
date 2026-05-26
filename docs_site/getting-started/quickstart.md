@@ -76,11 +76,7 @@ hvantk ancestry-inference \
 Create Hail Tables from public databases (ClinVar, gnomAD, Ensembl).
 
 ```bash
-# Single table
 hvantk mktable clinvar --raw-input clinvar.vcf.bgz --output-ht clinvar.ht
-
-# Batch processing
-hvantk mktable-batch --recipe tables_recipe.json
 ```
 
 [Tables Guide](../guide/usage.md){ .md-button }
@@ -92,9 +88,6 @@ Build Hail MatrixTables from bulk and single-cell expression data.
 ```bash
 # UCSC Cell Browser data
 hvantk mkmatrix ucsc -e expr.tsv.bgz -m metadata.tsv -o ucsc.mt
-
-# Batch processing
-hvantk mkmatrix-batch --recipe matrices_recipe.json
 ```
 
 [Expression Guide](../guide/usage.md){ .md-button }
@@ -148,7 +141,4 @@ hvantk mkmatrix ucsc -e data/ucsc/exprMatrix.tsv.gz -m data/ucsc/meta.tsv -o dat
 
 # Build annotation tables
 hvantk mktable clinvar --raw-input clinvar.vcf.bgz --output-ht clinvar.ht --ref-genome GRCh38
-
-# Or use batch processing with recipes
-hvantk mktable-batch --recipe recipe.json
 ```
