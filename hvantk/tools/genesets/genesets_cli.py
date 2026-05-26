@@ -129,7 +129,7 @@ def genesets_group():
     type=click.Path(exists=True),
     required=True,
     help="Path to ClinGen Hail Table (.ht) built with "
-    "'hvantk mktable clingen-gene-disease'.",
+    "'hvantk reprocess clingen:gene-disease'.",
 )
 @click.option(
     "--group-by",
@@ -261,7 +261,7 @@ def genesets_clingen(
     type=click.Path(exists=True),
     required=True,
     help="Path to GenCC Hail Table (.ht) built with "
-    "'hvantk mktable gencc-submissions'.",
+    "'hvantk reprocess gencc:submissions'.",
 )
 @click.option(
     "--group-by",
@@ -401,7 +401,7 @@ def genesets_gencc(
     type=click.Path(exists=True),
     required=True,
     help="Path to COSMIC CGC Hail Table (.ht) built with "
-    "'hvantk mktable cosmic-cgc'.",
+    "'hvantk reprocess cosmic-cgc:submissions'.",
 )
 @click.option(
     "--group-by",

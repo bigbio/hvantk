@@ -33,8 +33,7 @@ hvantk --help
 | Tool | Description | Command | Docs |
 |------|-------------|---------|------|
 | **Downloads** | Acquire external datasets (ClinVar, ClinGen, HGNC, etc.) | `hvantk download <source>` | [Data Sources](docs_site/guide/data-sources.md) |
-| **Annotation builders** | Variant, gene, and protein tables (ClinVar, dbNSFP, gnomAD, Ensembl, HGNC, INSIDER, CCR) | `hvantk mktable <source>` | [Usage Guide](docs_site/guide/usage.md) |
-| **Expression builders** | Bulk and single-cell matrices (UCSC, GTEx, Expression Atlas, CPTAC) | `hvantk mkmatrix <source>` | [Usage Guide](docs_site/guide/usage.md) |
+| **Dataset builds** | Build any plugin dataset (download → parse → build → drift check) | `hvantk reprocess <plugin>:<dataset>` | [Usage Guide](docs_site/guide/usage.md) |
 | **HGC** | Joint genotyping pipeline (GVCF combining, QC, format conversion) | `hvantk hgc` | [HGC](docs_site/tools/hgc.md) |
 | **Ancestry** | Ancestry inference (PCA + Random Forest classification) | `hvantk ancestry-inference` | [Ancestry](docs_site/tools/ancestry.md) |
 | **QTL Cascade** | Molecular QTL integration (eQTL + pQTL cascade, colocalization ABF) | `hvantk qtlcascade` | [QTL Cascade](docs_site/tools/qtlcascade.md) |
@@ -161,7 +160,7 @@ hvantk/
 │
 ├── tools/                      # CLI wiring + workflow orchestration
 │   ├── plugins/                # download, drift, reprocess, plugins list
-│   ├── build/                  # mktable, mkmatrix
+│   ├── build/                  # build_1k_genome (standalone reference panel build)
 │   ├── hgc/                    # joint-genotyping CLI (lazy-loaded)
 │   ├── ancestry/, enrichex/, expression/, ptm/, qtl/, infra/, genesets/
 │   └── tools_cli.py            # tool registry inspection

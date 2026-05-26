@@ -9,7 +9,7 @@ cli:
 purpose:
   short: Build eQTL/pQTL cascade joins, run colocalisation, summarise + report.
   long: |
-    Composes eQTL and pQTL Hail Tables built by `hvantk mktable eqtl/pqtl`
+    Composes eQTL and pQTL Hail Tables built by `hvantk reprocess gtex-eqtl:associations` / `pqtl:metrics`
     into a cascade join, runs per-gene colocalisation (ABF) on candidate
     cascade genes, overlays constraint + disease-gene annotations, and emits
     summary TSVs, plots, and an HTML report. The `run` subcommand orchestrates

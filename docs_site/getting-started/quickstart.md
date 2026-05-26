@@ -71,26 +71,22 @@ hvantk ancestry-inference \
 
 [Ancestry Documentation](../tools/ancestry.md){ .md-button } [Example](../examples/ancestry.md){ .md-button }
 
-## Annotation Tables
+## Build a dataset
 
-Create Hail Tables from public databases (ClinVar, gnomAD, Ensembl).
-
-```bash
-hvantk mktable clinvar --raw-input clinvar.vcf.bgz --output-ht clinvar.ht
-```
-
-[Tables Guide](../guide/usage.md){ .md-button }
-
-## Expression Matrices
-
-Build Hail MatrixTables from bulk and single-cell expression data.
+Every provider is a plugin under `hvantk/skills/<provider>/`. Build any dataset with the unified `reprocess` CLI:
 
 ```bash
-# UCSC Cell Browser data
-hvantk mkmatrix ucsc -e expr.tsv.bgz -m metadata.tsv -o ucsc.mt
+# List available plugins and their datasets
+hvantk plugins list
+
+# Build ClinVar variants from raw input
+hvantk reprocess clinvar:variants --raw-dir data/ --output clinvar.ht
+
+# Build a UCSC Cell Browser AnnData artifact
+hvantk reprocess ucsc-cellbrowser:adultPancreas --raw-dir data/ucsc --output ucsc.h5ad
 ```
 
-[Expression Guide](../guide/usage.md){ .md-button }
+[Usage Guide](../guide/usage.md){ .md-button }
 
 ## Expression Analysis
 
@@ -117,8 +113,6 @@ Convert standard gzip files to BGZF for Hail parallel import:
 hvantk utils convert-bgz input.tsv.gz -o output.tsv.bgz --threads 4
 ```
 
-Or use `--auto-convert-bgz` in supported commands to convert on-the-fly.
-
 ## Data Downloaders
 
 Download curated datasets from public repositories.
@@ -132,13 +126,11 @@ hvantk download ucsc --dataset adultPancreas --output-dir data/ucsc
 ## Full Quick Start Example
 
 ```bash
-# Download and process expression data
+# Download raw data
 hvantk download ucsc --dataset adultPancreas --output-dir data/ucsc
-hvantk mkmatrix ucsc -e data/ucsc/exprMatrix.tsv.bgz -m data/ucsc/meta.tsv -o data/ucsc/adultPancreas.mt
+hvantk download clinvar --output-dir data/clinvar
 
-# If expression matrix is plain gzip (.gz), use --auto-convert-bgz
-hvantk mkmatrix ucsc -e data/ucsc/exprMatrix.tsv.gz -m data/ucsc/meta.tsv -o data/ucsc/adultPancreas.mt --auto-convert-bgz
-
-# Build annotation tables
-hvantk mktable clinvar --raw-input clinvar.vcf.bgz --output-ht clinvar.ht --ref-genome GRCh38
+# Build artifacts (one CLI for all providers; runs the full Phase B pipeline)
+hvantk reprocess ucsc-cellbrowser:adultPancreas --raw-dir data/ucsc --output data/ucsc/adultPancreas.h5ad
+hvantk reprocess clinvar:variants --raw-dir data/clinvar --output clinvar.ht
 ```

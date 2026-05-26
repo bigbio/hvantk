@@ -1082,7 +1082,7 @@ def create_pqtl_tb(
         raise ValueError(
             "Ensembl gene mapping is required for cascade-compatible pQTL "
             "tables. Provide --hgnc-ht <path> (HGNC Hail Table built by "
-            "'hvantk mktable hgnc-gene'). If you intentionally want a "
+            "'hvantk reprocess hgnc:lookup'). If you intentionally want a "
             "symbol-keyed table for non-cascade use, pass --no-gene-map."
         )
 

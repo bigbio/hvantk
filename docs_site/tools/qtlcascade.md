@@ -1,5 +1,7 @@
 # QTL Cascade: Molecular QTL Cascade Analysis
 
+> **Heads up — build examples need refresh.** Sections that show `hvantk mktable eqtl` / `hvantk mktable pqtl` reference retired CLIs. The unified replacement is `hvantk reprocess <plugin>:<dataset>` — see the [Usage Guide](../guide/usage.md#1-build-a-dataset-with-hvantk-reprocess). Cascade-specific commands on this page (`hvantk qtlcascade ...`) are unaffected.
+
 QTL Cascade is a module within hvantk that traces variant effects across molecular layers — from DNA to RNA (eQTL) to protein (pQTL) — to identify variants whose transcriptomic effects propagate to the proteome. It integrates colocalization analysis to distinguish true signal propagation from LD artifacts.
 
 ![QTL Cascade workflow](../images/hvantk-qtlcascade-workflow.svg)

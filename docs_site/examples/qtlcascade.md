@@ -1,5 +1,7 @@
 # QTL Cascade Example
 
+> **Heads up — build examples need refresh.** Sections that show `hvantk mktable eqtl` / `hvantk mktable pqtl` reference retired CLIs. The unified replacement is `hvantk reprocess <plugin>:<dataset>` — see the [Usage Guide](../guide/usage.md#1-build-a-dataset-with-hvantk-reprocess).
+
 This page demonstrates the QTL cascade pipeline for tracing variant effects from DNA to RNA (eQTL) to protein (pQTL).
 
 ## Overview

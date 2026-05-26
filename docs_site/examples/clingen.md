@@ -1,5 +1,7 @@
 # ClinGen Examples
 
+> **Heads up — build example needs refresh.** The Quick Start below references the retired `hvantk mktable clingen` CLI. Use `hvantk reprocess clingen:gene-disease --raw-dir <dir> --output <path>` instead — see the [Usage Guide](../guide/usage.md#1-build-a-dataset-with-hvantk-reprocess). Other ClinGen commands and APIs on this page are unaffected.
+
 Query ClinGen Gene-Disease Validity data, extract gene sets, and categorize diseases using MONDO ontology.
 
 ## Quick Start

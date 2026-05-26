@@ -95,7 +95,7 @@ hvantk/
 ├── tools/                 # CLI command implementations (replaces legacy commands/)
 │   ├── ancestry/          # Ancestry CLI subcommands
 │   ├── annotation/        # Annotation CLI subcommands
-│   ├── build/             # mktable / mkmatrix / batch build commands
+│   ├── build/             # standalone reference panel builds (1k genomes)
 │   ├── enrichex/          # EnrichEx CLI subcommands
 │   ├── expression/        # Expression analysis commands
 │   ├── genesets/          # Gene set extraction/preparation
@@ -282,12 +282,9 @@ The primary interface is a well-structured CLI with domain-specific commands:
 # Download data
 hvantk download ucsc --dataset adultPancreas --output-dir data/
 
-# Build individual tables
-hvantk mktable clinvar --raw-input clinvar.vcf.bgz --output-ht clinvar.ht
-hvantk mktable ensembl-gene --raw-input biomart.tsv --output-ht ensembl.ht
-
-# Build matrices
-hvantk mkmatrix ucsc -e expr.tsv.bgz -m meta.tsv -o ucsc.mt
+# Build any dataset (full pipeline: download -> parse -> build -> drift check)
+hvantk reprocess clinvar:variants --raw-dir data/ --output clinvar.ht
+hvantk reprocess ucsc-cellbrowser:adultPancreas --raw-dir data/ --output ucsc.h5ad
 
 # Joint genotyping (HGC)
 hvantk hgc gvcf-combine -g /data/gvcfs -o cohort.vds
@@ -379,8 +376,8 @@ annotated = variants.annotate(
 **Purpose**: Top-level CLI command implementations (replaces the legacy `commands/` directory)
 
 **Key sub-packages**:
-- `build/` - `mktable`, `mkmatrix` commands
-- `plugins/` - `hvantk plugins list/show/reload` and `hvantk drift` commands
+- `plugins/` - `hvantk reprocess`, `hvantk drift`, `hvantk plugins list/show/reload` commands
+- `build/` - standalone reference panel builds (e.g. 1000 Genomes)
 - `hgc/` - HGC joint genotyping subcommands (combine, convert, QC, pipeline)
 - `ancestry/`, `enrichex/`, `ptm/`, `qtl/` - Per-pipeline CLI subcommands
 - `infra/` - Installation check, BGZF validation, utils

@@ -9,7 +9,7 @@ cli:
 purpose:
   short: Inspect, aggregate, and extract markers from expression .h5ad files.
   long: |
-    Operates on expression AnnData objects (built via `hvantk mkmatrix`).
+    Operates on expression AnnData objects (built via `hvantk reprocess <plugin>:<dataset>`).
     `describe` lists obs metadata fields; `summarize` aggregates cells into
     groups x genes layers (mean/sum/count_nonzero/fraction_expressed);
     `markers` runs scanpy.tl.rank_genes_groups and emits a GeneSetCollection;

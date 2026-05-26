@@ -1,5 +1,7 @@
 # ClinVar Streaming Examples
 
+> **Heads up — build example needs refresh.** The prerequisite step below references the retired `hvantk mktable clinvar` CLI. Use `hvantk reprocess clinvar:variants --raw-dir <dir> --output <path>` instead — see the [Usage Guide](../guide/usage.md#1-build-a-dataset-with-hvantk-reprocess). The streamer usage below is unaffected.
+
 Stream and filter ClinVar variant annotations using hvantk's `ClinvarDataStreamer`.
 
 ## Prerequisites

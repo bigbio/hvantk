@@ -69,7 +69,7 @@
     <text x="190" y="282" text-anchor="middle">drift_runner · genesets</text>
 
     <rect x="64" y="298" width="252" height="20" rx="6" fill="#dbeafe" stroke="#93c5fd" stroke-width="1" stroke-dasharray="3 3"/>
-    <text x="190" y="312" text-anchor="middle" font-size="10.5" font-style="italic" fill="#475569">mktable / mkmatrix (deprecated)</text>
+    <text x="190" y="312" text-anchor="middle" font-size="10.5" font-style="italic" fill="#475569">reprocess / drift / plugins</text>
   </g>
 
   <!-- ============== SKILLS column ============== -->
