@@ -1,7 +1,7 @@
 """Stable contracts for hvantk provider plugins.
 
 In-tree and out-of-tree plugin authors import their types from this module.
-The Provider dataclass is constructed by the loader (hvantk.core.plugin_loader)
+The Provider dataclass is constructed by the loader (hvantk.core.plugin.loader)
 from a plugin.yaml manifest plus resolved callables - it is not subclassed or
 instantiated by plugin authors.
 """
