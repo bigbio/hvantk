@@ -8,9 +8,16 @@ with the `--skip-*` flags.
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 import click
+
+
+_INT_RE = re.compile(r"^-?\d+$")
+_FLOAT_RE = re.compile(
+    r"^-?(\d+\.\d*([eE][+-]?\d+)?|\.\d+([eE][+-]?\d+)?|\d+[eE][+-]?\d+)$"
+)
 
 
 def _coerce_plugin_arg_value(value: str) -> Any:
@@ -21,20 +28,20 @@ def _coerce_plugin_arg_value(value: str) -> Any:
     values — e.g. ``overwrite=false`` arrives as the truthy string ``"false"``,
     and ``p_threshold=5e-8`` arrives as the string ``"5e-8"`` which breaks
     numeric comparisons.
+
+    Pattern matching is used (rather than ``try/except ValueError``) so that
+    the function has a single exit path per branch and does not swallow
+    exceptions silently.
     """
     low = value.lower()
     if low == "true":
         return True
     if low == "false":
         return False
-    try:
+    if _INT_RE.match(value):
         return int(value)
-    except ValueError:
-        pass
-    try:
+    if _FLOAT_RE.match(value):
         return float(value)
-    except ValueError:
-        pass
     return value
 
 
