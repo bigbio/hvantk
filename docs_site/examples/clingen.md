@@ -1,18 +1,18 @@
 # ClinGen Examples
 
-> **Heads up — build example needs refresh.** The Quick Start below references the retired `hvantk mktable clingen` CLI. Use `hvantk reprocess clingen:gene-disease --raw-dir <dir> --output <path>` instead — see the [Usage Guide](../guide/usage.md#1-build-a-dataset-with-hvantk-reprocess). Other ClinGen commands and APIs on this page are unaffected.
-
 Query ClinGen Gene-Disease Validity data, extract gene sets, and categorize diseases using MONDO ontology.
 
 ## Quick Start
 
-```bash
-# Download ClinGen data
-hvantk download clingen --output-dir data/
+The ClinGen plugin has a built-in downloader, so one command downloads today's snapshot into `data/` and builds the Hail Table:
 
-# Build Hail Table
-hvantk mktable clingen --raw-input data/clingen_gene_disease.csv --output-ht clingen.ht
+```bash
+hvantk reprocess clingen:gene-disease \
+  --raw-dir data/ \
+  --output clingen.ht
 ```
+
+If you already downloaded `Clingen-Gene-Disease-Summary-<YYYY-MM-DD>.csv` into `data/`, add `--skip-download` to reuse it.
 
 ## ClinGenStreamer API
 

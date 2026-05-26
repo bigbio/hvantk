@@ -8,8 +8,41 @@ with the `--skip-*` flags.
 from __future__ import annotations
 
 import json
+import re
+from typing import Any
 
 import click
+
+
+_INT_RE = re.compile(r"^-?\d+$")
+_FLOAT_RE = re.compile(
+    r"^-?(\d+\.\d*([eE][+-]?\d+)?|\.\d+([eE][+-]?\d+)?|\d+[eE][+-]?\d+)$"
+)
+
+
+def _coerce_plugin_arg_value(value: str) -> Any:
+    """Coerce a --plugin-arg string to bool / int / float when it matches.
+
+    Order: bool (``true``/``false``, case-insensitive) -> int -> float -> str.
+    Without coercion, builders that declare typed kwargs receive surprising
+    values — e.g. ``overwrite=false`` arrives as the truthy string ``"false"``,
+    and ``p_threshold=5e-8`` arrives as the string ``"5e-8"`` which breaks
+    numeric comparisons.
+
+    Pattern matching is used (rather than ``try/except ValueError``) so that
+    the function has a single exit path per branch and does not swallow
+    exceptions silently.
+    """
+    low = value.lower()
+    if low == "true":
+        return True
+    if low == "false":
+        return False
+    if _INT_RE.match(value):
+        return int(value)
+    if _FLOAT_RE.match(value):
+        return float(value)
+    return value
 
 
 @click.command(name="reprocess")
@@ -42,9 +75,11 @@ import click
     multiple=True,
     metavar="KEY=VALUE",
     help=(
-        "Plugin-specific kwarg forwarded to the lifecycle download and parse "
-        "functions (e.g. --plugin-arg cancer_type=brca for cptac:phospho). "
-        "Repeatable. Values are passed as strings; plugins coerce as needed."
+        "Plugin-specific kwarg forwarded to the lifecycle download, parse, "
+        "and Phase B build stages (e.g. --plugin-arg cancer_type=brca for "
+        "cptac:phospho, --plugin-arg reference_genome=GRCh38 for clinvar). "
+        "Repeatable. Values are coerced: 'true'/'false' -> bool, integer "
+        "strings -> int, decimal/scientific -> float, otherwise str."
     ),
 )
 @click.option(
@@ -79,10 +114,12 @@ def reprocess_cmd(
     except KeyError:
         raise click.ClickException(f"unknown dataset: {dataset}")
 
-    # Parse --plugin-arg KEY=VALUE pairs into a kwargs dict forwarded to both
-    # download_fn and parse_fn. Lets operators target plugin-specific options
-    # (e.g. cancer_type for cptac:phospho) without per-plugin reprocess flags.
-    extras: dict[str, str] = {}
+    # Parse --plugin-arg KEY=VALUE pairs into a kwargs dict forwarded to
+    # download_fn, parse_fn, and the Phase B builder. Lets operators target
+    # plugin-specific options (e.g. cancer_type for cptac:phospho,
+    # reference_genome for clinvar, p_threshold for gtex-eqtl) without
+    # per-plugin reprocess flags.
+    extras: dict[str, Any] = {}
     for kv in plugin_args:
         if "=" not in kv:
             raise click.UsageError(
@@ -93,7 +130,7 @@ def reprocess_cmd(
             raise click.UsageError(
                 f"--plugin-arg key must be non-empty; got: {kv!r}"
             )
-        extras[key] = value
+        extras[key] = _coerce_plugin_arg_value(value)
 
     # 1. Download stage
     if not skip_download:
@@ -141,6 +178,7 @@ def reprocess_cmd(
                 parsed_input=parsed_path,
                 output_path=Path(output),
                 plugin_version=spec.plugin_version or "<unknown>",
+                **extras,
             )
 
     # 4. Optional drift check

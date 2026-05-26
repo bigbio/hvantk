@@ -1,9 +1,12 @@
-"""Assert that hvantk's four-package layout (core / algorithms / skills / tools)
-honors the one-way dependency rule documented in the design spec:
+"""Assert that hvantk's five-package layout honors the one-way dependency rule:
 
     skills/      ----+
-                     +-->  algorithms/  -->  core/
+                     +-->  algorithms/  -->  core/, resources/
     tools/       ----+
+
+core/ and resources/ are both substrate -- consumed by the code layers above,
+neither imports upward. resources/ holds the data-catalog registry, JSON
+schemas, and the validator/aggregator that operate on them.
 
 Implementation note: each layer-pair is checked independently and gated with
 xfail until the corresponding migration phase fixes the violations. Phases
@@ -66,6 +69,20 @@ def test_algorithms_does_not_import_skills_or_tools():
     bad = _forbidden_matches("algorithms", ["hvantk.skills", "hvantk.tools"])
     assert not bad, (
         "algorithms/ must not import from skills/ or tools/. Offenders:\n"
+        + "\n".join(f"  {p.relative_to(PACKAGE_ROOT)} -> {d}" for p, d in bad)
+    )
+
+
+def test_resources_does_not_import_upward():
+    """resources/ is substrate -- a peer of core/. It must not import from the
+    code layers above it (algorithms/, skills/, tools/). Codifies the
+    placement decision recorded in docs_site/architecture.md."""
+    bad = _forbidden_matches(
+        "resources", ["hvantk.algorithms", "hvantk.skills", "hvantk.tools"]
+    )
+    assert not bad, (
+        "resources/ must not import from algorithms/, skills/, or tools/. "
+        "Offenders:\n"
         + "\n".join(f"  {p.relative_to(PACKAGE_ROOT)} -> {d}" for p, d in bad)
     )
 
