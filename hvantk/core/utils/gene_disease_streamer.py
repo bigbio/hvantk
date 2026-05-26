@@ -22,7 +22,6 @@ import hail as hl
 import pandas as pd
 
 from hvantk.core.utils.streaming import HailDataStreamer
-from hvantk.core.io.legacy_artifacts import load_legacy_table
 from hvantk.core.utils.gene_sets import load_gene_sets_from_dict
 from hvantk.core.utils.table_utils import get_row_fields
 
@@ -712,8 +711,15 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
         gene_table: hl.Table,
         gene_id_field: str = "gene_id",
         annotation_fields: Optional[List[str]] = None,
+        gene_annotation_ht: Optional[hl.Table] = None,
     ) -> hl.Table:
-        """Annotate an existing gene table with gene-disease validity data."""
+        """Annotate an existing gene table with gene-disease validity data.
+
+        ``gene_annotation_ht`` is required only when ``gene_id_field='gene_id'``;
+        it supplies the gene_id -> gene_name mapping. Pass an Ensembl gene table
+        (keyed by gene_id, with a ``gene_name`` field). When ``gene_id_field`` is
+        ``gene_symbol`` or ``hgnc_id`` no external mapping is needed.
+        """
         self._ensure_table_loaded()
         if gene_id_field not in gene_table.row:
             raise ValueError(
@@ -722,7 +728,7 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
 
         gene_level_ht = self._get_gene_level_table()
         gene_table_keyed, join_expr, join_key = self._prepare_gene_table_key(
-            gene_table, gene_id_field
+            gene_table, gene_id_field, gene_annotation_ht
         )
         gene_level_ht = gene_level_ht.key_by(join_key)
 
@@ -1044,7 +1050,10 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
         return gene_ht
 
     def _prepare_gene_table_key(
-        self, gene_table: hl.Table, gene_id_field: str
+        self,
+        gene_table: hl.Table,
+        gene_id_field: str,
+        gene_annotation_ht: Optional[hl.Table] = None,
     ) -> tuple[hl.Table, hl.expr.Expression, str]:
         if gene_id_field == "gene_symbol":
             return gene_table, gene_table[gene_id_field], "gene_symbol"
@@ -1055,21 +1064,20 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
                 "gene_id_field must be one of: gene_id, gene_symbol, hgnc_id"
             )
 
-        from hvantk.core.io import legacy_artifacts
-
-        if not legacy_artifacts.source_dir:
+        if gene_annotation_ht is None:
             raise ValueError(
-                "hvantk.core.io.legacy_artifacts.source_dir is not set; cannot map "
-                "gene_id to gene_symbol. Set source_dir or use gene_symbol/hgnc_id."
+                "gene_id_field='gene_id' requires gene_annotation_ht (an Ensembl "
+                "gene table keyed by gene_id with a gene_name field). Either pass "
+                "one explicitly or use gene_symbol / hgnc_id."
             )
-        gene_ann_ht = load_legacy_table("gene_ann")
-        if "gene_name" not in gene_ann_ht.row:
+        if "gene_name" not in gene_annotation_ht.row:
             raise ValueError(
-                "Ensembl gene annotation table missing gene_name field for mapping."
+                "gene_annotation_ht is missing the gene_name field required for "
+                "gene_id -> gene_symbol mapping."
             )
         prefix = self.annotation_prefix
         mapped = gene_table.annotate(
-            **{f"{prefix}gene_symbol": gene_ann_ht[gene_table[gene_id_field]].gene_name}
+            **{f"{prefix}gene_symbol": gene_annotation_ht[gene_table[gene_id_field]].gene_name}
         )
         return mapped, mapped[f"{prefix}gene_symbol"], "gene_symbol"
 
