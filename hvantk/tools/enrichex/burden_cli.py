@@ -73,12 +73,12 @@ def register_burden_commands(group):
 @click.option(
     "--genotype-aggregation",
     type=click.Choice(
-        ["hets", "homs", "multi_het", "homs_multi_het", "chets", "homs_chets"]
+        ["hets", "homs", "multi_het", "homs_multi_het"]
     ),
     default="hets",
     show_default=True,
     help="Genotype aggregation method. 'multi_het' counts genes with >= 2 het variants "
-    "(approximates compound-het). 'chets'/'homs_chets' are deprecated aliases.",
+    "(approximates compound-het).",
 )
 @click.option(
     "--max-af",
@@ -293,7 +293,7 @@ def burden_test(
             -m cohort.mt \\
             -p phenotypes.ht \\
             -s gene_sets.json \\
-            --genotype-aggregation homs_chets \\
+            --genotype-aggregation homs_multi_het \\
             --max-af 0.001 \\
             -o burden_results.tsv
 
@@ -868,7 +868,7 @@ def burden_test(
 @click.option(
     "--genotype-aggregation",
     type=click.Choice(
-        ["hets", "homs", "multi_het", "homs_multi_het", "chets", "homs_chets"]
+        ["hets", "homs", "multi_het", "homs_multi_het"]
     ),
     default="hets",
     show_default=True,

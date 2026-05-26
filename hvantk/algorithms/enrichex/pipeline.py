@@ -49,7 +49,6 @@ from hvantk.algorithms.enrichex.constants import (
     CORRECTION_METHODS,
     GENOTYPE_AGGREGATION_METHODS,
     PHENOTYPE_TYPES,
-    _DEPRECATED_AGGREGATION_ALIASES,
 )
 from hvantk.core.utils.table_utils import leaf_name, resolve_field, validate_fields
 
@@ -193,8 +192,7 @@ class BurdenConfig:
             )
 
         agg = self.genotype_aggregation
-        valid_agg = GENOTYPE_AGGREGATION_METHODS + list(_DEPRECATED_AGGREGATION_ALIASES)
-        if agg not in valid_agg:
+        if agg not in GENOTYPE_AGGREGATION_METHODS:
             errors.append(
                 f"Invalid genotype_aggregation '{agg}'. "
                 f"Must be one of: {GENOTYPE_AGGREGATION_METHODS}"

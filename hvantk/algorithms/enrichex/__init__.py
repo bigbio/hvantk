@@ -71,7 +71,6 @@ from hvantk.algorithms.enrichex.constants import (
     GENOTYPE_AGGREGATION_METHODS,
     PHENOTYPE_TYPES,
     VARIANT_CLASS_PRESETS,
-    _DEPRECATED_AGGREGATION_ALIASES,
 )
 from hvantk.algorithms.statistics.correction import apply_correction, fdr_threshold
 from hvantk.core.utils.gene_sets import (

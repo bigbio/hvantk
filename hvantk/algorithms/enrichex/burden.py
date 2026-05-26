@@ -42,41 +42,11 @@ except ModuleNotFoundError as exc:  # pragma: no cover - depends on env
 else:
     _HAIL_IMPORT_ERROR = None
 
-from hvantk.algorithms.enrichex.constants import (
-    VARIANT_CLASS_PRESETS,
-    _DEPRECATED_AGGREGATION_ALIASES,
-)
+from hvantk.algorithms.enrichex.constants import VARIANT_CLASS_PRESETS
 from hvantk.core.models.backends import algorithm, Backend
 from hvantk.core.utils.table_utils import field_exists, resolve_field
 
 logger = logging.getLogger(__name__)
-
-
-def _resolve_genotype_aggregation(method: str) -> str:
-    """Resolve deprecated genotype aggregation aliases to current names.
-
-    Parameters
-    ----------
-    method : str
-        Genotype aggregation method name (may be deprecated alias).
-
-    Returns
-    -------
-    str
-        Resolved method name.
-    """
-    if method in _DEPRECATED_AGGREGATION_ALIASES:
-        new_name = _DEPRECATED_AGGREGATION_ALIASES[method]
-        warnings.warn(
-            f"Genotype aggregation '{method}' is deprecated, use '{new_name}' instead. "
-            f"'{method}' approximates compound heterozygosity by counting genes with "
-            f">= 2 heterozygous qualifying variants; this over-counts when variants "
-            f"are in cis. For true compound-het calling, use phased genotypes.",
-            DeprecationWarning,
-            stacklevel=3,
-        )
-        return new_name
-    return method
 
 
 def _require_hail() -> None:
@@ -298,7 +268,6 @@ def compute_geneset_burden_mt(
         Row field containing gene symbol.
     genotype_aggregation : str
         One of "hets", "homs", "multi_het", "homs_multi_het".
-        Deprecated aliases "chets" and "homs_chets" are accepted with a warning.
         "multi_het" counts genes with >= 2 heterozygous qualifying variants
         (approximates compound-het; over-counts when variants are in cis).
     variant_filter : VariantFilter, optional
@@ -347,9 +316,6 @@ def compute_geneset_burden_mt(
     >>> mt_burden = compute_geneset_burden_mt(mt, gene_sets, variant_filter=vf)
     """
     _require_hail()
-
-    # Resolve deprecated aliases
-    genotype_aggregation = _resolve_genotype_aggregation(genotype_aggregation)
 
     # Pre-filter gene sets by minimum size
     if min_gene_set_size > 0:
@@ -1530,8 +1496,6 @@ def permutation_burden_test(
     logger.info("  Permutations: %d", n_permutations)
     logger.info("  Length matched: %s", length_matched)
 
-    # Resolve deprecated aliases
-    genotype_aggregation = _resolve_genotype_aggregation(genotype_aggregation)
     valid_methods = ["hets", "homs", "multi_het", "homs_multi_het"]
     if genotype_aggregation not in valid_methods:
         raise ValueError(

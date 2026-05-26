@@ -21,12 +21,6 @@ DEFAULT_GENE_FIELD = "SYMBOL"
 # Genotype aggregation methods
 GENOTYPE_AGGREGATION_METHODS = ["hets", "homs", "multi_het", "homs_multi_het"]
 
-# Deprecated aliases (mapped to new names)
-_DEPRECATED_AGGREGATION_ALIASES = {
-    "chets": "multi_het",
-    "homs_chets": "homs_multi_het",
-}
-
 # Default variant class presets for stratified burden analysis.
 # Consequence terms should match the values in the user's MT consequence field.
 # These use common VEP Sequence Ontology terms; adjust if your annotation
