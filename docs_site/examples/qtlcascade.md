@@ -1,7 +1,5 @@
 # QTL Cascade Example
 
-> **Heads up — build examples need refresh.** Sections that show `hvantk mktable eqtl` / `hvantk mktable pqtl` reference retired CLIs. The unified replacement is `hvantk reprocess <plugin>:<dataset>` — see the [Usage Guide](../guide/usage.md#1-build-a-dataset-with-hvantk-reprocess).
-
 This page demonstrates the QTL cascade pipeline for tracing variant effects from DNA to RNA (eQTL) to protein (pQTL).
 
 ## Overview
@@ -16,21 +14,25 @@ The QTL cascade pipeline:
 ## Quick Start (CLI)
 
 ```bash
-# Step 1: Build eQTL table from GTEx v11 significant pairs
-hvantk mktable eqtl \
-  --raw-input /data/gtex_v11/signif_pairs/Liver.v11.signif_pairs.parquet \
-  --output-ht /data/tables/eqtl_liver.ht \
-  --source gtex_v11 \
-  --tissue Liver
+# Step 1: Build eQTL table from GTEx v11 significant pairs.
+# Place Liver.v11.signif_pairs.parquet under /data/gtex_v11/signif_pairs/.
+hvantk reprocess gtex-eqtl:eqtls \
+  --raw-dir /data/gtex_v11/signif_pairs/ \
+  --output /data/tables/eqtl_liver.ht \
+  --skip-download \
+  --plugin-arg source=gtex_v11 \
+  --plugin-arg tissue=Liver
 
-# Step 2: Build pQTL table from Fang et al. allpairs
-hvantk mktable pqtl \
-  --raw-input /data/fang_pqtl/Liver_allpairs.txt.gz \
-  --output-ht /data/tables/pqtl_liver.ht \
-  --source gtex_fang \
-  --tissue Liver \
-  --gene-map-ht /data/tables/ensembl_gene.ht \
-  --p-threshold 5e-8
+# Step 2: Build pQTL table from Fang et al. allpairs.
+# Place Liver_allpairs.txt.gz under /data/fang_pqtl/.
+hvantk reprocess pqtl:metrics \
+  --raw-dir /data/fang_pqtl/ \
+  --output /data/tables/pqtl_liver.ht \
+  --skip-download \
+  --plugin-arg source=gtex_fang \
+  --plugin-arg tissue=Liver \
+  --plugin-arg hgnc_ht=/data/tables/ensembl_gene.ht \
+  --plugin-arg p_threshold=5e-8
 
 # Step 3: Run the cascade pipeline
 hvantk qtlcascade run \
@@ -83,17 +85,22 @@ print(f"Class counts: {result.class_counts}")
 To distinguish true signal propagation from LD artifacts, provide allpairs tables for coloc:
 
 ```bash
-# Build allpairs tables (set p-threshold to 0 to keep all variants)
-hvantk mktable eqtl \
-  --raw-input /data/gtex_v11/allpairs/Liver/ \
-  --output-ht /data/tables/eqtl_allpairs_liver.ht \
-  --source gtex_v11 --tissue Liver --p-threshold 0
+# Build allpairs tables (set p_threshold to 0 to keep all variants)
+hvantk reprocess gtex-eqtl:eqtls \
+  --raw-dir /data/gtex_v11/allpairs/Liver/ \
+  --output /data/tables/eqtl_allpairs_liver.ht \
+  --skip-download \
+  --plugin-arg source=gtex_v11 \
+  --plugin-arg tissue=Liver \
+  --plugin-arg p_threshold=0
 
-hvantk mktable pqtl \
-  --raw-input /data/fang_pqtl/Liver_allpairs.txt.gz \
-  --output-ht /data/tables/pqtl_allpairs_liver.ht \
-  --source gtex_fang --tissue Liver \
-  --gene-map-ht /data/tables/ensembl_gene.ht
+hvantk reprocess pqtl:metrics \
+  --raw-dir /data/fang_pqtl/ \
+  --output /data/tables/pqtl_allpairs_liver.ht \
+  --skip-download \
+  --plugin-arg source=gtex_fang \
+  --plugin-arg tissue=Liver \
+  --plugin-arg hgnc_ht=/data/tables/ensembl_gene.ht
 
 # Run pipeline with coloc
 hvantk qtlcascade run \

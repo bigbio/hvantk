@@ -336,14 +336,16 @@ def test_reprocess_plugin_arg_forwarded_to_download_and_parse(
         ],
     )
     assert result.exit_code == 0, result.output
+    # --plugin-arg values are coerced: 'true'/'false' -> bool, numeric strings
+    # -> int/float. 'brca' stays str because it matches no other type.
     download.assert_called_once_with(
-        raw_dir=str(raw), cancer_type="brca", overwrite="true"
+        raw_dir=str(raw), cancer_type="brca", overwrite=True
     )
     parse.assert_called_once_with(
         raw_dir=str(raw),
         output_path=str(intermediate),
         cancer_type="brca",
-        overwrite="true",
+        overwrite=True,
     )
 
 
@@ -378,15 +380,22 @@ def test_reprocess_phase_b_plugin_uses_run_builder_for_spec(
     tmp_path: Path, monkeypatch
 ):
     """A spec with artifact_type set should route through run_builder_for_spec
-    (which uses BuildContext), not the legacy spec.builder(input, output) shape."""
+    (which uses BuildContext), not the legacy spec.builder(input, output) shape.
+
+    Also guards that --plugin-arg values reach the Phase B builder with type
+    coercion applied — regressing this would silently drop build-time params
+    (reference_genome, p_threshold, tissue, ...) and break the deep-dive docs.
+    """
     import pandas as pd
     from hvantk.core.models import AnnotationTable, BuildContext
 
     # Real Phase B-style builder accepting (parsed, ctx, **params)
     captured_ctx: dict = {}
+    captured_params: dict = {}
 
     def phase_b_builder(parsed, ctx, **params):
         captured_ctx["ctx"] = ctx
+        captured_params.update(params)
         df = pd.DataFrame({"x": [1, 2, 3]})
         return AnnotationTable.from_pandas(
             df, provenance=ctx.provenance(schema_id="test-rows-v1")
@@ -413,6 +422,12 @@ def test_reprocess_phase_b_plugin_uses_run_builder_for_spec(
             "--output",
             str(output),
             "--skip-download",
+            "--plugin-arg",
+            "reference_genome=GRCh38",
+            "--plugin-arg",
+            "p_threshold=5e-8",
+            "--plugin-arg",
+            "overwrite=false",
             "--no-check-drift",
         ],
     )
@@ -421,6 +436,10 @@ def test_reprocess_phase_b_plugin_uses_run_builder_for_spec(
     # Confirm the builder got a real BuildContext (not a string)
     assert isinstance(captured_ctx["ctx"], BuildContext)
     assert captured_ctx["ctx"].source_fingerprint  # nonempty
+    # Confirm --plugin-arg values reached the Phase B builder with coercion
+    assert captured_params["reference_genome"] == "GRCh38"
+    assert captured_params["p_threshold"] == 5e-8
+    assert captured_params["overwrite"] is False
     # Confirm the artifact was saved (file exists + sidecar manifest exists)
     assert output.exists()
     assert output.with_name(output.name + ".provenance.json").exists()

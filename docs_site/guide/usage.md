@@ -2,7 +2,7 @@
 
 This guide covers how to build datasets and run analysis tools in hvantk.
 
-> **Heads up:** hvantk recently retired the `mktable` and `mkmatrix` CLIs. The unified replacement is `hvantk reprocess <plugin>:<dataset>`, which runs the full Phase B pipeline (download → parse → build → drift check → save with provenance). Tutorial pages under `docs_site/guide/` and `docs_site/tools/` that still reference `mktable` / `mkmatrix` are being refreshed; see section 1 below for the current pattern.
+> **Migration note:** hvantk has retired the `mktable` and `mkmatrix` CLIs. The unified replacement is `hvantk reprocess <plugin>:<dataset>`, which runs the full Phase B pipeline (download → parse → build → drift check → save with provenance). See section 1 below for the current pattern.
 
 If you haven't installed hvantk yet, see the main README for install steps.
 
@@ -62,8 +62,6 @@ hvantk reprocess cptac:expression \
   --output /out/cptac_brca.h5ad \
   --plugin-arg cancer_type=brca
 ```
-
-> The deep-dive per-source tutorials under [Data Sources](data-sources.md) and the `tools/` pages still reference the retired `mktable` / `mkmatrix` CLIs; they will be rewritten in a follow-up. Use the patterns above for new work.
 
 ## 2) Ancestry Inference
 
@@ -293,7 +291,7 @@ The command auto-detects whether the file is already BGZF and skips conversion i
 - For JSON vs YAML: JSON works out of the box; YAML recipes require `PyYAML` installed.
 - For UCSC, gene labels may be pipe-delimited (e.g., A|B); `--split-gene-field` defaults to true.
 - MatrixTables typically store sample/cell metadata under `mt.col_key` and cols metadata; inspect with `mt.describe()` in Python or logs from CLI.
-- **gzip vs BGZF**: Hail reads standard gzip files single-threaded, which is significantly slower for large files. Convert to BGZF with `--auto-convert-bgz` or `hvantk utils convert-bgz` for parallel import.
+- **gzip vs BGZF**: Hail reads standard gzip files single-threaded, which is significantly slower for large files. Pre-convert with `hvantk utils convert-bgz <file.gz>` for parallel import before running `hvantk reprocess`.
 
 ## See also
 
