@@ -5,7 +5,7 @@ Tests for HGC CLI pipeline command.
 from unittest.mock import patch, MagicMock
 from click.testing import CliRunner
 
-from hvantk.commands.hgc.pipeline_cli import pipeline
+from hvantk.tools.hgc.pipeline_cli import pipeline
 
 
 def test_pipeline_cli_basic():
@@ -17,8 +17,8 @@ def test_pipeline_cli_basic():
         os.makedirs("input_dir")
         os.makedirs("output_dir")
 
-        with patch("hvantk.hgc.pipeline.PipelineConfig") as mock_config:
-            with patch("hvantk.hgc.pipeline.PipelineRunner") as mock_runner:
+        with patch("hvantk.algorithms.hgc.pipeline.PipelineConfig") as mock_config:
+            with patch("hvantk.algorithms.hgc.pipeline.PipelineRunner") as mock_runner:
                 # Mock configuration
                 mock_cfg_instance = MagicMock()
                 mock_cfg_instance.validate.return_value = []
@@ -53,7 +53,7 @@ def test_pipeline_cli_validation_failure():
         os.makedirs("input_dir")
         os.makedirs("output_dir")
 
-        with patch("hvantk.hgc.pipeline.PipelineConfig") as mock_config:
+        with patch("hvantk.algorithms.hgc.pipeline.PipelineConfig") as mock_config:
             mock_cfg_instance = MagicMock()
             mock_cfg_instance.validate.return_value = ["Missing required parameter"]
             mock_config.return_value = mock_cfg_instance
@@ -77,8 +77,8 @@ def test_pipeline_cli_dry_run():
         os.makedirs("input_dir")
         os.makedirs("output_dir")
 
-        with patch("hvantk.hgc.pipeline.PipelineConfig") as mock_config:
-            with patch("hvantk.hgc.pipeline.PipelineRunner") as mock_runner:
+        with patch("hvantk.algorithms.hgc.pipeline.PipelineConfig") as mock_config:
+            with patch("hvantk.algorithms.hgc.pipeline.PipelineRunner") as mock_runner:
                 mock_cfg_instance = MagicMock()
                 mock_cfg_instance.validate.return_value = []
                 mock_config.return_value = mock_cfg_instance
@@ -111,8 +111,8 @@ def test_pipeline_cli_with_errors():
         os.makedirs("input_dir")
         os.makedirs("output_dir")
 
-        with patch("hvantk.hgc.pipeline.PipelineConfig") as mock_config:
-            with patch("hvantk.hgc.pipeline.PipelineRunner") as mock_runner:
+        with patch("hvantk.algorithms.hgc.pipeline.PipelineConfig") as mock_config:
+            with patch("hvantk.algorithms.hgc.pipeline.PipelineRunner") as mock_runner:
                 mock_cfg_instance = MagicMock()
                 mock_cfg_instance.validate.return_value = []
                 mock_config.return_value = mock_cfg_instance
@@ -142,8 +142,8 @@ def test_pipeline_cli_custom_options():
         os.makedirs("input_dir")
         os.makedirs("output_dir")
 
-        with patch("hvantk.hgc.pipeline.PipelineConfig") as mock_config:
-            with patch("hvantk.hgc.pipeline.PipelineRunner") as mock_runner:
+        with patch("hvantk.algorithms.hgc.pipeline.PipelineConfig") as mock_config:
+            with patch("hvantk.algorithms.hgc.pipeline.PipelineRunner") as mock_runner:
                 mock_cfg_instance = MagicMock()
                 mock_cfg_instance.validate.return_value = []
                 mock_config.return_value = mock_cfg_instance
@@ -190,8 +190,8 @@ def test_pipeline_cli_skip_stages():
         os.makedirs("input_dir")
         os.makedirs("output_dir")
 
-        with patch("hvantk.hgc.pipeline.PipelineConfig") as mock_config:
-            with patch("hvantk.hgc.pipeline.PipelineRunner") as mock_runner:
+        with patch("hvantk.algorithms.hgc.pipeline.PipelineConfig") as mock_config:
+            with patch("hvantk.algorithms.hgc.pipeline.PipelineRunner") as mock_runner:
                 mock_cfg_instance = MagicMock()
                 mock_cfg_instance.validate.return_value = []
                 mock_config.return_value = mock_cfg_instance

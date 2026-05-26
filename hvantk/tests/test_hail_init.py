@@ -1,7 +1,7 @@
 import os
 import hail as hl
 import pytest
-from hvantk.core.hail_context import (
+from hvantk.core.utils.hail_context import (
     init_hail,
     hail_initialized,
     get_hail_init_args,

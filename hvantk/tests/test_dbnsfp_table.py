@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from hvantk.tables.table_builders import create_dbnsfp_tb
+from hvantk.core.builders.table import create_dbnsfp_tb
 
 # Mark as Hail-dependent and slow
 pytestmark = [pytest.mark.hail, pytest.mark.slow]

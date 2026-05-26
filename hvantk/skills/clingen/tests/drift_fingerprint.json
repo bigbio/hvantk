@@ -1,0 +1,22 @@
+{
+  "probe_version": 1,
+  "source_version": null,
+  "headers": {
+    "Clingen-Gene-Disease-Summary.csv": [
+      "GENE SYMBOL",
+      "GENE ID (HGNC)",
+      "DISEASE LABEL",
+      "DISEASE ID (MONDO)",
+      "MOI",
+      "SOP",
+      "CLASSIFICATION",
+      "ONLINE REPORT",
+      "CLASSIFICATION DATE",
+      "GCEP"
+    ]
+  },
+  "checksums": {
+    "Clingen-Gene-Disease-Summary.csv": "placeholder-regenerate-from-live-source"
+  },
+  "fetched_at": "2026-05-16T00:00:00+00:00"
+}

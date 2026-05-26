@@ -4,7 +4,7 @@
 import pytest
 import logging
 from unittest.mock import Mock, patch
-from hvantk.annotation.annotation_pipeline import (
+from hvantk.algorithms.annotation.annotation_pipeline import (
     AnnotationConfig,
     FlexibleAnnotationStreamer,
     AnnotationRegistry,
@@ -12,7 +12,7 @@ from hvantk.annotation.annotation_pipeline import (
     create_flexible_pipeline,
     add_custom_annotation,
 )
-from hvantk.data.clinvar_streamer import ClinvarDataStreamer
+from hvantk.core.utils.clinvar_streamer import ClinvarDataStreamer
 import hail as hl
 
 logging.basicConfig(level=logging.INFO)
@@ -222,7 +222,7 @@ class TestRealWorldScenarios:
         """Test that new framework doesn't break existing functionality"""
 
         # Original hard-coded approach should still work
-        from hvantk.annotation.annotation_streamer import VariantPredictionScoreStreamer
+        from hvantk.algorithms.annotation.annotation_streamer import VariantPredictionScoreStreamer
 
         # New flexible approach
         flexible_config = AnnotationConfig(

@@ -1,0 +1,19 @@
+{
+  "probe_version": 1,
+  "source_version": "2026.1.Mm",
+  "headers": {
+    "index.jsp": [
+      "release_version"
+    ]
+  },
+  "checksums": {
+    "index.jsp": "b8725e3ca29c67945c82c49e03948bd12a8d7dc41be8d57fc735c9f25f5a614c"
+  },
+  "fetched_at": "2026-05-18T10:21:22.472826+00:00",
+  "extras": {
+    "versions_found": [
+      "2026.1.Hs",
+      "2026.1.Mm"
+    ]
+  }
+}

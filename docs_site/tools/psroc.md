@@ -1,5 +1,7 @@
 # PSROC: Prediction Score ROC Analysis
 
+> **Heads up — build examples need refresh.** Sections that show `hvantk mktable clinvar` / `hvantk mktable dbnsfp` / `hvantk mktable clingen-gene-disease` reference retired CLIs. The unified replacement is `hvantk reprocess <plugin>:<dataset>` — see the [Usage Guide](../guide/usage.md#1-build-a-dataset-with-hvantk-reprocess). PSROC commands on this page (`hvantk psroc ...`) are unaffected.
+
 PSROC is a module within hvantk that evaluates variant pathogenicity prediction scores using ROC (Receiver Operating Characteristic) curve analysis. It compares prediction scores from databases like dbNSFP against ClinVar truth labels to assess their discriminative power.
 
 ![PS-ROC workflow](../images/hvantk-psroc-workflow.svg)

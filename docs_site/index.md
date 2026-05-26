@@ -14,7 +14,6 @@
 - **Ancestry inference** — PCA + Random Forest classification ([Ancestry](tools/ancestry.md))
 - **Enrichment analysis** — overlap and burden testing ([EnrichEx](tools/enrichex.md))
 - **Score evaluation** — pathogenicity score ROC analysis ([PS-ROC](tools/psroc.md))
-- **Recipe-based batch processing** — JSON/YAML recipes for automation
 
 ## Get Started
 
@@ -23,7 +22,7 @@
 
 ## Documentation
 
-- [Building Tables](guide/usage.md) — examples and recipes
+- [Building Tables](guide/usage.md) — usage examples
 - [Data Sources](guide/data-sources.md) — available data sources and acquisition
 - [Architecture](architecture.md) — design and extension points
 - [Examples](examples/index.md) — end-to-end workflow examples

@@ -3,7 +3,7 @@
 import pytest
 import numpy as np
 
-from hvantk.enrichex.simulation import (
+from hvantk.algorithms.enrichex.simulation import (
     generate_synthetic_burden_cohort,
     check_type_i_error,
 )

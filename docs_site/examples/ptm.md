@@ -1,5 +1,7 @@
 # PTM (Post-Translational Modification) Variant Classification Example
 
+> **Heads up — prerequisite build example needs refresh.** The ClinVar prerequisite below references the retired `hvantk mktable clinvar` CLI. Use `hvantk reprocess clinvar:variants --raw-dir <dir> --output <path>` instead — see the [Usage Guide](../guide/usage.md#1-build-a-dataset-with-hvantk-reprocess). PTM-specific commands (`hvantk ptm ...`) on this page are unaffected.
+
 This page walks through the end-to-end PTM pipeline: building a PTM sites table, annotating variants, running landscape and population analyses, and generating a report.
 
 ## Overview

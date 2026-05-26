@@ -14,6 +14,7 @@ dependencies:
       - requests
       - tqdm
       - pandas
+      - pyarrow>=14  # parquet engine for AnnotationTable(backend="pandas") via core/io
       - numpy
       - matplotlib
       - seaborn
@@ -28,3 +29,5 @@ dependencies:
       - psutil
       - scikit-learn
       - tspex
+      - requests-mock  # offline HTTP stubs for plugin drift_probe tests
+      - jsonschema  # plugin.yaml manifest validation

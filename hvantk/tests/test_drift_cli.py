@@ -1,0 +1,82 @@
+"""Tests for `hvantk drift ...` Click commands."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+from click.testing import CliRunner
+
+from hvantk.core.plugin import loader as plugin_loader
+from hvantk.tools.plugins.drift_cli import drift_cmd
+
+
+FIXTURE_ROOT = Path(__file__).parent / "testdata" / "raw" / "plugins"
+
+
+@pytest.fixture(autouse=True)
+def reset_registry(monkeypatch):
+    plugin_loader.reset_registry_for_tests()
+    reg = plugin_loader.PluginRegistry()
+    reg.load_from_directory(FIXTURE_ROOT / "fake_plugin")
+    monkeypatch.setattr(plugin_loader, "get_registry", lambda: reg)
+
+
+def test_drift_clean_exit_zero():
+    runner = CliRunner()
+    result = runner.invoke(drift_cmd, ["fake:default"])
+    assert result.exit_code == 0
+    assert "clean" in result.output.lower()
+
+
+def test_drift_all_runs_every_dataset():
+    runner = CliRunner()
+    result = runner.invoke(drift_cmd, ["--all"])
+    assert result.exit_code == 0
+    assert "fake:default" in result.output
+
+
+def test_drift_json_output_is_parseable():
+    runner = CliRunner()
+    result = runner.invoke(drift_cmd, ["--json", "fake:default"])
+    assert result.exit_code == 0
+    parsed = json.loads(result.output)
+    # --json with a single dataset returns a list with one entry (matches --all behavior).
+    assert isinstance(parsed, list)
+    assert parsed[0]["dataset_name"] == "fake:default"
+    assert parsed[0]["status"] == "clean"
+
+
+def test_drift_regenerate_overwrites_fingerprint(tmp_path: Path, monkeypatch):
+    # Point the fixture at a tmpdir-copy so we don't mutate the test asset.
+    import shutil
+    plugin_dir = tmp_path / "fake_plugin"
+    shutil.copytree(FIXTURE_ROOT / "fake_plugin", plugin_dir)
+    plugin_loader.reset_registry_for_tests()
+    reg = plugin_loader.PluginRegistry()
+    reg.load_from_directory(plugin_dir)
+    monkeypatch.setattr(plugin_loader, "get_registry", lambda: reg)
+    fp_path = plugin_dir / "tests" / "drift_fingerprint.json"
+    old = json.loads(fp_path.read_text())
+    # Mutate the expected file so a regenerate visibly changes it.
+    fp_path.write_text(json.dumps({"probe_version": 1, "stale": True}))
+    runner = CliRunner()
+    result = runner.invoke(drift_cmd, ["--regenerate", "fake:default"])
+    assert result.exit_code == 0
+    new = json.loads(fp_path.read_text())
+    assert "stale" not in new
+    assert new["probe_version"] == old["probe_version"]
+
+
+def test_unknown_dataset_returns_registry_error_exit_code():
+    runner = CliRunner()
+    result = runner.invoke(drift_cmd, ["does:not:exist"])
+    assert result.exit_code == 3  # EXIT_REGISTRY_ERROR
+    assert "unknown dataset" in result.output.lower() or "unknown dataset" in (result.stderr or "")
+
+
+def test_regenerate_unknown_dataset_returns_registry_error_exit_code():
+    runner = CliRunner()
+    result = runner.invoke(drift_cmd, ["--regenerate", "does:not:exist"])
+    assert result.exit_code == 3

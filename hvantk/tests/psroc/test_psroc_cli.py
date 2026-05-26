@@ -11,7 +11,7 @@ from unittest.mock import patch, MagicMock
 
 from click.testing import CliRunner
 
-from hvantk.commands.psroc_cli import psroc_cmd, _parse_comma_separated
+from hvantk.tools.ptm.psroc_cli import psroc_cmd, _parse_comma_separated
 
 
 class TestParseCommaSeparated:
@@ -250,8 +250,8 @@ class TestPSROCCLIValidation:
 class TestPSROCCLIDryRun:
     """Test CLI dry-run functionality."""
 
-    @patch("hvantk.psroc.pipeline.PSROCPipeline")
-    @patch("hvantk.psroc.pipeline.PSROCConfig")
+    @patch("hvantk.algorithms.psroc.pipeline.PSROCPipeline")
+    @patch("hvantk.algorithms.psroc.pipeline.PSROCConfig")
     def test_dry_run_shows_plan(self, mock_config_cls, mock_pipeline_cls):
         """Test that --dry-run shows execution plan without running."""
         runner = CliRunner()
@@ -306,8 +306,8 @@ class TestPSROCCLIOptions:
         scores = _parse_comma_separated("CADD_phred,REVEL_score")
         assert scores == ["CADD_phred", "REVEL_score"]
 
-    @patch("hvantk.psroc.pipeline.PSROCPipeline")
-    @patch("hvantk.psroc.pipeline.PSROCConfig")
+    @patch("hvantk.algorithms.psroc.pipeline.PSROCPipeline")
+    @patch("hvantk.algorithms.psroc.pipeline.PSROCConfig")
     def test_max_missingness_passed_to_config(self, mock_config_cls, mock_pipeline_cls):
         """Test that max_missingness is passed to config."""
         runner = CliRunner()
@@ -348,8 +348,8 @@ class TestPSROCCLIOptions:
             call_kwargs = mock_config_cls.call_args[1]
             assert call_kwargs["max_missingness"] == 0.5
 
-    @patch("hvantk.psroc.pipeline.PSROCPipeline")
-    @patch("hvantk.psroc.pipeline.PSROCConfig")
+    @patch("hvantk.algorithms.psroc.pipeline.PSROCPipeline")
+    @patch("hvantk.algorithms.psroc.pipeline.PSROCConfig")
     def test_no_plots_flag(self, mock_config_cls, mock_pipeline_cls):
         """Test that --no-plots sets generate_plots=False."""
         runner = CliRunner()
@@ -388,8 +388,8 @@ class TestPSROCCLIOptions:
             call_kwargs = mock_config_cls.call_args[1]
             assert call_kwargs["generate_plots"] is False
 
-    @patch("hvantk.psroc.pipeline.PSROCPipeline")
-    @patch("hvantk.psroc.pipeline.PSROCConfig")
+    @patch("hvantk.algorithms.psroc.pipeline.PSROCPipeline")
+    @patch("hvantk.algorithms.psroc.pipeline.PSROCConfig")
     def test_export_tsv_flag(self, mock_config_cls, mock_pipeline_cls):
         """Test that --export-tsv sets export_tsv=True."""
         runner = CliRunner()
@@ -432,8 +432,8 @@ class TestPSROCCLIOptions:
 class TestPSROCCLIVariantSources:
     """Test different variant source options."""
 
-    @patch("hvantk.psroc.pipeline.PSROCPipeline")
-    @patch("hvantk.psroc.pipeline.PSROCConfig")
+    @patch("hvantk.algorithms.psroc.pipeline.PSROCPipeline")
+    @patch("hvantk.algorithms.psroc.pipeline.PSROCConfig")
     def test_genes_option(self, mock_config_cls, mock_pipeline_cls):
         """Test using --genes option."""
         runner = CliRunner()
@@ -473,8 +473,8 @@ class TestPSROCCLIVariantSources:
             assert call_kwargs["genes_file"] is None
             assert call_kwargs["variants_path"] is None
 
-    @patch("hvantk.psroc.pipeline.PSROCPipeline")
-    @patch("hvantk.psroc.pipeline.PSROCConfig")
+    @patch("hvantk.algorithms.psroc.pipeline.PSROCPipeline")
+    @patch("hvantk.algorithms.psroc.pipeline.PSROCConfig")
     def test_genes_file_option(self, mock_config_cls, mock_pipeline_cls):
         """Test using --genes-file option."""
         runner = CliRunner()
@@ -516,8 +516,8 @@ class TestPSROCCLIVariantSources:
             assert call_kwargs["genes_file"] == str(genes_file)
             assert call_kwargs["variants_path"] is None
 
-    @patch("hvantk.psroc.pipeline.PSROCPipeline")
-    @patch("hvantk.psroc.pipeline.PSROCConfig")
+    @patch("hvantk.algorithms.psroc.pipeline.PSROCPipeline")
+    @patch("hvantk.algorithms.psroc.pipeline.PSROCConfig")
     def test_variants_option(self, mock_config_cls, mock_pipeline_cls):
         """Test using --variants option."""
         runner = CliRunner()

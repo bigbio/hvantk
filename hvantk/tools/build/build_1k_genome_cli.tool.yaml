@@ -1,0 +1,19 @@
+api_version: 1
+name: build-1k-genome
+domain: build
+type: command
+description: Build a Hail MatrixTable from local 1000 Genomes VCF files.
+cli:
+  module: hvantk.tools.build.build_1k_genome_cli
+  function: build_1k_genome_cmd
+purpose:
+  short: Import per-chromosome bgzipped+tabix-indexed 1000G VCFs into a Hail MT.
+  long: |
+    Walks a directory of `.vcf.gz` files (with `.vcf.gz.tbi` indexes), imports
+    them with Hail, optionally joins a sample annotations file, and writes a
+    single MatrixTable. Supports per-chromosome subsetting and pre-conversion
+    of gzip-family files to clean BGZF when Hail throws ZipException on import.
+    Source URL is reference-only — the command does not download.
+requires:
+  hail: true
+  network: false

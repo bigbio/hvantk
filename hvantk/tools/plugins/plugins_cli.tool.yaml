@@ -1,0 +1,38 @@
+api_version: 1
+name: plugins
+domain: plugins
+type: command_group
+description: Inspect the hvantk plugin registry.
+cli:
+  module: hvantk.tools.plugins.plugins_cli
+  function: plugins_group
+purpose:
+  short: Discover, describe, and validate hvantk data-provider plugins.
+  long: |
+    The plugins tool surfaces the plugin registry's contents. Each subcommand
+    targets one inspection task: list every loaded provider, describe one
+    in detail, dump per-plugin load errors, or validate a manifest offline.
+subcommands:
+  - name: list
+    description: Tabular list of loaded providers
+    outputs: ["stdout: NAME / VERSION / DATASETS columns"]
+  - name: describe
+    description: Full details for one provider
+    inputs:
+      - name: provider
+        type: str
+        required: true
+        description: Provider name (e.g., clinvar, cptac)
+    outputs: ["stdout: provider details + dataset summary"]
+  - name: errors
+    description: Print all plugin load errors with cause
+  - name: validate
+    description: Validate a plugin.yaml file against the manifest schema
+    inputs:
+      - name: manifest_path
+        type: path
+        required: true
+        description: Absolute or relative path to a plugin.yaml file
+requires:
+  hail: false
+  network: false

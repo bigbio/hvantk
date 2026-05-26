@@ -8,8 +8,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from click.testing import CliRunner
 
-from hvantk.commands.build_1k_genome_cli import build_1k_genome_cmd
-from hvantk.tables.genome_builders import _extract_chrom_token, discover_vcf_files
+from hvantk.tools.build.build_1k_genome_cli import build_1k_genome_cmd
+from hvantk.core.builders.genome import _extract_chrom_token, discover_vcf_files
 
 
 def _make_vcf_dir(
@@ -76,7 +76,7 @@ def test_cli_basic_invocation(tmp_path):
 
     runner = CliRunner()
     with patch(
-        "hvantk.commands.build_1k_genome_cli._build_1k_genome_mt",
+        "hvantk.tools.build.build_1k_genome_cli._build_1k_genome_mt",
         return_value=mock_mt,
     ) as mock_build:
         result = runner.invoke(
@@ -109,7 +109,7 @@ def test_cli_all_options(tmp_path):
 
     runner = CliRunner()
     with patch(
-        "hvantk.commands.build_1k_genome_cli._build_1k_genome_mt",
+        "hvantk.tools.build.build_1k_genome_cli._build_1k_genome_mt",
         return_value=mock_mt,
     ) as mock_build:
         result = runner.invoke(
@@ -150,7 +150,7 @@ def test_cli_sample_annotations_delimiter(tmp_path):
 
     runner = CliRunner()
     with patch(
-        "hvantk.commands.build_1k_genome_cli._build_1k_genome_mt",
+        "hvantk.tools.build.build_1k_genome_cli._build_1k_genome_mt",
         return_value=mock_mt,
     ) as mock_build:
         result = runner.invoke(

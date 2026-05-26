@@ -5,7 +5,7 @@ Tests for HGC CLI utilities.
 import os
 from unittest.mock import patch
 
-from hvantk.commands.hgc.utils import (
+from hvantk.tools.hgc.utils import (
     setup_logging_for_hgc,
     expand_file_patterns,
     validate_input_files,
@@ -48,7 +48,7 @@ def test_expand_file_patterns(tmp_path):
     assert len(expanded) == 0
 
 
-@patch("hvantk.commands.hgc.utils.check_path_exists_and_readable")
+@patch("hvantk.tools.hgc.utils.check_path_exists_and_readable")
 def test_validate_input_files_gvcf(mock_check):
     """Test input file validation for GVCF files."""
     mock_check.return_value = True
@@ -67,7 +67,7 @@ def test_validate_input_files_gvcf(mock_check):
     assert "File not found" in errors[0]
 
 
-@patch("hvantk.commands.hgc.utils.validate_vds_paths")
+@patch("hvantk.tools.hgc.utils.validate_vds_paths")
 def test_validate_input_files_vds(mock_validate):
     """Test input file validation for VDS files."""
     mock_validate.return_value = True

@@ -169,8 +169,8 @@ def main(output_dir: str = "./examples/ancestry/results") -> int:
     # =========================================================================
     print("Loading hvantk modules...")
     try:
-        from hvantk.core.hail_context import init_hail
-        from hvantk.ancestry import (
+        from hvantk.core.utils.hail_context import init_hail
+        from hvantk.algorithms.ancestry import (
             run_ancestry_inference,
             PipelineConfig,
             SUPERPOP_COLORS,

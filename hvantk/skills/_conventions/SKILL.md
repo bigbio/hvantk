@@ -1,34 +1,34 @@
 ---
 name: hvantk:conventions
-description: Conventions every hvantk resource skill assumes. Read first.
+description: Conventions every hvantk plugin assumes. Read first.
 status: provisional
 ---
 
-# hvantk Resource Conventions
+# hvantk Plugin Conventions
 
-These conventions apply to every per-resource skill. Per-resource skills MAY assume everything below without restating it.
+These conventions apply to every per-resource plugin under `hvantk/skills/`. Per-resource skills MAY assume everything below without restating it.
 
 ## 1. Repository map
 
-- `hvantk/tables/` — Hail Table builders, including `_create_table_base()` (the boilerplate helper)
-- `hvantk/tables/matrix_builders.py` — MatrixTable / anndata builders
-- `hvantk/tables/registry.py` — recipe-system registration via `create_table_adapter()`
-- `hvantk/commands/` — Click CLI entry points; `make_table_cli.py` and `make_matrix_cli.py` are the dispatch hubs
-- `hvantk/datasets/` — provider-specific dataset classes (download + versioning)
-- `hvantk/resources/catalog.yaml` — provider catalog (URLs, version cadence, license)
-- `hvantk/resources/registry/<domain>/datasets.json` — per-domain JSON registry with one entry per dataset (find your source by `accession` or `title`)
-- `hvantk/core/hail_context.py` — Hail initialization (idempotent, thread-safe)
-- `hvantk/tests/testdata/raw/<source>/` — fixtures
-- `hvantk/tests/snapshots/<source>/` — schema + sample rows snapshots
-- `hvantk/skills/<source>/SKILL.md` — per-resource skill
+- `hvantk/skills/<provider>/` — the plugin folder. Contains `plugin.yaml`, `builder.py`, `cli.py`, `drift_probe.py`, `SKILL.md`, and `tests/`.
+- `hvantk/skills/<provider>/<dataset>/` — for providers that ship more than one dataset (e.g., `cptac/expression/`, `cptac/phospho/`). One `plugin.yaml` per provider declares all datasets; each dataset folder owns its builder, drift probe, CLI, and tests.
+- `hvantk/skills/<provider>/shared/` — code reused across two or more datasets in the same provider (e.g., the shared CPTAC dataset class).
+- `hvantk/skills/_conventions/SKILL.md` — this file. The shared contract.
+- `hvantk/core/builders/table.py` — still the home of generic helpers (`_create_table_base`, `_cleanup_temp_file`, `_parse_insider_bed_to_temp_tsv`) and of non-migrated builders. Plugins import the helpers; they do not add new top-level builders here.
+- `hvantk/core/plugin/registry.py` — recipe-system registry. The plugin loader populates `TABLE_BUILDERS` / `MATRIX_BUILDERS` automatically; hand-written `create_table_adapter()` calls are deprecated for migrated providers.
+- `hvantk/core/plugin/api.py`, `hvantk/core/plugin/loader.py` — plugin schema, discovery (filesystem + Python entry points), and lifecycle wiring.
+- `hvantk/tools/` — top-level CLI (`hvantk plugins`, `hvantk drift`, `hvantk reprocess`, `hvantk catalog`, plus legacy `mktable`, `mkmatrix`). Per-provider CLI lives in the plugin's own `cli.py` and is wired by `plugin.yaml`.
+- `hvantk/skills/<provider>/catalog/datasets.json` — per-plugin dataset catalog (URLs, version cadence, license, per-accession metadata). Aggregated by `hvantk.resources.unified_registry.HvantkRegistry` and surfaced via `hvantk catalog {list,show,stats,search}`.
 
 When in doubt, READ existing code under these paths before inferring shape.
 
 ## 2. Authoritative spec sources
 
-`resources/catalog.yaml` and `resources/registry/<domain>/datasets.json` are the source of truth for provider metadata: URLs, version strings, license, citation, release cadence. NEVER restate this content in a skill. Reference the catalog instead.
+Each plugin's `catalog/datasets.json` (under `hvantk/skills/<provider>/catalog/`) is the source of truth for that provider's metadata: URLs, version strings, license, citation, release cadence. NEVER restate this content in a skill. Reference the catalog file instead, or query it via `hvantk catalog show <accession>` / `hvantk catalog stats`.
 
-Every per-resource `SKILL.md` MUST cover the following nine sections, in order, with these exact headings:
+Every provider MUST ship a `plugin.yaml` with `api_version: 2`. Bare-name registry entries (e.g., `TABLE_BUILDERS["clinvar"]`) are deprecated; the loader installs compound keys (`provider:dataset`) automatically from the manifest. The manifest schema is enforced by `hvantk/tests/test_plugin_manifest_schema.py`.
+
+Every per-resource `SKILL.md` MUST cover these nine sections, in order, with these exact headings:
 
 1. `## 1. Status & scope`
 2. `## 2. Source identity`
@@ -40,7 +40,7 @@ Every per-resource `SKILL.md` MUST cover the following nine sections, in order, 
 8. `## 8. Update playbook`
 9. `## 9. Validation contract`
 
-Optional sections (use only if they add information not covered above): `## 10. Cross-reference notes` (interactions with other resources) and/or `## 11. Performance notes` (only when the resource has unusual cost characteristics).
+Optional sections (only if they add information not covered above): `## 10. Cross-reference notes`, `## 11. Performance notes`.
 
 ## 3. Keying conventions per data domain
 
@@ -53,11 +53,21 @@ Optional sections (use only if they add information not covered above): `## 10. 
 
 ## 4. Required helpers
 
-- `_create_table_base()` — defined in `hvantk/tables/table_builders.py`. Use this for variant/gene Table builders to avoid boilerplate (import, transform, checkpoint, optional TSV export). Its `import_func` parameter accepts any `Callable[[], hl.Table]`, including `hl.import_table` (delimited files), `hl.import_vcf().rows()` (VCFs), and `hl.import_lines` (variable-width or line-oriented files like GMT) — pick whichever fits the raw format.
-- `create_table_adapter()` — `hvantk/tables/registry.py`. Use to register a Hail Table builder in the recipe system via introspection-based parameter mapping.
-- `create_matrix_adapter()` — `hvantk/tables/registry.py`. Same role for MatrixTable / anndata builders that take multi-input shapes (e.g., expression matrix + metadata).
-- `init_hail()` — `hvantk/core/hail_context.py`. Use to ensure Hail is initialized once. Tests use the session-scoped `hail_session` fixture instead.
-- AnnData helpers — `hvantk/core/anndata_utils.py` exposes `build_anndata_metadata`, `save_anndata`, `coerce_obs_for_h5ad`, `annotate_column_summary_ad`. Use for anndata-backed builders.
+- `_create_table_base()` — `hvantk/core/builders/table.py`. Canonical helper for variant/gene Table builders (handles import, transform, checkpoint, optional TSV export). Its `import_func` accepts any `Callable[[], hl.Table]` — `hl.import_table` (TSV), `hl.import_vcf().rows()`, or `hl.import_lines` for line-oriented formats like GMT.
+- `init_hail()` — `hvantk/core/utils/hail_context.py`. Idempotent Hail init. Tests use the session-scoped `hail_session` fixture from `conftest.py`.
+- AnnData helpers — `hvantk/core/models/anndata_utils.py`: `build_anndata_metadata`, `save_anndata`, `coerce_obs_for_h5ad`, `annotate_column_summary_ad`.
+- Plugin runtime — `hvantk/core/plugin/api.py` defines `PluginSpec`, `DatasetSpec`, and `DriftProbeError`. Tests/CLI consume the populated registries via `hvantk/core/plugin/loader.py`.
+
+**Phase B builder contract (current):** plugin builders are functions
+`(parsed_input, ctx: BuildContext, **params) -> Artifact` that return
+an `AnnotationTable`, `ExpressionMatrix`, or `GeneSet` (see
+`hvantk/core/models/`). The platform invokes them via
+`hvantk.core.plugin.run_builder.run_builder_for_spec(...)` which validates
+the returned artifact's type against `plugin.yaml`'s `artifact_type` and
+stamps source-fingerprint provenance. The legacy
+`create_<dataset>_tb(input_path, output_path, ...)` functions remain in
+each plugin's `builder.py` for backward compatibility with `TABLE_BUILDERS`
+callers; they will be removed in a future cleanup phase.
 
 NEVER paste these helpers' source into a skill. Reference them by path.
 
@@ -67,55 +77,108 @@ NEVER paste these helpers' source into a skill. Reference them by path.
 - Signature shape: `input_path: str, output_path: str, **kwargs`. Common kwargs: `overwrite: bool`, `export_tsv: bool`, `reference_genome: str`.
 - Idempotent: must support `overwrite=True`. Output is checkpointed to disk.
 - Returns the built object (`hl.Table`, `hl.MatrixTable`, or `anndata.AnnData`).
+- Location: `hvantk/skills/<provider>/builder.py` for single-dataset providers, `hvantk/skills/<provider>/<dataset>/builder.py` for multi-dataset providers.
 
-## 6. Registry registration
+## 6. Registry registration via plugin.yaml
 
-A builder is registered in `hvantk/tables/registry.py` only if it is intended for batch / recipe use. Adapter pattern:
+The plugin loader auto-populates `TABLE_BUILDERS` / `MATRIX_BUILDERS` from manifests. Each `datasets[].builder` block resolves to a compound key `provider:dataset`. Example:
 
-```python
-TABLE_BUILDERS["<source>"] = create_table_adapter(
-    "hvantk.tables.table_builders", "create_<source>_tb"
-)
-# Anndata / multi-input matrix builders use the parallel registry:
-MATRIX_BUILDERS["<source>"] = create_matrix_adapter(
-    "hvantk.tables.matrix_builders", "build_<source>_ad"
-)
+```yaml
+api_version: 2
+name: hgnc
+datasets:
+  - name: lookup
+    domain: mapping
+    backend: hail
+    builder:
+      module: hvantk.skills.hgnc.builder
+      function: create_hgnc_gene_tb
 ```
 
-Skip registration for one-off builders.
+This yields `TABLE_BUILDERS["hgnc:lookup"]`. The legacy adapter pattern (`create_table_adapter(...)`) is no longer used for migrated providers; do not hand-edit `hvantk/core/plugin/registry.py` for a new plugin.
 
 ## 7. CLI command pattern
 
-New commands live under `hvantk/commands/make_table_cli.py` (or `make_matrix_cli.py`). Use Click decorators consistent with existing commands (`@_raw_input_opt`, `@_output_ht_opt`). Naming: `mktable_<source>` for the function, `<source>` for the command name.
+Per-provider CLI lives in `hvantk/skills/<provider>/cli.py` (single-dataset) or `hvantk/skills/<provider>/<dataset>/cli.py` (multi-dataset). The manifest's `cli:` block registers Click commands at top-level discovery time:
+
+```yaml
+cli:
+  - command: hgnc-download
+    module: hvantk.skills.hgnc.cli
+    function: download_cmd
+```
+
+The top-level `mktable` / `mkmatrix` commands in `hvantk/tools/` continue to dispatch by sub-command name (e.g., `hvantk mktable hgnc`) and import the plugin builder behind a thin shim.
 
 ## 8. Test pattern
 
-- Round-trip test file: `hvantk/tests/test_<source>_builder.py`.
-- Mark with `@pytest.mark.hail` if Hail is required.
-- Use the `hail_session` fixture (session-scoped, auto-applied via `conftest.py`).
-- Fixtures: `hvantk/tests/testdata/raw/<source>/`. Snapshots: `hvantk/tests/snapshots/<source>/`.
-- Assert against snapshots using `hvantk.tests._snapshot_utils`. The `--regenerate-snapshots` pytest flag rewrites snapshots in place.
+- Tests live next to the code: `hvantk/skills/<provider>/tests/` (single-dataset) or `hvantk/skills/<provider>/<dataset>/tests/` (multi-dataset).
+- Round-trip test file: `test_builder.py` (Hail-backed providers) or `test_<dataset>.py` (anndata providers).
+- Mark with `@pytest.mark.hail` if Hail is required. Use the `hail_session` fixture.
+- Fixtures: `tests/testdata/raw/<dataset>/`. Snapshots: `tests/snapshots/`.
+- Assert against snapshots with `hvantk.tests._snapshot_utils`. The `--regenerate-snapshots` flag rewrites snapshots in place.
 
 ## 9. Validation contract
 
-Every per-resource SKILL.md MUST declare, by path:
+Every per-resource `SKILL.md` MUST declare these paths, which MUST match the `tests:` block in `plugin.yaml`. All paths are plugin-relative (i.e., relative to the plugin folder):
 
-- `fixture`: input file used by the round-trip test
-- `schema_snapshot`: `hvantk/tests/snapshots/<source>/schema.json`
-- `row_snapshot`: `hvantk/tests/snapshots/<source>/sample_rows.json`. Keys used to select the snapshot rows must be unique-in-table — `_snapshot_utils.collect_sample_rows` does not deduplicate, so a duplicated key yields non-deterministic snapshots. For builders that legitimately produce multi-row keys (e.g., multi-association rows like GWAS Catalog), maintain `hvantk/tests/snapshots/<source>/sample_keys.json` alongside listing the singleton-key subset to sample.
-- `test_command`: `pytest hvantk/tests/test_<source>_builder.py` (append `-m hail` only when the test is marked `hail`)
+- `fixture` — input file or directory used by the round-trip test
+- `schema_snapshot` — `tests/snapshots/schema.json`
+- `row_snapshot` — `tests/snapshots/sample_rows.json`. Keys used to select snapshot rows must be unique-in-table — `_snapshot_utils.collect_sample_rows` does not deduplicate, so a duplicated key yields non-deterministic snapshots. For builders that legitimately produce multi-row keys (e.g., GWAS Catalog), maintain `tests/snapshots/sample_keys.json` listing the singleton-key subset to sample.
+- `drift_fingerprint` — `tests/drift_fingerprint.json` (the expected fingerprint; see § 12).
+- `command` — the pytest invocation (append `-m hail` only when the test is Hail-marked).
 
 ## 10. Hard guardrails
 
 - NEVER invent Hail field names. Read the schema from a real run.
 - NEVER invent VCF/TSV column names. Read the file header first.
-- NEVER assume catalog content. Read `resources/catalog.yaml`.
-- NEVER paste code from a builder into the skill. Reference the file path.
+- NEVER assume catalog content. Read the plugin's `catalog/datasets.json` (or run `hvantk catalog show <accession>`).
+- NEVER paste code from a builder into a skill. Reference the file path.
 - When uncertain, READ existing code (cite which file).
 
 ## 11. Out of scope for any skill
 
-- Downloaders. URL drift / version-string handling lives in `hvantk/commands/<source>_downloader.py` and `hvantk/datasets/<source>_datasets.py`.
 - Hail context init. Tests use `hail_session`; runtime uses `init_hail()`.
-- Cross-resource utilities (gene-ID mapping, locus normalization). Those live in `hvantk/utils/`.
+- Cross-resource utilities (gene-ID mapping, locus normalization). Those live in `hvantk/core/utils/`.
 - "How to use the product" — analytical guidance is downstream.
+
+## 12. Drift probe contract
+
+Each dataset declares a `drift_probe.module` + `function` in `plugin.yaml`. The probe is a zero-arg callable returning a dict with this exact shape:
+
+```python
+{
+    "probe_version": int,        # bump on probe-logic change
+    "source_version": str | None, # upstream version string (Last-Modified, release tag, etc.)
+    "headers":  {"<file>": [str, ...]},   # column or section headers from the live source
+    "checksums": {"<file>": str},          # sha256 over the bytes used to derive `headers`
+    "fetched_at": str,            # ISO-8601 UTC timestamp
+}
+```
+
+The expected fingerprint lives at `hvantk/skills/<provider>/[<dataset>/]tests/drift_fingerprint.json`. `hvantk drift <provider:dataset>` compares the live probe output against this file. Update the fingerprint when an intentional upstream change has been validated; do not silently regenerate it in the same PR as a behavioural change.
+
+### Automated drift workflow
+
+A scheduled GitHub Actions workflow (`.github/workflows/drift.yml`) runs `hvantk drift --all --json` daily at 06:00 UTC. For each plugin reporting `status: drifted`, the workflow:
+
+1. Branches `drift/<provider>-<dataset>` from the base branch (`env.BASE_BRANCH`, defaulting to `dev`).
+2. Regenerates `drift_fingerprint.json` via `hvantk drift --regenerate <provider:dataset>`.
+3. Opens (or updates) a draft PR via `gh pr create` / `gh pr edit`, with the structured diff embedded in the body and the regenerated fingerprint already committed. If the plugin's `plugin.yaml` declares `maintainers:` whose entries look like GitHub handles, those handles are `cc`'d in the PR body.
+
+The branch is bot-owned and uses `--force-with-lease`, so if the same dataset drifts again before the previous PR is merged the same branch is updated in place rather than spawning a new PR. Datasets reporting `status: probe_failed` are logged to the job summary but never trigger a PR -- those are infrastructure failures, not data drift.
+
+An agent or human reviews the PR to decide whether the change is a compatible upstream update (just merge the snapshot bump), a breaking schema change (also update `builder.py`), or a spurious probe difference (fix the probe).
+
+The workflow's `workflow_dispatch` trigger accepts a `dry_run` input that runs the helper in `--dry-run` mode, so an operator can validate the workflow plumbing without making real commits.
+
+## 13. Lifecycle stages
+
+Manifests MAY declare `lifecycle.download` and `lifecycle.parse` callables. `hvantk reprocess <provider:dataset>` chains:
+
+1. `lifecycle.download` (if declared) — fetch raw inputs into a working dir.
+2. `lifecycle.parse` (if declared) — normalise raw inputs into the builder's expected layout.
+3. `builder` — produce the Hail Table or AnnData artifact (always required).
+4. `drift_probe` — run a post-build drift check against the committed fingerprint (warning, not failure, unless `--strict` is passed).
+
+Both lifecycle stages are optional; a download-only provider (e.g., a static URL) may omit `parse`, and a vendor-supplied tarball may omit `download`. When present, each is `(module, function)` resolved at load time and surfaced via `PluginSpec` for the `reprocess` runner.

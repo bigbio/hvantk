@@ -1,0 +1,38 @@
+api_version: 1
+name: download
+domain: plugins
+type: command_group
+description: Download raw datasets from external providers (UCSC, ClinVar, etc).
+cli:
+  module: hvantk.tools.plugins.download_cli
+  function: download_group
+purpose:
+  short: Umbrella group aggregating per-provider download subcommands.
+  long: |
+    Each subcommand is a thin wrapper around a plugin's downloader. The set
+    here mirrors the providers that ship an `add_command` entry in
+    `hvantk/tools/plugins/download_cli.py`. New providers add a line in
+    that module and a corresponding subcommand entry below; the registry
+    surfaces them via `hvantk download --help` and the tool manifest UI.
+subcommands:
+  - name: ucsc
+    description: Download UCSC Cell Browser expression + metadata
+  - name: expression-atlas
+    description: Download Expression Atlas experiment matrices + SDRF
+  - name: clingen
+    description: Download ClinGen Gene-Disease Validity CSV
+  - name: gencc
+    description: Download GenCC submissions TSV
+  - name: hgnc
+    description: Download HGNC gene-nomenclature TSV
+  - name: clinvar
+    description: Download ClinVar variant VCF + tabix index
+  - name: uniprot-ptm
+    description: Download UniProt PTM site annotations
+  - name: peptideatlas-phospho
+    description: Download PeptideAtlas phosphopeptide build
+  - name: cptac-phospho
+    description: Download CPTAC phosphoproteomics matrices
+requires:
+  hail: false
+  network: true

@@ -1,0 +1,37 @@
+api_version: 2
+name: clingen
+version: 0.1.0
+status: provisional
+description: ClinGen Gene-Disease Validity TSV - Hail Table
+
+source:
+  catalog_ref: clingen
+
+datasets:
+  - name: gene-disease
+    domain: genomics
+    backend: hail
+    artifact_type: AnnotationTable
+    schema_id: clingen-gene-disease-v1
+    builder:
+      module: hvantk.skills.clingen.builder
+      function: build_clingen_gene_disease
+    drift_probe:
+      module: hvantk.skills.clingen.drift_probe
+      function: fetch_fingerprint
+    skill: SKILL.md
+    tests:
+      command: pytest hvantk/skills/clingen/tests -m hail
+      fixture: tests/testdata/raw/clingen
+      schema_snapshot: tests/snapshots/schema.json
+      row_snapshot: tests/snapshots/sample_rows.json
+      drift_fingerprint: tests/drift_fingerprint.json
+    lifecycle:
+      download:
+        module: hvantk.skills.clingen.cli
+        function: download_dataset
+
+cli:
+  - command: clingen-download
+    module: hvantk.skills.clingen.cli
+    function: download_cmd

@@ -1,0 +1,37 @@
+api_version: 2
+name: hgnc
+version: 0.2.0
+status: provisional
+description: HGNC complete-set TSV - Hail Table
+
+source:
+  catalog_ref: hgnc
+
+datasets:
+  - name: lookup
+    domain: mapping
+    backend: hail
+    artifact_type: AnnotationTable
+    schema_id: hgnc-lookup-v1
+    builder:
+      module: hvantk.skills.hgnc.builder
+      function: build_hgnc_gene_lookup
+    drift_probe:
+      module: hvantk.skills.hgnc.drift_probe
+      function: fetch_fingerprint
+    lifecycle:
+      download:
+        module: hvantk.skills.hgnc.cli
+        function: download_dataset
+    skill: SKILL.md
+    tests:
+      command: pytest hvantk/skills/hgnc/tests -m hail
+      fixture: tests/testdata/raw/hgnc
+      schema_snapshot: tests/snapshots/schema.json
+      row_snapshot: tests/snapshots/sample_rows.json
+      drift_fingerprint: tests/drift_fingerprint.json
+
+cli:
+  - command: hgnc-download
+    module: hvantk.skills.hgnc.cli
+    function: download_cmd

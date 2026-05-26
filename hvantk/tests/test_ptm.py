@@ -13,15 +13,15 @@ import os
 import pytest
 from click.testing import CliRunner
 
-from hvantk.ptm.mapper import (
+from hvantk.algorithms.ptm.mapper import (
     CodonMapping,
     GTFData,
     map_residue_to_genomic,
     map_protein_sites,
     resolve_transcript,
 )
-from hvantk.ptm.pipeline import PTMBuildConfig, map_ptm_sites
-from hvantk.ptm.constants import PTM_OUTPUT_COLUMNS
+from hvantk.algorithms.ptm.pipeline import PTMBuildConfig, map_ptm_sites
+from hvantk.core.ptm_constants import PTM_OUTPUT_COLUMNS
 
 
 # ---------- Fixtures ----------
@@ -207,7 +207,7 @@ def test_map_ptm_sites_roundtrip(tmp_path, gtf_data):
 
 def test_ptm_cli_help():
     """PTM command group is registered and renders help."""
-    from hvantk.commands.ptm_cli import ptm_group
+    from hvantk.tools.ptm.ptm_cli import ptm_group
 
     runner = CliRunner()
     result = runner.invoke(ptm_group, ["--help"])

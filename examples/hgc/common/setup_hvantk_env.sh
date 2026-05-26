@@ -131,7 +131,7 @@ else
 fi
 
 echo "  Checking hvantk.hgc functions..."
-if python -c "from hvantk.hgc import combine_gvcfs, convert_vds_to_mt, compute_full_qc, convert_mt_to_multi_sample_vcf; print('  ✓ All HGC functions importable')" 2>/dev/null; then
+if python -c "from hvantk.algorithms.hgc import combine_gvcfs, convert_vds_to_mt, compute_full_qc, convert_mt_to_multi_sample_vcf; print('  ✓ All HGC functions importable')" 2>/dev/null; then
     true
 else
     echo "  ✗ hvantk.hgc functions failed to import"

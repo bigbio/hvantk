@@ -1,0 +1,19 @@
+api_version: 1
+name: validate-bgzf
+domain: infra
+type: command
+description: Validate BGZF block integrity of one or more BGZF-compressed files.
+cli:
+  module: hvantk.tools.infra.validate_bgzf_cli
+  function: validate_bgzf_cmd
+purpose:
+  short: Walk BGZF blocks and verify header (+ optional CRC32/ISIZE) per block.
+  long: |
+    Accepts a single file path or a directory of `*.vcf.gz` files and validates
+    BGZF block boundaries. `--quick` performs header-only checks; the default
+    full mode also verifies per-block CRC32 and ISIZE. Used to triage Hail
+    ZipException errors caused by truncated or mid-block-corrupted bgzipped
+    inputs.
+requires:
+  hail: false
+  network: false

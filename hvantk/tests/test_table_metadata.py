@@ -8,7 +8,7 @@ pytestmark = [pytest.mark.hail]
 def test_build_table_metadata_fields(tmp_path):
     """Test that build_table_metadata produces correct struct fields."""
     import hail as hl
-    from hvantk.core.metadata import build_table_metadata
+    from hvantk.core.models.metadata import build_table_metadata
 
     input_path = str(tmp_path / "input.tsv")
     with open(input_path, "w") as f:
@@ -37,7 +37,7 @@ def test_build_table_metadata_fields(tmp_path):
 def test_build_table_metadata_with_locus():
     """Test metadata captures reference genome when locus is present."""
     import hail as hl
-    from hvantk.core.metadata import build_table_metadata
+    from hvantk.core.models.metadata import build_table_metadata
 
     ht = hl.utils.range_table(5)
     ht = ht.annotate(locus=hl.locus("chr1", ht.idx + 1, reference_genome="GRCh38"))
@@ -53,7 +53,7 @@ def test_build_table_metadata_with_locus():
 def test_build_matrix_metadata_fields(tmp_path):
     """Test that build_matrix_metadata produces correct struct fields."""
     import hail as hl
-    from hvantk.core.metadata import build_matrix_metadata
+    from hvantk.core.models.metadata import build_matrix_metadata
 
     mt = hl.utils.range_matrix_table(2, 3)
     mt = mt.annotate_rows(rid=mt.row_idx).key_rows_by("rid")
@@ -77,7 +77,7 @@ def test_build_matrix_metadata_fields(tmp_path):
 
 def test_get_hvantk_version():
     """Test version retrieval function."""
-    from hvantk.core.metadata import _get_hvantk_version
+    from hvantk.core.models.metadata import _get_hvantk_version
 
     version = _get_hvantk_version()
     assert isinstance(version, str)

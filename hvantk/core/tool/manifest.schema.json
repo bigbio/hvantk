@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hvantk.dev/schemas/tool_manifest.schema.json",
+  "title": "hvantk tool manifest",
+  "type": "object",
+  "required": ["api_version", "name", "domain", "type", "description", "cli", "purpose"],
+  "additionalProperties": false,
+  "properties": {
+    "api_version": { "const": 1 },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "domain": {
+      "type": "string",
+      "enum": [
+        "plugins",
+        "build",
+        "expression",
+        "annotation",
+        "genesets",
+        "ptm",
+        "ancestry",
+        "qtl",
+        "enrichex",
+        "hgc",
+        "infra"
+      ]
+    },
+    "type": {
+      "type": "string",
+      "enum": ["command", "command_group"]
+    },
+    "description": { "type": "string" },
+    "cli": {
+      "type": "object",
+      "required": ["module", "function"],
+      "additionalProperties": false,
+      "properties": {
+        "module": { "type": "string" },
+        "function": { "type": "string" }
+      }
+    },
+    "purpose": {
+      "type": "object",
+      "required": ["short"],
+      "additionalProperties": false,
+      "properties": {
+        "short": { "type": "string" },
+        "long": { "type": "string" }
+      }
+    },
+    "subcommands": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "description"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "description": { "type": "string" },
+          "inputs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "type", "required", "description"],
+              "additionalProperties": false,
+              "properties": {
+                "name": { "type": "string" },
+                "type": { "type": "string" },
+                "required": { "type": "boolean" },
+                "description": { "type": "string" }
+              }
+            }
+          },
+          "outputs": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                { "type": "string" },
+                { "type": "object" }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "requires": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "hail": { "type": "boolean" },
+        "network": { "type": "boolean" },
+        "extras": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

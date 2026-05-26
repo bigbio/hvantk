@@ -1,0 +1,25 @@
+{
+  "probe_version": 1,
+  "source_version": null,
+  "headers": {
+    "gencc-submissions.tsv": [
+      "sgc_id",
+      "gene_curie",
+      "gene_symbol",
+      "disease_curie",
+      "disease_title",
+      "disease_original_curie",
+      "disease_original_title",
+      "classification_title",
+      "moi_title",
+      "submitter_title",
+      "submitted_as_date",
+      "submitted_as_public_report_url",
+      "submitted_as_pmids"
+    ]
+  },
+  "checksums": {
+    "gencc-submissions.tsv": "placeholder-regenerate-from-live-source"
+  },
+  "fetched_at": "2026-05-18T00:00:00+00:00"
+}

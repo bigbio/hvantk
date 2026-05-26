@@ -1,0 +1,28 @@
+api_version: 2
+name: cosmic-cgc
+version: 0.1.0
+status: provisional
+description: COSMIC Cancer Gene Census (CGC) gene submissions - Hail Table
+
+source:
+  catalog_ref: cosmic-cgc
+
+datasets:
+  - name: submissions
+    domain: genomics
+    backend: hail
+    artifact_type: AnnotationTable
+    schema_id: cosmic-cgc-v1
+    builder:
+      module: hvantk.skills.cosmic_cgc.builder
+      function: build_cosmic_cgc_submissions
+    drift_probe:
+      module: hvantk.skills.cosmic_cgc.drift_probe
+      function: fetch_fingerprint
+    skill: SKILL.md
+    tests:
+      command: pytest hvantk/skills/cosmic_cgc/tests
+      fixture: tests/testdata/raw/cosmic-cgc
+      schema_snapshot: tests/snapshots/schema.json
+      row_snapshot: tests/snapshots/sample_rows.json
+      drift_fingerprint: tests/drift_fingerprint.json

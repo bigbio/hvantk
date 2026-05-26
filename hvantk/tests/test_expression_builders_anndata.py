@@ -42,7 +42,7 @@ class TestBuildUcscAd:
         self._write_expression_matrix(expr_path, genes, cells, values)
         self._write_metadata(meta_path, cells, ["neuron", "glia", "neuron", "glia"])
 
-        from hvantk.tables.matrix_builders import build_ucsc_ad
+        from hvantk.skills.ucsc_cellbrowser.builder import build_ucsc_ad
 
         adata = build_ucsc_ad(
             expression_matrix_path=expr_path,
@@ -80,7 +80,7 @@ class TestBuildUcscAd:
         self._write_expression_matrix(expr_path, genes, cells, values)
         self._write_metadata(meta_path, cells, ["neuron", "glia"])
 
-        from hvantk.tables.matrix_builders import build_ucsc_ad
+        from hvantk.skills.ucsc_cellbrowser.builder import build_ucsc_ad
 
         adata = build_ucsc_ad(
             expression_matrix_path=expr_path,
@@ -109,7 +109,7 @@ class TestBuildUcscAd:
         self._write_expression_matrix(expr_path, genes, cells, values)
         self._write_metadata(meta_path, cells, ["neuron", "glia"])
 
-        from hvantk.tables.matrix_builders import build_ucsc_ad
+        from hvantk.skills.ucsc_cellbrowser.builder import build_ucsc_ad
 
         adata = build_ucsc_ad(
             expression_matrix_path=expr_path,
@@ -138,7 +138,7 @@ class TestBuildUcscAd:
             fh.write("cell_A,neuron\n")
             fh.write("cell_B,glia\n")
 
-        from hvantk.tables.matrix_builders import build_ucsc_ad
+        from hvantk.skills.ucsc_cellbrowser.builder import build_ucsc_ad
 
         adata = build_ucsc_ad(
             expression_matrix_path=expr_path,
@@ -153,7 +153,7 @@ class TestBuildUcscAd:
 
 
 class TestBuildExpressionAtlasAd:
-    """Tests for build_expression_atlas_ad in matrix_builders."""
+    """Tests for build_expression_atlas_ad in hvantk.skills.expression_atlas.builder."""
 
     def _write_expression_tsv(self, path, gene_ids, gene_names, samples, values):
         """Write an Expression Atlas-style expression TSV."""
@@ -193,7 +193,7 @@ class TestBuildExpressionAtlasAd:
             ("E-MTAB-0001", "", "sample_2", "characteristic", "tissue", "liver"),
         ])
 
-        from hvantk.tables.matrix_builders import build_expression_atlas_ad
+        from hvantk.skills.expression_atlas.builder import build_expression_atlas_ad
 
         adata = build_expression_atlas_ad(
             expression_matrix_path=expr_path,
@@ -228,7 +228,9 @@ class TestBuildExpressionAtlasAd:
         expr_path = str(tmp_path / "expr.tsv")
         self._write_expression_tsv(expr_path, gene_ids, gene_names, samples, values)
 
-        from hvantk.tables.expression_atlas import create_anndata_from_expression_atlas
+        from hvantk.skills.expression_atlas.shared.expression_atlas import (
+            create_anndata_from_expression_atlas,
+        )
 
         adata = create_anndata_from_expression_atlas(
             expression_matrix_path=expr_path,
@@ -249,7 +251,9 @@ class TestBuildExpressionAtlasAd:
         expr_path = str(tmp_path / "expr.tsv")
         self._write_expression_tsv(expr_path, gene_ids, gene_names, samples, values)
 
-        from hvantk.tables.expression_atlas import create_anndata_from_expression_atlas
+        from hvantk.skills.expression_atlas.shared.expression_atlas import (
+            create_anndata_from_expression_atlas,
+        )
 
         adata = create_anndata_from_expression_atlas(expression_matrix_path=expr_path)
 
@@ -259,7 +263,7 @@ class TestBuildExpressionAtlasAd:
 
 
 class TestBuildCptacAd:
-    """Tests for build_cptac_ad in matrix_builders."""
+    """Tests for build_cptac_ad in the cptac expression plugin."""
 
     def test_builds_anndata_from_long_format(self, tmp_path):
         """Build AnnData from long-format CPTAC expression + metadata."""
@@ -281,7 +285,7 @@ class TestBuildCptacAd:
             fh.write("S1\tLUAD\n")
             fh.write("S2\tBRCA\n")
 
-        from hvantk.tables.matrix_builders import build_cptac_ad
+        from hvantk.skills.cptac.expression.builder import build_cptac_ad
 
         adata = build_cptac_ad(
             expression_path=expr_path,
@@ -314,14 +318,14 @@ class TestBuildCptacAd:
             fh.write("S1,LUAD\n")
             fh.write("S2,BRCA\n")
 
-        from hvantk.tables.matrix_builders import build_cptac_ad
+        from hvantk.skills.cptac.expression.builder import build_cptac_ad
 
         adata = build_cptac_ad(expression_path=expr_path, metadata_path=meta_path)
         assert adata.shape == (2, 2)
 
 
 class TestBuildCptacPhosphoAd:
-    """Tests for build_cptac_phospho_ad in matrix_builders."""
+    """Tests for build_cptac_phospho_ad in the cptac phospho plugin."""
 
     def test_builds_anndata_from_sites_matrix(self, tmp_path):
         """Build AnnData from wide-format CPTAC phospho matrix + metadata."""
@@ -341,7 +345,7 @@ class TestBuildCptacPhosphoAd:
             fh.write("S1\tLUAD\n")
             fh.write("S2\tBRCA\n")
 
-        from hvantk.tables.matrix_builders import build_cptac_phospho_ad
+        from hvantk.skills.cptac.phospho.builder import build_cptac_phospho_ad
 
         adata = build_cptac_phospho_ad(
             expression_path=expr_path,
@@ -372,95 +376,15 @@ class TestBuildCptacPhosphoAd:
             fh.write("S1,LUAD\n")
             fh.write("S2,BRCA\n")
 
-        from hvantk.tables.matrix_builders import build_cptac_phospho_ad
+        from hvantk.skills.cptac.phospho.builder import build_cptac_phospho_ad
 
         adata = build_cptac_phospho_ad(expression_path=expr_path, metadata_path=meta_path)
         assert adata.shape == (2, 2)
 
 
-class TestMkmatrixCli:
-    """CLI integration tests for mkmatrix commands."""
-
-    def _write_expression_matrix(self, path, genes, cells, values):
-        """Write a genes-x-cells TSV expression matrix."""
-        with open(path, "w") as fh:
-            fh.write("gene\t" + "\t".join(cells) + "\n")
-            for gene, row in zip(genes, values):
-                fh.write(gene + "\t" + "\t".join(str(v) for v in row) + "\n")
-
-    def _write_metadata(self, path, cell_ids, cell_types):
-        """Write a metadata TSV with cell_id index and cell_type column."""
-        with open(path, "w") as fh:
-            fh.write("cell_id\tcell_type\n")
-            for cid, ct in zip(cell_ids, cell_types):
-                fh.write(f"{cid}\t{ct}\n")
-
-    def test_ucsc_produces_h5ad(self, tmp_path):
-        from click.testing import CliRunner
-        from hvantk.commands.make_matrix_cli import mkmatrix_group
-
-        cells = ["cell_A", "cell_B", "cell_C", "cell_D"]
-        genes = ["TP53", "BRCA1", "EGFR"]
-        values = [
-            [1.0, 2.0, 3.0, 4.0],
-            [5.0, 6.0, 7.0, 8.0],
-            [9.0, 10.0, 11.0, 12.0],
-        ]
-
-        expr_path = str(tmp_path / "expr.tsv")
-        meta_path = str(tmp_path / "meta.tsv")
-        output = str(tmp_path / "output.h5ad")
-
-        self._write_expression_matrix(expr_path, genes, cells, values)
-        self._write_metadata(meta_path, cells, ["neuron", "glia", "neuron", "glia"])
-
-        runner = CliRunner()
-        result = runner.invoke(
-            mkmatrix_group,
-            ["ucsc", "-e", expr_path, "-m", meta_path, "-o", output],
-        )
-        assert result.exit_code == 0, result.output
-        assert (tmp_path / "output.h5ad").exists()
-
-        # Verify it's a valid h5ad
-        loaded = ad.read_h5ad(output)
-        assert loaded.shape == (4, 3)
-
-    def test_cptac_produces_h5ad(self, tmp_path):
-        from click.testing import CliRunner
-        from hvantk.commands.make_matrix_cli import mkmatrix_group
-
-        expr_path = str(tmp_path / "expr.tsv")
-        meta_path = str(tmp_path / "meta.tsv")
-        output = str(tmp_path / "output.h5ad")
-
-        with open(expr_path, "w") as fh:
-            fh.write("GeneID\tGene Name\tSampleID\tExpression\n")
-            fh.write("G1\tTP53\tS1\t1.5\n")
-            fh.write("G1\tTP53\tS2\t2.5\n")
-            fh.write("G2\tBRCA1\tS1\t3.5\n")
-            fh.write("G2\tBRCA1\tS2\t4.5\n")
-
-        with open(meta_path, "w") as fh:
-            fh.write("SampleID\ttumor_type\n")
-            fh.write("S1\tLUAD\n")
-            fh.write("S2\tBRCA\n")
-
-        runner = CliRunner()
-        result = runner.invoke(
-            mkmatrix_group,
-            ["cptac", "-e", expr_path, "-m", meta_path, "-o", output],
-        )
-        assert result.exit_code == 0, result.output
-        assert (tmp_path / "output.h5ad").exists()
-
-        loaded = ad.read_h5ad(output)
-        assert loaded.shape == (2, 2)
-
-
 class TestVisualizeExpressionAd:
     def test_returns_matplotlib_figure(self):
-        from hvantk.visualization.expression.anndata import (
+        from hvantk.algorithms.visualization.expression.anndata import (
             visualize_expression_distribution,
         )
         import matplotlib
@@ -477,7 +401,7 @@ class TestVisualizeExpressionAd:
         plt.close(fig)
 
     def test_returns_matplotlib_figure_sparse(self):
-        from hvantk.visualization.expression.anndata import (
+        from hvantk.algorithms.visualization.expression.anndata import (
             visualize_expression_distribution,
         )
         import matplotlib

@@ -8,7 +8,7 @@ import pandas as pd
 
 import numpy as np
 
-from hvantk.enrichex.burden import (
+from hvantk.algorithms.enrichex.burden import (
     VariantFilter,
     _compute_test_statistic,
     _linear_t_statistic,

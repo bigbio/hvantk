@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from hvantk.enrichex.plot import plot_enrichment_dotplot, plot_enrichment_barplot
+from hvantk.algorithms.enrichex.plot import plot_enrichment_dotplot, plot_enrichment_barplot
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"

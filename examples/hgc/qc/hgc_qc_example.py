@@ -33,7 +33,7 @@ def test_sample_qc():
     """Test sample QC computation."""
     try:
         import hail as hl
-        from hvantk.hgc import compute_sample_qc
+        from hvantk.algorithms.hgc import compute_sample_qc
 
         logger.info("Testing sample QC computation...")
 
@@ -73,7 +73,7 @@ def test_variant_qc():
     """Test variant QC computation."""
     try:
         import hail as hl
-        from hvantk.hgc import compute_variant_qc
+        from hvantk.algorithms.hgc import compute_variant_qc
 
         logger.info("Testing variant QC computation...")
 
@@ -113,7 +113,7 @@ def test_full_qc():
     """Test comprehensive QC computation."""
     try:
         import hail as hl
-        from hvantk.hgc import compute_full_qc
+        from hvantk.algorithms.hgc import compute_full_qc
 
         logger.info("Testing full QC computation...")
 
@@ -156,7 +156,7 @@ def test_qc_filtering():
     """Test QC-based filtering."""
     try:
         import hail as hl
-        from hvantk.hgc import (
+        from hvantk.algorithms.hgc import (
             compute_full_qc,
             filter_samples_by_qc,
             filter_variants_by_qc,
@@ -207,7 +207,7 @@ def test_qc_filtering():
 def test_qc_export():
     """Test QC metrics export."""
     try:
-        from hvantk.hgc import (
+        from hvantk.algorithms.hgc import (
             compute_full_qc,
             save_qc_metrics,
             prepare_qc_for_visualization,
@@ -253,7 +253,7 @@ def test_qc_export():
 def test_qc_visualization():
     """Test QC visualization functionality."""
     try:
-        from hvantk.hgc import compute_full_qc
+        from hvantk.algorithms.hgc import compute_full_qc
 
         logger.info("Testing QC visualization functionality...")
 
@@ -287,7 +287,7 @@ def test_qc_visualization():
         # Test direct imports
         logger.info("Testing direct visualization imports...")
         try:
-            from hvantk.visualization import (
+            from hvantk.algorithms.visualization import (
                 plot_sample_qc_overview,
                 plot_variant_qc_overview,
             )
@@ -315,7 +315,7 @@ def test_qc_visualization():
 def test_qc_report_generation():
     """Test QC report generation and saving."""
     try:
-        from hvantk.hgc import compute_full_qc
+        from hvantk.algorithms.hgc import compute_full_qc
         import os
 
         logger.info("Testing QC report generation...")
@@ -369,7 +369,7 @@ def example_save_qc_report():
     4. Save individual plots
     """
     import hail as hl
-    from hvantk.hgc import compute_full_qc, save_qc_metrics
+    from hvantk.algorithms.hgc import compute_full_qc, save_qc_metrics
     from datetime import datetime
     import os
 

@@ -25,19 +25,19 @@ logger = logging.getLogger("enrichex_demo")
 
 def main():
     import hail as hl
-    from hvantk.core.hail_context import init_hail
+    from hvantk.core.utils.hail_context import init_hail
 
     # ── 0. Init Hail ──────────────────────────────────────────────────
     init_hail(app_name="enrichex-demo")
 
-    from hvantk.enrichex.burden import VariantFilter
-    from hvantk.enrichex.pipeline import BurdenConfig, BurdenPipeline
-    from hvantk.enrichex.plot import (
+    from hvantk.algorithms.enrichex.burden import VariantFilter
+    from hvantk.algorithms.enrichex.pipeline import BurdenConfig, BurdenPipeline
+    from hvantk.algorithms.enrichex.plot import (
         plot_burden_volcano,
         plot_celltype_burden_heatmap,
         plot_celltype_forest,
     )
-    from hvantk.enrichex.simulation import (
+    from hvantk.algorithms.enrichex.simulation import (
         check_type_i_error,
         generate_synthetic_burden_cohort,
     )

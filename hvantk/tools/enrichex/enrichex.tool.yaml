@@ -1,0 +1,28 @@
+api_version: 1
+name: enrichex
+domain: enrichex
+type: command_group
+description: Gene set enrichment analysis (overlap + burden).
+cli:
+  module: hvantk.tools.enrichex
+  function: enrichex_group
+purpose:
+  short: Run gene set enrichment tests (Fisher overlap + Hail-native burden).
+  long: |
+    The `overlap` subcommand tests a query gene list against a
+    GeneSetCollection (JSON) using Fisher's exact test with configurable
+    multiple-testing correction. The `burden` subcommand performs Hail-native
+    case-control burden regression on a cohort MatrixTable against a gene set
+    file. `burden-pipeline` chains burden testing with configuration discovery
+    and report generation. Gene set extraction itself lives under
+    `hvantk genesets`.
+subcommands:
+  - name: overlap
+    description: Fisher's exact gene-list overlap enrichment against a GeneSetCollection
+  - name: burden
+    description: Hail-native case-control burden regression over a cohort MatrixTable
+  - name: burden-pipeline
+    description: End-to-end burden testing pipeline with auto-discovery and report
+requires:
+  hail: true
+  network: false

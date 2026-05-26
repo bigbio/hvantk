@@ -2,6 +2,21 @@
 
 See the full contributing guide at [docs_site/contributing.md](docs_site/contributing.md).
 
+## Adding a new data provider plugin
+
+Each external data source ships as a self-contained plugin under `hvantk/skills/<provider>/`. The HGNC plugin (`hvantk/skills/hgnc/`) is the canonical reference. Step by step:
+
+1. Create the folder layout. Single-dataset providers: `hvantk/skills/<provider>/{plugin.yaml,builder.py,cli.py,drift_probe.py,SKILL.md,tests/}`. Multi-dataset providers: add one subfolder per dataset and a `shared/` folder for code reused across them.
+2. Write `plugin.yaml` with `api_version: 2`, a `source.catalog_ref` pointing into `hvantk/resources/catalog.yaml`, and one `datasets:` entry per dataset declaring `builder`, `drift_probe`, optional `lifecycle.{download,parse}`, and the `tests:` block (fixture, schema/row snapshots, drift fingerprint, command).
+3. Implement the builder (`create_<source>_tb` or `build_<source>_ad`) using `_create_table_base()` from `hvantk/tables/table_builders.py` for Hail Table builders.
+4. Implement the downloader in `cli.py` (Click command + a `download_dataset` function the loader can wire to `lifecycle.download`).
+5. Implement the drift probe — a zero-arg function returning the fingerprint dict described in `hvantk/skills/_conventions/SKILL.md` § 12. Commit the expected fingerprint at `tests/drift_fingerprint.json`.
+6. Add the round-trip test under `tests/`, mark it `@pytest.mark.hail` if applicable, snapshot the schema and a small set of rows.
+7. Write `SKILL.md` following the nine-section template in `_conventions/SKILL.md` § 2.
+8. Verify: `hvantk plugins validate` should accept the manifest; `hvantk plugins describe <provider>` should list the new dataset; the round-trip test must pass; `hvantk drift <provider:dataset>` must match the committed fingerprint.
+
+Read `hvantk/skills/_conventions/SKILL.md` for the full contract (registry keys, drift-probe shape, lifecycle stages, validation paths, hard guardrails).
+
 ## Skill maintenance (resource-centric skills)
 
 `hvantk/skills/` contains agent-readable methodology for maintaining stable resources. Each per-resource `SKILL.md` is a design contract (source identity, output schema, builder + CLI + registry wiring, validation contract) that the round-trip test pins down. Shared conventions live in `hvantk/skills/_conventions/SKILL.md` — read that first before any per-resource skill.

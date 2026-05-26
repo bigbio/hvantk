@@ -15,7 +15,19 @@ keywords = [
     "joint-genotyping"
 ]
 include = [
-  { path = "hvantk/resources/catalog.yaml", format = ["sdist", "wheel"] }
+  { path = "hvantk/skills/**/plugin.yaml", format = ["sdist", "wheel"] },
+  { path = "hvantk/skills/**/*.py", format = ["sdist", "wheel"] },
+  { path = "hvantk/skills/**/SKILL.md", format = ["sdist", "wheel"] },
+  { path = "hvantk/skills/**/catalog/*.json", format = ["sdist", "wheel"] },
+  { path = "hvantk/skills/**/tests/drift_fingerprint.json", format = ["sdist", "wheel"] },
+]
+exclude = [
+    "hvantk/skills/**/tests/test_*.py",
+    "hvantk/skills/**/tests/conftest.py",
+    "hvantk/skills/**/tests/__init__.py",
+    "hvantk/skills/**/tests/data/**",
+    "hvantk/skills/**/tests/snapshots/**",
+    "hvantk/skills/**/tests/fixtures/**",
 ]
 
 [tool.poetry.dependencies]
@@ -25,7 +37,9 @@ click = "^8.1.3"
 requests = "*"
 tqdm = "*"
 pandas = "^2.0.0"
+pyarrow = ">=14.0"
 PyYAML = "*"
+jsonschema = ">=4.0"
 psutil = "*"
 pysam = ">=0.22"
 anndata = ">=0.10.0"
@@ -50,8 +64,10 @@ constraint = ["tspex", "matplotlib", "seaborn"]
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
+requests-mock = "^1.11"
 flake8 = "^6.0.0"
 black = "^23.7.0"
+hypothesis = ">=6.0"
 matplotlib = "*"
 seaborn = "*"
 plotly = "*"
@@ -59,6 +75,26 @@ tspex = "*"
 mkdocs = "*"
 mkdocs-material = "*"
 ipykernel = "^7.2.0"
+
+[tool.poetry.plugins."hvantk.providers"]
+# In-tree plugins register themselves the same way as external ones.
+# Only providers migrated to the plugin layout appear here.
+hgnc = "hvantk.skills.hgnc"
+msigdb = "hvantk.skills.msigdb"
+gtex-eqtl = "hvantk.skills.gtex_eqtl"
+gwas-catalog = "hvantk.skills.gwas_catalog"
+insider = "hvantk.skills.insider"
+clinvar = "hvantk.skills.clinvar"
+expression-atlas = "hvantk.skills.expression_atlas"
+peptideatlas = "hvantk.skills.peptideatlas"
+cptac = "hvantk.skills.cptac"
+ucsc-cellbrowser = "hvantk.skills.ucsc_cellbrowser"
+clingen = "hvantk.skills.clingen"
+gencc = "hvantk.skills.gencc"
+uniprot-ptm = "hvantk.skills.uniprot_ptm"
+
+[tool.pytest.ini_options]
+testpaths = ["hvantk/tests", "hvantk/skills"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

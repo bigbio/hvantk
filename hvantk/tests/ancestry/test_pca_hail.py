@@ -6,11 +6,11 @@ the Balding-Nichols population genetics model.
 
 import pytest
 
-from hvantk.ancestry.pca import (
+from hvantk.algorithms.ancestry.pca import (
     PCAResult,
     compute_pca,
 )
-from hvantk.ancestry.filter import filter_variants_for_ancestry
+from hvantk.algorithms.ancestry.filter import filter_variants_for_ancestry
 
 
 @pytest.mark.hail
@@ -137,7 +137,7 @@ class TestPcaPopulationStructure:
 
     def test_populations_cluster_separately(self, hail_session, synthetic_reference_mt):
         """Reference populations should form distinct clusters in PC space."""
-        from hvantk.ancestry.filter import filter_variants_for_ancestry
+        from hvantk.algorithms.ancestry.filter import filter_variants_for_ancestry
 
         # Filter and compute PCA on reference only
         mt = filter_variants_for_ancestry(synthetic_reference_mt)
@@ -172,8 +172,8 @@ class TestProjectSamples:
         self, hail_session, synthetic_query_mt, synthetic_reference_mt
     ):
         """Projection should produce PC scores for new samples."""
-        from hvantk.ancestry.filter import filter_variants_for_ancestry
-        from hvantk.ancestry.pca import project_samples
+        from hvantk.algorithms.ancestry.filter import filter_variants_for_ancestry
+        from hvantk.algorithms.ancestry.pca import project_samples
 
         # Compute PCA on reference
         ref_filtered = filter_variants_for_ancestry(synthetic_reference_mt)

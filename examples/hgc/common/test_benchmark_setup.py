@@ -26,7 +26,7 @@ def check_import(module_name: str, package_name: str = None) -> bool:
 def check_hvantk_hgc() -> bool:
     """Check if hvantk.hgc functions are available."""
     try:
-        from hvantk.hgc import (
+        from hvantk.algorithms.hgc import (
             combine_gvcfs,
             convert_vds_to_mt,
             compute_full_qc,

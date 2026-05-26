@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 from click.testing import CliRunner
 
-from hvantk.commands.genesets_cli import genesets_prepare as prepare_geneset_cmd
+from hvantk.tools.genesets.genesets_cli import genesets_prepare as prepare_geneset_cmd
 
 TESTDATA = Path(__file__).parent / "testdata" / "prepare_geneset"
 
@@ -88,7 +88,7 @@ def test_overwrite_flag(runner, tmp_path):
     assert result.exit_code == 0
 
 
-@patch("hvantk.utils.gene_aliases._load_hgnc_symbol_maps")
+@patch("hvantk.core.utils.gene_aliases._load_hgnc_symbol_maps")
 def test_hgnc_validation_resolves_aliases(mock_load, runner, tmp_path):
     """HGNC validation flag resolves aliases in output."""
     canonical = {

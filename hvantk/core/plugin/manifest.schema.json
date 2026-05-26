@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hvantk.dev/schemas/plugin_manifest.schema.json",
+  "title": "hvantk plugin manifest",
+  "type": "object",
+  "required": ["api_version", "name", "version", "datasets"],
+  "additionalProperties": false,
+  "properties": {
+    "api_version": { "enum": [1, 2] },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[A-Za-z0-9.-]+)?$"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["provisional", "stable", "deprecated"]
+    },
+    "maintainers": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "description": { "type": "string" },
+    "catalog": {
+      "type": "string",
+      "description": "Path (relative to the plugin folder) to a JSON file listing the accessions/datasets this plugin can build."
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "catalog_ref": { "type": "string" },
+        "registry_refs": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "datasets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "domain", "backend", "builder", "drift_probe", "skill", "tests"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "domain": {
+            "type": "string",
+            "enum": ["genomics", "transcriptomics", "proteomics", "epigenomics", "mapping"]
+          },
+          "backend": {
+            "type": "string",
+            "enum": ["hail", "anndata", "pandas"]
+          },
+          "builder": { "$ref": "#/$defs/callable_ref" },
+          "drift_probe": { "$ref": "#/$defs/callable_ref" },
+          "lifecycle": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "download": { "$ref": "#/$defs/callable_ref" },
+              "parse": { "$ref": "#/$defs/callable_ref" }
+            }
+          },
+          "artifact_type": {
+            "type": "string",
+            "description": "Phase B: the artifact class name returned by the builder (e.g. AnnotationTable)."
+          },
+          "schema_id": {
+            "type": "string",
+            "description": "Phase B: the schema identifier stamped onto the artifact's Provenance."
+          },
+          "skill": { "type": "string" },
+          "tests": {
+            "type": "object",
+            "required": [
+              "command",
+              "fixture",
+              "schema_snapshot",
+              "row_snapshot",
+              "drift_fingerprint"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "command": { "type": "string" },
+              "fixture": { "type": "string" },
+              "schema_snapshot": { "type": "string" },
+              "row_snapshot": { "type": "string" },
+              "drift_fingerprint": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "cli": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["command", "module", "function"],
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "module": { "type": "string" },
+          "function": { "type": "string" }
+        }
+      }
+    },
+    "runtime_requirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "python": { "type": "array", "items": { "type": "string" } },
+        "system": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  },
+  "$defs": {
+    "callable_ref": {
+      "type": "object",
+      "required": ["module", "function"],
+      "additionalProperties": false,
+      "properties": {
+        "module": { "type": "string" },
+        "function": { "type": "string" }
+      }
+    }
+  }
+}
