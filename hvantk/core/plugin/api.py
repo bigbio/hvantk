@@ -9,7 +9,8 @@ instantiated by plugin authors.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable, Literal, Mapping
+from pathlib import Path
+from typing import Any, Callable, Literal, Mapping, Protocol
 
 Domain = Literal["genomics", "transcriptomics", "proteomics", "epigenomics", "mapping"]
 Backend = Literal["hail", "anndata", "pandas"]
@@ -19,6 +20,58 @@ Backend = Literal["hail", "anndata", "pandas"]
 # `probe_version` is orthogonal probe-implementation metadata; bumping it should
 # not flip drift status or invalidate stored artifact fingerprints.
 PROBE_FINGERPRINT_IGNORED_KEYS = frozenset({"fetched_at", "probe_version"})
+
+
+class Builder(Protocol):
+    """Phase B builder contract used by ``DatasetSpec.builder``.
+
+    Plugin authors implement this signature; the platform's
+    ``run_builder_for_spec`` invokes it after computing the source fingerprint
+    from the drift probe and constructing a ``BuildContext``.
+
+    ``parsed_input`` is whatever ``DatasetSpec.parse_fn`` returned (typically a
+    path or a dict of paths for multi-input builders). Returns an Artifact
+    subclass — ``AnnotationTable``, ``ExpressionMatrix``, or ``GeneSet`` —
+    matching the manifest's ``artifact_type`` declaration.
+    """
+
+    def __call__(
+        self,
+        parsed_input: Any,
+        ctx: "BuildContext",
+        **params: Any,
+    ) -> Any: ...
+
+
+class DownloadFn(Protocol):
+    """Optional download stage, declared via the ``lifecycle.download`` block
+    in ``plugin.yaml`` (api_version >= 2). Fetches upstream data and writes
+    raw files under ``raw_dir``. Extra kwargs come from ``--plugin-arg
+    KEY=VALUE`` passthrough; the function ignores ones it doesn't consume.
+    """
+
+    def __call__(
+        self,
+        *,
+        raw_dir: Path | str,
+        **params: Any,
+    ) -> None: ...
+
+
+class ParseFn(Protocol):
+    """Optional parse stage, declared via the ``lifecycle.parse`` block in
+    ``plugin.yaml``. Reads the raw files ``download_fn`` produced from
+    ``raw_dir`` and writes the intermediate representation that ``Builder``
+    consumes to ``output_path``.
+    """
+
+    def __call__(
+        self,
+        *,
+        raw_dir: Path | str,
+        output_path: Path | str,
+        **params: Any,
+    ) -> None: ...
 
 
 class PluginLoadError(Exception):
@@ -119,12 +172,12 @@ class DatasetSpec:
     name: str
     domain: Domain
     backend: Backend
-    builder: Callable[..., Any]
+    builder: Builder
     drift_probe: Callable[[], Mapping[str, Any]]
     skill_path: str
     test_paths: TestPaths
-    download_fn: Callable[..., Any] | None = None
-    parse_fn: Callable[..., Any] | None = None
+    download_fn: DownloadFn | None = None
+    parse_fn: ParseFn | None = None
     artifact_type: type | None = None
     schema_id: str | None = None
     plugin_version: str | None = None
