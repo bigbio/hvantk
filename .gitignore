@@ -218,6 +218,7 @@ manuscript/
 
 # Claude AI files
 .claude/
+AGENTS.md
 
 # Vscode AI rules
 .github/instructions/codacy.instructions.md
