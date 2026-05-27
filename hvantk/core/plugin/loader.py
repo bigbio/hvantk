@@ -63,6 +63,12 @@ class PluginRegistry:
         self._manifests: dict[str, DatasetManifest] = {}
         # Pass-2 cache: successfully-resolved executable specs.
         self._datasets: dict[str, DatasetSpec] = {}
+        # Pass-2 negative cache: spec resolutions that failed eagerly.
+        # Stored so get_dataset() returns a consistent error within a
+        # session — without this, a transient resolution failure during
+        # Pass 2 could appear to "self-heal" on a later get_dataset() call
+        # (same registry, two different answers). Cleared on reset only.
+        self._failed_datasets: dict[str, PluginLoadError] = {}
         self._load_errors: list[tuple[str, Exception]] = []
         self._loaded_dirs: set[Path] = set()
         self._schema = _load_schema()
@@ -75,12 +81,24 @@ class PluginRegistry:
         return self._providers[name]
 
     def get_dataset(self, name: str) -> DatasetSpec:
-        """Return the executable spec, resolving callables lazily on first call."""
+        """Return the executable spec, resolving callables lazily on first call.
+
+        If the dataset's spec failed to resolve during eager Pass 2, raises
+        the cached :class:`PluginLoadError` rather than re-attempting the
+        import. This keeps the registry deterministic for the lifetime of
+        a session even when an underlying import is flaky.
+        """
         if name in self._datasets:
             return self._datasets[name]
+        if name in self._failed_datasets:
+            raise self._failed_datasets[name]
         if name not in self._manifests:
             raise KeyError(name)
-        spec = self._resolve_spec(self._manifests[name])
+        try:
+            spec = self._resolve_spec(self._manifests[name])
+        except PluginLoadError as exc:
+            self._failed_datasets[name] = exc
+            raise
         self._datasets[name] = spec
         return spec
 
@@ -339,6 +357,11 @@ class PluginRegistry:
                 )
 
         # Eagerly attempt to bind specs (best-effort; failures are soft).
+        # Failed bindings are cached in ``_failed_datasets`` so that a
+        # later get_dataset() call re-raises the same error rather than
+        # silently re-attempting and possibly succeeding (which would
+        # leave the same registry returning two different answers in one
+        # session — see F14).
         datasets: list[DatasetSpec] = []
         for dm in dm_list:
             try:
@@ -346,10 +369,12 @@ class PluginRegistry:
                 self._datasets[dm.name] = spec
                 datasets.append(spec)
             except PluginLoadError as exc:
+                self._failed_datasets[dm.name] = exc
                 self._load_errors.append((dm.name, exc))
             except Exception as exc:  # noqa: BLE001
                 err = PluginLoadError(str(exc))
                 err.__cause__ = exc
+                self._failed_datasets[dm.name] = err
                 self._load_errors.append((dm.name, err))
 
         # Cache CLI entries for downloader wiring.

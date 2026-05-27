@@ -75,12 +75,7 @@ def test_get_dataset_raises_for_unknown_name():
         reg.get_dataset("does:not:exist")
 
 
-def test_missing_optional_runtime_doesnt_drop_manifest(tmp_path):
-    """If a builder import would fail, the manifest still appears in list_manifests()."""
-    plugin_dir = tmp_path / "fake-broken"
-    plugin_dir.mkdir()
-    (plugin_dir / "plugin.yaml").write_text(
-        """
+_FAKE_BROKEN_MANIFEST = """
 api_version: 2
 name: fake-broken
 version: 0.1.0
@@ -108,8 +103,19 @@ datasets:
       row_snapshot: tests/snapshots/sample_rows.json
       drift_fingerprint: tests/drift_fingerprint.json
 """.strip()
-    )
+
+
+def _make_broken_plugin_dir(tmp_path):
+    plugin_dir = tmp_path / "fake-broken"
+    plugin_dir.mkdir()
+    (plugin_dir / "plugin.yaml").write_text(_FAKE_BROKEN_MANIFEST)
     (plugin_dir / "SKILL.md").write_text("# fake-broken")
+    return plugin_dir
+
+
+def test_missing_optional_runtime_doesnt_drop_manifest(tmp_path):
+    """If a builder import would fail, the manifest still appears in list_manifests()."""
+    plugin_dir = _make_broken_plugin_dir(tmp_path)
 
     reg = plugin_loader.PluginRegistry()
     reg.load_from_directory(plugin_dir)
@@ -123,6 +129,52 @@ datasets:
     # But trying to get the executable spec raises.
     with pytest.raises(Exception):
         reg.get_dataset("fake-broken:rows")
+
+
+def test_failed_dataset_resolution_is_cached_after_pass2(tmp_path):
+    """Pass-2 failures are cached so get_dataset() raises consistently.
+
+    Regression guard for F14: prior to the fix, Pass 2 caught the
+    PluginLoadError into _load_errors but did not cache a failure marker,
+    so a later get_dataset() call would re-attempt the import. If the
+    underlying failure was transient (e.g. a flaky network probe), the
+    second attempt could succeed -- leaving the same registry returning
+    two different answers in one session. The fix records failures in
+    ``_failed_datasets`` and re-raises the cached error.
+    """
+    plugin_dir = _make_broken_plugin_dir(tmp_path)
+
+    reg = plugin_loader.PluginRegistry()
+    reg.load_from_directory(plugin_dir)
+
+    # Pass 2 cached the failure.
+    assert "fake-broken:rows" in reg._failed_datasets
+    cached_error = reg._failed_datasets["fake-broken:rows"]
+
+    # Spy on _resolve_spec to prove get_dataset uses the cache (no second
+    # resolution attempt). Replacing it with a sentinel that would fail the
+    # test if called.
+    resolve_calls = []
+    original_resolve = reg._resolve_spec
+
+    def _spy(dm, *args, **kwargs):
+        resolve_calls.append(dm.name)
+        return original_resolve(dm, *args, **kwargs)
+
+    reg._resolve_spec = _spy  # type: ignore[method-assign]
+
+    # First get_dataset call after Pass 2: raises the cached error without
+    # re-resolving.
+    with pytest.raises(plugin_loader.PluginLoadError) as exc1:
+        reg.get_dataset("fake-broken:rows")
+    assert exc1.value is cached_error
+    assert resolve_calls == [], "get_dataset re-attempted resolution instead of using the cache"
+
+    # Second get_dataset call: still cached, still no resolve.
+    with pytest.raises(plugin_loader.PluginLoadError) as exc2:
+        reg.get_dataset("fake-broken:rows")
+    assert exc2.value is cached_error
+    assert resolve_calls == [], "get_dataset re-attempted resolution on second call"
 
 
 def test_provider_manifests_field_populated():
