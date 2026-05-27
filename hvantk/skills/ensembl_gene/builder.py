@@ -1,9 +1,8 @@
 """Hail Table builder for the Ensembl BioMart gene annotation resource.
 
-Phase K plugin promotion — inlines the import + transform logic from the
-legacy create_ensembl_gene_tb function from hvantk.core.builders.table with
-the Phase B contract. The legacy function stays in place for backward
-compatibility.
+Owns the Phase B ``build_ensembl_gene_genes`` builder. Imports the Ensembl
+BioMart TSV, renames fields, filters to canonical transcripts, groups by
+``gene_id``, and wraps with Provenance.
 """
 from __future__ import annotations
 
@@ -41,14 +40,12 @@ def build_ensembl_gene_genes(
     canonical = params.get("canonical", True)
     fields = params.get("fields", None)
 
-    # 1. Import (inline from create_ensembl_gene_tb's import_func)
     ht = hl.import_table(
         paths=str(parsed_input),
         min_partitions=50,
         impute=True,
     )
 
-    # 2. Transform (inline from create_ensembl_gene_tb's transform_func)
     logger.info("Replacing field names")
     ht = ht.rename(ENSEMBL_BIOMART_FIELDS)
 

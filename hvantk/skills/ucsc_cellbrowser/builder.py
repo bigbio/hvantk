@@ -1,25 +1,21 @@
 """AnnData builder for UCSC Cell Browser collections.
 
-This module owns ``build_ucsc_ad``, the canonical builder that turns a UCSC
-Cell Browser expression TSV plus its metadata file into an ``anndata.AnnData``
-object (cells x genes). It was migrated out of
-``hvantk/tables/matrix_builders.py`` so that everything UCSC-specific
-(builder, streaming/backed helpers, downloader, dataset class, tests,
-fixtures, SKILL) lives under the plugin folder at
-:mod:`hvantk.skills.ucsc_cellbrowser`.
+Owns the Phase B ``build_ucsc_cellbrowser`` builder. Turns a UCSC Cell
+Browser expression TSV plus its metadata file into an ``anndata.AnnData``
+object (cells x genes), returned as an ``ExpressionMatrix`` for the platform
+to persist.
 
-The shared AnnData helpers (``build_anndata_metadata``,
+Shared AnnData helpers (``build_anndata_metadata``,
 ``annotate_column_summary_ad``, ``save_anndata``) intentionally stay in
-``hvantk/core/anndata_utils.py`` because they are reused by every anndata
-builder (Expression Atlas, CPTAC, ...).
+``hvantk/core/models/anndata_utils.py`` and ``hvantk/core/io/anndata_io.py``
+because they are reused by every anndata builder (Expression Atlas, CPTAC,
+...).
 """
 
 from __future__ import annotations
 
-import anndata as ad
 import logging
 import os
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +23,6 @@ logger = logging.getLogger(__name__)
 BACKED_BUILDER_THRESHOLD_BYTES = 1 * 1024 * 1024 * 1024  # 1 GiB
 
 __all__ = [
-    "build_ucsc_ad",
     "build_ucsc_cellbrowser",
     "BACKED_BUILDER_THRESHOLD_BYTES",
 ]
@@ -40,65 +35,54 @@ _SCHEMA_IDS: dict[str, str] = {
 }
 
 
-def build_ucsc_ad(
-    expression_matrix_path: str,
-    metadata_path: str,
-    output_path: Optional[str] = None,
+def build_ucsc_cellbrowser(
+    parsed_input,
+    ctx,
+    *,
     gene_column: str = "gene",
     delimiter: str = "\t",
     split_gene_field: bool = True,
-    overwrite: bool = False,
     chunk_size: int = 500,
     backed: bool | None = None,
     column_batch: int = 64,
-) -> "ad.AnnData":
-    """Build an AnnData object from UCSC Cell Browser expression + metadata.
+    backed_output_path: str | None = None,
+    **params,
+):
+    """Phase B builder — returns an ExpressionMatrix.
 
-    Parameters
-    ----------
-    expression_matrix_path : str
-        Path to expression TSV (genes x cells).
-    metadata_path : str
-        Path to metadata TSV.
-    output_path : str, optional
-        If provided, save the AnnData as ``.h5ad``.
-    gene_column : str
-        Name of the gene identifier column (default ``"gene"``).
-    delimiter : str
-        Column delimiter (default tab).
-    split_gene_field : bool
-        Split pipe-separated gene names, keeping the first element.
-    overwrite : bool
-        Allow overwriting *output_path* if it exists.
-    chunk_size : int
-        Gene rows per streaming chunk (default 500).
-    backed : bool, optional
-        Force the backed-write builder. When ``None`` (default), auto-select
-        based on the expression matrix file size (``> BACKED_BUILDER_THRESHOLD_BYTES``
-        triggers backed mode). When ``True``, ``output_path`` is required.
-    column_batch : int
-        Gene-column batch size used by the backed builder (default 64).
-        Peak RAM scales with ``n_cells × column_batch``.
+    ``parsed_input`` must contain keys ``expression_matrix`` and ``metadata``.
+    The per-dataset ``schema_id`` is resolved from ``ctx.dataset`` via
+    ``_SCHEMA_IDS`` so that all three datasets (default, adult-ctx, dev-ctx)
+    share one builder function while each stamps the correct schema.
 
-    Returns
-    -------
-    ad.AnnData
-        Expression AnnData with metadata in ``obs`` and provenance in ``uns``.
-        In backed mode, returns a read-backed AnnData handle (``backed='r'``).
+    Backed vs in-memory dispatch:
+
+    - In-memory (default for small inputs): loads the expression matrix
+      directly into an ``AnnData`` object, annotates summary stats, and
+      returns it. The platform's ``artifact.save()`` persists to disk.
+    - Backed (auto-selected for inputs > ``BACKED_BUILDER_THRESHOLD_BYTES``,
+      or forced via ``backed=True``): writes to disk while streaming. Phase B
+      callers that need backed mode must pass ``backed_output_path`` (the
+      final on-disk path) because backed writing requires materializing
+      directly to a file. The platform then re-saves to the requested
+      output via ``artifact.save()`` (no-op when paths match).
     """
     import anndata as ad
 
+    from hvantk.core.models import ExpressionMatrix
+    from hvantk.core.models.anndata_utils import (
+        annotate_column_summary_ad,
+        build_anndata_metadata,
+    )
     from hvantk.skills.ucsc_cellbrowser.shared.ucsc import (
-        load_ucsc_metadata,
-        create_anndata_from_ucsc_matrix,
         build_ucsc_atlas_backed,
         coerce_obs_for_h5ad,
+        create_anndata_from_ucsc_matrix,
+        load_ucsc_metadata,
     )
-    from hvantk.core.models.anndata_utils import (
-        build_anndata_metadata,
-        annotate_column_summary_ad,
-    )
-    from hvantk.core.io.anndata_io import save_anndata
+
+    expression_matrix_path = str(parsed_input["expression_matrix"])
+    metadata_path = str(parsed_input["metadata"])
 
     logger.info("Loading UCSC metadata from %s", metadata_path)
     metadata_df = load_ucsc_metadata(metadata_path, sep=delimiter)
@@ -108,34 +92,46 @@ def build_ucsc_ad(
         size = os.path.getsize(expression_matrix_path)
         backed = size > BACKED_BUILDER_THRESHOLD_BYTES
         logger.info(
-            "build_ucsc_ad: auto-selected backed=%s (input size %.2f GiB, threshold %.2f GiB)",
-            backed, size / (1024**3), BACKED_BUILDER_THRESHOLD_BYTES / (1024**3),
+            "build_ucsc_cellbrowser: auto-selected backed=%s "
+            "(input size %.2f GiB, threshold %.2f GiB)",
+            backed,
+            size / (1024**3),
+            BACKED_BUILDER_THRESHOLD_BYTES / (1024**3),
         )
 
+    sid = _SCHEMA_IDS.get(ctx.dataset, "ucsc-cellbrowser-unknown-v1")
+
     if backed:
-        if output_path is None:
-            raise ValueError("backed=True requires output_path (writes directly to disk).")
-        provenance = {"hvantk_metadata": build_anndata_metadata("UCSC", expression_matrix_path)}
+        if backed_output_path is None:
+            raise ValueError(
+                "Backed mode requires --plugin-arg backed_output_path=<path> "
+                "(backed writes go directly to disk). Use the same path as "
+                "--output."
+            )
+        provenance = {
+            "hvantk_metadata": build_anndata_metadata("UCSC", expression_matrix_path)
+        }
         build_ucsc_atlas_backed(
             expression_matrix_path=expression_matrix_path,
-            output_path=output_path,
+            output_path=backed_output_path,
             metadata_df=metadata_df,
             gene_column=gene_column,
             delimiter=delimiter,
             split_gene_field=split_gene_field,
             column_batch=column_batch,
-            overwrite=overwrite,
+            overwrite=False,
             uns=provenance,
         )
-        # Return a backed-mode handle — shape + obs/var without materializing X.
         # annotate_column_summary_ad would need to scan the full X matrix and
         # is intentionally skipped for backed atlases (v1 trade-off).
         logger.info(
-            "Backed atlas built at %s; skipping annotate_column_summary_ad "
-            "(would materialize X). Returning a backed AnnData handle.",
-            output_path,
+            "Backed atlas built at %s; returning a backed AnnData handle.",
+            backed_output_path,
         )
-        return ad.read_h5ad(output_path, backed="r")
+        adata = ad.read_h5ad(backed_output_path, backed="r")
+        return ExpressionMatrix.from_anndata(
+            adata, provenance=ctx.provenance(schema_id=sid)
+        )
 
     logger.info("Creating AnnData from UCSC expression matrix (in-memory)")
     adata = create_anndata_from_ucsc_matrix(
@@ -154,55 +150,7 @@ def build_ucsc_ad(
     # vlen-string HDF5 writer chokes on NaN mixed with strings. Matches
     # the invariant enforced by build_ucsc_atlas_backed.
     adata.obs = coerce_obs_for_h5ad(adata.obs)
-    if output_path:
-        save_anndata(adata, output_path, overwrite=overwrite)
-    return adata
 
-
-def build_ucsc_cellbrowser(
-    parsed_input,
-    ctx,
-    *,
-    gene_column: str = "gene",
-    delimiter: str = "\t",
-    split_gene_field: bool = True,
-    chunk_size: int = 500,
-    backed=None,
-    column_batch: int = 64,
-    **params,
-):
-    """Phase B builder — returns an ExpressionMatrix.
-
-    Same dispatch as build_ucsc_ad (in-memory vs backed) but without writing.
-    The platform's run_builder_for_spec calls artifact.save() to persist.
-
-    ``parsed_input`` must contain keys ``expression_matrix`` and ``metadata``.
-    The per-dataset ``schema_id`` is resolved from ``ctx.dataset`` via
-    ``_SCHEMA_IDS`` so that all three datasets (default, adult-ctx, dev-ctx)
-    share one builder function while each stamps the correct schema.
-    """
-    from hvantk.core.models import ExpressionMatrix
-
-    expression_matrix_path = str(parsed_input["expression_matrix"])
-    metadata_path = str(parsed_input["metadata"])
-
-    # Delegate to the legacy in-memory or backed builder.
-    # output_path=None means "don't save" — the platform calls artifact.save().
-    adata = build_ucsc_ad(
-        expression_matrix_path=expression_matrix_path,
-        metadata_path=metadata_path,
-        output_path=None,
-        gene_column=gene_column,
-        delimiter=delimiter,
-        split_gene_field=split_gene_field,
-        overwrite=False,
-        chunk_size=chunk_size,
-        backed=backed,
-        column_batch=column_batch,
-    )
-
-    sid = _SCHEMA_IDS.get(ctx.dataset, "ucsc-cellbrowser-unknown-v1")
     return ExpressionMatrix.from_anndata(
         adata, provenance=ctx.provenance(schema_id=sid)
     )
-

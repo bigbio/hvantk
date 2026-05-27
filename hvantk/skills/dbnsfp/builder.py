@@ -1,9 +1,9 @@
 """Hail Table builder for the dbNSFP variant functional annotation database.
 
-Phase K plugin promotion — inlines the import + transform logic from the
-legacy create_dbnsfp_tb function from hvantk.core.builders.table with the
-Phase B contract. The legacy function stays in place for backward
-compatibility.
+Owns the Phase B ``build_dbnsfp_variants`` builder. Imports the dbNSFP
+TSV/BGZ, parses variant coordinates to ``(locus, alleles)``, optionally
+groups transcript scores and common prefixes into structs, and wraps with
+Provenance.
 """
 from __future__ import annotations
 
@@ -59,7 +59,6 @@ def build_dbnsfp_variants(
         auto_convert=auto_convert_bgz,
     )
 
-    # 1. Import (inline from create_dbnsfp_tb's import_func)
     ht = hl.import_table(
         paths=input_path_resolved,
         min_partitions=min_partitions,
@@ -68,7 +67,6 @@ def build_dbnsfp_variants(
         force_bgz=force_bgz,
     )
 
-    # 2. Transform (inline from create_dbnsfp_tb's transform_func)
     # Normalize chromosome field and construct variant key
     row_fields = get_row_fields(ht)
     if "#chr" in row_fields:

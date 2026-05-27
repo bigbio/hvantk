@@ -34,14 +34,13 @@ Stable provider notes the catalog will not capture:
 - Field renaming is driven by `CLINGEN_GENE_DISEASE_FIELDS` (`hvantk/core/constants.py`). Notable renames: `GENE SYMBOL → gene_symbol`, `GENE ID (HGNC) → hgnc_id`, `DISEASE LABEL → disease_label`, `DISEASE ID (MONDO) → mondo_id`, `MOI → mode_of_inheritance`, `CLASSIFICATION → classification`, `GCEP → gene_curation_expert_panel`.
 - ID prefix stripping: the builder strips the `HGNC:` and `MONDO:` prefixes from `hgnc_id` and `mondo_id`. This is asymmetric with the HGNC table (which keeps the prefix); downstream joins (e.g., `clingen_streamer`) account for this.
 - Classification levels (`CLINGEN_CLASSIFICATION_LEVELS`, strongest first): `Definitive`, `Strong`, `Moderate`, `Limited`, `Disputed`, `Refuted`. The builder annotates `classification_level` as the numeric position (lower is stronger). Unknown values get `len(CLINGEN_CLASSIFICATION_LEVELS)` and are clamped to the last valid index in the gene-aggregation branch.
-- Keying: default `key_by="gene_disease"` keys by `(hgnc_id, mondo_id)`. `key_by="gene"` aggregates per `hgnc_id` (collects diseases, classifications, modes-of-inheritance into sets; counts diseases). The gene branch also derives `max_classification_label` from `max_classification_level` via a clamped lookup.
-- TSV export is forwarded to `_create_table_base` (no nested struct to flatten); ClinGen is not special in this regard.
+- Keying: keyed by `(hgnc_id, mondo_id)`.
 
 ## 5. Output contract
 
-Hail Table at `<output_path>.ht`. Default keying: `(hgnc_id, mondo_id)`. With `key_by="gene"`, keyed by `hgnc_id` only.
+Hail Table at `<output_path>.ht`, keyed by `(hgnc_id, mondo_id)`.
 
-Default row schema includes: `hgnc_id`, `gene_symbol`, `disease_label`, `mondo_id`, `mode_of_inheritance`, `sop`, `classification`, `classification_level`, `classification_date`, `gene_curation_expert_panel`, `report_url`. Gene-aggregation rows replace the disease/classification scalars with `disease_labels`, `disease_mondo_pairs`, `mondo_ids`, `classifications`, `modes_of_inheritance`, `max_classification_level`, `max_classification_label`, `n_diseases`.
+Row schema includes: `hgnc_id`, `gene_symbol`, `disease_label`, `mondo_id`, `mode_of_inheritance`, `sop`, `classification`, `classification_level`, `classification_date`, `gene_curation_expert_panel`, `report_url`.
 
 ## 6. hvantk integration points
 

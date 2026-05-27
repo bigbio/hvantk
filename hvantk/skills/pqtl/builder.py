@@ -1,84 +1,157 @@
 """Hail Table builder for the pQTL (protein quantitative trait loci) resource.
 
-Phase K plugin promotion — delegates to the legacy create_pqtl_tb function
-from hvantk.core.builders.table with the Phase B contract. The legacy
-function performs complex multi-step processing (gene-symbol → Ensembl ID
-mapping, GTEx variant-ID parsing, SE derivation) that is cleanly encapsulated
-in the legacy builder. Using the delegation-stub pattern (as documented in the
-Phase K spec) rather than inlining, since the pQTL builder requires external
-resources (hgnc_ht) and has complex closure state.
+Owns the Phase B ``build_pqtl_metrics`` builder. The transform (GTEx
+variant-ID parsing, SE derivation via ``|BETA / STAT|``, gene-symbol →
+Ensembl-ID mapping via the HGNC table) is implemented directly here.
 
-The legacy function stays in place for backward compatibility.
+Shared GTEx variant-ID parsing helpers live in
+``hvantk.core.utils.qtl_helpers`` (also used by the eQTL builder).
 """
 from __future__ import annotations
 
 import logging
-import os
-import tempfile
-from typing import Any
 
 import hail as hl
 
+from hvantk.core.utils.qtl_helpers import (
+    parse_gtex_variant_id,
+    scan_tissue_files,
+)
+
 logger = logging.getLogger(__name__)
+
+
+def _import_gtex_fang(input_path, tissue):
+    """Import Fang et al. (2025) pQTL allpairs (space-delimited gzip).
+
+    Columns: ``gene_name SNP CHR BP A1 NMISS BETA STAT P``.
+    Rows where ``STAT = 0`` are removed (cannot derive SE).
+    """
+    files = scan_tissue_files(input_path, [".txt.gz", ".tsv.gz"])
+
+    tables = []
+    for fp, tname in files:
+        if tissue and tname != tissue:
+            continue
+        logger.info("Importing pQTL allpairs: %s (tissue: %s)", fp, tname)
+        ht_part = hl.import_table(
+            fp,
+            delimiter=" ",
+            force=True,
+            types={
+                "BETA": hl.tfloat64,
+                "STAT": hl.tfloat64,
+                "P": hl.tfloat64,
+            },
+        )
+        # STAT = 0 → SE undefined
+        ht_part = ht_part.filter(ht_part.STAT != 0.0)
+        ht_part = ht_part.select(
+            gene_symbol=ht_part.gene_name,
+            variant_id=ht_part.SNP,
+            beta=ht_part.BETA,
+            stat=ht_part.STAT,  # kept for SE derivation in transform
+            p_value=ht_part.P,
+            tissue=tname,
+        )
+        tables.append(ht_part)
+
+    if not tables:
+        raise FileNotFoundError(f"No pQTL allpairs files matched (tissue={tissue})")
+    return tables[0].union(*tables[1:]) if len(tables) > 1 else tables[0]
 
 
 def build_pqtl_metrics(
     parsed_input,
     ctx,
-    **params,
+    *,
+    reference_genome: str = "GRCh38",
+    source: str = "gtex_fang",
+    tissue: str | None = None,
+    hgnc_ht: str | None = None,
+    no_gene_map: bool = False,
+    p_threshold: float | None = None,
+    fields: list[str] | None = None,
 ):
-    """Phase B builder — returns an AnnotationTable.
+    """Phase B builder — returns an AnnotationTable keyed by
+    ``(locus, alleles, gene_id)``.
 
-    Delegates to create_pqtl_tb (delegation-stub pattern per Phase K spec)
-    because the pQTL builder requires external HGNC table resources and
-    complex multi-step transforms that share helpers with other builders.
+    For ``source='gtex_fang'``: Fang et al. (2025) allpairs files
+    (space-delimited gzip, TMT mass spectrometry, 5 tissues). SE is derived as
+    ``|BETA / STAT|`` (Fang files lack an SE column).
 
-    Parameters
-    ----------
-    parsed_input : str | Path
-        Path to pQTL allpairs file or directory of per-tissue files.
-    ctx : hvantk.core.models.BuildContext
-        Platform-provided context; supplies provenance.
-    **params
-        Optional: reference_genome (str, default "GRCh38"),
-                  source (str, default "gtex_fang"),
-                  tissue (str), hgnc_ht (str), no_gene_map (bool, default False),
-                  p_threshold (float), fields (list of str).
+    Gene symbols are mapped to Ensembl gene IDs via the HGNC table and
+    :class:`~hvantk.core.utils.gene_mapper.GeneMapper`. This is **required**
+    because the cascade join uses ``(locus, alleles, gene_id)`` with Ensembl
+    IDs on the eQTL side; raw gene symbols would produce zero matches.
 
-    Notes
-    -----
-    Phase K delegation stub — the delegation to the legacy builder writes to a
-    temporary path and reads the checkpointed table back. This adds an
-    extra disk write+read at build time; Phase L cleanup can inline the
-    transform directly.
+    Pass ``no_gene_map=True`` to opt out of mapping for non-cascade use cases
+    (the table will be keyed by raw gene symbol and will NOT join with eQTL
+    tables in cascade analysis).
     """
-    from hvantk.core.builders.table import create_pqtl_tb
     from hvantk.core.models import AnnotationTable
+    from hvantk.core.qtl_constants import PQTL_SOURCES
 
-    # Strip output_path/overwrite/export_tsv — platform owns those
-    safe_params = {
-        k: v
-        for k, v in params.items()
-        if k not in ("output_path", "overwrite", "export_tsv")
-    }
-
-    with tempfile.TemporaryDirectory() as td:
-        tmp_out = os.path.join(td, "pqtl.ht")
-        create_pqtl_tb(
-            input_path=str(parsed_input),
-            output_path=tmp_out,
-            overwrite=True,
-            **safe_params,
+    if source not in PQTL_SOURCES:
+        raise ValueError(
+            f"Unknown pQTL source: {source!r}. Supported: {PQTL_SOURCES}"
         )
-        # Read back before tempdir is cleaned up
-        ht = hl.read_table(tmp_out)
-        # Force materialisation into a new in-memory representation by
-        # collecting the schema — the actual data is lazy until artifact.save()
-        # calls ht.write(). We need the table to NOT reference the deleted
-        # tempdir. Re-checkpoint to a second temp path that persists until
-        # Hail's own temp-file cleanup.
-        persistent_tmp = hl.utils.new_temp_file(prefix="pqtl_", extension=".ht")
-        ht = ht.checkpoint(persistent_tmp, overwrite=True)
+    if source != "gtex_fang":
+        raise NotImplementedError(
+            f"pQTL source {source!r} is not yet implemented. "
+            "Only 'gtex_fang' (Fang et al. 2025) is currently supported."
+        )
+
+    if not hgnc_ht and not no_gene_map:
+        raise ValueError(
+            "Ensembl gene mapping is required for cascade-compatible pQTL "
+            "tables. Provide --plugin-arg hgnc_ht=<path> (HGNC Hail Table "
+            "built by 'hvantk reprocess hgnc:lookup'). If you intentionally "
+            "want a symbol-keyed table for non-cascade use, pass "
+            "--plugin-arg no_gene_map=true."
+        )
+
+    ht = _import_gtex_fang(str(parsed_input), tissue)
+    ht = parse_gtex_variant_id(ht, "variant_id", reference_genome)
+
+    # SE = |BETA / STAT| (Fang allpairs lack an SE column).
+    ht = ht.annotate(se=hl.abs(ht.beta / ht.stat))
+    ht = ht.drop("stat", "variant_id")
+
+    if hgnc_ht:
+        from hvantk.core.utils.gene_mapper import GeneMapper
+
+        logger.info(
+            "Mapping gene symbols → Ensembl IDs via GeneMapper (%s)",
+            hgnc_ht,
+        )
+        hgnc_table = hl.read_table(hgnc_ht)
+        mapper = GeneMapper(hgnc_table)
+        ht = mapper.annotate_table(
+            ht,
+            source_field="gene_symbol",
+            source_type="gene_symbol",
+            fields_to_add=["ensembl_gene_id"],
+        )
+        ht = ht.annotate(
+            gene_id=hl.or_else(ht.hgnc_ensembl_gene_id, ht.gene_symbol),
+        )
+        ht = ht.drop("hgnc_ensembl_gene_id")
+    else:
+        logger.warning(
+            "no_gene_map=True: using gene symbols as gene_id. "
+            "This table will NOT join with eQTL tables in cascade analysis."
+        )
+        ht = ht.annotate(gene_id=ht.gene_symbol)
+
+    if p_threshold is not None and p_threshold > 0:
+        ht = ht.filter(ht.p_value <= p_threshold)
+
+    ht = ht.annotate(source=source, is_cis=True)
+    ht = ht.key_by("locus", "alleles", "gene_id")
+
+    if fields is not None:
+        ht = ht.select(*fields)
 
     return AnnotationTable.from_hail(
         ht, provenance=ctx.provenance(schema_id="pqtl-v1")

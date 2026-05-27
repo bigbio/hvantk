@@ -39,17 +39,17 @@ Stable provider notes the catalog will not capture:
 
 ## 5. Output contract
 
-Hail Table at `<output_path>.ht`. Default keying: `(hgnc_id, mondo_id, submitter)`.
+Hail Table at `<output_path>.ht`, keyed by `(hgnc_id, mondo_id, submitter)`.
 
-Default row schema includes: `sgc_id`, `hgnc_id`, `gene_symbol`, `mondo_id`, `disease_label`, `disease_original_id`, `disease_original_label`, `classification`, `classification_level`, `mode_of_inheritance`, `submitter`, `submission_date`, `report_url`, `pmids`. Gene-disease aggregation rows replace per-submitter scalars with `submitters`, `classifications`, `modes_of_inheritance`, `max_classification_level`, `max_classification_label`, `n_submitters`. Gene aggregation additionally collapses `disease_labels`, `disease_mondo_pairs`, `mondo_ids`, `n_diseases`.
+Row schema includes: `sgc_id`, `hgnc_id`, `gene_symbol`, `mondo_id`, `disease_label`, `disease_original_id`, `disease_original_label`, `classification`, `classification_level`, `mode_of_inheritance`, `submitter`, `submission_date`, `report_url`, `pmids`.
 
 ## 6. hvantk integration points
 
 - Plugin manifest: `hvantk/skills/gencc/plugin.yaml` (drives loader registration; compound dataset key `gencc:submissions`).
-- Builder: `create_gencc_submissions_tb` in `hvantk/skills/gencc/builder.py` (uses `_create_table_base()` per `_conventions` § 4).
+- Builder: `build_gencc_submissions` in `hvantk/skills/gencc/builder.py`.
 - Downloader CLI: `download_cmd` (Click `gencc-download`) in `hvantk/skills/gencc/cli.py`; lifecycle entry-point `download_dataset(raw_dir=...)`. Wired into the umbrella `hvantk download gencc` group in `hvantk/tools/plugins/download_cli.py`.
 - Dataset class: `GenCCSubmissionsDataset` in `hvantk/skills/gencc/shared/datasets.py`.
-- Build CLI: `hvantk reprocess gencc:submissions --raw-dir <dir> --output <path>.ht` (skip individual stages with `--skip-download` / `--skip-parse` / `--skip-build`; pass builder kwargs via `--plugin-arg key=value`, e.g. `--plugin-arg key_by=gene_disease --plugin-arg min_classification=Strong`).
+- Build CLI: `hvantk reprocess gencc:submissions --raw-dir <dir> --output <path>.ht` (skip individual stages with `--skip-download` / `--skip-parse` / `--skip-build`; pass builder kwargs via `--plugin-arg key=value`, e.g. `--plugin-arg min_classification=Strong`).
 - Streamer (out-of-plugin, intentionally): `hvantk/data/gencc_streamer.py` (`GenCCStreamer`, subclass of `GeneDiseaseValidityStreamer`); shared with the ClinGen/gene-disease streamer family. Re-exported through `hvantk/data/__init__.py`.
 - Constants: `GENCC_BASE_URL`, `GENCC_FILE_PREFIX`, `GENCC_SUBMISSION_FIELDS`, `GENCC_CLASSIFICATION_LEVELS` in `hvantk/core/constants.py`.
 - Tests: `hvantk/skills/gencc/tests/test_gencc.py` (dataset class + builder-driven streamer tests), `test_drift_probe.py`.
@@ -60,8 +60,7 @@ When invoked to build or update:
 
 1. Verify Hail is available (defer to the SessionStart hook).
 2. Confirm the raw TSV is present at `<raw_dir>/gencc-submissions-<YYYY-MM-DD>.tsv`. If absent, run `hvantk download gencc --output-dir <raw_dir>`.
-3. Decide keying: `gene_disease_submitter` for full granularity (per-submitter assertions); `gene_disease` for consensus joins; `gene` for gene-level rollups.
-4. Build via Python (`create_gencc_submissions_tb(input_path, output_path, key_by=..., min_classification=..., overwrite=True)`) or CLI (`hvantk reprocess gencc:submissions --raw-dir <dir> --output <path>.ht --plugin-arg key_by=... --plugin-arg min_classification=...`).
+3. Build via CLI: `hvantk reprocess gencc:submissions --raw-dir <dir> --output <path>.ht` (pass `--plugin-arg min_classification=Strong` to filter).
 5. Sanity-check the output: row count plausible (per-submitter granularity gives more rows than ClinGen); key fields present; HGNC/MONDO prefixes stripped on at least one known row (e.g., BRCA1 → `hgnc_id == "1100"`, not `"HGNC:1100"`).
 6. Run validation: `pytest hvantk/skills/gencc/tests -m hail`.
 

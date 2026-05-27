@@ -1,9 +1,7 @@
 """Hail Table builder for the gnomAD constraint gene metrics resource.
 
-Phase K plugin promotion — inlines the import logic from the legacy
-create_gnomad_constraint_gene_metrics_tb function from
-hvantk.core.builders.table with the Phase B contract. The legacy function
-stays in place for backward compatibility.
+Owns the Phase B ``build_gnomad_metrics_metrics`` builder. Imports the
+gnomAD lof_metrics TSV keyed by ``gene_id`` and wraps with Provenance.
 """
 from __future__ import annotations
 
@@ -38,7 +36,6 @@ def build_gnomad_metrics_metrics(
 
     fields = params.get("fields", None)
 
-    # 1. Import (inline from create_gnomad_constraint_gene_metrics_tb's import_func)
     ht = hl.import_table(
         paths=str(parsed_input),
         impute=True,
