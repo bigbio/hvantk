@@ -73,7 +73,6 @@ def ensure_data_files():
 def main():
     """Main workflow with ontology-based categorization."""
     import hail as hl
-    from hvantk.skills.clingen.builder import create_clingen_gene_disease_tb
     from hvantk.skills.clingen.streamer import ClinGenStreamer
     from hvantk.core.utils.mondo_parser import MONDO_DISEASE_CATEGORIES
 
@@ -88,25 +87,25 @@ def main():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     # Paths
-    input_csv = str(INPUT_CSV)
     output_ht = str(OUTPUT_DIR / "clingen_full.ht")
     mondo_obo = str(MONDO_OBO)
 
-    # Step 1: Build the ClinGen Hail Table
+    # Step 1: Ensure the ClinGen Hail Table exists.
+    # Builds go through the plugin system; this example focuses on the
+    # ontology-based categorization that consumes a built artifact.
     print("\n" + "=" * 70)
-    print("Step 1: Building ClinGen Hail Table")
+    print("Step 1: ClinGen Hail Table")
     print("=" * 70)
 
     if not Path(output_ht).exists():
-        logger.info(f"Building ClinGen table from: {input_csv}")
-        create_clingen_gene_disease_tb(
-            input_path=input_csv,
-            output_path=output_ht,
-            key_by="gene_disease",
-            overwrite=True,
+        print(f"ERROR: ClinGen Hail Table not found at {output_ht}")
+        print("Build it first with:")
+        print(
+            f"  hvantk reprocess clingen:gene_disease "
+            f"--raw-dir {DATA_DIR} --output {output_ht} --skip-download"
         )
-    else:
-        logger.info(f"Using existing ClinGen table: {output_ht}")
+        return
+    logger.info(f"Using existing ClinGen table: {output_ht}")
 
     # Step 2: Initialize ClinGenStreamer
     print("\n" + "=" * 70)

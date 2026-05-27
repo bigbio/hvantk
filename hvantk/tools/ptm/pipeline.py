@@ -48,8 +48,10 @@ def ptm_build_pipeline(config: PTMBuildConfig) -> PTMBuildResult:
         1. Download UniProt PTM TSV (if ``config.ptm_tsv`` is None)
         2. Delegate to :func:`ptm_build_pipeline_core` for GTF download,
            parsing, and coordinate mapping
-        3. Build the Hail Table from the mapped TSV using the uniprot-ptm
-           skill's :func:`create_ptm_sites_tb`
+        3. Build the Hail Table from the mapped TSV by invoking the
+           ``uniprot_ptm:sites`` Phase B builder via
+           :func:`hvantk.core.plugin.run_builder.run_builder_for_spec`.
+           The build is stamped with platform Provenance.
 
     Parameters
     ----------
@@ -67,6 +69,11 @@ def ptm_build_pipeline(config: PTMBuildConfig) -> PTMBuildResult:
     ValueError
         If configuration validation fails.
     """
+    from pathlib import Path
+
+    from hvantk.core.plugin import loader as plugin_loader
+    from hvantk.core.plugin.run_builder import run_builder_for_spec
+
     # Step 1: Ensure UniProt PTM TSV is available before calling the core.
     # ptm_build_pipeline_core requires config.ptm_tsv to be set.
     if config.ptm_tsv is None:
@@ -86,18 +93,19 @@ def ptm_build_pipeline(config: PTMBuildConfig) -> PTMBuildResult:
     # Step 2: Pure coordinate-mapping core (no skills).
     result = ptm_build_pipeline_core(config)
 
-    # Step 3: Build Hail Table from the mapped TSV.
+    # Step 3: Build Hail Table from the mapped TSV via the Phase B contract.
     if result.n_mapped > 0:
         logger.info("Building Hail Table at %s...", config.output_ht)
-        from hvantk.skills.uniprot_ptm.builder import create_ptm_sites_tb
-
+        reg = plugin_loader.get_registry()
+        spec = reg.get_dataset("uniprot_ptm:sites")
         mapped_path = _resolve_mapped_path(config, result)
-        create_ptm_sites_tb(
-            input_path=mapped_path,
-            output_path=config.output_ht,
+        run_builder_for_spec(
+            spec,
+            parsed_input=mapped_path,
+            output_path=Path(config.output_ht),
+            plugin_version=spec.plugin_version or "<unknown>",
             reference_genome=config.reference_genome,
             flanking_codons=config.flanking_codons,
-            overwrite=config.overwrite,
         )
         result.output_ht = config.output_ht
 
