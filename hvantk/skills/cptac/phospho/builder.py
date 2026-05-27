@@ -22,10 +22,7 @@ def build_cptac_phospho(
     """Phase B builder — returns an ExpressionMatrix from CPTAC wide-format phospho + metadata."""
     import pandas as pd
     from hvantk.core.models import ExpressionMatrix
-    from hvantk.core.models.anndata_utils import (
-        annotate_column_summary_ad,
-        build_anndata_metadata,
-    )
+    from hvantk.core.models.anndata_utils import annotate_column_summary_ad
     from hvantk.skills.cptac.shared.cptac import create_anndata_from_cptac_phospho
 
     expression_path = str(parsed_input["expression"])
@@ -42,7 +39,6 @@ def build_cptac_phospho(
         sample_id_col=sample_id_col,
     )
 
-    adata.uns["hvantk_metadata"] = build_anndata_metadata("CPTAC-phospho", expression_path)
     annotate_column_summary_ad(adata)
 
     return ExpressionMatrix.from_anndata(

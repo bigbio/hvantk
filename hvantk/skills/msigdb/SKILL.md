@@ -47,7 +47,7 @@ GMT is **tab-separated with variable-width rows**:
 
 - **Object:** `hl.Table` checkpointed to `output_path` (a `.ht` directory).
 - **Key:** `[set_name]` (string, unique-in-table).
-- **Globals:** `hvantk_metadata` set by `_create_table_base`.
+- **Provenance:** stamped via `ctx.provenance(schema_id="msigdb-genesets-v1")`; persisted as a sidecar `.provenance.json`.
 - **Fields:**
   - `set_name: str` — gene-set identifier (e.g., `KEGG_APOPTOSIS`).
   - `source_url: str` — GMT column 2, verbatim. For MSigDB-issued GMTs this is a `https://www.gsea-msigdb.org/...` URL.

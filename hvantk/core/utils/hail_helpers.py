@@ -18,8 +18,6 @@ from typing import Callable, List, Optional
 
 import hail as hl
 
-from hvantk.core.models.metadata import build_table_metadata
-
 logger = logging.getLogger(__name__)
 _FILE_URI_PREFIX = "file://"
 
@@ -40,9 +38,12 @@ def create_table_base(
     2. Runs ``import_func()`` to obtain the table.
     3. Applies ``transform_func`` if provided.
     4. Optionally subsets to ``fields``.
-    5. Stamps ``hvantk_metadata`` globals.
-    6. Checkpoints to ``output_path``.
-    7. Optionally exports a TSV alongside the checkpoint.
+    5. Checkpoints to ``output_path``.
+    6. Optionally exports a TSV alongside the checkpoint.
+
+    Provenance is stamped on the resulting artifact by the Phase B
+    orchestrator (``run_builder_for_spec`` -> ``ctx.provenance(...)``);
+    callers no longer attach ``hvantk_metadata`` globals.
     """
     logger.info(f"Creating {source_name} table from {input_path}")
     ht = import_func()
@@ -53,10 +54,6 @@ def create_table_base(
     if fields is not None:
         logger.info(f"Selecting fields: {fields}")
         ht = ht.select(*fields)
-
-    ht = ht.annotate_globals(
-        hvantk_metadata=build_table_metadata(source_name, input_path, ht)
-    )
 
     logger.info(f"Checkpointing table to {output_path}")
     ht = ht.checkpoint(output=output_path, overwrite=overwrite)

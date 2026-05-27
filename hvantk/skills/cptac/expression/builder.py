@@ -24,10 +24,7 @@ def build_cptac_expression(
     """Phase B builder — returns an ExpressionMatrix from long-format CPTAC expression + metadata."""
     import pandas as pd
     from hvantk.core.models import ExpressionMatrix
-    from hvantk.core.models.anndata_utils import (
-        annotate_column_summary_ad,
-        build_anndata_metadata,
-    )
+    from hvantk.core.models.anndata_utils import annotate_column_summary_ad
     from hvantk.skills.cptac.shared.cptac import create_anndata_from_cptac_long
 
     expression_path = str(parsed_input["expression"])
@@ -46,7 +43,6 @@ def build_cptac_expression(
         expression_col=expression_col,
     )
 
-    adata.uns["hvantk_metadata"] = build_anndata_metadata("CPTAC", expression_path)
     annotate_column_summary_ad(adata)
 
     return ExpressionMatrix.from_anndata(

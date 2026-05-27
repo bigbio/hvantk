@@ -47,8 +47,8 @@ Stable notes:
 - **Shape:** `obs = samples`, `var = genes`. `X` is `float32` (genes-x-samples after transpose).
 - **`obs`:** indexed by `sample_id`; columns are SDRF characteristics / factors after the long → wide reshape (e.g. `organism`, `tissue`, `cell_type`, ...).
 - **`var`:** indexed by `gene_id`. Includes a `Gene Name` column when the source TSV had one.
-- **`uns["hvantk_metadata"]`:** provenance dict from `hvantk.core.anndata_utils.build_anndata_metadata("ExpressionAtlas", expression_matrix_path)`.
 - **`uns["column_summary"]`:** per-`obs`-column summary annotated by `annotate_column_summary_ad`.
+- **Provenance:** stamped on the returned `ExpressionMatrix` via `ctx.provenance(schema_id="expression-atlas-dataset-v1")`; persisted by the platform as a sidecar `.provenance.json`.
 
 ## 6. hvantk integration points
 

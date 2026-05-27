@@ -25,52 +25,6 @@ def _make_test_adata() -> ad.AnnData:
     return ad.AnnData(X=X, obs=obs, var=var)
 
 
-class TestBuildAnndataMetadata:
-    def test_returns_required_keys(self):
-        from hvantk.core.models.anndata_utils import build_anndata_metadata
-
-        meta = build_anndata_metadata("ClinVar", "/data/clinvar.vcf")
-        required = {
-            "hvantk_version",
-            "source_name",
-            "source_description",
-            "raw_input_path",
-            "build_date",
-        }
-        assert required.issubset(meta.keys())
-
-    def test_known_source_ucsc(self):
-        from hvantk.core.models.anndata_utils import build_anndata_metadata
-
-        meta = build_anndata_metadata("UCSC", "/data/ucsc.h5ad")
-        assert meta["source_name"] == "UCSC"
-        assert "UCSC Cell Browser" in meta["source_description"]
-
-    def test_known_source_expressionatlas(self):
-        from hvantk.core.models.anndata_utils import build_anndata_metadata
-
-        meta = build_anndata_metadata("Expression-Atlas", "/data/ea.h5ad")
-        assert "Expression Atlas" in meta["source_description"]
-
-    def test_known_source_cptac(self):
-        from hvantk.core.models.anndata_utils import build_anndata_metadata
-
-        meta = build_anndata_metadata("CPTAC", "/data/cptac.h5ad")
-        assert "Proteomics" in meta["source_description"]
-
-    def test_unknown_source(self):
-        from hvantk.core.models.anndata_utils import build_anndata_metadata
-
-        meta = build_anndata_metadata("UnknownDB", "/data/unk.tsv")
-        assert meta["source_description"] == ""
-
-    def test_input_path_stored(self):
-        from hvantk.core.models.anndata_utils import build_anndata_metadata
-
-        meta = build_anndata_metadata("test", "/my/path.tsv")
-        assert meta["raw_input_path"] == "/my/path.tsv"
-
-
 class TestAnnotateColumnSummary:
     def test_adds_column_summary_to_uns(self):
         from hvantk.core.models.anndata_utils import annotate_column_summary_ad

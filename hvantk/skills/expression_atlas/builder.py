@@ -4,9 +4,9 @@ Owns the Phase B ``build_expression_atlas`` builder. Turns an Expression
 Atlas baseline bulk-RNA-seq expression TSV plus its SDRF metadata file into
 an ``ExpressionMatrix`` (samples x genes).
 
-Shared AnnData helpers (``build_anndata_metadata``,
-``annotate_column_summary_ad``) live in ``hvantk/core/models/anndata_utils``
-because they are reused by every anndata builder (UCSC, CPTAC, ...).
+The shared ``annotate_column_summary_ad`` helper lives in
+``hvantk/core/models/anndata_utils`` and is reused by every anndata
+builder (UCSC, CPTAC, ...).
 """
 
 from __future__ import annotations
@@ -40,10 +40,7 @@ def build_expression_atlas(
         AnnData-backed ExpressionMatrix wrapped with Provenance.
     """
     from hvantk.core.models import ExpressionMatrix
-    from hvantk.core.models.anndata_utils import (
-        annotate_column_summary_ad,
-        build_anndata_metadata,
-    )
+    from hvantk.core.models.anndata_utils import annotate_column_summary_ad
     from hvantk.skills.expression_atlas.shared.expression_atlas import (
         convert_sdrf_to_dataframe,
         create_anndata_from_expression_atlas,
@@ -61,9 +58,6 @@ def build_expression_atlas(
         delimiter=delimiter,
     )
 
-    adata.uns["hvantk_metadata"] = build_anndata_metadata(
-        "ExpressionAtlas", expression_matrix_path
-    )
     annotate_column_summary_ad(adata)
 
     return ExpressionMatrix.from_anndata(

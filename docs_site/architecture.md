@@ -53,7 +53,7 @@ hvantk/
 │   │   ├── artifact.py          # Artifact base + type registry
 │   │   ├── backends.py          # AlgorithmMeta, Backend, @algorithm decorator
 │   │   ├── build_context.py     # BuildContext passed to plugin builders
-│   │   ├── anndata_utils.py     # AnnData helpers (build_anndata_metadata, etc.)
+│   │   ├── anndata_utils.py     # annotate_column_summary_ad (AnnData obs summary)
 │   │   ├── metadata.py          # Metadata structs and source descriptions
 │   │   └── provenance.py        # Source-fingerprint provenance stamping
 │   ├── plugin/            # Plugin system

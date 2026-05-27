@@ -1,8 +1,8 @@
 """AnnData on-disk I/O. Moved from core/models/anndata_utils.py in Phase Q
 to honor the intra-core rule: core/models doesn't perform I/O.
 
-Metadata enrichment helpers (build_anndata_metadata, annotate_column_summary_ad)
-stay in core/models/anndata_utils.py because they're pure data transformations.
+The pure data-transformation helper ``annotate_column_summary_ad`` stays
+in ``core/models/anndata_utils.py``.
 """
 
 import logging

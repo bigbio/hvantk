@@ -15,7 +15,6 @@ from typing import Any
 
 import hail as hl
 
-from hvantk.core.models.metadata import build_table_metadata
 from hvantk.core.utils.file_utils import resolve_compression
 
 logger = logging.getLogger(__name__)
@@ -79,9 +78,6 @@ def _run_alphagenome_streamer(
             alleles=[ht.ref, ht.alt],
         ).key_by("locus", "alleles")
 
-    ht = ht.annotate_globals(
-        hvantk_metadata=build_table_metadata("AlphaGenome", input_path, ht)
-    )
     if os.path.isdir(output_path):
         table_output_path = os.path.join(output_path, "alphagenome_variants.ht")
     else:

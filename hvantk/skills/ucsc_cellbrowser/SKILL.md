@@ -39,7 +39,7 @@ Gotchas:
 
 ## 5. Output contract
 
-`.h5ad` file at `output_path` (or an in-memory `AnnData` returned if `output_path` is omitted in non-backed mode). Schema is defined by `hvantk/tests/snapshots/ucsc-cellbrowser/schema.json` (canonical). Human summary: AnnData with `obs` indexed by cell ID and carrying cell metadata (rows = cells), `var` indexed by gene ID (rows = genes), `X` a `float32` sparse matrix (CSR for the in-memory path; CSC for the backed path), and `uns["hvantk_metadata"]` carrying provenance produced by `build_anndata_metadata("UCSC", ...)`.
+`.h5ad` file at `output_path` (or an in-memory `AnnData` returned if `output_path` is omitted in non-backed mode). Schema is defined by `hvantk/tests/snapshots/ucsc-cellbrowser/schema.json` (canonical). Human summary: AnnData with `obs` indexed by cell ID and carrying cell metadata (rows = cells), `var` indexed by gene ID (rows = genes), `X` a `float32` sparse matrix (CSR for the in-memory path; CSC for the backed path). Provenance is stamped on the returned `ExpressionMatrix` via `ctx.provenance(schema_id=...)` and persisted by the platform as a sidecar `.provenance.json`.
 
 ## 6. hvantk integration points
 
@@ -47,7 +47,7 @@ Gotchas:
 - In-memory helper: `create_anndata_from_ucsc_matrix` in `hvantk/skills/ucsc_cellbrowser/shared/ucsc.py`.
 - Backed-write helper: `build_ucsc_atlas_backed` in `hvantk/skills/ucsc_cellbrowser/shared/ucsc.py`.
 - Metadata loader: `load_ucsc_metadata` in `hvantk/skills/ucsc_cellbrowser/shared/ucsc.py`.
-- Provenance / save helpers: `build_anndata_metadata`, `save_anndata`, `annotate_column_summary_ad` in `hvantk/core/anndata_utils.py`.
+- Provenance: stamped by the platform via `ctx.provenance(...)` (see `hvantk/core/plugin/run_builder.py`). Save / summary helpers: `save_anndata` in `hvantk/core/io/anndata_io.py`, `annotate_column_summary_ad` in `hvantk/core/models/anndata_utils.py`.
 - CLI: `hvantk reprocess ucsc-cellbrowser:<dataset> --raw-dir <dir> --output <path>.h5ad` (dataset is one of `default`, `adult-ctx`, `dev-ctx`). Builder kwargs flow through `--plugin-arg key=value`.
 - Registry: registered for batch / recipe use as `MATRIX_BUILDERS["ucsc-cellbrowser:default"]` (and the `adult-ctx` / `dev-ctx` siblings) via the plugin manifest at `hvantk/skills/ucsc_cellbrowser/plugin.yaml`; the legacy bare `"ucsc"` key was retired with the plugin migration.
 - Test: `hvantk/skills/ucsc_cellbrowser/tests/test_builder.py`.

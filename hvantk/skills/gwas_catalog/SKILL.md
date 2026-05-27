@@ -69,7 +69,7 @@ Type coercions in transform (all string at import):
 
 - **Object:** `hl.Table` checkpointed to `output_path` (a `.ht` directory).
 - **Key:** `[locus, alleles]` where `alleles = [<risk_allele>, "N"]` (sentinel ALT).
-- **Globals:** `hvantk_metadata` set by `_create_table_base`.
+- **Provenance:** stamped via `ctx.provenance(schema_id="gwas-catalog-associations-v1")`; persisted as a sidecar `.provenance.json`.
 - **Fields:** snake_case 1:1 renames of the surviving raw 34 columns. Do not drop raw columns; let callers `select()`. No judgment-call flag columns (`is_haplotype`, `has_risk_allele`) — both disqualifying conditions are filtered upstream.
 - **Reference genome:** `GRCh38`. No liftover.
 

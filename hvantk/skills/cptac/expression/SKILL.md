@@ -44,8 +44,8 @@ Metadata file is read with the same auto-detect logic and indexed by `SampleID` 
 - **`X`:** `float32`, missing values as `NaN`.
 - **`obs`:** indexed by sample id; columns mirror the metadata file (after `set_index`).
 - **`var`:** indexed by gene id (name = `gene_id_col`); contains `gene_name_col` if it was present in the input.
-- **`uns["hvantk_metadata"]`:** provenance dict from `build_anndata_metadata("CPTAC", expression_path)`.
 - **`uns["column_summary"]`:** added by `annotate_column_summary_ad`.
+- **Provenance:** stamped on the returned `ExpressionMatrix` via `ctx.provenance(schema_id="cptac-expression-v1")`; persisted by the platform as a sidecar `.provenance.json` next to the `.h5ad`.
 
 ## 6. hvantk integration points
 

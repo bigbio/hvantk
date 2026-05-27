@@ -69,7 +69,7 @@ For eqtlgen, both `af` and `maf` remain `hl.missing` (the source distributes nei
 
 - **Object:** `hl.Table` checkpointed to `output_path` (a `.ht` directory).
 - **Key:** `[locus, alleles, gene_id]` (triple key).
-- **Globals:** `hvantk_metadata` set by `_create_table_base`.
+- **Provenance:** stamped on the returned `AnnotationTable` via `ctx.provenance(schema_id="gtex-eqtl-eqtls-v1")`; persisted as a sidecar `.provenance.json`.
 - **Fields (post-transform):**
   - `locus: locus<GRCh38>` — parsed from `variant_id`.
   - `alleles: array<str>` (length 2) — `[ref, alt]` from `variant_id`.

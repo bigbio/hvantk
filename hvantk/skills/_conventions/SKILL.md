@@ -55,7 +55,7 @@ Optional sections (only if they add information not covered above): `## 10. Cros
 
 - `_create_table_base()` — `hvantk/core/builders/table.py`. Canonical helper for variant/gene Table builders (handles import, transform, checkpoint, optional TSV export). Its `import_func` accepts any `Callable[[], hl.Table]` — `hl.import_table` (TSV), `hl.import_vcf().rows()`, or `hl.import_lines` for line-oriented formats like GMT.
 - `init_hail()` — `hvantk/core/utils/hail_context.py`. Idempotent Hail init. Tests use the session-scoped `hail_session` fixture from `conftest.py`.
-- AnnData helpers — `hvantk/core/models/anndata_utils.py`: `build_anndata_metadata`, `save_anndata`, `coerce_obs_for_h5ad`, `annotate_column_summary_ad`.
+- AnnData helpers — `annotate_column_summary_ad` in `hvantk/core/models/anndata_utils.py`; `save_anndata` in `hvantk/core/io/anndata_io.py`. Provenance is stamped on the returned Artifact via `ctx.provenance(schema_id=...)` — builders no longer write a separate `hvantk_metadata` dict.
 - Plugin runtime — `hvantk/core/plugin/api.py` defines `PluginSpec`, `DatasetSpec`, and `DriftProbeError`. Tests/CLI consume the populated registries via `hvantk/core/plugin/loader.py`.
 
 **Phase B builder contract (current):** plugin builders are functions

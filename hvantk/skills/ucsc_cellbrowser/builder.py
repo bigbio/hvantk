@@ -5,11 +5,10 @@ Browser expression TSV plus its metadata file into an ``anndata.AnnData``
 object (cells x genes), returned as an ``ExpressionMatrix`` for the platform
 to persist.
 
-Shared AnnData helpers (``build_anndata_metadata``,
-``annotate_column_summary_ad``, ``save_anndata``) intentionally stay in
-``hvantk/core/models/anndata_utils.py`` and ``hvantk/core/io/anndata_io.py``
-because they are reused by every anndata builder (Expression Atlas, CPTAC,
-...).
+Shared AnnData helpers (``annotate_column_summary_ad``, ``save_anndata``)
+live in ``hvantk/core/models/anndata_utils.py`` and
+``hvantk/core/io/anndata_io.py`` because they are reused by every anndata
+builder (Expression Atlas, CPTAC, ...).
 """
 
 from __future__ import annotations
@@ -70,10 +69,7 @@ def build_ucsc_cellbrowser(
     import anndata as ad
 
     from hvantk.core.models import ExpressionMatrix
-    from hvantk.core.models.anndata_utils import (
-        annotate_column_summary_ad,
-        build_anndata_metadata,
-    )
+    from hvantk.core.models.anndata_utils import annotate_column_summary_ad
     from hvantk.skills.ucsc_cellbrowser.shared.ucsc import (
         build_ucsc_atlas_backed,
         coerce_obs_for_h5ad,
@@ -108,9 +104,6 @@ def build_ucsc_cellbrowser(
                 "(backed writes go directly to disk). Use the same path as "
                 "--output."
             )
-        provenance = {
-            "hvantk_metadata": build_anndata_metadata("UCSC", expression_matrix_path)
-        }
         build_ucsc_atlas_backed(
             expression_matrix_path=expression_matrix_path,
             output_path=backed_output_path,
@@ -120,7 +113,7 @@ def build_ucsc_cellbrowser(
             split_gene_field=split_gene_field,
             column_batch=column_batch,
             overwrite=False,
-            uns=provenance,
+            uns=None,
         )
         # annotate_column_summary_ad would need to scan the full X matrix and
         # is intentionally skipped for backed atlases (v1 trade-off).
@@ -141,9 +134,6 @@ def build_ucsc_cellbrowser(
         delimiter=delimiter,
         split_gene_field=split_gene_field,
         chunk_size=chunk_size,
-    )
-    adata.uns["hvantk_metadata"] = build_anndata_metadata(
-        "UCSC", expression_matrix_path
     )
     annotate_column_summary_ad(adata)
     # Coerce object-dtype obs columns before any write_h5ad — anndata's

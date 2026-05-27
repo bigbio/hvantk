@@ -1,12 +1,16 @@
-"""AnnData utility functions for provenance and column summaries.
+"""AnnData utility functions for column summaries.
 
 I/O functions (save_anndata, load_anndata) live in
 :mod:`hvantk.core.io.anndata_io` to honor the intra-core rule that
 core/models must not perform disk I/O.
+
+The legacy ``build_anndata_metadata`` writer (and its Hail Table sibling
+``build_table_metadata``) was retired alongside the rest of the
+``hvantk_metadata`` globals mechanism. Provenance now lives exclusively
+on the ``Artifact.provenance`` field stamped by ``run_builder_for_spec``.
 """
 
 import logging
-from datetime import datetime
 from typing import Any, Dict
 
 import anndata as ad
@@ -14,53 +18,6 @@ import numpy as np
 import pandas as pd
 
 logger = logging.getLogger(__name__)
-
-_ANNDATA_SOURCE_DESCRIPTIONS: Dict[str, str] = {
-    "ucsc": "Single-cell expression data from UCSC Cell Browser",
-    "expressionatlas": "Bulk/single-cell RNA-seq from EMBL-EBI Expression Atlas",
-    "cptac": "Proteomics expression data from the Clinical Proteomic Tumor Analysis Consortium",
-}
-
-
-def _normalize_source_name(source_name: str) -> str:
-    """Normalize source name by lowercasing and removing non-alphanumeric chars."""
-    return "".join(ch for ch in source_name.lower() if ch.isalnum())
-
-
-def _get_hvantk_version() -> str:
-    """Get hvantk version from package metadata."""
-    try:
-        from importlib.metadata import version
-
-        return version("hvantk")
-    except Exception:
-        return "unknown"
-
-
-def build_anndata_metadata(source_name: str, input_path: str) -> Dict[str, Any]:
-    """Build provenance metadata dict for ``adata.uns["hvantk_metadata"]``.
-
-    Parameters
-    ----------
-    source_name : str
-        Human-readable name of the data source.
-    input_path : str
-        Path to the raw input file.
-
-    Returns
-    -------
-    dict
-        Metadata dict with keys: hvantk_version, source_name,
-        source_description, raw_input_path, build_date.
-    """
-    normalized = _normalize_source_name(source_name)
-    return {
-        "hvantk_version": _get_hvantk_version(),
-        "source_name": source_name,
-        "source_description": _ANNDATA_SOURCE_DESCRIPTIONS.get(normalized, ""),
-        "raw_input_path": input_path,
-        "build_date": datetime.now().isoformat(),
-    }
 
 
 def annotate_column_summary_ad(

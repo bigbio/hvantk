@@ -59,7 +59,8 @@ AnnData (`.h5ad`) builder output:
 - **`X`:** `float32`, missing intensities as `NaN`.
 - **`obs`:** indexed by sample id; columns mirror the metadata CSV.
 - **`var`:** indexed by site id (e.g. `TP53_S15`); columns `gene_symbol`, `amino_acid`, `residue_pos`.
-- **`uns["hvantk_metadata"]`** and **`uns["column_summary"]`** as for `cptac:expression`.
+- **`uns["column_summary"]`** as for `cptac:expression`.
+- **Provenance:** stamped via `ctx.provenance(schema_id="cptac-phospho-v1")` and persisted in the platform sidecar `.provenance.json`.
 
 ## 6. hvantk integration points
 

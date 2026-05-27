@@ -64,7 +64,7 @@ chr11   700235   700235        .   0   +   700235   700235   247,176,91
 
 - **Object:** `hl.Table` checkpointed to `output_path` (a `.ht` directory).
 - **Key:** `[interval]` (`interval<locus<GRCh38>>`).
-- **Globals:** `hvantk_metadata` set by `_create_table_base`.
+- **Provenance:** stamped via `ctx.provenance(schema_id="insider-variants-v1")`; persisted as a sidecar `.provenance.json`.
 - **Fields:**
   - `interval: interval<locus<GRCh38>>` — half-open `[start, end)`. Constructed via `hl.locus_interval(contig, start+1, end+1, ...)` to match `hl.import_bed`'s 0-based-BED → 1-based-Hail conversion, so semantic compatibility with prior interval-based variant annotation downstream is preserved.
   - `ppi_ids: array<str>` — sorted, deduplicated PPI identifiers (`<P1>_ppi_<P2>` format) from `track name=...` directives whose data rows cover this interval. Length ≥ 1; arrays of length > 1 indicate the position is shared between multiple PPI interfaces.
