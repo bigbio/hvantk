@@ -4,6 +4,7 @@ Dispatch:
   *.parquet            -> AnnotationTable (pandas backend)
   *.ht/                -> AnnotationTable (hail backend)
   *.h5ad               -> ExpressionMatrix (anndata backend) [Task 14]
+  *.mt/                -> VariantMatrix
   *.geneset.json       -> GeneSet [Task 15]
 
 Every saved artifact gets a sidecar <path>.provenance.json. Load returns
@@ -20,18 +21,19 @@ from hvantk.core.io._formats import (
     load_annotation_table_ht,
     load_annotation_table_parquet,
     load_expression_matrix_h5ad,
-    load_expression_matrix_mt,
     load_gene_set_json,
+    load_variant_matrix_mt,
     save_annotation_table_ht,
     save_annotation_table_parquet,
     save_expression_matrix_h5ad,
-    save_expression_matrix_mt,
     save_gene_set_json,
+    save_variant_matrix_mt,
 )
 from hvantk.core.io._manifest import read_manifest, write_manifest
 from hvantk.core.models.annotation_table import AnnotationTable
 from hvantk.core.models.expression_matrix import ExpressionMatrix
 from hvantk.core.models.gene_set import GeneSet
+from hvantk.core.models.variant_matrix import VariantMatrix
 
 
 def save(artifact: Any, path: str | Path) -> None:
@@ -50,11 +52,19 @@ def save(artifact: Any, path: str | Path) -> None:
     if isinstance(artifact, ExpressionMatrix):
         if path.suffix == ".h5ad":
             save_expression_matrix_h5ad(artifact, path)
-        elif path.suffix == ".mt" or path.name.endswith(".mt/"):
-            save_expression_matrix_mt(artifact, path)
         else:
             raise ArtifactTypeError(
-                f"ExpressionMatrix save: unrecognized extension for {path}"
+                f"ExpressionMatrix save: unrecognized extension for {path} "
+                f"(expected .h5ad; .mt/ is now VariantMatrix)"
+            )
+        write_manifest(artifact.provenance, path)
+        return
+    if isinstance(artifact, VariantMatrix):
+        if path.suffix == ".mt" or path.name.endswith(".mt/"):
+            save_variant_matrix_mt(artifact, path)
+        else:
+            raise ArtifactTypeError(
+                f"VariantMatrix save: unrecognized extension for {path} (expected .mt/)"
             )
         write_manifest(artifact.provenance, path)
         return
@@ -92,7 +102,7 @@ def load(path: str | Path, *, expected_schema_id: str | None = None) -> Any:
     if path.suffix == ".h5ad":
         return load_expression_matrix_h5ad(path, provenance)
     if path.suffix == ".mt" or path.name.endswith(".mt/"):
-        return load_expression_matrix_mt(path, provenance)
+        return load_variant_matrix_mt(path, provenance)
     raise ArtifactTypeError(f"load: unrecognized extension for {path}")
 
 
@@ -147,10 +157,9 @@ def load_native(
         else:
             native = artifact.to_pandas()     # zero-cost for pandas-backed
     elif isinstance(artifact, ExpressionMatrix):
-        if artifact.backend == "hail-mt":
-            native = artifact.to_hail_mt()    # zero-cost
-        else:
-            native = artifact.to_anndata()    # zero-cost for anndata-backed
+        native = artifact.to_anndata()
+    elif isinstance(artifact, VariantMatrix):
+        native = artifact.to_hail_mt()
     elif isinstance(artifact, GeneSet):
         native = artifact.to_list()
     else:
@@ -212,7 +221,7 @@ def save_native(
         artifact = ExpressionMatrix.from_anndata(native_obj, provenance=provenance)
     elif path.suffix == ".mt" or path.name.endswith(".mt/"):
         # hail.MatrixTable expected
-        artifact = ExpressionMatrix.from_hail_mt(native_obj, provenance=provenance)
+        artifact = VariantMatrix.from_hail_mt(native_obj, provenance=provenance)
     elif path.name.endswith(".geneset.json"):
         members = frozenset(native_obj)
         name = path.stem.replace(".geneset", "")
