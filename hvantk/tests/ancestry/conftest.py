@@ -173,7 +173,7 @@ def small_merged_mt(hail_session, synthetic_query_mt, synthetic_reference_mt):
     hl.MatrixTable
         Merged MatrixTable.
     """
-    from hvantk.ancestry.merge import merge_matrixtables
+    from hvantk.algorithms.ancestry.merge import merge_matrixtables
 
     return merge_matrixtables(
         query_mt=synthetic_query_mt,

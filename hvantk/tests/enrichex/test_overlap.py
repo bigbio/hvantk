@@ -6,12 +6,12 @@ These tests no longer require Hail — overlap enrichment uses scipy.
 
 import pytest
 
-from hvantk.utils.gene_sets import (
+from hvantk.core.utils.gene_sets import (
     GeneSet,
     GeneSetCollection,
     load_gene_sets_from_dict,
 )
-from hvantk.enrichex.overlap import (
+from hvantk.algorithms.enrichex.overlap import (
     OverlapResult,
     compute_overlap_enrichment,
     compute_overlap_enrichment_pandas,

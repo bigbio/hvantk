@@ -5,15 +5,15 @@ Tests for HGC CLI combine commands.
 from unittest.mock import patch
 from click.testing import CliRunner
 
-from hvantk.commands.hgc.combine_cli import gvcf_combine, vds_combine
+from hvantk.tools.hgc.combine_cli import gvcf_combine, vds_combine
 
 
 def test_gvcf_combine_cli_basic():
     """Test gvcf-combine command with basic options."""
     runner = CliRunner()
-    with patch("hvantk.commands.hgc.combine_cli.combine_gvcfs") as mock_combine:
+    with patch("hvantk.tools.hgc.combine_cli.combine_gvcfs") as mock_combine:
         with patch(
-            "hvantk.commands.hgc.combine_cli.validate_output_path"
+            "hvantk.tools.hgc.combine_cli.validate_output_path"
         ) as mock_validate:
             mock_validate.return_value = True
 
@@ -42,7 +42,7 @@ def test_gvcf_combine_cli_missing_inputs():
 def test_gvcf_combine_cli_dry_run():
     """Test gvcf-combine command with dry-run."""
     runner = CliRunner()
-    with patch("hvantk.commands.hgc.combine_cli.validate_output_path") as mock_validate:
+    with patch("hvantk.tools.hgc.combine_cli.validate_output_path") as mock_validate:
         mock_validate.return_value = True
 
         result = runner.invoke(
@@ -58,9 +58,9 @@ def test_gvcf_combine_cli_dry_run():
 def test_gvcf_combine_cli_with_vds_paths():
     """Test gvcf-combine command with VDS paths."""
     runner = CliRunner()
-    with patch("hvantk.commands.hgc.combine_cli.combine_gvcfs") as mock_combine:
+    with patch("hvantk.tools.hgc.combine_cli.combine_gvcfs") as mock_combine:
         with patch(
-            "hvantk.commands.hgc.combine_cli.validate_output_path"
+            "hvantk.tools.hgc.combine_cli.validate_output_path"
         ) as mock_validate:
             mock_validate.return_value = True
 
@@ -93,7 +93,7 @@ def test_vds_combine_cli_basic():
 
         os.makedirs("input_dir")
 
-        with patch("hvantk.commands.hgc.combine_cli.combine_vdses") as mock_combine:
+        with patch("hvantk.tools.hgc.combine_cli.combine_vdses") as mock_combine:
             result = runner.invoke(
                 vds_combine,
                 ["--input-dir", "input_dir", "--output", "/out.vds"],
@@ -142,7 +142,7 @@ def test_vds_combine_cli_no_validate():
 
         os.makedirs("input_dir")
 
-        with patch("hvantk.commands.hgc.combine_cli.combine_vdses") as mock_combine:
+        with patch("hvantk.tools.hgc.combine_cli.combine_vdses") as mock_combine:
             result = runner.invoke(
                 vds_combine,
                 ["--input-dir", "input_dir", "--output", "/out.vds", "--no-validate"],

@@ -3,7 +3,7 @@ from unittest.mock import patch, MagicMock
 
 from click.testing import CliRunner
 
-from hvantk.commands.qtlcascade_cli import qtlcascade_group
+from hvantk.tools.qtl.qtlcascade_cli import qtlcascade_group
 
 _MOCK_HAIL_CONTEXT = MagicMock()
 
@@ -15,7 +15,7 @@ def test_cascade_cmd():
         sys.modules,
         {"hail": MagicMock(), "hvantk.core.hail_context": _MOCK_HAIL_CONTEXT},
     ), patch(
-        "hvantk.qtlcascade.cascade.build_cascade", return_value=mock_ht
+        "hvantk.algorithms.qtlcascade.cascade.build_cascade", return_value=mock_ht
     ) as mock_build:
         result = runner.invoke(
             qtlcascade_group,
@@ -60,7 +60,7 @@ def test_coloc_cmd(tmp_path):
         sys.modules,
         {"hail": MagicMock(), "hvantk.core.hail_context": _MOCK_HAIL_CONTEXT},
     ), patch(
-        "hvantk.qtlcascade.coloc.run_coloc_per_gene", return_value=mock_df
+        "hvantk.algorithms.qtlcascade.coloc.run_coloc_per_gene", return_value=mock_df
     ):
         result = runner.invoke(
             qtlcascade_group,
@@ -107,7 +107,7 @@ def test_run_cmd_single_tissue():
     mock_result.n_cascade_genes = 42
     mock_result.class_counts = {"eqtl_mediated": 30, "discordant": 12}
 
-    with patch("hvantk.qtlcascade.pipeline.CascadePipeline") as MockPipeline:
+    with patch("hvantk.algorithms.qtlcascade.pipeline.CascadePipeline") as MockPipeline:
         MockPipeline.return_value.run.return_value = mock_result
         result = runner.invoke(
             qtlcascade_group,
@@ -127,7 +127,7 @@ def test_run_cmd_single_tissue():
 
 def test_report_cmd(tmp_path):
     runner = CliRunner()
-    with patch("hvantk.qtlcascade.report.generate_report") as mock_report:
+    with patch("hvantk.algorithms.qtlcascade.report.generate_report") as mock_report:
         result = runner.invoke(
             qtlcascade_group,
             [

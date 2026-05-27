@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from hvantk.tables.genome_builders import build_1k_genome_mt
+from hvantk.core.builders.genome import build_1k_genome_mt
 
 pytestmark = [pytest.mark.hail, pytest.mark.slow]
 

@@ -2,7 +2,7 @@
 # Demonstrates how to use the streaming architecture for different scenarios
 
 import logging
-from hvantk.data.clinvar_streamer import (
+from hvantk.core.utils.clinvar_streamer import (
     ClinvarDataStreamer,
     create_clinvar_training_set_streamer,
 )

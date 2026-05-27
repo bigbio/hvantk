@@ -1,0 +1,14 @@
+{
+  "probe_version": 1,
+  "source_version": "4562 experiments",
+  "headers": {
+    "experiments.json": [
+      "experimentAccession",
+      "lastUpdate"
+    ]
+  },
+  "checksums": {
+    "experiments.json": "7386f557bb6ddb42a08f3600d0d7e7ecb968dffac66ca4c7681fcba4ce45cbc9"
+  },
+  "fetched_at": "2026-05-18T10:13:08.171710+00:00"
+}

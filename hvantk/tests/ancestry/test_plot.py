@@ -1,6 +1,6 @@
 """Tests for ancestry plotting functions.
 
-Tests the visualization functions in hvantk.ancestry.plot without requiring
+Tests the visualization functions in hvantk.algorithms.ancestry.plot without requiring
 Hail or actual genetic data. Uses mock DataFrames to test plotting logic.
 """
 
@@ -8,7 +8,7 @@ import pytest
 import numpy as np
 import pandas as pd
 
-from hvantk.ancestry.constants import (
+from hvantk.algorithms.ancestry.constants import (
     PREDICTED_ANCESTRY_COL,
     ANCESTRY_PROB_COL,
     SOURCE_COL,
@@ -99,7 +99,7 @@ class TestPlotPCAScatter:
 
     def test_basic_scatter_plot(self, sample_predictions_df):
         """Test basic PCA scatter plot creation."""
-        from hvantk.ancestry.plot import plot_pca_scatter
+        from hvantk.algorithms.ancestry.plot import plot_pca_scatter
 
         fig = plot_pca_scatter(sample_predictions_df)
         assert fig is not None
@@ -109,14 +109,14 @@ class TestPlotPCAScatter:
 
     def test_scatter_plot_different_pcs(self, sample_predictions_df):
         """Test PCA scatter with different PC combinations."""
-        from hvantk.ancestry.plot import plot_pca_scatter
+        from hvantk.algorithms.ancestry.plot import plot_pca_scatter
 
         fig = plot_pca_scatter(sample_predictions_df, pc_x=1, pc_y=3)
         assert fig is not None
 
     def test_scatter_plot_query_as_undefined(self, sample_predictions_df):
         """Test showing query samples as undefined."""
-        from hvantk.ancestry.plot import plot_pca_scatter
+        from hvantk.algorithms.ancestry.plot import plot_pca_scatter
 
         fig = plot_pca_scatter(
             sample_predictions_df,
@@ -126,7 +126,7 @@ class TestPlotPCAScatter:
 
     def test_scatter_plot_custom_colors(self, sample_predictions_df):
         """Test scatter plot with custom color palette."""
-        from hvantk.ancestry.plot import plot_pca_scatter
+        from hvantk.algorithms.ancestry.plot import plot_pca_scatter
 
         custom_colors = {
             "EUR": "#FF0000",
@@ -139,7 +139,7 @@ class TestPlotPCAScatter:
 
     def test_scatter_plot_filter_populations(self, sample_predictions_df):
         """Test filtering to specific populations."""
-        from hvantk.ancestry.plot import plot_pca_scatter
+        from hvantk.algorithms.ancestry.plot import plot_pca_scatter
 
         fig = plot_pca_scatter(
             sample_predictions_df,
@@ -149,14 +149,14 @@ class TestPlotPCAScatter:
 
     def test_scatter_plot_filter_source(self, sample_predictions_df):
         """Test filtering to query or reference only."""
-        from hvantk.ancestry.plot import plot_pca_scatter
+        from hvantk.algorithms.ancestry.plot import plot_pca_scatter
 
         fig = plot_pca_scatter(sample_predictions_df, filter_source="query")
         assert fig is not None
 
     def test_scatter_plot_no_legend(self, sample_predictions_df):
         """Test scatter plot without legend."""
-        from hvantk.ancestry.plot import plot_pca_scatter
+        from hvantk.algorithms.ancestry.plot import plot_pca_scatter
 
         fig = plot_pca_scatter(sample_predictions_df, show_legend=False)
         assert fig is not None
@@ -167,7 +167,7 @@ class TestPlotPCAPanel:
 
     def test_two_panel_plot(self, sample_predictions_df):
         """Test two-panel PCA plot creation."""
-        from hvantk.ancestry.plot import plot_pca_panel
+        from hvantk.algorithms.ancestry.plot import plot_pca_panel
 
         fig = plot_pca_panel(sample_predictions_df)
         assert fig is not None
@@ -177,7 +177,7 @@ class TestPlotPCAPanel:
 
     def test_panel_plot_query_as_undefined(self, sample_predictions_df):
         """Test two-panel plot with query as undefined."""
-        from hvantk.ancestry.plot import plot_pca_panel
+        from hvantk.algorithms.ancestry.plot import plot_pca_panel
 
         fig = plot_pca_panel(
             sample_predictions_df,
@@ -191,21 +191,21 @@ class TestPlotVarianceExplained:
 
     def test_variance_explained_plot(self, sample_eigenvalues):
         """Test variance explained bar plot."""
-        from hvantk.ancestry.plot import plot_variance_explained
+        from hvantk.algorithms.ancestry.plot import plot_variance_explained
 
         fig = plot_variance_explained(sample_eigenvalues)
         assert fig is not None
 
     def test_variance_explained_limited_pcs(self, sample_eigenvalues):
         """Test limiting number of PCs shown."""
-        from hvantk.ancestry.plot import plot_variance_explained
+        from hvantk.algorithms.ancestry.plot import plot_variance_explained
 
         fig = plot_variance_explained(sample_eigenvalues, n_pcs=5)
         assert fig is not None
 
     def test_variance_explained_with_cumulative(self, sample_eigenvalues):
         """Test variance plot with cumulative line."""
-        from hvantk.ancestry.plot import plot_variance_explained
+        from hvantk.algorithms.ancestry.plot import plot_variance_explained
 
         fig = plot_variance_explained(sample_eigenvalues, cumulative=True)
         assert fig is not None
@@ -216,14 +216,14 @@ class TestPlotAncestryProportions:
 
     def test_ancestry_proportions_plot(self, sample_predictions_df):
         """Test ancestry proportions bar chart."""
-        from hvantk.ancestry.plot import plot_ancestry_proportions
+        from hvantk.algorithms.ancestry.plot import plot_ancestry_proportions
 
         fig = plot_ancestry_proportions(sample_predictions_df)
         assert fig is not None
 
     def test_ancestry_proportions_custom_colors(self, sample_predictions_df):
         """Test ancestry proportions with custom colors."""
-        from hvantk.ancestry.plot import plot_ancestry_proportions
+        from hvantk.algorithms.ancestry.plot import plot_ancestry_proportions
 
         custom_colors = {
             "EUR": "#FF0000",
@@ -240,14 +240,14 @@ class TestPlotProbabilityDistribution:
 
     def test_probability_distribution_plot(self, sample_predictions_df):
         """Test probability distribution histogram."""
-        from hvantk.ancestry.plot import plot_probability_distribution
+        from hvantk.algorithms.ancestry.plot import plot_probability_distribution
 
         fig = plot_probability_distribution(sample_predictions_df)
         assert fig is not None
 
     def test_probability_distribution_custom_bins(self, sample_predictions_df):
         """Test probability histogram with custom bins."""
-        from hvantk.ancestry.plot import plot_probability_distribution
+        from hvantk.algorithms.ancestry.plot import plot_probability_distribution
 
         fig = plot_probability_distribution(sample_predictions_df, bins=20)
         assert fig is not None
@@ -258,7 +258,7 @@ class TestPlotConfusionMatrix:
 
     def test_confusion_matrix_plot(self, sample_cv_labels):
         """Test confusion matrix heatmap."""
-        from hvantk.ancestry.plot import plot_confusion_matrix
+        from hvantk.algorithms.ancestry.plot import plot_confusion_matrix
 
         y_true, y_pred, labels = sample_cv_labels
         fig = plot_confusion_matrix(y_true, y_pred, labels=labels)
@@ -266,7 +266,7 @@ class TestPlotConfusionMatrix:
 
     def test_confusion_matrix_normalized(self, sample_cv_labels):
         """Test normalized confusion matrix."""
-        from hvantk.ancestry.plot import plot_confusion_matrix
+        from hvantk.algorithms.ancestry.plot import plot_confusion_matrix
 
         y_true, y_pred, labels = sample_cv_labels
         fig = plot_confusion_matrix(y_true, y_pred, labels=labels, normalize=True)
@@ -274,7 +274,7 @@ class TestPlotConfusionMatrix:
 
     def test_confusion_matrix_unnormalized(self, sample_cv_labels):
         """Test unnormalized confusion matrix."""
-        from hvantk.ancestry.plot import plot_confusion_matrix
+        from hvantk.algorithms.ancestry.plot import plot_confusion_matrix
 
         y_true, y_pred, labels = sample_cv_labels
         fig = plot_confusion_matrix(y_true, y_pred, labels=labels, normalize=False)
@@ -286,7 +286,7 @@ class TestEncodeFigure:
 
     def test_encode_figure_to_base64(self, sample_predictions_df):
         """Test encoding figure to base64 string."""
-        from hvantk.ancestry.plot import plot_pca_scatter, encode_figure_to_base64
+        from hvantk.algorithms.ancestry.plot import plot_pca_scatter, encode_figure_to_base64
 
         fig = plot_pca_scatter(sample_predictions_df)
         encoded = encode_figure_to_base64(fig)
@@ -297,7 +297,7 @@ class TestEncodeFigure:
 
     def test_encode_figure_different_dpi(self, sample_predictions_df):
         """Test encoding with different DPI settings."""
-        from hvantk.ancestry.plot import plot_pca_scatter, encode_figure_to_base64
+        from hvantk.algorithms.ancestry.plot import plot_pca_scatter, encode_figure_to_base64
 
         fig = plot_pca_scatter(sample_predictions_df)
         encoded_low = encode_figure_to_base64(fig, dpi=50)
@@ -312,7 +312,7 @@ class TestCloseFigure:
 
     def test_close_figure(self, sample_predictions_df):
         """Test closing figure releases memory."""
-        from hvantk.ancestry.plot import plot_pca_scatter, close_figure
+        from hvantk.algorithms.ancestry.plot import plot_pca_scatter, close_figure
         import matplotlib.pyplot as plt
 
         initial_figs = len(plt.get_fignums())
@@ -328,7 +328,7 @@ class TestPlotEdgeCases:
 
     def test_empty_dataframe(self):
         """Test plotting with empty DataFrame."""
-        from hvantk.ancestry.plot import plot_pca_scatter
+        from hvantk.algorithms.ancestry.plot import plot_pca_scatter
 
         empty_df = pd.DataFrame(
             columns=[
@@ -347,7 +347,7 @@ class TestPlotEdgeCases:
 
     def test_single_population(self, sample_predictions_df):
         """Test plotting with single population."""
-        from hvantk.ancestry.plot import plot_pca_scatter
+        from hvantk.algorithms.ancestry.plot import plot_pca_scatter
 
         # Filter to single population
         single_pop = sample_predictions_df[
@@ -359,7 +359,7 @@ class TestPlotEdgeCases:
 
     def test_missing_probability_column(self, sample_predictions_df):
         """Test probability plot with missing column."""
-        from hvantk.ancestry.plot import plot_probability_distribution
+        from hvantk.algorithms.ancestry.plot import plot_probability_distribution
 
         df_no_prob = sample_predictions_df.drop(columns=[ANCESTRY_PROB_COL])
 

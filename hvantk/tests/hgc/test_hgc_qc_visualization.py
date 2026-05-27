@@ -49,7 +49,7 @@ def test_mt():
 
 def test_create_matrixtable_and_compute_qc(test_mt):
     """Test 1: Create MatrixTable and compute comprehensive QC metrics."""
-    from hvantk.hgc import compute_full_qc
+    from hvantk.algorithms.hgc import compute_full_qc
 
     # Use the pre-created test MatrixTable from fixture
     mt = test_mt
@@ -106,8 +106,8 @@ def test_create_matrixtable_and_compute_qc(test_mt):
 
 def test_static_qc_visualizations(test_mt):
     """Test 2: Generate static QC visualizations using matplotlib."""
-    from hvantk.hgc import compute_full_qc
-    from hvantk.visualization.qc_plots import (
+    from hvantk.algorithms.hgc import compute_full_qc
+    from hvantk.algorithms.visualization.qc_plots import (
         plot_sample_call_rate_distribution,
         plot_variant_call_rate_distribution,
         plot_allele_frequency_spectrum,
@@ -156,7 +156,7 @@ def test_static_qc_visualizations(test_mt):
 
 def test_qcmetrics_plotting_integration(test_mt):
     """Test 3: Test QCMetrics class plotting methods integration."""
-    from hvantk.hgc import compute_full_qc
+    from hvantk.algorithms.hgc import compute_full_qc
 
     # Use the pre-created test MatrixTable from fixture
     mt = test_mt
@@ -196,14 +196,14 @@ def test_qcmetrics_plotting_integration(test_mt):
 def test_interactive_qc_visualizations(test_mt):
     """Test 4: Generate interactive QC visualizations using plotly (if available)."""
     try:
-        from hvantk.visualization.interactive_qc import check_plotly_available
+        from hvantk.algorithms.visualization.interactive_qc import check_plotly_available
 
         check_plotly_available()
     except ImportError:
         pytest.skip("Plotly not available")
 
-    from hvantk.hgc import compute_full_qc
-    from hvantk.visualization.interactive_qc import (
+    from hvantk.algorithms.hgc import compute_full_qc
+    from hvantk.algorithms.visualization.interactive_qc import (
         plot_interactive_sample_call_rates,
         plot_interactive_variant_call_rates,
         plot_interactive_allele_frequencies,
@@ -244,8 +244,8 @@ def test_interactive_qc_visualizations(test_mt):
 
 def test_html_qc_report_generation(test_mt):
     """Test 5: Generate comprehensive HTML QC reports."""
-    from hvantk.hgc import compute_full_qc
-    from hvantk.visualization.qc_report import generate_qc_report
+    from hvantk.algorithms.hgc import compute_full_qc
+    from hvantk.algorithms.visualization.qc_report import generate_qc_report
 
     # Use the pre-created test MatrixTable from fixture
     mt = test_mt
@@ -290,7 +290,7 @@ def test_html_qc_report_generation(test_mt):
 
 def test_qc_data_validation(test_mt):
     """Test 6: Validate QC data quality and structure."""
-    from hvantk.hgc import compute_full_qc
+    from hvantk.algorithms.hgc import compute_full_qc
 
     # Use the pre-created test MatrixTable from fixture
     mt = test_mt

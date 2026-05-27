@@ -7,8 +7,8 @@ import json
 import pandas as pd
 import pytest
 
-from hvantk.enrichex.pipeline import BurdenConfig, BurdenPipeline, BurdenRunResult
-from hvantk.utils.table_utils import leaf_name
+from hvantk.algorithms.enrichex.pipeline import BurdenConfig, BurdenPipeline, BurdenRunResult
+from hvantk.core.utils.table_utils import leaf_name
 
 
 # ---------------------------------------------------------------------------
@@ -188,7 +188,7 @@ class TestBurdenPipelineShowPlan:
         assert "heart" in plan
 
     def test_show_plan_with_variant_classes(self, tmp_path):
-        from hvantk.enrichex.burden import VariantFilter
+        from hvantk.algorithms.enrichex.burden import VariantFilter
 
         mt_path = tmp_path / "cohort.mt"
         mt_path.mkdir()
@@ -414,7 +414,7 @@ class TestBurdenPipelineRun:
 
     def test_run_with_variant_classes(self, hail_session, tmp_path):
         """Run with variant class stratification."""
-        from hvantk.enrichex.burden import VariantFilter
+        from hvantk.algorithms.enrichex.burden import VariantFilter
 
         mt_path, pheno_path, gs_path = _create_test_data(tmp_path)
 

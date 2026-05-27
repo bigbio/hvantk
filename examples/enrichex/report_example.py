@@ -9,7 +9,7 @@ import argparse
 import logging
 from pathlib import Path
 
-from hvantk.enrichex.report import generate_report
+from hvantk.algorithms.enrichex.report import generate_report
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"

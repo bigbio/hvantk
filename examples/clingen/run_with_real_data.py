@@ -28,8 +28,7 @@ INPUT_CSV = DATA_DIR / "clingen_gene_disease.csv"
 def main():
     """Main workflow with real ClinGen data."""
     import hail as hl
-    from hvantk.tables.table_builders import create_clingen_gene_disease_tb
-    from hvantk.data.clingen_streamer import ClinGenStreamer
+    from hvantk.skills.clingen.streamer import ClinGenStreamer
 
     # Initialize Hail
     logger.info("Initializing Hail...")
@@ -50,18 +49,21 @@ def main():
         )
         return
 
-    # Step 1: Build the ClinGen Hail Table
+    # Step 1: Ensure the ClinGen Hail Table exists.
+    # Builds go through the plugin system; this example focuses on the
+    # streamer / categorization logic that consumes a built artifact.
     print("\n" + "=" * 70)
-    print("Step 1: Building ClinGen Hail Table from real data")
+    print("Step 1: ClinGen Hail Table")
     print("=" * 70)
-    logger.info(f"Building ClinGen table from: {input_csv}")
-    create_clingen_gene_disease_tb(
-        input_path=input_csv,
-        output_path=output_ht,
-        key_by="gene_disease",
-        overwrite=True,
-    )
-    logger.info(f"ClinGen table saved to: {output_ht}")
+    if not Path(output_ht).exists():
+        print(f"ERROR: ClinGen Hail Table not found at {output_ht}")
+        print("Build it first with:")
+        print(
+            f"  hvantk reprocess clingen:gene_disease "
+            f"--raw-dir {DATA_DIR} --output {output_ht} --skip-download"
+        )
+        return
+    logger.info(f"Using ClinGen Hail Table at: {output_ht}")
 
     # Step 2: Extract genesets per disease using ClinGenStreamer
     print("\n" + "=" * 70)

@@ -1,0 +1,20 @@
+# Fixture for hvantk/skills/alphagenome/tests/test_streamer.py::TestLoadConfig.
+# Values are placeholders chosen to satisfy the test_load_valid_config
+# assertions; the api.key string is not a real credential.
+api:
+  key: test-api-key-123
+  max_retries: 3
+  retry_backoff: 2.0
+  request_timeout: 120
+ontology:
+  terms:
+    - UBERON:0001157
+    - UBERON:0000955
+  output_types:
+    - RNA_SEQ
+    - CHROMATIN
+intervals:
+  default_size: 1048576
+  adaptive: true
+  adaptive_max_size: 1048576
+  density_window: 50000

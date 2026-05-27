@@ -1,0 +1,39 @@
+api_version: 1
+name: hgc
+domain: hgc
+type: command_group
+description: Hail-based Genotype Combiner commands for joint genotyping workflows.
+cli:
+  module: hvantk.tools.hgc
+  function: hgc_group
+purpose:
+  short: Combine, convert, QC, and orchestrate joint-genotyping pipelines.
+  long: |
+    HGC groups four families of subcommands: combine (GVCF -> VDS, VDS -> VDS),
+    convert (VDS -> MT, MT -> VCF), QC (compute metrics, filter, summarise,
+    plot, render HTML report), and pipeline (end-to-end orchestrator). All
+    subcommands operate on Hail data formats and require Hail at runtime.
+subcommands:
+  - name: gvcf-combine
+    description: Combine GVCF files into a Variant Dataset (VDS)
+  - name: vds-combine
+    description: Combine multiple Variant Datasets (VDS)
+  - name: vds2mt
+    description: Convert a VDS to a MatrixTable
+  - name: mt2vcf
+    description: Export a MatrixTable to VCF
+  - name: compute-qc
+    description: Compute sample and variant QC metrics on a MatrixTable
+  - name: filter-qc
+    description: Filter a MatrixTable by sample and variant QC thresholds
+  - name: qc-summary
+    description: Summarize QC metrics across samples and variants
+  - name: plot-qc
+    description: Plot QC metric distributions
+  - name: qc-report
+    description: Render an HTML QC report combining summary and plots
+  - name: pipeline
+    description: End-to-end joint-genotyping orchestrator
+requires:
+  hail: true
+  network: false

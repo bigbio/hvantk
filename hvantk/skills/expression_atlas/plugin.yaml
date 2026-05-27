@@ -1,0 +1,39 @@
+api_version: 2
+name: expression-atlas
+version: 0.1.0
+status: provisional
+description: EBI Expression Atlas baseline bulk-RNA-seq matrix - AnnData
+
+catalog: catalog/datasets.json
+
+source:
+  catalog_ref: expression-atlas
+
+datasets:
+  - name: dataset
+    domain: transcriptomics
+    backend: anndata
+    artifact_type: ExpressionMatrix
+    schema_id: expression-atlas-dataset-v1
+    builder:
+      module: hvantk.skills.expression_atlas.builder
+      function: build_expression_atlas
+    drift_probe:
+      module: hvantk.skills.expression_atlas.drift_probe
+      function: fetch_fingerprint
+    lifecycle:
+      download:
+        module: hvantk.skills.expression_atlas.cli
+        function: download_dataset
+    skill: SKILL.md
+    tests:
+      command: pytest hvantk/skills/expression_atlas/tests
+      fixture: tests/testdata/raw/expression-atlas
+      schema_snapshot: tests/snapshots/schema.json
+      row_snapshot: tests/snapshots/sample_rows.json
+      drift_fingerprint: tests/drift_fingerprint.json
+
+cli:
+  - command: expression-atlas-download
+    module: hvantk.skills.expression_atlas.cli
+    function: download_experiments

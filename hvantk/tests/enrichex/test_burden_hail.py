@@ -8,7 +8,7 @@ import pandas as pd
 
 import numpy as np
 
-from hvantk.enrichex.burden import (
+from hvantk.algorithms.enrichex.burden import (
     VariantFilter,
     _compute_test_statistic,
     _linear_t_statistic,
@@ -127,42 +127,6 @@ class TestComputeGenesetBurdenMt:
             )
 
             assert mt_burden.count_rows() == 1
-
-    def test_deprecated_chets_alias(self, hail_session):
-        """Test that deprecated 'chets' alias works with warning."""
-        import warnings
-
-        mt = self.setup_test_mt()
-        gene_sets = {"set1": ["GENE1", "GENE2"]}
-
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-            mt_burden = compute_geneset_burden_mt(
-                mt,
-                gene_sets,
-                gene_field="SYMBOL",
-                genotype_aggregation="chets",
-            )
-            assert mt_burden.count_rows() == 1
-            assert any("deprecated" in str(warning.message).lower() for warning in w)
-
-    def test_deprecated_homs_chets_alias(self, hail_session):
-        """Test that deprecated 'homs_chets' alias works with warning."""
-        import warnings
-
-        mt = self.setup_test_mt()
-        gene_sets = {"set1": ["GENE1", "GENE2"]}
-
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-            mt_burden = compute_geneset_burden_mt(
-                mt,
-                gene_sets,
-                gene_field="SYMBOL",
-                genotype_aggregation="homs_chets",
-            )
-            assert mt_burden.count_rows() == 1
-            assert any("deprecated" in str(warning.message).lower() for warning in w)
 
     def test_compute_geneset_burden_no_filtering(self, hail_session):
         """Test burden computation with no filtering (pre-filtered MT)."""

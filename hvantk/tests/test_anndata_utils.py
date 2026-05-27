@@ -1,4 +1,4 @@
-"""Tests for hvantk.core.anndata_utils."""
+"""Tests for hvantk.core.models.anndata_utils."""
 
 import os
 
@@ -25,62 +25,16 @@ def _make_test_adata() -> ad.AnnData:
     return ad.AnnData(X=X, obs=obs, var=var)
 
 
-class TestBuildAnndataMetadata:
-    def test_returns_required_keys(self):
-        from hvantk.core.anndata_utils import build_anndata_metadata
-
-        meta = build_anndata_metadata("ClinVar", "/data/clinvar.vcf")
-        required = {
-            "hvantk_version",
-            "source_name",
-            "source_description",
-            "raw_input_path",
-            "build_date",
-        }
-        assert required.issubset(meta.keys())
-
-    def test_known_source_ucsc(self):
-        from hvantk.core.anndata_utils import build_anndata_metadata
-
-        meta = build_anndata_metadata("UCSC", "/data/ucsc.h5ad")
-        assert meta["source_name"] == "UCSC"
-        assert "UCSC Cell Browser" in meta["source_description"]
-
-    def test_known_source_expressionatlas(self):
-        from hvantk.core.anndata_utils import build_anndata_metadata
-
-        meta = build_anndata_metadata("Expression-Atlas", "/data/ea.h5ad")
-        assert "Expression Atlas" in meta["source_description"]
-
-    def test_known_source_cptac(self):
-        from hvantk.core.anndata_utils import build_anndata_metadata
-
-        meta = build_anndata_metadata("CPTAC", "/data/cptac.h5ad")
-        assert "Proteomics" in meta["source_description"]
-
-    def test_unknown_source(self):
-        from hvantk.core.anndata_utils import build_anndata_metadata
-
-        meta = build_anndata_metadata("UnknownDB", "/data/unk.tsv")
-        assert meta["source_description"] == ""
-
-    def test_input_path_stored(self):
-        from hvantk.core.anndata_utils import build_anndata_metadata
-
-        meta = build_anndata_metadata("test", "/my/path.tsv")
-        assert meta["raw_input_path"] == "/my/path.tsv"
-
-
 class TestAnnotateColumnSummary:
     def test_adds_column_summary_to_uns(self):
-        from hvantk.core.anndata_utils import annotate_column_summary_ad
+        from hvantk.core.models.anndata_utils import annotate_column_summary_ad
 
         adata = _make_test_adata()
         annotate_column_summary_ad(adata)
         assert "column_summary" in adata.uns
 
     def test_numeric_column(self):
-        from hvantk.core.anndata_utils import annotate_column_summary_ad
+        from hvantk.core.models.anndata_utils import annotate_column_summary_ad
 
         adata = _make_test_adata()
         annotate_column_summary_ad(adata)
@@ -93,7 +47,7 @@ class TestAnnotateColumnSummary:
         assert "n_missing" in n_counts
 
     def test_categorical_column(self):
-        from hvantk.core.anndata_utils import annotate_column_summary_ad
+        from hvantk.core.models.anndata_utils import annotate_column_summary_ad
 
         adata = _make_test_adata()
         annotate_column_summary_ad(adata)
@@ -105,7 +59,7 @@ class TestAnnotateColumnSummary:
         assert "n_missing" in ct
 
     def test_high_cardinality_categorical(self):
-        from hvantk.core.anndata_utils import annotate_column_summary_ad
+        from hvantk.core.models.anndata_utils import annotate_column_summary_ad
 
         adata = _make_test_adata()
         # Add a high-cardinality column
@@ -122,7 +76,7 @@ class TestAnnotateColumnSummary:
 
 class TestSaveLoadAnndata:
     def test_roundtrip(self, tmp_path):
-        from hvantk.core.anndata_utils import load_anndata, save_anndata
+        from hvantk.core.io.anndata_io import load_anndata, save_anndata
 
         adata = _make_test_adata()
         path = str(tmp_path / "test.h5ad")
@@ -132,7 +86,7 @@ class TestSaveLoadAnndata:
         np.testing.assert_array_almost_equal(loaded.X, adata.X)
 
     def test_overwrite_false_raises(self, tmp_path):
-        from hvantk.core.anndata_utils import save_anndata
+        from hvantk.core.io.anndata_io import save_anndata
 
         adata = _make_test_adata()
         path = str(tmp_path / "test.h5ad")
@@ -141,7 +95,7 @@ class TestSaveLoadAnndata:
             save_anndata(adata, path, overwrite=False)
 
     def test_overwrite_true_succeeds(self, tmp_path):
-        from hvantk.core.anndata_utils import save_anndata
+        from hvantk.core.io.anndata_io import save_anndata
 
         adata = _make_test_adata()
         path = str(tmp_path / "test.h5ad")

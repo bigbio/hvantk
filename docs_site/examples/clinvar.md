@@ -4,14 +4,16 @@ Stream and filter ClinVar variant annotations using hvantk's `ClinvarDataStreame
 
 ## Prerequisites
 
-Build a ClinVar Hail Table first:
+Build a ClinVar Hail Table first. The ClinVar plugin has a built-in downloader, so this single command downloads the latest VCF into `data/clinvar/` and builds the table in one go:
 
 ```bash
-hvantk mktable clinvar \
-  --raw-input clinvar.vcf.bgz \
-  --output-ht clinvar.ht \
-  --reference-genome GRCh38
+hvantk reprocess clinvar:variants \
+  --raw-dir data/clinvar/ \
+  --output clinvar.ht \
+  --plugin-arg reference_genome=GRCh38
 ```
+
+If you already have `clinvar.vcf.bgz` (or `.vcf.gz`), place it under `data/clinvar/` and add `--skip-download`.
 
 ## Basic Streaming
 

@@ -1,0 +1,19 @@
+api_version: 1
+name: check-install
+domain: infra
+type: command
+description: Smoke-test the hvantk + Hail installation.
+cli:
+  module: hvantk.tools.infra.check_install_cli
+  function: check_install_cmd
+purpose:
+  short: Post-install diagnostic for Hail + Spark on the local machine.
+  long: |
+    Three-step diagnostic: (0) warns if HTTP proxy env vars are set without a
+    localhost bypass (a known cause of Spark/Hail orjson errors), (1) initialises
+    Hail and prints its version, (2) generates a small Balding-Nichols
+    MatrixTable (3 pops, 50 samples, 200 variants) and (3) calls describe() on
+    it. Exits non-zero on failure. Useful as a first command after install.
+requires:
+  hail: true
+  network: false

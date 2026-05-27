@@ -1,0 +1,20 @@
+{
+  "probe_version": 1,
+  "source_version": null,
+  "headers": {
+    "phosphoproteomics": [
+      "installed_cptac_version",
+      "latest_release_tag",
+      "latest_release_published_at"
+    ]
+  },
+  "checksums": {
+    "phosphoproteomics": ""
+  },
+  "fetched_at": "1970-01-01T00:00:00Z",
+  "extras": {
+    "installed_cptac_version": null,
+    "latest_release_tag": null,
+    "latest_release_published_at": null
+  }
+}

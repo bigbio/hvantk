@@ -1,0 +1,26 @@
+{
+  "probe_version": 1,
+  "source_version": null,
+  "headers": {
+    "uniprot-ptm-human.tsv": [
+      "accession",
+      "gene_symbol",
+      "position",
+      "description",
+      "amino_acid",
+      "ensembl_xrefs",
+      "sequence_length"
+    ],
+    "uniprot_entry_keys": [
+      "features",
+      "genes",
+      "primaryAccession",
+      "sequence",
+      "uniProtKBCrossReferences"
+    ]
+  },
+  "checksums": {
+    "uniprot-ptm-human.tsv": "placeholder-regenerate-from-live-source"
+  },
+  "fetched_at": "2026-05-18T00:00:00+00:00"
+}

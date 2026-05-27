@@ -1,0 +1,23 @@
+api_version: 1
+name: fake
+version: 0.1.0
+status: provisional
+description: Fake plugin used by loader tests
+
+datasets:
+  - name: default
+    domain: genomics
+    backend: hail
+    builder:
+      module: hvantk.tests.testdata.raw.plugins.fake_plugin.builder
+      function: build
+    drift_probe:
+      module: hvantk.tests.testdata.raw.plugins.fake_plugin.drift_probe
+      function: fetch_fingerprint
+    skill: SKILL.md
+    tests:
+      command: pytest -q
+      fixture: tests/testdata/raw/fake
+      schema_snapshot: tests/snapshots/schema.json
+      row_snapshot: tests/snapshots/sample_rows.json
+      drift_fingerprint: tests/drift_fingerprint.json

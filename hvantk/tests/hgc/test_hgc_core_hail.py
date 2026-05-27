@@ -12,19 +12,19 @@ from pathlib import Path
 import pytest
 import hail as hl
 
-from hvantk.hgc.file_utils import validate_vcfs_paths, sort_mts_cols
-from hvantk.hgc.combiners import (
+from hvantk.algorithms.hgc.file_utils import validate_vcfs_paths, sort_mts_cols
+from hvantk.algorithms.hgc.combiners import (
     combine_gvcfs,
     combine_matrix_table_rows,
     combine_matrix_table_cols,
 )
-from hvantk.hgc.converters import (
+from hvantk.algorithms.hgc.converters import (
     convert_vds_to_mt,
     convert_mt_to_multi_sample_vcf,
     GNOMAD_AVAILABLE,
 )
-from hvantk.hgc.constants import GVCF_EXTENSION
-from hvantk.data.file_utils import compress_files, decompress_files
+from hvantk.algorithms.hgc.constants import GVCF_EXTENSION
+from hvantk.core.utils.file_utils import compress_files, decompress_files
 
 TESTS_DIR = Path(__file__).parent.parent / "testdata" / "hgc_data"
 

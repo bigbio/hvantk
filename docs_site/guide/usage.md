@@ -1,375 +1,69 @@
 # hvantk Usage Guide
 
-This guide shows practical, copy-pasteable examples to build Hail Tables (HT) and MatrixTables (MT) from explicit raw files and from recipes (JSON/YAML).
+This guide covers how to build datasets and run analysis tools in hvantk.
+
+> **Migration note:** hvantk has retired the `mktable` and `mkmatrix` CLIs. The unified replacement is `hvantk reprocess <plugin>:<dataset>`, which runs the full Phase B pipeline (download → parse → build → drift check → save with provenance). See section 1 below for the current pattern.
 
 If you haven't installed hvantk yet, see the main README for install steps.
 
 For downloading raw data files (built-in downloaders and manual steps), see [Data Sources](data-sources.md).
 
-## 1) Build a single annotation Table (HT)
+## 1) Build a dataset with `hvantk reprocess`
 
-Build one table at a time with explicit inputs and options.
+Every in-tree provider is a plugin under `hvantk/skills/<provider>/` with a `plugin.yaml` manifest declaring its datasets, lifecycle (download / parse / build), drift probe, and artifact contract. The single CLI entry point is `hvantk reprocess`.
 
-- ClinVar (VCF → HT keyed by [locus, alleles])
-
-```bash
-hvantk mktable clinvar \
-  --raw-input /data/clinvar_2024.vcf.bgz \
-  --output-ht /out/clinvar.ht \
-  --ref-genome GRCh38 \
-  --overwrite
-```
-
-- Interactome (BED intervals → HT keyed by interval)
+### Discover available datasets
 
 ```bash
-hvantk mktable interactome \
-  --raw-input /data/insider.bed.bgz \
-  --output-ht /out/interactome.ht
+# List all loaded plugins and their datasets
+hvantk plugins list
+
+# Show one plugin's manifest in detail
+hvantk plugins describe clinvar
 ```
 
-- GeVIR (TSV keyed by gene_id)
+### Build a dataset end-to-end (download → parse → build)
 
 ```bash
-hvantk mktable gevir \
-  --raw-input /data/gevir.tsv.bgz \
-  --output-ht /out/gevir.ht \
-  --fields oe_syn_upper,oe_mis_upper
+# ClinVar variants
+hvantk reprocess clinvar:variants \
+  --raw-dir /data/clinvar/ \
+  --output /out/clinvar.ht
+
+# HGNC lookup
+hvantk reprocess hgnc:lookup \
+  --raw-dir /data/hgnc/ \
+  --output /out/hgnc.ht
 ```
 
-- gnomAD constraint metrics (TSV keyed by gene_id)
+### Skip stages when you already have intermediates
 
 ```bash
-hvantk mktable gnomad-metrics \
-  --raw-input /data/gnomad.tsv.bgz \
-  --output-ht /out/gnomad.ht
+# Already-downloaded raw file; skip the download stage
+hvantk reprocess clinvar:variants \
+  --skip-download \
+  --raw-dir /data/clinvar/ \
+  --output /out/clinvar.ht
+
+# Pre-parsed intermediate file; skip both download and parse
+hvantk reprocess gevir:metrics \
+  --skip-download --skip-parse \
+  --intermediate /data/gevir.tsv.bgz \
+  --output /out/gevir.ht
 ```
 
-- dbNSFP variant annotations (TSV keyed by locus, alleles)
+### Pass plugin-specific parameters
+
+Use `--plugin-arg KEY=VALUE` (repeatable) to forward arguments that the plugin's download / parse / build functions accept. For example, to fetch a specific CPTAC cancer type:
 
 ```bash
-hvantk mktable dbnsfp \
-  --raw-input /data/dbNSFP4_variant.bgz \
-  --output-ht /out/dbnsfp.ht \
-  --ref-genome GRCh38 \
-  --auto-convert-bgz
+hvantk reprocess cptac:expression \
+  --raw-dir /data/cptac/ \
+  --output /out/cptac_brca.h5ad \
+  --plugin-arg cancer_type=brca
 ```
 
-> **Tip:** If your dbNSFP file is standard gzip (`.gz`) rather than BGZF, add `--auto-convert-bgz` to automatically convert it before import.
-
-- Ensembl gene annotations (Biomart TSV keyed by gene_id)
-
-```bash
-hvantk mktable ensembl-gene \
-  --raw-input /data/biomart.tsv.bgz \
-  --output-ht /out/ensembl.ht \
-  --no-canonical
-```
-
-- ClinGen Gene-Disease validity (CSV keyed by gene_id + disease_id)
-
-```bash
-hvantk mktable clingen-gene-disease \
-  --raw-input /data/clingen/Clingen-Gene-Disease-Summary-2026-03-22.csv \
-  --output-ht /out/clingen_gene_disease.ht
-```
-
-- GenCC submissions (CSV keyed by gene_id + disease_id)
-
-```bash
-hvantk mktable gencc-submissions \
-  --raw-input /data/gencc/gencc-submissions.csv \
-  --output-ht /out/gencc_submissions.ht
-```
-
-- COSMIC Cancer Gene Census (TSV keyed by gene_id)
-
-```bash
-hvantk mktable cosmic-cgc \
-  --raw-input /data/cosmic/cancer_gene_census.tsv \
-  --output-ht /out/cosmic_cgc.ht \
-  --mutation-context somatic
-```
-
-- HGNC gene nomenclature (TSV keyed by hgnc_id)
-
-```bash
-hvantk mktable hgnc \
-  --raw-input /data/hgnc/hgnc_complete_set.tsv \
-  --output-ht /out/hgnc.ht
-```
-
-- PTM sites (UniProt PTM → genomic coordinates, keyed by locus)
-
-```bash
-hvantk ptm build \
-  --output-dir /data/ptm/ \
-  --output-ht /out/ptm_sites.ht
-```
-
-> **Note:** The PTM build command downloads Ensembl GTF and UniProt PTM data automatically. Use `--gtf-path` and `--ptm-tsv` to provide pre-downloaded files.
-
-- PTM constraint (stratified AF depletion at PTM codons, by tissue / cell type)
-
-```bash
-# 1. Annotate variants with PTM flags first
-hvantk ptm annotate --variants-ht clinvar.ht --ptm-ht /out/ptm_sites.ht -o clinvar_ptm.ht
-
-# 2. Run stratified constraint analysis
-hvantk ptm constraint \
-  --variants-ht clinvar_ptm.ht \
-  --expression-source anndata \
-  --expression-path /data/farah_2024.h5ad \
-  --grouping major_cell_class \
-  --output-dir /out/ptm-farah/
-```
-
-> **Note:** See [`tools/ptm-constraint.md`](../tools/ptm-constraint.md) for the full flag reference and backend-specific notes (Hail MT / AnnData / tabular).
-
-- eQTL (keyed by locus, alleles, gene_id)
-
-```bash
-# GTEx v11 significant pairs (Parquet)
-hvantk mktable eqtl \
-  --raw-input /data/gtex_v11/Liver.v11.signif_pairs.parquet \
-  --output-ht /out/eqtl_liver.ht \
-  --source gtex_v11 \
-  --tissue Liver
-
-# GTEx v8 (TSV)
-hvantk mktable eqtl \
-  --raw-input /data/gtex_v8/Liver.v8.signif_variant_gene_pairs.txt.gz \
-  --output-ht /out/eqtl_liver.ht \
-  --source gtex_v8
-
-# eQTLGen (blood cis-eQTLs)
-hvantk mktable eqtl \
-  --raw-input /data/eqtlgen/cis-eQTLs_full.txt.gz \
-  --output-ht /out/eqtl_blood.ht \
-  --source eqtlgen
-
-# Allpairs for coloc (set p-threshold to 0)
-hvantk mktable eqtl \
-  --raw-input /data/gtex_v11/allpairs/Liver/ \
-  --output-ht /out/eqtl_allpairs_liver.ht \
-  --source gtex_v11 --tissue Liver --p-threshold 0
-```
-
-- pQTL (keyed by locus, alleles, gene_id)
-
-```bash
-# Fang et al. 2025 (space-delimited allpairs)
-hvantk mktable pqtl \
-  --raw-input /data/fang_pqtl/Liver_allpairs.txt.gz \
-  --output-ht /out/pqtl_liver.ht \
-  --source gtex_fang \
-  --tissue Liver \
-  --gene-map-ht /data/ensembl_gene.ht \
-  --p-threshold 5e-8
-```
-
-> **Note:** Fang pQTL data uses gene symbols. Provide `--gene-map-ht` (Ensembl gene table with `gene_name` field) for symbol → Ensembl ID mapping.
-
-## 2) Batch-create Tables (HT) from a recipe
-
-Use a recipe to build many tables at once. JSON and YAML are both supported (YAML requires PyYAML installed).
-
-Example JSON recipe (save as examples/recipes/tables.example.json):
-
-```json
-{
-  "tables": [
-    {
-      "name": "clinvar",
-      "input": "/data/clinvar_2024.vcf.bgz",
-      "output": "/out/clinvar.ht",
-      "params": {"reference_genome": "GRCh38", "export_tsv": true}
-    },
-    {
-      "name": "interactome",
-      "input": "/data/insider.bed.bgz",
-      "output": "/out/interactome.ht",
-      "params": {"reference_genome": "GRCh38"}
-    }
-  ]
-}
-```
-
-Run:
-
-```bash
-hvantk mktable-batch --recipe examples/recipes/tables.example.json
-```
-
-YAML variant (examples/recipes/tables.example.yaml):
-
-```yaml
----
-tables:
-  - name: clinvar
-    input: /data/clinvar_2024.vcf.bgz
-    output: /out/clinvar.ht
-    params:
-      reference_genome: GRCh38
-      export_tsv: true
-  - name: interactome
-    input: /data/insider.bed.bgz
-    output: /out/interactome.ht
-    params:
-      reference_genome: GRCh38
-```
-
-## 3) Build a single MatrixTable (MT)
-
-- UCSC Cell Browser (TSV matrix + TSV metadata)
-
-First, find and download the dataset you need:
-
-```bash
-# Search for datasets by tissue or keyword
-hvantk download ucsc --list_datasets --search heart
-
-# Download a dataset (use child path for collections)
-hvantk download ucsc --dataset hoc/all-heart --output-dir data/ucsc
-```
-
-Then build the MatrixTable:
-
-```bash
-hvantk mkmatrix ucsc \
-  --expression-matrix data/ucsc/hoc/all-heart/exprMatrix.tsv.gz \
-  --metadata data/ucsc/hoc/all-heart/meta.tsv \
-  --output-mt /out/ucsc.mt \
-  --gene-column gene \
-  --auto-convert-bgz \
-  --overwrite
-```
-
-- Expression Atlas (TSV matrix + SDRF TSV)
-
-```bash
-hvantk mkmatrix expression-atlas \
-  --expression-matrix /data/atlas/matrix.tsv \
-  --sdrf /data/atlas/atlas.sdrf.tsv \
-  --output-mt /out/atlas.mt \
-  --gene-column "Gene ID" \
-  --sample-id-column sample_id \
-  --overwrite
-```
-
-If your expression matrix is a plain `.gz` file, add `--auto-convert-bgz`:
-
-```bash
-hvantk mkmatrix expression-atlas \
-  --expression-matrix /data/atlas/matrix.tsv.gz \
-  --sdrf /data/atlas/atlas.sdrf.tsv \
-  --output-mt /out/atlas.mt \
-  --auto-convert-bgz
-```
-
-- CPTAC (TSV/CSV expression + TSV/CSV metadata)
-
-```bash
-hvantk mkmatrix cptac \
-  --expression /data/cptac/expression.tsv \
-  --metadata /data/cptac/metadata.tsv \
-  --output-mt /out/cptac.mt \
-  --gene-id-col GeneID \
-  --sample-id-col SampleID \
-  --categorical-cols TumorType,Stage \
-  --overwrite
-```
-
-## 4) Batch-create MatrixTables (MT) from a recipe
-
-Example JSON recipe (save as examples/recipes/matrices.example.json):
-
-```json
-{
-  "matrices": [
-    {
-      "name": "ucsc",
-      "inputs": {
-        "expression_matrix": "/data/ucsc/expr.tsv.bgz",
-        "metadata": "/data/ucsc/meta.tsv"
-      },
-      "output": "/out/ucsc.mt",
-      "params": {"gene_column": "gene", "overwrite": true}
-    },
-    {
-      "name": "expression-atlas",
-      "inputs": {
-        "expression_matrix": "/data/atlas/matrix.tsv",
-        "sdrf": "/data/atlas/atlas.sdrf.tsv"
-      },
-      "output": "/out/atlas.mt",
-      "params": {"gene_column": "Gene ID", "sample_id_column": "sample_id"}
-    }
-  ]
-}
-```
-
-Run:
-
-```bash
-hvantk mkmatrix-batch --recipe examples/recipes/matrices.example.json
-```
-
-YAML variant (examples/recipes/matrices.example.yaml):
-
-```yaml
----
-matrices:
-  - name: ucsc
-    inputs:
-      expression_matrix: /data/ucsc/expr.tsv.bgz
-      metadata: /data/ucsc/meta.tsv
-    output: /out/ucsc.mt
-    params:
-      gene_column: gene
-      overwrite: true
-  - name: expression-atlas
-    inputs:
-      expression_matrix: /data/atlas/matrix.tsv
-      sdrf: /data/atlas/atlas.sdrf.tsv
-    output: /out/atlas.mt
-    params:
-      gene_column: "Gene ID"
-      sample_id_column: sample_id
-```
-
-CPTAC JSON recipe (save as examples/recipes/cptac.example.json):
-
-```json
-{
-  "matrices": [
-    {
-      "name": "cptac",
-      "inputs": {
-        "expression": "/data/cptac/expression.tsv",
-        "metadata": "/data/cptac/metadata.tsv"
-      },
-      "output": "/out/cptac.mt",
-      "params": {
-        "gene_id_col": "GeneID",
-        "gene_name_col": "Gene Name",
-        "sample_id_col": "SampleID",
-        "expression_col": "Expression",
-        "categorical_cols": "TumorType,Stage",
-        "overwrite": true
-      }
-    }
-  ]
-}
-```
-
-Run:
-
-```bash
-hvantk mkmatrix-batch --recipe examples/recipes/cptac.example.json
-```
-
-## 5) Ancestry Inference
+## 2) Ancestry Inference
 
 Predict genetic ancestry for samples using PCA and Random Forest classification against a labeled reference panel.
 
@@ -579,23 +273,7 @@ hgnc_ids = streamer.to_gene_set(
 
 ## File Format Conversion
 
-Hail supports standard gzip (`.gz`) and uncompressed files but processes them single-threaded. Block gzip (BGZF) `.bgz` files enable parallel import and are strongly recommended for large datasets. hvantk provides two ways to convert:
-
-### Automatic conversion with `--auto-convert-bgz`
-
-Several CLI commands support the `--auto-convert-bgz` flag, which detects plain `.gz` files and converts them to BGZF before import:
-
-```bash
-hvantk mktable dbnsfp --raw-input data.gz --output-ht out.ht --auto-convert-bgz
-hvantk mkmatrix ucsc -e expr.tsv.gz -m meta.tsv -o out.mt --auto-convert-bgz
-hvantk mkmatrix expression-atlas -e matrix.tsv.gz -s atlas.sdrf.tsv -o out.mt --auto-convert-bgz
-```
-
-The converted `.bgz` file is written alongside the original (e.g., `data.gz` → `data.bgz`) and reused on subsequent runs.
-
-### Standalone conversion with `utils convert-bgz`
-
-For batch or one-off conversion:
+Hail supports standard gzip (`.gz`) and uncompressed files but processes them single-threaded. Block gzip (BGZF) `.bgz` files enable parallel import and are strongly recommended for large datasets. Convert with `hvantk utils convert-bgz`:
 
 ```bash
 # Default: replaces .gz extension with .bgz
@@ -613,7 +291,7 @@ The command auto-detects whether the file is already BGZF and skips conversion i
 - For JSON vs YAML: JSON works out of the box; YAML recipes require `PyYAML` installed.
 - For UCSC, gene labels may be pipe-delimited (e.g., A|B); `--split-gene-field` defaults to true.
 - MatrixTables typically store sample/cell metadata under `mt.col_key` and cols metadata; inspect with `mt.describe()` in Python or logs from CLI.
-- **gzip vs BGZF**: Hail reads standard gzip files single-threaded, which is significantly slower for large files. Convert to BGZF with `--auto-convert-bgz` or `hvantk utils convert-bgz` for parallel import.
+- **gzip vs BGZF**: Hail reads standard gzip files single-threaded, which is significantly slower for large files. Pre-convert with `hvantk utils convert-bgz <file.gz>` for parallel import before running `hvantk reprocess`.
 
 ## See also
 

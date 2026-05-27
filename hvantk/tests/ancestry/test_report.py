@@ -1,6 +1,6 @@
 """Tests for ancestry HTML report generation.
 
-Tests the report generation functions in hvantk.ancestry.report without
+Tests the report generation functions in hvantk.algorithms.ancestry.report without
 requiring Hail or actual genetic data. Uses mock objects to test report logic.
 """
 
@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 from unittest.mock import MagicMock, patch
 
-from hvantk.ancestry.constants import (
+from hvantk.algorithms.ancestry.constants import (
     PREDICTED_ANCESTRY_COL,
     ANCESTRY_PROB_COL,
     SOURCE_COL,
@@ -139,7 +139,7 @@ class TestCreateSummaryCard:
 
     def test_create_summary_card_basic(self):
         """Test creating a basic summary card."""
-        from hvantk.ancestry.report import _create_summary_card
+        from hvantk.algorithms.ancestry.report import _create_summary_card
 
         html = _create_summary_card(100, "Total Samples")
         assert "100" in html
@@ -148,14 +148,14 @@ class TestCreateSummaryCard:
 
     def test_create_summary_card_formatted_number(self):
         """Test summary card with formatted number."""
-        from hvantk.ancestry.report import _create_summary_card
+        from hvantk.algorithms.ancestry.report import _create_summary_card
 
         html = _create_summary_card("1,234", "Large Count")
         assert "1,234" in html
 
     def test_create_summary_card_percentage(self):
         """Test summary card with percentage."""
-        from hvantk.ancestry.report import _create_summary_card
+        from hvantk.algorithms.ancestry.report import _create_summary_card
 
         html = _create_summary_card("95.5%", "Accuracy")
         assert "95.5%" in html
@@ -166,7 +166,7 @@ class TestCreateAncestryTable:
 
     def test_create_ancestry_table(self, sample_predictions_df):
         """Test creating ancestry distribution table."""
-        from hvantk.ancestry.report import _create_ancestry_table
+        from hvantk.algorithms.ancestry.report import _create_ancestry_table
 
         html = _create_ancestry_table(sample_predictions_df)
 
@@ -176,7 +176,7 @@ class TestCreateAncestryTable:
 
     def test_ancestry_table_has_populations(self, sample_predictions_df):
         """Test that table includes population names."""
-        from hvantk.ancestry.report import _create_ancestry_table
+        from hvantk.algorithms.ancestry.report import _create_ancestry_table
 
         html = _create_ancestry_table(sample_predictions_df)
 
@@ -189,7 +189,7 @@ class TestCreatePredictionsTable:
 
     def test_create_predictions_table(self, sample_predictions_df):
         """Test creating sample predictions table."""
-        from hvantk.ancestry.report import _create_predictions_table
+        from hvantk.algorithms.ancestry.report import _create_predictions_table
 
         html = _create_predictions_table(sample_predictions_df)
 
@@ -198,7 +198,7 @@ class TestCreatePredictionsTable:
 
     def test_predictions_table_max_rows(self, sample_predictions_df):
         """Test predictions table respects max_rows."""
-        from hvantk.ancestry.report import _create_predictions_table
+        from hvantk.algorithms.ancestry.report import _create_predictions_table
 
         html = _create_predictions_table(sample_predictions_df, max_rows=10)
 
@@ -207,7 +207,7 @@ class TestCreatePredictionsTable:
 
     def test_predictions_table_includes_sample_ids(self, sample_predictions_df):
         """Test that table includes sample IDs."""
-        from hvantk.ancestry.report import _create_predictions_table
+        from hvantk.algorithms.ancestry.report import _create_predictions_table
 
         html = _create_predictions_table(sample_predictions_df, max_rows=5)
 
@@ -220,7 +220,7 @@ class TestCreateConfigTable:
 
     def test_create_config_table(self):
         """Test creating configuration table."""
-        from hvantk.ancestry.report import _create_config_table
+        from hvantk.algorithms.ancestry.report import _create_config_table
 
         config_dict = {
             "min_af": 0.01,
@@ -235,7 +235,7 @@ class TestCreateConfigTable:
 
     def test_config_table_all_params(self):
         """Test config table includes all parameters."""
-        from hvantk.ancestry.report import _create_config_table
+        from hvantk.algorithms.ancestry.report import _create_config_table
 
         config_dict = {
             "param1": "value1",
@@ -253,7 +253,7 @@ class TestCreateValidationSection:
 
     def test_validation_section_with_metrics(self, mock_ancestry_result):
         """Test validation section when metrics are present."""
-        from hvantk.ancestry.report import _create_validation_section
+        from hvantk.algorithms.ancestry.report import _create_validation_section
 
         html = _create_validation_section(mock_ancestry_result)
 
@@ -262,7 +262,7 @@ class TestCreateValidationSection:
 
     def test_validation_section_skipped(self):
         """Test validation section when validation was skipped."""
-        from hvantk.ancestry.report import _create_validation_section
+        from hvantk.algorithms.ancestry.report import _create_validation_section
 
         result = MagicMock()
         result.get_accuracy.return_value = None
@@ -279,7 +279,7 @@ class TestGenerateAncestryReport:
 
     def test_generate_report_creates_file(self, mock_ancestry_result, tmp_path):
         """Test that report generation creates HTML file."""
-        from hvantk.ancestry.report import generate_ancestry_report
+        from hvantk.algorithms.ancestry.report import generate_ancestry_report
 
         output_path = tmp_path / "report.html"
         result_path = generate_ancestry_report(mock_ancestry_result, output_path)
@@ -289,7 +289,7 @@ class TestGenerateAncestryReport:
 
     def test_report_contains_html_structure(self, mock_ancestry_result, tmp_path):
         """Test that generated report has proper HTML structure."""
-        from hvantk.ancestry.report import generate_ancestry_report
+        from hvantk.algorithms.ancestry.report import generate_ancestry_report
 
         output_path = tmp_path / "report.html"
         generate_ancestry_report(mock_ancestry_result, output_path)
@@ -303,7 +303,7 @@ class TestGenerateAncestryReport:
 
     def test_report_contains_title(self, mock_ancestry_result, tmp_path):
         """Test that report contains custom title."""
-        from hvantk.ancestry.report import generate_ancestry_report
+        from hvantk.algorithms.ancestry.report import generate_ancestry_report
 
         output_path = tmp_path / "report.html"
         generate_ancestry_report(
@@ -317,7 +317,7 @@ class TestGenerateAncestryReport:
 
     def test_report_contains_summary(self, mock_ancestry_result, tmp_path):
         """Test that report contains summary section."""
-        from hvantk.ancestry.report import generate_ancestry_report
+        from hvantk.algorithms.ancestry.report import generate_ancestry_report
 
         output_path = tmp_path / "report.html"
         generate_ancestry_report(mock_ancestry_result, output_path)
@@ -328,7 +328,7 @@ class TestGenerateAncestryReport:
 
     def test_report_contains_ancestry_section(self, mock_ancestry_result, tmp_path):
         """Test that report contains ancestry distribution section."""
-        from hvantk.ancestry.report import generate_ancestry_report
+        from hvantk.algorithms.ancestry.report import generate_ancestry_report
 
         output_path = tmp_path / "report.html"
         generate_ancestry_report(mock_ancestry_result, output_path)
@@ -338,7 +338,7 @@ class TestGenerateAncestryReport:
 
     def test_report_contains_pca_section(self, mock_ancestry_result, tmp_path):
         """Test that report contains PCA visualization section."""
-        from hvantk.ancestry.report import generate_ancestry_report
+        from hvantk.algorithms.ancestry.report import generate_ancestry_report
 
         output_path = tmp_path / "report.html"
         generate_ancestry_report(mock_ancestry_result, output_path)
@@ -348,7 +348,7 @@ class TestGenerateAncestryReport:
 
     def test_report_contains_embedded_images(self, mock_ancestry_result, tmp_path):
         """Test that report contains base64 encoded images."""
-        from hvantk.ancestry.report import generate_ancestry_report
+        from hvantk.algorithms.ancestry.report import generate_ancestry_report
 
         output_path = tmp_path / "report.html"
         generate_ancestry_report(mock_ancestry_result, output_path)
@@ -359,7 +359,7 @@ class TestGenerateAncestryReport:
 
     def test_report_contains_config_section(self, mock_ancestry_result, tmp_path):
         """Test that report contains configuration section."""
-        from hvantk.ancestry.report import generate_ancestry_report
+        from hvantk.algorithms.ancestry.report import generate_ancestry_report
 
         output_path = tmp_path / "report.html"
         generate_ancestry_report(mock_ancestry_result, output_path)
@@ -370,7 +370,7 @@ class TestGenerateAncestryReport:
 
     def test_report_creates_parent_directory(self, mock_ancestry_result, tmp_path):
         """Test that report creates parent directories if needed."""
-        from hvantk.ancestry.report import generate_ancestry_report
+        from hvantk.algorithms.ancestry.report import generate_ancestry_report
 
         output_path = tmp_path / "subdir" / "nested" / "report.html"
         generate_ancestry_report(mock_ancestry_result, output_path)
@@ -379,7 +379,7 @@ class TestGenerateAncestryReport:
 
     def test_report_returns_path(self, mock_ancestry_result, tmp_path):
         """Test that function returns Path object."""
-        from hvantk.ancestry.report import generate_ancestry_report
+        from hvantk.algorithms.ancestry.report import generate_ancestry_report
 
         output_path = tmp_path / "report.html"
         result = generate_ancestry_report(mock_ancestry_result, output_path)
@@ -388,7 +388,7 @@ class TestGenerateAncestryReport:
 
     def test_report_with_string_path(self, mock_ancestry_result, tmp_path):
         """Test that function accepts string path."""
-        from hvantk.ancestry.report import generate_ancestry_report
+        from hvantk.algorithms.ancestry.report import generate_ancestry_report
 
         output_path = str(tmp_path / "report.html")
         generate_ancestry_report(mock_ancestry_result, output_path)
@@ -401,7 +401,7 @@ class TestReportStyling:
 
     def test_report_has_css(self, mock_ancestry_result, tmp_path):
         """Test that report includes CSS styles."""
-        from hvantk.ancestry.report import generate_ancestry_report
+        from hvantk.algorithms.ancestry.report import generate_ancestry_report
 
         output_path = tmp_path / "report.html"
         generate_ancestry_report(mock_ancestry_result, output_path)
@@ -412,7 +412,7 @@ class TestReportStyling:
 
     def test_report_has_ancestry_badges(self, mock_ancestry_result, tmp_path):
         """Test that report has ancestry badge styling."""
-        from hvantk.ancestry.report import generate_ancestry_report
+        from hvantk.algorithms.ancestry.report import generate_ancestry_report
 
         output_path = tmp_path / "report.html"
         generate_ancestry_report(mock_ancestry_result, output_path)
@@ -422,7 +422,7 @@ class TestReportStyling:
 
     def test_report_has_responsive_design(self, mock_ancestry_result, tmp_path):
         """Test that report has responsive design elements."""
-        from hvantk.ancestry.report import generate_ancestry_report
+        from hvantk.algorithms.ancestry.report import generate_ancestry_report
 
         output_path = tmp_path / "report.html"
         generate_ancestry_report(mock_ancestry_result, output_path)
@@ -436,7 +436,7 @@ class TestReportFooter:
 
     def test_report_has_footer(self, mock_ancestry_result, tmp_path):
         """Test that report has footer section."""
-        from hvantk.ancestry.report import generate_ancestry_report
+        from hvantk.algorithms.ancestry.report import generate_ancestry_report
 
         output_path = tmp_path / "report.html"
         generate_ancestry_report(mock_ancestry_result, output_path)
@@ -446,7 +446,7 @@ class TestReportFooter:
 
     def test_report_has_timestamp(self, mock_ancestry_result, tmp_path):
         """Test that report includes generation timestamp."""
-        from hvantk.ancestry.report import generate_ancestry_report
+        from hvantk.algorithms.ancestry.report import generate_ancestry_report
 
         output_path = tmp_path / "report.html"
         generate_ancestry_report(mock_ancestry_result, output_path)

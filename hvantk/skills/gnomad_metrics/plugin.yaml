@@ -1,0 +1,28 @@
+api_version: 2
+name: gnomad-metrics
+version: 0.1.0
+status: provisional
+description: gnomAD constraint gene metrics (pLI, oe_lof, etc.) - Hail Table
+
+source:
+  catalog_ref: gnomad-metrics
+
+datasets:
+  - name: metrics
+    domain: genomics
+    backend: hail
+    artifact_type: AnnotationTable
+    schema_id: gnomad-metrics-v1
+    builder:
+      module: hvantk.skills.gnomad_metrics.builder
+      function: build_gnomad_metrics_metrics
+    drift_probe:
+      module: hvantk.skills.gnomad_metrics.drift_probe
+      function: fetch_fingerprint
+    skill: SKILL.md
+    tests:
+      command: pytest hvantk/skills/gnomad_metrics/tests
+      fixture: tests/testdata/raw/gnomad
+      schema_snapshot: tests/snapshots/schema.json
+      row_snapshot: tests/snapshots/sample_rows.json
+      drift_fingerprint: tests/drift_fingerprint.json

@@ -5,15 +5,15 @@ Tests for HGC CLI convert commands.
 from unittest.mock import patch
 from click.testing import CliRunner
 
-from hvantk.commands.hgc.convert_cli import vds2mt, mt2vcf
+from hvantk.tools.hgc.convert_cli import vds2mt, mt2vcf
 
 
 def test_vds2mt_cli_basic():
     """Test vds2mt command with basic options."""
     runner = CliRunner()
-    with patch("hvantk.commands.hgc.convert_cli.convert_vds_to_mt") as mock_convert:
+    with patch("hvantk.tools.hgc.convert_cli.convert_vds_to_mt") as mock_convert:
         with patch(
-            "hvantk.commands.hgc.convert_cli.validate_input_files"
+            "hvantk.tools.hgc.convert_cli.validate_input_files"
         ) as mock_validate:
             mock_validate.return_value = (True, [])
 
@@ -30,7 +30,7 @@ def test_vds2mt_cli_basic():
 def test_vds2mt_cli_validation_failure():
     """Test vds2mt command with validation failure."""
     runner = CliRunner()
-    with patch("hvantk.commands.hgc.convert_cli.validate_input_files") as mock_validate:
+    with patch("hvantk.tools.hgc.convert_cli.validate_input_files") as mock_validate:
         mock_validate.return_value = (False, ["VDS not found"])
 
         result = runner.invoke(
@@ -46,7 +46,7 @@ def test_vds2mt_cli_validation_failure():
 def test_vds2mt_cli_dry_run():
     """Test vds2mt command with dry-run."""
     runner = CliRunner()
-    with patch("hvantk.commands.hgc.convert_cli.validate_input_files") as mock_validate:
+    with patch("hvantk.tools.hgc.convert_cli.validate_input_files") as mock_validate:
         mock_validate.return_value = (True, [])
 
         result = runner.invoke(
@@ -62,9 +62,9 @@ def test_vds2mt_cli_dry_run():
 def test_vds2mt_cli_skip_validation():
     """Test vds2mt command with --skip-validation."""
     runner = CliRunner()
-    with patch("hvantk.commands.hgc.convert_cli.convert_vds_to_mt") as mock_convert:
+    with patch("hvantk.tools.hgc.convert_cli.convert_vds_to_mt") as mock_convert:
         with patch(
-            "hvantk.commands.hgc.convert_cli.validate_input_files"
+            "hvantk.tools.hgc.convert_cli.validate_input_files"
         ) as mock_validate:
             mock_validate.return_value = (True, [])
 
@@ -82,10 +82,10 @@ def test_mt2vcf_cli_basic():
     """Test mt2vcf command with basic options."""
     runner = CliRunner()
     with patch(
-        "hvantk.commands.hgc.convert_cli.convert_mt_to_multi_sample_vcf"
+        "hvantk.tools.hgc.convert_cli.convert_mt_to_multi_sample_vcf"
     ) as mock_convert:
         with patch(
-            "hvantk.commands.hgc.convert_cli.validate_input_files"
+            "hvantk.tools.hgc.convert_cli.validate_input_files"
         ) as mock_validate:
             mock_validate.return_value = (True, [])
 
@@ -102,7 +102,7 @@ def test_mt2vcf_cli_basic():
 def test_mt2vcf_cli_validation_failure():
     """Test mt2vcf command with validation failure."""
     runner = CliRunner()
-    with patch("hvantk.commands.hgc.convert_cli.validate_input_files") as mock_validate:
+    with patch("hvantk.tools.hgc.convert_cli.validate_input_files") as mock_validate:
         mock_validate.return_value = (False, ["MT not found"])
 
         result = runner.invoke(
@@ -118,7 +118,7 @@ def test_mt2vcf_cli_validation_failure():
 def test_mt2vcf_cli_dry_run():
     """Test mt2vcf command with dry-run."""
     runner = CliRunner()
-    with patch("hvantk.commands.hgc.convert_cli.validate_input_files") as mock_validate:
+    with patch("hvantk.tools.hgc.convert_cli.validate_input_files") as mock_validate:
         mock_validate.return_value = (True, [])
 
         result = runner.invoke(
@@ -136,10 +136,10 @@ def test_mt2vcf_cli_min_ac():
     """Test mt2vcf command with custom min-ac."""
     runner = CliRunner()
     with patch(
-        "hvantk.commands.hgc.convert_cli.convert_mt_to_multi_sample_vcf"
+        "hvantk.tools.hgc.convert_cli.convert_mt_to_multi_sample_vcf"
     ) as mock_convert:
         with patch(
-            "hvantk.commands.hgc.convert_cli.validate_input_files"
+            "hvantk.tools.hgc.convert_cli.validate_input_files"
         ) as mock_validate:
             mock_validate.return_value = (True, [])
 
@@ -157,10 +157,10 @@ def test_mt2vcf_cli_no_filter_adj():
     """Test mt2vcf command with --no-filter-adj."""
     runner = CliRunner()
     with patch(
-        "hvantk.commands.hgc.convert_cli.convert_mt_to_multi_sample_vcf"
+        "hvantk.tools.hgc.convert_cli.convert_mt_to_multi_sample_vcf"
     ) as mock_convert:
         with patch(
-            "hvantk.commands.hgc.convert_cli.validate_input_files"
+            "hvantk.tools.hgc.convert_cli.validate_input_files"
         ) as mock_validate:
             mock_validate.return_value = (True, [])
 

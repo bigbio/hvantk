@@ -1,0 +1,28 @@
+api_version: 2
+name: msigdb
+version: 0.1.0
+status: provisional
+description: MSigDB gene set GMT files - Hail Table
+
+source:
+  catalog_ref: msigdb
+
+datasets:
+  - name: genesets
+    domain: mapping
+    backend: hail
+    artifact_type: AnnotationTable
+    schema_id: msigdb-genesets-v1
+    builder:
+      module: hvantk.skills.msigdb.builder
+      function: build_msigdb_genesets
+    drift_probe:
+      module: hvantk.skills.msigdb.drift_probe
+      function: fetch_fingerprint
+    skill: SKILL.md
+    tests:
+      command: pytest hvantk/skills/msigdb/tests -m hail
+      fixture: tests/testdata/raw/msigdb
+      schema_snapshot: tests/snapshots/schema.json
+      row_snapshot: tests/snapshots/sample_rows.json
+      drift_fingerprint: tests/drift_fingerprint.json

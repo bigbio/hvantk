@@ -4,13 +4,13 @@
 import pytest
 import logging
 from unittest.mock import Mock, patch
-from hvantk.data.data_streamer import DataStreamer, HailDataStreamer, StreamProcessor
-from hvantk.data.clinvar_streamer import (
+from hvantk.core.utils.streaming import DataStreamer, HailDataStreamer, StreamProcessor
+from hvantk.core.utils.clinvar_streamer import (
     ClinvarDataStreamer,
     ClinvarTrainingSetProcessor,
     create_clinvar_training_set_streamer,
 )
-from hvantk.utils import load_sample_chd_gene_set
+from hvantk.core.utils.gene_sets import load_sample_chd_gene_set
 
 # Configure logging for tests
 logging.basicConfig(level=logging.INFO)

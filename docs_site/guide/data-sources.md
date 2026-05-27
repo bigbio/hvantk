@@ -1,12 +1,12 @@
 # Data Sources
 
-This page covers all annotation and expression data sources supported by hvantk: what they are, where to get them, and how to build Hail Tables from the raw data. Sources are split into two categories: those with **built-in downloaders** (automated) and those that require **manual download** (too large, license-gated, or fragile URLs).
+This page covers all annotation and expression data sources supported by hvantk: what they are, where to get them, and how to build datasets from the raw data. Sources are split into two categories: those with **built-in downloaders** (automated) and those that require **manual download** (too large, license-gated, or fragile URLs).
 
-For building Hail Tables and MatrixTables from downloaded data, see the [Usage Guide](usage.md).
+Every build on this page goes through the unified `hvantk reprocess <plugin>:<dataset>` entry point — see the [Usage Guide](usage.md#1-build-a-dataset-with-hvantk-reprocess) for the orchestration pattern, lifecycle flags, and `--plugin-arg KEY=VALUE` conventions used below.
 
 ## File format note
 
-Downloaded `.gz` files may be standard gzip (single-threaded in Hail) rather than BGZF (parallel). Use `--auto-convert-bgz` during table or matrix builds, or pre-convert with:
+Downloaded `.gz` files may be standard gzip (single-threaded in Hail) rather than BGZF (parallel). Pre-convert before building:
 
 ```bash
 hvantk utils convert-bgz input.gz
@@ -72,9 +72,16 @@ hvantk download hgnc --output-dir data/hgnc
 **Build Hail Table**:
 
 ```bash
-hvantk mktable hgnc \
-  --raw-input data/hgnc/hgnc_complete_set.tsv \
-  --output-ht hgnc.ht
+# Single command: download into data/hgnc/ then build the table
+hvantk reprocess hgnc:lookup \
+  --raw-dir data/hgnc/ \
+  --output hgnc.ht
+
+# Or, if you already downloaded the TSV into data/hgnc/:
+hvantk reprocess hgnc:lookup \
+  --raw-dir data/hgnc/ \
+  --output hgnc.ht \
+  --skip-download
 ```
 
 ### UCSC Cell Browser
@@ -111,7 +118,7 @@ hvantk download expression-atlas --download_path data/expression_atlas
 
 ## Manual download sources
 
-These sources are too large, require license acceptance, or have complex download procedures. Follow the instructions below, then use `hvantk mktable` to build Hail Tables.
+These sources are too large, require license acceptance, or have complex download procedures. Follow the instructions below, place the raw file(s) in a per-source directory, then build via `hvantk reprocess <plugin>:<dataset> --skip-download`.
 
 ### dbNSFP (~45 GB)
 
@@ -134,21 +141,15 @@ head -1 <(zcat dbNSFP4.9a_variant.chr1.gz) > /tmp/dbnsfp_header.txt
 **Build**:
 
 ```bash
-# Option 1: Pre-converted BGZF (recommended)
-hvantk mktable dbnsfp \
-  --raw-input dbNSFP4.9a_variant.bgz \
-  --output-ht dbnsfp.ht
-
-# Option 2: Auto-convert during build (requires a single already-merged .gz)
-# This only works if you have already concatenated the per-chromosome files
-# into a single gzip file (e.g., dbNSFP4.9a_variant.gz).
-# --auto-convert-bgz re-compresses the single .gz as BGZF; it does NOT
-# assemble per-chromosome files.
-hvantk mktable dbnsfp \
-  --raw-input dbNSFP4.9a_variant.gz \
-  --output-ht dbnsfp.ht \
-  --auto-convert-bgz
+# Place the concatenated BGZF file in data/dbnsfp/ (so the builder sees it),
+# then build. dbNSFP has no plugin downloader; --skip-download is required.
+hvantk reprocess dbnsfp:variants \
+  --raw-dir data/dbnsfp/ \
+  --output dbnsfp.ht \
+  --skip-download
 ```
+
+> **Note:** dbNSFP's builder reads BGZF input. If you only have a single combined `.gz`, pre-convert with `hvantk utils convert-bgz dbNSFP4.9a_variant.gz` before building.
 
 ### gnomAD constraint metrics (~50 MB for gene-level)
 
@@ -164,9 +165,11 @@ wget https://storage.googleapis.com/gcp-public-data--gnomad/release/4.1/constrai
 **Build**:
 
 ```bash
-hvantk mktable gnomad-metrics \
-  --raw-input gnomad.v4.1.constraint_metrics.tsv \
-  --output-ht gnomad_metrics.ht
+# Place gnomad.v4.1.constraint_metrics.tsv in data/gnomad_metrics/ then:
+hvantk reprocess gnomad-metrics:metrics \
+  --raw-dir data/gnomad_metrics/ \
+  --output gnomad_metrics.ht \
+  --skip-download
 ```
 
 ### INSIDER interactome (~100 MB)
@@ -179,9 +182,11 @@ URL: http://interactomeinsider.yulab.org/downloads.html
 **Build**:
 
 ```bash
-hvantk mktable interactome \
-  --raw-input insider_interaction_sites.bed.bgz \
-  --output-ht interactome.ht
+# Place insider_interaction_sites.bed.bgz in data/insider/ then:
+hvantk reprocess insider:variants \
+  --raw-dir data/insider/ \
+  --output interactome.ht \
+  --skip-download
 ```
 
 ### Ensembl gene annotations (~800 MB)
@@ -195,9 +200,11 @@ https://www.ensembl.org/info/data/ftp/index.html
 **Build**:
 
 ```bash
-hvantk mktable ensembl-gene \
-  --raw-input biomart_export.tsv.bgz \
-  --output-ht ensembl_gene.ht
+# Place biomart_export.tsv.bgz in data/ensembl_gene/ then:
+hvantk reprocess ensembl-gene:genes \
+  --raw-dir data/ensembl_gene/ \
+  --output ensembl_gene.ht \
+  --skip-download
 ```
 
 ### GeVIR (~20 GB)
@@ -211,9 +218,11 @@ https://www.nature.com/articles/s41588-019-0560-2
 **Build**:
 
 ```bash
-hvantk mktable gevir \
-  --raw-input gevir_metrics.tsv.bgz \
-  --output-ht gevir.ht
+# Place gevir_metrics.tsv.bgz in data/gevir/ then:
+hvantk reprocess gevir:metrics \
+  --raw-dir data/gevir/ \
+  --output gevir.ht \
+  --skip-download
 ```
 
 ### CCR - Coding-Constrained Regions (~50 MB)
@@ -235,9 +244,11 @@ URL: https://cancer.sanger.ac.uk/census
 **Build**:
 
 ```bash
-hvantk mktable cosmic-cgc \
-  --raw-input cancer_gene_census.tsv \
-  --output-ht cosmic_cgc.ht
+# Place cancer_gene_census.tsv in data/cosmic_cgc/ then:
+hvantk reprocess cosmic-cgc:submissions \
+  --raw-dir data/cosmic_cgc/ \
+  --output cosmic_cgc.ht \
+  --skip-download
 ```
 
 ### UniProt PTM Sites
@@ -295,43 +306,48 @@ URL: https://www.gtexportal.org/home/downloads/adult-gtex/qtl
 
 ```bash
 # Download significant pairs (Parquet format, ~50 MB per tissue)
-# Navigate to GTEx Portal → Downloads → Adult GTEx → QTL → eQTL → Significant pairs
+# Navigate to GTEx Portal → Downloads → Adult GTEx → QTL → eQTL → Significant pairs.
+# Place per-tissue files under /data/gtex_v11/signif_pairs/ then:
 
 # Build significant-pairs table
-hvantk mktable eqtl \
-  --raw-input /data/gtex_v11/Liver.v11.signif_pairs.parquet \
-  --output-ht eqtl_liver.ht \
-  --source gtex_v11 \
-  --tissue Liver
+hvantk reprocess gtex-eqtl:eqtls \
+  --raw-dir /data/gtex_v11/signif_pairs/ \
+  --output eqtl_liver.ht \
+  --skip-download \
+  --plugin-arg source=gtex_v11 \
+  --plugin-arg tissue=Liver
 
 # Build allpairs table for coloc (set p-threshold to 0)
-hvantk mktable eqtl \
-  --raw-input /data/gtex_v11/allpairs/Liver/ \
-  --output-ht eqtl_allpairs_liver.ht \
-  --source gtex_v11 \
-  --tissue Liver \
-  --p-threshold 0
+hvantk reprocess gtex-eqtl:eqtls \
+  --raw-dir /data/gtex_v11/allpairs/Liver/ \
+  --output eqtl_allpairs_liver.ht \
+  --skip-download \
+  --plugin-arg source=gtex_v11 \
+  --plugin-arg tissue=Liver \
+  --plugin-arg p_threshold=0
 ```
 
 **GTEx v8** (TSV format):
 
 ```bash
-# Download from GTEx Portal v8 archive
-hvantk mktable eqtl \
-  --raw-input /data/gtex_v8/Liver.v8.signif_variant_gene_pairs.txt.gz \
-  --output-ht eqtl_liver_v8.ht \
-  --source gtex_v8
+# Place Liver.v8.signif_variant_gene_pairs.txt.gz under /data/gtex_v8/ then:
+hvantk reprocess gtex-eqtl:eqtls \
+  --raw-dir /data/gtex_v8/ \
+  --output eqtl_liver_v8.ht \
+  --skip-download \
+  --plugin-arg source=gtex_v8
 ```
 
 **eQTLGen** (blood eQTLs):
 URL: https://www.eqtlgen.org/cis-eqtls.html
 
 ```bash
-# Download cis-eQTL full results (~2 GB)
-hvantk mktable eqtl \
-  --raw-input /data/eqtlgen/cis-eQTLs_full.txt.gz \
-  --output-ht eqtl_blood.ht \
-  --source eqtlgen
+# Place cis-eQTLs_full.txt.gz under /data/eqtlgen/ then:
+hvantk reprocess gtex-eqtl:eqtls \
+  --raw-dir /data/eqtlgen/ \
+  --output eqtl_blood.ht \
+  --skip-download \
+  --plugin-arg source=eqtlgen
 ```
 
 ### Fang et al. (2025) pQTL data
@@ -340,25 +356,28 @@ Protein quantitative trait loci from Fang et al. (2025), covering 5 tissues (Col
 
 URL: Contact authors or GTEx Portal supplementary data.
 
-> **Note:** Fang pQTL data uses gene symbols. Provide a `--gene-map-ht` (Ensembl gene table) for symbol → Ensembl ID mapping.
+> **Note:** Fang pQTL data uses gene symbols. Pass an Ensembl gene-table path via `--plugin-arg hgnc_ht=<path>` for symbol → Ensembl ID mapping (the builder uses an HGNC-style lookup table).
 
 ```bash
 # Build pQTL table with gene mapping
-hvantk mktable pqtl \
-  --raw-input /data/fang_pqtl/Liver_allpairs.txt.gz \
-  --output-ht pqtl_liver.ht \
-  --source gtex_fang \
-  --tissue Liver \
-  --gene-map-ht ensembl_gene.ht \
-  --p-threshold 5e-8
+# Place Liver_allpairs.txt.gz under /data/fang_pqtl/ then:
+hvantk reprocess pqtl:metrics \
+  --raw-dir /data/fang_pqtl/ \
+  --output pqtl_liver.ht \
+  --skip-download \
+  --plugin-arg source=gtex_fang \
+  --plugin-arg tissue=Liver \
+  --plugin-arg hgnc_ht=ensembl_gene.ht \
+  --plugin-arg p_threshold=5e-8
 
-# Allpairs for coloc (omit p-threshold)
-hvantk mktable pqtl \
-  --raw-input /data/fang_pqtl/Liver_allpairs.txt.gz \
-  --output-ht pqtl_allpairs_liver.ht \
-  --source gtex_fang \
-  --tissue Liver \
-  --gene-map-ht ensembl_gene.ht
+# Allpairs for coloc (omit p_threshold to keep all variants)
+hvantk reprocess pqtl:metrics \
+  --raw-dir /data/fang_pqtl/ \
+  --output pqtl_allpairs_liver.ht \
+  --skip-download \
+  --plugin-arg source=gtex_fang \
+  --plugin-arg tissue=Liver \
+  --plugin-arg hgnc_ht=ensembl_gene.ht
 ```
 
 ## Expression data sources

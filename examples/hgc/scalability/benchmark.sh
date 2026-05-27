@@ -140,7 +140,7 @@ echo ""
 
 # Validate that hvantk is importable
 echo "Validating Python environment..."
-if ! python -c "from hvantk.hgc import combine_gvcfs" 2>/dev/null; then
+if ! python -c "from hvantk.algorithms.hgc import combine_gvcfs" 2>/dev/null; then
     echo "ERROR: hvantk module is not installed in the current Python environment!"
     echo ""
     echo "Current Python: $(which python)"

@@ -181,15 +181,18 @@ hvantk genesets prepare -i panels.tsv -o panels.json --hgnc /data/hgnc.ht
 PSROC requires pre-built Hail Tables for ClinVar and dbNSFP:
 
 ```bash
-# Build ClinVar table
-hvantk mktable clinvar \
-  --raw-input /data/clinvar.vcf.bgz \
-  --output-ht /data/clinvar_grch38.ht
+# Build ClinVar table (clinvar plugin has a built-in downloader; raw-dir
+# holds clinvar.vcf.gz + .tbi).
+hvantk reprocess clinvar:variants \
+  --raw-dir /data/clinvar/ \
+  --output /data/clinvar_grch38.ht
 
-# Build dbNSFP table (from concatenated BGZF — see Deployment Guide)
-hvantk mktable dbnsfp \
-  --raw-input /data/dbNSFP4.9a_variant.bgz \
-  --output-ht /data/dbnsfp_grch38.ht
+# Build dbNSFP table from the concatenated BGZF (see Deployment Guide).
+# dbNSFP has no plugin downloader; --skip-download is required.
+hvantk reprocess dbnsfp:variants \
+  --raw-dir /data/dbnsfp/ \
+  --output /data/dbnsfp_grch38.ht \
+  --skip-download
 ```
 
 ### Score Selection
@@ -765,24 +768,27 @@ hvantk download clingen --output-dir /data/clingen
 ### Step 3: Build Hail Tables (Layer 1 — Builders)
 
 ```bash
-# Build ClinVar table
+# Build ClinVar table from the already-downloaded VCF in /data/clinvar/.
 # Note: ClinVar distributes standard gzip (.vcf.gz), which Hail reads
 # single-threaded. For parallel reads, recompress as BGZF first:
-#   gunzip -c clinvar.vcf.gz | bgzip -@ 4 > clinvar.vcf.bgz
-hvantk mktable clinvar \
-  --raw-input /data/clinvar/clinvar.vcf.gz \
-  --output-ht /data/tables/clinvar_grch38.ht
+#   hvantk utils convert-bgz /data/clinvar/clinvar.vcf.gz
+hvantk reprocess clinvar:variants \
+  --raw-dir /data/clinvar/ \
+  --output /data/tables/clinvar_grch38.ht \
+  --skip-download
 
-# Build dbNSFP table (from the concatenated BGZF file prepared in Step 2)
-hvantk mktable dbnsfp \
-  --raw-input /data/dbnsfp/dbNSFP4.9a_variant.bgz \
-  --output-ht /data/tables/dbnsfp_grch38.ht
+# Build dbNSFP table from the concatenated BGZF file prepared in Step 2.
+hvantk reprocess dbnsfp:variants \
+  --raw-dir /data/dbnsfp/ \
+  --output /data/tables/dbnsfp_grch38.ht \
+  --skip-download
 
-# Build ClinGen table (for gene set extraction)
-# The filename includes today's date, e.g., Clingen-Gene-Disease-Summary-2026-03-11.csv
-hvantk mktable clingen-gene-disease \
-  --raw-input /data/clingen/Clingen-Gene-Disease-Summary-*.csv \
-  --output-ht /data/tables/clingen.ht
+# Build ClinGen table (for gene set extraction). raw-dir contains the
+# Clingen-Gene-Disease-Summary-<YYYY-MM-DD>.csv downloaded in Step 2.
+hvantk reprocess clingen:gene-disease \
+  --raw-dir /data/clingen/ \
+  --output /data/tables/clingen.ht \
+  --skip-download
 ```
 
 ### Step 4: Prepare Gene Sets

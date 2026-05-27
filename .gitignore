@@ -9,6 +9,7 @@ __pycache__/
 # Distribution / packaging
 .Python
 build/
+!hvantk/tools/build/
 develop-eggs/
 dist/
 downloads/
@@ -217,3 +218,16 @@ manuscript/
 
 # Claude AI files
 .claude/
+AGENTS.md
+CLAUDE.md
+
+# Vscode AI rules
+.github/instructions/codacy.instructions.md
+
+# Local planning / brainstorming artifacts (not for distribution)
+docs/plans/
+docs/specs/
+docs/superpowers/
+
+# Codacy CLI v2 local cache + config (init-generated)
+.codacy/

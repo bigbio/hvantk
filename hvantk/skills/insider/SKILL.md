@@ -64,7 +64,7 @@ chr11   700235   700235        .   0   +   700235   700235   247,176,91
 
 - **Object:** `hl.Table` checkpointed to `output_path` (a `.ht` directory).
 - **Key:** `[interval]` (`interval<locus<GRCh38>>`).
-- **Globals:** `hvantk_metadata` set by `_create_table_base`.
+- **Provenance:** stamped via `ctx.provenance(schema_id="insider-variants-v1")`; persisted as a sidecar `.provenance.json`.
 - **Fields:**
   - `interval: interval<locus<GRCh38>>` — half-open `[start, end)`. Constructed via `hl.locus_interval(contig, start+1, end+1, ...)` to match `hl.import_bed`'s 0-based-BED → 1-based-Hail conversion, so semantic compatibility with prior interval-based variant annotation downstream is preserved.
   - `ppi_ids: array<str>` — sorted, deduplicated PPI identifiers (`<P1>_ppi_<P2>` format) from `track name=...` directives whose data rows cover this interval. Length ≥ 1; arrays of length > 1 indicate the position is shared between multiple PPI interfaces.
@@ -75,22 +75,25 @@ After aggregation, intervals are unique-in-table. Test inlines sample keys.
 
 ## 6. hvantk integration points
 
-- **Builder:** `create_interactome_tb` in `hvantk/tables/table_builders.py`. Uses `_create_table_base()` with `import_func` calling `_parse_insider_bed_to_temp_tsv` (track-aware Python pre-processor) then `hl.import_table + hl.locus_interval`, and `transform_func` doing `group_by(interval).aggregate(ppi_ids=collect_as_set(ppi_id))` + `hl.sorted(hl.array(...))`.
-- **Track parser helper:** `_parse_insider_bed_to_temp_tsv` (private), same module. Reads the BED, tracks `current_ppi_id` from `track name=...` headers, skips zero-length and malformed rows, writes a 4-column TSV to `hl.utils.new_temp_file(extension="tsv")`.
-- **Registry:** `TABLE_BUILDERS["interactome"] = create_table_adapter("hvantk.tables.table_builders", "create_interactome_tb")` in `hvantk/tables/registry.py:250`.
-- **CLI:** `mktable_interactome` in `hvantk/commands/make_table_cli.py:168` (command name `interactome`). Standard input/output/overwrite/export options.
+- **Builder:** `create_interactome_tb` in `hvantk/skills/insider/builder.py`. Uses `_create_table_base()` with `import_func` calling `_parse_insider_bed_to_temp_tsv` (track-aware Python pre-processor) then `hl.import_table + hl.locus_interval`, and `transform_func` doing `group_by(interval).aggregate(ppi_ids=collect_as_set(ppi_id))` + `hl.sorted(hl.array(...))`. Imports `_create_table_base`, `_parse_insider_bed_to_temp_tsv`, and `_cleanup_temp_file` from `hvantk/tables/table_builders.py` (shared / reused infrastructure stays there for now).
+- **Track parser helper:** `_parse_insider_bed_to_temp_tsv` (private) lives in `hvantk/tables/table_builders.py` alongside the other shared helpers. Reads the BED, tracks `current_ppi_id` from `track name=...` headers, skips zero-length and malformed rows, writes a 4-column TSV to `hl.utils.new_temp_file(extension="tsv")`.
+- **Registry:** plugin-driven; the in-tree plugin manifest at `hvantk/skills/insider/plugin.yaml` registers the dataset under compound key `insider:variants`, which is wired into `TABLE_BUILDERS` by `_apply_plugin_registrations` in `hvantk/tables/registry.py`.
+- **CLI:** end-to-end `hvantk reprocess insider:variants` is not yet wired — the Phase B `build_insider_interactome` builder calls `_parse_insider_bed_to_temp_tsv` on `parsed_input` as a file path, but `hvantk reprocess` always passes the `--raw-dir` directory (insider has no `lifecycle.parse`). Use the Python API for now: `create_interactome_tb(input_path=<bed>, output_path=<ht>, reference_genome="GRCh38", overwrite=True)`.
 - **Snapshot util branch:** `hvantk/tests/_snapshot_utils.py` — new `hl.tinterval` handlers added in this PR.
 - **Downloader:** out of scope (manual acquisition).
 
 ## 7. Workflow steps
 
 1. **Acquire** the BED file from http://interactomeinsider.yulab.org/downloads.html — manual download, no skill-side acquisition (file is >1 GB).
-2. **Build the Hail Table:**
-   ```bash
-   hvantk mktable interactome \
-       --raw-input /path/to/Whole_Human_Interactome_Interface_hg38.bed \
-       --output-ht /path/to/insider.ht \
-       --ref-genome GRCh38
+2. **Build the Hail Table** via the Python API (the reprocess CLI path is not yet wired — see § 6):
+   ```python
+   from hvantk.skills.insider.builder import create_interactome_tb
+   create_interactome_tb(
+       input_path="/path/to/Whole_Human_Interactome_Interface_hg38.bed",
+       output_path="/path/to/insider.ht",
+       reference_genome="GRCh38",
+       overwrite=True,
+   )
    ```
 3. **Internal flow** (implemented in `create_interactome_tb`):
    - `_parse_insider_bed_to_temp_tsv(input_path)` — Python-side BED iterator: tracks current PPI from `track name=...`, skips browser lines, skips zero-length and malformed rows, writes `contig\tstart\tend\tppi_id` to a Hail temp TSV.
@@ -111,10 +114,10 @@ INSIDER updates are irregular. To onboard a new release:
 
 Per `_conventions` § 9:
 
-- **fixture:** `hvantk/tests/testdata/raw/insider/insider_sample.bed`. 5 PPI tracks (~21 raw data rows; 17 valid after zero-length filtering). ~1.9 KB. Sliced from the full BED by a track-aware sub-sampler (keeps the `browser` directive plus the first N `track` blocks, each header paired with its data rows) — a plain `head -N` would split a track block and produce an invalid BED.
-- **schema_snapshot:** `hvantk/tests/snapshots/insider/schema.json`. Records the `{interval, ppi_ids: array<str>}` shape.
-- **row_snapshot:** `hvantk/tests/snapshots/insider/sample_rows.json`. Intervals are unique-in-table after the aggregation; test inlines 3 sample keys (per `_conventions` § 9 post-#101 rule — unique-key skills inline).
-- **test_command:** `pytest hvantk/tests/test_insider_builder.py -m hail`.
+- **fixture:** `hvantk/skills/insider/tests/testdata/raw/insider/insider_sample.bed`. 5 PPI tracks (~21 raw data rows; 17 valid after zero-length filtering). ~1.9 KB. Sliced from the full BED by a track-aware sub-sampler (keeps the `browser` directive plus the first N `track` blocks, each header paired with its data rows) — a plain `head -N` would split a track block and produce an invalid BED.
+- **schema_snapshot:** `hvantk/skills/insider/tests/snapshots/schema.json`. Records the `{interval, ppi_ids: array<str>}` shape.
+- **row_snapshot:** `hvantk/skills/insider/tests/snapshots/sample_rows.json`. Intervals are unique-in-table after the aggregation; test inlines 3 sample keys (per `_conventions` § 9 post-#101 rule — unique-key skills inline).
+- **test_command:** `pytest hvantk/skills/insider/tests -m hail`.
 
 Round-trip test asserts: builder idempotent with `overwrite=True`; checkpointed schema matches `schema.json`; deterministic sample-row slice matches `sample_rows.json`. The test exercises the `hl.tinterval` handling in `_snapshot_utils` (added in PR #105) — if that branch breaks, this test breaks.
 

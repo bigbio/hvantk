@@ -4,7 +4,7 @@ Tests for table_utils module.
 
 import pytest
 import hail as hl
-from hvantk.utils.table_utils import (
+from hvantk.core.utils.table_utils import (
     field_exists,
     get_row_fields,
     leaf_name,
@@ -221,7 +221,7 @@ def test_get_row_fields_different_table_types():
 # Tests for get_col_fields function
 def test_get_col_fields_basic(sample_matrix_table):
     """Test get_col_fields with a basic MatrixTable."""
-    from hvantk.utils.table_utils import get_col_fields
+    from hvantk.core.utils.table_utils import get_col_fields
 
     fields = get_col_fields(sample_matrix_table)
 
@@ -235,7 +235,7 @@ def test_get_col_fields_basic(sample_matrix_table):
 
 def test_get_col_fields_with_complex_types():
     """Test get_col_fields with complex column field types."""
-    from hvantk.utils.table_utils import get_col_fields
+    from hvantk.core.utils.table_utils import get_col_fields
 
     # Create a MatrixTable with complex column fields
     mt = hl.utils.range_matrix_table(2, 3)
@@ -258,7 +258,7 @@ def test_get_col_fields_with_complex_types():
 
 def test_get_entry_fields_basic():
     """Test get_entry_fields with a basic MatrixTable."""
-    from hvantk.utils.table_utils import get_entry_fields
+    from hvantk.core.utils.table_utils import get_entry_fields
 
     # Create a MatrixTable with entry fields
     mt = hl.utils.range_matrix_table(2, 2)
@@ -282,7 +282,7 @@ def test_get_entry_fields_basic():
 
 def test_get_entry_fields_empty():
     """Test get_entry_fields with a MatrixTable with no entry fields."""
-    from hvantk.utils.table_utils import get_entry_fields
+    from hvantk.core.utils.table_utils import get_entry_fields
 
     # Create a basic MatrixTable with no additional entry fields
     mt = hl.utils.range_matrix_table(2, 2)

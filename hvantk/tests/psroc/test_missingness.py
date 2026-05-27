@@ -8,7 +8,7 @@ functionality of the PSROC module.
 import numpy as np
 import pytest
 
-from hvantk.psroc.roc import (
+from hvantk.algorithms.psroc.roc import (
     ScoreMissingness,
     compute_score_missingness,
     filter_scores_by_missingness,

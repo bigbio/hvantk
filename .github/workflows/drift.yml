@@ -1,0 +1,103 @@
+name: Scheduled drift check
+
+on:
+  schedule:
+    # 06:00 UTC daily.
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "If true, run the helper in --dry-run mode (no git/gh side effects)."
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+permissions:
+  # Need write access to push branches and open PRs with the default
+  # GITHUB_TOKEN. No id-token / packages permissions are needed.
+  contents: write
+  pull-requests: write
+
+env:
+  # Base branch the bot branches off of and targets PRs against. Override here
+  # once the refactor lands on dev/main.
+  BASE_BRANCH: dev
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    # Schedule events on forks run with the upstream token but we still want to
+    # be defensive: only run on the canonical repo to avoid surprise pushes
+    # from fork-triggered manual dispatches.
+    if: github.repository == 'bigbio/hvantk' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout base branch
+        uses: actions/checkout@v4
+        with:
+          # Need history + branches for the helper to create new branches and
+          # push them. fetch-depth: 0 keeps things simple at the cost of size.
+          fetch-depth: 0
+          ref: ${{ env.BASE_BRANCH }}
+
+      - name: Install OpenBLAS
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libopenblas-dev
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.10"
+
+      - name: Add conda to system path
+        run: |
+          echo $CONDA/bin >> $GITHUB_PATH
+
+      - name: Install dependencies via conda env
+        run: |
+          conda env update --file environment.yml --name base
+
+      - name: Install hvantk in development mode
+        run: |
+          pip install -e .
+
+      - name: Configure git author for bot commits
+        run: |
+          git config user.name "hvantk-drift-bot"
+          git config user.email "bot@hvantk.dev"
+
+      - name: Run drift check (capture JSON)
+        # Tolerate non-zero exits: drift_cli returns 1 on drifted, 2 on
+        # probe_failed. Those are signals, not failures.
+        run: |
+          set +e
+          python -m hvantk.hvantk drift --all --json > /tmp/drift_report.json
+          rc=$?
+          echo "drift exit code: $rc"
+          if [ $rc -gt 2 ]; then
+            echo "drift CLI exited with $rc (unexpected; treating as failure)" >&2
+            exit $rc
+          fi
+          exit 0
+
+      - name: Show drift report
+        run: |
+          echo "--- /tmp/drift_report.json ---"
+          cat /tmp/drift_report.json || true
+
+      - name: Open / update draft PRs per drifted dataset
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BASE_BRANCH: ${{ env.BASE_BRANCH }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: |
+          ARGS="--report /tmp/drift_report.json --base-branch ${BASE_BRANCH}"
+          if [ "$DRY_RUN" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          python .github/scripts/drift_to_pr.py $ARGS

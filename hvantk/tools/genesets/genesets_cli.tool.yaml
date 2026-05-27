@@ -1,0 +1,30 @@
+api_version: 1
+name: genesets
+domain: genesets
+type: command_group
+description: Extract or prepare GeneSetCollection files from curated tables.
+cli:
+  module: hvantk.tools.genesets.genesets_cli
+  function: genesets_group
+purpose:
+  short: Build GeneSetCollection JSON/GMT files for PSROC, EnrichEx, etc.
+  long: |
+    Each subcommand sources a different upstream: ClinGen, GenCC, and COSMIC
+    Hail Tables built by their per-plugin builders (invoke via
+    `hvantk reprocess <provider>:<dataset>`), plus a `prepare`
+    subcommand that converts a plain headerless TSV into a GeneSetCollection
+    with optional HGNC validation and alias resolution. Output is consumable
+    by `hvantk psroc --gene-sets`, `hvantk enrichex burden -s`, and
+    `hvantk enrichex overlap -s`.
+subcommands:
+  - name: clingen
+    description: Extract gene set collections from a ClinGen Hail Table
+  - name: gencc
+    description: Extract gene set collections from a GenCC Hail Table
+  - name: cosmic
+    description: Extract gene set collections from a COSMIC Cancer Gene Census Hail Table
+  - name: prepare
+    description: Prepare a GeneSetCollection JSON from a plain headerless TSV (with optional HGNC validation)
+requires:
+  hail: true
+  network: false

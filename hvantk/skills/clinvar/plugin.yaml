@@ -1,0 +1,37 @@
+api_version: 2
+name: clinvar
+version: 0.2.0
+status: provisional
+description: ClinVar variant clinical-significance VCF - Hail Table
+
+source:
+  catalog_ref: clinvar
+
+datasets:
+  - name: variants
+    domain: genomics
+    backend: hail
+    artifact_type: AnnotationTable
+    schema_id: clinvar-variants-v1
+    builder:
+      module: hvantk.skills.clinvar.builder
+      function: build_clinvar
+    drift_probe:
+      module: hvantk.skills.clinvar.drift_probe
+      function: fetch_fingerprint
+    lifecycle:
+      download:
+        module: hvantk.skills.clinvar.cli
+        function: download_dataset
+    skill: SKILL.md
+    tests:
+      command: pytest hvantk/skills/clinvar/tests -m hail
+      fixture: tests/testdata/raw/clinvar
+      schema_snapshot: tests/snapshots/schema.json
+      row_snapshot: tests/snapshots/sample_rows.json
+      drift_fingerprint: tests/drift_fingerprint.json
+
+cli:
+  - command: clinvar-download
+    module: hvantk.skills.clinvar.cli
+    function: clinvar_downloader

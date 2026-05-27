@@ -2,167 +2,127 @@
 
 ## Overview
 
-`hvantk` (Hail-based Variant Annotation Toolkit) is a modular toolkit for multi-omics variant annotation and analysis built on Hail. The architecture emphasizes:
+`hvantk` is a multi-omics variant annotation toolkit. It is organized as a
+five-package layout — four code layers (`core/`, `algorithms/`, `skills/`,
+`tools/`) plus a substrate-level data registry (`resources/`) — with a
+strict one-way dependency rule enforced by
+[`hvantk/tests/test_dependency_directions.py`](https://github.com/bigbio/hvantk/blob/main/hvantk/tests/test_dependency_directions.py):
 
-1. **Domain organization** - Separate concerns for variants, genes, proteins, and expression data
-2. **Extensibility** - Protocol-based contracts for builders, streamers, and downloaders
-3. **Usability** - CLI-first design with clear command structure
-4. **Scalability** - Built on Hail for distributed processing of large datasets
+<p align="center">
+  <img src="images/hvantk-platform-architecture.svg" alt="hvantk platform architecture: tools/ depends on skills/, algorithms/, and core/; skills/ depends on algorithms/ and core/; algorithms/ depends on core/. resources/ sits at the substrate level alongside core/ and is consumed by skills/ and tools/. Arrows flow downward only." width="860">
+</p>
 
-## Architecture Diagram
+`resources/` is a peer of `core/` (not a layer above it): both are
+substrate that the code layers depend on, neither imports upward.
+Placement rule: dataset-registry JSON, JSON schemas, and the validator /
+aggregator code that operates on them go in `resources/`. Per-plugin
+catalog JSON (`skills/<provider>/catalog/datasets.json`) stays with its
+plugin and is aggregated by `resources/unified_registry.py`. See the
+[Resources Module](#resources-module-resources) section below for the
+full rule.
 
-![hvantk workflow architecture](images/hvantk-architecture.svg)
+Design priorities:
 
-**Figure 1.** *hvantk workflow architecture for scalable multi-omics variant annotation and analysis. External variant, gene, and expression databases are acquired through built-in downloaders and converted to domain-organized Hail Tables and MatrixTables via the builder framework. User cohort data (GVCFs, MatrixTables, gene sets, phenotypes) feeds directly into analysis pipelines. Four specialized pipelines — HGC (joint genotyping and quality control), Ancestry (PCA-based population inference), EnrichEx (gene-set burden and overlap testing), and PS-ROC (pathogenicity score evaluation) — produce annotated tables, HTML reports with embedded plots, and statistical results. All operations are distributed via Hail on Apache Spark, accessible through the `hvantk` CLI and Python API.*
+1. **Stable contracts** — algorithms consume typed artifacts; source adapters can
+   rot when upstream APIs change without breaking analysis code.
+2. **Manifest-driven** — plugins declare themselves via `plugin.yaml`; the loader
+   discovers descriptively first (no imports), binds executable callables lazily.
+3. **Provenance everywhere** — every artifact carries a `Provenance` (plugin,
+   version, source fingerprint, schema id, build timestamp, derivation parents).
+4. **Backend-portable + native escape hatch** — the artifact API works on either
+   Hail or pandas; algorithms that legitimately need raw Hail use
+   `core_io.load_native` / `save_native` (zero-cost passthrough with provenance).
 
 ## Project Structure
 
 ```text
 hvantk/
-├── hvantk.py              # Main CLI entry point
+├── __main__.py            # Main CLI entry point
 │
 ├── core/                  # L1: Core infrastructure
 │   ├── config.py          # Configuration management
 │   ├── constants.py       # Shared constants
-│   ├── hail_context.py    # Hail session management (thread-safe init)
-│   ├── metadata.py        # Metadata structs and source descriptions
-│   └── protocols.py       # Protocol definitions (Builder, Streamer, Downloader)
+│   ├── protocols.py       # Protocol definitions (Builder, Streamer, Downloader)
+│   ├── builders/          # Generic builder helpers
+│   │   └── table.py       # _create_table_base, _cleanup_temp_file, etc.
+│   ├── io/                # Artifact loader (load/save Hail Tables, AnnData, etc.)
+│   ├── models/            # Domain model types
+│   │   ├── annotation_table.py  # AnnotationTable artifact
+│   │   ├── expression_matrix.py # ExpressionMatrix artifact
+│   │   ├── gene_set.py          # GeneSet artifact
+│   │   ├── artifact.py          # Artifact base + type registry
+│   │   ├── backends.py          # AlgorithmMeta, Backend, @algorithm decorator
+│   │   ├── build_context.py     # BuildContext passed to plugin builders
+│   │   ├── anndata_utils.py     # annotate_column_summary_ad (AnnData obs summary)
+│   │   ├── metadata.py          # Metadata structs and source descriptions
+│   │   └── provenance.py        # Source-fingerprint provenance stamping
+│   ├── plugin/            # Plugin system
+│   │   ├── api.py         # Provider, DatasetSpec, PROBE_FINGERPRINT_IGNORED_KEYS
+│   │   ├── loader.py      # Plugin discovery (filesystem + entry points)
+│   │   ├── run_builder.py # run_builder_for_spec() — Phase B orchestrator
+│   │   └── drift_runner.py# Drift probe execution
+│   └── utils/             # Cross-cutting utilities
+│       ├── hail_context.py          # Idempotent Hail init
+│       ├── hail_helpers.py          # create_table_base, cleanup_temp_file
+│       ├── qtl_helpers.py           # GTEx variant-ID parsing (shared by eqtl/pqtl)
+│       ├── bgzf.py                  # BGZF utilities
+│       ├── streaming.py             # Generic DataStreamer / HailDataStreamer primitives
+│       ├── gene_disease_streamer.py # Abstract base shared by clingen/cosmic-cgc/gencc
+│       ├── clinvar_streamer.py      # ClinVar streamer (consumed by algorithms/)
+│       ├── file_utils.py            # File I/O helpers
+│       ├── gene_sets.py             # Gene set utilities
+│       ├── genome.py                # Genome/contig utilities
+│       ├── table_utils.py           # Hail Table manipulation helpers
+│       ├── writers.py               # HailTableWriter
+│       └── ...                      # Other shared utilities
 │
-├── data/                  # L1: Data management utilities
-│   ├── dataset.py         # Dataset handling
-│   ├── file_utils.py      # File I/O utilities
-│   ├── data_streamer.py            # DataStreamer base classes & StreamProcessor
-│   ├── gene_disease_streamer.py    # GeneDiseaseValidityStreamer base class
-│   ├── clinvar_streamer.py         # ClinVar data source streamer
-│   ├── clingen_streamer.py         # ClinGen streamer (subclass of GeneDiseaseValidityStreamer)
-│   ├── gencc_streamer.py           # GenCC streamer (subclass of GeneDiseaseValidityStreamer)
-│   ├── cosmic_cgc_streamer.py     # COSMIC CGC data streamer
-│   └── gene_mapper.py              # Gene ID/symbol mapping utilities
+├── algorithms/            # L4-L5: Analysis pipelines
+│   ├── annotation/        # Variant annotation pipeline
+│   ├── ancestry/          # Population ancestry inference
+│   ├── enrichex/          # Gene set enrichment analysis
+│   ├── expression/        # Expression data processing
+│   ├── hgc/               # Joint genotyping (HGC) pipeline
+│   ├── psroc/             # Pathogenicity score evaluation
+│   ├── ptm/               # Post-translational modification analysis
+│   ├── qtlcascade/        # QTL cascade analysis
+│   ├── statistics/        # Statistical utilities
+│   ├── training_sets/     # Training set construction
+│   └── visualization/     # Shared visualization helpers
 │
-├── datasets/              # L2: Dataset definitions
-│   ├── clingen_datasets.py          # ClinGen datasets
-│   ├── gencc_datasets.py            # GenCC datasets
-│   ├── clinvar_datasets.py          # ClinVar datasets
-│   ├── expression_atlas_datasets.py # Expression Atlas datasets
-│   └── ucsc_cell_datasets.py        # UCSC Cell Browser datasets
+├── skills/                # L2-L3: Per-provider data plugins
+│   ├── _conventions/      # Shared plugin contract (SKILL.md)
+│   ├── _hooks/            # Plugin lifecycle hooks
+│   ├── clingen/           # ClinGen gene-disease validity
+│   ├── clinvar/           # ClinVar variant annotations
+│   ├── cptac/             # CPTAC proteomics (expression/, phospho/)
+│   ├── expression_atlas/  # Expression Atlas bulk RNA-seq
+│   ├── gencc/             # GenCC gene-disease assertions
+│   ├── gtex_eqtl/         # GTEx eQTL data
+│   ├── gwas_catalog/      # GWAS Catalog
+│   ├── hgnc/              # HGNC gene nomenclature
+│   ├── insider/           # INSIDER protein-protein interaction sites
+│   ├── msigdb/            # MSigDB gene sets
+│   ├── peptideatlas/      # PeptideAtlas proteomics
+│   ├── ucsc_cellbrowser/  # UCSC Cell Browser single-cell RNA-seq
+│   └── uniprot_ptm/       # UniProt PTM annotations
 │
-├── tables/                # L2-L3: Table and matrix builders
-│   ├── table_builders.py  # Variant/gene annotation builders (ClinVar, dbNSFP, Ensembl, etc.)
-│   ├── matrix_builders.py # Expression matrix builders
-│   ├── genome_builders.py # Reference genome builders (e.g., 1000 Genomes)
-│   ├── ucsc.py            # UCSC Cell Browser builders
-│   ├── expression_atlas.py# Expression Atlas builders
-│   ├── cptac.py           # CPTAC proteomics builders
-│   └── registry.py        # Builder registry for recipes
-│
-├── annotation/            # L4: Annotation pipeline
-│   ├── annotate.py        # Core annotation functions
-│   ├── annotation_pipeline.py # Pipeline orchestration
-│   └── annotation_streamer.py # Annotation DataStreamer
-│
-├── hgc/                   # L5: HGC - Joint genotyping pipeline
-│   ├── combiners.py       # GVCF/MT combination
-│   ├── converters.py      # Format conversion (VDS ↔ MT ↔ VCF)
-│   ├── qc.py              # Quality control metrics
-│   ├── pipeline.py        # End-to-end pipeline orchestration
-│   ├── file_utils.py      # HGC-specific file utilities
-│   └── constants.py       # HGC constants
-│
-├── ancestry/              # L5: Ancestry inference pipeline
-│   ├── pipeline.py        # End-to-end ancestry pipeline
-│   ├── pca.py             # PCA computation
-│   ├── classify.py        # Random Forest classification
-│   ├── merge.py           # Reference/query merging
-│   ├── filter.py          # Variant filtering
-│   ├── plot.py            # Ancestry visualization
-│   ├── report.py          # HTML report generation
-│   └── constants.py       # Ancestry constants
-│
-├── psroc/                 # L5: PSROC - Score evaluation pipeline
-│   ├── pipeline.py        # End-to-end PSROC pipeline
-│   ├── roc.py             # ROC curve computation
-│   └── plots.py           # ROC visualization
-│
-├── enrichex/              # L5: EnrichEx - Gene set enrichment
-│   ├── overlap.py         # Overlap enrichment (Fisher's exact)
-│   ├── burden.py          # Burden testing (rare variant regression)
-│   ├── correction.py      # Multiple testing correction
-│   ├── plot.py            # Enrichment visualization
-│   ├── report.py          # HTML report generation
-│   ├── constants.py       # Enrichex-specific constants
-│   └── simulation.py      # Synthetic cohort generator for burden testing
-│
-├── ptm/                   # L5: PTM - Post-translational modification analysis
-│   ├── constants.py       # PTM-specific constants (URLs, categories)
-│   ├── mapper.py          # GTF parser and residue-to-genomic mapper
-│   ├── pipeline.py        # Build pipeline orchestration (Phases 1-2)
-│   ├── annotate.py        # Variant-PTM annotation (Phase 3)
-│   ├── analysis.py        # Landscape and population analysis (Phase 4)
-│   ├── constraint.py      # Stratified PTM AF-depletion analysis (by tissue/cell-type)
-│   ├── constraint_expression.py # Expression-source adapter (Hail MT / AnnData / tabular)
-│   ├── constraint_plots.py      # Four-panel figure renderer
-│   ├── constraint_report.py     # Constraint HTML report
-│   ├── plot.py            # PTM-specific visualization
-│   └── report.py          # HTML report generation
-│
-├── commands/              # CLI command implementations
-│   ├── make_table_cli.py        # mktable commands
-│   ├── make_matrix_cli.py       # mkmatrix commands
-│   ├── make_table_batch_cli.py  # mktable-batch (recipes)
-│   ├── make_matrix_batch_cli.py # mkmatrix-batch (recipes)
-│   ├── catalog_cli.py           # Data catalog commands
-│   ├── ancestry_cli.py          # Ancestry CLI
-│   ├── psroc_cli.py             # PSROC CLI
-│   ├── ptm_cli.py               # PTM CLI
-│   ├── download_cli.py          # Unified download command group
-│   ├── utils_cli.py             # Unified utils command group
-│   ├── check_install_cli.py     # Installation verification
-│   ├── validate_bgzf_cli.py     # BGZF validation
-│   ├── summarize_expression_cli.py # Expression analysis commands
-│   ├── ucsc_downloader.py       # UCSC downloader
-│   ├── expression_atlas_downloader.py # Expression Atlas downloader
-│   ├── clingen_downloader.py    # ClinGen downloader
-│   ├── gencc_downloader.py      # GenCC downloader
-│   ├── clinvar_downloader.py    # ClinVar downloader
-│   ├── hgnc_downloader.py       # HGNC downloader
-│   ├── genesets_cli.py          # Unified gene set extraction/preparation
-│   ├── hgc/                     # HGC CLI subcommands
-│   │   ├── combine_cli.py       # gvcf-combine, vds-combine
-│   │   ├── convert_cli.py       # vds2mt, mt2vcf
-│   │   ├── qc_cli.py            # compute-qc, qc-report
-│   │   └── pipeline_cli.py      # pipeline (end-to-end)
-│   └── enrichex_cli/            # EnrichEx CLI subcommands
-│       ├── overlap_cli.py       # overlap enrichment
-│       └── burden_cli.py        # burden testing
-│
-├── utils/                 # Utility functions
-│   ├── table_utils.py     # Table manipulation helpers
-│   ├── matrix_utils.py    # MatrixTable utilities
-│   ├── genome.py          # Genome/contig utilities
-│   ├── gene_sets.py       # Gene set utilities
-│   ├── geneset_io.py      # Gene set I/O and validation
-│   ├── gene_aliases.py    # Gene alias expansion (HGNC)
-│   ├── expressions.py     # Expression data utilities
-│   ├── correction.py      # Multiple testing correction
-│   ├── mondo_parser.py    # MONDO ontology parser
-│   ├── obo_parser.py      # OBO ontology parser
-│   ├── wilcoxon.py        # Wilcoxon rank-sum tests
-│   ├── wilcoxon_hail.py   # Hail-based Wilcoxon implementation
-│   └── catalog.py         # Catalog utilities
-│
-├── visualization/         # Visualization and reporting
-│   ├── base.py            # Base visualization classes
-│   ├── qc_plots.py        # QC plotting functions
-│   ├── qc_report.py       # QC HTML report generation
-│   ├── interactive_qc.py  # Interactive QC dashboards
-│   └── expression/        # Expression-specific visualizations
-│       └── hail.py        # Hail-based expression plots
+├── tools/                 # CLI command implementations (replaces legacy commands/)
+│   ├── ancestry/          # Ancestry CLI subcommands
+│   ├── annotation/        # Annotation CLI subcommands
+│   ├── build/             # standalone reference panel builds (1k genomes)
+│   ├── enrichex/          # EnrichEx CLI subcommands
+│   ├── expression/        # Expression analysis commands
+│   ├── genesets/          # Gene set extraction/preparation
+│   ├── hgc/               # HGC CLI subcommands
+│   ├── infra/             # Installation check, BGZF validation, utils
+│   ├── plugins/           # hvantk plugins / hvantk drift commands
+│   ├── ptm/               # PTM CLI subcommands
+│   └── qtl/               # QTL CLI subcommands
 │
 ├── resources/             # Data catalog and schemas
-│   ├── catalog.yaml       # Dataset registry
-│   ├── registry/          # Per-domain dataset metadata
+│   ├── registry/          # Surviving legacy per-domain dataset metadata (genomics only)
 │   ├── schemas/           # JSON schema definitions
-│   └── unified_registry.py# Unified registry access
+│   └── unified_registry.py# Aggregates per-plugin catalog/datasets.json + legacy registry
 │
 └── tests/                 # Test suite
     ├── conftest.py        # Pytest fixtures (hail_session, etc.)
@@ -171,7 +131,7 @@ hvantk/
     ├── ancestry/          # Ancestry tests
     ├── psroc/             # PSROC tests
     ├── enrichex/          # EnrichEx tests
-    └── test_ptm.py        # PTM tests
+    └── test_*.py          # Unit and integration tests
 ```
 
 ## Design Principles
@@ -180,10 +140,22 @@ hvantk/
 
 The codebase is organized by function and biological domain:
 
-**Data Builders** (`tables/`):
-- `table_builders.py` - Variant and gene annotation builders (ClinVar, dbNSFP, Ensembl, GeVIR, etc.)
-- `matrix_builders.py` - Expression matrix builders
-- `ucsc.py`, `expression_atlas.py`, `cptac.py` - Source-specific builders
+**Data Builders** (`skills/<provider>/builder.py`):
+- Each plugin under `hvantk/skills/` owns its Phase B builder
+  (`build_<provider>_<dataset>`). Builders return `AnnotationTable`,
+  `ExpressionMatrix`, or `GeneSet` artifacts, stamped with `Provenance` by
+  the platform via `run_builder_for_spec`.
+- `hvantk reprocess <provider>:<dataset>` is the **only** public build
+  path. There is no separate programmatic API; in-process callers that
+  need to build a table inside a tool/pipeline invoke
+  `hvantk.core.plugin.run_builder.run_builder_for_spec` directly.
+- Generic Hail helpers live in `hvantk/core/utils/hail_helpers.py`
+  (`create_table_base`, `cleanup_temp_file`); QTL-shared helpers in
+  `hvantk/core/utils/qtl_helpers.py`.
+- **Exception:** the 1000 Genomes builder
+  (`hvantk/core/builders/genome.py`) is the one remaining non-plugin
+  builder, tracked by [#116] for plugin migration. Until then, the legacy
+  `hvantk build-1k-genome` CLI remains the entry point for that dataset.
 
 **Analysis Pipelines** (separate modules):
 - `hgc/` - Joint genotyping and cohort analysis
@@ -201,82 +173,152 @@ The codebase is organized by function and biological domain:
 - **Proteins** - Keyed by `protein_id` or `interval`
 - **Expression** - MatrixTables with rows=genes, columns=samples/cells
 
-### 2. Protocol-Based Extensibility
+### 2. Artifact Contract
 
-Three core protocols define how components interact:
+Every data product is one of three semantic artifact types in
+[`hvantk/core/models/`](https://github.com/bigbio/hvantk/tree/main/hvantk/core/models):
 
-#### Builder Protocol
-Converts raw data files → Hail Tables/MatrixTables
+| Artifact | Backends | On-disk format | Used for |
+|---|---|---|---|
+| `AnnotationTable` | `hail` / `pandas` | `.ht/` or `.parquet` | variants, gene-disease pairs, eQTLs, PTM sites |
+| `ExpressionMatrix` | `anndata` / `hail-mt` | `.h5ad` or `.mt/` | bulk + single-cell expression, proteomics matrices |
+| `GeneSet` | (in-memory `frozenset`) | `.geneset.json` | curated gene collections |
 
-Builders follow a functional pattern using `_create_table_base()` to eliminate boilerplate:
+Each artifact carries a `Provenance` record (plugin, version, source
+fingerprint, schema id, build timestamp, derivation `parents`). The
+`@algorithm` decorator chains input provenances onto output artifacts
+automatically, so the build graph is preserved end-to-end.
+
+Artifacts expose a **portable query API** (`filter`, `select`, `join`,
+`with_columns`, `group_by().agg()`) via the [`col(...)`](https://github.com/bigbio/hvantk/blob/main/hvantk/core/models/_expr.py)
+expression DSL compiled to either backend at execution time. Algorithms
+can be written backend-agnostically:
 
 ```python
+from hvantk.core.models import AnnotationTable, col
+
+def filter_high_impact(ann: AnnotationTable) -> AnnotationTable:
+    return ann.filter((col("score") > 0.5) & (col("chrom") == "chr17"))
+```
+
+When an algorithm legitimately needs the raw native object (Hail-distributed
+joins, genotype matrices), use the **native passthrough**:
+
+```python
+from hvantk.core import io as core_io
+
+# zero-cost when backend matches file format
+ht, source_prov = core_io.load_native("variants.ht")  # → hl.Table
+filtered = ht.filter(ht.AC > 0)
+core_io.save_native(filtered, "filtered.ht", provenance=Provenance(
+    ..., parents=(source_prov,)
+))
+```
+
+### 3. Plugin Contract — adding a data source
+
+Each plugin under `hvantk/skills/<plugin>/` declares itself via `plugin.yaml`
+and provides a builder that returns a typed artifact. The platform's
+`run_builder_for_spec` orchestrates the build:
+
+```mermaid
+sequenceDiagram
+    participant CLI as hvantk reprocess
+    participant Reg as plugin registry
+    participant Probe as drift_probe()
+    participant Build as build_fn(parsed, ctx)
+    participant IO as core/io
+
+    CLI->>Reg: get_dataset("clinvar:variants")
+    Reg-->>CLI: DatasetSpec (lazy bind on first access)
+    CLI->>Probe: compute source fingerprint
+    Probe-->>CLI: probe dict
+    CLI->>CLI: BuildContext(plugin, version, fingerprint, …)
+    CLI->>Build: (parsed_input, ctx, **params)
+    Build-->>CLI: Artifact(provenance=ctx.provenance(schema_id=…))
+    CLI->>CLI: validate artifact_type + schema_id
+    CLI->>IO: artifact.save(path)
+    IO-->>IO: write data + sidecar .provenance.json
+```
+
+A minimal `plugin.yaml`:
+
+```yaml
+api_version: 2
+name: my-source
+version: 0.1.0
+description: My data source — variant table
+
+datasets:
+  - name: variants
+    domain: genomics
+    backend: hail
+    artifact_type: AnnotationTable
+    schema_id: my-source-variants-v1
+    builder:
+      module: hvantk.skills.my_source.builder
+      function: build_my_source_variants
+    drift_probe:
+      module: hvantk.skills.my_source.drift_probe
+      function: fetch_fingerprint
+    skill: SKILL.md
+    tests:
+      command: pytest hvantk/skills/my_source/tests -m hail
+      fixture: tests/testdata/raw/my-source
+      schema_snapshot: tests/snapshots/schema.json
+      row_snapshot: tests/snapshots/sample_rows.json
+      drift_fingerprint: tests/drift_fingerprint.json
+
+cli:
+  - command: my-source-download
+    module: hvantk.skills.my_source.cli
+    function: download_cmd
+```
+
+A matching builder:
+
+```python
+# hvantk/skills/my_source/builder.py
 import hail as hl
-from hvantk.tables.table_builders import _create_table_base
+from hvantk.core.models import AnnotationTable, BuildContext
 
-def create_my_source_tb(input_path: str, output_path: str, **kwargs) -> hl.Table:
-    """Build a Hail Table from MySource data.
-
-    Assumes imported records contain `locus` and `alleles` fields.
-    """
-    return _create_table_base(
-        source_name="MySource",
-        input_path=input_path,
-        output_path=output_path,
-        import_func=lambda: hl.import_table(input_path, ...),
-        transform_func=lambda ht: ht.key_by(ht.locus, ht.alleles),
-        overwrite=kwargs.get('overwrite', False),
-        export_tsv=kwargs.get('export_tsv', False),
+def build_my_source_variants(parsed_input, ctx: BuildContext, **params) -> AnnotationTable:
+    ht = hl.import_vcf(str(parsed_input), force=True).rows().key_by("locus", "alleles")
+    return AnnotationTable.from_hail(
+        ht, provenance=ctx.provenance(schema_id="my-source-variants-v1")
     )
 ```
 
-#### Streamer Protocol
-Transforms Hail data structures (filter, join, aggregate)
+The plugin loader (`hvantk/core/plugin/loader.py`) discovers manifests via a
+**two-pass mechanism**:
 
-Streamers extend `HailDataStreamer` from `hvantk/data/data_streamer.py`:
+1. **Pass 1 (descriptive, eager)** — reads YAML, populates `DatasetManifest`.
+   No imports. `registry.list_manifests()` works without optional runtimes.
+2. **Pass 2 (executable, lazy)** — on first `get_dataset(name)`, imports the
+   builder/probe modules and caches a `DatasetSpec`. Missing optional
+   runtimes only affect the *single* dataset that needs them.
 
-```python
-from typing import Iterator
-import hail as hl
-from hvantk.data.data_streamer import HailDataStreamer
+Downloader CLI commands are wired automatically from the manifest's `cli:`
+block — no manual edits in `hvantk/tools/plugins/download_cli.py` needed.
 
-class MySourceStreamer(HailDataStreamer):
-    def __init__(self, table_path: str, chunk_size: int = 10000):
-        super().__init__("MySourceStreamer", chunk_size=chunk_size)
-        self.table_path = table_path
+### Streamer placement rule
 
-    def setup(self) -> None:
-        super().setup()
-        self._table = hl.read_table(self.table_path)
+Streamers (classes that yield batches over a built table) are split by
+**who consumes them**, not by which provider produced the underlying table.
+This decouples streamer release cadence from provider release cadence and
+keeps the one-way `skills → algorithms → tools` dependency direction
+clean.
 
-    def stream(self) -> Iterator[hl.Table]:
-        # Yield chunks of data
-        ...
-```
+| Streamer kind | Lives in | Example |
+|---|---|---|
+| Generic, no domain knowledge | `core/utils/streaming.py` | `DataStreamer`, `HailDataStreamer`, `StreamProcessor` |
+| Shared abstract base across sibling skills | `core/utils/` | `gene_disease_streamer.py` (used by `clingen`, `cosmic-cgc`, `gencc`) |
+| Consumed by `algorithms/` | `core/utils/` | `clinvar_streamer.py` (consumed by `algorithms/annotation`, `algorithms/training_sets`) |
+| Truly source-specific (only the skill itself and `tools/` consume it) | `skills/<provider>/streamer.py` | `clingen/streamer.py`, `cosmic_cgc/streamer.py`, `gencc/streamer.py`, `alphagenome/streamer.py` |
 
-#### Downloader Protocol
-Fetches external datasets with verification
-
-Downloaders use dataset dataclasses with a `download()` method:
-
-```python
-from dataclasses import dataclass
-from pathlib import Path
-
-@dataclass
-class MyDataset:
-    url: str
-    output_dir: Path
-
-    def download(self, overwrite: bool = False) -> Path:
-        """Download and verify dataset."""
-        ...
-
-    @classmethod
-    def latest(cls, output_dir: Path) -> "MyDataset":
-        """Create instance for the latest available version."""
-        ...
-```
+The shared-base case is the one most likely to surprise: the sibling-skill
+rule (`skills/X` cannot import from `skills/Y`) forces any base class used
+by multiple skills to live above the skills layer — in `core/utils/`.
 
 ### 3. CLI-First Design
 
@@ -286,16 +328,9 @@ The primary interface is a well-structured CLI with domain-specific commands:
 # Download data
 hvantk download ucsc --dataset adultPancreas --output-dir data/
 
-# Build individual tables
-hvantk mktable clinvar --raw-input clinvar.vcf.bgz --output-ht clinvar.ht
-hvantk mktable ensembl-gene --raw-input biomart.tsv --output-ht ensembl.ht
-
-# Build matrices
-hvantk mkmatrix ucsc -e expr.tsv.bgz -m meta.tsv -o ucsc.mt
-
-# Batch processing via recipes
-hvantk mktable-batch --recipe tables.json
-hvantk mkmatrix-batch --recipe matrices.json
+# Build any dataset (full pipeline: download -> parse -> build -> drift check)
+hvantk reprocess clinvar:variants --raw-dir data/ --output clinvar.ht
+hvantk reprocess ucsc-cellbrowser:adultPancreas --raw-dir data/ --output ucsc.h5ad
 
 # Joint genotyping (HGC)
 hvantk hgc gvcf-combine -g /data/gvcfs -o cohort.vds
@@ -311,13 +346,10 @@ Raw File (VCF/TSV/BED) → Builder → Hail Table → Disk (.ht)
 
 Example:
 ```python
-from hvantk.tables.table_builders import create_clinvar_tb
+# Via the plugin system (recommended)
+from hvantk.core.plugin.run_builder import run_builder_for_spec
 
-ht = create_clinvar_tb(
-    input_path="clinvar.vcf.bgz",
-    output_path="clinvar.ht",
-    reference_genome="GRCh38"
-)
+artifact = run_builder_for_spec("clinvar:variants", input_path="clinvar.vcf.bgz", output_path="clinvar.ht")
 ```
 
 #### Pattern 2: Batch Building via Recipes
@@ -367,59 +399,34 @@ annotated = variants.annotate(
 **Key Components**:
 - `config.py` - Configuration management, context settings
 - `constants.py` - Shared constants (e.g., Ensembl field definitions)
-- `hail_context.py` - Hail session initialization and management
+- `utils/hail_context.py` - Hail session initialization and management
 - `protocols.py` - Protocol definitions for extensibility
+- `models/` - Domain artifact types (`AnnotationTable`, `ExpressionMatrix`, `GeneSet`)
+- `plugin/` - Plugin schema (`api.py`), discovery (`loader.py`), and builder dispatch (`run_builder.py`)
 
 **Design principle**: No domain logic, only infrastructure
 
-### Data Module (`data/`)
+### Skills Module (`skills/`)
 
-**Purpose**: Data management utilities
+**Purpose**: Per-provider data plugins. Each provider folder contains `plugin.yaml`, `builder.py`, `cli.py`, `drift_probe.py`, `SKILL.md`, `catalog/datasets.json`, and `tests/`. Multi-dataset providers (e.g., `cptac/`) have one sub-folder per dataset.
 
-**Key Components**:
-- `dataset.py` - Dataset handling and metadata
-- `file_utils.py` - File I/O utilities (download, checksum, compression)
-- `data_streamer.py` - Data streaming and transformation helpers
+**Current providers** (20): `alphagenome`, `clingen`, `clinvar`, `cosmic_cgc`, `cptac`, `dbnsfp`, `ensembl_gene`, `expression_atlas`, `gencc`, `gevir`, `gnomad_metrics`, `gtex_eqtl`, `gwas_catalog`, `hgnc`, `insider`, `msigdb`, `peptideatlas`, `pqtl`, `ucsc_cellbrowser`, `uniprot_ptm`.
 
-### Tables Module (`tables/`)
+**Builder outputs**:
+- Variant / gene tables keyed by `(locus, alleles)` or `gene_id` → `AnnotationTable`
+- Expression matrices rows=genes, columns=samples/cells → `ExpressionMatrix`
+- Gene set collections → `GeneSet`
 
-**Purpose**: Convert raw data files into Hail Tables/MatrixTables
+### Tools Module (`tools/`)
 
-**Current organization**:
+**Purpose**: Top-level CLI command implementations (replaces the legacy `commands/` directory)
 
-- `table_builders.py` - All variant and gene annotation builders:
-  - **ClinVar** - Variant clinical significance (VCF → Table)
-  - **dbNSFP** - Missense variant prediction scores (TSV → Table)
-  - **Ensembl** - Gene annotations from Biomart (TSV → Table)
-  - **GeVIR** - Gene-level viability scores (TSV → Table)
-  - **gnomAD Metrics** - Gene constraint metrics (TSV → Table)
-  - **INSIDER** - Protein-protein interaction sites (BED → Table)
-  - **ClinGen Gene-Disease** - Gene-disease validity (CSV → Table)
-  - **GenCC Submissions** - Gene-disease assertions (CSV → Table)
-  - **COSMIC CGC** - Cancer Gene Census (TSV → Table)
-  - **HGNC** - Gene nomenclature (TSV → Table)
-
-- `matrix_builders.py` - Expression matrix builders:
-  - **UCSC** - Single-cell RNA-seq (TSV → MatrixTable)
-  - **Expression Atlas** - Bulk RNA-seq (TSV → MatrixTable)
-
-**Schemas**:
-- Variant tables keyed by `(locus, alleles)`
-- Gene tables keyed by `gene_id`
-- Protein tables keyed by `interval` or `protein_id`
-- Expression matrices with rows=genes, columns=samples/cells
-
-### Commands Module (`commands/`)
-
-**Purpose**: CLI command implementations
-
-**Key files**:
-- `make_table_cli.py` - Commands for building individual tables
-- `make_matrix_cli.py` - Commands for building matrices
-- `make_table_batch_cli.py` - Batch table building from recipes
-- `make_matrix_batch_cli.py` - Batch matrix building from recipes
-- `catalog_cli.py` - Data catalog operations
+**Key sub-packages**:
+- `plugins/` - `hvantk reprocess`, `hvantk drift`, `hvantk plugins list/show/reload` commands
+- `build/` - standalone reference panel builds (e.g. 1000 Genomes)
 - `hgc/` - HGC joint genotyping subcommands (combine, convert, QC, pipeline)
+- `ancestry/`, `enrichex/`, `ptm/`, `qtl/` - Per-pipeline CLI subcommands
+- `infra/` - Installation check, BGZF validation, utils
 
 ### HGC Module (`hgc/`)
 
@@ -435,12 +442,30 @@ annotated = variants.annotate(
 
 ### Resources Module (`resources/`)
 
-**Purpose**: Data catalog and schema definitions
+**Purpose**: Substrate-level data registry and schema definitions.
+Peer of `core/`, not a layer above it.
 
 **Contents**:
-- `catalog.yaml` - Central dataset registry
-- `registry/` - Per-domain dataset metadata (genomics, transcriptomics, etc.)
-- `schemas/` - Schema definitions for validation
+- `registry/` - Surviving legacy per-domain dataset metadata (genomics only; transcriptomics / proteomics / epigenomics moved into per-plugin `hvantk/skills/<provider>/catalog/datasets.json`)
+- `unified_registry.py` - `HvantkRegistry` aggregator surfaced via `hvantk catalog {list,show,stats,search}`. Reads both the legacy per-domain registry above and the per-plugin catalog JSON under `skills/<provider>/catalog/`.
+- `schemas/` - JSON schema definitions used by `schema_validator.py` to validate catalog entries.
+- `schema_validator.py` - Validation entry point invoked by the unified registry.
+
+**Placement rule** (what goes here vs. nearby alternatives):
+
+| Lives in | Use for |
+|---|---|
+| `resources/registry/` | Cross-plugin / legacy per-domain catalog JSON that hasn't been migrated to a per-plugin folder. |
+| `resources/schemas/` | JSON schemas that describe catalog / dataset metadata, shared across plugins. |
+| `resources/unified_registry.py` | Code that aggregates per-plugin catalog JSON with the legacy registry. |
+| `skills/<provider>/catalog/datasets.json` | Per-plugin dataset metadata (the canonical location for new providers). |
+| `core/models/` | Artifact types (`AnnotationTable`, `ExpressionMatrix`, `GeneSet`) — runtime data shapes, not catalog metadata. |
+
+**Dependency direction**: `resources/` may be imported by `algorithms/`,
+`skills/`, and `tools/`. It must NOT import from any of those — like
+`core/`, it is substrate. This is enforced by
+`test_resources_does_not_import_upward` in
+[`hvantk/tests/test_dependency_directions.py`](https://github.com/bigbio/hvantk/blob/main/hvantk/tests/test_dependency_directions.py).
 
 ## Testing Strategy
 
@@ -461,62 +486,49 @@ hvantk/tests/
 
 ### Adding a New Data Source
 
-1. **Add builder to appropriate file** in `hvantk/tables/`:
+See the "Plugin Contract" section above for the full pattern. The minimal
+checklist:
+
+1. Create `hvantk/skills/<provider>/` with `plugin.yaml`, `builder.py` (returns
+   `AnnotationTable` / `ExpressionMatrix` / `GeneSet` via `ctx.provenance(schema_id=…)`),
+   `drift_probe.py`, `SKILL.md`, `catalog/datasets.json`, and `tests/`.
+2. Loader picks it up automatically — no edits to `hvantk/hvantk.py` or
+   `hvantk/tools/plugins/download_cli.py` required.
+3. CLI downloader command is wired from the manifest's `cli:` block.
+4. Add a conformance test using the `run_builder_for_spec` orchestrator
+   (see `hvantk/tests/test_plugin_conformance.py` for the template).
+5. Run `hvantk plugins list` — your plugin should appear.
+
+See `hvantk/skills/_conventions/SKILL.md` for the full contract.
+
+### Adding a New Algorithm
+
+1. Place the algorithm body in `hvantk/algorithms/<domain>/`.
+2. Decorate the entry point with `@algorithm`:
    ```python
-   # hvantk/tables/table_builders.py (for variants/genes)
-   # OR hvantk/tables/matrix_builders.py (for expression)
+   from hvantk.core.models.backends import Backend, algorithm
 
-   import hail as hl
-
-   def create_my_source_tb(input_path: str, output_path: str, **kwargs) -> hl.Table:
-       """
-       Create a Hail Table from my data source.
-
-       Follows the Builder protocol pattern.
-       """
-       # Import data
-       ht = hl.import_table(input_path, ...)
-
-       # Key appropriately (locus/alleles for variants, gene_id for genes)
-       ht = ht.key_by(...)
-
-       # Checkpoint to disk
-       ht = ht.checkpoint(output_path, overwrite=kwargs.get('overwrite', False))
-
-       return ht
+   @algorithm(
+       name="my_algorithm",
+       backends=[Backend.PANDAS],
+       inputs={"data": "AnnotationTable", "gene_set": "GeneSet"},
+       outputs={"result": "AnnotationTable"},
+   )
+   def my_algorithm(data, gene_set):
+       ...
    ```
+3. The decorator handles provenance chaining automatically. Output
+   artifacts inherit `parents = (data.provenance, gene_set.provenance)`.
+4. For Hail-native algorithms, declare `required_backend="hail"` and use
+   `core_io.load_native` to read inputs natively.
 
-2. **Add a CLI command** in `hvantk/commands/make_table_cli.py`:
-   ```python
-   @mktable_group.command("my-source")
-   @_raw_input_opt
-   @_output_ht_opt
-   @_overwrite_opt
-   def mktable_my_source(raw_input: str, output_ht: str, overwrite: bool):
-       """Build a MySource Hail Table."""
-       from hvantk.tables.table_builders import create_my_source_tb
+### Adding a New CLI Command
 
-       create_my_source_tb(
-           input_path=raw_input,
-           output_path=output_ht,
-           overwrite=overwrite
-       )
-   ```
-
-3. **Add tests** in `hvantk/tests/`:
-   ```python
-   def test_create_my_source_tb():
-       # Test implementation
-       pass
-   ```
-
-4. **Update documentation** in README.md and USAGE.md
-
-### Adding a New Transformation
-
-1. **Implement a streamer** following the `Streamer` protocol
-2. **Add to the pipeline** (for batch processing support)
-3. **Document** the transformation parameters
+1. Place the click command in `hvantk/tools/<domain>/`.
+2. Add a `<basename>.tool.yaml` manifest for discoverability via
+   `hvantk tools list` (descriptive metadata; not authoritative for
+   wiring today — that's Phase Q follow-up).
+3. Wire the command in `hvantk/hvantk.py`'s top-level CLI group.
 
 ## Dependencies
 

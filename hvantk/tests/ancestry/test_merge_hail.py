@@ -6,13 +6,13 @@ the Balding-Nichols population genetics model.
 
 import pytest
 
-from hvantk.ancestry.merge import (
+from hvantk.algorithms.ancestry.merge import (
     validate_matrixtable_compatibility,
     get_shared_variants_stats,
     merge_matrixtables,
     check_sample_overlap,
 )
-from hvantk.ancestry.constants import SOURCE_COL, KNOWN_ANCESTRY_COL
+from hvantk.algorithms.ancestry.constants import SOURCE_COL, KNOWN_ANCESTRY_COL
 
 
 @pytest.mark.hail

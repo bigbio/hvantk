@@ -1,0 +1,28 @@
+api_version: 2
+name: alphagenome
+version: 0.1.0
+status: provisional
+description: AlphaGenome variant effect predictions - Hail Table
+
+source:
+  catalog_ref: alphagenome
+
+datasets:
+  - name: predictions
+    domain: genomics
+    backend: hail
+    artifact_type: AnnotationTable
+    schema_id: alphagenome-v1
+    builder:
+      module: hvantk.skills.alphagenome.builder
+      function: build_alphagenome_predictions
+    drift_probe:
+      module: hvantk.skills.alphagenome.drift_probe
+      function: fetch_fingerprint
+    skill: SKILL.md
+    tests:
+      command: pytest hvantk/skills/alphagenome/tests
+      fixture: tests/testdata/raw/alphagenome
+      schema_snapshot: tests/snapshots/schema.json
+      row_snapshot: tests/snapshots/sample_rows.json
+      drift_fingerprint: tests/drift_fingerprint.json

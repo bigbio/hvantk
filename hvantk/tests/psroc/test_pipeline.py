@@ -12,7 +12,7 @@ from unittest.mock import Mock, patch
 import numpy as np
 import pytest
 
-from hvantk.psroc.pipeline import (
+from hvantk.algorithms.psroc.pipeline import (
     PSROCConfig,
     PSROCState,
     PSROCResult,
@@ -24,7 +24,7 @@ from hvantk.psroc.pipeline import (
     SCORE_DIRECTIONALITY,
     parse_variant_list,
 )
-from hvantk.psroc.roc import ROCResult, ScoreMissingness
+from hvantk.algorithms.psroc.roc import ROCResult, ScoreMissingness
 
 
 class TestPSROCConfig:
@@ -494,8 +494,8 @@ class TestPSROCPipelineValidation:
         with pytest.raises(ValueError, match="Configuration validation failed"):
             PSROCPipeline(config)
 
-    @patch("hvantk.psroc.pipeline.hl")
-    @patch("hvantk.psroc.pipeline.Path.exists")
+    @patch("hvantk.algorithms.psroc.pipeline.hl")
+    @patch("hvantk.algorithms.psroc.pipeline.Path.exists")
     def test_pipeline_setup_output_paths(self, mock_exists, mock_hl):
         """Test that output paths are set up correctly."""
         mock_exists.return_value = True
@@ -522,8 +522,8 @@ class TestPSROCPipelineValidation:
             assert "roc_curves_png" in pipeline.paths
             assert pipeline.paths["annotated_ht"].endswith("test_annotated.ht")
 
-    @patch("hvantk.psroc.pipeline.hl")
-    @patch("hvantk.psroc.pipeline.Path.exists")
+    @patch("hvantk.algorithms.psroc.pipeline.hl")
+    @patch("hvantk.algorithms.psroc.pipeline.Path.exists")
     def test_run_raises_when_gene_set_collection(self, mock_exists, mock_hl):
         """Test run() raises ValueError when gene_set_collection is active."""
         mock_exists.return_value = True
@@ -546,8 +546,8 @@ class TestPSROCPipelineValidation:
             with pytest.raises(ValueError, match="run_collection"):
                 pipeline.run()
 
-    @patch("hvantk.psroc.pipeline.hl")
-    @patch("hvantk.psroc.pipeline.Path.exists")
+    @patch("hvantk.algorithms.psroc.pipeline.hl")
+    @patch("hvantk.algorithms.psroc.pipeline.Path.exists")
     def test_run_collection_raises_without_collection(self, mock_exists, mock_hl):
         """Test run_collection() raises when gene_set_collection not set."""
         mock_exists.return_value = True
@@ -615,8 +615,8 @@ class TestVariantFileParsing:
 class TestShowPlan:
     """Test show_plan method output."""
 
-    @patch("hvantk.psroc.pipeline.hl")
-    @patch("hvantk.psroc.pipeline.Path.exists")
+    @patch("hvantk.algorithms.psroc.pipeline.hl")
+    @patch("hvantk.algorithms.psroc.pipeline.Path.exists")
     def test_show_plan_with_genes(self, mock_exists, mock_hl, capsys):
         """Test show_plan output with gene input."""
         mock_exists.return_value = True

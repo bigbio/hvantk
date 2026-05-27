@@ -557,60 +557,66 @@ plot_loeuf_by_cascade_class(
 
 ## Building Input Tables
 
-The cascade pipeline requires eQTL and pQTL Hail Tables as input. Build them with `hvantk mktable`:
+The cascade pipeline requires eQTL and pQTL Hail Tables as input. Build them via the unified `hvantk reprocess` entry point (the cascade plugins have no built-in downloader, so `--skip-download` is required after manually placing raw files into the per-source directory passed as `--raw-dir`).
 
 ### eQTL Table
 
 ```bash
-# GTEx v11 (parquet)
-hvantk mktable eqtl \
-  --raw-input /data/gtex_v11/signif_pairs/ \
-  --output-ht /data/eqtl_liver.ht \
-  --source gtex_v11 \
-  --tissue Liver
+# GTEx v11 (parquet directory)
+hvantk reprocess gtex-eqtl:eqtls \
+  --raw-dir /data/gtex_v11/signif_pairs/ \
+  --output /data/eqtl_liver.ht \
+  --skip-download \
+  --plugin-arg source=gtex_v11 \
+  --plugin-arg tissue=Liver
 
 # GTEx v8 (TSV)
-hvantk mktable eqtl \
-  --raw-input /data/gtex_v8/Liver.v8.signif_variant_gene_pairs.txt.gz \
-  --output-ht /data/eqtl_liver.ht \
-  --source gtex_v8
+hvantk reprocess gtex-eqtl:eqtls \
+  --raw-dir /data/gtex_v8/ \
+  --output /data/eqtl_liver.ht \
+  --skip-download \
+  --plugin-arg source=gtex_v8
 
 # eQTLGen
-hvantk mktable eqtl \
-  --raw-input /data/eqtlgen/cis-eQTLs_full.txt.gz \
-  --output-ht /data/eqtl_blood.ht \
-  --source eqtlgen
+hvantk reprocess gtex-eqtl:eqtls \
+  --raw-dir /data/eqtlgen/ \
+  --output /data/eqtl_blood.ht \
+  --skip-download \
+  --plugin-arg source=eqtlgen
 
 # Allpairs for coloc (keep all p-values)
-hvantk mktable eqtl \
-  --raw-input /data/gtex_v11/allpairs/ \
-  --output-ht /data/eqtl_allpairs_liver.ht \
-  --source gtex_v11 \
-  --tissue Liver \
-  --p-threshold 0
+hvantk reprocess gtex-eqtl:eqtls \
+  --raw-dir /data/gtex_v11/allpairs/ \
+  --output /data/eqtl_allpairs_liver.ht \
+  --skip-download \
+  --plugin-arg source=gtex_v11 \
+  --plugin-arg tissue=Liver \
+  --plugin-arg p_threshold=0
 ```
 
 ### pQTL Table
 
 ```bash
 # Fang et al. (2025) pQTL data
-hvantk mktable pqtl \
-  --raw-input /data/fang_pqtl/Liver_allpairs.txt.gz \
-  --output-ht /data/pqtl_liver.ht \
-  --source gtex_fang \
-  --tissue Liver \
-  --gene-map-ht /data/ensembl_gene.ht
+hvantk reprocess pqtl:metrics \
+  --raw-dir /data/fang_pqtl/ \
+  --output /data/pqtl_liver.ht \
+  --skip-download \
+  --plugin-arg source=gtex_fang \
+  --plugin-arg tissue=Liver \
+  --plugin-arg hgnc_ht=/data/ensembl_gene.ht
 
-# Allpairs for coloc (omit --p-threshold to keep all pairs)
-hvantk mktable pqtl \
-  --raw-input /data/fang_pqtl/Liver_allpairs.txt.gz \
-  --output-ht /data/pqtl_allpairs_liver.ht \
-  --source gtex_fang \
-  --tissue Liver \
-  --gene-map-ht /data/ensembl_gene.ht
+# Allpairs for coloc (omit p_threshold to keep all pairs)
+hvantk reprocess pqtl:metrics \
+  --raw-dir /data/fang_pqtl/ \
+  --output /data/pqtl_allpairs_liver.ht \
+  --skip-download \
+  --plugin-arg source=gtex_fang \
+  --plugin-arg tissue=Liver \
+  --plugin-arg hgnc_ht=/data/ensembl_gene.ht
 ```
 
-> **Note:** Fang pQTL data uses gene symbols. The `--gene-map-ht` option provides a reverse-index table (keyed by `gene_id` with `gene_name` field) for symbol → Ensembl ID mapping. Use the Ensembl gene table built with `hvantk mktable ensembl-gene`.
+> **Note:** Fang pQTL data uses gene symbols. The `hgnc_ht` plugin-arg provides a lookup table (keyed by `gene_id` with `gene_name` field) for symbol → Ensembl ID mapping. Use the Ensembl gene table built with `hvantk reprocess ensembl-gene:genes`.
 
 ## Module Structure
 

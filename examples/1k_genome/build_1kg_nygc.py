@@ -180,7 +180,7 @@ def main(
             )
 
         # -- Build MatrixTable --
-        from hvantk.tables.genome_builders import build_1k_genome_mt, resolve_delimiter
+        from hvantk.core.builders.genome import build_1k_genome_mt, resolve_delimiter
 
         mt = build_1k_genome_mt(
             input_vcfs=stage_dir,

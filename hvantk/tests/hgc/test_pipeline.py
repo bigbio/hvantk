@@ -9,7 +9,7 @@ import shutil
 from pathlib import Path
 import pytest
 
-from hvantk.hgc.pipeline import (
+from hvantk.algorithms.hgc.pipeline import (
     PipelineConfig,
     PipelineState,
     PipelineRunner,

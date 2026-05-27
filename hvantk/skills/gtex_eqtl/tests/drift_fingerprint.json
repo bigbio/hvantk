@@ -1,0 +1,22 @@
+{
+  "probe_version": 1,
+  "source_version": "cl361-2-gd31acd02",
+  "headers": {
+    "gtex-portal-qtl-downloads": [
+      "gtex-version",
+      "gtex-build-date",
+      "ETag",
+      "Last-Modified"
+    ]
+  },
+  "checksums": {
+    "gtex-portal-qtl-downloads": "64ac98e23e7563a94c9c6fc95a06404176c016e46bf44500ea44af327da1bc58"
+  },
+  "fetched_at": "2026-05-18T10:31:35.600729+00:00",
+  "extras": {
+    "gtex_version": "cl361-2-gd31acd02",
+    "gtex_build_date": "3/13/2026, 2:21:21 PM",
+    "etag": "W/\"69b455fb-2424\"",
+    "last_modified": "Fri, 13 Mar 2026 18:22:51 GMT"
+  }
+}

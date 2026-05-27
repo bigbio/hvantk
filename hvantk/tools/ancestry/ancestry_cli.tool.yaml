@@ -1,0 +1,20 @@
+api_version: 1
+name: ancestry-inference
+domain: ancestry
+type: command
+description: Infer ancestry labels for a query cohort from a labeled reference MT.
+cli:
+  module: hvantk.tools.ancestry.ancestry_cli
+  function: ancestry_inference_cmd
+purpose:
+  short: PCA + classifier-based ancestry prediction from genotype MatrixTables.
+  long: |
+    Aligns a query MatrixTable with a labeled reference MatrixTable (e.g.
+    1000 Genomes built via `hvantk build-1k-genome`), runs PCA-based feature
+    extraction, fits a classifier on reference ancestry labels, and writes
+    predictions back as a Hail Table plus TSV + serialized model + HTML
+    report. Variant filters (AF, call rate) and ancestry column are
+    configurable.
+requires:
+  hail: true
+  network: false

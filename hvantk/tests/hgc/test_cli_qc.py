@@ -5,7 +5,7 @@ Tests for HGC CLI QC commands.
 from unittest.mock import patch, MagicMock
 from click.testing import CliRunner
 
-from hvantk.commands.hgc.qc_cli import (
+from hvantk.tools.hgc.qc_cli import (
     compute_qc,
     filter_qc,
     qc_summary,
@@ -19,9 +19,9 @@ from hvantk.commands.hgc.qc_cli import (
 def test_compute_qc_cli_basic():
     """Test compute-qc command with basic options."""
     runner = CliRunner()
-    with patch("hvantk.commands.hgc.qc_cli.compute_full_qc") as mock_compute:
-        with patch("hvantk.commands.hgc.qc_cli.validate_input_files") as mock_validate:
-            with patch("hvantk.commands.hgc.qc_cli.save_qc_metrics") as mock_save:
+    with patch("hvantk.tools.hgc.qc_cli.compute_full_qc") as mock_compute:
+        with patch("hvantk.tools.hgc.qc_cli.validate_input_files") as mock_validate:
+            with patch("hvantk.tools.hgc.qc_cli.save_qc_metrics") as mock_save:
                 with patch("hail.init"):
                     with patch("hail.read_matrix_table") as mock_read:
                         mock_validate.return_value = (True, [])
@@ -44,7 +44,7 @@ def test_compute_qc_cli_basic():
 def test_compute_qc_cli_validation_failure():
     """Test compute-qc command with validation failure."""
     runner = CliRunner()
-    with patch("hvantk.commands.hgc.qc_cli.validate_input_files") as mock_validate:
+    with patch("hvantk.tools.hgc.qc_cli.validate_input_files") as mock_validate:
         mock_validate.return_value = (False, ["MT not found"])
 
         result = runner.invoke(
@@ -59,7 +59,7 @@ def test_compute_qc_cli_validation_failure():
 def test_compute_qc_cli_dry_run():
     """Test compute-qc command with dry-run."""
     runner = CliRunner()
-    with patch("hvantk.commands.hgc.qc_cli.validate_input_files") as mock_validate:
+    with patch("hvantk.tools.hgc.qc_cli.validate_input_files") as mock_validate:
         mock_validate.return_value = (True, [])
 
         result = runner.invoke(
@@ -75,7 +75,7 @@ def test_compute_qc_cli_dry_run():
 def test_compute_qc_cli_no_qc_selected():
     """Test compute-qc command with no QC metrics selected."""
     runner = CliRunner()
-    with patch("hvantk.commands.hgc.qc_cli.validate_input_files") as mock_validate:
+    with patch("hvantk.tools.hgc.qc_cli.validate_input_files") as mock_validate:
         mock_validate.return_value = (True, [])
 
         result = runner.invoke(
@@ -103,10 +103,10 @@ def test_compute_qc_cli_no_qc_selected():
 def test_filter_qc_cli_basic():
     """Test filter-qc command with basic options."""
     runner = CliRunner()
-    with patch("hvantk.commands.hgc.qc_cli.filter_samples_by_qc") as mock_filter_s:
-        with patch("hvantk.commands.hgc.qc_cli.filter_variants_by_qc") as mock_filter_v:
+    with patch("hvantk.tools.hgc.qc_cli.filter_samples_by_qc") as mock_filter_s:
+        with patch("hvantk.tools.hgc.qc_cli.filter_variants_by_qc") as mock_filter_v:
             with patch(
-                "hvantk.commands.hgc.qc_cli.validate_input_files"
+                "hvantk.tools.hgc.qc_cli.validate_input_files"
             ) as mock_validate:
                 with patch("hail.init"):
                     with patch("hail.read_matrix_table") as mock_read:
@@ -130,7 +130,7 @@ def test_filter_qc_cli_basic():
 def test_filter_qc_cli_dry_run():
     """Test filter-qc command with dry-run."""
     runner = CliRunner()
-    with patch("hvantk.commands.hgc.qc_cli.validate_input_files") as mock_validate:
+    with patch("hvantk.tools.hgc.qc_cli.validate_input_files") as mock_validate:
         mock_validate.return_value = (True, [])
 
         result = runner.invoke(
@@ -146,10 +146,10 @@ def test_filter_qc_cli_dry_run():
 def test_filter_qc_cli_custom_thresholds():
     """Test filter-qc command with custom thresholds."""
     runner = CliRunner()
-    with patch("hvantk.commands.hgc.qc_cli.filter_samples_by_qc") as mock_filter_s:
-        with patch("hvantk.commands.hgc.qc_cli.filter_variants_by_qc") as mock_filter_v:
+    with patch("hvantk.tools.hgc.qc_cli.filter_samples_by_qc") as mock_filter_s:
+        with patch("hvantk.tools.hgc.qc_cli.filter_variants_by_qc") as mock_filter_v:
             with patch(
-                "hvantk.commands.hgc.qc_cli.validate_input_files"
+                "hvantk.tools.hgc.qc_cli.validate_input_files"
             ) as mock_validate:
                 with patch("hail.init"):
                     with patch("hail.read_matrix_table") as mock_read:
@@ -197,7 +197,7 @@ def test_qc_summary_cli_basic():
         sample_df = pd.DataFrame({"call_rate": [0.9, 0.95], "mean_dp": [30, 35]})
         sample_df.to_csv("qc_dir/sample_qc.csv", index=False)
 
-        with patch("hvantk.hgc.qc.get_qc_summary_stats") as mock_stats:
+        with patch("hvantk.algorithms.hgc.qc.get_qc_summary_stats") as mock_stats:
             mock_stats.return_value = pd.DataFrame()
 
             result = runner.invoke(
@@ -237,7 +237,7 @@ def test_qc_summary_cli_output_json():
         sample_df = pd.DataFrame({"call_rate": [0.9, 0.95]})
         sample_df.to_csv("qc_dir/sample_qc.csv", index=False)
 
-        with patch("hvantk.hgc.qc.get_qc_summary_stats") as mock_stats:
+        with patch("hvantk.algorithms.hgc.qc.get_qc_summary_stats") as mock_stats:
             mock_stats.return_value = pd.DataFrame()
 
             result = runner.invoke(
@@ -256,7 +256,7 @@ def test_plot_qc_cli_basic():
     """Test plot-qc command with basic options."""
     runner = CliRunner()
     with patch(
-        "hvantk.commands.hgc.qc_cli.check_path_exists_and_readable"
+        "hvantk.tools.hgc.qc_cli.check_path_exists_and_readable"
     ) as mock_check:
         with patch("hail.init"):
             with patch("hail.read_matrix_table") as mock_read:
@@ -265,7 +265,7 @@ def test_plot_qc_cli_basic():
                 mock_mt.col = {"sample_qc": MagicMock()}
                 mock_read.return_value = mock_mt
 
-                with patch("hvantk.hgc.qc.QCMetrics") as mock_qc_metrics:
+                with patch("hvantk.algorithms.hgc.qc.QCMetrics") as mock_qc_metrics:
                     mock_qc_instance = MagicMock()
                     mock_qc_instance.has_sample_qc = True
                     mock_qc_instance.has_variant_qc = False
@@ -298,7 +298,7 @@ def test_plot_qc_cli_dry_run():
     """Test plot-qc command with dry-run."""
     runner = CliRunner()
     with patch(
-        "hvantk.commands.hgc.qc_cli.check_path_exists_and_readable"
+        "hvantk.tools.hgc.qc_cli.check_path_exists_and_readable"
     ) as mock_check:
         mock_check.return_value = True
 
@@ -316,7 +316,7 @@ def test_plot_qc_cli_no_qc_annotations():
     """Test plot-qc command with MT lacking QC annotations."""
     runner = CliRunner()
     with patch(
-        "hvantk.commands.hgc.qc_cli.check_path_exists_and_readable"
+        "hvantk.tools.hgc.qc_cli.check_path_exists_and_readable"
     ) as mock_check:
         with patch("hail.init"):
             with patch("hail.read_matrix_table") as mock_read:
@@ -342,7 +342,7 @@ def test_qc_report_cli_basic():
     """Test qc-report command with basic options."""
     runner = CliRunner()
     with patch(
-        "hvantk.commands.hgc.qc_cli.check_path_exists_and_readable"
+        "hvantk.tools.hgc.qc_cli.check_path_exists_and_readable"
     ) as mock_check:
         with patch("hail.init"):
             with patch("hail.read_matrix_table") as mock_read:
@@ -351,7 +351,7 @@ def test_qc_report_cli_basic():
                 mock_mt.col = {"sample_qc": MagicMock()}
                 mock_read.return_value = mock_mt
 
-                with patch("hvantk.hgc.qc.QCMetrics") as mock_qc_metrics:
+                with patch("hvantk.algorithms.hgc.qc.QCMetrics") as mock_qc_metrics:
                     from pathlib import Path
 
                     mock_qc_instance = MagicMock()
@@ -379,7 +379,7 @@ def test_qc_report_cli_dry_run():
     """Test qc-report command with dry-run."""
     runner = CliRunner()
     with patch(
-        "hvantk.commands.hgc.qc_cli.check_path_exists_and_readable"
+        "hvantk.tools.hgc.qc_cli.check_path_exists_and_readable"
     ) as mock_check:
         mock_check.return_value = True
 
@@ -397,7 +397,7 @@ def test_qc_report_cli_custom_title():
     """Test qc-report command with custom title."""
     runner = CliRunner()
     with patch(
-        "hvantk.commands.hgc.qc_cli.check_path_exists_and_readable"
+        "hvantk.tools.hgc.qc_cli.check_path_exists_and_readable"
     ) as mock_check:
         with patch("hail.init"):
             with patch("hail.read_matrix_table") as mock_read:
@@ -406,7 +406,7 @@ def test_qc_report_cli_custom_title():
                 mock_mt.col = {"sample_qc": MagicMock()}
                 mock_read.return_value = mock_mt
 
-                with patch("hvantk.hgc.qc.QCMetrics") as mock_qc_metrics:
+                with patch("hvantk.algorithms.hgc.qc.QCMetrics") as mock_qc_metrics:
                     from pathlib import Path
 
                     mock_qc_instance = MagicMock()

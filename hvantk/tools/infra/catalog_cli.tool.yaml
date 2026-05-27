@@ -1,0 +1,71 @@
+api_version: 1
+name: catalog
+domain: infra
+type: command_group
+description: Inspect the hvantk dataset catalog aggregated from per-plugin catalogs.
+cli:
+  module: hvantk.tools.infra.catalog_cli
+  function: catalog
+purpose:
+  short: List, show, and search the per-plugin dataset catalog; print aggregate stats.
+  long: |
+    Reads the live catalog by instantiating
+    `hvantk.resources.unified_registry.HvantkRegistry`, which aggregates each
+    plugin's `catalog/datasets.json` and the surviving
+    `resources/registry/genomics/datasets.json`. `list` produces a filtered
+    table (omics-type / data-source / organism), `show` dumps a single entry
+    by accession (yaml or json), `stats` reports counts by omics / organism /
+    source, and `search` does a free-text match on title / description /
+    accession. The legacy `build` subcommand was removed; use
+    `hvantk reprocess <provider:dataset>` for the equivalent build workflow.
+subcommands:
+  - name: list
+    description: List catalog entries with optional filters
+    inputs:
+      - name: --omics-type
+        type: str
+        required: false
+        description: Filter by omics type (transcriptomics/proteomics/genomics/epigenomics)
+      - name: --data-source
+        type: str
+        required: false
+        description: Substring filter on data_source
+      - name: --organism
+        type: str
+        required: false
+        description: Substring filter on organism
+      - name: --limit
+        type: int
+        required: false
+        description: Maximum number of rows to print (default 50)
+  - name: show
+    description: Show full record for one entry by accession
+    inputs:
+      - name: accession
+        type: str
+        required: true
+        description: Catalog accession
+      - name: --format
+        type: str
+        required: false
+        description: yaml (default) or json
+  - name: stats
+    description: Print total dataset count and breakdowns by omics, organism, source
+  - name: search
+    description: Free-text search across title / description / accession
+    inputs:
+      - name: query
+        type: str
+        required: true
+        description: Query string
+      - name: --omics-type
+        type: str
+        required: false
+        description: Restrict the search to one omics bucket
+      - name: --limit
+        type: int
+        required: false
+        description: Maximum number of rows to print (default 50)
+requires:
+  hail: false
+  network: false

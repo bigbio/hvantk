@@ -1,74 +1,83 @@
-import textwrap
-from pathlib import Path
+"""Tests for ``hvantk catalog`` CLI against per-plugin catalogs."""
+
 from click.testing import CliRunner
-import yaml
 
-from hvantk.commands.catalog_cli import catalog
-
-
-def _write_catalog(tmpdir: Path, content: str) -> Path:
-    p = tmpdir / "catalog.yaml"
-    p.write_text(textwrap.dedent(content))
-    return p
+from hvantk.tools.infra.catalog_cli import catalog as catalog_group
 
 
-def test_catalog_list_on_packaged(monkeypatch, tmp_path):
-    # Create list style catalog
-    cat_path = _write_catalog(
-        tmp_path,
-        """
-    - id: test.entry
-      provenance:
-        builder: hvantk.tests.test_cli_catalog._dummy_builder
-      params:
-        answer: 42
-    """,
+def test_list_returns_entries():
+    result = CliRunner().invoke(catalog_group, ["list", "--limit", "5"])
+    assert result.exit_code == 0, result.output
+    # Should show the column header and at least one row.
+    assert "ACCESSION" in result.output
+
+
+def test_list_filter_by_omics_type():
+    result = CliRunner().invoke(
+        catalog_group, ["list", "--omics-type", "transcriptomics", "--limit", "3"]
     )
-
-    runner = CliRunner()
-    result = runner.invoke(catalog, ["list", "--catalog", str(cat_path)])
-    assert result.exit_code == 0
-    assert "test.entry" in result.output
+    assert result.exit_code == 0, result.output
+    assert "transcriptomics" in result.output
 
 
-def _dummy_builder(answer=0):  # pragma: no cover - executed via CLI
-    return f"answer={answer}"
-
-
-def test_catalog_show(monkeypatch, tmp_path):
-    cat_path = _write_catalog(
-        tmp_path,
-        """
-    - id: demo
-      provenance:
-        builder: hvantk.tests.test_cli_catalog._dummy_builder
-      params:
-        foo: bar
-    """,
+def test_list_filter_by_organism_substring():
+    """``--organism Homo`` should match ``Homo sapiens`` via substring semantics."""
+    result = CliRunner().invoke(
+        catalog_group, ["list", "--organism", "Homo", "--limit", "3"]
     )
-    runner = CliRunner()
-    result = runner.invoke(catalog, ["show", "demo", "--catalog", str(cat_path)])
-    assert result.exit_code == 0
-    assert "foo: bar" in result.output
+    assert result.exit_code == 0, result.output
+    # Either we get rows (header line present) or "(no entries match)"; both
+    # are valid for the substring code path. We only assert exit_code here.
 
 
-def test_catalog_build(monkeypatch, tmp_path):
-    cat_path = _write_catalog(
-        tmp_path,
-        """
-    - id: buildme
-      provenance:
-        builder: hvantk.tests.test_cli_catalog._dummy_builder
-      params:
-        answer: 5
-    """,
+def test_show_unknown_accession_errors():
+    result = CliRunner().invoke(catalog_group, ["show", "DOES-NOT-EXIST"])
+    assert result.exit_code != 0
+    assert "not found" in result.output.lower()
+
+
+def test_show_known_accession_yaml():
+    """E-GTEX-8 is the first Expression Atlas entry shipped with the plugin."""
+    result = CliRunner().invoke(catalog_group, ["show", "E-GTEX-8"])
+    assert result.exit_code == 0, result.output
+    assert "E-GTEX-8" in result.output
+    assert "_omics_type" in result.output
+
+
+def test_show_known_accession_json():
+    result = CliRunner().invoke(
+        catalog_group, ["show", "E-GTEX-8", "--format", "json"]
     )
-    runner = CliRunner()
-    result = runner.invoke(
-        catalog,
-        ["build", "buildme", "--catalog", str(cat_path), "--override", "answer=7"],
+    assert result.exit_code == 0, result.output
+    assert '"accession"' in result.output
+    assert "E-GTEX-8" in result.output
+
+
+def test_stats_outputs_totals_and_breakdowns():
+    result = CliRunner().invoke(catalog_group, ["stats"])
+    assert result.exit_code == 0, result.output
+    assert "total datasets" in result.output
+    assert "by omics type" in result.output
+    assert "top organisms" in result.output
+    assert "top data sources" in result.output
+
+
+def test_search_finds_known_term():
+    """Verify shape: header is printed when matches exist, or "no matches" otherwise."""
+    result = CliRunner().invoke(catalog_group, ["search", "Homo", "--limit", "5"])
+    assert result.exit_code == 0, result.output
+    assert "matches:" in result.output or "no matches" in result.output
+
+
+def test_search_empty_query_for_missing_term_is_clean():
+    result = CliRunner().invoke(
+        catalog_group, ["search", "this-string-should-not-match-anything-xyzzy"]
     )
-    assert result.exit_code == 0
-    assert "Invoking builder" in result.output
-    assert "answer=7" in result.output
-    assert "Built buildme" in result.output
+    assert result.exit_code == 0, result.output
+    assert "no matches" in result.output
+
+
+def test_build_subcommand_removed():
+    """The legacy ``build`` subcommand was retired; ensure it's gone."""
+    result = CliRunner().invoke(catalog_group, ["build", "anything"])
+    assert result.exit_code != 0

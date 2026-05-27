@@ -12,14 +12,14 @@ from unittest.mock import patch
 
 import pytest
 
-from hvantk.utils.gene_sets import (
+from hvantk.core.utils.gene_sets import (
     GeneSet,
     GeneSetCollection,
     load_gene_sets,
     load_gene_sets_from_dict,
     load_marker_genes,
 )
-from hvantk.utils.geneset_io import (
+from hvantk.core.utils.geneset_io import (
     detect_id_type,
     parse_geneset_tsv,
     validate_gene_ids,
@@ -148,7 +148,7 @@ def _mock_hgnc_maps():
     return canonical, alias_to_canonical, canonical_to_aliases
 
 
-@patch("hvantk.utils.gene_aliases._load_hgnc_symbol_maps")
+@patch("hvantk.core.utils.gene_aliases._load_hgnc_symbol_maps")
 def test_validate_with_hgnc_alias_resolution(mock_load):
     mock_load.return_value = _mock_hgnc_maps()
     gene_sets = {"panel": ["FANCD1", "TP53", "ERCC11"]}
@@ -157,7 +157,7 @@ def test_validate_with_hgnc_alias_resolution(mock_load):
     assert vr.gene_sets["panel"] == ["BRCA2", "TP53", "ERCC1"]
 
 
-@patch("hvantk.utils.gene_aliases._load_hgnc_symbol_maps")
+@patch("hvantk.core.utils.gene_aliases._load_hgnc_symbol_maps")
 def test_validate_with_hgnc_unrecognized(mock_load):
     mock_load.return_value = _mock_hgnc_maps()
     gene_sets = {"panel": ["BRCA1", "FAKEGENE"]}

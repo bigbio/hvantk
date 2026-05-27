@@ -4,13 +4,15 @@ Query ClinGen Gene-Disease Validity data, extract gene sets, and categorize dise
 
 ## Quick Start
 
-```bash
-# Download ClinGen data
-hvantk download clingen --output-dir data/
+The ClinGen plugin has a built-in downloader, so one command downloads today's snapshot into `data/` and builds the Hail Table:
 
-# Build Hail Table
-hvantk mktable clingen --raw-input data/clingen_gene_disease.csv --output-ht clingen.ht
+```bash
+hvantk reprocess clingen:gene-disease \
+  --raw-dir data/ \
+  --output clingen.ht
 ```
+
+If you already downloaded `Clingen-Gene-Disease-Summary-<YYYY-MM-DD>.csv` into `data/`, add `--skip-download` to reuse it.
 
 ## ClinGenStreamer API
 

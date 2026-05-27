@@ -17,7 +17,7 @@ eval "$(poetry env activate)"
 
 | Input | Source | How to obtain |
 |-------|--------|---------------|
-| ClinVar Hail Table | NCBI | `hvantk download clinvar` then `hvantk mktable clinvar` |
+| ClinVar Hail Table | NCBI | `hvantk reprocess clinvar:variants --raw-dir data/clinvar/ --output data/clinvar.ht` |
 | gnomAD Hail Table | gnomAD | Manual download (see [Data Sources](../guide/data-sources.md)) |
 | Ensembl GTF | Ensembl | Auto-downloaded by `hvantk ptm build` |
 | UniProt PTM TSV | UniProt | Auto-downloaded by `hvantk ptm build` |
