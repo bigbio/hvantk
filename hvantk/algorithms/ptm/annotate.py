@@ -49,8 +49,9 @@ def annotate_variants_with_ptm(
     variants_ht : hl.Table
         Variant table keyed by locus (and optionally alleles).
     ptm_ht : hl.Table
-        PTM sites table from create_ptm_sites_tb, keyed by locus. Must have
-        fields: codon_start, codon_end, ptm_category. Optional evidence fields:
+        PTM sites table built via ``hvantk reprocess uniprot_ptm:sites``,
+        keyed by locus. Must have fields: codon_start, codon_end,
+        ptm_category. Optional evidence fields:
         source_db, evidence_type, n_observations, uniprot_id, gene_symbol,
         residue_pos, amino_acid, ptm_type.
     flanking_codons : int

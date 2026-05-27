@@ -63,6 +63,8 @@ hvantk/
 │   │   └── drift_runner.py# Drift probe execution
 │   └── utils/             # Cross-cutting utilities
 │       ├── hail_context.py          # Idempotent Hail init
+│       ├── hail_helpers.py          # create_table_base, cleanup_temp_file
+│       ├── qtl_helpers.py           # GTEx variant-ID parsing (shared by eqtl/pqtl)
 │       ├── bgzf.py                  # BGZF utilities
 │       ├── streaming.py             # Generic DataStreamer / HailDataStreamer primitives
 │       ├── gene_disease_streamer.py # Abstract base shared by clingen/cosmic-cgc/gencc
@@ -139,8 +141,21 @@ hvantk/
 The codebase is organized by function and biological domain:
 
 **Data Builders** (`skills/<provider>/builder.py`):
-- Each plugin under `hvantk/skills/` owns its builder. Builders return `AnnotationTable`, `ExpressionMatrix`, or `GeneSet` artifacts.
-- Generic helpers live in `hvantk/core/builders/table.py` (`_create_table_base`, etc.).
+- Each plugin under `hvantk/skills/` owns its Phase B builder
+  (`build_<provider>_<dataset>`). Builders return `AnnotationTable`,
+  `ExpressionMatrix`, or `GeneSet` artifacts, stamped with `Provenance` by
+  the platform via `run_builder_for_spec`.
+- `hvantk reprocess <provider>:<dataset>` is the **only** public build
+  path. There is no separate programmatic API; in-process callers that
+  need to build a table inside a tool/pipeline invoke
+  `hvantk.core.plugin.run_builder.run_builder_for_spec` directly.
+- Generic Hail helpers live in `hvantk/core/utils/hail_helpers.py`
+  (`create_table_base`, `cleanup_temp_file`); QTL-shared helpers in
+  `hvantk/core/utils/qtl_helpers.py`.
+- **Exception:** the 1000 Genomes builder
+  (`hvantk/core/builders/genome.py`) is the one remaining non-plugin
+  builder, tracked by [#116] for plugin migration. Until then, the legacy
+  `hvantk build-1k-genome` CLI remains the entry point for that dataset.
 
 **Analysis Pipelines** (separate modules):
 - `hgc/` - Joint genotyping and cohort analysis

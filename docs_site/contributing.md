@@ -107,41 +107,51 @@ Then create a pull request on GitHub with:
 
 ## Adding a New Data Source
 
-Follow this workflow when adding a new annotation source:
+New data sources are added as plugins under `hvantk/skills/<provider>/`. The
+canonical reference is `hvantk/skills/_conventions/SKILL.md` — start there
+and copy from an existing plugin (clinvar, hgnc, msigdb are good models).
 
-1. **Define the data product contract**
-   - Specify Table/MatrixTable schema
-   - Document key fields and data types
-   - Include metadata requirements
+1. **Scaffold the plugin folder**
+   - `hvantk/skills/<provider>/plugin.yaml` — manifest declaring the
+     `Builder` / `DriftProbe` / optional `DownloadFn` + `ParseFn`,
+     `artifact_type`, `schema_id`, and test fixture paths.
+   - `hvantk/skills/<provider>/builder.py` — implement the Phase B
+     contract: `build_<provider>_<dataset>(parsed_input, ctx, **params) -> Artifact`.
+   - `hvantk/skills/<provider>/drift_probe.py` — return a dict the platform
+     hashes into a `source_fingerprint`.
+   - `hvantk/skills/<provider>/SKILL.md` — author-facing operational guide.
 
-2. **Write the builder function**
+2. **Write the Phase B builder**
    ```python
-   def create_my_datasource_tb(raw_input: str, output_ht: str, **kwargs):
-       """Build Hail Table from raw data source.
+   from hvantk.core.models import AnnotationTable
 
-       Args:
-           raw_input: Path to raw input file
-           output_ht: Path for output Hail Table
-           **kwargs: Additional parameters
-       """
-       # Implementation
+   def build_myprovider_dataset(parsed_input, ctx, *, **params):
+       """Phase B builder — returns an AnnotationTable."""
+       # ... import + transform ...
+       return AnnotationTable.from_hail(
+           ht, provenance=ctx.provenance(schema_id="myprovider-v1")
+       )
    ```
+   `BuildContext` (`ctx`) supplies plugin name, version, and source
+   fingerprint; the platform stamps Provenance and validates the artifact
+   type / schema_id against `plugin.yaml`. **The CLI `hvantk reprocess` is
+   the only public build path** — there is no separate programmatic API.
 
-3. **Register in the catalog**
-   - Add to dataset registry
-   - Include provenance and version info
-   - Add checksums for data integrity
+3. **Create tests**
+   - `hvantk/skills/<provider>/tests/test_builder.py` — snapshot
+     round-trip test (use `phase_b_snapshot_adapter` from
+     `hvantk/tests/_snapshot_utils.py`).
+   - `hvantk/skills/<provider>/tests/testdata/` — minimal fixture.
+   - `hvantk/skills/<provider>/tests/snapshots/` — generated via
+     `pytest --regenerate-snapshots`.
 
-4. **Create tests**
-   - Add test data to `hvantk/tests/testdata`
-   - Write unit tests for the builder
-   - Test with various input scenarios
+4. **Update documentation**
+   - Add to [Data Sources](guide/data-sources.md).
+   - Add usage example to [Usage Guide](guide/usage.md) showing
+     `hvantk reprocess <provider>:<dataset>`.
 
-5. **Update documentation**
-   - Add to [Data Sources](guide/data-sources.md)
-   - Add usage example to [Usage Guide](guide/usage.md)
-
-See [Architecture](architecture.md) for detailed information on system design and extension points.
+See [Architecture](architecture.md) for detailed information on the plugin
+system and extension points.
 
 ## Code Review Process
 

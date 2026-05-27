@@ -266,7 +266,7 @@ def ptm_landscape(
     clinvar_ht : hl.Table
         ClinVar Hail Table keyed by (locus, alleles) with info.CLNSIG.
     ptm_ht : hl.Table
-        PTM sites Hail Table from create_ptm_sites_tb.
+        PTM sites Hail Table built via ``hvantk reprocess uniprot_ptm:sites``.
     output_dir : str
         Directory for output files (landscape_summary.json).
     flanking_codons : int
@@ -443,7 +443,7 @@ def ptm_population(
     gnomad_ht : hl.Table
         gnomAD variant table with allele frequency field.
     ptm_ht : hl.Table
-        PTM sites Hail Table from create_ptm_sites_tb.
+        PTM sites Hail Table built via ``hvantk reprocess uniprot_ptm:sites``.
     output_dir : str
         Directory for output files (population_summary.json).
     ccr_ht : hl.Table, optional

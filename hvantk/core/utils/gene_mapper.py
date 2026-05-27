@@ -64,8 +64,8 @@ class GeneMapper:
         Parameters
         ----------
         hgnc_ht : hl.Table
-            HGNC Hail Table created by create_hgnc_gene_tb().
-            Must be keyed by hgnc_id.
+            HGNC Hail Table built via ``hvantk reprocess hgnc:lookup`` and
+            loaded via ``hl.read_table()``. Must be keyed by ``hgnc_id``.
         """
         self._ht = hgnc_ht
         self._validate_schema()

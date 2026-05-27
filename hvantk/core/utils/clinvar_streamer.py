@@ -2,9 +2,9 @@
 # Implements streaming processing for generating training sets from Clinvar data
 #
 # Caller contract: pass a pre-built Hail Table via the `table` parameter.
-# Build the table with hvantk.skills.clinvar.builder.create_clinvar_tb() first,
-# then construct ClinvarDataStreamer(table=ht, ...).  This keeps core/ free of
-# any dependency on skills/.
+# Build the table with `hvantk reprocess clinvar:variants ...` first, load it
+# via `hl.read_table()`, then construct ClinvarDataStreamer(table=ht, ...).
+# This keeps core/ free of any dependency on skills/.
 
 import hail as hl
 from typing import Iterator, Optional, Set, Iterable
@@ -22,9 +22,11 @@ class ClinvarDataStreamer(HailDataStreamer):
     The caller is responsible for building the Hail Table and passing it via
     the ``table`` parameter.  Example::
 
-        from hvantk.skills.clinvar.builder import create_clinvar_tb
-        ht = create_clinvar_tb(input_path="/data/clinvar.vcf.bgz",
-                               output_path="/tmp/clinvar.ht")
+        # Build once via the plugin CLI:
+        #   hvantk reprocess clinvar:variants \
+        #     --raw-dir /data --output /tmp/clinvar.ht
+        import hail as hl
+        ht = hl.read_table("/tmp/clinvar.ht")
         streamer = ClinvarDataStreamer(table=ht, gene_set={"GATA4"})
 
     TP criteria:
