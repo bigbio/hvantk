@@ -80,3 +80,80 @@ def test_search_filters_with_missing_field_are_skipped():
     # Filtering by a needle that no record has — must return empty without raising.
     results = reg.search(query="", organism="NotAnOrganismValue")
     assert results == []
+
+
+def test_legacy_entry_skipped_when_plugin_catalog_owns_accession(tmp_path, caplog):
+    """Per-plugin catalogs take precedence over the legacy registry.
+
+    Regression guard for F13: prior to the fix, a legacy registry entry whose
+    accession overlapped a plugin catalog entry would silently double-insert
+    into the omics bucket and ``get_dataset(accession)`` would return whichever
+    iteration order happened to land first. The fix logs a WARNING and skips
+    the legacy duplicate.
+    """
+    import json
+    import logging
+
+    # Pick an accession that the live plugin layer owns exactly once. Some
+    # per-plugin catalogs include intra-file duplicates (a separate
+    # data-quality issue); choosing a unique accession isolates the
+    # cross-source collision behavior under test.
+    plugin_loader.reset_registry_for_tests()
+    reg_baseline = HvantkRegistry()
+    accession_counts: dict = {}
+    for entry in reg_baseline.list_transcriptomics_datasets():
+        acc = entry.get("accession")
+        if acc:
+            accession_counts[acc] = accession_counts.get(acc, 0) + 1
+    target_accession = next(
+        (acc for acc, n in accession_counts.items() if n == 1), None
+    )
+    assert target_accession is not None, "no uniquely-owned transcriptomics accession to test against"
+    baseline_count = accession_counts[target_accession]
+    assert baseline_count == 1
+
+    # Build a fake registry root containing a transcriptomics datasets.json
+    # whose entry duplicates the plugin accession.
+    fake_root = tmp_path / "registry"
+    (fake_root / "transcriptomics").mkdir(parents=True)
+    (fake_root / "transcriptomics" / "datasets.json").write_text(
+        json.dumps(
+            [
+                {
+                    "accession": target_accession,
+                    "title": "LEGACY-DUPLICATE",
+                    "description": "this entry should be skipped",
+                },
+                {
+                    "accession": "LEGACY-ONLY-ACCESSION",
+                    "title": "Legacy-only entry",
+                    "description": "no plugin owns this; should survive",
+                },
+            ]
+        )
+    )
+
+    plugin_loader.reset_registry_for_tests()
+    with caplog.at_level(logging.WARNING, logger="hvantk.resources.unified_registry"):
+        reg = HvantkRegistry(registry_root=fake_root)
+
+    # Per-plugin entry survives; legacy duplicate is dropped.
+    matched = [
+        e for e in reg.list_transcriptomics_datasets() if e["accession"] == target_accession
+    ]
+    assert len(matched) == 1, f"expected exactly one entry for {target_accession}, got {len(matched)}"
+    assert matched[0].get("title") != "LEGACY-DUPLICATE", (
+        "legacy entry leaked through; per-plugin precedence violated"
+    )
+
+    # Non-colliding legacy entry is still aggregated.
+    assert any(
+        e["accession"] == "LEGACY-ONLY-ACCESSION"
+        for e in reg.list_transcriptomics_datasets()
+    ), "non-colliding legacy entry was incorrectly dropped"
+
+    # The skip emitted a WARNING that names the offending accession.
+    assert any(
+        target_accession in record.getMessage() and record.levelname == "WARNING"
+        for record in caplog.records
+    ), "expected WARNING log naming the colliding accession"

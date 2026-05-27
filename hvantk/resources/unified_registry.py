@@ -9,6 +9,13 @@ Sources data from two places:
    After the per-plugin migration, only ``genomics/datasets.json`` remains
    in-tree (it still holds orphan entries without an owning plugin).
 
+**Collision precedence:** per-plugin catalogs win. If a legacy registry
+entry duplicates an ``(omics_type, accession)`` already contributed by a
+plugin catalog, the legacy entry is skipped and a WARNING is logged. There
+are zero overlapping accessions today; the rule exists to make the
+behavior deterministic the day someone moves an orphan entry into a plugin
+catalog without remembering to delete the legacy copy.
+
 The public API (``list_*_datasets``, ``get_dataset``, ``search``,
 ``get_stats``) is unchanged.
 """
@@ -95,7 +102,12 @@ class HvantkRegistry:
         self._load_registry()
 
     def _load_registry(self) -> None:
-        """Aggregate per-plugin catalogs and the remaining legacy registry files."""
+        """Aggregate per-plugin catalogs and the remaining legacy registry files.
+
+        Plugin catalogs are loaded first; the legacy genomics registry is the
+        fallback. Any legacy entry whose ``(omics_type, accession)`` is already
+        covered by a plugin catalog is skipped with a WARNING — per-plugin wins.
+        """
         # 1. Per-plugin catalogs (declared via plugin.yaml `catalog:`)
         try:
             # Import locally to avoid a hard dependency cycle when this module
@@ -137,6 +149,15 @@ class HvantkRegistry:
                         continue
                     self._cache.setdefault(omics, []).append(entry)
 
+        # Snapshot the accessions contributed by the plugin layer; the legacy
+        # pass below uses this set to enforce the "per-plugin wins" precedence.
+        plugin_owned: Dict[str, set] = {
+            otype: {
+                e.get("accession") for e in self._cache.get(otype, []) if e.get("accession")
+            }
+            for otype in self.omics_types
+        }
+
         # 2. Legacy per-omics registry files (only genomics remains today)
         for omics_type in self.omics_types:
             datasets_file = self.registry_root / omics_type / "datasets.json"
@@ -144,9 +165,22 @@ class HvantkRegistry:
                 continue
             try:
                 with open(datasets_file, "r") as fh:
-                    self._cache[omics_type].extend(json.load(fh))
+                    legacy_entries = json.load(fh)
             except (OSError, json.JSONDecodeError) as exc:
                 logger.error("Error loading %s: %s", omics_type, exc)
+                continue
+            for entry in legacy_entries:
+                accession = entry.get("accession")
+                if accession and accession in plugin_owned.get(omics_type, set()):
+                    logger.warning(
+                        "legacy %s entry %r duplicates a per-plugin catalog "
+                        "accession; skipping legacy copy (per-plugin wins per "
+                        "unified_registry precedence rule)",
+                        omics_type,
+                        accession,
+                    )
+                    continue
+                self._cache[omics_type].append(entry)
 
     def list_transcriptomics_datasets(self) -> List[Dict]:
         """Get all transcriptomics datasets."""
