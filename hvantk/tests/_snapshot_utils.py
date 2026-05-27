@@ -245,6 +245,41 @@ def load_snapshot(path: str | Path) -> Any:
     return json.loads(Path(path).read_text())
 
 
+def phase_b_snapshot_adapter(builder_fn, dataset_name: str):
+    """Adapt a Phase B builder for the snapshot-test calling convention.
+
+    The snapshot helpers below were designed around the legacy Phase A
+    ``(input_path, output_path, **kw) -> hl.Table`` shape. Phase B builders
+    take ``(parsed_input, ctx, **params) -> Artifact``. This factory bridges
+    the two: the returned callable constructs a deterministic ``BuildContext``,
+    invokes the Phase B builder, persists via ``artifact.save()``, and returns
+    the inner Hail Table so ``regenerate_snapshots`` can introspect it.
+
+    ``dataset_name`` should be the plugin's compound dataset key
+    (e.g. ``"clinvar:variants"``).
+    """
+    from hvantk.core.models.build_context import BuildContext
+
+    plugin = dataset_name.split(":", 1)[0]
+
+    def _adapter(input_path, output_path, **kw):
+        # Strip kwargs the Phase A signature accepted but Phase B does not.
+        kw.pop("overwrite", None)
+        kw.pop("export_tsv", None)
+        ctx = BuildContext(
+            plugin=plugin,
+            dataset=dataset_name,
+            plugin_version="test",
+            source_fingerprint="sha256:test",
+            builder_commit=None,
+        )
+        artifact = builder_fn(parsed_input=input_path, ctx=ctx, **kw)
+        artifact.save(output_path)
+        return artifact.to_hail()
+
+    return _adapter
+
+
 def regenerate_snapshots(
     builder_fn: Callable[..., Any],
     fixture_path: str,
@@ -281,7 +316,7 @@ def regenerate_snapshots(
         write `.h5ad`). Otherwise a temporary `.ht` path is created and used.
     input_path_kwarg:
         Name of the builder's input-path argument. Defaults to `"input_path"`,
-        matching the Hail Table builder convention. UCSC's `build_ucsc_ad`
+        matching the Hail Table builder convention. The UCSC snapshot wrapper
         uses `"expression_matrix_path"`, for example.
 
     Writes:

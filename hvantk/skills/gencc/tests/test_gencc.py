@@ -56,17 +56,21 @@ TEST_DIR = Path(__file__).parent / "testdata"
 
 @pytest.fixture
 def gencc_table_path(tmp_path):
-    """Build a GenCC Hail Table from test fixture (gene_disease_submitter keying)."""
-    from hvantk.skills.gencc.builder import create_gencc_submissions_tb
+    """Build a GenCC Hail Table from test fixture via the Phase B builder."""
+    from hvantk.core.models.build_context import BuildContext
+    from hvantk.skills.gencc.builder import build_gencc_submissions
 
     input_path = TEST_DIR / "raw/gencc/gencc_test_sample.tsv"
     output_path = tmp_path / "gencc_test.ht"
-    create_gencc_submissions_tb(
-        input_path=str(input_path),
-        output_path=str(output_path),
-        key_by="gene_disease_submitter",
-        overwrite=True,
+    ctx = BuildContext(
+        plugin="gencc",
+        dataset="gencc:submissions",
+        plugin_version="test",
+        source_fingerprint="sha256:test",
+        builder_commit=None,
     )
+    artifact = build_gencc_submissions(parsed_input=str(input_path), ctx=ctx)
+    artifact.save(str(output_path))
     return str(output_path)
 
 
@@ -75,7 +79,7 @@ def gencc_table_path(tmp_path):
 def test_gencc_submitter_summary(gencc_table_path):
     from hvantk.skills.gencc.streamer import GenCCStreamer
 
-    streamer = GenCCStreamer(gencc_table_path)
+    streamer = GenCCStreamer(gencc_table_path, init_hail=False)
     summary = streamer.submitter_summary()
     assert "ClinGen" in summary["submitter"].values
     assert len(summary) >= 3  # ClinGen, PanelApp, Orphanet, G2P
@@ -86,7 +90,7 @@ def test_gencc_submitter_summary(gencc_table_path):
 def test_gencc_get_geneset_per_submitter(gencc_table_path):
     from hvantk.skills.gencc.streamer import GenCCStreamer
 
-    streamer = GenCCStreamer(gencc_table_path)
+    streamer = GenCCStreamer(gencc_table_path, init_hail=False)
     result = streamer.get_geneset_per_submitter()
     assert "ClinGen" in result
     assert "BRCA1" in result["ClinGen"]
@@ -97,7 +101,7 @@ def test_gencc_get_geneset_per_submitter(gencc_table_path):
 def test_gencc_consensus_genes(gencc_table_path):
     from hvantk.skills.gencc.streamer import GenCCStreamer
 
-    streamer = GenCCStreamer(gencc_table_path)
+    streamer = GenCCStreamer(gencc_table_path, init_hail=False)
     # BRCA1, BRCA2, TP53, PTEN have multiple submitters in test data
     consensus = streamer.consensus_genes(min_submitters=2)
     assert "BRCA1" in consensus

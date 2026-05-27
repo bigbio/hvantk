@@ -10,6 +10,7 @@ from hvantk.tests._snapshot_utils import (
     collect_sample_rows,
     hail_schema_to_dict,
     load_snapshot,
+    phase_b_snapshot_adapter,
 )
 
 # Aliased to avoid shadowing the fixture name `regenerate_snapshots` in the test signature
@@ -21,8 +22,6 @@ SNAPSHOT_DIR = _TESTS_DIR / "snapshots"
 
 # Set names are unique-in-table (per skill §5), so keys are inlined here
 # rather than maintained in a separate sample_keys.json (per conventions §9).
-# Picks: shortest set, a medium set, the longest set in the fixture, plus a
-# typical-prefix set. All four exist in the fixture (see slicer).
 SAMPLE_KEYS = [
     {"set_name": "BIOCARTA_ACETAMINOPHEN_PATHWAY"},  # 5 genes (minimum)
     {"set_name": "KEGG_APOPTOSIS"},                  # 87 genes (medium)
@@ -35,32 +34,24 @@ SAMPLE_KEYS = [
 def test_msigdb_round_trip(hail_session, tmp_path, regenerate_snapshots):
     """Build MSigDB from fixture; assert schema and sample-row stability."""
     import hail as hl
-    from hvantk.skills.msigdb.builder import create_msigdb_tb
+    from hvantk.skills.msigdb.builder import build_msigdb_genesets
+
+    builder = phase_b_snapshot_adapter(build_msigdb_genesets, "msigdb:genesets")
 
     if regenerate_snapshots:
         regenerate_snapshots_fn(
-            builder_fn=create_msigdb_tb,
+            builder_fn=builder,
             fixture_path=FIXTURE,
             snapshot_dir=SNAPSHOT_DIR,
             keys=SAMPLE_KEYS,
-            builder_kwargs={"overwrite": True},
+            builder_kwargs={},
         )
         pytest.skip(
             "Snapshots regenerated; rerun without --regenerate-snapshots to assert."
         )
 
     output_path = str(tmp_path / "msigdb.ht")
-    create_msigdb_tb(
-        input_path=FIXTURE,
-        output_path=output_path,
-        overwrite=True,
-    )
-    # Idempotency: rebuild with overwrite=True should succeed.
-    create_msigdb_tb(
-        input_path=FIXTURE,
-        output_path=output_path,
-        overwrite=True,
-    )
+    builder(input_path=FIXTURE, output_path=output_path)
     ht = hl.read_table(output_path)
 
     expected_schema = load_snapshot(SNAPSHOT_DIR / "schema.json")

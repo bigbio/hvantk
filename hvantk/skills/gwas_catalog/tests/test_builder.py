@@ -11,6 +11,7 @@ from hvantk.tests._snapshot_utils import (
     collect_sample_rows,
     hail_schema_to_dict,
     load_snapshot,
+    phase_b_snapshot_adapter,
 )
 
 # Aliased to avoid shadowing the fixture name `regenerate_snapshots` in the test signature
@@ -24,36 +25,29 @@ SNAPSHOT_DIR = Path("hvantk/skills/gwas_catalog/tests/snapshots")
 def test_gwas_catalog_round_trip(hail_session, tmp_path, regenerate_snapshots):
     """Build GWAS Catalog from fixture; assert schema and sample-row stability."""
     import hail as hl
-    from hvantk.skills.gwas_catalog.builder import create_gwas_catalog_tb
+    from hvantk.skills.gwas_catalog.builder import build_gwas_catalog_associations
+
+    builder = phase_b_snapshot_adapter(
+        build_gwas_catalog_associations, "gwas_catalog:associations"
+    )
+    builder_kwargs = {"reference_genome": "GRCh38"}
 
     keys = json.loads((SNAPSHOT_DIR / "sample_keys.json").read_text())
 
     if regenerate_snapshots:
         regenerate_snapshots_fn(
-            builder_fn=create_gwas_catalog_tb,
+            builder_fn=builder,
             fixture_path=FIXTURE,
             snapshot_dir=SNAPSHOT_DIR,
             keys=keys,
-            builder_kwargs={"reference_genome": "GRCh38", "overwrite": True},
+            builder_kwargs=builder_kwargs,
         )
         pytest.skip(
             "Snapshots regenerated; rerun without --regenerate-snapshots to assert."
         )
 
     output_path = str(tmp_path / "gwas_catalog.ht")
-    create_gwas_catalog_tb(
-        input_path=FIXTURE,
-        output_path=output_path,
-        reference_genome="GRCh38",
-        overwrite=True,
-    )
-    # Idempotency: rebuild with overwrite=True should succeed.
-    create_gwas_catalog_tb(
-        input_path=FIXTURE,
-        output_path=output_path,
-        reference_genome="GRCh38",
-        overwrite=True,
-    )
+    builder(input_path=FIXTURE, output_path=output_path, **builder_kwargs)
     ht = hl.read_table(output_path)
 
     expected_schema = load_snapshot(SNAPSHOT_DIR / "schema.json")

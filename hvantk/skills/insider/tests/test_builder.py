@@ -10,6 +10,7 @@ from hvantk.tests._snapshot_utils import (
     collect_sample_rows,
     hail_schema_to_dict,
     load_snapshot,
+    phase_b_snapshot_adapter,
 )
 
 # Aliased to avoid shadowing the fixture name `regenerate_snapshots` in the test signature
@@ -34,16 +35,14 @@ SAMPLE_KEYS = [
 def test_insider_round_trip(hail_session, tmp_path, regenerate_snapshots):
     """Build INSIDER BED from fixture; assert schema and sample-row stability."""
     import hail as hl
-    from hvantk.skills.insider.builder import create_interactome_tb
+    from hvantk.skills.insider.builder import build_insider_interactome
 
-    builder_kwargs = {
-        "reference_genome": "GRCh38",
-        "overwrite": True,
-    }
+    builder = phase_b_snapshot_adapter(build_insider_interactome, "insider:variants")
+    builder_kwargs = {"reference_genome": "GRCh38"}
 
     if regenerate_snapshots:
         regenerate_snapshots_fn(
-            builder_fn=create_interactome_tb,
+            builder_fn=builder,
             fixture_path=FIXTURE,
             snapshot_dir=SNAPSHOT_DIR,
             keys=SAMPLE_KEYS,
@@ -55,9 +54,7 @@ def test_insider_round_trip(hail_session, tmp_path, regenerate_snapshots):
 
     output_path = str(tmp_path / "insider.ht")
     fixture_uri = Path(FIXTURE).resolve().as_uri()
-    create_interactome_tb(input_path=fixture_uri, output_path=output_path, **builder_kwargs)
-    # Idempotency: rebuild with overwrite=True should succeed.
-    create_interactome_tb(input_path=fixture_uri, output_path=output_path, **builder_kwargs)
+    builder(input_path=fixture_uri, output_path=output_path, **builder_kwargs)
     ht = hl.read_table(output_path)
 
     expected_schema = load_snapshot(SNAPSHOT_DIR / "schema.json")

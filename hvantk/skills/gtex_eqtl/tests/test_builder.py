@@ -10,6 +10,7 @@ from hvantk.tests._snapshot_utils import (
     collect_sample_rows,
     hail_schema_to_dict,
     load_snapshot,
+    phase_b_snapshot_adapter,
 )
 
 # Aliased to avoid shadowing the fixture name `regenerate_snapshots` in the test signature
@@ -35,19 +36,19 @@ SAMPLE_KEYS = [
 def test_gtex_eqtl_round_trip(hail_session, tmp_path, regenerate_snapshots):
     """Build GTEx v11 eQTL from Liver fixture; assert schema and sample-row stability."""
     import hail as hl
-    from hvantk.skills.gtex_eqtl.builder import create_eqtl_tb
+    from hvantk.skills.gtex_eqtl.builder import build_eqtl_associations
 
+    builder = phase_b_snapshot_adapter(build_eqtl_associations, "gtex_eqtl:eqtls")
     builder_kwargs = {
         "reference_genome": "GRCh38",
         "source": "gtex_v11",
         "tissue": "Liver",
         "p_threshold": 0,  # retain all fixture rows (signif_pairs is pre-filtered)
-        "overwrite": True,
     }
 
     if regenerate_snapshots:
         regenerate_snapshots_fn(
-            builder_fn=create_eqtl_tb,
+            builder_fn=builder,
             fixture_path=FIXTURE_DIR,
             snapshot_dir=SNAPSHOT_DIR,
             keys=SAMPLE_KEYS,
@@ -58,9 +59,7 @@ def test_gtex_eqtl_round_trip(hail_session, tmp_path, regenerate_snapshots):
         )
 
     output_path = str(tmp_path / "gtex_eqtl.ht")
-    create_eqtl_tb(input_path=FIXTURE_DIR, output_path=output_path, **builder_kwargs)
-    # Idempotency: rebuild with overwrite=True should succeed.
-    create_eqtl_tb(input_path=FIXTURE_DIR, output_path=output_path, **builder_kwargs)
+    builder(input_path=FIXTURE_DIR, output_path=output_path, **builder_kwargs)
     ht = hl.read_table(output_path)
 
     expected_schema = load_snapshot(SNAPSHOT_DIR / "schema.json")

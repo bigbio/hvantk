@@ -31,12 +31,15 @@ _SNAPSHOT_ROOT = Path("hvantk/skills/ucsc_cellbrowser/tests/snapshots")
 
 # Per-collection cases. ``builder_kwargs`` carries plugin-derived overrides
 # (e.g. ``gene_column``, ``split_gene_field``) when a dataset deviates from
-# ``build_ucsc_ad`` defaults; the default values produce empty dicts.
+# Phase B ``build_ucsc_cellbrowser`` defaults; the default values produce empty
+# dicts. ``dataset_name`` selects the per-dataset schema_id in the builder's
+# ``_SCHEMA_IDS`` table.
 _UCSC_CASES = [
     pytest.param(
         str(_FIXTURE_ROOT / "ucsc-cellbrowser" / "expression_matrix.tsv"),
         str(_FIXTURE_ROOT / "ucsc-cellbrowser" / "metadata.tsv"),
         _SNAPSHOT_ROOT / "ucsc-cellbrowser",
+        "ucsc-cellbrowser:default",
         {},
         id="asp_2019-celltype-summary",
     ),
@@ -44,6 +47,7 @@ _UCSC_CASES = [
         str(_FIXTURE_ROOT / "ucsc-cellbrowser-adult-ctx" / "expression_matrix.tsv"),
         str(_FIXTURE_ROOT / "ucsc-cellbrowser-adult-ctx" / "metadata.tsv"),
         _SNAPSHOT_ROOT / "ucsc-cellbrowser-adult-ctx",
+        "ucsc-cellbrowser:adult-ctx",
         {},
         id="adult-ctx-meta-atlas-class-summary",
     ),
@@ -51,14 +55,55 @@ _UCSC_CASES = [
         str(_FIXTURE_ROOT / "ucsc-cellbrowser-dev-ctx" / "expression_matrix.tsv"),
         str(_FIXTURE_ROOT / "ucsc-cellbrowser-dev-ctx" / "metadata.tsv"),
         _SNAPSHOT_ROOT / "ucsc-cellbrowser-dev-ctx",
+        "ucsc-cellbrowser:dev-ctx",
         {},
         id="dev-ctx-meta-atlas-type-v2-summary",
     ),
 ]
 
 
+def _fake_ctx(dataset_name: str):
+    """Construct a deterministic BuildContext for snapshot tests."""
+    from hvantk.core.models.build_context import BuildContext
+
+    plugin = dataset_name.split(":", 1)[0]
+    return BuildContext(
+        plugin=plugin,
+        dataset=dataset_name,
+        plugin_version="test",
+        source_fingerprint="sha256:test",
+        builder_commit=None,
+    )
+
+
+def _build_for_snapshot(expression_matrix_path, **call_kwargs):
+    """Phase B build wrapper for snapshot regeneration / assertion.
+
+    Accepts the (input_path, metadata_path, ...) signature the snapshot
+    helper expects plus an injected ``dataset_name``; returns the underlying
+    ``AnnData`` so the existing snapshot helpers apply without modification.
+    """
+    from hvantk.skills.ucsc_cellbrowser.builder import build_ucsc_cellbrowser
+
+    dataset_name = call_kwargs.pop("dataset_name")
+    metadata_path = call_kwargs.pop("metadata_path")
+    # Strip args that only existed on the Phase A signature.
+    call_kwargs.pop("output_path", None)
+    call_kwargs.pop("overwrite", None)
+
+    artifact = build_ucsc_cellbrowser(
+        parsed_input={
+            "expression_matrix": expression_matrix_path,
+            "metadata": metadata_path,
+        },
+        ctx=_fake_ctx(dataset_name),
+        **call_kwargs,
+    )
+    return artifact.to_anndata()
+
+
 @pytest.mark.parametrize(
-    ("expr_fixture", "meta_fixture", "snapshot_dir", "builder_kwargs"),
+    ("expr_fixture", "meta_fixture", "snapshot_dir", "dataset_name", "builder_kwargs"),
     _UCSC_CASES,
 )
 def test_ucsc_cellbrowser_round_trip(
@@ -67,21 +112,19 @@ def test_ucsc_cellbrowser_round_trip(
     expr_fixture,
     meta_fixture,
     snapshot_dir,
+    dataset_name,
     builder_kwargs,
 ):
     """Build UCSC sc AnnData from fixture; assert schema and head sample stability."""
-    from hvantk.skills.ucsc_cellbrowser.builder import build_ucsc_ad
-
     call_kwargs = {
         "metadata_path": meta_fixture,
-        "output_path": str(tmp_path / "ucsc.h5ad"),
-        "overwrite": True,
+        "dataset_name": dataset_name,
         **builder_kwargs,
     }
 
     if regenerate_snapshots:
         regenerate_snapshots_fn(
-            builder_fn=build_ucsc_ad,
+            builder_fn=_build_for_snapshot,
             fixture_path=expr_fixture,
             snapshot_dir=snapshot_dir,
             builder_kwargs=call_kwargs,
@@ -89,7 +132,7 @@ def test_ucsc_cellbrowser_round_trip(
         )
         pytest.skip("Snapshots regenerated; rerun without --regenerate-snapshots to assert.")
 
-    adata = build_ucsc_ad(
+    adata = _build_for_snapshot(
         expression_matrix_path=expr_fixture,
         **call_kwargs,
     )
