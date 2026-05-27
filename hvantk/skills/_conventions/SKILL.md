@@ -17,7 +17,7 @@ These conventions apply to every per-resource plugin under `hvantk/skills/`. Per
 - `hvantk/core/builders/table.py` — still the home of generic helpers (`_create_table_base`, `_cleanup_temp_file`, `_parse_insider_bed_to_temp_tsv`) and of non-migrated builders. Plugins import the helpers; they do not add new top-level builders here.
 - `hvantk/core/plugin/registry.py` — recipe-system registry. The plugin loader populates `TABLE_BUILDERS` / `MATRIX_BUILDERS` automatically; hand-written `create_table_adapter()` calls are deprecated for migrated providers.
 - `hvantk/core/plugin/api.py`, `hvantk/core/plugin/loader.py` — plugin schema, discovery (filesystem + Python entry points), and lifecycle wiring.
-- `hvantk/tools/` — top-level CLI (`hvantk plugins`, `hvantk drift`, `hvantk reprocess`, `hvantk catalog`, plus legacy `mktable`, `mkmatrix`). Per-provider CLI lives in the plugin's own `cli.py` and is wired by `plugin.yaml`.
+- `hvantk/tools/` — top-level CLI (`hvantk plugins`, `hvantk drift`, `hvantk reprocess`, `hvantk catalog`). Per-provider CLI lives in the plugin's own `cli.py` and is wired by `plugin.yaml`.
 - `hvantk/skills/<provider>/catalog/datasets.json` — per-plugin dataset catalog (URLs, version cadence, license, per-accession metadata). Aggregated by `hvantk.resources.unified_registry.HvantkRegistry` and surfaced via `hvantk catalog {list,show,stats,search}`.
 
 When in doubt, READ existing code under these paths before inferring shape.
@@ -108,7 +108,7 @@ cli:
     function: download_cmd
 ```
 
-The top-level `mktable` / `mkmatrix` commands in `hvantk/tools/` continue to dispatch by sub-command name (e.g., `hvantk mktable hgnc`) and import the plugin builder behind a thin shim.
+Top-level data-build invocations go through `hvantk reprocess <provider>:<dataset>`, which resolves the manifest, runs `lifecycle.download` / `lifecycle.parse` / `builder` in sequence, and stamps provenance. Build-time kwargs flow through `--plugin-arg KEY=VALUE`. The legacy `mktable` / `mkmatrix` commands have been retired.
 
 ## 8. Test pattern
 

@@ -28,13 +28,19 @@ import json
 
 logger = logging.getLogger(__name__)
 
+# Default chunk size for streamers / annotation pipelines. Picked as a
+# compromise between memory footprint per chunk and per-chunk overhead
+# (Hail flush cost, dict allocations). Override per subclass when a source
+# has very wide rows or unusually small files.
+DEFAULT_CHUNK_SIZE = 10000
+
 
 class DataStreamer(ABC):
     """
     Abstract base class for data streamers that process genomic data in chunks.
     """
 
-    def __init__(self, name: str, chunk_size: int = 10000):
+    def __init__(self, name: str, chunk_size: int = DEFAULT_CHUNK_SIZE):
         self.name = name
         self.chunk_size = chunk_size
         self.logger = logging.getLogger(f"{__name__}.{name}")
@@ -80,7 +86,7 @@ class HailDataStreamer(DataStreamer):
     Base class for Hail-based data streamers.
     """
 
-    def __init__(self, name: str, chunk_size: int = 10000, init_hail: bool = True):
+    def __init__(self, name: str, chunk_size: int = DEFAULT_CHUNK_SIZE, init_hail: bool = True):
         super().__init__(name, chunk_size)
         self.init_hail = init_hail
         # Track whether THIS streamer triggered initialization (informational only)

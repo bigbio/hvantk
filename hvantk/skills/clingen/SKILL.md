@@ -49,7 +49,7 @@ Default row schema includes: `hgnc_id`, `gene_symbol`, `disease_label`, `mondo_i
 - Builder: `create_clingen_gene_disease_tb` in `hvantk/skills/clingen/builder.py` (uses `_create_table_base()` per `_conventions` § 4).
 - Downloader CLI: `download_cmd` (Click `clingen-download`) in `hvantk/skills/clingen/cli.py`; lifecycle entry-point `download_dataset(raw_dir=...)`. Wired into the umbrella `hvantk download clingen` group in `hvantk/tools/plugins/download_cli.py`.
 - Dataset class: `ClinGenGeneDiseaseDataset` in `hvantk/skills/clingen/shared/datasets.py`.
-- Build CLI: `hvantk mktable clingen-gene-disease` in `hvantk/tools/build/make_table_cli.py`.
+- Build CLI: `hvantk reprocess clingen:gene-disease --raw-dir <dir> --output <path>.ht` (skip individual stages with `--skip-download` / `--skip-parse` / `--skip-build`; pass builder kwargs via `--plugin-arg key=value`, e.g. `--plugin-arg key_by=gene_disease --plugin-arg min_classification=Strong`).
 - Streamer (out-of-plugin, intentionally): `hvantk/data/clingen_streamer.py` (`ClinGenStreamer`, subclass of `GeneDiseaseValidityStreamer`); shared with the GenCC/gene-disease streamer family.
 - Constants: `CLINGEN_BASE_URL`, `CLINGEN_DOWNLOADS_URL`, `CLINGEN_FILE_PREFIX`, `CLINGEN_HEADER_SKIP_LINES`, `CLINGEN_GENE_DISEASE_FIELDS`, `CLINGEN_CLASSIFICATION_LEVELS` in `hvantk/core/constants.py`.
 - Tests: `hvantk/skills/clingen/tests/test_builder.py`, `test_downloader.py`, `test_drift_probe.py`. Streamer tests stay at `hvantk/tests/test_clingen_streamer.py` (test the unmoved streamer).
@@ -60,8 +60,8 @@ When invoked to build or update:
 
 1. Verify Hail is available (defer to the SessionStart hook).
 2. Confirm the raw CSV is present at `<raw_dir>/Clingen-Gene-Disease-Summary-<YYYY-MM-DD>.csv`. If absent, run `hvantk download clingen --output-dir <raw_dir>`.
-3. Decide keying: `gene_disease` for full granularity (joins on `(hgnc_id, mondo_id)`); `gene` for gene-level aggregation (downstream geneset extraction).
-4. Build via Python (`create_clingen_gene_disease_tb(input_path, output_path, key_by=..., min_classification=..., overwrite=True)`) or CLI (`hvantk mktable clingen-gene-disease --raw-input ... --output-ht ...`).
+3. Decide keying: `gene_disease` for full granularity (joins on `(hgnc_id, mondo_id)`); `gene` for gene-level aggregation (downstream geneset extraction). NOTE: the Phase B builder used by `hvantk reprocess` currently only supports `gene_disease`; `gene` keying requires the legacy Python `create_clingen_gene_disease_tb`.
+4. Build via Python (`create_clingen_gene_disease_tb(input_path, output_path, key_by=..., min_classification=..., overwrite=True)`) or CLI (`hvantk reprocess clingen:gene-disease --raw-dir <dir> --output <path>.ht --plugin-arg min_classification=...`). Other `key_by` values currently raise `NotImplementedError` via the CLI path.
 5. Sanity-check the output: row count plausible (~5k associations live, 11 in fixture); key fields present; HGNC/MONDO prefixes stripped on at least one known row (e.g., BRCA1 → `hgnc_id == "1100"`, not `"HGNC:1100"`).
 6. Run validation: `pytest hvantk/skills/clingen/tests -m hail`.
 

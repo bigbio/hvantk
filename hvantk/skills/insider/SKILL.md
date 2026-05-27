@@ -78,19 +78,22 @@ After aggregation, intervals are unique-in-table. Test inlines sample keys.
 - **Builder:** `create_interactome_tb` in `hvantk/skills/insider/builder.py`. Uses `_create_table_base()` with `import_func` calling `_parse_insider_bed_to_temp_tsv` (track-aware Python pre-processor) then `hl.import_table + hl.locus_interval`, and `transform_func` doing `group_by(interval).aggregate(ppi_ids=collect_as_set(ppi_id))` + `hl.sorted(hl.array(...))`. Imports `_create_table_base`, `_parse_insider_bed_to_temp_tsv`, and `_cleanup_temp_file` from `hvantk/tables/table_builders.py` (shared / reused infrastructure stays there for now).
 - **Track parser helper:** `_parse_insider_bed_to_temp_tsv` (private) lives in `hvantk/tables/table_builders.py` alongside the other shared helpers. Reads the BED, tracks `current_ppi_id` from `track name=...` headers, skips zero-length and malformed rows, writes a 4-column TSV to `hl.utils.new_temp_file(extension="tsv")`.
 - **Registry:** plugin-driven; the in-tree plugin manifest at `hvantk/skills/insider/plugin.yaml` registers the dataset under compound key `insider:variants`, which is wired into `TABLE_BUILDERS` by `_apply_plugin_registrations` in `hvantk/tables/registry.py`.
-- **CLI:** `mktable_interactome` in `hvantk/tools/build/make_table_cli.py:168` (command name `interactome`). Standard input/output/overwrite/export options.
+- **CLI:** end-to-end `hvantk reprocess insider:variants` is not yet wired — the Phase B `build_insider_interactome` builder calls `_parse_insider_bed_to_temp_tsv` on `parsed_input` as a file path, but `hvantk reprocess` always passes the `--raw-dir` directory (insider has no `lifecycle.parse`). Use the Python API for now: `create_interactome_tb(input_path=<bed>, output_path=<ht>, reference_genome="GRCh38", overwrite=True)`.
 - **Snapshot util branch:** `hvantk/tests/_snapshot_utils.py` — new `hl.tinterval` handlers added in this PR.
 - **Downloader:** out of scope (manual acquisition).
 
 ## 7. Workflow steps
 
 1. **Acquire** the BED file from http://interactomeinsider.yulab.org/downloads.html — manual download, no skill-side acquisition (file is >1 GB).
-2. **Build the Hail Table:**
-   ```bash
-   hvantk mktable interactome \
-       --raw-input /path/to/Whole_Human_Interactome_Interface_hg38.bed \
-       --output-ht /path/to/insider.ht \
-       --ref-genome GRCh38
+2. **Build the Hail Table** via the Python API (the reprocess CLI path is not yet wired — see § 6):
+   ```python
+   from hvantk.skills.insider.builder import create_interactome_tb
+   create_interactome_tb(
+       input_path="/path/to/Whole_Human_Interactome_Interface_hg38.bed",
+       output_path="/path/to/insider.ht",
+       reference_genome="GRCh38",
+       overwrite=True,
+   )
    ```
 3. **Internal flow** (implemented in `create_interactome_tb`):
    - `_parse_insider_bed_to_temp_tsv(input_path)` — Python-side BED iterator: tracks current PPI from `track name=...`, skips browser lines, skips zero-length and malformed rows, writes `contig\tstart\tend\tppi_id` to a Hail temp TSV.

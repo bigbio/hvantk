@@ -57,7 +57,7 @@ Stable notes:
 - **Dataset / collection classes:** `ExpressionAtlasDataset`, `ExpressionAtlasDatasetCollection` in `hvantk/skills/expression_atlas/shared/datasets.py`.
 - **Downloader CLI:** `download_experiments` in `hvantk/skills/expression_atlas/cli.py` (registered as `hvantk expression-atlas-download` and also re-bound under `hvantk download expression-atlas`).
 - **Lifecycle entry point:** `download_dataset` in `hvantk/skills/expression_atlas/cli.py`.
-- **Build CLI:** `hvantk mkmatrix expression-atlas` in `hvantk/tools/build/make_matrix_cli.py` (delegates to the plugin builder).
+- **Build CLI:** `hvantk reprocess expression-atlas:dataset --raw-dir <dir> --output <path>.h5ad` (delegates to the plugin builder; pass builder kwargs via `--plugin-arg key=value`).
 - **Plugin manifest:** `hvantk/skills/expression_atlas/plugin.yaml` (drives loader registration; compound dataset key `expression-atlas:dataset`).
 - **Tests:** `hvantk/skills/expression_atlas/tests/` (downloader unit + drift-probe sanity present; builder round-trip TODO).
 
@@ -70,7 +70,7 @@ When invoked to build or update a single Expression Atlas experiment:
 1. **Resolve raw paths.** Either download via
    `hvantk expression-atlas-download --accession <E-XXXX-N> --download_path /tmp/atlas`,
    or via the recipe system: `hvantk reprocess expression-atlas:dataset` (lifecycle download → builder).
-2. **Build:** `hvantk mkmatrix expression-atlas -e <expression>.tsv -s <accession>.sdrf.tsv -o <out>.h5ad`.
+2. **Build:** `hvantk reprocess expression-atlas:dataset --raw-dir <dir> --output <out>.h5ad`.
    - The builder parses the SDRF, transposes the expression matrix, attaches per-sample metadata into `obs`, annotates provenance, and writes `.h5ad`.
 3. **Validate:** TODO — once the round-trip fixture is seeded, run `pytest hvantk/skills/expression_atlas/tests`. Until then, the offline downloader unit tests + drift-probe placeholder test are what guard this plugin.
 
@@ -79,7 +79,7 @@ When invoked to build or update a single Expression Atlas experiment:
 TODO. This section will be fleshed out once per-accession drift detection lands (see § 2 catalog note and the drift-probe placeholder in `hvantk/skills/expression_atlas/drift_probe.py`). Expected shape:
 
 1. For each tracked accession in `registry/transcriptomics/datasets.json` (filter `data_source == "Expression_Atlas"`), re-run the per-accession HEAD probe; flag accessions whose `Last-Modified` or `Content-Length` changed.
-2. Re-download flagged accessions, rebuild via `hvantk mkmatrix expression-atlas`, and diff the new AnnData against the snapshotted shape / `obs` columns.
+2. Re-download flagged accessions, rebuild via `hvantk reprocess expression-atlas:dataset`, and diff the new AnnData against the snapshotted shape / `obs` columns.
 3. If the SDRF column set changed, document the new factor in § 4.
 
 ## 9. Validation contract

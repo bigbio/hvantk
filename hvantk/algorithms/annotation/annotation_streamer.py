@@ -3,7 +3,7 @@
 
 import hail as hl
 from typing import Iterator, Optional, Set
-from hvantk.core.utils.streaming import HailDataStreamer, StreamProcessor
+from hvantk.core.utils.streaming import DEFAULT_CHUNK_SIZE, HailDataStreamer, StreamProcessor
 from hvantk.core.utils.clinvar_streamer import ClinvarDataStreamer
 import logging
 
@@ -15,7 +15,7 @@ class AnnotationStreamer(HailDataStreamer):
     Base class for annotation streamers that add features to variant data.
     """
 
-    def __init__(self, name: str, annotation_source: str, chunk_size: int = 10000):
+    def __init__(self, name: str, annotation_source: str, chunk_size: int = DEFAULT_CHUNK_SIZE):
         super().__init__(name, chunk_size)
         self.annotation_source = annotation_source
         self.annotation_data = None
@@ -100,7 +100,7 @@ class VariantPredictionScoreStreamer(AnnotationStreamer):
     Adds variant prediction scores (CADD, SIFT, PolyPhen, etc.) from dbNSFP.
     """
 
-    def __init__(self, dbnsfp_path: str, chunk_size: int = 10000):
+    def __init__(self, dbnsfp_path: str, chunk_size: int = DEFAULT_CHUNK_SIZE):
         super().__init__("VariantPredictionScores", dbnsfp_path, chunk_size)
         self.dbnsfp_path = dbnsfp_path
 
@@ -166,7 +166,7 @@ class GeneExpressionStreamer(AnnotationStreamer):
     """
 
     def __init__(
-        self, expression_path: str, tissue_focus: str = "heart", chunk_size: int = 10000
+        self, expression_path: str, tissue_focus: str = "heart", chunk_size: int = DEFAULT_CHUNK_SIZE
     ):
         super().__init__("GeneExpression", expression_path, chunk_size)
         self.expression_path = expression_path
@@ -232,7 +232,7 @@ class GeneConstraintStreamer(AnnotationStreamer):
     Adds gene constraint metrics (pLI, LOEUF, etc.) and evolutionary metrics.
     """
 
-    def __init__(self, chunk_size: int = 10000):
+    def __init__(self, chunk_size: int = DEFAULT_CHUNK_SIZE):
         super().__init__("GeneConstraint", "gnomad_metrics", chunk_size)
 
     def load_annotation_data(self) -> hl.Table:
@@ -293,7 +293,7 @@ class PopulationFrequencyStreamer(AnnotationStreamer):
     Adds population frequency data from gnomAD.
     """
 
-    def __init__(self, chunk_size: int = 10000):
+    def __init__(self, chunk_size: int = DEFAULT_CHUNK_SIZE):
         super().__init__("PopulationFrequency", "gnomad_af", chunk_size)
 
     def load_annotation_data(self) -> hl.Table:

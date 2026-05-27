@@ -3,7 +3,7 @@
 
 import hail as hl
 from typing import Iterator, Optional, List, Dict, Any, Callable
-from hvantk.core.utils.streaming import HailDataStreamer, StreamProcessor
+from hvantk.core.utils.streaming import DEFAULT_CHUNK_SIZE, HailDataStreamer, StreamProcessor
 from hvantk.algorithms.hgc.constants import VCF_EXTENSION
 import logging
 import os
@@ -53,7 +53,7 @@ class FlexibleAnnotationStreamer(HailDataStreamer):
     through configuration rather than hard-coded implementations.
     """
 
-    def __init__(self, config: AnnotationConfig, chunk_size: int = 10000):
+    def __init__(self, config: AnnotationConfig, chunk_size: int = DEFAULT_CHUNK_SIZE):
         super().__init__(f"FlexibleAnnotation_{config.name}", chunk_size)
         self.config = config
         self.annotation_data = None

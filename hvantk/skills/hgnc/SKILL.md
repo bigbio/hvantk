@@ -53,7 +53,7 @@ Summary: one row per approved gene (≈43k in the live release; 5 in the fixture
 
 - Plugin manifest: `hvantk/skills/hgnc/plugin.yaml` (drives loader registration and `hvantk drift hgnc:lookup`).
 - Builder: `create_hgnc_gene_tb` in `hvantk/tables/table_builders.py` (uses `_create_table_base()` per `_conventions` § 4).
-- CLI: `hvantk mktable hgnc` defined in `hvantk/tools/build/make_table_cli.py` (`mktable_hgnc`). Supports `--include-withdrawn`, `--fields`, `--overwrite`, `--export-tsv`.
+- CLI: `hvantk reprocess hgnc:lookup --raw-dir <dir> --output <path>.ht`. Builder kwargs (`include_withdrawn`, `fields`, etc.) flow through `--plugin-arg key=value`.
 - Constants: `HGNC_GENE_FIELDS`, `HGNC_PIPE_SEPARATED_FIELDS`, `HGNC_DOWNLOAD_URL`, `HGNC_INFO_URL` in `hvantk/core/constants.py`.
 - Downloader: `hvantk/tools/hgnc_downloader.py` (CLI: `hvantk download hgnc`, wired in `hvantk/tools/plugins/download_cli.py`).
 - Registry: **not registered** in `hvantk/tables/registry.py`. HGNC is built as a one-off lookup ahead of recipe runs, not as part of a batch recipe — register only if a real recipe-driven workflow demands it.
@@ -66,7 +66,7 @@ When invoked to build, refresh, or extend the HGNC table:
 
 1. **Confirm the raw file is present.** If absent, point the user at `hvantk download hgnc --output <path>`; do not attempt to download from inside this workflow.
 2. **Verify the header.** `head -1` the TSV and confirm every key in `HGNC_GENE_FIELDS` either exists or is acceptably missing. New upstream columns are non-breaking; *missing* expected columns mean the upstream schema drifted — stop and surface the diff.
-3. **Build the Hail Table** by calling `create_hgnc_gene_tb(input_path, output_path, overwrite=…)` (Python API) or `hvantk mktable hgnc --raw-input … --output-ht … [--include-withdrawn] [--fields …]` (CLI). Both go through `_create_table_base`, so checkpointing and optional TSV export are handled.
+3. **Build the Hail Table** by calling `create_hgnc_gene_tb(input_path, output_path, overwrite=…)` (Python API) or `hvantk reprocess hgnc:lookup --raw-dir <dir> --output <path>.ht [--plugin-arg include_withdrawn=true] [--plugin-arg fields=…]` (CLI). Both go through `_create_table_base`, so checkpointing and optional TSV export are handled.
 4. **Sanity-check the output.** Confirm the table is keyed by `hgnc_id`, row count is in the expected range (~43k approved; +~5k if `--include-withdrawn`), and pipe-separated fields are arrays — not strings — for at least one known multi-value gene (e.g., BRCA1 → `alias_symbols` contains `BRCC1`).
 5. **Run the snapshot round-trip test** (§ 9). If snapshots do not yet exist, create them with `pytest … --regenerate-snapshots`, review the diff, and commit alongside the builder change.
 6. **Do not modify** the `HGNC:` prefix on `hgnc_id` keys. Downstream code relies on the prefix being preserved here and stripped at the join site.

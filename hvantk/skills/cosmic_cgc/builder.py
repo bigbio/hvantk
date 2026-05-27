@@ -1,9 +1,8 @@
 """Hail Table builder for the COSMIC Cancer Gene Census (CGC) resource.
 
-Phase K plugin promotion — inlines the import + transform logic from the
-legacy create_cosmic_cgc_tb function from hvantk.core.builders.table with
-the Phase B contract. The legacy function stays in place for backward
-compatibility.
+Phase B builder: imports the COSMIC CGC TSV, normalises tier classifications,
+optionally filters by mutation context, and emits an AnnotationTable with
+source-fingerprint provenance.
 """
 from __future__ import annotations
 
@@ -78,7 +77,7 @@ def build_cosmic_cgc_submissions(
         import_kwargs["force_bgz"] = True
     ht = hl.import_table(**import_kwargs)
 
-    # 2. Transform (inline from create_cosmic_cgc_tb's transform_func)
+    # 2. Transform
     logger.info("Renaming COSMIC CGC fields to standardized names")
     rename_map = build_rename_map(COSMIC_CGC_FIELDS, get_row_fields(ht))
     ht = ht.rename(rename_map)

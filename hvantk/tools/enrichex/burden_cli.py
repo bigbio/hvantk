@@ -10,6 +10,8 @@ import logging
 
 import click
 
+from hvantk.algorithms.enrichex.constants import GENOTYPE_AGGREGATION_METHODS
+
 logger = logging.getLogger(__name__)
 
 
@@ -72,9 +74,7 @@ def register_burden_commands(group):
 )
 @click.option(
     "--genotype-aggregation",
-    type=click.Choice(
-        ["hets", "homs", "multi_het", "homs_multi_het"]
-    ),
+    type=click.Choice(GENOTYPE_AGGREGATION_METHODS),
     default="hets",
     show_default=True,
     help="Genotype aggregation method. 'multi_het' counts genes with >= 2 het variants "
@@ -867,9 +867,7 @@ def burden_test(
 )
 @click.option(
     "--genotype-aggregation",
-    type=click.Choice(
-        ["hets", "homs", "multi_het", "homs_multi_het"]
-    ),
+    type=click.Choice(GENOTYPE_AGGREGATION_METHODS),
     default="hets",
     show_default=True,
     help="Genotype aggregation method.",

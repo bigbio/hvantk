@@ -30,7 +30,7 @@ subcommands:
       - name: name
         type: str
         required: true
-        description: Tool name (e.g., plugins, drift, mktable)
+        description: Tool name (e.g., plugins, drift, reprocess)
     outputs: ["stdout: tool metadata + subcommand list"]
   - name: errors
     description: Print per-manifest load errors with cause

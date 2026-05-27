@@ -10,7 +10,8 @@ purpose:
   short: Build GeneSetCollection JSON/GMT files for PSROC, EnrichEx, etc.
   long: |
     Each subcommand sources a different upstream: ClinGen, GenCC, and COSMIC
-    Hail Tables built by the corresponding `mktable` builders, plus a `prepare`
+    Hail Tables built by their per-plugin builders (invoke via
+    `hvantk reprocess <provider>:<dataset>`), plus a `prepare`
     subcommand that converts a plain headerless TSV into a GeneSetCollection
     with optional HGNC validation and alias resolution. Output is consumable
     by `hvantk psroc --gene-sets`, `hvantk enrichex burden -s`, and

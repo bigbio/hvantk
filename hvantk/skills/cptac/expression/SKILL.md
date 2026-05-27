@@ -54,14 +54,14 @@ Metadata file is read with the same auto-detect logic and indexed by `SampleID` 
 - **Drift probe:** `fetch_fingerprint` in `hvantk/skills/cptac/expression/drift_probe.py` (fingerprints the installed `cptac` Python package version).
 - **Plugin manifest:** `hvantk/skills/cptac/plugin.yaml` (compound dataset key `cptac:expression`).
 - **Tests:** parser/helper coverage in `hvantk/skills/cptac/expression/tests/` (drift-probe sanity); builder coverage in `hvantk/tests/test_expression_builders_anndata.py` (`TestBuildCptacAd`).
-- **CLI:** `hvantk mkmatrix cptac` in `hvantk/tools/build/make_matrix_cli.py`. The user-facing command name is unchanged from the pre-plugin layout; only the internal import path moved.
+- **CLI:** end-to-end `hvantk reprocess cptac:expression` is not yet wired — the Phase B `build_cptac_expression` builder expects `parsed_input` to be a `{"expression": <tsv>, "metadata": <tsv>}` dict produced by a `lifecycle.parse` stage that the manifest does not yet declare. Build via the Python API today (`build_cptac_expression(parsed_input, ctx, gene_id_col=…, sample_id_col=…, expression_col=…)`, or the legacy `build_cptac_ad`).
 
 ## 7. Workflow steps
 
 When invoked to build a CPTAC protein-expression AnnData:
 
 1. **Stage inputs.** Long-format expression TSV/CSV + sample metadata TSV/CSV. (Today the user produces these manually; an automated downloader for expression is a follow-up -- see `cptac:phospho` for the in-package fetcher pattern.)
-2. **Build.** `hvantk mkmatrix cptac -e <expression.tsv> -m <metadata.tsv> -o <out.h5ad>` (delegates to `build_cptac_ad`). Or import the builder directly.
+2. **Build.** Import `build_cptac_expression` (or the legacy `build_cptac_ad`) directly — see § 6 on why `hvantk reprocess cptac:expression` is not wired yet.
 3. **Validate.** `pytest hvantk/skills/cptac/expression/tests` (drift-probe sanity) + `pytest hvantk/tests/test_expression_builders_anndata.py::TestBuildCptacAd` (builder round-trip).
 
 ## 8. Update playbook

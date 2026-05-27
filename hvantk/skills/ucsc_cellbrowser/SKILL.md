@@ -48,7 +48,7 @@ Gotchas:
 - Backed-write helper: `build_ucsc_atlas_backed` in `hvantk/skills/ucsc_cellbrowser/shared/ucsc.py`.
 - Metadata loader: `load_ucsc_metadata` in `hvantk/skills/ucsc_cellbrowser/shared/ucsc.py`.
 - Provenance / save helpers: `build_anndata_metadata`, `save_anndata`, `annotate_column_summary_ad` in `hvantk/core/anndata_utils.py`.
-- CLI: `hvantk mkmatrix ucsc` in `hvantk/tools/build/make_matrix_cli.py` (`mkmatrix_ucsc`).
+- CLI: `hvantk reprocess ucsc-cellbrowser:<dataset> --raw-dir <dir> --output <path>.h5ad` (dataset is one of `default`, `adult-ctx`, `dev-ctx`). Builder kwargs flow through `--plugin-arg key=value`.
 - Registry: registered for batch / recipe use as `MATRIX_BUILDERS["ucsc-cellbrowser:default"]` (and the `adult-ctx` / `dev-ctx` siblings) via the plugin manifest at `hvantk/skills/ucsc_cellbrowser/plugin.yaml`; the legacy bare `"ucsc"` key was retired with the plugin migration.
 - Test: `hvantk/skills/ucsc_cellbrowser/tests/test_builder.py`.
 

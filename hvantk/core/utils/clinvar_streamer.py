@@ -8,7 +8,7 @@
 
 import hail as hl
 from typing import Iterator, Optional, Set, Iterable
-from hvantk.core.utils.streaming import HailDataStreamer, StreamProcessor
+from hvantk.core.utils.streaming import DEFAULT_CHUNK_SIZE, HailDataStreamer, StreamProcessor
 import logging
 
 from hvantk.core.utils.gene_sets import load_gene_set
@@ -45,7 +45,7 @@ class ClinvarDataStreamer(HailDataStreamer):
         clinvar_path: Optional[str] = None,
         gene_set: Optional[Set[str]] = None,
         disease_terms: Optional[Set[str]] = None,
-        chunk_size: int = 10000,
+        chunk_size: int = DEFAULT_CHUNK_SIZE,
         use_table_builder: bool = True,
         table_output_path: Optional[str] = None,
         overwrite_table: bool = False,

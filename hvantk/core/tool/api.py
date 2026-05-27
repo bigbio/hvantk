@@ -14,7 +14,7 @@ from typing import Literal
 
 Domain = Literal[
     "plugins",      # plugin-system runtime
-    "build",        # data-building (mktable, mkmatrix, build-1k-genome)
+    "build",        # data-building (e.g., build-1k-genome). Plugin-driven builds use `hvantk reprocess`.
     "expression",
     "annotation",
     "genesets",
@@ -52,7 +52,7 @@ class ToolRequirements:
 class ToolSpec:
     """One tool, materialised from a tool.yaml manifest."""
 
-    name: str                                 # CLI verb (e.g., "drift", "plugins", "mktable")
+    name: str                                 # CLI verb (e.g., "drift", "plugins", "reprocess")
     domain: Domain
     type: ToolType
     description: str

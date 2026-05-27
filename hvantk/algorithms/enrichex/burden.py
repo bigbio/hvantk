@@ -41,7 +41,17 @@ except ModuleNotFoundError as exc:  # pragma: no cover - depends on env
 else:
     _HAIL_IMPORT_ERROR = None
 
-from hvantk.algorithms.enrichex.constants import VARIANT_CLASS_PRESETS
+from hvantk.algorithms.enrichex.constants import (
+    DEFAULT_AF_FIELD,
+    DEFAULT_CONSEQUENCE_FIELD,
+    DEFAULT_MAX_AF,
+    DEFAULT_MIN_DP,
+    DEFAULT_MIN_GQ,
+    DEFAULT_MIN_SCORE,
+    DEFAULT_SCORE_FIELD,
+    GENOTYPE_AGGREGATION_METHODS,
+    VARIANT_CLASS_PRESETS,
+)
 from hvantk.core.models.backends import algorithm, Backend
 from hvantk.core.utils.table_utils import field_exists, resolve_field
 
@@ -85,17 +95,17 @@ class VariantFilter:
         Field name for consequence annotation
     """
 
-    max_af: float = 0.01
-    min_score: Optional[float] = 20.0
+    max_af: float = DEFAULT_MAX_AF
+    min_score: Optional[float] = DEFAULT_MIN_SCORE
     consequences: Optional[List[str]] = None
     pass_only: bool = True
-    min_gq: int = 20
-    min_dp: int = 10
+    min_gq: int = DEFAULT_MIN_GQ
+    min_dp: int = DEFAULT_MIN_DP
 
     # Field name mappings (configurable for different schemas)
-    af_field: str = "gnomad_af"
-    score_field: str = "cadd_phred"
-    consequence_field: str = "consequence"
+    af_field: str = DEFAULT_AF_FIELD
+    score_field: str = DEFAULT_SCORE_FIELD
+    consequence_field: str = DEFAULT_CONSEQUENCE_FIELD
 
     def to_hail_expr(
         self, mt: hl.MatrixTable, row_only: bool = True
@@ -339,11 +349,10 @@ def compute_geneset_burden_mt(
     logger.info(f"  Genotype aggregation: {genotype_aggregation}")
 
     # Validate genotype aggregation method
-    valid_methods = ["hets", "homs", "multi_het", "homs_multi_het"]
-    if genotype_aggregation not in valid_methods:
+    if genotype_aggregation not in GENOTYPE_AGGREGATION_METHODS:
         raise ValueError(
             f"Invalid genotype_aggregation: {genotype_aggregation}. "
-            f"Must be one of: {valid_methods}"
+            f"Must be one of: {GENOTYPE_AGGREGATION_METHODS}"
         )
 
     # Check required field exists
@@ -1444,11 +1453,10 @@ def permutation_burden_test(
     logger.info("  Permutations: %d", n_permutations)
     logger.info("  Length matched: %s", length_matched)
 
-    valid_methods = ["hets", "homs", "multi_het", "homs_multi_het"]
-    if genotype_aggregation not in valid_methods:
+    if genotype_aggregation not in GENOTYPE_AGGREGATION_METHODS:
         raise ValueError(
             f"Invalid genotype_aggregation: {genotype_aggregation}. "
-            f"Must be one of: {valid_methods}"
+            f"Must be one of: {GENOTYPE_AGGREGATION_METHODS}"
         )
 
     # Step 1: Compute per-gene burden MT (all genes, not just gene set genes)

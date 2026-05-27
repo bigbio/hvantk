@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 import hail as hl
 import pandas as pd
 
-from hvantk.core.utils.streaming import HailDataStreamer
+from hvantk.core.utils.streaming import DEFAULT_CHUNK_SIZE, HailDataStreamer
 from hvantk.core.utils.gene_sets import load_gene_sets_from_dict
 from hvantk.core.utils.table_utils import get_row_fields
 
@@ -57,7 +57,7 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
     def __init__(
         self,
         table_path: str,
-        chunk_size: int = 10000,
+        chunk_size: int = DEFAULT_CHUNK_SIZE,
         init_hail: bool = True,
     ):
         super().__init__(

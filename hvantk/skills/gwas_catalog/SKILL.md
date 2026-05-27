@@ -77,7 +77,7 @@ Type coercions in transform (all string at import):
 
 - **Builder:** `create_gwas_catalog_tb` in `hvantk/skills/gwas_catalog/builder.py`, via `_create_table_base()`. Signature per conventions §5. A re-export shim in `hvantk/tables/table_builders.py` keeps the old import path working.
 - **Registry:** registered via the plugin manifest at `hvantk/skills/gwas_catalog/plugin.yaml` (`gwas-catalog:associations`). Plugin discovery wires it into `TABLE_BUILDERS` at import time.
-- **CLI:** `mktable_gwas_catalog` in `hvantk/tools/build/make_table_cli.py` (command name `gwas-catalog`), decorated with `@_raw_input_opt` / `@_output_ht_opt`.
+- **CLI:** `hvantk reprocess gwas-catalog:associations --raw-dir <dir> --output <path>.ht --skip-download` (gwas-catalog declares no `lifecycle.download`, so `--skip-download` is always required; `<dir>` must contain the unzipped TSV). Builder kwargs (`reference_genome`) flow through `--plugin-arg key=value`.
 - **Catalog wiring:** see §2. **Downloader:** out of scope.
 
 ## 7. Workflow steps

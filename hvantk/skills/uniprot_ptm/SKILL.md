@@ -49,7 +49,7 @@ Row schema includes: `locus`, `chrom`, `codon_start`, `codon_end`, `strand`, `un
 - Builder: `create_ptm_sites_tb` in `hvantk/skills/uniprot_ptm/builder.py` (uses `_create_table_base()` per `_conventions` § 4).
 - Downloader CLI: `download_cmd` (Click `uniprot-ptm-download`) in `hvantk/skills/uniprot_ptm/cli.py`; lifecycle entry-point `download_dataset(raw_dir=...)`. Wired into the umbrella `hvantk download uniprot-ptm` group in `hvantk/tools/plugins/download_cli.py`.
 - Dataset class: `UniProtPTMDataset` in `hvantk/skills/uniprot_ptm/shared/datasets.py`.
-- Build CLI: `hvantk mktable ptm-sites` in `hvantk/tools/build/make_table_cli.py` (user-facing name preserved).
+- Build CLI: `hvantk reprocess uniprot-ptm:sites --raw-dir <dir> --output <path>.ht`. Builder kwargs (`reference_genome`, `flanking_codons`, etc.) flow through `--plugin-arg key=value`.
 - PTM mapping pipeline (out-of-plugin, intentionally): `hvantk/ptm/pipeline.py` (`map_ptm_sites`, `download_uniprot_ptm`) — the analysis tooling that produces the *mapped* TSV consumed by the builder.
 - Constants: `UNIPROT_API_URL`, `UNIPROT_HUMAN_PTM_QUERY`, `UNIPROT_API_FIELDS`, `UNIPROT_BATCH_SIZE`, `PTM_OUTPUT_COLUMNS` in `hvantk/ptm/constants.py`.
 - Tests: `hvantk/skills/uniprot_ptm/tests/test_drift_probe.py`. The end-to-end builder is exercised indirectly via `hvantk/tests/test_ptm.py` (mapping + builder integration).
@@ -61,7 +61,7 @@ When invoked to build or update:
 1. Verify Hail is available (defer to the SessionStart hook).
 2. Download the raw UniProt TSV: `hvantk download uniprot-ptm --output-dir <raw_dir>` (or call `UniProtPTMDataset.from_latest().download(raw_dir)`).
 3. Run the mapping pipeline to attach genomic coordinates: see `hvantk.algorithms.ptm.pipeline.map_ptm_sites`. Output is the mapped TSV consumed by step 4.
-4. Build via Python (`create_ptm_sites_tb(input_path, output_path, reference_genome=..., flanking_codons=..., overwrite=True)`) or CLI (`hvantk mktable ptm-sites --raw-input ... --output-ht ...`).
+4. Build via Python (`create_ptm_sites_tb(input_path, output_path, reference_genome=..., flanking_codons=..., overwrite=True)`) or CLI (`hvantk reprocess uniprot-ptm:sites --raw-dir <dir> --output <path>.ht --plugin-arg reference_genome=... --plugin-arg flanking_codons=...`).
 5. Sanity-check the output: row count plausible (hundreds of thousands across sources); `locus` populated; `flanking_interval` length is roughly `(codon_end - codon_start) + 2 * flanking_codons * 3`.
 6. Run validation: `pytest hvantk/skills/uniprot_ptm/tests -m hail`.
 

@@ -60,7 +60,7 @@ Per `_conventions` § 9, set names are unique-in-table for a single GMT, so **no
 
 - **Builder:** `create_msigdb_tb` in `hvantk/skills/msigdb/builder.py`, via `_create_table_base()`. Signature per `_conventions` § 5: `(input_path, output_path, overwrite=False, export_tsv=False)`. A re-export shim in `hvantk/tables/table_builders.py` keeps the old import path working.
 - **Registry:** registered via the plugin manifest at `hvantk/skills/msigdb/plugin.yaml` (`msigdb:genesets`). Plugin discovery wires it into `TABLE_BUILDERS` at import time.
-- **CLI:** `mktable_msigdb` in `hvantk/tools/build/make_table_cli.py` (command name `msigdb`), decorated with `@_raw_input_opt` / `@_output_ht_opt` / `@_overwrite_opt` / `@_export_tsv_opt`. No `--ref-genome` flag (gene-set membership is genome-independent).
+- **CLI:** `hvantk reprocess msigdb:genesets --raw-dir <dir> --output <path>.ht --skip-download` (msigdb declares no `lifecycle.download`, so `--skip-download` is always required; `<dir>` must contain the unzipped `.gmt`). The Phase B builder takes no kwargs; no reference-genome arg — gene-set membership is genome-independent.
 - **Catalog wiring:** see § 2. **Downloader:** out of scope (manual acquisition).
 
 ## 7. Workflow steps

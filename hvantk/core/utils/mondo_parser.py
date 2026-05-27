@@ -7,7 +7,6 @@ with MONDO-specific categories and download logic.
 """
 
 import logging
-from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
 from hvantk.core.utils.obo_parser import BaseOboOntology
@@ -140,52 +139,3 @@ class MondoOntology(BaseOboOntology):
         if mondo_id.isdigit():
             return f"MONDO:{mondo_id.zfill(7)}"
         return f"MONDO:{mondo_id}"
-
-
-def download_mondo_obo(output_path: str, overwrite: bool = False) -> str:
-    """
-    Download the latest MONDO OBO file.
-
-    Parameters
-    ----------
-    output_path : str
-        Path to save the downloaded file.
-    overwrite : bool
-        Whether to overwrite existing file.
-
-    Returns
-    -------
-    str
-        Path to the downloaded file.
-    """
-    import urllib.request
-    import ssl
-
-    output_path = Path(output_path)
-
-    if output_path.exists() and not overwrite:
-        logger.info(f"MONDO OBO file already exists at {output_path}")
-        return str(output_path)
-
-    url = (
-        "https://github.com/monarch-initiative/mondo/releases/latest/download/mondo.obo"
-    )
-    logger.info(f"Downloading MONDO ontology from {url}")
-
-    # Create SSL context that doesn't verify (for environments with cert issues)
-    ssl_context = ssl.create_default_context()
-    ssl_context.check_hostname = False
-    ssl_context.verify_mode = ssl.CERT_NONE
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    try:
-        urllib.request.urlretrieve(url, output_path)
-    except Exception:
-        # Try with unverified SSL
-        with urllib.request.urlopen(url, context=ssl_context) as response:
-            with open(output_path, "wb") as f:
-                f.write(response.read())
-
-    logger.info(f"Downloaded MONDO ontology to {output_path}")
-    return str(output_path)

@@ -96,7 +96,7 @@ For eqtlgen, both `af` and `maf` remain `hl.missing` (the source distributes nei
   - `_import_eqtl_eqtlgen` (eqtlgen TSV, separate schema).
 - **Source constants:** `EQTL_SOURCES = ("gtex_v11", "gtex_v8", "eqtlgen")` in `hvantk/qtlcascade/constants.py:77`.
 - **Registry:** `TABLE_BUILDERS["eqtl"] = create_table_adapter("hvantk.core.builders.table", "create_eqtl_tb")` in `hvantk/core/plugin/registry.py`.
-- **CLI:** `mktable_eqtl` in `hvantk/tools/build/make_table_cli.py:604` (command name `eqtl`), with `--source` flag (Click choice, default `gtex_v11`), `--tissue`, `--p-threshold`, plus the standard input/output/overwrite/export options.
+- **CLI:** `hvantk reprocess gtex-eqtl:eqtls --raw-dir <dir> --output <path>.ht`. Source-specific kwargs (`source`, `tissue`, `p_threshold`, `reference_genome`) flow through `--plugin-arg key=value`.
 - **Downstream consumer:** `hvantk/qtlcascade/` — the eQTL Hail Table is one half of the eQTL ⊕ pQTL cascade join.
 
 ## 7. Workflow steps
@@ -115,13 +115,14 @@ For eqtlgen, both `af` and `maf` remain `hl.missing` (the source distributes nei
 **Default usage (CLI, single tissue):**
 
 ```bash
-hvantk mktable eqtl \
-    --raw-input /path/to/gtex_v11_eqtl/ \
-    --output-ht /path/to/gtex_v11_eqtl_Liver.ht \
-    --source gtex_v11 \
-    --tissue Liver \
-    --p-threshold 0 \
-    --ref-genome GRCh38
+hvantk reprocess gtex-eqtl:eqtls \
+    --raw-dir /path/to/gtex_v11_eqtl/ \
+    --output /path/to/gtex_v11_eqtl_Liver.ht \
+    --skip-download \
+    --plugin-arg source=gtex_v11 \
+    --plugin-arg tissue=Liver \
+    --plugin-arg p_threshold=0 \
+    --plugin-arg reference_genome=GRCh38
 ```
 
 ## 8. Update playbook
