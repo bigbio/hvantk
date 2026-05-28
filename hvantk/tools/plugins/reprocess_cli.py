@@ -33,6 +33,19 @@ def _coerce_plugin_arg_value(value: str) -> Any:
     the function has a single exit path per branch and does not swallow
     exceptions silently.
     """
+    # List coercion: if the raw value contains a comma, treat it as a
+    # comma-separated list and recursively coerce each element. Builders
+    # that declare list-typed params (e.g. chromosomes: list[str]) thus
+    # receive a real list instead of the literal "chr1,chr2,chrX" string.
+    # Trade-off: a single element containing a comma cannot be expressed
+    # via --plugin-arg under this scheme; in practice plugin args don't
+    # carry commas in single values (issue #119, Option A).
+    if "," in value:
+        return [
+            _coerce_plugin_arg_value(part.strip())
+            for part in value.split(",")
+            if part.strip()
+        ]
     low = value.lower()
     if low == "true":
         return True
