@@ -24,7 +24,7 @@ from tqdm import tqdm
 from hvantk.skills.expression_atlas.shared.datasets import (
     ExpressionAtlasDatasetCollection,
 )
-from hvantk.core.constants import EXPRESSION_ATLAS_JSON_FILE_PATH
+from hvantk.skills.expression_atlas.shared.constants import EXPRESSION_ATLAS_JSON_FILE_PATH
 
 logger = logging.getLogger(__name__)
 

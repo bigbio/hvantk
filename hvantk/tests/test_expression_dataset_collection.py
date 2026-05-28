@@ -4,7 +4,7 @@ from hvantk.skills.expression_atlas.shared.datasets import (
     ExpressionAtlasDatasetCollection,
     ExpressionAtlasDataset,
 )
-from hvantk.core.constants import EXPRESSION_ATLAS_JSON_FILE_PATH
+from hvantk.skills.expression_atlas.shared.constants import EXPRESSION_ATLAS_JSON_FILE_PATH
 
 
 def test_from_json_creates_dataset_objects(tmp_path):
