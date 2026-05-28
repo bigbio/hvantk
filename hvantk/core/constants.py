@@ -9,25 +9,6 @@ logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parent
 logger.debug(f"Base directory: {BASE_DIR}")
 
-## Expression Atlas base URL
-EXPRESSION_ATLAS_BASE_URL = "https://www.ebi.ac.uk/gxa/experiments-content"
-logger.debug(f"Expression Atlas base URL: {EXPRESSION_ATLAS_BASE_URL}")
-
-# Path to the new unified registry system
-REGISTRY_ROOT_PATH = BASE_DIR.parent / "resources" / "registry"
-
-# Backward compatibility - path to transcriptomics datasets (replaces expression_atlas.json)
-TRANSCRIPTOMICS_DATASETS_PATH = REGISTRY_ROOT_PATH / "transcriptomics" / "datasets.json"
-
-# Legacy path for compatibility (deprecated)
-EXPRESSION_ATLAS_JSON_FILE_PATH = (
-    BASE_DIR.parent / "resources" / "expression_atlas.json"
-)
-
-logger.debug(f"Registry root path: {REGISTRY_ROOT_PATH}")
-logger.debug(f"Transcriptomics datasets path: {TRANSCRIPTOMICS_DATASETS_PATH}")
-logger.debug(f"Legacy Expression Atlas path: {EXPRESSION_ATLAS_JSON_FILE_PATH}")
-
 # ClinGen Gene-Disease Validity
 CLINGEN_DOWNLOADS_URL = "https://search.clinicalgenome.org/kb/downloads"
 CLINGEN_BASE_URL = "https://search.clinicalgenome.org/kb/gene-validity/download"
@@ -218,10 +199,6 @@ ALPHAGENOME_DEFAULT_REQUEST_TIMEOUT = 120
 # Explicit public API for this module
 __all__ = [
     "BASE_DIR",
-    "EXPRESSION_ATLAS_BASE_URL",
-    "REGISTRY_ROOT_PATH",
-    "TRANSCRIPTOMICS_DATASETS_PATH",
-    "EXPRESSION_ATLAS_JSON_FILE_PATH",  # Backward compatibility
     "CLINGEN_DOWNLOADS_URL",
     "CLINGEN_BASE_URL",
     "CLINGEN_FILE_PREFIX",

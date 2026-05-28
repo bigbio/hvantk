@@ -20,7 +20,7 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes every conve
 
 - **Provider:** EBI Expression Atlas (<https://www.ebi.ac.uk/gxa>).
 - **Catalog entry:** the per-accession dataset list lives in `hvantk/skills/expression_atlas/catalog/datasets.json` (filterable via `data_source == "Expression_Atlas"`). Browse with `hvantk catalog list --data-source Expression_Atlas` or `hvantk catalog show E-GTEX-8`. A top-level `expression-atlas` provider-level catalog entry remains a TODO; when added, point the plugin manifest's `source.catalog_ref` at it and remove this note.
-- Per-accession download URLs derive from `EXPRESSION_ATLAS_BASE_URL` in `hvantk/core/constants.py` and the FTP prefix `/pub/databases/microarray/data/atlas/experiments/<accession>/`.
+- Per-accession download URLs derive from `EXPRESSION_ATLAS_BASE_URL` in `hvantk/skills/expression_atlas/shared/constants.py` and the FTP prefix `/pub/databases/microarray/data/atlas/experiments/<accession>/`.
 
 ## 3. Backend choice + reasoning
 
