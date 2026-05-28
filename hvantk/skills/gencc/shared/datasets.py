@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from hvantk.core.constants import GENCC_BASE_URL, GENCC_FILE_PREFIX
+from hvantk.skills.gencc.shared.constants import GENCC_BASE_URL, GENCC_FILE_PREFIX
 from hvantk.core.utils.file_utils import download_file, sanitize_tsv
 
 logger = logging.getLogger(__name__)

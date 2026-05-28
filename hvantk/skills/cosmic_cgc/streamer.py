@@ -15,7 +15,7 @@ from typing import Dict, Optional, Set
 import hail as hl
 import pandas as pd
 
-from hvantk.core.constants import (
+from hvantk.skills.cosmic_cgc.shared.constants import (
     COSMIC_CGC_CLASSIFICATION_LEVELS,
     COSMIC_MUTATION_CONTEXTS,
 )

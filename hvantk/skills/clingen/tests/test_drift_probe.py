@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import requests_mock
 
-from hvantk.core.constants import CLINGEN_BASE_URL, CLINGEN_FILE_PREFIX
+from hvantk.skills.clingen.shared.constants import CLINGEN_BASE_URL, CLINGEN_FILE_PREFIX
 from hvantk.skills.clingen.drift_probe import fetch_fingerprint
 
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import requests_mock
 
-from hvantk.core.constants import GENCC_BASE_URL, GENCC_FILE_PREFIX
+from hvantk.skills.gencc.shared.constants import GENCC_BASE_URL, GENCC_FILE_PREFIX
 from hvantk.skills.gencc.drift_probe import fetch_fingerprint
 
 

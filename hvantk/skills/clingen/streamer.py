@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 import hail as hl
 import pandas as pd
 
-from hvantk.core.constants import CLINGEN_CLASSIFICATION_LEVELS
+from hvantk.skills.clingen.shared.constants import CLINGEN_CLASSIFICATION_LEVELS
 from hvantk.core.utils.gene_disease_streamer import GeneDiseaseValidityStreamer
 
 logger = logging.getLogger(__name__)

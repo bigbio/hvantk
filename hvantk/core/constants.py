@@ -9,112 +9,6 @@ logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parent
 logger.debug(f"Base directory: {BASE_DIR}")
 
-# ClinGen Gene-Disease Validity
-CLINGEN_DOWNLOADS_URL = "https://search.clinicalgenome.org/kb/downloads"
-CLINGEN_BASE_URL = "https://search.clinicalgenome.org/kb/gene-validity/download"
-CLINGEN_FILE_PREFIX = "Clingen-Gene-Disease-Summary"
-CLINGEN_HEADER_SKIP_LINES = 6
-
-CLINGEN_GENE_DISEASE_FIELDS = {
-    "GENE SYMBOL": "gene_symbol",
-    "GENE ID (HGNC)": "hgnc_id",
-    "DISEASE LABEL": "disease_label",
-    "DISEASE ID (MONDO)": "mondo_id",
-    "MOI": "mode_of_inheritance",
-    "SOP": "sop_version",
-    "CLASSIFICATION": "classification",
-    "ONLINE REPORT": "report_url",
-    "CLASSIFICATION DATE": "classification_date",
-    "GCEP": "gene_curation_expert_panel",
-}
-
-CLINGEN_CLASSIFICATION_LEVELS = [
-    "Definitive",
-    "Strong",
-    "Moderate",
-    "Limited",
-    "Disputed",
-    "Refuted",
-    "No Known Disease Relationship",
-]
-
-logger.debug(f"ClinGen base URL: {CLINGEN_BASE_URL}")
-
-# GenCC (Gene Curation Coalition)
-GENCC_BASE_URL = (
-    "https://thegencc.org/download/action/submissions-export-tsv?format=new"
-)
-GENCC_FILE_PREFIX = "gencc-submissions"
-
-GENCC_SUBMISSION_FIELDS = {
-    "sgc_id": "sgc_id",
-    "gene_curie": "hgnc_id",
-    "gene_symbol": "gene_symbol",
-    "disease_curie": "mondo_id",
-    "disease_title": "disease_label",
-    "disease_original_curie": "disease_original_id",
-    "disease_original_title": "disease_original_label",
-    "classification_title": "classification",
-    "moi_title": "mode_of_inheritance",
-    "submitter_title": "submitter",
-    "submitted_as_date": "submission_date",
-    "submitted_as_public_report_url": "report_url",
-    "submitted_as_pmids": "pmids",
-}
-
-GENCC_CLASSIFICATION_LEVELS = [
-    "Definitive",
-    "Strong",
-    "Moderate",
-    "Supportive",
-    "Limited",
-    "Disputed Evidence",
-    "Refuted Evidence",
-    "No Known Disease Relationship",
-]
-
-logger.debug(f"GenCC base URL: {GENCC_BASE_URL}")
-
-# COSMIC Cancer Gene Census (CGC)
-COSMIC_CGC_FILE_PREFIX = "cosmic-cgc"
-
-COSMIC_CGC_FIELDS = {
-    "Gene Symbol": "gene_symbol",
-    "Name": "gene_name",
-    "Entrez GeneId": "entrez_id",
-    "Genome Location": "genome_location",
-    "Tier": "classification",
-    "Hallmark": "hallmark",
-    "Chr Band": "chr_band",
-    "Somatic": "somatic",
-    "Germline": "germline",
-    "Tumour Types(Somatic)": "tumour_types_somatic",
-    "Tumour Types(Germline)": "tumour_types_germline",
-    "Cancer Syndrome": "cancer_syndrome",
-    "Tissue Type": "tissue_type",
-    "Molecular Genetics": "molecular_genetics",
-    "Role in Cancer": "role_in_cancer",
-    "Mutation Types": "mutation_types",
-    "Translocation Partner": "translocation_partner",
-    "Other Germline Mut": "other_germline_mut",
-    "Other Syndrome": "other_syndrome",
-    "Synonyms": "synonyms",
-}
-
-COSMIC_CGC_CLASSIFICATION_LEVELS = [
-    "Tier 1",
-    "Tier 2",
-]
-
-COSMIC_TISSUE_TYPES = {
-    "E": "Epithelial",
-    "L": "Lymphoid",
-    "M": "Mesenchymal",
-    "O": "Other",
-}
-
-COSMIC_MUTATION_CONTEXTS = ["somatic", "germline", "both"]
-
 # HGNC Gene Nomenclature
 HGNC_DOWNLOAD_URL = "https://storage.googleapis.com/public-download-files/hgnc/tsv/tsv/hgnc_complete_set.txt"
 HGNC_INFO_URL = "https://www.genenames.org/download/statistics-and-files/"
@@ -199,25 +93,10 @@ ALPHAGENOME_DEFAULT_REQUEST_TIMEOUT = 120
 # Explicit public API for this module
 __all__ = [
     "BASE_DIR",
-    "CLINGEN_DOWNLOADS_URL",
-    "CLINGEN_BASE_URL",
-    "CLINGEN_FILE_PREFIX",
-    "CLINGEN_HEADER_SKIP_LINES",
-    "CLINGEN_GENE_DISEASE_FIELDS",
-    "CLINGEN_CLASSIFICATION_LEVELS",
     "HGNC_DOWNLOAD_URL",
     "HGNC_INFO_URL",
     "HGNC_GENE_FIELDS",
     "HGNC_PIPE_SEPARATED_FIELDS",
-    "GENCC_BASE_URL",
-    "GENCC_FILE_PREFIX",
-    "GENCC_SUBMISSION_FIELDS",
-    "GENCC_CLASSIFICATION_LEVELS",
-    "COSMIC_CGC_FILE_PREFIX",
-    "COSMIC_CGC_FIELDS",
-    "COSMIC_CGC_CLASSIFICATION_LEVELS",
-    "COSMIC_TISSUE_TYPES",
-    "COSMIC_MUTATION_CONTEXTS",
     "CLINVAR_FTP_BASE",
     "CLINVAR_FTP_BASE_GRCh37",
     "CLINVAR_PATHOGENIC_LABELS",

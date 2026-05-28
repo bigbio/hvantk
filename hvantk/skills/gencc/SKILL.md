@@ -16,7 +16,7 @@ This skill covers BUILD and UPDATE of the GenCC Submissions Hail Table. It does 
 
 ## 2. Source identity
 
-Provider metadata (URL, license, citation) lives in the plugin's `catalog/datasets.json` (or query it with `hvantk catalog show <accession>` once a GenCC catalog entry exists). The URL/version constants live in `hvantk/core/constants.py` (`GENCC_BASE_URL`, `GENCC_FILE_PREFIX`). Read those files; do not restate.
+Provider metadata (URL, license, citation) lives in the plugin's `catalog/datasets.json` (or query it with `hvantk catalog show <accession>` once a GenCC catalog entry exists). The URL/version constants live in `hvantk/skills/gencc/shared/constants.py` (`GENCC_BASE_URL`, `GENCC_FILE_PREFIX`). Read those files; do not restate.
 
 Stable provider notes the catalog will not capture:
 - GenCC serves a single rolling submissions TSV; there are no dated archives. Freshness is determined by the file's HTTP `Last-Modified` header (when present) and by the `submitted_as_date` values in the body.
@@ -31,7 +31,7 @@ Stable provider notes the catalog will not capture:
 - File: tab-separated, optional double-quoted fields. The column header is the **first** non-blank line and begins with `sgc_id`. There is no metadata preamble (unlike ClinGen).
 - Preprocessing: handled inside the downloader (`sanitize_tsv` strips multiline quoted fields and blank lines). The builder itself calls `hl.import_table` directly on the sanitized TSV.
 - Import: `hl.import_table(delimiter="\t", impute=False, min_partitions=10)`. All fields stay as strings; no type inference.
-- Field renaming is driven by `GENCC_SUBMISSION_FIELDS` (`hvantk/core/constants.py`). Notable renames: `gene_curie → hgnc_id`, `gene_symbol → gene_symbol`, `disease_curie → mondo_id`, `disease_title → disease_label`, `classification_title → classification`, `moi_title → mode_of_inheritance`, `submitter_title → submitter`, `submitted_as_date → submission_date`, `submitted_as_public_report_url → report_url`, `submitted_as_pmids → pmids`.
+- Field renaming is driven by `GENCC_SUBMISSION_FIELDS` (`hvantk/skills/gencc/shared/constants.py`). Notable renames: `gene_curie → hgnc_id`, `gene_symbol → gene_symbol`, `disease_curie → mondo_id`, `disease_title → disease_label`, `classification_title → classification`, `moi_title → mode_of_inheritance`, `submitter_title → submitter`, `submitted_as_date → submission_date`, `submitted_as_public_report_url → report_url`, `submitted_as_pmids → pmids`.
 - ID prefix stripping: the builder strips the `HGNC:` and `MONDO:` prefixes from `hgnc_id` and `mondo_id` (asymmetric with HGNC, symmetric with ClinGen).
 - Classification levels (`GENCC_CLASSIFICATION_LEVELS`, strongest first): `Definitive`, `Strong`, `Moderate`, `Supportive`, `Limited`, `Disputed Evidence`, `Refuted Evidence`, `No Known Disease Relationship`. The builder annotates `classification_level` as the numeric position (lower is stronger); unknown values get `len(GENCC_CLASSIFICATION_LEVELS)` and are clamped to the last valid index in the aggregation branches.
 - Keying: default `key_by="gene_disease_submitter"` keys by `(hgnc_id, mondo_id, submitter)` (one row per submitter assertion). `key_by="gene_disease"` aggregates across submitters and re-derives `classification`/`classification_level` from `max_classification_level`. `key_by="gene"` aggregates all diseases per gene.
@@ -51,7 +51,7 @@ Row schema includes: `sgc_id`, `hgnc_id`, `gene_symbol`, `mondo_id`, `disease_la
 - Dataset class: `GenCCSubmissionsDataset` in `hvantk/skills/gencc/shared/datasets.py`.
 - Build CLI: `hvantk reprocess gencc:submissions --raw-dir <dir> --output <path>.ht` (skip individual stages with `--skip-download` / `--skip-parse` / `--skip-build`; pass builder kwargs via `--plugin-arg key=value`, e.g. `--plugin-arg min_classification=Strong`).
 - Streamer (out-of-plugin, intentionally): `hvantk/data/gencc_streamer.py` (`GenCCStreamer`, subclass of `GeneDiseaseValidityStreamer`); shared with the ClinGen/gene-disease streamer family. Re-exported through `hvantk/data/__init__.py`.
-- Constants: `GENCC_BASE_URL`, `GENCC_FILE_PREFIX`, `GENCC_SUBMISSION_FIELDS`, `GENCC_CLASSIFICATION_LEVELS` in `hvantk/core/constants.py`.
+- Constants: `GENCC_BASE_URL`, `GENCC_FILE_PREFIX`, `GENCC_SUBMISSION_FIELDS`, `GENCC_CLASSIFICATION_LEVELS` in `hvantk/skills/gencc/shared/constants.py`.
 - Tests: `hvantk/skills/gencc/tests/test_gencc.py` (dataset class + builder-driven streamer tests), `test_drift_probe.py`.
 
 ## 7. Workflow steps
