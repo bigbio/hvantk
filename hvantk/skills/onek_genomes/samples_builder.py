@@ -29,16 +29,11 @@ def build_onek_genomes_samples(parsed_input, ctx, **params):
             "or place the file there manually."
         )
     logger.info("Importing IGSR samples from %s", samples_path)
-    # The panel TSV has trailing tabs in the header; use impute=False with explicit types
-    # to avoid Hail inferring extra columns from those tabs.
     ht = hl.import_table(
         str(samples_path),
-        impute=False,
-        types={"sample": "str", "pop": "str", "super_pop": "str", "gender": "str"},
+        impute=True,
         key="sample",
     )
-    # Keep only the named columns (discard unnamed columns from trailing tabs)
-    ht = ht.select(pop=ht.pop, super_pop=ht.super_pop, gender=ht.gender)
     return AnnotationTable.from_hail(
         ht, provenance=ctx.provenance(schema_id="onek-genomes-samples-v1"),
     )

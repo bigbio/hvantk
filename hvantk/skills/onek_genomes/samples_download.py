@@ -32,5 +32,8 @@ def download_igsr_samples(*, raw_dir, **params) -> None:
     logger.info("Downloading 1KG samples panel from %s", _IGSR_URL)
     resp = requests.get(_IGSR_URL, timeout=_TIMEOUT_S)
     resp.raise_for_status()
-    target.write_bytes(resp.content)
-    logger.info("Wrote %d bytes to %s", len(resp.content), target)
+    # The upstream panel has trailing tabs on the header line — strip them so
+    # Hail's import_table sees consistent field counts across header and data.
+    cleaned = "\n".join(line.rstrip() for line in resp.text.splitlines()) + "\n"
+    target.write_text(cleaned, encoding="utf-8")
+    logger.info("Wrote %d bytes to %s", len(cleaned), target)
