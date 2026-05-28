@@ -163,7 +163,6 @@ hvantk/
 │
 ├── tools/                      # CLI wiring + workflow orchestration
 │   ├── plugins/                # download, drift, reprocess, plugins list
-│   ├── build/                  # build_1k_genome (standalone reference panel build)
 │   ├── hgc/                    # joint-genotyping CLI (lazy-loaded)
 │   ├── ancestry/, enrichex/, expression/, ptm/, qtl/, infra/, genesets/
 │   └── tools_cli.py            # tool registry inspection

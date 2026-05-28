@@ -11,16 +11,14 @@ purpose:
   long: |
     Re-exports a handful of infra commands as subcommands of `utils`:
     `check-install` (post-install Hail smoke test), `catalog` (artifact
-    catalog list/show/build), `build-1k-genome` (genome MT builder), and
-    `validate-bgzf` / `convert-bgz` (file utilities). New infra commands
-    can be added with one `add_command` line in `utils_cli.py`.
+    catalog list/show/build), and `validate-bgzf` / `convert-bgz` (file
+    utilities). New infra commands can be added with one `add_command`
+    line in `utils_cli.py`.
 subcommands:
   - name: check-install
     description: Post-install smoke test (proxy + Hail + synthetic MT)
   - name: catalog
     description: Inspect and invoke hvantk artifact catalog entries
-  - name: build-1k-genome
-    description: Build a Hail MatrixTable from local 1000 Genomes VCF files
   - name: validate-bgzf
     description: Validate BGZF block integrity of BGZF-compressed files
   - name: convert-bgz

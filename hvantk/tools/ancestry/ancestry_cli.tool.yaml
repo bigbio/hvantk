@@ -10,7 +10,7 @@ purpose:
   short: PCA + classifier-based ancestry prediction from genotype MatrixTables.
   long: |
     Aligns a query MatrixTable with a labeled reference MatrixTable (e.g.
-    1000 Genomes built via `hvantk build-1k-genome`), runs PCA-based feature
+    1000 Genomes built via `hvantk reprocess onek-genomes:variants`), runs PCA-based feature
     extraction, fits a classifier on reference ancestry labels, and writes
     predictions back as a Hail Table plus TSV + serialized model + HTML
     report. Variant filters (AF, call rate) and ancestry column are

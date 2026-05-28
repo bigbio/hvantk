@@ -14,7 +14,7 @@ from typing import Literal
 
 Domain = Literal[
     "plugins",      # plugin-system runtime
-    "build",        # data-building (e.g., build-1k-genome). Plugin-driven builds use `hvantk reprocess`.
+    "build",        # data-building (post-#116 retirement: empty; reserved for future non-plugin builders). Plugin-driven builds use `hvantk reprocess`.
     "expression",
     "annotation",
     "genesets",

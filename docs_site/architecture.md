@@ -152,10 +152,6 @@ The codebase is organized by function and biological domain:
 - Generic Hail helpers live in `hvantk/core/utils/hail_helpers.py`
   (`create_table_base`, `cleanup_temp_file`); QTL-shared helpers in
   `hvantk/core/utils/qtl_helpers.py`.
-- **Exception:** the 1000 Genomes builder
-  (`hvantk/core/builders/genome.py`) is the one remaining non-plugin
-  builder, tracked by [#116] for plugin migration. Until then, the legacy
-  `hvantk build-1k-genome` CLI remains the entry point for that dataset.
 
 **Analysis Pipelines** (separate modules):
 - `hgc/` - Joint genotyping and cohort analysis

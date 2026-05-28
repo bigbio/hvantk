@@ -179,29 +179,36 @@ def main(
                 f"No recalibrated genotype VCFs found in {vcf_dir}"
             )
 
-        # -- Build MatrixTable --
-        from hvantk.core.builders.genome import build_1k_genome_mt, resolve_delimiter
+        # -- Build via hvantk reprocess onek-genomes:variants --
+        # The legacy `build_1k_genome_mt` Python helper was retired in #116;
+        # all builds now route through the plugin system.
+        import subprocess
 
-        mt = build_1k_genome_mt(
-            input_vcfs=stage_dir,
-            output_mt=output_mt,
-            sample_annotations=sample_annotations_path,
-            sample_annotations_delimiter=resolve_delimiter(
-                sample_annotations_delimiter
-            ),
-            reference_genome=reference_genome,
-            chromosomes=chrom_list,
-            overwrite=overwrite,
-            auto_convert_bgz=auto_convert_bgz,
-        )
+        cmd = [
+            "hvantk", "reprocess", "onek-genomes:variants",
+            "--raw-dir", stage_dir,
+            "--output", output_mt,
+            "--skip-download",
+            "--plugin-arg", f"reference_genome={reference_genome}",
+            "--plugin-arg", f"auto_convert_bgz={'true' if auto_convert_bgz else 'false'}",
+        ]
+        if chrom_list:
+            cmd += ["--plugin-arg", f"chromosomes={','.join(chrom_list)}"]
+        if sample_annotations_path is not None:
+            logger.warning(
+                "--sample-annotations is no longer baked into the variants build "
+                "(post-#116). Run `hvantk reprocess onek-genomes:samples` to "
+                "build the canonical IGSR samples table, and join post-load. "
+                "Provided sample_annotations argument (%s) will be ignored.",
+                sample_annotations_path,
+            )
 
-        n_variants = mt.count_rows()
-        n_samples = mt.count_cols()
+        logger.info("Invoking: %s", " ".join(cmd))
+        subprocess.run(cmd, check=True)
+
         logger.info("=" * 42)
         logger.info("  Completed : %s", datetime.now().isoformat(timespec="seconds"))
         logger.info("  MatrixTable : %s", output_mt)
-        logger.info("  Variants    : %s", f"{n_variants:,}")
-        logger.info("  Samples     : %s", f"{n_samples:,}")
         logger.info("=" * 42)
     finally:
         shutil.rmtree(stage_dir, ignore_errors=True)
