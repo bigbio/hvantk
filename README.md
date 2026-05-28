@@ -60,13 +60,14 @@ everyone depends on — neither imports upward.
 
 ### Data model
 
-Three semantic artifact types live in [`hvantk/core/models/`](hvantk/core/models/),
+Four semantic artifact types live in [`hvantk/core/models/`](hvantk/core/models/),
 each backed by one of several native engines:
 
 | Artifact | Backends | On-disk format | Used for |
 |---|---|---|---|
 | [`AnnotationTable`](hvantk/core/models/annotation_table.py) | `hail` / `pandas` | `.ht/` or `.parquet` | variants, gene-disease pairs, eQTLs, PTM sites |
-| [`ExpressionMatrix`](hvantk/core/models/expression_matrix.py) | `anndata` / `hail-mt` | `.h5ad` or `.mt/` | bulk + single-cell expression, proteomics matrices |
+| [`ExpressionMatrix`](hvantk/core/models/expression_matrix.py) | `anndata` | `.h5ad` | bulk + single-cell expression, proteomics matrices |
+| [`VariantMatrix`](hvantk/core/models/variant_matrix.py) | `hail-mt` | `.mt/` | multi-sample variant cohorts (genotypes × samples × multi-field entries) |
 | [`GeneSet`](hvantk/core/models/gene_set.py) | (in-memory `frozenset`) | `.geneset.json` | curated gene collections (CHD, MSigDB, …) |
 
 Every artifact carries a [`Provenance`](hvantk/core/models/provenance.py)
@@ -130,7 +131,7 @@ Twenty plugins ship today: `clinvar`, `clingen`, `gencc`, `gwas-catalog`,
 ```
 hvantk/
 ├── core/                       # platform substrate — stable contracts
-│   ├── models/                 # AnnotationTable, ExpressionMatrix, GeneSet,
+│   ├── models/                 # AnnotationTable, ExpressionMatrix, VariantMatrix, GeneSet,
 │   │                           #   Provenance, BuildContext, Expr DSL,
 │   │                           #   AlgorithmMeta (@algorithm decorator)
 │   ├── io/                     # save / load / save_native / load_native,

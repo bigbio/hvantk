@@ -23,7 +23,7 @@ with a matching `.tbi` index.
 
 ### Samples (`:samples`)
 
-Auto-downloaded from IGSR's canonical samples endpoint (small TSV, ~250 KB).
+Auto-downloaded from IGSR's canonical samples endpoint (small TSV, ~55 KB).
 
 ## Usage
 

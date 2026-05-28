@@ -22,7 +22,7 @@ _TIMEOUT_S = 60
 def download_igsr_samples(*, raw_dir, **params) -> None:
     """Fetch the samples panel to ``raw_dir/igsr_samples.tsv``.
 
-    The samples panel is small (~120 KB) and updates infrequently. A new
+    The samples panel is small (~55 KB) and updates infrequently. A new
     download overwrites any prior copy in ``raw_dir``.
     """
     raw_dir = Path(raw_dir)
