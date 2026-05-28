@@ -27,9 +27,6 @@ from hvantk.algorithms.annotation.annotate import (
     annotate_hca,
 )
 
-project_dir = None
-out_path = f"{project_dir}/data/features"
-
 """
 Annotate variant table with features from multiple sources.
 
@@ -155,7 +152,7 @@ if __name__ == "__main__":
         "--output_ht",
         help="Path to output HailTable with features annotations",
         type=str,
-        default=out_path,
+        required=True,
     )
 
     parser.add_argument(
