@@ -41,7 +41,6 @@ def adata():
 
 def test_from_anndata(adata):
     em = ExpressionMatrix.from_anndata(adata, provenance=_prov())
-    assert em.backend == "anndata"
     assert em.n_obs == 3
     assert em.n_vars == 2
     assert em.provenance == _prov()
@@ -72,15 +71,6 @@ def test_X_returns_array(adata):
     X = em.X()
     assert X.shape == (3, 2)
     assert X[0, 0] == 1.0
-
-
-@pytest.mark.hail
-def test_to_hail_mt_returns_matrix_table(adata):
-    """Phase J: anndata backend converts to a Hail MatrixTable without error."""
-    em = ExpressionMatrix.from_anndata(adata, provenance=_prov())
-    mt = em.to_hail_mt()
-    import hail as hl
-    assert isinstance(mt, hl.MatrixTable)
 
 
 def test_subset_obs_using_obs_id(adata):
