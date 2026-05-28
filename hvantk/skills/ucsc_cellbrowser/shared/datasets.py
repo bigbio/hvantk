@@ -5,7 +5,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from hvantk.core.constants import (
+from hvantk.skills.ucsc_cellbrowser.shared.constants import (
     UCSC_CELL_BROWSER_BASE_URL,
     EXPRESSION_MATRIX_FILE_NAME,
     METADATA_FILE_NAME,
