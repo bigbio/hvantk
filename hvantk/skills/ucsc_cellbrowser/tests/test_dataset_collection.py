@@ -5,7 +5,7 @@ from hvantk.skills.ucsc_cellbrowser.shared.datasets import (
     UCSCDataSetCollection,
     UCSCDataset,
 )
-from hvantk.core.constants import UCSC_JSON_FILE_PATH
+from hvantk.skills.ucsc_cellbrowser.shared.constants import UCSC_JSON_FILE_PATH
 
 
 # Correctly create UCSCDataset objects from JSON data
