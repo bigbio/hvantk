@@ -11,7 +11,7 @@ from typing import Any, List, Optional
 
 import hail as hl
 
-from hvantk.core.constants import (
+from hvantk.skills.cosmic_cgc.shared.constants import (
     COSMIC_CGC_FIELDS,
     COSMIC_CGC_CLASSIFICATION_LEVELS,
     COSMIC_MUTATION_CONTEXTS,

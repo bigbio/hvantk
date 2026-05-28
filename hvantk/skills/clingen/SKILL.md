@@ -16,7 +16,7 @@ This skill covers BUILD and UPDATE of the ClinGen Gene-Disease Validity Hail Tab
 
 ## 2. Source identity
 
-Provider metadata (URL, license, citation) lives in the plugin's `catalog/datasets.json` (or query it with `hvantk catalog show <accession>` once a ClinGen catalog entry exists). The URL/version constants live in `hvantk/core/constants.py` (`CLINGEN_BASE_URL`, `CLINGEN_DOWNLOADS_URL`, `CLINGEN_FILE_PREFIX`, `CLINGEN_HEADER_SKIP_LINES`). Read those files; do not restate.
+Provider metadata (URL, license, citation) lives in the plugin's `catalog/datasets.json` (or query it with `hvantk catalog show <accession>` once a ClinGen catalog entry exists). The URL/version constants live in `hvantk/skills/clingen/shared/constants.py` (`CLINGEN_BASE_URL`, `CLINGEN_DOWNLOADS_URL`, `CLINGEN_FILE_PREFIX`, `CLINGEN_HEADER_SKIP_LINES`). Read those files; do not restate.
 
 Stable provider notes the catalog will not capture:
 - ClinGen serves a single rolling Gene-Disease Validity CSV; there are no dated archives. Freshness is determined by the file's HTTP `Last-Modified` header (when present) and by the values in the leading metadata block.
@@ -31,7 +31,7 @@ Stable provider notes the catalog will not capture:
 - File: comma-separated, double-quoted fields, **6-line metadata header** before the column-header line (`CLINGEN_HEADER_SKIP_LINES = 6`). The column header begins with `"GENE SYMBOL"`. Separator rows containing `++++++` are interleaved with the metadata block.
 - Preprocessing: the builder streams the file via `hl.hadoop_open` and writes a cleaned temp CSV containing only the column header + data rows. This is required because `hl.import_table` cannot skip arbitrary leading metadata.
 - Import: `hl.import_table(delimiter=",", quote='"', impute=False, min_partitions=10)`. All fields stay as strings; no type inference.
-- Field renaming is driven by `CLINGEN_GENE_DISEASE_FIELDS` (`hvantk/core/constants.py`). Notable renames: `GENE SYMBOL → gene_symbol`, `GENE ID (HGNC) → hgnc_id`, `DISEASE LABEL → disease_label`, `DISEASE ID (MONDO) → mondo_id`, `MOI → mode_of_inheritance`, `CLASSIFICATION → classification`, `GCEP → gene_curation_expert_panel`.
+- Field renaming is driven by `CLINGEN_GENE_DISEASE_FIELDS` (`hvantk/skills/clingen/shared/constants.py`). Notable renames: `GENE SYMBOL → gene_symbol`, `GENE ID (HGNC) → hgnc_id`, `DISEASE LABEL → disease_label`, `DISEASE ID (MONDO) → mondo_id`, `MOI → mode_of_inheritance`, `CLASSIFICATION → classification`, `GCEP → gene_curation_expert_panel`.
 - ID prefix stripping: the builder strips the `HGNC:` and `MONDO:` prefixes from `hgnc_id` and `mondo_id`. This is asymmetric with the HGNC table (which keeps the prefix); downstream joins (e.g., `clingen_streamer`) account for this.
 - Classification levels (`CLINGEN_CLASSIFICATION_LEVELS`, strongest first): `Definitive`, `Strong`, `Moderate`, `Limited`, `Disputed`, `Refuted`. The builder annotates `classification_level` as the numeric position (lower is stronger). Unknown values get `len(CLINGEN_CLASSIFICATION_LEVELS)` and are clamped to the last valid index in the gene-aggregation branch.
 - Keying: keyed by `(hgnc_id, mondo_id)`.
@@ -50,7 +50,7 @@ Row schema includes: `hgnc_id`, `gene_symbol`, `disease_label`, `mondo_id`, `mod
 - Dataset class: `ClinGenGeneDiseaseDataset` in `hvantk/skills/clingen/shared/datasets.py`.
 - Build CLI: `hvantk reprocess clingen:gene-disease --raw-dir <dir> --output <path>.ht` (skip individual stages with `--skip-download` / `--skip-parse` / `--skip-build`; pass builder kwargs via `--plugin-arg key=value`, e.g. `--plugin-arg key_by=gene_disease --plugin-arg min_classification=Strong`).
 - Streamer (out-of-plugin, intentionally): `hvantk/data/clingen_streamer.py` (`ClinGenStreamer`, subclass of `GeneDiseaseValidityStreamer`); shared with the GenCC/gene-disease streamer family.
-- Constants: `CLINGEN_BASE_URL`, `CLINGEN_DOWNLOADS_URL`, `CLINGEN_FILE_PREFIX`, `CLINGEN_HEADER_SKIP_LINES`, `CLINGEN_GENE_DISEASE_FIELDS`, `CLINGEN_CLASSIFICATION_LEVELS` in `hvantk/core/constants.py`.
+- Constants: `CLINGEN_BASE_URL`, `CLINGEN_DOWNLOADS_URL`, `CLINGEN_FILE_PREFIX`, `CLINGEN_HEADER_SKIP_LINES`, `CLINGEN_GENE_DISEASE_FIELDS`, `CLINGEN_CLASSIFICATION_LEVELS` in `hvantk/skills/clingen/shared/constants.py`.
 - Tests: `hvantk/skills/clingen/tests/test_builder.py`, `test_downloader.py`, `test_drift_probe.py`. Streamer tests stay at `hvantk/tests/test_clingen_streamer.py` (test the unmoved streamer).
 
 ## 7. Workflow steps
