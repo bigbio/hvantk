@@ -1,6 +1,6 @@
 """ClinGen Gene-Disease Validity data streamer.
 
-Thin subclass of :class:`GeneDiseaseValidityStreamer` that adds
+Thin subclass of :class:`GeneDiseaseTableStreamer` that adds
 ClinGen-specific GCEP (Gene Curation Expert Panel) methods.
 """
 
@@ -10,22 +10,22 @@ import logging
 from typing import TYPE_CHECKING, Dict, List, Optional, Set
 
 if TYPE_CHECKING:
-    from hvantk.core.utils.gene_mapper import GeneMapper
+    from hvantk.core.streamers.gene_catalog import GeneCatalogStreamer
 
 import hail as hl
 import pandas as pd
 
 from hvantk.skills.clingen.shared.constants import CLINGEN_CLASSIFICATION_LEVELS
-from hvantk.core.utils.gene_disease_streamer import GeneDiseaseValidityStreamer
+from hvantk.core.streamers.gene_disease_table import GeneDiseaseTableStreamer
 
 logger = logging.getLogger(__name__)
 
 
-class ClinGenStreamer(GeneDiseaseValidityStreamer):
+class ClinGenGeneDiseaseTableStreamer(GeneDiseaseTableStreamer):
     """Streamer for querying and aggregating ClinGen Gene-Disease Validity data.
 
     Inherits all generic query, aggregation, ontology, integration, and
-    summary methods from :class:`GeneDiseaseValidityStreamer`.  Adds
+    summary methods from :class:`GeneDiseaseTableStreamer`.  Adds
     ClinGen-specific methods for working with Gene Curation Expert Panels.
     """
 

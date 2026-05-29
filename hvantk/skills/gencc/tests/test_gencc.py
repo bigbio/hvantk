@@ -3,12 +3,11 @@ GenCC-specific tests.
 
 Tests GenCC dataset class (no Hail) and GenCC streamer submitter methods
 (requires Hail). Shared base-class logic is already exercised by
-test_clingen_streamer.py through ClinGenStreamer.
+test_clingen_streamer.py through ClinGenGeneDiseaseTableStreamer.
 
-The GenCC streamer itself (``hvantk.data.gencc_streamer``) intentionally
-lives outside this plugin folder because it is part of the cross-cutting
-``GeneDiseaseValidityStreamer`` family; the streamer tests here live with
-the builder because they depend on it to materialize the input HT.
+The GenCC streamer itself (``hvantk.skills.gencc.streamers``) lives inside
+this plugin folder as part of the ``GeneDiseaseTableStreamer`` family;
+streamer tests here depend on the builder to materialize the input HT.
 """
 
 from pathlib import Path
@@ -77,9 +76,9 @@ def gencc_table_path(tmp_path):
 @pytest.mark.hail
 @pytest.mark.slow
 def test_gencc_submitter_summary(gencc_table_path):
-    from hvantk.skills.gencc.streamer import GenCCStreamer
+    from hvantk.skills.gencc.streamers import GenCCGeneDiseaseTableStreamer
 
-    streamer = GenCCStreamer(gencc_table_path, init_hail=False)
+    streamer = GenCCGeneDiseaseTableStreamer(gencc_table_path, init_hail=False)
     summary = streamer.submitter_summary()
     assert "ClinGen" in summary["submitter"].values
     assert len(summary) >= 3  # ClinGen, PanelApp, Orphanet, G2P
@@ -88,9 +87,9 @@ def test_gencc_submitter_summary(gencc_table_path):
 @pytest.mark.hail
 @pytest.mark.slow
 def test_gencc_get_geneset_per_submitter(gencc_table_path):
-    from hvantk.skills.gencc.streamer import GenCCStreamer
+    from hvantk.skills.gencc.streamers import GenCCGeneDiseaseTableStreamer
 
-    streamer = GenCCStreamer(gencc_table_path, init_hail=False)
+    streamer = GenCCGeneDiseaseTableStreamer(gencc_table_path, init_hail=False)
     result = streamer.get_geneset_per_submitter()
     assert "ClinGen" in result
     assert "BRCA1" in result["ClinGen"]
@@ -99,9 +98,9 @@ def test_gencc_get_geneset_per_submitter(gencc_table_path):
 @pytest.mark.hail
 @pytest.mark.slow
 def test_gencc_consensus_genes(gencc_table_path):
-    from hvantk.skills.gencc.streamer import GenCCStreamer
+    from hvantk.skills.gencc.streamers import GenCCGeneDiseaseTableStreamer
 
-    streamer = GenCCStreamer(gencc_table_path, init_hail=False)
+    streamer = GenCCGeneDiseaseTableStreamer(gencc_table_path, init_hail=False)
     # BRCA1, BRCA2, TP53, PTEN have multiple submitters in test data
     consensus = streamer.consensus_genes(min_submitters=2)
     assert "BRCA1" in consensus

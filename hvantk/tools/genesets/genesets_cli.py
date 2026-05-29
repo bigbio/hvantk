@@ -203,9 +203,9 @@ def genesets_clingen(
         ctx.exit(1)
 
     try:
-        from hvantk.skills.clingen.streamer import ClinGenStreamer
+        from hvantk.skills.clingen.streamers import ClinGenGeneDiseaseTableStreamer
 
-        streamer = ClinGenStreamer(clingen_ht)
+        streamer = ClinGenGeneDiseaseTableStreamer(clingen_ht)
 
         if group_by == "gcep":
             gene_sets = streamer.get_geneset_per_gcep(
@@ -343,9 +343,9 @@ def genesets_gencc(
         ctx.exit(1)
 
     try:
-        from hvantk.skills.gencc.streamer import GenCCStreamer
+        from hvantk.skills.gencc.streamers import GenCCGeneDiseaseTableStreamer
 
-        streamer = GenCCStreamer(gencc_ht)
+        streamer = GenCCGeneDiseaseTableStreamer(gencc_ht)
 
         if group_by == "submitter":
             gene_sets = streamer.get_geneset_per_submitter(
@@ -483,9 +483,9 @@ def genesets_cosmic(
         ctx.exit(1)
 
     try:
-        from hvantk.skills.cosmic_cgc.streamer import CosmicCGCStreamer
+        from hvantk.skills.cosmic_cgc.streamers import CosmicCGCGeneDiseaseTableStreamer
 
-        streamer = CosmicCGCStreamer(cosmic_ht)
+        streamer = CosmicCGCGeneDiseaseTableStreamer(cosmic_ht)
 
         if group_by == "tumour-type":
             gene_sets = streamer.get_geneset_per_tumour_type(

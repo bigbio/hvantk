@@ -1,6 +1,6 @@
 """GenCC (Gene Curation Coalition) submissions data streamer.
 
-Thin subclass of :class:`GeneDiseaseValidityStreamer` that adds
+Thin subclass of :class:`GeneDiseaseTableStreamer` that adds
 GenCC-specific submitter methods and the ``gene_disease_submitter``
 keying mode.
 """
@@ -11,22 +11,22 @@ import logging
 from typing import TYPE_CHECKING, Dict, List, Optional, Set, Union
 
 if TYPE_CHECKING:
-    from hvantk.core.utils.gene_mapper import GeneMapper
+    from hvantk.core.streamers.gene_catalog import GeneCatalogStreamer
 
 import hail as hl
 import pandas as pd
 
 from hvantk.skills.gencc.shared.constants import GENCC_CLASSIFICATION_LEVELS
-from hvantk.core.utils.gene_disease_streamer import GeneDiseaseValidityStreamer
+from hvantk.core.streamers.gene_disease_table import GeneDiseaseTableStreamer
 
 logger = logging.getLogger(__name__)
 
 
-class GenCCStreamer(GeneDiseaseValidityStreamer):
+class GenCCGeneDiseaseTableStreamer(GeneDiseaseTableStreamer):
     """Streamer for querying and aggregating GenCC submissions data.
 
     Inherits all generic query, aggregation, ontology, integration, and
-    summary methods from :class:`GeneDiseaseValidityStreamer`.  Adds
+    summary methods from :class:`GeneDiseaseTableStreamer`.  Adds
     GenCC-specific methods for working with submitting organizations.
     """
 
