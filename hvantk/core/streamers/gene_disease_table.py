@@ -1,4 +1,4 @@
-"""Shared base class for gene-disease validity data streamers.
+"""GeneDiseaseTableStreamer — ABC for gene-disease association DataModels.
 
 Provides the common query, aggregation, ontology, integration, and summary
 logic shared by ClinGenStreamer and GenCCStreamer.  Subclasses set three
@@ -14,7 +14,7 @@ import os
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
 if TYPE_CHECKING:
-    from hvantk.core.utils.gene_mapper import GeneMapper
+    from hvantk.core.streamers.gene_catalog import GeneCatalogStreamer
     from hvantk.core.ontology.mondo import MondoOntology
     from hvantk.core.ontology.obo import BaseOboOntology
 
@@ -28,7 +28,7 @@ from hvantk.core.utils.table_utils import get_row_fields
 logger = logging.getLogger(__name__)
 
 
-class GeneDiseaseValidityStreamer(HailDataStreamer):
+class GeneDiseaseTableStreamer(HailDataStreamer):
     """Base streamer for gene-disease validity data sources.
 
     Subclasses **must** set the following class attributes:
@@ -114,7 +114,7 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
         min_classification: str = "Moderate",
         classifications: Optional[List[str]] = None,
         as_set: bool = True,
-        gene_mapper: Optional[GeneMapper] = None,
+        gene_catalog: Optional[GeneCatalogStreamer] = None,
         output_id_type: Optional[str] = None,
     ) -> Union[Set[str], hl.Table]:
         """Get genes filtered by classification level(s)."""
@@ -144,7 +144,7 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
             ht = self._apply_min_classification_filter(ht, min_classification)
 
         return self._return_gene_symbols(
-            ht, as_set=as_set, gene_mapper=gene_mapper, output_id_type=output_id_type
+            ht, as_set=as_set, gene_catalog=gene_catalog, output_id_type=output_id_type
         )
 
     def get_genes_by_disease(
@@ -153,7 +153,7 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
         match_mode: str = "contains",
         min_classification: Optional[str] = None,
         as_set: bool = True,
-        gene_mapper: Optional[GeneMapper] = None,
+        gene_catalog: Optional[GeneCatalogStreamer] = None,
         output_id_type: Optional[str] = None,
     ) -> Union[Set[str], hl.Table]:
         """Get genes associated with disease(s) matching given terms."""
@@ -181,7 +181,7 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
             ht = self._apply_min_classification_filter(ht, min_classification)
 
         return self._return_gene_symbols(
-            ht, as_set=as_set, gene_mapper=gene_mapper, output_id_type=output_id_type
+            ht, as_set=as_set, gene_catalog=gene_catalog, output_id_type=output_id_type
         )
 
     def get_genes_by_mondo_id(
@@ -189,7 +189,7 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
         mondo_ids: Union[str, List[str]],
         min_classification: Optional[str] = None,
         as_set: bool = True,
-        gene_mapper: Optional[GeneMapper] = None,
+        gene_catalog: Optional[GeneCatalogStreamer] = None,
         output_id_type: Optional[str] = None,
     ) -> Union[Set[str], hl.Table]:
         """Get genes associated with specific MONDO disease ID(s)."""
@@ -212,7 +212,7 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
             ht = self._apply_min_classification_filter(ht, min_classification)
 
         return self._return_gene_symbols(
-            ht, as_set=as_set, gene_mapper=gene_mapper, output_id_type=output_id_type
+            ht, as_set=as_set, gene_catalog=gene_catalog, output_id_type=output_id_type
         )
 
     def get_genes_by_moi(
@@ -220,7 +220,7 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
         modes: Union[str, List[str]],
         min_classification: Optional[str] = None,
         as_set: bool = True,
-        gene_mapper: Optional[GeneMapper] = None,
+        gene_catalog: Optional[GeneCatalogStreamer] = None,
         output_id_type: Optional[str] = None,
     ) -> Union[Set[str], hl.Table]:
         """Get genes by mode of inheritance."""
@@ -251,7 +251,7 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
             ht = self._apply_min_classification_filter(ht, min_classification)
 
         return self._return_gene_symbols(
-            ht, as_set=as_set, gene_mapper=gene_mapper, output_id_type=output_id_type
+            ht, as_set=as_set, gene_catalog=gene_catalog, output_id_type=output_id_type
         )
 
     # ------------------------------------------------------------------
@@ -675,7 +675,7 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
         self,
         min_classification: str = "Moderate",
         id_type: str = "symbol",
-        gene_mapper: Optional[GeneMapper] = None,
+        gene_catalog: Optional[GeneCatalogStreamer] = None,
         output_id_type: Optional[str] = None,
     ) -> Set[str]:
         """Export as gene set for integration with other hvantk components."""
@@ -687,11 +687,11 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
 
         ht = self._apply_min_classification_filter(ht, min_classification)
 
-        self._validate_translation_request(gene_mapper, output_id_type)
+        self._validate_translation_request(gene_catalog, output_id_type)
 
-        if gene_mapper is not None and output_id_type:
+        if gene_catalog is not None and output_id_type:
             symbols = self._collect_set(ht, ht.gene_symbol)
-            return self._translate_gene_ids(symbols, gene_mapper, output_id_type)
+            return self._translate_gene_ids(symbols, gene_catalog, output_id_type)
 
         id_type = id_type.lower()
         if id_type not in ("symbol", "hgnc_id", "both"):
@@ -934,36 +934,36 @@ class GeneDiseaseValidityStreamer(HailDataStreamer):
         self,
         ht: hl.Table,
         as_set: bool,
-        gene_mapper: Optional[GeneMapper] = None,
+        gene_catalog: Optional[GeneCatalogStreamer] = None,
         output_id_type: Optional[str] = None,
     ) -> Union[Set[str], hl.Table]:
         if not as_set:
             return ht
-        self._validate_translation_request(gene_mapper, output_id_type)
+        self._validate_translation_request(gene_catalog, output_id_type)
         symbols = self._collect_set(ht, ht.gene_symbol)
-        if gene_mapper is not None and output_id_type:
-            return self._translate_gene_ids(symbols, gene_mapper, output_id_type)
+        if gene_catalog is not None and output_id_type:
+            return self._translate_gene_ids(symbols, gene_catalog, output_id_type)
         return symbols
 
     @staticmethod
     def _validate_translation_request(
-        gene_mapper: Optional[GeneMapper], output_id_type: Optional[str]
+        gene_catalog: Optional[GeneCatalogStreamer], output_id_type: Optional[str]
     ) -> None:
-        if output_id_type and gene_mapper is None:
+        if output_id_type and gene_catalog is None:
             raise ValueError(
-                "output_id_type was provided but no gene_mapper was supplied. "
-                "A GeneMapper instance is required for ID translation."
+                "output_id_type was provided but no gene_catalog was supplied. "
+                "A GeneCatalogStreamer instance is required for ID translation."
             )
 
     @staticmethod
     def _translate_gene_ids(
         symbols: Set[str],
-        gene_mapper: GeneMapper,
+        gene_catalog: GeneCatalogStreamer,
         output_id_type: str,
     ) -> Set[str]:
         if output_id_type == "gene_symbol":
             return symbols
-        mapping = gene_mapper.map_ids(
+        mapping = gene_catalog.map_ids(
             list(symbols),
             source_type="gene_symbol",
             target_type=output_id_type,

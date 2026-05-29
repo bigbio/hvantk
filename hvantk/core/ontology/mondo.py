@@ -9,7 +9,7 @@ with MONDO-specific categories and download logic.
 import logging
 from typing import Dict, List, Optional, Set, Tuple
 
-from hvantk.core.utils.obo_parser import BaseOboOntology
+from hvantk.core.ontology.obo import BaseOboOntology
 
 logger = logging.getLogger(__name__)
 

@@ -74,7 +74,7 @@ def main():
     """Main workflow with ontology-based categorization."""
     import hail as hl
     from hvantk.skills.clingen.streamer import ClinGenStreamer
-    from hvantk.core.utils.mondo_parser import MONDO_DISEASE_CATEGORIES
+    from hvantk.core.ontology.mondo import MONDO_DISEASE_CATEGORIES
 
     # Ensure data files exist
     ensure_data_files()
