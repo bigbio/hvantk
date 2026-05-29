@@ -151,10 +151,9 @@ def build_cosmic_cgc_submissions(
     # Resolve gene_symbol -> hgnc_id if HGNC table is available
     if hgnc_path is not None:
         logger.info("Resolving gene symbols to HGNC IDs using %s", hgnc_path)
-        from hvantk.core.utils.gene_mapper import GeneMapper
+        from hvantk.skills.hgnc.streamers import HGNCGeneCatalogStreamer
 
-        hgnc_ht = hl.read_table(hgnc_path)
-        mapper = GeneMapper(hgnc_ht)
+        mapper = HGNCGeneCatalogStreamer.from_path(hgnc_path)
         symbols = set(ht.aggregate(hl.agg.collect_as_set(ht.gene_symbol)))
         mapping = mapper.map_to_hgnc(list(symbols), source_type="gene_symbol")
         mapping_literal = hl.literal(mapping)

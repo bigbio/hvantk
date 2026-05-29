@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from click.testing import CliRunner
@@ -10,6 +10,36 @@ from click.testing import CliRunner
 from hvantk.tools.genesets.genesets_cli import genesets_prepare as prepare_geneset_cmd
 
 TESTDATA = Path(__file__).parent / "testdata" / "prepare_geneset"
+
+
+def _make_mock_catalog_cli():
+    """Return a mock HGNCGeneCatalogStreamer with preset symbol maps for CLI tests."""
+    canonical = {
+        "BRCA1",
+        "BRCA2",
+        "TP53",
+        "EGFR",
+        "ERCC1",
+        "MYH7",
+        "TNNT2",
+        "LMNA",
+        "SCN5A",
+        "TTN",
+        "SCN1A",
+        "SCN2A",
+        "KCNQ2",
+        "STXBP1",
+        "GABRA1",
+        "BRAF",
+        "KRAS",
+        "NRAS",
+        "HRAS",
+        "MAP2K1",
+    }
+    mock_catalog = MagicMock()
+    mock_catalog._canonical_symbols = canonical
+    mock_catalog._alias_to_canonical = {"FANCD1": "BRCA2", "ERCC11": "ERCC1"}
+    return mock_catalog
 
 
 @pytest.fixture
@@ -88,36 +118,12 @@ def test_overwrite_flag(runner, tmp_path):
     assert result.exit_code == 0
 
 
-@patch("hvantk.core.utils.gene_aliases._load_hgnc_symbol_maps")
-def test_hgnc_validation_resolves_aliases(mock_load, runner, tmp_path):
+@patch(
+    "hvantk.skills.hgnc.streamers.HGNCGeneCatalogStreamer.from_path",
+    side_effect=lambda path: _make_mock_catalog_cli(),
+)
+def test_hgnc_validation_resolves_aliases(mock_from_path, runner, tmp_path):
     """HGNC validation flag resolves aliases in output."""
-    canonical = {
-        "BRCA1",
-        "BRCA2",
-        "TP53",
-        "EGFR",
-        "ERCC1",
-        "MYH7",
-        "TNNT2",
-        "LMNA",
-        "SCN5A",
-        "TTN",
-        "SCN1A",
-        "SCN2A",
-        "KCNQ2",
-        "STXBP1",
-        "GABRA1",
-        "BRAF",
-        "KRAS",
-        "NRAS",
-        "HRAS",
-        "MAP2K1",
-    }
-    mock_load.return_value = (
-        canonical,
-        {"FANCD1": "BRCA2", "ERCC11": "ERCC1"},
-        {"BRCA2": ["FANCD1"], "ERCC1": ["ERCC11"]},
-    )
     out = str(tmp_path / "out.json")
     result = runner.invoke(
         prepare_geneset_cmd,

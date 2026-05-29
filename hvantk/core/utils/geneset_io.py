@@ -268,9 +268,12 @@ def validate_with_hgnc(
     -------
     ValidationResult
     """
-    from hvantk.core.utils.gene_aliases import _load_hgnc_symbol_maps
+    # transient: Task 4 (#121) replaces this with a GeneCatalogStreamer parameter
+    from hvantk.skills.hgnc.streamers import HGNCGeneCatalogStreamer
 
-    canonical_symbols, alias_to_canonical, _ = _load_hgnc_symbol_maps(hgnc_path)
+    catalog = HGNCGeneCatalogStreamer.from_path(hgnc_path)
+    canonical_symbols = catalog._canonical_symbols
+    alias_to_canonical = catalog._alias_to_canonical
 
     # Classify every unique gene across all sets.
     all_genes = {g for genes in gene_sets.values() for g in genes}
