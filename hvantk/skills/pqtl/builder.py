@@ -2,7 +2,7 @@
 
 Owns the Phase B ``build_pqtl_metrics`` builder. The transform (GTEx
 variant-ID parsing, SE derivation via ``|BETA / STAT|``, gene-symbol →
-Ensembl-ID mapping via the HGNC table) is implemented directly here.
+Ensembl-ID mapping via a GeneCatalogStreamer) is implemented directly here.
 
 Shared GTEx variant-ID parsing helpers live in
 ``hvantk.core.utils.qtl_helpers`` (also used by the eQTL builder).
@@ -10,8 +10,12 @@ Shared GTEx variant-ID parsing helpers live in
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 import hail as hl
+
+if TYPE_CHECKING:
+    from hvantk.core.streamers.gene_catalog import GeneCatalogStreamer
 
 from hvantk.core.utils.qtl_helpers import (
     parse_gtex_variant_id,
@@ -68,7 +72,7 @@ def build_pqtl_metrics(
     reference_genome: str = "GRCh38",
     source: str = "gtex_fang",
     tissue: str | None = None,
-    hgnc_ht: str | None = None,
+    gene_catalog: GeneCatalogStreamer | None = None,
     no_gene_map: bool = False,
     p_threshold: float | None = None,
     fields: list[str] | None = None,
@@ -102,7 +106,7 @@ def build_pqtl_metrics(
             "Only 'gtex_fang' (Fang et al. 2025) is currently supported."
         )
 
-    if not hgnc_ht and not no_gene_map:
+    if gene_catalog is None and not no_gene_map:
         raise ValueError(
             "Ensembl gene mapping is required for cascade-compatible pQTL "
             "tables. Provide --plugin-arg hgnc_ht=<path> (HGNC Hail Table "
@@ -118,24 +122,20 @@ def build_pqtl_metrics(
     ht = ht.annotate(se=hl.abs(ht.beta / ht.stat))
     ht = ht.drop("stat", "variant_id")
 
-    if hgnc_ht:
-        from hvantk.skills.hgnc.streamers import HGNCGeneCatalogStreamer
-
+    if gene_catalog is not None:
         logger.info(
-            "Mapping gene symbols → Ensembl IDs via HGNCGeneCatalogStreamer (%s)",
-            hgnc_ht,
+            "Mapping gene symbols → Ensembl IDs via gene catalog"
         )
-        mapper = HGNCGeneCatalogStreamer.from_path(hgnc_ht)
-        ht = mapper.annotate_table(
-            ht,
-            source_field="gene_symbol",
-            source_type="gene_symbol",
-            fields_to_add=["ensembl_gene_id"],
+        symbols = set(ht.aggregate(hl.agg.collect_as_set(ht.gene_symbol)))
+        ensembl_mapping = gene_catalog.map_ids(
+            list(symbols), source_type="gene_symbol", target_type="ensembl_gene_id"
         )
+        mapping_literal = hl.literal(ensembl_mapping)
         ht = ht.annotate(
-            gene_id=hl.or_else(ht.hgnc_ensembl_gene_id, ht.gene_symbol),
+            gene_id=hl.or_else(
+                mapping_literal.get(ht.gene_symbol), ht.gene_symbol
+            )
         )
-        ht = ht.drop("hgnc_ensembl_gene_id")
     else:
         logger.warning(
             "no_gene_map=True: using gene symbols as gene_id. "

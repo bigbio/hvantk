@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from click.testing import CliRunner
@@ -13,7 +13,14 @@ TESTDATA = Path(__file__).parent / "testdata" / "prepare_geneset"
 
 
 def _make_mock_catalog_cli():
-    """Return a mock HGNCGeneCatalogStreamer with preset symbol maps for CLI tests."""
+    """Return a minimal GeneCatalogStreamer subclass for CLI tests.
+
+    Implements is_canonical / resolve_alias so that the inherited
+    validate_symbols() template method returns correct 3-tuples.
+    FANCD1 → BRCA2 alias resolution is included to satisfy the alias test.
+    """
+    from hvantk.core.streamers.gene_catalog import GeneCatalogStreamer
+
     canonical = {
         "BRCA1",
         "BRCA2",
@@ -36,10 +43,27 @@ def _make_mock_catalog_cli():
         "HRAS",
         "MAP2K1",
     }
-    mock_catalog = MagicMock()
-    mock_catalog._canonical_symbols = canonical
-    mock_catalog._alias_to_canonical = {"FANCD1": "BRCA2", "ERCC11": "ERCC1"}
-    return mock_catalog
+    alias_to_canonical = {"FANCD1": "BRCA2", "ERCC11": "ERCC1"}
+
+    class _FakeCatalog(GeneCatalogStreamer):
+        def __init__(self):
+            # Bypass AnnotationTable requirement; no real artifact needed.
+            self._canonical_symbols = canonical
+            self._alias_to_canonical = alias_to_canonical
+
+        def is_canonical(self, symbol):
+            return symbol in self._canonical_symbols
+
+        def resolve_alias(self, symbol):
+            return self._alias_to_canonical.get(symbol)
+
+        def expand_with_aliases(self, symbols):
+            raise NotImplementedError
+
+        def map_ids(self, ids, source_type, target_type):
+            raise NotImplementedError
+
+    return _FakeCatalog()
 
 
 @pytest.fixture

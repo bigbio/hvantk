@@ -612,7 +612,7 @@ def genesets_prepare(
       hvantk genesets prepare -i panels.tsv -o panels.json --hgnc /data/hgnc.ht
     """
     from hvantk.core.utils.gene_sets import load_gene_set, load_gene_sets_from_dict
-    from hvantk.core.utils.geneset_io import parse_geneset_tsv, validate_with_hgnc
+    from hvantk.core.utils.geneset_io import parse_geneset_tsv, validate_with_catalog
 
     output_path = Path(output)
     if output_path.exists() and not overwrite:
@@ -648,7 +648,9 @@ def genesets_prepare(
 
     if hgnc:
         click.echo(f"\nValidating against HGNC ({hgnc}) ...", err=True)
-        vr = validate_with_hgnc(gene_sets, hgnc)
+        from hvantk.skills.hgnc.streamers import HGNCGeneCatalogStreamer
+        catalog = HGNCGeneCatalogStreamer.from_path(hgnc)
+        vr = validate_with_catalog(gene_sets, catalog)
         gene_sets = vr.gene_sets
         hgnc_validated = True
         aliases_resolved = vr.aliases_resolved

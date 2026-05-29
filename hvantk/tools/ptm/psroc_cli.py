@@ -390,8 +390,16 @@ def psroc_cmd(
                 click.echo(f"  - {error}", err=True)
             ctx.exit(1)
 
+        # Construct the gene catalog in tools/ (the only layer allowed to import skills/).
+        from hvantk.skills.hgnc.streamers import HGNCGeneCatalogStreamer
+        gene_catalog = (
+            HGNCGeneCatalogStreamer.from_path(config.hgnc_path)
+            if config.hgnc_path
+            else None
+        )
+
         # Create pipeline
-        pipeline = PSROCPipeline(config)
+        pipeline = PSROCPipeline(config, gene_catalog=gene_catalog)
 
         # Show plan if dry-run
         if dry_run:
