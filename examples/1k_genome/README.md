@@ -6,8 +6,8 @@ Scripts for building a Hail MatrixTable from 1000 Genomes NYGC high-coverage dat
 
 | Script | Description |
 |--------|-------------|
-| `build_1kg_nygc.py` | Python API: build reference MatrixTable from per-chromosome VCFs |
-| `build_1kg_nygc_cli.py` | CLI wrapper: exercises `hvantk utils build-1k-genome` as a subprocess |
+| `build_1kg_nygc.py` | Stages NYGC-pattern VCFs and shells out to `hvantk reprocess onek-genomes:variants` |
+| `build_1kg_nygc_cli.py` | Same as `build_1kg_nygc.py`, kept as a separate file for backward compatibility |
 
 ## Prerequisites
 

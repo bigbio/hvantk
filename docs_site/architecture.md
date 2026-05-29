@@ -43,12 +43,11 @@ hvantk/
 │   ├── config.py          # Configuration management
 │   ├── constants.py       # Shared constants
 │   ├── protocols.py       # Protocol definitions (Builder, Streamer, Downloader)
-│   ├── builders/          # Generic builder helpers
-│   │   └── table.py       # _create_table_base, _cleanup_temp_file, etc.
 │   ├── io/                # Artifact loader (load/save Hail Tables, AnnData, etc.)
 │   ├── models/            # Domain model types
 │   │   ├── annotation_table.py  # AnnotationTable artifact
-│   │   ├── expression_matrix.py # ExpressionMatrix artifact
+│   │   ├── expression_matrix.py # ExpressionMatrix artifact (AnnData-only)
+│   │   ├── variant_matrix.py    # VariantMatrix artifact (Hail MatrixTable)
 │   │   ├── gene_set.py          # GeneSet artifact
 │   │   ├── artifact.py          # Artifact base + type registry
 │   │   ├── backends.py          # AlgorithmMeta, Backend, @algorithm decorator
@@ -143,8 +142,8 @@ The codebase is organized by function and biological domain:
 **Data Builders** (`skills/<provider>/builder.py`):
 - Each plugin under `hvantk/skills/` owns its Phase B builder
   (`build_<provider>_<dataset>`). Builders return `AnnotationTable`,
-  `ExpressionMatrix`, or `GeneSet` artifacts, stamped with `Provenance` by
-  the platform via `run_builder_for_spec`.
+  `ExpressionMatrix`, `VariantMatrix`, or `GeneSet` artifacts, stamped
+  with `Provenance` by the platform via `run_builder_for_spec`.
 - `hvantk reprocess <provider>:<dataset>` is the **only** public build
   path. There is no separate programmatic API; in-process callers that
   need to build a table inside a tool/pipeline invoke
@@ -152,10 +151,6 @@ The codebase is organized by function and biological domain:
 - Generic Hail helpers live in `hvantk/core/utils/hail_helpers.py`
   (`create_table_base`, `cleanup_temp_file`); QTL-shared helpers in
   `hvantk/core/utils/qtl_helpers.py`.
-- **Exception:** the 1000 Genomes builder
-  (`hvantk/core/builders/genome.py`) is the one remaining non-plugin
-  builder, tracked by [#116] for plugin migration. Until then, the legacy
-  `hvantk build-1k-genome` CLI remains the entry point for that dataset.
 
 **Analysis Pipelines** (separate modules):
 - `hgc/` - Joint genotyping and cohort analysis
@@ -181,7 +176,8 @@ Every data product is one of three semantic artifact types in
 | Artifact | Backends | On-disk format | Used for |
 |---|---|---|---|
 | `AnnotationTable` | `hail` / `pandas` | `.ht/` or `.parquet` | variants, gene-disease pairs, eQTLs, PTM sites |
-| `ExpressionMatrix` | `anndata` / `hail-mt` | `.h5ad` or `.mt/` | bulk + single-cell expression, proteomics matrices |
+| `ExpressionMatrix` | `anndata` | `.h5ad` | bulk + single-cell expression, proteomics matrices |
+| `VariantMatrix` | `hail-mt` | `.mt/` | multi-sample variant cohorts (genotypes × samples × multi-field entries) |
 | `GeneSet` | (in-memory `frozenset`) | `.geneset.json` | curated gene collections |
 
 Each artifact carries a `Provenance` record (plugin, version, source
@@ -401,7 +397,7 @@ annotated = variants.annotate(
 - `constants.py` - Shared constants (e.g., Ensembl field definitions)
 - `utils/hail_context.py` - Hail session initialization and management
 - `protocols.py` - Protocol definitions for extensibility
-- `models/` - Domain artifact types (`AnnotationTable`, `ExpressionMatrix`, `GeneSet`)
+- `models/` - Domain artifact types (`AnnotationTable`, `ExpressionMatrix`, `VariantMatrix`, `GeneSet`)
 - `plugin/` - Plugin schema (`api.py`), discovery (`loader.py`), and builder dispatch (`run_builder.py`)
 
 **Design principle**: No domain logic, only infrastructure
@@ -410,11 +406,12 @@ annotated = variants.annotate(
 
 **Purpose**: Per-provider data plugins. Each provider folder contains `plugin.yaml`, `builder.py`, `cli.py`, `drift_probe.py`, `SKILL.md`, `catalog/datasets.json`, and `tests/`. Multi-dataset providers (e.g., `cptac/`) have one sub-folder per dataset.
 
-**Current providers** (20): `alphagenome`, `clingen`, `clinvar`, `cosmic_cgc`, `cptac`, `dbnsfp`, `ensembl_gene`, `expression_atlas`, `gencc`, `gevir`, `gnomad_metrics`, `gtex_eqtl`, `gwas_catalog`, `hgnc`, `insider`, `msigdb`, `peptideatlas`, `pqtl`, `ucsc_cellbrowser`, `uniprot_ptm`.
+**Current providers** (21): `alphagenome`, `clingen`, `clinvar`, `cosmic_cgc`, `cptac`, `dbnsfp`, `ensembl_gene`, `expression_atlas`, `gencc`, `gevir`, `gnomad_metrics`, `gtex_eqtl`, `gwas_catalog`, `hgnc`, `insider`, `msigdb`, `onek_genomes`, `peptideatlas`, `pqtl`, `ucsc_cellbrowser`, `uniprot_ptm`.
 
 **Builder outputs**:
 - Variant / gene tables keyed by `(locus, alleles)` or `gene_id` → `AnnotationTable`
 - Expression matrices rows=genes, columns=samples/cells → `ExpressionMatrix`
+- Multi-sample variant cohorts (variants × samples × genotypes) → `VariantMatrix`
 - Gene set collections → `GeneSet`
 
 ### Tools Module (`tools/`)
@@ -459,7 +456,7 @@ Peer of `core/`, not a layer above it.
 | `resources/schemas/` | JSON schemas that describe catalog / dataset metadata, shared across plugins. |
 | `resources/unified_registry.py` | Code that aggregates per-plugin catalog JSON with the legacy registry. |
 | `skills/<provider>/catalog/datasets.json` | Per-plugin dataset metadata (the canonical location for new providers). |
-| `core/models/` | Artifact types (`AnnotationTable`, `ExpressionMatrix`, `GeneSet`) — runtime data shapes, not catalog metadata. |
+| `core/models/` | Artifact types (`AnnotationTable`, `ExpressionMatrix`, `VariantMatrix`, `GeneSet`) — runtime data shapes, not catalog metadata. |
 
 **Dependency direction**: `resources/` may be imported by `algorithms/`,
 `skills/`, and `tools/`. It must NOT import from any of those — like
@@ -490,7 +487,7 @@ See the "Plugin Contract" section above for the full pattern. The minimal
 checklist:
 
 1. Create `hvantk/skills/<provider>/` with `plugin.yaml`, `builder.py` (returns
-   `AnnotationTable` / `ExpressionMatrix` / `GeneSet` via `ctx.provenance(schema_id=…)`),
+   `AnnotationTable` / `ExpressionMatrix` / `VariantMatrix` / `GeneSet` via `ctx.provenance(schema_id=…)`),
    `drift_probe.py`, `SKILL.md`, `catalog/datasets.json`, and `tests/`.
 2. Loader picks it up automatically — no edits to `hvantk/hvantk.py` or
    `hvantk/tools/plugins/download_cli.py` required.

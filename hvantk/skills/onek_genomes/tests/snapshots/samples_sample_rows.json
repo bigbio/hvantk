@@ -1,0 +1,32 @@
+[
+  {
+    "gender": "male",
+    "pop": "GBR",
+    "sample": "HG00096",
+    "super_pop": "EUR"
+  },
+  {
+    "gender": "female",
+    "pop": "GBR",
+    "sample": "HG00097",
+    "super_pop": "EUR"
+  },
+  {
+    "gender": "female",
+    "pop": "GBR",
+    "sample": "HG00099",
+    "super_pop": "EUR"
+  },
+  {
+    "gender": "female",
+    "pop": "GBR",
+    "sample": "HG00100",
+    "super_pop": "EUR"
+  },
+  {
+    "gender": "male",
+    "pop": "GBR",
+    "sample": "HG00101",
+    "super_pop": "EUR"
+  }
+]

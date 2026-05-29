@@ -11,6 +11,7 @@ from hvantk.core.models.annotation_table import AnnotationTable
 from hvantk.core.models.expression_matrix import ExpressionMatrix
 from hvantk.core.models.gene_set import GeneSet
 from hvantk.core.models.provenance import Provenance
+from hvantk.core.models.variant_matrix import VariantMatrix
 
 
 def save_annotation_table_parquet(ann: AnnotationTable, path: Path) -> None:
@@ -46,18 +47,18 @@ def load_expression_matrix_h5ad(path: Path, provenance: Provenance) -> Expressio
     return ExpressionMatrix.from_anndata(adata, provenance=provenance)
 
 
-def save_expression_matrix_mt(em: "ExpressionMatrix", path: Path) -> None:
-    """Write an ExpressionMatrix as a Hail MatrixTable directory (``.mt/``)."""
-    mt = em.to_hail_mt()
+def save_variant_matrix_mt(vm: "VariantMatrix", path: Path) -> None:
+    """Write a VariantMatrix as a Hail MatrixTable directory (``.mt/``)."""
+    mt = vm.to_hail_mt()
     mt.write(str(path), overwrite=True)
 
 
-def load_expression_matrix_mt(path: Path, provenance: Provenance) -> "ExpressionMatrix":
-    """Load a Hail MatrixTable directory and wrap it as an ExpressionMatrix."""
+def load_variant_matrix_mt(path: Path, provenance: Provenance) -> "VariantMatrix":
+    """Load a Hail MatrixTable directory and wrap it as a VariantMatrix."""
     import hail as hl
 
     mt = hl.read_matrix_table(str(path))
-    return ExpressionMatrix.from_hail_mt(mt, provenance=provenance)
+    return VariantMatrix.from_hail_mt(mt, provenance=provenance)
 
 
 def save_gene_set_json(gs: GeneSet, path: Path) -> None:

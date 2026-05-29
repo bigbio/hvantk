@@ -1,0 +1,11 @@
+{
+  "key": [
+    "sample"
+  ],
+  "row": {
+    "gender": "str",
+    "pop": "str",
+    "sample": "str",
+    "super_pop": "str"
+  }
+}

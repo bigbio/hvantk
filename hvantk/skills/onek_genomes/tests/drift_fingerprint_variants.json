@@ -1,0 +1,12 @@
+{
+  "checksums": {},
+  "fetched_at": "2026-05-28T13:13:35.610146+00:00",
+  "headers": {
+    "CCDG_14151_B01_GRM_WGS_2020-08-05_chr22.filtered.shapeit2-duohmm-phased.vcf.gz": {
+      "content_length": "519930289",
+      "last_modified": "Thu, 29 Oct 2020 17:19:03 GMT"
+    }
+  },
+  "probe_version": 1,
+  "source_version": "1000G_2504_high_coverage"
+}

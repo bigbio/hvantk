@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     # bodies to avoid circular import at module load.
     from hvantk.core.models import (  # noqa: F401
         AnnotationTable,
-        ExpressionMatrix,
+        VariantMatrix,
         GeneSet,
     )
 
@@ -1702,7 +1702,7 @@ def permutation_burden_test(
     name="burden_analysis_artifact",
     backends=[Backend.HAIL],
     inputs={
-        "cohort": "ExpressionMatrix",
+        "cohort": "VariantMatrix",
         "gene_sets": "dict[str, GeneSet]",
         "phenotype": "AnnotationTable",
     },
@@ -1710,7 +1710,7 @@ def permutation_burden_test(
     required_backend="hail",
 )
 def run_burden_analysis_artifact(
-    cohort: "ExpressionMatrix",
+    cohort: "VariantMatrix",
     gene_sets: "Dict[str, GeneSet]",
     phenotype: "AnnotationTable",
     **kwargs,
@@ -1718,7 +1718,7 @@ def run_burden_analysis_artifact(
     """Phase P artifact-typed wrapper for run_burden_analysis.
 
     Accepts:
-      - cohort: ExpressionMatrix(backend='hail-mt') with genotype data
+      - cohort: VariantMatrix with genotype data
       - gene_sets: dict of GeneSet collections
       - phenotype: AnnotationTable(backend='hail') with sample phenotypes
 
@@ -1745,7 +1745,7 @@ def run_burden_analysis_artifact(
     name="stratified_burden_analysis_artifact",
     backends=[Backend.HAIL],
     inputs={
-        "cohort": "ExpressionMatrix",
+        "cohort": "VariantMatrix",
         "gene_sets": "dict[str, GeneSet]",
         "phenotype": "AnnotationTable",
     },
@@ -1753,7 +1753,7 @@ def run_burden_analysis_artifact(
     required_backend="hail",
 )
 def run_stratified_burden_analysis_artifact(
-    cohort: "ExpressionMatrix",
+    cohort: "VariantMatrix",
     gene_sets: "Dict[str, GeneSet]",
     phenotype: "AnnotationTable",
     variant_classes,
@@ -1762,7 +1762,7 @@ def run_stratified_burden_analysis_artifact(
     """Phase P artifact-typed wrapper for run_stratified_burden_analysis.
 
     Accepts:
-      - cohort: ExpressionMatrix(backend='hail-mt') with genotype data
+      - cohort: VariantMatrix with genotype data
       - gene_sets: dict of GeneSet collections
       - phenotype: AnnotationTable(backend='hail') with sample phenotypes
       - variant_classes: dict mapping class name to VariantFilter
