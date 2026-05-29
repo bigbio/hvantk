@@ -82,3 +82,48 @@ def test_provenance_unknown_is_quarantined():
         "Provenance.unknown is restricted to the legacy shim and tests. "
         "Offenders:\n" + "\n".join(f"  {p.relative_to(pkg)}" for p in offenders)
     )
+
+
+# Reverse-rule guard for issue #120: if hvantk/core/constants.py is
+# ever recreated, it must not declare plugin-specific constants.
+def test_core_constants_has_no_plugin_specific_blocks():
+    """The core/constants.py file was deleted by issue #120's closing PR.
+
+    It may be recreated in the future for legitimate cross-plugin
+    constants, but must never reintroduce plugin-prefixed names that
+    were moved out to skills/<plugin>/shared/constants.py.
+
+    This test:
+      - passes when the file is absent (current state);
+      - passes when the file is present and has no plugin-prefixed names;
+      - fails when the file is present and any forbidden prefix appears.
+
+    Forbidden prefixes correspond to the plugins whose constants were
+    relocated by #120: clingen, gencc, cosmic_cgc, clinvar, hgnc, ucsc,
+    expression_atlas, ensembl, alphagenome.
+    """
+    forbidden_prefixes = (
+        "CLINGEN_",
+        "GENCC_",
+        "COSMIC_",
+        "CLINVAR_",
+        "HGNC_",
+        "UCSC_",
+        "EXPRESSION_ATLAS_",
+        "ENSEMBL_BIOMART_",
+        "ALPHAGENOME_",
+    )
+    core_constants = PACKAGE_ROOT / "core" / "constants.py"
+    if not core_constants.is_file():
+        # File deleted by #120's closing PR; nothing to guard against.
+        return
+    source = core_constants.read_text()
+    offenders = [
+        prefix for prefix in forbidden_prefixes
+        if any(line.lstrip().startswith(prefix) for line in source.splitlines())
+    ]
+    assert not offenders, (
+        "hvantk/core/constants.py must not declare plugin-specific constants. "
+        f"Found prefixes: {offenders}. Move each block to "
+        "hvantk/skills/<plugin>/shared/constants.py per issue #120."
+    )
