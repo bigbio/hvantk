@@ -137,29 +137,34 @@ def test_parse_geneset_tsv_deduplicates(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def _mock_hgnc_maps():
+def _make_mock_catalog():
+    """Return a mock HGNCGeneCatalogStreamer with preset symbol maps."""
+    from unittest.mock import MagicMock
+
     canonical = {"BRCA1", "BRCA2", "TP53", "EGFR", "ERCC1"}
     alias_to_canonical = {"FANCD1": "BRCA2", "ERCC11": "ERCC1", "RNF53": "BRCA1"}
-    canonical_to_aliases = {
-        "BRCA2": ["FANCD1"],
-        "ERCC1": ["ERCC11"],
-        "BRCA1": ["RNF53"],
-    }
-    return canonical, alias_to_canonical, canonical_to_aliases
+    mock_catalog = MagicMock()
+    mock_catalog._canonical_symbols = canonical
+    mock_catalog._alias_to_canonical = alias_to_canonical
+    return mock_catalog
 
 
-@patch("hvantk.core.utils.gene_aliases._load_hgnc_symbol_maps")
-def test_validate_with_hgnc_alias_resolution(mock_load):
-    mock_load.return_value = _mock_hgnc_maps()
+@patch(
+    "hvantk.skills.hgnc.streamers.HGNCGeneCatalogStreamer.from_path",
+    side_effect=lambda path: _make_mock_catalog(),
+)
+def test_validate_with_hgnc_alias_resolution(mock_from_path):
     gene_sets = {"panel": ["FANCD1", "TP53", "ERCC11"]}
     vr = validate_with_hgnc(gene_sets, "/fake/hgnc.tsv")
     assert vr.aliases_resolved == {"FANCD1": "BRCA2", "ERCC11": "ERCC1"}
     assert vr.gene_sets["panel"] == ["BRCA2", "TP53", "ERCC1"]
 
 
-@patch("hvantk.core.utils.gene_aliases._load_hgnc_symbol_maps")
-def test_validate_with_hgnc_unrecognized(mock_load):
-    mock_load.return_value = _mock_hgnc_maps()
+@patch(
+    "hvantk.skills.hgnc.streamers.HGNCGeneCatalogStreamer.from_path",
+    side_effect=lambda path: _make_mock_catalog(),
+)
+def test_validate_with_hgnc_unrecognized(mock_from_path):
     gene_sets = {"panel": ["BRCA1", "FAKEGENE"]}
     vr = validate_with_hgnc(gene_sets, "/fake/hgnc.tsv")
     assert vr.unrecognized == {"FAKEGENE"}

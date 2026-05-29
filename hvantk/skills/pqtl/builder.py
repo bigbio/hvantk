@@ -119,14 +119,13 @@ def build_pqtl_metrics(
     ht = ht.drop("stat", "variant_id")
 
     if hgnc_ht:
-        from hvantk.core.utils.gene_mapper import GeneMapper
+        from hvantk.skills.hgnc.streamers import HGNCGeneCatalogStreamer
 
         logger.info(
-            "Mapping gene symbols → Ensembl IDs via GeneMapper (%s)",
+            "Mapping gene symbols → Ensembl IDs via HGNCGeneCatalogStreamer (%s)",
             hgnc_ht,
         )
-        hgnc_table = hl.read_table(hgnc_ht)
-        mapper = GeneMapper(hgnc_table)
+        mapper = HGNCGeneCatalogStreamer.from_path(hgnc_ht)
         ht = mapper.annotate_table(
             ht,
             source_field="gene_symbol",

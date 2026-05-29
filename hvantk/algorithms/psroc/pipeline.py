@@ -973,14 +973,12 @@ class PSROCPipeline:
             if gene_set:
                 # Expand with HGNC aliases if configured
                 if self.config.hgnc_path:
-                    from hvantk.core.utils.gene_aliases import (
-                        expand_gene_set_with_aliases,
-                    )
+                    # transient: Task 4 (#121) replaces this with a self.gene_catalog parameter
+                    from hvantk.skills.hgnc.streamers import HGNCGeneCatalogStreamer
 
                     pre_expand_count = len(gene_set)
-                    gene_set, alias_map = expand_gene_set_with_aliases(
-                        list(gene_set), self.config.hgnc_path
-                    )
+                    catalog = HGNCGeneCatalogStreamer.from_path(self.config.hgnc_path)
+                    gene_set, alias_map = catalog.expand_with_aliases(set(gene_set))
                     if alias_map:
                         logger.info(
                             f"   Expanded gene set with {len(alias_map)} "
