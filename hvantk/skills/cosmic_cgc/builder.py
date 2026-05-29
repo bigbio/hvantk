@@ -7,7 +7,7 @@ source-fingerprint provenance.
 from __future__ import annotations
 
 import logging
-from typing import Any, List, Optional
+from typing import TYPE_CHECKING, Any, List, Optional
 
 import hail as hl
 
@@ -18,6 +18,9 @@ from hvantk.skills.cosmic_cgc.shared.constants import (
 )
 from hvantk.core.utils.table_utils import get_row_fields, build_rename_map, str_to_bool
 from hvantk.core.utils.file_utils import resolve_compression
+
+if TYPE_CHECKING:
+    from hvantk.core.streamers.gene_catalog import GeneCatalogStreamer
 
 logger = logging.getLogger(__name__)
 
@@ -40,13 +43,13 @@ def build_cosmic_cgc_submissions(
         Platform-provided context; supplies provenance.
     **params
         Optional: mutation_context (str, default "both"), min_classification (str),
-                  hgnc_path (str), fields (list of str).
+                  gene_catalog (GeneCatalogStreamer), fields (list of str).
     """
     from hvantk.core.models import AnnotationTable
 
     mutation_context = params.get("mutation_context", "both")
     min_classification = params.get("min_classification", None)
-    hgnc_path = params.get("hgnc_path", None)
+    gene_catalog: Optional[GeneCatalogStreamer] = params.get("gene_catalog", None)
     fields = params.get("fields", None)
 
     if mutation_context not in COSMIC_MUTATION_CONTEXTS:
@@ -148,14 +151,13 @@ def build_cosmic_cgc_submissions(
         )
         ht = ht.filter(ht.classification_level <= min_level)
 
-    # Resolve gene_symbol -> hgnc_id if HGNC table is available
-    if hgnc_path is not None:
-        logger.info("Resolving gene symbols to HGNC IDs using %s", hgnc_path)
-        from hvantk.skills.hgnc.streamers import HGNCGeneCatalogStreamer
-
-        mapper = HGNCGeneCatalogStreamer.from_path(hgnc_path)
+    # Resolve gene_symbol -> hgnc_id if a gene catalog is available
+    if gene_catalog is not None:
+        logger.info("Resolving gene symbols to HGNC IDs via gene catalog")
         symbols = set(ht.aggregate(hl.agg.collect_as_set(ht.gene_symbol)))
-        mapping = mapper.map_to_hgnc(list(symbols), source_type="gene_symbol")
+        mapping = gene_catalog.map_ids(
+            list(symbols), source_type="gene_symbol", target_type="hgnc_id"
+        )
         mapping_literal = hl.literal(mapping)
         ht = ht.annotate(hgnc_id=mapping_literal.get(ht.gene_symbol))
         ht = ht.annotate(
@@ -169,8 +171,8 @@ def build_cosmic_cgc_submissions(
         ht = ht.key_by("hgnc_id")
     else:
         logger.warning(
-            "No HGNC path provided; keying by gene_symbol. "
-            "Provide hgnc_path for HGNC ID resolution."
+            "No gene catalog provided; keying by gene_symbol. "
+            "Provide gene_catalog for HGNC ID resolution."
         )
         ht = ht.key_by("gene_symbol")
 

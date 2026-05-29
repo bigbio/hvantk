@@ -20,15 +20,20 @@ Example:
     >>> result = pipeline.run()
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
-from typing import Optional, Dict, Any, List, Set
+from typing import TYPE_CHECKING, Optional, Dict, Any, List, Set
 from enum import Enum
 import hashlib
 import json
 import logging
 import re
 from datetime import datetime
+
+if TYPE_CHECKING:
+    from hvantk.core.streamers.gene_catalog import GeneCatalogStreamer
 
 import numpy as np
 import hail as hl
@@ -573,16 +578,23 @@ class PSROCPipeline:
         >>> result = pipeline.run()
     """
 
-    def __init__(self, config: PSROCConfig):
+    def __init__(
+        self,
+        config: PSROCConfig,
+        gene_catalog: GeneCatalogStreamer | None = None,
+    ):
         """Initialize PSROC pipeline.
 
         Args:
             config: Pipeline configuration.
+            gene_catalog: Optional gene catalog for alias expansion. Constructed
+                by the caller (in ``tools/``); the pipeline only calls ABC methods.
 
         Raises:
             ValueError: If configuration validation fails.
         """
         self.config = config
+        self.gene_catalog = gene_catalog
         errors = config.validate()
         if errors:
             raise ValueError(
@@ -816,7 +828,7 @@ class PSROCPipeline:
             )
 
             try:
-                pipeline = PSROCPipeline(group_config)
+                pipeline = PSROCPipeline(group_config, gene_catalog=self.gene_catalog)
                 result = pipeline.run()
                 results[group_name] = result
                 logger.info(
@@ -971,25 +983,25 @@ class PSROCPipeline:
             # Filter by gene set
             gene_set = self.config.get_gene_set()
             if gene_set:
-                # Expand with HGNC aliases if configured
-                if self.config.hgnc_path:
-                    # transient: Task 4 (#121) replaces this with a self.gene_catalog parameter
-                    from hvantk.skills.hgnc.streamers import HGNCGeneCatalogStreamer
-
-                    pre_expand_count = len(gene_set)
-                    catalog = HGNCGeneCatalogStreamer.from_path(self.config.hgnc_path)
-                    gene_set, alias_map = catalog.expand_with_aliases(set(gene_set))
+                # Expand with gene catalog aliases if configured
+                pre_expand_count = len(gene_set)
+                if self.gene_catalog is not None:
+                    gene_set, alias_map = self.gene_catalog.expand_with_aliases(
+                        set(gene_set)
+                    )
                     if alias_map:
                         logger.info(
                             f"   Expanded gene set with {len(alias_map)} "
-                            f"aliases from HGNC "
+                            f"aliases from gene catalog "
                             f"({pre_expand_count} → {len(gene_set)} symbols)"
                         )
                         for alias, canonical in sorted(alias_map.items()):
                             logger.info(f"     {alias} → {canonical}")
+                else:
+                    alias_map = {}
 
                 self._n_genes = (
-                    pre_expand_count if self.config.hgnc_path else len(gene_set)
+                    pre_expand_count if self.gene_catalog is not None else len(gene_set)
                 )
                 logger.info(f"   Filtering to {self._n_genes} genes")
                 gene_literal = hl.literal(gene_set)

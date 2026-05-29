@@ -184,6 +184,16 @@ def reprocess_cmd(
         else:
             # Phase B contract: orchestrator handles BuildContext, validation,
             # and save. Returns the stamped Provenance.
+            #
+            # Interface separation (#121): builders receive a GeneCatalogStreamer
+            # ABC, never construct the concrete HGNC streamer themselves (skills
+            # must not import sibling skills). tools/ is the only layer allowed
+            # to build it.
+            if "hgnc_path" in extras or "hgnc_ht" in extras:
+                from hvantk.skills.hgnc.streamers import HGNCGeneCatalogStreamer
+                hgnc_loc = extras.pop("hgnc_path", None) or extras.pop("hgnc_ht", None)
+                extras["gene_catalog"] = HGNCGeneCatalogStreamer.from_path(hgnc_loc)
+
             from hvantk.core.plugin.run_builder import run_builder_for_spec
             from pathlib import Path
             run_builder_for_spec(
