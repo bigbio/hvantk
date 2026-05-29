@@ -10,7 +10,7 @@ import logging
 
 import hail as hl
 
-from hvantk.core.constants import HGNC_GENE_FIELDS, HGNC_PIPE_SEPARATED_FIELDS
+from hvantk.skills.hgnc.shared.constants import HGNC_GENE_FIELDS, HGNC_PIPE_SEPARATED_FIELDS
 from hvantk.core.utils.table_utils import get_row_fields
 
 logger = logging.getLogger(__name__)

@@ -10,7 +10,7 @@ from __future__ import annotations
 import requests_mock
 
 from hvantk.skills.hgnc.drift_probe import fetch_fingerprint
-from hvantk.core.constants import HGNC_DOWNLOAD_URL
+from hvantk.skills.hgnc.shared.constants import HGNC_DOWNLOAD_URL
 
 
 def test_fetch_fingerprint_shape():

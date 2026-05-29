@@ -18,7 +18,7 @@ def annotate_clinvar_clnsig(t: hl.Table) -> hl.Table:
 
     Variants are annotated with a clinical significance label based on ClinVar data: "P" for pathogenic, "B" for benign, or missing if neither applies. The annotation is determined by matching ClinVar CLNSIG values against predefined sets of pathogenic and benign labels.
     """
-    from hvantk.core.constants import CLINVAR_PATHOGENIC_LABELS, CLINVAR_BENIGN_LABELS
+    from hvantk.skills.clinvar.shared.constants import CLINVAR_PATHOGENIC_LABELS, CLINVAR_BENIGN_LABELS
 
     logger.info("Annotating ClinVar CLNSIG")
     clinvar_ht = load_legacy_table("clinvar")

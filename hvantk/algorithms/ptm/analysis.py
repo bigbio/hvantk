@@ -17,7 +17,7 @@ from typing import Dict, List, Optional
 
 import hail as hl
 
-from hvantk.core.constants import CLINVAR_PATHOGENIC_LABELS, CLINVAR_BENIGN_LABELS
+from hvantk.skills.clinvar.shared.constants import CLINVAR_PATHOGENIC_LABELS, CLINVAR_BENIGN_LABELS
 
 logger = logging.getLogger(__name__)
 

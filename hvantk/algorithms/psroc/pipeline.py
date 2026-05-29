@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 
 
 # Re-export from core for backward compatibility
-from hvantk.core.constants import (  # noqa: E402
+from hvantk.skills.clinvar.shared.constants import (  # noqa: E402
     CLINVAR_PATHOGENIC_LABELS as PATHOGENIC_LABELS,
     CLINVAR_BENIGN_LABELS as BENIGN_LABELS,
 )
