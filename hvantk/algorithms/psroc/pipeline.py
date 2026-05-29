@@ -52,11 +52,28 @@ from hvantk.core.utils.gene_sets import load_gene_set
 logger = logging.getLogger(__name__)
 
 
-# Re-export from core for backward compatibility
-from hvantk.skills.clinvar.shared.constants import (  # noqa: E402
-    CLINVAR_PATHOGENIC_LABELS as PATHOGENIC_LABELS,
-    CLINVAR_BENIGN_LABELS as BENIGN_LABELS,
-)
+# TEMP duplication — tracked by https://github.com/bigbio/hvantk/issues/133
+#
+# These label sets are also defined in
+# hvantk/skills/clinvar/shared/constants.py (under names
+# CLINVAR_PATHOGENIC_LABELS / CLINVAR_BENIGN_LABELS). Importing them
+# from there would violate the algorithms-must-not-import-from-skills
+# dependency guard.
+#
+# The proper fix — parameterizing the schema and vocabulary so this
+# module accepts any conformant pathogenicity-labeled table, not just
+# ClinVar — is tracked by issue #133. Remove this duplication when
+# that parameterization lands.
+PATHOGENIC_LABELS = [
+    "Pathogenic/Likely_pathogenic",
+    "Likely_pathogenic",
+    "Pathogenic",
+]
+BENIGN_LABELS = [
+    "Benign/Likely_benign",
+    "Likely_benign",
+    "Benign",
+]
 
 # Score directionality: True means higher values indicate pathogenicity.
 # Scores not in this map default to higher_is_pathogenic=True.

@@ -18,7 +18,27 @@ def annotate_clinvar_clnsig(t: hl.Table) -> hl.Table:
 
     Variants are annotated with a clinical significance label based on ClinVar data: "P" for pathogenic, "B" for benign, or missing if neither applies. The annotation is determined by matching ClinVar CLNSIG values against predefined sets of pathogenic and benign labels.
     """
-    from hvantk.skills.clinvar.shared.constants import CLINVAR_PATHOGENIC_LABELS, CLINVAR_BENIGN_LABELS
+    # TEMP duplication — tracked by https://github.com/bigbio/hvantk/issues/133
+    #
+    # These label sets are also defined in
+    # hvantk/skills/clinvar/shared/constants.py. Importing them from
+    # there would violate the algorithms-must-not-import-from-skills
+    # dependency guard.
+    #
+    # The proper fix — parameterizing the schema and vocabulary so this
+    # function accepts any conformant pathogenicity-labeled table, not
+    # just ClinVar — is tracked by issue #133. Remove this duplication
+    # when that parameterization lands.
+    CLINVAR_PATHOGENIC_LABELS = [
+        "Pathogenic/Likely_pathogenic",
+        "Likely_pathogenic",
+        "Pathogenic",
+    ]
+    CLINVAR_BENIGN_LABELS = [
+        "Benign/Likely_benign",
+        "Likely_benign",
+        "Benign",
+    ]
 
     logger.info("Annotating ClinVar CLNSIG")
     clinvar_ht = load_legacy_table("clinvar")
