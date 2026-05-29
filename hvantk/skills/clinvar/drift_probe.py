@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 import requests
 
 from hvantk.core.plugin.api import DriftProbeError
-from hvantk.core.constants import CLINVAR_FTP_BASE
+from hvantk.skills.clinvar.shared.constants import CLINVAR_FTP_BASE
 
 PROBE_VERSION = 1
 _FILENAME = "clinvar.vcf.gz"

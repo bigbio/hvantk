@@ -18,7 +18,7 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import yaml
 
-from hvantk.core.constants import (
+from hvantk.skills.alphagenome.shared.constants import (
     ALPHAGENOME_DEFAULT_INTERVAL_SIZE,
     ALPHAGENOME_DEFAULT_DENSITY_WINDOW,
     ALPHAGENOME_DEFAULT_MAX_RETRIES,

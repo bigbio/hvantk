@@ -26,7 +26,7 @@ import re
 from dataclasses import dataclass
 from typing import Dict, Optional
 
-from hvantk.core.constants import CLINVAR_FTP_BASE, CLINVAR_FTP_BASE_GRCh37
+from hvantk.skills.clinvar.shared.constants import CLINVAR_FTP_BASE, CLINVAR_FTP_BASE_GRCh37
 from hvantk.core.utils.file_utils import download_file
 
 logger = logging.getLogger(__name__)
