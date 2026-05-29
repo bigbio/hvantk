@@ -13,7 +13,13 @@ TESTDATA = Path(__file__).parent / "testdata" / "prepare_geneset"
 
 
 def _make_mock_catalog_cli():
-    """Return a mock HGNCGeneCatalogStreamer with preset symbol maps for CLI tests."""
+    """Return a mock satisfying GeneCatalogStreamer for CLI tests.
+
+    validate_symbols is wired to the canonical / alias maps so that
+    validate_with_catalog produces the expected validation result.
+    """
+    from hvantk.core.streamers.gene_catalog import GeneCatalogStreamer
+
     canonical = {
         "BRCA1",
         "BRCA2",
@@ -36,9 +42,17 @@ def _make_mock_catalog_cli():
         "HRAS",
         "MAP2K1",
     }
-    mock_catalog = MagicMock()
-    mock_catalog._canonical_symbols = canonical
-    mock_catalog._alias_to_canonical = {"FANCD1": "BRCA2", "ERCC11": "ERCC1"}
+    alias_to_canonical = {"FANCD1": "BRCA2", "ERCC11": "ERCC1"}
+
+    mock_catalog = MagicMock(spec=GeneCatalogStreamer)
+    # Wire validate_symbols to the concrete ABC implementation logic.
+    mock_catalog.is_canonical.side_effect = lambda s: s in canonical
+    mock_catalog.resolve_alias.side_effect = lambda s: alias_to_canonical.get(s)
+
+    def _validate_symbols(symbols):
+        return GeneCatalogStreamer.validate_symbols(mock_catalog, symbols)
+
+    mock_catalog.validate_symbols.side_effect = _validate_symbols
     return mock_catalog
 
 
