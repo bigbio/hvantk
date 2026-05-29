@@ -1,6 +1,6 @@
 """COSMIC Cancer Gene Census (CGC) data streamer.
 
-Subclass of :class:`GeneDiseaseValidityStreamer` that adds COSMIC-specific
+Subclass of :class:`GeneDiseaseTableStreamer` that adds COSMIC-specific
 somatic/germline filtering, tumour-type and role-based gene set extraction.
 
 CGC tables have one row per gene (not per gene-disease assertion), so methods
@@ -19,16 +19,16 @@ from hvantk.skills.cosmic_cgc.shared.constants import (
     COSMIC_CGC_CLASSIFICATION_LEVELS,
     COSMIC_MUTATION_CONTEXTS,
 )
-from hvantk.core.utils.gene_disease_streamer import GeneDiseaseValidityStreamer
+from hvantk.core.streamers.gene_disease_table import GeneDiseaseTableStreamer
 
 logger = logging.getLogger(__name__)
 
 
-class CosmicCGCStreamer(GeneDiseaseValidityStreamer):
+class CosmicCGCGeneDiseaseTableStreamer(GeneDiseaseTableStreamer):
     """Streamer for querying and aggregating COSMIC Cancer Gene Census data.
 
     Inherits query, aggregation, and export machinery from
-    :class:`GeneDiseaseValidityStreamer` in gene-keyed mode.  Adds
+    :class:`GeneDiseaseTableStreamer` in gene-keyed mode.  Adds
     COSMIC-specific methods for somatic/germline filtering and gene set
     extraction by tumour type, role in cancer, and tissue type.
     """

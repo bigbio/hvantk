@@ -1,7 +1,7 @@
 """GeneDiseaseTableStreamer — ABC for gene-disease association DataModels.
 
 Provides the common query, aggregation, ontology, integration, and summary
-logic shared by ClinGenStreamer and GenCCStreamer.  Subclasses set three
+logic shared by ClinGenGeneDiseaseTableStreamer and GenCCGeneDiseaseTableStreamer.  Subclasses set three
 class-level properties (``source_name``, ``classification_levels``,
 ``annotation_prefix``) and may override ``_gene_disease_required_fields``,
 ``_grouping_field``, and ``_detect_keying_mode`` for source-specific behaviour.
