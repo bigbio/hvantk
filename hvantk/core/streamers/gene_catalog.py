@@ -1,6 +1,6 @@
 """GeneCatalogStreamer — ABC for gene metadata catalogs (HGNC, Ensembl, ...).
 
-Concrete subclasses live in ``skills/<plugin>/streamers.py``. Algorithms
+Concrete subclasses live in ``skills/<plugin>/streamer.py``. Algorithms
 consume the ABC; callers wire concrete catalogs at construction time.
 """
 from __future__ import annotations

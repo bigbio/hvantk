@@ -2,7 +2,7 @@
 
 Per-variant rows keyed by (locus, alleles), arbitrary annotations.
 
-Concrete subclasses live in ``skills/<plugin>/streamers.py``. This stub
+Concrete subclasses live in ``skills/<plugin>/streamer.py``. This stub
 is filled with the full abstract surface in a later PR, when the first
 concrete consumer (ClinVarVariantTableStreamer) is built.
 """
