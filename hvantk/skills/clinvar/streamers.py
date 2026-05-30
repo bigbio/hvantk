@@ -6,10 +6,17 @@ from typing import Iterable
 import hail as hl
 
 from hvantk.core.streamers.variant_table import VariantTableStreamer
+from hvantk.skills.clinvar.shared.constants import (
+    CLINVAR_PATHOGENIC_LABELS,
+    CLINVAR_BENIGN_LABELS,
+)
 
 
 class ClinVarVariantTableStreamer(VariantTableStreamer):
     """ClinVar variant table streamer (info.CLNSIG, info.GENEINFO, info.CLNDN)."""
+
+    PATHOGENIC_LABELS = CLINVAR_PATHOGENIC_LABELS
+    BENIGN_LABELS = CLINVAR_BENIGN_LABELS
 
     def to_hail(self) -> hl.Table:
         return self._artifact.to_hail()

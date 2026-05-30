@@ -12,34 +12,14 @@ from hvantk.core.io.legacy_artifacts import (
 )
 
 
-def annotate_clinvar_clnsig(t: hl.Table) -> hl.Table:
+def annotate_clinvar_clnsig(
+    t: hl.Table, *, pathogenic_labels, benign_labels
+) -> hl.Table:
     """
     Annotates variants with simplified ClinVar clinical significance labels.
 
-    Variants are annotated with a clinical significance label based on ClinVar data: "P" for pathogenic, "B" for benign, or missing if neither applies. The annotation is determined by matching ClinVar CLNSIG values against predefined sets of pathogenic and benign labels.
+    Variants are annotated with a clinical significance label based on ClinVar data: "P" for pathogenic, "B" for benign, or missing if neither applies. The annotation is determined by matching ClinVar CLNSIG values against the injected pathogenic and benign label vocabularies.
     """
-    # TEMP duplication — tracked by https://github.com/bigbio/hvantk/issues/133
-    #
-    # These label sets are also defined in
-    # hvantk/skills/clinvar/shared/constants.py. Importing them from
-    # there would violate the algorithms-must-not-import-from-skills
-    # dependency guard.
-    #
-    # The proper fix — parameterizing the schema and vocabulary so this
-    # function accepts any conformant pathogenicity-labeled table, not
-    # just ClinVar — is tracked by issue #133. Remove this duplication
-    # when that parameterization lands.
-    CLINVAR_PATHOGENIC_LABELS = [
-        "Pathogenic/Likely_pathogenic",
-        "Likely_pathogenic",
-        "Pathogenic",
-    ]
-    CLINVAR_BENIGN_LABELS = [
-        "Benign/Likely_benign",
-        "Likely_benign",
-        "Benign",
-    ]
-
     logger.info("Annotating ClinVar CLNSIG")
     clinvar_ht = load_legacy_table("clinvar")
 
@@ -48,10 +28,10 @@ def annotate_clinvar_clnsig(t: hl.Table) -> hl.Table:
 
     # Now compute conditions using the annotated field
     is_pathogenic = t.clinvar_clnsig.any(
-        lambda x: hl.set(CLINVAR_PATHOGENIC_LABELS).contains(x)
+        lambda x: hl.set(pathogenic_labels).contains(x)
     )
     is_benign = t.clinvar_clnsig.any(
-        lambda x: hl.set(CLINVAR_BENIGN_LABELS).contains(x)
+        lambda x: hl.set(benign_labels).contains(x)
     )
 
     t = t.annotate(
