@@ -1,10 +1,12 @@
-# Clinvar Training Set Data Streamer
-# Implements streaming processing for generating training sets from Clinvar data
+# ClinVar Training Set Data Streamer
+# Implements streaming processing for generating training sets from ClinVar data
+#
+# Moved from hvantk/core/utils/clinvar_streamer.py (issue #121).
+# core/utils/ must not hold ClinVar-specific logic; this belongs in skills/clinvar/.
 #
 # Caller contract: pass a pre-built Hail Table via the `table` parameter.
 # Build the table with `hvantk reprocess clinvar:variants ...` first, load it
 # via `hl.read_table()`, then construct ClinvarDataStreamer(table=ht, ...).
-# This keeps core/ free of any dependency on skills/.
 
 import hail as hl
 from typing import Iterator, Optional, Set, Iterable

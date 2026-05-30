@@ -5,7 +5,7 @@ import logging
 import os
 import hail as hl
 from hvantk.algorithms.hgc.constants import VCF_EXTENSION
-from hvantk.algorithms.annotation.annotation_streamer import (
+from hvantk.tools.training_sets.enhanced import (
     create_enhanced_clinvar_training_streamer,
 )
 from hvantk.core.utils.gene_sets import load_sample_chd_gene_set
