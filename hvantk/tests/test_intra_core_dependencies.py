@@ -199,3 +199,31 @@ def test_core_utils_has_no_provider_specific_files():
         "core/utils/ must not hold provider-specific files. "
         f"Offenders: {offenders}. Move each to skills/<plugin>/ per issue #121."
     )
+
+
+# Reverse-rule guard for issue #122: per-domain constants modules must not
+# reappear under core/.
+def test_core_has_no_domain_constants_files():
+    """core/ must not declare per-domain constants modules.
+
+    The PTM and QTL constants modules were split per issue #122 (moved to
+    skills/<plugin>/shared/constants.py and algorithms/<algorithm>/constants.py).
+    If either is reintroduced -- or a new domain-constants file appears with
+    similar naming -- this guard fails. Author should place per-domain
+    constants in the owning skill or algorithm, not core/.
+    """
+    forbidden_names = {
+        "ptm_constants.py",
+        "qtl_constants.py",
+    }
+    core_dir = PACKAGE_ROOT / "core"
+    offenders = [
+        str(p.relative_to(PACKAGE_ROOT))
+        for p in core_dir.rglob("*.py")
+        if p.name in forbidden_names
+    ]
+    assert not offenders, (
+        "Per-domain constants modules belong in skills/<plugin>/shared/ or "
+        "algorithms/<algorithm>/constants.py, not core/. Offenders: "
+        f"{offenders}. See issue #122."
+    )
