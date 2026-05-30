@@ -1,6 +1,6 @@
 """Hail Table builder for AlphaGenome variant effect predictions.
 
-Owns the full pipeline: drives the local AlphaGenomeStreamer to call the
+Owns the full pipeline: drives the local AlphaGenomePipeline to call the
 external API for each variant, persists predictions and checkpoint files
 to a temp directory, then re-emits a Hail Table keyed by (locus, alleles)
 under the Phase B contract.
@@ -20,7 +20,7 @@ from hvantk.core.utils.file_utils import resolve_compression
 logger = logging.getLogger(__name__)
 
 
-def _run_alphagenome_streamer(
+def _run_alphagenome_pipeline(
     input_path: str,
     output_path: str,
     config_path: str,
@@ -29,27 +29,27 @@ def _run_alphagenome_streamer(
 ) -> "hl.Table":
     """Run AlphaGenome predictions and return a checkpointed Hail Table.
 
-    Drives AlphaGenomeStreamer for the API calls, then builds a minimal
+    Drives AlphaGenomePipeline for the API calls, then builds a minimal
     Hail Table keyed by (locus, alleles) from the input variants and
     checkpoints it under output_path/alphagenome_variants.ht.
     """
-    from hvantk.skills.alphagenome.streamer import AlphaGenomeStreamer
+    from hvantk.skills.alphagenome.pipelines import AlphaGenomePipeline
 
     if overwrite and os.path.isdir(output_path):
         shutil.rmtree(output_path)
 
-    streamer = AlphaGenomeStreamer(
+    pipeline = AlphaGenomePipeline(
         input_path=input_path,
         output_dir=output_path,
         config_path=config_path,
         no_resume=no_resume,
     )
-    streamer.setup()
+    pipeline.setup()
     try:
-        for _batch in streamer.stream():
+        for _batch in pipeline.stream():
             pass  # checkpointing handled internally
     finally:
-        streamer.teardown()
+        pipeline.teardown()
 
     logger.info("Creating AlphaGenome variants table from %s", input_path)
 
@@ -110,7 +110,7 @@ def build_alphagenome_predictions(parsed_input, ctx, **params):
     with tempfile.TemporaryDirectory() as td:
         tmp_out = os.path.join(td, "alphagenome_out")
         os.makedirs(tmp_out, exist_ok=True)
-        _run_alphagenome_streamer(
+        _run_alphagenome_pipeline(
             input_path=str(parsed_input),
             output_path=tmp_out,
             overwrite=True,
