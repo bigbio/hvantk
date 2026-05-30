@@ -21,7 +21,7 @@ from hvantk.algorithms.ptm.mapper import (
     resolve_transcript,
 )
 from hvantk.algorithms.ptm.pipeline import PTMBuildConfig, map_ptm_sites
-from hvantk.core.ptm_constants import PTM_OUTPUT_COLUMNS
+from hvantk.algorithms.ptm.constants import PTM_OUTPUT_COLUMNS
 
 
 # ---------- Fixtures ----------

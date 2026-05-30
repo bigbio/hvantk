@@ -28,7 +28,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 from hvantk.core.utils.bgzf import BgzfWriter
-from hvantk.core.ptm_constants import (
+from hvantk.algorithms.ptm.constants import (
     ENSEMBL_GTF_URL,
     ENSEMBL_GTF_FILENAME,
     PTM_TYPE_CATEGORIES,

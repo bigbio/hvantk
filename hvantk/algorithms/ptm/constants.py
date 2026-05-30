@@ -1,10 +1,7 @@
-"""Constants and default values for PTM module."""
+"""Algorithm-local constants for the PTM analysis algorithm.
 
-# UniProt REST API
-UNIPROT_API_URL = "https://rest.uniprot.org/uniprotkb/search"
-UNIPROT_API_FIELDS = "accession,gene_names,ft_mod_res,xref_ensembl,sequence"
-UNIPROT_HUMAN_PTM_QUERY = "organism_id:9606 AND reviewed:true AND ft_mod_res:*"
-UNIPROT_BATCH_SIZE = 500
+Moved from hvantk/core/ptm_constants.py per issue #122 (clean-core principle).
+"""
 
 # Ensembl GTF
 ENSEMBL_RELEASE = "113"
@@ -13,29 +10,6 @@ ENSEMBL_GTF_URL = (
     f"/gtf/homo_sapiens/Homo_sapiens.GRCh38.{ENSEMBL_RELEASE}.gtf.gz"
 )
 ENSEMBL_GTF_FILENAME = f"Homo_sapiens.GRCh38.{ENSEMBL_RELEASE}.gtf.gz"
-
-# PeptideAtlas Phospho Build
-PEPTIDEATLAS_PHOSPHO_BASE_URL = "https://peptideatlas.org/builds/human/phospho"
-PEPTIDEATLAS_LATEST_BUILD_DATE = "202512"
-PEPTIDEATLAS_LATEST_BUILD_ID = "606"
-
-# CPTAC Phospho (via cptac Python package)
-CPTAC_CANCER_TYPES = [
-    "brca", "ccrcc", "coad", "gbm",
-    "hnscc", "lscc", "luad", "ov", "pdac", "ucec",
-]
-CPTAC_CANCER_CLASS_MAP = {
-    "brca": "Brca",
-    "ccrcc": "Ccrcc",
-    "coad": "Coad",
-    "gbm": "Gbm",
-    "hnscc": "Hnscc",
-    "lscc": "Lscc",
-    "luad": "Luad",
-    "ov": "Ov",
-    "pdac": "Pdac",
-    "ucec": "Ucec",
-}
 
 # PTM type categories (UniProt MOD_RES description prefixes)
 PTM_TYPE_CATEGORIES = {
