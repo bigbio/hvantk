@@ -26,7 +26,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
-from hvantk.core.ptm_constants import (
+from hvantk.skills.peptideatlas.phospho.shared.constants import (
     PEPTIDEATLAS_PHOSPHO_BASE_URL,
     PEPTIDEATLAS_LATEST_BUILD_DATE,
     PEPTIDEATLAS_LATEST_BUILD_ID,

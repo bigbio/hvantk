@@ -33,6 +33,19 @@ def _coerce_plugin_arg_value(value: str) -> Any:
     the function has a single exit path per branch and does not swallow
     exceptions silently.
     """
+    # List coercion: if the raw value contains a comma, treat it as a
+    # comma-separated list and recursively coerce each element. Builders
+    # that declare list-typed params (e.g. chromosomes: list[str]) thus
+    # receive a real list instead of the literal "chr1,chr2,chrX" string.
+    # Trade-off: a single element containing a comma cannot be expressed
+    # via --plugin-arg under this scheme; in practice plugin args don't
+    # carry commas in single values (issue #119, Option A).
+    if "," in value:
+        return [
+            _coerce_plugin_arg_value(part.strip())
+            for part in value.split(",")
+            if part.strip()
+        ]
     low = value.lower()
     if low == "true":
         return True
@@ -171,6 +184,16 @@ def reprocess_cmd(
         else:
             # Phase B contract: orchestrator handles BuildContext, validation,
             # and save. Returns the stamped Provenance.
+            #
+            # Interface separation (#121): builders receive a GeneCatalogStreamer
+            # ABC, never construct the concrete HGNC streamer themselves (skills
+            # must not import sibling skills). tools/ is the only layer allowed
+            # to build it.
+            if "hgnc_path" in extras or "hgnc_ht" in extras:
+                from hvantk.skills.hgnc.streamers import HGNCGeneCatalogStreamer
+                hgnc_loc = extras.pop("hgnc_path", None) or extras.pop("hgnc_ht", None)
+                extras["gene_catalog"] = HGNCGeneCatalogStreamer.from_path(hgnc_loc)
+
             from hvantk.core.plugin.run_builder import run_builder_for_spec
             from pathlib import Path
             run_builder_for_spec(

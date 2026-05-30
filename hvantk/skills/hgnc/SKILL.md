@@ -23,7 +23,7 @@ Out of scope for this skill (per `_conventions` § 11):
 
 HGNC = HUGO Gene Nomenclature Committee. The complete-set TSV is the authoritative reference for current approved human gene symbols, IDs, and curated cross-references.
 
-> Catalog gap: HGNC is **not yet registered** in any plugin's `catalog/datasets.json` or in `hvantk/resources/registry/genomics/datasets.json` (verified 2026-05-10; re-check with `hvantk catalog search HGNC`). Until it is, the URL/version constants live in `hvantk/core/constants.py` (`HGNC_DOWNLOAD_URL`, `HGNC_INFO_URL`). Do **not** restate them here. When HGNC is added to the catalog, drop this paragraph and reference the catalog entry.
+> Catalog gap: HGNC is **not yet registered** in any plugin's `catalog/datasets.json` or in `hvantk/resources/registry/genomics/datasets.json` (verified 2026-05-10; re-check with `hvantk catalog search HGNC`). Until it is, the URL/version constants live in `hvantk/skills/hgnc/shared/constants.py` (`HGNC_DOWNLOAD_URL`, `HGNC_INFO_URL`). Do **not** restate them here. When HGNC is added to the catalog, drop this paragraph and reference the catalog entry.
 
 Stable provider notes the catalog will not capture:
 - HGNC publishes a single rolling "complete set" (no dated versions in the URL); freshness is determined by the file's HTTP `Last-Modified` header.
@@ -37,7 +37,7 @@ Stable provider notes the catalog will not capture:
 
 - File: tab-separated, single header row, ~50 columns. Header confirmed in `hvantk/tests/testdata/raw/hgnc/hgnc_test_sample.tsv`.
 - Imported with `hl.import_table(impute=False, missing="")` — all fields stay as strings; no type inference is attempted.
-- Field renaming is driven by `HGNC_GENE_FIELDS` (`hvantk/core/constants.py`). Notable renames: `symbol → gene_symbol`, `name → gene_name`, `refseq_accession → refseq_id`, `orphanet → orphanet_id`, `date_approved_reserved → date_approved`. The builder only renames fields that are present in the input; columns absent from the upstream file are silently skipped.
+- Field renaming is driven by `HGNC_GENE_FIELDS` (`hvantk/skills/hgnc/shared/constants.py`). Notable renames: `symbol → gene_symbol`, `name → gene_name`, `refseq_accession → refseq_id`, `orphanet → orphanet_id`, `date_approved_reserved → date_approved`. The builder only renames fields that are present in the input; columns absent from the upstream file are silently skipped.
 - Pipe-separated multi-value fields are split into `array<str>` *after* renaming. The list of fields treated this way is `HGNC_PIPE_SEPARATED_FIELDS`. Empty/absent values become `[]`, not `missing`.
 - `status` filter: by default the builder keeps only rows where `status == "Approved"`. Pass `include_withdrawn=True` to keep symbols, entry-withdrawn rows, etc. Withdrawn rows often have a populated `hgnc_id` but missing cross-references — joining to them silently produces nulls.
 - Symbol history: `prev_symbols` and `alias_symbols` are needed to resolve legacy gene symbols. Downstream resolvers (e.g., `GeneMapper.resolve_symbol`) walk these arrays — do not strip them when selecting `--fields`.
@@ -54,7 +54,7 @@ Summary: one row per approved gene (≈43k in the live release; 5 in the fixture
 - Plugin manifest: `hvantk/skills/hgnc/plugin.yaml` (drives loader registration and `hvantk drift hgnc:lookup`).
 - Builder: `create_hgnc_gene_tb` in `hvantk/tables/table_builders.py` (uses `_create_table_base()` per `_conventions` § 4).
 - CLI: `hvantk reprocess hgnc:lookup --raw-dir <dir> --output <path>.ht`. Builder kwargs (`include_withdrawn`, `fields`, etc.) flow through `--plugin-arg key=value`.
-- Constants: `HGNC_GENE_FIELDS`, `HGNC_PIPE_SEPARATED_FIELDS`, `HGNC_DOWNLOAD_URL`, `HGNC_INFO_URL` in `hvantk/core/constants.py`.
+- Constants: `HGNC_GENE_FIELDS`, `HGNC_PIPE_SEPARATED_FIELDS`, `HGNC_DOWNLOAD_URL`, `HGNC_INFO_URL` in `hvantk/skills/hgnc/shared/constants.py`.
 - Downloader: `hvantk/tools/hgnc_downloader.py` (CLI: `hvantk download hgnc`, wired in `hvantk/tools/plugins/download_cli.py`).
 - Registry: **not registered** in `hvantk/tables/registry.py`. HGNC is built as a one-off lookup ahead of recipe runs, not as part of a batch recipe — register only if a real recipe-driven workflow demands it.
 - Existing tests: assertion-based unit + GeneMapper tests in `hvantk/tests/test_hgnc_table_hail.py` (marked `hail` and `slow`). The snapshot round-trip test (see § 9) is a *new* file the agent should create on first run; do not extend `test_hgnc_table_hail.py` to do snapshot work — keep concerns separated.

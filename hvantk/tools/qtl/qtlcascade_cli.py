@@ -14,7 +14,7 @@ import logging
 import click
 
 from hvantk.core.config import CONTEXT_SETTINGS
-from hvantk.core.qtl_constants import DEFAULT_COLOC_H4_THRESHOLD
+from hvantk.algorithms.qtlcascade.constants import DEFAULT_COLOC_H4_THRESHOLD
 
 logger = logging.getLogger(__name__)
 

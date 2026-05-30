@@ -1,0 +1,51 @@
+api_version: 2
+name: onek-genomes
+version: 0.1.0
+status: provisional
+description: 1000 Genomes high-coverage callset (NYGC/CCDG) — variants + IGSR samples
+
+source:
+  catalog_ref: onek-genomes
+
+datasets:
+  - name: variants
+    domain: genomics
+    backend: hail
+    artifact_type: VariantMatrix
+    schema_id: onek-genomes-variants-v1
+    builder:
+      module: hvantk.skills.onek_genomes.builder
+      function: build_onek_genomes_variants
+    drift_probe:
+      module: hvantk.skills.onek_genomes.drift_probe
+      function: fetch_variants_fingerprint
+    skill: SKILL.md
+    tests:
+      command: pytest hvantk/skills/onek_genomes/tests -m hail
+      fixture: tests/testdata/raw/onek_genomes
+      schema_snapshot: tests/snapshots/variants_schema.json
+      row_snapshot: tests/snapshots/variants_sample_rows.json
+      drift_fingerprint: tests/drift_fingerprint_variants.json
+
+  - name: samples
+    domain: genomics
+    backend: hail
+    artifact_type: AnnotationTable
+    schema_id: onek-genomes-samples-v1
+    builder:
+      module: hvantk.skills.onek_genomes.samples_builder
+      function: build_onek_genomes_samples
+    drift_probe:
+      module: hvantk.skills.onek_genomes.drift_probe
+      function: fetch_samples_fingerprint
+    lifecycle:
+      download:
+        module: hvantk.skills.onek_genomes.samples_download
+        function: download_igsr_samples
+    skill: SKILL.md
+    tests:
+      command: pytest hvantk/skills/onek_genomes/tests -m hail
+      fixture: tests/testdata/raw/onek_genomes
+      schema_snapshot: tests/snapshots/samples_schema.json
+      row_snapshot: tests/snapshots/samples_sample_rows.json
+      drift_fingerprint: tests/drift_fingerprint_samples.json

@@ -20,7 +20,7 @@ import pandas as pd
 from anndata.io import sparse_dataset, write_elem
 from scipy import sparse
 
-from hvantk.core.constants import UCSC_CELL_ID_COLUMN, UCSC_GENE_COLUMN
+from hvantk.skills.ucsc_cellbrowser.shared.constants import UCSC_CELL_ID_COLUMN, UCSC_GENE_COLUMN
 
 __all__ = [
     "load_ucsc_metadata",

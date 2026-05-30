@@ -2,14 +2,12 @@
 Tests for gene set data structures, I/O, parsing, and validation.
 
 Covers: GeneSet, GeneSetCollection (JSON + GMT round-trips), geneset_io
-(detect_id_type, validate_gene_ids, parse_geneset_tsv, validate_with_hgnc),
+(detect_id_type, validate_gene_ids, parse_geneset_tsv, validate_with_catalog),
 and loading utilities (load_gene_sets, load_marker_genes).
 """
 
 import json
 from pathlib import Path
-from unittest.mock import patch
-
 import pytest
 
 from hvantk.core.utils.gene_sets import (
@@ -23,7 +21,7 @@ from hvantk.core.utils.geneset_io import (
     detect_id_type,
     parse_geneset_tsv,
     validate_gene_ids,
-    validate_with_hgnc,
+    validate_with_catalog,
 )
 
 TESTDATA_GENESET = Path(__file__).parent.parent / "testdata" / "prepare_geneset"
@@ -133,35 +131,48 @@ def test_parse_geneset_tsv_deduplicates(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# geneset_io: validate_with_hgnc
+# geneset_io: validate_with_catalog
 # ---------------------------------------------------------------------------
 
 
-def _mock_hgnc_maps():
+def _make_mock_catalog():
+    """Return a minimal GeneCatalogStreamer subclass with preset symbol maps."""
+    from hvantk.core.streamers.gene_catalog import GeneCatalogStreamer
+
     canonical = {"BRCA1", "BRCA2", "TP53", "EGFR", "ERCC1"}
     alias_to_canonical = {"FANCD1": "BRCA2", "ERCC11": "ERCC1", "RNF53": "BRCA1"}
-    canonical_to_aliases = {
-        "BRCA2": ["FANCD1"],
-        "ERCC1": ["ERCC11"],
-        "BRCA1": ["RNF53"],
-    }
-    return canonical, alias_to_canonical, canonical_to_aliases
+
+    class _FakeCatalog(GeneCatalogStreamer):
+        def __init__(self):
+            # Bypass AnnotationTable requirement; no real artifact needed.
+            self._canonical_symbols = canonical
+            self._alias_to_canonical = alias_to_canonical
+
+        def is_canonical(self, symbol):
+            return symbol in self._canonical_symbols
+
+        def resolve_alias(self, symbol):
+            return self._alias_to_canonical.get(symbol)
+
+        def expand_with_aliases(self, symbols):
+            raise NotImplementedError
+
+        def map_ids(self, ids, source_type, target_type):
+            raise NotImplementedError
+
+    return _FakeCatalog()
 
 
-@patch("hvantk.core.utils.gene_aliases._load_hgnc_symbol_maps")
-def test_validate_with_hgnc_alias_resolution(mock_load):
-    mock_load.return_value = _mock_hgnc_maps()
+def test_validate_with_catalog_alias_resolution():
     gene_sets = {"panel": ["FANCD1", "TP53", "ERCC11"]}
-    vr = validate_with_hgnc(gene_sets, "/fake/hgnc.tsv")
+    vr = validate_with_catalog(gene_sets, _make_mock_catalog())
     assert vr.aliases_resolved == {"FANCD1": "BRCA2", "ERCC11": "ERCC1"}
     assert vr.gene_sets["panel"] == ["BRCA2", "TP53", "ERCC1"]
 
 
-@patch("hvantk.core.utils.gene_aliases._load_hgnc_symbol_maps")
-def test_validate_with_hgnc_unrecognized(mock_load):
-    mock_load.return_value = _mock_hgnc_maps()
+def test_validate_with_catalog_unrecognized():
     gene_sets = {"panel": ["BRCA1", "FAKEGENE"]}
-    vr = validate_with_hgnc(gene_sets, "/fake/hgnc.tsv")
+    vr = validate_with_catalog(gene_sets, _make_mock_catalog())
     assert vr.unrecognized == {"FAKEGENE"}
     assert "FAKEGENE" in vr.gene_sets["panel"]
 

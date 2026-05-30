@@ -2,6 +2,7 @@
 from hvantk.core.models.annotation_table import AnnotationTable
 from hvantk.core.models.expression_matrix import ExpressionMatrix
 from hvantk.core.models.gene_set import GeneSet
+from hvantk.core.models.variant_matrix import VariantMatrix
 from hvantk.core.models.provenance import Provenance
 from hvantk.core.models.build_context import BuildContext
 from hvantk.core.models._expr import col, agg_count, agg_mean, agg_sum
@@ -18,6 +19,7 @@ __all__ = [
     "AnnotationTable",
     "ExpressionMatrix",
     "GeneSet",
+    "VariantMatrix",
     "Provenance",
     "BuildContext",
     "col",

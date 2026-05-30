@@ -194,7 +194,7 @@ hvantk reprocess insider:variants \
 Ensembl gene annotations (gene name, gene ID, biotype, transcript ID).
 URL: https://www.ensembl.org/info/data/ftp/index.html
 
-**Download**: Export from BioMart with the required attributes matching `ENSEMBL_BIOMART_FIELDS` in `hvantk/core/constants.py`. Alternatively, download from the Ensembl FTP:
+**Download**: Export from BioMart with the required attributes matching `ENSEMBL_BIOMART_FIELDS` in `hvantk/skills/ensembl_gene/shared/constants.py`. Alternatively, download from the Ensembl FTP:
 https://www.ensembl.org/info/data/ftp/index.html
 
 **Build**:

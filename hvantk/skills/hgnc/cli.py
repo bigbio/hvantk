@@ -15,7 +15,7 @@ from pathlib import Path
 import click
 
 from hvantk.core.config import CONTEXT_SETTINGS  # noqa: F401  (kept for parity with sibling CLIs)
-from hvantk.core.constants import HGNC_DOWNLOAD_URL, HGNC_INFO_URL  # noqa: F401
+from hvantk.skills.hgnc.shared.constants import HGNC_DOWNLOAD_URL, HGNC_INFO_URL  # noqa: F401
 
 logger = logging.getLogger(__name__)
 

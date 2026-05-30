@@ -11,7 +11,7 @@ import tempfile
 import shutil
 
 from hvantk.skills.hgnc.cli import download_hgnc
-from hvantk.core.constants import HGNC_DOWNLOAD_URL
+from hvantk.skills.hgnc.shared.constants import HGNC_DOWNLOAD_URL
 
 
 class TestDownloadHgnc:

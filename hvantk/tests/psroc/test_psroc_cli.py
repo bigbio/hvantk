@@ -259,6 +259,7 @@ class TestPSROCCLIDryRun:
         # Set up mocks
         mock_config = MagicMock()
         mock_config.validate.return_value = []
+        mock_config.hgnc_path = None  # no HGNC; prevents catalog construction in CLI
         mock_config_cls.return_value = mock_config
 
         mock_pipeline = MagicMock()
@@ -314,6 +315,7 @@ class TestPSROCCLIOptions:
 
         mock_config = MagicMock()
         mock_config.validate.return_value = []
+        mock_config.hgnc_path = None  # no HGNC; prevents catalog construction in CLI
         mock_config_cls.return_value = mock_config
 
         mock_pipeline = MagicMock()
@@ -356,6 +358,7 @@ class TestPSROCCLIOptions:
 
         mock_config = MagicMock()
         mock_config.validate.return_value = []
+        mock_config.hgnc_path = None  # no HGNC; prevents catalog construction in CLI
         mock_config_cls.return_value = mock_config
 
         mock_pipeline = MagicMock()
@@ -396,6 +399,7 @@ class TestPSROCCLIOptions:
 
         mock_config = MagicMock()
         mock_config.validate.return_value = []
+        mock_config.hgnc_path = None  # no HGNC; prevents catalog construction in CLI
         mock_config_cls.return_value = mock_config
 
         mock_pipeline = MagicMock()
@@ -440,6 +444,7 @@ class TestPSROCCLIVariantSources:
 
         mock_config = MagicMock()
         mock_config.validate.return_value = []
+        mock_config.hgnc_path = None  # no HGNC; prevents catalog construction in CLI
         mock_config_cls.return_value = mock_config
 
         mock_pipeline = MagicMock()
@@ -481,6 +486,7 @@ class TestPSROCCLIVariantSources:
 
         mock_config = MagicMock()
         mock_config.validate.return_value = []
+        mock_config.hgnc_path = None  # no HGNC; prevents catalog construction in CLI
         mock_config_cls.return_value = mock_config
 
         mock_pipeline = MagicMock()
@@ -524,6 +530,7 @@ class TestPSROCCLIVariantSources:
 
         mock_config = MagicMock()
         mock_config.validate.return_value = []
+        mock_config.hgnc_path = None  # no HGNC; prevents catalog construction in CLI
         mock_config_cls.return_value = mock_config
 
         mock_pipeline = MagicMock()

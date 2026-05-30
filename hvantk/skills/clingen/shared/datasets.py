@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from hvantk.core.constants import (
+from hvantk.skills.clingen.shared.constants import (
     CLINGEN_BASE_URL,
     CLINGEN_FILE_PREFIX,
 )

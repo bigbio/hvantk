@@ -21,7 +21,7 @@ def test_all_expected_tool_domains_have_at_least_one_tool():
     reg = tool_loader.get_registry()
     domains = {t.domain for t in reg.list_tools()}
     expected = {
-        "plugins", "build", "expression", "annotation", "genesets",
+        "plugins", "expression", "annotation", "genesets",
         "ptm", "ancestry", "qtl", "enrichex", "hgc", "infra",
     }
     missing = expected - domains

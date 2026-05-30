@@ -21,7 +21,7 @@ import logging
 
 import hail as hl
 
-from hvantk.core.constants import (
+from hvantk.skills.clingen.shared.constants import (
     CLINGEN_CLASSIFICATION_LEVELS,
     CLINGEN_GENE_DISEASE_FIELDS,
 )

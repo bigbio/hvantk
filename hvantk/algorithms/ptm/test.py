@@ -28,7 +28,7 @@ import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
 
-from hvantk.core.ptm_constants import (
+from hvantk.algorithms.ptm.constants import (
     LMM_BINNED_MIN_CELL_N,
     LMM_BINNED_MIN_POS_EXPR,
     LMM_MIN_MIXED_GENES,

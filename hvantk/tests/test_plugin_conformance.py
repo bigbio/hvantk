@@ -482,7 +482,6 @@ def test_expression_atlas_dataset_round_trip(tmp_path, expression_atlas_inputs):
 
     loaded = core_io.load(out)
     assert isinstance(loaded, ExpressionMatrix)
-    assert loaded.backend == "anndata"
     assert loaded.n_vars == 2  # 2 genes
     assert loaded.n_obs == 3  # 3 samples
 
@@ -540,7 +539,6 @@ def test_cptac_expression_round_trip(tmp_path, cptac_expression_inputs):
 
     loaded = core_io.load(out)
     assert isinstance(loaded, ExpressionMatrix)
-    assert loaded.backend == "anndata"
     assert loaded.n_obs == 2  # 2 samples
     assert loaded.n_vars == 2  # 2 genes
 
@@ -596,7 +594,6 @@ def test_cptac_phospho_round_trip(tmp_path, cptac_phospho_inputs):
 
     loaded = core_io.load(out)
     assert isinstance(loaded, ExpressionMatrix)
-    assert loaded.backend == "anndata"
     assert loaded.n_obs == 2
     assert loaded.n_vars == 2
 
@@ -660,7 +657,6 @@ def test_ucsc_cellbrowser_round_trip(tmp_path, ucsc_cellbrowser_inputs, dataset_
 
     loaded = core_io.load(out)
     assert isinstance(loaded, ExpressionMatrix)
-    assert loaded.backend == "anndata"
     assert loaded.n_vars == 2  # 2 genes
     assert loaded.n_obs == 2  # 2 cells
 

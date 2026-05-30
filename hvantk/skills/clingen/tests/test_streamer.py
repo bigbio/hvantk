@@ -1,12 +1,12 @@
 """
-Hail integration tests for ClinGenStreamer.
+Hail integration tests for ClinGenGeneDiseaseTableStreamer.
 """
 
 from pathlib import Path
 
 import pytest
 
-from hvantk.skills.clingen.streamer import ClinGenStreamer
+from hvantk.skills.clingen.streamers import ClinGenGeneDiseaseTableStreamer
 from hvantk.skills.clingen.builder import build_clingen_gene_disease
 from hvantk.core.models.build_context import BuildContext
 
@@ -39,27 +39,27 @@ def clingen_table_path(tmp_path):
 
 
 def test_get_genes_by_classification_definitive(clingen_table_path):
-    streamer = ClinGenStreamer(clingen_table_path, init_hail=False)
+    streamer = ClinGenGeneDiseaseTableStreamer(clingen_table_path, init_hail=False)
     genes = streamer.get_genes_by_classification("Definitive")
     assert "BRCA1" in genes
     assert "APOB" not in genes
 
 
 def test_get_genes_by_disease_cancer(clingen_table_path):
-    streamer = ClinGenStreamer(clingen_table_path, init_hail=False)
+    streamer = ClinGenGeneDiseaseTableStreamer(clingen_table_path, init_hail=False)
     genes = streamer.get_genes_by_disease("cancer", match_mode="contains")
     assert "BRCA1" in genes
     assert "BRCA2" in genes
 
 
 def test_get_genes_by_mondo_id(clingen_table_path):
-    streamer = ClinGenStreamer(clingen_table_path, init_hail=False)
+    streamer = ClinGenGeneDiseaseTableStreamer(clingen_table_path, init_hail=False)
     genes = streamer.get_genes_by_mondo_id("MONDO:0005144")
     assert genes == {"BRCA1"}
 
 
 def test_compute_stats(clingen_table_path):
-    streamer = ClinGenStreamer(clingen_table_path, init_hail=False)
+    streamer = ClinGenGeneDiseaseTableStreamer(clingen_table_path, init_hail=False)
     stats = streamer.compute_stats()
     assert stats["total_associations"] == 11
     assert stats["unique_genes"] == 10
@@ -67,7 +67,7 @@ def test_compute_stats(clingen_table_path):
 
 
 def test_get_geneset_per_gcep(clingen_table_path):
-    streamer = ClinGenStreamer(clingen_table_path, init_hail=False)
+    streamer = ClinGenGeneDiseaseTableStreamer(clingen_table_path, init_hail=False)
     result = streamer.get_geneset_per_gcep()
     # Test data has 4 distinct GCEPs
     assert len(result) >= 3
@@ -84,7 +84,7 @@ def test_get_geneset_per_gcep(clingen_table_path):
 
 
 def test_get_geneset_per_gcep_min_genes(clingen_table_path):
-    streamer = ClinGenStreamer(clingen_table_path, init_hail=False)
+    streamer = ClinGenGeneDiseaseTableStreamer(clingen_table_path, init_hail=False)
     # Require at least 3 genes per GCEP — should filter out small panels
     result = streamer.get_geneset_per_gcep(min_genes=3)
     for genes in result.values():
@@ -92,7 +92,7 @@ def test_get_geneset_per_gcep_min_genes(clingen_table_path):
 
 
 def test_get_geneset_per_gcep_min_classification(clingen_table_path):
-    streamer = ClinGenStreamer(clingen_table_path, init_hail=False)
+    streamer = ClinGenGeneDiseaseTableStreamer(clingen_table_path, init_hail=False)
     result_all = streamer.get_geneset_per_gcep()
     result_definitive = streamer.get_geneset_per_gcep(min_classification="Definitive")
     # Filtering to Definitive should yield fewer or equal genes
@@ -102,81 +102,81 @@ def test_get_geneset_per_gcep_min_classification(clingen_table_path):
 
 
 def test_get_geneset_per_gcep_shorten_names_false(clingen_table_path):
-    streamer = ClinGenStreamer(clingen_table_path, init_hail=False)
+    streamer = ClinGenGeneDiseaseTableStreamer(clingen_table_path, init_hail=False)
     result = streamer.get_geneset_per_gcep(shorten_names=False)
     # Should contain the full GCEP name
     assert any("GCEP" in name for name in result)
 
 
 def test_aggregate_by_disease_category(clingen_table_path):
-    streamer = ClinGenStreamer(clingen_table_path, init_hail=False)
+    streamer = ClinGenGeneDiseaseTableStreamer(clingen_table_path, init_hail=False)
     categories = {"cancer": ["cancer"]}
     result = streamer.aggregate_by_disease_category(categories)
     assert "cancer" in result
     assert "BRCA1" in result["cancer"]
 
 
-def test_get_genes_by_classification_with_gene_mapper(clingen_table_path, tmp_path):
-    """Test GeneMapper integration translates gene symbols to HGNC IDs."""
+def test_get_genes_by_classification_with_gene_catalog(clingen_table_path, tmp_path):
+    """Test GeneCatalogStreamer integration translates gene symbols to HGNC IDs."""
     from unittest.mock import Mock
 
-    streamer = ClinGenStreamer(clingen_table_path, init_hail=False)
+    streamer = ClinGenGeneDiseaseTableStreamer(clingen_table_path, init_hail=False)
 
     # Get baseline symbols
     symbols = streamer.get_genes_by_classification("Definitive")
     assert len(symbols) > 0
 
-    # Mock GeneMapper to verify it's called correctly
-    mock_mapper = Mock()
-    mock_mapper.map_ids.return_value = {s: f"HGNC:{i}" for i, s in enumerate(symbols)}
+    # Mock GeneCatalogStreamer to verify it's called correctly
+    mock_catalog = Mock()
+    mock_catalog.map_ids.return_value = {s: f"HGNC:{i}" for i, s in enumerate(symbols)}
 
     result = streamer.get_genes_by_classification(
         "Definitive",
-        gene_mapper=mock_mapper,
+        gene_catalog=mock_catalog,
         output_id_type="hgnc_id",
     )
 
-    mock_mapper.map_ids.assert_called_once()
-    call_args = mock_mapper.map_ids.call_args
+    mock_catalog.map_ids.assert_called_once()
+    call_args = mock_catalog.map_ids.call_args
     assert call_args.kwargs["source_type"] == "gene_symbol"
     assert call_args.kwargs["target_type"] == "hgnc_id"
     # Results should be the mapped HGNC IDs
     assert all(v.startswith("HGNC:") for v in result)
 
 
-def test_to_gene_set_with_gene_mapper(clingen_table_path):
-    """Test to_gene_set with GeneMapper translates IDs."""
+def test_to_gene_set_with_gene_catalog(clingen_table_path):
+    """Test to_gene_set with GeneCatalogStreamer translates IDs."""
     from unittest.mock import Mock
 
-    streamer = ClinGenStreamer(clingen_table_path, init_hail=False)
+    streamer = ClinGenGeneDiseaseTableStreamer(clingen_table_path, init_hail=False)
 
-    mock_mapper = Mock()
-    mock_mapper.map_ids.return_value = {"BRCA1": "ENSG00000012048"}
+    mock_catalog = Mock()
+    mock_catalog.map_ids.return_value = {"BRCA1": "ENSG00000012048"}
 
     result = streamer.to_gene_set(
         min_classification="Definitive",
-        gene_mapper=mock_mapper,
+        gene_catalog=mock_catalog,
         output_id_type="ensembl_gene_id",
     )
 
-    mock_mapper.map_ids.assert_called_once()
+    mock_catalog.map_ids.assert_called_once()
     assert "ENSG00000012048" in result
 
 
-def test_gene_mapper_none_does_not_translate(clingen_table_path):
-    """Test that without gene_mapper, symbols are returned as-is."""
-    streamer = ClinGenStreamer(clingen_table_path, init_hail=False)
+def test_gene_catalog_none_does_not_translate(clingen_table_path):
+    """Test that without gene_catalog, symbols are returned as-is."""
+    streamer = ClinGenGeneDiseaseTableStreamer(clingen_table_path, init_hail=False)
     result = streamer.get_genes_by_classification("Definitive")
     # Should be gene symbols, not HGNC IDs or Ensembl IDs
     assert all(not v.startswith("HGNC:") for v in result)
     assert all(not v.startswith("ENSG") for v in result)
 
 
-def test_get_genes_by_classification_output_id_requires_gene_mapper(
+def test_get_genes_by_classification_output_id_requires_gene_catalog(
     clingen_table_path,
 ):
-    """output_id_type without gene_mapper raises ValueError."""
-    streamer = ClinGenStreamer(clingen_table_path, init_hail=False)
+    """output_id_type without gene_catalog raises ValueError."""
+    streamer = ClinGenGeneDiseaseTableStreamer(clingen_table_path, init_hail=False)
     with pytest.raises(ValueError, match="output_id_type was provided"):
         streamer.get_genes_by_classification(
             "Definitive",
@@ -184,9 +184,9 @@ def test_get_genes_by_classification_output_id_requires_gene_mapper(
         )
 
 
-def test_to_gene_set_output_id_requires_gene_mapper(clingen_table_path):
-    """to_gene_set requires gene_mapper when output_id_type is used."""
-    streamer = ClinGenStreamer(clingen_table_path, init_hail=False)
+def test_to_gene_set_output_id_requires_gene_catalog(clingen_table_path):
+    """to_gene_set requires gene_catalog when output_id_type is used."""
+    streamer = ClinGenGeneDiseaseTableStreamer(clingen_table_path, init_hail=False)
     with pytest.raises(ValueError, match="output_id_type was provided"):
         streamer.to_gene_set(
             min_classification="Definitive",

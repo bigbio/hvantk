@@ -3,16 +3,20 @@
 Parses a headerless two-column TSV (gene_set_name<TAB>gene_symbol) into a
 dictionary of {set_name: List[str]}, with format and identifier validation.
 
-Also provides HGNC-based symbol validation and alias resolution using the
-existing ``_load_hgnc_symbol_maps()`` infrastructure from
-``hvantk.core.utils.gene_aliases``.
+Also provides catalog-based symbol validation and alias resolution via the
+:class:`~hvantk.core.streamers.gene_catalog.GeneCatalogStreamer` ABC. Callers
+in ``tools/`` construct the concrete streamer and pass it here.
 """
+from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple
 import logging
 import re
+
+if TYPE_CHECKING:
+    from hvantk.core.streamers.gene_catalog import GeneCatalogStreamer
 
 logger = logging.getLogger(__name__)
 
@@ -243,15 +247,15 @@ class ValidationResult:
     gene_sets: Dict[str, List[str]] = field(default_factory=dict)
 
 
-def validate_with_hgnc(
+def validate_with_catalog(
     gene_sets: Dict[str, List[str]],
-    hgnc_path: str,
+    catalog: "GeneCatalogStreamer",
 ) -> ValidationResult:
-    """Validate gene symbols against HGNC and resolve aliases.
+    """Validate gene symbols against a gene catalog and resolve aliases.
 
     For each gene symbol:
 
-    1. If it is a current HGNC-approved symbol, it is recognized.
+    1. If it is a current approved symbol, it is recognized.
     2. If it is a known alias or previous symbol, it is resolved to the
        canonical symbol and the gene set entry is updated.
     3. If it matches nothing, it is marked unrecognized (included as-is
@@ -261,32 +265,17 @@ def validate_with_hgnc(
     ----------
     gene_sets : Dict[str, List[str]]
         Gene sets from :func:`parse_geneset_tsv`.
-    hgnc_path : str
-        Path to HGNC Hail Table (``.ht``) or TSV file.
+    catalog : GeneCatalogStreamer
+        Gene catalog providing symbol classification. Constructed by the
+        caller (in ``tools/``); this function only calls ABC methods.
 
     Returns
     -------
     ValidationResult
     """
-    from hvantk.core.utils.gene_aliases import _load_hgnc_symbol_maps
-
-    canonical_symbols, alias_to_canonical, _ = _load_hgnc_symbol_maps(hgnc_path)
-
-    # Classify every unique gene across all sets.
+    # Classify every unique gene across all sets via the ABC contract.
     all_genes = {g for genes in gene_sets.values() for g in genes}
-    recognized: Set[str] = set()
-    aliases_resolved: Dict[str, str] = {}
-    unrecognized: Set[str] = set()
-
-    for gene in all_genes:
-        if gene in canonical_symbols:
-            recognized.add(gene)
-        elif gene in alias_to_canonical:
-            canonical = alias_to_canonical[gene]
-            aliases_resolved[gene] = canonical
-            recognized.add(canonical)
-        else:
-            unrecognized.add(gene)
+    recognized, aliases_resolved, unrecognized = catalog.validate_symbols(all_genes)
 
     # Rebuild gene sets with aliases resolved, deduplicating.
     resolved_sets: Dict[str, List[str]] = {}

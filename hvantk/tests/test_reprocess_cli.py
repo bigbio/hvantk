@@ -443,3 +443,30 @@ def test_reprocess_phase_b_plugin_uses_run_builder_for_spec(
     # Confirm the artifact was saved (file exists + sidecar manifest exists)
     assert output.exists()
     assert output.with_name(output.name + ".provenance.json").exists()
+
+
+# ---------------------------------------------------------------------------
+# Regression tests for issue #119: comma-list coercion in _coerce_plugin_arg_value
+# ---------------------------------------------------------------------------
+
+from hvantk.tools.plugins.reprocess_cli import _coerce_plugin_arg_value  # noqa: E402
+
+
+def test_coerce_plugin_arg_value_splits_comma_list():
+    assert _coerce_plugin_arg_value("chr1,chr2,chrX") == ["chr1", "chr2", "chrX"]
+
+
+def test_coerce_plugin_arg_value_coerces_each_list_element():
+    assert _coerce_plugin_arg_value("1,2,3") == [1, 2, 3]
+    assert _coerce_plugin_arg_value("true,false") == [True, False]
+
+
+def test_coerce_plugin_arg_value_scalar_paths_unchanged():
+    assert _coerce_plugin_arg_value("true") is True
+    assert _coerce_plugin_arg_value("42") == 42
+    assert _coerce_plugin_arg_value("5e-8") == 5e-8
+    assert _coerce_plugin_arg_value("plain") == "plain"
+
+
+def test_coerce_plugin_arg_value_strips_whitespace_in_list():
+    assert _coerce_plugin_arg_value("chr1, chr2 , chrX") == ["chr1", "chr2", "chrX"]

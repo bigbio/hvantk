@@ -17,7 +17,28 @@ from typing import Dict, List, Optional
 
 import hail as hl
 
-from hvantk.core.constants import CLINVAR_PATHOGENIC_LABELS, CLINVAR_BENIGN_LABELS
+# TEMP duplication — tracked by https://github.com/bigbio/hvantk/issues/133
+#
+# These label sets are also defined in
+# hvantk/skills/clinvar/shared/constants.py. Importing them from there
+# would violate the algorithms-must-not-import-from-skills dependency
+# guard (see hvantk/tests/test_dependency_directions.py and
+# hvantk/tests/test_tools_ptm_pipeline.py).
+#
+# The proper fix — parameterizing the schema and vocabulary so this
+# module accepts any conformant pathogenicity-labeled table, not just
+# ClinVar — is tracked by issue #133. Remove this duplication when
+# that parameterization lands.
+CLINVAR_PATHOGENIC_LABELS = [
+    "Pathogenic/Likely_pathogenic",
+    "Likely_pathogenic",
+    "Pathogenic",
+]
+CLINVAR_BENIGN_LABELS = [
+    "Benign/Likely_benign",
+    "Likely_benign",
+    "Benign",
+]
 
 logger = logging.getLogger(__name__)
 

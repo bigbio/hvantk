@@ -11,7 +11,7 @@ import logging
 
 import hail as hl
 
-from hvantk.core.constants import (
+from hvantk.skills.gencc.shared.constants import (
     GENCC_CLASSIFICATION_LEVELS,
     GENCC_SUBMISSION_FIELDS,
 )

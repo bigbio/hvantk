@@ -11,7 +11,7 @@ from typing import Any
 
 import hail as hl
 
-from hvantk.core.constants import ENSEMBL_BIOMART_FIELDS
+from hvantk.skills.ensembl_gene.shared.constants import ENSEMBL_BIOMART_FIELDS
 
 logger = logging.getLogger(__name__)
 

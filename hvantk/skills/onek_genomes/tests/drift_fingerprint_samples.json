@@ -1,0 +1,12 @@
+{
+  "checksums": {},
+  "fetched_at": "2026-05-28T13:13:38.322732+00:00",
+  "headers": {
+    "integrated_call_samples_v3.20130502.ALL.panel": {
+      "content_length": "55156",
+      "last_modified": "Tue, 09 Sep 2014 11:00:23 GMT"
+    }
+  },
+  "probe_version": 1,
+  "source_version": "integrated_call_samples_v3.20130502"
+}

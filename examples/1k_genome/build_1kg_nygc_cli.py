@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """End-to-end CLI wrapper for building a 1000 Genomes MatrixTable via ``hvantk``.
 
-Unlike ``build_1kg_nygc.py`` (which calls the Python API directly), this script
-invokes ``hvantk build-1k-genome`` as a subprocess so the full CLI path is
-exercised — useful for catching argument parsing bugs, entry-point issues, etc.
+Stages NYGC-pattern VCFs and invokes ``hvantk reprocess onek-genomes:variants``
+as a subprocess so the full CLI path is exercised — useful for catching argument
+parsing bugs, entry-point issues, etc.
 
 Example usage::
 
@@ -141,7 +141,7 @@ def main(
     \b
     Stages only recalibrated genotype VCFs (*_chr*.recalibrated_variants.vcf.gz)
     into a temporary directory, excluding annotated and "others" contig files,
-    then invokes ``hvantk build-1k-genome`` as a subprocess.
+    then invokes ``hvantk reprocess onek-genomes:variants`` as a subprocess.
     """
     # Resolve sample annotations: absolute path used as-is, otherwise relative to vcf_dir
     sample_annotations_path = None
@@ -176,27 +176,31 @@ def main(
                 f"No recalibrated genotype VCFs found in {vcf_dir}"
             )
 
-        # -- Build CLI command --
+        # -- Build CLI command (post-#116: routes through the plugin system) --
         cmd = [
             "hvantk",
-            "build-1k-genome",
-            "--input-vcfs",
+            "reprocess",
+            "onek-genomes:variants",
+            "--raw-dir",
             stage_dir,
-            "--output-mt",
+            "--output",
             output_mt,
-            "--reference-genome",
-            reference_genome,
+            "--skip-download",
+            "--plugin-arg",
+            f"reference_genome={reference_genome}",
+            "--plugin-arg",
+            f"auto_convert_bgz={'true' if auto_convert_bgz else 'false'}",
         ]
         if chromosomes:
-            cmd += ["--chromosomes", chromosomes]
+            cmd += ["--plugin-arg", f"chromosomes={chromosomes}"]
         if sample_annotations_path:
-            cmd += ["--sample-annotations", sample_annotations_path]
-        if sample_annotations_delimiter is not None:
-            cmd += ["--sample-annotations-delimiter", sample_annotations_delimiter]
-        if overwrite:
-            cmd.append("--overwrite")
-        if auto_convert_bgz:
-            cmd.append("--auto-convert-bgz")
+            logger.warning(
+                "--sample-annotations is no longer accepted by the variants build "
+                "(post-#116). Run `hvantk reprocess onek-genomes:samples` to "
+                "build the canonical IGSR samples table, and join post-load. "
+                "Provided sample_annotations argument (%s) will be ignored.",
+                sample_annotations_path,
+            )
 
         logger.info("Running: %s", " ".join(cmd))
         try:
@@ -206,7 +210,7 @@ def main(
 
         if result.returncode != 0:
             raise click.ClickException(
-                f"hvantk build-1k-genome exited with code {result.returncode}"
+                f"hvantk reprocess onek-genomes:variants exited with code {result.returncode}"
             )
 
         logger.info("=" * 42)

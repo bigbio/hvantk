@@ -203,9 +203,9 @@ def genesets_clingen(
         ctx.exit(1)
 
     try:
-        from hvantk.skills.clingen.streamer import ClinGenStreamer
+        from hvantk.skills.clingen.streamers import ClinGenGeneDiseaseTableStreamer
 
-        streamer = ClinGenStreamer(clingen_ht)
+        streamer = ClinGenGeneDiseaseTableStreamer(clingen_ht)
 
         if group_by == "gcep":
             gene_sets = streamer.get_geneset_per_gcep(
@@ -343,9 +343,9 @@ def genesets_gencc(
         ctx.exit(1)
 
     try:
-        from hvantk.skills.gencc.streamer import GenCCStreamer
+        from hvantk.skills.gencc.streamers import GenCCGeneDiseaseTableStreamer
 
-        streamer = GenCCStreamer(gencc_ht)
+        streamer = GenCCGeneDiseaseTableStreamer(gencc_ht)
 
         if group_by == "submitter":
             gene_sets = streamer.get_geneset_per_submitter(
@@ -483,9 +483,9 @@ def genesets_cosmic(
         ctx.exit(1)
 
     try:
-        from hvantk.skills.cosmic_cgc.streamer import CosmicCGCStreamer
+        from hvantk.skills.cosmic_cgc.streamers import CosmicCGCGeneDiseaseTableStreamer
 
-        streamer = CosmicCGCStreamer(cosmic_ht)
+        streamer = CosmicCGCGeneDiseaseTableStreamer(cosmic_ht)
 
         if group_by == "tumour-type":
             gene_sets = streamer.get_geneset_per_tumour_type(
@@ -612,7 +612,7 @@ def genesets_prepare(
       hvantk genesets prepare -i panels.tsv -o panels.json --hgnc /data/hgnc.ht
     """
     from hvantk.core.utils.gene_sets import load_gene_set, load_gene_sets_from_dict
-    from hvantk.core.utils.geneset_io import parse_geneset_tsv, validate_with_hgnc
+    from hvantk.core.utils.geneset_io import parse_geneset_tsv, validate_with_catalog
 
     output_path = Path(output)
     if output_path.exists() and not overwrite:
@@ -648,7 +648,9 @@ def genesets_prepare(
 
     if hgnc:
         click.echo(f"\nValidating against HGNC ({hgnc}) ...", err=True)
-        vr = validate_with_hgnc(gene_sets, hgnc)
+        from hvantk.skills.hgnc.streamers import HGNCGeneCatalogStreamer
+        catalog = HGNCGeneCatalogStreamer.from_path(hgnc)
+        vr = validate_with_catalog(gene_sets, catalog)
         gene_sets = vr.gene_sets
         hgnc_validated = True
         aliases_resolved = vr.aliases_resolved
