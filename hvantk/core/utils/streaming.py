@@ -13,8 +13,6 @@ This module is retained because these code paths still depend on it:
     orchestration + a HailDataStreamer type hint)
   - hvantk.skills.clinvar.pipelines.training_set (ClinvarDataStreamer,
     ClinvarTrainingSetProcessor)
-  - hvantk.tools.training_sets.enhanced (EnhancedClinvarTrainingSetProcessor
-    uses StreamProcessor)
 
 For chunked iteration in new code, write a small private helper next to
 the calling class.
