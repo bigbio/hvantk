@@ -88,83 +88,6 @@ class Builder(Protocol):
         ...
 
 
-class Streamer(Protocol):
-    """
-    Protocol for data transformers (streamers) that process Hail Tables/MatrixTables.
-
-    Streamers take Hail data structures and transform them (filter, join, aggregate, etc.)
-    into new Hail data structures. They are composable building blocks for pipelines.
-
-    Example:
-        class VariantFilterStreamer:
-            def transform(self, input_data: hl.Table, **params: Any) -> hl.Table:
-                min_qual = params.get('min_quality', 30)
-                return input_data.filter(input_data.qual >= min_qual)
-
-            def validate_input(self, input_data: hl.Table) -> bool:
-                return 'qual' in input_data.row
-
-            def get_metadata(self) -> Dict[str, Any]:
-                return {'type': 'filter', 'input_type': 'variant_table'}
-    """
-
-    def transform(
-        self, input_data: Union[hl.Table, hl.MatrixTable], **params: Any
-    ) -> Union[hl.Table, hl.MatrixTable]:
-        """
-        Transform input data and return output.
-
-        Parameters
-        ----------
-        input_data : Union[hl.Table, hl.MatrixTable]
-            Input Hail data structure
-        **params : Any
-            Transformation parameters (e.g., filter thresholds, join tables, etc.)
-
-        Returns
-        -------
-        Union[hl.Table, hl.MatrixTable]
-            Transformed Hail data structure
-
-        Raises
-        ------
-        ValueError
-            If input schema is invalid or params are incorrect
-        """
-        ...
-
-    def validate_input(self, input_data: Union[hl.Table, hl.MatrixTable]) -> bool:
-        """
-        Validate that input schema matches expectations.
-
-        Parameters
-        ----------
-        input_data : Union[hl.Table, hl.MatrixTable]
-            The Hail data structure to validate
-
-        Returns
-        -------
-        bool
-            True if input schema is valid, False otherwise
-        """
-        ...
-
-    def get_metadata(self) -> Dict[str, Any]:
-        """
-        Return metadata about this streamer.
-
-        Returns
-        -------
-        Dict[str, Any]
-            Metadata dictionary containing:
-            - type: str - 'filter', 'join', 'aggregate', 'annotate', etc.
-            - input_type: str - Expected input type
-            - output_type: str - Output type (optional)
-            - description: str - Human-readable description (optional)
-        """
-        ...
-
-
 class Downloader(Protocol):
     """
     Protocol for data downloaders that fetch external datasets.
@@ -268,6 +191,3 @@ class Downloader(Protocol):
 # Type aliases for convenience
 TableOrMatrix = Union[hl.Table, hl.MatrixTable]
 BuilderFunction = Callable[..., Union[hl.Table, hl.MatrixTable]]
-StreamerFunction = Callable[
-    [Union[hl.Table, hl.MatrixTable]], Union[hl.Table, hl.MatrixTable]
-]
