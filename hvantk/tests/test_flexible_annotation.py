@@ -6,7 +6,7 @@ import logging
 from unittest.mock import Mock, patch
 from hvantk.algorithms.annotation.annotation_pipeline import (
     AnnotationConfig,
-    FlexibleAnnotationStreamer,
+    FlexibleAnnotator,
     AnnotationRegistry,
     ConfigurableAnnotationPipeline,
     create_flexible_pipeline,
@@ -212,7 +212,7 @@ class TestRealWorldScenarios:
         # All should be creatable without code changes
         streamers = []
         for config in configs:
-            streamer = FlexibleAnnotationStreamer(config)
+            streamer = FlexibleAnnotator(config)
             streamers.append(streamer)
             assert streamer.config.name == config.name
 
@@ -222,7 +222,7 @@ class TestRealWorldScenarios:
         """Test that new framework doesn't break existing functionality"""
 
         # Original hard-coded approach should still work
-        from hvantk.algorithms.annotation.annotation_streamer import VariantPredictionScoreStreamer
+        from hvantk.algorithms.annotation.annotator import VariantPredictionScoreAnnotator
 
         # New flexible approach
         flexible_config = AnnotationConfig(
@@ -231,7 +231,7 @@ class TestRealWorldScenarios:
             annotation_type="variant",
             loader_func=lambda _: Mock(spec=hl.Table),
         )
-        flexible_streamer = FlexibleAnnotationStreamer(flexible_config)
+        flexible_streamer = FlexibleAnnotator(flexible_config)
 
         # Both should have similar interfaces
         assert hasattr(flexible_streamer, "process_chunk")
@@ -245,7 +245,7 @@ class TestRealWorldScenarios:
             name="bad_source", source_path="/nonexistent/path.tsv"
         )
 
-        streamer = FlexibleAnnotationStreamer(bad_config)
+        streamer = FlexibleAnnotator(bad_config)
 
         # Should handle missing data gracefully
         mock_chunk = Mock(spec=hl.Table)

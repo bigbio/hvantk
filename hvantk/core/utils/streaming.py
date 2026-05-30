@@ -7,15 +7,15 @@ new plugins implement those ABCs in skills/<plugin>/streamers.py.
 
 This module is retained because these code paths still depend on it:
 
-  - hvantk.algorithms.annotation.annotation_streamer (AnnotationStreamer
-    base + the four annotator subclasses) and annotation_pipeline
+  - hvantk.core.streamers.gene_disease_table (GeneDiseaseTableStreamer
+    inherits HailDataStreamer)
+  - hvantk.algorithms.annotation.annotation_pipeline (StreamProcessor
+    orchestration + a HailDataStreamer type hint)
   - hvantk.skills.clinvar.pipelines.training_set (ClinvarDataStreamer,
     ClinvarTrainingSetProcessor)
-  - hvantk.tools.training_sets.enhanced (EnhancedClinvarTrainingSetProcessor)
+  - hvantk.tools.training_sets.enhanced (EnhancedClinvarTrainingSetProcessor
+    uses StreamProcessor)
   - hvantk.skills.alphagenome.streamer (AlphaGenomeStreamer)
-
-The "Annotator" rename + reframing of the annotation_streamer family is
-tracked in a follow-up issue; when it lands, this module can be removed.
 
 For chunked iteration in new code, write a small private helper next to
 the calling class.
