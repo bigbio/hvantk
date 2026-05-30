@@ -127,3 +127,75 @@ def test_core_constants_has_no_plugin_specific_blocks():
         f"Found prefixes: {offenders}. Move each block to "
         "hvantk/skills/<plugin>/shared/constants.py per issue #120."
     )
+
+
+# Reverse-rule guard for issue #121: core/streamers/ must not import from skills/.
+def test_core_streamers_imports_no_skills():
+    """core/streamers/*.py must not contain ``from hvantk.skills``."""
+    streamers_dir = PACKAGE_ROOT / "core" / "streamers"
+    if not streamers_dir.is_dir():
+        return
+    offenders: list[str] = []
+    for py in streamers_dir.rglob("*.py"):
+        if "__pycache__" in py.parts:
+            continue
+        for i, line in enumerate(py.read_text().splitlines(), 1):
+            s = line.lstrip()
+            if s.startswith("from hvantk.skills") or s.startswith("import hvantk.skills"):
+                offenders.append(f"{py.relative_to(PACKAGE_ROOT)}:{i}: {s}")
+    assert not offenders, (
+        "core/streamers/ must not import from hvantk.skills. "
+        f"Offenders: {offenders}. See issue #121."
+    )
+
+
+# Reverse-rule guard for issue #121: no plugin-specific classes in core/streamers/.
+def test_core_streamers_has_no_plugin_specific_classes():
+    """No class declared in core/streamers/ may carry a plugin-name prefix."""
+    forbidden_prefixes = (
+        "ClinGen", "ClinVar", "GenCC", "COSMIC", "CosmicCGC", "HGNC",
+        "Ensembl", "MSigDB", "DbNSFP", "UCSC", "AlphaGenome",
+        "ExpressionAtlas", "GTEx", "PQTL", "GWAS",
+        "GnomAD", "GeVIR", "UniProt", "PeptideAtlas", "CPTAC", "Insider",
+    )
+    streamers_dir = PACKAGE_ROOT / "core" / "streamers"
+    if not streamers_dir.is_dir():
+        return
+    offenders: list[str] = []
+    for py in streamers_dir.rglob("*.py"):
+        if "__pycache__" in py.parts:
+            continue
+        for i, line in enumerate(py.read_text().splitlines(), 1):
+            s = line.lstrip()
+            if s.startswith("class "):
+                name = s[len("class "):]
+                if any(name.startswith(p) for p in forbidden_prefixes):
+                    offenders.append(f"{py.relative_to(PACKAGE_ROOT)}:{i}: {s}")
+    assert not offenders, (
+        "core/streamers/ must not declare plugin-specific classes. "
+        f"Concrete plugin streamers belong in skills/<plugin>/streamers.py. "
+        f"Offenders: {offenders}. See issue #121."
+    )
+
+
+# Reverse-rule guard for issue #121: core/utils/ must hold only platform-generic files.
+def test_core_utils_has_no_provider_specific_files():
+    """core/utils/ must not hold provider-specific files."""
+    forbidden_prefixes = (
+        "clinvar_", "mondo_", "hgnc_", "cosmic_", "gencc_", "clingen_",
+        "gtex_", "expression_atlas_", "ucsc_", "alphagenome_",
+        "peptideatlas_", "uniprot_", "cptac_", "gene_disease_",
+    )
+    utils_dir = PACKAGE_ROOT / "core" / "utils"
+    if not utils_dir.is_dir():
+        return
+    offenders: list[str] = []
+    for py in utils_dir.rglob("*.py"):
+        if "__pycache__" in py.parts:
+            continue
+        if any(py.name.startswith(p) for p in forbidden_prefixes):
+            offenders.append(str(py.relative_to(PACKAGE_ROOT)))
+    assert not offenders, (
+        "core/utils/ must not hold provider-specific files. "
+        f"Offenders: {offenders}. Move each to skills/<plugin>/ per issue #121."
+    )
