@@ -152,7 +152,7 @@ class TestClinVarDataset:
             with open(test_file, "wb") as f:
                 f.write(content)
 
-            expected_md5 = hashlib.md5(content).hexdigest()
+            expected_md5 = hashlib.md5(content, usedforsecurity=False).hexdigest()
             md5_response = f"{expected_md5}  clinvar.vcf.gz"
 
             with patch("urllib.request.urlopen") as mock_urlopen:

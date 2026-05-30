@@ -101,10 +101,13 @@ class EnhancedClinvarTrainingSetProcessor(StreamProcessor):
             for chunk in all_chunks[1:]:
                 final_ht = final_ht.union(chunk)
 
-            # Trim to only ['gene', 'rf_label'] after all annotation
-            final_ht = final_ht.select("gene", "rf_label")
-
-            # Add final feature engineering
+            # Add final feature engineering. NOTE: do not trim to
+            # ['gene', 'rf_label'] here — _add_final_features() consumes the
+            # annotation columns (combined_deleteriousness, rarity_score,
+            # constraint_score) added by the annotation streamers above, and
+            # the TSV export below is meant to carry all features. (A stray
+            # select() trim, copied from the basic processor, previously
+            # dropped those columns before this step.)
             final_ht = self._add_final_features(final_ht)
 
             # Save results

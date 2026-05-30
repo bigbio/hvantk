@@ -27,4 +27,13 @@ class ClinVarVariantTableStreamer(VariantTableStreamer):
     def filter_by_pathogenicity(self, labels: Iterable[str]) -> hl.Table:
         ht = self.to_hail()
         label_set = hl.literal(set(labels))
-        return ht.filter(ht.info.CLNSIG.any(lambda x: label_set.contains(x)))
+        clnsig = ht.info.CLNSIG
+        # CLNSIG may be imported as an array or a scalar string depending on
+        # the VCF header's Number= field; handle both (mirrors the dtype
+        # check in algorithms/ptm/analysis.py:_extract_clnsig).
+        if isinstance(clnsig.dtype, hl.tarray):
+            return ht.filter(
+                hl.is_defined(clnsig)
+                & clnsig.any(lambda x: label_set.contains(x))
+            )
+        return ht.filter(hl.is_defined(clnsig) & label_set.contains(clnsig))
