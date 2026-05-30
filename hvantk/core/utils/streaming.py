@@ -15,7 +15,6 @@ This module is retained because these code paths still depend on it:
     ClinvarTrainingSetProcessor)
   - hvantk.tools.training_sets.enhanced (EnhancedClinvarTrainingSetProcessor
     uses StreamProcessor)
-  - hvantk.skills.alphagenome.streamer (AlphaGenomeStreamer)
 
 For chunked iteration in new code, write a small private helper next to
 the calling class.
