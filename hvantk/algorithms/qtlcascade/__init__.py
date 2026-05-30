@@ -44,7 +44,7 @@ from hvantk.algorithms.qtlcascade.coloc import (
 )
 
 # Constants
-from hvantk.core.qtl_constants import (
+from hvantk.algorithms.qtlcascade.constants import (
     CASCADE_CLASSES,
     CASCADE_CLASS_COLORS,
     CASCADE_CLASS_LABELS,
@@ -56,10 +56,6 @@ from hvantk.core.qtl_constants import (
     DEFAULT_COLOC_WINDOW_KB,
     DEFAULT_EQTL_P_THRESHOLD,
     DEFAULT_PQTL_P_THRESHOLD,
-    EQTL_SOURCES,
-    FANG_TISSUES,
-    FANG_TISSUE_EQTL_MAPPING,
-    PQTL_SOURCES,
 )
 
 # Pipeline
@@ -112,10 +108,6 @@ __all__ = [
     "DEFAULT_COLOC_W",
     "DEFAULT_COLOC_H4_THRESHOLD",
     "DEFAULT_COLOC_WINDOW_KB",
-    "FANG_TISSUES",
-    "FANG_TISSUE_EQTL_MAPPING",
-    "EQTL_SOURCES",
-    "PQTL_SOURCES",
 ]
 
 __version__ = "0.1.0"

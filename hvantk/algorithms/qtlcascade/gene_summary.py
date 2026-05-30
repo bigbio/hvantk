@@ -11,7 +11,7 @@ from typing import Optional
 
 import pandas as pd
 
-from hvantk.core.qtl_constants import DEFAULT_COLOC_H4_THRESHOLD
+from hvantk.algorithms.qtlcascade.constants import DEFAULT_COLOC_H4_THRESHOLD
 
 from hvantk.core.models.backends import Backend, algorithm
 

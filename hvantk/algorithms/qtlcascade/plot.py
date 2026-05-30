@@ -14,7 +14,7 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
-from hvantk.core.qtl_constants import (
+from hvantk.algorithms.qtlcascade.constants import (
     CASCADE_CLASSES,
     CASCADE_CLASS_COLORS,
     CASCADE_CLASS_LABELS,

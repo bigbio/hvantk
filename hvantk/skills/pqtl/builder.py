@@ -94,7 +94,7 @@ def build_pqtl_metrics(
     tables in cascade analysis).
     """
     from hvantk.core.models import AnnotationTable
-    from hvantk.core.qtl_constants import PQTL_SOURCES
+    from hvantk.skills.pqtl.shared.constants import PQTL_SOURCES
 
     if source not in PQTL_SOURCES:
         raise ValueError(

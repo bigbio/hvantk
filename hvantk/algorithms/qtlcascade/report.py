@@ -157,7 +157,7 @@ def _gene_table_section(df, top_n=50):
 
 
 def _coloc_section(coloc_df):
-    from hvantk.core.qtl_constants import DEFAULT_COLOC_H4_THRESHOLD
+    from hvantk.algorithms.qtlcascade.constants import DEFAULT_COLOC_H4_THRESHOLD
 
     n_total = len(coloc_df)
     n_pass = (coloc_df["H4"] > DEFAULT_COLOC_H4_THRESHOLD).sum()
