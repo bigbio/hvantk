@@ -22,7 +22,7 @@ import pandas as pd
 
 from hvantk.core.models.backends import get_algorithm_meta
 
-from hvantk.core.qtl_constants import (
+from hvantk.algorithms.qtlcascade.constants import (
     DEFAULT_COLOC_H4_THRESHOLD,
     DEFAULT_COLOC_P1,
     DEFAULT_COLOC_P2,

@@ -21,7 +21,7 @@ References
 import logging
 from typing import Optional
 
-from hvantk.core.qtl_constants import (
+from hvantk.algorithms.qtlcascade.constants import (
     DEFAULT_EQTL_P_THRESHOLD,
     DEFAULT_PQTL_P_THRESHOLD,
 )

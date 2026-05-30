@@ -170,7 +170,7 @@ def build_eqtl_associations(
     (``ENSG00000000003.15`` → ``ENSG00000000003``).
     """
     from hvantk.core.models import AnnotationTable
-    from hvantk.core.qtl_constants import EQTL_SOURCES
+    from hvantk.skills.gtex_eqtl.shared.constants import EQTL_SOURCES
 
     if source not in EQTL_SOURCES:
         raise ValueError(f"Unknown eQTL source: {source!r}. Supported: {EQTL_SOURCES}")
