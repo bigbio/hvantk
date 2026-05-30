@@ -19,10 +19,7 @@ Example (pure mapping core):
 
 import importlib as _importlib
 
-from hvantk.core.ptm_constants import (
-    UNIPROT_API_URL,
-    UNIPROT_API_FIELDS,
-    UNIPROT_HUMAN_PTM_QUERY,
+from hvantk.algorithms.ptm.constants import (
     ENSEMBL_GTF_URL,
     PTM_TYPE_CATEGORIES,
     DEFAULT_FLANKING_CODONS,
@@ -40,7 +37,7 @@ from hvantk.core.ptm_constants import (
 
 # Lazy imports for Hail-dependent and heavy modules (PEP 562).
 # Accessing any name listed here triggers on-demand loading so that
-# ``from hvantk.core.ptm_constants import ...`` never pulls in Hail.
+# importing constants never pulls in Hail.
 
 _LAZY_MODULES = {
     # mapper
@@ -148,9 +145,6 @@ __all__ = [
     # Report
     "generate_report",
     # Constants
-    "UNIPROT_API_URL",
-    "UNIPROT_API_FIELDS",
-    "UNIPROT_HUMAN_PTM_QUERY",
     "ENSEMBL_GTF_URL",
     "PTM_TYPE_CATEGORIES",
     "DEFAULT_FLANKING_CODONS",

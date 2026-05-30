@@ -6,8 +6,8 @@ shape::
     {PEPTIDEATLAS_PHOSPHO_BASE_URL}/{build_date}/atlas_build_{build_id}.tsv.zip
 
 A new build is released once or twice per year. The pinned ``(build_date,
-build_id)`` lives in :mod:`hvantk.core.ptm_constants` and is exported by the
-dataset class as ``PeptideAtlasPhosphoDataset.from_latest()``. A HEAD request
+build_id)`` lives in :mod:`hvantk.skills.peptideatlas.phospho.shared.constants`
+and is exported by the dataset class as ``PeptideAtlasPhosphoDataset.from_latest()``. A HEAD request
 against that URL returns ``Last-Modified`` and ``Content-Length``, which
 together form a lightweight fingerprint that flips when a new build is cut
 or the existing archive is regenerated.

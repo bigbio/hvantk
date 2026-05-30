@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 
-from hvantk.core.ptm_constants import PROXIMAL_BP
+from hvantk.algorithms.ptm.constants import PROXIMAL_BP
 
 if TYPE_CHECKING:
     import hail as hl

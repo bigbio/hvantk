@@ -13,7 +13,7 @@ from typing import Optional
 
 import click
 
-from hvantk.core.ptm_constants import CPTAC_CANCER_TYPES
+from hvantk.skills.cptac.shared.constants import CPTAC_CANCER_TYPES
 
 logger = logging.getLogger(__name__)
 
