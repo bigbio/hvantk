@@ -1,9 +1,9 @@
 # Enhanced Training Set Generation Pipeline
 # Composes a ClinVar skill data source with algorithm-level annotators.
 #
-# Moved from hvantk/algorithms/annotation/annotation_streamer.py (issue #121).
+# Moved from hvantk/algorithms/annotation/annotator.py (issue #121).
 # Only tools/ may import both skills/ (ClinvarDataStreamer) and algorithms/
-# (VariantPredictionScoreStreamer, etc.) -- that is the correct layer for
+# (VariantPredictionScoreAnnotator, etc.) -- that is the correct layer for
 # code that crosses the boundary between data sources and annotators.
 
 import hail as hl
@@ -11,11 +11,11 @@ from typing import Optional, Set
 
 from hvantk.core.utils.streaming import StreamProcessor
 from hvantk.skills.clinvar.pipelines.training_set import ClinvarDataStreamer
-from hvantk.algorithms.annotation.annotation_streamer import (
-    VariantPredictionScoreStreamer,
-    GeneExpressionStreamer,
-    GeneConstraintStreamer,
-    PopulationFrequencyStreamer,
+from hvantk.algorithms.annotation.annotator import (
+    VariantPredictionScoreAnnotator,
+    GeneExpressionAnnotator,
+    GeneConstraintAnnotator,
+    PopulationFrequencyAnnotator,
 )
 
 import logging
@@ -55,13 +55,13 @@ class EnhancedClinvarTrainingSetProcessor(StreamProcessor):
         self.add_streamer(clinvar_streamer)
 
         if include_prediction_scores:
-            self.add_streamer(VariantPredictionScoreStreamer(""))
+            self.add_streamer(VariantPredictionScoreAnnotator(""))
         if include_expression:
-            self.add_streamer(GeneExpressionStreamer("", tissue_focus))
+            self.add_streamer(GeneExpressionAnnotator("", tissue_focus))
         if include_constraint:
-            self.add_streamer(GeneConstraintStreamer())
+            self.add_streamer(GeneConstraintAnnotator())
         if include_population_freq:
-            self.add_streamer(PopulationFrequencyStreamer())
+            self.add_streamer(PopulationFrequencyAnnotator())
 
     def process(self, output_path: Optional[str] = None) -> Optional[hl.Table]:
         """
@@ -76,7 +76,7 @@ class EnhancedClinvarTrainingSetProcessor(StreamProcessor):
         try:
             # Start with Clinvar data
             clinvar_streamer = self.streamers[0]
-            annotation_streamers = self.streamers[1:]
+            annotators = self.streamers[1:]
 
             all_chunks = []
 
@@ -84,9 +84,9 @@ class EnhancedClinvarTrainingSetProcessor(StreamProcessor):
                 if base_chunk.count() == 0:
                     continue
 
-                # Apply each annotation streamer sequentially
+                # Apply each annotator sequentially
                 annotated_chunk = base_chunk
-                for annotator in annotation_streamers:
+                for annotator in annotators:
                     annotated_chunk = annotator.process_chunk(annotated_chunk)
 
                 all_chunks.append(annotated_chunk)

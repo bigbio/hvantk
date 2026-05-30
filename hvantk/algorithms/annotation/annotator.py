@@ -1,23 +1,41 @@
-# Multi-Source Annotation Streamer
-# Extends the basic streamer to include variant and gene-level annotations
+# Multi-Source Annotators
+# Annotation pipeline steps that add variant and gene-level annotations to
+# existing data chunks. These are NOT DataModel streamers (the "Streamer"
+# concept is reserved for the Artifact-wrapping ABCs in
+# hvantk.core.streamers); they are pipeline-step "Annotators" with a small,
+# self-contained base that intentionally does not depend on the legacy
+# chunked-IO base in hvantk.core.utils.streaming.
 
 import hail as hl
-from typing import Iterator, Optional, Set
-from hvantk.core.utils.streaming import DEFAULT_CHUNK_SIZE, HailDataStreamer, StreamProcessor
+from abc import ABC, abstractmethod
+from typing import Iterator, Optional
+from hvantk.core.utils.hail_context import init_hail, hail_initialized
 import logging
 
 logger = logging.getLogger(__name__)
 
+# Default chunk size for annotators. Kept local (value 10000) so this module
+# does not depend on the legacy streaming module; matches the historical
+# default that the annotators inherited from HailDataStreamer.
+DEFAULT_CHUNK_SIZE = 10000
 
-class AnnotationStreamer(HailDataStreamer):
+
+class Annotator(ABC):
     """
-    Base class for annotation streamers that add features to variant data.
+    Base class for annotators that add features to existing data chunks.
+
+    Self-contained: provides the small surface the annotator family relies on
+    (name, chunk_size, logger, idempotent Hail-initializing setup, no-op
+    teardown, and the annotation hooks) without inheriting the legacy
+    chunked-IO streaming base.
     """
 
     def __init__(self, name: str, annotation_source: str, chunk_size: int = DEFAULT_CHUNK_SIZE):
-        super().__init__(name, chunk_size)
+        self.name = name
         self.annotation_source = annotation_source
+        self.chunk_size = chunk_size
         self.annotation_data = None
+        self.logger = logging.getLogger(f"{__name__}.{name}")
 
     def load_annotation_data(self) -> hl.Table:
         """
@@ -26,11 +44,17 @@ class AnnotationStreamer(HailDataStreamer):
         raise NotImplementedError("Subclasses must implement load_annotation_data")
 
     def setup(self) -> None:
-        """Load annotation data"""
-        super().setup()
+        """Initialize Hail (idempotently) and load annotation data."""
+        if not hail_initialized():
+            init_hail()
         self.logger.info(f"Loading annotation data from {self.annotation_source}")
         self.annotation_data = self.load_annotation_data()
 
+    def teardown(self) -> None:
+        """No-op for global Hail lifecycle (do not stop shared Hail context)."""
+        pass
+
+    @abstractmethod
     def annotate_chunk(self, chunk: hl.Table) -> hl.Table:
         """
         Add annotations to a chunk. Must be implemented by subclasses.
@@ -40,10 +64,10 @@ class AnnotationStreamer(HailDataStreamer):
     def stream(self) -> Iterator[hl.Table]:
         """
         This is used when the annotator is the first in pipeline.
-        Usually annotation streamers are used to process existing chunks.
+        Usually annotators are used to process existing chunks.
         """
         raise NotImplementedError(
-            "Annotation streamers typically process existing data chunks"
+            "Annotators typically process existing data chunks"
         )
 
     def process_chunk(self, chunk: hl.Table) -> hl.Table:
@@ -94,7 +118,7 @@ class AnnotationStreamer(HailDataStreamer):
             return chunk
 
 
-class VariantPredictionScoreStreamer(AnnotationStreamer):
+class VariantPredictionScoreAnnotator(Annotator):
     """
     Adds variant prediction scores (CADD, SIFT, PolyPhen, etc.) from dbNSFP.
     """
@@ -159,7 +183,7 @@ class VariantPredictionScoreStreamer(AnnotationStreamer):
         return annotated
 
 
-class GeneExpressionStreamer(AnnotationStreamer):
+class GeneExpressionAnnotator(Annotator):
     """
     Adds gene expression data from various tissue/cell types.
     """
@@ -226,7 +250,7 @@ class GeneExpressionStreamer(AnnotationStreamer):
         return annotated
 
 
-class GeneConstraintStreamer(AnnotationStreamer):
+class GeneConstraintAnnotator(Annotator):
     """
     Adds gene constraint metrics (pLI, LOEUF, etc.) and evolutionary metrics.
     """
@@ -287,7 +311,7 @@ class GeneConstraintStreamer(AnnotationStreamer):
         return annotated
 
 
-class PopulationFrequencyStreamer(AnnotationStreamer):
+class PopulationFrequencyAnnotator(Annotator):
     """
     Adds population frequency data from gnomAD.
     """
