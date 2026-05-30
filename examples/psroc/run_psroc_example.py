@@ -120,6 +120,7 @@ def main(output_dir: str = "/tmp/psroc_example") -> int:
     try:
         from hvantk.core.utils.hail_context import init_hail
         from hvantk.algorithms.psroc import PSROCConfig, PSROCPipeline
+        from hvantk.skills.clinvar.streamers import ClinVarVariantTableStreamer
     except ImportError as e:
         print(f"ERROR: Failed to import hvantk modules: {e}")
         print("Make sure hvantk is installed: poetry install")
@@ -161,6 +162,8 @@ def main(output_dir: str = "/tmp/psroc_example") -> int:
         generate_plots=True,
         export_tsv=True,
         overwrite=True,
+        pathogenic_labels=ClinVarVariantTableStreamer.PATHOGENIC_LABELS,
+        benign_labels=ClinVarVariantTableStreamer.BENIGN_LABELS,
     )
 
     print(f"Genes: {config.genes}")
