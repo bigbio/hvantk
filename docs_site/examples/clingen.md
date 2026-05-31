@@ -14,14 +14,14 @@ hvantk reprocess clingen:gene-disease \
 
 If you already downloaded `Clingen-Gene-Disease-Summary-<YYYY-MM-DD>.csv` into `data/`, add `--skip-download` to reuse it.
 
-## ClinGenStreamer API
+## ClinGenGeneDiseaseTableStreamer API
 
-`ClinGenStreamer` inherits from `GeneDiseaseValidityStreamer`, which provides generic query, aggregation, and integration methods. The same API is available via `GenCCStreamer` for GenCC data.
+`ClinGenGeneDiseaseTableStreamer` inherits from `GeneDiseaseTableStreamer`, which provides generic query, aggregation, and integration methods. The same API is available via `GenCCGeneDiseaseTableStreamer` for GenCC data.
 
 ```python
-from hvantk.data.clingen_streamer import ClinGenStreamer
+from hvantk.skills.clingen.streamers import ClinGenGeneDiseaseTableStreamer
 
-streamer = ClinGenStreamer("clingen.ht", init_hail=False)
+streamer = ClinGenGeneDiseaseTableStreamer("clingen.ht", init_hail=False)
 streamer.setup()
 
 # Get genes by classification level
@@ -60,7 +60,7 @@ summary_df = streamer.categorize_by_ontology_summary(
 )
 ```
 
-Default MONDO categories include organ/system-based (cardiovascular, nervous system, metabolic), cancer, genetic (hereditary, autosomal dominant/recessive), and developmental. See `hvantk/utils/mondo_parser.py` for the full list.
+Default MONDO categories include organ/system-based (cardiovascular, nervous system, metabolic), cancer, genetic (hereditary, autosomal dominant/recessive), and developmental. See `hvantk/core/utils/mondo_parser.py` for the full list.
 
 ## Classification Levels
 

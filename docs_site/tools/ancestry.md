@@ -61,7 +61,7 @@ hvantk ancestry-inference \
 
 ```python
 import hail as hl
-from hvantk.ancestry import run_ancestry_inference
+from hvantk.algorithms.ancestry import run_ancestry_inference
 
 # Initialize Hail
 hl.init()
@@ -279,7 +279,7 @@ The HTML report includes:
 ### Main Function
 
 ```python
-from hvantk.ancestry import run_ancestry_inference, PipelineConfig
+from hvantk.algorithms.ancestry import run_ancestry_inference, PipelineConfig
 
 result = run_ancestry_inference(
     query_mt: hl.MatrixTable,
@@ -319,7 +319,7 @@ result.annotate_matrixtable(mt) -> hl.MatrixTable
 ### PipelineConfig
 
 ```python
-from hvantk.ancestry import PipelineConfig
+from hvantk.algorithms.ancestry import PipelineConfig
 
 config = PipelineConfig(
     # Variant filtering
@@ -359,7 +359,7 @@ config = PipelineConfig(
 
 ```python
 import hail as hl
-from hvantk.ancestry import run_ancestry_inference
+from hvantk.algorithms.ancestry import run_ancestry_inference
 
 hl.init()
 

@@ -137,7 +137,7 @@ hvantk hgc filter-qc -i analysis_qc.mt -o filtered.mt --min-sample-call-rate 0.9
 Use HGC functions directly in Python:
 
 ```python
-from hvantk.hgc import (
+from hvantk.algorithms.hgc import (
     combine_gvcfs,
     combine_vdses,
     convert_vds_to_mt,
@@ -169,7 +169,7 @@ convert_vds_to_mt(
 Additional QC functionality for combined cohorts:
 
 ```python
-from hvantk.hgc import compute_full_qc, filter_samples_by_qc, filter_variants_by_qc
+from hvantk.algorithms.hgc import compute_full_qc, filter_samples_by_qc, filter_variants_by_qc
 
 # Load combined MatrixTable
 import hail as hl
@@ -202,7 +202,7 @@ mt_filtered = filter_variants_by_qc(
 For end-to-end workflows, use the Pipeline API:
 
 ```python
-from hvantk.hgc.pipeline import PipelineConfig, PipelineRunner
+from hvantk.algorithms.hgc.pipeline import PipelineConfig, PipelineRunner
 
 # Create configuration
 config = PipelineConfig(
@@ -226,7 +226,7 @@ See [Pipeline Orchestration](#pipeline-orchestration) for detailed documentation
 
 ## Core Components
 
-### 1. Pipeline (`hvantk.hgc.pipeline`)
+### 1. Pipeline (`hvantk.algorithms.hgc.pipeline`)
 
 **Recommended** - End-to-end workflow orchestration:
 
@@ -237,25 +237,25 @@ See [Pipeline Orchestration](#pipeline-orchestration) for detailed documentation
 
 See [Pipeline Orchestration](#pipeline-orchestration) for detailed usage.
 
-### 2. Combiners (`hvantk.hgc.combiners`)
+### 2. Combiners (`hvantk.algorithms.hgc.combiners`)
 
 Functions for combining genomic datasets:
 
 - **`combine_gvcfs()`** - Combine GVCF files and/or existing VDS datasets into a new VDS
 - **`combine_vdses()`** - Merge multiple VDS directories into a single VDS
 
-**Advanced functions** (require direct import from `hvantk.hgc.combiners`):
+**Advanced functions** (require direct import from `hvantk.algorithms.hgc.combiners`):
 - **`combine_matrix_table_rows()`** - Combine MatrixTables by rows (variants)
 - **`combine_matrix_table_cols()`** - Combine MatrixTables by columns (samples)
 
-### 3. Converters (`hvantk.hgc.converters`)
+### 3. Converters (`hvantk.algorithms.hgc.converters`)
 
 Functions for format conversion:
 
 - **`convert_vds_to_mt()`** - Convert VDS to dense MatrixTable format
 - **`convert_mt_to_multi_sample_vcf()`** - Export MatrixTable to multi-sample VCF
 
-### 4. File Utilities (`hvantk.hgc.file_utils`)
+### 4. File Utilities (`hvantk.algorithms.hgc.file_utils`)
 
 Helper functions for file handling:
 
@@ -282,7 +282,7 @@ hvantk hgc gvcf-combine \
 
 **Python:**
 ```python
-from hvantk.hgc import combine_gvcfs
+from hvantk.algorithms.hgc import combine_gvcfs
 
 combine_gvcfs(
     gvcf_dir="/data/gvcfs",
@@ -329,7 +329,7 @@ hvantk hgc vds-combine \
 
 **Python:**
 ```python
-from hvantk.hgc import combine_vdses
+from hvantk.algorithms.hgc import combine_vdses
 
 combine_vdses(
     vdses_dir="/data/vds_datasets",
@@ -361,7 +361,7 @@ hvantk hgc vds2mt \
 
 **Python:**
 ```python
-from hvantk.hgc import convert_vds_to_mt
+from hvantk.algorithms.hgc import convert_vds_to_mt
 
 convert_vds_to_mt(
     vds_path="cohort.vds",
@@ -404,7 +404,7 @@ hvantk hgc mt2vcf \
 
 **Python:**
 ```python
-from hvantk.hgc import convert_mt_to_multi_sample_vcf
+from hvantk.algorithms.hgc import convert_mt_to_multi_sample_vcf
 
 convert_mt_to_multi_sample_vcf(
     mt_path="analysis.mt",
@@ -583,7 +583,7 @@ output_directory/
 ### Python API
 
 ```python
-from hvantk.hgc.pipeline import PipelineConfig, PipelineRunner
+from hvantk.algorithms.hgc.pipeline import PipelineConfig, PipelineRunner
 
 # Configure pipeline
 config = PipelineConfig(
@@ -742,7 +742,7 @@ tabix -p vcf input.g.vcf.gz
 ### Example 1: Incremental Cohort Building
 
 ```python
-from hvantk.hgc import combine_gvcfs, combine_vdses
+from hvantk.algorithms.hgc import combine_gvcfs, combine_vdses
 
 # First batch
 combine_gvcfs(
@@ -777,7 +777,7 @@ combine_vdses(
 
 ```python
 import hail as hl
-from hvantk.hgc import convert_vds_to_mt
+from hvantk.algorithms.hgc import convert_vds_to_mt
 
 # Convert VDS to MT
 convert_vds_to_mt(
@@ -828,7 +828,7 @@ mt.write("cohort_filtered.mt")
 
 ### Advanced Functions
 
-These functions require direct import from `hvantk.hgc.combiners`:
+These functions require direct import from `hvantk.algorithms.hgc.combiners`:
 
 | Function | Description | Returns |
 |----------|-------------|---------|
@@ -837,7 +837,7 @@ These functions require direct import from `hvantk.hgc.combiners`:
 
 ## Constants
 
-The module defines commonly used constants in `hvantk.hgc.constants`:
+The module defines commonly used constants in `hvantk.algorithms.hgc.constants`:
 
 **Reference Genomes:**
 - `HG38_GENOME_REFERENCE` - "GRCh38"

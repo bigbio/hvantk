@@ -26,9 +26,9 @@ hvantk ancestry-inference \
 ## Python API
 
 ```python
-from hvantk.ancestry.pipeline import run_ancestry_pipeline
+from hvantk.algorithms.ancestry.pipeline import run_ancestry_inference
 
-run_ancestry_pipeline(
+run_ancestry_inference(
     query_mt_path="cohort.mt",
     reference_mt_path="1kg_reference.mt",
     output_dir="results/",
