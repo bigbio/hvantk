@@ -60,7 +60,7 @@ summary_df = streamer.categorize_by_ontology_summary(
 )
 ```
 
-Default MONDO categories include organ/system-based (cardiovascular, nervous system, metabolic), cancer, genetic (hereditary, autosomal dominant/recessive), and developmental. See `hvantk/core/utils/mondo_parser.py` for the full list.
+Default MONDO categories include organ/system-based (cardiovascular, nervous system, metabolic), cancer, genetic (hereditary, autosomal dominant/recessive), and developmental. See `hvantk/core/ontology/mondo.py` (`MONDO_DISEASE_CATEGORIES`) for the full list.
 
 ## Classification Levels
 
