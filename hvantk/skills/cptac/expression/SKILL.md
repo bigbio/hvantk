@@ -12,14 +12,14 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes every conve
 
 ## 1. Status & scope
 
-- **Status:** provisional. Builder + drift-probe placeholder are migrated under the plugin folder. Builder round-trip snapshots are NOT yet seeded; the fixture directory exists but is empty. Existing builder coverage lives in `hvantk/tests/test_expression_builders_anndata.py` (`TestBuildCptacAd`).
+- **Status:** provisional. Builder + drift-probe placeholder live under the plugin folder. Builder round-trip snapshots are NOT yet seeded; the fixture directory exists but is empty. Plugin tests (drift-probe sanity) live in `hvantk/skills/cptac/expression/tests/`.
 - **In scope:** one long-format CPTAC protein-expression TSV/CSV at a time, paired with a sample metadata file. Output is an AnnData (`.h5ad`) keyed `samples x genes` with `float32` `X`. The user is responsible for staging the inputs -- there is no automated downloader for the expression matrix today (the `cptac` Python package fetches into memory for the phospho path; mirroring that for expression is a follow-up).
 - **Out of scope:** phosphoproteomics (sibling dataset `cptac:phospho`); per-cancer-type batch builds (callers loop themselves); any Hail-Table or wide-format representation.
 
 ## 2. Source identity
 
 - **Provider:** Clinical Proteomic Tumor Analysis Consortium (CPTAC) (<https://proteomics.cancer.gov/programs/cptac>).
-- **Catalog entry:** TODO. No CPTAC entry exists yet in any plugin's `catalog/datasets.json` (verify with `hvantk catalog search cptac`). The cancer-type enum + class map live in `hvantk/ptm/constants.py` (`CPTAC_CANCER_TYPES`, `CPTAC_CANCER_CLASS_MAP`). When a dedicated catalog entry lands under `hvantk/skills/cptac/catalog/datasets.json`, point this plugin's `source.catalog_ref` at it and remove this TODO.
+- **Catalog entry:** TODO. No CPTAC entry exists yet in any plugin's `catalog/datasets.json` (verify with `hvantk catalog search cptac`). The cancer-type enum + class map live in `hvantk/skills/cptac/shared/constants.py` (`CPTAC_CANCER_TYPES`, `CPTAC_CANCER_CLASS_MAP`). When a dedicated catalog entry lands under `hvantk/skills/cptac/catalog/datasets.json`, point this plugin's `source.catalog_ref` at it and remove this TODO.
 
 ## 3. Backend choice + reasoning
 
@@ -39,7 +39,7 @@ Metadata file is read with the same auto-detect logic and indexed by `SampleID` 
 
 ## 5. Output contract
 
-- **File:** AnnData `.h5ad` at the path passed via `output_path` (callers' choice -- there is no fixed naming).
+- **Artifact:** an `ExpressionMatrix` (AnnData-backed) returned by the builder; the platform persists it to `.h5ad` at the `--output` path the caller passes to `hvantk reprocess`.
 - **Shape:** `(n_samples, n_genes)` -- samples in `obs`, genes in `var`.
 - **`X`:** `float32`, missing values as `NaN`.
 - **`obs`:** indexed by sample id; columns mirror the metadata file (after `set_index`).
@@ -49,20 +49,20 @@ Metadata file is read with the same auto-detect logic and indexed by `SampleID` 
 
 ## 6. hvantk integration points
 
-- **Builder:** `build_cptac_ad` in `hvantk/skills/cptac/expression/builder.py`.
+- **Builder:** `build_cptac_expression(parsed_input, ctx, **params)` in `hvantk/skills/cptac/expression/builder.py`. `parsed_input` is a `{"expression": <tsv>, "metadata": <tsv>}` dict; `params` are `gene_id_col`, `gene_name_col`, `sample_id_col`, `expression_col`. Returns an `ExpressionMatrix`.
 - **Shared helpers:** `create_anndata_from_cptac_long`, `_parse_site_id` in `hvantk/skills/cptac/shared/cptac.py` (shared with the sibling phospho builder).
 - **Drift probe:** `fetch_fingerprint` in `hvantk/skills/cptac/expression/drift_probe.py` (fingerprints the installed `cptac` Python package version).
-- **Plugin manifest:** `hvantk/skills/cptac/plugin.yaml` (compound dataset key `cptac:expression`).
-- **Tests:** parser/helper coverage in `hvantk/skills/cptac/expression/tests/` (drift-probe sanity); builder coverage in `hvantk/tests/test_expression_builders_anndata.py` (`TestBuildCptacAd`).
-- **CLI:** end-to-end `hvantk reprocess cptac:expression` is not yet wired — the Phase B `build_cptac_expression` builder expects `parsed_input` to be a `{"expression": <tsv>, "metadata": <tsv>}` dict produced by a `lifecycle.parse` stage that the manifest does not yet declare. Build via the Python API today (`build_cptac_expression(parsed_input, ctx, gene_id_col=…, sample_id_col=…, expression_col=…)`, or the legacy `build_cptac_ad`).
+- **Plugin manifest:** `hvantk/skills/cptac/plugin.yaml` (compound dataset key `cptac:expression`). The loader auto-resolves the dataset via `get_registry().get_dataset("cptac:expression")`; top-level builds run through `run_builder_for_spec` (`hvantk/core/plugin/run_builder.py`).
+- **Tests:** drift-probe sanity in `hvantk/skills/cptac/expression/tests/test_drift_probe.py`.
+- **CLI:** end-to-end `hvantk reprocess cptac:expression` is not yet wired — the manifest does not declare a `lifecycle.parse` stage to produce the `{"expression": <tsv>, "metadata": <tsv>}` `parsed_input` dict. Until that lands, build via the Python API (`build_cptac_expression(parsed_input, ctx, gene_id_col=…, sample_id_col=…, expression_col=…)`).
 
 ## 7. Workflow steps
 
 When invoked to build a CPTAC protein-expression AnnData:
 
 1. **Stage inputs.** Long-format expression TSV/CSV + sample metadata TSV/CSV. (Today the user produces these manually; an automated downloader for expression is a follow-up -- see `cptac:phospho` for the in-package fetcher pattern.)
-2. **Build.** Import `build_cptac_expression` (or the legacy `build_cptac_ad`) directly — see § 6 on why `hvantk reprocess cptac:expression` is not wired yet.
-3. **Validate.** `pytest hvantk/skills/cptac/expression/tests` (drift-probe sanity) + `pytest hvantk/tests/test_expression_builders_anndata.py::TestBuildCptacAd` (builder round-trip).
+2. **Build.** Import `build_cptac_expression(parsed_input, ctx, **params)` directly — see § 6 on why `hvantk reprocess cptac:expression` is not wired yet.
+3. **Validate.** `pytest hvantk/skills/cptac/expression/tests` (drift-probe sanity).
 
 ## 8. Update playbook
 
@@ -77,7 +77,7 @@ CPTAC ships new cohorts and re-processed runs via the `cptac` Python package. Wh
 
 Per `_conventions` § 9:
 
-- **fixture:** `hvantk/skills/cptac/expression/tests/testdata/raw/cptac-expression/` (directory present, not yet seeded -- existing builder tests in `hvantk/tests/test_expression_builders_anndata.py` build mock inputs on the fly).
+- **fixture:** `hvantk/skills/cptac/expression/tests/testdata/raw/cptac-expression/` (declared in `plugin.yaml`; not yet seeded).
 - **schema_snapshot:** `hvantk/skills/cptac/expression/tests/snapshots/schema.json` (TODO -- created on first `--regenerate-snapshots` run).
 - **row_snapshot:** `hvantk/skills/cptac/expression/tests/snapshots/sample_rows.json` (TODO -- same).
 - **test_command:** `pytest hvantk/skills/cptac/expression/tests`.
@@ -86,7 +86,7 @@ Per `_conventions` § 9:
 The plugin manifest declares these paths so the loader contract holds. Drift-probe sanity test passes today; the builder round-trip snapshot is the gap to close in a follow-up.
 
 > **Snapshot status:** schema.json and sample_rows.json have NOT yet been seeded
-> for this plugin. On first round-trip run in a hail-enabled environment, use
-> `pytest hvantk/skills/cptac/expression/tests/test_builder.py --regenerate-snapshots`
+> for this plugin. On first round-trip run, use
+> `pytest hvantk/skills/cptac/expression/tests --regenerate-snapshots`
 > to bootstrap them, then commit. Until seeded, the round-trip test cannot verify
 > output against a fixed schema.

@@ -14,10 +14,11 @@ These conventions apply to every per-resource plugin under `hvantk/skills/`. Per
 - `hvantk/skills/<provider>/<dataset>/` — for providers that ship more than one dataset (e.g., `cptac/expression/`, `cptac/phospho/`). One `plugin.yaml` per provider declares all datasets; each dataset folder owns its builder, drift probe, CLI, and tests.
 - `hvantk/skills/<provider>/shared/` — code reused across two or more datasets in the same provider (e.g., the shared CPTAC dataset class).
 - `hvantk/skills/_conventions/SKILL.md` — this file. The shared contract.
-- `hvantk/core/builders/table.py` — still the home of generic helpers (`_create_table_base`, `_cleanup_temp_file`, `_parse_insider_bed_to_temp_tsv`) and of non-migrated builders. Plugins import the helpers; they do not add new top-level builders here.
-- `hvantk/core/plugin/registry.py` — recipe-system registry. The plugin loader populates `TABLE_BUILDERS` / `MATRIX_BUILDERS` automatically; hand-written `create_table_adapter()` calls are deprecated for migrated providers.
-- `hvantk/core/plugin/api.py`, `hvantk/core/plugin/loader.py` — plugin schema, discovery (filesystem + Python entry points), and lifecycle wiring.
-- `hvantk/tools/` — top-level CLI (`hvantk plugins`, `hvantk drift`, `hvantk reprocess`, `hvantk catalog`). Per-provider CLI lives in the plugin's own `cli.py` and is wired by `plugin.yaml`.
+- `hvantk/core/utils/hail_helpers.py` — shared Hail Table helpers: `create_table_base()` (import → transform → checkpoint → optional TSV export) and `cleanup_temp_file()` (best-effort temp cleanup). Other shared helpers: `contig_recoding()` in `hvantk/core/utils/genome.py`; `parse_gtex_variant_id()` / `strip_ensembl_version()` in `hvantk/core/utils/qtl_helpers.py`. There is no `hvantk/core/builders/table.py` and no `_create_table_base`.
+- `hvantk/core/plugin/api.py` — plugin runtime dataclasses (`Provider`, `DatasetSpec`, `DatasetManifest`, `TestPaths`) plus `PluginLoadError`, `PluginNameCollision`, `DriftProbeError`.
+- `hvantk/core/plugin/loader.py` — discovery (filesystem + Python entry points), manifest validation, and lazy callable resolution. The module-level `get_registry()` returns a `PluginRegistry`; `registry.get_dataset("<provider>:<dataset>")` yields the executable `DatasetSpec`. There is no `registry.py`, no `TABLE_BUILDERS` / `MATRIX_BUILDERS`, and no `create_table_adapter()` / `create_matrix_adapter()`.
+- `hvantk/core/plugin/run_builder.py` — `run_builder_for_spec(...)` is the sole dispatch path: it runs the drift probe, builds a `BuildContext`, invokes the builder, validates the returned artifact's type/`schema_id` against `plugin.yaml`, then saves and returns provenance.
+- `hvantk/tools/` — top-level CLI (`hvantk plugins`, `hvantk drift`, `hvantk reprocess`, `hvantk catalog`). The `reprocess` command lives in `hvantk/tools/plugins/reprocess_cli.py`. Per-provider downloader CLI lives in the plugin's own `cli.py` and is wired by `plugin.yaml`'s `cli:` block.
 - `hvantk/skills/<provider>/catalog/datasets.json` — per-plugin dataset catalog (URLs, version cadence, license, per-accession metadata). Aggregated by `hvantk.resources.unified_registry.HvantkRegistry` and surfaced via `hvantk catalog {list,show,stats,search}`.
 
 When in doubt, READ existing code under these paths before inferring shape.
@@ -26,7 +27,7 @@ When in doubt, READ existing code under these paths before inferring shape.
 
 Each plugin's `catalog/datasets.json` (under `hvantk/skills/<provider>/catalog/`) is the source of truth for that provider's metadata: URLs, version strings, license, citation, release cadence. NEVER restate this content in a skill. Reference the catalog file instead, or query it via `hvantk catalog show <accession>` / `hvantk catalog stats`.
 
-Every provider MUST ship a `plugin.yaml` with `api_version: 2`. Bare-name registry entries (e.g., `TABLE_BUILDERS["clinvar"]`) are deprecated; the loader installs compound keys (`provider:dataset`) automatically from the manifest. The manifest schema is enforced by `hvantk/tests/test_plugin_manifest_schema.py`.
+Every provider MUST ship a `plugin.yaml` with `api_version: 2`. Datasets are addressed by compound key `provider:dataset` (e.g., `clinvar:variants`); the loader registers each `DatasetManifest` under that key automatically and resolves its callables lazily on first `get_dataset("provider:dataset")`. The manifest schema is `hvantk/core/plugin/manifest.schema.json`.
 
 Every per-resource `SKILL.md` MUST cover these nine sections, in order, with these exact headings:
 
@@ -53,49 +54,56 @@ Optional sections (only if they add information not covered above): `## 10. Cros
 
 ## 4. Required helpers
 
-- `_create_table_base()` — `hvantk/core/builders/table.py`. Canonical helper for variant/gene Table builders (handles import, transform, checkpoint, optional TSV export). Its `import_func` accepts any `Callable[[], hl.Table]` — `hl.import_table` (TSV), `hl.import_vcf().rows()`, or `hl.import_lines` for line-oriented formats like GMT.
+- `create_table_base()` — `hvantk/core/utils/hail_helpers.py`. Optional scaffold for the small set of builders that follow the import → transform → checkpoint → optional TSV-export pattern. Its `import_func` accepts any `Callable[[], hl.Table]` — `hl.import_table` (TSV), `hl.import_vcf().rows()`, or `hl.import_lines` for line-oriented formats like GMT. Most builders build the Table inline instead of using it.
+- `cleanup_temp_file()` — `hvantk/core/utils/hail_helpers.py`. Best-effort cleanup of local / Hadoop / S3 / GS temp files. This is the only shared temp helper.
 - `init_hail()` — `hvantk/core/utils/hail_context.py`. Idempotent Hail init. Tests use the session-scoped `hail_session` fixture from `conftest.py`.
 - AnnData helpers — `annotate_column_summary_ad` in `hvantk/core/models/anndata_utils.py`; `save_anndata` in `hvantk/core/io/anndata_io.py`. Provenance is stamped on the returned Artifact via `ctx.provenance(schema_id=...)` — builders no longer write a separate `hvantk_metadata` dict.
-- Plugin runtime — `hvantk/core/plugin/api.py` defines `PluginSpec`, `DatasetSpec`, and `DriftProbeError`. Tests/CLI consume the populated registries via `hvantk/core/plugin/loader.py`.
+- Plugin runtime — `hvantk/core/plugin/api.py` defines `Provider`, `DatasetSpec`, `DatasetManifest`, and `DriftProbeError`. Tests/CLI consume the populated registry via `get_registry()` in `hvantk/core/plugin/loader.py`.
 
-**Phase B builder contract (current):** plugin builders are functions
+**Builder contract (current):** plugin builders are functions
 `(parsed_input, ctx: BuildContext, **params) -> Artifact` that return
 an `AnnotationTable`, `ExpressionMatrix`, or `GeneSet` (see
-`hvantk/core/models/`). The platform invokes them via
-`hvantk.core.plugin.run_builder.run_builder_for_spec(...)` which validates
-the returned artifact's type against `plugin.yaml`'s `artifact_type` and
-stamps source-fingerprint provenance. The legacy
-`create_<dataset>_tb(input_path, output_path, ...)` functions remain in
-each plugin's `builder.py` for backward compatibility with `TABLE_BUILDERS`
-callers; they will be removed in a future cleanup phase.
+`hvantk/core/models/`). There is no `(input_path, output_path, overwrite,
+export_tsv)` signature — output path and persistence are owned by the
+orchestrator, not the builder. The platform invokes builders via
+`hvantk.core.plugin.run_builder.run_builder_for_spec(...)`, which runs the
+drift probe, constructs the `BuildContext`, calls the builder, validates the
+returned artifact's type and `schema_id` against `plugin.yaml`, stamps
+source-fingerprint provenance, and saves the artifact. The builder function
+name is whatever `plugin.yaml`'s `builder.function` declares — a
+`build_<...>` name such as `build_clinvar`, `build_hgnc_gene_lookup`, or
+`build_ucsc_cellbrowser`. The old `create_<x>_tb` / `build_<x>_ad` names do
+not exist.
 
 NEVER paste these helpers' source into a skill. Reference them by path.
 
 ## 5. Builder pattern
 
-- Function naming: `create_<source>_tb` (Table) or `build_<source>_ad` (anndata).
-- Signature shape: `input_path: str, output_path: str, **kwargs`. Common kwargs: `overwrite: bool`, `export_tsv: bool`, `reference_genome: str`.
-- Idempotent: must support `overwrite=True`. Output is checkpointed to disk.
-- Returns the built object (`hl.Table`, `hl.MatrixTable`, or `anndata.AnnData`).
+- Function naming: `build_<source>` (the exact name is declared in `plugin.yaml`'s `builder.function`).
+- Signature shape: `(parsed_input, ctx, **params) -> Artifact`. `parsed_input` is whatever `lifecycle.parse` returned (often a raw path or directory); `ctx` is the platform-supplied `BuildContext`. Common `params`: `reference_genome: str`, plus dataset-specific flags forwarded from `--plugin-arg`.
+- The builder returns an `AnnotationTable`, `ExpressionMatrix`, or `GeneSet` wrapper (from `hvantk/core/models/`), stamping provenance via `ctx.provenance(schema_id=...)`. The builder does NOT take an `output_path` / `overwrite` kwarg and does NOT checkpoint itself — `run_builder_for_spec` saves the returned artifact.
 - Location: `hvantk/skills/<provider>/builder.py` for single-dataset providers, `hvantk/skills/<provider>/<dataset>/builder.py` for multi-dataset providers.
 
 ## 6. Registry registration via plugin.yaml
 
-The plugin loader auto-populates `TABLE_BUILDERS` / `MATRIX_BUILDERS` from manifests. Each `datasets[].builder` block resolves to a compound key `provider:dataset`. Example:
+The plugin loader discovers every `plugin.yaml` under `hvantk/skills/` (plus `hvantk.providers` entry points) and registers each `datasets[]` entry under the compound key `provider:dataset`. There is no `TABLE_BUILDERS` / `MATRIX_BUILDERS` dict and no `create_table_adapter()` to hand-edit — the manifest IS the registration. Example:
 
 ```yaml
 api_version: 2
 name: hgnc
+version: 0.1.0
 datasets:
   - name: lookup
     domain: mapping
     backend: hail
+    artifact_type: AnnotationTable
+    schema_id: hgnc-lookup-v1
     builder:
       module: hvantk.skills.hgnc.builder
-      function: create_hgnc_gene_tb
+      function: build_hgnc_gene_lookup
 ```
 
-This yields `TABLE_BUILDERS["hgnc:lookup"]`. The legacy adapter pattern (`create_table_adapter(...)`) is no longer used for migrated providers; do not hand-edit `hvantk/core/plugin/registry.py` for a new plugin.
+`get_registry().get_dataset("hgnc:lookup")` returns the executable `DatasetSpec` (callables resolved lazily); top-level builds run through `run_builder_for_spec`. No `registry.py` edit and no `_apply_plugin_registrations` step is involved.
 
 ## 7. CLI command pattern
 
@@ -108,7 +116,13 @@ cli:
     function: download_cmd
 ```
 
-Top-level data-build invocations go through `hvantk reprocess <provider>:<dataset>`, which resolves the manifest, runs `lifecycle.download` / `lifecycle.parse` / `builder` in sequence, and stamps provenance. Build-time kwargs flow through `--plugin-arg KEY=VALUE`. The legacy `mktable` / `mkmatrix` commands have been retired.
+Top-level data-build invocations go through:
+
+```bash
+hvantk reprocess <provider>:<dataset> --raw-dir <dir> --output <out> [--plugin-arg KEY=VALUE]
+```
+
+This resolves the manifest via `get_registry().get_dataset(...)`, runs `lifecycle.download` / `lifecycle.parse` / `builder` in sequence, and stamps provenance. Build-time kwargs flow through `--plugin-arg KEY=VALUE`. Provider names use hyphens (e.g., `gtex-eqtl`, `gnomad-metrics`, `ucsc-cellbrowser`, `cosmic-cgc`, `uniprot-ptm`). The legacy `mktable` / `mkmatrix` commands have been retired.
 
 ## 8. Test pattern
 
@@ -139,7 +153,7 @@ Every per-resource `SKILL.md` MUST declare these paths, which MUST match the `te
 ## 11. Out of scope for any skill
 
 - Hail context init. Tests use `hail_session`; runtime uses `init_hail()`.
-- Cross-resource utilities (gene-ID mapping, locus normalization). Those live in `hvantk/core/utils/`.
+- Cross-resource utilities. Genome/locus helpers (`contig_recoding`) live in `hvantk/core/utils/genome.py`; QTL helpers (`parse_gtex_variant_id`, `strip_ensembl_version`) in `hvantk/core/utils/qtl_helpers.py`. Gene-ID mapping is owned by `HGNCGeneCatalogStreamer` in `hvantk/skills/hgnc/streamers.py` (the old `GeneMapper` / `gene_mapper.py` / `gene_aliases.py` are retired).
 - "How to use the product" — analytical guidance is downstream.
 
 ## 12. Drift probe contract
@@ -181,4 +195,4 @@ Manifests MAY declare `lifecycle.download` and `lifecycle.parse` callables. `hva
 3. `builder` — produce the Hail Table or AnnData artifact (always required).
 4. `drift_probe` — run a post-build drift check against the committed fingerprint (warning, not failure, unless `--strict` is passed).
 
-Both lifecycle stages are optional; a download-only provider (e.g., a static URL) may omit `parse`, and a vendor-supplied tarball may omit `download`. When present, each is `(module, function)` resolved at load time and surfaced via `PluginSpec` for the `reprocess` runner.
+Both lifecycle stages are optional; a download-only provider (e.g., a static URL) may omit `parse`, and a vendor-supplied tarball may omit `download`. When present, each is `(module, function)` resolved lazily and surfaced on the `DatasetSpec` (as `download_fn` / `parse_fn`) for the `reprocess` runner.

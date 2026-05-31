@@ -11,14 +11,30 @@ compatibility with the eQTL cascade join. The table is keyed by
 
 - `pqtl:metrics` — per-variant-gene pQTL association metrics, keyed by (locus, alleles, gene_id)
 
-## Phase K notes
+## Build
 
-This plugin was promoted from the hardcoded `_TABLE_BUILDERS` entry of
-the same name as part of Phase K of the data-model platform refactor.
-The builder uses a delegation-stub to the legacy `create_pqtl_tb` because
-the pQTL builder requires an external HGNC table resource and complex
-gene-symbol → Ensembl ID mapping that shares helpers with other builders.
-The drift probe is a stub. The downloader is not implemented.
+```bash
+hvantk reprocess pqtl:metrics \
+  --raw-dir <dir-with-fang-allpairs> \
+  --output <out.ht> \
+  --plugin-arg hgnc_ht=<hgnc-lookup.ht>
+```
+
+The HGNC Hail Table (built via `hvantk reprocess hgnc:lookup`) is required so
+gene symbols can be mapped to Ensembl gene IDs for the eQTL cascade join. To
+opt out and produce a symbol-keyed table for non-cascade use, pass
+`--plugin-arg no_gene_map=true`.
+
+## Builder
+
+The builder `build_pqtl_metrics` lives in `hvantk/skills/pqtl/builder.py`. Its
+signature is `(parsed_input, ctx, **params) -> AnnotationTable`. It imports the
+Fang allpairs inline via `hl.import_table`, parses GTEx variant IDs with
+`parse_gtex_variant_id` from `hvantk/core/utils/qtl_helpers.py`, derives SE as
+`|BETA / STAT|` (Fang files lack an SE column), and maps gene symbols to
+Ensembl gene IDs through a `GeneCatalogStreamer` (base class in
+`hvantk/core/streamers/gene_catalog.py`). The drift probe is a stub. The
+downloader is not implemented.
 
 ## Schema
 
@@ -27,5 +43,14 @@ Field documentation TBD. Key fields: `locus`, `alleles`, `gene_id`,
 
 ## Tests
 
-No fixture is available for the pqtl source. The test file contains a
-registration-only test and a skipped round-trip test.
+```bash
+pytest hvantk/skills/pqtl/tests
+```
+
+No fixture is available for the pqtl source. `hvantk/skills/pqtl/tests/test_pqtl.py`
+contains a registration-only test (`test_pqtl_metrics_registered`) and a skipped
+round-trip test (`test_pqtl_metrics_round_trip`). The `tests:` block in
+`plugin.yaml` declares plugin-relative fixture/snapshot paths
+(`tests/testdata/raw/pqtl`, `tests/snapshots/schema.json`,
+`tests/snapshots/sample_rows.json`, `tests/drift_fingerprint.json`) that are
+not yet populated.

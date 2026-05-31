@@ -12,6 +12,8 @@ domain: variants
 
 This skill covers BUILD and UPDATE of the ClinVar Hail Table. It does NOT cover download (see `hvantk/skills/clinvar/cli.py`) or downstream analysis.
 
+The builder is `build_clinvar` in `hvantk/skills/clinvar/builder.py`. It has the platform builder signature `build_clinvar(parsed_input, ctx, *, reference_genome="GRCh38") -> AnnotationTable`. There is no `input_path` / `output_path` / `overwrite` / `export_tsv` signature; the platform's `run_builder_for_spec` calls `artifact.save()` to materialize the table.
+
 ## 2. Source identity
 
 Provider metadata (URL, version cadence, license, citation) lives in the ClinVar entry inside `hvantk/resources/registry/genomics/datasets.json` (find by `accession: "ClinVar_latest"`), surfaced via `hvantk catalog show ClinVar_latest`. Read that file; do not restate.
@@ -25,7 +27,7 @@ Hail Table keyed by `(locus, alleles)`. Reasoning: ClinVar is variant-keyed and 
 ## 4. Raw format & gotchas
 
 - File format: bgzipped VCF (`.vcf.bgz` with `.tbi` index).
-- Reference genome: GRCh38 by default. The `contig_recoding()` helper from `hvantk/tables/table_builders.py` maps numeric contigs to `chr*` names.
+- Reference genome: GRCh38 by default. The `contig_recoding()` helper from `hvantk/core/utils/genome.py` maps numeric contigs to `chr*` names.
 - Import: use `hl.import_vcf(path, force=True, reference_genome=..., contig_recoding=..., skip_invalid_loci=True)`. The `force=True` flag is required because ClinVar VCFs contain non-standard headers.
 - Keying: after `.rows()`, repartition (typical: 100) and key by `(locus, alleles)`.
 - INFO fields commonly used: `CLNSIG`, `CLNREVSTAT`, `CLNDN`, `CLNDISDB`, `RS`, `MC`, `GENEINFO`. The full list comes from the VCF header — read it, do not assume.
@@ -33,18 +35,18 @@ Hail Table keyed by `(locus, alleles)`. Reasoning: ClinVar is variant-keyed and 
   - Spaces in INFO values are encoded as `_` (e.g., `Likely_pathogenic`).
   - Multi-value INFO fields use `,` or `|` depending on the field.
   - `CLNDISDB` uses `,` between databases and `|` between IDs within a database.
-- TSV export gotcha: when `export_tsv=True`, ClinVar's TSV is **flattened** before export so nested struct fields become flat columns. Do NOT pass `export_tsv` straight through to `_create_table_base` — instead, force `export_tsv=False` in the helper call and run `<table>.flatten().export(f"{output_path}.tsv.bgz")` after the helper returns. Other builders may forward `export_tsv` directly; ClinVar is special because of the deeply nested INFO struct.
 
 ## 5. Output contract
 
-Hail Table at `<output_path>.ht`. Schema is defined by `hvantk/tests/snapshots/clinvar/schema.json` (canonical). Human summary: keyed by `(locus, alleles)`; row contains `rsid`, `qual`, `filters`, and an `info` struct with the ClinVar-specific INFO fields parsed by `hl.import_vcf`.
+`AnnotationTable` wrapping a Hail Table keyed by `(locus, alleles)`, with provenance `schema_id="clinvar-variants-v1"`. The platform writes it to the build `--output` path. Schema is defined by `hvantk/skills/clinvar/tests/snapshots/schema.json` (canonical). Human summary: row contains `rsid`, `qual`, `filters`, and an `info` struct with the ClinVar-specific INFO fields parsed by `hl.import_vcf`.
 
 ## 6. hvantk integration points
 
-- Builder: `create_clinvar_tb` in `hvantk/skills/clinvar/builder.py`
-- Downloader CLI: `clinvar_downloader` in `hvantk/skills/clinvar/cli.py` (registered as `hvantk download clinvar`)
+- Builder: `build_clinvar` in `hvantk/skills/clinvar/builder.py`
+- Streamer: `ClinVarVariantTableStreamer` in `hvantk/skills/clinvar/streamers.py` (subclass of `VariantTableStreamer` in `hvantk/core/streamers/`)
+- Downloader CLI: `clinvar_downloader` in `hvantk/skills/clinvar/cli.py` (registered as `hvantk clinvar-download`; lifecycle download via `download_dataset` in the same module)
 - Dataset class: `ClinVarDataset` in `hvantk/skills/clinvar/shared/datasets.py`
-- Build CLI: `hvantk reprocess clinvar:variants --raw-dir <dir> --output <path>.ht` (skip individual stages with `--skip-download` / `--skip-parse` / `--skip-build`; pass builder kwargs via `--plugin-arg key=value`, e.g. `--plugin-arg reference_genome=GRCh38`)
+- Build CLI: `hvantk reprocess clinvar:variants --raw-dir <dir> --output <path>.ht` (pass builder kwargs via `--plugin-arg KEY=VALUE`, e.g. `--plugin-arg reference_genome=GRCh38`). The plugin loader (`hvantk/core/plugin/loader.py`) resolves the dataset from `plugin.yaml` via `get_registry().get_dataset("clinvar:variants")`; the build runs through `run_builder_for_spec` (`hvantk/core/plugin/run_builder.py`).
 - Plugin manifest: `hvantk/skills/clinvar/plugin.yaml` (drives loader registration; compound dataset key `clinvar:variants`)
 - Test: `hvantk/skills/clinvar/tests/test_builder.py`
 
@@ -56,21 +58,21 @@ When invoked to build or update:
 
 1. Verify Hail is available (defer to the SessionStart hook).
 2. Confirm input is a ClinVar VCF: read the `#CHROM` header line of the input file.
-3. Use `_create_table_base()` from `hvantk/tables/table_builders.py` with:
-   - `import_func = lambda: hl.import_vcf(input_path, force=True, reference_genome=reference_genome, contig_recoding=contig_recoding(), skip_invalid_loci=True).rows()`
-   - `transform_func = lambda ht: ht.repartition(100).key_by("locus", "alleles")`
+3. Build the table inline in `build_clinvar` (no shared base helper):
+   - `hl.import_vcf(str(parsed_input), force=True, reference_genome=reference_genome, contig_recoding=contig_recoding(), skip_invalid_loci=True).rows()`
+   - `.repartition(100).key_by("locus", "alleles")`
+   - Wrap the result with `AnnotationTable.from_hail(ht, provenance=ctx.provenance(schema_id="clinvar-variants-v1"))`. The platform calls `artifact.save()` to write to disk.
 4. Apply the parsing rules from § 4 (force, contig_recoding, skip_invalid_loci).
-5. Preserve the flatten-before-export branch from § 4 — pass `export_tsv=False` to `_create_table_base` and run `<table>.flatten().export(...)` after. The round-trip test does NOT exercise `export_tsv=True`, so a regression here would land silently.
-6. Run validation: `pytest hvantk/skills/clinvar/tests/test_builder.py -m hail`.
-7. Report: schema diff, sample-row diff, test pass/fail.
+5. Run validation: `pytest hvantk/skills/clinvar/tests -m hail`.
+6. Report: schema diff, sample-row diff, test pass/fail.
 
 ## 8. Update playbook
 
 When ClinVar releases a new monthly version:
 
-1. Fetch the new release: `hvantk download clinvar --output-dir /tmp/clinvar`.
+1. Fetch the new release: `hvantk clinvar-download --output-dir /tmp/clinvar`.
 2. Regenerate the fixture: extract a small representative slice (mix of CLNSIG values, multi-allelic site, multi-CLNDN row). The current pilot fixture is a single-chromosome slice (`hvantk/skills/clinvar/tests/testdata/raw/clinvar/clinvar_20220403_chr20.vcf.bgz`) — this is adequate because ClinVar parsing is INFO-field driven, not chromosome-dependent. Replace the file (re-bgzip if needed). A `.tbi` index is optional; `hl.import_vcf(force=True)` reads `.bgz` directly.
-3. Run snapshot regeneration: `pytest hvantk/skills/clinvar/tests/test_builder.py -m hail --regenerate-snapshots`.
+3. Run snapshot regeneration: `pytest hvantk/skills/clinvar/tests -m hail --regenerate-snapshots`.
 4. Inspect the snapshot diff:
    - **Expected diff** (new INFO field, additional CLNSIG value): commit the regenerated snapshots with explanation.
    - **Unexpected diff** (schema regression, missing field): STOP. Investigate before committing.
@@ -82,4 +84,5 @@ When ClinVar releases a new monthly version:
 - `fixture`: `hvantk/skills/clinvar/tests/testdata/raw/clinvar/clinvar_20220403_chr20.vcf.bgz`
 - `schema_snapshot`: `hvantk/skills/clinvar/tests/snapshots/schema.json`
 - `row_snapshot`: `hvantk/skills/clinvar/tests/snapshots/sample_rows.json`
-- `test_command`: `pytest hvantk/skills/clinvar/tests/test_builder.py -m hail`
+- `drift_fingerprint`: `hvantk/skills/clinvar/tests/drift_fingerprint.json`
+- `test_command`: `pytest hvantk/skills/clinvar/tests -m hail`
