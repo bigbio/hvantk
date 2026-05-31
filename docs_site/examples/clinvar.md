@@ -1,6 +1,6 @@
-# ClinVar Streaming Examples
+# ClinVar Query Examples
 
-Stream and filter ClinVar variant annotations using hvantk's `ClinvarDataStreamer`.
+Query and filter ClinVar variant annotations using hvantk's `ClinVarVariantTableStreamer`.
 
 ## Prerequisites
 
@@ -15,86 +15,75 @@ hvantk reprocess clinvar:variants \
 
 If you already have `clinvar.vcf.bgz` (or `.vcf.gz`), place it under `data/clinvar/` and add `--skip-download`.
 
-## Basic Streaming
+## Basic Usage
+
+The streamer wraps a built ClinVar `AnnotationTable` and exposes typed query
+methods. Construct it from a saved table with `from_path`, then drop to the
+underlying Hail Table with `to_hail()`:
 
 ```python
-from hvantk.data.clinvar_streamer import ClinvarDataStreamer
+from hvantk.skills.clinvar.streamers import ClinVarVariantTableStreamer
 
-streamer = ClinvarDataStreamer(
-    clinvar_path="clinvar.ht",
-    chunk_size=5000,
-)
+streamer = ClinVarVariantTableStreamer.from_path("clinvar.ht")
 
-streamer.setup()
-try:
-    for chunk in streamer.stream():
-        print(f"Chunk rows: {chunk.count()}")
-finally:
-    streamer.teardown()
+ht = streamer.to_hail()
+print(f"Total variants: {ht.count()}")
 ```
 
 ## Filtering by Gene Set
 
+`filter_to_genes` keeps variants whose `info.GENEINFO` gene matches the set and
+returns a Hail Table:
+
 ```python
-streamer = ClinvarDataStreamer(
-    clinvar_path="clinvar.ht",
-    gene_set={"BRCA1", "BRCA2", "TP53"},
-)
-streamer.setup()
-for chunk in streamer.stream():
-    # Process chunk
-    pass
-streamer.teardown()
+brca_ht = streamer.filter_to_genes({"BRCA1", "BRCA2", "TP53"})
+print(f"Variants in panel: {brca_ht.count()}")
 ```
 
-## Filtering by Disease Terms
+## Filtering by Pathogenicity
+
+`filter_by_pathogenicity` filters on the ClinVar `info.CLNSIG` clinical
+significance labels:
 
 ```python
-streamer = ClinvarDataStreamer(
-    clinvar_path="clinvar.ht",
-    disease_terms={"breast_cancer", "ovarian_cancer"},
+pathogenic_ht = streamer.filter_by_pathogenicity(
+    ["Pathogenic", "Likely_pathogenic"]
 )
-streamer.setup()
-for chunk in streamer.stream():
-    pass
-streamer.teardown()
+print(f"Pathogenic variants: {pathogenic_ht.count()}")
 ```
 
 ## Aggregating Results
 
-```python
-from collections import Counter
+The methods return ordinary Hail Tables, so aggregate them natively:
 
-gene_counts = Counter()
-streamer.setup()
-for chunk in streamer.stream():
-    rows = chunk.select("gene").collect()
-    for row in rows:
-        gene_counts[row.gene] += 1
-streamer.teardown()
-print(gene_counts)
+```python
+import hail as hl
+
+brca_ht = streamer.filter_to_genes({"BRCA1", "BRCA2", "TP53"})
+by_sig = brca_ht.aggregate(hl.agg.counter(brca_ht.info.CLNSIG))
+print(by_sig)
 ```
 
-## Training Set Generation
+## Deriving a Training-Label Column
+
+`label_training_set` derives a TP/TN label column (default `rf_label`) from the
+ClinVar pathogenic/benign labels, optionally restricted to a gene set or disease
+terms:
 
 ```python
-from hvantk.data.clinvar_streamer import create_clinvar_training_set_streamer
-
-processor = create_clinvar_training_set_streamer(
-    clinvar_path="clinvar.ht",
-    output_dir="./data/training_set",
+labeled_ht = streamer.label_training_set(
     gene_set={"BRCA1", "BRCA2"},
+    disease_terms={"breast", "ovarian"},
+    label_column="rf_label",
 )
-result = processor.process()
-if result:
-    print(f"Generated training set with {result.count()} variants")
+labeled_ht = labeled_ht.filter(hl.is_defined(labeled_ht.rf_label))
+print(f"Labeled training variants: {labeled_ht.count()}")
 ```
 
 ## Tips
 
-- **Chunk size**: Adjust for memory/performance tradeoffs (default: 10000)
-- **Data freshness**: Update ClinVar tables regularly (monthly recommended)
-- **Gene names**: ClinVar uses HGNC symbols; verify your gene names match
+- **Data freshness**: Update ClinVar tables regularly (monthly recommended).
+- **Gene names**: ClinVar uses HGNC symbols; verify your gene names match.
 
 ## Runnable Scripts
 

@@ -176,19 +176,19 @@ All steps can also be run programmatically:
 
 ```python
 import hail as hl
-from hvantk.ptm import (
+from hvantk.algorithms.ptm import (
     PTMBuildConfig,
-    ptm_build_pipeline,
+    ptm_build_pipeline_core,
     annotate_variants_with_ptm,
     ptm_landscape,
     ptm_population,
     export_ptm_strata,
 )
-from hvantk.ptm.report import generate_report
+from hvantk.algorithms.ptm.report import generate_report
 
 # Build
 config = PTMBuildConfig(output_dir="data/ptm/", output_ht="data/ptm/ptm_sites.ht")
-build_result = ptm_build_pipeline(config)
+build_result = ptm_build_pipeline_core(config)
 
 # Annotate
 clinvar = hl.read_table("data/clinvar.ht")

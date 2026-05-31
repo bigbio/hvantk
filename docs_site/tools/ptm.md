@@ -69,32 +69,32 @@ hvantk ptm report -o report.html \
 ### Python API
 
 ```python
-from hvantk.ptm import PTMBuildConfig, ptm_build_pipeline
+from hvantk.algorithms.ptm import PTMBuildConfig, ptm_build_pipeline_core
 
 # Build PTM sites table
 config = PTMBuildConfig(
     output_dir="data/ptm/",
     output_ht="data/ptm/ptm_sites.ht",
 )
-result = ptm_build_pipeline(config)
+result = ptm_build_pipeline_core(config)
 print(f"Mapped {result.n_mapped}/{result.n_total} sites")
 
 # Annotate variants
 import hail as hl
-from hvantk.ptm import annotate_variants_with_ptm
+from hvantk.algorithms.ptm import annotate_variants_with_ptm
 
 variants = hl.read_table("clinvar.ht")
 ptm = hl.read_table("data/ptm/ptm_sites.ht")
 annotated = annotate_variants_with_ptm(variants, ptm)
 
 # Landscape analysis
-from hvantk.ptm import ptm_landscape
+from hvantk.algorithms.ptm import ptm_landscape
 
 result = ptm_landscape(variants, ptm, "results/landscape/")
 print(result.summary())
 
 # Population analysis
-from hvantk.ptm import ptm_population
+from hvantk.algorithms.ptm import ptm_population
 
 gnomad = hl.read_table("gnomad.ht")
 pop_result = ptm_population(gnomad, ptm, "results/population/")
@@ -207,7 +207,7 @@ Gene annotation (exon coordinates, CDS phases) from Ensembl GRCh38. Used for map
 ## Module Structure
 
 ```text
-hvantk/ptm/
+hvantk/algorithms/ptm/
 ├── __init__.py     # Module exports
 ├── constants.py    # PTM-specific constants (URLs, field names, categories)
 ├── mapper.py       # GTF parser and residue-to-genomic coordinate mapper

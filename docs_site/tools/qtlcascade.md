@@ -67,7 +67,7 @@ hvantk qtlcascade run \
 ### Python API
 
 ```python
-from hvantk.qtlcascade import CascadeConfig, CascadePipeline
+from hvantk.algorithms.qtlcascade import CascadeConfig, CascadePipeline
 
 # Configure pipeline
 config = CascadeConfig(
@@ -370,7 +370,7 @@ Optional:
 #### `build_cascade`
 
 ```python
-from hvantk.qtlcascade import build_cascade
+from hvantk.algorithms.qtlcascade import build_cascade
 
 ht = build_cascade(
     eqtl_ht_path="/data/eqtl.ht",
@@ -388,7 +388,7 @@ Returns a Hail Table keyed by `(locus, alleles, gene_id)` with cascade classific
 #### `build_cascade_gene_summary`
 
 ```python
-from hvantk.qtlcascade import build_cascade_gene_summary
+from hvantk.algorithms.qtlcascade import build_cascade_gene_summary
 
 gene_ht = build_cascade_gene_summary(
     cascade_ht_path="/results/cascade.ht",
@@ -405,7 +405,7 @@ Returns a Hail Table keyed by `gene_id` with aggregated cascade evidence.
 #### `coloc_abf`
 
 ```python
-from hvantk.qtlcascade import coloc_abf
+from hvantk.algorithms.qtlcascade import coloc_abf
 import numpy as np
 
 result = coloc_abf(
@@ -424,7 +424,7 @@ Returns dict with keys `H0`–`H4`, `n_variants`, `lead_snp_h4_idx`.
 #### `run_coloc_per_gene`
 
 ```python
-from hvantk.qtlcascade import run_coloc_per_gene
+from hvantk.algorithms.qtlcascade import run_coloc_per_gene
 
 coloc_df = run_coloc_per_gene(
     eqtl_allpairs_ht_path="/data/eqtl_allpairs.ht",
@@ -441,7 +441,7 @@ coloc_df = run_coloc_per_gene(
 #### CascadeConfig
 
 ```python
-from hvantk.qtlcascade import CascadeConfig
+from hvantk.algorithms.qtlcascade import CascadeConfig
 
 config = CascadeConfig(
     # Required
@@ -485,7 +485,7 @@ if errors:
 #### CascadePipeline
 
 ```python
-from hvantk.qtlcascade import CascadePipeline
+from hvantk.algorithms.qtlcascade import CascadePipeline
 
 pipeline = CascadePipeline(config)
 
@@ -519,7 +519,7 @@ if result.coloc_df is not None:
 ### Plotting Functions
 
 ```python
-from hvantk.qtlcascade import (
+from hvantk.algorithms.qtlcascade import (
     plot_cascade_classes,
     plot_attenuation,
     plot_coloc_posteriors,
@@ -621,7 +621,7 @@ hvantk reprocess pqtl:metrics \
 ## Module Structure
 
 ```text
-hvantk/qtlcascade/
+hvantk/algorithms/qtlcascade/
 ├── __init__.py      # Public API surface
 ├── constants.py     # Thresholds, priors, tissue mappings, source IDs
 ├── cascade.py       # Outer join + cascade classification

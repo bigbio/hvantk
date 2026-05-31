@@ -45,7 +45,7 @@ hvantk qtlcascade run \
 ## Quick Start (Python API)
 
 ```python
-from hvantk.qtlcascade import (
+from hvantk.algorithms.qtlcascade import (
     build_cascade,
     build_cascade_gene_summary,
     CascadeConfig,
