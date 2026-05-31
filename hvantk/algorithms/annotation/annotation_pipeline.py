@@ -3,15 +3,177 @@
 
 import hail as hl
 from typing import Iterator, Optional, List, Dict, Any, Callable
-from hvantk.core.utils.streaming import HailDataStreamer, StreamProcessor
 from hvantk.algorithms.annotation.annotator import Annotator, DEFAULT_CHUNK_SIZE
 from hvantk.algorithms.hgc.constants import VCF_EXTENSION
+import json
 import logging
 import os
 import warnings
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+
+class StreamProcessor:
+    """
+    Orchestrates multiple streamers/annotators in a pipeline.
+
+    Relocated from the retired ``hvantk.core.utils.streaming`` module. It has a
+    single consumer (:class:`ConfigurableAnnotationPipeline`) and is source
+    agnostic: it only relies on the duck-typed ``.name`` / ``.setup()`` /
+    ``.stream()`` / ``.process_chunk()`` / ``.teardown()`` surface.
+    """
+
+    def __init__(self, name: str):
+        self.name = name
+        self.streamers: List[Any] = []
+        self.logger = logging.getLogger(f"{__name__}.{name}")
+
+    def add_streamer(self, streamer: Any) -> "StreamProcessor":
+        """Add a streamer to the pipeline"""
+        self.streamers.append(streamer)
+        # Avoid attribute errors with mocks or lightweight objects lacking a `name`
+        _sname = getattr(
+            streamer, "name", getattr(streamer, "__name__", streamer.__class__.__name__)
+        )
+        self.logger.info(f"Added streamer: {_sname}")
+        return self
+
+    def process(self, output_path: Optional[str] = None) -> Any:
+        """
+        Execute the streaming pipeline.
+
+        Args:
+            output_path: Optional path to save results
+
+        Returns:
+            Final processed result
+        """
+        self.logger.info(
+            f"Starting {self.name} pipeline with {len(self.streamers)} streamers"
+        )
+
+        # Setup all streamers
+        for streamer in self.streamers:
+            streamer.setup()
+
+        try:
+            result = None
+
+            # Process through each streamer in sequence
+            for i, streamer in enumerate(self.streamers):
+                _sname = getattr(
+                    streamer,
+                    "name",
+                    getattr(streamer, "__name__", streamer.__class__.__name__),
+                )
+                self.logger.info(
+                    f"Processing with streamer {i+1}/{len(self.streamers)}: {_sname}"
+                )
+
+                if i == 0:
+                    # First streamer processes raw data
+                    result = list(streamer.stream())
+                else:
+                    # Subsequent streamers process output from previous streamer
+                    processed_chunks = []
+                    incoming_chunks = (
+                        result if isinstance(result, (list, tuple)) else [result]
+                    )
+                    for chunk in incoming_chunks:
+                        if hasattr(streamer, "set_input"):
+                            setup_ok = streamer.set_input(chunk)
+                            if setup_ok:
+                                # set_input succeeded; stream produces zero or more outputs
+                                processed_chunks.extend(streamer.stream())
+                            else:
+                                # Fallback to single-chunk processing
+                                processed_chunks.append(streamer.process_chunk(chunk))
+                        else:
+                            processed_chunks.append(streamer.process_chunk(chunk))
+                    result = processed_chunks
+
+            if output_path and result:
+                self._save_result(result, output_path)
+
+            return result
+
+        finally:
+            # Teardown all streamers
+            for streamer in reversed(self.streamers):
+                streamer.teardown()
+
+    def _save_result(self, result: Any, output_path: str) -> None:
+        """Persist the final pipeline result to disk.
+
+        Supported result types:
+          - str -> UTF-8 text file
+          - bytes / bytearray -> binary file
+          - dict / list (JSON serializable) -> pretty-printed JSON file
+          - hail.Table -> checkpoint (.ht) (if output_path does not end with .ht, it is used as given)
+          - list of hail.Table -> union then checkpoint
+
+        For any other type, raise NotImplementedError to force subclasses to
+        implement a custom serialization strategy.
+        """
+        if not output_path or not isinstance(output_path, str):
+            raise ValueError("output_path must be a non-empty string")
+
+        # Ensure parent directory exists
+        parent = os.path.dirname(output_path) or "."
+        try:
+            os.makedirs(parent, exist_ok=True)
+        except Exception as e:
+            self.logger.error(f"Failed creating parent directory '{parent}': {e}")
+            raise
+
+        try:
+            # Hail Table or list[Hail Table]
+            if isinstance(result, hl.Table):
+                self.logger.info(f"Saving Hail Table to {output_path}")
+                result.checkpoint(output_path, overwrite=True)
+                return
+            if (
+                isinstance(result, list)
+                and result
+                and all(isinstance(r, hl.Table) for r in result)
+            ):
+                self.logger.info(
+                    f"Unioning {len(result)} Hail Tables and saving to {output_path}"
+                )
+                combined = result[0]
+                for tb in result[1:]:
+                    combined = combined.union(tb)
+                combined.checkpoint(output_path, overwrite=True)
+                return
+
+            # Simple Python types
+            if isinstance(result, str):
+                self.logger.info(f"Writing text result to {output_path}")
+                with open(output_path, "w", encoding="utf-8") as fh:
+                    fh.write(result)
+                return
+            if isinstance(result, (bytes, bytearray)):
+                self.logger.info(f"Writing binary result to {output_path}")
+                with open(output_path, "wb") as fh:
+                    fh.write(result)
+                return
+            if isinstance(result, (dict, list)):
+                self.logger.info(f"Writing JSON result to {output_path}")
+                with open(output_path, "w", encoding="utf-8") as fh:
+                    json.dump(result, fh, indent=2, ensure_ascii=False)
+                return
+
+            # Unsupported type -> delegate responsibility
+            msg = (
+                "_save_result does not know how to persist object of type "
+                f"{type(result).__name__}; subclasses must override _save_result"
+            )
+            self.logger.error(msg)
+            raise NotImplementedError(msg)
+        except Exception as e:
+            self.logger.error(f"Failed saving result to {output_path}: {e}")
+            raise
 
 
 class AnnotationConfig:
@@ -394,7 +556,7 @@ class ConfigurableAnnotationPipeline(StreamProcessor):
     def __init__(
         self,
         name: str,
-        base_streamer: HailDataStreamer,
+        base_streamer: Any,
         registry: Optional[AnnotationRegistry] = None,
     ):
         super().__init__(name)
@@ -527,7 +689,7 @@ def create_builtin_registry() -> AnnotationRegistry:
 
 
 def create_flexible_pipeline(
-    base_streamer: HailDataStreamer, pipeline_name: str = "FlexibleAnnotationPipeline"
+    base_streamer: Any, pipeline_name: str = "FlexibleAnnotationPipeline"
 ) -> ConfigurableAnnotationPipeline:
     """Create a flexible annotation pipeline with built-in registry"""
     registry = create_builtin_registry()

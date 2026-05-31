@@ -21,14 +21,19 @@ if TYPE_CHECKING:
 import hail as hl
 import pandas as pd
 
-from hvantk.core.utils.streaming import DEFAULT_CHUNK_SIZE, HailDataStreamer
+from hvantk.core.utils.hail_context import init_hail, hail_initialized
 from hvantk.core.utils.gene_sets import load_gene_sets_from_dict
 from hvantk.core.utils.table_utils import get_row_fields
 
 logger = logging.getLogger(__name__)
 
+# Default chunk size for the gene-disease streamer. Kept local (value 10000) so
+# this module does not depend on the legacy streaming base; picked as a
+# compromise between memory footprint per chunk and per-chunk overhead.
+DEFAULT_CHUNK_SIZE = 10000
 
-class GeneDiseaseTableStreamer(HailDataStreamer):
+
+class GeneDiseaseTableStreamer:
     """Base streamer for gene-disease validity data sources.
 
     Subclasses **must** set the following class attributes:
@@ -60,9 +65,10 @@ class GeneDiseaseTableStreamer(HailDataStreamer):
         chunk_size: int = DEFAULT_CHUNK_SIZE,
         init_hail: bool = True,
     ):
-        super().__init__(
-            f"{self.source_name}Streamer", chunk_size=chunk_size, init_hail=init_hail
-        )
+        self.name = f"{self.source_name}Streamer"
+        self.chunk_size = chunk_size
+        self.logger = logging.getLogger(f"{__name__}.{self.name}")
+        self.init_hail = init_hail
         self.table_path = table_path
         self._table: Optional[hl.Table] = None
         self._keying_mode: Optional[str] = None
@@ -73,7 +79,8 @@ class GeneDiseaseTableStreamer(HailDataStreamer):
     # ------------------------------------------------------------------
 
     def setup(self) -> None:
-        super().setup()
+        if self.init_hail and not hail_initialized():
+            init_hail()  # idempotent global initializer
         if self._table is not None:
             return
         if not self.table_path:
@@ -82,6 +89,10 @@ class GeneDiseaseTableStreamer(HailDataStreamer):
         self._table = hl.read_table(self.table_path)
         self._keying_mode = self._detect_keying_mode(self._table)
         self.validate_table()
+
+    def teardown(self) -> None:
+        """No-op for global Hail lifecycle (do not stop shared Hail context)."""
+        pass
 
     def stream(self):
         self._ensure_table_loaded()

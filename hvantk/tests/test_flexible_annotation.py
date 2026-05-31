@@ -11,7 +11,6 @@ from hvantk.algorithms.annotation.annotation_pipeline import (
     create_flexible_pipeline,
     add_custom_annotation,
 )
-from hvantk.skills.clinvar.pipelines.training_set import ClinvarDataStreamer
 import hail as hl
 
 logging.basicConfig(level=logging.INFO)
@@ -75,7 +74,7 @@ class TestFlexibleAnnotationFramework:
         """Test pipeline can be built with various annotation sources"""
 
         # Mock base streamer
-        base_streamer = Mock(spec=ClinvarDataStreamer)
+        base_streamer = Mock()
         base_streamer.name = "MockClinvar"
 
         # Create registry with test annotations
@@ -104,7 +103,7 @@ class TestFlexibleAnnotationFramework:
     def test_custom_annotation_addition(self):
         """Test adding completely custom annotations"""
 
-        base_streamer = Mock(spec=ClinvarDataStreamer)
+        base_streamer = Mock()
         base_streamer.name = "MockClinvar"  # Add missing name attribute
         pipeline = create_flexible_pipeline(base_streamer, "CustomTest")
 
@@ -128,7 +127,8 @@ class TestFlexibleAnnotationFramework:
     def test_feature_transformations(self):
         """Test custom feature transformation capabilities"""
 
-        base_streamer = Mock(spec=ClinvarDataStreamer)
+        base_streamer = Mock()
+        base_streamer.name = "MockClinvar"
         pipeline = ConfigurableAnnotationPipeline("TransformTest", base_streamer)
 
         # Add feature transformations
