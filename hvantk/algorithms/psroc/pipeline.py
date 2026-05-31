@@ -243,6 +243,14 @@ class PSROCConfig:
         if not self.scores:
             errors.append("Must provide at least one score via --scores")
 
+        # Check injected pathogenicity vocabularies (required by _assign_labels)
+        if not self.pathogenic_labels:
+            errors.append(
+                "pathogenic_labels is required (ClinVar pathogenic vocabulary)"
+            )
+        if not self.benign_labels:
+            errors.append("benign_labels is required (ClinVar benign vocabulary)")
+
         # Check output directory
         if not self.output_dir:
             errors.append("--output-dir is required")

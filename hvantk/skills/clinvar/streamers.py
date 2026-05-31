@@ -41,11 +41,9 @@ def apply_clinvar_training_labels(
     Preserves the variant keys (locus, alleles) and the ``gene`` column for
     downstream gene-based annotation.
 
-    Note: this assumes ``info.CLNSIG`` is an array field (it calls
-    ``.any(...)`` on it), matching the legacy ``ClinvarDataStreamer``. This
-    intentionally differs from
-    ``ClinVarVariantTableStreamer.filter_by_pathogenicity``, which handles both
-    array and scalar CLNSIG.
+    Note: ``info.CLNSIG`` may be imported as an ``array<str>`` or a scalar
+    ``str`` depending on the VCF header's ``Number=`` field. Both are handled
+    below, mirroring ``ClinVarVariantTableStreamer.filter_by_pathogenicity``.
     """
     gene_set = set(gene_set) if gene_set else set()
     # Normalize disease terms the same way the legacy streamer did.
@@ -105,13 +103,20 @@ def apply_clinvar_training_labels(
         if not gene_set
         else hl.literal(gene_set).contains(ht.gene)
     )
-    gene_tp = (
-        ht.info.CLNSIG.any(lambda x: hl.set(pathogenic_labels).contains(x))
-        & gene_filter
-    )
+    clnsig = ht.info.CLNSIG
+    pathogenic_set = hl.set(pathogenic_labels)
+    benign_set = hl.set(benign_labels)
+    if isinstance(clnsig.dtype, hl.tarray):
+        clnsig_is_pathogenic = clnsig.any(lambda x: pathogenic_set.contains(x))
+        clnsig_is_benign = clnsig.any(lambda x: benign_set.contains(x))
+    else:
+        clnsig_is_pathogenic = hl.is_defined(clnsig) & pathogenic_set.contains(clnsig)
+        clnsig_is_benign = hl.is_defined(clnsig) & benign_set.contains(clnsig)
+
+    gene_tp = clnsig_is_pathogenic & gene_filter
 
     is_tp_site = gene_tp | disease_tp
-    is_tn_site = ht.info.CLNSIG.any(lambda x: hl.set(benign_labels).contains(x))
+    is_tn_site = clnsig_is_benign
 
     ht = ht.annotate(_is_tp_site=is_tp_site, _is_tn_site=is_tn_site)
     # Keep rows where exactly one of TP/TN holds.

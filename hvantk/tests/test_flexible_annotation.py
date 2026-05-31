@@ -1,9 +1,8 @@
 # Test for Flexible Annotation Framework
 # Validates extensibility and custom annotation capabilities
 
-import pytest
 import logging
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 from hvantk.algorithms.annotation.annotation_pipeline import (
     AnnotationConfig,
     FlexibleAnnotator,
@@ -224,6 +223,8 @@ class TestRealWorldScenarios:
         # Original hard-coded approach should still work
         from hvantk.algorithms.annotation.annotator import VariantPredictionScoreAnnotator
 
+        legacy_annotator = VariantPredictionScoreAnnotator("/path/to/dbnsfp.ht")
+
         # New flexible approach
         flexible_config = AnnotationConfig(
             name="prediction_scores_flexible",
@@ -233,8 +234,11 @@ class TestRealWorldScenarios:
         )
         flexible_streamer = FlexibleAnnotator(flexible_config)
 
-        # Both should have similar interfaces
-        assert hasattr(flexible_streamer, "process_chunk")
+        # Both should expose the same processing surface
+        for annotator in (legacy_annotator, flexible_streamer):
+            assert hasattr(annotator, "process_chunk")
+            assert hasattr(annotator, "setup")
+            assert hasattr(annotator, "teardown")
         assert flexible_streamer.name.startswith("FlexibleAnnotation_")
 
     def test_error_handling_and_fallbacks(self):

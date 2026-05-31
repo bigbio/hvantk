@@ -22,6 +22,7 @@ from hvantk.algorithms.annotation.annotator import (
     PopulationFrequencyAnnotator,
     VariantPredictionScoreAnnotator,
 )
+from hvantk.core.utils.hail_context import hail_initialized, init_hail
 from hvantk.skills.clinvar.streamers import (
     ClinVarVariantTableStreamer,
     apply_clinvar_training_labels,
@@ -122,6 +123,11 @@ def build_clinvar_training_set(
     Note (legacy gene semantics): ``gene_set`` only GATES gene-based TP inside
     the label derivation; it does NOT hard-filter the table to those genes.
     """
+    # This convenience entry point reads a Hail Table artifact, so ensure Hail
+    # is initialized (idempotently) before loading the .ht.
+    if not hail_initialized():
+        init_hail()
+
     base = ClinVarVariantTableStreamer.from_path(clinvar_table_path)
 
     outcome = OutcomeSpec(

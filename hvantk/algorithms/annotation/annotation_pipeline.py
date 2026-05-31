@@ -198,9 +198,9 @@ class FlexibleAnnotator(Annotator):
 
     def setup(self) -> None:
         """Load annotation data with error handling"""
-        super().setup()
         try:
-            self.annotation_data = self.load_annotation_data()
+            # Annotator.setup() inits Hail and loads self.annotation_data.
+            super().setup()
             # Ensure proper keying for subsequent index lookups; avoid full counts here.
             self._ensure_annotation_key()
             key_descr = [str(k) for k in self.annotation_data.key]  # informational only

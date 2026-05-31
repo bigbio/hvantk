@@ -34,6 +34,9 @@ def main():
     logger.info(f"Clinvar table path: {clinvar_table_path}")
     logger.info(f"Output directory: {output_dir}")
 
+    # Ensure the output directory exists before checkpoint/export write to it.
+    os.makedirs(output_dir, exist_ok=True)
+
     # Load CHD gene set (gates gene-based TP labeling; does not hard-filter).
     logger.info("Loading CHD-associated genes")
     gene_set = load_sample_chd_gene_set()
@@ -53,10 +56,9 @@ def main():
         )
 
         if training_set is not None:
-            logger.info(
-                f"Successfully generated enhanced training set with "
-                f"{training_set.count()} variants"
-            )
+            # _log_statistics() does the full-table scans; avoid an extra
+            # count() pass here (it logs the TP/TN total itself).
+            logger.info("Successfully generated enhanced training set")
             _log_statistics(training_set)
         else:
             logger.warning("No enhanced training set generated")
