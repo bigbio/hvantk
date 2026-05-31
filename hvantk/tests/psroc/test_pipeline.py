@@ -493,6 +493,8 @@ class TestPSROCPipelineValidation:
                 scores=["CADD_phred"],
                 output_dir=tmpdir,
                 output_prefix="test",
+                pathogenic_labels=["Pathogenic"],
+                benign_labels=["Benign"],
             )
 
             # Create mock table directories
@@ -520,6 +522,8 @@ class TestPSROCPipelineValidation:
                 dbnsfp_ht=f"{tmpdir}/dbnsfp.ht",
                 scores=["CADD_phred"],
                 output_dir=tmpdir,
+                pathogenic_labels=["Pathogenic"],
+                benign_labels=["Benign"],
             )
 
             Path(f"{tmpdir}/clinvar.ht").mkdir()
@@ -544,6 +548,8 @@ class TestPSROCPipelineValidation:
                 dbnsfp_ht=f"{tmpdir}/dbnsfp.ht",
                 scores=["CADD_phred"],
                 output_dir=tmpdir,
+                pathogenic_labels=["Pathogenic"],
+                benign_labels=["Benign"],
             )
 
             Path(f"{tmpdir}/clinvar.ht").mkdir()
@@ -613,6 +619,8 @@ class TestShowPlan:
                 dbnsfp_ht=f"{tmpdir}/dbnsfp.ht",
                 scores=["CADD_phred", "REVEL_score"],
                 output_dir=tmpdir,
+                pathogenic_labels=["Pathogenic"],
+                benign_labels=["Benign"],
             )
 
             Path(f"{tmpdir}/clinvar.ht").mkdir()
