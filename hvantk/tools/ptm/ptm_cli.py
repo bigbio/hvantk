@@ -258,11 +258,19 @@ def ptm_landscape_cmd(ctx, clinvar_ht, ptm_ht, output, flanking_codons, save_plo
         import os
         import hail as hl
         from hvantk.algorithms.ptm.analysis import ptm_landscape
+        from hvantk.skills.clinvar.streamers import ClinVarVariantTableStreamer
 
         clinvar = hl.read_table(clinvar_ht)
         ptm = hl.read_table(ptm_ht)
 
-        result = ptm_landscape(clinvar, ptm, output, flanking_codons=flanking_codons)
+        result = ptm_landscape(
+            clinvar,
+            ptm,
+            output,
+            pathogenic_labels=ClinVarVariantTableStreamer.PATHOGENIC_LABELS,
+            benign_labels=ClinVarVariantTableStreamer.BENIGN_LABELS,
+            flanking_codons=flanking_codons,
+        )
         click.echo(result.summary())
 
         if save_plots:

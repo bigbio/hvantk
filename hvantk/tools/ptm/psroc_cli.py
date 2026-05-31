@@ -360,6 +360,10 @@ def psroc_cmd(
             click.echo(f"Loaded {len(gene_set_collection)} gene sets from {gene_sets}")
 
         # Create configuration
+        # tools/ is the only layer allowed to import skills/; it supplies the
+        # ClinVar pathogenicity vocabulary to the psroc algorithm (see #145).
+        from hvantk.skills.clinvar.streamers import ClinVarVariantTableStreamer
+
         config = PSROCConfig(
             genes=genes_list,
             genes_file=genes_file,
@@ -380,6 +384,8 @@ def psroc_cmd(
             generate_plots=not no_plots,
             min_variants=min_variants,
             n_bootstrap=n_bootstrap,
+            pathogenic_labels=ClinVarVariantTableStreamer.PATHOGENIC_LABELS,
+            benign_labels=ClinVarVariantTableStreamer.BENIGN_LABELS,
         )
 
         # Validate configuration

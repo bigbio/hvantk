@@ -3,7 +3,8 @@
 
 import hail as hl
 from typing import Iterator, Optional, List, Dict, Any, Callable
-from hvantk.core.utils.streaming import DEFAULT_CHUNK_SIZE, HailDataStreamer, StreamProcessor
+from hvantk.core.utils.streaming import HailDataStreamer, StreamProcessor
+from hvantk.algorithms.annotation.annotator import Annotator, DEFAULT_CHUNK_SIZE
 from hvantk.algorithms.hgc.constants import VCF_EXTENSION
 import logging
 import os
@@ -47,14 +48,16 @@ class AnnotationConfig:
         return defaults.get(self.annotation_type, "key")
 
 
-class FlexibleAnnotationStreamer(HailDataStreamer):
+class FlexibleAnnotator(Annotator):
     """
-    Highly flexible annotation streamer that can handle any data source
+    Highly flexible annotator that can handle any data source
     through configuration rather than hard-coded implementations.
     """
 
     def __init__(self, config: AnnotationConfig, chunk_size: int = DEFAULT_CHUNK_SIZE):
-        super().__init__(f"FlexibleAnnotation_{config.name}", chunk_size)
+        super().__init__(
+            f"FlexibleAnnotation_{config.name}", config.source_path, chunk_size
+        )
         self.config = config
         self.annotation_data = None
 
@@ -195,9 +198,9 @@ class FlexibleAnnotationStreamer(HailDataStreamer):
 
     def setup(self) -> None:
         """Load annotation data with error handling"""
-        super().setup()
         try:
-            self.annotation_data = self.load_annotation_data()
+            # Annotator.setup() inits Hail and loads self.annotation_data.
+            super().setup()
             # Ensure proper keying for subsequent index lookups; avoid full counts here.
             self._ensure_annotation_key()
             key_descr = [str(k) for k in self.annotation_data.key]  # informational only
@@ -337,9 +340,9 @@ class FlexibleAnnotationStreamer(HailDataStreamer):
         return annotated.annotate(**renames) if renames else annotated
 
     def stream(self) -> Iterator[hl.Table]:
-        """Not implemented for annotation streamers"""
+        """Not implemented for annotators"""
         raise NotImplementedError(
-            "FlexibleAnnotationStreamer is for processing existing chunks"
+            "FlexibleAnnotator is for processing existing chunks"
         )
 
     def process_chunk(self, chunk: hl.Table) -> hl.Table:
@@ -374,12 +377,12 @@ class AnnotationRegistry:
         """List all registered annotations"""
         return list(self._annotations.keys())
 
-    def create_streamer(self, name: str, **kwargs) -> FlexibleAnnotationStreamer:
-        """Create a streamer for a registered annotation"""
+    def create_annotator(self, name: str, **kwargs) -> FlexibleAnnotator:
+        """Create an annotator for a registered annotation"""
         config = self.get(name)
         if not config:
             raise ValueError(f"Annotation '{name}' not registered")
-        return FlexibleAnnotationStreamer(config, **kwargs)
+        return FlexibleAnnotator(config, **kwargs)
 
 
 class ConfigurableAnnotationPipeline(StreamProcessor):
@@ -407,9 +410,9 @@ class ConfigurableAnnotationPipeline(StreamProcessor):
     ) -> "ConfigurableAnnotationPipeline":
         """Add annotation by name (from registry) or direct config"""
         if config:
-            streamer = FlexibleAnnotationStreamer(config, **streamer_kwargs)
+            streamer = FlexibleAnnotator(config, **streamer_kwargs)
         elif annotation_name and self.registry:
-            streamer = self.registry.create_streamer(annotation_name, **streamer_kwargs)
+            streamer = self.registry.create_annotator(annotation_name, **streamer_kwargs)
         else:
             raise ValueError("Either annotation_name or config must be provided")
 

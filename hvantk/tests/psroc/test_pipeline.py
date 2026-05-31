@@ -18,8 +18,6 @@ from hvantk.algorithms.psroc.pipeline import (
     PSROCResult,
     PSROCPipeline,
     PSROCStage,
-    PATHOGENIC_LABELS,
-    BENIGN_LABELS,
     CLNREVSTAT_STAR_MAP,
     SCORE_DIRECTIONALITY,
     parse_variant_list,
@@ -408,20 +406,6 @@ class TestPSROCStage:
 class TestConstants:
     """Test pipeline constants (labels, star map)."""
 
-    def test_pathogenic_labels(self):
-        """Test pathogenic label list."""
-        assert "Pathogenic" in PATHOGENIC_LABELS
-        assert "Likely_pathogenic" in PATHOGENIC_LABELS
-        assert "Pathogenic/Likely_pathogenic" in PATHOGENIC_LABELS
-        assert len(PATHOGENIC_LABELS) == 3
-
-    def test_benign_labels(self):
-        """Test benign label list."""
-        assert "Benign" in BENIGN_LABELS
-        assert "Likely_benign" in BENIGN_LABELS
-        assert "Benign/Likely_benign" in BENIGN_LABELS
-        assert len(BENIGN_LABELS) == 3
-
     def test_clnrevstat_star_map_known_values(self):
         """Test CLNREVSTAT star map assigns correct star counts."""
         assert CLNREVSTAT_STAR_MAP["practice_guideline"] == 4
@@ -509,6 +493,8 @@ class TestPSROCPipelineValidation:
                 scores=["CADD_phred"],
                 output_dir=tmpdir,
                 output_prefix="test",
+                pathogenic_labels=["Pathogenic"],
+                benign_labels=["Benign"],
             )
 
             # Create mock table directories
@@ -536,6 +522,8 @@ class TestPSROCPipelineValidation:
                 dbnsfp_ht=f"{tmpdir}/dbnsfp.ht",
                 scores=["CADD_phred"],
                 output_dir=tmpdir,
+                pathogenic_labels=["Pathogenic"],
+                benign_labels=["Benign"],
             )
 
             Path(f"{tmpdir}/clinvar.ht").mkdir()
@@ -560,6 +548,8 @@ class TestPSROCPipelineValidation:
                 dbnsfp_ht=f"{tmpdir}/dbnsfp.ht",
                 scores=["CADD_phred"],
                 output_dir=tmpdir,
+                pathogenic_labels=["Pathogenic"],
+                benign_labels=["Benign"],
             )
 
             Path(f"{tmpdir}/clinvar.ht").mkdir()
@@ -629,6 +619,8 @@ class TestShowPlan:
                 dbnsfp_ht=f"{tmpdir}/dbnsfp.ht",
                 scores=["CADD_phred", "REVEL_score"],
                 output_dir=tmpdir,
+                pathogenic_labels=["Pathogenic"],
+                benign_labels=["Benign"],
             )
 
             Path(f"{tmpdir}/clinvar.ht").mkdir()

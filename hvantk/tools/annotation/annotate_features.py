@@ -26,6 +26,7 @@ from hvantk.algorithms.annotation.annotate import (
     annotate_clinvar_clnsig,
     annotate_hca,
 )
+from hvantk.skills.clinvar.streamers import ClinVarVariantTableStreamer
 
 """
 Annotate variant table with features from multiple sources.
@@ -69,7 +70,11 @@ def main(args):
     # annotate clinvar significance
     # annotate clinvar significance
     logger.info("Annotating ClinVar significance")
-    ht = annotate_clinvar_clnsig(ht)
+    ht = annotate_clinvar_clnsig(
+        ht,
+        pathogenic_labels=ClinVarVariantTableStreamer.PATHOGENIC_LABELS,
+        benign_labels=ClinVarVariantTableStreamer.BENIGN_LABELS,
+    )
 
     # annotate variant ID from locus and alleles
     logger.info("Annotating variant ID")

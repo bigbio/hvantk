@@ -1,9 +1,15 @@
-"""AlphaGenome variant prediction streamer.
+"""AlphaGenome variant prediction pipeline.
 
-Streams variant positions through the AlphaGenome API and produces
-multimodal variant effect predictions. Outputs are currently written as
-consolidated JSON (predictions.json); per-modality Hail Table assembly
-will be added once the AlphaGenome SDK response structure is validated.
+Runs variant positions through the AlphaGenome API as a one-shot pipeline
+and produces multimodal variant effect predictions. Outputs are currently
+written as consolidated JSON (predictions.json); per-modality Hail Table
+assembly will be added once the AlphaGenome SDK response structure is
+validated.
+
+This is NOT a per-DataModel streamer (the ``Streamer`` ABCs live in
+:mod:`hvantk.core.streamers`). The AlphaGenome VariantTable artifact is
+produced by :mod:`hvantk.skills.alphagenome.builder`
+(``build_alphagenome_predictions``, ``schema_id="alphagenome-v1"``).
 """
 
 import csv as csv_module
@@ -25,7 +31,7 @@ from hvantk.skills.alphagenome.shared.constants import (
     ALPHAGENOME_DEFAULT_REQUEST_TIMEOUT,
     ALPHAGENOME_DEFAULT_RETRY_BACKOFF,
 )
-from hvantk.core.utils.streaming import HailDataStreamer
+from hvantk.core.utils.hail_context import init_hail, hail_initialized
 
 logger = logging.getLogger(__name__)
 
@@ -528,14 +534,19 @@ def _serialize_prediction(result: Any) -> Dict[str, Any]:
         return {"raw": str(result)}
 
 
-class AlphaGenomeStreamer(HailDataStreamer):
-    """Streams variant predictions from the AlphaGenome API.
+class AlphaGenomePipeline:
+    """One-shot pipeline that runs variant predictions through the AlphaGenome API.
 
     Reads variants from a Hail Table or TSV, groups them into genomic
     intervals, calls the AlphaGenome predict_variant API with rate
     limiting and checkpoint-based resumption, and writes consolidated
     JSON predictions. Per-modality Hail Table assembly is deferred
     until the SDK response structure is validated.
+
+    This is NOT a per-DataModel streamer (those ABCs live in
+    :mod:`hvantk.core.streamers`). The AlphaGenome VariantTable artifact
+    is produced by :mod:`hvantk.skills.alphagenome.builder`
+    (``build_alphagenome_predictions``).
 
     Parameters
     ----------
@@ -559,8 +570,10 @@ class AlphaGenomeStreamer(HailDataStreamer):
         no_resume: bool = False,
         chunk_size: int = 50,
     ):
-        super().__init__(name="AlphaGenomeStreamer", chunk_size=chunk_size,
-                         init_hail=input_path.endswith(".ht"))
+        self.name = "AlphaGenomePipeline"
+        self.chunk_size = chunk_size
+        self.logger = logging.getLogger(f"{__name__}.{self.name}")
+        self._init_hail = input_path.endswith(".ht")
         self.input_path = input_path
         self.output_dir = output_dir
         self.config_path = config_path
@@ -575,7 +588,8 @@ class AlphaGenomeStreamer(HailDataStreamer):
         self._start_time: float = 0.0
 
     def setup(self) -> None:
-        super().setup()
+        if self._init_hail and not hail_initialized():
+            init_hail()
         self._start_time = time.time()
 
         self._config = load_config(self.config_path)
@@ -711,10 +725,6 @@ class AlphaGenomeStreamer(HailDataStreamer):
 
             yield batch_results
 
-    def process_chunk(self, chunk: Any) -> Any:
-        """Identity — processing happens in stream()."""
-        return chunk
-
     def teardown(self) -> None:
         """Log summary and assemble per-modality outputs from checkpoints."""
         elapsed = time.time() - self._start_time
@@ -730,7 +740,6 @@ class AlphaGenomeStreamer(HailDataStreamer):
             f"failed variants: {failed_count}, "
             f"runtime: {elapsed:.0f}s"
         )
-        super().teardown()
 
     def _assemble_outputs(self) -> None:
         """Assemble predictions from batch checkpoint files.

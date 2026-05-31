@@ -41,8 +41,6 @@ from hvantk.algorithms.psroc.pipeline import (
     PSROCResult,
     PSROCPipeline,
     PSROCStage,
-    PATHOGENIC_LABELS,
-    BENIGN_LABELS,
 )
 
 __all__ = [
@@ -67,7 +65,4 @@ __all__ = [
     "PSROCResult",
     "PSROCPipeline",
     "PSROCStage",
-    # Constants
-    "PATHOGENIC_LABELS",
-    "BENIGN_LABELS",
 ]

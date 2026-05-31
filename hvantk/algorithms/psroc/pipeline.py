@@ -57,29 +57,6 @@ from hvantk.core.utils.gene_sets import load_gene_set
 logger = logging.getLogger(__name__)
 
 
-# TEMP duplication — tracked by https://github.com/bigbio/hvantk/issues/133
-#
-# These label sets are also defined in
-# hvantk/skills/clinvar/shared/constants.py (under names
-# CLINVAR_PATHOGENIC_LABELS / CLINVAR_BENIGN_LABELS). Importing them
-# from there would violate the algorithms-must-not-import-from-skills
-# dependency guard.
-#
-# The proper fix — parameterizing the schema and vocabulary so this
-# module accepts any conformant pathogenicity-labeled table, not just
-# ClinVar — is tracked by issue #133. Remove this duplication when
-# that parameterization lands.
-PATHOGENIC_LABELS = [
-    "Pathogenic/Likely_pathogenic",
-    "Likely_pathogenic",
-    "Pathogenic",
-]
-BENIGN_LABELS = [
-    "Benign/Likely_benign",
-    "Likely_benign",
-    "Benign",
-]
-
 # Score directionality: True means higher values indicate pathogenicity.
 # Scores not in this map default to higher_is_pathogenic=True.
 SCORE_DIRECTIONALITY: Dict[str, bool] = {
@@ -219,6 +196,12 @@ class PSROCConfig:
     # Bootstrap confidence interval for AUC
     n_bootstrap: int = 2000
 
+    # ClinVar pathogenicity vocabulary (injected by the CLI/caller; see #145).
+    # algorithms/ may not import skills/, so the vocabulary is supplied as
+    # config rather than imported from skills/clinvar/shared/constants.py.
+    pathogenic_labels: Optional[List[str]] = None
+    benign_labels: Optional[List[str]] = None
+
     def validate(self) -> List[str]:
         """Validate configuration and return list of errors.
 
@@ -259,6 +242,14 @@ class PSROCConfig:
         # Check scores
         if not self.scores:
             errors.append("Must provide at least one score via --scores")
+
+        # Check injected pathogenicity vocabularies (required by _assign_labels)
+        if not self.pathogenic_labels:
+            errors.append(
+                "pathogenic_labels is required (ClinVar pathogenic vocabulary)"
+            )
+        if not self.benign_labels:
+            errors.append("benign_labels is required (ClinVar benign vocabulary)")
 
         # Check output directory
         if not self.output_dir:
@@ -825,6 +816,8 @@ class PSROCPipeline:
                 group_name=group_name,
                 min_variants=self.config.min_variants,
                 n_bootstrap=self.config.n_bootstrap,
+                pathogenic_labels=self.config.pathogenic_labels,
+                benign_labels=self.config.benign_labels,
             )
 
             try:
@@ -1096,6 +1089,14 @@ class PSROCPipeline:
         """Stage 3: Assign binary labels to ClinVar variants."""
         logger.info("🔄 [3/7] Assigning binary labels (Pathogenic/Benign)...")
 
+        pathogenic_labels = self.config.pathogenic_labels
+        benign_labels = self.config.benign_labels
+        if not pathogenic_labels or not benign_labels:
+            raise ValueError(
+                "PSROCConfig.pathogenic_labels and benign_labels must be set "
+                "(the CLI supplies ClinVar's vocabulary); see issue #145."
+            )
+
         if self._labeled_ht is None:
             raise RuntimeError(
                 "ClinVar variants not filtered. Run _filter_clinvar first."
@@ -1119,13 +1120,13 @@ class PSROCPipeline:
             .when(
                 hl.is_defined(clnsig)
                 & (clnsig != "")
-                & hl.literal(PATHOGENIC_LABELS).contains(clnsig),
+                & hl.literal(pathogenic_labels).contains(clnsig),
                 "Pathogenic",
             )
             .when(
                 hl.is_defined(clnsig)
                 & (clnsig != "")
-                & hl.literal(BENIGN_LABELS).contains(clnsig),
+                & hl.literal(benign_labels).contains(clnsig),
                 "Benign",
             )
             .default("Uncertain/Conflicting"),

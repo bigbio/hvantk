@@ -17,29 +17,6 @@ from typing import Dict, List, Optional
 
 import hail as hl
 
-# TEMP duplication — tracked by https://github.com/bigbio/hvantk/issues/133
-#
-# These label sets are also defined in
-# hvantk/skills/clinvar/shared/constants.py. Importing them from there
-# would violate the algorithms-must-not-import-from-skills dependency
-# guard (see hvantk/tests/test_dependency_directions.py and
-# hvantk/tests/test_tools_ptm_pipeline.py).
-#
-# The proper fix — parameterizing the schema and vocabulary so this
-# module accepts any conformant pathogenicity-labeled table, not just
-# ClinVar — is tracked by issue #133. Remove this duplication when
-# that parameterization lands.
-CLINVAR_PATHOGENIC_LABELS = [
-    "Pathogenic/Likely_pathogenic",
-    "Likely_pathogenic",
-    "Pathogenic",
-]
-CLINVAR_BENIGN_LABELS = [
-    "Benign/Likely_benign",
-    "Likely_benign",
-    "Benign",
-]
-
 logger = logging.getLogger(__name__)
 
 
@@ -136,11 +113,11 @@ def _extract_clnsig(ht: hl.Table) -> hl.Expression:
     return ht.info.CLNSIG
 
 
-def _label_clinvar(ht: hl.Table) -> hl.Table:
+def _label_clinvar(ht: hl.Table, *, pathogenic_labels, benign_labels) -> hl.Table:
     """Add _label field ('P', 'B', or 'other') based on ClinVar CLNSIG."""
     clnsig = _extract_clnsig(ht)
-    p_labels = hl.literal(CLINVAR_PATHOGENIC_LABELS)
-    b_labels = hl.literal(CLINVAR_BENIGN_LABELS)
+    p_labels = hl.literal(pathogenic_labels)
+    b_labels = hl.literal(benign_labels)
     return ht.annotate(
         _label=hl.case()
         .when(hl.is_defined(clnsig) & p_labels.contains(clnsig), "P")
@@ -274,6 +251,9 @@ def ptm_landscape(
     clinvar_ht: hl.Table,
     ptm_ht: hl.Table,
     output_dir: str,
+    *,
+    pathogenic_labels,
+    benign_labels,
     flanking_codons: int = 5,
 ) -> PTMLandscapeResult:
     """PTM-variant overlap and enrichment analysis (Q1).
@@ -290,6 +270,10 @@ def ptm_landscape(
         PTM sites Hail Table built via ``hvantk reprocess uniprot_ptm:sites``.
     output_dir : str
         Directory for output files (landscape_summary.json).
+    pathogenic_labels : Iterable[str]
+        ClinVar CLNSIG values treated as pathogenic.
+    benign_labels : Iterable[str]
+        ClinVar CLNSIG values treated as benign.
     flanking_codons : int
         Flanking codons for proximal window (default: 5).
 
@@ -304,7 +288,11 @@ def ptm_landscape(
 
     # Annotate ClinVar with PTM info and assign P/B labels
     annotated = annotate_variants_with_ptm(clinvar_ht, ptm_ht, flanking_codons)
-    annotated = _label_clinvar(annotated)
+    annotated = _label_clinvar(
+        annotated,
+        pathogenic_labels=pathogenic_labels,
+        benign_labels=benign_labels,
+    )
 
     # Aggregate counts in a single pass
     stats = annotated.aggregate(

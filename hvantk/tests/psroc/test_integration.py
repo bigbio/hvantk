@@ -239,6 +239,8 @@ class TestConfigValidation:
                 dbnsfp_ht=str(dbnsfp_path),
                 scores=["CADD_phred", "REVEL_score"],
                 output_dir=tmpdir,
+                pathogenic_labels=["Pathogenic"],
+                benign_labels=["Benign"],
             )
 
             errors = config.validate()
