@@ -11,9 +11,21 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report, confusion_matrix
-from sklearn.model_selection import StratifiedKFold, cross_val_predict
+# Make scikit-learn import optional - only required for classifier training.
+try:
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.metrics import classification_report, confusion_matrix
+    from sklearn.model_selection import StratifiedKFold, cross_val_predict
+
+    SKLEARN_AVAILABLE = True
+except ImportError:  # pragma: no cover
+    SKLEARN_AVAILABLE = False
+    # Defined to satisfy linters; guarded by SKLEARN_AVAILABLE.
+    RandomForestClassifier = None
+    classification_report = None
+    confusion_matrix = None
+    StratifiedKFold = None
+    cross_val_predict = None
 
 from hvantk.algorithms.ancestry.constants import (
     ANCESTRY_PROB_COL,
@@ -195,6 +207,12 @@ def train_classifier(
     ... )
     >>> print(f"Accuracy: {result.get_accuracy():.2%}")
     """
+    if not SKLEARN_AVAILABLE:
+        raise RuntimeError(
+            "Ancestry classification requires scikit-learn. Install it with "
+            "'poetry install --extras ml' (or --extras ancestry / --extras psroc)."
+        )
+
     # Get PC columns
     pc_cols = _get_pc_columns(n_pcs)
 

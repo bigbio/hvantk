@@ -642,7 +642,13 @@ def plot_confusion_matrix(
         The figure.
     """
     plt, _, _ = _get_matplotlib()
-    from sklearn.metrics import confusion_matrix as sk_confusion_matrix
+    try:
+        from sklearn.metrics import confusion_matrix as sk_confusion_matrix
+    except ImportError:  # pragma: no cover
+        raise RuntimeError(
+            "Confusion matrix plotting requires scikit-learn. Install it with "
+            "'poetry install --extras ancestry' (or --extras ml / --extras psroc)."
+        )
 
     if labels is None:
         labels = sorted(set(y_true) | set(y_pred))
