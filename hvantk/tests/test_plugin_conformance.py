@@ -764,3 +764,78 @@ def test_dbnsfp_variants_round_trip(tmp_path):
     loaded = core_io.load(out)
     assert isinstance(loaded, AnnotationTable)
     assert loaded.count() > 0
+
+
+# ---------- onek-genomes:variants ----------
+
+
+@pytest.mark.hail
+def test_onek_genomes_variants_round_trip(tmp_path):
+    """onek-genomes:variants builds a VariantMatrix from per-chromosome 1KG VCFs."""
+    from hvantk.core.models import VariantMatrix
+
+    plugin_loader.reset_registry_for_tests()
+    reg = plugin_loader.get_registry()
+    spec = reg.get_dataset("onek-genomes:variants")
+
+    assert spec.artifact_type is VariantMatrix
+    assert spec.schema_id == "onek-genomes-variants-v1"
+
+    fixture = Path(
+        "hvantk/skills/onek_genomes/tests/testdata/raw/onek_genomes"
+    )
+    assert fixture.exists()
+
+    object.__setattr__(
+        spec, "drift_probe", lambda: {"fingerprint": "sha256:test-onek-variants"}
+    )
+
+    out = tmp_path / "variants.mt"
+    prov = run_builder_for_spec(
+        spec, parsed_input=fixture, output_path=out, plugin_version=spec.plugin_version,
+    )
+
+    assert prov.plugin == "onek-genomes"
+    assert prov.dataset == "onek-genomes:variants"
+    assert prov.schema_id == "onek-genomes-variants-v1"
+
+    loaded = core_io.load(out)
+    assert isinstance(loaded, VariantMatrix)
+    assert loaded.n_variants > 0
+    assert loaded.n_samples > 0
+
+
+# ---------- onek-genomes:samples ----------
+
+
+@pytest.mark.hail
+def test_onek_genomes_samples_round_trip(tmp_path):
+    """onek-genomes:samples builds an AnnotationTable from the IGSR sample TSV."""
+    plugin_loader.reset_registry_for_tests()
+    reg = plugin_loader.get_registry()
+    spec = reg.get_dataset("onek-genomes:samples")
+
+    assert spec.artifact_type is AnnotationTable
+    assert spec.schema_id == "onek-genomes-samples-v1"
+
+    fixture = Path(
+        "hvantk/skills/onek_genomes/tests/testdata/raw/onek_genomes"
+    )
+    assert fixture.exists()
+
+    object.__setattr__(
+        spec, "drift_probe", lambda: {"fingerprint": "sha256:test-onek-samples"}
+    )
+
+    out = tmp_path / "samples.ht"
+    prov = run_builder_for_spec(
+        spec, parsed_input=fixture, output_path=out, plugin_version=spec.plugin_version,
+    )
+
+    assert prov.plugin == "onek-genomes"
+    assert prov.dataset == "onek-genomes:samples"
+    assert prov.schema_id == "onek-genomes-samples-v1"
+
+    loaded = core_io.load(out)
+    assert isinstance(loaded, AnnotationTable)
+    assert loaded.count() > 0
