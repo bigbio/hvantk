@@ -101,7 +101,7 @@ hvantk ancestry-inference \
 
 ```python
 import hail as hl
-from hvantk.ancestry import run_ancestry_inference
+from hvantk.algorithms.ancestry import run_ancestry_inference
 
 # Initialize Hail
 hl.init()
@@ -145,40 +145,42 @@ annotated_mt = result.annotate_matrixtable(query_mt)
 
 ## Expression Analysis
 
-Inspect, summarize, and extract markers from expression MatrixTables.
+Inspect, summarize, and extract markers from expression AnnData (`.h5ad`) files.
 
 ```bash
-# Inspect column metadata fields
-hvantk expression describe -m /data/heart_sc.mt
+# Inspect observation metadata fields
+hvantk expression describe -m /data/heart_sc.h5ad
 
-# Collapse into gene-level summary grouped by cell type
+# Collapse into a per-group × per-gene summary AnnData grouped by cell type
 hvantk expression summarize \
-  -m /data/heart_sc.mt \
+  -m /data/heart_sc.h5ad \
   --group-by cell_type \
-  -o /out/heart_celltype_summary.ht
+  -o /out/heart_celltype_summary.h5ad
 
 # Multi-field grouping with pre-filtering
 hvantk expression summarize \
-  -m /data/heart_sc.mt \
+  -m /data/heart_sc.h5ad \
   --group-by cell_type --group-by region \
   --filter-by time_point=9wpc \
   --min-cells 50 \
-  -o /out/heart_summary.ht
+  -o /out/heart_summary.h5ad
 
-# Extract marker genes (fold-change method)
+# Extract marker genes (Wilcoxon rank-sum test)
 hvantk expression markers \
-  -s /out/heart_celltype_summary.ht \
-  --method fold_change \
-  --top-n 200 \
-  -o /out/heart_markers.json
-
-# Extract markers using Wilcoxon rank-sum test
-hvantk expression markers \
-  -m /data/heart_sc.mt \
+  -m /data/heart_sc.h5ad \
   --method wilcoxon \
   --group-by cell_type \
   --top-n 200 \
-  -o /out/heart_wilcoxon_markers.json
+  -o /out/heart_markers.json
+
+# Extract markers using a t-test, pre-filtered to one region
+hvantk expression markers \
+  -m /data/heart_sc.h5ad \
+  --method t-test \
+  --group-by cell_type \
+  --filter-by region=LV \
+  --top-n 200 \
+  -o /out/heart_LV_markers.json
 ```
 
 ## Prepare Custom Gene Sets
@@ -209,14 +211,16 @@ hvantk genesets cosmic --ht /data/cosmic_cgc.ht -o cosmic_gene_sets.json
 ### Python API
 
 ```python
-from hvantk.utils.geneset_io import parse_geneset_tsv, validate_with_hgnc
-from hvantk.utils.gene_sets import load_gene_sets_from_dict
+from hvantk.core.utils.geneset_io import parse_geneset_tsv, validate_with_catalog
+from hvantk.core.utils.gene_sets import load_gene_sets_from_dict
+from hvantk.skills.hgnc.streamers import HGNCGeneCatalogStreamer
 
 # Parse TSV
 result = parse_geneset_tsv("panels.tsv")
 
-# Optional: validate against HGNC
-vr = validate_with_hgnc(result.gene_sets, "/data/hgnc.ht")
+# Optional: validate against the HGNC gene catalog (resolves aliases)
+catalog = HGNCGeneCatalogStreamer.from_path("/data/hgnc.ht")
+vr = validate_with_catalog(result.gene_sets, catalog)
 
 # Build and save collection
 collection = load_gene_sets_from_dict(vr.gene_sets, source="prepare-geneset")
@@ -226,9 +230,9 @@ collection.save("panels.json")
 ## ClinGen Gene-Disease streamer
 
 ```python
-from hvantk.data.clingen_streamer import ClinGenStreamer
+from hvantk.skills.clingen.streamers import ClinGenGeneDiseaseTableStreamer
 
-streamer = ClinGenStreamer("/data/clingen/clingen_gene_disease.ht")
+streamer = ClinGenGeneDiseaseTableStreamer("/data/clingen/clingen_gene_disease.ht")
 
 # High-confidence genes
 definitive = streamer.get_genes_by_classification("Definitive")
@@ -250,23 +254,21 @@ streamer.export_for_enrichex(
     min_classification="Moderate",
 )
 
-# Translate output to Ensembl IDs using GeneMapper
-import hail as hl
-from hvantk.data.gene_mapper import GeneMapper
+# Translate output to Ensembl IDs using the HGNC gene catalog
+from hvantk.skills.hgnc.streamers import HGNCGeneCatalogStreamer
 
-hgnc_ht = hl.read_table("/data/hgnc/hgnc.ht")
-mapper = GeneMapper(hgnc_ht)
+catalog = HGNCGeneCatalogStreamer.from_path("/data/hgnc/hgnc.ht")
 
 ensembl_ids = streamer.get_genes_by_classification(
-    "Definitive",
-    gene_mapper=mapper,
+    min_classification="Definitive",
+    gene_catalog=catalog,
     output_id_type="ensembl_gene_id",
 )
 
 # Or translate to HGNC IDs
 hgnc_ids = streamer.to_gene_set(
     min_classification="Moderate",
-    gene_mapper=mapper,
+    gene_catalog=catalog,
     output_id_type="hgnc_id",
 )
 ```
@@ -288,13 +290,12 @@ The command auto-detects whether the file is already BGZF and skips conversion i
 ## Tips & troubleshooting
 
 - Use `--overwrite` to replace an existing output. Without it, builders abort if the output exists.
-- For JSON vs YAML: JSON works out of the box; YAML recipes require `PyYAML` installed.
 - For UCSC, gene labels may be pipe-delimited (e.g., A|B); `--split-gene-field` defaults to true.
-- MatrixTables typically store sample/cell metadata under `mt.col_key` and cols metadata; inspect with `mt.describe()` in Python or logs from CLI.
+- Expression AnnData stores per-cell/sample metadata in `adata.obs`; inspect it with `hvantk expression describe -m <file.h5ad>` or `adata.obs` in Python.
 - **gzip vs BGZF**: Hail reads standard gzip files single-threaded, which is significantly slower for large files. Pre-convert with `hvantk utils convert-bgz <file.gz>` for parallel import before running `hvantk reprocess`.
 
 ## See also
 
 - [Architecture](../architecture.md) – system design and extension points
 - [Contributing](../contributing.md) – development workflow and contribution guidelines
-- [Recipe Examples](https://github.com/bigbio/hvantk/tree/main/examples/recipes/) – ready-to-edit recipe templates
+- [Data Sources](data-sources.md) – available datasets and how to acquire them

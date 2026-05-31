@@ -146,10 +146,10 @@ sequenceDiagram
     IO-->>IO: write data + sidecar .provenance.json
 ```
 
-Twenty plugins ship today: `clinvar`, `clingen`, `gencc`, `gwas-catalog`,
+Twenty-one plugins ship today: `clinvar`, `clingen`, `gencc`, `gwas-catalog`,
 `hgnc`, `gtex-eqtl`, `insider`, `msigdb`, `uniprot-ptm`, `peptideatlas`,
 `expression-atlas`, `cptac`, `ucsc-cellbrowser`, `gevir`, `gnomad-metrics`,
-`ensembl-gene`, `dbnsfp`, `cosmic-cgc`, `pqtl`, `alphagenome`.
+`ensembl-gene`, `dbnsfp`, `cosmic-cgc`, `pqtl`, `alphagenome`, `onek-genomes`.
 
 ### Project structure
 
@@ -178,7 +178,7 @@ hvantk/
 │   ├── qtlcascade/             # eQTL → pQTL cascade + colocalization
 │   └── annotation/             # multi-source annotation pipelines
 │
-├── skills/                     # data-source plugins (20 total)
+├── skills/                     # data-source plugins (21 total)
 │   ├── <plugin>/
 │   │   ├── plugin.yaml         # declarative manifest (drives discovery + CLI)
 │   │   ├── builder.py          # Phase B: (parsed, ctx) → Artifact
