@@ -64,6 +64,9 @@ nav:
     - EnrichEx - Enrichment Analysis: tools/enrichex.md
     - PS-ROC - Score Evaluation: tools/psroc.md
     - Ancestry Inference: tools/ancestry.md
+    - PTM - Variant Classification: tools/ptm.md
+    - PTM Constraint: tools/ptm-constraint.md
+    - QTL Cascade: tools/qtlcascade.md
   - Examples:
     - Overview: examples/index.md
     - HGC: examples/hgc.md
@@ -74,6 +77,5 @@ nav:
     - ClinGen: examples/clingen.md
     - QTL Cascade: examples/qtlcascade.md
     - PTM: examples/ptm.md
-    - Recipes: examples/recipes.md
   - Architecture: architecture.md
   - Contributing: contributing.md

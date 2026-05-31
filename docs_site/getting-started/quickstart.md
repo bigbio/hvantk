@@ -90,17 +90,17 @@ hvantk reprocess ucsc-cellbrowser:adultPancreas --raw-dir data/ucsc --output ucs
 
 ## Expression Analysis
 
-Inspect, summarize, and extract marker genes from expression MatrixTables.
+Inspect, summarize, and extract marker genes from expression AnnData (`.h5ad`) files.
 
 ```bash
 # Inspect metadata
-hvantk expression describe -m ucsc.mt
+hvantk expression describe -m ucsc.h5ad
 
 # Summarize by cell type
-hvantk expression summarize -m ucsc.mt --group-by cell_type -o summary.ht
+hvantk expression summarize -m ucsc.h5ad --group-by cell_type -o summary.h5ad
 
 # Extract marker genes
-hvantk expression markers -s summary.ht --method fold_change -o markers.json
+hvantk expression markers -m ucsc.h5ad --group-by cell_type --method wilcoxon -o markers.json
 ```
 
 [Expression Guide](../guide/usage.md){ .md-button }
