@@ -21,7 +21,7 @@ hvantk enrichex overlap \
 ### Python API
 
 ```python
-from hvantk.enrichex import GeneSetCollection, compute_overlap_enrichment
+from hvantk.algorithms.enrichex import GeneSetCollection, compute_overlap_enrichment
 
 query_genes = ["BRCA1", "TP53", "EGFR"]  # or load from my_genes.txt
 gene_sets = GeneSetCollection.load("gene_sets.json")
@@ -45,7 +45,7 @@ hvantk enrichex burden \
   -s gene_sets.json \
   --covariates PC1,PC2,PC3,age,sex \
   --max-af 0.001 \
-  --min-cadd 25 \
+  --min-score 25 \
   -o results/burden_results.tsv \
   --generate-report
 ```
