@@ -260,4 +260,9 @@ def reprocess_cmd(
         if result.status == "drifted" and result.diff:
             click.echo(json.dumps(result.diff, indent=2, default=str))
 
-    _progress(f"done -> {output}")
+    if skip_build:
+        # No build stage ran, so nothing was written to --output; don't imply
+        # the final artifact was produced.
+        _progress("done (build skipped; no artifact written)")
+    else:
+        _progress(f"done -> {output}")

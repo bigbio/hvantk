@@ -72,10 +72,13 @@ hvantk/
 │   │   ├── genome.py         # Genome/contig utilities (contig_recoding)
 │   │   ├── table_utils.py    # Hail Table manipulation helpers
 │   │   └── writers.py        # HailTableWriter
-│   └── streamers/         # Base streamer classes (consumed by algorithms/ + skills/)
-│       ├── gene_disease_table.py # GeneDiseaseTableStreamer (clingen/gencc/cosmic-cgc base)
-│       ├── variant_table.py      # VariantTableStreamer (clinvar base)
-│       └── gene_catalog.py       # GeneCatalogStreamer (hgnc base)
+│   ├── streamers/         # Base streamer classes (consumed by algorithms/ + skills/)
+│   │   ├── gene_disease_table.py # GeneDiseaseTableStreamer (clingen/gencc/cosmic-cgc base)
+│   │   ├── variant_table.py      # VariantTableStreamer (clinvar base)
+│   │   └── gene_catalog.py       # GeneCatalogStreamer (hgnc base)
+│   └── ontology/          # OBO / MONDO ontology parsers
+│       ├── obo.py             # Generic OBO parser
+│       └── mondo.py           # MONDO disease-category map (MONDO_DISEASE_CATEGORIES)
 │
 ├── algorithms/            # L4-L5: Analysis pipelines
 │   ├── annotation/        # Variant annotation pipeline
@@ -168,7 +171,7 @@ The codebase is organized by function and biological domain:
 - **Variants** - Keyed by `(locus, alleles)`
 - **Genes** - Keyed by `gene_id`
 - **Proteins** - Keyed by `protein_id` or `interval`
-- **Expression** - AnnData matrices (`.h5ad`) with rows=genes, columns=samples/cells
+- **Expression** - AnnData matrices (`.h5ad`) with rows=samples/cells (`obs`), columns=genes (`var`)
 
 ### 2. Artifact Contract
 
@@ -390,7 +393,7 @@ annotated = variants.annotate(
 
 **Builder outputs**:
 - Variant / gene tables keyed by `(locus, alleles)` or `gene_id` → `AnnotationTable`
-- Expression matrices rows=genes, columns=samples/cells → `ExpressionMatrix`
+- Expression matrices rows=samples/cells (`obs`), columns=genes (`var`) → `ExpressionMatrix`
 - Multi-sample variant cohorts (variants × samples × genotypes) → `VariantMatrix`
 - Gene set collections → `GeneSet`
 
