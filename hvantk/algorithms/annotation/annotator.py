@@ -3,8 +3,8 @@
 # existing data chunks. These are NOT DataModel streamers (the "Streamer"
 # concept is reserved for the Artifact-wrapping ABCs in
 # hvantk.core.streamers); they are pipeline-step "Annotators" with a small,
-# self-contained base that intentionally does not depend on the legacy
-# chunked-IO base in hvantk.core.utils.streaming.
+# self-contained base that intentionally does not depend on the
+# now-retired legacy chunked-IO streaming base.
 
 import hail as hl
 from abc import ABC, abstractmethod
