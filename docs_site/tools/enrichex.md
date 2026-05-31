@@ -84,7 +84,7 @@ hvantk enrichex burden \
   -p phenotypes.ht \
   -s gene_sets.json \
   --max-af 0.001 \
-  --min-cadd 25 \
+  --min-score 25 \
   --consequences missense_variant,frameshift_variant \
   --covariates PC1,PC2,PC3,PC4,PC5,age,sex \
   -o burden_results.tsv
@@ -95,11 +95,11 @@ hvantk enrichex burden \
 #### Overlap Enrichment
 
 ```python
-from hvantk.enrichex import (
+from hvantk.algorithms.enrichex import (
     GeneSetCollection,
     compute_overlap_enrichment_pandas
 )
-from hvantk.core.hail_context import init_hail
+from hvantk.core.utils.hail_context import init_hail
 
 # Initialize Hail
 init_hail()
@@ -127,8 +127,8 @@ print(significant[['gene_set_name', 'odds_ratio', 'p_adjusted']])
 #### Burden Testing
 
 ```python
-from hvantk.enrichex import run_burden_analysis
-from hvantk.core.hail_context import init_hail
+from hvantk.algorithms.enrichex import run_burden_analysis, VariantFilter
+from hvantk.core.utils.hail_context import init_hail
 import hail as hl
 import json
 
@@ -151,8 +151,7 @@ results_ht = run_burden_analysis(
     phenotype_field="is_case",
     phenotype_type="binary",
     covariate_fields=["PC1", "PC2", "PC3", "PC4", "PC5", "age", "sex"],
-    max_af=0.001,
-    min_cadd=25.0,
+    variant_filter=VariantFilter(max_af=0.001, min_score=25.0, score_field="cadd_phred"),
     genotype_aggregation="hets"
 )
 
@@ -185,7 +184,7 @@ The same functionality is available via Python:
 
 ```python
 import pandas as pd
-from hvantk.enrichex.plot import (
+from hvantk.algorithms.enrichex.plot import (
     plot_enrichment_dotplot,
     plot_enrichment_barplot,
     plot_burden_forest,
@@ -246,7 +245,7 @@ Reports are saved alongside the output file with an `.html` extension.
 From Python, the `generate_report` helper offers the same functionality:
 
 ```python
-from hvantk.enrichex.report import generate_report
+from hvantk.algorithms.enrichex.report import generate_report
 
 generate_report(
     output_path="ad_enrichex_report.html",
@@ -325,7 +324,7 @@ hvantk enrichex burden \
   --phenotype-field is_case \
   --phenotype-type binary \
   --max-af 0.001 \
-  --min-cadd 25 \
+  --min-score 25 \
   --consequences missense_variant,frameshift_variant,stop_gained \
   --genotype-aggregation hets \
   --covariates PC1,PC2,PC3,PC4,PC5,age,sex \
@@ -359,7 +358,7 @@ hvantk enrichex overlap \
 **Scenario:** Test gene set burden across multiple neurological disorders.
 
 ```python
-from hvantk.enrichex import run_burden_analysis
+from hvantk.algorithms.enrichex import run_burden_analysis, VariantFilter
 import hail as hl
 
 # Load cohort with multiple phenotypes
@@ -382,8 +381,7 @@ for pheno in ["alzheimers", "parkinsons", "schizophrenia"]:
         phenotype_field=pheno,
         phenotype_type="binary",
         covariate_fields=["PC1", "PC2", "PC3", "age", "sex"],
-        max_af=0.001,
-        min_cadd=25.0
+        variant_filter=VariantFilter(max_af=0.001, min_score=25.0, score_field="cadd_phred"),
     )
     results_ht.export(f"{pheno}_burden.tsv")
 ```
@@ -427,7 +425,7 @@ EnrichEx uses JSON format for gene set collections:
 ### Creating Gene Sets from TSV
 
 ```python
-from hvantk.enrichex import GeneSetCollection, load_marker_genes
+from hvantk.algorithms.enrichex import GeneSetCollection, load_marker_genes
 
 # Load from TSV file (columns: gene, cell_type, score)
 gene_sets = load_marker_genes(
@@ -443,7 +441,7 @@ gene_sets.save("cell_type_markers.json")
 ### Creating Gene Sets Manually
 
 ```python
-from hvantk.enrichex import GeneSet, GeneSetCollection
+from hvantk.algorithms.enrichex import GeneSet, GeneSetCollection
 
 # Define individual gene sets
 microglia = GeneSet(
@@ -581,13 +579,13 @@ hvantk enrichex burden ... --max-af 1.0
 **CADD Score Filtering:**
 ```bash
 # High CADD scores (likely deleterious)
-hvantk enrichex burden ... --min-cadd 25
+hvantk enrichex burden ... --min-score 25
 
 # Very high CADD
-hvantk enrichex burden ... --min-cadd 30
+hvantk enrichex burden ... --min-score 30
 
 # No CADD filter
-hvantk enrichex burden ... --min-cadd 0
+hvantk enrichex burden ... --min-score 0
 ```
 
 **Consequence Filtering:**
@@ -815,7 +813,7 @@ Excitatory_Neurons\t0.42\t0.58\t0.72\t0.47\t0.70\tFalse
 Represents a single gene set:
 
 ```python
-from hvantk.enrichex import GeneSet
+from hvantk.algorithms.enrichex import GeneSet
 
 gene_set = GeneSet(
     name="Microglia",
@@ -835,7 +833,7 @@ print(gene_set.genes)          # {"TREM2", "CD33", "MS4A6A", "TYROBP"}
 Collection of gene sets:
 
 ```python
-from hvantk.enrichex import GeneSetCollection
+from hvantk.algorithms.enrichex import GeneSetCollection
 
 # Load from JSON
 gene_sets = GeneSetCollection.load("brain_markers.json")
@@ -866,7 +864,7 @@ data = gene_sets.to_dict()
 Compute enrichment with Hail objects:
 
 ```python
-from hvantk.enrichex import compute_overlap_enrichment, OverlapResult
+from hvantk.algorithms.enrichex import compute_overlap_enrichment, OverlapResult
 from typing import List
 
 results: List[OverlapResult] = compute_overlap_enrichment(
@@ -887,7 +885,7 @@ for result in results:
 Compute enrichment with pandas DataFrame output:
 
 ```python
-from hvantk.enrichex import compute_overlap_enrichment_pandas
+from hvantk.algorithms.enrichex import compute_overlap_enrichment_pandas
 import pandas as pd
 
 results_df: pd.DataFrame = compute_overlap_enrichment_pandas(
@@ -911,7 +909,7 @@ results_df.to_csv("enrichment_results.tsv", sep="\t", index=False)
 Complete burden analysis pipeline:
 
 ```python
-from hvantk.enrichex import run_burden_analysis
+from hvantk.algorithms.enrichex import run_burden_analysis, VariantFilter
 import hail as hl
 
 results_ht = run_burden_analysis(
@@ -924,9 +922,12 @@ results_ht = run_burden_analysis(
     phenotype_field="is_case",
     phenotype_type="binary",  # or "continuous"
     covariate_fields=["PC1", "PC2", "PC3", "age", "sex"],
-    max_af=0.001,
-    min_cadd=25.0,
-    consequences=["missense_variant", "frameshift_variant"],
+    variant_filter=VariantFilter(
+        max_af=0.001,
+        min_score=25.0,
+        consequences=["missense_variant", "frameshift_variant"],
+        score_field="cadd_phred",
+    ),
     genotype_aggregation="hets",  # or "homs", "chets", "homs_chets"
     gene_field="SYMBOL"
 )
@@ -943,7 +944,7 @@ results_df = results_ht.to_pandas()
 Low-level burden computation (for custom workflows):
 
 ```python
-from hvantk.enrichex import compute_geneset_burden_mt
+from hvantk.algorithms.enrichex import compute_geneset_burden_mt, VariantFilter
 import hail as hl
 
 # Compute burden matrix
@@ -954,9 +955,12 @@ burden_mt = compute_geneset_burden_mt(
         "Excitatory": ["GRIN2A", "GRIN2B"]
     },
     gene_field="SYMBOL",
-    max_af=0.001,
-    min_cadd=25.0,
-    consequences=["missense_variant", "frameshift_variant"],
+    variant_filter=VariantFilter(
+        max_af=0.001,
+        min_score=25.0,
+        consequences=["missense_variant", "frameshift_variant"],
+        score_field="cadd_phred",
+    ),
     genotype_aggregation="hets"
 )
 
@@ -975,7 +979,7 @@ burden_mt = burden_mt.annotate_cols(**phenotypes_ht[burden_mt.col_key])
 Run regression on burden matrix:
 
 ```python
-from hvantk.enrichex import logistic_burden_test, linear_burden_test
+from hvantk.algorithms.enrichex import logistic_burden_test, linear_burden_test
 import hail as hl
 
 # For binary phenotypes
@@ -1002,7 +1006,7 @@ results_ht = linear_burden_test(
 Load gene sets from TSV marker file:
 
 ```python
-from hvantk.enrichex import load_marker_genes
+from hvantk.algorithms.enrichex import load_marker_genes
 
 gene_sets = load_marker_genes(
     marker_file="seurat_markers.tsv",
@@ -1018,7 +1022,7 @@ gene_sets.save("markers.json")
 Apply multiple testing correction to p-values:
 
 ```python
-from hvantk.enrichex import apply_correction
+from hvantk.algorithms.enrichex import apply_correction
 import numpy as np
 
 p_values = np.array([0.001, 0.05, 0.10, 0.20])
@@ -1165,19 +1169,19 @@ Interpretation:
 
 **Conservative filters (high confidence):**
 ```bash
---max-af 0.0001 --min-cadd 30 --consequences frameshift_variant,stop_gained
+--max-af 0.0001 --min-score 30 --consequences frameshift_variant,stop_gained
 ```
 Use for: Rare disease studies, high-penetrance variants
 
 **Moderate filters (balanced):**
 ```bash
---max-af 0.001 --min-cadd 25 --consequences missense_variant,frameshift_variant,stop_gained
+--max-af 0.001 --min-score 25 --consequences missense_variant,frameshift_variant,stop_gained
 ```
 Use for: Complex diseases, general burden testing
 
 **Permissive filters (exploratory):**
 ```bash
---max-af 0.01 --min-cadd 20 --consequences missense_variant
+--max-af 0.01 --min-score 20 --consequences missense_variant
 ```
 Use for: Exploratory analyses, large cohorts
 
@@ -1231,7 +1235,7 @@ Solution: Check gene identifier consistency
 #### Issue: "Gene set has no variants passing filters"
 ```text
 Solution: Relax variant filters or check annotations
-hvantk enrichex burden ... --max-af 0.01 --min-cadd 15
+hvantk enrichex burden ... --max-af 0.01 --min-score 15
 
 Or verify VEP annotations are present:
 - Check consequence field exists
