@@ -20,7 +20,7 @@ hvantk psroc \
 ## Python API
 
 ```python
-from hvantk.psroc import PSROCConfig, PSROCPipeline
+from hvantk.algorithms.psroc import PSROCConfig, PSROCPipeline
 
 config = PSROCConfig(
     genes=["BRCA1", "BRCA2", "TP53"],

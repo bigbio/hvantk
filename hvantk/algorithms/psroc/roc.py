@@ -9,7 +9,16 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 import numpy as np
 
-from sklearn.metrics import roc_curve, roc_auc_score
+# Make scikit-learn import optional - only required for ROC computation.
+try:
+    from sklearn.metrics import roc_curve, roc_auc_score
+
+    SKLEARN_AVAILABLE = True
+except ImportError:  # pragma: no cover
+    SKLEARN_AVAILABLE = False
+    # Defined to satisfy linters; guarded by SKLEARN_AVAILABLE.
+    roc_curve = None
+    roc_auc_score = None
 
 
 @dataclass
@@ -266,6 +275,12 @@ def bootstrap_auc_ci(
         ValueError: If inputs are invalid (mismatched lengths, single class,
             bad n_resamples or confidence_level).
     """
+    if not SKLEARN_AVAILABLE:
+        raise RuntimeError(
+            "ROC analysis requires scikit-learn. Install it with "
+            "'poetry install --extras psroc' (or --extras ml / --extras ancestry)."
+        )
+
     labels = np.asarray(labels).ravel()
     scores = np.asarray(scores).ravel()
 
@@ -337,6 +352,12 @@ def compute_roc_metrics(
         ValueError: If labels and score arrays have different lengths,
                    if no valid labels exist, or if all scores are excluded.
     """
+    if not SKLEARN_AVAILABLE:
+        raise RuntimeError(
+            "ROC analysis requires scikit-learn. Install it with "
+            "'poetry install --extras psroc' (or --extras ml / --extras ancestry)."
+        )
+
     if len(labels) == 0:
         raise ValueError("Labels array is empty")
 

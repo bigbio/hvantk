@@ -60,20 +60,25 @@ hvantk/
 │   │   ├── loader.py      # Plugin discovery (filesystem + entry points)
 │   │   ├── run_builder.py # run_builder_for_spec() — Phase B orchestrator
 │   │   └── drift_runner.py# Drift probe execution
-│   └── utils/             # Cross-cutting utilities
-│       ├── hail_context.py          # Idempotent Hail init
-│       ├── hail_helpers.py          # create_table_base, cleanup_temp_file
-│       ├── qtl_helpers.py           # GTEx variant-ID parsing (shared by eqtl/pqtl)
-│       ├── bgzf.py                  # BGZF utilities
-│       ├── streaming.py             # Generic DataStreamer / HailDataStreamer primitives
-│       ├── gene_disease_streamer.py # Abstract base shared by clingen/cosmic-cgc/gencc
-│       ├── clinvar_streamer.py      # ClinVar streamer (consumed by algorithms/)
-│       ├── file_utils.py            # File I/O helpers
-│       ├── gene_sets.py             # Gene set utilities
-│       ├── genome.py                # Genome/contig utilities
-│       ├── table_utils.py           # Hail Table manipulation helpers
-│       ├── writers.py               # HailTableWriter
-│       └── ...                      # Other shared utilities
+│   ├── utils/             # Cross-cutting utilities
+│   │   ├── hail_context.py   # Idempotent Hail init
+│   │   ├── hail_helpers.py   # create_table_base, cleanup_temp_file
+│   │   ├── qtl_helpers.py    # GTEx variant-ID parsing (shared by eqtl/pqtl)
+│   │   ├── bgzf.py           # BGZF utilities
+│   │   ├── catalog.py        # Catalog helpers
+│   │   ├── file_utils.py     # File I/O helpers
+│   │   ├── gene_sets.py      # Gene set utilities
+│   │   ├── geneset_io.py     # Gene set parsing / validation
+│   │   ├── genome.py         # Genome/contig utilities (contig_recoding)
+│   │   ├── table_utils.py    # Hail Table manipulation helpers
+│   │   └── writers.py        # HailTableWriter
+│   ├── streamers/         # Base streamer classes (consumed by algorithms/ + skills/)
+│   │   ├── gene_disease_table.py # GeneDiseaseTableStreamer (clingen/gencc/cosmic-cgc base)
+│   │   ├── variant_table.py      # VariantTableStreamer (clinvar base)
+│   │   └── gene_catalog.py       # GeneCatalogStreamer (hgnc base)
+│   └── ontology/          # OBO / MONDO ontology parsers
+│       ├── obo.py             # Generic OBO parser
+│       └── mondo.py           # MONDO disease-category map (MONDO_DISEASE_CATEGORIES)
 │
 ├── algorithms/            # L4-L5: Analysis pipelines
 │   ├── annotation/        # Variant annotation pipeline
@@ -166,7 +171,7 @@ The codebase is organized by function and biological domain:
 - **Variants** - Keyed by `(locus, alleles)`
 - **Genes** - Keyed by `gene_id`
 - **Proteins** - Keyed by `protein_id` or `interval`
-- **Expression** - MatrixTables with rows=genes, columns=samples/cells
+- **Expression** - AnnData matrices (`.h5ad`) with rows=samples/cells (`obs`), columns=genes (`var`)
 
 ### 2. Artifact Contract
 
@@ -299,22 +304,17 @@ block — no manual edits in `hvantk/tools/plugins/download_cli.py` needed.
 
 ### Streamer placement rule
 
-Streamers (classes that yield batches over a built table) are split by
-**who consumes them**, not by which provider produced the underlying table.
-This decouples streamer release cadence from provider release cadence and
-keeps the one-way `skills → algorithms → tools` dependency direction
-clean.
+Streamers (classes that yield batches over a built table) are split between a
+**base class** that lives above the skills layer and **per-provider subclasses**
+that ship with their plugin. This keeps the one-way
+`skills → algorithms → tools` dependency direction clean: the sibling-skill
+rule (`skills/X` cannot import from `skills/Y`) forces any base class shared by
+multiple skills to live in `core/streamers/`.
 
 | Streamer kind | Lives in | Example |
 |---|---|---|
-| Generic, no domain knowledge | `core/utils/streaming.py` | `DataStreamer`, `HailDataStreamer`, `StreamProcessor` |
-| Shared abstract base across sibling skills | `core/utils/` | `gene_disease_streamer.py` (used by `clingen`, `cosmic-cgc`, `gencc`) |
-| Consumed by `algorithms/` | `core/utils/` | `clinvar_streamer.py` (consumed by `algorithms/annotation`, `algorithms/training_sets`) |
-| Truly source-specific (only the skill itself and `tools/` consume it) | `skills/<provider>/streamer.py` | `clingen/streamer.py`, `cosmic_cgc/streamer.py`, `gencc/streamer.py`, `alphagenome/streamer.py` |
-
-The shared-base case is the one most likely to surprise: the sibling-skill
-rule (`skills/X` cannot import from `skills/Y`) forces any base class used
-by multiple skills to live above the skills layer — in `core/utils/`.
+| Shared base class | `core/streamers/` | `GeneDiseaseTableStreamer` (`gene_disease_table.py`), `VariantTableStreamer` (`variant_table.py`), `GeneCatalogStreamer` (`gene_catalog.py`) |
+| Per-provider subclass | `skills/<provider>/streamers.py` | `ClinGenGeneDiseaseTableStreamer` (`clingen/streamers.py`), `GenCCGeneDiseaseTableStreamer` (`gencc/streamers.py`), `ClinVarVariantTableStreamer` (`clinvar/streamers.py`) |
 
 ### 3. CLI-First Design
 
@@ -341,33 +341,16 @@ Raw File (VCF/TSV/BED) → Builder → Hail Table → Disk (.ht)
 ```
 
 Example:
-```python
-# Via the plugin system (recommended)
-from hvantk.core.plugin.run_builder import run_builder_for_spec
-
-artifact = run_builder_for_spec("clinvar:variants", input_path="clinvar.vcf.bgz", output_path="clinvar.ht")
+```bash
+# The reprocess CLI runs the full Phase B pipeline: download → parse → build → drift-check
+hvantk reprocess clinvar:variants --raw-dir data/ --output clinvar.ht
 ```
+In-process callers drive the same Phase B builder via
+`run_builder_for_spec(spec, *, parsed_input, output_path, plugin_version, **params)`
+(in `hvantk/core/plugin/run_builder.py`), which takes a resolved `DatasetSpec`
+and returns the stamped `Provenance`.
 
-#### Pattern 2: Batch Building via Recipes
-```
-Recipe JSON → Parser → [Builder 1, Builder 2, ...] → Multiple Tables
-```
-
-Example recipe:
-```json
-{
-  "tables": [
-    {
-      "name": "clinvar",
-      "input": "/data/clinvar.vcf.bgz",
-      "output": "/out/clinvar.ht",
-      "params": {"reference_genome": "GRCh38"}
-    }
-  ]
-}
-```
-
-#### Pattern 3: Multi-Omics Integration
+#### Pattern 2: Multi-Omics Integration
 ```
 Variant Table + Gene Table + Expression Matrix → Integrated Analysis
 ```
@@ -410,7 +393,7 @@ annotated = variants.annotate(
 
 **Builder outputs**:
 - Variant / gene tables keyed by `(locus, alleles)` or `gene_id` → `AnnotationTable`
-- Expression matrices rows=genes, columns=samples/cells → `ExpressionMatrix`
+- Expression matrices rows=samples/cells (`obs`), columns=genes (`var`) → `ExpressionMatrix`
 - Multi-sample variant cohorts (variants × samples × genotypes) → `VariantMatrix`
 - Gene set collections → `GeneSet`
 
@@ -533,7 +516,7 @@ See `hvantk/skills/_conventions/SKILL.md` for the full contract.
 - **gnomAD** - Utilities for gnomAD data
 - **Click** - CLI framework
 - **Pandas** - Data manipulation
-- **PyYAML** - YAML recipe support
+- **PyYAML** - YAML manifest parsing (`plugin.yaml`)
 - **Matplotlib/Seaborn/Plotly** - Visualization (optional)
 
 ## Performance Considerations

@@ -51,7 +51,7 @@ hvantk psroc \
 ### Python API
 
 ```python
-from hvantk.psroc import PSROCConfig, PSROCPipeline
+from hvantk.algorithms.psroc import PSROCConfig, PSROCPipeline
 
 # Configure analysis
 config = PSROCConfig(
@@ -533,7 +533,7 @@ hvantk psroc \
 Configuration dataclass for the pipeline:
 
 ```python
-from hvantk.psroc import PSROCConfig
+from hvantk.algorithms.psroc import PSROCConfig
 
 config = PSROCConfig(
     # Input sources (exactly one required)
@@ -577,7 +577,7 @@ if errors:
 Main pipeline orchestrator:
 
 ```python
-from hvantk.psroc import PSROCPipeline
+from hvantk.algorithms.psroc import PSROCPipeline
 
 pipeline = PSROCPipeline(config)
 
@@ -588,7 +588,7 @@ pipeline.show_plan()
 result = pipeline.run()
 
 # --- Multi-group analysis ---
-from hvantk.psroc import PSROCConfig, PSROCPipeline
+from hvantk.algorithms.psroc import PSROCConfig, PSROCPipeline
 
 collection_config = PSROCConfig(
     gene_set_collection={
@@ -642,7 +642,7 @@ result_dict = result.to_dict()
 For direct use without the pipeline:
 
 ```python
-from hvantk.psroc import (
+from hvantk.algorithms.psroc import (
     compute_roc_metrics,
     compute_all_missingness,
     filter_scores_by_missingness,
@@ -671,7 +671,7 @@ for name, roc in results.items():
 ### Plotting Functions
 
 ```python
-from hvantk.psroc import (
+from hvantk.algorithms.psroc import (
     plot_roc_curves,
     plot_auc_comparison,
     plot_missingness_summary,
@@ -928,9 +928,9 @@ hvantk genesets clingen \
 ### From ClinGen (Python API)
 
 ```python
-from hvantk.data.clingen_streamer import ClinGenStreamer
+from hvantk.skills.clingen.streamers import ClinGenGeneDiseaseTableStreamer
 
-streamer = ClinGenStreamer(table_path="/data/tables/clingen.ht")
+streamer = ClinGenGeneDiseaseTableStreamer(table_path="/data/tables/clingen.ht")
 streamer.setup()
 
 # GCEP-based (recommended)
@@ -957,7 +957,7 @@ gene_sets = {
 Standard GMT files (e.g., MSigDB pathways) can be loaded directly:
 
 ```python
-from hvantk.utils.gene_sets import load_gene_sets
+from hvantk.core.utils.gene_sets import load_gene_sets
 
 collection = load_gene_sets("/data/pathways.gmt")
 gene_set_dict = {gs.name: gs.genes for gs in collection}
@@ -966,7 +966,7 @@ gene_set_dict = {gs.name: gs.genes for gs in collection}
 ### Saving for CLI Use
 
 ```python
-from hvantk.utils.gene_sets import load_gene_sets_from_dict
+from hvantk.core.utils.gene_sets import load_gene_sets_from_dict
 
 collection = load_gene_sets_from_dict(gene_sets)
 collection.save("/data/gene_sets/my_collection.json")

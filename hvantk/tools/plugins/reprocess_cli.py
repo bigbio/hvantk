@@ -8,10 +8,29 @@ with the `--skip-*` flags.
 from __future__ import annotations
 
 import json
+import logging
 import re
+import sys
+import time
 from typing import Any
 
 import click
+
+
+def _configure_logging(verbose: bool) -> None:
+    """On ``--verbose``, surface builders' INFO logs (e.g. the UCSC streaming
+    loop's per-chunk lines) on the terminal.
+
+    Called before any lifecycle stage runs — and therefore before Hail
+    initializes — so the root logger is configured first. ``basicConfig`` is a
+    no-op once handlers exist, so the level is also set explicitly to guarantee
+    INFO records are emitted even if something (e.g. Hail) already attached a
+    handler.
+    """
+    if not verbose:
+        return
+    logging.basicConfig(level=logging.INFO, stream=sys.stderr)
+    logging.getLogger().setLevel(logging.INFO)
 
 
 _INT_RE = re.compile(r"^-?\d+$")
@@ -106,6 +125,18 @@ def _coerce_plugin_arg_value(value: str) -> Any:
     is_flag=True,
     help="Disable the post-build drift probe",
 )
+@click.option(
+    "--verbose",
+    "-v",
+    is_flag=True,
+    help="Surface builders' INFO logs (per-chunk progress, etc.) on stderr",
+)
+@click.option(
+    "--quiet",
+    "-q",
+    is_flag=True,
+    help="Suppress the per-stage progress lines (errors still print)",
+)
 def reprocess_cmd(
     dataset,
     raw_dir,
@@ -117,8 +148,24 @@ def reprocess_cmd(
     plugin_args,
     check_drift,
     no_check_drift,
+    verbose,
+    quiet,
 ):
     """Run download -> parse -> build for a plugin dataset."""
+    _configure_logging(verbose)
+
+    # Per-stage progress to stderr (keeps stdout clean for piping). Each line
+    # carries the cumulative elapsed time so an operator can tell a long build
+    # is still alive. Suppressed by --quiet; --verbose adds the builders' own
+    # INFO logs on top.
+    _start = time.monotonic()
+
+    def _progress(message: str) -> None:
+        if quiet:
+            return
+        elapsed = time.monotonic() - _start
+        click.echo(f"[reprocess {dataset}] {message} ({elapsed:.0f}s)", err=True)
+
     from hvantk.core.plugin import drift_runner, loader as plugin_loader
 
     reg = plugin_loader.get_registry()
@@ -152,7 +199,7 @@ def reprocess_cmd(
                 f"{dataset} has no lifecycle.download declared; "
                 "use --skip-download or add it to plugin.yaml"
             )
-        click.echo(f"download: {dataset} -> {raw_dir}")
+        _progress(f"download -> {raw_dir}")
         spec.download_fn(raw_dir=raw_dir, **extras)
 
     # 2. Parse stage
@@ -161,7 +208,7 @@ def reprocess_cmd(
             raise click.UsageError(
                 "--intermediate is required when the plugin declares lifecycle.parse"
             )
-        click.echo(f"parse: {raw_dir} -> {intermediate}")
+        _progress(f"parse: {raw_dir} -> {intermediate}")
         spec.parse_fn(raw_dir=raw_dir, output_path=intermediate, **extras)
         parsed_path = intermediate
     elif not skip_parse:
@@ -175,7 +222,7 @@ def reprocess_cmd(
 
     # 3. Build stage
     if not skip_build:
-        click.echo(f"build: {parsed_path} -> {output}")
+        _progress(f"build: {parsed_path} -> {output}")
         if spec.artifact_type is None:
             # Legacy (Phase A) plugin not yet migrated to Phase B contract.
             # Fall back to the old shape: spec.builder(input, output) writes
@@ -207,6 +254,15 @@ def reprocess_cmd(
     # 4. Optional drift check
     if check_drift and not no_check_drift:
         result = drift_runner.run_drift_check(dataset)
-        click.echo(f"drift: {result.status}")
+        # Drift status is a result, not routine chatter — show it on stderr even
+        # under --quiet so a "drifted" outcome is never silently swallowed.
+        click.echo(f"drift: {result.status}", err=True)
         if result.status == "drifted" and result.diff:
             click.echo(json.dumps(result.diff, indent=2, default=str))
+
+    if skip_build:
+        # No build stage ran, so nothing was written to --output; don't imply
+        # the final artifact was produced.
+        _progress("done (build skipped; no artifact written)")
+    else:
+        _progress(f"done -> {output}")

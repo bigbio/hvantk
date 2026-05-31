@@ -10,13 +10,30 @@ distribution of de novo mutations.
 
 - `gevir:metrics` — per-gene vulnerability and intolerance rank metrics, keyed by gene_id
 
-## Phase K notes
+The builder is `build_gevir_metrics` in `hvantk/skills/gevir/builder.py`, with
+signature `(parsed_input, ctx, **params) -> AnnotationTable`. It imports the
+GeVIR TSV inline via `hl.import_table(..., key="gene_id")`, optionally selects a
+`fields` subset, and wraps the result with provenance under schema
+`gevir-metrics-v1`. The dataset is resolved from `plugin.yaml` by the plugin
+loader (`hvantk/core/plugin/loader.py`) and built through `run_builder_for_spec`
+(`hvantk/core/plugin/run_builder.py`); there is no separate builder registry.
 
-This plugin was promoted from the hardcoded `_TABLE_BUILDERS` entry of
-the same name as part of Phase K of the data-model platform refactor.
-The drift probe is a stub; a real probe should be implemented in a
-follow-up. The downloader is not implemented; upstream files are
-expected to be externally materialized for now.
+## Build
+
+```bash
+hvantk reprocess gevir:metrics \
+  --raw-dir <dir-containing-gevir-tsv> \
+  --output <out.ht>
+```
+
+Optional plugin args (e.g. field selection) can be passed with
+`--plugin-arg fields=...`.
+
+## Notes
+
+The drift probe (`hvantk/skills/gevir/drift_probe.py`, `fetch_fingerprint`) is a
+stub; a real probe should be implemented in a follow-up. No downloader is
+implemented; upstream files are expected to be externally materialized for now.
 
 ## Schema
 

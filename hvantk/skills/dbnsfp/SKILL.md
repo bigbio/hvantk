@@ -13,13 +13,31 @@ Upstream: https://sites.google.com/site/jpopgen/dbNSFP
 
 - `dbnsfp:variants` — per-variant functional annotation table, keyed by (locus, alleles)
 
-## Phase K notes
+## Build
 
-This plugin was promoted from the hardcoded `_TABLE_BUILDERS` entry of
-the same name as part of Phase K of the data-model platform refactor.
-The drift probe is a stub; a real probe should be implemented in a
-follow-up. The downloader is not implemented; upstream files are
-expected to be externally materialized for now.
+The builder is `build_dbnsfp_variants` in `hvantk/skills/dbnsfp/builder.py`
+(signature `(parsed_input, ctx, **params) -> AnnotationTable`). The plugin
+loader resolves it from `plugin.yaml` via `get_registry().get_dataset("dbnsfp:variants")`;
+top-level builds run through `run_builder_for_spec`.
+
+Invoke via the CLI:
+
+```bash
+hvantk reprocess dbnsfp:variants --raw-dir <dir> --output <out.ht> \
+  [--plugin-arg reference_genome=GRCh38] [--plugin-arg parse_transcript_scores=true]
+```
+
+Supported `params`: `reference_genome` (default `GRCh38`),
+`min_partitions` (default 200), `force_bgz` (default true),
+`parse_transcript_scores` (default true), `group_prefixes` (list of str),
+`auto_convert_bgz` (default false).
+
+## Notes
+
+The drift probe (`drift_probe.fetch_fingerprint`) is a stub; a real probe
+should be implemented in a follow-up. No downloader is wired in
+`plugin.yaml` lifecycle yet; upstream files are expected to be externally
+materialized for now.
 
 ## Schema
 
@@ -30,6 +48,9 @@ fields from gnomAD, ExAC, 1000Gp3, and ESP6500 are grouped into structs.
 
 ## Tests
 
-A conformance test in `tests/test_dbnsfp.py` exercises the build via
-`run_builder_for_spec` against the bundled fixture at
-`hvantk/tests/testdata/raw/dbnsfp/dbNSFP4_v49a_example_variants.bgz`.
+A conformance test in `hvantk/skills/dbnsfp/tests/test_dbnsfp.py` exercises
+the build via `run_builder_for_spec`. Per `plugin.yaml`, test artifacts are
+plugin-relative: the raw fixture lives under `tests/testdata/raw/dbnsfp/`
+(`dbNSFP4_v49a_example_variants.bgz`), with the drift fingerprint at
+`tests/drift_fingerprint.json` and snapshots at `tests/snapshots/`. Run with
+`pytest hvantk/skills/dbnsfp/tests`.

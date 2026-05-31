@@ -21,6 +21,31 @@ eval "$(poetry env activate)"
 
 **Prerequisites**: Python >=3.10, Hail
 
+### Optional extras
+
+The base install is intentionally lean — heavy plotting and ML dependencies are
+opt-in via Poetry extras. Install only what a given workflow needs:
+
+| Extra | Enables | Pulls in |
+| --- | --- | --- |
+| `viz` | Static and interactive plotting | matplotlib, seaborn, plotly |
+| `interactive` | Interactive plots / dashboards | plotly |
+| `duckdb` | DuckDB-backed queries | duckdb |
+| `hgc` | Joint genotyping (incl. genotype adjustment + plots) | gnomad, matplotlib, seaborn, plotly |
+| `psroc` | Pathogenicity Score ROC analysis | matplotlib, plotly, scikit-learn |
+| `ptm` | CPTAC proteomics builders | cptac |
+| `constraint` | Tissue-specificity / constraint metrics | tspex, matplotlib, seaborn |
+| `ancestry` | Ancestry inference (PCA + Random Forest + plots) | scikit-learn, matplotlib, seaborn |
+| `ml` | scikit-learn-backed features only | scikit-learn |
+
+```bash
+# One or more extras at once
+poetry install --extras "ancestry psroc"
+
+# Or a single extra
+poetry install --extras ml
+```
+
 Verify it works:
 
 ```bash
@@ -121,10 +146,10 @@ sequenceDiagram
     IO-->>IO: write data + sidecar .provenance.json
 ```
 
-Twenty plugins ship today: `clinvar`, `clingen`, `gencc`, `gwas-catalog`,
+Twenty-one plugins ship today: `clinvar`, `clingen`, `gencc`, `gwas-catalog`,
 `hgnc`, `gtex-eqtl`, `insider`, `msigdb`, `uniprot-ptm`, `peptideatlas`,
 `expression-atlas`, `cptac`, `ucsc-cellbrowser`, `gevir`, `gnomad-metrics`,
-`ensembl-gene`, `dbnsfp`, `cosmic-cgc`, `pqtl`, `alphagenome`.
+`ensembl-gene`, `dbnsfp`, `cosmic-cgc`, `pqtl`, `alphagenome`, `onek-genomes`.
 
 ### Project structure
 
@@ -153,7 +178,7 @@ hvantk/
 │   ├── qtlcascade/             # eQTL → pQTL cascade + colocalization
 │   └── annotation/             # multi-source annotation pipelines
 │
-├── skills/                     # data-source plugins (20 total)
+├── skills/                     # data-source plugins (21 total)
 │   ├── <plugin>/
 │   │   ├── plugin.yaml         # declarative manifest (drives discovery + CLI)
 │   │   ├── builder.py          # Phase B: (parsed, ctx) → Artifact

@@ -32,7 +32,7 @@ The exact raw-format gotchas live where the parser does:
 
 - Expression TSV parser + AnnData assembly: `hvantk/skills/expression_atlas/shared/expression_atlas.py` (`create_anndata_from_expression_atlas`).
 - SDRF long → wide reshape: same file (`_import_sdrf`, `_reshape_sdrf_long_to_wide_format`, `convert_sdrf_to_dataframe`).
-- High-level builder narrative: docstring on `build_expression_atlas_ad` in `hvantk/skills/expression_atlas/builder.py`.
+- High-level builder narrative: docstring on `build_expression_atlas` in `hvantk/skills/expression_atlas/builder.py`.
 
 Stable notes:
 
@@ -52,7 +52,7 @@ Stable notes:
 
 ## 6. hvantk integration points
 
-- **Builder:** `build_expression_atlas_ad` in `hvantk/skills/expression_atlas/builder.py`.
+- **Builder:** `build_expression_atlas` (signature `(parsed_input, ctx, **params) -> ExpressionMatrix`) in `hvantk/skills/expression_atlas/builder.py`.
 - **SDRF / matrix helpers:** `hvantk/skills/expression_atlas/shared/expression_atlas.py`.
 - **Dataset / collection classes:** `ExpressionAtlasDataset`, `ExpressionAtlasDatasetCollection` in `hvantk/skills/expression_atlas/shared/datasets.py`.
 - **Downloader CLI:** `download_experiments` in `hvantk/skills/expression_atlas/cli.py` (registered as `hvantk expression-atlas-download` and also re-bound under `hvantk download expression-atlas`).
@@ -78,7 +78,7 @@ When invoked to build or update a single Expression Atlas experiment:
 
 TODO. This section will be fleshed out once per-accession drift detection lands (see § 2 catalog note and the drift-probe placeholder in `hvantk/skills/expression_atlas/drift_probe.py`). Expected shape:
 
-1. For each tracked accession in `registry/transcriptomics/datasets.json` (filter `data_source == "Expression_Atlas"`), re-run the per-accession HEAD probe; flag accessions whose `Last-Modified` or `Content-Length` changed.
+1. For each tracked accession in `hvantk/skills/expression_atlas/catalog/datasets.json` (filter `data_source == "Expression_Atlas"`), re-run the per-accession HEAD probe; flag accessions whose `Last-Modified` or `Content-Length` changed.
 2. Re-download flagged accessions, rebuild via `hvantk reprocess expression-atlas:dataset`, and diff the new AnnData against the snapshotted shape / `obs` columns.
 3. If the SDRF column set changed, document the new factor in § 4.
 
