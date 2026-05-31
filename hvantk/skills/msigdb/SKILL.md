@@ -14,7 +14,7 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes every conve
 
 - **Status:** provisional. The builder, fixture, snapshots, and round-trip test exist; this skill is the design contract and update reference.
 - **In scope:** any GMT file from MSigDB → single Hail Table keyed by `set_name`. Verified against the C2 Canonical Pathways human gene-symbols collection (`c2.cp.v2026.1.Hs.symbols.gmt`, 4,115 sets, 1.6 MB).
-- **Out of scope:** downloader (MSigDB requires login + license click-through, so per `_conventions` § 11 acquisition is manual); other MSigDB collections (H, C1, C3-C8) — the builder is collection-agnostic but each collection should be tracked in the catalog separately if onboarded; gene-symbol normalization / alias resolution (use `hvantk/data/gene_mapper.py` downstream); cross-format variants beyond GMT (GMX, XML).
+- **Out of scope:** downloader (MSigDB requires login + license click-through, so per `_conventions` § 11 acquisition is manual); other MSigDB collections (H, C1, C3-C8) — the builder is collection-agnostic but each collection should be tracked in the catalog separately if onboarded; gene-symbol normalization / alias resolution (use the `HGNCGeneCatalogStreamer` in `hvantk/skills/hgnc/streamers.py` downstream); cross-format variants beyond GMT (GMX, XML).
 
 ## 2. Source identity
 
@@ -45,7 +45,7 @@ GMT is **tab-separated with variable-width rows**:
 
 ## 5. Output contract
 
-- **Object:** `hl.Table` checkpointed to `output_path` (a `.ht` directory).
+- **Object:** an `AnnotationTable` (`hvantk/core/models`) wrapping a Hail Table, built via `AnnotationTable.from_hail(...)`. The `reprocess` runner checkpoints it to `--output` (a `.ht` directory).
 - **Key:** `[set_name]` (string, unique-in-table).
 - **Provenance:** stamped via `ctx.provenance(schema_id="msigdb-genesets-v1")`; persisted as a sidecar `.provenance.json`.
 - **Fields:**
@@ -58,21 +58,21 @@ Per `_conventions` § 9, set names are unique-in-table for a single GMT, so **no
 
 ## 6. hvantk integration points
 
-- **Builder:** `create_msigdb_tb` in `hvantk/skills/msigdb/builder.py`, via `_create_table_base()`. Signature per `_conventions` § 5: `(input_path, output_path, overwrite=False, export_tsv=False)`. A re-export shim in `hvantk/tables/table_builders.py` keeps the old import path working.
-- **Registry:** registered via the plugin manifest at `hvantk/skills/msigdb/plugin.yaml` (`msigdb:genesets`). Plugin discovery wires it into `TABLE_BUILDERS` at import time.
-- **CLI:** `hvantk reprocess msigdb:genesets --raw-dir <dir> --output <path>.ht --skip-download` (msigdb declares no `lifecycle.download`, so `--skip-download` is always required; `<dir>` must contain the unzipped `.gmt`). The Phase B builder takes no kwargs; no reference-genome arg — gene-set membership is genome-independent.
+- **Builder:** `build_msigdb_genesets` in `hvantk/skills/msigdb/builder.py`. Signature: `(parsed_input, ctx) -> AnnotationTable`. The table is built inline (`hl.import_lines` + `split`/`select`/`key_by`) — there is no `_create_table_base` helper and no `output_path`/`overwrite` kwargs. The shared temp helper, if needed, is `cleanup_temp_file` in `hvantk/core/utils/hail_helpers.py`.
+- **Registry:** declared via the plugin manifest at `hvantk/skills/msigdb/plugin.yaml` (dataset `genesets`). The plugin loader (`hvantk/core/plugin/loader.py`) auto-resolves it from the manifest via `get_registry().get_dataset("msigdb:genesets")`; there is no `TABLE_BUILDERS`/`MATRIX_BUILDERS` registry or adapter. Top-level builds run through `run_builder_for_spec` (`hvantk/core/plugin/run_builder.py`).
+- **CLI:** `hvantk reprocess msigdb:genesets --raw-dir <dir> --output <path>.ht --skip-download` (msigdb declares no `lifecycle.download`, so `--skip-download` is always required; `<dir>` must contain the unzipped `.gmt`). The builder takes no `--plugin-arg` params; no reference-genome arg — gene-set membership is genome-independent.
 - **Catalog wiring:** see § 2. **Downloader:** out of scope (manual acquisition).
 
 ## 7. Workflow steps
 
-1. **Resolve raw path.** Caller passes the unzipped `.gmt` path. Acquire from <https://www.gsea-msigdb.org/gsea/msigdb/human/collections.jsp> (login required).
-2. **Import.** `hl.import_lines(input_path, min_partitions=4)` — yields one row per line with `text: str`.
-3. **Transform** (`transform_func` passed to `_create_table_base`):
+1. **Resolve raw path.** `parsed_input` is the unzipped `.gmt` path (resolved by the reprocess runner from `--raw-dir`). Acquire from <https://www.gsea-msigdb.org/gsea/msigdb/human/collections.jsp> (login required).
+2. **Import.** `hl.import_lines(paths=str(parsed_input), min_partitions=4)` — yields one row per line with `text: str`.
+3. **Transform** (inline in `build_msigdb_genesets`):
    - `parts = ht.text.split("\t")`.
    - `set_name = parts[0]`, `source_url = parts[1]`, `genes = parts[2:]` (Hail array slice).
    - `ht.filter(ht.set_name != "")` — defensive against blank lines.
    - `ht.key_by("set_name")`.
-4. **Checkpoint + globals + optional TSV.** Handled by `_create_table_base` via `overwrite` and `export_tsv` kwargs.
+4. **Wrap + return.** `AnnotationTable.from_hail(ht, provenance=ctx.provenance(schema_id="msigdb-genesets-v1"))`. Checkpointing to `--output` and provenance sidecar are handled by the reprocess runner.
 
 ## 8. Update playbook
 
@@ -81,7 +81,7 @@ MSigDB releases ~annually (versioned `v<year>.<n>`, e.g., `v2026.1`, `v2025.1`).
 1. Acquire the new GMT (manual download). Update the file path / version in the corresponding `registry/genomics/datasets.json` entry; bump `accession` (`MSigDB_C2_CP_v2026.1.Hs.symbols` → `MSigDB_C2_CP_v2027.1.Hs.symbols`).
 2. Re-run the round-trip test (§ 9). If it passes, no builder change.
 3. The GMT format has been stable for ~15 years; column 1 / column 2 / variable-tail shape has not changed. If MSigDB ever changes the description column (column 2) away from a URL, the `source_url` field name becomes misleading — rename to `description` and update this skill.
-4. To onboard a different collection (e.g., C5 GO, H Hallmark): add a new catalog entry with the new accession; the same `create_msigdb_tb` builder works without modification. Add a parallel fixture and snapshot directory if the new collection has structural quirks (e.g., GMTs with embedded null bytes).
+4. To onboard a different collection (e.g., C5 GO, H Hallmark): add a new catalog entry with the new accession; the same `build_msigdb_genesets` builder works without modification. Add a parallel fixture and snapshot directory if the new collection has structural quirks (e.g., GMTs with embedded null bytes).
 
 ## 9. Validation contract
 
@@ -92,4 +92,4 @@ Per `_conventions` § 9:
 - **row_snapshot:** `hvantk/skills/msigdb/tests/snapshots/sample_rows.json`. `set_name` keys are unique-in-table, so no `sample_keys.json` is maintained per `_conventions` § 9 (post-#101). The round-trip test inlines the small key list.
 - **test_command:** `pytest hvantk/skills/msigdb/tests -m hail`.
 
-Round-trip test asserts: builder idempotent with `overwrite=True`; checkpointed schema matches `schema.json`; deterministic sorted row slice matches `sample_rows.json`. Regenerate via `--regenerate-snapshots` when the schema changes (rare — see § 8).
+Round-trip test asserts: the built `AnnotationTable` schema matches `schema.json`; deterministic sorted row slice matches `sample_rows.json`. Regenerate snapshots when the schema changes (rare — see § 8).

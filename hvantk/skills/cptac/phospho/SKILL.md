@@ -12,18 +12,18 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes every conve
 
 ## 1. Status & scope
 
-- **Status:** provisional. Downloader + dataset class + parser helpers + builder + drift-probe placeholder + parser unit tests are migrated under the plugin folder. Builder round-trip snapshots are NOT yet seeded; the fixture directory exists but is empty. Existing builder coverage lives in `hvantk/tests/test_expression_builders_anndata.py` (`TestBuildCptacPhosphoAd`).
-- **In scope:** per-cancer-type phospho fetches (one of `CPTAC_CANCER_TYPES`) via the `cptac` Python package, written as a 13-column intermediate TSV consumed by the PTM pipeline (`hvantk/ptm/pipeline.py`) AND a wide-format matrix CSV + metadata CSV consumed by the AnnData builder. The builder produces a `(samples x sites)` AnnData with parsed site annotations in `var`.
-- **Out of scope:** non-phospho PTM atlases on CPTAC (those would land as sibling datasets under `hvantk/skills/cptac/<ptm-type>/`); pan-cancer joint analysis (the CLI merges per-cancer TSVs but does not produce a joint AnnData).
+- **Status:** provisional. Downloader + dataset class + parser helpers + builder + drift-probe placeholder + parser unit tests live under the plugin folder. Builder round-trip snapshots are NOT yet seeded; the fixture directory exists but is empty. Plugin tests (parser + drift-probe sanity) live in `hvantk/skills/cptac/phospho/tests/`.
+- **In scope:** per-cancer-type phospho fetches (one of `CPTAC_CANCER_TYPES`) via the `cptac` Python package, written as a 13-column intermediate TSV consumed by the PTM pipeline (`hvantk/algorithms/ptm/pipeline.py`) AND a wide-format matrix CSV + metadata CSV consumed by the AnnData builder. The builder produces a `(samples x sites)` AnnData with parsed site annotations in `var`.
+- **Out of scope:** non-phospho PTM atlases on CPTAC (those would land as sibling datasets under `hvantk/skills/cptac/<ptm-type>/`); pan-cancer joint analysis (the downloader merges per-cancer TSVs but does not produce a joint AnnData).
 
 ## 2. Source identity
 
 - **Provider:** Clinical Proteomic Tumor Analysis Consortium (CPTAC) (<https://proteomics.cancer.gov/programs/cptac>), accessed via the [`cptac` Python package](https://pypi.org/project/cptac/) (NOT direct HTTP).
-- **Catalog entry:** TODO. No CPTAC entry exists yet in any plugin's `catalog/datasets.json` (verify with `hvantk catalog search cptac`). Cancer-type enum + class map live in `hvantk/ptm/constants.py` (`CPTAC_CANCER_TYPES`, `CPTAC_CANCER_CLASS_MAP`). The installed `cptac` package version is the de-facto release pin (fingerprinted by the drift probe).
+- **Catalog entry:** TODO. No CPTAC entry exists yet in any plugin's `catalog/datasets.json` (verify with `hvantk catalog search cptac`). Cancer-type enum + class map live in `hvantk/skills/cptac/shared/constants.py` (`CPTAC_CANCER_TYPES`, `CPTAC_CANCER_CLASS_MAP`). The installed `cptac` package version is the de-facto release pin (fingerprinted by the drift probe).
 
 ## 3. Backend choice + reasoning
 
-**`backend: anndata`, `domain: proteomics`.** Per `_conventions` § 3, AnnData is the right fit for sparse-ish sample x feature matrices. CPTAC phospho is `samples x sites` with parsed site annotations (`gene_symbol`, `amino_acid`, `residue_pos`) in `var` and clinical metadata in `obs`. The intermediate site-level TSV stays alongside the AnnData because the downstream PTM pipeline (`hvantk/ptm/pipeline.py`) reads the TSV directly -- the AnnData is for analysis, the TSV is for the PTM-site joining workflow.
+**`backend: anndata`, `domain: proteomics`.** Per `_conventions` § 3, AnnData is the right fit for sparse-ish sample x feature matrices. CPTAC phospho is `samples x sites` with parsed site annotations (`gene_symbol`, `amino_acid`, `residue_pos`) in `var` and clinical metadata in `obs`. The intermediate site-level TSV stays alongside the AnnData because the downstream PTM pipeline (`hvantk/algorithms/ptm/pipeline.py`) reads the TSV directly -- the AnnData is for analysis, the TSV is for the PTM-site joining workflow.
 
 ## 4. Raw format & gotchas
 
@@ -65,22 +65,22 @@ AnnData (`.h5ad`) builder output:
 ## 6. hvantk integration points
 
 - **Dataset class + parser helpers:** `CPTACPhosphoDataset`, `parse_phospho_site`, `extract_phospho_sites`, `write_intermediate_tsv`, `write_matrix_csv`, `write_metadata_csv`, `parse_raw_dir` in `hvantk/skills/cptac/shared/datasets.py`.
-- **Builder:** `build_cptac_phospho_ad` in `hvantk/skills/cptac/phospho/builder.py` (shares `create_anndata_from_cptac_phospho` in `hvantk/skills/cptac/shared/cptac.py`).
-- **Downloader CLI:** `download_cmd` in `hvantk/skills/cptac/phospho/cli.py` (registered as `hvantk cptac-phospho-download` and re-bound under `hvantk download cptac-phospho` via `hvantk/tools/plugins/download_cli.py`).
+- **Builder:** `build_cptac_phospho(parsed_input, ctx, **params)` in `hvantk/skills/cptac/phospho/builder.py`. `parsed_input` is a `{"expression": <matrix.csv>, "metadata": <metadata.csv>}` dict; `params` are `site_id_col`, `sample_id_col`. Returns an `ExpressionMatrix` (shares `create_anndata_from_cptac_phospho` in `hvantk/skills/cptac/shared/cptac.py`).
+- **Downloader CLI:** `download_cmd` in `hvantk/skills/cptac/phospho/cli.py`, declared as command `cptac-phospho-download` in the manifest's `cli:` block. The plugin loader strips the `-download` suffix and wires it as `hvantk download cptac-phospho` (via `hvantk/tools/plugins/download_cli.py`).
 - **Lifecycle entry points:** `download_dataset` (in `phospho/cli.py`) and `parse_raw_dir` (in `shared/datasets.py`), wired via `lifecycle.download` + `lifecycle.parse` in `plugin.yaml`.
 - **Drift probe:** `fetch_fingerprint` in `hvantk/skills/cptac/phospho/drift_probe.py` (fingerprints the installed `cptac` package version).
-- **Downstream consumer:** `hvantk/ptm/pipeline.py` (`PTMBuildConfig.cptac_tsv`) -- reads the per-cancer intermediate TSV and maps PTM sites to genomic coordinates. Exposed at the user-facing level by `hvantk/ptm/atlas.py` (`PTMAtlasConfig.cptac_tsv`).
-- **Plugin manifest:** `hvantk/skills/cptac/plugin.yaml` (compound dataset key `cptac:phospho`).
-- **Tests:** `hvantk/skills/cptac/phospho/tests/` (parser unit tests + drift-probe sanity); builder coverage in `hvantk/tests/test_expression_builders_anndata.py` (`TestBuildCptacPhosphoAd`).
+- **Downstream consumer:** `hvantk/algorithms/ptm/pipeline.py` (`PTMBuildConfig.cptac_tsv`) -- reads the per-cancer intermediate TSV and maps PTM sites to genomic coordinates. Exposed at the user-facing level by `hvantk/algorithms/ptm/atlas.py` (`PTMAtlasConfig.cptac_tsv`).
+- **Plugin manifest:** `hvantk/skills/cptac/plugin.yaml` (compound dataset key `cptac:phospho`). The loader auto-resolves the dataset via `get_registry().get_dataset("cptac:phospho")`; top-level builds run through `run_builder_for_spec` (`hvantk/core/plugin/run_builder.py`).
+- **Tests:** `hvantk/skills/cptac/phospho/tests/` (parser unit tests in `test_phospho.py` + drift-probe sanity in `test_drift_probe.py`).
 
 ## 7. Workflow steps
 
 When invoked to build or update CPTAC phospho data:
 
-1. **Download.** Either via the standalone CLI (`hvantk cptac-phospho-download --cancer-type brca -o /data/cptac`) or via the lifecycle entry point (`hvantk reprocess cptac:phospho`, which calls `download_dataset(raw_dir=...)`). Pass `--all` for all cancer types; the CLI then also produces a pan-cancer merge TSV.
+1. **Download.** Either via the download CLI (`hvantk download cptac-phospho --cancer-type brca -o /data/cptac`) or via the lifecycle entry point (`hvantk reprocess cptac:phospho`, which calls `download_dataset(raw_dir=...)`). Pass `--all` for all cancer types; the downloader then also produces a pan-cancer merge TSV.
 2. **(Lifecycle) parse-only step.** `parse_raw_dir(raw_dir=..., output_path=..., cancer_type=...)` re-reads per-cancer TSVs from `raw_dir` and writes a consolidated TSV at `output_path`.
-3. **Builder.** `build_cptac_phospho_ad(expression_path=<matrix.csv>, metadata_path=<metadata.csv>, output_path=<out.h5ad>)` to produce the `(samples x sites)` AnnData.
-4. **Validate.** `pytest hvantk/skills/cptac/phospho/tests` (parser + drift-probe) and `pytest hvantk/tests/test_expression_builders_anndata.py::TestBuildCptacPhosphoAd` (builder round-trip).
+3. **Builder.** `build_cptac_phospho(parsed_input, ctx, site_id_col=…, sample_id_col=…)` where `parsed_input = {"expression": <matrix.csv>, "metadata": <metadata.csv>}`, to produce the `(samples x sites)` `ExpressionMatrix`.
+4. **Validate.** `pytest hvantk/skills/cptac/phospho/tests` (parser + drift-probe).
 
 ## 8. Update playbook
 
@@ -106,7 +106,7 @@ Per `_conventions` § 9:
 The plugin manifest already declares these paths so the loader contract holds. Parser unit tests + drift-probe sanity test pass today; the builder round-trip snapshot is the gap to close in a follow-up.
 
 > **Snapshot status:** schema.json and sample_rows.json have NOT yet been seeded
-> for this plugin. On first round-trip run in a hail-enabled environment, use
-> `pytest hvantk/skills/cptac/phospho/tests/test_builder.py --regenerate-snapshots`
+> for this plugin. On first round-trip run, use
+> `pytest hvantk/skills/cptac/phospho/tests --regenerate-snapshots`
 > to bootstrap them, then commit. Until seeded, the round-trip test cannot verify
 > output against a fixed schema.

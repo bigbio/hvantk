@@ -12,13 +12,36 @@ Upstream: https://www.ensembl.org/biomart/
 
 - `ensembl-gene:genes` — gene-level annotation table, keyed by gene_id (Ensembl gene ID)
 
-## Phase K notes
+## Build
 
-This plugin was promoted from the hardcoded `_TABLE_BUILDERS` entry of
-the same name as part of Phase K of the data-model platform refactor.
-The drift probe is a stub; a real probe should be implemented in a
-follow-up. The downloader is not implemented; upstream files are
-expected to be externally materialized for now.
+```bash
+hvantk reprocess ensembl-gene:genes \
+  --raw-dir <dir-containing-biomart-tsv> \
+  --output <out.ht> \
+  [--plugin-arg canonical=true] \
+  [--plugin-arg fields=gene_id,gene_name]
+```
+
+The build is resolved by the plugin loader
+(`hvantk/core/plugin/loader.py`) from `plugin.yaml` via
+`get_registry().get_dataset("ensembl-gene:genes")` and executed through
+`run_builder_for_spec` (`hvantk/core/plugin/run_builder.py`).
+
+The builder is `build_ensembl_gene_genes` in
+`hvantk/skills/ensembl_gene/builder.py`, with signature
+`build_ensembl_gene_genes(parsed_input, ctx, **params) -> AnnotationTable`.
+It imports the BioMart TSV inline via `hl.import_table`, renames fields
+using `ENSEMBL_BIOMART_FIELDS` from
+`hvantk/skills/ensembl_gene/shared/constants.py`, optionally filters to
+canonical transcripts (`canonical` param, default `True`), groups by
+`gene_id`, optionally selects `fields`, and wraps the result with
+`AnnotationTable.from_hail`.
+
+## Notes
+
+The drift probe is a stub (`drift_probe.py`); a real probe should be
+implemented in a follow-up. No downloader is implemented; upstream
+BioMart exports are expected to be externally materialized for now.
 
 ## Schema
 

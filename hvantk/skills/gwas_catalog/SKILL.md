@@ -23,7 +23,7 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes every conve
 
 ## 3. Backend choice + reasoning
 
-**`backend: hail`, `domain: variants`.** The catalog is a flat ~10⁶-row TSV consumed by joining onto variant tables (ClinVar, dbNSFP, gnomAD) keyed by `(locus, alleles)`. Hail gives `hl.parse_locus` over `CHR_ID` + `CHR_POS`, cheap key-joins into the existing variant ecosystem, and free checkpointing + globals via `_create_table_base`. A pandas builder would force callers to materialize ~1M rows per join. Domain is `variants` (not `genes`) — every row anchors to a SNP, not `MAPPED_GENE`.
+**`backend: hail`, `domain: variants`.** The catalog is a flat ~10⁶-row TSV consumed by joining onto variant tables (ClinVar, dbNSFP, gnomAD) keyed by `(locus, alleles)`. Hail gives `hl.parse_locus` over `CHR_ID` + `CHR_POS` and cheap key-joins into the existing variant ecosystem. The builder imports and transforms the table inline (`hl.import_table` + renames/casts) and returns an `AnnotationTable`. A pandas builder would force callers to materialize ~1M rows per join. Domain is `variants` (not `genes`) — every row anchors to a SNP, not `MAPPED_GENE`.
 
 Key by `(locus, alleles)` with sentinel ALT — `alleles = [<risk_allele>, "N"]`. The risk allele is real; the ALT is a synthetic `"N"` sentinel. Callers joining against ClinVar / gnomAD must normalize on REF/ALT separately; this skill does not do that work.
 
@@ -67,7 +67,7 @@ Type coercions in transform (all string at import):
 
 ## 5. Output contract
 
-- **Object:** `hl.Table` checkpointed to `output_path` (a `.ht` directory).
+- **Object:** an `AnnotationTable` (from `hvantk.core.models`) wrapping the keyed `hl.Table`, built via `AnnotationTable.from_hail(ht, provenance=...)`. The plugin runtime materializes it to disk.
 - **Key:** `[locus, alleles]` where `alleles = [<risk_allele>, "N"]` (sentinel ALT).
 - **Provenance:** stamped via `ctx.provenance(schema_id="gwas-catalog-associations-v1")`; persisted as a sidecar `.provenance.json`.
 - **Fields:** snake_case 1:1 renames of the surviving raw 34 columns. Do not drop raw columns; let callers `select()`. No judgment-call flag columns (`is_haplotype`, `has_risk_allele`) — both disqualifying conditions are filtered upstream.
@@ -75,16 +75,16 @@ Type coercions in transform (all string at import):
 
 ## 6. hvantk integration points
 
-- **Builder:** `create_gwas_catalog_tb` in `hvantk/skills/gwas_catalog/builder.py`, via `_create_table_base()`. Signature per conventions §5. A re-export shim in `hvantk/tables/table_builders.py` keeps the old import path working.
-- **Registry:** registered via the plugin manifest at `hvantk/skills/gwas_catalog/plugin.yaml` (`gwas-catalog:associations`). Plugin discovery wires it into `TABLE_BUILDERS` at import time.
-- **CLI:** `hvantk reprocess gwas-catalog:associations --raw-dir <dir> --output <path>.ht --skip-download` (gwas-catalog declares no `lifecycle.download`, so `--skip-download` is always required; `<dir>` must contain the unzipped TSV). Builder kwargs (`reference_genome`) flow through `--plugin-arg key=value`.
+- **Builder:** `build_gwas_catalog_associations` in `hvantk/skills/gwas_catalog/builder.py`. Signature `(parsed_input, ctx, *, reference_genome="GRCh38") -> AnnotationTable`. Imports and transforms the table inline; no shared `_create_table_base` helper exists.
+- **Registry:** declared by the plugin manifest at `hvantk/skills/gwas_catalog/plugin.yaml` under `datasets[].builder` (dataset key `gwas-catalog:associations`). The plugin loader (`hvantk/core/plugin/loader.py`) auto-resolves the dataset via `get_registry().get_dataset("gwas-catalog:associations")`; top-level builds run through `run_builder_for_spec` (`hvantk/core/plugin/run_builder.py`). There is no `TABLE_BUILDERS` registry.
+- **CLI:** `hvantk reprocess gwas-catalog:associations --raw-dir <dir> --output <path>.ht` (gwas-catalog declares no `lifecycle.download`; `<dir>` must contain the unzipped TSV). Builder kwargs (`reference_genome`) flow through `--plugin-arg key=value`.
 - **Catalog wiring:** see §2. **Downloader:** out of scope.
 
 ## 7. Workflow steps
 
 1. **Resolve raw path.** Caller passes the unzipped TSV path; the builder does not unzip.
 2. **Import.** `hl.import_table(input_path, delimiter='\t', quote=None, missing='', impute=False)`.
-3. **Transform** (`transform_func` passed to `_create_table_base`):
+3. **Transform** (inline in the builder, after import):
    - Rename the 34 columns to snake_case 1:1 (do not drop).
    - Filter rows where `STRONGEST SNP-RISK ALLELE` ends in `-?` (judgment call #2).
    - Filter rows where `CHR_ID` is not canonical (no match against `^(chr)?(\d+|X|Y|MT?)$`) — drops `;`-separated and `x`-separated malformed shapes (judgment call #3).
@@ -92,7 +92,7 @@ Type coercions in transform (all string at import):
    - Recode `chr_id` to GRCh38 contig form: the catalog ships bare contigs (`"7"`, `"12"`), but Hail's `GRCh38` reference expects `"chr7"` etc. Use `contig = hl.if_else(chr_id.startswith("chr"), chr_id, "chr" + chr_id)`, then `locus = hl.parse_locus(contig + ':' + hl.str(chr_pos), reference_genome=reference_genome)`.
    - Extract `risk_allele` from `STRONGEST SNP-RISK ALLELE` (split on `-`, take suffix).
    - Construct `alleles = [risk_allele, "N"]` and `key_by(locus, alleles)`.
-4. **Checkpoint + globals + optional TSV.** Handled by `_create_table_base` via `overwrite` and `export_tsv` kwargs.
+4. **Wrap + return.** Return `AnnotationTable.from_hail(ht, provenance=ctx.provenance(schema_id="gwas-catalog-associations-v1"))`. The plugin runtime handles materialization/checkpointing to `--output`.
 
 ## 8. Update playbook
 
@@ -113,4 +113,4 @@ Per conventions §9:
 - **sample_keys:** `hvantk/skills/gwas_catalog/tests/snapshots/sample_keys.json`. Lists the `(locus, alleles)` keys used for `row_snapshot` assertions. These keys MUST be unique-in-table — `_snapshot_utils.collect_sample_rows` does not deduplicate, so a duplicated key produces non-deterministic snapshots. Multi-trait-per-variant rows in this catalog routinely share keys; the snapshot subset must use singleton-key rows.
 - **test_command:** `pytest hvantk/skills/gwas_catalog/tests -m hail`.
 
-Round-trip test asserts: builder idempotent with `overwrite=True`; checkpointed schema matches `schema.json`; deterministic sorted row slice matches `sample_rows.json`. Regenerate via `--regenerate-snapshots` when a judgment call resolves or the schema changes.
+Round-trip test (`tests/test_builder.py`) asserts: the materialized schema matches `schema.json`; the row slice for the keys in `sample_keys.json` matches `sample_rows.json`. The test drives the builder through `phase_b_snapshot_adapter`, which materializes the returned `AnnotationTable` to a temp `.ht`. Regenerate via `--regenerate-snapshots` when a judgment call resolves or the schema changes.
