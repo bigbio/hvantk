@@ -6,7 +6,6 @@ gnomAD lof_metrics TSV keyed by ``gene_id`` and wraps with Provenance.
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 import hail as hl
 

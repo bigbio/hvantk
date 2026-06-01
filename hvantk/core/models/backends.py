@@ -17,7 +17,6 @@ class Backend(Enum):
 
     HAIL = "hail"
     PANDAS = "pandas"
-    DUCKDB = "duckdb"
 
 
 @dataclass

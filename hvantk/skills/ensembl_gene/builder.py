@@ -7,7 +7,6 @@ BioMart TSV, renames fields, filters to canonical transcripts, groups by
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 import hail as hl
 
