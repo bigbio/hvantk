@@ -989,7 +989,7 @@ def plot_allele_frequency_spectrum(
                     x[1] if isinstance(x, (list, np.ndarray)) and len(x) > 1 else x
                 )
             )
-        except:
+        except Exception:
             afs = df[af_col]
     else:
         afs = df[af_col]
@@ -1260,7 +1260,7 @@ def plot_variant_qc_overview(
                         x[1] if isinstance(x, (list, np.ndarray)) and len(x) > 1 else x
                     )
                 )
-            except:
+            except Exception:
                 afs = df[af_col]
         else:
             afs = df[af_col]
@@ -1327,7 +1327,7 @@ def plot_variant_qc_overview(
                         x[1] if isinstance(x, (list, np.ndarray)) and len(x) > 1 else x
                     )
                 )
-            except:
+            except Exception:
                 acs = df[ac_col]
         else:
             acs = df[ac_col]
@@ -1568,7 +1568,7 @@ def plot_qc_summary_dashboard(
                             else x
                         )
                     )
-                except:
+                except Exception:
                     afs = variant_data[af_col]
             else:
                 afs = variant_data[af_col]
@@ -1618,7 +1618,7 @@ def plot_qc_summary_dashboard(
                             else x
                         )
                     )
-                except:
+                except Exception:
                     acs = variant_data[ac_col]
             else:
                 acs = variant_data[ac_col]
@@ -1688,7 +1688,7 @@ def plot_qc_summary_dashboard(
                             else x
                         )
                     )
-                except:
+                except Exception:
                     afs = variant_data[af_col]
             else:
                 afs = variant_data[af_col]

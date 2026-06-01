@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 def build_msigdb_genesets(
     parsed_input,
     ctx,
+    **params,
 ):
     """Phase B builder — returns an AnnotationTable.
 
