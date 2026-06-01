@@ -166,7 +166,10 @@ def str_to_bool(expr: hl.StringExpression) -> hl.BooleanExpression:
 def strip_curie_prefix(expr: hl.StringExpression, prefix: str) -> hl.StringExpression:
     """Strip a CURIE *prefix* (e.g. ``"HGNC:"``) from a Hail string expression.
 
-    Values that do not start with *prefix* are returned unchanged.
+    Values that do not start with *prefix* are returned unchanged. Only the
+    leading prefix is removed (via slicing), not every occurrence — Hail's
+    ``StringExpression.replace`` is regex/global and would over-strip a token
+    that recurs later in the value.
 
     Parameters
     ----------
@@ -179,7 +182,7 @@ def strip_curie_prefix(expr: hl.StringExpression, prefix: str) -> hl.StringExpre
     -------
     hl.StringExpression
     """
-    return hl.if_else(expr.startswith(prefix), expr.replace(prefix, ""), expr)
+    return hl.if_else(expr.startswith(prefix), expr[len(prefix):], expr)
 
 
 def annotate_classification_level(
