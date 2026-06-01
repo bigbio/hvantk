@@ -15,7 +15,12 @@ from hvantk.skills.gencc.shared.constants import (
     GENCC_CLASSIFICATION_LEVELS,
     GENCC_SUBMISSION_FIELDS,
 )
-from hvantk.core.utils.table_utils import get_row_fields
+from hvantk.core.utils.table_utils import (
+    get_row_fields,
+    strip_curie_prefix,
+    annotate_classification_level,
+    filter_min_classification,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -58,34 +63,15 @@ def build_gencc_submissions(
 
     row_fields = get_row_fields(ht)
     if "hgnc_id" in row_fields:
-        ht = ht.annotate(
-            hgnc_id=hl.if_else(
-                ht.hgnc_id.startswith("HGNC:"),
-                ht.hgnc_id.replace("HGNC:", ""),
-                ht.hgnc_id,
-            )
-        )
+        ht = ht.annotate(hgnc_id=strip_curie_prefix(ht.hgnc_id, "HGNC:"))
     if "mondo_id" in row_fields:
-        ht = ht.annotate(
-            mondo_id=hl.if_else(
-                ht.mondo_id.startswith("MONDO:"),
-                ht.mondo_id.replace("MONDO:", ""),
-                ht.mondo_id,
-            )
-        )
+        ht = ht.annotate(mondo_id=strip_curie_prefix(ht.mondo_id, "MONDO:"))
 
-    classification_order = {
-        level: i for i, level in enumerate(GENCC_CLASSIFICATION_LEVELS)
-    }
-    ht = ht.annotate(
-        classification_level=hl.literal(classification_order).get(
-            ht.classification, hl.len(GENCC_CLASSIFICATION_LEVELS)
-        )
-    )
-
+    ht = annotate_classification_level(ht, GENCC_CLASSIFICATION_LEVELS)
     if min_classification is not None:
-        min_level = classification_order[min_classification]
-        ht = ht.filter(ht.classification_level <= min_level)
+        ht = filter_min_classification(
+            ht, GENCC_CLASSIFICATION_LEVELS, min_classification
+        )
 
     ht = ht.key_by("hgnc_id", "mondo_id", "submitter")
 

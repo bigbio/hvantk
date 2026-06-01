@@ -159,6 +159,98 @@ def str_to_bool(expr: hl.StringExpression) -> hl.BooleanExpression:
 
 
 # ---------------------------------------------------------------------------
+# Gene-disease classification levels & CURIE prefixes
+# ---------------------------------------------------------------------------
+
+
+def strip_curie_prefix(expr: hl.StringExpression, prefix: str) -> hl.StringExpression:
+    """Strip a CURIE *prefix* (e.g. ``"HGNC:"``) from a Hail string expression.
+
+    Values that do not start with *prefix* are returned unchanged.
+
+    Parameters
+    ----------
+    expr : hl.StringExpression
+        The string field to normalise.
+    prefix : str
+        The CURIE prefix to strip (e.g. ``"HGNC:"`` or ``"MONDO:"``).
+
+    Returns
+    -------
+    hl.StringExpression
+    """
+    return hl.if_else(expr.startswith(prefix), expr.replace(prefix, ""), expr)
+
+
+def annotate_classification_level(
+    ht: hl.Table,
+    levels: Sequence[str],
+    *,
+    field: str = "classification",
+    level_field: str = "classification_level",
+) -> hl.Table:
+    """Annotate *level_field* with the ordinal rank of ``ht[field]`` in *levels*.
+
+    The ordinal is the index of the classification within *levels* (most
+    confident first). Values absent from *levels* (including missing) map to
+    ``len(levels)`` so they sort last.
+
+    Parameters
+    ----------
+    ht : hl.Table
+        Table carrying a string *field* of classification labels.
+    levels : sequence of str
+        Ordered classification labels, most-confident first.
+    field : str
+        Source classification field name. Defaults to ``"classification"``.
+    level_field : str
+        Name of the integer rank field to add. Defaults to
+        ``"classification_level"``.
+
+    Returns
+    -------
+    hl.Table
+    """
+    order = {level: i for i, level in enumerate(levels)}
+    return ht.annotate(
+        **{level_field: hl.literal(order).get(ht[field], hl.len(levels))}
+    )
+
+
+def filter_min_classification(
+    ht: hl.Table,
+    levels: Sequence[str],
+    min_classification: str,
+    *,
+    level_field: str = "classification_level",
+) -> hl.Table:
+    """Filter *ht* to rows at or above *min_classification* confidence.
+
+    Keeps rows whose *level_field* ordinal is ``<=`` the ordinal of
+    *min_classification* within *levels* (lower ordinal == higher confidence).
+    Requires *level_field* to already exist — see
+    :func:`annotate_classification_level`.
+
+    Parameters
+    ----------
+    ht : hl.Table
+        Table with *level_field* already annotated.
+    levels : sequence of str
+        Ordered classification labels, most-confident first.
+    min_classification : str
+        Minimum confidence level to keep; must be one of *levels*.
+    level_field : str
+        Integer rank field to filter on. Defaults to ``"classification_level"``.
+
+    Returns
+    -------
+    hl.Table
+    """
+    min_level = {level: i for i, level in enumerate(levels)}[min_classification]
+    return ht.filter(ht[level_field] <= min_level)
+
+
+# ---------------------------------------------------------------------------
 # Field resolution — handles both flat dotted names and nested structs
 # ---------------------------------------------------------------------------
 
