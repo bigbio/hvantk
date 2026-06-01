@@ -20,6 +20,9 @@ import logging
 import tempfile
 from datetime import datetime
 
+# hail_context applies the NumPy ``np.bool`` compatibility shim before it
+# imports Hail, so it must be imported before ``import hail`` below.
+from hvantk.core.utils.hail_context import init_hail
 import hail as hl
 
 from hvantk.algorithms.hgc import (
@@ -30,7 +33,6 @@ from hvantk.algorithms.hgc import (
     compute_variant_qc,
     filter_samples_by_qc,
     filter_variants_by_qc,
-    save_qc_metrics,
     QCMetrics,
 )
 
@@ -252,16 +254,15 @@ class PipelineRunner:
         self.logger.info(f"Output paths configured: {self.paths}")
 
     def _initialize_hail(self):
-        """Initialize Hail if not already initialized."""
-        try:
-            # Check if Hail is already initialized
-            hl.current_backend()
-            self.logger.info("Hail already initialized")
-        except:
-            # Initialize Hail
-            tmp_dir = self.config.tmp_dir or tempfile.gettempdir()
-            hl.init(tmp_dir=tmp_dir, quiet=False)
-            self.logger.info(f"Hail initialized with tmp_dir: {tmp_dir}")
+        """Initialize Hail if not already initialized.
+
+        Delegates to the managed, idempotent, thread-safe ``init_hail`` so
+        repeated pipeline invocations in one process do not trigger a second
+        ``hl.init`` (which Hail rejects), and ``HVANTK_SKIP_HAIL_INIT`` is honored.
+        """
+        tmp_dir = self.config.tmp_dir or tempfile.gettempdir()
+        init_hail(tmp_dir=tmp_dir, quiet=False)
+        self.logger.info(f"Hail initialized with tmp_dir: {tmp_dir}")
 
     def show_plan(self):
         """Display the execution plan without running."""

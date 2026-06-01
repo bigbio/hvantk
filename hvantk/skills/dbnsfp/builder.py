@@ -8,7 +8,6 @@ Provenance.
 from __future__ import annotations
 
 import logging
-from typing import Any, List, Optional
 
 import hail as hl
 

@@ -964,7 +964,7 @@ def ptm_test(
         click.echo(f"Running {mode} for {len(strata)} strata...")
 
         if mode == "lmm":
-            from hvantk.algorithms.ptm.test import run_lmm
+            from hvantk.algorithms.ptm.lmm import run_lmm
 
             rows = []
             for s in strata:
@@ -998,7 +998,7 @@ def ptm_test(
                     err=True,
                 )
                 ctx.exit(1)
-            from hvantk.algorithms.ptm.test import run_binned_interaction_lmm
+            from hvantk.algorithms.ptm.lmm import run_binned_interaction_lmm
 
             wide = _read_expression_wide(expression_pkl, expression_tsv)
             rows = []

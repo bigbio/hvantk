@@ -120,10 +120,12 @@ def compute_qc(
             click.echo(f"   • Save MatrixTable: {save_mt}")
             return
 
-        # Import hail and read MatrixTable
+        # Import hail_context (init_hail) before hail: it applies the NumPy
+        # np.bool compatibility shim before importing Hail.
+        from hvantk.core.utils.hail_context import init_hail
         import hail as hl
 
-        hl.init(quiet=True)
+        init_hail(quiet=True)
 
         click.echo("🔄 Loading MatrixTable...")
         mt = hl.read_matrix_table(input)
@@ -282,10 +284,12 @@ def filter_qc(
             click.echo(f"     - HWE threshold: {hwe_threshold}")
             return
 
-        # Import hail and read MatrixTable
+        # Import hail_context (init_hail) before hail: it applies the NumPy
+        # np.bool compatibility shim before importing Hail.
+        from hvantk.core.utils.hail_context import init_hail
         import hail as hl
 
-        hl.init(quiet=True)
+        init_hail(quiet=True)
 
         click.echo("🔄 Loading MatrixTable...")
         mt = hl.read_matrix_table(input)
@@ -611,6 +615,9 @@ def plot_qc(
         hvantk hgc plot-qc -i cohort_qc.mt -o plots/ --interactive --dry-run
     """
     try:
+        # hail_context (init_hail) first: it applies the NumPy np.bool
+        # compatibility shim before Hail is imported.
+        from hvantk.core.utils.hail_context import init_hail
         import hail as hl
         from pathlib import Path
 
@@ -648,7 +655,7 @@ def plot_qc(
         output_path.mkdir(parents=True, exist_ok=True)
 
         # Initialize Hail
-        hl.init(quiet=True)
+        init_hail(quiet=True)
 
         # Load MatrixTable
         click.echo(f"📥 Loading MatrixTable from {input}")
@@ -663,7 +670,7 @@ def plot_qc(
             ctx.exit(1)
 
         # Extract QC metrics
-        from hvantk.algorithms.hgc.qc import extract_qc_metrics, QCMetrics
+        from hvantk.algorithms.hgc.qc import QCMetrics
 
         # Create QCMetrics object
         sample_qc = mt.cols().select("sample_qc") if "sample_qc" in mt.col else None
@@ -914,6 +921,9 @@ def qc_report(ctx, input, output, title, include_plots, style, dry_run):
         hvantk hgc qc-report -i cohort_qc.mt -o report.html --style publication --dry-run
     """
     try:
+        # hail_context (init_hail) first: it applies the NumPy np.bool
+        # compatibility shim before Hail is imported.
+        from hvantk.core.utils.hail_context import init_hail
         import hail as hl
         from pathlib import Path
 
@@ -937,7 +947,7 @@ def qc_report(ctx, input, output, title, include_plots, style, dry_run):
             return
 
         # Initialize Hail
-        hl.init(quiet=True)
+        init_hail(quiet=True)
 
         # Load MatrixTable
         click.echo(f"📥 Loading MatrixTable from {input}")

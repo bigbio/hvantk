@@ -12,7 +12,7 @@ and keeps the API surface small.
 
 Example
 -------
-    >>> from hvantk.algorithms.ptm.test import run_lmm, run_binned_interaction_lmm
+    >>> from hvantk.algorithms.ptm.lmm import run_lmm, run_binned_interaction_lmm
     >>> result = run_lmm(df_heart, stratum="Heart")
     >>> print(result.beta_ptm, result.p_ptm)
 """
