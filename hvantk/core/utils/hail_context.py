@@ -83,6 +83,29 @@ def init_hail(**kwargs) -> None:
                     kwargs,
                 )
             return
+        # A Hail backend may already exist from a path other than init_hail()
+        # — e.g. a raw hl.init() in a notebook or a test fixture. Calling
+        # hl.init() again raises Hail's "already initialized" error, so adopt
+        # the existing session instead of re-initializing.
+        try:
+            hl.current_backend()
+            already_running = True
+        except Exception:
+            already_running = False
+        if already_running:
+            _HAIL_INITIALIZED = True
+            _HAIL_INIT_ARGS = dict(kwargs)
+            if kwargs:
+                _logger.warning(
+                    "Hail already initialized outside init_hail(); "
+                    "cannot apply init kwargs %s",
+                    kwargs,
+                )
+            else:
+                _logger.info(
+                    "Adopting Hail backend already initialized outside init_hail()"
+                )
+            return
         hl.init(**kwargs)
         _HAIL_INITIALIZED = True
         _HAIL_INIT_ARGS = dict(kwargs)
