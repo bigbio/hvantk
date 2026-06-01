@@ -87,11 +87,11 @@ _LAZY_MODULES = {
         "annotate_variants_by_symbol",
     ),
     # Phase-2 constraint tests (statsmodels)
-    "LMMResult": ("hvantk.algorithms.ptm.test", "LMMResult"),
-    "BinnedLMMResult": ("hvantk.algorithms.ptm.test", "BinnedLMMResult"),
-    "run_lmm": ("hvantk.algorithms.ptm.test", "run_lmm"),
+    "LMMResult": ("hvantk.algorithms.ptm.lmm", "LMMResult"),
+    "BinnedLMMResult": ("hvantk.algorithms.ptm.lmm", "BinnedLMMResult"),
+    "run_lmm": ("hvantk.algorithms.ptm.lmm", "run_lmm"),
     "run_binned_interaction_lmm": (
-        "hvantk.algorithms.ptm.test",
+        "hvantk.algorithms.ptm.lmm",
         "run_binned_interaction_lmm",
     ),
     # Phase-2 report writer
