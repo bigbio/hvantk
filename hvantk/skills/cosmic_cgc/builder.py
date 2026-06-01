@@ -16,7 +16,13 @@ from hvantk.skills.cosmic_cgc.shared.constants import (
     COSMIC_CGC_CLASSIFICATION_LEVELS,
     COSMIC_MUTATION_CONTEXTS,
 )
-from hvantk.core.utils.table_utils import get_row_fields, build_rename_map, str_to_bool
+from hvantk.core.utils.table_utils import (
+    get_row_fields,
+    build_rename_map,
+    str_to_bool,
+    annotate_classification_level,
+    filter_min_classification,
+)
 from hvantk.core.utils.file_utils import resolve_compression
 
 if TYPE_CHECKING:
@@ -96,15 +102,7 @@ def build_cosmic_cgc_submissions(
     )
 
     # Add classification_level numeric field
-    classification_order = {
-        level: i for i, level in enumerate(COSMIC_CGC_CLASSIFICATION_LEVELS)
-    }
-    ht = ht.annotate(
-        classification_level=hl.literal(classification_order).get(
-            ht.classification,
-            hl.len(COSMIC_CGC_CLASSIFICATION_LEVELS),
-        )
-    )
+    ht = annotate_classification_level(ht, COSMIC_CGC_CLASSIFICATION_LEVELS)
 
     # Normalize boolean fields
     for bool_field in ("somatic", "germline", "hallmark"):
@@ -143,13 +141,10 @@ def build_cosmic_cgc_submissions(
 
     # Apply min_classification filter
     if min_classification is not None:
-        min_level = classification_order[min_classification]
-        logger.info(
-            "Filtering to classifications >= %s (level %d)",
-            min_classification,
-            min_level,
+        logger.info("Filtering to classifications >= %s", min_classification)
+        ht = filter_min_classification(
+            ht, COSMIC_CGC_CLASSIFICATION_LEVELS, min_classification
         )
-        ht = ht.filter(ht.classification_level <= min_level)
 
     # Resolve gene_symbol -> hgnc_id if a gene catalog is available
     if gene_catalog is not None:

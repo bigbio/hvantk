@@ -20,8 +20,10 @@ def test_all_expected_tool_domains_have_at_least_one_tool():
     tool_loader.reset_registry_for_tests()
     reg = tool_loader.get_registry()
     domains = {t.domain for t in reg.list_tools()}
+    # NOTE: "annotation" intentionally absent — its only tool (annotate_features,
+    # a legacy unwired argparse script) was removed; the domain has no CLI tool.
     expected = {
-        "plugins", "expression", "annotation", "genesets",
+        "plugins", "expression", "genesets",
         "ptm", "ancestry", "qtl", "enrichex", "hgc", "infra",
     }
     missing = expected - domains
