@@ -48,17 +48,6 @@ from .qc_plots import (
 
 logger = logging.getLogger(__name__)
 
-# Plotly color scheme (matching our QC colors)
-PLOTLY_COLORS = {
-    "pass": "#2E8B57",  # Sea Green
-    "warn": "#FF8C00",  # Dark Orange
-    "fail": "#DC143C",  # Crimson
-    "neutral": "#4682B4",  # Steel Blue
-    "highlight": "#FFD700",  # Gold
-    "background": "#F5F5F5",  # White Smoke
-}
-
-
 def check_plotly_available():
     """Check if plotly is available and raise informative error if not."""
     if not HAS_PLOTLY:
@@ -112,7 +101,7 @@ def plot_interactive_sample_call_rates(
             x=call_rates,
             nbinsx=50,
             name="Call Rates",
-            marker_color=PLOTLY_COLORS["neutral"],
+            marker_color=QC_COLORS["neutral"],
             opacity=0.7,
             hovertemplate="<b>Call Rate Range:</b> %{x}<br>"
             + "<b>Sample Count:</b> %{y}<br>"
@@ -128,7 +117,7 @@ def plot_interactive_sample_call_rates(
         fig.add_vline(
             x=thresholds["good"],
             line_dash="dash",
-            line_color=PLOTLY_COLORS["pass"],
+            line_color=QC_COLORS["pass"],
             annotation_text=f"Good (≥{thresholds['good']:.2f})",
             annotation_position="top",
         )
@@ -137,7 +126,7 @@ def plot_interactive_sample_call_rates(
         fig.add_vline(
             x=thresholds["acceptable"],
             line_dash="dash",
-            line_color=PLOTLY_COLORS["warn"],
+            line_color=QC_COLORS["warn"],
             annotation_text=f"Acceptable (≥{thresholds['acceptable']:.2f})",
             annotation_position="top",
         )
@@ -207,7 +196,7 @@ def plot_interactive_sample_titv(
             x=filtered_ratios,
             nbinsx=50,
             name="Ti/Tv Ratios",
-            marker_color=PLOTLY_COLORS["neutral"],
+            marker_color=QC_COLORS["neutral"],
             opacity=0.7,
             hovertemplate="<b>Ti/Tv Range:</b> %{x}<br>"
             + "<b>Sample Count:</b> %{y}<br>"
@@ -223,7 +212,7 @@ def plot_interactive_sample_titv(
         fig.add_vrect(
             x0=thresholds["good_min"],
             x1=thresholds["good_max"],
-            fillcolor=PLOTLY_COLORS["pass"],
+            fillcolor=QC_COLORS["pass"],
             opacity=0.2,
             layer="below",
             line_width=0,
@@ -292,7 +281,7 @@ def plot_interactive_variant_call_rates(
             x=call_rates,
             nbinsx=50,
             name="Call Rates",
-            marker_color=PLOTLY_COLORS["neutral"],
+            marker_color=QC_COLORS["neutral"],
             opacity=0.7,
             hovertemplate="<b>Call Rate Range:</b> %{x}<br>"
             + "<b>Variant Count:</b> %{y}<br>"
@@ -308,7 +297,7 @@ def plot_interactive_variant_call_rates(
         fig.add_vline(
             x=thresholds["good"],
             line_dash="dash",
-            line_color=PLOTLY_COLORS["pass"],
+            line_color=QC_COLORS["pass"],
             annotation_text=f"Good (≥{thresholds['good']:.2f})",
             annotation_position="top",
         )
@@ -317,7 +306,7 @@ def plot_interactive_variant_call_rates(
         fig.add_vline(
             x=thresholds["acceptable"],
             line_dash="dash",
-            line_color=PLOTLY_COLORS["warn"],
+            line_color=QC_COLORS["warn"],
             annotation_text=f"Acceptable (≥{thresholds['acceptable']:.2f})",
             annotation_position="top",
         )
@@ -399,7 +388,7 @@ def plot_interactive_allele_frequencies(
             x=afs_filtered,
             nbinsx=50,
             name="Allele Frequencies",
-            marker_color=PLOTLY_COLORS["neutral"],
+            marker_color=QC_COLORS["neutral"],
             opacity=0.7,
             hovertemplate="<b>AF Range:</b> %{x}<br>"
             + "<b>Variant Count:</b> %{y}<br>"
@@ -411,7 +400,7 @@ def plot_interactive_allele_frequencies(
     fig.add_vline(
         x=0.01,
         line_dash="dash",
-        line_color=PLOTLY_COLORS["warn"],
+        line_color=QC_COLORS["warn"],
         annotation_text="1% MAF",
         annotation_position="top",
     )
@@ -419,7 +408,7 @@ def plot_interactive_allele_frequencies(
     fig.add_vline(
         x=0.05,
         line_dash="dash",
-        line_color=PLOTLY_COLORS["pass"],
+        line_color=QC_COLORS["pass"],
         annotation_text="5% MAF",
         annotation_position="top",
     )
@@ -501,7 +490,7 @@ def plot_interactive_hwe_pvalues(
             x=plot_values,
             nbinsx=50,
             name="HWE p-values",
-            marker_color=PLOTLY_COLORS["neutral"],
+            marker_color=QC_COLORS["neutral"],
             opacity=0.7,
             hovertemplate=f"<b>{xlabel} Range:</b> %{{x}}<br>"
             + "<b>Variant Count:</b> %{y}<br>"
@@ -519,7 +508,7 @@ def plot_interactive_hwe_pvalues(
         else:
             line_val = threshold
 
-        color = PLOTLY_COLORS["fail"] if name == "fail" else PLOTLY_COLORS["warn"]
+        color = QC_COLORS["fail"] if name == "fail" else QC_COLORS["warn"]
         fig.add_vline(
             x=line_val,
             line_dash="dash",
@@ -615,7 +604,7 @@ def plot_interactive_sample_scatter(
             ],
             **kwargs,
         )
-        fig.update_traces(marker_color=PLOTLY_COLORS["neutral"])
+        fig.update_traces(marker_color=QC_COLORS["neutral"])
 
     # Customize layout
     if title is None:
@@ -697,7 +686,7 @@ def plot_interactive_qc_dashboard(
                     x=call_rates,
                     nbinsx=30,
                     name="Sample Call Rates",
-                    marker_color=PLOTLY_COLORS["neutral"],
+                    marker_color=QC_COLORS["neutral"],
                     opacity=0.7,
                     showlegend=False,
                     hovertemplate="Call Rate: %{x}<br>Count: %{y}<extra></extra>",
@@ -718,7 +707,7 @@ def plot_interactive_qc_dashboard(
                     x=filtered_ti_tv,
                     nbinsx=30,
                     name="Ti/Tv Ratios",
-                    marker_color=PLOTLY_COLORS["pass"],
+                    marker_color=QC_COLORS["pass"],
                     opacity=0.7,
                     showlegend=False,
                     hovertemplate="Ti/Tv Ratio: %{x}<br>Count: %{y}<extra></extra>",
@@ -741,7 +730,7 @@ def plot_interactive_qc_dashboard(
                     x=call_rates,
                     nbinsx=30,
                     name="Variant Call Rates",
-                    marker_color=PLOTLY_COLORS["warn"],
+                    marker_color=QC_COLORS["warn"],
                     opacity=0.7,
                     showlegend=False,
                     hovertemplate="Call Rate: %{x}<br>Count: %{y}<extra></extra>",
@@ -777,7 +766,7 @@ def plot_interactive_qc_dashboard(
                         x=afs_filtered,
                         nbinsx=30,
                         name="Allele Frequencies",
-                        marker_color=PLOTLY_COLORS["highlight"],
+                        marker_color=QC_COLORS["highlight"],
                         opacity=0.7,
                         showlegend=False,
                         hovertemplate="Allele Freq: %{x}<br>Count: %{y}<extra></extra>",
