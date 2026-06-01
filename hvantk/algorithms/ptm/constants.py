@@ -58,7 +58,7 @@ RESOLUTION_METHODS = ["xref_mane", "xref_any", "gene_mane"]
 
 # ---------------------------------------------------------------------------
 # Variant-annotation and LMM defaults
-# (consumed by hvantk.ptm.annotate and hvantk.ptm.test).
+# (consumed by hvantk.algorithms.ptm.annotate and hvantk.algorithms.ptm.lmm).
 # ---------------------------------------------------------------------------
 
 # Proximal flanking window for gene-symbol variant annotation:
@@ -84,13 +84,13 @@ EXPRESSION_BIN_LABELS = ["b0_none", "b1_Q1", "b2_Q2", "b3_Q3", "b4_Q4"]
 LOG_AF_EPSILON = 1e-8
 
 # Minimum per-stratum sample counts for the constraint LMM
-# (hvantk.ptm.test.fit_constraint_lmm). Below these the per-gene estimate
+# (hvantk.algorithms.ptm.lmm.fit_constraint_lmm). Below these the per-gene estimate
 # is unstable.
 LMM_MIN_N_PTM = 30
 LMM_MIN_N_NONPTM = 30
 LMM_MIN_MIXED_GENES = 10
 
 # Sparsity gates for the binned-interaction LMM
-# (hvantk.ptm.test.fit_binned_interaction_lmm).
+# (hvantk.algorithms.ptm.lmm.fit_binned_interaction_lmm).
 LMM_BINNED_MIN_POS_EXPR = 100
 LMM_BINNED_MIN_CELL_N = 5

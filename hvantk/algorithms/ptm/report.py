@@ -26,7 +26,7 @@ from hvantk.algorithms.ptm.plot import (
 
 if TYPE_CHECKING:  # avoid import-time Hail/statsmodels load for type hints
     from hvantk.algorithms.ptm.atlas import PTMAtlasResult
-    from hvantk.algorithms.ptm.test import BinnedLMMResult, LMMResult
+    from hvantk.algorithms.ptm.lmm import BinnedLMMResult, LMMResult
 
 logger = logging.getLogger(__name__)
 
