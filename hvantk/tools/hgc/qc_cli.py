@@ -667,7 +667,7 @@ def plot_qc(
             ctx.exit(1)
 
         # Extract QC metrics
-        from hvantk.algorithms.hgc.qc import extract_qc_metrics, QCMetrics
+        from hvantk.algorithms.hgc.qc import QCMetrics
 
         # Create QCMetrics object
         sample_qc = mt.cols().select("sample_qc") if "sample_qc" in mt.col else None

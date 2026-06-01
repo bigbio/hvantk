@@ -97,7 +97,7 @@ class WilcoxonParams:
         Maximum significant markers to return per group.
     correction_method : str
         Multiple-testing correction method passed to
-        :func:`~hvantk.enrichex.correction.apply_correction`.
+        :func:`~hvantk.algorithms.statistics.correction.apply_correction`.
     alpha : float
         Significance threshold on adjusted p-values.
     tie_correction : bool

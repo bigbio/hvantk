@@ -433,16 +433,6 @@ class PluginRegistry:
                 f"(new attempt from {plugin_id})"
             )
         self._providers[provider.name] = provider
-        # Register manifests (all datasets, bind or not).
-        for dm in provider.manifests:
-            if dm.name in self._manifests:
-                # Defensive: already set during _build_provider; this is a no-op.
-                pass
-        # Register successfully-bound specs.
-        for ds in provider.datasets:
-            if ds.name in self._datasets:
-                # Defensive: already cached; no action needed.
-                pass
 
 
 # --- Module-level singleton (lazy) ---
