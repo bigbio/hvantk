@@ -20,9 +20,11 @@ import logging
 import tempfile
 from datetime import datetime
 
+# hail_context applies the NumPy ``np.bool`` compatibility shim before it
+# imports Hail, so it must be imported before ``import hail`` below.
+from hvantk.core.utils.hail_context import init_hail
 import hail as hl
 
-from hvantk.core.utils.hail_context import init_hail
 from hvantk.algorithms.hgc import (
     combine_gvcfs,
     convert_vds_to_mt,

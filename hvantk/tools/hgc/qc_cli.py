@@ -120,9 +120,10 @@ def compute_qc(
             click.echo(f"   • Save MatrixTable: {save_mt}")
             return
 
-        # Import hail and read MatrixTable
-        import hail as hl
+        # Import hail_context (init_hail) before hail: it applies the NumPy
+        # np.bool compatibility shim before importing Hail.
         from hvantk.core.utils.hail_context import init_hail
+        import hail as hl
 
         init_hail(quiet=True)
 
@@ -283,9 +284,10 @@ def filter_qc(
             click.echo(f"     - HWE threshold: {hwe_threshold}")
             return
 
-        # Import hail and read MatrixTable
-        import hail as hl
+        # Import hail_context (init_hail) before hail: it applies the NumPy
+        # np.bool compatibility shim before importing Hail.
         from hvantk.core.utils.hail_context import init_hail
+        import hail as hl
 
         init_hail(quiet=True)
 
@@ -613,6 +615,9 @@ def plot_qc(
         hvantk hgc plot-qc -i cohort_qc.mt -o plots/ --interactive --dry-run
     """
     try:
+        # hail_context (init_hail) first: it applies the NumPy np.bool
+        # compatibility shim before Hail is imported.
+        from hvantk.core.utils.hail_context import init_hail
         import hail as hl
         from pathlib import Path
 
@@ -650,8 +655,6 @@ def plot_qc(
         output_path.mkdir(parents=True, exist_ok=True)
 
         # Initialize Hail
-        from hvantk.core.utils.hail_context import init_hail
-
         init_hail(quiet=True)
 
         # Load MatrixTable
@@ -918,6 +921,9 @@ def qc_report(ctx, input, output, title, include_plots, style, dry_run):
         hvantk hgc qc-report -i cohort_qc.mt -o report.html --style publication --dry-run
     """
     try:
+        # hail_context (init_hail) first: it applies the NumPy np.bool
+        # compatibility shim before Hail is imported.
+        from hvantk.core.utils.hail_context import init_hail
         import hail as hl
         from pathlib import Path
 
@@ -941,8 +947,6 @@ def qc_report(ctx, input, output, title, include_plots, style, dry_run):
             return
 
         # Initialize Hail
-        from hvantk.core.utils.hail_context import init_hail
-
         init_hail(quiet=True)
 
         # Load MatrixTable

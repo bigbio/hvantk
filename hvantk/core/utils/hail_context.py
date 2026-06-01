@@ -94,7 +94,11 @@ def init_hail(**kwargs) -> None:
             already_running = False
         if already_running:
             _HAIL_INITIALIZED = True
-            _HAIL_INIT_ARGS = dict(kwargs)
+            # The kwargs were NOT applied (Hail was initialized elsewhere), so
+            # record an empty dict rather than the requested kwargs — keeps
+            # get_hail_init_args() honest and lets later calls still surface
+            # conflicting-kwargs warnings.
+            _HAIL_INIT_ARGS = {}
             if kwargs:
                 _logger.warning(
                     "Hail already initialized outside init_hail(); "
