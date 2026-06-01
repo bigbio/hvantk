@@ -135,9 +135,10 @@ class VariantPredictionScoreAnnotator(Annotator):
 
     def annotate_chunk(self, chunk: hl.Table) -> hl.Table:
         """Add variant prediction scores"""
-        self.logger.debug(
-            f"Adding variant prediction scores to {chunk.count()} variants"
-        )
+        if self.logger.isEnabledFor(logging.DEBUG):
+            self.logger.debug(
+                f"Adding variant prediction scores to {chunk.count()} variants"
+            )
 
         # Annotate with prediction scores
         annotated = chunk.annotate(**self.annotation_data[chunk.key])
@@ -327,9 +328,10 @@ class PopulationFrequencyAnnotator(Annotator):
 
     def annotate_chunk(self, chunk: hl.Table) -> hl.Table:
         """Add population frequency annotations"""
-        self.logger.debug(
-            f"Adding population frequency data to {chunk.count()} variants"
-        )
+        if self.logger.isEnabledFor(logging.DEBUG):
+            self.logger.debug(
+                f"Adding population frequency data to {chunk.count()} variants"
+            )
 
         # Join on locus and alleles
         annotated = chunk.annotate(**self.annotation_data[chunk.key])

@@ -382,7 +382,7 @@ def plot_interactive_allele_frequencies(
                     x[1] if isinstance(x, (list, np.ndarray)) and len(x) > 1 else x
                 )
             )
-        except:
+        except Exception:
             afs = df[af_col]
     else:
         afs = df[af_col]
@@ -763,7 +763,7 @@ def plot_interactive_qc_dashboard(
                             else x
                         )
                     )
-                except:
+                except Exception:
                     afs = variant_data[af_col]
             else:
                 afs = variant_data[af_col]

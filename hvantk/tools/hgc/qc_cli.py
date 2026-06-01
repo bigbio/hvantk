@@ -122,8 +122,9 @@ def compute_qc(
 
         # Import hail and read MatrixTable
         import hail as hl
+        from hvantk.core.utils.hail_context import init_hail
 
-        hl.init(quiet=True)
+        init_hail(quiet=True)
 
         click.echo("🔄 Loading MatrixTable...")
         mt = hl.read_matrix_table(input)
@@ -284,8 +285,9 @@ def filter_qc(
 
         # Import hail and read MatrixTable
         import hail as hl
+        from hvantk.core.utils.hail_context import init_hail
 
-        hl.init(quiet=True)
+        init_hail(quiet=True)
 
         click.echo("🔄 Loading MatrixTable...")
         mt = hl.read_matrix_table(input)
@@ -648,7 +650,9 @@ def plot_qc(
         output_path.mkdir(parents=True, exist_ok=True)
 
         # Initialize Hail
-        hl.init(quiet=True)
+        from hvantk.core.utils.hail_context import init_hail
+
+        init_hail(quiet=True)
 
         # Load MatrixTable
         click.echo(f"📥 Loading MatrixTable from {input}")
@@ -937,7 +941,9 @@ def qc_report(ctx, input, output, title, include_plots, style, dry_run):
             return
 
         # Initialize Hail
-        hl.init(quiet=True)
+        from hvantk.core.utils.hail_context import init_hail
+
+        init_hail(quiet=True)
 
         # Load MatrixTable
         click.echo(f"📥 Loading MatrixTable from {input}")
