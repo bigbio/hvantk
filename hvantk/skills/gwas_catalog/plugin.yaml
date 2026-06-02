@@ -4,6 +4,8 @@ version: 0.1.0
 status: provisional
 description: NHGRI-EBI GWAS Catalog full associations TSV - Hail Table
 
+catalog: catalog/datasets.json
+
 source:
   catalog_ref: gwas-catalog
 

@@ -79,8 +79,8 @@ from hvantk.core.utils.gene_sets import (
     load_gene_sets_from_dict,
     load_marker_genes,
 )
+from hvantk.algorithms.visualization.base import encode_figure_to_base64
 from hvantk.algorithms.enrichex.plot import (
-    encode_figure_to_base64,
     plot_burden_forest,
     plot_burden_volcano,
     plot_celltype_burden_heatmap,
@@ -93,7 +93,11 @@ from hvantk.algorithms.enrichex.overlap import (
     compute_overlap_enrichment,
     compute_overlap_enrichment_pandas,
 )
-from hvantk.algorithms.enrichex.pipeline import BurdenConfig, BurdenPipeline, BurdenRunResult
+from hvantk.algorithms.enrichex.pipeline import (
+    BurdenConfig,
+    BurdenPipeline,
+    BurdenRunResult,
+)
 from hvantk.algorithms.enrichex.report import generate_report
 from hvantk.algorithms.enrichex.simulation import check_type_i_error
 

@@ -1366,14 +1366,24 @@ class PSROCPipeline:
         metrics = self.state.outputs.get("roc_metrics", {})
         missingness = self.state.outputs.get("missingness", {})
 
+        # Fuse the four label counts into a single Hail action (one Spark job).
+        label_counts = ht.aggregate(
+            hl.struct(
+                n_pathogenic=hl.agg.count_where(ht.label == "Pathogenic"),
+                n_benign=hl.agg.count_where(ht.label == "Benign"),
+                n_excluded=hl.agg.count_where(ht.label == "Uncertain/Conflicting"),
+                n_total=hl.agg.count(),
+            )
+        )
+
         result = PSROCResult(
             annotated_ht_path=self.paths["annotated_ht"],
             metrics=metrics,
             missingness=missingness,
-            n_pathogenic=ht.filter(ht.label == "Pathogenic").count(),
-            n_benign=ht.filter(ht.label == "Benign").count(),
-            n_excluded=ht.filter(ht.label == "Uncertain/Conflicting").count(),
-            n_total=ht.count(),
+            n_pathogenic=label_counts.n_pathogenic,
+            n_benign=label_counts.n_benign,
+            n_excluded=label_counts.n_excluded,
+            n_total=label_counts.n_total,
             n_out_of_scope=self._n_out_of_scope,
             n_genes=self._n_genes,
             scores_included=[

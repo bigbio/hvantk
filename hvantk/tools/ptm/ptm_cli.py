@@ -473,48 +473,13 @@ def ptm_report(ctx, output, landscape_json, population_json, title, description)
         if landscape_json:
             with open(landscape_json) as f:
                 data = json.load(f)
-            landscape_result = PTMLandscapeResult(
-                n_variants=data.get("n_variants", 0),
-                n_pathogenic=data.get("n_pathogenic", 0),
-                n_benign=data.get("n_benign", 0),
-                n_ptm_site_pathogenic=data.get("ptm_site", {}).get("pathogenic", 0),
-                n_ptm_proximal_pathogenic=data.get("ptm_proximal", {}).get(
-                    "pathogenic", 0
-                ),
-                n_ptm_site_benign=data.get("ptm_site", {}).get("benign", 0),
-                n_ptm_proximal_benign=data.get("ptm_proximal", {}).get("benign", 0),
-                enrichment_odds_ratio=data.get("enrichment", {}).get("odds_ratio", 0.0),
-                enrichment_ci_low=data.get("enrichment", {}).get("ci_low", 0.0),
-                enrichment_ci_high=data.get("enrichment", {}).get(
-                    "ci_high", float("inf")
-                ),
-                enrichment_p_value=data.get("enrichment", {}).get("p_value", 1.0),
-                overlap_by_category=data.get("overlap_by_category", {}),
-                category_enrichment=data.get("category_enrichment", {}),
-                distance_distribution={
-                    int(k): v for k, v in data.get("distance_distribution", {}).items()
-                },
-            )
+            landscape_result = PTMLandscapeResult.from_dict(data)
 
         population_result = None
         if population_json:
             with open(population_json) as f:
                 data = json.load(f)
-            population_result = PTMPopulationResult(
-                n_variants=data.get("n_variants", 0),
-                n_ptm_site=data.get("n_ptm_site", 0),
-                n_ptm_proximal=data.get("n_ptm_proximal", 0),
-                n_non_ptm=data.get("n_non_ptm", 0),
-                mean_af_ptm_site=data.get("mean_af", {}).get("ptm_site", 0.0),
-                mean_af_ptm_proximal=data.get("mean_af", {}).get("ptm_proximal", 0.0),
-                mean_af_non_ptm=data.get("mean_af", {}).get("non_ptm", 0.0),
-                n_zero_af_ptm=data.get("n_zero_af_ptm", 0),
-                ptm_site_afs=data.get("ptm_site_afs", []),
-                proximal_afs=data.get("proximal_afs", []),
-                non_ptm_afs=data.get("non_ptm_afs", []),
-                ccr_mean_ptm=data.get("ccr_mean_ptm"),
-                ccr_mean_non_ptm=data.get("ccr_mean_non_ptm"),
-            )
+            population_result = PTMPopulationResult.from_dict(data)
 
         generate_report(
             output_path=output,

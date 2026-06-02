@@ -1,0 +1,37 @@
+[
+  {
+    "title": "MSigDB - Molecular Signatures Database (C2 Canonical Pathways, human, gene symbols)",
+    "accession": "MSigDB_C2_CP_v2026.1.Hs.symbols",
+    "description": "Broad Institute Molecular Signatures Database. Collection C2 (curated gene sets) sub-collection CP (Canonical Pathways) \u2014 pathway gene sets curated from online resources (BIOCARTA, KEGG, PID, REACTOME, WP, SA). Human gene-symbol variant. GMT format: tab-separated variable-width rows where column 1 is set_name, column 2 is a gsea-msigdb URL, and columns 3..N are gene symbols. Built into a Hail Table keyed by set_name with genes as array<str>; see hvantk/skills/msigdb/SKILL.md. Used for gene-set lookup in enrichment / burden / overlap analyses.",
+    "pubmedid": "16199517",
+    "data_source": "Custom",
+    "last_updated": "2026-01-01T00:00:00.000000",
+    "update_frequency": "annually",
+    "organism": "Homo sapiens",
+    "tissue_type": "all",
+    "sample_count": 4115,
+    "license": "CC Attribution 4.0 (academic) / commercial license required",
+    "doi": "10.1073/pnas.0506580102",
+    "genome_build": "GRCh38",
+    "frequency_data": false,
+    "clinical_significance": false,
+    "annotation_sources": [
+      "MSigDB",
+      "BIOCARTA",
+      "KEGG",
+      "PID",
+      "REACTOME",
+      "WikiPathways",
+      "SignalingAlliance"
+    ],
+    "files": [
+      {
+        "path": "c2.cp.v2026.1.Hs.symbols.gmt",
+        "format": "gmt",
+        "size_bytes": 1677390,
+        "url": "https://www.gsea-msigdb.org/gsea/msigdb/human/collections.jsp",
+        "description": "C2 Canonical Pathways collection, human gene symbols, v2026.1. 4,115 gene sets ranging from 5 to ~1500 members per set."
+      }
+    ]
+  }
+]

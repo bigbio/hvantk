@@ -33,6 +33,61 @@ logger = logging.getLogger(__name__)
 DEFAULT_CHUNK_SIZE = 10000
 
 
+def _categorize_rows_by_ontology(
+    rows,
+    onto,
+    categories: Dict[str, str],
+) -> Dict[str, Dict[str, Set[str]]]:
+    """Categorize ``(gene, disease, mondo_id)`` rows by MONDO ontology categories.
+
+    Pure helper (no streamer state): ``rows`` is an iterable of already-loaded
+    records exposing ``gene_symbol`` / ``disease_label`` / ``mondo_id`` as
+    attributes *or* dict keys; ``onto`` is a ``MondoOntology``; ``categories``
+    maps MONDO category IDs to display names. Returns
+    ``{category_name: {"genes", "diseases", "mondo_ids"}}`` plus an
+    ``"uncategorized"`` bucket when any rows do not match a category.
+    """
+    results: Dict[str, Dict[str, Set[str]]] = {}
+    for cat_name in categories.values():
+        results[cat_name] = {"genes": set(), "diseases": set(), "mondo_ids": set()}
+
+    uncategorized = {"genes": set(), "diseases": set(), "mondo_ids": set()}
+
+    for row in rows:
+        gene = row.gene_symbol if hasattr(row, "gene_symbol") else row["gene_symbol"]
+        disease = (
+            row.disease_label
+            if hasattr(row, "disease_label")
+            else row["disease_label"]
+        )
+        mondo_id = row.mondo_id if hasattr(row, "mondo_id") else row["mondo_id"]
+
+        if not mondo_id:
+            uncategorized["genes"].add(gene)
+            uncategorized["diseases"].add(disease)
+            continue
+
+        if not mondo_id.startswith("MONDO:"):
+            mondo_id = f"MONDO:{mondo_id}"
+
+        matched_cats = onto.categorize(mondo_id, categories)
+
+        if matched_cats:
+            for _cat_id, cat_name in matched_cats:
+                results[cat_name]["genes"].add(gene)
+                results[cat_name]["diseases"].add(disease)
+                results[cat_name]["mondo_ids"].add(mondo_id)
+        else:
+            uncategorized["genes"].add(gene)
+            uncategorized["diseases"].add(disease)
+            uncategorized["mondo_ids"].add(mondo_id)
+
+    if uncategorized["genes"]:
+        results["uncategorized"] = uncategorized
+
+    return results
+
+
 class GeneDiseaseTableStreamer:
     """Base streamer for gene-disease validity data sources.
 
@@ -344,6 +399,34 @@ class GeneDiseaseTableStreamer:
             gene_sets[name] = genes
         return gene_sets
 
+    def _resolve_mondo_ontology(self, ontology, method_name: str):
+        """Resolve an ontology argument to a ``MondoOntology``.
+
+        Accepts a path (``str``) or an existing ``MondoOntology``. Raises
+        ``TypeError`` for non-MONDO ontologies, which cannot be matched against
+        the MONDO-based disease annotations these tables use.
+        """
+        from hvantk.core.ontology.obo import BaseOboOntology
+        from hvantk.core.ontology.mondo import MondoOntology
+
+        if isinstance(ontology, str):
+            logger.info(f"Loading MONDO ontology from {ontology}")
+            return MondoOntology(ontology)
+        if isinstance(ontology, MondoOntology):
+            return ontology
+        if isinstance(ontology, BaseOboOntology):
+            raise TypeError(
+                f"{method_name} requires a MondoOntology instance because "
+                f"{self.source_name} data uses MONDO disease IDs. Non-MONDO "
+                "ontologies cannot be matched against MONDO-based disease "
+                "annotations. Pass a MondoOntology or a path to a MONDO OBO "
+                "file instead."
+            )
+        raise TypeError(
+            f"ontology must be a file path (str) or MondoOntology instance, "
+            f"got {type(ontology).__name__}"
+        )
+
     def categorize_by_ontology(
         self,
         ontology: Union[str, MondoOntology],
@@ -351,27 +434,9 @@ class GeneDiseaseTableStreamer:
         categories: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Dict[str, Set[str]]]:
         """Categorize diseases using MONDO ontology hierarchy."""
-        from hvantk.core.ontology.obo import BaseOboOntology
-        from hvantk.core.ontology.mondo import MondoOntology, MONDO_DISEASE_CATEGORIES
+        from hvantk.core.ontology.mondo import MONDO_DISEASE_CATEGORIES
 
-        if isinstance(ontology, str):
-            logger.info(f"Loading MONDO ontology from {ontology}")
-            onto = MondoOntology(ontology)
-        elif isinstance(ontology, MondoOntology):
-            onto = ontology
-        elif isinstance(ontology, BaseOboOntology):
-            raise TypeError(
-                "categorize_by_ontology requires a MondoOntology instance "
-                f"because {self.source_name} data uses MONDO disease IDs. "
-                "Non-MONDO ontologies cannot be matched against MONDO-based "
-                "disease annotations. Pass a MondoOntology or "
-                "a path to a MONDO OBO file instead."
-            )
-        else:
-            raise TypeError(
-                f"ontology must be a file path (str) or MondoOntology instance, "
-                f"got {type(ontology).__name__}"
-            )
+        onto = self._resolve_mondo_ontology(ontology, "categorize_by_ontology")
 
         self._ensure_table_loaded()
         ht = self._table
@@ -408,45 +473,7 @@ class GeneDiseaseTableStreamer:
                         }
                     )
 
-        results: Dict[str, Dict[str, Set[str]]] = {}
-        for cat_name in categories.values():
-            results[cat_name] = {"genes": set(), "diseases": set(), "mondo_ids": set()}
-
-        uncategorized = {"genes": set(), "diseases": set(), "mondo_ids": set()}
-
-        for row in rows:
-            gene = (
-                row.gene_symbol if hasattr(row, "gene_symbol") else row["gene_symbol"]
-            )
-            disease = (
-                row.disease_label
-                if hasattr(row, "disease_label")
-                else row["disease_label"]
-            )
-            mondo_id = row.mondo_id if hasattr(row, "mondo_id") else row["mondo_id"]
-
-            if not mondo_id:
-                uncategorized["genes"].add(gene)
-                uncategorized["diseases"].add(disease)
-                continue
-
-            if not mondo_id.startswith("MONDO:"):
-                mondo_id = f"MONDO:{mondo_id}"
-
-            matched_cats = onto.categorize(mondo_id, categories)
-
-            if matched_cats:
-                for _cat_id, cat_name in matched_cats:
-                    results[cat_name]["genes"].add(gene)
-                    results[cat_name]["diseases"].add(disease)
-                    results[cat_name]["mondo_ids"].add(mondo_id)
-            else:
-                uncategorized["genes"].add(gene)
-                uncategorized["diseases"].add(disease)
-                uncategorized["mondo_ids"].add(mondo_id)
-
-        if uncategorized["genes"]:
-            results["uncategorized"] = uncategorized
+        results = _categorize_rows_by_ontology(rows, onto, categories)
 
         logger.info(f"Categorized diseases into {len(results)} categories")
         return results
@@ -485,24 +512,7 @@ class GeneDiseaseTableStreamer:
         as_set: bool = True,
     ) -> Union[Set[str], List[Tuple[str, str, str]]]:
         """Get genes belonging to a specific ontology category."""
-        from hvantk.core.ontology.obo import BaseOboOntology
-        from hvantk.core.ontology.mondo import MondoOntology
-
-        if isinstance(ontology, str):
-            onto = MondoOntology(ontology)
-        elif isinstance(ontology, MondoOntology):
-            onto = ontology
-        elif isinstance(ontology, BaseOboOntology):
-            raise TypeError(
-                "get_genes_by_ontology_category requires a MondoOntology "
-                f"instance because {self.source_name} data uses MONDO disease IDs. "
-                "Pass a MondoOntology or a path to a MONDO OBO file instead."
-            )
-        else:
-            raise TypeError(
-                f"ontology must be a file path (str) or MondoOntology instance, "
-                f"got {type(ontology).__name__}"
-            )
+        onto = self._resolve_mondo_ontology(ontology, "get_genes_by_ontology_category")
 
         self._ensure_table_loaded()
         ht = self._table
@@ -569,28 +579,45 @@ class GeneDiseaseTableStreamer:
         if ht is None:
             raise ValueError(f"{self.source_name} table not loaded.")
 
-        total_associations = ht.count()
-        unique_genes = len(ht.aggregate(hl.agg.collect_as_set(ht.gene_symbol)))
-        unique_diseases = len(ht.aggregate(hl.agg.collect_as_set(ht.disease_label)))
-        classification_counts = ht.aggregate(hl.agg.counter(ht.classification))
-        moi_counts = ht.aggregate(hl.agg.counter(ht.mode_of_inheritance))
-
         grouping_field = self._grouping_field
-        grouping_counts = ht.aggregate(hl.agg.counter(ht[grouping_field]))
+        date_field = self._date_field
 
-        genes_per_classification = ht.aggregate(
-            hl.agg.group_by(ht.classification, hl.agg.collect_as_set(ht.gene_symbol))
-        )
+        # Fuse all row-wise aggregations into a single Hail action (one Spark
+        # job) instead of ~8 separate ``ht.count()`` / ``ht.aggregate(...)`` calls.
+        agg_exprs = {
+            "total_associations": hl.agg.count(),
+            "all_genes": hl.agg.collect_as_set(ht.gene_symbol),
+            "all_diseases": hl.agg.collect_as_set(ht.disease_label),
+            "classification_counts": hl.agg.counter(ht.classification),
+            "moi_counts": hl.agg.counter(ht.mode_of_inheritance),
+            "grouping_counts": hl.agg.counter(ht[grouping_field]),
+            "genes_by_classification": hl.agg.group_by(
+                ht.classification, hl.agg.collect_as_set(ht.gene_symbol)
+            ),
+            "diseases_by_classification": hl.agg.group_by(
+                ht.classification, hl.agg.collect_as_set(ht.disease_label)
+            ),
+        }
+        if date_field:
+            agg_exprs["last_update"] = hl.agg.max(ht[date_field])
+        agg = ht.aggregate(hl.struct(**agg_exprs))
+
+        total_associations = agg.total_associations
+        unique_genes = len(agg.all_genes)
+        unique_diseases = len(agg.all_diseases)
+        classification_counts = agg.classification_counts
+        moi_counts = agg.moi_counts
+        grouping_counts = agg.grouping_counts
         genes_per_classification = {
-            k: len(v) for k, v in genes_per_classification.items()
+            k: len(v) for k, v in agg.genes_by_classification.items()
         }
-        diseases_per_classification = ht.aggregate(
-            hl.agg.group_by(ht.classification, hl.agg.collect_as_set(ht.disease_label))
-        )
         diseases_per_classification = {
-            k: len(v) for k, v in diseases_per_classification.items()
+            k: len(v) for k, v in agg.diseases_by_classification.items()
         }
+        last_update = agg.last_update if date_field else None
 
+        # Top genes by disease count is a grouped table operation, so it stays
+        # a separate job (cannot be folded into the row aggregation above).
         top_genes_rows = (
             ht.group_by(ht.gene_symbol)
             .aggregate(n_diseases=hl.agg.count())
@@ -600,9 +627,6 @@ class GeneDiseaseTableStreamer:
         top_genes_by_diseases = [
             (row.gene_symbol, row.n_diseases) for row in top_genes_rows
         ]
-
-        date_field = self._date_field
-        last_update = ht.aggregate(hl.agg.max(ht[date_field])) if date_field else None
 
         return {
             "total_associations": total_associations,

@@ -106,24 +106,6 @@ class QCMetrics:
 
         return plot_variant_qc_overview(self.get_variant_metrics_df(), **kwargs)
 
-    def plot_dashboard(self, **kwargs):
-        """
-        Plot comprehensive QC summary dashboard.
-
-        Parameters
-        ----------
-        **kwargs
-            Additional arguments passed to plot_qc_summary_dashboard
-
-        Returns
-        -------
-        matplotlib.figure.Figure
-            The created figure
-        """
-        from hvantk.algorithms.visualization.qc_plots import plot_qc_summary_dashboard
-
-        return plot_qc_summary_dashboard(self, **kwargs)
-
     def plot_sample_call_rates(self, **kwargs):
         """
         Plot sample call rate distribution.

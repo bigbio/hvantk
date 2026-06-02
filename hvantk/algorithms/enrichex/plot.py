@@ -9,17 +9,16 @@ required beyond the existing hvantk[viz] extra.
 
 from __future__ import annotations
 
-import base64
-import io
 import logging
 from itertools import cycle
-from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import numpy as np
 import pandas as pd
+
+from hvantk.algorithms.visualization.base import save_figure_to_path
 
 try:  # seaborn is optional but provides nicer defaults when present
     import seaborn as sns
@@ -232,7 +231,7 @@ def plot_enrichment_dotplot(
     _add_size_legend(ax, size_by=size_by, values=df[size_by], size_range=size_range)
     fig.tight_layout()
 
-    _save_figure(fig, output_path, format=format, dpi=dpi)
+    save_figure_to_path(fig, output_path, format=format, dpi=dpi)
     return fig
 
 
@@ -424,7 +423,7 @@ def plot_burden_forest(
         ax.add_artist(legend)
 
     fig.tight_layout()
-    _save_figure(fig, output_path, format=format, dpi=dpi)
+    save_figure_to_path(fig, output_path, format=format, dpi=dpi)
     return fig
 
 
@@ -560,7 +559,7 @@ def plot_enrichment_barplot(
     ax.grid(axis="x" if orientation == "horizontal" else "y", linestyle="--", alpha=0.4)
     fig.tight_layout()
 
-    _save_figure(fig, output_path, format=format, dpi=dpi)
+    save_figure_to_path(fig, output_path, format=format, dpi=dpi)
     return fig
 
 
@@ -611,7 +610,7 @@ def plot_celltype_burden_heatmap(
             message="No data available",
             figsize=figsize,
         )
-        _save_figure(fig, output_path, format=format, dpi=dpi)
+        save_figure_to_path(fig, output_path, format=format, dpi=dpi)
         return fig
 
     required_cols = {"gene_set_name", "variant_class", "collection"}
@@ -632,7 +631,7 @@ def plot_celltype_burden_heatmap(
             message="No data after filtering by variant classes",
             figsize=figsize,
         )
-        _save_figure(fig, output_path, format=format, dpi=dpi)
+        save_figure_to_path(fig, output_path, format=format, dpi=dpi)
         return fig
 
     # Sort by collection then gene_set_name for grouping
@@ -726,7 +725,7 @@ def plot_celltype_burden_heatmap(
     ax.set_title(title or "Cell-Type Burden Heatmap")
     fig.tight_layout()
 
-    _save_figure(fig, output_path, format=format, dpi=dpi)
+    save_figure_to_path(fig, output_path, format=format, dpi=dpi)
     return fig
 
 
@@ -779,7 +778,7 @@ def plot_burden_volcano(
             message="No data available",
             figsize=figsize,
         )
-        _save_figure(fig, output_path, format=format, dpi=dpi)
+        save_figure_to_path(fig, output_path, format=format, dpi=dpi)
         return fig
 
     p_col = _resolve_pvalue_column(results_df)
@@ -884,7 +883,7 @@ def plot_burden_volcano(
     ax.set_title(title or "Burden Volcano Plot")
     fig.tight_layout()
 
-    _save_figure(fig, output_path, format=format, dpi=dpi)
+    save_figure_to_path(fig, output_path, format=format, dpi=dpi)
     return fig
 
 
@@ -937,7 +936,7 @@ def plot_celltype_forest(
             message="No data available",
             figsize=figsize,
         )
-        _save_figure(fig, output_path, format=format, dpi=dpi)
+        save_figure_to_path(fig, output_path, format=format, dpi=dpi)
         return fig
 
     # Filter to the requested cell type
@@ -947,7 +946,7 @@ def plot_celltype_forest(
             message="Missing gene_set_name column",
             figsize=figsize,
         )
-        _save_figure(fig, output_path, format=format, dpi=dpi)
+        save_figure_to_path(fig, output_path, format=format, dpi=dpi)
         return fig
 
     df = results_df[results_df["gene_set_name"] == cell_type].copy()
@@ -957,7 +956,7 @@ def plot_celltype_forest(
             message=f"No data for cell type '{cell_type}'",
             figsize=figsize,
         )
-        _save_figure(fig, output_path, format=format, dpi=dpi)
+        save_figure_to_path(fig, output_path, format=format, dpi=dpi)
         return fig
 
     required_cols = {"variant_class", effect_col, "ci_lower", "ci_upper"}
@@ -1038,22 +1037,8 @@ def plot_celltype_forest(
     ax.legend(handles=handles, loc="best", frameon=False)
 
     fig.tight_layout()
-    _save_figure(fig, output_path, format=format, dpi=dpi)
+    save_figure_to_path(fig, output_path, format=format, dpi=dpi)
     return fig
-
-
-def encode_figure_to_base64(
-    fig: plt.Figure,
-    format: str = "png",
-    dpi: int = 200,
-) -> str:
-    """
-    Convert a matplotlib figure to a base64-encoded image string.
-    """
-    buffer = io.BytesIO()
-    fig.savefig(buffer, format=format, dpi=dpi, bbox_inches="tight")
-    buffer.seek(0)
-    return base64.b64encode(buffer.read()).decode("utf-8")
 
 
 def _empty_figure(
@@ -1083,7 +1068,7 @@ def _empty_figure(
         spine.set_visible(False)
     fig.tight_layout()
     if output_path is not None:
-        _save_figure(fig, output_path, format=format, dpi=dpi)
+        save_figure_to_path(fig, output_path, format=format, dpi=dpi)
     return fig
 
 
@@ -1202,15 +1187,6 @@ def _add_size_legend(
         bbox_to_anchor=(1.02, 0.2),
         frameon=False,
     )
-
-
-def _save_figure(fig: plt.Figure, output_path: str, format: str, dpi: int) -> None:
-    path = Path(output_path)
-    if path.suffix.lower() != f".{format.lower()}":
-        path = path.with_suffix(f".{format}")
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(path, dpi=dpi, bbox_inches="tight", format=format)
-    logger.info("Saved figure to %s", path)
 
 
 def _categorical_palette(categories: Iterable[str]) -> Dict[str, str]:

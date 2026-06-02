@@ -113,7 +113,6 @@ def test_static_qc_visualizations(test_mt):
         plot_allele_frequency_spectrum,
         plot_sample_qc_overview,
         plot_variant_qc_overview,
-        plot_qc_summary_dashboard,
     )
 
     # Use the pre-created test MatrixTable from fixture
@@ -148,11 +147,6 @@ def test_static_qc_visualizations(test_mt):
     assert fig5 is not None, "Variant overview dashboard should be created"
     plt.close(fig5)
 
-    # Test 6: Comprehensive QC summary dashboard (12 panels)
-    fig6 = plot_qc_summary_dashboard(qc_results, figsize=(20, 12))
-    assert fig6 is not None, "Comprehensive dashboard should be created"
-    plt.close(fig6)
-
 
 def test_qcmetrics_plotting_integration(test_mt):
     """Test 3: Test QCMetrics class plotting methods integration."""
@@ -186,11 +180,6 @@ def test_qcmetrics_plotting_integration(test_mt):
     fig5 = qc_results.plot_allele_frequencies(bins=25, log_scale=False)
     assert fig5 is not None, "QCMetrics allele frequencies should work"
     plt.close(fig5)
-
-    # Test 4: Comprehensive dashboard
-    fig6 = qc_results.plot_dashboard(figsize=(18, 12))
-    assert fig6 is not None, "QCMetrics comprehensive dashboard should work"
-    plt.close(fig6)
 
 
 def test_interactive_qc_visualizations(test_mt):

@@ -23,8 +23,8 @@ from tqdm import tqdm
 
 from hvantk.skills.expression_atlas.shared.datasets import (
     ExpressionAtlasDatasetCollection,
+    load_expression_atlas_datasets,
 )
-from hvantk.skills.expression_atlas.shared.constants import EXPRESSION_ATLAS_JSON_FILE_PATH
 
 logger = logging.getLogger(__name__)
 
@@ -144,8 +144,8 @@ def _print_dataset_accessions():
     :raises JSONDecodeError: If the JSON file contains invalid JSON format.
     """
     try:
-        collection = ExpressionAtlasDatasetCollection.from_json(
-            EXPRESSION_ATLAS_JSON_FILE_PATH
+        collection = ExpressionAtlasDatasetCollection(
+            datasets=load_expression_atlas_datasets()
         )
         dataset_accessions = collection.list_dataset_accessions()
         if not dataset_accessions:

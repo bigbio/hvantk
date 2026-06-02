@@ -5,10 +5,17 @@ This module provides foundational functions for visualization settings,
 styling, and common operations used across different visualization types.
 """
 
+import base64
+import io
+import logging
 import os
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from typing import Optional, Union, Tuple, Dict, Any, List
+from typing import Optional, Union, Tuple, Dict, List
+
+logger = logging.getLogger(__name__)
 
 
 def set_default_style(
@@ -239,3 +246,93 @@ def add_figure_labels(
             fontweight=fontweight,
             **kwargs,
         )
+
+
+_FORMAT_MIME_TYPES: dict[str, str] = {
+    "png": "image/png",
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "svg": "image/svg+xml",
+    "pdf": "application/pdf",
+    "tiff": "image/tiff",
+    "tif": "image/tiff",
+    "webp": "image/webp",
+}
+
+
+def encode_figure_to_base64(
+    fig: plt.Figure,
+    format: str = "png",
+    dpi: int = 200,
+    *,
+    as_data_uri: bool = False,
+) -> str:
+    """Convert a matplotlib figure to a base64-encoded image string.
+
+    Parameters
+    ----------
+    fig : matplotlib.figure.Figure
+        The figure to encode.
+    format : str
+        Image format ('png', 'svg', etc.). Leading dots are stripped and the
+        value is lowercased.
+    dpi : int
+        Resolution for raster formats.
+    as_data_uri : bool, keyword-only
+        When True, wrap the payload as ``data:image/{format};base64,{payload}``
+        for direct embedding in an HTML ``<img src=...>`` attribute. When False
+        (default), return the raw base64 payload.
+
+    Returns
+    -------
+    str
+        The base64 payload, optionally wrapped as a data URI.
+    """
+    format = format.lstrip(".").lower()
+    buffer = io.BytesIO()
+    fig.savefig(buffer, format=format, dpi=dpi, bbox_inches="tight")
+    buffer.seek(0)
+    payload = base64.b64encode(buffer.read()).decode("utf-8")
+    buffer.close()
+    if as_data_uri:
+        mime = _FORMAT_MIME_TYPES.get(format, f"image/{format}")
+        return f"data:{mime};base64,{payload}"
+    return payload
+
+
+def save_figure_to_path(
+    fig: plt.Figure,
+    output_path: Optional[str],
+    format: Optional[str] = None,
+    dpi: int = 300,
+) -> None:
+    """Save a figure to a single output path.
+
+    No-op when ``output_path`` is falsy. When ``format`` is provided, the path's
+    suffix is normalized to match it and the format is passed explicitly to
+    :meth:`savefig`; otherwise the path's own suffix determines the format.
+
+    Parameters
+    ----------
+    fig : matplotlib.figure.Figure
+        The figure to save.
+    output_path : str or None
+        Destination path. If falsy, nothing is written.
+    format : str, optional
+        Explicit export format. If given, the path suffix is normalized to it.
+    dpi : int
+        Resolution in dots per inch.
+    """
+    if not output_path:
+        return
+    if format is not None:
+        format = format.lstrip(".").lower()
+    path = Path(output_path)
+    if format is not None and path.suffix.lower() != f".{format}":
+        path = path.with_suffix(f".{format}")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if format is not None:
+        fig.savefig(path, dpi=dpi, bbox_inches="tight", format=format)
+    else:
+        fig.savefig(str(path), dpi=dpi, bbox_inches="tight")
+    logger.info("Saved figure to %s", path)

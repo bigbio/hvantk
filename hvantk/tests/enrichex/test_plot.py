@@ -7,8 +7,8 @@ import pytest
 
 matplotlib.use("Agg")
 
+from hvantk.algorithms.visualization.base import encode_figure_to_base64
 from hvantk.algorithms.enrichex.plot import (
-    encode_figure_to_base64,
     plot_burden_forest,
     plot_burden_volcano,
     plot_celltype_burden_heatmap,

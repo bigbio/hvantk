@@ -1,0 +1,43 @@
+[
+  {
+    "title": "dbNSFP - Database of Human Nonsynonymous SNPs and their Functional Predictions",
+    "accession": "dbNSFP_v4.7",
+    "description": "Comprehensive database of functional predictions and annotations for human nonsynonymous and splice-site SNVs. Includes prediction scores from SIFT, PolyPhen2, CADD, GERP++, PhyloP, PhastCons, and many others for variant pathogenicity assessment.",
+    "pubmedid": "21520341",
+    "data_source": "Custom",
+    "last_updated": "2025-09-23T16:30:00.000000",
+    "update_frequency": "quarterly",
+    "organism": "Homo sapiens",
+    "tissue_type": "all",
+    "sample_count": 84000000,
+    "license": "Academic use",
+    "doi": "10.1002/humu.21517",
+    "genome_build": "GRCh38",
+    "variant_types": [
+      "SNV",
+      "indel"
+    ],
+    "frequency_data": true,
+    "clinical_significance": true,
+    "annotation_sources": [
+      "SIFT",
+      "PolyPhen2",
+      "CADD",
+      "GERP++",
+      "PhyloP",
+      "PhastCons",
+      "VEST4",
+      "DANN",
+      "fitCons"
+    ],
+    "files": [
+      {
+        "path": "dbNSFP4.7a.txt.gz",
+        "format": "txt",
+        "size_bytes": 45000000000,
+        "compression": "gzip",
+        "description": "Complete dbNSFP database with all prediction scores for missense variants"
+      }
+    ]
+  }
+]

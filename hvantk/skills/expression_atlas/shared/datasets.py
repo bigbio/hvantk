@@ -280,52 +280,32 @@ def load_expression_atlas_datasets(
         List of ExpressionAtlasDataset objects
     """
     if json_path is None:
-        try:
-            from pathlib import Path
-            from hvantk.resources.unified_registry import (
-                load_expression_atlas_datasets as load_new_format,
+        from hvantk.resources.unified_registry import HvantkRegistry
+
+        registry_entries = [
+            d
+            for d in HvantkRegistry().list_transcriptomics_datasets()
+            if d.get("data_source") == "Expression_Atlas"
+        ]
+        return [
+            ExpressionAtlasDataset(
+                title=dataset.get("title", ""),
+                accession=dataset.get("accession", ""),
+                type=f"{dataset.get('platform_type', 'RNA-seq')} {dataset.get('data_level', 'gene')} {dataset.get('expression_unit', 'TPM')}",
+                pubmedid=dataset.get("pubmedid"),
+                description=dataset.get("description", ""),
+                files=[
+                    {
+                        "type": file_obj.get("description", "").replace(
+                            "File type: ", ""
+                        ),
+                        "name": file_obj.get("path", ""),
+                    }
+                    for file_obj in dataset.get("files", [])
+                ],
             )
-
-            new_datasets = load_new_format()
-            legacy_datasets = []
-
-            for dataset in new_datasets:
-                legacy_dataset = ExpressionAtlasDataset(
-                    title=dataset.get("title", ""),
-                    accession=dataset.get("accession", ""),
-                    type=f"{dataset.get('platform_type', 'RNA-seq')} {dataset.get('data_level', 'gene')} {dataset.get('expression_unit', 'TPM')}",
-                    pubmedid=dataset.get("pubmedid"),
-                    description=dataset.get("description", ""),
-                    files=[
-                        {
-                            "type": file_obj.get("description", "").replace(
-                                "File type: ", ""
-                            ),
-                            "name": file_obj.get("path", ""),
-                        }
-                        for file_obj in dataset.get("files", [])
-                    ],
-                )
-                legacy_datasets.append(legacy_dataset)
-
-            return legacy_datasets
-
-        except ImportError:
-            logger.warning(
-                "Unified registry not available, falling back to legacy loading"
-            )
-            from pathlib import Path
-
-            json_path = str(
-                Path(__file__).parent.parent / "resources" / "expression_atlas.json"
-            )
-        except Exception as e:
-            logger.error(f"Failed to load from unified registry: {e}")
-            from pathlib import Path
-
-            json_path = str(
-                Path(__file__).parent.parent / "resources" / "expression_atlas.json"
-            )
+            for dataset in registry_entries
+        ]
 
     collection = ExpressionAtlasDatasetCollection.from_json(json_path)
     return collection.datasets

@@ -1,0 +1,40 @@
+[
+  {
+    "title": "ClinVar - Archive of reports of relationships among variants and phenotypes",
+    "accession": "ClinVar_latest",
+    "description": "Public archive of reports of the relationships among human variations and phenotypes, with supporting evidence. ClinVar facilitates access to and communication about the relationships asserted between human variation and observed health status.",
+    "pubmedid": "24234437",
+    "data_source": "Custom",
+    "last_updated": "2025-09-23T16:30:00.000000",
+    "update_frequency": "monthly",
+    "organism": "Homo sapiens",
+    "tissue_type": "all",
+    "sample_count": 2500000,
+    "license": "Public Domain",
+    "doi": "10.1093/nar/gkt1113",
+    "genome_build": "GRCh38",
+    "variant_types": [
+      "SNV",
+      "indel",
+      "CNV",
+      "SV"
+    ],
+    "frequency_data": false,
+    "clinical_significance": true,
+    "annotation_sources": [
+      "ClinVar",
+      "OMIM",
+      "MedGen",
+      "HPO"
+    ],
+    "files": [
+      {
+        "path": "clinvar.vcf.gz",
+        "format": "vcf",
+        "size_bytes": 500000000,
+        "compression": "gzip",
+        "description": "ClinVar variant calls with clinical significance annotations"
+      }
+    ]
+  }
+]
