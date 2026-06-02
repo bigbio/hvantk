@@ -7,6 +7,8 @@ This module provides functions and classes for visualizing multiomics data.
 from .base import (
     set_default_style,
     save_figure,
+    save_figure_to_path,
+    encode_figure_to_base64,
     get_colors,
     add_figure_labels,
 )
@@ -121,6 +123,8 @@ def plot_interactive_sample_scatter(*args, **kwargs):
 __all__ = [
     "set_default_style",
     "save_figure",
+    "save_figure_to_path",
+    "encode_figure_to_base64",
     "get_colors",
     "add_figure_labels",
     "visualize_expression_distribution",
