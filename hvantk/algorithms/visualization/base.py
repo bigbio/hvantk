@@ -248,7 +248,7 @@ def add_figure_labels(
         )
 
 
-_FORMAT_MIME_TYPES: dict = {
+_FORMAT_MIME_TYPES: dict[str, str] = {
     "png": "image/png",
     "jpg": "image/jpeg",
     "jpeg": "image/jpeg",
