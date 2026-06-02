@@ -1,0 +1,35 @@
+[
+  {
+    "title": "GWAS Catalog - NHGRI-EBI Catalog of human genome-wide association studies",
+    "accession": "GWAS_Catalog_v1.0_e115_r2026-04-27",
+    "description": "Manually curated collection of all published genome-wide association studies. Each row is a SNP-trait association with study provenance, p-value, effect size (OR or BETA), and risk-allele frequency. v1.0 schema (34 columns, no MAPPED_TRAIT_URI). Built into a Hail Table keyed by (locus, alleles) with a sentinel ALT for variant-annotation joins; see hvantk/skills/gwas_catalog/SKILL.md.",
+    "pubmedid": "30445434",
+    "data_source": "Custom",
+    "last_updated": "2026-04-27T00:00:00.000000",
+    "update_frequency": "quarterly",
+    "organism": "Homo sapiens",
+    "tissue_type": "all",
+    "sample_count": 1100000,
+    "license": "CC0 1.0",
+    "doi": "10.1093/nar/gky1120",
+    "genome_build": "GRCh38",
+    "variant_types": [
+      "SNV"
+    ],
+    "frequency_data": true,
+    "clinical_significance": false,
+    "annotation_sources": [
+      "GWAS Catalog",
+      "Ensembl"
+    ],
+    "files": [
+      {
+        "path": "gwas-catalog-download-associations-v1.0-full.tsv",
+        "format": "tsv",
+        "size_bytes": 556245182,
+        "url": "https://www.ebi.ac.uk/gwas/api/search/downloads/full",
+        "description": "Full associations TSV (v1.0, 34 columns) from the EBI GWAS Catalog e115 / r2026-04-27 release."
+      }
+    ]
+  }
+]

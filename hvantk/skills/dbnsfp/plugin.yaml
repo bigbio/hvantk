@@ -4,6 +4,8 @@ version: 0.1.0
 status: provisional
 description: dbNSFP variant functional annotation database - Hail Table
 
+catalog: catalog/datasets.json
+
 source:
   catalog_ref: dbnsfp
 

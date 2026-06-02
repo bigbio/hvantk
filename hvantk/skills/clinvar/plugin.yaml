@@ -4,6 +4,8 @@ version: 0.2.0
 status: provisional
 description: ClinVar variant clinical-significance VCF - Hail Table
 
+catalog: catalog/datasets.json
+
 source:
   catalog_ref: clinvar
 

@@ -4,6 +4,8 @@ version: 0.1.0
 status: provisional
 description: GeVIR gene vulnerability and intolerance rank metrics - Hail Table
 
+catalog: catalog/datasets.json
+
 source:
   catalog_ref: gevir
 

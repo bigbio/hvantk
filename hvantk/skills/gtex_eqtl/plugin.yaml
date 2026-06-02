@@ -4,6 +4,8 @@ version: 0.1.0
 status: provisional
 description: GTEx tissue-specific eQTL summary statistics - Hail Table
 
+catalog: catalog/datasets.json
+
 source:
   catalog_ref: gtex-eqtl
 

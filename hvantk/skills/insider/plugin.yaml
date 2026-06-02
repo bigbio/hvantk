@@ -4,6 +4,8 @@ version: 0.1.0
 status: provisional
 description: INSIDER protein-protein interactome BED - Hail Table
 
+catalog: catalog/datasets.json
+
 source:
   catalog_ref: insider
 

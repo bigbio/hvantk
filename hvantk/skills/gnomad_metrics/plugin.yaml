@@ -4,6 +4,8 @@ version: 0.1.0
 status: provisional
 description: gnomAD constraint gene metrics (pLI, oe_lof, etc.) - Hail Table
 
+catalog: catalog/datasets.json
+
 source:
   catalog_ref: gnomad-metrics
 
