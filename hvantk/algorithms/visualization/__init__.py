@@ -69,12 +69,6 @@ def plot_variant_qc_overview(*args, **kwargs):
     return _impl(*args, **kwargs)
 
 
-def plot_qc_summary_dashboard(*args, **kwargs):
-    from .qc_plots import plot_qc_summary_dashboard as _impl
-
-    return _impl(*args, **kwargs)
-
-
 def generate_qc_report(*args, **kwargs):
     from .qc_report import generate_qc_report as _impl
 
@@ -139,7 +133,6 @@ __all__ = [
     "plot_allele_frequency_spectrum",
     "plot_hwe_pvalues",
     "plot_variant_qc_overview",
-    "plot_qc_summary_dashboard",
     "generate_qc_report",
     # Interactive plotting functions
     "plot_interactive_sample_call_rates",
