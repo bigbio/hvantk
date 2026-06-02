@@ -633,33 +633,37 @@ class HGNCGeneCatalogStreamer(GeneCatalogStreamer):
 
         Absorbed from ``core/utils/gene_mapper.GeneMapper.get_coverage_stats``.
         """
-        row_fields = set(self._ht.row)
-        stats = {"total_genes": self._ht.count()}
+        ht = self._ht
+        row_fields = set(ht.row)
+
+        # Fuse total + per-field coverage counts into a single Hail action
+        # (one Spark job) instead of one ``filter(...).count()`` per field.
+        agg_exprs = {"total_genes": hl.agg.count()}
 
         if "ensembl_gene_id" in row_fields:
-            stats["with_ensembl"] = self._ht.filter(
-                hl.is_defined(self._ht.ensembl_gene_id)
-                & (self._ht.ensembl_gene_id != "")
-            ).count()
+            agg_exprs["with_ensembl"] = hl.agg.count_where(
+                hl.is_defined(ht.ensembl_gene_id) & (ht.ensembl_gene_id != "")
+            )
 
         if "entrez_id" in row_fields:
-            stats["with_entrez"] = self._ht.filter(
-                hl.is_defined(self._ht.entrez_id) & (self._ht.entrez_id != "")
-            ).count()
+            agg_exprs["with_entrez"] = hl.agg.count_where(
+                hl.is_defined(ht.entrez_id) & (ht.entrez_id != "")
+            )
 
         if "uniprot_ids" in row_fields:
-            stats["with_uniprot"] = self._ht.filter(
-                hl.is_defined(self._ht.uniprot_ids) & (hl.len(self._ht.uniprot_ids) > 0)
-            ).count()
+            agg_exprs["with_uniprot"] = hl.agg.count_where(
+                hl.is_defined(ht.uniprot_ids) & (hl.len(ht.uniprot_ids) > 0)
+            )
 
         if "omim_id" in row_fields:
-            stats["with_omim"] = self._ht.filter(
-                hl.is_defined(self._ht.omim_id) & (hl.len(self._ht.omim_id) > 0)
-            ).count()
+            agg_exprs["with_omim"] = hl.agg.count_where(
+                hl.is_defined(ht.omim_id) & (hl.len(ht.omim_id) > 0)
+            )
 
         if "locus_group" in row_fields:
-            stats["protein_coding"] = self._ht.filter(
-                self._ht.locus_group == "protein-coding gene"
-            ).count()
+            agg_exprs["protein_coding"] = hl.agg.count_where(
+                ht.locus_group == "protein-coding gene"
+            )
 
-        return stats
+        agg = ht.aggregate(hl.struct(**agg_exprs))
+        return {key: agg[key] for key in agg_exprs}

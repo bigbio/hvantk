@@ -29,9 +29,17 @@ from typing import List, Union, Optional
 import pandas as pd
 import matplotlib
 
-matplotlib.use(
-    "Agg"
-)  # Use non-interactive backend - must be set before importing pyplot
+# Select a non-interactive backend for headless rendering, but only if one is
+# not already active — avoids clobbering an interactive/inline backend the host
+# process (e.g. a notebook) has deliberately set. Matches constraint_plots.py.
+if matplotlib.get_backend().lower() not in {
+    "agg",
+    "module://matplotlib_inline.backend_inline",
+}:
+    try:
+        matplotlib.use("Agg")
+    except Exception:  # pragma: no cover - backend already locked in
+        pass
 import matplotlib.pyplot as plt
 
 from .qc_plots import (

@@ -651,11 +651,20 @@ def logistic_burden_test(
         ci_upper=hl.exp(result.beta + 1.96 * result.standard_error),
     )
 
-    n_tested = result.count()
+    # Fuse the three result counts into a single Hail action (one Spark job).
+    counts = result.aggregate(
+        hl.struct(
+            n_tested=hl.agg.count(),
+            n_nan_p=hl.agg.count_where(hl.is_nan(result.p_value)),
+            n_nominal=hl.agg.count_where(result.p_value < 0.05),
+        )
+    )
+
+    n_tested = counts.n_tested
     logger.info("Regression complete: %d gene sets tested", n_tested)
 
     # Check for convergence issues (NaN p-values)
-    n_nan_p = result.filter(hl.is_nan(result.p_value)).count()
+    n_nan_p = counts.n_nan_p
     if n_nan_p > 0:
         logger.warning(
             "Logistic regression produced NaN p-values for %d/%d gene sets "
@@ -665,7 +674,7 @@ def logistic_burden_test(
         )
 
     # Report nominally significant results
-    n_nominal = result.filter(result.p_value < 0.05).count()
+    n_nominal = counts.n_nominal
     logger.info("  %d gene sets nominally significant (p < 0.05)", n_nominal)
 
     return result
@@ -744,11 +753,20 @@ def linear_burden_test(
         pass_through=pass_through or [],
     )
 
-    n_tested = result.count()
+    # Fuse the three result counts into a single Hail action (one Spark job).
+    counts = result.aggregate(
+        hl.struct(
+            n_tested=hl.agg.count(),
+            n_nan_p=hl.agg.count_where(hl.is_nan(result.p_value)),
+            n_nominal=hl.agg.count_where(result.p_value < 0.05),
+        )
+    )
+
+    n_tested = counts.n_tested
     logger.info("Regression complete: %d gene sets tested", n_tested)
 
     # Check for convergence issues (NaN p-values)
-    n_nan_p = result.filter(hl.is_nan(result.p_value)).count()
+    n_nan_p = counts.n_nan_p
     if n_nan_p > 0:
         logger.warning(
             "Linear regression produced NaN p-values for %d/%d gene sets "
@@ -758,7 +776,7 @@ def linear_burden_test(
         )
 
     # Report nominally significant results
-    n_nominal = result.filter(result.p_value < 0.05).count()
+    n_nominal = counts.n_nominal
     logger.info("  %d gene sets nominally significant (p < 0.05)", n_nominal)
 
     return result
