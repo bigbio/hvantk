@@ -569,28 +569,45 @@ class GeneDiseaseTableStreamer:
         if ht is None:
             raise ValueError(f"{self.source_name} table not loaded.")
 
-        total_associations = ht.count()
-        unique_genes = len(ht.aggregate(hl.agg.collect_as_set(ht.gene_symbol)))
-        unique_diseases = len(ht.aggregate(hl.agg.collect_as_set(ht.disease_label)))
-        classification_counts = ht.aggregate(hl.agg.counter(ht.classification))
-        moi_counts = ht.aggregate(hl.agg.counter(ht.mode_of_inheritance))
-
         grouping_field = self._grouping_field
-        grouping_counts = ht.aggregate(hl.agg.counter(ht[grouping_field]))
+        date_field = self._date_field
 
-        genes_per_classification = ht.aggregate(
-            hl.agg.group_by(ht.classification, hl.agg.collect_as_set(ht.gene_symbol))
-        )
+        # Fuse all row-wise aggregations into a single Hail action (one Spark
+        # job) instead of ~8 separate ``ht.count()`` / ``ht.aggregate(...)`` calls.
+        agg_exprs = {
+            "total_associations": hl.agg.count(),
+            "all_genes": hl.agg.collect_as_set(ht.gene_symbol),
+            "all_diseases": hl.agg.collect_as_set(ht.disease_label),
+            "classification_counts": hl.agg.counter(ht.classification),
+            "moi_counts": hl.agg.counter(ht.mode_of_inheritance),
+            "grouping_counts": hl.agg.counter(ht[grouping_field]),
+            "genes_by_classification": hl.agg.group_by(
+                ht.classification, hl.agg.collect_as_set(ht.gene_symbol)
+            ),
+            "diseases_by_classification": hl.agg.group_by(
+                ht.classification, hl.agg.collect_as_set(ht.disease_label)
+            ),
+        }
+        if date_field:
+            agg_exprs["last_update"] = hl.agg.max(ht[date_field])
+        agg = ht.aggregate(hl.struct(**agg_exprs))
+
+        total_associations = agg.total_associations
+        unique_genes = len(agg.all_genes)
+        unique_diseases = len(agg.all_diseases)
+        classification_counts = agg.classification_counts
+        moi_counts = agg.moi_counts
+        grouping_counts = agg.grouping_counts
         genes_per_classification = {
-            k: len(v) for k, v in genes_per_classification.items()
+            k: len(v) for k, v in agg.genes_by_classification.items()
         }
-        diseases_per_classification = ht.aggregate(
-            hl.agg.group_by(ht.classification, hl.agg.collect_as_set(ht.disease_label))
-        )
         diseases_per_classification = {
-            k: len(v) for k, v in diseases_per_classification.items()
+            k: len(v) for k, v in agg.diseases_by_classification.items()
         }
+        last_update = agg.last_update if date_field else None
 
+        # Top genes by disease count is a grouped table operation, so it stays
+        # a separate job (cannot be folded into the row aggregation above).
         top_genes_rows = (
             ht.group_by(ht.gene_symbol)
             .aggregate(n_diseases=hl.agg.count())
@@ -600,9 +617,6 @@ class GeneDiseaseTableStreamer:
         top_genes_by_diseases = [
             (row.gene_symbol, row.n_diseases) for row in top_genes_rows
         ]
-
-        date_field = self._date_field
-        last_update = ht.aggregate(hl.agg.max(ht[date_field])) if date_field else None
 
         return {
             "total_associations": total_associations,
