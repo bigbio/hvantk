@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
@@ -68,3 +67,58 @@ def test_validate_command_rejects_invalid_manifest():
     manifest = FIXTURE_ROOT / "broken-manifest" / "plugin.yaml"
     result = runner.invoke(plugins_group, ["validate", str(manifest)])
     assert result.exit_code != 0
+
+
+_VALID_DATASET_YAML = """\
+  - name: default
+    domain: genomics
+    backend: hail
+    builder:
+      module: hvantk.tests.testdata.raw.plugins.fake_plugin.builder
+      function: build
+    drift_probe:
+      module: hvantk.tests.testdata.raw.plugins.fake_plugin.drift_probe
+      function: fetch_fingerprint
+    skill: SKILL.md
+    tests:
+      command: pytest -q
+      fixture: tests/testdata/raw/fake
+      schema_snapshot: tests/snapshots/schema.json
+      row_snapshot: tests/snapshots/sample_rows.json
+      drift_fingerprint: tests/drift_fingerprint.json
+"""
+
+
+def test_validate_rejects_catalog_entry_missing_required_field(tmp_path):
+    from click.testing import CliRunner
+    from hvantk.tools.plugins.plugins_cli import plugins_group
+    (tmp_path / "catalog").mkdir()
+    (tmp_path / "catalog" / "datasets.json").write_text(
+        '[{"title": "x", "description": "d", "data_source": "Custom", '
+        '"organism": "Homo sapiens", "files": []}]'  # missing "accession"
+    )
+    (tmp_path / "plugin.yaml").write_text(
+        "api_version: 2\nname: tmp-plug\nversion: 0.1.0\n"
+        "catalog: catalog/datasets.json\n"
+        "datasets:\n" + _VALID_DATASET_YAML
+    )
+    res = CliRunner().invoke(plugins_group, ["validate", str(tmp_path / "plugin.yaml")])
+    assert res.exit_code != 0
+    assert "accession" in res.output
+
+
+def test_validate_rejects_duplicate_accession_within_catalog(tmp_path):
+    from click.testing import CliRunner
+    from hvantk.tools.plugins.plugins_cli import plugins_group
+    (tmp_path / "catalog").mkdir()
+    entry = ('{"accession": "DUP", "title": "x", "description": "d", '
+             '"data_source": "Custom", "organism": "Homo sapiens", "files": []}')
+    (tmp_path / "catalog" / "datasets.json").write_text(f"[{entry}, {entry}]")
+    (tmp_path / "plugin.yaml").write_text(
+        "api_version: 2\nname: tmp-plug\nversion: 0.1.0\n"
+        "catalog: catalog/datasets.json\n"
+        "datasets:\n" + _VALID_DATASET_YAML
+    )
+    res = CliRunner().invoke(plugins_group, ["validate", str(tmp_path / "plugin.yaml")])
+    assert res.exit_code != 0
+    assert "DUP" in res.output

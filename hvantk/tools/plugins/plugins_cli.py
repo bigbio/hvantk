@@ -73,4 +73,33 @@ def validate_cmd(manifest_path: str):
         jsonschema.validate(content, schema)
     except jsonschema.ValidationError as exc:
         raise click.ClickException(f"validation failed: {exc.message}")
+    catalog_rel = content.get("catalog")
+    if catalog_rel:
+        catalog_path = Path(manifest_path).parent / catalog_rel
+        if not catalog_path.is_file():
+            raise click.ClickException(f"catalog not found: {catalog_path}")
+        catalog_schema = json.loads(
+            (Path(plugin_loader.__file__).parent / "catalog_entry.schema.json").read_text()
+        )
+        entries = json.loads(catalog_path.read_text())
+        if not isinstance(entries, list):
+            raise click.ClickException(f"catalog must be a JSON array: {catalog_path}")
+        errors: list[str] = []
+        seen: set[str] = set()
+        for i, entry in enumerate(entries):
+            try:
+                jsonschema.validate(entry, catalog_schema)
+            except jsonschema.ValidationError as exc:
+                acc = entry.get("accession", f"index {i}") if isinstance(entry, dict) else f"index {i}"
+                errors.append(f"entry {acc}: {exc.message}")
+                continue
+            acc = entry["accession"]
+            if acc in seen:
+                errors.append(f"duplicate accession within catalog: {acc}")
+            seen.add(acc)
+        if errors:
+            raise click.ClickException(
+                "catalog validation failed:\n  - " + "\n  - ".join(errors)
+            )
+        click.echo(f"catalog ok: {catalog_path} ({len(entries)} entries)")
     click.echo(f"ok: {manifest_path}")
