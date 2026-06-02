@@ -130,6 +130,12 @@ class HvantkRegistry:
                 )
                 continue
 
+            if not isinstance(entries, list):
+                raise ValueError(
+                    f"catalog for {provider.name!r} ({catalog_path}) must be a "
+                    f"JSON array of objects"
+                )
+
             primary = _DOMAIN_TO_OMICS.get(
                 _provider_primary_domain(provider) or "", None
             )
@@ -137,14 +143,23 @@ class HvantkRegistry:
                 # Unknown-domain plugins do not feed the omics buckets.
                 continue
             for entry in entries:
+                if not isinstance(entry, dict):
+                    raise ValueError(
+                        f"catalog entry in {provider.name!r} ({catalog_path}) is "
+                        f"not a JSON object: {entry!r}"
+                    )
                 acc = entry.get("accession")
-                if acc and acc in seen_accessions:
+                if not acc:
+                    raise ValueError(
+                        f"catalog entry in {provider.name!r} ({catalog_path}) is "
+                        f"missing the required 'accession' field"
+                    )
+                if acc in seen_accessions:
                     raise ValueError(
                         f"duplicate catalog accession {acc!r}: declared by both "
                         f"{seen_accessions[acc]!r} and {provider.name!r}"
                     )
-                if acc:
-                    seen_accessions[acc] = provider.name
+                seen_accessions[acc] = provider.name
                 omics = _infer_omics_for_entry(entry, primary)
                 if omics is None:
                     continue

@@ -78,10 +78,13 @@ def validate_cmd(manifest_path: str):
         catalog_path = Path(manifest_path).parent / catalog_rel
         if not catalog_path.is_file():
             raise click.ClickException(f"catalog not found: {catalog_path}")
-        catalog_schema = json.loads(
-            (Path(plugin_loader.__file__).parent / "catalog_entry.schema.json").read_text()
-        )
-        entries = json.loads(catalog_path.read_text())
+        try:
+            catalog_schema = json.loads(
+                (Path(plugin_loader.__file__).parent / "catalog_entry.schema.json").read_text()
+            )
+            entries = json.loads(catalog_path.read_text())
+        except (OSError, json.JSONDecodeError) as exc:
+            raise click.ClickException(f"failed to read catalog {catalog_path}: {exc}")
         if not isinstance(entries, list):
             raise click.ClickException(f"catalog must be a JSON array: {catalog_path}")
         errors: list[str] = []
