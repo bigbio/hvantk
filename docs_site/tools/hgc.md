@@ -179,7 +179,6 @@ mt = hl.read_matrix_table("analysis.mt")
 qc_results = compute_full_qc(mt)
 
 # Generate visualizations
-qc_results.plot_dashboard(save_path='qc_dashboard.png')
 qc_results.plot_interactive_dashboard().show()
 qc_results.generate_html_report('qc_report.html')
 

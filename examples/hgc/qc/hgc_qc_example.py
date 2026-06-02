@@ -279,8 +279,10 @@ def test_qc_visualization():
             logger.warning(f"Variant overview plot failed: {e}")
 
         try:
-            qc_results.plot_dashboard()
-            logger.info("✓ QC dashboard created")
+            # Static dashboard was retired; the interactive (plotly) dashboard
+            # is the supported replacement.
+            qc_results.plot_interactive_dashboard()
+            logger.info("✓ Interactive QC dashboard created")
         except Exception as e:
             logger.warning(f"QC dashboard failed: {e}")
 
@@ -427,11 +429,8 @@ def example_save_qc_report():
         variant_plot.savefig(variant_plot_path, dpi=300, bbox_inches="tight")
         logger.info(f"   ✓ Variant QC plot: {variant_plot_path}")
 
-        # Full dashboard
-        dashboard = qc_results.plot_dashboard()
-        dashboard_path = os.path.join(output_dir, f"qc_dashboard_{timestamp}.png")
-        dashboard.savefig(dashboard_path, dpi=300, bbox_inches="tight")
-        logger.info(f"   ✓ QC dashboard: {dashboard_path}")
+        # The static PNG dashboard was retired; use 'hvantk hgc qc-report' for a
+        # combined HTML report or plot_interactive_dashboard() for an interactive one.
 
     except Exception as e:
         logger.warning(f"   ⚠ Plot saving failed: {e}")

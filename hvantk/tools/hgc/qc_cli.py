@@ -817,9 +817,11 @@ def plot_qc(
                     fig, output_path / "interactive_qc_dashboard.html"
                 )
                 created_files.append("interactive_qc_dashboard.html")
-            elif plot_type == "dashboard":
+            else:
                 # The static matplotlib summary dashboard was retired in favour of
                 # the individual plots plus the combined `hvantk hgc qc-report`.
+                # Shown for both `--plot-type dashboard` and `--plot-type all`
+                # (non-interactive) so the retirement is never a silent no-op.
                 click.echo(
                     "ℹ️  The static QC dashboard has been removed. Use "
                     "--plot-type overview/individual, add --interactive for an "
