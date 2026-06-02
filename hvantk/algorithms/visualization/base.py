@@ -248,6 +248,18 @@ def add_figure_labels(
         )
 
 
+_FORMAT_MIME_TYPES: dict = {
+    "png": "image/png",
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "svg": "image/svg+xml",
+    "pdf": "application/pdf",
+    "tiff": "image/tiff",
+    "tif": "image/tiff",
+    "webp": "image/webp",
+}
+
+
 def encode_figure_to_base64(
     fig: plt.Figure,
     format: str = "png",
@@ -262,7 +274,8 @@ def encode_figure_to_base64(
     fig : matplotlib.figure.Figure
         The figure to encode.
     format : str
-        Image format ('png', 'svg', etc.).
+        Image format ('png', 'svg', etc.). Leading dots are stripped and the
+        value is lowercased.
     dpi : int
         Resolution for raster formats.
     as_data_uri : bool, keyword-only
@@ -275,13 +288,15 @@ def encode_figure_to_base64(
     str
         The base64 payload, optionally wrapped as a data URI.
     """
+    format = format.lstrip(".").lower()
     buffer = io.BytesIO()
     fig.savefig(buffer, format=format, dpi=dpi, bbox_inches="tight")
     buffer.seek(0)
     payload = base64.b64encode(buffer.read()).decode("utf-8")
     buffer.close()
     if as_data_uri:
-        return f"data:image/{format};base64,{payload}"
+        mime = _FORMAT_MIME_TYPES.get(format, f"image/{format}")
+        return f"data:{mime};base64,{payload}"
     return payload
 
 
@@ -310,8 +325,10 @@ def save_figure_to_path(
     """
     if not output_path:
         return
+    if format is not None:
+        format = format.lstrip(".").lower()
     path = Path(output_path)
-    if format is not None and path.suffix.lower() != f".{format.lower()}":
+    if format is not None and path.suffix.lower() != f".{format}":
         path = path.with_suffix(f".{format}")
     path.parent.mkdir(parents=True, exist_ok=True)
     if format is not None:

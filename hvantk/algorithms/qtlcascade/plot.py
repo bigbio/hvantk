@@ -39,6 +39,8 @@ def _require_matplotlib():
 
 def _save_figure(fig, output_path: Optional[str], dpi: int = 300):
     """Save figure to disk if *output_path* is provided."""
+    if not output_path:
+        return
     # Imported lazily so importing this module stays matplotlib-optional.
     from hvantk.algorithms.visualization.base import save_figure_to_path
 
