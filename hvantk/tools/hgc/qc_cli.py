@@ -605,14 +605,16 @@ def plot_qc(
     """
     Generate QC plots from MatrixTable with QC annotations.
 
-    Create individual plots, overviews, or comprehensive dashboards from quality control
-    metrics computed on genomic variant data.
+    Create individual plots or multi-panel overviews from quality control
+    metrics computed on genomic variant data. For a combined report, use
+    'hvantk hgc qc-report'; add --interactive --plot-type dashboard for an
+    interactive (plotly) dashboard.
 
     Examples:
         hvantk hgc plot-qc -i cohort_qc.mt -o plots/ --plot-type overview
-        hvantk hgc plot-qc -i cohort_qc.mt -o plots/ --plot-type dashboard --style publication
+        hvantk hgc plot-qc -i cohort_qc.mt -o plots/ --plot-type individual --style publication
         hvantk hgc plot-qc -i cohort_qc.mt -o plots/ --plot-type all --format pdf
-        hvantk hgc plot-qc -i cohort_qc.mt -o plots/ --interactive --dry-run
+        hvantk hgc plot-qc -i cohort_qc.mt -o plots/ --plot-type dashboard --interactive
     """
     try:
         # hail_context (init_hail) first: it applies the NumPy np.bool
@@ -841,23 +843,26 @@ def plot_qc(
                     created_files.append(f"hwe_pvalues.{output_format}")
 
         if plot_type == "dashboard" or plot_type == "all":
-            click.echo("🎨 Creating comprehensive QC dashboard...")
-
             if use_interactive:
-                from hvantk.algorithms.visualization.interactive_qc import save_interactive_plot
+                click.echo("🎨 Creating interactive QC dashboard...")
+                from hvantk.algorithms.visualization.interactive_qc import (
+                    save_interactive_plot,
+                )
 
                 fig = qc_results.plot_interactive_dashboard()
                 save_interactive_plot(
                     fig, output_path / "interactive_qc_dashboard.html"
                 )
                 created_files.append("interactive_qc_dashboard.html")
-            else:
-                fig = qc_results.plot_dashboard(
-                    save_path=output_path / f"qc_dashboard.{output_format}",
-                    figsize=(20, 12),
-                    **{k: v for k, v in plot_kwargs.items() if k != "figsize"},
+            elif plot_type == "dashboard":
+                # The static matplotlib summary dashboard was retired in favour of
+                # the individual plots plus the combined `hvantk hgc qc-report`.
+                click.echo(
+                    "ℹ️  The static QC dashboard has been removed. Use "
+                    "--plot-type overview/individual, add --interactive for an "
+                    "interactive dashboard, or run 'hvantk hgc qc-report' for a "
+                    "combined HTML report."
                 )
-                created_files.append(f"qc_dashboard.{output_format}")
 
         # Summary
         click.echo(f"\n📊 Successfully created {len(created_files)} QC plots:")
