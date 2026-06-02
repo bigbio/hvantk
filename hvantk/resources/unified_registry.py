@@ -252,30 +252,3 @@ class HvantkRegistry:
         """Reload registry from files."""
         self._cache = {t: [] for t in self.omics_types}
         self._load_registry()
-
-
-# Backward compatibility - maintain existing function signatures
-def load_transcriptomics_registry() -> List[Dict]:
-    """Backward compatibility function for transcriptomics data."""
-    registry = HvantkRegistry()
-    return registry.list_transcriptomics_datasets()
-
-
-def load_expression_atlas_datasets() -> List[Dict]:
-    """Backward compatibility function for Expression Atlas data."""
-    registry = HvantkRegistry()
-    return [
-        d
-        for d in registry.list_transcriptomics_datasets()
-        if d.get("data_source") == "Expression_Atlas"
-    ]
-
-
-def load_ucsc_datasets() -> List[Dict]:
-    """Backward compatibility function for UCSC data."""
-    registry = HvantkRegistry()
-    return [
-        d
-        for d in registry.list_transcriptomics_datasets()
-        if d.get("data_source") == "UCSC"
-    ]
