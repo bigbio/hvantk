@@ -5,9 +5,9 @@ versioned independently. There is no global "UCSC Cell Browser version"
 string. To produce a stable drift signal we fingerprint two things:
 
 * The local pinned-collection catalog
-  (``hvantk/resources/cells_ucsc_datasets.json``) -- this changes only
-  when we deliberately add/remove tracked collections, and is the
-  source of truth for reproducible builds.
+  (``hvantk/skills/ucsc_cellbrowser/data/cells_ucsc_datasets.json``) --
+  this changes only when we deliberately add/remove tracked collections,
+  and is the source of truth for reproducible builds.
 * The upstream root ``https://cells.ucsc.edu/dataset.json`` HEAD --
   ``Last-Modified``/``ETag`` flip whenever ANY collection in the
   browser is updated. Surfaced as ``upstream_version`` and
@@ -32,7 +32,8 @@ from hvantk.core.plugin.api import DriftProbeError
 
 PROBE_VERSION = 1
 UCSC_DATASET_INDEX_URL = "https://cells.ucsc.edu/dataset.json"
-_LOCAL_CATALOG_PACKAGE = "hvantk.resources"
+_LOCAL_CATALOG_PACKAGE = "hvantk.skills.ucsc_cellbrowser"
+_LOCAL_CATALOG_SUBDIR = "data"
 _LOCAL_CATALOG_NAME = "cells_ucsc_datasets.json"
 _TIMEOUT_S = 30
 
@@ -41,7 +42,7 @@ def _local_catalog_bytes() -> bytes:
     """Read the pinned UCSC Cell Browser catalog shipped with hvantk."""
     return (
         importlib.resources.files(_LOCAL_CATALOG_PACKAGE)
-        .joinpath(_LOCAL_CATALOG_NAME)
+        .joinpath(_LOCAL_CATALOG_SUBDIR, _LOCAL_CATALOG_NAME)
         .read_bytes()
     )
 
