@@ -27,6 +27,112 @@ def register_burden_commands(group):
     group.add_command(burden_pipeline_cmd)
 
 
+def _render_burden_summary(result_df, alpha, phenotype_type: str) -> None:
+    """Print the single-class burden analysis summary and top-significant table.
+
+    Pure presentation extracted from ``burden_test``: counts significant gene
+    sets and renders an ASCII table of the top hits, with columns chosen by
+    phenotype type (odds ratio for binary, standard error for continuous).
+    """
+    n_significant = result_df["significant"].sum()
+    click.echo("\n" + "=" * 60)
+    click.echo("BURDEN ANALYSIS SUMMARY")
+    click.echo("=" * 60)
+    click.echo(f"Total gene sets tested: {len(result_df)}")
+    click.echo(f"Significant gene sets (p_adj < {alpha}): {n_significant}")
+
+    if n_significant > 0:
+        click.echo(f"\nTop significant gene sets:")
+        click.echo("-" * 60)
+
+        # Select columns based on phenotype type
+        if phenotype_type == "binary":
+            display_cols = [
+                "gene_set_name",
+                "beta",
+                "odds_ratio",
+                "p_value",
+                "p_adjusted",
+            ]
+        else:
+            display_cols = [
+                "gene_set_name",
+                "beta",
+                "standard_error",
+                "p_value",
+                "p_adjusted",
+            ]
+
+        # Filter to available columns
+        available_cols = [c for c in display_cols if c in result_df.columns]
+        top = result_df[result_df["significant"]].head(5)[available_cols]
+
+        # Format for display
+        top_display = top.copy()
+        if "beta" in top_display.columns:
+            top_display["beta"] = top_display["beta"].apply(lambda x: f"{x:.4f}")
+        if "odds_ratio" in top_display.columns:
+            top_display["odds_ratio"] = top_display["odds_ratio"].apply(
+                lambda x: f"{x:.2f}"
+            )
+        if "standard_error" in top_display.columns:
+            top_display["standard_error"] = top_display["standard_error"].apply(
+                lambda x: f"{x:.4f}"
+            )
+        top_display["p_value"] = top_display["p_value"].apply(lambda x: f"{x:.2e}")
+        top_display["p_adjusted"] = top_display["p_adjusted"].apply(lambda x: f"{x:.2e}")
+
+        # Print table
+        if phenotype_type == "binary":
+            header = "  ".join(
+                [
+                    "Gene Set".ljust(20),
+                    "Beta".ljust(8),
+                    "OR".ljust(8),
+                    "P-value".ljust(10),
+                    "P-adj".ljust(10),
+                ]
+            )
+        else:
+            header = "  ".join(
+                [
+                    "Gene Set".ljust(20),
+                    "Beta".ljust(8),
+                    "SE".ljust(8),
+                    "P-value".ljust(10),
+                    "P-adj".ljust(10),
+                ]
+            )
+
+        click.echo(header)
+        click.echo("-" * 60)
+
+        for _, row in top_display.iterrows():
+            if phenotype_type == "binary":
+                line = "  ".join(
+                    [
+                        str(row["gene_set_name"])[:20].ljust(20),
+                        str(row["beta"]).ljust(8),
+                        str(row.get("odds_ratio", "N/A")).ljust(8),
+                        str(row["p_value"]).ljust(10),
+                        str(row["p_adjusted"]).ljust(10),
+                    ]
+                )
+            else:
+                line = "  ".join(
+                    [
+                        str(row["gene_set_name"])[:20].ljust(20),
+                        str(row["beta"]).ljust(8),
+                        str(row.get("standard_error", "N/A")).ljust(8),
+                        str(row["p_value"]).ljust(10),
+                        str(row["p_adjusted"]).ljust(10),
+                    ]
+                )
+            click.echo(line)
+
+    click.echo("=" * 60 + "\n")
+
+
 @click.command(name="burden")
 @click.option(
     "-m",
@@ -621,105 +727,7 @@ def burden_test(
         click.echo(f"\n  Results written to: {results_path}")
 
         # Summary statistics
-        n_significant = result_df["significant"].sum()
-        click.echo("\n" + "=" * 60)
-        click.echo("BURDEN ANALYSIS SUMMARY")
-        click.echo("=" * 60)
-        click.echo(f"Total gene sets tested: {len(result_df)}")
-        click.echo(f"Significant gene sets (p_adj < {alpha}): {n_significant}")
-
-        if n_significant > 0:
-            click.echo(f"\nTop significant gene sets:")
-            click.echo("-" * 60)
-
-            # Select columns based on phenotype type
-            if phenotype_type == "binary":
-                display_cols = [
-                    "gene_set_name",
-                    "beta",
-                    "odds_ratio",
-                    "p_value",
-                    "p_adjusted",
-                ]
-            else:
-                display_cols = [
-                    "gene_set_name",
-                    "beta",
-                    "standard_error",
-                    "p_value",
-                    "p_adjusted",
-                ]
-
-            # Filter to available columns
-            available_cols = [c for c in display_cols if c in result_df.columns]
-            top = result_df[result_df["significant"]].head(5)[available_cols]
-
-            # Format for display
-            top_display = top.copy()
-            if "beta" in top_display.columns:
-                top_display["beta"] = top_display["beta"].apply(lambda x: f"{x:.4f}")
-            if "odds_ratio" in top_display.columns:
-                top_display["odds_ratio"] = top_display["odds_ratio"].apply(
-                    lambda x: f"{x:.2f}"
-                )
-            if "standard_error" in top_display.columns:
-                top_display["standard_error"] = top_display["standard_error"].apply(
-                    lambda x: f"{x:.4f}"
-                )
-            top_display["p_value"] = top_display["p_value"].apply(lambda x: f"{x:.2e}")
-            top_display["p_adjusted"] = top_display["p_adjusted"].apply(
-                lambda x: f"{x:.2e}"
-            )
-
-            # Print table
-            if phenotype_type == "binary":
-                header = "  ".join(
-                    [
-                        "Gene Set".ljust(20),
-                        "Beta".ljust(8),
-                        "OR".ljust(8),
-                        "P-value".ljust(10),
-                        "P-adj".ljust(10),
-                    ]
-                )
-            else:
-                header = "  ".join(
-                    [
-                        "Gene Set".ljust(20),
-                        "Beta".ljust(8),
-                        "SE".ljust(8),
-                        "P-value".ljust(10),
-                        "P-adj".ljust(10),
-                    ]
-                )
-
-            click.echo(header)
-            click.echo("-" * 60)
-
-            for _, row in top_display.iterrows():
-                if phenotype_type == "binary":
-                    line = "  ".join(
-                        [
-                            str(row["gene_set_name"])[:20].ljust(20),
-                            str(row["beta"]).ljust(8),
-                            str(row.get("odds_ratio", "N/A")).ljust(8),
-                            str(row["p_value"]).ljust(10),
-                            str(row["p_adjusted"]).ljust(10),
-                        ]
-                    )
-                else:
-                    line = "  ".join(
-                        [
-                            str(row["gene_set_name"])[:20].ljust(20),
-                            str(row["beta"]).ljust(8),
-                            str(row.get("standard_error", "N/A")).ljust(8),
-                            str(row["p_value"]).ljust(10),
-                            str(row["p_adjusted"]).ljust(10),
-                        ]
-                    )
-                click.echo(line)
-
-        click.echo("=" * 60 + "\n")
+        _render_burden_summary(result_df, alpha, phenotype_type)
 
     # Run permutation test if requested
     if permutation:
