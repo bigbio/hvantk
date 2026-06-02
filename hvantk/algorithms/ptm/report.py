@@ -16,8 +16,8 @@ from typing import Any, Dict, List, Optional, Sequence, TYPE_CHECKING
 import matplotlib.pyplot as plt
 
 from hvantk.algorithms.ptm.analysis import PTMLandscapeResult, PTMPopulationResult
+from hvantk.algorithms.visualization.base import encode_figure_to_base64
 from hvantk.algorithms.ptm.plot import (
-    encode_figure_to_base64,
     plot_distance_distribution,
     plot_landscape_summary,
     plot_overlap_by_category,
@@ -698,8 +698,7 @@ def _build_phase2_binned_section(results: Sequence["BinnedLMMResult"]) -> str:
 
     if not body_rows:
         body_rows = (
-            f"<tr><td colspan='{3 + 3 * len(all_bins) + 2}'>"
-            "(no results)</td></tr>"
+            f"<tr><td colspan='{3 + 3 * len(all_bins) + 2}'>" "(no results)</td></tr>"
         )
 
     return (

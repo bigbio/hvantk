@@ -12,8 +12,6 @@ The main plotting function `plot_pca_scatter` supports:
 """
 
 import logging
-from io import BytesIO
-import base64
 from typing import Dict, List, Optional, Tuple, Union, Any
 
 import numpy as np
@@ -703,7 +701,7 @@ def plot_confusion_matrix(
 
 
 def encode_figure_to_base64(fig, format: str = "png", dpi: int = 150) -> str:
-    """Encode matplotlib figure to base64 string for HTML embedding.
+    """Encode matplotlib figure to a base64 data-URI string for HTML embedding.
 
     Parameters
     ----------
@@ -717,14 +715,16 @@ def encode_figure_to_base64(fig, format: str = "png", dpi: int = 150) -> str:
     Returns
     -------
     str
-        Base64-encoded image string.
+        Data-URI string (``data:image/{format};base64,...``) suitable for an
+        HTML ``<img src=...>`` attribute.
     """
-    buffer = BytesIO()
-    fig.savefig(buffer, format=format, dpi=dpi, bbox_inches="tight")
-    buffer.seek(0)
-    img_str = base64.b64encode(buffer.read()).decode("utf-8")
-    buffer.close()
-    return f"data:image/{format};base64,{img_str}"
+    # Imported lazily so that importing this module does not require matplotlib
+    # (kept optional via ``_get_matplotlib``); ``base`` imports it eagerly.
+    from hvantk.algorithms.visualization.base import (
+        encode_figure_to_base64 as _encode,
+    )
+
+    return _encode(fig, format=format, dpi=dpi, as_data_uri=True)
 
 
 def close_figure(fig) -> None:

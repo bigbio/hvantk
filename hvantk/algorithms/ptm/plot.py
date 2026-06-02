@@ -14,14 +14,13 @@ Plot functions:
 
 from __future__ import annotations
 
-import base64
-import io
 import logging
-from pathlib import Path
 from typing import Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
+
+from hvantk.algorithms.visualization.base import save_figure_to_path
 
 try:
     import seaborn as sns
@@ -195,7 +194,7 @@ def plot_landscape_summary(
         title or "PTM-Variant Landscape Summary", fontsize=13, fontweight="bold"
     )
     fig.tight_layout()
-    _save_figure(fig, output_path, format=format, dpi=dpi)
+    save_figure_to_path(fig, output_path, format=format, dpi=dpi)
     return fig
 
 
@@ -244,7 +243,7 @@ def plot_overlap_by_category(
     ax.set_title(title or "P/LP Variants by PTM Category")
     ax.grid(axis="x", linestyle="--", alpha=0.4)
     fig.tight_layout()
-    _save_figure(fig, output_path, format=format, dpi=dpi)
+    save_figure_to_path(fig, output_path, format=format, dpi=dpi)
     return fig
 
 
@@ -296,7 +295,7 @@ def plot_distance_distribution(
     ax.set_xticks(distances)
     ax.grid(axis="y", linestyle="--", alpha=0.4)
     fig.tight_layout()
-    _save_figure(fig, output_path, format=format, dpi=dpi)
+    save_figure_to_path(fig, output_path, format=format, dpi=dpi)
     return fig
 
 
@@ -435,7 +434,7 @@ def plot_population_af(
         fontweight="bold",
     )
     fig.tight_layout()
-    _save_figure(fig, output_path, format=format, dpi=dpi)
+    save_figure_to_path(fig, output_path, format=format, dpi=dpi)
     return fig
 
 
@@ -522,9 +521,9 @@ def plot_source_overlap(
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=figsize)
 
     # Color scheme
-    c_up = "#2196F3"       # blue - UniProt
-    c_both = "#9C27B0"     # purple - overlap
-    c_pa = "#FF9800"       # orange - PeptideAtlas
+    c_up = "#2196F3"  # blue - UniProt
+    c_both = "#9C27B0"  # purple - overlap
+    c_pa = "#FF9800"  # orange - PeptideAtlas
 
     # --- Left panel: site counts by category ---
     categories = ["UniProt\nonly", "Both", "PeptideAtlas\nonly"]
@@ -577,8 +576,16 @@ def plot_source_overlap(
             median.set_color("black")
             median.set_linewidth(2)
     else:
-        ax2.text(0.5, 0.5, "No PeptideAtlas\ndata", ha="center", va="center",
-                 transform=ax2.transAxes, fontsize=12, color="#888888")
+        ax2.text(
+            0.5,
+            0.5,
+            "No PeptideAtlas\ndata",
+            ha="center",
+            va="center",
+            transform=ax2.transAxes,
+            fontsize=12,
+            color="#888888",
+        )
 
     ax2.set_ylabel("log$_{10}$(n_observations)")
     ax2.set_title("PeptideAtlas Evidence")
@@ -607,34 +614,13 @@ def plot_source_overlap(
         fontweight="bold",
     )
     fig.tight_layout()
-    _save_figure(fig, output_path, format=format, dpi=dpi)
+    save_figure_to_path(fig, output_path, format=format, dpi=dpi)
     return fig
 
 
 # ---------------------------------------------------------------------------
 # Utilities
 # ---------------------------------------------------------------------------
-
-
-def encode_figure_to_base64(
-    fig: plt.Figure,
-    format: str = "png",
-    dpi: int = 200,
-) -> str:
-    """Convert a matplotlib figure to a base64-encoded image string."""
-    buffer = io.BytesIO()
-    fig.savefig(buffer, format=format, dpi=dpi, bbox_inches="tight")
-    buffer.seek(0)
-    return base64.b64encode(buffer.read()).decode("utf-8")
-
-
-def _save_figure(fig: plt.Figure, output_path: str, format: str, dpi: int) -> None:
-    path = Path(output_path)
-    if path.suffix.lower() != f".{format.lower()}":
-        path = path.with_suffix(f".{format}")
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(path, dpi=dpi, bbox_inches="tight", format=format)
-    logger.info("Saved figure to %s", path)
 
 
 def _empty_figure(
@@ -664,5 +650,5 @@ def _empty_figure(
         spine.set_visible(False)
     fig.tight_layout()
     if output_path is not None:
-        _save_figure(fig, output_path, format=format, dpi=dpi)
+        save_figure_to_path(fig, output_path, format=format, dpi=dpi)
     return fig

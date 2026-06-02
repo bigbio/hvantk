@@ -44,17 +44,26 @@ _LAZY_MODULES = {
     "CodonMapping": ("hvantk.algorithms.ptm.mapper", "CodonMapping"),
     "GTFData": ("hvantk.algorithms.ptm.mapper", "GTFData"),
     "parse_ensembl_gtf": ("hvantk.algorithms.ptm.mapper", "parse_ensembl_gtf"),
-    "map_residue_to_genomic": ("hvantk.algorithms.ptm.mapper", "map_residue_to_genomic"),
+    "map_residue_to_genomic": (
+        "hvantk.algorithms.ptm.mapper",
+        "map_residue_to_genomic",
+    ),
     "map_protein_sites": ("hvantk.algorithms.ptm.mapper", "map_protein_sites"),
     "resolve_transcript": ("hvantk.algorithms.ptm.mapper", "resolve_transcript"),
     # pipeline
     "PTMBuildConfig": ("hvantk.algorithms.ptm.pipeline", "PTMBuildConfig"),
     "PTMBuildResult": ("hvantk.algorithms.ptm.pipeline", "PTMBuildResult"),
-    "ptm_build_pipeline_core": ("hvantk.algorithms.ptm.pipeline", "ptm_build_pipeline_core"),
+    "ptm_build_pipeline_core": (
+        "hvantk.algorithms.ptm.pipeline",
+        "ptm_build_pipeline_core",
+    ),
     "map_ptm_sites": ("hvantk.algorithms.ptm.pipeline", "map_ptm_sites"),
     "download_ensembl_gtf": ("hvantk.algorithms.ptm.pipeline", "download_ensembl_gtf"),
     # annotate (requires Hail)
-    "annotate_variants_with_ptm": ("hvantk.algorithms.ptm.annotate", "annotate_variants_with_ptm"),
+    "annotate_variants_with_ptm": (
+        "hvantk.algorithms.ptm.annotate",
+        "annotate_variants_with_ptm",
+    ),
     # analysis (requires Hail)
     "PTMLandscapeResult": ("hvantk.algorithms.ptm.analysis", "PTMLandscapeResult"),
     "PTMPopulationResult": ("hvantk.algorithms.ptm.analysis", "PTMPopulationResult"),
@@ -71,10 +80,19 @@ _LAZY_MODULES = {
     ),
     # plot
     "plot_landscape_summary": ("hvantk.algorithms.ptm.plot", "plot_landscape_summary"),
-    "plot_overlap_by_category": ("hvantk.algorithms.ptm.plot", "plot_overlap_by_category"),
-    "plot_distance_distribution": ("hvantk.algorithms.ptm.plot", "plot_distance_distribution"),
+    "plot_overlap_by_category": (
+        "hvantk.algorithms.ptm.plot",
+        "plot_overlap_by_category",
+    ),
+    "plot_distance_distribution": (
+        "hvantk.algorithms.ptm.plot",
+        "plot_distance_distribution",
+    ),
     "plot_population_af": ("hvantk.algorithms.ptm.plot", "plot_population_af"),
-    "encode_figure_to_base64": ("hvantk.algorithms.ptm.plot", "encode_figure_to_base64"),
+    "encode_figure_to_base64": (
+        "hvantk.algorithms.visualization.base",
+        "encode_figure_to_base64",
+    ),
     # report
     "generate_report": ("hvantk.algorithms.ptm.report", "generate_report"),
     # Phase-2 atlas facade
@@ -95,7 +113,10 @@ _LAZY_MODULES = {
         "run_binned_interaction_lmm",
     ),
     # Phase-2 report writer
-    "generate_phase2_report": ("hvantk.algorithms.ptm.report", "generate_phase2_report"),
+    "generate_phase2_report": (
+        "hvantk.algorithms.ptm.report",
+        "generate_phase2_report",
+    ),
 }
 
 
@@ -107,6 +128,7 @@ def __getattr__(name: str):
         globals()[name] = val  # cache for subsequent access
         return val
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 __all__ = [
     # Annotation

@@ -19,8 +19,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from hvantk.core.utils.gene_sets import GeneSetCollection
+from hvantk.algorithms.visualization.base import encode_figure_to_base64
 from hvantk.algorithms.enrichex.plot import (
-    encode_figure_to_base64,
     plot_burden_forest,
     plot_enrichment_dotplot,
 )

@@ -5,10 +5,7 @@ All functions return ``matplotlib.figure.Figure`` objects and optionally
 save to disk.  Plot styling follows the enrichex/psroc conventions.
 """
 
-import io
-import base64
 import logging
-from pathlib import Path
 from typing import Optional
 
 import numpy as np
@@ -42,21 +39,19 @@ def _require_matplotlib():
 
 def _save_figure(fig, output_path: Optional[str], dpi: int = 300):
     """Save figure to disk if *output_path* is provided."""
-    if output_path:
-        p = Path(output_path)
-        p.parent.mkdir(parents=True, exist_ok=True)
-        fig.savefig(str(p), dpi=dpi, bbox_inches="tight")
-        logger.info("Saved plot: %s", p)
+    # Imported lazily so importing this module stays matplotlib-optional.
+    from hvantk.algorithms.visualization.base import save_figure_to_path
+
+    save_figure_to_path(fig, output_path, dpi=dpi)
 
 
 def encode_figure_to_base64(fig) -> str:
     """Encode a matplotlib figure as a base64 PNG for HTML embedding."""
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", dpi=300, bbox_inches="tight")
-    buf.seek(0)
-    encoded = base64.b64encode(buf.read()).decode("utf-8")
-    buf.close()
-    return encoded
+    from hvantk.algorithms.visualization.base import (
+        encode_figure_to_base64 as _encode,
+    )
+
+    return _encode(fig, dpi=300)
 
 
 # ---------------------------------------------------------------------------
