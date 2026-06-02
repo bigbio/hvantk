@@ -1,0 +1,36 @@
+[
+  {
+    "title": "GTEx v11 cis-eQTL significant variant-gene pairs (per-tissue)",
+    "accession": "GTEx_v11_eQTL_signif_pairs",
+    "description": "GTEx Consortium release v11 cis-eQTL significant variant-gene pairs, one parquet file per tissue. 12 source columns: phenotype_id, variant_id (chr_pos_ref_alt_b38), start_distance, af, ma_samples, ma_count, pval_nominal, slope, slope_se, pval_nominal_threshold, min_pval_nominal, pval_beta. Built into a Hail Table keyed by (locus, alleles, gene_id) via spark.read.parquet \u2192 hl.Table.from_spark; see hvantk/skills/gtex-eqtl/SKILL.md. Used as eQTL input to hvantk/qtlcascade/ and variant annotation.",
+    "pubmedid": "32913098",
+    "data_source": "Custom",
+    "last_updated": "2024-12-01T00:00:00.000000",
+    "update_frequency": "irregular",
+    "organism": "Homo sapiens",
+    "tissue_type": "all",
+    "sample_count": 1000,
+    "license": "Public (summary statistics); dbGaP-controlled for individual-level data",
+    "doi": "10.1126/science.aaz1776",
+    "genome_build": "GRCh38",
+    "variant_types": [
+      "SNV"
+    ],
+    "frequency_data": true,
+    "clinical_significance": false,
+    "annotation_sources": [
+      "GTEx",
+      "GENCODE",
+      "Ensembl"
+    ],
+    "files": [
+      {
+        "path": "Liver.v11.eQTLs.signif_pairs.parquet",
+        "format": "parquet",
+        "size_bytes": 27912129,
+        "url": "https://gtexportal.org/home/downloads/adult-gtex/qtl",
+        "description": "Liver tissue v11 cis-eQTL significant variant-gene pairs (Apache Parquet). One file per tissue; the skill anchors against Liver as the smallest v11 tissue (~28 MB). Same schema across all 49 tissues."
+      }
+    ]
+  }
+]

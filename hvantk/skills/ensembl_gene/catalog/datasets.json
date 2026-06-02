@@ -1,0 +1,45 @@
+[
+  {
+    "title": "Ensembl Gene Annotations",
+    "accession": "Ensembl_v110",
+    "description": "Comprehensive gene annotations from the Ensembl project including gene models, transcript isoforms, protein sequences, regulatory features, and comparative genomics data across species.",
+    "pubmedid": "31691826",
+    "data_source": "Custom",
+    "last_updated": "2025-09-23T16:30:00.000000",
+    "update_frequency": "quarterly",
+    "organism": "Homo sapiens",
+    "tissue_type": "all",
+    "sample_count": 70000,
+    "license": "Apache 2.0",
+    "doi": "10.1093/nar/gkz966",
+    "genome_build": "GRCh38",
+    "variant_types": [
+      "SNV",
+      "indel",
+      "SV"
+    ],
+    "frequency_data": false,
+    "clinical_significance": false,
+    "annotation_sources": [
+      "Ensembl",
+      "GENCODE",
+      "RefSeq"
+    ],
+    "files": [
+      {
+        "path": "Homo_sapiens.GRCh38.110.gtf.gz",
+        "format": "gtf",
+        "size_bytes": 800000000,
+        "compression": "gzip",
+        "description": "Complete gene annotations in GTF format"
+      },
+      {
+        "path": "Homo_sapiens.GRCh38.110.gff3.gz",
+        "format": "gff",
+        "size_bytes": 900000000,
+        "compression": "gzip",
+        "description": "Complete gene annotations in GFF3 format"
+      }
+    ]
+  }
+]

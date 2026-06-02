@@ -1,0 +1,72 @@
+[
+  {
+    "title": "gnomAD - Genome Aggregation Database",
+    "accession": "gnomAD_v4.1",
+    "description": "Large-scale reference dataset of human genetic variation, aggregating exome and genome sequencing data from diverse populations worldwide. Provides allele frequencies, quality metrics, and population-specific annotations.",
+    "pubmedid": "32461654",
+    "data_source": "Custom",
+    "last_updated": "2025-09-23T16:30:00.000000",
+    "update_frequency": "annually",
+    "organism": "Homo sapiens",
+    "tissue_type": "all",
+    "sample_count": 730000,
+    "license": "ODC Open Database License",
+    "doi": "10.1038/s41586-020-2308-7",
+    "genome_build": "GRCh38",
+    "variant_types": [
+      "SNV",
+      "indel",
+      "SV",
+      "CNV"
+    ],
+    "frequency_data": true,
+    "clinical_significance": false,
+    "population_data": {
+      "populations": [
+        "AFR",
+        "AMR",
+        "ASJ",
+        "EAS",
+        "FIN",
+        "NFE",
+        "OTH",
+        "SAS"
+      ],
+      "ancestry_groups": [
+        "African",
+        "Latino/Admixed American",
+        "Ashkenazi Jewish",
+        "East Asian",
+        "Finnish",
+        "Non-Finnish European",
+        "Other",
+        "South Asian"
+      ]
+    },
+    "annotation_sources": [
+      "gnomAD",
+      "ExAC"
+    ],
+    "quality_filters": {
+      "min_depth": 10,
+      "min_quality_score": 30,
+      "genotype_quality_threshold": 20
+    },
+    "files": [
+      {
+        "path": "gnomad.genomes.v4.1.sites.vcf.bgz",
+        "format": "vcf",
+        "size_bytes": 150000000000,
+        "compression": "gzip",
+        "description": "gnomAD genome sites with population frequencies"
+      },
+      {
+        "path": "gnomad.exomes.v4.1.sites.vcf.bgz",
+        "format": "vcf",
+        "size_bytes": 80000000000,
+        "compression": "gzip",
+        "description": "gnomAD exome sites with population frequencies"
+      }
+    ]
+  }
+]

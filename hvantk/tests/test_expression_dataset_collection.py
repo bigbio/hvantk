@@ -3,8 +3,8 @@ import json
 from hvantk.skills.expression_atlas.shared.datasets import (
     ExpressionAtlasDatasetCollection,
     ExpressionAtlasDataset,
+    load_expression_atlas_datasets,
 )
-from hvantk.skills.expression_atlas.shared.constants import EXPRESSION_ATLAS_JSON_FILE_PATH
 
 
 def test_from_json_creates_dataset_objects(tmp_path):
@@ -55,16 +55,13 @@ def test_from_json_creates_dataset_objects(tmp_path):
     assert collection.datasets[1].pubmedid is None
 
 
-def test_from_json_existing_file():
-    """Test that from_json correctly loads from an existing file."""
-    collection = ExpressionAtlasDatasetCollection.from_json(
-        EXPRESSION_ATLAS_JSON_FILE_PATH
+def test_collection_from_registry_backed_loader():
+    """Collection built from the (registry-backed) plugin loader."""
+    collection = ExpressionAtlasDatasetCollection(
+        datasets=load_expression_atlas_datasets()
     )
     assert len(collection.datasets) > 0
     assert isinstance(collection.datasets[0], ExpressionAtlasDataset)
-
-    # Print the summary of the first dataset
-    print(collection.datasets[1].summary())
 
 
 def test_get_dataset_by_accession():
@@ -89,9 +86,9 @@ def test_get_dataset_by_accession():
 
 
 def test_list_dataset_accessions():
-    """Test the list_dataset_accessions method."""
-    collection = ExpressionAtlasDatasetCollection.from_json(
-        EXPRESSION_ATLAS_JSON_FILE_PATH
+    """list_dataset_accessions over the registry-backed collection."""
+    collection = ExpressionAtlasDatasetCollection(
+        datasets=load_expression_atlas_datasets()
     )
     accessions = collection.list_dataset_accessions()
     assert len(accessions) > 0

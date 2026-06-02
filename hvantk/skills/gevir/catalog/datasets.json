@@ -1,0 +1,38 @@
+[
+  {
+    "title": "GeVIR - Genome-wide Variant Intolerance Ranking",
+    "accession": "GeVIR_v1.0",
+    "description": "Genome-wide scores for ranking the pathogenicity potential of human genetic variants. GeVIR integrates multiple genomic features to provide pathogenicity predictions for both coding and non-coding variants.",
+    "pubmedid": "31873297",
+    "data_source": "Custom",
+    "last_updated": "2025-09-23T16:30:00.000000",
+    "update_frequency": "irregular",
+    "organism": "Homo sapiens",
+    "tissue_type": "all",
+    "sample_count": 700000000,
+    "license": "Academic use",
+    "doi": "10.1038/s41467-019-14246-7",
+    "genome_build": "GRCh38",
+    "variant_types": [
+      "SNV",
+      "indel"
+    ],
+    "frequency_data": false,
+    "clinical_significance": true,
+    "annotation_sources": [
+      "GeVIR",
+      "CADD",
+      "phyloP",
+      "phastCons"
+    ],
+    "files": [
+      {
+        "path": "gevir_scores_GRCh38.tsv.gz",
+        "format": "tsv",
+        "size_bytes": 20000000000,
+        "compression": "gzip",
+        "description": "GeVIR pathogenicity scores for human variants"
+      }
+    ]
+  }
+]

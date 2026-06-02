@@ -1,0 +1,35 @@
+[
+  {
+    "title": "ClinGen Gene-Disease Validity",
+    "accession": "ClinGen_GeneDisease",
+    "description": "Curated gene-disease associations with evidence-based classifications from ClinGen. Includes classification levels (Definitive, Strong, Moderate, Limited), mode of inheritance, and MONDO disease ontology mappings.",
+    "pubmedid": "28552198",
+    "data_source": "Custom",
+    "last_updated": "2026-03-06T00:00:00.000000",
+    "update_frequency": "monthly",
+    "organism": "Homo sapiens",
+    "tissue_type": "all",
+    "sample_count": 4000,
+    "license": "CC BY 4.0",
+    "doi": "10.1016/j.ajhg.2017.04.015",
+    "genome_build": "GRCh38",
+    "variant_types": [
+      "SNV"
+    ],
+    "frequency_data": false,
+    "clinical_significance": true,
+    "annotation_sources": [
+      "ClinGen",
+      "MONDO",
+      "OMIM"
+    ],
+    "files": [
+      {
+        "path": "Clingen-Gene-Disease-Summary.csv",
+        "format": "csv",
+        "size_bytes": 5000000,
+        "description": "Gene-disease validity classifications with evidence levels"
+      }
+    ]
+  }
+]

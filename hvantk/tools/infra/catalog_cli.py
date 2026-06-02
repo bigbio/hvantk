@@ -4,8 +4,8 @@ This CLI is a read-only window onto the live registry: it does NOT load the
 old ``hvantk/resources/catalog.yaml`` summary file (removed when per-domain
 ``datasets.json`` files were retired). Instead it instantiates
 :class:`hvantk.resources.unified_registry.HvantkRegistry`, which aggregates
-each plugin's ``catalog/datasets.json`` plus the surviving legacy
-``resources/registry/genomics/datasets.json``.
+each plugin's ``catalog/datasets.json`` (the single source of truth — a
+duplicate accession across two plugins is a hard error).
 
 Subcommands:
 

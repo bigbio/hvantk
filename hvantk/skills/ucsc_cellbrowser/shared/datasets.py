@@ -352,11 +352,11 @@ def load_ucsc_datasets(json_path: Optional[str] = None) -> List[UCSCDataset]:
         List of UCSCDataset objects
     """
     if json_path is None:
-        import os
-
-        json_path = os.path.join(
-            os.path.dirname(__file__), "..", "resources", "cells_ucsc_datasets.json"
+        from hvantk.skills.ucsc_cellbrowser.shared.constants import (
+            UCSC_JSON_FILE_PATH,
         )
+
+        json_path = str(UCSC_JSON_FILE_PATH)
 
     collection = UCSCDataSetCollection.from_json(json_path)
     return collection.datasets

@@ -6696,50 +6696,6 @@
     ]
   },
   {
-    "title": "Cortex Development",
-    "accession": "cortex-dev",
-    "description": "Single-cell RNA-seq data from developing human cortex. SmartSeq2 protocol with 4,261 cells from embryonic brain tissue.",
-    "data_source": "UCSC",
-    "last_updated": "2025-09-23T15:25:48.241726",
-    "update_frequency": "static",
-    "organism": "Human (H. sapiens)",
-    "tissue_type": "brain",
-    "sample_count": 4261,
-    "expression_unit": "counts",
-    "platform_type": "single-cell RNA-seq",
-    "data_level": "gene",
-    "files": [
-      {
-        "path": "cortex-dev_expression.tsv",
-        "format": "tsv",
-        "size_bytes": 157810688,
-        "description": "Expression matrix for Cortex Development"
-      }
-    ]
-  },
-  {
-    "title": "Alzheimer's Disease Across Six Brain Regions",
-    "accession": "ad-multi-region",
-    "description": "Single-cell RNA-seq data from Alzheimer's disease patients across six brain regions. Part of the ROSMAP project with over 1.3M cells.",
-    "data_source": "UCSC",
-    "last_updated": "2025-09-23T15:25:48.245258",
-    "update_frequency": "static",
-    "organism": "Human (H. sapiens)",
-    "tissue_type": "brain",
-    "sample_count": 1353074,
-    "expression_unit": "counts",
-    "platform_type": "single-cell RNA-seq",
-    "data_level": "gene",
-    "files": [
-      {
-        "path": "ad-multi-region_expression.tsv",
-        "format": "tsv",
-        "size_bytes": 5242880000,
-        "description": "Expression matrix for Alzheimer's Disease Across Six Brain Regions"
-      }
-    ]
-  },
-  {
     "accession": "adult_ctx_meta_atlas_class_summary",
     "title": "Adult Cortex Meta-Atlas (class-level summary)",
     "description": "Class-level expression summary derived from the UCSC Cell Browser 'Adult Cortex Meta-Atlas' collection (parent accession: adult-ctx-meta-atlas). Rows = genes, columns = cell-class meta-cells (e.g. Astrocyte, IT, PVALB).",
@@ -6760,7 +6716,8 @@
     "expected_obs_columns": [
       "Class",
       "n_cells"
-    ]
+    ],
+    "files": []
   },
   {
     "accession": "dev_ctx_meta_atlas_type_v2_summary",
@@ -6783,7 +6740,8 @@
     "expected_obs_columns": [
       "Type_v2",
       "n_cells"
-    ]
+    ],
+    "files": []
   },
   {
     "accession": "asp_2019_celltype_summary",
@@ -6805,6 +6763,7 @@
     "expected_obs_columns": [
       "celltype",
       "n_cells"
-    ]
+    ],
+    "files": []
   }
 ]
