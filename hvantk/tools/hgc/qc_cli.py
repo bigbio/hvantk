@@ -491,46 +491,9 @@ def qc_summary(ctx, qc_dir, sample_file, variant_file, output, format):
                     json.dump(summary_data, f, indent=2)
 
             elif format == "markdown":
-                # Generate markdown report
-                md_content = "# Quality Control Summary Report\n\n"
+                from hvantk.algorithms.hgc.qc_report import render_qc_summary_markdown
 
-                for qc_type, data in summary_data.items():
-                    md_content += f"## {qc_type.replace('_', ' ').title()}\n\n"
-                    md_content += f"- **File**: {data['file']}\n"
-                    md_content += f"- **Count**: {data.get('n_samples', data.get('n_variants', 0)):,}\n"
-                    md_content += f"- **Metrics**: {', '.join(data['columns'])}\n\n"
-
-                    if data["summary_stats"]:
-                        md_content += "### Summary Statistics\n\n"
-                        md_content += "| Metric | Count | Mean | Std | Min | 25% | 50% | 75% | Max |\n"
-                        md_content += "|--------|--------|--------|--------|--------|--------|--------|--------|--------|\n"
-
-                        for metric, stats in data["summary_stats"].items():
-                            if isinstance(stats, dict):
-                                row = f"| {metric} |"
-                                for stat in [
-                                    "count",
-                                    "mean",
-                                    "std",
-                                    "min",
-                                    "25%",
-                                    "50%",
-                                    "75%",
-                                    "max",
-                                ]:
-                                    value = stats.get(stat, "N/A")
-                                    if (
-                                        isinstance(value, (int, float))
-                                        and stat != "count"
-                                    ):
-                                        value = (
-                                            f"{value:.3f}"
-                                            if abs(value) < 1000
-                                            else f"{value:.2e}"
-                                        )
-                                    row += f" {value} |"
-                                md_content += row + "\n"
-                        md_content += "\n"
+                md_content = render_qc_summary_markdown(summary_data)
 
                 with open(output_path, "w") as f:
                     f.write(md_content)
