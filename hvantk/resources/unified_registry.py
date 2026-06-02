@@ -1,20 +1,11 @@
 """
 Unified registry interface for hvantk.
 
-Sources data from two places:
-
-1. Per-plugin catalogs declared in each plugin's ``plugin.yaml`` via the
-   ``catalog:`` field (resolved by ``hvantk.core.plugin_loader``).
-2. Legacy per-domain JSON files under ``hvantk/resources/registry/<omics>/``.
-   After the per-plugin migration, only ``genomics/datasets.json`` remains
-   in-tree (it still holds orphan entries without an owning plugin).
-
-**Collision precedence:** per-plugin catalogs win. If a legacy registry
-entry duplicates an ``(omics_type, accession)`` already contributed by a
-plugin catalog, the legacy entry is skipped and a WARNING is logged. There
-are zero overlapping accessions today; the rule exists to make the
-behavior deterministic the day someone moves an orphan entry into a plugin
-catalog without remembering to delete the legacy copy.
+All dataset metadata comes exclusively from per-plugin catalogs declared in
+each plugin's ``plugin.yaml`` via the ``catalog:`` field. There is no legacy
+fallback: every dataset must be owned by exactly one plugin. A duplicate
+``accession`` contributed by two different plugins is a hard ``ValueError`` —
+there is exactly one authoritative owner per dataset.
 
 The public API (``list_*_datasets``, ``get_dataset``, ``search``,
 ``get_stats``) is unchanged.
@@ -22,7 +13,6 @@ The public API (``list_*_datasets``, ``get_dataset``, ``search``,
 
 import json
 import logging
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -35,8 +25,12 @@ _DOMAIN_TO_OMICS = {
     "proteomics": "proteomics",
     "genomics": "genomics",
     "epigenomics": "epigenomics",
-    # mapping-type plugins (e.g. hgnc lookup) carry no per-omics data
-    # entries and so contribute nothing to the registry buckets.
+    # `mapping`-domain plugins build lookup/mapping artifacts rather than a
+    # single omics keyspace, but their catalogued reference datasets
+    # (ensembl_gene gene annotations, msigdb gene sets) belong in the
+    # genomics browse bucket. hgnc is `mapping` too but ships no catalog, so
+    # it contributes nothing here.
+    "mapping": "genomics",
 }
 
 
@@ -93,22 +87,23 @@ class HvantkRegistry:
 
     omics_types = ["transcriptomics", "proteomics", "genomics", "epigenomics"]
 
-    def __init__(self, registry_root: Optional[Path] = None):
+    def __init__(self):
         """Initialize the unified registry."""
-        self.registry_root = registry_root or Path(__file__).parent / "registry"
         self._cache: Dict[str, List[Dict[str, Any]]] = {
             t: [] for t in self.omics_types
         }
         self._load_registry()
 
     def _load_registry(self) -> None:
-        """Aggregate per-plugin catalogs and the remaining legacy registry files.
+        """Aggregate per-plugin catalogs only (single source of truth).
 
-        Plugin catalogs are loaded first; the legacy genomics registry is the
-        fallback. Any legacy entry whose ``(omics_type, accession)`` is already
-        covered by a plugin catalog is skipped with a WARNING — per-plugin wins.
+        Every buildable plugin declares ``catalog: catalog/datasets.json`` in
+        its manifest; this merges those catalogs into per-omics buckets. A
+        duplicate ``accession`` contributed by two different plugins is a hard
+        error — there is exactly one authoritative owner per dataset.
         """
-        # 1. Per-plugin catalogs (declared via plugin.yaml `catalog:`)
+        self._cache = {otype: [] for otype in self.omics_types}
+        seen_accessions: Dict[str, str] = {}  # accession -> owning provider name
         try:
             # Import locally to avoid a hard dependency cycle when this module
             # is imported before the plugin loader is needed.
@@ -116,71 +111,44 @@ class HvantkRegistry:
 
             registry = plugin_loader.get_registry()
         except Exception as exc:  # noqa: BLE001
-            logger.warning("plugin loader unavailable; per-plugin catalogs skipped: %s", exc)
-            registry = None
+            logger.warning("plugin loader unavailable; catalog is empty: %s", exc)
+            return
 
-        if registry is not None:
-            for provider in registry.list_providers():
-                catalog_path = getattr(provider, "catalog_path", None)
-                if not catalog_path:
-                    continue
-                try:
-                    with open(catalog_path, "r") as fh:
-                        entries = json.load(fh)
-                except (OSError, json.JSONDecodeError) as exc:
-                    logger.warning(
-                        "failed to load catalog for %s (%s): %s",
-                        provider.name,
-                        catalog_path,
-                        exc,
-                    )
-                    continue
-
-                primary = _DOMAIN_TO_OMICS.get(
-                    _provider_primary_domain(provider) or "", None
-                )
-                if primary is None:
-                    # Mapping-type or unknown-domain plugins do not feed
-                    # the omics buckets.
-                    continue
-                for entry in entries:
-                    omics = _infer_omics_for_entry(entry, primary)
-                    if omics is None:
-                        continue
-                    self._cache.setdefault(omics, []).append(entry)
-
-        # Snapshot the accessions contributed by the plugin layer; the legacy
-        # pass below uses this set to enforce the "per-plugin wins" precedence.
-        plugin_owned: Dict[str, set] = {
-            otype: {
-                e.get("accession") for e in self._cache.get(otype, []) if e.get("accession")
-            }
-            for otype in self.omics_types
-        }
-
-        # 2. Legacy per-omics registry files (only genomics remains today)
-        for omics_type in self.omics_types:
-            datasets_file = self.registry_root / omics_type / "datasets.json"
-            if not datasets_file.is_file():
+        for provider in registry.list_providers():
+            catalog_path = getattr(provider, "catalog_path", None)
+            if not catalog_path:
                 continue
             try:
-                with open(datasets_file, "r") as fh:
-                    legacy_entries = json.load(fh)
+                with open(catalog_path, "r") as fh:
+                    entries = json.load(fh)
             except (OSError, json.JSONDecodeError) as exc:
-                logger.error("Error loading %s: %s", omics_type, exc)
+                logger.warning(
+                    "failed to load catalog for %s (%s): %s",
+                    provider.name,
+                    catalog_path,
+                    exc,
+                )
                 continue
-            for entry in legacy_entries:
-                accession = entry.get("accession")
-                if accession and accession in plugin_owned.get(omics_type, set()):
-                    logger.warning(
-                        "legacy %s entry %r duplicates a per-plugin catalog "
-                        "accession; skipping legacy copy (per-plugin wins per "
-                        "unified_registry precedence rule)",
-                        omics_type,
-                        accession,
+
+            primary = _DOMAIN_TO_OMICS.get(
+                _provider_primary_domain(provider) or "", None
+            )
+            if primary is None:
+                # Unknown-domain plugins do not feed the omics buckets.
+                continue
+            for entry in entries:
+                acc = entry.get("accession")
+                if acc and acc in seen_accessions:
+                    raise ValueError(
+                        f"duplicate catalog accession {acc!r}: declared by both "
+                        f"{seen_accessions[acc]!r} and {provider.name!r}"
                     )
+                if acc:
+                    seen_accessions[acc] = provider.name
+                omics = _infer_omics_for_entry(entry, primary)
+                if omics is None:
                     continue
-                self._cache[omics_type].append(entry)
+                self._cache.setdefault(omics, []).append(entry)
 
     def list_transcriptomics_datasets(self) -> List[Dict]:
         """Get all transcriptomics datasets."""

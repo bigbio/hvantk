@@ -1,15 +1,10 @@
-"""Verify HvantkRegistry sources data from per-plugin catalogs after migration.
+"""Verify HvantkRegistry sources all dataset metadata from per-plugin catalogs.
 
-Before the migration the registry read three flat files:
-- registry/transcriptomics/datasets.json   (~300 entries)
-- registry/proteomics/datasets.json        (2 entries)
-- registry/epigenomics/datasets.json       (0 entries)
-
-After the migration those entries live inside each owning plugin's
-``catalog/datasets.json`` (expression-atlas, ucsc-cellbrowser). The legacy
-``registry/genomics/datasets.json`` is intentionally retained until orphan
-entries (dbNSFP, gnomad-metrics, ensembl-gene, gevir, cosmic-cgc) gain
-owning plugins.
+All omics buckets — transcriptomics, proteomics, and genomics — are now
+populated exclusively from per-plugin ``catalog/datasets.json`` files
+declared in each plugin's ``plugin.yaml``. There is no legacy file fallback.
+A duplicate ``accession`` contributed by two different plugins is a hard
+``ValueError``.
 """
 
 from __future__ import annotations
@@ -45,12 +40,21 @@ def test_proteomics_loaded_from_per_plugin_catalogs():
     assert len(entries) >= 2, f"expected at least 2 proteomics entries, got {len(entries)}"
 
 
-def test_genomics_still_loaded_from_legacy_path():
+def test_genomics_loaded_from_per_plugin_catalogs():
     reg = _fresh_registry()
-    entries = reg.list_genomics_datasets()
-    # The legacy registry/genomics/datasets.json was NOT migrated; should
-    # still have its in-tree entries.
-    assert len(entries) >= 5
+    accs = {e.get("accession") for e in reg.list_genomics_datasets()}
+    # The 10 genomics datasets now come from per-plugin catalogs. Two of them
+    # (Ensembl_v110, MSigDB_*) come from `mapping`-domain plugins routed into
+    # the genomics bucket.
+    expected = {
+        "dbNSFP_v4.7", "ClinVar_latest", "gnomAD_v4.1", "INSIDER_v1.0",
+        "Ensembl_v110", "GeVIR_v1.0", "ClinGen_GeneDisease",
+        "GWAS_Catalog_v1.0_e115_r2026-04-27",
+        "MSigDB_C2_CP_v2026.1.Hs.symbols", "GTEx_v11_eQTL_signif_pairs",
+    }
+    assert expected <= accs, f"missing genomics plugin entries: {expected - accs}"
+    # CCR has no owning plugin and must NOT appear (it left the catalog).
+    assert "CCR_v2.0" not in accs
 
 
 def test_search_organism_filter_uses_substring_match():
@@ -82,78 +86,36 @@ def test_search_filters_with_missing_field_are_skipped():
     assert results == []
 
 
-def test_legacy_entry_skipped_when_plugin_catalog_owns_accession(tmp_path, caplog):
-    """Per-plugin catalogs take precedence over the legacy registry.
-
-    Regression guard for F13: prior to the fix, a legacy registry entry whose
-    accession overlapped a plugin catalog entry would silently double-insert
-    into the omics bucket and ``get_dataset(accession)`` would return whichever
-    iteration order happened to land first. The fix logs a WARNING and skips
-    the legacy duplicate.
-    """
+def test_duplicate_accession_across_plugins_is_error(monkeypatch, tmp_path):
+    """Two providers contributing the same accession must raise, not silently skip."""
     import json
-    import logging
+    import pytest
+    import hvantk.resources.unified_registry as ur
 
-    # Pick an accession that the live plugin layer owns exactly once. Some
-    # per-plugin catalogs include intra-file duplicates (a separate
-    # data-quality issue); choosing a unique accession isolates the
-    # cross-source collision behavior under test.
-    plugin_loader.reset_registry_for_tests()
-    reg_baseline = HvantkRegistry()
-    accession_counts: dict = {}
-    for entry in reg_baseline.list_transcriptomics_datasets():
-        acc = entry.get("accession")
-        if acc:
-            accession_counts[acc] = accession_counts.get(acc, 0) + 1
-    target_accession = next(
-        (acc for acc, n in accession_counts.items() if n == 1), None
+    class _FakeProvider:
+        def __init__(self, name, catalog_path):
+            self.name = name
+            self.catalog_path = str(catalog_path)
+            self.primary_domain = "genomics"
+            self.datasets = ()
+
+    def _entry(acc):
+        return {
+            "accession": acc, "title": acc, "description": "x",
+            "data_source": "Custom", "organism": "Homo sapiens", "files": [],
+        }
+
+    cat_a = tmp_path / "a.json"; cat_a.write_text(json.dumps([_entry("DUP")]))
+    cat_b = tmp_path / "b.json"; cat_b.write_text(json.dumps([_entry("DUP")]))
+
+    class _FakeRegistry:
+        def list_providers(self):
+            return [_FakeProvider("prov-a", cat_a), _FakeProvider("prov-b", cat_b)]
+
+    monkeypatch.setattr(
+        "hvantk.core.plugin.loader.get_registry", lambda: _FakeRegistry()
     )
-    assert target_accession is not None, "no uniquely-owned transcriptomics accession to test against"
-    baseline_count = accession_counts[target_accession]
-    assert baseline_count == 1
+    with pytest.raises(ValueError, match="DUP"):
+        ur.HvantkRegistry()
 
-    # Build a fake registry root containing a transcriptomics datasets.json
-    # whose entry duplicates the plugin accession.
-    fake_root = tmp_path / "registry"
-    (fake_root / "transcriptomics").mkdir(parents=True)
-    (fake_root / "transcriptomics" / "datasets.json").write_text(
-        json.dumps(
-            [
-                {
-                    "accession": target_accession,
-                    "title": "LEGACY-DUPLICATE",
-                    "description": "this entry should be skipped",
-                },
-                {
-                    "accession": "LEGACY-ONLY-ACCESSION",
-                    "title": "Legacy-only entry",
-                    "description": "no plugin owns this; should survive",
-                },
-            ]
-        )
-    )
 
-    plugin_loader.reset_registry_for_tests()
-    with caplog.at_level(logging.WARNING, logger="hvantk.resources.unified_registry"):
-        reg = HvantkRegistry(registry_root=fake_root)
-
-    # Per-plugin entry survives; legacy duplicate is dropped.
-    matched = [
-        e for e in reg.list_transcriptomics_datasets() if e["accession"] == target_accession
-    ]
-    assert len(matched) == 1, f"expected exactly one entry for {target_accession}, got {len(matched)}"
-    assert matched[0].get("title") != "LEGACY-DUPLICATE", (
-        "legacy entry leaked through; per-plugin precedence violated"
-    )
-
-    # Non-colliding legacy entry is still aggregated.
-    assert any(
-        e["accession"] == "LEGACY-ONLY-ACCESSION"
-        for e in reg.list_transcriptomics_datasets()
-    ), "non-colliding legacy entry was incorrectly dropped"
-
-    # The skip emitted a WARNING that names the offending accession.
-    assert any(
-        target_accession in record.getMessage() and record.levelname == "WARNING"
-        for record in caplog.records
-    ), "expected WARNING log naming the colliding accession"
