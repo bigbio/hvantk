@@ -243,6 +243,84 @@ def compute_per_gene_burden_mt(
     return mt_genes
 
 
+def _build_gene_length_ht(
+    mt: "hl.MatrixTable",
+    gene_field: str,
+    gene_lengths: Optional[Dict[str, float]],
+) -> "hl.Table":
+    """Build a ``gene -> length(kb)`` table for burden length-normalization.
+
+    Uses the provided CDS lengths when available, otherwise the count of
+    qualifying variant sites per gene as a proxy.
+    """
+    if gene_lengths is not None:
+        logger.info(
+            "Gene-length normalization: using provided CDS lengths (%d genes)",
+            len(gene_lengths),
+        )
+        return hl.Table.parallelize(
+            [
+                hl.struct(gene=k, _gene_length=float(v) / 1000.0)
+                for k, v in gene_lengths.items()
+            ],
+            schema=hl.tstruct(gene=hl.tstr, _gene_length=hl.tfloat64),
+        ).key_by("gene")
+
+    logger.info(
+        "Gene-length normalization: using qualifying variant site "
+        "count per gene as proxy (provide gene_lengths for "
+        "CDS-based normalization)"
+    )
+    _rows = mt.rows()
+    return _rows.group_by(gene=_rows[gene_field]).aggregate(
+        _gene_length=hl.float64(hl.agg.count())
+    )
+
+
+def _build_gene_to_sets_ht(gene_sets: Dict[str, List[str]]) -> "hl.Table":
+    """Build a ``gene -> [gene_set_ids]`` table from the gene-set definitions."""
+    gene_to_sets: Dict[str, List[str]] = {}
+    for gs_name, genes in gene_sets.items():
+        for gene in genes:
+            if gene not in gene_to_sets:
+                gene_to_sets[gene] = []
+            gene_to_sets[gene].append(gs_name)
+
+    logger.info(f"  {len(gene_to_sets)} unique genes across all gene sets")
+
+    return hl.Table.parallelize(
+        [hl.struct(gene=k, gene_set_ids=v) for k, v in gene_to_sets.items()],
+        schema=hl.tstruct(gene=hl.tstr, gene_set_ids=hl.tarray(hl.tstr)),
+    ).key_by("gene")
+
+
+def _select_burden_agg_expr(
+    mt_genes: "hl.MatrixTable",
+    genotype_aggregation: str,
+    normalize_by_length: bool,
+):
+    """Select the gene -> gene-set burden aggregation expression.
+
+    Collapses the ``normalize_by_length`` x ``genotype_aggregation`` cases into
+    a single per-gene "qualifies" condition plus either a count-based or a
+    length-rate-based aggregation sum.
+    """
+    if genotype_aggregation == "hets":
+        qualifies = mt_genes.hets > 0
+    elif genotype_aggregation == "homs":
+        qualifies = mt_genes.homs > 0
+    elif genotype_aggregation == "multi_het":
+        qualifies = mt_genes.multi_het
+    elif genotype_aggregation == "homs_multi_het":
+        qualifies = mt_genes.multi_het | (mt_genes.homs > 0)
+    else:  # pragma: no cover - validated upstream in compute_geneset_burden_mt
+        raise ValueError(f"Invalid genotype_aggregation: {genotype_aggregation}")
+
+    if normalize_by_length:
+        return hl.agg.sum(hl.if_else(qualifies, 1.0 / mt_genes._gene_length, 0.0))
+    return hl.int(hl.agg.sum(hl.if_else(qualifies, 1, 0)))
+
+
 def compute_geneset_burden_mt(
     mt: hl.MatrixTable,
     gene_sets: Dict[str, List[str]],
@@ -372,45 +450,11 @@ def compute_geneset_burden_mt(
     # Gene-length normalization setup
     _gene_length_ht = None
     if normalize_by_length:
-        if gene_lengths is not None:
-            logger.info(
-                "Gene-length normalization: using provided CDS lengths (%d genes)",
-                len(gene_lengths),
-            )
-            _gene_length_ht = hl.Table.parallelize(
-                [
-                    hl.struct(gene=k, _gene_length=float(v) / 1000.0)
-                    for k, v in gene_lengths.items()
-                ],
-                schema=hl.tstruct(gene=hl.tstr, _gene_length=hl.tfloat64),
-            ).key_by("gene")
-        else:
-            logger.info(
-                "Gene-length normalization: using qualifying variant site "
-                "count per gene as proxy (provide gene_lengths for "
-                "CDS-based normalization)"
-            )
-            _rows = mt.rows()
-            _gene_length_ht = _rows.group_by(gene=_rows[gene_field]).aggregate(
-                _gene_length=hl.float64(hl.agg.count())
-            )
+        _gene_length_ht = _build_gene_length_ht(mt, gene_field, gene_lengths)
 
     # Create gene → gene_sets mapping
     logger.info("Creating gene to gene set mapping...")
-    gene_to_sets = {}
-    for gs_name, genes in gene_sets.items():
-        for gene in genes:
-            if gene not in gene_to_sets:
-                gene_to_sets[gene] = []
-            gene_to_sets[gene].append(gs_name)
-
-    logger.info(f"  {len(gene_to_sets)} unique genes across all gene sets")
-
-    # Convert to Hail Table
-    gene_to_sets_ht = hl.Table.parallelize(
-        [hl.struct(gene=k, gene_set_ids=v) for k, v in gene_to_sets.items()],
-        schema=hl.tstruct(gene=hl.tstr, gene_set_ids=hl.tarray(hl.tstr)),
-    ).key_by("gene")
+    gene_to_sets_ht = _build_gene_to_sets_ht(gene_sets)
 
     # Annotate MT with gene set membership
     mt = mt.annotate_rows(gene_set_ids=gene_to_sets_ht[mt[gene_field]].gene_set_ids)
@@ -466,39 +510,10 @@ def compute_geneset_burden_mt(
     # STEP 2: Aggregate genes → gene sets per sample
     logger.info("Step 2: Aggregating genes to gene sets per sample...")
 
-    # Select aggregation method
-    if normalize_by_length:
-        # Rate-based aggregation: divide by gene length
-        if genotype_aggregation == "hets":
-            agg_expr = hl.agg.sum(
-                hl.if_else(mt_genes.hets > 0, 1.0 / mt_genes._gene_length, 0.0)
-            )
-        elif genotype_aggregation == "homs":
-            agg_expr = hl.agg.sum(
-                hl.if_else(mt_genes.homs > 0, 1.0 / mt_genes._gene_length, 0.0)
-            )
-        elif genotype_aggregation == "multi_het":
-            agg_expr = hl.agg.sum(
-                hl.if_else(mt_genes.multi_het, 1.0 / mt_genes._gene_length, 0.0)
-            )
-        elif genotype_aggregation == "homs_multi_het":
-            agg_expr = hl.agg.sum(
-                hl.if_else(
-                    mt_genes.multi_het | (mt_genes.homs > 0),
-                    1.0 / mt_genes._gene_length,
-                    0.0,
-                )
-            )
-    elif genotype_aggregation == "hets":
-        agg_expr = hl.int(hl.agg.sum(hl.if_else(mt_genes.hets > 0, 1, 0)))
-    elif genotype_aggregation == "homs":
-        agg_expr = hl.int(hl.agg.sum(hl.if_else(mt_genes.homs > 0, 1, 0)))
-    elif genotype_aggregation == "multi_het":
-        agg_expr = hl.int(hl.agg.sum(hl.if_else(mt_genes.multi_het, 1, 0)))
-    elif genotype_aggregation == "homs_multi_het":
-        agg_expr = hl.int(
-            hl.agg.sum(hl.if_else(mt_genes.multi_het | (mt_genes.homs > 0), 1, 0))
-        )
+    # Select aggregation method (count- or length-rate-based, per qualifying gene)
+    agg_expr = _select_burden_agg_expr(
+        mt_genes, genotype_aggregation, normalize_by_length
+    )
 
     # Count genes found per gene set (before grouping collapses gene info).
     # Must use the rows Table's own field reference — not mt_genes — to
