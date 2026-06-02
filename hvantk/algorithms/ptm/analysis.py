@@ -56,6 +56,55 @@ class PTMLandscapeResult:
                 lines.append(f"    {cat}: {n:,}")
         return "\n".join(lines)
 
+    def to_dict(self) -> dict:
+        """Serialize to the nested JSON shape written as landscape_summary.json."""
+        return {
+            "n_variants": self.n_variants,
+            "n_pathogenic": self.n_pathogenic,
+            "n_benign": self.n_benign,
+            "ptm_site": {
+                "pathogenic": self.n_ptm_site_pathogenic,
+                "benign": self.n_ptm_site_benign,
+            },
+            "ptm_proximal": {
+                "pathogenic": self.n_ptm_proximal_pathogenic,
+                "benign": self.n_ptm_proximal_benign,
+            },
+            "enrichment": {
+                "odds_ratio": self.enrichment_odds_ratio,
+                "ci_low": self.enrichment_ci_low,
+                "ci_high": self.enrichment_ci_high,
+                "p_value": self.enrichment_p_value,
+            },
+            "overlap_by_category": self.overlap_by_category,
+            "category_enrichment": self.category_enrichment,
+            "distance_distribution": {
+                str(k): v for k, v in self.distance_distribution.items()
+            },
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "PTMLandscapeResult":
+        """Reconstruct from the nested JSON shape produced by :meth:`to_dict`."""
+        return cls(
+            n_variants=data.get("n_variants", 0),
+            n_pathogenic=data.get("n_pathogenic", 0),
+            n_benign=data.get("n_benign", 0),
+            n_ptm_site_pathogenic=data.get("ptm_site", {}).get("pathogenic", 0),
+            n_ptm_proximal_pathogenic=data.get("ptm_proximal", {}).get("pathogenic", 0),
+            n_ptm_site_benign=data.get("ptm_site", {}).get("benign", 0),
+            n_ptm_proximal_benign=data.get("ptm_proximal", {}).get("benign", 0),
+            enrichment_odds_ratio=data.get("enrichment", {}).get("odds_ratio", 0.0),
+            enrichment_ci_low=data.get("enrichment", {}).get("ci_low", 0.0),
+            enrichment_ci_high=data.get("enrichment", {}).get("ci_high", float("inf")),
+            enrichment_p_value=data.get("enrichment", {}).get("p_value", 1.0),
+            overlap_by_category=data.get("overlap_by_category", {}),
+            category_enrichment=data.get("category_enrichment", {}),
+            distance_distribution={
+                int(k): v for k, v in data.get("distance_distribution", {}).items()
+            },
+        )
+
 
 @dataclass
 class PTMPopulationResult:
@@ -95,6 +144,45 @@ class PTMPopulationResult:
         elif self.ccr_mean_non_ptm is not None:
             lines.append(f"  Mean CCR: non-PTM={self.ccr_mean_non_ptm:.1f}")
         return "\n".join(lines)
+
+    def to_dict(self) -> dict:
+        """Serialize to the nested JSON shape written as population_summary.json."""
+        return {
+            "n_variants": self.n_variants,
+            "n_ptm_site": self.n_ptm_site,
+            "n_ptm_proximal": self.n_ptm_proximal,
+            "n_non_ptm": self.n_non_ptm,
+            "mean_af": {
+                "ptm_site": self.mean_af_ptm_site,
+                "ptm_proximal": self.mean_af_ptm_proximal,
+                "non_ptm": self.mean_af_non_ptm,
+            },
+            "n_zero_af_ptm": self.n_zero_af_ptm,
+            "ptm_site_afs": self.ptm_site_afs,
+            "proximal_afs": self.proximal_afs,
+            "non_ptm_afs": self.non_ptm_afs,
+            "ccr_mean_ptm": self.ccr_mean_ptm,
+            "ccr_mean_non_ptm": self.ccr_mean_non_ptm,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "PTMPopulationResult":
+        """Reconstruct from the nested JSON shape produced by :meth:`to_dict`."""
+        return cls(
+            n_variants=data.get("n_variants", 0),
+            n_ptm_site=data.get("n_ptm_site", 0),
+            n_ptm_proximal=data.get("n_ptm_proximal", 0),
+            n_non_ptm=data.get("n_non_ptm", 0),
+            mean_af_ptm_site=data.get("mean_af", {}).get("ptm_site", 0.0),
+            mean_af_ptm_proximal=data.get("mean_af", {}).get("ptm_proximal", 0.0),
+            mean_af_non_ptm=data.get("mean_af", {}).get("non_ptm", 0.0),
+            n_zero_af_ptm=data.get("n_zero_af_ptm", 0),
+            ptm_site_afs=data.get("ptm_site_afs", []),
+            proximal_afs=data.get("proximal_afs", []),
+            non_ptm_afs=data.get("non_ptm_afs", []),
+            ccr_mean_ptm=data.get("ccr_mean_ptm"),
+            ccr_mean_non_ptm=data.get("ccr_mean_non_ptm"),
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -395,34 +483,7 @@ def ptm_landscape(
 
     # Write JSON summary
     with open(os.path.join(output_dir, "landscape_summary.json"), "w") as f:
-        json.dump(
-            {
-                "n_variants": result.n_variants,
-                "n_pathogenic": result.n_pathogenic,
-                "n_benign": result.n_benign,
-                "ptm_site": {
-                    "pathogenic": result.n_ptm_site_pathogenic,
-                    "benign": result.n_ptm_site_benign,
-                },
-                "ptm_proximal": {
-                    "pathogenic": result.n_ptm_proximal_pathogenic,
-                    "benign": result.n_ptm_proximal_benign,
-                },
-                "enrichment": {
-                    "odds_ratio": result.enrichment_odds_ratio,
-                    "ci_low": result.enrichment_ci_low,
-                    "ci_high": result.enrichment_ci_high,
-                    "p_value": result.enrichment_p_value,
-                },
-                "overlap_by_category": result.overlap_by_category,
-                "category_enrichment": result.category_enrichment,
-                "distance_distribution": {
-                    str(k): v for k, v in result.distance_distribution.items()
-                },
-            },
-            f,
-            indent=2,
-        )
+        json.dump(result.to_dict(), f, indent=2)
 
     logger.info(result.summary())
     return result
@@ -543,27 +604,7 @@ def ptm_population(
 
     # Write JSON summary
     with open(os.path.join(output_dir, "population_summary.json"), "w") as f:
-        json.dump(
-            {
-                "n_variants": result.n_variants,
-                "n_ptm_site": result.n_ptm_site,
-                "n_ptm_proximal": result.n_ptm_proximal,
-                "n_non_ptm": result.n_non_ptm,
-                "mean_af": {
-                    "ptm_site": result.mean_af_ptm_site,
-                    "ptm_proximal": result.mean_af_ptm_proximal,
-                    "non_ptm": result.mean_af_non_ptm,
-                },
-                "n_zero_af_ptm": result.n_zero_af_ptm,
-                "ptm_site_afs": result.ptm_site_afs,
-                "proximal_afs": result.proximal_afs,
-                "non_ptm_afs": result.non_ptm_afs,
-                "ccr_mean_ptm": result.ccr_mean_ptm,
-                "ccr_mean_non_ptm": result.ccr_mean_non_ptm,
-            },
-            f,
-            indent=2,
-        )
+        json.dump(result.to_dict(), f, indent=2)
 
     logger.info(result.summary())
     return result
