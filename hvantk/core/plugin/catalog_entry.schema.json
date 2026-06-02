@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hvantk-catalog-entry",
+  "title": "hvantk catalog entry",
+  "type": "object",
+  "required": ["accession", "title", "description", "data_source", "organism", "files"],
+  "properties": {
+    "accession": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "description": { "type": "string" },
+    "data_source": { "type": "string", "minLength": 1 },
+    "organism": { "type": "string", "minLength": 1 },
+    "pubmedid": { "type": ["string", "null"] },
+    "doi": { "type": "string" },
+    "license": { "type": "string" },
+    "update_frequency": { "type": "string" },
+    "last_updated": { "type": "string" },
+    "genome_build": { "type": "string" },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "format"],
+        "properties": {
+          "path": { "type": "string" },
+          "format": { "type": "string" },
+          "size_bytes": { "type": ["integer", "null"] },
+          "compression": { "type": "string" },
+          "url": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    }
+  }
+}
