@@ -8,11 +8,10 @@ from click.testing import CliRunner
 from hvantk.skills.expression_atlas import cli as expression_atlas_downloader
 from hvantk.skills.expression_atlas.cli import _download_file_with_retry
 
-# Define the path to the bundled resources used by the optional config-driven
-# integration tests. The original test lived under hvantk/tests/, so TEST_DIR
-# pointed at hvantk/; from the new plugin tests directory we need three
-# parents to reach the hvantk/ package root.
-TEST_DIR = Path(__file__).resolve().parents[3]
+# Sample Expression Atlas config used by the optional config-driven download
+# integration tests. Relocated from hvantk/resources/ into the plugin's test
+# fixtures during the plugin-sourced-catalog migration.
+_FIXTURE_CONFIG = Path(__file__).resolve().parent / "testdata" / "expression_atlas.json"
 
 
 @pytest.fixture
@@ -38,7 +37,7 @@ def test_download_experiments_config(download_path):
     runner = CliRunner()
 
     # Call the download_experiments function with the config file and download path
-    config_path = str(TEST_DIR / "resources/expression_atlas.json")
+    config_path = str(_FIXTURE_CONFIG)
     result = runner.invoke(
         expression_atlas_downloader.download_experiments,
         ["--config_path", config_path, "--download_path", download_path],
@@ -62,7 +61,7 @@ def test_download_experiments_accession_with_config(download_path):
     runner = CliRunner()
 
     # Call the download_experiments function with the accession and download path
-    config_path = str(TEST_DIR / "resources/expression_atlas.json")
+    config_path = str(_FIXTURE_CONFIG)
     accession = "E-MTAB-6798"
     result = runner.invoke(
         expression_atlas_downloader.download_experiments,
