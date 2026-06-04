@@ -4,7 +4,7 @@
     "accession": "ClinVar_latest",
     "description": "Public archive of reports of the relationships among human variations and phenotypes, with supporting evidence. ClinVar facilitates access to and communication about the relationships asserted between human variation and observed health status.",
     "pubmedid": "24234437",
-    "data_source": "Custom",
+    "data_source": "ClinVar",
     "last_updated": "2025-09-23T16:30:00.000000",
     "update_frequency": "monthly",
     "organism": "Homo sapiens",

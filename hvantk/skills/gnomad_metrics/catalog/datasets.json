@@ -4,7 +4,7 @@
     "accession": "gnomAD_v4.1",
     "description": "Large-scale reference dataset of human genetic variation, aggregating exome and genome sequencing data from diverse populations worldwide. Provides allele frequencies, quality metrics, and population-specific annotations.",
     "pubmedid": "32461654",
-    "data_source": "Custom",
+    "data_source": "gnomAD",
     "last_updated": "2025-09-23T16:30:00.000000",
     "update_frequency": "annually",
     "organism": "Homo sapiens",

@@ -10,6 +10,7 @@ import numpy as np
 
 from hvantk.algorithms.enrichex.burden import (
     VariantFilter,
+    _build_gene_to_sets_ht,
     _compute_test_statistic,
     _linear_t_statistic,
     _logistic_z_statistic,
@@ -181,6 +182,38 @@ class TestComputeGenesetBurdenMt:
                 gene_field="SYMBOL",
                 genotype_aggregation="invalid",
             )
+
+    def test_compute_geneset_burden_dedups_gene_set_size(self, hail_session):
+        """gene_set_size must reflect the DEDUPED gene count so it stays
+        consistent with n_genes_found / gene_coverage_pct when a caller passes
+        duplicate genes within a set (PR #187 review: Copilot)."""
+        mt = self.setup_test_mt()
+        gene_sets = {"set1": ["GENE1", "GENE1", "GENE2"]}  # GENE1 duplicated
+        mt_burden = compute_geneset_burden_mt(mt, gene_sets, gene_field="SYMBOL")
+        row = mt_burden.rows().collect()[0]
+        assert row.gene_set_size == 2  # deduped (GENE1, GENE2), not 3
+
+
+@pytest.mark.hail
+class TestBuildGeneToSetsHt:
+    """Regression tests for _build_gene_to_sets_ht (gene -> [set ids])."""
+
+    def test_dedups_repeated_gene_within_a_set(self, hail_session):
+        """A gene listed twice in one set maps to that set once, not twice —
+        otherwise it is double-counted after explode_rows (n_genes_found /
+        burden). Regression for #185."""
+        ht = _build_gene_to_sets_ht({"panel_a": ["BRCA1", "BRCA1", "TP53"]})
+        rows = {r["gene"]: list(r["gene_set_ids"]) for r in ht.collect()}
+        assert rows["BRCA1"] == ["panel_a"]  # not ["panel_a", "panel_a"]
+        assert rows["TP53"] == ["panel_a"]
+
+    def test_keeps_distinct_sets_for_a_shared_gene(self, hail_session):
+        """Within-set dedup must not collapse a gene's membership across sets."""
+        ht = _build_gene_to_sets_ht(
+            {"panel_a": ["BRCA1", "BRCA1"], "panel_b": ["BRCA1"]}
+        )
+        rows = {r["gene"]: list(r["gene_set_ids"]) for r in ht.collect()}
+        assert rows["BRCA1"] == ["panel_a", "panel_b"]
 
 
 @pytest.mark.hail

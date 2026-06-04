@@ -4,7 +4,7 @@
     "accession": "MSigDB_C2_CP_v2026.1.Hs.symbols",
     "description": "Broad Institute Molecular Signatures Database. Collection C2 (curated gene sets) sub-collection CP (Canonical Pathways) \u2014 pathway gene sets curated from online resources (BIOCARTA, KEGG, PID, REACTOME, WP, SA). Human gene-symbol variant. GMT format: tab-separated variable-width rows where column 1 is set_name, column 2 is a gsea-msigdb URL, and columns 3..N are gene symbols. Built into a Hail Table keyed by set_name with genes as array<str>; see hvantk/skills/msigdb/SKILL.md. Used for gene-set lookup in enrichment / burden / overlap analyses.",
     "pubmedid": "16199517",
-    "data_source": "Custom",
+    "data_source": "MSigDB",
     "last_updated": "2026-01-01T00:00:00.000000",
     "update_frequency": "annually",
     "organism": "Homo sapiens",

@@ -4,7 +4,7 @@
     "accession": "GWAS_Catalog_v1.0_e115_r2026-04-27",
     "description": "Manually curated collection of all published genome-wide association studies. Each row is a SNP-trait association with study provenance, p-value, effect size (OR or BETA), and risk-allele frequency. v1.0 schema (34 columns, no MAPPED_TRAIT_URI). Built into a Hail Table keyed by (locus, alleles) with a sentinel ALT for variant-annotation joins; see hvantk/skills/gwas_catalog/SKILL.md.",
     "pubmedid": "30445434",
-    "data_source": "Custom",
+    "data_source": "GWAS Catalog",
     "last_updated": "2026-04-27T00:00:00.000000",
     "update_frequency": "quarterly",
     "organism": "Homo sapiens",

@@ -4,7 +4,7 @@
     "accession": "Ensembl_v110",
     "description": "Comprehensive gene annotations from the Ensembl project including gene models, transcript isoforms, protein sequences, regulatory features, and comparative genomics data across species.",
     "pubmedid": "31691826",
-    "data_source": "Custom",
+    "data_source": "Ensembl",
     "last_updated": "2025-09-23T16:30:00.000000",
     "update_frequency": "quarterly",
     "organism": "Homo sapiens",
@@ -35,7 +35,7 @@
       },
       {
         "path": "Homo_sapiens.GRCh38.110.gff3.gz",
-        "format": "gff",
+        "format": "gff3",
         "size_bytes": 900000000,
         "compression": "gzip",
         "description": "Complete gene annotations in GFF3 format"
