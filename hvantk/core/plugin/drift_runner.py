@@ -10,13 +10,18 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .api import DatasetSpec, DriftProbeError, PROBE_FINGERPRINT_IGNORED_KEYS
+from .api import (
+    DatasetSpec,
+    DriftProbeError,
+    PROBE_FINGERPRINT_IGNORED_KEYS,
+    PROBE_STATUS_STUB,
+)
 
 
 @dataclass(frozen=True)
 class DriftResult:
     dataset_name: str
-    status: str  # clean | drifted | probe_failed
+    status: str  # clean | drifted | probe_failed | stub
     observed: dict[str, Any] | None = None
     expected: dict[str, Any] | None = None
     diff: dict[str, Any] | None = None
@@ -35,6 +40,32 @@ def run_drift_check(dataset_name: str, *, timeout: int = 60) -> DriftResult:
 def _run_drift_check_with_spec(
     spec: DatasetSpec, *, timeout: int = 60
 ) -> DriftResult:
+    # Invoke the probe before loading the baseline so an intentional stub
+    # (documentation-only source with no probeable URL) is reported as
+    # status="stub" — these plugins ship no committed baseline, so a
+    # baseline-first ordering would mislabel them as "probe_failed".
+    try:
+        observed = _invoke_with_timeout(spec.drift_probe, timeout=timeout)
+    except DriftProbeError as exc:
+        return DriftResult(
+            dataset_name=spec.name,
+            status="probe_failed",
+            probe_error=exc,
+        )
+    except Exception as exc:  # noqa: BLE001
+        return DriftResult(
+            dataset_name=spec.name,
+            status="probe_failed",
+            probe_error=DriftProbeError(f"probe raised {type(exc).__name__}: {exc}"),
+        )
+
+    if observed.get("probe_status") == PROBE_STATUS_STUB:
+        return DriftResult(
+            dataset_name=spec.name,
+            status="stub",
+            observed=observed,
+        )
+
     fp_path = Path(spec.test_paths.drift_fingerprint)
     try:
         expected = json.loads(fp_path.read_text())
@@ -42,26 +73,10 @@ def _run_drift_check_with_spec(
         return DriftResult(
             dataset_name=spec.name,
             status="probe_failed",
+            observed=observed,
             probe_error=DriftProbeError(
                 f"missing expected fingerprint at {fp_path}"
             ),
-        )
-
-    try:
-        observed = _invoke_with_timeout(spec.drift_probe, timeout=timeout)
-    except DriftProbeError as exc:
-        return DriftResult(
-            dataset_name=spec.name,
-            status="probe_failed",
-            expected=expected,
-            probe_error=exc,
-        )
-    except Exception as exc:  # noqa: BLE001
-        return DriftResult(
-            dataset_name=spec.name,
-            status="probe_failed",
-            expected=expected,
-            probe_error=DriftProbeError(f"probe raised {type(exc).__name__}: {exc}"),
         )
 
     diff = _compare_fingerprints(expected, observed)

@@ -21,6 +21,33 @@ Backend = Literal["hail", "anndata", "pandas"]
 # not flip drift status or invalidate stored artifact fingerprints.
 PROBE_FINGERPRINT_IGNORED_KEYS = frozenset({"fetched_at", "probe_version"})
 
+# Sentinel value for ``probe_status`` marking a drift probe as an intentional
+# stub: a documentation-only / license-gated / publication-only source with no
+# stable, programmatically-probeable direct URL. ``drift_runner`` reports these
+# as status="stub" (a visible WARNING) instead of a silent false-green "clean"
+# or a misleading "probe_failed". See issue #177.
+PROBE_STATUS_STUB = "stub"
+
+# Honest provenance token recorded by ``run_builder._coerce_fingerprint`` for a
+# stubbed source (the ``fingerprint`` key wins there). Self-describing rather
+# than a fake ``sha256:...`` hash, so provenance never implies a real probe ran.
+STUB_FINGERPRINT_TOKEN = "stub:no-programmatic-source"
+
+
+def stub_fingerprint(reason: str) -> dict:
+    """Build the structured sentinel a documentation-only drift probe returns.
+
+    Use this from ``fetch_fingerprint()`` when the source cannot be fingerprinted
+    programmatically (manual/gated/publication-only acquisition). ``reason``
+    explains why (surfaced in the ``hvantk drift`` WARNING). Returning this marks
+    the dataset as status="stub" rather than producing a false-green drift result.
+    """
+    return {
+        "probe_status": PROBE_STATUS_STUB,
+        "reason": reason,
+        "fingerprint": STUB_FINGERPRINT_TOKEN,
+    }
+
 
 class Builder(Protocol):
     """Phase B builder contract used by ``DatasetSpec.builder``.

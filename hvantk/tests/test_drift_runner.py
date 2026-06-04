@@ -163,6 +163,23 @@ def test_drift_diff_reports_removed_keys(tmp_path: Path):
     assert result.diff["changed"] == {}
 
 
+def test_stub_probe_reported_as_stub_not_false_green(tmp_path: Path):
+    """A documentation-only stub probe must surface as status='stub' — never a
+    false-green 'clean' and never a misleading 'probe_failed' — even with no
+    committed baseline fingerprint (issue #177)."""
+    from hvantk.core.plugin.api import stub_fingerprint
+
+    # Stub plugins ship no committed baseline, so point at a nonexistent file.
+    spec = _make_spec(
+        probe_return=lambda: stub_fingerprint("doc-only; no probeable URL"),
+        fingerprint_path=tmp_path / "does-not-exist.json",
+    )
+    result = _run_with_spec(spec)
+    assert result.status == "stub"
+    assert result.status not in ("clean", "probe_failed")
+    assert result.observed["reason"] == "doc-only; no probeable URL"
+
+
 def test_probe_returning_non_mapping_surfaces_clear_error(tmp_path: Path):
     fp_path = tmp_path / "fp.json"
     _write_fingerprint(fp_path, {"probe_version": 1, "headers": {}, "checksums": {}})

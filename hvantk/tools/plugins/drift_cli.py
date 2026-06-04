@@ -59,11 +59,20 @@ def drift_cmd(dataset, all_flag, domain, as_json, regenerate, timeout):
     else:
         for r in results:
             click.echo(f"{r.dataset_name}: {r.status}")
+            if r.status == "stub":
+                reason = (r.observed or {}).get("reason", "no programmatic source")
+                click.echo(
+                    f"WARNING: {r.dataset_name}: stub probe — {reason}; "
+                    "no real drift detection (documentation-only source).",
+                    err=True,
+                )
             if r.diff:
                 click.echo(json.dumps(r.diff, indent=2, default=str))
 
     # Priority: probe_failed(2) > drifted(1) > clean(0). Infra failure trumps
     # drift because drifted output is only meaningful if the probe actually ran.
+    # status="stub" is intentional (doc-only source) → exit clean, but the
+    # WARNING above keeps it from being a silent false-green.
     exit_codes = {EXIT_CLEAN}
     for r in results:
         if r.status == "drifted":

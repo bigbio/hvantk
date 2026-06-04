@@ -1,16 +1,20 @@
-"""Drift probe stub for dbnsfp.
+"""Drift probe for dbnsfp — documentation-only source (stub).
 
-Phase K plugin promotion lifts this source from the legacy hardcoded
-_TABLE_BUILDERS dict. A real drift probe (which queries the upstream
-source and returns a fingerprint) is a follow-up — for now this stub
-returns a placeholder fingerprint.
+dbNSFP is distributed from a landing page (sites.google.com/site/jpopgen/dbNSFP)
+with no stable direct data URL to fingerprint. This probe returns a structured
+stub sentinel so ``hvantk drift`` reports a visible WARNING (status="stub")
+rather than a silent false-green. Replace with a real probe if a direct data URL
+becomes available. See issue #177.
 """
 from __future__ import annotations
 
+from hvantk.core.plugin.api import stub_fingerprint
+
+_REASON = (
+    "dbNSFP is distributed from a landing page "
+    "(sites.google.com/site/jpopgen/dbNSFP); no stable direct data URL"
+)
+
 
 def fetch_fingerprint() -> dict:
-    return {
-        "fingerprint": "sha256:phase-k-stub-not-implemented",
-        "probe_status": "stub",
-        "comment": "Phase K plugin promotion stub; replace with real probe.",
-    }
+    return stub_fingerprint(_REASON)
