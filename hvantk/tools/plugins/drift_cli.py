@@ -59,15 +59,23 @@ def drift_cmd(dataset, all_flag, domain, as_json, regenerate, timeout):
     else:
         for r in results:
             click.echo(f"{r.dataset_name}: {r.status}")
-            if r.status == "stub":
-                reason = (r.observed or {}).get("reason", "no programmatic source")
-                click.echo(
-                    f"WARNING: {r.dataset_name}: stub probe — {reason}; "
-                    "no real drift detection (documentation-only source).",
-                    err=True,
-                )
             if r.diff:
                 click.echo(json.dumps(r.diff, indent=2, default=str))
+
+    # Emit stub WARNINGs to stderr in BOTH human-readable and --json modes.
+    # The scheduled drift workflow captures `drift --all --json` stdout to a
+    # file (.github/workflows/drift.yml), so a WARNING confined to the
+    # human-readable path would never surface in CI logs — re-hiding doc-only
+    # stubs. stderr keeps machine-readable stdout clean while CI logs stay
+    # visibly non-green.
+    for r in results:
+        if r.status == "stub":
+            reason = (r.observed or {}).get("reason", "no programmatic source")
+            click.echo(
+                f"WARNING: {r.dataset_name}: stub probe — {reason}; "
+                "no real drift detection (documentation-only source).",
+                err=True,
+            )
 
     # Priority: probe_failed(2) > drifted(1) > clean(0). Infra failure trumps
     # drift because drifted output is only meaningful if the probe actually ran.

@@ -48,6 +48,33 @@ def test_drift_json_output_is_parseable():
     assert parsed[0]["status"] == "clean"
 
 
+def test_drift_stub_emits_warning_to_stderr_in_json_mode():
+    """Regression (PR #186 review): a stub probe must surface a WARNING on
+    stderr even in --json mode, so the scheduled drift workflow — which captures
+    `drift --all --json` stdout to a file — stays visibly non-green for
+    documentation-only sources. stdout must remain clean machine-readable JSON.
+    """
+    from hvantk.core.plugin.api import stub_fingerprint
+
+    spec = plugin_loader.get_registry().get_dataset("fake:default")
+    object.__setattr__(
+        spec, "drift_probe", lambda: stub_fingerprint("doc-only; no probeable URL")
+    )
+
+    runner = CliRunner(mix_stderr=False)
+    result = runner.invoke(drift_cmd, ["--json", "fake:default"])
+
+    assert result.exit_code == 0
+    # stdout stays clean JSON (consumed by drift_to_pr.py / CI capture)
+    parsed = json.loads(result.stdout)
+    assert parsed[0]["status"] == "stub"
+    assert "WARNING" not in result.stdout
+    # the WARNING is on stderr so it shows up in CI step logs
+    assert "WARNING" in result.stderr
+    assert "stub probe" in result.stderr
+    assert "doc-only; no probeable URL" in result.stderr
+
+
 def test_drift_regenerate_overwrites_fingerprint(tmp_path: Path, monkeypatch):
     # Point the fixture at a tmpdir-copy so we don't mutate the test asset.
     import shutil
