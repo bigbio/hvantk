@@ -11,7 +11,7 @@ Drift report shape (one element per dataset)::
     [
       {
         "dataset_name": "clinvar:variants",
-        "status": "clean" | "drifted" | "probe_failed",
+        "status": "clean" | "drifted" | "probe_failed" | "stub",
         "observed": {...} | null,
         "expected": {...} | null,
         "diff": {...} | null,
@@ -32,7 +32,10 @@ For each ``status == "drifted"`` entry the script:
 6. Opens a draft PR (or updates the body of an existing one).
 
 Probe-failed entries are recorded in the GitHub step summary but never
-produce a PR (they are infrastructure failures, not data drift).
+produce a PR (they are infrastructure failures, not data drift). ``stub``
+entries (documentation-only sources with no programmatic probe) are likewise
+never turned into PRs; they are surfaced in the summary count so they are not
+silently dropped.
 
 Exit code is always 0 unless a wholly unexpected error escapes; drift /
 probe-failed are not workflow failures.
@@ -366,6 +369,26 @@ def handle_probe_failed(
     )
 
 
+def handle_stub(
+    entry: dict,
+    *,
+    step_summary: Path | None,
+) -> None:
+    """Surface a documentation-only stub in the rendered step summary so it is
+    not silently dropped. Stubs never open a PR (they are not data drift) and
+    never fail the workflow (they exit clean)."""
+    dataset = entry["dataset_name"]
+    reason = (entry.get("observed") or {}).get(
+        "reason", "documentation-only source; no programmatic probe"
+    )
+    print(f"\n=== Stub (no real drift detection): {dataset} ===")
+    print(f"  {reason}")
+    _summary_line(
+        step_summary,
+        f"- STUB: `{dataset}` -- {reason}",
+    )
+
+
 def _summary_line(step_summary: Path | None, line: str) -> None:
     if step_summary is None:
         return
@@ -427,10 +450,11 @@ def main(argv: list[str] | None = None) -> int:
     drifted = [e for e in report if e.get("status") == "drifted"]
     probe_failed = [e for e in report if e.get("status") == "probe_failed"]
     clean = [e for e in report if e.get("status") == "clean"]
+    stub = [e for e in report if e.get("status") == "stub"]
 
     print(
         f"summary: {len(drifted)} drifted, {len(probe_failed)} probe_failed, "
-        f"{len(clean)} clean"
+        f"{len(clean)} clean, {len(stub)} stub"
     )
 
     for entry in drifted:
@@ -457,6 +481,9 @@ def main(argv: list[str] | None = None) -> int:
 
     for entry in probe_failed:
         handle_probe_failed(entry, step_summary=step_summary)
+
+    for entry in stub:
+        handle_stub(entry, step_summary=step_summary)
 
     return 0
 
