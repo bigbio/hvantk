@@ -42,7 +42,7 @@ def _render_burden_summary(result_df, alpha, phenotype_type: str) -> None:
     click.echo(f"Significant gene sets (p_adj < {alpha}): {n_significant}")
 
     if n_significant > 0:
-        click.echo(f"\nTop significant gene sets:")
+        click.echo("\nTop significant gene sets:")
         click.echo("-" * 60)
 
         # Select columns based on phenotype type
@@ -434,13 +434,13 @@ def burden_test(
         click.echo("\n" + "=" * 60)
         click.echo("ENRICHEX BURDEN ANALYSIS PLAN (Hail-Native)")
         click.echo("=" * 60)
-        click.echo(f"\nInputs:")
+        click.echo("\nInputs:")
         click.echo(f"  Cohort MT: {cohort_mt}")
         click.echo(f"  Phenotypes: {phenotypes}")
         click.echo(f"    Field: {phenotype_field}")
         click.echo(f"    Type: {phenotype_type}")
         click.echo(f"  Gene sets: {gene_sets}")
-        click.echo(f"\nVariant Filters:")
+        click.echo("\nVariant Filters:")
         if max_af is not None:
             click.echo(f"  Max AF: {max_af} (field: {af_field})")
         if min_score is not None:
@@ -450,18 +450,18 @@ def burden_test(
         if consequences:
             click.echo(f"  Consequences: {consequences} (field: {consequence_field})")
         if max_af is None and min_score is None and not consequences:
-            click.echo(f"  None (MT assumed pre-filtered)")
-        click.echo(f"\nAnalysis:")
+            click.echo("  None (MT assumed pre-filtered)")
+        click.echo("\nAnalysis:")
         click.echo(f"  Gene field: {gene_field}")
         click.echo(f"  Genotype aggregation: {genotype_aggregation}")
         if covariates:
             click.echo(f"  Covariates: {covariates}")
         if normalize_by_length:
-            click.echo(f"  Normalize by length: Yes")
+            click.echo("  Normalize by length: Yes")
             if gene_lengths:
                 click.echo(f"  Gene lengths file: {gene_lengths}")
             else:
-                click.echo(f"  Gene lengths: using variant site count proxy")
+                click.echo("  Gene lengths: using variant site count proxy")
         if min_carriers > 0:
             click.echo(f"  Min carriers: {min_carriers}")
         if variant_classes:

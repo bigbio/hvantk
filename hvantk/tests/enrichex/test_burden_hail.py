@@ -10,6 +10,7 @@ import numpy as np
 
 from hvantk.algorithms.enrichex.burden import (
     VariantFilter,
+    _build_gene_to_sets_ht,
     _compute_test_statistic,
     _linear_t_statistic,
     _logistic_z_statistic,
@@ -181,6 +182,28 @@ class TestComputeGenesetBurdenMt:
                 gene_field="SYMBOL",
                 genotype_aggregation="invalid",
             )
+
+
+@pytest.mark.hail
+class TestBuildGeneToSetsHt:
+    """Regression tests for _build_gene_to_sets_ht (gene -> [set ids])."""
+
+    def test_dedups_repeated_gene_within_a_set(self, hail_session):
+        """A gene listed twice in one set maps to that set once, not twice —
+        otherwise it is double-counted after explode_rows (n_genes_found /
+        burden). Regression for #185."""
+        ht = _build_gene_to_sets_ht({"panel_a": ["BRCA1", "BRCA1", "TP53"]})
+        rows = {r["gene"]: list(r["gene_set_ids"]) for r in ht.collect()}
+        assert rows["BRCA1"] == ["panel_a"]  # not ["panel_a", "panel_a"]
+        assert rows["TP53"] == ["panel_a"]
+
+    def test_keeps_distinct_sets_for_a_shared_gene(self, hail_session):
+        """Within-set dedup must not collapse a gene's membership across sets."""
+        ht = _build_gene_to_sets_ht(
+            {"panel_a": ["BRCA1", "BRCA1"], "panel_b": ["BRCA1"]}
+        )
+        rows = {r["gene"]: list(r["gene_set_ids"]) for r in ht.collect()}
+        assert rows["BRCA1"] == ["panel_a", "panel_b"]
 
 
 @pytest.mark.hail

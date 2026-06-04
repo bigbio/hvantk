@@ -57,8 +57,13 @@ def render_qc_summary_markdown(summary_data: Dict[str, dict]) -> str:
                     for stat in _SUMMARY_STAT_COLUMNS:
                         value = stats.get(stat, "N/A")
                         if isinstance(value, (int, float)) and stat != "count":
+                            # Use scientific notation for very small magnitudes
+                            # (e.g. tiny HWE p-values) so they don't collapse to
+                            # "0.000"; keep an exact 0 as "0.000".
                             value = (
-                                f"{value:.3f}" if abs(value) < 1000 else f"{value:.2e}"
+                                f"{value:.3f}"
+                                if value == 0 or 1e-3 <= abs(value) < 1000
+                                else f"{value:.2e}"
                             )
                         row += f" {value} |"
                     md_content += row + "\n"

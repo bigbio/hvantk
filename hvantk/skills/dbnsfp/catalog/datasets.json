@@ -4,7 +4,7 @@
     "accession": "dbNSFP_v4.7",
     "description": "Comprehensive database of functional predictions and annotations for human nonsynonymous and splice-site SNVs. Includes prediction scores from SIFT, PolyPhen2, CADD, GERP++, PhyloP, PhastCons, and many others for variant pathogenicity assessment.",
     "pubmedid": "21520341",
-    "data_source": "Custom",
+    "data_source": "dbNSFP",
     "last_updated": "2025-09-23T16:30:00.000000",
     "update_frequency": "quarterly",
     "organism": "Homo sapiens",

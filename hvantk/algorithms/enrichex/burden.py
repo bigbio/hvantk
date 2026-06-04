@@ -281,7 +281,11 @@ def _build_gene_to_sets_ht(gene_sets: Dict[str, List[str]]) -> "hl.Table":
     """Build a ``gene -> [gene_set_ids]`` table from the gene-set definitions."""
     gene_to_sets: Dict[str, List[str]] = {}
     for gs_name, genes in gene_sets.items():
-        for gene in genes:
+        # dict.fromkeys dedups within a single set while preserving order, so a
+        # gene listed twice in one set is not double-counted after explode_rows
+        # (n_genes_found / burden). set() would lose order; the canonical
+        # parse_geneset_tsv already dedups upstream, so this guards other callers.
+        for gene in dict.fromkeys(genes):
             if gene not in gene_to_sets:
                 gene_to_sets[gene] = []
             gene_to_sets[gene].append(gs_name)
