@@ -398,6 +398,16 @@ def compute_geneset_burden_mt(
     """
     _require_hail()
 
+    # Normalize each set's gene list (dedup within set, order-preserving) up
+    # front so the min_gene_set_size filter, gene_set_size, gene_coverage_pct,
+    # and the gene->set membership are all derived from the same deduped genes.
+    # No-op for the canonical pipeline (parse_geneset_tsv already dedups); this
+    # only affects callers passing raw, duplicate-containing lists, where the
+    # deduped membership would otherwise disagree with len()-based sizes.
+    gene_sets = {
+        name: list(dict.fromkeys(genes)) for name, genes in gene_sets.items()
+    }
+
     # Pre-filter gene sets by minimum size
     if min_gene_set_size > 0:
         n_before = len(gene_sets)

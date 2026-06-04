@@ -183,6 +183,16 @@ class TestComputeGenesetBurdenMt:
                 genotype_aggregation="invalid",
             )
 
+    def test_compute_geneset_burden_dedups_gene_set_size(self, hail_session):
+        """gene_set_size must reflect the DEDUPED gene count so it stays
+        consistent with n_genes_found / gene_coverage_pct when a caller passes
+        duplicate genes within a set (PR #187 review: Copilot)."""
+        mt = self.setup_test_mt()
+        gene_sets = {"set1": ["GENE1", "GENE1", "GENE2"]}  # GENE1 duplicated
+        mt_burden = compute_geneset_burden_mt(mt, gene_sets, gene_field="SYMBOL")
+        row = mt_burden.rows().collect()[0]
+        assert row.gene_set_size == 2  # deduped (GENE1, GENE2), not 3
+
 
 @pytest.mark.hail
 class TestBuildGeneToSetsHt:
