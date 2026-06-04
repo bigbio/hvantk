@@ -61,11 +61,18 @@ def test_drift_stub_emits_warning_to_stderr_in_json_mode():
         spec, "drift_probe", lambda: stub_fingerprint("doc-only; no probeable URL")
     )
 
-    runner = CliRunner(mix_stderr=False)
+    # Click >= 8.2 removed the `mix_stderr` kwarg and always captures stdout
+    # and stderr separately; Click 8.1.x needs `mix_stderr=False` to do so.
+    # Support both so the test runs on either version.
+    try:
+        runner = CliRunner(mix_stderr=False)
+    except TypeError:
+        runner = CliRunner()
     result = runner.invoke(drift_cmd, ["--json", "fake:default"])
 
     assert result.exit_code == 0
-    # stdout stays clean JSON (consumed by drift_to_pr.py / CI capture)
+    # `result.stdout` is stdout-only on both Click 8.1.x (via mix_stderr=False)
+    # and 8.2+ (always separated); `result.output` mixes stderr in on 8.2+.
     parsed = json.loads(result.stdout)
     assert parsed[0]["status"] == "stub"
     assert "WARNING" not in result.stdout
