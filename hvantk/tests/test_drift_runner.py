@@ -91,6 +91,24 @@ def test_probe_failed_when_probe_raises(tmp_path: Path):
     assert "network down" in str(result.probe_error)
 
 
+def test_probe_failure_with_missing_baseline_reports_both(tmp_path: Path):
+    """When the probe fails AND no baseline fingerprint is committed, the error
+    must surface both the probe failure and the missing-fingerprint path — the
+    probe-first ordering must not mask the missing-baseline config error
+    (PR #188 review: Copilot)."""
+    fp_path = tmp_path / "does-not-exist.json"  # no baseline written
+
+    def boom():
+        raise DriftProbeError("network down")
+
+    spec = _make_spec(probe_return=boom, fingerprint_path=fp_path)
+    result = _run_with_spec(spec)
+    assert result.status == "probe_failed"
+    msg = str(result.probe_error)
+    assert "network down" in msg  # underlying probe error preserved
+    assert "missing" in msg.lower() and str(fp_path) in msg  # baseline flagged
+
+
 def test_fetched_at_is_excluded_from_comparison(tmp_path: Path):
     fp_path = tmp_path / "fp.json"
     _write_fingerprint(
@@ -161,6 +179,23 @@ def test_drift_diff_reports_removed_keys(tmp_path: Path):
     assert result.diff["added"] == {}
     assert result.diff["removed"] == {"source_version": "v1"}
     assert result.diff["changed"] == {}
+
+
+def test_stub_probe_reported_as_stub_not_false_green(tmp_path: Path):
+    """A documentation-only stub probe must surface as status='stub' — never a
+    false-green 'clean' and never a misleading 'probe_failed' — even with no
+    committed baseline fingerprint (issue #177)."""
+    from hvantk.core.plugin.api import stub_fingerprint
+
+    # Stub plugins ship no committed baseline, so point at a nonexistent file.
+    spec = _make_spec(
+        probe_return=lambda: stub_fingerprint("doc-only; no probeable URL"),
+        fingerprint_path=tmp_path / "does-not-exist.json",
+    )
+    result = _run_with_spec(spec)
+    assert result.status == "stub"
+    assert result.status not in ("clean", "probe_failed")
+    assert result.observed["reason"] == "doc-only; no probeable URL"
 
 
 def test_probe_returning_non_mapping_surfaces_clear_error(tmp_path: Path):

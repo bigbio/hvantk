@@ -4,7 +4,7 @@
     "accession": "GTEx_v11_eQTL_signif_pairs",
     "description": "GTEx Consortium release v11 cis-eQTL significant variant-gene pairs, one parquet file per tissue. 12 source columns: phenotype_id, variant_id (chr_pos_ref_alt_b38), start_distance, af, ma_samples, ma_count, pval_nominal, slope, slope_se, pval_nominal_threshold, min_pval_nominal, pval_beta. Built into a Hail Table keyed by (locus, alleles, gene_id) via spark.read.parquet \u2192 hl.Table.from_spark; see hvantk/skills/gtex_eqtl/SKILL.md. Used as eQTL input to hvantk/qtlcascade/ and variant annotation.",
     "pubmedid": "32913098",
-    "data_source": "Custom",
+    "data_source": "GTEx",
     "last_updated": "2024-12-01T00:00:00.000000",
     "update_frequency": "irregular",
     "organism": "Homo sapiens",

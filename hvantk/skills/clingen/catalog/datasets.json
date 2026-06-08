@@ -4,7 +4,7 @@
     "accession": "ClinGen_GeneDisease",
     "description": "Curated gene-disease associations with evidence-based classifications from ClinGen. Includes classification levels (Definitive, Strong, Moderate, Limited), mode of inheritance, and MONDO disease ontology mappings.",
     "pubmedid": "28552198",
-    "data_source": "Custom",
+    "data_source": "ClinGen",
     "last_updated": "2026-03-06T00:00:00.000000",
     "update_frequency": "monthly",
     "organism": "Homo sapiens",

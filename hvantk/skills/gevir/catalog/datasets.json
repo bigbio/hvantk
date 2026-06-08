@@ -4,7 +4,7 @@
     "accession": "GeVIR_v1.0",
     "description": "Genome-wide scores for ranking the pathogenicity potential of human genetic variants. GeVIR integrates multiple genomic features to provide pathogenicity predictions for both coding and non-coding variants.",
     "pubmedid": "31873297",
-    "data_source": "Custom",
+    "data_source": "GeVIR",
     "last_updated": "2025-09-23T16:30:00.000000",
     "update_frequency": "irregular",
     "organism": "Homo sapiens",

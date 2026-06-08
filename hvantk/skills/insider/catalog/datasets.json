@@ -4,7 +4,7 @@
     "accession": "INSIDER_v1.0",
     "description": "Interactome Insider (Wei et al., Nat Methods 2017). Predicted (ECLAIR), structural (PDB), and homology-derived (I3D) protein-protein interaction interface residues. Distributed as two complementary products: (1) Whole_Human_Interactome_Interface_hg38.bed \u2014 UCSC-style BED with 208,448 named PPI tracks projecting interface residues onto GRCh38 coordinates (this file path), and (2) H_sapiens_interfacesALL.txt \u2014 per protein-pair residue arrays with Source provenance (a separately-onboardable product, not in this catalog entry). Built by a custom track-aware BED parser plus hl.import_table into an interval-keyed Hail Table that preserves PPI IDs from track names; see hvantk/skills/insider/SKILL.md. Used for variant-interval intersection (does a variant fall in any predicted PPI interface?).",
     "pubmedid": "29036289",
-    "data_source": "Custom",
+    "data_source": "INSIDER",
     "last_updated": "2025-09-23T16:30:00.000000",
     "update_frequency": "irregular",
     "organism": "Homo sapiens",

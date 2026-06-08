@@ -281,7 +281,11 @@ def _build_gene_to_sets_ht(gene_sets: Dict[str, List[str]]) -> "hl.Table":
     """Build a ``gene -> [gene_set_ids]`` table from the gene-set definitions."""
     gene_to_sets: Dict[str, List[str]] = {}
     for gs_name, genes in gene_sets.items():
-        for gene in genes:
+        # dict.fromkeys dedups within a single set while preserving order, so a
+        # gene listed twice in one set is not double-counted after explode_rows
+        # (n_genes_found / burden). set() would lose order; the canonical
+        # parse_geneset_tsv already dedups upstream, so this guards other callers.
+        for gene in dict.fromkeys(genes):
             if gene not in gene_to_sets:
                 gene_to_sets[gene] = []
             gene_to_sets[gene].append(gs_name)
@@ -393,6 +397,16 @@ def compute_geneset_burden_mt(
     >>> mt_burden = compute_geneset_burden_mt(mt, gene_sets, variant_filter=vf)
     """
     _require_hail()
+
+    # Normalize each set's gene list (dedup within set, order-preserving) up
+    # front so the min_gene_set_size filter, gene_set_size, gene_coverage_pct,
+    # and the gene->set membership are all derived from the same deduped genes.
+    # No-op for the canonical pipeline (parse_geneset_tsv already dedups); this
+    # only affects callers passing raw, duplicate-containing lists, where the
+    # deduped membership would otherwise disagree with len()-based sizes.
+    gene_sets = {
+        name: list(dict.fromkeys(genes)) for name, genes in gene_sets.items()
+    }
 
     # Pre-filter gene sets by minimum size
     if min_gene_set_size > 0:
