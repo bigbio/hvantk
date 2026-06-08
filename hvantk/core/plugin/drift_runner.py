@@ -37,6 +37,25 @@ def run_drift_check(dataset_name: str, *, timeout: int = 60) -> DriftResult:
     return _run_drift_check_with_spec(spec, timeout=timeout)
 
 
+def _probe_failed(spec: DatasetSpec, exc: DriftProbeError) -> DriftResult:
+    """Build a probe_failed result, also flagging a missing baseline fingerprint.
+
+    The probe runs before the baseline is read (so intentional stubs classify
+    correctly). Without this, a plugin whose probe fails AND ships no committed
+    baseline would surface only the probe error and silently hide the
+    missing-fingerprint configuration issue. The underlying probe error is
+    preserved either way.
+    """
+    fp_path = Path(spec.test_paths.drift_fingerprint)
+    if not fp_path.exists():
+        exc = DriftProbeError(
+            f"{exc}; additionally, expected fingerprint is missing at {fp_path}"
+        )
+    return DriftResult(
+        dataset_name=spec.name, status="probe_failed", probe_error=exc
+    )
+
+
 def _run_drift_check_with_spec(
     spec: DatasetSpec, *, timeout: int = 60
 ) -> DriftResult:
@@ -47,16 +66,10 @@ def _run_drift_check_with_spec(
     try:
         observed = _invoke_with_timeout(spec.drift_probe, timeout=timeout)
     except DriftProbeError as exc:
-        return DriftResult(
-            dataset_name=spec.name,
-            status="probe_failed",
-            probe_error=exc,
-        )
+        return _probe_failed(spec, exc)
     except Exception as exc:  # noqa: BLE001
-        return DriftResult(
-            dataset_name=spec.name,
-            status="probe_failed",
-            probe_error=DriftProbeError(f"probe raised {type(exc).__name__}: {exc}"),
+        return _probe_failed(
+            spec, DriftProbeError(f"probe raised {type(exc).__name__}: {exc}")
         )
 
     if observed.get("probe_status") == PROBE_STATUS_STUB:
