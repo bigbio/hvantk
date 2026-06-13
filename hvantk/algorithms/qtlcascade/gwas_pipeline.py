@@ -22,9 +22,15 @@ from hvantk.algorithms.qtlcascade import finemap as fm
 from hvantk.algorithms.qtlcascade.constants import (
     DEFAULT_COLOC_P1, DEFAULT_COLOC_P2, DEFAULT_COLOC_P12,
     DEFAULT_GWAS_W_CC, DEFAULT_EQTL_W_QUANT, DEFAULT_COLOC_MIN_SNPS,
-    DEFAULT_COLOC_WINDOW_KB, DEFAULT_COLOC_H4_THRESHOLD,
+    DEFAULT_COLOC_WINDOW_KB,
     EQTL_CATALOGUE_DEFAULT_STUDY, DEFAULT_FINEMAP_SUPERPOP,
 )
+
+# PP4 cutoff for the verdict gate (ABF "colocalizes" and coloc.susie "confirms").
+# Deliberately 0.5 (not the stricter 0.8 ABF-declaration threshold): coloc.susie
+# is more conservative than single-variant ABF, and the validated positive
+# control (AF→MYOZ1) confirms at coloc.susie PP4=0.71.
+DEFAULT_VERDICT_PP4 = 0.5
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +54,7 @@ class GwasColocConfig:
     p1: float = DEFAULT_COLOC_P1
     p2: float = DEFAULT_COLOC_P2
     p12: float = DEFAULT_COLOC_P12
-    h4_threshold: float = DEFAULT_COLOC_H4_THRESHOLD
+    pp4_threshold: float = DEFAULT_VERDICT_PP4
     superpop: str = DEFAULT_FINEMAP_SUPERPOP
     ld_cache_dir: Optional[str] = None
     gene_symbols: dict = field(default_factory=dict)
@@ -65,14 +71,14 @@ class GwasColocConfig:
 
 
 def _verdict(pp4_abf: Optional[float], fmr: Optional[fm.FineMapResult],
-             h4_threshold: float) -> str:
-    if pp4_abf is None or pp4_abf < 0.5:
-        return "NO COLOC (ABF below 0.5)"
+             pp4_threshold: float) -> str:
+    if pp4_abf is None or pp4_abf < pp4_threshold:
+        return f"NO COLOC (ABF below {pp4_threshold})"
     if fmr is None or not fmr.available:
         return "SUGGESTIVE (ABF only; fine-mapping not run)"
     if fmr.coloc_susie_pp4 is None:
         return "INCONCLUSIVE (fine-mapping incomplete)"
-    if fmr.coloc_susie_pp4 >= 0.5:
+    if fmr.coloc_susie_pp4 >= pp4_threshold:
         return "CONFIRMED (ABF + fine-mapping agree)"
     if (fmr.cs_gwas or 0) == 0 or (fmr.cs_eqtl or 0) == 0:
         return "REFUTED (no fine-mappable signal — single-variant-ABF artifact)"
@@ -118,7 +124,7 @@ def run_gwas_coloc_pipeline(config: GwasColocConfig) -> dict:
                 ld_cache_dir=config.ld_cache_dir, superpop=config.superpop,
             )
 
-    verdict = _verdict(pp4_abf, fmr, config.h4_threshold)
+    verdict = _verdict(pp4_abf, fmr, config.pp4_threshold)
 
     out_dir = Path(config.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -162,7 +168,8 @@ def run_gwas_coloc_pipeline(config: GwasColocConfig) -> dict:
         "software": {"framework": "hvantk.algorithms.qtlcascade.gwas_pipeline"},
     }
     report_path = out_dir / f"report_{config.endpoint}_{config.chrom}_{config.lead}.json"
-    json.dump(report, open(report_path, "w"), indent=2)
+    with open(report_path, "w") as fh:
+        json.dump(report, fh, indent=2)
     report["results"]["report_json"] = str(report_path)
     logger.info("verdict: %s", verdict)
     return report

@@ -60,8 +60,8 @@ def _ensure_ca_bundle() -> None:
             import certifi
 
             os.environ["CURL_CA_BUNDLE"] = certifi.where()
-        except Exception:  # pragma: no cover - certifi is a hard dep
-            pass
+        except Exception as exc:  # pragma: no cover - certifi is a hard dep
+            logger.debug("certifi unavailable for CA bundle: %s", exc)
 
 
 def _contig(tb: "pysam.TabixFile", chrom: str) -> str:
@@ -95,16 +95,16 @@ def fetch_finngen_region(
     pval mlogp beta sebeta af*.
     """
     _ensure_ca_bundle()
-    tb = pysam.TabixFile(finngen_url(endpoint))
     out: dict[tuple[int, str, str], tuple[float, float, float]] = {}
-    for rec in tb.fetch(_contig(tb, chrom), start, end):
-        f = rec.split("\t")
-        try:
-            se = float(f[9])
-            if se > 0:
-                out[(int(f[1]), f[2], f[3])] = (float(f[8]), se, float(f[6]))
-        except (ValueError, IndexError):
-            continue
+    with pysam.TabixFile(finngen_url(endpoint)) as tb:
+        for rec in tb.fetch(_contig(tb, chrom), start, end):
+            f = rec.split("\t")
+            try:
+                se = float(f[9])
+                if se > 0:
+                    out[(int(f[1]), f[2], f[3])] = (float(f[8]), se, float(f[6]))
+            except (ValueError, IndexError):
+                continue
     return out
 
 
@@ -118,17 +118,17 @@ def fetch_eqtl_region(
     local tabix path.
     """
     _ensure_ca_bundle()
-    tb = pysam.TabixFile(eqtl_catalogue_url(dataset, study))
     out: dict[str, list[tuple[tuple[int, str, str], float, float, float]]] = {}
-    for rec in tb.fetch(_contig(tb, chrom), start, end):
-        f = rec.split("\t")
-        try:
-            key = (int(f[2]), f[3], f[4])
-            out.setdefault(f[0].split(".")[0], []).append(
-                (key, float(f[9]), float(f[10]), float(f[8]))
-            )
-        except (ValueError, IndexError):
-            continue
+    with pysam.TabixFile(eqtl_catalogue_url(dataset, study)) as tb:
+        for rec in tb.fetch(_contig(tb, chrom), start, end):
+            f = rec.split("\t")
+            try:
+                key = (int(f[2]), f[3], f[4])
+                out.setdefault(f[0].split(".")[0], []).append(
+                    (key, float(f[9]), float(f[10]), float(f[8]))
+                )
+            except (ValueError, IndexError):
+                continue
     return out
 
 
@@ -207,9 +207,10 @@ def run_locus_coloc(
 ) -> GwasColocResult:
     """ABF coloc of a GWAS region against every overlapping cis gene.
 
-    Variants are matched on ``(pos, ref, alt)`` (ALT-referenced on both sides);
-    alleles must agree. Pure in-memory — fetch with
-    :func:`fetch_finngen_region` / :func:`fetch_eqtl_region` first.
+    Variants are matched on position and allele *set* — ref/alt may be stored in
+    either order across sources (the ABF kernel uses z^2, so allele orientation
+    does not affect H4). Pure in-memory — fetch with :func:`fetch_finngen_region`
+    / :func:`fetch_eqtl_region` first.
     """
     gwas_min_p = min((v[2] for v in gwas.values()), default=float("nan"))
     rows = []

@@ -119,13 +119,13 @@ def test_eqtl_catalogue_url_passthrough():
 # ---------------------------------------------------------------------------
 
 
-def test_gwas_coloc_cli_requires_n_for_finemap():
+def test_gwas_coloc_cli_requires_n_for_finemap(tmp_path):
     from hvantk.tools.qtl.qtlcascade_cli import qtlcascade_group
 
     r = CliRunner().invoke(
         qtlcascade_group,
         ["gwas-coloc", "--endpoint", "I9_AF", "--chrom", "10", "--lead", "73600000",
-         "--eqtl", "QTD000251", "-o", "/tmp/out"],  # fine-map default on, no -n
+         "--eqtl", "QTD000251", "-o", str(tmp_path / "out")],  # fine-map on, no -n
     )
     assert r.exit_code == 1
     assert "fine-mapping requires gwas_N and eqtl_N" in r.output

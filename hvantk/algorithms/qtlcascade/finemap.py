@@ -52,6 +52,8 @@ def finemap_available() -> tuple[bool, list[str]]:
     missing: list[str] = []
     if shutil.which("bcftools") is None:
         missing.append("bcftools")
+    if shutil.which("curl") is None:
+        missing.append("curl")
     if shutil.which("Rscript") is None:
         missing.append("Rscript (R)")
         return False, missing
@@ -145,6 +147,8 @@ def _eur_dosages(chrom: str, start: int, end: int, cache: Path, superpop: str
     out: dict[tuple[int, str, str], np.ndarray] = {}
     q = subprocess.run(["bcftools", "query", "-f", "%POS\t%REF\t%ALT[\t%GT]\n", str(reg)],
                        capture_output=True, text=True)
+    if q.returncode != 0:
+        raise RuntimeError(f"bcftools query failed: {q.stderr.strip()[-200:]}")
     for line in q.stdout.splitlines():
         f = line.split("\t")
         if len(f) < 4:
@@ -216,7 +220,8 @@ def _build_inputs(gwas, eqtl_recs, chrom, start, end, gwas_N, eqtl_N,
         for snp, pos, bg, sg, be, se in rows:
             fh.write(f"{snp}\t{pos}\t{bg}\t{sg}\t{be}\t{se}\n")
     np.savetxt(work / "ld.tsv", R, fmt="%.6f", delimiter="\t")
-    json.dump({"gwas_N": gwas_N, "eqtl_N": eqtl_N}, open(work / "meta.json", "w"))
+    with open(work / "meta.json", "w") as fh:
+        json.dump({"gwas_N": gwas_N, "eqtl_N": eqtl_N}, fh)
     return len(rows)
 
 
