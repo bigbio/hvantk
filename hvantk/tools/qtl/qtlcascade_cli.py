@@ -14,7 +14,12 @@ import logging
 import click
 
 from hvantk.core.config import CONTEXT_SETTINGS
-from hvantk.algorithms.qtlcascade.constants import DEFAULT_COLOC_H4_THRESHOLD
+from hvantk.algorithms.qtlcascade.constants import (
+    DEFAULT_COLOC_H4_THRESHOLD,
+    DEFAULT_COLOC_WINDOW_KB,
+    EQTL_CATALOGUE_DEFAULT_STUDY,
+    DEFAULT_FINEMAP_SUPERPOP,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -138,6 +143,80 @@ def coloc_cmd(
     Path(output).parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(output, sep="\t", index=False)
     click.echo(f"Coloc results written to {output} ({len(df)} genes)")
+
+
+# ---------------------------------------------------------------------------
+# gwas-coloc — GWAS → effector coloc (FinnGen × eQTL Catalogue) + SuSiE confirm
+# ---------------------------------------------------------------------------
+
+
+@qtlcascade_group.command("gwas-coloc")
+@click.option("--endpoint", required=True, type=str,
+              help="FinnGen R10 endpoint code (e.g. I9_AF).")
+@click.option("--chrom", required=True, type=str, help="Chromosome (GRCh38, no 'chr').")
+@click.option("--lead", required=True, type=int, help="Lead variant position (GRCh38).")
+@click.option("--eqtl", "eqtl_dataset", required=True, type=str,
+              help="eQTL Catalogue dataset id / URL / local tabix (e.g. QTD000251).")
+@click.option("--eqtl-study", type=str, default=EQTL_CATALOGUE_DEFAULT_STUDY,
+              show_default=True, help="eQTL Catalogue study id.")
+@click.option("--window-kb", type=int, default=DEFAULT_COLOC_WINDOW_KB,
+              show_default=True, help="Regional window (±kb) around the lead.")
+@click.option("--gene", "gene_of_interest", type=str, default=None,
+              help="ENSG of interest to confirm (default: the ABF-top gene).")
+@click.option("--fine-map/--no-fine-map", default=True, show_default=True,
+              help="Run SuSiE/coloc.susie confirmation (needs R+susieR+coloc, bcftools).")
+@click.option("--gwas-n", "gwas_n", type=int, default=None,
+              help="GWAS sample size (required for fine-mapping).")
+@click.option("--eqtl-n", "eqtl_n", type=int, default=None,
+              help="eQTL sample size (required for fine-mapping).")
+@click.option("--superpop", type=str, default=DEFAULT_FINEMAP_SUPERPOP,
+              show_default=True, help="1000G super-population for the LD reference.")
+@click.option("--ld-cache-dir", type=str, default=None,
+              help="Cache directory for the 1000G LD reference.")
+@click.option("-o", "--output-dir", required=True, type=str, help="Output directory.")
+@click.pass_context
+def gwas_coloc_cmd(ctx, endpoint, chrom, lead, eqtl_dataset, eqtl_study, window_kb,
+                   gene_of_interest, fine_map, gwas_n, eqtl_n, superpop,
+                   ld_cache_dir, output_dir):
+    """GWAS → effector colocalization with optional SuSiE fine-map confirmation.
+
+    Ranks cis effectors at a GWAS locus by ABF H4, then (default) confirms the
+    lead effector with SuSiE/coloc.susie to separate genuine colocalization
+    (CONFIRMED) from single-variant-ABF artifacts (REFUTED).
+    """
+    from hvantk.algorithms.qtlcascade.gwas_pipeline import (
+        GwasColocConfig,
+        run_gwas_coloc_pipeline,
+    )
+
+    config = GwasColocConfig(
+        endpoint=endpoint, chrom=chrom, lead=lead, eqtl_dataset=eqtl_dataset,
+        eqtl_study=eqtl_study, window_kb=window_kb, gene_of_interest=gene_of_interest,
+        fine_map=fine_map, gwas_N=gwas_n, eqtl_N=eqtl_n, superpop=superpop,
+        ld_cache_dir=ld_cache_dir, output_dir=output_dir,
+    )
+    errors = config.validate()
+    if errors:
+        for e in errors:
+            click.echo(f"  ERROR: {e}", err=True)
+        ctx.exit(1)
+
+    report = run_gwas_coloc_pipeline(config)
+    res = report["results"]
+    gmp = report["gwas"]["min_p_in_region"]
+    click.echo(f"\nRegion {report['region']}  |  GWAS min-p {gmp:.1e}  |  "
+               f"{res['n_genes_tested']} genes tested")
+    click.echo(f"Top effector: {res['top_effector']} (PP4={res['top_PP4']})")
+    if report["fine_map"]:
+        fmr = report["fine_map"]
+        if fmr["available"]:
+            click.echo(f"Fine-map: credible sets GWAS={fmr['credible_sets_gwas']} "
+                       f"eQTL={fmr['credible_sets_eqtl']}; "
+                       f"coloc.susie PP4={fmr['coloc_susie_PP4']}")
+        else:
+            click.echo(f"Fine-map: {fmr['note']}", err=True)
+    click.echo(f"VERDICT: {report['verdict']}")
+    click.echo(f"Report: {res['report_json']}")
 
 
 # ---------------------------------------------------------------------------

@@ -54,3 +54,47 @@ DEFAULT_COLOC_H4_THRESHOLD = 0.8
 
 # Regional window for coloc (±kb from lead variant)
 DEFAULT_COLOC_WINDOW_KB = 500
+
+# ---------------------------------------------------------------------------
+# GWAS × eQTL colocalization (gwas_coloc.py)
+# ---------------------------------------------------------------------------
+# Trait-specific prior effect-size variances W (Wakefield 2009). coloc's
+# conventional defaults: case-control GWAS sd(logOR)=0.2 -> W=0.04;
+# quantitative cis-eQTL sd=0.15 -> W=0.0225.
+DEFAULT_GWAS_W_CC = 0.04
+DEFAULT_EQTL_W_QUANT = 0.0225
+
+# Minimum shared variants in a region for a gene to be coloc-tested.
+DEFAULT_COLOC_MIN_SNPS = 20
+
+# Public summary-statistic sources (remote-tabix; no bulk download).
+# FinnGen R10 GWAS: contig has no 'chr'; cols chrom pos ref alt rsids
+#   nearest_genes pval mlogp beta sebeta af*.
+FINNGEN_R10_SUMSTATS_URL = (
+    "https://storage.googleapis.com/finngen-public-data-r10/"
+    "summary_stats/finngen_R10_{endpoint}.gz"
+)
+# eQTL Catalogue cis-eQTL all-variant sumstats; cols gene_id chrom pos ref alt
+#   variant ma_samples maf pvalue beta se. Default study QTS000015 = GTEx.
+EQTL_CATALOGUE_SUMSTATS_URL = (
+    "https://ftp.ebi.ac.uk/pub/databases/spot/eQTL/sumstats/"
+    "{study}/{dataset}/{dataset}.all.tsv.gz"
+)
+EQTL_CATALOGUE_DEFAULT_STUDY = "QTS000015"
+
+# ---------------------------------------------------------------------------
+# Fine-mapping LD reference (finemap.py) — 1000 Genomes high-coverage GRCh38.
+# Used to build a EUR LD matrix for SuSiE-RSS + coloc.susie. Optional layer.
+# ---------------------------------------------------------------------------
+KG_PHASED_VCF_URL = (
+    "http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/"
+    "1000G_2504_high_coverage/working/20201028_3202_phased/"
+    "CCDG_14151_B01_GRM_WGS_2020-08-05_chr{chrom}."
+    "filtered.shapeit2-duohmm-phased.vcf.gz"
+)
+KG_PANEL_URL = (
+    "http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/"
+    "1000G_2504_high_coverage/20130606_g1k_3202_samples_ped_population.txt"
+)
+# Default fine-map super-population for the LD reference.
+DEFAULT_FINEMAP_SUPERPOP = "EUR"
