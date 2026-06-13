@@ -123,9 +123,12 @@ def fetch_eqtl_region(
         for rec in tb.fetch(_contig(tb, chrom), start, end):
             f = rec.split("\t")
             try:
+                se = float(f[10])
+                if se <= 0:  # guard against div-by-zero in the ABF kernel
+                    continue
                 key = (int(f[2]), f[3], f[4])
                 out.setdefault(f[0].split(".")[0], []).append(
-                    (key, float(f[9]), float(f[10]), float(f[8]))
+                    (key, float(f[9]), se, float(f[8]))
                 )
             except (ValueError, IndexError):
                 continue
@@ -263,7 +266,7 @@ def run_finngen_eqtl_coloc(
 ) -> GwasColocResult:
     """End-to-end ABF coloc: fetch FinnGen × eQTL Catalogue region, rank effectors."""
     half = window_kb * 1000
-    start, end = lead - half, lead + half
+    start, end = max(0, lead - half), lead + half  # clamp left edge near contig start
     region = f"chr{chrom}:{start}-{end}"
     logger.info("coloc %s × %s @ %s", endpoint, eqtl_dataset, region)
     gwas = fetch_finngen_region(endpoint, chrom, start, end)

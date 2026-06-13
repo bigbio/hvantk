@@ -72,8 +72,10 @@ class GwasColocConfig:
 
 def _verdict(pp4_abf: Optional[float], fmr: Optional[fm.FineMapResult],
              pp4_threshold: float) -> str:
-    if pp4_abf is None or pp4_abf < pp4_threshold:
-        return f"NO COLOC (ABF below {pp4_threshold})"
+    if pp4_abf is None:
+        return "NO COLOC (gene of interest absent from results / no eQTL genes tested)"
+    if pp4_abf < pp4_threshold:
+        return f"NO COLOC (ABF PP4 {pp4_abf:.2f} < {pp4_threshold})"
     if fmr is None or not fmr.available:
         return "SUGGESTIVE (ABF only; fine-mapping not run)"
     if fmr.coloc_susie_pp4 is None:
@@ -88,7 +90,7 @@ def _verdict(pp4_abf: Optional[float], fmr: Optional[fm.FineMapResult],
 def run_gwas_coloc_pipeline(config: GwasColocConfig) -> dict:
     """Run the pipeline and write a provenance-stamped report. Returns the report dict."""
     half = config.window_kb * 1000
-    start, end = config.lead - half, config.lead + half
+    start, end = max(0, config.lead - half), config.lead + half  # clamp left edge
     region = f"chr{config.chrom}:{start}-{end}"
 
     gwas = gc.fetch_finngen_region(config.endpoint, config.chrom, start, end)
@@ -102,15 +104,19 @@ def run_gwas_coloc_pipeline(config: GwasColocConfig) -> dict:
         gene_symbols=config.gene_symbols,
     )
 
-    target = config.gene_of_interest
-    if target is None and not cres.table.empty:
-        target = str(cres.table.iloc[0]["gene_id"])
+    user_gene = config.gene_of_interest
+    target = user_gene if user_gene else (
+        str(cres.table.iloc[0]["gene_id"]) if not cres.table.empty else None)
     goi_row = None
     if target is not None and not cres.table.empty:
         match = cres.table[cres.table["gene_id"] == target]
         goi_row = match.iloc[0] if len(match) else None
-    pp4_abf = float(goi_row["PP4"]) if goi_row is not None else (
-        float(cres.table.iloc[0]["PP4"]) if not cres.table.empty else None)
+    if user_gene is not None:
+        # User-specified gene: report ITS PP4 (or None if absent from results) —
+        # never another gene's — so the verdict is about the requested gene.
+        pp4_abf = float(goi_row["PP4"]) if goi_row is not None else None
+    else:
+        pp4_abf = float(cres.table.iloc[0]["PP4"]) if not cres.table.empty else None
 
     fmr = None
     if config.fine_map and target is not None and target in eqtl:

@@ -43,6 +43,7 @@ PyYAML = "*"
 jsonschema = ">=4.0"
 psutil = "*"
 pysam = ">=0.22"
+certifi = "*"
 anndata = ">=0.10.0"
 scanpy = ">=1.10.0"
 gnomad = { version = "*", optional = true }

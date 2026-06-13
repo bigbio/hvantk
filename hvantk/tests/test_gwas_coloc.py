@@ -154,3 +154,25 @@ def test_gwas_coloc_cli_runs_with_mocked_pipeline(tmp_path, monkeypatch):
     assert r.exit_code == 0, r.output
     assert "CONFIRMED" in r.output
     assert "ENSG00000177791" in r.output
+
+
+def test_pipeline_user_gene_absent_not_misattributed(tmp_path, monkeypatch):
+    # Regression: a user-specified gene absent from the coloc table must NOT
+    # inherit the top gene's PP4 (verdict must be about the requested gene).
+    import hvantk.algorithms.qtlcascade.gwas_coloc as gc
+    from hvantk.algorithms.qtlcascade.gwas_pipeline import (
+        GwasColocConfig, run_gwas_coloc_pipeline,
+    )
+
+    monkeypatch.setattr(gc, "fetch_finngen_region",
+                        lambda *a, **k: _gwas_dict(40, 20, 7.0))
+    monkeypatch.setattr(gc, "fetch_eqtl_region",
+                        lambda *a, **k: {"ENSG_OTHER": _eqtl_recs(40, 20, 7.0)})
+    cfg = GwasColocConfig(
+        endpoint="X", chrom="1", lead=1_000_000, eqtl_dataset="QTD",
+        gene_of_interest="ENSG_ABSENT", fine_map=False, output_dir=str(tmp_path),
+    )
+    rep = run_gwas_coloc_pipeline(cfg)
+    assert rep["results"]["goi_PP4_abf"] is None          # not the top gene's PP4
+    assert rep["results"]["top_effector"] == "ENSG_OTHER"  # top still reported
+    assert rep["verdict"].startswith("NO COLOC")

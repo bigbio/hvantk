@@ -87,13 +87,13 @@ EQTL_CATALOGUE_DEFAULT_STUDY = "QTS000015"
 # Used to build a EUR LD matrix for SuSiE-RSS + coloc.susie. Optional layer.
 # ---------------------------------------------------------------------------
 KG_PHASED_VCF_URL = (
-    "http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/"
+    "https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/"
     "1000G_2504_high_coverage/working/20201028_3202_phased/"
     "CCDG_14151_B01_GRM_WGS_2020-08-05_chr{chrom}."
     "filtered.shapeit2-duohmm-phased.vcf.gz"
 )
 KG_PANEL_URL = (
-    "http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/"
+    "https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/"
     "1000G_2504_high_coverage/20130606_g1k_3202_samples_ped_population.txt"
 )
 # Default fine-map super-population for the LD reference.
