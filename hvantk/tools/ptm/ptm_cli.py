@@ -501,7 +501,11 @@ def ptm_report(ctx, output, landscape_json, population_json, title, description)
     "--variants-ht",
     type=str,
     required=True,
-    help="Path to PTM-annotated variant Hail Table (from `hvantk ptm annotate`).",
+    help=(
+        "Path to PTM-annotated variants (from `hvantk ptm annotate`): a Hail "
+        "Table directory, or a tabular file (.pkl/.parquet/.csv/.tsv, each "
+        "optionally gzip/bgz-compressed)."
+    ),
 )
 @click.option(
     "--expression-source",

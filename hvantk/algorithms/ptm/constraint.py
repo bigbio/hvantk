@@ -295,6 +295,13 @@ def _load_variants_hail(config: PTMConstraintConfig) -> pd.DataFrame:
 
     if config.af_field in row_fields:
         select["af"] = ht[config.af_field]
+    elif config.af_observed_only:
+        raise ValueError(
+            f"AF field '{config.af_field}' is absent from the variants HT, but "
+            "--af-observed-only (default) restricts to gnomAD AF > 0 and would "
+            "drop every variant. Pass --include-zero-af to disable the filter or "
+            "supply the correct --af-field."
+        )
     else:
         logger.warning(
             "AF field '%s' not found; filling with zeros.", config.af_field
@@ -361,6 +368,13 @@ def _load_variants_tabular(config: PTMConstraintConfig) -> pd.DataFrame:
 
     if config.af_field in cols:
         out["af"] = raw[config.af_field]
+    elif config.af_observed_only:
+        raise ValueError(
+            f"AF field '{config.af_field}' is absent from the variant table, but "
+            "--af-observed-only (default) restricts to gnomAD AF > 0 and would "
+            "drop every variant. Pass --include-zero-af to disable the filter or "
+            "supply the correct --af-field."
+        )
     else:
         logger.warning("AF field '%s' not found; filling with zeros.", config.af_field)
         out["af"] = 0.0
@@ -394,10 +408,15 @@ def _read_variants_tabular_file(path: str) -> pd.DataFrame:
         return pd.read_pickle(path)
     if ".parquet" in suffixes:
         return pd.read_parquet(path)
-    compression = {".gz", ".bgz", ".bz2"}
-    base = next((s for s in reversed(suffixes) if s not in compression), "")
+    # pandas does not infer ".bgz"; map it (and .gz) to gzip explicitly. BGZF is a
+    # valid multi-member gzip stream, so the gzip codec reads it transparently.
+    comp_map = {".gz": "gzip", ".bgz": "gzip", ".bz2": "bz2"}
+    compression = next(
+        (comp_map[s] for s in reversed(suffixes) if s in comp_map), "infer"
+    )
+    base = next((s for s in reversed(suffixes) if s not in comp_map), "")
     sep = "," if base == ".csv" else "\t"
-    return pd.read_csv(path, sep=sep, low_memory=False)
+    return pd.read_csv(path, sep=sep, low_memory=False, compression=compression)
 
 
 def _finalize_variants_df(df: pd.DataFrame) -> pd.DataFrame:
@@ -406,7 +425,16 @@ def _finalize_variants_df(df: pd.DataFrame) -> pd.DataFrame:
     df["is_ptm_site"] = df["is_ptm_site"].fillna(False).astype(bool)
     df["is_ptm_proximal"] = df["is_ptm_proximal"].fillna(False).astype(bool)
     df["ptm_any"] = df["is_ptm_site"] | df["is_ptm_proximal"]
-    df["af"] = pd.to_numeric(df["af"], errors="coerce").fillna(0.0)
+    af_numeric = pd.to_numeric(df["af"], errors="coerce")
+    n_missing_af = int(af_numeric.isna().sum())
+    if n_missing_af:
+        logger.warning(
+            "%d variant(s) have missing/non-numeric AF coerced to 0.0; under "
+            "--af-observed-only these are dropped and become indistinguishable "
+            "from gnomAD-absent variants. Check the AF field if unexpected.",
+            n_missing_af,
+        )
+    df["af"] = af_numeric.fillna(0.0)
     df["loeuf"] = pd.to_numeric(df["loeuf"], errors="coerce")
     df["gene_key"] = df["gene_key"].astype(str).str.replace(r"\.\d+$", "", regex=True)
     return df
