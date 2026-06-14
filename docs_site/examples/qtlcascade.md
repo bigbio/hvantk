@@ -184,6 +184,106 @@ hvantk qtlcascade coloc \
   -o coloc_results.tsv
 ```
 
+## GWAS → Effector Colocalization (`gwas-coloc`)
+
+`hvantk qtlcascade gwas-coloc` colocalizes a **GWAS** locus against cis-**eQTL** to rank the likely
+effector gene(s), then (by default) confirms the lead effector with **SuSiE-RSS + `coloc.susie`**
+fine-mapping. All summary statistics stream via **remote tabix** — no bulk downloads.
+
+The fine-mapping step is what separates a genuine colocalization (`CONFIRMED`) from a
+single-variant-ABF artifact (`REFUTED`). The example below shows both, anchored on a
+literature-supported positive control.
+
+### Positive control — atrial fibrillation → MYOZ1 (CONFIRMED)
+
+`MYOZ1` (10q22) is a known cardiac effector for atrial fibrillation. Confirm it end-to-end
+(FinnGen `I9_AF` × GTEx heart atrial-appendage eQTL `QTD000251`):
+
+```bash
+hvantk qtlcascade gwas-coloc \
+  --endpoint I9_AF --chrom 10 --lead 73600000 \
+  --eqtl QTD000251 \
+  --gene ENSG00000177791 \
+  --gwas-n 261395 --eqtl-n 372 \
+  -o results/myoz1
+```
+
+Expected output (values are illustrative; remote data may shift slightly between releases):
+
+```text
+Region chr10:73100000-74100000  |  GWAS min-p 2.7e-14  |  51 genes tested
+Top effector: ENSG00000177791 (PP4=0.812)
+Fine-map: credible sets GWAS=1 eQTL=1; coloc.susie PP4=0.712
+VERDICT: CONFIRMED (ABF + fine-mapping agree)
+Report: results/myoz1/report_I9_AF_10_73600000.json
+```
+
+> `ENSG00000177791` is `MYOZ1`. The tool reports Ensembl gene IDs; HGNC symbol mapping is a planned
+> enhancement.
+
+### Fast tier — ABF only (no external tools)
+
+The ABF ranking is pure-Python (only the core deps). Skip fine-mapping with `--no-fine-map`
+(then `--gwas-n`/`--eqtl-n` are not required):
+
+```bash
+hvantk qtlcascade gwas-coloc \
+  --endpoint I9_AF --chrom 10 --lead 73600000 \
+  --eqtl QTD000251 --no-fine-map \
+  -o results/myoz1_abf
+# Top effector: ENSG00000177791 (PP4=0.812)
+# VERDICT: SUGGESTIVE (ABF only; fine-mapping not run)
+```
+
+### Contrast — a CHD locus that does NOT survive fine-mapping (REFUTED)
+
+The septal-defect 17q21 locus has an *identical-looking* ABF signal (PP4 ≈ 0.81 for `NSF`) that
+**fails** fine-mapping — neither trait yields a credible set, so the ABF hit is a single-variant
+artifact:
+
+```bash
+hvantk qtlcascade gwas-coloc \
+  --endpoint Q17_SEPTA_DEFEC --chrom 17 --lead 46890164 \
+  --eqtl QTD000136 \
+  --gene ENSG00000073969 \
+  --gwas-n 412181 --eqtl-n 213 \
+  -o results/nsf_17q21
+# Top effector: ENSG00000073969 (PP4=0.81)
+# Fine-map: credible sets GWAS=0 eQTL=0; coloc.susie PP4=0.0
+# VERDICT: REFUTED (no fine-mappable signal — single-variant-ABF artifact)
+```
+
+This `CONFIRMED`-vs-`REFUTED` contrast is why the fine-mapping layer matters: single-variant ABF
+over-calls when a strong GWAS meets a weak eQTL.
+
+### Prerequisites
+
+| Tier | Requirements |
+|------|--------------|
+| ABF only (`--no-fine-map`) | core hvantk deps (pysam, numpy, pandas) + network |
+| Fine-mapping (default) | additionally `R` with `susieR` + `coloc`, plus `bcftools` and `curl`; downloads a 1000G GRCh38 LD reference for the chosen `--superpop` (default `EUR`), cached under `--ld-cache-dir` (default: `$HVANTK_LD_CACHE`, else `~/.cache/hvantk/1kg`) |
+
+Data sources (all remote, no downloads): FinnGen R10 GWAS, eQTL Catalogue (GTEx) cis-eQTL, and
+1000 Genomes high-coverage GRCh38 for the LD reference.
+
+### Python API
+
+```python
+from hvantk.algorithms.qtlcascade.gwas_pipeline import (
+    GwasColocConfig, run_gwas_coloc_pipeline,
+)
+
+config = GwasColocConfig(
+    endpoint="I9_AF", chrom="10", lead=73600000,
+    eqtl_dataset="QTD000251", gene_of_interest="ENSG00000177791",
+    gwas_N=261395, eqtl_N=372, fine_map=True,
+    output_dir="results/myoz1",
+)
+report = run_gwas_coloc_pipeline(config)
+print(report["verdict"])             # CONFIRMED (ABF + fine-mapping agree)
+print(report["results"]["top_PP4"])  # ~0.81
+```
+
 ## Data Sources
 
 | Source | Type | Format | Reference |
@@ -192,6 +292,9 @@ hvantk qtlcascade coloc \
 | GTEx v8 | eQTL | TSV | GTEx Consortium |
 | eQTLGen | eQTL | TSV | Vosa et al. (2021) |
 | Fang et al. 2025 | pQTL | Space-delimited TSV | Fang et al. (2025) |
+| FinnGen R10 | GWAS | Remote-tabix (bgzip+tbi) | FinnGen (2023) |
+| eQTL Catalogue (GTEx) | cis-eQTL | Remote-tabix (bgzip+tbi) | Kerimov et al. (2021) |
+| 1000 Genomes (GRCh38) | LD reference | VCF (remote-tabix) | 1000G / NYGC (2020) |
 
 See [Data Sources](../guide/data-sources.md#qtl-data) for download instructions.
 

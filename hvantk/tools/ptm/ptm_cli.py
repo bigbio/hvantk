@@ -501,7 +501,11 @@ def ptm_report(ctx, output, landscape_json, population_json, title, description)
     "--variants-ht",
     type=str,
     required=True,
-    help="Path to PTM-annotated variant Hail Table (from `hvantk ptm annotate`).",
+    help=(
+        "Path to PTM-annotated variants (from `hvantk ptm annotate`): a Hail "
+        "Table directory, or a tabular file (.pkl/.parquet/.csv/.tsv, each "
+        "optionally gzip/bgz-compressed)."
+    ),
 )
 @click.option(
     "--expression-source",
@@ -547,6 +551,14 @@ def ptm_report(ctx, output, landscape_json, population_json, title, description)
     help="Optional two-column TSV mapping expression gene IDs to symbols.",
 )
 @click.option(
+    "--group-mapping",
+    type=click.Path(exists=True),
+    default=None,
+    help="Optional two-column TSV mapping raw expression-group labels to broader "
+    "analysis groups (e.g. 53 GTEx tissues -> 12 organ systems). Applied to each "
+    "gene's primary (argmax) group.",
+)
+@click.option(
     "--expression-metric",
     type=click.Choice(["median", "mean", "median_nonzero"], case_sensitive=False),
     default="median",
@@ -574,6 +586,13 @@ def ptm_report(ctx, output, landscape_json, population_json, title, description)
     show_default=True,
     help="Keep only genes whose max group expression meets this floor.",
 )
+@click.option(
+    "--af-observed-only/--include-zero-af",
+    default=True,
+    show_default=True,
+    help="Restrict the depletion comparison to variants observed in gnomAD "
+    "(AF > 0); --include-zero-af also keeps unobserved (AF = 0) variants.",
+)
 @click.option("--overwrite", is_flag=True)
 @click.pass_context
 def ptm_constraint(
@@ -590,11 +609,13 @@ def ptm_constraint(
     loeuf_field,
     ptm_category_field,
     gene_id_mapping,
+    group_mapping,
     expression_metric,
     min_cells_per_group,
     min_variants_per_group,
     flanking_codons,
     expressed_threshold,
+    af_observed_only,
     overwrite,
 ):
     """Stratified PTM constraint analysis across groups (tissue / cell type).
@@ -642,11 +663,13 @@ def ptm_constraint(
             loeuf_field=loeuf_field,
             ptm_category_field=ptm_category_field,
             gene_id_mapping=gene_id_mapping,
+            group_mapping=group_mapping,
             expression_metric=expression_metric.lower(),
             min_cells_per_group=min_cells_per_group,
             min_variants_per_group=min_variants_per_group,
             flanking_codons=flanking_codons,
             expressed_threshold=expressed_threshold,
+            af_observed_only=af_observed_only,
             overwrite=overwrite,
         )
 

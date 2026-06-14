@@ -179,6 +179,30 @@ From Giambartolomei et al. (2014), Table 1:
 | `p12` | 1×10⁻⁵ | P(variant causal for both traits) |
 | `W` | 0.04 | Prior variance on effect size |
 
+## GWAS → Effector Colocalization (`gwas-coloc`)
+
+A complementary workflow to the eQTL × pQTL cascade above. Instead of joining two molecular QTLs, it colocalizes a **GWAS** locus against cis-**eQTL** to nominate the effector gene, then optionally confirms it with **SuSiE-RSS + `coloc.susie`** fine-mapping.
+
+- **GWAS source** — a FinnGen R10 endpoint (remote-tabix; no download).
+- **eQTL source** — an eQTL Catalogue dataset, e.g. GTEx `QTD000251` (remote-tabix).
+- **Screen** — ABF with trait-specific priors (W₁ = 0.04 for the case-control GWAS, W₂ = 0.0225 for the quantitative eQTL) ranks every overlapping cis gene by P(H4). Reuses the same validated `compute_log_abf` kernel as the cascade coloc.
+- **Confirmation** (optional, on by default) — SuSiE-RSS fine-maps both traits against a 1000G reference-LD matrix for a configurable super-population (default `EUR`, via `--superpop`); `coloc.susie` tests for a *shared credible set*. This separates a genuine colocalization from a single-variant-ABF artifact (a strong GWAS leaning on a weak eQTL).
+- **Output** — a provenance-stamped JSON report + a per-gene TSV + a verdict.
+
+### Verdicts
+
+| Verdict | Meaning |
+|---------|---------|
+| `CONFIRMED` | ABF PP4 ≥ threshold **and** `coloc.susie` PP4 ≥ threshold |
+| `REFUTED` | ABF says coloc, but fine-mapping finds no shared credible set (single-variant-ABF artifact) |
+| `SUGGESTIVE` | ABF coloc only — fine-mapping skipped (`--no-fine-map`) **or** unavailable (missing `R` / `bcftools` / `curl`) |
+| `INCONCLUSIVE` | Fine-mapping ran but produced no `coloc.susie` PP4 (e.g. too few overlapping variants, or the R step did not complete) |
+| `NO COLOC` | ABF PP4 below threshold, or the gene of interest is absent from the results |
+
+> **Fine-mapping is optional.** It requires `R` (with `susieR` + `coloc`), `bcftools`, and `curl`, plus a 1000G GRCh38 LD reference that is auto-downloaded and cached under `--ld-cache-dir` (default: `$HVANTK_LD_CACHE`, else `~/.cache/hvantk/1kg`). Without those tools, run `--no-fine-map` for the ABF screen alone. The default verdict threshold is PP4 ≥ 0.5 — `coloc.susie` is more conservative than single-variant ABF.
+
+See the [worked example](../examples/qtlcascade.md#gwas-effector-colocalization-gwas-coloc) — AF → MYOZ1 (CONFIRMED) versus a CHD 17q21/NSF look-alike (REFUTED).
+
 ## Multi-Tissue Mode
 
 When `--tissues` is provided, the pipeline runs independently per tissue via `run_collection()`, then generates:
@@ -313,6 +337,31 @@ Required:
 Optional:
   --tissue TEXT           Filter allpairs to this tissue
   --window-kb INTEGER     Regional window ±kb [default: 500]
+```
+
+### `hvantk qtlcascade gwas-coloc`
+
+GWAS → effector colocalization (FinnGen × eQTL Catalogue) with optional SuSiE fine-map confirmation.
+
+```text
+hvantk qtlcascade gwas-coloc [OPTIONS]
+
+Required:
+  --endpoint TEXT           FinnGen R10 endpoint code (e.g. I9_AF)
+  --chrom TEXT              Chromosome (GRCh38, no 'chr')
+  --lead INTEGER            Lead variant position (GRCh38)
+  --eqtl TEXT               eQTL Catalogue dataset id / URL / local tabix (e.g. QTD000251)
+  -o, --output-dir TEXT     Output directory
+
+Optional:
+  --eqtl-study TEXT         eQTL Catalogue study id [default: QTS000015]
+  --window-kb INTEGER       Regional window ±kb around the lead [default: 500]
+  --gene TEXT               ENSG to confirm [default: the ABF-top gene]
+  --fine-map/--no-fine-map  Run SuSiE/coloc.susie confirmation [default: fine-map]
+  --gwas-n INTEGER          GWAS sample size (required for fine-mapping)
+  --eqtl-n INTEGER          eQTL sample size (required for fine-mapping)
+  --superpop TEXT           1000G super-population for the LD reference [default: EUR]
+  --ld-cache-dir TEXT       Cache directory for the 1000G LD reference
 ```
 
 ### `hvantk qtlcascade run`
@@ -629,7 +678,12 @@ hvantk/algorithms/qtlcascade/
 ├── gene_summary.py  # Gene-level aggregation + overlays
 ├── pipeline.py      # CascadeConfig, CascadePipeline, CascadeResult
 ├── plot.py          # Visualisations (cascade classes, attenuation, coloc, heatmap)
-└── report.py        # HTML report generation
+├── report.py        # HTML report generation
+├── gwas_coloc.py    # GWAS × eQTL ABF coloc (FinnGen × eQTL Catalogue, remote-tabix)
+├── finemap.py       # Optional SuSiE-RSS + coloc.susie confirmation (1000G LD; configurable --superpop)
+├── gwas_pipeline.py # GwasColocConfig, run_gwas_coloc_pipeline (+ provenance report)
+└── resources/
+    └── susie_coloc.R  # R worker for SuSiE-RSS + coloc.susie
 ```
 
 ## References
