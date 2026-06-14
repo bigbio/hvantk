@@ -165,7 +165,8 @@ def coloc_cmd(
 @click.option("--gene", "gene_of_interest", type=str, default=None,
               help="ENSG of interest to confirm (default: the ABF-top gene).")
 @click.option("--fine-map/--no-fine-map", default=True, show_default=True,
-              help="Run SuSiE/coloc.susie confirmation (needs R+susieR+coloc, bcftools, curl).")
+              help="Run pure-Python SuSiE-RSS/coloc.susie confirmation "
+                   "(needs the 1000G LD reference: network, or --ld-vcf).")
 @click.option("--gwas-n", "gwas_n", type=int, default=None,
               help="GWAS sample size (required for fine-mapping).")
 @click.option("--eqtl-n", "eqtl_n", type=int, default=None,
@@ -174,11 +175,14 @@ def coloc_cmd(
               show_default=True, help="1000G super-population for the LD reference.")
 @click.option("--ld-cache-dir", type=str, default=None,
               help="Cache directory for the 1000G LD reference.")
+@click.option("--ld-vcf", type=str, default=None,
+              help="Local VCF to use as the LD reference instead of remote 1000G "
+                   "(offline / reproducible runs; uses all its samples).")
 @click.option("-o", "--output-dir", required=True, type=str, help="Output directory.")
 @click.pass_context
 def gwas_coloc_cmd(ctx, endpoint, chrom, lead, eqtl_dataset, eqtl_study, window_kb,
                    gene_of_interest, fine_map, gwas_n, eqtl_n, superpop,
-                   ld_cache_dir, output_dir):
+                   ld_cache_dir, ld_vcf, output_dir):
     """GWAS → effector colocalization with optional SuSiE fine-map confirmation.
 
     Ranks cis effectors at a GWAS locus by ABF H4, then (default) confirms the
@@ -194,7 +198,7 @@ def gwas_coloc_cmd(ctx, endpoint, chrom, lead, eqtl_dataset, eqtl_study, window_
         endpoint=endpoint, chrom=chrom, lead=lead, eqtl_dataset=eqtl_dataset,
         eqtl_study=eqtl_study, window_kb=window_kb, gene_of_interest=gene_of_interest,
         fine_map=fine_map, gwas_N=gwas_n, eqtl_N=eqtl_n, superpop=superpop,
-        ld_cache_dir=ld_cache_dir, output_dir=output_dir,
+        ld_cache_dir=ld_cache_dir, ld_vcf=ld_vcf, output_dir=output_dir,
     )
     errors = config.validate()
     if errors:
