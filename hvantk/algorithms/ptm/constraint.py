@@ -10,9 +10,11 @@ PTM flags use :func:`hvantk.ptm.annotate.annotate_variants_with_ptm`.
 
 from __future__ import annotations
 
+import ast
 import json
 import logging
 import os
+import re
 from dataclasses import asdict, dataclass, field
 from typing import Any, Dict, List, Optional
 
@@ -405,6 +407,12 @@ def _read_variants_tabular_file(path: str) -> pd.DataFrame:
 
     suffixes = [s.lower() for s in Path(path).suffixes]
     if ".pkl" in suffixes or ".pickle" in suffixes:
+        # Pickle deserialization executes arbitrary code — only load files you
+        # produced or trust. Prefer .parquet/.tsv for untrusted sources.
+        logger.warning(
+            "Loading pickle '%s'; unpickling runs arbitrary code — only use "
+            "trusted files (prefer .parquet/.csv/.tsv otherwise).", path
+        )
         return pd.read_pickle(path)
     if ".parquet" in suffixes:
         return pd.read_parquet(path)
@@ -708,13 +716,34 @@ def _test_loeuf_group_factorial(
 
 
 def _normalise_category(raw: Any) -> List[str]:
-    """Explode a set/list/string of PTM categories into lowercase tokens."""
-    if raw is None:
+    """Explode a set/list/string of PTM categories into lowercase tokens.
+
+    Hail inputs arrive as a real collection; tabular (CSV/TSV) inputs arrive as
+    a *string* rendering of one, e.g. ``"{'phospho', 'ac'}"``, ``"['phospho']"``,
+    ``"frozenset({'phospho'})"`` or a delimited list ``"phospho;ac"``. Parse
+    those so each category is counted separately rather than as one token.
+    """
+    if raw is None or (isinstance(raw, float) and pd.isna(raw)):
         return []
     if isinstance(raw, (set, frozenset, list, tuple, np.ndarray)):
         cats = [str(x).lower() for x in raw if x is not None]
     else:
-        cats = [str(raw).lower()]
+        s = str(raw).strip()
+        if not s:
+            return ["other"]
+        parsed: Optional[List[str]] = None
+        m = re.search(r"[\[\{\(].*[\]\}\)]", s)  # a collection literal anywhere in s
+        if m:
+            try:
+                val = ast.literal_eval(m.group(0))
+                if isinstance(val, (set, frozenset, list, tuple)):
+                    parsed = [str(x).lower() for x in val if x is not None]
+            except (ValueError, SyntaxError):
+                inner = m.group(0)[1:-1]
+                parsed = [t.strip().strip("'\"").lower() for t in inner.split(",")]
+        if parsed is None:
+            parsed = [t.strip().lower() for t in re.split(r"[;,|]", s)]
+        cats = [c for c in parsed if c]
     return cats or ["other"]
 
 

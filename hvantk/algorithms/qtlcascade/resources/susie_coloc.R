@@ -39,8 +39,11 @@ cat(sprintf("CS_EQTL %d\n", cse))
 pp4 <- 0.0
 if (csg > 0 && cse > 0) {
   cr <- tryCatch(coloc.susie(sg, se), error = function(e) NULL)
-  if (!is.null(cr) && !is.null(cr$summary) && nrow(cr$summary) > 0)
-    pp4 <- max(cr$summary$PP.H4.abf)
+  if (!is.null(cr) && !is.null(cr$summary) && nrow(cr$summary) > 0) {
+    vals <- cr$summary$PP.H4.abf
+    vals <- vals[is.finite(vals)]
+    if (length(vals) > 0) pp4 <- max(vals)
+  }
 }
 cat(sprintf("COLOC_SUSIE_PP4 %.4f\n", pp4))
 

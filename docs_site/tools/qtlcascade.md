@@ -680,7 +680,7 @@ hvantk/algorithms/qtlcascade/
 ├── plot.py          # Visualisations (cascade classes, attenuation, coloc, heatmap)
 ├── report.py        # HTML report generation
 ├── gwas_coloc.py    # GWAS × eQTL ABF coloc (FinnGen × eQTL Catalogue, remote-tabix)
-├── finemap.py       # Optional SuSiE-RSS + coloc.susie confirmation (1000G EUR LD)
+├── finemap.py       # Optional SuSiE-RSS + coloc.susie confirmation (1000G LD; configurable --superpop)
 ├── gwas_pipeline.py # GwasColocConfig, run_gwas_coloc_pipeline (+ provenance report)
 └── resources/
     └── susie_coloc.R  # R worker for SuSiE-RSS + coloc.susie

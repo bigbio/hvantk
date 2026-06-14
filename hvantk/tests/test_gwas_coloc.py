@@ -128,7 +128,14 @@ def test_gwas_coloc_cli_requires_n_for_finemap(tmp_path):
          "--eqtl", "QTD000251", "-o", str(tmp_path / "out")],  # fine-map on, no -n
     )
     assert r.exit_code == 1
-    assert "fine-mapping requires gwas_N and eqtl_N" in r.output
+    # Validation errors go to stderr (err=True); Click 8.1 mixes it into .output,
+    # 8.2+ separates it — combine both so the assertion is version-robust.
+    combined = r.output
+    try:
+        combined += r.stderr
+    except (ValueError, AttributeError):
+        pass
+    assert "fine-mapping requires gwas_N and eqtl_N" in combined
 
 
 def test_gwas_coloc_cli_runs_with_mocked_pipeline(tmp_path, monkeypatch):

@@ -10,6 +10,7 @@ Commands::
 """
 
 import logging
+import math
 
 import click
 
@@ -164,7 +165,7 @@ def coloc_cmd(
 @click.option("--gene", "gene_of_interest", type=str, default=None,
               help="ENSG of interest to confirm (default: the ABF-top gene).")
 @click.option("--fine-map/--no-fine-map", default=True, show_default=True,
-              help="Run SuSiE/coloc.susie confirmation (needs R+susieR+coloc, bcftools).")
+              help="Run SuSiE/coloc.susie confirmation (needs R+susieR+coloc, bcftools, curl).")
 @click.option("--gwas-n", "gwas_n", type=int, default=None,
               help="GWAS sample size (required for fine-mapping).")
 @click.option("--eqtl-n", "eqtl_n", type=int, default=None,
@@ -204,7 +205,8 @@ def gwas_coloc_cmd(ctx, endpoint, chrom, lead, eqtl_dataset, eqtl_study, window_
     report = run_gwas_coloc_pipeline(config)
     res = report["results"]
     gmp = report["gwas"]["min_p_in_region"]
-    click.echo(f"\nRegion {report['region']}  |  GWAS min-p {gmp:.1e}  |  "
+    gmp_str = f"{gmp:.1e}" if isinstance(gmp, float) and math.isfinite(gmp) else "n/a"
+    click.echo(f"\nRegion {report['region']}  |  GWAS min-p {gmp_str}  |  "
                f"{res['n_genes_tested']} genes tested")
     click.echo(f"Top effector: {res['top_effector']} (PP4={res['top_PP4']})")
     if report["fine_map"]:

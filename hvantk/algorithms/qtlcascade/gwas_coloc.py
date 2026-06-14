@@ -225,8 +225,11 @@ def run_locus_coloc(
             g = gwas.get((pos, eref, ealt)) or gwas.get((pos, ealt, eref))
             if g is None:
                 continue
-            b1.append(g[0]); s1.append(g[1])
-            b2.append(ebeta); s2.append(ese); eqtl_ps.append(epval)
+            b1.append(g[0])
+            s1.append(g[1])
+            b2.append(ebeta)
+            s2.append(ese)
+            eqtl_ps.append(epval)
         if len(b1) < min_snps:
             continue
         res = coloc_abf_two_traits(
@@ -266,7 +269,7 @@ def run_finngen_eqtl_coloc(
 ) -> GwasColocResult:
     """End-to-end ABF coloc: fetch FinnGen × eQTL Catalogue region, rank effectors."""
     half = window_kb * 1000
-    start, end = max(0, lead - half), lead + half  # clamp left edge near contig start
+    start, end = max(1, lead - half), lead + half  # 1-based; clamp left edge near contig start
     region = f"chr{chrom}:{start}-{end}"
     logger.info("coloc %s × %s @ %s", endpoint, eqtl_dataset, region)
     gwas = fetch_finngen_region(endpoint, chrom, start, end)

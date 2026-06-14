@@ -13,6 +13,7 @@ from __future__ import annotations
 import datetime
 import json
 import logging
+import math
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -65,6 +66,14 @@ class GwasColocConfig:
             errs.append("endpoint is required")
         if not self.eqtl_dataset:
             errs.append("eqtl_dataset is required")
+        if self.lead <= 0:
+            errs.append("lead must be a positive 1-based position")
+        if self.window_kb <= 0:
+            errs.append("window_kb must be > 0")
+        if self.min_snps < 2:
+            errs.append("min_snps must be >= 2")
+        if not 0.0 <= self.pp4_threshold <= 1.0:
+            errs.append("pp4_threshold must be in [0, 1]")
         if self.fine_map and (self.gwas_N is None or self.eqtl_N is None):
             errs.append("fine-mapping requires gwas_N and eqtl_N (or pass --no-fine-map)")
         return errs
@@ -76,10 +85,12 @@ def _verdict(pp4_abf: Optional[float], fmr: Optional[fm.FineMapResult],
         return "NO COLOC (gene of interest absent from results / no eQTL genes tested)"
     if pp4_abf < pp4_threshold:
         return f"NO COLOC (ABF PP4 {pp4_abf:.2f} < {pp4_threshold})"
-    if fmr is None or not fmr.available:
+    if fmr is None:
         return "SUGGESTIVE (ABF only; fine-mapping not run)"
+    if not fmr.available:
+        return f"SUGGESTIVE (ABF only; fine-mapping unavailable — {fmr.note})"
     if fmr.coloc_susie_pp4 is None:
-        return "INCONCLUSIVE (fine-mapping incomplete)"
+        return f"INCONCLUSIVE (fine-mapping incomplete — {fmr.note})"
     if fmr.coloc_susie_pp4 >= pp4_threshold:
         return "CONFIRMED (ABF + fine-mapping agree)"
     if (fmr.cs_gwas or 0) == 0 or (fmr.cs_eqtl or 0) == 0:
@@ -87,10 +98,21 @@ def _verdict(pp4_abf: Optional[float], fmr: Optional[fm.FineMapResult],
     return "REFUTED (distinct causal variants — ABF PP4 not supported by fine-mapping)"
 
 
+def _json_safe(obj):
+    """Recursively replace non-finite floats (NaN/inf) with None for strict JSON."""
+    if isinstance(obj, dict):
+        return {k: _json_safe(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_json_safe(v) for v in obj]
+    if isinstance(obj, float) and not math.isfinite(obj):
+        return None
+    return obj
+
+
 def run_gwas_coloc_pipeline(config: GwasColocConfig) -> dict:
     """Run the pipeline and write a provenance-stamped report. Returns the report dict."""
     half = config.window_kb * 1000
-    start, end = max(0, config.lead - half), config.lead + half  # clamp left edge
+    start, end = max(1, config.lead - half), config.lead + half  # 1-based; clamp left edge
     region = f"chr{config.chrom}:{start}-{end}"
 
     gwas = gc.fetch_finngen_region(config.endpoint, config.chrom, start, end)
@@ -175,7 +197,7 @@ def run_gwas_coloc_pipeline(config: GwasColocConfig) -> dict:
     }
     report_path = out_dir / f"report_{config.endpoint}_{config.chrom}_{config.lead}.json"
     with open(report_path, "w") as fh:
-        json.dump(report, fh, indent=2)
+        json.dump(_json_safe(report), fh, indent=2)
     report["results"]["report_json"] = str(report_path)
     logger.info("verdict: %s", verdict)
     return report

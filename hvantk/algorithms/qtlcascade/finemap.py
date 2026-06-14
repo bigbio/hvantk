@@ -2,9 +2,9 @@
 
 The single-variant ABF in :mod:`gwas_coloc` is fast but can over-call when a
 strong GWAS meets a weak eQTL. This module fine-maps both traits with SuSiE-RSS
-(using a 1000G EUR reference-LD matrix) and runs ``coloc.susie`` to test for a
-**shared credible set** — separating genuine colocalization from single-variant
-artifacts.
+(using a 1000G reference-LD matrix for a configurable super-population, default
+EUR via ``--superpop``) and runs ``coloc.susie`` to test for a **shared credible
+set** — separating genuine colocalization from single-variant artifacts.
 
 This layer is OPTIONAL: it needs external tools (``R`` with ``susieR``+``coloc``,
 ``bcftools``) and network access to the 1000G reference. :func:`finemap_available`
@@ -71,7 +71,7 @@ def finemap_available() -> tuple[bool, list[str]]:
 
 
 # ---------------------------------------------------------------------------
-# 1000G EUR reference LD
+# 1000G reference LD (configurable super-population, default EUR)
 # ---------------------------------------------------------------------------
 
 
@@ -82,7 +82,7 @@ def _cache_dir(ld_cache_dir: Optional[str]) -> Path:
     return d
 
 
-def _eur_unrelated_samples(cache: Path, superpop: str) -> Path:
+def _unrelated_samples(cache: Path, superpop: str) -> Path:
     """Download the 1000G 3202 panel once; derive unrelated founders of ``superpop``."""
     out = cache / f"{superpop.lower()}_unrelated.txt"
     if out.exists():
@@ -101,6 +101,11 @@ def _eur_unrelated_samples(cache: Path, superpop: str) -> Path:
             f = line.split()
             if len(f) > sup and f[sup] == superpop and f[fat] == "0" and f[mot] == "0":
                 samples.append(f[sid])
+    if not samples:
+        raise ValueError(
+            f"No unrelated founders found for super-population '{superpop}' in the "
+            "1000G panel. Check --superpop (one of EUR, AFR, EAS, SAS, AMR)."
+        )
     out.write_text("\n".join(samples) + "\n")
     logger.info("derived %d unrelated %s founders", len(samples), superpop)
     return out
@@ -116,14 +121,14 @@ def _kg_index(chrom: str, cache: Path) -> str:
     return str(idx)
 
 
-def _eur_dosages(chrom: str, start: int, end: int, cache: Path, superpop: str
-                 ) -> dict[tuple[int, str, str], np.ndarray]:
+def _panel_dosages(chrom: str, start: int, end: int, cache: Path, superpop: str
+                   ) -> dict[tuple[int, str, str], np.ndarray]:
     """Region ALT-dosage matrix over unrelated `superpop` samples (biallelic SNPs).
 
     Downloads the region subset to a local VCF first (EBI streams flaky BGZF
     mid-pipe), retrying until bcftools exits cleanly, then queries locally.
     """
-    samples = _eur_unrelated_samples(cache, superpop)
+    samples = _unrelated_samples(cache, superpop)
     idx = _kg_index(chrom, cache)
     url = KG_PHASED_VCF_URL.format(chrom=chrom) + f"##idx##{idx}"
     reg = cache / f"region_chr{chrom}_{start}_{end}_{superpop.lower()}.vcf.gz"
@@ -180,12 +185,13 @@ class FineMapResult:
 
 def _build_inputs(gwas, eqtl_recs, chrom, start, end, gwas_N, eqtl_N,
                   cache: Path, work: Path, superpop: str) -> int:
-    """Harmonize GWAS ∩ eQTL ∩ 1000G-EUR → write merged.tsv, ld.tsv, meta.json.
+    """Harmonize GWAS ∩ eQTL ∩ 1000G panel → write merged.tsv, ld.tsv, meta.json.
 
     Effects oriented to the GWAS ALT allele; LD computed as ALT-dosage
-    correlation so its sign matches the betas. Returns the variant count.
+    correlation (over the chosen super-population) so its sign matches the betas.
+    Returns the variant count.
     """
-    kg = _eur_dosages(chrom, start, end, cache, superpop)
+    kg = _panel_dosages(chrom, start, end, cache, superpop)
     eqtl_by_key = {key: (b, s) for key, b, s, _p in eqtl_recs}
     rows, dosages = [], []
     for (pos, ref, alt), (bg, sg, _pg) in gwas.items():
@@ -204,14 +210,22 @@ def _build_inputs(gwas, eqtl_recs, chrom, start, end, gwas_N, eqtl_N,
             dv = 2.0 - kg[(pos, alt, ref)]
         if dv is None:
             continue
+        if np.isnan(dv).all():
+            continue  # all genotypes missing — would poison the LD correlation
         if np.isnan(dv).any():
             dv = np.where(np.isnan(dv), np.nanmean(dv), dv)
-        if np.nanstd(dv) == 0:
+        if not np.isfinite(dv).all() or np.std(dv) == 0:
             continue
         rows.append((f"{chrom}:{pos}:{ref}:{alt}", pos, bg, sg, be, se))
         dosages.append(dv)
     if len(rows) < 2:
         return len(rows)
+    if len(rows) > 5000:
+        logger.warning(
+            "%d variants in the LD region; the %dx%d correlation matrix is large "
+            "and SuSiE may be slow/memory-heavy. Consider a smaller --window-kb.",
+            len(rows), len(rows), len(rows),
+        )
     order = np.argsort([r[1] for r in rows])
     rows = [rows[i] for i in order]
     R = np.corrcoef(np.array([dosages[i] for i in order]))
@@ -289,6 +303,10 @@ def run_finemap(
             ld_s_gwas=_f("LD_S_GWAS"), ld_s_eqtl=_f("LD_S_EQTL"),
             note="ok",
         )
+    except Exception as exc:  # fine-mapping is optional: degrade, don't abort the run
+        logger.warning("fine-mapping failed, continuing without it: %s", exc)
+        return FineMapResult(available=True, n_variants=0,
+                             note=f"fine-map error: {exc}")
     finally:
         if work_dir is None:
             shutil.rmtree(work, ignore_errors=True)
