@@ -186,7 +186,7 @@ A complementary workflow to the eQTL × pQTL cascade above. Instead of joining t
 - **GWAS source** — a FinnGen R10 endpoint (remote-tabix; no download).
 - **eQTL source** — an eQTL Catalogue dataset, e.g. GTEx `QTD000251` (remote-tabix).
 - **Screen** — ABF with trait-specific priors (W₁ = 0.04 for the case-control GWAS, W₂ = 0.0225 for the quantitative eQTL) ranks every overlapping cis gene by P(H4). Reuses the same validated `compute_log_abf` kernel as the cascade coloc.
-- **Confirmation** (optional, on by default) — SuSiE-RSS fine-maps both traits against a 1000G EUR reference-LD matrix; `coloc.susie` tests for a *shared credible set*. This separates a genuine colocalization from a single-variant-ABF artifact (a strong GWAS leaning on a weak eQTL).
+- **Confirmation** (optional, on by default) — SuSiE-RSS fine-maps both traits against a 1000G reference-LD matrix for a configurable super-population (default `EUR`, via `--superpop`); `coloc.susie` tests for a *shared credible set*. This separates a genuine colocalization from a single-variant-ABF artifact (a strong GWAS leaning on a weak eQTL).
 - **Output** — a provenance-stamped JSON report + a per-gene TSV + a verdict.
 
 ### Verdicts
@@ -195,10 +195,11 @@ A complementary workflow to the eQTL × pQTL cascade above. Instead of joining t
 |---------|---------|
 | `CONFIRMED` | ABF PP4 ≥ threshold **and** `coloc.susie` PP4 ≥ threshold |
 | `REFUTED` | ABF says coloc, but fine-mapping finds no shared credible set (single-variant-ABF artifact) |
-| `SUGGESTIVE` | ABF coloc only (fine-mapping not run, e.g. `--no-fine-map`) |
+| `SUGGESTIVE` | ABF coloc only — fine-mapping skipped (`--no-fine-map`) **or** unavailable (missing `R` / `bcftools` / `curl`) |
+| `INCONCLUSIVE` | Fine-mapping ran but produced no `coloc.susie` PP4 (e.g. too few overlapping variants, or the R step did not complete) |
 | `NO COLOC` | ABF PP4 below threshold, or the gene of interest is absent from the results |
 
-> **Fine-mapping is optional.** It requires `R` (with `susieR` + `coloc`), `bcftools`, and `curl`, plus a 1000G GRCh38 LD reference (auto-downloaded and cached under `--ld-cache-dir`). Without those tools, run `--no-fine-map` for the ABF screen alone. The default verdict threshold is PP4 ≥ 0.5 — `coloc.susie` is more conservative than single-variant ABF.
+> **Fine-mapping is optional.** It requires `R` (with `susieR` + `coloc`), `bcftools`, and `curl`, plus a 1000G GRCh38 LD reference that is auto-downloaded and cached under `--ld-cache-dir` (default: `$HVANTK_LD_CACHE`, else `~/.cache/hvantk/1kg`). Without those tools, run `--no-fine-map` for the ABF screen alone. The default verdict threshold is PP4 ≥ 0.5 — `coloc.susie` is more conservative than single-variant ABF.
 
 See the [worked example](../examples/qtlcascade.md#gwas-effector-colocalization-gwas-coloc) — AF → MYOZ1 (CONFIRMED) versus a CHD 17q21/NSF look-alike (REFUTED).
 

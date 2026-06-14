@@ -261,7 +261,7 @@ over-calls when a strong GWAS meets a weak eQTL.
 | Tier | Requirements |
 |------|--------------|
 | ABF only (`--no-fine-map`) | core hvantk deps (pysam, numpy, pandas) + network |
-| Fine-mapping (default) | additionally `R` with `susieR` + `coloc`, plus `bcftools` and `curl`; downloads a 1000G GRCh38 EUR LD reference (cached under `--ld-cache-dir`) |
+| Fine-mapping (default) | additionally `R` with `susieR` + `coloc`, plus `bcftools` and `curl`; downloads a 1000G GRCh38 LD reference for the chosen `--superpop` (default `EUR`), cached under `--ld-cache-dir` (default: `$HVANTK_LD_CACHE`, else `~/.cache/hvantk/1kg`) |
 
 Data sources (all remote, no downloads): FinnGen R10 GWAS, eQTL Catalogue (GTEx) cis-eQTL, and
 1000 Genomes high-coverage GRCh38 for the LD reference.
