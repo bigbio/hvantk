@@ -59,11 +59,13 @@ class PTMConstraintConfig:
     loeuf_field: str = "loeuf"
     ptm_category_field: str = "ptm_types"
     gene_id_mapping: Optional[str] = None
+    group_mapping: Optional[str] = None
     expression_metric: str = "median"
     min_cells_per_group: int = 50
     min_variants_per_group: int = 20
     flanking_codons: int = 7
     expressed_threshold: float = 1.0
+    af_observed_only: bool = True
     overwrite: bool = False
 
     def validate(self) -> List[str]:
@@ -87,6 +89,10 @@ class PTMConstraintConfig:
         if self.gene_id_mapping and not os.path.exists(self.gene_id_mapping):
             errors.append(
                 f"--gene-id-mapping does not exist: {self.gene_id_mapping}"
+            )
+        if self.group_mapping and not os.path.exists(self.group_mapping):
+            errors.append(
+                f"--group-mapping does not exist: {self.group_mapping}"
             )
         if self.min_cells_per_group < 0:
             errors.append("--min-cells-per-group must be >= 0.")
@@ -162,10 +168,12 @@ def run_ptm_constraint(config: PTMConstraintConfig) -> PTMConstraintResult:
     )
 
     gene_id_map = _load_gene_id_map(config.gene_id_mapping)
+    group_map = _load_group_map(config.group_mapping)
     gene_features = _compute_gene_features(
         expr_wide,
         expressed_threshold=config.expressed_threshold,
         gene_id_map=gene_id_map,
+        group_map=group_map,
     )
 
     merged = _join_and_filter(variants_df, gene_features, config)
@@ -237,7 +245,28 @@ def _json_default(obj: Any) -> Any:
 
 
 def _load_variants(config: PTMConstraintConfig) -> pd.DataFrame:
-    """Load the PTM-annotated variant HT into pandas, keeping the needed columns."""
+    """Load the PTM-annotated variant table into pandas, keeping needed columns.
+
+    Accepts either a Hail Table (a directory path, e.g. produced by
+    ``hvantk ptm annotate``) or a tabular file (.pkl/.parquet/.csv/.tsv, each
+    optionally gzip/bgz-compressed). Both routes yield the same normalised
+    columns: is_ptm_site, is_ptm_proximal, ptm_any, gene_key, af, loeuf, label,
+    ptm_categories.
+    """
+    if _is_hail_table_path(config.variants_ht_path):
+        df = _load_variants_hail(config)
+    else:
+        df = _load_variants_tabular(config)
+    return _finalize_variants_df(df)
+
+
+def _is_hail_table_path(path: str) -> bool:
+    """A Hail Table is a directory on disk; tabular inputs are files."""
+    return os.path.isdir(path) or str(path).rstrip("/").endswith(".ht")
+
+
+def _load_variants_hail(config: PTMConstraintConfig) -> pd.DataFrame:
+    """Load + label-filter a PTM-annotated variant Hail Table into pandas."""
     from hvantk.core.utils.hail_context import hl, init_hail
 
     init_hail()
@@ -266,6 +295,13 @@ def _load_variants(config: PTMConstraintConfig) -> pd.DataFrame:
 
     if config.af_field in row_fields:
         select["af"] = ht[config.af_field]
+    elif config.af_observed_only:
+        raise ValueError(
+            f"AF field '{config.af_field}' is absent from the variants HT, but "
+            "--af-observed-only (default) restricts to gnomAD AF > 0 and would "
+            "drop every variant. Pass --include-zero-af to disable the filter or "
+            "supply the correct --af-field."
+        )
     else:
         logger.warning(
             "AF field '%s' not found; filling with zeros.", config.af_field
@@ -300,15 +336,107 @@ def _load_variants(config: PTMConstraintConfig) -> pd.DataFrame:
                 "correct --label-field."
             )
 
-    df = ht.to_pandas()
+    return ht.to_pandas()
 
+
+def _load_variants_tabular(config: PTMConstraintConfig) -> pd.DataFrame:
+    """Load + label-filter a PTM-annotated variant table from a tabular file.
+
+    Recognised extensions: .pkl/.pickle, .parquet, .csv, .tsv/.tab (each
+    optionally .gz/.bgz). ``is_ptm_proximal`` is required; ``is_ptm_site``
+    defaults to False when absent. Gene/AF/LOEUF/label/category columns are read
+    from the configured field names, with safe fallbacks.
+    """
+    raw = _read_variants_tabular_file(config.variants_ht_path)
+    cols = set(raw.columns)
+
+    if "is_ptm_proximal" not in cols:
+        raise KeyError(
+            "Variant table missing required 'is_ptm_proximal' column. "
+            f"Available columns: {sorted(cols)[:30]}"
+        )
+    if config.gene_field not in cols:
+        raise KeyError(
+            f"Gene field '{config.gene_field}' not in variant table. "
+            f"Available columns: {sorted(cols)[:30]}"
+        )
+
+    out = pd.DataFrame(index=raw.index)
+    out["is_ptm_proximal"] = raw["is_ptm_proximal"]
+    out["is_ptm_site"] = raw["is_ptm_site"] if "is_ptm_site" in cols else False
+    out["gene_key"] = raw[config.gene_field]
+
+    if config.af_field in cols:
+        out["af"] = raw[config.af_field]
+    elif config.af_observed_only:
+        raise ValueError(
+            f"AF field '{config.af_field}' is absent from the variant table, but "
+            "--af-observed-only (default) restricts to gnomAD AF > 0 and would "
+            "drop every variant. Pass --include-zero-af to disable the filter or "
+            "supply the correct --af-field."
+        )
+    else:
+        logger.warning("AF field '%s' not found; filling with zeros.", config.af_field)
+        out["af"] = 0.0
+
+    out["loeuf"] = raw[config.loeuf_field] if config.loeuf_field in cols else np.nan
+    out["label"] = raw[config.label_field] if config.label_field in cols else None
+    out["ptm_categories"] = (
+        raw[config.ptm_category_field] if config.ptm_category_field in cols else None
+    )
+
+    if config.label_filter != "all":
+        if config.label_field in cols:
+            out = out[out["label"] == config.label_filter].copy()
+        else:
+            raise ValueError(
+                f"--label-filter '{config.label_filter}' requested but label "
+                f"field '{config.label_field}' is absent from the variant table. "
+                "Pass --label-filter all to disable filtering or supply the "
+                "correct --label-field."
+            )
+
+    return out
+
+
+def _read_variants_tabular_file(path: str) -> pd.DataFrame:
+    """Read a variant table from pickle/parquet/CSV/TSV (gzip/bgz transparent)."""
+    from pathlib import Path
+
+    suffixes = [s.lower() for s in Path(path).suffixes]
+    if ".pkl" in suffixes or ".pickle" in suffixes:
+        return pd.read_pickle(path)
+    if ".parquet" in suffixes:
+        return pd.read_parquet(path)
+    # pandas does not infer ".bgz"; map it (and .gz) to gzip explicitly. BGZF is a
+    # valid multi-member gzip stream, so the gzip codec reads it transparently.
+    comp_map = {".gz": "gzip", ".bgz": "gzip", ".bz2": "bz2"}
+    compression = next(
+        (comp_map[s] for s in reversed(suffixes) if s in comp_map), "infer"
+    )
+    base = next((s for s in reversed(suffixes) if s not in comp_map), "")
+    sep = "," if base == ".csv" else "\t"
+    return pd.read_csv(path, sep=sep, low_memory=False, compression=compression)
+
+
+def _finalize_variants_df(df: pd.DataFrame) -> pd.DataFrame:
+    """Normalise dtypes shared by the Hail and tabular variant loaders."""
+    df = df.copy()
     df["is_ptm_site"] = df["is_ptm_site"].fillna(False).astype(bool)
     df["is_ptm_proximal"] = df["is_ptm_proximal"].fillna(False).astype(bool)
     df["ptm_any"] = df["is_ptm_site"] | df["is_ptm_proximal"]
-    df["af"] = pd.to_numeric(df["af"], errors="coerce").fillna(0.0)
+    af_numeric = pd.to_numeric(df["af"], errors="coerce")
+    n_missing_af = int(af_numeric.isna().sum())
+    if n_missing_af:
+        logger.warning(
+            "%d variant(s) have missing/non-numeric AF coerced to 0.0; under "
+            "--af-observed-only these are dropped and become indistinguishable "
+            "from gnomAD-absent variants. Check the AF field if unexpected.",
+            n_missing_af,
+        )
+    df["af"] = af_numeric.fillna(0.0)
     df["loeuf"] = pd.to_numeric(df["loeuf"], errors="coerce")
     df["gene_key"] = df["gene_key"].astype(str).str.replace(r"\.\d+$", "", regex=True)
-
     return df
 
 
@@ -324,10 +452,31 @@ def _load_gene_id_map(path: Optional[str]) -> Optional[Dict[str, str]]:
     return dict(zip(df[src].astype(str), df[dst].astype(str)))
 
 
+def _load_group_map(path: Optional[str]) -> Optional[Dict[str, str]]:
+    """Load a two-column TSV mapping raw expression-group labels to analysis groups.
+
+    Used to collapse fine-grained expression columns (e.g. 53 GTEx tissues) into
+    broader analysis categories (e.g. 12 organ systems) for the per-group ranking.
+    The mapping is applied to each gene's primary (argmax) group, so τ and the
+    expressed flag remain computed on the full-resolution expression profile. The
+    first column is the raw label, the second the analysis group.
+    """
+    if path is None:
+        return None
+    df = pd.read_csv(path, sep="\t")
+    if df.shape[1] < 2:
+        raise ValueError(
+            "Group mapping TSV needs at least two columns (raw_label, analysis_group)."
+        )
+    src, dst = df.columns[0], df.columns[1]
+    return dict(zip(df[src].astype(str), df[dst].astype(str)))
+
+
 def _compute_gene_features(
     expr_wide: pd.DataFrame,
     expressed_threshold: float,
     gene_id_map: Optional[Dict[str, str]],
+    group_map: Optional[Dict[str, str]] = None,
 ) -> pd.DataFrame:
     """Produce per-gene τ, primary_group, and max-expression flag."""
     index = expr_wide.index.astype(str).str.replace(r"\.\d+$", "", regex=True)
@@ -343,6 +492,8 @@ def _compute_gene_features(
     tau = compute_specificity(expr_wide, method="tau")
 
     primary_group = expr_wide.idxmax(axis=1)
+    if group_map is not None:
+        primary_group = primary_group.map(lambda g: group_map.get(str(g), str(g)))
     max_expr = expr_wide.max(axis=1)
 
     features = pd.DataFrame(
@@ -380,6 +531,20 @@ def _join_and_filter(
             f"(threshold={config.expressed_threshold})."
         )
 
+    if config.af_observed_only:
+        n_before = len(merged)
+        merged = merged[merged["af"] > 0].copy()
+        logger.info(
+            "AF-observed-only: kept %d/%d variants with gnomAD AF > 0.",
+            len(merged),
+            n_before,
+        )
+        if len(merged) == 0:
+            raise ValueError(
+                "No variants remain after restricting to gnomAD AF > 0. "
+                "Pass --include-zero-af to keep unobserved variants."
+            )
+
     return merged
 
 
@@ -397,12 +562,28 @@ def _mw_log2_ratio(
     mean_ptm = float(np.mean(afs_ptm)) if n_ptm else np.nan
     mean_non = float(np.mean(afs_non)) if n_non else np.nan
 
-    ratio = (
-        (mean_non + pseudocount) / (mean_ptm + pseudocount)
-        if n_ptm and n_non
+    # Effect size is reported on MEDIANS, consistent with the rank-based
+    # Mann-Whitney U test below. Mean AF ratios are dominated by heavy-tailed
+    # outliers and can invert the ranking at small n (e.g. a 14-variant group
+    # outranking heart), so the median ratio is the headline and the mean ratio
+    # is retained as a secondary column for transparency.
+    have_both = bool(n_ptm and n_non)
+    median_ratio = (
+        (med_non + pseudocount) / (med_ptm + pseudocount) if have_both else np.nan
+    )
+    mean_ratio = (
+        (mean_non + pseudocount) / (mean_ptm + pseudocount) if have_both else np.nan
+    )
+    log2_ratio = (
+        float(np.log2(median_ratio))
+        if np.isfinite(median_ratio) and median_ratio > 0
         else np.nan
     )
-    log2_ratio = float(np.log2(ratio)) if np.isfinite(ratio) and ratio > 0 else np.nan
+    log2_mean_ratio = (
+        float(np.log2(mean_ratio))
+        if np.isfinite(mean_ratio) and mean_ratio > 0
+        else np.nan
+    )
 
     pvalue = np.nan
     if n_ptm >= 3 and n_non >= 3:
@@ -421,8 +602,10 @@ def _mw_log2_ratio(
         "med_non": med_non,
         "mean_ptm": mean_ptm,
         "mean_non": mean_non,
-        "ratio": float(ratio) if np.isfinite(ratio) else np.nan,
+        "ratio": float(median_ratio) if np.isfinite(median_ratio) else np.nan,
         "log2_ratio": log2_ratio,
+        "mean_ratio": float(mean_ratio) if np.isfinite(mean_ratio) else np.nan,
+        "log2_mean_ratio": log2_mean_ratio,
         "p_value": pvalue,
     }
 
