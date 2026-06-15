@@ -162,6 +162,10 @@ def run_gwas_coloc_pipeline(config: GwasColocConfig) -> dict:
     cres.table.to_csv(tsv_path, sep="\t", index=False)
 
     top = cres.table.iloc[0] if not cres.table.empty else None
+    ld_source = (
+        f"a user-supplied local LD VCF ({config.ld_vcf})" if config.ld_vcf
+        else f"a 1000G high-coverage GRCh38 reference-LD panel "
+             f"({config.superpop} unrelated founders)")
     report = {
         "endpoint": config.endpoint,
         "region": region,
@@ -187,15 +191,14 @@ def run_gwas_coloc_pipeline(config: GwasColocConfig) -> dict:
             "credible_sets_gwas": fmr.cs_gwas, "credible_sets_eqtl": fmr.cs_eqtl,
             "coloc_susie_PP4": fmr.coloc_susie_pp4,
             "ld_consistency_s_gwas": fmr.ld_s_gwas, "ld_consistency_s_eqtl": fmr.ld_s_eqtl,
-            "ld_panel": (f"local VCF {config.ld_vcf}" if config.ld_vcf else
-                         f"1000G high-coverage GRCh38, {config.superpop} unrelated founders"),
+            "ld_panel": ld_source,
             "note": fmr.note,
         }),
         "verdict": verdict,
         "provenance_notes": (
             "Summary statistics streamed via remote tabix (no bulk download). "
-            "Fine-mapping (when run) is pure-Python SuSiE-RSS + coloc.susie over a "
-            "1000G reference-LD panel (not in-sample LD — the documented SuSiE-RSS "
+            f"Fine-mapping (when run) is pure-Python SuSiE-RSS + coloc.susie over "
+            f"{ld_source} (not in-sample LD — the documented SuSiE-RSS "
             "limitation for weak/underpowered eQTLs)."),
         "software": {"framework": "hvantk.algorithms.qtlcascade.gwas_pipeline",
                      "fine_mapping": "hvantk.algorithms.qtlcascade.susie (NumPy "

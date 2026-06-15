@@ -199,7 +199,7 @@ A complementary workflow to the eQTL × pQTL cascade above. Instead of joining t
 | `INCONCLUSIVE` | Fine-mapping ran but produced no `coloc.susie` PP4 (e.g. too few overlapping variants) |
 | `NO COLOC` | ABF PP4 below threshold, or the gene of interest is absent from the results |
 
-> **Fine-mapping is optional and pure-Python** (issue #193). It needs only the core hvantk dependencies (`numpy`, `pysam`) plus a 1000G GRCh38 LD reference — auto-streamed over the network and cached under `--ld-cache-dir` (default: `$HVANTK_LD_CACHE`, else `~/.cache/hvantk/1kg`), or supplied offline with `--ld-vcf <local.vcf.gz>`. No external `R` / `bcftools` / `curl`. With no network and no `--ld-vcf`, run `--no-fine-map` for the ABF screen alone. The default verdict threshold is PP4 ≥ 0.5 — `coloc.susie` is more conservative than single-variant ABF.
+> **Fine-mapping is optional and pure-Python** (issue #193). It needs only the core hvantk dependencies (`numpy`, `pysam`) plus a 1000G GRCh38 LD reference — auto-streamed over the network and cached under `--ld-cache-dir` (default: `$HVANTK_LD_CACHE`, else `~/.cache/hvantk/1kg`), or supplied offline with `--ld-vcf <local.vcf.gz>`. No external `R` / `bcftools` / `curl`. If the LD reference is unreachable (and no `--ld-vcf` is given), run `--no-fine-map` for the ABF screen alone — note `--no-fine-map` only removes the LD-reference network dependency; the ABF screen still streams the GWAS/eQTL summary statistics over the network. The default verdict threshold is PP4 ≥ 0.5 — `coloc.susie` is more conservative than single-variant ABF.
 
 See the [worked example](../examples/qtlcascade.md#gwas-effector-colocalization-gwas-coloc) — AF → MYOZ1 (CONFIRMED) versus a CHD 17q21/NSF look-alike (REFUTED).
 

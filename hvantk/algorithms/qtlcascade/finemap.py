@@ -192,7 +192,8 @@ def _panel_dosages(
             kwargs = {"index_filename": index_filename} if index_filename else {}
             with pysam.VariantFile(src, **kwargs) as vf:
                 if keep is not None:
-                    present = [s for s in keep if s in set(vf.header.samples)]
+                    header_samples = set(vf.header.samples)  # build once, not per ID
+                    present = [s for s in keep if s in header_samples]
                     if not present:
                         raise RuntimeError(
                             f"none of the {len(keep)} {superpop} samples are in the "
