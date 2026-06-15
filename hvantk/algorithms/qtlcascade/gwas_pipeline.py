@@ -58,6 +58,7 @@ class GwasColocConfig:
     pp4_threshold: float = DEFAULT_VERDICT_PP4
     superpop: str = DEFAULT_FINEMAP_SUPERPOP
     ld_cache_dir: Optional[str] = None
+    ld_vcf: Optional[str] = None         # local VCF LD reference (offline runs)
     gene_symbols: dict = field(default_factory=dict)
 
     def validate(self) -> list[str]:
@@ -150,6 +151,7 @@ def run_gwas_coloc_pipeline(config: GwasColocConfig) -> dict:
                 gwas=gwas, eqtl_recs=eqtl[target], chrom=config.chrom,
                 start=start, end=end, gwas_N=config.gwas_N, eqtl_N=config.eqtl_N,
                 ld_cache_dir=config.ld_cache_dir, superpop=config.superpop,
+                ld_vcf=config.ld_vcf,
             )
 
     verdict = _verdict(pp4_abf, fmr, config.pp4_threshold)
@@ -185,15 +187,19 @@ def run_gwas_coloc_pipeline(config: GwasColocConfig) -> dict:
             "credible_sets_gwas": fmr.cs_gwas, "credible_sets_eqtl": fmr.cs_eqtl,
             "coloc_susie_PP4": fmr.coloc_susie_pp4,
             "ld_consistency_s_gwas": fmr.ld_s_gwas, "ld_consistency_s_eqtl": fmr.ld_s_eqtl,
-            "ld_panel": f"1000G high-coverage GRCh38, {config.superpop} unrelated founders",
+            "ld_panel": (f"local VCF {config.ld_vcf}" if config.ld_vcf else
+                         f"1000G high-coverage GRCh38, {config.superpop} unrelated founders"),
             "note": fmr.note,
         }),
         "verdict": verdict,
         "provenance_notes": (
             "Summary statistics streamed via remote tabix (no bulk download). "
-            "Fine-mapping (when run) uses a 1000G reference-LD panel, not in-sample "
-            "LD — the documented SuSiE-RSS limitation for weak/underpowered eQTLs."),
-        "software": {"framework": "hvantk.algorithms.qtlcascade.gwas_pipeline"},
+            "Fine-mapping (when run) is pure-Python SuSiE-RSS + coloc.susie over a "
+            "1000G reference-LD panel (not in-sample LD — the documented SuSiE-RSS "
+            "limitation for weak/underpowered eQTLs)."),
+        "software": {"framework": "hvantk.algorithms.qtlcascade.gwas_pipeline",
+                     "fine_mapping": "hvantk.algorithms.qtlcascade.susie (NumPy "
+                     "susie_rss + coloc.susie)"},
     }
     report_path = out_dir / f"report_{config.endpoint}_{config.chrom}_{config.lead}.json"
     with open(report_path, "w") as fh:

@@ -213,7 +213,7 @@ Expected output (values are illustrative; remote data may shift slightly between
 ```text
 Region chr10:73100000-74100000  |  GWAS min-p 2.7e-14  |  51 genes tested
 Top effector: ENSG00000177791 (PP4=0.812)
-Fine-map: credible sets GWAS=1 eQTL=1; coloc.susie PP4=0.712
+Fine-map: credible sets GWAS=1 eQTL=1; coloc.susie PP4=0.649
 VERDICT: CONFIRMED (ABF + fine-mapping agree)
 Report: results/myoz1/report_I9_AF_10_73600000.json
 ```
@@ -221,7 +221,7 @@ Report: results/myoz1/report_I9_AF_10_73600000.json
 > `ENSG00000177791` is `MYOZ1`. The tool reports Ensembl gene IDs; HGNC symbol mapping is a planned
 > enhancement.
 
-### Fast tier — ABF only (no external tools)
+### Fast tier — ABF only (offline-friendly)
 
 The ABF ranking is pure-Python (only the core deps). Skip fine-mapping with `--no-fine-map`
 (then `--gwas-n`/`--eqtl-n` are not required):
@@ -261,7 +261,7 @@ over-calls when a strong GWAS meets a weak eQTL.
 | Tier | Requirements |
 |------|--------------|
 | ABF only (`--no-fine-map`) | core hvantk deps (pysam, numpy, pandas) + network |
-| Fine-mapping (default) | additionally `R` with `susieR` + `coloc`, plus `bcftools` and `curl`; downloads a 1000G GRCh38 LD reference for the chosen `--superpop` (default `EUR`), cached under `--ld-cache-dir` (default: `$HVANTK_LD_CACHE`, else `~/.cache/hvantk/1kg`) |
+| Fine-mapping (default) | **same core deps** — fine-mapping is pure-Python SuSiE-RSS + `coloc.susie` (no `R` / `bcftools` / `curl`). Streams a 1000G GRCh38 LD reference for the chosen `--superpop` (default `EUR`), cached under `--ld-cache-dir` (default: `$HVANTK_LD_CACHE`, else `~/.cache/hvantk/1kg`); or pass a local `--ld-vcf` to run fully offline |
 
 Data sources (all remote, no downloads): FinnGen R10 GWAS, eQTL Catalogue (GTEx) cis-eQTL, and
 1000 Genomes high-coverage GRCh38 for the LD reference.

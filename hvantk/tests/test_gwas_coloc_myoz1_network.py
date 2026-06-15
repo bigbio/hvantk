@@ -1,12 +1,14 @@
 """End-to-end positive-control regression: AF 10q22 → MYOZ1 must be CONFIRMED.
 
-Network + external tools (R+susieR+coloc, bcftools, 1000G). Auto-marked
+Network only (FinnGen + eQTL Catalogue + 1000G LD, all via remote tabix). The
+fine-mapping is now pure-Python SuSiE-RSS + coloc.susie (no R/bcftools). Auto-marked
 ``network`` by the filename suffix, so it is excluded from the default fast
 run; execute with ``pytest -m network hvantk/tests/test_gwas_coloc_myoz1_network.py``.
 
 This guards the whole chain: ABF coloc recovers MYOZ1 as the top effector AND
 SuSiE/coloc.susie confirms it — the discrimination that makes the workflow
-trustworthy (cf. the CHD 17q21/NSF look-alike, which is REFUTED).
+trustworthy (cf. the CHD 17q21/NSF look-alike, which is REFUTED; see
+``test_gwas_coloc_nsf_network.py``).
 """
 
 import pytest
@@ -21,7 +23,7 @@ MYOZ1 = "ENSG00000177791"
 
 
 @pytest.mark.skipif(not finemap_available()[0],
-                    reason="needs R+susieR+coloc and bcftools")
+                    reason="needs pysam for the 1000G LD reference")
 def test_af_myoz1_positive_control_confirmed(tmp_path):
     cfg = GwasColocConfig(
         endpoint="I9_AF", chrom="10", lead=73600000,

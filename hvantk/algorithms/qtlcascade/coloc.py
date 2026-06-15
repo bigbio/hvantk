@@ -83,10 +83,15 @@ def _logsumexp(x: np.ndarray) -> float:
 
 
 def _logdiff(a: float, b: float) -> float:
-    """Compute ``log(exp(a) - exp(b))`` in log-space (requires ``a > b``).
+    """Compute ``log(exp(a) - exp(b))`` in log-space (requires ``a >= b``).
 
-    Matches ``logdiff`` in the R coloc package (``R/claudia.R``).
+    Matches ``logdiff`` in the R coloc package (``R/claudia.R``). Returns
+    ``-inf`` when ``a <= b`` (the ``a == b`` boundary arises for a single-variant
+    region / perfectly concentrated single effect, where the H3 mass is exactly
+    0); this also avoids a benign ``log(0)`` warning.
     """
+    if not a > b:
+        return float("-inf")
     return a + np.log1p(-np.exp(b - a))
 
 
