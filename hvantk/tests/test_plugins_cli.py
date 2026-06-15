@@ -94,7 +94,7 @@ def test_validate_rejects_catalog_entry_missing_required_field(tmp_path):
     from hvantk.tools.plugins.plugins_cli import plugins_group
     (tmp_path / "catalog").mkdir()
     (tmp_path / "catalog" / "datasets.json").write_text(
-        '[{"title": "x", "description": "d", "data_source": "Custom", '
+        '[{"title": "x", "description": "d", "data_source": "ClinGen", '
         '"organism": "Homo sapiens", "files": []}]'  # missing "accession"
     )
     (tmp_path / "plugin.yaml").write_text(
@@ -112,7 +112,7 @@ def test_validate_rejects_duplicate_accession_within_catalog(tmp_path):
     from hvantk.tools.plugins.plugins_cli import plugins_group
     (tmp_path / "catalog").mkdir()
     entry = ('{"accession": "DUP", "title": "x", "description": "d", '
-             '"data_source": "Custom", "organism": "Homo sapiens", "files": []}')
+             '"data_source": "ClinGen", "organism": "Homo sapiens", "files": []}')
     (tmp_path / "catalog" / "datasets.json").write_text(f"[{entry}, {entry}]")
     (tmp_path / "plugin.yaml").write_text(
         "api_version: 2\nname: tmp-plug\nversion: 0.1.0\n"

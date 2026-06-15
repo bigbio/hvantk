@@ -1,19 +1,20 @@
-import sys
 from unittest.mock import patch, MagicMock
 
 from click.testing import CliRunner
 
 from hvantk.tools.qtl.qtlcascade_cli import qtlcascade_group
 
-_MOCK_HAIL_CONTEXT = MagicMock()
-
 
 def test_cascade_cmd():
     runner = CliRunner()
     mock_ht = MagicMock()
-    with patch.dict(
-        sys.modules,
-        {"hail": MagicMock(), "hvantk.core.hail_context": _MOCK_HAIL_CONTEXT},
+    # Mock init_hail at the seam the command actually calls
+    # (hvantk.core.utils.hail_context.init_hail) so no real Hail backend is
+    # started, plus build_cascade so no Hail ops run. Patching sys.modules
+    # instead is order-fragile: it only intercepts Hail if hail_context hasn't
+    # already bound the real module earlier in the suite.
+    with patch(
+        "hvantk.core.utils.hail_context.init_hail"
     ), patch(
         "hvantk.algorithms.qtlcascade.cascade.build_cascade", return_value=mock_ht
     ) as mock_build:
@@ -56,9 +57,8 @@ def test_coloc_cmd(tmp_path):
         }
     )
 
-    with patch.dict(
-        sys.modules,
-        {"hail": MagicMock(), "hvantk.core.hail_context": _MOCK_HAIL_CONTEXT},
+    with patch(
+        "hvantk.core.utils.hail_context.init_hail"
     ), patch(
         "hvantk.algorithms.qtlcascade.coloc.run_coloc_per_gene", return_value=mock_df
     ):

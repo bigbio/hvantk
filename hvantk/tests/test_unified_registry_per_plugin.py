@@ -102,7 +102,7 @@ def test_duplicate_accession_across_plugins_is_error(monkeypatch, tmp_path):
     def _entry(acc):
         return {
             "accession": acc, "title": acc, "description": "x",
-            "data_source": "Custom", "organism": "Homo sapiens", "files": [],
+            "data_source": "ClinGen", "organism": "Homo sapiens", "files": [],
         }
 
     cat_a = tmp_path / "a.json"; cat_a.write_text(json.dumps([_entry("DUP")]))
@@ -116,6 +116,39 @@ def test_duplicate_accession_across_plugins_is_error(monkeypatch, tmp_path):
         "hvantk.core.plugin.loader.get_registry", lambda: _FakeRegistry()
     )
     with pytest.raises(ValueError, match="DUP"):
+        ur.HvantkRegistry()
+
+
+def test_unmapped_primary_domain_is_error(monkeypatch, tmp_path):
+    """A catalog-owning provider whose primary domain isn't in _DOMAIN_TO_OMICS
+    must fail fast, not silently drop its datasets (regression for #185)."""
+    import json
+    import pytest
+    import hvantk.resources.unified_registry as ur
+
+    class _FakeProvider:
+        def __init__(self, name, catalog_path, domain):
+            self.name = name
+            self.catalog_path = str(catalog_path)
+            self.primary_domain = domain
+            self.datasets = ()
+
+    cat = tmp_path / "c.json"
+    cat.write_text(
+        json.dumps([{
+            "accession": "X1", "title": "X1", "description": "x",
+            "data_source": "ClinGen", "organism": "Homo sapiens", "files": [],
+        }])
+    )
+
+    class _FakeRegistry:
+        def list_providers(self):
+            return [_FakeProvider("prov-x", cat, "metabolomics")]
+
+    monkeypatch.setattr(
+        "hvantk.core.plugin.loader.get_registry", lambda: _FakeRegistry()
+    )
+    with pytest.raises(ValueError, match="metabolomics"):
         ur.HvantkRegistry()
 
 
