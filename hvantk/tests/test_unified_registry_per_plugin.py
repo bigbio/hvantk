@@ -102,7 +102,7 @@ def test_duplicate_accession_across_plugins_is_error(monkeypatch, tmp_path):
     def _entry(acc):
         return {
             "accession": acc, "title": acc, "description": "x",
-            "data_source": "Custom", "organism": "Homo sapiens", "files": [],
+            "data_source": "ClinGen", "organism": "Homo sapiens", "files": [],
         }
 
     cat_a = tmp_path / "a.json"; cat_a.write_text(json.dumps([_entry("DUP")]))
@@ -137,7 +137,7 @@ def test_unmapped_primary_domain_is_error(monkeypatch, tmp_path):
     cat.write_text(
         json.dumps([{
             "accession": "X1", "title": "X1", "description": "x",
-            "data_source": "Custom", "organism": "Homo sapiens", "files": [],
+            "data_source": "ClinGen", "organism": "Homo sapiens", "files": [],
         }])
     )
 

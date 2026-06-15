@@ -28,7 +28,7 @@
         "format": "tsv",
         "size_bytes": 556245182,
         "url": "https://ftp.ebi.ac.uk/pub/databases/gwas/releases/latest/gwas-catalog-associations-full.zip",
-        "description": "Full associations TSV (v1.0, 34 columns), unzipped from the EBI GWAS Catalog latest-release archive (pinned content: e115 / r2026-04-27). The legacy api/search/downloads/full endpoint has been retired (404); this FTP archive is the URL the drift probe fingerprints."
+        "description": "Full associations TSV (v1.0, 34 columns), unzipped from the EBI GWAS Catalog full-associations archive. The `url` is the rolling latest-release endpoint (the same one the drift probe fingerprints) and may resolve to a newer release over time; the specific release this entry was built from is recorded in `accession` (e115 / r2026-04-27). The legacy api/search/downloads/full endpoint has been retired (404)."
       }
     ]
   }
