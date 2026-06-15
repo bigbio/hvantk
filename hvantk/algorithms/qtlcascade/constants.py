@@ -98,3 +98,17 @@ KG_PANEL_URL = (
 )
 # Default fine-map super-population for the LD reference.
 DEFAULT_FINEMAP_SUPERPOP = "EUR"
+
+# ---------------------------------------------------------------------------
+# SuSiE-RSS + coloc.susie (susie.py) — pure-Python fine-mapping (issue #193).
+# Ports susieR::susie_rss(z, R, n, L) and coloc::coloc.susie; the priors below
+# are the coloc package's coloc.susie defaults (p12 differs from the
+# single-variant ABF p12 = 1e-5 above).
+# ---------------------------------------------------------------------------
+DEFAULT_SUSIE_L = 10              # max single effects (susie_rss L)
+DEFAULT_SUSIE_COVERAGE = 0.95     # credible-set coverage
+DEFAULT_SUSIE_MIN_ABS_CORR = 0.5  # credible-set purity filter (min |r|)
+DEFAULT_SUSIE_MAX_ITER = 100      # IBSS iterations
+DEFAULT_COLOC_SUSIE_P1 = 1e-4     # coloc.susie P(causal for trait 1 only)
+DEFAULT_COLOC_SUSIE_P2 = 1e-4     # coloc.susie P(causal for trait 2 only)
+DEFAULT_COLOC_SUSIE_P12 = 5e-6    # coloc.susie P(shared causal variant)

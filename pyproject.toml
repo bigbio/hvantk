@@ -20,7 +20,6 @@ include = [
   { path = "hvantk/skills/**/SKILL.md", format = ["sdist", "wheel"] },
   { path = "hvantk/skills/**/catalog/*.json", format = ["sdist", "wheel"] },
   { path = "hvantk/skills/**/tests/drift_fingerprint.json", format = ["sdist", "wheel"] },
-  { path = "hvantk/algorithms/**/resources/*.R", format = ["sdist", "wheel"] },
 ]
 exclude = [
     "hvantk/skills/**/tests/test_*.py",
