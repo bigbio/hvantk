@@ -136,12 +136,21 @@ class HvantkRegistry:
                     f"JSON array of objects"
                 )
 
-            primary = _DOMAIN_TO_OMICS.get(
-                _provider_primary_domain(provider) or "", None
-            )
+            domain = _provider_primary_domain(provider)
+            primary = _DOMAIN_TO_OMICS.get(domain or "")
             if primary is None:
-                # Unknown-domain plugins do not feed the omics buckets.
-                continue
+                # Fail-fast: a provider that ships a catalog must map to an
+                # omics bucket. Silently skipping it would drop its datasets
+                # from every browse/search surface AND bypass the duplicate-
+                # accession guard below — a misconfiguration we want to catch
+                # at load time, not paper over. Map the domain in
+                # _DOMAIN_TO_OMICS to resolve.
+                raise ValueError(
+                    f"provider {provider.name!r} ships a catalog "
+                    f"({catalog_path}) but its primary domain {domain!r} does "
+                    f"not map to an omics bucket; add it to _DOMAIN_TO_OMICS "
+                    f"(known domains: {sorted(_DOMAIN_TO_OMICS)})"
+                )
             for entry in entries:
                 if not isinstance(entry, dict):
                     raise ValueError(
