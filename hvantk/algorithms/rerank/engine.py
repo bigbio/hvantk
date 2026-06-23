@@ -1,0 +1,56 @@
+# local/rerank_engine/engine.py
+from dataclasses import dataclass
+import numpy as np, pandas as pd
+from hvantk.algorithms.rerank.config import validate
+from hvantk.algorithms.rerank.features import FeatureAssembler
+from hvantk.algorithms.rerank.reranker import ReRanker
+from hvantk.algorithms.rerank.tiers import TierAssigner
+from hvantk.algorithms.rerank.evaluator import Evaluator, EvalResult
+
+@dataclass
+class RerankResult:
+    table: pd.DataFrame; metrics: EvalResult; coverage: dict
+
+def rerank(config) -> RerankResult:
+    validate(config)
+    matrix, coverage = FeatureAssembler().assemble(config)
+    prior = config.prior.load().rename(columns={"unit": "gene"})
+    pos = config.labels.load()
+    df = matrix.merge(prior, on="gene", how="left")
+    df["y"] = df["gene"].isin(pos).astype(int)
+    feat_cols = [c for c in matrix.columns if c != "gene"]
+    for c in feat_cols: df[c] = pd.to_numeric(df[c], errors="coerce")
+    y = df["y"].values
+    covered = sum(1 for g in pos if g in set(matrix["gene"]))
+    if pos and covered / len(pos) < config.min_label_coverage:
+        raise ValueError(
+            f"label/feature join coverage too low: only {covered}/{len(pos)} "
+            f"({covered/len(pos):.0%}) positive units are in the feature matrix — likely a gene-symbol/build mismatch")
+    scores = ReRanker(config.calibration, config.folds).score(df, feat_cols, y)
+    veto_table = df
+    if config.cohort is not None:
+        cohort_cols = config.cohort.load()
+        add = [c for c in cohort_cols.columns if c != "gene" and c not in veto_table.columns]
+        veto_table = df.merge(cohort_cols[["gene"] + add], on="gene", how="left")
+    veto_mask = config.veto.apply(veto_table).reset_index(drop=True)
+    tiers = TierAssigner(config.tiers).assign(scores, veto_mask)
+    # axis groups for ablation = one group per FeatureAxis (its own columns), baseline = first axis present
+    groups = {ax.name: [c for c in ax.load().columns if c != "gene" and c in feat_cols] for ax in config.features}
+    groups = {k:v for k,v in groups.items() if v}
+    baseline = next(iter(groups))
+    metrics = Evaluator().evaluate(df, feat_cols, y, scores, groups, baseline)
+    table = pd.DataFrame({"gene": df.gene, "prior_stat": df.prior_stat, "score": scores,
+                          "veto_flag": veto_mask.values, "y": y})
+    table = pd.concat([table.reset_index(drop=True), tiers.reset_index(drop=True)], axis=1)
+    # Append extra genes that were excluded from model scoring (e.g. paper-14 extras like HCAR1).
+    # They are forced to FRAGILE verdict with no model score.
+    if config.extra_vetoed_genes:
+        extra_y = {g: int(g in pos) for g in config.extra_vetoed_genes}
+        extra_rows = pd.DataFrame([{
+            "gene": g, "prior_stat": float("nan"), "score": float("nan"),
+            "veto_flag": True, "y": extra_y.get(g, 0),
+            "tier": "T0_FRAGILE", "verdict": "FRAGILE",
+        } for g in config.extra_vetoed_genes if g not in set(df.gene)])
+        if len(extra_rows):
+            table = pd.concat([table, extra_rows], ignore_index=True)
+    return RerankResult(table=table, metrics=metrics, coverage=coverage)
