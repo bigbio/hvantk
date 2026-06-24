@@ -26,6 +26,11 @@ def rerank(config) -> RerankResult:
         raise ValueError(
             f"label/feature join coverage too low: only {covered}/{len(pos)} "
             f"({covered/len(pos):.0%}) positive units are in the feature matrix — likely a gene-symbol/build mismatch")
+    n_pos = int(y.sum()); n_neg = int(len(y) - n_pos)
+    if min(n_pos, n_neg) < config.folds:
+        raise ValueError(
+            f"too few examples for {config.folds}-fold OOF: {n_pos} positive / {n_neg} negative units "
+            f"(need >= {config.folds} of each class). Provide more labels or lower Config.folds.")
     scores = ReRanker(config.calibration, config.folds).score(df, feat_cols, y)
     veto_table = df
     if config.cohort is not None:

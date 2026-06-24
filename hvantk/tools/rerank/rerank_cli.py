@@ -1,8 +1,8 @@
 # hvantk/tools/rerank/rerank_cli.py
-import click, yaml, pandas as pd
+import click
+import yaml
+
 from hvantk.core.config import CONTEXT_SETTINGS
-from hvantk.algorithms.rerank import rerank, Config, PriorSpec, CohortSpec, LabelSpec
-from hvantk.algorithms.rerank.catalog.builders import table_axis, genelist_labels
 
 
 @click.command(name="rerank", context_settings=CONTEXT_SETTINGS,
@@ -11,16 +11,33 @@ from hvantk.algorithms.rerank.catalog.builders import table_axis, genelist_label
               help="YAML config: prior, features (gene-keyed tables), labels, optional cohort.")
 @click.option("-o", "--output", required=True, type=click.Path(), help="Output ranked TSV.")
 def rerank_cmd(config_path, output):
+    # Heavy ML imports are deferred to invocation time so that importing the hvantk CLI
+    # (and every other subcommand) does NOT require scikit-learn, which is an OPTIONAL
+    # dependency. Mirrors the psroc/ancestry deferral pattern.
+    from hvantk.algorithms.rerank import rerank, Config, PriorSpec, CohortSpec
+    from hvantk.algorithms.rerank.catalog.builders import table_axis, genelist_labels
+    from hvantk.algorithms.rerank.veto import CaseControlArchitectureVeto, NoOpVeto
+
     with open(config_path) as fh:
         spec = yaml.safe_load(fh)
-    prior = PriorSpec(spec["prior"]["path"], spec["prior"]["unit_col"], spec["prior"]["stat_col"])
-    feats = [table_axis(f["name"], f["path"]) for f in spec["features"]]
-    labels = genelist_labels(spec["labels"]["path"])
+    if not isinstance(spec, dict):
+        raise click.ClickException(
+            f"config {config_path}: expected a YAML mapping, got {type(spec).__name__}")
+    for key in ("prior", "features", "labels"):
+        if key not in spec:
+            raise click.ClickException(f"config {config_path}: missing required key '{key}'")
+    try:
+        prior = PriorSpec(spec["prior"]["path"], spec["prior"]["unit_col"], spec["prior"]["stat_col"])
+        feats = [table_axis(f["name"], f["path"]) for f in spec["features"]]
+        labels = genelist_labels(spec["labels"]["path"])
+    except (KeyError, TypeError) as exc:
+        raise click.ClickException(
+            f"config {config_path}: malformed prior/features/labels block ({exc})")
+
     cohort = None
     if spec.get("cohort"):
         cohort = CohortSpec(spec["cohort"]["path"],
                             params={"veto_cols": spec["cohort"].get("veto_cols", []), "key": "gene"})
-    from hvantk.algorithms.rerank.veto import CaseControlArchitectureVeto, NoOpVeto
     cfg = Config(name=spec.get("name", "rerank"), prior=prior, features=feats, labels=labels,
                  cohort=cohort, veto=CaseControlArchitectureVeto() if cohort else NoOpVeto(),
                  min_label_coverage=float(spec.get("min_label_coverage", 0.5)))
