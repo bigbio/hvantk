@@ -23,6 +23,7 @@ Domain = Literal[
     "enrichex",
     "hgc",
     "infra",
+    "rerank",
 ]
 
 ToolType = Literal["command", "command_group"]

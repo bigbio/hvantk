@@ -19,6 +19,7 @@ from hvantk.tools.plugins.plugins_cli import plugins_group
 from hvantk.tools.plugins.tools_cli import tools_group
 from hvantk.tools.plugins.drift_cli import drift_cmd
 from hvantk.tools.plugins.reprocess_cli import reprocess_cmd
+from hvantk.tools.rerank import rerank_cmd
 
 # Main CLI entry point for the package (hvantk)
 
@@ -94,6 +95,7 @@ cli.add_command(plugins_group)
 cli.add_command(tools_group)
 cli.add_command(drift_cmd)
 cli.add_command(reprocess_cmd)
+cli.add_command(rerank_cmd)
 
 
 def main():

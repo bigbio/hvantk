@@ -24,7 +24,8 @@
         "qtl",
         "enrichex",
         "hgc",
-        "infra"
+        "infra",
+        "rerank"
       ]
     },
     "type": {
