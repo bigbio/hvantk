@@ -21,6 +21,10 @@ datasets:
     drift_probe:
       module: hvantk.skills.gnomad_metrics.drift_probe
       function: fetch_fingerprint
+    lifecycle:
+      download:
+        module: hvantk.skills.gnomad_metrics.cli
+        function: download_dataset
     skill: SKILL.md
     tests:
       command: pytest hvantk/skills/gnomad_metrics/tests
@@ -28,3 +32,8 @@ datasets:
       schema_snapshot: tests/snapshots/schema.json
       row_snapshot: tests/snapshots/sample_rows.json
       drift_fingerprint: tests/drift_fingerprint.json
+
+cli:
+  - command: gnomad-metrics-download
+    module: hvantk.skills.gnomad_metrics.cli
+    function: download_cmd
