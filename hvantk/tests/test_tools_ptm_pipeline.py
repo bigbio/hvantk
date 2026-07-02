@@ -35,3 +35,48 @@ def test_algorithms_ptm_has_no_skill_imports():
                 if node.module.startswith("hvantk.skills"):
                     bad.append((py.name, node.module))
     assert not bad, f"algorithms/ptm/ has skill imports: {bad}"
+
+
+def test_ptm_build_pipeline_resolves_hyphenated_uniprot_key(monkeypatch, tmp_path):
+    """#198 regression: the Hail build step must resolve 'uniprot-ptm:sites'
+    (hyphen, per plugin.yaml `name: uniprot-ptm`), not the underscore form.
+
+    The bug wasted the whole expensive GTF download + coordinate mapping run
+    before KeyError-ing at the final build step.
+    """
+    import hvantk.tools.ptm.pipeline as pl
+    from hvantk.algorithms.ptm.pipeline import PTMBuildConfig
+
+    captured = {}
+
+    class _FakeSpec:
+        plugin_version = "0.1.0"
+
+    class _FakeRegistry:
+        def get_dataset(self, key):
+            captured["key"] = key
+            return _FakeSpec()
+
+    class _FakeResult:
+        n_mapped = 5
+        mapped_tsv_path = str(tmp_path / "ptm_sites_mapped.tsv.bgz")
+        output_ht = None
+
+    # get_registry + run_builder_for_spec are imported INSIDE ptm_build_pipeline;
+    # patch them at their source modules. ptm_build_pipeline_core is a module global.
+    monkeypatch.setattr(
+        "hvantk.core.plugin.loader.get_registry", lambda: _FakeRegistry()
+    )
+    monkeypatch.setattr(
+        "hvantk.core.plugin.run_builder.run_builder_for_spec", lambda *a, **k: None
+    )
+    monkeypatch.setattr(pl, "ptm_build_pipeline_core", lambda cfg: _FakeResult())
+
+    cfg = PTMBuildConfig(
+        output_dir=str(tmp_path),
+        output_ht=str(tmp_path / "out.ht"),
+        ptm_tsv=str(tmp_path / "ptm.tsv"),  # non-None -> download step skipped
+    )
+    pl.ptm_build_pipeline(cfg)
+
+    assert captured["key"] == "uniprot-ptm:sites"
