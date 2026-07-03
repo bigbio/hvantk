@@ -37,6 +37,7 @@ Aggregation gotchas (see `extract_phospho_sites` and `write_matrix_csv` in `shar
 - The same `(gene, amino_acid, position)` can appear via multiple peptide columns -- `extract_phospho_sites` aggregates `n_observations` and weighted-averages `mean_intensity` across columns. `write_matrix_csv` groups duplicate site labels by mean intensity per sample.
 - Sample-level tissue type is inferred from the sample-id suffix: `*.N` -> `normal`, everything else -> `tumor`. This is then joined onto the clinical metadata as a new `tissue_type` column.
 - Some cancer types have no normal samples; the downloader logs and continues without a `*-normal.tsv`.
+- **`coad` and `ov` fail *inside* `cptac` 1.5.14 (upstream, not hvantk):** the umich mapping download raises `unsupported operand type(s) for //: 'NoneType' and 'int'`, and the source fallback hits `len(generator)` at `cptac/cancers/cancer.py:682`. `--all` therefore skips-and-continues past them (see § 7) and reports a summary; the other cancer types still build. Revisit on a newer `cptac` release.
 - The package fetches data from upstream **at runtime** (no static URLs). The `cptac:phospho` drift probe therefore fingerprints the installed package version, not an HTTP `Last-Modified` header.
 
 For the AnnData builder, the input is the *wide* matrix CSV (sites in rows / first column, samples in remaining columns). Site IDs follow the `<gene>_<aa><pos>` convention (e.g. `TP53_S15`). The builder parses these via `_parse_site_id` and writes `gene_symbol`, `amino_acid`, `residue_pos` into `var`.
