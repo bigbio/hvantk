@@ -90,24 +90,27 @@ def _expected_extensions(backend):
 
 
 def _check_output_extension(spec, output):
-    """Fail fast when --output's extension can't hold the plugin's backend.
+    """Fail fast when --output's extension doesn't match the plugin's backend.
 
-    ``core/io.save`` dispatches purely on extension, so e.g. a pandas
-    AnnotationTable written to ``.ht`` would silently invoke ``to_hail()`` (needs a
-    JVM) and fail confusingly deep in the build. Catch that mismatch up front.
+    ``reprocess`` writes each dataset in its declared backend's native format
+    (pandas->.parquet, hail->.ht/.mt, anndata->.h5ad). ``core/io.save`` dispatches
+    purely on extension, so a mismatch would silently trigger a backend conversion
+    -- e.g. a pandas AnnotationTable to ``.ht`` invokes ``to_hail()`` (needs a JVM),
+    or a hail table to ``.parquet`` collects via ``to_pandas()`` -- and can fail
+    confusingly deep in the build. Catch that up front. ``Path.name`` already
+    normalizes trailing slashes, so ``.ht/`` / ``.mt/`` dir forms match too.
     """
     from pathlib import Path
 
     expected = _expected_extensions(getattr(spec, "backend", None))
     if expected is None:
         return
-    name = Path(output).name.rstrip("/")
-    if any(name.endswith(ext) for ext in expected):
+    if any(Path(output).name.endswith(ext) for ext in expected):
         return
     raise click.UsageError(
-        f"{spec.name} has backend {getattr(spec, 'backend', '?')!r}; --output should "
-        f"end in {' or '.join(expected)}, got {output!r}. Saving to a mismatched "
-        "extension triggers a backend conversion (e.g. .ht requires Hail/JVM)."
+        f"{spec.name} has backend {getattr(spec, 'backend', '?')!r}; reprocess writes "
+        f"its native format, so --output should end in {' or '.join(expected)}, got "
+        f"{output!r} (a mismatched extension would force a backend conversion)."
     )
 
 
