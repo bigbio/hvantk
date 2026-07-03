@@ -549,8 +549,10 @@ def test_cptac_expression_round_trip(tmp_path, cptac_expression_inputs):
 @pytest.fixture
 def cptac_phospho_inputs(tmp_path):
     """Wide-format CPTAC phospho: rows are sites, columns are samples + metadata."""
+    # Site column header matches what CPTACPhosphoDataset.write_matrix_csv writes
+    # (df.index.name = "Site"); the builder's site_id_col default is "Site" (#198).
     expr_lines = [
-        "SiteID\tS1\tS2",
+        "Site\tS1\tS2",
         "TP53_S315\t1.2\t3.4",
         "BRCA2_S988\t0.5\t2.1",
     ]

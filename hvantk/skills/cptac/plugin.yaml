@@ -46,12 +46,13 @@ datasets:
       row_snapshot: phospho/tests/snapshots/sample_rows.json
       drift_fingerprint: phospho/tests/drift_fingerprint.json
     lifecycle:
+      # No parse stage: the download already writes the builder's inputs
+      # (per-cancer cptac-phospho-<ct>-matrix.csv / -metadata.csv), so reprocess
+      # hands the raw dir straight to the builder (mirrors cptac:expression).
+      # The builder selects the cancer via --plugin-arg cancer_type=<ct>.
       download:
         module: hvantk.skills.cptac.phospho.cli
         function: download_dataset
-      parse:
-        module: hvantk.skills.cptac.shared.datasets
-        function: parse_raw_dir
 
 cli:
   - command: cptac-phospho-download

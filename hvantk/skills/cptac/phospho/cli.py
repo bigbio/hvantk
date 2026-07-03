@@ -58,9 +58,22 @@ def download_dataset(
 
     cancer_types = [cancer_type] if cancer_type else CPTAC_CANCER_TYPES
     results: dict = {}
+    failures: dict = {}
     for ct in cancer_types:
-        dataset = CPTACPhosphoDataset(cancer_type=ct)
-        results[ct] = dataset.download(raw_dir, overwrite=overwrite)
+        try:
+            results[ct] = CPTACPhosphoDataset(cancer_type=ct).download(
+                raw_dir, overwrite=overwrite
+            )
+        except Exception as exc:  # noqa: BLE001 - skip-and-continue per cancer
+            # coad + ov fail inside cptac 1.5.14 upstream; one bad type must not
+            # lose the rest. Record and continue.
+            logger.warning("CPTAC phospho download failed for %s: %s", ct, exc)
+            failures[ct] = str(exc)
+    if failures:
+        results["_failures"] = failures
+    succeeded = [k for k in results if k != "_failures"]
+    if not succeeded:
+        raise RuntimeError(f"All CPTAC phospho downloads failed: {failures}")
     return results
 
 
@@ -123,45 +136,61 @@ def download_cmd(ctx, output_dir, cancer_type, download_all, list_cancers, overw
         )
         ctx.exit(1)
 
-    try:
-        from hvantk.skills.cptac.shared.datasets import CPTACPhosphoDataset, _TSV_COLUMNS
+    # These are hvantk classes (no cptac import at module scope), so this never
+    # fails on a missing cptac package -- that ImportError surfaces lazily inside
+    # dataset.download() and is handled per-cancer below.
+    from hvantk.skills.cptac.shared.datasets import CPTACPhosphoDataset, _TSV_COLUMNS
 
-        cancer_types = CPTAC_CANCER_TYPES if download_all else [cancer_type]
+    cancer_types = CPTAC_CANCER_TYPES if download_all else [cancer_type]
 
-        all_tsv_paths = []
-        for ct in cancer_types:
-            click.echo(f"Processing {ct}...")
-            dataset = CPTACPhosphoDataset(cancer_type=ct)
-            paths = dataset.download(output_dir, overwrite=overwrite)
-            click.echo(f"  TSV: {paths['tsv']}")
-            click.echo(f"  Matrix: {paths['matrix']}")
-            click.echo(f"  Metadata: {paths['metadata']}")
-            all_tsv_paths.append(paths["tsv"])
+    all_tsv_paths = []
+    succeeded, failed = [], {}
+    for ct in cancer_types:
+        click.echo(f"Processing {ct}...")
+        try:
+            paths = CPTACPhosphoDataset(cancer_type=ct).download(
+                output_dir, overwrite=overwrite
+            )
+        except ImportError as e:
+            # The cptac package itself is missing -> nothing can succeed.
+            click.echo(f"Error: {e}", err=True)
+            ctx.exit(1)
+        except Exception as exc:  # noqa: BLE001 - one bad cancer must not lose the rest
+            logger.warning("CPTAC phospho download failed for %s: %s", ct, exc)
+            click.echo(f"  FAILED: {exc}", err=True)
+            failed[ct] = str(exc)
+            continue
+        click.echo(f"  TSV: {paths['tsv']}")
+        click.echo(f"  Matrix: {paths['matrix']}")
+        click.echo(f"  Metadata: {paths['metadata']}")
+        succeeded.append(ct)
+        all_tsv_paths.append(paths["tsv"])
 
-        # Pan-cancer merge if --all
-        if download_all and len(all_tsv_paths) > 1:
-            pancancer_path = os.path.join(output_dir, "cptac-phospho-pancancer.tsv")
-            click.echo(f"Merging {len(all_tsv_paths)} cancer types into {pancancer_path}...")
+    # Pan-cancer merge over the cancer types that actually succeeded.
+    if download_all and len(all_tsv_paths) > 1:
+        pancancer_path = os.path.join(output_dir, "cptac-phospho-pancancer.tsv")
+        click.echo(f"Merging {len(all_tsv_paths)} cancer types into {pancancer_path}...")
 
-            with open(pancancer_path, "w", newline="") as fout:
-                writer = csv.DictWriter(
-                    fout, fieldnames=_TSV_COLUMNS, delimiter="\t", lineterminator="\n"
-                )
-                writer.writeheader()
-                for tsv_path in all_tsv_paths:
-                    with open(tsv_path) as fin:
-                        reader = csv.DictReader(fin, delimiter="\t")
-                        for row in reader:
-                            writer.writerow(row)
+        with open(pancancer_path, "w", newline="") as fout:
+            writer = csv.DictWriter(
+                fout, fieldnames=_TSV_COLUMNS, delimiter="\t", lineterminator="\n"
+            )
+            writer.writeheader()
+            for tsv_path in all_tsv_paths:
+                with open(tsv_path) as fin:
+                    for row in csv.DictReader(fin, delimiter="\t"):
+                        writer.writerow(row)
 
-            click.echo(f"Pan-cancer TSV: {pancancer_path}")
+        click.echo(f"Pan-cancer TSV: {pancancer_path}")
 
-    except ImportError as e:
-        click.echo(f"Error: {e}", err=True)
-        ctx.exit(1)
-    except Exception as e:
-        logger.exception(f"Download failed: {e}")
-        click.echo(f"Error: {e}", err=True)
+    if failed:
+        click.echo(
+            f"Summary: {len(succeeded)} succeeded, {len(failed)} failed "
+            f"({', '.join(sorted(failed))}). coad + ov are known upstream failures "
+            "in cptac 1.5.14.",
+            err=True,
+        )
+    if not succeeded:
         ctx.exit(1)
 
 
