@@ -120,3 +120,44 @@ def test_reprocess_cmd_defaults_missing_intermediate(tmp_path, monkeypatch):
     assert result.exit_code == 0, result.output
     assert calls["output_path"].endswith("peptideatlas_phospho.intermediate")
     assert calls["built_from"] == calls["output_path"]
+
+
+def test_reprocess_cmd_no_parse_passes_raw_dir(tmp_path, monkeypatch):
+    """With no parse stage (like cptac:phospho after #198), the builder receives
+    the raw download directory directly."""
+    from click.testing import CliRunner
+    import hvantk.tools.plugins.reprocess_cli as rc
+
+    seen = {}
+
+    class _Spec:
+        name = "cptac:phospho"
+        backend = "anndata"
+        download_fn = None
+        parse_fn = None
+        artifact_type = None  # legacy Phase-A build shape: builder(input, output)
+        plugin_version = "0.1.0"
+
+        def builder(self, parsed_path, output):
+            seen["parsed_path"] = parsed_path
+
+    monkeypatch.setattr(
+        "hvantk.core.plugin.loader.get_registry",
+        lambda: type("_Reg", (), {"get_dataset": lambda self, k: _Spec()})(),
+    )
+    monkeypatch.setattr(
+        "hvantk.core.plugin.drift_runner.run_drift_check",
+        lambda ds: type("_R", (), {"status": "clean", "diff": None})(),
+    )
+
+    result = CliRunner().invoke(
+        rc.reprocess_cmd,
+        [
+            "cptac:phospho",
+            "--raw-dir", str(tmp_path / "raw"),
+            "--output", str(tmp_path / "out.h5ad"),  # matches anndata backend
+            "--skip-download",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert seen["parsed_path"] == str(tmp_path / "raw")
