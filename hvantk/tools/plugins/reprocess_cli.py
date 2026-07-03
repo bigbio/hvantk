@@ -77,6 +77,10 @@ def _coerce_plugin_arg_value(value: str) -> Any:
     return value
 
 
+# Fallback backend->extension map, used only for legacy specs that declare no
+# artifact_type. When artifact_type IS known it is authoritative (see
+# _expected_extensions) because backend alone can't tell a hail AnnotationTable
+# (.ht) from a hail VariantMatrix (.mt).
 _BACKEND_EXPECTED_EXT = {
     "pandas": (".parquet",),
     "anndata": (".h5ad",),
@@ -84,33 +88,50 @@ _BACKEND_EXPECTED_EXT = {
 }
 
 
-def _expected_extensions(backend):
-    """Output extensions valid for a declared plugin backend (None = unknown)."""
-    return _BACKEND_EXPECTED_EXT.get(backend)
+def _expected_extensions(spec):
+    """Output extension(s) reprocess writes for a spec's native artifact format.
+
+    reprocess emits each dataset in its native format (no cross-format
+    conversion). Keyed on ``artifact_type`` when known, which — unlike backend
+    alone — distinguishes a hail AnnotationTable (.ht) from a VariantMatrix (.mt);
+    ``core/io.save`` only accepts .mt for VariantMatrix. Falls back to the backend
+    map for legacy specs with no ``artifact_type``. Returns None when it can't be
+    determined, so the caller skips the check rather than guessing.
+    """
+    at_name = getattr(getattr(spec, "artifact_type", None), "__name__", None)
+    if at_name == "AnnotationTable":
+        return (".parquet",) if getattr(spec, "backend", None) == "pandas" else (".ht",)
+    if at_name == "VariantMatrix":
+        return (".mt",)
+    if at_name == "ExpressionMatrix":
+        return (".h5ad",)
+    if at_name == "GeneSet":
+        return (".geneset.json",)
+    return _BACKEND_EXPECTED_EXT.get(getattr(spec, "backend", None))
 
 
 def _check_output_extension(spec, output):
-    """Fail fast when --output's extension doesn't match the plugin's backend.
+    """Fail fast when --output's extension can't hold the dataset's artifact.
 
-    ``reprocess`` writes each dataset in its declared backend's native format
-    (pandas->.parquet, hail->.ht/.mt, anndata->.h5ad). ``core/io.save`` dispatches
-    purely on extension, so a mismatch would silently trigger a backend conversion
-    -- e.g. a pandas AnnotationTable to ``.ht`` invokes ``to_hail()`` (needs a JVM),
-    or a hail table to ``.parquet`` collects via ``to_pandas()`` -- and can fail
-    confusingly deep in the build. Catch that up front. ``Path.name`` already
-    normalizes trailing slashes, so ``.ht/`` / ``.mt/`` dir forms match too.
+    ``reprocess`` writes each dataset in its native format; ``core/io.save``
+    dispatches by artifact type + extension, so a mismatch would either fail at
+    save (e.g. ``.mt`` for an AnnotationTable) or silently trigger a backend
+    conversion (e.g. a pandas AnnotationTable to ``.ht`` invokes ``to_hail()``,
+    needing a JVM) and fail confusingly deep in the build. Catch it up front.
+    ``Path.name`` normalizes trailing slashes, so ``.ht/`` / ``.mt/`` dir forms
+    match too.
     """
     from pathlib import Path
 
-    expected = _expected_extensions(getattr(spec, "backend", None))
-    if expected is None:
+    expected = _expected_extensions(spec)
+    if not expected:
         return
     if any(Path(output).name.endswith(ext) for ext in expected):
         return
     raise click.UsageError(
-        f"{spec.name} has backend {getattr(spec, 'backend', '?')!r}; reprocess writes "
-        f"its native format, so --output should end in {' or '.join(expected)}, got "
-        f"{output!r} (a mismatched extension would force a backend conversion)."
+        f"{spec.name} writes {' or '.join(expected)} (its native format); got "
+        f"--output {output!r}. A mismatched extension would fail at save or force a "
+        "backend conversion."
     )
 
 
@@ -226,14 +247,10 @@ def reprocess_cmd(
     extras: dict[str, Any] = {}
     for kv in plugin_args:
         if "=" not in kv:
-            raise click.UsageError(
-                f"--plugin-arg must be KEY=VALUE; got: {kv!r}"
-            )
+            raise click.UsageError(f"--plugin-arg must be KEY=VALUE; got: {kv!r}")
         key, value = kv.split("=", 1)
         if not key:
-            raise click.UsageError(
-                f"--plugin-arg key must be non-empty; got: {kv!r}"
-            )
+            raise click.UsageError(f"--plugin-arg key must be non-empty; got: {kv!r}")
         extras[key] = _coerce_plugin_arg_value(value)
 
     # Fail fast on an output extension the plugin's backend can't hold (#198),
@@ -291,11 +308,13 @@ def reprocess_cmd(
             # to build it.
             if "hgnc_path" in extras or "hgnc_ht" in extras:
                 from hvantk.skills.hgnc.streamers import HGNCGeneCatalogStreamer
+
                 hgnc_loc = extras.pop("hgnc_path", None) or extras.pop("hgnc_ht", None)
                 extras["gene_catalog"] = HGNCGeneCatalogStreamer.from_path(hgnc_loc)
 
             from hvantk.core.plugin.run_builder import run_builder_for_spec
             from pathlib import Path
+
             run_builder_for_spec(
                 spec,
                 parsed_input=parsed_path,

@@ -9,13 +9,43 @@ import click
 import pytest
 
 
-def test_expected_extensions():
+def _fake_spec(backend, artifact_type_name=None):
+    at = type(artifact_type_name, (), {}) if artifact_type_name else None
+    return type("_Spec", (), {"name": "x:y", "backend": backend, "artifact_type": at})()
+
+
+def test_expected_extensions_keys_on_artifact_type():
     from hvantk.tools.plugins.reprocess_cli import _expected_extensions
 
-    assert _expected_extensions("pandas") == (".parquet",)
-    assert _expected_extensions("anndata") == (".h5ad",)
-    assert ".ht" in _expected_extensions("hail")
-    assert _expected_extensions("unknown") is None
+    # artifact_type is authoritative — distinguishes a hail AnnotationTable (.ht)
+    # from a hail VariantMatrix (.mt), which backend alone cannot.
+    assert _expected_extensions(_fake_spec("hail", "AnnotationTable")) == (".ht",)
+    assert _expected_extensions(_fake_spec("pandas", "AnnotationTable")) == (
+        ".parquet",
+    )
+    assert _expected_extensions(_fake_spec("hail", "VariantMatrix")) == (".mt",)
+    assert _expected_extensions(_fake_spec("anndata", "ExpressionMatrix")) == (".h5ad",)
+    # legacy specs (no artifact_type) fall back to the backend map
+    assert _expected_extensions(_fake_spec("pandas")) == (".parquet",)
+    assert ".ht" in _expected_extensions(_fake_spec("hail"))
+    assert _expected_extensions(_fake_spec("unknown")) is None
+
+
+def test_check_output_extension_hail_annotationtable_rejects_mt():
+    """#200 review (qodo): a hail-backed AnnotationTable (e.g. uniprot-ptm:sites)
+    must reject .mt up front, not accept it and then fail later in core.io.save
+    (where .mt is valid only for VariantMatrix)."""
+    from hvantk.tools.plugins.reprocess_cli import _check_output_extension
+
+    at_spec = _fake_spec("hail", "AnnotationTable")
+    with pytest.raises(click.UsageError):
+        _check_output_extension(at_spec, "out.mt")  # .mt is VariantMatrix-only
+    _check_output_extension(at_spec, "out.ht")  # native for hail AnnotationTable
+
+    vm_spec = _fake_spec("hail", "VariantMatrix")
+    _check_output_extension(vm_spec, "out.mt")  # native for VariantMatrix
+    with pytest.raises(click.UsageError):
+        _check_output_extension(vm_spec, "out.ht")
 
 
 def test_check_output_extension_mismatch_raises():
@@ -68,8 +98,10 @@ def test_reprocess_cmd_rejects_backend_extension_mismatch(tmp_path, monkeypatch)
         rc.reprocess_cmd,
         [
             "peptideatlas:phospho",
-            "--raw-dir", str(tmp_path / "raw"),
-            "--output", str(tmp_path / "out.ht"),  # pandas backend -> .ht is wrong
+            "--raw-dir",
+            str(tmp_path / "raw"),
+            "--output",
+            str(tmp_path / "out.ht"),  # pandas backend -> .ht is wrong
         ],
     )
     assert result.exit_code != 0
@@ -112,8 +144,10 @@ def test_reprocess_cmd_defaults_missing_intermediate(tmp_path, monkeypatch):
         rc.reprocess_cmd,
         [
             "peptideatlas:phospho",
-            "--raw-dir", str(tmp_path / "raw"),
-            "--output", str(tmp_path / "out.parquet"),  # matches pandas backend
+            "--raw-dir",
+            str(tmp_path / "raw"),
+            "--output",
+            str(tmp_path / "out.parquet"),  # matches pandas backend
             "--skip-download",
         ],
     )
@@ -154,8 +188,10 @@ def test_reprocess_cmd_no_parse_passes_raw_dir(tmp_path, monkeypatch):
         rc.reprocess_cmd,
         [
             "cptac:phospho",
-            "--raw-dir", str(tmp_path / "raw"),
-            "--output", str(tmp_path / "out.h5ad"),  # matches anndata backend
+            "--raw-dir",
+            str(tmp_path / "raw"),
+            "--output",
+            str(tmp_path / "out.h5ad"),  # matches anndata backend
             "--skip-download",
         ],
     )
