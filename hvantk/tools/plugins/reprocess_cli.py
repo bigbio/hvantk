@@ -77,6 +77,47 @@ def _coerce_plugin_arg_value(value: str) -> Any:
     return value
 
 
+_BACKEND_EXPECTED_EXT = {
+    "pandas": (".parquet",),
+    "anndata": (".h5ad",),
+    "hail": (".ht", ".mt"),
+}
+
+
+def _expected_extensions(backend):
+    """Output extensions valid for a declared plugin backend (None = unknown)."""
+    return _BACKEND_EXPECTED_EXT.get(backend)
+
+
+def _check_output_extension(spec, output):
+    """Fail fast when --output's extension can't hold the plugin's backend.
+
+    ``core/io.save`` dispatches purely on extension, so e.g. a pandas
+    AnnotationTable written to ``.ht`` would silently invoke ``to_hail()`` (needs a
+    JVM) and fail confusingly deep in the build. Catch that mismatch up front.
+    """
+    from pathlib import Path
+
+    expected = _expected_extensions(getattr(spec, "backend", None))
+    if expected is None:
+        return
+    name = Path(output).name.rstrip("/")
+    if any(name.endswith(ext) for ext in expected):
+        return
+    raise click.UsageError(
+        f"{spec.name} has backend {getattr(spec, 'backend', '?')!r}; --output should "
+        f"end in {' or '.join(expected)}, got {output!r}. Saving to a mismatched "
+        "extension triggers a backend conversion (e.g. .ht requires Hail/JVM)."
+    )
+
+
+def _default_intermediate(dataset, raw_dir):
+    """Intermediate path used when a parse-declaring plugin gets no --intermediate."""
+    import os
+
+    return os.path.join(raw_dir, f"{dataset.replace(':', '_')}.intermediate")
+
+
 @click.command(name="reprocess")
 @click.argument("dataset")
 @click.option(
@@ -192,6 +233,11 @@ def reprocess_cmd(
             )
         extras[key] = _coerce_plugin_arg_value(value)
 
+    # Fail fast on an output extension the plugin's backend can't hold (#198),
+    # before running the (potentially expensive) download/parse/build stages.
+    if not skip_build:
+        _check_output_extension(spec, output)
+
     # 1. Download stage
     if not skip_download:
         if spec.download_fn is None:
@@ -205,9 +251,13 @@ def reprocess_cmd(
     # 2. Parse stage
     if not skip_parse and spec.parse_fn is not None:
         if intermediate is None:
-            raise click.UsageError(
-                "--intermediate is required when the plugin declares lifecycle.parse"
-            )
+            # The plugin declares a parse stage but no --intermediate was given.
+            # Default it under raw_dir (and log) instead of hard-erroring (#198).
+            import os
+
+            os.makedirs(raw_dir, exist_ok=True)
+            intermediate = _default_intermediate(dataset, raw_dir)
+            _progress(f"--intermediate not given; defaulting to {intermediate}")
         _progress(f"parse: {raw_dir} -> {intermediate}")
         spec.parse_fn(raw_dir=raw_dir, output_path=intermediate, **extras)
         parsed_path = intermediate
