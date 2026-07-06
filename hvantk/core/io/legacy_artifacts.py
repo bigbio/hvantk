@@ -37,7 +37,6 @@ _LEGACY_PATHS = {
     "clinvar": "data/ht/clinvar.GRCh38.ht",
     "gene_expression": "data/ht/rnaseq.human.ht",
     "gene_ann": "data/ht/gene.ann.ensembl.ht",
-    "ccr": "data/ht/ccr.GRCh38.ht",
     "gevir": "data/ht/gevir.metrics.ht",
     "ppi": "data/ht/interactome.GRCh38.ht",
     "dbnsfp_scores": "data/ht/dbNSFP4.1a_variant.ht",
@@ -72,7 +71,7 @@ def load_legacy_table(name: str, source_dir: Optional[str] = None) -> "hl.Table"
     Parameters
     ----------
     name : str
-        One of the keys in _LEGACY_PATHS (e.g. "ccr", "gevir", "dbnsfp_scores").
+        One of the keys in _LEGACY_PATHS (e.g. "gevir", "dbnsfp_scores").
     source_dir : str, optional
         Explicit source dir. If None, falls back to the module-level
         ``source_dir`` global. Raises ValueError if neither is set.

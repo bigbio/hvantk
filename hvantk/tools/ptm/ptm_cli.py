@@ -353,9 +353,6 @@ def ptm_export_strata(ctx, annotated_ht, output):
 @click.option("--gnomad-ht", type=str, required=True, help="Path to gnomAD Hail Table")
 @click.option("--ptm-ht", type=str, required=True, help="Path to PTM sites Hail Table")
 @click.option(
-    "--ccr-ht", type=str, default=None, help="Path to CCR Hail Table (optional)"
-)
-@click.option(
     "--af-field",
     type=str,
     default="AF",
@@ -371,24 +368,23 @@ def ptm_export_strata(ctx, annotated_ht, output):
 )
 @click.pass_context
 def ptm_population_cmd(
-    ctx, gnomad_ht, ptm_ht, ccr_ht, af_field, output, flanking_codons, save_plots
+    ctx, gnomad_ht, ptm_ht, af_field, output, flanking_codons, save_plots
 ):
     """Population-level PTM-variant allele frequency analysis (Q3).
 
     \b
     Compares allele frequency distributions at PTM sites vs non-PTM coding
     positions in gnomAD. Identifies PTM sites under purifying selection
-    (zero or near-zero AF). Optionally cross-references with CCR scores.
+    (zero or near-zero AF).
 
     \b
     Output:
-      population_summary.json — AF statistics, counts, CCR comparison
+      population_summary.json — AF statistics, counts
       *.png (with --save-plots) — AF comparison plot
 
     \b
     Examples:
       hvantk ptm population --gnomad-ht gnomad.ht --ptm-ht ptm_sites.ht -o results/population/
-      hvantk ptm population --gnomad-ht gnomad.ht --ptm-ht ptm_sites.ht --ccr-ht ccr.ht -o results/population/
     """
     try:
         import os
@@ -397,13 +393,11 @@ def ptm_population_cmd(
 
         gnomad = hl.read_table(gnomad_ht)
         ptm = hl.read_table(ptm_ht)
-        ccr = hl.read_table(ccr_ht) if ccr_ht else None
 
         result = ptm_population(
             gnomad,
             ptm,
             output,
-            ccr_ht=ccr,
             af_field=af_field,
             flanking_codons=flanking_codons,
         )

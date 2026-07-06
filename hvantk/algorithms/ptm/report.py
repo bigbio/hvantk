@@ -253,19 +253,9 @@ def _build_population_section(
         embed,
     )
 
-    ccr_html = ""
-    if result.ccr_mean_ptm is not None and result.ccr_mean_non_ptm is not None:
-        ccr_html = (
-            "<div class='card'>"
-            "<h3>CCR Comparison</h3>"
-            f"<p>Mean CCR at PTM sites: {result.ccr_mean_ptm:.1f}</p>"
-            f"<p>Mean CCR at non-PTM: {result.ccr_mean_non_ptm:.1f}</p>"
-            "</div>"
-        )
-
     return (
         "<section><h2>Population Analysis (Q3)</h2>"
-        f"{overview}{af_img}{ccr_html}"
+        f"{overview}{af_img}"
         "</section>"
     )
 
