@@ -1,4 +1,4 @@
-"""Conformance test for the gevir plugin (Phase K)."""
+"""Round-trip / snapshot tests for the gevir plugin (Phase K)."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -7,7 +7,26 @@ import pytest
 
 from hvantk.core.models import AnnotationTable
 from hvantk.core.plugin import loader as plugin_loader
-from hvantk.core.plugin.run_builder import run_builder_for_spec
+from hvantk.tests._snapshot_utils import (
+    collect_sample_rows,
+    hail_schema_to_dict,
+    load_snapshot,
+    phase_b_snapshot_adapter,
+)
+
+# Aliased to avoid shadowing the fixture name `regenerate_snapshots` in the signature.
+from hvantk.tests._snapshot_utils import regenerate_snapshots as regenerate_snapshots_fn
+
+FIXTURE = "hvantk/tests/testdata/raw/gevir/gevir_metrics_pmid31873297.tsv.bgz"
+SNAPSHOT_DIR = Path("hvantk/skills/gevir/tests/snapshots")
+
+# Stable gene_id keys picked from the fixture; the table is keyed by gene_id
+# (Ensembl ENSG, str).
+SAMPLE_KEYS = [
+    {"gene_id": "ENSG00000092607"},  # TBX15
+    {"gene_id": "ENSG00000162300"},  # ZFPL1
+    {"gene_id": "ENSG00000109062"},  # SLC9A3R1
+]
 
 
 def test_gevir_metrics_registered():
@@ -19,30 +38,33 @@ def test_gevir_metrics_registered():
 
 
 @pytest.mark.hail
-def test_gevir_metrics_round_trip(tmp_path):
-    plugin_loader.reset_registry_for_tests()
-    reg = plugin_loader.get_registry()
-    spec = reg.get_dataset("gevir:metrics")
+def test_gevir_round_trip(hail_session, tmp_path, regenerate_snapshots):
+    """Build GeVIR metrics from fixture; assert schema and sample-row stability."""
+    import hail as hl
+    from hvantk.skills.gevir.builder import build_gevir_metrics
 
-    assert spec.artifact_type is AnnotationTable
-    assert spec.schema_id == "gevir-metrics-v1"
+    builder = phase_b_snapshot_adapter(build_gevir_metrics, "gevir:metrics")
 
-    fixture = Path("hvantk/tests/testdata/raw/gevir/gevir_metrics_pmid31873297.tsv.bgz")
-    assert fixture.exists(), f"Fixture not found: {fixture}"
+    if regenerate_snapshots:
+        regenerate_snapshots_fn(
+            builder_fn=builder,
+            fixture_path=FIXTURE,
+            snapshot_dir=SNAPSHOT_DIR,
+            keys=SAMPLE_KEYS,
+        )
+        pytest.skip(
+            "Snapshots regenerated; rerun without --regenerate-snapshots to assert."
+        )
 
-    out = tmp_path / "metrics.ht"
-    prov = run_builder_for_spec(
-        spec,
-        parsed_input=fixture,
-        output_path=out,
-        plugin_version=spec.plugin_version,
-    )
+    output_path = str(tmp_path / "gevir.ht")
+    fixture_uri = Path(FIXTURE).resolve().as_uri()
+    builder(input_path=fixture_uri, output_path=output_path)
+    ht = hl.read_table(output_path)
 
-    assert prov.plugin == "gevir"
-    assert prov.schema_id == "gevir-metrics-v1"
+    expected_schema = load_snapshot(SNAPSHOT_DIR / "schema.json")
+    actual_schema = hail_schema_to_dict(ht)
+    assert actual_schema == expected_schema, "GeVIR schema drifted from snapshot"
 
-    from hvantk.core import io as core_io
-    loaded = core_io.load(out)
-    assert isinstance(loaded, AnnotationTable)
-    assert loaded.backend == "hail"
-    assert loaded.count() > 0
+    expected_rows = load_snapshot(SNAPSHOT_DIR / "sample_rows.json")
+    actual_rows = collect_sample_rows(ht, keys=SAMPLE_KEYS)
+    assert actual_rows == expected_rows, "GeVIR sample rows drifted from snapshot"

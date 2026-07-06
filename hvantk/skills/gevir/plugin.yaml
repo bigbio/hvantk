@@ -29,8 +29,5 @@ datasets:
       # resolved relative to this plugin folder -> ../../tests/... = hvantk/tests/...
       fixture: ../../tests/testdata/raw/gevir
       schema_snapshot: tests/snapshots/schema.json
-      # TODO(pending Slurm/Hail build): sample_rows.json is emitted by the
-      # @pytest.mark.hail round-trip build, which needs a Java-11 Slurm allocation
-      # (login node OOMs on Hail init); not yet generated/committed.
       row_snapshot: tests/snapshots/sample_rows.json
       drift_fingerprint: tests/drift_fingerprint.json

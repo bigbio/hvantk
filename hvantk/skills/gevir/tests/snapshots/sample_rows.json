@@ -1,0 +1,35 @@
+[
+  {
+    "key": {
+      "gene_id": "ENSG00000092607"
+    },
+    "row": {
+      "canonical_transcript": "ENST00000207157",
+      "gevir_pct": 6.745519343,
+      "gnomad_gene_name": "TBX15",
+      "virlof_pct": 11.18227364
+    }
+  },
+  {
+    "key": {
+      "gene_id": "ENSG00000162300"
+    },
+    "row": {
+      "canonical_transcript": "ENST00000294258",
+      "gevir_pct": 52.09958163,
+      "gnomad_gene_name": "ZFPL1",
+      "virlof_pct": 42.86452146
+    }
+  },
+  {
+    "key": {
+      "gene_id": "ENSG00000109062"
+    },
+    "row": {
+      "canonical_transcript": "ENST00000262613",
+      "gevir_pct": 78.55482671,
+      "gnomad_gene_name": "SLC9A3R1",
+      "virlof_pct": 73.62739528
+    }
+  }
+]
