@@ -1,7 +1,5 @@
 {
-  "probe_version": 0,
-  "source_version": "insider drift probe not implemented; track upstream release manually",
-  "headers": {},
-  "checksums": {},
-  "fetched_at": "1970-01-01T00:00:00Z"
+  "probe_status": "stub",
+  "reason": "insider drift probe not implemented; track upstream release manually",
+  "fingerprint": "stub:no-programmatic-source"
 }
