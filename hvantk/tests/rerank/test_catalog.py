@@ -10,7 +10,7 @@ def test_profile_defaults():
     assert p.cohort is None and p.precomputed is None and p.tissue is None
     assert p.min_label_coverage == 0.5
     assert p.label_classifications == ["Definitive", "Strong", "Moderate"]
-    assert p.cell_types == [] and p.disease_terms == [] and p.extra_vetoed_genes == []
+    assert p.cell_types == [] and p.disease_terms == [] and p.extra_flagged_genes == []
     assert p.extra_positive_genes == set()
 
 
@@ -18,8 +18,8 @@ def test_profile_defaults():
 import pandas as pd
 from hvantk.algorithms.rerank.config import FeatureAxis
 from hvantk.algorithms.rerank.catalog.profile import DiseaseProfile
-from hvantk.algorithms.rerank.catalog.registry import axis, AXES, build_config, _constraint_first, _default_veto
-from hvantk.algorithms.rerank.veto import NoOpVeto, CaseControlArchitectureVeto
+from hvantk.algorithms.rerank.catalog.registry import axis, AXES, build_config, _constraint_first, _default_audit
+from hvantk.algorithms.rerank.audit import NoAudit, CaseControlArchitectureAudit
 
 
 def test_constraint_first_reorders():
@@ -29,11 +29,11 @@ def test_constraint_first_reorders():
     assert out[0].name == "constraint"
 
 
-def test_default_veto_depends_on_cohort():
+def test_default_audit_depends_on_cohort():
     from hvantk.algorithms.rerank.config import CohortSpec
-    assert isinstance(_default_veto(DiseaseProfile(name="t")), NoOpVeto)
+    assert isinstance(_default_audit(DiseaseProfile(name="t")), NoAudit)
     p = DiseaseProfile(name="t", cohort=CohortSpec("x.tsv", params={}))
-    assert isinstance(_default_veto(p), CaseControlArchitectureVeto)
+    assert isinstance(_default_audit(p), CaseControlArchitectureAudit)
 
 
 def test_build_config_string_and_override():
@@ -41,7 +41,7 @@ def test_build_config_string_and_override():
     from hvantk.algorithms.rerank.config import FeatureAxis, LabelSpec
     from hvantk.algorithms.rerank.catalog.registry import axis, AXES, build_config
     from hvantk.algorithms.rerank.catalog.profile import DiseaseProfile
-    from hvantk.algorithms.rerank.veto import NoOpVeto
+    from hvantk.algorithms.rerank.audit import NoAudit
     _saved = dict(AXES)
     try:
         @axis("labels")
@@ -60,7 +60,7 @@ def test_build_config_string_and_override():
         assert cfg.name == "t"
         assert [f.name for f in cfg.features][0] == "constraint"
         assert "expression" in [f.name for f in cfg.features]
-        assert isinstance(cfg.veto, NoOpVeto)
+        assert isinstance(cfg.audit, NoAudit)
     finally:
         AXES.clear()
         AXES.update(_saved)

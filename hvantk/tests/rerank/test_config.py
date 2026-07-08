@@ -1,7 +1,7 @@
 # local/rerank_engine/tests/test_config.py
 import pytest, pandas as pd
 from hvantk.algorithms.rerank.config import Config, PriorSpec, FeatureAxis, LabelSpec, validate
-from hvantk.algorithms.rerank.veto import NoOpVeto
+from hvantk.algorithms.rerank.audit import NoAudit
 
 def _mk():
     return Config(name="t",
@@ -11,7 +11,7 @@ def _mk():
 
 def test_defaults():
     c = _mk()
-    assert c.units == "gene" and c.cohort is None and isinstance(c.veto, NoOpVeto) and c.tiers == 5
+    assert c.units == "gene" and c.cohort is None and isinstance(c.audit, NoAudit) and c.tiers == 5
     assert c.calibration == "isotonic" and c.folds == 5
 
 def test_validate_rejects_variant_units():
@@ -19,9 +19,9 @@ def test_validate_rejects_variant_units():
     with pytest.raises(NotImplementedError):
         validate(c)
 
-def test_validate_requires_noop_veto_when_no_cohort():
-    from hvantk.algorithms.rerank.veto import CaseControlArchitectureVeto
-    c = _mk(); c.veto = CaseControlArchitectureVeto()   # cohort is None -> invalid
+def test_validate_requires_noaudit_when_no_cohort():
+    from hvantk.algorithms.rerank.audit import CaseControlArchitectureAudit
+    c = _mk(); c.audit = CaseControlArchitectureAudit()   # cohort is None -> invalid
     with pytest.raises(ValueError):
         validate(c)
 

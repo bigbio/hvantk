@@ -35,7 +35,7 @@ class CohortSpec:
     variant_table_path: str
     params: dict = field(default_factory=dict)
     def load(self) -> pd.DataFrame:
-        cols = self.params.get("veto_cols", [])
+        cols = self.params.get("audit_cols", [])
         key = self.params.get("key", "gene")
         sep = "\t" if self.variant_table_path.endswith((".tsv", ".bgz", ".gz")) else ","
         df = pd.read_csv(self.variant_table_path, sep=sep)
@@ -50,27 +50,27 @@ class Config:
     labels: LabelSpec
     units: str = "gene"
     cohort: Optional[CohortSpec] = None
-    veto: "object" = None
+    audit: "object" = None
     calibration: str = "isotonic"
     folds: int = 5
     tiers: int = 5
-    extra_vetoed_genes: list = field(default_factory=list)
-    """Genes to append to the output table after scoring, forced FRAGILE/vetoed (not in model matrix)."""
+    extra_flagged_genes: list = field(default_factory=list)
+    """Genes to append to the output table after scoring, forced FLAGGED/unscored (not in model matrix)."""
     min_label_coverage: float = 0.5
     """Minimum fraction of label-positive units that must appear in the feature matrix.
     Set to 0.0 for intentional cross-disease transfer configs where labels come from a
     different gene universe (e.g. NDD labels scored against a CHD feature matrix)."""
     def __post_init__(self):
-        if self.veto is None:
-            from hvantk.algorithms.rerank.veto import NoOpVeto
-            self.veto = NoOpVeto()
+        if self.audit is None:
+            from hvantk.algorithms.rerank.audit import NoAudit
+            self.audit = NoAudit()
 
 def validate(config: Config) -> None:
-    from hvantk.algorithms.rerank.veto import NoOpVeto
+    from hvantk.algorithms.rerank.audit import NoAudit
     if config.units != "gene":
         raise NotImplementedError(f"units={config.units!r}: only 'gene' is supported in v1")
-    if config.cohort is None and not isinstance(config.veto, NoOpVeto):
-        raise ValueError("a non-NoOp veto requires a cohort (variant-level data)")
+    if config.cohort is None and not isinstance(config.audit, NoAudit):
+        raise ValueError("a non-NoAudit audit requires a cohort (variant-level data)")
     if not config.features:
         raise ValueError("at least one FeatureAxis is required")
     if not config.labels.load():

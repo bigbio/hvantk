@@ -11,8 +11,9 @@ purpose:
   long: |
     Given a YAML config naming a prior (gene burden), one or more gene-keyed
     feature tables (constraint, expression, ...), a label gene-list, and an
-    optional cohort variant table (enabling the architecture/QC veto), `rerank`
-    fits a calibrated out-of-fold model, assigns credibility tiers, and reports
+    optional cohort variant table (enabling the advisory architecture/QC audit),
+    `rerank` fits a calibrated out-of-fold model, assigns credibility tiers, and
+    flags cohort artifacts for review (advisory, not overriding), reporting
     per-axis delta-AUC over the constraint baseline. The disease-specific feature
     tables are produced by user recipes; the engine is disease-agnostic.
 requires:
