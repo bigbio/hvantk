@@ -21,3 +21,16 @@ def test_architecture_audit_reasons():
     assert r == ["insufficient_data", "recurrent_variant", "common_driver", ""]
     flagged = [x != "" for x in r]
     assert flagged == [True, True, True, False]
+
+
+def test_architecture_audit_precedence_on_overlap():
+    # A gene matching multiple rules gets the highest-precedence reason:
+    # common_driver > recurrent_variant > insufficient_data.
+    t = pd.DataFrame({
+        "gene":       ["few_and_common", "recurrent_and_common", "few_and_recurrent"],
+        "n_case_var": [2,                 9,                      2],
+        "conc":       [0.9,               0.9,                    0.9],
+        "driver_af":  [6e-3,              6e-3,                   1e-4],
+    })
+    r = CaseControlArchitectureAudit().apply(t).tolist()
+    assert r == ["common_driver", "common_driver", "recurrent_variant"]

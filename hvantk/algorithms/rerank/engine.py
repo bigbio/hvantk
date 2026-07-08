@@ -60,4 +60,6 @@ def rerank(config) -> RerankResult:
         } for g in config.extra_flagged_genes if g not in set(df.gene)])
         if len(extra_rows):
             table = pd.concat([table, extra_rows], ignore_index=True)
+    table = table[["gene", "prior_stat", "score", "score_percentile",
+                   "tier", "verdict", "flag", "flag_reason", "y"]]
     return RerankResult(table=table, metrics=metrics, coverage=coverage)
