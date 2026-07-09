@@ -1,7 +1,10 @@
 # local/rerank_engine/config.py
 from dataclasses import dataclass, field
-from typing import Callable, Optional
+from typing import Callable, Optional, TYPE_CHECKING
 import pandas as pd
+
+if TYPE_CHECKING:
+    from hvantk.algorithms.rerank.audit import Audit
 
 @dataclass
 class PriorSpec:
@@ -50,7 +53,7 @@ class Config:
     labels: LabelSpec
     units: str = "gene"
     cohort: Optional[CohortSpec] = None
-    audit: "object" = None
+    audit: Optional["Audit"] = None
     calibration: str = "isotonic"
     folds: int = 5
     tiers: int = 5

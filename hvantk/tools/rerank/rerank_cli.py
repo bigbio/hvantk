@@ -50,6 +50,6 @@ def rerank_cmd(config_path, output):
     click.echo(f"Credibility: ROBUST={n_robust} / INTERMEDIATE={len(scored) - n_robust} "
                f"(over {len(scored)} scored genes)")
     click.echo(f"Audit: {n_flagged} gene(s) FLAGGED for review (advisory; ranking not overridden). "
-               f"Reasons: {res.table.loc[res.table.flag, 'flag_reason'].value_counts().to_dict()}")
+               f"Reasons: {res.table.loc[res.table['flag'], 'flag_reason'].value_counts().to_dict()}")
     click.echo("Per-axis ablation (delta-AUC over constraint):")
     click.echo(res.metrics.ablation.to_string(index=False))
