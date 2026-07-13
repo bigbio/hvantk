@@ -521,20 +521,10 @@ def compute_sample_qc(
             mt, call_field=call_field, prefer_lpgT=True, tmp_field=tmp_field
         )
 
-        # Preflight: count invalid GT if any slipped through
-        invalid_count = mt_qc.aggregate_entries(
-            hl.agg.count_where(
-                hl.is_defined(mt_qc[tmp_field])
-                & hl.any(
-                    lambda i: mt_qc[tmp_field][i] >= hl.len(mt_qc.alleles),
-                    hl.range(0, mt_qc[tmp_field].ploidy),
-                )
-            )
-        )
-        if invalid_count:
-            logger.warning(
-                f"Preflight: found {invalid_count} invalid temp genotypes before sample_qc; they will be set missing"
-            )
+        # NB: no preflight count here. `_prepare_qc_gt` sets `tmp_field` to MISSING wherever the
+        # call was out of bounds, so counting entries where `tmp_field` is *defined* and out of
+        # bounds is counting an empty intersection: the answer is 0 by construction and the
+        # warning was unreachable. It cost a full pass over the entry matrix to learn nothing.
 
         # Ensure compatibility: temporarily set GT to the sanitized tmp field
         mt_for_qc = _with_temp_gt(mt_qc, tmp_field=tmp_field, backup_field="__orig_GT")
@@ -616,20 +606,7 @@ def compute_variant_qc(
             mt, call_field=call_field, prefer_lpgT=True, tmp_field=tmp_field
         )
 
-        # Preflight logging as above
-        invalid_count = mt_qc.aggregate_entries(
-            hl.agg.count_where(
-                hl.is_defined(mt_qc[tmp_field])
-                & hl.any(
-                    lambda i: mt_qc[tmp_field][i] >= hl.len(mt_qc.alleles),
-                    hl.range(0, mt_qc[tmp_field].ploidy),
-                )
-            )
-        )
-        if invalid_count:
-            logger.warning(
-                f"Preflight: found {invalid_count} invalid temp genotypes before variant_qc; they will be set missing"
-            )
+        # No preflight count -- see compute_sample_qc: the value is 0 by construction.
 
         mt_for_qc = _with_temp_gt(mt_qc, tmp_field=tmp_field, backup_field="__orig_GT")
         mt_with_qc = hl.variant_qc(mt_for_qc, name=name)

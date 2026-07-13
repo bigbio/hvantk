@@ -71,6 +71,11 @@ class PipelineConfig:
     skip_compute_variant_qc: bool = False
     skip_export_pvcf: bool = False
 
+    # Skip the biallelic audit + repair in the VDS -> MT stage. `hvantk hgc vds2mt` has exposed
+    # this since forever; the pipeline hard-coded False, so users of the *recommended* entry point
+    # could not opt out at all.
+    skip_validation: bool = False
+
     # Path overrides (for resuming from intermediate stages)
     vds_path: Optional[str] = None
     mt_path: Optional[str] = None
@@ -460,7 +465,7 @@ class PipelineRunner:
             output_path=self.paths["mt"],
             adjust_genotypes=True,
             skip_split_multi=False,
-            skip_validation=False,
+            skip_validation=self.config.skip_validation,
             skip_keying_by_cols=False,
             overwrite=self.config.overwrite,
         )

@@ -61,6 +61,16 @@ def register_pipeline_command(group):
     default=False,
     help="Skip exporting the cohort (project) VCF",
 )
+@click.option(
+    "--skip-validation",
+    is_flag=True,
+    default=False,
+    help=(
+        "Skip the biallelic audit and genotype repair during VDS -> MatrixTable conversion. "
+        "The audit runs on the sparse variant data and is cheap; skip it only for a trusted, "
+        "already-validated VDS."
+    ),
+)
 # Path overrides
 @click.option(
     "--vds-path",
@@ -147,6 +157,7 @@ def pipeline(
     skip_compute_sample_qc,
     skip_compute_variant_qc,
     skip_export_pvcf,
+    skip_validation,
     vds_path,
     mt_path,
     tmp_dir,
@@ -207,6 +218,7 @@ def pipeline(
             skip_compute_sample_qc=skip_compute_sample_qc,
             skip_compute_variant_qc=skip_compute_variant_qc,
             skip_export_pvcf=skip_export_pvcf,
+            skip_validation=skip_validation,
             vds_path=vds_path,
             mt_path=mt_path,
             min_sample_call_rate=min_sample_call_rate,
