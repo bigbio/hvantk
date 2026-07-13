@@ -25,11 +25,10 @@ The HGC module implements a complete joint genotyping pipeline with integrated q
 3. **MatrixTable Processing** - Convert VDS to analysis-ready MatrixTable format
 4. **VCF Export** - Export processed data back to standard VCF format
 
-### Additional Functionality: Quality Control & Visualization
+### Additional Functionality: Quality Control & Reporting
 5. **QC Metrics Computation** - Comprehensive sample and variant quality assessment on combined cohorts
-6. **QC Visualization** - Static and interactive plots for quality control analysis
-7. **QC Reports** - Professional HTML reports with embedded plots and recommendations
-8. **QC-based Filtering** - Quality-based sample and variant filtering tools
+6. **QC Report** - One static HTML report for operational triage
+7. **QC-based Filtering** - Quality-based sample and variant filtering tools
 
 ## Key Features
 
@@ -48,8 +47,9 @@ The HGC module implements a complete joint genotyping pipeline with integrated q
 
 ### Quality Control Features (Post-Combination)
 - **Comprehensive QC Metrics**: Sample and variant-level quality assessment for combined cohorts
-- **Interactive Visualizations**: Static matplotlib and interactive Plotly plots for data exploration
-- **Professional Reports**: HTML reports with embedded plots, metrics, and recommendations
+- **Typed Artifacts**: QC tables (Hail tables / pandas DataFrames) — plot them yourself for
+  publication figures; see [Plot your own QC from the tables](#plot-your-own-qc-from-the-tables)
+- **Operational Triage Report**: One static HTML report with embedded plots, metrics, and recommendations
 - **Quality-based Filtering**: Threshold-based sample and variant filtering tools
 
 ### Interface Options
@@ -117,13 +117,7 @@ Additional QC commands for analyzing combined cohorts:
 # Compute QC metrics for combined cohort
 hvantk hgc compute-qc -i analysis.mt -o analysis_qc.mt
 
-# Generate QC visualizations
-hvantk hgc plot-qc -i analysis_qc.mt -o plots/ --plot-type dashboard
-
-# Create interactive QC plots
-hvantk hgc plot-qc -i analysis_qc.mt -o plots/ --interactive
-
-# Generate comprehensive QC report
+# Generate the static operational-triage QC report
 hvantk hgc qc-report -i analysis_qc.mt -o qc_report.html
 
 # Filter based on QC metrics
@@ -178,8 +172,7 @@ mt = hl.read_matrix_table("analysis.mt")
 # Compute comprehensive QC metrics
 qc_results = compute_full_qc(mt)
 
-# Generate visualizations
-qc_results.plot_interactive_dashboard().show()
+# One static HTML report for operational triage
 qc_results.generate_html_report('qc_report.html')
 
 # Apply quality filters
@@ -195,6 +188,38 @@ mt_filtered = filter_variants_by_qc(
     min_hwe_pvalue=1e-6
 )
 ```
+
+#### Plot your own QC from the tables
+
+HGC's QC module hands back QC *artifacts* — Hail tables and pandas DataFrames — it does not
+own the figures made from them. `QCMetrics.plot_*`, the interactive (plotly) dashboard, and
+`hvantk hgc plot-qc` have been retired: a canned `plot_sample_qc_overview()` can never serve a
+figure that has to fit someone else's panel, draw your actual thresholds, or work off the right
+subset of the data (e.g. polymorphic variants only). The stable, composable artifact is the
+table; the plot is an opinion.
+
+Get the tables and plot them with matplotlib directly:
+
+```python
+import matplotlib.pyplot as plt
+from hvantk.algorithms.hgc import compute_full_qc
+
+qc_results = compute_full_qc(mt)
+
+sample_df = qc_results.get_sample_metrics_df()
+variant_df = qc_results.get_variant_metrics_df()
+
+fig, ax = plt.subplots(figsize=(8, 5))
+ax.hist(sample_df["sample_qc.call_rate"], bins=30)
+ax.axvline(0.85, color="red", linestyle="--", label="min call rate")
+ax.set_xlabel("Sample call rate")
+ax.set_ylabel("Number of samples")
+ax.legend()
+fig.savefig("sample_call_rate.png", dpi=300, bbox_inches="tight")
+```
+
+For a quick "did anything obviously go wrong" check after joint-calling a cohort, use the one
+static report that is still built in: `hvantk hgc qc-report` / `QCMetrics.generate_html_report()`.
 
 #### Pipeline Orchestration (Recommended)
 

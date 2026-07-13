@@ -58,7 +58,7 @@ tspex = { version = ">=0.6.0", optional = true }
 viz = ["matplotlib", "seaborn", "plotly"]
 duckdb = ["duckdb"]
 interactive = ["plotly"]
-hgc = ["matplotlib", "seaborn", "plotly", "gnomad"]
+hgc = ["matplotlib", "seaborn", "gnomad"]
 psroc = ["matplotlib", "plotly", "scikit-learn"]
 ptm = ["cptac"]
 constraint = ["tspex", "matplotlib", "seaborn"]

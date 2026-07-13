@@ -14,7 +14,6 @@ Main Functions:
     Sample QC:
     - plot_sample_call_rate_distribution: Sample call rate histograms with thresholds
     - plot_sample_titv_distribution: Ti/Tv ratio distributions with expected ranges
-    - plot_sample_depth_distribution: Depth statistics distributions
     - plot_sample_qc_overview: Multi-panel sample QC dashboard
 
     Variant QC:
@@ -50,16 +49,6 @@ try:
     HAS_SEABORN = True
 except ImportError:
     HAS_SEABORN = False
-
-try:
-    import plotly.graph_objects as go
-    import plotly.express as px
-    from plotly.subplots import make_subplots
-    import plotly.offline as pyo
-
-    HAS_PLOTLY = True
-except ImportError:
-    HAS_PLOTLY = False
 
 from .base import set_default_style, save_figure
 
@@ -493,115 +482,6 @@ def plot_sample_titv_distribution(
     handles, labels = ax.get_legend_handles_labels()
     if handles:
         ax.legend(loc="upper left")
-
-    plt.tight_layout()
-
-    if save_path:
-        save_figure(fig, save_path, **kwargs)
-
-    return fig
-
-
-def plot_sample_depth_distribution(
-    sample_df: pd.DataFrame,
-    bins: int = 50,
-    kde: bool = True,
-    log_scale: bool = False,
-    style: str = "default",
-    figsize: Tuple[float, float] = (10, 6),
-    save_path: Optional[Union[str, Path]] = None,
-    **kwargs,
-) -> plt.Figure:
-    """
-    Plot distribution of sample depth statistics.
-
-    Parameters
-    ----------
-    sample_df : pd.DataFrame
-        Sample QC metrics DataFrame
-    bins : int
-        Number of histogram bins
-    kde : bool
-        Whether to overlay kernel density estimate
-    log_scale : bool
-        Whether to use log scale for y-axis
-    style : str
-        Plot style
-    figsize : tuple
-        Figure size (width, height)
-    save_path : str or Path, optional
-        Path to save the figure
-    **kwargs
-        Additional plotting arguments
-
-    Returns
-    -------
-    matplotlib.figure.Figure
-        The created figure
-    """
-    set_default_style(style)
-
-    # Prepare data
-    df = _prepare_sample_qc_data(sample_df)
-
-    # Look for depth mean column
-    depth_col = None
-    for col in ["dp_stats_mean", "mean", "sample_qc_mean_dp", "dp_mean"]:
-        if col in df.columns:
-            depth_col = col
-            break
-
-    if depth_col is None:
-        raise ValueError(
-            "Sample DataFrame must contain depth statistics (mean depth column)"
-        )
-
-    depths = df[depth_col].dropna()
-
-    # Create figure
-    fig, ax = plt.subplots(figsize=figsize)
-
-    # Plot histogram
-    ax.hist(
-        depths,
-        bins=bins,
-        alpha=0.7,
-        color=QC_COLORS["neutral"],
-        edgecolor="black",
-        linewidth=0.5,
-    )
-
-    # Add KDE if requested
-    if kde and HAS_SEABORN:
-        try:
-            sns.kdeplot(
-                data=depths, ax=ax, color="red", linewidth=2, warn_singular=False
-            )
-        except Exception as e:
-            logger.warning(f"Could not add KDE overlay: {e}")
-
-    # Set log scale if requested
-    if log_scale:
-        ax.set_yscale("log")
-
-    # Customize plot
-    ax.set_xlabel("Mean Depth", fontsize=12)
-    ax.set_ylabel("Number of Samples", fontsize=12)
-    ax.set_title(
-        f"Sample Depth Distribution (n={len(depths)})", fontsize=14, fontweight="bold"
-    )
-
-    # Add statistics
-    stats_text = f"Mean: {depths.mean():.2f}\nStd: {depths.std():.2f}\nMedian: {depths.median():.2f}"
-    ax.text(
-        0.98,
-        0.98,
-        stats_text,
-        transform=ax.transAxes,
-        verticalalignment="top",
-        horizontalalignment="right",
-        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.8),
-    )
 
     plt.tight_layout()
 

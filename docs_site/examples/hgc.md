@@ -34,8 +34,11 @@ runner.run()
 
 ### Expected Outputs
 
-- `qc_report_*.html` - Interactive HTML report
-- `qc_dashboard_*.png` - Multi-panel QC visualization
+- `qc_report_*.html` - Static HTML QC report (embedded plots, tables, recommendations)
+
+For a publication figure or any custom plot, export the QC tables
+(`QCMetrics.get_sample_metrics_df()` / `get_variant_metrics_df()`) and plot with matplotlib —
+see [Plot your own QC from the tables](../tools/hgc.md#plot-your-own-qc-from-the-tables).
 
 ## Scalability Benchmarks
 

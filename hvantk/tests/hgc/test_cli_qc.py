@@ -9,7 +9,6 @@ from hvantk.tools.hgc.qc_cli import (
     compute_qc,
     filter_qc,
     qc_summary,
-    plot_qc,
     qc_report,
 )
 
@@ -247,92 +246,6 @@ def test_qc_summary_cli_output_json():
 
             assert result.exit_code == 0
             assert os.path.exists("summary.json")
-
-
-# ===== plot_qc Tests =====
-
-
-def test_plot_qc_cli_basic():
-    """Test plot-qc command with basic options."""
-    runner = CliRunner()
-    with patch(
-        "hvantk.tools.hgc.qc_cli.check_path_exists_and_readable"
-    ) as mock_check:
-        with patch("hail.init"):
-            with patch("hail.read_matrix_table") as mock_read:
-                mock_check.return_value = True
-                mock_mt = MagicMock()
-                mock_mt.col = {"sample_qc": MagicMock()}
-                mock_read.return_value = mock_mt
-
-                with patch("hvantk.algorithms.hgc.qc.QCMetrics") as mock_qc_metrics:
-                    mock_qc_instance = MagicMock()
-                    mock_qc_instance.has_sample_qc = True
-                    mock_qc_instance.has_variant_qc = False
-
-                    # Mock plot function to create the file
-                    def mock_plot_overview(save_path=None, **kwargs):
-                        if save_path:
-                            from pathlib import Path
-
-                            Path(save_path).parent.mkdir(parents=True, exist_ok=True)
-                            Path(save_path).write_text("mock plot")
-                        return MagicMock()
-
-                    mock_qc_instance.plot_sample_overview.side_effect = (
-                        mock_plot_overview
-                    )
-                    mock_qc_metrics.return_value = mock_qc_instance
-
-                    with runner.isolated_filesystem():
-                        result = runner.invoke(
-                            plot_qc,
-                            ["--input", "/data.mt", "--output-dir", "plots"],
-                        )
-
-                        assert result.exit_code == 0
-                        assert "QC plotting completed successfully" in result.output
-
-
-def test_plot_qc_cli_dry_run():
-    """Test plot-qc command with dry-run."""
-    runner = CliRunner()
-    with patch(
-        "hvantk.tools.hgc.qc_cli.check_path_exists_and_readable"
-    ) as mock_check:
-        mock_check.return_value = True
-
-        result = runner.invoke(
-            plot_qc,
-            ["--input", "/data.mt", "--output-dir", "plots", "--dry-run"],
-        )
-
-        assert result.exit_code == 0
-        assert "Dry run mode" in result.output
-        assert "Plot type: overview" in result.output
-
-
-def test_plot_qc_cli_no_qc_annotations():
-    """Test plot-qc command with MT lacking QC annotations."""
-    runner = CliRunner()
-    with patch(
-        "hvantk.tools.hgc.qc_cli.check_path_exists_and_readable"
-    ) as mock_check:
-        with patch("hail.init"):
-            with patch("hail.read_matrix_table") as mock_read:
-                mock_check.return_value = True
-                mock_mt = MagicMock()
-                mock_mt.col = {}
-                mock_mt.row = {}
-                mock_read.return_value = mock_mt
-
-                result = runner.invoke(
-                    plot_qc,
-                    ["--input", "/data.mt", "--output-dir", "plots"],
-                )
-
-                assert result.exit_code == 1
-                assert "No QC annotations found" in result.output
 
 
 # ===== qc_report Tests =====

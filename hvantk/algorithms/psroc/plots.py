@@ -3,7 +3,7 @@ ROC curve visualization functions for PSROC pipeline.
 
 This module provides static (matplotlib) plotting functions for ROC curves
 and related metrics visualization. Follows the styling conventions established
-in hvantk.visualization.qc_plots.
+in hvantk.algorithms.visualization.base.
 
 Main Functions:
     - plot_roc_curves: Multi-score ROC curve overlay plot
