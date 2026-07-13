@@ -35,7 +35,7 @@ def register_combine_commands(group):
 @click.option("--save-path", "-s", help="Path to save the combiner plan")
 @click.option(
     "--import-interval-size",
-    type=int,
+    type=click.IntRange(min=1),
     default=None,
     help=(
         "Size (bp) of the even genomic intervals used to partition GVCF import. "
@@ -60,13 +60,13 @@ def register_combine_commands(group):
 )
 @click.option(
     "--gvcf-batch-size",
-    type=int,
+    type=click.IntRange(min=1),
     default=None,
     help="Number of GVCFs to combine per tree-merge batch (Hail default: 50).",
 )
 @click.option(
     "--branch-factor",
-    type=int,
+    type=click.IntRange(min=2),
     default=None,
     help="Branch factor of the combiner's hierarchical merge (Hail default: 100).",
 )

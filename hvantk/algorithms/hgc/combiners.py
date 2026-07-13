@@ -62,6 +62,12 @@ def combine_gvcfs(
         if not (gvcf_dir or vdses):
             raise ValueError("Either GVCF files or VDS files must be provided.")
 
+        # Work on a copy: the interval keys below are consumed with .pop(), and mutating
+        # the caller's dict would silently strip the settings from any subsequent call
+        # that reuses it (e.g. combining several chromosomes in a loop), falling back to
+        # the genome default without warning.
+        kwargs = dict(kwargs or {})
+
         validated_gvcfs: List[str] = []
         validated_vdses: List[str] = []
 
@@ -77,6 +83,11 @@ def combine_gvcfs(
 
         # Handle interval-related parameters from kwargs
         intervals = kwargs.pop("intervals", None)
+        if intervals is not None:
+            # Callers may naturally supply any iterable (e.g. a generator comprehension
+            # over contigs). Materialise it once so that logging/len cannot raise and so
+            # Hail receives a list it can traverse more than once.
+            intervals = list(intervals)
         import_interval_size = kwargs.pop("import_interval_size", None)
         use_genome_default = kwargs.pop("use_genome_default_intervals", False)
         use_exome_default = kwargs.pop("use_exome_default_intervals", False)
@@ -97,6 +108,13 @@ def combine_gvcfs(
                 "Only one of 'intervals', 'import_interval_size', "
                 "'use_genome_default_intervals', or 'use_exome_default_intervals' "
                 "can be specified."
+            )
+
+        # Fail fast on values Hail would only reject deep inside the combiner, where the
+        # error is wrapped in generic "check your Spark version / GVCF files" guidance.
+        if import_interval_size is not None and import_interval_size < 1:
+            raise ValueError(
+                f"'import_interval_size' must be at least 1 bp, got {import_interval_size}."
             )
 
         # Set default to genome intervals if none specified
