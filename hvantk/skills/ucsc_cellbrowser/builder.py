@@ -34,6 +34,53 @@ _SCHEMA_IDS: dict[str, str] = {
 }
 
 
+def _resolve_ucsc_inputs(parsed_input):
+    """Normalise the builder input into ``(expression_matrix_path, metadata_path)``.
+
+    Accepts either:
+
+    * a mapping with ``expression_matrix`` / ``metadata`` keys (direct Phase B callers), or
+    * a path to the raw download directory. This is the ``hvantk reprocess`` contract:
+      the dataset declares no ``lifecycle.parse`` stage, so reprocess passes the raw dir
+      to the builder ("no parse stage declared: the builder consumes the raw dir
+      directly", ``reprocess_cli``). The downloader writes files under a per-accession
+      subdirectory, so we search the given directory and one level of subdirectories.
+    """
+    if isinstance(parsed_input, dict):
+        return str(parsed_input["expression_matrix"]), str(parsed_input["metadata"])
+
+    from hvantk.skills.ucsc_cellbrowser.shared.constants import (
+        EXPRESSION_MATRIX_FILE_NAME,
+        METADATA_FILE_NAME,
+    )
+
+    root = str(parsed_input)
+    expr_names = (EXPRESSION_MATRIX_FILE_NAME, "expression_matrix.tsv")
+    meta_names = (METADATA_FILE_NAME, "metadata.tsv")
+    search_dirs = [root] + [
+        os.path.join(root, d)
+        for d in sorted(os.listdir(root))
+        if os.path.isdir(os.path.join(root, d))
+    ]
+
+    def _find(names):
+        for directory in search_dirs:
+            for name in names:
+                candidate = os.path.join(directory, name)
+                if os.path.exists(candidate):
+                    return candidate
+        return None
+
+    expr = _find(expr_names)
+    meta = _find(meta_names)
+    if expr is None or meta is None:
+        raise FileNotFoundError(
+            f"UCSC builder: could not locate an expression matrix {expr_names} and "
+            f"metadata {meta_names} under {root!r} (searched {search_dirs})"
+        )
+    return expr, meta
+
+
 def build_ucsc_cellbrowser(
     parsed_input,
     ctx,
@@ -49,7 +96,9 @@ def build_ucsc_cellbrowser(
 ):
     """Phase B builder — returns an ExpressionMatrix.
 
-    ``parsed_input`` must contain keys ``expression_matrix`` and ``metadata``.
+    ``parsed_input`` is either a mapping with ``expression_matrix`` / ``metadata``
+    keys, or a path to the raw download directory (the ``hvantk reprocess`` contract
+    for a parse-less dataset); see ``_resolve_ucsc_inputs``.
     The per-dataset ``schema_id`` is resolved from ``ctx.dataset`` via
     ``_SCHEMA_IDS`` so that all three datasets (default, adult-ctx, dev-ctx)
     share one builder function while each stamps the correct schema.
@@ -77,8 +126,7 @@ def build_ucsc_cellbrowser(
         load_ucsc_metadata,
     )
 
-    expression_matrix_path = str(parsed_input["expression_matrix"])
-    metadata_path = str(parsed_input["metadata"])
+    expression_matrix_path, metadata_path = _resolve_ucsc_inputs(parsed_input)
 
     logger.info("Loading UCSC metadata from %s", metadata_path)
     metadata_df = load_ucsc_metadata(metadata_path, sep=delimiter)
