@@ -1,0 +1,38 @@
+{
+  "X_corner": [
+    [
+      1.2000000476837158,
+      0.5
+    ],
+    [
+      3.4000000953674316,
+      2.0999999046325684
+    ]
+  ],
+  "obs_head": [
+    {
+      "SampleID": "S1",
+      "disease": "normal",
+      "tissue": "liver"
+    },
+    {
+      "SampleID": "S2",
+      "disease": "tumor",
+      "tissue": "liver"
+    }
+  ],
+  "var_head": [
+    {
+      "Site": "TP53_S315",
+      "amino_acid": "S",
+      "gene_symbol": "TP53",
+      "residue_pos": 315
+    },
+    {
+      "Site": "BRCA2_S988",
+      "amino_acid": "S",
+      "gene_symbol": "BRCA2",
+      "residue_pos": 988
+    }
+  ]
+}

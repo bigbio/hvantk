@@ -47,18 +47,22 @@ ARTIFACT_FIELDS = ("fixture", "schema_snapshot", "row_snapshot", "drift_fingerpr
 # remaining fingerprint gaps are a separate concern from snapshots: a probe has to be run
 # against the live upstream, which the snapshot tests deliberately never touch.
 #
-# uniprot-ptm's `fixture` gap is a genuinely absent file rather than a wrong path: its
-# round-trip test synthesizes a TSV into tmp_path instead of reading a committed one, so
-# a fixture has to be created before it can be snapshotted.
 # (dbnsfp / ensembl-gene / gevir / gnomad-metrics previously appeared here for a different
 # reason -- they declared a plugin-local fixture dir that was never created while the
 # tests read one under hvantk/tests/testdata/raw/. Their manifests now point at the real
 # shared location, so only their snapshot/fingerprint files remain outstanding.)
+#
+# uniprot-ptm and both cptac datasets had no committed fixture at all -- their round-trip
+# tests synthesized inputs into tmp_path. Small fixtures were committed for each, so all
+# three now ship a full set and have left this list.
+#
+# expression-atlas is the remaining seedable one: its declared fixture dir holds only a
+# .gitkeep, and the real inputs under hvantk/tests/testdata/raw/expression_atlas/ are too
+# large to use directly (116k transcripts x 320 samples), so a fixture must be *derived*
+# by truncation rather than copied.
 KNOWN_INCOMPLETE: dict[str, tuple[str, ...]] = {
     "alphagenome:predictions": ARTIFACT_FIELDS,
     "cosmic-cgc:submissions": ARTIFACT_FIELDS,
-    "cptac:expression": ("fixture", "schema_snapshot", "row_snapshot"),
-    "cptac:phospho": ("fixture", "schema_snapshot", "row_snapshot"),
     "dbnsfp:variants": ("drift_fingerprint",),
     "ensembl-gene:genes": ("drift_fingerprint",),
     "expression-atlas:dataset": ("schema_snapshot", "row_snapshot"),
@@ -66,7 +70,6 @@ KNOWN_INCOMPLETE: dict[str, tuple[str, ...]] = {
     "gnomad-metrics:metrics": ("drift_fingerprint",),
     "peptideatlas:phospho": ("schema_snapshot", "row_snapshot"),
     "pqtl:metrics": ARTIFACT_FIELDS,
-    "uniprot-ptm:sites": ("fixture", "schema_snapshot", "row_snapshot"),
 }
 
 
