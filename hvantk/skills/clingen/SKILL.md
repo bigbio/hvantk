@@ -81,8 +81,9 @@ When ClinGen publishes an updated snapshot (any download is effectively a new sn
 - `drift_fingerprint`: `hvantk/skills/clingen/tests/drift_fingerprint.json`
 - `test_command`: `pytest hvantk/skills/clingen/tests -m hail`
 
-> **Snapshot status:** the `tests/snapshots/schema.json` and
-> `tests/snapshots/sample_rows.json` paths declared in `plugin.yaml` have NOT yet
-> been seeded for this plugin (the `tests/snapshots/` directory does not exist
-> yet). Until seeded, there is no fixed-schema round-trip check; the live tests
-> are `test_downloader.py`, `test_drift_probe.py`, and `test_streamer.py`.
+> **Snapshot status:** seeded. `tests/snapshots/schema.json` and
+> `tests/snapshots/sample_rows.json` are committed, and `test_builder.py` asserts the
+> build against them. Regenerate after an intentional schema change with
+> `pytest hvantk/skills/clingen/tests/test_builder.py --regenerate-snapshots`, then
+> commit the result. The other live tests are `test_downloader.py`,
+> `test_drift_probe.py`, and `test_streamer.py`.

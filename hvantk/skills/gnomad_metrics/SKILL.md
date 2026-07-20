@@ -51,7 +51,10 @@ A conformance test in
 `hvantk/skills/gnomad_metrics/tests/test_gnomad_metrics.py` exercises the
 build via `run_builder_for_spec` against the gnomAD lof_metrics fixture
 (`gnomad.v2.1.1.lof_metrics.by_gene.chr20.tsv.bgz`). The `tests:` block in
-`plugin.yaml` declares the plugin-relative fixture at
-`tests/testdata/raw/gnomad`.
+`plugin.yaml` declares that fixture as `../../tests/testdata/raw/gnomad`: unlike the
+snapshots and drift fingerprint, it is not plugin-relative but lives in the shared
+tree at `hvantk/tests/testdata/raw/gnomad`, shared with
+`hvantk/tests/test_plugin_conformance.py` and referenced in place rather than
+duplicated.
 
 Run with: `pytest hvantk/skills/gnomad_metrics/tests`
