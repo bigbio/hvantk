@@ -5,7 +5,7 @@ committed snapshots, so a change in builder behaviour or upstream field layout s
 as an explicit diff rather than silently.
 
 Regenerate after an intentional change:
-    pytest hvantk/skills/clingen/tests/test_builder.py --regenerate-snapshots
+    pytest hvantk/skills/clingen/tests/test_builder.py -m hail --regenerate-snapshots
 """
 
 from __future__ import annotations

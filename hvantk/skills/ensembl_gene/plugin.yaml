@@ -23,7 +23,7 @@ datasets:
       function: fetch_fingerprint
     skill: SKILL.md
     tests:
-      command: pytest hvantk/skills/ensembl_gene/tests
+      command: pytest hvantk/skills/ensembl_gene/tests -m hail
       fixture: ../../tests/testdata/raw/ensembl
       schema_snapshot: tests/snapshots/schema.json
       row_snapshot: tests/snapshots/sample_rows.json

@@ -23,7 +23,7 @@ datasets:
       function: fetch_fingerprint
     skill: SKILL.md
     tests:
-      command: pytest hvantk/skills/dbnsfp/tests
+      command: pytest hvantk/skills/dbnsfp/tests -m hail
       fixture: ../../tests/testdata/raw/dbnsfp
       schema_snapshot: tests/snapshots/schema.json
       row_snapshot: tests/snapshots/sample_rows.json
