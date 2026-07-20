@@ -60,7 +60,16 @@ def errors_cmd():
 
 @plugins_group.command(name="validate")
 @click.argument("manifest_path", type=click.Path(exists=True, dir_okay=False))
-def validate_cmd(manifest_path: str):
+@click.option(
+    "--strict-artifacts/--no-strict-artifacts",
+    default=False,
+    help=(
+        "Fail if the manifest declares a fixture/snapshot/fingerprint that is not on "
+        "disk. Warns by default, because most in-tree plugins do not yet ship a full "
+        "set; see the KNOWN_INCOMPLETE ledger in the test suite."
+    ),
+)
+def validate_cmd(manifest_path: str, strict_artifacts: bool):
     """Validate a plugin.yaml file against the schema (offline)."""
     import yaml
     import jsonschema
@@ -112,4 +121,29 @@ def validate_cmd(manifest_path: str):
                 "catalog validation failed:\n  - " + "\n  - ".join(errors)
             )
         click.echo(f"catalog ok: {catalog_path} ({len(entries)} entries)")
+
+    # Declared-but-absent validation artifacts. The loader resolves these paths without
+    # requiring them, so a manifest can promise a snapshot it never shipped and still
+    # load clean; surface that here instead of letting it pass silently.
+    artifact_fields = ("fixture", "schema_snapshot", "row_snapshot", "drift_fingerprint")
+    plugin_dir = Path(manifest_path).parent
+    missing: list[str] = []
+    for dataset in content.get("datasets", []):
+        tests_block = dataset.get("tests") or {}
+        for field in artifact_fields:
+            rel = tests_block.get(field)
+            if rel and not (plugin_dir / rel).exists():
+                missing.append(f"{dataset.get('name', '?')}: {field} -> {rel}")
+    if missing:
+        if strict_artifacts:
+            raise click.ClickException(
+                "declared validation artifacts are missing:\n  - " + "\n  - ".join(missing)
+            )
+        click.echo(
+            "warning: declared validation artifacts are missing "
+            f"({len(missing)}; re-run with --strict-artifacts to fail):\n  - "
+            + "\n  - ".join(missing),
+            err=True,
+        )
+
     click.echo(f"ok: {manifest_path}")
