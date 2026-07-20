@@ -197,6 +197,11 @@ local_test_*
 
 # Ignore large data files
 data/
+# ...but the example fixtures are small, committed on purpose, and referenced by
+# examples/rerank/config.yaml -- without them a fresh clone gets an example that
+# points at files it does not have.
+!examples/rerank/data/
+!examples/rerank/data/**
 checkpoints/
 # Hail table files
 *.ht/
