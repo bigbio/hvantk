@@ -24,6 +24,10 @@ datasets:
     skill: SKILL.md
     tests:
       command: pytest hvantk/skills/dbnsfp/tests -m hail
+      # Shared fixture: lives in the repo-level testdata tree
+      # (hvantk/tests/testdata/raw/dbnsfp), used by this plugin's round-trip test and
+      # by cross-cutting tests, so it is referenced in place rather than duplicated.
+      # Resolved relative to this plugin folder -> ../../tests/... = hvantk/tests/...
       fixture: ../../tests/testdata/raw/dbnsfp
       schema_snapshot: tests/snapshots/schema.json
       row_snapshot: tests/snapshots/sample_rows.json
