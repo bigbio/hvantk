@@ -1,0 +1,23 @@
+{
+  "key": [
+    "hgnc_id",
+    "mondo_id",
+    "submitter"
+  ],
+  "row": {
+    "classification": "str",
+    "classification_level": "int32",
+    "disease_label": "str",
+    "disease_original_id": "str",
+    "disease_original_label": "str",
+    "gene_symbol": "str",
+    "hgnc_id": "str",
+    "mode_of_inheritance": "str",
+    "mondo_id": "str",
+    "pmids": "str",
+    "report_url": "str",
+    "sgc_id": "str",
+    "submission_date": "str",
+    "submitter": "str"
+  }
+}

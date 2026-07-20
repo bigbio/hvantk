@@ -1,0 +1,16 @@
+{
+  "key": [
+    "gene_id"
+  ],
+  "row": {
+    "chromosome": "str",
+    "gene_end": "int32",
+    "gene_id": "str",
+    "gene_name": "str",
+    "gene_start": "int32",
+    "gene_synonym": "set<str>",
+    "gene_type": "str",
+    "protein_id": "set<str>",
+    "transcript_id": "set<str>"
+  }
+}

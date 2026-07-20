@@ -24,7 +24,7 @@ datasets:
     skill: SKILL.md
     tests:
       command: pytest hvantk/skills/dbnsfp/tests
-      fixture: tests/testdata/raw/dbnsfp
+      fixture: ../../tests/testdata/raw/dbnsfp
       schema_snapshot: tests/snapshots/schema.json
       row_snapshot: tests/snapshots/sample_rows.json
       drift_fingerprint: tests/drift_fingerprint.json

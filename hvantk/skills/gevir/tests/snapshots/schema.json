@@ -1,0 +1,12 @@
+{
+  "key": [
+    "gene_id"
+  ],
+  "row": {
+    "canonical_transcript": "str",
+    "gene_id": "str",
+    "gevir_pct": "float64",
+    "gnomad_gene_name": "str",
+    "virlof_pct": "float64"
+  }
+}

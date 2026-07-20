@@ -24,7 +24,7 @@ datasets:
     skill: SKILL.md
     tests:
       command: pytest hvantk/skills/gevir/tests
-      fixture: tests/testdata/raw/gevir
+      fixture: ../../tests/testdata/raw/gevir
       schema_snapshot: tests/snapshots/schema.json
       row_snapshot: tests/snapshots/sample_rows.json
       drift_fingerprint: tests/drift_fingerprint.json

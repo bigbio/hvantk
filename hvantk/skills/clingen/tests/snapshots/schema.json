@@ -1,0 +1,19 @@
+{
+  "key": [
+    "hgnc_id",
+    "mondo_id"
+  ],
+  "row": {
+    "classification": "str",
+    "classification_date": "str",
+    "classification_level": "int32",
+    "disease_label": "str",
+    "gene_curation_expert_panel": "str",
+    "gene_symbol": "str",
+    "hgnc_id": "str",
+    "mode_of_inheritance": "str",
+    "mondo_id": "str",
+    "report_url": "str",
+    "sop_version": "str"
+  }
+}

@@ -42,22 +42,28 @@ ARTIFACT_FIELDS = ("fixture", "schema_snapshot", "row_snapshot", "drift_fingerpr
 #   3. simply never seeded, though the builder runs from a committed fixture -- the
 #      majority, and the ones the follow-up work removes from this list.
 #
-# `fixture` gaps for dbnsfp / gevir / gnomad-metrics are a manifest bug rather than a
-# missing file: the tests read a fixture under hvantk/tests/testdata/raw/, while the
-# manifest declares a plugin-relative path that was never created.
+# clingen, gencc and hgnc were removed from this list once their snapshots landed, and
+# dbnsfp / ensembl-gene / gevir / gnomad-metrics now lack only a drift fingerprint. The
+# remaining fingerprint gaps are a separate concern from snapshots: a probe has to be run
+# against the live upstream, which the snapshot tests deliberately never touch.
+#
+# uniprot-ptm's `fixture` gap is a genuinely absent file rather than a wrong path: its
+# round-trip test synthesizes a TSV into tmp_path instead of reading a committed one, so
+# a fixture has to be created before it can be snapshotted.
+# (dbnsfp / ensembl-gene / gevir / gnomad-metrics previously appeared here for a different
+# reason -- they declared a plugin-local fixture dir that was never created while the
+# tests read one under hvantk/tests/testdata/raw/. Their manifests now point at the real
+# shared location, so only their snapshot/fingerprint files remain outstanding.)
 KNOWN_INCOMPLETE: dict[str, tuple[str, ...]] = {
     "alphagenome:predictions": ARTIFACT_FIELDS,
-    "clingen:gene-disease": ("schema_snapshot", "row_snapshot"),
     "cosmic-cgc:submissions": ARTIFACT_FIELDS,
     "cptac:expression": ("fixture", "schema_snapshot", "row_snapshot"),
     "cptac:phospho": ("fixture", "schema_snapshot", "row_snapshot"),
-    "dbnsfp:variants": ARTIFACT_FIELDS,
-    "ensembl-gene:genes": ARTIFACT_FIELDS,
+    "dbnsfp:variants": ("drift_fingerprint",),
+    "ensembl-gene:genes": ("drift_fingerprint",),
     "expression-atlas:dataset": ("schema_snapshot", "row_snapshot"),
-    "gencc:submissions": ("schema_snapshot", "row_snapshot"),
-    "gevir:metrics": ARTIFACT_FIELDS,
-    "gnomad-metrics:metrics": ARTIFACT_FIELDS,
-    "hgnc:lookup": ("schema_snapshot", "row_snapshot"),
+    "gevir:metrics": ("drift_fingerprint",),
+    "gnomad-metrics:metrics": ("drift_fingerprint",),
     "peptideatlas:phospho": ("schema_snapshot", "row_snapshot"),
     "pqtl:metrics": ARTIFACT_FIELDS,
     "uniprot-ptm:sites": ("fixture", "schema_snapshot", "row_snapshot"),
