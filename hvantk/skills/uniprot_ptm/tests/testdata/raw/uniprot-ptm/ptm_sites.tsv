@@ -1,0 +1,7 @@
+chrom	codon_start	codon_end	strand	uniprot_id	gene_symbol	residue_pos	amino_acid	ptm_type	ptm_category	source_db	evidence_type	n_observations	tissue_type
+17	7676272	7676274	-	P04637	TP53	315	S	phosphoserine	phosphorylation	uniprot	experimental	10	
+13	32316461	32316463	+	P51587	BRCA2	988	S	phosphoserine	phosphorylation	uniprot	experimental	5	
+17	7675994	7675996	-	P04637	TP53	392	S	phosphoserine	phosphorylation	uniprot	experimental	22	tumor
+1	11796321	11796323	-	Q9Y6K9	NEMO	43	Y	phosphotyrosine	phosphorylation	uniprot	experimental	3	tumor
+MT	3308	3310	+	P03886	MT-ND1	12	S	phosphoserine	phosphorylation	uniprot	experimental	2	
+GL000009.2	1500	1502	+	X9XXX9	UNPLACED	7	S	phosphoserine	phosphorylation	uniprot	experimental	1	
