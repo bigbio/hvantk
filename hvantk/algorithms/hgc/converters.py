@@ -37,89 +37,117 @@ def _split_vds(
     return hl.vds.split_multi(vds)
 
 
-def _validate_and_fix_biallelic_entries(
-    mt: hl.MatrixTable, skip_validation: bool = False
-) -> hl.MatrixTable:
+def _gt_out_of_bounds(mt: hl.MatrixTable, field: str = "GT"):
+    """Predicate: this entry's call references an allele index that does not exist.
+
+    Shared by the audit (which counts them) and the repair (which sets them missing), so the two
+    can never drift apart.
     """
-    Validate that GT and AD are correctly aligned to biallelic split variants.
-
-    After VDS-level split, this should find 0 issues. This is a safety check
-    that can be skipped for trusted pipelines to improve performance.
-
-    Parameters:
-        mt: Input MatrixTable (after VDS split + densification)
-        skip_validation: If True, skip validation (faster, use only if confident)
-
-    Returns:
-        MatrixTable with any invalid entries fixed (set to missing)
-    """
-    if skip_validation:
-        logging.info("Skipping biallelic validation (skip_validation=True)")
-        return mt
-
-    logging.info("Validating biallelic entries (GT indices and AD lengths)…")
-
-    # Single aggregation for both GT and AD validation (performance optimization)
-    validation = mt.aggregate_entries(
-        hl.struct(
-            # GT validation: check for out-of-bounds allele indices
-            n_invalid_gt=hl.agg.count_where(
-                hl.is_defined(mt.GT)
-                & hl.any(
-                    lambda i: mt.GT[i] >= hl.len(mt.alleles), hl.range(0, mt.GT.ploidy)
-                )
-            ),
-            gt_examples=hl.agg.filter(
-                hl.is_defined(mt.GT)
-                & hl.any(
-                    lambda i: mt.GT[i] >= hl.len(mt.alleles), hl.range(0, mt.GT.ploidy)
-                ),
-                hl.agg.take(hl.struct(locus=mt.locus, alleles=mt.alleles, GT=mt.GT), 3),
-            ),
-            # AD validation: check for length mismatch
-            n_invalid_ad=hl.agg.count_where(
-                hl.is_defined(mt.AD) & (hl.len(mt.AD) != hl.len(mt.alleles))
-            ),
-            ad_examples=hl.agg.filter(
-                hl.is_defined(mt.AD) & (hl.len(mt.AD) != hl.len(mt.alleles)),
-                hl.agg.take(hl.struct(locus=mt.locus, alleles=mt.alleles, AD=mt.AD), 3),
-            ),
-        )
+    gt = mt[field]
+    return hl.is_defined(gt) & hl.any(
+        lambda i: gt[i] >= hl.len(mt.alleles), hl.range(0, gt.ploidy)
     )
 
-    # Report findings
-    if validation.n_invalid_gt == 0 and validation.n_invalid_ad == 0:
+
+def _audit_split_variant_data(vds: hl.vds.VariantDataset) -> None:
+    """Count (and report) misaligned GT/AD entries, on the SPARSE variant data.
+
+    This is the same check that used to run on the densified MatrixTable, moved upstream. It is
+    equivalent because neither defect can originate in a reference block:
+
+    * reference-derived entries get a hom-ref call -- `to_dense_mt` either injects `hl.call(0, 0)`
+      outright, or reuses a reference call that the VDS combiner already forced to be hom-ref
+      (`.or_error('found reference block with non reference-genotype at' ...)`). A hom-ref call can
+      never index an allele that does not exist.
+    * reference-derived entries have `AD` MISSING. The combiner renames the reference block's depth
+      field to `LAD`, and `to_dense_mt` fills every variant-only field with `hl.missing` on the
+      reference side -- so the `hl.is_defined(AD)` guard below can never fire there.
+
+    Both defects can therefore only live in `variant_data`, which holds just the variant records
+    rather than the full samples x sites matrix. Auditing it costs a scan of the sparse data
+    instead of a second full densify of the cohort.
+
+    (Verified against Hail 0.2.137: hail/vds/methods.py `to_dense_mt`,
+    hail/vds/combiner/combine.py `make_ref_entry_struct`.)
+
+    Assumes a combiner-built VDS, which is the only kind hvantk produces. A hand-assembled VDS with
+    a non-hom-ref reference block could in principle hide a defect from this count -- it would
+    still be *repaired* downstream, because the repair runs on the dense matrix, but it would not
+    be *reported* here.
+    """
+    vd = vds.variant_data
+    has_gt, has_ad = "GT" in vd.entry, "AD" in vd.entry
+
+    if not (has_gt or has_ad):
+        logging.warning(
+            "Skipping biallelic audit: variant data has neither 'GT' nor 'AD' "
+            f"(entries: {list(vd.entry.keys())}). This is expected when the VDS-level "
+            "multi-allelic split was skipped, which leaves local alleles (LGT/LAD) in place."
+        )
+        return
+
+    logging.info(
+        "Auditing biallelic entries on variant data (GT indices and AD lengths)…"
+    )
+
+    checks = {}
+    if has_gt:
+        invalid_gt = _gt_out_of_bounds(vd)
+        checks["n_invalid_gt"] = hl.agg.count_where(invalid_gt)
+        checks["gt_examples"] = hl.agg.filter(
+            invalid_gt,
+            hl.agg.take(hl.struct(locus=vd.locus, alleles=vd.alleles, GT=vd.GT), 3),
+        )
+    if has_ad:
+        invalid_ad = hl.is_defined(vd.AD) & (hl.len(vd.AD) != hl.len(vd.alleles))
+        checks["n_invalid_ad"] = hl.agg.count_where(invalid_ad)
+        checks["ad_examples"] = hl.agg.filter(
+            invalid_ad,
+            hl.agg.take(hl.struct(locus=vd.locus, alleles=vd.alleles, AD=vd.AD), 3),
+        )
+
+    audit = vd.aggregate_entries(hl.struct(**checks))
+
+    n_gt = audit.n_invalid_gt if has_gt else 0
+    n_ad = audit.n_invalid_ad if has_ad else 0
+
+    if n_gt == 0 and n_ad == 0:
         logging.info("✓ All entries valid (GT indices and AD lengths correct)")
+        return
+
+    if n_gt > 0:
+        logging.warning(
+            f"Found {n_gt} entries with out-of-bounds GT indices; they will be set to missing. "
+            f"Examples: {audit.gt_examples}"
+        )
+    if n_ad > 0:
+        # Reported only -- an AD of the wrong length is a caller/pipeline bug upstream, and
+        # silently rewriting depths would hide it.
+        logging.warning(
+            f"Found {n_ad} entries with AD length mismatch. Examples: {audit.ad_examples}"
+        )
+
+
+def _apply_biallelic_gt_fix(mt: hl.MatrixTable) -> hl.MatrixTable:
+    """Set out-of-bounds genotypes to missing, as a LAZY expression on the dense matrix.
+
+    Applied unconditionally, and that is the crux of the fix. The previous version gated this on
+    `if n_invalid_gt > 0`, and *reading* that count is an eager action: it forced Hail to execute
+    the whole densify plan a first time, purely to decide whether to add an annotation. Expressed
+    unconditionally, the repair instead folds into the single pass that writes the MatrixTable.
+
+    On clean data -- which is what a VDS-level split is supposed to guarantee -- this is the
+    identity: `hl.if_else(False, missing, GT)` is `GT`, so the written entries are unchanged.
+
+    It stays on the DENSE matrix on purpose: correctness of the output must not depend on the
+    reference-block invariants that make the sparse audit sound.
+    """
+    if "GT" not in mt.entry:
         return mt
 
-    # Log issues found
-    if validation.n_invalid_gt > 0:
-        logging.warning(
-            f"Found {validation.n_invalid_gt} entries with out-of-bounds GT indices. "
-            f"Examples: {validation.gt_examples}"
-        )
-
-    if validation.n_invalid_ad > 0:
-        logging.warning(
-            f"Found {validation.n_invalid_ad} entries with AD length mismatch. "
-            f"Examples: {validation.ad_examples}"
-        )
-
-    # Fix invalid GTs (set to missing)
-    if validation.n_invalid_gt > 0:
-        logging.info("Setting invalid genotypes to missing…")
-        mt = mt.annotate_entries(
-            GT=hl.if_else(
-                hl.is_defined(mt.GT)
-                & hl.any(
-                    lambda i: mt.GT[i] >= hl.len(mt.alleles), hl.range(0, mt.GT.ploidy)
-                ),
-                hl.missing(hl.tcall),
-                mt.GT,
-            )
-        )
-
-    return mt
+    return mt.annotate_entries(
+        GT=hl.if_else(_gt_out_of_bounds(mt), hl.missing(hl.tcall), mt.GT)
+    )
 
 
 @algorithm(name="convert_vds_to_mt", backends=[Backend.HAIL])
@@ -137,17 +165,18 @@ def convert_vds_to_mt(
 
     This function:
     1. Splits multi-allelic variants at VDS level (recommended for VDS data)
-    2. Densifies to MatrixTable
-    3. Validates biallelic entries (optional, for safety)
-    4. Annotates adjusted genotypes (optional, requires gnomad)
-    5. Keys by sample and writes to disk
+    2. Audits biallelic entries on the sparse variant data (optional, for safety)
+    3. Densifies to MatrixTable
+    4. Repairs out-of-bounds genotypes (lazily, fused into the write)
+    5. Annotates adjusted genotypes (optional, requires gnomad)
+    6. Keys by sample and writes to disk
 
     Parameters:
         vds_path: Path to the input VDS
         output_path: Path where the output MatrixTable will be written
         adjust_genotypes: If True, annotate with adjusted genotypes (requires gnomad)
         skip_split_multi: If True, skip splitting multi-allelic variants
-        skip_validation: If True, skip biallelic validation (faster, use only if confident)
+        skip_validation: If True, skip both the biallelic audit and the repair
         skip_keying_by_cols: If True, skip keying the MatrixTable by columns
         overwrite: Whether to overwrite the output if it already exists
 
@@ -156,8 +185,11 @@ def convert_vds_to_mt(
 
     Notes:
         - VDS-level splitting is critical for correct GT/AD/PL alignment
-        - Validation can be skipped for trusted pipelines to improve performance
         - After VDS split, GT/AD are already biallelic (no manual downcoding needed)
+        - The densify is executed EXACTLY ONCE, by the final write. Hail is lazy and does not
+          cache, so any eager action on the dense MatrixTable (an aggregate, a count) would
+          re-execute the densify from the top. The audit therefore runs on the sparse variant data
+          and the repair is expressed lazily; see `_audit_split_variant_data`.
         - This algorithm operates on raw `hl.MatrixTable` / `hl.VariantDataset` instances
           (genotype data). ExpressionMatrix's hail-mt backend isn't available yet (Phase J).
     """
@@ -174,14 +206,24 @@ def convert_vds_to_mt(
         vds = hl.vds.read_vds(vds_path)
         vds = _split_vds(vds, skip_split=skip_split_multi)
 
-        # Step 2: Densify to MatrixTable
+        # Step 2: Audit the SPARSE variant data, before densifying. Every eager action on the
+        # dense MatrixTable re-runs the densify from scratch (Hail is lazy and does not cache), so
+        # a validation aggregate there would double the cost of this whole stage.
+        if skip_validation:
+            logging.info("Skipping biallelic audit (skip_validation=True)")
+        else:
+            _audit_split_variant_data(vds)
+
+        # Step 3: Densify to MatrixTable
         logging.info("Converting VDS to dense MatrixTable…")
         mt = hl.vds.to_dense_mt(vds)
 
-        # Step 3: Validate biallelic entries (optional, can skip for performance)
-        mt = _validate_and_fix_biallelic_entries(mt, skip_validation=skip_validation)
+        # Step 4: Repair out-of-bounds genotypes. A lazy expression: it costs no extra pass,
+        # it fuses into the write below, and on clean data it is the identity.
+        if not skip_validation:
+            mt = _apply_biallelic_gt_fix(mt)
 
-        # Step 4: Annotate adjusted genotypes (optional, requires gnomad)
+        # Step 5: Annotate adjusted genotypes (optional, requires gnomad)
         if adjust_genotypes:
             logging.info("Annotating MatrixTable with adjusted genotypes...")
             required_fields = {"GQ", "DP", "AD", "GT"}
@@ -196,12 +238,12 @@ def convert_vds_to_mt(
                 mt = annotate_adj(mt)
                 logging.info("Adjusted genotype annotation completed.")
 
-        # Step 5: Key by sample (optional)
+        # Step 6: Key by sample (optional)
         if not skip_keying_by_cols:
             logging.info("Keying MatrixTable by sample column 's'...")
             mt = mt.key_cols_by(mt["s"])
 
-        # Step 6: Write output
+        # Step 7: Write output -- the ONLY action that executes the densify
         logging.info(f"Writing MatrixTable to {output_path}...")
         mt.write(output_path, overwrite=overwrite)
         logging.info("✓ MatrixTable successfully written.")
