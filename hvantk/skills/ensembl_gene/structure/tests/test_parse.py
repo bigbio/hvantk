@@ -1,6 +1,9 @@
 """Per-gene structural summary parsed from an Ensembl GTF."""
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -69,11 +72,16 @@ def test_version_suffixes_are_stripped(tmp_path):
 
 
 def test_tie_break_deterministic_on_equal_cds_length(tmp_path):
-    """When two non-MANE transcripts have equal CDS length, pick the larger transcript ID.
+    """When two non-MANE transcripts have equal CDS length, output must be deterministic.
 
-    This tests the determinism fix: without transcript ID in the tie-break key, max()
-    would resolve ties by set iteration order (Python's per-process hash seed), causing
-    non-deterministic output across runs.
+    Without transcript ID in the tie-break key, max() would resolve ties by set iteration
+    order (Python's per-process hash seed), causing non-deterministic winners across runs.
+    This test verifies that output is identical across at least 8 subprocess runs with
+    different PYTHONHASHSEED values, proving the tuple-key (length, transcript_id) is
+    load-bearing for determinism.
+
+    The winner should be the transcript with the larger ID (lexicographically), since
+    (length, transcript_id) tuple comparison sorts on the second element to break ties.
     """
     gtf = tmp_path / "tie.gtf"
     gtf.write_text(
@@ -86,8 +94,36 @@ def test_tie_break_deterministic_on_equal_cds_length(tmp_path):
         '1\te\tCDS\t1\t9\t.\t+\t0\tgene_id "ENSG00000000010"; '
         'transcript_id "ENST00000000011";\n'
     )
-    out = parse_gtf_structure(str(gtf))
-    row = out.iloc[0]
-    # Both transcripts have 9 bp CDS; the one with larger ID (ENST00000000011) should win
-    assert row.cds_transcript == "ENST00000000011"
-    assert row.cds_length == 9
+
+    # Snippet to run in subprocess: parse the GTF and print the winner cds_transcript.
+    snippet = f"""
+import sys
+sys.path.insert(0, "/fs/dss/home/heto4575/projects/pyvatk")
+from hvantk.skills.ensembl_gene.structure.parse import parse_gtf_structure
+df = parse_gtf_structure({str(gtf)!r})
+print(df.iloc[0]["cds_transcript"])
+"""
+
+    # Run the parser 8 times, each with a different PYTHONHASHSEED.
+    winners = []
+    for seed in range(8):
+        env = {**os.environ, "PYTHONHASHSEED": str(seed)}
+        result = subprocess.run(
+            [sys.executable, "-c", snippet],
+            env=env,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        winner = result.stdout.strip()
+        winners.append(winner)
+
+    # All runs must produce the identical winner; if they differ, the determinism is broken.
+    assert len(set(winners)) == 1, (
+        f"Determinism broken: got different winners across seeds: {winners}. "
+        "The tuple-key (cds_bp[t], t) is not being used."
+    )
+
+    # Verify the winner is the larger transcript ID (the expected tie-break result).
+    expected_winner = "ENST00000000011"
+    assert winners[0] == expected_winner
