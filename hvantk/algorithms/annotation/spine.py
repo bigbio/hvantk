@@ -80,6 +80,11 @@ def build_spine(genes_ht, structure_ht, hgnc_ht, *, biotype: str = "protein_codi
             key=lambda r: r.hgnc_id,
         )
     )
+    # Only hgnc_id and gene_group are pulled from HGNC. gene_group is array<str> upstream
+    # (a gene can be in several groups) and is carried through unreduced -- a downstream
+    # consumer sees the real shape rather than a lossy scalar. mane_select is taken from
+    # `structure` (a plain str), NOT from HGNC's own array<str> mane_select field, so this
+    # select must not start pulling HGNC's mane_select or it would collide with structure's.
     hgnc_by_gene = hgnc_by_gene.select(
         hgnc_id=hgnc_by_gene._records[0].hgnc_id,
         gene_group=hgnc_by_gene._records[0].gene_group,

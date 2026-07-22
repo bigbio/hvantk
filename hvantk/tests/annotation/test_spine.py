@@ -85,7 +85,13 @@ def _structure_ht():
 
 
 def _hgnc_ht():
-    """ENSG3 is deliberately absent -- a protein-coding gene with no HGNC record."""
+    """ENSG3 is deliberately absent -- a protein-coding gene with no HGNC record.
+
+    ``gene_group`` is ``array<str>`` to match the real ``hgnc:lookup`` schema (a gene can
+    belong to several HGNC gene groups): modelling it as a scalar here would assert a
+    contract production never produces. The spine carries the array through unchanged -- it
+    is deliberately not reduced to a scalar, so a P2 consumer sees the real shape.
+    """
     import hail as hl
 
     return hl.Table.parallelize(
@@ -94,17 +100,20 @@ def _hgnc_ht():
                 "hgnc_id": "HGNC:1",
                 "symbol": "MYL7",
                 "ensembl_gene_id": "ENSG1",
-                "gene_group": "Myosin light chains",
+                "gene_group": ["Myosin light chains"],
             },
             {
                 "hgnc_id": "HGNC:2",
                 "symbol": "LNC1",
                 "ensembl_gene_id": "ENSG2",
-                "gene_group": "",
+                "gene_group": [],
             },
         ],
         hl.tstruct(
-            hgnc_id=hl.tstr, symbol=hl.tstr, ensembl_gene_id=hl.tstr, gene_group=hl.tstr
+            hgnc_id=hl.tstr,
+            symbol=hl.tstr,
+            ensembl_gene_id=hl.tstr,
+            gene_group=hl.tarray(hl.tstr),
         ),
         key=["hgnc_id"],
     )
@@ -136,9 +145,9 @@ def test_structure_and_hgnc_fields_are_carried(hail_session):
 
     assert row.cds_length == 300
     assert row.n_coding_exons == 2
-    assert row.mane_select == "ENST1"
+    assert row.mane_select == "ENST1"  # from structure (str), not HGNC's array<str>
     assert row.hgnc_id == "HGNC:1"
-    assert row.gene_group == "Myosin light chains"
+    assert row.gene_group == ["Myosin light chains"]  # array<str>, carried unreduced
 
 
 @pytest.mark.hail
@@ -179,17 +188,20 @@ def test_two_hgnc_records_for_one_gene_do_not_duplicate_the_row(hail_session):
                 "hgnc_id": "HGNC:9",
                 "symbol": "MYL7B",
                 "ensembl_gene_id": "ENSG1",
-                "gene_group": "Z group",
+                "gene_group": ["Z group"],
             },
             {
                 "hgnc_id": "HGNC:1",
                 "symbol": "MYL7",
                 "ensembl_gene_id": "ENSG1",
-                "gene_group": "Myosin light chains",
+                "gene_group": ["Myosin light chains"],
             },
         ],
         hl.tstruct(
-            hgnc_id=hl.tstr, symbol=hl.tstr, ensembl_gene_id=hl.tstr, gene_group=hl.tstr
+            hgnc_id=hl.tstr,
+            symbol=hl.tstr,
+            ensembl_gene_id=hl.tstr,
+            gene_group=hl.tarray(hl.tstr),
         ),
         key=["hgnc_id"],
     )
@@ -199,5 +211,7 @@ def test_two_hgnc_records_for_one_gene_do_not_duplicate_the_row(hail_session):
     assert spine.count() == 2  # ENSG1 + ENSG3, not 3
     assert spine.count() == spine.distinct().count()
     row = spine.filter(spine.gene_id == "ENSG1").collect()[0]
-    assert row.hgnc_id == "HGNC:1"  # lowest hgnc_id wins, deterministically
-    assert row.gene_group == "Myosin light chains"
+    assert (
+        row.hgnc_id == "HGNC:1"
+    )  # lexicographically smallest hgnc_id wins, deterministically
+    assert row.gene_group == ["Myosin light chains"]  # the winning record's array

@@ -96,9 +96,13 @@ def test_tie_break_deterministic_on_equal_cds_length(tmp_path):
     )
 
     # Snippet to run in subprocess: parse the GTF and print the winner cds_transcript.
+    # The repo root is derived from this test file's location, not hardcoded -- a hardcoded
+    # absolute path would make the determinism guard itself non-portable, failing (or, worse,
+    # silently importing a different copy of hvantk) on any other checkout or on CI.
+    repo_root = Path(__file__).resolve().parents[5]
     snippet = f"""
 import sys
-sys.path.insert(0, "/fs/dss/home/heto4575/projects/pyvatk")
+sys.path.insert(0, {str(repo_root)!r})
 from hvantk.skills.ensembl_gene.structure.parse import parse_gtf_structure
 df = parse_gtf_structure({str(gtf)!r})
 print(df.iloc[0]["cds_transcript"])
