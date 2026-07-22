@@ -86,6 +86,48 @@ hvantk hgc pipeline \
 
 See [Pipeline Orchestration](#pipeline-orchestration) for detailed documentation.
 
+#### Tuning combiner parallelism (`--import-interval-size`)
+
+Hail's gVCF combiner partitions the import by **even genomic intervals**, and derives
+**one partition per interval**. The interval size therefore sets a *ceiling* on how many
+cores can do useful work in the combine stage — the stage that dominates joint-genotyping
+runtime.
+
+The default is Hail's genome default of **1.2 Mb**, which is sized for whole-genome gVCFs.
+For a **region-restricted** run (a single chromosome, an exome, a gene panel) it can
+produce far fewer partitions than you have cores, leaving most of them idle:
+
+| Input region | Partitions at the 1.2 Mb default |
+|---|---|
+| chr20 (64.4 Mb) | 54 |
+| chr1 (249.0 Mb) | 208 |
+| whole genome (3.1 Gb) | ~2,584 |
+
+**Rule of thumb: keep partitions at roughly 2–4× your total core count.** If you run
+chr20 on 128 cores with the default, ~74 cores have nothing to do — which looks like
+"the tool doesn't scale" but is purely a partitioning artefact.
+
+```bash
+# chr1 on a 128-core cluster: 600 kb -> 415 partitions (~3x cores)
+hvantk hgc gvcf-combine -g /path/to/chr1_gvcfs -o cohort.vds \
+    --import-interval-size 600000
+
+# The same knob on the recommended end-to-end pipeline
+hvantk hgc pipeline -i /path/to/chr1_gvcfs -o /path/to/out \
+    --import-interval-size 600000
+```
+
+Related tuning options (available on both `gvcf-combine` and `pipeline`):
+
+| Option | Meaning | Hail default |
+|---|---|---|
+| `--import-interval-size` | Interval size (bp); **one partition per interval** | 1.2 Mb (genome) |
+| `--use-exome-default-intervals` | Use Hail's exome interval size | 60 Mb |
+| `--gvcf-batch-size` | gVCFs merged per tree-merge batch | 50 |
+| `--branch-factor` | Branch factor of the hierarchical merge | 100 |
+
+`--import-interval-size` and `--use-exome-default-intervals` are mutually exclusive.
+
 #### Individual Component Commands
 
 For advanced users who need fine-grained control, HGC provides individual commands:
