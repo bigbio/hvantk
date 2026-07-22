@@ -56,6 +56,7 @@ EXPECTED_DATASETS = {
     "cptac:phospho",
     "dbnsfp:variants",
     "ensembl-gene:genes",
+    "ensembl-gene:structure",
     "expression-atlas:dataset",
     "gencc:submissions",
     "gevir:metrics",
