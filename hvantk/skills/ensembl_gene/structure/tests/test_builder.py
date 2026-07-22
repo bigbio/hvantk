@@ -98,3 +98,40 @@ def test_protein_coding_only_param_filters(hail_session, tmp_path):
     ht = hl.read_table(output_path)
 
     assert ht.count() == 2  # the lncRNA gene is dropped
+
+
+@pytest.mark.hail
+def test_builder_accepts_a_raw_directory(hail_session, tmp_path):
+    """End-to-end guard for the reprocess path: `hvantk reprocess` hands the builder the
+    raw directory (no parse stage), not the GTF file. The build must succeed against a
+    directory containing the downloaded GTF, not crash with IsADirectoryError.
+
+    The downloaded artifact is gzipped (``...gtf.gz``), so the fixture is gzipped into the
+    committed filename here -- which also exercises the parser's gzip branch."""
+    import gzip
+
+    import hail as hl
+
+    from hvantk.resources.ensembl_release import ENSEMBL_GTF_FILENAME
+    from hvantk.skills.ensembl_gene.structure.builder import (
+        build_ensembl_gene_structure,
+    )
+
+    raw_dir = tmp_path / "raw"
+    raw_dir.mkdir()
+    with open(FIXTURE, "rb") as src, gzip.open(
+        raw_dir / ENSEMBL_GTF_FILENAME, "wb"
+    ) as dst:
+        dst.write(src.read())  # what the downloader writes: a gzipped GTF
+
+    builder = phase_b_snapshot_adapter(
+        build_ensembl_gene_structure, "ensembl-gene:structure"
+    )
+    output_path = str(tmp_path / "structure_from_dir.ht")
+    builder(
+        input_path=str(raw_dir), output_path=output_path
+    )  # reprocess passes the dir
+    ht = hl.read_table(output_path)
+
+    assert ht.count() == 3
+    assert list(ht.key) == ["gene_id"]

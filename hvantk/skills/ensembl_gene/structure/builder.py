@@ -9,10 +9,30 @@ burden counts, so it must be available as a nuisance covariate rather than omitt
 from __future__ import annotations
 
 import logging
+import os
+
+from hvantk.resources.ensembl_release import ENSEMBL_GTF_FILENAME
 
 logger = logging.getLogger(__name__)
 
 SCHEMA_ID = "ensembl-gene-structure-v1"
+
+
+def _resolve_gtf_path(parsed_input) -> str:
+    """Resolve the builder's input to the GTF file itself.
+
+    This dataset declares ``lifecycle.download`` but no ``lifecycle.parse``, so
+    ``hvantk reprocess`` hands the builder the raw *directory* (the download wrote the
+    GTF inside it), not the file. Sibling plugins survive this because ``hl.import_table``
+    tolerates a directory path; this builder reads the GTF with plain Python ``open()``,
+    which raises ``IsADirectoryError`` on a directory. So resolve a directory to the known
+    committed filename here. A path that already points at a file is returned unchanged,
+    which keeps the direct ``build(input_path=<file>)`` calls (tests, snapshots) working.
+    """
+    path = str(parsed_input)
+    if os.path.isdir(path):
+        return os.path.join(path, ENSEMBL_GTF_FILENAME)
+    return path
 
 
 def build_ensembl_gene_structure(parsed_input, ctx, **params):
@@ -37,7 +57,7 @@ def build_ensembl_gene_structure(parsed_input, ctx, **params):
     from hvantk.core.models import AnnotationTable
     from hvantk.skills.ensembl_gene.structure.parse import parse_gtf_structure
 
-    df = parse_gtf_structure(str(parsed_input))
+    df = parse_gtf_structure(_resolve_gtf_path(parsed_input))
 
     if params.get("protein_coding_only", False):
         df = df[df.gene_biotype == "protein_coding"].reset_index(drop=True)
