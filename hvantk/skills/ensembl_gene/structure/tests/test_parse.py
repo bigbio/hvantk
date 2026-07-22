@@ -32,7 +32,7 @@ def test_mane_wins_over_a_longer_non_mane_transcript(df):
     row = df[df.gene_id == "ENSG00000000001"].iloc[0]
     assert row.mane_select == "ENST00000000001"
     assert row.cds_transcript == "ENST00000000001"
-    assert row.cds_length == 300          # (1099-1000+1) + (2199-2000+1)
+    assert row.cds_length == 300  # (1099-1000+1) + (2199-2000+1)
     assert row.n_coding_exons == 2
     assert row.n_transcripts == 2
 
@@ -42,7 +42,7 @@ def test_longest_cds_wins_when_there_is_no_mane(df):
     row = df[df.gene_id == "ENSG00000000002"].iloc[0]
     assert row.mane_select == ""
     assert row.cds_transcript == "ENST00000000004"
-    assert row.cds_length == 300          # 1299-1000+1
+    assert row.cds_length == 300  # 1299-1000+1
     assert row.n_coding_exons == 1
 
 
@@ -66,3 +66,28 @@ def test_version_suffixes_are_stripped(tmp_path):
     out = parse_gtf_structure(str(gtf))
     assert out.iloc[0].gene_id == "ENSG00000000009"
     assert out.iloc[0].cds_transcript == "ENST00000000009"
+
+
+def test_tie_break_deterministic_on_equal_cds_length(tmp_path):
+    """When two non-MANE transcripts have equal CDS length, pick the larger transcript ID.
+
+    This tests the determinism fix: without transcript ID in the tie-break key, max()
+    would resolve ties by set iteration order (Python's per-process hash seed), causing
+    non-deterministic output across runs.
+    """
+    gtf = tmp_path / "tie.gtf"
+    gtf.write_text(
+        '1\te\ttranscript\t1\t9\t.\t+\t.\tgene_id "ENSG00000000010"; '
+        'transcript_id "ENST00000000010"; gene_biotype "protein_coding";\n'
+        '1\te\tCDS\t1\t9\t.\t+\t0\tgene_id "ENSG00000000010"; '
+        'transcript_id "ENST00000000010";\n'
+        '1\te\ttranscript\t1\t9\t.\t+\t.\tgene_id "ENSG00000000010"; '
+        'transcript_id "ENST00000000011"; gene_biotype "protein_coding";\n'
+        '1\te\tCDS\t1\t9\t.\t+\t0\tgene_id "ENSG00000000010"; '
+        'transcript_id "ENST00000000011";\n'
+    )
+    out = parse_gtf_structure(str(gtf))
+    row = out.iloc[0]
+    # Both transcripts have 9 bp CDS; the one with larger ID (ENST00000000011) should win
+    assert row.cds_transcript == "ENST00000000011"
+    assert row.cds_length == 9

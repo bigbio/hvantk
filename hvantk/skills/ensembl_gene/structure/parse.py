@@ -90,7 +90,13 @@ def parse_gtf_structure(gtf_path: str) -> pd.DataFrame:
         coding = [t for t in transcripts if cds_bp[t] > 0]
         representative = mane_of_gene.get(gene_id)
         if representative is None or representative not in coding:
-            representative = max(coding, key=lambda t: cds_bp[t]) if coding else None
+            # Tie-break on transcript ID, not just length: `coding` derives from a set, so a
+            # bare max() on length alone resolves ties by set iteration order, which follows
+            # Python's per-process string-hash seed. That makes the output differ between runs
+            # on identical input.
+            representative = (
+                max(coding, key=lambda t: (cds_bp[t], t)) if coding else None
+            )
         rows.append(
             {
                 "gene_id": gene_id,
