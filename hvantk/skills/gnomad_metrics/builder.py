@@ -3,6 +3,7 @@
 Owns the Phase B ``build_gnomad_metrics_metrics`` builder. Imports the
 gnomAD lof_metrics TSV keyed by ``gene_id`` and wraps with Provenance.
 """
+
 from __future__ import annotations
 
 import logging
@@ -31,15 +32,33 @@ def build_gnomad_metrics_metrics(
     **params
         Optional: fields (list of str) to select from the table.
     """
+    from pathlib import Path
+
     from hvantk.core.models import AnnotationTable
 
     fields = params.get("fields", None)
+    # Key column: v2.1.1 by_gene has "gene_id"; v4.0 constraint_metrics has no
+    # gene_id column (per-transcript rows), so callers pass e.g. key="transcript".
+    key = params.get("key", "gene_id")
+
+    # `hvantk reprocess` hands a download-only plugin's builder the raw_dir (no
+    # parse stage); resolve the constraint file inside it. An explicit file path
+    # (run_builder_for_spec / tests) is used as-is.
+    src = Path(parsed_input)
+    if src.is_dir():
+        candidates = sorted(src.glob("*.bgz")) + sorted(src.glob("*.tsv"))
+        if not candidates:
+            raise FileNotFoundError(
+                f"No gnomAD constraint file (*.bgz/*.tsv) found in {src}"
+            )
+        src = candidates[0]
+        logger.info("Resolved gnomAD constraint file: %s", src)
 
     ht = hl.import_table(
-        paths=str(parsed_input),
+        paths=str(src),
         impute=True,
         min_partitions=100,
-        key="gene_id",
+        key=key,
     )
 
     # 2. Optional field selection
