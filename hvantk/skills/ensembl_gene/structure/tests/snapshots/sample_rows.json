@@ -1,0 +1,41 @@
+[
+  {
+    "key": {
+      "gene_id": "ENSG00000000001"
+    },
+    "row": {
+      "cds_length": 300,
+      "cds_transcript": "ENST00000000001",
+      "gene_biotype": "protein_coding",
+      "mane_select": "ENST00000000001",
+      "n_coding_exons": 2,
+      "n_transcripts": 2
+    }
+  },
+  {
+    "key": {
+      "gene_id": "ENSG00000000002"
+    },
+    "row": {
+      "cds_length": 300,
+      "cds_transcript": "ENST00000000004",
+      "gene_biotype": "protein_coding",
+      "mane_select": "",
+      "n_coding_exons": 1,
+      "n_transcripts": 2
+    }
+  },
+  {
+    "key": {
+      "gene_id": "ENSG00000000003"
+    },
+    "row": {
+      "cds_length": 0,
+      "cds_transcript": "",
+      "gene_biotype": "lncRNA",
+      "mane_select": "",
+      "n_coding_exons": 0,
+      "n_transcripts": 1
+    }
+  }
+]

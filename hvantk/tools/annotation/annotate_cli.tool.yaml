@@ -1,0 +1,21 @@
+api_version: 1
+name: annotate
+domain: annotation
+type: command_group
+description: Build gene- and cohort-level annotation artifacts.
+cli:
+  module: hvantk.tools.annotation.annotate_cli
+  function: annotate_group
+purpose:
+  short: Build the gene spine and the annotation matrices that join onto it.
+  long: |
+    `hvantk annotate spine` joins ensembl-gene:genes, ensembl-gene:structure and
+    hgnc:lookup into one gene_id-keyed table that every annotation source maps onto.
+    Later subcommands (`prepare`, `compose`, `cohort`) build the per-source annotations
+    and compose them into a per-gene feature matrix.
+subcommands:
+  - name: spine
+    description: Build the protein-coding gene spine keyed on Ensembl gene_id
+requires:
+  hail: true
+  network: false

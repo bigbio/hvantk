@@ -3,13 +3,13 @@
 Moved from hvantk/core/ptm_constants.py per issue #122 (clean-core principle).
 """
 
-# Ensembl GTF
-ENSEMBL_RELEASE = "113"
-ENSEMBL_GTF_URL = (
-    f"https://ftp.ensembl.org/pub/release-{ENSEMBL_RELEASE}"
-    f"/gtf/homo_sapiens/Homo_sapiens.GRCh38.{ENSEMBL_RELEASE}.gtf.gz"
+# Ensembl GTF -- release pinned once, in the ensembl-gene plugin. Re-exported here so
+# existing importers of hvantk.algorithms.ptm.constants keep working unchanged.
+from hvantk.resources.ensembl_release import (  # noqa: F401
+    ENSEMBL_GTF_FILENAME,
+    ENSEMBL_GTF_URL,
+    ENSEMBL_RELEASE,
 )
-ENSEMBL_GTF_FILENAME = f"Homo_sapiens.GRCh38.{ENSEMBL_RELEASE}.gtf.gz"
 
 # PTM type categories (UniProt MOD_RES description prefixes)
 PTM_TYPE_CATEGORIES = {

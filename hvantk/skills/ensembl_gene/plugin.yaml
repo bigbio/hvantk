@@ -32,3 +32,32 @@ datasets:
       schema_snapshot: tests/snapshots/schema.json
       row_snapshot: tests/snapshots/sample_rows.json
       drift_fingerprint: tests/drift_fingerprint.json
+
+  - name: structure
+    domain: mapping
+    backend: hail
+    artifact_type: AnnotationTable
+    schema_id: ensembl-gene-structure-v1
+    builder:
+      module: hvantk.skills.ensembl_gene.structure.builder
+      function: build_ensembl_gene_structure
+    drift_probe:
+      module: hvantk.skills.ensembl_gene.structure.drift_probe
+      function: fetch_fingerprint
+    lifecycle:
+      # No parse stage: the builder reads the downloaded GTF directly.
+      download:
+        module: hvantk.skills.ensembl_gene.structure.cli
+        function: download_dataset
+    skill: structure/SKILL.md
+    tests:
+      command: pytest hvantk/skills/ensembl_gene/structure/tests -m hail
+      fixture: structure/tests/testdata/raw/ensembl-structure
+      schema_snapshot: structure/tests/snapshots/schema.json
+      row_snapshot: structure/tests/snapshots/sample_rows.json
+      drift_fingerprint: structure/tests/drift_fingerprint.json
+
+cli:
+  - command: ensembl-structure-download
+    module: hvantk.skills.ensembl_gene.structure.cli
+    function: download_cmd
