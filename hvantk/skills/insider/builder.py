@@ -46,8 +46,11 @@ def _parse_insider_bed_to_temp_tsv(input_path: str) -> str:
       - Track headers with no parseable ``name=...`` are skipped
         (``current_ppi_id`` becomes None, so subsequent rows until the next
         valid track are dropped).
-      - Zero-length intervals (``start == end``) are dropped — matches the
-        prior builder's ``skip_invalid_intervals=True`` behavior.
+      - Degenerate BED rows (``start >= end``, i.e. zero- or negative-length)
+        are dropped here — they cannot form a valid interval. Loci that fall
+        outside the reference bounds or on a non-reference contig are handled
+        separately, downstream in the builder (see
+        :func:`build_insider_interactome`).
 
     Returns the path to a Hail-managed temp file (extension ``tsv``).
     """
@@ -112,14 +115,23 @@ def build_insider_interactome(
             types={"start": hl.tint32, "end": hl.tint32},
             min_partitions=4,
         )
+        # BED is 0-based half-open; with locus_interval's default
+        # includes_start=True/includes_end=False, [start+1, end+1) maps the BED
+        # span onto Hail's 1-based coordinates. invalid_missing=True sets loci
+        # outside the reference bounds or on a non-reference contig to NA rather
+        # than raising (the default invalid_missing=False aborts the whole build
+        # on a single bad row); the is_defined filter below then drops them,
+        # matching the prior builder's skip_invalid_intervals=True intent.
         ht = ht.annotate(
             interval=hl.locus_interval(
                 ht.contig,
                 ht.start + 1,
                 ht.end + 1,
                 reference_genome=reference_genome,
+                invalid_missing=True,
             )
         )
+        ht = ht.filter(hl.is_defined(ht.interval))
         ht = ht.select("interval", "ppi_id")
         grouped = ht.group_by(ht.interval).aggregate(
             ppi_ids=hl.agg.collect_as_set(ht.ppi_id)

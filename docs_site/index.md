@@ -6,7 +6,7 @@
 
 ## Core Capabilities
 
-- **Variant annotations** — ClinVar, dbNSFP, gnomAD, CCR scores
+- **Variant annotations** — ClinVar, dbNSFP, gnomAD
 - **Gene annotations** — Ensembl, GeVIR, gene constraints
 - **Protein annotations** — INSIDER protein-protein interactions
 - **Expression data** — bulk & single-cell RNA-seq from UCSC, GTEx

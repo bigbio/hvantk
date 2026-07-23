@@ -1,37 +1,28 @@
 [
   {
-    "title": "GeVIR - Genome-wide Variant Intolerance Ranking",
+    "title": "GeVIR - Gene Variation Intolerance Rank",
     "accession": "GeVIR_v1.0",
-    "description": "Genome-wide scores for ranking the pathogenicity potential of human genetic variants. GeVIR integrates multiple genomic features to provide pathogenicity predictions for both coding and non-coding variants.",
+    "description": "Gene-level intolerance-to-variation ranks for 19,361 protein-coding genes, derived from the density and spatial distribution of protein-coding variants observed across ~138,632 gnomAD exome and genome sequences. The GeVIR percentile ranks genes by intolerance to functional variation; VIRLoF combines GeVIR with the gnomAD LOEUF loss-of-function constraint metric. This is a gene-level resource keyed by Ensembl gene_id and is build-agnostic; the underlying gnomAD data is v2 (GRCh37). It is not a variant-level pathogenicity score.",
     "pubmedid": "31873297",
     "data_source": "GeVIR",
     "last_updated": "2025-09-23T16:30:00.000000",
     "update_frequency": "irregular",
     "organism": "Homo sapiens",
     "tissue_type": "all",
-    "sample_count": 700000000,
     "license": "Academic use",
-    "doi": "10.1038/s41467-019-14246-7",
-    "genome_build": "GRCh38",
-    "variant_types": [
-      "SNV",
-      "indel"
-    ],
+    "doi": "10.1038/s41588-019-0560-2",
+    "genome_build": "GRCh37",
     "frequency_data": false,
-    "clinical_significance": true,
+    "clinical_significance": false,
     "annotation_sources": [
-      "GeVIR",
-      "CADD",
-      "phyloP",
-      "phastCons"
+      "gnomAD"
     ],
     "files": [
       {
-        "path": "gevir_scores_GRCh38.tsv.gz",
+        "path": "gevir_metrics.tsv",
         "format": "tsv",
-        "size_bytes": 20000000000,
-        "compression": "gzip",
-        "description": "GeVIR pathogenicity scores for human variants"
+        "size_bytes": 2000000,
+        "description": "Per-gene GeVIR and VIRLoF intolerance percentile ranks (~19,361 protein-coding genes)"
       }
     ]
   }

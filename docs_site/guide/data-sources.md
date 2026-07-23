@@ -214,13 +214,19 @@ hvantk reprocess ensembl-gene:genes \
   --skip-download
 ```
 
-### GeVIR (~20 GB)
+### GeVIR (~1-2 MB)
 
-Gene variation intolerance ranking scores.
+Gene-level intolerance-to-variation ranks (GeVIR and VIRLoF percentiles) for
+19,361 protein-coding genes, keyed by Ensembl gene_id. Not a variant-level
+pathogenicity score. Abramovs, Brass & Tassabehji, 2020, Nature Genetics
+52(1):35-39 (PMID 31873297, DOI 10.1038/s41588-019-0560-2).
 URL: https://www.nature.com/articles/s41588-019-0560-2
 
-**Download**: Supplementary data from the Nature publication:
-https://www.nature.com/articles/s41588-019-0560-2
+**Download**: Small supplementary table from the Nature Genetics publication
+(https://www.nature.com/articles/s41588-019-0560-2) or the authors' repository
+(https://github.com/gevirank/gevir). At ~1-2 MB with a stable, public URL, GeVIR
+qualifies for a real downloader under the framework in CLAUDE.md — a recommended
+follow-up (not yet implemented).
 
 **Build**:
 
@@ -231,15 +237,6 @@ hvantk reprocess gevir:metrics \
   --output gevir.ht \
   --skip-download
 ```
-
-### CCR - Coding-Constrained Regions (~50 MB)
-
-Highly constrained coding regions in the human genome.
-URL: https://www.nature.com/articles/s41588-018-0294-6
-
-**Download**: Supplementary data from the Nature publication above.
-
-**Note**: No builder is currently available for CCR. This is planned for a future release.
 
 ### COSMIC Cancer Gene Census
 
