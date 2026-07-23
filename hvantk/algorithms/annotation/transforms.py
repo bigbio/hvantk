@@ -70,7 +70,10 @@ def _agg_for(token, col):
         return hl.agg.count_where(hl.is_defined(col))
     if token.startswith(FRAC_GT_PREFIX):
         thr = float(token[len(FRAC_GT_PREFIX) :])
-        return hl.agg.fraction(hl.is_defined(col) & (col > thr))
+        # Denominator is the SCORED variants (col defined), consistent with `mean` above and
+        # the research brief's intent: an undiluted fraction, so a partial-coverage score is
+        # not biased downward by unscored variants counting as "not > thr".
+        return hl.agg.filter(hl.is_defined(col), hl.agg.fraction(col > thr))
     raise ValueError(f"unknown stat token {token!r}")
 
 
