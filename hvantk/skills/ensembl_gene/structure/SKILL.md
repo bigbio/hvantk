@@ -1,12 +1,16 @@
 # ensembl-gene:structure
 
-Per-gene structural summary parsed from the pinned Ensembl GTF.
+The canonical per-gene Ensembl table (location, name, biotype, and structure) parsed from the pinned GTF.
 
 **Key:** `gene_id` (Ensembl, version suffix stripped)
 
 | Column | Type | Meaning |
 |---|---|---|
 | `gene_id` | str | Ensembl gene ID, unversioned |
+| `gene_name` | str | HGNC/Ensembl gene symbol |
+| `chromosome` | str | Sequence name (e.g. `1`, `X`) |
+| `gene_start` | int | Gene start (1-based) |
+| `gene_end` | int | Gene end (1-based, inclusive) |
 | `gene_biotype` | str | e.g. `protein_coding`, `lncRNA` |
 | `mane_select` | str | MANE Select transcript ID, `""` if the gene has none |
 | `cds_transcript` | str | Representative coding transcript: MANE if present, else longest CDS |
