@@ -43,6 +43,30 @@ def test_schema_accepts_a_gene_id_entry_and_rejects_a_bad_one():
     assert not validator.is_valid(bad)
 
 
+def test_schema_rejects_a_non_gene_id_key():
+    """P2a restricts key to gene_id; a well-formed hgnc_id entry must fail validation.
+
+    This is the schema half of the key-restriction defense-in-depth. P2c widens the enum;
+    when it does, this test is the deliberate tripwire it must update.
+    """
+    import jsonschema
+
+    schema = json.loads(SCHEMA.read_text())
+    validator = jsonschema.Draft202012Validator(schema)
+    entry = {
+        "name": "x",
+        "layer1": [
+            {
+                "axis": "gene-disease",
+                "source": "clingen:gene-disease",
+                "key": "hgnc_id",
+                "columns": ["classification"],
+            }
+        ],
+    }
+    assert not validator.is_valid(entry)
+
+
 def test_load_spec_parses_a_gene_id_entry(tmp_path):
     from hvantk.algorithms.annotation.spec import load_spec
 

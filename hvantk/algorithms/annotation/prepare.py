@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 
-from hvantk.algorithms.annotation.mapping import GeneIdMapper, MappingReport
+from hvantk.algorithms.annotation.mapping import GeneIdMapper
 
 logger = logging.getLogger(__name__)
 
