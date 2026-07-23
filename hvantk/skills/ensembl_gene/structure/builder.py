@@ -5,8 +5,7 @@ carries location and name (chromosome, gene_start, gene_end, gene_name), biotype
 structural covariates downstream annotation depends on -- CDS length (needed to normalise PTM
 site counts), coding-exon count, transcript count, and the MANE Select transcript. Gene length
 is also a mechanical confounder of rare-variant burden counts, so it must be available as a
-nuisance covariate rather than omitted. (``ensembl-gene:genes`` is a separate BioMart-sourced
-dataset, no longer used by the spine.)
+nuisance covariate rather than omitted.
 """
 from __future__ import annotations
 

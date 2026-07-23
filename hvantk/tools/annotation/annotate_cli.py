@@ -70,7 +70,13 @@ def spine_cmd(gene_table, hgnc, output, biotype):
 @click.option(
     "--output", required=True, help="Output path for the prepared table (.ht)."
 )
-def prepare_cmd(spec, axis, input_path, spine, output):
+@click.option(
+    "--hgnc",
+    "hgnc_path",
+    default=None,
+    help="Path to the hgnc:lookup table (.ht); required when the entry's key is hgnc_id or symbol.",
+)
+def prepare_cmd(spec, axis, input_path, spine, output, hgnc_path):
     """Map one source onto the spine's gene_id and select its declared columns."""
     import hail as hl
 
@@ -85,7 +91,17 @@ def prepare_cmd(spec, axis, input_path, spine, output):
     source_ht = hl.read_table(input_path)
     spine_ids = hl.read_table(spine).gene_id.collect()
 
-    prepared, report = prepare_source(source_ht, spine_ids, entry)
+    hgnc = None
+    if entry.key != "gene_id":
+        if not hgnc_path:
+            raise click.UsageError(
+                f"entry {entry.source!r} has key {entry.key!r}; pass --hgnc <hgnc:lookup .ht>"
+            )
+        from hvantk.skills.hgnc.streamers import HGNCGeneCatalogStreamer
+
+        hgnc = HGNCGeneCatalogStreamer.from_path(hgnc_path)
+
+    prepared, report = prepare_source(source_ht, spine_ids, entry, hgnc=hgnc)
     enforce_rate(report, entry.min_mapping_rate)  # raises MappingRateError if too low
     prepared.write(output, overwrite=True)
 

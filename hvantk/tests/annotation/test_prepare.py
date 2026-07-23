@@ -60,15 +60,6 @@ def test_mapping_report_counts_the_off_spine_row_as_unmapped(hail_session):
 
 
 @pytest.mark.hail
-def test_a_non_gene_id_key_is_rejected_in_p2a(hail_session):
-    from hvantk.algorithms.annotation.prepare import prepare_source
-
-    bad = SourceEntry("x", "s:d", "hgnc_id", ("mis_z",))
-    with pytest.raises(ValueError, match="gene_id"):
-        prepare_source(_source_ht(), {"ENSG1"}, bad)
-
-
-@pytest.mark.hail
 def test_a_source_that_maps_no_genes_raises_a_clear_error(hail_session):
     from hvantk.algorithms.annotation.mapping import MappingRateError
     from hvantk.algorithms.annotation.prepare import prepare_source
@@ -76,3 +67,107 @@ def test_a_source_that_maps_no_genes_raises_a_clear_error(hail_session):
     # The spine shares no gene_id with the source -> every row is unmapped.
     with pytest.raises(MappingRateError, match="0 of 3"):
         prepare_source(_source_ht(), {"ENSG_NONE"}, ENTRY)
+
+
+class _FakeHGNC:
+    """Minimal stand-in for HGNCGeneCatalogStreamer: only the methods GeneIdMapper calls."""
+
+    def __init__(self, hgnc_to_ensembl=None, symbol_to_hgnc=None, canonical=None):
+        self._h2e = hgnc_to_ensembl or {}
+        self._s2h = symbol_to_hgnc or {}
+        self._canon = canonical or {}
+
+    def map_from_hgnc(self, ids, field):
+        return {i: self._h2e.get(i) for i in ids}
+
+    def resolve_to_canonical(self, symbol):
+        return self._canon.get(symbol, symbol)
+
+    def map_to_hgnc(self, symbols, field):
+        return {s: self._s2h.get(s) for s in symbols}
+
+
+def _hgnc_source_ht():
+    import hail as hl
+
+    return hl.Table.parallelize(
+        [
+            {"hgnc_id": "HGNC:1", "score": 1.0},
+            {"hgnc_id": "HGNC:2", "score": 2.0},
+            {"hgnc_id": "HGNC:404", "score": 9.0},  # will not resolve onto the spine
+        ],
+        hl.tstruct(hgnc_id=hl.tstr, score=hl.tfloat64),
+        key=["hgnc_id"],
+    )
+
+
+HGNC_ENTRY = SourceEntry(axis="x", source="s:hg", key="hgnc_id", columns=("score",))
+
+
+@pytest.mark.hail
+def test_hgnc_id_source_is_rekeyed_onto_gene_id(hail_session):
+    from hvantk.algorithms.annotation.prepare import prepare_source
+
+    fake = _FakeHGNC(
+        hgnc_to_ensembl={"HGNC:1": "ENSG1", "HGNC:2": "ENSG2", "HGNC:404": "ENSGX"}
+    )
+    prepared, report = prepare_source(
+        _hgnc_source_ht(), {"ENSG1", "ENSG2"}, HGNC_ENTRY, hgnc=fake
+    )
+    assert list(prepared.key) == ["gene_id"]
+    assert set(prepared.row) == {"gene_id", "score"}
+    assert sorted(prepared.gene_id.collect()) == [
+        "ENSG1",
+        "ENSG2",
+    ]  # HGNC:404 off-spine dropped
+    assert report.n_in == 3 and report.n_mapped == 2
+
+
+@pytest.mark.hail
+def test_symbol_source_resolves_aliases_before_mapping(hail_session):
+    import hail as hl
+
+    from hvantk.algorithms.annotation.prepare import prepare_source
+
+    src = hl.Table.parallelize(
+        [{"symbol": "OLDNAME", "score": 1.0}],
+        hl.tstruct(symbol=hl.tstr, score=hl.tfloat64),
+        key=["symbol"],
+    )
+    # OLDNAME is a previous symbol for the gene whose current symbol is NEWNAME.
+    fake = _FakeHGNC(
+        canonical={"OLDNAME": "NEWNAME"},
+        symbol_to_hgnc={"NEWNAME": "HGNC:1"},
+        hgnc_to_ensembl={"HGNC:1": "ENSG1"},
+    )
+    entry = SourceEntry(axis="x", source="s:sym", key="symbol", columns=("score",))
+    prepared, report = prepare_source(src, {"ENSG1"}, entry, hgnc=fake)
+    assert prepared.gene_id.collect() == ["ENSG1"]
+    assert report.n_mapped == 1
+
+
+@pytest.mark.hail
+def test_a_non_gene_id_key_without_hgnc_raises(hail_session):
+    from hvantk.algorithms.annotation.prepare import prepare_source
+
+    with pytest.raises(ValueError, match="hgnc"):
+        prepare_source(_hgnc_source_ht(), {"ENSG1"}, HGNC_ENTRY, hgnc=None)
+
+
+@pytest.mark.hail
+def test_two_keys_mapping_to_one_gene_is_rejected(hail_session):
+    import hail as hl
+
+    from hvantk.algorithms.annotation.prepare import prepare_source
+
+    src = hl.Table.parallelize(
+        [{"hgnc_id": "HGNC:1", "score": 1.0}, {"hgnc_id": "HGNC:2", "score": 2.0}],
+        hl.tstruct(hgnc_id=hl.tstr, score=hl.tfloat64),
+        key=["hgnc_id"],
+    )
+    # Both HGNC ids resolve to the same gene -> the re-keyed table would have two rows for ENSG1.
+    fake = _FakeHGNC(hgnc_to_ensembl={"HGNC:1": "ENSG1", "HGNC:2": "ENSG1"})
+    with pytest.raises(ValueError, match="same gene_id"):
+        prepare_source(
+            src, {"ENSG1"}, SourceEntry("x", "s:hg", "hgnc_id", ("score",)), hgnc=fake
+        )

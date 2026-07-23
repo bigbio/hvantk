@@ -196,21 +196,22 @@ hvantk reprocess insider:variants \
   --skip-download
 ```
 
-### Ensembl gene annotations (~800 MB)
+### Ensembl gene annotations (~60 MB GTF)
 
-Ensembl gene annotations (gene name, gene ID, biotype, transcript ID).
-URL: https://www.ensembl.org/info/data/ftp/index.html
+The canonical per-gene table (`ensembl-gene:structure`): gene ID, gene name, biotype,
+coordinates, CDS length, coding-exon count, transcript count, and MANE Select — parsed from
+the pinned-release Ensembl GTF. The release is pinned in
+`hvantk/resources/ensembl_release.py`; the same pin governs the PTM coordinate mapper.
 
-**Download**: Export from BioMart with the required attributes matching `ENSEMBL_BIOMART_FIELDS` in `hvantk/skills/ensembl_gene/shared/constants.py`. Alternatively, download from the Ensembl FTP:
-https://www.ensembl.org/info/data/ftp/index.html
+**Download**: the release-pinned GTF from the Ensembl FTP
+(https://ftp.ensembl.org/pub/), or via the plugin's downloader.
 
 **Build**:
 
 ```bash
-# Place biomart_export.tsv.bgz in data/ensembl_gene/ then:
-hvantk reprocess ensembl-gene:genes \
-  --raw-dir data/ensembl_gene/ \
-  --output ensembl_gene.ht \
+hvantk reprocess ensembl-gene:structure \
+  --raw-dir data/ensembl/ \
+  --output ensembl_structure.ht \
   --skip-download
 ```
 

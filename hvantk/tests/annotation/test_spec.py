@@ -1,4 +1,4 @@
-"""Feature-spec parsing and validation (P2a: gene_id-keyed entries only)."""
+"""Feature-spec parsing and validation (keys: gene_id, hgnc_id, symbol)."""
 from __future__ import annotations
 
 import json
@@ -57,11 +57,12 @@ def test_schema_accepts_a_gene_id_entry_and_rejects_a_bad_one():
         jsonschema.validate(bad, schema)
 
 
-def test_schema_rejects_a_non_gene_id_key():
-    """P2a restricts key to gene_id; a well-formed hgnc_id entry must fail validation.
+def test_schema_rejects_an_unknown_key():
+    """Validates that only the allowed keys (gene_id, hgnc_id, symbol) pass validation.
 
-    This is the schema half of the key-restriction defense-in-depth. P2c widens the enum;
-    when it does, this test is the deliberate tripwire it must update.
+    This is the schema half of the key-restriction defense-in-depth. P2c widened the enum
+    to gene_id/hgnc_id/symbol; this tripwire now asserts a still-unknown key (protein_id) is
+    rejected, and must be re-pointed at a new unknown key if the enum widens again.
     """
     import jsonschema
     import pytest
@@ -71,9 +72,9 @@ def test_schema_rejects_a_non_gene_id_key():
         "name": "x",
         "layer1": [
             {
-                "axis": "gene-disease",
-                "source": "clingen:gene-disease",
-                "key": "hgnc_id",
+                "axis": "protein",
+                "source": "some:source",
+                "key": "protein_id",
                 "columns": ["classification"],
             }
         ],
@@ -185,4 +186,38 @@ def test_duplicate_axis_labels_are_rejected(tmp_path):
     p.write_text(doc)
 
     with pytest.raises(ValueError, match="duplicate axis"):
+        load_spec(p)
+
+
+def test_hgnc_id_and_symbol_keys_are_accepted(tmp_path):
+    from hvantk.algorithms.annotation.spec import load_spec
+
+    doc = (
+        "name: t\n"
+        "layer1:\n"
+        "  - {axis: a, source: s:one, key: hgnc_id, columns: [c1]}\n"
+        "  - {axis: b, source: s:two, key: symbol, columns: [c2]}\n"
+    )
+    p = tmp_path / "s.yaml"
+    p.write_text(doc)
+
+    spec = load_spec(p)
+    assert spec.entry("a").key == "hgnc_id"
+    assert spec.entry("b").key == "symbol"
+
+
+def test_an_unknown_key_is_still_rejected(tmp_path):
+    import jsonschema
+
+    from hvantk.algorithms.annotation.spec import load_spec
+
+    doc = (
+        "name: t\n"
+        "layer1:\n"
+        "  - {axis: a, source: s:one, key: protein_id, columns: [c1]}\n"
+    )
+    p = tmp_path / "s.yaml"
+    p.write_text(doc)
+
+    with pytest.raises(jsonschema.ValidationError):
         load_spec(p)

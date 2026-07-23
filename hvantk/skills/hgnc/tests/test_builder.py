@@ -20,6 +20,7 @@ from hvantk.tests._snapshot_utils import (
     load_snapshot,
     phase_b_snapshot_adapter,
 )
+
 # Aliased to avoid shadowing the fixture name `regenerate_snapshots` in the test signature
 from hvantk.tests._snapshot_utils import regenerate_snapshots as regenerate_snapshots_fn
 
@@ -52,15 +53,33 @@ def test_hgnc_snapshot_round_trip(hail_session, tmp_path, regenerate_snapshots):
             snapshot_dir=SNAPSHOT_DIR,
             keys=SAMPLE_KEYS,
         )
-        pytest.skip("Snapshots regenerated; rerun without --regenerate-snapshots to assert.")
+        pytest.skip(
+            "Snapshots regenerated; rerun without --regenerate-snapshots to assert."
+        )
 
     output_path = str(tmp_path / "hgnc.ht")
     builder(input_path=FIXTURE, output_path=output_path)
     ht = hl.read_table(output_path)
 
     expected_schema = load_snapshot(SNAPSHOT_DIR / "schema.json")
-    assert hail_schema_to_dict(ht) == expected_schema, "HGNC schema drifted from snapshot"
+    assert (
+        hail_schema_to_dict(ht) == expected_schema
+    ), "HGNC schema drifted from snapshot"
 
     expected_rows = load_snapshot(SNAPSHOT_DIR / "sample_rows.json")
     actual_rows = collect_sample_rows(ht, keys=SAMPLE_KEYS)
     assert actual_rows == expected_rows, "HGNC sample rows drifted from snapshot"
+
+
+@pytest.mark.hail
+def test_map_from_hgnc_returns_empty_for_empty_input(hail_session, tmp_path):
+    """map_from_hgnc([]) must return {} rather than crash on hl.literal(set())."""
+    from hvantk.skills.hgnc.builder import build_hgnc_gene_lookup
+    from hvantk.skills.hgnc.streamers import HGNCGeneCatalogStreamer
+
+    builder = phase_b_snapshot_adapter(build_hgnc_gene_lookup, "hgnc:lookup")
+    out = str(tmp_path / "hgnc.ht")
+    builder(input_path=FIXTURE, output_path=out)
+    streamer = HGNCGeneCatalogStreamer.from_path(out)
+
+    assert streamer.map_from_hgnc([], "ensembl_gene_id") == {}

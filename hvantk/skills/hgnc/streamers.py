@@ -241,9 +241,7 @@ class HGNCGeneCatalogStreamer(GeneCatalogStreamer):
     def resolve_alias(self, symbol: str) -> str | None:
         return self._alias_to_canonical.get(symbol)
 
-    def expand_with_aliases(
-        self, symbols: set[str]
-    ) -> tuple[set[str], dict[str, str]]:
+    def expand_with_aliases(self, symbols: set[str]) -> tuple[set[str], dict[str, str]]:
         """Expand a gene set to include all known HGNC aliases.
 
         Absorbed from ``core/utils/gene_aliases.expand_gene_set_with_aliases``.
@@ -428,6 +426,9 @@ class HGNCGeneCatalogStreamer(GeneCatalogStreamer):
             Mapping from HGNC ID to target ID (or None if not found).
             For uniprot_id, returns the first UniProt ID if multiple exist.
         """
+        if not hgnc_ids:
+            return {}
+
         if target_type == "hgnc_id":
             return {id_: id_ for id_ in hgnc_ids}
 
