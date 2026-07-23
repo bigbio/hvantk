@@ -81,7 +81,10 @@ def prepare_cmd(spec, axis, input_path, spine, output, hgnc_path):
     import hail as hl
 
     from hvantk.algorithms.annotation.mapping import enforce_rate
-    from hvantk.algorithms.annotation.prepare import prepare_source
+    from hvantk.algorithms.annotation.prepare import (
+        prepare_source,
+        prepare_variant_source,
+    )
     from hvantk.algorithms.annotation.spec import load_spec
     from hvantk.core.utils.hail_context import init_hail
 
@@ -91,18 +94,27 @@ def prepare_cmd(spec, axis, input_path, spine, output, hgnc_path):
     source_ht = hl.read_table(input_path)
     spine_ids = hl.read_table(spine).gene_id.collect()
 
+    needs_hgnc = entry.key in ("hgnc_id", "symbol") or (
+        entry.key == "variant"
+        and entry.aggregate is not None
+        and entry.aggregate.to != "gene_id"
+    )
     hgnc = None
-    if entry.key != "gene_id":
+    if needs_hgnc:
         if not hgnc_path:
             raise click.UsageError(
-                f"entry {entry.source!r} has key {entry.key!r}; pass --hgnc <hgnc:lookup .ht>"
+                f"entry {entry.source!r} needs --hgnc <hgnc:lookup .ht>"
             )
         from hvantk.skills.hgnc.streamers import HGNCGeneCatalogStreamer
 
         hgnc = HGNCGeneCatalogStreamer.from_path(hgnc_path)
 
-    prepared, report = prepare_source(source_ht, spine_ids, entry, hgnc=hgnc)
-    enforce_rate(report, entry.min_mapping_rate)  # raises MappingRateError if too low
+    if entry.key == "variant":
+        prepared, report = prepare_variant_source(
+            source_ht, spine_ids, entry, hgnc=hgnc
+        )
+    else:
+        prepared, report = prepare_source(source_ht, spine_ids, entry, hgnc=hgnc)
+    enforce_rate(report, entry.min_mapping_rate)
     prepared.write(output, overwrite=True)
-
     click.echo(f"prepare {axis} ({entry.source}): {report.summary()} -> {output}")
