@@ -6,7 +6,11 @@
     "row": {
       "cds_length": 300,
       "cds_transcript": "ENST00000000001",
+      "chromosome": "1",
       "gene_biotype": "protein_coding",
+      "gene_end": 6000,
+      "gene_name": "GENE1",
+      "gene_start": 1000,
       "mane_select": "ENST00000000001",
       "n_coding_exons": 2,
       "n_transcripts": 2
@@ -19,7 +23,11 @@
     "row": {
       "cds_length": 300,
       "cds_transcript": "ENST00000000004",
+      "chromosome": "2",
       "gene_biotype": "protein_coding",
+      "gene_end": 5000,
+      "gene_name": "GENE2",
+      "gene_start": 1000,
       "mane_select": "",
       "n_coding_exons": 1,
       "n_transcripts": 2
@@ -32,7 +40,11 @@
     "row": {
       "cds_length": 0,
       "cds_transcript": "",
+      "chromosome": "3",
       "gene_biotype": "lncRNA",
+      "gene_end": 5000,
+      "gene_name": "LNC3",
+      "gene_start": 1000,
       "mane_select": "",
       "n_coding_exons": 0,
       "n_transcripts": 1
