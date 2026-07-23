@@ -64,7 +64,8 @@ def spine_cmd(gene_table, hgnc, output, biotype):
     "--input",
     "input_path",
     required=True,
-    help="Path to the built source AnnotationTable (.ht).",
+    help="Path to the built source: an AnnotationTable (.ht), or an AnnData (.h5ad) "
+    "for a matrix entry.",
 )
 @click.option("--spine", required=True, help="Path to the gene spine table (.ht).")
 @click.option(
@@ -82,6 +83,7 @@ def prepare_cmd(spec, axis, input_path, spine, output, hgnc_path):
 
     from hvantk.algorithms.annotation.mapping import enforce_rate
     from hvantk.algorithms.annotation.prepare import (
+        prepare_matrix_source,
         prepare_source,
         prepare_variant_source,
     )
@@ -91,7 +93,6 @@ def prepare_cmd(spec, axis, input_path, spine, output, hgnc_path):
     init_hail()
 
     entry = load_spec(spec).entry(axis)
-    source_ht = hl.read_table(input_path)
     spine_ids = hl.read_table(spine).gene_id.collect()
 
     needs_hgnc = entry.key in ("hgnc_id", "symbol") or (
@@ -109,11 +110,18 @@ def prepare_cmd(spec, axis, input_path, spine, output, hgnc_path):
 
         hgnc = HGNCGeneCatalogStreamer.from_path(hgnc_path)
 
-    if entry.key == "variant":
+    if entry.matrix is not None:
+        import anndata
+
+        matrix_ad = anndata.read_h5ad(input_path)
+        prepared, report = prepare_matrix_source(matrix_ad, spine_ids, entry, hgnc=hgnc)
+    elif entry.key == "variant":
+        source_ht = hl.read_table(input_path)
         prepared, report = prepare_variant_source(
             source_ht, spine_ids, entry, hgnc=hgnc
         )
     else:
+        source_ht = hl.read_table(input_path)
         prepared, report = prepare_source(source_ht, spine_ids, entry, hgnc=hgnc)
     enforce_rate(report, entry.min_mapping_rate)
     prepared.write(output, overwrite=True)
