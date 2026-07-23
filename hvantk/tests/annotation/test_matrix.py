@@ -71,6 +71,42 @@ def test_reduce_collapses_duplicate_symbols_with_max():
     assert df.loc["TNNT2", "asp_cm_spec"] == pytest.approx(1.0)
 
 
+def test_reduce_sum_combine_pools_subtype_fractions_for_a_cell_class():
+    # A cell CLASS (e.g. cardiomyocytes) split across subtypes: combine='sum' pools the
+    # per-subtype EWCE fractions so a pan-class gene reads high; 'max' would take only the
+    # single strongest subtype and under-read it.
+    import anndata as ad
+
+    from hvantk.algorithms.annotation.matrix import reduce_matrix_to_gene
+    from hvantk.algorithms.annotation.spec import MatrixSpec, SpecificitySpec
+
+    genes = ["PAN", "SPECIFIC"]
+    groups = ["CM_a", "CM_b", "Other"]
+    # PAN: expressed equally in both CM subtypes, nowhere else -> per-subtype spec 0.5, sum 1.0.
+    # SPECIFIC: only in CM_a -> per-subtype spec 1.0/0.0, sum 1.0, but max is also 1.0.
+    mean = np.array([[5.0, 5.0], [5.0, 0.0], [0.0, 0.0]])  # groups x genes
+    a = ad.AnnData(
+        X=None,
+        obs=pd.DataFrame({"celltype": groups}, index=groups),
+        var=pd.DataFrame(index=genes),
+        layers={"mean": mean},
+    )
+    mspec = MatrixSpec(
+        group_axis="celltype",
+        atlas="asp",
+        specificity=SpecificitySpec(
+            method="ewce_fraction",
+            targets=("CM_a", "CM_b"),
+            combine="sum",
+            name="cm_spec",
+        ),
+    )
+    row = reduce_matrix_to_gene(a, mspec).set_index("symbol")
+    # PAN pooled across both CM subtypes reads fully CM (0.5 + 0.5); 'max' would give only 0.5.
+    assert row.loc["PAN", "asp_cm_spec"] == pytest.approx(1.0)
+    assert row.loc["SPECIFIC", "asp_cm_spec"] == pytest.approx(1.0)
+
+
 def test_reduce_emits_per_group_stats_when_declared():
     from hvantk.algorithms.annotation.matrix import reduce_matrix_to_gene
 

@@ -80,9 +80,17 @@ def reduce_matrix_to_gene(adata, mspec):
                 f"specificity targets {targets} not found among groups {list(spec_gg.columns)}"
             )
         tgt = spec_gg[present]
-        combined = (
-            tgt.max(axis=1) if mspec.specificity.combine == "max" else tgt.mean(axis=1)
-        )
+        combine = mspec.specificity.combine
+        if combine == "sum":
+            # Cell-CLASS specificity (EWCE level 1): the targets are subtypes of one class
+            # (e.g. atrial/ventricular/Myoz2 cardiomyocytes), so pool their fractions ->
+            # fraction of the gene's expression that is in the class. A pan-class gene
+            # (split across subtypes) reads high, which 'max' (peak single subtype) misses.
+            combined = tgt.sum(axis=1)
+        elif combine == "mean":
+            combined = tgt.mean(axis=1)
+        else:  # 'max' -- peak specificity to any single target
+            combined = tgt.max(axis=1)
         cols[f"{mspec.atlas}_{mspec.specificity.name}"] = combined
 
     out = pd.DataFrame(cols)

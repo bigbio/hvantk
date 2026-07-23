@@ -72,7 +72,7 @@
               "minItems": 1,
               "items": {"type": "string", "minLength": 1}
             },
-            "combine": {"type": "string", "enum": ["max", "mean"]},
+            "combine": {"type": "string", "enum": ["max", "mean", "sum"]},
             "name": {"type": "string", "minLength": 1}
           }
         }
