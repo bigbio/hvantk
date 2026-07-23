@@ -4,7 +4,7 @@ from __future__ import annotations
 import pytest
 
 
-def _genes_ht():
+def _gene_table_ht():
     import hail as hl
 
     return hl.Table.parallelize(
@@ -15,40 +15,6 @@ def _genes_ht():
                 "chromosome": "7",
                 "gene_start": 100,
                 "gene_end": 200,
-            },
-            {
-                "gene_id": "ENSG2",
-                "gene_name": "LNC1",
-                "chromosome": "2",
-                "gene_start": 300,
-                "gene_end": 400,
-            },
-            {
-                "gene_id": "ENSG3",
-                "gene_name": "ORPH",
-                "chromosome": "3",
-                "gene_start": 500,
-                "gene_end": 600,
-            },
-        ],
-        hl.tstruct(
-            gene_id=hl.tstr,
-            gene_name=hl.tstr,
-            chromosome=hl.tstr,
-            gene_start=hl.tint32,
-            gene_end=hl.tint32,
-        ),
-        key=["gene_id"],
-    )
-
-
-def _structure_ht():
-    import hail as hl
-
-    return hl.Table.parallelize(
-        [
-            {
-                "gene_id": "ENSG1",
                 "gene_biotype": "protein_coding",
                 "mane_select": "ENST1",
                 "cds_length": 300,
@@ -57,6 +23,10 @@ def _structure_ht():
             },
             {
                 "gene_id": "ENSG2",
+                "gene_name": "LNC1",
+                "chromosome": "2",
+                "gene_start": 300,
+                "gene_end": 400,
                 "gene_biotype": "lncRNA",
                 "mane_select": "",
                 "cds_length": 0,
@@ -65,6 +35,10 @@ def _structure_ht():
             },
             {
                 "gene_id": "ENSG3",
+                "gene_name": "ORPH",
+                "chromosome": "3",
+                "gene_start": 500,
+                "gene_end": 600,
                 "gene_biotype": "protein_coding",
                 "mane_select": "",
                 "cds_length": 150,
@@ -74,6 +48,10 @@ def _structure_ht():
         ],
         hl.tstruct(
             gene_id=hl.tstr,
+            gene_name=hl.tstr,
+            chromosome=hl.tstr,
+            gene_start=hl.tint32,
+            gene_end=hl.tint32,
             gene_biotype=hl.tstr,
             mane_select=hl.tstr,
             cds_length=hl.tint32,
@@ -123,7 +101,7 @@ def _hgnc_ht():
 def test_spine_keeps_only_protein_coding(hail_session):
     from hvantk.algorithms.annotation.spine import build_spine
 
-    spine = build_spine(_genes_ht(), _structure_ht(), _hgnc_ht())
+    spine = build_spine(_gene_table_ht(), _hgnc_ht())
     assert sorted(spine.gene_id.collect()) == ["ENSG1", "ENSG3"]
 
 
@@ -131,7 +109,7 @@ def test_spine_keeps_only_protein_coding(hail_session):
 def test_gene_id_is_the_key_and_is_unique(hail_session):
     from hvantk.algorithms.annotation.spine import build_spine
 
-    spine = build_spine(_genes_ht(), _structure_ht(), _hgnc_ht())
+    spine = build_spine(_gene_table_ht(), _hgnc_ht())
     assert list(spine.key) == ["gene_id"]
     assert spine.count() == spine.distinct().count()
 
@@ -140,7 +118,7 @@ def test_gene_id_is_the_key_and_is_unique(hail_session):
 def test_structure_and_hgnc_fields_are_carried(hail_session):
     from hvantk.algorithms.annotation.spine import build_spine
 
-    spine = build_spine(_genes_ht(), _structure_ht(), _hgnc_ht())
+    spine = build_spine(_gene_table_ht(), _hgnc_ht())
     row = spine.filter(spine.gene_id == "ENSG1").collect()[0]
 
     assert row.cds_length == 300
@@ -155,7 +133,7 @@ def test_a_gene_without_an_hgnc_record_is_kept_with_a_missing_hgnc_id(hail_sessi
     """The join must not silently drop genes HGNC does not cover."""
     from hvantk.algorithms.annotation.spine import build_spine
 
-    spine = build_spine(_genes_ht(), _structure_ht(), _hgnc_ht())
+    spine = build_spine(_gene_table_ht(), _hgnc_ht())
     row = spine.filter(spine.gene_id == "ENSG3").collect()[0]
 
     assert row.hgnc_id is None
@@ -166,7 +144,7 @@ def test_a_gene_without_an_hgnc_record_is_kept_with_a_missing_hgnc_id(hail_sessi
 def test_hgnc_mapping_rate_is_reported(hail_session):
     from hvantk.algorithms.annotation.spine import build_spine, spine_mapping_rate
 
-    spine = build_spine(_genes_ht(), _structure_ht(), _hgnc_ht())
+    spine = build_spine(_gene_table_ht(), _hgnc_ht())
     assert spine_mapping_rate(spine) == pytest.approx(0.5)  # 1 of 2 kept genes
 
 
@@ -206,7 +184,7 @@ def test_two_hgnc_records_for_one_gene_do_not_duplicate_the_row(hail_session):
         key=["hgnc_id"],
     )
 
-    spine = build_spine(_genes_ht(), _structure_ht(), dup_hgnc)
+    spine = build_spine(_gene_table_ht(), dup_hgnc)
 
     assert spine.count() == 2  # ENSG1 + ENSG3, not 3
     assert spine.count() == spine.distinct().count()

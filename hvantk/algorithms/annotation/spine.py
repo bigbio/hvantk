@@ -30,29 +30,22 @@ SPINE_FIELDS = [
 ]
 
 
-def build_spine(genes_ht, structure_ht, hgnc_ht, *, biotype: str = "protein_coding"):
-    """Join Ensembl genes, GTF structure and HGNC into the gene spine.
+def build_spine(gene_table_ht, hgnc_ht, *, biotype: str = "protein_coding"):
+    """Join the canonical Ensembl gene table to HGNC into the gene spine.
 
     Parameters
     ----------
-    genes_ht : hail.Table
-        ``ensembl-gene:genes``, keyed on ``gene_id``.
-    structure_ht : hail.Table
-        ``ensembl-gene:structure``, keyed on ``gene_id``.
+    gene_table_ht : hail.Table
+        ``ensembl-gene:structure`` (the canonical gene table: location, name, biotype,
+        and structural summary), keyed on ``gene_id``.
     hgnc_ht : hail.Table
         ``hgnc:lookup``, keyed on ``hgnc_id``, carrying ``ensembl_gene_id``.
     biotype : str
         Gene biotype to keep. Pass ``None`` to keep every biotype.
-
-    Returns
-    -------
-    hail.Table
-        Keyed on ``gene_id``, one row per gene, fields as in ``SPINE_FIELDS``.
     """
     import hail as hl
 
-    ht = genes_ht.join(structure_ht, how="inner")
-
+    ht = gene_table_ht
     if biotype is not None:
         ht = ht.filter(ht.gene_biotype == biotype)
 
@@ -100,7 +93,6 @@ def build_spine(genes_ht, structure_ht, hgnc_ht, *, biotype: str = "protein_codi
         )
 
     ht = ht.select(*SPINE_FIELDS)
-
     logger.info("Spine: %d genes (biotype=%s)", after, biotype)
     return ht
 
