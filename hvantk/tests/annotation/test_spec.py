@@ -36,5 +36,8 @@ def test_schema_accepts_a_gene_id_entry_and_rejects_a_bad_one():
     }
     assert validator.is_valid(good), list(validator.iter_errors(good))
 
-    bad = {"name": "x", "layer1": [{"axis": "constraint"}]}  # missing source/key/columns
+    bad = {
+        "name": "x",
+        "layer1": [{"axis": "constraint"}],
+    }  # missing source/key/columns
     assert not validator.is_valid(bad)
