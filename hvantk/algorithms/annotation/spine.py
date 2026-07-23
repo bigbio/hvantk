@@ -42,6 +42,11 @@ def build_spine(gene_table_ht, hgnc_ht, *, biotype: str = "protein_coding"):
         ``hgnc:lookup``, keyed on ``hgnc_id``, carrying ``ensembl_gene_id``.
     biotype : str
         Gene biotype to keep. Pass ``None`` to keep every biotype.
+
+    Returns
+    -------
+    hail.Table
+        Keyed on ``gene_id``, one row per gene, fields as in ``SPINE_FIELDS``.
     """
     import hail as hl
 
