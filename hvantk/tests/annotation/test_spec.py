@@ -280,3 +280,46 @@ def test_aggregate_on_a_non_variant_key_is_allowed_by_schema_but_ignored(tmp_pat
     p = tmp_path / "s.yaml"
     p.write_text(doc)
     assert load_spec(p).entry("c").aggregate is None
+
+
+def test_matrix_entry_parses(tmp_path):
+    from hvantk.algorithms.annotation.spec import load_spec
+
+    doc = (
+        "name: t\n"
+        "layer1:\n"
+        "  - axis: expr\n"
+        "    source: ucsc-cellbrowser:asp_2019\n"
+        "    key: symbol\n"
+        "    columns: [asp_cm_spec]\n"
+        "    matrix:\n"
+        "      group_axis: celltype\n"
+        "      atlas: asp\n"
+        "      tissue_tag: cardiac\n"
+        "      specificity: {method: ewce_fraction, targets: [Ventricular cardiomyocytes], combine: max, name: cm_spec}\n"
+    )
+    p = tmp_path / "s.yaml"
+    p.write_text(doc)
+    e = load_spec(p).entry("expr")
+    assert e.matrix.group_axis == "celltype" and e.matrix.atlas == "asp"
+    assert e.matrix.specificity.method == "ewce_fraction"
+    assert e.matrix.specificity.targets == ("Ventricular cardiomyocytes",)
+    assert e.matrix.specificity.combine == "max"
+
+
+def test_matrix_requires_symbol_key(tmp_path):
+    from hvantk.algorithms.annotation.spec import load_spec
+
+    doc = (
+        "name: t\n"
+        "layer1:\n"
+        "  - axis: expr\n"
+        "    source: s:a\n"
+        "    key: gene_id\n"
+        "    columns: [asp_cm_spec]\n"
+        "    matrix: {group_axis: celltype, atlas: asp}\n"
+    )
+    p = tmp_path / "s.yaml"
+    p.write_text(doc)
+    with pytest.raises(ValueError, match="matrix"):
+        load_spec(p)

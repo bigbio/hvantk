@@ -42,10 +42,41 @@
         "min_mapping_rate": {"type": "number", "minimum": 0, "maximum": 1},
         "origin": {"type": "string"},
         "ablate_separately": {"type": "boolean"},
-        "aggregate": {"$ref": "#/$defs/aggregateSpec"}
+        "aggregate": {"$ref": "#/$defs/aggregateSpec"},
+        "matrix": {"$ref": "#/$defs/matrixSpec"}
       },
       "if": {"properties": {"key": {"const": "variant"}}, "required": ["key"]},
       "then": {"required": ["aggregate"]}
+    },
+    "matrixSpec": {
+      "type": "object",
+      "required": ["group_axis", "atlas"],
+      "additionalProperties": false,
+      "properties": {
+        "group_axis": {"type": "string", "minLength": 1},
+        "atlas": {"type": "string", "minLength": 1},
+        "tissue_tag": {"type": "string"},
+        "stats": {
+          "type": "array",
+          "items": {"type": "string", "enum": ["mean", "fraction_expressed", "frac"]}
+        },
+        "drop_groups": {"type": "array", "items": {"type": "string"}},
+        "specificity": {
+          "type": "object",
+          "required": ["method", "targets"],
+          "additionalProperties": false,
+          "properties": {
+            "method": {"type": "string", "enum": ["ewce_fraction"]},
+            "targets": {
+              "type": "array",
+              "minItems": 1,
+              "items": {"type": "string", "minLength": 1}
+            },
+            "combine": {"type": "string", "enum": ["max", "mean"]},
+            "name": {"type": "string", "minLength": 1}
+          }
+        }
+      }
     },
     "aggregateSpec": {
       "type": "object",

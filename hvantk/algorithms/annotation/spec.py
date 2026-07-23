@@ -43,6 +43,24 @@ class AggregateSpec:
 
 
 @dataclass(frozen=True)
+class SpecificitySpec:
+    method: str
+    targets: tuple[str, ...]
+    combine: str = "max"
+    name: str = "spec"
+
+
+@dataclass(frozen=True)
+class MatrixSpec:
+    group_axis: str
+    atlas: str
+    tissue_tag: str | None = None
+    stats: tuple[str, ...] = ()
+    drop_groups: tuple[str, ...] = ()
+    specificity: SpecificitySpec | None = None
+
+
+@dataclass(frozen=True)
 class SourceEntry:
     axis: str
     source: str
@@ -52,6 +70,7 @@ class SourceEntry:
     origin: str | None = None
     ablate_separately: bool = False
     aggregate: AggregateSpec | None = None
+    matrix: MatrixSpec | None = None
 
 
 @dataclass(frozen=True)
@@ -82,6 +101,30 @@ def _build_aggregate(raw: dict | None) -> AggregateSpec | None:
     )
 
 
+def _build_matrix(raw: dict | None) -> MatrixSpec | None:
+    if raw is None:
+        return None
+    specificity_raw = raw.get("specificity")
+    specificity = (
+        None
+        if specificity_raw is None
+        else SpecificitySpec(
+            method=specificity_raw["method"],
+            targets=tuple(specificity_raw["targets"]),
+            combine=specificity_raw.get("combine", "max"),
+            name=specificity_raw.get("name", "spec"),
+        )
+    )
+    return MatrixSpec(
+        group_axis=raw["group_axis"],
+        atlas=raw["atlas"],
+        tissue_tag=raw.get("tissue_tag"),
+        stats=tuple(raw.get("stats", ())),
+        drop_groups=tuple(raw.get("drop_groups", ())),
+        specificity=specificity,
+    )
+
+
 def load_spec(path: str | Path) -> FeatureSpec:
     """Read a feature-spec YAML, validate it against the schema, and return a FeatureSpec.
 
@@ -90,8 +133,10 @@ def load_spec(path: str | Path) -> FeatureSpec:
     jsonschema.ValidationError
         If the document does not conform to feature_spec.schema.json.
     ValueError
-        If two layer1 entries share an axis label, or an entry's ``key`` and ``aggregate``
-        presence disagree (``key == "variant"`` requires ``aggregate`` and vice versa).
+        If two layer1 entries share an axis label, an entry's ``key`` and ``aggregate``
+        presence disagree (``key == "variant"`` requires ``aggregate`` and vice versa), or an
+        entry has a ``matrix`` block with ``key`` other than ``"symbol"`` (the reduced table
+        the matrix reducer produces is symbol-keyed).
     """
     doc = yaml.safe_load(Path(path).read_text())
     jsonschema.validate(doc, _schema())  # raises ValidationError on failure
@@ -105,6 +150,7 @@ def load_spec(path: str | Path) -> FeatureSpec:
             origin=e.get("origin"),
             ablate_separately=e.get("ablate_separately", False),
             aggregate=_build_aggregate(e.get("aggregate")),
+            matrix=_build_matrix(e.get("matrix")),
         )
         for e in doc["layer1"]
     )
@@ -119,5 +165,11 @@ def load_spec(path: str | Path) -> FeatureSpec:
         if (e.key == "variant") != (e.aggregate is not None):
             raise ValueError(
                 f"entry {e.source!r}: key 'variant' requires an aggregate block and vice versa"
+            )
+    for e in entries:
+        if e.matrix is not None and e.key != "symbol":
+            raise ValueError(
+                f"entry {e.source!r} has a matrix block, which requires key: symbol "
+                f"(the reduced table is symbol-keyed); got key {e.key!r}"
             )
     return FeatureSpec(name=doc["name"], layer1=entries)
