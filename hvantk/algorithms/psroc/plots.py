@@ -25,7 +25,11 @@ from hvantk.algorithms.psroc.roc import ROCResult, ScoreMissingness
 
 # Try to import visualization utilities
 try:
-    from hvantk.algorithms.visualization.base import set_default_style, save_figure, get_colors
+    from hvantk.algorithms.visualization.base import (
+        set_default_style,
+        save_figure,
+        get_colors,
+    )
 except ImportError:
     # Fallback implementations if base module not available
     def set_default_style(style: str = "default", **kwargs) -> None:
