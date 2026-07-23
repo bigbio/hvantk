@@ -52,7 +52,7 @@ def test_symbols_map_through_alias_resolution():
     mapping, report = mapper.from_symbols(["MYL7", "OLD1"], source="test")
 
     assert mapping["MYL7"] == "ENSG00000106631"
-    assert mapping["OLD1"] == "ENSG00000000001"   # OLD1 -> NEW1 -> HGNC -> ENSG
+    assert mapping["OLD1"] == "ENSG00000000001"  # OLD1 -> NEW1 -> HGNC -> ENSG
     assert report.n_mapped == 2
     assert report.rate == 1.0
 
@@ -96,3 +96,45 @@ def test_enforce_rate_raises_below_threshold_and_names_examples():
     assert "cardoso" in message
     assert "0.50" in message
     assert "A" in message
+
+
+def test_gene_ids_pass_through_when_on_the_spine():
+    mapper = GeneIdMapper(
+        FakeHGNC(), SPINE
+    )  # SPINE = {"ENSG00000106631","ENSG00000000001"}
+    mapping, report = mapper.from_gene_ids(
+        ["ENSG00000106631", "ENSG00000000001"], source="test"
+    )
+    assert mapping["ENSG00000106631"] == "ENSG00000106631"
+    assert mapping["ENSG00000000001"] == "ENSG00000000001"
+    assert report.key_type == "gene_id"
+    assert report.rate == 1.0
+
+
+def test_gene_ids_off_the_spine_count_as_unmapped():
+    mapper = GeneIdMapper(FakeHGNC(), SPINE)
+    mapping, report = mapper.from_gene_ids(
+        ["ENSG00000106631", "ENSG_NOT_ON_SPINE"], source="src"
+    )
+    assert mapping["ENSG_NOT_ON_SPINE"] is None
+    assert report.n_unmapped == 1
+    assert "ENSG_NOT_ON_SPINE" in report.unmapped
+    assert report.rate == 0.5
+
+
+def test_from_gene_ids_does_not_touch_hgnc():
+    """A gene_id source must not consult HGNC at all -- it is already in spine key space."""
+
+    class ExplodingHGNC:
+        def resolve_to_canonical(self, s):
+            raise AssertionError("HGNC must not be called for gene_id keying")
+
+        def map_to_hgnc(self, *a, **k):
+            raise AssertionError("HGNC must not be called for gene_id keying")
+
+        def map_from_hgnc(self, *a, **k):
+            raise AssertionError("HGNC must not be called for gene_id keying")
+
+    mapper = GeneIdMapper(ExplodingHGNC(), SPINE)
+    mapping, report = mapper.from_gene_ids(["ENSG00000106631"], source="s")
+    assert mapping["ENSG00000106631"] == "ENSG00000106631"

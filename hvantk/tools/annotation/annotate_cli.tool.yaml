@@ -16,6 +16,8 @@ purpose:
 subcommands:
   - name: spine
     description: Build the protein-coding gene spine keyed on Ensembl gene_id
+  - name: prepare
+    description: Map one annotation source onto the spine's gene_id and select its columns
 requires:
   hail: true
   network: false
