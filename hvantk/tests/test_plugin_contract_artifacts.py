@@ -66,7 +66,6 @@ KNOWN_INCOMPLETE: dict[str, tuple[str, ...]] = {
     "alphagenome:predictions": ARTIFACT_FIELDS,
     "cosmic-cgc:submissions": ARTIFACT_FIELDS,
     "dbnsfp:variants": ("drift_fingerprint",),
-    "ensembl-gene:genes": ("drift_fingerprint",),
     "expression-atlas:dataset": ("schema_snapshot", "row_snapshot"),
     "gnomad-metrics:metrics": ("drift_fingerprint",),
     "peptideatlas:phospho": ("schema_snapshot", "row_snapshot"),
@@ -102,7 +101,9 @@ def test_no_new_dataset_declares_a_missing_artifact():
     }
     assert not unexpected, (
         "These datasets declare validation artifacts that do not exist on disk:\n"
-        + "\n".join(f"  {n}: missing {', '.join(f)}" for n, f in sorted(unexpected.items()))
+        + "\n".join(
+            f"  {n}: missing {', '.join(f)}" for n, f in sorted(unexpected.items())
+        )
         + "\n\nCommit the artifacts (see hvantk/skills/_conventions/SKILL.md), or add an "
         "entry to KNOWN_INCOMPLETE with the reason."
     )

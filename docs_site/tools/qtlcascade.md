@@ -666,7 +666,7 @@ hvantk reprocess pqtl:metrics \
   --plugin-arg hgnc_ht=/data/ensembl_gene.ht
 ```
 
-> **Note:** Fang pQTL data uses gene symbols. The `hgnc_ht` plugin-arg provides a lookup table (keyed by `gene_id` with `gene_name` field) for symbol → Ensembl ID mapping. Use the Ensembl gene table built with `hvantk reprocess ensembl-gene:genes`.
+> **Note:** Fang pQTL data uses gene symbols. The `hgnc_ht` plugin-arg provides a lookup table (keyed by `gene_id` with `gene_name` field) for symbol → Ensembl ID mapping. Use the Ensembl gene table built with `hvantk reprocess ensembl-gene:structure` (keyed by `gene_id`, carries `gene_name`).
 
 ## Module Structure
 

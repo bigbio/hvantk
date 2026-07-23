@@ -23,6 +23,6 @@ PTM coordinate mapper, so both read one gene model.
 
 **Params:** `protein_coding_only` (bool, default `False`).
 
-**Why it exists:** `ensembl-gene:genes` carries coordinates only. CDS length is required
+**Why it exists:** A bare gene table carries coordinates only. CDS length is required
 to normalise PTM site density, and gene length mechanically confounds rare-variant burden
 counts, so it must be available as a nuisance covariate.

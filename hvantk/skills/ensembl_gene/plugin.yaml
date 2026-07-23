@@ -2,7 +2,7 @@ api_version: 2
 name: ensembl-gene
 version: 0.1.0
 status: provisional
-description: Ensembl BioMart gene annotation (canonical transcripts, coordinates) - Hail Table
+description: Ensembl gene models from the pinned-release GTF (canonical per-gene table) - Hail Table
 
 catalog: catalog/datasets.json
 
@@ -10,29 +10,6 @@ source:
   catalog_ref: ensembl-gene
 
 datasets:
-  - name: genes
-    domain: mapping
-    backend: hail
-    artifact_type: AnnotationTable
-    schema_id: ensembl-gene-v1
-    builder:
-      module: hvantk.skills.ensembl_gene.builder
-      function: build_ensembl_gene_genes
-    drift_probe:
-      module: hvantk.skills.ensembl_gene.drift_probe
-      function: fetch_fingerprint
-    skill: SKILL.md
-    tests:
-      command: pytest hvantk/skills/ensembl_gene/tests -m hail
-      # Shared fixture: lives in the repo-level testdata tree
-      # (hvantk/tests/testdata/raw/ensembl), used by this plugin's round-trip test and
-      # by cross-cutting tests, so it is referenced in place rather than duplicated.
-      # Resolved relative to this plugin folder -> ../../tests/... = hvantk/tests/...
-      fixture: ../../tests/testdata/raw/ensembl
-      schema_snapshot: tests/snapshots/schema.json
-      row_snapshot: tests/snapshots/sample_rows.json
-      drift_fingerprint: tests/drift_fingerprint.json
-
   - name: structure
     domain: mapping
     backend: hail
