@@ -1,4 +1,4 @@
-"""Feature-spec parsing and validation (keys: gene_id, hgnc_id, symbol)."""
+"""Feature-spec parsing and validation (keys: gene_id, hgnc_id, symbol, variant)."""
 from __future__ import annotations
 
 import json

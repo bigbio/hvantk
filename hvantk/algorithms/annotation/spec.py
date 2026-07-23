@@ -51,7 +51,7 @@ class SourceEntry:
     min_mapping_rate: float = 0.9
     origin: str | None = None
     ablate_separately: bool = False
-    aggregate: "AggregateSpec | None" = None
+    aggregate: AggregateSpec | None = None
 
 
 @dataclass(frozen=True)
@@ -66,7 +66,7 @@ class FeatureSpec:
         raise KeyError(f"no layer1 entry for axis {axis!r}")
 
 
-def _build_aggregate(raw: dict | None) -> "AggregateSpec | None":
+def _build_aggregate(raw: dict | None) -> AggregateSpec | None:
     if raw is None:
         return None
     scores = tuple(
