@@ -4,8 +4,14 @@ Layering: pandas/numpy/anndata + stdlib only, plus sibling ``hvantk.algorithms``
 ``hvantk.skills``/``hvantk.tools``. The atlas arrives as data (an AnnData handed in by the caller).
 The reduced table then rides the existing P2c-2 ``key: symbol`` path onto the spine.
 
-Specificity is the EWCE fraction ``mean_group / sum_groups(mean)`` (the metric the manuscript used;
-the only one that reproduces the locked expression numbers).
+The per-group means this reducer consumes are produced by ``scanpy.get.aggregate`` (wrapped in
+``hvantk.algorithms.expression.matrix_utils.summarize``) -- i.e. the pseudobulk aggregation is a
+library call, not hand-rolled. Only the specificity *normalization* lives here: the EWCE fraction
+``mean_group / sum_groups(mean)`` (the metric the manuscript used; the only one that reproduces the
+locked expression numbers). No maintained dependency implements that exact L1 proportion -- scanpy
+has no specificity fn (its ``rank_genes_groups`` is DE markers on raw cells), and ``tspex``'s
+per-tissue ``spm`` is an L2/cosine metric, so both give different numbers. It is kept inline as a
+definitional row-normalization by design (confirmed with the user 2026-07-24).
 """
 from __future__ import annotations
 
