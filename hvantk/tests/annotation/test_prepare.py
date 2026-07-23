@@ -171,3 +171,92 @@ def test_two_keys_mapping_to_one_gene_is_rejected(hail_session):
         prepare_source(
             src, {"ENSG1"}, SourceEntry("x", "s:hg", "hgnc_id", ("score",)), hgnc=fake
         )
+
+
+def _tol_entry():
+    from hvantk.algorithms.annotation.spec import AggregateSpec, ScoreSpec, SourceEntry
+
+    agg = AggregateSpec(
+        by="Ensembl_geneid",
+        to="gene_id",
+        filter="missense",
+        reduce="max",
+        scores=(ScoreSpec("revel", "REVEL_score", ("mean", "max", "frac_gt_0.5")),),
+    )
+    return SourceEntry(
+        axis="tolerance",
+        source="dbnsfp:variants",
+        key="variant",
+        columns=("revel_mean", "revel_max", "revel_frac_gt_0.5", "n_possible_missense"),
+        aggregate=agg,
+    )
+
+
+@pytest.mark.hail
+def test_prepare_variant_source_aggregates_and_maps_onto_spine(hail_session):
+    import hail as hl
+
+    from hvantk.algorithms.annotation.prepare import prepare_variant_source
+
+    # variant table: 2 missense in ENSG_A (on spine), 1 in ENSG_OFF (not on spine).
+    rows = [
+        {
+            "locus": hl.locus("chr1", 100, "GRCh38"),
+            "alleles": ["A", "C"],
+            "aaref": "M",
+            "aaalt": "T",
+            "Ensembl_geneid": "ENSG_A",
+            "REVEL_score": {"t1": 0.9},
+        },
+        {
+            "locus": hl.locus("chr1", 200, "GRCh38"),
+            "alleles": ["G", "T"],
+            "aaref": "R",
+            "aaalt": "Q",
+            "Ensembl_geneid": "ENSG_A",
+            "REVEL_score": {"t1": 0.1},
+        },
+        {
+            "locus": hl.locus("chr1", 300, "GRCh38"),
+            "alleles": ["C", "A"],
+            "aaref": "D",
+            "aaalt": "N",
+            "Ensembl_geneid": "ENSG_OFF",
+            "REVEL_score": {"t1": 0.5},
+        },
+    ]
+    src = hl.Table.parallelize(
+        rows,
+        hl.tstruct(
+            locus=hl.tlocus("GRCh38"),
+            alleles=hl.tarray(hl.tstr),
+            aaref=hl.tstr,
+            aaalt=hl.tstr,
+            Ensembl_geneid=hl.tstr,
+            REVEL_score=hl.tdict(hl.tstr, hl.tfloat64),
+        ),
+        key=["locus", "alleles"],
+    )
+    prepared, report = prepare_variant_source(src, {"ENSG_A"}, _tol_entry())
+    assert list(prepared.key) == ["gene_id"]
+    assert set(prepared.row) == {
+        "gene_id",
+        "revel_mean",
+        "revel_max",
+        "revel_frac_gt_0.5",
+        "n_possible_missense",
+    }
+    assert prepared.gene_id.collect() == ["ENSG_A"]  # ENSG_OFF dropped (off spine)
+    row = prepared.collect()[0]
+    assert row.n_possible_missense == 2 and row.revel_max == pytest.approx(0.9)
+    assert report.n_mapped == 1 and report.n_in == 2  # 2 aggregated genes; 1 on spine
+
+
+@pytest.mark.hail
+def test_prepare_source_gene_id_path_unchanged(hail_session):
+    # Guard the refactor: the direct gene_id path still behaves as in P2c-2.
+    from hvantk.algorithms.annotation.prepare import prepare_source
+
+    prepared, report = prepare_source(_source_ht(), {"ENSG1", "ENSG2"}, ENTRY)
+    assert list(prepared.key) == ["gene_id"]
+    assert sorted(prepared.gene_id.collect()) == ["ENSG1", "ENSG2"]

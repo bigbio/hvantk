@@ -57,40 +57,86 @@ def prepare_source(source_ht, spine_gene_ids, entry, *, hgnc=None):
     mapper = GeneIdMapper(hgnc, spine)
 
     source_keys = source_ht[key].collect()
-    if key == "gene_id":
-        mapping, report = mapper.from_gene_ids(source_keys, source=entry.source)
-    elif key == "hgnc_id":
-        mapping, report = mapper.from_hgnc_ids(source_keys, source=entry.source)
-    else:  # symbol
-        mapping, report = mapper.from_symbols(source_keys, source=entry.source)
-
-    resolved = {k: v for k, v in mapping.items() if v is not None}
-    if not resolved:
-        raise MappingRateError(
-            f"{entry.source} mapped 0 of {report.n_in} identifiers onto the spine; "
-            f"nothing to prepare. First unmapped: {', '.join(report.unmapped[:10])}"
-        )
+    resolved, report = _resolve_to_gene_id(source_keys, key, entry.source, mapper)
 
     if key == "gene_id":
-        # Already gene_id-keyed: filter to the mapped ids and select columns.
         mapped_ids = hl.literal(set(resolved.values()))
         prepared = source_ht.filter(mapped_ids.contains(source_ht.gene_id))
         prepared = prepared.select(*entry.columns)
     else:
-        # Re-key: attach gene_id from the mapping, drop rows that did not resolve, key on gene_id.
-        lut = hl.literal(resolved)  # source_key -> gene_id
-        prepared = source_ht.annotate(gene_id=lut.get(source_ht[key]))
-        prepared = prepared.filter(hl.is_defined(prepared.gene_id))
-        prepared = prepared.key_by("gene_id").select(*entry.columns)
-        # One row per gene is a hard contract; a many-to-one mapping would duplicate a gene.
-        n_rows = prepared.count()
-        n_genes = prepared.distinct().count()
-        if n_rows != n_genes:
-            raise ValueError(
-                f"{entry.source}: {n_rows - n_genes} source rows resolve to the same "
-                f"gene_id (many-to-one); this source needs aggregation before prepare, not "
-                f"available until a later increment"
-            )
+        prepared = _rekey_onto_gene_id(
+            source_ht, key, resolved, entry.columns, entry.source
+        )
 
+    logger.info(report.summary())
+    return prepared, report
+
+
+def _resolve_to_gene_id(source_keys, to_space, source_label, mapper):
+    """Dispatch the mapper by id-space and drop unmapped; raise if nothing maps."""
+    if to_space == "gene_id":
+        mapping, report = mapper.from_gene_ids(source_keys, source=source_label)
+    elif to_space == "hgnc_id":
+        mapping, report = mapper.from_hgnc_ids(source_keys, source=source_label)
+    elif to_space == "symbol":
+        mapping, report = mapper.from_symbols(source_keys, source=source_label)
+    else:
+        raise ValueError(f"unsupported id-space {to_space!r}")
+    resolved = {k: v for k, v in mapping.items() if v is not None}
+    if not resolved:
+        raise MappingRateError(
+            f"{source_label} mapped 0 of {report.n_in} identifiers onto the spine; "
+            f"nothing to prepare. First unmapped: {', '.join(report.unmapped[:10])}"
+        )
+    return resolved, report
+
+
+def _rekey_onto_gene_id(source_ht, key_col, resolved, columns, source_label):
+    """Attach gene_id from ``resolved``, drop unresolved, key on gene_id, select columns.
+
+    Enforces one row per gene: a many-to-one mapping (or an un-aggregated source) raises.
+    """
+    import hail as hl
+
+    lut = hl.literal(resolved)
+    prepared = source_ht.annotate(gene_id=lut.get(source_ht[key_col]))
+    prepared = prepared.filter(hl.is_defined(prepared.gene_id))
+    prepared = prepared.key_by("gene_id").select(*columns)
+    n_rows = prepared.count()
+    n_genes = prepared.distinct().count()
+    if n_rows != n_genes:
+        raise ValueError(
+            f"{source_label}: {n_rows - n_genes} source rows resolve to the same gene_id "
+            f"(many-to-one); this source needs aggregation before prepare"
+        )
+    return prepared
+
+
+def prepare_variant_source(source_ht, spine_gene_ids, entry, *, hgnc=None):
+    """Aggregate a variant source to per-gene stats, then reconcile onto the spine.
+
+    ``entry.aggregate`` declares the group column, id-space, filter, and per-score stats. The
+    aggregated table is keyed on ``aggregate.by`` (an id in ``aggregate.to`` space); it is mapped
+    onto gene_id exactly like a gene-keyed source.
+    """
+    from hvantk.algorithms.annotation import transforms
+
+    agg = entry.aggregate
+    if agg is None:
+        raise ValueError(
+            f"entry {entry.source!r} has key 'variant' but no aggregate block"
+        )
+    if agg.to != "gene_id" and hgnc is None:
+        raise ValueError(
+            f"entry {entry.source!r} aggregates to {agg.to!r}, which needs the HGNC streamer"
+        )
+
+    grouped = transforms.aggregate_to_gene(source_ht, agg)  # keyed on agg.by
+    mapper = GeneIdMapper(hgnc, set(spine_gene_ids))
+    source_keys = grouped[agg.by].collect()
+    resolved, report = _resolve_to_gene_id(source_keys, agg.to, entry.source, mapper)
+    prepared = _rekey_onto_gene_id(
+        grouped, agg.by, resolved, entry.columns, entry.source
+    )
     logger.info(report.summary())
     return prepared, report
