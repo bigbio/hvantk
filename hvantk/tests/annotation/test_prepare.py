@@ -66,3 +66,13 @@ def test_a_non_gene_id_key_is_rejected_in_p2a(hail_session):
     bad = SourceEntry("x", "s:d", "hgnc_id", ("mis_z",))
     with pytest.raises(ValueError, match="gene_id"):
         prepare_source(_source_ht(), {"ENSG1"}, bad)
+
+
+@pytest.mark.hail
+def test_a_source_that_maps_no_genes_raises_a_clear_error(hail_session):
+    from hvantk.algorithms.annotation.mapping import MappingRateError
+    from hvantk.algorithms.annotation.prepare import prepare_source
+
+    # The spine shares no gene_id with the source -> every row is unmapped.
+    with pytest.raises(MappingRateError, match="0 of 3"):
+        prepare_source(_source_ht(), {"ENSG_NONE"}, ENTRY)

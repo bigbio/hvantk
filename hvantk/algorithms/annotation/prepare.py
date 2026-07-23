@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 
-from hvantk.algorithms.annotation.mapping import GeneIdMapper
+from hvantk.algorithms.annotation.mapping import GeneIdMapper, MappingRateError
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,17 @@ def prepare_source(source_ht, spine_gene_ids, entry, *, hgnc=None):
     mapping, report = mapper.from_gene_ids(source_ids, source=entry.source)
 
     # Keep only rows whose gene_id is on the spine, then narrow to the declared columns.
-    mapped_ids = hl.literal({g for g, v in mapping.items() if v is not None})
+    mapped = {g for g, v in mapping.items() if v is not None}
+    if not mapped:
+        # hl.literal(set()) cannot infer an element type, so an empty mapping would crash
+        # opaquely here. A source that reaches the spine with nothing is a hard failure:
+        # surface it as a clear MappingRateError before any table is built.
+        raise MappingRateError(
+            f"{entry.source} mapped 0 of {report.n_in} identifiers onto the spine; "
+            f"nothing to prepare. First unmapped: {', '.join(report.unmapped[:10])}"
+        )
+
+    mapped_ids = hl.literal(mapped)
     prepared = source_ht.filter(mapped_ids.contains(source_ht.gene_id))
     prepared = prepared.select(*entry.columns)
 
