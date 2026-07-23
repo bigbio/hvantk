@@ -1,4 +1,4 @@
-"""Feature-spec parsing and validation (P2a: gene_id-keyed entries only)."""
+"""Feature-spec parsing and validation (keys: gene_id, hgnc_id, symbol)."""
 from __future__ import annotations
 
 import json
@@ -60,9 +60,9 @@ def test_schema_accepts_a_gene_id_entry_and_rejects_a_bad_one():
 def test_schema_rejects_an_unknown_key():
     """Validates that only the allowed keys (gene_id, hgnc_id, symbol) pass validation.
 
-    This is the schema half of the key-restriction defense-in-depth. When the enum is
-    widened in P2c, this test is the deliberate tripwire that is updated to test a
-    still-unknown key.
+    This is the schema half of the key-restriction defense-in-depth. P2c widened the enum
+    to gene_id/hgnc_id/symbol; this tripwire now asserts a still-unknown key (protein_id) is
+    rejected, and must be re-pointed at a new unknown key if the enum widens again.
     """
     import jsonschema
     import pytest
