@@ -5,8 +5,12 @@
   "row": {
     "cds_length": "int32",
     "cds_transcript": "str",
+    "chromosome": "str",
     "gene_biotype": "str",
+    "gene_end": "int32",
     "gene_id": "str",
+    "gene_name": "str",
+    "gene_start": "int32",
     "mane_select": "str",
     "n_coding_exons": "int32",
     "n_transcripts": "int32"

@@ -1,6 +1,6 @@
 """CLI for building annotation artifacts.
 
-    hvantk annotate spine --genes G.ht --structure S.ht --hgnc H.ht --output spine.ht
+    hvantk annotate spine --gene-table G.ht --hgnc H.ht --output spine.ht
 
 Later phases add ``prepare``, ``compose`` and ``cohort`` to this group.
 
@@ -22,9 +22,11 @@ def annotate_group():
 
 
 @annotate_group.command("spine")
-@click.option("--genes", required=True, help="Path to the ensembl-gene:genes table.")
 @click.option(
-    "--structure", required=True, help="Path to the ensembl-gene:structure table."
+    "--gene-table",
+    "gene_table",
+    required=True,
+    help="Path to the ensembl-gene:structure table (the canonical gene table).",
 )
 @click.option("--hgnc", required=True, help="Path to the hgnc:lookup table.")
 @click.option("--output", required=True, help="Output path for the spine table.")
@@ -34,7 +36,7 @@ def annotate_group():
     show_default=True,
     help="Gene biotype to keep; pass 'all' to keep every biotype.",
 )
-def spine_cmd(genes, structure, hgnc, output, biotype):
+def spine_cmd(gene_table, hgnc, output, biotype):
     """Build the gene spine every annotation joins onto."""
     import hail as hl
 
@@ -44,8 +46,7 @@ def spine_cmd(genes, structure, hgnc, output, biotype):
     init_hail()
 
     ht = build_spine(
-        hl.read_table(genes),
-        hl.read_table(structure),
+        hl.read_table(gene_table),
         hl.read_table(hgnc),
         biotype=None if biotype == "all" else biotype,
     )

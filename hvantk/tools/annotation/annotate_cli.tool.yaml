@@ -9,13 +9,13 @@ cli:
 purpose:
   short: Build the gene spine and the annotation matrices that join onto it.
   long: |
-    `hvantk annotate spine` joins ensembl-gene:genes, ensembl-gene:structure and
-    hgnc:lookup into one gene_id-keyed table that every annotation source maps onto.
+    `hvantk annotate spine` joins the canonical Ensembl gene table (ensembl-gene:structure)
+    and hgnc:lookup into one gene_id-keyed table that every annotation source maps onto.
     Later subcommands (`prepare`, `compose`, `cohort`) build the per-source annotations
     and compose them into a per-gene feature matrix.
 subcommands:
   - name: spine
-    description: Build the protein-coding gene spine keyed on Ensembl gene_id
+    description: Build the protein-coding gene spine from ensembl-gene:structure + hgnc:lookup
   - name: prepare
     description: Map one annotation source onto the spine's gene_id and select its columns
 requires:

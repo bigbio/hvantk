@@ -1,10 +1,12 @@
-"""Builder for ``ensembl-gene:structure`` -- per-gene structural summary from the GTF.
+"""Builder for ``ensembl-gene:structure`` -- the canonical per-gene Ensembl table from the GTF.
 
-``ensembl-gene:genes`` (the BioMart dataset) carries only coordinates, name and biotype.
-This dataset adds the structural covariates that downstream annotation depends on:
-CDS length (needed to normalise PTM site counts), coding-exon count, transcript count and
-the MANE Select transcript. Gene length is also a mechanical confounder of rare-variant
-burden counts, so it must be available as a nuisance covariate rather than omitted.
+Parsed from the pinned release GTF, this is the single gene table the spine is built on: it
+carries location and name (chromosome, gene_start, gene_end, gene_name), biotype, and the
+structural covariates downstream annotation depends on -- CDS length (needed to normalise PTM
+site counts), coding-exon count, transcript count, and the MANE Select transcript. Gene length
+is also a mechanical confounder of rare-variant burden counts, so it must be available as a
+nuisance covariate rather than omitted. (``ensembl-gene:genes`` is a separate BioMart-sourced
+dataset, no longer used by the spine.)
 """
 from __future__ import annotations
 

@@ -131,3 +131,19 @@ print(df.iloc[0]["cds_transcript"])
     # Verify the winner is the larger transcript ID (the expected tie-break result).
     expected_winner = "ENST00000000011"
     assert winners[0] == expected_winner
+
+
+def test_gene_coordinates_and_name_are_captured(df):
+    row = df[df.gene_id == "ENSG00000000001"].iloc[0]
+    assert row.chromosome == "1"
+    assert row.gene_start == 1000
+    assert row.gene_end == 6000
+    assert row.gene_name == "GENE1"
+
+
+def test_coordinates_present_for_the_non_coding_gene_too(df):
+    row = df[df.gene_id == "ENSG00000000003"].iloc[0]
+    assert row.chromosome == "3"
+    assert row.gene_name == "LNC3"
+    assert row.gene_start == 1000
+    assert row.gene_end == 5000
