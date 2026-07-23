@@ -27,6 +27,22 @@ def _schema() -> dict:
 
 
 @dataclass(frozen=True)
+class ScoreSpec:
+    name: str
+    column: str
+    stats: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class AggregateSpec:
+    by: str
+    to: str
+    scores: tuple[ScoreSpec, ...]
+    filter: str | None = None
+    reduce: str = "max"
+
+
+@dataclass(frozen=True)
 class SourceEntry:
     axis: str
     source: str
@@ -35,6 +51,7 @@ class SourceEntry:
     min_mapping_rate: float = 0.9
     origin: str | None = None
     ablate_separately: bool = False
+    aggregate: "AggregateSpec | None" = None
 
 
 @dataclass(frozen=True)
@@ -49,6 +66,22 @@ class FeatureSpec:
         raise KeyError(f"no layer1 entry for axis {axis!r}")
 
 
+def _build_aggregate(raw: dict | None) -> "AggregateSpec | None":
+    if raw is None:
+        return None
+    scores = tuple(
+        ScoreSpec(name=name, column=sc["column"], stats=tuple(sc["stats"]))
+        for name, sc in raw["scores"].items()
+    )
+    return AggregateSpec(
+        by=raw["by"],
+        to=raw["to"],
+        scores=scores,
+        filter=raw.get("filter"),
+        reduce=raw.get("reduce", "max"),
+    )
+
+
 def load_spec(path: str | Path) -> FeatureSpec:
     """Read a feature-spec YAML, validate it against the schema, and return a FeatureSpec.
 
@@ -57,7 +90,8 @@ def load_spec(path: str | Path) -> FeatureSpec:
     jsonschema.ValidationError
         If the document does not conform to feature_spec.schema.json.
     ValueError
-        If two layer1 entries share an axis label.
+        If two layer1 entries share an axis label, or an entry's ``key`` and ``aggregate``
+        presence disagree (``key == "variant"`` requires ``aggregate`` and vice versa).
     """
     doc = yaml.safe_load(Path(path).read_text())
     jsonschema.validate(doc, _schema())  # raises ValidationError on failure
@@ -70,6 +104,7 @@ def load_spec(path: str | Path) -> FeatureSpec:
             min_mapping_rate=e.get("min_mapping_rate", 0.9),
             origin=e.get("origin"),
             ablate_separately=e.get("ablate_separately", False),
+            aggregate=_build_aggregate(e.get("aggregate")),
         )
         for e in doc["layer1"]
     )
@@ -80,4 +115,9 @@ def load_spec(path: str | Path) -> FeatureSpec:
             "duplicate axis label(s) in spec (each layer1 axis must be unique, it is the "
             f"CLI addressing key): {', '.join(duplicates)}"
         )
+    for e in entries:
+        if (e.key == "variant") != (e.aggregate is not None):
+            raise ValueError(
+                f"entry {e.source!r}: key 'variant' requires an aggregate block and vice versa"
+            )
     return FeatureSpec(name=doc["name"], layer1=entries)

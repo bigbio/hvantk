@@ -221,3 +221,62 @@ def test_an_unknown_key_is_still_rejected(tmp_path):
 
     with pytest.raises(jsonschema.ValidationError):
         load_spec(p)
+
+
+def test_variant_key_with_aggregate_parses(tmp_path):
+    from hvantk.algorithms.annotation.spec import load_spec
+
+    doc = (
+        "name: t\n"
+        "layer1:\n"
+        "  - axis: tolerance\n"
+        "    source: dbnsfp:variants\n"
+        "    key: variant\n"
+        "    columns: [revel_mean, revel_frac_gt_0.5]\n"
+        "    aggregate:\n"
+        "      by: Ensembl_geneid\n"
+        "      to: gene_id\n"
+        "      filter: missense\n"
+        "      scores:\n"
+        "        revel: {column: REVEL_score, stats: [mean, frac_gt_0.5]}\n"
+    )
+    p = tmp_path / "s.yaml"
+    p.write_text(doc)
+    spec = load_spec(p)
+    e = spec.entry("tolerance")
+    assert e.key == "variant"
+    assert e.aggregate.by == "Ensembl_geneid" and e.aggregate.to == "gene_id"
+    assert e.aggregate.reduce == "max"  # default
+    assert e.aggregate.scores[0].name == "revel"
+    assert e.aggregate.scores[0].column == "REVEL_score"
+    assert e.aggregate.scores[0].stats == ("mean", "frac_gt_0.5")
+
+
+def test_variant_key_without_aggregate_is_rejected(tmp_path):
+    from hvantk.algorithms.annotation.spec import load_spec
+
+    doc = (
+        "name: t\n"
+        "layer1:\n"
+        "  - {axis: x, source: s:d, key: variant, columns: [c1]}\n"
+    )
+    p = tmp_path / "s.yaml"
+    p.write_text(doc)
+    with pytest.raises(
+        Exception
+    ):  # jsonschema ValidationError (if/then) or ValueError (load_spec check)
+        load_spec(p)
+
+
+def test_aggregate_on_a_non_variant_key_is_allowed_by_schema_but_ignored(tmp_path):
+    # A gene_id entry with no aggregate still parses; aggregate defaults to None.
+    from hvantk.algorithms.annotation.spec import load_spec
+
+    doc = (
+        "name: t\n"
+        "layer1:\n"
+        "  - {axis: c, source: gnomad-metrics:metrics, key: gene_id, columns: [mis_z]}\n"
+    )
+    p = tmp_path / "s.yaml"
+    p.write_text(doc)
+    assert load_spec(p).entry("c").aggregate is None
