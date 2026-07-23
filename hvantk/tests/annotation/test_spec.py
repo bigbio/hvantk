@@ -4,6 +4,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 SCHEMA = Path("hvantk/resources/schemas/feature_spec.schema.json")
 
 
@@ -144,7 +146,43 @@ def test_entry_raises_for_a_missing_axis(tmp_path):
         "    key: gene_id\n"
         "    columns: [mis_z]\n"
     )
-    import pytest
 
     with pytest.raises(KeyError):
         load_spec(p).entry("expression")
+
+
+def test_a_multi_entry_spec_addresses_each_axis_independently(tmp_path):
+    from hvantk.algorithms.annotation.spec import load_spec
+
+    doc = (
+        "name: t\n"
+        "layer1:\n"
+        "  - {axis: constraint, source: gnomad-metrics:metrics, key: gene_id, "
+        "columns: [mis_z]}\n"
+        "  - {axis: gevir, source: gevir:metrics, key: gene_id, "
+        "columns: [gevir_pct, virlof_pct]}\n"
+    )
+    p = tmp_path / "s.yaml"
+    p.write_text(doc)
+
+    spec = load_spec(p)
+    assert spec.entry("constraint").source == "gnomad-metrics:metrics"
+    gevir = spec.entry("gevir")
+    assert gevir.source == "gevir:metrics"
+    assert gevir.columns == ("gevir_pct", "virlof_pct")
+
+
+def test_duplicate_axis_labels_are_rejected(tmp_path):
+    from hvantk.algorithms.annotation.spec import load_spec
+
+    doc = (
+        "name: t\n"
+        "layer1:\n"
+        "  - {axis: constraint, source: a:x, key: gene_id, columns: [c1]}\n"
+        "  - {axis: constraint, source: b:y, key: gene_id, columns: [c2]}\n"
+    )
+    p = tmp_path / "s.yaml"
+    p.write_text(doc)
+
+    with pytest.raises(ValueError, match="duplicate axis"):
+        load_spec(p)

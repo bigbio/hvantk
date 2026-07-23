@@ -56,6 +56,8 @@ def load_spec(path: str | Path) -> FeatureSpec:
     ------
     jsonschema.ValidationError
         If the document does not conform to feature_spec.schema.json.
+    ValueError
+        If two layer1 entries share an axis label.
     """
     doc = yaml.safe_load(Path(path).read_text())
     jsonschema.validate(doc, _schema())  # raises ValidationError on failure
@@ -71,4 +73,11 @@ def load_spec(path: str | Path) -> FeatureSpec:
         )
         for e in doc["layer1"]
     )
+    axes = [e.axis for e in entries]
+    duplicates = sorted({a for a in axes if axes.count(a) > 1})
+    if duplicates:
+        raise ValueError(
+            "duplicate axis label(s) in spec (each layer1 axis must be unique, it is the "
+            f"CLI addressing key): {', '.join(duplicates)}"
+        )
     return FeatureSpec(name=doc["name"], layer1=entries)
