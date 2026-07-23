@@ -10,8 +10,8 @@ purpose:
   short: Combine, convert, QC, and orchestrate joint-genotyping pipelines.
   long: |
     HGC groups four families of subcommands: combine (GVCF -> VDS, VDS -> VDS),
-    convert (VDS -> MT, MT -> VCF), QC (compute metrics, filter, summarise,
-    plot, render HTML report), and pipeline (end-to-end orchestrator). All
+    convert (VDS -> MT, MT -> VCF), QC (compute metrics, filter, summarize,
+    render HTML report), and pipeline (end-to-end orchestrator). All
     subcommands operate on Hail data formats and require Hail at runtime.
 subcommands:
   - name: gvcf-combine
@@ -28,8 +28,6 @@ subcommands:
     description: Filter a MatrixTable by sample and variant QC thresholds
   - name: qc-summary
     description: Summarize QC metrics across samples and variants
-  - name: plot-qc
-    description: Plot QC metric distributions
   - name: qc-report
     description: Render an HTML QC report combining summary and plots
   - name: pipeline
