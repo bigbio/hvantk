@@ -88,6 +88,19 @@ class GeneIdMapper:
         mapping = {i: self._keep_if_on_spine(to_ensembl.get(i)) for i in ids}
         return mapping, self._report(source, "hgnc_id", mapping)
 
+    def from_gene_ids(
+        self, gene_ids: Iterable[str], *, source: str
+    ) -> tuple[dict[str, Optional[str]], MappingReport]:
+        """Resolve source rows already keyed on Ensembl ``gene_id``.
+
+        No HGNC lookup: the identifiers are already in the spine's key space. A
+        ``gene_id`` the spine does not contain (a different Ensembl release, or a
+        non-protein-coding gene) counts as unmapped, exactly as for the other key types.
+        """
+        ids = list(gene_ids)
+        mapping = {g: self._keep_if_on_spine(g) for g in ids}
+        return mapping, self._report(source, "gene_id", mapping)
+
     def from_symbols(
         self, symbols: Iterable[str], *, source: str
     ) -> tuple[dict[str, Optional[str]], MappingReport]:
