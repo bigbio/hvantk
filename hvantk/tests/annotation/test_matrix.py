@@ -107,6 +107,38 @@ def test_reduce_sum_combine_pools_subtype_fractions_for_a_cell_class():
     assert row.loc["SPECIFIC", "asp_cm_spec"] == pytest.approx(1.0)
 
 
+def test_reduce_raises_when_a_declared_specificity_target_is_absent():
+    # A partially-present target set must fail loudly, not silently pool over the survivors
+    # (which would under-report every pan-class gene's cell-class specificity).
+    from hvantk.algorithms.annotation.matrix import reduce_matrix_to_gene
+
+    # _summary_adata has groups 'CM' and 'Other'; 'GHOST' is not present.
+    with pytest.raises(ValueError, match="GHOST"):
+        reduce_matrix_to_gene(_summary_adata(), _mspec(targets=("CM", "GHOST")))
+
+
+def test_reduce_raises_on_sanitized_group_label_collision():
+    import anndata as ad
+
+    from hvantk.algorithms.annotation.matrix import reduce_matrix_to_gene
+    from hvantk.algorithms.annotation.spec import MatrixSpec
+
+    # 'T-cell' and 'T cell' both sanitize to 't_cell' -> the per-group stat columns would
+    # otherwise silently overwrite each other.
+    groups = ["T-cell", "T cell"]
+    a = ad.AnnData(
+        X=None,
+        obs=pd.DataFrame({"celltype": groups}, index=groups),
+        var=pd.DataFrame(index=["A", "B"]),
+        layers={"mean": np.array([[1.0, 2.0], [3.0, 4.0]])},
+    )
+    mspec = MatrixSpec(
+        group_axis="celltype", atlas="asp", stats=("mean",), specificity=None
+    )
+    with pytest.raises(ValueError, match="sanitize"):
+        reduce_matrix_to_gene(a, mspec)
+
+
 def test_reduce_emits_per_group_stats_when_declared():
     from hvantk.algorithms.annotation.matrix import reduce_matrix_to_gene
 

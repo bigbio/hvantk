@@ -65,6 +65,8 @@ def reduce_matrix_to_gene(adata, mspec):
 
     mean_gg = _layer_genes_by_group(adata, "mean", keep_idx, groups)
     cols = {}
+    # sanitized column name -> source group label, to catch _san collisions
+    col_origin = {}
 
     for stat in mspec.stats:
         layer = "fraction_expressed" if stat in ("fraction_expressed", "frac") else stat
@@ -75,17 +77,29 @@ def reduce_matrix_to_gene(adata, mspec):
         )
         stat_tag = "frac" if layer == "fraction_expressed" else layer
         for g in df.columns:
-            cols[f"{mspec.atlas}_{_san(g)}_{stat_tag}"] = df[g]
+            key = f"{mspec.atlas}_{_san(g)}_{stat_tag}"
+            if key in col_origin:
+                raise ValueError(
+                    f"group labels {col_origin[key]!r} and {g!r} both sanitize to column "
+                    f"{key!r}; rename a group or use drop_groups to disambiguate"
+                )
+            col_origin[key] = g
+            cols[key] = df[g]
 
     if mspec.specificity is not None:
         spec_gg = ewce_specificity(mean_gg)
         targets = [t.strip() for t in mspec.specificity.targets]
-        present = [c for c in spec_gg.columns if c in targets]
-        if not present:
+        # Require EXACT coverage: a partially-present target set would silently pool the
+        # cell-class specificity over only the surviving subtypes (e.g. combine='sum' summing
+        # 1 of 3 cardiomyocyte subtypes), under-reporting every pan-class gene with no error.
+        missing = [t for t in targets if t not in spec_gg.columns]
+        if missing:
             raise ValueError(
-                f"specificity targets {targets} not found among groups {list(spec_gg.columns)}"
+                f"specificity targets {missing} absent from groups {list(spec_gg.columns)} "
+                f"(after strip/drop_groups); a partial target set would under-pool the "
+                f"cell-class specificity -- fix the spec or the atlas"
             )
-        tgt = spec_gg[present]
+        tgt = spec_gg[targets]
         combine = mspec.specificity.combine
         if combine == "sum":
             # Cell-CLASS specificity (EWCE level 1): the targets are subtypes of one class
