@@ -306,3 +306,50 @@ def test_prepare_matrix_source_reduces_and_maps_onto_spine(hail_session):
     d = {r.gene_id: r.asp_cm_spec for r in prepared.collect()}
     assert d["ENSG_T"] == pytest.approx(1.0)  # TNNT2: CM-specific
     assert d["ENSG_A"] == pytest.approx(0.5)  # ACTB: ubiquitous
+
+
+@pytest.mark.hail
+def test_prepare_matrix_source_collapses_symbol_collisions_onto_one_gene(hail_session):
+    # Two distinct atlas symbols (an alias and its current symbol) resolve to ONE gene_id.
+    # Unlike a plain gene table, a matrix must combine them (by max), not raise.
+    import anndata as ad
+    import numpy as np
+    import pandas as pd
+
+    from hvantk.algorithms.annotation.prepare import prepare_matrix_source
+    from hvantk.algorithms.annotation.spec import (
+        MatrixSpec,
+        SpecificitySpec,
+        SourceEntry,
+    )
+
+    genes = ["TNNT2", "TNNT2_ALIAS"]  # both map to ENSG_T
+    a = ad.AnnData(
+        X=None,
+        obs=pd.DataFrame({"celltype": ["CM", "Other"]}, index=["CM", "Other"]),
+        var=pd.DataFrame(index=genes),
+        # TNNT2 fully CM-specific (spec 1.0); the alias row is ubiquitous (spec 0.5).
+        layers={"mean": np.array([[10.0, 5.0], [0.0, 5.0]])},
+    )
+    entry = SourceEntry(
+        axis="expr",
+        source="ucsc-cellbrowser:asp_2019",
+        key="symbol",
+        columns=("asp_cm_spec",),
+        matrix=MatrixSpec(
+            group_axis="celltype",
+            atlas="asp",
+            specificity=SpecificitySpec("ewce_fraction", ("CM",), "max", "cm_spec"),
+        ),
+    )
+    fake = _FakeHGNC(
+        canonical={"TNNT2": "TNNT2", "TNNT2_ALIAS": "TNNT2_ALIAS"},
+        symbol_to_hgnc={"TNNT2": "HGNC:T", "TNNT2_ALIAS": "HGNC:T"},
+        hgnc_to_ensembl={"HGNC:T": "ENSG_T"},
+    )
+    prepared, report = prepare_matrix_source(a, {"ENSG_T"}, entry, hgnc=fake)
+    assert list(prepared.key) == ["gene_id"]
+    assert prepared.count() == 1  # collapsed to one row, not raised
+    assert prepared.distinct().count() == 1
+    d = {r.gene_id: r.asp_cm_spec for r in prepared.collect()}
+    assert d["ENSG_T"] == pytest.approx(1.0)  # max(1.0 CM-specific, 0.5 ubiquitous)

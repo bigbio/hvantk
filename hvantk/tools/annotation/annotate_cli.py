@@ -64,7 +64,8 @@ def spine_cmd(gene_table, hgnc, output, biotype):
     "--input",
     "input_path",
     required=True,
-    help="Path to the built source AnnotationTable (.ht).",
+    help="Path to the built source: an AnnotationTable (.ht), or an AnnData (.h5ad) "
+    "for a matrix entry.",
 )
 @click.option("--spine", required=True, help="Path to the gene spine table (.ht).")
 @click.option(
