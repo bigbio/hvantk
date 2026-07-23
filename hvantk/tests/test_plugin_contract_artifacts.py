@@ -43,13 +43,13 @@ ARTIFACT_FIELDS = ("fixture", "schema_snapshot", "row_snapshot", "drift_fingerpr
 #      majority, and the ones the follow-up work removes from this list.
 #
 # clingen, gencc and hgnc were removed from this list once their snapshots landed, and
-# dbnsfp / ensembl-gene / gnomad-metrics now lack only a drift fingerprint. The
+# dbnsfp / gnomad-metrics now lack only a drift fingerprint. The
 # remaining fingerprint gaps are a separate concern from snapshots: a probe has to be run
 # against the live upstream, which the snapshot tests deliberately never touch.
 # (gevir shipped its drift fingerprint as part of the gevir plugin-review work, so it
 # left this list.)
 #
-# (dbnsfp / ensembl-gene / gnomad-metrics previously appeared here for a different
+# (dbnsfp / gnomad-metrics previously appeared here for a different
 # reason -- they declared a plugin-local fixture dir that was never created while the
 # tests read one under hvantk/tests/testdata/raw/. Their manifests now point at the real
 # shared location, so only their snapshot/fingerprint files remain outstanding.)

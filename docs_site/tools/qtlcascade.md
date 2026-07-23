@@ -654,7 +654,7 @@ hvantk reprocess pqtl:metrics \
   --skip-download \
   --plugin-arg source=gtex_fang \
   --plugin-arg tissue=Liver \
-  --plugin-arg hgnc_ht=/data/ensembl_gene.ht
+  --plugin-arg hgnc_ht=/data/hgnc_lookup.ht
 
 # Allpairs for coloc (omit p_threshold to keep all pairs)
 hvantk reprocess pqtl:metrics \
@@ -663,10 +663,10 @@ hvantk reprocess pqtl:metrics \
   --skip-download \
   --plugin-arg source=gtex_fang \
   --plugin-arg tissue=Liver \
-  --plugin-arg hgnc_ht=/data/ensembl_gene.ht
+  --plugin-arg hgnc_ht=/data/hgnc_lookup.ht
 ```
 
-> **Note:** Fang pQTL data uses gene symbols. The `hgnc_ht` plugin-arg provides a lookup table (keyed by `gene_id` with `gene_name` field) for symbol → Ensembl ID mapping. Use the Ensembl gene table built with `hvantk reprocess ensembl-gene:structure` (keyed by `gene_id`, carries `gene_name`).
+> **Note:** Fang pQTL data uses gene symbols. Pass the HGNC lookup table via `--plugin-arg hgnc_ht=<path>` (built with `hvantk reprocess hgnc:lookup`, keyed by `hgnc_id` with a `gene_symbol` field); it maps each symbol to its Ensembl gene ID for the cascade join.
 
 ## Module Structure
 
