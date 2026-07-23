@@ -112,6 +112,40 @@ def _rekey_onto_gene_id(source_ht, key_col, resolved, columns, source_label):
     return prepared
 
 
+def prepare_matrix_source(matrix_ad, spine_gene_ids, entry, *, hgnc=None):
+    """Reduce an expression-matrix AnnData to per-gene features, then reconcile onto the spine.
+
+    ``entry.matrix`` declares the reduction (group axis, per-group stats, EWCE specificity). The
+    reduced table is symbol-keyed and rides the existing symbol resolve+rekey tail onto gene_id.
+    """
+    import hail as hl
+
+    from hvantk.algorithms.annotation import matrix as matrix_mod
+
+    if entry.matrix is None:
+        raise ValueError(
+            f"entry {entry.source!r} prepared as matrix but has no matrix block"
+        )
+    if hgnc is None:
+        raise ValueError(
+            f"entry {entry.source!r} is a symbol-keyed matrix source; needs the HGNC streamer"
+        )
+
+    df = matrix_mod.reduce_matrix_to_gene(
+        matrix_ad, entry.matrix
+    )  # 'symbol' + feature cols
+    grouped = hl.Table.from_pandas(df, key=["symbol"])
+    mapper = GeneIdMapper(hgnc, set(spine_gene_ids))
+    resolved, report = _resolve_to_gene_id(
+        grouped.symbol.collect(), "symbol", entry.source, mapper
+    )
+    prepared = _rekey_onto_gene_id(
+        grouped, "symbol", resolved, entry.columns, entry.source
+    )
+    logger.info(report.summary())
+    return prepared, report
+
+
 def prepare_variant_source(source_ht, spine_gene_ids, entry, *, hgnc=None):
     """Aggregate a variant source to per-gene stats, then reconcile onto the spine.
 

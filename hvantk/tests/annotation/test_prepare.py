@@ -260,3 +260,49 @@ def test_prepare_source_gene_id_path_unchanged(hail_session):
     prepared, report = prepare_source(_source_ht(), {"ENSG1", "ENSG2"}, ENTRY)
     assert list(prepared.key) == ["gene_id"]
     assert sorted(prepared.gene_id.collect()) == ["ENSG1", "ENSG2"]
+
+
+@pytest.mark.hail
+def test_prepare_matrix_source_reduces_and_maps_onto_spine(hail_session):
+    import anndata as ad
+    import numpy as np
+    import pandas as pd
+
+    from hvantk.algorithms.annotation.prepare import prepare_matrix_source
+    from hvantk.algorithms.annotation.spec import (
+        MatrixSpec,
+        SpecificitySpec,
+        SourceEntry,
+    )
+
+    genes = ["TNNT2", "ACTB", "OFFGENE"]
+    a = ad.AnnData(
+        X=None,
+        obs=pd.DataFrame({"celltype": ["CM", "Other"]}, index=["CM", "Other"]),
+        var=pd.DataFrame(index=genes),
+        layers={"mean": np.array([[10.0, 5.0, 1.0], [0.0, 5.0, 1.0]])},
+    )
+    entry = SourceEntry(
+        axis="expr",
+        source="ucsc-cellbrowser:asp_2019",
+        key="symbol",
+        columns=("asp_cm_spec",),
+        matrix=MatrixSpec(
+            group_axis="celltype",
+            atlas="asp",
+            specificity=SpecificitySpec("ewce_fraction", ("CM",), "max", "cm_spec"),
+        ),
+    )
+    # HGNC fake: TNNT2/ACTB resolve onto the spine; OFFGENE resolves off-spine.
+    fake = _FakeHGNC(
+        canonical={"TNNT2": "TNNT2", "ACTB": "ACTB", "OFFGENE": "OFFGENE"},
+        symbol_to_hgnc={"TNNT2": "HGNC:T", "ACTB": "HGNC:A", "OFFGENE": "HGNC:O"},
+        hgnc_to_ensembl={"HGNC:T": "ENSG_T", "HGNC:A": "ENSG_A", "HGNC:O": "ENSG_OFF"},
+    )
+    prepared, report = prepare_matrix_source(a, {"ENSG_T", "ENSG_A"}, entry, hgnc=fake)
+    assert list(prepared.key) == ["gene_id"]
+    assert set(prepared.row) == {"gene_id", "asp_cm_spec"}
+    assert sorted(prepared.gene_id.collect()) == ["ENSG_A", "ENSG_T"]  # OFFGENE dropped
+    d = {r.gene_id: r.asp_cm_spec for r in prepared.collect()}
+    assert d["ENSG_T"] == pytest.approx(1.0)  # TNNT2: CM-specific
+    assert d["ENSG_A"] == pytest.approx(0.5)  # ACTB: ubiquitous
