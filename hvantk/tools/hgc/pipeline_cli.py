@@ -32,6 +32,38 @@ def register_pipeline_command(group):
 )
 # Stage control flags
 @click.option(
+    "--import-interval-size",
+    type=click.IntRange(min=1),
+    default=None,
+    help=(
+        "Size (bp) of the even genomic intervals used to partition gVCF import in "
+        "stage 1. Hail derives ONE PARTITION PER INTERVAL, so this caps the combine "
+        "stage's parallelism. Default (Hail's genome default) is 1.2 Mb, which yields "
+        "few partitions for a single chromosome (chr20 -> 54, chr1 -> 208), leaving "
+        "extra cores idle. Lower it so partitions comfortably exceed your core count "
+        "(~2-4x is a good target). Mutually exclusive with "
+        "--use-exome-default-intervals."
+    ),
+)
+@click.option(
+    "--use-exome-default-intervals",
+    is_flag=True,
+    default=False,
+    help="Partition gVCF import with Hail's exome default interval size (60 Mb).",
+)
+@click.option(
+    "--gvcf-batch-size",
+    type=click.IntRange(min=1),
+    default=None,
+    help="Number of gVCFs to combine per tree-merge batch (Hail default: 50).",
+)
+@click.option(
+    "--branch-factor",
+    type=click.IntRange(min=2),
+    default=None,
+    help="Branch factor of the combiner's hierarchical merge (Hail default: 100).",
+)
+@click.option(
     "--skip-combine-gvcfs",
     is_flag=True,
     default=False,
@@ -60,6 +92,16 @@ def register_pipeline_command(group):
     is_flag=True,
     default=False,
     help="Skip exporting the cohort (project) VCF",
+)
+@click.option(
+    "--skip-validation",
+    is_flag=True,
+    default=False,
+    help=(
+        "Skip the biallelic audit and genotype repair during VDS -> MatrixTable conversion. "
+        "The audit runs on the sparse variant data and is cheap; skip it only for a trusted, "
+        "already-validated VDS."
+    ),
 )
 # Path overrides
 @click.option(
@@ -142,11 +184,16 @@ def pipeline(
     ctx,
     input_dir,
     output_dir,
+    import_interval_size,
+    use_exome_default_intervals,
+    gvcf_batch_size,
+    branch_factor,
     skip_combine_gvcfs,
     skip_vds_to_mt,
     skip_compute_sample_qc,
     skip_compute_variant_qc,
     skip_export_pvcf,
+    skip_validation,
     vds_path,
     mt_path,
     tmp_dir,
@@ -202,11 +249,16 @@ def pipeline(
             n_partitions=n_partitions,
             overwrite=overwrite,
             output_prefix=output_prefix,
+            import_interval_size=import_interval_size,
+            use_exome_default_intervals=use_exome_default_intervals,
+            gvcf_batch_size=gvcf_batch_size,
+            branch_factor=branch_factor,
             skip_combine_gvcfs=skip_combine_gvcfs,
             skip_vds_to_mt=skip_vds_to_mt,
             skip_compute_sample_qc=skip_compute_sample_qc,
             skip_compute_variant_qc=skip_compute_variant_qc,
             skip_export_pvcf=skip_export_pvcf,
+            skip_validation=skip_validation,
             vds_path=vds_path,
             mt_path=mt_path,
             min_sample_call_rate=min_sample_call_rate,

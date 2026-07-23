@@ -23,4 +23,4 @@ class DiseaseProfile:
     ptm_features_path: Optional[str] = None
     # knobs
     min_label_coverage: float = 0.5
-    extra_vetoed_genes: list = field(default_factory=list)
+    extra_flagged_genes: list = field(default_factory=list)

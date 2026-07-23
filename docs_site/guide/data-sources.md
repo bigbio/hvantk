@@ -20,6 +20,7 @@ hvantk utils convert-bgz input.gz
 | ClinGen | `hvantk download clingen` | ~5 MB |
 | GenCC | `hvantk download gencc` | ~10 MB |
 | HGNC | `hvantk download hgnc` | ~20 MB |
+| gnomAD constraint | `hvantk download gnomad-metrics` | ~4.6 MB (v2.1.1) / ~82 MB (v4.0) |
 | UCSC Cell Browser | `hvantk download ucsc` | varies |
 | Expression Atlas | `hvantk download expression-atlas` | varies |
 
@@ -151,25 +152,31 @@ hvantk reprocess dbnsfp:variants \
 
 > **Note:** dbNSFP's builder reads BGZF input. If you only have a single combined `.gz`, pre-convert with `hvantk utils convert-bgz dbNSFP4.9a_variant.gz` before building.
 
-### gnomAD constraint metrics (~50 MB for gene-level)
+### gnomAD constraint metrics
 
-Gene-level constraint metrics (pLI, LOEUF, missense Z-score) from gnomAD v4.1.
-URL: https://storage.googleapis.com/gcp-public-data--gnomad/release/4.1/constraint/gnomad.v4.1.constraint_metrics.tsv
+Per-gene constraint metrics (pLI, oe_lof / LOEUF, missense Z) from gnomAD. The
+tables are small and public, so hvantk ships a downloader
+(`hvantk download gnomad-metrics`; it is also in the built-in-downloader list above).
 
-**Download**:
+- **v2.1.1** (GRCh37, ~4.6 MB) — the default and the table hvantk standardises on
+  (keyed by `gene_id`).
+- **v4.0** (GRCh38, ~82 MB) — newer; per-transcript rows, dotted column names, and
+  **no `gene_id`** column, so build with `--plugin-arg key=transcript`. gnomAD did
+  not re-release constraint for v4.1.
+
+**Download + build** (end-to-end, defaults to v2.1.1 by-gene):
 
 ```bash
-wget https://storage.googleapis.com/gcp-public-data--gnomad/release/4.1/constraint/gnomad.v4.1.constraint_metrics.tsv
-```
-
-**Build**:
-
-```bash
-# Place gnomad.v4.1.constraint_metrics.tsv in data/gnomad_metrics/ then:
 hvantk reprocess gnomad-metrics:metrics \
   --raw-dir data/gnomad_metrics/ \
-  --output gnomad_metrics.ht \
-  --skip-download
+  --output gnomad_metrics.ht
+
+# v4.0 (GRCh38) instead:
+hvantk download gnomad-metrics --version v4.0 \
+  --output data/gnomad_metrics/gnomad.v4.0.constraint_metrics.tsv
+hvantk reprocess gnomad-metrics:metrics --skip-download \
+  --raw-dir data/gnomad_metrics/ --output gnomad_metrics_v4.ht \
+  --plugin-arg key=transcript
 ```
 
 ### INSIDER interactome (~100 MB)

@@ -18,6 +18,7 @@ import pandas as pd
 
 from hvantk.skills.gencc.shared.constants import GENCC_CLASSIFICATION_LEVELS
 from hvantk.core.streamers.gene_disease_table import GeneDiseaseTableStreamer
+from hvantk.core.utils.hail_helpers import agg_max_str
 
 logger = logging.getLogger(__name__)
 
@@ -135,7 +136,7 @@ class GenCCGeneDiseaseTableStreamer(GeneDiseaseTableStreamer):
             genes=hl.agg.collect_as_set(ht.gene_symbol),
             diseases=hl.agg.collect_as_set(ht.disease_label),
             classification_counts=hl.agg.counter(ht.classification),
-            last_submission=hl.agg.max(ht.submission_date),
+            last_submission=agg_max_str(ht.submission_date),
         )
 
         df = summary_ht.to_pandas()

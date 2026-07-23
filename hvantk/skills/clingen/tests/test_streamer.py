@@ -104,8 +104,10 @@ def test_get_geneset_per_gcep_min_classification(clingen_table_path):
 def test_get_geneset_per_gcep_shorten_names_false(clingen_table_path):
     streamer = ClinGenGeneDiseaseTableStreamer(clingen_table_path, init_hail=False)
     result = streamer.get_geneset_per_gcep(shorten_names=False)
-    # Should contain the full GCEP name
-    assert any("GCEP" in name for name in result)
+    # The unshortened name keeps the panel suffix that ClinGen actually ships,
+    # " Gene Curation Expert Panel" -- not the abbreviation "GCEP", which appears
+    # only as the CSV column header.
+    assert any("Gene Curation Expert Panel" in name for name in result)
 
 
 def test_aggregate_by_disease_category(clingen_table_path):

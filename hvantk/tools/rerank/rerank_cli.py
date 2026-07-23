@@ -16,7 +16,7 @@ def rerank_cmd(config_path, output):
     # dependency. Mirrors the psroc/ancestry deferral pattern.
     from hvantk.algorithms.rerank import rerank, Config, PriorSpec, CohortSpec
     from hvantk.algorithms.rerank.catalog.builders import table_axis, genelist_labels
-    from hvantk.algorithms.rerank.veto import CaseControlArchitectureVeto, NoOpVeto
+    from hvantk.algorithms.rerank.audit import CaseControlArchitectureAudit, NoAudit
 
     with open(config_path) as fh:
         spec = yaml.safe_load(fh)
@@ -37,12 +37,19 @@ def rerank_cmd(config_path, output):
     cohort = None
     if spec.get("cohort"):
         cohort = CohortSpec(spec["cohort"]["path"],
-                            params={"veto_cols": spec["cohort"].get("veto_cols", []), "key": "gene"})
+                            params={"audit_cols": spec["cohort"].get("audit_cols", []), "key": "gene"})
     cfg = Config(name=spec.get("name", "rerank"), prior=prior, features=feats, labels=labels,
-                 cohort=cohort, veto=CaseControlArchitectureVeto() if cohort else NoOpVeto(),
+                 cohort=cohort, audit=CaseControlArchitectureAudit() if cohort else NoAudit(),
                  min_label_coverage=float(spec.get("min_label_coverage", 0.5)))
     res = rerank(cfg)
     res.table.to_csv(output, sep="\t", index=False)
     click.echo(f"Wrote {len(res.table)} genes -> {output}")
+    scored = res.table[res.table["score"].notna()]
+    n_robust = int((scored["verdict"] == "ROBUST").sum())
+    n_flagged = int(res.table["flag"].sum())
+    click.echo(f"Credibility: ROBUST={n_robust} / INTERMEDIATE={len(scored) - n_robust} "
+               f"(over {len(scored)} scored genes)")
+    click.echo(f"Audit: {n_flagged} gene(s) FLAGGED for review (advisory; ranking not overridden). "
+               f"Reasons: {res.table.loc[res.table['flag'], 'flag_reason'].value_counts().to_dict()}")
     click.echo("Per-axis ablation (delta-AUC over constraint):")
     click.echo(res.metrics.ablation.to_string(index=False))

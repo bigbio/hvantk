@@ -1,0 +1,104 @@
+[
+  {
+    "key": {
+      "hgnc_id": "1100",
+      "mondo_id": "0005144"
+    },
+    "row": {
+      "classification": "Definitive",
+      "classification_date": "2025-06-15",
+      "classification_level": 0,
+      "disease_label": "breast-ovarian cancer, familial 1",
+      "gene_curation_expert_panel": "Hereditary Breast, Ovarian and Pancreatic Cancer Gene Curation Expert Panel",
+      "gene_symbol": "BRCA1",
+      "mode_of_inheritance": "Autosomal dominant",
+      "report_url": "https://search.clinicalgenome.org/kb/gene-validity/123",
+      "sop_version": "SOP8"
+    }
+  },
+  {
+    "key": {
+      "hgnc_id": "1100",
+      "mondo_id": "0013683"
+    },
+    "row": {
+      "classification": "Strong",
+      "classification_date": "2025-09-01",
+      "classification_level": 1,
+      "disease_label": "pancreatic cancer, susceptibility to, 4",
+      "gene_curation_expert_panel": "Hereditary Breast, Ovarian and Pancreatic Cancer Gene Curation Expert Panel",
+      "gene_symbol": "BRCA1",
+      "mode_of_inheritance": "Autosomal dominant",
+      "report_url": "https://search.clinicalgenome.org/kb/gene-validity/133",
+      "sop_version": "SOP8"
+    }
+  },
+  {
+    "key": {
+      "hgnc_id": "1101",
+      "mondo_id": "0005145"
+    },
+    "row": {
+      "classification": "Definitive",
+      "classification_date": "2025-06-16",
+      "classification_level": 0,
+      "disease_label": "breast-ovarian cancer, familial 2",
+      "gene_curation_expert_panel": "Hereditary Breast, Ovarian and Pancreatic Cancer Gene Curation Expert Panel",
+      "gene_symbol": "BRCA2",
+      "mode_of_inheritance": "Autosomal dominant",
+      "report_url": "https://search.clinicalgenome.org/kb/gene-validity/124",
+      "sop_version": "SOP8"
+    }
+  },
+  {
+    "key": {
+      "hgnc_id": "11998",
+      "mondo_id": "0007903"
+    },
+    "row": {
+      "classification": "Definitive",
+      "classification_date": "2025-05-20",
+      "classification_level": 0,
+      "disease_label": "Li-Fraumeni syndrome",
+      "gene_curation_expert_panel": "Hereditary Cancer Gene Curation Expert Panel",
+      "gene_symbol": "TP53",
+      "mode_of_inheritance": "Autosomal dominant",
+      "report_url": "https://search.clinicalgenome.org/kb/gene-validity/125",
+      "sop_version": "SOP8"
+    }
+  },
+  {
+    "key": {
+      "hgnc_id": "1748",
+      "mondo_id": "0008594"
+    },
+    "row": {
+      "classification": "Strong",
+      "classification_date": "2025-03-22",
+      "classification_level": 1,
+      "disease_label": "hereditary diffuse gastric cancer",
+      "gene_curation_expert_panel": "Hereditary Cancer Gene Curation Expert Panel",
+      "gene_symbol": "CDH1",
+      "mode_of_inheritance": "Autosomal dominant",
+      "report_url": "https://search.clinicalgenome.org/kb/gene-validity/127",
+      "sop_version": "SOP8"
+    }
+  },
+  {
+    "key": {
+      "hgnc_id": "583",
+      "mondo_id": "0021056"
+    },
+    "row": {
+      "classification": "Definitive",
+      "classification_date": "2025-02-15",
+      "classification_level": 0,
+      "disease_label": "familial adenomatous polyposis 1",
+      "gene_curation_expert_panel": "Hereditary Colorectal Cancer Gene Curation Expert Panel",
+      "gene_symbol": "APC",
+      "mode_of_inheritance": "Autosomal dominant",
+      "report_url": "https://search.clinicalgenome.org/kb/gene-validity/130",
+      "sop_version": "SOP8"
+    }
+  }
+]

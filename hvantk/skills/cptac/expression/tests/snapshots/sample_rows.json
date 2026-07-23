@@ -1,0 +1,34 @@
+{
+  "X_corner": [
+    [
+      5.199999809265137,
+      10.5
+    ],
+    [
+      8.100000381469727,
+      20.299999237060547
+    ]
+  ],
+  "obs_head": [
+    {
+      "SampleID": "S1",
+      "disease": "normal",
+      "tissue": "liver"
+    },
+    {
+      "SampleID": "S2",
+      "disease": "tumor",
+      "tissue": "liver"
+    }
+  ],
+  "var_head": [
+    {
+      "Gene Name": "BRCA2",
+      "GeneID": "ENSG00000139618"
+    },
+    {
+      "Gene Name": "TP53",
+      "GeneID": "ENSG00000141510"
+    }
+  ]
+}

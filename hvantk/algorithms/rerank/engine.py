@@ -32,30 +32,34 @@ def rerank(config) -> RerankResult:
             f"too few examples for {config.folds}-fold OOF: {n_pos} positive / {n_neg} negative units "
             f"(need >= {config.folds} of each class). Provide more labels or lower Config.folds.")
     scores = ReRanker(config.calibration, config.folds).score(df, feat_cols, y)
-    veto_table = df
+    audit_table = df
     if config.cohort is not None:
         cohort_cols = config.cohort.load()
-        add = [c for c in cohort_cols.columns if c != "gene" and c not in veto_table.columns]
-        veto_table = df.merge(cohort_cols[["gene"] + add], on="gene", how="left")
-    veto_mask = config.veto.apply(veto_table).reset_index(drop=True)
-    tiers = TierAssigner(config.tiers).assign(scores, veto_mask)
-    # axis groups for ablation = one group per FeatureAxis (its own columns), baseline = first axis present
+        add = [c for c in cohort_cols.columns if c != "gene" and c not in audit_table.columns]
+        audit_table = df.merge(cohort_cols[["gene"] + add], on="gene", how="left")
+    flag_reason = config.audit.apply(audit_table).reset_index(drop=True)
+    flag = (flag_reason != "")
+    tiers = TierAssigner(config.tiers).assign(scores)      # pure credibility, no flag input
     groups = {ax.name: [c for c in ax.load().columns if c != "gene" and c in feat_cols] for ax in config.features}
-    groups = {k:v for k,v in groups.items() if v}
+    groups = {k: v for k, v in groups.items() if v}
     baseline = next(iter(groups))
     metrics = Evaluator().evaluate(df, feat_cols, y, scores, groups, baseline)
     table = pd.DataFrame({"gene": df.gene, "prior_stat": df.prior_stat, "score": scores,
-                          "veto_flag": veto_mask.values, "y": y})
+                          "flag": flag.values, "flag_reason": flag_reason.values, "y": y})
     table = pd.concat([table.reset_index(drop=True), tiers.reset_index(drop=True)], axis=1)
-    # Append extra genes that were excluded from model scoring (e.g. paper-14 extras like HCAR1).
-    # They are forced to FRAGILE verdict with no model score.
-    if config.extra_vetoed_genes:
-        extra_y = {g: int(g in pos) for g in config.extra_vetoed_genes}
+    table["score_percentile"] = (table["score"].rank(pct=True) * 100).round(1)
+    # Append extra genes excluded from model scoring (e.g. HCAR1: too few case variants).
+    # They are unscored and carry an advisory flag; they are NOT forced onto the tier ladder.
+    if config.extra_flagged_genes:
+        extra_y = {g: int(g in pos) for g in config.extra_flagged_genes}
         extra_rows = pd.DataFrame([{
             "gene": g, "prior_stat": float("nan"), "score": float("nan"),
-            "veto_flag": True, "y": extra_y.get(g, 0),
-            "tier": "T0_FRAGILE", "verdict": "FRAGILE",
-        } for g in config.extra_vetoed_genes if g not in set(df.gene)])
+            "score_percentile": float("nan"), "flag": True,
+            "flag_reason": "insufficient_data", "y": extra_y.get(g, 0),
+            "tier": "unscored", "verdict": "unscored",
+        } for g in config.extra_flagged_genes if g not in set(df.gene)])
         if len(extra_rows):
             table = pd.concat([table, extra_rows], ignore_index=True)
+    table = table[["gene", "prior_stat", "score", "score_percentile",
+                   "tier", "verdict", "flag", "flag_reason", "y"]]
     return RerankResult(table=table, metrics=metrics, coverage=coverage)

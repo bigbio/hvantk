@@ -65,6 +65,30 @@ def create_table_base(
     return ht
 
 
+def agg_max_str(expr: "hl.StringExpression") -> "hl.StringExpression":
+    """Aggregate the lexicographic maximum of a string expression.
+
+    ``hl.agg.max`` accepts only int32/int64/float32/float64 (and ``hl.max`` likewise
+    returns a NumericExpression), so calling it on a string column raises
+    ``TypeError: max: parameter 'expr': expected expression of type int32 or ...``.
+    Hail ships no string-max aggregator, so build one: dedupe to the distinct values,
+    sort descending, take the first.
+
+    Use for ISO-8601 date strings (``YYYY-MM-DD``), where lexicographic order equals
+    chronological order. It is NOT a general date max -- ``DD/MM/YYYY`` would sort wrong.
+
+    ``collect_as_set`` rather than ``collect`` keeps this cheap: a group of 10,000 rows
+    sharing 50 distinct dates materializes 50 values. Missing values are filtered out
+    first, and a group whose values are all missing returns missing rather than raising
+    an array-index error.
+
+    Works in both an ungrouped ``ht.aggregate(...)`` and inside
+    ``ht.group_by(...).aggregate(...)``.
+    """
+    distinct = hl.array(hl.agg.filter(hl.is_defined(expr), hl.agg.collect_as_set(expr)))
+    return hl.or_missing(hl.len(distinct) > 0, hl.sorted(distinct, reverse=True)[0])
+
+
 def cleanup_temp_file(tmp_path: Optional[str]) -> None:
     """Best-effort cleanup for local or Hadoop/S3/GS temp files."""
     if not tmp_path:

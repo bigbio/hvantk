@@ -33,8 +33,19 @@ def combine_gvcfs(
         save_path (str): Path to save the combiner plan.
         vdses (List[str]): List of VDS paths to be combined.
         kwargs (dict): Additional keyword arguments to pass to the new_combiner hail function.
-                      Can include 'intervals', 'use_genome_default_intervals', or
-                      'use_exome_default_intervals' (mutually exclusive).
+                      GVCF partitioning is chosen by exactly one of 'intervals',
+                      'import_interval_size', 'use_genome_default_intervals', or
+                      'use_exome_default_intervals' (mutually exclusive). If none is given,
+                      'use_genome_default_intervals' is applied (Hail's 1.2 Mb genome default).
+                      Other keys (e.g. 'gvcf_batch_size', 'branch_factor', 'target_records')
+                      are forwarded to Hail unchanged.
+
+                      Partitioning note: Hail derives one partition per interval, so the
+                      combiner's effective parallelism is capped by the interval count. With
+                      the 1.2 Mb genome default a single chromosome yields relatively few
+                      partitions (e.g. chr20 -> 54), and cores beyond that sit idle. Set
+                      'import_interval_size' so that partitions comfortably exceed the number
+                      of available cores (~2-4x is a good target).
         reference_genome (str): Reference genome to use (default: GRCh38).
 
     Returns:
@@ -51,6 +62,12 @@ def combine_gvcfs(
         if not (gvcf_dir or vdses):
             raise ValueError("Either GVCF files or VDS files must be provided.")
 
+        # Work on a copy: the interval keys below are consumed with .pop(), and mutating
+        # the caller's dict would silently strip the settings from any subsequent call
+        # that reuses it (e.g. combining several chromosomes in a loop), falling back to
+        # the genome default without warning.
+        kwargs = dict(kwargs or {})
+
         validated_gvcfs: List[str] = []
         validated_vdses: List[str] = []
 
@@ -66,18 +83,38 @@ def combine_gvcfs(
 
         # Handle interval-related parameters from kwargs
         intervals = kwargs.pop("intervals", None)
+        if intervals is not None:
+            # Callers may naturally supply any iterable (e.g. a generator comprehension
+            # over contigs). Materialise it once so that logging/len cannot raise and so
+            # Hail receives a list it can traverse more than once.
+            intervals = list(intervals)
+        import_interval_size = kwargs.pop("import_interval_size", None)
         use_genome_default = kwargs.pop("use_genome_default_intervals", False)
         use_exome_default = kwargs.pop("use_exome_default_intervals", False)
 
-        # Validate that only one interval method is specified
+        # Validate that only one interval method is specified. Hail warns (and silently
+        # picks one) when several collide, so we fail loudly here instead.
         interval_params_set = sum(
-            [intervals is not None, use_genome_default, use_exome_default]
+            [
+                intervals is not None,
+                import_interval_size is not None,
+                use_genome_default,
+                use_exome_default,
+            ]
         )
 
         if interval_params_set > 1:
             raise ValueError(
-                "Only one of 'intervals', 'use_genome_default_intervals', or "
-                "'use_exome_default_intervals' can be specified."
+                "Only one of 'intervals', 'import_interval_size', "
+                "'use_genome_default_intervals', or 'use_exome_default_intervals' "
+                "can be specified."
+            )
+
+        # Fail fast on values Hail would only reject deep inside the combiner, where the
+        # error is wrapped in generic "check your Spark version / GVCF files" guidance.
+        if import_interval_size is not None and import_interval_size < 1:
+            raise ValueError(
+                f"'import_interval_size' must be at least 1 bp, got {import_interval_size}."
             )
 
         # Set default to genome intervals if none specified
@@ -95,6 +132,9 @@ def combine_gvcfs(
         logging.info(f"  - Reference genome: {reference_genome}")
         logging.info(f"  - Use genome intervals: {use_genome_default}")
         logging.info(f"  - Use exome intervals: {use_exome_default}")
+        logging.info(f"  - Import interval size: {import_interval_size}")
+        if intervals is not None:
+            logging.info(f"  - Explicit intervals: {len(intervals)}")
         if validated_gvcfs:
             logging.info(f"  - First GVCF: {validated_gvcfs[0]}")
 
@@ -107,6 +147,7 @@ def combine_gvcfs(
                 save_path=save_path,
                 vds_paths=validated_vdses,
                 intervals=intervals,
+                import_interval_size=import_interval_size,
                 use_genome_default_intervals=use_genome_default,
                 use_exome_default_intervals=use_exome_default,
                 reference_genome=reference_genome,

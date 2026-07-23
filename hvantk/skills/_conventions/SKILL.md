@@ -134,9 +134,9 @@ This resolves the manifest via `get_registry().get_dataset(...)`, runs `lifecycl
 
 ## 9. Validation contract
 
-Every per-resource `SKILL.md` MUST declare these paths, which MUST match the `tests:` block in `plugin.yaml`. All paths are plugin-relative (i.e., relative to the plugin folder):
+Every per-resource `SKILL.md` MUST declare these paths, which MUST match the `tests:` block in `plugin.yaml`. All paths are resolved relative to the plugin folder, and normally live inside it:
 
-- `fixture` — input file or directory used by the round-trip test
+- `fixture` — input file or directory used by the round-trip test. Normally plugin-local (`tests/testdata/raw/<dataset>/`). A fixture that is genuinely shared with cross-cutting tests — `hvantk/tests/test_plugin_conformance.py`, or an integration test in another package — instead lives in the repo-level tree and is referenced in place as `../../tests/testdata/raw/<dataset>`, rather than being duplicated per consumer. Say which form applies in the plugin's `SKILL.md`, since the two are not interchangeable. `dbnsfp`, `ensembl_gene`, `gevir` and `gnomad_metrics` use the shared form.
 - `schema_snapshot` — `tests/snapshots/schema.json`
 - `row_snapshot` — `tests/snapshots/sample_rows.json`. Keys used to select snapshot rows must be unique-in-table — `_snapshot_utils.collect_sample_rows` does not deduplicate, so a duplicated key yields non-deterministic snapshots. For builders that legitimately produce multi-row keys (e.g., GWAS Catalog), maintain `tests/snapshots/sample_keys.json` listing the singleton-key subset to sample.
 - `drift_fingerprint` — `tests/drift_fingerprint.json` (the expected fingerprint; see § 12).

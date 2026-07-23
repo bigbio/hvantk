@@ -17,6 +17,7 @@ import pandas as pd
 
 from hvantk.skills.clingen.shared.constants import CLINGEN_CLASSIFICATION_LEVELS
 from hvantk.core.streamers.gene_disease_table import GeneDiseaseTableStreamer
+from hvantk.core.utils.hail_helpers import agg_max_str
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +77,7 @@ class ClinGenGeneDiseaseTableStreamer(GeneDiseaseTableStreamer):
             genes=hl.agg.collect_as_set(ht.gene_symbol),
             diseases=hl.agg.collect_as_set(ht.disease_label),
             classification_counts=hl.agg.counter(ht.classification),
-            last_curation=hl.agg.max(ht.classification_date),
+            last_curation=agg_max_str(ht.classification_date),
         )
 
         df = summary_ht.to_pandas()

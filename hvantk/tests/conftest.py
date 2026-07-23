@@ -136,15 +136,11 @@ def hail_session(tmp_path_factory, request):
 # ----------------------------
 # Skill snapshot regeneration flag
 # ----------------------------
-def pytest_addoption(parser):
-    parser.addoption(
-        "--regenerate-snapshots",
-        action="store_true",
-        default=False,
-        help="Regenerate skill snapshot files in place instead of asserting against them.",
-    )
-
-
+# ``pytest_addoption`` for --regenerate-snapshots lives in the repo-root conftest.py,
+# not here: this file is only loaded for paths under hvantk/tests/, so registering it
+# here left the option undefined when a plugin's own suite was run on its own (pytest
+# conftest discovery walks ancestors, and hvantk/skills/ is a sibling of hvantk/tests/).
+# The fixture below stays here, because each plugin's tests/conftest.py re-exports it.
 @pytest.fixture
 def regenerate_snapshots(request) -> bool:
     return request.config.getoption("--regenerate-snapshots")

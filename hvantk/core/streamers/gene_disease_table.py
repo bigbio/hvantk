@@ -22,6 +22,7 @@ import hail as hl
 import pandas as pd
 
 from hvantk.core.utils.hail_context import init_hail, hail_initialized
+from hvantk.core.utils.hail_helpers import agg_max_str
 from hvantk.core.utils.gene_sets import load_gene_sets_from_dict
 from hvantk.core.utils.table_utils import get_row_fields
 
@@ -599,7 +600,8 @@ class GeneDiseaseTableStreamer:
             ),
         }
         if date_field:
-            agg_exprs["last_update"] = hl.agg.max(ht[date_field])
+            # Date fields are ISO-8601 *strings*, and hl.agg.max is numeric-only.
+            agg_exprs["last_update"] = agg_max_str(ht[date_field])
         agg = ht.aggregate(hl.struct(**agg_exprs))
 
         total_associations = agg.total_associations

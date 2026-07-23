@@ -44,11 +44,11 @@ def test_genomics_loaded_from_per_plugin_catalogs():
     reg = _fresh_registry()
     accs = {e.get("accession") for e in reg.list_genomics_datasets()}
     # The 10 genomics datasets now come from per-plugin catalogs. Two of them
-    # (Ensembl_v110, MSigDB_*) come from `mapping`-domain plugins routed into
+    # (Ensembl_v113, MSigDB_*) come from `mapping`-domain plugins routed into
     # the genomics bucket.
     expected = {
         "dbNSFP_v4.7", "ClinVar_latest", "gnomAD_v4.1", "INSIDER_v1.0",
-        "Ensembl_v110", "GeVIR_v1.0", "ClinGen_GeneDisease",
+        "Ensembl_v113", "GeVIR_v1.0", "ClinGen_GeneDisease",
         "GWAS_Catalog_v1.0_e115_r2026-04-27",
         "MSigDB_C2_CP_v2026.1.Hs.symbols", "GTEx_v11_eQTL_signif_pairs",
     }

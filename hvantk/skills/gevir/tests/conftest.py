@@ -1,4 +1,4 @@
-"""Local conftest for the gevir plugin tests.
+"""Local conftest for the GeVIR plugin tests.
 
 Re-exports the session-level fixtures (``hail_session``, ``regenerate_snapshots``)
 and the auto-marker hook from ``hvantk/tests/conftest.py``. Pytest's conftest

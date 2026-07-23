@@ -1,0 +1,373 @@
+[
+  {
+    "key": {
+      "hgnc_id": "HGNC:1100"
+    },
+    "row": {
+      "agr": null,
+      "alias_names": [
+        "breast cancer 1 early onset"
+      ],
+      "alias_symbols": [
+        "BRCC1",
+        "FANCS",
+        "PPP1R53"
+      ],
+      "bioparadigms_slc": null,
+      "ccds_id": [
+        "CCDS11453",
+        "CCDS11456"
+      ],
+      "cd": null,
+      "cosmic": null,
+      "date_approved": "1994-02-07",
+      "date_modified": null,
+      "date_name_changed": null,
+      "date_symbol_changed": null,
+      "ena": null,
+      "ensembl_gene_id": "ENSG00000012048",
+      "entrez_id": "672",
+      "enzyme_id": null,
+      "gencc": "HGNC:1100",
+      "gene_group": [
+        "BRCA1-A complex",
+        "Fanconi anemia complementation groups"
+      ],
+      "gene_group_id": [
+        "1307",
+        "548"
+      ],
+      "gene_name": "BRCA1 DNA repair associated",
+      "gene_symbol": "BRCA1",
+      "gtrnadb": null,
+      "homeodb": null,
+      "horde_id": null,
+      "imgt": null,
+      "intermediate_filament_db": null,
+      "iuphar": null,
+      "kznf_gene_catalog": null,
+      "lncipedia": null,
+      "lncrnadb": null,
+      "location": "17q21.31",
+      "location_sortable": "17q21.31",
+      "locus_group": "protein-coding gene",
+      "locus_type": "gene with protein product",
+      "lsdb": null,
+      "mamit-trnadb": null,
+      "mane_select": [
+        "ENST00000357654.9",
+        "NM_007294.4"
+      ],
+      "merops": null,
+      "mgd_id": null,
+      "mirbase": null,
+      "omim_id": [
+        "113705"
+      ],
+      "orphanet_id": "119831|156210",
+      "prev_names": [
+        "breast cancer 1 early onset"
+      ],
+      "prev_symbols": [],
+      "pseudogene.org": null,
+      "pubmed_id": null,
+      "refseq_id": "NM_007294",
+      "rgd_id": null,
+      "rna_central_id": null,
+      "snornabase": null,
+      "status": "Approved",
+      "ucsc_id": "uc002ict.4",
+      "uniprot_ids": [
+        "P38398"
+      ],
+      "vega_id": null
+    }
+  },
+  {
+    "key": {
+      "hgnc_id": "HGNC:1101"
+    },
+    "row": {
+      "agr": null,
+      "alias_names": [
+        "breast cancer 2 early onset"
+      ],
+      "alias_symbols": [
+        "BRCC2",
+        "FANCD1",
+        "XRCC11"
+      ],
+      "bioparadigms_slc": null,
+      "ccds_id": [
+        "CCDS9344"
+      ],
+      "cd": null,
+      "cosmic": null,
+      "date_approved": "1994-02-07",
+      "date_modified": null,
+      "date_name_changed": null,
+      "date_symbol_changed": null,
+      "ena": null,
+      "ensembl_gene_id": "ENSG00000139618",
+      "entrez_id": "675",
+      "enzyme_id": null,
+      "gencc": "HGNC:1101",
+      "gene_group": [
+        "Fanconi anemia complementation groups"
+      ],
+      "gene_group_id": [
+        "548"
+      ],
+      "gene_name": "BRCA2 DNA repair associated",
+      "gene_symbol": "BRCA2",
+      "gtrnadb": null,
+      "homeodb": null,
+      "horde_id": null,
+      "imgt": null,
+      "intermediate_filament_db": null,
+      "iuphar": null,
+      "kznf_gene_catalog": null,
+      "lncipedia": null,
+      "lncrnadb": null,
+      "location": "13q13.1",
+      "location_sortable": "13q13.1",
+      "locus_group": "protein-coding gene",
+      "locus_type": "gene with protein product",
+      "lsdb": null,
+      "mamit-trnadb": null,
+      "mane_select": [
+        "ENST00000380152.8",
+        "NM_000059.4"
+      ],
+      "merops": null,
+      "mgd_id": null,
+      "mirbase": null,
+      "omim_id": [
+        "600185"
+      ],
+      "orphanet_id": "145",
+      "prev_names": [
+        "breast cancer 2 early onset"
+      ],
+      "prev_symbols": [],
+      "pseudogene.org": null,
+      "pubmed_id": null,
+      "refseq_id": "NM_000059",
+      "rgd_id": null,
+      "rna_central_id": null,
+      "snornabase": null,
+      "status": "Approved",
+      "ucsc_id": "uc001uub.2",
+      "uniprot_ids": [
+        "P51587"
+      ],
+      "vega_id": null
+    }
+  },
+  {
+    "key": {
+      "hgnc_id": "HGNC:16376"
+    },
+    "row": {
+      "agr": null,
+      "alias_names": [],
+      "alias_symbols": [],
+      "bioparadigms_slc": null,
+      "ccds_id": [],
+      "cd": null,
+      "cosmic": null,
+      "date_approved": "2001-08-28",
+      "date_modified": null,
+      "date_name_changed": null,
+      "date_symbol_changed": null,
+      "ena": null,
+      "ensembl_gene_id": "ENSG00000238101",
+      "entrez_id": "114181",
+      "enzyme_id": null,
+      "gencc": null,
+      "gene_group": [],
+      "gene_group_id": [],
+      "gene_name": "family with sequence similarity 8 member A5 pseudogene",
+      "gene_symbol": "FAM8A5P",
+      "gtrnadb": null,
+      "homeodb": null,
+      "horde_id": null,
+      "imgt": null,
+      "intermediate_filament_db": null,
+      "iuphar": null,
+      "kznf_gene_catalog": null,
+      "lncipedia": null,
+      "lncrnadb": null,
+      "location": "6p21",
+      "location_sortable": "06p21",
+      "locus_group": "pseudogene",
+      "locus_type": "pseudogene",
+      "lsdb": null,
+      "mamit-trnadb": null,
+      "mane_select": [],
+      "merops": null,
+      "mgd_id": null,
+      "mirbase": null,
+      "omim_id": [],
+      "orphanet_id": null,
+      "prev_names": [
+        "family with sequence similarity 8 member A5 pseudogene"
+      ],
+      "prev_symbols": [],
+      "pseudogene.org": null,
+      "pubmed_id": null,
+      "refseq_id": "NG_001298",
+      "rgd_id": null,
+      "rna_central_id": null,
+      "snornabase": null,
+      "status": "Approved",
+      "ucsc_id": null,
+      "uniprot_ids": [],
+      "vega_id": "OTTHUMG00000139003"
+    }
+  },
+  {
+    "key": {
+      "hgnc_id": "HGNC:4641"
+    },
+    "row": {
+      "agr": null,
+      "alias_names": [],
+      "alias_symbols": [],
+      "bioparadigms_slc": null,
+      "ccds_id": [],
+      "cd": null,
+      "cosmic": null,
+      "date_approved": "1994-08-10",
+      "date_modified": null,
+      "date_name_changed": null,
+      "date_symbol_changed": null,
+      "ena": null,
+      "ensembl_gene_id": "ENSG00000277656",
+      "entrez_id": "2952",
+      "enzyme_id": "2.5.1.18",
+      "gencc": null,
+      "gene_group": [
+        "Soluble glutathione S-transferases"
+      ],
+      "gene_group_id": [
+        "567"
+      ],
+      "gene_name": "glutathione S-transferase theta 1",
+      "gene_symbol": "GSTT1",
+      "gtrnadb": null,
+      "homeodb": null,
+      "horde_id": null,
+      "imgt": null,
+      "intermediate_filament_db": null,
+      "iuphar": null,
+      "kznf_gene_catalog": null,
+      "lncipedia": null,
+      "lncrnadb": null,
+      "location": "22q11.23",
+      "location_sortable": "22q11.23",
+      "locus_group": "protein-coding gene",
+      "locus_type": "gene with protein product",
+      "lsdb": null,
+      "mamit-trnadb": null,
+      "mane_select": [
+        "ENST00000612885.4",
+        "NM_000853.4"
+      ],
+      "merops": null,
+      "mgd_id": null,
+      "mirbase": null,
+      "omim_id": [
+        "600436"
+      ],
+      "orphanet_id": "470418",
+      "prev_names": [
+        "glutathione S-transferase theta 1 pseudogene"
+      ],
+      "prev_symbols": [
+        "GSTT1P",
+        "GSTT1-1"
+      ],
+      "pseudogene.org": null,
+      "pubmed_id": null,
+      "refseq_id": "NM_000853",
+      "rgd_id": null,
+      "rna_central_id": null,
+      "snornabase": null,
+      "status": "Approved",
+      "ucsc_id": "uc002zze.4",
+      "uniprot_ids": [
+        "P30711"
+      ],
+      "vega_id": null
+    }
+  },
+  {
+    "key": {
+      "hgnc_id": "HGNC:51839"
+    },
+    "row": {
+      "agr": null,
+      "alias_names": [],
+      "alias_symbols": [
+        "lncRNA-AS-GSTT1(1-72)",
+        "lncRNA-CD244",
+        "lncRNA-BC050410"
+      ],
+      "bioparadigms_slc": null,
+      "ccds_id": [],
+      "cd": null,
+      "cosmic": null,
+      "date_approved": "2015-08-05",
+      "date_modified": null,
+      "date_name_changed": null,
+      "date_symbol_changed": null,
+      "ena": null,
+      "ensembl_gene_id": null,
+      "entrez_id": "106099130",
+      "enzyme_id": null,
+      "gencc": null,
+      "gene_group": [
+        "Antisense RNAs"
+      ],
+      "gene_group_id": [
+        "1987"
+      ],
+      "gene_name": "GSTT1 antisense RNA 1",
+      "gene_symbol": "GSTT1-AS1",
+      "gtrnadb": null,
+      "homeodb": null,
+      "horde_id": null,
+      "imgt": null,
+      "intermediate_filament_db": null,
+      "iuphar": null,
+      "kznf_gene_catalog": null,
+      "lncipedia": null,
+      "lncrnadb": null,
+      "location": "22q11.23",
+      "location_sortable": "22q11.23",
+      "locus_group": "non-coding RNA",
+      "locus_type": "RNA, long non-coding",
+      "lsdb": null,
+      "mamit-trnadb": null,
+      "mane_select": [],
+      "merops": null,
+      "mgd_id": null,
+      "mirbase": null,
+      "omim_id": [],
+      "orphanet_id": null,
+      "prev_names": [],
+      "prev_symbols": [],
+      "pseudogene.org": null,
+      "pubmed_id": null,
+      "refseq_id": "NR_132348",
+      "rgd_id": null,
+      "rna_central_id": null,
+      "snornabase": null,
+      "status": "Approved",
+      "ucsc_id": null,
+      "uniprot_ids": [],
+      "vega_id": null
+    }
+  }
+]

@@ -1,7 +1,7 @@
 [
   {
     "title": "Ensembl Gene Annotations",
-    "accession": "Ensembl_v110",
+    "accession": "Ensembl_v113",
     "description": "Comprehensive gene annotations from the Ensembl project including gene models, transcript isoforms, protein sequences, regulatory features, and comparative genomics data across species.",
     "pubmedid": "31691826",
     "data_source": "Ensembl",
@@ -27,14 +27,14 @@
     ],
     "files": [
       {
-        "path": "Homo_sapiens.GRCh38.110.gtf.gz",
+        "path": "Homo_sapiens.GRCh38.113.gtf.gz",
         "format": "gtf",
         "size_bytes": 800000000,
         "compression": "gzip",
         "description": "Complete gene annotations in GTF format"
       },
       {
-        "path": "Homo_sapiens.GRCh38.110.gff3.gz",
+        "path": "Homo_sapiens.GRCh38.113.gff3.gz",
         "format": "gff3",
         "size_bytes": 900000000,
         "compression": "gzip",

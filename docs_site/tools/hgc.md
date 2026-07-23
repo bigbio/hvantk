@@ -86,6 +86,48 @@ hvantk hgc pipeline \
 
 See [Pipeline Orchestration](#pipeline-orchestration) for detailed documentation.
 
+#### Tuning combiner parallelism (`--import-interval-size`)
+
+Hail's gVCF combiner partitions the import by **even genomic intervals**, and derives
+**one partition per interval**. The interval size therefore sets a *ceiling* on how many
+cores can do useful work in the combine stage — the stage that dominates joint-genotyping
+runtime.
+
+The default is Hail's genome default of **1.2 Mb**, which is sized for whole-genome gVCFs.
+For a **region-restricted** run (a single chromosome, an exome, a gene panel) it can
+produce far fewer partitions than you have cores, leaving most of them idle:
+
+| Input region | Partitions at the 1.2 Mb default |
+|---|---|
+| chr20 (64.4 Mb) | 54 |
+| chr1 (249.0 Mb) | 208 |
+| whole genome (3.1 Gb) | ~2,584 |
+
+**Rule of thumb: keep partitions at roughly 2–4× your total core count.** If you run
+chr20 on 128 cores with the default, ~74 cores have nothing to do — which looks like
+"the tool doesn't scale" but is purely a partitioning artefact.
+
+```bash
+# chr1 on a 128-core cluster: 600 kb -> 415 partitions (~3x cores)
+hvantk hgc gvcf-combine -g /path/to/chr1_gvcfs -o cohort.vds \
+    --import-interval-size 600000
+
+# The same knob on the recommended end-to-end pipeline
+hvantk hgc pipeline -i /path/to/chr1_gvcfs -o /path/to/out \
+    --import-interval-size 600000
+```
+
+Related tuning options (available on both `gvcf-combine` and `pipeline`):
+
+| Option | Meaning | Hail default |
+|---|---|---|
+| `--import-interval-size` | Interval size (bp); **one partition per interval** | 1.2 Mb (genome) |
+| `--use-exome-default-intervals` | Use Hail's exome interval size | 60 Mb |
+| `--gvcf-batch-size` | gVCFs merged per tree-merge batch | 50 |
+| `--branch-factor` | Branch factor of the hierarchical merge | 100 |
+
+`--import-interval-size` and `--use-exome-default-intervals` are mutually exclusive.
+
 #### Individual Component Commands
 
 For advanced users who need fine-grained control, HGC provides individual commands:
@@ -160,7 +202,7 @@ convert_vds_to_mt(
     output_path="analysis.mt",
     adjust_genotypes=True,
     skip_split_multi=False,
-    convert_lgt_to_gt=True
+    skip_validation=False
 )
 ```
 
@@ -354,7 +396,6 @@ hvantk hgc vds2mt \
   --input cohort.vds \
   --output analysis.mt \
   --adjust-genotypes \
-  --convert-lgt-to-gt \
   --overwrite
 ```
 
@@ -367,7 +408,7 @@ convert_vds_to_mt(
     output_path="analysis.mt",
     adjust_genotypes=True,
     skip_split_multi=False,
-    convert_lgt_to_gt=True,
+    skip_validation=False,
     skip_keying_by_cols=False,
     overwrite=False
 )
@@ -378,14 +419,36 @@ convert_vds_to_mt(
 - `output_path`: Output MatrixTable path
 - `adjust_genotypes`: Annotate with adjusted genotypes using gnomAD quality filters (requires `gnomad` package)
 - `skip_split_multi`: Skip splitting multi-allelic variants (not recommended)
-- `convert_lgt_to_gt`: Convert LGT (local genotype) to GT (global genotype) after splitting (recommended)
+- `skip_validation`: Skip the biallelic audit and genotype repair (see below)
 - `skip_keying_by_cols`: Skip keying MatrixTable by sample column
 - `overwrite`: Whether to overwrite existing output
 
 **Important Notes:**
-- LGT to GT conversion must happen **after** splitting multi-allelic variants
+- The VDS-level split already produces biallelic GT/AD — no manual LGT→GT downcoding is needed
 - Adjusted genotype annotation requires the `gnomad` package: `pip install gnomad`
-- Setting `skip_split_multi=True` and `convert_lgt_to_gt=True` will raise an error
+
+#### The densify runs exactly once
+
+This stage is dominated by *densification*: expanding the VDS's reference blocks back into a full
+samples × sites matrix. Hail is lazy and **does not cache**, so every *eager* action on the dense
+MatrixTable — an `aggregate_entries`, a `count`, a `write` — re-executes the whole densify from
+the top.
+
+`convert_vds_to_mt` is therefore written so that **only the final `write` touches the dense
+matrix**:
+
+- the **biallelic audit** (out-of-bounds `GT` indices, `AD` length mismatches) runs on the *sparse*
+  `variant_data`, before densification. That is where such defects can originate: reference blocks
+  are hom-ref by construction and carry no `AD`, so densification cannot introduce either defect.
+- the **repair** (setting an out-of-bounds genotype to missing) is applied as a lazy, unconditional
+  expression on the dense matrix. It fuses into the write, and on clean data it is the identity.
+
+Gating the repair behind `if n_invalid > 0` would look harmless but is not: *reading* that count is
+an eager action, so it forces an entire extra densify of the cohort. On a 500-sample chr1 callset
+that mistake cost ~42% of the stage's wall time.
+
+`--skip-validation` turns off both the audit and the repair. The audit is cheap (it scans only the
+sparse variant records), so there is rarely a reason to.
 
 ### MatrixTable to VCF Export
 
@@ -721,7 +784,7 @@ convert_vds_to_mt(..., adjust_genotypes=False)
 Solution: Either enable multi-allelic splitting or disable LGT conversion:
 convert_vds_to_mt(..., skip_split_multi=False)
 # OR
-convert_vds_to_mt(..., convert_lgt_to_gt=False)
+convert_vds_to_mt(..., skip_validation=True)
 ```
 
 **Issue: "Out of memory during GVCF combination"**
@@ -813,7 +876,7 @@ mt.write("cohort_filtered.mt")
 |----------|-------------|---------|
 | `combine_gvcfs(gvcf_dir, vds_output_path, tmp_path, save_path, vdses, kwargs, reference_genome='GRCh38')` | Combine GVCF files into a VDS. See [GVCF Combination](#gvcf-combination). | None |
 | `combine_vdses(vdses_dir, output_path, validate=True, overwrite=False)` | Merge multiple VDS directories. See [VDS Combination](#vds-combination). | None |
-| `convert_vds_to_mt(vds_path, output_path, adjust_genotypes=True, skip_split_multi=False, convert_lgt_to_gt=True, skip_keying_by_cols=False, overwrite=False)` | Convert VDS to dense MatrixTable. See [VDS to MatrixTable Conversion](#vds-to-matrixtable-conversion). | None |
+| `convert_vds_to_mt(vds_path, output_path, adjust_genotypes=True, skip_split_multi=False, skip_validation=False, skip_keying_by_cols=False, overwrite=False)` | Convert VDS to dense MatrixTable. See [VDS to MatrixTable Conversion](#vds-to-matrixtable-conversion). | None |
 | `convert_mt_to_multi_sample_vcf(mt_path, vcf_path, filter_adj_genotypes=True, min_ac=1, split_multi=True)` | Export MatrixTable to VCF. See [MatrixTable to VCF Export](#matrixtable-to-vcf-export). | None |
 
 ### Utility Functions

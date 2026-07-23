@@ -1,35 +1,68 @@
 [
   {
     "key": {
-      "gene_id": "ENSG00000092607"
+      "gene_id": "ENSG00000000003"
     },
     "row": {
-      "canonical_transcript": "ENST00000207157",
-      "gevir_pct": 6.745519343,
-      "gnomad_gene_name": "TBX15",
-      "virlof_pct": 11.18227364
+      "canonical_transcript": "ENST00000373020",
+      "gevir_pct": 88.34254429,
+      "gnomad_gene_name": "TSPAN6",
+      "virlof_pct": 74.77403027
     }
   },
   {
     "key": {
-      "gene_id": "ENSG00000162300"
+      "gene_id": "ENSG00000000005"
     },
     "row": {
-      "canonical_transcript": "ENST00000294258",
-      "gevir_pct": 52.09958163,
-      "gnomad_gene_name": "ZFPL1",
-      "virlof_pct": 42.86452146
+      "canonical_transcript": "ENST00000373031",
+      "gevir_pct": 44.76524973,
+      "gnomad_gene_name": "TNMD",
+      "virlof_pct": 47.75579774
     }
   },
   {
     "key": {
-      "gene_id": "ENSG00000109062"
+      "gene_id": "ENSG00000000419"
     },
     "row": {
-      "canonical_transcript": "ENST00000262613",
-      "gevir_pct": 78.55482671,
-      "gnomad_gene_name": "SLC9A3R1",
-      "virlof_pct": 73.62739528
+      "canonical_transcript": "ENST00000371588",
+      "gevir_pct": 24.52352668,
+      "gnomad_gene_name": "DPM1",
+      "virlof_pct": 33.55715097
+    }
+  },
+  {
+    "key": {
+      "gene_id": "ENSG00000000457"
+    },
+    "row": {
+      "canonical_transcript": "ENST00000367772",
+      "gevir_pct": 43.17958783,
+      "gnomad_gene_name": "SCYL3",
+      "virlof_pct": 29.90031507
+    }
+  },
+  {
+    "key": {
+      "gene_id": "ENSG00000000460"
+    },
+    "row": {
+      "canonical_transcript": "ENST00000286031",
+      "gevir_pct": 59.5165539,
+      "gnomad_gene_name": "C1orf112",
+      "virlof_pct": 46.49036723
+    }
+  },
+  {
+    "key": {
+      "gene_id": "ENSG00000000938"
+    },
+    "row": {
+      "canonical_transcript": "ENST00000374005",
+      "gevir_pct": 19.71489076,
+      "gnomad_gene_name": "FGR",
+      "virlof_pct": 18.03625846
     }
   }
 ]

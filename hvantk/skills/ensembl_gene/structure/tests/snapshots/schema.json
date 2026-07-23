@@ -1,0 +1,14 @@
+{
+  "key": [
+    "gene_id"
+  ],
+  "row": {
+    "cds_length": "int32",
+    "cds_transcript": "str",
+    "gene_biotype": "str",
+    "gene_id": "str",
+    "mane_select": "str",
+    "n_coding_exons": "int32",
+    "n_transcripts": "int32"
+  }
+}

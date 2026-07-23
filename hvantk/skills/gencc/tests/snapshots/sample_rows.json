@@ -1,0 +1,122 @@
+[
+  {
+    "key": {
+      "hgnc_id": "1100",
+      "mondo_id": "0005144",
+      "submitter": "ClinGen"
+    },
+    "row": {
+      "classification": "Definitive",
+      "classification_level": 0,
+      "disease_label": "breast-ovarian cancer, familial 1",
+      "disease_original_id": "MONDO:0005144",
+      "disease_original_label": "breast-ovarian cancer, familial 1",
+      "gene_symbol": "BRCA1",
+      "mode_of_inheritance": "Autosomal dominant",
+      "pmids": "12345678",
+      "report_url": "https://example.com/1",
+      "sgc_id": "SGC-001",
+      "submission_date": "2025-06-15"
+    }
+  },
+  {
+    "key": {
+      "hgnc_id": "1100",
+      "mondo_id": "0005144",
+      "submitter": "Genomics England PanelApp"
+    },
+    "row": {
+      "classification": "Strong",
+      "classification_level": 1,
+      "disease_label": "breast-ovarian cancer, familial 1",
+      "disease_original_id": "MONDO:0005144",
+      "disease_original_label": "breast-ovarian cancer, familial 1",
+      "gene_symbol": "BRCA1",
+      "mode_of_inheritance": "Autosomal dominant",
+      "pmids": "23456789",
+      "report_url": "https://example.com/2",
+      "sgc_id": "SGC-002",
+      "submission_date": "2025-07-01"
+    }
+  },
+  {
+    "key": {
+      "hgnc_id": "1100",
+      "mondo_id": "0013683",
+      "submitter": "G2P"
+    },
+    "row": {
+      "classification": "Supportive",
+      "classification_level": 3,
+      "disease_label": "pancreatic cancer, susceptibility to, 4",
+      "disease_original_id": "MONDO:0013683",
+      "disease_original_label": "pancreatic cancer, susceptibility to, 4",
+      "gene_symbol": "BRCA1",
+      "mode_of_inheritance": "Autosomal dominant",
+      "pmids": "33445566",
+      "report_url": "https://example.com/13",
+      "sgc_id": "SGC-013",
+      "submission_date": "2025-09-01"
+    }
+  },
+  {
+    "key": {
+      "hgnc_id": "1101",
+      "mondo_id": "0005145",
+      "submitter": "ClinGen"
+    },
+    "row": {
+      "classification": "Definitive",
+      "classification_level": 0,
+      "disease_label": "breast-ovarian cancer, familial 2",
+      "disease_original_id": "MONDO:0005145",
+      "disease_original_label": "breast-ovarian cancer, familial 2",
+      "gene_symbol": "BRCA2",
+      "mode_of_inheritance": "Autosomal dominant",
+      "pmids": "34567890",
+      "report_url": "https://example.com/3",
+      "sgc_id": "SGC-003",
+      "submission_date": "2025-06-16"
+    }
+  },
+  {
+    "key": {
+      "hgnc_id": "1101",
+      "mondo_id": "0005145",
+      "submitter": "Genomics England PanelApp"
+    },
+    "row": {
+      "classification": "Definitive",
+      "classification_level": 0,
+      "disease_label": "breast-ovarian cancer, familial 2",
+      "disease_original_id": "MONDO:0005145",
+      "disease_original_label": "breast-ovarian cancer, familial 2",
+      "gene_symbol": "BRCA2",
+      "mode_of_inheritance": "Autosomal dominant",
+      "pmids": "45678901",
+      "report_url": "https://example.com/4",
+      "sgc_id": "SGC-004",
+      "submission_date": "2025-06-20"
+    }
+  },
+  {
+    "key": {
+      "hgnc_id": "11998",
+      "mondo_id": "0007903",
+      "submitter": "ClinGen"
+    },
+    "row": {
+      "classification": "Definitive",
+      "classification_level": 0,
+      "disease_label": "Li-Fraumeni syndrome",
+      "disease_original_id": "MONDO:0007903",
+      "disease_original_label": "Li-Fraumeni syndrome",
+      "gene_symbol": "TP53",
+      "mode_of_inheritance": "Autosomal dominant",
+      "pmids": "56789012",
+      "report_url": "https://example.com/5",
+      "sgc_id": "SGC-005",
+      "submission_date": "2025-05-20"
+    }
+  }
+]

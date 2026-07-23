@@ -94,8 +94,8 @@ Declared in `plugin.yaml`'s `tests:` block (all paths plugin-relative under `hva
 
 The snapshot directory and round-trip test file are declared but not yet created — initial run uses `pytest … --regenerate-snapshots` to seed them, per `_conventions` § 8.
 
-> **Snapshot status:** `tests/snapshots/schema.json` and `tests/snapshots/sample_rows.json`
-> have NOT yet been seeded for this plugin. On first round-trip run in a
-> hail-enabled environment, use `--regenerate-snapshots` to bootstrap them, then
-> commit. Until seeded, the round-trip test cannot verify output against a fixed
-> schema.
+> **Snapshot status:** seeded. `tests/snapshots/schema.json` and
+> `tests/snapshots/sample_rows.json` are committed, and `test_builder.py` asserts the
+> build against them. Regenerate after an intentional schema change with
+> `pytest hvantk/skills/hgnc/tests/test_builder.py --regenerate-snapshots`, then
+> commit the result.
