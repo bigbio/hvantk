@@ -126,3 +126,97 @@ def prepare_cmd(spec, axis, input_path, spine, output, hgnc_path):
     enforce_rate(report, entry.min_mapping_rate)
     prepared.write(output, overwrite=True)
     click.echo(f"prepare {axis} ({entry.source}): {report.summary()} -> {output}")
+
+
+def _parse_prepared_option(values: tuple[str, ...]) -> dict[str, str]:
+    """Parse repeatable ``--prepared axis=path`` options into a dict.
+
+    Pure Python -- no Hail, no spec -- so it is unit-testable without a Hail session.
+    """
+    prepared_paths: dict[str, str] = {}
+    for value in values:
+        axis, sep, path = value.partition("=")
+        axis, path = axis.strip(), path.strip()
+        if not sep or not axis or not path:
+            raise click.UsageError(
+                f"--prepared value {value!r} is malformed; expected axis=path"
+            )
+        prepared_paths[axis] = path
+    return prepared_paths
+
+
+def _validate_prepared_axes(spec, prepared_paths: dict[str, str]) -> None:
+    """Raise a clear ``click.UsageError`` if ``--prepared`` doesn't match the spec's axes.
+
+    Checked in pure Python, before ``compose`` (which raises a raw ``KeyError`` on a
+    missing axis) and before any Hail call, so this is unit-testable without Hail.
+    """
+    spec_axes = {entry.axis for entry in spec.layer1}
+    prepared_axes = set(prepared_paths)
+
+    missing = sorted(spec_axes - prepared_axes)
+    if missing:
+        raise click.UsageError(
+            "missing --prepared for spec axis(es): " + ", ".join(missing)
+        )
+
+    unknown = sorted(prepared_axes - spec_axes)
+    if unknown:
+        raise click.UsageError(
+            "--prepared names axis(es) not declared in the spec "
+            f"{spec.name!r}: " + ", ".join(unknown)
+        )
+
+
+@annotate_group.command("compose")
+@click.option("--spec", required=True, help="Path to the feature-spec YAML.")
+@click.option("--spine", required=True, help="Path to the gene spine table (.ht).")
+@click.option(
+    "--prepared",
+    "prepared_opts",
+    required=True,
+    multiple=True,
+    help="Repeatable axis=path, one per spec layer1 axis (e.g. constraint=constraint.ht).",
+)
+@click.option(
+    "--output", required=True, help="Output path for the composed matrix (.ht)."
+)
+@click.option(
+    "--manifest",
+    default=None,
+    help="Output path for the manifest JSON (default: <output>.manifest.json).",
+)
+def compose_cmd(spec, spine, prepared_opts, output, manifest):
+    """Left-join every spec axis's prepared table onto the spine."""
+    import json
+
+    from hvantk.algorithms.annotation.compose import compose
+    from hvantk.algorithms.annotation.spec import load_spec
+
+    feature_spec = load_spec(spec)
+    prepared_paths = _parse_prepared_option(prepared_opts)
+    _validate_prepared_axes(feature_spec, prepared_paths)
+
+    manifest_path = manifest or f"{output}.manifest.json"
+
+    import hail as hl
+
+    from hvantk.core.utils.hail_context import init_hail
+
+    init_hail()
+
+    spine_ht = hl.read_table(spine)
+    prepared_by_axis = {
+        axis: hl.read_table(path) for axis, path in prepared_paths.items()
+    }
+
+    composed, report = compose(spine_ht, prepared_by_axis, feature_spec)
+    composed.write(output, overwrite=True)
+
+    with open(manifest_path, "w") as fh:
+        json.dump(report, fh, indent=2)
+
+    click.echo(
+        f"compose {feature_spec.name}: {report['n_genes']} genes x "
+        f"{len(feature_spec.layer1)} axes -> {output} (manifest: {manifest_path})"
+    )
