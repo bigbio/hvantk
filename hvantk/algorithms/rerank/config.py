@@ -35,6 +35,15 @@ class FeatureAxis:
 
 @dataclass
 class CohortSpec:
+    """DEPRECATED: superseded by hvantk.algorithms.cohort.spec.CohortManifest.
+
+    This loads a fixed set of audit columns from a gene-keyed table and is consumed in
+    exactly one place (engine.py, after scoring). It is retained because
+    examples/rerank/config.yaml exposes it publicly and the committed reference output
+    in hvantk/tests/rerank/test_example.py asserts flags derived from it. Migrating the
+    rerank path onto CohortManifest is a separate increment with its own regression gate.
+    """
+
     variant_table_path: str
     params: dict = field(default_factory=dict)
     def load(self) -> pd.DataFrame:
