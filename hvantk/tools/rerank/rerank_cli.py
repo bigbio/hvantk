@@ -1,14 +1,22 @@
 # hvantk/tools/rerank/rerank_cli.py
+import logging
+
 import click
 import jsonschema
 import yaml
 
 from hvantk.core.config import CONTEXT_SETTINGS
 
+logger = logging.getLogger(__name__)
+
 # The columns CaseControlArchitectureAudit needs (audit.py). When the cohort manifest
 # declares all three -- via any cohort_axes entry -- the audit is wired up automatically;
 # otherwise the run falls back to NoAudit.
 _ARCHITECTURE_AUDIT_COLUMNS = {"n_case_var", "conc", "driver_af"}
+# The axis label a cohort author would name an architecture axis after -- used only to
+# detect a near-miss (declares this axis but not all three columns above) and warn about
+# it. Any other axis combination that happens to supply the three columns is unaffected.
+_ARCHITECTURE_AXIS_NAME = "architecture"
 
 
 @click.command(
@@ -73,6 +81,23 @@ def rerank_cmd(config_path, output):
         raise click.ClickException(
             f"config {config_path}: malformed features/labels block ({exc})"
         )
+
+    for entry in cohort.cohort_axes:
+        if entry.axis == _ARCHITECTURE_AXIS_NAME:
+            missing = sorted(_ARCHITECTURE_AUDIT_COLUMNS - set(entry.columns))
+            if missing:
+                logger.warning(
+                    "cohort %r: cohort_axes entry %r has columns %r, which is not a "
+                    "superset of the columns CaseControlArchitectureAudit requires "
+                    "%r -- missing %r; falling back to NoAudit unless those columns "
+                    "are declared elsewhere in the manifest.",
+                    cohort.name,
+                    entry.axis,
+                    sorted(entry.columns),
+                    sorted(_ARCHITECTURE_AUDIT_COLUMNS),
+                    missing,
+                )
+            break
 
     has_architecture = _ARCHITECTURE_AUDIT_COLUMNS <= set(cohort.declared_columns())
     audit = CaseControlArchitectureAudit() if has_architecture else NoAudit()

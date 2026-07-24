@@ -2,7 +2,8 @@
 
 Turns a rare-variant burden result into a calibrated, auditable per-gene table with
 `hvantk rerank`, using small synthetic fixtures so the whole thing runs in a few seconds
-without Hail, a cohort, or network access.
+without Hail, a real patient cohort, or network access -- the `cohort:` in `config.yaml`
+points at the small synthetic cohort manifest shipped in `data/`, not an external dataset.
 
 ## Contents
 
