@@ -9,6 +9,8 @@ source of one, so validate()/rerank() require Config.cohort unconditionally (M3)
 The engine's cohort merge fails loud on a column collision instead of silently
 dropping the cohort's column (M5).
 """
+import logging
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -87,7 +89,7 @@ def test_config_derives_prior_from_cohort_when_none_given(tmp_path):
     assert dict(zip(loaded["unit"], loaded["prior_stat"])) == {"A": 0.01, "B": 0.2}
 
 
-def test_config_keeps_an_explicitly_given_prior_even_with_a_cohort(tmp_path):
+def test_config_keeps_an_explicitly_given_prior_even_with_a_cohort(tmp_path, caplog):
     # M2 derives the prior only when the caller didn't already supply one -- an
     # explicit PriorSpec is never silently clobbered by the cohort's own prior
     # column (this is exactly registry.build_config's existing calling convention:
@@ -96,9 +98,47 @@ def test_config_keeps_an_explicitly_given_prior_even_with_a_cohort(tmp_path):
     _write_tsv(p, ["gene", "minp"], [("A", 0.01), ("B", 0.2)])
     explicit = PriorSpec(path=str(p), unit_col="gene", stat_col="minp")
 
-    cfg = _mk(cohort=_manifest(p), prior=explicit)
+    with caplog.at_level(logging.WARNING, logger="hvantk.algorithms.rerank.config"):
+        cfg = _mk(cohort=_manifest(p), prior=explicit)
 
     assert cfg.prior is explicit
+    # Same (path, key/unit_col, stat/prior column) on both sides -> the sources agree,
+    # so no disagreement warning should fire (a warning here would be noise: this is
+    # registry.build_config's normal, correct calling convention).
+    assert caplog.records == []
+
+
+def test_config_warns_when_an_explicit_prior_disagrees_with_the_cohorts_own_prior(
+    tmp_path, caplog
+):
+    # The manifest's own prior source and the explicitly-supplied PriorSpec point at
+    # genuinely different data (different file, different values), unlike the test
+    # above. This lets the assertions below tell "correctly used the explicit prior"
+    # apart from "silently used a stale/wrong value" -- a test built on identical
+    # values on both sides cannot distinguish those two outcomes.
+    cohort_path = tmp_path / "cohort.tsv"
+    _write_tsv(cohort_path, ["gene", "minp"], [("A", 0.01), ("B", 0.2)])
+    explicit_path = tmp_path / "explicit_prior.tsv"
+    _write_tsv(explicit_path, ["gene", "minp"], [("A", 0.9), ("B", 0.4)])
+    explicit = PriorSpec(path=str(explicit_path), unit_col="gene", stat_col="minp")
+
+    with caplog.at_level(logging.WARNING, logger="hvantk.algorithms.rerank.config"):
+        cfg = _mk(cohort=_manifest(cohort_path), prior=explicit)
+
+    # The warning fires and names both sources.
+    assert len(caplog.records) == 1
+    message = caplog.records[0].getMessage()
+    assert "demo" in message  # names the cohort (Config.name and cohort.name both
+    assert str(explicit_path) in message  # the explicit source
+    assert str(cohort_path) in message  # the cohort's own source
+    assert "disagree" in message
+
+    # The explicit prior still wins -- it must be the *values from explicit_path*
+    # that actually reach the output, not the cohort's own (different) values. If the
+    # override direction were ever flipped (cohort wins on disagreement instead of
+    # the explicit prior), this assertion -- not just the warning above -- would fail.
+    loaded = cfg.prior.load()
+    assert dict(zip(loaded["unit"], loaded["prior_stat"])) == {"A": 0.9, "B": 0.4}
 
 
 def test_config_derived_prior_matches_load_prior_frame(tmp_path):

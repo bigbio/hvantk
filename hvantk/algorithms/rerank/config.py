@@ -1,4 +1,5 @@
 # local/rerank_engine/config.py
+import logging
 from dataclasses import dataclass, field
 from typing import Callable, Optional, TYPE_CHECKING
 import pandas as pd
@@ -8,6 +9,8 @@ from hvantk.algorithms.cohort.spec import CohortManifest
 
 if TYPE_CHECKING:
     from hvantk.algorithms.rerank.audit import Audit
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -90,7 +93,10 @@ class Config:
     """The unit -> prior_stat table engine.rerank merges in before scoring. Derived
     automatically from `cohort` in __post_init__ (via _ManifestPrior) when a cohort
     manifest is present and no prior was given explicitly; an explicitly-supplied
-    prior is never overridden."""
+    prior is never overridden. If a cohort manifest is also present and its own prior
+    source (table/key_column/prior column) disagrees with the explicit prior's
+    (path/unit_col/stat_col), __post_init__ logs a warning naming both sources -- the
+    explicit prior still wins, but the discrepancy is no longer silent."""
     audit: Optional["Audit"] = None
     calibration: str = "isotonic"
     folds: int = 5
@@ -107,13 +113,47 @@ class Config:
             from hvantk.algorithms.rerank.audit import NoAudit
 
             self.audit = NoAudit()
-        if self.cohort is not None and self.prior is None:
-            self.prior = _ManifestPrior(self.cohort)
+        if self.cohort is not None:
+            if self.prior is None:
+                self.prior = _ManifestPrior(self.cohort)
+            elif isinstance(self.prior, PriorSpec):
+                # "Disagree" is defined structurally, not by data content: the explicit
+                # PriorSpec's (path, unit_col, stat_col) vs. the (table, key_column,
+                # prior.column) the manifest would have derived via _ManifestPrior. This
+                # is a cheap comparison of source descriptors -- it never reads either
+                # table -- and it is intentionally silent when the two sources happen to
+                # describe the same file/columns (the common, correct case in
+                # registry.build_config, which always passes the prior explicitly
+                # alongside a cohort). The explicit prior always wins either way; this
+                # only decides whether that precedence is worth flagging.
+                manifest_source = (
+                    self.cohort.table,
+                    self.cohort.key_column,
+                    self.cohort.prior.column,
+                )
+                explicit_source = (
+                    self.prior.path,
+                    self.prior.unit_col,
+                    self.prior.stat_col,
+                )
+                if explicit_source != manifest_source:
+                    logger.warning(
+                        "Config %r: an explicitly-supplied Config.prior (path=%r, "
+                        "unit_col=%r, stat_col=%r) disagrees with cohort %r's own prior "
+                        "(table=%r, key_column=%r, column=%r); the explicit "
+                        "Config.prior wins and the cohort's prior is ignored.",
+                        self.name,
+                        self.prior.path,
+                        self.prior.unit_col,
+                        self.prior.stat_col,
+                        self.cohort.name,
+                        self.cohort.table,
+                        self.cohort.key_column,
+                        self.cohort.prior.column,
+                    )
 
 
 def validate(config: Config) -> None:
-    from hvantk.algorithms.rerank.audit import NoAudit
-
     if config.units != "gene":
         raise NotImplementedError(
             f"units={config.units!r}: only 'gene' is supported in v1"
@@ -126,11 +166,6 @@ def validate(config: Config) -> None:
             "accepted by rerank. Build a manifest with "
             "hvantk.algorithms.cohort.spec.load_cohort(path) and set it as Config.cohort."
         )
-    # Narrower predecessor of the unconditional check above -- kept because it still
-    # documents the original, more specific rule (a real Audit always needs a cohort);
-    # it can no longer fire on its own since config.cohort is already required above.
-    if config.cohort is None and not isinstance(config.audit, NoAudit):
-        raise ValueError("a non-NoAudit audit requires a cohort (variant-level data)")
     if not config.features:
         raise ValueError("at least one FeatureAxis is required")
     if not config.labels.load():

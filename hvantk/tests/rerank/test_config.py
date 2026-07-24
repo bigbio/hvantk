@@ -43,15 +43,6 @@ def test_validate_rejects_variant_units():
         validate(c)
 
 
-def test_validate_requires_noaudit_when_no_cohort():
-    from hvantk.algorithms.rerank.audit import CaseControlArchitectureAudit
-
-    c = _mk()
-    c.audit = CaseControlArchitectureAudit()  # cohort is None -> invalid
-    with pytest.raises(ValueError):
-        validate(c)
-
-
 def test_validate_requires_a_cohort_manifest():
     # M3: rerank always needs a prior, and a CohortManifest is now its only supported
     # source -- a PriorSpec-only config (cohort=None) is rejected even with NoAudit.
