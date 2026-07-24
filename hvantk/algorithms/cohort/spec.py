@@ -98,6 +98,14 @@ class CohortManifest:
     ``key_column`` is always resolved to a concrete string (never ``None``) after
     construction, whether the manifest is parsed via :func:`load_cohort` or built
     directly -- no consumer has to write ``manifest.key_column or manifest.key``.
+
+    ``__post_init__`` enforces "every declared column appears exactly once" (see
+    :func:`_check_no_duplicate_columns`) unconditionally, not only on the
+    :func:`load_cohort` path: a manifest built directly in Python (as every test in
+    this codebase, and any future non-YAML caller, does) must reject a prior column
+    reused inside an axis exactly as loudly as a YAML manifest does. Without this,
+    :meth:`axis_columns` and the prior/axis column sets could silently diverge from
+    what ``load_cohort_frame`` actually merges for such a manifest.
     """
 
     name: str
@@ -112,14 +120,35 @@ class CohortManifest:
     def __post_init__(self) -> None:
         if self.key_column is None:
             object.__setattr__(self, "key_column", self.key)
+        _check_no_duplicate_columns(self)
 
     def declared_columns(self) -> tuple[str, ...]:
         """The prior column followed by every axis column, in declaration order.
 
         This is the exact set of columns ``attach`` selects from the cohort table;
-        uniqueness across it is enforced at load time.
+        uniqueness across it is enforced at construction time (``__post_init__``).
         """
         cols = [self.prior.column]
+        for entry in self.cohort_axes:
+            cols.extend(entry.columns)
+        return tuple(cols)
+
+    def axis_columns(self) -> tuple[str, ...]:
+        """Every ``cohort_axes`` column, in declaration order -- ``declared_columns()``
+        minus the prior column.
+
+        This is the exact column set ``load_cohort_frame(..., include_prior=False)``
+        returns (modulo the renamed key column) -- i.e. what ``engine.rerank()``'s
+        audit merge actually contributes to the audit table. Use this, never
+        ``declared_columns()``, as the basis for "does this cohort carry columns X"
+        eligibility checks such as
+        :func:`hvantk.algorithms.rerank.audit.has_architecture_columns`:
+        ``declared_columns()`` also carries the prior column, which the engine's
+        audit merge never includes, so testing eligibility against it can
+        green-light an audit that then can't find its own required columns in the
+        table it's actually handed.
+        """
+        cols: list[str] = []
         for entry in self.cohort_axes:
             cols.extend(entry.columns)
         return tuple(cols)
@@ -175,7 +204,9 @@ def load_cohort(path: str | Path) -> CohortManifest:
         labels=labels,
         cohort_axes=axes,
     )
-    _check_no_duplicate_columns(manifest)
+    # No explicit _check_no_duplicate_columns(manifest) call needed here: it now runs
+    # unconditionally inside CohortManifest.__post_init__, so the CohortManifest(...)
+    # construction above already raised if two declared columns collided.
     return manifest
 
 
@@ -197,7 +228,14 @@ def _check_no_duplicate_columns(manifest: CohortManifest) -> None:
     with the prior column. The latter is the subtler bug: a prior statistic and a
     same-named model feature are usually different transforms of the same quantity
     (a raw p-value versus its negative log), so declaring both quietly feeds the
-    untransformed value into the model.
+    untransformed value into the model. It is also what keeps :meth:`axis_columns`
+    (declared_columns() minus the prior column) unambiguous: if an axis were ever
+    allowed to reuse the prior's own column name, "the axis columns" and "the
+    columns present with the prior column removed" would stop being the same set.
+
+    Called from :meth:`CohortManifest.__post_init__`, so this runs for every
+    manifest regardless of how it was constructed -- not only manifests parsed by
+    :func:`load_cohort`.
     """
     owner: dict[str, str] = {}
     for col in (manifest.prior.column,):

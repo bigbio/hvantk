@@ -1,14 +1,16 @@
 # local/rerank_engine/catalog/profile.py
 from dataclasses import dataclass, field
 from typing import Optional, Callable
-from hvantk.algorithms.rerank.config import PriorSpec, CohortSpec
+from hvantk.algorithms.cohort.spec import CohortManifest
+from hvantk.algorithms.rerank.config import PriorSpec
+
 
 @dataclass
 class DiseaseProfile:
     name: str
     # inputs / universe
     prior: Optional[PriorSpec] = None
-    cohort: Optional[CohortSpec] = None
+    cohort: Optional[CohortManifest] = None
     # precomputed feature source: callable -> (matrix[gene+feature cols], {family: [cols]})
     precomputed: Optional[Callable] = None
     # tissue / cell-type context (drives expression/eqtl/ptm axes)
@@ -17,7 +19,9 @@ class DiseaseProfile:
     dev_window: Optional[str] = None
     # labels
     disease_terms: list = field(default_factory=list)
-    label_classifications: list = field(default_factory=lambda: ["Definitive", "Strong", "Moderate"])
+    label_classifications: list = field(
+        default_factory=lambda: ["Definitive", "Strong", "Moderate"]
+    )
     extra_positive_genes: set = field(default_factory=set)
     # per-cohort PTM feature parquet (built by chd_ptm_features.py prep step)
     ptm_features_path: Optional[str] = None

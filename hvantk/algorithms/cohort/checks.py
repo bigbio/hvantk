@@ -52,6 +52,17 @@ def detect_delimiter(table_path: str) -> str:
     return "\t" if "\t" in _first_line(table_path) else ","
 
 
+def is_compressed(table_path: str) -> bool:
+    """Whether a cohort table is gzip-compressed, by the same suffix check
+    :func:`_first_line` already applies.
+
+    Public so a non-Hail reader of the table (``hvantk.algorithms.cohort.frame``'s
+    pandas loader) can pick the same "is this gzip" answer as ``read_header`` and
+    ``detect_delimiter`` without re-deriving the ``.gz``/``.bgz`` suffix list.
+    """
+    return Path(table_path).suffix in _COMPRESSED_SUFFIXES
+
+
 def read_header(table_path: str) -> list[str]:
     """Return the column names of a delimited cohort table.
 
