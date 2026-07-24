@@ -19,7 +19,7 @@
     ],
     "files": [
       {
-        "path": "gevir_metrics.tsv",
+        "path": "gevir_metrics_pmid31873297.tsv.bgz",
         "format": "tsv",
         "size_bytes": 2000000,
         "description": "Per-gene GeVIR and VIRLoF intolerance percentile ranks (~19,361 protein-coding genes)"

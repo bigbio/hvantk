@@ -27,7 +27,7 @@ The HGC module implements a complete joint genotyping pipeline with integrated q
 
 ### Additional Functionality: Quality Control & Visualization
 5. **QC Metrics Computation** - Comprehensive sample and variant quality assessment on combined cohorts
-6. **QC Visualization** - Static and interactive plots for quality control analysis
+6. **QC Table Export** - Sample and variant QC metrics as pandas DataFrames, ready to plot with matplotlib or any plotting library
 7. **QC Reports** - Professional HTML reports with embedded plots and recommendations
 8. **QC-based Filtering** - Quality-based sample and variant filtering tools
 
@@ -48,7 +48,7 @@ The HGC module implements a complete joint genotyping pipeline with integrated q
 
 ### Quality Control Features (Post-Combination)
 - **Comprehensive QC Metrics**: Sample and variant-level quality assessment for combined cohorts
-- **Interactive Visualizations**: Static matplotlib and interactive Plotly plots for data exploration
+- **Exported QC Tables**: `get_sample_metrics_df()` / `get_variant_metrics_df()` return pandas DataFrames you can plot directly with matplotlib
 - **Professional Reports**: HTML reports with embedded plots, metrics, and recommendations
 - **Quality-based Filtering**: Threshold-based sample and variant filtering tools
 
@@ -159,18 +159,17 @@ Additional QC commands for analyzing combined cohorts:
 # Compute QC metrics for combined cohort
 hvantk hgc compute-qc -i analysis.mt -o analysis_qc.mt
 
-# Generate QC visualizations
-hvantk hgc plot-qc -i analysis_qc.mt -o plots/ --plot-type dashboard
-
-# Create interactive QC plots
-hvantk hgc plot-qc -i analysis_qc.mt -o plots/ --interactive
-
 # Generate comprehensive QC report
 hvantk hgc qc-report -i analysis_qc.mt -o qc_report.html
 
 # Filter based on QC metrics
 hvantk hgc filter-qc -i analysis_qc.mt -o filtered.mt --min-sample-call-rate 0.95
 ```
+
+Standalone QC plotting/dashboard CLI support has been retired. `qc-report` produces
+a self-contained HTML report with embedded plots; for ad hoc or custom plots, export
+the QC metrics to a DataFrame in Python and plot with matplotlib directly (see
+[Quality Control Functions](#quality-control-functions-post-combination) below).
 
 ### Python API
 
@@ -220,9 +219,19 @@ mt = hl.read_matrix_table("analysis.mt")
 # Compute comprehensive QC metrics
 qc_results = compute_full_qc(mt)
 
-# Generate visualizations
-qc_results.plot_interactive_dashboard().show()
+# Generate a self-contained HTML report (recommended for a full overview)
 qc_results.generate_html_report('qc_report.html')
+
+# Or plot directly from the exported QC tables with matplotlib
+import matplotlib.pyplot as plt
+
+sample_df = qc_results.get_sample_metrics_df()
+fig, ax = plt.subplots()
+ax.hist(sample_df["sample_qc.call_rate"], bins=30)
+ax.axvline(0.85, color="red", ls="--", label="min call rate")
+ax.set_xlabel("Sample call rate")
+ax.legend()
+fig.savefig("call_rate.png", dpi=300, bbox_inches="tight")
 
 # Apply quality filters
 mt_filtered = filter_samples_by_qc(
