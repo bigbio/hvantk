@@ -7,6 +7,7 @@ in the default fast suite.
 """
 import gzip
 
+import pandas as pd
 import pytest
 
 from hvantk.algorithms.cohort.frame import load_cohort_frame, load_prior_frame
@@ -119,3 +120,21 @@ def test_load_prior_frame_matches_priorspec_load_column_names(tmp_path):
     assert list(frame.columns) == ["unit", "prior_stat"]
     assert set(frame["unit"]) == {"A", "B"}
     assert set(frame["prior_stat"]) == {0.01, 0.20}
+
+
+def test_load_prior_frame_matches_priorspec_load_exactly(tmp_path):
+    """Task 1 review (Minor): the test above only checks column names and value
+    *sets* and never exercises the real PriorSpec.load() -- two loaders that agree on
+    names/sets could still disagree on row order or dtype and this would not catch
+    it. Compare full frames instead, so the two implementations cannot drift apart
+    silently."""
+    from hvantk.algorithms.rerank.config import PriorSpec
+
+    p = tmp_path / "cohort.tsv"
+    _write_tsv(p, ["gene", "minp"], [("A", 0.01), ("B", 0.20), ("C", 0.55)])
+    m = _manifest(p)
+
+    manifest_frame = load_prior_frame(m)
+    priorspec_frame = PriorSpec(path=str(p), unit_col="gene", stat_col="minp").load()
+
+    pd.testing.assert_frame_equal(manifest_frame, priorspec_frame)

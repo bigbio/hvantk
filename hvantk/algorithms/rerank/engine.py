@@ -1,6 +1,7 @@
 # local/rerank_engine/engine.py
 from dataclasses import dataclass
 import numpy as np, pandas as pd
+from hvantk.algorithms.cohort.frame import load_cohort_frame
 from hvantk.algorithms.rerank.config import validate
 from hvantk.algorithms.rerank.features import FeatureAssembler
 from hvantk.algorithms.rerank.reranker import ReRanker
@@ -48,13 +49,31 @@ def rerank(config) -> RerankResult:
     scores = ReRanker(config.calibration, config.folds).score(df, feat_cols, y)
     audit_table = df
     if config.cohort is not None:
-        cohort_cols = config.cohort.load()
-        add = [
-            c
-            for c in cohort_cols.columns
-            if c != "gene" and c not in audit_table.columns
+        cohort_cols = load_cohort_frame(config.cohort)
+        collisions = [
+            c for c in cohort_cols.columns if c != "gene" and c in audit_table.columns
         ]
-        audit_table = df.merge(cohort_cols[["gene"] + add], on="gene", how="left")
+        if collisions:
+
+            def _source(col):
+                if col == "prior_stat":
+                    return "the prior"
+                if col == "y":
+                    return "the label column"
+                if col in feat_cols:
+                    return "a feature axis"
+                return "the scored table"
+
+            detail = "; ".join(
+                f"{c!r} (already supplied by {_source(c)})" for c in sorted(collisions)
+            )
+            raise ValueError(
+                f"cohort {config.cohort.name!r} declares column(s) that collide with "
+                f"the scored table: {detail}. A cohort column must never silently "
+                "override, or be silently dropped in favour of, a same-named model/"
+                "prior column -- rename the colliding column(s) in the cohort manifest."
+            )
+        audit_table = df.merge(cohort_cols, on="gene", how="left")
     flag_reason = config.audit.apply(audit_table).reset_index(drop=True)
     flag = flag_reason != ""
     tiers = TierAssigner(config.tiers).assign(scores)  # pure credibility, no flag input
