@@ -1,0 +1,24 @@
+api_version: 1
+name: cohort
+domain: annotation
+type: command_group
+description: Validate and attach external cohorts.
+cli:
+  module: hvantk.tools.cohort.cohort_cli
+  function: cohort_group
+purpose:
+  short: Present an external cohort to hvantk in a standard, validated form.
+  long: |
+    A cohort is a spine-mappable gene key plus a cohort-derived prior statistic.
+    `hvantk cohort validate` checks a manifest against its table and labels without
+    building anything; `hvantk cohort attach` maps the cohort onto the gene spine and
+    joins it to the Layer-1 feature matrix, recording which genes the cohort actually
+    tested and never imputing values for the ones it did not.
+subcommands:
+  - name: validate
+    description: Check a cohort manifest against its table and labels
+  - name: attach
+    description: Join a cohort's declared columns onto the Layer-1 matrix
+requires:
+  hail: true
+  network: false

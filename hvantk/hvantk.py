@@ -21,6 +21,7 @@ from hvantk.tools.plugins.drift_cli import drift_cmd
 from hvantk.tools.plugins.reprocess_cli import reprocess_cmd
 from hvantk.tools.rerank import rerank_cmd
 from hvantk.tools.annotation.annotate_cli import annotate_group
+from hvantk.tools.cohort.cohort_cli import cohort_group
 
 # Main CLI entry point for the package (hvantk)
 
@@ -98,6 +99,7 @@ cli.add_command(drift_cmd)
 cli.add_command(reprocess_cmd)
 cli.add_command(rerank_cmd)
 cli.add_command(annotate_group)
+cli.add_command(cohort_group)
 
 
 def main():
