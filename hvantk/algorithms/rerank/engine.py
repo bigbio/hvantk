@@ -49,7 +49,12 @@ def rerank(config) -> RerankResult:
     scores = ReRanker(config.calibration, config.folds).score(df, feat_cols, y)
     audit_table = df
     if config.cohort is not None:
-        cohort_cols = load_cohort_frame(config.cohort)
+        # The prior column was already consumed above (as `prior_stat`), so it is
+        # excluded here: re-merging it under its raw name would add nothing new and
+        # would make it a spurious collision candidate against a feature axis that
+        # legitimately reuses the same column name (e.g. a cohort whose prior is the
+        # same p-value a "burden" axis also carries as a model feature).
+        cohort_cols = load_cohort_frame(config.cohort, include_prior=False)
         collisions = [
             c for c in cohort_cols.columns if c != "gene" and c in audit_table.columns
         ]

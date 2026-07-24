@@ -156,6 +156,110 @@ def test_rerank_cli_wires_up_the_architecture_audit_when_declared(tmp_path):
     }
 
 
+def test_rerank_cli_rejects_a_stale_prior_block(tmp_path):
+    # Finding 4 (whole-branch review): a config migrated to declare 'cohort:' that
+    # still carries a leftover pre-migration 'prior:' block must fail loud, not be
+    # silently ignored -- the prior it names is never read, and prior_stat would come
+    # from the cohort manifest's own table instead, with no warning at all.
+    n = 150
+    genes, y = _toy_fixtures(tmp_path, n=n)
+    cohort_spec = {
+        "name": "toy",
+        "key": "symbol",
+        "key_column": "gene",
+        "table": str(tmp_path / "cohort.tsv"),
+        "prior": {"column": "p", "direction": "lower_is_better"},
+    }
+    (tmp_path / "cohort.yaml").write_text(yaml.safe_dump(cohort_spec))
+    cfg = {
+        "name": "toy",
+        "cohort": str(tmp_path / "cohort.yaml"),
+        "features": [{"name": "constraint", "path": str(tmp_path / "feat.parquet")}],
+        "labels": {"path": str(tmp_path / "labels.txt")},
+        "min_label_coverage": 0.0,
+        # Stale: pre-migration key, points at a file this run never touches.
+        "prior": {
+            "path": str(tmp_path / "my_curated_burden.tsv"),
+            "unit_col": "gene",
+            "stat_col": "minp",
+        },
+    }
+    config_path = tmp_path / "c.yaml"
+    config_path.write_text(yaml.safe_dump(cfg))
+    out = tmp_path / "out.tsv"
+    r = CliRunner().invoke(rerank_cmd, ["-c", str(config_path), "-o", str(out)])
+    assert r.exit_code != 0
+    assert "prior" in r.output
+    assert not out.exists()
+
+
+def test_rerank_cli_rejects_any_unknown_top_level_key(tmp_path):
+    n = 150
+    genes, y = _toy_fixtures(tmp_path, n=n)
+    cohort_spec = {
+        "name": "toy",
+        "key": "symbol",
+        "key_column": "gene",
+        "table": str(tmp_path / "cohort.tsv"),
+        "prior": {"column": "p", "direction": "lower_is_better"},
+    }
+    config_path = _write_config(tmp_path, cohort_spec)
+    cfg = yaml.safe_load(config_path.read_text())
+    cfg["not_a_real_key"] = True
+    config_path.write_text(yaml.safe_dump(cfg))
+    out = tmp_path / "out.tsv"
+    r = CliRunner().invoke(rerank_cmd, ["-c", str(config_path), "-o", str(out)])
+    assert r.exit_code != 0
+    assert "not_a_real_key" in r.output
+
+
+def test_rerank_cli_no_near_miss_warning_when_architecture_columns_are_split(
+    tmp_path, caplog
+):
+    # Finding 5 (whole-branch review): a manifest splitting the three architecture
+    # columns across an "architecture" axis (n_case_var, conc) and a differently-named
+    # axis (driver_af here, under "qc") is a WORKING configuration --
+    # CaseControlArchitectureAudit genuinely wires up (has_architecture_columns()
+    # looks at declared_columns() as a whole, not any one axis). The near-miss warning
+    # must stay silent here; it used to fire unconditionally before has_architecture
+    # was computed.
+    n = 150
+    n_case_var = np.full(n, 10)
+    n_case_var[0] = 2
+    genes, y = _toy_fixtures(
+        tmp_path,
+        n=n,
+        extra_cohort_cols={
+            "n_case_var": n_case_var,
+            "conc": np.full(n, 0.1),
+            "driver_af": np.zeros(n),
+        },
+    )
+    cohort_spec = {
+        "name": "toy",
+        "key": "symbol",
+        "key_column": "gene",
+        "table": str(tmp_path / "cohort.tsv"),
+        "prior": {"column": "p", "direction": "lower_is_better"},
+        "cohort_axes": [
+            {"axis": "architecture", "columns": ["n_case_var", "conc"]},
+            {"axis": "qc", "columns": ["driver_af"]},
+        ],
+    }
+    config_path = _write_config(tmp_path, cohort_spec)
+    out = tmp_path / "out.tsv"
+    with caplog.at_level(logging.WARNING, logger=_RERANK_CLI_LOGGER):
+        r = CliRunner().invoke(rerank_cmd, ["-c", str(config_path), "-o", str(out)])
+    assert r.exit_code == 0, r.output
+
+    assert [rec for rec in caplog.records if rec.name == _RERANK_CLI_LOGGER] == []
+
+    # The audit genuinely ran (not NoAudit): gene "g0" trips insufficient_data.
+    t = pd.read_csv(out, sep="\t")
+    assert t["flag"].any()
+    assert "g0" in set(t.loc[t["flag"], "gene"])
+
+
 def test_rerank_cli_reports_a_missing_cohort_manifest_clearly(tmp_path):
     cfg = {
         "name": "toy",

@@ -9,14 +9,19 @@ from hvantk.core.config import CONTEXT_SETTINGS
 
 logger = logging.getLogger(__name__)
 
-# The columns CaseControlArchitectureAudit needs (audit.py). When the cohort manifest
-# declares all three -- via any cohort_axes entry -- the audit is wired up automatically;
-# otherwise the run falls back to NoAudit.
-_ARCHITECTURE_AUDIT_COLUMNS = {"n_case_var", "conc", "driver_af"}
 # The axis label a cohort author would name an architecture axis after -- used only to
-# detect a near-miss (declares this axis but not all three columns above) and warn about
-# it. Any other axis combination that happens to supply the three columns is unaffected.
+# detect a near-miss (declares this axis but not all three columns
+# hvantk.algorithms.rerank.audit.ARCHITECTURE_AUDIT_COLUMNS needs) and warn about it.
+# Any other axis combination that happens to supply the three columns is unaffected.
 _ARCHITECTURE_AXIS_NAME = "architecture"
+
+# Top-level keys this CLI understands. A leftover 'prior:' block from a config that
+# predates the CohortManifest migration -- or any other stray key -- is rejected
+# loudly rather than silently ignored: unlike the pre-migration PriorSpec-only config,
+# the prior now lives entirely inside the cohort manifest this CLI loads via
+# 'cohort:', so a 'prior:' block here can never be honoured and silently keeping it
+# around invites exactly the confusion this check exists to prevent.
+_KNOWN_TOP_LEVEL_KEYS = {"name", "cohort", "features", "labels", "min_label_coverage"}
 
 
 @click.command(
@@ -42,7 +47,12 @@ def rerank_cmd(config_path, output):
     # dependency. Mirrors the psroc/ancestry deferral pattern.
     from hvantk.algorithms.rerank import rerank, Config
     from hvantk.algorithms.rerank.catalog.builders import table_axis, genelist_labels
-    from hvantk.algorithms.rerank.audit import CaseControlArchitectureAudit, NoAudit
+    from hvantk.algorithms.rerank.audit import (
+        ARCHITECTURE_AUDIT_COLUMNS,
+        CaseControlArchitectureAudit,
+        NoAudit,
+        has_architecture_columns,
+    )
     from hvantk.algorithms.cohort.spec import load_cohort
 
     with open(config_path) as fh:
@@ -56,6 +66,19 @@ def rerank_cmd(config_path, output):
             raise click.ClickException(
                 f"config {config_path}: missing required key '{key}'"
             )
+    unknown = sorted(set(spec) - _KNOWN_TOP_LEVEL_KEYS)
+    if unknown:
+        prior_hint = (
+            " 'prior:' is a pre-migration key -- the prior now lives in the cohort "
+            "manifest's own 'prior:' block, referenced here via 'cohort:'; delete it."
+            if "prior" in unknown
+            else ""
+        )
+        raise click.ClickException(
+            f"config {config_path}: unknown key(s) {unknown}."
+            + prior_hint
+            + f" Known keys: {sorted(_KNOWN_TOP_LEVEL_KEYS)}."
+        )
 
     cohort_path = spec["cohort"]
     if not isinstance(cohort_path, str):
@@ -82,25 +105,32 @@ def rerank_cmd(config_path, output):
             f"config {config_path}: malformed features/labels block ({exc})"
         )
 
-    for entry in cohort.cohort_axes:
-        if entry.axis == _ARCHITECTURE_AXIS_NAME:
-            missing = sorted(_ARCHITECTURE_AUDIT_COLUMNS - set(entry.columns))
-            if missing:
-                logger.warning(
-                    "cohort %r: cohort_axes entry %r has columns %r, which is not a "
-                    "superset of the columns CaseControlArchitectureAudit requires "
-                    "%r -- missing %r; falling back to NoAudit unless those columns "
-                    "are declared elsewhere in the manifest.",
-                    cohort.name,
-                    entry.axis,
-                    sorted(entry.columns),
-                    sorted(_ARCHITECTURE_AUDIT_COLUMNS),
-                    missing,
-                )
-            break
-
-    has_architecture = _ARCHITECTURE_AUDIT_COLUMNS <= set(cohort.declared_columns())
+    has_architecture = has_architecture_columns(cohort.declared_columns())
     audit = CaseControlArchitectureAudit() if has_architecture else NoAudit()
+
+    # Only worth warning about a near-miss (an "architecture"-named axis that doesn't
+    # cover all three required columns) when the audit did NOT end up wired -- e.g. the
+    # three columns are split across an "architecture" axis and a differently-named
+    # axis (both contributing to declared_columns()), which has_architecture_columns()
+    # already accounts for. Warning here regardless of has_architecture would fire on
+    # working configs where CaseControlArchitectureAudit genuinely ran.
+    if not has_architecture:
+        for entry in cohort.cohort_axes:
+            if entry.axis == _ARCHITECTURE_AXIS_NAME:
+                missing = sorted(ARCHITECTURE_AUDIT_COLUMNS - set(entry.columns))
+                if missing:
+                    logger.warning(
+                        "cohort %r: cohort_axes entry %r has columns %r, which is not "
+                        "a superset of the columns CaseControlArchitectureAudit "
+                        "requires %r -- missing %r; falling back to NoAudit unless "
+                        "those columns are declared elsewhere in the manifest.",
+                        cohort.name,
+                        entry.axis,
+                        sorted(entry.columns),
+                        sorted(ARCHITECTURE_AUDIT_COLUMNS),
+                        missing,
+                    )
+                break
 
     cfg = Config(
         name=spec.get("name", "rerank"),

@@ -236,6 +236,34 @@ def test_engine_raises_loud_on_cohort_prior_collision(tmp_path):
     assert "the prior" in msg
 
 
+def test_engine_does_not_collide_when_prior_column_reused_as_a_feature(tmp_path):
+    # Findings 1+2 (whole-branch review): a manifest honestly declaring its prior
+    # column under the same name a feature axis also carries as a model feature (the
+    # CHD shape: prior.column='minp', and a 'burden' FeatureAxis whose own column is
+    # also 'minp') must run clean. The cohort's prior column was already consumed into
+    # 'prior_stat' before the audit merge runs, so re-merging it under its raw name
+    # must never happen -- it is not a genuine collision, just the same statistic
+    # reachable under two names.
+    genes, feat, pos = _synthetic()
+    cohort_path = tmp_path / "cohort.tsv"
+    _write_tsv(cohort_path, ["gene", "minp"], [(g, 0.1) for g in genes])
+    cohort = _manifest(cohort_path, prior_col="minp")
+    burden = pd.DataFrame({"gene": genes, "minp": [0.2] * len(genes)})
+    cfg = Config(
+        name="t",
+        features=[FeatureAxis("burden", lambda: burden)],
+        labels=LabelSpec(lambda: pos),
+        cohort=cohort,
+        min_label_coverage=0.0,
+    )
+    res = rerank(cfg)  # must not raise
+    assert "prior_stat" in res.table.columns
+    assert len(res.table) == len(genes)
+    # 'minp' really was used as the 'burden' axis's model feature (not silently
+    # dropped by the collision guard).
+    assert "burden" in res.metrics.ablation["family"].tolist()
+
+
 # ---------------------------------------------------------------------------
 # Audit contract: cohort columns feed config.audit.apply() but never become
 # model features.

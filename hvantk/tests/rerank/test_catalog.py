@@ -38,10 +38,14 @@ def test_constraint_first_reorders():
 
 
 def test_default_audit_depends_on_cohort():
-    from hvantk.algorithms.cohort.spec import CohortManifest, CohortPrior
+    from hvantk.algorithms.cohort.spec import CohortAxis, CohortManifest, CohortPrior
 
     assert isinstance(_default_audit(DiseaseProfile(name="t")), NoAudit)
-    p = DiseaseProfile(
+
+    # M3 made Config.cohort mandatory for every rerank config, so "cohort is not
+    # None" is no longer a useful signal -- a plain prior-only manifest (the minimum
+    # M3 demands) must NOT get the (expensive) architecture audit.
+    no_architecture = DiseaseProfile(
         name="t",
         cohort=CohortManifest(
             name="t",
@@ -50,7 +54,23 @@ def test_default_audit_depends_on_cohort():
             prior=CohortPrior(column="minp", direction="lower_is_better"),
         ),
     )
-    assert isinstance(_default_audit(p), CaseControlArchitectureAudit)
+    assert isinstance(_default_audit(no_architecture), NoAudit)
+
+    with_architecture = DiseaseProfile(
+        name="t",
+        cohort=CohortManifest(
+            name="t",
+            key="gene",
+            table="x.tsv",
+            prior=CohortPrior(column="minp", direction="lower_is_better"),
+            cohort_axes=(
+                CohortAxis(
+                    axis="architecture", columns=("n_case_var", "conc", "driver_af")
+                ),
+            ),
+        ),
+    )
+    assert isinstance(_default_audit(with_architecture), CaseControlArchitectureAudit)
 
 
 def test_build_config_string_and_override():
