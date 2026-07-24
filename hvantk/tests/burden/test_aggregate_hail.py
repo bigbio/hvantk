@@ -7,6 +7,7 @@ from hvantk.algorithms.burden.aggregate import (
     count_2x2,
     variant_reductions,
 )
+from hvantk.algorithms.burden.pipeline import run_from_mt
 
 pytestmark = pytest.mark.hail
 
@@ -158,3 +159,20 @@ def test_variant_reductions_counts_and_drivers():
     top = max(drivers, key=lambda d: d["cc"])
     assert top["cc"] == 1
     assert top["ctrl_freq"] == 0.0
+
+
+def test_run_from_mt_end_to_end():
+    mt = _toy_mt()
+    df = run_from_mt(
+        mt,
+        gene_col="SYMBOL",
+        route_col="csq_group",
+        arm_col="is_case",
+        key="symbol",
+        carrier_mode="het",
+    ).set_index("gene")
+    # GENEA carried only by cases -> its prior route is lof with a low-ish p; columns present
+    assert "GENEA" in df.index
+    for col in ["route", "minp", "odds_ratio", "n_case_var", "conc", "driver_af"]:
+        assert col in df.columns
+    assert df.loc["GENEA", "n_case_var"] == 2
