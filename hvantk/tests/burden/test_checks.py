@@ -1,7 +1,10 @@
 import pytest
 from hvantk.algorithms.burden.checks import (
-    KEY_SPACES, CARRIER_MODES,
-    check_key_space, check_carrier_mode, check_required_fields,
+    KEY_SPACES,
+    CARRIER_MODES,
+    check_key_space,
+    check_carrier_mode,
+    check_required_fields,
 )
 
 
@@ -24,16 +27,23 @@ def test_required_fields_all_present_ok():
         row_fields=["locus", "alleles", "SYMBOL", "csq_group"],
         entry_fields=["GT"],
         col_fields=["s", "is_case"],
-        gene_col="SYMBOL", route_col="csq_group", arm_col="is_case",
+        gene_col="SYMBOL",
+        route_col="csq_group",
+        arm_col="is_case",
     )
 
 
 def test_required_fields_missing_gene_names_it():
-    with pytest.raises(ValueError, match="gene column 'SYMBOL' not found in MatrixTable row fields"):
+    with pytest.raises(
+        ValueError, match="gene column 'SYMBOL' not found in MatrixTable row fields"
+    ):
         check_required_fields(
             row_fields=["locus", "alleles", "csq_group"],
-            entry_fields=["GT"], col_fields=["s", "is_case"],
-            gene_col="SYMBOL", route_col="csq_group", arm_col="is_case",
+            entry_fields=["GT"],
+            col_fields=["s", "is_case"],
+            gene_col="SYMBOL",
+            route_col="csq_group",
+            arm_col="is_case",
         )
 
 
@@ -41,15 +51,42 @@ def test_required_fields_missing_gt_names_it():
     with pytest.raises(ValueError, match="genotype entry field 'GT' not found"):
         check_required_fields(
             row_fields=["locus", "alleles", "SYMBOL", "csq_group"],
-            entry_fields=["AD"], col_fields=["s", "is_case"],
-            gene_col="SYMBOL", route_col="csq_group", arm_col="is_case",
+            entry_fields=["AD"],
+            col_fields=["s", "is_case"],
+            gene_col="SYMBOL",
+            route_col="csq_group",
+            arm_col="is_case",
         )
 
 
 def test_required_fields_missing_arm_names_it():
-    with pytest.raises(ValueError, match="case/control column 'is_case' not found in MatrixTable column fields"):
+    with pytest.raises(
+        ValueError,
+        match="case/control column 'is_case' not found in MatrixTable column fields",
+    ):
         check_required_fields(
             row_fields=["locus", "alleles", "SYMBOL", "csq_group"],
-            entry_fields=["GT"], col_fields=["s"],
-            gene_col="SYMBOL", route_col="csq_group", arm_col="is_case",
+            entry_fields=["GT"],
+            col_fields=["s"],
+            gene_col="SYMBOL",
+            route_col="csq_group",
+            arm_col="is_case",
+        )
+
+
+def test_carrier_modes_value():
+    assert CARRIER_MODES == ("het", "hom", "chet", "homs_chet")
+
+
+def test_required_fields_missing_route_names_it():
+    with pytest.raises(
+        ValueError, match="route column 'csq_group' not found in MatrixTable row fields"
+    ):
+        check_required_fields(
+            row_fields=["locus", "alleles", "SYMBOL"],
+            entry_fields=["GT"],
+            col_fields=["s", "is_case"],
+            gene_col="SYMBOL",
+            route_col="csq_group",
+            arm_col="is_case",
         )

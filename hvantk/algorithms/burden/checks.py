@@ -13,9 +13,7 @@ CARRIER_MODES: tuple[str, ...] = ("het", "hom", "chet", "homs_chet")
 
 def check_key_space(key: str) -> None:
     if key not in KEY_SPACES:
-        raise ValueError(
-            f"unknown gene key space {key!r}; must be one of {KEY_SPACES}"
-        )
+        raise ValueError(f"unknown gene key space {key!r}; must be one of {KEY_SPACES}")
 
 
 def check_carrier_mode(mode: str) -> None:
