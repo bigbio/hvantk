@@ -45,16 +45,28 @@ class CaseControlArchitectureAudit(Audit):
     def apply(self, unit_table: pd.DataFrame) -> pd.Series:
         df = unit_table
         has_driver = ("driver_af" in df.columns) or ("driver_af_f" in df.columns)
-        missing = [c for c in ("n_case_var", "conc") if c not in df.columns]
+        # "driver_af" is handled separately above (it accepts a "driver_af_f" alias),
+        # so the direct-name requirement is ARCHITECTURE_AUDIT_COLUMNS minus it --
+        # deriving from the constant instead of re-listing ("n_case_var", "conc") here
+        # keeps this the single place the audit's own column requirement is spelled out.
+        required_direct = sorted(ARCHITECTURE_AUDIT_COLUMNS - {"driver_af"})
+        missing = [c for c in required_direct if c not in df.columns]
         if missing or not has_driver:
             need = missing + ([] if has_driver else ["driver_af"])
             raise ValueError(
                 "CaseControlArchitectureAudit requires case/control architecture columns "
                 f"{need} in the audit table (supplied via the cohort and/or feature tables). "
-                "Declare all three columns (n_case_var, conc, driver_af) on the cohort "
-                "manifest -- directly or via a cohort_axes entry -- so the audit is wired "
-                "up automatically; otherwise leave Config.audit unset (the default falls "
-                "back to NoAudit) or pass NoAudit() explicitly."
+                "Declare all three columns (n_case_var, conc, driver_af) across one or "
+                "more cohort_axes entries on the cohort manifest -- the manifest schema "
+                "allows only 'prior' and 'cohort_axes', and declaring a required column "
+                "as the prior does not work either: engine.rerank() excludes the prior "
+                "column from the audit merge, so it is invisible to this check either "
+                "way. 'hvantk rerank' always sets Config.audit explicitly, based on "
+                "hvantk.algorithms.rerank.audit.has_architecture_columns(cohort.axis_columns()) "
+                "-- there is no 'audit:' config key -- so a CLI user who does not want "
+                "this audit should simply not declare all three columns, which falls "
+                "back to NoAudit automatically. A direct Python-API caller may instead "
+                "leave Config.audit unset (default NoAudit) or pass NoAudit() explicitly."
             )
         nv = pd.to_numeric(df["n_case_var"], errors="coerce")
         conc = pd.to_numeric(df["conc"], errors="coerce")

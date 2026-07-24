@@ -105,7 +105,12 @@ def rerank_cmd(config_path, output):
             f"config {config_path}: malformed features/labels block ({exc})"
         )
 
-    has_architecture = has_architecture_columns(cohort.declared_columns())
+    # axis_columns(), not declared_columns(): engine.rerank() merges the cohort frame
+    # with include_prior=False, so eligibility must be judged on exactly the columns
+    # that merge actually contributes (see the matching comment in
+    # hvantk.algorithms.rerank.catalog.registry._default_audit, which this CLI path
+    # must never disagree with).
+    has_architecture = has_architecture_columns(cohort.axis_columns())
     audit = CaseControlArchitectureAudit() if has_architecture else NoAudit()
 
     # Only worth warning about a near-miss (an "architecture"-named axis that doesn't

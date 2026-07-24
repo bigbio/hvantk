@@ -8,7 +8,9 @@ from pathlib import Path
 import pytest
 
 from hvantk.algorithms.cohort.spec import (
+    CohortAxis,
     CohortManifest,
+    CohortPrior,
     load_cohort,
 )
 
@@ -160,3 +162,28 @@ def test_axis_column_colliding_with_the_prior_column_is_rejected(tmp_path):
     text = MINIMAL + ("cohort_axes:\n" "  - {axis: burden, columns: [minp]}\n")
     with pytest.raises(ValueError, match="duplicate declared column 'minp'"):
         load_cohort(_write(tmp_path, text))
+
+
+def test_axis_column_colliding_with_the_prior_column_is_rejected_on_direct_construction():
+    # Finding 3, "related root cause" (re-review): the duplicate-column check used to
+    # run only inside load_cohort(), so a directly-constructed CohortManifest (every
+    # test helper in this codebase, and any future non-YAML caller) could declare an
+    # axis column that collides with the prior column. frame.py's include_prior=False
+    # path then silently dropped that axis column along with the prior column instead
+    # of surfacing the conflict -- axis_columns() and "what the engine actually
+    # merges" could only ever match if this invariant holds for every construction
+    # path, not only the YAML one.
+    with pytest.raises(ValueError, match="duplicate declared column 'minp'"):
+        CohortManifest(
+            name="demo",
+            key="symbol",
+            table="/data/demo_genes.tsv",
+            prior=CohortPrior(column="minp", direction="lower_is_better"),
+            cohort_axes=(CohortAxis(axis="burden", columns=("minp",)),),
+        )
+
+
+def test_axis_columns_is_declared_columns_minus_the_prior_column(tmp_path):
+    m = load_cohort(_write(tmp_path, FULL))
+    assert m.axis_columns() == ("n_case_var", "conc", "revel_mean")
+    assert set(m.declared_columns()) - set(m.axis_columns()) == {"p_burden"}

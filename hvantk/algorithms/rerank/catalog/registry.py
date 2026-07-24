@@ -30,9 +30,17 @@ def _default_audit(profile):
     # present. Since M3 made Config.cohort mandatory for every rerank config, "cohort
     # is not None" is true for every config -- so it can no longer stand in for "has
     # the architecture columns" the way it once did.
+    #
+    # The eligibility check is against axis_columns(), not declared_columns():
+    # engine.rerank() merges the cohort frame with include_prior=False, so the prior
+    # column never reaches the audit table. Testing declared_columns() (which still
+    # carries the prior column) can green-light a manifest whose prior happens to be
+    # named e.g. "n_case_var" even though the engine will never actually merge that
+    # column in -- the audit would then raise instead of running, on a manifest that
+    # looked eligible.
     if profile.cohort is None:
         return NoAudit()
-    if has_architecture_columns(profile.cohort.declared_columns()):
+    if has_architecture_columns(profile.cohort.axis_columns()):
         return CaseControlArchitectureAudit()
     return NoAudit()
 

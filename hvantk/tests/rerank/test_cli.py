@@ -260,6 +260,59 @@ def test_rerank_cli_no_near_miss_warning_when_architecture_columns_are_split(
     assert "g0" in set(t.loc[t["flag"], "gene"])
 
 
+def test_rerank_cli_falls_back_cleanly_when_the_prior_column_is_the_missing_third(
+    tmp_path, caplog
+):
+    # Finding 3 (re-review): has_architecture_columns() used to be fed
+    # declared_columns() (prior column + axis columns), but engine.rerank() merges
+    # the cohort frame with include_prior=False -- the two disagree by exactly the
+    # prior column. Reproduction: prior.column='n_case_var', and a cohort_axes
+    # "architecture" entry declaring only the other two required columns ('conc',
+    # 'driver_af'). declared_columns() looks like a superset of the three required
+    # columns (it counts the prior column too), so the audit used to get wired up --
+    # then engine.rerank() merged only the axis columns, CaseControlArchitectureAudit
+    # never saw 'n_case_var', and it raised "requires case/control architecture
+    # columns ['n_case_var']" for a manifest the user believed declared all three.
+    # Post-fix, eligibility is judged on axis_columns() alone, which agrees with what
+    # the engine actually merges: this manifest is correctly NOT eligible, falls back
+    # to NoAudit, and the near-miss warning explains why -- no raise-after-fitting.
+    n = 150
+    genes, y = _toy_fixtures(
+        tmp_path,
+        n=n,
+        extra_cohort_cols={
+            "n_case_var": np.full(n, 10),
+            "conc": np.full(n, 0.1),
+            "driver_af": np.zeros(n),
+        },
+    )
+    cohort_spec = {
+        "name": "toy",
+        "key": "symbol",
+        "key_column": "gene",
+        "table": str(tmp_path / "cohort.tsv"),
+        "prior": {"column": "n_case_var", "direction": "lower_is_better"},
+        "cohort_axes": [{"axis": "architecture", "columns": ["conc", "driver_af"]}],
+    }
+    config_path = _write_config(tmp_path, cohort_spec)
+    out = tmp_path / "out.tsv"
+    with caplog.at_level(logging.WARNING, logger=_RERANK_CLI_LOGGER):
+        r = CliRunner().invoke(rerank_cmd, ["-c", str(config_path), "-o", str(out)])
+    assert r.exit_code == 0, r.output
+    assert "requires case/control architecture columns" not in r.output
+
+    warnings = [rec for rec in caplog.records if rec.name == _RERANK_CLI_LOGGER]
+    assert len(warnings) == 1
+    message = warnings[0].getMessage()
+    assert "architecture" in message
+    assert "n_case_var" in message
+
+    # NoAudit ran, not CaseControlArchitectureAudit -- nothing is flagged.
+    t = pd.read_csv(out, sep="\t")
+    assert not t["flag"].any()
+    assert len(t) == n
+
+
 def test_rerank_cli_reports_a_missing_cohort_manifest_clearly(tmp_path):
     cfg = {
         "name": "toy",

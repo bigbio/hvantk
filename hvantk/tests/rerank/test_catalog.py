@@ -73,6 +73,32 @@ def test_default_audit_depends_on_cohort():
     assert isinstance(_default_audit(with_architecture), CaseControlArchitectureAudit)
 
 
+def test_default_audit_is_not_fooled_by_the_prior_column_supplying_the_third_column():
+    # Finding 3 (re-review): eligibility must be judged on the columns
+    # engine.rerank() will actually merge (axis_columns()), not declared_columns()
+    # (which also counts the prior column, but the engine merges the cohort frame
+    # with include_prior=False). A manifest whose prior IS one of the three required
+    # columns, with only the other two declared via cohort_axes, used to look
+    # eligible via declared_columns() and then raise inside
+    # CaseControlArchitectureAudit.apply() once the engine actually ran, because the
+    # prior column never reaches the merged audit table.
+    from hvantk.algorithms.cohort.spec import CohortAxis, CohortManifest, CohortPrior
+
+    profile = DiseaseProfile(
+        name="t",
+        cohort=CohortManifest(
+            name="t",
+            key="gene",
+            table="x.tsv",
+            prior=CohortPrior(column="n_case_var", direction="lower_is_better"),
+            cohort_axes=(
+                CohortAxis(axis="architecture", columns=("conc", "driver_af")),
+            ),
+        ),
+    )
+    assert isinstance(_default_audit(profile), NoAudit)
+
+
 def test_build_config_string_and_override():
     import pandas as pd
     from hvantk.algorithms.rerank.config import FeatureAxis, LabelSpec
