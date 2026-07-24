@@ -28,9 +28,9 @@ __all__ = [
 
 # Map compound dataset names → Phase B schema IDs.
 _SCHEMA_IDS: dict[str, str] = {
-    "ucsc-cellbrowser:default":   "ucsc-cellbrowser-default-v1",
+    "ucsc-cellbrowser:default": "ucsc-cellbrowser-default-v1",
     "ucsc-cellbrowser:adult-ctx": "ucsc-cellbrowser-adult-ctx-v1",
-    "ucsc-cellbrowser:dev-ctx":   "ucsc-cellbrowser-dev-ctx-v1",
+    "ucsc-cellbrowser:dev-ctx": "ucsc-cellbrowser-dev-ctx-v1",
 }
 
 
@@ -63,22 +63,37 @@ def _resolve_ucsc_inputs(parsed_input):
         if os.path.isdir(os.path.join(root, d))
     ]
 
-    def _find(names):
-        for directory in search_dirs:
-            for name in names:
-                candidate = os.path.join(directory, name)
-                if os.path.exists(candidate):
-                    return candidate
+    def _first_present(directory, names):
+        for name in names:
+            candidate = os.path.join(directory, name)
+            if os.path.exists(candidate):
+                return candidate
         return None
 
-    expr = _find(expr_names)
-    meta = _find(meta_names)
-    if expr is None or meta is None:
+    # A dataset's download carries its expression matrix and metadata together, so collect the
+    # locations holding BOTH and require exactly one. A raw dir reused across the sibling
+    # datasets (default / adult-ctx / dev-ctx) would otherwise let the search silently pick the
+    # alphabetically-first subdir and stamp the wrong schema_id; requiring a single location
+    # also rules out pairing an expression file from one dir with metadata from another.
+    # (PR #222 review.)
+    hits = []
+    for directory in search_dirs:
+        expr = _first_present(directory, expr_names)
+        meta = _first_present(directory, meta_names)
+        if expr and meta:
+            hits.append((directory, expr, meta))
+    if not hits:
         raise FileNotFoundError(
             f"UCSC builder: could not locate an expression matrix {expr_names} and "
-            f"metadata {meta_names} under {root!r} (searched {search_dirs})"
+            f"metadata {meta_names} together under {root!r} (searched {search_dirs})"
         )
-    return expr, meta
+    if len(hits) > 1:
+        raise ValueError(
+            f"UCSC builder: found expression+metadata in multiple locations "
+            f"{[h[0] for h in hits]} under {root!r}; point --raw-dir at a single dataset's "
+            f"download so the correct schema_id is stamped."
+        )
+    return hits[0][1], hits[0][2]
 
 
 def build_ucsc_cellbrowser(

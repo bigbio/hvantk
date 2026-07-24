@@ -49,3 +49,16 @@ def test_raw_dir_flat(tmp_path):
 def test_missing_files_raises(tmp_path):
     with pytest.raises(FileNotFoundError):
         _resolve_ucsc_inputs(str(tmp_path))
+
+
+def test_raw_dir_with_multiple_dataset_subdirs_raises(tmp_path):
+    # Reusing one --raw-dir across the sibling datasets (default/adult-ctx/dev-ctx) leaves
+    # expression+metadata in more than one subdir; the builder must fail loud rather than pick
+    # the alphabetically-first and stamp the wrong schema_id. (PR #222 review.)
+    for acc in ("adult-ctx-accession", "dev-ctx-accession"):
+        d = tmp_path / acc
+        d.mkdir()
+        (d / EXPRESSION_MATRIX_FILE_NAME).write_text("gene\tcell1\n")
+        (d / METADATA_FILE_NAME).write_text("cell\ttype\n")
+    with pytest.raises(ValueError, match="multiple locations"):
+        _resolve_ucsc_inputs(str(tmp_path))
