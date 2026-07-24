@@ -140,6 +140,19 @@ def test_same_column_declared_by_two_axes_is_rejected(tmp_path):
         load_cohort(_write(tmp_path, text))
 
 
+def test_key_column_defaults_to_key_when_omitted(tmp_path):
+    m = load_cohort(_write(tmp_path, MINIMAL))
+    assert m.key == "symbol"
+    assert m.key_column == "symbol"
+
+
+def test_key_column_is_parsed_when_declared_explicitly(tmp_path):
+    text = MINIMAL + "key_column: gene\n"
+    m = load_cohort(_write(tmp_path, text))
+    assert m.key == "symbol"
+    assert m.key_column == "gene"
+
+
 def test_axis_column_colliding_with_the_prior_column_is_rejected(tmp_path):
     """The minp trap: the prior stat and a same-named model feature are different
     transforms of the same quantity (raw p vs -log10 p). Declaring both silently

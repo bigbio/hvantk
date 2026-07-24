@@ -22,6 +22,16 @@ cohort_axes:
     columns: [n_case_var]
 """
 
+MANIFEST_WITH_KEY_COLUMN = """\
+name: demo
+key: symbol
+key_column: gene
+table: {table}
+prior:
+  column: minp
+  direction: lower_is_better
+"""
+
 
 def _write_manifest(tmp_path, table_path):
     p = tmp_path / "cohort.yaml"
@@ -56,6 +66,21 @@ def test_validate_fails_loud_when_a_declared_column_is_missing(tmp_path):
     result = CliRunner().invoke(cohort_group, ["validate", "--cohort", manifest])
     assert result.exit_code != 0
     assert "n_case_var" in result.output
+
+
+def test_validate_fails_loud_when_the_key_column_is_missing(tmp_path):
+    """The exact real-world flaw: key='symbol' but the table's identifier column is
+    named 'gene', not 'symbol'. Declaring key_column='gene' names it correctly, but
+    the table below has neither -- validate must catch this instead of letting a
+    later hl.import_table blow up with a Hail-internal error."""
+    tsv = tmp_path / "cohort.tsv"
+    tsv.write_text("symbol\tminp\nA\t0.01\n")
+    p = tmp_path / "cohort.yaml"
+    p.write_text(MANIFEST_WITH_KEY_COLUMN.format(table=str(tsv)))
+
+    result = CliRunner().invoke(cohort_group, ["validate", "--cohort", str(p)])
+    assert result.exit_code != 0
+    assert "gene" in result.output
 
 
 def test_validate_fails_loud_when_the_table_is_missing(tmp_path):

@@ -79,13 +79,39 @@ class CohortAxis:
 
 @dataclass(frozen=True)
 class CohortManifest:
+    """Declares how an external cohort is presented to hvantk.
+
+    ``key`` and ``key_column`` answer two different questions -- conflating them is
+    exactly the bug this pair of fields exists to prevent:
+
+    * ``key`` is the identifier SPACE the cohort's gene key lives in --
+      ``gene_id`` (Ensembl), ``hgnc_id``, or ``symbol``. This is what
+      ``prepare_source`` needs to know *how* to resolve the values (which mapper
+      to dispatch to); the enum stays closed to those three spine-mappable spaces.
+    * ``key_column`` is the COLUMN NAME in the cohort's own table that actually
+      holds those identifier values. It defaults to ``key`` when the manifest
+      omits it, so a manifest whose identifier column happens to be named after
+      its own id-space needs nothing extra. Real cohorts routinely don't: a
+      symbol-keyed table commonly names that column ``gene``, not ``symbol`` --
+      write ``key: symbol`` / ``key_column: gene`` for that case.
+
+    ``key_column`` is always resolved to a concrete string (never ``None``) after
+    construction, whether the manifest is parsed via :func:`load_cohort` or built
+    directly -- no consumer has to write ``manifest.key_column or manifest.key``.
+    """
+
     name: str
     key: str
     table: str
     prior: CohortPrior
+    key_column: str | None = None
     min_mapping_rate: float = 0.9
     labels: CohortLabels | None = None
     cohort_axes: tuple[CohortAxis, ...] = field(default_factory=tuple)
+
+    def __post_init__(self) -> None:
+        if self.key_column is None:
+            object.__setattr__(self, "key_column", self.key)
 
     def declared_columns(self) -> tuple[str, ...]:
         """The prior column followed by every axis column, in declaration order.
@@ -144,6 +170,7 @@ def load_cohort(path: str | Path) -> CohortManifest:
         prior=CohortPrior(
             column=doc["prior"]["column"], direction=doc["prior"]["direction"]
         ),
+        key_column=doc.get("key_column", doc["key"]),
         min_mapping_rate=doc.get("min_mapping_rate", 0.9),
         labels=labels,
         cohort_axes=axes,

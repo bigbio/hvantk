@@ -47,6 +47,25 @@ def as_source_entry(manifest):
     )
 
 
+def _expose_key_column(cohort_ht, manifest):
+    """Expose the cohort table's identifier column under the name ``prepare_source`` expects.
+
+    ``prepare_source`` (Stage 1, ``hvantk.algorithms.annotation.prepare``) resolves the
+    identifier column by plain field-name lookup on ``entry.key`` (``source_ht[key]``)
+    -- it never consults ``source_ht``'s actual Hail key. ``manifest.key`` names the
+    identifier SPACE (``gene_id`` / ``hgnc_id`` / ``symbol``), which is what
+    ``prepare_source`` dispatches the mapper on; ``manifest.key_column`` names the
+    column that actually holds those values in the cohort's own table, and the two are
+    often different (a real cohort's symbol column is commonly named ``gene``). When
+    they differ, rename the column so the field ``prepare_source`` looks up exists; when
+    they match -- every manifest written before ``key_column`` existed -- this is a
+    no-op, which is what keeps old manifests working unchanged.
+    """
+    if manifest.key_column == manifest.key:
+        return cohort_ht
+    return cohort_ht.rename({manifest.key_column: manifest.key})
+
+
 def check_no_layer1_collisions(layer1, manifest) -> None:
     """Raise if a declared cohort column would overwrite a Layer-1 column.
 
@@ -92,7 +111,8 @@ def attach(layer1, cohort_ht, manifest, *, hgnc=None):
         spine (``compose`` emits one row per spine gene), so no separate spine argument
         is needed -- and passing one would admit a mismatch.
     cohort_ht : hail.Table
-        The cohort's gene-level table, keyed by whatever ``manifest.key`` names.
+        The cohort's gene-level table, keyed by whatever ``manifest.key_column`` names
+        (defaults to ``manifest.key`` when the manifest omits it).
     manifest : hvantk.algorithms.cohort.spec.CohortManifest
     hgnc : optional
         An HGNC gene-catalog streamer, required when ``manifest.key`` is ``hgnc_id`` or
@@ -121,6 +141,8 @@ def attach(layer1, cohort_ht, manifest, *, hgnc=None):
     from hvantk.algorithms.annotation.prepare import prepare_source
 
     check_no_layer1_collisions(layer1, manifest)
+
+    cohort_ht = _expose_key_column(cohort_ht, manifest)
 
     spine_gene_ids = layer1.gene_id.collect()
     prepared, report = prepare_source(

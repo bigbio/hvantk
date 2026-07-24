@@ -58,6 +58,25 @@ def _check_declared_columns_exist(manifest, header: list[str]) -> None:
         )
 
 
+def _check_key_column_exists(manifest, header: list[str]) -> None:
+    """The key column itself must exist in the table.
+
+    Nothing previously checked this: ``key`` is the identifier SPACE
+    (``gene_id`` / ``hgnc_id`` / ``symbol``) and ``key_column`` is the column that
+    actually holds those values, and the two are commonly different (a real cohort's
+    symbol column is often named ``gene``, not ``symbol``). Without this check, a
+    wrong or missing ``key_column`` fails only deep inside ``hl.import_table`` with a
+    raw Hail error that never mentions the manifest -- exactly the failure class every
+    other declared column is already checked against.
+    """
+    if manifest.key_column not in header:
+        raise click.UsageError(
+            f"cohort table {manifest.table} has no column {manifest.key_column!r} "
+            f"(key_column); key={manifest.key!r} names the identifier space, "
+            "key_column names the column in the table that holds it"
+        )
+
+
 def _load_manifest(cohort_path: str):
     """Parse a manifest, converting contract violations into clean CLI errors."""
     from hvantk.algorithms.cohort.spec import load_cohort
@@ -76,9 +95,13 @@ def validate_cmd(cohort):
     """Check a cohort manifest against its table (and labels) without building anything."""
     manifest = _load_manifest(cohort)
     header = _read_header(manifest.table)
+    _check_key_column_exists(manifest, header)
     _check_declared_columns_exist(manifest, header)
 
-    click.echo(f"cohort {manifest.name}: key={manifest.key} table={manifest.table}")
+    click.echo(
+        f"cohort {manifest.name}: key={manifest.key} "
+        f"key_column={manifest.key_column} table={manifest.table}"
+    )
     click.echo(f"  prior: {manifest.prior.column} ({manifest.prior.direction})")
     for entry in manifest.cohort_axes:
         click.echo(f"  axis {entry.axis}: {', '.join(entry.columns)}")
@@ -123,6 +146,7 @@ def attach_cmd(cohort, layer1, output, report, hgnc_path):
 
     manifest = _load_manifest(cohort)
     header = _read_header(manifest.table)
+    _check_key_column_exists(manifest, header)
     _check_declared_columns_exist(manifest, header)
 
     # Labels are symbol-keyed regardless of the cohort's own key, so declaring labels
@@ -153,7 +177,7 @@ def attach_cmd(cohort, layer1, output, report, hgnc_path):
 
     delimiter = "\t" if Path(manifest.table).suffix in (".tsv", ".txt") else ","
     cohort_ht = hl.import_table(
-        manifest.table, delimiter=delimiter, impute=True, key=manifest.key
+        manifest.table, delimiter=delimiter, impute=True, key=manifest.key_column
     )
 
     attached, result = attach(hl.read_table(layer1), cohort_ht, manifest, hgnc=hgnc)

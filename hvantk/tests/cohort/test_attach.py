@@ -259,3 +259,53 @@ def test_attach_fails_loud_when_too_few_label_symbols_resolve(hail_session, tmp_
     manifest = _labelled_manifest(tmp_path, {"A", "GHOST"}, min_rate=0.9)
     with pytest.raises(MappingRateError):
         attach(_layer1(), _cohort(), manifest, hgnc=_FakeHGNC())
+
+
+def _cohort_symbols_in_a_column_named_gene():
+    """The exact real-world shape the G1 gate found: identifiers are HGNC symbols,
+    but the column holding them is literally named 'gene', not 'symbol'."""
+    import hail as hl
+
+    return hl.Table.parallelize(
+        [
+            {"gene": "A", "minp": 0.01, "n_case_var": 5},
+            {"gene": "B", "minp": 0.20, "n_case_var": 3},
+        ],
+        hl.tstruct(gene=hl.tstr, minp=hl.tfloat64, n_case_var=hl.tint32),
+        key=["gene"],
+    )
+
+
+@pytest.mark.hail
+def test_attach_works_when_the_key_column_is_named_differently_from_the_key(
+    hail_session,
+):
+    """key='symbol' declares the identifier SPACE; key_column='gene' names the
+    actual column. Before this fix, ``hl.import_table(..., key=manifest.key)``
+    would look for a column literally named 'symbol' and fail on every real
+    cohort -- all four of which name it 'gene'."""
+    manifest = CohortManifest(
+        name="demo",
+        key="symbol",
+        key_column="gene",
+        table="/data/demo.tsv",
+        prior=CohortPrior(column="minp", direction="lower_is_better"),
+        cohort_axes=(CohortAxis(axis="burden", columns=("n_case_var",)),),
+    )
+
+    attached, report = attach(
+        _layer1(),
+        _cohort_symbols_in_a_column_named_gene(),
+        manifest,
+        hgnc=_FakeHGNC(),
+    )
+
+    rows = {r.gene_id: r for r in attached.collect()}
+    assert rows["ENSG1"].cohort_tested is True
+    assert rows["ENSG1"].minp == pytest.approx(0.01)
+    assert rows["ENSG1"].n_case_var == 5
+    assert rows["ENSG2"].cohort_tested is True
+    assert rows["ENSG3"].cohort_tested is False
+    assert rows["ENSG3"].minp is None
+    assert report["n_tested"] == 2
+    assert report["mapping_rate"] == pytest.approx(1.0)
