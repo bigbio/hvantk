@@ -81,6 +81,52 @@ def test_no_collision_passes():
     check_no_layer1_collisions(_FakeLayer1(), _manifest())
 
 
+def test_collision_with_the_reserved_cohort_tested_name_fails_loud():
+    """A cohort column named ``cohort_tested`` would be silently overwritten by the
+    synthetic ``cohort_tested`` bool `attach` computes -- reserved and checked up front,
+    same as an actual Layer-1 collision. Pure-Python: no @pytest.mark.hail."""
+
+    class _FakeLayer1:
+        row = {"gene_id": None, "gene_name": None, "mis_z": None}
+
+    m = _manifest(axes=(CohortAxis(axis="qc", columns=("cohort_tested",)),))
+    with pytest.raises(ValueError, match="cohort_tested"):
+        check_no_layer1_collisions(_FakeLayer1(), m)
+
+
+def test_collision_with_the_reserved_label_name_fails_loud():
+    """Same failure class for ``label`` -- a common column name in a case/control
+    table, and the exact name `attach` assigns when a manifest declares labels."""
+
+    class _FakeLayer1:
+        row = {"gene_id": None, "gene_name": None, "mis_z": None}
+
+    m = _manifest(axes=(CohortAxis(axis="qc", columns=("label",)),))
+    with pytest.raises(ValueError, match="label"):
+        check_no_layer1_collisions(_FakeLayer1(), m)
+
+
+def test_resolve_labels_requires_hgnc():
+    """A labelled manifest is always symbol-keyed, so it always needs the HGNC
+    catalog -- even when ``manifest.key`` is ``gene_id`` and `prepare_source`'s own
+    hgnc guard is skipped. Pure Python: the guard fires before any Hail table or
+    label-set file is touched, so no @pytest.mark.hail and no real gene-set JSON."""
+    from hvantk.algorithms.cohort.attach import _resolve_labels
+    from hvantk.algorithms.cohort.spec import CohortLabels
+
+    base = _manifest()
+    labelled = CohortManifest(
+        name=base.name,
+        key=base.key,
+        table=base.table,
+        prior=base.prior,
+        labels=CohortLabels(gene_set="/unused/panel.json"),
+    )
+
+    with pytest.raises(ValueError, match="hgnc"):
+        _resolve_labels(labelled, ["ENSG1", "ENSG2"], hgnc=None)
+
+
 @pytest.mark.hail
 def test_attach_keeps_every_spine_gene_and_flags_tested(hail_session):
     m = _manifest(axes=(CohortAxis(axis="burden", columns=("n_case_var",)),))
@@ -130,6 +176,12 @@ def test_report_records_prior_direction_and_per_column_rates(hail_session):
     assert report["axes"]["burden"]["n_case_var"]["non_null_rate"] == pytest.approx(
         2 / 3
     )
+    # positive_rate is positives-among-non-null, not positives-among-all-genes: both
+    # cohort rows are non-null (ENSG1, ENSG2) and both minp (0.01, 0.20) and
+    # n_case_var (5, 3) values are > 0, so the rate is 2/2 -- distinct from the
+    # 2/3 non_null_rate above, which would catch a wrong denominator.
+    assert report["prior"]["positive_rate"] == pytest.approx(1.0)
+    assert report["axes"]["burden"]["n_case_var"]["positive_rate"] == pytest.approx(1.0)
 
 
 class _FakeHGNC:

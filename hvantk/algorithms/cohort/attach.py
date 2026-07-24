@@ -22,6 +22,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+#: Column names ``attach`` itself introduces on the output table. A manifest that
+#: declares either name would have its data silently overwritten by the synthetic
+#: value computed a few lines later -- so these are reserved and checked for up front.
+RESERVED_COLUMNS = ("cohort_tested", "label")
+
 
 def as_source_entry(manifest):
     """Express the cohort manifest as a Stage-1 ``SourceEntry``.
@@ -49,9 +54,26 @@ def check_no_layer1_collisions(layer1, manifest) -> None:
     column named like a Layer-1 feature would quietly shadow it and every downstream
     number would be computed on the wrong values. Schema introspection only -- reading
     field names starts no Hail job -- so this runs before any computation.
+
+    This also rejects a declared column named ``cohort_tested`` or ``label``
+    (``RESERVED_COLUMNS``): ``attach`` assigns those names itself after the left-join,
+    so a cohort column sharing one would be silently overwritten by the synthetic
+    value with no exception and no warning -- the same failure class as a Layer-1
+    collision, just against a schema that doesn't exist yet at check time.
     """
+    declared = set(manifest.declared_columns())
+
+    reserved_clashing = sorted(declared & set(RESERVED_COLUMNS))
+    if reserved_clashing:
+        raise ValueError(
+            f"cohort {manifest.name!r} declares column(s) {', '.join(reserved_clashing)} "
+            f"that collide with attach()'s reserved output column name(s) "
+            f"({', '.join(RESERVED_COLUMNS)}); rename the cohort column(s) -- attach "
+            "would silently overwrite the cohort's data with its own computed value"
+        )
+
     existing = set(layer1.row)
-    clashing = sorted(set(manifest.declared_columns()) & existing)
+    clashing = sorted(declared & existing)
     if clashing:
         raise ValueError(
             f"cohort {manifest.name!r} declares column(s) {', '.join(clashing)} "
@@ -87,7 +109,9 @@ def attach(layer1, cohort_ht, manifest, *, hgnc=None):
     Raises
     ------
     ValueError
-        If a declared cohort column collides with a Layer-1 column.
+        If a declared cohort column collides with a Layer-1 column or with a
+        reserved output column name (``RESERVED_COLUMNS``), or if the manifest
+        declares labels but no ``hgnc`` was passed.
     hvantk.algorithms.annotation.mapping.MappingRateError
         If the gene-key mapping rate falls below ``manifest.min_mapping_rate``.
     """
@@ -135,6 +159,12 @@ def _resolve_labels(manifest, spine_gene_ids, *, hgnc):
     from hvantk.algorithms.annotation.mapping import GeneIdMapper, enforce_rate
 
     from hvantk.algorithms.cohort.labels import load_label_genes
+
+    if hgnc is None:
+        raise ValueError(
+            f"cohort {manifest.name!r} declares labels, which are always "
+            "symbol-keyed and need the HGNC streamer; pass hgnc=<HGNCGeneCatalogStreamer>"
+        )
 
     genes = load_label_genes(manifest.labels)
     mapper = GeneIdMapper(hgnc, spine_gene_ids)
