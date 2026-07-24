@@ -8,14 +8,14 @@ without Hail, a cohort, or network access.
 
 ```
 examples/rerank/
-├── config.yaml          the run: prior + two evidence axes + labels + cohort
+├── config.yaml          the run: cohort + two evidence axes + labels
 ├── make_fixtures.py     regenerates data/ (seeded; rewrites the same bytes)
 ├── data/
-│   ├── prior.tsv        gene, minp          -- the starting ranking to be re-ranked
-│   ├── constraint.tsv   gene, mis_z, pli    -- evidence axis 1 (ablation baseline)
-│   ├── expression.tsv   gene, dev_expr      -- evidence axis 2
-│   ├── labels.txt       40 positive genes   -- external training label
-│   └── cohort.tsv       gene, n_case_var, conc, driver_af -- audit architecture
+│   ├── cohort.yaml       the cohort manifest -- prior column + architecture axis
+│   ├── cohort.tsv        gene, minp, n_case_var, conc, driver_af -- prior + audit architecture
+│   ├── constraint.tsv    gene, mis_z, pli    -- evidence axis 1 (ablation baseline)
+│   ├── expression.tsv    gene, dev_expr      -- evidence axis 2
+│   └── labels.txt        40 positive genes   -- external training label
 └── results/
     └── rerank_scores.tsv   committed reference output (150 genes)
 ```
@@ -43,10 +43,12 @@ genes, 40 of them positive. Both feature axes carry real signal about the label,
 expression slightly weaker than constraint so the drop-one ablation produces a non-trivial
 ordering rather than two identical rows.
 
-The cohort table deliberately seeds every branch of the advisory audit, so the flag
-columns in the output are non-empty: 4 genes with `n_case_var <= 2`
-(`insufficient_data`), 4 with `conc >= 0.6` and elevated `driver_af`
-(`recurrent_variant`), and 3 with `driver_af > 1e-3` (`common_driver`).
+The cohort table (`data/cohort.tsv`, declared by `data/cohort.yaml`) carries both the
+prior statistic (`minp`) and the case/control architecture columns in one place -- a
+cohort manifest can only point at a single gene-level table. It deliberately seeds every
+branch of the advisory audit, so the flag columns in the output are non-empty: 4 genes
+with `n_case_var <= 2` (`insufficient_data`), 4 with `conc >= 0.6` and elevated
+`driver_af` (`recurrent_variant`), and 3 with `driver_af > 1e-3` (`common_driver`).
 
 **These numbers are a smoke test, not a scientific result.** The data is invented; do not
 read the AUCs as evidence of anything.

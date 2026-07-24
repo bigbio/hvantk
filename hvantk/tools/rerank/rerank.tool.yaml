@@ -9,13 +9,14 @@ cli:
 purpose:
   short: Calibrated credibility re-ranking of a gene burden by multi-omic feature tables.
   long: |
-    Given a YAML config naming a prior (gene burden), one or more gene-keyed
-    feature tables (constraint, expression, ...), a label gene-list, and an
-    optional cohort variant table (enabling the advisory architecture/QC audit),
-    `rerank` fits a calibrated out-of-fold model, assigns credibility tiers, and
-    flags cohort artifacts for review (advisory, not overriding), reporting
-    per-axis delta-AUC over the constraint baseline. The disease-specific feature
-    tables are produced by user recipes; the engine is disease-agnostic.
+    Given a YAML config naming a cohort manifest (the prior/gene burden, and,
+    when it declares an architecture axis, the columns enabling the advisory
+    architecture/QC audit), one or more gene-keyed feature tables (constraint,
+    expression, ...), and a label gene-list, `rerank` fits a calibrated
+    out-of-fold model, assigns credibility tiers, and flags cohort artifacts
+    for review (advisory, not overriding), reporting per-axis delta-AUC over
+    the constraint baseline. The disease-specific feature tables are produced
+    by user recipes; the engine is disease-agnostic.
 requires:
   hail: false
   network: false
