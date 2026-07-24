@@ -18,6 +18,8 @@ subcommands:
     description: Build the protein-coding gene spine from ensembl-gene:structure + hgnc:lookup
   - name: prepare
     description: Map one annotation source onto the spine's gene_id and select its columns
+  - name: compose
+    description: Left-join every spec layer1 axis's prepared table onto the spine into one matrix
 requires:
   hail: true
   network: false
