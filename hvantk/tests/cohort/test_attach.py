@@ -1,0 +1,424 @@
+"""Attaching a cohort onto the Layer-1 matrix.
+
+The collision check is pure Python (schema introspection only) and is deliberately
+unmarked so it runs in the fast suite; the join tests need Hail.
+"""
+import pytest
+
+from hvantk.algorithms.cohort.attach import (
+    as_source_entry,
+    attach,
+    check_no_layer1_collisions,
+)
+from hvantk.algorithms.cohort.spec import (
+    CohortAxis,
+    CohortLabels,
+    CohortManifest,
+    CohortPrior,
+)
+
+
+def _manifest(axes=(), prior_col="minp", key="gene_id", labels=None):
+    return CohortManifest(
+        name="demo",
+        key=key,
+        table="/data/demo.tsv",
+        prior=CohortPrior(column=prior_col, direction="lower_is_better"),
+        cohort_axes=axes,
+        labels=labels,
+    )
+
+
+def _layer1():
+    import hail as hl
+
+    return hl.Table.parallelize(
+        [
+            {"gene_id": "ENSG1", "gene_name": "A", "mis_z": 1.0},
+            {"gene_id": "ENSG2", "gene_name": "B", "mis_z": 2.0},
+            {"gene_id": "ENSG3", "gene_name": "C", "mis_z": 3.0},
+        ],
+        hl.tstruct(gene_id=hl.tstr, gene_name=hl.tstr, mis_z=hl.tfloat64),
+        key=["gene_id"],
+    )
+
+
+def _cohort():
+    """ENSG3 is deliberately absent -- it was never tested by this cohort."""
+    import hail as hl
+
+    return hl.Table.parallelize(
+        [
+            {"gene_id": "ENSG1", "minp": 0.01, "n_case_var": 5},
+            {"gene_id": "ENSG2", "minp": 0.20, "n_case_var": 3},
+        ],
+        hl.tstruct(gene_id=hl.tstr, minp=hl.tfloat64, n_case_var=hl.tint32),
+        key=["gene_id"],
+    )
+
+
+def test_as_source_entry_carries_every_declared_column():
+    m = _manifest(axes=(CohortAxis(axis="burden", columns=("n_case_var",)),))
+    entry = as_source_entry(m)
+    assert entry.key == "gene_id"
+    assert entry.columns == ("minp", "n_case_var")
+    assert entry.min_mapping_rate == m.min_mapping_rate
+
+
+def test_collision_with_a_layer1_column_fails_loud():
+    """Pure-Python schema check -- must run without Hail (no @pytest.mark.hail)."""
+
+    class _FakeLayer1:
+        row = {"gene_id": None, "gene_name": None, "mis_z": None}
+
+    m = _manifest(axes=(CohortAxis(axis="constraint", columns=("mis_z",)),))
+    with pytest.raises(ValueError, match="mis_z"):
+        check_no_layer1_collisions(_FakeLayer1(), m)
+
+
+def test_no_collision_passes():
+    class _FakeLayer1:
+        row = {"gene_id": None, "gene_name": None, "mis_z": None}
+
+    check_no_layer1_collisions(_FakeLayer1(), _manifest())
+
+
+def test_collision_with_the_reserved_cohort_tested_name_fails_loud():
+    """A cohort column named ``cohort_tested`` would be silently overwritten by the
+    synthetic ``cohort_tested`` bool `attach` computes -- reserved and checked up front,
+    same as an actual Layer-1 collision. Pure-Python: no @pytest.mark.hail."""
+
+    class _FakeLayer1:
+        row = {"gene_id": None, "gene_name": None, "mis_z": None}
+
+    m = _manifest(axes=(CohortAxis(axis="qc", columns=("cohort_tested",)),))
+    with pytest.raises(ValueError, match="cohort_tested"):
+        check_no_layer1_collisions(_FakeLayer1(), m)
+
+
+def test_collision_with_the_reserved_label_name_fails_loud_when_labels_declared():
+    """Same failure class for ``label`` -- a common column name in a case/control
+    table, and the exact name `attach` assigns when a manifest declares labels.
+    ``label`` is only reserved when ``manifest.labels is not None`` (attach only ever
+    writes that column in that case), so this manifest must declare labels for the
+    collision to be real."""
+
+    class _FakeLayer1:
+        row = {"gene_id": None, "gene_name": None, "mis_z": None}
+
+    m = _manifest(
+        axes=(CohortAxis(axis="qc", columns=("label",)),),
+        labels=CohortLabels(gene_set="/unused/panel.json"),
+    )
+    with pytest.raises(ValueError, match="label"):
+        check_no_layer1_collisions(_FakeLayer1(), m)
+
+
+def test_declared_label_column_does_not_collide_when_manifest_declares_no_labels():
+    """The mirror image: `attach` never writes a ``label`` column unless the manifest
+    declares labels, so a declared cohort column literally named ``label`` is fine
+    when it does not -- there is no synthetic value to be overwritten by."""
+
+    class _FakeLayer1:
+        row = {"gene_id": None, "gene_name": None, "mis_z": None}
+
+    m = _manifest(axes=(CohortAxis(axis="qc", columns=("label",)),), labels=None)
+    check_no_layer1_collisions(_FakeLayer1(), m)
+
+
+def test_layer1_already_has_cohort_tested_fails_loud():
+    """The Layer-1-schema side of the reserved-name check: a prior ``attach`` run's
+    own ``cohort_tested`` output column (or any Layer-1 source that happens to carry
+    one) would otherwise be silently replaced by ``layer1.annotate(cohort_tested=...)``
+    with no error and no warning."""
+
+    class _FakeLayer1:
+        row = {"gene_id": None, "cohort_tested": None}
+
+    with pytest.raises(ValueError, match="cohort_tested"):
+        check_no_layer1_collisions(_FakeLayer1(), _manifest())
+
+
+def test_layer1_already_has_label_and_manifest_declares_labels_fails_loud():
+    """A Layer-1 matrix that already carries a ``label`` column (e.g. a curated
+    pathogenic/vus string from an earlier source) would be silently replaced by the
+    synthetic True/False `attach` computes for a labelled manifest."""
+
+    class _FakeLayer1:
+        row = {"gene_id": None, "label": None}
+
+    m = _manifest(labels=CohortLabels(gene_set="/unused/panel.json"))
+    with pytest.raises(ValueError, match="label"):
+        check_no_layer1_collisions(_FakeLayer1(), m)
+
+
+def test_layer1_has_label_but_manifest_declares_no_labels_does_not_raise():
+    """`attach` never writes ``label`` unless the manifest declares labels, so a
+    Layer-1 ``label`` column is untouched -- and therefore not a collision -- when the
+    manifest has none."""
+
+    class _FakeLayer1:
+        row = {"gene_id": None, "label": None}
+
+    check_no_layer1_collisions(_FakeLayer1(), _manifest())
+
+
+def test_resolve_labels_requires_hgnc():
+    """A labelled manifest is always symbol-keyed, so it always needs the HGNC
+    catalog -- even when ``manifest.key`` is ``gene_id`` and `prepare_source`'s own
+    hgnc guard is skipped. Pure Python: the guard fires before any Hail table or
+    label-set file is touched, so no @pytest.mark.hail and no real gene-set JSON."""
+    from hvantk.algorithms.cohort.attach import _resolve_labels
+    from hvantk.algorithms.cohort.spec import CohortLabels
+
+    base = _manifest()
+    labelled = CohortManifest(
+        name=base.name,
+        key=base.key,
+        table=base.table,
+        prior=base.prior,
+        labels=CohortLabels(gene_set="/unused/panel.json"),
+    )
+
+    with pytest.raises(ValueError, match="hgnc"):
+        _resolve_labels(labelled, ["ENSG1", "ENSG2"], hgnc=None)
+
+
+@pytest.mark.hail
+def test_attach_keeps_every_spine_gene_and_flags_tested(hail_session):
+    m = _manifest(axes=(CohortAxis(axis="burden", columns=("n_case_var",)),))
+    attached, report = attach(_layer1(), _cohort(), m)
+
+    assert list(attached.key) == ["gene_id"]
+    assert attached.count() == 3
+    rows = {r.gene_id: r for r in attached.collect()}
+    assert rows["ENSG1"].cohort_tested is True
+    assert rows["ENSG2"].cohort_tested is True
+    assert rows["ENSG3"].cohort_tested is False
+    assert report["n_genes"] == 3
+    assert report["n_tested"] == 2
+
+
+@pytest.mark.hail
+def test_attach_never_imputes(hail_session):
+    """A gene absent from the cohort table stays missing -- not zero."""
+    m = _manifest(axes=(CohortAxis(axis="burden", columns=("n_case_var",)),))
+    attached, _ = attach(_layer1(), _cohort(), m)
+
+    rows = {r.gene_id: r for r in attached.collect()}
+    assert rows["ENSG3"].minp is None
+    assert rows["ENSG3"].n_case_var is None
+    assert rows["ENSG1"].minp == pytest.approx(0.01)
+
+
+@pytest.mark.hail
+def test_attach_preserves_layer1_columns(hail_session):
+    attached, _ = attach(_layer1(), _cohort(), _manifest())
+    assert set(attached.row) == {
+        "gene_id",
+        "gene_name",
+        "mis_z",
+        "minp",
+        "cohort_tested",
+    }
+
+
+@pytest.mark.hail
+def test_report_records_prior_direction_and_per_column_rates(hail_session):
+    m = _manifest(axes=(CohortAxis(axis="burden", columns=("n_case_var",)),))
+    _, report = attach(_layer1(), _cohort(), m)
+
+    assert report["prior"]["column"] == "minp"
+    assert report["prior"]["direction"] == "lower_is_better"
+    assert report["axes"]["burden"]["n_case_var"]["non_null_rate"] == pytest.approx(
+        2 / 3
+    )
+    # positive_rate is positives-among-non-null, not positives-among-all-genes: both
+    # cohort rows are non-null (ENSG1, ENSG2) and both minp (0.01, 0.20) and
+    # n_case_var (5, 3) values are > 0, so the rate is 2/2 -- distinct from the
+    # 2/3 non_null_rate above, which would catch a wrong denominator.
+    assert report["prior"]["positive_rate"] == pytest.approx(1.0)
+    assert report["axes"]["burden"]["n_case_var"]["positive_rate"] == pytest.approx(1.0)
+    # The report records `key` (the identifier space) AND `key_column` (the actual
+    # column read out of the cohort table) -- before this, the JSON never said which
+    # column was actually consulted.
+    assert report["key"] == "gene_id"
+    assert report["key_column"] == "gene_id"
+
+
+@pytest.mark.hail
+def test_attach_raises_on_duplicate_gene_id_rows(hail_session):
+    """`prepare_source`'s gene_id branch (Stage-1, never modified here) does not
+    enforce one row per gene -- it only filters onto the spine and selects columns.
+    Without a cohort-side guard, the later index-join would pick one of the two ENSG1
+    rows arbitrarily and silently drop the other, in violation of R3 ('one row per
+    tested gene')."""
+    import hail as hl
+
+    dup_cohort = hl.Table.parallelize(
+        [
+            {"gene_id": "ENSG1", "minp": 0.01, "n_case_var": 5},
+            {"gene_id": "ENSG2", "minp": 0.20, "n_case_var": 3},
+            {"gene_id": "ENSG1", "minp": 0.99, "n_case_var": 1},
+        ],
+        hl.tstruct(gene_id=hl.tstr, minp=hl.tfloat64, n_case_var=hl.tint32),
+        key=["gene_id"],
+    )
+    m = _manifest(axes=(CohortAxis(axis="burden", columns=("n_case_var",)),))
+
+    with pytest.raises(ValueError, match="ENSG1"):
+        attach(_layer1(), dup_cohort, m)
+
+
+@pytest.mark.hail
+def test_attach_reports_null_positive_rate_for_a_non_numeric_declared_column(
+    hail_session,
+):
+    """A declared string column (e.g. `hl.import_table(..., impute=True)` typing a
+    numeric column as str because one row holds '<0.001' or 'Inf') must not crash
+    `_build_report`'s `column > 0` comparison; it gets `positive_rate: None` instead,
+    with `non_null_rate` still computed correctly."""
+    import hail as hl
+
+    cohort = hl.Table.parallelize(
+        [
+            {"gene_id": "ENSG1", "minp": 0.01, "flag": "<0.001"},
+            {"gene_id": "ENSG2", "minp": 0.20, "flag": "yes"},
+        ],
+        hl.tstruct(gene_id=hl.tstr, minp=hl.tfloat64, flag=hl.tstr),
+        key=["gene_id"],
+    )
+    m = _manifest(axes=(CohortAxis(axis="qc", columns=("flag",)),))
+
+    attached, report = attach(_layer1(), cohort, m)
+
+    assert "flag" in set(attached.row)
+    assert report["axes"]["qc"]["flag"]["positive_rate"] is None
+    assert report["axes"]["qc"]["flag"]["non_null_rate"] == pytest.approx(2 / 3)
+
+
+class _FakeHGNC:
+    """Minimal HGNC stand-in: resolves symbols straight through to gene ids.
+
+    Mirrors the fake-collaborator convention in hvantk/tests/annotation/test_mapping.py --
+    tests never build a real HGNC table.
+    """
+
+    _SYMBOL_TO_HGNC = {"A": "HGNC:1", "B": "HGNC:2", "GHOST": "HGNC:9"}
+    _HGNC_TO_ENSEMBL = {"HGNC:1": "ENSG1", "HGNC:2": "ENSG2", "HGNC:9": "ENSG99"}
+
+    def resolve_to_canonical(self, symbol):
+        return symbol
+
+    def map_to_hgnc(self, ids, source_type):
+        return {i: self._SYMBOL_TO_HGNC.get(i) for i in ids}
+
+    def map_from_hgnc(self, hgnc_ids, target_type):
+        return {h: self._HGNC_TO_ENSEMBL.get(h) for h in hgnc_ids}
+
+
+def _labelled_manifest(tmp_path, genes, min_rate=0.5):
+    import json
+
+    from hvantk.algorithms.cohort.spec import CohortLabels
+
+    payload = {
+        "gene_sets": {
+            "panel": {
+                "name": "panel",
+                "genes": sorted(genes),
+                "source": "prepare-geneset",
+                "n_genes": len(genes),
+                "metadata": {},
+            }
+        },
+        "background_genes": sorted(genes),
+        "n_gene_sets": 1,
+        "n_background": len(genes),
+        "source_description": "test",
+        "metadata": {},
+    }
+    p = tmp_path / "panel.json"
+    p.write_text(json.dumps(payload))
+
+    m = _manifest()
+    return CohortManifest(
+        name=m.name,
+        key=m.key,
+        table=m.table,
+        prior=m.prior,
+        labels=CohortLabels(gene_set=str(p), min_mapping_rate=min_rate),
+    )
+
+
+@pytest.mark.hail
+def test_attach_emits_a_label_column_from_the_declared_gene_set(hail_session, tmp_path):
+    manifest = _labelled_manifest(tmp_path, {"A"})
+    attached, report = attach(_layer1(), _cohort(), manifest, hgnc=_FakeHGNC())
+
+    rows = {r.gene_id: r for r in attached.collect()}
+    assert rows["ENSG1"].label is True
+    # False, not missing: a label set is a closed-world assertion.
+    assert rows["ENSG2"].label is False
+    assert rows["ENSG3"].label is False
+    assert report["labels"]["n_mapped"] == 1
+
+
+@pytest.mark.hail
+def test_attach_fails_loud_when_too_few_label_symbols_resolve(hail_session, tmp_path):
+    """GHOST maps to ENSG99, which is not on the spine -- so only 1 of 2 resolves."""
+    from hvantk.algorithms.annotation.mapping import MappingRateError
+
+    manifest = _labelled_manifest(tmp_path, {"A", "GHOST"}, min_rate=0.9)
+    with pytest.raises(MappingRateError):
+        attach(_layer1(), _cohort(), manifest, hgnc=_FakeHGNC())
+
+
+def _cohort_symbols_in_a_column_named_gene():
+    """The exact real-world shape the G1 gate found: identifiers are HGNC symbols,
+    but the column holding them is literally named 'gene', not 'symbol'."""
+    import hail as hl
+
+    return hl.Table.parallelize(
+        [
+            {"gene": "A", "minp": 0.01, "n_case_var": 5},
+            {"gene": "B", "minp": 0.20, "n_case_var": 3},
+        ],
+        hl.tstruct(gene=hl.tstr, minp=hl.tfloat64, n_case_var=hl.tint32),
+        key=["gene"],
+    )
+
+
+@pytest.mark.hail
+def test_attach_works_when_the_key_column_is_named_differently_from_the_key(
+    hail_session,
+):
+    """key='symbol' declares the identifier SPACE; key_column='gene' names the
+    actual column. Before this fix, ``hl.import_table(..., key=manifest.key)``
+    would look for a column literally named 'symbol' and fail on every real
+    cohort -- all four of which name it 'gene'."""
+    manifest = CohortManifest(
+        name="demo",
+        key="symbol",
+        key_column="gene",
+        table="/data/demo.tsv",
+        prior=CohortPrior(column="minp", direction="lower_is_better"),
+        cohort_axes=(CohortAxis(axis="burden", columns=("n_case_var",)),),
+    )
+
+    attached, report = attach(
+        _layer1(),
+        _cohort_symbols_in_a_column_named_gene(),
+        manifest,
+        hgnc=_FakeHGNC(),
+    )
+
+    rows = {r.gene_id: r for r in attached.collect()}
+    assert rows["ENSG1"].cohort_tested is True
+    assert rows["ENSG1"].minp == pytest.approx(0.01)
+    assert rows["ENSG1"].n_case_var == 5
+    assert rows["ENSG2"].cohort_tested is True
+    assert rows["ENSG3"].cohort_tested is False
+    assert rows["ENSG3"].minp is None
+    assert report["n_tested"] == 2
+    assert report["mapping_rate"] == pytest.approx(1.0)
