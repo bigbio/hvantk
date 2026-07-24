@@ -251,11 +251,22 @@ def test_qc_export():
 
 
 def test_qc_visualization():
-    """Test QC visualization functionality."""
+    """Test plotting directly from the exported QC tables.
+
+    There is no built-in plotting/dashboard command, and QCMetrics has no
+    per-metric plot methods of its own; QC metrics are exported as pandas
+    DataFrames (get_sample_metrics_df() / get_variant_metrics_df()) and
+    plotted with matplotlib directly. 'hvantk hgc qc-report' /
+    generate_html_report() remains the option for a combined HTML report.
+    """
     try:
+        import matplotlib
+
+        matplotlib.use("Agg")  # headless-safe backend for this example
+        import matplotlib.pyplot as plt
         from hvantk.algorithms.hgc import compute_full_qc
 
-        logger.info("Testing QC visualization functionality...")
+        logger.info("Testing QC table plotting...")
 
         # Create test data
         mt = create_test_mt(n_samples=50, n_variants=200)
@@ -263,48 +274,27 @@ def test_qc_visualization():
         # Compute QC
         qc_results = compute_full_qc(mt)
 
-        # Test QCMetrics plotting methods
-        logger.info("Testing QCMetrics plotting methods...")
-
         try:
-            qc_results.plot_sample_overview()
-            logger.info("✓ Sample overview plot created")
-        except Exception as e:
-            logger.warning(f"Sample overview plot failed: {e}")
-
-        try:
-            qc_results.plot_variant_overview()
-            logger.info("✓ Variant overview plot created")
-        except Exception as e:
-            logger.warning(f"Variant overview plot failed: {e}")
-
-        try:
-            # Static dashboard was retired; the interactive (plotly) dashboard
-            # is the supported replacement.
-            qc_results.plot_interactive_dashboard()
-            logger.info("✓ Interactive QC dashboard created")
-        except Exception as e:
-            logger.warning(f"QC dashboard failed: {e}")
-
-        # Test direct imports
-        logger.info("Testing direct visualization imports...")
-        try:
-            from hvantk.algorithms.visualization import (
-                plot_sample_qc_overview,
-                plot_variant_qc_overview,
-            )
-
             sample_df = qc_results.get_sample_metrics_df()
-            variant_df = qc_results.get_variant_metrics_df()
-
-            plot_sample_qc_overview(sample_df)
-            logger.info("✓ Direct sample overview import works")
-
-            plot_variant_qc_overview(variant_df)
-            logger.info("✓ Direct variant overview import works")
-
+            fig, ax = plt.subplots()
+            ax.hist(sample_df["sample_qc.call_rate"], bins=30)
+            ax.axvline(0.85, color="red", ls="--", label="min call rate")
+            ax.set_xlabel("Sample call rate")
+            ax.legend()
+            plt.close(fig)
+            logger.info("✓ Sample call-rate plot created")
         except Exception as e:
-            logger.warning(f"Direct imports failed: {e}")
+            logger.warning(f"Sample call-rate plot failed: {e}")
+
+        try:
+            variant_df = qc_results.get_variant_metrics_df()
+            fig, ax = plt.subplots()
+            ax.hist(variant_df["variant_qc.call_rate"], bins=30)
+            ax.set_xlabel("Variant call rate")
+            plt.close(fig)
+            logger.info("✓ Variant call-rate plot created")
+        except Exception as e:
+            logger.warning(f"Variant call-rate plot failed: {e}")
 
         logger.info("✅ QC visualization test completed")
         return True
@@ -414,23 +404,41 @@ def example_save_qc_report():
     except Exception as e:
         logger.warning(f"   ⚠ Metrics save failed: {e}")
 
-    # 3. Save individual plots as PNG
+    # 3. Save individual plots as PNG, built directly from the exported QC tables.
+    # There is no built-in plotting/dashboard command; plot straight from
+    # get_sample_metrics_df() / get_variant_metrics_df() with matplotlib.
     logger.info("\n3. Saving individual plots...")
     try:
-        # Sample QC overview
-        sample_plot = qc_results.plot_sample_overview()
-        sample_plot_path = os.path.join(output_dir, f"sample_qc_{timestamp}.png")
-        sample_plot.savefig(sample_plot_path, dpi=300, bbox_inches="tight")
+        import matplotlib.pyplot as plt
+
+        # Sample call-rate distribution
+        sample_df = qc_results.get_sample_metrics_df()
+        fig, ax = plt.subplots()
+        ax.hist(sample_df["sample_qc.call_rate"], bins=30)
+        ax.axvline(0.85, color="red", ls="--", label="min call rate")
+        ax.set_xlabel("Sample call rate")
+        ax.legend()
+        sample_plot_path = os.path.join(
+            output_dir, f"sample_qc_call_rate_{timestamp}.png"
+        )
+        fig.savefig(sample_plot_path, dpi=300, bbox_inches="tight")
+        plt.close(fig)
         logger.info(f"   ✓ Sample QC plot: {sample_plot_path}")
 
-        # Variant QC overview
-        variant_plot = qc_results.plot_variant_overview()
-        variant_plot_path = os.path.join(output_dir, f"variant_qc_{timestamp}.png")
-        variant_plot.savefig(variant_plot_path, dpi=300, bbox_inches="tight")
+        # Variant call-rate distribution
+        variant_df = qc_results.get_variant_metrics_df()
+        fig, ax = plt.subplots()
+        ax.hist(variant_df["variant_qc.call_rate"], bins=30)
+        ax.set_xlabel("Variant call rate")
+        variant_plot_path = os.path.join(
+            output_dir, f"variant_qc_call_rate_{timestamp}.png"
+        )
+        fig.savefig(variant_plot_path, dpi=300, bbox_inches="tight")
+        plt.close(fig)
         logger.info(f"   ✓ Variant QC plot: {variant_plot_path}")
 
-        # The static PNG dashboard was retired; use 'hvantk hgc qc-report' for a
-        # combined HTML report or plot_interactive_dashboard() for an interactive one.
+        # For a combined report with embedded plots, use 'hvantk hgc qc-report'
+        # or qc_results.generate_html_report(...) from Python.
 
     except Exception as e:
         logger.warning(f"   ⚠ Plot saving failed: {e}")

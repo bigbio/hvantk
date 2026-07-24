@@ -34,8 +34,32 @@ runner.run()
 
 ### Expected Outputs
 
-- `qc_report_*.html` - Interactive HTML report
-- `qc_dashboard_*.png` - Multi-panel QC visualization
+- `qc_report_*.html` - Self-contained HTML report with embedded plots
+
+### Custom Plots from Exported QC Tables
+
+There is no standalone plotting/dashboard command. For ad hoc or custom plots,
+export the QC metrics as pandas DataFrames and plot with matplotlib directly:
+
+```python
+import hail as hl
+import matplotlib.pyplot as plt
+from hvantk.algorithms.hgc import compute_full_qc
+
+mt = hl.read_matrix_table("cohort_qc.mt")
+qc = compute_full_qc(mt)
+df = qc.get_sample_metrics_df()
+
+fig, ax = plt.subplots()
+ax.hist(df["sample_qc.call_rate"], bins=30)
+ax.axvline(0.85, color="red", ls="--", label="min call rate")
+ax.set_xlabel("Sample call rate")
+ax.legend()
+fig.savefig("call_rate.png", dpi=300, bbox_inches="tight")
+```
+
+See [Quality Control Functions](../tools/hgc.md#quality-control-functions-post-combination)
+in the HGC reference for the full set of exported metrics.
 
 ## Scalability Benchmarks
 
