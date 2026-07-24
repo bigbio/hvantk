@@ -4,7 +4,8 @@ import hail as hl
 from hvantk.algorithms.burden.aggregate import (
     build_per_gene_carrier_mt,
     assert_clean_mt,
-    qualifies_expr,
+    count_2x2,
+    variant_reductions,
 )
 
 pytestmark = pytest.mark.hail
@@ -113,3 +114,47 @@ def test_assert_clean_mt_rejects_non_binary_arm():
             arm_col="is_case",
             key="symbol",
         )
+
+
+def test_count_2x2_distinct_sample_carriers():
+    mt = _toy_mt()  # GENEA/lof: s0(case),s1(case) carriers; GENEB/mis: s2(control)
+    df = count_2x2(
+        mt,
+        gene_field="SYMBOL",
+        route_field="csq_group",
+        arm_field="is_case",
+        carrier_mode="het",
+    ).set_index(["gene", "route"])
+    assert df.loc[("GENEA", "lof"), "a"] == 2  # 2 case carriers
+    assert df.loc[("GENEA", "lof"), "b"] == 0  # 0 control carriers
+    assert df.loc[("GENEB", "mis"), "a"] == 0
+    assert df.loc[("GENEB", "mis"), "b"] == 1
+    assert df.loc[("GENEA", "lof"), "n_case"] == 2
+    assert df.loc[("GENEA", "lof"), "n_control"] == 2
+
+
+def test_variant_reductions_counts_and_drivers():
+    mt = _toy_mt()
+    df = variant_reductions(
+        mt,
+        gene_field="SYMBOL",
+        route_field="csq_group",
+        arm_field="is_case",
+        carrier_mode="het",
+    ).set_index(["gene", "route"])
+    # GENEA/lof has 2 variants, each carried by 1 distinct case -> n_case_var == 2
+    assert df.loc[("GENEA", "lof"), "n_case_var"] == 2
+    assert df.loc[("GENEA", "lof"), "conc_num"] == 1  # max single-variant case carriers
+    assert df.loc[("GENEA", "lof"), "conc_den"] == 2  # sum of case carriers
+    # both GENEA variants are case-private (0 control carriers)
+    assert df.loc[("GENEA", "lof"), "n_case_private"] == 2
+    # GENEB/mis is carried only by a control -> no case variants
+    assert df.loc[("GENEB", "mis"), "n_case_var"] == 0
+
+    # drivers must be usable exactly the way Task 4's pandas layer will use it:
+    # max(drivers, key=lambda d: d["cc"]) then d["ctrl_freq"].
+    drivers = df.loc[("GENEA", "lof"), "drivers"]
+    assert len(drivers) == 2
+    top = max(drivers, key=lambda d: d["cc"])
+    assert top["cc"] == 1
+    assert top["ctrl_freq"] == 0.0
