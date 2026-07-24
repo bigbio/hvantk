@@ -22,9 +22,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-#: Column names ``attach`` itself introduces on the output table. A manifest that
-#: declares either name would have its data silently overwritten by the synthetic
-#: value computed a few lines later -- so these are reserved and checked for up front.
+#: The full universe of column names ``attach`` itself can introduce on the output
+#: table. Not all of these are reserved for every manifest -- ``cohort_tested`` always
+#: is, but ``label`` is only written (and therefore only reserved) when the manifest
+#: declares labels; see :func:`_reserved_columns` for the per-manifest active set that
+#: :func:`check_no_layer1_collisions` actually checks against.
 RESERVED_COLUMNS = ("cohort_tested", "label")
 
 
@@ -66,32 +68,69 @@ def _expose_key_column(cohort_ht, manifest):
     return cohort_ht.rename({manifest.key_column: manifest.key})
 
 
+def _reserved_columns(manifest) -> set:
+    """The reserved output names ``attach()`` will actually write for this manifest.
+
+    ``cohort_tested`` is unconditional -- every call writes it. ``label`` is written
+    only when ``manifest.labels is not None`` (see the ``if manifest.labels is not
+    None`` branch in :func:`attach`); reserving it unconditionally would reject a
+    cohort's unrelated ``label`` column (a common name in a case/control table) for a
+    collision that can never actually happen for that manifest.
+    """
+    reserved = {"cohort_tested"}
+    if manifest.labels is not None:
+        reserved.add("label")
+    return reserved
+
+
 def check_no_layer1_collisions(layer1, manifest) -> None:
-    """Raise if a declared cohort column would overwrite a Layer-1 column.
+    """Raise if a declared cohort column, or a reserved output name, would overwrite
+    an existing column -- on either side of the join.
 
     ``Table.annotate`` silently replaces an existing field, so without this a cohort
     column named like a Layer-1 feature would quietly shadow it and every downstream
     number would be computed on the wrong values. Schema introspection only -- reading
     field names starts no Hail job -- so this runs before any computation.
 
-    This also rejects a declared column named ``cohort_tested`` or ``label``
-    (``RESERVED_COLUMNS``): ``attach`` assigns those names itself after the left-join,
-    so a cohort column sharing one would be silently overwritten by the synthetic
-    value with no exception and no warning -- the same failure class as a Layer-1
-    collision, just against a schema that doesn't exist yet at check time.
+    Three checks, in order:
+
+    1. A declared cohort column named ``cohort_tested`` or (when the manifest
+       declares labels) ``label`` -- the reserved names ``attach`` assigns itself
+       after the left-join. Without this, the cohort's own data would be silently
+       overwritten by the synthetic value with no exception and no warning.
+    2. A reserved name that ALREADY exists in the Layer-1 schema. Without this,
+       ``layer1.annotate(cohort_tested=..., label=...)`` replaces the existing
+       Layer-1 field outright -- e.g. a prior `attach` run's ``cohort_tested`` column,
+       or a Layer-1 source that happens to carry a ``label`` column of its own -- with
+       no error, exit 0. This is the same failure class as (1), just checked against
+       a schema ``attach`` itself is about to write rather than one the manifest
+       declares.
+    3. A declared cohort column that already exists in the Layer-1 matrix.
     """
     declared = set(manifest.declared_columns())
+    reserved = _reserved_columns(manifest)
 
-    reserved_clashing = sorted(declared & set(RESERVED_COLUMNS))
+    reserved_clashing = sorted(declared & reserved)
     if reserved_clashing:
         raise ValueError(
             f"cohort {manifest.name!r} declares column(s) {', '.join(reserved_clashing)} "
             f"that collide with attach()'s reserved output column name(s) "
-            f"({', '.join(RESERVED_COLUMNS)}); rename the cohort column(s) -- attach "
+            f"({', '.join(sorted(reserved))}); rename the cohort column(s) -- attach "
             "would silently overwrite the cohort's data with its own computed value"
         )
 
     existing = set(layer1.row)
+
+    reserved_in_layer1 = sorted(reserved & existing)
+    if reserved_in_layer1:
+        raise ValueError(
+            f"the Layer-1 matrix already has column(s) {', '.join(reserved_in_layer1)}, "
+            f"which cohort {manifest.name!r} would overwrite with attach()'s own "
+            f"computed value ({', '.join(sorted(reserved))} are reserved output "
+            "names); rename or drop the existing Layer-1 column(s) first -- attaching "
+            "would silently replace them, including a prior attach run's own output"
+        )
+
     clashing = sorted(declared & existing)
     if clashing:
         raise ValueError(
@@ -99,6 +138,38 @@ def check_no_layer1_collisions(layer1, manifest) -> None:
             "that already exist in the Layer-1 matrix; rename the cohort column(s) "
             "-- attaching would silently overwrite the Layer-1 values"
         )
+
+
+def _check_no_duplicate_cohort_rows(cohort_ht, manifest) -> None:
+    """Raise if the cohort table has more than one row for the same gene key.
+
+    ``prepare_source``'s ``key == "gene_id"`` branch (Stage-1 machinery, shared with
+    other pipelines and never modified here) does not enforce one row per gene -- it
+    only filters onto the spine and selects columns. Without this check, the later
+    index-join (``prepared[layer1.gene_id]``) picks one of several matching rows
+    arbitrarily and silently drops the rest, in violation of the contract's R3 rule
+    ("one row per tested gene"). Checked here, on the cohort side, precisely because
+    ``prepare_source`` must not change behaviour for its other callers.
+
+    Cheap by construction -- a row count and a distinct-key count, no collect -- with
+    the actual duplicated keys materialised only once those two counts have already
+    proven a duplicate exists.
+    """
+    import hail as hl
+
+    key = manifest.key
+    n_rows = cohort_ht.count()
+    n_keys = cohort_ht.key_by(key).distinct().count()
+    if n_rows == n_keys:
+        return
+
+    counts = cohort_ht.aggregate(hl.agg.counter(cohort_ht[key]))
+    dup_keys = sorted(k for k, c in counts.items() if c > 1)
+    raise ValueError(
+        f"cohort {manifest.name!r} table has {n_rows - n_keys} duplicate row(s) for "
+        f"gene key(s) {', '.join(dup_keys[:10])}; the cohort table must carry "
+        "exactly one row per gene -- aggregate the table before attaching"
+    )
 
 
 def attach(layer1, cohort_ht, manifest, *, hgnc=None):
@@ -130,7 +201,8 @@ def attach(layer1, cohort_ht, manifest, *, hgnc=None):
     ------
     ValueError
         If a declared cohort column collides with a Layer-1 column or with a
-        reserved output column name (``RESERVED_COLUMNS``), or if the manifest
+        reserved output column name (``RESERVED_COLUMNS``), if the cohort table
+        carries more than one row for the same gene key, or if the manifest
         declares labels but no ``hgnc`` was passed.
     hvantk.algorithms.annotation.mapping.MappingRateError
         If the gene-key mapping rate falls below ``manifest.min_mapping_rate``.
@@ -143,6 +215,7 @@ def attach(layer1, cohort_ht, manifest, *, hgnc=None):
     check_no_layer1_collisions(layer1, manifest)
 
     cohort_ht = _expose_key_column(cohort_ht, manifest)
+    _check_no_duplicate_cohort_rows(cohort_ht, manifest)
 
     spine_gene_ids = layer1.gene_id.collect()
     prepared, report = prepare_source(
@@ -201,11 +274,31 @@ def _build_report(ht, manifest, mapping_report, label_report=None) -> dict:
     """Coverage report: tested count, mapping rate, and per-column rates.
 
     Mirrors the shape ``compose`` emits so both layers' manifests read the same way.
+
+    ``positive_rate`` needs an ordered comparison (``column > 0``), so it is computed
+    only for declared columns Hail's own schema reports as numeric
+    (:func:`hail.is_numeric` on ``ht[col].dtype``). A declared column that
+    ``hl.import_table(..., impute=True)`` typed as ``str`` -- a single dirty row like
+    ``<0.001``, ``.``, ``Inf``, or a stray space is enough -- gets
+    ``positive_rate: None`` and a logged warning naming the column and its type,
+    rather than crashing here with a bare ``TypeError`` after mapping, joining and
+    label resolution have already finished.
     """
     import hail as hl
 
     columns = list(manifest.declared_columns())
     n_genes = ht.count()
+
+    numeric_columns = {col for col in columns if hl.is_numeric(ht[col].dtype)}
+    for col in columns:
+        if col not in numeric_columns:
+            logger.warning(
+                "cohort %s: declared column %r has non-numeric type %s; "
+                "positive_rate will be reported as null for this column",
+                manifest.name,
+                col,
+                ht[col].dtype,
+            )
 
     stats = ht.aggregate(
         hl.struct(
@@ -213,7 +306,11 @@ def _build_report(ht, manifest, mapping_report, label_report=None) -> dict:
             **{
                 col: hl.struct(
                     nn=hl.agg.count_where(hl.is_defined(ht[col])),
-                    pos=hl.agg.count_where(ht[col] > 0),
+                    **(
+                        {"pos": hl.agg.count_where(ht[col] > 0)}
+                        if col in numeric_columns
+                        else {}
+                    ),
                 )
                 for col in columns
             },
@@ -222,9 +319,12 @@ def _build_report(ht, manifest, mapping_report, label_report=None) -> dict:
 
     def _rates(col):
         nn = stats[col]["nn"]
+        non_null_rate = (nn / n_genes) if n_genes else 0.0
+        if col not in numeric_columns:
+            return {"non_null_rate": non_null_rate, "positive_rate": None}
         pos = stats[col]["pos"]
         return {
-            "non_null_rate": (nn / n_genes) if n_genes else 0.0,
+            "non_null_rate": non_null_rate,
             "positive_rate": (pos / nn) if nn else None,
         }
 
@@ -233,6 +333,7 @@ def _build_report(ht, manifest, mapping_report, label_report=None) -> dict:
         "n_genes": n_genes,
         "n_tested": stats["n_tested"],
         "key": manifest.key,
+        "key_column": manifest.key_column,
         "mapping_rate": mapping_report.rate,
         "prior": {
             "column": manifest.prior.column,

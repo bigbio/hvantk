@@ -2,7 +2,8 @@
 
     hvantk annotate spine --gene-table G.ht --hgnc H.ht --output spine.ht
 
-Later phases add ``prepare``, ``compose`` and ``cohort`` to this group.
+``prepare`` and ``compose`` live in this group; ``cohort`` is a deliberately separate
+top-level group (``hvantk cohort``) rather than a subcommand here.
 
 The command does its work in-process. Scheduling is deliberately external -- sbatch
 wrappers submit it -- so that hvantk never imports a scheduler.

@@ -12,18 +12,20 @@ from hvantk.algorithms.cohort.attach import (
 )
 from hvantk.algorithms.cohort.spec import (
     CohortAxis,
+    CohortLabels,
     CohortManifest,
     CohortPrior,
 )
 
 
-def _manifest(axes=(), prior_col="minp", key="gene_id"):
+def _manifest(axes=(), prior_col="minp", key="gene_id", labels=None):
     return CohortManifest(
         name="demo",
         key=key,
         table="/data/demo.tsv",
         prior=CohortPrior(column=prior_col, direction="lower_is_better"),
         cohort_axes=axes,
+        labels=labels,
     )
 
 
@@ -94,16 +96,71 @@ def test_collision_with_the_reserved_cohort_tested_name_fails_loud():
         check_no_layer1_collisions(_FakeLayer1(), m)
 
 
-def test_collision_with_the_reserved_label_name_fails_loud():
+def test_collision_with_the_reserved_label_name_fails_loud_when_labels_declared():
     """Same failure class for ``label`` -- a common column name in a case/control
-    table, and the exact name `attach` assigns when a manifest declares labels."""
+    table, and the exact name `attach` assigns when a manifest declares labels.
+    ``label`` is only reserved when ``manifest.labels is not None`` (attach only ever
+    writes that column in that case), so this manifest must declare labels for the
+    collision to be real."""
 
     class _FakeLayer1:
         row = {"gene_id": None, "gene_name": None, "mis_z": None}
 
-    m = _manifest(axes=(CohortAxis(axis="qc", columns=("label",)),))
+    m = _manifest(
+        axes=(CohortAxis(axis="qc", columns=("label",)),),
+        labels=CohortLabels(gene_set="/unused/panel.json"),
+    )
     with pytest.raises(ValueError, match="label"):
         check_no_layer1_collisions(_FakeLayer1(), m)
+
+
+def test_declared_label_column_does_not_collide_when_manifest_declares_no_labels():
+    """The mirror image: `attach` never writes a ``label`` column unless the manifest
+    declares labels, so a declared cohort column literally named ``label`` is fine
+    when it does not -- there is no synthetic value to be overwritten by."""
+
+    class _FakeLayer1:
+        row = {"gene_id": None, "gene_name": None, "mis_z": None}
+
+    m = _manifest(axes=(CohortAxis(axis="qc", columns=("label",)),), labels=None)
+    check_no_layer1_collisions(_FakeLayer1(), m)
+
+
+def test_layer1_already_has_cohort_tested_fails_loud():
+    """The Layer-1-schema side of the reserved-name check: a prior ``attach`` run's
+    own ``cohort_tested`` output column (or any Layer-1 source that happens to carry
+    one) would otherwise be silently replaced by ``layer1.annotate(cohort_tested=...)``
+    with no error and no warning."""
+
+    class _FakeLayer1:
+        row = {"gene_id": None, "cohort_tested": None}
+
+    with pytest.raises(ValueError, match="cohort_tested"):
+        check_no_layer1_collisions(_FakeLayer1(), _manifest())
+
+
+def test_layer1_already_has_label_and_manifest_declares_labels_fails_loud():
+    """A Layer-1 matrix that already carries a ``label`` column (e.g. a curated
+    pathogenic/vus string from an earlier source) would be silently replaced by the
+    synthetic True/False `attach` computes for a labelled manifest."""
+
+    class _FakeLayer1:
+        row = {"gene_id": None, "label": None}
+
+    m = _manifest(labels=CohortLabels(gene_set="/unused/panel.json"))
+    with pytest.raises(ValueError, match="label"):
+        check_no_layer1_collisions(_FakeLayer1(), m)
+
+
+def test_layer1_has_label_but_manifest_declares_no_labels_does_not_raise():
+    """`attach` never writes ``label`` unless the manifest declares labels, so a
+    Layer-1 ``label`` column is untouched -- and therefore not a collision -- when the
+    manifest has none."""
+
+    class _FakeLayer1:
+        row = {"gene_id": None, "label": None}
+
+    check_no_layer1_collisions(_FakeLayer1(), _manifest())
 
 
 def test_resolve_labels_requires_hgnc():
@@ -182,6 +239,62 @@ def test_report_records_prior_direction_and_per_column_rates(hail_session):
     # 2/3 non_null_rate above, which would catch a wrong denominator.
     assert report["prior"]["positive_rate"] == pytest.approx(1.0)
     assert report["axes"]["burden"]["n_case_var"]["positive_rate"] == pytest.approx(1.0)
+    # The report records `key` (the identifier space) AND `key_column` (the actual
+    # column read out of the cohort table) -- before this, the JSON never said which
+    # column was actually consulted.
+    assert report["key"] == "gene_id"
+    assert report["key_column"] == "gene_id"
+
+
+@pytest.mark.hail
+def test_attach_raises_on_duplicate_gene_id_rows(hail_session):
+    """`prepare_source`'s gene_id branch (Stage-1, never modified here) does not
+    enforce one row per gene -- it only filters onto the spine and selects columns.
+    Without a cohort-side guard, the later index-join would pick one of the two ENSG1
+    rows arbitrarily and silently drop the other, in violation of R3 ('one row per
+    tested gene')."""
+    import hail as hl
+
+    dup_cohort = hl.Table.parallelize(
+        [
+            {"gene_id": "ENSG1", "minp": 0.01, "n_case_var": 5},
+            {"gene_id": "ENSG2", "minp": 0.20, "n_case_var": 3},
+            {"gene_id": "ENSG1", "minp": 0.99, "n_case_var": 1},
+        ],
+        hl.tstruct(gene_id=hl.tstr, minp=hl.tfloat64, n_case_var=hl.tint32),
+        key=["gene_id"],
+    )
+    m = _manifest(axes=(CohortAxis(axis="burden", columns=("n_case_var",)),))
+
+    with pytest.raises(ValueError, match="ENSG1"):
+        attach(_layer1(), dup_cohort, m)
+
+
+@pytest.mark.hail
+def test_attach_reports_null_positive_rate_for_a_non_numeric_declared_column(
+    hail_session,
+):
+    """A declared string column (e.g. `hl.import_table(..., impute=True)` typing a
+    numeric column as str because one row holds '<0.001' or 'Inf') must not crash
+    `_build_report`'s `column > 0` comparison; it gets `positive_rate: None` instead,
+    with `non_null_rate` still computed correctly."""
+    import hail as hl
+
+    cohort = hl.Table.parallelize(
+        [
+            {"gene_id": "ENSG1", "minp": 0.01, "flag": "<0.001"},
+            {"gene_id": "ENSG2", "minp": 0.20, "flag": "yes"},
+        ],
+        hl.tstruct(gene_id=hl.tstr, minp=hl.tfloat64, flag=hl.tstr),
+        key=["gene_id"],
+    )
+    m = _manifest(axes=(CohortAxis(axis="qc", columns=("flag",)),))
+
+    attached, report = attach(_layer1(), cohort, m)
+
+    assert "flag" in set(attached.row)
+    assert report["axes"]["qc"]["flag"]["positive_rate"] is None
+    assert report["axes"]["qc"]["flag"]["non_null_rate"] == pytest.approx(2 / 3)
 
 
 class _FakeHGNC:

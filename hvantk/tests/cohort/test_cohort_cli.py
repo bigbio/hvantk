@@ -91,11 +91,37 @@ def test_validate_fails_loud_when_the_table_is_missing(tmp_path):
 
 
 def test_validate_surfaces_a_bad_manifest_as_a_clean_error(tmp_path):
+    """A schema-invalid manifest must exit non-zero with the actionable text, not a
+    raw traceback. `not isinstance(..., KeyError)` alone is tautological here: schema
+    validation always rejects a bad document before any `doc["table"]` lookup runs, so
+    KeyError can never be raised regardless of whether `_load_manifest`'s try/except
+    does anything at all -- confirmed by temporarily deleting that try/except, which
+    makes THIS rewritten assertion fail (a raw jsonschema.ValidationError escapes and
+    click reports a non-clean exit) while the old assertion kept passing."""
     p = tmp_path / "bad.yaml"
     p.write_text("name: demo\nkey: symbol\n")  # no table, no prior
     result = CliRunner().invoke(cohort_group, ["validate", "--cohort", str(p)])
     assert result.exit_code != 0
+    assert "invalid cohort manifest" in result.output
     assert not isinstance(result.exception, KeyError), result.exception
+
+
+def test_validate_succeeds_on_a_gzipped_tsv_table(tmp_path):
+    """finding 3: `Path("x.tsv.gz").suffix == ".gz"`, so the old suffix-whitelist
+    delimiter heuristic picked ',' and then opened the gzip bytes as UTF-8 text --
+    exit 1, empty output, UnicodeDecodeError on byte 0x8b. Hail's own import_table
+    already reads gz/bgz natively, so the header reader was the only blocker."""
+    import gzip
+
+    table = tmp_path / "cohort.tsv.gz"
+    with gzip.open(table, "wt") as fh:
+        fh.write("gene_id\tminp\tn_case_var\nENSG1\t0.01\t5\nENSG2\t0.2\t3\n")
+    manifest = _write_manifest(tmp_path, str(table))
+
+    result = CliRunner().invoke(cohort_group, ["validate", "--cohort", manifest])
+    assert result.exit_code == 0, result.output
+    assert "minp" in result.output
+    assert "n_case_var" in result.output
 
 
 @pytest.mark.hail

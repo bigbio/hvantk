@@ -12,9 +12,7 @@ fast with a clear message instead of after a Spark start-up.
 """
 from __future__ import annotations
 
-import csv
 import logging
-from pathlib import Path
 
 import click
 
@@ -27,64 +25,58 @@ def cohort_group():
 
 
 def _read_header(table_path: str) -> list[str]:
-    """Return the column names of a delimited cohort table.
+    """Thin CLI wrapper: read a cohort table's header, as a clean ``click`` error.
 
-    Pure Python and header-only, so `validate` stays cheap and Hail-free.
+    The actual check is public and Click-free --
+    :func:`hvantk.algorithms.cohort.checks.read_header` -- so a Python caller of
+    ``attach()`` can run it without importing this module.
     """
-    path = Path(table_path)
-    if not path.exists():
-        raise click.UsageError(f"cohort table not found: {table_path}")
+    from hvantk.algorithms.cohort.checks import read_header
 
-    delimiter = "\t" if path.suffix in (".tsv", ".txt") else ","
-    with path.open() as fh:
-        try:
-            header = next(csv.reader(fh, delimiter=delimiter))
-        except StopIteration:
-            raise click.UsageError(f"cohort table is empty: {table_path}")
-    return [h.strip() for h in header]
+    try:
+        return read_header(table_path)
+    except ValueError as exc:
+        raise click.UsageError(str(exc))
 
 
 def _check_declared_columns_exist(manifest, header: list[str]) -> None:
-    """Every declared column must exist in the table.
+    """Thin CLI wrapper around
+    :func:`hvantk.algorithms.cohort.checks.check_declared_columns_exist`."""
+    from hvantk.algorithms.cohort.checks import check_declared_columns_exist
 
-    A missing declared column must never become a silently absent feature -- that is
-    how a mapping bug turns into unexplained model degradation.
-    """
-    missing = [c for c in manifest.declared_columns() if c not in header]
-    if missing:
-        raise click.UsageError(
-            f"cohort table {manifest.table} is missing declared column(s): "
-            + ", ".join(missing)
-        )
+    try:
+        check_declared_columns_exist(manifest, header)
+    except ValueError as exc:
+        raise click.UsageError(str(exc))
 
 
 def _check_key_column_exists(manifest, header: list[str]) -> None:
-    """The key column itself must exist in the table.
+    """Thin CLI wrapper around
+    :func:`hvantk.algorithms.cohort.checks.check_key_column_exists`."""
+    from hvantk.algorithms.cohort.checks import check_key_column_exists
 
-    Nothing previously checked this: ``key`` is the identifier SPACE
-    (``gene_id`` / ``hgnc_id`` / ``symbol``) and ``key_column`` is the column that
-    actually holds those values, and the two are commonly different (a real cohort's
-    symbol column is often named ``gene``, not ``symbol``). Without this check, a
-    wrong or missing ``key_column`` fails only deep inside ``hl.import_table`` with a
-    raw Hail error that never mentions the manifest -- exactly the failure class every
-    other declared column is already checked against.
-    """
-    if manifest.key_column not in header:
-        raise click.UsageError(
-            f"cohort table {manifest.table} has no column {manifest.key_column!r} "
-            f"(key_column); key={manifest.key!r} names the identifier space, "
-            "key_column names the column in the table that holds it"
-        )
+    try:
+        check_key_column_exists(manifest, header)
+    except ValueError as exc:
+        raise click.UsageError(str(exc))
 
 
 def _load_manifest(cohort_path: str):
     """Parse a manifest, converting contract violations into clean CLI errors."""
+    import jsonschema
+
     from hvantk.algorithms.cohort.spec import load_cohort
 
     try:
         return load_cohort(cohort_path)
     except click.UsageError:
         raise
+    except jsonschema.ValidationError as exc:
+        # `exc.message` is the one line that actually names the violation (e.g. "'table'
+        # is a required property"); the default `str(exc)` also dumps the entire schema
+        # and an `On instance:` echo of the whole document -- 50+ noisy lines for what is
+        # usually a single missing or misspelled key.
+        raise click.UsageError(f"invalid cohort manifest {cohort_path}: {exc.message}")
     except Exception as exc:
         raise click.UsageError(f"invalid cohort manifest {cohort_path}: {exc}")
 
@@ -175,7 +167,9 @@ def attach_cmd(cohort, layer1, output, report, hgnc_path):
 
         hgnc = HGNCGeneCatalogStreamer.from_path(hgnc_path)
 
-    delimiter = "\t" if Path(manifest.table).suffix in (".tsv", ".txt") else ","
+    from hvantk.algorithms.cohort.checks import detect_delimiter
+
+    delimiter = detect_delimiter(manifest.table)
     cohort_ht = hl.import_table(
         manifest.table, delimiter=delimiter, impute=True, key=manifest.key_column
     )
