@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "hvantk cohort manifest",
+  "description": "Declares how an external cohort is presented to hvantk: its gene key, its cohort-derived prior statistic, optional labels, and optional cohort feature axes.",
+  "type": "object",
+  "required": ["name", "key", "table", "prior"],
+  "additionalProperties": false,
+  "properties": {
+    "name": {"type": "string", "minLength": 1},
+    "key": {"enum": ["gene_id", "hgnc_id", "symbol"]},
+    "table": {"type": "string", "minLength": 1},
+    "min_mapping_rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "prior": {
+      "type": "object",
+      "required": ["column", "direction"],
+      "additionalProperties": false,
+      "properties": {
+        "column": {"type": "string", "minLength": 1},
+        "direction": {"enum": ["lower_is_better", "higher_is_better"]}
+      }
+    },
+    "labels": {
+      "type": "object",
+      "required": ["gene_set"],
+      "additionalProperties": false,
+      "properties": {
+        "gene_set": {"type": "string", "minLength": 1},
+        "set_name": {"type": "string", "minLength": 1},
+        "min_mapping_rate": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "cohort_axes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["axis", "columns"],
+        "additionalProperties": false,
+        "properties": {
+          "axis": {"type": "string", "minLength": 1},
+          "columns": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": "string", "minLength": 1}
+          }
+        }
+      }
+    }
+  }
+}
