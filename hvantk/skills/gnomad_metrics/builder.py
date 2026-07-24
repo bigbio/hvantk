@@ -51,6 +51,16 @@ def build_gnomad_metrics_metrics(
             raise FileNotFoundError(
                 f"No gnomAD constraint file (*.bgz/*.tsv) found in {src}"
             )
+        if len(candidates) > 1:
+            # Do not silently pick the first: a raw dir holding more than one constraint
+            # file (e.g. v2.1.1 + v4.0, or by_gene + by_transcript) would build the wrong
+            # table. Mirror the sibling gevir builder and fail loud. (PR #222 review.)
+            raise ValueError(
+                f"expected exactly one gnomAD constraint file in {src}, found "
+                f"{len(candidates)}: {[c.name for c in candidates]}. Point --raw-dir at a "
+                f"directory holding a single version's constraint file, or pass an explicit "
+                f"file path."
+            )
         src = candidates[0]
         logger.info("Resolved gnomAD constraint file: %s", src)
 

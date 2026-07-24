@@ -20,11 +20,26 @@ from hvantk.tests._snapshot_utils import (
     load_snapshot,
     phase_b_snapshot_adapter,
 )
+
 # Aliased to avoid shadowing the fixture name `regenerate_snapshots` in the test signature
 from hvantk.tests._snapshot_utils import regenerate_snapshots as regenerate_snapshots_fn
 
-FIXTURE = "hvantk/tests/testdata/raw/gnomad/gnomad.v2.1.1.lof_metrics.by_gene.chr20.tsv.bgz"
+FIXTURE = (
+    "hvantk/tests/testdata/raw/gnomad/gnomad.v2.1.1.lof_metrics.by_gene.chr20.tsv.bgz"
+)
 SNAPSHOT_DIR = Path("hvantk/skills/gnomad_metrics/tests/snapshots")
+
+
+def test_build_raises_when_raw_dir_holds_multiple_constraint_files(tmp_path):
+    # A raw dir with more than one constraint file (e.g. v2.1.1 + v4.0) must fail loud rather
+    # than silently build from candidates[0]. Guard raises before any Hail call. (PR #222 review.)
+    from hvantk.skills.gnomad_metrics.builder import build_gnomad_metrics_metrics
+
+    (tmp_path / "gnomad.v2.1.1.lof_metrics.by_gene.txt.bgz").write_text("x")
+    (tmp_path / "gnomad.v4.0.constraint_metrics.tsv").write_text("x")
+    with pytest.raises(ValueError, match="exactly one gnomAD constraint file"):
+        build_gnomad_metrics_metrics(str(tmp_path), None)
+
 
 # Real keys, taken from an actual build of the fixture -- collect_sample_rows raises
 # KeyError for any key absent from the table, so these cannot be invented.
@@ -39,12 +54,16 @@ SAMPLE_KEYS = [
 
 
 @pytest.mark.hail
-def test_gnomad_metrics_snapshot_round_trip(hail_session, tmp_path, regenerate_snapshots):
+def test_gnomad_metrics_snapshot_round_trip(
+    hail_session, tmp_path, regenerate_snapshots
+):
     """Build gnomAD constraint metrics from fixture; assert schema and sample-row stability."""
     import hail as hl
     from hvantk.skills.gnomad_metrics.builder import build_gnomad_metrics_metrics
 
-    builder = phase_b_snapshot_adapter(build_gnomad_metrics_metrics, "gnomad-metrics:metrics")
+    builder = phase_b_snapshot_adapter(
+        build_gnomad_metrics_metrics, "gnomad-metrics:metrics"
+    )
 
     if regenerate_snapshots:
         regenerate_snapshots_fn(
@@ -53,15 +72,21 @@ def test_gnomad_metrics_snapshot_round_trip(hail_session, tmp_path, regenerate_s
             snapshot_dir=SNAPSHOT_DIR,
             keys=SAMPLE_KEYS,
         )
-        pytest.skip("Snapshots regenerated; rerun without --regenerate-snapshots to assert.")
+        pytest.skip(
+            "Snapshots regenerated; rerun without --regenerate-snapshots to assert."
+        )
 
     output_path = str(tmp_path / "gnomad_metrics.ht")
     builder(input_path=FIXTURE, output_path=output_path)
     ht = hl.read_table(output_path)
 
     expected_schema = load_snapshot(SNAPSHOT_DIR / "schema.json")
-    assert hail_schema_to_dict(ht) == expected_schema, "gnomAD constraint metrics schema drifted from snapshot"
+    assert (
+        hail_schema_to_dict(ht) == expected_schema
+    ), "gnomAD constraint metrics schema drifted from snapshot"
 
     expected_rows = load_snapshot(SNAPSHOT_DIR / "sample_rows.json")
     actual_rows = collect_sample_rows(ht, keys=SAMPLE_KEYS)
-    assert actual_rows == expected_rows, "gnomAD constraint metrics sample rows drifted from snapshot"
+    assert (
+        actual_rows == expected_rows
+    ), "gnomAD constraint metrics sample rows drifted from snapshot"
