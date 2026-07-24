@@ -17,35 +17,58 @@ import pytest
 from hvantk.core.plugin import loader as plugin_loader
 
 
+# Deliberately hard-coded rather than derived from the manifests on disk: this is a
+# tripwire, so adding or removing a provider MUST be a conscious edit here. It is only
+# useful if it actually runs -- these tests are `hail`-marked, which pytest.ini deselects
+# by default, so the list silently rotted 8 providers behind the tree (alphagenome,
+# cosmic-cgc, dbnsfp, ensembl-gene, gevir, gnomad-metrics, onek-genomes, pqtl) until the
+# CI job added alongside this change started exercising the marker.
 EXPECTED_PROVIDERS = {
+    "alphagenome",
     "clingen",
     "clinvar",
+    "cosmic-cgc",
     "cptac",
+    "dbnsfp",
+    "ensembl-gene",
     "expression-atlas",
     "gencc",
+    "gevir",
+    "gnomad-metrics",
     "gtex-eqtl",
     "gwas-catalog",
     "hgnc",
     "insider",
     "msigdb",
+    "onek-genomes",
     "peptideatlas",
+    "pqtl",
     "ucsc-cellbrowser",
     "uniprot-ptm",
 }
 
 EXPECTED_DATASETS = {
+    "alphagenome:predictions",
     "clingen:gene-disease",
     "clinvar:variants",
+    "cosmic-cgc:submissions",
     "cptac:expression",
     "cptac:phospho",
+    "dbnsfp:variants",
+    "ensembl-gene:structure",
     "expression-atlas:dataset",
     "gencc:submissions",
+    "gevir:metrics",
+    "gnomad-metrics:metrics",
     "gtex-eqtl:eqtls",
     "gwas-catalog:associations",
     "hgnc:lookup",
     "insider:variants",
     "msigdb:genesets",
+    "onek-genomes:samples",
+    "onek-genomes:variants",
     "peptideatlas:phospho",
+    "pqtl:metrics",
     "ucsc-cellbrowser:default",
     "ucsc-cellbrowser:adult-ctx",
     "ucsc-cellbrowser:dev-ctx",

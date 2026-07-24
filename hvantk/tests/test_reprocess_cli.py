@@ -32,8 +32,11 @@ def _make_spec(
 ) -> DatasetSpec:
     return DatasetSpec(
         name=name,
+        # Self-consistent with the .parquet outputs these tests use: reprocess now
+        # fails fast when --output's extension can't hold the declared backend
+        # (pandas -> .parquet, hail -> .ht/.mt, anndata -> .h5ad; issue #198).
         domain="genomics",
-        backend="hail",
+        backend="pandas",
         builder=builder or MagicMock(),
         drift_probe=MagicMock(return_value={"probe_version": 1}),
         skill_path="/x/SKILL.md",
@@ -201,13 +204,20 @@ def test_reprocess_unknown_dataset_errors(tmp_path: Path, monkeypatch):
     assert "unknown dataset" in result.output.lower()
 
 
-def test_reprocess_parse_requires_intermediate_path(tmp_path: Path, monkeypatch):
-    """When a plugin declares lifecycle.parse, --intermediate must be supplied."""
+def test_reprocess_parse_without_intermediate_auto_defaults(tmp_path: Path, monkeypatch):
+    """When a plugin declares lifecycle.parse but --intermediate is omitted,
+    reprocess defaults the intermediate under raw_dir instead of hard-erroring (#198).
+    """
+    import os
+
     download = MagicMock()
     parse = MagicMock()
     builder = MagicMock()
     spec = _make_spec(download_fn=download, parse_fn=parse, builder=builder)
     _install_registry(monkeypatch, spec)
+
+    raw = tmp_path / "raw"
+    output = tmp_path / "out.parquet"
 
     runner = CliRunner()
     result = runner.invoke(
@@ -215,15 +225,46 @@ def test_reprocess_parse_requires_intermediate_path(tmp_path: Path, monkeypatch)
         [
             "stub:default",
             "--raw-dir",
+            str(raw),
+            "--output",
+            str(output),
+            "--no-check-drift",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    # Defaulted intermediate: "<dataset with ':' -> '_'>.intermediate" under raw_dir.
+    expected_intermediate = os.path.join(str(raw), "stub_default.intermediate")
+    parse.assert_called_once_with(raw_dir=str(raw), output_path=expected_intermediate)
+    builder.assert_called_once_with(expected_intermediate, str(output))
+
+
+def test_reprocess_rejects_output_extension_backend_mismatch(
+    tmp_path: Path, monkeypatch
+):
+    """A pandas-backed dataset written to .ht fails fast, not silently via to_hail.
+
+    Regression test for the wiring of _check_output_extension into reprocess_cmd
+    (#198): core/io.save dispatches by extension, so .ht would route a pandas
+    AnnotationTable through to_hail() (needs a JVM) and crash confusingly.
+    """
+    builder = MagicMock()
+    spec = _make_spec(builder=builder)  # backend defaults to pandas
+    _install_registry(monkeypatch, spec)
+
+    result = CliRunner().invoke(
+        reprocess_cmd,
+        [
+            "stub:default",
+            "--raw-dir",
             str(tmp_path / "raw"),
             "--output",
-            str(tmp_path / "out.parquet"),
+            str(tmp_path / "out.ht"),
+            "--skip-download",
             "--no-check-drift",
         ],
     )
     assert result.exit_code != 0
-    assert "--intermediate" in result.output
-    parse.assert_not_called()
+    assert ".parquet" in result.output  # names the backend-appropriate extension
     builder.assert_not_called()
 
 

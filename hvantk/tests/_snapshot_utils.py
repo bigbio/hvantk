@@ -211,7 +211,9 @@ def anndata_schema_to_dict(adata: Any) -> dict:
         "var_columns": sorted(adata.var.columns.tolist()),
         "X_dtype": x_dtype,
         "X_format": x_format,
-        "layers": sorted(list(adata.layers.keys())),
+        # anndata >=0.13 reports a None default layer key (list(adata.layers.keys())
+        # == [None]) where <=0.11 reported []; drop it so snapshots are version-stable.
+        "layers": sorted(k for k in adata.layers.keys() if k is not None),
     }
 
 

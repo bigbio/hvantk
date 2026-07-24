@@ -28,10 +28,72 @@ __all__ = [
 
 # Map compound dataset names → Phase B schema IDs.
 _SCHEMA_IDS: dict[str, str] = {
-    "ucsc-cellbrowser:default":   "ucsc-cellbrowser-default-v1",
+    "ucsc-cellbrowser:default": "ucsc-cellbrowser-default-v1",
     "ucsc-cellbrowser:adult-ctx": "ucsc-cellbrowser-adult-ctx-v1",
-    "ucsc-cellbrowser:dev-ctx":   "ucsc-cellbrowser-dev-ctx-v1",
+    "ucsc-cellbrowser:dev-ctx": "ucsc-cellbrowser-dev-ctx-v1",
 }
+
+
+def _resolve_ucsc_inputs(parsed_input):
+    """Normalise the builder input into ``(expression_matrix_path, metadata_path)``.
+
+    Accepts either:
+
+    * a mapping with ``expression_matrix`` / ``metadata`` keys (direct Phase B callers), or
+    * a path to the raw download directory. This is the ``hvantk reprocess`` contract:
+      the dataset declares no ``lifecycle.parse`` stage, so reprocess passes the raw dir
+      to the builder ("no parse stage declared: the builder consumes the raw dir
+      directly", ``reprocess_cli``). The downloader writes files under a per-accession
+      subdirectory, so we search the given directory and one level of subdirectories.
+    """
+    if isinstance(parsed_input, dict):
+        return str(parsed_input["expression_matrix"]), str(parsed_input["metadata"])
+
+    from hvantk.skills.ucsc_cellbrowser.shared.constants import (
+        EXPRESSION_MATRIX_FILE_NAME,
+        METADATA_FILE_NAME,
+    )
+
+    root = str(parsed_input)
+    expr_names = (EXPRESSION_MATRIX_FILE_NAME, "expression_matrix.tsv")
+    meta_names = (METADATA_FILE_NAME, "metadata.tsv")
+    search_dirs = [root] + [
+        os.path.join(root, d)
+        for d in sorted(os.listdir(root))
+        if os.path.isdir(os.path.join(root, d))
+    ]
+
+    def _first_present(directory, names):
+        for name in names:
+            candidate = os.path.join(directory, name)
+            if os.path.exists(candidate):
+                return candidate
+        return None
+
+    # A dataset's download carries its expression matrix and metadata together, so collect the
+    # locations holding BOTH and require exactly one. A raw dir reused across the sibling
+    # datasets (default / adult-ctx / dev-ctx) would otherwise let the search silently pick the
+    # alphabetically-first subdir and stamp the wrong schema_id; requiring a single location
+    # also rules out pairing an expression file from one dir with metadata from another.
+    # (PR #222 review.)
+    hits = []
+    for directory in search_dirs:
+        expr = _first_present(directory, expr_names)
+        meta = _first_present(directory, meta_names)
+        if expr and meta:
+            hits.append((directory, expr, meta))
+    if not hits:
+        raise FileNotFoundError(
+            f"UCSC builder: could not locate an expression matrix {expr_names} and "
+            f"metadata {meta_names} together under {root!r} (searched {search_dirs})"
+        )
+    if len(hits) > 1:
+        raise ValueError(
+            f"UCSC builder: found expression+metadata in multiple locations "
+            f"{[h[0] for h in hits]} under {root!r}; point --raw-dir at a single dataset's "
+            f"download so the correct schema_id is stamped."
+        )
+    return hits[0][1], hits[0][2]
 
 
 def build_ucsc_cellbrowser(
@@ -49,7 +111,9 @@ def build_ucsc_cellbrowser(
 ):
     """Phase B builder — returns an ExpressionMatrix.
 
-    ``parsed_input`` must contain keys ``expression_matrix`` and ``metadata``.
+    ``parsed_input`` is either a mapping with ``expression_matrix`` / ``metadata``
+    keys, or a path to the raw download directory (the ``hvantk reprocess`` contract
+    for a parse-less dataset); see ``_resolve_ucsc_inputs``.
     The per-dataset ``schema_id`` is resolved from ``ctx.dataset`` via
     ``_SCHEMA_IDS`` so that all three datasets (default, adult-ctx, dev-ctx)
     share one builder function while each stamps the correct schema.
@@ -77,8 +141,7 @@ def build_ucsc_cellbrowser(
         load_ucsc_metadata,
     )
 
-    expression_matrix_path = str(parsed_input["expression_matrix"])
-    metadata_path = str(parsed_input["metadata"])
+    expression_matrix_path, metadata_path = _resolve_ucsc_inputs(parsed_input)
 
     logger.info("Loading UCSC metadata from %s", metadata_path)
     metadata_df = load_ucsc_metadata(metadata_path, sep=delimiter)

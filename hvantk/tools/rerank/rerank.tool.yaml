@@ -1,0 +1,21 @@
+api_version: 1
+name: rerank
+domain: rerank
+type: command
+description: Re-rank genes by multi-omic credibility from a declarative YAML config.
+cli:
+  module: hvantk.tools.rerank
+  function: rerank_cmd
+purpose:
+  short: Calibrated credibility re-ranking of a gene burden by multi-omic feature tables.
+  long: |
+    Given a YAML config naming a prior (gene burden), one or more gene-keyed
+    feature tables (constraint, expression, ...), a label gene-list, and an
+    optional cohort variant table (enabling the advisory architecture/QC audit),
+    `rerank` fits a calibrated out-of-fold model, assigns credibility tiers, and
+    flags cohort artifacts for review (advisory, not overriding), reporting
+    per-axis delta-AUC over the constraint baseline. The disease-specific feature
+    tables are produced by user recipes; the engine is disease-agnostic.
+requires:
+  hail: false
+  network: false

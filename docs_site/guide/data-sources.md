@@ -20,6 +20,7 @@ hvantk utils convert-bgz input.gz
 | ClinGen | `hvantk download clingen` | ~5 MB |
 | GenCC | `hvantk download gencc` | ~10 MB |
 | HGNC | `hvantk download hgnc` | ~20 MB |
+| gnomAD constraint | `hvantk download gnomad-metrics` | ~4.6 MB (v2.1.1) / ~82 MB (v4.0) |
 | UCSC Cell Browser | `hvantk download ucsc` | varies |
 | Expression Atlas | `hvantk download expression-atlas` | varies |
 
@@ -151,25 +152,31 @@ hvantk reprocess dbnsfp:variants \
 
 > **Note:** dbNSFP's builder reads BGZF input. If you only have a single combined `.gz`, pre-convert with `hvantk utils convert-bgz dbNSFP4.9a_variant.gz` before building.
 
-### gnomAD constraint metrics (~50 MB for gene-level)
+### gnomAD constraint metrics
 
-Gene-level constraint metrics (pLI, LOEUF, missense Z-score) from gnomAD v4.1.
-URL: https://storage.googleapis.com/gcp-public-data--gnomad/release/4.1/constraint/gnomad.v4.1.constraint_metrics.tsv
+Per-gene constraint metrics (pLI, oe_lof / LOEUF, missense Z) from gnomAD. The
+tables are small and public, so hvantk ships a downloader
+(`hvantk download gnomad-metrics`; it is also in the built-in-downloader list above).
 
-**Download**:
+- **v2.1.1** (GRCh37, ~4.6 MB) — the default and the table hvantk standardises on
+  (keyed by `gene_id`).
+- **v4.0** (GRCh38, ~82 MB) — newer; per-transcript rows, dotted column names, and
+  **no `gene_id`** column, so build with `--plugin-arg key=transcript`. gnomAD did
+  not re-release constraint for v4.1.
+
+**Download + build** (end-to-end, defaults to v2.1.1 by-gene):
 
 ```bash
-wget https://storage.googleapis.com/gcp-public-data--gnomad/release/4.1/constraint/gnomad.v4.1.constraint_metrics.tsv
-```
-
-**Build**:
-
-```bash
-# Place gnomad.v4.1.constraint_metrics.tsv in data/gnomad_metrics/ then:
 hvantk reprocess gnomad-metrics:metrics \
   --raw-dir data/gnomad_metrics/ \
-  --output gnomad_metrics.ht \
-  --skip-download
+  --output gnomad_metrics.ht
+
+# v4.0 (GRCh38) instead:
+hvantk download gnomad-metrics --version v4.0 \
+  --output data/gnomad_metrics/gnomad.v4.0.constraint_metrics.tsv
+hvantk reprocess gnomad-metrics:metrics --skip-download \
+  --raw-dir data/gnomad_metrics/ --output gnomad_metrics_v4.ht \
+  --plugin-arg key=transcript
 ```
 
 ### INSIDER interactome (~100 MB)
@@ -189,31 +196,38 @@ hvantk reprocess insider:variants \
   --skip-download
 ```
 
-### Ensembl gene annotations (~800 MB)
+### Ensembl gene annotations (~60 MB GTF)
 
-Ensembl gene annotations (gene name, gene ID, biotype, transcript ID).
-URL: https://www.ensembl.org/info/data/ftp/index.html
+The canonical per-gene table (`ensembl-gene:structure`): gene ID, gene name, biotype,
+coordinates, CDS length, coding-exon count, transcript count, and MANE Select — parsed from
+the pinned-release Ensembl GTF. The release is pinned in
+`hvantk/resources/ensembl_release.py`; the same pin governs the PTM coordinate mapper.
 
-**Download**: Export from BioMart with the required attributes matching `ENSEMBL_BIOMART_FIELDS` in `hvantk/skills/ensembl_gene/shared/constants.py`. Alternatively, download from the Ensembl FTP:
-https://www.ensembl.org/info/data/ftp/index.html
+**Download**: the release-pinned GTF from the Ensembl FTP
+(https://ftp.ensembl.org/pub/), or via the plugin's downloader.
 
 **Build**:
 
 ```bash
-# Place biomart_export.tsv.bgz in data/ensembl_gene/ then:
-hvantk reprocess ensembl-gene:genes \
-  --raw-dir data/ensembl_gene/ \
-  --output ensembl_gene.ht \
+hvantk reprocess ensembl-gene:structure \
+  --raw-dir data/ensembl/ \
+  --output ensembl_structure.ht \
   --skip-download
 ```
 
-### GeVIR (~20 GB)
+### GeVIR (~1-2 MB)
 
-Gene variation intolerance ranking scores.
+Gene-level intolerance-to-variation ranks (GeVIR and VIRLoF percentiles) for
+19,361 protein-coding genes, keyed by Ensembl gene_id. Not a variant-level
+pathogenicity score. Abramovs, Brass & Tassabehji, 2020, Nature Genetics
+52(1):35-39 (PMID 31873297, DOI 10.1038/s41588-019-0560-2).
 URL: https://www.nature.com/articles/s41588-019-0560-2
 
-**Download**: Supplementary data from the Nature publication:
-https://www.nature.com/articles/s41588-019-0560-2
+**Download**: Small supplementary table from the Nature Genetics publication
+(https://www.nature.com/articles/s41588-019-0560-2) or the authors' repository
+(https://github.com/gevirank/gevir). At ~1-2 MB with a stable, public URL, GeVIR
+qualifies for a real downloader under the framework in CLAUDE.md — a recommended
+follow-up (not yet implemented).
 
 **Build**:
 
@@ -224,15 +238,6 @@ hvantk reprocess gevir:metrics \
   --output gevir.ht \
   --skip-download
 ```
-
-### CCR - Coding-Constrained Regions (~50 MB)
-
-Highly constrained coding regions in the human genome.
-URL: https://www.nature.com/articles/s41588-018-0294-6
-
-**Download**: Supplementary data from the Nature publication above.
-
-**Note**: No builder is currently available for CCR. This is planned for a future release.
 
 ### COSMIC Cancer Gene Census
 

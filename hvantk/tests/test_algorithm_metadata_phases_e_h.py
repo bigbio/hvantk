@@ -122,7 +122,7 @@ def test_existing_algorithm_meta_still_works():
     assert meta.outputs == {}
 
 
-@pytest.mark.parametrize("domain", ["enrichex", "expression", "qtlcascade", "hgc"])
+@pytest.mark.parametrize("domain", ["enrichex", "expression", "qtlcascade", "hgc", "rerank"])
 def test_domain_has_no_skill_imports(domain):
     root = Path(__file__).resolve().parents[1] / "algorithms" / domain
     bad = []

@@ -185,7 +185,7 @@ The `annotate` command adds these fields to the variant table:
 
 | File | Description |
 |------|-------------|
-| `population_summary.json` | AF statistics, variant counts, optional CCR comparison |
+| `population_summary.json` | AF statistics, variant counts |
 | `population_af.png` | Mean AF comparison across PTM strata (with `--save-plots`) |
 
 ### Report

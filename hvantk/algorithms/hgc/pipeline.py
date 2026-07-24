@@ -64,12 +64,26 @@ class PipelineConfig:
     overwrite: bool = False
     output_prefix: str = "cohort"
 
+    # GVCF-combiner tuning (stage 1). Hail derives ONE PARTITION PER INTERVAL, so the
+    # interval size caps how many cores can do useful work in the combine stage: with
+    # Hail's 1.2 Mb genome default a single chromosome yields few partitions
+    # (chr20 -> 54, chr1 -> 208) and any cores beyond that idle.
+    import_interval_size: Optional[int] = None
+    use_exome_default_intervals: bool = False
+    gvcf_batch_size: Optional[int] = None
+    branch_factor: Optional[int] = None
+
     # Stage skip flags
     skip_combine_gvcfs: bool = False
     skip_vds_to_mt: bool = False
     skip_compute_sample_qc: bool = False
     skip_compute_variant_qc: bool = False
     skip_export_pvcf: bool = False
+
+    # Skip the biallelic audit + repair in the VDS -> MT stage. `hvantk hgc vds2mt` has exposed
+    # this since forever; the pipeline hard-coded False, so users of the *recommended* entry point
+    # could not opt out at all.
+    skip_validation: bool = False
 
     # Path overrides (for resuming from intermediate stages)
     vds_path: Optional[str] = None
@@ -118,7 +132,41 @@ class PipelineConfig:
         if not 0 <= self.min_variant_call_rate <= 1:
             errors.append("min_variant_call_rate must be between 0 and 1")
 
+        # Validate GVCF-combiner tuning. Hail rejects these too, but only once the
+        # combiner is constructed - well after Hail init and gVCF validation - and the
+        # error is then wrapped in generic "check your Spark/GVCFs" guidance.
+        if self.import_interval_size is not None and self.import_interval_size < 1:
+            errors.append("import_interval_size must be at least 1 bp")
+
+        if self.import_interval_size is not None and self.use_exome_default_intervals:
+            errors.append(
+                "import_interval_size and use_exome_default_intervals are mutually exclusive"
+            )
+
+        if self.gvcf_batch_size is not None and self.gvcf_batch_size < 1:
+            errors.append("gvcf_batch_size must be at least 1")
+
+        if self.branch_factor is not None and self.branch_factor < 2:
+            errors.append("branch_factor must be at least 2")
+
         return errors
+
+    def combiner_kwargs(self) -> Dict[str, Any]:
+        """Build the kwargs forwarded to ``combine_gvcfs`` for stage 1.
+
+        Only keys the user actually set are included; an empty dict preserves Hail's
+        default partitioning (``use_genome_default_intervals``, 1.2 Mb).
+        """
+        kwargs: Dict[str, Any] = {}
+        if self.import_interval_size is not None:
+            kwargs["import_interval_size"] = self.import_interval_size
+        if self.use_exome_default_intervals:
+            kwargs["use_exome_default_intervals"] = True
+        if self.gvcf_batch_size is not None:
+            kwargs["gvcf_batch_size"] = self.gvcf_batch_size
+        if self.branch_factor is not None:
+            kwargs["branch_factor"] = self.branch_factor
+        return kwargs
 
 
 @dataclass
@@ -279,6 +327,9 @@ class PipelineRunner:
         print(f"  Reference genome: {self.config.reference_genome}")
         print(f"  Partitions:       {self.config.n_partitions or 'auto'}")
         print(f"  Overwrite:        {self.config.overwrite}")
+        print(
+            f"  Combiner options: {self.config.combiner_kwargs() or 'defaults (genome 1.2 Mb intervals)'}"
+        )
 
         print("\n📊 Stages to execute:")
         stage_num = 1
@@ -436,13 +487,17 @@ class PipelineRunner:
         """Stage 1: Combine gVCFs into VDS."""
         self.logger.info("🔄 [1/5] Combining gVCF files into VDS...")
 
+        combiner_kwargs = self.config.combiner_kwargs()
+        if combiner_kwargs:
+            self.logger.info(f"   Combiner options: {combiner_kwargs}")
+
         combine_gvcfs(
             gvcf_dir=self.config.input_dir,
             vds_output_path=self.paths["vds"],
             tmp_path=self.config.tmp_dir or tempfile.mkdtemp(),
             save_path=f"{self.paths['vds']}.plan",
             vdses=[],
-            kwargs={},
+            kwargs=combiner_kwargs,
             reference_genome=self.config.reference_genome,
         )
 
@@ -460,7 +515,7 @@ class PipelineRunner:
             output_path=self.paths["mt"],
             adjust_genotypes=True,
             skip_split_multi=False,
-            skip_validation=False,
+            skip_validation=self.config.skip_validation,
             skip_keying_by_cols=False,
             overwrite=self.config.overwrite,
         )

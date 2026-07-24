@@ -1,0 +1,14 @@
+{
+  "X_dtype": "float32",
+  "X_format": "ndarray",
+  "layers": [],
+  "n_obs": 2,
+  "n_vars": 2,
+  "obs_columns": [
+    "disease",
+    "tissue"
+  ],
+  "var_columns": [
+    "Gene Name"
+  ]
+}

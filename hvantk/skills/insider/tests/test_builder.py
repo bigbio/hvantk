@@ -64,3 +64,51 @@ def test_insider_round_trip(hail_session, tmp_path, regenerate_snapshots):
     expected_rows = load_snapshot(SNAPSHOT_DIR / "sample_rows.json")
     actual_rows = collect_sample_rows(ht, keys=SAMPLE_KEYS)
     assert actual_rows == expected_rows, "INSIDER sample rows drifted from snapshot"
+
+
+@pytest.mark.hail
+def test_insider_drops_invalid_loci(hail_session, tmp_path):
+    """Regression (DEFECT 1): out-of-range / non-reference-contig rows are
+    dropped instead of aborting the build.
+
+    The builder previously called ``hl.locus_interval`` with the default
+    ``invalid_missing=False``, so a single BED row whose locus fell outside the
+    reference bounds or on a non-reference contig raised and aborted the whole
+    build. With ``invalid_missing=True`` plus an ``hl.is_defined`` filter, such
+    rows are silently dropped (matching the prior builder's
+    ``skip_invalid_intervals=True`` intent) and the build succeeds.
+
+    Hail-dependent: must run on Slurm
+    (``pytest hvantk/skills/insider/tests -m hail``); the login node OOMs on
+    Hail init, so this test is intentionally not executed there.
+    """
+    import hail as hl
+    from hvantk.skills.insider.builder import build_insider_interactome
+
+    # One in-bounds chr21 row, plus two rows that would abort the old builder:
+    # a non-reference contig and an out-of-range coordinate (chr21 on GRCh38 is
+    # 46,709,983 bp long).
+    bed = tmp_path / "insider_invalid.bed"
+    bed.write_text(
+        'track name=P1_ppi_P2 description="x" visibility=dense itemRgb="On"\n'
+        "chr21\t5030000\t5030002\t.\t0\t+\n"
+        "chrBOGUS\t100\t102\t.\t0\t+\n"
+        "chr21\t900000000\t900000002\t.\t0\t+\n"
+    )
+
+    builder = phase_b_snapshot_adapter(build_insider_interactome, "insider:variants")
+    output_path = str(tmp_path / "insider_invalid.ht")
+    builder(
+        input_path=bed.resolve().as_uri(),
+        output_path=output_path,
+        reference_genome="GRCh38",
+    )
+
+    ht = hl.read_table(output_path)
+    # Only the single in-bounds chr21 interval survives; the two invalid rows
+    # are dropped rather than aborting the build.
+    assert ht.count() == 1
+    row = ht.collect()[0]
+    assert row.interval.start.contig == "chr21"
+    assert row.interval.start.position == 5030001
+    assert row.ppi_ids == ["P1_ppi_P2"]

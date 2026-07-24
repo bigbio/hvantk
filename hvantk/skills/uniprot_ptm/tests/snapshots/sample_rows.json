@@ -1,0 +1,127 @@
+[
+  {
+    "key": {
+      "locus": "chr1:11796321"
+    },
+    "row": {
+      "amino_acid": "Y",
+      "chrom": "1",
+      "codon_end": 11796323,
+      "codon_start": 11796321,
+      "evidence_type": "experimental",
+      "flanking_interval": {
+        "end": "chr1:11796338",
+        "start": "chr1:11796306"
+      },
+      "gene_symbol": "NEMO",
+      "n_observations": 3,
+      "ptm_category": "phosphorylation",
+      "ptm_type": "phosphotyrosine",
+      "residue_pos": 43,
+      "source_db": "uniprot",
+      "strand": "-",
+      "tissue_type": "tumor",
+      "uniprot_id": "Q9Y6K9"
+    }
+  },
+  {
+    "key": {
+      "locus": "chr13:32316461"
+    },
+    "row": {
+      "amino_acid": "S",
+      "chrom": "13",
+      "codon_end": 32316463,
+      "codon_start": 32316461,
+      "evidence_type": "experimental",
+      "flanking_interval": {
+        "end": "chr13:32316478",
+        "start": "chr13:32316446"
+      },
+      "gene_symbol": "BRCA2",
+      "n_observations": 5,
+      "ptm_category": "phosphorylation",
+      "ptm_type": "phosphoserine",
+      "residue_pos": 988,
+      "source_db": "uniprot",
+      "strand": "+",
+      "tissue_type": "",
+      "uniprot_id": "P51587"
+    }
+  },
+  {
+    "key": {
+      "locus": "chr17:7675994"
+    },
+    "row": {
+      "amino_acid": "S",
+      "chrom": "17",
+      "codon_end": 7675996,
+      "codon_start": 7675994,
+      "evidence_type": "experimental",
+      "flanking_interval": {
+        "end": "chr17:7676011",
+        "start": "chr17:7675979"
+      },
+      "gene_symbol": "TP53",
+      "n_observations": 22,
+      "ptm_category": "phosphorylation",
+      "ptm_type": "phosphoserine",
+      "residue_pos": 392,
+      "source_db": "uniprot",
+      "strand": "-",
+      "tissue_type": "tumor",
+      "uniprot_id": "P04637"
+    }
+  },
+  {
+    "key": {
+      "locus": "chr17:7676272"
+    },
+    "row": {
+      "amino_acid": "S",
+      "chrom": "17",
+      "codon_end": 7676274,
+      "codon_start": 7676272,
+      "evidence_type": "experimental",
+      "flanking_interval": {
+        "end": "chr17:7676289",
+        "start": "chr17:7676257"
+      },
+      "gene_symbol": "TP53",
+      "n_observations": 10,
+      "ptm_category": "phosphorylation",
+      "ptm_type": "phosphoserine",
+      "residue_pos": 315,
+      "source_db": "uniprot",
+      "strand": "-",
+      "tissue_type": "",
+      "uniprot_id": "P04637"
+    }
+  },
+  {
+    "key": {
+      "locus": "chrM:3308"
+    },
+    "row": {
+      "amino_acid": "S",
+      "chrom": "MT",
+      "codon_end": 3310,
+      "codon_start": 3308,
+      "evidence_type": "experimental",
+      "flanking_interval": {
+        "end": "chrM:3325",
+        "start": "chrM:3293"
+      },
+      "gene_symbol": "MT-ND1",
+      "n_observations": 2,
+      "ptm_category": "phosphorylation",
+      "ptm_type": "phosphoserine",
+      "residue_pos": 12,
+      "source_db": "uniprot",
+      "strand": "+",
+      "tissue_type": "",
+      "uniprot_id": "P03886"
+    }
+  }
+]

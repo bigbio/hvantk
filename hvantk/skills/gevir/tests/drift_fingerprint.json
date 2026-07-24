@@ -1,0 +1,5 @@
+{
+  "probe_status": "stub",
+  "reason": "GeVIR metrics are published as supplementary data (PMID 31873297); no programmatic data URL to fingerprint",
+  "fingerprint": "stub:no-programmatic-source"
+}

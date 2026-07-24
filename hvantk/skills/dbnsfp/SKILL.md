@@ -49,8 +49,11 @@ fields from gnomAD, ExAC, 1000Gp3, and ESP6500 are grouped into structs.
 ## Tests
 
 A conformance test in `hvantk/skills/dbnsfp/tests/test_dbnsfp.py` exercises
-the build via `run_builder_for_spec`. Per `plugin.yaml`, test artifacts are
-plugin-relative: the raw fixture lives under `tests/testdata/raw/dbnsfp/`
-(`dbNSFP4_v49a_example_variants.bgz`), with the drift fingerprint at
-`tests/drift_fingerprint.json` and snapshots at `tests/snapshots/`. Run with
+the build via `run_builder_for_spec`. Snapshots and the drift fingerprint are
+plugin-relative (`tests/snapshots/`, `tests/drift_fingerprint.json`), but the raw
+fixture is **not**: it lives in the shared tree at
+`hvantk/tests/testdata/raw/dbnsfp/dbNSFP4_v49a_example_variants.bgz`, which
+`plugin.yaml` declares as `../../tests/testdata/raw/dbnsfp`. It is shared with
+`hvantk/tests/test_plugin_conformance.py` and a psroc integration test, so it is
+referenced in place rather than duplicated per plugin. Run with
 `pytest hvantk/skills/dbnsfp/tests`.

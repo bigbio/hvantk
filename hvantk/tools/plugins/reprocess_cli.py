@@ -77,6 +77,71 @@ def _coerce_plugin_arg_value(value: str) -> Any:
     return value
 
 
+# Fallback backend->extension map, used only for legacy specs that declare no
+# artifact_type. When artifact_type IS known it is authoritative (see
+# _expected_extensions) because backend alone can't tell a hail AnnotationTable
+# (.ht) from a hail VariantMatrix (.mt).
+_BACKEND_EXPECTED_EXT = {
+    "pandas": (".parquet",),
+    "anndata": (".h5ad",),
+    "hail": (".ht", ".mt"),
+}
+
+
+def _expected_extensions(spec):
+    """Output extension(s) reprocess writes for a spec's native artifact format.
+
+    reprocess emits each dataset in its native format (no cross-format
+    conversion). Keyed on ``artifact_type`` when known, which — unlike backend
+    alone — distinguishes a hail AnnotationTable (.ht) from a VariantMatrix (.mt);
+    ``core/io.save`` only accepts .mt for VariantMatrix. Falls back to the backend
+    map for legacy specs with no ``artifact_type``. Returns None when it can't be
+    determined, so the caller skips the check rather than guessing.
+    """
+    at_name = getattr(getattr(spec, "artifact_type", None), "__name__", None)
+    if at_name == "AnnotationTable":
+        return (".parquet",) if getattr(spec, "backend", None) == "pandas" else (".ht",)
+    if at_name == "VariantMatrix":
+        return (".mt",)
+    if at_name == "ExpressionMatrix":
+        return (".h5ad",)
+    if at_name == "GeneSet":
+        return (".geneset.json",)
+    return _BACKEND_EXPECTED_EXT.get(getattr(spec, "backend", None))
+
+
+def _check_output_extension(spec, output):
+    """Fail fast when --output's extension can't hold the dataset's artifact.
+
+    ``reprocess`` writes each dataset in its native format; ``core/io.save``
+    dispatches by artifact type + extension, so a mismatch would either fail at
+    save (e.g. ``.mt`` for an AnnotationTable) or silently trigger a backend
+    conversion (e.g. a pandas AnnotationTable to ``.ht`` invokes ``to_hail()``,
+    needing a JVM) and fail confusingly deep in the build. Catch it up front.
+    ``Path.name`` normalizes trailing slashes, so ``.ht/`` / ``.mt/`` dir forms
+    match too.
+    """
+    from pathlib import Path
+
+    expected = _expected_extensions(spec)
+    if not expected:
+        return
+    if any(Path(output).name.endswith(ext) for ext in expected):
+        return
+    raise click.UsageError(
+        f"{spec.name} writes {' or '.join(expected)} (its native format); got "
+        f"--output {output!r}. A mismatched extension would fail at save or force a "
+        "backend conversion."
+    )
+
+
+def _default_intermediate(dataset, raw_dir):
+    """Intermediate path used when a parse-declaring plugin gets no --intermediate."""
+    import os
+
+    return os.path.join(raw_dir, f"{dataset.replace(':', '_')}.intermediate")
+
+
 @click.command(name="reprocess")
 @click.argument("dataset")
 @click.option(
@@ -182,15 +247,16 @@ def reprocess_cmd(
     extras: dict[str, Any] = {}
     for kv in plugin_args:
         if "=" not in kv:
-            raise click.UsageError(
-                f"--plugin-arg must be KEY=VALUE; got: {kv!r}"
-            )
+            raise click.UsageError(f"--plugin-arg must be KEY=VALUE; got: {kv!r}")
         key, value = kv.split("=", 1)
         if not key:
-            raise click.UsageError(
-                f"--plugin-arg key must be non-empty; got: {kv!r}"
-            )
+            raise click.UsageError(f"--plugin-arg key must be non-empty; got: {kv!r}")
         extras[key] = _coerce_plugin_arg_value(value)
+
+    # Fail fast on an output extension the plugin's backend can't hold (#198),
+    # before running the (potentially expensive) download/parse/build stages.
+    if not skip_build:
+        _check_output_extension(spec, output)
 
     # 1. Download stage
     if not skip_download:
@@ -205,9 +271,13 @@ def reprocess_cmd(
     # 2. Parse stage
     if not skip_parse and spec.parse_fn is not None:
         if intermediate is None:
-            raise click.UsageError(
-                "--intermediate is required when the plugin declares lifecycle.parse"
-            )
+            # The plugin declares a parse stage but no --intermediate was given.
+            # Default it under raw_dir (and log) instead of hard-erroring (#198).
+            import os
+
+            os.makedirs(raw_dir, exist_ok=True)
+            intermediate = _default_intermediate(dataset, raw_dir)
+            _progress(f"--intermediate not given; defaulting to {intermediate}")
         _progress(f"parse: {raw_dir} -> {intermediate}")
         spec.parse_fn(raw_dir=raw_dir, output_path=intermediate, **extras)
         parsed_path = intermediate
@@ -238,11 +308,13 @@ def reprocess_cmd(
             # to build it.
             if "hgnc_path" in extras or "hgnc_ht" in extras:
                 from hvantk.skills.hgnc.streamers import HGNCGeneCatalogStreamer
+
                 hgnc_loc = extras.pop("hgnc_path", None) or extras.pop("hgnc_ht", None)
                 extras["gene_catalog"] = HGNCGeneCatalogStreamer.from_path(hgnc_loc)
 
             from hvantk.core.plugin.run_builder import run_builder_for_spec
             from pathlib import Path
+
             run_builder_for_spec(
                 spec,
                 parsed_input=parsed_path,

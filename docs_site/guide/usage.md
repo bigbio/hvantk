@@ -63,6 +63,16 @@ hvantk reprocess cptac:expression \
   --plugin-arg cancer_type=brca
 ```
 
+CPTAC phosphoproteomics builds one AnnData per cancer type — the single
+`cancer_type` flows to both the download and the build:
+
+```bash
+hvantk reprocess cptac:phospho \
+  --raw-dir /data/cptac/ \
+  --output /out/cptac_phospho_brca.h5ad \
+  --plugin-arg cancer_type=brca
+```
+
 ## 2) Ancestry Inference
 
 Predict genetic ancestry for samples using PCA and Random Forest classification against a labeled reference panel.

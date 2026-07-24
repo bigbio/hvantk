@@ -19,7 +19,7 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes every conve
 ## 2. Source identity
 
 - **Provider:** EBI GWAS Catalog. **Schema pinned by this skill:** v1.0 (34 columns, no `MAPPED_TRAIT_URI`).
-- **Catalog entry:** present. `hvantk/resources/registry/genomics/datasets.json` contains `GWAS_Catalog_v1.0_e115_r2026-04-27` (surfaced by `hvantk catalog show GWAS_Catalog_v1.0_e115_r2026-04-27`). URLs / cadence / license / citation live in the registry entry — not here.
+- **Catalog entry:** present. `hvantk/skills/gwas_catalog/catalog/datasets.json` contains `GWAS_Catalog_v1.0_e115_r2026-04-27` (surfaced by `hvantk catalog show GWAS_Catalog_v1.0_e115_r2026-04-27`). URLs / cadence / license / citation live in the plugin catalog entry — not here.
 
 ## 3. Backend choice + reasoning
 
@@ -98,7 +98,7 @@ Type coercions in transform (all string at import):
 
 Releases ~quarterly (tags like `e116_r2026-08-xx`). Per release:
 
-1. Update the GWAS Catalog entry in `registry/genomics/datasets.json` (`last_updated`, file path). Bump accession only on schema change.
+1. Update the GWAS Catalog entry in `hvantk/skills/gwas_catalog/catalog/datasets.json` (`last_updated`, file path). Bump accession only on schema change.
 2. Re-run the round-trip test (§9). If it passes, no builder change.
 3. On schema change: bump accession suffix, update the rename map in the builder, regenerate snapshots with `pytest --regenerate-snapshots`, revisit §3–§4 judgment calls.
 4. If EBI publishes v1.0.2 alongside v1.0: revisit judgment call #4 (option B).

@@ -138,6 +138,29 @@ class TestPaths:
     row_snapshot: str
     drift_fingerprint: str
 
+    #: Fields naming an on-disk validation artifact. ``command`` is excluded -- it is a
+    #: shell string, not a path.
+    ARTIFACT_FIELDS = ("fixture", "schema_snapshot", "row_snapshot", "drift_fingerprint")
+
+    def missing_artifacts(self) -> tuple[tuple[str, str], ...]:
+        """Return ``(field, path)`` for every declared artifact absent from disk.
+
+        The loader resolves these paths but deliberately does not require them, so a
+        manifest can declare a snapshot it does not ship and still load -- which is how
+        the tree came to hold 25 dataset declarations against 10 snapshot files without
+        anything failing. Callers that want the contract enforced (``hvantk plugins
+        validate``, the coverage ratchet in the test suite) ask for the gap explicitly
+        rather than each re-deriving the path layout.
+
+        Returns an empty tuple when every declared artifact exists.
+        """
+        missing = []
+        for field in self.ARTIFACT_FIELDS:
+            path = getattr(self, field)
+            if not Path(path).exists():
+                missing.append((field, path))
+        return tuple(missing)
+
 
 @dataclass(frozen=True)
 class DatasetManifest:

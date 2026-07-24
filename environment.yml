@@ -30,4 +30,4 @@ dependencies:
       - scikit-learn
       - tspex
       - requests-mock  # offline HTTP stubs for plugin drift_probe tests
-      - jsonschema  # plugin.yaml manifest validation
+      - jsonschema>=4.0  # plugin.yaml + feature-spec validation (matches pyproject >=4.0)

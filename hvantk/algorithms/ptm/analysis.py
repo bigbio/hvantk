@@ -13,7 +13,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 import hail as hl
 
@@ -121,8 +121,6 @@ class PTMPopulationResult:
     ptm_site_afs: List[float] = field(default_factory=list)
     proximal_afs: List[float] = field(default_factory=list)
     non_ptm_afs: List[float] = field(default_factory=list)
-    ccr_mean_ptm: Optional[float] = None
-    ccr_mean_non_ptm: Optional[float] = None
     output_dir: str = ""
 
     def summary(self) -> str:
@@ -134,15 +132,6 @@ class PTMPopulationResult:
             f"  Non-PTM: {self.n_non_ptm:,} (mean AF={self.mean_af_non_ptm:.2e})",
             f"  PTM sites with zero AF: {self.n_zero_af_ptm:,}",
         ]
-        if self.ccr_mean_ptm is not None and self.ccr_mean_non_ptm is not None:
-            lines.append(
-                f"  Mean CCR: PTM={self.ccr_mean_ptm:.1f}, "
-                f"non-PTM={self.ccr_mean_non_ptm:.1f}"
-            )
-        elif self.ccr_mean_ptm is not None:
-            lines.append(f"  Mean CCR: PTM={self.ccr_mean_ptm:.1f}")
-        elif self.ccr_mean_non_ptm is not None:
-            lines.append(f"  Mean CCR: non-PTM={self.ccr_mean_non_ptm:.1f}")
         return "\n".join(lines)
 
     def to_dict(self) -> dict:
@@ -161,8 +150,6 @@ class PTMPopulationResult:
             "ptm_site_afs": self.ptm_site_afs,
             "proximal_afs": self.proximal_afs,
             "non_ptm_afs": self.non_ptm_afs,
-            "ccr_mean_ptm": self.ccr_mean_ptm,
-            "ccr_mean_non_ptm": self.ccr_mean_non_ptm,
         }
 
     @classmethod
@@ -180,8 +167,6 @@ class PTMPopulationResult:
             ptm_site_afs=data.get("ptm_site_afs", []),
             proximal_afs=data.get("proximal_afs", []),
             non_ptm_afs=data.get("non_ptm_afs", []),
-            ccr_mean_ptm=data.get("ccr_mean_ptm"),
-            ccr_mean_non_ptm=data.get("ccr_mean_non_ptm"),
         )
 
 
@@ -498,7 +483,6 @@ def ptm_population(
     gnomad_ht: hl.Table,
     ptm_ht: hl.Table,
     output_dir: str,
-    ccr_ht: Optional[hl.Table] = None,
     af_field: str = "AF",
     flanking_codons: int = 5,
 ) -> PTMPopulationResult:
@@ -516,8 +500,6 @@ def ptm_population(
         PTM sites Hail Table built via ``hvantk reprocess uniprot_ptm:sites``.
     output_dir : str
         Directory for output files (population_summary.json).
-    ccr_ht : hl.Table, optional
-        CCR table for constrained region cross-reference.
     af_field : str
         Name of the allele frequency field in gnomad_ht (default: "AF").
     flanking_codons : int
@@ -534,10 +516,6 @@ def ptm_population(
 
     # Annotate gnomAD with PTM info
     annotated = annotate_variants_with_ptm(gnomad_ht, ptm_ht, flanking_codons)
-
-    # Optionally annotate with CCR
-    if ccr_ht is not None:
-        annotated = annotated.annotate(_ccr_pct=ccr_ht[annotated.locus].ccr_pct)
 
     af = annotated[af_field]
 
@@ -562,27 +540,6 @@ def ptm_population(
         )
     )
 
-    # CCR comparison
-    ccr_ptm = None
-    ccr_non_ptm = None
-    if ccr_ht is not None:
-        ccr_stats = annotated.aggregate(
-            hl.struct(
-                ptm=hl.agg.filter(
-                    is_ptm & hl.is_defined(annotated._ccr_pct),
-                    hl.agg.stats(annotated._ccr_pct),
-                ),
-                non_ptm=hl.agg.filter(
-                    is_non_ptm & hl.is_defined(annotated._ccr_pct),
-                    hl.agg.stats(annotated._ccr_pct),
-                ),
-            )
-        )
-        if ccr_stats.ptm.n > 0:
-            ccr_ptm = ccr_stats.ptm.mean
-        if ccr_stats.non_ptm.n > 0:
-            ccr_non_ptm = ccr_stats.non_ptm.mean
-
     result = PTMPopulationResult(
         n_variants=stats.n_total,
         n_ptm_site=stats.n_ptm_site,
@@ -597,8 +554,6 @@ def ptm_population(
         ptm_site_afs=[float(x) for x in stats.afs_ptm_site],
         proximal_afs=[float(x) for x in stats.afs_ptm_prox],
         non_ptm_afs=[float(x) for x in stats.afs_non_ptm],
-        ccr_mean_ptm=ccr_ptm,
-        ccr_mean_non_ptm=ccr_non_ptm,
         output_dir=output_dir,
     )
 

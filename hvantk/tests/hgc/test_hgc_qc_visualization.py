@@ -1,8 +1,9 @@
 """
-Test suite for HGC QC visualization functionality.
+Test suite for HGC QC computation and HTML report generation.
 
-This module contains tests to ensure the QC visualization components work correctly.
-Tests create small MatrixTables, compute QC metrics, and test visualization features.
+This module contains tests to ensure QC computation and the HTML QC report
+path work correctly. Tests create small MatrixTables, compute QC metrics,
+and validate the resulting data and generated report.
 """
 
 import pytest
@@ -10,7 +11,6 @@ import tempfile
 from pathlib import Path
 
 import hail as hl
-import matplotlib.pyplot as plt
 
 
 @pytest.fixture(scope="session")
@@ -104,135 +104,8 @@ def test_create_matrixtable_and_compute_qc(test_mt):
     return qc_results
 
 
-def test_static_qc_visualizations(test_mt):
-    """Test 2: Generate static QC visualizations using matplotlib."""
-    from hvantk.algorithms.hgc import compute_full_qc
-    from hvantk.algorithms.visualization.qc_plots import (
-        plot_sample_call_rate_distribution,
-        plot_variant_call_rate_distribution,
-        plot_allele_frequency_spectrum,
-        plot_sample_qc_overview,
-        plot_variant_qc_overview,
-    )
-
-    # Use the pre-created test MatrixTable from fixture
-    mt = test_mt
-    qc_results = compute_full_qc(mt)
-
-    sample_df = qc_results.get_sample_metrics_df()
-    variant_df = qc_results.get_variant_metrics_df()
-
-    # Test 1: Sample call rate distribution
-    fig1 = plot_sample_call_rate_distribution(sample_df, bins=20)
-    assert fig1 is not None, "Sample call rate plot should be created"
-    plt.close(fig1)
-
-    # Test 2: Variant call rate distribution
-    fig2 = plot_variant_call_rate_distribution(variant_df, bins=20)
-    assert fig2 is not None, "Variant call rate plot should be created"
-    plt.close(fig2)
-
-    # Test 3: Allele frequency spectrum
-    fig3 = plot_allele_frequency_spectrum(variant_df, bins=30, log_scale=True)
-    assert fig3 is not None, "Allele frequency plot should be created"
-    plt.close(fig3)
-
-    # Test 4: Sample QC overview dashboard (6 panels)
-    fig4 = plot_sample_qc_overview(sample_df, figsize=(15, 10))
-    assert fig4 is not None, "Sample overview dashboard should be created"
-    plt.close(fig4)
-
-    # Test 5: Variant QC overview dashboard (6 panels)
-    fig5 = plot_variant_qc_overview(variant_df, figsize=(15, 10))
-    assert fig5 is not None, "Variant overview dashboard should be created"
-    plt.close(fig5)
-
-
-def test_qcmetrics_plotting_integration(test_mt):
-    """Test 3: Test QCMetrics class plotting methods integration."""
-    from hvantk.algorithms.hgc import compute_full_qc
-
-    # Use the pre-created test MatrixTable from fixture
-    mt = test_mt
-    qc_results = compute_full_qc(mt)
-
-    # Test QCMetrics plotting methods
-
-    # Test 1: Sample overview through QCMetrics
-    fig1 = qc_results.plot_sample_overview(figsize=(12, 8))
-    assert fig1 is not None, "QCMetrics sample overview should work"
-    plt.close(fig1)
-
-    # Test 2: Variant overview through QCMetrics
-    fig2 = qc_results.plot_variant_overview(figsize=(12, 8))
-    assert fig2 is not None, "QCMetrics variant overview should work"
-    plt.close(fig2)
-
-    # Test 3: Individual metric plots
-    fig3 = qc_results.plot_sample_call_rates(bins=15)
-    assert fig3 is not None, "QCMetrics sample call rates should work"
-    plt.close(fig3)
-
-    fig4 = qc_results.plot_variant_call_rates(bins=15)
-    assert fig4 is not None, "QCMetrics variant call rates should work"
-    plt.close(fig4)
-
-    fig5 = qc_results.plot_allele_frequencies(bins=25, log_scale=False)
-    assert fig5 is not None, "QCMetrics allele frequencies should work"
-    plt.close(fig5)
-
-
-def test_interactive_qc_visualizations(test_mt):
-    """Test 4: Generate interactive QC visualizations using plotly (if available)."""
-    try:
-        from hvantk.algorithms.visualization.interactive_qc import check_plotly_available
-
-        check_plotly_available()
-    except ImportError:
-        pytest.skip("Plotly not available")
-
-    from hvantk.algorithms.hgc import compute_full_qc
-    from hvantk.algorithms.visualization.interactive_qc import (
-        plot_interactive_sample_call_rates,
-        plot_interactive_variant_call_rates,
-        plot_interactive_allele_frequencies,
-        plot_interactive_qc_dashboard,
-    )
-
-    # Use the pre-created test MatrixTable from fixture
-    mt = test_mt
-    qc_results = compute_full_qc(mt)
-
-    sample_df = qc_results.get_sample_metrics_df()
-    variant_df = qc_results.get_variant_metrics_df()
-
-    # Test 1: Interactive sample call rates
-    fig1 = plot_interactive_sample_call_rates(sample_df)
-    assert fig1 is not None, "Interactive sample call rates should be created"
-    assert hasattr(fig1, "show"), "Should be a plotly figure with show method"
-
-    # Test 2: Interactive variant call rates
-    fig2 = plot_interactive_variant_call_rates(variant_df)
-    assert fig2 is not None, "Interactive variant call rates should be created"
-
-    # Test 3: Interactive allele frequencies
-    fig3 = plot_interactive_allele_frequencies(variant_df, log_scale=True)
-    assert fig3 is not None, "Interactive allele frequencies should be created"
-
-    # Test 4: Interactive QC dashboard
-    fig4 = plot_interactive_qc_dashboard(qc_results)
-    assert fig4 is not None, "Interactive QC dashboard should be created"
-
-    # Test 5: QCMetrics integration for interactive plots
-    fig5 = qc_results.plot_interactive_sample_call_rates()
-    assert fig5 is not None, "QCMetrics interactive sample call rates should work"
-
-    fig6 = qc_results.plot_interactive_dashboard()
-    assert fig6 is not None, "QCMetrics interactive dashboard should work"
-
-
 def test_html_qc_report_generation(test_mt):
-    """Test 5: Generate comprehensive HTML QC reports."""
+    """Test 2: Generate comprehensive HTML QC reports."""
     from hvantk.algorithms.hgc import compute_full_qc
     from hvantk.algorithms.visualization.qc_report import generate_qc_report
 
@@ -278,7 +151,7 @@ def test_html_qc_report_generation(test_mt):
 
 
 def test_qc_data_validation(test_mt):
-    """Test 6: Validate QC data quality and structure."""
+    """Test 3: Validate QC data quality and structure."""
     from hvantk.algorithms.hgc import compute_full_qc
 
     # Use the pre-created test MatrixTable from fixture

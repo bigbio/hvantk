@@ -136,14 +136,6 @@ hvantk ptm population \
   --ptm-ht data/ptm/ptm_sites.ht \
   -o results/population/ \
   --save-plots
-
-# Optionally include CCR scores
-hvantk ptm population \
-  --gnomad-ht data/gnomad.ht \
-  --ptm-ht data/ptm/ptm_sites.ht \
-  --ccr-ht data/ccr.ht \
-  -o results/population/ \
-  --save-plots
 ```
 
 **Expected output:**

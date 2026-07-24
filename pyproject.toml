@@ -52,15 +52,19 @@ seaborn = { version = "*", optional = true }
 plotly = { version = "*", optional = true }
 duckdb = { version = ">=0.9.0", optional = true }
 cptac = { version = "*", optional = true }
+# sorted-nearest is a compiled runtime dep of pyranges (imported by cptac); an
+# extras install doesn't reliably pull it, so declare it explicitly. Import name
+# is `sorted_nearest`. Already resolved in poetry.lock (0.0.41).
+sorted-nearest = { version = "*", optional = true }
 tspex = { version = ">=0.6.0", optional = true }
 
 [tool.poetry.extras]
 viz = ["matplotlib", "seaborn", "plotly"]
 duckdb = ["duckdb"]
 interactive = ["plotly"]
-hgc = ["matplotlib", "seaborn", "plotly", "gnomad"]
+hgc = ["matplotlib", "seaborn", "gnomad"]
 psroc = ["matplotlib", "plotly", "scikit-learn"]
-ptm = ["cptac"]
+ptm = ["cptac", "sorted-nearest"]
 constraint = ["tspex", "matplotlib", "seaborn"]
 ancestry = ["scikit-learn", "matplotlib", "seaborn"]
 ml = ["scikit-learn"]

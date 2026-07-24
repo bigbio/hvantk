@@ -29,18 +29,36 @@ from hvantk.core.plugin.run_builder import run_builder_for_spec
 def peptideatlas_phospho_parsed_tsv(tmp_path):
     """Write a minimal intermediate phospho TSV with the schema produced by parse_raw_dir."""
     cols = [
-        "gene_symbol", "protein_accession", "site_position", "residue",
-        "n_observations", "peptide_sequences", "source_db", "evidence_type",
+        "gene_symbol",
+        "protein_accession",
+        "site_position",
+        "residue",
+        "n_observations",
+        "peptide_sequences",
+        "source_db",
+        "evidence_type",
     ]
     rows = [
-        {"gene_symbol": "TP53", "protein_accession": "P04637",
-         "site_position": "315", "residue": "S",
-         "n_observations": "2", "peptide_sequences": "ABCDE;FGHIJ",
-         "source_db": "peptideatlas", "evidence_type": "phospho"},
-        {"gene_symbol": "BRCA1", "protein_accession": "P38398",
-         "site_position": "988", "residue": "S",
-         "n_observations": "1", "peptide_sequences": "KLMNO",
-         "source_db": "peptideatlas", "evidence_type": "phospho"},
+        {
+            "gene_symbol": "TP53",
+            "protein_accession": "P04637",
+            "site_position": "315",
+            "residue": "S",
+            "n_observations": "2",
+            "peptide_sequences": "ABCDE;FGHIJ",
+            "source_db": "peptideatlas",
+            "evidence_type": "phospho",
+        },
+        {
+            "gene_symbol": "BRCA1",
+            "protein_accession": "P38398",
+            "site_position": "988",
+            "residue": "S",
+            "n_observations": "1",
+            "peptide_sequences": "KLMNO",
+            "source_db": "peptideatlas",
+            "evidence_type": "phospho",
+        },
     ]
     tsv_path = tmp_path / "peptideatlas-phospho.tsv"
     with open(tsv_path, "w", newline="") as f:
@@ -102,11 +120,15 @@ def test_clinvar_variants_round_trip(tmp_path):
     assert spec.plugin_version
 
     # Use the bundled fixture VCF (chr20 subset)
-    fixture = Path("hvantk/skills/clinvar/tests/testdata/raw/clinvar/clinvar_20220403_chr20.vcf.bgz")
+    fixture = Path(
+        "hvantk/skills/clinvar/tests/testdata/raw/clinvar/clinvar_20220403_chr20.vcf.bgz"
+    )
     assert fixture.exists(), f"missing fixture: {fixture}"
 
     # Avoid network calls in the drift_probe (clinvar probe hits NCBI)
-    object.__setattr__(spec, "drift_probe", lambda: {"fingerprint": "sha256:test-clinvar"})
+    object.__setattr__(
+        spec, "drift_probe", lambda: {"fingerprint": "sha256:test-clinvar"}
+    )
 
     out = tmp_path / "variants.ht"
     prov = run_builder_for_spec(
@@ -181,7 +203,9 @@ def test_gencc_submissions_round_trip(tmp_path):
     fixture = Path("hvantk/skills/gencc/tests/testdata/raw/gencc/gencc_test_sample.tsv")
     assert fixture.exists()
 
-    object.__setattr__(spec, "drift_probe", lambda: {"fingerprint": "sha256:test-gencc"})
+    object.__setattr__(
+        spec, "drift_probe", lambda: {"fingerprint": "sha256:test-gencc"}
+    )
 
     out = tmp_path / "submissions.ht"
     prov = run_builder_for_spec(
@@ -213,10 +237,14 @@ def test_clingen_gene_disease_round_trip(tmp_path):
     assert spec.artifact_type is AnnotationTable
     assert spec.schema_id == "clingen-gene-disease-v1"
 
-    fixture = Path("hvantk/skills/clingen/tests/testdata/raw/clingen/clingen_test_sample.csv")
+    fixture = Path(
+        "hvantk/skills/clingen/tests/testdata/raw/clingen/clingen_test_sample.csv"
+    )
     assert fixture.exists()
 
-    object.__setattr__(spec, "drift_probe", lambda: {"fingerprint": "sha256:test-clingen"})
+    object.__setattr__(
+        spec, "drift_probe", lambda: {"fingerprint": "sha256:test-clingen"}
+    )
 
     out = tmp_path / "gene-disease.ht"
     prov = run_builder_for_spec(
@@ -247,7 +275,9 @@ def test_gwas_catalog_associations_round_trip(tmp_path):
     assert spec.artifact_type is AnnotationTable
     assert spec.schema_id == "gwas-catalog-associations-v1"
 
-    fixture = Path("hvantk/skills/gwas_catalog/tests/testdata/raw/gwas-catalog/gwas-catalog-sample.tsv")
+    fixture = Path(
+        "hvantk/skills/gwas_catalog/tests/testdata/raw/gwas-catalog/gwas-catalog-sample.tsv"
+    )
     assert fixture.exists()
 
     object.__setattr__(spec, "drift_probe", lambda: {"fingerprint": "sha256:test-gwas"})
@@ -281,7 +311,9 @@ def test_gtex_eqtl_eqtls_round_trip(tmp_path):
     assert spec.artifact_type is AnnotationTable
     assert spec.schema_id == "gtex-eqtl-eqtls-v1"
 
-    fixture = Path("hvantk/skills/gtex_eqtl/tests/testdata/raw/gtex-eqtl/Liver.v11.eQTLs.signif_pairs.parquet")
+    fixture = Path(
+        "hvantk/skills/gtex_eqtl/tests/testdata/raw/gtex-eqtl/Liver.v11.eQTLs.signif_pairs.parquet"
+    )
     assert fixture.exists()
 
     object.__setattr__(spec, "drift_probe", lambda: {"fingerprint": "sha256:test-gtex"})
@@ -316,10 +348,14 @@ def test_insider_variants_round_trip(tmp_path):
     assert spec.artifact_type is AnnotationTable
     assert spec.schema_id == "insider-variants-v1"
 
-    fixture = Path("hvantk/skills/insider/tests/testdata/raw/insider/insider_sample.bed")
+    fixture = Path(
+        "hvantk/skills/insider/tests/testdata/raw/insider/insider_sample.bed"
+    )
     assert fixture.exists()
 
-    object.__setattr__(spec, "drift_probe", lambda: {"fingerprint": "sha256:test-insider"})
+    object.__setattr__(
+        spec, "drift_probe", lambda: {"fingerprint": "sha256:test-insider"}
+    )
 
     out = tmp_path / "variants.ht"
     prov = run_builder_for_spec(
@@ -353,7 +389,9 @@ def test_msigdb_genesets_round_trip(tmp_path):
     fixture = Path("hvantk/skills/msigdb/tests/testdata/raw/msigdb/c2.cp-sample.gmt")
     assert fixture.exists()
 
-    object.__setattr__(spec, "drift_probe", lambda: {"fingerprint": "sha256:test-msigdb"})
+    object.__setattr__(
+        spec, "drift_probe", lambda: {"fingerprint": "sha256:test-msigdb"}
+    )
 
     out = tmp_path / "genesets.ht"
     prov = run_builder_for_spec(
@@ -379,16 +417,55 @@ def test_msigdb_genesets_round_trip(tmp_path):
 def uniprot_ptm_sites_tsv(tmp_path):
     """Write a minimal mapped PTM coordinates TSV with the columns the builder expects."""
     cols = [
-        "chrom", "codon_start", "codon_end", "strand", "uniprot_id", "gene_symbol",
-        "residue_pos", "amino_acid", "ptm_type", "ptm_category", "source_db",
-        "evidence_type", "n_observations", "tissue_type",
+        "chrom",
+        "codon_start",
+        "codon_end",
+        "strand",
+        "uniprot_id",
+        "gene_symbol",
+        "residue_pos",
+        "amino_acid",
+        "ptm_type",
+        "ptm_category",
+        "source_db",
+        "evidence_type",
+        "n_observations",
+        "tissue_type",
     ]
     rows = [
         # Use chr17 (TP53) and chr13 (BRCA2) for plausibility
-        ["17", "7676272", "7676274", "-", "P04637", "TP53", "315", "S",
-         "phosphoserine", "phosphorylation", "uniprot", "experimental", "10", ""],
-        ["13", "32316461", "32316463", "+", "P51587", "BRCA2", "988", "S",
-         "phosphoserine", "phosphorylation", "uniprot", "experimental", "5", ""],
+        [
+            "17",
+            "7676272",
+            "7676274",
+            "-",
+            "P04637",
+            "TP53",
+            "315",
+            "S",
+            "phosphoserine",
+            "phosphorylation",
+            "uniprot",
+            "experimental",
+            "10",
+            "",
+        ],
+        [
+            "13",
+            "32316461",
+            "32316463",
+            "+",
+            "P51587",
+            "BRCA2",
+            "988",
+            "S",
+            "phosphoserine",
+            "phosphorylation",
+            "uniprot",
+            "experimental",
+            "5",
+            "",
+        ],
     ]
     tsv = tmp_path / "ptm_sites.tsv"
     with open(tsv, "w") as f:
@@ -467,7 +544,9 @@ def test_expression_atlas_dataset_round_trip(tmp_path, expression_atlas_inputs):
     assert spec.artifact_type is ExpressionMatrix
     assert spec.schema_id == "expression-atlas-dataset-v1"
 
-    object.__setattr__(spec, "drift_probe", lambda: {"fingerprint": "sha256:test-expr-atlas"})
+    object.__setattr__(
+        spec, "drift_probe", lambda: {"fingerprint": "sha256:test-expr-atlas"}
+    )
 
     out = tmp_path / "dataset.h5ad"
     prov = run_builder_for_spec(
@@ -523,7 +602,9 @@ def test_cptac_expression_round_trip(tmp_path, cptac_expression_inputs):
     assert spec.artifact_type is ExpressionMatrix
     assert spec.schema_id == "cptac-expression-v1"
 
-    object.__setattr__(spec, "drift_probe", lambda: {"fingerprint": "sha256:test-cptac-expr"})
+    object.__setattr__(
+        spec, "drift_probe", lambda: {"fingerprint": "sha256:test-cptac-expr"}
+    )
 
     out = tmp_path / "expression.h5ad"
     prov = run_builder_for_spec(
@@ -549,8 +630,10 @@ def test_cptac_expression_round_trip(tmp_path, cptac_expression_inputs):
 @pytest.fixture
 def cptac_phospho_inputs(tmp_path):
     """Wide-format CPTAC phospho: rows are sites, columns are samples + metadata."""
+    # Site column header matches what CPTACPhosphoDataset.write_matrix_csv writes
+    # (df.index.name = "Site"); the builder's site_id_col default is "Site" (#198).
     expr_lines = [
-        "SiteID\tS1\tS2",
+        "Site\tS1\tS2",
         "TP53_S315\t1.2\t3.4",
         "BRCA2_S988\t0.5\t2.1",
     ]
@@ -578,7 +661,9 @@ def test_cptac_phospho_round_trip(tmp_path, cptac_phospho_inputs):
     assert spec.artifact_type is ExpressionMatrix
     assert spec.schema_id == "cptac-phospho-v1"
 
-    object.__setattr__(spec, "drift_probe", lambda: {"fingerprint": "sha256:test-cptac-phospho"})
+    object.__setattr__(
+        spec, "drift_probe", lambda: {"fingerprint": "sha256:test-cptac-phospho"}
+    )
 
     out = tmp_path / "phospho.h5ad"
     prov = run_builder_for_spec(
@@ -626,12 +711,14 @@ def ucsc_cellbrowser_inputs(tmp_path):
 @pytest.mark.parametrize(
     "dataset_name,expected_schema",
     [
-        ("default",   "ucsc-cellbrowser-default-v1"),
+        ("default", "ucsc-cellbrowser-default-v1"),
         ("adult-ctx", "ucsc-cellbrowser-adult-ctx-v1"),
-        ("dev-ctx",   "ucsc-cellbrowser-dev-ctx-v1"),
+        ("dev-ctx", "ucsc-cellbrowser-dev-ctx-v1"),
     ],
 )
-def test_ucsc_cellbrowser_round_trip(tmp_path, ucsc_cellbrowser_inputs, dataset_name, expected_schema):
+def test_ucsc_cellbrowser_round_trip(
+    tmp_path, ucsc_cellbrowser_inputs, dataset_name, expected_schema
+):
     from hvantk.core.models import ExpressionMatrix
 
     plugin_loader.reset_registry_for_tests()
@@ -641,7 +728,9 @@ def test_ucsc_cellbrowser_round_trip(tmp_path, ucsc_cellbrowser_inputs, dataset_
     assert spec.artifact_type is ExpressionMatrix
     assert spec.schema_id == expected_schema
 
-    object.__setattr__(spec, "drift_probe", lambda: {"fingerprint": f"sha256:test-ucsc-{dataset_name}"})
+    object.__setattr__(
+        spec, "drift_probe", lambda: {"fingerprint": f"sha256:test-ucsc-{dataset_name}"}
+    )
 
     out = tmp_path / f"{dataset_name}.h5ad"
     prov = run_builder_for_spec(
@@ -680,7 +769,10 @@ def test_gevir_metrics_round_trip(tmp_path):
 
     out = tmp_path / "metrics.ht"
     prov = run_builder_for_spec(
-        spec, parsed_input=fixture, output_path=out, plugin_version=spec.plugin_version,
+        spec,
+        parsed_input=fixture,
+        output_path=out,
+        plugin_version=spec.plugin_version,
     )
     assert prov.plugin == "gevir"
     assert prov.schema_id == "gevir-metrics-v1"
@@ -699,42 +791,22 @@ def test_gnomad_metrics_round_trip(tmp_path):
     assert spec.artifact_type is AnnotationTable
     assert spec.schema_id == "gnomad-metrics-v1"
 
-    fixture = Path("hvantk/tests/testdata/raw/gnomad/gnomad.v2.1.1.lof_metrics.by_gene.chr20.tsv.bgz")
+    fixture = Path(
+        "hvantk/tests/testdata/raw/gnomad/gnomad.v2.1.1.lof_metrics.by_gene.chr20.tsv.bgz"
+    )
     assert fixture.exists()
 
     object.__setattr__(spec, "drift_probe", lambda: {"source_version": "test"})
 
     out = tmp_path / "metrics.ht"
     prov = run_builder_for_spec(
-        spec, parsed_input=fixture, output_path=out, plugin_version=spec.plugin_version,
+        spec,
+        parsed_input=fixture,
+        output_path=out,
+        plugin_version=spec.plugin_version,
     )
     assert prov.plugin == "gnomad-metrics"
     assert prov.schema_id == "gnomad-metrics-v1"
-
-    loaded = core_io.load(out)
-    assert isinstance(loaded, AnnotationTable)
-    assert loaded.count() > 0
-
-
-@pytest.mark.hail
-def test_ensembl_gene_round_trip(tmp_path):
-    plugin_loader.reset_registry_for_tests()
-    reg = plugin_loader.get_registry()
-    spec = reg.get_dataset("ensembl-gene:genes")
-
-    assert spec.artifact_type is AnnotationTable
-    assert spec.schema_id == "ensembl-gene-v1"
-
-    fixture = Path("hvantk/tests/testdata/raw/ensembl/ensembl_gene_biomart.tsv.bgz")
-    assert fixture.exists()
-
-    object.__setattr__(spec, "drift_probe", lambda: {"source_version": "test"})
-
-    out = tmp_path / "genes.ht"
-    prov = run_builder_for_spec(
-        spec, parsed_input=fixture, output_path=out, plugin_version=spec.plugin_version,
-    )
-    assert prov.plugin == "ensembl-gene"
 
     loaded = core_io.load(out)
     assert isinstance(loaded, AnnotationTable)
@@ -757,7 +829,10 @@ def test_dbnsfp_variants_round_trip(tmp_path):
 
     out = tmp_path / "variants.ht"
     prov = run_builder_for_spec(
-        spec, parsed_input=fixture, output_path=out, plugin_version=spec.plugin_version,
+        spec,
+        parsed_input=fixture,
+        output_path=out,
+        plugin_version=spec.plugin_version,
     )
     assert prov.plugin == "dbnsfp"
 
@@ -781,9 +856,7 @@ def test_onek_genomes_variants_round_trip(tmp_path):
     assert spec.artifact_type is VariantMatrix
     assert spec.schema_id == "onek-genomes-variants-v1"
 
-    fixture = Path(
-        "hvantk/skills/onek_genomes/tests/testdata/raw/onek_genomes"
-    )
+    fixture = Path("hvantk/skills/onek_genomes/tests/testdata/raw/onek_genomes")
     assert fixture.exists()
 
     object.__setattr__(
@@ -792,7 +865,10 @@ def test_onek_genomes_variants_round_trip(tmp_path):
 
     out = tmp_path / "variants.mt"
     prov = run_builder_for_spec(
-        spec, parsed_input=fixture, output_path=out, plugin_version=spec.plugin_version,
+        spec,
+        parsed_input=fixture,
+        output_path=out,
+        plugin_version=spec.plugin_version,
     )
 
     assert prov.plugin == "onek-genomes"
@@ -818,9 +894,7 @@ def test_onek_genomes_samples_round_trip(tmp_path):
     assert spec.artifact_type is AnnotationTable
     assert spec.schema_id == "onek-genomes-samples-v1"
 
-    fixture = Path(
-        "hvantk/skills/onek_genomes/tests/testdata/raw/onek_genomes"
-    )
+    fixture = Path("hvantk/skills/onek_genomes/tests/testdata/raw/onek_genomes")
     assert fixture.exists()
 
     object.__setattr__(
@@ -829,7 +903,10 @@ def test_onek_genomes_samples_round_trip(tmp_path):
 
     out = tmp_path / "samples.ht"
     prov = run_builder_for_spec(
-        spec, parsed_input=fixture, output_path=out, plugin_version=spec.plugin_version,
+        spec,
+        parsed_input=fixture,
+        output_path=out,
+        plugin_version=spec.plugin_version,
     )
 
     assert prov.plugin == "onek-genomes"

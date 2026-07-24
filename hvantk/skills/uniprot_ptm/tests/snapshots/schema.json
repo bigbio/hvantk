@@ -1,0 +1,23 @@
+{
+  "key": [
+    "locus"
+  ],
+  "row": {
+    "amino_acid": "str",
+    "chrom": "str",
+    "codon_end": "int32",
+    "codon_start": "int32",
+    "evidence_type": "str",
+    "flanking_interval": "interval<locus<GRCh38>>",
+    "gene_symbol": "str",
+    "locus": "locus<GRCh38>",
+    "n_observations": "int32",
+    "ptm_category": "str",
+    "ptm_type": "str",
+    "residue_pos": "int32",
+    "source_db": "str",
+    "strand": "str",
+    "tissue_type": "str",
+    "uniprot_id": "str"
+  }
+}

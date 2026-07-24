@@ -15,9 +15,7 @@
     "genome_build": "GRCh38",
     "variant_types": [
       "SNV",
-      "indel",
-      "SV",
-      "CNV"
+      "indel"
     ],
     "frequency_data": true,
     "clinical_significance": false,

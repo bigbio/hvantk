@@ -1,0 +1,14 @@
+#!genome-build GRCh38
+1	ensembl	gene	1000	6000	.	+	.	gene_id "ENSG00000000001"; gene_name "GENE1"; gene_biotype "protein_coding";
+1	ensembl	transcript	1000	5000	.	+	.	gene_id "ENSG00000000001"; transcript_id "ENST00000000001"; gene_biotype "protein_coding"; tag "MANE_Select";
+1	ensembl	CDS	1000	1099	.	+	0	gene_id "ENSG00000000001"; transcript_id "ENST00000000001";
+1	ensembl	CDS	2000	2199	.	+	0	gene_id "ENSG00000000001"; transcript_id "ENST00000000001";
+1	ensembl	transcript	1000	6000	.	+	.	gene_id "ENSG00000000001"; transcript_id "ENST00000000002"; gene_biotype "protein_coding";
+1	ensembl	CDS	1000	1999	.	+	0	gene_id "ENSG00000000001"; transcript_id "ENST00000000002";
+2	ensembl	gene	1000	5000	.	-	.	gene_id "ENSG00000000002"; gene_name "GENE2"; gene_biotype "protein_coding";
+2	ensembl	transcript	1000	5000	.	-	.	gene_id "ENSG00000000002"; transcript_id "ENST00000000003"; gene_biotype "protein_coding";
+2	ensembl	CDS	1000	1049	.	-	0	gene_id "ENSG00000000002"; transcript_id "ENST00000000003";
+2	ensembl	transcript	1000	5000	.	-	.	gene_id "ENSG00000000002"; transcript_id "ENST00000000004"; gene_biotype "protein_coding";
+2	ensembl	CDS	1000	1299	.	-	0	gene_id "ENSG00000000002"; transcript_id "ENST00000000004";
+3	ensembl	gene	1000	5000	.	+	.	gene_id "ENSG00000000003"; gene_name "LNC3"; gene_biotype "lncRNA";
+3	ensembl	transcript	1000	5000	.	+	.	gene_id "ENSG00000000003"; transcript_id "ENST00000000005"; gene_biotype "lncRNA";
