@@ -74,6 +74,9 @@ class SourceEntry:
     min_mapping_rate: float = 0.9
     origin: str | None = None
     ablate_separately: bool = False
+    # How to reduce when several source keys map to ONE gene_id. None (default) makes
+    # that an error; see prepare.COLLAPSE_REDUCERS for the vocabulary.
+    collapse: str | None = None
     aggregate: AggregateSpec | None = None
     matrix: MatrixSpec | None = None
 
@@ -155,6 +158,7 @@ def load_spec(path: str | Path) -> FeatureSpec:
             min_mapping_rate=e.get("min_mapping_rate", 0.9),
             origin=e.get("origin"),
             ablate_separately=e.get("ablate_separately", False),
+            collapse=e.get("collapse"),
             aggregate=_build_aggregate(e.get("aggregate")),
             matrix=_build_matrix(e.get("matrix")),
         )
