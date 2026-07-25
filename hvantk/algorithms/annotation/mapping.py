@@ -119,6 +119,28 @@ class GeneIdMapper:
             mapping[sym] = self._keep_if_on_spine(gene_id)
         return mapping, self._report(source, "symbol", mapping)
 
+    def from_uniprot_ids(
+        self, uniprot_ids: Iterable[str], *, source: str
+    ) -> tuple[dict[str, Optional[str]], MappingReport]:
+        """Resolve rows keyed on UniProt accession (proteomic / interactome sources).
+
+        Same two-hop chain as ``from_symbols`` (accession -> hgnc_id -> ensembl_gene_id)
+        but with no alias step: UniProt accessions are stable, so there is nothing to
+        canonicalise. An accession HGNC does not carry -- an isoform-specific or
+        non-human entry -- counts as unmapped.
+        """
+        ids = list(uniprot_ids)
+        to_hgnc = self._hgnc.map_to_hgnc(sorted(set(ids)), "uniprot_id")
+        hgnc_ids = sorted({h for h in to_hgnc.values() if h})
+        to_ensembl = self._hgnc.map_from_hgnc(hgnc_ids, "ensembl_gene_id")
+
+        mapping: dict[str, Optional[str]] = {}
+        for acc in ids:
+            hgnc_id = to_hgnc.get(acc)
+            gene_id = to_ensembl.get(hgnc_id) if hgnc_id else None
+            mapping[acc] = self._keep_if_on_spine(gene_id)
+        return mapping, self._report(source, "uniprot_id", mapping)
+
     def _keep_if_on_spine(self, gene_id: Optional[str]) -> Optional[str]:
         return gene_id if gene_id in self._spine else None
 

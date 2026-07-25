@@ -33,7 +33,7 @@
       "properties": {
         "axis": {"type": "string", "minLength": 1},
         "source": {"type": "string", "minLength": 1},
-        "key": {"type": "string", "enum": ["gene_id", "hgnc_id", "symbol", "variant"]},
+        "key": {"type": "string", "enum": ["gene_id", "hgnc_id", "symbol", "uniprot_id", "variant"]},
         "columns": {
           "type": "array",
           "minItems": 1,
@@ -84,7 +84,7 @@
       "additionalProperties": false,
       "properties": {
         "by": {"type": "string", "minLength": 1},
-        "to": {"type": "string", "enum": ["gene_id", "hgnc_id", "symbol"]},
+        "to": {"type": "string", "enum": ["gene_id", "hgnc_id", "symbol", "uniprot_id"]},
         "filter": {"type": "string", "minLength": 1},
         "reduce": {"type": "string", "minLength": 1},
         "count_name": {"type": "string", "minLength": 1},

@@ -80,6 +80,8 @@ def _resolve_to_gene_id(source_keys, to_space, source_label, mapper):
         mapping, report = mapper.from_hgnc_ids(source_keys, source=source_label)
     elif to_space == "symbol":
         mapping, report = mapper.from_symbols(source_keys, source=source_label)
+    elif to_space == "uniprot_id":
+        mapping, report = mapper.from_uniprot_ids(source_keys, source=source_label)
     else:
         raise ValueError(f"unsupported id-space {to_space!r}")
     resolved = {k: v for k, v in mapping.items() if v is not None}

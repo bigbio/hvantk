@@ -1,0 +1,12 @@
+{
+  "key": [
+    "uniprot_id"
+  ],
+  "row": {
+    "n_interface_residues": "int32",
+    "n_partners": "int32",
+    "n_partners_experimental": "int32",
+    "n_partners_predicted": "int32",
+    "uniprot_id": "str"
+  }
+}
