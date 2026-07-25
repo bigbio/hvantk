@@ -7,6 +7,7 @@ from hvantk.algorithms.burden.aggregate import (
     count_2x2,
     variant_reductions,
 )
+from hvantk.algorithms.burden.fet import finalize_reductions
 from hvantk.algorithms.burden.pipeline import run_from_mt
 
 pytestmark = pytest.mark.hail
@@ -176,3 +177,163 @@ def test_run_from_mt_end_to_end():
     for col in ["route", "minp", "odds_ratio", "n_case_var", "conc", "driver_af"]:
         assert col in df.columns
     assert df.loc["GENEA", "n_case_var"] == 2
+    # GENEA's only route in _toy_mt() is lof, so it must be the winning route.
+    assert df.loc["GENEA", "route"] == "lof"
+
+
+def test_build_per_gene_carrier_mt_entry_values():
+    """Concrete hets/homs/multi_het entry values, not just row-key/shape."""
+    mt = _toy_mt()
+    out = build_per_gene_carrier_mt(mt, gene_field="SYMBOL", route_field="csq_group")
+    entries = out.entries().to_pandas()
+
+    def _entry(gene, route, sample):
+        rows = entries[
+            (entries.SYMBOL == gene)
+            & (entries.csq_group == route)
+            & (entries.s == sample)
+        ]
+        assert len(rows) == 1
+        return rows.iloc[0]
+
+    # variant0 (GENEA/lof) is het carried by s0 only.
+    s0 = _entry("GENEA", "lof", "s0")
+    assert s0["hets"] == 1
+    assert s0["homs"] == 0
+    assert not bool(s0["multi_het"])
+
+    # variant1 (GENEA/lof) is het carried by s1 only.
+    s1 = _entry("GENEA", "lof", "s1")
+    assert s1["hets"] == 1
+
+    # s2/s3 carry no GENEA/lof variant.
+    assert _entry("GENEA", "lof", "s2")["hets"] == 0
+    assert _entry("GENEA", "lof", "s3")["hets"] == 0
+
+    # variant2 (GENEB/mis) is het carried by s2 only.
+    assert _entry("GENEB", "mis", "s2")["hets"] == 1
+    assert _entry("GENEB", "mis", "s3")["hets"] == 0
+
+
+def _array_route_mt():
+    """1 variant in GENEA tagged with TWO routes (lof, missC), het in s0.
+
+    Exercises the ``array<str>`` explode_rows branch (``_is_array``) of
+    ``build_per_gene_carrier_mt``: a variant tagged with multiple routes
+    must contribute to every one of them.
+    """
+    mt = hl.utils.range_matrix_table(n_rows=1, n_cols=2)
+    mt = mt.annotate_rows(
+        locus=hl.locus("chr1", 500, reference_genome="GRCh38"),
+        alleles=hl.array(["A", "C"]),
+        SYMBOL="GENEA",
+        csq_group=hl.literal(["lof", "missC"]),
+    )
+    mt = mt.key_rows_by("locus", "alleles")
+
+    sample_ids = hl.literal(["s0", "s1"])
+    mt = mt.annotate_cols(s=sample_ids[mt.col_idx], is_case=mt.col_idx == 0)
+    mt = mt.key_cols_by("s")
+
+    mt = mt.annotate_entries(
+        GT=hl.if_else(mt.col_idx == 0, hl.call(0, 1), hl.call(0, 0))
+    )
+    return mt.drop("row_idx", "col_idx")
+
+
+def test_build_per_gene_carrier_mt_explodes_array_route():
+    mt = _array_route_mt()
+    out = build_per_gene_carrier_mt(mt, gene_field="SYMBOL", route_field="csq_group")
+    assert list(out.row_key) == ["SYMBOL", "csq_group"]
+    rows = out.rows()
+    keys = rows.aggregate(
+        hl.agg.collect_as_set(hl.struct(SYMBOL=rows.SYMBOL, csq_group=rows.csq_group))
+    )
+    assert keys == {
+        hl.Struct(SYMBOL="GENEA", csq_group="lof"),
+        hl.Struct(SYMBOL="GENEA", csq_group="missC"),
+    }
+
+    # the single variant carries s0 as a het -> both exploded (gene,route) rows
+    # must see s0 as a carrier.
+    entries = out.entries().to_pandas()
+    for route in ("lof", "missC"):
+        row = entries[
+            (entries.SYMBOL == "GENEA")
+            & (entries.csq_group == route)
+            & (entries.s == "s0")
+        ]
+        assert len(row) == 1
+        assert row.iloc[0]["hets"] == 1
+
+
+def _hom_carrier_mt():
+    """1 variant in GENEA, hom-var in s0 (case), hom-ref in s1 (control).
+
+    Exercises ``carrier_mode="hom"`` in ``count_2x2`` (vs. the default "het").
+    """
+    mt = hl.utils.range_matrix_table(n_rows=1, n_cols=2)
+    mt = mt.annotate_rows(
+        locus=hl.locus("chr1", 600, reference_genome="GRCh38"),
+        alleles=hl.array(["A", "C"]),
+        SYMBOL="GENEA",
+        csq_group="lof",
+    )
+    mt = mt.key_rows_by("locus", "alleles")
+
+    sample_ids = hl.literal(["s0", "s1"])
+    mt = mt.annotate_cols(s=sample_ids[mt.col_idx], is_case=mt.col_idx == 0)
+    mt = mt.key_cols_by("s")
+
+    mt = mt.annotate_entries(
+        GT=hl.if_else(mt.col_idx == 0, hl.call(1, 1), hl.call(0, 0))
+    )
+    return mt.drop("row_idx", "col_idx")
+
+
+def test_count_2x2_hom_carrier_mode_vs_het():
+    mt = _hom_carrier_mt()
+    hom_df = count_2x2(
+        mt,
+        gene_field="SYMBOL",
+        route_field="csq_group",
+        arm_field="is_case",
+        carrier_mode="hom",
+    ).set_index(["gene", "route"])
+    het_df = count_2x2(
+        mt,
+        gene_field="SYMBOL",
+        route_field="csq_group",
+        arm_field="is_case",
+        carrier_mode="het",
+    ).set_index(["gene", "route"])
+    # s0 (case) is hom-var -> counted as a carrier under "hom", not under "het".
+    assert hom_df.loc[("GENEA", "lof"), "a"] == 1
+    assert het_df.loc[("GENEA", "lof"), "a"] == 0
+
+
+def test_variant_reductions_score_field_reflects_case_scores():
+    mt = _toy_mt()
+    # REVEL-like float score keyed by position: variant0=0.8, variant1=0.6, variant2=0.3.
+    revel_by_pos = hl.literal(
+        {100: 0.8, 200: 0.6, 300: 0.3}, dtype=hl.tdict(hl.tint32, hl.tfloat64)
+    )
+    mt = mt.annotate_rows(revel=revel_by_pos.get(mt.locus.position))
+
+    df = variant_reductions(
+        mt,
+        gene_field="SYMBOL",
+        route_field="csq_group",
+        arm_field="is_case",
+        carrier_mode="het",
+        score_field="revel",
+    ).set_index(["gene", "route"])
+    # GENEA/lof case-carried variants are variant0 (revel=0.8, s0) and
+    # variant1 (revel=0.6, s1) -> score_sum/score_n reflect both.
+    assert df.loc[("GENEA", "lof"), "score_sum"] == pytest.approx(1.4)
+    assert df.loc[("GENEA", "lof"), "score_n"] == 2
+    # GENEB/mis's only variant is carried by a control -> no case-carried scores.
+    assert df.loc[("GENEB", "mis"), "score_n"] == 0
+
+    fin = finalize_reductions(df.reset_index()).set_index(["gene", "route"])
+    assert fin.loc[("GENEA", "lof"), "mean_score_case"] == pytest.approx(0.7)
