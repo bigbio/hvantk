@@ -25,6 +25,14 @@ import numpy as np
 
 @dataclass(frozen=True)
 class UnivariateStat:
+    """Per-column univariate screening result.
+
+    For untestable columns (all-NaN, or one arm empty) ``p`` defaults to ``1.0``
+    while ``z`` is ``nan`` -- they are not interchangeable stand-ins for "no result".
+    Consumers must gate on ``.passed``, never on ``np.isfinite(p)`` (always true,
+    even for untestable columns) or on ``p`` alone.
+    """
+
     auc: float
     z: float
     p: float
