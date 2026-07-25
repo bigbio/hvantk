@@ -20,9 +20,12 @@ def add_fisher(counts_df: pd.DataFrame) -> pd.DataFrame:
     df = counts_df.copy()
     df["c"] = df["n_case"] - df["a"]
     df["d"] = df["n_control"] - df["b"]
-    stats = df.apply(
-        lambda r: fisher_2x2(int(r.a), int(r.b), int(r.c), int(r.d)), axis=1
-    )
+    # itertuples avoids the per-row Series construction of apply(axis=1); the
+    # per-row scipy fisher_exact call is unchanged, as is row order.
+    stats = [
+        fisher_2x2(int(r.a), int(r.b), int(r.c), int(r.d))
+        for r in df.itertuples(index=False)
+    ]
     df["p"] = [s[0] for s in stats]
     df["odds_ratio"] = [s[1] for s in stats]
     return df

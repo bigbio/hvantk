@@ -178,6 +178,10 @@ def variant_reductions(
     _require_hail()
     if _is_array(mt[route_field]):
         mt = mt.explode_rows(mt[route_field])
+    # Drop undefined gene/route so this frame stays consistent with count_2x2 (which
+    # filters both via build_per_gene_carrier_mt); otherwise (gene=None/route=None)
+    # groups appear here, never match a Fisher winner, and waste work.
+    mt = mt.filter_rows(hl.is_defined(mt[gene_field]) & hl.is_defined(mt[route_field]))
     carr = _carrier_variant_expr(mt, carrier_mode)
     n_ctrl = mt.aggregate_cols(hl.agg.count_where(~mt[arm_field]))
     score = (
