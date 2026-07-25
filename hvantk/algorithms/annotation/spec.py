@@ -40,6 +40,11 @@ class AggregateSpec:
     scores: tuple[ScoreSpec, ...]
     filter: str | None = None
     reduce: str = "max"
+    # Name of the emitted row-count column. The count is "source rows that survived the
+    # filter", so only dbNSFP's is literally 'possible missense'; a PTM-site or eQTL-pair
+    # source counts something else, and two such axes would collide on a shared name.
+    # Defaults to the dbNSFP-era name so existing specs are unaffected.
+    count_name: str = "n_possible_missense"
 
 
 @dataclass(frozen=True)
@@ -98,6 +103,7 @@ def _build_aggregate(raw: dict | None) -> AggregateSpec | None:
         scores=scores,
         filter=raw.get("filter"),
         reduce=raw.get("reduce", "max"),
+        count_name=raw.get("count_name", "n_possible_missense"),
     )
 
 

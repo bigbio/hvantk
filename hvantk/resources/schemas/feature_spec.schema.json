@@ -87,6 +87,7 @@
         "to": {"type": "string", "enum": ["gene_id", "hgnc_id", "symbol"]},
         "filter": {"type": "string", "minLength": 1},
         "reduce": {"type": "string", "minLength": 1},
+        "count_name": {"type": "string", "minLength": 1},
         "scores": {
           "type": "object", "minProperties": 1,
           "additionalProperties": {

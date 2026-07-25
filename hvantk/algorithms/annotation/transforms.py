@@ -87,9 +87,13 @@ def aggregate_to_gene(source_ht, agg):
 
     Steps: filter (named predicate) -> reduce each score's transcript-dict to a per-variant
     scalar -> explode the ';'-delimited ``agg.by`` gene string to distinct genes -> group_by that
-    gene -> the declared stats + ``n_possible_missense``. Returns a Table keyed on ``agg.by``,
-    carrying exactly the ``output_name(score, token)`` columns plus ``n_possible_missense``. No
+    gene -> the declared stats + the row-count column. Returns a Table keyed on ``agg.by``,
+    carrying exactly the ``output_name(score, token)`` columns plus ``agg.count_name``. No
     spine reconciliation here -- the caller (prepare.py) maps ``agg.by`` onto gene_id.
+
+    The row count is "source rows that survived the filter"; ``agg.count_name`` names it
+    (default ``n_possible_missense``, true only for dbNSFP). Sources counting something else
+    must set it, or two aggregate axes collide on one column name at compose time.
     """
     import hail as hl
 
@@ -109,7 +113,7 @@ def aggregate_to_gene(source_ht, agg):
     for s in agg.scores:
         for token in s.stats:
             aggregations[output_name(s.name, token)] = _agg_for(token, ht[s.name])
-    aggregations["n_possible_missense"] = hl.agg.count()
+    aggregations[agg.count_name] = hl.agg.count()
 
     grouped = ht.group_by(**{agg.by: ht._gene}).aggregate(**aggregations)
     logger.info("aggregate_to_gene: %d genes", grouped.count())

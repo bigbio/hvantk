@@ -120,6 +120,28 @@ def test_aggregate_to_gene_collapses_missense_variants_per_gene(hail_session):
 
 
 @pytest.mark.hail
+def test_row_count_column_is_named_by_count_name(hail_session):
+    """A non-dbNSFP source must be able to name its own row-count column.
+
+    The count is "rows that survived the filter", which is only 'possible missense'
+    for dbNSFP. A PTM-site or eQTL-pair source counts something else entirely, and
+    two such axes composed together would otherwise collide on one hardcoded name.
+    """
+    from dataclasses import replace
+
+    from hvantk.algorithms.annotation.transforms import aggregate_to_gene
+
+    grouped = aggregate_to_gene(
+        _variant_ht(), replace(_agg_spec(), count_name="n_ptm_sites")
+    )
+    assert "n_ptm_sites" in grouped.row
+    assert "n_possible_missense" not in grouped.row
+    d = {r.Ensembl_geneid: r for r in grouped.collect()}
+    assert d["ENSG_A"].n_ptm_sites == 2
+    assert d["ENSG_B"].n_ptm_sites == 1
+
+
+@pytest.mark.hail
 def test_stop_gain_and_stop_loss_are_excluded(hail_session):
     import hail as hl
 
