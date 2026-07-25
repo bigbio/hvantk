@@ -30,7 +30,7 @@ def _toy_mt():
     positions = hl.literal([100, 200, 300])
     alt_alleles = hl.literal(["C", "G", "T"])
     mt = mt.annotate_rows(
-        locus=hl.locus("1", positions[mt.row_idx], reference_genome="GRCh38"),
+        locus=hl.locus("chr1", positions[mt.row_idx], reference_genome="GRCh38"),
         alleles=hl.array(["A", alt_alleles[mt.row_idx]]),
         SYMBOL=genes[mt.row_idx],
         csq_group=routes[mt.row_idx],
