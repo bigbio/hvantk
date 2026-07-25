@@ -224,6 +224,12 @@ def attach_cmd(cohort, layer1, output, report, hgnc_path):
     help="Optional multiple-testing correction (adds p_adj; prior stays raw min-p).",
 )
 @click.option("--output", "output_path", required=True, help="Output gene table (TSV).")
+@click.option(
+    "--emit-manifest",
+    "manifest_path",
+    default=None,
+    help="Also write a ready-to-use cohort.yaml stub (pointing at --output) here.",
+)
 def burden_cmd(
     mt_path,
     gene_col,
@@ -234,6 +240,7 @@ def burden_cmd(
     score_field,
     mtc,
     output_path,
+    manifest_path,
 ):
     """Originate a cohort's gene-level prior via a Fisher-exact burden test."""
     import hail as hl
@@ -259,3 +266,16 @@ def burden_cmd(
         raise click.UsageError(str(exc))
     df.to_csv(output_path, sep="\t", index=False)
     click.echo(f"Wrote {len(df)} genes to {output_path}")
+    if manifest_path:
+        from pathlib import Path
+
+        from hvantk.algorithms.burden.manifest import render_cohort_manifest
+        from hvantk.algorithms.cohort.spec import load_cohort
+
+        Path(manifest_path).write_text(
+            render_cohort_manifest(
+                name=Path(output_path).stem, key=key, table=output_path
+            )
+        )
+        load_cohort(manifest_path)  # fail loud if the emitted stub is somehow invalid
+        click.echo(f"Wrote cohort manifest to {manifest_path}")
