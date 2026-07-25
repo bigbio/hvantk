@@ -184,3 +184,78 @@ def attach_cmd(cohort, layer1, output, report, hgnc_path):
         f"attach {manifest.name}: {result['n_tested']}/{result['n_genes']} genes "
         f"tested -> {output} (report: {report_path})"
     )
+
+
+@cohort_group.command("burden")
+@click.option(
+    "--mt",
+    "mt_path",
+    required=True,
+    help="Clean case/control genotype MatrixTable (.mt).",
+)
+@click.option("--gene-col", required=True, help="Row field holding the gene key.")
+@click.option(
+    "--route-col",
+    required=True,
+    help="Row field holding the variant-type/route (str or array<str>).",
+)
+@click.option(
+    "--arm-col", required=True, help="Column field: boolean case/control (True = case)."
+)
+@click.option(
+    "--key",
+    required=True,
+    type=click.Choice(["gene_id", "hgnc_id", "symbol"]),
+    help="Identifier space of the gene key.",
+)
+@click.option(
+    "--carrier-mode",
+    default="het",
+    type=click.Choice(["het", "hom", "chet", "homs_chet"]),
+    show_default=True,
+)
+@click.option(
+    "--score-field", default=None, help="Optional row field for mean_score_case."
+)
+@click.option(
+    "--mtc",
+    default=None,
+    type=click.Choice(["bh", "bonferroni"]),
+    help="Optional multiple-testing correction (adds p_adj; prior stays raw min-p).",
+)
+@click.option("--output", "output_path", required=True, help="Output gene table (TSV).")
+def burden_cmd(
+    mt_path,
+    gene_col,
+    route_col,
+    arm_col,
+    key,
+    carrier_mode,
+    score_field,
+    mtc,
+    output_path,
+):
+    """Originate a cohort's gene-level prior via a Fisher-exact burden test."""
+    import hail as hl
+
+    from hvantk.algorithms.burden.pipeline import run_from_mt
+    from hvantk.core.utils.hail_context import init_hail
+
+    init_hail()
+
+    mt = hl.read_matrix_table(mt_path)
+    try:
+        df = run_from_mt(
+            mt,
+            gene_col=gene_col,
+            route_col=route_col,
+            arm_col=arm_col,
+            key=key,
+            carrier_mode=carrier_mode,
+            score_field=score_field,
+            mtc=mtc,
+        )
+    except ValueError as exc:
+        raise click.UsageError(str(exc))
+    df.to_csv(output_path, sep="\t", index=False)
+    click.echo(f"Wrote {len(df)} genes to {output_path}")

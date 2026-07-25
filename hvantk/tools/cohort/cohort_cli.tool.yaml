@@ -19,6 +19,8 @@ subcommands:
     description: Check a cohort manifest against its table and labels
   - name: attach
     description: Join a cohort's declared columns onto the Layer-1 matrix
+  - name: burden
+    description: Originate a gene-level prior from a clean case/control genotype MatrixTable (Fisher-exact)
 requires:
   hail: true
   network: false
