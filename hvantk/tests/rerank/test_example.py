@@ -32,8 +32,15 @@ CONFIG = EXAMPLE_DIR / "config.yaml"
 REFERENCE = EXAMPLE_DIR / "results" / "rerank_scores.tsv"
 
 EXPECTED_COLUMNS = [
-    "gene", "prior_stat", "score", "score_percentile",
-    "tier", "verdict", "flag", "flag_reason", "y",
+    "gene",
+    "prior_stat",
+    "score",
+    "score_percentile",
+    "tier",
+    "verdict",
+    "flag",
+    "flag_reason",
+    "y",
 ]
 
 
@@ -46,7 +53,7 @@ def test_example_files_are_present():
             REFERENCE,
             EXAMPLE_DIR / "README.md",
             EXAMPLE_DIR / "make_fixtures.py",
-            EXAMPLE_DIR / "data" / "prior.tsv",
+            EXAMPLE_DIR / "data" / "cohort.yaml",
             EXAMPLE_DIR / "data" / "constraint.tsv",
             EXAMPLE_DIR / "data" / "expression.tsv",
             EXAMPLE_DIR / "data" / "labels.txt",
@@ -67,7 +74,9 @@ def test_reference_output_has_the_documented_shape():
     assert not flagged.empty, "fixtures should exercise the audit"
     assert flagged["tier"].notna().all()
     assert set(df.loc[df["flag"], "flag_reason"]) <= {
-        "insufficient_data", "recurrent_variant", "common_driver",
+        "insufficient_data",
+        "recurrent_variant",
+        "common_driver",
     }
 
 
@@ -76,8 +85,17 @@ def test_example_run_reproduces_the_committed_output(tmp_path):
     """Run the documented command and compare against results/rerank_scores.tsv."""
     out = tmp_path / "rerank_scores.tsv"
     proc = subprocess.run(
-        [sys.executable, "-m", "hvantk.hvantk", "rerank", "-c", str(CONFIG), "-o", str(out)],
-        cwd=REPO_ROOT,          # config.yaml paths resolve against the working directory
+        [
+            sys.executable,
+            "-m",
+            "hvantk.hvantk",
+            "rerank",
+            "-c",
+            str(CONFIG),
+            "-o",
+            str(out),
+        ],
+        cwd=REPO_ROOT,  # config.yaml paths resolve against the working directory
         capture_output=True,
         text=True,
         timeout=600,
@@ -93,4 +111,6 @@ def test_example_run_reproduces_the_committed_output(tmp_path):
     assert got["score"].rank().tolist() == ref["score"].rank().tolist()
     assert got["score"].to_numpy() == pytest.approx(ref["score"].to_numpy(), abs=1e-6)
     assert got["flag"].tolist() == ref["flag"].tolist()
-    assert got["flag_reason"].fillna("").tolist() == ref["flag_reason"].fillna("").tolist()
+    assert (
+        got["flag_reason"].fillna("").tolist() == ref["flag_reason"].fillna("").tolist()
+    )

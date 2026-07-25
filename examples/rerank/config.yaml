@@ -7,12 +7,16 @@
 
 name: rerank-example
 
-# Starting ranking: the burden result to be re-ranked. `stat_col` is carried through to
-# the output as `prior_stat`; it is not a model feature.
-prior:
-  path: examples/rerank/data/prior.tsv
-  unit_col: gene
-  stat_col: minp
+# The external cohort declaration: a path to a cohort manifest YAML (see
+# hvantk/algorithms/cohort/spec.py and data/cohort.yaml). The manifest is the single
+# source of the starting ranking to be re-ranked -- its `prior.column` is carried
+# through to the output as `prior_stat`; it is not a model feature. There is no
+# separate `prior:` block here; the manifest supersedes it.
+#
+# When the manifest declares a `cohort_axes` entry naming `n_case_var`, `conc` and
+# `driver_af`, the CLI wires up the advisory CaseControlArchitectureAudit
+# automatically; a manifest without those columns runs with NoAudit instead.
+cohort: examples/rerank/data/cohort.yaml
 
 # Evidence axes. Order matters: the first axis is the ablation baseline the Evaluator
 # scores the others against. Every non-key column becomes a model feature and must be
@@ -27,9 +31,3 @@ features:
 # the evaluation from being circular.
 labels:
   path: examples/rerank/data/labels.txt
-
-# Case/control architecture columns for the advisory audit. Omit this block entirely to
-# run with NoAudit; supplying it without these three columns raises.
-cohort:
-  path: examples/rerank/data/cohort.tsv
-  audit_cols: [n_case_var, conc, driver_af]
