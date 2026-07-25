@@ -60,3 +60,14 @@ def test_missing_column_is_rejected(tmp_path):
     p.write_text("P1\tP2\tSource\n" "Q1\tQ2\tECLAIR\n")
     with pytest.raises(ValueError, match="missing column"):
         parse_interfaces(str(p))
+
+
+def test_builder_accepts_file_uri_and_directory(tmp_path):
+    """The snapshot adapter passes a file:// URI; reprocess passes a plain dir."""
+    from hvantk.skills.insider.interfaces.builder import _resolve_input
+
+    f = tmp_path / "H_sapiens_interfacesALL.txt"
+    f.write_text("P1\tP2\tSource\tP1_IRES\tP2_IRES\n")
+    assert _resolve_input(f.as_uri()) == str(f)
+    assert _resolve_input(str(f)) == str(f)
+    assert _resolve_input(str(tmp_path)) == str(f)  # dir -> default filename

@@ -20,9 +20,19 @@ logger = logging.getLogger(__name__)
 DEFAULT_FILENAME = "H_sapiens_interfacesALL.txt"
 
 
+_FILE_URI_PREFIX = "file://"
+
+
 def _resolve_input(parsed_input) -> str:
-    """Accept either the interface file itself or the raw dir containing it."""
+    """Accept the interface file or its raw dir, as a plain path or a ``file://`` URI.
+
+    The snapshot-test adapter hands builders a URI (``Path(...).as_uri()``), while
+    ``reprocess`` hands a plain path; the sibling ``insider:variants`` builder normalises
+    the same way. This parser uses stdlib ``open``, which does not understand URIs.
+    """
     path = str(parsed_input)
+    if path.startswith(_FILE_URI_PREFIX):
+        path = path[len(_FILE_URI_PREFIX) :]
     if os.path.isdir(path):
         return os.path.join(path, DEFAULT_FILENAME)
     return path

@@ -83,3 +83,48 @@ def test_map_from_hgnc_returns_empty_for_empty_input(hail_session, tmp_path):
     streamer = HGNCGeneCatalogStreamer.from_path(out)
 
     assert streamer.map_from_hgnc([], "ensembl_gene_id") == {}
+
+
+@pytest.mark.hail
+def test_quoted_multivalue_fields_are_unquoted_before_splitting(hail_session, tmp_path):
+    """Regression: the real HGNC dump QUOTES multi-value fields; the fixture does not.
+
+    ``hgnc_complete_set.txt`` writes e.g. ``prev_symbol`` as ``"H1F4|HIST1H1E"``. Splitting
+    on ``|`` without stripping the quotes yields ``['"H1F4', 'HIST1H1E"']`` -- every first
+    and last element carries a stray quote, so ``prev_symbols``/``alias_symbols`` lookups
+    for the clean symbol miss and the gene silently fails to map. The committed fixture
+    has zero quotes, which is why this never surfaced.
+
+    Real-world impact this reproduces: HIST1H1E (previous symbol of H1-4) did not resolve,
+    so 5 CHD cohort genes dropped out at mapping time. ``uniprot_ids`` and ``gene_group``
+    are corrupted the same way.
+    """
+    import hail as hl
+    from hvantk.skills.hgnc.builder import build_hgnc_gene_lookup
+
+    header = (
+        "hgnc_id\tsymbol\tname\tlocus_group\tlocus_type\tstatus\tlocation\t"
+        "location_sortable\talias_symbol\talias_name\tprev_symbol\tprev_name\t"
+        "gene_group\tgene_group_id\tdate_approved_reserved\tdate_symbol_changed\t"
+        "date_name_changed\tdate_modified\tentrez_id\tensembl_gene_id\tvega_id\t"
+        "ucsc_id\tena\trefseq_accession\tccds_id\tuniprot_ids\n"
+    )
+    # Quoted exactly as the real dump writes them.
+    row = (
+        "HGNC:4718\tH1-4\tH1.4 linker histone\tprotein-coding gene\t"
+        "gene with protein product\tApproved\t6p22.2\t06p22.2\t"
+        '"H1.4|H1e"\t\t"H1F4|HIST1H1E"\t\t"grp1|grp2"\t"1|2"\t\t\t\t\t\t'
+        'ENSG00000168298\t\t\t\t\t\t"P10412|Q4VB24"\n'
+    )
+    src = tmp_path / "hgnc_quoted.tsv"
+    src.write_text(header + row)
+
+    builder = phase_b_snapshot_adapter(build_hgnc_gene_lookup, "hgnc:lookup")
+    out = str(tmp_path / "hgnc.ht")
+    builder(input_path=Path(src).resolve().as_uri(), output_path=out)
+    r = hl.read_table(out).collect()[0]
+
+    assert list(r.prev_symbols) == ["H1F4", "HIST1H1E"], list(r.prev_symbols)
+    assert list(r.alias_symbols) == ["H1.4", "H1e"], list(r.alias_symbols)
+    assert list(r.uniprot_ids) == ["P10412", "Q4VB24"], list(r.uniprot_ids)
+    assert list(r.gene_group) == ["grp1", "grp2"], list(r.gene_group)
