@@ -353,3 +353,39 @@ def test_prepare_matrix_source_collapses_symbol_collisions_onto_one_gene(hail_se
     assert prepared.distinct().count() == 1
     d = {r.gene_id: r.asp_cm_spec for r in prepared.collect()}
     assert d["ENSG_T"] == pytest.approx(1.0)  # max(1.0 CM-specific, 0.5 ubiquitous)
+
+
+def test_prepare_source_accepts_uniprot_id_key():
+    """A uniprot_id-keyed gene-level source must reach the mapper, not be rejected early.
+
+    `insider:interfaces` is protein-keyed: the reduction is per UniProt accession, and
+    `GeneIdMapper.from_uniprot_ids` maps accession -> hgnc_id -> ensembl_gene_id. The
+    id-space dispatch in `_resolve_to_gene_id` already handles it; this guards the guard
+    in `prepare_source`, which listed the accepted keys separately and so silently
+    excluded the space the schema advertises.
+    """
+    import pytest
+
+    from hvantk.algorithms.annotation.prepare import prepare_source
+    from hvantk.algorithms.annotation.spec import SourceEntry
+
+    entry = SourceEntry(
+        axis="ppi",
+        source="insider:interfaces",
+        key="uniprot_id",
+        columns=("n_partners",),
+    )
+    # No hgnc streamer -> must fail on the MISSING STREAMER, not on the key space.
+    with pytest.raises(ValueError, match="needs the HGNC streamer"):
+        prepare_source(object(), [], entry, hgnc=None)
+
+
+def test_prepare_source_still_rejects_an_unknown_key_space():
+    import pytest
+
+    from hvantk.algorithms.annotation.prepare import prepare_source
+    from hvantk.algorithms.annotation.spec import SourceEntry
+
+    entry = SourceEntry(axis="x", source="s", key="refseq_id", columns=("c",))
+    with pytest.raises(ValueError, match="declares key"):
+        prepare_source(object(), [], entry, hgnc=object())

@@ -19,6 +19,11 @@ from hvantk.algorithms.annotation.mapping import GeneIdMapper, MappingRateError
 
 logger = logging.getLogger(__name__)
 
+# Gene-level key spaces a prepared source may declare. Single source of truth for the
+# guard below; `_resolve_to_gene_id` dispatches the same set, and the feature-spec schema
+# advertises it. Keep the three in step -- they drifted once already.
+_GENE_KEY_SPACES = ("gene_id", "hgnc_id", "symbol", "uniprot_id")
+
 
 def prepare_source(source_ht, spine_gene_ids, entry, *, hgnc=None):
     """Map ``source_ht`` onto the spine and select ``entry.columns``.
@@ -42,9 +47,12 @@ def prepare_source(source_ht, spine_gene_ids, entry, *, hgnc=None):
     import hail as hl
 
     key = entry.key
-    if key not in ("gene_id", "hgnc_id", "symbol"):
+    # Keep in step with the schema's key enum and `_resolve_to_gene_id`'s dispatch --
+    # this listed the accepted spaces a third time and so silently excluded uniprot_id,
+    # which both the schema and the mapper already supported.
+    if key not in _GENE_KEY_SPACES:
         raise ValueError(
-            f"prepare_source supports gene_id, hgnc_id, symbol keys; entry "
+            f"prepare_source supports {', '.join(_GENE_KEY_SPACES)} keys; entry "
             f"{entry.source!r} declares key {key!r}"
         )
     if key != "gene_id" and hgnc is None:
