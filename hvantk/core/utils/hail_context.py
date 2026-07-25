@@ -39,6 +39,32 @@ _HAIL_INITIALIZED = False
 _HAIL_INIT_ARGS: Dict[str, Any] = {}
 
 
+def _hail_already_initialized() -> bool:
+    """Whether a Hail backend exists, WITHOUT creating one.
+
+    ``hl.current_backend()`` looks like the natural probe but is not a predicate: it
+    resolves through ``Env.hc()``, which calls ``hl.init()`` with defaults when no
+    backend exists (printing "Initializing Hail with default parameters..."). Used as a
+    guard it is self-fulfilling -- it starts Hail with the wrong settings, then reports
+    "already running", so the caller's kwargs are dropped on the floor.
+
+    That silently disabled ``init_hail(tmp_dir=..., local_tmpdir=...)`` in every fresh
+    process. On a multi-node Spark cluster the consequence is not cosmetic: Hail spills
+    to node-local ``/tmp``, and executors on other nodes fail with
+    ``FileNotFoundException: file:/tmp/aggregate_intermediates/...``.
+
+    Hail exposes no public "is initialized" predicate, so this reads ``Env._hc``
+    directly. It is a plain attribute check with no side effects, which is exactly the
+    property the guard needs.
+    """
+    try:
+        from hail.utils.java import Env
+
+        return Env._hc is not None
+    except Exception:  # pragma: no cover - hail missing or internals moved
+        return False
+
+
 def hail_initialized() -> bool:
     return _HAIL_INITIALIZED
 
@@ -87,12 +113,9 @@ def init_hail(**kwargs) -> None:
         # — e.g. a raw hl.init() in a notebook or a test fixture. Calling
         # hl.init() again raises Hail's "already initialized" error, so adopt
         # the existing session instead of re-initializing.
-        try:
-            hl.current_backend()
-            already_running = True
-        except Exception:
-            already_running = False
-        if already_running:
+        # NB: probe with _hail_already_initialized(), never hl.current_backend() —
+        # the latter CREATES a default-configured backend rather than reporting one.
+        if _hail_already_initialized():
             _HAIL_INITIALIZED = True
             # The kwargs were NOT applied (Hail was initialized elsewhere), so
             # record an empty dict rather than the requested kwargs — keeps
