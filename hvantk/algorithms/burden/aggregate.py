@@ -12,8 +12,6 @@ only does the distributed per-sample counting and the fail-loud input contract.
 """
 from __future__ import annotations
 
-import logging
-
 try:
     import hail as hl
 except ModuleNotFoundError as exc:  # pragma: no cover - depends on env
@@ -27,8 +25,6 @@ from hvantk.algorithms.burden.checks import (
     check_key_space,
     check_carrier_mode,
 )
-
-logger = logging.getLogger(__name__)
 
 
 def _require_hail() -> None:
@@ -174,7 +170,11 @@ def variant_reductions(
     carrier_mode,
     score_field: str | None = None,
 ):
-    """Per-(gene,route) reduction inputs from per-variant arm carrier counts."""
+    """Per-(gene,route) reduction inputs from per-variant arm carrier counts.
+
+    Note: ``ctrl_freq`` (below) is the control-CARRIER frequency of a variant
+    (distinct control carriers / control samples), not an allele frequency.
+    """
     _require_hail()
     if _is_array(mt[route_field]):
         mt = mt.explode_rows(mt[route_field])
@@ -190,6 +190,8 @@ def variant_reductions(
         _n_ctrl_carr=hl.agg.count_where(carr & ~mt[arm_field]),
         _score=score,
     )
+    # _ctrl_freq is the control-carrier frequency (carriers / control samples), not
+    # an allele frequency -- see `variant_reductions` docstring.
     mt = mt.annotate_rows(_ctrl_freq=mt._n_ctrl_carr / n_ctrl if n_ctrl else 0.0)
     rows = mt.rows()
     grouped = rows.group_by(gene=rows[gene_field], route=rows[route_field]).aggregate(

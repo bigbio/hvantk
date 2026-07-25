@@ -36,6 +36,10 @@ def pick_min_p(fisher_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _driver_af(drivers) -> float:
+    # "af" here is the control-CARRIER frequency (carriers / control samples) of the
+    # max-case-carrier ("cc") driver variant, not an allele frequency; the exact
+    # allele-vs-carrier semantics are pinned by the CHD reproduction gate -- do not
+    # change without re-running it.
     if not isinstance(drivers, (list, np.ndarray)) or len(drivers) == 0:
         return float("nan")
     top = max(drivers, key=lambda d: d["cc"])

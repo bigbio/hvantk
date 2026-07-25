@@ -78,6 +78,36 @@ def test_carrier_modes_value():
     assert CARRIER_MODES == ("het", "hom", "chet", "homs_chet")
 
 
+def test_required_fields_missing_locus_names_it():
+    with pytest.raises(
+        ValueError,
+        match="variant key field 'locus' not found in MatrixTable row fields",
+    ):
+        check_required_fields(
+            row_fields=["alleles", "SYMBOL", "csq_group"],
+            entry_fields=["GT"],
+            col_fields=["s", "is_case"],
+            gene_col="SYMBOL",
+            route_col="csq_group",
+            arm_col="is_case",
+        )
+
+
+def test_required_fields_missing_alleles_names_it():
+    with pytest.raises(
+        ValueError,
+        match="variant key field 'alleles' not found in MatrixTable row fields",
+    ):
+        check_required_fields(
+            row_fields=["locus", "SYMBOL", "csq_group"],
+            entry_fields=["GT"],
+            col_fields=["s", "is_case"],
+            gene_col="SYMBOL",
+            route_col="csq_group",
+            arm_col="is_case",
+        )
+
+
 def test_required_fields_missing_route_names_it():
     with pytest.raises(
         ValueError, match="route column 'csq_group' not found in MatrixTable row fields"

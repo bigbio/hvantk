@@ -32,6 +32,11 @@ def check_required_fields(
     route_col: str,
     arm_col: str,
 ) -> None:
+    for req in ("locus", "alleles"):
+        if req not in row_fields:
+            raise ValueError(
+                f"variant key field {req!r} not found in MatrixTable row fields {row_fields}"
+            )
     if gene_col not in row_fields:
         raise ValueError(
             f"gene column {gene_col!r} not found in MatrixTable row fields {row_fields}"
