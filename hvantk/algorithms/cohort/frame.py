@@ -85,7 +85,15 @@ def _read_table(manifest, *, raw: bool = False) -> pd.DataFrame:
     """
     delimiter = detect_delimiter(manifest.table)
     compression = "gzip" if is_compressed(manifest.table) else None
-    read_kwargs = {"dtype": str, "keep_default_na": False} if raw else {}
+    # Non-raw: force the key column to str so an all-numeric gene key (e.g. bare HGNC
+    # numeric ids) is not inferred as int64 -- an int64 "gene" silently produces an
+    # all-null left merge against string-keyed consumers. NA-token coercion still runs
+    # (keep_default_na defaults True), so a key literally spelled "NA" is still caught.
+    read_kwargs = (
+        {"dtype": str, "keep_default_na": False}
+        if raw
+        else {"dtype": {manifest.key_column: str}}
+    )
     df = pd.read_csv(
         manifest.table, sep=delimiter, compression=compression, **read_kwargs
     )
@@ -213,7 +221,7 @@ def load_cohort_frame(manifest, *, include_prior: bool = True) -> pd.DataFrame:
 
     cols = manifest.declared_columns() if include_prior else manifest.axis_columns()
     declared = [c for c in cols if c != manifest.key_column]
-    frame = df[[manifest.key_column] + declared].rename(
+    frame = df[[manifest.key_column, *declared]].rename(
         columns={manifest.key_column: "gene"}
     )
     return frame.reset_index(drop=True)

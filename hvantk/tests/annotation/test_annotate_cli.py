@@ -45,6 +45,13 @@ def test_parse_prepared_option_rejects_an_empty_axis_or_path():
         _parse_prepared_option(("constraint=",))
 
 
+def test_parse_prepared_option_rejects_a_duplicate_axis():
+    # A repeated axis must not silently last-win -- a typo'd repeat would otherwise
+    # quietly compose the wrong table.
+    with pytest.raises(click.UsageError, match="twice"):
+        _parse_prepared_option(("constraint=/tmp/a.ht", "constraint=/tmp/b.ht"))
+
+
 # --------------------------------------------------------------------------
 # _validate_prepared_axes -- pure Python, no Hail
 # --------------------------------------------------------------------------

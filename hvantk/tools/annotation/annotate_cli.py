@@ -142,6 +142,11 @@ def _parse_prepared_option(values: tuple[str, ...]) -> dict[str, str]:
             raise click.UsageError(
                 f"--prepared value {value!r} is malformed; expected axis=path"
             )
+        if axis in prepared_paths:
+            raise click.UsageError(
+                f"--prepared given twice for axis {axis!r} "
+                f"({prepared_paths[axis]!r} then {path!r}); pass each axis once"
+            )
         prepared_paths[axis] = path
     return prepared_paths
 

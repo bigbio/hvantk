@@ -124,8 +124,9 @@ def _carrier_variant_expr(mt, carrier_mode: str):
     check_carrier_mode(carrier_mode)
     if carrier_mode == "hom":
         return mt.GT.is_hom_var()
-    # het / chet / homs_chet all count a het genotype as a carrier at the variant level;
-    # chet vs homs_chet only change the *gene-level* qualifies rule (qualifies_expr).
+    # het and chet count only a het genotype as a variant-level carrier; homs_chet also
+    # counts a hom-var genotype (het | hom_var), matching qualifies_expr's homs_chet union
+    # rule. (het vs chet then differ only in the *gene-level* qualifies rule.)
     return (
         mt.GT.is_het() | mt.GT.is_hom_var()
         if carrier_mode == "homs_chet"

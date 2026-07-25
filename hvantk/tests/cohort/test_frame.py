@@ -230,6 +230,20 @@ def test_load_cohort_frame_accepts_a_gene_key_literally_named_zero(tmp_path):
     assert set(frame["gene"]) == {"0", "B"}
 
 
+def test_load_cohort_frame_keeps_an_all_numeric_gene_key_as_string(tmp_path):
+    # An all-numeric gene column (e.g. bare HGNC numeric ids) must not be inferred as
+    # int64: an int64 "gene" silently produces an all-null merge against string-keyed
+    # consumers. The key column is read as str so the values stay strings.
+    p = tmp_path / "cohort.tsv"
+    _write_tsv(p, ["gene", "minp"], [("100", 0.01), ("200", 0.20)])
+    m = _manifest(p, prior_col="minp")
+
+    frame = load_cohort_frame(m)
+
+    assert frame["gene"].dtype == object
+    assert frame["gene"].tolist() == ["100", "200"]
+
+
 def test_load_cohort_frame_raises_on_empty_gene_keys_and_counts_them(tmp_path):
     # Finding 7 (whole-branch review): value_counts() drops NaN by default, so blank
     # gene cells used to sail through the duplicate check, enter the frame as NaN
