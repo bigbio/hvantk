@@ -239,6 +239,9 @@ def burden_cmd(
     import hail as hl
 
     from hvantk.algorithms.burden.pipeline import run_from_mt
+    from hvantk.core.utils.hail_context import init_hail
+
+    init_hail()
 
     mt = hl.read_matrix_table(mt_path)
     try:

@@ -82,7 +82,7 @@ def test_assert_clean_mt_rejects_multiallelic():
     # with the gene/route/arm/GT fields assert_clean_mt requires.
     mt = hl.utils.range_matrix_table(n_rows=1, n_cols=1)
     mt = mt.annotate_rows(
-        locus=hl.locus("1", 400, reference_genome="GRCh38"),
+        locus=hl.locus("chr1", 400, reference_genome="GRCh38"),
         alleles=["A", "C", "G"],
         SYMBOL="GENEC",
         csq_group="lof",
