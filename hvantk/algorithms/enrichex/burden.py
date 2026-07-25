@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 if TYPE_CHECKING:
     import numpy as np
     import pandas as pd
+
     # Artifact types — used only in string annotations for the Phase P
     # artifact-typed wrappers. Imported under TYPE_CHECKING so flake8 sees
     # the names; the wrappers themselves import lazily inside the function
@@ -41,6 +42,7 @@ except ModuleNotFoundError as exc:  # pragma: no cover - depends on env
 else:
     _HAIL_IMPORT_ERROR = None
 
+from hvantk.algorithms.burden.aggregate import build_per_gene_carrier_mt
 from hvantk.algorithms.enrichex.constants import (
     DEFAULT_AF_FIELD,
     DEFAULT_CONSEQUENCE_FIELD,
@@ -230,12 +232,8 @@ def compute_per_gene_burden_mt(
     # Filter to rows with gene annotation
     mt = mt.filter_rows(hl.is_defined(mt[gene_field]))
 
-    # Aggregate variants -> genes per sample
-    mt_genes = mt.group_rows_by(mt[gene_field]).aggregate(
-        hets=hl.agg.count_where(mt.GT.is_het()),
-        homs=hl.agg.count_where(mt.GT.is_hom_var()),
-        multi_het=hl.agg.count_where(mt.GT.is_het()) >= 2,
-    )
+    # Aggregate variants -> genes per sample (shared primitive; identical schema)
+    mt_genes = build_per_gene_carrier_mt(mt, gene_field=gene_field)
 
     n_genes = mt_genes.count_rows()
     logger.info("  %d unique genes after aggregation", n_genes)
@@ -404,9 +402,7 @@ def compute_geneset_burden_mt(
     # No-op for the canonical pipeline (parse_geneset_tsv already dedups); this
     # only affects callers passing raw, duplicate-containing lists, where the
     # deduped membership would otherwise disagree with len()-based sizes.
-    gene_sets = {
-        name: list(dict.fromkeys(genes)) for name, genes in gene_sets.items()
-    }
+    gene_sets = {name: list(dict.fromkeys(genes)) for name, genes in gene_sets.items()}
 
     # Pre-filter gene sets by minimum size
     if min_gene_set_size > 0:
