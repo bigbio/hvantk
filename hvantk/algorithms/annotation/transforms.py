@@ -52,8 +52,21 @@ def _max_over_dict(dict_expr):
     return hl.max(dict_expr.values())
 
 
-# Named transcript-dict reducers (``aggregate.reduce``). Default ``max``.
-REDUCERS = {"max": _max_over_dict}
+def _identity(col_expr):
+    """Pass a score column through unchanged, for sources that are not dbNSFP-shaped.
+
+    dbNSFP broadcasts each score across a variant's transcripts, so its score columns are
+    ``dict<transcript_id, float>`` and need reducing to one scalar per row. Most other
+    row-level sources carry a plain scalar already -- a UniProt PTM site has one
+    ``n_observations``, a GTEx eQTL pair one ``slope`` -- and ``max`` would fail on them,
+    because ``hl.max(col.values())`` requires a dict.
+    """
+    return col_expr
+
+
+# Named per-row score reducers (``aggregate.reduce``). Default ``max`` for dbNSFP's
+# transcript dicts; ``identity`` for sources whose score columns are already scalars.
+REDUCERS = {"max": _max_over_dict, "identity": _identity}
 
 
 def _agg_for(token, col):

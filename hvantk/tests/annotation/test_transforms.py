@@ -151,3 +151,65 @@ def test_stop_gain_and_stop_loss_are_excluded(hail_session):
     missense = ht.filter(PREDICATES["missense"](ht))
     # v3 (aaalt == "X") is the only non-missense row.
     assert missense.count() == 2
+
+
+def _scalar_ht():
+    """A row-level source whose score columns are already scalars, not transcript dicts.
+
+    dbNSFP broadcasts each score across a variant's transcripts, so its columns are
+    ``dict<transcript_id, float>``. Most other row-level sources are not shaped that way:
+    a UniProt PTM site has one ``n_observations``, a GTEx eQTL pair one ``slope``. Two
+    sites/pairs per group here so the group_by has something to reduce.
+    """
+    import hail as hl
+
+    rows = [
+        {"uniprot_id": "P00001", "n_observations": 4, "score": 0.2},
+        {"uniprot_id": "P00001", "n_observations": 10, "score": 0.8},
+        {"uniprot_id": "P00002", "n_observations": 1, "score": 0.5},
+    ]
+    return hl.Table.parallelize(
+        rows,
+        hl.tstruct(uniprot_id=hl.tstr, n_observations=hl.tint32, score=hl.tfloat64),
+        key=["uniprot_id"],
+    )
+
+
+@pytest.mark.hail
+def test_identity_reduce_supports_sources_with_scalar_score_columns(hail_session):
+    """``reduce: identity`` lets a non-dbNSFP source through the aggregate path.
+
+    The default ``max`` reducer calls ``.values()`` on each score column, which only
+    exists on a dict. Without an identity reducer the whole aggregate path is unusable
+    for any source that is not shaped like dbNSFP -- PTM density, GTEx eQTL and pQTL all
+    hit this.
+    """
+    from hvantk.algorithms.annotation.spec import AggregateSpec, ScoreSpec
+    from hvantk.algorithms.annotation.transforms import aggregate_to_gene
+
+    spec = AggregateSpec(
+        by="uniprot_id",
+        to="uniprot_id",
+        reduce="identity",
+        count_name="n_ptm_sites",
+        scores=(ScoreSpec("obs", "n_observations", ("mean", "max")),
+                ScoreSpec("sc", "score", ("max",))),
+    )
+    grouped = aggregate_to_gene(_scalar_ht(), spec)
+    assert set(grouped.row) == {"uniprot_id", "obs_mean", "obs_max", "sc_max",
+                                "n_ptm_sites"}
+    d = {r.uniprot_id: r for r in grouped.collect()}
+    assert d["P00001"].n_ptm_sites == 2
+    assert d["P00001"].obs_max == 10
+    assert d["P00001"].obs_mean == pytest.approx(7.0)
+    assert d["P00001"].sc_max == pytest.approx(0.8)
+    assert d["P00002"].n_ptm_sites == 1
+
+
+def test_identity_reducer_is_registered():
+    """Fast (no-Hail) guard that the token exists, so a spec typo fails loudly."""
+    from hvantk.algorithms.annotation.transforms import REDUCERS
+
+    assert "identity" in REDUCERS
+    sentinel = object()
+    assert REDUCERS["identity"](sentinel) is sentinel
