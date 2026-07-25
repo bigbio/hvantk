@@ -100,3 +100,39 @@ def univariate_filter(X, y, columns, q: float = 0.10):
         s = stats[col]
         stats[col] = UnivariateStat(s.auc, s.z, s.p, True, s.n_pos, s.n_neg)
     return stats
+
+
+def redundancy_filter(X, columns, scores, max_rho: float = 0.75):
+    """Drop columns that duplicate a stronger sibling WITHIN the same axis.
+
+    Greedy in descending univariate strength: walk the columns best-first and drop any
+    whose |Spearman rho| against an already-kept column reaches ``max_rho``. The 0.75
+    default is the correlation-matrix cutoff from the reference workflow.
+
+    Spearman, not Pearson: these predictors are monotonically but not linearly related
+    (rankscore vs phred vs raw), so a linear coefficient would understate the redundancy.
+
+    Deliberately WITHIN-axis only. An axis that duplicates the baseline axis is not pruned
+    here -- the per-axis delta-AUC exists to reveal exactly that, and pruning it first
+    would hide the finding.
+    """
+    import pandas as pd
+
+    ordered = sorted(columns, key=lambda c: -abs(scores.get(c, 0.0)))
+    kept: list[str] = []
+    dropped: dict[str, str] = {}
+    for col in ordered:
+        redundant_with = None
+        for k in kept:
+            pair = X[[col, k]].dropna()
+            if len(pair) < 3:
+                continue
+            rho = pair[col].corr(pair[k], method="spearman")
+            if pd.notna(rho) and abs(rho) >= max_rho:
+                redundant_with = k
+                break
+        if redundant_with is None:
+            kept.append(col)
+        else:
+            dropped[col] = f"redundant_with:{redundant_with}"
+    return kept, dropped

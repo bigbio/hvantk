@@ -150,3 +150,47 @@ def test_bh_admits_more_weak_signals_than_a_fixed_bonferroni_bound():
     bonferroni_passed = sum(1 for s in testable if s.p <= q / m)
 
     assert bh_passed > bonferroni_passed
+
+
+def test_redundancy_keeps_the_stronger_member_of_a_correlated_pair():
+    """Greedy by univariate strength: the better feature survives, the other is named."""
+    import numpy as np
+    import pandas as pd
+
+    from hvantk.algorithms.rerank.selection import redundancy_filter
+
+    rng = np.random.default_rng(1)
+    base = rng.normal(0, 1, 500)
+    X = pd.DataFrame({"strong": base, "copy": base * 3.0 + 1.0, "other": rng.normal(0, 1, 500)})
+    kept, dropped = redundancy_filter(
+        X, ["strong", "copy", "other"], {"strong": 0.30, "copy": 0.10, "other": 0.20}, 0.75
+    )
+    assert "strong" in kept and "other" in kept
+    assert "copy" not in kept
+    assert dropped["copy"] == "redundant_with:strong"
+
+
+def test_redundancy_uses_spearman_so_monotone_rescaling_still_collapses():
+    """These scores are monotonically but not linearly related; Pearson would miss it."""
+    import numpy as np
+    import pandas as pd
+
+    from hvantk.algorithms.rerank.selection import redundancy_filter
+
+    rng = np.random.default_rng(2)
+    base = rng.uniform(0.1, 5.0, 400)
+    X = pd.DataFrame({"a": base, "b": np.exp(base)})
+    kept, _ = redundancy_filter(X, ["a", "b"], {"a": 0.30, "b": 0.20}, 0.75)
+    assert kept == ["a"]
+
+
+def test_uncorrelated_columns_all_survive():
+    import numpy as np
+    import pandas as pd
+
+    from hvantk.algorithms.rerank.selection import redundancy_filter
+
+    rng = np.random.default_rng(3)
+    X = pd.DataFrame({c: rng.normal(0, 1, 300) for c in "abc"})
+    kept, dropped = redundancy_filter(X, list("abc"), {c: 0.1 for c in "abc"}, 0.75)
+    assert set(kept) == set("abc") and dropped == {}
