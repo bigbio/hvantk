@@ -9,6 +9,7 @@ from hvantk.algorithms.cohort.spec import CohortManifest
 
 if TYPE_CHECKING:
     from hvantk.algorithms.rerank.audit import Audit
+    from hvantk.algorithms.rerank.selection import SelectionPolicy
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +108,16 @@ class Config:
     """Minimum fraction of label-positive units that must appear in the feature matrix.
     Set to 0.0 for intentional cross-disease transfer configs where labels come from a
     different gene universe (e.g. NDD labels scored against a CHD feature matrix)."""
+    selection: Optional["SelectionPolicy"] = None
+    """Feature-selection policy. None (default) disables selection entirely and reproduces
+    the pre-selection code path exactly."""
+    feature_provenance: Optional[dict] = None
+    """column -> frozenset of sources the predictor was trained on, or None if undeclared.
+    None for the whole dict means provenance is unavailable: a single 'all' arm is run."""
+    label_provenance: frozenset = frozenset()
+    """Sources the LABELS were derived from. Circularity is a property of the pair --
+    REVEL against a ClinGen-derived label is badly circular; against a purely
+    burden-derived one it is far less so -- so neither half means anything alone."""
 
     def __post_init__(self):
         if self.audit is None:
