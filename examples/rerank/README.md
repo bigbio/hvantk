@@ -107,9 +107,12 @@ Two properties are worth understanding before reading any number this produces:
 - **Selection re-runs inside every cross-validation fold**, on the training slice only.
   Selecting once on the whole matrix and then cross-validating the survivors inflates the
   result — on pure noise that alone yields AUC ≈ 0.58 instead of 0.50, which is why
-  `hvantk/tests/rerank/test_selection_nesting.py` exists and must never be relaxed. The
-  global-pass AUC is still reported, as `SelectionSummary.auc_global`, so the size of that
-  bias is a measured number for your cohort rather than an assumption.
+  `hvantk/tests/rerank/test_selection_nesting.py` exists and must never be relaxed.
+  `SelectionSummary.auc_global` reports what the global pass would have claimed, but treat
+  `auc_global − auc_nested` as a stability diagnostic, not as a bias estimate: the global
+  pass both sees every label (inflating it) and forces one feature set on every fold
+  (which can hurt it), so the gap has no guaranteed sign. On the real CHD cohort it is
+  **+0.0098 on the `all` arm and −0.0100 on `clean`** — same data, same policy.
 - **`clean` is always the headline.** Statistical filtering cannot detect circularity; it
   rewards it. `all` exists only to quantify the channel, and it bundles both conflicted and
   undeclared columns — `n_conflicted` and `n_unknown` keep those separate.

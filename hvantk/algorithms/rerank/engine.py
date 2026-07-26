@@ -13,10 +13,18 @@ from hvantk.algorithms.rerank.evaluator import Evaluator, EvalResult
 class SelectionSummary:
     """What feature selection did, for one arm of one run.
 
-    ``auc_global`` is deliberately reported next to ``auc_nested`` rather than instead of
-    it. The global pass selects once on all the data, so its AUC is optimistically biased;
-    the gap between the two is a MEASURED estimate of that selection bias for this cohort,
-    which is worth more than assuming it is small. ``auc_nested`` is the headline.
+    ``auc_nested`` is the headline. ``auc_global`` is reported next to it, never instead of
+    it: the global pass selects once on all the data, so its estimate is contaminated by
+    label exposure.
+
+    Read the gap as a diagnostic, NOT as a bias estimate. It is the difference between two
+    estimators that differ in two ways at once -- the global one has seen every label
+    (which inflates it), and it also commits every fold to a single feature set instead of
+    one fitted per fold (which can help or hurt). Those pull in opposite directions and the
+    sum has no guaranteed sign. Measured on the real CHD cohort (1362 genes, 51 features):
+    +0.0098 on the `all` arm but -0.0100 on `clean`, from the same data and the same
+    policy. A large gap in either direction says the selection is unstable on this cohort;
+    a small one says little.
     """
 
     arm: str
