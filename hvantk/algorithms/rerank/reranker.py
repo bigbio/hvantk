@@ -18,8 +18,33 @@ class ReRanker:
         self.calibration = calibration
         self.folds = folds
 
-    def score(self, matrix, feat_cols, y):
-        X = matrix[feat_cols].values
+    def score(self, matrix, feat_cols, y, selector=None):
+        """Out-of-fold calibrated probabilities.
+
+        With ``selector`` given, feature selection re-runs inside every fold on the
+        TRAINING slice only. The fold loop is explicit because ``cross_val_predict``
+        cannot express per-fold feature selection -- it takes a fixed design matrix.
+
+        With ``selector=None`` this is the original single ``cross_val_predict`` call and
+        the output is unchanged.
+        """
+        y = np.asarray(y)
         cv = StratifiedKFold(self.folds, shuffle=True, random_state=42)
-        clf = CalibratedClassifierCV(_gbm(), method=self.calibration, cv=self.folds)
-        return cross_val_predict(clf, X, y, cv=cv, method="predict_proba")[:, 1]
+        if selector is None:
+            X = matrix[feat_cols].values
+            clf = CalibratedClassifierCV(_gbm(), method=self.calibration, cv=self.folds)
+            return cross_val_predict(clf, X, y, cv=cv, method="predict_proba")[:, 1]
+
+        oof = np.full(len(y), np.nan)
+        for train_idx, test_idx in cv.split(matrix[feat_cols].values, y):
+            X_tr = matrix.iloc[train_idx]
+            cols = list(selector(X_tr, y[train_idx], list(feat_cols)))
+            if not cols:
+                # Nothing survived on this fold: predict the training prevalence rather
+                # than crash. A fold that selects nothing is information, not an error.
+                oof[test_idx] = y[train_idx].mean()
+                continue
+            clf = CalibratedClassifierCV(_gbm(), method=self.calibration, cv=self.folds)
+            clf.fit(X_tr[cols].values, y[train_idx])
+            oof[test_idx] = clf.predict_proba(matrix.iloc[test_idx][cols].values)[:, 1]
+        return oof
