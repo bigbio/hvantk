@@ -148,3 +148,30 @@ def test_clean_arm_refuses_to_run_when_every_column_conflicts(tmp_path):
 
     with pytest.raises(ValueError, match="clean"):
         rerank_arms(cfg)
+
+
+def test_column_missing_from_the_provenance_map_is_undeclared_not_deleted(tmp_path):
+    """An axis nobody declared must land in `all` as unknown -- never silently vanish.
+
+    Omission and an explicit None mean the same thing per the plugin contract: usable,
+    never clean. If an undeclared column were dropped from both arms instead, adding an
+    axis and forgetting to declare it would quietly change the headline with nothing in
+    the output to show a column had gone missing.
+    """
+    from hvantk.algorithms.rerank.engine import rerank_arms
+    from hvantk.algorithms.rerank.selection import SelectionPolicy
+
+    cfg = _cfg(
+        tmp_path,
+        selection=SelectionPolicy(wrapper="none"),
+        # c2 and REVEL_rankscore are simply absent from the map
+        feature_provenance={"c1": frozenset()},
+        label_provenance=frozenset({"GenCC"}),
+        min_label_coverage=0.0,
+    )
+
+    arms = rerank_arms(cfg)
+
+    assert arms["all"].selection.n_unknown == 2
+    assert "REVEL_rankscore" in arms["all"].selection.global_features.get("trained", ())
+    assert "trained" not in arms["clean"].selection.global_features

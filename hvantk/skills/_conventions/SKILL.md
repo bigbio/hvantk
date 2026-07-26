@@ -105,6 +105,29 @@ datasets:
 
 `get_registry().get_dataset("hgnc:lookup")` returns the executable `DatasetSpec` (callables resolved lazily); top-level builds run through `run_builder_for_spec`. No `registry.py` edit and no `_apply_plugin_registrations` step is involved.
 
+### Optional: `scores:` — per-predictor training provenance
+
+A dataset that ships *predictor* columns (a pathogenicity score, a trained metric) may declare what each one was fit on:
+
+```yaml
+    scores:
+      phyloP100way_vertebrate_rankscore: {trained_on: []}
+      CADD_raw_rankscore:                {trained_on: [simulated]}
+      REVEL_rankscore:                   {trained_on: [HGMD, ClinVar]}
+```
+
+The plugin author declares this **once**, because circularity is a property of the data, not of any one analysis — a predictor trained on ClinVar will correlate with a ClinGen-derived label partly because it was trained on genes like those, and no statistical filter can detect that (filtering *rewards* it). Downstream consumers inherit the declaration instead of re-reviewing dozens of scores per cohort; `hvantk`'s rerank uses it to split a run into `clean` and `all` arms and report the gap.
+
+Three states, and the difference matters:
+
+| `trained_on` | meaning |
+|---|---|
+| `[]` | fit on nothing label-derived (e.g. pure conservation) — never conflicts |
+| `[SourceA, …]` | fit on those sources; conflicts with a label derived from any of them |
+| score omitted | **unknown**, treated conservatively — usable, but never counted as clean |
+
+Source names are free strings; consumers compare them through an equivalence map (`ClinVar`, `ClinGen`, `GenCC`, `HGMD`, `OMIM` are all curated disease databases and conflict with one another). Declare the sources as the authors describe them and let the consumer's map do the grouping. `scores:` is optional — a dataset with no trained predictors should omit it entirely rather than declare an empty block.
+
 ## 7. CLI command pattern
 
 Per-provider CLI lives in `hvantk/skills/<provider>/cli.py` (single-dataset) or `hvantk/skills/<provider>/<dataset>/cli.py` (multi-dataset). The manifest's `cli:` block registers Click commands at top-level discovery time:

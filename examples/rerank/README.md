@@ -75,6 +75,54 @@ The audit is **advisory**: flagged genes keep their score and their place in the
 The ablation CI for expression spans zero, which is the honest outcome for a small
 synthetic set — a real axis would need a real cohort to earn a claim.
 
+## Feature selection (Python API only)
+
+By default `rerank` uses every column of every axis, which is fine here (four columns)
+and unworkable for a real matrix — dbNSFP alone offers ~45 correlated predictors, and
+hand-picking a few is neither defensible nor reproducible across cohorts. Setting
+`Config.selection` turns on a declarative selection stage instead:
+
+```python
+from hvantk.algorithms.rerank.engine import rerank_arms
+from hvantk.algorithms.rerank.selection import SelectionPolicy, load_policy
+
+config.selection = SelectionPolicy()            # or: policy, equivalence = load_policy("selection.yaml")
+config.feature_provenance = {"REVEL_rankscore": frozenset({"HGMD", "ClinVar"}),
+                             "mis_z": frozenset()}
+config.label_provenance = frozenset({"ClinGen"})
+
+arms = rerank_arms(config)
+arms["clean"].metrics.auc          # the headline
+arms["all"].metrics.auc            # the same run including circular/undeclared columns
+arms["clean"].selection.frequency  # axis -> column -> folds that selected it
+```
+
+Three filters run **within each axis**, in this order: a univariate AUC screen with
+within-axis BH-FDR, a Spearman redundancy filter, then RFECV. Within-axis is what keeps a
+per-axis ΔAUC meaningful — it compares each axis's best subset against the baseline's best
+subset, so a wide axis is not penalised merely for carrying redundant columns.
+
+Two properties are worth understanding before reading any number this produces:
+
+- **Selection re-runs inside every cross-validation fold**, on the training slice only.
+  Selecting once on the whole matrix and then cross-validating the survivors inflates the
+  result — on pure noise that alone yields AUC ≈ 0.58 instead of 0.50, which is why
+  `hvantk/tests/rerank/test_selection_nesting.py` exists and must never be relaxed. The
+  global-pass AUC is still reported, as `SelectionSummary.auc_global`, so the size of that
+  bias is a measured number for your cohort rather than an assumption.
+- **`clean` is always the headline.** Statistical filtering cannot detect circularity; it
+  rewards it. `all` exists only to quantify the channel, and it bundles both conflicted and
+  undeclared columns — `n_conflicted` and `n_unknown` keep those separate.
+
+Provenance comes from the plugin manifests (`scores: {trained_on: […]}`, see
+`hvantk/skills/_conventions/SKILL.md` §6) paired with what your labels were derived from.
+Circularity is a property of the *pair*: REVEL against a ClinGen label is badly circular;
+against a purely burden-derived one, far less so.
+
+The `hvantk rerank` CLI does **not** expose this yet — `config.yaml` has no `selection:`
+key, and `build_config` does not set one, so a CLI run behaves exactly as before. Reach
+for the Python API until that wiring lands.
+
 ## Reproducibility
 
 Every stochastic step is seeded (`random_state=42` for the classifier, the cross-validation

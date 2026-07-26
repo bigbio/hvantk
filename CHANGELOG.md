@@ -4,6 +4,9 @@
 
 ### Added
 
+- Declarative feature selection for `hvantk rerank` (Python API: `Config.selection`). Three filters run within each axis — univariate AUC with within-axis BH-FDR, Spearman redundancy, then RFECV — re-fitted inside every cross-validation fold on the training slice only, so the reported ΔAUC is not inflated by selection that has seen the held-out labels. `Config.selection = None` (the default) reproduces the previous code path exactly, and the CLI is unchanged.
+- `rerank_arms(config)` runs each analysis as two arms, `clean` and `all`, over identical folds. `clean` (columns with no provenance conflict against the label source) is the headline; `all` adds conflicted and undeclared columns so the circularity channel is a measured number rather than an assumption. `RerankResult.selection` carries the per-fold selection frequency, the global-pass feature list, and both nested and global AUCs.
+- Plugin manifests may declare per-predictor training provenance: an optional `scores: {<column>: {trained_on: [...]}}` block per dataset. `hvantk/skills/dbnsfp/plugin.yaml` declares it for 47 predictors. An omitted score means unknown and is never treated as clean.
 - Plugin system for data-provider adapters. Each provider now lives in a single folder under `hvantk/skills/<provider>/` with a `plugin.yaml` manifest, builder code, drift probe, downloader CLI, and tests. The loader auto-discovers plugins from the in-tree filesystem and Python entry points.
 - `hvantk plugins {list,describe,errors,validate}` commands for inspecting the registry.
 - `hvantk drift <provider:dataset>` for upstream-drift detection against committed expected fingerprints.

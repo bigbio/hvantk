@@ -86,6 +86,12 @@ def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
             "a 'gene' column. Check the feature specs and that each axis table carries numeric "
             "columns."
         )
+    # A column the provenance map never mentions is UNDECLARED, which the contract treats
+    # exactly like an explicit None: usable, never clean. Counting it here (before the arm
+    # restriction) is what stops an axis nobody declared from silently vanishing from the
+    # run -- a dropped column would quietly move the headline with nothing to show for it.
+    if config.feature_provenance is not None:
+        _n_unknown += sum(1 for c in feat_cols if c not in config.feature_provenance)
     if _allowed_columns is not None:
         feat_cols = [c for c in feat_cols if c in _allowed_columns]
         if not feat_cols:
@@ -280,11 +286,14 @@ def rerank_arms(config) -> dict:
     assignment = resolve_arms(
         config.feature_provenance, config.label_provenance, DEFAULT_EQUIVALENCE
     )
-    arms = {"clean": assignment.clean, "all": assignment.all_columns}
+    # `all` is left unrestricted rather than set to `assignment.all_columns`: the matrix may
+    # carry columns the provenance map never mentions, and those belong in `all` (they are
+    # merely undeclared, not disqualified). `rerank` counts them into n_unknown.
+    arms = {"clean": set(assignment.clean), "all": None}
     return {
         name: rerank(
             config,
-            _allowed_columns=set(allowed),
+            _allowed_columns=allowed,
             _arm=name,
             _n_conflicted=len(assignment.conflicted),
             _n_unknown=len(assignment.unknown),
