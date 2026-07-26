@@ -19,6 +19,7 @@ which adapts to both cohort size and axis width with no per-cohort tuning.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 
@@ -234,3 +235,35 @@ def select_axis(X, y, columns, policy) -> SelectionReport:
             wrapper_ran = True
 
     return SelectionReport(tuple(kept), dropped, stats, wrapper_ran)
+
+
+_POLICY_SCHEMA_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "resources"
+    / "schemas"
+    / "selection_policy.schema.json"
+)
+
+
+def load_policy(path):
+    """Read and validate a selection policy. Returns ``(SelectionPolicy, equivalence)``.
+
+    Every field is optional: an empty document is a valid, working policy that yields the
+    defaults above. That matters because it makes the feature-selection stage adoptable
+    without anyone first having to understand the knobs.
+
+    ``equivalence`` is provenance vocabulary rather than a filter knob, so it is returned
+    alongside the policy instead of living on it -- the resolver consumes it, the filters
+    never see it.
+    """
+    import json
+
+    import jsonschema
+    import yaml
+
+    from hvantk.algorithms.rerank.provenance import DEFAULT_EQUIVALENCE
+
+    doc = yaml.safe_load(Path(path).read_text()) or {}
+    jsonschema.validate(doc, json.loads(_POLICY_SCHEMA_PATH.read_text()))
+    equivalence = doc.pop("equivalence", None) or DEFAULT_EQUIVALENCE
+    return SelectionPolicy(**doc), equivalence
