@@ -194,3 +194,139 @@ def test_uncorrelated_columns_all_survive():
     X = pd.DataFrame({c: rng.normal(0, 1, 300) for c in "abc"})
     kept, dropped = redundancy_filter(X, list("abc"), {c: 0.1 for c in "abc"}, 0.75)
     assert set(kept) == set("abc") and dropped == {}
+
+
+def test_redundancy_stronger_column_survives_regardless_of_list_order():
+    """Same fixture as `test_redundancy_keeps_the_stronger_member_of_a_correlated_pair`
+    above, but with the weaker/duplicate column listed FIRST in `columns`. All three
+    shipped fixtures happen to list the highest-scoring column first, so an
+    implementation that walks `columns` in caller-supplied order -- instead of sorting
+    by descending |score| -- passes them unnoticed. Reordering the input list must not
+    change which column survives: the greedy walk is defined over score order, never
+    list order.
+    """
+    import numpy as np
+    import pandas as pd
+
+    from hvantk.algorithms.rerank.selection import redundancy_filter
+
+    rng = np.random.default_rng(1)
+    base = rng.normal(0, 1, 500)
+    X = pd.DataFrame({"strong": base, "copy": base * 3.0 + 1.0, "other": rng.normal(0, 1, 500)})
+    kept, dropped = redundancy_filter(
+        X, ["copy", "strong", "other"], {"strong": 0.30, "copy": 0.10, "other": 0.20}, 0.75
+    )
+    assert "strong" in kept and "other" in kept
+    assert "copy" not in kept
+    assert dropped["copy"] == "redundant_with:strong"
+
+
+def test_redundancy_spearman_keeps_a_pair_pearson_would_drop():
+    """`test_redundancy_uses_spearman_so_monotone_rescaling_still_collapses` above uses
+    b = exp(a), but for that fixture Pearson(a, b) = 0.868 -- still over the 0.75
+    cutoff, so `b` is dropped whether the implementation uses Spearman or Pearson, and
+    the test cannot tell the two apart. Here the transform is steep enough that
+    Pearson(a, b) = 0.627 (clearly under cutoff, so a Pearson-based filter would keep
+    both columns) while Spearman(a, b) is exactly 1.0 (a monotone transform preserves
+    rank order perfectly, so it stays over cutoff regardless of shape). Only a
+    Spearman-based filter drops `b` here.
+    """
+    import numpy as np
+    import pandas as pd
+
+    from hvantk.algorithms.rerank.selection import redundancy_filter
+
+    rng = np.random.default_rng(4)
+    base = rng.uniform(0.1, 5.0, 400)
+    X = pd.DataFrame({"a": base, "b": np.exp(3 * base)})
+    assert X["a"].corr(X["b"], method="pearson") < 0.75
+    assert X["a"].corr(X["b"], method="spearman") >= 0.75
+
+    kept, dropped = redundancy_filter(X, ["a", "b"], {"a": 0.30, "b": 0.20}, 0.75)
+    assert kept == ["a"]
+    assert dropped["b"] == "redundant_with:a"
+
+
+def test_redundancy_tiny_overlap_is_not_declared_redundant():
+    """A sparse dbNSFP-style score can be non-null for only a handful of rows. Two
+    columns that happen to agree on their only 2 shared non-null rows are trivially
+    "perfectly correlated" -- any 2 distinct points are perfectly monotonic -- so
+    without the `len(pair) < 3` guard this reads as rho ~= 1.0 and the sparse column
+    would be wrongly discarded on the strength of two observations.
+    """
+    import numpy as np
+    import pandas as pd
+
+    from hvantk.algorithms.rerank.selection import redundancy_filter
+
+    X = pd.DataFrame(
+        {
+            "dense": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0],
+            "sparse": [10.0, 20.0, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan],
+        }
+    )
+    kept, dropped = redundancy_filter(X, ["dense", "sparse"], {"dense": 0.30, "sparse": 0.20}, 0.75)
+    assert set(kept) == {"dense", "sparse"}
+    assert dropped == {}
+
+
+def test_redundancy_checks_survivors_not_everything_walked_so_far():
+    """A-B and B-C are each over cutoff, but A-C is not. B is dropped as redundant
+    with A; by the time C is considered, B is no longer a *kept* column, so C must be
+    compared only against A (still under cutoff) and must survive. Comparing against
+    every column visited so far -- including the discarded B -- would wrongly drop C
+    too, even though C's only redundancy was with a column that itself got dropped.
+    """
+    import numpy as np
+    import pandas as pd
+
+    from hvantk.algorithms.rerank.selection import redundancy_filter
+
+    rng = np.random.default_rng(9)
+    corr = np.array(
+        [
+            [1.00, 0.80, 0.60],
+            [0.80, 1.00, 0.86],
+            [0.60, 0.86, 1.00],
+        ]
+    )
+    samples = rng.multivariate_normal(mean=[0.0, 0.0, 0.0], cov=corr, size=300)
+    X = pd.DataFrame(samples, columns=["A", "B", "C"])
+    assert X["A"].corr(X["B"], method="spearman") >= 0.75
+    assert X["B"].corr(X["C"], method="spearman") >= 0.75
+    assert X["A"].corr(X["C"], method="spearman") < 0.75
+
+    kept, dropped = redundancy_filter(X, ["A", "B", "C"], {"A": 0.30, "B": 0.20, "C": 0.10}, 0.75)
+    assert kept == ["A", "C"]
+    assert dropped == {"B": "redundant_with:A"}
+
+
+def test_redundancy_empty_columns_returns_empty():
+    """An axis can legitimately contribute zero columns to a slice after upstream
+    filtering; the filter must hand back an empty result instead of raising on an
+    empty `columns` (and the internal empty `ordered`/`kept`).
+    """
+    import pandas as pd
+
+    from hvantk.algorithms.rerank.selection import redundancy_filter
+
+    X = pd.DataFrame({"a": [1.0, 2.0, 3.0]})
+    assert redundancy_filter(X, [], {}, 0.75) == ([], {})
+
+
+def test_redundancy_missing_score_falls_back_to_zero():
+    """`scores` comes from the univariate step and may legitimately omit a column
+    (e.g. it was untestable there and never got a score). The greedy walk must still
+    place such a column instead of raising a KeyError, treating an absent score as the
+    weakest possible (0.0) rather than crashing the whole selection step.
+    """
+    import numpy as np
+    import pandas as pd
+
+    from hvantk.algorithms.rerank.selection import redundancy_filter
+
+    rng = np.random.default_rng(20)
+    X = pd.DataFrame({"a": rng.normal(0, 1, 300), "b": rng.normal(0, 1, 300)})
+    kept, dropped = redundancy_filter(X, ["a", "b"], {"a": 0.5}, 0.75)
+    assert set(kept) == {"a", "b"}
+    assert dropped == {}
