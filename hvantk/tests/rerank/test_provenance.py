@@ -94,3 +94,50 @@ def test_custom_equivalence_map_changes_the_verdict():
         {"widget": frozenset({"FooScore"})}, frozenset({"BarLabel"}), DEFAULT_EQUIVALENCE
     )
     assert clean.clean == ("widget",)
+
+
+def test_dbnsfp_declares_provenance_for_its_predictors():
+    """The plugin author declares training sources once; every consumer inherits them."""
+    from pathlib import Path
+
+    import yaml
+
+    import hvantk
+
+    manifest = Path(hvantk.__file__).parent / "skills" / "dbnsfp" / "plugin.yaml"
+    doc = yaml.safe_load(manifest.read_text())
+    scores = next(d for d in doc["datasets"] if d["name"] == "variants")["scores"]
+
+    # disease-database trained -> must be declared, else they silently reach the headline
+    assert set(scores["REVEL_rankscore"]["trained_on"]) >= {"HGMD"}
+    assert "ClinVar" in scores["MVP_rankscore"]["trained_on"]
+    # trained on simulated alleles, not curated disease sets
+    assert scores["CADD_raw_rankscore"]["trained_on"] == ["simulated"]
+    # pure conservation: nothing to conflict with
+    assert scores["phyloP100way_vertebrate_rankscore"]["trained_on"] == []
+
+
+def test_declared_dbnsfp_scores_resolve_into_arms_against_a_clinvar_label():
+    """End-to-end: the declarations actually drive the clean/all split.
+
+    Pins the join between the plugin manifest and `resolve_arms` -- a declaration that
+    parses but never reaches the resolver would be documentation, not a control.
+    """
+    from pathlib import Path
+
+    import yaml
+
+    import hvantk
+    from hvantk.algorithms.rerank.provenance import DEFAULT_EQUIVALENCE, resolve_arms
+
+    manifest = Path(hvantk.__file__).parent / "skills" / "dbnsfp" / "plugin.yaml"
+    doc = yaml.safe_load(manifest.read_text())
+    scores = next(d for d in doc["datasets"] if d["name"] == "variants")["scores"]
+    provenance = {k: frozenset(v["trained_on"]) for k, v in scores.items()}
+
+    arms = resolve_arms(provenance, frozenset({"ClinGen"}), DEFAULT_EQUIVALENCE)
+
+    assert "REVEL_rankscore" in arms.conflicted          # HGMD/ClinVar vs a ClinGen label
+    assert "phyloP100way_vertebrate_rankscore" in arms.clean
+    assert "CADD_raw_rankscore" in arms.clean            # 'simulated' is not a disease db
+    assert arms.unknown == ()                            # every declared score is declared
