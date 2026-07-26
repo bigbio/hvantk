@@ -9,7 +9,7 @@ def test_empty_document_is_a_valid_policy(tmp_path):
     p = tmp_path / "selection.yaml"
     p.write_text("{}\n")
     policy, equivalence = load_policy(p)
-    assert policy.q == 0.10 and policy.wrapper == "rfecv" and policy.inner_folds == 3
+    assert policy.q == 0.10 and policy.wrapper == "none" and policy.inner_folds == 3
     assert equivalence == DEFAULT_EQUIVALENCE
 
 
@@ -17,9 +17,9 @@ def test_overrides_are_applied(tmp_path):
     from hvantk.algorithms.rerank.selection import load_policy
 
     p = tmp_path / "selection.yaml"
-    p.write_text("q: 0.05\nwrapper: none\ninner_folds: 5\n")
+    p.write_text("q: 0.05\nwrapper: rfecv\ninner_folds: 5\n")
     policy, _ = load_policy(p)
-    assert policy.q == 0.05 and policy.wrapper == "none" and policy.inner_folds == 5
+    assert policy.q == 0.05 and policy.wrapper == "rfecv" and policy.inner_folds == 5
 
 
 def test_equivalence_map_is_overridable(tmp_path):

@@ -46,6 +46,10 @@ certifi = "*"
 anndata = ">=0.10.0"
 scanpy = ">=1.10.0"
 gnomad = { version = "*", optional = true }
+# ^1.4, not ^1.3: rerank's opt-in RFECV step wraps RandomForestClassifier, which only
+# tolerates NaN from 1.4 onward, and these feature matrices are 20-50% missing by design.
+# The floor stays as long as `SelectionPolicy(wrapper="rfecv")` is reachable -- it is now
+# off by default, not removed. Drop to ^1.3 only if the wrapper is deleted outright.
 scikit-learn = { version = "^1.4", optional = true }
 matplotlib = { version = "*", optional = true }
 seaborn = { version = "*", optional = true }

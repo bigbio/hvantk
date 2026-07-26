@@ -363,7 +363,9 @@ def test_select_axis_runs_all_three_steps_and_reports_reasons():
     })
     noise = [f"noise{i}" for i in range(8)]
 
-    rep = select_axis(X, y, list(X.columns), _policy())
+    # wrapper explicitly ON: the default is "none", and this test is specifically about
+    # all THREE steps running and each drop carrying its own reason.
+    rep = select_axis(X, y, list(X.columns), _policy(wrapper="rfecv"))
 
     assert "signal" in rep.kept
     assert rep.dropped.get("signal_copy", "").startswith("redundant_with:")
@@ -374,14 +376,36 @@ def test_select_axis_runs_all_three_steps_and_reports_reasons():
 
 
 def test_wrapper_is_skipped_when_too_few_positives_and_says_so():
-    """RFECV cannot run with fewer positives than inner folds; degrade, don't crash."""
+    """RFECV cannot run with fewer positives than inner folds; degrade, don't crash.
+
+    ``wrapper="rfecv"`` is passed explicitly: with the default ("none") the wrapper never
+    runs at all and this test would pass vacuously, asserting nothing about the guard.
+    """
     from hvantk.algorithms.rerank.selection import select_axis
 
     rng = np.random.default_rng(8)
     y = np.array([0] * 40 + [1] * 2)
     X = pd.DataFrame({f"f{i}": rng.normal(0, 1, 42) for i in range(4)})
-    rep = select_axis(X, y, list(X.columns), _policy(inner_folds=3))
+    rep = select_axis(X, y, list(X.columns), _policy(wrapper="rfecv", inner_folds=3))
     assert rep.wrapper_ran is False
+
+
+def test_wrapper_is_off_by_default():
+    """The default policy runs the two filters only -- pinned, because it is a claim.
+
+    Measured across four real cohorts: RFECV's eliminations concentrate in the cohort with
+    the fewest positives, and it prunes the ablation baseline axis. Flipping this default
+    back must be a deliberate, evidenced act, not a drive-by edit.
+    """
+    from hvantk.algorithms.rerank.selection import SelectionPolicy, select_axis
+
+    assert SelectionPolicy().wrapper == "none"
+
+    rng = np.random.default_rng(12)
+    n = 600
+    y = np.repeat([0, 1], n // 2)
+    X = pd.DataFrame({f"f{i}": y * (i < 2) + rng.normal(0, 1, n) for i in range(5)})
+    assert select_axis(X, y, list(X.columns), SelectionPolicy()).wrapper_ran is False
 
 
 def test_disabled_steps_are_no_ops():

@@ -5,6 +5,10 @@ doi:10.1371/journal.pone.0189875): univariate filter -> redundancy filter -> wra
 Their Table 1 is the reason for that order: prefiltering cut RFE runtime ~3x (35 min -> 11)
 at equal accuracy, and inner CV3/CV7/CV10 all gave the same RMSE, so 3 inner folds suffice.
 
+Only the first TWO run by default here; the wrapper is opt-in (see ``SelectionPolicy``).
+That is a departure from the reference workflow, taken on measurements from four cohorts
+rather than on principle, and it is reversible per run.
+
 EVERY function here takes a training slice. Nothing in this module may see held-out rows.
 Selection that has seen the test labels inflates the reported metric (Ambroise & McLachlan
 2002), and here the reported delta-AUC IS the scientific claim. `test_selection_nesting.py`
@@ -141,13 +145,33 @@ def redundancy_filter(X, columns, scores, max_rho: float = 0.75):
 
 @dataclass(frozen=True)
 class SelectionPolicy:
-    """How to filter one axis. An all-defaults instance is the recommended policy."""
+    """How to filter one axis. An all-defaults instance is the recommended policy.
+
+    ``wrapper`` defaults to "none" -- the two filters only -- on measured evidence, not on
+    principle. Across four real cohorts (CHD, CHD-NDD, epilepsy-DEE, SCHEMA-SCZ; 21 axes)
+    RFECV eliminated a column on 4 of the 11 axes wide enough for it to run, and 3 of
+    those 4 were in the cohort with the FEWEST positives (54). Its aggression tracks label
+    scarcity inversely, which is the signature of a wrapper fitting inner-CV noise: at 54
+    positives an inner CV3 fold holds ~18, and "the feature count that maximised inner
+    AUC" is barely distinguishable from chance.
+
+    Worse, it prunes the axis whose composition defines the headline metric. On CHD-NDD it
+    cut the constraint axis to a single column, and constraint is the ABLATION BASELINE --
+    a thinner baseline silently inflates every other axis's delta-AUC. On CHD it removed
+    ``n_case_var``, one of the two columns that condition the gene universe.
+
+    Set ``wrapper="rfecv"`` deliberately, on an axis wide enough to need it (the ~45-column
+    dbNSFP predictor axis is the motivating case) and with enough positives to trust the
+    inner CV. It is kept, not deleted, because it demonstrably has behaviour -- it has
+    simply not yet been shown to have BENEFICIAL behaviour, which needs an out-of-fold
+    outcome comparison rather than an elimination count.
+    """
 
     univariate: str = "auc"          # "auc" | "none"
     q: float = 0.10                  # BH-FDR level, within axis
     redundancy: str = "spearman"     # "spearman" | "none"
     redundancy_max: float = 0.75
-    wrapper: str = "rfecv"           # "rfecv" | "none"
+    wrapper: str = "none"            # "none" | "rfecv" -- see the class docstring
     wrapper_estimator: str = "random_forest"
     inner_folds: int = 3             # Table 1: CV3 == CV7 == CV10; more is wasted compute
     seed: int = 42

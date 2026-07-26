@@ -97,10 +97,18 @@ arms["all"].metrics.auc            # the same run including circular/undeclared 
 arms["clean"].selection.frequency  # axis -> column -> folds that selected it
 ```
 
-Three filters run **within each axis**, in this order: a univariate AUC screen with
-within-axis BH-FDR, a Spearman redundancy filter, then RFECV. Within-axis is what keeps a
-per-axis ΔAUC meaningful — it compares each axis's best subset against the baseline's best
-subset, so a wide axis is not penalised merely for carrying redundant columns.
+Selection runs **within each axis**. Within-axis is what keeps a per-axis ΔAUC meaningful —
+it compares each axis's best subset against the baseline's best subset, so a wide axis is
+not penalised merely for carrying redundant columns.
+
+Two filters run by default: a univariate AUC screen with within-axis BH-FDR, then a
+Spearman redundancy filter. A third step, RFECV, exists but is **off by default**
+(`wrapper="rfecv"` turns it on). That default is measured, not assumed — across four real
+cohorts (21 axes) RFECV eliminated columns on 4 of the 11 axes wide enough to run it, and
+3 of those 4 were in the cohort with the fewest positives (54), which is how a wrapper
+fitting inner-CV noise looks. It also pruned the *ablation baseline* axis down to one
+column on that cohort, which silently inflates every other axis's ΔAUC. Turn it on
+deliberately, for a genuinely wide axis with enough positives to trust an inner CV.
 
 Two properties are worth understanding before reading any number this produces:
 

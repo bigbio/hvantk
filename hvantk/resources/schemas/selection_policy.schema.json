@@ -9,7 +9,11 @@
     "q": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
     "redundancy": {"type": "string", "enum": ["spearman", "none"]},
     "redundancy_max": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
-    "wrapper": {"type": "string", "enum": ["rfecv", "none"]},
+    "wrapper": {
+      "description": "Recursive feature elimination with internal CV. Defaults to 'none': measured across four cohorts, RFECV's eliminations concentrated in the cohort with the fewest positives and pruned the ablation baseline axis. Set 'rfecv' deliberately, on a wide axis with enough positives to trust an inner CV.",
+      "type": "string",
+      "enum": ["none", "rfecv"]
+    },
     "wrapper_estimator": {"type": "string", "enum": ["random_forest"]},
     "inner_folds": {"type": "integer", "minimum": 2},
     "seed": {"type": "integer"},
