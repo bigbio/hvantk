@@ -136,3 +136,101 @@ def redundancy_filter(X, columns, scores, max_rho: float = 0.75):
         else:
             dropped[col] = f"redundant_with:{redundant_with}"
     return kept, dropped
+
+
+@dataclass(frozen=True)
+class SelectionPolicy:
+    """How to filter one axis. An all-defaults instance is the recommended policy."""
+
+    univariate: str = "auc"          # "auc" | "none"
+    q: float = 0.10                  # BH-FDR level, within axis
+    redundancy: str = "spearman"     # "spearman" | "none"
+    redundancy_max: float = 0.75
+    wrapper: str = "rfecv"           # "rfecv" | "none"
+    wrapper_estimator: str = "random_forest"
+    inner_folds: int = 3             # Table 1: CV3 == CV7 == CV10; more is wasted compute
+    seed: int = 42
+
+
+@dataclass(frozen=True)
+class SelectionReport:
+    kept: tuple[str, ...]
+    dropped: dict[str, str]
+    stats: dict
+    wrapper_ran: bool
+
+
+def _rfecv(X, y, columns, policy):
+    """Recursive feature elimination with internal CV, choosing the count itself.
+
+    RandomForest rather than the downstream HistGradientBoostingClassifier: HistGBM
+    exposes neither ``coef_`` nor ``feature_importances_``, so sklearn's RFE cannot wrap
+    it. The reference workflow used RandomForest and SVM, so this follows it -- but the
+    selector and the final model are then DIFFERENT estimators, and features RF ranks as
+    important are not guaranteed to be the ones HistGBM would favour. Recorded as a known
+    caveat rather than presented as free.
+
+    Requires scikit-learn >= 1.4, where tree estimators accept NaN natively; these matrices
+    are 20-50% missing by design and imputing here would leak column statistics.
+    """
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.feature_selection import RFECV
+    from sklearn.model_selection import StratifiedKFold
+
+    est = RandomForestClassifier(
+        n_estimators=200, min_samples_leaf=20, class_weight="balanced",
+        random_state=policy.seed, n_jobs=-1,
+    )
+    sel = RFECV(
+        estimator=est,
+        step=1,
+        min_features_to_select=1,
+        cv=StratifiedKFold(policy.inner_folds, shuffle=True, random_state=policy.seed),
+        scoring="roc_auc",
+    )
+    sel.fit(X[list(columns)].to_numpy(), y)
+    return [c for c, keep in zip(columns, sel.support_) if keep]
+
+
+def select_axis(X, y, columns, policy) -> SelectionReport:
+    """Filter one axis down to its informative, non-redundant subset.
+
+    ``X`` must already be restricted to the TRAINING slice. Order is univariate ->
+    redundancy -> wrapper, which is the benchmarked order: the filters make the wrapper
+    roughly 3x cheaper at equal accuracy.
+    """
+    columns = list(columns)
+    dropped: dict[str, str] = {}
+    stats: dict = {}
+
+    kept = columns
+    if policy.univariate == "auc":
+        stats = univariate_filter(X, y, kept, q=policy.q)
+        survivors = [c for c in kept if stats[c].passed]
+        for c in kept:
+            if c not in survivors:
+                dropped[c] = "univariate_fdr"
+        kept = survivors
+
+    if policy.redundancy == "spearman" and len(kept) > 1:
+        strength = {c: abs(stats[c].auc - 0.5) if c in stats else 0.0 for c in kept}
+        kept, red_dropped = redundancy_filter(X, kept, strength, policy.redundancy_max)
+        dropped.update(red_dropped)
+
+    wrapper_ran = False
+    n_pos = int((np.asarray(y) == 1).sum())
+    n_neg = int((np.asarray(y) == 0).sum())
+    if policy.wrapper == "rfecv" and len(kept) > 1:
+        if min(n_pos, n_neg) < policy.inner_folds:
+            # Degrade to filter-only rather than raise: a small arm is a property of the
+            # cohort, not an error, and the report records that the wrapper was skipped.
+            wrapper_ran = False
+        else:
+            survivors = _rfecv(X, y, kept, policy)
+            for c in kept:
+                if c not in survivors:
+                    dropped[c] = "rfecv"
+            kept = survivors
+            wrapper_ran = True
+
+    return SelectionReport(tuple(kept), dropped, stats, wrapper_ran)

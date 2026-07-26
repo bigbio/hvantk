@@ -330,3 +330,80 @@ def test_redundancy_missing_score_falls_back_to_zero():
     kept, dropped = redundancy_filter(X, ["a", "b"], {"a": 0.5}, 0.75)
     assert set(kept) == {"a", "b"}
     assert dropped == {}
+
+
+def _policy(**kw):
+    from hvantk.algorithms.rerank.selection import SelectionPolicy
+
+    return SelectionPolicy(**kw)
+
+
+def test_select_axis_runs_all_three_steps_and_reports_reasons():
+    """All three steps fire, each drop carries a reason, and nothing goes unaccounted for.
+
+    The noise assertion is a bulk one, not "all eight", deliberately. The univariate gate
+    is BH-FDR at q=0.10, so it is *designed* to admit roughly one false discovery in ten
+    survivors; demanding that every null column vanish would be asserting a guarantee FDR
+    control does not make, and the first cohort whose noise happened to land under the
+    threshold would look like a regression. Here `noise4` reaches p=0.010 and passes at
+    rank 3 (threshold 0.03) -- correct behaviour, not a leak. What must hold exactly is
+    the accounting: every column is either kept or dropped-with-a-reason, and no column
+    is dropped as uninformative unless it really is one of the nulls.
+    """
+    from hvantk.algorithms.rerank.selection import select_axis
+
+    rng = np.random.default_rng(7)
+    n = 1500
+    y = np.repeat([0, 1], n // 2)
+    signal = y + rng.normal(0, 1.0, n)
+    X = pd.DataFrame({
+        "signal": signal,
+        "signal_copy": signal * 2.0,                       # redundant with signal
+        **{f"noise{i}": rng.normal(0, 1, n) for i in range(8)},
+    })
+    noise = [f"noise{i}" for i in range(8)]
+
+    rep = select_axis(X, y, list(X.columns), _policy())
+
+    assert "signal" in rep.kept
+    assert rep.dropped.get("signal_copy", "").startswith("redundant_with:")
+    assert set(rep.kept) | set(rep.dropped) == set(X.columns)
+    assert set(rep.kept) & set(rep.dropped) == set()
+    assert {c for c, why in rep.dropped.items() if why == "univariate_fdr"} <= set(noise)
+    assert sum(c in rep.dropped for c in noise) >= 7
+
+
+def test_wrapper_is_skipped_when_too_few_positives_and_says_so():
+    """RFECV cannot run with fewer positives than inner folds; degrade, don't crash."""
+    from hvantk.algorithms.rerank.selection import select_axis
+
+    rng = np.random.default_rng(8)
+    y = np.array([0] * 40 + [1] * 2)
+    X = pd.DataFrame({f"f{i}": rng.normal(0, 1, 42) for i in range(4)})
+    rep = select_axis(X, y, list(X.columns), _policy(inner_folds=3))
+    assert rep.wrapper_ran is False
+
+
+def test_disabled_steps_are_no_ops():
+    from hvantk.algorithms.rerank.selection import select_axis
+
+    rng = np.random.default_rng(9)
+    X = pd.DataFrame({f"f{i}": rng.normal(0, 1, 200) for i in range(5)})
+    y = np.repeat([0, 1], 100)
+    rep = select_axis(
+        X, y, list(X.columns),
+        _policy(univariate="none", redundancy="none", wrapper="none"),
+    )
+    assert set(rep.kept) == set(X.columns)
+
+
+def test_select_axis_is_deterministic():
+    from hvantk.algorithms.rerank.selection import select_axis
+
+    rng = np.random.default_rng(10)
+    n = 800
+    y = np.repeat([0, 1], n // 2)
+    X = pd.DataFrame({f"f{i}": y * (i == 0) + rng.normal(0, 1, n) for i in range(6)})
+    a = select_axis(X, y, list(X.columns), _policy())
+    b = select_axis(X, y, list(X.columns), _policy())
+    assert a.kept == b.kept
