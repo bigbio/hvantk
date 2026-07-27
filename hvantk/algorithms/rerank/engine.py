@@ -278,13 +278,17 @@ def rerank_arms(config) -> dict:
                headline: statistical filtering cannot detect circularity, it REWARDS it
                (REVEL correlates with the label partly because it was trained on genes
                like these).
-      all   -- clean + conflicted + unknown. Exists only so the circularity channel is a
-               measured number instead of an assumption.
+      all   -- clean + conflicted, the latter now including every undeclared column.
+               Exists only so the circularity channel is a measured number instead of an
+               assumption.
 
     Both arms use identical folds, so the delta between them is paired. An undeclared
     column is usable but never contributes to the headline, so ``all - clean`` bundles the
-    circularity channel with whatever undeclared provenance is worth; the summary keeps
-    ``n_conflicted`` and ``n_unknown`` separate so the two are not confused.
+    circularity channel with whatever undeclared provenance is worth. An undeclared column
+    is counted as conflicted, on the assumption that a predictor nobody has vouched for
+    may well have seen the label's sources; ``n_unknown`` reports how many of the
+    conflicted total are there for that reason rather than by a computed conflict, so the
+    two are not confused and the manifest gap stays visible.
     """
     from hvantk.algorithms.rerank.provenance import DEFAULT_EQUIVALENCE, resolve_arms
 
@@ -315,8 +319,12 @@ def rerank_arms(config) -> dict:
             config,
             _allowed_columns=allowed,
             _arm=name,
+            # `n_conflicted` now includes the undeclared columns, which are barred on the
+            # conservative assumption that they conflict. `n_unknown` reports how many of
+            # that total got there for want of a declaration rather than by a computed
+            # conflict -- the number to drive to zero by writing the manifest entries.
             _n_conflicted=len(assignment.conflicted),
-            _n_unknown=len(assignment.unknown),
+            _n_unknown=len(assignment.undeclared),
         )
         for name, allowed in arms.items()
     }
