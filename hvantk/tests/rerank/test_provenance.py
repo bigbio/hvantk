@@ -8,7 +8,7 @@ def test_empty_trained_on_is_clean():
     a = resolve_arms({"phyloP": frozenset()}, frozenset({"GenCC"}), DEFAULT_EQUIVALENCE)
     assert a.clean == ("phyloP",)
     assert a.conflicted == {}
-    assert a.unknown == ()
+    assert a.undeclared == ()
 
 
 def test_shared_equivalence_class_conflicts():
@@ -46,15 +46,47 @@ def test_unrecognised_source_conflicts_with_matching_unrecognised_source():
     assert a.conflicted == {"toy_score": frozenset({"simulated"})}
 
 
-def test_undeclared_is_unknown_and_not_clean():
-    """Absent provenance must fail safe: usable, but never in the headline arm."""
+def test_undeclared_is_conflicted_and_not_clean():
+    """Absent provenance must fail safe: usable, but never in the headline arm.
+
+    The bar is recorded as a conflict rather than as a third neutral-sounding bucket. A
+    column nobody has vouched for is presumed to have seen whatever the label derives
+    from, so the presumed conflict is the label's own classes.
+    """
     a = resolve_arms({"mystery": None}, frozenset({"GenCC"}), DEFAULT_EQUIVALENCE)
     assert a.clean == ()
-    assert a.unknown == ("mystery",)
-    assert a.conflicted == {}
+    assert a.conflicted == {"mystery": frozenset({"curated_disease_db"})}
+    assert a.undeclared == ("mystery",)
 
 
-def test_all_columns_is_clean_plus_conflicted_plus_unknown():
+def test_undeclared_columns_are_nameable_for_review():
+    """`undeclared` is a subset of `conflicted`, not a parallel bucket.
+
+    Without the list an undeclared column is indistinguishable from a genuinely circular
+    one, and nobody can tell which manifest entry is missing -- which is how four dbNSFP
+    columns (MutFormer, PHACTboost) sat unnoticed outside the clean arm.
+    """
+    a = resolve_arms(
+        {"REVEL": frozenset({"ClinVar"}), "mystery": None},
+        frozenset({"GenCC"}),
+        DEFAULT_EQUIVALENCE,
+    )
+    assert set(a.undeclared) <= set(a.conflicted)
+    assert "REVEL" in a.conflicted and "REVEL" not in a.undeclared
+
+
+def test_all_columns_does_not_double_count_undeclared():
+    """`undeclared` members are already `conflicted` keys; counting both duplicates them."""
+    a = resolve_arms(
+        {"phyloP": frozenset(), "mystery": None},
+        frozenset({"GenCC"}),
+        DEFAULT_EQUIVALENCE,
+    )
+    assert sorted(a.all_columns) == ["mystery", "phyloP"]
+    assert len(a.all_columns) == len(set(a.all_columns))
+
+
+def test_all_columns_is_clean_plus_conflicted():
     a = resolve_arms(
         {"phyloP": frozenset(), "REVEL": frozenset({"ClinVar"}), "mystery": None},
         frozenset({"GenCC"}),
@@ -142,7 +174,7 @@ def test_declared_dbnsfp_scores_resolve_into_arms_against_a_clinvar_label():
     assert "REVEL_rankscore" in arms.conflicted          # HGMD/ClinVar vs a ClinGen label
     assert "phyloP100way_vertebrate_rankscore" in arms.clean
     assert "CADD_raw_rankscore" in arms.clean            # 'simulated' is not a disease db
-    assert arms.unknown == ()                            # every declared score is declared
+    assert arms.undeclared == ()                         # every declared score is declared
 
 
 def test_a_source_in_two_equivalence_classes_is_rejected():
