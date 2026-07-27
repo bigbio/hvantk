@@ -67,7 +67,8 @@ def test_arms_split_on_provenance_and_delta_is_reported(tmp_path):
     assert "REVEL_rankscore" not in arms["clean"].selection.global_features.get("trained", ())
 
 
-def test_undeclared_column_is_unknown_and_excluded_from_clean(tmp_path):
+def test_undeclared_column_is_conflicted_and_excluded_from_clean(tmp_path):
+    """`n_unknown` counts the undeclared subset of the conflicted total, not a third bucket."""
     from hvantk.algorithms.rerank.engine import rerank_arms
     from hvantk.algorithms.rerank.selection import SelectionPolicy
 
@@ -151,7 +152,7 @@ def test_clean_arm_refuses_to_run_when_every_column_conflicts(tmp_path):
 
 
 def test_column_missing_from_the_provenance_map_is_undeclared_not_deleted(tmp_path):
-    """An axis nobody declared must land in `all` as unknown -- never silently vanish.
+    """An axis nobody declared must land in `all` as conflicted -- never silently vanish.
 
     Omission and an explicit None mean the same thing per the plugin contract: usable,
     never clean. If an undeclared column were dropped from both arms instead, adding an

@@ -71,7 +71,7 @@ def _classes(sources, equivalence) -> frozenset[str]:
 
 
 def resolve_arms(feature_provenance, label_provenance, equivalence) -> ArmAssignment:
-    """Split feature columns into clean / conflicted / unknown for a given label source.
+    """Split feature columns into clean / conflicted for a given label source.
 
     ``feature_provenance`` maps column -> the set of sources the predictor was trained on,
     or ``None`` when undeclared. An empty set means "trained on nothing label-derived" and
