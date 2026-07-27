@@ -19,6 +19,54 @@ from hvantk.algorithms.annotation.mapping import GeneIdMapper, MappingRateError
 
 logger = logging.getLogger(__name__)
 
+# Gene-level key spaces a prepared source may declare. Single source of truth for the
+# guard below; `_resolve_to_gene_id` dispatches the same set, and the feature-spec schema
+# advertises it. Keep the three in step -- they drifted once already.
+_GENE_KEY_SPACES = ("gene_id", "hgnc_id", "symbol", "uniprot_id")
+
+
+def _collapse_reducers():
+    """Reductions available to a spec's ``collapse:`` key, built lazily (needs Hail).
+
+    Mapping a source key onto ``gene_id`` can be legitimately many-to-one -- one gene
+    routinely has several UniProt accessions (isoforms, historical entries), so both
+    ``insider:interfaces`` and ``uniprot-ptm:sites`` collapse. Without a declared policy
+    that is an error, because silently dropping or double-counting rows is worse than
+    failing. ``max`` is the safe pick for accession collapse: the rows describe the SAME
+    protein, so it never inflates the way ``sum`` would.
+    """
+    import hail as hl
+
+    return {"max": hl.agg.max, "min": hl.agg.min, "mean": hl.agg.mean,
+            "sum": hl.agg.sum}
+
+
+class _LazyCollapseReducers(dict):
+    """Populates from Hail on first use so importing this module stays Hail-free."""
+
+    def _ensure(self):
+        if not super().__len__():
+            self.update(_collapse_reducers())
+
+    def __contains__(self, key):
+        self._ensure()
+        return super().__contains__(key)
+
+    def __getitem__(self, key):
+        self._ensure()
+        return super().__getitem__(key)
+
+    def __iter__(self):
+        self._ensure()
+        return super().__iter__()
+
+    def __len__(self):
+        self._ensure()
+        return super().__len__()
+
+
+COLLAPSE_REDUCERS = _LazyCollapseReducers()
+
 
 def prepare_source(source_ht, spine_gene_ids, entry, *, hgnc=None):
     """Map ``source_ht`` onto the spine and select ``entry.columns``.
@@ -42,9 +90,12 @@ def prepare_source(source_ht, spine_gene_ids, entry, *, hgnc=None):
     import hail as hl
 
     key = entry.key
-    if key not in ("gene_id", "hgnc_id", "symbol"):
+    # Keep in step with the schema's key enum and `_resolve_to_gene_id`'s dispatch --
+    # this listed the accepted spaces a third time and so silently excluded uniprot_id,
+    # which both the schema and the mapper already supported.
+    if key not in _GENE_KEY_SPACES:
         raise ValueError(
-            f"prepare_source supports gene_id, hgnc_id, symbol keys; entry "
+            f"prepare_source supports {', '.join(_GENE_KEY_SPACES)} keys; entry "
             f"{entry.source!r} declares key {key!r}"
         )
     if key != "gene_id" and hgnc is None:
@@ -65,7 +116,8 @@ def prepare_source(source_ht, spine_gene_ids, entry, *, hgnc=None):
         prepared = prepared.select(*entry.columns)
     else:
         prepared = _rekey_onto_gene_id(
-            source_ht, key, resolved, entry.columns, entry.source
+            source_ht, key, resolved, entry.columns, entry.source,
+            collapse=entry.collapse,
         )
 
     logger.info(report.summary())
@@ -80,6 +132,8 @@ def _resolve_to_gene_id(source_keys, to_space, source_label, mapper):
         mapping, report = mapper.from_hgnc_ids(source_keys, source=source_label)
     elif to_space == "symbol":
         mapping, report = mapper.from_symbols(source_keys, source=source_label)
+    elif to_space == "uniprot_id":
+        mapping, report = mapper.from_uniprot_ids(source_keys, source=source_label)
     else:
         raise ValueError(f"unsupported id-space {to_space!r}")
     resolved = {k: v for k, v in mapping.items() if v is not None}
@@ -91,12 +145,20 @@ def _resolve_to_gene_id(source_keys, to_space, source_label, mapper):
     return resolved, report
 
 
-def _rekey_onto_gene_id(source_ht, key_col, resolved, columns, source_label):
+def _rekey_onto_gene_id(source_ht, key_col, resolved, columns, source_label, *,
+                        collapse=None):
     """Attach gene_id from ``resolved``, drop unresolved, key on gene_id, select columns.
 
-    Enforces one row per gene: a many-to-one mapping (or an un-aggregated source) raises.
+    Enforces one row per gene. A many-to-one mapping raises unless the spec entry
+    declares a ``collapse`` reduction -- see :data:`COLLAPSE_REDUCERS`.
     """
     import hail as hl
+
+    # Unkey first: when `aggregate.by` is itself `gene_id` (pQTL and GTEx eQTL are both
+    # gene_id-keyed), group_by has already keyed the table on gene_id and annotating it
+    # raises "cannot overwrite key field". Dropping the key is safe -- the very next step
+    # re-keys on gene_id anyway.
+    source_ht = source_ht.key_by()
 
     lut = hl.literal(resolved)
     prepared = source_ht.annotate(gene_id=lut.get(source_ht[key_col]))
@@ -104,12 +166,28 @@ def _rekey_onto_gene_id(source_ht, key_col, resolved, columns, source_label):
     prepared = prepared.key_by("gene_id").select(*columns)
     n_rows = prepared.count()
     n_genes = prepared.distinct().count()
-    if n_rows != n_genes:
+    if n_rows == n_genes:
+        return prepared
+
+    if collapse is None:
         raise ValueError(
             f"{source_label}: {n_rows - n_genes} source rows resolve to the same gene_id "
-            f"(many-to-one); this source needs aggregation before prepare"
+            f"(many-to-one); aggregate the source before prepare, or declare a "
+            f"`collapse:` reduction ({', '.join(sorted(COLLAPSE_REDUCERS))})"
         )
-    return prepared
+    if collapse not in COLLAPSE_REDUCERS:
+        raise ValueError(
+            f"{source_label}: unknown collapse reduction {collapse!r}; "
+            f"expected one of {', '.join(sorted(COLLAPSE_REDUCERS))}"
+        )
+    agg = COLLAPSE_REDUCERS[collapse]
+    logger.info(
+        "%s: collapsing %d many-to-one rows onto gene_id with %r",
+        source_label, n_rows - n_genes, collapse,
+    )
+    return prepared.group_by(prepared.gene_id).aggregate(
+        **{c: agg(prepared[c]) for c in columns}
+    )
 
 
 def prepare_matrix_source(matrix_ad, spine_gene_ids, entry, *, hgnc=None):
@@ -194,7 +272,7 @@ def prepare_variant_source(source_ht, spine_gene_ids, entry, *, hgnc=None):
     source_keys = grouped[agg.by].collect()
     resolved, report = _resolve_to_gene_id(source_keys, agg.to, entry.source, mapper)
     prepared = _rekey_onto_gene_id(
-        grouped, agg.by, resolved, entry.columns, entry.source
+        grouped, agg.by, resolved, entry.columns, entry.source, collapse=entry.collapse
     )
     logger.info(report.summary())
     return prepared, report

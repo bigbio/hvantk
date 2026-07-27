@@ -250,6 +250,30 @@ def test_variant_key_with_aggregate_parses(tmp_path):
     assert e.aggregate.scores[0].name == "revel"
     assert e.aggregate.scores[0].column == "REVEL_score"
     assert e.aggregate.scores[0].stats == ("mean", "frac_gt_0.5")
+    assert e.aggregate.count_name == "n_possible_missense"  # dbNSFP-era default
+
+
+def test_aggregate_count_name_is_configurable(tmp_path):
+    """Non-dbNSFP sources name their own row-count column (PTM sites, eQTL pairs)."""
+    from hvantk.algorithms.annotation.spec import load_spec
+
+    doc = (
+        "name: t\n"
+        "layer1:\n"
+        "  - axis: ptm_density\n"
+        "    source: uniprot-ptm:sites\n"
+        "    key: variant\n"
+        "    columns: [ptm_nobs_mean, n_ptm_sites]\n"
+        "    aggregate:\n"
+        "      by: gene_symbol\n"
+        "      to: symbol\n"
+        "      count_name: n_ptm_sites\n"
+        "      scores:\n"
+        "        ptm_nobs: {column: n_observations, stats: [mean]}\n"
+    )
+    p = tmp_path / "s.yaml"
+    p.write_text(doc)
+    assert load_spec(p).entry("ptm_density").aggregate.count_name == "n_ptm_sites"
 
 
 def test_variant_key_without_aggregate_is_rejected(tmp_path):

@@ -3,24 +3,41 @@
   "title": "hvantk feature spec",
   "description": "Declares the per-source feature entries composed into a per-gene matrix.",
   "type": "object",
-  "required": ["name", "layer1"],
+  "required": [
+    "name",
+    "layer1"
+  ],
   "additionalProperties": false,
   "properties": {
-    "name": {"type": "string", "minLength": 1},
-    "spine": {"type": "object"},
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "spine": {
+      "type": "object"
+    },
     "layer1": {
       "type": "array",
       "minItems": 1,
-      "items": {"$ref": "#/$defs/sourceEntry"}
+      "items": {
+        "$ref": "#/$defs/sourceEntry"
+      }
     },
     "exclude": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["source", "reason"],
+        "required": [
+          "source",
+          "reason"
+        ],
         "properties": {
-          "source": {"type": "string"},
-          "reason": {"type": "string"}
+          "source": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
         }
       }
     }
@@ -28,75 +45,227 @@
   "$defs": {
     "sourceEntry": {
       "type": "object",
-      "required": ["axis", "source", "key", "columns"],
+      "required": [
+        "axis",
+        "source",
+        "key",
+        "columns"
+      ],
       "additionalProperties": false,
       "properties": {
-        "axis": {"type": "string", "minLength": 1},
-        "source": {"type": "string", "minLength": 1},
-        "key": {"type": "string", "enum": ["gene_id", "hgnc_id", "symbol", "variant"]},
+        "axis": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "key": {
+          "type": "string",
+          "enum": [
+            "gene_id",
+            "hgnc_id",
+            "symbol",
+            "uniprot_id",
+            "variant"
+          ]
+        },
         "columns": {
           "type": "array",
           "minItems": 1,
-          "items": {"type": "string", "minLength": 1}
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         },
-        "min_mapping_rate": {"type": "number", "minimum": 0, "maximum": 1},
-        "origin": {"type": "string"},
-        "ablate_separately": {"type": "boolean"},
-        "aggregate": {"$ref": "#/$defs/aggregateSpec"},
-        "matrix": {"$ref": "#/$defs/matrixSpec"}
+        "min_mapping_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "origin": {
+          "type": "string"
+        },
+        "ablate_separately": {
+          "type": "boolean"
+        },
+        "aggregate": {
+          "$ref": "#/$defs/aggregateSpec"
+        },
+        "matrix": {
+          "$ref": "#/$defs/matrixSpec"
+        },
+        "collapse": {
+          "type": "string",
+          "enum": [
+            "max",
+            "min",
+            "mean",
+            "sum"
+          ]
+        }
       },
-      "if": {"properties": {"key": {"const": "variant"}}, "required": ["key"]},
-      "then": {"required": ["aggregate"]}
+      "if": {
+        "properties": {
+          "key": {
+            "const": "variant"
+          }
+        },
+        "required": [
+          "key"
+        ]
+      },
+      "then": {
+        "required": [
+          "aggregate"
+        ]
+      }
     },
     "matrixSpec": {
       "type": "object",
-      "required": ["group_axis", "atlas"],
+      "required": [
+        "group_axis",
+        "atlas"
+      ],
       "additionalProperties": false,
       "properties": {
-        "group_axis": {"type": "string", "minLength": 1},
-        "atlas": {"type": "string", "minLength": 1},
-        "tissue_tag": {"type": "string"},
+        "group_axis": {
+          "type": "string",
+          "minLength": 1
+        },
+        "atlas": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tissue_tag": {
+          "type": "string"
+        },
         "stats": {
           "type": "array",
-          "items": {"type": "string", "enum": ["mean", "fraction_expressed", "frac"]}
+          "items": {
+            "type": "string",
+            "enum": [
+              "mean",
+              "fraction_expressed",
+              "frac"
+            ]
+          }
         },
-        "drop_groups": {"type": "array", "items": {"type": "string"}},
+        "drop_groups": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "specificity": {
           "type": "object",
-          "required": ["method", "targets"],
+          "required": [
+            "method",
+            "targets"
+          ],
           "additionalProperties": false,
           "properties": {
-            "method": {"type": "string", "enum": ["ewce_fraction"]},
+            "method": {
+              "type": "string",
+              "enum": [
+                "ewce_fraction"
+              ]
+            },
             "targets": {
               "type": "array",
               "minItems": 1,
-              "items": {"type": "string", "minLength": 1}
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
             },
-            "combine": {"type": "string", "enum": ["max", "mean", "sum"]},
-            "name": {"type": "string", "minLength": 1}
+            "combine": {
+              "type": "string",
+              "enum": [
+                "max",
+                "mean",
+                "sum"
+              ]
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1
+            }
           }
         }
       }
     },
     "aggregateSpec": {
       "type": "object",
-      "required": ["by", "to", "scores"],
+      "required": [
+        "by",
+        "to",
+        "scores"
+      ],
       "additionalProperties": false,
       "properties": {
-        "by": {"type": "string", "minLength": 1},
-        "to": {"type": "string", "enum": ["gene_id", "hgnc_id", "symbol"]},
-        "filter": {"type": "string", "minLength": 1},
-        "reduce": {"type": "string", "minLength": 1},
+        "by": {
+          "type": "string",
+          "minLength": 1
+        },
+        "to": {
+          "type": "string",
+          "enum": [
+            "gene_id",
+            "hgnc_id",
+            "symbol",
+            "uniprot_id"
+          ]
+        },
+        "filter": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reduce": {
+          "type": "string",
+          "minLength": 1
+        },
+        "count_name": {
+          "type": "string",
+          "minLength": 1
+        },
         "scores": {
-          "type": "object", "minProperties": 1,
+          "type": "object",
+          "minProperties": 1,
           "additionalProperties": {
-            "type": "object", "required": ["column", "stats"], "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "column",
+              "stats"
+            ],
+            "additionalProperties": false,
             "properties": {
-              "column": {"type": "string", "minLength": 1},
-              "stats": {"type": "array", "minItems": 1, "items": {"anyOf": [
-                {"type": "string", "enum": ["mean", "max", "min", "count"]},
-                {"type": "string", "pattern": "^frac_gt_-?[0-9]+(\\.[0-9]+)?$"}
-              ]}}
+              "column": {
+                "type": "string",
+                "minLength": 1
+              },
+              "stats": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "mean",
+                        "max",
+                        "min",
+                        "count"
+                      ]
+                    },
+                    {
+                      "type": "string",
+                      "pattern": "^frac_gt_-?[0-9]+(\\.[0-9]+)?$"
+                    }
+                  ]
+                }
+              }
             }
           }
         }

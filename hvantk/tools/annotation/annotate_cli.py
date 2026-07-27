@@ -96,7 +96,7 @@ def prepare_cmd(spec, axis, input_path, spine, output, hgnc_path):
     entry = load_spec(spec).entry(axis)
     spine_ids = hl.read_table(spine).gene_id.collect()
 
-    needs_hgnc = entry.key in ("hgnc_id", "symbol") or (
+    needs_hgnc = entry.key in ("hgnc_id", "symbol", "uniprot_id") or (
         entry.key == "variant"
         and entry.aggregate is not None
         and entry.aggregate.to != "gene_id"

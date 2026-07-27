@@ -78,6 +78,22 @@
             "description": "Phase B: the schema identifier stamped onto the artifact's Provenance."
           },
           "skill": { "type": "string" },
+          "scores": {
+            "type": "object",
+            "description": "Per-score training provenance, declared once by the plugin author. Circularity is a property of the data, so consumers (e.g. rerank's clean/all arms) inherit these declarations instead of re-reviewing every predictor per analysis. An empty 'trained_on' means the score saw nothing label-derived; an omitted score is unknown, which consumers must treat conservatively rather than as clean.",
+            "additionalProperties": {
+              "type": "object",
+              "required": ["trained_on"],
+              "additionalProperties": false,
+              "properties": {
+                "trained_on": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Sources the predictor was fit on (e.g. ClinVar, HGMD, simulated, population_af)."
+                }
+              }
+            }
+          },
           "tests": {
             "type": "object",
             "required": [

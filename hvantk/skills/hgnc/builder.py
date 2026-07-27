@@ -10,7 +10,10 @@ import logging
 
 import hail as hl
 
-from hvantk.skills.hgnc.shared.constants import HGNC_GENE_FIELDS, HGNC_PIPE_SEPARATED_FIELDS
+from hvantk.skills.hgnc.shared.constants import (
+    HGNC_GENE_FIELDS,
+    HGNC_PIPE_SEPARATED_FIELDS,
+)
 from hvantk.core.utils.table_utils import get_row_fields
 
 logger = logging.getLogger(__name__)
@@ -58,7 +61,13 @@ def build_hgnc_gene_lookup(
     if not include_withdrawn:
         ht = ht.filter(ht.status == "Approved")
 
-    # Parse pipe-separated fields into arrays
+    # Parse pipe-separated fields into arrays.
+    #
+    # hgnc_complete_set.txt QUOTES its multi-value fields (prev_symbol is written
+    # `"H1F4|HIST1H1E"`), so the quotes must come off BEFORE the split -- otherwise the
+    # first and last elements keep a stray `"` and every alias/prev-symbol lookup for the
+    # clean symbol misses. No HGNC value legitimately contains a double quote, so
+    # stripping them all is safe and simpler than anchoring to the ends.
     row_fields = get_row_fields(ht)
     for field in HGNC_PIPE_SEPARATED_FIELDS:
         if field in row_fields:
@@ -66,7 +75,11 @@ def build_hgnc_gene_lookup(
                 **{
                     field: hl.if_else(
                         hl.is_defined(ht[field]) & (ht[field] != ""),
-                        ht[field].split("\\|").filter(lambda x: x != ""),
+                        ht[field]
+                        .replace('"', "")
+                        .split("\\|")
+                        .map(lambda x: x.strip())
+                        .filter(lambda x: x != ""),
                         hl.empty_array(hl.tstr),
                     )
                 }

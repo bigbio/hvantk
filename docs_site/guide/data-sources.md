@@ -196,6 +196,22 @@ hvantk reprocess insider:variants \
   --skip-download
 ```
 
+INSIDER also ships a **gene-level** dataset, `insider:interfaces`, built from
+`H_sapiens_interfacesALL.txt` rather than the BED file. Where `insider:variants` is
+locus-keyed (interaction sites as genomic intervals), `insider:interfaces` is keyed by
+`uniprot_id` and summarises each protein's interactome: `n_partners`,
+`n_partners_experimental`, `n_partners_predicted` and `n_interface_residues`. The two are
+complementary, not alternatives — use `interfaces` when the question is "how connected is
+this gene", and `variants` when it is "does this variant fall in an interaction site".
+
+```bash
+# Place H_sapiens_interfacesALL.txt in data/insider/ then:
+hvantk reprocess insider:interfaces \
+  --raw-dir data/insider/ \
+  --output insider_interfaces.ht \
+  --skip-download
+```
+
 ### Ensembl gene annotations (~60 MB GTF)
 
 The canonical per-gene table (`ensembl-gene:structure`): gene ID, gene name, biotype,

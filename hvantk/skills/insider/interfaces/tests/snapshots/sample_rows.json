@@ -1,0 +1,35 @@
+[
+  {
+    "key": {
+      "uniprot_id": "Q00001"
+    },
+    "row": {
+      "n_interface_residues": 5,
+      "n_partners": 2,
+      "n_partners_experimental": 1,
+      "n_partners_predicted": 1
+    }
+  },
+  {
+    "key": {
+      "uniprot_id": "Q00002"
+    },
+    "row": {
+      "n_interface_residues": 1,
+      "n_partners": 2,
+      "n_partners_experimental": 1,
+      "n_partners_predicted": 1
+    }
+  },
+  {
+    "key": {
+      "uniprot_id": "Q00003"
+    },
+    "row": {
+      "n_interface_residues": 2,
+      "n_partners": 2,
+      "n_partners_experimental": 2,
+      "n_partners_predicted": 0
+    }
+  }
+]

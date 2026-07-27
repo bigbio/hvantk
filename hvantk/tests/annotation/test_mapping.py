@@ -20,7 +20,9 @@ class FakeHGNC:
     """
 
     _CANONICAL = {"MYL7": "MYL7", "OLD1": "NEW1", "NEW1": "NEW1"}
-    _TO_HGNC = {"MYL7": "HGNC:7592", "NEW1": "HGNC:00001"}
+    # UniProt accessions share this dict: the fake ignores source_type, and what is under
+    # test is the mapper's chaining (id -> hgnc_id -> ensembl -> spine), not HGNC itself.
+    _TO_HGNC = {"MYL7": "HGNC:7592", "NEW1": "HGNC:00001", "P00001": "HGNC:7592"}
     _TO_ENSEMBL = {"HGNC:7592": "ENSG00000106631", "HGNC:00001": "ENSG00000000001"}
 
     def resolve_to_canonical(self, symbol):
@@ -55,6 +57,18 @@ def test_symbols_map_through_alias_resolution():
     assert mapping["OLD1"] == "ENSG00000000001"  # OLD1 -> NEW1 -> HGNC -> ENSG
     assert report.n_mapped == 2
     assert report.rate == 1.0
+
+
+def test_uniprot_ids_map_through_hgnc_to_spine():
+    """INSIDER and other proteomic sources arrive keyed on UniProt accession."""
+    mapper = GeneIdMapper(FakeHGNC(), SPINE)
+    mapping, report = mapper.from_uniprot_ids(["P00001", "P99999"], source="insider")
+
+    assert mapping["P00001"] == "ENSG00000106631"
+    assert mapping["P99999"] is None  # unknown accession is unmapped, not dropped silently
+    assert report.key_type == "uniprot_id"
+    assert report.n_in == 2 and report.n_mapped == 1
+    assert report.unmapped == ("P99999",)
 
 
 def test_unmapped_symbols_are_named_not_just_counted():

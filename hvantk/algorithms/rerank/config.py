@@ -9,6 +9,7 @@ from hvantk.algorithms.cohort.spec import CohortManifest
 
 if TYPE_CHECKING:
     from hvantk.algorithms.rerank.audit import Audit
+    from hvantk.algorithms.rerank.selection import SelectionPolicy
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +108,28 @@ class Config:
     """Minimum fraction of label-positive units that must appear in the feature matrix.
     Set to 0.0 for intentional cross-disease transfer configs where labels come from a
     different gene universe (e.g. NDD labels scored against a CHD feature matrix)."""
+    selection: Optional["SelectionPolicy"] = None
+    """Feature-selection policy. None (default) disables selection entirely and reproduces
+    the pre-selection code path exactly."""
+    feature_provenance: Optional[dict] = None
+    """column -> frozenset of sources the predictor was trained on, or None if undeclared.
+    None for the whole dict means provenance is unavailable: a single 'all' arm is run."""
+    label_provenance: Optional[frozenset] = None
+    """Sources the LABELS were derived from. Circularity is a property of the pair --
+    REVEL against a ClinGen-derived label is badly circular; against a purely
+    burden-derived one it is far less so -- so neither half means anything alone.
+
+    None means UNDECLARED and is rejected by `rerank_arms`; an explicit `frozenset()`
+    means "these labels derive from nothing curated" and is accepted. The distinction is
+    the same one `feature_provenance` draws, and it exists because the failure is silent:
+    an empty label source conflicts with nothing, so a forgotten declaration produces a
+    `clean` arm that admits every circular predictor and looks entirely healthy."""
+    provenance_equivalence: Optional[dict] = None
+    """Source-name classes for the circularity check; None uses DEFAULT_EQUIVALENCE.
+    `selection.yaml` can override the vocabulary and `load_policy` returns it, so it needs
+    somewhere to live -- without this field the override is silently discarded and the
+    clean/all split is computed against the defaults, which is a wrong answer rather than
+    an error."""
 
     def __post_init__(self):
         if self.audit is None:

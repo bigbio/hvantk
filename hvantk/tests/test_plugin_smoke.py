@@ -63,6 +63,7 @@ EXPECTED_DATASETS = {
     "gtex-eqtl:eqtls",
     "gwas-catalog:associations",
     "hgnc:lookup",
+    "insider:interfaces",
     "insider:variants",
     "msigdb:genesets",
     "onek-genomes:samples",
