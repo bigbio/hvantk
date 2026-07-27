@@ -12,6 +12,8 @@
       "sequence_length"
     ],
     "uniprot_entry_keys": [
+      "entryType",
+      "extraAttributes",
       "features",
       "genes",
       "primaryAccession",
@@ -20,7 +22,7 @@
     ]
   },
   "checksums": {
-    "uniprot-ptm-human.tsv": "placeholder-regenerate-from-live-source"
+    "uniprot-ptm-human.tsv": "ffe8f6c4b44fcbefc0302349ce29d93aed6ad472576e8ba5f77cfc9a5831fe2f"
   },
-  "fetched_at": "2026-05-18T00:00:00+00:00"
+  "fetched_at": "2026-07-27T17:10:10.475194+00:00"
 }

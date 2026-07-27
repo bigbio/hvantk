@@ -37,8 +37,14 @@ entries (documentation-only sources with no programmatic probe) are likewise
 never turned into PRs; they are surfaced in the summary count so they are not
 silently dropped.
 
-Exit code is always 0 unless a wholly unexpected error escapes; drift /
-probe-failed are not workflow failures.
+Drift and probe-failure are signals, not workflow failures, so neither sets a
+nonzero exit. Failing to *act* on a signal is a different matter: if a drifted
+dataset gets as far as needing a PR and the ``gh`` call errors, this script
+exits 1. It previously caught that error per dataset, logged it, and still
+returned 0 -- so when the repository's "Allow GitHub Actions to create and
+approve pull requests" setting was off, every run pushed its branches, failed
+all 11 ``gh pr create`` calls, and reported success. The daily job was green for
+months while opening nothing.
 """
 
 from __future__ import annotations
@@ -457,6 +463,7 @@ def main(argv: list[str] | None = None) -> int:
         f"{len(clean)} clean, {len(stub)} stub"
     )
 
+    failed: list[str] = []
     for entry in drifted:
         try:
             handle_drifted(
@@ -466,7 +473,10 @@ def main(argv: list[str] | None = None) -> int:
                 step_summary=step_summary,
             )
         except subprocess.CalledProcessError as exc:
-            # One drifted dataset failing to PR shouldn't stop the others.
+            # One drifted dataset failing to PR shouldn't stop the others, but it
+            # must not vanish either: collected here and re-raised as a nonzero
+            # exit once every dataset has had its turn.
+            failed.append(str(entry.get("dataset_name")))
             print(
                 f"error handling {entry.get('dataset_name')}: "
                 f"{exc.cmd} exited {exc.returncode}\n"
@@ -484,6 +494,23 @@ def main(argv: list[str] | None = None) -> int:
 
     for entry in stub:
         handle_stub(entry, step_summary=step_summary)
+
+    if failed:
+        joined = ", ".join(sorted(failed))
+        print(
+            f"\nERROR: {len(failed)} drifted dataset(s) were detected but no pull "
+            f"request could be opened for them: {joined}.\n"
+            "If the failure above is 'GitHub Actions is not permitted to create or "
+            "approve pull requests', enable Settings -> Actions -> General -> "
+            "'Allow GitHub Actions to create and approve pull requests'.",
+            file=sys.stderr,
+        )
+        _summary_line(
+            step_summary,
+            f"\n**{len(failed)} drifted dataset(s) could not be turned into a PR.** "
+            "The branches were pushed; the `gh pr create` calls failed.",
+        )
+        return 1
 
     return 0
 

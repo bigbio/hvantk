@@ -210,3 +210,85 @@ def test_probe_returning_non_mapping_surfaces_clear_error(tmp_path: Path):
     # The error message must mention the actual type so debuggers know what
     # the probe returned, not a cryptic dict() TypeError.
     assert "non-mapping" in str(result.probe_error) or "list" in str(result.probe_error)
+
+
+def test_placeholder_checksum_baseline_is_probe_failed_not_drifted(tmp_path: Path):
+    """A hand-seeded baseline is a missing baseline, not upstream movement.
+
+    Six committed fingerprints carried a placeholder checksum or a Unix-epoch
+    `fetched_at`. Neither can equal a live observation, so the comparator called
+    them `drifted` on every run and the scheduled bot reopened the same no-op PRs
+    nightly. Classifying them `probe_failed` names the actual defect and keeps the
+    bot quiet (it never PRs a probe failure).
+    """
+    from hvantk.core.plugin.api import PLACEHOLDER_CHECKSUM
+
+    fp_path = tmp_path / "fp.json"
+    _write_fingerprint(fp_path, {
+        "probe_version": 1,
+        "source_version": None,
+        "headers": {"a.tsv": ["col1"]},
+        "checksums": {"a.tsv": PLACEHOLDER_CHECKSUM},
+        "fetched_at": "2026-05-16T00:00:00+00:00",
+    })
+    spec = _make_spec(
+        probe_return={
+            "probe_version": 1,
+            "source_version": "Mon, 27 Jul 2026 09:52:02 GMT",
+            "headers": {"a.tsv": ["col1"]},
+            "checksums": {"a.tsv": "1bf26b3670c0d7ff"},
+            "fetched_at": "2026-07-27T09:52:02+00:00",
+        },
+        fingerprint_path=fp_path,
+    )
+    result = _run_with_spec(spec)
+
+    assert result.status == "probe_failed"
+    assert "--regenerate" in str(result.probe_error)
+
+
+def test_epoch_fetched_at_baseline_is_probe_failed_not_drifted(tmp_path: Path):
+    fp_path = tmp_path / "fp.json"
+    _write_fingerprint(fp_path, {
+        "probe_version": 1,
+        "source_version": None,
+        "headers": {"protein_expression": ["installed_cptac_version"]},
+        "checksums": {"protein_expression": ""},
+        "fetched_at": "1970-01-01T00:00:00Z",
+    })
+    spec = _make_spec(
+        probe_return={
+            "probe_version": 1,
+            "source_version": "1.5.13",
+            "headers": {"protein_expression": ["installed_cptac_version"]},
+            "checksums": {"protein_expression": "abc123"},
+            "fetched_at": "2026-07-27T17:00:00+00:00",
+        },
+        fingerprint_path=fp_path,
+    )
+    result = _run_with_spec(spec)
+
+    assert result.status == "probe_failed"
+    assert "epoch" in str(result.probe_error)
+
+
+def test_empty_checksums_is_not_treated_as_a_placeholder(tmp_path: Path):
+    """ensembl-gene:structure fingerprints HTTP validators, not a body hash.
+
+    Its `checksums` map is legitimately empty. Detection must key on markers that
+    cannot occur in genuine probe output, or fixing the false-drifted class would
+    just create a false-probe_failed one.
+    """
+    fp = {
+        "probe_version": 2,
+        "source_version": "Sun, 18 Aug 2024 22:02:07 GMT",
+        "headers": {"g.gtf.gz": {"etag": '"3d2b9d9"', "content_length": "64141785"}},
+        "checksums": {},
+        "extras": {"release": "113"},
+        "fetched_at": "2026-07-27T17:17:16+00:00",
+    }
+    fp_path = tmp_path / "fp.json"
+    _write_fingerprint(fp_path, fp)
+    spec = _make_spec(probe_return=dict(fp), fingerprint_path=fp_path)
+
+    assert _run_with_spec(spec).status == "clean"

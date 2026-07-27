@@ -4,8 +4,214 @@
       "CA",
       "C"
     ],
-    "filters": "set()",
-    "info": "Struct(AC=[2], AC_AFR=[0], AC_AMR=[2], AC_EAS=[0], AC_EUR=[0], AC_Het=[2], AC_Het_AFR=[0], AC_Het_AMR=[2], AC_Het_EAS=[0], AC_Het_EUR=[0], AC_Het_SAS=[0], AC_Hom=[0], AC_Hom_AFR=[0], AC_Hom_AMR=[0], AC_Hom_EAS=[0], AC_Hom_EUR=[0], AC_Hom_SAS=[0], AC_SAS=[0], AF=[0.000312305], AF_AFR=[0.0], AF_AMR=[0.00204082], AF_EAS=[0.0], AF_EUR=[0.0], AF_SAS=[0.0], AN=6404, AN_AFR=1786, AN_AMR=980, AN_EAS=1170, AN_EUR=1266, AN_SAS=1202, BaseQRankSum=0.168, ClippingRankSum=-0.111, DP=38958, DS=False, END=None, FS=1.486, HWE=[1.0], HWE_AFR=[1.0], HWE_AMR=[1.0], HWE_EAS=[1.0], HWE_EUR=[1.0], HWE_SAS=[1.0], HaplotypeScore=None, InbreedingCoeff=-0.0121, MLEAC=[2], MLEAF=[0.0003192], MQ=31.06, MQ0=0, MQRankSum=-0.501, NEGATIVE_TRAIN_SITE=True, POSITIVE_TRAIN_SITE=False, QD=0.66, RAW_MQ=None, ReadPosRankSum=0.711, SOR=0.418, VQSLOD=-1.977, VariantType=None, culprit='SOR', AN_EUR_unrel=1006, AN_EAS_unrel=1008, AN_AMR_unrel=694, AN_SAS_unrel=978, AN_AFR_unrel=1322, AC_EUR_unrel=[0], AC_EAS_unrel=[0], AC_AMR_unrel=[1], AC_SAS_unrel=[0], AC_AFR_unrel=[0], AC_Hom_EUR_unrel=[0], AC_Hom_EAS_unrel=[0], AC_Hom_AMR_unrel=[0], AC_Hom_SAS_unrel=[0], AC_Hom_AFR_unrel=[0], AC_Het_EUR_unrel=[0], AC_Het_EAS_unrel=[0], AC_Het_AMR_unrel=[1], AC_Het_SAS_unrel=[0], AC_Het_AFR_unrel=[0], AF_EUR_unrel=[0.0], AF_EAS_unrel=[0.0], AF_AMR_unrel=[0.00144092], AF_SAS_unrel=[0.0], AF_AFR_unrel=[0.0], ExcHet_EAS=[1.0], ExcHet_AMR=[0.998979], ExcHet_EUR=[1.0], ExcHet_AFR=[1.0], ExcHet_SAS=[1.0], ExcHet=[0.999844])",
+    "filters": [],
+    "info": {
+      "AC": [
+        2
+      ],
+      "AC_AFR": [
+        0
+      ],
+      "AC_AFR_unrel": [
+        0
+      ],
+      "AC_AMR": [
+        2
+      ],
+      "AC_AMR_unrel": [
+        1
+      ],
+      "AC_EAS": [
+        0
+      ],
+      "AC_EAS_unrel": [
+        0
+      ],
+      "AC_EUR": [
+        0
+      ],
+      "AC_EUR_unrel": [
+        0
+      ],
+      "AC_Het": [
+        2
+      ],
+      "AC_Het_AFR": [
+        0
+      ],
+      "AC_Het_AFR_unrel": [
+        0
+      ],
+      "AC_Het_AMR": [
+        2
+      ],
+      "AC_Het_AMR_unrel": [
+        1
+      ],
+      "AC_Het_EAS": [
+        0
+      ],
+      "AC_Het_EAS_unrel": [
+        0
+      ],
+      "AC_Het_EUR": [
+        0
+      ],
+      "AC_Het_EUR_unrel": [
+        0
+      ],
+      "AC_Het_SAS": [
+        0
+      ],
+      "AC_Het_SAS_unrel": [
+        0
+      ],
+      "AC_Hom": [
+        0
+      ],
+      "AC_Hom_AFR": [
+        0
+      ],
+      "AC_Hom_AFR_unrel": [
+        0
+      ],
+      "AC_Hom_AMR": [
+        0
+      ],
+      "AC_Hom_AMR_unrel": [
+        0
+      ],
+      "AC_Hom_EAS": [
+        0
+      ],
+      "AC_Hom_EAS_unrel": [
+        0
+      ],
+      "AC_Hom_EUR": [
+        0
+      ],
+      "AC_Hom_EUR_unrel": [
+        0
+      ],
+      "AC_Hom_SAS": [
+        0
+      ],
+      "AC_Hom_SAS_unrel": [
+        0
+      ],
+      "AC_SAS": [
+        0
+      ],
+      "AC_SAS_unrel": [
+        0
+      ],
+      "AF": [
+        0.000312305
+      ],
+      "AF_AFR": [
+        0.0
+      ],
+      "AF_AFR_unrel": [
+        0.0
+      ],
+      "AF_AMR": [
+        0.00204082
+      ],
+      "AF_AMR_unrel": [
+        0.00144092
+      ],
+      "AF_EAS": [
+        0.0
+      ],
+      "AF_EAS_unrel": [
+        0.0
+      ],
+      "AF_EUR": [
+        0.0
+      ],
+      "AF_EUR_unrel": [
+        0.0
+      ],
+      "AF_SAS": [
+        0.0
+      ],
+      "AF_SAS_unrel": [
+        0.0
+      ],
+      "AN": 6404,
+      "AN_AFR": 1786,
+      "AN_AFR_unrel": 1322,
+      "AN_AMR": 980,
+      "AN_AMR_unrel": 694,
+      "AN_EAS": 1170,
+      "AN_EAS_unrel": 1008,
+      "AN_EUR": 1266,
+      "AN_EUR_unrel": 1006,
+      "AN_SAS": 1202,
+      "AN_SAS_unrel": 978,
+      "BaseQRankSum": 0.168,
+      "ClippingRankSum": -0.111,
+      "DP": 38958,
+      "DS": false,
+      "END": null,
+      "ExcHet": [
+        0.999844
+      ],
+      "ExcHet_AFR": [
+        1.0
+      ],
+      "ExcHet_AMR": [
+        0.998979
+      ],
+      "ExcHet_EAS": [
+        1.0
+      ],
+      "ExcHet_EUR": [
+        1.0
+      ],
+      "ExcHet_SAS": [
+        1.0
+      ],
+      "FS": 1.486,
+      "HWE": [
+        1.0
+      ],
+      "HWE_AFR": [
+        1.0
+      ],
+      "HWE_AMR": [
+        1.0
+      ],
+      "HWE_EAS": [
+        1.0
+      ],
+      "HWE_EUR": [
+        1.0
+      ],
+      "HWE_SAS": [
+        1.0
+      ],
+      "HaplotypeScore": null,
+      "InbreedingCoeff": -0.0121,
+      "MLEAC": [
+        2
+      ],
+      "MLEAF": [
+        0.0003192
+      ],
+      "MQ": 31.06,
+      "MQ0": 0,
+      "MQRankSum": -0.501,
+      "NEGATIVE_TRAIN_SITE": true,
+      "POSITIVE_TRAIN_SITE": false,
+      "QD": 0.66,
+      "RAW_MQ": null,
+      "ReadPosRankSum": 0.711,
+      "SOR": 0.418,
+      "VQSLOD": -1.977,
+      "VariantType": null,
+      "culprit": "SOR"
+    },
     "locus": "chr22:10519265",
     "qual": null,
     "rsid": "22:10519265:CA:C"
@@ -15,8 +221,214 @@
       "G",
       "C"
     ],
-    "filters": "set()",
-    "info": "Struct(AC=[242], AC_AFR=[232], AC_AMR=[7], AC_EAS=[0], AC_EUR=[3], AC_Het=[240], AC_Het_AFR=[230], AC_Het_AMR=[7], AC_Het_EAS=[0], AC_Het_EUR=[3], AC_Het_SAS=[0], AC_Hom=[2], AC_Hom_AFR=[2], AC_Hom_AMR=[0], AC_Hom_EAS=[0], AC_Hom_EUR=[0], AC_Hom_SAS=[0], AC_SAS=[0], AF=[0.0377889], AF_AFR=[0.129899], AF_AMR=[0.00714286], AF_EAS=[0.0], AF_EUR=[0.00236967], AF_SAS=[0.0], AN=6404, AN_AFR=1786, AN_AMR=980, AN_EAS=1170, AN_EUR=1266, AN_SAS=1202, BaseQRankSum=0.198, ClippingRankSum=0.212, DP=43702, DS=False, END=None, FS=5.351, HWE=[0.088733], HWE_AFR=[9.75749e-07], HWE_AMR=[1.0], HWE_EAS=[1.0], HWE_EUR=[1.0], HWE_SAS=[1.0], HaplotypeScore=None, InbreedingCoeff=-0.0186, MLEAC=[257], MLEAF=[0.041], MQ=30.11, MQ0=0, MQRankSum=0.619, NEGATIVE_TRAIN_SITE=False, POSITIVE_TRAIN_SITE=False, QD=8.55, RAW_MQ=None, ReadPosRankSum=0.212, SOR=1.05, VQSLOD=-9.723, VariantType=None, culprit='MQ', AN_EUR_unrel=1006, AN_EAS_unrel=1008, AN_AMR_unrel=694, AN_SAS_unrel=978, AN_AFR_unrel=1322, AC_EUR_unrel=[1], AC_EAS_unrel=[0], AC_AMR_unrel=[5], AC_SAS_unrel=[0], AC_AFR_unrel=[165], AC_Hom_EUR_unrel=[0], AC_Hom_EAS_unrel=[0], AC_Hom_AMR_unrel=[0], AC_Hom_SAS_unrel=[0], AC_Hom_AFR_unrel=[2], AC_Het_EUR_unrel=[1], AC_Het_EAS_unrel=[0], AC_Het_AMR_unrel=[5], AC_Het_SAS_unrel=[0], AC_Het_AFR_unrel=[163], AF_EUR_unrel=[0.000994036], AF_EAS_unrel=[0.0], AF_AMR_unrel=[0.00720461], AF_SAS_unrel=[0.0], AF_AFR_unrel=[0.124811], ExcHet_EAS=[1.0], ExcHet_AMR=[0.978659], ExcHet_EUR=[0.997628], ExcHet_AFR=[6.50087e-07], ExcHet_SAS=[1.0], ExcHet=[0.0521215])",
+    "filters": [],
+    "info": {
+      "AC": [
+        242
+      ],
+      "AC_AFR": [
+        232
+      ],
+      "AC_AFR_unrel": [
+        165
+      ],
+      "AC_AMR": [
+        7
+      ],
+      "AC_AMR_unrel": [
+        5
+      ],
+      "AC_EAS": [
+        0
+      ],
+      "AC_EAS_unrel": [
+        0
+      ],
+      "AC_EUR": [
+        3
+      ],
+      "AC_EUR_unrel": [
+        1
+      ],
+      "AC_Het": [
+        240
+      ],
+      "AC_Het_AFR": [
+        230
+      ],
+      "AC_Het_AFR_unrel": [
+        163
+      ],
+      "AC_Het_AMR": [
+        7
+      ],
+      "AC_Het_AMR_unrel": [
+        5
+      ],
+      "AC_Het_EAS": [
+        0
+      ],
+      "AC_Het_EAS_unrel": [
+        0
+      ],
+      "AC_Het_EUR": [
+        3
+      ],
+      "AC_Het_EUR_unrel": [
+        1
+      ],
+      "AC_Het_SAS": [
+        0
+      ],
+      "AC_Het_SAS_unrel": [
+        0
+      ],
+      "AC_Hom": [
+        2
+      ],
+      "AC_Hom_AFR": [
+        2
+      ],
+      "AC_Hom_AFR_unrel": [
+        2
+      ],
+      "AC_Hom_AMR": [
+        0
+      ],
+      "AC_Hom_AMR_unrel": [
+        0
+      ],
+      "AC_Hom_EAS": [
+        0
+      ],
+      "AC_Hom_EAS_unrel": [
+        0
+      ],
+      "AC_Hom_EUR": [
+        0
+      ],
+      "AC_Hom_EUR_unrel": [
+        0
+      ],
+      "AC_Hom_SAS": [
+        0
+      ],
+      "AC_Hom_SAS_unrel": [
+        0
+      ],
+      "AC_SAS": [
+        0
+      ],
+      "AC_SAS_unrel": [
+        0
+      ],
+      "AF": [
+        0.0377889
+      ],
+      "AF_AFR": [
+        0.129899
+      ],
+      "AF_AFR_unrel": [
+        0.124811
+      ],
+      "AF_AMR": [
+        0.00714286
+      ],
+      "AF_AMR_unrel": [
+        0.00720461
+      ],
+      "AF_EAS": [
+        0.0
+      ],
+      "AF_EAS_unrel": [
+        0.0
+      ],
+      "AF_EUR": [
+        0.00236967
+      ],
+      "AF_EUR_unrel": [
+        0.000994036
+      ],
+      "AF_SAS": [
+        0.0
+      ],
+      "AF_SAS_unrel": [
+        0.0
+      ],
+      "AN": 6404,
+      "AN_AFR": 1786,
+      "AN_AFR_unrel": 1322,
+      "AN_AMR": 980,
+      "AN_AMR_unrel": 694,
+      "AN_EAS": 1170,
+      "AN_EAS_unrel": 1008,
+      "AN_EUR": 1266,
+      "AN_EUR_unrel": 1006,
+      "AN_SAS": 1202,
+      "AN_SAS_unrel": 978,
+      "BaseQRankSum": 0.198,
+      "ClippingRankSum": 0.212,
+      "DP": 43702,
+      "DS": false,
+      "END": null,
+      "ExcHet": [
+        0.0521215
+      ],
+      "ExcHet_AFR": [
+        6.50087e-07
+      ],
+      "ExcHet_AMR": [
+        0.978659
+      ],
+      "ExcHet_EAS": [
+        1.0
+      ],
+      "ExcHet_EUR": [
+        0.997628
+      ],
+      "ExcHet_SAS": [
+        1.0
+      ],
+      "FS": 5.351,
+      "HWE": [
+        0.088733
+      ],
+      "HWE_AFR": [
+        9.75749e-07
+      ],
+      "HWE_AMR": [
+        1.0
+      ],
+      "HWE_EAS": [
+        1.0
+      ],
+      "HWE_EUR": [
+        1.0
+      ],
+      "HWE_SAS": [
+        1.0
+      ],
+      "HaplotypeScore": null,
+      "InbreedingCoeff": -0.0186,
+      "MLEAC": [
+        257
+      ],
+      "MLEAF": [
+        0.041
+      ],
+      "MQ": 30.11,
+      "MQ0": 0,
+      "MQRankSum": 0.619,
+      "NEGATIVE_TRAIN_SITE": false,
+      "POSITIVE_TRAIN_SITE": false,
+      "QD": 8.55,
+      "RAW_MQ": null,
+      "ReadPosRankSum": 0.212,
+      "SOR": 1.05,
+      "VQSLOD": -9.723,
+      "VariantType": null,
+      "culprit": "MQ"
+    },
     "locus": "chr22:10519276",
     "qual": null,
     "rsid": "22:10519276:G:C"
@@ -26,8 +438,214 @@
       "G",
       "A"
     ],
-    "filters": "set()",
-    "info": "Struct(AC=[0], AC_AFR=[0], AC_AMR=[0], AC_EAS=[0], AC_EUR=[0], AC_Het=[0], AC_Het_AFR=[0], AC_Het_AMR=[0], AC_Het_EAS=[0], AC_Het_EUR=[0], AC_Het_SAS=[0], AC_Hom=[0], AC_Hom_AFR=[0], AC_Hom_AMR=[0], AC_Hom_EAS=[0], AC_Hom_EUR=[0], AC_Hom_SAS=[0], AC_SAS=[0], AF=[0.0], AF_AFR=[0.0], AF_AMR=[0.0], AF_EAS=[0.0], AF_EUR=[0.0], AF_SAS=[0.0], AN=6404, AN_AFR=1786, AN_AMR=980, AN_EAS=1170, AN_EUR=1266, AN_SAS=1202, BaseQRankSum=0.564, ClippingRankSum=0.579, DP=64781, DS=False, END=None, FS=2.676, HWE=[1.0], HWE_AFR=[1.0], HWE_AMR=[1.0], HWE_EAS=[1.0], HWE_EUR=[1.0], HWE_SAS=[1.0], HaplotypeScore=None, InbreedingCoeff=0.0392, MLEAC=[2], MLEAF=[0.0003239], MQ=31.55, MQ0=0, MQRankSum=1.16, NEGATIVE_TRAIN_SITE=False, POSITIVE_TRAIN_SITE=False, QD=15.41, RAW_MQ=None, ReadPosRankSum=0.381, SOR=1.302, VQSLOD=-8.415, VariantType=None, culprit='MQ', AN_EUR_unrel=1006, AN_EAS_unrel=1008, AN_AMR_unrel=694, AN_SAS_unrel=978, AN_AFR_unrel=1322, AC_EUR_unrel=[0], AC_EAS_unrel=[0], AC_AMR_unrel=[0], AC_SAS_unrel=[0], AC_AFR_unrel=[0], AC_Hom_EUR_unrel=[0], AC_Hom_EAS_unrel=[0], AC_Hom_AMR_unrel=[0], AC_Hom_SAS_unrel=[0], AC_Hom_AFR_unrel=[0], AC_Het_EUR_unrel=[0], AC_Het_EAS_unrel=[0], AC_Het_AMR_unrel=[0], AC_Het_SAS_unrel=[0], AC_Het_AFR_unrel=[0], AF_EUR_unrel=[0.0], AF_EAS_unrel=[0.0], AF_AMR_unrel=[0.0], AF_SAS_unrel=[0.0], AF_AFR_unrel=[0.0], ExcHet_EAS=[1.0], ExcHet_AMR=[1.0], ExcHet_EUR=[1.0], ExcHet_AFR=[1.0], ExcHet_SAS=[1.0], ExcHet=[1.0])",
+    "filters": [],
+    "info": {
+      "AC": [
+        0
+      ],
+      "AC_AFR": [
+        0
+      ],
+      "AC_AFR_unrel": [
+        0
+      ],
+      "AC_AMR": [
+        0
+      ],
+      "AC_AMR_unrel": [
+        0
+      ],
+      "AC_EAS": [
+        0
+      ],
+      "AC_EAS_unrel": [
+        0
+      ],
+      "AC_EUR": [
+        0
+      ],
+      "AC_EUR_unrel": [
+        0
+      ],
+      "AC_Het": [
+        0
+      ],
+      "AC_Het_AFR": [
+        0
+      ],
+      "AC_Het_AFR_unrel": [
+        0
+      ],
+      "AC_Het_AMR": [
+        0
+      ],
+      "AC_Het_AMR_unrel": [
+        0
+      ],
+      "AC_Het_EAS": [
+        0
+      ],
+      "AC_Het_EAS_unrel": [
+        0
+      ],
+      "AC_Het_EUR": [
+        0
+      ],
+      "AC_Het_EUR_unrel": [
+        0
+      ],
+      "AC_Het_SAS": [
+        0
+      ],
+      "AC_Het_SAS_unrel": [
+        0
+      ],
+      "AC_Hom": [
+        0
+      ],
+      "AC_Hom_AFR": [
+        0
+      ],
+      "AC_Hom_AFR_unrel": [
+        0
+      ],
+      "AC_Hom_AMR": [
+        0
+      ],
+      "AC_Hom_AMR_unrel": [
+        0
+      ],
+      "AC_Hom_EAS": [
+        0
+      ],
+      "AC_Hom_EAS_unrel": [
+        0
+      ],
+      "AC_Hom_EUR": [
+        0
+      ],
+      "AC_Hom_EUR_unrel": [
+        0
+      ],
+      "AC_Hom_SAS": [
+        0
+      ],
+      "AC_Hom_SAS_unrel": [
+        0
+      ],
+      "AC_SAS": [
+        0
+      ],
+      "AC_SAS_unrel": [
+        0
+      ],
+      "AF": [
+        0.0
+      ],
+      "AF_AFR": [
+        0.0
+      ],
+      "AF_AFR_unrel": [
+        0.0
+      ],
+      "AF_AMR": [
+        0.0
+      ],
+      "AF_AMR_unrel": [
+        0.0
+      ],
+      "AF_EAS": [
+        0.0
+      ],
+      "AF_EAS_unrel": [
+        0.0
+      ],
+      "AF_EUR": [
+        0.0
+      ],
+      "AF_EUR_unrel": [
+        0.0
+      ],
+      "AF_SAS": [
+        0.0
+      ],
+      "AF_SAS_unrel": [
+        0.0
+      ],
+      "AN": 6404,
+      "AN_AFR": 1786,
+      "AN_AFR_unrel": 1322,
+      "AN_AMR": 980,
+      "AN_AMR_unrel": 694,
+      "AN_EAS": 1170,
+      "AN_EAS_unrel": 1008,
+      "AN_EUR": 1266,
+      "AN_EUR_unrel": 1006,
+      "AN_SAS": 1202,
+      "AN_SAS_unrel": 978,
+      "BaseQRankSum": 0.564,
+      "ClippingRankSum": 0.579,
+      "DP": 64781,
+      "DS": false,
+      "END": null,
+      "ExcHet": [
+        1.0
+      ],
+      "ExcHet_AFR": [
+        1.0
+      ],
+      "ExcHet_AMR": [
+        1.0
+      ],
+      "ExcHet_EAS": [
+        1.0
+      ],
+      "ExcHet_EUR": [
+        1.0
+      ],
+      "ExcHet_SAS": [
+        1.0
+      ],
+      "FS": 2.676,
+      "HWE": [
+        1.0
+      ],
+      "HWE_AFR": [
+        1.0
+      ],
+      "HWE_AMR": [
+        1.0
+      ],
+      "HWE_EAS": [
+        1.0
+      ],
+      "HWE_EUR": [
+        1.0
+      ],
+      "HWE_SAS": [
+        1.0
+      ],
+      "HaplotypeScore": null,
+      "InbreedingCoeff": 0.0392,
+      "MLEAC": [
+        2
+      ],
+      "MLEAF": [
+        0.0003239
+      ],
+      "MQ": 31.55,
+      "MQ0": 0,
+      "MQRankSum": 1.16,
+      "NEGATIVE_TRAIN_SITE": false,
+      "POSITIVE_TRAIN_SITE": false,
+      "QD": 15.41,
+      "RAW_MQ": null,
+      "ReadPosRankSum": 0.381,
+      "SOR": 1.302,
+      "VQSLOD": -8.415,
+      "VariantType": null,
+      "culprit": "MQ"
+    },
     "locus": "chr22:10519325",
     "qual": null,
     "rsid": "22:10519325:G:A"
@@ -37,8 +655,214 @@
       "T",
       "C"
     ],
-    "filters": "set()",
-    "info": "Struct(AC=[241], AC_AFR=[227], AC_AMR=[9], AC_EAS=[0], AC_EUR=[5], AC_Het=[229], AC_Het_AFR=[217], AC_Het_AMR=[9], AC_Het_EAS=[0], AC_Het_EUR=[3], AC_Het_SAS=[0], AC_Hom=[12], AC_Hom_AFR=[10], AC_Hom_AMR=[0], AC_Hom_EAS=[0], AC_Hom_EUR=[2], AC_Hom_SAS=[0], AC_SAS=[0], AF=[0.0376327], AF_AFR=[0.1271], AF_AMR=[0.00918367], AF_EAS=[0.0], AF_EUR=[0.00394945], AF_SAS=[0.0], AN=6404, AN_AFR=1786, AN_AMR=980, AN_EAS=1170, AN_EUR=1266, AN_SAS=1202, BaseQRankSum=0.154, ClippingRankSum=-0.116, DP=75953, DS=False, END=None, FS=7.141, HWE=[0.457638], HWE_AFR=[0.00361844], HWE_AMR=[1.0], HWE_EAS=[1.0], HWE_EUR=[0.00789575], HWE_SAS=[1.0], HaplotypeScore=None, InbreedingCoeff=0.0331, MLEAC=[249], MLEAF=[0.04], MQ=31.69, MQ0=0, MQRankSum=0.796, NEGATIVE_TRAIN_SITE=False, POSITIVE_TRAIN_SITE=False, QD=9.53, RAW_MQ=None, ReadPosRankSum=0.326, SOR=1.006, VQSLOD=-7.367, VariantType=None, culprit='MQ', AN_EUR_unrel=1006, AN_EAS_unrel=1008, AN_AMR_unrel=694, AN_SAS_unrel=978, AN_AFR_unrel=1322, AC_EUR_unrel=[3], AC_EAS_unrel=[0], AC_AMR_unrel=[6], AC_SAS_unrel=[0], AC_AFR_unrel=[160], AC_Hom_EUR_unrel=[2], AC_Hom_EAS_unrel=[0], AC_Hom_AMR_unrel=[0], AC_Hom_SAS_unrel=[0], AC_Hom_AFR_unrel=[8], AC_Het_EUR_unrel=[1], AC_Het_EAS_unrel=[0], AC_Het_AMR_unrel=[6], AC_Het_SAS_unrel=[0], AC_Het_AFR_unrel=[152], AF_EUR_unrel=[0.00298211], AF_EAS_unrel=[0.0], AF_AMR_unrel=[0.00864553], AF_SAS_unrel=[0.0], AF_AFR_unrel=[0.121029], ExcHet_EAS=[1.0], ExcHet_AMR=[0.963622], ExcHet_EUR=[0.999991], ExcHet_AFR=[0.00165702], ExcHet_SAS=[1.0], ExcHet=[0.836416])",
+    "filters": [],
+    "info": {
+      "AC": [
+        241
+      ],
+      "AC_AFR": [
+        227
+      ],
+      "AC_AFR_unrel": [
+        160
+      ],
+      "AC_AMR": [
+        9
+      ],
+      "AC_AMR_unrel": [
+        6
+      ],
+      "AC_EAS": [
+        0
+      ],
+      "AC_EAS_unrel": [
+        0
+      ],
+      "AC_EUR": [
+        5
+      ],
+      "AC_EUR_unrel": [
+        3
+      ],
+      "AC_Het": [
+        229
+      ],
+      "AC_Het_AFR": [
+        217
+      ],
+      "AC_Het_AFR_unrel": [
+        152
+      ],
+      "AC_Het_AMR": [
+        9
+      ],
+      "AC_Het_AMR_unrel": [
+        6
+      ],
+      "AC_Het_EAS": [
+        0
+      ],
+      "AC_Het_EAS_unrel": [
+        0
+      ],
+      "AC_Het_EUR": [
+        3
+      ],
+      "AC_Het_EUR_unrel": [
+        1
+      ],
+      "AC_Het_SAS": [
+        0
+      ],
+      "AC_Het_SAS_unrel": [
+        0
+      ],
+      "AC_Hom": [
+        12
+      ],
+      "AC_Hom_AFR": [
+        10
+      ],
+      "AC_Hom_AFR_unrel": [
+        8
+      ],
+      "AC_Hom_AMR": [
+        0
+      ],
+      "AC_Hom_AMR_unrel": [
+        0
+      ],
+      "AC_Hom_EAS": [
+        0
+      ],
+      "AC_Hom_EAS_unrel": [
+        0
+      ],
+      "AC_Hom_EUR": [
+        2
+      ],
+      "AC_Hom_EUR_unrel": [
+        2
+      ],
+      "AC_Hom_SAS": [
+        0
+      ],
+      "AC_Hom_SAS_unrel": [
+        0
+      ],
+      "AC_SAS": [
+        0
+      ],
+      "AC_SAS_unrel": [
+        0
+      ],
+      "AF": [
+        0.0376327
+      ],
+      "AF_AFR": [
+        0.1271
+      ],
+      "AF_AFR_unrel": [
+        0.121029
+      ],
+      "AF_AMR": [
+        0.00918367
+      ],
+      "AF_AMR_unrel": [
+        0.00864553
+      ],
+      "AF_EAS": [
+        0.0
+      ],
+      "AF_EAS_unrel": [
+        0.0
+      ],
+      "AF_EUR": [
+        0.00394945
+      ],
+      "AF_EUR_unrel": [
+        0.00298211
+      ],
+      "AF_SAS": [
+        0.0
+      ],
+      "AF_SAS_unrel": [
+        0.0
+      ],
+      "AN": 6404,
+      "AN_AFR": 1786,
+      "AN_AFR_unrel": 1322,
+      "AN_AMR": 980,
+      "AN_AMR_unrel": 694,
+      "AN_EAS": 1170,
+      "AN_EAS_unrel": 1008,
+      "AN_EUR": 1266,
+      "AN_EUR_unrel": 1006,
+      "AN_SAS": 1202,
+      "AN_SAS_unrel": 978,
+      "BaseQRankSum": 0.154,
+      "ClippingRankSum": -0.116,
+      "DP": 75953,
+      "DS": false,
+      "END": null,
+      "ExcHet": [
+        0.836416
+      ],
+      "ExcHet_AFR": [
+        0.00165702
+      ],
+      "ExcHet_AMR": [
+        0.963622
+      ],
+      "ExcHet_EAS": [
+        1.0
+      ],
+      "ExcHet_EUR": [
+        0.999991
+      ],
+      "ExcHet_SAS": [
+        1.0
+      ],
+      "FS": 7.141,
+      "HWE": [
+        0.457638
+      ],
+      "HWE_AFR": [
+        0.00361844
+      ],
+      "HWE_AMR": [
+        1.0
+      ],
+      "HWE_EAS": [
+        1.0
+      ],
+      "HWE_EUR": [
+        0.00789575
+      ],
+      "HWE_SAS": [
+        1.0
+      ],
+      "HaplotypeScore": null,
+      "InbreedingCoeff": 0.0331,
+      "MLEAC": [
+        249
+      ],
+      "MLEAF": [
+        0.04
+      ],
+      "MQ": 31.69,
+      "MQ0": 0,
+      "MQRankSum": 0.796,
+      "NEGATIVE_TRAIN_SITE": false,
+      "POSITIVE_TRAIN_SITE": false,
+      "QD": 9.53,
+      "RAW_MQ": null,
+      "ReadPosRankSum": 0.326,
+      "SOR": 1.006,
+      "VQSLOD": -7.367,
+      "VariantType": null,
+      "culprit": "MQ"
+    },
     "locus": "chr22:10519389",
     "qual": null,
     "rsid": "22:10519389:T:C"
@@ -48,8 +872,214 @@
       "G",
       "A"
     ],
-    "filters": "set()",
-    "info": "Struct(AC=[4], AC_AFR=[4], AC_AMR=[0], AC_EAS=[0], AC_EUR=[0], AC_Het=[4], AC_Het_AFR=[4], AC_Het_AMR=[0], AC_Het_EAS=[0], AC_Het_EUR=[0], AC_Het_SAS=[0], AC_Hom=[0], AC_Hom_AFR=[0], AC_Hom_AMR=[0], AC_Hom_EAS=[0], AC_Hom_EUR=[0], AC_Hom_SAS=[0], AC_SAS=[0], AF=[0.00062461], AF_AFR=[0.00223964], AF_AMR=[0.0], AF_EAS=[0.0], AF_EUR=[0.0], AF_SAS=[0.0], AN=6404, AN_AFR=1786, AN_AMR=980, AN_EAS=1170, AN_EUR=1266, AN_SAS=1202, BaseQRankSum=0.414, ClippingRankSum=-0.456, DP=67628, DS=False, END=None, FS=13.355, HWE=[1.0], HWE_AFR=[1.0], HWE_AMR=[1.0], HWE_EAS=[1.0], HWE_EUR=[1.0], HWE_SAS=[1.0], HaplotypeScore=None, InbreedingCoeff=-0.0067, MLEAC=[3], MLEAF=[0.0004791], MQ=31.07, MQ0=0, MQRankSum=-0.344, NEGATIVE_TRAIN_SITE=False, POSITIVE_TRAIN_SITE=False, QD=1.23, RAW_MQ=None, ReadPosRankSum=0.572, SOR=1.813, VQSLOD=-9.918, VariantType=None, culprit='MQ', AN_EUR_unrel=1006, AN_EAS_unrel=1008, AN_AMR_unrel=694, AN_SAS_unrel=978, AN_AFR_unrel=1322, AC_EUR_unrel=[0], AC_EAS_unrel=[0], AC_AMR_unrel=[0], AC_SAS_unrel=[0], AC_AFR_unrel=[4], AC_Hom_EUR_unrel=[0], AC_Hom_EAS_unrel=[0], AC_Hom_AMR_unrel=[0], AC_Hom_SAS_unrel=[0], AC_Hom_AFR_unrel=[0], AC_Het_EUR_unrel=[0], AC_Het_EAS_unrel=[0], AC_Het_AMR_unrel=[0], AC_Het_SAS_unrel=[0], AC_Het_AFR_unrel=[4], AF_EUR_unrel=[0.0], AF_EAS_unrel=[0.0], AF_AMR_unrel=[0.0], AF_SAS_unrel=[0.0], AF_AFR_unrel=[0.00302572], ExcHet_EAS=[1.0], ExcHet_AMR=[1.0], ExcHet_EUR=[1.0], ExcHet_AFR=[0.99664], ExcHet_SAS=[1.0], ExcHet=[0.999063])",
+    "filters": [],
+    "info": {
+      "AC": [
+        4
+      ],
+      "AC_AFR": [
+        4
+      ],
+      "AC_AFR_unrel": [
+        4
+      ],
+      "AC_AMR": [
+        0
+      ],
+      "AC_AMR_unrel": [
+        0
+      ],
+      "AC_EAS": [
+        0
+      ],
+      "AC_EAS_unrel": [
+        0
+      ],
+      "AC_EUR": [
+        0
+      ],
+      "AC_EUR_unrel": [
+        0
+      ],
+      "AC_Het": [
+        4
+      ],
+      "AC_Het_AFR": [
+        4
+      ],
+      "AC_Het_AFR_unrel": [
+        4
+      ],
+      "AC_Het_AMR": [
+        0
+      ],
+      "AC_Het_AMR_unrel": [
+        0
+      ],
+      "AC_Het_EAS": [
+        0
+      ],
+      "AC_Het_EAS_unrel": [
+        0
+      ],
+      "AC_Het_EUR": [
+        0
+      ],
+      "AC_Het_EUR_unrel": [
+        0
+      ],
+      "AC_Het_SAS": [
+        0
+      ],
+      "AC_Het_SAS_unrel": [
+        0
+      ],
+      "AC_Hom": [
+        0
+      ],
+      "AC_Hom_AFR": [
+        0
+      ],
+      "AC_Hom_AFR_unrel": [
+        0
+      ],
+      "AC_Hom_AMR": [
+        0
+      ],
+      "AC_Hom_AMR_unrel": [
+        0
+      ],
+      "AC_Hom_EAS": [
+        0
+      ],
+      "AC_Hom_EAS_unrel": [
+        0
+      ],
+      "AC_Hom_EUR": [
+        0
+      ],
+      "AC_Hom_EUR_unrel": [
+        0
+      ],
+      "AC_Hom_SAS": [
+        0
+      ],
+      "AC_Hom_SAS_unrel": [
+        0
+      ],
+      "AC_SAS": [
+        0
+      ],
+      "AC_SAS_unrel": [
+        0
+      ],
+      "AF": [
+        0.00062461
+      ],
+      "AF_AFR": [
+        0.00223964
+      ],
+      "AF_AFR_unrel": [
+        0.00302572
+      ],
+      "AF_AMR": [
+        0.0
+      ],
+      "AF_AMR_unrel": [
+        0.0
+      ],
+      "AF_EAS": [
+        0.0
+      ],
+      "AF_EAS_unrel": [
+        0.0
+      ],
+      "AF_EUR": [
+        0.0
+      ],
+      "AF_EUR_unrel": [
+        0.0
+      ],
+      "AF_SAS": [
+        0.0
+      ],
+      "AF_SAS_unrel": [
+        0.0
+      ],
+      "AN": 6404,
+      "AN_AFR": 1786,
+      "AN_AFR_unrel": 1322,
+      "AN_AMR": 980,
+      "AN_AMR_unrel": 694,
+      "AN_EAS": 1170,
+      "AN_EAS_unrel": 1008,
+      "AN_EUR": 1266,
+      "AN_EUR_unrel": 1006,
+      "AN_SAS": 1202,
+      "AN_SAS_unrel": 978,
+      "BaseQRankSum": 0.414,
+      "ClippingRankSum": -0.456,
+      "DP": 67628,
+      "DS": false,
+      "END": null,
+      "ExcHet": [
+        0.999063
+      ],
+      "ExcHet_AFR": [
+        0.99664
+      ],
+      "ExcHet_AMR": [
+        1.0
+      ],
+      "ExcHet_EAS": [
+        1.0
+      ],
+      "ExcHet_EUR": [
+        1.0
+      ],
+      "ExcHet_SAS": [
+        1.0
+      ],
+      "FS": 13.355,
+      "HWE": [
+        1.0
+      ],
+      "HWE_AFR": [
+        1.0
+      ],
+      "HWE_AMR": [
+        1.0
+      ],
+      "HWE_EAS": [
+        1.0
+      ],
+      "HWE_EUR": [
+        1.0
+      ],
+      "HWE_SAS": [
+        1.0
+      ],
+      "HaplotypeScore": null,
+      "InbreedingCoeff": -0.0067,
+      "MLEAC": [
+        3
+      ],
+      "MLEAF": [
+        0.0004791
+      ],
+      "MQ": 31.07,
+      "MQ0": 0,
+      "MQRankSum": -0.344,
+      "NEGATIVE_TRAIN_SITE": false,
+      "POSITIVE_TRAIN_SITE": false,
+      "QD": 1.23,
+      "RAW_MQ": null,
+      "ReadPosRankSum": 0.572,
+      "SOR": 1.813,
+      "VQSLOD": -9.918,
+      "VariantType": null,
+      "culprit": "MQ"
+    },
     "locus": "chr22:10519410",
     "qual": null,
     "rsid": "22:10519410:G:A"
