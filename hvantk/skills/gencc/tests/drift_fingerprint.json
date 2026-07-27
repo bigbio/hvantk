@@ -1,25 +1,43 @@
 {
   "probe_version": 1,
-  "source_version": null,
+  "source_version": "Sun, 26 Jul 2026 06:01:33 GMT",
   "headers": {
     "gencc-submissions.tsv": [
       "sgc_id",
+      "version_number",
       "gene_curie",
       "gene_symbol",
       "disease_curie",
       "disease_title",
       "disease_original_curie",
       "disease_original_title",
+      "classification_curie",
       "classification_title",
+      "moi_curie",
       "moi_title",
+      "submitter_curie",
       "submitter_title",
+      "submitted_as_hgnc_id",
+      "submitted_as_hgnc_symbol",
+      "submitted_as_disease_id",
+      "submitted_as_disease_name",
+      "submitted_as_moi_id",
+      "submitted_as_moi_name",
+      "submitted_as_submitter_id",
+      "submitted_as_submitter_name",
+      "submitted_as_classification_id",
+      "submitted_as_classification_name",
       "submitted_as_date",
       "submitted_as_public_report_url",
-      "submitted_as_pmids"
+      "submitted_as_notes",
+      "submitted_as_pmids",
+      "submitted_as_assertion_criteria_url",
+      "submitted_as_submission_id",
+      "submitted_run_date"
     ]
   },
   "checksums": {
-    "gencc-submissions.tsv": "placeholder-regenerate-from-live-source"
+    "gencc-submissions.tsv": "6f07ac79f908bca4cfb99874e13d7d1ae5a9c839112baba0243b45fbc018f308"
   },
-  "fetched_at": "2026-05-18T00:00:00+00:00"
+  "fetched_at": "2026-07-27T17:10:04.227093+00:00"
 }

@@ -1,5 +1,5 @@
 {
-  "probe_version": 1,
+  "probe_version": 2,
   "source_version": null,
   "headers": {
     "Clingen-Gene-Disease-Summary.csv": [
@@ -16,7 +16,10 @@
     ]
   },
   "checksums": {
-    "Clingen-Gene-Disease-Summary.csv": "placeholder-regenerate-from-live-source"
+    "Clingen-Gene-Disease-Summary.csv": "1bf26b3670c0d7ff2700df59ee07d1aff8a70bc2c63a7ffc062377312cccf440"
   },
-  "fetched_at": "2026-05-16T00:00:00+00:00"
+  "extras": {
+    "content_length": "1113685"
+  },
+  "fetched_at": "2026-07-27T17:14:46.968306+00:00"
 }

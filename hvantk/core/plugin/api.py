@@ -33,6 +33,59 @@ PROBE_STATUS_STUB = "stub"
 # than a fake ``sha256:...`` hash, so provenance never implies a real probe ran.
 STUB_FINGERPRINT_TOKEN = "stub:no-programmatic-source"
 
+# Value a hand-seeded ``drift_fingerprint.json`` carries where a real checksum
+# belongs. A baseline holding it was written by hand, never captured from a live
+# probe, so it cannot equal any observed fingerprint.
+PLACEHOLDER_CHECKSUM = "placeholder-regenerate-from-live-source"
+
+# ``fetched_at`` value meaning "no probe has ever run": a hand-written baseline
+# stamped at the Unix epoch rather than at a real fetch time.
+_EPOCH_PREFIX = "1970-01-01"
+
+
+def placeholder_baseline_reason(expected: Mapping[str, Any]) -> str | None:
+    """Explain why ``expected`` is a hand-seeded baseline, or None if it is real.
+
+    A committed ``drift_fingerprint.json`` is supposed to be the output of a real
+    probe run. Six of them were instead seeded by hand -- placeholder checksum
+    strings, ``fetched_at`` at the Unix epoch -- and a hand-seeded baseline can
+    never equal a live observation. Comparing it produced a permanent, and
+    therefore meaningless, ``drifted`` verdict: the scheduled drift bot opened the
+    same no-op pull requests every night, which is how six dead comparators went
+    unnoticed while looking maximally alive.
+
+    ``drift_runner`` calls this before diffing and reports ``probe_failed`` -- the
+    baseline is missing in substance even though the file exists -- so the
+    condition surfaces as the configuration error it is, and is never mistaken
+    for the upstream having moved.
+
+    Three markers, none of which can occur in genuine probe output: the placeholder
+    sentinel string, an empty checksum value, and ``fetched_at`` at the Unix epoch.
+
+    Detection is deliberately narrow. An empty ``checksums`` *map* is not a marker,
+    because probes that fingerprint HTTP validators instead of bodies legitimately
+    ship one -- peptideatlas does. The distinction between an empty map and an empty
+    value inside it is load-bearing, and both cases are pinned by tests.
+    """
+    checksums = expected.get("checksums")
+    if isinstance(checksums, Mapping):
+        for name, value in checksums.items():
+            if isinstance(value, str) and value == PLACEHOLDER_CHECKSUM:
+                return f"checksum for {name!r} is the placeholder sentinel"
+            # The other seeding tell: cptac's two baselines carried an empty string
+            # where a digest belongs. Those also had an epoch ``fetched_at``, so the
+            # check below covered the real cases -- but a baseline hand-written with
+            # a genuine timestamp would slip past. A probe that ran always produces
+            # a digest.
+            if isinstance(value, str) and not value.strip():
+                return f"checksum for {name!r} is empty; no digest was ever computed"
+
+    fetched_at = expected.get("fetched_at")
+    if isinstance(fetched_at, str) and fetched_at.startswith(_EPOCH_PREFIX):
+        return f"fetched_at is the Unix epoch ({fetched_at!r}); no probe ever ran"
+
+    return None
+
 
 def stub_fingerprint(reason: str) -> dict:
     """Build the structured sentinel a documentation-only drift probe returns.
