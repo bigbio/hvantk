@@ -18,6 +18,12 @@ What remains is genuinely information-bearing: the hash of the column-header
 row detects schema drift, and ``Content-Length`` -- stable across requests,
 and moving when curations land -- detects content change. That pair is the
 comparator; ClinGen exposes no content version to record beyond it.
+
+Both halves are required rather than best-effort. If either the header row or
+``Content-Length`` is absent the probe raises rather than recording a partial
+fingerprint, because the scheduled drift bot regenerates a drifted baseline
+automatically: a single transient omission would otherwise be committed as the
+new baseline and silently retire content detection for good.
 """
 
 from __future__ import annotations
@@ -50,6 +56,16 @@ def fetch_fingerprint() -> dict:
         )
         head.raise_for_status()
         content_length = head.headers.get("Content-Length")
+        if content_length is None:
+            # Fail closed. Recording None would leave only the column-header hash, so
+            # a row-level ClinGen change would read as clean -- and because the
+            # scheduled bot regenerates a drifted baseline automatically, one
+            # transient omission would bake the None in permanently and retire the
+            # content signal for good. probe_failed is loud and recoverable.
+            raise DriftProbeError(
+                "ClinGen response omitted Content-Length; refusing to record a "
+                "fingerprint with no content signal."
+            )
 
         with requests.get(
             CLINGEN_BASE_URL, timeout=_TIMEOUT_S, stream=True, allow_redirects=True

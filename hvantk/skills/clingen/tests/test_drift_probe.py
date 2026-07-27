@@ -7,8 +7,10 @@ network access; we do not run it in this suite.
 
 from __future__ import annotations
 
+import pytest
 import requests_mock
 
+from hvantk.core.plugin.api import DriftProbeError
 from hvantk.core.plugin.drift_runner import _compare_fingerprints
 from hvantk.skills.clingen.shared.constants import CLINGEN_BASE_URL, CLINGEN_FILE_PREFIX
 from hvantk.skills.clingen.drift_probe import fetch_fingerprint
@@ -93,3 +95,20 @@ def test_fingerprint_is_stable_across_repeated_probes():
     second = probe_with("Mon, 27 Jul 2026 17:12:59 GMT")
 
     assert _compare_fingerprints(first, second) is None
+
+
+def test_missing_content_length_fails_closed():
+    """Without Content-Length the fingerprint has no content signal, so refuse it.
+
+    Recording None would leave only the column-header hash, making a row-level ClinGen
+    change read as clean. The scheduled drift bot regenerates a drifted baseline
+    automatically, so one transient omission would bake the None in permanently.
+    """
+    with requests_mock.Mocker() as m:
+        m.head(CLINGEN_BASE_URL, headers={})
+        m.get(
+            CLINGEN_BASE_URL,
+            text='"GENE SYMBOL","GENE ID (HGNC)"\n',
+        )
+        with pytest.raises(DriftProbeError, match="Content-Length"):
+            fetch_fingerprint()

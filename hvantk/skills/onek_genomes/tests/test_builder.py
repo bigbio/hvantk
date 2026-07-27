@@ -34,8 +34,13 @@ from hvantk.tests._snapshot_utils import (
     phase_b_snapshot_adapter,
 )
 
-FIXTURE = "hvantk/skills/onek_genomes/tests/testdata/raw/onek_genomes"
-SNAPSHOT_DIR = Path("hvantk/skills/onek_genomes/tests/snapshots")
+# Anchored to this file, not the CWD. The sibling plugins use repo-root-relative
+# literals, which work only when pytest is invoked from the repository root: running
+# `pytest tests -m hail` from inside the plugin directory collects fine and then fails
+# at run time with FileNotFoundError on the fixture (CodeRabbit, PR #233).
+_HERE = Path(__file__).resolve().parent
+FIXTURE = str(_HERE / "testdata" / "raw" / "onek_genomes")
+SNAPSHOT_DIR = _HERE / "snapshots"
 
 #: Rows sampled per dataset. The fixture is a single sorted chr22 VCF and a sorted
 #: sample table, so a head sample is deterministic across runs.
