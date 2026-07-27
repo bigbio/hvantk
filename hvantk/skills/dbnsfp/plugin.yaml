@@ -51,6 +51,16 @@ datasets:
       GenoCanyon_rankscore: {trained_on: []}
       Eigen-raw_coding_rankscore: {trained_on: []}
       Eigen-PC-raw_coding_rankscore: {trained_on: []}
+      # additional conservation tracks shipped as rankscores
+      GERP_91_mammals_rankscore: {trained_on: []}
+      phastCons17way_primate_rankscore: {trained_on: []}
+      phastCons470way_mammalian_rankscore: {trained_on: []}
+      phyloP17way_primate_rankscore: {trained_on: []}
+      # fitCons variants: functional-genomics fitness consequence, per cell line.
+      # Derived from ENCODE functional data, not from any curated variant list.
+      GM12878_fitCons_rankscore: {trained_on: []}
+      H1-hESC_fitCons_rankscore: {trained_on: []}
+      HUVEC_fitCons_rankscore: {trained_on: []}
       # --- supervised on curated disease databases ---
       REVEL_rankscore: {trained_on: [HGMD, ClinVar]}
       MVP_rankscore: {trained_on: [ClinVar]}
@@ -68,6 +78,14 @@ datasets:
       MutScore_rankscore: {trained_on: [ClinVar]}
       VARITY_R_rankscore: {trained_on: [ClinVar]}
       VARITY_ER_rankscore: {trained_on: [ClinVar]}
+      # LOO = the leave-one-out releases of the same two VARITY models
+      VARITY_R_LOO_rankscore: {trained_on: [ClinVar]}
+      VARITY_ER_LOO_rankscore: {trained_on: [ClinVar]}
+      # DELIBERATELY NOT DECLARED: MutFormer_rankscore, PHACTboost_rankscore.
+      # Both are plausibly supervised on curated disease variants, but I could not confirm
+      # their training sets, and a wrong "clean" declaration is far more damaging than an
+      # honest "unknown" -- unknown still reaches the `all` arm, it just never contributes
+      # to the headline. Declare them when someone checks the source publications.
       gMVP_rankscore: {trained_on: [ClinVar]}
       Polyphen2_HDIV_rankscore: {trained_on: [OMIM]}
       Polyphen2_HVAR_rankscore: {trained_on: [OMIM, ClinVar]}

@@ -77,14 +77,14 @@
       "AltaiNeandertal": "./.",
       "Ancestral_allele": "c",
       "BayesDel_addAF_pred": "T",
-      "BayesDel_addAF_rankscore": "0.08736",
+      "BayesDel_addAF_rankscore": 0.08736,
       "BayesDel_addAF_score": {
         "ENST00000564130": -0.299191,
         "ENST00000568584": -0.299191,
         "ENST00000568866": -0.299191
       },
       "BayesDel_noAF_pred": "T",
-      "BayesDel_noAF_rankscore": "0.07767",
+      "BayesDel_noAF_rankscore": 0.07767,
       "BayesDel_noAF_score": {
         "ENST00000564130": -0.667544,
         "ENST00000568584": -0.667544,
@@ -98,7 +98,7 @@
       "CADD_phred_hg19": "0.208",
       "CADD_raw": "-0.004978",
       "CADD_raw_hg19": "-0.457832",
-      "CADD_raw_rankscore": "0.04247",
+      "CADD_raw_rankscore": 0.04247,
       "CADD_raw_rankscore_hg19": "0.01856",
       "ChagyrskayaNeandertal": "./.",
       "ClinPred_pred": null,
@@ -108,7 +108,7 @@
         "ENST00000568584": null,
         "ENST00000568866": null
       },
-      "DANN_rankscore": "0.10474",
+      "DANN_rankscore": 0.10474,
       "DANN_score": {
         "ENST00000564130": 0.7383846749388943,
         "ENST00000568584": 0.7383846749388943,
@@ -154,10 +154,10 @@
       },
       "Eigen-PC-phred_coding": "1.136441",
       "Eigen-PC-raw_coding": "-0.541136693316466",
-      "Eigen-PC-raw_coding_rankscore": "0.21041",
+      "Eigen-PC-raw_coding_rankscore": 0.21041,
       "Eigen-phred_coding": "2.283428",
       "Eigen-raw_coding": "-0.0664259884670748",
-      "Eigen-raw_coding_rankscore": "0.38872",
+      "Eigen-raw_coding_rankscore": 0.38872,
       "Ensembl_geneid": "ENSG00000261456;ENSG00000261456;ENSG00000261456",
       "Ensembl_proteinid": "ENSP00000457610;ENSP00000457062;ENSP00000456206",
       "Ensembl_transcriptid": [
@@ -225,11 +225,11 @@
       "GENCODE_basic": "Y;Y;Y",
       "GERP++_NR": "0.109",
       "GERP++_RS": "0.109",
-      "GERP++_RS_rankscore": "0.13884",
+      "GERP++_RS_rankscore": 0.13884,
       "GERP_91_mammals": null,
       "GERP_91_mammals_rankscore": null,
       "GM12878_confidence_value": "0",
-      "GM12878_fitCons_rankscore": "0.02171",
+      "GM12878_fitCons_rankscore": 0.02171,
       "GM12878_fitCons_score": {
         "ENST00000564130": 0.084543,
         "ENST00000568584": 0.084543,
@@ -239,7 +239,7 @@
       "GTEx_V8_eQTL_tissue": null,
       "GTEx_V8_sQTL_gene": null,
       "GTEx_V8_sQTL_tissue": null,
-      "GenoCanyon_rankscore": "0.01202",
+      "GenoCanyon_rankscore": 0.01202,
       "GenoCanyon_score": {
         "ENST00000564130": 7.80698991405282e-06,
         "ENST00000568584": 7.80698991405282e-06,
@@ -247,7 +247,7 @@
       },
       "Geuvadis_eQTL_target_gene": null,
       "H1-hESC_confidence_value": "0",
-      "H1-hESC_fitCons_rankscore": "0.02440",
+      "H1-hESC_fitCons_rankscore": 0.0244,
       "H1-hESC_fitCons_score": {
         "ENST00000564130": 0.078618,
         "ENST00000568584": 0.078618,
@@ -260,7 +260,7 @@
       "HGVSp_VEP": "p.Ter411TyrextTer19;p.Ter408TyrextTer19;p.Ter445TyrextTer19",
       "HGVSp_snpEff": "p.Ter411Tyrext*?;p.Ter408Tyrext*?;p.Ter445Tyrext*?",
       "HUVEC_confidence_value": "0",
-      "HUVEC_fitCons_rankscore": "0.00518",
+      "HUVEC_fitCons_rankscore": 0.00518,
       "HUVEC_fitCons_score": {
         "ENST00000564130": 0.057018,
         "ENST00000568584": 0.057018,
@@ -268,7 +268,7 @@
       },
       "Interpro_domain": ".;.;.",
       "LINSIGHT": "0.0863545",
-      "LINSIGHT_rankscore": "0.19638",
+      "LINSIGHT_rankscore": 0.19638,
       "LIST-S2_pred": ".;.;.",
       "LIST-S2_rankscore": null,
       "LIST-S2_score": {
@@ -353,7 +353,7 @@
         "ENST00000568866": null
       },
       "MutationTaster_AAE": ".;*445Y;*411Y;*373Y;*408Y",
-      "MutationTaster_converted_rankscore": "0.81001",
+      "MutationTaster_converted_rankscore": 0.81001,
       "MutationTaster_model": "without_aae;complex_aae;complex_aae;complex_aae;complex_aae",
       "MutationTaster_pred": "D;N;N;N;N",
       "MutationTaster_score": {
@@ -451,7 +451,7 @@
         "ENST00000568866": null
       },
       "VEP_canonical": ".;.;YES",
-      "VEST4_rankscore": "0.00485",
+      "VEST4_rankscore": 0.00485,
       "VEST4_score": {
         "ENST00000564130": 0.024,
         "ENST00000568584": 0.025,
@@ -483,7 +483,7 @@
       "eQTLGen_snp_id": null,
       "fathmm-MKL_coding_group": "AEFI",
       "fathmm-MKL_coding_pred": "N",
-      "fathmm-MKL_coding_rankscore": "0.05488",
+      "fathmm-MKL_coding_rankscore": 0.05488,
       "fathmm-MKL_coding_score": {
         "ENST00000564130": 0.01738,
         "ENST00000568584": 0.01738,
@@ -632,24 +632,24 @@
       "hg19_chr": "10",
       "hg19_pos(1-based)": "92997",
       "integrated_confidence_value": "0",
-      "integrated_fitCons_rankscore": "0.01641",
+      "integrated_fitCons_rankscore": 0.01641,
       "integrated_fitCons_score": {
         "ENST00000564130": 0.074636,
         "ENST00000568584": 0.074636,
         "ENST00000568866": 0.074636
       },
       "phastCons100way_vertebrate": "0.003000",
-      "phastCons100way_vertebrate_rankscore": "0.16062",
+      "phastCons100way_vertebrate_rankscore": 0.16062,
       "phastCons17way_primate": "0.009000",
-      "phastCons17way_primate_rankscore": "0.08673",
+      "phastCons17way_primate_rankscore": 0.08673,
       "phastCons470way_mammalian": "0.021000",
-      "phastCons470way_mammalian_rankscore": "0.20819",
+      "phastCons470way_mammalian_rankscore": 0.20819,
       "phyloP100way_vertebrate": "-0.291000",
-      "phyloP100way_vertebrate_rankscore": "0.08379",
+      "phyloP100way_vertebrate_rankscore": 0.08379,
       "phyloP17way_primate": "0.290000",
-      "phyloP17way_primate_rankscore": "0.18761",
+      "phyloP17way_primate_rankscore": 0.18761,
       "phyloP470way_mammalian": "0.308000",
-      "phyloP470way_mammalian_rankscore": "0.17052",
+      "phyloP470way_mammalian_rankscore": 0.17052,
       "refcodon": "TAG;TAG;TAG",
       "rs_dbSNP": null
     }
@@ -732,14 +732,14 @@
       "AltaiNeandertal": "./.",
       "Ancestral_allele": "c",
       "BayesDel_addAF_pred": "T",
-      "BayesDel_addAF_rankscore": "0.10073",
+      "BayesDel_addAF_rankscore": 0.10073,
       "BayesDel_addAF_score": {
         "ENST00000564130": -0.285683,
         "ENST00000568584": -0.285683,
         "ENST00000568866": -0.285683
       },
       "BayesDel_noAF_pred": "T",
-      "BayesDel_noAF_rankscore": "0.09084",
+      "BayesDel_noAF_rankscore": 0.09084,
       "BayesDel_noAF_score": {
         "ENST00000564130": -0.648141,
         "ENST00000568584": -0.648141,
@@ -753,7 +753,7 @@
       "CADD_phred_hg19": "0.179",
       "CADD_raw": "-0.017863",
       "CADD_raw_hg19": "-0.489917",
-      "CADD_raw_rankscore": "0.04159",
+      "CADD_raw_rankscore": 0.04159,
       "CADD_raw_rankscore_hg19": "0.01747",
       "ChagyrskayaNeandertal": "./.",
       "ClinPred_pred": null,
@@ -763,7 +763,7 @@
         "ENST00000568584": null,
         "ENST00000568866": null
       },
-      "DANN_rankscore": "0.10182",
+      "DANN_rankscore": 0.10182,
       "DANN_score": {
         "ENST00000564130": 0.7302973149376916,
         "ENST00000568584": 0.7302973149376916,
@@ -809,10 +809,10 @@
       },
       "Eigen-PC-phred_coding": "1.136441",
       "Eigen-PC-raw_coding": "-0.541136693316466",
-      "Eigen-PC-raw_coding_rankscore": "0.21041",
+      "Eigen-PC-raw_coding_rankscore": 0.21041,
       "Eigen-phred_coding": "2.283428",
       "Eigen-raw_coding": "-0.0664259884670748",
-      "Eigen-raw_coding_rankscore": "0.38872",
+      "Eigen-raw_coding_rankscore": 0.38872,
       "Ensembl_geneid": "ENSG00000261456;ENSG00000261456;ENSG00000261456",
       "Ensembl_proteinid": "ENSP00000457610;ENSP00000457062;ENSP00000456206",
       "Ensembl_transcriptid": [
@@ -880,11 +880,11 @@
       "GENCODE_basic": "Y;Y;Y",
       "GERP++_NR": "0.109",
       "GERP++_RS": "0.109",
-      "GERP++_RS_rankscore": "0.13884",
+      "GERP++_RS_rankscore": 0.13884,
       "GERP_91_mammals": null,
       "GERP_91_mammals_rankscore": null,
       "GM12878_confidence_value": "0",
-      "GM12878_fitCons_rankscore": "0.02171",
+      "GM12878_fitCons_rankscore": 0.02171,
       "GM12878_fitCons_score": {
         "ENST00000564130": 0.084543,
         "ENST00000568584": 0.084543,
@@ -894,7 +894,7 @@
       "GTEx_V8_eQTL_tissue": null,
       "GTEx_V8_sQTL_gene": null,
       "GTEx_V8_sQTL_tissue": null,
-      "GenoCanyon_rankscore": "0.01202",
+      "GenoCanyon_rankscore": 0.01202,
       "GenoCanyon_score": {
         "ENST00000564130": 7.80698991405282e-06,
         "ENST00000568584": 7.80698991405282e-06,
@@ -902,7 +902,7 @@
       },
       "Geuvadis_eQTL_target_gene": null,
       "H1-hESC_confidence_value": "0",
-      "H1-hESC_fitCons_rankscore": "0.02440",
+      "H1-hESC_fitCons_rankscore": 0.0244,
       "H1-hESC_fitCons_score": {
         "ENST00000564130": 0.078618,
         "ENST00000568584": 0.078618,
@@ -915,7 +915,7 @@
       "HGVSp_VEP": "p.Ter411TyrextTer19;p.Ter408TyrextTer19;p.Ter445TyrextTer19",
       "HGVSp_snpEff": "p.Ter411Tyrext*?;p.Ter408Tyrext*?;p.Ter445Tyrext*?",
       "HUVEC_confidence_value": "0",
-      "HUVEC_fitCons_rankscore": "0.00518",
+      "HUVEC_fitCons_rankscore": 0.00518,
       "HUVEC_fitCons_score": {
         "ENST00000564130": 0.057018,
         "ENST00000568584": 0.057018,
@@ -923,7 +923,7 @@
       },
       "Interpro_domain": ".;.;.",
       "LINSIGHT": "0.0863545",
-      "LINSIGHT_rankscore": "0.19638",
+      "LINSIGHT_rankscore": 0.19638,
       "LIST-S2_pred": ".;.;.",
       "LIST-S2_rankscore": null,
       "LIST-S2_score": {
@@ -1008,7 +1008,7 @@
         "ENST00000568866": null
       },
       "MutationTaster_AAE": ".;*445Y;*373Y;*411Y;*408Y",
-      "MutationTaster_converted_rankscore": "0.81001",
+      "MutationTaster_converted_rankscore": 0.81001,
       "MutationTaster_model": "without_aae;complex_aae;complex_aae;complex_aae;complex_aae",
       "MutationTaster_pred": "D;N;N;N;N",
       "MutationTaster_score": {
@@ -1106,7 +1106,7 @@
         "ENST00000568866": null
       },
       "VEP_canonical": ".;.;YES",
-      "VEST4_rankscore": "0.00485",
+      "VEST4_rankscore": 0.00485,
       "VEST4_score": {
         "ENST00000564130": 0.024,
         "ENST00000568584": 0.025,
@@ -1138,7 +1138,7 @@
       "eQTLGen_snp_id": null,
       "fathmm-MKL_coding_group": "AEFI",
       "fathmm-MKL_coding_pred": "N",
-      "fathmm-MKL_coding_rankscore": "0.05629",
+      "fathmm-MKL_coding_rankscore": 0.05629,
       "fathmm-MKL_coding_score": {
         "ENST00000564130": 0.01805,
         "ENST00000568584": 0.01805,
@@ -1287,24 +1287,24 @@
       "hg19_chr": "10",
       "hg19_pos(1-based)": "92997",
       "integrated_confidence_value": "0",
-      "integrated_fitCons_rankscore": "0.01641",
+      "integrated_fitCons_rankscore": 0.01641,
       "integrated_fitCons_score": {
         "ENST00000564130": 0.074636,
         "ENST00000568584": 0.074636,
         "ENST00000568866": 0.074636
       },
       "phastCons100way_vertebrate": "0.003000",
-      "phastCons100way_vertebrate_rankscore": "0.16062",
+      "phastCons100way_vertebrate_rankscore": 0.16062,
       "phastCons17way_primate": "0.009000",
-      "phastCons17way_primate_rankscore": "0.08673",
+      "phastCons17way_primate_rankscore": 0.08673,
       "phastCons470way_mammalian": "0.021000",
-      "phastCons470way_mammalian_rankscore": "0.20819",
+      "phastCons470way_mammalian_rankscore": 0.20819,
       "phyloP100way_vertebrate": "-0.291000",
-      "phyloP100way_vertebrate_rankscore": "0.08379",
+      "phyloP100way_vertebrate_rankscore": 0.08379,
       "phyloP17way_primate": "0.290000",
-      "phyloP17way_primate_rankscore": "0.18761",
+      "phyloP17way_primate_rankscore": 0.18761,
       "phyloP470way_mammalian": "0.308000",
-      "phyloP470way_mammalian_rankscore": "0.17052",
+      "phyloP470way_mammalian_rankscore": 0.17052,
       "refcodon": "TAG;TAG;TAG",
       "rs_dbSNP": null
     }
@@ -1387,14 +1387,14 @@
       "AltaiNeandertal": "./.",
       "Ancestral_allele": "t",
       "BayesDel_addAF_pred": "T",
-      "BayesDel_addAF_rankscore": "0.47200",
+      "BayesDel_addAF_rankscore": 0.472,
       "BayesDel_addAF_score": {
         "ENST00000564130": -0.0315021,
         "ENST00000568584": -0.0315021,
         "ENST00000568866": -0.0315021
       },
       "BayesDel_noAF_pred": "T",
-      "BayesDel_noAF_rankscore": "0.46492",
+      "BayesDel_noAF_rankscore": 0.46492,
       "BayesDel_noAF_score": {
         "ENST00000564130": -0.283027,
         "ENST00000568584": -0.283027,
@@ -1408,7 +1408,7 @@
       "CADD_phred_hg19": "0.879",
       "CADD_raw": "0.597055",
       "CADD_raw_hg19": "-0.153687",
-      "CADD_raw_rankscore": "0.09658",
+      "CADD_raw_rankscore": 0.09658,
       "CADD_raw_rankscore_hg19": "0.03328",
       "ChagyrskayaNeandertal": "./.",
       "ClinPred_pred": null,
@@ -1418,7 +1418,7 @@
         "ENST00000568584": null,
         "ENST00000568866": null
       },
-      "DANN_rankscore": "0.12536",
+      "DANN_rankscore": 0.12536,
       "DANN_score": {
         "ENST00000564130": 0.7897827094056438,
         "ENST00000568584": 0.7897827094056438,
@@ -1464,10 +1464,10 @@
       },
       "Eigen-PC-phred_coding": "1.63077",
       "Eigen-PC-raw_coding": "-0.268321761988832",
-      "Eigen-PC-raw_coding_rankscore": "0.29149",
+      "Eigen-PC-raw_coding_rankscore": 0.29149,
       "Eigen-phred_coding": "3.13754",
       "Eigen-raw_coding": "0.161609934222095",
-      "Eigen-raw_coding_rankscore": "0.49364",
+      "Eigen-raw_coding_rankscore": 0.49364,
       "Ensembl_geneid": "ENSG00000261456;ENSG00000261456;ENSG00000261456",
       "Ensembl_proteinid": "ENSP00000457610;ENSP00000457062;ENSP00000456206",
       "Ensembl_transcriptid": [
@@ -1535,11 +1535,11 @@
       "GENCODE_basic": "Y;Y;Y",
       "GERP++_NR": "0.109",
       "GERP++_RS": "0.109",
-      "GERP++_RS_rankscore": "0.13884",
+      "GERP++_RS_rankscore": 0.13884,
       "GERP_91_mammals": null,
       "GERP_91_mammals_rankscore": null,
       "GM12878_confidence_value": "0",
-      "GM12878_fitCons_rankscore": "0.02171",
+      "GM12878_fitCons_rankscore": 0.02171,
       "GM12878_fitCons_score": {
         "ENST00000564130": 0.084543,
         "ENST00000568584": 0.084543,
@@ -1549,7 +1549,7 @@
       "GTEx_V8_eQTL_tissue": null,
       "GTEx_V8_sQTL_gene": null,
       "GTEx_V8_sQTL_tissue": null,
-      "GenoCanyon_rankscore": "0.03498",
+      "GenoCanyon_rankscore": 0.03498,
       "GenoCanyon_score": {
         "ENST00000564130": 2.27304880193025e-05,
         "ENST00000568584": 2.27304880193025e-05,
@@ -1557,7 +1557,7 @@
       },
       "Geuvadis_eQTL_target_gene": null,
       "H1-hESC_confidence_value": "0",
-      "H1-hESC_fitCons_rankscore": "0.02440",
+      "H1-hESC_fitCons_rankscore": 0.0244,
       "H1-hESC_fitCons_score": {
         "ENST00000564130": 0.078618,
         "ENST00000568584": 0.078618,
@@ -1570,7 +1570,7 @@
       "HGVSp_VEP": "p.Ter411LeuextTer19;p.Ter408LeuextTer19;p.Ter445LeuextTer19",
       "HGVSp_snpEff": "p.Ter411Leuext*?;p.Ter408Leuext*?;p.Ter445Leuext*?",
       "HUVEC_confidence_value": "0",
-      "HUVEC_fitCons_rankscore": "0.00518",
+      "HUVEC_fitCons_rankscore": 0.00518,
       "HUVEC_fitCons_score": {
         "ENST00000564130": 0.057018,
         "ENST00000568584": 0.057018,
@@ -1578,7 +1578,7 @@
       },
       "Interpro_domain": ".;.;.",
       "LINSIGHT": "0.0863545",
-      "LINSIGHT_rankscore": "0.19638",
+      "LINSIGHT_rankscore": 0.19638,
       "LIST-S2_pred": ".;.;.",
       "LIST-S2_rankscore": null,
       "LIST-S2_score": {
@@ -1663,7 +1663,7 @@
         "ENST00000568866": null
       },
       "MutationTaster_AAE": ".;*411L;*408L;*445L;*373L",
-      "MutationTaster_converted_rankscore": "0.81001",
+      "MutationTaster_converted_rankscore": 0.81001,
       "MutationTaster_model": "without_aae;complex_aae;complex_aae;complex_aae;complex_aae",
       "MutationTaster_pred": "D;N;N;N;N",
       "MutationTaster_score": {
@@ -1727,7 +1727,7 @@
         "ENST00000568866": null
       },
       "SiPhy_29way_logOdds": "4.6217",
-      "SiPhy_29way_logOdds_rankscore": "0.11842",
+      "SiPhy_29way_logOdds_rankscore": 0.11842,
       "SiPhy_29way_pi": "0.0:4.0E-4:0.0:0.9996",
       "TSL": "5;5;1",
       "TWINSUK_AC": null,
@@ -1761,7 +1761,7 @@
         "ENST00000568866": null
       },
       "VEP_canonical": ".;.;YES",
-      "VEST4_rankscore": "0.00485",
+      "VEST4_rankscore": 0.00485,
       "VEST4_score": {
         "ENST00000564130": 0.024,
         "ENST00000568584": 0.025,
@@ -1793,7 +1793,7 @@
       "eQTLGen_snp_id": null,
       "fathmm-MKL_coding_group": "AEFI",
       "fathmm-MKL_coding_pred": "D",
-      "fathmm-MKL_coding_rankscore": "0.32197",
+      "fathmm-MKL_coding_rankscore": 0.32197,
       "fathmm-MKL_coding_score": {
         "ENST00000564130": 0.63783,
         "ENST00000568584": 0.63783,
@@ -1942,24 +1942,24 @@
       "hg19_chr": "10",
       "hg19_pos(1-based)": "92998",
       "integrated_confidence_value": "0",
-      "integrated_fitCons_rankscore": "0.01641",
+      "integrated_fitCons_rankscore": 0.01641,
       "integrated_fitCons_score": {
         "ENST00000564130": 0.074636,
         "ENST00000568584": 0.074636,
         "ENST00000568866": 0.074636
       },
       "phastCons100way_vertebrate": "0.566000",
-      "phastCons100way_vertebrate_rankscore": "0.27473",
+      "phastCons100way_vertebrate_rankscore": 0.27473,
       "phastCons17way_primate": "0.011000",
-      "phastCons17way_primate_rankscore": "0.09372",
+      "phastCons17way_primate_rankscore": 0.09372,
       "phastCons470way_mammalian": "1.000000",
-      "phastCons470way_mammalian_rankscore": "0.68203",
+      "phastCons470way_mammalian_rankscore": 0.68203,
       "phyloP100way_vertebrate": "1.152000",
-      "phyloP100way_vertebrate_rankscore": "0.31275",
+      "phyloP100way_vertebrate_rankscore": 0.31275,
       "phyloP17way_primate": "0.318000",
-      "phyloP17way_primate_rankscore": "0.19305",
+      "phyloP17way_primate_rankscore": 0.19305,
       "phyloP470way_mammalian": "4.751000",
-      "phyloP470way_mammalian_rankscore": "0.44659",
+      "phyloP470way_mammalian_rankscore": 0.44659,
       "refcodon": "TAG;TAG;TAG",
       "rs_dbSNP": null
     }
@@ -2042,14 +2042,14 @@
       "AltaiNeandertal": "./.",
       "Ancestral_allele": "t",
       "BayesDel_addAF_pred": "T",
-      "BayesDel_addAF_rankscore": "0.35578",
+      "BayesDel_addAF_rankscore": 0.35578,
       "BayesDel_addAF_score": {
         "ENST00000564130": -0.105105,
         "ENST00000568584": -0.105105,
         "ENST00000568866": -0.105105
       },
       "BayesDel_noAF_pred": "T",
-      "BayesDel_noAF_rankscore": "0.34699",
+      "BayesDel_noAF_rankscore": 0.34699,
       "BayesDel_noAF_score": {
         "ENST00000564130": -0.388753,
         "ENST00000568584": -0.388753,
@@ -2063,7 +2063,7 @@
       "CADD_phred_hg19": "0.539",
       "CADD_raw": "0.610074",
       "CADD_raw_hg19": "-0.253523",
-      "CADD_raw_rankscore": "0.09786",
+      "CADD_raw_rankscore": 0.09786,
       "CADD_raw_rankscore_hg19": "0.02744",
       "ChagyrskayaNeandertal": "./.",
       "ClinPred_pred": null,
@@ -2073,7 +2073,7 @@
         "ENST00000568584": null,
         "ENST00000568866": null
       },
-      "DANN_rankscore": "0.12208",
+      "DANN_rankscore": 0.12208,
       "DANN_score": {
         "ENST00000564130": 0.7822273107734652,
         "ENST00000568584": 0.7822273107734652,
@@ -2119,10 +2119,10 @@
       },
       "Eigen-PC-phred_coding": "1.63077",
       "Eigen-PC-raw_coding": "-0.268321761988832",
-      "Eigen-PC-raw_coding_rankscore": "0.29149",
+      "Eigen-PC-raw_coding_rankscore": 0.29149,
       "Eigen-phred_coding": "3.13754",
       "Eigen-raw_coding": "0.161609934222095",
-      "Eigen-raw_coding_rankscore": "0.49364",
+      "Eigen-raw_coding_rankscore": 0.49364,
       "Ensembl_geneid": "ENSG00000261456;ENSG00000261456;ENSG00000261456",
       "Ensembl_proteinid": "ENSP00000457610;ENSP00000457062;ENSP00000456206",
       "Ensembl_transcriptid": [
@@ -2190,11 +2190,11 @@
       "GENCODE_basic": "Y;Y;Y",
       "GERP++_NR": "0.109",
       "GERP++_RS": "0.109",
-      "GERP++_RS_rankscore": "0.13884",
+      "GERP++_RS_rankscore": 0.13884,
       "GERP_91_mammals": null,
       "GERP_91_mammals_rankscore": null,
       "GM12878_confidence_value": "0",
-      "GM12878_fitCons_rankscore": "0.02171",
+      "GM12878_fitCons_rankscore": 0.02171,
       "GM12878_fitCons_score": {
         "ENST00000564130": 0.084543,
         "ENST00000568584": 0.084543,
@@ -2204,7 +2204,7 @@
       "GTEx_V8_eQTL_tissue": null,
       "GTEx_V8_sQTL_gene": null,
       "GTEx_V8_sQTL_tissue": null,
-      "GenoCanyon_rankscore": "0.03498",
+      "GenoCanyon_rankscore": 0.03498,
       "GenoCanyon_score": {
         "ENST00000564130": 2.27304880193025e-05,
         "ENST00000568584": 2.27304880193025e-05,
@@ -2212,7 +2212,7 @@
       },
       "Geuvadis_eQTL_target_gene": null,
       "H1-hESC_confidence_value": "0",
-      "H1-hESC_fitCons_rankscore": "0.02440",
+      "H1-hESC_fitCons_rankscore": 0.0244,
       "H1-hESC_fitCons_score": {
         "ENST00000564130": 0.078618,
         "ENST00000568584": 0.078618,
@@ -2225,7 +2225,7 @@
       "HGVSp_VEP": "p.Ter411TrpextTer19;p.Ter408TrpextTer19;p.Ter445TrpextTer19",
       "HGVSp_snpEff": "p.Ter411Trpext*?;p.Ter408Trpext*?;p.Ter445Trpext*?",
       "HUVEC_confidence_value": "0",
-      "HUVEC_fitCons_rankscore": "0.00518",
+      "HUVEC_fitCons_rankscore": 0.00518,
       "HUVEC_fitCons_score": {
         "ENST00000564130": 0.057018,
         "ENST00000568584": 0.057018,
@@ -2233,7 +2233,7 @@
       },
       "Interpro_domain": ".;.;.",
       "LINSIGHT": "0.0863545",
-      "LINSIGHT_rankscore": "0.19638",
+      "LINSIGHT_rankscore": 0.19638,
       "LIST-S2_pred": ".;.;.",
       "LIST-S2_rankscore": null,
       "LIST-S2_score": {
@@ -2318,7 +2318,7 @@
         "ENST00000568866": null
       },
       "MutationTaster_AAE": ".;*411W;*408W;*445W;*373W",
-      "MutationTaster_converted_rankscore": "0.81001",
+      "MutationTaster_converted_rankscore": 0.81001,
       "MutationTaster_model": "without_aae;complex_aae;complex_aae;complex_aae;complex_aae",
       "MutationTaster_pred": "D;N;N;N;N",
       "MutationTaster_score": {
@@ -2382,7 +2382,7 @@
         "ENST00000568866": null
       },
       "SiPhy_29way_logOdds": "4.6217",
-      "SiPhy_29way_logOdds_rankscore": "0.11842",
+      "SiPhy_29way_logOdds_rankscore": 0.11842,
       "SiPhy_29way_pi": "0.0:4.0E-4:0.0:0.9996",
       "TSL": "5;5;1",
       "TWINSUK_AC": null,
@@ -2416,7 +2416,7 @@
         "ENST00000568866": null
       },
       "VEP_canonical": ".;.;YES",
-      "VEST4_rankscore": "0.00485",
+      "VEST4_rankscore": 0.00485,
       "VEST4_score": {
         "ENST00000564130": 0.024,
         "ENST00000568584": 0.025,
@@ -2448,7 +2448,7 @@
       "eQTLGen_snp_id": null,
       "fathmm-MKL_coding_group": "AEFI",
       "fathmm-MKL_coding_pred": "N",
-      "fathmm-MKL_coding_rankscore": "0.26465",
+      "fathmm-MKL_coding_rankscore": 0.26465,
       "fathmm-MKL_coding_score": {
         "ENST00000564130": 0.40566,
         "ENST00000568584": 0.40566,
@@ -2597,24 +2597,24 @@
       "hg19_chr": "10",
       "hg19_pos(1-based)": "92998",
       "integrated_confidence_value": "0",
-      "integrated_fitCons_rankscore": "0.01641",
+      "integrated_fitCons_rankscore": 0.01641,
       "integrated_fitCons_score": {
         "ENST00000564130": 0.074636,
         "ENST00000568584": 0.074636,
         "ENST00000568866": 0.074636
       },
       "phastCons100way_vertebrate": "0.566000",
-      "phastCons100way_vertebrate_rankscore": "0.27473",
+      "phastCons100way_vertebrate_rankscore": 0.27473,
       "phastCons17way_primate": "0.011000",
-      "phastCons17way_primate_rankscore": "0.09372",
+      "phastCons17way_primate_rankscore": 0.09372,
       "phastCons470way_mammalian": "1.000000",
-      "phastCons470way_mammalian_rankscore": "0.68203",
+      "phastCons470way_mammalian_rankscore": 0.68203,
       "phyloP100way_vertebrate": "1.152000",
-      "phyloP100way_vertebrate_rankscore": "0.31275",
+      "phyloP100way_vertebrate_rankscore": 0.31275,
       "phyloP17way_primate": "0.318000",
-      "phyloP17way_primate_rankscore": "0.19305",
+      "phyloP17way_primate_rankscore": 0.19305,
       "phyloP470way_mammalian": "4.751000",
-      "phyloP470way_mammalian_rankscore": "0.44659",
+      "phyloP470way_mammalian_rankscore": 0.44659,
       "refcodon": "TAG;TAG;TAG",
       "rs_dbSNP": null
     }
@@ -2697,14 +2697,14 @@
       "AltaiNeandertal": "./.",
       "Ancestral_allele": "t",
       "BayesDel_addAF_pred": "T",
-      "BayesDel_addAF_rankscore": "0.21179",
+      "BayesDel_addAF_rankscore": 0.21179,
       "BayesDel_addAF_score": {
         "ENST00000564130": -0.1974,
         "ENST00000568584": -0.1974,
         "ENST00000568866": -0.1974
       },
       "BayesDel_noAF_pred": "T",
-      "BayesDel_noAF_rankscore": "0.20160",
+      "BayesDel_noAF_rankscore": 0.2016,
       "BayesDel_noAF_score": {
         "ENST00000564130": -0.521328,
         "ENST00000568584": -0.521328,
@@ -2718,7 +2718,7 @@
       "CADD_phred_hg19": "0.092",
       "CADD_raw": "0.278995",
       "CADD_raw_hg19": "-0.640108",
-      "CADD_raw_rankscore": "0.06558",
+      "CADD_raw_rankscore": 0.06558,
       "CADD_raw_rankscore_hg19": "0.01311",
       "ChagyrskayaNeandertal": "./.",
       "ClinPred_pred": null,
@@ -2728,7 +2728,7 @@
         "ENST00000568584": null,
         "ENST00000568866": null
       },
-      "DANN_rankscore": "0.07182",
+      "DANN_rankscore": 0.07182,
       "DANN_score": {
         "ENST00000564130": 0.6327934973697148,
         "ENST00000568584": 0.6327934973697148,
@@ -2774,10 +2774,10 @@
       },
       "Eigen-PC-phred_coding": "1.63077",
       "Eigen-PC-raw_coding": "-0.268321761988832",
-      "Eigen-PC-raw_coding_rankscore": "0.29149",
+      "Eigen-PC-raw_coding_rankscore": 0.29149,
       "Eigen-phred_coding": "3.13754",
       "Eigen-raw_coding": "0.161609934222095",
-      "Eigen-raw_coding_rankscore": "0.49364",
+      "Eigen-raw_coding_rankscore": 0.49364,
       "Ensembl_geneid": "ENSG00000261456;ENSG00000261456;ENSG00000261456",
       "Ensembl_proteinid": "ENSP00000457610;ENSP00000457062;ENSP00000456206",
       "Ensembl_transcriptid": [
@@ -2845,11 +2845,11 @@
       "GENCODE_basic": "Y;Y;Y",
       "GERP++_NR": "0.109",
       "GERP++_RS": "0.109",
-      "GERP++_RS_rankscore": "0.13884",
+      "GERP++_RS_rankscore": 0.13884,
       "GERP_91_mammals": null,
       "GERP_91_mammals_rankscore": null,
       "GM12878_confidence_value": "0",
-      "GM12878_fitCons_rankscore": "0.02171",
+      "GM12878_fitCons_rankscore": 0.02171,
       "GM12878_fitCons_score": {
         "ENST00000564130": 0.084543,
         "ENST00000568584": 0.084543,
@@ -2859,7 +2859,7 @@
       "GTEx_V8_eQTL_tissue": null,
       "GTEx_V8_sQTL_gene": null,
       "GTEx_V8_sQTL_tissue": null,
-      "GenoCanyon_rankscore": "0.03498",
+      "GenoCanyon_rankscore": 0.03498,
       "GenoCanyon_score": {
         "ENST00000564130": 2.27304880193025e-05,
         "ENST00000568584": 2.27304880193025e-05,
@@ -2867,7 +2867,7 @@
       },
       "Geuvadis_eQTL_target_gene": null,
       "H1-hESC_confidence_value": "0",
-      "H1-hESC_fitCons_rankscore": "0.02440",
+      "H1-hESC_fitCons_rankscore": 0.0244,
       "H1-hESC_fitCons_score": {
         "ENST00000564130": 0.078618,
         "ENST00000568584": 0.078618,
@@ -2880,7 +2880,7 @@
       "HGVSp_VEP": "p.Ter411SerextTer19;p.Ter408SerextTer19;p.Ter445SerextTer19",
       "HGVSp_snpEff": "p.Ter411Serext*?;p.Ter408Serext*?;p.Ter445Serext*?",
       "HUVEC_confidence_value": "0",
-      "HUVEC_fitCons_rankscore": "0.00518",
+      "HUVEC_fitCons_rankscore": 0.00518,
       "HUVEC_fitCons_score": {
         "ENST00000564130": 0.057018,
         "ENST00000568584": 0.057018,
@@ -2888,7 +2888,7 @@
       },
       "Interpro_domain": ".;.;.",
       "LINSIGHT": "0.0863545",
-      "LINSIGHT_rankscore": "0.19638",
+      "LINSIGHT_rankscore": 0.19638,
       "LIST-S2_pred": ".;.;.",
       "LIST-S2_rankscore": null,
       "LIST-S2_score": {
@@ -2973,7 +2973,7 @@
         "ENST00000568866": null
       },
       "MutationTaster_AAE": ".;*411S;*408S;*445S;*373S",
-      "MutationTaster_converted_rankscore": "0.81001",
+      "MutationTaster_converted_rankscore": 0.81001,
       "MutationTaster_model": "without_aae;complex_aae;complex_aae;complex_aae;complex_aae",
       "MutationTaster_pred": "D;N;N;N;N",
       "MutationTaster_score": {
@@ -3037,7 +3037,7 @@
         "ENST00000568866": null
       },
       "SiPhy_29way_logOdds": "4.6217",
-      "SiPhy_29way_logOdds_rankscore": "0.11842",
+      "SiPhy_29way_logOdds_rankscore": 0.11842,
       "SiPhy_29way_pi": "0.0:4.0E-4:0.0:0.9996",
       "TSL": "5;5;1",
       "TWINSUK_AC": null,
@@ -3071,7 +3071,7 @@
         "ENST00000568866": null
       },
       "VEP_canonical": ".;.;YES",
-      "VEST4_rankscore": "0.00485",
+      "VEST4_rankscore": 0.00485,
       "VEST4_score": {
         "ENST00000564130": 0.024,
         "ENST00000568584": 0.025,
@@ -3103,7 +3103,7 @@
       "eQTLGen_snp_id": null,
       "fathmm-MKL_coding_group": "AEFI",
       "fathmm-MKL_coding_pred": "D",
-      "fathmm-MKL_coding_rankscore": "0.32581",
+      "fathmm-MKL_coding_rankscore": 0.32581,
       "fathmm-MKL_coding_score": {
         "ENST00000564130": 0.64968,
         "ENST00000568584": 0.64968,
@@ -3252,24 +3252,24 @@
       "hg19_chr": "10",
       "hg19_pos(1-based)": "92998",
       "integrated_confidence_value": "0",
-      "integrated_fitCons_rankscore": "0.01641",
+      "integrated_fitCons_rankscore": 0.01641,
       "integrated_fitCons_score": {
         "ENST00000564130": 0.074636,
         "ENST00000568584": 0.074636,
         "ENST00000568866": 0.074636
       },
       "phastCons100way_vertebrate": "0.566000",
-      "phastCons100way_vertebrate_rankscore": "0.27473",
+      "phastCons100way_vertebrate_rankscore": 0.27473,
       "phastCons17way_primate": "0.011000",
-      "phastCons17way_primate_rankscore": "0.09372",
+      "phastCons17way_primate_rankscore": 0.09372,
       "phastCons470way_mammalian": "1.000000",
-      "phastCons470way_mammalian_rankscore": "0.68203",
+      "phastCons470way_mammalian_rankscore": 0.68203,
       "phyloP100way_vertebrate": "1.152000",
-      "phyloP100way_vertebrate_rankscore": "0.31275",
+      "phyloP100way_vertebrate_rankscore": 0.31275,
       "phyloP17way_primate": "0.318000",
-      "phyloP17way_primate_rankscore": "0.19305",
+      "phyloP17way_primate_rankscore": 0.19305,
       "phyloP470way_mammalian": "4.751000",
-      "phyloP470way_mammalian_rankscore": "0.44659",
+      "phyloP470way_mammalian_rankscore": 0.44659,
       "refcodon": "TAG;TAG;TAG",
       "rs_dbSNP": null
     }
@@ -3352,14 +3352,14 @@
       "AltaiNeandertal": "./.",
       "Ancestral_allele": "a",
       "BayesDel_addAF_pred": "T",
-      "BayesDel_addAF_rankscore": "0.19590",
+      "BayesDel_addAF_rankscore": 0.1959,
       "BayesDel_addAF_score": {
         "ENST00000564130": -0.208501,
         "ENST00000568584": -0.208501,
         "ENST00000568866": -0.208501
       },
       "BayesDel_noAF_pred": "T",
-      "BayesDel_noAF_rankscore": "0.18566",
+      "BayesDel_noAF_rankscore": 0.18566,
       "BayesDel_noAF_score": {
         "ENST00000564130": -0.537273,
         "ENST00000568584": -0.537273,
@@ -3373,7 +3373,7 @@
       "CADD_phred_hg19": "0.049",
       "CADD_raw": "0.450525",
       "CADD_raw_hg19": "-0.786349",
-      "CADD_raw_rankscore": "0.08207",
+      "CADD_raw_rankscore": 0.08207,
       "CADD_raw_rankscore_hg19": "0.00988",
       "ChagyrskayaNeandertal": "./.",
       "ClinPred_pred": null,
@@ -3383,7 +3383,7 @@
         "ENST00000568584": null,
         "ENST00000568866": null
       },
-      "DANN_rankscore": "0.09225",
+      "DANN_rankscore": 0.09225,
       "DANN_score": {
         "ENST00000564130": 0.7021988883061545,
         "ENST00000568584": 0.7021988883061545,
@@ -3429,10 +3429,10 @@
       },
       "Eigen-PC-phred_coding": "1.799432",
       "Eigen-PC-raw_coding": "-0.194312436101041",
-      "Eigen-PC-raw_coding_rankscore": "0.31745",
+      "Eigen-PC-raw_coding_rankscore": 0.31745,
       "Eigen-phred_coding": "3.447424",
       "Eigen-raw_coding": "0.231918408098847",
-      "Eigen-raw_coding_rankscore": "0.52750",
+      "Eigen-raw_coding_rankscore": 0.5275,
       "Ensembl_geneid": "ENSG00000261456;ENSG00000261456;ENSG00000261456",
       "Ensembl_proteinid": "ENSP00000457610;ENSP00000457062;ENSP00000456206",
       "Ensembl_transcriptid": [
@@ -3500,11 +3500,11 @@
       "GENCODE_basic": "Y;Y;Y",
       "GERP++_NR": "0.109",
       "GERP++_RS": "0.109",
-      "GERP++_RS_rankscore": "0.13884",
+      "GERP++_RS_rankscore": 0.13884,
       "GERP_91_mammals": null,
       "GERP_91_mammals_rankscore": null,
       "GM12878_confidence_value": "0",
-      "GM12878_fitCons_rankscore": "0.02171",
+      "GM12878_fitCons_rankscore": 0.02171,
       "GM12878_fitCons_score": {
         "ENST00000564130": 0.084543,
         "ENST00000568584": 0.084543,
@@ -3514,7 +3514,7 @@
       "GTEx_V8_eQTL_tissue": null,
       "GTEx_V8_sQTL_gene": null,
       "GTEx_V8_sQTL_tissue": null,
-      "GenoCanyon_rankscore": "0.07723",
+      "GenoCanyon_rankscore": 0.07723,
       "GenoCanyon_score": {
         "ENST00000564130": 0.000735838323923882,
         "ENST00000568584": 0.000735838323923882,
@@ -3522,7 +3522,7 @@
       },
       "Geuvadis_eQTL_target_gene": null,
       "H1-hESC_confidence_value": "0",
-      "H1-hESC_fitCons_rankscore": "0.02440",
+      "H1-hESC_fitCons_rankscore": 0.0244,
       "H1-hESC_fitCons_score": {
         "ENST00000564130": 0.078618,
         "ENST00000568584": 0.078618,
@@ -3535,7 +3535,7 @@
       "HGVSp_VEP": "p.Ter411GluextTer19;p.Ter408GluextTer19;p.Ter445GluextTer19",
       "HGVSp_snpEff": "p.Ter411Gluext*?;p.Ter408Gluext*?;p.Ter445Gluext*?",
       "HUVEC_confidence_value": "0",
-      "HUVEC_fitCons_rankscore": "0.00518",
+      "HUVEC_fitCons_rankscore": 0.00518,
       "HUVEC_fitCons_score": {
         "ENST00000564130": 0.057018,
         "ENST00000568584": 0.057018,
@@ -3543,7 +3543,7 @@
       },
       "Interpro_domain": ".;.;.",
       "LINSIGHT": "0.596157",
-      "LINSIGHT_rankscore": "0.40755",
+      "LINSIGHT_rankscore": 0.40755,
       "LIST-S2_pred": ".;.;.",
       "LIST-S2_rankscore": null,
       "LIST-S2_score": {
@@ -3628,7 +3628,7 @@
         "ENST00000568866": null
       },
       "MutationTaster_AAE": ".;*411E;*408E;*445E;*373E",
-      "MutationTaster_converted_rankscore": "0.81001",
+      "MutationTaster_converted_rankscore": 0.81001,
       "MutationTaster_model": "without_aae;complex_aae;complex_aae;complex_aae;complex_aae",
       "MutationTaster_pred": "D;N;N;N;N",
       "MutationTaster_score": {
@@ -3692,7 +3692,7 @@
         "ENST00000568866": null
       },
       "SiPhy_29way_logOdds": "4.6217",
-      "SiPhy_29way_logOdds_rankscore": "0.11842",
+      "SiPhy_29way_logOdds_rankscore": 0.11842,
       "SiPhy_29way_pi": "0.9996:0.0:4.0E-4:0.0",
       "TSL": "5;5;1",
       "TWINSUK_AC": null,
@@ -3726,7 +3726,7 @@
         "ENST00000568866": null
       },
       "VEP_canonical": ".;.;YES",
-      "VEST4_rankscore": "0.00485",
+      "VEST4_rankscore": 0.00485,
       "VEST4_score": {
         "ENST00000564130": 0.024,
         "ENST00000568584": 0.025,
@@ -3758,7 +3758,7 @@
       "eQTLGen_snp_id": null,
       "fathmm-MKL_coding_group": "AEFI",
       "fathmm-MKL_coding_pred": "D",
-      "fathmm-MKL_coding_rankscore": "0.41474",
+      "fathmm-MKL_coding_rankscore": 0.41474,
       "fathmm-MKL_coding_score": {
         "ENST00000564130": 0.82212,
         "ENST00000568584": 0.82212,
@@ -3907,24 +3907,24 @@
       "hg19_chr": "10",
       "hg19_pos(1-based)": "92999",
       "integrated_confidence_value": "0",
-      "integrated_fitCons_rankscore": "0.01641",
+      "integrated_fitCons_rankscore": 0.01641,
       "integrated_fitCons_score": {
         "ENST00000564130": 0.074636,
         "ENST00000568584": 0.074636,
         "ENST00000568866": 0.074636
       },
       "phastCons100way_vertebrate": "0.647000",
-      "phastCons100way_vertebrate_rankscore": "0.28146",
+      "phastCons100way_vertebrate_rankscore": 0.28146,
       "phastCons17way_primate": "0.012000",
-      "phastCons17way_primate_rankscore": "0.09680",
+      "phastCons17way_primate_rankscore": 0.0968,
       "phastCons470way_mammalian": "1.000000",
-      "phastCons470way_mammalian_rankscore": "0.68203",
+      "phastCons470way_mammalian_rankscore": 0.68203,
       "phyloP100way_vertebrate": "4.720000",
-      "phyloP100way_vertebrate_rankscore": "0.61636",
+      "phyloP100way_vertebrate_rankscore": 0.61636,
       "phyloP17way_primate": "0.358000",
-      "phyloP17way_primate_rankscore": "0.20042",
+      "phyloP17way_primate_rankscore": 0.20042,
       "phyloP470way_mammalian": "8.934000",
-      "phyloP470way_mammalian_rankscore": "0.78414",
+      "phyloP470way_mammalian_rankscore": 0.78414,
       "refcodon": "TAG;TAG;TAG",
       "rs_dbSNP": null
     }
