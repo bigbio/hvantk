@@ -59,15 +59,26 @@ def placeholder_baseline_reason(expected: Mapping[str, Any]) -> str | None:
     condition surfaces as the configuration error it is, and is never mistaken
     for the upstream having moved.
 
-    Detection is deliberately narrow: only markers that cannot occur in genuine
-    probe output. An empty ``checksums`` map is *not* one of them, because probes
-    that fingerprint HTTP validators instead of bodies legitimately ship one.
+    Three markers, none of which can occur in genuine probe output: the placeholder
+    sentinel string, an empty checksum value, and ``fetched_at`` at the Unix epoch.
+
+    Detection is deliberately narrow. An empty ``checksums`` *map* is not a marker,
+    because probes that fingerprint HTTP validators instead of bodies legitimately
+    ship one -- peptideatlas does. The distinction between an empty map and an empty
+    value inside it is load-bearing, and both cases are pinned by tests.
     """
     checksums = expected.get("checksums")
     if isinstance(checksums, Mapping):
         for name, value in checksums.items():
             if isinstance(value, str) and value == PLACEHOLDER_CHECKSUM:
                 return f"checksum for {name!r} is the placeholder sentinel"
+            # The other seeding tell: cptac's two baselines carried an empty string
+            # where a digest belongs. Those also had an epoch ``fetched_at``, so the
+            # check below covered the real cases -- but a baseline hand-written with
+            # a genuine timestamp would slip past. A probe that ran always produces
+            # a digest.
+            if isinstance(value, str) and not value.strip():
+                return f"checksum for {name!r} is empty; no digest was ever computed"
 
     fetched_at = expected.get("fetched_at")
     if isinstance(fetched_at, str) and fetched_at.startswith(_EPOCH_PREFIX):

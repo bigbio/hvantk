@@ -248,6 +248,7 @@ def test_placeholder_checksum_baseline_is_probe_failed_not_drifted(tmp_path: Pat
 
 
 def test_epoch_fetched_at_baseline_is_probe_failed_not_drifted(tmp_path: Path):
+    """The other seeding marker: cptac's two baselines were stamped at the epoch."""
     fp_path = tmp_path / "fp.json"
     _write_fingerprint(fp_path, {
         "probe_version": 1,
@@ -286,6 +287,58 @@ def test_empty_checksums_is_not_treated_as_a_placeholder(tmp_path: Path):
         "checksums": {},
         "extras": {"release": "113"},
         "fetched_at": "2026-07-27T17:17:16+00:00",
+    }
+    fp_path = tmp_path / "fp.json"
+    _write_fingerprint(fp_path, fp)
+    spec = _make_spec(probe_return=dict(fp), fingerprint_path=fp_path)
+
+    assert _run_with_spec(spec).status == "clean"
+
+
+def test_empty_checksum_string_baseline_is_probe_failed(tmp_path: Path):
+    """An empty string where a digest belongs is seeding, even with a real timestamp.
+
+    cptac's two baselines carried an empty checksum *and* an epoch `fetched_at`, so the
+    epoch marker alone covered every real case. A baseline hand-written with a genuine
+    timestamp would otherwise have reported drifted forever.
+    """
+    fp_path = tmp_path / "fp.json"
+    _write_fingerprint(
+        fp_path,
+        {
+            "probe_version": 1,
+            "headers": {"x": ["a"]},
+            "checksums": {"x": ""},
+            "fetched_at": "2026-07-27T12:00:00+00:00",
+        },
+    )
+    spec = _make_spec(
+        probe_return={
+            "probe_version": 1,
+            "headers": {"x": ["a"]},
+            "checksums": {"x": "a28a4982e5f9"},
+            "fetched_at": "2026-07-27T13:00:00+00:00",
+        },
+        fingerprint_path=fp_path,
+    )
+    result = _run_with_spec(spec)
+
+    assert result.status == "probe_failed"
+    assert "empty" in str(result.probe_error)
+
+
+def test_empty_checksums_map_is_still_not_a_placeholder(tmp_path: Path):
+    """peptideatlas ships ``checksums: {}`` legitimately.
+
+    An empty MAP is not an empty VALUE: widening the marker to cover the former would
+    turn a working comparator into a permanent probe_failed, trading one false alarm
+    for another.
+    """
+    fp = {
+        "probe_version": 1,
+        "headers": {"atlas.zip": {"build_id": "606"}},
+        "checksums": {},
+        "fetched_at": "2026-07-27T12:00:00+00:00",
     }
     fp_path = tmp_path / "fp.json"
     _write_fingerprint(fp_path, fp)

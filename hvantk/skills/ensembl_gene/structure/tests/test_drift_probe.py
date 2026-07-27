@@ -30,6 +30,11 @@ _LIVE_HEADERS = {
 
 
 def test_fingerprint_records_live_validators():
+    """Every field must come from the response, not from a repo constant.
+
+    ``release`` is the one exception and is kept deliberately: bumping the pin without
+    rebuilding should register as drift.
+    """
     with requests_mock.Mocker() as m:
         m.head(ENSEMBL_GTF_URL, headers=_LIVE_HEADERS)
         fp = fetch_fingerprint()
@@ -56,6 +61,7 @@ def test_probe_actually_calls_upstream():
 
 
 def test_upstream_failure_becomes_a_probe_error():
+    """An unreachable upstream is probe_failed, never a silent clean or drifted."""
     with requests_mock.Mocker() as m:
         m.head(ENSEMBL_GTF_URL, status_code=404)
         with pytest.raises(DriftProbeError, match="HTTP failure"):
@@ -77,6 +83,11 @@ def test_changed_upstream_file_is_detected():
 
 
 def test_unchanged_upstream_file_is_clean():
+    """The other half of the contract: a real probe must not report spurious drift.
+
+    Ensembl's archive serves a static file, so unlike ClinGen there is no request-time
+    validator here to filter out -- two probes of an unchanged file must simply agree.
+    """
     with requests_mock.Mocker() as m:
         m.head(ENSEMBL_GTF_URL, headers=_LIVE_HEADERS)
         first = fetch_fingerprint()

@@ -23,6 +23,7 @@ _SCRIPT = Path(__file__).resolve().parents[2] / ".github" / "scripts" / "drift_t
 
 
 def _load_module():
+    """Import the bot helper from its path in .github/scripts (not a package)."""
     spec = importlib.util.spec_from_file_location("drift_to_pr", _SCRIPT)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -31,10 +32,12 @@ def _load_module():
 
 @pytest.fixture(scope="module")
 def drift_to_pr():
+    """The loaded bot helper module, imported once per test module."""
     return _load_module()
 
 
 def _write_report(tmp_path: Path, entries: list[dict]) -> Path:
+    """Write a `hvantk drift --all --json`-shaped report and return its path."""
     path = tmp_path / "drift_report.json"
     path.write_text(json.dumps(entries))
     return path
@@ -51,9 +54,14 @@ DRIFTED = {
 
 
 def test_exits_nonzero_when_a_pr_cannot_be_opened(drift_to_pr, tmp_path, monkeypatch):
+    """The regression: drift detected, branch pushed, `gh pr create` refused, exit 0.
+
+    Reproduces the exact stderr the repository setting produced in run 30255526454.
+    """
     report = _write_report(tmp_path, [DRIFTED])
 
     def _explode(cmd, **kwargs):
+        """Succeed for every git call; fail only on `gh pr create`."""
         if cmd[:3] == ["gh", "pr", "create"]:
             raise subprocess.CalledProcessError(
                 1,
@@ -80,6 +88,7 @@ def test_exits_nonzero_when_a_pr_cannot_be_opened(drift_to_pr, tmp_path, monkeyp
 
 
 def test_exits_zero_when_nothing_drifted(drift_to_pr, tmp_path):
+    """Stub and probe_failed are signals, not failures, and open no pull request."""
     report = _write_report(
         tmp_path,
         [

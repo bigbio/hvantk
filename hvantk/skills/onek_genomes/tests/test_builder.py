@@ -51,6 +51,12 @@ def _head_rows(table, n: int = N_SAMPLE_ROWS) -> list[dict]:
 
 
 def _assert_or_regenerate(rows_table, schema_obj, stem: str, regenerate: bool) -> None:
+    """Compare schema and rows against the committed pair, or rewrite them.
+
+    ``schema_obj`` is the artifact whose schema is serialised (a MatrixTable keeps its
+    col/entry fields, which ``rows_table`` alone would drop); ``rows_table`` is the Table
+    the row sample is taken from. For the samples dataset the two are the same object.
+    """
     schema_path = SNAPSHOT_DIR / f"{stem}_schema.json"
     rows_path = SNAPSHOT_DIR / f"{stem}_sample_rows.json"
 

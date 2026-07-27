@@ -77,6 +77,7 @@ def test_fingerprint_is_stable_across_repeated_probes():
     body = f"CLINGEN GENE VALIDITY CURATIONS\nFILE CREATED: 2026-01-15\n{header_row}"
 
     def probe_with(last_modified: str) -> dict:
+        """Fingerprint the same unchanged body behind a different Last-Modified."""
         with requests_mock.Mocker() as m:
             m.head(
                 CLINGEN_BASE_URL,
