@@ -175,3 +175,37 @@ def test_column_missing_from_the_provenance_map_is_undeclared_not_deleted(tmp_pa
     assert arms["all"].selection.n_unknown == 2
     assert "REVEL_rankscore" in arms["all"].selection.global_features.get("trained", ())
     assert "trained" not in arms["clean"].selection.global_features
+
+
+def test_custom_equivalence_map_reaches_the_arm_split(tmp_path):
+    """A vocabulary override in selection.yaml must actually change the arms.
+
+    `load_policy` returns (policy, equivalence) and the loader tests prove the override
+    parses -- but until Config carried it, `rerank_arms` used DEFAULT_EQUIVALENCE and the
+    override was silently discarded. That is a wrong clean/all split, not an error, which
+    is the worst failure mode available here.
+
+    Here the label is derived from "SourceA" and REVEL_rankscore is declared trained on
+    "SourceB". Under the default vocabulary they are unrelated names, so REVEL is clean.
+    Under a map that puts both in one class they conflict, and REVEL must leave `clean`.
+    """
+    from hvantk.algorithms.rerank.engine import rerank_arms
+    from hvantk.algorithms.rerank.selection import SelectionPolicy
+
+    prov = {"c1": frozenset(), "c2": frozenset(),
+            "REVEL_rankscore": frozenset({"SourceB"})}
+
+    default_arms = rerank_arms(_cfg(
+        tmp_path, selection=SelectionPolicy(wrapper="none"),
+        feature_provenance=prov, label_provenance=frozenset({"SourceA"}),
+        min_label_coverage=0.0,
+    ))
+    assert default_arms["clean"].selection.n_conflicted == 0
+
+    custom_arms = rerank_arms(_cfg(
+        tmp_path, selection=SelectionPolicy(wrapper="none"),
+        feature_provenance=prov, label_provenance=frozenset({"SourceA"}),
+        provenance_equivalence={"my_class": ["SourceA", "SourceB"]},
+        min_label_coverage=0.0,
+    ))
+    assert custom_arms["clean"].selection.n_conflicted == 1

@@ -36,10 +36,26 @@ def _classes(sources, equivalence) -> frozenset[str]:
 
     A source with no declared class maps to itself, so an unrecognised name still
     conflicts with an identical name and with nothing else.
+
+    A source listed under TWO classes is rejected rather than resolved. Building the
+    lookup as a plain dict comprehension would let the last class processed win by
+    iteration order, silently reclassifying that source and moving columns between the
+    clean and all arms -- a wrong headline, not an error. Same rule the CLI already
+    applies to a repeated ``--prepared`` axis (PR #229): reject the ambiguity, do not
+    guess at it.
     """
-    member_to_class = {
-        member: klass for klass, members in equivalence.items() for member in members
-    }
+    member_to_class: dict[str, str] = {}
+    for klass, members in equivalence.items():
+        for member in members:
+            prior = member_to_class.get(member)
+            if prior is not None and prior != klass:
+                raise ValueError(
+                    f"equivalence source {member!r} is declared in two classes "
+                    f"({prior!r} and {klass!r}); a source belongs to exactly one class, "
+                    "because its class decides which arm a feature lands in. Remove the "
+                    "duplicate."
+                )
+            member_to_class[member] = klass
     return frozenset(member_to_class.get(s, s) for s in sources)
 
 

@@ -292,7 +292,9 @@ def rerank_arms(config) -> dict:
         return {"all": rerank(config)}
 
     assignment = resolve_arms(
-        config.feature_provenance, config.label_provenance, DEFAULT_EQUIVALENCE
+        config.feature_provenance,
+        config.label_provenance,
+        config.provenance_equivalence or DEFAULT_EQUIVALENCE,
     )
     # `all` is left unrestricted rather than set to `assignment.all_columns`: the matrix may
     # carry columns the provenance map never mentions, and those belong in `all` (they are

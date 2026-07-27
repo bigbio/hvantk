@@ -24,7 +24,7 @@ datasets:
     skill: SKILL.md
     # Training provenance per predictor. Declared here, once, by the plugin author --
     # circularity is a property of the DATA, so every downstream cohort inherits it and
-    # nobody re-reviews 45 scores per analysis. Empty list = trained on nothing
+    # nobody re-reviews 57 scores per analysis. Empty list = trained on nothing
     # label-derived. Omitted = unknown, which is treated conservatively (never "clean").
     scores:
       # --- no disease-label exposure ---

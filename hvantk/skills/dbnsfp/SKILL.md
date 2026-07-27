@@ -34,7 +34,7 @@ Supported `params`: `reference_genome` (default `GRCh38`),
 
 ## Training provenance (`scores:`)
 
-`plugin.yaml` declares `trained_on` for 47 of dbNSFP's predictors — which curated
+`plugin.yaml` declares `trained_on` for 55 of dbNSFP's 57 rankscore predictors — which curated
 database, simulated allele set, or population resource each one was fit on. dbNSFP is
 the reason the mechanism exists: roughly half its predictors are supervised on ClinVar
 or HGMD, so against a curated-database label they are partly circular, and a purely

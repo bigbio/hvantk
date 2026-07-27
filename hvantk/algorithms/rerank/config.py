@@ -118,6 +118,12 @@ class Config:
     """Sources the LABELS were derived from. Circularity is a property of the pair --
     REVEL against a ClinGen-derived label is badly circular; against a purely
     burden-derived one it is far less so -- so neither half means anything alone."""
+    provenance_equivalence: Optional[dict] = None
+    """Source-name classes for the circularity check; None uses DEFAULT_EQUIVALENCE.
+    `selection.yaml` can override the vocabulary and `load_policy` returns it, so it needs
+    somewhere to live -- without this field the override is silently discarded and the
+    clean/all split is computed against the defaults, which is a wrong answer rather than
+    an error."""
 
     def __post_init__(self):
         if self.audit is None:
