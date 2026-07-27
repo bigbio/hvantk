@@ -1,3 +1,5 @@
+import pytest
+
 from hvantk.algorithms.rerank.provenance import DEFAULT_EQUIVALENCE, resolve_arms
 
 
@@ -141,3 +143,23 @@ def test_declared_dbnsfp_scores_resolve_into_arms_against_a_clinvar_label():
     assert "phyloP100way_vertebrate_rankscore" in arms.clean
     assert "CADD_raw_rankscore" in arms.clean            # 'simulated' is not a disease db
     assert arms.unknown == ()                            # every declared score is declared
+
+
+def test_a_source_in_two_equivalence_classes_is_rejected():
+    """Ambiguous vocabulary must fail loud, not resolve by dict iteration order.
+
+    A duplicate member would otherwise be assigned to whichever class the dict happened
+    to process last, silently moving every feature trained on that source between the
+    clean and all arms. Same failure shape the CLI rejects for a repeated `--prepared`
+    axis (PR #229) -- reject the ambiguity rather than guess.
+    """
+    bad = {"curated_disease_db": ["ClinVar", "HGMD"], "other": ["ClinVar"]}
+    with pytest.raises(ValueError, match="two classes"):
+        resolve_arms({"x": frozenset({"ClinVar"})}, frozenset({"HGMD"}), bad)
+
+
+def test_a_source_repeated_within_one_class_is_fine():
+    """Only a CROSS-class duplicate is ambiguous; repeating inside one class is not."""
+    dup = {"curated_disease_db": ["ClinVar", "ClinVar", "HGMD"]}
+    arms = resolve_arms({"x": frozenset({"ClinVar"})}, frozenset({"HGMD"}), dup)
+    assert "x" in arms.conflicted
