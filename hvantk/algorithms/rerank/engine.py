@@ -291,6 +291,16 @@ def rerank_arms(config) -> dict:
     if config.selection is None or config.feature_provenance is None:
         return {"all": rerank(config)}
 
+    if config.label_provenance is None:
+        raise ValueError(
+            "feature_provenance is set but label_provenance is not. Circularity is a "
+            "property of the feature/label PAIR, so an undeclared label source makes the "
+            "clean arm meaningless: nothing conflicts with nothing, every circular "
+            "predictor is admitted, and the run looks healthy. Declare what the labels "
+            "were derived from (e.g. frozenset({'ClinGen', 'GenCC'})), or pass an "
+            "explicit frozenset() to assert they derive from nothing curated."
+        )
+
     assignment = resolve_arms(
         config.feature_provenance,
         config.label_provenance,

@@ -209,3 +209,47 @@ def test_custom_equivalence_map_reaches_the_arm_split(tmp_path):
         min_label_coverage=0.0,
     ))
     assert custom_arms["clean"].selection.n_conflicted == 1
+
+
+def test_forgetting_label_provenance_is_rejected(tmp_path):
+    """An undeclared label source must fail loud, not silently bless every column.
+
+    `label_provenance` conflicts with nothing when it is empty, so a caller who sets
+    `feature_provenance` and forgets the label half gets a `clean` arm containing every
+    circular predictor -- and a plausible, entirely wrong headline. None (undeclared) is
+    therefore an error; an explicit frozenset() is a real assertion and is accepted.
+    """
+    import pytest
+
+    from hvantk.algorithms.rerank.engine import rerank_arms
+    from hvantk.algorithms.rerank.selection import SelectionPolicy
+
+    cfg = _cfg(
+        tmp_path,
+        selection=SelectionPolicy(wrapper="none"),
+        feature_provenance={"c1": frozenset(), "c2": frozenset(),
+                            "REVEL_rankscore": frozenset({"ClinVar"})},
+        min_label_coverage=0.0,
+    )  # label_provenance deliberately not passed
+
+    with pytest.raises(ValueError, match="label_provenance"):
+        rerank_arms(cfg)
+
+
+def test_explicitly_empty_label_provenance_is_accepted(tmp_path):
+    """frozenset() asserts 'derived from nothing curated' -- a legitimate cohort."""
+    from hvantk.algorithms.rerank.engine import rerank_arms
+    from hvantk.algorithms.rerank.selection import SelectionPolicy
+
+    cfg = _cfg(
+        tmp_path,
+        selection=SelectionPolicy(wrapper="none"),
+        feature_provenance={"c1": frozenset(), "c2": frozenset(),
+                            "REVEL_rankscore": frozenset({"ClinVar"})},
+        label_provenance=frozenset(),
+        min_label_coverage=0.0,
+    )
+
+    arms = rerank_arms(cfg)
+    # Nothing conflicts with a label derived from nothing curated -- correctly, not by accident.
+    assert arms["clean"].selection.n_conflicted == 0

@@ -15,12 +15,11 @@ from __future__ import annotations
 import logging
 import os
 
+from hvantk.skills.insider.shared import normalize_hadoop_path
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_FILENAME = "H_sapiens_interfacesALL.txt"
-
-
-_FILE_URI_PREFIX = "file://"
 
 
 def _resolve_input(parsed_input) -> str:
@@ -30,9 +29,7 @@ def _resolve_input(parsed_input) -> str:
     ``reprocess`` hands a plain path; the sibling ``insider:variants`` builder normalises
     the same way. This parser uses stdlib ``open``, which does not understand URIs.
     """
-    path = str(parsed_input)
-    if path.startswith(_FILE_URI_PREFIX):
-        path = path[len(_FILE_URI_PREFIX) :]
+    path = normalize_hadoop_path(str(parsed_input))
     if os.path.isdir(path):
         return os.path.join(path, DEFAULT_FILENAME)
     return path
