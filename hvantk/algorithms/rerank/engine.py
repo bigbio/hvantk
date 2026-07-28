@@ -79,6 +79,76 @@ def _axis_selector(policy, groups, frequency=None):
     return selector
 
 
+def _compose_selector(selection_selector, leakage_policy):
+    """Chain the presence-leakage control in FRONT of within-axis selection.
+
+    Order is not cosmetic. The univariate filter scores ``|AUC - 0.5|`` on a column's
+    VALUES, and a column whose missingness tracks the label scores well on exactly that --
+    statistical selection rewards the defect rather than detecting it, which is the argument
+    ``provenance.py`` makes for circularity and which transposes here. So a leaking column
+    must be removed before selection ever sees it.
+
+    Returns ``None`` when neither control is configured, rather than an identity function:
+    ``ReRanker.score`` takes a different and cheaper path for ``selector=None``, and
+    wrapping it would silently move every existing run onto the other path.
+    """
+    if leakage_policy is None:
+        return selection_selector
+
+    from hvantk.algorithms.rerank.leakage import resolve_leakage
+
+    def selector(X_train, y_train, columns):
+        kept = resolve_leakage(
+            X_train,
+            y_train,
+            list(columns),
+            q=leakage_policy.q,
+            min_auc=leakage_policy.min_auc,
+        ).clean
+        if selection_selector is None:
+            return list(kept)
+        return selection_selector(X_train, y_train, list(kept))
+
+    return selector
+
+
+def _leakage_filtered_groups(df, y, groups, leakage_policy):
+    """Axis groups with presence-leaking columns removed, for the GLOBAL selection pass.
+
+    ``_selection_summary`` runs its own selection over all the data to produce the
+    human-readable "these are the features" list. That pass does not go through the per-fold
+    selector, so without this a column the folds barred can still appear in
+    ``global_features`` and be read as endorsed by a selection nobody ran.
+
+    Resolved once over the union of columns rather than per axis, so the FDR correction sees
+    every column that was tested -- filtering axis by axis would apply a laxer bar to a
+    narrow axis than the nested path does.
+
+    Returns ``groups`` unchanged (same object) when no policy is set, so the summary is
+    byte-identical for existing configurations.
+    """
+    if leakage_policy is None:
+        return groups
+
+    from hvantk.algorithms.rerank.leakage import resolve_leakage
+
+    every = list(dict.fromkeys(c for cols in groups.values() for c in cols))
+    clean = set(
+        resolve_leakage(
+            df, y, every, q=leakage_policy.q, min_auc=leakage_policy.min_auc
+        ).clean
+    )
+    out = {}
+    for axis, cols in groups.items():
+        kept = [c for c in cols if c in clean]
+        # An axis left with nothing is dropped rather than passed on empty: a zero-column
+        # axis reaching select_axis reads as measured-and-contributed-nothing, which is a
+        # different statement from barred.
+        if kept:
+            out[axis] = kept
+    return out
+
+
 def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
            _n_unknown=0) -> RerankResult:
     validate(config)
@@ -135,17 +205,32 @@ def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
     groups = {k: v for k, v in groups.items() if v}
     baseline = next(iter(groups))
     reranker = ReRanker(config.calibration, config.folds)
+    leakage_policy = getattr(config, "leakage", None)
     selector = summary = None
     if config.selection is not None:
         frequency: dict = {}
-        selector = _axis_selector(config.selection, groups)
-        recording = _axis_selector(config.selection, groups, frequency)
+        selector = _compose_selector(
+            _axis_selector(config.selection, groups), leakage_policy
+        )
+        recording = _compose_selector(
+            _axis_selector(config.selection, groups, frequency), leakage_policy
+        )
         scores = reranker.score(df, feat_cols, y, selector=recording)
         summary = _selection_summary(
-            config, df, y, groups, scores, frequency, _arm, _n_conflicted, _n_unknown
+            config, df, y,
+            _leakage_filtered_groups(df, y, groups, leakage_policy),
+            scores, frequency, _arm, _n_conflicted, _n_unknown
         )
     else:
-        scores = reranker.score(df, feat_cols, y)
+        # Leakage control is independent of SelectionPolicy: one asks whether a column's
+        # values are worth keeping, the other whether its missingness carries the label.
+        # Requiring a selection policy to get the leakage control would couple them.
+        selector = _compose_selector(None, leakage_policy)
+        scores = (
+            reranker.score(df, feat_cols, y, selector=selector)
+            if selector is not None
+            else reranker.score(df, feat_cols, y)
+        )
     audit_table = df
     if config.cohort is not None:
         # The prior column was already consumed above (as `prior_stat`), so it is

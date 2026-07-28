@@ -1,5 +1,6 @@
 # local/rerank_engine/config.py
 import logging
+import math
 from dataclasses import dataclass, field
 from typing import Callable, Optional, TYPE_CHECKING
 import pandas as pd
@@ -9,6 +10,7 @@ from hvantk.algorithms.cohort.spec import CohortManifest
 
 if TYPE_CHECKING:
     from hvantk.algorithms.rerank.audit import Audit
+    from hvantk.algorithms.rerank.leakage import LeakagePolicy
     from hvantk.algorithms.rerank.selection import SelectionPolicy
 
 logger = logging.getLogger(__name__)
@@ -111,6 +113,17 @@ class Config:
     selection: Optional["SelectionPolicy"] = None
     """Feature-selection policy. None (default) disables selection entirely and reproduces
     the pre-selection code path exactly."""
+    leakage: Optional["LeakagePolicy"] = None
+    """Presence-leakage control: bar columns whose MISSINGNESS predicts the label.
+
+    Independent of `selection` and of `feature_provenance`. Provenance asks what a
+    predictor was TRAINED on; this asks which units it was RUN on. A predictor can pass the
+    first and fail the second -- EVE is unsupervised on alignments, so it is correctly
+    clean on provenance, while the bare flag "was EVE computed for this gene" scored AUC
+    0.716 against a ClinGen/GenCC label in the cohort that motivated this, above the whole
+    constraint axis.
+
+    None (default) disables the control and reproduces the previous code path exactly."""
     feature_provenance: Optional[dict] = None
     """column -> frozenset of sources the predictor was trained on, or None if undeclared.
     None for the whole dict means provenance is unavailable: a single 'all' arm is run."""
@@ -136,6 +149,33 @@ class Config:
             from hvantk.algorithms.rerank.audit import NoAudit
 
             self.audit = NoAudit()
+        if self.leakage is not None:
+            from hvantk.algorithms.rerank.leakage import LeakagePolicy
+
+            # Checked rather than duck-typed: the engine reads `.q` and `.min_auc`, so a
+            # bare float or dict here would raise deep inside a per-fold selector, or worse,
+            # be swallowed and leave the control silently off while the caller believes it
+            # is on. A disabled safety control that looks enabled is the failure to avoid.
+            if not isinstance(self.leakage, LeakagePolicy):
+                raise TypeError(
+                    f"Config.leakage must be a LeakagePolicy or None; got "
+                    f"{type(self.leakage).__name__}. To use defaults, pass "
+                    f"LeakagePolicy()."
+                )
+            # Validated here as well as in presence_leakage, because there the failure
+            # surfaces deep inside a per-fold selector -- after the matrix is assembled and
+            # scoring has begun -- rather than at the point the misconfiguration was made.
+            if not 0.0 < self.leakage.q <= 1.0:
+                raise ValueError(
+                    f"Config.leakage.q must be in (0, 1]; got {self.leakage.q}"
+                )
+            _m = self.leakage.min_auc
+            if not (
+                isinstance(_m, (int, float)) and math.isfinite(_m) and 0.0 <= _m <= 1.0
+            ):
+                raise ValueError(
+                    f"Config.leakage.min_auc must be finite and in [0, 1]; got {_m!r}"
+                )
         if self.cohort is not None:
             if self.prior is None:
                 self.prior = _ManifestPrior(self.cohort)

@@ -51,6 +51,13 @@ gnomad = { version = "*", optional = true }
 # The floor stays as long as `SelectionPolicy(wrapper="rfecv")` is reachable -- it is now
 # off by default, not removed. Drop to ^1.3 only if the wrapper is deleted outright.
 scikit-learn = { version = "^1.4", optional = true }
+# scipy is a hard install_requires of scikit-learn, so it is always present wherever the
+# code that imports it is reachable -- rerank's selection and leakage filters both use
+# scipy.stats, and neither can run without sklearn anyway. Declared explicitly regardless,
+# because relying on a transitive dependency is how it silently breaks later. OPTIONAL, and
+# listed in the same extras as scikit-learn: rerank is not part of a base install, so a
+# base-level declaration would burden every user who never touches it.
+scipy = { version = ">=1.8", optional = true }
 matplotlib = { version = "*", optional = true }
 seaborn = { version = "*", optional = true }
 plotly = { version = "*", optional = true }
@@ -67,11 +74,11 @@ viz = ["matplotlib", "seaborn", "plotly"]
 duckdb = ["duckdb"]
 interactive = ["plotly"]
 hgc = ["matplotlib", "seaborn", "gnomad"]
-psroc = ["matplotlib", "plotly", "scikit-learn"]
+psroc = ["matplotlib", "plotly", "scikit-learn", "scipy"]
 ptm = ["cptac", "sorted-nearest"]
 constraint = ["tspex", "matplotlib", "seaborn"]
-ancestry = ["scikit-learn", "matplotlib", "seaborn"]
-ml = ["scikit-learn"]
+ancestry = ["scikit-learn", "matplotlib", "seaborn", "scipy"]
+ml = ["scikit-learn", "scipy"]
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
