@@ -113,9 +113,15 @@ def presence_leakage(
 
     if not 0.0 < q <= 1.0:
         raise ValueError(f"q must be in (0, 1]; got {q}")
+    # NaN would pass silently and disable the effect floor entirely: max(0.0, nan) is 0.0,
+    # so every FDR-significant column would be barred with no effect-size protection --
+    # exactly the over-correction the floor exists to prevent, and invisible in the output.
+    _m = float(min_auc)
+    if not np.isfinite(_m) or not 0.0 <= _m <= 1.0:
+        raise ValueError(f"min_auc must be finite and in [0, 1]; got {min_auc!r}")
 
     y = np.asarray(y)
-    min_effect = max(0.0, float(min_auc) - 0.5)
+    min_effect = max(0.0, _m - 0.5)
     stats: dict[str, LeakageStat] = {}
 
     for col in columns:

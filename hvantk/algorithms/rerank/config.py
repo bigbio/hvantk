@@ -1,5 +1,6 @@
 # local/rerank_engine/config.py
 import logging
+import math
 from dataclasses import dataclass, field
 from typing import Callable, Optional, TYPE_CHECKING
 import pandas as pd
@@ -160,6 +161,20 @@ class Config:
                     f"Config.leakage must be a LeakagePolicy or None; got "
                     f"{type(self.leakage).__name__}. To use defaults, pass "
                     f"LeakagePolicy()."
+                )
+            # Validated here as well as in presence_leakage, because there the failure
+            # surfaces deep inside a per-fold selector -- after the matrix is assembled and
+            # scoring has begun -- rather than at the point the misconfiguration was made.
+            if not 0.0 < self.leakage.q <= 1.0:
+                raise ValueError(
+                    f"Config.leakage.q must be in (0, 1]; got {self.leakage.q}"
+                )
+            _m = self.leakage.min_auc
+            if not (
+                isinstance(_m, (int, float)) and math.isfinite(_m) and 0.0 <= _m <= 1.0
+            ):
+                raise ValueError(
+                    f"Config.leakage.min_auc must be finite and in [0, 1]; got {_m!r}"
                 )
         if self.cohort is not None:
             if self.prior is None:

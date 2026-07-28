@@ -116,3 +116,67 @@ def test_config_rejects_an_invalid_policy_type():
     """A bare float or dict here would be silently ignored by the engine."""
     with pytest.raises((TypeError, ValueError)):
         Config(name="x", features=[], labels=None, leakage=0.55).__post_init__()
+
+
+def test_global_selection_summary_excludes_leaking_columns():
+    """The global summary must not report a column the nested folds barred.
+
+    `_selection_summary` runs its own selection over ALL the data to produce the
+    human-readable "these are the features" list. That pass is separate from the per-fold
+    selector, so without explicit filtering a leaking column can appear in
+    `global_features` -- and be read as endorsed -- while no fold ever used it.
+    """
+    from hvantk.algorithms.rerank.engine import _leakage_filtered_groups
+
+    X, y = _leaky_frame()
+    groups = {"constraint": ["pLI"], "dbnsfp": ["eve_mean"], "expression": ["expr"]}
+
+    filtered = _leakage_filtered_groups(X, y, groups, LeakagePolicy())
+
+    assert "eve_mean" not in filtered.get("dbnsfp", [])
+    assert filtered["constraint"] == ["pLI"]
+    assert filtered["expression"] == ["expr"]
+
+
+def test_leakage_filtered_groups_drops_an_axis_left_empty():
+    """An axis whose every column leaks must disappear, not survive as an empty list.
+
+    A zero-column axis reaching select_axis is reported as present-but-contributing-
+    nothing, which reads as a measured null rather than a barred axis.
+    """
+    from hvantk.algorithms.rerank.engine import _leakage_filtered_groups
+
+    X, y = _leaky_frame()
+    filtered = _leakage_filtered_groups(
+        X, y, {"only_leaky": ["eve_mean"], "fine": ["expr"]}, LeakagePolicy()
+    )
+
+    assert "only_leaky" not in filtered
+    assert filtered["fine"] == ["expr"]
+
+
+def test_leakage_filtered_groups_is_identity_without_a_policy():
+    from hvantk.algorithms.rerank.engine import _leakage_filtered_groups
+
+    X, y = _leaky_frame()
+    groups = {"a": ["pLI"], "b": ["eve_mean"]}
+    assert _leakage_filtered_groups(X, y, groups, None) is groups
+
+
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), -0.2, 1.4])
+def test_policy_rejects_non_finite_or_out_of_range_min_auc(bad):
+    """NaN silently disables the effect floor: max(0.0, nan) is 0.0, so every
+    FDR-significant column would be barred with no effect-size protection at all."""
+    with pytest.raises(ValueError, match="min_auc"):
+        Config(
+            name="x", features=[], labels=None, leakage=LeakagePolicy(min_auc=bad)
+        ).__post_init__()
+
+
+@pytest.mark.parametrize("bad", [0.0, -0.1, 1.5])
+def test_config_rejects_invalid_policy_q(bad):
+    """presence_leakage raises for these, but only once a per-fold selector reaches it."""
+    with pytest.raises(ValueError, match="q"):
+        Config(
+            name="x", features=[], labels=None, leakage=LeakagePolicy(q=bad)
+        ).__post_init__()

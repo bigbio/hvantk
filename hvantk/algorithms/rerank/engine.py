@@ -112,6 +112,43 @@ def _compose_selector(selection_selector, leakage_policy):
     return selector
 
 
+def _leakage_filtered_groups(df, y, groups, leakage_policy):
+    """Axis groups with presence-leaking columns removed, for the GLOBAL selection pass.
+
+    ``_selection_summary`` runs its own selection over all the data to produce the
+    human-readable "these are the features" list. That pass does not go through the per-fold
+    selector, so without this a column the folds barred can still appear in
+    ``global_features`` and be read as endorsed by a selection nobody ran.
+
+    Resolved once over the union of columns rather than per axis, so the FDR correction sees
+    every column that was tested -- filtering axis by axis would apply a laxer bar to a
+    narrow axis than the nested path does.
+
+    Returns ``groups`` unchanged (same object) when no policy is set, so the summary is
+    byte-identical for existing configurations.
+    """
+    if leakage_policy is None:
+        return groups
+
+    from hvantk.algorithms.rerank.leakage import resolve_leakage
+
+    every = list(dict.fromkeys(c for cols in groups.values() for c in cols))
+    clean = set(
+        resolve_leakage(
+            df, y, every, q=leakage_policy.q, min_auc=leakage_policy.min_auc
+        ).clean
+    )
+    out = {}
+    for axis, cols in groups.items():
+        kept = [c for c in cols if c in clean]
+        # An axis left with nothing is dropped rather than passed on empty: a zero-column
+        # axis reaching select_axis reads as measured-and-contributed-nothing, which is a
+        # different statement from barred.
+        if kept:
+            out[axis] = kept
+    return out
+
+
 def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
            _n_unknown=0) -> RerankResult:
     validate(config)
@@ -180,7 +217,9 @@ def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
         )
         scores = reranker.score(df, feat_cols, y, selector=recording)
         summary = _selection_summary(
-            config, df, y, groups, scores, frequency, _arm, _n_conflicted, _n_unknown
+            config, df, y,
+            _leakage_filtered_groups(df, y, groups, leakage_policy),
+            scores, frequency, _arm, _n_conflicted, _n_unknown
         )
     else:
         # Leakage control is independent of SelectionPolicy: one asks whether a column's
