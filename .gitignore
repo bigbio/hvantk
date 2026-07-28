@@ -212,9 +212,6 @@ checkpoints/
 # Pickle files
 *.pkl
 
-# Manuscript build files
-manuscript/
-
 # Ignore Jupyter Notebook checkpoints
 .ipynb_checkpoints/
 
@@ -233,6 +230,9 @@ CLAUDE.md
 docs/plans/
 docs/specs/
 docs/superpowers/
+
+# research artifacts (not for distribution)
+manuscript
 
 # Codacy CLI v2 local cache + config (init-generated)
 .codacy/
