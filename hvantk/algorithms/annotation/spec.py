@@ -49,10 +49,35 @@ class AggregateSpec:
 
 @dataclass(frozen=True)
 class SpecificitySpec:
+    """How a genes x groups specificity matrix becomes feature columns.
+
+    ``emit`` controls the reduction, and defaults to the VECTOR -- one column per group.
+    Reducing an atlas to a single summed scalar throws away the cross-group contrast: the
+    non-target groups are computed, used as the denominator of the fraction, and discarded.
+    Measured on real cohorts, that reduction cost an epilepsy axis +0.061 AUC and the
+    difference between significant and not, while keeping the vector raised the
+    selected-maximum null by +0.0009. So the vector is the default and a named roll-up is
+    additive: give ``targets`` and you get the roll-up column IN ADDITION to the vector.
+
+    emit
+        ``"vector"`` (default) one column per group, plus the roll-up when ``targets`` is
+        non-empty; ``"rollup"`` the roll-up only, which requires ``targets``.
+    """
+
     method: str
-    targets: tuple[str, ...]
+    targets: tuple[str, ...] = ()
     combine: str = "max"
     name: str = "spec"
+    emit: str = "vector"
+
+    def __post_init__(self):
+        if self.emit not in ("vector", "rollup"):
+            raise ValueError(
+                f"emit must be 'vector' or 'rollup'; got {self.emit!r}")
+        if self.emit == "rollup" and not self.targets:
+            raise ValueError(
+                "emit='rollup' needs targets; with none there is nothing to roll up "
+                "(an empty target set would silently sum to an all-zero column)")
 
 
 @dataclass(frozen=True)

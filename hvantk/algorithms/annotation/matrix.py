@@ -89,29 +89,55 @@ def reduce_matrix_to_gene(adata, mspec):
     if mspec.specificity is not None:
         spec_gg = ewce_specificity(mean_gg)
         targets = [t.strip() for t in mspec.specificity.targets]
-        # Require EXACT coverage: a partially-present target set would silently pool the
-        # cell-class specificity over only the surviving subtypes (e.g. combine='sum' summing
-        # 1 of 3 cardiomyocyte subtypes), under-reporting every pan-class gene with no error.
-        missing = [t for t in targets if t not in spec_gg.columns]
-        if missing:
-            raise ValueError(
-                f"specificity targets {missing} absent from groups {list(spec_gg.columns)} "
-                f"(after strip/drop_groups); a partial target set would under-pool the "
-                f"cell-class specificity -- fix the spec or the atlas"
-            )
-        tgt = spec_gg[targets]
-        combine = mspec.specificity.combine
-        if combine == "sum":
-            # Cell-CLASS specificity (EWCE level 1): the targets are subtypes of one class
-            # (e.g. atrial/ventricular/Myoz2 cardiomyocytes), so pool their fractions ->
-            # fraction of the gene's expression that is in the class. A pan-class gene
-            # (split across subtypes) reads high, which 'max' (peak single subtype) misses.
-            combined = tgt.sum(axis=1)
-        elif combine == "mean":
-            combined = tgt.mean(axis=1)
-        else:  # 'max' -- peak specificity to any single target
-            combined = tgt.max(axis=1)
-        cols[f"{mspec.atlas}_{mspec.specificity.name}"] = combined
+
+        # The VECTOR: one column per surviving group. Emitted before any roll-up so that a
+        # roll-up name colliding with a group name is caught by the same col_origin check.
+        if mspec.specificity.emit == "vector":
+            for g in spec_gg.columns:
+                key = f"{mspec.atlas}_{_san(g)}"
+                if key in col_origin:
+                    raise ValueError(
+                        f"group labels {col_origin[key]!r} and {g!r} both sanitize to "
+                        f"column {key!r}; rename a group or use drop_groups to disambiguate"
+                    )
+                col_origin[key] = g
+                cols[key] = spec_gg[g]
+
+        # THE ROLL-UP, additive and optional: emitted only when targets were named. Guarded,
+        # because an empty target set makes spec_gg[[]] sum to an all-zero column -- a silent
+        # dead feature rather than an error.
+        if targets:
+            # Require EXACT coverage: a partially-present target set would silently pool the
+            # cell-class specificity over only the surviving subtypes (e.g. combine='sum'
+            # summing 1 of 3 cardiomyocyte subtypes), under-reporting every pan-class gene.
+            missing = [t for t in targets if t not in spec_gg.columns]
+            if missing:
+                raise ValueError(
+                    f"specificity targets {missing} absent from groups "
+                    f"{list(spec_gg.columns)} (after strip/drop_groups); a partial target "
+                    f"set would under-pool the cell-class specificity -- fix the spec or "
+                    f"the atlas"
+                )
+            tgt = spec_gg[targets]
+            combine = mspec.specificity.combine
+            if combine == "sum":
+                # Cell-CLASS specificity (EWCE level 1): the targets are subtypes of one
+                # class (e.g. atrial/ventricular/Myoz2 cardiomyocytes), so pool their
+                # fractions -> fraction of the gene's expression that is in the class. A
+                # pan-class gene (split across subtypes) reads high, which 'max' (peak
+                # single subtype) misses.
+                combined = tgt.sum(axis=1)
+            elif combine == "mean":
+                combined = tgt.mean(axis=1)
+            else:  # 'max' -- peak specificity to any single target
+                combined = tgt.max(axis=1)
+            key = f"{mspec.atlas}_{mspec.specificity.name}"
+            if key in col_origin:
+                raise ValueError(
+                    f"roll-up name {key!r} collides with the group column from "
+                    f"{col_origin[key]!r}; rename the roll-up"
+                )
+            cols[key] = combined
 
     out = pd.DataFrame(cols)
     out.index.name = "symbol"
