@@ -1,4 +1,16 @@
 {
-  "release": "113",
-  "url": "https://ftp.ensembl.org/pub/release-113/gtf/homo_sapiens/Homo_sapiens.GRCh38.113.gtf.gz"
+  "probe_version": 2,
+  "source_version": "Sun, 18 Aug 2024 22:02:07 GMT",
+  "headers": {
+    "Homo_sapiens.GRCh38.113.gtf.gz": {
+      "etag": "\"3d2b9d9-61ffc57e3eacb\"",
+      "content_length": "64141785"
+    }
+  },
+  "checksums": {},
+  "extras": {
+    "release": "113",
+    "url": "https://ftp.ensembl.org/pub/release-113/gtf/homo_sapiens/Homo_sapiens.GRCh38.113.gtf.gz"
+  },
+  "fetched_at": "2026-07-27T17:17:16.767601+00:00"
 }

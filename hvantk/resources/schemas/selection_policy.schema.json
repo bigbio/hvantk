@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "hvantk rerank feature-selection policy",
+  "description": "Filter methods and thresholds for the within-axis feature-selection stage of 'hvantk rerank'. Every field is optional; an empty document is a valid policy that yields the documented defaults.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "univariate": {"type": "string", "enum": ["auc", "none"]},
+    "q": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+    "redundancy": {"type": "string", "enum": ["spearman", "none"]},
+    "redundancy_max": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+    "wrapper": {
+      "description": "Recursive feature elimination with internal CV. Defaults to 'none': measured across four cohorts, RFECV's eliminations concentrated in the cohort with the fewest positives and pruned the ablation baseline axis. Set 'rfecv' deliberately, on a wide axis with enough positives to trust an inner CV.",
+      "type": "string",
+      "enum": ["none", "rfecv"]
+    },
+    "wrapper_estimator": {"type": "string", "enum": ["random_forest"]},
+    "inner_folds": {"type": "integer", "minimum": 2},
+    "seed": {"type": "integer"},
+    "equivalence": {
+      "description": "Source-name classes for the circularity check. Sources within one class conflict with each other; sources in different classes never do.",
+      "type": "object",
+      "additionalProperties": {"type": "array", "items": {"type": "string"}}
+    }
+  }
+}

@@ -22,6 +22,77 @@ datasets:
       module: hvantk.skills.dbnsfp.drift_probe
       function: fetch_fingerprint
     skill: SKILL.md
+    # Training provenance per predictor. Declared here, once, by the plugin author --
+    # circularity is a property of the DATA, so every downstream cohort inherits it and
+    # nobody re-reviews 57 scores per analysis. Empty list = trained on nothing
+    # label-derived. Omitted = unknown, which is treated conservatively (never "clean").
+    scores:
+      # --- no disease-label exposure ---
+      phyloP100way_vertebrate_rankscore: {trained_on: []}
+      phyloP470way_mammalian_rankscore: {trained_on: []}
+      phastCons100way_vertebrate_rankscore: {trained_on: []}
+      GERP++_RS_rankscore: {trained_on: []}
+      SiPhy_29way_logOdds_rankscore: {trained_on: []}
+      SIFT_converted_rankscore: {trained_on: []}
+      SIFT4G_converted_rankscore: {trained_on: []}
+      PROVEAN_converted_rankscore: {trained_on: []}
+      MutationAssessor_rankscore: {trained_on: []}
+      LRT_converted_rankscore: {trained_on: []}
+      EVE_rankscore: {trained_on: []}
+      ESM1b_rankscore: {trained_on: []}
+      MPC_rankscore: {trained_on: [population_af]}
+      bStatistic_converted_rankscore: {trained_on: [population_af]}
+      CADD_raw_rankscore: {trained_on: [simulated]}
+      DANN_rankscore: {trained_on: [simulated]}
+      PrimateAI_rankscore: {trained_on: [primate_variation]}
+      AlphaMissense_rankscore: {trained_on: [population_af, structure]}
+      integrated_fitCons_rankscore: {trained_on: []}
+      LINSIGHT_rankscore: {trained_on: []}
+      GenoCanyon_rankscore: {trained_on: []}
+      Eigen-raw_coding_rankscore: {trained_on: []}
+      Eigen-PC-raw_coding_rankscore: {trained_on: []}
+      # additional conservation tracks shipped as rankscores
+      GERP_91_mammals_rankscore: {trained_on: []}
+      phastCons17way_primate_rankscore: {trained_on: []}
+      phastCons470way_mammalian_rankscore: {trained_on: []}
+      phyloP17way_primate_rankscore: {trained_on: []}
+      # fitCons variants: functional-genomics fitness consequence, per cell line.
+      # Derived from ENCODE functional data, not from any curated variant list.
+      GM12878_fitCons_rankscore: {trained_on: []}
+      H1-hESC_fitCons_rankscore: {trained_on: []}
+      HUVEC_fitCons_rankscore: {trained_on: []}
+      # --- supervised on curated disease databases ---
+      REVEL_rankscore: {trained_on: [HGMD, ClinVar]}
+      MVP_rankscore: {trained_on: [ClinVar]}
+      MetaSVM_rankscore: {trained_on: [ClinVar, HGMD]}
+      MetaLR_rankscore: {trained_on: [ClinVar, HGMD]}
+      MetaRNN_rankscore: {trained_on: [ClinVar]}
+      ClinPred_rankscore: {trained_on: [ClinVar]}
+      BayesDel_addAF_rankscore: {trained_on: [ClinVar, HGMD]}
+      BayesDel_noAF_rankscore: {trained_on: [ClinVar, HGMD]}
+      VEST4_rankscore: {trained_on: [HGMD]}
+      M-CAP_rankscore: {trained_on: [ClinVar, HGMD]}
+      DEOGEN2_rankscore: {trained_on: [ClinVar]}
+      LIST-S2_rankscore: {trained_on: [ClinVar]}
+      MutPred_rankscore: {trained_on: [HGMD]}
+      MutScore_rankscore: {trained_on: [ClinVar]}
+      VARITY_R_rankscore: {trained_on: [ClinVar]}
+      VARITY_ER_rankscore: {trained_on: [ClinVar]}
+      # LOO = the leave-one-out releases of the same two VARITY models
+      VARITY_R_LOO_rankscore: {trained_on: [ClinVar]}
+      VARITY_ER_LOO_rankscore: {trained_on: [ClinVar]}
+      # DELIBERATELY NOT DECLARED: MutFormer_rankscore, PHACTboost_rankscore.
+      # Both are plausibly supervised on curated disease variants, but I could not confirm
+      # their training sets, and a wrong "clean" declaration is far more damaging than an
+      # honest "unknown" -- unknown still reaches the `all` arm, it just never contributes
+      # to the headline. Declare them when someone checks the source publications.
+      gMVP_rankscore: {trained_on: [ClinVar]}
+      Polyphen2_HDIV_rankscore: {trained_on: [OMIM]}
+      Polyphen2_HVAR_rankscore: {trained_on: [OMIM, ClinVar]}
+      MutationTaster_converted_rankscore: {trained_on: [ClinVar]}
+      FATHMM_converted_rankscore: {trained_on: [HGMD]}
+      fathmm-MKL_coding_rankscore: {trained_on: [ClinVar, HGMD]}
+      fathmm-XF_coding_rankscore: {trained_on: [ClinVar, HGMD]}
     tests:
       command: pytest hvantk/skills/dbnsfp/tests -m hail
       # Shared fixture: lives in the repo-level testdata tree

@@ -197,12 +197,17 @@ def summarize_expression_cmd(
             param_hint="--group-by",
         )
 
-    summary = summarize_expression_ad(
-        adata,
-        group_by=list(group_by),
-        filter_by=filters,
-        min_cells_per_group=min_cells,
-    )
+    # Same reasoning as `markers`: summarize_expression_ad reaches for scanpy,
+    # which is optional, so surface a missing extra as a usage error not a crash.
+    try:
+        summary = summarize_expression_ad(
+            adata,
+            group_by=list(group_by),
+            filter_by=filters,
+            min_cells_per_group=min_cells,
+        )
+    except ImportError as exc:
+        raise click.ClickException(str(exc)) from exc
 
     if summary.n_obs == 0:
         click.echo(
@@ -318,11 +323,19 @@ def markers_cmd(
     """
     from pathlib import Path
 
-    import scanpy as sc
-
     from hvantk.core.io.anndata_io import load_anndata
-    from hvantk.algorithms.expression.matrix_utils import filter_by_metadata_ad
+    from hvantk.algorithms.expression.matrix_utils import (
+        filter_by_metadata_ad,
+        require_scanpy,
+    )
     from hvantk.core.utils.gene_sets import GeneSet, GeneSetCollection
+
+    # ClickException so a missing optional extra reads as a usage problem rather
+    # than a crash -- click prints "Error: <msg>" and exits 1, no traceback.
+    try:
+        sc = require_scanpy()
+    except ImportError as exc:
+        raise click.ClickException(str(exc)) from exc
 
     output_path = Path(output)
     if output_path.exists() and not overwrite:

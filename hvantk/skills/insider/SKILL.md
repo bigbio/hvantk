@@ -121,3 +121,32 @@ Round-trip test (`hvantk/skills/insider/tests/test_builder.py`, via `phase_b_sna
 Regenerate via `--regenerate-snapshots` when:
 - The builder adds / removes / renames fields (e.g., if a future PR adds a `source: array<str>` derived from `track description="..."` Source values).
 - A new INSIDER release changes the BED column shape (currently unchanged for v1.0).
+
+### 9b. Second dataset: `insider:interfaces`
+
+`interfaces` is the gene-level companion to `variants`, added for the rerank-v2 axis work.
+It reads the OTHER raw INSIDER file, `H_sapiens_interfacesALL.txt` (~49 MB, 122,768 pair
+rows over 15,144 proteins), not the 1.17 GB BED: the pair table already carries both
+UniProt accessions and both interface-residue lists, so a per-gene reduction needs no
+genomic join.
+
+- **fixture:** `hvantk/skills/insider/interfaces/tests/testdata/raw/interfaces/H_sapiens_interfacesALL.txt` (3 pair rows, 3 proteins; covers a range IRES `[5,7-9]`, an empty `[]`, and both a predicted and an experimental source).
+- **schema_snapshot:** `hvantk/skills/insider/interfaces/tests/snapshots/schema.json` — `{uniprot_id, n_partners, n_partners_experimental, n_partners_predicted, n_interface_residues}`, keyed `uniprot_id`.
+- **row_snapshot:** `hvantk/skills/insider/interfaces/tests/snapshots/sample_rows.json`.
+- **test_command:** `pytest hvantk/skills/insider/interfaces/tests -m hail`.
+
+`n_interface_residues` is the size of the UNION of a protein's interface residues across
+all its interactions, so it is bounded by protein length rather than by partner count --
+it reads as "how much of this protein is interface" and does not inherit degree bias.
+`Source` splits ECLAIR (predicted, 115,717 rows) from PDB/I3D (experimental, 7,051); the
+split is retained as two partner counts because PPI degree tracks study effort, so a
+predicted-only re-measurement is the axis's study-bias control.
+
+**Layout note (deliberate):** `variants` keeps the flat single-dataset layout it shipped
+with, while `interfaces` uses the `<provider>/<dataset>/` form from `_conventions` § 1.
+Migrating `variants` would churn its manifest, snapshots, drift fingerprint and the
+contract ratchet for no functional gain, so it was left alone; a future PR may unify them.
+
+The parse core (`interfaces/parse.py`) is pure Python and has no Hail dependency, so the
+whole reduction is covered by fast tests (`interfaces/tests/test_parse.py`); only the
+Hail Table wrapping needs `-m hail`.

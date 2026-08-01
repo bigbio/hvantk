@@ -26,6 +26,25 @@ def _schema() -> dict:
     return json.loads(_SCHEMA_PATH.read_text())
 
 
+# The `combine` vocabulary, as a dispatch table rather than a name list, so that
+# SpecificitySpec's validation and reduce_matrix_to_gene's dispatch read from ONE
+# definition and cannot drift into disagreement. Consumed by matrix.py; kept here
+# because it is spec vocabulary, and because matrix.py already depends on this
+# module's types while nothing here depends on matrix.py.
+#
+#   sum  -- cell-CLASS specificity (EWCE level 1): targets are subtypes of one class
+#           (atrial/ventricular/Myoz2 cardiomyocytes), so pool their fractions into the
+#           fraction of the gene's expression sitting in the class. A pan-class gene,
+#           split across subtypes, reads high here and is missed by max.
+#   mean -- average specificity across targets.
+#   max  -- peak specificity to any single target.
+COMBINE_REDUCERS = {
+    "sum": lambda df: df.sum(axis=1),
+    "mean": lambda df: df.mean(axis=1),
+    "max": lambda df: df.max(axis=1),
+}
+
+
 @dataclass(frozen=True)
 class ScoreSpec:
     name: str
@@ -40,14 +59,54 @@ class AggregateSpec:
     scores: tuple[ScoreSpec, ...]
     filter: str | None = None
     reduce: str = "max"
+    # Name of the emitted row-count column. The count is "source rows that survived the
+    # filter", so only dbNSFP's is literally 'possible missense'; a PTM-site or eQTL-pair
+    # source counts something else, and two such axes would collide on a shared name.
+    # Defaults to the dbNSFP-era name so existing specs are unaffected.
+    count_name: str = "n_possible_missense"
 
 
 @dataclass(frozen=True)
 class SpecificitySpec:
+    """How a genes x groups specificity matrix becomes feature columns.
+
+    ``emit`` controls the reduction, and defaults to the VECTOR -- one column per group.
+    Reducing an atlas to a single summed scalar throws away the cross-group contrast: the
+    non-target groups are computed, used as the denominator of the fraction, and discarded.
+    Measured on real cohorts, that reduction cost an epilepsy axis +0.061 AUC and the
+    difference between significant and not, while keeping the vector raised the
+    selected-maximum null by +0.0009. So the vector is the default and a named roll-up is
+    additive: give ``targets`` and you get the roll-up column IN ADDITION to the vector.
+
+    emit
+        ``"vector"`` (default) one column per group, plus the roll-up when ``targets`` is
+        non-empty; ``"rollup"`` the roll-up only, which requires ``targets``.
+    """
+
     method: str
-    targets: tuple[str, ...]
+    targets: tuple[str, ...] = ()
     combine: str = "max"
     name: str = "spec"
+    emit: str = "vector"
+
+    def __post_init__(self):
+        if self.emit not in ("vector", "rollup"):
+            raise ValueError(
+                f"emit must be 'vector' or 'rollup'; got {self.emit!r}")
+        if self.emit == "rollup" and not self.targets:
+            raise ValueError(
+                "emit='rollup' needs targets; with none there is nothing to roll up "
+                "(an empty target set would silently sum to an all-zero column)")
+        # Validated for the same reason as emit, and it matters more: the old
+        # reduce_matrix_to_gene dispatched sum/mean/else-max, so an unrecognised
+        # value did not raise -- it silently became 'max'. A spec author writing
+        # combine: 'sm' would get peak single-target specificity where they asked
+        # for the pooled class fraction: a different feature, not a degraded one.
+        if self.combine not in COMBINE_REDUCERS:
+            raise ValueError(
+                f"combine must be one of {sorted(COMBINE_REDUCERS)}; "
+                f"got {self.combine!r}"
+            )
 
 
 @dataclass(frozen=True)
@@ -69,6 +128,9 @@ class SourceEntry:
     min_mapping_rate: float = 0.9
     origin: str | None = None
     ablate_separately: bool = False
+    # How to reduce when several source keys map to ONE gene_id. None (default) makes
+    # that an error; see prepare.COLLAPSE_REDUCERS for the vocabulary.
+    collapse: str | None = None
     aggregate: AggregateSpec | None = None
     matrix: MatrixSpec | None = None
 
@@ -98,6 +160,7 @@ def _build_aggregate(raw: dict | None) -> AggregateSpec | None:
         scores=scores,
         filter=raw.get("filter"),
         reduce=raw.get("reduce", "max"),
+        count_name=raw.get("count_name", "n_possible_missense"),
     )
 
 
@@ -110,9 +173,16 @@ def _build_matrix(raw: dict | None) -> MatrixSpec | None:
         if specificity_raw is None
         else SpecificitySpec(
             method=specificity_raw["method"],
-            targets=tuple(specificity_raw["targets"]),
+            # Optional in the schema: with no targets you get the vector alone.
+            # Defaulting here rather than indexing keeps YAML able to express
+            # vector-only, which is the point of the roll-up being additive.
+            targets=tuple(specificity_raw.get("targets", ())),
             combine=specificity_raw.get("combine", "max"),
             name=specificity_raw.get("name", "spec"),
+            # Without this, emit was Python-API-only: every YAML-driven spec
+            # silently took the "vector" default and could not opt back into the
+            # roll-up-only output the docstring advertises.
+            emit=specificity_raw.get("emit", "vector"),
         )
     )
     return MatrixSpec(
@@ -149,6 +219,7 @@ def load_spec(path: str | Path) -> FeatureSpec:
             min_mapping_rate=e.get("min_mapping_rate", 0.9),
             origin=e.get("origin"),
             ablate_separately=e.get("ablate_separately", False),
+            collapse=e.get("collapse"),
             aggregate=_build_aggregate(e.get("aggregate")),
             matrix=_build_matrix(e.get("matrix")),
         )
@@ -172,4 +243,23 @@ def load_spec(path: str | Path) -> FeatureSpec:
                 f"entry {e.source!r} has a matrix block, which requires key: symbol "
                 f"(the reduced table is symbol-keyed); got key {e.key!r}"
             )
+    # Matrix vector columns are named {atlas}_{sanitized_group} with no axis component
+    # (matrix.reduce_matrix_to_gene), so two matrix entries over the SAME atlas emit the
+    # same column names for every group they share. Since emit="vector" is the default,
+    # that is now the common case -- e.g. splitting one single-cell atlas into a
+    # cardiomyocyte axis and a fibroblast axis. compose() would catch it, but only after
+    # both sources had been read, reduced and mapped onto the spine; here it costs
+    # nothing and names the fix.
+    atlases: dict = {}
+    for e in entries:
+        if e.matrix is None:
+            continue
+        if e.matrix.atlas in atlases:
+            raise ValueError(
+                f"axes {atlases[e.matrix.atlas]!r} and {e.axis!r} both declare matrix "
+                f"atlas {e.matrix.atlas!r}; their per-group specificity columns would "
+                "collide, since a vector column is named {atlas}_{group}. Give each "
+                "matrix axis a distinct atlas label, or set emit: rollup on all but one"
+            )
+        atlases[e.matrix.atlas] = e.axis
     return FeatureSpec(name=doc["name"], layer1=entries)

@@ -1,5 +1,7 @@
 """Tests for AnnData-based expression analysis functions in matrix_utils."""
 
+import importlib.util
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -11,6 +13,14 @@ from hvantk.algorithms.expression.matrix_utils import (
     describe_expression_ad,
     filter_by_metadata_ad,
     summarize_expression_ad,
+)
+
+# Only summarize_expression_ad reaches for scanpy, and only at call time -- describe/
+# filter work on a base install. find_spec rather than importorskip so the rest of the
+# module still runs, and so we never pay scanpy's import cost just to decide.
+requires_scanpy = pytest.mark.skipif(
+    importlib.util.find_spec("scanpy") is None,
+    reason="summarize_expression_ad needs the 'expression' extra (scanpy)",
 )
 
 
@@ -63,6 +73,7 @@ class TestFilterByMetadataAd:
         assert filtered.n_obs > 0
 
 
+@requires_scanpy
 class TestSummarizeExpressionAd:
     def test_returns_anndata(self, test_adata):
         result = summarize_expression_ad(test_adata, group_by="cell_type")

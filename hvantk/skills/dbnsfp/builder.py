@@ -144,6 +144,33 @@ def build_dbnsfp_variants(
         if ann:
             ht = ht.annotate(**ann)
 
+    # Rank-normalised scores: ONE value per variant, so a scalar float, not a dict.
+    #
+    # Unlike the *_score columns above, a rankscore is not per-transcript -- dbNSFP ranks
+    # each predictor across its whole database, so the value describes the variant. It is
+    # also the only dbNSFP surface on which predictors are mutually comparable, in two
+    # senses that both matter downstream:
+    #   scale       every rankscore is on 0-1, so one threshold means the same thing for
+    #               all ~57 of them (no per-predictor cutoffs to hand-tune)
+    #   direction   the "_converted_" ones (SIFT, FATHMM, PROVEAN, LRT, MutationTaster,
+    #               bStatistic) are inverted at the source, so for EVERY rankscore without
+    #               exception, higher = more damaging. Raw scores are not: SIFT and FATHMM
+    #               run the other way, and a feature axis built on them would be silently
+    #               backwards for those tools.
+    # Left as strings these are unusable as features (hl.agg.mean on a str fails), which
+    # would push an identical cast into every consumer.
+    row_fields_list = list(get_row_fields(ht))
+    rank_fields = [
+        f
+        for f in row_fields_list
+        if f.endswith("_rankscore") and ht[f].dtype == hl.tstr
+    ]
+    if rank_fields:
+        logger.info("Parsing %d *_rankscore field(s) to float64", len(rank_fields))
+        # hl.parse_float yields missing for dbNSFP's "." placeholder -- an unscored
+        # variant must stay missing, never 0.0, which would read as "confidently benign".
+        ht = ht.annotate(**{f: hl.parse_float(ht[f]) for f in rank_fields})
+
     # Group common prefixes into structs
     prefixes = group_prefixes or [
         "gnomAD",

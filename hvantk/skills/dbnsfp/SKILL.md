@@ -32,6 +32,23 @@ Supported `params`: `reference_genome` (default `GRCh38`),
 `parse_transcript_scores` (default true), `group_prefixes` (list of str),
 `auto_convert_bgz` (default false).
 
+## Training provenance (`scores:`)
+
+`plugin.yaml` declares `trained_on` for 55 of dbNSFP's 57 rankscore predictors — which curated
+database, simulated allele set, or population resource each one was fit on. dbNSFP is
+the reason the mechanism exists: roughly half its predictors are supervised on ClinVar
+or HGMD, so against a curated-database label they are partly circular, and a purely
+statistical filter would *reward* that circularity rather than catch it.
+
+The three states are `[]` (nothing label-derived, e.g. `phyloP100way_vertebrate_rankscore`),
+an explicit source list (`REVEL_rankscore: [HGMD, ClinVar]`), and omitted, which means
+unknown and is never treated as clean. See `hvantk/skills/_conventions/SKILL.md` §6 for
+the contract, and `hvantk.algorithms.rerank.provenance.resolve_arms` for the consumer.
+
+The list is curated from each tool's own publication and is a claim about training data,
+not about quality; correct it as tools are retrained. It is not exhaustive — a dbNSFP
+column with no entry is simply unknown, which is the safe default.
+
 ## Notes
 
 The drift probe (`drift_probe.fetch_fingerprint`) is a stub; a real probe

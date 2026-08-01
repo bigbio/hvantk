@@ -259,6 +259,10 @@ def phase_b_snapshot_adapter(builder_fn, dataset_name: str):
 
     ``dataset_name`` should be the plugin's compound dataset key
     (e.g. ``"clinvar:variants"``).
+
+    Table-backed artifacts (``AnnotationTable``) expose ``to_hail``; ``VariantMatrix``
+    exposes ``to_hail_mt`` instead, so the unwrap step dispatches on whichever is
+    present rather than assuming a Table.
     """
     from hvantk.core.models.build_context import BuildContext
 
@@ -277,7 +281,15 @@ def phase_b_snapshot_adapter(builder_fn, dataset_name: str):
         )
         artifact = builder_fn(parsed_input=input_path, ctx=ctx, **kw)
         artifact.save(output_path)
-        return artifact.to_hail()
+        unwrap = getattr(artifact, "to_hail", None) or getattr(
+            artifact, "to_hail_mt", None
+        )
+        if unwrap is None:
+            raise TypeError(
+                f"{type(artifact).__name__} exposes neither to_hail nor to_hail_mt; "
+                "cannot unwrap for snapshot introspection."
+            )
+        return unwrap()
 
     return _adapter
 

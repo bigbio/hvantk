@@ -52,8 +52,21 @@ def _max_over_dict(dict_expr):
     return hl.max(dict_expr.values())
 
 
-# Named transcript-dict reducers (``aggregate.reduce``). Default ``max``.
-REDUCERS = {"max": _max_over_dict}
+def _identity(col_expr):
+    """Pass a score column through unchanged, for sources that are not dbNSFP-shaped.
+
+    dbNSFP broadcasts each score across a variant's transcripts, so its score columns are
+    ``dict<transcript_id, float>`` and need reducing to one scalar per row. Most other
+    row-level sources carry a plain scalar already -- a UniProt PTM site has one
+    ``n_observations``, a GTEx eQTL pair one ``slope`` -- and ``max`` would fail on them,
+    because ``hl.max(col.values())`` requires a dict.
+    """
+    return col_expr
+
+
+# Named per-row score reducers (``aggregate.reduce``). Default ``max`` for dbNSFP's
+# transcript dicts; ``identity`` for sources whose score columns are already scalars.
+REDUCERS = {"max": _max_over_dict, "identity": _identity}
 
 
 def _agg_for(token, col):
@@ -87,9 +100,13 @@ def aggregate_to_gene(source_ht, agg):
 
     Steps: filter (named predicate) -> reduce each score's transcript-dict to a per-variant
     scalar -> explode the ';'-delimited ``agg.by`` gene string to distinct genes -> group_by that
-    gene -> the declared stats + ``n_possible_missense``. Returns a Table keyed on ``agg.by``,
-    carrying exactly the ``output_name(score, token)`` columns plus ``n_possible_missense``. No
+    gene -> the declared stats + the row-count column. Returns a Table keyed on ``agg.by``,
+    carrying exactly the ``output_name(score, token)`` columns plus ``agg.count_name``. No
     spine reconciliation here -- the caller (prepare.py) maps ``agg.by`` onto gene_id.
+
+    The row count is "source rows that survived the filter"; ``agg.count_name`` names it
+    (default ``n_possible_missense``, true only for dbNSFP). Sources counting something else
+    must set it, or two aggregate axes collide on one column name at compose time.
     """
     import hail as hl
 
@@ -109,7 +126,7 @@ def aggregate_to_gene(source_ht, agg):
     for s in agg.scores:
         for token in s.stats:
             aggregations[output_name(s.name, token)] = _agg_for(token, ht[s.name])
-    aggregations["n_possible_missense"] = hl.agg.count()
+    aggregations[agg.count_name] = hl.agg.count()
 
     grouped = ht.group_by(**{agg.by: ht._gene}).aggregate(**aggregations)
     logger.info("aggregate_to_gene: %d genes", grouped.count())

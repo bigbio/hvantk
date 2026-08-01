@@ -57,14 +57,20 @@ def compose(spine, prepared_by_axis, spec):
 
     _check_no_column_collisions(spec)
 
+    for entry in spec.layer1:
+        if entry.axis not in prepared_by_axis:
+            raise KeyError(
+                f"prepared_by_axis is missing axis {entry.axis!r}, declared in spec "
+                f"{spec.name!r}"
+            )
+    # Resolved from the prepared tables, not the spec: a matrix axis emits one column per
+    # atlas group, which the spec cannot name ahead of time. Done up front so the
+    # cross-axis collision check covers those runtime columns too.
+    columns_by_axis = _resolve_columns_by_axis(spec, prepared_by_axis)
+
     ht = spine
     for entry in spec.layer1:
         axis = entry.axis
-        if axis not in prepared_by_axis:
-            raise KeyError(
-                f"prepared_by_axis is missing axis {axis!r}, declared in spec "
-                f"{spec.name!r}"
-            )
         prepared = prepared_by_axis[axis]
         # `prepared[ht.gene_id]` is Hail's index-join idiom (Table.__getitem__ ->
         # Table.index): a StructExpression of prepared's non-key fields, missing where
@@ -73,12 +79,50 @@ def compose(spine, prepared_by_axis, spec):
         # presence flag correct regardless of whether a matched row's own column values
         # happen to be null.
         joined = prepared[ht.gene_id]
-        updates = {col: joined[col] for col in entry.columns}
+        updates = {col: joined[col] for col in columns_by_axis[axis]}
         updates[f"{axis}_present"] = hl.is_defined(joined)
         ht = ht.annotate(**updates)
 
-    manifest = _build_manifest(ht, spec)
+    manifest = _build_manifest(ht, spec, columns_by_axis)
     return ht, manifest
+
+
+def _axis_columns(prepared) -> list:
+    """The columns an axis actually contributes: the prepared table's non-key fields.
+
+    Read from the table rather than from ``entry.columns`` because a matrix source's
+    columns are only known at runtime -- ``emit="vector"`` produces one per atlas group.
+    For every other source type this is exactly ``entry.columns`` already, since prepare
+    selects/aggregates precisely those, so reading the table generalizes without changing
+    existing behaviour.
+    """
+    key = set(prepared.key)
+    return [f for f in prepared.row if f not in key]
+
+
+def _resolve_columns_by_axis(spec, prepared_by_axis) -> dict:
+    """Map axis -> contributed columns, and re-run the collision check over the real set.
+
+    ``_check_no_column_collisions`` can only see what the spec declares, which for a
+    matrix axis is a subset of what it emits. Two atlases sharing a group label would
+    therefore collide only once Hail tried to annotate the same name twice, which is a
+    far worse error than saying so here.
+    """
+    columns_by_axis: dict = {}
+    owner: dict = {}
+    for entry in spec.layer1:
+        cols = _axis_columns(prepared_by_axis[entry.axis])
+        for col in cols:
+            if col in owner:
+                raise ValueError(
+                    f"duplicate output column {col!r}: contributed by axis "
+                    f"{owner[col]!r} and axis {entry.axis!r}. For a matrix axis the "
+                    "columns come from the atlas's group labels, so give the axes "
+                    "distinct atlas prefixes or use drop_groups"
+                )
+            owner[col] = entry.axis
+        columns_by_axis[entry.axis] = cols
+    return columns_by_axis
 
 
 def _check_no_column_collisions(spec) -> None:
@@ -99,15 +143,16 @@ def _check_no_column_collisions(spec) -> None:
             owner[col] = entry.axis
 
 
-def _build_manifest(ht, spec) -> dict:
+def _build_manifest(ht, spec, columns_by_axis) -> dict:
     """Per axis+column non-null rate (over the spine) and positive rate (among non-null).
 
-    Computed with a single ``ht.aggregate`` call over every declared column, per the
-    design's manifest contract.
+    Computed with a single ``ht.aggregate`` call over every contributed column, per the
+    design's manifest contract. Driven by ``columns_by_axis`` rather than the spec so a
+    matrix axis's per-group vector is reported too, not just its declared roll-up.
     """
     import hail as hl
 
-    columns = [col for entry in spec.layer1 for col in entry.columns]
+    columns = [col for cols in columns_by_axis.values() for col in cols]
     n_genes = ht.count()
 
     if not columns:
@@ -128,7 +173,7 @@ def _build_manifest(ht, spec) -> dict:
     axes: dict = {}
     for entry in spec.layer1:
         axis_manifest = {}
-        for col in entry.columns:
+        for col in columns_by_axis[entry.axis]:
             col_stats = stats[col]
             nn = col_stats["nn"]
             pos = col_stats["pos"]

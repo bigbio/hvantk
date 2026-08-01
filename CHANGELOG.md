@@ -4,6 +4,9 @@
 
 ### Added
 
+- Declarative feature selection for `hvantk rerank` (Python API: `Config.selection`). Filters run within each axis — univariate AUC with within-axis BH-FDR, then Spearman redundancy — re-fitted inside every cross-validation fold on the training slice only, so the reported ΔAUC is not inflated by selection that has seen the held-out labels. A third RFECV step is available but **off by default** (`SelectionPolicy(wrapper="rfecv")`): across four real cohorts it eliminated columns almost exclusively in the one with the fewest positives, and pruned the ablation baseline axis, so it needs an out-of-fold outcome comparison before it can be trusted by default. `Config.selection = None` (the default) reproduces the previous code path exactly, and the CLI is unchanged.
+- `rerank_arms(config)` runs each analysis as two arms, `clean` and `all`, over identical folds. `clean` (columns with no provenance conflict against the label source) is the headline; `all` adds conflicted and undeclared columns so the circularity channel is a measured number rather than an assumption. `RerankResult.selection` carries the per-fold selection frequency, the global-pass feature list, and both nested and global AUCs.
+- Plugin manifests may declare per-predictor training provenance: an optional `scores: {<column>: {trained_on: [...]}}` block per dataset. `hvantk/skills/dbnsfp/plugin.yaml` declares it for 55 of its 57 rankscore predictors. An omitted score means unknown and is never treated as clean.
 - Plugin system for data-provider adapters. Each provider now lives in a single folder under `hvantk/skills/<provider>/` with a `plugin.yaml` manifest, builder code, drift probe, downloader CLI, and tests. The loader auto-discovers plugins from the in-tree filesystem and Python entry points.
 - `hvantk plugins {list,describe,errors,validate}` commands for inspecting the registry.
 - `hvantk drift <provider:dataset>` for upstream-drift detection against committed expected fingerprints.
@@ -13,6 +16,47 @@
 
 ### Changed
 
+- **`gnomad` is no longer a dependency.** hvantk used exactly one function from it,
+  `annotate_adj`, which is ~15 lines of Hail expression with no gnomAD data behind it.
+  It is now ported into `hvantk/algorithms/hgc/adj.py` (gnomad_methods is MIT; the port
+  keeps the logic and thresholds verbatim and carries the attribution), so `adj` means
+  exactly what it means in a gnomAD callset. Dropping the dependency removes **35
+  packages** from the lock — `hgvs`, `ga4gh-vrs`, `onnx`, `onnxruntime`, `skl2onnx`,
+  `psycopg2`, `protobuf`, `sympy`, `slackclient` and more — and, critically, removes the
+  transitive `jsonschema<4` pin that conflicted with hvantk's own declared
+  `jsonschema>=4.0`. That conflict is what had made `poetry.lock` impossible to
+  regenerate in place. `adjust_genotypes=True` no longer requires an optional install,
+  so the `hgc` extra is now just `["matplotlib", "seaborn"]`.
+- **`poetry.lock` regenerated and now consistent with `pyproject.toml`.** It had drifted
+  across ~28 commits — pinning `jsonschema` 3.2.0 against a declared `>=4.0`, and missing
+  the `ancestry`/`ml`/`constraint`/`expression` extras entirely — so `poetry install`
+  failed on a clean checkout. 208 → 181 packages; the only version change besides the
+  removals is `jsonschema` 3.2.0 → 4.26.0. `scanpy`'s move behind the `expression` extra
+  is now actually in effect rather than merely declared.
+- **Breaking (rerank).** `ArmAssignment.unknown` is renamed `undeclared`, and an undeclared
+  predictor is now treated as *conflicted* rather than getting a bucket of its own. Arm
+  membership is otherwise unchanged. Code reading `ArmAssignment.unknown` must be updated.
+- **Rebuild your dbNSFP artifact.** `dbnsfp:variants` now parses the ~57 `*_rankscore`
+  columns to `float64` with proper missingness, instead of leaving them as raw strings
+  (`"."` for missing). `schema_id` stays `dbnsfp-v1` — the column *set* is unchanged and
+  string rankscores were always a parsing bug rather than an intended schema — so nothing
+  will warn you: an artifact built before this release carries strings where a fresh build
+  carries floats. Re-run `hvantk reprocess dbnsfp:variants` before relying on those columns.
+- Specificity features in the annotation matrix now emit a per-group **vector** by default
+  (one column per surviving atlas group, named `{atlas}_{sanitized_group}`) instead of a
+  single rolled-up scalar. A named roll-up is *additive* when `specificity.targets` is
+  given; `specificity.emit: rollup` restores the previous single-column output. Two matrix
+  axes may no longer share an `atlas` label, since their vector columns would collide.
+- `hvantk drift` comparators can now actually detect an upstream change. Previously the
+  comparison could pass regardless of source content, so drift went unreported.
+- `scikit-learn` floor raised to `>=1.4` (NaN-tolerant tree estimators, needed by rerank's
+  optional RFECV wrapper). `scipy` is now declared explicitly, as an optional dependency in
+  the `ml` / `ancestry` / `psroc` extras.
+- `scanpy` moved out of the base install into a new `expression` extra. It is required by
+  `hvantk expression summarize`, `hvantk expression markers`, and `hvantk ptm constraint
+  --expression-metric mean`; those now fail with an actionable message naming the extra
+  rather than a bare `ModuleNotFoundError`. The extra cannot be installed on Intel macOS
+  (scanpy → numba → llvmlite ships no x86_64 macOS wheel from 0.47).
 - Package restructured into 4 purpose-driven roofs: `core/` (platform models, utilities, plugin/tool runtime, streamers, transient builders), `algorithms/` (analytical computation: ptm, psroc, qtlcascade, enrichex, hgc, ancestry, annotation, visualization, expression, statistics, training_sets), `skills/` (data ingestion plugins), `tools/` (CLI surface). Inside `core/` there are now sub-packages `models/`, `utils/`, `streamers/`, `plugin/`, `tool/`, `builders/` so adding a new format helper has one obvious home. One-way dependency rule (`skills/`, `tools/` → `algorithms/` → `core/`) is enforced by `hvantk/tests/test_dependency_directions.py`. `hvantk/data/`, `hvantk/utils/`, `hvantk/tables/`, and 8 top-level algorithm dirs (`hvantk/{ptm,psroc,qtlcascade,enrichex,hgc,ancestry,annotation,visualization}/`) are gone. `ClinVarStreamer` no longer imports from `hvantk.skills.clinvar.builder` — it accepts a pre-built Hail Table via its constructor.
 - Registry keys for migrated providers use compound `provider:dataset` form. Recipe JSONs and any custom callers should update from bare names (e.g., `clinvar`) to compound (`clinvar:variants`). The legacy `hvantk mktable` / `hvantk mkmatrix` CLI surfaces have been retired; data builds now go through `hvantk reprocess <provider>:<dataset>` with `--plugin-arg key=value` for builder kwargs.
 - Plugin manifests gain an optional `catalog: <path>` field pointing at a per-plugin `catalog/datasets.json`. `unified_registry.HvantkRegistry` now aggregates per-plugin catalogs from the plugin loader in addition to the legacy `resources/registry/genomics/datasets.json`.
@@ -26,6 +70,10 @@
 - Per-provider builder functions in `hvantk/tables/table_builders.py` and `matrix_builders.py` for migrated providers (moved into `hvantk/skills/<provider>/[<dataset>/]builder.py`).
 - `hvantk/resources/generate_catalog.py` (regenerated the now-removed per-domain `datasets.json` files). Catalog regeneration is now a per-plugin concern; if a maintainer needs a packaged regenerator in the future it should live alongside each plugin's `catalog/datasets.json`.
 - `hvantk/resources/catalog.yaml` (auto-generated summary file pointing at deleted per-domain JSON files). Equivalent information is available on demand via `hvantk catalog stats`.
+- `openai`, `anthropic`, `google-genai` and `RestrictedPython` dropped from
+  `requirements.txt` and `environment.yml`. None is imported anywhere in the tree, and
+  none was ever declared in `pyproject.toml` — CI had been installing four packages the
+  library does not use.
 
 ### Known gaps before first stable release
 
@@ -35,3 +83,24 @@
   `cptac:expression`, and `cptac:phospho`. The first hail-enabled CI run with
   `--regenerate-snapshots` will bootstrap them. All `ucsc-cellbrowser` variants
   (`default`, `adult-ctx`, `dev-ctx`) already have populated snapshot dirs.
+- `scipy` is imported at module scope by `algorithms/burden/fet.py`,
+  `algorithms/enrichex/overlap.py` and `algorithms/ptm/constraint.py`, none of which sit
+  behind an extra that pulls it in, so `hvantk enrichex burden|overlap` and
+  `hvantk ptm constraint` raise `ModuleNotFoundError` on a base install. Pre-existing:
+  scipy was previously not declared at all.
+- The package version has never been bumped from `0.1.0`, so releases to `main` are not
+  distinguishable by version.
+- No CI job installs the package (`pip install .` / `poetry install`), so `pytest` imports
+  `hvantk` from the checkout directory. Packaging — the `include`/`exclude` globs, the
+  console-script entry point, and the `[tool.poetry.plugins."hvantk.providers"]`
+  entry-point registrations — is therefore never exercised in CI, and the plugin loader's
+  entry-point discovery path is only ever tested via its filesystem fallback. (The lock
+  itself *is* now validated on every push — see the `poetry.lock in sync` job.)
+- The `build` and `build (3.10/3.11/3.12)` jobs run only on pull requests targeting
+  `main`, so a Python-version incompatibility introduced on a `dev` PR is not caught until
+  the release gate, with the whole release to bisect rather than one commit.
+- No CI job runs `hvantk/tests/hgc/`. `hail`-marked tests are deselected by `pytest.ini`'s
+  `addopts`, and the one hail-enabled job (`Plugin contract (hail)`) is path-scoped to the
+  plugin-contract tests. So the HGC integration suite — including `test_convert_vds_to_mt`,
+  which is the end-to-end exercise of `adj` — runs only when someone invokes `pytest -m hail`
+  locally. Unskipping that test made it *runnable*, not *automatically run*.

@@ -3,14 +3,9 @@ import hail as hl
 from hvantk.algorithms.hgc.constants import ADJ_GT_FIELD, VCF_EXTENSION
 from hvantk.core.models.backends import algorithm, Backend
 
-# Make gnomad import optional - only required when adjust_genotypes=True
-try:
-    from gnomad.utils.annotations import annotate_adj
-
-    GNOMAD_AVAILABLE = True
-except ImportError:
-    GNOMAD_AVAILABLE = False
-    annotate_adj = None  # defined to satisfy linters; guarded by GNOMAD_AVAILABLE
+# Ported from gnomad_methods (MIT) rather than imported -- see adj.py for why. It is
+# unconditional now: no optional dependency, so no availability guard.
+from hvantk.algorithms.hgc.adj import annotate_adj
 
 
 def _split_vds(
@@ -168,20 +163,19 @@ def convert_vds_to_mt(
     2. Audits biallelic entries on the sparse variant data (optional, for safety)
     3. Densifies to MatrixTable
     4. Repairs out-of-bounds genotypes (lazily, fused into the write)
-    5. Annotates adjusted genotypes (optional, requires gnomad)
+    5. Annotates adjusted genotypes (optional)
     6. Keys by sample and writes to disk
 
     Parameters:
         vds_path: Path to the input VDS
         output_path: Path where the output MatrixTable will be written
-        adjust_genotypes: If True, annotate with adjusted genotypes (requires gnomad)
+        adjust_genotypes: If True, annotate the `adj` entry field using gnomAD's published
+            quality thresholds. Needs no optional install -- see `hvantk.algorithms.hgc.adj`.
+            Skipped with a warning if the densified MT lacks GT/GQ/DP/AD.
         skip_split_multi: If True, skip splitting multi-allelic variants
         skip_validation: If True, skip both the biallelic audit and the repair
         skip_keying_by_cols: If True, skip keying the MatrixTable by columns
         overwrite: Whether to overwrite the output if it already exists
-
-    Raises:
-        RuntimeError: If adjust_genotypes=True but gnomad is not installed
 
     Notes:
         - VDS-level splitting is critical for correct GT/AD/PL alignment
@@ -194,13 +188,6 @@ def convert_vds_to_mt(
           (genotype data). ExpressionMatrix's hail-mt backend isn't available yet (Phase J).
     """
     try:
-        # Check dependencies
-        if adjust_genotypes and not GNOMAD_AVAILABLE:
-            raise RuntimeError(
-                "adjust_genotypes=True requires the 'gnomad' package to be installed. "
-                "Please install it with 'pip install gnomad' or set adjust_genotypes=False."
-            )
-
         # Step 1: Load and split VDS
         logging.info(f"Reading VDS from {vds_path}...")
         vds = hl.vds.read_vds(vds_path)
@@ -223,7 +210,7 @@ def convert_vds_to_mt(
         if not skip_validation:
             mt = _apply_biallelic_gt_fix(mt)
 
-        # Step 5: Annotate adjusted genotypes (optional, requires gnomad)
+        # Step 5: Annotate adjusted genotypes (optional)
         if adjust_genotypes:
             logging.info("Annotating MatrixTable with adjusted genotypes...")
             required_fields = {"GQ", "DP", "AD", "GT"}

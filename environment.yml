@@ -10,7 +10,6 @@ dependencies:
       - click
       - hail==0.2.137  # Pin exact version for Spark compatibility
       - pyspark==3.5.7  # Must match Hail's compiled Spark version
-      - gnomad
       - requests
       - tqdm
       - pandas
@@ -18,10 +17,6 @@ dependencies:
       - numpy
       - matplotlib
       - seaborn
-      - openai
-      - anthropic
-      - google-genai
-      - RestrictedPython
       - anndata>=0.10.0
       - scanpy>=1.10.0
       - pysam>=0.22
@@ -31,3 +26,14 @@ dependencies:
       - tspex
       - requests-mock  # offline HTTP stubs for plugin drift_probe tests
       - jsonschema>=4.0  # plugin.yaml + feature-spec validation (matches pyproject >=4.0)
+      # Declared rather than left to arrive transitively (scipy via scikit-learn, certifi
+      # via requests): both are imported directly -- scipy at module scope in
+      # algorithms/{burden/fet,enrichex/overlap,ptm/constraint}.py.
+      - scipy>=1.8
+      - certifi
+      # This workflow triggers on: [push], so it is the job that actually runs on dev-
+      # targeted branches. Without hypothesis here, test_expr_algebra_properties.py
+      # importorskips itself and the property tests stay invisible on exactly the path
+      # that gates day-to-day work -- adding it only to requirements.txt would have fixed
+      # the main-only pip jobs and left this one blind.
+      - hypothesis>=6.0

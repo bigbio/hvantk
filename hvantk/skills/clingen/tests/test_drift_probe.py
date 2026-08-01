@@ -7,8 +7,11 @@ network access; we do not run it in this suite.
 
 from __future__ import annotations
 
+import pytest
 import requests_mock
 
+from hvantk.core.plugin.api import DriftProbeError
+from hvantk.core.plugin.drift_runner import _compare_fingerprints
 from hvantk.skills.clingen.shared.constants import CLINGEN_BASE_URL, CLINGEN_FILE_PREFIX
 from hvantk.skills.clingen.drift_probe import fetch_fingerprint
 
@@ -29,14 +32,21 @@ def test_fetch_fingerprint_shape():
     with requests_mock.Mocker() as m:
         m.head(
             CLINGEN_BASE_URL,
-            headers={"Last-Modified": "Wed, 01 Jan 2026 00:00:00 GMT"},
+            headers={
+                "Last-Modified": "Wed, 01 Jan 2026 00:00:00 GMT",
+                "Content-Length": "1113685",
+            },
         )
         m.get(CLINGEN_BASE_URL, text=fake_body)
         fp = fetch_fingerprint()
 
     expected_filename = f"{CLINGEN_FILE_PREFIX}.csv"
-    assert fp["probe_version"] == 1
-    assert fp["source_version"] == "Wed, 01 Jan 2026 00:00:00 GMT"
+    assert fp["probe_version"] == 2
+    # Last-Modified is deliberately NOT recorded: the endpoint renders the CSV
+    # per request, so the server returns the request time and every run would
+    # otherwise report drift. See the probe module docstring.
+    assert fp["source_version"] is None
+    assert fp["extras"]["content_length"] == "1113685"
     assert fp["headers"][expected_filename] == [
         "GENE SYMBOL",
         "GENE ID (HGNC)",
@@ -51,3 +61,54 @@ def test_fetch_fingerprint_shape():
     ]
     assert expected_filename in fp["checksums"]
     assert "fetched_at" in fp
+
+
+def test_fingerprint_is_stable_across_repeated_probes():
+    """Two probes of an unchanged source must compare equal.
+
+    Regression test for the request-time ``Last-Modified``: ClinGen renders the
+    export on demand, so consecutive HEADs return different timestamps for
+    byte-identical content. Recording that value made ``hvantk drift`` report
+    clingen:gene-disease as drifted on every run, which is what the scheduled
+    drift bot turned into a daily no-op pull request.
+    """
+    header_row = (
+        '"GENE SYMBOL","GENE ID (HGNC)","DISEASE LABEL","DISEASE ID (MONDO)",'
+        '"MOI","SOP","CLASSIFICATION","ONLINE REPORT","CLASSIFICATION DATE","GCEP"\n'
+    )
+    body = f"CLINGEN GENE VALIDITY CURATIONS\nFILE CREATED: 2026-01-15\n{header_row}"
+
+    def probe_with(last_modified: str) -> dict:
+        """Fingerprint the same unchanged body behind a different Last-Modified."""
+        with requests_mock.Mocker() as m:
+            m.head(
+                CLINGEN_BASE_URL,
+                headers={
+                    "Last-Modified": last_modified,
+                    "Content-Length": "1113685",
+                },
+            )
+            m.get(CLINGEN_BASE_URL, text=body)
+            return fetch_fingerprint()
+
+    first = probe_with("Mon, 27 Jul 2026 17:12:51 GMT")
+    second = probe_with("Mon, 27 Jul 2026 17:12:59 GMT")
+
+    assert _compare_fingerprints(first, second) is None
+
+
+def test_missing_content_length_fails_closed():
+    """Without Content-Length the fingerprint has no content signal, so refuse it.
+
+    Recording None would leave only the column-header hash, making a row-level ClinGen
+    change read as clean. The scheduled drift bot regenerates a drifted baseline
+    automatically, so one transient omission would bake the None in permanently.
+    """
+    with requests_mock.Mocker() as m:
+        m.head(CLINGEN_BASE_URL, headers={})
+        m.get(
+            CLINGEN_BASE_URL,
+            text='"GENE SYMBOL","GENE ID (HGNC)"\n',
+        )
+        with pytest.raises(DriftProbeError, match="Content-Length"):
+            fetch_fingerprint()

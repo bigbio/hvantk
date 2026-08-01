@@ -22,22 +22,44 @@ _HEADER = (
 
 
 def render_cohort_manifest(
-    *, name: str, key: str, table: str, key_column: str = "gene"
+    *,
+    name: str,
+    key: str,
+    table: str,
+    key_column: str = "gene",
+    prior_column: str = "minp",
+    architecture_columns=ARCHITECTURE_AXIS_COLUMNS,
 ) -> str:
-    """Return ``cohort.yaml`` text for a burden output table.
+    """Return ``cohort.yaml`` text for a gene-level cohort table.
 
     ``key`` is the gene-key space (``gene_id``/``hgnc_id``/``symbol``); ``key_column``
-    is the burden output's gene column (always ``gene``); ``table`` is the output TSV
+    is the burden output's gene column (usually ``gene``); ``table`` is the output TSV
     path (kept verbatim -- consumers resolve it relative to their working directory).
+
+    The defaults describe ``hvantk cohort burden``'s own output. They are parameters
+    because the manifest is the contract for EXTERNAL cohorts too, and those rarely
+    match:
+
+    ``prior_column``
+        The burden op writes ``minp``, but a consumed prior is usually named something
+        else -- Epi25 DEE uses ``p_dee``, SCHEMA uses ``p_burden``. Hardcoding ``minp``
+        emits a manifest that validates and then resolves to a missing column.
+
+    ``architecture_columns``
+        Pass ``None`` for a cohort with no variant-level table, which therefore has no
+        allelic-architecture columns and no artifact veto. Emitting the axis anyway
+        would name columns the table does not have, and would hide a real difference
+        between cohorts behind a block that looks populated.
     """
     doc = {
         "name": name,
         "key": key,
         "key_column": key_column,
         "table": table,
-        "prior": {"column": "minp", "direction": "lower_is_better"},
-        "cohort_axes": [
-            {"axis": "architecture", "columns": list(ARCHITECTURE_AXIS_COLUMNS)}
-        ],
+        "prior": {"column": prior_column, "direction": "lower_is_better"},
     }
+    if architecture_columns:
+        doc["cohort_axes"] = [
+            {"axis": "architecture", "columns": list(architecture_columns)}
+        ]
     return _HEADER + yaml.safe_dump(doc, sort_keys=False)

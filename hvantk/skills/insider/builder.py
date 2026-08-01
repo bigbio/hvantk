@@ -19,16 +19,14 @@ import re
 import hail as hl
 
 from hvantk.core.utils.hail_helpers import cleanup_temp_file
+from hvantk.skills.insider.shared import normalize_hadoop_path
 
 logger = logging.getLogger(__name__)
 
 _TRACK_NAME_RE = re.compile(r'name=([^\s]+)')
-_FILE_URI_PREFIX = "file://"
 
-
-def _normalize_hadoop_path(path: str) -> str:
-    """Normalize local file URIs for filesystem APIs."""
-    return path[len(_FILE_URI_PREFIX):] if path.startswith(_FILE_URI_PREFIX) else path
+# Shared with insider:interfaces -- both datasets take the same two input shapes.
+_normalize_hadoop_path = normalize_hadoop_path
 
 
 def _parse_insider_bed_to_temp_tsv(input_path: str) -> str:

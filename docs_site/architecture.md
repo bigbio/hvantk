@@ -513,7 +513,6 @@ See `hvantk/skills/_conventions/SKILL.md` for the full contract.
 ## Dependencies
 
 - **Hail** - Distributed data processing framework
-- **gnomAD** - Utilities for gnomAD data
 - **Click** - CLI framework
 - **Pandas** - Data manipulation
 - **PyYAML** - YAML manifest parsing (`plugin.yaml`)

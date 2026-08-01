@@ -1,6 +1,6 @@
 {
   "probe_version": 1,
-  "source_version": null,
+  "source_version": "v1.5.14",
   "headers": {
     "phosphoproteomics": [
       "installed_cptac_version",
@@ -9,12 +9,12 @@
     ]
   },
   "checksums": {
-    "phosphoproteomics": ""
+    "phosphoproteomics": "a28a4982e5f93821dd042bf360cb3cd450d6ae83cd9c6e8f73da6a8ae0b57236"
   },
-  "fetched_at": "1970-01-01T00:00:00Z",
+  "fetched_at": "2026-07-27T17:10:36.242749+00:00",
   "extras": {
-    "installed_cptac_version": null,
-    "latest_release_tag": null,
-    "latest_release_published_at": null
+    "installed_cptac_version": "1.5.14",
+    "latest_release_tag": "v1.5.14",
+    "latest_release_published_at": "2024-06-06T18:20:16Z"
   }
 }

@@ -15,6 +15,7 @@ from .api import (
     DriftProbeError,
     PROBE_FINGERPRINT_IGNORED_KEYS,
     PROBE_STATUS_STUB,
+    placeholder_baseline_reason,
 )
 
 
@@ -89,6 +90,22 @@ def _run_drift_check_with_spec(
             observed=observed,
             probe_error=DriftProbeError(
                 f"missing expected fingerprint at {fp_path}"
+            ),
+        )
+
+    # A hand-seeded baseline cannot equal a live observation, so diffing it would
+    # report drift forever. That is a missing baseline wearing a committed file's
+    # clothes, and it classifies as probe_failed rather than drifted.
+    seeded = placeholder_baseline_reason(expected)
+    if seeded is not None:
+        return DriftResult(
+            dataset_name=spec.name,
+            status="probe_failed",
+            observed=observed,
+            expected=expected,
+            probe_error=DriftProbeError(
+                f"committed baseline at {fp_path} was never captured from a live "
+                f"probe ({seeded}); run `hvantk drift --regenerate {spec.name}`"
             ),
         )
 

@@ -10,13 +10,147 @@ from hvantk.algorithms.rerank.evaluator import Evaluator, EvalResult
 
 
 @dataclass
+class SelectionSummary:
+    """What feature selection did, for one arm of one run.
+
+    ``auc_nested`` is the headline. ``auc_global`` is reported next to it, never instead of
+    it: the global pass selects once on all the data, so its estimate is contaminated by
+    label exposure.
+
+    Read the gap as a diagnostic, NOT as a bias estimate. It is the difference between two
+    estimators that differ in two ways at once -- the global one has seen every label
+    (which inflates it), and it also commits every fold to a single feature set instead of
+    one fitted per fold (which can help or hurt). Those pull in opposite directions and the
+    sum has no guaranteed sign. Measured on the real CHD cohort (1362 genes, 51 features):
+    +0.0098 on the `all` arm but -0.0100 on `clean`, from the same data and the same
+    policy. A large gap in either direction says the selection is unstable on this cohort;
+    a small one says little.
+    """
+
+    arm: str
+    frequency: dict          # axis -> column -> number of folds that selected it
+    global_features: dict    # axis -> columns selected by the global (all-data) pass
+    auc_nested: float
+    auc_global: float
+    n_conflicted: int
+    n_unknown: int
+
+
+@dataclass
 class RerankResult:
     table: pd.DataFrame
     metrics: EvalResult
     coverage: dict
+    selection: "SelectionSummary | None" = None
 
 
-def rerank(config) -> RerankResult:
+def _axis_selector(policy, groups, frequency=None):
+    """Build the per-fold selector: selection runs INDEPENDENTLY WITHIN each axis.
+
+    Within-axis is what makes a per-axis delta-AUC well defined -- "axis X's contribution"
+    means "X's best subset over the baseline's best subset", regardless of which other
+    axes happen to be present. It also stops a 50-column axis from being penalised
+    against a 1-column axis purely for carrying redundant columns.
+
+    ``columns`` is whatever slice the caller is scoring (the ablation path passes
+    baseline+one axis), so each axis is intersected with it rather than assumed present.
+    """
+    from hvantk.algorithms.rerank.selection import select_axis
+
+    def selector(X_train, y_train, columns):
+        wanted = set(columns)
+        kept, claimed = [], set()
+        for axis, axis_cols in groups.items():
+            present = [c for c in axis_cols if c in wanted]
+            if not present:
+                continue
+            claimed.update(present)
+            chosen = select_axis(X_train, y_train, present, policy).kept
+            kept.extend(chosen)
+            if frequency is not None:
+                counts = frequency.setdefault(axis, {})
+                for c in chosen:
+                    counts[c] = counts.get(c, 0) + 1
+        # Columns owned by no axis are passed through rather than dropped: selection is a
+        # within-axis operation and has nothing to say about them.
+        kept.extend(c for c in columns if c not in claimed)
+        return kept
+
+    return selector
+
+
+def _compose_selector(selection_selector, leakage_policy):
+    """Chain the presence-leakage control in FRONT of within-axis selection.
+
+    Order is not cosmetic. The univariate filter scores ``|AUC - 0.5|`` on a column's
+    VALUES, and a column whose missingness tracks the label scores well on exactly that --
+    statistical selection rewards the defect rather than detecting it, which is the argument
+    ``provenance.py`` makes for circularity and which transposes here. So a leaking column
+    must be removed before selection ever sees it.
+
+    Returns ``None`` when neither control is configured, rather than an identity function:
+    ``ReRanker.score`` takes a different and cheaper path for ``selector=None``, and
+    wrapping it would silently move every existing run onto the other path.
+    """
+    if leakage_policy is None:
+        return selection_selector
+
+    from hvantk.algorithms.rerank.leakage import resolve_leakage
+
+    def selector(X_train, y_train, columns):
+        kept = resolve_leakage(
+            X_train,
+            y_train,
+            list(columns),
+            q=leakage_policy.q,
+            min_auc=leakage_policy.min_auc,
+        ).clean
+        if selection_selector is None:
+            return list(kept)
+        return selection_selector(X_train, y_train, list(kept))
+
+    return selector
+
+
+def _leakage_filtered_groups(df, y, groups, leakage_policy):
+    """Axis groups with presence-leaking columns removed, for the GLOBAL selection pass.
+
+    ``_selection_summary`` runs its own selection over all the data to produce the
+    human-readable "these are the features" list. That pass does not go through the per-fold
+    selector, so without this a column the folds barred can still appear in
+    ``global_features`` and be read as endorsed by a selection nobody ran.
+
+    Resolved once over the union of columns rather than per axis, so the FDR correction sees
+    every column that was tested -- filtering axis by axis would apply a laxer bar to a
+    narrow axis than the nested path does.
+
+    Returns ``groups`` unchanged (same object) when no policy is set, so the summary is
+    byte-identical for existing configurations.
+    """
+    if leakage_policy is None:
+        return groups
+
+    from hvantk.algorithms.rerank.leakage import resolve_leakage
+
+    every = list(dict.fromkeys(c for cols in groups.values() for c in cols))
+    clean = set(
+        resolve_leakage(
+            df, y, every, q=leakage_policy.q, min_auc=leakage_policy.min_auc
+        ).clean
+    )
+    out = {}
+    for axis, cols in groups.items():
+        kept = [c for c in cols if c in clean]
+        # An axis left with nothing is dropped rather than passed on empty: a zero-column
+        # axis reaching select_axis reads as measured-and-contributed-nothing, which is a
+        # different statement from barred.
+        if kept:
+            out[axis] = kept
+    return out
+
+
+def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
+           _n_unknown=0) -> RerankResult:
     validate(config)
     matrix, coverage = FeatureAssembler().assemble(config)
     prior = config.prior.load().rename(columns={"unit": "gene"})
@@ -30,6 +164,22 @@ def rerank(config) -> RerankResult:
             "a 'gene' column. Check the feature specs and that each axis table carries numeric "
             "columns."
         )
+    # A column the provenance map never mentions is UNDECLARED, which the contract treats
+    # exactly like an explicit None: usable, never clean. Counting it here (before the arm
+    # restriction) is what stops an axis nobody declared from silently vanishing from the
+    # run -- a dropped column would quietly move the headline with nothing to show for it.
+    if config.feature_provenance is not None:
+        _n_unknown += sum(1 for c in feat_cols if c not in config.feature_provenance)
+    if _allowed_columns is not None:
+        feat_cols = [c for c in feat_cols if c in _allowed_columns]
+        if not feat_cols:
+            raise ValueError(
+                f"rerank arm {_arm!r}: no feature column survives the provenance filter. "
+                f"Every column conflicts with the label provenance "
+                f"{sorted(config.label_provenance)!r} or is undeclared, so this arm has "
+                "nothing to score. Declare 'trained_on' for the columns that are not "
+                "actually derived from those sources, or re-derive the labels."
+            )
     for c in feat_cols:
         df[c] = pd.to_numeric(df[c], errors="coerce")
     y = df["y"].values
@@ -46,7 +196,41 @@ def rerank(config) -> RerankResult:
             f"too few examples for {config.folds}-fold OOF: {n_pos} positive / {n_neg} negative units "
             f"(need >= {config.folds} of each class). Provide more labels or lower Config.folds."
         )
-    scores = ReRanker(config.calibration, config.folds).score(df, feat_cols, y)
+    # Axis grouping is needed before scoring, not just for the ablation table: selection
+    # is a within-axis operation, so the selector has to know which column belongs where.
+    groups = {
+        ax.name: [c for c in ax.load().columns if c != "gene" and c in feat_cols]
+        for ax in config.features
+    }
+    groups = {k: v for k, v in groups.items() if v}
+    baseline = next(iter(groups))
+    reranker = ReRanker(config.calibration, config.folds)
+    leakage_policy = getattr(config, "leakage", None)
+    selector = summary = None
+    if config.selection is not None:
+        frequency: dict = {}
+        selector = _compose_selector(
+            _axis_selector(config.selection, groups), leakage_policy
+        )
+        recording = _compose_selector(
+            _axis_selector(config.selection, groups, frequency), leakage_policy
+        )
+        scores = reranker.score(df, feat_cols, y, selector=recording)
+        summary = _selection_summary(
+            config, df, y,
+            _leakage_filtered_groups(df, y, groups, leakage_policy),
+            scores, frequency, _arm, _n_conflicted, _n_unknown
+        )
+    else:
+        # Leakage control is independent of SelectionPolicy: one asks whether a column's
+        # values are worth keeping, the other whether its missingness carries the label.
+        # Requiring a selection policy to get the leakage control would couple them.
+        selector = _compose_selector(None, leakage_policy)
+        scores = (
+            reranker.score(df, feat_cols, y, selector=selector)
+            if selector is not None
+            else reranker.score(df, feat_cols, y)
+        )
     audit_table = df
     if config.cohort is not None:
         # The prior column was already consumed above (as `prior_stat`), so it is
@@ -82,13 +266,7 @@ def rerank(config) -> RerankResult:
     flag_reason = config.audit.apply(audit_table).reset_index(drop=True)
     flag = flag_reason != ""
     tiers = TierAssigner(config.tiers).assign(scores)  # pure credibility, no flag input
-    groups = {
-        ax.name: [c for c in ax.load().columns if c != "gene" and c in feat_cols]
-        for ax in config.features
-    }
-    groups = {k: v for k, v in groups.items() if v}
-    baseline = next(iter(groups))
-    metrics = Evaluator().evaluate(df, feat_cols, y, scores, groups, baseline)
+    metrics = Evaluator().evaluate(df, feat_cols, y, scores, groups, baseline, selector)
     table = pd.DataFrame(
         {
             "gene": df.gene,
@@ -139,4 +317,99 @@ def rerank(config) -> RerankResult:
             "y",
         ]
     ]
-    return RerankResult(table=table, metrics=metrics, coverage=coverage)
+    return RerankResult(
+        table=table, metrics=metrics, coverage=coverage, selection=summary
+    )
+
+
+def _selection_summary(config, df, y, groups, scores, frequency, arm,
+                       n_conflicted, n_unknown) -> SelectionSummary:
+    """Run the global pass and package it with the nested result.
+
+    The global pass exists ONLY to produce a human-readable "these are the features"
+    list -- one selection over all the data, which is what a reader can actually inspect
+    and argue with. Its AUC is reported alongside as ``auc_global`` so the selection bias
+    it carries is visible rather than hidden; nothing downstream ranks on it.
+    """
+    from sklearn.metrics import roc_auc_score
+
+    from hvantk.algorithms.rerank.selection import select_axis
+
+    global_features = {
+        axis: select_axis(df, y, cols, config.selection).kept
+        for axis, cols in groups.items()
+    }
+    picked = [c for cols in global_features.values() for c in cols]
+    auc_global = float("nan")
+    if picked:
+        global_scores = ReRanker(config.calibration, config.folds).score(df, picked, y)
+        auc_global = float(roc_auc_score(y, global_scores))
+    return SelectionSummary(
+        arm=arm,
+        frequency=frequency,
+        global_features=global_features,
+        auc_nested=float(roc_auc_score(y, scores)),
+        auc_global=auc_global,
+        n_conflicted=n_conflicted,
+        n_unknown=n_unknown,
+    )
+
+
+def rerank_arms(config) -> dict:
+    """Run rerank once per provenance arm and return ``{arm_name: RerankResult}``.
+
+    Two arms when selection and provenance are both configured:
+      clean -- columns with no provenance conflict against this label source. ALWAYS the
+               headline: statistical filtering cannot detect circularity, it REWARDS it
+               (REVEL correlates with the label partly because it was trained on genes
+               like these).
+      all   -- clean + conflicted, the latter now including every undeclared column.
+               Exists only so the circularity channel is a measured number instead of an
+               assumption.
+
+    Both arms use identical folds, so the delta between them is paired. An undeclared
+    column is usable but never contributes to the headline, so ``all - clean`` bundles the
+    circularity channel with whatever undeclared provenance is worth. An undeclared column
+    is counted as conflicted, on the assumption that a predictor nobody has vouched for
+    may well have seen the label's sources; ``n_unknown`` reports how many of the
+    conflicted total are there for that reason rather than by a computed conflict, so the
+    two are not confused and the manifest gap stays visible.
+    """
+    from hvantk.algorithms.rerank.provenance import DEFAULT_EQUIVALENCE, resolve_arms
+
+    if config.selection is None or config.feature_provenance is None:
+        return {"all": rerank(config)}
+
+    if config.label_provenance is None:
+        raise ValueError(
+            "feature_provenance is set but label_provenance is not. Circularity is a "
+            "property of the feature/label PAIR, so an undeclared label source makes the "
+            "clean arm meaningless: nothing conflicts with nothing, every circular "
+            "predictor is admitted, and the run looks healthy. Declare what the labels "
+            "were derived from (e.g. frozenset({'ClinGen', 'GenCC'})), or pass an "
+            "explicit frozenset() to assert they derive from nothing curated."
+        )
+
+    assignment = resolve_arms(
+        config.feature_provenance,
+        config.label_provenance,
+        config.provenance_equivalence or DEFAULT_EQUIVALENCE,
+    )
+    # `all` is left unrestricted rather than set to `assignment.all_columns`: the matrix may
+    # carry columns the provenance map never mentions, and those belong in `all` (they are
+    # merely undeclared, not disqualified). `rerank` counts them into n_unknown.
+    arms = {"clean": set(assignment.clean), "all": None}
+    return {
+        name: rerank(
+            config,
+            _allowed_columns=allowed,
+            _arm=name,
+            # `n_conflicted` now includes the undeclared columns, which are barred on the
+            # conservative assumption that they conflict. `n_unknown` reports how many of
+            # that total got there for want of a declaration rather than by a computed
+            # conflict -- the number to drive to zero by writing the manifest entries.
+            _n_conflicted=len(assignment.conflicted),
+            _n_unknown=len(assignment.undeclared),
+        )
+        for name, allowed in arms.items()
+    }

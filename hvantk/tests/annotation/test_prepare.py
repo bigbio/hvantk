@@ -301,11 +301,63 @@ def test_prepare_matrix_source_reduces_and_maps_onto_spine(hail_session):
     )
     prepared, report = prepare_matrix_source(a, {"ENSG_T", "ENSG_A"}, entry, hgnc=fake)
     assert list(prepared.key) == ["gene_id"]
-    assert set(prepared.row) == {"gene_id", "asp_cm_spec"}
+    # The per-group VECTOR survives prepare alongside the declared roll-up. It used to be
+    # dropped here -- entry.columns gated the collapse, so emit="vector" (the default) was
+    # a no-op through the real pipeline no matter what the reducer emitted.
+    assert set(prepared.row) == {"gene_id", "asp_cm", "asp_other", "asp_cm_spec"}
     assert sorted(prepared.gene_id.collect()) == ["ENSG_A", "ENSG_T"]  # OFFGENE dropped
-    d = {r.gene_id: r.asp_cm_spec for r in prepared.collect()}
-    assert d["ENSG_T"] == pytest.approx(1.0)  # TNNT2: CM-specific
-    assert d["ENSG_A"] == pytest.approx(0.5)  # ACTB: ubiquitous
+    rows = {r.gene_id: r for r in prepared.collect()}
+    assert rows["ENSG_T"].asp_cm_spec == pytest.approx(1.0)  # TNNT2: CM-specific
+    assert rows["ENSG_A"].asp_cm_spec == pytest.approx(0.5)  # ACTB: ubiquitous
+    # Vector columns carry the same EWCE fractions, per group rather than rolled up.
+    assert rows["ENSG_T"].asp_cm == pytest.approx(1.0)
+    assert rows["ENSG_T"].asp_other == pytest.approx(0.0)
+    assert rows["ENSG_A"].asp_cm == pytest.approx(0.5)
+    assert rows["ENSG_A"].asp_other == pytest.approx(0.5)
+
+
+@pytest.mark.hail
+def test_prepare_matrix_source_rejects_undeclared_column(hail_session):
+    """A declared column the reducer never produces is an error, not a silent absence.
+
+    entry.columns no longer gates which columns survive, so its remaining job is to catch
+    a typo or an atlas whose group labels moved out from under the spec.
+    """
+    import anndata as ad
+    import numpy as np
+    import pandas as pd
+
+    from hvantk.algorithms.annotation.prepare import prepare_matrix_source
+    from hvantk.algorithms.annotation.spec import (
+        MatrixSpec,
+        SpecificitySpec,
+        SourceEntry,
+    )
+
+    a = ad.AnnData(
+        X=None,
+        obs=pd.DataFrame({"celltype": ["CM", "Other"]}, index=["CM", "Other"]),
+        var=pd.DataFrame(index=["TNNT2"]),
+        layers={"mean": np.array([[10.0], [0.0]])},
+    )
+    entry = SourceEntry(
+        axis="expr",
+        source="ucsc-cellbrowser:asp_2019",
+        key="symbol",
+        columns=("asp_typo_spec",),  # reducer emits asp_cm_spec, not this
+        matrix=MatrixSpec(
+            group_axis="celltype",
+            atlas="asp",
+            specificity=SpecificitySpec("ewce_fraction", ("CM",), "max", "cm_spec"),
+        ),
+    )
+    fake = _FakeHGNC(
+        canonical={"TNNT2": "TNNT2"},
+        symbol_to_hgnc={"TNNT2": "HGNC:T"},
+        hgnc_to_ensembl={"HGNC:T": "ENSG_T"},
+    )
+    with pytest.raises(ValueError, match="did not produce"):
+        prepare_matrix_source(a, {"ENSG_T"}, entry, hgnc=fake)
 
 
 @pytest.mark.hail
@@ -353,3 +405,131 @@ def test_prepare_matrix_source_collapses_symbol_collisions_onto_one_gene(hail_se
     assert prepared.distinct().count() == 1
     d = {r.gene_id: r.asp_cm_spec for r in prepared.collect()}
     assert d["ENSG_T"] == pytest.approx(1.0)  # max(1.0 CM-specific, 0.5 ubiquitous)
+
+
+def test_prepare_source_accepts_uniprot_id_key():
+    """A uniprot_id-keyed gene-level source must reach the mapper, not be rejected early.
+
+    `insider:interfaces` is protein-keyed: the reduction is per UniProt accession, and
+    `GeneIdMapper.from_uniprot_ids` maps accession -> hgnc_id -> ensembl_gene_id. The
+    id-space dispatch in `_resolve_to_gene_id` already handles it; this guards the guard
+    in `prepare_source`, which listed the accepted keys separately and so silently
+    excluded the space the schema advertises.
+    """
+    import pytest
+
+    from hvantk.algorithms.annotation.prepare import prepare_source
+    from hvantk.algorithms.annotation.spec import SourceEntry
+
+    entry = SourceEntry(
+        axis="ppi",
+        source="insider:interfaces",
+        key="uniprot_id",
+        columns=("n_partners",),
+    )
+    # No hgnc streamer -> must fail on the MISSING STREAMER, not on the key space.
+    with pytest.raises(ValueError, match="needs the HGNC streamer"):
+        prepare_source(object(), [], entry, hgnc=None)
+
+
+def test_prepare_source_still_rejects_an_unknown_key_space():
+    import pytest
+
+    from hvantk.algorithms.annotation.prepare import prepare_source
+    from hvantk.algorithms.annotation.spec import SourceEntry
+
+    entry = SourceEntry(axis="x", source="s", key="refseq_id", columns=("c",))
+    with pytest.raises(ValueError, match="declares key"):
+        prepare_source(object(), [], entry, hgnc=object())
+
+
+def _by_gene_id_spec(collapse=None):
+    from hvantk.algorithms.annotation.spec import AggregateSpec, ScoreSpec, SourceEntry
+
+    return SourceEntry(
+        axis="pqtl",
+        source="pqtl:metrics",
+        key="variant",
+        columns=("n_pairs", "b_max"),
+        collapse=collapse,
+        aggregate=AggregateSpec(
+            by="gene_id", to="gene_id", reduce="identity", count_name="n_pairs",
+            scores=(ScoreSpec("b", "beta", ("max",)),),
+        ),
+    )
+
+
+@pytest.mark.hail
+def test_aggregate_by_gene_id_does_not_collide_with_the_key(hail_session):
+    """A source that already carries gene_id must be aggregable by it.
+
+    `_rekey_onto_gene_id` annotated `gene_id` onto the grouped table -- but when
+    `aggregate.by` IS `gene_id`, group_by has already keyed the table on it, so Hail
+    raises "cannot overwrite key field 'gene_id'". Both the pQTL and the GTEx eQTL
+    sources are keyed that way, so this blocked two axes in all four configurations.
+    """
+    import hail as hl
+
+    from hvantk.algorithms.annotation.prepare import prepare_variant_source
+
+    ht = hl.Table.parallelize(
+        [
+            {"gene_id": "ENSG_A", "beta": 0.4},
+            {"gene_id": "ENSG_A", "beta": 0.9},
+            {"gene_id": "ENSG_B", "beta": 0.1},
+        ],
+        hl.tstruct(gene_id=hl.tstr, beta=hl.tfloat64),
+        key=["gene_id"],
+    )
+    prepared, _ = prepare_variant_source(ht, ["ENSG_A", "ENSG_B"], _by_gene_id_spec())
+    d = {r.gene_id: r for r in prepared.collect()}
+    assert d["ENSG_A"].n_pairs == 2
+    assert d["ENSG_A"].b_max == pytest.approx(0.9)
+    assert d["ENSG_B"].n_pairs == 1
+
+
+@pytest.mark.hail
+def test_many_to_one_mapping_raises_without_a_collapse_policy(hail_session):
+    """Silent row loss must stay impossible unless the spec opts in."""
+    import hail as hl
+
+    from hvantk.algorithms.annotation.prepare import _rekey_onto_gene_id
+
+    ht = hl.Table.parallelize(
+        [{"uniprot_id": "P1", "v": 3}, {"uniprot_id": "P2", "v": 5}],
+        hl.tstruct(uniprot_id=hl.tstr, v=hl.tint32),
+        key=["uniprot_id"],
+    )
+    resolved = {"P1": "ENSG_A", "P2": "ENSG_A"}  # two accessions, one gene
+    with pytest.raises(ValueError, match="many-to-one"):
+        _rekey_onto_gene_id(ht, "uniprot_id", resolved, ("v",), "src", collapse=None)
+
+
+@pytest.mark.hail
+def test_collapse_max_reduces_a_many_to_one_mapping(hail_session):
+    """`collapse: max` is the opt-in for id spaces that are legitimately many-to-one.
+
+    One gene commonly has several UniProt accessions (isoforms, historical entries), so
+    `insider:interfaces` and `uniprot-ptm:sites` both collapse onto the spine. `max` is
+    the safe default reduction: the accessions describe the SAME protein, so it never
+    double-counts the way `sum` would.
+    """
+    import hail as hl
+
+    from hvantk.algorithms.annotation.prepare import _rekey_onto_gene_id
+
+    ht = hl.Table.parallelize(
+        [
+            {"uniprot_id": "P1", "v": 3},
+            {"uniprot_id": "P2", "v": 5},
+            {"uniprot_id": "P3", "v": 7},
+        ],
+        hl.tstruct(uniprot_id=hl.tstr, v=hl.tint32),
+        key=["uniprot_id"],
+    )
+    resolved = {"P1": "ENSG_A", "P2": "ENSG_A", "P3": "ENSG_B"}
+    prepared = _rekey_onto_gene_id(
+        ht, "uniprot_id", resolved, ("v",), "src", collapse="max"
+    )
+    d = {r.gene_id: r.v for r in prepared.collect()}
+    assert d == {"ENSG_A": 5, "ENSG_B": 7}

@@ -106,7 +106,11 @@ def _run(**overrides):
     kwargs = dict(
         vds_path="/in.vds",
         output_path="/out.mt",
-        adjust_genotypes=False,  # keep gnomad out of this test
+        # Not about gnomad (no longer a dependency): this test patches
+        # `converters.hl`, but annotate_adj lives in adj.py and imports its own real
+        # `hail`, so adjust_genotypes=True would call real hl.case()/hl.if_else() on
+        # the mock entries and blow up.
+        adjust_genotypes=False,
     )
     kwargs.update(overrides)
     convert_vds_to_mt(**kwargs)
