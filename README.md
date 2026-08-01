@@ -31,7 +31,7 @@ opt-in via Poetry extras. Install only what a given workflow needs:
 | `viz` | Static and interactive plotting | matplotlib, seaborn, plotly |
 | `interactive` | Interactive plots / dashboards | plotly |
 | `duckdb` | DuckDB-backed queries | duckdb |
-| `hgc` | Joint genotyping (incl. genotype adjustment + plots) | gnomad, matplotlib, seaborn, plotly |
+| `hgc` | Joint genotyping plots (genotype adjustment needs no extra) | matplotlib, seaborn |
 | `psroc` | Pathogenicity Score ROC analysis | matplotlib, plotly, scikit-learn |
 | `ptm` | CPTAC proteomics builders | cptac |
 | `constraint` | Tissue-specificity / constraint metrics | tspex, matplotlib, seaborn |

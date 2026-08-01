@@ -3,6 +3,30 @@ name: Python Package using Conda
 on: [push]
 
 jobs:
+  # Runs in seconds and needs no environment, so it sits in the workflow that triggers on
+  # every push rather than only on main-targeted PRs. Its absence is why poetry.lock drifted
+  # out of sync with pyproject.toml across ~28 commits without CI noticing: nothing in the
+  # pipeline installed via poetry or validated the lock, so the two could disagree forever
+  # while every job stayed green.
+  lockfile:
+    name: poetry.lock in sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.10"
+      # Pinned to the 2.x line rather than latest: pyproject.toml still uses the
+      # `[tool.poetry.*]` spelling of keywords/urls/plugins/extras/scripts, which 2.x
+      # reports as deprecation warnings (exit 0). A future major is entitled to promote
+      # those to errors, which would break this gate on someone else's release rather
+      # than on a change of ours.
+      - name: Install poetry
+        run: python -m pip install --upgrade pip "poetry>=2.0,<3.0"
+      - name: Check pyproject.toml is valid and poetry.lock matches it
+        run: poetry check --lock
+
   build-linux:
     runs-on: ubuntu-latest
     strategy:

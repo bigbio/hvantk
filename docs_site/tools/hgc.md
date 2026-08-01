@@ -426,7 +426,7 @@ convert_vds_to_mt(
 **Parameters:**
 - `vds_path`: Input VDS path
 - `output_path`: Output MatrixTable path
-- `adjust_genotypes`: Annotate with adjusted genotypes using gnomAD quality filters (requires `gnomad` package)
+- `adjust_genotypes`: Annotate with adjusted genotypes using gnomAD quality filters (no extra install needed)
 - `skip_split_multi`: Skip splitting multi-allelic variants (not recommended)
 - `skip_validation`: Skip the biallelic audit and genotype repair (see below)
 - `skip_keying_by_cols`: Skip keying MatrixTable by sample column
@@ -434,7 +434,9 @@ convert_vds_to_mt(
 
 **Important Notes:**
 - The VDS-level split already produces biallelic GT/AD — no manual LGT→GT downcoding is needed
-- Adjusted genotype annotation requires the `gnomad` package: `pip install gnomad`
+- Adjusted genotype annotation needs no extra dependency: `annotate_adj` is ported from
+  gnomad_methods (MIT) into `hvantk/algorithms/hgc/adj.py`, with gnomAD's published
+  thresholds kept verbatim (GQ >= 20, DP >= 10, AB >= 0.2, haploid DP >= 5)
 
 #### The densify runs exactly once
 
@@ -779,14 +781,6 @@ combine_gvcfs(..., reference_genome="GRCh38")
 ## Troubleshooting
 
 ### Common Issues
-
-**Issue: "gnomAD package not found"**
-```
-Solution: Install gnomAD package or disable adjusted genotypes:
-pip install gnomad
-# OR
-convert_vds_to_mt(..., adjust_genotypes=False)
-```
 
 **Issue: "Cannot convert LGT to GT when skip_split_multi=True"**
 ```
