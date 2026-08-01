@@ -21,7 +21,6 @@ from hvantk.algorithms.hgc.combiners import (
 from hvantk.algorithms.hgc.converters import (
     convert_vds_to_mt,
     convert_mt_to_multi_sample_vcf,
-    GNOMAD_AVAILABLE,
 )
 from hvantk.algorithms.hgc.constants import GVCF_EXTENSION
 from hvantk.core.utils.file_utils import compress_files, decompress_files
@@ -62,9 +61,10 @@ def test_combine_gvcfs(tmp_path):
     )
 
 
+# No longer skipped on a missing gnomad install: annotate_adj is ported into
+# hvantk.algorithms.hgc.adj, so adjusted genotypes always work.
 @pytest.mark.hail
 @pytest.mark.order3
-@pytest.mark.skipif(not GNOMAD_AVAILABLE, reason="gnomad package not installed")
 def test_convert_vds_to_mt(tmp_path):
     """Test VDS → MatrixTable conversion."""
     decompress_files(

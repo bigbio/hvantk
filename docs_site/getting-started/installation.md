@@ -38,7 +38,7 @@ poetry install --extras "viz hgc"      # or: poetry install --all-extras
 | `ml` | scikit-learn | ML-backed analyses |
 | `ancestry` | scikit-learn, matplotlib, seaborn | `hvantk ancestry-inference` |
 | `psroc` | scikit-learn, matplotlib, plotly | `hvantk psroc` |
-| `hgc` | matplotlib, seaborn, plotly, gnomad | `hvantk hgc` QC plots/reports |
+| `hgc` | matplotlib, seaborn | `hvantk hgc` QC plots/reports |
 | `ptm` | cptac | CPTAC PTM downloads |
 | `constraint` | tspex, matplotlib, seaborn | `hvantk ptm constraint` |
 | `duckdb` | duckdb | DuckDB-backed catalog queries |

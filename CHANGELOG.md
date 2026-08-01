@@ -16,6 +16,23 @@
 
 ### Changed
 
+- **`gnomad` is no longer a dependency.** hvantk used exactly one function from it,
+  `annotate_adj`, which is ~15 lines of Hail expression with no gnomAD data behind it.
+  It is now ported into `hvantk/algorithms/hgc/adj.py` (gnomad_methods is MIT; the port
+  keeps the logic and thresholds verbatim and carries the attribution), so `adj` means
+  exactly what it means in a gnomAD callset. Dropping the dependency removes **35
+  packages** from the lock — `hgvs`, `ga4gh-vrs`, `onnx`, `onnxruntime`, `skl2onnx`,
+  `psycopg2`, `protobuf`, `sympy`, `slackclient` and more — and, critically, removes the
+  transitive `jsonschema<4` pin that conflicted with hvantk's own declared
+  `jsonschema>=4.0`. That conflict is what had made `poetry.lock` impossible to
+  regenerate in place. `adjust_genotypes=True` no longer requires an optional install,
+  so the `hgc` extra is now just `["matplotlib", "seaborn"]`.
+- **`poetry.lock` regenerated and now consistent with `pyproject.toml`.** It had drifted
+  across ~28 commits — pinning `jsonschema` 3.2.0 against a declared `>=4.0`, and missing
+  the `ancestry`/`ml`/`constraint`/`expression` extras entirely — so `poetry install`
+  failed on a clean checkout. 208 → 181 packages; the only version change besides the
+  removals is `jsonschema` 3.2.0 → 4.26.0. `scanpy`'s move behind the `expression` extra
+  is now actually in effect rather than merely declared.
 - **Breaking (rerank).** `ArmAssignment.unknown` is renamed `undeclared`, and an undeclared
   predictor is now treated as *conflicted* rather than getting a bucket of its own. Arm
   membership is otherwise unchanged. Code reading `ArmAssignment.unknown` must be updated.
@@ -66,15 +83,6 @@
   `cptac:expression`, and `cptac:phospho`. The first hail-enabled CI run with
   `--regenerate-snapshots` will bootstrap them. All `ucsc-cellbrowser` variants
   (`default`, `adult-ctx`, `dev-ctx`) already have populated snapshot dirs.
-- **`poetry.lock` is stale, so `poetry install` fails on a clean checkout.** The lock pins
-  `jsonschema` 3.2.0 against a declared `jsonschema = ">=4.0"`, and its `[extras]` table is
-  missing `ancestry`, `ml`, `constraint` and `expression` entirely, so
-  `poetry install --extras expression` fails extras validation on top of the hash
-  mismatch. Regenerating it also moves `gnomad` 0.8.2 → 0.6.4 (gnomad 0.8.2 needs the
-  `hgvs`/`ga4gh-vrs` stack, which pins `jsonschema<4`), which touches HGC and so has to be
-  exercised on the cluster. Until that lands, `scanpy`'s move behind the `expression`
-  extra is *declared but not in effect* — the lock still records it as a mandatory
-  main-group package.
 - `scipy` is imported at module scope by `algorithms/burden/fet.py`,
   `algorithms/enrichex/overlap.py` and `algorithms/ptm/constraint.py`, none of which sit
   behind an extra that pulls it in, so `hvantk enrichex burden|overlap` and
@@ -82,18 +90,17 @@
   scipy was previously not declared at all.
 - The package version has never been bumped from `0.1.0`, so releases to `main` are not
   distinguishable by version.
-- Adding `numpy` to `[tool.poetry.dependencies]` did **not** come with a regenerated
-  `poetry.lock`, for the same reason as the entry above: relocking is blocked on the
-  gnomad/HGC question. The lock was already stale before this change and is no more
-  installable after it — numpy resolves to 2.2.5 there already, which satisfies the new
-  floor — but the `content-hash` is now one dependency further out of date.
-- No CI job installs the package (`pip install .` / `poetry install`) or validates the
-  lock, so `pytest` imports `hvantk` from the checkout directory. Packaging — the
-  `include`/`exclude` globs, the console-script entry point, and the
-  `[tool.poetry.plugins."hvantk.providers"]` entry-point registrations — is therefore
-  never exercised in CI, and the plugin loader's entry-point discovery path is only ever
-  tested via its filesystem fallback. This is also why the stale `poetry.lock` above went
-  unnoticed across ~28 commits touching `pyproject.toml`.
+- No CI job installs the package (`pip install .` / `poetry install`), so `pytest` imports
+  `hvantk` from the checkout directory. Packaging — the `include`/`exclude` globs, the
+  console-script entry point, and the `[tool.poetry.plugins."hvantk.providers"]`
+  entry-point registrations — is therefore never exercised in CI, and the plugin loader's
+  entry-point discovery path is only ever tested via its filesystem fallback. (The lock
+  itself *is* now validated on every push — see the `poetry.lock in sync` job.)
 - The `build` and `build (3.10/3.11/3.12)` jobs run only on pull requests targeting
   `main`, so a Python-version incompatibility introduced on a `dev` PR is not caught until
   the release gate, with the whole release to bisect rather than one commit.
+- No CI job runs `hvantk/tests/hgc/`. `hail`-marked tests are deselected by `pytest.ini`'s
+  `addopts`, and the one hail-enabled job (`Plugin contract (hail)`) is path-scoped to the
+  plugin-contract tests. So the HGC integration suite — including `test_convert_vds_to_mt`,
+  which is the end-to-end exercise of `adj` — runs only when someone invokes `pytest -m hail`
+  locally. Unskipping that test made it *runnable*, not *automatically run*.

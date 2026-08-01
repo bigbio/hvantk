@@ -150,10 +150,12 @@ From: python:3.10-slim-bookworm
     hail 0.2.137
 ```
 
-> Trim `--extras` to what you run. The core install omits gnomad / scikit-learn /
-> viz / cptac / tspex / duckdb — they live behind extras (`hgc`, `ptm`, `ancestry`,
-> `psroc`, `constraint`, `ml`, `viz`, `duckdb`). `pyBigWig` is **not** a hvantk
-> dependency — include it only for experiments that query bigWig tracks.
+> Trim `--extras` to what you run. The core install omits scikit-learn / viz /
+> cptac / tspex / duckdb / scanpy — they live behind extras (`hgc`, `ptm`,
+> `ancestry`, `psroc`, `constraint`, `ml`, `viz`, `duckdb`, `expression`).
+> `pyBigWig` is **not** a hvantk dependency — include it only for experiments that
+> query bigWig tracks. Genotype adjustment needs **no** extra: `annotate_adj` is
+> ported in-tree, so `gnomad` is no longer a dependency at all.
 
 ### 3.3 Build (rootless) and validate
 

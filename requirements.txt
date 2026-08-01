@@ -34,8 +34,6 @@ numpy>=1.23
 # importorskips itself and the feature-selection stack goes untested on this path.
 scikit-learn>=1.4,<2
 scipy>=1.8
-# hgc
-gnomad
 # viz (matplotlib/seaborn also back the hgc, constraint and ancestry extras)
 matplotlib
 seaborn
