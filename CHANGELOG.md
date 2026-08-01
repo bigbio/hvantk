@@ -53,6 +53,10 @@
 - Per-provider builder functions in `hvantk/tables/table_builders.py` and `matrix_builders.py` for migrated providers (moved into `hvantk/skills/<provider>/[<dataset>/]builder.py`).
 - `hvantk/resources/generate_catalog.py` (regenerated the now-removed per-domain `datasets.json` files). Catalog regeneration is now a per-plugin concern; if a maintainer needs a packaged regenerator in the future it should live alongside each plugin's `catalog/datasets.json`.
 - `hvantk/resources/catalog.yaml` (auto-generated summary file pointing at deleted per-domain JSON files). Equivalent information is available on demand via `hvantk catalog stats`.
+- `openai`, `anthropic`, `google-genai` and `RestrictedPython` dropped from
+  `requirements.txt` and `environment.yml`. None is imported anywhere in the tree, and
+  none was ever declared in `pyproject.toml` — CI had been installing four packages the
+  library does not use.
 
 ### Known gaps before first stable release
 
@@ -78,3 +82,18 @@
   scipy was previously not declared at all.
 - The package version has never been bumped from `0.1.0`, so releases to `main` are not
   distinguishable by version.
+- Adding `numpy` to `[tool.poetry.dependencies]` did **not** come with a regenerated
+  `poetry.lock`, for the same reason as the entry above: relocking is blocked on the
+  gnomad/HGC question. The lock was already stale before this change and is no more
+  installable after it — numpy resolves to 2.2.5 there already, which satisfies the new
+  floor — but the `content-hash` is now one dependency further out of date.
+- No CI job installs the package (`pip install .` / `poetry install`) or validates the
+  lock, so `pytest` imports `hvantk` from the checkout directory. Packaging — the
+  `include`/`exclude` globs, the console-script entry point, and the
+  `[tool.poetry.plugins."hvantk.providers"]` entry-point registrations — is therefore
+  never exercised in CI, and the plugin loader's entry-point discovery path is only ever
+  tested via its filesystem fallback. This is also why the stale `poetry.lock` above went
+  unnoticed across ~28 commits touching `pyproject.toml`.
+- The `build` and `build (3.10/3.11/3.12)` jobs run only on pull requests targeting
+  `main`, so a Python-version incompatibility introduced on a `dev` PR is not caught until
+  the release gate, with the whole release to bisect rather than one commit.
