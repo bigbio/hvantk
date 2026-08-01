@@ -243,4 +243,23 @@ def load_spec(path: str | Path) -> FeatureSpec:
                 f"entry {e.source!r} has a matrix block, which requires key: symbol "
                 f"(the reduced table is symbol-keyed); got key {e.key!r}"
             )
+    # Matrix vector columns are named {atlas}_{sanitized_group} with no axis component
+    # (matrix.reduce_matrix_to_gene), so two matrix entries over the SAME atlas emit the
+    # same column names for every group they share. Since emit="vector" is the default,
+    # that is now the common case -- e.g. splitting one single-cell atlas into a
+    # cardiomyocyte axis and a fibroblast axis. compose() would catch it, but only after
+    # both sources had been read, reduced and mapped onto the spine; here it costs
+    # nothing and names the fix.
+    atlases: dict = {}
+    for e in entries:
+        if e.matrix is None:
+            continue
+        if e.matrix.atlas in atlases:
+            raise ValueError(
+                f"axes {atlases[e.matrix.atlas]!r} and {e.axis!r} both declare matrix "
+                f"atlas {e.matrix.atlas!r}; their per-group specificity columns would "
+                "collide, since a vector column is named {atlas}_{group}. Give each "
+                "matrix axis a distinct atlas label, or set emit: rollup on all but one"
+            )
+        atlases[e.matrix.atlas] = e.axis
     return FeatureSpec(name=doc["name"], layer1=entries)
