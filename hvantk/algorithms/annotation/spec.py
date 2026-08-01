@@ -26,6 +26,25 @@ def _schema() -> dict:
     return json.loads(_SCHEMA_PATH.read_text())
 
 
+# The `combine` vocabulary, as a dispatch table rather than a name list, so that
+# SpecificitySpec's validation and reduce_matrix_to_gene's dispatch read from ONE
+# definition and cannot drift into disagreement. Consumed by matrix.py; kept here
+# because it is spec vocabulary, and because matrix.py already depends on this
+# module's types while nothing here depends on matrix.py.
+#
+#   sum  -- cell-CLASS specificity (EWCE level 1): targets are subtypes of one class
+#           (atrial/ventricular/Myoz2 cardiomyocytes), so pool their fractions into the
+#           fraction of the gene's expression sitting in the class. A pan-class gene,
+#           split across subtypes, reads high here and is missed by max.
+#   mean -- average specificity across targets.
+#   max  -- peak specificity to any single target.
+COMBINE_REDUCERS = {
+    "sum": lambda df: df.sum(axis=1),
+    "mean": lambda df: df.mean(axis=1),
+    "max": lambda df: df.max(axis=1),
+}
+
+
 @dataclass(frozen=True)
 class ScoreSpec:
     name: str
@@ -49,10 +68,45 @@ class AggregateSpec:
 
 @dataclass(frozen=True)
 class SpecificitySpec:
+    """How a genes x groups specificity matrix becomes feature columns.
+
+    ``emit`` controls the reduction, and defaults to the VECTOR -- one column per group.
+    Reducing an atlas to a single summed scalar throws away the cross-group contrast: the
+    non-target groups are computed, used as the denominator of the fraction, and discarded.
+    Measured on real cohorts, that reduction cost an epilepsy axis +0.061 AUC and the
+    difference between significant and not, while keeping the vector raised the
+    selected-maximum null by +0.0009. So the vector is the default and a named roll-up is
+    additive: give ``targets`` and you get the roll-up column IN ADDITION to the vector.
+
+    emit
+        ``"vector"`` (default) one column per group, plus the roll-up when ``targets`` is
+        non-empty; ``"rollup"`` the roll-up only, which requires ``targets``.
+    """
+
     method: str
-    targets: tuple[str, ...]
+    targets: tuple[str, ...] = ()
     combine: str = "max"
     name: str = "spec"
+    emit: str = "vector"
+
+    def __post_init__(self):
+        if self.emit not in ("vector", "rollup"):
+            raise ValueError(
+                f"emit must be 'vector' or 'rollup'; got {self.emit!r}")
+        if self.emit == "rollup" and not self.targets:
+            raise ValueError(
+                "emit='rollup' needs targets; with none there is nothing to roll up "
+                "(an empty target set would silently sum to an all-zero column)")
+        # Validated for the same reason as emit, and it matters more: the old
+        # reduce_matrix_to_gene dispatched sum/mean/else-max, so an unrecognised
+        # value did not raise -- it silently became 'max'. A spec author writing
+        # combine: 'sm' would get peak single-target specificity where they asked
+        # for the pooled class fraction: a different feature, not a degraded one.
+        if self.combine not in COMBINE_REDUCERS:
+            raise ValueError(
+                f"combine must be one of {sorted(COMBINE_REDUCERS)}; "
+                f"got {self.combine!r}"
+            )
 
 
 @dataclass(frozen=True)
@@ -119,9 +173,16 @@ def _build_matrix(raw: dict | None) -> MatrixSpec | None:
         if specificity_raw is None
         else SpecificitySpec(
             method=specificity_raw["method"],
-            targets=tuple(specificity_raw["targets"]),
+            # Optional in the schema: with no targets you get the vector alone.
+            # Defaulting here rather than indexing keeps YAML able to express
+            # vector-only, which is the point of the roll-up being additive.
+            targets=tuple(specificity_raw.get("targets", ())),
             combine=specificity_raw.get("combine", "max"),
             name=specificity_raw.get("name", "spec"),
+            # Without this, emit was Python-API-only: every YAML-driven spec
+            # silently took the "vector" default and could not opt back into the
+            # roll-up-only output the docstring advertises.
+            emit=specificity_raw.get("emit", "vector"),
         )
     )
     return MatrixSpec(

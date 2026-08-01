@@ -53,7 +53,8 @@ def test_reduce_emits_specificity_and_strips_group_whitespace():
     from hvantk.algorithms.annotation.matrix import reduce_matrix_to_gene
 
     df = reduce_matrix_to_gene(_summary_adata(), _mspec())
-    assert list(df.columns) == ["symbol", "asp_cm_spec"]
+    # vector-by-default: naming targets adds the roll-up, it does not replace the vector.
+    assert sorted(df.columns) == ["asp_cm", "asp_cm_spec", "asp_other", "symbol"]
     row = df.set_index("symbol")
     # TNNT2: mean 10 in CM, 0 in Other -> spec 1.0. ACTB: 5/5 -> 0.5.
     assert row.loc["TNNT2", "asp_cm_spec"] == pytest.approx(1.0)
@@ -148,3 +149,69 @@ def test_reduce_emits_per_group_stats_when_declared():
     # per-group mean columns, group label sanitized (' CM ' -> 'cm'); plus the specificity col
     assert "asp_cm_mean" in df.columns and "asp_other_mean" in df.columns
     assert df.loc["TNNT2", "asp_cm_mean"] == pytest.approx(10.0)
+
+
+# --- vector emission -------------------------------------------------------------------
+# Reducing an atlas to one summed scalar discards the cross-cell-type contrast entirely: the
+# non-target groups are computed, used as the denominator, then thrown away. Measured cost on
+# real data (analysis/rerank-homogenised): collapsing 33 cortical cell types to one number
+# took an epilepsy axis from +0.0795 to +0.0187 and from significant to not, while the
+# multiplicity penalty for keeping the vector was +0.0009. So the vector is the default and
+# the roll-up is additive.
+
+
+def test_specificity_emits_one_column_per_group_by_default():
+    from hvantk.algorithms.annotation.matrix import reduce_matrix_to_gene
+    from hvantk.algorithms.annotation.spec import MatrixSpec, SpecificitySpec
+
+    mspec = MatrixSpec(
+        group_axis="celltype",
+        atlas="asp",
+        specificity=SpecificitySpec(method="ewce_fraction", targets=()),
+    )
+    df = reduce_matrix_to_gene(_summary_adata(), mspec).set_index("symbol")
+
+    # one column per surviving group, sanitized, atlas-prefixed -- and NO roll-up, because
+    # no targets were named.
+    assert sorted(df.columns) == ["asp_cm", "asp_other"]
+    # TNNT2 is 10 in CM, 0 in Other -> the vector carries the contrast the scalar hid.
+    assert df.loc["TNNT2", "asp_cm"] == pytest.approx(1.0)
+    assert df.loc["TNNT2", "asp_other"] == pytest.approx(0.0)
+    assert df.loc["ACTB", "asp_cm"] == pytest.approx(0.5)
+    assert df.loc["ACTB", "asp_other"] == pytest.approx(0.5)
+
+
+def test_emit_rollup_suppresses_the_vector():
+    """The old single-column behaviour stays reachable for callers that want only the class.
+
+    Vector-by-default changes what you get without asking; it must not remove the ability to
+    ask for the scalar. `emit="rollup"` is that opt-out.
+    """
+    from hvantk.algorithms.annotation.matrix import reduce_matrix_to_gene
+    from hvantk.algorithms.annotation.spec import MatrixSpec, SpecificitySpec
+
+    mspec = MatrixSpec(
+        group_axis="celltype",
+        atlas="asp",
+        specificity=SpecificitySpec(
+            method="ewce_fraction", targets=("CM",), combine="max",
+            name="cm_spec", emit="rollup",
+        ),
+    )
+    df = reduce_matrix_to_gene(_summary_adata(), mspec)
+    assert list(df.columns) == ["symbol", "asp_cm_spec"]
+
+
+def test_emit_rollup_without_targets_is_rejected():
+    """An empty target set summed to a silent all-zero column before this change."""
+    from hvantk.algorithms.annotation.spec import SpecificitySpec
+
+    with pytest.raises(ValueError, match="needs targets"):
+        SpecificitySpec(method="ewce_fraction", targets=(), emit="rollup")
+
+
+def test_unknown_emit_is_rejected():
+    from hvantk.algorithms.annotation.spec import SpecificitySpec
+
+    with pytest.raises(ValueError, match="emit must be"):
+        SpecificitySpec(method="ewce_fraction", targets=("CM",), emit="scalar")

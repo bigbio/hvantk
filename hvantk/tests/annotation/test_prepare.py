@@ -301,11 +301,63 @@ def test_prepare_matrix_source_reduces_and_maps_onto_spine(hail_session):
     )
     prepared, report = prepare_matrix_source(a, {"ENSG_T", "ENSG_A"}, entry, hgnc=fake)
     assert list(prepared.key) == ["gene_id"]
-    assert set(prepared.row) == {"gene_id", "asp_cm_spec"}
+    # The per-group VECTOR survives prepare alongside the declared roll-up. It used to be
+    # dropped here -- entry.columns gated the collapse, so emit="vector" (the default) was
+    # a no-op through the real pipeline no matter what the reducer emitted.
+    assert set(prepared.row) == {"gene_id", "asp_cm", "asp_other", "asp_cm_spec"}
     assert sorted(prepared.gene_id.collect()) == ["ENSG_A", "ENSG_T"]  # OFFGENE dropped
-    d = {r.gene_id: r.asp_cm_spec for r in prepared.collect()}
-    assert d["ENSG_T"] == pytest.approx(1.0)  # TNNT2: CM-specific
-    assert d["ENSG_A"] == pytest.approx(0.5)  # ACTB: ubiquitous
+    rows = {r.gene_id: r for r in prepared.collect()}
+    assert rows["ENSG_T"].asp_cm_spec == pytest.approx(1.0)  # TNNT2: CM-specific
+    assert rows["ENSG_A"].asp_cm_spec == pytest.approx(0.5)  # ACTB: ubiquitous
+    # Vector columns carry the same EWCE fractions, per group rather than rolled up.
+    assert rows["ENSG_T"].asp_cm == pytest.approx(1.0)
+    assert rows["ENSG_T"].asp_other == pytest.approx(0.0)
+    assert rows["ENSG_A"].asp_cm == pytest.approx(0.5)
+    assert rows["ENSG_A"].asp_other == pytest.approx(0.5)
+
+
+@pytest.mark.hail
+def test_prepare_matrix_source_rejects_undeclared_column(hail_session):
+    """A declared column the reducer never produces is an error, not a silent absence.
+
+    entry.columns no longer gates which columns survive, so its remaining job is to catch
+    a typo or an atlas whose group labels moved out from under the spec.
+    """
+    import anndata as ad
+    import numpy as np
+    import pandas as pd
+
+    from hvantk.algorithms.annotation.prepare import prepare_matrix_source
+    from hvantk.algorithms.annotation.spec import (
+        MatrixSpec,
+        SpecificitySpec,
+        SourceEntry,
+    )
+
+    a = ad.AnnData(
+        X=None,
+        obs=pd.DataFrame({"celltype": ["CM", "Other"]}, index=["CM", "Other"]),
+        var=pd.DataFrame(index=["TNNT2"]),
+        layers={"mean": np.array([[10.0], [0.0]])},
+    )
+    entry = SourceEntry(
+        axis="expr",
+        source="ucsc-cellbrowser:asp_2019",
+        key="symbol",
+        columns=("asp_typo_spec",),  # reducer emits asp_cm_spec, not this
+        matrix=MatrixSpec(
+            group_axis="celltype",
+            atlas="asp",
+            specificity=SpecificitySpec("ewce_fraction", ("CM",), "max", "cm_spec"),
+        ),
+    )
+    fake = _FakeHGNC(
+        canonical={"TNNT2": "TNNT2"},
+        symbol_to_hgnc={"TNNT2": "HGNC:T"},
+        hgnc_to_ensembl={"HGNC:T": "ENSG_T"},
+    )
+    with pytest.raises(ValueError, match="did not produce"):
+        prepare_matrix_source(a, {"ENSG_T"}, entry, hgnc=fake)
 
 
 @pytest.mark.hail
