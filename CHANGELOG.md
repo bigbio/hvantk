@@ -99,3 +99,8 @@
 - The `build` and `build (3.10/3.11/3.12)` jobs run only on pull requests targeting
   `main`, so a Python-version incompatibility introduced on a `dev` PR is not caught until
   the release gate, with the whole release to bisect rather than one commit.
+- No CI job runs `hvantk/tests/hgc/`. `hail`-marked tests are deselected by `pytest.ini`'s
+  `addopts`, and the one hail-enabled job (`Plugin contract (hail)`) is path-scoped to the
+  plugin-contract tests. So the HGC integration suite — including `test_convert_vds_to_mt`,
+  which is the end-to-end exercise of `adj` — runs only when someone invokes `pytest -m hail`
+  locally. Unskipping that test made it *runnable*, not *automatically run*.

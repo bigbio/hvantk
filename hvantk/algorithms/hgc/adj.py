@@ -5,7 +5,7 @@ https://github.com/broadinstitute/gnomad_methods -- see NOTICE below.
 
 WHY PORTED RATHER THAN IMPORTED: hvantk used exactly one function from the `gnomad`
 package, ``annotate_adj``, and it is ~15 lines of Hail expression with no gnomAD data
-behind it -- the work is all Hail. Carrying the dependency for it cost 30 packages
+behind it -- the work is all Hail. Carrying the dependency for it cost 35 packages
 (`hgvs`, `ga4gh-vrs`, `onnx`, `onnxruntime`, `skl2onnx`, `psycopg2`, `protobuf`,
 `sympy`, ...), and, worse, gnomad 0.8.2 pins `jsonschema<4` transitively, which
 conflicts with hvantk's own declared `jsonschema>=4.0` for plugin and feature-spec
@@ -21,6 +21,7 @@ Copyright (c) 2018 Broad Institute, licensed under the MIT License. This module 
 derivative work: the expression logic is unchanged, the LGT/LAD fallback is retained,
 and only the surrounding packaging differs.
 """
+
 from __future__ import annotations
 
 from typing import Union
@@ -62,9 +63,7 @@ def get_adj_expr(
     """
     return (
         (gq_expr >= adj_gq)
-        & hl.if_else(
-            gt_expr.is_haploid(), dp_expr >= haploid_adj_dp, dp_expr >= adj_dp
-        )
+        & hl.if_else(gt_expr.is_haploid(), dp_expr >= haploid_adj_dp, dp_expr >= adj_dp)
         & (
             hl.case()
             .when(~gt_expr.is_het(), True)
