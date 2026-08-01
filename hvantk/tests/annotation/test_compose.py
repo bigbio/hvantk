@@ -157,3 +157,46 @@ def test_compose_raises_on_duplicate_output_column_across_axes():
 
     with pytest.raises(ValueError, match="mis_z"):
         compose(spine=None, prepared_by_axis={}, spec=spec)
+
+
+@pytest.mark.hail
+def test_compose_carries_matrix_vector_columns_not_just_declared(hail_session):
+    """A matrix axis contributes every column its prepared table holds.
+
+    Regression: compose annotated only ``entry.columns``, so a matrix source's per-group
+    specificity vector -- whose names come from the atlas's group labels at runtime and
+    so cannot be enumerated in the spec -- was silently dropped. That made
+    ``emit="vector"``, the documented default, a no-op end to end.
+    """
+    import hail as hl
+
+    from hvantk.algorithms.annotation.compose import compose
+
+    entry = SourceEntry(
+        axis="expr",
+        source="ucsc-cellbrowser:asp_2019",
+        key="symbol",
+        columns=("asp_cm_spec",),  # the spec names ONLY the roll-up
+    )
+    # ...while the prepared table also carries the per-group vector.
+    prepared = _axis(
+        [
+            {"gene_id": "ENSG1", "asp_cm_spec": 1.0, "asp_cm": 1.0, "asp_other": 0.0},
+            {"gene_id": "ENSG2", "asp_cm_spec": 0.5, "asp_cm": 0.5, "asp_other": 0.5},
+        ],
+        hl.tstruct(
+            gene_id=hl.tstr,
+            asp_cm_spec=hl.tfloat64,
+            asp_cm=hl.tfloat64,
+            asp_other=hl.tfloat64,
+        ),
+    )
+    spec = FeatureSpec(name="test-spec", layer1=(entry,))
+    composed, manifest = compose(_spine(), {"expr": prepared}, spec)
+
+    assert {"asp_cm_spec", "asp_cm", "asp_other"} <= set(composed.row)
+    assert set(manifest["axes"]["expr"]) == {"asp_cm_spec", "asp_cm", "asp_other"}
+    rows = {r.gene_id: r for r in composed.collect()}
+    assert rows["ENSG1"].asp_other == pytest.approx(0.0)
+    assert rows["ENSG2"].asp_other == pytest.approx(0.5)
+    assert rows["ENSG3"].asp_cm is None  # absent from the axis, left missing

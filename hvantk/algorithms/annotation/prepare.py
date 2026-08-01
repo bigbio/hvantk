@@ -214,13 +214,30 @@ def prepare_matrix_source(matrix_ad, spine_gene_ids, entry, *, hgnc=None):
     df = matrix_mod.reduce_matrix_to_gene(
         matrix_ad, entry.matrix
     )  # 'symbol' + feature cols
+    # A matrix source's column set is decided at RUNTIME by the atlas's groups -- with
+    # specificity emit="vector" (the default) there is one column per surviving group,
+    # whose names come from _san() over labels the spec author cannot enumerate ahead of
+    # time. So carry everything the reducer produced, rather than the static
+    # entry.columns: restricting to the declared list here silently dropped the whole
+    # vector on the floor, leaving emit="vector" a no-op through the real pipeline.
+    produced = [c for c in df.columns if c != "symbol"]
+    # entry.columns stays meaningful as an assertion: whatever the spec explicitly names
+    # MUST be produced. That catches a typo, a renamed group, or an atlas swapped under
+    # the spec -- all of which would otherwise surface as a silently absent feature.
+    missing = [c for c in entry.columns if c not in produced]
+    if missing:
+        raise ValueError(
+            f"entry {entry.source!r} declares column(s) {missing} that the matrix "
+            f"reducer did not produce; it emitted {produced}. Check the spec's "
+            f"specificity.name / stats against the atlas's group labels"
+        )
     grouped = hl.Table.from_pandas(df, key=["symbol"])
     mapper = GeneIdMapper(hgnc, set(spine_gene_ids))
     resolved, report = _resolve_to_gene_id(
         grouped.symbol.collect(), "symbol", entry.source, mapper
     )
     prepared = _collapse_matrix_onto_gene_id(
-        grouped, "symbol", resolved, entry.columns, entry.source
+        grouped, "symbol", resolved, produced, entry.source
     )
     logger.info(report.summary())
     return prepared, report
