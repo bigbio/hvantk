@@ -19,8 +19,33 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "describe_expression_ad",
     "filter_by_metadata_ad",
+    "require_scanpy",
     "summarize_expression_ad",
 ]
+
+_SCANPY_HINT = (
+    "scanpy is required for expression aggregation and marker detection, and is "
+    "not part of the base install. Install the 'expression' extra:\n"
+    "    pip install 'hvantk[expression]'\n"
+    "    poetry install --extras expression\n"
+    "Note: unavailable on Intel macOS -- scanpy pulls numba/llvmlite, which ships "
+    "no x86_64 macOS wheel. Run expression aggregation on Linux or Apple Silicon."
+)
+
+
+def require_scanpy():
+    """Return the scanpy module, or raise with the extra to install.
+
+    Public rather than underscore-private because the expression CLI imports it
+    too, so both entry points give the same guidance. Without this, dropping
+    scanpy from the base install leaves callers with a bare ModuleNotFoundError
+    and no hint that an extra exists.
+    """
+    try:
+        import scanpy as sc
+    except ModuleNotFoundError as exc:  # pragma: no cover - needs scanpy absent
+        raise ImportError(_SCANPY_HINT) from exc
+    return sc
 
 
 def describe_expression_ad(adata: ad.AnnData) -> Dict[str, Any]:
@@ -120,8 +145,13 @@ def summarize_expression_ad(
         Shape ``(n_groups, n_genes)`` with layers ``mean``, ``sum``,
         ``count_nonzero``, ``fraction_expressed``. ``obs["n_cells"]`` stores
         the per-group cell count.
+
+    Raises
+    ------
+    ImportError
+        If scanpy is not installed. It ships in the ``expression`` extra.
     """
-    import scanpy as sc
+    sc = require_scanpy()
 
     if filter_by:
         adata = filter_by_metadata_ad(adata, filter_by)

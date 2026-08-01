@@ -42,14 +42,20 @@ poetry install --extras "viz hgc"      # or: poetry install --all-extras
 | `ptm` | cptac | CPTAC PTM downloads |
 | `constraint` | tspex, matplotlib, seaborn | `hvantk ptm constraint` |
 | `duckdb` | duckdb | DuckDB-backed catalog queries |
-| `expression` | scanpy | `hvantk expression summarize` aggregation |
+| `expression` | scanpy | `hvantk expression summarize` and `markers` |
+
+Exactly two commands need this extra — `hvantk expression summarize` (via
+`summarize_expression_ad`) and `hvantk expression markers` (scanpy's
+`rank_genes_groups`). `describe` and `summarize-ucsc` do not touch scanpy and
+work on a base install. Without the extra, both scanpy-backed commands exit with
+an actionable message naming it, not a traceback.
 
 > **`expression` is unavailable on Intel macOS.** scanpy pulls `numba` →
 > `llvmlite`, which ships no x86_64 macOS wheel from 0.47 onward and fails to
 > build from source. The extra installs normally on Linux and Apple Silicon.
 > This is why scanpy is an extra rather than a base dependency: as a base dep it
-> made the whole package uninstallable on Intel Macs. Everything outside
-> `hvantk expression summarize` works there.
+> made the whole package uninstallable on Intel Macs. On Intel, run those two
+> commands on the cluster; the rest of the toolkit is unaffected.
 
 `scikit-learn` is optional — install `ml`, `ancestry`, or `psroc` if you use
 those analyses.
