@@ -161,8 +161,7 @@
         "specificity": {
           "type": "object",
           "required": [
-            "method",
-            "targets"
+            "method"
           ],
           "additionalProperties": false,
           "properties": {
@@ -170,6 +169,13 @@
               "type": "string",
               "enum": [
                 "ewce_fraction"
+              ]
+            },
+            "emit": {
+              "type": "string",
+              "enum": [
+                "vector",
+                "rollup"
               ]
             },
             "targets": {

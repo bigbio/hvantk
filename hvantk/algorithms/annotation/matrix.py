@@ -18,6 +18,8 @@ from __future__ import annotations
 import logging
 import re
 
+from hvantk.algorithms.annotation.spec import COMBINE_REDUCERS
+
 logger = logging.getLogger(__name__)
 
 
@@ -119,23 +121,21 @@ def reduce_matrix_to_gene(adata, mspec):
                     f"the atlas"
                 )
             tgt = spec_gg[targets]
-            combine = mspec.specificity.combine
-            if combine == "sum":
-                # Cell-CLASS specificity (EWCE level 1): the targets are subtypes of one
-                # class (e.g. atrial/ventricular/Myoz2 cardiomyocytes), so pool their
-                # fractions -> fraction of the gene's expression that is in the class. A
-                # pan-class gene (split across subtypes) reads high, which 'max' (peak
-                # single subtype) misses.
-                combined = tgt.sum(axis=1)
-            elif combine == "mean":
-                combined = tgt.mean(axis=1)
-            else:  # 'max' -- peak specificity to any single target
-                combined = tgt.max(axis=1)
+            # Table dispatch, not if/elif/else: the old chain fell through to max
+            # for any unrecognised value, so a typo silently produced peak-subtype
+            # specificity where the spec asked for the pooled class fraction.
+            # SpecificitySpec validates against these same keys, so an unknown
+            # value cannot reach here.
+            combined = COMBINE_REDUCERS[mspec.specificity.combine](tgt)
             key = f"{mspec.atlas}_{mspec.specificity.name}"
             if key in col_origin:
+                # col_origin holds BOTH the per-group specificity columns and the
+                # per-group stat columns ({atlas}_{group}_{stat}), so name the colliding
+                # column rather than asserting which kind it was -- a roll-up named
+                # 'cm_mean' collides with a stat column, not a group column.
                 raise ValueError(
-                    f"roll-up name {key!r} collides with the group column from "
-                    f"{col_origin[key]!r}; rename the roll-up"
+                    f"roll-up name {key!r} collides with an existing column "
+                    f"derived from group {col_origin[key]!r}; rename the roll-up"
                 )
             cols[key] = combined
 
