@@ -58,12 +58,17 @@ gnomad = { version = "*", optional = true }
 # The floor stays as long as `SelectionPolicy(wrapper="rfecv")` is reachable -- it is now
 # off by default, not removed. Drop to ^1.3 only if the wrapper is deleted outright.
 scikit-learn = { version = "^1.4", optional = true }
-# scipy is a hard install_requires of scikit-learn, so it is always present wherever the
-# code that imports it is reachable -- rerank's selection and leakage filters both use
-# scipy.stats, and neither can run without sklearn anyway. Declared explicitly regardless,
-# because relying on a transitive dependency is how it silently breaks later. OPTIONAL, and
-# listed in the same extras as scikit-learn: rerank is not part of a base install, so a
-# base-level declaration would burden every user who never touches it.
+# Declared explicitly rather than leaned on as a transitive dep of scikit-learn, because
+# relying on a transitive dependency is how it silently breaks later.
+#
+# NOTE, and it is not fully true that scipy only matters where sklearn does:
+# algorithms/burden/fet.py, algorithms/enrichex/overlap.py and algorithms/ptm/constraint.py
+# all `from scipy...` at MODULE scope without sklearn anywhere nearby, so `hvantk enrichex
+# burden|overlap` and `hvantk ptm constraint` raise ModuleNotFoundError on a base install.
+# That is pre-existing -- scipy was previously not declared here at all, so those paths were
+# already broken without an extra -- and keeping scipy optional does not make it worse. The
+# real fix is either a gating extra for enrichex/ptm or call-time imports with a
+# require_scipy() guard (cf. require_scanpy in algorithms/expression/matrix_utils.py).
 scipy = { version = ">=1.8", optional = true }
 matplotlib = { version = "*", optional = true }
 seaborn = { version = "*", optional = true }
