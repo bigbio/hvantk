@@ -42,6 +42,14 @@ poetry install --extras "viz hgc"      # or: poetry install --all-extras
 | `ptm` | cptac | CPTAC PTM downloads |
 | `constraint` | tspex, matplotlib, seaborn | `hvantk ptm constraint` |
 | `duckdb` | duckdb | DuckDB-backed catalog queries |
+| `expression` | scanpy | `hvantk expression summarize` aggregation |
+
+> **`expression` is unavailable on Intel macOS.** scanpy pulls `numba` →
+> `llvmlite`, which ships no x86_64 macOS wheel from 0.47 onward and fails to
+> build from source. The extra installs normally on Linux and Apple Silicon.
+> This is why scanpy is an extra rather than a base dependency: as a base dep it
+> made the whole package uninstallable on Intel Macs. Everything outside
+> `hvantk expression summarize` works there.
 
 `scikit-learn` is optional — install `ml`, `ancestry`, or `psroc` if you use
 those analyses.

@@ -37,6 +37,7 @@ opt-in via Poetry extras. Install only what a given workflow needs:
 | `constraint` | Tissue-specificity / constraint metrics | tspex, matplotlib, seaborn |
 | `ancestry` | Ancestry inference (PCA + Random Forest + plots) | scikit-learn, matplotlib, seaborn |
 | `ml` | scikit-learn-backed features only | scikit-learn |
+| `expression` | `summarize_expression_ad` / `hvantk expression summarize` | scanpy |
 
 ```bash
 # One or more extras at once
