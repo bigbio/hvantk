@@ -25,12 +25,14 @@ certifi
 anndata>=0.10.0
 # numpy is imported at module scope in ~68 modules. It arrives transitively via
 # pandas/hail, but the code uses it directly, so it is declared rather than assumed.
-numpy
+# The floor matches pyproject and is non-binding in practice: hail itself requires
+# numpy>=2,<3, so a real install lands on 2.x regardless.
+numpy>=1.23
 
 # --- optional extras, installed so the tests behind them actually run ---
 # ml / ancestry / psroc. Without scikit-learn, hvantk/tests/rerank/test_example.py
 # importorskips itself and the feature-selection stack goes untested on this path.
-scikit-learn>=1.4
+scikit-learn>=1.4,<2
 scipy>=1.8
 # hgc
 gnomad
