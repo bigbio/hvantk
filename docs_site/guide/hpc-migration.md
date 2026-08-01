@@ -62,6 +62,32 @@ unusually native-lib-heavy — Hail's JVM/Spark, `pysam` (htslib), `pyarrow` (Ar
 C++), `h5py` (HDF5), `scipy`/`scikit-learn` (BLAS/LAPACK), `duckdb` — so the
 container payoff is large.
 
+### 1.1 Keeping the cluster's clone current
+
+The cluster has its own bare repo, and the working repo pushes to it via a **second
+remote** called `hpc`. Local branches track `origin` (GitHub), so a bare `git push`
+**does not** update the cluster:
+
+| Remote | URL | Role |
+|---|---|---|
+| `origin` | `git@github.com:bigbio/hvantk.git` | GitHub; PRs and CI |
+| `hpc` | `hpc:/user/<user>/git/pyvatk.git` | bare repo on the cluster; the node-side clone pulls from here |
+
+After anything lands on `main` or `dev`:
+
+```bash
+# confirm it is a fast-forward, so no cluster-side commits are clobbered
+git fetch hpc
+git merge-base --is-ancestor hpc/dev origin/dev && echo "fast-forward, safe"
+
+git push hpc main dev
+```
+
+**This matters more than ordinary repo hygiene**, because the `.sif` is built from
+`poetry.lock` (§3.2). A stale cluster clone rebuilds the *previous* dependency set
+without any error — the build succeeds, it is just the wrong environment. Rebuild the
+image whenever `poetry.lock` changes, not only when `hvantk/` does.
+
 ---
 
 ## 2. Cluster facts to confirm on first login
