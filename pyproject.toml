@@ -37,6 +37,10 @@ click = "^8.1.3"
 requests = "*"
 tqdm = "*"
 pandas = "^2.0.0"
+# Imported at module scope in ~68 modules. It has always arrived transitively via
+# pandas/hail, but code that imports a package directly should declare it -- otherwise the
+# day pandas drops or re-pins numpy, the break surfaces somewhere unrelated.
+numpy = ">=1.23"
 pyarrow = ">=14.0"
 PyYAML = "*"
 jsonschema = ">=4.0"
