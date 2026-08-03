@@ -152,7 +152,7 @@ From: python:3.10-slim-bookworm
     poetry config virtualenvs.create false
     # install the locked deps + the extras you actually run (trim as needed):
     poetry install --no-interaction --no-root \
-        --extras "hgc ptm qtl ancestry psroc constraint viz duckdb"
+        --extras "hgc ptm ancestry psroc constraint enrichex cohort viz duckdb"
     poetry install --no-interaction --only-root
     # experiment-only extras NOT in pyproject (e.g. PTM functionality pilot):
     pip install --no-cache-dir pyBigWig
@@ -176,9 +176,11 @@ From: python:3.10-slim-bookworm
     hail 0.2.137
 ```
 
-> Trim `--extras` to what you run. The core install omits scikit-learn / viz /
+> Trim `--extras` to what you run. The core install omits scikit-learn / scipy / viz /
 > cptac / tspex / duckdb / scanpy — they live behind extras (`hgc`, `ptm`,
-> `ancestry`, `psroc`, `constraint`, `ml`, `viz`, `duckdb`, `expression`).
+> `ancestry`, `psroc`, `constraint`, `enrichex`, `cohort`, `ml`, `viz`, `duckdb`,
+> `interactive`, `expression`). The authoritative list is `[tool.poetry.extras]` in
+> `pyproject.toml`; this one is prose and is not machine-checked.
 > `pyBigWig` is **not** a hvantk dependency — include it only for experiments that
 > query bigWig tracks. Genotype adjustment needs **no** extra: `annotate_adj` is
 > ported in-tree, so `gnomad` is no longer a dependency at all.
@@ -458,6 +460,6 @@ launching at scale.
   localhost.
 - **Stray system/conda Python** below the 3.10 floor → use the container's Python;
   never run hvantk against an unmanaged interpreter.
-- **Core install ≠ full toolkit** — install the right **extras** (`hgc ptm qtl
-  ancestry psroc constraint viz duckdb`) in the image.
+- **Core install ≠ full toolkit** — install the right **extras** (`hgc ptm
+  ancestry psroc constraint enrichex cohort viz duckdb`) in the image.
 - **Scratch is purged** — copy results to project/home before the window.
