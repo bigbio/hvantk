@@ -1,6 +1,6 @@
 {
   "probe_version": 1,
-  "source_version": "Sun, 26 Jul 2026 06:01:33 GMT",
+  "source_version": "Sun, 02 Aug 2026 06:02:19 GMT",
   "headers": {
     "gencc-submissions.tsv": [
       "sgc_id",
@@ -39,5 +39,5 @@
   "checksums": {
     "gencc-submissions.tsv": "6f07ac79f908bca4cfb99874e13d7d1ae5a9c839112baba0243b45fbc018f308"
   },
-  "fetched_at": "2026-07-27T17:10:04.227093+00:00"
+  "fetched_at": "2026-08-03T09:43:52.920327+00:00"
 }
