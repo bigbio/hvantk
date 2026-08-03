@@ -16,19 +16,37 @@ keywords = [
 ]
 include = [
   { path = "hvantk/skills/**/plugin.yaml", format = ["sdist", "wheel"] },
-  { path = "hvantk/skills/**/*.py", format = ["sdist", "wheel"] },
   { path = "hvantk/skills/**/SKILL.md", format = ["sdist", "wheel"] },
   { path = "hvantk/skills/**/catalog/*.json", format = ["sdist", "wheel"] },
-  { path = "hvantk/skills/**/tests/drift_fingerprint.json", format = ["sdist", "wheel"] },
+  # multi-dataset providers suffix this per dataset (drift_fingerprint_samples.json)
+  { path = "hvantk/skills/**/tests/drift_fingerprint*.json", format = ["sdist", "wheel"] },
 ]
+# These excludes were previously defeated and shipped 43.3 MB of test data in a 46.2 MB
+# wheel -- 339 files under a tests/ dir, including a 14.7 MB VDS zip and an 11.4 MB
+# expression-atlas fixture. Two causes, both fixed here:
+#   1. `hvantk/tests/**` was never listed at all (190 of those files), so the top-level test
+#      suite and its testdata/ shipped to every user in full.
+#   2. The skills excludes were overridden by the explicit `include` of
+#      "hvantk/skills/**/*.py" above: a path named by `include` wins, so test_*.py under a
+#      skill came back in regardless of being excluded. The include is now narrowed to the
+#      non-.py data files it exists for -- ordinary package modules under hvantk/ need no
+#      include, since `packages` already carries them.
+# Nothing in CI built a wheel, so none of this was visible. The packaging-smoke job added in
+# this change asserts wheel hygiene so it cannot regress silently again.
 exclude = [
+    "hvantk/tests/**",
     "hvantk/skills/**/tests/test_*.py",
     "hvantk/skills/**/tests/conftest.py",
     "hvantk/skills/**/tests/__init__.py",
     "hvantk/skills/**/tests/data/**",
+    "hvantk/skills/**/tests/testdata/**",
     "hvantk/skills/**/tests/snapshots/**",
     "hvantk/skills/**/tests/fixtures/**",
 ]
+# `testdata` (above) was the name actually used by the skills; the pre-existing list named
+# only data/, snapshots/ and fixtures/, so per-skill fixture VCF/TSV/parquet files shipped.
+# drift_fingerprint.json stays -- it is included on purpose, being what `hvantk drift`
+# compares a live probe against.
 
 [tool.poetry.dependencies]
 python = ">=3.10.0,<4.0.0"
@@ -101,10 +119,12 @@ hgc = ["matplotlib", "seaborn"]
 psroc = ["matplotlib", "plotly", "scikit-learn", "scipy"]
 ptm = ["cptac", "sorted-nearest"]
 constraint = ["tspex", "matplotlib", "seaborn", "scipy"]
-# enrichex needs matplotlib as well as scipy: overlap.py imports scipy.stats and
-# plot.py / report.py import matplotlib, all at module scope, and enrichex/__init__ pulls
-# both in unconditionally -- so a scipy-only extra would break the moment `hvantk enrichex`
-# drew anything.
+# enrichex needs matplotlib as well as scipy. scipy is eager -- overlap.py imports
+# scipy.stats at module scope, so `hvantk enrichex overlap` needs it to import at all.
+# matplotlib is no longer eager: enrichex/__init__ resolves plot.py / report.py through a
+# PEP 562 __getattr__, so a base install can run the CLI. It is still in this extra because
+# the plotting and --generate-report paths need it at call time, and accessing a plotting
+# name without it raises an ImportError naming this extra.
 enrichex = ["scipy", "matplotlib", "seaborn"]
 # cohort covers `hvantk cohort burden`, whose pipeline reaches algorithms/burden/fet.py and
 # its module-scope `from scipy.stats import fisher_exact`. scipy alone: nothing on that path
