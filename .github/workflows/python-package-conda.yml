@@ -23,19 +23,23 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
-      # Pinned to the 2.x line rather than latest: pyproject.toml still uses the
-      # `[tool.poetry.*]` spelling of keywords/urls/plugins/extras/scripts, which 2.x
-      # reports as deprecation warnings (exit 0). A future major is entitled to promote
-      # those to errors, which would break this gate on someone else's release rather
-      # than on a change of ours.
+      # Unpinned again as of the PEP 621 migration. The `<3.0` ceiling was defensive: with
+      # the `[tool.poetry.*]` spelling of name/version/description/authors/license/readme/
+      # keywords/urls/plugins/extras/scripts, `poetry check` emitted 11 deprecation warnings,
+      # and a future major promoting those to errors would have broken this gate on someone
+      # else's release rather than on a change of ours. All eleven are gone.
+      # This does NOT make the job immune to a poetry major: [tool.poetry] still carries
+      # include/exclude and the dev dependency group, which are poetry-specific and could
+      # change again. What it removes is the specific, already-announced deprecation that
+      # the ceiling was put up for. Re-pin if a future major actually breaks this.
       - name: Install poetry
-        run: python -m pip install --upgrade pip "poetry>=2.0,<3.0"
+        run: python -m pip install --upgrade pip poetry
       - name: Check pyproject.toml is valid and poetry.lock matches it
         run: poetry check --lock
 
   # Nothing in CI installed the package, so `pytest` always imported hvantk from the checkout
   # directory and three things were never exercised: the `hvantk` console script, the
-  # [tool.poetry.plugins."hvantk.providers"] entry points, and the include/exclude packaging
+  # [project.entry-points."hvantk.providers"] entry points, and the include/exclude packaging
   # globs. All three were broken and CI was green throughout:
   #   - `hvantk --help` raised ModuleNotFoundError on a base install (the CLI eagerly imported
   #     matplotlib, which is optional),
@@ -61,7 +65,8 @@ jobs:
           java-version: "11"
       - name: Build the wheel
         run: |
-          python -m pip install --upgrade pip "poetry>=2.0,<3.0"
+          # >=2.0 is a real floor, not caution: PEP 621 [project] metadata needs poetry-core 2.x
+          python -m pip install --upgrade pip "poetry>=2.0"
           poetry build -f wheel
       - name: Check wheel contents
         run: python .github/scripts/check_wheel.py

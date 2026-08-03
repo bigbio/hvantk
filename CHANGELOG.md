@@ -16,6 +16,24 @@
 
 ### Changed
 
+- **Version bumped to `0.2.0`, and `pyproject.toml` migrated to PEP 621 `[project]`.** The
+  package shipped to `main` twice at `0.1.0`, so releases were not distinguishable by
+  version. Separately, `name`, `version`, `description`, `authors`, `license`, `readme`,
+  `keywords`, `urls`, `plugins`, `extras` and `scripts` all used the deprecated
+  `[tool.poetry.*]` spelling — 11 warnings on every `poetry check`. They now live under
+  `[project]`, `[project.optional-dependencies]`, `[project.entry-points]`,
+  `[project.scripts]` and `[project.urls]`; only genuinely Poetry-specific keys
+  (`include`/`exclude`, dependency groups) remain under `[tool.poetry]`.
+  **The migration is resolution-neutral**: the lock resolves to the same 187 packages,
+  name-for-name and version-for-version, before and after. Poetry's caret shorthand is
+  spelled out as the PEP 508 equivalent it always meant (`^8.1.3` → `>=8.1.3,<9.0.0`), not
+  re-pinned. With nothing deprecated left, the defensive `poetry>=2.0,<3.0` pin in the
+  `poetry.lock in sync` CI job is unpinned again.
+  One consequence is new: PEP 621 puts the full specifier in each extra, so `scipy>=1.8`
+  is written six times and `scikit-learn>=1.4,<2.0` three times, and one could be re-pinned
+  with the others left behind — resolving differently depending on which extra a user
+  installs. `test_pyproject_extras.py` now asserts every extra spells a shared package
+  identically, alongside a check that no extra re-declares a base dependency.
 - **`gnomad` is no longer a dependency.** hvantk used exactly one function from it,
   `annotate_adj`, which is ~15 lines of Hail expression with no gnomAD data behind it.
   It is now ported into `hvantk/algorithms/hgc/adj.py` (gnomad_methods is MIT; the port
@@ -142,8 +160,8 @@
   `cptac:expression`, and `cptac:phospho`. The first hail-enabled CI run with
   `--regenerate-snapshots` will bootstrap them. All `ucsc-cellbrowser` variants
   (`default`, `adult-ctx`, `dev-ctx`) already have populated snapshot dirs.
-- The package version has never been bumped from `0.1.0`, so releases to `main` are not
-  distinguishable by version.
+- (Resolved: version bumped to 0.2.0 — see Changed.) Releases are still not git-tagged, so
+  a release is identifiable by version but not by a tag.
   (The three CI gaps previously listed here — no install job, the version matrix running
   only on `main`, and `hvantk/tests/hgc/` running in no job — are resolved; see the
   packaging and CI entries under Changed.)
