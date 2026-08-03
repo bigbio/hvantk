@@ -71,6 +71,39 @@
   move. A base install still raises a bare `ModuleNotFoundError` rather than a message
   naming the extra; a `require_scipy()` guard (cf. `require_scanpy`) would fix the *text*,
   and is tracked separately because it changes no extra's contents.
+- **`hvantk` was unusable from a `pip install`.** The console script imported
+  `hvantk.tools.enrichex` at module scope, which ran `algorithms/enrichex/__init__.py`,
+  which eagerly imported `enrichex/plot.py`, `enrichex/report.py` and
+  `visualization/base.py` — all three import `matplotlib` at module scope. matplotlib is
+  optional, so on a base install **every** command including `hvantk --help` raised
+  `ModuleNotFoundError`. Those three imports are now resolved on attribute access (PEP 562
+  `__getattr__`), so the package imports without matplotlib and the CLI runs. The eight
+  plotting/reporting names stay in `__all__` and stay importable; touching one without
+  matplotlib now raises an `ImportError` naming the `enrichex` extra, matching
+  `require_scanpy` and `_require_matplotlib`. No plotting behaviour changed — the enrichex
+  CLIs already imported `generate_report` inside the functions that use it.
+- **The wheel shipped 43.3 MB of test data.** `hvantk/tests/**` was absent from `exclude`
+  (190 files, including a 14.7 MB VDS zip and an 11.4 MB expression-atlas fixture); the
+  skills excludes were overridden by `include = "hvantk/skills/**/*.py"`, since a path named
+  by `include` wins; and the excludes named `tests/data/**` where the skills actually use
+  `tests/testdata/**`. Fixed all three: the wheel goes from **46.2 MB to 2.86 MB**
+  uncompressed (28 MB to 897 KB on disk) with every manifest, skills module, catalog and
+  drift fingerprint intact.
+- **CI now installs the package.** New `packaging-smoke` job builds the wheel, checks its
+  contents with `.github/scripts/check_wheel.py`, installs it into a clean environment with
+  no extras, and runs `hvantk --help` / `hvantk plugins list` from a directory where the
+  checkout is not importable — so the console script, the entry-point registrations and the
+  packaging globs are exercised against the installed copy. It also asserts the provider
+  count matches the tree, since a dropped manifest would otherwise still exit 0. Both bugs
+  above were found by writing this job.
+- **`hvantk/tests/hgc/` now runs in CI** as a new `hgc-hail` job — separate from
+  `Plugin contract (hail)` rather than appended to it, so the contract signal is not delayed
+  behind ~6 min of unrelated HGC work. This is the first automatic run of
+  `test_convert_vds_to_mt`, the end-to-end exercise of the `adj` code ported in #252.
+- **The Python version matrix now runs on `dev` PRs**, not only `main`, so an incompatibility
+  is caught on one commit instead of at the release gate with a whole release to bisect.
+  `actions/setup-python` moved v3 → v5 and both workflows now declare
+  `permissions: contents: read` (both raised in review on #249).
 - The extras table is now guarded by a test. It is duplicated in three places — the
   `[tool.poetry.extras]` block, `README.md` and `docs_site/getting-started/installation.md`
   — and only the first is executable, so the prose copies had drifted eight cells
@@ -111,17 +144,6 @@
   (`default`, `adult-ctx`, `dev-ctx`) already have populated snapshot dirs.
 - The package version has never been bumped from `0.1.0`, so releases to `main` are not
   distinguishable by version.
-- No CI job installs the package (`pip install .` / `poetry install`), so `pytest` imports
-  `hvantk` from the checkout directory. Packaging — the `include`/`exclude` globs, the
-  console-script entry point, and the `[tool.poetry.plugins."hvantk.providers"]`
-  entry-point registrations — is therefore never exercised in CI, and the plugin loader's
-  entry-point discovery path is only ever tested via its filesystem fallback. (The lock
-  itself *is* now validated on every push — see the `poetry.lock in sync` job.)
-- The `build` and `build (3.10/3.11/3.12)` jobs run only on pull requests targeting
-  `main`, so a Python-version incompatibility introduced on a `dev` PR is not caught until
-  the release gate, with the whole release to bisect rather than one commit.
-- No CI job runs `hvantk/tests/hgc/`. `hail`-marked tests are deselected by `pytest.ini`'s
-  `addopts`, and the one hail-enabled job (`Plugin contract (hail)`) is path-scoped to the
-  plugin-contract tests. So the HGC integration suite — including `test_convert_vds_to_mt`,
-  which is the end-to-end exercise of `adj` — runs only when someone invokes `pytest -m hail`
-  locally. Unskipping that test made it *runnable*, not *automatically run*.
+  (The three CI gaps previously listed here — no install job, the version matrix running
+  only on `main`, and `hvantk/tests/hgc/` running in no job — are resolved; see the
+  packaging and CI entries under Changed.)

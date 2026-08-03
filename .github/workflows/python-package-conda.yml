@@ -2,6 +2,12 @@ name: Python Package using Conda
 
 on: [push]
 
+# Every job here only reads the repo -- builds, installs, runs tests. The default token grants
+# write scopes none of them need. Flagged in review on #249 and not applied at the time; set
+# now at workflow level so new jobs inherit it rather than each having to remember.
+permissions:
+  contents: read
+
 jobs:
   # Runs in seconds and needs no environment, so it sits in the workflow that triggers on
   # every push rather than only on main-targeted PRs. Its absence is why poetry.lock drifted
@@ -14,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python 3.10
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: "3.10"
       # Pinned to the 2.x line rather than latest: pyproject.toml still uses the
@@ -26,6 +32,60 @@ jobs:
         run: python -m pip install --upgrade pip "poetry>=2.0,<3.0"
       - name: Check pyproject.toml is valid and poetry.lock matches it
         run: poetry check --lock
+
+  # Nothing in CI installed the package, so `pytest` always imported hvantk from the checkout
+  # directory and three things were never exercised: the `hvantk` console script, the
+  # [tool.poetry.plugins."hvantk.providers"] entry points, and the include/exclude packaging
+  # globs. All three were broken and CI was green throughout:
+  #   - `hvantk --help` raised ModuleNotFoundError on a base install (the CLI eagerly imported
+  #     matplotlib, which is optional),
+  #   - the wheel shipped 43.3 MB of test data in a 46.2 MB wheel, because `hvantk/tests/**`
+  #     was absent from `exclude` and the skills excludes were overridden by an `include`.
+  # This job is the guard: it builds the wheel, checks its contents, installs it into a clean
+  # environment with NO extras, and runs the CLI from a directory where the checkout is not
+  # importable -- so it tests the installed copy rather than the source tree.
+  packaging-smoke:
+    name: Installed package smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      # hail is a hard dependency and needs Java 11 to import; the CLI imports it eagerly.
+      - name: Set up Java 11
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "11"
+      - name: Build the wheel
+        run: |
+          python -m pip install --upgrade pip "poetry>=2.0,<3.0"
+          poetry build -f wheel
+      - name: Check wheel contents
+        run: python .github/scripts/check_wheel.py
+      - name: Install the wheel into a clean environment, without extras
+        run: |
+          python -m venv /tmp/venv
+          /tmp/venv/bin/pip install --upgrade pip
+          /tmp/venv/bin/pip install dist/*.whl
+      # `working-directory` is load-bearing: run this from the repo root and Python would
+      # import ./hvantk from the checkout, which is exactly what this job exists to avoid.
+      - name: Smoke-check the installed CLI
+        working-directory: /tmp
+        run: |
+          /tmp/venv/bin/python -c "import hvantk, os; p = os.path.dirname(hvantk.__file__); assert 'site-packages' in p, p; print('importing installed copy:', p)"
+          /tmp/venv/bin/hvantk --help
+          /tmp/venv/bin/hvantk plugins list
+      # A packaging glob that drops manifests would still let `plugins list` exit 0 with a
+      # short list, so assert the count instead of just the exit code.
+      - name: Every plugin manifest survived packaging
+        run: |
+          expected=$(find hvantk/skills -name plugin.yaml | wc -l | tr -d ' ')
+          actual=$(cd /tmp && /tmp/venv/bin/hvantk plugins list | tail -n +2 | grep -c '[^[:space:]]')
+          echo "manifests in tree: $expected / providers from installed copy: $actual"
+          test "$expected" = "$actual"
 
   build-linux:
     runs-on: ubuntu-latest
@@ -39,7 +99,7 @@ jobs:
             sudo apt-get update
             sudo apt-get install -y libopenblas-dev
       - name: Set up Python 3.10
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: "3.10"
       - name: Add conda to system path
@@ -83,7 +143,7 @@ jobs:
           distribution: temurin
           java-version: "11"
       - name: Set up Python 3.10
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: "3.10"
       - name: Add conda to system path
@@ -104,3 +164,42 @@ jobs:
                  hvantk/tests/test_hail_helpers.py \
                  hvantk/skills \
                  -m hail -rA
+
+  # hvantk/tests/hgc/ ran in NO CI job: pytest.ini deselects `hail`, and the job above is
+  # path-scoped to the contract tests. So test_convert_vds_to_mt -- the only end-to-end
+  # exercise of the `adj` code ported out of the gnomad dependency in #252 -- ran only under a
+  # manual `pytest -m hail`.
+  #
+  # Deliberately a SEPARATE job rather than more paths on plugin-contract. Appending would
+  # push that job from ~6 to ~12 min and delay the contract signal behind unrelated HGC work;
+  # as its own job it runs concurrently, so wall-clock to first failure is unchanged.
+  hgc-hail:
+    name: HGC pipeline (hail)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install OpenBLAS
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libopenblas-dev
+      - name: Set up Java 11
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "11"
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Add conda to system path
+        run: |
+          echo $CONDA/bin >> $GITHUB_PATH
+      - name: Install dependencies
+        run: |
+          conda env update --file environment.yml --name base
+      - name: Install test dependencies
+        run: |
+          python -m pip install pytest requests-mock
+      - name: Run HGC tests
+        run: |
+          pytest hvantk/tests/hgc -m hail -rA
