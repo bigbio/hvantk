@@ -52,6 +52,32 @@
 - `scikit-learn` floor raised to `>=1.4` (NaN-tolerant tree estimators, needed by rerank's
   optional RFECV wrapper). `scipy` is now declared explicitly, as an optional dependency in
   the `ml` / `ancestry` / `psroc` extras.
+- **Every command that imports `scipy` at module scope now has an extra that installs it.**
+  Three modules do, and they sit on three *different* commands — a mapping the previous
+  known-gaps note got wrong:
+  `algorithms/ptm/constraint.py` → `hvantk ptm constraint` (`constraint` extra);
+  `algorithms/enrichex/overlap.py` → `hvantk enrichex overlap` (new `enrichex` extra);
+  `algorithms/burden/fet.py` → `hvantk cohort burden` (new `cohort` extra).
+  `fet.py` is *not* reached by `hvantk enrichex burden`: its only importer is
+  `algorithms/burden/pipeline.py`, imported by `tools/cohort/cohort_cli.py` alone.
+  Previously `constraint` omitted `scipy`, so `pip install hvantk[constraint]` yielded a
+  documented extra whose own command still raised `ModuleNotFoundError`, and neither
+  `hvantk enrichex overlap` nor `hvantk cohort burden` had any extra to install.
+  `enrichex` also carries matplotlib/seaborn, because `enrichex/__init__` imports
+  `plot.py`/`report.py` unconditionally and a scipy-only extra would break on import.
+  `scipy` was added to `expression` too — a resolution no-op, since scanpy already depends
+  on it, but `visualization/expression/anndata.py` imports `scipy.sparse` directly and this
+  project declares what it imports rather than inheriting it from a transitive edge that can
+  move. A base install still raises a bare `ModuleNotFoundError` rather than a message
+  naming the extra; a `require_scipy()` guard (cf. `require_scanpy`) would fix the *text*,
+  and is tracked separately because it changes no extra's contents.
+- The extras table is now guarded by a test. It is duplicated in three places — the
+  `[tool.poetry.extras]` block, `README.md` and `docs_site/getting-started/installation.md`
+  — and only the first is executable, so the prose copies had drifted eight cells
+  (`psroc`/`ancestry`/`ml` missing `scipy`, `ptm` missing `sorted-nearest`) across two
+  releases. `hvantk/tests/test_pyproject_extras.py` now parses both markdown tables and
+  fails if either disagrees with `pyproject.toml`, and also fails if an extra names a
+  package that is not declared `optional = true`. Non-Hail, so it runs in the default suite.
 - `scanpy` moved out of the base install into a new `expression` extra. It is required by
   `hvantk expression summarize`, `hvantk expression markers`, and `hvantk ptm constraint
   --expression-metric mean`; those now fail with an actionable message naming the extra
@@ -83,11 +109,6 @@
   `cptac:expression`, and `cptac:phospho`. The first hail-enabled CI run with
   `--regenerate-snapshots` will bootstrap them. All `ucsc-cellbrowser` variants
   (`default`, `adult-ctx`, `dev-ctx`) already have populated snapshot dirs.
-- `scipy` is imported at module scope by `algorithms/burden/fet.py`,
-  `algorithms/enrichex/overlap.py` and `algorithms/ptm/constraint.py`, none of which sit
-  behind an extra that pulls it in, so `hvantk enrichex burden|overlap` and
-  `hvantk ptm constraint` raise `ModuleNotFoundError` on a base install. Pre-existing:
-  scipy was previously not declared at all.
 - The package version has never been bumped from `0.1.0`, so releases to `main` are not
   distinguishable by version.
 - No CI job installs the package (`pip install .` / `poetry install`), so `pytest` imports

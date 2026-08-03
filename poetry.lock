@@ -5935,9 +5935,11 @@ remote = ["fsspec (>=2023.10.0)", "obstore (>=0.5.1)"]
 
 [extras]
 ancestry = ["matplotlib", "scikit-learn", "scipy", "seaborn"]
-constraint = ["matplotlib", "seaborn", "tspex"]
+cohort = ["scipy"]
+constraint = ["matplotlib", "scipy", "seaborn", "tspex"]
 duckdb = ["duckdb"]
-expression = ["scanpy"]
+enrichex = ["matplotlib", "scipy", "seaborn"]
+expression = ["scanpy", "scipy"]
 hgc = ["matplotlib", "seaborn"]
 interactive = ["plotly"]
 ml = ["scikit-learn", "scipy"]
@@ -5948,4 +5950,4 @@ viz = ["matplotlib", "plotly", "seaborn"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10.0,<4.0.0"
-content-hash = "feac0f9f42756b4ecf0b2d754c1785fcf6889b75d12c3b9f0619f5ddafbd8d72"
+content-hash = "399feafeb18269ff1e3ecabd1bad77ccd0bb574fc5c526883616927b3d13d8ca"
