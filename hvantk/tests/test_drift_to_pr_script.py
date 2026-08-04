@@ -188,3 +188,150 @@ def test_branch_needs_update_is_true_when_the_branch_is_new(drift_to_pr, monkeyp
     """No branch yet -> always push. Cheap, but it is the common first-drift path."""
     monkeypatch.setattr(drift_to_pr, "remote_branch_exists", lambda b, dry_run: False)
     assert drift_to_pr.branch_needs_update("drift/x-y", dry_run=False) is True
+
+
+# --- the skip path itself, end to end -----------------------------------------------
+#
+# Adversarial review caught that NO test exercised the behaviour this change adds:
+# replacing the whole body of `branch_needs_update` with `return True` -- a complete
+# neutering of the fix -- left every test green. These drive handle_drifted and assert
+# on the git/gh commands actually issued.
+
+
+def _capture_handle_drifted(drift_to_pr, monkeypatch, *, needs_update, pr_exists):
+    """Run handle_drifted with git/gh stubbed, returning the commands it issued."""
+    cmds: list[list[str]] = []
+
+    def _record(cmd, **kwargs):
+        cmds.append(list(cmd))
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(drift_to_pr, "_run", _record)
+    monkeypatch.setattr(drift_to_pr, "branch_needs_update", lambda b, dry_run: needs_update)
+    monkeypatch.setattr(
+        drift_to_pr, "pr_exists_for_branch", lambda b, dry_run: "7" if pr_exists else None
+    )
+    # `git diff --cached --quiet` -> returncode 1 means "there is something staged",
+    # which is the state after a real regeneration.
+    monkeypatch.setattr(
+        subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(a[0] if a else [], 1)
+    )
+
+    drift_to_pr.handle_drifted(
+        dict(DRIFTED), base_branch="dev", dry_run=False, step_summary=None
+    )
+    return cmds
+
+
+def test_skip_issues_no_commit_push_or_pr(drift_to_pr, monkeypatch):
+    """The behaviour the whole PR exists for. Fails if branch_needs_update is neutered
+    to `return True`, which is exactly the hole review found."""
+    cmds = _capture_handle_drifted(
+        drift_to_pr, monkeypatch, needs_update=False, pr_exists=True
+    )
+    joined = [" ".join(c) for c in cmds]
+    assert not any(c.startswith("git commit") for c in joined), joined
+    assert not any(c.startswith("git push") for c in joined), joined
+    assert not any(c.startswith("gh pr") for c in joined), joined
+
+
+def test_update_still_commits_pushes_and_edits(drift_to_pr, monkeypatch):
+    """The complement: when the branch DOES need updating, nothing is suppressed."""
+    cmds = _capture_handle_drifted(
+        drift_to_pr, monkeypatch, needs_update=True, pr_exists=True
+    )
+    joined = [" ".join(c) for c in cmds]
+    assert any(c.startswith("git commit") for c in joined), joined
+    assert any(c.startswith("git push") for c in joined), joined
+    assert any(c.startswith("gh pr edit") for c in joined), joined
+
+
+def test_matching_branch_with_no_open_pr_is_never_skipped(drift_to_pr, monkeypatch):
+    """A branch can outlive its PR -- closing a PR leaves the head branch, and a run
+    whose push succeeded while `gh pr create` failed leaves a branch with no PR at all.
+    Skipping on branch content alone would suppress that dataset's drift forever."""
+    cmds = _capture_handle_drifted(
+        drift_to_pr, monkeypatch, needs_update=False, pr_exists=False
+    )
+    joined = [" ".join(c) for c in cmds]
+    assert any(c.startswith("gh pr create") for c in joined), joined
+
+
+# --- branch_needs_update against a REAL git repo -------------------------------------
+#
+# The stubbed tests above drive handle_drifted's branching, but they monkeypatch
+# branch_needs_update itself, so they cannot detect that function being wrong. Neutering
+# it to `return True` left them all green -- the same vacuity adversarial review found in
+# the first version of this test file. This exercises the real thing over real git.
+
+
+def _git(repo, *args):
+    return subprocess.run(
+        ["git", *args], cwd=repo, check=True, text=True, capture_output=True
+    )
+
+
+@pytest.fixture
+def repo_with_drift_branch(tmp_path, drift_to_pr, monkeypatch):
+    """A repo whose `drift/p-d` branch already carries a fingerprint, with `origin`
+    pointing back at itself so ls-remote/fetch behave as they do in CI."""
+    repo = tmp_path / "repo"
+    (repo / "hvantk" / "skills").mkdir(parents=True)
+    fp = repo / "hvantk" / "skills" / "drift_fingerprint.json"
+
+    _git(repo.parent, "init", "-q", str(repo))
+    _git(repo, "config", "user.email", "t@t")
+    _git(repo, "config", "user.name", "t")
+    fp.write_text(json.dumps({"source_version": "v1", "fetched_at": "2026-08-01"}))
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "base")
+    _git(repo, "branch", "-M", "dev")
+    _git(repo, "checkout", "-qb", "drift/p-d")
+    _git(repo, "commit", "-q", "--allow-empty", "-m", "branch head")
+    _git(repo, "checkout", "-q", "dev")
+    _git(repo, "remote", "add", "origin", str(repo))
+
+    monkeypatch.setattr(drift_to_pr, "REPO_ROOT", repo)
+    monkeypatch.chdir(repo)
+    return repo, fp
+
+
+def test_branch_needs_update_false_when_only_the_timestamp_moved(
+    repo_with_drift_branch, drift_to_pr
+):
+    """The regression this PR exists for, against real git."""
+    repo, fp = repo_with_drift_branch
+    fp.write_text(json.dumps({"source_version": "v1", "fetched_at": "2026-08-04"}))
+    _git(repo, "add", "hvantk/skills")
+
+    assert drift_to_pr.branch_needs_update("drift/p-d", dry_run=False) is False
+
+
+def test_branch_needs_update_true_when_the_source_actually_moved(
+    repo_with_drift_branch, drift_to_pr
+):
+    """The signal must survive: a real upstream change still pushes."""
+    repo, fp = repo_with_drift_branch
+    fp.write_text(json.dumps({"source_version": "v2", "fetched_at": "2026-08-04"}))
+    _git(repo, "add", "hvantk/skills")
+
+    assert drift_to_pr.branch_needs_update("drift/p-d", dry_run=False) is True
+
+
+def test_discard_staged_fingerprints_clears_index_and_worktree(
+    repo_with_drift_branch, drift_to_pr
+):
+    """The contamination fix: a skipped dataset must leave nothing behind for the next
+    one. `git checkout -B` does not clear the index, so a leftover staged fingerprint
+    would be committed onto an unrelated dataset's branch."""
+    repo, fp = repo_with_drift_branch
+    original = fp.read_text()
+    fp.write_text(json.dumps({"source_version": "LEAKED", "fetched_at": "x"}))
+    _git(repo, "add", "hvantk/skills")
+    assert _git(repo, "diff", "--cached", "--name-only").stdout.strip()
+
+    drift_to_pr._discard_staged_fingerprints(dry_run=False)
+
+    assert _git(repo, "diff", "--cached", "--name-only").stdout.strip() == ""
+    assert fp.read_text() == original, "working tree must be restored too, or the next "\
+        "`git add hvantk/skills` re-stages the leak"

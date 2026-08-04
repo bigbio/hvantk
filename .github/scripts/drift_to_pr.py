@@ -267,6 +267,29 @@ def remote_branch_exists(branch: str, *, dry_run: bool) -> bool:
     return bool((result.stdout or "").strip())
 
 
+def _discard_staged_fingerprints(*, dry_run: bool) -> None:
+    """Return index AND working tree for ``hvantk/skills`` to HEAD.
+
+    Every early return out of `handle_drifted` after `git add` must call this. The
+    regeneration is per-dataset but the checkout is not isolated: the next iteration
+    does `git checkout -B <next-branch> origin/<base>`, which leaves both the index and
+    the working tree untouched. A leftover staged fingerprint would therefore be picked
+    up by the next dataset's `git add hvantk/skills` and committed onto ITS branch --
+    contaminating an unrelated PR, and masking that dataset's own skip check because
+    the diff is no longer empty.
+
+    `git checkout HEAD -- <path>` rather than `git reset`: reset alone unstages but
+    leaves the modified file in the working tree, where the next `git add` re-stages it.
+    """
+    if dry_run:
+        print("[dry-run] (would discard staged fingerprint changes)")
+        return
+    subprocess.run(
+        ["git", "checkout", "HEAD", "--", "hvantk/skills"],
+        check=False, text=True, capture_output=True,
+    )
+
+
 def branch_needs_update(branch: str, *, dry_run: bool) -> bool:
     """Should the staged fingerprints be pushed to ``branch``?
 
@@ -386,6 +409,7 @@ def handle_drifted(
                 f"  no fingerprint changes to commit for {dataset}; "
                 "drift may have already been addressed. Skipping PR."
             )
+            _discard_staged_fingerprints(dry_run=dry_run)
             return
 
         # ...and neither should a re-push that changes nothing but a timestamp.
@@ -403,10 +427,32 @@ def handle_drifted(
         # So: if the branch already exists and already proposes materially the same
         # fingerprint, leave it alone. The PR stays open with its original body; only a
         # genuine upstream change re-pushes.
-        if not branch_needs_update(branch, dry_run=dry_run):
+        # Only skip when an open PR actually exists to be left alone. A branch can
+        # outlive its PR -- closing a PR does not delete the head branch, and a run
+        # whose push succeeded while `gh pr create` failed leaves a branch with no PR
+        # at all (that exact failure is why this script exits nonzero on gh errors; see
+        # the module docstring). In either case the branch content matches, so a
+        # content-only check would skip forever and the dataset's drift would never be
+        # surfaced again -- the precise outcome `branch_needs_update` promises cannot
+        # happen. Re-opening a PR for an existing branch is cheap; silence is not.
+        if not branch_needs_update(branch, dry_run=dry_run) and pr_exists_for_branch(
+            branch, dry_run=dry_run
+        ):
             print(
                 f"  branch {branch} already proposes this fingerprint "
                 f"(only volatile keys differ); leaving it untouched."
+            )
+            # The regenerated fingerprint is still staged at this point. Leaving it
+            # there would carry THIS dataset's baseline into the NEXT dataset's branch:
+            # `git checkout -B` does not clear the index, so the next iteration's
+            # `git add hvantk/skills` would stage both, and the next PR would commit a
+            # bump it has nothing to do with. It would also defeat this very skip for
+            # every dataset processed after a skipped one.
+            _discard_staged_fingerprints(dry_run=dry_run)
+            _summary_line(
+                step_summary,
+                f"- DRIFT (unchanged): `{dataset}` -> branch `{branch}` still open; "
+                f"nothing new to push",
             )
             return
 
