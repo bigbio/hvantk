@@ -111,23 +111,34 @@ def fingerprints_match(a: str, b: str) -> bool:
         return False
 
 
-def branch_name_for_signal(datasets: list[str]) -> str:
+def branch_name_for_signal(datasets: list[str], fingerprint_path: str = "") -> str:
     """Branch name for a drift signal covering one or more datasets.
 
     A single dataset keeps its historical name exactly (``drift/<provider>-<dataset>``),
-    so existing branches and their open PRs are still matched. A group that is entirely
-    one provider's collapses to ``drift/<provider>`` -- stable across runs, and it does
-    not privilege whichever member happened to be listed first in the manifest.
+    so existing branches and their open PRs are still matched.
+
+    A group takes ``drift/<provider>``, plus the baseline's distinguishing suffix when it
+    has one. The suffix matters: the branch must identify the SIGNAL, and a provider can
+    own more than one. Multi-dataset providers suffix their baselines per dataset
+    (``drift_fingerprint_samples.json`` alongside ``drift_fingerprint.json``), so keying
+    on the provider alone would collapse two independent signals onto one branch, where
+    the second would overwrite the first's commit and rewrite its PR body. Deriving from
+    the path rather than from the member list also keeps the name stable across runs, and
+    does not privilege whichever member the manifest happens to list first.
     """
     if len(datasets) == 1:
         return branch_name_for(datasets[0])
+
     providers = {split_dataset(d)[0] for d in datasets}
-    if len(providers) == 1:
-        return "drift/" + providers.pop()
-    # A baseline shared ACROSS providers should be impossible -- the path lives inside
-    # one plugin directory -- but fall back to something deterministic rather than
-    # picking arbitrarily, so the branch does not move between runs.
-    return branch_name_for(sorted(datasets)[0])
+    if len(providers) != 1:
+        # A baseline shared ACROSS providers should be impossible -- the path lives
+        # inside one plugin directory -- but stay deterministic rather than arbitrary.
+        return branch_name_for(sorted(datasets)[0])
+
+    base = "drift/" + providers.pop()
+    stem = Path(fingerprint_path).stem if fingerprint_path else ""
+    suffix = stem[len("drift_fingerprint"):].strip("_-") if stem.startswith("drift_fingerprint") else stem
+    return f"{base}-{suffix}" if suffix else base
 
 
 def group_by_drift_signal(drifted: list[dict]) -> list[dict]:
@@ -446,7 +457,7 @@ def handle_drifted(
     # to just this one, so a report without the field behaves exactly as before.
     covers = entry.get("datasets") or [dataset]
     provider, dataset_short = split_dataset(dataset)
-    branch = branch_name_for_signal(covers)
+    branch = branch_name_for_signal(covers, entry.get("fingerprint_path") or "")
     skill_md = find_skill_md(provider, dataset_short)
     maintainers = read_maintainers(provider)
     diff = entry.get("diff") or {}

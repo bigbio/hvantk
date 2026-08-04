@@ -417,3 +417,25 @@ def test_discard_staged_fingerprints_clears_index_and_worktree(
     assert _git(repo, "diff", "--cached", "--name-only").stdout.strip() == ""
     assert fp.read_text() == original, "working tree must be restored too, or the next "\
         "`git add hvantk/skills` re-stages the leak"
+
+
+def test_two_signals_from_one_provider_do_not_collide_on_one_branch(drift_to_pr):
+    """Review finding on #263: keying a group's branch on the provider alone discards the
+    baseline path that DEFINES the signal. Multi-dataset providers suffix their baselines
+    per dataset, so a provider can own two independent signals; collapsing them onto one
+    branch means the second overwrites the first's commit and rewrites its PR."""
+    a = drift_to_pr.branch_name_for_signal(
+        ["p:one", "p:two"], "hvantk/skills/p/tests/drift_fingerprint.json"
+    )
+    b = drift_to_pr.branch_name_for_signal(
+        ["p:three", "p:four"], "hvantk/skills/p/tests/drift_fingerprint_samples.json"
+    )
+    assert a != b, f"distinct signals collided on {a}"
+    assert a == "drift/p"                 # the unsuffixed baseline keeps the plain name
+    assert b == "drift/p-samples"
+
+
+def test_group_branch_still_stable_across_member_order(drift_to_pr):
+    fp = "hvantk/skills/ucsc_cellbrowser/tests/drift_fingerprint.json"
+    assert drift_to_pr.branch_name_for_signal(["u:a", "u:b", "u:c"], fp) == \
+           drift_to_pr.branch_name_for_signal(["u:c", "u:a", "u:b"], fp)
