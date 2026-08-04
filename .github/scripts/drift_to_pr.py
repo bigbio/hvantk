@@ -28,7 +28,11 @@ For each ``status == "drifted"`` entry the script:
 3. Runs ``hvantk drift --regenerate <provider:dataset>`` to overwrite the
    committed ``drift_fingerprint.json``.
 4. Commits with a plain Conventional Commits message.
-5. Force-pushes with lease (the branch is bot-owned).
+5. Force-pushes with lease (the branch is bot-owned) -- but only if the branch does
+   not already propose the same fingerprint. ``--regenerate`` rewrites ``fetched_at``
+   every run, so without that check each open PR was re-pushed and its body re-edited
+   once a day forever: nine PRs churned daily for a week, ~63 notifications, none of
+   them new information.
 6. Opens a draft PR (or updates the body of an existing one).
 
 Probe-failed entries are recorded in the GitHub step summary but never
@@ -66,6 +70,13 @@ except ImportError:  # pragma: no cover - exercised only in stripped envs
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SKILLS_ROOT = REPO_ROOT / "hvantk" / "skills"
 
+# Mirrors hvantk.core.plugin.api.PROBE_FINGERPRINT_IGNORED_KEYS. Duplicated rather than
+# imported because this script runs from a checkout where the package may not be
+# importable, and `_fingerprints_match` must not become a no-op if the import fails --
+# a silently-empty ignore set would make every comparison "different" and restore the
+# exact churn this guards against. Kept in sync by test_drift_to_pr_script.py.
+FINGERPRINT_IGNORED_KEYS = frozenset({"fetched_at", "probe_version"})
+
 
 # --------------------------------------------------------------------------- #
 # Pure helpers (no side effects, easy to reason about / test).
@@ -81,6 +92,23 @@ def branch_name_for(dataset: str) -> str:
     if ":" not in dataset:
         raise ValueError(f"expected '<provider>:<dataset>', got: {dataset!r}")
     return "drift/" + dataset.replace(":", "-")
+
+
+def strip_ignored(fingerprint: dict) -> dict:
+    """Fingerprint minus the keys that change on every probe regardless of upstream."""
+    return {k: v for k, v in fingerprint.items() if k not in FINGERPRINT_IGNORED_KEYS}
+
+
+def fingerprints_match(a: str, b: str) -> bool:
+    """True if two fingerprint JSON blobs agree once volatile keys are dropped.
+
+    Unparseable input returns False -- "I cannot tell" must mean "push it", never
+    "skip it", or a malformed fingerprint would silently suppress a real drift PR.
+    """
+    try:
+        return strip_ignored(json.loads(a)) == strip_ignored(json.loads(b))
+    except (ValueError, AttributeError, TypeError):
+        return False
 
 
 def split_dataset(dataset: str) -> tuple[str, str]:
@@ -233,7 +261,57 @@ def remote_branch_exists(branch: str, *, dry_run: bool) -> bool:
         text=True,
         capture_output=True,
     )
-    return bool(result.stdout.strip())
+    # `or ""` rather than a bare .strip(): stdout is None whenever the call was made
+    # without capture_output, and a crash here would abort a drift run over a branch
+    # existence check.
+    return bool((result.stdout or "").strip())
+
+
+def branch_needs_update(branch: str, *, dry_run: bool) -> bool:
+    """Should the staged fingerprints be pushed to ``branch``?
+
+    False only when the branch already exists AND every staged fingerprint is
+    materially identical to the one it already carries -- i.e. the sole difference is
+    `fetched_at`. Everything else returns True, deliberately: a branch that does not
+    exist, a file the branch lacks, an unreadable blob or a git failure all mean "I
+    cannot prove this is redundant", and the safe answer is to push. Suppressing a real
+    drift PR is far worse than one redundant force-push.
+    """
+    if dry_run:
+        return True
+    if not remote_branch_exists(branch, dry_run=dry_run):
+        return True
+
+    staged = subprocess.run(
+        ["git", "diff", "--cached", "--name-only"],
+        check=False, text=True, capture_output=True,
+    )
+    paths = [p for p in (staged.stdout or "").split("\n") if p.strip()]
+    if staged.returncode != 0 or not paths:
+        return True
+
+    # The branch ref may not exist locally -- the run checked out BASE_BRANCH, not this
+    # one -- so fetch it and read blobs out of FETCH_HEAD rather than assuming
+    # origin/<branch> is present.
+    fetched = subprocess.run(
+        ["git", "fetch", "origin", branch],
+        check=False, text=True, capture_output=True,
+    )
+    if fetched.returncode != 0:
+        return True
+
+    for path in paths:
+        current = (REPO_ROOT / path).read_text() if (REPO_ROOT / path).exists() else None
+        previous = subprocess.run(
+            ["git", "show", f"FETCH_HEAD:{path}"],
+            check=False, text=True, capture_output=True,
+        )
+        if current is None or previous.returncode != 0:
+            return True
+        if not fingerprints_match(current, previous.stdout):
+            return True
+
+    return False
 
 
 def pr_exists_for_branch(branch: str, *, dry_run: bool) -> str | None:
@@ -307,6 +385,28 @@ def handle_drifted(
             print(
                 f"  no fingerprint changes to commit for {dataset}; "
                 "drift may have already been addressed. Skipping PR."
+            )
+            return
+
+        # ...and neither should a re-push that changes nothing but a timestamp.
+        #
+        # The check above compares against BASE_BRANCH, so for a dataset that is still
+        # drifted it can never fire: `--regenerate` rewrites `fetched_at` on every run,
+        # which alone guarantees a non-empty diff. The result was that each of the nine
+        # open drift PRs got a fresh force-push and a body edit EVERY morning for a
+        # week -- ~63 notification events, none of them carrying new information --
+        # because nothing compared the new fingerprint against what the branch already
+        # proposed. `fetched_at` is excluded from drift comparison
+        # (PROBE_FINGERPRINT_IGNORED_KEYS) but still written into the committed file,
+        # so it is invisible to the detector and load-bearing for the diff.
+        #
+        # So: if the branch already exists and already proposes materially the same
+        # fingerprint, leave it alone. The PR stays open with its original body; only a
+        # genuine upstream change re-pushes.
+        if not branch_needs_update(branch, dry_run=dry_run):
+            print(
+                f"  branch {branch} already proposes this fingerprint "
+                f"(only volatile keys differ); leaving it untouched."
             )
             return
 
