@@ -17,8 +17,9 @@
 ### Changed
 
 - **Version bumped to `0.2.0`, and `pyproject.toml` migrated to PEP 621 `[project]`.** The
-  package shipped to `main` twice at `0.1.0`, so releases were not distinguishable by
-  version. Separately, `name`, `version`, `description`, `authors`, `license`, `readme`,
+  version had been `0.1.0` since 2025-05-04, across 61 merges into `main` — so no release in
+  fifteen months was distinguishable from any other by version. Separately, `name`,
+  `version`, `description`, `authors`, `license`, `readme`,
   `keywords`, `urls`, `plugins`, `extras` and `scripts` all used the deprecated
   `[tool.poetry.*]` spelling — 11 warnings on every `poetry check`. They now live under
   `[project]`, `[project.optional-dependencies]`, `[project.entry-points]`,
