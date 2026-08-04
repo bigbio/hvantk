@@ -69,3 +69,43 @@ def test_valid_combiner_tuning_passes_validate(tmp_path):
         e for e in errors if "interval" in e or "batch" in e or "branch" in e
     ]
     assert combiner_errors == []
+
+
+# --- #208: n_partitions reached no pipeline stage ----------------------------------
+#
+# The field was accepted from the CLI and echoed back in the run plan while being read by
+# nothing, so the run plan affirmatively told the user a setting had taken effect when it
+# had not. These pin the wiring; the end-to-end partition-count assertion lives in
+# test_hgc_core_hail.py, which needs Hail.
+
+
+def test_pipeline_forwards_n_partitions_to_the_converter(tmp_path, monkeypatch):
+    """The regression: PipelineConfig.n_partitions must REACH convert_vds_to_mt."""
+    from hvantk.algorithms.hgc import pipeline as pipeline_mod
+
+    seen = {}
+
+    def _spy(**kwargs):
+        seen.update(kwargs)
+
+    monkeypatch.setattr(pipeline_mod, "convert_vds_to_mt", _spy)
+
+    runner = pipeline_mod.PipelineRunner(_cfg(tmp_path, n_partitions=64))
+    runner.state.outputs["vds"] = str(tmp_path / "cohort.vds")
+    runner._run_vds_to_mt()
+
+    assert seen["n_partitions"] == 64
+
+
+def test_pipeline_passes_none_when_unset(tmp_path, monkeypatch):
+    """Unset must stay None rather than becoming a number, so the VDS layout is kept."""
+    from hvantk.algorithms.hgc import pipeline as pipeline_mod
+
+    seen = {}
+    monkeypatch.setattr(pipeline_mod, "convert_vds_to_mt", lambda **kw: seen.update(kw))
+
+    runner = pipeline_mod.PipelineRunner(_cfg(tmp_path))
+    runner.state.outputs["vds"] = str(tmp_path / "cohort.vds")
+    runner._run_vds_to_mt()
+
+    assert seen["n_partitions"] is None

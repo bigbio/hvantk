@@ -60,6 +60,9 @@ class PipelineConfig:
     # Optional processing configuration
     tmp_dir: Optional[str] = None
     reference_genome: str = "GRCh38"
+    # Target partition count for the VDS -> MatrixTable stage, forwarded to
+    # convert_vds_to_mt and applied at the read (see #207/#208). NOT the combiner's
+    # interval tuning below -- that governs stage 1, this governs stage 2 onward.
     n_partitions: Optional[int] = None
     overwrite: bool = False
     output_prefix: str = "cohort"
@@ -325,7 +328,11 @@ class PipelineRunner:
 
         print("\n🔧 Configuration:")
         print(f"  Reference genome: {self.config.reference_genome}")
-        print(f"  Partitions:       {self.config.n_partitions or 'auto'}")
+        # Reaches convert_vds_to_mt as of #208. Before that this line printed a setting
+        # no stage read -- keep it truthful, and say which stage it governs.
+        print(
+            f"  Partitions (MT):  {self.config.n_partitions or 'auto (VDS layout)'}"
+        )
         print(f"  Overwrite:        {self.config.overwrite}")
         print(
             f"  Combiner options: {self.config.combiner_kwargs() or 'defaults (genome 1.2 Mb intervals)'}"
@@ -518,6 +525,11 @@ class PipelineRunner:
             skip_validation=self.config.skip_validation,
             skip_keying_by_cols=False,
             overwrite=self.config.overwrite,
+            # #208: this is the consumer `n_partitions` never had. It was accepted from
+            # the CLI and echoed back in the run plan while reaching no stage at all, so
+            # the run plan was affirmatively telling the user a setting had taken effect
+            # when it had not.
+            n_partitions=self.config.n_partitions,
         )
 
         self.logger.info(f"   ✓ MatrixTable created: {self.paths['mt']}")

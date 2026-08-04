@@ -42,6 +42,17 @@ def register_convert_commands(group):
     "--overwrite/--no-overwrite", default=False, help="Overwrite output if exists"
 )
 @click.option(
+    "--n-partitions",
+    type=int,
+    default=None,
+    help=(
+        "Coalesce the dense MatrixTable to this many partitions before writing. Reduces "
+        "only. Default keeps the VDS's layout, which is derived from reference blocks and "
+        "saturates as sample count grows, leaving partitions too thin to amortise task "
+        "overhead (see issue #207). Size this from the dense matrix, not the VDS."
+    ),
+)
+@click.option(
     "--dry-run", is_flag=True, help="Show what would be done without executing"
 )
 @click.pass_context
@@ -54,6 +65,7 @@ def vds2mt(
     skip_validation,
     skip_keying_by_cols,
     overwrite,
+    n_partitions,
     dry_run,
 ):
     """
@@ -91,6 +103,7 @@ def vds2mt(
             click.echo(f"   • Adjust genotypes: {adjust_genotypes}")
             click.echo(f"   • Skip split multi: {skip_split_multi}")
             click.echo(f"   • Skip validation: {skip_validation}")
+            click.echo(f"   • Partitions: {n_partitions or 'auto (VDS layout)'}")
             return
 
         # Execute conversion
@@ -103,6 +116,7 @@ def vds2mt(
             skip_validation=skip_validation,
             skip_keying_by_cols=skip_keying_by_cols,
             overwrite=overwrite,
+            n_partitions=n_partitions,
         )
 
         click.echo(f"✅ Successfully converted {input} to MatrixTable at {output}")

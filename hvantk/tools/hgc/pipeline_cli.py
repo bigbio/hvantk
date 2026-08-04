@@ -133,7 +133,13 @@ def register_pipeline_command(group):
     "--n-partitions",
     type=int,
     default=None,
-    help="Number of partitions for parallel processing",
+    help=(
+        "Coalesce the dense MatrixTable to this many partitions in the VDS -> MT stage. "
+        "Reduces only. Default keeps the VDS's own layout, which is reference-block-derived "
+        "and saturates as sample count grows, leaving partitions too thin to amortise task "
+        "overhead (see #207). Size this from the dense matrix. Does not affect the gVCF "
+        "combiner -- use --combiner-* for stage 1."
+    ),
 )
 @click.option(
     "--overwrite", is_flag=True, default=False, help="Overwrite existing output files"
