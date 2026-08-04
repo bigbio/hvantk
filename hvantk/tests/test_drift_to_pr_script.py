@@ -198,9 +198,20 @@ def test_branch_needs_update_is_true_when_the_branch_is_new(drift_to_pr, monkeyp
 # on the git/gh commands actually issued.
 
 
-def _capture_handle_drifted(drift_to_pr, monkeypatch, *, needs_update, pr_exists):
-    """Run handle_drifted with git/gh stubbed, returning the commands it issued."""
+def _capture_handle_drifted(
+    drift_to_pr, monkeypatch, tmp_path, *, needs_update, pr_exists, staged=True
+):
+    """Run handle_drifted with git/gh stubbed.
+
+    Returns (commands issued, cleanup-call count, step-summary text). The cleanup count
+    and summary are captured deliberately: an earlier version of this helper recorded
+    only `_run` and passed step_summary=None, so deleting the
+    `_discard_staged_fingerprints(...)` CALL SITES -- a full revert of the fix they
+    belong to -- left the whole suite green. `_discard_staged_fingerprints` calls
+    `subprocess.run` directly, not `_run`, so it was invisible here.
+    """
     cmds: list[list[str]] = []
+    cleanups: list[bool] = []
 
     def _record(cmd, **kwargs):
         cmds.append(list(cmd))
@@ -211,34 +222,45 @@ def _capture_handle_drifted(drift_to_pr, monkeypatch, *, needs_update, pr_exists
     monkeypatch.setattr(
         drift_to_pr, "pr_exists_for_branch", lambda b, dry_run: "7" if pr_exists else None
     )
-    # `git diff --cached --quiet` -> returncode 1 means "there is something staged",
-    # which is the state after a real regeneration.
     monkeypatch.setattr(
-        subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(a[0] if a else [], 1)
+        drift_to_pr, "_discard_staged_fingerprints", lambda **kw: cleanups.append(True)
+    )
+    # `git diff --cached --quiet` -> returncode 1 means "there is something staged",
+    # which is the state after a real regeneration. 0 means nothing to commit.
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *a, **k: subprocess.CompletedProcess(a[0] if a else [], 1 if staged else 0),
     )
 
+    summary = tmp_path / "summary.md"
     drift_to_pr.handle_drifted(
-        dict(DRIFTED), base_branch="dev", dry_run=False, step_summary=None
+        dict(DRIFTED), base_branch="dev", dry_run=False, step_summary=summary
     )
-    return cmds
+    return cmds, len(cleanups), (summary.read_text() if summary.exists() else "")
 
 
-def test_skip_issues_no_commit_push_or_pr(drift_to_pr, monkeypatch):
+def test_skip_issues_no_commit_push_or_pr(drift_to_pr, monkeypatch, tmp_path):
     """The behaviour the whole PR exists for. Fails if branch_needs_update is neutered
     to `return True`, which is exactly the hole review found."""
-    cmds = _capture_handle_drifted(
-        drift_to_pr, monkeypatch, needs_update=False, pr_exists=True
+    cmds, cleanups, summary = _capture_handle_drifted(
+        drift_to_pr, monkeypatch, tmp_path, needs_update=False, pr_exists=True
     )
     joined = [" ".join(c) for c in cmds]
     assert not any(c.startswith("git commit") for c in joined), joined
     assert not any(c.startswith("git push") for c in joined), joined
     assert not any(c.startswith("gh pr") for c in joined), joined
+    # The staged fingerprint MUST be discarded before returning, or it is committed
+    # onto the next dataset's branch. Deleting this call site was a silent revert.
+    assert cleanups == 1, "skip path must discard the staged fingerprint"
+    # ...and a still-drifting dataset must not vanish from the rendered report.
+    assert "DRIFT (unchanged)" in summary, summary
 
 
-def test_update_still_commits_pushes_and_edits(drift_to_pr, monkeypatch):
+def test_update_still_commits_pushes_and_edits(drift_to_pr, monkeypatch, tmp_path):
     """The complement: when the branch DOES need updating, nothing is suppressed."""
-    cmds = _capture_handle_drifted(
-        drift_to_pr, monkeypatch, needs_update=True, pr_exists=True
+    cmds, _, _ = _capture_handle_drifted(
+        drift_to_pr, monkeypatch, tmp_path, needs_update=True, pr_exists=True
     )
     joined = [" ".join(c) for c in cmds]
     assert any(c.startswith("git commit") for c in joined), joined
@@ -246,12 +268,12 @@ def test_update_still_commits_pushes_and_edits(drift_to_pr, monkeypatch):
     assert any(c.startswith("gh pr edit") for c in joined), joined
 
 
-def test_matching_branch_with_no_open_pr_is_never_skipped(drift_to_pr, monkeypatch):
+def test_matching_branch_with_no_open_pr_is_never_skipped(drift_to_pr, monkeypatch, tmp_path):
     """A branch can outlive its PR -- closing a PR leaves the head branch, and a run
     whose push succeeded while `gh pr create` failed leaves a branch with no PR at all.
     Skipping on branch content alone would suppress that dataset's drift forever."""
-    cmds = _capture_handle_drifted(
-        drift_to_pr, monkeypatch, needs_update=False, pr_exists=False
+    cmds, _, _ = _capture_handle_drifted(
+        drift_to_pr, monkeypatch, tmp_path, needs_update=False, pr_exists=False
     )
     joined = [" ".join(c) for c in cmds]
     assert any(c.startswith("gh pr create") for c in joined), joined
@@ -335,3 +357,12 @@ def test_discard_staged_fingerprints_clears_index_and_worktree(
     assert _git(repo, "diff", "--cached", "--name-only").stdout.strip() == ""
     assert fp.read_text() == original, "working tree must be restored too, or the next "\
         "`git add hvantk/skills` re-stages the leak"
+
+
+def test_nothing_staged_path_also_discards(drift_to_pr, monkeypatch, tmp_path):
+    """The OTHER early return after `git add`. Both must clean up, or whichever is left
+    uncovered reintroduces contamination on its own path."""
+    _, cleanups, _ = _capture_handle_drifted(
+        drift_to_pr, monkeypatch, tmp_path, needs_update=True, pr_exists=True, staged=False
+    )
+    assert cleanups == 1, "the 'nothing to commit' return must discard too"
