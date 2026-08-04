@@ -6,6 +6,8 @@ with Hail's 1.2 Mb genome default and had no way to raise the partition count ab
 core count. These tests pin the wiring so that cannot silently regress.
 """
 
+import re
+
 import pytest
 
 from hvantk.algorithms.hgc.pipeline import PipelineConfig
@@ -109,3 +111,44 @@ def test_pipeline_passes_none_when_unset(tmp_path, monkeypatch):
     runner._run_vds_to_mt()
 
     assert seen["n_partitions"] is None
+
+
+# --- adversarial-review findings on #261 --------------------------------------------
+
+
+def test_invalid_n_partitions_is_rejected_by_validate(tmp_path):
+    """Bad values must be caught by config validation, not deep inside stage 2.
+
+    n_partitions was the only tuning knob with no validate() clause, so `--n-partitions 0`
+    passed the gate, ran the multi-hour gVCF combine, and only then hit the guard inside
+    convert_vds_to_mt. Its three siblings are all checked here for exactly this reason.
+    """
+    for bad in (0, -5):
+        errors = _cfg(tmp_path, n_partitions=bad).validate()
+        assert any("n_partitions" in e for e in errors), (bad, errors)
+
+
+def test_valid_n_partitions_passes_validate(tmp_path):
+    assert [e for e in _cfg(tmp_path, n_partitions=64).validate() if "n_partitions" in e] == []
+    assert [e for e in _cfg(tmp_path).validate() if "n_partitions" in e] == []
+
+
+def test_run_plan_does_not_render_zero_as_auto():
+    """`or` printed 0 -- a value that aborts the run -- as "auto"."""
+    from hvantk.algorithms.hgc.pipeline import _shown_partitions
+
+    assert _shown_partitions(None) == "auto (VDS layout)"
+    assert _shown_partitions(0) == "0"
+    assert _shown_partitions(64) == "64"
+
+
+def test_pipeline_help_names_flags_that_exist():
+    """The --n-partitions help pointed at a `--combiner-*` family that does not exist."""
+    from hvantk.tools.hgc.pipeline_cli import pipeline as pipeline_cmd
+
+    opt = next(p for p in pipeline_cmd.params if "--n-partitions" in getattr(p, "opts", []))
+    declared = {o for p in pipeline_cmd.params for o in getattr(p, "opts", [])}
+    referenced = re.findall(r"--[a-z][a-z0-9-]+", opt.help)
+
+    missing = [f for f in referenced if f not in declared]
+    assert not missing, f"help references flags this command does not define: {missing}"

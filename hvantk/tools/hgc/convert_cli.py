@@ -103,7 +103,11 @@ def vds2mt(
             click.echo(f"   • Adjust genotypes: {adjust_genotypes}")
             click.echo(f"   • Skip split multi: {skip_split_multi}")
             click.echo(f"   • Skip validation: {skip_validation}")
-            click.echo(f"   • Partitions: {n_partitions or 'auto (VDS layout)'}")
+            # `is None`, not `or`: 0 is rejected by convert_vds_to_mt, so rendering
+            # it as "auto" would have the dry run report a clean plan for an invocation
+            # that aborts.
+            shown = "auto (VDS layout)" if n_partitions is None else n_partitions
+            click.echo(f"   • Partitions: {shown}")
             return
 
         # Execute conversion

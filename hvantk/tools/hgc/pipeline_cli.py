@@ -138,7 +138,8 @@ def register_pipeline_command(group):
         "Reduces only. Default keeps the VDS's own layout, which is reference-block-derived "
         "and saturates as sample count grows, leaving partitions too thin to amortise task "
         "overhead (see #207). Size this from the dense matrix. Does not affect the gVCF "
-        "combiner -- use --combiner-* for stage 1."
+        "combiner -- use --import-interval-size / --gvcf-batch-size / --branch-factor / "
+        "--use-exome-default-intervals for stage 1."
     ),
 )
 @click.option(
