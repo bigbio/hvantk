@@ -152,3 +152,46 @@ def test_pipeline_help_names_flags_that_exist():
 
     missing = [f for f in referenced if f not in declared]
     assert not missing, f"help references flags this command does not define: {missing}"
+
+
+def test_vds2mt_dry_run_shows_zero_rather_than_auto(tmp_path):
+    """The CALL SITE, not just the helper.
+
+    Round-2 review: the helper test alone left both call sites unprotected -- reverting
+    convert_cli.py to `n_partitions or 'auto (VDS layout)'` kept the suite green. This is
+    the live half: `vds2mt` has no config.validate() gate, so 0 reaches the dry-run
+    printer and the user is told a plan is fine for an invocation that aborts.
+    """
+    from unittest.mock import patch
+    from click.testing import CliRunner
+
+    from hvantk.tools.hgc.convert_cli import vds2mt
+
+    with patch("hvantk.tools.hgc.convert_cli.validate_input_files", return_value=(True, [])), \
+         patch("hvantk.tools.hgc.convert_cli.validate_output_path", return_value=True):
+        result = CliRunner().invoke(
+            vds2mt,
+            ["-i", str(tmp_path / "in.vds"), "-o", str(tmp_path / "out.mt"),
+             "--n-partitions", "0", "--dry-run"],
+        )
+
+    assert result.exit_code == 0, result.output
+    assert "Partitions: 0" in result.output, result.output
+    assert "auto" not in result.output, result.output
+
+
+def test_run_plan_call_site_shows_zero_rather_than_auto(tmp_path):
+    """The other call site: PipelineRunner.show_plan."""
+    from hvantk.algorithms.hgc.pipeline import PipelineRunner
+
+    import io
+    import contextlib
+
+    runner = PipelineRunner(_cfg(tmp_path, n_partitions=0))
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        runner.show_plan()
+    out = buf.getvalue()
+
+    assert "Partitions (MT):  0" in out, out
+    assert "auto" not in out, out
