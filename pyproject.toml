@@ -1,9 +1,9 @@
 # PEP 621 metadata. Migrated off the `[tool.poetry.*]` spelling 2026-08-04, which poetry 2.x
-# reported as 13 deprecation warnings on every `poetry check`. The migration had to come
+# reported as 11 deprecation warnings on every `poetry check`. The migration had to come
 # first: the `poetry>=2.0,<3.0` pin in the lockfile CI job was defensive against a future
 # major promoting those warnings to errors, and that pin can only be relaxed once nothing
-# deprecated is left. Poetry-specific keys (packages/include/exclude, dependency groups)
-# stay under [tool.poetry] -- they have no PEP 621 equivalent and are not deprecated.
+# deprecated is left. Poetry-specific keys (include/exclude, dependency groups) stay under
+# [tool.poetry] -- they have no PEP 621 equivalent and are not deprecated.
 [project]
 name = "hvantk"
 version = "0.2.0"
