@@ -32,12 +32,14 @@ opt-in via Poetry extras. Install only what a given workflow needs:
 | `interactive` | Interactive plots / dashboards | plotly |
 | `duckdb` | DuckDB-backed queries | duckdb |
 | `hgc` | Joint genotyping plots (genotype adjustment needs no extra) | matplotlib, seaborn |
-| `psroc` | Pathogenicity Score ROC analysis | matplotlib, plotly, scikit-learn |
-| `ptm` | CPTAC proteomics builders | cptac |
-| `constraint` | Tissue-specificity / constraint metrics | tspex, matplotlib, seaborn |
-| `ancestry` | Ancestry inference (PCA + Random Forest + plots) | scikit-learn, matplotlib, seaborn |
-| `ml` | scikit-learn-backed features only | scikit-learn |
-| `expression` | `hvantk expression summarize` / `markers`, and `ptm constraint --expression-metric mean` | scanpy |
+| `psroc` | Pathogenicity Score ROC analysis | matplotlib, plotly, scikit-learn, scipy |
+| `ptm` | CPTAC proteomics builders | cptac, sorted-nearest |
+| `constraint` | Tissue-specificity / constraint metrics | tspex, matplotlib, seaborn, scipy |
+| `enrichex` | `hvantk enrichex overlap` / `burden` and their plots | scipy, matplotlib, seaborn |
+| `cohort` | `hvantk cohort burden` (Fisher gene burden) | scipy |
+| `ancestry` | Ancestry inference (PCA + Random Forest + plots) | scikit-learn, matplotlib, seaborn, scipy |
+| `ml` | scikit-learn-backed features only | scikit-learn, scipy |
+| `expression` | `hvantk expression summarize` / `markers`, and `ptm constraint --expression-metric mean` | scanpy, scipy |
 
 ```bash
 # One or more extras at once

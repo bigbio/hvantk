@@ -35,14 +35,16 @@ poetry install --extras "viz hgc"      # or: poetry install --all-extras
 |---|---|---|
 | `viz` | matplotlib, seaborn, plotly | plots and HTML reports |
 | `interactive` | plotly | interactive QC dashboards |
-| `ml` | scikit-learn | ML-backed analyses |
-| `ancestry` | scikit-learn, matplotlib, seaborn | `hvantk ancestry-inference` |
-| `psroc` | scikit-learn, matplotlib, plotly | `hvantk psroc` |
+| `ml` | scikit-learn, scipy | ML-backed analyses |
+| `ancestry` | scikit-learn, matplotlib, seaborn, scipy | `hvantk ancestry-inference` |
+| `psroc` | scikit-learn, matplotlib, plotly, scipy | `hvantk psroc` |
 | `hgc` | matplotlib, seaborn | `hvantk hgc` QC plots/reports |
-| `ptm` | cptac | CPTAC PTM downloads |
-| `constraint` | tspex, matplotlib, seaborn | `hvantk ptm constraint` |
+| `ptm` | cptac, sorted-nearest | CPTAC PTM downloads |
+| `constraint` | tspex, matplotlib, seaborn, scipy | `hvantk ptm constraint` |
+| `enrichex` | scipy, matplotlib, seaborn | `hvantk enrichex overlap` / `burden` |
+| `cohort` | scipy | `hvantk cohort burden` |
 | `duckdb` | duckdb | DuckDB-backed catalog queries |
-| `expression` | scanpy | `hvantk expression summarize` and `markers` |
+| `expression` | scanpy, scipy | `hvantk expression summarize` and `markers` |
 
 Three command paths need this extra:
 

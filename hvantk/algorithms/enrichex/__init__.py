@@ -79,15 +79,6 @@ from hvantk.core.utils.gene_sets import (
     load_gene_sets_from_dict,
     load_marker_genes,
 )
-from hvantk.algorithms.visualization.base import encode_figure_to_base64
-from hvantk.algorithms.enrichex.plot import (
-    plot_burden_forest,
-    plot_burden_volcano,
-    plot_celltype_burden_heatmap,
-    plot_celltype_forest,
-    plot_enrichment_barplot,
-    plot_enrichment_dotplot,
-)
 from hvantk.algorithms.enrichex.overlap import (
     OverlapResult,
     compute_overlap_enrichment,
@@ -98,8 +89,65 @@ from hvantk.algorithms.enrichex.pipeline import (
     BurdenPipeline,
     BurdenRunResult,
 )
-from hvantk.algorithms.enrichex.report import generate_report
 from hvantk.algorithms.enrichex.simulation import check_type_i_error
+
+# Plotting and reporting are resolved on ATTRIBUTE ACCESS, not at package import (PEP 562).
+#
+# They used to be plain `from ... import` lines here, and that broke `hvantk` outright: the
+# CLI imports hvantk.algorithms.enrichex.constants, which runs this module, which pulled in
+# enrichex.plot / enrichex.report / visualization.base -- all three import matplotlib at
+# module scope. matplotlib is optional, so on a base install `pip install hvantk` produced a
+# console script where even `hvantk --help` raised ModuleNotFoundError. Every command paid
+# for plotting whether or not it plotted.
+#
+# The names below stay importable and stay in __all__, so this is not an API change; the
+# import simply happens on first use. The CLI never trips it -- overlap_cli and burden_cli
+# already import `generate_report` inside the functions that need it -- so a base install
+# now runs, and the `enrichex` extra (which carries matplotlib) is what a plotting caller
+# installs.
+_LAZY = {
+    "encode_figure_to_base64": "hvantk.algorithms.visualization.base",
+    "generate_report": "hvantk.algorithms.enrichex.report",
+    "plot_burden_forest": "hvantk.algorithms.enrichex.plot",
+    "plot_burden_volcano": "hvantk.algorithms.enrichex.plot",
+    "plot_celltype_burden_heatmap": "hvantk.algorithms.enrichex.plot",
+    "plot_celltype_forest": "hvantk.algorithms.enrichex.plot",
+    "plot_enrichment_barplot": "hvantk.algorithms.enrichex.plot",
+    "plot_enrichment_dotplot": "hvantk.algorithms.enrichex.plot",
+}
+
+
+_PLOTTING_HINT = (
+    "matplotlib is required for EnrichEx plotting and reporting, and is not part of the "
+    "base install. Install the 'enrichex' extra:\n"
+    "    pip install 'hvantk[enrichex]'\n"
+    "    poetry install --extras enrichex"
+)
+
+
+def __getattr__(name: str):
+    """Resolve the plotting/reporting exports on first access."""
+    module = _LAZY.get(name)
+    if module is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    import importlib
+
+    try:
+        value = getattr(importlib.import_module(module), name)
+    except ModuleNotFoundError as exc:  # pragma: no cover - needs matplotlib absent
+        # Same contract as require_scanpy (algorithms/expression/matrix_utils.py) and
+        # _require_matplotlib (algorithms/qtlcascade/plot.py): name the extra rather than
+        # leave the caller a bare ModuleNotFoundError. Deferring the import must not also
+        # degrade the message -- that was the review finding on the scanpy extra in #248.
+        if exc.name and exc.name.split(".")[0] in {"matplotlib", "seaborn"}:
+            raise ImportError(_PLOTTING_HINT) from exc
+        raise
+    globals()[name] = value  # cache, so the import cost is paid once
+    return value
+
+
+def __dir__():
+    return sorted(set(globals()) | set(_LAZY))
 
 try:
     from hvantk.algorithms.enrichex.simulation import generate_synthetic_burden_cohort

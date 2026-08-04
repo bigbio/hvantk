@@ -62,6 +62,32 @@ unusually native-lib-heavy — Hail's JVM/Spark, `pysam` (htslib), `pyarrow` (Ar
 C++), `h5py` (HDF5), `scipy`/`scikit-learn` (BLAS/LAPACK), `duckdb` — so the
 container payoff is large.
 
+### 1.1 Keeping the cluster's clone current
+
+The cluster has its own bare repo, and the working repo pushes to it via a **second
+remote** called `hpc`. Local branches track `origin` (GitHub), so a bare `git push`
+**does not** update the cluster:
+
+| Remote | URL | Role |
+|---|---|---|
+| `origin` | `git@github.com:bigbio/hvantk.git` | GitHub; PRs and CI |
+| `hpc` | `hpc:/user/<user>/git/pyvatk.git` | bare repo on the cluster; the node-side clone pulls from here |
+
+After anything lands on `main` or `dev`:
+
+```bash
+# confirm it is a fast-forward, so no cluster-side commits are clobbered
+git fetch hpc
+git merge-base --is-ancestor hpc/dev origin/dev && echo "fast-forward, safe"
+
+git push hpc main dev
+```
+
+**This matters more than ordinary repo hygiene**, because the `.sif` is built from
+`poetry.lock` (§3.2). A stale cluster clone rebuilds the *previous* dependency set
+without any error — the build succeeds, it is just the wrong environment. Rebuild the
+image whenever `poetry.lock` changes, not only when `hvantk/` does.
+
 ---
 
 ## 2. Cluster facts to confirm on first login
@@ -121,12 +147,13 @@ From: python:3.10-slim-bookworm
         zlib1g-dev libbz2-dev liblzma-dev libcurl4-openssl-dev libdeflate-dev \
         libopenblas-dev liblapack-dev liblz4-dev libhdf5-dev git
     # --- hvantk via Poetry, from the committed lock (reproducible) ---
-    pip install --no-cache-dir "poetry==1.8.*"
+    # >=2.0: pyproject.toml uses PEP 621 [project] metadata, which poetry 1.8 cannot read.
+    pip install --no-cache-dir "poetry>=2.0"
     cd /opt/hvantk
     poetry config virtualenvs.create false
     # install the locked deps + the extras you actually run (trim as needed):
     poetry install --no-interaction --no-root \
-        --extras "hgc ptm qtl ancestry psroc constraint viz duckdb"
+        --extras "hgc ptm ancestry psroc constraint enrichex cohort viz duckdb"
     poetry install --no-interaction --only-root
     # experiment-only extras NOT in pyproject (e.g. PTM functionality pilot):
     pip install --no-cache-dir pyBigWig
@@ -150,9 +177,12 @@ From: python:3.10-slim-bookworm
     hail 0.2.137
 ```
 
-> Trim `--extras` to what you run. The core install omits scikit-learn / viz /
+> Trim `--extras` to what you run. The core install omits scikit-learn / scipy / viz /
 > cptac / tspex / duckdb / scanpy — they live behind extras (`hgc`, `ptm`,
-> `ancestry`, `psroc`, `constraint`, `ml`, `viz`, `duckdb`, `expression`).
+> `ancestry`, `psroc`, `constraint`, `enrichex`, `cohort`, `ml`, `viz`, `duckdb`,
+> `interactive`, `expression`). The authoritative list is
+> `[project.optional-dependencies]` in `pyproject.toml`; this one is prose and is not
+> machine-checked.
 > `pyBigWig` is **not** a hvantk dependency — include it only for experiments that
 > query bigWig tracks. Genotype adjustment needs **no** extra: `annotate_adj` is
 > ported in-tree, so `gnomad` is no longer a dependency at all.
@@ -432,6 +462,6 @@ launching at scale.
   localhost.
 - **Stray system/conda Python** below the 3.10 floor → use the container's Python;
   never run hvantk against an unmanaged interpreter.
-- **Core install ≠ full toolkit** — install the right **extras** (`hgc ptm qtl
-  ancestry psroc constraint viz duckdb`) in the image.
+- **Core install ≠ full toolkit** — install the right **extras** (`hgc ptm
+  ancestry psroc constraint enrichex cohort viz duckdb`) in the image.
 - **Scratch is purged** — copy results to project/home before the window.

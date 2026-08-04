@@ -3,11 +3,19 @@
 
 name: Python package
 
+# `dev` is included deliberately. With main-only triggers the 3.10/3.11/3.12 matrix ran for
+# the first time at the release gate, so a version incompatibility introduced on a dev PR was
+# discovered with a whole release to bisect instead of a single commit. The cost is three jobs
+# per dev PR; the alternative is finding out later, on a bigger diff.
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "dev"]
   pull_request:
-    branches: ["main"]
+    branches: ["main", "dev"]
+
+# lint + test only; no write scopes needed
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -20,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies

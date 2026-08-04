@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 — 2026-08-04
+
+First tagged release. Everything below had accumulated under `Unreleased` since `0.1.0`,
+which sat on `main` unchanged from 2025-05-04 across 61 merges.
 
 ### Added
 
@@ -16,6 +19,25 @@
 
 ### Changed
 
+- **Version bumped to `0.2.0`, and `pyproject.toml` migrated to PEP 621 `[project]`.** The
+  version had been `0.1.0` since 2025-05-04, across 61 merges into `main` — so no release in
+  fifteen months was distinguishable from any other by version. Separately, `name`,
+  `version`, `description`, `authors`, `license`, `readme`,
+  `keywords`, `urls`, `plugins`, `extras` and `scripts` all used the deprecated
+  `[tool.poetry.*]` spelling — 11 warnings on every `poetry check`. They now live under
+  `[project]`, `[project.optional-dependencies]`, `[project.entry-points]`,
+  `[project.scripts]` and `[project.urls]`; only genuinely Poetry-specific keys
+  (`include`/`exclude`, dependency groups) remain under `[tool.poetry]`.
+  **The migration is resolution-neutral**: the lock resolves to the same 187 packages,
+  name-for-name and version-for-version, before and after. Poetry's caret shorthand is
+  spelled out as the PEP 508 equivalent it always meant (`^8.1.3` → `>=8.1.3,<9.0.0`), not
+  re-pinned. With nothing deprecated left, the defensive `poetry>=2.0,<3.0` pin in the
+  `poetry.lock in sync` CI job is unpinned again.
+  One consequence is new: PEP 621 puts the full specifier in each extra, so `scipy>=1.8`
+  is written six times and `scikit-learn>=1.4,<2.0` three times, and one could be re-pinned
+  with the others left behind — resolving differently depending on which extra a user
+  installs. `test_pyproject_extras.py` now asserts every extra spells a shared package
+  identically, alongside a check that no extra re-declares a base dependency.
 - **`gnomad` is no longer a dependency.** hvantk used exactly one function from it,
   `annotate_adj`, which is ~15 lines of Hail expression with no gnomAD data behind it.
   It is now ported into `hvantk/algorithms/hgc/adj.py` (gnomad_methods is MIT; the port
@@ -52,6 +74,65 @@
 - `scikit-learn` floor raised to `>=1.4` (NaN-tolerant tree estimators, needed by rerank's
   optional RFECV wrapper). `scipy` is now declared explicitly, as an optional dependency in
   the `ml` / `ancestry` / `psroc` extras.
+- **Every command that imports `scipy` at module scope now has an extra that installs it.**
+  Three modules do, and they sit on three *different* commands — a mapping the previous
+  known-gaps note got wrong:
+  `algorithms/ptm/constraint.py` → `hvantk ptm constraint` (`constraint` extra);
+  `algorithms/enrichex/overlap.py` → `hvantk enrichex overlap` (new `enrichex` extra);
+  `algorithms/burden/fet.py` → `hvantk cohort burden` (new `cohort` extra).
+  `fet.py` is *not* reached by `hvantk enrichex burden`: its only importer is
+  `algorithms/burden/pipeline.py`, imported by `tools/cohort/cohort_cli.py` alone.
+  Previously `constraint` omitted `scipy`, so `pip install hvantk[constraint]` yielded a
+  documented extra whose own command still raised `ModuleNotFoundError`, and neither
+  `hvantk enrichex overlap` nor `hvantk cohort burden` had any extra to install.
+  `enrichex` also carries matplotlib/seaborn, because `enrichex/__init__` imports
+  `plot.py`/`report.py` unconditionally and a scipy-only extra would break on import.
+  `scipy` was added to `expression` too — a resolution no-op, since scanpy already depends
+  on it, but `visualization/expression/anndata.py` imports `scipy.sparse` directly and this
+  project declares what it imports rather than inheriting it from a transitive edge that can
+  move. A base install still raises a bare `ModuleNotFoundError` rather than a message
+  naming the extra; a `require_scipy()` guard (cf. `require_scanpy`) would fix the *text*,
+  and is tracked separately because it changes no extra's contents.
+- **`hvantk` was unusable from a `pip install`.** The console script imported
+  `hvantk.tools.enrichex` at module scope, which ran `algorithms/enrichex/__init__.py`,
+  which eagerly imported `enrichex/plot.py`, `enrichex/report.py` and
+  `visualization/base.py` — all three import `matplotlib` at module scope. matplotlib is
+  optional, so on a base install **every** command including `hvantk --help` raised
+  `ModuleNotFoundError`. Those three imports are now resolved on attribute access (PEP 562
+  `__getattr__`), so the package imports without matplotlib and the CLI runs. The eight
+  plotting/reporting names stay in `__all__` and stay importable; touching one without
+  matplotlib now raises an `ImportError` naming the `enrichex` extra, matching
+  `require_scanpy` and `_require_matplotlib`. No plotting behaviour changed — the enrichex
+  CLIs already imported `generate_report` inside the functions that use it.
+- **The wheel shipped 43.3 MB of test data.** `hvantk/tests/**` was absent from `exclude`
+  (190 files, including a 14.7 MB VDS zip and an 11.4 MB expression-atlas fixture); the
+  skills excludes were overridden by `include = "hvantk/skills/**/*.py"`, since a path named
+  by `include` wins; and the excludes named `tests/data/**` where the skills actually use
+  `tests/testdata/**`. Fixed all three: the wheel goes from **46.2 MB to 2.86 MB**
+  uncompressed (28 MB to 897 KB on disk) with every manifest, skills module, catalog and
+  drift fingerprint intact.
+- **CI now installs the package.** New `packaging-smoke` job builds the wheel, checks its
+  contents with `.github/scripts/check_wheel.py`, installs it into a clean environment with
+  no extras, and runs `hvantk --help` / `hvantk plugins list` from a directory where the
+  checkout is not importable — so the console script, the entry-point registrations and the
+  packaging globs are exercised against the installed copy. It also asserts the provider
+  count matches the tree, since a dropped manifest would otherwise still exit 0. Both bugs
+  above were found by writing this job.
+- **`hvantk/tests/hgc/` now runs in CI** as a new `hgc-hail` job — separate from
+  `Plugin contract (hail)` rather than appended to it, so the contract signal is not delayed
+  behind ~6 min of unrelated HGC work. This is the first automatic run of
+  `test_convert_vds_to_mt`, the end-to-end exercise of the `adj` code ported in #252.
+- **The Python version matrix now runs on `dev` PRs**, not only `main`, so an incompatibility
+  is caught on one commit instead of at the release gate with a whole release to bisect.
+  `actions/setup-python` moved v3 → v5 and both workflows now declare
+  `permissions: contents: read` (both raised in review on #249).
+- The extras table is now guarded by a test. It is duplicated in three places — the
+  `[tool.poetry.extras]` block, `README.md` and `docs_site/getting-started/installation.md`
+  — and only the first is executable, so the prose copies had drifted eight cells
+  (`psroc`/`ancestry`/`ml` missing `scipy`, `ptm` missing `sorted-nearest`) across two
+  releases. `hvantk/tests/test_pyproject_extras.py` now parses both markdown tables and
+  fails if either disagrees with `pyproject.toml`, and also fails if an extra names a
+  package that is not declared `optional = true`. Non-Hail, so it runs in the default suite.
 - `scanpy` moved out of the base install into a new `expression` extra. It is required by
   `hvantk expression summarize`, `hvantk expression markers`, and `hvantk ptm constraint
   --expression-metric mean`; those now fail with an actionable message naming the extra
@@ -83,24 +164,8 @@
   `cptac:expression`, and `cptac:phospho`. The first hail-enabled CI run with
   `--regenerate-snapshots` will bootstrap them. All `ucsc-cellbrowser` variants
   (`default`, `adult-ctx`, `dev-ctx`) already have populated snapshot dirs.
-- `scipy` is imported at module scope by `algorithms/burden/fet.py`,
-  `algorithms/enrichex/overlap.py` and `algorithms/ptm/constraint.py`, none of which sit
-  behind an extra that pulls it in, so `hvantk enrichex burden|overlap` and
-  `hvantk ptm constraint` raise `ModuleNotFoundError` on a base install. Pre-existing:
-  scipy was previously not declared at all.
-- The package version has never been bumped from `0.1.0`, so releases to `main` are not
-  distinguishable by version.
-- No CI job installs the package (`pip install .` / `poetry install`), so `pytest` imports
-  `hvantk` from the checkout directory. Packaging — the `include`/`exclude` globs, the
-  console-script entry point, and the `[tool.poetry.plugins."hvantk.providers"]`
-  entry-point registrations — is therefore never exercised in CI, and the plugin loader's
-  entry-point discovery path is only ever tested via its filesystem fallback. (The lock
-  itself *is* now validated on every push — see the `poetry.lock in sync` job.)
-- The `build` and `build (3.10/3.11/3.12)` jobs run only on pull requests targeting
-  `main`, so a Python-version incompatibility introduced on a `dev` PR is not caught until
-  the release gate, with the whole release to bisect rather than one commit.
-- No CI job runs `hvantk/tests/hgc/`. `hail`-marked tests are deselected by `pytest.ini`'s
-  `addopts`, and the one hail-enabled job (`Plugin contract (hail)`) is path-scoped to the
-  plugin-contract tests. So the HGC integration suite — including `test_convert_vds_to_mt`,
-  which is the end-to-end exercise of `adj` — runs only when someone invokes `pytest -m hail`
-  locally. Unskipping that test made it *runnable*, not *automatically run*.
+- (Resolved: version bumped to 0.2.0 — see Changed.) Releases are still not git-tagged, so
+  a release is identifiable by version but not by a tag.
+  (The three CI gaps previously listed here — no install job, the version matrix running
+  only on `main`, and `hvantk/tests/hgc/` running in no job — are resolved; see the
+  packaging and CI entries under Changed.)

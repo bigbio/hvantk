@@ -83,7 +83,7 @@ def test_loading_same_directory_twice_is_idempotent():
 
     The skills-root scan and the entry-point scan can both surface the same
     in-tree plugin once it is listed in pyproject.toml's
-    `[tool.poetry.plugins."hvantk.providers"]` table. The loader must dedupe
+    `[project.entry-points."hvantk.providers"]` table. The loader must dedupe
     so this discovery overlap does not crash every CLI invocation.
     """
     reg = PluginRegistry()
