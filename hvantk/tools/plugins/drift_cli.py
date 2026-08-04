@@ -52,7 +52,11 @@ def drift_cmd(dataset, all_flag, domain, as_json, regenerate, timeout):
         click.echo(f"unknown dataset: {dataset}", err=True)
         raise SystemExit(EXIT_REGISTRY_ERROR)
 
-    results = [drift_runner.run_drift_check(spec.name, timeout=timeout) for spec in targets]
+    # run_drift_checks, not a comprehension over run_drift_check: datasets sharing a
+    # baseline AND a probe callable share one drift signal, so it is probed once and
+    # fanned out. Every dataset still gets its own entry; they just agree, and the CI
+    # bot collapses them into one PR via the shared fingerprint_path.
+    results = drift_runner.run_drift_checks(targets, timeout=timeout)
 
     if as_json:
         click.echo(json.dumps([_serialize(r) for r in results], indent=2, default=str))

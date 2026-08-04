@@ -6,9 +6,9 @@ from __future__ import annotations
 
 import json
 import signal
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 from .api import (
     DatasetSpec,
@@ -27,6 +27,10 @@ class DriftResult:
     expected: dict[str, Any] | None = None
     diff: dict[str, Any] | None = None
     probe_error: BaseException | None = None
+    #: The committed baseline this result was diffed against. Datasets that share one
+    #: share a drift signal, which is what lets the CI bot collapse them into a single
+    #: PR instead of one per dataset. See `run_drift_checks`.
+    fingerprint_path: str | None = None
 
 
 def run_drift_check(dataset_name: str, *, timeout: int = 60) -> DriftResult:
@@ -36,6 +40,45 @@ def run_drift_check(dataset_name: str, *, timeout: int = 60) -> DriftResult:
     reg = plugin_loader.get_registry()
     spec = reg.get_dataset(dataset_name)
     return _run_drift_check_with_spec(spec, timeout=timeout)
+
+
+def run_drift_checks(
+    specs: "Iterable[DatasetSpec]", *, timeout: int = 60
+) -> list[DriftResult]:
+    """Drift-check many datasets, probing once per distinct drift signal.
+
+    Datasets that declare the SAME ``drift_fingerprint`` baseline and resolve to the
+    SAME probe callable do not have separate drift signals -- they have one, reported
+    several times. `ucsc-cellbrowser` is the worked example: `default`, `adult-ctx` and
+    `dev-ctx` are distinct *schema* variants (their obs cell-type column is `celltype`,
+    `Class` and `Type_v2` respectively, which is why each earns its own snapshot), but
+    `fetch_fingerprint()` takes no arguments and fingerprints the provider-wide catalog
+    at cells.ucsc.edu/dataset.json. One upstream event therefore produced three
+    identical drift reports, three branches writing the same file, and three mutually
+    conflicting PRs -- merging any one made the other two conflict.
+
+    Grouping is keyed on ``(fingerprint path, probe callable)`` rather than the path
+    alone. Two datasets sharing a baseline but resolving to DIFFERENT probes is a
+    manifest error (the two would overwrite each other's baseline), and this key makes
+    the runtime conservative about it: they simply do not group, and each is probed and
+    reported on its own. `hvantk plugins validate` reports the misconfiguration.
+
+    Every dataset still gets its own entry in the returned list, so the report shape is
+    unchanged; members of a group share ``fingerprint_path``, which is what lets the CI
+    bot open one PR per signal instead of one per dataset.
+    """
+    cache: dict[tuple[str, int], DriftResult] = {}
+    results: list[DriftResult] = []
+    for spec in specs:
+        key = (str(spec.test_paths.drift_fingerprint), id(spec.drift_probe))
+        cached = cache.get(key)
+        if cached is None:
+            cached = _run_drift_check_with_spec(spec, timeout=timeout)
+            cache[key] = cached
+        # `replace` rather than reuse: the shared result carries the FIRST member's
+        # dataset_name, and every caller keys off that field.
+        results.append(replace(cached, dataset_name=spec.name))
+    return results
 
 
 def _probe_failed(spec: DatasetSpec, exc: DriftProbeError) -> DriftResult:
@@ -53,13 +96,22 @@ def _probe_failed(spec: DatasetSpec, exc: DriftProbeError) -> DriftResult:
             f"{exc}; additionally, expected fingerprint is missing at {fp_path}"
         )
     return DriftResult(
-        dataset_name=spec.name, status="probe_failed", probe_error=exc
+        dataset_name=spec.name,
+        status="probe_failed",
+        probe_error=exc,
+        fingerprint_path=str(fp_path),
     )
 
 
 def _run_drift_check_with_spec(
     spec: DatasetSpec, *, timeout: int = 60
 ) -> DriftResult:
+    # Resolved up front because every return below reports it, including the stub
+    # branch, which returns before the baseline is read. Reading the PATH is not
+    # reading the FILE, so this does not disturb the probe-before-baseline ordering
+    # described below.
+    fp_path = Path(spec.test_paths.drift_fingerprint)
+
     # Invoke the probe before loading the baseline so an intentional stub
     # (documentation-only source with no probeable URL) is reported as
     # status="stub" — these plugins ship no committed baseline, so a
@@ -78,9 +130,9 @@ def _run_drift_check_with_spec(
             dataset_name=spec.name,
             status="stub",
             observed=observed,
+            fingerprint_path=str(fp_path),
         )
 
-    fp_path = Path(spec.test_paths.drift_fingerprint)
     try:
         expected = json.loads(fp_path.read_text())
     except FileNotFoundError:
@@ -91,6 +143,7 @@ def _run_drift_check_with_spec(
             probe_error=DriftProbeError(
                 f"missing expected fingerprint at {fp_path}"
             ),
+            fingerprint_path=str(fp_path),
         )
 
     # A hand-seeded baseline cannot equal a live observation, so diffing it would
@@ -107,6 +160,7 @@ def _run_drift_check_with_spec(
                 f"committed baseline at {fp_path} was never captured from a live "
                 f"probe ({seeded}); run `hvantk drift --regenerate {spec.name}`"
             ),
+            fingerprint_path=str(fp_path),
         )
 
     diff = _compare_fingerprints(expected, observed)
@@ -116,6 +170,7 @@ def _run_drift_check_with_spec(
             status="clean",
             observed=observed,
             expected=expected,
+            fingerprint_path=str(fp_path),
         )
     return DriftResult(
         dataset_name=spec.name,
@@ -123,6 +178,7 @@ def _run_drift_check_with_spec(
         observed=observed,
         expected=expected,
         diff=diff,
+        fingerprint_path=str(fp_path),
     )
 
 

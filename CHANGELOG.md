@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+### Changed
+
+- **Datasets that share a `drift_fingerprint` baseline are now treated as sharing one
+  drift signal**, rather than as N independent ones. `hvantk drift` probes such a group
+  once and fans the result out — every dataset still gets its own report entry, and each
+  now carries `fingerprint_path` — and the drift workflow opens a single PR per signal.
+  `ucsc-cellbrowser` is the case that forced it: `default`, `adult-ctx` and `dev-ctx` are
+  genuinely distinct *schema* variants (their obs cell-type column is `celltype`, `Class`
+  and `Type_v2`, which is why each earns its own snapshot), but `fetch_fingerprint()`
+  takes no arguments and fingerprints the provider-wide catalog at
+  `cells.ucsc.edu/dataset.json`. One upstream event therefore produced three identical
+  PRs whose branches all wrote the same file, so merging any one made the other two
+  conflict — #241 merged, #242 and #243 were closed as superseded. Grouping is keyed on
+  *(baseline path, probe callable)*, not the path alone: two datasets sharing a baseline
+  while declaring different probes would each overwrite the other's, so they deliberately
+  do not group, and `hvantk plugins validate` now rejects that declaration outright. A
+  lone dataset keeps its historical `drift/<provider>-<dataset>` branch name exactly, so
+  existing open PRs are still matched; a group uses `drift/<provider>`.
+
 ### Fixed
 
 - **Every open drift PR was force-pushed and its body re-edited once a day, forever.**

@@ -146,4 +146,31 @@ def validate_cmd(manifest_path: str, strict_artifacts: bool):
             err=True,
         )
 
+    # Datasets may deliberately SHARE a drift_fingerprint -- that is how a manifest says
+    # "these have one drift signal, not N", and the drift runner groups on it so one
+    # upstream event yields one PR rather than one per dataset. Sharing is only coherent
+    # when the probe is also shared: two datasets pointing different probes at one
+    # baseline would each overwrite the other's, and whichever regenerated last would
+    # define "clean" for both. That is a manifest error, so name it.
+    by_fingerprint: dict[str, list[tuple[str, tuple[str, str]]]] = {}
+    for dataset in content.get("datasets", []):
+        rel = (dataset.get("tests") or {}).get("drift_fingerprint")
+        probe = dataset.get("drift_probe") or {}
+        if not rel:
+            continue
+        by_fingerprint.setdefault(rel, []).append(
+            (dataset.get("name", "?"), (probe.get("module", ""), probe.get("function", "")))
+        )
+    conflicts = [
+        f"{rel} is shared by "
+        + ", ".join(f"{name} -> {mod}:{fn}" for name, (mod, fn) in members)
+        for rel, members in sorted(by_fingerprint.items())
+        if len({probe for _, probe in members}) > 1
+    ]
+    if conflicts:
+        raise click.ClickException(
+            "datasets share a drift_fingerprint but declare different drift probes; "
+            "they would overwrite each other's baseline:\n  - " + "\n  - ".join(conflicts)
+        )
+
     click.echo(f"ok: {manifest_path}")
