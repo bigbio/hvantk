@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 — 2026-08-04
+
+First tagged release. Everything below had accumulated under `Unreleased` since `0.1.0`,
+which sat on `main` unchanged from 2025-05-04 across 61 merges.
 
 ### Added
 
