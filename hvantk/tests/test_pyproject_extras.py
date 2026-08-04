@@ -5,7 +5,8 @@ pulled by an extras install, breaking `import cptac`. The ptm extra must declare
 `sorted-nearest` explicitly.
 
 The docs half exists because the extras table is duplicated in THREE places -- the
-`[tool.poetry.extras]` block, README.md, and docs_site/getting-started/installation.md --
+`[project.optional-dependencies]` table, README.md, and
+docs_site/getting-started/installation.md --
 and only the first is executable. Three separate hand-fixes to the two prose copies were
 needed in as many sessions, two of them caught only by adversarial review, and a fourth
 drift (psroc/ancestry/ml missing scipy, ptm missing sorted-nearest -- eight wrong cells)
@@ -38,8 +39,20 @@ def _load_pyproject() -> dict:
     return toml.loads((ROOT / "pyproject.toml").read_text())
 
 
+def _optional_dependencies() -> dict[str, list[str]]:
+    """Extras as PEP 621 declares them: name -> list of full requirement specifiers."""
+    return _load_pyproject()["project"]["optional-dependencies"]
+
+
+def _requirement_name(spec: str) -> str:
+    """`scikit-learn>=1.4,<2.0` -> `scikit-learn`. Bare names pass through unchanged."""
+    return re.split(r"[<>=!~;@\[\s]", spec, maxsplit=1)[0].strip()
+
+
 def _declared_extras() -> dict[str, set[str]]:
-    return {k: set(v) for k, v in _load_pyproject()["tool"]["poetry"]["extras"].items()}
+    """Extras as bare package names, for comparison against the prose tables."""
+    return {k: {_requirement_name(s) for s in v}
+            for k, v in _optional_dependencies().items()}
 
 
 def _parse_doc_table(path: Path, dep_header: str) -> dict[str, set[str]]:
@@ -103,21 +116,31 @@ def test_parser_stops_at_the_end_of_the_extras_table(tmp_path):
 
 
 def test_ptm_extra_includes_sorted_nearest():
-    poetry = _load_pyproject()["tool"]["poetry"]
-    assert "sorted-nearest" in poetry["extras"]["ptm"]
-    assert "sorted-nearest" in poetry["dependencies"]
+    assert "sorted-nearest" in _declared_extras()["ptm"]
 
 
-def test_every_extra_dependency_is_declared_optional():
-    """An extra naming a package that is not an optional dependency installs nothing."""
-    poetry = _load_pyproject()["tool"]["poetry"]
-    deps = poetry["dependencies"]
-    for extra, packages in poetry["extras"].items():
-        for pkg in packages:
-            assert pkg in deps, f"extra {extra!r} names undeclared dependency {pkg!r}"
-            spec = deps[pkg]
-            assert isinstance(spec, dict) and spec.get("optional") is True, \
-                f"extra {extra!r} names {pkg!r}, which is not optional = true"
+def test_no_extra_duplicates_a_base_dependency():
+    """A package in [project.dependencies] is always installed; gating it behind an extra
+    would advertise a choice that does not exist."""
+    base = {_requirement_name(s) for s in _load_pyproject()["project"]["dependencies"]}
+    for extra, packages in _declared_extras().items():
+        overlap = sorted(packages & base)
+        assert not overlap, f"extra {extra!r} re-declares base dependencies {overlap}"
+
+
+def test_extras_agree_on_every_shared_constraint():
+    """PEP 621 puts the full specifier in each extra, so `scipy>=1.8` is written six times
+    and `scikit-learn>=1.4,<2.0` three times. Nothing stops one from being re-pinned and the
+    rest left behind -- an inconsistency that would resolve differently depending on which
+    extra a user installed. This is the drift the old [tool.poetry.dependencies] split could
+    not have, and it arrived with the migration, so it is guarded here."""
+    seen: dict[str, dict[str, str]] = {}
+    for extra, specs in _optional_dependencies().items():
+        for spec in specs:
+            seen.setdefault(_requirement_name(spec), {})[extra] = spec
+    for pkg, by_extra in sorted(seen.items()):
+        distinct = set(by_extra.values())
+        assert len(distinct) == 1, f"{pkg} is spelled inconsistently across extras: {by_extra}"
 
 
 @pytest.mark.parametrize("path,dep_header", DOC_TABLES, ids=lambda p: getattr(p, "name", p))

@@ -1,11 +1,20 @@
-[tool.poetry]
+# PEP 621 metadata. Migrated off the `[tool.poetry.*]` spelling 2026-08-04, which poetry 2.x
+# reported as 13 deprecation warnings on every `poetry check`. The migration had to come
+# first: the `poetry>=2.0,<3.0` pin in the lockfile CI job was defensive against a future
+# major promoting those warnings to errors, and that pin can only be relaxed once nothing
+# deprecated is left. Poetry-specific keys (packages/include/exclude, dependency groups)
+# stay under [tool.poetry] -- they have no PEP 621 equivalent and are not deprecated.
+[project]
 name = "hvantk"
-version = "0.1.0"
+version = "0.2.0"
 description = "Hail-based toolkit for multi-omics variant annotation and analysis"
-authors = ["Yasset Perez-Riverol <ypriverol@gmail.com>",
-           "Enrique Audain <enrique.audain@uni-oldenburg.de>"]
+authors = [
+    { name = "Yasset Perez-Riverol", email = "ypriverol@gmail.com" },
+    { name = "Enrique Audain", email = "enrique.audain@uni-oldenburg.de" },
+]
 license = "MIT"
 readme = "README.md"
+requires-python = ">=3.10.0,<4.0.0"
 keywords = [
     "multiomics",
     "annotation-toolkit",
@@ -14,6 +23,36 @@ keywords = [
     "genotype-combining",
     "joint-genotyping"
 ]
+# PEP 508 specifiers, so poetry's caret shorthand is spelled out. These are exact
+# equivalents, not re-pins: ^8.1.3 == >=8.1.3,<9.0.0 and ^2.0.0 == >=2.0.0,<3.0.0. The lock
+# resolves to the same 187 packages as before the migration.
+dependencies = [
+    "hail>=0.2.137",
+    "click>=8.1.3,<9.0.0",
+    "requests",
+    "tqdm",
+    "pandas>=2.0.0,<3.0.0",
+    # Imported at module scope in ~68 modules. It has always arrived transitively via
+    # pandas/hail, but code that imports a package directly should declare it -- otherwise
+    # the day pandas drops or re-pins numpy, the break surfaces somewhere unrelated.
+    "numpy>=1.23",
+    "pyarrow>=14.0",
+    "PyYAML",
+    "jsonschema>=4.0",
+    "psutil",
+    "pysam>=0.22",
+    "certifi",
+    "anndata>=0.10.0",
+]
+
+[project.urls]
+GitHub = "https://github.com/bigbio/hvantk/"
+LICENSE = "https://github.com/bigbio/hvantk/blob/main/LICENSE"
+
+[project.scripts]
+hvantk = "hvantk.hvantk:main"
+
+[tool.poetry]
 include = [
   { path = "hvantk/skills/**/plugin.yaml", format = ["sdist", "wheel"] },
   { path = "hvantk/skills/**/SKILL.md", format = ["sdist", "wheel"] },
@@ -48,39 +87,11 @@ exclude = [
 # drift_fingerprint.json stays -- it is included on purpose, being what `hvantk drift`
 # compares a live probe against.
 
-[tool.poetry.dependencies]
-python = ">=3.10.0,<4.0.0"
-hail = ">=0.2.137"
-click = "^8.1.3"
-requests = "*"
-tqdm = "*"
-pandas = "^2.0.0"
-# Imported at module scope in ~68 modules. It has always arrived transitively via
-# pandas/hail, but code that imports a package directly should declare it -- otherwise the
-# day pandas drops or re-pins numpy, the break surfaces somewhere unrelated.
-numpy = ">=1.23"
-pyarrow = ">=14.0"
-PyYAML = "*"
-jsonschema = ">=4.0"
-psutil = "*"
-pysam = ">=0.22"
-certifi = "*"
-anndata = ">=0.10.0"
-# OPTIONAL, unlike anndata: scanpy pulls numba -> llvmlite, and llvmlite ships no
-# x86_64 macOS wheel from 0.47 on, so a base-level declaration makes the whole
-# package uninstallable on Intel Macs -- including for the ~99% of the toolkit that
-# never touches expression. Both import sites (algorithms/expression/matrix_utils.py,
-# tools/expression/summarize_expression_cli.py) already import it inside the function
-# body, so nothing breaks at import time when it is absent. anndata is pure Python and
-# stays in the base install.
-scanpy = { version = ">=1.10.0", optional = true }
-# ^1.4, not ^1.3: rerank's opt-in RFECV step wraps RandomForestClassifier, which only
-# tolerates NaN from 1.4 onward, and these feature matrices are 20-50% missing by design.
-# The floor stays as long as `SelectionPolicy(wrapper="rfecv")` is reachable -- it is now
-# off by default, not removed. Drop to ^1.3 only if the wrapper is deleted outright.
-scikit-learn = { version = "^1.4", optional = true }
-# Declared explicitly rather than leaned on as a transitive dep of scikit-learn, because
-# relying on a transitive dependency is how it silently breaks later.
+# Optional dependencies. In PEP 621 an extra carries the full specifier, so a constraint
+# repeated across extras (scipy in six, scikit-learn in three) is a drift surface that the
+# old [tool.poetry.dependencies] + [tool.poetry.extras] split did not have -- one extra could
+# be re-pinned and the others left behind, silently. test_pyproject_extras.py asserts every
+# extra spells the same package identically, so that divergence fails the build.
 #
 # scipy is NOT only needed where sklearn is. Three modules `from scipy...` at MODULE scope
 # with no sklearn nearby, and they sit on three DIFFERENT commands -- check the call graph
@@ -90,52 +101,42 @@ scikit-learn = { version = "^1.4", optional = true }
 #   algorithms/burden/fet.py         -> `hvantk cohort burden`       -> cohort extra
 # fet.py is NOT reached by `hvantk enrichex burden`: its only importer is
 # algorithms/burden/pipeline.py, which is imported by tools/cohort/cohort_cli.py alone.
-# (algorithms/enrichex/burden.py imports scipy at CALL time only, so it does not gate import.)
-# Until 2026-08-03 `constraint` omitted scipy, so `pip install hvantk[constraint]` produced a
-# documented extra whose own command still raised ModuleNotFoundError, and enrichex and cohort
-# had no extra at all.
 #
-# A call-time require_scipy() guard (cf. require_scanpy in algorithms/expression/matrix_utils)
-# would additionally turn a BASE install's bare ModuleNotFoundError into a message naming the
-# extra. That is a separate improvement: it changes the error text, not what any extra
-# installs, so it is not needed to make these extras correct.
-scipy = { version = ">=1.8", optional = true }
-matplotlib = { version = "*", optional = true }
-seaborn = { version = "*", optional = true }
-plotly = { version = "*", optional = true }
-duckdb = { version = ">=0.9.0", optional = true }
-cptac = { version = "*", optional = true }
-# sorted-nearest is a compiled runtime dep of pyranges (imported by cptac); an
-# extras install doesn't reliably pull it, so declare it explicitly. Import name
-# is `sorted_nearest`. Already resolved in poetry.lock (0.0.41).
-sorted-nearest = { version = "*", optional = true }
-tspex = { version = ">=0.6.0", optional = true }
-
-[tool.poetry.extras]
+# scikit-learn floor is >=1.4, not >=1.3: rerank's opt-in RFECV step wraps
+# RandomForestClassifier, which only tolerates NaN from 1.4 onward, and these feature
+# matrices are 20-50% missing by design.
+#
+# scanpy is optional, unlike anndata: it pulls numba -> llvmlite, which ships no x86_64 macOS
+# wheel from 0.47 on, so a base-level declaration would make the package uninstallable on
+# Intel Macs -- including for the ~99% of the toolkit that never touches expression.
+#
+# sorted-nearest is a compiled runtime dep of pyranges (imported by cptac); an extras install
+# doesn't reliably pull it, so it is declared explicitly. Import name is `sorted_nearest`.
+[project.optional-dependencies]
 viz = ["matplotlib", "seaborn", "plotly"]
-duckdb = ["duckdb"]
+duckdb = ["duckdb>=0.9.0"]
 interactive = ["plotly"]
 hgc = ["matplotlib", "seaborn"]
-psroc = ["matplotlib", "plotly", "scikit-learn", "scipy"]
+psroc = ["matplotlib", "plotly", "scikit-learn>=1.4,<2.0", "scipy>=1.8"]
 ptm = ["cptac", "sorted-nearest"]
-constraint = ["tspex", "matplotlib", "seaborn", "scipy"]
+constraint = ["tspex>=0.6.0", "matplotlib", "seaborn", "scipy>=1.8"]
 # enrichex needs matplotlib as well as scipy. scipy is eager -- overlap.py imports
 # scipy.stats at module scope, so `hvantk enrichex overlap` needs it to import at all.
 # matplotlib is no longer eager: enrichex/__init__ resolves plot.py / report.py through a
 # PEP 562 __getattr__, so a base install can run the CLI. It is still in this extra because
 # the plotting and --generate-report paths need it at call time, and accessing a plotting
 # name without it raises an ImportError naming this extra.
-enrichex = ["scipy", "matplotlib", "seaborn"]
+enrichex = ["scipy>=1.8", "matplotlib", "seaborn"]
 # cohort covers `hvantk cohort burden`, whose pipeline reaches algorithms/burden/fet.py and
 # its module-scope `from scipy.stats import fisher_exact`. scipy alone: nothing on that path
 # imports matplotlib.
-cohort = ["scipy"]
-ancestry = ["scikit-learn", "matplotlib", "seaborn", "scipy"]
-ml = ["scikit-learn", "scipy"]
+cohort = ["scipy>=1.8"]
+ancestry = ["scikit-learn>=1.4,<2.0", "matplotlib", "seaborn", "scipy>=1.8"]
+ml = ["scikit-learn>=1.4,<2.0", "scipy>=1.8"]
 # scanpy already depends on scipy, so listing it changes no resolution -- but
 # visualization/expression/anndata.py imports scipy.sparse directly, and this file's rule is
 # to declare what is imported rather than inherit it from a transitive edge that can move.
-expression = ["scanpy", "scipy"]
+expression = ["scanpy>=1.10.0", "scipy>=1.8"]
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
@@ -152,7 +153,7 @@ mkdocs = "*"
 mkdocs-material = "*"
 ipykernel = "^7.2.0"
 
-[tool.poetry.plugins."hvantk.providers"]
+[project.entry-points."hvantk.providers"]
 # In-tree plugins register themselves the same way as external ones.
 # Only providers migrated to the plugin layout appear here.
 hgnc = "hvantk.skills.hgnc"
@@ -173,12 +174,11 @@ uniprot-ptm = "hvantk.skills.uniprot_ptm"
 testpaths = ["hvantk/tests", "hvantk/skills"]
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+# >=2.0, not >=1.0: PEP 621 `[project]` metadata is only read by poetry-core 2.x, and the
+# `license = "MIT"` SPDX expression needs its PEP 639 support. Against an older poetry-core
+# this file's name/version/dependencies would simply not be found, since [tool.poetry] no
+# longer carries them -- a build that fails, or worse produces a wheel with empty metadata.
+# The floor was left at 1.0.0 through the migration and only caught in review; CI masked it
+# because the packaging-smoke job installs a modern poetry explicitly.
+requires = ["poetry-core>=2.0.0"]
 build-backend = "poetry.core.masonry.api"
-
-[tool.poetry.urls]
-GitHub = "https://github.com/bigbio/hvantk/"
-LICENSE = "https://github.com/bigbio/hvantk/blob/main/LICENSE"
-
-[tool.poetry.scripts]
-hvantk = "hvantk.hvantk:main"

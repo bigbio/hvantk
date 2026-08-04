@@ -147,7 +147,8 @@ From: python:3.10-slim-bookworm
         zlib1g-dev libbz2-dev liblzma-dev libcurl4-openssl-dev libdeflate-dev \
         libopenblas-dev liblapack-dev liblz4-dev libhdf5-dev git
     # --- hvantk via Poetry, from the committed lock (reproducible) ---
-    pip install --no-cache-dir "poetry==1.8.*"
+    # >=2.0: pyproject.toml uses PEP 621 [project] metadata, which poetry 1.8 cannot read.
+    pip install --no-cache-dir "poetry>=2.0"
     cd /opt/hvantk
     poetry config virtualenvs.create false
     # install the locked deps + the extras you actually run (trim as needed):
@@ -179,8 +180,9 @@ From: python:3.10-slim-bookworm
 > Trim `--extras` to what you run. The core install omits scikit-learn / scipy / viz /
 > cptac / tspex / duckdb / scanpy — they live behind extras (`hgc`, `ptm`,
 > `ancestry`, `psroc`, `constraint`, `enrichex`, `cohort`, `ml`, `viz`, `duckdb`,
-> `interactive`, `expression`). The authoritative list is `[tool.poetry.extras]` in
-> `pyproject.toml`; this one is prose and is not machine-checked.
+> `interactive`, `expression`). The authoritative list is
+> `[project.optional-dependencies]` in `pyproject.toml`; this one is prose and is not
+> machine-checked.
 > `pyBigWig` is **not** a hvantk dependency — include it only for experiments that
 > query bigWig tracks. Genotype adjustment needs **no** extra: `annotate_adj` is
 > ported in-tree, so `gnomad` is no longer a dependency at all.
