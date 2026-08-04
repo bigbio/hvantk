@@ -19,6 +19,7 @@ import requests
 
 from hvantk.skills.gencc.shared.constants import GENCC_BASE_URL, GENCC_FILE_PREFIX
 from hvantk.core.plugin.api import DriftProbeError
+from hvantk.core.utils.http import request_with_retry
 
 PROBE_VERSION = 1
 _FILENAME = f"{GENCC_FILE_PREFIX}.tsv"
@@ -33,15 +34,19 @@ def fetch_fingerprint() -> dict:
     portion of the body up to and including the column-header line (begins
     with ``sgc_id``). Does not stream the full TSV (~MB-scale).
     """
+    # Retrying, because GenCC rate-limits: on 2026-08-04 it answered the scheduled
+    # drift regeneration with HTTP 429, which failed the probe and then the whole
+    # workflow run. request_with_retry honours Retry-After but clamps the wait, so a
+    # long backoff request cannot stall CI.
     try:
-        head = requests.head(
-            GENCC_BASE_URL, timeout=_TIMEOUT_S, allow_redirects=True
+        head = request_with_retry(
+            "HEAD", GENCC_BASE_URL, timeout=_TIMEOUT_S, allow_redirects=True
         )
         head.raise_for_status()
         last_modified = head.headers.get("Last-Modified")
 
-        with requests.get(
-            GENCC_BASE_URL, timeout=_TIMEOUT_S, stream=True, allow_redirects=True
+        with request_with_retry(
+            "GET", GENCC_BASE_URL, timeout=_TIMEOUT_S, stream=True, allow_redirects=True
         ) as resp:
             resp.raise_for_status()
             buf = io.StringIO()

@@ -61,9 +61,17 @@ jobs:
         run: |
           conda env update --file environment.yml --name base
 
+      # The `ptm` extra, not a bare install. The cptac probe fingerprints the INSTALLED
+      # cptac version (importlib.metadata) against PayneLab's latest GitHub release, so
+      # the package has to be present for the probe to mean anything -- and `cptac` is
+      # declared in the `ptm` extra. Under a bare `pip install -e .` both cptac:expression
+      # and cptac:phospho raised "The 'cptac' Python package is not installed; cannot
+      # fingerprint" on EVERY run, so upstream CPTAC drift has never once been detectable.
+      # Of the 22 probes these two are the only ones needing an extra; the other 20 use
+      # requests or the stdlib alone.
       - name: Install hvantk in development mode
         run: |
-          pip install -e .
+          pip install -e ".[ptm]"
 
       - name: Configure git author for bot commits
         run: |

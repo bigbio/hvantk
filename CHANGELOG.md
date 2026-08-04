@@ -1,5 +1,29 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **The `cptac:expression` and `cptac:phospho` drift probes had never once succeeded.**
+  The drift workflow installed with a bare `pip install -e .`, but the cptac probe
+  fingerprints the *installed* `cptac` version (via `importlib.metadata`) against
+  PayneLab's latest GitHub release — and `cptac` is declared in the `ptm` extra. Every
+  scheduled run reported `The 'cptac' Python package is not installed; cannot
+  fingerprint`, so upstream CPTAC drift has never been detectable. The workflow now
+  installs `.[ptm]`. Of the 22 drift probes these two are the only ones needing an
+  extra; the other 20 use `requests` or the stdlib alone.
+- **A single rate-limited response could fail the whole scheduled drift run.** On
+  2026-08-04 GenCC answered the regeneration request with HTTP 429; the probe had no
+  retry, so it raised, no PR could be opened for the drifted dataset, and the run exited
+  non-zero with nothing actually wrong. New `hvantk/core/utils/http.py` provides
+  `request_with_retry`, which retries transient statuses (429 and the 5xx family) and
+  connection errors with exponential backoff. It honours `Retry-After` but **clamps**
+  it: `urllib3.util.Retry` sleeps for the header's full value with no upper bound
+  (`backoff_max` caps only the exponential path), so a host answering `Retry-After: 3600`
+  would park CI for an hour. The helper deliberately does not call `raise_for_status`,
+  so callers keep their existing error handling and only the transient case changes.
+  Wired into the GenCC probe; the other 12 HTTP probes can adopt it as needed.
+
 ## 0.2.0 — 2026-08-04
 
 First tagged release. Everything below had accumulated under `Unreleased` since `0.1.0`,
