@@ -159,17 +159,25 @@ def group_by_drift_signal(drifted: list[dict]) -> list[dict]:
 
     Order is preserved so branch names stay stable across runs.
     """
-    grouped: dict[str, dict] = {}
+    grouped: dict[tuple, dict] = {}
     out: list[dict] = []
     for entry in drifted:
         path = entry.get("fingerprint_path")
         if not path:
             out.append({**entry, "datasets": [entry.get("dataset_name")]})
             continue
-        existing = grouped.get(path)
+        # Key on (baseline, probe), exactly as `run_drift_checks` does. Grouping on the
+        # baseline alone would re-merge what the runner deliberately kept apart: two
+        # datasets sharing a baseline while declaring DIFFERENT probes is a manifest
+        # error, and merging them would open a single PR whose regeneration covers only
+        # `entry["dataset_name"]`, leaving the other dataset's drift silently
+        # unaddressed. A report without probe_ref (older shape) falls back to the path,
+        # which is the pre-existing behaviour rather than a new risk.
+        key = (path, entry.get("probe_ref"))
+        existing = grouped.get(key)
         if existing is None:
             merged = {**entry, "datasets": [entry.get("dataset_name")]}
-            grouped[path] = merged
+            grouped[key] = merged
             out.append(merged)
         else:
             existing["datasets"].append(entry.get("dataset_name"))
@@ -405,10 +413,19 @@ def branch_needs_update(branch: str, *, dry_run: bool) -> bool:
         return True
 
     for path in paths:
-        current = (REPO_ROOT / path).read_text() if (REPO_ROOT / path).exists() else None
+        # `errors="replace"` rather than a bare read_text(): a staged file that is not
+        # valid UTF-8 raises UnicodeDecodeError, which is not a CalledProcessError, so
+        # `main` would not catch it and every remaining dataset would be skipped. And
+        # `paths` is every staged path, not only JSON under hvantk/skills, so that
+        # depends on runner state rather than on this script's own staging. A mangled
+        # decode can only make the comparison unequal, which pushes -- the safe answer.
+        target = REPO_ROOT / path
+        current = target.read_text(errors="replace") if target.exists() else None
+        # errors="replace" here too: text=True decodes strictly, so a blob that is not
+        # valid UTF-8 would raise UnicodeDecodeError out of subprocess itself.
         previous = subprocess.run(
             ["git", "show", f"FETCH_HEAD:{path}"],
-            check=False, text=True, capture_output=True,
+            check=False, text=True, errors="replace", capture_output=True,
         )
         if current is None or previous.returncode != 0:
             return True

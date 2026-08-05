@@ -218,3 +218,25 @@ def test_run_plan_call_site_shows_zero_rather_than_auto(tmp_path, monkeypatch):
     # test would have broken it for reasons having nothing to do with the code.
     line = next(ln for ln in buf.getvalue().splitlines() if "Partitions (MT):" in ln)
     assert line.split(":", 1)[1].strip() == "0", line
+
+
+def test_run_plan_does_not_advertise_partitions_when_the_stage_is_skipped(
+    tmp_path, monkeypatch
+):
+    """--skip-vds-to-mt means convert_vds_to_mt never runs, so the existing MatrixTable
+    keeps its layout. Printing the requested number there would repeat #208's mistake in
+    a new place: affirming a setting no stage will read."""
+    import contextlib
+    import io
+
+    from hvantk.algorithms.hgc import pipeline as pipeline_mod
+
+    cfg = _cfg(tmp_path, n_partitions=64, skip_vds_to_mt=True, mt_path=str(tmp_path))
+    runner = _runner_without_hail(pipeline_mod, monkeypatch, cfg)
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        runner.show_plan()
+
+    line = next(ln for ln in buf.getvalue().splitlines() if "Partitions (MT):" in ln)
+    assert "64" not in line, line
+    assert "skipped" in line.lower(), line

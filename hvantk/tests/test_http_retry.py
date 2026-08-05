@@ -101,3 +101,35 @@ def test_connection_errors_are_retried_but_other_request_errors_are_not(
 )
 def test_parse_retry_after(header, expected):
     assert http_util.parse_retry_after(header) == expected
+
+
+# --- review findings on #268 ---------------------------------------------------------
+
+
+@pytest.mark.parametrize("kwargs", [
+    {"backoff_s": -1.0},
+    {"max_sleep_s": -5.0},
+])
+def test_negative_timings_are_rejected_before_the_first_request(kwargs):
+    """A negative value would otherwise surface only AFTER a transient failure, replacing
+    the upstream error the caller was retrying with ValueError('sleep length must be
+    non-negative')."""
+    with pytest.raises(ValueError, match="must be >= 0"):
+        http_util.request_with_retry("GET", URL, **kwargs)
+
+
+def test_backoff_is_capped_at_max_sleep_for_any_attempt():
+    """`backoff_s * 2 ** (attempt - 1)` is evaluated BEFORE min() clamps it, so a high
+    attempt NUMBER raises `OverflowError: int too large to convert to float` -- not
+    merely a slow computation, an outright crash.
+
+    Asserted on the helper rather than by driving 1,200 real failures through the retry
+    loop: the `slept` fixture patches `time.sleep` globally, so under a full-suite run
+    that version captured sleeps from unrelated code (625,818 of them) and failed for a
+    reason having nothing to do with backoff. This form is deterministic and still fails
+    if the exponent cap is removed.
+    """
+    assert http_util._backoff(2.0, 1, 30.0) == 2.0
+    assert http_util._backoff(2.0, 4, 30.0) == 16.0
+    assert http_util._backoff(2.0, 99, 30.0) == 30.0
+    assert http_util._backoff(2.0, 10**6, 30.0) == 30.0

@@ -35,6 +35,9 @@ DEFAULT_ATTEMPTS = 4
 DEFAULT_BACKOFF_S = 2.0
 DEFAULT_MAX_SLEEP_S = 30.0
 
+# 2**32 s is ~136 years; any clamp is reached long before this.
+_MAX_EXP = 32
+
 
 def parse_retry_after(value: str | None) -> float | None:
     """``Retry-After`` as seconds, or ``None`` if absent/unparseable.
@@ -63,6 +66,18 @@ def parse_retry_after(value: str | None) -> float | None:
     return max(0.0, (when - datetime.now(timezone.utc)).total_seconds())
 
 
+def _backoff(backoff_s: float, attempt: int, max_sleep_s: float) -> float:
+    """Exponential backoff for `attempt`, clamped to `max_sleep_s`.
+
+    The exponent is capped before it is used. `backoff_s * 2 ** (attempt - 1)` looks
+    harmless because min() clamps the result, but the multiplication happens first: with
+    a large `attempts` it raises `OverflowError: int too large to convert to float`
+    rather than merely being slow. _MAX_EXP is far past any reachable max_sleep_s, so
+    capping it changes no real result.
+    """
+    return min(backoff_s * 2 ** min(attempt - 1, _MAX_EXP), max_sleep_s)
+
+
 def request_with_retry(
     method: str,
     url: str,
@@ -88,6 +103,13 @@ def request_with_retry(
     """
     if attempts < 1:
         raise ValueError(f"attempts must be >= 1, got {attempts}")
+    # Rejected here rather than at the sleep: a negative value only surfaces AFTER a
+    # transient failure, so the caller would see ValueError("sleep length must be
+    # non-negative") in place of the upstream error it was retrying.
+    if backoff_s < 0 or max_sleep_s < 0:
+        raise ValueError(
+            f"backoff_s and max_sleep_s must be >= 0, got {backoff_s} and {max_sleep_s}"
+        )
 
     retry_statuses = frozenset(retry_statuses)
     caller = session if session is not None else requests
@@ -99,7 +121,7 @@ def request_with_retry(
         except (requests.Timeout, requests.ConnectionError) as exc:
             if is_last:
                 raise
-            sleep_s = min(backoff_s * 2 ** (attempt - 1), max_sleep_s)
+            sleep_s = _backoff(backoff_s, attempt, max_sleep_s)
             logger.warning(
                 "%s %s failed (%s); retrying in %.1fs (attempt %d/%d)",
                 method.upper(), url, type(exc).__name__, sleep_s, attempt, attempts,
@@ -115,8 +137,8 @@ def request_with_retry(
         # attempts open would leak one connection per retry.
         retry_after = parse_retry_after(response.headers.get("Retry-After"))
         response.close()
-        backoff = backoff_s * 2 ** (attempt - 1)
-        sleep_s = min(retry_after if retry_after is not None else backoff, max_sleep_s)
+        backoff = _backoff(backoff_s, attempt, max_sleep_s)
+        sleep_s = min(retry_after, max_sleep_s) if retry_after is not None else backoff
         logger.warning(
             "%s %s returned %d; retrying in %.1fs (attempt %d/%d)",
             method.upper(), url, response.status_code, sleep_s, attempt, attempts,

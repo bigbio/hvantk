@@ -39,12 +39,19 @@ from hvantk.algorithms.hgc import (
 logger = logging.getLogger(__name__)
 
 
-def _shown_partitions(n: Optional[int]) -> str:
+def _shown_partitions(n: Optional[int], *, skipped: bool = False) -> str:
     """Render `n_partitions` for the run plan.
 
     Keyed on `is None`, not truthiness: 0 is a rejected value, and `or` would print it
     as "auto", telling the user a dry run's plan is fine for an invocation that aborts.
+
+    `skipped` covers --skip-vds-to-mt: that stage is the only consumer, so with it off
+    the existing MatrixTable keeps whatever layout it already has. Printing the
+    requested number there would repeat #208's mistake in a new place -- affirming a
+    setting that no stage will read.
     """
+    if skipped:
+        return "n/a (VDS -> MT stage skipped)"
     return "auto (VDS layout)" if n is None else str(n)
 
 
@@ -351,7 +358,8 @@ class PipelineRunner:
         # Reaches convert_vds_to_mt as of #208. Before that this line printed a setting
         # no stage read -- keep it truthful, and say which stage it governs.
         print(
-            f"  Partitions (MT):  {_shown_partitions(self.config.n_partitions)}"
+            f"  Partitions (MT):  "
+            f"{_shown_partitions(self.config.n_partitions, skipped=self.config.skip_vds_to_mt)}"
         )
         print(f"  Overwrite:        {self.config.overwrite}")
         print(

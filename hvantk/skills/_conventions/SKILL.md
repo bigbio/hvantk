@@ -205,7 +205,7 @@ Two datasets may **not** share a baseline while declaring *different* probes: ea
 
 A scheduled GitHub Actions workflow (`.github/workflows/drift.yml`) runs `hvantk drift --all --json` daily at 06:00 UTC. For each plugin reporting `status: drifted`, the workflow:
 
-1. Branches `drift/<provider>-<dataset>` from the base branch (`env.BASE_BRANCH`, defaulting to `dev`) — or `drift/<provider>` when several of that provider's datasets share one drift signal, so the group gets a single PR.
+1. Branches `drift/<provider>-<dataset>` from the base branch (`env.BASE_BRANCH`, defaulting to `dev`). When several of that provider's datasets share one drift signal the group gets a single branch instead: `drift/<provider>`, or `drift/<provider>-<suffix>` when the shared baseline's filename carries one (`drift_fingerprint_samples.json` → `drift/<provider>-samples`). The suffix is what keeps two independent signals from the same provider on separate branches, so a multi-dataset provider does not have its second signal overwrite its first.
 2. Regenerates `drift_fingerprint.json` via `hvantk drift --regenerate <provider:dataset>`.
 3. Opens (or updates) a draft PR via `gh pr create` / `gh pr edit`, with the structured diff embedded in the body and the regenerated fingerprint already committed. If the plugin's `plugin.yaml` declares `maintainers:` whose entries look like GitHub handles, those handles are `cc`'d in the PR body.
 

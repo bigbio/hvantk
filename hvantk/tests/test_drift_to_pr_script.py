@@ -478,3 +478,44 @@ def test_nothing_staged_path_also_discards(drift_to_pr, monkeypatch, tmp_path):
     assert cleanups == [{"dry_run": False}], (
         "the 'nothing to commit' return must discard too, and for real"
     )
+
+
+def test_same_baseline_different_probes_are_not_grouped(drift_to_pr):
+    """The bot must apply the runner's rule, not a weaker one.
+
+    `run_drift_checks` keys on (baseline, probe callable) so that two datasets sharing a
+    baseline while declaring DIFFERENT probes -- a manifest error -- are never merged.
+    Grouping on the baseline alone here would re-merge them, opening one PR whose
+    regeneration covers only the first dataset and leaving the second's drift silently
+    unaddressed.
+    """
+    groups = drift_to_pr.group_by_drift_signal([
+        {**_drifted("p:one", UCSC_FP), "probe_ref": "mod:probe_a"},
+        {**_drifted("p:two", UCSC_FP), "probe_ref": "mod:probe_b"},
+    ])
+    assert len(groups) == 2, "different probes must not share a PR"
+
+
+def test_same_baseline_same_probe_still_groups(drift_to_pr):
+    """The complement: the ucsc case must keep collapsing."""
+    groups = drift_to_pr.group_by_drift_signal([
+        {**_drifted("u:a", UCSC_FP), "probe_ref": "mod:fetch_fingerprint"},
+        {**_drifted("u:b", UCSC_FP), "probe_ref": "mod:fetch_fingerprint"},
+    ])
+    assert len(groups) == 1
+    assert groups[0]["datasets"] == ["u:a", "u:b"]
+
+
+def test_an_undecodable_staged_file_does_not_abort_the_run(
+    repo_with_drift_branch, drift_to_pr
+):
+    """`read_text()` raises UnicodeDecodeError on non-UTF-8, which is not a
+    CalledProcessError, so `main` would not catch it and every remaining dataset would be
+    skipped. `paths` is every staged path, not only JSON this script wrote."""
+    repo, fp = repo_with_drift_branch
+    fp.write_bytes(b'\xff\xfe{"source_version": "v1"}')
+    _git(repo, "add", "hvantk/skills")
+
+    # Must return a verdict rather than raising. Undecodable content cannot match, so
+    # the safe answer is "push".
+    assert drift_to_pr.branch_needs_update("drift/p-d", dry_run=False) is True
