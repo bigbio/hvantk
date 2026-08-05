@@ -39,6 +39,22 @@ from hvantk.algorithms.hgc import (
 logger = logging.getLogger(__name__)
 
 
+def _shown_partitions(n: Optional[int], *, skipped: bool = False) -> str:
+    """Render `n_partitions` for the run plan.
+
+    Keyed on `is None`, not truthiness: 0 is a rejected value, and `or` would print it
+    as "auto", telling the user a dry run's plan is fine for an invocation that aborts.
+
+    `skipped` covers --skip-vds-to-mt: that stage is the only consumer, so with it off
+    the existing MatrixTable keeps whatever layout it already has. Printing the
+    requested number there would repeat #208's mistake in a new place -- affirming a
+    setting that no stage will read.
+    """
+    if skipped:
+        return "n/a (VDS -> MT stage skipped)"
+    return "auto (VDS layout)" if n is None else str(n)
+
+
 class PipelineStage(Enum):
     """Enumeration of pipeline stages."""
 
@@ -60,6 +76,12 @@ class PipelineConfig:
     # Optional processing configuration
     tmp_dir: Optional[str] = None
     reference_genome: str = "GRCh38"
+    # Target partition count for the VDS -> MatrixTable stage, forwarded to
+    # convert_vds_to_mt, which COALESCES the dense MatrixTable before writing it
+    # (see #207/#208). Deliberately not applied at the read: that approach was measured
+    # and fails -- see the step 3b comment in algorithms/hgc/converters.py before
+    # re-attempting it. NOT the combiner's interval tuning below: that governs stage 1,
+    # this governs stage 2 onward.
     n_partitions: Optional[int] = None
     overwrite: bool = False
     output_prefix: str = "cohort"
@@ -148,6 +170,14 @@ class PipelineConfig:
 
         if self.branch_factor is not None and self.branch_factor < 2:
             errors.append("branch_factor must be at least 2")
+
+        # Checked here, not only in convert_vds_to_mt, for the same reason as the three
+        # knobs above: this is the gate that runs before Hail init and before stage 1.
+        # convert_vds_to_mt does reject < 1, but stage 2 is reached only after the gVCF
+        # combine has run to completion -- hours on a real cohort -- so a value that was
+        # knowably wrong before any work started would cost the whole combine first.
+        if self.n_partitions is not None and self.n_partitions < 1:
+            errors.append("n_partitions must be at least 1")
 
         return errors
 
@@ -325,7 +355,12 @@ class PipelineRunner:
 
         print("\n🔧 Configuration:")
         print(f"  Reference genome: {self.config.reference_genome}")
-        print(f"  Partitions:       {self.config.n_partitions or 'auto'}")
+        # Reaches convert_vds_to_mt as of #208. Before that this line printed a setting
+        # no stage read -- keep it truthful, and say which stage it governs.
+        print(
+            f"  Partitions (MT):  "
+            f"{_shown_partitions(self.config.n_partitions, skipped=self.config.skip_vds_to_mt)}"
+        )
         print(f"  Overwrite:        {self.config.overwrite}")
         print(
             f"  Combiner options: {self.config.combiner_kwargs() or 'defaults (genome 1.2 Mb intervals)'}"
@@ -518,6 +553,11 @@ class PipelineRunner:
             skip_validation=self.config.skip_validation,
             skip_keying_by_cols=False,
             overwrite=self.config.overwrite,
+            # #208: this is the consumer `n_partitions` never had. It was accepted from
+            # the CLI and echoed back in the run plan while reaching no stage at all, so
+            # the run plan was affirmatively telling the user a setting had taken effect
+            # when it had not.
+            n_partitions=self.config.n_partitions,
         )
 
         self.logger.info(f"   ✓ MatrixTable created: {self.paths['mt']}")

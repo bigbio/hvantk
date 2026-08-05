@@ -107,6 +107,46 @@ def test_validate_rejects_catalog_entry_missing_required_field(tmp_path):
     assert "accession" in res.output
 
 
+def test_validate_normalizes_fingerprint_paths_before_grouping(tmp_path):
+    """`tests/x.json` and `./tests/x.json` name ONE baseline, as the loader resolves them.
+
+    Grouping on the declared string files them in separate buckets, so the
+    conflicting-probe check never fires and the baseline overwrite this validation
+    exists to name ships silently.
+    """
+    from click.testing import CliRunner
+    from hvantk.tools.plugins.plugins_cli import plugins_group
+
+    def _dataset(name: str, spelling: str, function: str) -> str:
+        return (
+            f"  - name: {name}\n"
+            "    domain: genomics\n"
+            "    backend: hail\n"
+            "    builder:\n"
+            "      module: hvantk.tests.testdata.raw.plugins.fake_plugin.builder\n"
+            "      function: build\n"
+            "    drift_probe:\n"
+            "      module: hvantk.tests.testdata.raw.plugins.fake_plugin.drift_probe\n"
+            f"      function: {function}\n"
+            "    skill: SKILL.md\n"
+            "    tests:\n"
+            "      command: pytest -q\n"
+            "      fixture: tests/testdata/raw/fake\n"
+            "      schema_snapshot: tests/snapshots/schema.json\n"
+            "      row_snapshot: tests/snapshots/sample_rows.json\n"
+            f"      drift_fingerprint: {spelling}\n"
+        )
+
+    (tmp_path / "plugin.yaml").write_text(
+        "api_version: 2\nname: tmp-plug\nversion: 0.1.0\ndatasets:\n"
+        + _dataset("a", "tests/drift_fingerprint.json", "fetch_fingerprint")
+        + _dataset("b", "./tests/drift_fingerprint.json", "a_different_probe")
+    )
+    res = CliRunner().invoke(plugins_group, ["validate", str(tmp_path / "plugin.yaml")])
+    assert res.exit_code != 0, res.output
+    assert "different drift probes" in res.output, res.output
+
+
 def test_validate_rejects_duplicate_accession_within_catalog(tmp_path):
     from click.testing import CliRunner
     from hvantk.tools.plugins.plugins_cli import plugins_group

@@ -28,7 +28,11 @@ For each ``status == "drifted"`` entry the script:
 3. Runs ``hvantk drift --regenerate <provider:dataset>`` to overwrite the
    committed ``drift_fingerprint.json``.
 4. Commits with a plain Conventional Commits message.
-5. Force-pushes with lease (the branch is bot-owned).
+5. Force-pushes with lease (the branch is bot-owned) -- but only if the branch does
+   not already propose the same fingerprint. ``--regenerate`` rewrites ``fetched_at``
+   every run, so without that check each open PR was re-pushed and its body re-edited
+   once a day forever: nine PRs churned daily for a week, ~63 notifications, none of
+   them new information.
 6. Opens a draft PR (or updates the body of an existing one).
 
 Probe-failed entries are recorded in the GitHub step summary but never
@@ -66,6 +70,13 @@ except ImportError:  # pragma: no cover - exercised only in stripped envs
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SKILLS_ROOT = REPO_ROOT / "hvantk" / "skills"
 
+# Mirrors hvantk.core.plugin.api.PROBE_FINGERPRINT_IGNORED_KEYS. Duplicated rather than
+# imported because this script runs from a checkout where the package may not be
+# importable, and `_fingerprints_match` must not become a no-op if the import fails --
+# a silently-empty ignore set would make every comparison "different" and restore the
+# exact churn this guards against. Kept in sync by test_drift_to_pr_script.py.
+FINGERPRINT_IGNORED_KEYS = frozenset({"fetched_at", "probe_version"})
+
 
 # --------------------------------------------------------------------------- #
 # Pure helpers (no side effects, easy to reason about / test).
@@ -81,6 +92,96 @@ def branch_name_for(dataset: str) -> str:
     if ":" not in dataset:
         raise ValueError(f"expected '<provider>:<dataset>', got: {dataset!r}")
     return "drift/" + dataset.replace(":", "-")
+
+
+def strip_ignored(fingerprint: dict) -> dict:
+    """Fingerprint minus the keys that change on every probe regardless of upstream."""
+    return {k: v for k, v in fingerprint.items() if k not in FINGERPRINT_IGNORED_KEYS}
+
+
+def fingerprints_match(a: str, b: str) -> bool:
+    """True if two fingerprint JSON blobs agree once volatile keys are dropped.
+
+    Unparseable input returns False -- "I cannot tell" must mean "push it", never
+    "skip it", or a malformed fingerprint would silently suppress a real drift PR.
+    """
+    try:
+        return strip_ignored(json.loads(a)) == strip_ignored(json.loads(b))
+    except (ValueError, AttributeError, TypeError):
+        return False
+
+
+def branch_name_for_signal(datasets: list[str], fingerprint_path: str = "") -> str:
+    """Branch name for a drift signal covering one or more datasets.
+
+    A single dataset keeps its historical name exactly (``drift/<provider>-<dataset>``),
+    so existing branches and their open PRs are still matched.
+
+    A group takes ``drift/<provider>``, plus the baseline's distinguishing suffix when it
+    has one. The suffix matters: the branch must identify the SIGNAL, and a provider can
+    own more than one. Multi-dataset providers suffix their baselines per dataset
+    (``drift_fingerprint_samples.json`` alongside ``drift_fingerprint.json``), so keying
+    on the provider alone would collapse two independent signals onto one branch, where
+    the second would overwrite the first's commit and rewrite its PR body. Deriving from
+    the path rather than from the member list also keeps the name stable across runs, and
+    does not privilege whichever member the manifest happens to list first.
+    """
+    if len(datasets) == 1:
+        return branch_name_for(datasets[0])
+
+    providers = {split_dataset(d)[0] for d in datasets}
+    if len(providers) != 1:
+        # A baseline shared ACROSS providers should be impossible -- the path lives
+        # inside one plugin directory -- but stay deterministic rather than arbitrary.
+        return branch_name_for(sorted(datasets)[0])
+
+    base = "drift/" + providers.pop()
+    stem = Path(fingerprint_path).stem if fingerprint_path else ""
+    suffix = stem[len("drift_fingerprint"):].strip("_-") if stem.startswith("drift_fingerprint") else stem
+    return f"{base}-{suffix}" if suffix else base
+
+
+def group_by_drift_signal(drifted: list[dict]) -> list[dict]:
+    """Collapse drifted entries that report the SAME drift signal into one.
+
+    Datasets sharing a ``fingerprint_path`` share a baseline file, so they cannot have
+    independent drift: one upstream event produces N identical reports, N branches
+    writing the same file, and N mutually conflicting PRs. `ucsc-cellbrowser` is the
+    worked case -- `default`, `adult-ctx` and `dev-ctx` are distinct *schema* variants
+    (obs cell-type column `celltype` / `Class` / `Type_v2`), but the probe fingerprints
+    the provider-wide catalog, so all three always agree. Merging one made the other two
+    conflict.
+
+    Returns one entry per signal, each carrying a ``datasets`` list naming every member,
+    so the PR can say what it covers. Entries WITHOUT a fingerprint_path are never
+    grouped -- an older report shape, or a runner that did not populate it, must not
+    silently collapse unrelated datasets into one PR.
+
+    Order is preserved so branch names stay stable across runs.
+    """
+    grouped: dict[tuple, dict] = {}
+    out: list[dict] = []
+    for entry in drifted:
+        path = entry.get("fingerprint_path")
+        if not path:
+            out.append({**entry, "datasets": [entry.get("dataset_name")]})
+            continue
+        # Key on (baseline, probe), exactly as `run_drift_checks` does. Grouping on the
+        # baseline alone would re-merge what the runner deliberately kept apart: two
+        # datasets sharing a baseline while declaring DIFFERENT probes is a manifest
+        # error, and merging them would open a single PR whose regeneration covers only
+        # `entry["dataset_name"]`, leaving the other dataset's drift silently
+        # unaddressed. A report without probe_ref (older shape) falls back to the path,
+        # which is the pre-existing behaviour rather than a new risk.
+        key = (path, entry.get("probe_ref"))
+        existing = grouped.get(key)
+        if existing is None:
+            merged = {**entry, "datasets": [entry.get("dataset_name")]}
+            grouped[key] = merged
+            out.append(merged)
+        else:
+            existing["datasets"].append(entry.get("dataset_name"))
+    return out
 
 
 def split_dataset(dataset: str) -> tuple[str, str]:
@@ -153,11 +254,23 @@ def build_pr_body(
     diff: dict | None,
     skill_md: Path | None,
     maintainers: list[str],
+    covers: list[str] | None = None,
 ) -> str:
     lines: list[str] = []
+    others = [d for d in (covers or []) if d and d != dataset]
     lines.append(
         f"Automated drift detection found upstream changes for `{dataset}`."
     )
+    if others:
+        listed = ", ".join(f"`{d}`" for d in others)
+        lines.append("")
+        lines.append(
+            f"This also covers {listed}. Those datasets declare the same "
+            "`drift_fingerprint` baseline and the same probe, so they report one drift "
+            "signal between them, not one each -- they are distinct *schema* variants "
+            "of the same upstream resource. Previously each opened its own PR proposing "
+            "byte-identical content, and merging any one made the rest conflict."
+        )
     lines.append("")
     lines.append(
         "This PR regenerates `drift_fingerprint.json` so the test suite "
@@ -191,7 +304,11 @@ def build_pr_body(
     return "\n".join(lines) + "\n"
 
 
-def pr_title_for(dataset: str) -> str:
+def pr_title_for(dataset: str, covers: list[str] | None = None) -> str:
+    extra = len([d for d in (covers or []) if d and d != dataset])
+    if extra:
+        provider = split_dataset(dataset)[0]
+        return f"chore(drift): {provider} snapshot regeneration ({extra + 1} datasets)"
     return f"chore(drift): {dataset} snapshot regeneration"
 
 
@@ -233,7 +350,99 @@ def remote_branch_exists(branch: str, *, dry_run: bool) -> bool:
         text=True,
         capture_output=True,
     )
-    return bool(result.stdout.strip())
+    # `or ""` rather than a bare .strip(): stdout is None whenever the call was made
+    # without capture_output, and a crash here would abort a drift run over a branch
+    # existence check.
+    return bool((result.stdout or "").strip())
+
+
+def _discard_staged_fingerprints(*, dry_run: bool) -> None:
+    """Return index AND working tree for ``hvantk/skills`` to HEAD.
+
+    Every early return out of `handle_drifted` after `git add` must call this. The
+    regeneration is per-dataset but the checkout is not isolated: the next iteration
+    does `git checkout -B <next-branch> origin/<base>`, which leaves both the index and
+    the working tree untouched. A leftover staged fingerprint would therefore be picked
+    up by the next dataset's `git add hvantk/skills` and committed onto ITS branch --
+    contaminating an unrelated PR, and masking that dataset's own skip check because
+    the diff is no longer empty.
+
+    `git checkout HEAD -- <path>` rather than `git reset`: reset alone unstages but
+    leaves the modified file in the working tree, where the next `git add` re-stages it.
+    """
+    if dry_run:
+        print("[dry-run] (would discard staged fingerprint changes)")
+        return
+    result = subprocess.run(
+        ["git", "checkout", "HEAD", "--", "hvantk/skills"],
+        check=False, text=True, capture_output=True,
+    )
+    if result.returncode != 0:
+        # `check=False` keeps one failed cleanup from aborting the whole run, but
+        # swallowing the output would hide the exact state this function exists to
+        # prevent: the fingerprint stays staged and the next dataset commits it onto
+        # ITS branch. Surface it so the job log names the contaminating run.
+        print(
+            "  WARNING: could not discard staged fingerprints; the next dataset may "
+            f"commit them onto its branch: {(result.stderr or '').strip()}",
+            file=sys.stderr,
+        )
+
+
+def branch_needs_update(branch: str, *, dry_run: bool) -> bool:
+    """Should the staged fingerprints be pushed to ``branch``?
+
+    False only when the branch already exists AND every staged fingerprint is
+    materially identical to the one it already carries -- i.e. the sole difference is
+    `fetched_at`. Everything else returns True, deliberately: a branch that does not
+    exist, a file the branch lacks, an unreadable blob or a git failure all mean "I
+    cannot prove this is redundant", and the safe answer is to push. Suppressing a real
+    drift PR is far worse than one redundant force-push.
+    """
+    if dry_run:
+        return True
+    if not remote_branch_exists(branch, dry_run=dry_run):
+        return True
+
+    staged = subprocess.run(
+        ["git", "diff", "--cached", "--name-only"],
+        check=False, text=True, capture_output=True,
+    )
+    paths = [p for p in (staged.stdout or "").split("\n") if p.strip()]
+    if staged.returncode != 0 or not paths:
+        return True
+
+    # The branch ref may not exist locally -- the run checked out BASE_BRANCH, not this
+    # one -- so fetch it and read blobs out of FETCH_HEAD rather than assuming
+    # origin/<branch> is present.
+    fetched = subprocess.run(
+        ["git", "fetch", "origin", branch],
+        check=False, text=True, capture_output=True,
+    )
+    if fetched.returncode != 0:
+        return True
+
+    for path in paths:
+        # `errors="replace"` rather than a bare read_text(): a staged file that is not
+        # valid UTF-8 raises UnicodeDecodeError, which is not a CalledProcessError, so
+        # `main` would not catch it and every remaining dataset would be skipped. And
+        # `paths` is every staged path, not only JSON under hvantk/skills, so that
+        # depends on runner state rather than on this script's own staging. A mangled
+        # decode can only make the comparison unequal, which pushes -- the safe answer.
+        target = REPO_ROOT / path
+        current = target.read_text(errors="replace") if target.exists() else None
+        # errors="replace" here too: text=True decodes strictly, so a blob that is not
+        # valid UTF-8 would raise UnicodeDecodeError out of subprocess itself.
+        previous = subprocess.run(
+            ["git", "show", f"FETCH_HEAD:{path}"],
+            check=False, text=True, errors="replace", capture_output=True,
+        )
+        if current is None or previous.returncode != 0:
+            return True
+        if not fingerprints_match(current, previous.stdout):
+            return True
+
+    return False
 
 
 def pr_exists_for_branch(branch: str, *, dry_run: bool) -> str | None:
@@ -271,8 +480,11 @@ def handle_drifted(
     step_summary: Path | None,
 ) -> None:
     dataset = entry["dataset_name"]
+    # Datasets sharing this entry's drift signal (see group_by_drift_signal). Defaults
+    # to just this one, so a report without the field behaves exactly as before.
+    covers = entry.get("datasets") or [dataset]
     provider, dataset_short = split_dataset(dataset)
-    branch = branch_name_for(dataset)
+    branch = branch_name_for_signal(covers, entry.get("fingerprint_path") or "")
     skill_md = find_skill_md(provider, dataset_short)
     maintainers = read_maintainers(provider)
     diff = entry.get("diff") or {}
@@ -308,6 +520,51 @@ def handle_drifted(
                 f"  no fingerprint changes to commit for {dataset}; "
                 "drift may have already been addressed. Skipping PR."
             )
+            _discard_staged_fingerprints(dry_run=dry_run)
+            return
+
+        # ...and neither should a re-push that changes nothing but a timestamp.
+        #
+        # The check above compares against BASE_BRANCH, so for a dataset that is still
+        # drifted it can never fire: `--regenerate` rewrites `fetched_at` on every run,
+        # which alone guarantees a non-empty diff. The result was that each of the nine
+        # open drift PRs got a fresh force-push and a body edit EVERY morning for a
+        # week -- ~63 notification events, none of them carrying new information --
+        # because nothing compared the new fingerprint against what the branch already
+        # proposed. `fetched_at` is excluded from drift comparison
+        # (PROBE_FINGERPRINT_IGNORED_KEYS) but still written into the committed file,
+        # so it is invisible to the detector and load-bearing for the diff.
+        #
+        # So: if the branch already exists and already proposes materially the same
+        # fingerprint, leave it alone. The PR stays open with its original body; only a
+        # genuine upstream change re-pushes.
+        # Only skip when an open PR actually exists to be left alone. A branch can
+        # outlive its PR -- closing a PR does not delete the head branch, and a run
+        # whose push succeeded while `gh pr create` failed leaves a branch with no PR
+        # at all (that exact failure is why this script exits nonzero on gh errors; see
+        # the module docstring). In either case the branch content matches, so a
+        # content-only check would skip forever and the dataset's drift would never be
+        # surfaced again -- the precise outcome `branch_needs_update` promises cannot
+        # happen. Re-opening a PR for an existing branch is cheap; silence is not.
+        if not branch_needs_update(branch, dry_run=dry_run) and pr_exists_for_branch(
+            branch, dry_run=dry_run
+        ):
+            print(
+                f"  branch {branch} already proposes this fingerprint "
+                f"(only volatile keys differ); leaving it untouched."
+            )
+            # The regenerated fingerprint is still staged at this point. Leaving it
+            # there would carry THIS dataset's baseline into the NEXT dataset's branch:
+            # `git checkout -B` does not clear the index, so the next iteration's
+            # `git add hvantk/skills` would stage both, and the next PR would commit a
+            # bump it has nothing to do with. It would also defeat this very skip for
+            # every dataset processed after a skipped one.
+            _discard_staged_fingerprints(dry_run=dry_run)
+            _summary_line(
+                step_summary,
+                f"- DRIFT (unchanged): `{dataset}` -> branch `{branch}` still open; "
+                f"nothing new to push",
+            )
             return
 
     _run(
@@ -322,8 +579,8 @@ def handle_drifted(
     )
 
     # 5) open or update PR
-    body = build_pr_body(dataset, diff, skill_md, maintainers)
-    title = pr_title_for(dataset)
+    body = build_pr_body(dataset, diff, skill_md, maintainers, covers=covers)
+    title = pr_title_for(dataset, covers=covers)
 
     existing = pr_exists_for_branch(branch, dry_run=dry_run)
     if existing:
@@ -463,8 +720,15 @@ def main(argv: list[str] | None = None) -> int:
         f"{len(clean)} clean, {len(stub)} stub"
     )
 
+    groups = group_by_drift_signal(drifted)
+    if len(groups) < len(drifted):
+        print(
+            f"  {len(drifted)} drifted dataset(s) share {len(groups)} distinct drift "
+            f"signal(s); opening one PR per signal."
+        )
+
     failed: list[str] = []
-    for entry in drifted:
+    for entry in groups:
         try:
             handle_drifted(
                 entry,
@@ -476,17 +740,23 @@ def main(argv: list[str] | None = None) -> int:
             # One drifted dataset failing to PR shouldn't stop the others, but it
             # must not vanish either: collected here and re-raised as a nonzero
             # exit once every dataset has had its turn.
-            failed.append(str(entry.get("dataset_name")))
+            #
+            # Name every dataset the signal covers, not just the anchor. A grouped
+            # entry regenerates one baseline on behalf of several datasets, so
+            # reporting `dataset_name` alone would show the operator one dataset when
+            # several are left unaddressed.
+            covered = [str(d) for d in (entry.get("datasets") or [entry.get("dataset_name")])]
+            failed.extend(covered)
+            label = ", ".join(covered)
             print(
-                f"error handling {entry.get('dataset_name')}: "
+                f"error handling {label}: "
                 f"{exc.cmd} exited {exc.returncode}\n"
                 f"stdout: {exc.stdout}\nstderr: {exc.stderr}",
                 file=sys.stderr,
             )
             _summary_line(
                 step_summary,
-                f"- ERROR: `{entry.get('dataset_name')}` -- "
-                f"{exc.cmd[0]} exited {exc.returncode}",
+                f"- ERROR: `{label}` -- {exc.cmd[0]} exited {exc.returncode}",
             )
 
     for entry in probe_failed:

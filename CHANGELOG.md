@@ -1,5 +1,94 @@
 # Changelog
 
+## 0.3.0 — 2026-08-05
+
+### Added
+
+- **`--n-partitions` now controls the VDS → MatrixTable partitioning** on both
+  `hvantk hgc vds2mt` and `hvantk hgc pipeline`, coalescing the dense MatrixTable before
+  the write. A VDS's on-disk layout is derived from its *reference-block* count, which is
+  a property of the genome and saturates (~229 M on chr1 by N≈500 samples) while the dense
+  matrix keeps growing with N×M(N). Past that point the partition count stops tracking the
+  size of the data it partitions and work-per-task collapses — measured at 0.69
+  MiB/partition on a 1,005-sample chr1 cohort, where densify and QC plateaued at 1.29× and
+  1.64× going from 16 to 128 cores while well-sized stages scaled 7.8× (#207).
+  Implemented with `naive_coalesce`, which merges adjacent partitions without a shuffle so
+  the densify for a merged group runs inside one task. Reduces only; the default is
+  unchanged. **Not** implemented at the read: `hl.vds.read_vds(n_partitions=…)` looks
+  tidier but derives intervals from the reference data via `_calculate_new_partitions`,
+  whose count saturates independently of the request — measured on the 2,586-partition
+  test VDS it returned 2 intervals for every request from 2 to 100, and `to_dense_mt` then
+  failed a Scala `require` on the reference/variant mismatch for requests of 2, 4 and 16,
+  where coalescing returned exactly 2, 4 and 16.
+
+### Changed
+
+- **Datasets that share a `drift_fingerprint` baseline are now treated as sharing one
+  drift signal**, rather than as N independent ones. `hvantk drift` probes such a group
+  once and fans the result out — every dataset still gets its own report entry, and each
+  now carries `fingerprint_path` — and the drift workflow opens a single PR per signal.
+  `ucsc-cellbrowser` is the case that forced it: `default`, `adult-ctx` and `dev-ctx` are
+  genuinely distinct *schema* variants (their obs cell-type column is `celltype`, `Class`
+  and `Type_v2`, which is why each earns its own snapshot), but `fetch_fingerprint()`
+  takes no arguments and fingerprints the provider-wide catalog at
+  `cells.ucsc.edu/dataset.json`. One upstream event therefore produced three identical
+  PRs whose branches all wrote the same file, so merging any one made the other two
+  conflict — #241 merged, #242 and #243 were closed as superseded. Grouping is keyed on
+  *(baseline path, probe callable)*, not the path alone: two datasets sharing a baseline
+  while declaring different probes would each overwrite the other's, so they deliberately
+  do not group, and `hvantk plugins validate` now rejects that declaration outright. A
+  lone dataset keeps its historical `drift/<provider>-<dataset>` branch name exactly, so
+  existing open PRs are still matched; a group uses `drift/<provider>`.
+
+### Fixed
+
+- **`PipelineConfig.n_partitions` reached no pipeline stage.** It was accepted from the
+  CLI and echoed back in the run plan while being read by nothing, so the run plan
+  affirmatively told the user a setting had taken effect when it had not — the worst
+  failure mode for a dead flag, and the first knob a user reaches for when they hit #207.
+  It is now forwarded to `convert_vds_to_mt`; the run plan line names the stage it governs
+  (#208).
+- **Every open drift PR was force-pushed and its body re-edited once a day, forever.**
+  Nine PRs churned daily for a week — roughly 63 notification events, none carrying new
+  information. `hvantk drift --regenerate` rewrites `fetched_at` on every run, and the
+  existing emptiness check compared against the *base branch*, so for a dataset that was
+  still drifted it could never fire: the timestamp alone guaranteed a non-empty diff.
+  Nothing compared the freshly regenerated fingerprint against what the branch already
+  proposed. `drift_to_pr.py` now skips the push and the PR edit when the branch already
+  carries a materially identical fingerprint — "materially" meaning equal once
+  `fetched_at` and `probe_version` are dropped, the same keys the drift detector ignores.
+  The skip additionally requires an **open PR** to still exist: a branch outlives its PR
+  when one is closed, and a run whose push succeeded while `gh pr create` failed leaves a
+  branch with no PR at all — in both cases the branch content matches, so a content-only
+  check would suppress that dataset's drift forever. Every other outcome (no branch yet,
+  a file the branch lacks, an unreadable blob, a git failure) still pushes: suppressing a
+  real drift PR is far worse than one redundant force-push. A skipped dataset also
+  restores the index and working tree before returning — `git checkout -B` does not clear
+  the index, so a leftover staged fingerprint would be committed onto the *next*
+  dataset's branch — and still reports itself in the job's step summary. Note this does **not** reduce how often drift is *detected* — a content
+  revision, such as ClinGen's `content_length` moving while the checksum holds, is still
+  a genuine change and still opens a PR.
+
+- **The `cptac:expression` and `cptac:phospho` drift probes had never once succeeded.**
+  The drift workflow installed with a bare `pip install -e .`, but the cptac probe
+  fingerprints the *installed* `cptac` version (via `importlib.metadata`) against
+  PayneLab's latest GitHub release — and `cptac` is declared in the `ptm` extra. Every
+  scheduled run reported `The 'cptac' Python package is not installed; cannot
+  fingerprint`, so upstream CPTAC drift has never been detectable. The workflow now
+  installs `.[ptm]`. Of the 22 drift probes these two are the only ones needing an
+  extra; the other 20 use `requests` or the stdlib alone.
+- **A single rate-limited response could fail the whole scheduled drift run.** On
+  2026-08-04 GenCC answered the regeneration request with HTTP 429; the probe had no
+  retry, so it raised, no PR could be opened for the drifted dataset, and the run exited
+  non-zero with nothing actually wrong. New `hvantk/core/utils/http.py` provides
+  `request_with_retry`, which retries transient statuses (429 and the 5xx family) and
+  connection errors with exponential backoff. It honours `Retry-After` but **clamps**
+  it: `urllib3.util.Retry` sleeps for the header's full value with no upper bound
+  (`backoff_max` caps only the exponential path), so a host answering `Retry-After: 3600`
+  would park CI for an hour. The helper deliberately does not call `raise_for_status`,
+  so callers keep their existing error handling and only the transient case changes.
+  Wired into the GenCC probe; the other 12 HTTP probes can adopt it as needed.
+
 ## 0.2.0 — 2026-08-04
 
 First tagged release. Everything below had accumulated under `Unreleased` since `0.1.0`,

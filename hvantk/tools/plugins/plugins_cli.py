@@ -146,4 +146,40 @@ def validate_cmd(manifest_path: str, strict_artifacts: bool):
             err=True,
         )
 
+    # Datasets may deliberately SHARE a drift_fingerprint -- that is how a manifest says
+    # "these have one drift signal, not N", and the drift runner groups on it so one
+    # upstream event yields one PR rather than one per dataset. Sharing is only coherent
+    # when the probe is also shared: two datasets pointing different probes at one
+    # baseline would each overwrite the other's, and whichever regenerated last would
+    # define "clean" for both. That is a manifest error, so name it.
+    # Key on the RESOLVED path rather than the declared string. The loader resolves
+    # these against the plugin directory before anything at runtime sees them (see
+    # `loader.py`), so `tests/x.json` and `./tests/x.json` are one baseline there.
+    # Grouping on the raw spelling would file them in separate buckets, the
+    # single-probe check would not fire, and the overwrite this validation exists to
+    # name would escape. The declared spelling is kept only for the message.
+    by_fingerprint: dict[str, list[tuple[str, tuple[str, str]]]] = {}
+    declared: dict[str, str] = {}
+    for dataset in content.get("datasets", []):
+        rel = (dataset.get("tests") or {}).get("drift_fingerprint")
+        probe = dataset.get("drift_probe") or {}
+        if not rel:
+            continue
+        key = (plugin_dir / rel).resolve().as_posix()
+        declared.setdefault(key, rel)
+        by_fingerprint.setdefault(key, []).append(
+            (dataset.get("name", "?"), (probe.get("module", ""), probe.get("function", "")))
+        )
+    conflicts = [
+        f"{declared[key]} is shared by "
+        + ", ".join(f"{name} -> {mod}:{fn}" for name, (mod, fn) in members)
+        for key, members in sorted(by_fingerprint.items())
+        if len({probe for _, probe in members}) > 1
+    ]
+    if conflicts:
+        raise click.ClickException(
+            "datasets share a drift_fingerprint but declare different drift probes; "
+            "they would overwrite each other's baseline:\n  - " + "\n  - ".join(conflicts)
+        )
+
     click.echo(f"ok: {manifest_path}")
