@@ -6,7 +6,7 @@
 # [tool.poetry] -- they have no PEP 621 equivalent and are not deprecated.
 [project]
 name = "hvantk"
-version = "0.2.0"
+version = "0.3.0"
 description = "Hail-based toolkit for multi-omics variant annotation and analysis"
 authors = [
     { name = "Yasset Perez-Riverol", email = "ypriverol@gmail.com" },
