@@ -52,6 +52,16 @@ DRIFTED = {
     "probe_error": None,
 }
 
+#: A grouped entry, as `group_by_drift_signal` emits it: several datasets sharing one
+#: baseline, with the first as the anchor. `DRIFTED` carries neither `datasets` nor
+#: `fingerprint_path`, so it only ever exercises the single-dataset path.
+GROUPED = {
+    **DRIFTED,
+    "dataset_name": "ucsc-cellbrowser:default",
+    "datasets": ["ucsc-cellbrowser:default", "ucsc-cellbrowser:adult-ctx"],
+    "fingerprint_path": "hvantk/skills/ucsc_cellbrowser/tests/drift_fingerprint.json",
+}
+
 
 def test_exits_nonzero_when_a_pr_cannot_be_opened(drift_to_pr, tmp_path, monkeypatch):
     """The regression: drift detected, branch pushed, `gh pr create` refused, exit 0.
@@ -281,7 +291,7 @@ def test_grouped_pr_names_every_dataset_it_covers(drift_to_pr):
 
 
 def _capture_handle_drifted(
-    drift_to_pr, monkeypatch, tmp_path, *, needs_update, pr_exists, staged=True
+    drift_to_pr, monkeypatch, tmp_path, *, needs_update, pr_exists, staged=True, entry=None
 ):
     """Run handle_drifted with git/gh stubbed.
 
@@ -321,7 +331,7 @@ def _capture_handle_drifted(
 
     summary = tmp_path / "summary.md"
     drift_to_pr.handle_drifted(
-        dict(DRIFTED), base_branch="dev", dry_run=False, step_summary=summary
+        dict(entry or DRIFTED), base_branch="dev", dry_run=False, step_summary=summary
     )
     return cmds, cleanups, (summary.read_text() if summary.exists() else "")
 
@@ -355,6 +365,32 @@ def test_update_still_commits_pushes_and_edits(drift_to_pr, monkeypatch, tmp_pat
     assert any(c.startswith("git commit") for c in joined), joined
     assert any(c.startswith("git push") for c in joined), joined
     assert any(c.startswith("gh pr edit") for c in joined), joined
+
+
+def test_grouped_entry_checks_out_the_signal_branch_and_titles_the_group(
+    drift_to_pr, monkeypatch, tmp_path
+):
+    """`handle_drifted`'s grouping wiring, not just the helpers it calls.
+
+    `branch_name_for_signal` and `pr_title_for` are unit-tested on their own, but every
+    other test here passes `DRIFTED`, which has no `datasets` and no `fingerprint_path`
+    -- so the single-dataset path is the only one they run. Passing `[dataset]` instead
+    of `covers`, or dropping `fingerprint_path`, would leave those unit tests green
+    while the bot silently opened a per-dataset PR for a grouped signal: the exact
+    regression #263 exists to prevent.
+    """
+    cmds, _, _ = _capture_handle_drifted(
+        drift_to_pr, monkeypatch, tmp_path, needs_update=True, pr_exists=False, entry=GROUPED
+    )
+    joined = [" ".join(c) for c in cmds]
+
+    checkout = next(c for c in joined if c.startswith("git checkout -B"))
+    assert "drift/ucsc-cellbrowser" in checkout, checkout
+    # The anchor's per-dataset name is what a dropped `covers` would produce.
+    assert "drift/ucsc-cellbrowser-default" not in checkout, checkout
+
+    create = next(c for c in joined if c.startswith("gh pr create"))
+    assert "(2 datasets)" in create, create
 
 
 def test_matching_branch_with_no_open_pr_is_never_skipped(drift_to_pr, monkeypatch, tmp_path):
