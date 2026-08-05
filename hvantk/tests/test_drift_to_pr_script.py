@@ -190,6 +190,88 @@ def test_branch_needs_update_is_true_when_the_branch_is_new(drift_to_pr, monkeyp
     assert drift_to_pr.branch_needs_update("drift/x-y", dry_run=False) is True
 
 
+# --- one PR per drift SIGNAL, not per dataset --------------------------------------
+#
+# ucsc-cellbrowser declares three datasets (default / adult-ctx / dev-ctx) that are
+# distinct SCHEMA variants -- their obs cell-type column is `celltype`, `Class` and
+# `Type_v2` -- but all three share one drift_fingerprint and a zero-argument probe that
+# fingerprints the provider-wide catalog. One upstream event therefore produced three
+# identical PRs, and merging any one made the other two conflict (#241/#242/#243).
+
+
+def _drifted(name, path):
+    return {"dataset_name": name, "status": "drifted", "fingerprint_path": path,
+            "observed": {}, "expected": {}, "diff": {}, "probe_error": None}
+
+
+UCSC_FP = "hvantk/skills/ucsc_cellbrowser/tests/drift_fingerprint.json"
+
+
+def test_datasets_sharing_a_baseline_collapse_to_one_entry(drift_to_pr):
+    groups = drift_to_pr.group_by_drift_signal([
+        _drifted("ucsc-cellbrowser:default", UCSC_FP),
+        _drifted("ucsc-cellbrowser:adult-ctx", UCSC_FP),
+        _drifted("ucsc-cellbrowser:dev-ctx", UCSC_FP),
+    ])
+
+    assert len(groups) == 1
+    assert groups[0]["datasets"] == [
+        "ucsc-cellbrowser:default",
+        "ucsc-cellbrowser:adult-ctx",
+        "ucsc-cellbrowser:dev-ctx",
+    ]
+
+
+def test_distinct_baselines_are_never_merged(drift_to_pr):
+    """The guard that keeps this from over-collapsing: different file, different PR."""
+    groups = drift_to_pr.group_by_drift_signal([
+        _drifted("clinvar:variants", "hvantk/skills/clinvar/tests/drift_fingerprint.json"),
+        _drifted("hgnc:lookup", "hvantk/skills/hgnc/tests/drift_fingerprint.json"),
+    ])
+    assert len(groups) == 2
+
+
+def test_entries_without_a_fingerprint_path_are_never_grouped(drift_to_pr):
+    """An older report shape must not silently collapse unrelated datasets into one PR."""
+    groups = drift_to_pr.group_by_drift_signal([
+        {"dataset_name": "a:x", "status": "drifted"},
+        {"dataset_name": "b:y", "status": "drifted"},
+    ])
+    assert len(groups) == 2
+    assert [g["datasets"] for g in groups] == [["a:x"], ["b:y"]]
+
+
+def test_group_branch_is_provider_level_but_single_datasets_keep_their_name(drift_to_pr):
+    """A lone dataset must keep its historical branch, or open PRs stop being matched."""
+    assert drift_to_pr.branch_name_for_signal(["clinvar:variants"]) == "drift/clinvar-variants"
+    assert drift_to_pr.branch_name_for_signal([
+        "ucsc-cellbrowser:default", "ucsc-cellbrowser:adult-ctx",
+    ]) == "drift/ucsc-cellbrowser"
+
+
+def test_group_branch_is_stable_regardless_of_member_order(drift_to_pr):
+    """Branch names must not move between runs, or every run orphans yesterday's PR."""
+    a = drift_to_pr.branch_name_for_signal(["ucsc:default", "ucsc:adult", "ucsc:dev"])
+    b = drift_to_pr.branch_name_for_signal(["ucsc:dev", "ucsc:default", "ucsc:adult"])
+    assert a == b
+
+
+def test_grouped_pr_names_every_dataset_it_covers(drift_to_pr):
+    body = drift_to_pr.build_pr_body(
+        "ucsc-cellbrowser:default", {}, None, [],
+        covers=["ucsc-cellbrowser:default", "ucsc-cellbrowser:adult-ctx"],
+    )
+    assert "ucsc-cellbrowser:adult-ctx" in body
+
+    title = drift_to_pr.pr_title_for(
+        "ucsc-cellbrowser:default",
+        covers=["ucsc-cellbrowser:default", "ucsc-cellbrowser:adult-ctx"],
+    )
+    assert "2 datasets" in title
+    # A single dataset keeps the original title verbatim.
+    assert drift_to_pr.pr_title_for("clinvar:variants") == (
+        "chore(drift): clinvar:variants snapshot regeneration"
+    )
 # --- the skip path itself, end to end -----------------------------------------------
 #
 # Adversarial review caught that NO test exercised the behaviour this change adds:
@@ -365,6 +447,27 @@ def test_discard_staged_fingerprints_clears_index_and_worktree(
     assert fp.read_text() == original, "working tree must be restored too, or the next "\
         "`git add hvantk/skills` re-stages the leak"
 
+
+def test_two_signals_from_one_provider_do_not_collide_on_one_branch(drift_to_pr):
+    """Review finding on #263: keying a group's branch on the provider alone discards the
+    baseline path that DEFINES the signal. Multi-dataset providers suffix their baselines
+    per dataset, so a provider can own two independent signals; collapsing them onto one
+    branch means the second overwrites the first's commit and rewrites its PR."""
+    a = drift_to_pr.branch_name_for_signal(
+        ["p:one", "p:two"], "hvantk/skills/p/tests/drift_fingerprint.json"
+    )
+    b = drift_to_pr.branch_name_for_signal(
+        ["p:three", "p:four"], "hvantk/skills/p/tests/drift_fingerprint_samples.json"
+    )
+    assert a != b, f"distinct signals collided on {a}"
+    assert a == "drift/p"                 # the unsuffixed baseline keeps the plain name
+    assert b == "drift/p-samples"
+
+
+def test_group_branch_still_stable_across_member_order(drift_to_pr):
+    fp = "hvantk/skills/ucsc_cellbrowser/tests/drift_fingerprint.json"
+    assert drift_to_pr.branch_name_for_signal(["u:a", "u:b", "u:c"], fp) == \
+           drift_to_pr.branch_name_for_signal(["u:c", "u:a", "u:b"], fp)
 
 def test_nothing_staged_path_also_discards(drift_to_pr, monkeypatch, tmp_path):
     """The OTHER early return after `git add`. Both must clean up, or whichever is left

@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from hvantk.core.plugin import drift_runner
 from hvantk.core.plugin.drift_runner import DriftResult, run_drift_check
 from hvantk.core.plugin.api import DatasetSpec, DriftProbeError, TestPaths
 
@@ -345,3 +346,88 @@ def test_empty_checksums_map_is_still_not_a_placeholder(tmp_path: Path):
     spec = _make_spec(probe_return=dict(fp), fingerprint_path=fp_path)
 
     assert _run_with_spec(spec).status == "clean"
+
+
+# --- one probe per drift signal ------------------------------------------------------
+
+
+def _spec(name, fingerprint_path, probe):
+    """Minimal DatasetSpec stand-in: run_drift_checks touches only these fields."""
+    from types import SimpleNamespace
+
+    return SimpleNamespace(
+        name=name,
+        drift_probe=probe,
+        test_paths=SimpleNamespace(drift_fingerprint=str(fingerprint_path)),
+    )
+
+
+def test_datasets_sharing_a_baseline_and_probe_are_probed_once(tmp_path):
+    """ucsc-cellbrowser's three datasets share one baseline and one zero-arg probe, so
+    they have ONE drift signal. Probing per dataset made three identical HTTP calls and
+    produced three mutually-conflicting PRs."""
+    fp = tmp_path / "drift_fingerprint.json"
+    fp.write_text(json.dumps({"source_version": "v1", "fetched_at": "2026-01-01"}))
+
+    calls = []
+
+    def probe():
+        calls.append(1)
+        return {"source_version": "v1", "fetched_at": "2026-08-04"}
+
+    specs = [_spec(f"ucsc:{n}", fp, probe) for n in ("default", "adult-ctx", "dev-ctx")]
+    results = drift_runner.run_drift_checks(specs)
+
+    assert len(calls) == 1, f"probe ran {len(calls)} times; expected 1"
+    assert [r.dataset_name for r in results] == [
+        "ucsc:default", "ucsc:adult-ctx", "ucsc:dev-ctx"
+    ], "every dataset must still get its own entry"
+    assert {r.status for r in results} == {"clean"}
+    assert {r.fingerprint_path for r in results} == {str(fp)}
+
+
+def test_same_baseline_but_different_probes_are_not_grouped(tmp_path):
+    """Conservative on a manifest error: two probes writing one baseline would each
+    overwrite the other, so they must not share a result. `plugins validate` rejects the
+    declaration; the runtime simply refuses to merge them."""
+    fp = tmp_path / "drift_fingerprint.json"
+    fp.write_text(json.dumps({"source_version": "v1"}))
+
+    calls = []
+
+    def probe_a():
+        calls.append("a")
+        return {"source_version": "v1"}
+
+    def probe_b():
+        calls.append("b")
+        return {"source_version": "v1"}
+
+    results = drift_runner.run_drift_checks(
+        [_spec("p:one", fp, probe_a), _spec("p:two", fp, probe_b)]
+    )
+
+    assert sorted(calls) == ["a", "b"], "each distinct probe must run"
+    assert len(results) == 2
+
+
+def test_distinct_baselines_are_probed_separately(tmp_path):
+    """The obvious non-regression: unrelated datasets keep independent drift."""
+    calls = []
+
+    def make(version):
+        def probe():
+            calls.append(version)
+            return {"source_version": version}
+        return probe
+
+    specs = []
+    for name, version in (("a:x", "1"), ("b:y", "2")):
+        fp = tmp_path / f"{name.replace(':', '_')}.json"
+        fp.write_text(json.dumps({"source_version": version}))
+        specs.append(_spec(name, fp, make(version)))
+
+    results = drift_runner.run_drift_checks(specs)
+
+    assert sorted(calls) == ["1", "2"]
+    assert {r.status for r in results} == {"clean"}

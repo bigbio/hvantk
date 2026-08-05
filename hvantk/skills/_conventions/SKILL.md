@@ -195,11 +195,17 @@ Each dataset declares a `drift_probe.module` + `function` in `plugin.yaml`. The 
 
 The expected fingerprint lives at `hvantk/skills/<provider>/[<dataset>/]tests/drift_fingerprint.json`. `hvantk drift <provider:dataset>` compares the live probe output against this file. Update the fingerprint when an intentional upstream change has been validated; do not silently regenerate it in the same PR as a behavioural change.
 
+**Sharing one `drift_fingerprint` across datasets is meaningful, not a shortcut.** Datasets that point at the same baseline *and* the same probe are declaring that they have **one** drift signal between them, not one each — which is the honest declaration when the probe is provider-scoped. `ucsc-cellbrowser` is the worked example: `default`, `adult-ctx` and `dev-ctx` are distinct *schema* variants (their obs cell-type column is `celltype`, `Class` and `Type_v2` respectively, so each earns its own snapshot), but `fetch_fingerprint()` takes no arguments and fingerprints the provider-wide catalog, so all three always report identically.
+
+`hvantk drift` probes such a group once and fans the result out — every dataset still gets its own report entry — and the drift workflow opens a single PR per signal. Without that, one upstream event produced three identical PRs whose branches all wrote the same file, so merging any one made the others conflict.
+
+Two datasets may **not** share a baseline while declaring *different* probes: each would overwrite the other's file, and whichever regenerated last would define "clean" for both. `hvantk plugins validate` rejects that.
+
 ### Automated drift workflow
 
 A scheduled GitHub Actions workflow (`.github/workflows/drift.yml`) runs `hvantk drift --all --json` daily at 06:00 UTC. For each plugin reporting `status: drifted`, the workflow:
 
-1. Branches `drift/<provider>-<dataset>` from the base branch (`env.BASE_BRANCH`, defaulting to `dev`).
+1. Branches `drift/<provider>-<dataset>` from the base branch (`env.BASE_BRANCH`, defaulting to `dev`) — or `drift/<provider>` when several of that provider's datasets share one drift signal, so the group gets a single PR.
 2. Regenerates `drift_fingerprint.json` via `hvantk drift --regenerate <provider:dataset>`.
 3. Opens (or updates) a draft PR via `gh pr create` / `gh pr edit`, with the structured diff embedded in the body and the regenerated fingerprint already committed. If the plugin's `plugin.yaml` declares `maintainers:` whose entries look like GitHub handles, those handles are `cc`'d in the PR body.
 

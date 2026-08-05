@@ -111,6 +111,71 @@ def fingerprints_match(a: str, b: str) -> bool:
         return False
 
 
+def branch_name_for_signal(datasets: list[str], fingerprint_path: str = "") -> str:
+    """Branch name for a drift signal covering one or more datasets.
+
+    A single dataset keeps its historical name exactly (``drift/<provider>-<dataset>``),
+    so existing branches and their open PRs are still matched.
+
+    A group takes ``drift/<provider>``, plus the baseline's distinguishing suffix when it
+    has one. The suffix matters: the branch must identify the SIGNAL, and a provider can
+    own more than one. Multi-dataset providers suffix their baselines per dataset
+    (``drift_fingerprint_samples.json`` alongside ``drift_fingerprint.json``), so keying
+    on the provider alone would collapse two independent signals onto one branch, where
+    the second would overwrite the first's commit and rewrite its PR body. Deriving from
+    the path rather than from the member list also keeps the name stable across runs, and
+    does not privilege whichever member the manifest happens to list first.
+    """
+    if len(datasets) == 1:
+        return branch_name_for(datasets[0])
+
+    providers = {split_dataset(d)[0] for d in datasets}
+    if len(providers) != 1:
+        # A baseline shared ACROSS providers should be impossible -- the path lives
+        # inside one plugin directory -- but stay deterministic rather than arbitrary.
+        return branch_name_for(sorted(datasets)[0])
+
+    base = "drift/" + providers.pop()
+    stem = Path(fingerprint_path).stem if fingerprint_path else ""
+    suffix = stem[len("drift_fingerprint"):].strip("_-") if stem.startswith("drift_fingerprint") else stem
+    return f"{base}-{suffix}" if suffix else base
+
+
+def group_by_drift_signal(drifted: list[dict]) -> list[dict]:
+    """Collapse drifted entries that report the SAME drift signal into one.
+
+    Datasets sharing a ``fingerprint_path`` share a baseline file, so they cannot have
+    independent drift: one upstream event produces N identical reports, N branches
+    writing the same file, and N mutually conflicting PRs. `ucsc-cellbrowser` is the
+    worked case -- `default`, `adult-ctx` and `dev-ctx` are distinct *schema* variants
+    (obs cell-type column `celltype` / `Class` / `Type_v2`), but the probe fingerprints
+    the provider-wide catalog, so all three always agree. Merging one made the other two
+    conflict.
+
+    Returns one entry per signal, each carrying a ``datasets`` list naming every member,
+    so the PR can say what it covers. Entries WITHOUT a fingerprint_path are never
+    grouped -- an older report shape, or a runner that did not populate it, must not
+    silently collapse unrelated datasets into one PR.
+
+    Order is preserved so branch names stay stable across runs.
+    """
+    grouped: dict[str, dict] = {}
+    out: list[dict] = []
+    for entry in drifted:
+        path = entry.get("fingerprint_path")
+        if not path:
+            out.append({**entry, "datasets": [entry.get("dataset_name")]})
+            continue
+        existing = grouped.get(path)
+        if existing is None:
+            merged = {**entry, "datasets": [entry.get("dataset_name")]}
+            grouped[path] = merged
+            out.append(merged)
+        else:
+            existing["datasets"].append(entry.get("dataset_name"))
+    return out
+
+
 def split_dataset(dataset: str) -> tuple[str, str]:
     provider, _, name = dataset.partition(":")
     return provider, name
@@ -181,11 +246,23 @@ def build_pr_body(
     diff: dict | None,
     skill_md: Path | None,
     maintainers: list[str],
+    covers: list[str] | None = None,
 ) -> str:
     lines: list[str] = []
+    others = [d for d in (covers or []) if d and d != dataset]
     lines.append(
         f"Automated drift detection found upstream changes for `{dataset}`."
     )
+    if others:
+        listed = ", ".join(f"`{d}`" for d in others)
+        lines.append("")
+        lines.append(
+            f"This also covers {listed}. Those datasets declare the same "
+            "`drift_fingerprint` baseline and the same probe, so they report one drift "
+            "signal between them, not one each -- they are distinct *schema* variants "
+            "of the same upstream resource. Previously each opened its own PR proposing "
+            "byte-identical content, and merging any one made the rest conflict."
+        )
     lines.append("")
     lines.append(
         "This PR regenerates `drift_fingerprint.json` so the test suite "
@@ -219,7 +296,11 @@ def build_pr_body(
     return "\n".join(lines) + "\n"
 
 
-def pr_title_for(dataset: str) -> str:
+def pr_title_for(dataset: str, covers: list[str] | None = None) -> str:
+    extra = len([d for d in (covers or []) if d and d != dataset])
+    if extra:
+        provider = split_dataset(dataset)[0]
+        return f"chore(drift): {provider} snapshot regeneration ({extra + 1} datasets)"
     return f"chore(drift): {dataset} snapshot regeneration"
 
 
@@ -372,8 +453,11 @@ def handle_drifted(
     step_summary: Path | None,
 ) -> None:
     dataset = entry["dataset_name"]
+    # Datasets sharing this entry's drift signal (see group_by_drift_signal). Defaults
+    # to just this one, so a report without the field behaves exactly as before.
+    covers = entry.get("datasets") or [dataset]
     provider, dataset_short = split_dataset(dataset)
-    branch = branch_name_for(dataset)
+    branch = branch_name_for_signal(covers, entry.get("fingerprint_path") or "")
     skill_md = find_skill_md(provider, dataset_short)
     maintainers = read_maintainers(provider)
     diff = entry.get("diff") or {}
@@ -468,8 +552,8 @@ def handle_drifted(
     )
 
     # 5) open or update PR
-    body = build_pr_body(dataset, diff, skill_md, maintainers)
-    title = pr_title_for(dataset)
+    body = build_pr_body(dataset, diff, skill_md, maintainers, covers=covers)
+    title = pr_title_for(dataset, covers=covers)
 
     existing = pr_exists_for_branch(branch, dry_run=dry_run)
     if existing:
@@ -609,8 +693,15 @@ def main(argv: list[str] | None = None) -> int:
         f"{len(clean)} clean, {len(stub)} stub"
     )
 
+    groups = group_by_drift_signal(drifted)
+    if len(groups) < len(drifted):
+        print(
+            f"  {len(drifted)} drifted dataset(s) share {len(groups)} distinct drift "
+            f"signal(s); opening one PR per signal."
+        )
+
     failed: list[str] = []
-    for entry in drifted:
+    for entry in groups:
         try:
             handle_drifted(
                 entry,
