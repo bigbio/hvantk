@@ -87,6 +87,71 @@ def test_convert_vds_to_mt(tmp_path):
 
 
 @pytest.mark.hail
+@pytest.mark.order3
+def test_convert_vds_to_mt_honours_n_partitions(tmp_path):
+    """#207/#208: --n-partitions must actually change the written layout.
+
+    #208's acceptance criteria require that the flag either changes the output's
+    partitioning or does not exist; before this it was accepted, printed in the run plan,
+    and read by no stage. The default is asserted too, so a regression that silently
+    coalesced every run would fail rather than pass quietly.
+
+    The fixture VDS carries 2,586 partitions, so 4 is a genuine reduction rather than a
+    no-op -- `naive_coalesce` does nothing when the current count is already lower, which
+    would make a badly-chosen target vacuously "pass". That precondition is asserted from
+    the VDS's own partition count rather than by running a second, uncoalesced conversion:
+    it is free metadata, where the extra conversion cost ~4 minutes of a job that runs on
+    every push. The uncoalesced path is already covered by test_convert_vds_to_mt above.
+    """
+    import hail as hl
+
+    decompress_files(
+        zip_path=str(TESTS_DIR / "vds/cohort.vds.zip"),
+        extract_to=str(tmp_path / "cohort.vds"),
+        remove_originals=False,
+    )
+    vds_path = str(tmp_path / "cohort.vds")
+
+    source_parts = hl.vds.read_vds(vds_path).variant_data.n_partitions()
+    assert source_parts > 4, (
+        f"fixture VDS has only {source_parts} partitions; coalescing to 4 would be a "
+        f"no-op and the assertion below would prove nothing"
+    )
+
+    out = tmp_path / "coalesced.mt"
+    convert_vds_to_mt(
+        vds_path=vds_path,
+        output_path=str(out),
+        adjust_genotypes=False,
+        skip_validation=True,
+        skip_split_multi=False,
+        skip_keying_by_cols=False,
+        overwrite=True,
+        n_partitions=4,
+    )
+
+    written_parts = hl.read_matrix_table(str(out)).n_partitions()
+    assert written_parts == 4, f"expected 4 partitions, got {written_parts}"
+
+
+@pytest.mark.hail
+@pytest.mark.order3
+def test_convert_vds_to_mt_rejects_a_nonsense_partition_count(tmp_path):
+    """A bad count must fail before Hail does, with a message naming the parameter."""
+    decompress_files(
+        zip_path=str(TESTS_DIR / "vds/cohort.vds.zip"),
+        extract_to=str(tmp_path / "cohort.vds"),
+        remove_originals=False,
+    )
+    with pytest.raises(ValueError, match="n_partitions must be >= 1"):
+        convert_vds_to_mt(
+            vds_path=str(tmp_path / "cohort.vds"),
+            output_path=str(tmp_path / "never.mt"),
+            n_partitions=0,
+        )
+
+
+@pytest.mark.hail
 @pytest.mark.order4
 def test_convert_mt_to_cvcf(tmp_path):
     """Test MatrixTable → multi-sample VCF conversion."""
