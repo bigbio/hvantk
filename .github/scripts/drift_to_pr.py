@@ -373,10 +373,20 @@ def _discard_staged_fingerprints(*, dry_run: bool) -> None:
     if dry_run:
         print("[dry-run] (would discard staged fingerprint changes)")
         return
-    subprocess.run(
+    result = subprocess.run(
         ["git", "checkout", "HEAD", "--", "hvantk/skills"],
         check=False, text=True, capture_output=True,
     )
+    if result.returncode != 0:
+        # `check=False` keeps one failed cleanup from aborting the whole run, but
+        # swallowing the output would hide the exact state this function exists to
+        # prevent: the fingerprint stays staged and the next dataset commits it onto
+        # ITS branch. Surface it so the job log names the contaminating run.
+        print(
+            "  WARNING: could not discard staged fingerprints; the next dataset may "
+            f"commit them onto its branch: {(result.stderr or '').strip()}",
+            file=sys.stderr,
+        )
 
 
 def branch_needs_update(branch: str, *, dry_run: bool) -> bool:
@@ -730,17 +740,23 @@ def main(argv: list[str] | None = None) -> int:
             # One drifted dataset failing to PR shouldn't stop the others, but it
             # must not vanish either: collected here and re-raised as a nonzero
             # exit once every dataset has had its turn.
-            failed.append(str(entry.get("dataset_name")))
+            #
+            # Name every dataset the signal covers, not just the anchor. A grouped
+            # entry regenerates one baseline on behalf of several datasets, so
+            # reporting `dataset_name` alone would show the operator one dataset when
+            # several are left unaddressed.
+            covered = [str(d) for d in (entry.get("datasets") or [entry.get("dataset_name")])]
+            failed.extend(covered)
+            label = ", ".join(covered)
             print(
-                f"error handling {entry.get('dataset_name')}: "
+                f"error handling {label}: "
                 f"{exc.cmd} exited {exc.returncode}\n"
                 f"stdout: {exc.stdout}\nstderr: {exc.stderr}",
                 file=sys.stderr,
             )
             _summary_line(
                 step_summary,
-                f"- ERROR: `{entry.get('dataset_name')}` -- "
-                f"{exc.cmd[0]} exited {exc.returncode}",
+                f"- ERROR: `{label}` -- {exc.cmd[0]} exited {exc.returncode}",
             )
 
     for entry in probe_failed:
