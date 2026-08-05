@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+### Added
+
+- **`--n-partitions` now controls the VDS → MatrixTable partitioning** on both
+  `hvantk hgc vds2mt` and `hvantk hgc pipeline`, coalescing the dense MatrixTable before
+  the write. A VDS's on-disk layout is derived from its *reference-block* count, which is
+  a property of the genome and saturates (~229 M on chr1 by N≈500 samples) while the dense
+  matrix keeps growing with N×M(N). Past that point the partition count stops tracking the
+  size of the data it partitions and work-per-task collapses — measured at 0.69
+  MiB/partition on a 1,005-sample chr1 cohort, where densify and QC plateaued at 1.29× and
+  1.64× going from 16 to 128 cores while well-sized stages scaled 7.8× (#207).
+  Implemented with `naive_coalesce`, which merges adjacent partitions without a shuffle so
+  the densify for a merged group runs inside one task. Reduces only; the default is
+  unchanged. **Not** implemented at the read: `hl.vds.read_vds(n_partitions=…)` looks
+  tidier but derives intervals from the reference data via `_calculate_new_partitions`,
+  whose count saturates independently of the request — measured on the 2,586-partition
+  test VDS it returned 2 intervals for every request from 2 to 100, and `to_dense_mt` then
+  failed a Scala `require` on the reference/variant mismatch for requests of 2, 4 and 16,
+  where coalescing returned exactly 2, 4 and 16.
+
 ### Changed
 
 - **Datasets that share a `drift_fingerprint` baseline are now treated as sharing one
@@ -23,6 +42,12 @@
 
 ### Fixed
 
+- **`PipelineConfig.n_partitions` reached no pipeline stage.** It was accepted from the
+  CLI and echoed back in the run plan while being read by nothing, so the run plan
+  affirmatively told the user a setting had taken effect when it had not — the worst
+  failure mode for a dead flag, and the first knob a user reaches for when they hit #207.
+  It is now forwarded to `convert_vds_to_mt`; the run plan line names the stage it governs
+  (#208).
 - **Every open drift PR was force-pushed and its body re-edited once a day, forever.**
   Nine PRs churned daily for a week — roughly 63 notification events, none carrying new
   information. `hvantk drift --regenerate` rewrites `fetched_at` on every run, and the

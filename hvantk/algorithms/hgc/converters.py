@@ -1,4 +1,6 @@
 import logging
+from typing import Optional
+
 import hail as hl
 from hvantk.algorithms.hgc.constants import ADJ_GT_FIELD, VCF_EXTENSION
 from hvantk.core.models.backends import algorithm, Backend
@@ -154,6 +156,7 @@ def convert_vds_to_mt(
     skip_validation: bool = False,
     skip_keying_by_cols: bool = False,
     overwrite: bool = False,
+    n_partitions: Optional[int] = None,
 ) -> None:
     """
     Convert a Variant Dataset (VDS) to MatrixTable (MT).
@@ -176,6 +179,10 @@ def convert_vds_to_mt(
         skip_validation: If True, skip both the biallelic audit and the repair
         skip_keying_by_cols: If True, skip keying the MatrixTable by columns
         overwrite: Whether to overwrite the output if it already exists
+        n_partitions: Coalesce the dense MatrixTable to this many partitions before
+            writing. Reduces only -- `naive_coalesce` is a no-op if the count is already
+            lower. `None` (the default) keeps the VDS's on-disk layout and reproduces the
+            previous behaviour exactly.
 
     Notes:
         - VDS-level splitting is critical for correct GT/AD/PL alignment
@@ -186,10 +193,27 @@ def convert_vds_to_mt(
           and the repair is expressed lazily; see `_audit_split_variant_data`.
         - This algorithm operates on raw `hl.MatrixTable` / `hl.VariantDataset` instances
           (genotype data). ExpressionMatrix's hail-mt backend isn't available yet (Phase J).
+        - `n_partitions` coalesces the DENSE MatrixTable (step 3b), which is the only
+          lever that works: `to_dense_mt` takes no partitioning argument, and setting one
+          on the read raises inside Hail -- see the comment at step 3b for the measurement.
+          Boundaries are inherited by merging adjacent partitions, so what the caller
+          controls is the COUNT, not the balance. There is no auto-sizing: choosing a
+          heuristic needs measurement on a real cohort, not a guess here.
     """
     try:
         # Step 1: Load and split VDS
+        #
+        # Why the partition count is worth overriding at all: a VDS's on-disk layout is
+        # derived from its REFERENCE-BLOCK count, which is a property of the genome and
+        # saturates (~229 M on chr1 by N~=500 samples), while the dense matrix keeps
+        # growing with N x M(N). Past that point the partition count stops tracking the
+        # size of the data it partitions and work-per-task collapses -- measured at
+        # 0.69 MiB/partition for a 1,005-sample chr1 cohort, where densify and QC
+        # plateaued at 1.29x and 1.64x going from 16 to 128 cores while the well-sized
+        # stages scaled 7.8x. See #207.
         logging.info(f"Reading VDS from {vds_path}...")
+        if n_partitions is not None and n_partitions < 1:
+            raise ValueError(f"n_partitions must be >= 1, got {n_partitions}")
         vds = hl.vds.read_vds(vds_path)
         vds = _split_vds(vds, skip_split=skip_split_multi)
 
@@ -204,6 +228,33 @@ def convert_vds_to_mt(
         # Step 3: Densify to MatrixTable
         logging.info("Converting VDS to dense MatrixTable…")
         mt = hl.vds.to_dense_mt(vds)
+
+        # Step 3b: Coalesce to the requested partition count.
+        #
+        # `naive_coalesce` merges ADJACENT partitions with no shuffle, so the whole
+        # upstream chain for the merged group -- including the densify -- runs inside one
+        # task. That is the point: it makes tasks fatter, which is what #207 is about.
+        #
+        # Rejected alternative, and the reason this is not done at the read: passing
+        # `n_partitions` to `hl.vds.read_vds` looks like the tidier lever, but on a real
+        # VDS it fails. `read_vds` derives intervals from the reference data via
+        # `reference_data._calculate_new_partitions(n)`, and that count saturates
+        # independently of the request -- measured on the test cohort it returned 2
+        # intervals for every request from 2 to 100, while the read itself yielded 1
+        # actual partition. `to_dense_mt` then fails a Scala `require` on the mismatch
+        # between the reference and variant reads. Measured on the 2,586-partition test
+        # VDS: read-time requests of 2, 4 and 16 all raised
+        # `IllegalArgumentException: requirement failed`, where coalesce returned exactly
+        # 2, 4 and 16.
+        #
+        # `mt.n_partitions()` is deliberately NOT consulted first. Hail is lazy and does
+        # not cache; this function's whole design is that the densify executes exactly
+        # once, at the write (see the note above and `_audit_split_variant_data`), so a
+        # metadata probe here is a needless risk for a check Hail already does --
+        # `naive_coalesce` is a documented no-op when the current count is already lower.
+        if n_partitions is not None:
+            logging.info(f"Coalescing dense MatrixTable to {n_partitions} partitions.")
+            mt = mt.naive_coalesce(n_partitions)
 
         # Step 4: Repair out-of-bounds genotypes. A lazy expression: it costs no extra pass,
         # it fuses into the write below, and on clean data it is the identity.

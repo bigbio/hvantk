@@ -172,3 +172,43 @@ def test_mt2vcf_cli_no_filter_adj():
             assert result.exit_code == 0
             call_kwargs = mock_convert.call_args[1]
             assert call_kwargs["filter_adj_genotypes"] is False
+
+
+def test_vds2mt_forwards_n_partitions_to_the_converter():
+    """The REAL (non-dry-run) forwarding, which had no test at all.
+
+    Round-3 review: deleting `n_partitions=n_partitions` from the convert_vds_to_mt call
+    left the whole suite green, so `hvantk hgc vds2mt --n-partitions 4` would write with
+    the VDS's own layout while `--dry-run` on the identical command still printed
+    `Partitions: 4`. That is #208's failure mode -- a flag accepted, echoed back
+    affirmatively, and read by no stage -- reappearing on the command this PR was fixing.
+    """
+    runner = CliRunner()
+    with patch("hvantk.tools.hgc.convert_cli.convert_vds_to_mt") as mock_convert:
+        with patch(
+            "hvantk.tools.hgc.convert_cli.validate_input_files"
+        ) as mock_validate:
+            mock_validate.return_value = (True, [])
+
+            result = runner.invoke(
+                vds2mt,
+                ["--input", "/data.vds", "--output", "/out.mt", "--n-partitions", "4"],
+            )
+
+            assert result.exit_code == 0
+            assert mock_convert.call_args[1]["n_partitions"] == 4
+
+
+def test_vds2mt_defaults_n_partitions_to_none():
+    """Unset must reach the converter as None, not 0 or a number: None is what keeps the
+    VDS layout, and the converter rejects anything below 1."""
+    runner = CliRunner()
+    with patch("hvantk.tools.hgc.convert_cli.convert_vds_to_mt") as mock_convert:
+        with patch(
+            "hvantk.tools.hgc.convert_cli.validate_input_files"
+        ) as mock_validate:
+            mock_validate.return_value = (True, [])
+
+            runner.invoke(vds2mt, ["--input", "/data.vds", "--output", "/out.mt"])
+
+            assert mock_convert.call_args[1]["n_partitions"] is None
