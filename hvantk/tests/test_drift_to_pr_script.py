@@ -293,7 +293,7 @@ def _capture_handle_drifted(
     `subprocess.run` directly, not `_run`, so it was invisible here.
     """
     cmds: list[list[str]] = []
-    cleanups: list[bool] = []
+    cleanups: list[dict] = []
 
     def _record(cmd, **kwargs):
         cmds.append(list(cmd))
@@ -304,8 +304,12 @@ def _capture_handle_drifted(
     monkeypatch.setattr(
         drift_to_pr, "pr_exists_for_branch", lambda b, dry_run: "7" if pr_exists else None
     )
+    # Record the KWARGS, not just the fact of a call. `_discard_staged_fingerprints`
+    # is a no-op under dry_run=True (it prints and returns), so a spy that discards its
+    # arguments cannot tell a real cleanup from a neutered one -- a call site changed to
+    # `dry_run=True` would restore the contamination bug with the suite still green.
     monkeypatch.setattr(
-        drift_to_pr, "_discard_staged_fingerprints", lambda **kw: cleanups.append(True)
+        drift_to_pr, "_discard_staged_fingerprints", lambda **kw: cleanups.append(kw)
     )
     # `git diff --cached --quiet` -> returncode 1 means "there is something staged",
     # which is the state after a real regeneration. 0 means nothing to commit.
@@ -319,7 +323,7 @@ def _capture_handle_drifted(
     drift_to_pr.handle_drifted(
         dict(DRIFTED), base_branch="dev", dry_run=False, step_summary=summary
     )
-    return cmds, len(cleanups), (summary.read_text() if summary.exists() else "")
+    return cmds, cleanups, (summary.read_text() if summary.exists() else "")
 
 
 def test_skip_issues_no_commit_push_or_pr(drift_to_pr, monkeypatch, tmp_path):
@@ -334,7 +338,10 @@ def test_skip_issues_no_commit_push_or_pr(drift_to_pr, monkeypatch, tmp_path):
     assert not any(c.startswith("gh pr") for c in joined), joined
     # The staged fingerprint MUST be discarded before returning, or it is committed
     # onto the next dataset's branch. Deleting this call site was a silent revert.
-    assert cleanups == 1, "skip path must discard the staged fingerprint"
+    assert cleanups == [{"dry_run": False}], (
+        "skip path must discard the staged fingerprint, and must do it for real -- "
+        "dry_run=True would print and return, leaving the index contaminated"
+    )
     # ...and a still-drifting dataset must not vanish from the rendered report.
     assert "DRIFT (unchanged)" in summary, summary
 
@@ -468,4 +475,6 @@ def test_nothing_staged_path_also_discards(drift_to_pr, monkeypatch, tmp_path):
     _, cleanups, _ = _capture_handle_drifted(
         drift_to_pr, monkeypatch, tmp_path, needs_update=True, pr_exists=True, staged=False
     )
-    assert cleanups == 1, "the 'nothing to commit' return must discard too"
+    assert cleanups == [{"dry_run": False}], (
+        "the 'nothing to commit' return must discard too, and for real"
+    )
