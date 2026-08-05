@@ -81,6 +81,20 @@ def test_valid_combiner_tuning_passes_validate(tmp_path):
 # test_hgc_core_hail.py, which needs Hail.
 
 
+def _runner_without_hail(pipeline_mod, monkeypatch, cfg):
+    """Build a PipelineRunner without booting a JVM.
+
+    PipelineRunner.__init__ calls _initialize_hail(). None of these tests need Hail --
+    show_plan() only prints strings and _run_vds_to_mt's converter is stubbed -- but
+    without this the file boots Spark inside the DEFAULT `pytest -q` run, which
+    pytest.ini deliberately configures to deselect the `hail` marker, and fails outright
+    on any machine with no JVM. Round-3 review caught it: the pre-PR file produced zero
+    Spark banners, this one produced three.
+    """
+    monkeypatch.setattr(pipeline_mod.PipelineRunner, "_initialize_hail", lambda self: None)
+    return pipeline_mod.PipelineRunner(cfg)
+
+
 def test_pipeline_forwards_n_partitions_to_the_converter(tmp_path, monkeypatch):
     """The regression: PipelineConfig.n_partitions must REACH convert_vds_to_mt."""
     from hvantk.algorithms.hgc import pipeline as pipeline_mod
@@ -92,7 +106,7 @@ def test_pipeline_forwards_n_partitions_to_the_converter(tmp_path, monkeypatch):
 
     monkeypatch.setattr(pipeline_mod, "convert_vds_to_mt", _spy)
 
-    runner = pipeline_mod.PipelineRunner(_cfg(tmp_path, n_partitions=64))
+    runner = _runner_without_hail(pipeline_mod, monkeypatch, _cfg(tmp_path, n_partitions=64))
     runner.state.outputs["vds"] = str(tmp_path / "cohort.vds")
     runner._run_vds_to_mt()
 
@@ -106,7 +120,7 @@ def test_pipeline_passes_none_when_unset(tmp_path, monkeypatch):
     seen = {}
     monkeypatch.setattr(pipeline_mod, "convert_vds_to_mt", lambda **kw: seen.update(kw))
 
-    runner = pipeline_mod.PipelineRunner(_cfg(tmp_path))
+    runner = _runner_without_hail(pipeline_mod, monkeypatch, _cfg(tmp_path))
     runner.state.outputs["vds"] = str(tmp_path / "cohort.vds")
     runner._run_vds_to_mt()
 
@@ -176,22 +190,31 @@ def test_vds2mt_dry_run_shows_zero_rather_than_auto(tmp_path):
         )
 
     assert result.exit_code == 0, result.output
-    assert "Partitions: 0" in result.output, result.output
-    assert "auto" not in result.output, result.output
+    # The Partitions LINE only -- result.output embeds tmp_path, so a blanket
+    # `assert "auto" not in result.output` depends on pytest's tmp-dir naming rather
+    # than on the code under test.
+    line = next(ln for ln in result.output.splitlines() if "Partitions:" in ln)
+    assert line.split(":", 1)[1].strip() == "0", line
 
 
-def test_run_plan_call_site_shows_zero_rather_than_auto(tmp_path):
+def test_run_plan_call_site_shows_zero_rather_than_auto(tmp_path, monkeypatch):
     """The other call site: PipelineRunner.show_plan."""
-    from hvantk.algorithms.hgc.pipeline import PipelineRunner
-
-    import io
     import contextlib
+    import io
 
-    runner = PipelineRunner(_cfg(tmp_path, n_partitions=0))
+    from hvantk.algorithms.hgc import pipeline as pipeline_mod
+
+    runner = _runner_without_hail(
+        pipeline_mod, monkeypatch, _cfg(tmp_path, n_partitions=0)
+    )
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
         runner.show_plan()
-    out = buf.getvalue()
 
-    assert "Partitions (MT):  0" in out, out
-    assert "auto" not in out, out
+    # Assert on the Partitions LINE, not the whole capture. A blanket
+    # `assert "auto" not in out` scans output that embeds tmp_path, whose directory name
+    # pytest derives from this function's own name truncated to 30 chars -- it passed
+    # only because the cut landed one character before the trailing "auto". Renaming the
+    # test would have broken it for reasons having nothing to do with the code.
+    line = next(ln for ln in buf.getvalue().splitlines() if "Partitions (MT):" in ln)
+    assert line.split(":", 1)[1].strip() == "0", line
