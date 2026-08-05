@@ -1,11 +1,11 @@
 {
   "probe_version": 1,
-  "source_version": "Tue, 28 Jul 2026 22:07:55 GMT",
+  "source_version": "Wed, 05 Aug 2026 05:17:03 GMT",
   "headers": {
     "clinvar.vcf.gz": {
-      "content_length": "193012905"
+      "content_length": "193094343"
     }
   },
   "checksums": {},
-  "fetched_at": "2026-08-04T08:36:51.182152+00:00"
+  "fetched_at": "2026-08-05T08:36:20.969698+00:00"
 }
