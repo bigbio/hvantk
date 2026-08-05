@@ -29,6 +29,26 @@
   failure mode for a dead flag, and the first knob a user reaches for when they hit #207.
   It is now forwarded to `convert_vds_to_mt`; the run plan line names the stage it governs
   (#208).
+- **Every open drift PR was force-pushed and its body re-edited once a day, forever.**
+  Nine PRs churned daily for a week — roughly 63 notification events, none carrying new
+  information. `hvantk drift --regenerate` rewrites `fetched_at` on every run, and the
+  existing emptiness check compared against the *base branch*, so for a dataset that was
+  still drifted it could never fire: the timestamp alone guaranteed a non-empty diff.
+  Nothing compared the freshly regenerated fingerprint against what the branch already
+  proposed. `drift_to_pr.py` now skips the push and the PR edit when the branch already
+  carries a materially identical fingerprint — "materially" meaning equal once
+  `fetched_at` and `probe_version` are dropped, the same keys the drift detector ignores.
+  The skip additionally requires an **open PR** to still exist: a branch outlives its PR
+  when one is closed, and a run whose push succeeded while `gh pr create` failed leaves a
+  branch with no PR at all — in both cases the branch content matches, so a content-only
+  check would suppress that dataset's drift forever. Every other outcome (no branch yet,
+  a file the branch lacks, an unreadable blob, a git failure) still pushes: suppressing a
+  real drift PR is far worse than one redundant force-push. A skipped dataset also
+  restores the index and working tree before returning — `git checkout -B` does not clear
+  the index, so a leftover staged fingerprint would be committed onto the *next*
+  dataset's branch — and still reports itself in the job's step summary. Note this does **not** reduce how often drift is *detected* — a content
+  revision, such as ClinGen's `content_length` moving while the checksum holds, is still
+  a genuine change and still opens a PR.
 
 - **The `cptac:expression` and `cptac:phospho` drift probes had never once succeeded.**
   The drift workflow installed with a bare `pip install -e .`, but the cptac probe
