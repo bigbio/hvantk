@@ -1,6 +1,6 @@
 {
   "probe_version": 1,
-  "source_version": "Tue, 04 Aug 2026 13:01:56 GMT",
+  "source_version": "Fri, 07 Aug 2026 12:37:25 GMT",
   "headers": {
     "hgnc_complete_set.txt": [
       "hgnc_id",
@@ -62,5 +62,5 @@
   "checksums": {
     "hgnc_complete_set.txt": "b8cfde58b7ea456e6f05482a4cf663fe329a6508a00809713167cc827200790c"
   },
-  "fetched_at": "2026-08-05T08:36:30.827355+00:00"
+  "fetched_at": "2026-08-08T06:53:41.473348+00:00"
 }
