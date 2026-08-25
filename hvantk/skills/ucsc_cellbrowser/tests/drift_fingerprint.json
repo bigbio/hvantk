@@ -1,6 +1,6 @@
 {
   "probe_version": 1,
-  "source_version": "Thu, 20 Aug 2026 05:37:04 GMT",
+  "source_version": "Tue, 25 Aug 2026 06:09:30 GMT",
   "headers": {
     "cells_ucsc_datasets.json": [
       "local-catalog-hash"
@@ -13,7 +13,7 @@
   },
   "checksums": {
     "cells_ucsc_datasets.json": "f448a4b146a7137d21a7c376db4734f39cb56623de362c96da8f05e7e5e380be",
-    "dataset.json": "a88266bb18fc2126826c8b0cbe7a505c8bcfbc1d4dace67cacf267b52b3e680b"
+    "dataset.json": "ab6a7d65d47c126b2ca310dd614f986a6c1f072b4ff2d9eddd70f2f97551518b"
   },
-  "fetched_at": "2026-08-20T06:46:11.474510+00:00"
+  "fetched_at": "2026-08-25T06:47:10.166616+00:00"
 }
