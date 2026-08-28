@@ -75,7 +75,7 @@ SKILLS_ROOT = REPO_ROOT / "hvantk" / "skills"
 # importable, and `_fingerprints_match` must not become a no-op if the import fails --
 # a silently-empty ignore set would make every comparison "different" and restore the
 # exact churn this guards against. Kept in sync by test_drift_to_pr_script.py.
-FINGERPRINT_IGNORED_KEYS = frozenset({"fetched_at", "probe_version"})
+FINGERPRINT_IGNORED_KEYS = frozenset({"fetched_at", "probe_version", "informational"})
 
 
 # --------------------------------------------------------------------------- #

@@ -19,7 +19,11 @@ Backend = Literal["hail", "anndata", "pandas"]
 # drift-comparison diff (drift_runner). `fetched_at` is timestamp noise.
 # `probe_version` is orthogonal probe-implementation metadata; bumping it should
 # not flip drift status or invalidate stored artifact fingerprints.
-PROBE_FINGERPRINT_IGNORED_KEYS = frozenset({"fetched_at", "probe_version"})
+# `informational` holds fields recorded for human readers (upstream publish dates and
+# similar) that must never themselves signal drift. hgnc and gencc previously carried
+# Last-Modified in `source_version`, so a byte-identical republish opened a PR -- 8 of 8
+# hgnc drift PRs moved only the timestamp while the content checksum never changed.
+PROBE_FINGERPRINT_IGNORED_KEYS = frozenset({"fetched_at", "probe_version", "informational"})
 
 # Sentinel value for ``probe_status`` marking a drift probe as an intentional
 # stub: a documentation-only / license-gated / publication-only source with no
