@@ -61,6 +61,7 @@ import os
 import re
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 try:  # PyYAML ships in the conda env; soft-import so --dry-run still works
@@ -71,6 +72,7 @@ except ImportError:  # pragma: no cover - exercised only in stripped envs
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SKILLS_ROOT = REPO_ROOT / "hvantk" / "skills"
+LEDGER_PATH = REPO_ROOT / "hvantk" / "resources" / "drift_ledger.json"
 
 # Mirrors hvantk.core.plugin.api.PROBE_FINGERPRINT_IGNORED_KEYS. Duplicated rather than
 # imported because this script runs from a checkout where the package may not be
@@ -142,6 +144,38 @@ def partition_by_risk(drifted: list[dict]) -> tuple[list[dict], list[dict]]:
         target = routine if classify_risk(entry.get("diff")) == "routine" else schema
         target.append(entry)
     return routine, schema
+
+
+# --------------------------------------------------------------------------- #
+# Rebuild ledger. A fingerprint bump is also the signal that a built artifact may now
+# be stale; without this, that fact survives only in git history. Recorded in the same
+# commit as the fingerprints it describes -- see record_in_ledger below for why it must
+# be written and staged only once handle_drifted / handle_routine_batch have already
+# decided a commit is happening, never earlier.
+# --------------------------------------------------------------------------- #
+
+
+def ledger_entry(*, dataset: str, diff: dict | None, pr_ref: str, now: str) -> dict:
+    """One ledger row. ``rebuilt_at`` starts None and is set by whoever rebuilds;
+    a value older than ``last_upstream_change`` is the stale-artifact condition.
+
+    ``dataset`` is accepted for a call signature symmetric with ``ledger_update``
+    (and to self-document each call site); it is not part of the row itself, since
+    the dataset name is already the ledger's key at the ``ledger_update`` level.
+    """
+    return {
+        "last_upstream_change": now,
+        "accepted_in": pr_ref,
+        "signal": classify_risk(diff),
+        "rebuilt_at": None,
+    }
+
+
+def ledger_update(ledger: dict, *, dataset: str, diff: dict | None, pr_ref: str, now: str) -> dict:
+    """Return a copy of ``ledger`` with ``dataset`` updated. Never touches other rows."""
+    out = dict(ledger)
+    out[dataset] = ledger_entry(dataset=dataset, diff=diff, pr_ref=pr_ref, now=now)
+    return out
 
 
 def fingerprints_match(a: str, b: str) -> bool:
@@ -540,6 +574,55 @@ def pr_exists_for_branch(branch: str, *, dry_run: bool) -> str | None:
     return out or None
 
 
+def load_ledger() -> dict:
+    """Read the ledger. A missing or corrupt file yields {} rather than raising --
+    a broken ledger must not block a drift PR, it just starts recording afresh.
+    """
+    if not LEDGER_PATH.is_file():
+        return {}
+    try:
+        return json.loads(LEDGER_PATH.read_text()) or {}
+    except ValueError:
+        return {}
+
+
+def record_in_ledger(entries: list[dict], *, pr_ref: str, dry_run: bool) -> None:
+    """Update the ledger for every dataset in ``entries`` and write it back.
+
+    Callers must invoke this only once they have already decided a commit is
+    happening -- i.e. AFTER both anti-churn guards in handle_drifted /
+    handle_routine_batch (the `git diff --cached --quiet` emptiness check and
+    `branch_needs_update`) have passed, and the caller must stage the ledger file
+    itself in a separate `git add` right after calling this, rather than folding it
+    into the earlier `git add hvantk/skills`.
+    That earlier add is exactly what both guards inspect: `last_upstream_change` is
+    `datetime.now(...)` at call time, so it is a different value on literally every
+    invocation. Staging the ledger before either guard runs would make
+    `git diff --cached --quiet` non-empty even when the fingerprint content did not
+    change, and would make `branch_needs_update`'s per-path `fingerprints_match` check
+    see the ledger's own timestamp move on every run -- both report "needs update"
+    unconditionally, silently restoring the exact daily re-push/notification churn
+    those guards exist to prevent (see the module docstring and the comment beside
+    `branch_needs_update`). Calling it here, right before the commit, still gets the
+    ledger change into the SAME commit as the fingerprints it describes -- just via
+    its own `git add` rather than the earlier one.
+    """
+    if dry_run:
+        print(f"  [dry-run] would record {len(entries)} ledger entries")
+        return
+    now = datetime.now(timezone.utc).isoformat()
+    ledger = load_ledger()
+    for entry in entries:
+        ledger = ledger_update(
+            ledger,
+            dataset=entry["dataset_name"],
+            diff=entry.get("diff"),
+            pr_ref=pr_ref,
+            now=now,
+        )
+    LEDGER_PATH.write_text(json.dumps(ledger, indent=2, sort_keys=True) + "\n")
+
+
 # --------------------------------------------------------------------------- #
 # Per-dataset workflow.
 # --------------------------------------------------------------------------- #
@@ -642,6 +725,13 @@ def handle_drifted(
                 f"nothing new to push",
             )
             return
+
+    # Record the accepted change in the rebuild ledger, and stage it on its own --
+    # only now, after both guards above have passed, so its ever-moving
+    # `last_upstream_change` timestamp cannot defeat either of them. See
+    # record_in_ledger's docstring.
+    record_in_ledger([entry], pr_ref=branch, dry_run=dry_run)
+    _run(["git", "add", "hvantk/resources/drift_ledger.json"], dry_run=dry_run)
 
     _run(
         ["git", "commit", "-m", commit_message_for(dataset)],
@@ -768,6 +858,12 @@ def handle_routine_batch(
             f"- DRIFT (unchanged): routine batch of {len(datasets)} still open",
         )
         return
+
+    # See the matching comment in handle_drifted: the ledger is written and staged in
+    # its own `git add` only after both anti-churn guards above have passed, never
+    # before, or its ever-changing `last_upstream_change` timestamp would defeat them.
+    record_in_ledger(entries, pr_ref=branch, dry_run=dry_run)
+    _run(["git", "add", "hvantk/resources/drift_ledger.json"], dry_run=dry_run)
 
     _run(
         ["git", "commit", "-m",

@@ -828,3 +828,69 @@ def test_resolve_assignees_rejects_a_malformed_fallback(drift_to_pr, monkeypatch
     """A junk env value must not become a --assignee argument."""
     monkeypatch.setattr(drift_to_pr, "DEFAULT_ASSIGNEE", "not a valid handle!")
     assert drift_to_pr.resolve_assignees([]) == []
+
+
+# --- rebuild ledger -----------------------------------------------------------------
+#
+# Merging a fingerprint accepts a new baseline; without a ledger, the fact that a built
+# artifact is now stale survives only in git history. ClinVar gained ~408 KB of variants
+# across 2026-08 with nothing recording that a rebuild was due.
+
+def test_ledger_entry_records_the_accepted_change(drift_to_pr):
+    entry = drift_to_pr.ledger_entry(
+        dataset="clinvar:variants",
+        diff={"changed": {"headers": {}}, "added": {}, "removed": {}},
+        pr_ref="PR #288",
+        now="2026-08-23T16:56:29+00:00",
+    )
+    assert entry == {
+        "last_upstream_change": "2026-08-23T16:56:29+00:00",
+        "accepted_in": "PR #288",
+        "signal": "schema",
+        "rebuilt_at": None,
+    }
+
+
+def test_ledger_entry_signal_matches_classify_risk(drift_to_pr):
+    """The ledger's `signal` must agree with the PR's own classification, or the two
+    tell different stories about the same change."""
+    diff = {"changed": {"extras": {}}, "added": {}, "removed": {}}
+    entry = drift_to_pr.ledger_entry(
+        dataset="hgnc:lookup", diff=diff, pr_ref="PR #1", now="2026-08-01T00:00:00+00:00"
+    )
+    assert entry["signal"] == drift_to_pr.classify_risk(diff) == "routine"
+
+
+def test_ledger_update_preserves_rebuilt_at_of_other_datasets(drift_to_pr):
+    """Updating one dataset must not clear another's rebuild record."""
+    ledger = {"hgnc:lookup": {"last_upstream_change": "x", "accepted_in": "PR #1",
+                              "signal": "routine", "rebuilt_at": "2026-08-01T00:00:00+00:00"}}
+    out = drift_to_pr.ledger_update(
+        ledger, dataset="clinvar:variants",
+        diff={"changed": {"extras": {}}, "added": {}, "removed": {}},
+        pr_ref="PR #2", now="2026-08-23T00:00:00+00:00",
+    )
+    assert out["hgnc:lookup"]["rebuilt_at"] == "2026-08-01T00:00:00+00:00"
+    assert out["clinvar:variants"]["signal"] == "routine"
+
+
+def test_ledger_update_does_not_mutate_its_input(drift_to_pr):
+    ledger = {}
+    drift_to_pr.ledger_update(
+        ledger, dataset="a:b", diff={"changed": {}, "added": {}, "removed": {}},
+        pr_ref="PR #1", now="2026-08-01T00:00:00+00:00",
+    )
+    assert ledger == {}
+
+
+def test_load_ledger_returns_empty_dict_on_corrupt_file(drift_to_pr, monkeypatch, tmp_path):
+    """A broken ledger must not block a drift PR -- it just starts recording afresh."""
+    bad = tmp_path / "drift_ledger.json"
+    bad.write_text("{ not json")
+    monkeypatch.setattr(drift_to_pr, "LEDGER_PATH", bad)
+    assert drift_to_pr.load_ledger() == {}
+
+
+def test_load_ledger_returns_empty_dict_when_absent(drift_to_pr, monkeypatch, tmp_path):
+    monkeypatch.setattr(drift_to_pr, "LEDGER_PATH", tmp_path / "nope.json")
+    assert drift_to_pr.load_ledger() == {}
