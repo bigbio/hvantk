@@ -1103,3 +1103,37 @@ def test_handle_routine_batch_skip_path_calls_maybe_escalate(drift_to_pr, monkey
     )
 
     assert escalated == [("42", False)]
+
+
+def test_nothing_in_the_drift_pipeline_auto_merges():
+    """Hard project constraint, enforced rather than conventional.
+
+    Auto-merge was considered and rejected: batching and cadence alone take drift
+    volume from ~34 PRs/month to ~2, so auto-merge would only be the step from 2 to 0
+    -- and that step would require carving an exception into CLAUDE.md's "PR must be
+    approved before merging to `dev`". The 2026-08-28 backlog was a visibility failure,
+    not a review-burden one, so auto-merging would route around the problem instead of
+    fixing it.
+
+    This asserts on the real files rather than on a constant, because the failure mode
+    is someone adding `gh pr merge --auto` to a workflow in six months without reading
+    that reasoning.
+    """
+    import pathlib
+    import re
+
+    root = pathlib.Path(__file__).resolve().parents[2] / ".github"
+    banned = re.compile(r"gh\s+pr\s+merge|--auto\b|\"merge\"")
+    offenders = []
+    for path in sorted(root.rglob("*")):
+        if path.suffix not in {".yml", ".yaml", ".py"} or not path.is_file():
+            continue
+        for lineno, line in enumerate(path.read_text().splitlines(), 1):
+            stripped = line.strip()
+            # Prose is fine -- the constraint is documented in several places.
+            if stripped.startswith("#") or stripped.startswith("Never emits"):
+                continue
+            if banned.search(line):
+                offenders.append(f"{path.relative_to(root.parent)}:{lineno}: {stripped}")
+
+    assert not offenders, "auto-merge found in the drift pipeline:\n" + "\n".join(offenders)
