@@ -41,7 +41,10 @@ jobs:
           git fetch --no-tags origin main dev
           ahead=$(git rev-list --count origin/main..origin/dev)
           changed=$(git diff --name-only origin/main origin/dev)
-          nonfp=$(echo "$changed" | grep -v 'drift_fingerprint\.json$' | grep -v '^$' || true)
+          # The ledger is written by the same commits as the fingerprints, so it must be
+          # excluded here too -- otherwise nonfp is non-empty after the first merged drift
+          # PR and this workflow silently never promotes again.
+          nonfp=$(echo "$changed" | grep -vE 'drift_fingerprint\.json$|drift_ledger\.json$' | grep -v '^$' || true)
           echo "ahead=$ahead"
           if [ "$ahead" -eq 0 ]; then
             echo "promote=false" >> "$GITHUB_OUTPUT"
