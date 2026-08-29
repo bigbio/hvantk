@@ -618,3 +618,39 @@ def test_classify_risk_source_version_alone_is_routine(drift_to_pr):
         "added": {}, "removed": {},
     }
     assert drift_to_pr.classify_risk(diff) == "routine"
+
+
+# --- routine batching ---------------------------------------------------------------
+
+def test_routine_datasets_share_one_branch(drift_to_pr):
+    """All routine drift lands on a single branch so it becomes one reviewable PR.
+    34 PRs in the first month came from one-PR-per-dataset; batching is what takes
+    that to ~1 per run."""
+    assert drift_to_pr.ROUTINE_BRANCH == "drift/routine-batch"
+
+
+def test_partition_by_risk_splits_the_report(drift_to_pr):
+    drifted = [
+        {"dataset_name": "hgnc:lookup",
+         "diff": {"changed": {"extras": {}}, "added": {}, "removed": {}}},
+        {"dataset_name": "gtex-eqtl:eqtls",
+         "diff": {"changed": {"headers": {}}, "added": {}, "removed": {}}},
+        {"dataset_name": "clinvar:variants",
+         "diff": {"changed": {"extras": {}}, "added": {}, "removed": {}}},
+    ]
+    routine, schema = drift_to_pr.partition_by_risk(drifted)
+
+    assert [d["dataset_name"] for d in routine] == ["hgnc:lookup", "clinvar:variants"]
+    assert [d["dataset_name"] for d in schema] == ["gtex-eqtl:eqtls"]
+
+
+def test_partition_by_risk_handles_an_empty_report(drift_to_pr):
+    assert drift_to_pr.partition_by_risk([]) == ([], [])
+
+
+def test_handle_routine_batch_is_a_noop_on_empty_input(drift_to_pr, monkeypatch):
+    """No routine drift must mean no branch, no commit, no PR -- not an empty PR."""
+    calls = []
+    monkeypatch.setattr(drift_to_pr, "_run", lambda cmd, **kw: calls.append(cmd))
+    drift_to_pr.handle_routine_batch([], base_branch="dev", dry_run=True, step_summary=None)
+    assert calls == []

@@ -128,6 +128,20 @@ def classify_risk(diff: dict | None) -> str:
     return "routine"
 
 
+# All routine drift shares one branch, so it becomes one reviewable PR per run rather
+# than one per dataset. Schema changes keep their own per-dataset branches.
+ROUTINE_BRANCH = "drift/routine-batch"
+
+
+def partition_by_risk(drifted: list[dict]) -> tuple[list[dict], list[dict]]:
+    """Split drifted entries into (routine, schema), preserving report order."""
+    routine, schema = [], []
+    for entry in drifted:
+        target = routine if classify_risk(entry.get("diff")) == "routine" else schema
+        target.append(entry)
+    return routine, schema
+
+
 def fingerprints_match(a: str, b: str) -> bool:
     """True if two fingerprint JSON blobs agree once volatile keys are dropped.
 
@@ -646,6 +660,128 @@ def handle_drifted(
     )
 
 
+def handle_routine_batch(
+    entries: list[dict],
+    *,
+    base_branch: str,
+    dry_run: bool,
+    step_summary: Path | None,
+) -> None:
+    """Regenerate every routine fingerprint onto ONE branch and open ONE PR.
+
+    Mirrors handle_drifted's sequence, but the regenerate step loops over datasets
+    before a single commit, so N routine datasets cost one PR instead of N.
+    """
+    if not entries:
+        return
+
+    datasets = [e["dataset_name"] for e in entries]
+    branch = ROUTINE_BRANCH
+    print(f"\n=== Routine batch ({len(datasets)}) -> branch {branch} ===")
+    for name in datasets:
+        print(f"      {name}")
+
+    _run(["git", "fetch", "origin", base_branch], dry_run=dry_run, check=False)
+    _run(["git", "checkout", "-B", branch, f"origin/{base_branch}"], dry_run=dry_run)
+
+    for name in datasets:
+        _run(
+            ["python", "-m", "hvantk.hvantk", "drift", "--regenerate", name],
+            dry_run=dry_run,
+        )
+
+    _run(["git", "add", "hvantk/skills"], dry_run=dry_run)
+
+    if not branch_needs_update(branch, dry_run=dry_run) and pr_exists_for_branch(
+        branch, dry_run=dry_run
+    ):
+        print(f"  branch {branch} already proposes these fingerprints; leaving it.")
+        _discard_staged_fingerprints(dry_run=dry_run)
+        _summary_line(
+            step_summary,
+            f"- DRIFT (unchanged): routine batch of {len(datasets)} still open",
+        )
+        return
+
+    _run(
+        ["git", "commit", "-m",
+         f"chore(drift): refresh {len(datasets)} snapshots\n\n"
+         + "\n".join(f"- {n}" for n in datasets)],
+        dry_run=dry_run,
+    )
+    _run(
+        ["git", "push", "--force-with-lease", "--set-upstream", "origin", branch],
+        dry_run=dry_run,
+    )
+
+    title = f"chore(drift): refresh {len(datasets)} snapshots"
+    body = build_batch_pr_body(entries)
+    maintainers = sorted({
+        m
+        for e in entries
+        for m in read_maintainers(split_dataset(e["dataset_name"])[0])
+        if _GITHUB_HANDLE.match(m)
+    })
+
+    existing = pr_exists_for_branch(branch, dry_run=dry_run)
+    if existing:
+        _run(["gh", "pr", "edit", existing, "--title", title, "--body", body],
+             dry_run=dry_run)
+    else:
+        _run(
+            pr_create_argv(
+                base_branch=base_branch, branch=branch, title=title, body=body,
+                risk="routine", assignees=maintainers,
+            ),
+            dry_run=dry_run,
+        )
+
+    _summary_line(
+        step_summary,
+        f"- DRIFT: routine batch of {len(datasets)} -> branch `{branch}`",
+    )
+
+
+def pr_create_argv(
+    *, base_branch: str, branch: str, title: str, body: str,
+    risk: str, assignees: list[str],
+) -> list[str]:
+    """Build the ``gh pr create`` argv. Deliberately NOT a draft: a draft cannot be
+    merged and is filtered out of review queues, which is how five drift PRs sat
+    unreviewed for three days."""
+    argv = [
+        "gh", "pr", "create",
+        "--base", base_branch,
+        "--head", branch,
+        "--title", title,
+        "--body", body,
+        "--label", f"drift:{risk}",
+    ]
+    if assignees:
+        argv += ["--assignee", ",".join(assignees)]
+    return argv
+
+
+def build_batch_pr_body(entries: list[dict]) -> str:
+    """PR body for the routine batch. Task 9 replaces this with a version that leads
+    with a classification table."""
+    parts = [
+        f"Automated drift detection found upstream changes for {len(entries)} "
+        f"dataset(s). The schema signal is unchanged for every one below.",
+        "",
+    ]
+    for entry in entries:
+        parts += [
+            f"### `{entry['dataset_name']}`",
+            "",
+            "```json",
+            json.dumps(entry.get("diff") or {}, indent=2, sort_keys=True),
+            "```",
+            "",
+        ]
+    return "\n".join(parts)
+
+
 def handle_probe_failed(
     entry: dict,
     *,
@@ -756,8 +892,44 @@ def main(argv: list[str] | None = None) -> int:
             f"signal(s); opening one PR per signal."
         )
 
+    # Routine drift (schema signal unchanged) batches onto ONE branch/PR; schema-risk
+    # drift keeps the existing one-branch-per-signal path so a human looks at it on
+    # its own. See classify_risk / partition_by_risk.
+    routine, schema = partition_by_risk(groups)
+    if routine:
+        print(
+            f"  {len(routine)} of {len(groups)} signal(s) are routine (schema "
+            f"unchanged); batching them onto one branch: {ROUTINE_BRANCH}."
+        )
+
     failed: list[str] = []
-    for entry in groups:
+    try:
+        handle_routine_batch(
+            routine,
+            base_branch=args.base_branch,
+            dry_run=args.dry_run,
+            step_summary=step_summary,
+        )
+    except subprocess.CalledProcessError as exc:
+        # Same contract as the per-dataset loop below: a git/gh failure here must not
+        # be swallowed, or the batch silently stops opening PRs while the job still
+        # reports success -- the exact regression this script exists to prevent (see
+        # the module docstring).
+        covered = [str(e.get("dataset_name")) for e in routine]
+        failed.extend(covered)
+        label = ", ".join(covered)
+        print(
+            f"error handling routine batch ({label}): "
+            f"{exc.cmd} exited {exc.returncode}\n"
+            f"stdout: {exc.stdout}\nstderr: {exc.stderr}",
+            file=sys.stderr,
+        )
+        _summary_line(
+            step_summary,
+            f"- ERROR: routine batch (`{label}`) -- {exc.cmd[0]} exited {exc.returncode}",
+        )
+
+    for entry in schema:
         try:
             handle_drifted(
                 entry,
