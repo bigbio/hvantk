@@ -431,3 +431,31 @@ def test_distinct_baselines_are_probed_separately(tmp_path):
 
     assert sorted(calls) == ["1", "2"]
     assert {r.status for r in results} == {"clean"}
+
+
+def test_informational_block_does_not_trigger_drift():
+    """`informational` records human-useful context (e.g. Last-Modified) that must
+    never itself be a drift signal -- otherwise a byte-identical republish opens a PR,
+    which is exactly the hgnc/gencc failure this key exists to end."""
+    from hvantk.core.plugin.drift_runner import _compare_fingerprints
+
+    expected = {
+        "probe_version": 2,
+        "source_version": None,
+        "checksums": {"f.txt": "abc"},
+        "extras": {"content_length": "100"},
+        "informational": {"last_modified": "Wed, 26 Aug 2026 12:56:33 GMT"},
+    }
+    observed = dict(expected, informational={"last_modified": "Fri, 28 Aug 2026 17:02:20 GMT"})
+
+    assert _compare_fingerprints(expected, observed) is None
+
+
+def test_content_length_change_still_triggers_drift():
+    """The counterpart: `extras` stays compared, so a real content change is caught."""
+    from hvantk.core.plugin.drift_runner import _compare_fingerprints
+
+    expected = {"checksums": {"f.txt": "abc"}, "extras": {"content_length": "100"}}
+    observed = {"checksums": {"f.txt": "abc"}, "extras": {"content_length": "205"}}
+
+    assert _compare_fingerprints(expected, observed) is not None

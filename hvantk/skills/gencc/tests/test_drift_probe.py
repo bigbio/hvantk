@@ -7,10 +7,12 @@ network access; we do not run it in this suite.
 
 from __future__ import annotations
 
+import pytest
 import requests_mock
 
-from hvantk.skills.gencc.shared.constants import GENCC_BASE_URL, GENCC_FILE_PREFIX
+from hvantk.core.plugin.api import DriftProbeError
 from hvantk.skills.gencc.drift_probe import fetch_fingerprint
+from hvantk.skills.gencc.shared.constants import GENCC_BASE_URL, GENCC_FILE_PREFIX
 
 
 def test_fetch_fingerprint_shape():
@@ -26,14 +28,16 @@ def test_fetch_fingerprint_shape():
     with requests_mock.Mocker() as m:
         m.head(
             GENCC_BASE_URL,
-            headers={"Last-Modified": "Wed, 01 Jan 2026 00:00:00 GMT"},
+            headers={
+                "Last-Modified": "Wed, 01 Jan 2026 00:00:00 GMT",
+                "Content-Length": "8388608",
+            },
         )
         m.get(GENCC_BASE_URL, text=fake_body)
         fp = fetch_fingerprint()
 
     expected_filename = f"{GENCC_FILE_PREFIX}.tsv"
-    assert fp["probe_version"] == 1
-    assert fp["source_version"] == "Wed, 01 Jan 2026 00:00:00 GMT"
+    assert fp["probe_version"] == 2
     assert fp["headers"][expected_filename] == [
         "sgc_id",
         "gene_curie",
@@ -51,3 +55,31 @@ def test_fetch_fingerprint_shape():
     ]
     assert expected_filename in fp["checksums"]
     assert "fetched_at" in fp
+
+
+def test_gencc_last_modified_is_demoted():
+    """gencc's checksum 6f07ac79f9 never moved across 4 fingerprint commits while
+    Last-Modified moved every time -- same failure shape as hgnc."""
+    with requests_mock.Mocker() as m:
+        m.head(
+            GENCC_BASE_URL,
+            headers={
+                "Last-Modified": "Sun, 23 Aug 2026 06:01:43 GMT",
+                "Content-Length": "8388608",
+            },
+        )
+        m.get(GENCC_BASE_URL, text="sgc_id\tgene_curie\tgene_symbol\tdisease_curie\n")
+        fp = fetch_fingerprint()
+
+    assert fp["probe_version"] == 2
+    assert fp["source_version"] is None
+    assert fp["informational"]["last_modified"] == "Sun, 23 Aug 2026 06:01:43 GMT"
+    assert fp["extras"]["content_length"] == "8388608"
+
+
+def test_gencc_missing_content_length_fails_closed():
+    with requests_mock.Mocker() as m:
+        m.head(GENCC_BASE_URL, headers={"Last-Modified": "x"})
+        m.get(GENCC_BASE_URL, text="sgc_id\tgene_curie\tgene_symbol\tdisease_curie\n")
+        with pytest.raises(DriftProbeError, match="Content-Length"):
+            fetch_fingerprint()

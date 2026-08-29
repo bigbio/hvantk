@@ -1,0 +1,67 @@
+name: Drift fingerprint validation
+
+# A fingerprint change is a JSON baseline, not code. The full 3-version matrix takes
+# ~25 min and cannot fail on it for any reason this subset would miss, so drift PRs
+# get a fast gate instead. Schema-change PRs additionally run the full matrix, which
+# python-package.yml already provides on every PR to dev.
+on:
+  pull_request:
+    paths:
+      - 'hvantk/skills/**/drift_fingerprint.json'
+
+permissions:
+  contents: read
+
+jobs:
+  drift-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # There is no `dev` extra in pyproject.toml -- test tools (pytest, requests-mock,
+      # hypothesis, ...) live in [tool.poetry.group.dev.dependencies], a Poetry-only
+      # dependency group that pip cannot see via `.[dev]` (pip only understands PEP 621
+      # [project.optional-dependencies] extras). `pip install -e ".[dev]"` would install
+      # hvantk with no test deps at all, and the pytest step below would then fail with
+      # "command not found". python-package.yml / python-app.yml hit this same
+      # pip-vs-poetry gap and solve it with requirements.txt, a hand-maintained mirror of
+      # pyproject.toml's runtime deps plus the dev-group test tools -- including
+      # requests-mock and matplotlib, both of which hvantk/tests/conftest.py needs just to
+      # be collected. pytest itself is still not in requirements.txt, so it's installed
+      # explicitly, exactly as those two workflows do.
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      # actions/checkout with fetch-depth: 0 fetches full history for ALL branches (not
+      # just the checked-out ref) into refs/remotes/origin/*, so origin/<base_ref> would
+      # in fact resolve here. This uses the PR's recorded base SHA instead anyway: it
+      # needs no branch-name-to-remote-ref resolution at all, just the commit object
+      # (guaranteed present by fetch-depth: 0), and it isn't subject to origin/<base_ref>
+      # having moved on if dev advanced after GitHub last recomputed the merge ref.
+      - name: Every changed fingerprint is valid JSON
+        run: |
+          set -euo pipefail
+          changed=$(git diff --name-only "${{ github.event.pull_request.base.sha }}...HEAD" \
+                    -- 'hvantk/skills/**/drift_fingerprint.json')
+          if [ -z "$changed" ]; then echo "no fingerprint files changed"; exit 0; fi
+          for f in $changed; do
+            python3 -c "import json,sys; json.load(open(sys.argv[1])); print('valid: '+sys.argv[1])" "$f"
+          done
+
+      - name: Plugin and drift contract tests
+        run: |
+          pytest -q \
+            hvantk/tests/test_drift_runner.py \
+            hvantk/tests/test_drift_cli.py \
+            hvantk/tests/test_drift_to_pr_script.py \
+            hvantk/tests/test_plugin_manifest_schema.py \
+            hvantk/tests/test_plugin_contract_artifacts.py
