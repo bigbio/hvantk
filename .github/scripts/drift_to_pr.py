@@ -720,10 +720,22 @@ def handle_drifted(
     _run(["git", "checkout", "-B", branch, f"origin/{base_branch}"], dry_run=dry_run)
 
     # 2) regenerate fingerprint via the CLI we already ship
-    _run(
-        ["python", "-m", "hvantk.hvantk", "drift", "--regenerate", dataset],
-        dry_run=dry_run,
-    )
+    try:
+        _run(
+            ["python", "-m", "hvantk.hvantk", "drift", "--regenerate", dataset],
+            dry_run=dry_run,
+        )
+    except Exception:
+        # A failed regenerate can still leave THIS dataset's fingerprint dirty in the
+        # working tree (partially written, or left over from a prior attempt). `main()`
+        # catches the CalledProcessError this raises, logs it, and moves on to the NEXT
+        # schema-loop entry -- whose `git checkout -B` does not touch an already-dirty
+        # working tree, and whose `git add hvantk/skills` would stage (and then commit)
+        # this leftover onto a PR that has nothing to do with it. Discard before the
+        # failure is allowed to propagate. Mirrors the same guard around
+        # handle_routine_batch's regenerate loop, one dataset at a time instead of N.
+        _discard_staged_fingerprints(dry_run=dry_run)
+        raise
 
     # 3) stage only fingerprint JSONs (avoid accidentally pulling in unrelated
     #    working-tree noise from the runner).
@@ -875,11 +887,23 @@ def handle_routine_batch(
     _run(["git", "fetch", "origin", base_branch], dry_run=dry_run, check=False)
     _run(["git", "checkout", "-B", branch, f"origin/{base_branch}"], dry_run=dry_run)
 
-    for name in datasets:
-        _run(
-            ["python", "-m", "hvantk.hvantk", "drift", "--regenerate", name],
-            dry_run=dry_run,
-        )
+    try:
+        for name in datasets:
+            _run(
+                ["python", "-m", "hvantk.hvantk", "drift", "--regenerate", name],
+                dry_run=dry_run,
+            )
+    except Exception:
+        # A mid-loop failure leaves every dataset regenerated BEFORE the failing one
+        # sitting dirty in the working tree (staging happens only once, after the whole
+        # loop finishes). `main()` catches the CalledProcessError this raises, logs it,
+        # and continues into the schema loop -- whose `git checkout -B` does not touch
+        # an already-dirty working tree, and whose `git add hvantk/skills` would stage
+        # (and then commit) these leftovers onto an unrelated PR: a schema-change PR,
+        # invisible in its diff and its ledger entry. Discard before the failure is
+        # allowed to propagate.
+        _discard_staged_fingerprints(dry_run=dry_run)
+        raise
 
     _run(["git", "add", "hvantk/skills"], dry_run=dry_run)
 

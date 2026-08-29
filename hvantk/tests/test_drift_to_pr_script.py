@@ -434,6 +434,92 @@ def test_matching_branch_with_no_open_pr_is_never_skipped(drift_to_pr, monkeypat
     assert any(c.startswith("gh pr create") for c in joined), joined
 
 
+# --- partial-batch contamination: a failure must not leave a dirty working tree -----
+#
+# `handle_routine_batch` regenerates every routine dataset in a loop, staging only AFTER
+# the loop finishes. If dataset N of M fails, datasets before it have already written
+# modified fingerprint files to the working tree. `main()` catches the resulting
+# CalledProcessError, logs it, and continues into the schema loop, whose `git checkout -B`
+# does not touch an already-dirty working tree, and whose `git add hvantk/skills` would
+# stage -- and then commit -- those leftovers onto an unrelated PR: a schema-change PR,
+# invisible in its diff and its ledger entry. The same risk exists one level up in
+# `handle_drifted`'s own single regenerate call, contaminating the NEXT schema-loop entry.
+
+
+def test_routine_batch_discards_working_tree_on_mid_loop_regenerate_failure(
+    drift_to_pr, monkeypatch
+):
+    """A regenerate failure partway through the batch must discard whatever earlier
+    datasets already wrote to the working tree before the exception is allowed to
+    propagate -- or `main()`'s except-and-continue leaves it for the schema loop to
+    silently absorb."""
+    calls: list[list[str]] = []
+
+    def _regen_fails_on_third(cmd, **kwargs):
+        calls.append(list(cmd))
+        if cmd[:4] == ["python", "-m", "hvantk.hvantk", "drift"] and cmd[-1] == "c:three":
+            raise subprocess.CalledProcessError(1, cmd, output="", stderr="boom")
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    def _record_subprocess_run(cmd, **kwargs):
+        calls.append(list(cmd))
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(drift_to_pr, "_run", _regen_fails_on_third)
+    monkeypatch.setattr(subprocess, "run", _record_subprocess_run)
+
+    entries = [
+        {"dataset_name": "a:one", "diff": {}},
+        {"dataset_name": "b:two", "diff": {}},
+        {"dataset_name": "c:three", "diff": {}},
+    ]
+
+    with pytest.raises(subprocess.CalledProcessError):
+        drift_to_pr.handle_routine_batch(
+            entries, base_branch="dev", dry_run=False, step_summary=None
+        )
+
+    joined = [" ".join(c) for c in calls]
+    # The cleanup must actually run -- and run BEFORE the exception escapes, i.e. as the
+    # very next command after the failing regenerate call.
+    assert joined[-1] == "git checkout HEAD -- hvantk/skills", joined
+    # And the leftover must never reach the index in the first place on this path.
+    assert not any(c.startswith("git add") for c in joined), joined
+
+
+def test_handle_drifted_discards_working_tree_when_regenerate_fails(
+    drift_to_pr, monkeypatch
+):
+    """Same contamination mechanism one level up: `handle_drifted` regenerates only ONE
+    dataset, but a failure here still leaves that dataset's fingerprint dirty in the
+    working tree. `main()`'s per-entry except logs it and moves on to the NEXT schema
+    entry, whose `git checkout -B` inherits the dirty file and whose `git add
+    hvantk/skills` would stage it into a commit that has nothing to do with it."""
+    calls: list[list[str]] = []
+
+    def _regen_fails(cmd, **kwargs):
+        calls.append(list(cmd))
+        if cmd[:4] == ["python", "-m", "hvantk.hvantk", "drift"]:
+            raise subprocess.CalledProcessError(1, cmd, output="", stderr="boom")
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    def _record_subprocess_run(cmd, **kwargs):
+        calls.append(list(cmd))
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(drift_to_pr, "_run", _regen_fails)
+    monkeypatch.setattr(subprocess, "run", _record_subprocess_run)
+
+    with pytest.raises(subprocess.CalledProcessError):
+        drift_to_pr.handle_drifted(
+            dict(DRIFTED), base_branch="dev", dry_run=False, step_summary=None
+        )
+
+    joined = [" ".join(c) for c in calls]
+    assert joined[-1] == "git checkout HEAD -- hvantk/skills", joined
+    assert not any(c.startswith("git add") for c in joined), joined
+
+
 # --- branch_needs_update against a REAL git repo -------------------------------------
 #
 # The stubbed tests above drive handle_drifted's branching, but they monkeypatch
