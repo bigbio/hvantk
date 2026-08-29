@@ -18,6 +18,18 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository == 'bigbio/hvantk' || github.event_name == 'workflow_dispatch'
     steps:
+      # Same App token drift.yml uses. A PR authored by GITHUB_TOKEN has its checks
+      # parked at `action_required` until a human approves them -- and this PR targets
+      # main, where the full matrix and the Hail jobs are exactly what a reviewer needs
+      # to see before merging. Authoring it as the App keeps those checks running
+      # unattended.
+      - name: Mint drift-bot token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.DRIFT_BOT_APP_ID }}
+          private-key: ${{ secrets.DRIFT_BOT_PRIVATE_KEY }}
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -46,7 +58,7 @@ jobs:
       - name: Open the promotion PR
         if: steps.check.outputs.promote == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           set -euo pipefail
           existing=$(gh pr list --repo "$GITHUB_REPOSITORY" --base main --head dev \
