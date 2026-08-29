@@ -1,0 +1,60 @@
+name: Monthly drift promotion
+
+# Opens ONE dev -> main PR when the only delta is fingerprints. Never merges: main is
+# the release branch and CLAUDE.md forbids merging to it without review. Exists because
+# main sat 31 commits and 3 weeks behind dev on 2026-08-28, which also left the HPC
+# clone stale on both branches.
+on:
+  schedule:
+    - cron: "0 7 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    if: github.repository == 'bigbio/hvantk' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Decide whether a promotion is warranted
+        id: check
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main dev
+          ahead=$(git rev-list --count origin/main..origin/dev)
+          changed=$(git diff --name-only origin/main origin/dev)
+          nonfp=$(echo "$changed" | grep -v 'drift_fingerprint\.json$' | grep -v '^$' || true)
+          echo "ahead=$ahead"
+          if [ "$ahead" -eq 0 ]; then
+            echo "promote=false" >> "$GITHUB_OUTPUT"
+          elif [ -n "$nonfp" ]; then
+            # Code changed too -- that is a release decision, not an automated snapshot
+            # promotion. Stay out of the way.
+            echo "non-fingerprint changes present; skipping:"; echo "$nonfp"
+            echo "promote=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "promote=true" >> "$GITHUB_OUTPUT"
+            echo "$changed" > /tmp/changed.txt
+          fi
+
+      - name: Open the promotion PR
+        if: steps.check.outputs.promote == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          existing=$(gh pr list --repo "$GITHUB_REPOSITORY" --base main --head dev \
+            --state open --limit 1 --json number --jq '.[0].number // empty')
+          body=$(printf 'Promotes accumulated drift-snapshot regeneration from `dev`. Fingerprint JSON only -- no code, no version bump.\n\n```\n%s\n```\n\nReview and merge; this PR is never merged automatically.' "$(cat /tmp/changed.txt)")
+          if [ -n "$existing" ]; then
+            gh pr edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh pr create --repo "$GITHUB_REPOSITORY" --base main --head dev \
+              --title "chore(drift): promote accumulated snapshot regeneration" --body "$body"
+          fi
