@@ -338,8 +338,9 @@ def test_mark_rebuilt_and_ledger_flag_are_mutually_exclusive(tmp_path, monkeypat
 # `--ledger` used to return before the --all/dataset validation, so `--ledger --all`,
 # `--ledger somedataset`, `--ledger --regenerate`, and `--ledger --json` all exited 0
 # and printed the same whole-ledger dump, silently discarding whichever other flag was
-# passed -- exactly the kind of surprise the --all/dataset mutual-exclusion check below
-# already guards against for the non-ledger path.
+# passed -- exactly the kind of surprise drift_cmd's own `--all`/dataset
+# mutual-exclusion check (further down in drift_cli.py) already guards against on the
+# non-ledger path.
 
 
 def test_ledger_flag_rejects_all_flag(tmp_path, monkeypatch):
