@@ -59,6 +59,19 @@ def drift_cmd(dataset, all_flag, domain, as_json, regenerate, timeout, ledger_fl
         return
 
     if ledger_flag:
+        # --ledger is its own reporting mode over the whole ledger, not a per-dataset
+        # drift check -- --all / a dataset argument / --regenerate / --json all
+        # describe a *different* command (run the probes; optionally on one dataset;
+        # optionally overwriting the baseline; optionally as JSON). Silently accepting
+        # them alongside --ledger and running the ledger dump anyway discards
+        # whatever the other flag asked for without saying so; --domain is left
+        # unguarded because it is already a no-op without --all outside this branch
+        # too, so --ledger --domain is not a NEW inconsistency.
+        if all_flag or dataset or regenerate or as_json:
+            raise click.UsageError(
+                "--ledger cannot be combined with --all, --regenerate, --json, or a "
+                "dataset argument"
+            )
         stale = _stale_datasets(_load_ledger())
         if not stale:
             click.echo("no datasets pending rebuild")

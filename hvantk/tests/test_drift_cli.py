@@ -331,3 +331,48 @@ def test_mark_rebuilt_and_ledger_flag_are_mutually_exclusive(tmp_path, monkeypat
     # Must be OUR validation catching the combination, not e.g. an unrecognized-option
     # error from click -- the wording should name both flags.
     assert "--ledger" in result.output and "--mark-rebuilt" in result.output, result.output
+
+
+# --- --ledger must not silently swallow co-occurring flags ----------------------------
+#
+# `--ledger` used to return before the --all/dataset validation, so `--ledger --all`,
+# `--ledger somedataset`, `--ledger --regenerate`, and `--ledger --json` all exited 0
+# and printed the same whole-ledger dump, silently discarding whichever other flag was
+# passed -- exactly the kind of surprise the --all/dataset mutual-exclusion check below
+# already guards against for the non-ledger path.
+
+
+def test_ledger_flag_rejects_all_flag(tmp_path, monkeypatch):
+    from hvantk.tools.plugins import drift_cli
+
+    monkeypatch.setattr(drift_cli, "LEDGER_PATH", tmp_path / "drift_ledger.json")
+    result = CliRunner().invoke(drift_cli.drift_cmd, ["--ledger", "--all"])
+    assert result.exit_code != 0
+    assert "--ledger" in result.output and "--all" in result.output, result.output
+
+
+def test_ledger_flag_rejects_a_dataset_argument(tmp_path, monkeypatch):
+    from hvantk.tools.plugins import drift_cli
+
+    monkeypatch.setattr(drift_cli, "LEDGER_PATH", tmp_path / "drift_ledger.json")
+    result = CliRunner().invoke(drift_cli.drift_cmd, ["--ledger", "clinvar:variants"])
+    assert result.exit_code != 0
+    assert "--ledger" in result.output, result.output
+
+
+def test_ledger_flag_rejects_regenerate(tmp_path, monkeypatch):
+    from hvantk.tools.plugins import drift_cli
+
+    monkeypatch.setattr(drift_cli, "LEDGER_PATH", tmp_path / "drift_ledger.json")
+    result = CliRunner().invoke(drift_cli.drift_cmd, ["--ledger", "--regenerate"])
+    assert result.exit_code != 0
+    assert "--ledger" in result.output and "--regenerate" in result.output, result.output
+
+
+def test_ledger_flag_rejects_json(tmp_path, monkeypatch):
+    from hvantk.tools.plugins import drift_cli
+
+    monkeypatch.setattr(drift_cli, "LEDGER_PATH", tmp_path / "drift_ledger.json")
+    result = CliRunner().invoke(drift_cli.drift_cmd, ["--ledger", "--json"])
+    assert result.exit_code != 0
+    assert "--ledger" in result.output and "--json" in result.output, result.output
