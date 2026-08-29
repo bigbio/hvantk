@@ -713,3 +713,88 @@ def test_handle_routine_batch_does_not_commit_when_nothing_staged(
     # forward regardless.
     assert cleanups == [{"dry_run": False}]
     assert "DRIFT (unchanged)" in summary.read_text()
+
+
+# --- visibility requirements (V1 ready-for-review, V3 assigned, V4 labelled, V5 table)
+
+def test_pr_is_created_ready_for_review_not_draft(drift_to_pr):
+    """V1. A draft PR cannot be merged and is filtered out of most review queues and
+    notification defaults, so the old shape hid the work it was asking for -- which is
+    why five PRs sat unreviewed for 3 days on 2026-08-28."""
+    argv = drift_to_pr.pr_create_argv(
+        base_branch="dev", branch="drift/routine-batch",
+        title="t", body="b", risk="routine", assignees=["enriquea"],
+    )
+    assert "--draft" not in argv
+
+
+def test_pr_create_applies_the_risk_label(drift_to_pr):
+    """V4."""
+    argv = drift_to_pr.pr_create_argv(
+        base_branch="dev", branch="b", title="t", body="b",
+        risk="schema", assignees=[],
+    )
+    assert "--label" in argv
+    assert "drift:schema" in argv
+
+
+def test_pr_create_assigns_maintainers(drift_to_pr):
+    """V3. Nobody was assigned, so nothing appeared on anyone's list."""
+    argv = drift_to_pr.pr_create_argv(
+        base_branch="dev", branch="b", title="t", body="b",
+        risk="routine", assignees=["enriquea", "ypriverol"],
+    )
+    assert "--assignee" in argv
+    assert "enriquea,ypriverol" in argv
+
+
+def test_pr_create_omits_assignee_when_no_maintainers(drift_to_pr):
+    """`gh pr create --assignee ''` errors, so the flag must be absent, not empty."""
+    argv = drift_to_pr.pr_create_argv(
+        base_branch="dev", branch="b", title="t", body="b",
+        risk="routine", assignees=[],
+    )
+    assert "--assignee" not in argv
+
+
+def test_pr_create_never_auto_merges(drift_to_pr):
+    """Explicit project constraint: nothing in this pipeline may auto-merge."""
+    argv = drift_to_pr.pr_create_argv(
+        base_branch="dev", branch="b", title="t", body="b",
+        risk="routine", assignees=[],
+    )
+    assert "--auto" not in argv
+    assert "merge" not in argv
+
+
+def test_classification_table_marks_schema_changes(drift_to_pr):
+    """A reviewer must be able to spot a schema change without reading JSON."""
+    table = drift_to_pr.classification_table([
+        {"dataset_name": "hgnc:lookup",
+         "diff": {"changed": {"extras": {}}, "added": {}, "removed": {}}},
+        {"dataset_name": "gtex-eqtl:eqtls",
+         "diff": {"changed": {"headers": {}}, "added": {}, "removed": {}}},
+    ])
+    assert "`hgnc:lookup`" in table
+    assert "routine — schema unchanged" in table
+    assert "**SCHEMA CHANGE**" in table
+
+
+def test_batch_body_leads_with_the_table_not_the_json(drift_to_pr):
+    """V5. The old body opened with per-dataset JSON, which is why five PRs were
+    indistinguishable at a glance."""
+    body = drift_to_pr.build_batch_pr_body([
+        {"dataset_name": "hgnc:lookup",
+         "diff": {"changed": {"extras": {}}, "added": {}, "removed": {}}},
+    ])
+    assert body.index("| Dataset |") < body.index("```json")
+
+
+def test_schema_change_pr_is_also_not_a_draft(drift_to_pr):
+    """V1 applies to the schema path too -- arguably more so, since that is the PR that
+    most needs a human to look at it."""
+    import re
+    src = (drift_to_pr.__file__ or "")
+    assert src, "could not locate the script source"
+    text = open(src).read()
+    assert "--draft" not in text

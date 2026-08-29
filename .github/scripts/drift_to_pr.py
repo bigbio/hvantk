@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Open or update a draft PR per drifted dataset reported by
+"""Open or update a PR per drifted dataset reported by
 ``hvantk drift --all --json``.
 
 This script is invoked by ``.github/workflows/drift.yml``. It is also
@@ -33,7 +33,9 @@ For each ``status == "drifted"`` entry the script:
    every run, so without that check each open PR was re-pushed and its body re-edited
    once a day forever: nine PRs churned daily for a week, ~63 notifications, none of
    them new information.
-6. Opens a draft PR (or updates the body of an existing one).
+6. Opens a PR ready for review -- labelled with its risk classification and
+   assigned to the plugin's declared maintainers, if any -- or updates the body
+   of an existing one.
 
 Probe-failed entries are recorded in the GitHub step summary but never
 produce a PR (they are infrastructure failures, not data drift). ``stub``
@@ -300,6 +302,11 @@ def build_pr_body(
     covers: list[str] | None = None,
 ) -> str:
     lines: list[str] = []
+    # Lead with the verdict table (V5) -- built from what this function already has
+    # (`dataset`, `diff`), not from the full report entry, which build_pr_body's
+    # signature does not carry.
+    lines.append(classification_table([{"dataset_name": dataset, "diff": diff}]))
+    lines.append("")
     others = [d for d in (covers or []) if d and d != dataset]
     lines.append(
         f"Automated drift detection found upstream changes for `{dataset}`."
@@ -530,6 +537,10 @@ def handle_drifted(
     branch = branch_name_for_signal(covers, entry.get("fingerprint_path") or "")
     skill_md = find_skill_md(provider, dataset_short)
     maintainers = read_maintainers(provider)
+    # Same filter handle_routine_batch applies before assigning: gh wants bare GitHub
+    # logins, and an unfiltered entry (an email, a malformed handle) would make
+    # `gh pr create --assignee` itself the thing that fails.
+    assignees = sorted({m for m in maintainers if _GITHUB_HANDLE.match(m)})
     diff = entry.get("diff") or {}
 
     print(f"\n=== Drifted: {dataset} -> branch {branch} ===")
@@ -637,16 +648,12 @@ def handle_drifted(
             dry_run=dry_run,
         )
     else:
-        print("  creating new draft PR")
+        print("  creating new PR")
         _run(
-            [
-                "gh", "pr", "create",
-                "--draft",
-                "--base", base_branch,
-                "--head", branch,
-                "--title", title,
-                "--body", body,
-            ],
+            pr_create_argv(
+                base_branch=base_branch, branch=branch, title=title, body=body,
+                risk="schema", assignees=assignees,
+            ),
             dry_run=dry_run,
         )
 
@@ -656,7 +663,7 @@ def handle_drifted(
 
     _summary_line(
         step_summary,
-        f"- DRIFT: `{dataset}` -> branch `{branch}` (draft PR opened/updated)",
+        f"- DRIFT: `{dataset}` -> branch `{branch}` (PR opened/updated)",
     )
 
 
@@ -780,12 +787,23 @@ def handle_routine_batch(
 
 
 def pr_create_argv(
-    *, base_branch: str, branch: str, title: str, body: str,
-    risk: str, assignees: list[str],
+    *,
+    base_branch: str,
+    branch: str,
+    title: str,
+    body: str,
+    risk: str,
+    assignees: list[str],
 ) -> list[str]:
-    """Build the ``gh pr create`` argv. Deliberately NOT a draft: a draft cannot be
-    merged and is filtered out of review queues, which is how five drift PRs sat
-    unreviewed for three days."""
+    """Build the ``gh pr create`` argv.
+
+    Deliberately NOT a draft (V1): a draft cannot be merged and is filtered out of
+    review queues and notification defaults, which is how five drift PRs sat
+    unreviewed for three days. Extracted as a pure function so the flags are
+    testable without invoking gh.
+
+    Never emits ``--auto``: nothing in this pipeline may auto-merge.
+    """
     argv = [
         "gh", "pr", "create",
         "--base", base_branch,
@@ -799,12 +817,40 @@ def pr_create_argv(
     return argv
 
 
+def classification_table(entries: list[dict]) -> str:
+    """Markdown table summarising what moved per dataset, and the verdict.
+
+    Leads the PR body (V5) so a reviewer sees the judgement before the raw JSON
+    diffs. The old body opened with per-dataset JSON, which is why five PRs were
+    indistinguishable at a glance.
+    """
+    rows = [
+        "| Dataset | What moved | Verdict |",
+        "| --- | --- | --- |",
+    ]
+    for entry in entries:
+        diff = entry.get("diff") or {}
+        changed = diff.get("changed") or {}
+        signal = ", ".join(f"`{k}`" for k in sorted(changed)) or "—"
+        verdict = (
+            "routine — schema unchanged"
+            if classify_risk(diff) == "routine"
+            else "**SCHEMA CHANGE** — check `builder.py`"
+        )
+        rows.append(f"| `{entry['dataset_name']}` | {signal} | {verdict} |")
+    return "\n".join(rows)
+
+
 def build_batch_pr_body(entries: list[dict]) -> str:
-    """PR body for the routine batch. Task 9 replaces this with a version that leads
-    with a classification table."""
+    """PR body for the routine batch: verdict table first, raw diffs collapsed below."""
     parts = [
-        f"Automated drift detection found upstream changes for {len(entries)} "
-        f"dataset(s). The schema signal is unchanged for every one below.",
+        f"Automated drift detection found upstream changes for "
+        f"{len(entries)} dataset(s). The schema signal is unchanged for every one "
+        f"below — only content and/or version moved.",
+        "",
+        classification_table(entries),
+        "",
+        "<details><summary>Raw fingerprint diffs</summary>",
         "",
     ]
     for entry in entries:
@@ -816,6 +862,7 @@ def build_batch_pr_body(entries: list[dict]) -> str:
             "```",
             "",
         ]
+    parts.append("</details>")
     return "\n".join(parts)
 
 
