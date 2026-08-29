@@ -692,6 +692,43 @@ def handle_routine_batch(
 
     _run(["git", "add", "hvantk/skills"], dry_run=dry_run)
 
+    # No-op commits should not fail the job -- check first, exactly like
+    # handle_drifted. Reachable in practice: a re-run after someone already merged the
+    # fix manually, or a race where this branch already carries every regenerated
+    # fingerprint byte-for-byte. Routed through `_run` (rather than a direct
+    # subprocess.run call, unlike handle_drifted) so dry_run short-circuits it the same
+    # way as every other command here -- calling it unconditionally would make `_run`
+    # fabricate a returncode of 0 under --dry-run, which would misreport "nothing to
+    # commit" on every dry run and silently swallow the demonstration path.
+    if dry_run:
+        print("[dry-run] (skipping diff/commit emptiness check)")
+    else:
+        status = _run(
+            ["git", "diff", "--cached", "--quiet"], dry_run=dry_run, check=False
+        )
+        if status.returncode == 0:
+            print(
+                f"  no fingerprint changes to commit for the routine batch of "
+                f"{len(datasets)}; drift may have already been addressed. "
+                "Skipping PR."
+            )
+            # `git diff --cached --quiet` only proves the INDEX matches HEAD -- it
+            # says nothing about whether the working tree has a stray modification
+            # sitting outside the index (a .gitignore quirk, a partial `add`, or any
+            # other way a regenerated file could escape being staged). Discarding is
+            # cheap and resets both the index AND the working tree, so call it
+            # unconditionally rather than assume "nothing staged" implies "nothing to
+            # clean up" -- `git checkout -B` carries the working tree forward across
+            # branches regardless, and this function returns right into the schema
+            # loop's first `git checkout -B`, which would inherit anything left behind.
+            _discard_staged_fingerprints(dry_run=dry_run)
+            _summary_line(
+                step_summary,
+                f"- DRIFT (unchanged): routine batch of {len(datasets)} had nothing "
+                "to commit; drift may have already been addressed",
+            )
+            return
+
     if not branch_needs_update(branch, dry_run=dry_run) and pr_exists_for_branch(
         branch, dry_run=dry_run
     ):

@@ -71,7 +71,16 @@ def test_exits_nonzero_when_a_pr_cannot_be_opened(drift_to_pr, tmp_path, monkeyp
     report = _write_report(tmp_path, [DRIFTED])
 
     def _explode(cmd, **kwargs):
-        """Succeed for every git call; fail only on `gh pr create`."""
+        """Succeed for every git call; fail only on `gh pr create`.
+
+        `DRIFTED`'s diff has no schema-key changes, so `classify_risk` reads it as
+        routine and this report is routed through `handle_routine_batch`, whose own
+        emptiness check (`git diff --cached --quiet`) goes through `_run` -- unlike
+        `handle_drifted`'s, which shells out to `subprocess.run` directly. Answer that
+        one command with "there IS something staged" (nonzero), matching this test's
+        premise -- drift was detected and a branch was pushed -- so the guard does not
+        short-circuit before `gh pr create` gets a chance to fail.
+        """
         if cmd[:3] == ["gh", "pr", "create"]:
             raise subprocess.CalledProcessError(
                 1,
@@ -80,12 +89,15 @@ def test_exits_nonzero_when_a_pr_cannot_be_opened(drift_to_pr, tmp_path, monkeyp
                 stderr="GitHub Actions is not permitted to create or approve "
                 "pull requests (createPullRequest)",
             )
+        if cmd == ["git", "diff", "--cached", "--quiet"]:
+            return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="")
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
     monkeypatch.setattr(drift_to_pr, "_run", _explode)
     monkeypatch.setattr(drift_to_pr, "pr_exists_for_branch", lambda b, dry_run: None)
-    # The real emptiness check shells out to git; the branch under test is what
-    # happens after a commit was made.
+    # `handle_drifted`'s own emptiness check shells out to `subprocess.run` directly
+    # (rather than `_run`); the branch under test is what happens after a commit was
+    # made, so it also must see "something is staged" (nonzero).
     monkeypatch.setattr(
         subprocess,
         "run",
@@ -654,3 +666,50 @@ def test_handle_routine_batch_is_a_noop_on_empty_input(drift_to_pr, monkeypatch)
     monkeypatch.setattr(drift_to_pr, "_run", lambda cmd, **kw: calls.append(cmd))
     drift_to_pr.handle_routine_batch([], base_branch="dev", dry_run=True, step_summary=None)
     assert calls == []
+
+
+def test_handle_routine_batch_does_not_commit_when_nothing_staged(
+    drift_to_pr, monkeypatch, tmp_path
+):
+    """The no-op-commit guard, mirrored from handle_drifted: if regenerating every
+    routine dataset in the batch produces no staged diff at all -- a re-run after a
+    manual merge, or a race where the branch already carries these fingerprints --
+    `git commit` must not be invoked. Nothing staged means `git commit` fails outright
+    (nothing to commit), which would take the whole batch down with an unhandled
+    CalledProcessError instead of a clean skip.
+    """
+    cmds: list[list[str]] = []
+    cleanups: list[dict] = []
+
+    def _record(cmd, **kwargs):
+        cmds.append(list(cmd))
+        # Every command "succeeds", including `git diff --cached --quiet`: a returncode
+        # of 0 from THAT specific command is exactly the "nothing staged" signal this
+        # test means to drive.
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(drift_to_pr, "_run", _record)
+    monkeypatch.setattr(
+        drift_to_pr, "_discard_staged_fingerprints", lambda **kw: cleanups.append(kw)
+    )
+
+    summary = tmp_path / "summary.md"
+    entries = [
+        {"dataset_name": "hgnc:lookup", "diff": {}},
+        {"dataset_name": "clinvar:variants", "diff": {}},
+    ]
+    drift_to_pr.handle_routine_batch(
+        entries, base_branch="dev", dry_run=False, step_summary=summary
+    )
+
+    joined = [" ".join(c) for c in cmds]
+    assert any(c == "git diff --cached --quiet" for c in joined), joined
+    assert not any(c.startswith("git commit") for c in joined), joined
+    assert not any(c.startswith("git push") for c in joined), joined
+    assert not any(c.startswith("gh pr") for c in joined), joined
+    # Discard must still run: `git diff --cached --quiet` only proves the INDEX
+    # matches HEAD, not that the working tree has nothing left over outside it, and
+    # `git checkout -B` (the schema loop's very next move) carries the working tree
+    # forward regardless.
+    assert cleanups == [{"dry_run": False}]
+    assert "DRIFT (unchanged)" in summary.read_text()
