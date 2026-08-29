@@ -1116,6 +1116,100 @@ def test_pr_created_at_is_empty_under_dry_run(drift_to_pr):
     assert drift_to_pr._pr_created_at("1", dry_run=True) == ""
 
 
+# --- escalation must not repeat forever -----------------------------------------------
+#
+# `should_escalate` is a pure function of the PR's creation time, which never changes:
+# once a PR passes 14 days it is True on EVERY subsequent run, and nothing recorded that
+# a comment was already posted. A PR left open six months would collect roughly one
+# near-identical comment per run -- the notification-fatigue failure #268 fixed for
+# force-pushes, recurring here on a fortnightly cadence instead of daily.
+
+
+def test_pr_has_escalation_comment_true_when_marker_present(drift_to_pr, monkeypatch):
+    monkeypatch.setattr(
+        subprocess, "run",
+        lambda *a, **k: subprocess.CompletedProcess(
+            a[0], 0, stdout=f"unrelated\n{drift_to_pr.ESCALATION_MARKER}\nmore text", stderr=""
+        ),
+    )
+    assert drift_to_pr._pr_has_escalation_comment("1", dry_run=False) is True
+
+
+def test_pr_has_escalation_comment_false_when_absent(drift_to_pr, monkeypatch):
+    monkeypatch.setattr(
+        subprocess, "run",
+        lambda *a, **k: subprocess.CompletedProcess(a[0], 0, stdout="just a normal comment", stderr=""),
+    )
+    assert drift_to_pr._pr_has_escalation_comment("1", dry_run=False) is False
+
+
+def test_pr_has_escalation_comment_false_under_dry_run(drift_to_pr, monkeypatch):
+    """Mirrors `_pr_created_at`: a value-returning read with its own dry_run gate, no
+    subprocess call of any kind under --dry-run."""
+    calls: list = []
+    monkeypatch.setattr(
+        subprocess, "run",
+        lambda *a, **k: calls.append(a) or subprocess.CompletedProcess(a[0] if a else [], 0),
+    )
+    assert drift_to_pr._pr_has_escalation_comment("1", dry_run=True) is False
+    assert calls == []
+
+
+def test_maybe_escalate_includes_the_marker_in_the_comment_body(drift_to_pr, monkeypatch):
+    """The marker must actually be IN the posted comment, or the next run's
+    `_pr_has_escalation_comment` check can never find it."""
+    stale = (datetime.now(timezone.utc) - timedelta(days=20)).isoformat()
+    monkeypatch.setattr(drift_to_pr, "_pr_created_at", lambda pr, *, dry_run: stale)
+    monkeypatch.setattr(drift_to_pr, "_pr_has_escalation_comment", lambda pr, *, dry_run: False)
+    calls: list[list[str]] = []
+    monkeypatch.setattr(
+        drift_to_pr, "_run",
+        lambda cmd, **kw: calls.append(list(cmd)) or subprocess.CompletedProcess(cmd, 0, stdout="", stderr=""),
+    )
+
+    drift_to_pr.maybe_escalate("55", dry_run=False)
+
+    assert len(calls) == 1, calls
+    body = calls[0][calls[0].index("--body") + 1]
+    assert drift_to_pr.ESCALATION_MARKER in body, body
+
+
+def test_maybe_escalate_is_idempotent_across_repeated_calls(drift_to_pr, monkeypatch):
+    """The regression test: simulate two runs against the same stale PR. The first
+    finds no existing comments; the second finds the marker that this test's own `gh pr
+    comment` stub "posted" on the first call -- exactly as a real escalation comment
+    would leave a marker for the next run's `gh pr view` to find. Only ONE `gh pr
+    comment` call must ever be issued across both runs.
+    """
+    stale = (datetime.now(timezone.utc) - timedelta(days=20)).isoformat()
+    monkeypatch.setattr(drift_to_pr, "_pr_created_at", lambda pr, *, dry_run: stale)
+
+    posted_comments: list[str] = []
+
+    def _fake_subprocess_run(cmd, **kwargs):
+        if cmd[:3] == ["gh", "pr", "view"]:
+            return subprocess.CompletedProcess(cmd, 0, stdout="\n".join(posted_comments), stderr="")
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", _fake_subprocess_run)
+
+    calls: list[list[str]] = []
+
+    def _record(cmd, **kw):
+        calls.append(list(cmd))
+        if cmd[:3] == ["gh", "pr", "comment"]:
+            posted_comments.append(cmd[cmd.index("--body") + 1])
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(drift_to_pr, "_run", _record)
+
+    drift_to_pr.maybe_escalate("55", dry_run=False)
+    drift_to_pr.maybe_escalate("55", dry_run=False)
+
+    comment_calls = [c for c in calls if c[:3] == ["gh", "pr", "comment"]]
+    assert len(comment_calls) == 1, calls
+
+
 # --- wiring: escalation fires only on the "leaving it untouched" skip path ----------
 #
 # Placed after `_discard_staged_fingerprints` and before `_summary_line`/`return` in

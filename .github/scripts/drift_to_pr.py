@@ -193,6 +193,13 @@ def fingerprints_match(a: str, b: str) -> bool:
 # One full regeneration cycle. A PR still open after this was not acted on.
 ESCALATE_AFTER = timedelta(days=14)
 
+# `should_escalate` is a pure function of the PR's creation time, so it is True on EVERY
+# run once a PR passes 14 days -- nothing else remembers that a comment was already
+# posted. This marker is embedded in the escalation comment's body and checked by
+# `_pr_has_escalation_comment` before posting another one, so a PR left open for months
+# collects the comment once, not once per run.
+ESCALATION_MARKER = "<!-- hvantk-drift-escalation -->"
+
 
 def should_escalate(*, pr_created_at: str, now: str) -> bool:
     """True if an open drift PR has outlived one full cycle.
@@ -617,12 +624,42 @@ def _pr_created_at(pr_number: str, *, dry_run: bool) -> str:
     return (result.stdout or "").strip()
 
 
+def _pr_has_escalation_comment(pr_number: str, *, dry_run: bool) -> bool:
+    """True if a comment carrying ``ESCALATION_MARKER`` already exists on the PR.
+
+    Follows ``_pr_created_at``'s exact pattern immediately above: a value-returning
+    read with its own ``dry_run`` gate, calling ``subprocess.run`` directly rather than
+    ``_run``, so it stays invisible to tests that assert "no PR command was issued via
+    `_run`" on a path that only ever meant "no PR was created, edited, or commented on"
+    (``test_skip_issues_no_commit_push_or_pr``).
+
+    A ``gh`` failure or unparseable output can't be distinguished from "no comments
+    yet" here -- both leave the marker absent from stdout -- so this returns False and
+    ``maybe_escalate`` posts. That is the same direction every other "I cannot tell" in
+    this module resolves in: never suppress a real signal because a query failed.
+    """
+    if dry_run:
+        return False
+    result = subprocess.run(
+        ["gh", "pr", "view", pr_number, "--json", "comments", "--jq", ".comments[].body"],
+        check=False, text=True, capture_output=True,
+    )
+    return ESCALATION_MARKER in (result.stdout or "")
+
+
 def maybe_escalate(pr_number: str, *, dry_run: bool) -> None:
     """Comment once on a drift PR that has outlived a full cycle.
 
     Deliberately a comment on the EXISTING PR, never a new PR: #268 fixed the inverse
     failure where nine PRs were force-pushed every morning, ~63 notification events a
     week carrying no new information.
+
+    Idempotent: ``should_escalate`` is a pure function of the PR's creation time, which
+    never changes, so it is True on EVERY run once a PR passes 14 days -- nothing else
+    recorded that a comment already went out. A PR left open six months collected
+    roughly one near-identical comment per run. ``ESCALATION_MARKER``, embedded in the
+    comment body and checked via ``_pr_has_escalation_comment`` before posting, makes a
+    second escalation on the same PR a no-op.
     """
     created_at = _pr_created_at(pr_number, dry_run=dry_run)
     if not created_at:
@@ -631,8 +668,11 @@ def maybe_escalate(pr_number: str, *, dry_run: bool) -> None:
         pr_created_at=created_at, now=datetime.now(timezone.utc).isoformat()
     ):
         return
+    if _pr_has_escalation_comment(pr_number, dry_run=dry_run):
+        return
     _run(
         ["gh", "pr", "comment", pr_number, "--body",
+         f"{ESCALATION_MARKER}\n"
          "This drift PR has been open for a full regeneration cycle (14 days). "
          "Upstream is still drifted and the baseline here is still unmerged."],
         dry_run=dry_run, check=False,
