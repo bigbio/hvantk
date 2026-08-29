@@ -186,3 +186,63 @@ def test_ledger_flag_survives_a_truthy_non_dict_ledger_file(tmp_path, monkeypatc
 
     assert result.exit_code == 0, result.output
     assert "no datasets pending rebuild" in result.output
+
+
+# --- _stale_datasets timestamp comparison ---------------------------------------------
+#
+# `rebuilt < entry.get("last_upstream_change", "")` compared ISO-8601 strings
+# LEXICOGRAPHICALLY. That happens to agree with chronological order only when both
+# timestamps share the same UTC offset and the same sub-second precision -- neither is
+# guaranteed for values written across timezones/tools/library versions.
+
+
+def test_stale_datasets_compares_timestamps_as_real_instants_not_strings():
+    """Two counterexamples where the artifact WAS rebuilt after the upstream change,
+    but naive string comparison says otherwise.
+
+    "2026-08-23T09:00:00-05:00" (=14:00 UTC) sorts BEFORE
+    "2026-08-23T10:00:00+00:00" lexicographically despite being the LATER instant.
+    "2026-08-23T10:00:00.500000+00:00" is a later instant than
+    "2026-08-23T10:00:00Z", but string comparison here happens to agree only by
+    accident of digit count -- the offset case above proves it isn't reliable.
+    """
+    from hvantk.tools.plugins import drift_cli
+
+    ledger = {
+        "a:one": {
+            "last_upstream_change": "2026-08-23T10:00:00+00:00",
+            "rebuilt_at": "2026-08-23T09:00:00-05:00",
+        },
+        "b:two": {
+            "last_upstream_change": "2026-08-23T10:00:00Z",
+            "rebuilt_at": "2026-08-23T10:00:00.500000+00:00",
+        },
+    }
+    assert drift_cli._stale_datasets(ledger) == []
+
+
+def test_stale_datasets_reports_a_genuinely_stale_dataset():
+    from hvantk.tools.plugins import drift_cli
+
+    ledger = {
+        "c:three": {
+            "last_upstream_change": "2026-08-23T10:00:00+00:00",
+            "rebuilt_at": "2026-08-20T00:00:00+00:00",
+        },
+    }
+    assert [name for name, _ in drift_cli._stale_datasets(ledger)] == ["c:three"]
+
+
+def test_stale_datasets_reports_an_unparseable_rebuilt_at_as_stale():
+    """An unparseable timestamp must be reported, not hidden: a false "stale" merely
+    prompts someone to look, but a false "fresh" would hide a genuinely stale artifact
+    from the report."""
+    from hvantk.tools.plugins import drift_cli
+
+    ledger = {
+        "d:four": {
+            "last_upstream_change": "2026-08-23T10:00:00+00:00",
+            "rebuilt_at": "not-a-timestamp",
+        },
+    }
+    assert [name for name, _ in drift_cli._stale_datasets(ledger)] == ["d:four"]

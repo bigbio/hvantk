@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+from datetime import datetime
 from pathlib import Path
 
 import click
@@ -143,11 +144,36 @@ def _load_ledger() -> dict:
     return data if isinstance(data, dict) else {}
 
 
+def _parse_iso(s: str) -> datetime | None:
+    """Parse an ISO-8601 timestamp (tolerating a trailing ``Z``) to a tz-aware
+    ``datetime``. Returns None if ``s`` is not parseable. Mirrors the approach
+    ``should_escalate`` uses in ``.github/scripts/drift_to_pr.py``.
+    """
+    try:
+        return datetime.fromisoformat(s.replace("Z", "+00:00"))
+    except (ValueError, AttributeError, TypeError):
+        return None
+
+
 def _stale_datasets(ledger: dict) -> list[tuple[str, dict]]:
-    """Datasets whose upstream moved after their last rebuild. Never-rebuilt counts."""
+    """Datasets whose upstream moved after their last rebuild. Never-rebuilt counts.
+
+    Timestamps are parsed to real instants rather than compared as strings --
+    "2026-08-23T09:00:00-05:00" (=14:00 UTC) sorts BEFORE
+    "2026-08-23T10:00:00+00:00" lexicographically despite being the LATER instant,
+    which would misreport a freshly-rebuilt dataset as stale. An unparseable
+    timestamp on either side is treated as stale rather than silently as fresh: this
+    is a "which artifacts are stale?" report, and a false "stale" merely prompts
+    someone to look, while a false "fresh" would hide a genuinely stale artifact.
+    """
     out = []
     for name, entry in sorted(ledger.items()):
         rebuilt = entry.get("rebuilt_at")
-        if rebuilt is None or rebuilt < entry.get("last_upstream_change", ""):
+        if rebuilt is None:
+            out.append((name, entry))
+            continue
+        rebuilt_at = _parse_iso(rebuilt)
+        last_upstream_change = _parse_iso(entry.get("last_upstream_change", ""))
+        if rebuilt_at is None or last_upstream_change is None or rebuilt_at < last_upstream_change:
             out.append((name, entry))
     return out
