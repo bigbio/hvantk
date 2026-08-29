@@ -798,3 +798,33 @@ def test_schema_change_pr_is_also_not_a_draft(drift_to_pr):
     assert src, "could not locate the script source"
     text = open(src).read()
     assert "--draft" not in text
+
+
+# --- default assignee fallback ------------------------------------------------------
+#
+# `read_maintainers` reads plugin.yaml's `maintainers:` field, which no manifest
+# currently declares -- so without a fallback the assignment requirement is dead code
+# and drift PRs go on nobody's list, which is half of why five sat unreviewed for
+# three days.
+
+def test_resolve_assignees_prefers_declared_maintainers(drift_to_pr, monkeypatch):
+    monkeypatch.setattr(drift_to_pr, "DEFAULT_ASSIGNEE", "fallback-user")
+    assert drift_to_pr.resolve_assignees(["alice", "bob"]) == ["alice", "bob"]
+
+
+def test_resolve_assignees_falls_back_when_none_declared(drift_to_pr, monkeypatch):
+    monkeypatch.setattr(drift_to_pr, "DEFAULT_ASSIGNEE", "enriquea")
+    assert drift_to_pr.resolve_assignees([]) == ["enriquea"]
+
+
+def test_resolve_assignees_empty_when_no_fallback_configured(drift_to_pr, monkeypatch):
+    """`gh pr create --assignee ''` errors, so with nothing configured the result must
+    be an empty list (the flag is then omitted entirely), never [''] ."""
+    monkeypatch.setattr(drift_to_pr, "DEFAULT_ASSIGNEE", "")
+    assert drift_to_pr.resolve_assignees([]) == []
+
+
+def test_resolve_assignees_rejects_a_malformed_fallback(drift_to_pr, monkeypatch):
+    """A junk env value must not become a --assignee argument."""
+    monkeypatch.setattr(drift_to_pr, "DEFAULT_ASSIGNEE", "not a valid handle!")
+    assert drift_to_pr.resolve_assignees([]) == []

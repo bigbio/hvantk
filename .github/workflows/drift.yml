@@ -117,6 +117,7 @@ jobs:
           BASE_BRANCH: ${{ env.BASE_BRANCH }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           DRY_RUN: ${{ github.event.inputs.dry_run }}
+          DRIFT_DEFAULT_ASSIGNEE: enriquea
         run: |
           ARGS="--report /tmp/drift_report.json --base-branch ${BASE_BRANCH}"
           if [ "$DRY_RUN" = "true" ]; then

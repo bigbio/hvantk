@@ -277,6 +277,29 @@ def read_maintainers(provider: str) -> list[str]:
 _GITHUB_HANDLE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$")
 
 
+# Fallback reviewer when a plugin declares no `maintainers:` in its plugin.yaml.
+# No manifest currently declares that field, so without this the --assignee flag is
+# never emitted and drift PRs land on nobody's list -- half of why five of them sat
+# unreviewed for three days. Set via DRIFT_DEFAULT_ASSIGNEE in the workflow env; a
+# per-plugin `maintainers:` still wins wherever one is declared.
+DEFAULT_ASSIGNEE = os.environ.get("DRIFT_DEFAULT_ASSIGNEE", "").strip()
+
+
+def resolve_assignees(maintainers: list[str]) -> list[str]:
+    """Declared maintainers if any, else the configured fallback, else nothing.
+
+    Every returned handle is validated against ``_GITHUB_HANDLE``: `gh pr create`
+    errors on a malformed or empty --assignee, and a junk env value must degrade to
+    "no assignee" rather than fail the whole run.
+    """
+    valid = [m for m in maintainers if _GITHUB_HANDLE.match(m)]
+    if valid:
+        return valid
+    if DEFAULT_ASSIGNEE and _GITHUB_HANDLE.match(DEFAULT_ASSIGNEE):
+        return [DEFAULT_ASSIGNEE]
+    return []
+
+
 def format_cc_line(maintainers: list[str]) -> str | None:
     """Convert ``["alice@example.com", "@bob", "carol"]`` into a
     ``cc @bob @carol`` line. Email-only entries are skipped (we can't mention
@@ -537,10 +560,9 @@ def handle_drifted(
     branch = branch_name_for_signal(covers, entry.get("fingerprint_path") or "")
     skill_md = find_skill_md(provider, dataset_short)
     maintainers = read_maintainers(provider)
-    # Same filter handle_routine_batch applies before assigning: gh wants bare GitHub
-    # logins, and an unfiltered entry (an email, a malformed handle) would make
-    # `gh pr create --assignee` itself the thing that fails.
-    assignees = sorted({m for m in maintainers if _GITHUB_HANDLE.match(m)})
+    # Validation (bare GitHub handles only) and the default-assignee fallback both
+    # live in resolve_assignees now; see its docstring.
+    assignees = resolve_assignees(maintainers)
     diff = entry.get("diff") or {}
 
     print(f"\n=== Drifted: {dataset} -> branch {branch} ===")
@@ -760,12 +782,15 @@ def handle_routine_batch(
 
     title = f"chore(drift): refresh {len(datasets)} snapshots"
     body = build_batch_pr_body(entries)
+    # Collect maintainers across every dataset in the batch, then resolve ONCE on the
+    # combined list -- not per dataset, or a fallback would land on the batch as many
+    # times as it has entries with no declared maintainer of their own.
     maintainers = sorted({
         m
         for e in entries
         for m in read_maintainers(split_dataset(e["dataset_name"])[0])
-        if _GITHUB_HANDLE.match(m)
     })
+    assignees = resolve_assignees(maintainers)
 
     existing = pr_exists_for_branch(branch, dry_run=dry_run)
     if existing:
@@ -775,7 +800,7 @@ def handle_routine_batch(
         _run(
             pr_create_argv(
                 base_branch=base_branch, branch=branch, title=title, body=body,
-                risk="routine", assignees=maintainers,
+                risk="routine", assignees=assignees,
             ),
             dry_run=dry_run,
         )
