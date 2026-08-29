@@ -99,6 +99,35 @@ def strip_ignored(fingerprint: dict) -> dict:
     return {k: v for k, v in fingerprint.items() if k not in FINGERPRINT_IGNORED_KEYS}
 
 
+# Fingerprint keys that carry the SCHEMA signal. `headers` is the column list;
+# `checksums` is a hash of the column-header row for the header-hashing probes
+# (clingen, gencc, hgnc), so a moved checksum means the columns moved.
+SCHEMA_KEYS = frozenset({"headers", "checksums"})
+
+
+def classify_risk(diff: dict | None) -> str:
+    """Classify a drift diff as ``"routine"`` or ``"schema"``.
+
+    Routine means the schema signal is unchanged and only content/version moved --
+    safe to batch with other routine datasets into one PR. Schema means the column
+    list or header hash moved, or the fingerprint gained/lost a top-level key, and
+    the plugin's builder.py may need a change.
+
+    Defaults to ``"schema"`` for anything it cannot read. Misclassifying a schema
+    change as routine would bury it in a batch; the reverse just opens one extra PR.
+    """
+    if not isinstance(diff, dict) or not diff:
+        return "schema"
+    if diff.get("added") or diff.get("removed"):
+        return "schema"
+    changed = diff.get("changed") or {}
+    if not isinstance(changed, dict):
+        return "schema"
+    if SCHEMA_KEYS & set(changed):
+        return "schema"
+    return "routine"
+
+
 def fingerprints_match(a: str, b: str) -> bool:
     """True if two fingerprint JSON blobs agree once volatile keys are dropped.
 

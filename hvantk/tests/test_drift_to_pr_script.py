@@ -555,3 +555,66 @@ def test_an_undecodable_staged_file_does_not_abort_the_run(
     # Must return a verdict rather than raising. Undecodable content cannot match, so
     # the safe answer is "push".
     assert drift_to_pr.branch_needs_update("drift/p-d", dry_run=False) is True
+
+
+# --- risk classification ------------------------------------------------------------
+#
+# The routine/schema split is the whole basis for batching: routine datasets share one
+# PR, schema changes get their own. Misclassifying a schema change as routine would bury
+# a builder-breaking change inside a batch nobody reads closely.
+
+def test_classify_risk_routine_when_headers_unchanged(drift_to_pr):
+    diff = {
+        "changed": {
+            "extras": {"expected": {"content_length": "100"},
+                       "observed": {"content_length": "205"}},
+        },
+        "added": {}, "removed": {},
+    }
+    assert drift_to_pr.classify_risk(diff) == "routine"
+
+
+def test_classify_risk_schema_when_headers_changed(drift_to_pr):
+    diff = {
+        "changed": {
+            "headers": {"expected": {"f.txt": ["a", "b"]},
+                        "observed": {"f.txt": ["a", "b", "c"]}},
+        },
+        "added": {}, "removed": {},
+    }
+    assert drift_to_pr.classify_risk(diff) == "schema"
+
+
+def test_classify_risk_schema_when_checksums_changed(drift_to_pr):
+    """For header-hashing probes (clingen, gencc, hgnc) the checksum IS the schema
+    signal, so a moved checksum is a schema change, not routine content drift."""
+    diff = {
+        "changed": {
+            "checksums": {"expected": {"f.txt": "aaa"}, "observed": {"f.txt": "bbb"}},
+        },
+        "added": {}, "removed": {},
+    }
+    assert drift_to_pr.classify_risk(diff) == "schema"
+
+
+def test_classify_risk_schema_when_keys_added_or_removed(drift_to_pr):
+    """A probe that gained or lost a top-level key changed shape; treat as schema so a
+    human looks. Cheap to be wrong in this direction."""
+    assert drift_to_pr.classify_risk({"added": {"extras": {}}, "removed": {}, "changed": {}}) == "schema"
+    assert drift_to_pr.classify_risk({"added": {}, "removed": {"checksums": {}}, "changed": {}}) == "schema"
+
+
+def test_classify_risk_unparseable_diff_is_schema(drift_to_pr):
+    """"I cannot tell" must mean "show a human", never "batch it silently"."""
+    assert drift_to_pr.classify_risk(None) == "schema"
+    assert drift_to_pr.classify_risk({}) == "schema"
+
+
+def test_classify_risk_source_version_alone_is_routine(drift_to_pr):
+    """A version string moving with no schema signal is routine -- e.g. gtex-eqtl's
+    portal version cl361->cl362, which is a website redeploy, not a data schema change."""
+    diff = {
+        "changed": {"source_version": {"expected": "cl361", "observed": "cl362"}},
+        "added": {}, "removed": {},
+    }
+    assert drift_to_pr.classify_risk(diff) == "routine"
