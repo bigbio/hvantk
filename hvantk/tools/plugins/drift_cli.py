@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import click
@@ -32,8 +32,32 @@ LEDGER_PATH = Path(__file__).resolve().parents[2] / "resources" / "drift_ledger.
 @click.option("--timeout", default=60, show_default=True, help="Probe timeout in seconds")
 @click.option("--ledger", "ledger_flag", is_flag=True,
               help="List datasets whose upstream moved since their last rebuild")
-def drift_cmd(dataset, all_flag, domain, as_json, regenerate, timeout, ledger_flag):
+@click.option("--mark-rebuilt", "mark_rebuilt", default=None, metavar="DATASET",
+              help="Record DATASET as rebuilt now, clearing it from --ledger's stale list")
+def drift_cmd(dataset, all_flag, domain, as_json, regenerate, timeout, ledger_flag, mark_rebuilt):
     """Compare a plugin's live drift-probe fingerprint against the expected file."""
+    if mark_rebuilt is not None:
+        # A standalone action, like --regenerate: it takes its OWN dataset name, so a
+        # positional `dataset` / --all / --regenerate alongside it would be ambiguous
+        # about which dataset is meant. Mutually exclusive with --ledger too -- marking
+        # and then immediately re-listing in one invocation is rare enough (and cheap
+        # enough as two commands) that it is not worth the ambiguity of picking an
+        # implicit ordering between "mutate" and "report" in a single call.
+        if ledger_flag:
+            raise click.UsageError("--mark-rebuilt and --ledger are mutually exclusive")
+        if all_flag or dataset or regenerate or as_json:
+            raise click.UsageError(
+                "--mark-rebuilt takes its own dataset name; it cannot be combined "
+                "with --all, --regenerate, --json, or a dataset argument"
+            )
+        try:
+            _mark_rebuilt(mark_rebuilt)
+        except KeyError:
+            click.echo(f"dataset not in ledger: {mark_rebuilt}", err=True)
+            raise SystemExit(EXIT_REGISTRY_ERROR)
+        click.echo(f"marked rebuilt: {mark_rebuilt}")
+        return
+
     if ledger_flag:
         stale = _stale_datasets(_load_ledger())
         if not stale:
@@ -177,3 +201,25 @@ def _stale_datasets(ledger: dict) -> list[tuple[str, dict]]:
         if rebuilt_at is None or last_upstream_change is None or rebuilt_at < last_upstream_change:
             out.append((name, entry))
     return out
+
+
+def _mark_rebuilt(dataset_name: str) -> None:
+    """Set ``dataset_name``'s ledger entry ``rebuilt_at`` to now (UTC, ISO-8601) and
+    write the ledger back. Every other entry is copied through untouched.
+
+    Raises ``KeyError`` if ``dataset_name`` has no ledger row -- the ledger is written
+    exclusively by the drift bot (``.github/scripts/drift_to_pr.py``) when a dataset
+    actually drifts, so a name absent from it never had a pending-rebuild signal to
+    clear. Silently creating a row here would let `--ledger` under-report just as
+    easily as the string-comparison and truthy-JSON bugs this same file fixes elsewhere
+    -- fail loudly instead.
+    """
+    ledger = _load_ledger()
+    if dataset_name not in ledger:
+        raise KeyError(dataset_name)
+    updated = dict(ledger)
+    updated[dataset_name] = {
+        **ledger[dataset_name],
+        "rebuilt_at": datetime.now(timezone.utc).isoformat(),
+    }
+    LEDGER_PATH.write_text(json.dumps(updated, indent=2, sort_keys=True) + "\n")

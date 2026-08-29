@@ -246,3 +246,88 @@ def test_stale_datasets_reports_an_unparseable_rebuilt_at_as_stale():
         },
     }
     assert [name for name, _ in drift_cli._stale_datasets(ledger)] == ["d:four"]
+
+
+# --- --mark-rebuilt --------------------------------------------------------------------
+#
+# The ledger records that a dataset drifted, but nothing ever cleared `rebuilt_at` --
+# every drifted dataset stayed pending-rebuild forever and `--ledger` could never report
+# "nothing pending". `--mark-rebuilt <dataset>` is the missing other half: it records
+# that a human (or a follow-up pipeline run) actually rebuilt the artifact.
+
+
+def test_mark_rebuilt_clears_a_dataset_from_the_stale_list(tmp_path, monkeypatch):
+    from hvantk.tools.plugins import drift_cli
+
+    ledger = tmp_path / "drift_ledger.json"
+    ledger.write_text(json.dumps({
+        "clinvar:variants": {"last_upstream_change": "2026-08-23T00:00:00+00:00",
+                             "accepted_in": "PR #288", "signal": "routine",
+                             "rebuilt_at": None},
+    }))
+    monkeypatch.setattr(drift_cli, "LEDGER_PATH", ledger)
+
+    result = CliRunner().invoke(drift_cli.drift_cmd, ["--mark-rebuilt", "clinvar:variants"])
+    assert result.exit_code == 0, result.output
+
+    stale = CliRunner().invoke(drift_cli.drift_cmd, ["--ledger"])
+    assert stale.exit_code == 0
+    assert "no datasets pending rebuild" in stale.output
+    assert "clinvar:variants" not in stale.output
+
+
+def test_mark_rebuilt_unknown_dataset_errors_without_creating_an_entry(tmp_path, monkeypatch):
+    """Marking a dataset that never drifted (so it has no ledger row) must fail loudly,
+    not silently fabricate a row the drift bot never wrote."""
+    from hvantk.tools.plugins import drift_cli
+
+    ledger = tmp_path / "drift_ledger.json"
+    ledger.write_text("{}")
+    monkeypatch.setattr(drift_cli, "LEDGER_PATH", ledger)
+
+    result = CliRunner().invoke(drift_cli.drift_cmd, ["--mark-rebuilt", "does:not:exist"])
+
+    assert result.exit_code != 0
+    assert "does:not:exist" in (result.output or "")
+    assert json.loads(ledger.read_text()) == {}
+
+
+def test_mark_rebuilt_preserves_every_other_entry_untouched(tmp_path, monkeypatch):
+    from hvantk.tools.plugins import drift_cli
+
+    ledger = tmp_path / "drift_ledger.json"
+    other_entry = {"last_upstream_change": "2026-08-01T00:00:00+00:00",
+                    "accepted_in": "PR #286", "signal": "routine",
+                    "rebuilt_at": "2026-08-20T00:00:00+00:00"}
+    ledger.write_text(json.dumps({
+        "clinvar:variants": {"last_upstream_change": "2026-08-23T00:00:00+00:00",
+                             "accepted_in": "PR #288", "signal": "routine",
+                             "rebuilt_at": None},
+        "hgnc:lookup": other_entry,
+    }))
+    monkeypatch.setattr(drift_cli, "LEDGER_PATH", ledger)
+
+    result = CliRunner().invoke(drift_cli.drift_cmd, ["--mark-rebuilt", "clinvar:variants"])
+    assert result.exit_code == 0, result.output
+
+    on_disk = json.loads(ledger.read_text())
+    assert on_disk["hgnc:lookup"] == other_entry
+    assert on_disk["clinvar:variants"]["accepted_in"] == "PR #288"
+    assert on_disk["clinvar:variants"]["signal"] == "routine"
+    assert on_disk["clinvar:variants"]["rebuilt_at"] is not None
+
+
+def test_mark_rebuilt_and_ledger_flag_are_mutually_exclusive(tmp_path, monkeypatch):
+    from hvantk.tools.plugins import drift_cli
+
+    ledger = tmp_path / "drift_ledger.json"
+    ledger.write_text("{}")
+    monkeypatch.setattr(drift_cli, "LEDGER_PATH", ledger)
+
+    result = CliRunner().invoke(
+        drift_cli.drift_cmd, ["--ledger", "--mark-rebuilt", "clinvar:variants"]
+    )
+    assert result.exit_code != 0
+    # Must be OUR validation catching the combination, not e.g. an unrecognized-option
+    # error from click -- the wording should name both flags.
+    assert "--ledger" in result.output and "--mark-rebuilt" in result.output, result.output
