@@ -36,6 +36,23 @@ def drift_to_pr():
     return _load_module()
 
 
+@pytest.fixture(autouse=True)
+def isolated_ledger(drift_to_pr, monkeypatch, tmp_path):
+    """Give every test its own throwaway ledger file, never the real
+    ``hvantk/resources/drift_ledger.json``.
+
+    `record_in_ledger` writes straight to `LEDGER_PATH` with `Path.write_text` -- a
+    plain file write, not a subprocess call -- so it is invisible to the `_run` /
+    `subprocess.run` monkeypatching the rest of this suite already relies on to stay
+    side-effect-free (see `_capture_handle_drifted` and `test_exits_nonzero_when_a_pr_
+    cannot_be_opened`, which mock exactly those two for the same reason). Without
+    this, any test that drives `handle_drifted` / `handle_routine_batch` past both
+    anti-churn guards with `dry_run=False` -- several pre-existing tests do -- writes
+    real dataset entries into the tracked ledger file on every test run.
+    """
+    monkeypatch.setattr(drift_to_pr, "LEDGER_PATH", tmp_path / "drift_ledger.json")
+
+
 def _write_report(tmp_path: Path, entries: list[dict]) -> Path:
     """Write a `hvantk drift --all --json`-shaped report and return its path."""
     path = tmp_path / "drift_report.json"
