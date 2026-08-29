@@ -15,6 +15,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import subprocess
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -911,3 +912,194 @@ def test_load_ledger_returns_empty_dict_on_corrupt_file(drift_to_pr, monkeypatch
 def test_load_ledger_returns_empty_dict_when_absent(drift_to_pr, monkeypatch, tmp_path):
     monkeypatch.setattr(drift_to_pr, "LEDGER_PATH", tmp_path / "nope.json")
     assert drift_to_pr.load_ledger() == {}
+
+
+# --- stale-PR escalation ------------------------------------------------------------
+#
+# A drift PR still open after a full regeneration cycle was not acted on. The bot must
+# say so on the EXISTING PR, never by opening another: #268 fixed the inverse failure,
+# where nine PRs were force-pushed every morning producing ~63 notification events a
+# week carrying no new information.
+
+
+def test_pr_older_than_one_cycle_is_escalated(drift_to_pr):
+    """A PR still open after a full regeneration cycle was not acted on."""
+    assert drift_to_pr.should_escalate(
+        pr_created_at="2026-08-01T06:00:00Z", now="2026-08-16T06:00:00Z"
+    ) is True
+
+
+def test_pr_within_one_cycle_is_not_escalated(drift_to_pr):
+    assert drift_to_pr.should_escalate(
+        pr_created_at="2026-08-01T06:00:00Z", now="2026-08-10T06:00:00Z"
+    ) is False
+
+
+def test_pr_exactly_at_the_cycle_boundary_is_escalated(drift_to_pr):
+    assert drift_to_pr.should_escalate(
+        pr_created_at="2026-08-01T06:00:00Z", now="2026-08-15T06:00:00Z"
+    ) is True
+
+
+def test_unparseable_timestamp_does_not_escalate(drift_to_pr):
+    """Escalation is a notification; a parse failure must not spam the PR."""
+    assert drift_to_pr.should_escalate(pr_created_at="not-a-date", now="2026-08-16T06:00:00Z") is False
+    assert drift_to_pr.should_escalate(pr_created_at="2026-08-01T06:00:00Z", now="") is False
+    assert drift_to_pr.should_escalate(pr_created_at=None, now="2026-08-16T06:00:00Z") is False
+
+
+# `maybe_escalate` itself: the plumbing from a PR number to (at most) one `gh pr
+# comment`. `_pr_created_at` is stubbed directly rather than faking `subprocess.run`,
+# because -- like `pr_exists_for_branch` / `remote_branch_exists` -- it is a
+# value-returning read with its own dry_run gate, not a fire-and-forget action routed
+# through `_run`.
+
+
+def test_maybe_escalate_comments_once_when_pr_outlived_a_cycle(drift_to_pr, monkeypatch):
+    """The plumbing: a stale createdAt drives exactly one `gh pr comment`."""
+    stale = (datetime.now(timezone.utc) - timedelta(days=20)).isoformat()
+    monkeypatch.setattr(drift_to_pr, "_pr_created_at", lambda pr, *, dry_run: stale)
+    calls: list[list[str]] = []
+    monkeypatch.setattr(
+        drift_to_pr, "_run",
+        lambda cmd, **kw: calls.append(list(cmd)) or subprocess.CompletedProcess(cmd, 0, stdout="", stderr=""),
+    )
+
+    drift_to_pr.maybe_escalate("55", dry_run=False)
+
+    assert len(calls) == 1, calls
+    assert calls[0][:3] == ["gh", "pr", "comment"], calls
+    assert "55" in calls[0], calls
+
+
+def test_maybe_escalate_does_not_comment_when_pr_is_recent(drift_to_pr, monkeypatch):
+    recent = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+    monkeypatch.setattr(drift_to_pr, "_pr_created_at", lambda pr, *, dry_run: recent)
+    calls: list[list[str]] = []
+    monkeypatch.setattr(
+        drift_to_pr, "_run",
+        lambda cmd, **kw: calls.append(list(cmd)) or subprocess.CompletedProcess(cmd, 0, stdout="", stderr=""),
+    )
+
+    drift_to_pr.maybe_escalate("55", dry_run=False)
+
+    assert calls == []
+
+
+def test_maybe_escalate_does_nothing_when_pr_created_at_is_unknown(drift_to_pr, monkeypatch):
+    """`_pr_created_at` returns "" whenever gh could not answer. No timestamp means no
+    verdict, so no comment -- never a crash."""
+    monkeypatch.setattr(drift_to_pr, "_pr_created_at", lambda pr, *, dry_run: "")
+    calls: list[list[str]] = []
+    monkeypatch.setattr(
+        drift_to_pr, "_run",
+        lambda cmd, **kw: calls.append(list(cmd)) or subprocess.CompletedProcess(cmd, 0, stdout="", stderr=""),
+    )
+
+    drift_to_pr.maybe_escalate("55", dry_run=False)
+
+    assert calls == []
+
+
+def test_maybe_escalate_is_a_noop_under_dry_run(drift_to_pr, monkeypatch):
+    """A previous agent found `_run` fabricates `returncode=0` with EMPTY (not None)
+    stdout under --dry-run. `maybe_escalate` must degrade safely regardless: no crash,
+    no false escalation, and -- since the read is a value-returning query like
+    `pr_exists_for_branch` / `remote_branch_exists` -- no subprocess call of any kind,
+    mirroring how those two also go silent under dry_run without touching `_run`.
+    """
+    run_calls: list[list[str]] = []
+    monkeypatch.setattr(
+        drift_to_pr, "_run",
+        lambda cmd, **kw: run_calls.append(list(cmd)) or subprocess.CompletedProcess(cmd, 0, stdout="", stderr=""),
+    )
+    direct_calls: list = []
+    monkeypatch.setattr(
+        subprocess, "run",
+        lambda *a, **k: direct_calls.append(a) or subprocess.CompletedProcess(a[0] if a else [], 0),
+    )
+
+    drift_to_pr.maybe_escalate("999", dry_run=True)
+
+    assert run_calls == []
+    assert direct_calls == []
+
+
+def test_pr_created_at_is_empty_under_dry_run(drift_to_pr):
+    """Direct unit test of the dry_run gate `maybe_escalate` relies on."""
+    assert drift_to_pr._pr_created_at("1", dry_run=True) == ""
+
+
+# --- wiring: escalation fires only on the "leaving it untouched" skip path ----------
+#
+# Placed after `_discard_staged_fingerprints` and before `_summary_line`/`return` in
+# BOTH `handle_drifted` and `handle_routine_batch` -- that early return is precisely
+# "this PR is still sitting there unmerged". The sibling early return in each function
+# (nothing staged at all) is a different situation -- there may be no PR yet -- and
+# must not escalate.
+
+
+def test_handle_drifted_skip_path_calls_maybe_escalate(drift_to_pr, monkeypatch, tmp_path):
+    escalated: list[tuple] = []
+    monkeypatch.setattr(
+        drift_to_pr, "maybe_escalate",
+        lambda pr, *, dry_run: escalated.append((pr, dry_run)),
+    )
+    _capture_handle_drifted(
+        drift_to_pr, monkeypatch, tmp_path, needs_update=False, pr_exists=True
+    )
+    assert escalated == [("7", False)]
+
+
+def test_handle_drifted_update_path_never_escalates(drift_to_pr, monkeypatch, tmp_path):
+    """The complement: a branch that DOES get updated is not "left untouched", so it
+    must not also escalate."""
+    escalated: list[tuple] = []
+    monkeypatch.setattr(
+        drift_to_pr, "maybe_escalate",
+        lambda pr, *, dry_run: escalated.append((pr, dry_run)),
+    )
+    _capture_handle_drifted(
+        drift_to_pr, monkeypatch, tmp_path, needs_update=True, pr_exists=True
+    )
+    assert escalated == []
+
+
+def test_handle_drifted_nothing_staged_path_never_escalates(drift_to_pr, monkeypatch, tmp_path):
+    """The OTHER early return (nothing to commit) is not "an existing PR left
+    untouched" -- there may be no PR at all yet -- so it must not escalate."""
+    escalated: list[tuple] = []
+    monkeypatch.setattr(
+        drift_to_pr, "maybe_escalate",
+        lambda pr, *, dry_run: escalated.append((pr, dry_run)),
+    )
+    _capture_handle_drifted(
+        drift_to_pr, monkeypatch, tmp_path, needs_update=True, pr_exists=True, staged=False
+    )
+    assert escalated == []
+
+
+def test_handle_routine_batch_skip_path_calls_maybe_escalate(drift_to_pr, monkeypatch):
+    """The routine-batch mirror of the handle_drifted wiring above."""
+    escalated: list[tuple] = []
+
+    def _record(cmd, **kwargs):
+        if cmd == ["git", "diff", "--cached", "--quiet"]:
+            return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="")
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(drift_to_pr, "_run", _record)
+    monkeypatch.setattr(drift_to_pr, "branch_needs_update", lambda b, dry_run: False)
+    monkeypatch.setattr(drift_to_pr, "pr_exists_for_branch", lambda b, dry_run: "42")
+    monkeypatch.setattr(drift_to_pr, "_discard_staged_fingerprints", lambda **kw: None)
+    monkeypatch.setattr(
+        drift_to_pr, "maybe_escalate",
+        lambda pr, *, dry_run: escalated.append((pr, dry_run)),
+    )
+
+    drift_to_pr.handle_routine_batch(
+        [{"dataset_name": "hgnc:lookup", "diff": {}}],
+        base_branch="dev", dry_run=False, step_summary=None,
+    )
+
+    assert escalated == [("42", False)]

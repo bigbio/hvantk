@@ -61,7 +61,7 @@ import os
 import re
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 try:  # PyYAML ships in the conda env; soft-import so --dry-run still works
@@ -188,6 +188,28 @@ def fingerprints_match(a: str, b: str) -> bool:
         return strip_ignored(json.loads(a)) == strip_ignored(json.loads(b))
     except (ValueError, AttributeError, TypeError):
         return False
+
+
+# One full regeneration cycle. A PR still open after this was not acted on.
+ESCALATE_AFTER = timedelta(days=14)
+
+
+def should_escalate(*, pr_created_at: str, now: str) -> bool:
+    """True if an open drift PR has outlived one full cycle.
+
+    Returns False on any unparseable input: escalation is a notification, and a parse
+    failure must not turn into repeated comments on the PR.
+    """
+    def _parse(s: str) -> datetime | None:
+        try:
+            return datetime.fromisoformat(s.replace("Z", "+00:00")).astimezone(timezone.utc)
+        except (ValueError, AttributeError, TypeError):
+            return None
+
+    created, current = _parse(pr_created_at), _parse(now)
+    if created is None or current is None:
+        return False
+    return (current - created) >= ESCALATE_AFTER
 
 
 def branch_name_for_signal(datasets: list[str], fingerprint_path: str = "") -> str:
@@ -574,6 +596,49 @@ def pr_exists_for_branch(branch: str, *, dry_run: bool) -> str | None:
     return out or None
 
 
+def _pr_created_at(pr_number: str, *, dry_run: bool) -> str:
+    """The PR's ``createdAt`` timestamp, or ``""`` if unknown.
+
+    A value-returning read, so -- like ``pr_exists_for_branch`` / ``remote_branch_exists``
+    above -- it gates its own ``dry_run`` short-circuit and calls ``subprocess.run``
+    directly rather than going through ``_run``. ``_run`` is for the fire-and-forget
+    action commands (commit, push, ``gh pr create``/``edit``/``comment``), each already
+    gated uniformly by its own caller; routing a query through it here would make this
+    read visible to every test that captures ``_run`` calls to assert "no PR command
+    was issued" on a path that only ever meant "no PR was created or edited" -- e.g.
+    the skip path's own no-churn guarantee.
+    """
+    if dry_run:
+        return ""
+    result = subprocess.run(
+        ["gh", "pr", "view", pr_number, "--json", "createdAt", "--jq", ".createdAt"],
+        check=False, text=True, capture_output=True,
+    )
+    return (result.stdout or "").strip()
+
+
+def maybe_escalate(pr_number: str, *, dry_run: bool) -> None:
+    """Comment once on a drift PR that has outlived a full cycle.
+
+    Deliberately a comment on the EXISTING PR, never a new PR: #268 fixed the inverse
+    failure where nine PRs were force-pushed every morning, ~63 notification events a
+    week carrying no new information.
+    """
+    created_at = _pr_created_at(pr_number, dry_run=dry_run)
+    if not created_at:
+        return
+    if not should_escalate(
+        pr_created_at=created_at, now=datetime.now(timezone.utc).isoformat()
+    ):
+        return
+    _run(
+        ["gh", "pr", "comment", pr_number, "--body",
+         "This drift PR has been open for a full regeneration cycle (14 days). "
+         "Upstream is still drifted and the baseline here is still unmerged."],
+        dry_run=dry_run, check=False,
+    )
+
+
 def load_ledger() -> dict:
     """Read the ledger. A missing or corrupt file yields {} rather than raising --
     a broken ledger must not block a drift PR, it just starts recording afresh.
@@ -705,8 +770,12 @@ def handle_drifted(
         # content-only check would skip forever and the dataset's drift would never be
         # surfaced again -- the precise outcome `branch_needs_update` promises cannot
         # happen. Re-opening a PR for an existing branch is cheap; silence is not.
-        if not branch_needs_update(branch, dry_run=dry_run) and pr_exists_for_branch(
-            branch, dry_run=dry_run
+        # `existing_pr` is captured via walrus so the escalation call below can reuse
+        # it, while preserving the original short-circuit: `pr_exists_for_branch`
+        # (a `gh pr list` call) still runs only when `branch_needs_update` is False,
+        # exactly as before this change.
+        if not branch_needs_update(branch, dry_run=dry_run) and (
+            existing_pr := pr_exists_for_branch(branch, dry_run=dry_run)
         ):
             print(
                 f"  branch {branch} already proposes this fingerprint "
@@ -719,6 +788,9 @@ def handle_drifted(
             # bump it has nothing to do with. It would also defeat this very skip for
             # every dataset processed after a skipped one.
             _discard_staged_fingerprints(dry_run=dry_run)
+            # This IS "this PR is still sitting there unmerged": say so on the PR
+            # itself once it has outlived a full cycle, rather than opening another.
+            maybe_escalate(existing_pr, dry_run=dry_run)
             _summary_line(
                 step_summary,
                 f"- DRIFT (unchanged): `{dataset}` -> branch `{branch}` still open; "
@@ -848,11 +920,17 @@ def handle_routine_batch(
             )
             return
 
-    if not branch_needs_update(branch, dry_run=dry_run) and pr_exists_for_branch(
-        branch, dry_run=dry_run
+    # See the matching comment in handle_drifted: walrus preserves the original
+    # short-circuit so `pr_exists_for_branch` still runs only when needed, while making
+    # the PR number available to the escalation call below.
+    if not branch_needs_update(branch, dry_run=dry_run) and (
+        existing_pr := pr_exists_for_branch(branch, dry_run=dry_run)
     ):
         print(f"  branch {branch} already proposes these fingerprints; leaving it.")
         _discard_staged_fingerprints(dry_run=dry_run)
+        # This IS "this PR is still sitting there unmerged": say so on the PR itself
+        # once it has outlived a full cycle, rather than opening another.
+        maybe_escalate(existing_pr, dry_run=dry_run)
         _summary_line(
             step_summary,
             f"- DRIFT (unchanged): routine batch of {len(datasets)} still open",
