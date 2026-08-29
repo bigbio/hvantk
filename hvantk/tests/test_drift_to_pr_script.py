@@ -1385,7 +1385,7 @@ def test_handle_routine_batch_skip_path_calls_maybe_escalate(drift_to_pr, monkey
 
 
 def test_nothing_in_the_drift_pipeline_auto_merges():
-    """Hard project constraint, enforced rather than conventional.
+    """Hard project constraint, backstopped here rather than left purely conventional.
 
     Auto-merge was considered and rejected: batching and cadence alone take drift
     volume from ~34 PRs/month to ~2, so auto-merge would only be the step from 2 to 0
@@ -1396,13 +1396,36 @@ def test_nothing_in_the_drift_pipeline_auto_merges():
 
     This asserts on the real files rather than on a constant, because the failure mode
     is someone adding `gh pr merge --auto` to a workflow in six months without reading
-    that reasoning.
+    that reasoning. It is a BACKSTOP against the common, low-effort ways that
+    reintroduction happens -- the `gh pr merge` CLI under any of the quoting styles
+    Python/YAML tend to produce, a bare `--auto` flag, the REST `.../pulls/<n>/merge`
+    endpoint, the GraphQL `enablePullRequestAutoMerge` mutation, and third-party
+    automerge Actions -- not a proof that no auto-merge path exists anywhere in the
+    tree. A sufficiently indirect call (built from string concatenation at runtime,
+    routed through an external script, a differently-named GraphQL alias, etc.) can
+    still slip past a regex; this catches the reintroduction someone types by hand,
+    not a determined attempt to evade it.
     """
     import pathlib
     import re
 
     root = pathlib.Path(__file__).resolve().parents[2] / ".github"
-    banned = re.compile(r"gh\s+pr\s+merge|--auto\b|\"merge\"")
+    # `gh`/`pr`/`merge` as separate tokens joined only by whitespace, quotes, or
+    # commas -- so both `gh pr merge ...` (shell) and `["gh", "pr", "merge", ...]` /
+    # `['gh', 'pr', 'merge', ...]` (Python argv, either quoting style) are caught.
+    _SEP = r"""[\s,'"]+"""
+    banned = re.compile(
+        r"gh" + _SEP + r"pr" + _SEP + r"merge"
+        r"|--auto\b"
+        r'|"merge"'
+        # Case-insensitive: catches `pascalgn/automerge-action` (a GitHub Action) and
+        # `enablePullRequestAutoMerge` (the GraphQL mutation) in one alternative, since
+        # the latter contains "AutoMerge" as a substring.
+        r"|(?i:automerge)"
+        # The REST "merge a pull request" endpoint, e.g. `gh api -X PUT
+        # repos/OWNER/REPO/pulls/123/merge`.
+        r"|(?i:pulls/\S*/merge)"
+    )
     offenders = []
     for path in sorted(root.rglob("*")):
         if path.suffix not in {".yml", ".yaml", ".py"} or not path.is_file():
