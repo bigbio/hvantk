@@ -155,3 +155,34 @@ def test_ledger_flag_reports_nothing_pending_on_empty_ledger(tmp_path, monkeypat
     result = CliRunner().invoke(drift_cli.drift_cmd, ["--ledger"])
     assert result.exit_code == 0
     assert "no datasets pending rebuild" in result.output
+
+
+def test_load_ledger_returns_empty_dict_on_truthy_non_dict_json(tmp_path, monkeypatch):
+    """`json.loads(text) or {}` only substitutes `{}` for FALSY JSON -- a populated
+    list or a bare string is truthy and passes straight through, breaking the
+    docstring's "a missing or corrupt file yields {}" promise."""
+    from hvantk.tools.plugins import drift_cli
+
+    ledger = tmp_path / "drift_ledger.json"
+    monkeypatch.setattr(drift_cli, "LEDGER_PATH", ledger)
+
+    ledger.write_text("[1, 2, 3]")
+    assert drift_cli._load_ledger() == {}
+
+    ledger.write_text('"x"')
+    assert drift_cli._load_ledger() == {}
+
+
+def test_ledger_flag_survives_a_truthy_non_dict_ledger_file(tmp_path, monkeypatch):
+    """`drift --ledger` against a ledger file containing a JSON list must exit 0 with
+    "no datasets pending rebuild" rather than crash calling `.items()` on a list."""
+    from hvantk.tools.plugins import drift_cli
+
+    ledger = tmp_path / "drift_ledger.json"
+    ledger.write_text("[1, 2, 3]")
+    monkeypatch.setattr(drift_cli, "LEDGER_PATH", ledger)
+
+    result = CliRunner().invoke(drift_cli.drift_cmd, ["--ledger"])
+
+    assert result.exit_code == 0, result.output
+    assert "no datasets pending rebuild" in result.output

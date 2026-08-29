@@ -682,13 +682,21 @@ def maybe_escalate(pr_number: str, *, dry_run: bool) -> None:
 def load_ledger() -> dict:
     """Read the ledger. A missing or corrupt file yields {} rather than raising --
     a broken ledger must not block a drift PR, it just starts recording afresh.
+
+    Also yields {} for JSON that parses but is not an object -- e.g. a truthy `[...]`
+    or a bare string. `json.loads(text) or {}` looks like it handles "empty/invalid",
+    but `or` only substitutes on a FALSY parse (`[]`, `0`, `""`, `null`); a populated
+    list or non-empty string is truthy and would pass straight through, and every
+    caller here assumes a dict (`record_in_ledger` does `dict(ledger)`, which raises
+    `TypeError` for a list).
     """
     if not LEDGER_PATH.is_file():
         return {}
     try:
-        return json.loads(LEDGER_PATH.read_text()) or {}
+        data = json.loads(LEDGER_PATH.read_text())
     except ValueError:
         return {}
+    return data if isinstance(data, dict) else {}
 
 
 def record_in_ledger(entries: list[dict], *, pr_ref: str, dry_run: bool) -> None:

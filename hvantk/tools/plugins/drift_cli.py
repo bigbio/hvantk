@@ -127,12 +127,20 @@ def _serialize(result: drift_runner.DriftResult) -> dict:
 
 
 def _load_ledger() -> dict:
+    """Read the ledger. A missing or corrupt file -- or JSON that parses but is not an
+    object (a truthy list, a bare string) -- yields {} rather than raising.
+    `json.loads(text) or {}` looks like it covers this, but `or` only substitutes on a
+    FALSY parse (`[]`, `0`, `""`, `null`); a populated list or non-empty string is
+    truthy and would pass straight through to `_stale_datasets`, which calls
+    `.items()` and raises `AttributeError` on anything that isn't a dict.
+    """
     if not LEDGER_PATH.is_file():
         return {}
     try:
-        return json.loads(LEDGER_PATH.read_text()) or {}
+        data = json.loads(LEDGER_PATH.read_text())
     except ValueError:
         return {}
+    return data if isinstance(data, dict) else {}
 
 
 def _stale_datasets(ledger: dict) -> list[tuple[str, dict]]:

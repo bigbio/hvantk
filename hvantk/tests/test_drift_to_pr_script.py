@@ -1000,6 +1000,23 @@ def test_load_ledger_returns_empty_dict_when_absent(drift_to_pr, monkeypatch, tm
     assert drift_to_pr.load_ledger() == {}
 
 
+def test_load_ledger_returns_empty_dict_on_truthy_non_dict_json(drift_to_pr, monkeypatch, tmp_path):
+    """`json.loads(text) or {}` only substitutes `{}` for FALSY JSON (`[]`, `0`, `""`,
+    `null`) -- truthy non-dict JSON (a populated list, a bare string) passes straight
+    through unchanged, breaking the docstring's "a missing or corrupt file yields {}"
+    promise for exactly the shapes a half-written or hand-edited ledger is likely to
+    produce. `record_in_ledger` then calls `dict(ledger)` on the result, which raises
+    `TypeError` for a list."""
+    non_dict = tmp_path / "drift_ledger.json"
+    monkeypatch.setattr(drift_to_pr, "LEDGER_PATH", non_dict)
+
+    non_dict.write_text("[1, 2, 3]")
+    assert drift_to_pr.load_ledger() == {}
+
+    non_dict.write_text('"x"')
+    assert drift_to_pr.load_ledger() == {}
+
+
 # --- stale-PR escalation ------------------------------------------------------------
 #
 # A drift PR still open after a full regeneration cycle was not acted on. The bot must
