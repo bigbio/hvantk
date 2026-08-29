@@ -223,9 +223,10 @@ def _mark_rebuilt(dataset_name: str) -> None:
     Raises ``KeyError`` if ``dataset_name`` has no ledger row -- the ledger is written
     exclusively by the drift bot (``.github/scripts/drift_to_pr.py``) when a dataset
     actually drifts, so a name absent from it never had a pending-rebuild signal to
-    clear. Silently creating a row here would let `--ledger` under-report just as
-    easily as the string-comparison and truthy-JSON bugs this same file fixes elsewhere
-    -- fail loudly instead.
+    clear. Silently fabricating a row instead would turn a typo'd dataset name (e.g.
+    a stray colon, or the singular/plural of a provider's dataset key) into a
+    phantom entry, while the real dataset the caller meant to clear stays stale and
+    the caller walks away believing it is handled -- fail loudly instead.
     """
     ledger = _load_ledger()
     if dataset_name not in ledger:
