@@ -16,6 +16,11 @@ EXIT_DRIFTED = 1
 EXIT_PROBE_FAILED = 2
 EXIT_REGISTRY_ERROR = 3
 
+# hvantk/tools/plugins/drift_cli.py -> parents[2] is hvantk/, so this resolves to
+# hvantk/resources/drift_ledger.json -- the ledger the drift bot writes in the same
+# commit as the fingerprints it describes (see .github/scripts/drift_to_pr.py).
+LEDGER_PATH = Path(__file__).resolve().parents[2] / "resources" / "drift_ledger.json"
+
 
 @click.command(name="drift")
 @click.argument("dataset", required=False)
@@ -24,8 +29,20 @@ EXIT_REGISTRY_ERROR = 3
 @click.option("--json", "as_json", is_flag=True, help="Emit machine-readable JSON")
 @click.option("--regenerate", is_flag=True, help="Overwrite drift_fingerprint.json with observed probe output")
 @click.option("--timeout", default=60, show_default=True, help="Probe timeout in seconds")
-def drift_cmd(dataset, all_flag, domain, as_json, regenerate, timeout):
+@click.option("--ledger", "ledger_flag", is_flag=True,
+              help="List datasets whose upstream moved since their last rebuild")
+def drift_cmd(dataset, all_flag, domain, as_json, regenerate, timeout, ledger_flag):
     """Compare a plugin's live drift-probe fingerprint against the expected file."""
+    if ledger_flag:
+        stale = _stale_datasets(_load_ledger())
+        if not stale:
+            click.echo("no datasets pending rebuild")
+            return
+        for name, entry in stale:
+            click.echo(f"{name}\tupstream={entry['last_upstream_change']}\t"
+                       f"rebuilt={entry['rebuilt_at'] or 'never'}")
+        return
+
     if all_flag and dataset:
         raise click.UsageError("pass either a dataset name or --all, not both")
     if not all_flag and not dataset:
@@ -107,3 +124,22 @@ def _serialize(result: drift_runner.DriftResult) -> dict:
     if d["probe_error"] is not None:
         d["probe_error"] = str(result.probe_error)
     return d
+
+
+def _load_ledger() -> dict:
+    if not LEDGER_PATH.is_file():
+        return {}
+    try:
+        return json.loads(LEDGER_PATH.read_text()) or {}
+    except ValueError:
+        return {}
+
+
+def _stale_datasets(ledger: dict) -> list[tuple[str, dict]]:
+    """Datasets whose upstream moved after their last rebuild. Never-rebuilt counts."""
+    out = []
+    for name, entry in sorted(ledger.items()):
+        rebuilt = entry.get("rebuilt_at")
+        if rebuilt is None or rebuilt < entry.get("last_upstream_change", ""):
+            out.append((name, entry))
+    return out

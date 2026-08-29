@@ -114,3 +114,44 @@ def test_regenerate_unknown_dataset_returns_registry_error_exit_code():
     runner = CliRunner()
     result = runner.invoke(drift_cmd, ["--regenerate", "does:not:exist"])
     assert result.exit_code == 3
+
+
+# --- --ledger ------------------------------------------------------------------------
+#
+# A fingerprint bump accepted into a PR is also the signal that a built artifact may
+# now be stale. `hvantk drift --ledger` reads the rebuild ledger (written by the drift
+# bot; see .github/scripts/drift_to_pr.py) and lists what is still pending a rebuild.
+
+def test_ledger_flag_lists_datasets_needing_rebuild(tmp_path, monkeypatch):
+    """A dataset whose upstream moved after its last rebuild is stale. Never-rebuilt
+    (rebuilt_at None) counts as stale."""
+    from hvantk.tools.plugins import drift_cli
+
+    ledger = tmp_path / "drift_ledger.json"
+    ledger.write_text(json.dumps({
+        "clinvar:variants": {"last_upstream_change": "2026-08-23T00:00:00+00:00",
+                             "accepted_in": "PR #288", "signal": "routine",
+                             "rebuilt_at": None},
+        "hgnc:lookup": {"last_upstream_change": "2026-08-01T00:00:00+00:00",
+                        "accepted_in": "PR #286", "signal": "routine",
+                        "rebuilt_at": "2026-08-20T00:00:00+00:00"},
+    }))
+    monkeypatch.setattr(drift_cli, "LEDGER_PATH", ledger)
+
+    result = CliRunner().invoke(drift_cli.drift_cmd, ["--ledger"])
+
+    assert result.exit_code == 0
+    assert "clinvar:variants" in result.output
+    assert "hgnc:lookup" not in result.output
+
+
+def test_ledger_flag_reports_nothing_pending_on_empty_ledger(tmp_path, monkeypatch):
+    from hvantk.tools.plugins import drift_cli
+
+    ledger = tmp_path / "drift_ledger.json"
+    ledger.write_text("{}")
+    monkeypatch.setattr(drift_cli, "LEDGER_PATH", ledger)
+
+    result = CliRunner().invoke(drift_cli.drift_cmd, ["--ledger"])
+    assert result.exit_code == 0
+    assert "no datasets pending rebuild" in result.output
