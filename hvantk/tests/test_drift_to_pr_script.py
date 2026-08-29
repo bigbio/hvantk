@@ -1017,6 +1017,88 @@ def test_load_ledger_returns_empty_dict_on_truthy_non_dict_json(drift_to_pr, mon
     assert drift_to_pr.load_ledger() == {}
 
 
+# --- ledger write ORDERING: staged only after both anti-churn guards ---------------
+#
+# `record_in_ledger`'s docstring explains at length why it must be called and staged
+# only AFTER both anti-churn guards (the `git diff --cached --quiet` emptiness check
+# and `branch_needs_update`) have already passed: its `last_upstream_change` is
+# `datetime.now(...)`, a different value on literally every invocation, so staging it
+# before either guard runs would make both report "needs update" unconditionally --
+# reviving the #268 incident (nine PRs force-pushed daily, ~63 notifications/week).
+#
+# Every other test in this module mocks git/gh and asserts on the SET of commands
+# issued, or on the final outcome -- none of them observe WHERE `git add
+# hvantk/resources/drift_ledger.json` lands relative to the emptiness guard. Moving
+# the ledger write to the top of `handle_drifted` -- reintroducing the #268 bug
+# outright -- left a previous 71-test version of this suite 71/71 green.
+
+
+def test_handle_drifted_stages_the_ledger_only_after_the_emptiness_guard(
+    drift_to_pr, monkeypatch
+):
+    """`handle_drifted`'s own emptiness check shells out to `subprocess.run` directly
+    (see `_capture_handle_drifted`'s docstring above) rather than through `_run`, so
+    BOTH are patched here into one shared, order-preserving list -- patching `_run`
+    alone would leave the `git diff --cached --quiet` call invisible and this
+    ordering assertion vacuous.
+    """
+    calls: list[list[str]] = []
+
+    def _record_run(cmd, **kwargs):
+        calls.append(list(cmd))
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    def _record_subprocess_run(cmd, **kwargs):
+        calls.append(list(cmd))
+        # nonzero == "something is staged", the state after a real regenerate. 0
+        # would take the early "nothing to commit" return before the ledger is ever
+        # touched -- a different path, already covered by
+        # test_skip_issues_no_commit_push_or_pr / test_nothing_staged_path_also_discards.
+        if cmd == ["git", "diff", "--cached", "--quiet"]:
+            return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="")
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(drift_to_pr, "_run", _record_run)
+    monkeypatch.setattr(subprocess, "run", _record_subprocess_run)
+    monkeypatch.setattr(drift_to_pr, "branch_needs_update", lambda b, dry_run: True)
+    monkeypatch.setattr(drift_to_pr, "pr_exists_for_branch", lambda b, dry_run: None)
+
+    drift_to_pr.handle_drifted(
+        dict(DRIFTED), base_branch="dev", dry_run=False, step_summary=None
+    )
+
+    diff_idx = calls.index(["git", "diff", "--cached", "--quiet"])
+    add_ledger_idx = calls.index(["git", "add", "hvantk/resources/drift_ledger.json"])
+    assert add_ledger_idx > diff_idx, calls
+
+
+def test_handle_routine_batch_stages_the_ledger_only_after_the_emptiness_guard(
+    drift_to_pr, monkeypatch
+):
+    """The routine-batch mirror. Its emptiness check DOES go through `_run` (unlike
+    `handle_drifted`'s), so patching `_run` alone is enough to see both commands."""
+    calls: list[list[str]] = []
+
+    def _record_run(cmd, **kwargs):
+        calls.append(list(cmd))
+        if cmd == ["git", "diff", "--cached", "--quiet"]:
+            return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="")
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(drift_to_pr, "_run", _record_run)
+    monkeypatch.setattr(drift_to_pr, "branch_needs_update", lambda b, dry_run: True)
+    monkeypatch.setattr(drift_to_pr, "pr_exists_for_branch", lambda b, dry_run: None)
+
+    entries = [{"dataset_name": "a:one", "diff": {}}, {"dataset_name": "b:two", "diff": {}}]
+    drift_to_pr.handle_routine_batch(
+        entries, base_branch="dev", dry_run=False, step_summary=None
+    )
+
+    diff_idx = calls.index(["git", "diff", "--cached", "--quiet"])
+    add_ledger_idx = calls.index(["git", "add", "hvantk/resources/drift_ledger.json"])
+    assert add_ledger_idx > diff_idx, calls
+
+
 # --- stale-PR escalation ------------------------------------------------------------
 #
 # A drift PR still open after a full regeneration cycle was not acted on. The bot must
