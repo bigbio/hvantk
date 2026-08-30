@@ -189,27 +189,45 @@ Each dataset declares a `drift_probe.module` + `function` in `plugin.yaml`. The 
     "source_version": str | None, # upstream version string (Last-Modified, release tag, etc.)
     "headers":  {"<file>": [str, ...]},   # column or section headers from the live source
     "checksums": {"<file>": str},          # sha256 over the bytes used to derive `headers`
+    "extras": {"<key>": Any},     # optional: probe-specific content signals, compared for drift
+    "informational": {"<key>": Any}, # optional: human-readable context, excluded from drift comparison
     "fetched_at": str,            # ISO-8601 UTC timestamp
 }
 ```
+
+`extras` is an open dict for probe-specific content signals that don't fit `headers`/`checksums` but still matter for drift — typically an HTTP `Content-Length`. clingen has fingerprinted `extras.content_length` since the drift-comparator fix in #233; hgnc and gencc now do too.
+
+`informational` is recorded for human readers and is **excluded from drift comparison** — it is in `PROBE_FINGERPRINT_IGNORED_KEYS` (`hvantk/core/plugin/api.py`) alongside `fetched_at` and `probe_version`. This is where `Last-Modified` now lives for probes whose upstream re-publishes byte-identical content under a fresh timestamp: across hgnc's 8 committed fingerprints from 2026-05-16 to 2026-08-27 the checksum never moved while `Last-Modified` moved on every single one. A probe that puts that kind of timestamp in a field drift actually compares — `source_version`, as hgnc and gencc both did before `probe_version` 2 — opens a PR on every republish carrying no information; recording it under `informational` instead keeps it visible in the committed JSON without ever letting it trigger drift.
 
 The expected fingerprint lives at `hvantk/skills/<provider>/[<dataset>/]tests/drift_fingerprint.json`. `hvantk drift <provider:dataset>` compares the live probe output against this file. Update the fingerprint when an intentional upstream change has been validated; do not silently regenerate it in the same PR as a behavioural change.
 
 **Sharing one `drift_fingerprint` across datasets is meaningful, not a shortcut.** Datasets that point at the same baseline *and* the same probe are declaring that they have **one** drift signal between them, not one each — which is the honest declaration when the probe is provider-scoped. `ucsc-cellbrowser` is the worked example: `default`, `adult-ctx` and `dev-ctx` are distinct *schema* variants (their obs cell-type column is `celltype`, `Class` and `Type_v2` respectively, so each earns its own snapshot), but `fetch_fingerprint()` takes no arguments and fingerprints the provider-wide catalog, so all three always report identically.
 
-`hvantk drift` probes such a group once and fans the result out — every dataset still gets its own report entry — and the drift workflow opens a single PR per signal. Without that, one upstream event produced three identical PRs whose branches all wrote the same file, so merging any one made the others conflict.
+`hvantk drift` probes such a group once and fans the result out — every dataset still gets its own report entry — so the drift workflow never opens more than one PR per signal (routine signals are batched together further still; see below). Without the per-signal grouping, one upstream event produced three identical PRs whose branches all wrote the same file, so merging any one made the others conflict.
 
 Two datasets may **not** share a baseline while declaring *different* probes: each would overwrite the other's file, and whichever regenerated last would define "clean" for both. `hvantk plugins validate` rejects that.
 
 ### Automated drift workflow
 
-A scheduled GitHub Actions workflow (`.github/workflows/drift.yml`) runs `hvantk drift --all --json` daily at 06:00 UTC. For each plugin reporting `status: drifted`, the workflow:
+A scheduled GitHub Actions workflow (`.github/workflows/drift.yml`) runs `hvantk drift --all --json` fortnightly, at 06:00 UTC on the 1st and 15th (`cron: "0 6 1,15 * *"`) — nothing this toolkit tracks moves faster than that in a way that matters. GitHub Actions cron is best-effort under load, so the day is reliable but the hour is not; a 06:00 trigger routinely fires several hours late. A separate, faster workflow, `.github/workflows/drift-health.yml` (`cron: "0 6 * * 1"`, every Monday), runs the same probes purely to catch a *broken probe* early: it opens no PRs, only filing (or commenting on) a `drift:probe-failed`-labelled issue when a probe reports `status: probe_failed`.
 
-1. Branches `drift/<provider>-<dataset>` from the base branch (`env.BASE_BRANCH`, defaulting to `dev`). When several of that provider's datasets share one drift signal the group gets a single branch instead: `drift/<provider>`, or `drift/<provider>-<suffix>` when the shared baseline's filename carries one (`drift_fingerprint_samples.json` → `drift/<provider>-samples`). The suffix is what keeps two independent signals from the same provider on separate branches, so a multi-dataset provider does not have its second signal overwrite its first.
-2. Regenerates `drift_fingerprint.json` via `hvantk drift --regenerate <provider:dataset>`.
-3. Opens (or updates) a draft PR via `gh pr create` / `gh pr edit`, with the structured diff embedded in the body and the regenerated fingerprint already committed. If the plugin's `plugin.yaml` declares `maintainers:` whose entries look like GitHub handles, those handles are `cc`'d in the PR body.
+For each drift signal reported (after the per-signal grouping above), `classify_risk` reads the diff and sorts it into one of two risk tiers:
 
-The branch is bot-owned and uses `--force-with-lease`, so if the same dataset drifts again before the previous PR is merged the same branch is updated in place rather than spawning a new PR. Datasets reporting `status: probe_failed` are logged to the job summary but never trigger a PR -- those are infrastructure failures, not data drift.
+- **`"routine"`** — the schema signal is unchanged; only content and/or version moved. True only when neither `headers` nor `checksums` (`SCHEMA_KEYS`) appears among the diff's `changed` keys, and no top-level key was added or removed.
+- **`"schema"`** — a header/checksum hash moved, a top-level key was added or removed, or the diff could not be read. `classify_risk` defaults to `"schema"` on anything unreadable: misclassifying a real schema change as routine would bury it in a batch, where the reverse only costs one extra PR.
+
+The two tiers are handled differently:
+
+1. **Routine.** Every routine signal from the run is regenerated onto one shared branch, `drift/routine-batch`, and becomes **one** PR (`drift:routine` label) covering every dataset in it.
+2. **Schema.** Each schema signal keeps its own branch — `drift/<provider>-<dataset>`, or `drift/<provider>[-<suffix>]` when several of that provider's datasets share one signal, the suffix coming from the shared baseline's filename (`drift_fingerprint_samples.json` → `drift/<provider>-samples`) — and its own PR (`drift:schema` label). The suffix is what keeps two independent signals from the same provider on separate branches, so a multi-dataset provider does not have its second signal overwrite its first.
+
+Both branch off the base branch (`env.BASE_BRANCH`, defaulting to `dev`) and regenerate via `hvantk drift --regenerate <provider:dataset>`. Every PR body leads with a markdown table (dataset, what moved, verdict) before the raw JSON diffs. PRs are opened **ready for review, never as a draft** — a draft is filtered out of most review queues and cannot be merged, which is how five drift PRs once sat unreviewed for three days — and assigned from the plugin's `maintainers:` in `plugin.yaml` when declared (bare GitHub handles only), else the `DRIFT_DEFAULT_ASSIGNEE` workflow env var, else left unassigned. Nothing here ever auto-merges; every PR, routine or schema, waits on a human.
+
+A bot-owned branch pushes with `--force-with-lease`, so a signal that drifts again before its PR is merged updates the same branch and PR in place — but only when the regenerated fingerprint actually differs (ignoring `fetched_at`/`probe_version`/`informational`); a re-push that would change nothing but a timestamp is skipped instead, which is what stops an open PR from being re-pushed and re-notified on every run. A drift PR still open after one full regeneration cycle (14 days) gets exactly one escalation comment posted on it — never a second, and never a new PR.
+
+Datasets reporting `status: probe_failed` or `status: stub` are logged to the job summary but never produce a PR — the former is an infrastructure failure, the latter a documentation-only source with no programmatic probe.
+
+Every accepted fingerprint bump is recorded, in the same commit, in the rebuild ledger (`hvantk/resources/drift_ledger.json`): one row per dataset naming when upstream last changed, which branch/PR accepted it, its risk signal, and when it was last rebuilt (`null` until someone runs `hvantk drift --mark-rebuilt <dataset>`). `hvantk drift --ledger` lists every dataset that is stale — never rebuilt, or rebuilt before its last recorded upstream change — which is how "the fingerprint bump merged" is kept distinct from "the built artifact was refreshed."
 
 An agent or human reviews the PR to decide whether the change is a compatible upstream update (just merge the snapshot bump), a breaking schema change (also update `builder.py`), or a spurious probe difference (fix the probe).
 
