@@ -1044,8 +1044,6 @@ def plot_celltype_forest(
     return fig
 
 
-
-
 def _check_dataframe(df: pd.DataFrame, columns: Iterable[str]) -> None:
     missing = [col for col in columns if col not in df.columns]
     if missing:

@@ -36,10 +36,17 @@ def slept(monkeypatch):
     """
     calls: list[float] = []
     test_thread = threading.get_ident()
+    real_sleep = http_util.time.sleep
 
     def record(seconds: float) -> None:
         if threading.get_ident() == test_thread:
             calls.append(seconds)
+            return
+        # Every other thread still really sleeps. Swallowing their sleeps
+        # instead would turn a JVM/py4j poller's `while True: ...; sleep(1)`
+        # into a hot spin on a core for the duration of these tests -- quiet,
+        # but worse than the noisy failure this fixture is fixing.
+        real_sleep(seconds)
 
     monkeypatch.setattr(http_util.time, "sleep", record)
     return calls

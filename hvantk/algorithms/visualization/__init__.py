@@ -5,6 +5,7 @@ This module provides functions and classes for visualizing multiomics data.
 """
 
 from .base import (
+    empty_figure,
     set_default_style,
     save_figure,
     save_figure_to_path,
@@ -29,6 +30,7 @@ def generate_qc_report(*args, **kwargs):
 
 
 __all__ = [
+    "empty_figure",
     "set_default_style",
     "save_figure",
     "save_figure_to_path",

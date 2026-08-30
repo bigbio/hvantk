@@ -30,9 +30,9 @@ jobs:
       - name: Lint with ruff
         run: |
           # stop the build if there are Python syntax errors or undefined names
-          ruff check . --select=E9,F63,F7,F82 --output-format=full --statistics
+          ruff check . --select=E9,F63,F7,F82 --output-format=full
           # exit-zero treats all errors as warnings; width/complexity come from pyproject.toml
-          ruff check . --exit-zero --select=E,W,F,C901 --statistics
+          ruff check . --exit-zero --statistics
       - name: Test with pytest
         run: |
           pytest

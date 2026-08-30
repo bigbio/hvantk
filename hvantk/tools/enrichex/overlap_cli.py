@@ -152,7 +152,6 @@ def overlap_test(
         click.echo(f"\nTSV results written to: {tsv_path}")
 
     if output_format in ("json", "both"):
-
         json_path = output if output.endswith(".json") else f"{output}.json"
         df.to_json(json_path, orient="records", indent=2)
         click.echo(f"JSON results written to: {json_path}")

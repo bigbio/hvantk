@@ -29,11 +29,16 @@ __all__ = [
 
 def __getattr__(name: str):
     if name in __all__:
-        from hvantk.core.models import backends
+        import importlib
 
-        return getattr(backends, name)
+        value = getattr(importlib.import_module("hvantk.core.models.backends"), name)
+        globals()[name] = value  # cache, so the import cost is paid once
+        return value
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def __dir__():
-    return sorted(__all__)
+    # Union, not just __all__: returning only the lazy names would hide the
+    # real subpackages (config, io, models, plugin, utils, ...) from dir(),
+    # REPL completion and inspect.getmembers even after they are imported.
+    return sorted({*__all__, *globals()} - {"TYPE_CHECKING"})

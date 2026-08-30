@@ -50,7 +50,11 @@ __all__ = [
     "col",
 ]
 
-assert set(__all__) == set(_EXPORTS), "__all__ and _EXPORTS must stay in sync"
+if set(__all__) != set(_EXPORTS):  # not an assert: python -O strips those
+    raise RuntimeError(
+        "hvantk.core.models: __all__ and _EXPORTS disagree -- "
+        f"{sorted(set(__all__) ^ set(_EXPORTS))}"
+    )
 
 
 def __getattr__(name: str):
@@ -65,8 +69,10 @@ def __getattr__(name: str):
 
 
 def __dir__():
-    # Report the declared surface only. Resolving a name injects its submodule
-    # as a package attribute; reporting __all__ keeps those (and the typing
-    # import above) out of the public namespace, which is what the old
-    # `globals().pop("_expr", None)` was for.
-    return sorted(__all__)
+    # Union of the lazy exports and whatever is already bound, minus private
+    # names. The underscore filter is what the old `globals().pop("_expr")`
+    # achieved; returning only __all__ would additionally hide the real
+    # submodules (annotation_table, provenance, ...) from dir().
+    return sorted(
+        {*__all__, *(n for n in globals() if not n.startswith("_"))} - {"TYPE_CHECKING"}
+    )

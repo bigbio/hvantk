@@ -2,6 +2,7 @@ import importlib
 import logging
 
 import click
+from click.utils import make_default_short_help
 
 logger = logging.getLogger(__name__)
 
@@ -136,17 +137,29 @@ class LazyGroup(click.Group):
         return cmd
 
     def format_commands(self, ctx, formatter):
-        """Render the command list from the registry, without importing."""
+        """Render the command list from the registry, without importing.
+
+        Mirrors ``click.Group.format_commands``, including the width-derived
+        truncation: click computes ``formatter.width - 6 - len(longest name)``
+        and elides each short help to fit one row. Passing the registry string
+        through unabridged instead made 8 of the 18 rows wrap onto a second
+        line, so ``hvantk --help`` grew from 29 lines to 36 and no longer
+        matched the layout every subgroup's ``--help`` still uses.
+        """
+        names = self.list_commands(ctx)
+        if not names:
+            return
+        limit = formatter.width - 6 - max(len(name) for name in names)
         rows = []
-        for name in self.list_commands(ctx):
+        for name in names:
             entry = _LAZY_COMMANDS.get(name)
             if entry is not None:
-                rows.append((name, entry[2]))
+                rows.append((name, make_default_short_help(entry[2], limit)))
                 continue
             cmd = super().get_command(ctx, name)
             if cmd is None or cmd.hidden:
                 continue
-            rows.append((name, cmd.get_short_help_str(limit=90)))
+            rows.append((name, cmd.get_short_help_str(limit)))
         if rows:
             with formatter.section("Commands"):
                 formatter.write_dl(rows)

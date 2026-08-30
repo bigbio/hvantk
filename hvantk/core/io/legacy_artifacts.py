@@ -47,9 +47,6 @@ _LEGACY_PATHS = {
 }
 
 
-# Path to the gene-set TSV file (not a Hail Table).
-
-
 def _require_source_dir(provided: Optional[str]) -> str:
     """Resolve source_dir from arg or module global; raise if neither set."""
     sd = provided if provided is not None else source_dir
