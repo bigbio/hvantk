@@ -11,6 +11,8 @@ Deliberately non-Hail so it runs in the default suite.
 """
 from __future__ import annotations
 
+import threading
+
 import pytest
 import requests
 
@@ -21,9 +23,25 @@ URL = "https://example.invalid/drift.tsv"
 
 @pytest.fixture
 def slept(monkeypatch):
-    """Record sleep durations instead of actually sleeping."""
+    """Record this thread's sleep durations instead of actually sleeping.
+
+    ``monkeypatch.setattr(http_util.time, "sleep", ...)`` rebinds the attribute
+    on the shared ``time`` module, so it intercepts *every* thread in the
+    process, not just the retry loop under test. Whenever the full suite leaves
+    a JVM/py4j polling thread alive, its ``time.sleep(1)`` calls land in this
+    list and the length assertions fail for a reason unrelated to backoff --
+    observed at 625,818 captured sleeps once and 31,085 another time, while the
+    same tests pass in isolation. Filtering by thread keeps the assertions
+    about the retry loop, which always runs on the calling thread.
+    """
     calls: list[float] = []
-    monkeypatch.setattr(http_util.time, "sleep", calls.append)
+    test_thread = threading.get_ident()
+
+    def record(seconds: float) -> None:
+        if threading.get_ident() == test_thread:
+            calls.append(seconds)
+
+    monkeypatch.setattr(http_util.time, "sleep", record)
     return calls
 
 

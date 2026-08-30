@@ -14,7 +14,6 @@ import logging
 
 import click
 
-from hvantk.core.config import CONTEXT_SETTINGS  # noqa: F401  (kept for parity with sibling CLIs)
 from hvantk.skills.uniprot_ptm.shared.datasets import UniProtPTMDataset
 
 logger = logging.getLogger(__name__)

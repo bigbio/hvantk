@@ -19,7 +19,6 @@ import logging
 
 import click
 
-from hvantk.core.config import CONTEXT_SETTINGS  # noqa: F401  (kept for parity with sibling CLIs)
 from hvantk.skills.clinvar.shared.datasets import ClinVarDataset
 
 logger = logging.getLogger(__name__)
