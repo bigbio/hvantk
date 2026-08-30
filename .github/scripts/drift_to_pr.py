@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Open or update a draft PR per drifted dataset reported by
+"""Open or update a PR per drifted dataset reported by
 ``hvantk drift --all --json``.
 
 This script is invoked by ``.github/workflows/drift.yml``. It is also
@@ -33,7 +33,9 @@ For each ``status == "drifted"`` entry the script:
    every run, so without that check each open PR was re-pushed and its body re-edited
    once a day forever: nine PRs churned daily for a week, ~63 notifications, none of
    them new information.
-6. Opens a draft PR (or updates the body of an existing one).
+6. Opens a PR ready for review -- labelled with its risk classification and
+   assigned to the plugin's declared maintainers, if any -- or updates the body
+   of an existing one.
 
 Probe-failed entries are recorded in the GitHub step summary but never
 produce a PR (they are infrastructure failures, not data drift). ``stub``
@@ -59,6 +61,7 @@ import os
 import re
 import subprocess
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 try:  # PyYAML ships in the conda env; soft-import so --dry-run still works
@@ -69,13 +72,14 @@ except ImportError:  # pragma: no cover - exercised only in stripped envs
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SKILLS_ROOT = REPO_ROOT / "hvantk" / "skills"
+LEDGER_PATH = REPO_ROOT / "hvantk" / "resources" / "drift_ledger.json"
 
 # Mirrors hvantk.core.plugin.api.PROBE_FINGERPRINT_IGNORED_KEYS. Duplicated rather than
 # imported because this script runs from a checkout where the package may not be
 # importable, and `_fingerprints_match` must not become a no-op if the import fails --
 # a silently-empty ignore set would make every comparison "different" and restore the
 # exact churn this guards against. Kept in sync by test_drift_to_pr_script.py.
-FINGERPRINT_IGNORED_KEYS = frozenset({"fetched_at", "probe_version"})
+FINGERPRINT_IGNORED_KEYS = frozenset({"fetched_at", "probe_version", "informational"})
 
 
 # --------------------------------------------------------------------------- #
@@ -99,6 +103,81 @@ def strip_ignored(fingerprint: dict) -> dict:
     return {k: v for k, v in fingerprint.items() if k not in FINGERPRINT_IGNORED_KEYS}
 
 
+# Fingerprint keys that carry the SCHEMA signal. `headers` is the column list;
+# `checksums` is a hash of the column-header row for the header-hashing probes
+# (clingen, gencc, hgnc), so a moved checksum means the columns moved.
+SCHEMA_KEYS = frozenset({"headers", "checksums"})
+
+
+def classify_risk(diff: dict | None) -> str:
+    """Classify a drift diff as ``"routine"`` or ``"schema"``.
+
+    Routine means the schema signal is unchanged and only content/version moved --
+    safe to batch with other routine datasets into one PR. Schema means the column
+    list or header hash moved, or the fingerprint gained/lost a top-level key, and
+    the plugin's builder.py may need a change.
+
+    Defaults to ``"schema"`` for anything it cannot read. Misclassifying a schema
+    change as routine would bury it in a batch; the reverse just opens one extra PR.
+    """
+    if not isinstance(diff, dict) or not diff:
+        return "schema"
+    if diff.get("added") or diff.get("removed"):
+        return "schema"
+    changed = diff.get("changed") or {}
+    if not isinstance(changed, dict):
+        return "schema"
+    if SCHEMA_KEYS & set(changed):
+        return "schema"
+    return "routine"
+
+
+# All routine drift shares one branch, so it becomes one reviewable PR per run rather
+# than one per dataset. Schema changes keep their own per-dataset branches.
+ROUTINE_BRANCH = "drift/routine-batch"
+
+
+def partition_by_risk(drifted: list[dict]) -> tuple[list[dict], list[dict]]:
+    """Split drifted entries into (routine, schema), preserving report order."""
+    routine, schema = [], []
+    for entry in drifted:
+        target = routine if classify_risk(entry.get("diff")) == "routine" else schema
+        target.append(entry)
+    return routine, schema
+
+
+# --------------------------------------------------------------------------- #
+# Rebuild ledger. A fingerprint bump is also the signal that a built artifact may now
+# be stale; without this, that fact survives only in git history. Recorded in the same
+# commit as the fingerprints it describes -- see record_in_ledger below for why it must
+# be written and staged only once handle_drifted / handle_routine_batch have already
+# decided a commit is happening, never earlier.
+# --------------------------------------------------------------------------- #
+
+
+def ledger_entry(*, dataset: str, diff: dict | None, pr_ref: str, now: str) -> dict:
+    """One ledger row. ``rebuilt_at`` starts None and is set by whoever rebuilds;
+    a value older than ``last_upstream_change`` is the stale-artifact condition.
+
+    ``dataset`` is accepted for a call signature symmetric with ``ledger_update``
+    (and to self-document each call site); it is not part of the row itself, since
+    the dataset name is already the ledger's key at the ``ledger_update`` level.
+    """
+    return {
+        "last_upstream_change": now,
+        "accepted_in": pr_ref,
+        "signal": classify_risk(diff),
+        "rebuilt_at": None,
+    }
+
+
+def ledger_update(ledger: dict, *, dataset: str, diff: dict | None, pr_ref: str, now: str) -> dict:
+    """Return a copy of ``ledger`` with ``dataset`` updated. Never touches other rows."""
+    out = dict(ledger)
+    out[dataset] = ledger_entry(dataset=dataset, diff=diff, pr_ref=pr_ref, now=now)
+    return out
+
+
 def fingerprints_match(a: str, b: str) -> bool:
     """True if two fingerprint JSON blobs agree once volatile keys are dropped.
 
@@ -109,6 +188,35 @@ def fingerprints_match(a: str, b: str) -> bool:
         return strip_ignored(json.loads(a)) == strip_ignored(json.loads(b))
     except (ValueError, AttributeError, TypeError):
         return False
+
+
+# One full regeneration cycle. A PR still open after this was not acted on.
+ESCALATE_AFTER = timedelta(days=14)
+
+# `should_escalate` is a pure function of the PR's creation time, so it is True on EVERY
+# run once a PR passes 14 days -- nothing else remembers that a comment was already
+# posted. This marker is embedded in the escalation comment's body and checked by
+# `_pr_has_escalation_comment` before posting another one, so a PR left open for months
+# collects the comment once, not once per run.
+ESCALATION_MARKER = "<!-- hvantk-drift-escalation -->"
+
+
+def should_escalate(*, pr_created_at: str, now: str) -> bool:
+    """True if an open drift PR has outlived one full cycle.
+
+    Returns False on any unparseable input: escalation is a notification, and a parse
+    failure must not turn into repeated comments on the PR.
+    """
+    def _parse(s: str) -> datetime | None:
+        try:
+            return datetime.fromisoformat(s.replace("Z", "+00:00")).astimezone(timezone.utc)
+        except (ValueError, AttributeError, TypeError):
+            return None
+
+    created, current = _parse(pr_created_at), _parse(now)
+    if created is None or current is None:
+        return False
+    return (current - created) >= ESCALATE_AFTER
 
 
 def branch_name_for_signal(datasets: list[str], fingerprint_path: str = "") -> str:
@@ -232,6 +340,29 @@ def read_maintainers(provider: str) -> list[str]:
 _GITHUB_HANDLE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$")
 
 
+# Fallback reviewer when a plugin declares no `maintainers:` in its plugin.yaml.
+# No manifest currently declares that field, so without this the --assignee flag is
+# never emitted and drift PRs land on nobody's list -- half of why five of them sat
+# unreviewed for three days. Set via DRIFT_DEFAULT_ASSIGNEE in the workflow env; a
+# per-plugin `maintainers:` still wins wherever one is declared.
+DEFAULT_ASSIGNEE = os.environ.get("DRIFT_DEFAULT_ASSIGNEE", "").strip()
+
+
+def resolve_assignees(maintainers: list[str]) -> list[str]:
+    """Declared maintainers if any, else the configured fallback, else nothing.
+
+    Every returned handle is validated against ``_GITHUB_HANDLE``: `gh pr create`
+    errors on a malformed or empty --assignee, and a junk env value must degrade to
+    "no assignee" rather than fail the whole run.
+    """
+    valid = [m for m in maintainers if _GITHUB_HANDLE.match(m)]
+    if valid:
+        return valid
+    if DEFAULT_ASSIGNEE and _GITHUB_HANDLE.match(DEFAULT_ASSIGNEE):
+        return [DEFAULT_ASSIGNEE]
+    return []
+
+
 def format_cc_line(maintainers: list[str]) -> str | None:
     """Convert ``["alice@example.com", "@bob", "carol"]`` into a
     ``cc @bob @carol`` line. Email-only entries are skipped (we can't mention
@@ -257,6 +388,11 @@ def build_pr_body(
     covers: list[str] | None = None,
 ) -> str:
     lines: list[str] = []
+    # Lead with the verdict table (V5) -- built from what this function already has
+    # (`dataset`, `diff`), not from the full report entry, which build_pr_body's
+    # signature does not carry.
+    lines.append(classification_table([{"dataset_name": dataset, "diff": diff}]))
+    lines.append("")
     others = [d for d in (covers or []) if d and d != dataset]
     lines.append(
         f"Automated drift detection found upstream changes for `{dataset}`."
@@ -467,6 +603,139 @@ def pr_exists_for_branch(branch: str, *, dry_run: bool) -> str | None:
     return out or None
 
 
+def _pr_created_at(pr_number: str, *, dry_run: bool) -> str:
+    """The PR's ``createdAt`` timestamp, or ``""`` if unknown.
+
+    A value-returning read, so -- like ``pr_exists_for_branch`` / ``remote_branch_exists``
+    above -- it gates its own ``dry_run`` short-circuit and calls ``subprocess.run``
+    directly rather than going through ``_run``. ``_run`` is for the fire-and-forget
+    action commands (commit, push, ``gh pr create``/``edit``/``comment``), each already
+    gated uniformly by its own caller; routing a query through it here would make this
+    read visible to every test that captures ``_run`` calls to assert "no PR command
+    was issued" on a path that only ever meant "no PR was created or edited" -- e.g.
+    the skip path's own no-churn guarantee.
+    """
+    if dry_run:
+        return ""
+    result = subprocess.run(
+        ["gh", "pr", "view", pr_number, "--json", "createdAt", "--jq", ".createdAt"],
+        check=False, text=True, capture_output=True,
+    )
+    return (result.stdout or "").strip()
+
+
+def _pr_has_escalation_comment(pr_number: str, *, dry_run: bool) -> bool:
+    """True if a comment carrying ``ESCALATION_MARKER`` already exists on the PR.
+
+    Follows ``_pr_created_at``'s exact pattern immediately above: a value-returning
+    read with its own ``dry_run`` gate, calling ``subprocess.run`` directly rather than
+    ``_run``, so it stays invisible to tests that assert "no PR command was issued via
+    `_run`" on a path that only ever meant "no PR was created, edited, or commented on"
+    (``test_skip_issues_no_commit_push_or_pr``).
+
+    A ``gh`` failure or unparseable output can't be distinguished from "no comments
+    yet" here -- both leave the marker absent from stdout -- so this returns False and
+    ``maybe_escalate`` posts. That is the same direction every other "I cannot tell" in
+    this module resolves in: never suppress a real signal because a query failed.
+    """
+    if dry_run:
+        return False
+    result = subprocess.run(
+        ["gh", "pr", "view", pr_number, "--json", "comments", "--jq", ".comments[].body"],
+        check=False, text=True, capture_output=True,
+    )
+    return ESCALATION_MARKER in (result.stdout or "")
+
+
+def maybe_escalate(pr_number: str, *, dry_run: bool) -> None:
+    """Comment once on a drift PR that has outlived a full cycle.
+
+    Deliberately a comment on the EXISTING PR, never a new PR: #268 fixed the inverse
+    failure where nine PRs were force-pushed every morning, ~63 notification events a
+    week carrying no new information.
+
+    Idempotent: ``should_escalate`` is a pure function of the PR's creation time, which
+    never changes, so it is True on EVERY run once a PR passes 14 days -- nothing else
+    recorded that a comment already went out. A PR left open six months collected
+    roughly one near-identical comment per run. ``ESCALATION_MARKER``, embedded in the
+    comment body and checked via ``_pr_has_escalation_comment`` before posting, makes a
+    second escalation on the same PR a no-op.
+    """
+    created_at = _pr_created_at(pr_number, dry_run=dry_run)
+    if not created_at:
+        return
+    if not should_escalate(
+        pr_created_at=created_at, now=datetime.now(timezone.utc).isoformat()
+    ):
+        return
+    if _pr_has_escalation_comment(pr_number, dry_run=dry_run):
+        return
+    _run(
+        ["gh", "pr", "comment", pr_number, "--body",
+         f"{ESCALATION_MARKER}\n"
+         "This drift PR has been open for a full regeneration cycle (14 days). "
+         "Upstream is still drifted and the baseline here is still unmerged."],
+        dry_run=dry_run, check=False,
+    )
+
+
+def load_ledger() -> dict:
+    """Read the ledger. A missing or corrupt file yields {} rather than raising --
+    a broken ledger must not block a drift PR, it just starts recording afresh.
+
+    Also yields {} for JSON that parses but is not an object -- e.g. a truthy `[...]`
+    or a bare string. `json.loads(text) or {}` looks like it handles "empty/invalid",
+    but `or` only substitutes on a FALSY parse (`[]`, `0`, `""`, `null`); a populated
+    list or non-empty string is truthy and would pass straight through, and every
+    caller here assumes a dict (`record_in_ledger` does `dict(ledger)`, which raises
+    `TypeError` for a list).
+    """
+    if not LEDGER_PATH.is_file():
+        return {}
+    try:
+        data = json.loads(LEDGER_PATH.read_text())
+    except ValueError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def record_in_ledger(entries: list[dict], *, pr_ref: str, dry_run: bool) -> None:
+    """Update the ledger for every dataset in ``entries`` and write it back.
+
+    Callers must invoke this only once they have already decided a commit is
+    happening -- i.e. AFTER both anti-churn guards in handle_drifted /
+    handle_routine_batch (the `git diff --cached --quiet` emptiness check and
+    `branch_needs_update`) have passed, and the caller must stage the ledger file
+    itself in a separate `git add` right after calling this, rather than folding it
+    into the earlier `git add hvantk/skills`.
+    That earlier add is exactly what both guards inspect: `last_upstream_change` is
+    `datetime.now(...)` at call time, so it is a different value on literally every
+    invocation. Staging the ledger before either guard runs would make
+    `git diff --cached --quiet` non-empty even when the fingerprint content did not
+    change, and would make `branch_needs_update`'s per-path `fingerprints_match` check
+    see the ledger's own timestamp move on every run -- both report "needs update"
+    unconditionally, silently restoring the exact daily re-push/notification churn
+    those guards exist to prevent (see the module docstring and the comment beside
+    `branch_needs_update`). Calling it here, right before the commit, still gets the
+    ledger change into the SAME commit as the fingerprints it describes -- just via
+    its own `git add` rather than the earlier one.
+    """
+    if dry_run:
+        print(f"  [dry-run] would record {len(entries)} ledger entries")
+        return
+    now = datetime.now(timezone.utc).isoformat()
+    ledger = load_ledger()
+    for entry in entries:
+        ledger = ledger_update(
+            ledger,
+            dataset=entry["dataset_name"],
+            diff=entry.get("diff"),
+            pr_ref=pr_ref,
+            now=now,
+        )
+    LEDGER_PATH.write_text(json.dumps(ledger, indent=2, sort_keys=True) + "\n")
+
+
 # --------------------------------------------------------------------------- #
 # Per-dataset workflow.
 # --------------------------------------------------------------------------- #
@@ -487,6 +756,9 @@ def handle_drifted(
     branch = branch_name_for_signal(covers, entry.get("fingerprint_path") or "")
     skill_md = find_skill_md(provider, dataset_short)
     maintainers = read_maintainers(provider)
+    # Validation (bare GitHub handles only) and the default-assignee fallback both
+    # live in resolve_assignees now; see its docstring.
+    assignees = resolve_assignees(maintainers)
     diff = entry.get("diff") or {}
 
     print(f"\n=== Drifted: {dataset} -> branch {branch} ===")
@@ -496,10 +768,22 @@ def handle_drifted(
     _run(["git", "checkout", "-B", branch, f"origin/{base_branch}"], dry_run=dry_run)
 
     # 2) regenerate fingerprint via the CLI we already ship
-    _run(
-        ["python", "-m", "hvantk.hvantk", "drift", "--regenerate", dataset],
-        dry_run=dry_run,
-    )
+    try:
+        _run(
+            ["python", "-m", "hvantk.hvantk", "drift", "--regenerate", dataset],
+            dry_run=dry_run,
+        )
+    except Exception:
+        # A failed regenerate can still leave THIS dataset's fingerprint dirty in the
+        # working tree (partially written, or left over from a prior attempt). `main()`
+        # catches the CalledProcessError this raises, logs it, and moves on to the NEXT
+        # schema-loop entry -- whose `git checkout -B` does not touch an already-dirty
+        # working tree, and whose `git add hvantk/skills` would stage (and then commit)
+        # this leftover onto a PR that has nothing to do with it. Discard before the
+        # failure is allowed to propagate. Mirrors the same guard around
+        # handle_routine_batch's regenerate loop, one dataset at a time instead of N.
+        _discard_staged_fingerprints(dry_run=dry_run)
+        raise
 
     # 3) stage only fingerprint JSONs (avoid accidentally pulling in unrelated
     #    working-tree noise from the runner).
@@ -546,8 +830,12 @@ def handle_drifted(
         # content-only check would skip forever and the dataset's drift would never be
         # surfaced again -- the precise outcome `branch_needs_update` promises cannot
         # happen. Re-opening a PR for an existing branch is cheap; silence is not.
-        if not branch_needs_update(branch, dry_run=dry_run) and pr_exists_for_branch(
-            branch, dry_run=dry_run
+        # `existing_pr` is captured via walrus so the escalation call below can reuse
+        # it, while preserving the original short-circuit: `pr_exists_for_branch`
+        # (a `gh pr list` call) still runs only when `branch_needs_update` is False,
+        # exactly as before this change.
+        if not branch_needs_update(branch, dry_run=dry_run) and (
+            existing_pr := pr_exists_for_branch(branch, dry_run=dry_run)
         ):
             print(
                 f"  branch {branch} already proposes this fingerprint "
@@ -560,12 +848,22 @@ def handle_drifted(
             # bump it has nothing to do with. It would also defeat this very skip for
             # every dataset processed after a skipped one.
             _discard_staged_fingerprints(dry_run=dry_run)
+            # This IS "this PR is still sitting there unmerged": say so on the PR
+            # itself once it has outlived a full cycle, rather than opening another.
+            maybe_escalate(existing_pr, dry_run=dry_run)
             _summary_line(
                 step_summary,
                 f"- DRIFT (unchanged): `{dataset}` -> branch `{branch}` still open; "
                 f"nothing new to push",
             )
             return
+
+    # Record the accepted change in the rebuild ledger, and stage it on its own --
+    # only now, after both guards above have passed, so its ever-moving
+    # `last_upstream_change` timestamp cannot defeat either of them. See
+    # record_in_ledger's docstring.
+    record_in_ledger([entry], pr_ref=branch, dry_run=dry_run)
+    _run(["git", "add", "hvantk/resources/drift_ledger.json"], dry_run=dry_run)
 
     _run(
         ["git", "commit", "-m", commit_message_for(dataset)],
@@ -594,16 +892,12 @@ def handle_drifted(
             dry_run=dry_run,
         )
     else:
-        print("  creating new draft PR")
+        print("  creating new PR")
         _run(
-            [
-                "gh", "pr", "create",
-                "--draft",
-                "--base", base_branch,
-                "--head", branch,
-                "--title", title,
-                "--body", body,
-            ],
+            pr_create_argv(
+                base_branch=base_branch, branch=branch, title=title, body=body,
+                risk="schema", assignees=assignees,
+            ),
             dry_run=dry_run,
         )
 
@@ -613,8 +907,234 @@ def handle_drifted(
 
     _summary_line(
         step_summary,
-        f"- DRIFT: `{dataset}` -> branch `{branch}` (draft PR opened/updated)",
+        f"- DRIFT: `{dataset}` -> branch `{branch}` (PR opened/updated)",
     )
+
+
+def handle_routine_batch(
+    entries: list[dict],
+    *,
+    base_branch: str,
+    dry_run: bool,
+    step_summary: Path | None,
+) -> None:
+    """Regenerate every routine fingerprint onto ONE branch and open ONE PR.
+
+    Mirrors handle_drifted's sequence, but the regenerate step loops over datasets
+    before a single commit, so N routine datasets cost one PR instead of N.
+    """
+    if not entries:
+        return
+
+    datasets = [e["dataset_name"] for e in entries]
+    branch = ROUTINE_BRANCH
+    print(f"\n=== Routine batch ({len(datasets)}) -> branch {branch} ===")
+    for name in datasets:
+        print(f"      {name}")
+
+    _run(["git", "fetch", "origin", base_branch], dry_run=dry_run, check=False)
+    _run(["git", "checkout", "-B", branch, f"origin/{base_branch}"], dry_run=dry_run)
+
+    try:
+        for name in datasets:
+            _run(
+                ["python", "-m", "hvantk.hvantk", "drift", "--regenerate", name],
+                dry_run=dry_run,
+            )
+    except Exception:
+        # A mid-loop failure leaves every dataset regenerated BEFORE the failing one
+        # sitting dirty in the working tree (staging happens only once, after the whole
+        # loop finishes). `main()` catches the CalledProcessError this raises, logs it,
+        # and continues into the schema loop -- whose `git checkout -B` does not touch
+        # an already-dirty working tree, and whose `git add hvantk/skills` would stage
+        # (and then commit) these leftovers onto an unrelated PR: a schema-change PR,
+        # invisible in its diff and its ledger entry. Discard before the failure is
+        # allowed to propagate.
+        _discard_staged_fingerprints(dry_run=dry_run)
+        raise
+
+    _run(["git", "add", "hvantk/skills"], dry_run=dry_run)
+
+    # No-op commits should not fail the job -- check first, exactly like
+    # handle_drifted. Reachable in practice: a re-run after someone already merged the
+    # fix manually, or a race where this branch already carries every regenerated
+    # fingerprint byte-for-byte. Routed through `_run` (rather than a direct
+    # subprocess.run call, unlike handle_drifted) so dry_run short-circuits it the same
+    # way as every other command here -- calling it unconditionally would make `_run`
+    # fabricate a returncode of 0 under --dry-run, which would misreport "nothing to
+    # commit" on every dry run and silently swallow the demonstration path.
+    if dry_run:
+        print("[dry-run] (skipping diff/commit emptiness check)")
+    else:
+        status = _run(
+            ["git", "diff", "--cached", "--quiet"], dry_run=dry_run, check=False
+        )
+        if status.returncode == 0:
+            print(
+                f"  no fingerprint changes to commit for the routine batch of "
+                f"{len(datasets)}; drift may have already been addressed. "
+                "Skipping PR."
+            )
+            # `git diff --cached --quiet` only proves the INDEX matches HEAD -- it
+            # says nothing about whether the working tree has a stray modification
+            # sitting outside the index (a .gitignore quirk, a partial `add`, or any
+            # other way a regenerated file could escape being staged). Discarding is
+            # cheap and resets both the index AND the working tree, so call it
+            # unconditionally rather than assume "nothing staged" implies "nothing to
+            # clean up" -- `git checkout -B` carries the working tree forward across
+            # branches regardless, and this function returns right into the schema
+            # loop's first `git checkout -B`, which would inherit anything left behind.
+            _discard_staged_fingerprints(dry_run=dry_run)
+            _summary_line(
+                step_summary,
+                f"- DRIFT (unchanged): routine batch of {len(datasets)} had nothing "
+                "to commit; drift may have already been addressed",
+            )
+            return
+
+    # See the matching comment in handle_drifted: walrus preserves the original
+    # short-circuit so `pr_exists_for_branch` still runs only when needed, while making
+    # the PR number available to the escalation call below.
+    if not branch_needs_update(branch, dry_run=dry_run) and (
+        existing_pr := pr_exists_for_branch(branch, dry_run=dry_run)
+    ):
+        print(f"  branch {branch} already proposes these fingerprints; leaving it.")
+        _discard_staged_fingerprints(dry_run=dry_run)
+        # This IS "this PR is still sitting there unmerged": say so on the PR itself
+        # once it has outlived a full cycle, rather than opening another.
+        maybe_escalate(existing_pr, dry_run=dry_run)
+        _summary_line(
+            step_summary,
+            f"- DRIFT (unchanged): routine batch of {len(datasets)} still open",
+        )
+        return
+
+    # See the matching comment in handle_drifted: the ledger is written and staged in
+    # its own `git add` only after both anti-churn guards above have passed, never
+    # before, or its ever-changing `last_upstream_change` timestamp would defeat them.
+    record_in_ledger(entries, pr_ref=branch, dry_run=dry_run)
+    _run(["git", "add", "hvantk/resources/drift_ledger.json"], dry_run=dry_run)
+
+    _run(
+        ["git", "commit", "-m",
+         f"chore(drift): refresh {len(datasets)} snapshots\n\n"
+         + "\n".join(f"- {n}" for n in datasets)],
+        dry_run=dry_run,
+    )
+    _run(
+        ["git", "push", "--force-with-lease", "--set-upstream", "origin", branch],
+        dry_run=dry_run,
+    )
+
+    title = f"chore(drift): refresh {len(datasets)} snapshots"
+    body = build_batch_pr_body(entries)
+    # Collect maintainers across every dataset in the batch, then resolve ONCE on the
+    # combined list -- not per dataset, or a fallback would land on the batch as many
+    # times as it has entries with no declared maintainer of their own.
+    maintainers = sorted({
+        m
+        for e in entries
+        for m in read_maintainers(split_dataset(e["dataset_name"])[0])
+    })
+    assignees = resolve_assignees(maintainers)
+
+    existing = pr_exists_for_branch(branch, dry_run=dry_run)
+    if existing:
+        _run(["gh", "pr", "edit", existing, "--title", title, "--body", body],
+             dry_run=dry_run)
+    else:
+        _run(
+            pr_create_argv(
+                base_branch=base_branch, branch=branch, title=title, body=body,
+                risk="routine", assignees=assignees,
+            ),
+            dry_run=dry_run,
+        )
+
+    _summary_line(
+        step_summary,
+        f"- DRIFT: routine batch of {len(datasets)} -> branch `{branch}`",
+    )
+
+
+def pr_create_argv(
+    *,
+    base_branch: str,
+    branch: str,
+    title: str,
+    body: str,
+    risk: str,
+    assignees: list[str],
+) -> list[str]:
+    """Build the ``gh pr create`` argv.
+
+    Deliberately NOT a draft (V1): a draft cannot be merged and is filtered out of
+    review queues and notification defaults, which is how five drift PRs sat
+    unreviewed for three days. Extracted as a pure function so the flags are
+    testable without invoking gh.
+
+    Never emits ``--auto``: nothing in this pipeline may auto-merge.
+    """
+    argv = [
+        "gh", "pr", "create",
+        "--base", base_branch,
+        "--head", branch,
+        "--title", title,
+        "--body", body,
+        "--label", f"drift:{risk}",
+    ]
+    if assignees:
+        argv += ["--assignee", ",".join(assignees)]
+    return argv
+
+
+def classification_table(entries: list[dict]) -> str:
+    """Markdown table summarising what moved per dataset, and the verdict.
+
+    Leads the PR body (V5) so a reviewer sees the judgement before the raw JSON
+    diffs. The old body opened with per-dataset JSON, which is why five PRs were
+    indistinguishable at a glance.
+    """
+    rows = [
+        "| Dataset | What moved | Verdict |",
+        "| --- | --- | --- |",
+    ]
+    for entry in entries:
+        diff = entry.get("diff") or {}
+        changed = diff.get("changed") or {}
+        signal = ", ".join(f"`{k}`" for k in sorted(changed)) or "—"
+        verdict = (
+            "routine — schema unchanged"
+            if classify_risk(diff) == "routine"
+            else "**SCHEMA CHANGE** — check `builder.py`"
+        )
+        rows.append(f"| `{entry['dataset_name']}` | {signal} | {verdict} |")
+    return "\n".join(rows)
+
+
+def build_batch_pr_body(entries: list[dict]) -> str:
+    """PR body for the routine batch: verdict table first, raw diffs collapsed below."""
+    parts = [
+        f"Automated drift detection found upstream changes for "
+        f"{len(entries)} dataset(s). The schema signal is unchanged for every one "
+        f"below — only content and/or version moved.",
+        "",
+        classification_table(entries),
+        "",
+        "<details><summary>Raw fingerprint diffs</summary>",
+        "",
+    ]
+    for entry in entries:
+        parts += [
+            f"### `{entry['dataset_name']}`",
+            "",
+            "```json",
+            json.dumps(entry.get("diff") or {}, indent=2, sort_keys=True),
+            "```",
+            "",
+        ]
+    parts.append("</details>")
+    return "\n".join(parts)
 
 
 def handle_probe_failed(
@@ -727,8 +1247,44 @@ def main(argv: list[str] | None = None) -> int:
             f"signal(s); opening one PR per signal."
         )
 
+    # Routine drift (schema signal unchanged) batches onto ONE branch/PR; schema-risk
+    # drift keeps the existing one-branch-per-signal path so a human looks at it on
+    # its own. See classify_risk / partition_by_risk.
+    routine, schema = partition_by_risk(groups)
+    if routine:
+        print(
+            f"  {len(routine)} of {len(groups)} signal(s) are routine (schema "
+            f"unchanged); batching them onto one branch: {ROUTINE_BRANCH}."
+        )
+
     failed: list[str] = []
-    for entry in groups:
+    try:
+        handle_routine_batch(
+            routine,
+            base_branch=args.base_branch,
+            dry_run=args.dry_run,
+            step_summary=step_summary,
+        )
+    except subprocess.CalledProcessError as exc:
+        # Same contract as the per-dataset loop below: a git/gh failure here must not
+        # be swallowed, or the batch silently stops opening PRs while the job still
+        # reports success -- the exact regression this script exists to prevent (see
+        # the module docstring).
+        covered = [str(e.get("dataset_name")) for e in routine]
+        failed.extend(covered)
+        label = ", ".join(covered)
+        print(
+            f"error handling routine batch ({label}): "
+            f"{exc.cmd} exited {exc.returncode}\n"
+            f"stdout: {exc.stdout}\nstderr: {exc.stderr}",
+            file=sys.stderr,
+        )
+        _summary_line(
+            step_summary,
+            f"- ERROR: routine batch (`{label}`) -- {exc.cmd[0]} exited {exc.returncode}",
+        )
+
+    for entry in schema:
         try:
             handle_drifted(
                 entry,

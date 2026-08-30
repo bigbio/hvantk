@@ -2,8 +2,11 @@ name: Scheduled drift check
 
 on:
   schedule:
-    # 06:00 UTC daily.
-    - cron: "0 6 * * *"
+    # Fortnightly, 06:00 UTC on the 1st and 15th. Nothing upstream moves faster than
+    # weekly in a way that matters: GWAS Catalog is ~monthly, GTEx moved twice in four
+    # months, ClinVar/GenCC/UCSC are weekly. Probe HEALTH is checked weekly by
+    # drift-health.yml, which opens no PRs.
+    - cron: "0 6 1,15 * *"
   workflow_dispatch:
     inputs:
       dry_run:
@@ -16,8 +19,14 @@ on:
           - "true"
 
 permissions:
-  # Need write access to push branches and open PRs with the default
-  # GITHUB_TOKEN. No id-token / packages permissions are needed.
+  # The actual branch push and PR creation authenticate with the drift-bot
+  # GitHub App token (see the "Mint drift-bot token" step), not this
+  # GITHUB_TOKEN: a PR authored by GITHUB_TOKEN has its workflow runs parked
+  # at conclusion `action_required` until a human manually approves them, so
+  # CI never runs unattended on a GITHUB_TOKEN-authored drift PR. The App
+  # token is exempt from that restriction. contents/pull-requests write is
+  # still needed here for actions/checkout and other steps that use the
+  # job's default GITHUB_TOKEN. No id-token / packages permissions are needed.
   contents: write
   pull-requests: write
 
@@ -35,9 +44,17 @@ jobs:
     if: github.repository == 'bigbio/hvantk' || github.event_name == 'workflow_dispatch'
 
     steps:
+      - name: Mint drift-bot token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.DRIFT_BOT_APP_ID }}
+          private-key: ${{ secrets.DRIFT_BOT_PRIVATE_KEY }}
+
       - name: Checkout base branch
         uses: actions/checkout@v4
         with:
+          token: ${{ steps.app-token.outputs.token }}
           # Need history + branches for the helper to create new branches and
           # push them. fetch-depth: 0 keeps things simple at the cost of size.
           fetch-depth: 0
@@ -75,8 +92,8 @@ jobs:
 
       - name: Configure git author for bot commits
         run: |
-          git config user.name "hvantk-drift-bot"
-          git config user.email "bot@hvantk.dev"
+          git config user.name  "${{ steps.app-token.outputs.app-slug }}[bot]"
+          git config user.email "${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com"
 
       - name: Run drift check (capture JSON)
         # Tolerate non-zero exits: drift_cli returns 1 on drifted, 2 on
@@ -99,10 +116,11 @@ jobs:
 
       - name: Open / update draft PRs per drifted dataset
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           BASE_BRANCH: ${{ env.BASE_BRANCH }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           DRY_RUN: ${{ github.event.inputs.dry_run }}
+          DRIFT_DEFAULT_ASSIGNEE: enriquea
         run: |
           ARGS="--report /tmp/drift_report.json --base-branch ${BASE_BRANCH}"
           if [ "$DRY_RUN" = "true" ]; then

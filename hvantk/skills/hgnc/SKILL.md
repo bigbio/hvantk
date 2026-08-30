@@ -26,7 +26,7 @@ HGNC = HUGO Gene Nomenclature Committee. The complete-set TSV is the authoritati
 > Catalog gap: HGNC is **not yet registered** in any plugin's `catalog/datasets.json` or in `hvantk/resources/registry/genomics/datasets.json` (verified 2026-05-10; re-check with `hvantk catalog search HGNC`). Until it is, the URL/version constants live in `hvantk/skills/hgnc/shared/constants.py` (`HGNC_DOWNLOAD_URL`, `HGNC_INFO_URL`). Do **not** restate them here. When HGNC is added to the catalog, drop this paragraph and reference the catalog entry.
 
 Stable provider notes the catalog will not capture:
-- HGNC publishes a single rolling "complete set" (no dated versions in the URL); freshness is determined by the file's HTTP `Last-Modified` header.
+- HGNC publishes a single rolling "complete set" (no dated versions in the URL). Freshness is **not** determined by `Last-Modified`: HGNC re-publishes byte-identical content under a fresh timestamp, so the drift probe's content signal is the HTTP `Content-Length` header (`extras.content_length`) instead. Across all 8 committed fingerprints from 2026-05-16 to 2026-08-27 the checksum (`b8cfde58…`) never moved while `Last-Modified` moved on every regeneration — and the checksum only hashes the column-header line (a SCHEMA signal), so it could not have caught a content-only change either. `Last-Modified` is still recorded, under `informational` (excluded from drift comparison), and `source_version` is `null`. The probe (`probe_version` 2) fails closed — raises `DriftProbeError` — if the server omits `Content-Length`.
 - The TSV uses `\N` for missing in some columns and empty strings in others; both are treated as missing on import (see § 4).
 
 ## 3. Backend choice + reasoning
@@ -75,7 +75,7 @@ When invoked to build, refresh, or extend the HGNC table:
 
 Triggered when HGNC publishes an updated complete-set file or when an upstream schema change surfaces.
 
-1. Re-download the raw TSV (`hvantk hgnc-download --overwrite`). Capture the new `Last-Modified` header in the PR description — that is the de-facto version handle.
+1. Re-download the raw TSV (`hvantk hgnc-download --overwrite`). Capture the new `Content-Length` in the PR description — that is what the drift probe treats as the content signal (see § 2). `Last-Modified` is recorded for reference only and does not indicate whether content actually changed.
 2. Diff the new TSV header against the previous fixture header (`diff <(head -1 old.tsv) <(head -1 new.tsv)`). New columns alone are non-breaking — they will not appear in the built table unless added to `HGNC_GENE_FIELDS`. Removed/renamed columns require updating `HGNC_GENE_FIELDS` (and possibly `HGNC_PIPE_SEPARATED_FIELDS`).
 3. If the test fixture (`hvantk/skills/hgnc/tests/testdata/raw/hgnc/hgnc_test_sample.tsv`) is no longer representative (e.g., a tested gene was withdrawn, a new pipe-separated field was added), regenerate it from the live file by sub-sampling the same gene set (`HGNC:1100`, `HGNC:1101`, `HGNC:4641`, plus a withdrawn row to exercise `include_withdrawn`).
 4. Re-run the round-trip test with `--regenerate-snapshots`. Expected diffs: new optional columns added to the schema; widened pipe-separated arrays; refreshed `date_modified` values in `sample_rows.json`. Unexpected diffs: changed `hgnc_id` keys, missing core fields (`gene_symbol`, `ensembl_gene_id`), changed `status` semantics — investigate before committing.

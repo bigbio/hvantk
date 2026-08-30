@@ -15,6 +15,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import subprocess
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -34,6 +35,23 @@ def _load_module():
 def drift_to_pr():
     """The loaded bot helper module, imported once per test module."""
     return _load_module()
+
+
+@pytest.fixture(autouse=True)
+def isolated_ledger(drift_to_pr, monkeypatch, tmp_path):
+    """Give every test its own throwaway ledger file, never the real
+    ``hvantk/resources/drift_ledger.json``.
+
+    `record_in_ledger` writes straight to `LEDGER_PATH` with `Path.write_text` -- a
+    plain file write, not a subprocess call -- so it is invisible to the `_run` /
+    `subprocess.run` monkeypatching the rest of this suite already relies on to stay
+    side-effect-free (see `_capture_handle_drifted` and `test_exits_nonzero_when_a_pr_
+    cannot_be_opened`, which mock exactly those two for the same reason). Without
+    this, any test that drives `handle_drifted` / `handle_routine_batch` past both
+    anti-churn guards with `dry_run=False` -- several pre-existing tests do -- writes
+    real dataset entries into the tracked ledger file on every test run.
+    """
+    monkeypatch.setattr(drift_to_pr, "LEDGER_PATH", tmp_path / "drift_ledger.json")
 
 
 def _write_report(tmp_path: Path, entries: list[dict]) -> Path:
@@ -71,7 +89,16 @@ def test_exits_nonzero_when_a_pr_cannot_be_opened(drift_to_pr, tmp_path, monkeyp
     report = _write_report(tmp_path, [DRIFTED])
 
     def _explode(cmd, **kwargs):
-        """Succeed for every git call; fail only on `gh pr create`."""
+        """Succeed for every git call; fail only on `gh pr create`.
+
+        `DRIFTED`'s diff has no schema-key changes, so `classify_risk` reads it as
+        routine and this report is routed through `handle_routine_batch`, whose own
+        emptiness check (`git diff --cached --quiet`) goes through `_run` -- unlike
+        `handle_drifted`'s, which shells out to `subprocess.run` directly. Answer that
+        one command with "there IS something staged" (nonzero), matching this test's
+        premise -- drift was detected and a branch was pushed -- so the guard does not
+        short-circuit before `gh pr create` gets a chance to fail.
+        """
         if cmd[:3] == ["gh", "pr", "create"]:
             raise subprocess.CalledProcessError(
                 1,
@@ -80,12 +107,15 @@ def test_exits_nonzero_when_a_pr_cannot_be_opened(drift_to_pr, tmp_path, monkeyp
                 stderr="GitHub Actions is not permitted to create or approve "
                 "pull requests (createPullRequest)",
             )
+        if cmd == ["git", "diff", "--cached", "--quiet"]:
+            return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="")
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
     monkeypatch.setattr(drift_to_pr, "_run", _explode)
     monkeypatch.setattr(drift_to_pr, "pr_exists_for_branch", lambda b, dry_run: None)
-    # The real emptiness check shells out to git; the branch under test is what
-    # happens after a commit was made.
+    # `handle_drifted`'s own emptiness check shells out to `subprocess.run` directly
+    # (rather than `_run`); the branch under test is what happens after a commit was
+    # made, so it also must see "something is staged" (nonzero).
     monkeypatch.setattr(
         subprocess,
         "run",
@@ -404,6 +434,92 @@ def test_matching_branch_with_no_open_pr_is_never_skipped(drift_to_pr, monkeypat
     assert any(c.startswith("gh pr create") for c in joined), joined
 
 
+# --- partial-batch contamination: a failure must not leave a dirty working tree -----
+#
+# `handle_routine_batch` regenerates every routine dataset in a loop, staging only AFTER
+# the loop finishes. If dataset N of M fails, datasets before it have already written
+# modified fingerprint files to the working tree. `main()` catches the resulting
+# CalledProcessError, logs it, and continues into the schema loop, whose `git checkout -B`
+# does not touch an already-dirty working tree, and whose `git add hvantk/skills` would
+# stage -- and then commit -- those leftovers onto an unrelated PR: a schema-change PR,
+# invisible in its diff and its ledger entry. The same risk exists one level up in
+# `handle_drifted`'s own single regenerate call, contaminating the NEXT schema-loop entry.
+
+
+def test_routine_batch_discards_working_tree_on_mid_loop_regenerate_failure(
+    drift_to_pr, monkeypatch
+):
+    """A regenerate failure partway through the batch must discard whatever earlier
+    datasets already wrote to the working tree before the exception is allowed to
+    propagate -- or `main()`'s except-and-continue leaves it for the schema loop to
+    silently absorb."""
+    calls: list[list[str]] = []
+
+    def _regen_fails_on_third(cmd, **kwargs):
+        calls.append(list(cmd))
+        if cmd[:4] == ["python", "-m", "hvantk.hvantk", "drift"] and cmd[-1] == "c:three":
+            raise subprocess.CalledProcessError(1, cmd, output="", stderr="boom")
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    def _record_subprocess_run(cmd, **kwargs):
+        calls.append(list(cmd))
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(drift_to_pr, "_run", _regen_fails_on_third)
+    monkeypatch.setattr(subprocess, "run", _record_subprocess_run)
+
+    entries = [
+        {"dataset_name": "a:one", "diff": {}},
+        {"dataset_name": "b:two", "diff": {}},
+        {"dataset_name": "c:three", "diff": {}},
+    ]
+
+    with pytest.raises(subprocess.CalledProcessError):
+        drift_to_pr.handle_routine_batch(
+            entries, base_branch="dev", dry_run=False, step_summary=None
+        )
+
+    joined = [" ".join(c) for c in calls]
+    # The cleanup must actually run -- and run BEFORE the exception escapes, i.e. as the
+    # very next command after the failing regenerate call.
+    assert joined[-1] == "git checkout HEAD -- hvantk/skills", joined
+    # And the leftover must never reach the index in the first place on this path.
+    assert not any(c.startswith("git add") for c in joined), joined
+
+
+def test_handle_drifted_discards_working_tree_when_regenerate_fails(
+    drift_to_pr, monkeypatch
+):
+    """Same contamination mechanism one level up: `handle_drifted` regenerates only ONE
+    dataset, but a failure here still leaves that dataset's fingerprint dirty in the
+    working tree. `main()`'s per-entry except logs it and moves on to the NEXT schema
+    entry, whose `git checkout -B` inherits the dirty file and whose `git add
+    hvantk/skills` would stage it into a commit that has nothing to do with it."""
+    calls: list[list[str]] = []
+
+    def _regen_fails(cmd, **kwargs):
+        calls.append(list(cmd))
+        if cmd[:4] == ["python", "-m", "hvantk.hvantk", "drift"]:
+            raise subprocess.CalledProcessError(1, cmd, output="", stderr="boom")
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    def _record_subprocess_run(cmd, **kwargs):
+        calls.append(list(cmd))
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(drift_to_pr, "_run", _regen_fails)
+    monkeypatch.setattr(subprocess, "run", _record_subprocess_run)
+
+    with pytest.raises(subprocess.CalledProcessError):
+        drift_to_pr.handle_drifted(
+            dict(DRIFTED), base_branch="dev", dry_run=False, step_summary=None
+        )
+
+    joined = [" ".join(c) for c in calls]
+    assert joined[-1] == "git checkout HEAD -- hvantk/skills", joined
+    assert not any(c.startswith("git add") for c in joined), joined
+
+
 # --- branch_needs_update against a REAL git repo -------------------------------------
 #
 # The stubbed tests above drive handle_drifted's branching, but they monkeypatch
@@ -555,3 +671,771 @@ def test_an_undecodable_staged_file_does_not_abort_the_run(
     # Must return a verdict rather than raising. Undecodable content cannot match, so
     # the safe answer is "push".
     assert drift_to_pr.branch_needs_update("drift/p-d", dry_run=False) is True
+
+
+# --- risk classification ------------------------------------------------------------
+#
+# The routine/schema split is the whole basis for batching: routine datasets share one
+# PR, schema changes get their own. Misclassifying a schema change as routine would bury
+# a builder-breaking change inside a batch nobody reads closely.
+
+def test_classify_risk_routine_when_headers_unchanged(drift_to_pr):
+    diff = {
+        "changed": {
+            "extras": {"expected": {"content_length": "100"},
+                       "observed": {"content_length": "205"}},
+        },
+        "added": {}, "removed": {},
+    }
+    assert drift_to_pr.classify_risk(diff) == "routine"
+
+
+def test_classify_risk_schema_when_headers_changed(drift_to_pr):
+    diff = {
+        "changed": {
+            "headers": {"expected": {"f.txt": ["a", "b"]},
+                        "observed": {"f.txt": ["a", "b", "c"]}},
+        },
+        "added": {}, "removed": {},
+    }
+    assert drift_to_pr.classify_risk(diff) == "schema"
+
+
+def test_classify_risk_schema_when_checksums_changed(drift_to_pr):
+    """For header-hashing probes (clingen, gencc, hgnc) the checksum IS the schema
+    signal, so a moved checksum is a schema change, not routine content drift."""
+    diff = {
+        "changed": {
+            "checksums": {"expected": {"f.txt": "aaa"}, "observed": {"f.txt": "bbb"}},
+        },
+        "added": {}, "removed": {},
+    }
+    assert drift_to_pr.classify_risk(diff) == "schema"
+
+
+def test_classify_risk_schema_when_keys_added_or_removed(drift_to_pr):
+    """A probe that gained or lost a top-level key changed shape; treat as schema so a
+    human looks. Cheap to be wrong in this direction."""
+    assert drift_to_pr.classify_risk({"added": {"extras": {}}, "removed": {}, "changed": {}}) == "schema"
+    assert drift_to_pr.classify_risk({"added": {}, "removed": {"checksums": {}}, "changed": {}}) == "schema"
+
+
+def test_classify_risk_unparseable_diff_is_schema(drift_to_pr):
+    """"I cannot tell" must mean "show a human", never "batch it silently"."""
+    assert drift_to_pr.classify_risk(None) == "schema"
+    assert drift_to_pr.classify_risk({}) == "schema"
+
+
+def test_classify_risk_source_version_alone_is_routine(drift_to_pr):
+    """A version string moving with no schema signal is routine -- e.g. gtex-eqtl's
+    portal version cl361->cl362, which is a website redeploy, not a data schema change."""
+    diff = {
+        "changed": {"source_version": {"expected": "cl361", "observed": "cl362"}},
+        "added": {}, "removed": {},
+    }
+    assert drift_to_pr.classify_risk(diff) == "routine"
+
+
+# --- routine batching ---------------------------------------------------------------
+
+def test_routine_datasets_share_one_branch(drift_to_pr):
+    """All routine drift lands on a single branch so it becomes one reviewable PR.
+    34 PRs in the first month came from one-PR-per-dataset; batching is what takes
+    that to ~1 per run."""
+    assert drift_to_pr.ROUTINE_BRANCH == "drift/routine-batch"
+
+
+def test_partition_by_risk_splits_the_report(drift_to_pr):
+    drifted = [
+        {"dataset_name": "hgnc:lookup",
+         "diff": {"changed": {"extras": {}}, "added": {}, "removed": {}}},
+        {"dataset_name": "gtex-eqtl:eqtls",
+         "diff": {"changed": {"headers": {}}, "added": {}, "removed": {}}},
+        {"dataset_name": "clinvar:variants",
+         "diff": {"changed": {"extras": {}}, "added": {}, "removed": {}}},
+    ]
+    routine, schema = drift_to_pr.partition_by_risk(drifted)
+
+    assert [d["dataset_name"] for d in routine] == ["hgnc:lookup", "clinvar:variants"]
+    assert [d["dataset_name"] for d in schema] == ["gtex-eqtl:eqtls"]
+
+
+def test_partition_by_risk_handles_an_empty_report(drift_to_pr):
+    assert drift_to_pr.partition_by_risk([]) == ([], [])
+
+
+def test_handle_routine_batch_is_a_noop_on_empty_input(drift_to_pr, monkeypatch):
+    """No routine drift must mean no branch, no commit, no PR -- not an empty PR."""
+    calls = []
+    monkeypatch.setattr(drift_to_pr, "_run", lambda cmd, **kw: calls.append(cmd))
+    drift_to_pr.handle_routine_batch([], base_branch="dev", dry_run=True, step_summary=None)
+    assert calls == []
+
+
+def test_handle_routine_batch_does_not_commit_when_nothing_staged(
+    drift_to_pr, monkeypatch, tmp_path
+):
+    """The no-op-commit guard, mirrored from handle_drifted: if regenerating every
+    routine dataset in the batch produces no staged diff at all -- a re-run after a
+    manual merge, or a race where the branch already carries these fingerprints --
+    `git commit` must not be invoked. Nothing staged means `git commit` fails outright
+    (nothing to commit), which would take the whole batch down with an unhandled
+    CalledProcessError instead of a clean skip.
+    """
+    cmds: list[list[str]] = []
+    cleanups: list[dict] = []
+
+    def _record(cmd, **kwargs):
+        cmds.append(list(cmd))
+        # Every command "succeeds", including `git diff --cached --quiet`: a returncode
+        # of 0 from THAT specific command is exactly the "nothing staged" signal this
+        # test means to drive.
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(drift_to_pr, "_run", _record)
+    monkeypatch.setattr(
+        drift_to_pr, "_discard_staged_fingerprints", lambda **kw: cleanups.append(kw)
+    )
+
+    summary = tmp_path / "summary.md"
+    entries = [
+        {"dataset_name": "hgnc:lookup", "diff": {}},
+        {"dataset_name": "clinvar:variants", "diff": {}},
+    ]
+    drift_to_pr.handle_routine_batch(
+        entries, base_branch="dev", dry_run=False, step_summary=summary
+    )
+
+    joined = [" ".join(c) for c in cmds]
+    assert any(c == "git diff --cached --quiet" for c in joined), joined
+    assert not any(c.startswith("git commit") for c in joined), joined
+    assert not any(c.startswith("git push") for c in joined), joined
+    assert not any(c.startswith("gh pr") for c in joined), joined
+    # Discard must still run: `git diff --cached --quiet` only proves the INDEX
+    # matches HEAD, not that the working tree has nothing left over outside it, and
+    # `git checkout -B` (the schema loop's very next move) carries the working tree
+    # forward regardless.
+    assert cleanups == [{"dry_run": False}]
+    assert "DRIFT (unchanged)" in summary.read_text()
+
+
+# --- visibility requirements (V1 ready-for-review, V3 assigned, V4 labelled, V5 table)
+
+def test_pr_is_created_ready_for_review_not_draft(drift_to_pr):
+    """V1. A draft PR cannot be merged and is filtered out of most review queues and
+    notification defaults, so the old shape hid the work it was asking for -- which is
+    why five PRs sat unreviewed for 3 days on 2026-08-28."""
+    argv = drift_to_pr.pr_create_argv(
+        base_branch="dev", branch="drift/routine-batch",
+        title="t", body="b", risk="routine", assignees=["enriquea"],
+    )
+    assert "--draft" not in argv
+
+
+def test_pr_create_applies_the_risk_label(drift_to_pr):
+    """V4."""
+    argv = drift_to_pr.pr_create_argv(
+        base_branch="dev", branch="b", title="t", body="b",
+        risk="schema", assignees=[],
+    )
+    assert "--label" in argv
+    assert "drift:schema" in argv
+
+
+def test_pr_create_assigns_maintainers(drift_to_pr):
+    """V3. Nobody was assigned, so nothing appeared on anyone's list."""
+    argv = drift_to_pr.pr_create_argv(
+        base_branch="dev", branch="b", title="t", body="b",
+        risk="routine", assignees=["enriquea", "ypriverol"],
+    )
+    assert "--assignee" in argv
+    assert "enriquea,ypriverol" in argv
+
+
+def test_pr_create_omits_assignee_when_no_maintainers(drift_to_pr):
+    """`gh pr create --assignee ''` errors, so the flag must be absent, not empty."""
+    argv = drift_to_pr.pr_create_argv(
+        base_branch="dev", branch="b", title="t", body="b",
+        risk="routine", assignees=[],
+    )
+    assert "--assignee" not in argv
+
+
+def test_pr_create_never_auto_merges(drift_to_pr):
+    """Explicit project constraint: nothing in this pipeline may auto-merge."""
+    argv = drift_to_pr.pr_create_argv(
+        base_branch="dev", branch="b", title="t", body="b",
+        risk="routine", assignees=[],
+    )
+    assert "--auto" not in argv
+    assert "merge" not in argv
+
+
+def test_classification_table_marks_schema_changes(drift_to_pr):
+    """A reviewer must be able to spot a schema change without reading JSON."""
+    table = drift_to_pr.classification_table([
+        {"dataset_name": "hgnc:lookup",
+         "diff": {"changed": {"extras": {}}, "added": {}, "removed": {}}},
+        {"dataset_name": "gtex-eqtl:eqtls",
+         "diff": {"changed": {"headers": {}}, "added": {}, "removed": {}}},
+    ])
+    assert "`hgnc:lookup`" in table
+    assert "routine — schema unchanged" in table
+    assert "**SCHEMA CHANGE**" in table
+
+
+def test_batch_body_leads_with_the_table_not_the_json(drift_to_pr):
+    """V5. The old body opened with per-dataset JSON, which is why five PRs were
+    indistinguishable at a glance."""
+    body = drift_to_pr.build_batch_pr_body([
+        {"dataset_name": "hgnc:lookup",
+         "diff": {"changed": {"extras": {}}, "added": {}, "removed": {}}},
+    ])
+    assert body.index("| Dataset |") < body.index("```json")
+
+
+def test_schema_change_pr_is_also_not_a_draft(drift_to_pr):
+    """V1 applies to the schema path too -- arguably more so, since that is the PR that
+    most needs a human to look at it."""
+    import re
+    src = (drift_to_pr.__file__ or "")
+    assert src, "could not locate the script source"
+    text = open(src).read()
+    assert "--draft" not in text
+
+
+# --- default assignee fallback ------------------------------------------------------
+#
+# `read_maintainers` reads plugin.yaml's `maintainers:` field, which no manifest
+# currently declares -- so without a fallback the assignment requirement is dead code
+# and drift PRs go on nobody's list, which is half of why five sat unreviewed for
+# three days.
+
+def test_resolve_assignees_prefers_declared_maintainers(drift_to_pr, monkeypatch):
+    monkeypatch.setattr(drift_to_pr, "DEFAULT_ASSIGNEE", "fallback-user")
+    assert drift_to_pr.resolve_assignees(["alice", "bob"]) == ["alice", "bob"]
+
+
+def test_resolve_assignees_falls_back_when_none_declared(drift_to_pr, monkeypatch):
+    monkeypatch.setattr(drift_to_pr, "DEFAULT_ASSIGNEE", "enriquea")
+    assert drift_to_pr.resolve_assignees([]) == ["enriquea"]
+
+
+def test_resolve_assignees_empty_when_no_fallback_configured(drift_to_pr, monkeypatch):
+    """`gh pr create --assignee ''` errors, so with nothing configured the result must
+    be an empty list (the flag is then omitted entirely), never [''] ."""
+    monkeypatch.setattr(drift_to_pr, "DEFAULT_ASSIGNEE", "")
+    assert drift_to_pr.resolve_assignees([]) == []
+
+
+def test_resolve_assignees_rejects_a_malformed_fallback(drift_to_pr, monkeypatch):
+    """A junk env value must not become a --assignee argument."""
+    monkeypatch.setattr(drift_to_pr, "DEFAULT_ASSIGNEE", "not a valid handle!")
+    assert drift_to_pr.resolve_assignees([]) == []
+
+
+# --- rebuild ledger -----------------------------------------------------------------
+#
+# Merging a fingerprint accepts a new baseline; without a ledger, the fact that a built
+# artifact is now stale survives only in git history. ClinVar gained ~408 KB of variants
+# across 2026-08 with nothing recording that a rebuild was due.
+
+def test_ledger_entry_records_the_accepted_change(drift_to_pr):
+    entry = drift_to_pr.ledger_entry(
+        dataset="clinvar:variants",
+        diff={"changed": {"headers": {}}, "added": {}, "removed": {}},
+        pr_ref="PR #288",
+        now="2026-08-23T16:56:29+00:00",
+    )
+    assert entry == {
+        "last_upstream_change": "2026-08-23T16:56:29+00:00",
+        "accepted_in": "PR #288",
+        "signal": "schema",
+        "rebuilt_at": None,
+    }
+
+
+def test_ledger_entry_signal_matches_classify_risk(drift_to_pr):
+    """The ledger's `signal` must agree with the PR's own classification, or the two
+    tell different stories about the same change."""
+    diff = {"changed": {"extras": {}}, "added": {}, "removed": {}}
+    entry = drift_to_pr.ledger_entry(
+        dataset="hgnc:lookup", diff=diff, pr_ref="PR #1", now="2026-08-01T00:00:00+00:00"
+    )
+    assert entry["signal"] == drift_to_pr.classify_risk(diff) == "routine"
+
+
+def test_ledger_update_preserves_rebuilt_at_of_other_datasets(drift_to_pr):
+    """Updating one dataset must not clear another's rebuild record."""
+    ledger = {"hgnc:lookup": {"last_upstream_change": "x", "accepted_in": "PR #1",
+                              "signal": "routine", "rebuilt_at": "2026-08-01T00:00:00+00:00"}}
+    out = drift_to_pr.ledger_update(
+        ledger, dataset="clinvar:variants",
+        diff={"changed": {"extras": {}}, "added": {}, "removed": {}},
+        pr_ref="PR #2", now="2026-08-23T00:00:00+00:00",
+    )
+    assert out["hgnc:lookup"]["rebuilt_at"] == "2026-08-01T00:00:00+00:00"
+    assert out["clinvar:variants"]["signal"] == "routine"
+
+
+def test_ledger_update_does_not_mutate_its_input(drift_to_pr):
+    ledger = {}
+    drift_to_pr.ledger_update(
+        ledger, dataset="a:b", diff={"changed": {}, "added": {}, "removed": {}},
+        pr_ref="PR #1", now="2026-08-01T00:00:00+00:00",
+    )
+    assert ledger == {}
+
+
+def test_load_ledger_returns_empty_dict_on_corrupt_file(drift_to_pr, monkeypatch, tmp_path):
+    """A broken ledger must not block a drift PR -- it just starts recording afresh."""
+    bad = tmp_path / "drift_ledger.json"
+    bad.write_text("{ not json")
+    monkeypatch.setattr(drift_to_pr, "LEDGER_PATH", bad)
+    assert drift_to_pr.load_ledger() == {}
+
+
+def test_load_ledger_returns_empty_dict_when_absent(drift_to_pr, monkeypatch, tmp_path):
+    monkeypatch.setattr(drift_to_pr, "LEDGER_PATH", tmp_path / "nope.json")
+    assert drift_to_pr.load_ledger() == {}
+
+
+def test_load_ledger_returns_empty_dict_on_truthy_non_dict_json(drift_to_pr, monkeypatch, tmp_path):
+    """`json.loads(text) or {}` only substitutes `{}` for FALSY JSON (`[]`, `0`, `""`,
+    `null`) -- truthy non-dict JSON (a populated list, a bare string) passes straight
+    through unchanged, breaking the docstring's "a missing or corrupt file yields {}"
+    promise for exactly the shapes a half-written or hand-edited ledger is likely to
+    produce. `record_in_ledger` then calls `dict(ledger)` on the result, which raises
+    `TypeError` for a list."""
+    non_dict = tmp_path / "drift_ledger.json"
+    monkeypatch.setattr(drift_to_pr, "LEDGER_PATH", non_dict)
+
+    non_dict.write_text("[1, 2, 3]")
+    assert drift_to_pr.load_ledger() == {}
+
+    non_dict.write_text('"x"')
+    assert drift_to_pr.load_ledger() == {}
+
+
+# --- ledger write ORDERING: staged only after both anti-churn guards ---------------
+#
+# `record_in_ledger`'s docstring explains at length why it must be called and staged
+# only AFTER both anti-churn guards (the `git diff --cached --quiet` emptiness check
+# and `branch_needs_update`) have already passed: its `last_upstream_change` is
+# `datetime.now(...)`, a different value on literally every invocation, so staging it
+# before either guard runs would make both report "needs update" unconditionally --
+# reviving the #268 incident (nine PRs force-pushed daily, ~63 notifications/week).
+#
+# Every other test in this module mocks git/gh and asserts on the SET of commands
+# issued, or on the final outcome -- none of them observe WHERE `git add
+# hvantk/resources/drift_ledger.json` lands relative to the emptiness guard. Moving
+# the ledger write to the top of `handle_drifted` -- reintroducing the #268 bug
+# outright -- left a previous 71-test version of this suite 71/71 green.
+
+
+def test_handle_drifted_stages_the_ledger_only_after_the_emptiness_guard(
+    drift_to_pr, monkeypatch
+):
+    """`handle_drifted`'s own emptiness check shells out to `subprocess.run` directly
+    (see `_capture_handle_drifted`'s docstring above) rather than through `_run`, so
+    BOTH are patched here into one shared, order-preserving list -- patching `_run`
+    alone would leave the `git diff --cached --quiet` call invisible and this
+    ordering assertion vacuous.
+    """
+    calls: list[list[str]] = []
+
+    def _record_run(cmd, **kwargs):
+        calls.append(list(cmd))
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    def _record_subprocess_run(cmd, **kwargs):
+        calls.append(list(cmd))
+        # nonzero == "something is staged", the state after a real regenerate. 0
+        # would take the early "nothing to commit" return before the ledger is ever
+        # touched -- a different path, already covered by
+        # test_skip_issues_no_commit_push_or_pr / test_nothing_staged_path_also_discards.
+        if cmd == ["git", "diff", "--cached", "--quiet"]:
+            return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="")
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(drift_to_pr, "_run", _record_run)
+    monkeypatch.setattr(subprocess, "run", _record_subprocess_run)
+    monkeypatch.setattr(drift_to_pr, "branch_needs_update", lambda b, dry_run: True)
+    monkeypatch.setattr(drift_to_pr, "pr_exists_for_branch", lambda b, dry_run: None)
+
+    drift_to_pr.handle_drifted(
+        dict(DRIFTED), base_branch="dev", dry_run=False, step_summary=None
+    )
+
+    diff_idx = calls.index(["git", "diff", "--cached", "--quiet"])
+    add_ledger_idx = calls.index(["git", "add", "hvantk/resources/drift_ledger.json"])
+    assert add_ledger_idx > diff_idx, calls
+
+
+def test_handle_routine_batch_stages_the_ledger_only_after_the_emptiness_guard(
+    drift_to_pr, monkeypatch
+):
+    """The routine-batch mirror. Its emptiness check DOES go through `_run` (unlike
+    `handle_drifted`'s), so patching `_run` alone is enough to see both commands."""
+    calls: list[list[str]] = []
+
+    def _record_run(cmd, **kwargs):
+        calls.append(list(cmd))
+        if cmd == ["git", "diff", "--cached", "--quiet"]:
+            return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="")
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(drift_to_pr, "_run", _record_run)
+    monkeypatch.setattr(drift_to_pr, "branch_needs_update", lambda b, dry_run: True)
+    monkeypatch.setattr(drift_to_pr, "pr_exists_for_branch", lambda b, dry_run: None)
+
+    entries = [{"dataset_name": "a:one", "diff": {}}, {"dataset_name": "b:two", "diff": {}}]
+    drift_to_pr.handle_routine_batch(
+        entries, base_branch="dev", dry_run=False, step_summary=None
+    )
+
+    diff_idx = calls.index(["git", "diff", "--cached", "--quiet"])
+    add_ledger_idx = calls.index(["git", "add", "hvantk/resources/drift_ledger.json"])
+    assert add_ledger_idx > diff_idx, calls
+
+
+# --- stale-PR escalation ------------------------------------------------------------
+#
+# A drift PR still open after a full regeneration cycle was not acted on. The bot must
+# say so on the EXISTING PR, never by opening another: #268 fixed the inverse failure,
+# where nine PRs were force-pushed every morning producing ~63 notification events a
+# week carrying no new information.
+
+
+def test_pr_older_than_one_cycle_is_escalated(drift_to_pr):
+    """A PR still open after a full regeneration cycle was not acted on."""
+    assert drift_to_pr.should_escalate(
+        pr_created_at="2026-08-01T06:00:00Z", now="2026-08-16T06:00:00Z"
+    ) is True
+
+
+def test_pr_within_one_cycle_is_not_escalated(drift_to_pr):
+    assert drift_to_pr.should_escalate(
+        pr_created_at="2026-08-01T06:00:00Z", now="2026-08-10T06:00:00Z"
+    ) is False
+
+
+def test_pr_exactly_at_the_cycle_boundary_is_escalated(drift_to_pr):
+    assert drift_to_pr.should_escalate(
+        pr_created_at="2026-08-01T06:00:00Z", now="2026-08-15T06:00:00Z"
+    ) is True
+
+
+def test_unparseable_timestamp_does_not_escalate(drift_to_pr):
+    """Escalation is a notification; a parse failure must not spam the PR."""
+    assert drift_to_pr.should_escalate(pr_created_at="not-a-date", now="2026-08-16T06:00:00Z") is False
+    assert drift_to_pr.should_escalate(pr_created_at="2026-08-01T06:00:00Z", now="") is False
+    assert drift_to_pr.should_escalate(pr_created_at=None, now="2026-08-16T06:00:00Z") is False
+
+
+# `maybe_escalate` itself: the plumbing from a PR number to (at most) one `gh pr
+# comment`. `_pr_created_at` is stubbed directly rather than faking `subprocess.run`,
+# because -- like `pr_exists_for_branch` / `remote_branch_exists` -- it is a
+# value-returning read with its own dry_run gate, not a fire-and-forget action routed
+# through `_run`.
+
+
+def test_maybe_escalate_comments_once_when_pr_outlived_a_cycle(drift_to_pr, monkeypatch):
+    """The plumbing: a stale createdAt drives exactly one `gh pr comment`."""
+    stale = (datetime.now(timezone.utc) - timedelta(days=20)).isoformat()
+    monkeypatch.setattr(drift_to_pr, "_pr_created_at", lambda pr, *, dry_run: stale)
+    calls: list[list[str]] = []
+    monkeypatch.setattr(
+        drift_to_pr, "_run",
+        lambda cmd, **kw: calls.append(list(cmd)) or subprocess.CompletedProcess(cmd, 0, stdout="", stderr=""),
+    )
+
+    drift_to_pr.maybe_escalate("55", dry_run=False)
+
+    assert len(calls) == 1, calls
+    assert calls[0][:3] == ["gh", "pr", "comment"], calls
+    assert "55" in calls[0], calls
+
+
+def test_maybe_escalate_does_not_comment_when_pr_is_recent(drift_to_pr, monkeypatch):
+    recent = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+    monkeypatch.setattr(drift_to_pr, "_pr_created_at", lambda pr, *, dry_run: recent)
+    calls: list[list[str]] = []
+    monkeypatch.setattr(
+        drift_to_pr, "_run",
+        lambda cmd, **kw: calls.append(list(cmd)) or subprocess.CompletedProcess(cmd, 0, stdout="", stderr=""),
+    )
+
+    drift_to_pr.maybe_escalate("55", dry_run=False)
+
+    assert calls == []
+
+
+def test_maybe_escalate_does_nothing_when_pr_created_at_is_unknown(drift_to_pr, monkeypatch):
+    """`_pr_created_at` returns "" whenever gh could not answer. No timestamp means no
+    verdict, so no comment -- never a crash."""
+    monkeypatch.setattr(drift_to_pr, "_pr_created_at", lambda pr, *, dry_run: "")
+    calls: list[list[str]] = []
+    monkeypatch.setattr(
+        drift_to_pr, "_run",
+        lambda cmd, **kw: calls.append(list(cmd)) or subprocess.CompletedProcess(cmd, 0, stdout="", stderr=""),
+    )
+
+    drift_to_pr.maybe_escalate("55", dry_run=False)
+
+    assert calls == []
+
+
+def test_maybe_escalate_is_a_noop_under_dry_run(drift_to_pr, monkeypatch):
+    """A previous agent found `_run` fabricates `returncode=0` with EMPTY (not None)
+    stdout under --dry-run. `maybe_escalate` must degrade safely regardless: no crash,
+    no false escalation, and -- since the read is a value-returning query like
+    `pr_exists_for_branch` / `remote_branch_exists` -- no subprocess call of any kind,
+    mirroring how those two also go silent under dry_run without touching `_run`.
+    """
+    run_calls: list[list[str]] = []
+    monkeypatch.setattr(
+        drift_to_pr, "_run",
+        lambda cmd, **kw: run_calls.append(list(cmd)) or subprocess.CompletedProcess(cmd, 0, stdout="", stderr=""),
+    )
+    direct_calls: list = []
+    monkeypatch.setattr(
+        subprocess, "run",
+        lambda *a, **k: direct_calls.append(a) or subprocess.CompletedProcess(a[0] if a else [], 0),
+    )
+
+    drift_to_pr.maybe_escalate("999", dry_run=True)
+
+    assert run_calls == []
+    assert direct_calls == []
+
+
+def test_pr_created_at_is_empty_under_dry_run(drift_to_pr):
+    """Direct unit test of the dry_run gate `maybe_escalate` relies on."""
+    assert drift_to_pr._pr_created_at("1", dry_run=True) == ""
+
+
+# --- escalation must not repeat forever -----------------------------------------------
+#
+# `should_escalate` is a pure function of the PR's creation time, which never changes:
+# once a PR passes 14 days it is True on EVERY subsequent run, and nothing recorded that
+# a comment was already posted. A PR left open six months would collect roughly one
+# near-identical comment per run -- the notification-fatigue failure #268 fixed for
+# force-pushes, recurring here on a fortnightly cadence instead of daily.
+
+
+def test_pr_has_escalation_comment_true_when_marker_present(drift_to_pr, monkeypatch):
+    monkeypatch.setattr(
+        subprocess, "run",
+        lambda *a, **k: subprocess.CompletedProcess(
+            a[0], 0, stdout=f"unrelated\n{drift_to_pr.ESCALATION_MARKER}\nmore text", stderr=""
+        ),
+    )
+    assert drift_to_pr._pr_has_escalation_comment("1", dry_run=False) is True
+
+
+def test_pr_has_escalation_comment_false_when_absent(drift_to_pr, monkeypatch):
+    monkeypatch.setattr(
+        subprocess, "run",
+        lambda *a, **k: subprocess.CompletedProcess(a[0], 0, stdout="just a normal comment", stderr=""),
+    )
+    assert drift_to_pr._pr_has_escalation_comment("1", dry_run=False) is False
+
+
+def test_pr_has_escalation_comment_false_under_dry_run(drift_to_pr, monkeypatch):
+    """Mirrors `_pr_created_at`: a value-returning read with its own dry_run gate, no
+    subprocess call of any kind under --dry-run."""
+    calls: list = []
+    monkeypatch.setattr(
+        subprocess, "run",
+        lambda *a, **k: calls.append(a) or subprocess.CompletedProcess(a[0] if a else [], 0),
+    )
+    assert drift_to_pr._pr_has_escalation_comment("1", dry_run=True) is False
+    assert calls == []
+
+
+def test_maybe_escalate_includes_the_marker_in_the_comment_body(drift_to_pr, monkeypatch):
+    """The marker must actually be IN the posted comment, or the next run's
+    `_pr_has_escalation_comment` check can never find it."""
+    stale = (datetime.now(timezone.utc) - timedelta(days=20)).isoformat()
+    monkeypatch.setattr(drift_to_pr, "_pr_created_at", lambda pr, *, dry_run: stale)
+    monkeypatch.setattr(drift_to_pr, "_pr_has_escalation_comment", lambda pr, *, dry_run: False)
+    calls: list[list[str]] = []
+    monkeypatch.setattr(
+        drift_to_pr, "_run",
+        lambda cmd, **kw: calls.append(list(cmd)) or subprocess.CompletedProcess(cmd, 0, stdout="", stderr=""),
+    )
+
+    drift_to_pr.maybe_escalate("55", dry_run=False)
+
+    assert len(calls) == 1, calls
+    body = calls[0][calls[0].index("--body") + 1]
+    assert drift_to_pr.ESCALATION_MARKER in body, body
+
+
+def test_maybe_escalate_is_idempotent_across_repeated_calls(drift_to_pr, monkeypatch):
+    """The regression test: simulate two runs against the same stale PR. The first
+    finds no existing comments; the second finds the marker that this test's own `gh pr
+    comment` stub "posted" on the first call -- exactly as a real escalation comment
+    would leave a marker for the next run's `gh pr view` to find. Only ONE `gh pr
+    comment` call must ever be issued across both runs.
+    """
+    stale = (datetime.now(timezone.utc) - timedelta(days=20)).isoformat()
+    monkeypatch.setattr(drift_to_pr, "_pr_created_at", lambda pr, *, dry_run: stale)
+
+    posted_comments: list[str] = []
+
+    def _fake_subprocess_run(cmd, **kwargs):
+        if cmd[:3] == ["gh", "pr", "view"]:
+            return subprocess.CompletedProcess(cmd, 0, stdout="\n".join(posted_comments), stderr="")
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", _fake_subprocess_run)
+
+    calls: list[list[str]] = []
+
+    def _record(cmd, **kw):
+        calls.append(list(cmd))
+        if cmd[:3] == ["gh", "pr", "comment"]:
+            posted_comments.append(cmd[cmd.index("--body") + 1])
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(drift_to_pr, "_run", _record)
+
+    drift_to_pr.maybe_escalate("55", dry_run=False)
+    drift_to_pr.maybe_escalate("55", dry_run=False)
+
+    comment_calls = [c for c in calls if c[:3] == ["gh", "pr", "comment"]]
+    assert len(comment_calls) == 1, calls
+
+
+# --- wiring: escalation fires only on the "leaving it untouched" skip path ----------
+#
+# Placed after `_discard_staged_fingerprints` and before `_summary_line`/`return` in
+# BOTH `handle_drifted` and `handle_routine_batch` -- that early return is precisely
+# "this PR is still sitting there unmerged". The sibling early return in each function
+# (nothing staged at all) is a different situation -- there may be no PR yet -- and
+# must not escalate.
+
+
+def test_handle_drifted_skip_path_calls_maybe_escalate(drift_to_pr, monkeypatch, tmp_path):
+    escalated: list[tuple] = []
+    monkeypatch.setattr(
+        drift_to_pr, "maybe_escalate",
+        lambda pr, *, dry_run: escalated.append((pr, dry_run)),
+    )
+    _capture_handle_drifted(
+        drift_to_pr, monkeypatch, tmp_path, needs_update=False, pr_exists=True
+    )
+    assert escalated == [("7", False)]
+
+
+def test_handle_drifted_update_path_never_escalates(drift_to_pr, monkeypatch, tmp_path):
+    """The complement: a branch that DOES get updated is not "left untouched", so it
+    must not also escalate."""
+    escalated: list[tuple] = []
+    monkeypatch.setattr(
+        drift_to_pr, "maybe_escalate",
+        lambda pr, *, dry_run: escalated.append((pr, dry_run)),
+    )
+    _capture_handle_drifted(
+        drift_to_pr, monkeypatch, tmp_path, needs_update=True, pr_exists=True
+    )
+    assert escalated == []
+
+
+def test_handle_drifted_nothing_staged_path_never_escalates(drift_to_pr, monkeypatch, tmp_path):
+    """The OTHER early return (nothing to commit) is not "an existing PR left
+    untouched" -- there may be no PR at all yet -- so it must not escalate."""
+    escalated: list[tuple] = []
+    monkeypatch.setattr(
+        drift_to_pr, "maybe_escalate",
+        lambda pr, *, dry_run: escalated.append((pr, dry_run)),
+    )
+    _capture_handle_drifted(
+        drift_to_pr, monkeypatch, tmp_path, needs_update=True, pr_exists=True, staged=False
+    )
+    assert escalated == []
+
+
+def test_handle_routine_batch_skip_path_calls_maybe_escalate(drift_to_pr, monkeypatch):
+    """The routine-batch mirror of the handle_drifted wiring above."""
+    escalated: list[tuple] = []
+
+    def _record(cmd, **kwargs):
+        if cmd == ["git", "diff", "--cached", "--quiet"]:
+            return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="")
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(drift_to_pr, "_run", _record)
+    monkeypatch.setattr(drift_to_pr, "branch_needs_update", lambda b, dry_run: False)
+    monkeypatch.setattr(drift_to_pr, "pr_exists_for_branch", lambda b, dry_run: "42")
+    monkeypatch.setattr(drift_to_pr, "_discard_staged_fingerprints", lambda **kw: None)
+    monkeypatch.setattr(
+        drift_to_pr, "maybe_escalate",
+        lambda pr, *, dry_run: escalated.append((pr, dry_run)),
+    )
+
+    drift_to_pr.handle_routine_batch(
+        [{"dataset_name": "hgnc:lookup", "diff": {}}],
+        base_branch="dev", dry_run=False, step_summary=None,
+    )
+
+    assert escalated == [("42", False)]
+
+
+def test_nothing_in_the_drift_pipeline_auto_merges():
+    """Hard project constraint, backstopped here rather than left purely conventional.
+
+    Auto-merge was considered and rejected: batching and cadence alone take drift
+    volume from ~34 PRs/month to ~2, so auto-merge would only be the step from 2 to 0
+    -- and that step would require carving an exception into CLAUDE.md's "PR must be
+    approved before merging to `dev`". The 2026-08-28 backlog was a visibility failure,
+    not a review-burden one, so auto-merging would route around the problem instead of
+    fixing it.
+
+    This asserts on the real files rather than on a constant, because the failure mode
+    is someone adding `gh pr merge --auto` to a workflow in six months without reading
+    that reasoning. It is a BACKSTOP against the common, low-effort ways that
+    reintroduction happens -- the `gh pr merge` CLI under any of the quoting styles
+    Python/YAML tend to produce, a bare `--auto` flag, the REST `.../pulls/<n>/merge`
+    endpoint, the GraphQL `enablePullRequestAutoMerge` mutation, and third-party
+    automerge Actions -- not a proof that no auto-merge path exists anywhere in the
+    tree. A sufficiently indirect call (built from string concatenation at runtime,
+    routed through an external script, a differently-named GraphQL alias, etc.) can
+    still slip past a regex; this catches the reintroduction someone types by hand,
+    not a determined attempt to evade it.
+    """
+    import pathlib
+    import re
+
+    root = pathlib.Path(__file__).resolve().parents[2] / ".github"
+    # `gh`/`pr`/`merge` as separate tokens joined only by whitespace, quotes, or
+    # commas -- so both `gh pr merge ...` (shell) and `["gh", "pr", "merge", ...]` /
+    # `['gh', 'pr', 'merge', ...]` (Python argv, either quoting style) are caught.
+    _SEP = r"""[\s,'"]+"""
+    banned = re.compile(
+        r"gh" + _SEP + r"pr" + _SEP + r"merge"
+        r"|--auto\b"
+        r'|"merge"'
+        # Case-insensitive: catches `pascalgn/automerge-action` (a GitHub Action) and
+        # `enablePullRequestAutoMerge` (the GraphQL mutation) in one alternative, since
+        # the latter contains "AutoMerge" as a substring.
+        r"|(?i:automerge)"
+        # The REST "merge a pull request" endpoint, e.g. `gh api -X PUT
+        # repos/OWNER/REPO/pulls/123/merge`.
+        r"|(?i:pulls/\S*/merge)"
+    )
+    offenders = []
+    for path in sorted(root.rglob("*")):
+        if path.suffix not in {".yml", ".yaml", ".py"} or not path.is_file():
+            continue
+        for lineno, line in enumerate(path.read_text().splitlines(), 1):
+            stripped = line.strip()
+            # Prose is fine -- the constraint is documented in several places.
+            if stripped.startswith("#") or stripped.startswith("Never emits"):
+                continue
+            if banned.search(line):
+                offenders.append(f"{path.relative_to(root.parent)}:{lineno}: {stripped}")
+
+    assert not offenders, "auto-merge found in the drift pipeline:\n" + "\n".join(offenders)
