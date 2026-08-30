@@ -48,9 +48,6 @@ _LEGACY_PATHS = {
 
 
 # Path to the gene-set TSV file (not a Hail Table).
-_LEGACY_GENESET_PATHS = {
-    "chd_gene_set": "resources/geneset/CHD_genes_all.tsv",
-}
 
 
 def _require_source_dir(provided: Optional[str]) -> str:
@@ -125,14 +122,3 @@ def load_legacy_gene_expression_table(
     )
     t = t.drop(t["mean_expr_time_point"], t["mean_expr_dev_stage"]).key_by("Gene")
     return t
-
-
-def load_legacy_chd_gene_set(source_dir: Optional[str] = None):
-    """Load the CHD gene set as a Hail SetExpression."""
-    import hail as hl
-
-    sd = _require_source_dir(source_dir)
-    rel = _LEGACY_GENESET_PATHS["chd_gene_set"]
-    path = f"{sd}/{rel}"
-    t = hl.import_table(path, no_header=True)
-    return t.aggregate(hl.agg.collect_as_set(t.f0))

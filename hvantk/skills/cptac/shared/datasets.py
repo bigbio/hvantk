@@ -17,8 +17,7 @@ import csv
 import logging
 import os
 import re
-from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 from hvantk.skills.cptac.shared.constants import CPTAC_CANCER_TYPES, CPTAC_CANCER_CLASS_MAP

@@ -336,3 +336,34 @@ def save_figure_to_path(
     else:
         fig.savefig(str(path), dpi=dpi, bbox_inches="tight")
     logger.info("Saved figure to %s", path)
+
+
+def empty_figure(
+    output_path: Optional[str] = None,
+    format: str = "png",
+    dpi: int = 300,
+    title: str = "No Data",
+    message: str = "No data available",
+    figsize: Tuple[int, int] = (8, 4),
+) -> plt.Figure:
+    """Create a placeholder figure when there is no data to plot."""
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.text(
+        0.5,
+        0.5,
+        message,
+        ha="center",
+        va="center",
+        fontsize=14,
+        color="#888888",
+        transform=ax.transAxes,
+    )
+    ax.set_title(title)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+    fig.tight_layout()
+    if output_path is not None:
+        save_figure_to_path(fig, output_path, format=format, dpi=dpi)
+    return fig

@@ -330,7 +330,7 @@ class UCSCDataSetCollection:
                 organism_counts[organism] = organism_counts.get(organism, 0) + 1
 
         summary_lines = [
-            f"UCSC Dataset Collection",
+            "UCSC Dataset Collection",
             f"Total datasets: {len(self.datasets)}",
             "Organisms:",
         ]
@@ -339,24 +339,3 @@ class UCSCDataSetCollection:
             summary_lines.append(f"  {organism}: {count}")
 
         return "\n".join(summary_lines)
-
-
-def load_ucsc_datasets(json_path: Optional[str] = None) -> List[UCSCDataset]:
-    """
-    Load UCSC datasets from JSON file.
-
-    Args:
-        json_path: Path to JSON file. If None, uses default resource file.
-
-    Returns:
-        List of UCSCDataset objects
-    """
-    if json_path is None:
-        from hvantk.skills.ucsc_cellbrowser.shared.constants import (
-            UCSC_JSON_FILE_PATH,
-        )
-
-        json_path = str(UCSC_JSON_FILE_PATH)
-
-    collection = UCSCDataSetCollection.from_json(json_path)
-    return collection.datasets

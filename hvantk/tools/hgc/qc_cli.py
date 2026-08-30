@@ -262,7 +262,7 @@ def filter_qc(
             click.echo("🔍 Dry run mode - would execute QC filtering with:")
             click.echo(f"   • Input: {input}")
             click.echo(f"   • Output: {output}")
-            click.echo(f"   • Sample filters:")
+            click.echo("   • Sample filters:")
             click.echo(f"     - Min call rate: {min_sample_call_rate}")
             if min_mean_dp:
                 click.echo(f"     - Min mean depth: {min_mean_dp}")
@@ -270,7 +270,7 @@ def filter_qc(
                 click.echo(f"     - Max mean depth: {max_mean_dp}")
             if min_mean_gq:
                 click.echo(f"     - Min mean GQ: {min_mean_gq}")
-            click.echo(f"   • Variant filters:")
+            click.echo("   • Variant filters:")
             click.echo(f"     - Min call rate: {min_variant_call_rate}")
             click.echo(f"     - Min AC: {min_ac}")
             if max_ac:
@@ -630,7 +630,7 @@ def qc_report(ctx, input, output, title, include_plots, style, dry_run):
         # Get file size
         file_size = report_path.stat().st_size / 1024  # KB
 
-        click.echo(f"📊 HTML QC report created:")
+        click.echo("📊 HTML QC report created:")
         click.echo(f"   • File: {report_path.absolute()}")
         click.echo(f"   • Size: {file_size:.1f} KB")
         click.echo(f"   • Title: {title}")
@@ -647,7 +647,7 @@ def qc_report(ctx, input, output, title, include_plots, style, dry_run):
         if variant_df is not None:
             click.echo(f"   • Variants: {len(variant_df):,}")
 
-        click.echo(f"\n🌐 Open the report in your web browser:")
+        click.echo("\n🌐 Open the report in your web browser:")
         click.echo(f"   file://{report_path.absolute()}")
         click.echo("✅ QC HTML report generated successfully")
 

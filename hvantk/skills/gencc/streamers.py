@@ -8,10 +8,7 @@ keying mode.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Dict, List, Optional, Set, Union
-
-if TYPE_CHECKING:
-    from hvantk.core.streamers.gene_catalog import GeneCatalogStreamer
+from typing import Dict, Optional, Set, Union
 
 import hail as hl
 import pandas as pd

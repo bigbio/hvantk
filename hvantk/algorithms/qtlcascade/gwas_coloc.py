@@ -39,7 +39,6 @@ from hvantk.algorithms.qtlcascade.constants import (
     DEFAULT_GWAS_W_CC,
     DEFAULT_EQTL_W_QUANT,
     DEFAULT_COLOC_MIN_SNPS,
-    DEFAULT_COLOC_WINDOW_KB,
     FINNGEN_R10_SUMSTATS_URL,
     EQTL_CATALOGUE_SUMSTATS_URL,
     EQTL_CATALOGUE_DEFAULT_STUDY,
@@ -249,33 +248,3 @@ def run_locus_coloc(
           .reset_index(drop=True) if rows else pd.DataFrame(columns=cols))
     return GwasColocResult(table=df, gwas_min_p=gwas_min_p,
                            n_genes_tested=len(df), region=region)
-
-
-def run_finngen_eqtl_coloc(
-    *,
-    endpoint: str,
-    chrom: str,
-    lead: int,
-    eqtl_dataset: str,
-    window_kb: int = DEFAULT_COLOC_WINDOW_KB,
-    eqtl_study: str = EQTL_CATALOGUE_DEFAULT_STUDY,
-    min_snps: int = DEFAULT_COLOC_MIN_SNPS,
-    W1: float = DEFAULT_GWAS_W_CC,
-    W2: float = DEFAULT_EQTL_W_QUANT,
-    p1: float = DEFAULT_COLOC_P1,
-    p2: float = DEFAULT_COLOC_P2,
-    p12: float = DEFAULT_COLOC_P12,
-    gene_symbols: Optional[dict[str, str]] = None,
-) -> GwasColocResult:
-    """End-to-end ABF coloc: fetch FinnGen × eQTL Catalogue region, rank effectors."""
-    half = window_kb * 1000
-    start, end = max(1, lead - half), lead + half  # 1-based; clamp left edge near contig start
-    region = f"chr{chrom}:{start}-{end}"
-    logger.info("coloc %s × %s @ %s", endpoint, eqtl_dataset, region)
-    gwas = fetch_finngen_region(endpoint, chrom, start, end)
-    eqtl = fetch_eqtl_region(eqtl_dataset, chrom, start, end, study=eqtl_study)
-    logger.info("  GWAS variants=%d; eQTL genes=%d", len(gwas), len(eqtl))
-    return run_locus_coloc(
-        gwas=gwas, eqtl=eqtl, region=region, min_snps=min_snps,
-        W1=W1, W2=W2, p1=p1, p2=p2, p12=p12, gene_symbols=gene_symbols,
-    )

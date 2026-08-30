@@ -18,9 +18,8 @@ from pathlib import Path
 
 import click
 
-from hvantk.core.config import (
-    CONTEXT_SETTINGS,
-)  # noqa: F401  (parity with sibling CLIs)
+# Imported for parity with sibling plugin CLIs (not applied to the command below).
+from hvantk.core.config import CONTEXT_SETTINGS  # noqa: F401
 from hvantk.skills.gnomad_metrics.shared.constants import (
     DEFAULT_VERSION,
     GNOMAD_CONSTRAINT_TABLES,

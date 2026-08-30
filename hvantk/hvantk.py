@@ -1,27 +1,156 @@
-import click
+import importlib
 import logging
+
+import click
 
 logger = logging.getLogger(__name__)
 
 from hvantk.core.config import CONTEXT_SETTINGS
-from hvantk.tools.plugins.download_cli import download_group
-from hvantk.tools.infra.utils_cli import utils_group
-from hvantk.tools.infra.catalog_cli import catalog as catalog_group
-from hvantk.tools.genesets.genesets_cli import genesets_group
-from hvantk.tools.hgc import hgc_group
-from hvantk.tools.ptm.psroc_cli import psroc_cmd
-from hvantk.tools.enrichex import enrichex_group
-from hvantk.tools.ancestry.ancestry_cli import ancestry_inference_cmd
-from hvantk.tools.expression.summarize_expression_cli import expression_group
-from hvantk.tools.ptm.ptm_cli import ptm_group
-from hvantk.tools.qtl.qtlcascade_cli import qtlcascade_group
-from hvantk.tools.plugins.plugins_cli import plugins_group
-from hvantk.tools.plugins.tools_cli import tools_group
-from hvantk.tools.plugins.drift_cli import drift_cmd
-from hvantk.tools.plugins.reprocess_cli import reprocess_cmd
-from hvantk.tools.rerank import rerank_cmd
-from hvantk.tools.annotation.annotate_cli import annotate_group
-from hvantk.tools.cohort.cohort_cli import cohort_group
+
+# Subcommand registry: name -> (module, attribute, short help).
+#
+# Importing the 18 subcommand modules eagerly pulled Hail, pandas, scipy and
+# matplotlib into *every* invocation -- ``hvantk --help`` took ~11 s. They are
+# resolved on first use instead (see ``LazyGroup``), so only the command the
+# user actually ran pays for its dependencies.
+#
+# The short help is duplicated here because listing the commands must not import
+# them. That duplication is the one maintenance cost of this design: if a
+# subcommand's own help text changes, update the copy here too, or ``hvantk
+# --help`` will show the stale wording.
+_LAZY_COMMANDS: dict[str, tuple[str, str, str]] = {
+    "ancestry-inference": (
+        "hvantk.tools.ancestry.ancestry_cli",
+        "ancestry_inference_cmd",
+        "Infer genetic ancestry using PCA and Random Forest classification.",
+    ),
+    "annotate": (
+        "hvantk.tools.annotation.annotate_cli",
+        "annotate_group",
+        "Build gene- and cohort-level annotation artifacts.",
+    ),
+    "catalog": (
+        "hvantk.tools.infra.catalog_cli",
+        "catalog",
+        "Inspect the hvantk dataset catalog (aggregated from per-plugin catalogs).",
+    ),
+    "cohort": (
+        "hvantk.tools.cohort.cohort_cli",
+        "cohort_group",
+        "Validate and attach external cohorts.",
+    ),
+    "download": (
+        "hvantk.tools.plugins.download_cli",
+        "download_group",
+        "Download external datasets.",
+    ),
+    "drift": (
+        "hvantk.tools.plugins.drift_cli",
+        "drift_cmd",
+        "Compare a plugin's live drift-probe fingerprint against the expected file.",
+    ),
+    "enrichex": (
+        "hvantk.tools.enrichex",
+        "enrichex_group",
+        "Gene set enrichment analysis commands.",
+    ),
+    "expression": (
+        "hvantk.tools.expression.summarize_expression_cli",
+        "expression_group",
+        "Expression AnnData analysis commands.",
+    ),
+    "genesets": (
+        "hvantk.tools.genesets.genesets_cli",
+        "genesets_group",
+        "Extract or prepare gene set collections.",
+    ),
+    "hgc": (
+        "hvantk.tools.hgc",
+        "hgc_group",
+        "HGC (Hail-based Genotype Combiner) commands for joint genotyping workflows",
+    ),
+    "plugins": (
+        "hvantk.tools.plugins.plugins_cli",
+        "plugins_group",
+        "Inspect the hvantk plugin registry.",
+    ),
+    "psroc": (
+        "hvantk.tools.ptm.psroc_cli",
+        "psroc_cmd",
+        "PSROC: Prediction Score ROC Analysis",
+    ),
+    "ptm": (
+        "hvantk.tools.ptm.ptm_cli",
+        "ptm_group",
+        "Post-translational modification variant classification commands.",
+    ),
+    "qtlcascade": (
+        "hvantk.tools.qtl.qtlcascade_cli",
+        "qtlcascade_group",
+        "Molecular QTL cascade analysis (eQTL \u2192 pQTL \u2192 disease).",
+    ),
+    "reprocess": (
+        "hvantk.tools.plugins.reprocess_cli",
+        "reprocess_cmd",
+        "Run download -> parse -> build for a plugin dataset.",
+    ),
+    "rerank": (
+        "hvantk.tools.rerank",
+        "rerank_cmd",
+        "Re-rank genes by multi-omic credibility from a declarative YAML config.",
+    ),
+    "tools": (
+        "hvantk.tools.plugins.tools_cli",
+        "tools_group",
+        "Inspect the hvantk tool registry.",
+    ),
+    "utils": (
+        "hvantk.tools.infra.utils_cli",
+        "utils_group",
+        "Operational utilities: format conversion, validation, diagnostics.",
+    ),
+}
+
+
+class LazyGroup(click.Group):
+    """A ``click.Group`` that imports a subcommand only when it is invoked.
+
+    ``list_commands`` and ``--help`` are served from ``_LAZY_COMMANDS`` without
+    importing anything; ``get_command`` does the real import and caches the
+    resulting command object.
+    """
+
+    def list_commands(self, ctx):
+        return sorted({*super().list_commands(ctx), *_LAZY_COMMANDS})
+
+    def get_command(self, ctx, cmd_name):
+        cmd = super().get_command(ctx, cmd_name)
+        if cmd is not None:
+            return cmd
+        entry = _LAZY_COMMANDS.get(cmd_name)
+        if entry is None:
+            return None
+        module, attr, _ = entry
+        cmd = getattr(importlib.import_module(module), attr)
+        self.add_command(cmd, cmd_name)
+        return cmd
+
+    def format_commands(self, ctx, formatter):
+        """Render the command list from the registry, without importing."""
+        rows = []
+        for name in self.list_commands(ctx):
+            entry = _LAZY_COMMANDS.get(name)
+            if entry is not None:
+                rows.append((name, entry[2]))
+                continue
+            cmd = super().get_command(ctx, name)
+            if cmd is None or cmd.hidden:
+                continue
+            rows.append((name, cmd.get_short_help_str(limit=90)))
+        if rows:
+            with formatter.section("Commands"):
+                formatter.write_dl(rows)
+
 
 # Main CLI entry point for the package (hvantk)
 
@@ -56,6 +185,7 @@ def setup_logging(verbosity: int = 0, log_file: str | None = None):
 
 @click.group(
     "hvantk",
+    cls=LazyGroup,
     help="A python package for gene and variant annotation with joint genotyping capabilities.",
     context_settings=CONTEXT_SETTINGS,
 )
@@ -80,26 +210,6 @@ def cli(verbose, log_file):
     """
     setup_logging(verbose, log_file)
     logger.info("Starting hvantk CLI")
-
-
-cli.add_command(download_group)
-cli.add_command(utils_group)
-cli.add_command(catalog_group)
-cli.add_command(genesets_group)
-cli.add_command(hgc_group)
-cli.add_command(psroc_cmd)
-cli.add_command(enrichex_group)
-cli.add_command(ancestry_inference_cmd)
-cli.add_command(expression_group)
-cli.add_command(ptm_group)
-cli.add_command(qtlcascade_group)
-cli.add_command(plugins_group)
-cli.add_command(tools_group)
-cli.add_command(drift_cmd)
-cli.add_command(reprocess_cmd)
-cli.add_command(rerank_cmd)
-cli.add_command(annotate_group)
-cli.add_command(cohort_group)
 
 
 def main():

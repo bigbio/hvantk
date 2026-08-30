@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import anndata as ad
 import pandas as pd
-import os
 
 __all__ = [
     "convert_sdrf_to_dataframe",
