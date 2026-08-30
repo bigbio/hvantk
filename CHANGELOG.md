@@ -1,5 +1,85 @@
 # Changelog
 
+## 0.3.1 — 2026-08-30
+
+Reworks the scheduled drift bot. Fewer PRs, each carrying a signal that means
+something, and each visible enough to get reviewed.
+
+In its first month the bot opened **34 PRs from 7 of 26 datasets**, all looking alike.
+On 2026-08-28 five were found sitting unreviewed for three days and were then merged
+without CI having ever run on them.
+
+### Added
+
+- **A rebuild ledger.** `hvantk/resources/drift_ledger.json` records each accepted
+  upstream change per dataset. `hvantk drift --ledger` lists datasets whose upstream
+  moved since their last rebuild; `hvantk drift --mark-rebuilt <dataset>` clears one.
+  A fingerprint bump is not only a test-baseline update — it is also the signal that a
+  built artifact may be stale (ClinVar gained ~408 KB of variants across 2026-08), and
+  that fact previously survived only in git history.
+- **`informational`, a fingerprint block excluded from drift comparison.** Probes can
+  record context for human readers — upstream publish dates and similar — without it
+  becoming a drift trigger. Sits alongside `fetched_at` and `probe_version` in
+  `PROBE_FINGERPRINT_IGNORED_KEYS`.
+- **Risk classification and batching.** Drifted datasets are split into *routine*
+  (schema signal unchanged) and *schema* (column list or header hash moved).
+  All routine ones share one branch and become one PR; each schema change keeps its
+  own. Classification defaults to *schema* for anything it cannot read — burying a
+  builder-breaking change inside a batch is worse than one extra PR.
+- **A weekly probe-health workflow** (`drift-health.yml`) that opens no PRs and only
+  files an issue when a probe reports `probe_failed`. Exists because moving
+  regeneration to fortnightly doubles the worst-case delay on a *broken* probe, and
+  the `cptac` probe had failed silently for months before anyone noticed.
+- **A fast path-filtered CI job** (`drift-validate.yml`) gating fingerprint-only PRs in
+  ~1m40s instead of the ~25-minute three-version matrix.
+- **A monthly promotion workflow** (`drift-promote.yml`) that opens one `dev` → `main`
+  PR when the delta is fingerprints-only. It never merges.
+- **Stale-PR escalation.** A drift PR open past a full cycle gets one comment on itself
+  — never a second PR, which is the failure #262 fixed for force-pushes.
+
+### Changed
+
+- **`hgnc` and `gencc` probes record `Content-Length` as their content signal**, and
+  `Last-Modified` moves to `informational`. Both previously carried `Last-Modified` in
+  `source_version`, which drift compares, while hashing only the column-header line —
+  a *schema* signal. So they recorded no content signal at all, and a byte-identical
+  re-publish was indistinguishable from a real update. Across all 8 committed hgnc
+  fingerprints from 2026-05-16 to 2026-08-27 the checksum never moved while
+  `Last-Modified` moved every time. Both probes now fail closed if the server omits
+  `Content-Length`, rather than recording a fingerprint with no content signal — the
+  scheduled bot regenerates drifted baselines automatically, so one transient omission
+  would otherwise be baked in permanently. `PROBE_VERSION` → 2 for both; baselines
+  regenerated. **Anything parsing those files by hand needs updating.**
+- **The drift bot authenticates as a GitHub App** rather than `GITHUB_TOKEN`. A PR
+  authored by `GITHUB_TOKEN` has its workflow runs parked at `action_required` until a
+  human approves them, so no drift PR had ever been CI-tested unattended.
+- **Drift PRs open ready for review, never as drafts**, labelled `drift:routine` or
+  `drift:schema`, assigned from the plugin's `maintainers:` or the
+  `DRIFT_DEFAULT_ASSIGNEE` environment variable, with a classification table leading
+  the body ahead of the raw JSON diffs.
+- **Regeneration runs fortnightly** (1st and 15th) rather than daily. Nothing upstream
+  moves faster than weekly in a way that matters. Note GitHub schedules cron
+  best-effort under load — the day is reliable, the hour is not.
+- **`hvantk drift --ledger` rejects** being combined with `--all`, a dataset argument,
+  `--regenerate` or `--json`, rather than silently ignoring them.
+
+### Fixed
+
+- **A failed mid-batch regeneration no longer contaminates an unrelated PR.** Earlier
+  datasets' regenerated files were left in the working tree; the next handler's
+  `git checkout -B` carried them onto its branch and `git add hvantk/skills` committed
+  them — invisible in that PR's diff, body and ledger, while stderr claimed no PR had
+  been opened for them.
+- **The promotion gate can fire at all.** It excluded only `drift_fingerprint.json`,
+  but every drift commit also writes `drift_ledger.json`, so from the first merged
+  drift PR onward it would have skipped permanently, green and silent.
+- **Stale-PR escalation is idempotent.** It was a pure function of the PR's creation
+  time with no memory, so a PR open six months would have collected ~11 identical
+  comments.
+- **`load_ledger` no longer raises on truthy non-dict JSON**, honouring its documented
+  contract; and ledger staleness compares timestamps as instants rather than strings,
+  so a `-05:00` offset no longer reads as older than a `+00:00` one.
+
 ## 0.3.0 — 2026-08-05
 
 ### Added
