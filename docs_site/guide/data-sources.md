@@ -67,7 +67,7 @@ hvantk download gencc --list-versions
 
 ```bash
 # Download HGNC complete gene nomenclature set
-hvantk download hgnc --output-dir data/hgnc
+hvantk download hgnc --output data/hgnc/hgnc_complete_set.txt
 ```
 
 **Build Hail Table**:

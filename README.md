@@ -209,8 +209,12 @@ hvantk/
 │   ├── plugins/                # download, drift, reprocess, plugins/tools list
 │   ├── hgc/                    # joint-genotyping CLI (lazy-loaded)
 │   ├── infra/                  # catalog, utils (check-install, bgzf)
-│   ├── annotation/, cohort/, rerank/, genesets/, training_sets/
-│   └── ancestry/, enrichex/, expression/, ptm/, qtl/
+│   ├── annotation/             # annotate spine / prepare / compose
+│   ├── cohort/                 # cohort validate / burden / attach
+│   ├── rerank/                 # rerank CLI
+│   ├── genesets/               # gene set extraction / preparation
+│   ├── training_sets/          # TrainingSetBuilder — library only, no CLI command
+│   └── ancestry/, enrichex/, expression/, ptm/, qtl/   # one package per domain
 │
 ├── resources/                  # platform metadata (unified catalog registry)
 └── tests/                      # cross-cutting tests (dependency directions,

@@ -331,12 +331,18 @@ columns to keep:
 name: chd-features
 layer1:
   - {axis: constraint, source: gnomad-metrics:metrics, key: gene_id, columns: [mis_z]}
-  - {axis: gevir,      source: gevir:table,            key: gene_id, columns: [gevir_pct]}
+  - {axis: gevir,      source: gevir:metrics,          key: gene_id, columns: [gevir_pct]}
 ```
 
-Each `axis` label must be unique — it is the identity the later stages join on. When an
-entry's `key` is `hgnc_id` or `symbol` rather than `gene_id`, `prepare` needs
-`--hgnc` so it can resolve the mapping.
+`layer1:` is a literal key, not a label you choose — it names the gene-level evidence
+axes. Each `axis` label must be unique: it is how the later stages address the entry
+(`--axis constraint`, `--prepared constraint=…`) and it names the `{axis}_present`
+column. The join itself is on `key:`, which is `gene_id` here.
+
+`key` accepts `gene_id`, `hgnc_id`, `symbol`, `uniprot_id` or `variant`. Anything but
+`gene_id` needs `prepare --hgnc` to resolve the mapping — as does a `variant` entry
+that aggregates to something other than `gene_id`. Run
+`hvantk annotate prepare --help` for the authoritative rule.
 
 ### 3. Prepare each axis, then compose
 
@@ -348,7 +354,7 @@ hvantk annotate prepare --spec features.yaml --axis constraint \
   --input gnomad_metrics.ht --spine spine.ht --output constraint.ht
 
 hvantk annotate prepare --spec features.yaml --axis gevir \
-  --input gevir.ht --spine spine.ht --output gevir.ht
+  --input gevir_metrics.ht --spine spine.ht --output gevir.ht
 ```
 
 `compose` left-joins every prepared axis onto the spine. It requires one `--prepared`
@@ -388,7 +394,7 @@ cohort_axes:
 
 ```bash
 # Check the manifest against its table (and labels) before anything reads it
-hvantk cohort validate --manifest cohort.yaml
+hvantk cohort validate --cohort cohort.yaml
 
 # Originate a gene-level prior with a Fisher-exact burden test
 hvantk cohort burden --help
@@ -401,7 +407,18 @@ hvantk cohort attach --help
 declared axis column missing from the table, rather than letting a silently-empty join
 propagate into the matrix.
 
-The same manifest is what `hvantk rerank` consumes as its starting ranking — see
+`hvantk rerank` does not read this manifest directly: it takes its own config,
+which *points* at the manifest and adds the evidence axes and labels —
+
+```yaml
+cohort: cohort.yaml        # the manifest above
+features:
+  - {name: constraint, path: constraint.tsv}
+labels:
+  path: labels.txt
+```
+
+The manifest's `prior.column` is carried through to the output as `prior_stat`. See
 [examples/rerank](https://github.com/bigbio/hvantk/tree/main/examples/rerank) for a
 complete runnable configuration.
 
