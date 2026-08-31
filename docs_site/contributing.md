@@ -184,7 +184,7 @@ All submissions require review:
 
 ## Questions?
 
-- **Documentation**: See the [guide](guide/) section
+- **Documentation**: See the [usage guide](guide/usage.md) and [data sources](guide/data-sources.md)
 - **Architecture**: See [architecture.md](architecture.md)
 - **Issues**: [GitHub Issues](https://github.com/bigbio/hvantk/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/bigbio/hvantk/discussions)
