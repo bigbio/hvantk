@@ -136,6 +136,38 @@ class LazyGroup(click.Group):
         self.add_command(cmd, cmd_name)
         return cmd
 
+    def shell_complete(self, ctx, incomplete):
+        """Complete command names from the registry, without importing them.
+
+        click's ``Group.shell_complete`` builds each ``CompletionItem`` from
+        ``command.get_short_help_str()``, which means ``_complete_visible_commands``
+        calls ``get_command`` for every visible name -- resolving all 18 modules on
+        every ``<TAB>``: ~5.9 s, pulling Hail, pandas, anndata, scipy and matplotlib.
+        Completion is the one place a user is *guaranteed* to be waiting, so this is
+        the same fix as ``format_commands``, applied to the same registry: the name
+        and short help are already here.
+
+        45 is click's default ``get_short_help_str`` limit, matched so completion
+        renders identically to a non-lazy group.
+        """
+        from click.shell_completion import CompletionItem
+
+        results = [
+            CompletionItem(name, help=make_default_short_help(entry[2], 45))
+            for name, entry in sorted(_LAZY_COMMANDS.items())
+            if name.startswith(incomplete)
+        ]
+        # Anything registered outside the registry (add_command) still has to be
+        # resolved -- there is nowhere else to read its help from.
+        for name in super().list_commands(ctx):
+            if name.startswith(incomplete) and name not in _LAZY_COMMANDS:
+                cmd = super().get_command(ctx, name)
+                if cmd is not None and not cmd.hidden:
+                    results.append(CompletionItem(name, help=cmd.get_short_help_str()))
+        # Group.shell_complete's tail: the group's own options.
+        results.extend(click.Command.shell_complete(self, ctx, incomplete))
+        return results
+
     def format_commands(self, ctx, formatter):
         """Render the command list from the registry, without importing.
 

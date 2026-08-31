@@ -51,13 +51,25 @@ def _tracked(*suffixes: str) -> list[Path]:
     gitignored agent-instruction files a developer has locally. A test that is
     green in CI and red on your machine trains people to ignore it. It also had
     no business reading files outside version control in the first place.
+
+    These run at module scope, so a failure here is a *collection* error for the
+    whole file rather than a skip. A tree without `.git` is a real case -- a
+    `git archive` export, an sdist, a container built from a copied source tree
+    (this project's Apptainer image) -- and so is `git` not being on PATH.
+    Neither says anything about the docs, so neither should read as a failure.
     """
-    out = subprocess.run(
-        ["git", "-C", str(REPO_ROOT), "ls-files", "-z", *(f"*{s}" for s in suffixes)],
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(REPO_ROOT), "ls-files", "-z", *(f"*{s}" for s in suffixes)],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+    except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+        pytest.skip(
+            f"docs guards need a git checkout to enumerate tracked files: {exc}",
+            allow_module_level=True,
+        )
     return [REPO_ROOT / rel for rel in out.split("\0") if rel]
 
 
@@ -112,11 +124,20 @@ def test_documented_command_options_exist(path: Path, command: str):
     argv = [a for a in argv if a != "..."]
 
     result = CliRunner().invoke(cli, argv + ["--help"], catch_exceptions=True)
-    if result.exit_code != 0 and "No such option" in (result.output or ""):
+    # "No such command" matters as much as "No such option": a doc that says
+    # `hvantk anotate ...` is exactly as broken for a reader as a bad flag, and
+    # only the option case was checked -- so a typo'd or renamed *command* was
+    # invisible to a test whose name claims to cover documented commands.
+    output = result.output or ""
+    broken = next(
+        (m for m in ("No such option", "No such command") if m in output), None
+    )
+    if result.exit_code != 0 and broken is not None:
+        noun = "an option" if broken == "No such option" else "a subcommand"
         pytest.fail(
-            f"{path.relative_to(REPO_ROOT)} documents a command with an option "
+            f"{path.relative_to(REPO_ROOT)} documents a command with {noun} "
             f"that does not exist:\n    {command}\n"
-            f"{result.output.strip().splitlines()[-1]}"
+            f"{output.strip().splitlines()[-1]}"
         )
 
 
@@ -234,7 +255,23 @@ def test_documented_artifact_annotations_are_importable():
     """
     import hvantk.core.models as models
 
+    # Resolve each name for real. Comparing HVANTK_ARTIFACT_NAMES against
+    # `__all__` alone compares two hand-maintained lists: both are literals in
+    # this repo, so `stale` was permanently empty and the scan below was dead
+    # code. `getattr` goes through the package's PEP 562 __getattr__ and so
+    # actually imports the defining module -- deleting core/models/artifact.py
+    # fails here, which is the whole point of a test named "are_importable".
     exported = set(models.__all__)
+    unresolvable = []
+    for name in sorted(HVANTK_ARTIFACT_NAMES & exported):
+        try:
+            getattr(models, name)
+        except Exception as exc:  # noqa: BLE001 - report any import failure
+            unresolvable.append(f"{name}: {type(exc).__name__}: {exc}")
+    assert not unresolvable, (
+        f"hvantk.core.models lists these in __all__ but cannot resolve them: {unresolvable}"
+    )
+
     stale = sorted(HVANTK_ARTIFACT_NAMES - exported)
     offenders = []
     for path in _tracked(".md", ".svg"):

@@ -25,7 +25,7 @@ import json
 import logging
 from importlib.metadata import entry_points
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Iterable, get_args
 
 import jsonschema
 import yaml
@@ -314,16 +314,19 @@ class PluginRegistry:
                     f"{dm.name}: artifact_type {dm.artifact_type_name!r} not found "
                     f"in hvantk.core.models"
                 )
-            # Must be a concrete class. `hvantk.core.models` also exports the
-            # `Artifact` union and (via normal submodule access) module objects;
-            # either would make the build-time isinstance check in
-            # run_builder_for_spec vacuous or raise TypeError, and the union has
-            # no __name__ to report in the contract-violation message.
-            if not isinstance(artifact_type, type):
+            # Must be one of the four artifact classes. An `isinstance(_, type)`
+            # check is not enough: it rejects the `Artifact` union and module
+            # objects, but still admits any other class the package exports
+            # (`Provenance`, `BuildContext`), which then loads clean and fails
+            # deep inside run_builder_for_spec instead of here. Checking
+            # membership makes the guard say what its message promises.
+            from hvantk.core.models.artifact import Artifact
+
+            if artifact_type not in get_args(Artifact):
+                allowed = ", ".join(t.__name__ for t in get_args(Artifact))
                 raise PluginLoadError(
                     f"{dm.name}: artifact_type {dm.artifact_type_name!r} must name a "
-                    f"concrete artifact class (AnnotationTable, ExpressionMatrix, "
-                    f"VariantMatrix or GeneSet), not {artifact_type!r}"
+                    f"concrete artifact class ({allowed}), not {artifact_type!r}"
                 )
         return DatasetSpec(
             name=dm.name,
