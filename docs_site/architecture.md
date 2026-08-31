@@ -41,19 +41,17 @@ hvantk/
 │
 ├── core/                  # L1: Core infrastructure
 │   ├── config.py          # Configuration management
-│   ├── constants.py       # Shared constants
-│   ├── protocols.py       # Protocol definitions (Builder, Streamer, Downloader)
 │   ├── io/                # Artifact loader (load/save Hail Tables, AnnData, etc.)
+│   ├── tool/              # tool manifest discovery (descriptive)
+│   ├── ontology/          # OBO / MONDO parsers
 │   ├── models/            # Domain model types
 │   │   ├── annotation_table.py  # AnnotationTable artifact
 │   │   ├── expression_matrix.py # ExpressionMatrix artifact (AnnData-only)
 │   │   ├── variant_matrix.py    # VariantMatrix artifact (Hail MatrixTable)
 │   │   ├── gene_set.py          # GeneSet artifact
-│   │   ├── artifact.py          # Artifact base + type registry
 │   │   ├── backends.py          # AlgorithmMeta, Backend, @algorithm decorator
 │   │   ├── build_context.py     # BuildContext passed to plugin builders
 │   │   ├── anndata_utils.py     # annotate_column_summary_ad (AnnData obs summary)
-│   │   ├── metadata.py          # Metadata structs and source descriptions
 │   │   └── provenance.py        # Source-fingerprint provenance stamping
 │   ├── plugin/            # Plugin system
 │   │   ├── api.py         # Provider, DatasetSpec, PROBE_FINGERPRINT_IGNORED_KEYS
@@ -65,13 +63,12 @@ hvantk/
 │   │   ├── hail_helpers.py   # create_table_base, cleanup_temp_file
 │   │   ├── qtl_helpers.py    # GTEx variant-ID parsing (shared by eqtl/pqtl)
 │   │   ├── bgzf.py           # BGZF utilities
-│   │   ├── catalog.py        # Catalog helpers
 │   │   ├── file_utils.py     # File I/O helpers
 │   │   ├── gene_sets.py      # Gene set utilities
 │   │   ├── geneset_io.py     # Gene set parsing / validation
 │   │   ├── genome.py         # Genome/contig utilities (contig_recoding)
 │   │   ├── table_utils.py    # Hail Table manipulation helpers
-│   │   └── writers.py        # HailTableWriter
+│   │   └── http.py           # retrying HTTP helper (drift probes, downloaders)
 │   ├── streamers/         # Base streamer classes (consumed by algorithms/ + skills/)
 │   │   ├── gene_disease_table.py # GeneDiseaseTableStreamer (clingen/gencc/cosmic-cgc base)
 │   │   ├── variant_table.py      # VariantTableStreamer (clinvar base)
@@ -90,10 +87,14 @@ hvantk/
 │   ├── ptm/               # Post-translational modification analysis
 │   ├── qtlcascade/        # QTL cascade analysis
 │   ├── statistics/        # Statistical utilities
-│   ├── training_sets/     # Training set construction
+│   ├── burden/            # rare-variant burden
+│   ├── cohort/            # external cohort handling
+│   ├── rerank/            # multi-omic gene re-ranking
 │   └── visualization/     # Shared visualization helpers
 │
-├── skills/                # L2-L3: Per-provider data plugins
+├── skills/                # L2-L3: Per-provider data plugins (21 providers;
+│                          #   a selection is shown -- see "Current providers" below
+│                          #   for the full list)
 │   ├── _conventions/      # Shared plugin contract (SKILL.md)
 │   ├── _hooks/            # Plugin lifecycle hooks
 │   ├── clingen/           # ClinGen gene-disease validity
@@ -113,12 +114,14 @@ hvantk/
 ├── tools/                 # CLI command implementations (replaces legacy commands/)
 │   ├── ancestry/          # Ancestry CLI subcommands
 │   ├── annotation/        # Annotation CLI subcommands
-│   ├── build/             # standalone reference panel builds (1k genomes)
 │   ├── enrichex/          # EnrichEx CLI subcommands
 │   ├── expression/        # Expression analysis commands
 │   ├── genesets/          # Gene set extraction/preparation
 │   ├── hgc/               # HGC CLI subcommands
 │   ├── infra/             # Installation check, BGZF validation, utils
+│   ├── cohort/            # Cohort validate / burden / attach
+│   ├── rerank/            # Re-ranking CLI
+│   ├── training_sets/     # Training-set construction (library; no CLI command)
 │   ├── plugins/           # hvantk plugins / hvantk drift commands
 │   ├── ptm/               # PTM CLI subcommands
 │   └── qtl/               # QTL CLI subcommands
@@ -236,7 +239,7 @@ sequenceDiagram
     Probe-->>CLI: probe dict
     CLI->>CLI: BuildContext(plugin, version, fingerprint, …)
     CLI->>Build: (parsed_input, ctx, **params)
-    Build-->>CLI: Artifact(provenance=ctx.provenance(schema_id=…))
+    Build-->>CLI: AnnotationTable(provenance=ctx.provenance(schema_id=…))
     CLI->>CLI: validate artifact_type + schema_id
     CLI->>IO: artifact.save(path)
     IO-->>IO: write data + sidecar .provenance.json
@@ -402,7 +405,7 @@ annotated = variants.annotate(
 **Purpose**: Top-level CLI command implementations (replaces the legacy `commands/` directory)
 
 **Key sub-packages**:
-- `plugins/` - `hvantk reprocess`, `hvantk drift`, `hvantk plugins list/show/reload` commands
+- `plugins/` - `hvantk reprocess`, `hvantk drift`, `hvantk plugins list/describe/errors/validate` commands
 - `build/` - standalone reference panel builds (e.g. 1000 Genomes)
 - `hgc/` - HGC joint genotyping subcommands (combine, convert, QC, pipeline)
 - `ancestry/`, `enrichex/`, `ptm/`, `qtl/` - Per-pipeline CLI subcommands
@@ -508,7 +511,29 @@ See `hvantk/skills/_conventions/SKILL.md` for the full contract.
 2. Add a `<basename>.tool.yaml` manifest for discoverability via
    `hvantk tools list` (descriptive metadata; not authoritative for
    wiring today — that's Phase Q follow-up).
-3. Wire the command in `hvantk/hvantk.py`'s top-level CLI group.
+3. Add an entry to `_LAZY_COMMANDS` in `hvantk/hvantk.py` — the command
+    name mapped to `(module, attribute, short help)`:
+
+    ```python
+    "mycmd": (
+       "hvantk.tools.mydomain.mycmd_cli",
+       "mycmd_group",
+       "One-line summary, matching the command's own short help.",
+    ),
+    ```
+
+    Do **not** add a module-level `from hvantk.tools... import ...` plus
+    `cli.add_command(...)`. `LazyGroup` still honours `add_command`, so that
+    works — and silently costs every single invocation the import of whatever
+    your command pulls in. That eager wiring is what made `hvantk --help` take
+    ~10 s; going through `_LAZY_COMMANDS` keeps it at ~0.1 s because nothing is
+    imported until the command is actually run. No test will catch the
+    regression; only startup time changes.
+
+    The short help is duplicated in the registry because listing the commands
+    must not import them. `test_lazy_command_registry_matches_real_commands`
+    asserts your entry still matches the real command, so a later edit to the
+    docstring fails CI rather than silently staling `hvantk --help`.
 
 ## Dependencies
 

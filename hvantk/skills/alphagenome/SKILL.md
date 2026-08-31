@@ -14,7 +14,7 @@ and produces a Hail Table keyed by (locus, alleles).
 
 The builder is `build_alphagenome_predictions` in
 `hvantk/skills/alphagenome/builder.py`, with the standard plugin signature
-`(parsed_input, ctx, **params) -> Artifact` (returns an `AnnotationTable`).
+`(parsed_input, ctx, **params) -> AnnotationTable`.
 Internally it drives `AlphaGenomePipeline` (in
 `hvantk/skills/alphagenome/pipelines.py`) to call the external API for each
 variant, then builds the Hail Table inline from the input variants

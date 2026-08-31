@@ -61,11 +61,12 @@ Optional sections (only if they add information not covered above): `## 10. Cros
 - Plugin runtime — `hvantk/core/plugin/api.py` defines `Provider`, `DatasetSpec`, `DatasetManifest`, and `DriftProbeError`. Tests/CLI consume the populated registry via `get_registry()` in `hvantk/core/plugin/loader.py`.
 
 **Builder contract (current):** plugin builders are functions
-`(parsed_input, ctx: BuildContext, **params) -> Artifact` that return
-an `AnnotationTable`, `ExpressionMatrix`, or `GeneSet` (see
-`hvantk/core/models/`). There is no `(input_path, output_path, overwrite,
-export_tsv)` signature — output path and persistence are owned by the
-orchestrator, not the builder. The platform invokes builders via
+`(parsed_input, ctx: BuildContext, **params) -> AnnotationTable` — or
+whichever of `ExpressionMatrix`, `VariantMatrix`, `GeneSet` the manifest
+declares as its `artifact_type` (see `hvantk/core/models/`). Annotate the
+concrete type: there is no importable `Artifact` base to annotate against.
+There is no `(input_path, output_path, overwrite, export_tsv)` signature —
+output path and persistence are owned by the orchestrator, not the builder. The platform invokes builders via
 `hvantk.core.plugin.run_builder.run_builder_for_spec(...)`, which runs the
 drift probe, constructs the `BuildContext`, calls the builder, validates the
 returned artifact's type and `schema_id` against `plugin.yaml`, stamps
@@ -80,8 +81,10 @@ NEVER paste these helpers' source into a skill. Reference them by path.
 ## 5. Builder pattern
 
 - Function naming: `build_<source>` (the exact name is declared in `plugin.yaml`'s `builder.function`).
-- Signature shape: `(parsed_input, ctx, **params) -> Artifact`. `parsed_input` is whatever `lifecycle.parse` returned (often a raw path or directory); `ctx` is the platform-supplied `BuildContext`. Common `params`: `reference_genome: str`, plus dataset-specific flags forwarded from `--plugin-arg`.
-- The builder returns an `AnnotationTable`, `ExpressionMatrix`, or `GeneSet` wrapper (from `hvantk/core/models/`), stamping provenance via `ctx.provenance(schema_id=...)`. The builder does NOT take an `output_path` / `overwrite` kwarg and does NOT checkpoint itself — `run_builder_for_spec` saves the returned artifact.
+- Signature shape: `(parsed_input, ctx, **params) -> <ConcreteArtifact>`, where the
+  return type is one of `AnnotationTable` / `ExpressionMatrix` / `VariantMatrix` /
+  `GeneSet`. `parsed_input` is whatever `lifecycle.parse` returned (often a raw path or directory); `ctx` is the platform-supplied `BuildContext`. Common `params`: `reference_genome: str`, plus dataset-specific flags forwarded from `--plugin-arg`.
+- The builder returns the concrete artifact its manifest declares via `artifact_type` (from `hvantk/core/models/`), stamping provenance via `ctx.provenance(schema_id=...)`. The builder does NOT take an `output_path` / `overwrite` kwarg and does NOT checkpoint itself — `run_builder_for_spec` saves the returned artifact.
 - Location: `hvantk/skills/<provider>/builder.py` for single-dataset providers, `hvantk/skills/<provider>/<dataset>/builder.py` for multi-dataset providers.
 
 ## 6. Registry registration via plugin.yaml
