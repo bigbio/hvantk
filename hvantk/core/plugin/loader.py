@@ -314,6 +314,17 @@ class PluginRegistry:
                     f"{dm.name}: artifact_type {dm.artifact_type_name!r} not found "
                     f"in hvantk.core.models"
                 )
+            # Must be a concrete class. `hvantk.core.models` also exports the
+            # `Artifact` union and (via normal submodule access) module objects;
+            # either would make the build-time isinstance check in
+            # run_builder_for_spec vacuous or raise TypeError, and the union has
+            # no __name__ to report in the contract-violation message.
+            if not isinstance(artifact_type, type):
+                raise PluginLoadError(
+                    f"{dm.name}: artifact_type {dm.artifact_type_name!r} must name a "
+                    f"concrete artifact class (AnnotationTable, ExpressionMatrix, "
+                    f"VariantMatrix or GeneSet), not {artifact_type!r}"
+                )
         return DatasetSpec(
             name=dm.name,
             domain=dm.domain,

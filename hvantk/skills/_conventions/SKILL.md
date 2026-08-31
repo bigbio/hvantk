@@ -63,8 +63,12 @@ Optional sections (only if they add information not covered above): `## 10. Cros
 **Builder contract (current):** plugin builders are functions
 `(parsed_input, ctx: BuildContext, **params) -> AnnotationTable` — or
 whichever of `ExpressionMatrix`, `VariantMatrix`, `GeneSet` the manifest
-declares as its `artifact_type` (see `hvantk/core/models/`). Annotate the
-concrete type: there is no importable `Artifact` base to annotate against.
+declares as its `artifact_type` (see `hvantk/core/models/`). Prefer annotating
+the concrete type — it is what the manifest declares and what
+`run_builder_for_spec` checks. `Artifact` is importable from
+`hvantk.core.models` as a union of the four concrete types if you need to
+annotate generically, but it is **not** a valid `artifact_type` in a manifest:
+that field must name a concrete class, and the loader rejects the union.
 There is no `(input_path, output_path, overwrite, export_tsv)` signature —
 output path and persistence are owned by the orchestrator, not the builder. The platform invokes builders via
 `hvantk.core.plugin.run_builder.run_builder_for_spec(...)`, which runs the
