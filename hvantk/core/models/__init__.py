@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover - import-time typing only
     from hvantk.core.models.annotation_table import AnnotationTable
+    from hvantk.core.models.artifact import Artifact
     from hvantk.core.models.build_context import BuildContext
     from hvantk.core.models.expression_matrix import ExpressionMatrix
     from hvantk.core.models.gene_set import GeneSet
@@ -26,6 +27,7 @@ if TYPE_CHECKING:  # pragma: no cover - import-time typing only
 # public name -> defining submodule
 _EXPORTS = {
     "AnnotationTable": "hvantk.core.models.annotation_table",
+    "Artifact": "hvantk.core.models.artifact",
     "ExpressionMatrix": "hvantk.core.models.expression_matrix",
     "GeneSet": "hvantk.core.models.gene_set",
     "VariantMatrix": "hvantk.core.models.variant_matrix",
@@ -39,6 +41,7 @@ _EXPORTS = {
 
 __all__ = [
     "AnnotationTable",
+    "Artifact",
     "BuildContext",
     "ExpressionMatrix",
     "GeneSet",

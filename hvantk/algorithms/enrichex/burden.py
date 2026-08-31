@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     import pandas as pd
 
     # Artifact types — used only in string annotations for the Phase P
-    # artifact-typed wrappers. Imported under TYPE_CHECKING so flake8 sees
+    # artifact-typed wrappers. Imported under TYPE_CHECKING so the linter sees
     # the names; the wrappers themselves import lazily inside the function
     # bodies to avoid circular import at module load.
     from hvantk.core.models import (  # noqa: F401

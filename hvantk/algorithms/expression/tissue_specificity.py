@@ -18,7 +18,7 @@ from hvantk.core.models.backends import algorithm, Backend
 
 if TYPE_CHECKING:
     # AnnotationTable referenced in string annotations on
-    # compute_specificity_artifact; imported under TYPE_CHECKING so flake8
+    # compute_specificity_artifact; imported under TYPE_CHECKING so the linter
     # sees the name without forcing a runtime import at module load.
     from hvantk.core.models import AnnotationTable  # noqa: F401
 

@@ -212,10 +212,12 @@ class TestPaths:
         Returns an empty tuple when every declared artifact exists.
         """
         missing = []
-        for field in self.ARTIFACT_FIELDS:
-            path = getattr(self, field)
+        # Not `field`: that shadows dataclasses.field, imported at line 11 and
+        # used by the dataclasses below.
+        for field_name in self.ARTIFACT_FIELDS:
+            path = getattr(self, field_name)
             if not Path(path).exists():
-                missing.append((field, path))
+                missing.append((field_name, path))
         return tuple(missing)
 
 

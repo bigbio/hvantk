@@ -207,19 +207,42 @@ def test_the_tree_parser_reconstructs_nested_paths():
     assert "core" in drawn and len(drawn) > 20
 
 
-def test_no_markdown_documents_an_importable_artifact_base():
-    """`-> Artifact` is not annotatable: there is no such importable name.
+#: Names hvantk has presented as builder return types, current and historical.
+#: Hardcoded rather than pattern-matched because Hail owns `Table` and
+#: `MatrixTable`, which the HGC docs legitimately annotate with -- a shape-based
+#: rule ("ends with Table/Matrix/Set") flags those and is unusable here.
+#: `Artifact` is listed because it was deleted in #303 and restored as a union
+#: later; that round trip is exactly the failure this test exists to catch.
+HVANTK_ARTIFACT_NAMES = frozenset(
+    {"Artifact", "AnnotationTable", "ExpressionMatrix", "VariantMatrix", "GeneSet"}
+)
 
-    The Protocol was deleted; `hvantk.core.models` exports the four concrete
-    types only. Docs that write `-> Artifact` in a copy-pasteable signature
-    hand plugin authors an annotation that raises on import.
+
+def test_documented_artifact_annotations_are_importable():
+    """A `-> X` in the docs must be a real name in `hvantk.core.models`.
+
+    #303 deleted the `Artifact` Protocol while four documents still wrote
+    `-> Artifact` in copy-pasteable builder signatures, handing out-of-tree
+    plugin authors an annotation that raised on import. The first version of
+    this guard banned the string outright; `Artifact` is importable again -- as
+    a union of the four concrete types -- so a ban would now forbid working
+    code. What actually matters is that the name resolves.
+
+    Concrete types remain the better style, since the manifest declares one and
+    `run_builder_for_spec` checks against it. But style is not what breaks
+    someone else's build.
     """
+    import hvantk.core.models as models
+
+    exported = set(models.__all__)
+    stale = sorted(HVANTK_ARTIFACT_NAMES - exported)
     offenders = []
     for path in _tracked(".md", ".svg"):
-        for match in re.finditer(r"(->|→)\s*Artifact\b", path.read_text()):
-            offenders.append(f"{path.relative_to(REPO_ROOT)}: {match.group(0)}")
+        for match in re.finditer(r"(?:->|\u2192)\s*`?(\w+)`?", path.read_text()):
+            name = match.group(1)
+            if name in stale:
+                offenders.append(f"{path.relative_to(REPO_ROOT)}: -> {name}")
     assert not offenders, (
-        "documentation annotates a return type of `Artifact`, which is not "
-        f"importable from hvantk.core.models: {offenders}\n"
-        "Name the concrete artifact type the builder returns."
+        f"documentation annotates {stale}, which hvantk.core.models no longer "
+        f"exports (it exports {sorted(exported)}): {offenders}"
     )
