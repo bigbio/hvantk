@@ -179,10 +179,20 @@ target-version = "py310"
 line-length = 127  # matches the width the advisory CI pass has always used
 
 [tool.ruff.lint]
-# The advisory set, mirroring what flake8's default selection covered at the
-# same width and complexity. A bare `ruff check` (or a ruff-LSP editor) now
-# reports what CI's advisory pass reports; CI narrows to E9,F63,F7,F82 with an
-# explicit --select for the one gate that actually blocks a merge.
+# The advisory set. A bare `ruff check` (or a ruff-LSP editor) reports what CI's
+# advisory pass reports; CI narrows to E9,F63,F7,F82 with an explicit --select
+# for the one gate that actually blocks a merge.
+#
+# The blocking gate is exactly equivalent to the flake8 one it replaced: 0
+# findings under both, and an injected F821/syntax error is caught by both.
+#
+# The *advisory* set is not equivalent, and it would be misleading to say it is:
+# on the same tracked files at the same width and complexity, flake8 reports 378
+# findings across 25 codes and ruff 288 across 15. The ten missing codes --
+# E127 E128 E203 E225 E227 E231 E272 E302 E305 W391 -- are pycodestyle rules
+# ruff keeps behind `preview`. Nothing that blocked a merge stopped blocking;
+# whether to set `preview = true` and take those 90 findings back is a separate
+# decision from replacing the linter.
 select = ["E", "W", "F", "C901"]
 
 [tool.ruff.lint.mccabe]

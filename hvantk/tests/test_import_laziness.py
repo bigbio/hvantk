@@ -18,6 +18,8 @@ from pathlib import Path
 
 import pytest
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
 # Modules whose import cost is the whole point: pandas ~0.4 s, anndata ~0.8 s,
 # hail ~5.4 s. Kept as a tuple so the failure message can name the culprit.
 HEAVY = ("pandas", "anndata", "hail")
@@ -34,11 +36,18 @@ def _modules_after(code: str) -> set[str]:
         "import sys\n"
         "print(' '.join(sorted(sys.modules)))\n"
     )
+    # cwd is pinned rather than inherited: the package is not installed in CI
+    # (the workflow installs requirements.txt and runs pytest from the repo
+    # root), so `import hvantk` resolves purely by cwd. Inheriting it would make
+    # these tests depend on where pytest happened to be invoked from, and --
+    # if a copy of hvantk were ever installed -- would let them measure that
+    # copy instead of the source tree under test.
     proc = subprocess.run(
         [sys.executable, "-c", probe],
         capture_output=True,
         text=True,
         timeout=300,
+        cwd=REPO_ROOT,
     )
     assert proc.returncode == 0, f"probe failed:\n{proc.stderr}"
     return set(proc.stdout.split())
@@ -92,6 +101,12 @@ def test_building_the_cli_imports_no_subcommand_module():
     loaded = _modules_after("from hvantk.hvantk import cli")
     eager = sorted(m for m in _subcommand_modules() if _is_loaded(m, loaded))
     assert not eager, f"CLI import eagerly loaded subcommand modules: {eager}"
+    # The registry check above is blind to anything *not* in _LAZY_COMMANDS: a
+    # bare `from hvantk.algorithms.enrichex import burden` at module scope in
+    # hvantk.py -- the exact case this module's docstring names -- costs ~5.9 s
+    # and passes it. The heavy-module check is what catches that, so both run.
+    heavy = sorted(set(HEAVY) & loaded)
+    assert not heavy, f"CLI import pulled {heavy}; something heavy is imported at module scope"
 
 
 def test_listing_commands_imports_no_subcommand_module():
@@ -109,6 +124,29 @@ def test_listing_commands_imports_no_subcommand_module():
     )
     eager = sorted(m for m in _subcommand_modules() if _is_loaded(m, loaded))
     assert not eager, f"`hvantk --help` imported subcommand modules: {eager}"
+    heavy = sorted(set(HEAVY) & loaded)
+    assert not heavy, f"`hvantk --help` pulled {heavy}"
+
+
+def test_every_command_is_lazy():
+    """Both checks above are scoped to `_LAZY_COMMANDS`; this pins that scope.
+
+    Emptying the registry and wiring the 18 commands eagerly with `add_command`
+    -- the pattern `architecture.md` warns against -- leaves `hvantk --help`
+    byte-identical and costs ~5.6 s, while making every registry-derived
+    assertion iterate an empty set. Asserting the two agree is what stops a
+    guard from being silently defined out of existence.
+    """
+    import click
+
+    from hvantk.hvantk import _LAZY_COMMANDS, cli
+
+    listed = set(cli.list_commands(click.Context(cli)))
+    assert listed == set(_LAZY_COMMANDS), (
+        "every top-level command must be resolved through _LAZY_COMMANDS; "
+        f"eagerly registered: {sorted(listed - set(_LAZY_COMMANDS))}, "
+        f"missing from the CLI: {sorted(set(_LAZY_COMMANDS) - listed)}"
+    )
 
 
 def test_artifact_union_covers_every_artifact_class():
@@ -184,3 +222,44 @@ def test_loader_still_accepts_a_concrete_artifact_type(tmp_path):
     reg = PluginRegistry()
     reg.load_from_directory(dst)
     assert reg.get_dataset("fake:default").artifact_type is AnnotationTable
+
+
+def test_shell_completion_imports_no_subcommand_module():
+    """``hvantk <TAB>`` must not resolve commands either.
+
+    click's ``Group.shell_complete`` builds each completion from
+    ``command.get_short_help_str()``, so the stock implementation calls
+    ``get_command`` for all 18 names. That made completion -- the one place a
+    user is guaranteed to be waiting -- cost ~5.9 s and pull Hail, pandas,
+    anndata, scipy and matplotlib, while ``--help`` returned in 0.1 s.
+    """
+    loaded = _modules_after(
+        "from click.shell_completion import ShellComplete\n"
+        "from hvantk.hvantk import cli\n"
+        "items = ShellComplete(cli, {}, 'hvantk', '_HVANTK_COMPLETE').get_completions([], '')\n"
+        "assert len(items) == 18, len(items)\n"
+    )
+    eager = sorted(m for m in _subcommand_modules() if _is_loaded(m, loaded))
+    assert not eager, f"shell completion imported subcommand modules: {eager}"
+    heavy = sorted(set(HEAVY) & loaded)
+    assert not heavy, f"shell completion pulled {heavy}"
+
+
+def test_shell_completion_renders_the_same_as_a_resolved_group():
+    """The lazy short help must match what click would render after resolving.
+
+    ``_LAZY_COMMANDS`` duplicates each short help, so completion is only safe if
+    the copy agrees with the real command -- including click's 45-column
+    truncation, which is easy to omit and silently changes every row.
+    """
+    import click
+    from click.shell_completion import ShellComplete
+
+    from hvantk.hvantk import _LAZY_COMMANDS, cli
+
+    lazy = [(i.value, i.help) for i in ShellComplete(cli, {}, "h", "_H").get_completions([], "")]
+    ctx = click.Context(cli)
+    for name in list(_LAZY_COMMANDS):
+        cli.get_command(ctx, name)  # force-resolve, then use click's stock path
+    eager = [(i.value, i.help) for i in click.Group.shell_complete(cli, ctx, "")]
+    assert lazy == eager
