@@ -127,9 +127,10 @@ hvantk/
 │   └── qtl/               # QTL CLI subcommands
 │
 ├── resources/             # Data catalog and schemas
-│   ├── registry/          # Surviving legacy per-domain dataset metadata (genomics only)
 │   ├── schemas/           # JSON schema definitions
-│   └── unified_registry.py# Aggregates per-plugin catalog/datasets.json + legacy registry
+│   ├── ensembl_release.py # pinned Ensembl release / GTF URL
+│   ├── drift_ledger.json  # committed drift fingerprints
+│   └── unified_registry.py# Aggregates the per-plugin catalog/datasets.json files
 │
 └── tests/                 # Test suite
     ├── conftest.py        # Pytest fixtures (hail_session, etc.)
