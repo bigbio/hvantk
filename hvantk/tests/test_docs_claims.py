@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import re
 import shlex
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -39,7 +40,33 @@ from hvantk.hvantk import cli
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PACKAGE_ROOT = REPO_ROOT / "hvantk"
-DOC_FILES = sorted((REPO_ROOT / "docs_site").rglob("*.md")) + [REPO_ROOT / "README.md"]
+
+
+def _tracked(*suffixes: str) -> list[Path]:
+    """Repo files git actually tracks, with any of `suffixes`.
+
+    Deliberately not `REPO_ROOT.rglob`: that also walks ignored and untracked
+    files. The first version of this test did, and it failed in a working copy
+    while passing in CI -- CI checks out a clean tree, so it never saw the
+    gitignored agent-instruction files a developer has locally. A test that is
+    green in CI and red on your machine trains people to ignore it. It also had
+    no business reading files outside version control in the first place.
+    """
+    out = subprocess.run(
+        ["git", "-C", str(REPO_ROOT), "ls-files", "-z", *(f"*{s}" for s in suffixes)],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    return [REPO_ROOT / rel for rel in out.split("\0") if rel]
+
+
+DOC_FILES = [
+    p
+    for p in _tracked(".md")
+    if p.parts[len(REPO_ROOT.parts)] in {"docs_site", "README.md"}
+]
+
 
 # `hvantk <something>` inside a ```bash fence. Backslash continuations are
 # joined first so a multi-line invocation is checked as one command.
@@ -188,11 +215,7 @@ def test_no_markdown_documents_an_importable_artifact_base():
     hand plugin authors an annotation that raises on import.
     """
     offenders = []
-    for path in list(REPO_ROOT.rglob("*.md")) + list(
-        (REPO_ROOT / "docs_site/images").rglob("*.svg")
-    ):
-        if "local" in path.parts or ".git" in path.parts or "site" in path.parts:
-            continue
+    for path in _tracked(".md", ".svg"):
         for match in re.finditer(r"(->|→)\s*Artifact\b", path.read_text()):
             offenders.append(f"{path.relative_to(REPO_ROOT)}: {match.group(0)}")
     assert not offenders, (
