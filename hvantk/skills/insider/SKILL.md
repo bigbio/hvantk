@@ -25,6 +25,11 @@ This skill is the **first interval-keyed skill** in hvantk. Conventions § 3 dec
 
 - **Provider:** Yu lab (Cornell). Wei et al., *Nat Methods* 2017, PMID 29036289.
 - **Distribution:** http://interactomeinsider.yulab.org/downloads.html
+- **Direct file paths** (the page carries no links in its markup, but the paths
+  below are stable and are what the drift probe pins):
+  - `/bed/all.bed` — the >1 GB genomic BED backing `insider:variants`
+  - `/downloads/interfacesALL/H_sapiens_interfacesALL.txt` — the ~49 MB
+    protein-pair table backing `insider:interfaces`
 - **License:** Academic use (per the existing catalog entry).
 - **Catalog entry:** `INSIDER_v1.0` in `hvantk/resources/registry/genomics/datasets.json`. **Filename and metadata corrected in the same PR that adds this skill** — the prior entry listed `insider_interaction_sites.tsv` which is not a real INSIDER distribution product (see § 4 Gap 2).
 
@@ -115,6 +120,14 @@ Per `_conventions` § 9:
 - **schema_snapshot:** `hvantk/skills/insider/tests/snapshots/schema.json`. Records the `{interval, ppi_ids: array<str>}` shape.
 - **row_snapshot:** `hvantk/skills/insider/tests/snapshots/sample_rows.json`. Intervals are unique-in-table after the aggregation; test inlines 3 sample keys (per `_conventions` § 9 post-#101 rule — unique-key skills inline).
 - **test_command:** `pytest hvantk/skills/insider/tests -m hail`.
+- **drift_fingerprint:** `hvantk/skills/insider/tests/drift_fingerprint.json`, shared by
+  both datasets since they share one probe module. The probe HEADs both direct file
+  paths (§ 2) and compares Content-Length per file; the 1.17 GB BED is never
+  transferred. `ETag` and `Last-Modified` are recorded but demoted to `informational`,
+  which drift comparison ignores: nginx derives the ETag from (size, mtime), so it
+  would open a no-op pull request on any byte-identical re-upload. The probe requests
+  `Accept-Encoding: identity` — the server gzips `text/plain` on the fly and then omits
+  `Content-Length` entirely, which would leave the fingerprint with no compared signal.
 
 Round-trip test (`hvantk/skills/insider/tests/test_builder.py`, via `phase_b_snapshot_adapter(build_insider_interactome, "insider:variants")`) asserts: checkpointed schema matches `schema.json`; deterministic sample-row slice matches `sample_rows.json`. The test exercises the `hl.tinterval` handling in `_snapshot_utils` (added in PR #105) — if that branch breaks, this test breaks.
 

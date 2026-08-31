@@ -27,8 +27,8 @@
       {
         "path": "Whole_Human_Interactome_Interface_hg38.bed",
         "format": "bed",
-        "size_bytes": 1171586071,
-        "url": "http://interactomeinsider.yulab.org/downloads.html",
+        "size_bytes": 1171848841,
+        "url": "http://interactomeinsider.yulab.org/bed/all.bed",
         "description": "UCSC-style BED with 208,448 'track name=<P1>_ppi_<P2>' headers; 18.6M data rows representing per-residue genomic intervals (typically 1-3 bp) for predicted/experimental protein-protein interface positions. >1 GB; manual acquisition per CLAUDE.md downloader strategy. The track-aware INSIDER builder preserves track-name metadata as PPI IDs during import."
       }
     ]

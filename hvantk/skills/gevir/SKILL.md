@@ -35,13 +35,23 @@ Optional plugin args (e.g. field selection) can be passed with
 
 ## Notes
 
-The drift probe (`hvantk/skills/gevir/drift_probe.py`, `fetch_fingerprint`) is a
-documentation-only stub: GeVIR is published as supplementary data, so there is no
-programmatic data URL to fingerprint and `hvantk drift` reports status="stub".
-No downloader is implemented yet; the GeVIR table is small (~1-2 MB), public, and
-served from a stable URL, so it qualifies for a real downloader under the
-project's downloader framework — a recommended follow-up. Until then, upstream
-files are expected to be materialized externally.
+The drift probe (`hvantk/skills/gevir/drift_probe.py`, `fetch_fingerprint`) issues
+a single HEAD against the article's supplementary object on Springer's
+static-content CDN and compares its content-hash ETag plus Content-Length; the
+10 MB workbook is never transferred. It replaced a documentation-only stub once
+that URL was confirmed addressable (issue #177, which had recorded the source as
+publication-only and therefore unprobeable).
+
+Note that https://github.com/gevirank/gevir — cited above as the upstream — ships
+the **analysis code only**. Its `tables/` directory holds a placeholder file, so
+it is not a source for the metric table and cannot be used as a drift target. The
+table itself is Supplementary Table 2 of the paper, distributed as the article's
+MOESM3 object; of the six MOESM slots only that one is public.
+
+No downloader is implemented yet; the GeVIR table is small (~1-2 MB) and served
+from the stable URL the drift probe already pins, so it qualifies for a real
+downloader under the project's downloader framework — a recommended follow-up.
+Until then, upstream files are expected to be materialized externally.
 
 ## Schema
 

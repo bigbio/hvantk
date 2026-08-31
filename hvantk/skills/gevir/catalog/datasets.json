@@ -22,7 +22,8 @@
         "path": "gevir_metrics_pmid31873297.tsv.bgz",
         "format": "tsv",
         "size_bytes": 2000000,
-        "description": "Per-gene GeVIR and VIRLoF intolerance percentile ranks (~19,361 protein-coding genes)"
+        "description": "Per-gene GeVIR and VIRLoF intolerance percentile ranks (~19,361 protein-coding genes)",
+        "url": "https://static-content.springer.com/esm/art%3A10.1038%2Fs41588-019-0560-2/MediaObjects/41588_2019_560_MOESM3_ESM.xlsx"
       }
     ]
   }
