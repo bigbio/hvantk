@@ -8,7 +8,6 @@ artifact files (raw .parquet, .h5ad, .ht) without rebuilding everything.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from hvantk.core.models.provenance import Provenance
 

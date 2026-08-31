@@ -4,7 +4,7 @@ import numpy as np, pandas as pd
 from sklearn.metrics import roc_auc_score, average_precision_score, brier_score_loss
 from sklearn.calibration import calibration_curve
 from sklearn.model_selection import StratifiedKFold, cross_val_predict
-from hvantk.algorithms.rerank.reranker import ReRanker, _gbm
+from hvantk.algorithms.rerank.reranker import _gbm
 
 
 def _raw_oof(matrix, cols, y, selector=None):

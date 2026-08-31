@@ -19,7 +19,6 @@ import pandas as pd
 
 from hvantk.algorithms.ancestry.constants import (
     SUPERPOP_COLORS,
-    POPULATION_COLORS,
     POPULATION_NAMES,
     SOURCE_COL,
     KNOWN_ANCESTRY_COL,
@@ -439,9 +438,7 @@ def plot_variance_explained(
         fig = ax_plot.figure
 
     # Bar plot for individual variance
-    bars = ax_plot.bar(
-        pcs, var_explained, color="steelblue", alpha=0.7, label="Individual"
-    )
+    ax_plot.bar(pcs, var_explained, color="steelblue", alpha=0.7, label="Individual")
     ax_plot.set_xlabel("Principal Component", fontsize=12)
     ax_plot.set_ylabel("Variance Explained", fontsize=12)
     ax_plot.set_title("Variance Explained by Principal Components", fontsize=14)

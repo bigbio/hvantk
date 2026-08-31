@@ -390,20 +390,20 @@ class PipelineRunner:
             print(f"      Output: {self.paths['sample_qc']}")
             stage_num += 1
         else:
-            print(f"  [SKIP] Compute Sample QC")
+            print("  [SKIP] Compute Sample QC")
 
         if not self.config.skip_compute_variant_qc:
             print(f"  [{stage_num}] Compute Variant QC")
             print(f"      Output: {self.paths['variant_qc']}")
             stage_num += 1
         else:
-            print(f"  [SKIP] Compute Variant QC")
+            print("  [SKIP] Compute Variant QC")
 
         if not self.config.skip_export_pvcf:
             print(f"  [{stage_num}] Export cohort VCF")
             print(f"      Output: {self.paths['pvcf']}")
             if self.config.apply_qc_filters:
-                print(f"      Apply QC filters: Yes")
+                print("      Apply QC filters: Yes")
                 print(
                     f"        Min sample call rate: {self.config.min_sample_call_rate}"
                 )
@@ -412,7 +412,7 @@ class PipelineRunner:
                 )
             stage_num += 1
         else:
-            print(f"  [SKIP] Export pVCF")
+            print("  [SKIP] Export pVCF")
 
         if self.config.generate_qc_report:
             print(f"  [{stage_num}] Generate QC Report")

@@ -22,7 +22,6 @@ def _missense_predicate(ht):
     Consequence column. aaalt == 'X' is a stop-gain, aaref == 'X' a stop-loss, '.' is missing;
     all are excluded, leaving substitutions between standard amino acids.
     """
-    import hail as hl
 
     return (
         (ht.aaref != ht.aaalt)

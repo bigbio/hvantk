@@ -1,6 +1,5 @@
 import csv
 import gzip
-import io
 import logging
 import os
 import os.path as path
@@ -13,7 +12,7 @@ import zlib
 
 import requests
 from tqdm import tqdm
-from hvantk.core.utils.bgzf import BGZF_BLOCK_SIZE, BgzfWriter, make_bgzf_block
+from hvantk.core.utils.bgzf import BGZF_BLOCK_SIZE, make_bgzf_block
 
 logger = logging.getLogger(__name__)
 

@@ -8,7 +8,7 @@ Manifest path is the artifact path with `.provenance.json` appended:
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 from hvantk.core.models.provenance import Provenance

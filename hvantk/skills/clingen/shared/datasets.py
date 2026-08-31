@@ -68,7 +68,7 @@ class ClinGenGeneDiseaseDataset:
         """
         # Validate date format
         try:
-            parsed = datetime.strptime(version_date, "%Y-%m-%d")
+            datetime.strptime(version_date, "%Y-%m-%d")
         except ValueError:
             raise ValueError(
                 f"Invalid version_date format: {version_date}. Expected YYYY-MM-DD"
