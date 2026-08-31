@@ -1,0 +1,47 @@
+{
+  "probe_version": 1,
+  "source_version": "4.9a",
+  "headers": {
+    "dbNSFP-release-index": [
+      "release_version"
+    ]
+  },
+  "checksums": {
+    "dbNSFP-release-index": "565236cfaed66fdc2be4568621404b3d396eef845128209944d0e7cc44d31b0c"
+  },
+  "extras": {
+    "releases_found": [
+      "1.2",
+      "2.0",
+      "2.0b1_variant",
+      "2.0b2",
+      "2.0b3",
+      "2.0b4",
+      "4.0a",
+      "4.0b1a",
+      "4.0b1c",
+      "4.0b2a",
+      "4.0b2c",
+      "4.0c",
+      "4.1a",
+      "4.1c",
+      "4.2a",
+      "4.2c",
+      "4.3a",
+      "4.3c",
+      "4.4a",
+      "4.4c",
+      "4.5a",
+      "4.5c",
+      "4.6a",
+      "4.6c",
+      "4.7a",
+      "4.7c",
+      "4.8a",
+      "4.8c",
+      "4.9a",
+      "4.9c"
+    ]
+  },
+  "fetched_at": "2026-08-31T23:17:25.398768+00:00"
+}

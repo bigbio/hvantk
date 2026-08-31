@@ -1,0 +1,36 @@
+{
+  "probe_version": 1,
+  "source_version": null,
+  "headers": {},
+  "checksums": {
+    "2.1.1/constraint/gnomad.v2.1.1.lof_metrics.by_gene.txt.bgz": "967fb59dc509d9ee351b9d35efacf52a",
+    "2.1.1/constraint/gnomad.v2.1.1.lof_metrics.by_transcript.txt.bgz": "ee84bf0398e551b2ad52608cefb3ce30",
+    "v4.0/constraint/gnomad.v4.0.constraint_metrics.tsv": "612f3899a85a1b7c6513a9dd65b00485"
+  },
+  "extras": {
+    "2.1.1/constraint/gnomad.v2.1.1.lof_metrics.by_gene.txt.bgz": {
+      "content_length": "4609488",
+      "generation": "1597936745580178"
+    },
+    "2.1.1/constraint/gnomad.v2.1.1.lof_metrics.by_transcript.txt.bgz": {
+      "content_length": "13341280",
+      "generation": "1597936751635121"
+    },
+    "v4.0/constraint/gnomad.v4.0.constraint_metrics.tsv": {
+      "content_length": "85888818",
+      "generation": "1699056035127872"
+    }
+  },
+  "informational": {
+    "2.1.1/constraint/gnomad.v2.1.1.lof_metrics.by_gene.txt.bgz": {
+      "last_modified": "Thu, 20 Aug 2020 15:19:05 GMT"
+    },
+    "2.1.1/constraint/gnomad.v2.1.1.lof_metrics.by_transcript.txt.bgz": {
+      "last_modified": "Thu, 20 Aug 2020 15:19:11 GMT"
+    },
+    "v4.0/constraint/gnomad.v4.0.constraint_metrics.tsv": {
+      "last_modified": "Sat, 04 Nov 2023 00:00:35 GMT"
+    }
+  },
+  "fetched_at": "2026-08-31T23:17:24.906648+00:00"
+}

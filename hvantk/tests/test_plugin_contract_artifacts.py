@@ -42,12 +42,17 @@ ARTIFACT_FIELDS = ("fixture", "schema_snapshot", "row_snapshot", "drift_fingerpr
 #   3. simply never seeded, though the builder runs from a committed fixture -- the
 #      majority, and the ones the follow-up work removes from this list.
 #
-# clingen, gencc and hgnc were removed from this list once their snapshots landed, and
-# dbnsfp / gnomad-metrics now lack only a drift fingerprint. The
-# remaining fingerprint gaps are a separate concern from snapshots: a probe has to be run
-# against the live upstream, which the snapshot tests deliberately never touch.
+# clingen, gencc and hgnc were removed from this list once their snapshots landed.
 # (gevir shipped its drift fingerprint as part of the gevir plugin-review work, so it
 # left this list.)
+#
+# dbnsfp and gnomad-metrics left it too, once real drift probes replaced their stub
+# sentinels and their baselines were captured from live probe runs. Both had been
+# recorded under issue #177 as having no probeable URL; re-checking showed the gnomAD
+# constraint tables sit in a public GCS bucket that returns an MD5 ETag, and that the
+# dbNSFP landing page -- though its advertised S3 archives are all dead -- still exposes
+# a stable release list. The remaining three entries below are the ones where that
+# re-check genuinely found nothing to probe.
 #
 # (dbnsfp / gnomad-metrics previously appeared here for a different
 # reason -- they declared a plugin-local fixture dir that was never created while the
@@ -63,13 +68,11 @@ ARTIFACT_FIELDS = ("fixture", "schema_snapshot", "row_snapshot", "drift_fingerpr
 # large to use directly (116k transcripts x 320 samples), so a fixture must be *derived*
 # by truncation rather than copied.
 KNOWN_INCOMPLETE: dict[str, tuple[str, ...]] = {
-    "alphagenome:predictions": ARTIFACT_FIELDS,
-    "cosmic-cgc:submissions": ARTIFACT_FIELDS,
-    "dbnsfp:variants": ("drift_fingerprint",),
+    "alphagenome:predictions": ("fixture", "schema_snapshot", "row_snapshot"),
+    "cosmic-cgc:submissions": ("fixture", "schema_snapshot", "row_snapshot"),
     "expression-atlas:dataset": ("schema_snapshot", "row_snapshot"),
-    "gnomad-metrics:metrics": ("drift_fingerprint",),
     "peptideatlas:phospho": ("schema_snapshot", "row_snapshot"),
-    "pqtl:metrics": ARTIFACT_FIELDS,
+    "pqtl:metrics": ("fixture", "schema_snapshot", "row_snapshot"),
 }
 
 

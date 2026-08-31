@@ -1,0 +1,30 @@
+{
+  "probe_version": 1,
+  "source_version": "0.8.0",
+  "headers": {
+    "alphagenome-sdk-releases": [
+      "sdk_version"
+    ]
+  },
+  "checksums": {
+    "alphagenome-sdk-releases": "f7b757e01ac422cc47d6f74a7a427a3f461cea0b3fc06917ff44f48e7c1d9406"
+  },
+  "extras": {
+    "current_version": "0.8.0",
+    "releases_found": [
+      "0.0.1",
+      "0.0.2",
+      "0.1.0",
+      "0.2.0",
+      "0.3.0",
+      "0.4.0",
+      "0.5.0",
+      "0.5.1",
+      "0.6.0",
+      "0.6.1",
+      "0.7.0",
+      "0.8.0"
+    ]
+  },
+  "fetched_at": "2026-08-31T23:21:48.447579+00:00"
+}
