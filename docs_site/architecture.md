@@ -49,7 +49,6 @@ hvantk/
 │   │   ├── expression_matrix.py # ExpressionMatrix artifact (AnnData-only)
 │   │   ├── variant_matrix.py    # VariantMatrix artifact (Hail MatrixTable)
 │   │   ├── gene_set.py          # GeneSet artifact
-│   │   ├── artifact.py          # Artifact base + type registry
 │   │   ├── backends.py          # AlgorithmMeta, Backend, @algorithm decorator
 │   │   ├── build_context.py     # BuildContext passed to plugin builders
 │   │   ├── anndata_utils.py     # annotate_column_summary_ad (AnnData obs summary)
@@ -508,7 +507,29 @@ See `hvantk/skills/_conventions/SKILL.md` for the full contract.
 2. Add a `<basename>.tool.yaml` manifest for discoverability via
    `hvantk tools list` (descriptive metadata; not authoritative for
    wiring today — that's Phase Q follow-up).
-3. Wire the command in `hvantk/hvantk.py`'s top-level CLI group.
+3. Add an entry to `_LAZY_COMMANDS` in `hvantk/hvantk.py` — the command
+   name mapped to `(module, attribute, short help)`:
+
+   ```python
+   "mycmd": (
+       "hvantk.tools.mydomain.mycmd_cli",
+       "mycmd_group",
+       "One-line summary, matching the command's own short help.",
+   ),
+   ```
+
+   Do **not** add a module-level `from hvantk.tools... import ...` plus
+   `cli.add_command(...)`. `LazyGroup` still honours `add_command`, so that
+   works — and silently costs every single invocation the import of whatever
+   your command pulls in. That eager wiring is what made `hvantk --help` take
+   ~10 s; going through `_LAZY_COMMANDS` keeps it at ~0.1 s because nothing is
+   imported until the command is actually run. No test will catch the
+   regression; only startup time changes.
+
+   The short help is duplicated in the registry because listing the commands
+   must not import them. `test_lazy_command_registry_matches_real_commands`
+   asserts your entry still matches the real command, so a later edit to the
+   docstring fails CI rather than silently staling `hvantk --help`.
 
 ## Dependencies
 

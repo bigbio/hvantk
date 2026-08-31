@@ -297,6 +297,114 @@ hvantk utils convert-bgz input.tsv.gz -o output.tsv.bgz --threads 4
 
 The command auto-detects whether the file is already BGZF and skips conversion if so.
 
+## Gene-level annotation matrices
+
+`hvantk annotate` turns built datasets into one gene × feature matrix. It is three
+commands run in order, because each stage is independently re-runnable and the
+expensive middle stage is per-source:
+
+| Stage | Command | Produces |
+| --- | --- | --- |
+| 1. Spine | `annotate spine` | the gene table every annotation joins onto |
+| 2. Prepare | `annotate prepare` (once per axis) | one source mapped onto the spine's `gene_id` |
+| 3. Compose | `annotate compose` | the joined matrix + a manifest JSON |
+
+### 1. Build the spine
+
+The spine fixes which genes exist and what `gene_id` means for the whole matrix.
+
+```bash
+hvantk annotate spine \
+  --gene-table ensembl_structure.ht \
+  --hgnc hgnc_lookup.ht \
+  --output spine.ht
+```
+
+`--biotype` defaults to `protein_coding`; pass `--biotype all` to keep every biotype.
+
+### 2. Declare the sources
+
+A feature spec names each axis, the dataset it comes from, the key to join on, and the
+columns to keep:
+
+```yaml
+name: chd-features
+layer1:
+  - {axis: constraint, source: gnomad-metrics:metrics, key: gene_id, columns: [mis_z]}
+  - {axis: gevir,      source: gevir:table,            key: gene_id, columns: [gevir_pct]}
+```
+
+Each `axis` label must be unique — it is the identity the later stages join on. When an
+entry's `key` is `hgnc_id` or `symbol` rather than `gene_id`, `prepare` needs
+`--hgnc` so it can resolve the mapping.
+
+### 3. Prepare each axis, then compose
+
+`prepare` runs once per axis and is the stage worth parallelising — each invocation is
+independent, so they can be separate cluster jobs:
+
+```bash
+hvantk annotate prepare --spec features.yaml --axis constraint \
+  --input gnomad_metrics.ht --spine spine.ht --output constraint.ht
+
+hvantk annotate prepare --spec features.yaml --axis gevir \
+  --input gevir.ht --spine spine.ht --output gevir.ht
+```
+
+`compose` left-joins every prepared axis onto the spine. It requires one `--prepared`
+per axis in the spec and fails if any is missing, so a partial matrix cannot be produced
+silently:
+
+```bash
+hvantk annotate compose --spec features.yaml --spine spine.ht \
+  --prepared constraint=constraint.ht \
+  --prepared gevir=gevir.ht \
+  --output features.ht
+```
+
+The manifest JSON lands next to the output (`features.ht.manifest.json` unless
+`--manifest` says otherwise) and records what went into the matrix.
+
+Scheduling is deliberately external: the commands do their work in-process and hvantk
+never imports a scheduler, so an sbatch wrapper submits them.
+
+## External cohorts
+
+`hvantk cohort` brings a cohort's own gene-level results alongside the annotation
+matrix. A cohort is declared by a manifest, not by flags:
+
+```yaml
+name: my-cohort
+key: symbol              # or gene_id / hgnc_id
+key_column: gene         # the column in `table` holding that key
+table: cohort.tsv
+prior:
+  column: minp
+  direction: lower_is_better
+cohort_axes:
+  - axis: architecture
+    columns: [n_case_var, conc, driver_af]
+```
+
+```bash
+# Check the manifest against its table (and labels) before anything reads it
+hvantk cohort validate --manifest cohort.yaml
+
+# Originate a gene-level prior with a Fisher-exact burden test
+hvantk cohort burden --help
+
+# Join the cohort's declared columns onto the Layer-1 matrix
+hvantk cohort attach --help
+```
+
+`validate` first is the point: it fails on a key column that is not present, or a
+declared axis column missing from the table, rather than letting a silently-empty join
+propagate into the matrix.
+
+The same manifest is what `hvantk rerank` consumes as its starting ranking — see
+[examples/rerank](https://github.com/bigbio/hvantk/tree/main/examples/rerank) for a
+complete runnable configuration.
+
 ## Tips & troubleshooting
 
 - Use `--overwrite` to replace an existing output. Without it, builders abort if the output exists.

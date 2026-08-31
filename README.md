@@ -69,6 +69,15 @@ hvantk --help
 | **PS-ROC** | Pathogenicity score ROC evaluation against ClinVar labels | `hvantk psroc` | [PS-ROC](docs_site/tools/psroc.md) |
 | **PTM** | Post-translational modification variant classification | `hvantk ptm` | [PTM](docs_site/tools/ptm.md) |
 | **Expression** | Expression analysis (summarize, marker extraction) | `hvantk expression` | [Usage Guide](docs_site/guide/usage.md) |
+| **Annotate** | Build the gene spine, map sources onto it, compose a gene × feature matrix | `hvantk annotate` | [Usage Guide](docs_site/guide/usage.md#gene-level-annotation-matrices) |
+| **Cohort** | Validate and attach external cohorts | `hvantk cohort` | [Usage Guide](docs_site/guide/usage.md#external-cohorts) |
+| **Re-rank** | Re-rank genes by multi-omic credibility from a YAML config | `hvantk rerank` | [Example](examples/rerank/README.md) |
+| **Gene sets** | Extract or prepare gene set collections (ClinGen, GenCC, COSMIC) | `hvantk genesets` | [Usage Guide](docs_site/guide/usage.md) |
+
+Plus the registry and operational commands: `hvantk plugins` and `hvantk tools` (inspect the
+plugin and tool registries), `hvantk catalog` (search the aggregated dataset catalog),
+`hvantk drift` (compare a plugin's live source fingerprint against the committed one),
+and `hvantk utils` (format conversion, BGZF validation, install diagnostics).
 
 ## Architecture
 
@@ -167,9 +176,11 @@ hvantk/
 │   ├── plugin/                 # plugin registry, run_builder_for_spec,
 │   │                           #   two-pass discovery (DatasetManifest → DatasetSpec)
 │   ├── tool/                   # tool manifest discovery (descriptive)
-│   ├── builders/               # shared builder helpers (create_table_base, …)
-│   ├── streamers/              # low-level chunked-IO for raw upstream downloads
-│   └── utils/                  # generic helpers (hail context, file utils)
+│   ├── streamers/              # Streamer ABCs — query/iterate built tables
+│   │                           #   (concrete subclasses live in skills/<plugin>/)
+│   ├── ontology/               # OBO / MONDO parsers
+│   └── utils/                  # generic helpers (hail context, hail_helpers,
+│                               #   file utils, gene sets)
 │
 ├── algorithms/                 # analytics — consume artifacts, return artifacts
 │   ├── ancestry/               # PCA + Random Forest ancestry inference
@@ -179,22 +190,27 @@ hvantk/
 │   ├── ptm/                    # PTM coordinate mapping + atlas
 │   ├── psroc/                  # pathogenicity score ROC analysis
 │   ├── qtlcascade/             # eQTL → pQTL cascade + colocalization
-│   └── annotation/             # multi-source annotation pipelines
+│   ├── annotation/             # spine / prepare / compose annotation pipeline
+│   ├── burden/, cohort/        # rare-variant burden + external cohort handling
+│   ├── rerank/                 # multi-omic gene re-ranking (feature axes + audit)
+│   ├── statistics/             # multiple-testing correction, shared stats
+│   └── visualization/          # shared figure helpers (empty_figure, save_figure)
 │
 ├── skills/                     # data-source plugins (21 total)
 │   ├── <plugin>/
 │   │   ├── plugin.yaml         # declarative manifest (drives discovery + CLI)
-│   │   ├── builder.py          # Phase B: (parsed, ctx) → Artifact
+│   │   ├── builder.py          # Phase B: (parsed, ctx) → AnnotationTable / …
 │   │   ├── drift_probe.py      # upstream fingerprint
 │   │   ├── cli.py              # downloader (auto-wired via manifest cli: block)
 │   │   └── tests/              # per-plugin conformance tests + fixtures
 │   └── _conventions/SKILL.md   # contract documentation
 │
 ├── tools/                      # CLI wiring + workflow orchestration
-│   ├── plugins/                # download, drift, reprocess, plugins list
+│   ├── plugins/                # download, drift, reprocess, plugins/tools list
 │   ├── hgc/                    # joint-genotyping CLI (lazy-loaded)
-│   ├── ancestry/, enrichex/, expression/, ptm/, qtl/, infra/, genesets/
-│   └── tools_cli.py            # tool registry inspection
+│   ├── infra/                  # catalog, utils (check-install, bgzf)
+│   ├── annotation/, cohort/, rerank/, genesets/, training_sets/
+│   └── ancestry/, enrichex/, expression/, ptm/, qtl/
 │
 ├── resources/                  # platform metadata (unified catalog registry)
 └── tests/                      # cross-cutting tests (dependency directions,
@@ -206,9 +222,9 @@ hvantk/
 
 | Add | Where | Pattern |
 |---|---|---|
-| A new data source | `hvantk/skills/<plugin>/` | Write `plugin.yaml` + `builder.py` (returns `Artifact`) + `drift_probe.py`. Loader auto-discovers. |
+| A new data source | `hvantk/skills/<plugin>/` | Write `plugin.yaml` + `builder.py` (returns one of the four artifact types) + `drift_probe.py`. Loader auto-discovers. |
 | A new algorithm | `hvantk/algorithms/<domain>/` | Decorate with `@algorithm(name=…, backends=[…], inputs={…}, outputs={…})`. Operate on Artifact inputs (or use `load_native` for Hail-heavy work). |
-| A new CLI command | `hvantk/tools/<domain>/` | Add the click command + a `.tool.yaml` manifest. Wire in `hvantk/hvantk.py`. |
+| A new CLI command | `hvantk/tools/<domain>/` | Add the click command + a `.tool.yaml` manifest, then an entry in `_LAZY_COMMANDS` in `hvantk/hvantk.py`. Do **not** add a module-level import + `cli.add_command` — that works, but costs every invocation your command's imports (see [Architecture](docs_site/architecture.md#adding-a-new-cli-command)). |
 | A new artifact format | `hvantk/core/io/_formats.py` + dispatch in `__init__.py` | Add `save_<artifact>_<ext>` / `load_<artifact>_<ext>`. |
 
 ## Documentation
