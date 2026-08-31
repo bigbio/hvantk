@@ -1,1 +1,14 @@
-{}
+{
+  "clingen:gene-disease": {
+    "accepted_in": "drift/routine-batch",
+    "last_upstream_change": "2026-08-30T11:21:24.495687+00:00",
+    "rebuilt_at": null,
+    "signal": "routine"
+  },
+  "gencc:submissions": {
+    "accepted_in": "drift/routine-batch",
+    "last_upstream_change": "2026-08-30T11:21:24.495687+00:00",
+    "rebuilt_at": null,
+    "signal": "routine"
+  }
+}

@@ -7,10 +7,7 @@ ClinGen-specific GCEP (Gene Curation Expert Panel) methods.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Dict, List, Optional, Set
-
-if TYPE_CHECKING:
-    from hvantk.core.streamers.gene_catalog import GeneCatalogStreamer
+from typing import Dict, Optional, Set
 
 import hail as hl
 import pandas as pd

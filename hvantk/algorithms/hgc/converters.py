@@ -286,7 +286,7 @@ def convert_vds_to_mt(
         mt.write(output_path, overwrite=overwrite)
         logging.info("✓ MatrixTable successfully written.")
 
-    except Exception as e:
+    except Exception:
         logging.exception("An error occurred during VDS to MT conversion.")
         raise
 
@@ -576,6 +576,6 @@ def convert_mt_to_multi_sample_vcf(
         hl.export_vcf(mt, vcf_path)
         logging.info("VCF successfully written.")
 
-    except Exception as e:
+    except Exception:
         logging.exception("An error occurred during conversion to VCF.")
         raise

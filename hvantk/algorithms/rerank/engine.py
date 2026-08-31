@@ -1,6 +1,6 @@
 # local/rerank_engine/engine.py
 from dataclasses import dataclass
-import numpy as np, pandas as pd
+import pandas as pd
 from hvantk.algorithms.cohort.frame import load_cohort_frame
 from hvantk.algorithms.rerank.config import validate
 from hvantk.algorithms.rerank.features import FeatureAssembler

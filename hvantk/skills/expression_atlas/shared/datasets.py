@@ -256,7 +256,7 @@ class ExpressionAtlasDatasetCollection:
             type_counts[dataset.type] = type_counts.get(dataset.type, 0) + 1
 
         summary_lines = [
-            f"Expression Atlas Dataset Collection",
+            "Expression Atlas Dataset Collection",
             f"Total datasets: {len(self.datasets)}",
             "Dataset types:",
         ]

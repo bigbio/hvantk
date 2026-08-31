@@ -227,8 +227,7 @@ hvantk enrichex overlap \
   -g ad_gwas_genes.txt \
   -s brain_cell_types.json \
   -o enrichment_results.tsv \
-  --generate-report \
-  --report-title "Alzheimer's Disease Enrichment Analysis"
+  --generate-report
 
 # Generate burden test with HTML report
 hvantk enrichex burden \
@@ -236,8 +235,7 @@ hvantk enrichex burden \
   -p phenotypes.ht \
   -s gene_sets.json \
   -o burden_results.tsv \
-  --generate-report \
-  --report-title "AD Burden Analysis"
+  --generate-report
 ```
 
 Reports are saved alongside the output file with an `.html` extension.
@@ -606,13 +604,13 @@ hvantk enrichex burden \
   --consequences missense_variant,synonymous_variant,frameshift_variant,stop_gained
 ```
 
-**Genotype Quality Filtering:**
-```bash
-# Strict quality filters
-hvantk enrichex burden ... --min-gq 30 --min-dp 20
+**Genotype quality filtering** is *not* done here. EnrichEx assumes a pre-filtered
+MatrixTable: genotype QC (GQ/DP thresholds), sample QC and variant QC are upstream
+concerns, applied before the cohort reaches `burden`. Use `hvantk hgc filter-qc`, or
+filter the MatrixTable yourself:
 
-# Lenient quality filters
-hvantk enrichex burden ... --min-gq 10 --min-dp 5
+```python
+mt = mt.filter_entries((mt.GQ >= 30) & (mt.DP >= 20))
 ```
 
 #### Genotype Aggregation Methods

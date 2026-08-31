@@ -7,7 +7,6 @@ logic previously in ``core/utils/gene_mapper.py`` and
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 from typing import Dict, List, Literal, Optional
 
 import hail as hl

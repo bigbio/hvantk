@@ -21,6 +21,7 @@ import pandas as pd
 from hvantk.core.utils.gene_sets import GeneSetCollection
 from hvantk.algorithms.visualization.base import encode_figure_to_base64
 from hvantk.algorithms.enrichex.plot import (
+    _resolve_significance,
     plot_burden_forest,
     plot_enrichment_dotplot,
 )
@@ -636,14 +637,6 @@ def _resolve_pvalue_column(df: pd.DataFrame) -> str:
         if column in df.columns:
             return column
     raise ValueError("Results must include p_adjusted or p_value columns.")
-
-
-def _resolve_significance(
-    df: pd.DataFrame, p_col: str, threshold: float = 0.05
-) -> pd.Series:
-    if "significant" in df.columns:
-        return df["significant"].astype(bool)
-    return df[p_col] < threshold
 
 
 def _format_float(value: Any) -> str:

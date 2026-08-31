@@ -135,7 +135,7 @@ def overlap_test(
     )
 
     # Run enrichment
-    click.echo(f"\nRunning overlap enrichment analysis...")
+    click.echo("\nRunning overlap enrichment analysis...")
     click.echo(f"  Correction method: {correction}")
     click.echo(f"  Significance threshold: {alpha}")
 
@@ -152,8 +152,6 @@ def overlap_test(
         click.echo(f"\nTSV results written to: {tsv_path}")
 
     if output_format in ("json", "both"):
-        import json
-
         json_path = output if output.endswith(".json") else f"{output}.json"
         df.to_json(json_path, orient="records", indent=2)
         click.echo(f"JSON results written to: {json_path}")
@@ -204,7 +202,7 @@ def overlap_test(
     click.echo(f"Significant gene sets (p_adj < {alpha}): {n_significant}")
 
     if n_significant > 0:
-        click.echo(f"\nTop enriched gene sets:")
+        click.echo("\nTop enriched gene sets:")
         click.echo("-" * 60)
 
         # Format top results table

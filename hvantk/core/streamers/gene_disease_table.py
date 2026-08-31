@@ -16,7 +16,6 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 if TYPE_CHECKING:
     from hvantk.core.streamers.gene_catalog import GeneCatalogStreamer
     from hvantk.core.ontology.mondo import MondoOntology
-    from hvantk.core.ontology.obo import BaseOboOntology
 
 import hail as hl
 import pandas as pd

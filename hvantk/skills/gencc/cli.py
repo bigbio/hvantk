@@ -14,7 +14,6 @@ import logging
 
 import click
 
-from hvantk.core.config import CONTEXT_SETTINGS  # noqa: F401  (kept for parity with sibling CLIs)
 from hvantk.skills.gencc.shared.datasets import GenCCSubmissionsDataset
 
 logger = logging.getLogger(__name__)

@@ -9,7 +9,7 @@ import html
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, Union
 
 import pandas as pd
 
@@ -17,7 +17,6 @@ from hvantk.algorithms.ancestry.constants import (
     PREDICTED_ANCESTRY_COL,
     ANCESTRY_PROB_COL,
     SOURCE_COL,
-    KNOWN_ANCESTRY_COL,
     POPULATION_NAMES,
 )
 

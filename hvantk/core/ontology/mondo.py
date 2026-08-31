@@ -7,7 +7,7 @@ with MONDO-specific categories and download logic.
 """
 
 import logging
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from hvantk.core.ontology.obo import BaseOboOntology
 

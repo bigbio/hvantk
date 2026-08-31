@@ -892,7 +892,7 @@ def generate_qc_report(
         )
     else:
         overview_metrics.append(
-            f"""
+            """
             <tr>
                 <td>Mean Sample Call Rate</td>
                 <td>N/A</td>
@@ -916,7 +916,7 @@ def generate_qc_report(
         )
     else:
         overview_metrics.append(
-            f"""
+            """
             <tr>
                 <td>Mean Variant Call Rate</td>
                 <td>N/A</td>

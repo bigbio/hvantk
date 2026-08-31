@@ -31,6 +31,15 @@ theme:
 plugins:
   - search
 
+# Without this, `mkdocs build --strict` still passes on a broken anchor or an
+# unresolvable internal link -- both default to INFO, and --strict only promotes
+# WARNINGs. The docs CI job relies on these being warnings.
+validation:
+  links:
+    anchors: warn
+    unrecognized_links: warn
+    absolute_links: info
+
 markdown_extensions:
   - admonition
   - pymdownx.details

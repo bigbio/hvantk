@@ -413,7 +413,7 @@ class CosmicCGCGeneDiseaseTableStreamer(GeneDiseaseTableStreamer):
         Since COSMIC CGC lacks MONDO disease labels, this searches the
         merged tumour types (somatic + germline) for keyword matches.
         """
-        from typing import Dict, List, Set
+        from typing import Dict, Set
 
         self._ensure_table_loaded()
         ht = self._table

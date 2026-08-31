@@ -86,7 +86,7 @@
     <text x="500" y="146" text-anchor="middle">plugin.yaml manifest</text>
 
     <rect x="374" y="162" width="252" height="28" rx="6" fill="#ffffff" stroke="#fcd34d" stroke-width="1"/>
-    <text x="500" y="180" text-anchor="middle">builder.py → Artifact</text>
+    <text x="500" y="180" text-anchor="middle">builder.py → typed artifact</text>
 
     <rect x="374" y="196" width="252" height="28" rx="6" fill="#ffffff" stroke="#fcd34d" stroke-width="1"/>
     <text x="500" y="214" text-anchor="middle">drift_probe.py</text>

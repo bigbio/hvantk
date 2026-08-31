@@ -284,14 +284,22 @@ def export_ptm_strata(
     """
     os.makedirs(output_dir, exist_ok=True)
 
+    is_ptm = annotated_ht.is_ptm_site | annotated_ht.is_ptm_proximal
     strata = {
-        "ptm": annotated_ht.filter(
-            annotated_ht.is_ptm_site | annotated_ht.is_ptm_proximal
-        ),
-        "non_ptm": annotated_ht.filter(
-            ~annotated_ht.is_ptm_site & ~annotated_ht.is_ptm_proximal
-        ),
+        "ptm": annotated_ht.filter(is_ptm),
+        "non_ptm": annotated_ht.filter(~is_ptm),
     }
+
+    # Both stratum sizes come from a single pass over the table. Calling
+    # ``ht.count()`` per stratum inside the loop below ran an extra full Spark
+    # job each time -- and because ``annotated_ht`` is lazy, every one of those
+    # jobs re-ran the whole PTM annotation pipeline just to produce a log line.
+    counts = annotated_ht.aggregate(
+        hl.struct(
+            ptm=hl.agg.count_where(is_ptm),
+            non_ptm=hl.agg.count_where(~is_ptm),
+        )
+    )
 
     paths = {}
     for name, ht in strata.items():
@@ -308,8 +316,7 @@ def export_ptm_strata(
             )
         )
         ht_out.key_by().select("_vid").export(out_path, header=False)
-        n = ht.count()
-        logger.info(f"Exported {n:,} {name} variants to {out_path}")
+        logger.info(f"Exported {counts[name]:,} {name} variants to {out_path}")
         paths[name] = out_path
 
     return paths

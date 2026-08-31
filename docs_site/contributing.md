@@ -116,7 +116,9 @@ and copy from an existing plugin (clinvar, hgnc, msigdb are good models).
      `Builder` / `DriftProbe` / optional `DownloadFn` + `ParseFn`,
      `artifact_type`, `schema_id`, and test fixture paths.
    - `hvantk/skills/<provider>/builder.py` — implement the Phase B
-     contract: `build_<provider>_<dataset>(parsed_input, ctx, **params) -> Artifact`.
+     contract: `build_<provider>_<dataset>(parsed_input, ctx, **params)`,
+     returning one of `AnnotationTable` / `ExpressionMatrix` / `VariantMatrix` /
+     `GeneSet` (the manifest's `artifact_type` declares which).
    - `hvantk/skills/<provider>/drift_probe.py` — return a dict the platform
      hashes into a `source_fingerprint`.
    - `hvantk/skills/<provider>/SKILL.md` — author-facing operational guide.
@@ -182,7 +184,7 @@ All submissions require review:
 
 ## Questions?
 
-- **Documentation**: See the [guide](guide/) section
+- **Documentation**: See the [usage guide](guide/usage.md) and [data sources](guide/data-sources.md)
 - **Architecture**: See [architecture.md](architecture.md)
 - **Issues**: [GitHub Issues](https://github.com/bigbio/hvantk/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/bigbio/hvantk/discussions)
