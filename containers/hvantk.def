@@ -1,0 +1,58 @@
+Bootstrap: docker
+From: python:3.10-slim-bullseye
+
+# hvantk container image, built from the committed poetry.lock
+# (hail 0.2.137 + pyspark 3.5.8). See docs_site/guide/hpc-migration.md section 3.
+#
+# BASE IMAGE: bullseye, not bookworm. Debian 12 (bookworm) has no openjdk-11 package
+# at all -- apt reports it is replaced by openjdk-17-jre-headless, and Hail 0.2.x /
+# Spark 3.5 support Java 8 or 11 ONLY. Debian 11 (bullseye) still ships
+# openjdk-11-jdk-headless. Do not "modernise" this base without checking `java -version`
+# inside the built image.
+#
+# EXTRAS: checked against [project.optional-dependencies] in pyproject.toml. This set
+# covers every unique package across all extras. `expression` is required or
+# `hvantk expression ...` has no scanpy. `ml` and `interactive` are deliberately
+# omitted as redundant: scikit-learn arrives via ancestry/psroc, plotly via viz.
+
+%files
+    pyproject.toml /opt/hvantk/pyproject.toml
+    poetry.lock    /opt/hvantk/poetry.lock
+    hvantk         /opt/hvantk/hvantk
+    README.md      /opt/hvantk/README.md
+
+%post
+    set -e
+    # --- Java 11 (Hail 0.2.137 / Spark 3.5 support Java 8 or 11 ONLY) + native libs ---
+    apt-get update && apt-get install -y --no-install-recommends \
+        openjdk-11-jdk-headless \
+        build-essential g++ \
+        zlib1g-dev libbz2-dev liblzma-dev libcurl4-openssl-dev libdeflate-dev \
+        libopenblas-dev liblapack-dev liblz4-dev libhdf5-dev git
+    # --- hvantk from the committed lock (reproducible; not unpinned pip install) ---
+    pip install --no-cache-dir "poetry>=2.0"
+    cd /opt/hvantk
+    poetry config virtualenvs.create false
+    poetry install --no-interaction --no-root \
+        --extras "hgc ptm ancestry psroc constraint enrichex cohort viz duckdb expression"
+    poetry install --no-interaction --only-root
+    apt-get purge -y build-essential g++ git && apt-get autoremove -y
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+    # fail the build here rather than shipping a broken image
+    java -version 2>&1 | head -1
+    python -c "import hail; print('hail', hail.__version__)"
+
+%environment
+    export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+    export PATH=$JAVA_HOME/bin:$PATH
+    export LC_ALL=C.UTF-8 LANG=C.UTF-8
+    export NO_PROXY=localhost,127.0.0.1,0.0.0.0,::1
+    export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
+
+%runscript
+    exec hvantk "$@"
+
+%labels
+    org hvantk
+    hail 0.2.137
+    pyspark 3.5.8
