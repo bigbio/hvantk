@@ -109,7 +109,9 @@ returns `(native_obj, Provenance)` zero-cost.
 
 Each data source ships as a self-contained plugin under `hvantk/skills/<plugin>/`,
 declared by a [`plugin.yaml`](hvantk/skills/clinvar/plugin.yaml) manifest naming its
-builder, drift probe, and downloader. The platform orchestrator
+builder and drift probe, plus an optional downloader for sources that permit an
+automated fetch — the ones behind a license gate or too large to mirror ship a
+documented acquisition procedure instead. The platform orchestrator
 [`run_builder_for_spec`](hvantk/core/plugin/run_builder.py) resolves the manifest,
 computes the source fingerprint, calls the builder, validates the returned artifact
 against the manifest's `artifact_type` and `schema_id`, and saves it alongside a
