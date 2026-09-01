@@ -4,15 +4,19 @@
 pulled by an extras install, breaking `import cptac`. The ptm extra must declare
 `sorted-nearest` explicitly.
 
-The docs half exists because the extras table is duplicated in THREE places -- the
-`[project.optional-dependencies]` table, README.md, and
-docs_site/getting-started/installation.md --
-and only the first is executable. Three separate hand-fixes to the two prose copies were
-needed in as many sessions, two of them caught only by adversarial review, and a fourth
-drift (psroc/ancestry/ml missing scipy, ptm missing sorted-nearest -- eight wrong cells)
-survived a release. A reader following a wrong table installs an environment that cannot run
-the command the table promises, which is exactly the failure `pip install hvantk[constraint]`
-produced. Deliberately non-Hail so it runs in the default suite.
+The docs half exists because the extras table is duplicated -- the
+`[project.optional-dependencies]` table and
+docs_site/getting-started/installation.md -- and only the first is executable. Three
+separate hand-fixes to the prose copies were needed in as many sessions, two of them
+caught only by adversarial review, and a fourth drift (psroc/ancestry/ml missing scipy,
+ptm missing sorted-nearest -- eight wrong cells) survived a release. A reader following a
+wrong table installs an environment that cannot run the command the table promises, which
+is exactly the failure `pip install hvantk[constraint]` produced.
+
+There were THREE copies until README.md's was replaced by a pointer to installation.md;
+that removal is why one prose table is now guarded rather than two. Keep it that way: a
+new copy of this table anywhere is a new thing to drift, and it belongs in this list if it
+is added. Deliberately non-Hail so it runs in the default suite.
 """
 from __future__ import annotations
 
@@ -22,11 +26,11 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-# (path, the column holding the dependency list). Both tables are markdown pipe tables whose
-# first column is the extra name in backticks; they differ in column order, so each doc names
-# its own header rather than assuming a position.
+# (path, the column holding the dependency list). The table is a markdown pipe table whose
+# first column is the extra name in backticks. Each doc names its own header rather than
+# assuming a position, so a second copy with a different column order can be added here
+# without touching the parser.
 DOC_TABLES = [
-    (ROOT / "README.md", "Pulls in"),
     (ROOT / "docs_site" / "getting-started" / "installation.md", "Pulls in"),
 ]
 
