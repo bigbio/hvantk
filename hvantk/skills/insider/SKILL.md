@@ -24,7 +24,10 @@ This skill is the **first interval-keyed skill** in hvantk. Conventions § 3 dec
 ## 2. Source identity
 
 - **Provider:** Yu lab (Cornell). Wei et al., *Nat Methods* 2017, PMID 29036289.
-- **Distribution:** http://interactomeinsider.yulab.org/downloads.html
+- **Distribution:** the download page carries no links in its markup, but both
+  products have stable, directly addressable paths. Per `_conventions` § 2 the
+  catalog owns them: see `catalog/datasets.json`, or run
+  `hvantk catalog show INSIDER_v1.0`. Both are what the drift probes pin.
 - **License:** Academic use (per the existing catalog entry).
 - **Catalog entry:** `INSIDER_v1.0` in `hvantk/resources/registry/genomics/datasets.json`. **Filename and metadata corrected in the same PR that adds this skill** — the prior entry listed `insider_interaction_sites.tsv` which is not a real INSIDER distribution product (see § 4 Gap 2).
 
@@ -115,6 +118,38 @@ Per `_conventions` § 9:
 - **schema_snapshot:** `hvantk/skills/insider/tests/snapshots/schema.json`. Records the `{interval, ppi_ids: array<str>}` shape.
 - **row_snapshot:** `hvantk/skills/insider/tests/snapshots/sample_rows.json`. Intervals are unique-in-table after the aggregation; test inlines 3 sample keys (per `_conventions` § 9 post-#101 rule — unique-key skills inline).
 - **test_command:** `pytest hvantk/skills/insider/tests -m hail`.
+- **drift_fingerprint:** `hvantk/skills/insider/tests/drift_fingerprint.json` for
+  `variants`, and `interfaces/tests/drift_fingerprint.json` for `interfaces` — **one
+  baseline per dataset, deliberately not shared.** The two products are versioned
+  independently upstream (the BED has not moved since 2018-03-05; the interfaces table
+  moved 2024-05-15), and a shared probe/baseline had three consequences: the drift bot
+  writes a ledger row only for a group's anchor dataset, so an interfaces-only change
+  could never be reported against the dataset that needed rebuilding; a transient fault
+  on the BED aborted the probe before the interfaces file was reached, masking real
+  drift; and each artifact's provenance covered the other dataset's file. Fetch
+  mechanics are shared in `shared/http_probe.py`; the fingerprints are not.
+
+  Each probe HEADs its own file (§ 2) and compares **Content-Length and the ETag**,
+  both under `headers`; no body is transferred. Two details are load-bearing:
+
+  - The ETag is *not* redundant with Content-Length. The live values decode as
+    `hex(size)-hex(mtime)` — `0x2f752a5` is exactly the interfaces file's 49,762,981
+    bytes — so it moves on size *or* mtime, while Content-Length moves only on size.
+    Demoting it would make every equal-size edit (a swapped accession, a corrected
+    residue index) undetectable. The hgnc precedent for demoting validators does not
+    transfer: hgnc republishes byte-identical content weekly, whereas these are static
+    archives, so the no-op-PR risk is near-nil. `Last-Modified` stays in
+    `informational`.
+  - The signals sit under `headers`, not `extras`, because `drift_to_pr.classify_risk`
+    treats a diff as "routine" unless `headers` or `checksums` moved. With both empty,
+    a re-release that changed the `track name=` format — the case § 8 says breaks the
+    parser — would be batched under a PR body stating the schema signal was unchanged.
+
+  The probes request `Accept-Encoding: identity` and reject a non-identity response:
+  the server gzips `text/plain` on the fly, and a compressed reply omits
+  `Content-Length` entirely while appending `-gzip` to the ETag. Note the portal
+  serves **no HTTPS listener**, so these are cleartext requests; comparing two
+  independent validators rather than one is a mitigation, not a fix.
 
 Round-trip test (`hvantk/skills/insider/tests/test_builder.py`, via `phase_b_snapshot_adapter(build_insider_interactome, "insider:variants")`) asserts: checkpointed schema matches `schema.json`; deterministic sample-row slice matches `sample_rows.json`. The test exercises the `hl.tinterval` handling in `_snapshot_utils` (added in PR #105) — if that branch breaks, this test breaks.
 

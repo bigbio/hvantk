@@ -43,7 +43,7 @@ datasets:
       module: hvantk.skills.insider.interfaces.builder
       function: build_insider_interfaces
     drift_probe:
-      module: hvantk.skills.insider.drift_probe
+      module: hvantk.skills.insider.interfaces.drift_probe
       function: fetch_fingerprint
     skill: SKILL.md
     tests:
@@ -51,4 +51,4 @@ datasets:
       fixture: interfaces/tests/testdata/raw/interfaces
       schema_snapshot: interfaces/tests/snapshots/schema.json
       row_snapshot: interfaces/tests/snapshots/sample_rows.json
-      drift_fingerprint: tests/drift_fingerprint.json
+      drift_fingerprint: interfaces/tests/drift_fingerprint.json
