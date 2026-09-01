@@ -1,0 +1,14 @@
+{
+  "probe_version": 2,
+  "source_version": "v104",
+  "headers": {
+    "cosmic-release-index": [
+      "v101",
+      "v102",
+      "v103",
+      "v104"
+    ]
+  },
+  "checksums": {},
+  "fetched_at": "2026-09-01T07:32:18.934283+00:00"
+}

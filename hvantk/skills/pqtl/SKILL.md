@@ -33,7 +33,13 @@ Fang allpairs inline via `hl.import_table`, parses GTEx variant IDs with
 `parse_gtex_variant_id` from `hvantk/core/utils/qtl_helpers.py`, derives SE as
 `|BETA / STAT|` (Fang files lack an SE column), and maps gene symbols to
 Ensembl gene IDs through a `GeneCatalogStreamer` (base class in
-`hvantk/core/streamers/gene_catalog.py`). The drift probe is a stub. The
+`hvantk/core/streamers/gene_catalog.py`). The drift probe checks the upstream
+preprint's version metadata through medRxiv's public JSON API -- for a
+publication-only source the publication *is* the upstream.
+
+**What it detects:** a new preprint version, or the preprint being published in a
+journal. **What it cannot detect:** an in-place replacement of a supplementary file
+under an unchanged version. The
 downloader is not implemented.
 
 ## Schema
@@ -52,5 +58,6 @@ contains a registration-only test (`test_pqtl_metrics_registered`) and a skipped
 round-trip test (`test_pqtl_metrics_round_trip`). The `tests:` block in
 `plugin.yaml` declares plugin-relative fixture/snapshot paths
 (`tests/testdata/raw/pqtl`, `tests/snapshots/schema.json`,
-`tests/snapshots/sample_rows.json`, `tests/drift_fingerprint.json`) that are
-not yet populated.
+`tests/snapshots/sample_rows.json`). Those remain unpopulated -- the statistics are
+publication supplementary material with no redistributable fixture. The drift
+fingerprint (`tests/drift_fingerprint.json`) IS populated, from a live probe run.

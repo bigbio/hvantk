@@ -51,7 +51,21 @@ column with no entry is simply unknown, which is the safe default.
 
 ## Notes
 
-The drift probe (`drift_probe.fetch_fingerprint`) is a stub; a real probe
+The drift probe (`drift_probe.fetch_fingerprint`) scrapes the release list the
+upstream landing page advertises.
+
+**What it detects:** a new dbNSFP release being advertised. **What it cannot detect:**
+an in-place change to an archive's contents, or the download links being repaired --
+the markup names the same archives either way. It deliberately never hashes the page
+body: Google Sites re-renders per request (352,830 vs 352,716 bytes on two consecutive
+fetches), so hashing it would flag drift on every run.
+
+> **The documented download path is broken.** Every `dbNSFP*.zip` the landing page links
+> returns 404 -- the S3 bucket answers `NoSuchBucket` -- and the `database.liulab.science`
+> mirror does not resolve. Tracked as issue #321. Acquisition currently has no working
+> public route.
+
+A real downloader
 should be implemented in a follow-up. No downloader is wired in
 `plugin.yaml` lifecycle yet; upstream files are expected to be externally
 materialized for now.
