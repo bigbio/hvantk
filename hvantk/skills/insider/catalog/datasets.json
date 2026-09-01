@@ -5,7 +5,7 @@
     "description": "Interactome Insider (Wei et al., Nat Methods 2017). Predicted (ECLAIR), structural (PDB), and homology-derived (I3D) protein-protein interaction interface residues. Distributed as two complementary products: (1) Whole_Human_Interactome_Interface_hg38.bed \u2014 UCSC-style BED with 208,448 named PPI tracks projecting interface residues onto GRCh38 coordinates (this file path), and (2) H_sapiens_interfacesALL.txt \u2014 per protein-pair residue arrays with Source provenance (a separately-onboardable product, not in this catalog entry). Built by a custom track-aware BED parser plus hl.import_table into an interval-keyed Hail Table that preserves PPI IDs from track names; see hvantk/skills/insider/SKILL.md. Used for variant-interval intersection (does a variant fall in any predicted PPI interface?).",
     "pubmedid": "29036289",
     "data_source": "INSIDER",
-    "last_updated": "2025-09-23T16:30:00.000000",
+    "last_updated": "2026-09-01T00:00:00.000000",
     "update_frequency": "irregular",
     "organism": "Homo sapiens",
     "tissue_type": "all",
@@ -30,6 +30,13 @@
         "size_bytes": 1171848841,
         "url": "http://interactomeinsider.yulab.org/bed/all.bed",
         "description": "UCSC-style BED with 208,448 'track name=<P1>_ppi_<P2>' headers; 18.6M data rows representing per-residue genomic intervals (typically 1-3 bp) for predicted/experimental protein-protein interface positions. >1 GB; manual acquisition per CLAUDE.md downloader strategy. The track-aware INSIDER builder preserves track-name metadata as PPI IDs during import."
+      },
+      {
+        "path": "H_sapiens_interfacesALL.txt",
+        "format": "tsv",
+        "size_bytes": 49762981,
+        "url": "http://interactomeinsider.yulab.org/downloads/interfacesALL/H_sapiens_interfacesALL.txt",
+        "description": "Per-protein-pair interface residue arrays with Source provenance (ECLAIR predicted / PDB / I3D homology). Backs `insider:interfaces`; protein-keyed rather than genomic, so no coordinate join is needed. Direct path: the downloads page carries no links in its markup."
       }
     ]
   }

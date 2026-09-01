@@ -37,6 +37,13 @@ PROBE_STATUS_STUB = "stub"
 # than a fake ``sha256:...`` hash, so provenance never implies a real probe ran.
 STUB_FINGERPRINT_TOKEN = "stub:no-programmatic-source"
 
+# Honest provenance token recorded by ``run_builder`` when the drift probe could
+# not reach its source. A build must not be lost because provenance metadata was
+# unobtainable -- the manual-acquisition plugins are built from staged files on
+# nodes that may have no egress at all -- but the record must never imply a probe
+# succeeded. Self-describing for the same reason as STUB_FINGERPRINT_TOKEN.
+PROBE_UNAVAILABLE_TOKEN = "probe-unavailable:source-unreachable"
+
 # Value a hand-seeded ``drift_fingerprint.json`` carries where a real checksum
 # belongs. A baseline holding it was written by hand, never captured from a live
 # probe, so it cannot equal any observed fingerprint.
@@ -104,6 +111,40 @@ def stub_fingerprint(reason: str) -> dict:
         "reason": reason,
         "fingerprint": STUB_FINGERPRINT_TOKEN,
     }
+
+
+def normalize_etag(value: str | None) -> str | None:
+    """Reduce an ``ETag`` header to its bare entity-tag, or None if it carries none.
+
+    ``str.strip('"')`` is wrong here and was shipped once: it strips a character
+    *set* from both ends, so ``W/"abc"`` becomes ``W/"abc`` (the leading ``W``
+    blocks the left strip) and ``"abc"-gzip`` becomes ``abc"-gzip``. Both then get
+    recorded as a content signal, and because the drift bot regenerates drifted
+    baselines automatically, one such value bakes in permanently.
+
+    Handles the three forms RFC 7232 and real servers produce: a strong tag
+    ``"abc"``, a weak tag ``W/"abc"``, and a transform-suffixed tag ``"abc"-gzip``
+    (mod_deflate appends this when it compresses). Weak and suffixed forms reduce
+    to the same tag as the strong form, so a validator that flips between them on
+    a byte-identical object no longer reads as drift.
+
+    Returns None for a missing, blank, or empty-quoted (``""``) tag, so callers can
+    fail closed on "no content signal" rather than recording an empty digest --
+    which ``placeholder_baseline_reason`` would later flag as a hand-seeded
+    baseline, trapping the dataset in a probe_failed loop.
+    """
+    if value is None:
+        return None
+    tag = value.strip()
+    if tag[:2].upper() == "W/":
+        tag = tag[2:]
+    # Drop a transform suffix appended after the closing quote.
+    if tag.startswith('"'):
+        closing = tag.find('"', 1)
+        if closing != -1:
+            tag = tag[: closing + 1]
+    tag = tag.strip('"').strip()
+    return tag or None
 
 
 class Builder(Protocol):
