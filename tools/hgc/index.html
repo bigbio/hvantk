@@ -1,0 +1,3820 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Hail-based toolkit for multi-omics variant annotation and analysis">
+      
+      
+      
+        <link rel="canonical" href="https://bigbio.github.io/hvantk/tools/hgc/">
+      
+      
+        <link rel="prev" href="../../guide/hpc-migration/">
+      
+      
+        <link rel="next" href="../enrichex/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>HGC - Joint Genotyping - hvantk</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#hgc-hail-based-genotype-combiner" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="hvantk" class="md-header__button md-logo" aria-label="hvantk" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            hvantk
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              HGC - Joint Genotyping
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/bigbio/hvantk" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    bigbio/hvantk
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="hvantk" class="md-nav__button md-logo" aria-label="hvantk" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    hvantk
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/bigbio/hvantk" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    bigbio/hvantk
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building Tables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/data-sources/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/hpc-migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HPC Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tools
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tools
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HGC - Joint Genotyping
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HGC - Joint Genotyping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#primary-functionality" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Primary Functionality
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#additional-functionality-quality-control-visualization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Additional Functionality: Quality Control &amp; Visualization
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Features
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Key Features">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pipeline-orchestration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline Orchestration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#core-joint-genotyping-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Joint Genotyping Features
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quality-control-features-post-combination" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quality Control Features (Post-Combination)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#interface-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interface Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Start
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Quick Start">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#command-line-interface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command-Line Interface
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Command-Line Interface">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#end-to-end-pipeline-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        End-to-End Pipeline (Recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tuning-combiner-parallelism-import-interval-size" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tuning combiner parallelism (--import-interval-size)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#individual-component-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Individual Component Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#python-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python API
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Python API">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-joint-genotyping-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Joint Genotyping Functions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quality-control-functions-post-combination" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quality Control Functions (Post-Combination)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pipeline-orchestration-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline Orchestration (Recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#core-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Components
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core Components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-pipeline-hvantkalgorithmshgcpipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Pipeline (hvantk.algorithms.hgc.pipeline)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-combiners-hvantkalgorithmshgccombiners" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Combiners (hvantk.algorithms.hgc.combiners)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-converters-hvantkalgorithmshgcconverters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Converters (hvantk.algorithms.hgc.converters)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-file-utilities-hvantkalgorithmshgcfile_utils" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. File Utilities (hvantk.algorithms.hgc.file_utils)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#detailed-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Detailed Usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Detailed Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#gvcf-combination" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GVCF Combination
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vds-combination" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VDS Combination
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vds-to-matrixtable-conversion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VDS to MatrixTable Conversion
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="VDS to MatrixTable Conversion">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-densify-runs-exactly-once" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The densify runs exactly once
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#matrixtable-to-vcf-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MatrixTable to VCF Export
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pipeline-orchestration_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline Orchestration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Pipeline Orchestration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#overview_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#basic-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic Usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-features_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Features
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#common-workflows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Workflows
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Common Workflows">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-standard-pipeline-with-qc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Standard Pipeline with QC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-resume-from-existing-vds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Resume from Existing VDS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-qc-only-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. QC-Only Analysis
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-resume-after-error" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Resume After Error
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#output-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#python-api_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python API
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#performance-tips" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Tips
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-formats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Formats
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Data Formats">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#gvcf-genomic-vcf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GVCF (Genomic VCF)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vds-variant-dataset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VDS (Variant DataSet)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#matrixtable-mt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MatrixTable (MT)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vcf-variant-call-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VCF (Variant Call Format)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Considerations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance Considerations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#memory-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Memory Requirements
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#storage-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Storage Requirements
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optimization-tips" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optimization Tips
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Options
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Common Options">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#interval-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interval Selection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reference-genomes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference Genomes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#common-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Issues
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-1-incremental-cohort-building" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example 1: Incremental Cohort Building
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-3-custom-quality-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example 3: Custom Quality Filtering
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        API Reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="API Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#main-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Main Functions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#utility-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Utility Functions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#advanced-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advanced Functions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#constants" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Constants
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../enrichex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EnrichEx - Enrichment Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../psroc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PS-ROC - Score Evaluation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ancestry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ancestry Inference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ptm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM - Variant Classification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ptm-constraint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM Constraint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../qtlcascade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QTL Cascade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Examples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/hgc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HGC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/enrichex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EnrichEx
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/psroc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PS-ROC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/ancestry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ancestry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/clinvar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ClinVar Streaming
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/clingen/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ClinGen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/qtlcascade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QTL Cascade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/ptm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#primary-functionality" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Primary Functionality
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#additional-functionality-quality-control-visualization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Additional Functionality: Quality Control &amp; Visualization
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Features
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Key Features">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pipeline-orchestration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline Orchestration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#core-joint-genotyping-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Joint Genotyping Features
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quality-control-features-post-combination" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quality Control Features (Post-Combination)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#interface-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interface Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Start
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Quick Start">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#command-line-interface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command-Line Interface
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Command-Line Interface">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#end-to-end-pipeline-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        End-to-End Pipeline (Recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tuning-combiner-parallelism-import-interval-size" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tuning combiner parallelism (--import-interval-size)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#individual-component-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Individual Component Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#python-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python API
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Python API">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-joint-genotyping-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Joint Genotyping Functions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quality-control-functions-post-combination" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quality Control Functions (Post-Combination)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pipeline-orchestration-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline Orchestration (Recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#core-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Components
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core Components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-pipeline-hvantkalgorithmshgcpipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Pipeline (hvantk.algorithms.hgc.pipeline)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-combiners-hvantkalgorithmshgccombiners" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Combiners (hvantk.algorithms.hgc.combiners)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-converters-hvantkalgorithmshgcconverters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Converters (hvantk.algorithms.hgc.converters)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-file-utilities-hvantkalgorithmshgcfile_utils" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. File Utilities (hvantk.algorithms.hgc.file_utils)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#detailed-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Detailed Usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Detailed Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#gvcf-combination" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GVCF Combination
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vds-combination" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VDS Combination
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vds-to-matrixtable-conversion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VDS to MatrixTable Conversion
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="VDS to MatrixTable Conversion">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-densify-runs-exactly-once" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The densify runs exactly once
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#matrixtable-to-vcf-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MatrixTable to VCF Export
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pipeline-orchestration_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline Orchestration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Pipeline Orchestration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#overview_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#basic-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic Usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-features_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Features
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#common-workflows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Workflows
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Common Workflows">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-standard-pipeline-with-qc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Standard Pipeline with QC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-resume-from-existing-vds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Resume from Existing VDS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-qc-only-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. QC-Only Analysis
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-resume-after-error" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Resume After Error
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#output-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#python-api_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python API
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#performance-tips" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Tips
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-formats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Formats
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Data Formats">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#gvcf-genomic-vcf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GVCF (Genomic VCF)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vds-variant-dataset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VDS (Variant DataSet)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#matrixtable-mt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MatrixTable (MT)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vcf-variant-call-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VCF (Variant Call Format)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Considerations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance Considerations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#memory-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Memory Requirements
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#storage-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Storage Requirements
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optimization-tips" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optimization Tips
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Options
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Common Options">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#interval-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interval Selection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reference-genomes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference Genomes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#common-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Issues
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-1-incremental-cohort-building" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example 1: Incremental Cohort Building
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-3-custom-quality-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example 3: Custom Quality Filtering
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        API Reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="API Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#main-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Main Functions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#utility-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Utility Functions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#advanced-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advanced Functions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#constants" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Constants
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="hgc-hail-based-genotype-combiner">HGC: Hail-based Genotype Combiner<a class="headerlink" href="#hgc-hail-based-genotype-combiner" title="Permanent link">&para;</a></h1>
+<p>HGC is a module within hvantk that provides high-performance tools for joint genotyping workflows using <a href="https://hail.is/">Hail</a>. It enables efficient combination of genomic variant call format (GVCF) files, conversion between different Hail data formats (VDS, MatrixTable), and export to standard VCF format.</p>
+<p><img alt="HGC workflow" src="../../images/hvantk-hgc-workflow.svg" /></p>
+<p><strong>Figure 1.</strong> <em>HGC joint genotyping pipeline — from GVCF combination through format conversion, quality control, and validated VCF export.</em></p>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>The HGC module implements a complete joint genotyping pipeline with integrated quality control:</p>
+<h3 id="primary-functionality">Primary Functionality<a class="headerlink" href="#primary-functionality" title="Permanent link">&para;</a></h3>
+<p><strong>Pipeline Orchestration</strong> (Recommended)
+- <strong>End-to-End Automation</strong> - Single command runs gVCF → VDS → MT → QC → pVCF workflow
+- <strong>Flexible Resumption</strong> - Skip completed stages to resume from any point
+- <strong>Integrated QC</strong> - Optional quality filtering and HTML report generation
+- <strong>State Persistence</strong> - Automatic checkpointing for error recovery</p>
+<p><strong>Individual Component Commands</strong> (Advanced)</p>
+<ol>
+<li><strong>GVCF Combination</strong> - Combine multiple single-sample GVCF files into a unified Variant DataSet (VDS)</li>
+<li><strong>VDS Operations</strong> - Merge multiple VDS datasets and convert between formats</li>
+<li><strong>MatrixTable Processing</strong> - Convert VDS to analysis-ready MatrixTable format</li>
+<li><strong>VCF Export</strong> - Export processed data back to standard VCF format</li>
+</ol>
+<h3 id="additional-functionality-quality-control-visualization">Additional Functionality: Quality Control &amp; Visualization<a class="headerlink" href="#additional-functionality-quality-control-visualization" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>QC Metrics Computation</strong> - Comprehensive sample and variant quality assessment on combined cohorts</li>
+<li><strong>QC Table Export</strong> - Sample and variant QC metrics as pandas DataFrames, ready to plot with matplotlib or any plotting library</li>
+<li><strong>QC Reports</strong> - Professional HTML reports with embedded plots and recommendations</li>
+<li><strong>QC-based Filtering</strong> - Quality-based sample and variant filtering tools</li>
+</ol>
+<h2 id="key-features">Key Features<a class="headerlink" href="#key-features" title="Permanent link">&para;</a></h2>
+<h3 id="pipeline-orchestration">Pipeline Orchestration<a class="headerlink" href="#pipeline-orchestration" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Single-Command Workflows</strong>: Run complete gVCF → pVCF pipeline with one command</li>
+<li><strong>Smart Resumption</strong>: Skip completed stages to recover from errors or resume processing</li>
+<li><strong>Integrated QC</strong>: Built-in quality filtering and HTML report generation</li>
+<li><strong>State Management</strong>: Automatic checkpointing with JSON state files</li>
+<li><strong>Dry-Run Mode</strong>: Preview execution plan before running</li>
+</ul>
+<h3 id="core-joint-genotyping-features">Core Joint Genotyping Features<a class="headerlink" href="#core-joint-genotyping-features" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Scalable Joint Genotyping</strong>: Efficiently combine thousands of GVCF files using Hail's optimized combiner</li>
+<li><strong>Flexible Data Formats</strong>: Work with VDS (storage-optimized) and MatrixTable (analysis-optimized) formats</li>
+<li><strong>Multi-allelic Handling</strong>: Automatic splitting and normalization of multi-allelic variants</li>
+<li><strong>Genotype Annotation</strong>: Built-in support for adjusted genotype annotations</li>
+</ul>
+<h3 id="quality-control-features-post-combination">Quality Control Features (Post-Combination)<a class="headerlink" href="#quality-control-features-post-combination" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Comprehensive QC Metrics</strong>: Sample and variant-level quality assessment for combined cohorts</li>
+<li><strong>Exported QC Tables</strong>: <code>get_sample_metrics_df()</code> / <code>get_variant_metrics_df()</code> return pandas DataFrames you can plot directly with matplotlib</li>
+<li><strong>Professional Reports</strong>: HTML reports with embedded plots, metrics, and recommendations</li>
+<li><strong>Quality-based Filtering</strong>: Threshold-based sample and variant filtering tools</li>
+</ul>
+<h3 id="interface-options">Interface Options<a class="headerlink" href="#interface-options" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>CLI and Python API</strong>: Use via command-line interface or directly in Python scripts</li>
+</ul>
+<h2 id="quick-start">Quick Start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
+<h3 id="command-line-interface">Command-Line Interface<a class="headerlink" href="#command-line-interface" title="Permanent link">&para;</a></h3>
+<h4 id="end-to-end-pipeline-recommended">End-to-End Pipeline (Recommended)<a class="headerlink" href="#end-to-end-pipeline-recommended" title="Permanent link">&para;</a></h4>
+<p>For most users, the <strong>pipeline command</strong> provides the easiest way to run the complete workflow:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Run complete pipeline: gVCF → VDS → MT → QC → VCF</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>pipeline<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span>-i<span class="w"> </span>/path/to/gvcfs<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span>-o<span class="w"> </span>/path/to/output
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="c1"># With QC filtering and HTML report</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>pipeline<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">  </span>-i<span class="w"> </span>/path/to/gvcfs<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">  </span>-o<span class="w"> </span>/path/to/output<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">  </span>--apply-qc-filters<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">  </span>--min-sample-call-rate<span class="w"> </span><span class="m">0</span>.95<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">  </span>--generate-qc-report
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="c1"># View execution plan without running</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>pipeline<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">  </span>-i<span class="w"> </span>/path/to/gvcfs<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w">  </span>-o<span class="w"> </span>/path/to/output<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="w">  </span>--dry-run
+</code></pre></div>
+<p>See <a href="#pipeline-orchestration">Pipeline Orchestration</a> for detailed documentation.</p>
+<h4 id="tuning-combiner-parallelism-import-interval-size">Tuning combiner parallelism (<code>--import-interval-size</code>)<a class="headerlink" href="#tuning-combiner-parallelism-import-interval-size" title="Permanent link">&para;</a></h4>
+<p>Hail's gVCF combiner partitions the import by <strong>even genomic intervals</strong>, and derives
+<strong>one partition per interval</strong>. The interval size therefore sets a <em>ceiling</em> on how many
+cores can do useful work in the combine stage — the stage that dominates joint-genotyping
+runtime.</p>
+<p>The default is Hail's genome default of <strong>1.2 Mb</strong>, which is sized for whole-genome gVCFs.
+For a <strong>region-restricted</strong> run (a single chromosome, an exome, a gene panel) it can
+produce far fewer partitions than you have cores, leaving most of them idle:</p>
+<table>
+<thead>
+<tr>
+<th>Input region</th>
+<th>Partitions at the 1.2 Mb default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>chr20 (64.4 Mb)</td>
+<td>54</td>
+</tr>
+<tr>
+<td>chr1 (249.0 Mb)</td>
+<td>208</td>
+</tr>
+<tr>
+<td>whole genome (3.1 Gb)</td>
+<td>~2,584</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Rule of thumb: keep partitions at roughly 2–4× your total core count.</strong> If you run
+chr20 on 128 cores with the default, ~74 cores have nothing to do — which looks like
+"the tool doesn't scale" but is purely a partitioning artefact.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># chr1 on a 128-core cluster: 600 kb -&gt; 415 partitions (~3x cores)</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>gvcf-combine<span class="w"> </span>-g<span class="w"> </span>/path/to/chr1_gvcfs<span class="w"> </span>-o<span class="w"> </span>cohort.vds<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span>--import-interval-size<span class="w"> </span><span class="m">600000</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="c1"># The same knob on the recommended end-to-end pipeline</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>pipeline<span class="w"> </span>-i<span class="w"> </span>/path/to/chr1_gvcfs<span class="w"> </span>-o<span class="w"> </span>/path/to/out<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">    </span>--import-interval-size<span class="w"> </span><span class="m">600000</span>
+</code></pre></div>
+<p>Related tuning options (available on both <code>gvcf-combine</code> and <code>pipeline</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Meaning</th>
+<th>Hail default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--import-interval-size</code></td>
+<td>Interval size (bp); <strong>one partition per interval</strong></td>
+<td>1.2 Mb (genome)</td>
+</tr>
+<tr>
+<td><code>--use-exome-default-intervals</code></td>
+<td>Use Hail's exome interval size</td>
+<td>60 Mb</td>
+</tr>
+<tr>
+<td><code>--gvcf-batch-size</code></td>
+<td>gVCFs merged per tree-merge batch</td>
+<td>50</td>
+</tr>
+<tr>
+<td><code>--branch-factor</code></td>
+<td>Branch factor of the hierarchical merge</td>
+<td>100</td>
+</tr>
+</tbody>
+</table>
+<p><code>--import-interval-size</code> and <code>--use-exome-default-intervals</code> are mutually exclusive.</p>
+<h4 id="individual-component-commands">Individual Component Commands<a class="headerlink" href="#individual-component-commands" title="Permanent link">&para;</a></h4>
+<p>For advanced users who need fine-grained control, HGC provides individual commands:</p>
+<p><strong>Core Joint Genotyping Commands:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># View available commands</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>--help
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># Combine GVCF files</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>gvcf-combine<span class="w"> </span>-g<span class="w"> </span>/path/to/gvcfs<span class="w"> </span>-o<span class="w"> </span>combined.vds
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1"># Combine VDS datasets</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>vds-combine<span class="w"> </span>-i<span class="w"> </span>/path/to/vds_dir<span class="w"> </span>-o<span class="w"> </span>merged.vds
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="c1"># Convert VDS to MatrixTable</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>vds2mt<span class="w"> </span>-i<span class="w"> </span>combined.vds<span class="w"> </span>-o<span class="w"> </span>analysis.mt
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="c1"># Export MatrixTable to VCF</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>mt2vcf<span class="w"> </span>-i<span class="w"> </span>analysis.mt<span class="w"> </span>-o<span class="w"> </span>results.vcf.gz
+</code></pre></div>
+<p><strong>Quality Control Commands (Post-Combination):</strong></p>
+<p>Additional QC commands for analyzing combined cohorts:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># Compute QC metrics for combined cohort</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>compute-qc<span class="w"> </span>-i<span class="w"> </span>analysis.mt<span class="w"> </span>-o<span class="w"> </span>analysis_qc.mt
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># Generate comprehensive QC report</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>qc-report<span class="w"> </span>-i<span class="w"> </span>analysis_qc.mt<span class="w"> </span>-o<span class="w"> </span>qc_report.html
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="c1"># Filter based on QC metrics</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>filter-qc<span class="w"> </span>-i<span class="w"> </span>analysis_qc.mt<span class="w"> </span>-o<span class="w"> </span>filtered.mt<span class="w"> </span>--min-sample-call-rate<span class="w"> </span><span class="m">0</span>.95
+</code></pre></div>
+<p>Standalone QC plotting/dashboard CLI support has been retired. <code>qc-report</code> produces
+a self-contained HTML report with embedded plots; for ad hoc or custom plots, export
+the QC metrics to a DataFrame in Python and plot with matplotlib directly (see
+<a href="#quality-control-functions-post-combination">Quality Control Functions</a> below).</p>
+<h3 id="python-api">Python API<a class="headerlink" href="#python-api" title="Permanent link">&para;</a></h3>
+<h4 id="core-joint-genotyping-functions">Core Joint Genotyping Functions<a class="headerlink" href="#core-joint-genotyping-functions" title="Permanent link">&para;</a></h4>
+<p>Use HGC functions directly in Python:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.hgc</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    <span class="n">combine_gvcfs</span><span class="p">,</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    <span class="n">combine_vdses</span><span class="p">,</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="n">convert_vds_to_mt</span><span class="p">,</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="n">convert_mt_to_multi_sample_vcf</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="p">)</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="c1"># Combine GVCF files into VDS</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="n">combine_gvcfs</span><span class="p">(</span>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    <span class="n">gvcf_dir</span><span class="o">=</span><span class="s2">"/path/to/gvcfs"</span><span class="p">,</span>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>    <span class="n">vds_output_path</span><span class="o">=</span><span class="s2">"output.vds"</span><span class="p">,</span>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>    <span class="n">tmp_path</span><span class="o">=</span><span class="s2">"/tmp/hail"</span><span class="p">,</span>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>    <span class="n">save_path</span><span class="o">=</span><span class="s2">"combiner_plan.json"</span><span class="p">,</span>
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>    <span class="n">vdses</span><span class="o">=</span><span class="p">[],</span>
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>    <span class="n">kwargs</span><span class="o">=</span><span class="p">{}</span>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="p">)</span>
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a><span class="c1"># Convert VDS to MatrixTable</span>
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a><span class="n">convert_vds_to_mt</span><span class="p">(</span>
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>    <span class="n">vds_path</span><span class="o">=</span><span class="s2">"output.vds"</span><span class="p">,</span>
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>    <span class="n">output_path</span><span class="o">=</span><span class="s2">"analysis.mt"</span><span class="p">,</span>
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>    <span class="n">adjust_genotypes</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>    <span class="n">skip_split_multi</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>    <span class="n">skip_validation</span><span class="o">=</span><span class="kc">False</span>
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a><span class="p">)</span>
+</code></pre></div>
+<h4 id="quality-control-functions-post-combination">Quality Control Functions (Post-Combination)<a class="headerlink" href="#quality-control-functions-post-combination" title="Permanent link">&para;</a></h4>
+<p>Additional QC functionality for combined cohorts:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.hgc</span><span class="w"> </span><span class="kn">import</span> <span class="n">compute_full_qc</span><span class="p">,</span> <span class="n">filter_samples_by_qc</span><span class="p">,</span> <span class="n">filter_variants_by_qc</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="c1"># Load combined MatrixTable</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="kn">import</span><span class="w"> </span><span class="nn">hail</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">hl</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="n">mt</span> <span class="o">=</span> <span class="n">hl</span><span class="o">.</span><span class="n">read_matrix_table</span><span class="p">(</span><span class="s2">"analysis.mt"</span><span class="p">)</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="c1"># Compute comprehensive QC metrics</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="n">qc_results</span> <span class="o">=</span> <span class="n">compute_full_qc</span><span class="p">(</span><span class="n">mt</span><span class="p">)</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="c1"># Generate a self-contained HTML report (recommended for a full overview)</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="n">qc_results</span><span class="o">.</span><span class="n">generate_html_report</span><span class="p">(</span><span class="s1">'qc_report.html'</span><span class="p">)</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="c1"># Or plot directly from the exported QC tables with matplotlib</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="n">sample_df</span> <span class="o">=</span> <span class="n">qc_results</span><span class="o">.</span><span class="n">get_sample_metrics_df</span><span class="p">()</span>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="n">ax</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">sample_df</span><span class="p">[</span><span class="s2">"sample_qc.call_rate"</span><span class="p">],</span> <span class="n">bins</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a><span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="mf">0.85</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">"red"</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s2">"--"</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"min call rate"</span><span class="p">)</span>
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a><span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">"Sample call rate"</span><span class="p">)</span>
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a><span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a><span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s2">"call_rate.png"</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s2">"tight"</span><span class="p">)</span>
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a><span class="c1"># Apply quality filters</span>
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a><span class="n">mt_filtered</span> <span class="o">=</span> <span class="n">filter_samples_by_qc</span><span class="p">(</span>
+<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>    <span class="n">qc_results</span><span class="o">.</span><span class="n">mt</span><span class="p">,</span>
+<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a>    <span class="n">min_call_rate</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span>
+<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a>    <span class="n">min_ti_tv_ratio</span><span class="o">=</span><span class="mf">1.8</span>
+<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a><span class="p">)</span>
+<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a>
+<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a><span class="n">mt_filtered</span> <span class="o">=</span> <span class="n">filter_variants_by_qc</span><span class="p">(</span>
+<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a>    <span class="n">mt_filtered</span><span class="p">,</span>
+<a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a>    <span class="n">min_call_rate</span><span class="o">=</span><span class="mf">0.90</span><span class="p">,</span>
+<a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a>    <span class="n">min_hwe_pvalue</span><span class="o">=</span><span class="mf">1e-6</span>
+<a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a><span class="p">)</span>
+</code></pre></div>
+<h4 id="pipeline-orchestration-recommended">Pipeline Orchestration (Recommended)<a class="headerlink" href="#pipeline-orchestration-recommended" title="Permanent link">&para;</a></h4>
+<p>For end-to-end workflows, use the Pipeline API:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.hgc.pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">PipelineConfig</span><span class="p">,</span> <span class="n">PipelineRunner</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="c1"># Create configuration</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="n">config</span> <span class="o">=</span> <span class="n">PipelineConfig</span><span class="p">(</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="n">input_dir</span><span class="o">=</span><span class="s2">"/data/gvcfs"</span><span class="p">,</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    <span class="n">output_dir</span><span class="o">=</span><span class="s2">"/data/output"</span><span class="p">,</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>    <span class="n">apply_qc_filters</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    <span class="n">min_sample_call_rate</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>    <span class="n">generate_qc_report</span><span class="o">=</span><span class="kc">True</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="p">)</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="c1"># Run pipeline</span>
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="n">runner</span> <span class="o">=</span> <span class="n">PipelineRunner</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="n">runner</span><span class="o">.</span><span class="n">show_plan</span><span class="p">()</span>  <span class="c1"># Optional: preview execution</span>
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a><span class="n">state</span> <span class="o">=</span> <span class="n">runner</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a><span class="c1"># Check results</span>
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Outputs: </span><span class="si">{</span><span class="n">state</span><span class="o">.</span><span class="n">outputs</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</code></pre></div>
+<p>See <a href="#pipeline-orchestration">Pipeline Orchestration</a> for detailed documentation.</p>
+<h2 id="core-components">Core Components<a class="headerlink" href="#core-components" title="Permanent link">&para;</a></h2>
+<h3 id="1-pipeline-hvantkalgorithmshgcpipeline">1. Pipeline (<code>hvantk.algorithms.hgc.pipeline</code>)<a class="headerlink" href="#1-pipeline-hvantkalgorithmshgcpipeline" title="Permanent link">&para;</a></h3>
+<p><strong>Recommended</strong> - End-to-end workflow orchestration:</p>
+<ul>
+<li><strong><code>PipelineConfig</code></strong> - Configuration dataclass with validation</li>
+<li><strong><code>PipelineRunner</code></strong> - Orchestration engine with dry-run support</li>
+<li><strong><code>PipelineState</code></strong> - State tracking with JSON save/load</li>
+<li><strong><code>PipelineStage</code></strong> - Enum of pipeline stages</li>
+</ul>
+<p>See <a href="#pipeline-orchestration">Pipeline Orchestration</a> for detailed usage.</p>
+<h3 id="2-combiners-hvantkalgorithmshgccombiners">2. Combiners (<code>hvantk.algorithms.hgc.combiners</code>)<a class="headerlink" href="#2-combiners-hvantkalgorithmshgccombiners" title="Permanent link">&para;</a></h3>
+<p>Functions for combining genomic datasets:</p>
+<ul>
+<li><strong><code>combine_gvcfs()</code></strong> - Combine GVCF files and/or existing VDS datasets into a new VDS</li>
+<li><strong><code>combine_vdses()</code></strong> - Merge multiple VDS directories into a single VDS</li>
+</ul>
+<p><strong>Advanced functions</strong> (require direct import from <code>hvantk.algorithms.hgc.combiners</code>):
+- <strong><code>combine_matrix_table_rows()</code></strong> - Combine MatrixTables by rows (variants)
+- <strong><code>combine_matrix_table_cols()</code></strong> - Combine MatrixTables by columns (samples)</p>
+<h3 id="3-converters-hvantkalgorithmshgcconverters">3. Converters (<code>hvantk.algorithms.hgc.converters</code>)<a class="headerlink" href="#3-converters-hvantkalgorithmshgcconverters" title="Permanent link">&para;</a></h3>
+<p>Functions for format conversion:</p>
+<ul>
+<li><strong><code>convert_vds_to_mt()</code></strong> - Convert VDS to dense MatrixTable format</li>
+<li><strong><code>convert_mt_to_multi_sample_vcf()</code></strong> - Export MatrixTable to multi-sample VCF</li>
+</ul>
+<h3 id="4-file-utilities-hvantkalgorithmshgcfile_utils">4. File Utilities (<code>hvantk.algorithms.hgc.file_utils</code>)<a class="headerlink" href="#4-file-utilities-hvantkalgorithmshgcfile_utils" title="Permanent link">&para;</a></h3>
+<p>Helper functions for file handling:</p>
+<ul>
+<li><strong><code>validate_vcfs_paths()</code></strong> - Validate GVCF files and their indices</li>
+<li><strong><code>validate_vds_paths()</code></strong> - Validate VDS directory paths</li>
+<li><strong><code>check_path_exists_and_readable()</code></strong> - Verify file accessibility</li>
+<li><strong><code>compress_files()</code></strong> / <strong><code>decompress_files()</code></strong> - Handle file compression</li>
+<li><strong><code>sort_mts_cols()</code></strong> - Sort MatrixTable columns to match reference order</li>
+</ul>
+<h2 id="detailed-usage">Detailed Usage<a class="headerlink" href="#detailed-usage" title="Permanent link">&para;</a></h2>
+<h3 id="gvcf-combination">GVCF Combination<a class="headerlink" href="#gvcf-combination" title="Permanent link">&para;</a></h3>
+<p>Combine single-sample GVCF files into a joint-called VDS:</p>
+<p><strong>CLI:</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>gvcf-combine<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span>--gvcf-dir<span class="w"> </span>/data/gvcfs<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span>--output<span class="w"> </span>cohort.vds<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">  </span>--temp-dir<span class="w"> </span>/tmp/hail<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">  </span>--save-path<span class="w"> </span>combiner_plan.json
+</code></pre></div></p>
+<p><strong>Python:</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.hgc</span><span class="w"> </span><span class="kn">import</span> <span class="n">combine_gvcfs</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">combine_gvcfs</span><span class="p">(</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="n">gvcf_dir</span><span class="o">=</span><span class="s2">"/data/gvcfs"</span><span class="p">,</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="n">vds_output_path</span><span class="o">=</span><span class="s2">"cohort.vds"</span><span class="p">,</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    <span class="n">tmp_path</span><span class="o">=</span><span class="s2">"/tmp/hail"</span><span class="p">,</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>    <span class="n">save_path</span><span class="o">=</span><span class="s2">"combiner_plan.json"</span><span class="p">,</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    <span class="n">vdses</span><span class="o">=</span><span class="p">[],</span>  <span class="c1"># Optional: existing VDS to include</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>    <span class="n">kwargs</span><span class="o">=</span><span class="p">{</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>        <span class="c1"># Optional interval parameters (mutually exclusive):</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>        <span class="c1"># 'use_genome_default_intervals': True,</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>        <span class="c1"># 'use_exome_default_intervals': True,</span>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>        <span class="c1"># 'intervals': [list of intervals]</span>
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>    <span class="p">},</span>
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>    <span class="n">reference_genome</span><span class="o">=</span><span class="s2">"GRCh38"</span>
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a><span class="p">)</span>
+</code></pre></div></p>
+<p><strong>Parameters:</strong>
+- <code>gvcf_dir</code>: Directory containing <code>.g.vcf.gz</code> files with <code>.tbi</code> indices
+- <code>vds_output_path</code>: Output path for the combined VDS
+- <code>tmp_path</code>: Temporary directory for intermediate files
+- <code>save_path</code>: Path to save the combiner execution plan (JSON)
+- <code>vdses</code>: List of existing VDS paths to combine with GVCFs
+- <code>kwargs</code>: Additional parameters for <code>hail.vds.new_combiner()</code>
+- <code>reference_genome</code>: Reference genome build (default: "GRCh38")</p>
+<p><strong>Requirements:</strong>
+- GVCF files must have corresponding <code>.tbi</code> index files
+- Sufficient temporary storage (typically 2-3x input size)
+- Adequate memory for Hail operations</p>
+<h3 id="vds-combination">VDS Combination<a class="headerlink" href="#vds-combination" title="Permanent link">&para;</a></h3>
+<p>Merge multiple VDS datasets:</p>
+<p><strong>CLI:</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>vds-combine<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span>--input-dir<span class="w"> </span>/data/vds_datasets<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">  </span>--output<span class="w"> </span>merged.vds<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">  </span>--validate<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">  </span>--overwrite
+</code></pre></div></p>
+<p><strong>Python:</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.hgc</span><span class="w"> </span><span class="kn">import</span> <span class="n">combine_vdses</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="n">combine_vdses</span><span class="p">(</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    <span class="n">vdses_dir</span><span class="o">=</span><span class="s2">"/data/vds_datasets"</span><span class="p">,</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    <span class="n">output_path</span><span class="o">=</span><span class="s2">"merged.vds"</span><span class="p">,</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    <span class="n">validate</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    <span class="n">overwrite</span><span class="o">=</span><span class="kc">False</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="p">)</span>
+</code></pre></div></p>
+<p><strong>Parameters:</strong>
+- <code>vdses_dir</code>: Directory containing VDS subdirectories (each ending in <code>.vds</code>)
+- <code>output_path</code>: Output path for merged VDS
+- <code>validate</code>: Whether to validate the combined VDS using Hail's validator
+- <code>overwrite</code>: Whether to overwrite existing output</p>
+<h3 id="vds-to-matrixtable-conversion">VDS to MatrixTable Conversion<a class="headerlink" href="#vds-to-matrixtable-conversion" title="Permanent link">&para;</a></h3>
+<p>Convert storage-optimized VDS to analysis-ready MatrixTable:</p>
+<p><strong>CLI:</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>vds2mt<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">  </span>--input<span class="w"> </span>cohort.vds<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">  </span>--output<span class="w"> </span>analysis.mt<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">  </span>--adjust-genotypes<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="w">  </span>--overwrite
+</code></pre></div></p>
+<p><strong>Python:</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.hgc</span><span class="w"> </span><span class="kn">import</span> <span class="n">convert_vds_to_mt</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="n">convert_vds_to_mt</span><span class="p">(</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    <span class="n">vds_path</span><span class="o">=</span><span class="s2">"cohort.vds"</span><span class="p">,</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    <span class="n">output_path</span><span class="o">=</span><span class="s2">"analysis.mt"</span><span class="p">,</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    <span class="n">adjust_genotypes</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>    <span class="n">skip_split_multi</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>    <span class="n">skip_validation</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>    <span class="n">skip_keying_by_cols</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>    <span class="n">overwrite</span><span class="o">=</span><span class="kc">False</span>
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a><span class="p">)</span>
+</code></pre></div></p>
+<p><strong>Parameters:</strong>
+- <code>vds_path</code>: Input VDS path
+- <code>output_path</code>: Output MatrixTable path
+- <code>adjust_genotypes</code>: Annotate with adjusted genotypes using gnomAD quality filters (no extra install needed)
+- <code>skip_split_multi</code>: Skip splitting multi-allelic variants (not recommended)
+- <code>skip_validation</code>: Skip the biallelic audit and genotype repair (see below)
+- <code>skip_keying_by_cols</code>: Skip keying MatrixTable by sample column
+- <code>overwrite</code>: Whether to overwrite existing output</p>
+<p><strong>Important Notes:</strong>
+- The VDS-level split already produces biallelic GT/AD — no manual LGT→GT downcoding is needed
+- Adjusted genotype annotation needs no extra dependency: <code>annotate_adj</code> is ported from
+  gnomad_methods (MIT) into <code>hvantk/algorithms/hgc/adj.py</code>, with gnomAD's published
+  thresholds kept verbatim (GQ &gt;= 20, DP &gt;= 10, AB &gt;= 0.2, haploid DP &gt;= 5)</p>
+<h4 id="the-densify-runs-exactly-once">The densify runs exactly once<a class="headerlink" href="#the-densify-runs-exactly-once" title="Permanent link">&para;</a></h4>
+<p>This stage is dominated by <em>densification</em>: expanding the VDS's reference blocks back into a full
+samples × sites matrix. Hail is lazy and <strong>does not cache</strong>, so every <em>eager</em> action on the dense
+MatrixTable — an <code>aggregate_entries</code>, a <code>count</code>, a <code>write</code> — re-executes the whole densify from
+the top.</p>
+<p><code>convert_vds_to_mt</code> is therefore written so that <strong>only the final <code>write</code> touches the dense
+matrix</strong>:</p>
+<ul>
+<li>the <strong>biallelic audit</strong> (out-of-bounds <code>GT</code> indices, <code>AD</code> length mismatches) runs on the <em>sparse</em>
+  <code>variant_data</code>, before densification. That is where such defects can originate: reference blocks
+  are hom-ref by construction and carry no <code>AD</code>, so densification cannot introduce either defect.</li>
+<li>the <strong>repair</strong> (setting an out-of-bounds genotype to missing) is applied as a lazy, unconditional
+  expression on the dense matrix. It fuses into the write, and on clean data it is the identity.</li>
+</ul>
+<p>Gating the repair behind <code>if n_invalid &gt; 0</code> would look harmless but is not: <em>reading</em> that count is
+an eager action, so it forces an entire extra densify of the cohort. On a 500-sample chr1 callset
+that mistake cost ~42% of the stage's wall time.</p>
+<p><code>--skip-validation</code> turns off both the audit and the repair. The audit is cheap (it scans only the
+sparse variant records), so there is rarely a reason to.</p>
+<h3 id="matrixtable-to-vcf-export">MatrixTable to VCF Export<a class="headerlink" href="#matrixtable-to-vcf-export" title="Permanent link">&para;</a></h3>
+<p>Export processed MatrixTable to standard VCF format:</p>
+<p><strong>CLI:</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>mt2vcf<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">  </span>--input<span class="w"> </span>analysis.mt<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="w">  </span>--output<span class="w"> </span>results.vcf.gz<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="w">  </span>--filter-adj<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="w">  </span>--min-ac<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="w">  </span>--split-multi
+</code></pre></div></p>
+<p><strong>Python:</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.hgc</span><span class="w"> </span><span class="kn">import</span> <span class="n">convert_mt_to_multi_sample_vcf</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="n">convert_mt_to_multi_sample_vcf</span><span class="p">(</span>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>    <span class="n">mt_path</span><span class="o">=</span><span class="s2">"analysis.mt"</span><span class="p">,</span>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>    <span class="n">vcf_path</span><span class="o">=</span><span class="s2">"results.vcf.gz"</span><span class="p">,</span>
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>    <span class="n">filter_adj_genotypes</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>    <span class="n">min_ac</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>    <span class="n">split_multi</span><span class="o">=</span><span class="kc">True</span>
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a><span class="p">)</span>
+</code></pre></div></p>
+<p><strong>Parameters:</strong>
+- <code>mt_path</code>: Input MatrixTable path
+- <code>vcf_path</code>: Output VCF file path
+- <code>filter_adj_genotypes</code>: Filter to adjusted genotypes only (recommended)
+- <code>min_ac</code>: Minimum alternate allele count for variant inclusion
+- <code>split_multi</code>: Split multi-allelic variants (if not already split)</p>
+<p><strong>VCF Info Fields:</strong>
+The output VCF includes standard INFO fields:
+- <code>AF</code>: Allele frequency
+- <code>AC</code>: Allele count
+- <code>AN</code>: Total number of alleles
+- <code>call_rate</code>: Variant call rate</p>
+<h2 id="pipeline-orchestration_1">Pipeline Orchestration<a class="headerlink" href="#pipeline-orchestration_1" title="Permanent link">&para;</a></h2>
+<p>The <strong>HGC Pipeline</strong> provides end-to-end workflow orchestration from gVCF files to cohort VCF with integrated quality control. This is the <strong>recommended approach</strong> for most users.</p>
+<h3 id="overview_1">Overview<a class="headerlink" href="#overview_1" title="Permanent link">&para;</a></h3>
+<p>The pipeline orchestrates five stages:</p>
+<ol>
+<li><strong>Combine gVCFs</strong> → VDS (Variant Dataset)</li>
+<li><strong>Convert VDS</strong> → MatrixTable</li>
+<li><strong>Compute Sample QC</strong> metrics</li>
+<li><strong>Compute Variant QC</strong> metrics</li>
+<li><strong>Export</strong> → Project VCF (pVCF)</li>
+</ol>
+<p>Each stage can be skipped for flexible workflow resumption.</p>
+<h3 id="basic-usage">Basic Usage<a class="headerlink" href="#basic-usage" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1"># Run complete pipeline</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>pipeline<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="w">  </span>-i<span class="w"> </span>/data/gvcfs<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="w">  </span>-o<span class="w"> </span>/data/output
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="c1"># With QC filtering and reporting</span>
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>pipeline<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a><span class="w">  </span>-i<span class="w"> </span>/data/gvcfs<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a><span class="w">  </span>-o<span class="w"> </span>/data/output<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a><span class="w">  </span>--apply-qc-filters<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a><span class="w">  </span>--min-sample-call-rate<span class="w"> </span><span class="m">0</span>.95<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a><span class="w">  </span>--min-variant-call-rate<span class="w"> </span><span class="m">0</span>.90<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a><span class="w">  </span>--generate-qc-report
+<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>
+<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a><span class="c1"># View execution plan (dry run)</span>
+<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>pipeline<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a><span class="w">  </span>-i<span class="w"> </span>/data/gvcfs<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a><span class="w">  </span>-o<span class="w"> </span>/data/output<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a><span class="w">  </span>--dry-run
+</code></pre></div>
+<h3 id="key-features_1">Key Features<a class="headerlink" href="#key-features_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>End-to-End Automation</strong>: Single command runs the complete workflow</li>
+<li><strong>Stage Skipping</strong>: Resume from any intermediate stage</li>
+<li><strong>QC Integration</strong>: Optional quality filtering before export</li>
+<li><strong>State Persistence</strong>: Automatic checkpointing for recovery</li>
+<li><strong>Flexible Configuration</strong>: 20+ options for customization</li>
+</ul>
+<h3 id="common-workflows">Common Workflows<a class="headerlink" href="#common-workflows" title="Permanent link">&para;</a></h3>
+<h4 id="1-standard-pipeline-with-qc">1. Standard Pipeline with QC<a class="headerlink" href="#1-standard-pipeline-with-qc" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>pipeline<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="w">  </span>-i<span class="w"> </span>/data/gvcfs<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="w">  </span>-o<span class="w"> </span>/data/output<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="w">  </span>--output-prefix<span class="w"> </span>my_cohort<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="w">  </span>--apply-qc-filters<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="w">  </span>--generate-qc-report
+</code></pre></div>
+<p><strong>Output:</strong>
+- <code>my_cohort.vds/</code> - Combined variant dataset
+- <code>my_cohort.mt/</code> - MatrixTable
+- <code>my_cohort_filtered.mt/</code> - QC-filtered MatrixTable
+- <code>my_cohort.vcf.bgz</code> - Final cohort VCF
+- <code>qc/my_cohort_qc_report.html</code> - QC report</p>
+<h4 id="2-resume-from-existing-vds">2. Resume from Existing VDS<a class="headerlink" href="#2-resume-from-existing-vds" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>pipeline<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="w">  </span>-i<span class="w"> </span>/data/gvcfs<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="w">  </span>-o<span class="w"> </span>/data/output<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="w">  </span>--skip-combine-gvcfs<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="w">  </span>--vds-path<span class="w"> </span>/data/existing.vds
+</code></pre></div>
+<h4 id="3-qc-only-analysis">3. QC-Only Analysis<a class="headerlink" href="#3-qc-only-analysis" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>pipeline<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="w">  </span>-i<span class="w"> </span>/data/gvcfs<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="w">  </span>-o<span class="w"> </span>/data/qc_analysis<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="w">  </span>--skip-export-pvcf<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a><span class="w">  </span>--generate-qc-report
+</code></pre></div>
+<h4 id="4-resume-after-error">4. Resume After Error<a class="headerlink" href="#4-resume-after-error" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="c1"># If pipeline fails, check state</span>
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>cat<span class="w"> </span>/data/output/.pipeline_state.json
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="c1"># Resume from last successful stage</span>
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>pipeline<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a><span class="w">  </span>-i<span class="w"> </span>/data/gvcfs<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a><span class="w">  </span>-o<span class="w"> </span>/data/output<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a><span class="w">  </span>--skip-combine-gvcfs<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a><span class="w">  </span>--vds-path<span class="w"> </span>/data/output/cohort.vds<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a><span class="w">  </span>--overwrite
+</code></pre></div>
+<h3 id="configuration-options">Configuration Options<a class="headerlink" href="#configuration-options" title="Permanent link">&para;</a></h3>
+<p><strong>Required:</strong>
+- <code>-i, --input-dir</code> - Directory containing gVCF files
+- <code>-o, --output-dir</code> - Output directory</p>
+<p><strong>Stage Control:</strong>
+- <code>--skip-combine-gvcfs</code> - Skip Stage 1 (requires <code>--vds-path</code>)
+- <code>--skip-vds-to-mt</code> - Skip Stage 2 (requires <code>--mt-path</code>)
+- <code>--skip-compute-sample-qc</code> - Skip Stage 3
+- <code>--skip-compute-variant-qc</code> - Skip Stage 4
+- <code>--skip-export-pvcf</code> - Skip Stage 5</p>
+<p><strong>Quality Control:</strong>
+- <code>--apply-qc-filters</code> - Apply QC filters before export
+- <code>--min-sample-call-rate FLOAT</code> - Minimum sample call rate (default: 0.85)
+- <code>--min-variant-call-rate FLOAT</code> - Minimum variant call rate (default: 0.85)
+- <code>--generate-qc-report</code> - Create HTML QC report</p>
+<p><strong>Processing:</strong>
+- <code>--reference-genome [GRCh37|GRCh38]</code> - Reference build (default: GRCh38)
+- <code>--n-partitions INT</code> - Partitions for parallel processing
+- <code>--tmp-dir PATH</code> - Temporary directory
+- <code>--overwrite</code> - Overwrite existing files
+- <code>--output-prefix TEXT</code> - Output filename prefix (default: cohort)</p>
+<p><strong>Utility:</strong>
+- <code>--dry-run</code> - Show execution plan without running</p>
+<h3 id="output-structure">Output Structure<a class="headerlink" href="#output-structure" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>output_directory/
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>├── cohort.vds/                    # Stage 1: Combined VDS
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>├── cohort.mt/                     # Stage 2: MatrixTable
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>├── cohort_filtered.mt/            # Filtered MT (if --apply-qc-filters)
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a>├── cohort.vcf.bgz                 # Stage 5: Cohort VCF
+<a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a>├── qc/
+<a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a>│   ├── cohort_sample_qc.ht        # Stage 3: Sample QC
+<a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a>│   ├── cohort_sample_qc.csv
+<a id="__codelineno-20-9" name="__codelineno-20-9" href="#__codelineno-20-9"></a>│   ├── cohort_variant_qc.ht       # Stage 4: Variant QC
+<a id="__codelineno-20-10" name="__codelineno-20-10" href="#__codelineno-20-10"></a>│   ├── cohort_variant_qc.csv
+<a id="__codelineno-20-11" name="__codelineno-20-11" href="#__codelineno-20-11"></a>│   └── cohort_qc_report.html      # HTML Report
+<a id="__codelineno-20-12" name="__codelineno-20-12" href="#__codelineno-20-12"></a>├── logs/
+<a id="__codelineno-20-13" name="__codelineno-20-13" href="#__codelineno-20-13"></a>│   └── pipeline_*.log
+<a id="__codelineno-20-14" name="__codelineno-20-14" href="#__codelineno-20-14"></a>└── .pipeline_state.json           # State for recovery
+</code></pre></div>
+<h3 id="python-api_1">Python API<a class="headerlink" href="#python-api_1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.hgc.pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">PipelineConfig</span><span class="p">,</span> <span class="n">PipelineRunner</span>
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a><span class="c1"># Configure pipeline</span>
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a><span class="n">config</span> <span class="o">=</span> <span class="n">PipelineConfig</span><span class="p">(</span>
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>    <span class="n">input_dir</span><span class="o">=</span><span class="s2">"/data/gvcfs"</span><span class="p">,</span>
+<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>    <span class="n">output_dir</span><span class="o">=</span><span class="s2">"/data/output"</span><span class="p">,</span>
+<a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a>    <span class="n">output_prefix</span><span class="o">=</span><span class="s2">"my_cohort"</span><span class="p">,</span>
+<a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a>    <span class="n">apply_qc_filters</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-21-9" name="__codelineno-21-9" href="#__codelineno-21-9"></a>    <span class="n">min_sample_call_rate</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span>
+<a id="__codelineno-21-10" name="__codelineno-21-10" href="#__codelineno-21-10"></a>    <span class="n">min_variant_call_rate</span><span class="o">=</span><span class="mf">0.90</span><span class="p">,</span>
+<a id="__codelineno-21-11" name="__codelineno-21-11" href="#__codelineno-21-11"></a>    <span class="n">generate_qc_report</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-21-12" name="__codelineno-21-12" href="#__codelineno-21-12"></a>    <span class="n">reference_genome</span><span class="o">=</span><span class="s2">"GRCh38"</span>
+<a id="__codelineno-21-13" name="__codelineno-21-13" href="#__codelineno-21-13"></a><span class="p">)</span>
+<a id="__codelineno-21-14" name="__codelineno-21-14" href="#__codelineno-21-14"></a>
+<a id="__codelineno-21-15" name="__codelineno-21-15" href="#__codelineno-21-15"></a><span class="c1"># Validate configuration</span>
+<a id="__codelineno-21-16" name="__codelineno-21-16" href="#__codelineno-21-16"></a><span class="n">errors</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">validate</span><span class="p">()</span>
+<a id="__codelineno-21-17" name="__codelineno-21-17" href="#__codelineno-21-17"></a><span class="k">if</span> <span class="n">errors</span><span class="p">:</span>
+<a id="__codelineno-21-18" name="__codelineno-21-18" href="#__codelineno-21-18"></a>    <span class="k">for</span> <span class="n">error</span> <span class="ow">in</span> <span class="n">errors</span><span class="p">:</span>
+<a id="__codelineno-21-19" name="__codelineno-21-19" href="#__codelineno-21-19"></a>        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Error: </span><span class="si">{</span><span class="n">error</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<a id="__codelineno-21-20" name="__codelineno-21-20" href="#__codelineno-21-20"></a>    <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-21-21" name="__codelineno-21-21" href="#__codelineno-21-21"></a>
+<a id="__codelineno-21-22" name="__codelineno-21-22" href="#__codelineno-21-22"></a><span class="c1"># Create and run pipeline</span>
+<a id="__codelineno-21-23" name="__codelineno-21-23" href="#__codelineno-21-23"></a><span class="n">runner</span> <span class="o">=</span> <span class="n">PipelineRunner</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+<a id="__codelineno-21-24" name="__codelineno-21-24" href="#__codelineno-21-24"></a><span class="n">runner</span><span class="o">.</span><span class="n">show_plan</span><span class="p">()</span>  <span class="c1"># Preview execution</span>
+<a id="__codelineno-21-25" name="__codelineno-21-25" href="#__codelineno-21-25"></a><span class="n">state</span> <span class="o">=</span> <span class="n">runner</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+<a id="__codelineno-21-26" name="__codelineno-21-26" href="#__codelineno-21-26"></a>
+<a id="__codelineno-21-27" name="__codelineno-21-27" href="#__codelineno-21-27"></a><span class="c1"># Check results</span>
+<a id="__codelineno-21-28" name="__codelineno-21-28" href="#__codelineno-21-28"></a><span class="k">if</span> <span class="n">state</span><span class="o">.</span><span class="n">errors</span><span class="p">:</span>
+<a id="__codelineno-21-29" name="__codelineno-21-29" href="#__codelineno-21-29"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Pipeline failed: </span><span class="si">{</span><span class="n">state</span><span class="o">.</span><span class="n">errors</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<a id="__codelineno-21-30" name="__codelineno-21-30" href="#__codelineno-21-30"></a><span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-21-31" name="__codelineno-21-31" href="#__codelineno-21-31"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Success! Outputs: </span><span class="si">{</span><span class="n">state</span><span class="o">.</span><span class="n">outputs</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="performance-tips">Performance Tips<a class="headerlink" href="#performance-tips" title="Permanent link">&para;</a></h3>
+<p><strong>Memory Management:</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="c1"># For large cohorts (&gt;1000 samples)</span>
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">PYSPARK_SUBMIT_ARGS</span><span class="o">=</span><span class="s1">'--driver-memory 32g --executor-memory 32g'</span>
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>pipeline<span class="w"> </span>-i<span class="w"> </span>/data/gvcfs<span class="w"> </span>-o<span class="w"> </span>/data/output<span class="w"> </span>--n-partitions<span class="w"> </span><span class="m">1000</span>
+</code></pre></div></p>
+<p><strong>Disk Space:</strong>
+- VDS: ~1-2x input gVCF size
+- MatrixTable: ~0.5-1x VDS size
+- pVCF: ~0.5-1x MatrixTable size</p>
+<p><strong>Typical Runtime</strong> (varies by hardware and cohort size):
+- 100 samples: ~30-60 minutes
+- 500 samples: ~2-4 hours
+- 1000 samples: ~4-8 hours</p>
+<h2 id="data-formats">Data Formats<a class="headerlink" href="#data-formats" title="Permanent link">&para;</a></h2>
+<h3 id="gvcf-genomic-vcf">GVCF (Genomic VCF)<a class="headerlink" href="#gvcf-genomic-vcf" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Single-sample variant calls with reference blocks</li>
+<li>Format: <code>.g.vcf.gz</code> with <code>.tbi</code> index</li>
+<li>Input format for joint genotyping</li>
+</ul>
+<h3 id="vds-variant-dataset">VDS (Variant DataSet)<a class="headerlink" href="#vds-variant-dataset" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Hail's storage-optimized format for genomic data</li>
+<li>Separates reference data from variant data</li>
+<li>Efficient for large cohorts</li>
+<li>Directory structure ending in <code>.vds</code></li>
+</ul>
+<h3 id="matrixtable-mt">MatrixTable (MT)<a class="headerlink" href="#matrixtable-mt" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Hail's analysis-optimized format</li>
+<li>Dense matrix representation</li>
+<li>Rows: variants, Columns: samples</li>
+<li>Directory structure ending in <code>.mt</code></li>
+</ul>
+<h3 id="vcf-variant-call-format">VCF (Variant Call Format)<a class="headerlink" href="#vcf-variant-call-format" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Standard genomic variant format</li>
+<li>Compatible with most genomic tools</li>
+<li>Format: <code>.vcf.gz</code> with optional <code>.tbi</code> index</li>
+</ul>
+<h2 id="performance-considerations">Performance Considerations<a class="headerlink" href="#performance-considerations" title="Permanent link">&para;</a></h2>
+<h3 id="memory-requirements">Memory Requirements<a class="headerlink" href="#memory-requirements" title="Permanent link">&para;</a></h3>
+<ul>
+<li>GVCF combination: ~8-16 GB for small cohorts (&lt;100 samples)</li>
+<li>Large cohorts (&gt;1000 samples): 32-64 GB recommended</li>
+<li>Set Hail memory with environment variable: <code>export PYSPARK_SUBMIT_ARGS="--driver-memory 32g"</code></li>
+</ul>
+<h3 id="storage-requirements">Storage Requirements<a class="headerlink" href="#storage-requirements" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Temporary space: 2-3x input GVCF size</li>
+<li>VDS output: ~50-70% of input GVCF size</li>
+<li>MatrixTable: ~100-150% of VDS size</li>
+</ul>
+<h3 id="optimization-tips">Optimization Tips<a class="headerlink" href="#optimization-tips" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Use SSD storage for temporary files</li>
+<li>Adjust Hail partitioning for your cluster size</li>
+<li>Process intervals in parallel for large cohorts</li>
+<li>Use genome/exome default intervals for better performance</li>
+</ol>
+<h2 id="common-options">Common Options<a class="headerlink" href="#common-options" title="Permanent link">&para;</a></h2>
+<h3 id="interval-selection">Interval Selection<a class="headerlink" href="#interval-selection" title="Permanent link">&para;</a></h3>
+<p>When combining GVCFs, you can specify genomic intervals:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="c1"># Use default genome intervals (recommended for WGS)</span>
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="n">kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'use_genome_default_intervals'</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>
+<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a><span class="c1"># Use default exome intervals (recommended for WES)</span>
+<a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a><span class="n">kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'use_exome_default_intervals'</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+<a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a>
+<a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a><span class="c1"># Specify custom intervals</span>
+<a id="__codelineno-23-8" name="__codelineno-23-8" href="#__codelineno-23-8"></a><span class="n">kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'intervals'</span><span class="p">:</span> <span class="p">[</span>
+<a id="__codelineno-23-9" name="__codelineno-23-9" href="#__codelineno-23-9"></a>    <span class="n">hl</span><span class="o">.</span><span class="n">parse_locus_interval</span><span class="p">(</span><span class="s1">'chr1:1-1000000'</span><span class="p">),</span>
+<a id="__codelineno-23-10" name="__codelineno-23-10" href="#__codelineno-23-10"></a>    <span class="n">hl</span><span class="o">.</span><span class="n">parse_locus_interval</span><span class="p">(</span><span class="s1">'chr2:5000000-6000000'</span><span class="p">)</span>
+<a id="__codelineno-23-11" name="__codelineno-23-11" href="#__codelineno-23-11"></a><span class="p">]}</span>
+</code></pre></div>
+<h3 id="reference-genomes">Reference Genomes<a class="headerlink" href="#reference-genomes" title="Permanent link">&para;</a></h3>
+<p>Supported reference genomes:
+- <code>GRCh38</code> (default) - Human genome build 38
+- <code>GRCh37</code> - Human genome build 37</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="n">combine_gvcfs</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">reference_genome</span><span class="o">=</span><span class="s2">"GRCh38"</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="common-issues">Common Issues<a class="headerlink" href="#common-issues" title="Permanent link">&para;</a></h3>
+<p><strong>Issue: "Cannot convert LGT to GT when skip_split_multi=True"</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>Solution: Either enable multi-allelic splitting or disable LGT conversion:
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>convert_vds_to_mt(..., skip_split_multi=False)
+<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a># OR
+<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a>convert_vds_to_mt(..., skip_validation=True)
+</code></pre></div></p>
+<p><strong>Issue: "Out of memory during GVCF combination"</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>Solution: Increase driver memory:
+<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>export PYSPARK_SUBMIT_ARGS="--driver-memory 64g pyspark-shell"
+</code></pre></div></p>
+<p><strong>Issue: "TBI index file not found"</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a>Solution: Create index files for GVCF files:
+<a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a>tabix -p vcf input.g.vcf.gz
+</code></pre></div></p>
+<h2 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">&para;</a></h2>
+<h3 id="example-1-incremental-cohort-building">Example 1: Incremental Cohort Building<a class="headerlink" href="#example-1-incremental-cohort-building" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.hgc</span><span class="w"> </span><span class="kn">import</span> <span class="n">combine_gvcfs</span><span class="p">,</span> <span class="n">combine_vdses</span>
+<a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a>
+<a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a><span class="c1"># First batch</span>
+<a id="__codelineno-28-4" name="__codelineno-28-4" href="#__codelineno-28-4"></a><span class="n">combine_gvcfs</span><span class="p">(</span>
+<a id="__codelineno-28-5" name="__codelineno-28-5" href="#__codelineno-28-5"></a>    <span class="n">gvcf_dir</span><span class="o">=</span><span class="s2">"data/batch1"</span><span class="p">,</span>
+<a id="__codelineno-28-6" name="__codelineno-28-6" href="#__codelineno-28-6"></a>    <span class="n">vds_output_path</span><span class="o">=</span><span class="s2">"output/batch1.vds"</span><span class="p">,</span>
+<a id="__codelineno-28-7" name="__codelineno-28-7" href="#__codelineno-28-7"></a>    <span class="n">tmp_path</span><span class="o">=</span><span class="s2">"tmp"</span><span class="p">,</span>
+<a id="__codelineno-28-8" name="__codelineno-28-8" href="#__codelineno-28-8"></a>    <span class="n">save_path</span><span class="o">=</span><span class="s2">"output/batch1_plan.json"</span><span class="p">,</span>
+<a id="__codelineno-28-9" name="__codelineno-28-9" href="#__codelineno-28-9"></a>    <span class="n">vdses</span><span class="o">=</span><span class="p">[],</span>
+<a id="__codelineno-28-10" name="__codelineno-28-10" href="#__codelineno-28-10"></a>    <span class="n">kwargs</span><span class="o">=</span><span class="p">{}</span>
+<a id="__codelineno-28-11" name="__codelineno-28-11" href="#__codelineno-28-11"></a><span class="p">)</span>
+<a id="__codelineno-28-12" name="__codelineno-28-12" href="#__codelineno-28-12"></a>
+<a id="__codelineno-28-13" name="__codelineno-28-13" href="#__codelineno-28-13"></a><span class="c1"># Second batch</span>
+<a id="__codelineno-28-14" name="__codelineno-28-14" href="#__codelineno-28-14"></a><span class="n">combine_gvcfs</span><span class="p">(</span>
+<a id="__codelineno-28-15" name="__codelineno-28-15" href="#__codelineno-28-15"></a>    <span class="n">gvcf_dir</span><span class="o">=</span><span class="s2">"data/batch2"</span><span class="p">,</span>
+<a id="__codelineno-28-16" name="__codelineno-28-16" href="#__codelineno-28-16"></a>    <span class="n">vds_output_path</span><span class="o">=</span><span class="s2">"output/batch2.vds"</span><span class="p">,</span>
+<a id="__codelineno-28-17" name="__codelineno-28-17" href="#__codelineno-28-17"></a>    <span class="n">tmp_path</span><span class="o">=</span><span class="s2">"tmp"</span><span class="p">,</span>
+<a id="__codelineno-28-18" name="__codelineno-28-18" href="#__codelineno-28-18"></a>    <span class="n">save_path</span><span class="o">=</span><span class="s2">"output/batch2_plan.json"</span><span class="p">,</span>
+<a id="__codelineno-28-19" name="__codelineno-28-19" href="#__codelineno-28-19"></a>    <span class="n">vdses</span><span class="o">=</span><span class="p">[],</span>
+<a id="__codelineno-28-20" name="__codelineno-28-20" href="#__codelineno-28-20"></a>    <span class="n">kwargs</span><span class="o">=</span><span class="p">{}</span>
+<a id="__codelineno-28-21" name="__codelineno-28-21" href="#__codelineno-28-21"></a><span class="p">)</span>
+<a id="__codelineno-28-22" name="__codelineno-28-22" href="#__codelineno-28-22"></a>
+<a id="__codelineno-28-23" name="__codelineno-28-23" href="#__codelineno-28-23"></a><span class="c1"># Merge batches</span>
+<a id="__codelineno-28-24" name="__codelineno-28-24" href="#__codelineno-28-24"></a><span class="n">combine_vdses</span><span class="p">(</span>
+<a id="__codelineno-28-25" name="__codelineno-28-25" href="#__codelineno-28-25"></a>    <span class="n">vdses_dir</span><span class="o">=</span><span class="s2">"output"</span><span class="p">,</span>  <span class="c1"># Contains batch1.vds and batch2.vds</span>
+<a id="__codelineno-28-26" name="__codelineno-28-26" href="#__codelineno-28-26"></a>    <span class="n">output_path</span><span class="o">=</span><span class="s2">"output/merged.vds"</span><span class="p">,</span>
+<a id="__codelineno-28-27" name="__codelineno-28-27" href="#__codelineno-28-27"></a>    <span class="n">validate</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-28-28" name="__codelineno-28-28" href="#__codelineno-28-28"></a>    <span class="n">overwrite</span><span class="o">=</span><span class="kc">False</span>
+<a id="__codelineno-28-29" name="__codelineno-28-29" href="#__codelineno-28-29"></a><span class="p">)</span>
+</code></pre></div>
+<h3 id="example-3-custom-quality-filtering">Example 3: Custom Quality Filtering<a class="headerlink" href="#example-3-custom-quality-filtering" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">hail</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">hl</span>
+<a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.hgc</span><span class="w"> </span><span class="kn">import</span> <span class="n">convert_vds_to_mt</span>
+<a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a>
+<a id="__codelineno-29-4" name="__codelineno-29-4" href="#__codelineno-29-4"></a><span class="c1"># Convert VDS to MT</span>
+<a id="__codelineno-29-5" name="__codelineno-29-5" href="#__codelineno-29-5"></a><span class="n">convert_vds_to_mt</span><span class="p">(</span>
+<a id="__codelineno-29-6" name="__codelineno-29-6" href="#__codelineno-29-6"></a>    <span class="n">vds_path</span><span class="o">=</span><span class="s2">"cohort.vds"</span><span class="p">,</span>
+<a id="__codelineno-29-7" name="__codelineno-29-7" href="#__codelineno-29-7"></a>    <span class="n">output_path</span><span class="o">=</span><span class="s2">"cohort.mt"</span><span class="p">,</span>
+<a id="__codelineno-29-8" name="__codelineno-29-8" href="#__codelineno-29-8"></a>    <span class="n">adjust_genotypes</span><span class="o">=</span><span class="kc">True</span>
+<a id="__codelineno-29-9" name="__codelineno-29-9" href="#__codelineno-29-9"></a><span class="p">)</span>
+<a id="__codelineno-29-10" name="__codelineno-29-10" href="#__codelineno-29-10"></a>
+<a id="__codelineno-29-11" name="__codelineno-29-11" href="#__codelineno-29-11"></a><span class="c1"># Read MT and apply custom filters</span>
+<a id="__codelineno-29-12" name="__codelineno-29-12" href="#__codelineno-29-12"></a><span class="n">mt</span> <span class="o">=</span> <span class="n">hl</span><span class="o">.</span><span class="n">read_matrix_table</span><span class="p">(</span><span class="s2">"cohort.mt"</span><span class="p">)</span>
+<a id="__codelineno-29-13" name="__codelineno-29-13" href="#__codelineno-29-13"></a>
+<a id="__codelineno-29-14" name="__codelineno-29-14" href="#__codelineno-29-14"></a><span class="c1"># Filter to high-quality variants</span>
+<a id="__codelineno-29-15" name="__codelineno-29-15" href="#__codelineno-29-15"></a><span class="n">mt</span> <span class="o">=</span> <span class="n">mt</span><span class="o">.</span><span class="n">filter_rows</span><span class="p">(</span>
+<a id="__codelineno-29-16" name="__codelineno-29-16" href="#__codelineno-29-16"></a>    <span class="p">(</span><span class="n">mt</span><span class="o">.</span><span class="n">info</span><span class="o">.</span><span class="n">AC</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">)</span> <span class="o">&amp;</span>  <span class="c1"># At least 2 alternate alleles</span>
+<a id="__codelineno-29-17" name="__codelineno-29-17" href="#__codelineno-29-17"></a>    <span class="p">(</span><span class="n">mt</span><span class="o">.</span><span class="n">variant_qc</span><span class="o">.</span><span class="n">call_rate</span> <span class="o">&gt;</span> <span class="mf">0.95</span><span class="p">)</span>  <span class="c1"># 95% call rate</span>
+<a id="__codelineno-29-18" name="__codelineno-29-18" href="#__codelineno-29-18"></a><span class="p">)</span>
+<a id="__codelineno-29-19" name="__codelineno-29-19" href="#__codelineno-29-19"></a>
+<a id="__codelineno-29-20" name="__codelineno-29-20" href="#__codelineno-29-20"></a><span class="c1"># Filter to high-quality samples</span>
+<a id="__codelineno-29-21" name="__codelineno-29-21" href="#__codelineno-29-21"></a><span class="n">mt</span> <span class="o">=</span> <span class="n">mt</span><span class="o">.</span><span class="n">filter_cols</span><span class="p">(</span>
+<a id="__codelineno-29-22" name="__codelineno-29-22" href="#__codelineno-29-22"></a>    <span class="n">mt</span><span class="o">.</span><span class="n">sample_qc</span><span class="o">.</span><span class="n">call_rate</span> <span class="o">&gt;</span> <span class="mf">0.90</span>  <span class="c1"># 90% sample call rate</span>
+<a id="__codelineno-29-23" name="__codelineno-29-23" href="#__codelineno-29-23"></a><span class="p">)</span>
+<a id="__codelineno-29-24" name="__codelineno-29-24" href="#__codelineno-29-24"></a>
+<a id="__codelineno-29-25" name="__codelineno-29-25" href="#__codelineno-29-25"></a><span class="c1"># Write filtered MT</span>
+<a id="__codelineno-29-26" name="__codelineno-29-26" href="#__codelineno-29-26"></a><span class="n">mt</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">"cohort_filtered.mt"</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="api-reference">API Reference<a class="headerlink" href="#api-reference" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p>For detailed parameter descriptions, usage examples, and notes, see <a href="#detailed-usage">Detailed Usage</a> and <a href="#pipeline-orchestration">Pipeline Orchestration</a>.</p>
+</blockquote>
+<h3 id="main-functions">Main Functions<a class="headerlink" href="#main-functions" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>combine_gvcfs(gvcf_dir, vds_output_path, tmp_path, save_path, vdses, kwargs, reference_genome='GRCh38')</code></td>
+<td>Combine GVCF files into a VDS. See <a href="#gvcf-combination">GVCF Combination</a>.</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>combine_vdses(vdses_dir, output_path, validate=True, overwrite=False)</code></td>
+<td>Merge multiple VDS directories. See <a href="#vds-combination">VDS Combination</a>.</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>convert_vds_to_mt(vds_path, output_path, adjust_genotypes=True, skip_split_multi=False, skip_validation=False, skip_keying_by_cols=False, overwrite=False)</code></td>
+<td>Convert VDS to dense MatrixTable. See <a href="#vds-to-matrixtable-conversion">VDS to MatrixTable Conversion</a>.</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>convert_mt_to_multi_sample_vcf(mt_path, vcf_path, filter_adj_genotypes=True, min_ac=1, split_multi=True)</code></td>
+<td>Export MatrixTable to VCF. See <a href="#matrixtable-to-vcf-export">MatrixTable to VCF Export</a>.</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<h3 id="utility-functions">Utility Functions<a class="headerlink" href="#utility-functions" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>validate_vcfs_paths(directory, pattern=None)</code></td>
+<td>Retrieve and validate GVCF file paths</td>
+<td>List[str]</td>
+</tr>
+<tr>
+<td><code>validate_vds_paths(vdses)</code></td>
+<td>Validate VDS directory paths</td>
+<td>List[str]</td>
+</tr>
+<tr>
+<td><code>check_path_exists_and_readable(path)</code></td>
+<td>Verify file accessibility</td>
+<td>str</td>
+</tr>
+<tr>
+<td><code>sort_mts_cols(mts, ref_index=0)</code></td>
+<td>Sort MatrixTable columns to match reference</td>
+<td>List[hl.MatrixTable]</td>
+</tr>
+</tbody>
+</table>
+<h3 id="advanced-functions">Advanced Functions<a class="headerlink" href="#advanced-functions" title="Permanent link">&para;</a></h3>
+<p>These functions require direct import from <code>hvantk.algorithms.hgc.combiners</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>combine_matrix_table_rows(mt_paths, output_path, n_partitions, force_sort_cols=False, overwrite=False, kwargs=None)</code></td>
+<td>Combine MatrixTables by rows (variants)</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>combine_matrix_table_cols(mt_paths, output_path, n_partitions, overwrite=False, kwargs=None)</code></td>
+<td>Combine MatrixTables by columns (samples)</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<h2 id="constants">Constants<a class="headerlink" href="#constants" title="Permanent link">&para;</a></h2>
+<p>The module defines commonly used constants in <code>hvantk.algorithms.hgc.constants</code>:</p>
+<p><strong>Reference Genomes:</strong>
+- <code>HG38_GENOME_REFERENCE</code> - "GRCh38"
+- <code>HG37_GENOME_REFERENCE</code> - "GRCh37"</p>
+<p><strong>File Extensions:</strong>
+- <code>GVCF_EXTENSION</code> - ".g.vcf.gz"
+- <code>GVCF_EXTENSION_TBI</code> - ".g.vcf.gz.tbi"
+- <code>VCF_EXTENSION</code> - ".vcf.gz"
+- <code>VCF_EXTENSION_TBI</code> - ".vcf.gz.tbi"
+- <code>VDS_EXTENSION</code> - ".vds"</p>
+<p><strong>Entry Fields:</strong>
+- <code>GT_FIELD</code> - "GT" (Genotype)
+- <code>AD_FIELD</code> - "AD" (Allelic depths)
+- <code>DP_FIELD</code> - "DP" (Read depth)
+- <code>GQ_FIELD</code> - "GQ" (Genotype quality)
+- <code>PL_FIELD</code> - "PL" (Phred-scaled likelihoods)
+- <code>PID_FIELD</code> - "PID" (Physical phasing ID)
+- <code>SB_FIELD</code> - "SB" (Strand bias)
+- <code>MIN_DP_FIELD</code> - "MIN_DP" (Minimum read depth)
+- <code>ADJ_GT_FIELD</code> - "adj" (Adjusted genotype flag)</p>
+<p><strong>Note:</strong> MatrixTable files use the <code>.mt</code> extension, but this is a directory structure convention rather than a defined constant in the module.</p>
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="https://hail.is/docs/0.2/">Hail Documentation</a></li>
+<li><a href="https://gatk.broadinstitute.org/hc/en-us/articles/360035531812-GVCF-Genomic-Variant-Call-Format">GVCF Format Specification</a></li>
+<li><a href="https://hail.is/docs/0.2/vds/index.html">VDS Format Details</a></li>
+<li><a href="https://gatk.broadinstitute.org/hc/en-us/articles/360035890431-The-logic-of-joint-calling-for-germline-short-variants">Joint Genotyping Best Practices</a></li>
+</ul>
+<hr />
+<p>See <a href="../../getting-started/installation/">Installation</a> for setup, <a href="../../contributing/">Contributing</a> for development workflow.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
