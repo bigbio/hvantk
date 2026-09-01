@@ -21,26 +21,25 @@ SKILL.md so the coverage claim stays honest.
 
 from __future__ import annotations
 
-import hashlib
-import json
 from datetime import datetime, timezone
 
 import requests
 
 from hvantk.core.plugin.api import DriftProbeError
+from hvantk.core.utils.http import request_with_retry
 
-PROBE_VERSION = 1
+PROBE_VERSION = 2
 ALPHAGENOME_PYPI_URL = "https://pypi.org/pypi/alphagenome/json"
 
 _FILENAME = "alphagenome-sdk-releases"
-_TIMEOUT_S = 30
+_TIMEOUT_S = (5.0, 15.0)
 
 
 def fetch_fingerprint() -> dict:
     """Fingerprint the published AlphaGenome SDK release set."""
     try:
-        resp = requests.get(
-            ALPHAGENOME_PYPI_URL, timeout=_TIMEOUT_S, allow_redirects=True
+        resp = request_with_retry(
+            "GET", ALPHAGENOME_PYPI_URL, timeout=_TIMEOUT_S, allow_redirects=True
         )
         resp.raise_for_status()
     except requests.RequestException as exc:
@@ -55,26 +54,30 @@ def fetch_fingerprint() -> dict:
         raise DriftProbeError(f"PyPI returned non-JSON: {exc}") from exc
 
     current = (payload.get("info") or {}).get("version")
-    releases = sorted((payload.get("releases") or {}).keys())
-    # Fail closed. No version means the project was renamed or the API changed
-    # shape, not that AlphaGenome has no releases; recording it would bake an
-    # empty baseline that every later run compares equal to.
-    if not current or not releases:
+    # Fail closed on the field that actually carries the signal. `info.version` is
+    # the supported one; `releases` is deprecated on this endpoint and slated for
+    # removal, so requiring it would turn a PyPI API change into a permanent
+    # probe_failed for an SDK that never moved.
+    if not current:
         raise DriftProbeError(
-            "PyPI returned no version or no releases for alphagenome; the "
-            "project or the API shape has probably changed."
+            "PyPI returned no info.version for alphagenome; the project or the "
+            "API shape has probably changed."
         )
 
-    canonical = json.dumps(
-        {"current": current, "releases": releases}, separators=(",", ":")
-    ).encode("utf-8")
-    checksum = hashlib.sha256(canonical).hexdigest()
+    compared: dict[str, object] = {"current_version": current}
+    releases = sorted((payload.get("releases") or {}).keys())
+    if releases:
+        compared["release_count"] = len(releases)
 
     return {
         "probe_version": PROBE_VERSION,
         "source_version": current,
-        "headers": {_FILENAME: ["sdk_version"]},
-        "checksums": {_FILENAME: checksum},
-        "extras": {"current_version": current, "releases_found": releases},
+        # The version IS the signal; a sha256 over it would be a pure function of
+        # a value already in the compared surface. The full release list is
+        # deliberately NOT compared: it is deprecated upstream, and it grows on
+        # pre-release and yanked uploads that no build would ever install.
+        "headers": {_FILENAME: compared},
+        "checksums": {},
+        "informational": {"releases_found": releases},
         "fetched_at": datetime.now(timezone.utc).isoformat(),
     }

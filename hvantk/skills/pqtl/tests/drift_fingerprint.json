@@ -1,26 +1,17 @@
 {
-  "probe_version": 1,
+  "probe_version": 2,
   "source_version": "1",
   "headers": {
-    "medrxiv-preprint-metadata": [
-      "version",
-      "date",
-      "published",
-      "doi"
-    ]
+    "medrxiv-preprint-metadata": {
+      "version": "1",
+      "date": "2025-01-13",
+      "published": "NA"
+    }
   },
-  "checksums": {
-    "medrxiv-preprint-metadata": "230ff3762e8628ec2cfbf75cb19a847b99b73b21e9912f64700daa3ccf7a7e74"
-  },
-  "extras": {
-    "version": "1",
-    "date": "2025-01-13",
-    "published": "NA",
-    "doi": "10.1101/2025.01.10.25320181"
-  },
+  "checksums": {},
   "informational": {
     "title": "Regulation of protein abundance in normal human tissues",
     "versions_listed": 1
   },
-  "fetched_at": "2026-08-31T23:21:10.247465+00:00"
+  "fetched_at": "2026-09-01T07:32:19.306546+00:00"
 }

@@ -30,7 +30,7 @@ def test_fetch_fingerprint_shape():
         fp = fetch_fingerprint()
 
     assert fp["source_version"] == "0.8.0"
-    assert fp["extras"]["releases_found"] == ["0.7.0", "0.8.0"]
+    assert fp["informational"]["releases_found"] == ["0.7.0", "0.8.0"]
 
 
 def test_new_sdk_release_moves_the_checksum():
@@ -45,15 +45,28 @@ def test_new_sdk_release_moves_the_checksum():
         )
         after = fetch_fingerprint()
 
-    assert before["checksums"] != after["checksums"]
+    assert before["headers"] != after["headers"]
     assert after["source_version"] == "0.9.0"
 
 
 def test_missing_version_fails_closed():
+    """Discriminating case: `releases` present, `info.version` absent."""
     with requests_mock.Mocker() as m:
-        m.get(ALPHAGENOME_PYPI_URL, json={"info": {}, "releases": {}})
-        with pytest.raises(DriftProbeError, match="no version or no releases"):
+        m.get(ALPHAGENOME_PYPI_URL, json={"info": {}, "releases": {"0.8.0": []}})
+        with pytest.raises(DriftProbeError, match="no info.version"):
             fetch_fingerprint()
+
+
+def test_deprecated_releases_key_absent_still_probes():
+    """PyPI deprecated `releases` on this endpoint. Requiring it would turn an
+    upstream API change into a permanent probe_failed for an SDK that never moved,
+    while `info.version` -- the field carrying the signal -- is unaffected."""
+    with requests_mock.Mocker() as m:
+        m.get(ALPHAGENOME_PYPI_URL, json={"info": {"version": "0.8.0"}})
+        fp = fetch_fingerprint()
+
+    assert fp["source_version"] == "0.8.0"
+    assert fp["headers"]["alphagenome-sdk-releases"]["current_version"] == "0.8.0"
 
 
 def test_non_json_fails_closed():

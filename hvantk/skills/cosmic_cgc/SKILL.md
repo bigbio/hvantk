@@ -12,6 +12,23 @@ Upstream: https://cancer.sanger.ac.uk/census
 
 - `cosmic-cgc:submissions` — gene-level cancer gene census table, keyed by `gene_symbol` by default (or `hgnc_id` if a `gene_catalog` is provided)
 
+## Drift detection
+
+The drift probe (`drift_probe.py`, `fetch_fingerprint`) reads the per-release anchors
+(`id="v<N>"`) from COSMIC's public release-notes page. The Census *data* stays
+login- and licence-gated -- `cancer.sanger.ac.uk/census` answers 302 to
+`/cosmic/login` -- so acquisition remains manual and no data URL is probed.
+
+**What it detects:** a new COSMIC release. **What it cannot detect:** a change to the
+Census contents within a release; no unauthenticated probe can see that.
+
+Two details are load-bearing. The trailing slash matters -- `/cosmic/release_notes`
+returns 200 while `/cosmic/release_notes/` redirects to the login form -- and the probe
+rejects any redirected response rather than scraping a login page. And it anchors on the
+`id="v<N>"` attributes, never on prose: matching `COSMIC v<N>` in body text picked up
+`v16`/`v18`/`v20` from sentences about the *Actionability* product, a different version
+series, so an unrelated editorial edit would have opened a no-op pull request.
+
 ## Build
 
 ```bash

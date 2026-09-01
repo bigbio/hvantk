@@ -26,30 +26,33 @@ in SKILL.md so the coverage claim stays honest.
 
 from __future__ import annotations
 
-import hashlib
-import json
 from datetime import datetime, timezone
 
 import requests
 
 from hvantk.core.plugin.api import DriftProbeError
+from hvantk.core.utils.http import request_with_retry
 
-PROBE_VERSION = 1
+PROBE_VERSION = 2
 
 PQTL_SOURCE_DOI = "10.1101/2025.01.10.25320181"
 MEDRXIV_API_URL = f"https://api.biorxiv.org/details/medrxiv/{PQTL_SOURCE_DOI}"
 
-# Only these fields form the compared surface; see module docstring.
-_COMPARED_FIELDS = ("version", "date", "published", "doi")
+# Only these fields form the compared surface; see module docstring. `doi` is
+# deliberately absent: the request URL is built FROM the DOI, so echoing it back
+# is a constant that can never drift.
+_COMPARED_FIELDS = ("version", "date", "published")
 
 _FILENAME = "medrxiv-preprint-metadata"
-_TIMEOUT_S = 30
+_TIMEOUT_S = (5.0, 15.0)
 
 
 def fetch_fingerprint() -> dict:
     """Fingerprint the upstream preprint's version metadata."""
     try:
-        resp = requests.get(MEDRXIV_API_URL, timeout=_TIMEOUT_S, allow_redirects=True)
+        resp = request_with_retry(
+            "GET", MEDRXIV_API_URL, timeout=_TIMEOUT_S, allow_redirects=True
+        )
         resp.raise_for_status()
     except requests.RequestException as exc:
         raise DriftProbeError(f"HTTP failure: {exc}") from exc
@@ -72,22 +75,40 @@ def fetch_fingerprint() -> dict:
             "the API shape has probably changed."
         )
 
-    # The API lists one record per version, oldest first; the newest is what a
-    # rebuild would pick up.
-    latest = collection[-1]
-    compared = {field: latest.get(field) for field in _COMPARED_FIELDS}
+    # Selected by version rather than by position. The API's ordering is not
+    # documented, and `collection[-1]` on a newest-first response would pin the
+    # OLDEST record -- so a v2 posting, the single event this probe exists to
+    # detect, would compare equal to the baseline and report clean forever.
+    def _version_of(record: dict) -> int:
+        raw = record.get("version")
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            return -1
 
-    canonical = json.dumps(compared, sort_keys=True, separators=(",", ":")).encode(
-        "utf-8"
-    )
-    checksum = hashlib.sha256(canonical).hexdigest()
+    latest = max(collection, key=_version_of)
+    version = _version_of(latest)
+    # Fail closed rather than stringifying a missing field. `str(None)` yields the
+    # literal "None", which is truthy and indistinguishable from a real version
+    # label, and the bot would commit it as the baseline.
+    if version < 0:
+        raise DriftProbeError(
+            f"medRxiv record for {PQTL_SOURCE_DOI} carried no usable version "
+            f"field (got {latest.get('version')!r}); the API shape has probably "
+            "changed."
+        )
+
+    compared = {field: latest.get(field) for field in _COMPARED_FIELDS}
+    # Normalised so an API that switches "1" to 1 does not read as drift.
+    compared["version"] = str(version)
 
     return {
         "probe_version": PROBE_VERSION,
-        "source_version": str(latest.get("version")),
-        "headers": {_FILENAME: list(_COMPARED_FIELDS)},
-        "checksums": {_FILENAME: checksum},
-        "extras": compared,
+        "source_version": str(version),
+        # The metadata IS the signal; a sha256 over it would be a pure function of
+        # values already in the compared surface.
+        "headers": {_FILENAME: compared},
+        "checksums": {},
         "informational": {
             "title": latest.get("title"),
             "versions_listed": len(collection),

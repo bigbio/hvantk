@@ -50,14 +50,18 @@ ARTIFACT_FIELDS = ("fixture", "schema_snapshot", "row_snapshot", "drift_fingerpr
 # sentinels and their baselines were captured from live probe runs. Both had been
 # recorded under issue #177 as having no probeable URL; re-checking showed the gnomAD
 # constraint tables sit in a public GCS bucket that returns an MD5 ETag, and that the
-# dbNSFP landing page -- though its advertised S3 archives are all dead -- still exposes
-# a stable release list. The remaining three entries below are the ones where that
-# re-check genuinely found nothing to probe.
+# dbNSFP landing page -- though its advertised S3 archives are all dead (issue #321) --
+# still exposes a stable release list.
 #
-# (dbnsfp / gnomad-metrics previously appeared here for a different
-# reason -- they declared a plugin-local fixture dir that was never created while the
-# tests read one under hvantk/tests/testdata/raw/. Their manifests now point at the real
-# shared location, so only their snapshot/fingerprint files remain outstanding.)
+# The five entries below are NOT the datasets without a drift probe: every dataset in
+# the tree now ships a live one. They are the datasets still missing a *fixture* or
+# *snapshot*, for the reasons in the three causes above -- alphagenome, cosmic-cgc and
+# pqtl have no committable static artifact or no redistributable rows, while
+# expression-atlas and peptideatlas await fixtures derived by truncation.
+#
+# (dbnsfp / gnomad-metrics previously appeared here twice over: first for a fixture dir
+# that was never created, then for a missing drift fingerprint. Both are resolved and
+# neither is listed any more.)
 #
 # uniprot-ptm and both cptac datasets had no committed fixture at all -- their round-trip
 # tests synthesized inputs into tmp_path. Small fixtures were committed for each, so all
