@@ -125,7 +125,7 @@ the lock; do not regenerate or loosen it. And:
 
 ### 3.2 `hvantk.def` (build from the locked environment)
 
-The definition file lives in the repo at **[`containers/hvantk.def`](../../containers/hvantk.def)**
+The definition file lives in the repo at **`containers/hvantk.def`**
 — build from that file rather than copying a snippet, so the base image and extras
 cannot drift from what was last built and validated. It installs the **exact** locked
 dependency set, not an unpinned `pip install hail`.
