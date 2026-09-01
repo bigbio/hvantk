@@ -19,7 +19,9 @@ Three classes of doc rot, each of which has actually shipped:
    `core/utils/writers.py`, `algorithms/training_sets/`, `tools/build/` --
    while the parallel tree in README.md was corrected by hand. A contributor
    following the stale one is told to put new code in directories that are not
-   there, in a layer that would violate the dependency rule.
+   there, in a layer that would violate the dependency rule. That divergence is
+   now structurally impossible: README.md's duplicate tree was replaced by a
+   link, so architecture.md holds the only one and these tests guard it there.
 
 Deliberately non-Hail so it runs in the default suite. It does import every
 subcommand module (resolving a documented command imports the module that
@@ -197,7 +199,7 @@ def _is_illustrative(path: str) -> bool:
     return "*" in path or "<" in path or path.endswith("...")
 
 
-@pytest.mark.parametrize("doc", ["README.md", "docs_site/architecture.md"])
+@pytest.mark.parametrize("doc", ["docs_site/architecture.md"])
 def test_structure_tree_names_only_real_paths(doc: str):
     """Every entry drawn in a project-structure tree must exist at that path.
 
@@ -223,7 +225,7 @@ def test_structure_tree_names_only_real_paths(doc: str):
 
 def test_the_tree_parser_reconstructs_nested_paths():
     """Guard the guard: if depth parsing broke, everything above goes vacuous."""
-    drawn = _tree_paths((REPO_ROOT / "README.md").read_text())
+    drawn = _tree_paths((REPO_ROOT / "docs_site" / "architecture.md").read_text())
     assert "core/models" in drawn, sorted(d for d in drawn if "models" in d)
     assert "core" in drawn and len(drawn) > 20
 

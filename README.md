@@ -23,31 +23,16 @@ eval "$(poetry env activate)"
 
 ### Optional extras
 
-The base install is intentionally lean — heavy plotting and ML dependencies are
-opt-in via Poetry extras. Install only what a given workflow needs:
-
-| Extra | Enables | Pulls in |
-| --- | --- | --- |
-| `viz` | Static and interactive plotting | matplotlib, seaborn, plotly |
-| `interactive` | Interactive plots / dashboards | plotly |
-| `duckdb` | DuckDB-backed queries | duckdb |
-| `hgc` | Joint genotyping plots (genotype adjustment needs no extra) | matplotlib, seaborn |
-| `psroc` | Pathogenicity Score ROC analysis | matplotlib, plotly, scikit-learn, scipy |
-| `ptm` | CPTAC proteomics builders | cptac, sorted-nearest |
-| `constraint` | Tissue-specificity / constraint metrics | tspex, matplotlib, seaborn, scipy |
-| `enrichex` | `hvantk enrichex overlap` / `burden` and their plots | scipy, matplotlib, seaborn |
-| `cohort` | `hvantk cohort burden` (Fisher gene burden) | scipy |
-| `ancestry` | Ancestry inference (PCA + Random Forest + plots) | scikit-learn, matplotlib, seaborn, scipy |
-| `ml` | scikit-learn-backed features only | scikit-learn, scipy |
-| `expression` | `hvantk expression summarize` / `markers`, and `ptm constraint --expression-metric mean` | scanpy, scipy |
+The base install is intentionally lean — plotting, machine-learning, and a few
+provider-specific dependencies are opt-in Poetry extras:
 
 ```bash
-# One or more extras at once
-poetry install --extras "ancestry psroc"
-
-# Or a single extra
-poetry install --extras ml
+poetry install --extras "ancestry psroc"   # one or more
+poetry install --all-extras                # everything
 ```
+
+For the full table — what each extra pulls in and which commands need it — see
+[Installation → Optional features](docs_site/getting-started/installation.md#optional-features-extras).
 
 Verify it works:
 
@@ -122,105 +107,24 @@ returns `(native_obj, Provenance)` zero-cost.
 
 ### Plugin contract — adding a new data source
 
-Each plugin under `hvantk/skills/<plugin>/` declares itself via
-[`plugin.yaml`](hvantk/skills/clinvar/plugin.yaml) and provides a builder
-that returns a typed artifact:
+Each data source ships as a self-contained plugin under `hvantk/skills/<plugin>/`,
+declared by a [`plugin.yaml`](hvantk/skills/clinvar/plugin.yaml) manifest naming its
+builder and drift probe, plus an optional downloader for sources that permit an
+automated fetch. Sources behind a license gate, or too large to mirror, ship a
+documented acquisition procedure instead. The platform orchestrator
+[`run_builder_for_spec`](hvantk/core/plugin/run_builder.py) resolves the manifest,
+computes the source fingerprint, calls the builder, validates the returned artifact
+against the manifest's `artifact_type` and `schema_id`, and saves it alongside a
+sidecar `.provenance.json`. The loader discovers manifests on its own — there is no
+registry to edit.
 
-```python
-# hvantk/skills/clinvar/builder.py
-def build_clinvar(parsed_input, ctx: BuildContext, **params) -> AnnotationTable:
-    ht = hl.import_vcf(str(parsed_input), force=True, ...).rows().key_by("locus", "alleles")
-    return AnnotationTable.from_hail(
-        ht, provenance=ctx.provenance(schema_id="clinvar-variants-v1")
-    )
-```
+The full contract and the annotated directory tree live in the architecture guide:
 
-The platform orchestrator [`run_builder_for_spec`](hvantk/core/plugin/run_builder.py)
-ties it all together at build time:
-
-```mermaid
-sequenceDiagram
-    participant CLI as hvantk reprocess
-    participant Reg as plugin registry
-    participant Probe as drift_probe()
-    participant Build as build_fn(parsed, ctx)
-    participant IO as core/io
-
-    CLI->>Reg: get_dataset("clinvar:variants")
-    Reg-->>CLI: DatasetSpec (lazy bind on first access)
-    CLI->>Probe: compute source fingerprint
-    Probe-->>CLI: probe dict
-    CLI->>CLI: BuildContext(plugin, version, fingerprint, …)
-    CLI->>Build: (parsed_input, ctx, **params)
-    Build-->>CLI: AnnotationTable(provenance=ctx.provenance(schema_id=…))
-    CLI->>CLI: validate artifact_type + schema_id
-    CLI->>IO: artifact.save(path)
-    IO-->>IO: write data + sidecar .provenance.json
-```
-
-Twenty-one plugins ship today: `clinvar`, `clingen`, `gencc`, `gwas-catalog`,
-`hgnc`, `gtex-eqtl`, `insider`, `msigdb`, `uniprot-ptm`, `peptideatlas`,
-`expression-atlas`, `cptac`, `ucsc-cellbrowser`, `gevir`, `gnomad-metrics`,
-`ensembl-gene`, `dbnsfp`, `cosmic-cgc`, `pqtl`, `alphagenome`, `onek-genomes`.
-
-### Project structure
-
-```
-hvantk/
-├── core/                       # platform substrate — stable contracts
-│   ├── models/                 # AnnotationTable, ExpressionMatrix, VariantMatrix, GeneSet,
-│   │                           #   Provenance, BuildContext, Expr DSL,
-│   │                           #   AlgorithmMeta (@algorithm decorator)
-│   ├── io/                     # save / load / save_native / load_native,
-│   │                           #   sidecar provenance manifests, legacy shim
-│   ├── plugin/                 # plugin registry, run_builder_for_spec,
-│   │                           #   two-pass discovery (DatasetManifest → DatasetSpec)
-│   ├── tool/                   # tool manifest discovery (descriptive)
-│   ├── streamers/              # Streamer ABCs — query/iterate built tables
-│   │                           #   (concrete subclasses live in skills/<plugin>/)
-│   ├── ontology/               # OBO / MONDO parsers
-│   └── utils/                  # generic helpers (hail context, hail_helpers,
-│                               #   file utils, gene sets)
-│
-├── algorithms/                 # analytics — consume artifacts, return artifacts
-│   ├── ancestry/               # PCA + Random Forest ancestry inference
-│   ├── enrichex/               # gene set enrichment + burden testing
-│   ├── expression/             # tissue specificity (tau, gini, etc.)
-│   ├── hgc/                    # joint genotyping (gvcf combine, VDS, QC)
-│   ├── ptm/                    # PTM coordinate mapping + atlas
-│   ├── psroc/                  # pathogenicity score ROC analysis
-│   ├── qtlcascade/             # eQTL → pQTL cascade + colocalization
-│   ├── annotation/             # spine / prepare / compose annotation pipeline
-│   ├── burden/, cohort/        # rare-variant burden + external cohort handling
-│   ├── rerank/                 # multi-omic gene re-ranking (feature axes + audit)
-│   ├── statistics/             # multiple-testing correction, shared stats
-│   └── visualization/          # shared figure helpers (empty_figure, save_figure)
-│
-├── skills/                     # data-source plugins (21 total)
-│   ├── <plugin>/
-│   │   ├── plugin.yaml         # declarative manifest (drives discovery + CLI)
-│   │   ├── builder.py          # Phase B: (parsed, ctx) → AnnotationTable / …
-│   │   ├── drift_probe.py      # upstream fingerprint
-│   │   ├── cli.py              # downloader (auto-wired via manifest cli: block)
-│   │   └── tests/              # per-plugin conformance tests + fixtures
-│   └── _conventions/SKILL.md   # contract documentation
-│
-├── tools/                      # CLI wiring + workflow orchestration
-│   ├── plugins/                # download, drift, reprocess, plugins/tools list
-│   ├── hgc/                    # joint-genotyping CLI (lazy-loaded)
-│   ├── infra/                  # catalog, utils (check-install, bgzf)
-│   ├── annotation/             # annotate spine / prepare / compose
-│   ├── cohort/                 # cohort validate / burden / attach
-│   ├── rerank/                 # rerank CLI
-│   ├── genesets/               # gene set extraction / preparation
-│   ├── training_sets/          # TrainingSetBuilder — library only, no CLI command
-│   └── ancestry/, enrichex/, expression/, ptm/, qtl/   # one package per domain
-│
-├── resources/                  # platform metadata (unified catalog registry)
-└── tests/                      # cross-cutting tests (dependency directions,
-                                #   plugin conformance, io round-trips,
-                                #   Expr algebra parity, etc.)
-```
+- [Plugin contract](docs_site/architecture.md#3-plugin-contract--adding-a-data-source)
+  — build sequence diagram, annotated `plugin.yaml`, two-pass loader, streamer
+  placement rule
+- [Project structure](docs_site/architecture.md#project-structure) — what lives in
+  each package, layer by layer
 
 ### How to extend
 
