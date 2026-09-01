@@ -125,89 +125,76 @@ the lock; do not regenerate or loosen it. And:
 
 ### 3.2 `hvantk.def` (build from the locked environment)
 
-Place this at the repo root (or under `containers/`). It installs the **exact**
-locked dependency set, not unpinned `pip install hail`.
+The definition file lives in the repo at **`containers/hvantk.def`**
+— build from that file rather than copying a snippet, so the base image and extras
+cannot drift from what was last built and validated. It installs the **exact** locked
+dependency set, not an unpinned `pip install hail`.
 
-```singularity
-Bootstrap: docker
-From: python:3.10-slim-bookworm
+Two choices in it are load-bearing and must not be "modernised" without re-validating:
 
-%files
-    pyproject.toml /opt/hvantk/pyproject.toml
-    poetry.lock    /opt/hvantk/poetry.lock
-    hvantk         /opt/hvantk/hvantk
-    README.md      /opt/hvantk/README.md
+- **Base image is `python:3.10-slim-bullseye`, not bookworm.** Debian 12 (bookworm) has
+  no `openjdk-11` package at all — `apt-get install openjdk-11-jdk-headless` fails with
+  *"Package 'openjdk-11-jdk-headless' has no installation candidate … the following
+  packages replace it: openjdk-17-jre-headless"*. Hail 0.2.x / Spark 3.5 support Java 8
+  or 11 **only**, so a bookworm base either fails the build or silently gives you
+  Java 17. Debian 11 (bullseye) ships `openjdk-11-jdk-headless` (11.0.32.1).
+- **Extras include `expression`.** The set
+  `hgc ptm ancestry psroc constraint enrichex cohort viz duckdb expression`
+  is checked against `[project.optional-dependencies]` in `pyproject.toml` and covers
+  every unique package across all extras. Omitting `expression` builds an image with no
+  scanpy, so `hvantk expression …` cannot run. `ml` and `interactive` are redundant:
+  scikit-learn arrives via `ancestry`/`psroc`, plotly via `viz`.
 
-%post
-    set -e
-    # --- Java 11 (Hail 0.2.137 requirement; NOT 17+) + native build/runtime libs ---
-    apt-get update && apt-get install -y --no-install-recommends \
-        openjdk-11-jdk-headless \
-        build-essential g++ \
-        zlib1g-dev libbz2-dev liblzma-dev libcurl4-openssl-dev libdeflate-dev \
-        libopenblas-dev liblapack-dev liblz4-dev libhdf5-dev git
-    # --- hvantk via Poetry, from the committed lock (reproducible) ---
-    # >=2.0: pyproject.toml uses PEP 621 [project] metadata, which poetry 1.8 cannot read.
-    pip install --no-cache-dir "poetry>=2.0"
-    cd /opt/hvantk
-    poetry config virtualenvs.create false
-    # install the locked deps + the extras you actually run (trim as needed):
-    poetry install --no-interaction --no-root \
-        --extras "hgc ptm ancestry psroc constraint enrichex cohort viz duckdb"
-    poetry install --no-interaction --only-root
-    # experiment-only extras NOT in pyproject (e.g. PTM functionality pilot):
-    pip install --no-cache-dir pyBigWig
-    apt-get purge -y build-essential g++ git && apt-get autoremove -y
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
-%environment
-    export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
-    export PATH=$JAVA_HOME/bin:$PATH
-    export LC_ALL=C.UTF-8 LANG=C.UTF-8
-    # keep Hail/py4j localhost traffic off any proxy
-    export NO_PROXY=localhost,127.0.0.1,0.0.0.0,::1
-    # avoid BLAS thread explosion under Spark
-    export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
-
-%runscript
-    exec hvantk "$@"
-
-%labels
-    org hvantk
-    hail 0.2.137
-```
-
-> Trim `--extras` to what you run. The core install omits scikit-learn / scipy / viz /
-> cptac / tspex / duckdb / scanpy — they live behind extras (`hgc`, `ptm`,
-> `ancestry`, `psroc`, `constraint`, `enrichex`, `cohort`, `ml`, `viz`, `duckdb`,
-> `interactive`, `expression`). The authoritative list is
-> `[project.optional-dependencies]` in `pyproject.toml`; this one is prose and is not
-> machine-checked.
-> `pyBigWig` is **not** a hvantk dependency — include it only for experiments that
-> query bigWig tracks. Genotype adjustment needs **no** extra: `annotate_adj` is
-> ported in-tree, so `gnomad` is no longer a dependency at all.
+The `%post` block ends by printing `java -version` and importing `hail`, so a broken
+image fails at **build** time rather than at first use.
 
 ### 3.3 Build (rootless) and validate
 
 ```bash
 # Keep build cache/tmp OFF the small home quota
-export APPTAINER_CACHEDIR=/scratch/$USER/apptainer/cache
-export APPTAINER_TMPDIR=/scratch/$USER/apptainer/tmp
-mkdir -p "$APPTAINER_CACHEDIR" "$APPTAINER_TMPDIR"
+export SINGULARITY_CACHEDIR=$WORK/containers/cache     # APPTAINER_* if you have apptainer
+export SINGULARITY_TMPDIR=$WORK/containers/tmp
+mkdir -p "$SINGULARITY_CACHEDIR" "$SINGULARITY_TMPDIR"
 
-# Build on the cluster if --fakeroot is allowed:
-apptainer build --fakeroot hvantk.sif hvantk.def
-#   ...or build on a laptop / CI and copy the .sif over via Globus/rsync.
+# Build from the REPO ROOT: %files paths in the def are relative to the build CWD.
+cd <the cluster clone>
+singularity build $WORK/containers/hvantk.sif containers/hvantk.def
+```
 
-# Validate the full native + JVM stack on a COMPUTE node (not login):
-srun -c 4 --mem 16g apptainer exec hvantk.sif hvantk utils check-install
+**`--fakeroot` is not usable on every cluster.** It needs a `/etc/subuid` entry for your
+account; without one the build fails immediately with
+`could not use fakeroot: no valid mapping entry found for <user>`, and a plain
+unprivileged build is refused outright with
+`--remote, --fakeroot, or the proot command are required to build this source as a
+non-root user`. Check before assuming:
+
+```bash
+grep "^$USER:" /etc/subuid    # empty output => --fakeroot will NOT work here
+```
+
+When there is no `subuid` entry, SingularityCE 3.11+/4.x accepts a static **`proot`**
+instead, which needs no privileges at all:
+
+```bash
+mkdir -p ~/bin && curl -fsSL -o ~/bin/proot https://proot.gitlab.io/proot/bin/proot
+chmod +x ~/bin/proot
+export PATH="$HOME/bin:$PATH"       # singularity picks proot up from PATH
+singularity build $WORK/containers/hvantk.sif containers/hvantk.def
+```
+
+Builds take roughly 10 minutes and the image is ~2.2 GB.
+
+Validate the full native + JVM stack on a **compute** node (not login) — and go through
+the run wrapper, because Hail cannot initialise inside the container without Spark
+scratch (see §4.1):
+
+```bash
+srun -c 4 --mem 16g bash containers/hvantk_run.sh utils check-install
 #   expects: Hail version prints, balding_nichols_model smoke test passes.
 ```
 
 `hvantk utils check-install` is the canonical go/no-go for a node — it initializes
 Hail, prints `hl.version()`, runs a Hail smoke test, and diagnoses proxy problems.
-
----
 
 ## 4. Running Hail on the cluster
 
@@ -216,6 +203,19 @@ Hail, prints `hl.version()`, runs a Hail smoke test, and diagnoses proxy problem
 hvantk runs Hail in **local Spark mode** — every `init_hail()` call uses local
 defaults (no master/memory config in the repo). On HPC that maps to **one exclusive
 node, many cores, high memory**, with Spark temp on **node-local scratch**.
+
+> **`SPARK_LOCAL_DIRS` is mandatory when running from the container, and its absence
+> is misdiagnosed.** Without a writable node-local scratch bound into the image, Hail
+> init dies with
+> `DiskBlockManager: ERROR: Failed to create any local dir`, followed by
+> `Hail initialisation failed: [Errno 111] Connection refused` from py4j. The second
+> message is what you see first and it reads like a network or proxy fault; it is not.
+> `containers/hvantk_run.sh` sets the scratch dir up and binds it, so prefer:
+>
+> ```bash
+> bash containers/hvantk_run.sh utils check-install
+> HVANTK_BIND="$WORK:$WORK" bash containers/hvantk_run.sh reprocess clinvar:variants ...
+> ```
 
 ```bash
 #!/bin/bash
@@ -451,6 +451,13 @@ launching at scale.
 ## 10. Gotchas quick-reference
 
 - **Java 17 default** → Hail breaks. Force **Java 11** (baked into the container).
+- **A bookworm base image** → there is no `openjdk-11` in Debian 12 at all; apt offers
+  `openjdk-17-jre-headless` instead. Use `python:3.10-slim-bullseye`.
+- **`--fakeroot` with no `/etc/subuid` entry** → `no valid mapping entry found`, and an
+  unprivileged build is refused. Put a static `proot` on `PATH` instead (§3.3).
+- **Container Hail init: `[Errno 111] Connection refused`** → almost never the network.
+  Look one line up for `DiskBlockManager: Failed to create any local dir`: Spark has no
+  writable scratch. Use `containers/hvantk_run.sh` (§4.1).
 - **`spark.driver.memory == --mem`** → silent cgroup OOM-kill. Use ~80%.
 - **`local[*]` on a shared node** → heartbeat timeouts. Pin to `--cpus-per-task`, or
   use `--exclusive`.
@@ -463,5 +470,6 @@ launching at scale.
 - **Stray system/conda Python** below the 3.10 floor → use the container's Python;
   never run hvantk against an unmanaged interpreter.
 - **Core install ≠ full toolkit** — install the right **extras** (`hgc ptm
-  ancestry psroc constraint enrichex cohort viz duckdb`) in the image.
+  ancestry psroc constraint enrichex cohort viz duckdb expression`) in the image.
+  Dropping `expression` yields an image with no scanpy, so `hvantk expression …` fails.
 - **Scratch is purged** — copy results to project/home before the window.

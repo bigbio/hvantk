@@ -7,8 +7,14 @@ Genetics* 52(1):35-39; DOI 10.1038/s41588-019-0560-2) and ranks **19,361**
 protein-coding genes by their intolerance to variation, derived from the density
 and spatial distribution of protein-coding variants observed across ~138,632
 gnomAD exome and genome sequences. GeVIR is a gene-level metric — it is **not** a
-variant-level pathogenicity score. Upstream code and data are at
-https://github.com/gevirank/gevir.
+variant-level pathogenicity score.
+
+The metric table is distributed as **Supplementary Table 2** of that paper, served
+from Springer's static-content CDN as the article's MOESM3 object (an `.xlsx`
+workbook, ~10.3 MB; only that one of the six MOESM slots is public). The authors'
+repository at https://github.com/gevirank/gevir ships the **analysis code only** --
+its `tables/` directory holds a placeholder file -- so it is not a source for the
+table and cannot be used as a drift target.
 
 ## Dataset
 
@@ -35,13 +41,24 @@ Optional plugin args (e.g. field selection) can be passed with
 
 ## Notes
 
-The drift probe (`hvantk/skills/gevir/drift_probe.py`, `fetch_fingerprint`) is a
-documentation-only stub: GeVIR is published as supplementary data, so there is no
-programmatic data URL to fingerprint and `hvantk drift` reports status="stub".
-No downloader is implemented yet; the GeVIR table is small (~1-2 MB), public, and
-served from a stable URL, so it qualifies for a real downloader under the
-project's downloader framework — a recommended follow-up. Until then, upstream
-files are expected to be materialized externally.
+The drift probe (`hvantk/skills/gevir/drift_probe.py`, `fetch_fingerprint`) issues
+a single HEAD against the article's supplementary object (§ above) and compares
+its content-hash ETag plus Content-Length; the workbook body is never
+transferred. It replaced a documentation-only stub once that URL was confirmed
+addressable (issue #177, which had recorded the source as publication-only and
+therefore unprobeable).
+
+**The probe target and the build input are different files.** The probe watches
+the upstream `.xlsx` (~10.3 MB); the builder reads a bgzipped TSV
+(`gevir_metrics_pmid31873297.tsv.bgz`, ~1-2 MB) derived from sheet `table_2` of
+that workbook. The catalog `files` entry describes the derived TSV, which is why
+it carries no download URL: fetching the upstream URL does not yield that file
+without an extract-and-convert step.
+
+No downloader is implemented yet. A real one would have to extract sheet
+`table_2` and BGZF-compress it, not just fetch the URL, so it is more than the
+usual thin wrapper — a recommended follow-up. Until then, upstream files are
+expected to be materialized externally.
 
 ## Schema
 

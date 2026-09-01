@@ -24,8 +24,13 @@ with `chrom`/`pos`/`ref`/`alt` columns) and keys it by `(locus, alleles)`.
 A `config_path` param pointing to an AlphaGenome YAML config is required (see
 `tests/testdata/alphagenome_config.yaml`); `no_resume` (bool, default False) is
 optional. There is no built-in downloader (no `lifecycle.download` in
-`plugin.yaml`). The drift probe (`drift_probe.py`, `fetch_fingerprint`) is a
-placeholder stub.
+`plugin.yaml`). The drift probe (`drift_probe.py`, `fetch_fingerprint`) reads the
+published SDK release stream from PyPI's JSON API, which needs no credentials.
+
+**What it detects:** a new AlphaGenome SDK release, which is the signal to re-check
+whether predictions still match a stored artifact. **What it cannot detect:** a
+server-side model update shipped without an SDK release. No unauthenticated probe can
+observe that, so the coverage claim stops there.
 
 ## Build invocation
 
@@ -50,6 +55,7 @@ pytest hvantk/skills/alphagenome/tests
 No raw-data fixture is available for the alphagenome source (requires AlphaGenome
 API access). `tests/test_alphagenome.py` contains a registration-only test
 (`test_alphagenome_predictions_registered`) and a skipped round-trip test. The
-only checked-in fixture is `tests/testdata/alphagenome_config.yaml`; the schema/row
-snapshot and drift fingerprint paths declared in `plugin.yaml` are not yet
-populated.
+only checked-in fixture is `tests/testdata/alphagenome_config.yaml`. The drift
+fingerprint (`tests/drift_fingerprint.json`) is populated from a live probe run; the
+schema/row snapshot paths declared in `plugin.yaml` remain unpopulated, since a
+credentialed live prediction API has no static artifact to snapshot.

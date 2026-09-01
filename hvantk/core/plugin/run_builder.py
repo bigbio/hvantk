@@ -13,11 +13,19 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
 from hvantk.core.models import BuildContext, Provenance
-from hvantk.core.plugin.api import DatasetSpec, PROBE_FINGERPRINT_IGNORED_KEYS
+from hvantk.core.plugin.api import (
+    DatasetSpec,
+    DriftProbeError,
+    PROBE_FINGERPRINT_IGNORED_KEYS,
+    PROBE_UNAVAILABLE_TOKEN,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class BuilderContractError(RuntimeError):
@@ -90,8 +98,32 @@ def run_builder_for_spec(
             f"migrate to Phase B contract before calling run_builder_for_spec()"
         )
 
-    probe_result = spec.drift_probe()
-    fingerprint = _coerce_fingerprint(probe_result, spec.name)
+    # A probe failure must not destroy the build. The probe supplies provenance
+    # metadata, not build input, and every manual-acquisition plugin is built
+    # from a file staged by hand -- often on a compute node with no egress. Before
+    # the documentation-only plugins gained live probes their probes were pure
+    # in-process calls, so those builds needed no network at all; letting a
+    # DriftProbeError propagate here would have made `hvantk reprocess
+    # --skip-download --no-check-drift` fail offline, and `--no-check-drift` gates
+    # only the post-build check, not this call.
+    #
+    # The fallback is a self-describing token rather than a synthesized digest, so
+    # the provenance record never implies a probe ran (same reasoning as
+    # STUB_FINGERPRINT_TOKEN).
+    try:
+        probe_result = spec.drift_probe()
+        fingerprint = _coerce_fingerprint(probe_result, spec.name)
+    except DriftProbeError as exc:
+        logger.warning(
+            "%s: drift probe could not reach its source (%s); stamping provenance "
+            "with %r. The artifact is built normally; run `hvantk drift %s` once "
+            "connectivity is available to record a real fingerprint.",
+            spec.name,
+            exc,
+            PROBE_UNAVAILABLE_TOKEN,
+            spec.name,
+        )
+        fingerprint = PROBE_UNAVAILABLE_TOKEN
 
     ctx = BuildContext(
         plugin=spec.name.split(":", 1)[0],

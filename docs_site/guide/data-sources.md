@@ -179,12 +179,22 @@ hvantk reprocess gnomad-metrics:metrics --skip-download \
   --plugin-arg key=transcript
 ```
 
-### INSIDER interactome (~100 MB)
+### INSIDER interactome (~1.2 GB genomic BED; ~49 MB pair table)
 
-Protein-protein interaction sites from the INSIDER database.
+Protein-protein interaction interface residues from the INSIDER database.
 URL: http://interactomeinsider.yulab.org/downloads.html
 
-**Download**: Visit http://interactomeinsider.yulab.org/downloads.html and download the interaction site BED file.
+INSIDER ships **two** products, and hvantk builds a dataset from each:
+
+| dataset | file | size | direct URL |
+| --- | --- | --- | --- |
+| `insider:variants` | `Whole_Human_Interactome_Interface_hg38.bed` | ~1.17 GB | `http://interactomeinsider.yulab.org/bed/all.bed` |
+| `insider:interfaces` | `H_sapiens_interfacesALL.txt` | ~49 MB | `http://interactomeinsider.yulab.org/downloads/interfacesALL/H_sapiens_interfacesALL.txt` |
+
+**Download**: the downloads page carries no links in its markup, so use the direct
+URLs above (they are also recorded in the plugin catalog — `hvantk catalog show
+INSIDER_v1.0`). Both are served over plain HTTP; the site has no HTTPS listener.
+The BED is >1 GB, so acquisition is manual per the downloader framework in CLAUDE.md.
 
 **Build**:
 
@@ -239,11 +249,25 @@ pathogenicity score. Abramovs, Brass & Tassabehji, 2020, Nature Genetics
 52(1):35-39 (PMID 31873297, DOI 10.1038/s41588-019-0560-2).
 URL: https://www.nature.com/articles/s41588-019-0560-2
 
-**Download**: Small supplementary table from the Nature Genetics publication
-(https://www.nature.com/articles/s41588-019-0560-2) or the authors' repository
-(https://github.com/gevirank/gevir). At ~1-2 MB with a stable, public URL, GeVIR
-qualifies for a real downloader under the framework in CLAUDE.md — a recommended
-follow-up (not yet implemented).
+**Download**: the metric table is **Supplementary Table 2** of the Nature Genetics
+paper, served as the article's MOESM3 object:
+
+```
+https://static-content.springer.com/esm/art%3A10.1038%2Fs41588-019-0560-2/MediaObjects/41588_2019_560_MOESM3_ESM.xlsx
+```
+
+That is a ~10.3 MB `.xlsx` workbook (only MOESM3 of the six supplementary slots is
+public; the rest return 403). The builder reads a bgzipped TSV, so extract sheet
+`table_2` and BGZF-compress it before building.
+
+> **Note:** the authors' repository at https://github.com/gevirank/gevir ships the
+> **analysis code only** — its `tables/` directory holds a placeholder file — so it
+> is not a source for the metric table. Earlier revisions of this guide pointed
+> there.
+
+A real downloader would have to do the extract-and-convert step, not just fetch the
+URL, so it is more than the usual thin wrapper — a recommended follow-up (not yet
+implemented).
 
 **Build**:
 

@@ -59,8 +59,11 @@ from `plugin.yaml`; top-level builds run through `run_builder_for_spec`
 ## Phase K notes
 
 This plugin was promoted as part of Phase K of the data-model platform
-refactor. The drift probe (`drift_probe.py`, `fetch_fingerprint`) is a
-stub; a real probe should be implemented in a follow-up. The downloader
+refactor. The drift probe (`drift_probe.py`, `fetch_fingerprint`) HEADs every
+declared constraint object in the public `gcp-public-data--gnomad` bucket and compares
+the MD5 ETag, Content-Length and `x-goog-generation` per object; no body is
+transferred. It is the strongest comparator in the tree, since GCS ETags are content
+digests rather than mtime-derived validators. The downloader
 (`cli.py`, `download_dataset` / `download_cmd`) fetches the constraint tables
 from the public gnomAD GCS bucket — see the Download section above.
 

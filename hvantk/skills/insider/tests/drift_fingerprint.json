@@ -1,5 +1,17 @@
 {
-  "probe_status": "stub",
-  "reason": "insider drift probe not implemented; track upstream release manually",
-  "fingerprint": "stub:no-programmatic-source"
+  "probe_version": 2,
+  "source_version": null,
+  "headers": {
+    "Whole_Human_Interactome_Interface_hg38.bed": {
+      "content_length": "1171848841",
+      "etag": "45d8fe89-566adb9ac3780"
+    }
+  },
+  "checksums": {},
+  "informational": {
+    "Whole_Human_Interactome_Interface_hg38.bed": {
+      "last_modified": "Mon, 05 Mar 2018 17:33:34 GMT"
+    }
+  },
+  "fetched_at": "2026-09-01T00:41:41.500835+00:00"
 }

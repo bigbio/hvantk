@@ -294,6 +294,13 @@ def build_my_source_variants(parsed_input, ctx: BuildContext, **params) -> Annot
     )
 ```
 
+A shipped one to copy from: `hvantk/skills/clinvar/builder.py` defines
+`build_clinvar`, which `hvantk/skills/clinvar/plugin.yaml` binds to the
+`clinvar:variants` dataset under schema `clinvar-variants-v1`. The builder name
+is whatever `plugin.yaml`'s `builder.function` declares — plugins in the tree use
+both the short form (`build_clinvar`) and the per-dataset form
+(`build_clingen_gene_disease`).
+
 The plugin loader (`hvantk/core/plugin/loader.py`) discovers manifests via a
 **two-pass mechanism**:
 

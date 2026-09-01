@@ -1,5 +1,15 @@
 {
-  "probe_status": "stub",
-  "reason": "GeVIR metrics are published as supplementary data (PMID 31873297); no programmatic data URL to fingerprint",
-  "fingerprint": "stub:no-programmatic-source"
+  "probe_version": 2,
+  "source_version": null,
+  "headers": {
+    "41588_2019_560_MOESM3_ESM.xlsx": {
+      "content_length": "10270511",
+      "etag": "6423adf134a669acc357f619d1162009"
+    }
+  },
+  "checksums": {},
+  "informational": {
+    "last_modified": "Tue, 14 Nov 2023 18:23:50 GMT"
+  },
+  "fetched_at": "2026-09-01T00:41:41.211380+00:00"
 }
