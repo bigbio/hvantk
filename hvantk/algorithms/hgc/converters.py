@@ -291,12 +291,81 @@ def convert_vds_to_mt(
         raise
 
 
+# A correct `adj` is never MISSING -- every field the expression reads is defined on a
+# properly densified matrix. A small tolerance absorbs genuinely odd entries; the
+# failure this guards against is three orders of magnitude above it.
+ADJ_MISSING_TOLERANCE = 0.01
+ADJ_GUARD_SAMPLE_ROWS = 20_000
+
+
+def _assert_adj_is_computable(
+    mt: hl.MatrixTable,
+    sample_rows: int = ADJ_GUARD_SAMPLE_ROWS,
+    tolerance: float = ADJ_MISSING_TOLERANCE,
+) -> None:
+    """Fail loudly if ``adj`` is MISSING for a material share of entries.
+
+    ``filter_entries(mt.adj)`` keeps only entries whose predicate is True, and Hail
+    treats MISSING as not-True -- so a systematically-missing ``adj`` silently DELETES
+    genotypes instead of raising. That is precisely how the 1005-sample CHD WGS callset
+    lost 96.5% of its hom-ref genotypes, undetected for ~18 months: the export looked
+    internally consistent because ``variant_qc`` recomputed AC/AF/AN afterwards.
+
+    A schema check cannot catch this. ``DP`` is present in the entry schema (it comes
+    from ``variant_data``) while being undefined on every reference-derived entry, so
+    ``"DP" in mt.entry`` passes while the values are missing. Only a definedness check
+    on ``adj`` itself sees it. See ``hvantk.algorithms.hgc.adj.annotate_adj``.
+
+    Sampled over the first ``sample_rows`` rows rather than the whole matrix: the
+    failure mode is systematic, so it shows up in any sample, and a full pass would
+    double the cost of this stage. Deliberately NOT placed in ``convert_vds_to_mt`` --
+    an eager aggregate there would force a second full densify, which that function is
+    built to avoid.
+    """
+    probe = mt.head(sample_rows)
+    stats = probe.aggregate_entries(
+        hl.struct(
+            total=hl.agg.count(),
+            missing=hl.agg.count_where(hl.is_missing(probe[ADJ_GT_FIELD])),
+            retained=hl.agg.count_where(probe[ADJ_GT_FIELD] == True),  # noqa: E712
+        )
+    )
+
+    if stats.total == 0:
+        logging.warning("adj guard: no entries in the sampled rows; skipping check.")
+        return
+
+    frac_missing = stats.missing / stats.total
+    frac_retained = stats.retained / stats.total
+    logging.info(
+        f"adj guard (first {sample_rows} rows): {frac_retained:.1%} of entries would be "
+        f"retained, {frac_missing:.1%} have a MISSING adj."
+    )
+
+    if frac_missing > tolerance:
+        raise ValueError(
+            f"'{ADJ_GT_FIELD}' is MISSING for {frac_missing:.1%} of sampled entries "
+            f"(tolerance {tolerance:.1%}). filter_entries() would DELETE those "
+            f"genotypes silently rather than fail, and the AC/AF/AN recomputed "
+            f"afterwards would look self-consistent.\n"
+            f"Most likely cause: a field the adj expression reads is undefined on "
+            f"reference-derived entries. DeepVariant reference blocks carry MIN_DP and "
+            f"no DP, so DP is missing on every hom-ref entry after densify -- note DP "
+            f"is still in the entry SCHEMA, so a schema check does not catch it.\n"
+            f"Entry fields present: {sorted(mt.entry)}\n"
+            f"If this MatrixTable was built before the MIN_DP fallback landed, rebuild "
+            f"it from the VDS with `hvantk hgc vds2mt`.\n"
+            f"See hvantk/algorithms/hgc/adj.py:annotate_adj for the full mechanism."
+        )
+
+
 def convert_mt_to_multi_sample_vcf(
     mt_path: str,
     vcf_path: str,
     filter_adj_genotypes: bool = True,
     min_ac: int = 1,
     split_multi: bool = True,
+    check_adj: bool = True,
 ) -> None:
     """
     Convert a Hail MatrixTable to a multi-sample VCF file.
@@ -312,6 +381,9 @@ def convert_mt_to_multi_sample_vcf(
         filter_adj_genotypes (bool): If True, filter entries to adjusted genotypes. Recommended.
         min_ac (int): Minimum alternate allele count (AC) for a variant to be retained.
         split_multi (bool): Whether to split multi-allelic variants.
+        check_adj (bool): If True (default), verify before filtering that `adj` is not
+            systematically MISSING, which would make `filter_entries` delete genotypes
+            silently. See `_assert_adj_is_computable`.
     """
     try:
         # Validate VCF path
@@ -333,6 +405,9 @@ def convert_mt_to_multi_sample_vcf(
                     f"Proceeding without adj filtering. Available entry fields: {list(mt.entry.keys())}"
                 )
             else:
+                # Check BEFORE filtering -- the filter is what removes the evidence.
+                if check_adj:
+                    _assert_adj_is_computable(mt)
                 logging.info("Filtering entries to adjusted genotypes...")
                 mt = mt.filter_entries(mt.adj, keep=True)
         else:
