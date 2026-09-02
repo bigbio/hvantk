@@ -34,6 +34,41 @@ def _split_vds(
     return hl.vds.split_multi(vds)
 
 
+def resolve_reference_depth(mt: hl.MatrixTable) -> hl.MatrixTable:
+    """Fill ``DP`` from ``MIN_DP`` on reference-derived entries.
+
+    DeepVariant reference blocks report depth as ``MIN_DP`` and carry no ``DP``, so after
+    ``to_dense_mt`` every hom-ref entry filled in from the reference side has ``DP``
+    missing. Leaving it that way exports genotypes that look depth-less even though the
+    depth is exactly what justified keeping them -- and any downstream
+    ``FORMAT/DP >= N`` filter then deletes them, reproducing the very bug this pipeline
+    just fixed, one step further along. Measured on the corrected chr20: 62.1% of CALLED
+    genotypes had no ``DP``, and a naive ``DP>=10`` filter would have pushed missingness
+    from 6.8% back to 64.7%.
+
+    Folding ``MIN_DP`` into ``DP`` at the joint-genotyping step is the standard
+    convention, not a local invention:
+
+    * **GLnexus** -- the joint caller published alongside DeepVariant -- ships
+      ``ref_dp_format: MIN_DP`` and a liftover of ``orig_names: [MIN_DP, DP] -> name: DP``
+      with ``combi_method: min`` in its DeepVariant presets.
+    * **DRAGEN / GATK** joint genotyping print ``MIN_DP`` from hom-ref calls as
+      ``FORMAT/DP`` in the joint VCF.
+    * **Hail's own** ``hl.vds.interval_coverage`` uses ``DP`` when present and falls back
+      to ``MIN_DP`` when it is not.
+
+    ``MIN_DP`` is the minimum depth across the block, so this is the conservative reading
+    -- matching GLnexus's ``combi_method: min``. DeepVariant >= 1.2.0 can also emit
+    ``MED_DP``, but the combiner keeps only ``MIN_DP`` on the reference side, and the
+    minimum is the standard choice regardless.
+
+    A no-op when either field is absent, so it is safe on non-DeepVariant callsets.
+    """
+    if "DP" not in mt.entry or "MIN_DP" not in mt.entry:
+        return mt
+    return mt.annotate_entries(DP=hl.coalesce(mt.DP, mt.MIN_DP))
+
+
 def _gt_out_of_bounds(mt: hl.MatrixTable, field: str = "GT"):
     """Predicate: this entry's call references an allele index that does not exist.
 
@@ -260,6 +295,13 @@ def convert_vds_to_mt(
         # it fuses into the write below, and on clean data it is the identity.
         if not skip_validation:
             mt = _apply_biallelic_gt_fix(mt)
+
+        # Step 4b: Resolve the reference-block depth into DP, BEFORE adj reads it and
+        # before the MT is written. Doing it here rather than at export means the
+        # intermediate MatrixTable is self-consistent too, and it matches where GLnexus
+        # and DRAGEN apply the same convention (the joint-genotyping step, not the
+        # writer). A lazy expression: it fuses into the write below and costs no pass.
+        mt = resolve_reference_depth(mt)
 
         # Step 5: Annotate adjusted genotypes (optional)
         if adjust_genotypes:

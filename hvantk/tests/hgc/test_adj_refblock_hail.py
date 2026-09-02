@@ -21,7 +21,10 @@ import pytest
 import hail as hl
 
 from hvantk.algorithms.hgc.adj import annotate_adj
-from hvantk.algorithms.hgc.converters import _assert_adj_is_computable
+from hvantk.algorithms.hgc.converters import (
+    _assert_adj_is_computable,
+    resolve_reference_depth,
+)
 
 
 def _densified_shape_mt():
@@ -121,3 +124,36 @@ def test_guard_rejects_a_systematically_missing_adj():
 
 def test_guard_passes_a_healthy_matrix():
     _assert_adj_is_computable(annotate_adj(_densified_shape_mt()))
+
+
+def test_resolve_reference_depth_fills_dp_from_min_dp():
+    """Recovered reference-block genotypes must carry a usable DP.
+
+    Keeping the genotype but exporting it with an empty DP hands the next tool the
+    same missing-value trap: a `FORMAT/DP >= 10` filter deletes exactly the entries
+    the MIN_DP fallback just rescued. Folding MIN_DP into DP at the joint-genotyping
+    step is the standard convention (GLnexus `orig_names: [MIN_DP, DP] -> DP,
+    combi_method: min`; DRAGEN/GATK print hom-ref MIN_DP as FORMAT/DP).
+    """
+    mt = resolve_reference_depth(_densified_shape_mt())
+    dp = {r.col_idx: r.DP for r in mt.entries().select("DP").collect()}
+
+    assert dp[0] == 25, "reference-block entry must take DP from MIN_DP"
+    assert dp[1] == 20, "variant-record DP must be preserved, not overwritten"
+    assert dp[2] == 3, "low-depth reference block keeps its true (low) MIN_DP"
+    assert dp[3] == 25
+
+    assert all(v is not None for v in dp.values()), (
+        "no entry may be left without a DP -- that is what makes a downstream "
+        "FORMAT/DP filter delete recovered genotypes"
+    )
+
+
+def test_resolve_reference_depth_is_a_noop_without_min_dp():
+    """Non-DeepVariant callsets have no MIN_DP; the step must leave them alone."""
+    mt = _densified_shape_mt().drop("MIN_DP")
+    out = resolve_reference_depth(mt)
+
+    dp = {r.col_idx: r.DP for r in out.entries().select("DP").collect()}
+    assert dp[1] == 20, "variant-record DP untouched"
+    assert dp[0] is None, "nothing to fall back to, so DP stays missing"
