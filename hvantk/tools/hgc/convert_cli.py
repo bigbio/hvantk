@@ -144,10 +144,16 @@ def vds2mt(
     "--split-multi/--no-split-multi", default=True, help="Split multi-allelic variants"
 )
 @click.option(
+    "--check-adj/--no-check-adj",
+    default=True,
+    help="Verify adj is not systematically MISSING before filtering (recommended: "
+    "a missing adj makes filter_entries delete genotypes silently)",
+)
+@click.option(
     "--dry-run", is_flag=True, help="Show what would be done without executing"
 )
 @click.pass_context
-def mt2vcf(ctx, input, output, filter_adj, min_ac, split_multi, dry_run):
+def mt2vcf(ctx, input, output, filter_adj, min_ac, split_multi, check_adj, dry_run):
     """
     Convert MatrixTable to VCF format.
 
@@ -183,6 +189,7 @@ def mt2vcf(ctx, input, output, filter_adj, min_ac, split_multi, dry_run):
             click.echo(f"   • Filter adjusted genotypes: {filter_adj}")
             click.echo(f"   • Minimum AC: {min_ac}")
             click.echo(f"   • Split multi: {split_multi}")
+            click.echo(f"   • Check adj computable: {check_adj}")
             return
 
         # Execute conversion
@@ -193,6 +200,7 @@ def mt2vcf(ctx, input, output, filter_adj, min_ac, split_multi, dry_run):
             filter_adj_genotypes=filter_adj,
             min_ac=min_ac,
             split_multi=split_multi,
+            check_adj=check_adj,
         )
 
         click.echo(f"✅ Successfully converted {input} to VCF at {output}")

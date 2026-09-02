@@ -90,12 +90,40 @@ def annotate_adj(
     own caller densifies first and checks for GT/AD, so the fallback is normally inert --
     it is kept so this function behaves identically to the upstream one for any other
     caller.
+
+    Falls back to ``MIN_DP`` for the depth when ``DP`` is missing. This is NOT
+    cosmetic -- without it the function silently destroys data on any callset built
+    from DeepVariant gVCFs:
+
+    * DeepVariant reference blocks are ``GT:GQ:MIN_DP:PL`` -- they carry ``MIN_DP``
+      and no ``DP`` (variant records are ``GT:GQ:DP:AD:VAF:PL``). Hail's VDS combiner
+      infers which reference entry fields to keep, so ``reference_data`` ends up as
+      ``{END, GQ, MIN_DP}`` with no ``DP`` at all.
+    * ``to_dense_mt`` fills variant-only fields with ``hl.missing`` on the reference
+      side, so every reference-derived hom-ref entry has ``DP`` MISSING. Note ``DP``
+      is still in the entry SCHEMA (it comes from ``variant_data``), so a
+      ``"DP" in mt.entry`` check does not catch this.
+    * ``DP >= adj_dp`` is then missing, and in Hail ``True & missing`` is missing --
+      so ``adj`` is MISSING rather than False, and ``filter_entries(adj)`` drops
+      entries whose predicate is not True. Every reference-block hom-ref genotype is
+      deleted, and a downstream ``variant_qc`` recomputes AC/AF/AN on the wreckage.
+
+    Measured on the 1005-sample CHD WGS cohort (chr20, 1.25 B hom-ref entries): 96.5%
+    of hom-ref entries had ``adj`` MISSING and were deleted, taking the call rate to
+    0.033. With this fallback it is 0.947. Het and hom-var entries always carry ``DP``
+    (they come from variant records) and were never affected.
+
+    ``MIN_DP`` is the MINIMUM depth across the reference block, so using it is
+    conservative -- it under-passes rather than over-passes, which is the right
+    direction for a QC filter. It is also the only depth field a combiner-built
+    ``reference_data`` carries, so there is no less-conservative option available.
     """
     gt_expr = mt.LGT if "GT" not in mt.entry and "LGT" in mt.entry else mt.GT
     ad_expr = mt.LAD if "AD" not in mt.entry and "LAD" in mt.entry else mt.AD
+    dp_expr = hl.coalesce(mt.DP, mt.MIN_DP) if "MIN_DP" in mt.entry else mt.DP
 
     return mt.annotate_entries(
         adj=get_adj_expr(
-            gt_expr, mt.GQ, mt.DP, ad_expr, adj_gq, adj_dp, adj_ab, haploid_adj_dp
+            gt_expr, mt.GQ, dp_expr, ad_expr, adj_gq, adj_dp, adj_ab, haploid_adj_dp
         )
     )
