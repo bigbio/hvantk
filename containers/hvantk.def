@@ -1,14 +1,29 @@
 Bootstrap: docker
-From: python:3.10-slim-bullseye
+From: ubuntu:22.04
 
 # hvantk container image, built from the committed poetry.lock
 # (hail 0.2.137 + pyspark 3.5.8). See docs_site/guide/hpc-migration.md section 3.
 #
-# BASE IMAGE: bullseye, not bookworm. Debian 12 (bookworm) has no openjdk-11 package
-# at all -- apt reports it is replaced by openjdk-17-jre-headless, and Hail 0.2.x /
-# Spark 3.5 support Java 8 or 11 ONLY. Debian 11 (bullseye) still ships
-# openjdk-11-jdk-headless. Do not "modernise" this base without checking `java -version`
-# inside the built image.
+# BASE IMAGE: ubuntu:22.04 (jammy). The previous base, python:3.10-slim-bullseye,
+# sat on Debian 11, whose LTS ended 2026-08-31 -- deb.debian.org still serves the
+# apt *index* while every .deb 404s, so `apt-get update` succeeds and every install
+# fails. That is unfixable by retrying (jobs 19929927, 19930001).
+#
+# Debian 12 (bookworm) is not the answer either: it carries no openjdk-11 at all,
+# only 17+, and Hail 0.2.x / Spark 3.5 support Java 8 or 11 ONLY. That constraint is
+# what pinned this file to a dying distro, and it is a *Debian* constraint, not a
+# Linux one.
+#
+# Ubuntu 22.04 dissolves it -- both requirements come from its own supported main
+# repo, one vendor, no third-party JDK and no snapshot pinning:
+#
+#   python3        3.10.6      (matches the Python the poetry.lock was resolved for)
+#   openjdk-11-jdk-headless
+#                  11.0.32+9-1ubuntu1~22.04   (main, security-maintained)
+#
+# Support: standard security maintenance to May 2027, ESM to May 2032.
+#
+# NOTE: %post runs under /bin/sh (dash) -- no PIPESTATUS, no pipefail, no arrays.
 #
 # EXTRAS: checked against [project.optional-dependencies] in pyproject.toml. This set
 # covers every unique package across all extras. `expression` is required or
@@ -23,24 +38,75 @@ From: python:3.10-slim-bullseye
 
 %post
     set -e
-    # --- Java 11 (Hail 0.2.137 / Spark 3.5 support Java 8 or 11 ONLY) + native libs ---
-    apt-get update && apt-get install -y --no-install-recommends \
-        openjdk-11-jdk-headless \
-        build-essential g++ \
-        zlib1g-dev libbz2-dev liblzma-dev libcurl4-openssl-dev libdeflate-dev \
-        libopenblas-dev liblapack-dev liblz4-dev libhdf5-dev git
+    # tzdata will block on an interactive prompt without this.
+    export DEBIAN_FRONTEND=noninteractive
+
+    # apt update and install are retried AS A PAIR: retrying the install alone cannot
+    # help when the index is stale relative to the pool.
+    apt_ok=0
+    for attempt in 1 2 3; do
+        apt-get update > /tmp/apt-update.log 2>&1 || true
+        if apt-get install -y --no-install-recommends \
+            python3.10 python3.10-dev python3.10-venv python3-pip python-is-python3 \
+            openjdk-11-jdk-headless \
+            build-essential g++ \
+            zlib1g-dev libbz2-dev liblzma-dev libcurl4-openssl-dev libdeflate-dev \
+            libopenblas-dev liblapack-dev liblz4-dev libhdf5-dev git \
+            ca-certificates \
+            > /tmp/apt-install.log 2>&1; then
+            apt_ok=1
+            echo "apt: installed on attempt $attempt"
+            break
+        fi
+        echo "apt: attempt $attempt failed"
+        tail -5 /tmp/apt-install.log
+        sleep 15
+    done
+    if [ "$apt_ok" -ne 1 ]; then
+        echo "FATAL: system dependencies could not be installed"
+        tail -20 /tmp/apt-install.log
+        exit 1
+    fi
+
+    # Fail here, not 15 minutes later inside an sdist build with a confusing error.
+    command -v gcc     >/dev/null || { echo "FATAL: gcc missing";     exit 1; }
+    command -v java    >/dev/null || { echo "FATAL: java missing";    exit 1; }
+    command -v python3 >/dev/null || { echo "FATAL: python3 missing"; exit 1; }
+    echo "java  : $(java -version 2>&1 | head -1)"
+    echo "python: $(python3 -V 2>&1)"
+    # Hail 0.2.x / Spark 3.5 run on Java 8 or 11 ONLY -- refuse anything else.
+    java -version 2>&1 | head -1 | grep -qE '"(1\.8|11)\.' \
+        || { echo "FATAL: image Java is not 8/11 -- Hail will not run"; exit 1; }
+    python3 -V 2>&1 | grep -q "3\.10\." \
+        || { echo "FATAL: python3 is not 3.10 -- poetry.lock was resolved for 3.10"; exit 1; }
+
     # --- hvantk from the committed lock (reproducible; not unpinned pip install) ---
-    pip install --no-cache-dir "poetry>=2.0"
+    #
+    # `python3 -m pip` rather than `pip`: Ubuntu's python3-pip installs pip3, and a
+    # bare `pip` may not exist on PATH.
+    #
+    # Upgrade pip FIRST. Ubuntu 22.04 ships pip 22.0.2, whose vendored rich does a
+    # bare `import attr` while pip does not vendor attrs -- so pip's own startup can
+    # depend on the site-packages attrs poetry is concurrently installing, dying with
+    # `module 'attr.setters' has no attribute 'pipe'`. rich >= 13 dropped attrs.
+    python3 -m pip install --no-cache-dir --upgrade pip
+    # Pin poetry: "poetry>=2.0" silently moved 2.4.2 -> 2.4.3 between builds, which is
+    # a floating dependency in the one file whose job is reproducing a lockfile.
+    python3 -m pip install --no-cache-dir "poetry==2.4.3"
+
     cd /opt/hvantk
     poetry config virtualenvs.create false
     poetry install --no-interaction --no-root \
         --extras "hgc ptm ancestry psroc constraint enrichex cohort viz duckdb expression"
     poetry install --no-interaction --only-root
-    apt-get purge -y build-essential g++ git && apt-get autoremove -y
+
+    apt-get purge -y build-essential g++ git python3.10-dev && apt-get autoremove -y
     apt-get clean && rm -rf /var/lib/apt/lists/*
+
     # fail the build here rather than shipping a broken image
     java -version 2>&1 | head -1
-    python -c "import hail; print('hail', hail.__version__)"
+    python3 -c "import hail; print('hail', hail.__version__)"
+    command -v hvantk >/dev/null || { echo "FATAL: hvantk entry point missing"; exit 1; }
 
 %environment
     export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
@@ -56,3 +122,5 @@ From: python:3.10-slim-bullseye
     org hvantk
     hail 0.2.137
     pyspark 3.5.8
+    base ubuntu:22.04
+    base_note "jammy: python3.10 + openjdk-11 both from main; standard support to 2027-05"
