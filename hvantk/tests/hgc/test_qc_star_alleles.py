@@ -79,3 +79,47 @@ def test_af_spectrum_stats_box_and_legend_do_not_overlap():
         f"same corner"
     )
     plt.close(fig)
+
+
+def test_plot_title_discloses_subsampling():
+    """A plot lifted out of the report must carry the disclosure in its own title.
+
+    The report's parameter table says "Variants plotted: 500,306 random sample of
+    11,396,989", but the plot titles said "n=500306 variants" -- and an image
+    extracted from the report travels without the table. The title has to say so.
+    """
+    rng = np.random.default_rng(1)
+    df = pd.DataFrame({"AF": np.clip(rng.beta(0.4, 3.0, 2000), 0, 1)})
+    df.attrs["n_total_variants"] = 11_396_989
+    df.attrs["subsampled"] = True
+
+    fig = plot_allele_frequency_spectrum(df, figsize=(9, 5))
+    title = fig.axes[0].get_title()
+    plt.close(fig)
+
+    assert "11,396,989" in title, f"true total missing from title: {title!r}"
+    assert "sampled" in title, f"sampling not disclosed in title: {title!r}"
+
+
+def test_plot_title_plain_when_not_subsampled():
+    """No disclosure noise on a complete frame."""
+    rng = np.random.default_rng(2)
+    df = pd.DataFrame({"AF": np.clip(rng.beta(0.4, 3.0, 2000), 0, 1)})
+    df.attrs["n_total_variants"] = 2000
+    df.attrs["subsampled"] = False
+
+    fig = plot_allele_frequency_spectrum(df, figsize=(9, 5))
+    title = fig.axes[0].get_title()
+    plt.close(fig)
+
+    assert "sampled" not in title, f"unexpected sampling note: {title!r}"
+
+
+def test_plot_title_survives_a_frame_with_no_attrs():
+    """Plot functions are public API; a bare DataFrame must still work."""
+    rng = np.random.default_rng(3)
+    df = pd.DataFrame({"AF": np.clip(rng.beta(0.4, 3.0, 500), 0, 1)})
+
+    fig = plot_allele_frequency_spectrum(df, figsize=(9, 5))
+    assert "n=" in fig.axes[0].get_title()
+    plt.close(fig)

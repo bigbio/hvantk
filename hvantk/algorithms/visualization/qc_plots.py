@@ -77,6 +77,26 @@ QC_THRESHOLDS = {
 }
 
 
+def _sampled_note(source_df, n_shown):
+    """Return a trailing note disclosing that the frame is a subsample.
+
+    get_variant_metrics_df subsamples above its row budget and records the true total
+    on df.attrs. Titling a plot "n=500306 variants" for an 11,396,989-variant callset
+    presents the sample as the population -- and a plot extracted from the report
+    carries no other disclosure with it, so the title has to say so itself.
+    """
+    total = None
+    subsampled = False
+    try:
+        total = source_df.attrs.get("n_total_variants")
+        subsampled = bool(source_df.attrs.get("subsampled", False))
+    except AttributeError:  # not a DataFrame, or no attrs
+        pass
+    if subsampled and total and total > n_shown:
+        return f"; sampled from {total:,}"
+    return ""
+
+
 def _stats_box(ax, text, legend_loc="upper right"):
     """Draw a stats box in a corner the legend does not occupy.
 
@@ -803,7 +823,8 @@ def plot_variant_call_rate_distribution(
     ax.set_xlabel("Variant Call Rate", fontsize=12)
     ax.set_ylabel("Number of Variants", fontsize=12)
     ax.set_title(
-        f"Variant Call Rate Distribution (n={len(call_rates)})",
+        f"Variant Call Rate Distribution (n={len(call_rates):,}"
+        f"{_sampled_note(variant_df, len(call_rates))})",
         fontsize=14,
         fontweight="bold",
     )
@@ -927,7 +948,8 @@ def plot_allele_frequency_spectrum(
     ax.set_xlabel("Allele Frequency", fontsize=12)
     ax.set_ylabel("Number of Variants", fontsize=12)
     ax.set_title(
-        f"Allele Frequency Spectrum (n={len(afs_filtered)} polymorphic)",
+        f"Allele Frequency Spectrum (n={len(afs_filtered):,} polymorphic"
+        f"{_sampled_note(variant_df, len(afs_filtered))})",
         fontsize=14,
         fontweight="bold",
     )
@@ -1042,7 +1064,8 @@ def plot_hwe_pvalues(
     ax.set_xlabel(xlabel, fontsize=12)
     ax.set_ylabel("Number of Variants", fontsize=12)
     ax.set_title(
-        f"Hardy-Weinberg Equilibrium p-values {title_suffix} (n={len(pvalues)})",
+        f"Hardy-Weinberg Equilibrium p-values {title_suffix} (n={len(pvalues):,}"
+        f"{_sampled_note(variant_df, len(pvalues))})",
         fontsize=14,
         fontweight="bold",
     )
@@ -1295,7 +1318,9 @@ def plot_variant_qc_overview(
 
     # Add overall title
     fig.suptitle(
-        f"Variant QC Overview (n={len(df)} variants)", fontsize=16, fontweight="bold"
+        f"Variant QC Overview (n={len(df):,} variants{_sampled_note(variant_df, len(df))})",
+        fontsize=16,
+        fontweight="bold",
     )
 
     if save_path:
