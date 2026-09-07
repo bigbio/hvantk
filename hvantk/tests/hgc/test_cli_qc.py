@@ -264,6 +264,10 @@ def test_qc_report_cli_basic():
                     mock_qc_instance = MagicMock()
                     mock_qc_instance.has_sample_qc = True
                     mock_qc_instance.has_variant_qc = False
+                    # qc-report counts in Hail rather than building DataFrames just
+                    # to len() them, so these must return real ints to be formatted.
+                    mock_qc_instance.count_samples.return_value = 100
+                    mock_qc_instance.count_variants.return_value = 1000
                     mock_qc_instance.generate_html_report.return_value = Path(
                         "report.html"
                     )
@@ -315,6 +319,10 @@ def test_qc_report_cli_custom_title():
                     mock_qc_instance = MagicMock()
                     mock_qc_instance.has_sample_qc = True
                     mock_qc_instance.has_variant_qc = False
+                    # qc-report counts in Hail rather than building DataFrames just
+                    # to len() them, so these must return real ints to be formatted.
+                    mock_qc_instance.count_samples.return_value = 100
+                    mock_qc_instance.count_variants.return_value = 1000
                     mock_qc_instance.generate_html_report.return_value = Path(
                         "custom_report.html"
                     )

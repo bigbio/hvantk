@@ -13,7 +13,6 @@ Commands:
 
 import logging
 import click
-import os
 
 logger = logging.getLogger(__name__)
 
@@ -147,17 +146,10 @@ def compute_qc(
             variant_qc_table = mt_qc.rows().select("variant_qc")
             qc_results = QCMetrics(mt_qc, None, variant_qc_table)
 
-        # Save QC metrics
+        # Save QC metrics. `save_mt` is honoured inside save_qc_metrics -- writing the
+        # MatrixTable and then deleting it still paid for the whole write.
         click.echo("💾 Saving QC metrics...")
-        saved_files = save_qc_metrics(qc_results, output_dir, prefix)
-
-        # Remove MatrixTable from saved files if not requested
-        if not save_mt and "matrix_table" in saved_files:
-            import shutil
-
-            if os.path.exists(saved_files["matrix_table"]):
-                shutil.rmtree(saved_files["matrix_table"])
-            del saved_files["matrix_table"]
+        saved_files = save_qc_metrics(qc_results, output_dir, prefix, save_mt=save_mt)
 
         click.echo("✅ Successfully computed and saved QC metrics:")
         for file_type, file_path in saved_files.items():
@@ -635,17 +627,12 @@ def qc_report(ctx, input, output, title, include_plots, style, dry_run):
         click.echo(f"   • Size: {file_size:.1f} KB")
         click.echo(f"   • Title: {title}")
 
-        sample_df = (
-            qc_results.get_sample_metrics_df() if qc_results.has_sample_qc else None
-        )
-        variant_df = (
-            qc_results.get_variant_metrics_df() if qc_results.has_variant_qc else None
-        )
-
-        if sample_df is not None:
-            click.echo(f"   • Samples: {len(sample_df):,}")
-        if variant_df is not None:
-            click.echo(f"   • Variants: {len(variant_df):,}")
+        # Count in Hail. Building the DataFrames just to call len() on them collected
+        # every variant to the driver -- ~11 M rows on one real chromosome.
+        if qc_results.has_sample_qc:
+            click.echo(f"   • Samples: {qc_results.count_samples():,}")
+        if qc_results.has_variant_qc:
+            click.echo(f"   • Variants: {qc_results.count_variants():,}")
 
         click.echo("\n🌐 Open the report in your web browser:")
         click.echo(f"   file://{report_path.absolute()}")
