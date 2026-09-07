@@ -13,7 +13,6 @@ Commands:
 
 import logging
 import click
-import os
 
 logger = logging.getLogger(__name__)
 
@@ -147,17 +146,10 @@ def compute_qc(
             variant_qc_table = mt_qc.rows().select("variant_qc")
             qc_results = QCMetrics(mt_qc, None, variant_qc_table)
 
-        # Save QC metrics
+        # Save QC metrics. `save_mt` is honoured inside save_qc_metrics -- writing the
+        # MatrixTable and then deleting it still paid for the whole write.
         click.echo("💾 Saving QC metrics...")
-        saved_files = save_qc_metrics(qc_results, output_dir, prefix)
-
-        # Remove MatrixTable from saved files if not requested
-        if not save_mt and "matrix_table" in saved_files:
-            import shutil
-
-            if os.path.exists(saved_files["matrix_table"]):
-                shutil.rmtree(saved_files["matrix_table"])
-            del saved_files["matrix_table"]
+        saved_files = save_qc_metrics(qc_results, output_dir, prefix, save_mt=save_mt)
 
         click.echo("✅ Successfully computed and saved QC metrics:")
         for file_type, file_path in saved_files.items():
@@ -414,7 +406,11 @@ def qc_summary(ctx, qc_dir, sample_file, variant_file, output, format):
         if variant_file:
             variant_path = Path(variant_file)
         else:
-            variant_files = list(qc_dir.glob("*variant_qc*.csv"))
+            # compute-qc writes the variant table as TSV (Hail export: alleles
+            # and struct fields contain unquoted commas). Older runs wrote .csv.
+            variant_files = sorted(qc_dir.glob("*variant_qc*.tsv")) or sorted(
+                qc_dir.glob("*variant_qc*.csv")
+            )
             if not variant_files:
                 click.echo("⚠️  No variant QC files found")
                 variant_path = None
@@ -449,7 +445,9 @@ def qc_summary(ctx, qc_dir, sample_file, variant_file, output, format):
 
         if variant_path and variant_path.exists():
             click.echo(f"📊 Processing variant QC metrics from {variant_path}")
-            variant_df = pd.read_csv(variant_path)
+            # sep=None + python engine sniffs tab vs comma, so both the current
+            # .tsv and any pre-existing .csv parse correctly.
+            variant_df = pd.read_csv(variant_path, sep=None, engine="python")
             from hvantk.algorithms.hgc.qc import get_qc_summary_stats
 
             variant_summary = get_qc_summary_stats(variant_df)
@@ -635,17 +633,12 @@ def qc_report(ctx, input, output, title, include_plots, style, dry_run):
         click.echo(f"   • Size: {file_size:.1f} KB")
         click.echo(f"   • Title: {title}")
 
-        sample_df = (
-            qc_results.get_sample_metrics_df() if qc_results.has_sample_qc else None
-        )
-        variant_df = (
-            qc_results.get_variant_metrics_df() if qc_results.has_variant_qc else None
-        )
-
-        if sample_df is not None:
-            click.echo(f"   • Samples: {len(sample_df):,}")
-        if variant_df is not None:
-            click.echo(f"   • Variants: {len(variant_df):,}")
+        # Count in Hail. Building the DataFrames just to call len() on them collected
+        # every variant to the driver -- ~11 M rows on one real chromosome.
+        if qc_results.has_sample_qc:
+            click.echo(f"   • Samples: {qc_results.count_samples():,}")
+        if qc_results.has_variant_qc:
+            click.echo(f"   • Variants: {qc_results.count_variants():,}")
 
         click.echo("\n🌐 Open the report in your web browser:")
         click.echo(f"   file://{report_path.absolute()}")
