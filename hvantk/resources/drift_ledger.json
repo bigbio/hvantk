@@ -5,6 +5,12 @@
     "rebuilt_at": null,
     "signal": "routine"
   },
+  "clinvar:variants": {
+    "accepted_in": "drift/clinvar-variants",
+    "last_upstream_change": "2026-09-01T10:50:05.475114+00:00",
+    "rebuilt_at": null,
+    "signal": "schema"
+  },
   "gencc:submissions": {
     "accepted_in": "drift/routine-batch",
     "last_upstream_change": "2026-08-30T11:21:24.495687+00:00",
