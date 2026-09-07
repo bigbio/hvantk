@@ -77,6 +77,29 @@ QC_THRESHOLDS = {
 }
 
 
+def _stats_box(ax, text, legend_loc="upper right"):
+    """Draw a stats box in a corner the legend does not occupy.
+
+    Placing both at "upper right" -- which plot_allele_frequency_spectrum did
+    unconditionally, and plot_variant_qc_overview did whenever log_transform was
+    False -- renders the two on top of each other, e.g. "Mean: 0.2071" printed over
+    "5% MAF". Anchor the box opposite whichever side the legend is on.
+    """
+    if "right" in legend_loc:
+        x, ha = 0.02, "left"
+    else:
+        x, ha = 0.98, "right"
+    ax.text(
+        x,
+        0.98,
+        text,
+        transform=ax.transAxes,
+        verticalalignment="top",
+        horizontalalignment=ha,
+        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.8),
+    )
+
+
 def _prepare_sample_qc_data(sample_df: pd.DataFrame) -> pd.DataFrame:
     """
     Prepare sample QC data for plotting by flattening nested columns.
@@ -113,9 +136,9 @@ def _prepare_sample_qc_data(sample_df: pd.DataFrame) -> pd.DataFrame:
 
                 # Update the previous occurrence
                 prev_idx = seen_names[base_name]
-                new_columns[
-                    prev_idx
-                ] = f"{df.columns[prev_idx].split('.')[-2]}_{base_name}"
+                new_columns[prev_idx] = (
+                    f"{df.columns[prev_idx].split('.')[-2]}_{base_name}"
+                )
 
                 new_columns.append(context_name)
             else:
@@ -911,15 +934,8 @@ def plot_allele_frequency_spectrum(
 
     # Add statistics
     stats_text = f"Mean: {afs_filtered.mean():.4f}\nMedian: {afs_filtered.median():.4f}\n<1%: {(afs_filtered < 0.01).sum()}\n<5%: {(afs_filtered < 0.05).sum()}"
-    ax.text(
-        0.98,
-        0.98,
-        stats_text,
-        transform=ax.transAxes,
-        verticalalignment="top",
-        horizontalalignment="right",
-        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.8),
-    )
+    # Legend and stats box must not share a corner (they used to both sit top-right).
+    _stats_box(ax, stats_text, legend_loc="upper right")
 
     ax.legend(loc="upper right")
     plt.tight_layout()
@@ -1041,20 +1057,16 @@ def plot_hwe_pvalues(
             f"Mean: {plot_values.mean():.2e}\nMedian: {plot_values.median():.2e}"
         )
 
-    ax.text(
-        0.98,
-        0.98,
-        stats_text,
-        transform=ax.transAxes,
-        verticalalignment="top",
-        horizontalalignment="right",
-        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.8),
-    )
+    # Legend side depends on log_transform, so the stats box has to follow it --
+    # pinned at "upper right" it collided with the legend whenever log_transform
+    # was False.
+    legend_loc = "upper left" if log_transform else "upper right"
+    _stats_box(ax, stats_text, legend_loc=legend_loc)
 
     # Add legend if there are threshold lines
     handles, labels = ax.get_legend_handles_labels()
     if handles:
-        ax.legend(loc="upper left" if log_transform else "upper right")
+        ax.legend(loc=legend_loc)
 
     plt.tight_layout()
 

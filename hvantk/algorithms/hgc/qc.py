@@ -33,6 +33,51 @@ logger = logging.getLogger(__name__)
 # 500k rows is far more than any histogram needs and stays well inside a normal driver.
 DEFAULT_VARIANT_DF_MAX_ROWS = 500_000
 
+# Non-variant alternate alleles that survive densification of a gVCF-derived VDS.
+#
+#   <*> / <NON_REF>  the gVCF "any other allele" placeholder that DeepVariant and GATK
+#                    emit on every reference block. After to_dense_mt these become rows
+#                    like ("T", "<*>") with AC=0 on the alt -- not variants at all.
+#   *                the VCF spanning-deletion allele: a real representation, but not an
+#                    independent variant, and it distorts an allele-frequency spectrum.
+#
+# Measured on the 1005-sample chr20 dense MatrixTable: 5,139,209 of 11,396,989 rows
+# (45.09%) carried <*>. A QC report computed over that population is describing
+# reference blocks as much as variants, which is why its AF spectrum looks nothing
+# like a real one.
+SYMBOLIC_ALT_ALLELES = frozenset({"<*>", "<NON_REF>", "*"})
+
+
+def count_symbolic_alt_rows(mt: hl.MatrixTable) -> Tuple[int, int]:
+    """Return (rows with a symbolic/non-variant alt allele, total rows).
+
+    Cheap enough to run before deciding whether to warn: it is a row-level count, not
+    a genotype-level one.
+    """
+    symbolic = hl.literal(set(SYMBOLIC_ALT_ALLELES))
+    rows = mt.rows()
+    counts = rows.aggregate(
+        hl.struct(
+            symbolic=hl.agg.count_where(
+                hl.any(lambda a: symbolic.contains(a), rows.alleles[1:])
+            ),
+            total=hl.agg.count(),
+        )
+    )
+    return int(counts.symbolic), int(counts.total)
+
+
+def filter_symbolic_alt_alleles(mt: hl.MatrixTable) -> hl.MatrixTable:
+    """Drop rows whose alternate allele is symbolic (``<*>``/``<NON_REF>``) or ``*``.
+
+    See :data:`SYMBOLIC_ALT_ALLELES`. This is a row filter only -- no genotype is
+    altered, and rows carrying real alternate alleles are untouched.
+    """
+    symbolic = hl.literal(set(SYMBOLIC_ALT_ALLELES))
+    return mt.filter_rows(
+        hl.any(lambda a: symbolic.contains(a), mt.alleles[1:]), keep=False
+    )
+
 
 class QCMetrics:
     """Container class for QC metrics and metadata."""
