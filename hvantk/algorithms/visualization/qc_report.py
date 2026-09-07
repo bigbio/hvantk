@@ -695,9 +695,30 @@ def generate_qc_report(
         qc_results.get_variant_metrics_df() if qc_results.has_variant_qc else None
     )
 
-    # Basic stats with fallback values
+    # Basic stats with fallback values.
+    #
+    # n_variants must be the TRUE variant count, not len(variant_df): above the row
+    # budget the DataFrame is a subsample, and reporting its length here would state
+    # "Number of Variants: 500,013" for an 11.1 M variant callset -- the report would
+    # contradict the CLI, which counts in Hail. get_variant_metrics_df records the real
+    # total on df.attrs precisely so this stays honest.
     n_samples = len(sample_df) if sample_df is not None else 0
-    n_variants = len(variant_df) if variant_df is not None else 0
+    if variant_df is not None:
+        n_variants = variant_df.attrs.get("n_total_variants", len(variant_df))
+        variant_subsampled = bool(variant_df.attrs.get("subsampled", False))
+        n_variants_plotted = len(variant_df)
+    else:
+        n_variants = 0
+        variant_subsampled = False
+        n_variants_plotted = 0
+
+    if variant_subsampled:
+        logger.warning(
+            "Variant plots in this report are built from a %s-row sample of %s "
+            "variants. They are representative, not exact.",
+            f"{n_variants_plotted:,}",
+            f"{n_variants:,}",
+        )
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # Generate plots and convert to base64
@@ -956,10 +977,23 @@ def generate_qc_report(
     # Generate recommendations - handle None dataframes
     recommendations = generate_recommendations(sample_df, variant_df)
 
-    # Analysis parameters
+    # Analysis parameters. When the variant plots came from a subsample, say so here --
+    # a reader comparing this report against the exported table must be able to see
+    # that the plotted variants are a sample and the count is the full callset.
+    subsample_row = ""
+    if variant_subsampled:
+        subsample_row = (
+            "<tr><td>Variants plotted</td><td>"
+            f"{n_variants_plotted:,} random sample of {n_variants:,} "
+            "&mdash; plots are representative, not exact; "
+            "the complete table is in the exported <code>*_variant_qc.tsv</code>"
+            "</td></tr>"
+        )
+
     analysis_parameters = f"""
         <tr><td>Number of Samples</td><td>{n_samples:,}</td></tr>
         <tr><td>Number of Variants</td><td>{n_variants:,}</td></tr>
+        {subsample_row}
         <tr><td>Analysis Date</td><td>{timestamp}</td></tr>
         <tr><td>QC Module Version</td><td>hvantk v1.0</td></tr>
     """

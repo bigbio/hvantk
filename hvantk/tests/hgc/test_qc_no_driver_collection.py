@@ -33,6 +33,7 @@ class _FakeTable:
         self._exploding = exploding_to_pandas
         self.exported_to = None
         self.export_delimiter = None
+        self.flattened = False
         self.sampled_p = None
         self.to_pandas_calls = 0
 
@@ -46,11 +47,20 @@ class _FakeTable:
         self._sampled_child = out
         return out
 
+    def flatten(self):
+        self.flattened = True
+        return self
+
     def export(
         self, output, types_file=None, header=True, parallel=None, delimiter="\t"
     ):
         self.exported_to = output
         self.export_delimiter = delimiter
+        # Write a realistic flattened export so the parseability guard has something
+        # to read back.
+        with open(output, "w") as fh:
+            fh.write("locus\talleles\tvariant_qc.call_rate\n")
+            fh.write('1:1\t["A","C"]\t1.0000e+00\n')
 
     def to_pandas(self):
         self.to_pandas_calls += 1
@@ -80,10 +90,17 @@ def test_save_qc_metrics_exports_variants_without_collecting(tmp_path):
 
     saved = save_qc_metrics(qc, tmp_path, prefix="t")
 
-    assert variant.exported_to == str(tmp_path / "t_variant_qc.csv")
-    assert variant.export_delimiter == ",", "the file is named .csv, so export as CSV"
+    assert variant.exported_to == str(tmp_path / "t_variant_qc.tsv")
+    assert variant.export_delimiter == "\t", (
+        'must be tab-delimited: `alleles` exports as ["A","C"] and struct fields as '
+        "JSON, both full of commas that Hail does not quote -- a comma-delimited file "
+        "is silently malformed"
+    )
+    assert (
+        variant.flattened
+    ), "flatten() first, or all 28 QC metrics collapse into one JSON blob column"
     assert variant.to_pandas_calls == 0
-    assert saved["variant_qc"] == str(tmp_path / "t_variant_qc.csv")
+    assert saved["variant_qc"] == str(tmp_path / "t_variant_qc.tsv")
 
 
 def test_save_qc_metrics_still_collects_samples(tmp_path):
@@ -161,3 +178,62 @@ def test_counts_do_not_build_dataframes():
 
 def test_default_budget_is_sane():
     assert 0 < DEFAULT_VARIANT_DF_MAX_ROWS <= 5_000_000
+
+
+# --------------------------------------------------------------------------- guards
+# These cover defects found by reviewing the first version of this fix: the export was
+# a malformed CSV, the DataFrame cache ignored max_rows, and the subsampling that the
+# fix claimed was "never silent" was in fact never surfaced anywhere a reader looks.
+
+
+def test_export_guard_rejects_comma_decimal_separator(tmp_path):
+    """A locale-formatted export must fail loudly, not parse as strings downstream.
+
+    Hail formats export floats with the JVM default locale. On a European locale
+    `call_rate` is written `1,0000e+00`, every downstream `pd.read_csv` reads the
+    column as text, and the numeric summaries come out empty rather than wrong --
+    which is worse, because nothing complains. Reproduced locally: forcing
+    `-Duser.language=en` flips `1,0000e+00` back to `1.0000e+00`.
+    """
+    from hvantk.algorithms.hgc.qc import _assert_export_is_parseable
+
+    bad = tmp_path / "bad.tsv"
+    bad.write_text('locus\talleles\tvariant_qc.call_rate\n1:1\t["A","C"]\t1,0000e+00\n')
+
+    with pytest.raises(ValueError, match="comma decimal separator"):
+        _assert_export_is_parseable(bad)
+
+
+def test_export_guard_accepts_a_normal_export(tmp_path):
+    from hvantk.algorithms.hgc.qc import _assert_export_is_parseable
+
+    good = tmp_path / "good.tsv"
+    good.write_text(
+        'locus\talleles\tvariant_qc.call_rate\n1:1\t["A","C"]\t1.0000e+00\n'
+    )
+
+    _assert_export_is_parseable(good)  # must not raise
+
+
+def test_export_guard_tolerates_an_empty_table(tmp_path):
+    from hvantk.algorithms.hgc.qc import _assert_export_is_parseable
+
+    empty = tmp_path / "empty.tsv"
+    empty.write_text("locus\talleles\tvariant_qc.call_rate\n")
+
+    _assert_export_is_parseable(empty)  # header only: nothing to check
+
+
+def test_dataframe_cache_respects_a_changed_budget():
+    """max_rows=0 ("give me everything") must not return a cached subsample."""
+    variant = _FakeTable(1_000_000)
+    qc = QCMetrics(mt=_FakeMT(), sample_qc=None, variant_qc=variant)
+
+    small = qc.get_variant_metrics_df(max_rows=1000)
+    assert small.attrs["subsampled"] is True
+
+    full = qc.get_variant_metrics_df(max_rows=0)
+    assert (
+        full.attrs["subsampled"] is False
+    ), "the cache ignored max_rows and handed back the earlier subsample"
+    assert len(full) == 1_000_000

@@ -406,7 +406,11 @@ def qc_summary(ctx, qc_dir, sample_file, variant_file, output, format):
         if variant_file:
             variant_path = Path(variant_file)
         else:
-            variant_files = list(qc_dir.glob("*variant_qc*.csv"))
+            # compute-qc writes the variant table as TSV (Hail export: alleles
+            # and struct fields contain unquoted commas). Older runs wrote .csv.
+            variant_files = sorted(qc_dir.glob("*variant_qc*.tsv")) or sorted(
+                qc_dir.glob("*variant_qc*.csv")
+            )
             if not variant_files:
                 click.echo("⚠️  No variant QC files found")
                 variant_path = None
@@ -441,7 +445,9 @@ def qc_summary(ctx, qc_dir, sample_file, variant_file, output, format):
 
         if variant_path and variant_path.exists():
             click.echo(f"📊 Processing variant QC metrics from {variant_path}")
-            variant_df = pd.read_csv(variant_path)
+            # sep=None + python engine sniffs tab vs comma, so both the current
+            # .tsv and any pre-existing .csv parse correctly.
+            variant_df = pd.read_csv(variant_path, sep=None, engine="python")
             from hvantk.algorithms.hgc.qc import get_qc_summary_stats
 
             variant_summary = get_qc_summary_stats(variant_df)

@@ -17,6 +17,7 @@ Functions:
 """
 
 import logging
+import re
 import hail as hl
 import pandas as pd
 import numpy as np
@@ -47,6 +48,7 @@ class QCMetrics:
         self.variant_qc = variant_qc
         self._sample_metrics_df = None
         self._variant_metrics_df = None
+        self._variant_df_max_rows = None
 
     @property
     def has_sample_qc(self) -> bool:
@@ -84,8 +86,10 @@ class QCMetrics:
         size. The subsampling is logged and recorded in ``df.attrs`` -- it must never be
         silent, or a reader will take a subsampled plot for an exact one.
 
-        For the exact, complete per-variant table use :func:`save_qc_metrics`, which
-        writes it with ``Table.export`` -- distributed, no driver ceiling, all rows.
+        For every row use :func:`save_qc_metrics`, which writes the table with
+        ``Table.export`` -- distributed, no driver ceiling. Note that Hail's export
+        reduces doubles to ~5 significant figures, so it has all the rows but not the
+        full float precision pandas wrote.
 
         Parameters
         ----------
@@ -93,6 +97,13 @@ class QCMetrics:
             Row budget for the returned DataFrame. Set to 0 to disable sampling and
             collect everything (this is what used to happen unconditionally).
         """
+        # Cache on max_rows too: a caller asking for a different budget -- notably
+        # max_rows=0, the documented "give me everything" escape hatch -- must not be
+        # handed back a subsample cached from an earlier call.
+        if self._variant_df_max_rows != max_rows:
+            self._variant_metrics_df = None
+        self._variant_df_max_rows = max_rows
+
         if self._variant_metrics_df is None and self.has_variant_qc:
             ht = self.variant_qc
             n_total = ht.count()
@@ -811,6 +822,52 @@ def prepare_qc_for_visualization(
         raise
 
 
+def _assert_export_is_parseable(path: Union[str, Path]) -> None:
+    """Fail loudly if an exported QC table is not machine-readable.
+
+    Hail formats floats in ``Table.export`` with the **JVM default locale**. On a
+    machine whose locale uses a comma decimal separator (much of Europe -- and this
+    toolkit is developed and run there) ``call_rate`` is written ``1,0000e+00``
+    instead of ``1.0000e+00``. Every downstream ``pd.read_csv`` then reads those
+    columns as strings, and every numeric summary silently becomes empty rather than
+    wrong -- which is worse, because nothing complains.
+
+    The pandas path this replaced formatted floats with the C locale and so was
+    immune. Rather than depend on the JVM locale of whoever runs this, read the file
+    back and check that the numeric columns actually parse.
+
+    Note also that Hail's export reduces doubles to ~5 significant figures
+    (0.5052631578947369 -> 5.0526e-01). That is fine for QC metrics but it is not
+    byte-identical to what pandas wrote, so do not describe this file as lossless.
+    """
+    path = Path(path)
+    try:
+        with open(path) as fh:
+            header = fh.readline().rstrip("\n").split("\t")
+            first = fh.readline().rstrip("\n").split("\t")
+    except OSError as e:  # pragma: no cover - the export just succeeded
+        raise ValueError(f"exported QC table {path} could not be read back: {e}")
+
+    if not first or first == [""]:
+        return  # empty table: nothing to verify
+
+    # Any field that looks like "1,2345e+00" is locale-formatted and will not parse.
+    locale_broken = [
+        (col, val)
+        for col, val in zip(header, first)
+        if re.fullmatch(r"[+-]?\d+,\d+([eE][+-]?\d+)?", val)
+    ]
+    if locale_broken:
+        col, val = locale_broken[0]
+        raise ValueError(
+            f"{path} was written with a comma decimal separator (e.g. {col}={val!r}). "
+            "Hail's Table.export formats floats using the JVM default locale, so this "
+            "file will not parse downstream. Start the JVM with "
+            "-Duser.language=en -Duser.country=US (e.g. via PYSPARK_SUBMIT_ARGS "
+            "--driver-java-options) and re-run."
+        )
+
+
 def save_qc_metrics(
     qc_metrics: QCMetrics,
     output_dir: Union[str, Path],
@@ -821,9 +878,15 @@ def save_qc_metrics(
     Save QC metrics to files.
 
     The variant table is written with ``Table.export`` rather than
-    ``to_pandas().to_csv()``. Hail exports from the executors, so this is complete (no
-    row limit) and never materialises the table on the driver -- the collect-based path
-    killed a 200 GB driver on a single real chromosome (~11.1 M variants, job 19925591).
+    ``to_pandas().to_csv()``. Hail exports from the executors, so every row is written
+    and the table is never materialised on the driver -- the collect-based path killed a
+    200 GB driver on a single real chromosome (~11.1 M variants, job 19925591).
+
+    Two consequences of exporting through Hail rather than pandas, both deliberate:
+    the file is TAB-delimited (``alleles`` and struct fields contain commas that Hail
+    does not quote), and doubles are written to ~5 significant figures rather than full
+    precision. All rows, slightly coarser floats.
+
     Sample QC stays on ``to_pandas``: it is bounded by the cohort size, not the variant
     count, and 1005 rows is nothing.
 
@@ -859,9 +922,20 @@ def save_qc_metrics(
 
         # Save variant QC -- exported by Hail from the executors, NOT collected.
         # There is no row ceiling here and the driver never holds the table.
+        #
+        # TAB-delimited, and .tsv rather than .csv, because a comma delimiter cannot
+        # work here: `alleles` exports as ["A","T"] and an un-flattened struct as a
+        # JSON object, both of which contain commas, and Hail does not quote fields.
+        # A comma-delimited "csv" is silently malformed -- three header columns over
+        # rows with a dozen embedded commas.
+        #
+        # .flatten() first, so the 28 QC metrics become real columns
+        # (variant_qc.call_rate, ...) matching how the pandas-written sample file
+        # names them, instead of one opaque JSON blob column.
         if qc_metrics.has_variant_qc:
-            variant_path = output_dir / f"{prefix}_variant_qc.csv"
-            qc_metrics.variant_qc.export(str(variant_path), delimiter=",")
+            variant_path = output_dir / f"{prefix}_variant_qc.tsv"
+            qc_metrics.variant_qc.flatten().export(str(variant_path))
+            _assert_export_is_parseable(variant_path)
             saved_files["variant_qc"] = str(variant_path)
             logger.info(f"Saved variant QC metrics to {variant_path}")
 
