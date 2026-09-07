@@ -719,6 +719,34 @@ def generate_qc_report(
             f"{n_variants_plotted:,}",
             f"{n_variants:,}",
         )
+
+    # Symbolic <*>/<NON_REF> rows are gVCF reference blocks that survived densify, not
+    # variants. `compute-qc --remove-star-alleles` (the default) drops them, but a
+    # MatrixTable built another way can still carry them -- on the 1005-sample chr20
+    # callset they were 45% of rows, which makes the AF spectrum meaningless. If any
+    # are present the report must say so rather than quietly plotting them.
+    star_fraction = None
+    if variant_df is not None and "alleles" in variant_df.columns:
+        try:
+            from hvantk.algorithms.hgc.qc import SYMBOLIC_ALT_ALLELES
+
+            def _is_symbolic(alleles):
+                try:
+                    return any(a in SYMBOLIC_ALT_ALLELES for a in list(alleles)[1:])
+                except TypeError:
+                    return False
+
+            n_star = int(variant_df["alleles"].map(_is_symbolic).sum())
+            if n_star:
+                star_fraction = 100.0 * n_star / len(variant_df)
+                logger.warning(
+                    "%.2f%% of plotted rows carry a symbolic <*>/<NON_REF>/* alternate "
+                    "allele. These are not variants; re-run compute-qc with "
+                    "--remove-star-alleles.",
+                    star_fraction,
+                )
+        except Exception as e:  # never let a disclosure check break the report
+            logger.debug("star-allele check skipped: %s", e)
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # Generate plots and convert to base64
@@ -990,10 +1018,23 @@ def generate_qc_report(
             "</td></tr>"
         )
 
+    star_row = ""
+    if star_fraction:
+        star_row = (
+            "<tr><td>⚠️ Symbolic alt alleles</td><td>"
+            f"{star_fraction:.2f}% of plotted rows carry <code>&lt;*&gt;</code> / "
+            "<code>&lt;NON_REF&gt;</code> / <code>*</code> &mdash; these are gVCF "
+            "reference blocks, not variants. Variant counts, the allele-frequency "
+            "spectrum and HWE are all distorted. Re-run <code>compute-qc</code> with "
+            "<code>--remove-star-alleles</code>."
+            "</td></tr>"
+        )
+
     analysis_parameters = f"""
         <tr><td>Number of Samples</td><td>{n_samples:,}</td></tr>
         <tr><td>Number of Variants</td><td>{n_variants:,}</td></tr>
         {subsample_row}
+        {star_row}
         <tr><td>Analysis Date</td><td>{timestamp}</td></tr>
         <tr><td>QC Module Version</td><td>hvantk v1.0</td></tr>
     """
