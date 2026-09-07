@@ -17,6 +17,7 @@ Functions:
 """
 
 import logging
+import re
 import hail as hl
 import pandas as pd
 import numpy as np
@@ -25,6 +26,57 @@ from pathlib import Path
 from hvantk.core.models.backends import algorithm, Backend
 
 logger = logging.getLogger(__name__)
+
+# Row budget for a variant-QC pandas DataFrame. Above this, callers get a random
+# subsample rather than an OOM: `to_pandas()` collects every column to the driver, and
+# a real dense chromosome is ~11 M variants (see QCMetrics.get_variant_metrics_df).
+# 500k rows is far more than any histogram needs and stays well inside a normal driver.
+DEFAULT_VARIANT_DF_MAX_ROWS = 500_000
+
+# Non-variant alternate alleles that survive densification of a gVCF-derived VDS.
+#
+#   <*> / <NON_REF>  the gVCF "any other allele" placeholder that DeepVariant and GATK
+#                    emit on every reference block. After to_dense_mt these become rows
+#                    like ("T", "<*>") with AC=0 on the alt -- not variants at all.
+#   *                the VCF spanning-deletion allele: a real representation, but not an
+#                    independent variant, and it distorts an allele-frequency spectrum.
+#
+# Measured on the 1005-sample chr20 dense MatrixTable: 5,139,209 of 11,396,989 rows
+# (45.09%) carried <*>. A QC report computed over that population is describing
+# reference blocks as much as variants, which is why its AF spectrum looks nothing
+# like a real one.
+SYMBOLIC_ALT_ALLELES = frozenset({"<*>", "<NON_REF>", "*"})
+
+
+def count_symbolic_alt_rows(mt: hl.MatrixTable) -> Tuple[int, int]:
+    """Return (rows with a symbolic/non-variant alt allele, total rows).
+
+    Cheap enough to run before deciding whether to warn: it is a row-level count, not
+    a genotype-level one.
+    """
+    symbolic = hl.literal(set(SYMBOLIC_ALT_ALLELES))
+    rows = mt.rows()
+    counts = rows.aggregate(
+        hl.struct(
+            symbolic=hl.agg.count_where(
+                hl.any(lambda a: symbolic.contains(a), rows.alleles[1:])
+            ),
+            total=hl.agg.count(),
+        )
+    )
+    return int(counts.symbolic), int(counts.total)
+
+
+def filter_symbolic_alt_alleles(mt: hl.MatrixTable) -> hl.MatrixTable:
+    """Drop rows whose alternate allele is symbolic (``<*>``/``<NON_REF>``) or ``*``.
+
+    See :data:`SYMBOLIC_ALT_ALLELES`. This is a row filter only -- no genotype is
+    altered, and rows carrying real alternate alleles are untouched.
+    """
+    symbolic = hl.literal(set(SYMBOLIC_ALT_ALLELES))
+    return mt.filter_rows(
+        hl.any(lambda a: symbolic.contains(a), mt.alleles[1:]), keep=False
+    )
 
 
 class QCMetrics:
@@ -41,6 +93,7 @@ class QCMetrics:
         self.variant_qc = variant_qc
         self._sample_metrics_df = None
         self._variant_metrics_df = None
+        self._variant_df_max_rows = None
 
     @property
     def has_sample_qc(self) -> bool:
@@ -58,11 +111,77 @@ class QCMetrics:
             self._sample_metrics_df = self.sample_qc.to_pandas()
         return self._sample_metrics_df
 
-    def get_variant_metrics_df(self) -> pd.DataFrame:
-        """Get variant QC metrics as pandas DataFrame."""
+    def get_variant_metrics_df(
+        self, max_rows: int = DEFAULT_VARIANT_DF_MAX_ROWS
+    ) -> pd.DataFrame:
+        """Get variant QC metrics as a pandas DataFrame, bounded in size.
+
+        ``Table.to_pandas()`` is implemented as
+        ``table.aggregate(hl.struct(**{col: hl.agg.collect(col) ...}))``, i.e. every
+        column is collected into a single struct-of-arrays **on the driver**. That is
+        O(n_variants) in driver memory with no ceiling, and on real data it does not
+        degrade gracefully -- it kills the JVM.
+
+        Measured: a 1005-sample chr20 dense MatrixTable has ~11.1 M variants. Collecting
+        its 28 variant-QC fields killed a 200 GB driver after ~38 minutes, taking
+        ``compute-qc`` and therefore ``qc-report`` down with it (job 19925591).
+
+        So this method samples down to ``max_rows`` when the table is larger, which
+        keeps every caller (all of which are plotting histograms) working at any cohort
+        size. The subsampling is logged and recorded in ``df.attrs`` -- it must never be
+        silent, or a reader will take a subsampled plot for an exact one.
+
+        For every row use :func:`save_qc_metrics`, which writes the table with
+        ``Table.export`` -- distributed, no driver ceiling. Note that Hail's export
+        reduces doubles to ~5 significant figures, so it has all the rows but not the
+        full float precision pandas wrote.
+
+        Parameters
+        ----------
+        max_rows : int
+            Row budget for the returned DataFrame. Set to 0 to disable sampling and
+            collect everything (this is what used to happen unconditionally).
+        """
+        # Cache on max_rows too: a caller asking for a different budget -- notably
+        # max_rows=0, the documented "give me everything" escape hatch -- must not be
+        # handed back a subsample cached from an earlier call.
+        if self._variant_df_max_rows != max_rows:
+            self._variant_metrics_df = None
+        self._variant_df_max_rows = max_rows
+
         if self._variant_metrics_df is None and self.has_variant_qc:
-            self._variant_metrics_df = self.variant_qc.to_pandas()
+            ht = self.variant_qc
+            n_total = ht.count()
+            sampled = False
+
+            if max_rows and n_total > max_rows:
+                p = max_rows / n_total
+                logger.warning(
+                    "Variant QC table has %s rows, above the %s row budget for a "
+                    "pandas DataFrame. Sampling ~%.4f of rows for visualization. "
+                    "Plots built from this are representative but NOT exact; the "
+                    "complete table is written by save_qc_metrics() via Table.export().",
+                    f"{n_total:,}",
+                    f"{max_rows:,}",
+                    p,
+                )
+                ht = ht.sample(p)
+                sampled = True
+
+            df = ht.to_pandas()
+            # Carried on the frame so a report can disclose it downstream.
+            df.attrs["n_total_variants"] = n_total
+            df.attrs["subsampled"] = sampled
+            self._variant_metrics_df = df
         return self._variant_metrics_df
+
+    def count_variants(self) -> int:
+        """Number of variant QC rows, without collecting them to the driver."""
+        return self.variant_qc.count() if self.has_variant_qc else 0
+
+    def count_samples(self) -> int:
+        """Number of sample QC rows, without collecting them to the driver."""
+        return self.sample_qc.count() if self.has_sample_qc else 0
 
     def generate_html_report(self, output_path: Union[str, Path], **kwargs):
         """
@@ -375,6 +494,7 @@ def extract_qc_metrics(
     mt: hl.MatrixTable,
     sample_qc_name: str = "sample_qc",
     variant_qc_name: str = "variant_qc",
+    max_variant_rows: int = DEFAULT_VARIANT_DF_MAX_ROWS,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Extract QC metrics as pandas DataFrames.
@@ -403,12 +523,31 @@ def extract_qc_metrics(
             sample_qc_df = sample_qc_table.to_pandas()
             logger.info(f"Extracted sample QC metrics for {len(sample_qc_df)} samples")
 
-        # Extract variant QC if available
+        # Extract variant QC if available. Bounded for the same reason as
+        # QCMetrics.get_variant_metrics_df: to_pandas() collects every row to the
+        # driver, and a real dense chromosome is ~11 M variants.
         if variant_qc_name in mt.row:
             variant_qc_table = mt.rows().select(variant_qc_name)
+            n_total = variant_qc_table.count()
+            if max_variant_rows and n_total > max_variant_rows:
+                p = max_variant_rows / n_total
+                logger.warning(
+                    "Variant QC table has %s rows, above the %s row budget for a "
+                    "pandas DataFrame. Sampling ~%.4f of rows. For the complete table "
+                    "use save_qc_metrics(), which exports it without collecting.",
+                    f"{n_total:,}",
+                    f"{max_variant_rows:,}",
+                    p,
+                )
+                variant_qc_table = variant_qc_table.sample(p)
             variant_qc_df = variant_qc_table.to_pandas()
+            variant_qc_df.attrs["n_total_variants"] = n_total
+            variant_qc_df.attrs["subsampled"] = bool(
+                max_variant_rows and n_total > max_variant_rows
+            )
             logger.info(
-                f"Extracted variant QC metrics for {len(variant_qc_df)} variants"
+                f"Extracted variant QC metrics for {len(variant_qc_df)} variants "
+                f"(of {n_total:,} total)"
             )
 
         return sample_qc_df, variant_qc_df
@@ -728,16 +867,80 @@ def prepare_qc_for_visualization(
         raise
 
 
+def _assert_export_is_parseable(path: Union[str, Path]) -> None:
+    """Fail loudly if an exported QC table is not machine-readable.
+
+    Hail formats floats in ``Table.export`` with the **JVM default locale**. On a
+    machine whose locale uses a comma decimal separator (much of Europe -- and this
+    toolkit is developed and run there) ``call_rate`` is written ``1,0000e+00``
+    instead of ``1.0000e+00``. Every downstream ``pd.read_csv`` then reads those
+    columns as strings, and every numeric summary silently becomes empty rather than
+    wrong -- which is worse, because nothing complains.
+
+    The pandas path this replaced formatted floats with the C locale and so was
+    immune. Rather than depend on the JVM locale of whoever runs this, read the file
+    back and check that the numeric columns actually parse.
+
+    Note also that Hail's export reduces doubles to ~5 significant figures
+    (0.5052631578947369 -> 5.0526e-01). That is fine for QC metrics but it is not
+    byte-identical to what pandas wrote, so do not describe this file as lossless.
+    """
+    path = Path(path)
+    try:
+        with open(path) as fh:
+            header = fh.readline().rstrip("\n").split("\t")
+            first = fh.readline().rstrip("\n").split("\t")
+    except OSError as e:  # pragma: no cover - the export just succeeded
+        raise ValueError(f"exported QC table {path} could not be read back: {e}")
+
+    if not first or first == [""]:
+        return  # empty table: nothing to verify
+
+    # Any field that looks like "1,2345e+00" is locale-formatted and will not parse.
+    locale_broken = [
+        (col, val)
+        for col, val in zip(header, first)
+        if re.fullmatch(r"[+-]?\d+,\d+([eE][+-]?\d+)?", val)
+    ]
+    if locale_broken:
+        col, val = locale_broken[0]
+        raise ValueError(
+            f"{path} was written with a comma decimal separator (e.g. {col}={val!r}). "
+            "Hail's Table.export formats floats using the JVM default locale, so this "
+            "file will not parse downstream. Start the JVM with "
+            "-Duser.language=en -Duser.country=US (e.g. via PYSPARK_SUBMIT_ARGS "
+            "--driver-java-options) and re-run."
+        )
+
+
 def save_qc_metrics(
-    qc_metrics: QCMetrics, output_dir: Union[str, Path], prefix: str = "qc_metrics"
+    qc_metrics: QCMetrics,
+    output_dir: Union[str, Path],
+    prefix: str = "qc_metrics",
+    save_mt: bool = True,
 ) -> Dict[str, str]:
     """
     Save QC metrics to files.
+
+    The variant table is written with ``Table.export`` rather than
+    ``to_pandas().to_csv()``. Hail exports from the executors, so every row is written
+    and the table is never materialised on the driver -- the collect-based path killed a
+    200 GB driver on a single real chromosome (~11.1 M variants, job 19925591).
+
+    Two consequences of exporting through Hail rather than pandas, both deliberate:
+    the file is TAB-delimited (``alleles`` and struct fields contain commas that Hail
+    does not quote), and doubles are written to ~5 significant figures rather than full
+    precision. All rows, slightly coarser floats.
+
+    Sample QC stays on ``to_pandas``: it is bounded by the cohort size, not the variant
+    count, and 1005 rows is nothing.
 
     Args:
         qc_metrics: QCMetrics object
         output_dir: Output directory
         prefix: File prefix for output files
+        save_mt: Write the annotated MatrixTable. When False it is not written at all --
+            previously the caller deleted it afterwards, which still paid the full write.
 
     Returns:
         Dictionary with paths to saved files
@@ -762,19 +965,32 @@ def save_qc_metrics(
             saved_files["sample_qc"] = str(sample_path)
             logger.info(f"Saved sample QC metrics to {sample_path}")
 
-        # Save variant QC
+        # Save variant QC -- exported by Hail from the executors, NOT collected.
+        # There is no row ceiling here and the driver never holds the table.
+        #
+        # TAB-delimited, and .tsv rather than .csv, because a comma delimiter cannot
+        # work here: `alleles` exports as ["A","T"] and an un-flattened struct as a
+        # JSON object, both of which contain commas, and Hail does not quote fields.
+        # A comma-delimited "csv" is silently malformed -- three header columns over
+        # rows with a dozen embedded commas.
+        #
+        # .flatten() first, so the 28 QC metrics become real columns
+        # (variant_qc.call_rate, ...) matching how the pandas-written sample file
+        # names them, instead of one opaque JSON blob column.
         if qc_metrics.has_variant_qc:
-            variant_df = qc_metrics.get_variant_metrics_df()
-            variant_path = output_dir / f"{prefix}_variant_qc.csv"
-            variant_df.to_csv(variant_path, index=False)
+            variant_path = output_dir / f"{prefix}_variant_qc.tsv"
+            qc_metrics.variant_qc.flatten().export(str(variant_path))
+            _assert_export_is_parseable(variant_path)
             saved_files["variant_qc"] = str(variant_path)
             logger.info(f"Saved variant QC metrics to {variant_path}")
 
-        # Save MatrixTable if needed
-        mt_path = output_dir / f"{prefix}_with_qc.mt"
-        qc_metrics.mt.write(str(mt_path), overwrite=True)
-        saved_files["matrix_table"] = str(mt_path)
-        logger.info(f"Saved MatrixTable with QC annotations to {mt_path}")
+        # Save MatrixTable if requested. Writing it and deleting it afterwards still
+        # costs the full materialisation, so honour the flag here instead.
+        if save_mt:
+            mt_path = output_dir / f"{prefix}_with_qc.mt"
+            qc_metrics.mt.write(str(mt_path), overwrite=True)
+            saved_files["matrix_table"] = str(mt_path)
+            logger.info(f"Saved MatrixTable with QC annotations to {mt_path}")
 
         return saved_files
 

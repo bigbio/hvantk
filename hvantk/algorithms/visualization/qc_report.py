@@ -695,9 +695,58 @@ def generate_qc_report(
         qc_results.get_variant_metrics_df() if qc_results.has_variant_qc else None
     )
 
-    # Basic stats with fallback values
+    # Basic stats with fallback values.
+    #
+    # n_variants must be the TRUE variant count, not len(variant_df): above the row
+    # budget the DataFrame is a subsample, and reporting its length here would state
+    # "Number of Variants: 500,013" for an 11.1 M variant callset -- the report would
+    # contradict the CLI, which counts in Hail. get_variant_metrics_df records the real
+    # total on df.attrs precisely so this stays honest.
     n_samples = len(sample_df) if sample_df is not None else 0
-    n_variants = len(variant_df) if variant_df is not None else 0
+    if variant_df is not None:
+        n_variants = variant_df.attrs.get("n_total_variants", len(variant_df))
+        variant_subsampled = bool(variant_df.attrs.get("subsampled", False))
+        n_variants_plotted = len(variant_df)
+    else:
+        n_variants = 0
+        variant_subsampled = False
+        n_variants_plotted = 0
+
+    if variant_subsampled:
+        logger.warning(
+            "Variant plots in this report are built from a %s-row sample of %s "
+            "variants. They are representative, not exact.",
+            f"{n_variants_plotted:,}",
+            f"{n_variants:,}",
+        )
+
+    # Symbolic <*>/<NON_REF> rows are gVCF reference blocks that survived densify, not
+    # variants. `compute-qc --remove-star-alleles` (the default) drops them, but a
+    # MatrixTable built another way can still carry them -- on the 1005-sample chr20
+    # callset they were 45% of rows, which makes the AF spectrum meaningless. If any
+    # are present the report must say so rather than quietly plotting them.
+    star_fraction = None
+    if variant_df is not None and "alleles" in variant_df.columns:
+        try:
+            from hvantk.algorithms.hgc.qc import SYMBOLIC_ALT_ALLELES
+
+            def _is_symbolic(alleles):
+                try:
+                    return any(a in SYMBOLIC_ALT_ALLELES for a in list(alleles)[1:])
+                except TypeError:
+                    return False
+
+            n_star = int(variant_df["alleles"].map(_is_symbolic).sum())
+            if n_star:
+                star_fraction = 100.0 * n_star / len(variant_df)
+                logger.warning(
+                    "%.2f%% of plotted rows carry a symbolic <*>/<NON_REF>/* alternate "
+                    "allele. These are not variants; re-run compute-qc with "
+                    "--remove-star-alleles.",
+                    star_fraction,
+                )
+        except Exception as e:  # never let a disclosure check break the report
+            logger.debug("star-allele check skipped: %s", e)
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # Generate plots and convert to base64
@@ -956,10 +1005,36 @@ def generate_qc_report(
     # Generate recommendations - handle None dataframes
     recommendations = generate_recommendations(sample_df, variant_df)
 
-    # Analysis parameters
+    # Analysis parameters. When the variant plots came from a subsample, say so here --
+    # a reader comparing this report against the exported table must be able to see
+    # that the plotted variants are a sample and the count is the full callset.
+    subsample_row = ""
+    if variant_subsampled:
+        subsample_row = (
+            "<tr><td>Variants plotted</td><td>"
+            f"{n_variants_plotted:,} random sample of {n_variants:,} "
+            "&mdash; plots are representative, not exact; "
+            "the complete table is in the exported <code>*_variant_qc.tsv</code>"
+            "</td></tr>"
+        )
+
+    star_row = ""
+    if star_fraction:
+        star_row = (
+            "<tr><td>⚠️ Symbolic alt alleles</td><td>"
+            f"{star_fraction:.2f}% of plotted rows carry <code>&lt;*&gt;</code> / "
+            "<code>&lt;NON_REF&gt;</code> / <code>*</code> &mdash; these are gVCF "
+            "reference blocks, not variants. Variant counts, the allele-frequency "
+            "spectrum and HWE are all distorted. Re-run <code>compute-qc</code> with "
+            "<code>--remove-star-alleles</code>."
+            "</td></tr>"
+        )
+
     analysis_parameters = f"""
         <tr><td>Number of Samples</td><td>{n_samples:,}</td></tr>
         <tr><td>Number of Variants</td><td>{n_variants:,}</td></tr>
+        {subsample_row}
+        {star_row}
         <tr><td>Analysis Date</td><td>{timestamp}</td></tr>
         <tr><td>QC Module Version</td><td>hvantk v1.0</td></tr>
     """

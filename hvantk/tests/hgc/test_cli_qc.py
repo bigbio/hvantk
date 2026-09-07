@@ -23,21 +23,29 @@ def test_compute_qc_cli_basic():
             with patch("hvantk.tools.hgc.qc_cli.save_qc_metrics") as mock_save:
                 with patch("hail.init"):
                     with patch("hail.read_matrix_table") as mock_read:
-                        mock_validate.return_value = (True, [])
-                        mock_mt = MagicMock()
-                        mock_read.return_value = mock_mt
-                        mock_qc = MagicMock()
-                        mock_compute.return_value = mock_qc
-                        mock_save.return_value = {"sample_qc": "/out/sample_qc.csv"}
+                        # compute-qc now counts symbolic <*>/<NON_REF> rows before
+                        # computing QC; that is a real Hail aggregation and cannot run
+                        # against a MagicMock MatrixTable.
+                        with patch(
+                            "hvantk.algorithms.hgc.qc.count_symbolic_alt_rows",
+                            return_value=(0, 1000),
+                        ):
+                            mock_validate.return_value = (True, [])
+                            mock_mt = MagicMock()
+                            mock_mt.entry = {}  # no `adj` field -> no adj warning
+                            mock_read.return_value = mock_mt
+                            mock_qc = MagicMock()
+                            mock_compute.return_value = mock_qc
+                            mock_save.return_value = {"sample_qc": "/out/sample_qc.csv"}
 
-                        result = runner.invoke(
-                            compute_qc,
-                            ["--input", "/data.mt", "--output-dir", "/out"],
-                        )
+                            result = runner.invoke(
+                                compute_qc,
+                                ["--input", "/data.mt", "--output-dir", "/out"],
+                            )
 
-                        assert result.exit_code == 0
-                        assert "Successfully computed" in result.output
-                        mock_compute.assert_called_once()
+                            assert result.exit_code == 0
+                            assert "Successfully computed" in result.output
+                            mock_compute.assert_called_once()
 
 
 def test_compute_qc_cli_validation_failure():
@@ -264,6 +272,10 @@ def test_qc_report_cli_basic():
                     mock_qc_instance = MagicMock()
                     mock_qc_instance.has_sample_qc = True
                     mock_qc_instance.has_variant_qc = False
+                    # qc-report counts in Hail rather than building DataFrames just
+                    # to len() them, so these must return real ints to be formatted.
+                    mock_qc_instance.count_samples.return_value = 100
+                    mock_qc_instance.count_variants.return_value = 1000
                     mock_qc_instance.generate_html_report.return_value = Path(
                         "report.html"
                     )
@@ -315,6 +327,10 @@ def test_qc_report_cli_custom_title():
                     mock_qc_instance = MagicMock()
                     mock_qc_instance.has_sample_qc = True
                     mock_qc_instance.has_variant_qc = False
+                    # qc-report counts in Hail rather than building DataFrames just
+                    # to len() them, so these must return real ints to be formatted.
+                    mock_qc_instance.count_samples.return_value = 100
+                    mock_qc_instance.count_variants.return_value = 1000
                     mock_qc_instance.generate_html_report.return_value = Path(
                         "custom_report.html"
                     )

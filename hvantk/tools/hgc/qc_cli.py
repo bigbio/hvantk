@@ -13,7 +13,6 @@ Commands:
 
 import logging
 import click
-import os
 
 logger = logging.getLogger(__name__)
 
@@ -66,11 +65,41 @@ def register_qc_commands(group):
     "--save-mt/--no-save-mt", default=True, help="Save MatrixTable with QC annotations"
 )
 @click.option(
+    "--adj-filter/--no-adj-filter",
+    default=False,
+    help=(
+        "Apply the adj genotype filter before computing QC, so the report describes "
+        "the FILTERED callset rather than the densified matrix. Requires an `adj` "
+        "entry field (hvantk hgc vds2mt --adjust-genotypes). Off by default because "
+        "both views are legitimate and not every MatrixTable has adj; a warning is "
+        "emitted when adj is present but unused."
+    ),
+)
+@click.option(
+    "--remove-star-alleles/--keep-star-alleles",
+    default=True,
+    help=(
+        "Drop rows whose alternate allele is the gVCF placeholder <*>/<NON_REF> or the "
+        "spanning deletion *. These are not variants; on a densified gVCF callset they "
+        "can be ~45%% of rows and make the allele-frequency spectrum meaningless."
+    ),
+)
+@click.option(
     "--dry-run", is_flag=True, help="Show what would be done without executing"
 )
 @click.pass_context
 def compute_qc(
-    ctx, input, output_dir, sample_qc, variant_qc, call_field, prefix, save_mt, dry_run
+    ctx,
+    input,
+    output_dir,
+    sample_qc,
+    variant_qc,
+    call_field,
+    prefix,
+    save_mt,
+    adj_filter,
+    remove_star_alleles,
+    dry_run,
 ):
     """
     Compute comprehensive quality control metrics for samples and variants.
@@ -116,6 +145,8 @@ def compute_qc(
             click.echo(f"   • Call field: {call_field}")
             click.echo(f"   • Prefix: {prefix}")
             click.echo(f"   • Save MatrixTable: {save_mt}")
+            click.echo(f"   • Remove star alleles: {remove_star_alleles}")
+            click.echo(f"   • Adj filter: {adj_filter}")
             return
 
         # Import hail_context (init_hail) before hail: it applies the NumPy
@@ -127,6 +158,74 @@ def compute_qc(
 
         click.echo("🔄 Loading MatrixTable...")
         mt = hl.read_matrix_table(input)
+
+        # Symbolic <*>/<NON_REF> rows are gVCF reference blocks that survived
+        # densification, not variants. Counting them is cheap and the number is worth
+        # stating either way: it says how much of the input was never a variant.
+        from hvantk.algorithms.hgc.qc import (
+            count_symbolic_alt_rows,
+            filter_symbolic_alt_alleles,
+        )
+
+        n_symbolic, n_total = count_symbolic_alt_rows(mt)
+        pct = (100.0 * n_symbolic / n_total) if n_total else 0.0
+        if n_symbolic == 0:
+            click.echo("✅ No <*>/<NON_REF>/* alternate alleles present")
+        elif remove_star_alleles:
+            click.echo(
+                f"🧹 Removing {n_symbolic:,} of {n_total:,} rows ({pct:.2f}%) whose "
+                f"alternate allele is <*>/<NON_REF>/* -- these are not variants"
+            )
+            mt = filter_symbolic_alt_alleles(mt)
+        else:
+            click.echo(
+                f"⚠️  WARNING: keeping {n_symbolic:,} of {n_total:,} rows ({pct:.2f}%) "
+                f"whose alternate allele is <*>/<NON_REF>/*. These are gVCF reference "
+                f"blocks, not variants; the variant count, allele-frequency spectrum "
+                f"and HWE will all be distorted. Use --remove-star-alleles to drop them.",
+                err=True,
+            )
+            logger.warning(
+                "Star/symbolic alt alleles retained: %d of %d rows (%.2f%%)",
+                n_symbolic,
+                n_total,
+                pct,
+            )
+
+        # adj genotype filter. Unlike star alleles -- which are never variants and so
+        # are dropped by default -- filtering on adj is a genuine analytical choice:
+        # pre-filter QC answers "how good is my densified data", post-filter answers
+        # "what am I shipping". Both are legitimate, so this is opt-in. But silence
+        # would be misleading, because the two differ a lot: on the 1005-sample chr20
+        # callset the densified matrix reads call rate 0.9712 while the delivered VCF
+        # is 0.9161.
+        #
+        # filter_entries (rather than setting GT to missing) is deliberate: Hail's
+        # sample_qc counts filtered entries in the call-rate denominator either way,
+        # but filter_entries also preserves n_filtered, which separates "removed by
+        # QC" from "never called".
+        has_adj = "adj" in mt.entry
+        if adj_filter:
+            if not has_adj:
+                click.echo(
+                    "❌ --adj-filter requested but the MatrixTable has no `adj` entry "
+                    "field. Produce one with `hvantk hgc vds2mt --adjust-genotypes`.",
+                    err=True,
+                )
+                ctx.exit(1)
+            click.echo("🔬 Applying adj genotype filter before QC")
+            mt = mt.filter_entries(mt.adj, keep=True)
+        elif has_adj:
+            click.echo(
+                "⚠️  WARNING: this MatrixTable has an `adj` entry field but the adj "
+                "filter is NOT being applied. The reported call rate and missingness "
+                "describe the densified matrix, not the filtered callset that would be "
+                "exported. Use --adj-filter for the callset view.",
+                err=True,
+            )
+            logger.warning(
+                "adj present but not applied; QC describes the unfiltered matrix"
+            )
 
         # Compute QC metrics based on options
         if sample_qc and variant_qc:
@@ -147,17 +246,10 @@ def compute_qc(
             variant_qc_table = mt_qc.rows().select("variant_qc")
             qc_results = QCMetrics(mt_qc, None, variant_qc_table)
 
-        # Save QC metrics
+        # Save QC metrics. `save_mt` is honoured inside save_qc_metrics -- writing the
+        # MatrixTable and then deleting it still paid for the whole write.
         click.echo("💾 Saving QC metrics...")
-        saved_files = save_qc_metrics(qc_results, output_dir, prefix)
-
-        # Remove MatrixTable from saved files if not requested
-        if not save_mt and "matrix_table" in saved_files:
-            import shutil
-
-            if os.path.exists(saved_files["matrix_table"]):
-                shutil.rmtree(saved_files["matrix_table"])
-            del saved_files["matrix_table"]
+        saved_files = save_qc_metrics(qc_results, output_dir, prefix, save_mt=save_mt)
 
         click.echo("✅ Successfully computed and saved QC metrics:")
         for file_type, file_path in saved_files.items():
@@ -414,7 +506,11 @@ def qc_summary(ctx, qc_dir, sample_file, variant_file, output, format):
         if variant_file:
             variant_path = Path(variant_file)
         else:
-            variant_files = list(qc_dir.glob("*variant_qc*.csv"))
+            # compute-qc writes the variant table as TSV (Hail export: alleles
+            # and struct fields contain unquoted commas). Older runs wrote .csv.
+            variant_files = sorted(qc_dir.glob("*variant_qc*.tsv")) or sorted(
+                qc_dir.glob("*variant_qc*.csv")
+            )
             if not variant_files:
                 click.echo("⚠️  No variant QC files found")
                 variant_path = None
@@ -449,7 +545,9 @@ def qc_summary(ctx, qc_dir, sample_file, variant_file, output, format):
 
         if variant_path and variant_path.exists():
             click.echo(f"📊 Processing variant QC metrics from {variant_path}")
-            variant_df = pd.read_csv(variant_path)
+            # sep=None + python engine sniffs tab vs comma, so both the current
+            # .tsv and any pre-existing .csv parse correctly.
+            variant_df = pd.read_csv(variant_path, sep=None, engine="python")
             from hvantk.algorithms.hgc.qc import get_qc_summary_stats
 
             variant_summary = get_qc_summary_stats(variant_df)
@@ -635,17 +733,12 @@ def qc_report(ctx, input, output, title, include_plots, style, dry_run):
         click.echo(f"   • Size: {file_size:.1f} KB")
         click.echo(f"   • Title: {title}")
 
-        sample_df = (
-            qc_results.get_sample_metrics_df() if qc_results.has_sample_qc else None
-        )
-        variant_df = (
-            qc_results.get_variant_metrics_df() if qc_results.has_variant_qc else None
-        )
-
-        if sample_df is not None:
-            click.echo(f"   • Samples: {len(sample_df):,}")
-        if variant_df is not None:
-            click.echo(f"   • Variants: {len(variant_df):,}")
+        # Count in Hail. Building the DataFrames just to call len() on them collected
+        # every variant to the driver -- ~11 M rows on one real chromosome.
+        if qc_results.has_sample_qc:
+            click.echo(f"   • Samples: {qc_results.count_samples():,}")
+        if qc_results.has_variant_qc:
+            click.echo(f"   • Variants: {qc_results.count_variants():,}")
 
         click.echo("\n🌐 Open the report in your web browser:")
         click.echo(f"   file://{report_path.absolute()}")
