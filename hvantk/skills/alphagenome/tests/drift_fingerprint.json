@@ -1,10 +1,10 @@
 {
   "probe_version": 2,
-  "source_version": "0.8.0",
+  "source_version": "0.9.0",
   "headers": {
     "alphagenome-sdk-releases": {
-      "current_version": "0.8.0",
-      "release_count": 12
+      "current_version": "0.9.0",
+      "release_count": 13
     }
   },
   "checksums": {},
@@ -21,8 +21,9 @@
       "0.6.0",
       "0.6.1",
       "0.7.0",
-      "0.8.0"
+      "0.8.0",
+      "0.9.0"
     ]
   },
-  "fetched_at": "2026-09-01T07:32:19.398674+00:00"
+  "fetched_at": "2026-09-15T10:45:17.989972+00:00"
 }
