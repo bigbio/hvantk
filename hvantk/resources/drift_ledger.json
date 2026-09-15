@@ -16,5 +16,11 @@
     "last_upstream_change": "2026-08-30T11:21:24.495687+00:00",
     "rebuilt_at": null,
     "signal": "routine"
+  },
+  "hgnc:lookup": {
+    "accepted_in": "drift/hgnc-lookup",
+    "last_upstream_change": "2026-09-15T10:45:46.868617+00:00",
+    "rebuilt_at": null,
+    "signal": "schema"
   }
 }
