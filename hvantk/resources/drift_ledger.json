@@ -7,7 +7,7 @@
   },
   "clinvar:variants": {
     "accepted_in": "drift/clinvar-variants",
-    "last_upstream_change": "2026-09-01T10:50:05.475114+00:00",
+    "last_upstream_change": "2026-09-15T10:45:28.035172+00:00",
     "rebuilt_at": null,
     "signal": "schema"
   },
