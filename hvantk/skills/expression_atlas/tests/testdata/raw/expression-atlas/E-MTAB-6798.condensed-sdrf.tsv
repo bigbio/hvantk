@@ -1,0 +1,36 @@
+E-MTAB-6798		ERR2588382	characteristic	age	10.5 day
+E-MTAB-6798		ERR2588382	characteristic	developmental stage	embryo	http://purl.obolibrary.org/obo/UBERON_0000922
+E-MTAB-6798		ERR2588382	characteristic	genotype	wild type genotype
+E-MTAB-6798		ERR2588382	characteristic	organism	Mus musculus	http://purl.obolibrary.org/obo/NCBITaxon_10090
+E-MTAB-6798		ERR2588382	characteristic	organism part	brain	http://purl.obolibrary.org/obo/UBERON_0000955
+E-MTAB-6798		ERR2588382	characteristic	sex	male	http://purl.obolibrary.org/obo/PATO_0000384
+E-MTAB-6798		ERR2588382	characteristic	strain	CD-1	http://www.ebi.ac.uk/efo/EFO_0005180
+E-MTAB-6798		ERR2588382	factor	developmental stage	embryonic day 10.5	http://www.ebi.ac.uk/efo/EFO_0007643
+E-MTAB-6798		ERR2588382	factor	organism part	brain	http://purl.obolibrary.org/obo/UBERON_0000955
+E-MTAB-6798		ERR2588383	characteristic	age	10.5 day
+E-MTAB-6798		ERR2588383	characteristic	developmental stage	embryo	http://purl.obolibrary.org/obo/UBERON_0000922
+E-MTAB-6798		ERR2588383	characteristic	genotype	wild type genotype
+E-MTAB-6798		ERR2588383	characteristic	organism	Mus musculus	http://purl.obolibrary.org/obo/NCBITaxon_10090
+E-MTAB-6798		ERR2588383	characteristic	organism part	brain	http://purl.obolibrary.org/obo/UBERON_0000955
+E-MTAB-6798		ERR2588383	characteristic	sex	female	http://purl.obolibrary.org/obo/PATO_0000383
+E-MTAB-6798		ERR2588383	characteristic	strain	CD-1	http://www.ebi.ac.uk/efo/EFO_0005180
+E-MTAB-6798		ERR2588383	factor	developmental stage	embryonic day 10.5	http://www.ebi.ac.uk/efo/EFO_0007643
+E-MTAB-6798		ERR2588383	factor	organism part	brain	http://purl.obolibrary.org/obo/UBERON_0000955
+E-MTAB-6798		ERR2588384	characteristic	age	10.5 day
+E-MTAB-6798		ERR2588384	characteristic	developmental stage	embryo	http://purl.obolibrary.org/obo/UBERON_0000922
+E-MTAB-6798		ERR2588384	characteristic	genotype	wild type genotype
+E-MTAB-6798		ERR2588384	characteristic	organism	Mus musculus	http://purl.obolibrary.org/obo/NCBITaxon_10090
+E-MTAB-6798		ERR2588384	characteristic	organism part	brain	http://purl.obolibrary.org/obo/UBERON_0000955
+E-MTAB-6798		ERR2588384	characteristic	sex	female	http://purl.obolibrary.org/obo/PATO_0000383
+E-MTAB-6798		ERR2588384	characteristic	strain	CD-1	http://www.ebi.ac.uk/efo/EFO_0005180
+E-MTAB-6798		ERR2588384	factor	developmental stage	embryonic day 10.5	http://www.ebi.ac.uk/efo/EFO_0007643
+E-MTAB-6798		ERR2588384	factor	organism part	brain	http://purl.obolibrary.org/obo/UBERON_0000955
+E-MTAB-6798		ERR2588399	characteristic	age	11.5 day
+E-MTAB-6798		ERR2588399	characteristic	developmental stage	embryo	http://purl.obolibrary.org/obo/UBERON_0000922
+E-MTAB-6798		ERR2588399	characteristic	genotype	wild type genotype
+E-MTAB-6798		ERR2588399	characteristic	organism	Mus musculus	http://purl.obolibrary.org/obo/NCBITaxon_10090
+E-MTAB-6798		ERR2588399	characteristic	organism part	ovary	http://purl.obolibrary.org/obo/UBERON_0000992
+E-MTAB-6798		ERR2588399	characteristic	sex	female	http://purl.obolibrary.org/obo/PATO_0000383
+E-MTAB-6798		ERR2588399	characteristic	strain	CD-1	http://www.ebi.ac.uk/efo/EFO_0005180
+E-MTAB-6798		ERR2588399	factor	developmental stage	embryonic day 11.5	http://www.ebi.ac.uk/efo/EFO_0002562
+E-MTAB-6798		ERR2588399	factor	organism part	ovary	http://purl.obolibrary.org/obo/UBERON_0000992

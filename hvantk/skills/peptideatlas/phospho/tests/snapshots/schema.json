@@ -1,0 +1,27 @@
+{
+  "columns": [
+    "accession",
+    "gene_symbol",
+    "position",
+    "description",
+    "amino_acid",
+    "ensembl_xrefs",
+    "sequence_length",
+    "n_observations",
+    "source_db",
+    "evidence_type"
+  ],
+  "dtypes": {
+    "accession": "str",
+    "amino_acid": "str",
+    "description": "str",
+    "ensembl_xrefs": "str",
+    "evidence_type": "str",
+    "gene_symbol": "str",
+    "n_observations": "str",
+    "position": "str",
+    "sequence_length": "str",
+    "source_db": "str"
+  },
+  "n_rows": 2
+}

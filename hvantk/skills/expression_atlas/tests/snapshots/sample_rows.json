@@ -1,0 +1,96 @@
+{
+  "X_corner": [
+    [
+      16.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      7.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      64.0,
+      0.0,
+      12.0,
+      0.0,
+      0.0
+    ],
+    [
+      2.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  ],
+  "obs_head": [
+    {
+      "age": "10.5 day",
+      "developmental_stage": "embryonic day 10.5",
+      "genotype": "wild type genotype",
+      "organism": "Mus musculus",
+      "organism_part": "brain",
+      "sample_id": "ERR2588382",
+      "sex": "male",
+      "strain": "CD-1"
+    },
+    {
+      "age": "10.5 day",
+      "developmental_stage": "embryonic day 10.5",
+      "genotype": "wild type genotype",
+      "organism": "Mus musculus",
+      "organism_part": "brain",
+      "sample_id": "ERR2588384",
+      "sex": "female",
+      "strain": "CD-1"
+    },
+    {
+      "age": "10.5 day",
+      "developmental_stage": "embryonic day 10.5",
+      "genotype": "wild type genotype",
+      "organism": "Mus musculus",
+      "organism_part": "brain",
+      "sample_id": "ERR2588383",
+      "sex": "female",
+      "strain": "CD-1"
+    },
+    {
+      "age": "11.5 day",
+      "developmental_stage": "embryonic day 11.5",
+      "genotype": "wild type genotype",
+      "organism": "Mus musculus",
+      "organism_part": "ovary",
+      "sample_id": "ERR2588399",
+      "sex": "female",
+      "strain": "CD-1"
+    }
+  ],
+  "var_head": [
+    {
+      "Gene Name": "Gnai3",
+      "gene_id": "ENSMUSG00000000001"
+    },
+    {
+      "Gene Name": "Pbsn",
+      "gene_id": "ENSMUSG00000000003"
+    },
+    {
+      "Gene Name": "Cdc45",
+      "gene_id": "ENSMUSG00000000028"
+    },
+    {
+      "Gene Name": "Scml2",
+      "gene_id": "ENSMUSG00000000037"
+    },
+    {
+      "Gene Name": "Apoh",
+      "gene_id": "ENSMUSG00000000049"
+    }
+  ]
+}

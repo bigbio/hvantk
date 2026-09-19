@@ -86,15 +86,21 @@ TODO. This section will be fleshed out once per-accession drift detection lands 
 
 Per `_conventions` § 9:
 
-- **fixture:** `hvantk/skills/expression_atlas/tests/testdata/raw/expression-atlas/` (directory present, not yet seeded). The first round-trip test will populate this with a small TSV + condensed-SDRF pair.
-- **schema_snapshot:** `hvantk/skills/expression_atlas/tests/snapshots/schema.json` (TODO — created on first `--regenerate-snapshots` run).
-- **row_snapshot:** `hvantk/skills/expression_atlas/tests/snapshots/sample_rows.json` (TODO — same).
+- **fixture:** `hvantk/skills/expression_atlas/tests/testdata/raw/expression-atlas/` — seeded. `E-MTAB-6798-transcripts-tpms.tsv` (20 genes x 4 samples, ~0.8 KB) + `E-MTAB-6798.condensed-sdrf.tsv` (the same 4 sample IDs, ~3.3 KB), derived by truncation from the real upstream files under `hvantk/tests/testdata/raw/expression_atlas/`. Recipe recorded at the top of `tests/test_builder.py`.
+- **schema_snapshot:** `hvantk/skills/expression_atlas/tests/snapshots/schema.json` — seeded (4 obs x 20 vars).
+- **row_snapshot:** `hvantk/skills/expression_atlas/tests/snapshots/sample_rows.json` — seeded.
 - **test_command:** `pytest hvantk/skills/expression_atlas/tests`.
 
-The plugin manifest already declares these paths so the loader contract holds. The downloader unit tests + drift-probe placeholder test pass today; the builder round-trip is the gap to close in a follow-up PR.
+The plugin manifest already declares these paths so the loader contract holds. `tests/test_builder.py` now exercises `build_expression_atlas` end-to-end against the committed fixture and asserts both snapshots plus `n_obs`/`n_vars`; regenerate via `pytest hvantk/skills/expression_atlas/tests/test_builder.py --regenerate-snapshots`. No Hail is required — the artifact is AnnData-backed.
 
-> **Snapshot status:** schema.json and sample_rows.json have NOT yet been seeded
-> for this plugin. On first round-trip run in a hail-enabled environment, use
-> `pytest hvantk/skills/expression_atlas/tests/test_builder.py --regenerate-snapshots`
-> to bootstrap them, then commit. Until seeded, the round-trip test cannot verify
-> output against a fixed schema.
+> **Known builder gap (not fixed here):** the real upstream `*-transcripts-tpms.tsv`
+> header is `Gene ID\tGene Name\tGeneID\t<samples...>` — the third `GeneID` column is
+> the per-row *transcript* id, distinct from `Gene ID`. `create_anndata_from_expression_atlas()`
+> only strips `{"Gene ID", "Gene Name"}` as non-sample columns (its `gene_column` /
+> `gene_name_column` defaults), so a real, untruncated file crashes with
+> `ValueError: could not convert string to float: 'ENSMUST...'` before the builder
+> ever gets a matrix. The committed fixture works around this by dropping that
+> third column (see the recipe in `tests/test_builder.py`). A future re-author of
+> this builder should either accept/drop a transcript-id column explicitly or
+> document that only gene-level (2-metadata-column) Expression Atlas files are
+> supported.

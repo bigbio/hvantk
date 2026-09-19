@@ -1,0 +1,3 @@
+accession	gene_symbol	position	description	amino_acid	ensembl_xrefs	sequence_length	n_observations	source_db	evidence_type
+P04637	TP53	315	Phosphoserine	S		393	80	PeptideAtlas	mass_spectrometry
+P04637	TP53	6	Phosphoserine	S		393	10	PeptideAtlas	mass_spectrometry
