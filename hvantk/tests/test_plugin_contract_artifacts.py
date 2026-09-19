@@ -159,7 +159,13 @@ def test_every_known_gap_is_classified_permanent():
     agent-authoring evaluation (#341). Requiring a ``PERMANENTLY_UNGRADABLE`` entry
     forces that distinction to be made explicitly at the moment a dataset is added.
     """
-    unclassified = sorted(set(KNOWN_INCOMPLETE) - set(PERMANENTLY_UNGRADABLE))
+    # A blank or whitespace reason is not a reason. Comparing keys alone would let
+    # PERMANENTLY_UNGRADABLE[name] = "" satisfy the invariant while explaining nothing.
+    unclassified = sorted(
+        name
+        for name in KNOWN_INCOMPLETE
+        if not str(PERMANENTLY_UNGRADABLE.get(name, "")).strip()
+    )
     assert not unclassified, (
         "These datasets are on KNOWN_INCOMPLETE without a recorded reason they can "
         f"never ship the artifacts: {', '.join(unclassified)}.\n"

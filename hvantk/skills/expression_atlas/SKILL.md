@@ -12,7 +12,7 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes every conve
 
 ## 1. Status & scope
 
-- **Status:** provisional. Builder, downloader, dataset class, and downloader tests are in place under the plugin folder; round-trip builder snapshots are NOT yet seeded (no fixture, no `schema.json`, no `sample_rows.json`) -- writing the first round-trip test is follow-up work tracked alongside this skill.
+- **Status:** provisional. Builder, downloader, dataset class and downloader tests are in place, and the round-trip contract is **seeded**: `tests/testdata/raw/expression-atlas/` holds a truncated fixture, `tests/snapshots/` holds `schema.json` + `sample_rows.json`, and `tests/test_builder.py` asserts against both (§ 9). One caveat carries over — the fixture drops the upstream `GeneID` transcript column the builder cannot yet handle (#342), so the seeded test does not exercise the real production header shape.
 - **In scope:** any single Expression Atlas baseline bulk-RNA-seq experiment with a gene-centric TPM matrix (genes x samples) and a paired SDRF metadata file, converted to an AnnData object keyed `samples x genes`.
 - **Out of scope:** scRNA-seq cell-level matrices (use the UCSC Cell Browser plugin); differential expression matrices; cross-accession multi-experiment merging; gene-symbol / accession normalization (downstream).
 
@@ -72,14 +72,14 @@ When invoked to build or update a single Expression Atlas experiment:
    or via the recipe system: `hvantk reprocess expression-atlas:dataset` (lifecycle download → builder).
 2. **Build:** `hvantk reprocess expression-atlas:dataset --raw-dir <dir> --output <out>.h5ad`.
    - The builder parses the SDRF, transposes the expression matrix, attaches per-sample metadata into `obs`, annotates provenance, and writes `.h5ad`.
-3. **Validate:** TODO — once the round-trip fixture is seeded, run `pytest hvantk/skills/expression_atlas/tests`. Until then, the offline downloader unit tests + drift-probe placeholder test are what guard this plugin.
+3. **Validate:** run `pytest hvantk/skills/expression_atlas/tests`. That covers the seeded round-trip (`test_builder.py`, schema + sample rows + `n_obs`/`n_vars`) alongside the offline downloader and drift-probe tests. Regenerate snapshots only for an intentional change: `pytest hvantk/skills/expression_atlas/tests/test_builder.py --regenerate-snapshots`. **Building from a real, untruncated download will still fail until #342 is fixed** — see § 9.
 
 ## 8. Update playbook
 
 TODO. This section will be fleshed out once per-accession drift detection lands (see § 2 catalog note and the drift-probe placeholder in `hvantk/skills/expression_atlas/drift_probe.py`). Expected shape:
 
 1. For each tracked accession in `hvantk/skills/expression_atlas/catalog/datasets.json` (filter `data_source == "Expression_Atlas"`), re-run the per-accession HEAD probe; flag accessions whose `Last-Modified` or `Content-Length` changed.
-2. Re-download flagged accessions, rebuild via `hvantk reprocess expression-atlas:dataset`, and diff the new AnnData against the snapshotted shape / `obs` columns.
+2. Re-download flagged accessions, rebuild via `hvantk reprocess expression-atlas:dataset`, and diff the new AnnData against the committed snapshots in `tests/snapshots/` (§ 9).
 3. If the SDRF column set changed, document the new factor in § 4.
 
 ## 9. Validation contract

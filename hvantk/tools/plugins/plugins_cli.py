@@ -90,7 +90,9 @@ def validate_cmd(manifest_path: str, strict_artifacts: bool):
             raise click.ClickException(f"catalog not found: {catalog_path}")
         try:
             catalog_schema = json.loads(
-                (Path(plugin_loader.__file__).parent / "catalog_entry.schema.json").read_text()
+                (
+                    Path(plugin_loader.__file__).parent / "catalog_entry.schema.json"
+                ).read_text()
             )
         except (OSError, json.JSONDecodeError) as exc:
             raise click.ClickException(
@@ -110,7 +112,11 @@ def validate_cmd(manifest_path: str, strict_artifacts: bool):
             try:
                 jsonschema.validate(entry, catalog_schema)
             except jsonschema.ValidationError as exc:
-                acc = entry.get("accession", f"index {i}") if isinstance(entry, dict) else f"index {i}"
+                acc = (
+                    entry.get("accession", f"index {i}")
+                    if isinstance(entry, dict)
+                    else f"index {i}"
+                )
                 errors.append(f"entry {acc}: {exc.message}")
                 continue
             acc = entry["accession"]
@@ -126,7 +132,12 @@ def validate_cmd(manifest_path: str, strict_artifacts: bool):
     # Declared-but-absent validation artifacts. The loader resolves these paths without
     # requiring them, so a manifest can promise a snapshot it never shipped and still
     # load clean; surface that here instead of letting it pass silently.
-    artifact_fields = ("fixture", "schema_snapshot", "row_snapshot", "drift_fingerprint")
+    artifact_fields = (
+        "fixture",
+        "schema_snapshot",
+        "row_snapshot",
+        "drift_fingerprint",
+    )
     plugin_dir = Path(manifest_path).parent
     missing: list[str] = []
     for dataset in content.get("datasets", []):
@@ -138,7 +149,8 @@ def validate_cmd(manifest_path: str, strict_artifacts: bool):
     if missing:
         if strict_artifacts:
             raise click.ClickException(
-                "declared validation artifacts are missing:\n  - " + "\n  - ".join(missing)
+                "declared validation artifacts are missing:\n  - "
+                + "\n  - ".join(missing)
             )
         click.echo(
             "warning: declared validation artifacts are missing "
@@ -169,7 +181,10 @@ def validate_cmd(manifest_path: str, strict_artifacts: bool):
         key = (plugin_dir / rel).resolve().as_posix()
         declared.setdefault(key, rel)
         by_fingerprint.setdefault(key, []).append(
-            (dataset.get("name", "?"), (probe.get("module", ""), probe.get("function", "")))
+            (
+                dataset.get("name", "?"),
+                (probe.get("module", ""), probe.get("function", "")),
+            )
         )
     conflicts = [
         f"{declared[key]} is shared by "
@@ -180,7 +195,8 @@ def validate_cmd(manifest_path: str, strict_artifacts: bool):
     if conflicts:
         raise click.ClickException(
             "datasets share a drift_fingerprint but declare different drift probes; "
-            "they would overwrite each other's baseline:\n  - " + "\n  - ".join(conflicts)
+            "they would overwrite each other's baseline:\n  - "
+            + "\n  - ".join(conflicts)
         )
 
     # The SKILL.md nine-section contract (_conventions s 2). Documented as MUST since the
@@ -189,19 +205,29 @@ def validate_cmd(manifest_path: str, strict_artifacts: bool):
     # tree by hvantk/tests/test_plugin_skill_conformance.py -- both call the same checker.
     spec_problems: list[str] = []
     for dataset in content.get("datasets", []):
+        name = dataset.get("name", "?")
         rel = dataset.get("skill")
-        if not rel:
+        if rel is None:
+            # The manifest schema lists `skill` as required, so absence is already a
+            # schema failure above; nothing to add here.
+            continue
+        if not str(rel).strip():
+            # But the schema types it as a plain string, so `skill: ""` satisfies
+            # "required" and would otherwise fall through this whole check and print
+            # `ok` -- a manifest opting out of the contract by declaring nothing.
+            spec_problems.append(f"{name}: skill is declared but empty")
             continue
         spec_path = plugin_dir / rel
         if not spec_path.is_file():
-            spec_problems.append(f"{dataset.get('name', '?')}: skill not found -> {rel}")
+            spec_problems.append(f"{name}: skill not found -> {rel}")
             continue
         for problem in check_skill_spec(spec_path):
             spec_problems.append(f"{rel}: {problem}")
     if spec_problems:
         raise click.ClickException(
             "SKILL.md does not meet the nine-section contract "
-            "(hvantk/skills/_conventions/SKILL.md s 2):\n  - " + "\n  - ".join(spec_problems)
+            "(hvantk/skills/_conventions/SKILL.md s 2):\n  - "
+            + "\n  - ".join(spec_problems)
         )
 
     click.echo(f"ok: {manifest_path}")
