@@ -167,7 +167,7 @@ DataFrame to `gene_biotype == "protein_coding"` rows before the Hail Table is bu
   `--overwrite` is passed.
 - **Drift probe:** `fetch_fingerprint` in
   `hvantk/skills/ensembl_gene/structure/drift_probe.py`, `PROBE_VERSION = 2`. HEADs
-  `ENSEMBL_GTF_URL` (no payload download -- the docstring notes the GTF is ~64 MB) and
+  `ENSEMBL_GTF_URL` (no payload download -- the docstring notes the GTF is ~64 MB; note `catalog/datasets.json` records `size_bytes: 800000000` for the same file, so one of the two is wrong and neither should be trusted for capacity planning) and
   fingerprints `ETag` + `Content-Length` under `headers`, records `Last-Modified` as
   `source_version`, and puts `{release, url}` under `extras`. Raises `DriftProbeError` on
   an HTTP failure or if the response has neither `ETag` nor `Content-Length`.
