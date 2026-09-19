@@ -69,6 +69,28 @@ def test_validate_command_rejects_invalid_manifest():
     assert result.exit_code != 0
 
 
+def test_validate_command_rejects_non_conforming_skill(tmp_path):
+    """A declared SKILL.md that misses the nine-section contract fails validation (#334).
+
+    Without this, the check added alongside it could be deleted and only
+    ``test_validate_command_accepts_valid_manifest`` would notice -- and that one
+    passes when the check does nothing at all.
+    """
+    plugin_dir = tmp_path / "prose_plugin"
+    plugin_dir.mkdir()
+    source = (FIXTURE_ROOT / "fake_plugin" / "plugin.yaml").read_text()
+    (plugin_dir / "plugin.yaml").write_text(source)
+    # Prose with no frontmatter and no required headings -- the exact shape 9 of the 23
+    # in-tree specs had drifted to before #334.
+    (plugin_dir / "SKILL.md").write_text("# Some provider\n\nJust prose.\n")
+
+    runner = CliRunner()
+    result = runner.invoke(plugins_group, ["validate", str(plugin_dir / "plugin.yaml")])
+    assert result.exit_code != 0
+    assert "nine-section contract" in result.output
+    assert "## 1. Status & scope" in result.output
+
+
 _VALID_DATASET_YAML = """\
   - name: default
     domain: genomics

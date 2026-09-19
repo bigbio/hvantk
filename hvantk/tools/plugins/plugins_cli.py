@@ -8,6 +8,7 @@ from pathlib import Path
 import click
 
 from hvantk.core.plugin import loader as plugin_loader
+from hvantk.core.plugin.skill_spec import check_skill_spec
 
 
 @click.group(name="plugins")
@@ -180,6 +181,27 @@ def validate_cmd(manifest_path: str, strict_artifacts: bool):
         raise click.ClickException(
             "datasets share a drift_fingerprint but declare different drift probes; "
             "they would overwrite each other's baseline:\n  - " + "\n  - ".join(conflicts)
+        )
+
+    # The SKILL.md nine-section contract (_conventions s 2). Documented as MUST since the
+    # plugin system landed but unchecked until issue #334, which is how 9 of 23 specs came
+    # to carry none of the nine headings. Checked here per manifest, and across the whole
+    # tree by hvantk/tests/test_plugin_skill_conformance.py -- both call the same checker.
+    spec_problems: list[str] = []
+    for dataset in content.get("datasets", []):
+        rel = dataset.get("skill")
+        if not rel:
+            continue
+        spec_path = plugin_dir / rel
+        if not spec_path.is_file():
+            spec_problems.append(f"{dataset.get('name', '?')}: skill not found -> {rel}")
+            continue
+        for problem in check_skill_spec(spec_path):
+            spec_problems.append(f"{rel}: {problem}")
+    if spec_problems:
+        raise click.ClickException(
+            "SKILL.md does not meet the nine-section contract "
+            "(hvantk/skills/_conventions/SKILL.md s 2):\n  - " + "\n  - ".join(spec_problems)
         )
 
     click.echo(f"ok: {manifest_path}")
