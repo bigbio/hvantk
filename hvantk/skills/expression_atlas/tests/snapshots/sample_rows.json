@@ -74,22 +74,27 @@
   "var_head": [
     {
       "Gene Name": "Gnai3",
+      "GeneID": "ENSMUST00000000001",
       "gene_id": "ENSMUSG00000000001"
     },
     {
       "Gene Name": "Pbsn",
+      "GeneID": "ENSMUST00000000003",
       "gene_id": "ENSMUSG00000000003"
     },
     {
       "Gene Name": "Cdc45",
+      "GeneID": "ENSMUST00000000028",
       "gene_id": "ENSMUSG00000000028"
     },
     {
       "Gene Name": "Scml2",
+      "GeneID": "ENSMUST00000019101",
       "gene_id": "ENSMUSG00000000037"
     },
     {
       "Gene Name": "Apoh",
+      "GeneID": "ENSMUST00000000049",
       "gene_id": "ENSMUSG00000000049"
     }
   ]
