@@ -197,3 +197,68 @@ def test_all_missing_sample_column_stays_a_sample(tmp_path):
 
     adata = create_anndata_from_expression_atlas(expression_matrix_path=str(path))
     assert list(adata.obs_names) == ["ERR1", "ERR_empty"]
+
+
+def test_malformed_sample_named_in_sdrf_raises_rather_than_vanishing(tmp_path):
+    """A declared sample carrying a bad sentinel must fail loudly, not move to .var.
+
+    Inferring annotations from content alone made this silent: an all-text sample was
+    reclassified as metadata, dropped from the matrix, and the build SUCCEEDED with
+    that sample missing -- strictly worse than the crash the inference was added to
+    prevent. `metadata_df.index` is the authoritative sample list, so it outranks the
+    heuristic.
+    """
+    import pandas as pd
+    import pytest
+    from hvantk.skills.expression_atlas.shared.expression_atlas import (
+        create_anndata_from_expression_atlas,
+    )
+
+    path = tmp_path / "tpms.tsv"
+    pd.DataFrame(
+        {
+            "Gene ID": ["ENSMUSG00000000001", "ENSMUSG00000000002"],
+            "Gene Name": ["Gnai3", "Cdc45"],
+            "GeneID": ["ENSMUST00000000001", "ENSMUST00000000002"],
+            "ERR1": [16, 3],
+            # "-" is NOT one of pandas' recognised NA strings, so it survives read_csv
+            # as text and would otherwise look exactly like an annotation column.
+            "ERR_broken": ["-", "-"],
+        }
+    ).to_csv(path, sep="\t", index=False)
+    metadata = pd.DataFrame(
+        index=["ERR1", "ERR_broken"], data={"organism": ["Mus"] * 2}
+    )
+
+    with pytest.raises(ValueError, match="could not convert string to float"):
+        create_anndata_from_expression_atlas(
+            expression_matrix_path=str(path), metadata_df=metadata
+        )
+
+
+def test_malformed_sample_without_sdrf_still_raises(tmp_path):
+    """The positional guard covers the case where no sample list is supplied.
+
+    Annotations are a LEADING block in this format, so a non-numeric column appearing
+    after the first sample is malformed data, not metadata -- regardless of whether a
+    caller passed metadata_df.
+    """
+    import pandas as pd
+    import pytest
+    from hvantk.skills.expression_atlas.shared.expression_atlas import (
+        create_anndata_from_expression_atlas,
+    )
+
+    path = tmp_path / "tpms.tsv"
+    pd.DataFrame(
+        {
+            "Gene ID": ["ENSMUSG00000000001"],
+            "Gene Name": ["Gnai3"],
+            "GeneID": ["ENSMUST00000000001"],
+            "ERR1": [16],
+            "ERR_broken": ["-"],
+        }
+    ).to_csv(path, sep="\t", index=False)
+
+    with pytest.raises(ValueError, match="could not convert string to float"):
+        create_anndata_from_expression_atlas(expression_matrix_path=str(path))

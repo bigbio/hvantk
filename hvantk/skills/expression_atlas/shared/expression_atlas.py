@@ -240,19 +240,39 @@ def create_anndata_from_expression_atlas(
 
     # Anything left that holds values but no numeric ones is an annotation column the
     # caller did not name -- upstream's `GeneID` transcript id being the known case.
-    # Deciding on CONTENT rather than position matters: the column is not always third,
-    # and an all-missing sample column must stay a sample (it coerces to NaN, which is
-    # numeric), not be misread as metadata and removed from the matrix.
+    #
+    # Inference is deliberately hemmed in on two sides, because getting it wrong is
+    # WORSE than the crash this function used to produce: a real sample reclassified as
+    # an annotation vanishes from the matrix and reappears in `var`, and the build
+    # succeeds. A silent missing sample beats no error message only for whoever is not
+    # the one analysing the result.
+    #
+    #   1. A column named in `metadata_df` is a sample, full stop. The SDRF is the
+    #      authoritative sample list, so its say-so outranks any content heuristic; a
+    #      sample carrying an unsupported sentinel ("-", "n/a ", a comma decimal) must
+    #      reach the float cast and raise, not be quietly absorbed.
+    #   2. Only the LEADING run of columns is considered. Expression Atlas puts its
+    #      annotations first and every column from the first sample onward is data, so
+    #      a non-numeric column appearing mid-matrix is malformed data, not metadata.
+    #
+    # Content still decides within those bounds, because position alone is not enough:
+    # the transcript column is not always third. And note an all-missing sample column
+    # coerces to NaN, which IS numeric, so it correctly stays a sample.
+    known_samples = set(metadata_df.index) if metadata_df is not None else set()
     inferred: list[str] = []
     for col in df.columns:
         if col in annotation_cols:
             continue
+        if col in known_samples:
+            break  # first declared sample: everything from here on is data
         values = df[col]
         if values.notna().any() and pd.to_numeric(values, errors="coerce").isna().all():
             inferred.append(col)
+        else:
+            break  # first numeric column ends the leading annotation block
     if inferred:
         logger.warning(
-            "Treating non-numeric column(s) %s as gene annotations, not samples; "
+            "Treating non-numeric leading column(s) %s as gene annotations, not samples; "
             "they are preserved in .var. Pass extra_annotation_columns to silence this.",
             ", ".join(map(str, inferred)),
         )
