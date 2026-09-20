@@ -9,6 +9,10 @@ source:
 
 datasets:
   - name: variants
+    acquisition:
+      mode: byo
+      reason: size
+      instructions: SKILL.md#7-workflow-steps
     domain: genomics
     backend: hail
     artifact_type: VariantMatrix

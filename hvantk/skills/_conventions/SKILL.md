@@ -139,6 +139,26 @@ Three states, and the difference matters:
 
 Source names are free strings; consumers compare them through an equivalence map (`ClinVar`, `ClinGen`, `GenCC`, `HGMD`, `OMIM` are all curated disease databases and conflict with one another). Declare the sources as the authors describe them and let the consumer's map do the grouping. `scores:` is optional — a dataset with no trained predictors should omit it entirely rather than declare an empty block.
 
+### Optional: `acquisition:` — can this dataset fetch its own data?
+
+A dataset that ships no `lifecycle.download` is ambiguous: it may mean *nobody has written the downloader yet*, or it may mean *no downloader is possible*. Those are different states and used to look identical (#118), so `--skip-download` read as a category error on every bring-your-own-data build.
+
+```yaml
+    acquisition:
+      mode: byo              # download (default) | byo
+      reason: size           # size | credentialed | license | publication-only | unstable-url
+      instructions: SKILL.md#2-source-identity
+```
+
+Declared **per dataset, not per provider** — `onek-genomes` ships `variants` (~1.5 TB, BYO) beside `samples` (~55 KB, auto-downloaded), so one provider-level field could not describe it.
+
+- Omitting the block means `mode: download`, so every pre-existing manifest stays valid.
+- `mode: download` with no `lifecycle.download` is the honest way to say *a downloader belongs here and is not written yet* — a TODO. See CLAUDE.md's downloader decision framework for when one is warranted.
+- `mode: byo` requires a `reason`, and is **rejected** alongside `lifecycle.download`: a dataset either fetches its own inputs or it does not, and a manifest claiming both is lying about one.
+- Under `mode: byo`, `hvantk reprocess` skips the download stage implicitly (no flag needed) and instead pre-flights `--raw-dir`, failing with `instructions` interpolated if it is empty — rather than dying deep inside the builder.
+
+**`byo` is a statement about acquisition, never about testability.** `dbnsfp` cannot be downloaded at all (#321) yet ships a committed fixture and both snapshots. Nothing may read `mode: byo` as exempting a dataset from the § 9 validation contract; conflating the two is what left five datasets ungradable (#341), and a test enforces the separation.
+
 ## 7. CLI command pattern
 
 Per-provider CLI lives in `hvantk/skills/<provider>/cli.py` (single-dataset) or `hvantk/skills/<provider>/<dataset>/cli.py` (multi-dataset). The manifest's `cli:` block registers Click commands at top-level discovery time:

@@ -25,16 +25,35 @@ LEDGER_PATH = Path(__file__).resolve().parents[2] / "resources" / "drift_ledger.
 
 @click.command(name="drift")
 @click.argument("dataset", required=False)
-@click.option("--all", "all_flag", is_flag=True, help="Run drift check for every dataset")
+@click.option(
+    "--all", "all_flag", is_flag=True, help="Run drift check for every dataset"
+)
 @click.option("--domain", default=None, help="Filter by domain (with --all)")
 @click.option("--json", "as_json", is_flag=True, help="Emit machine-readable JSON")
-@click.option("--regenerate", is_flag=True, help="Overwrite drift_fingerprint.json with observed probe output")
-@click.option("--timeout", default=60, show_default=True, help="Probe timeout in seconds")
-@click.option("--ledger", "ledger_flag", is_flag=True,
-              help="List datasets whose upstream moved since their last rebuild")
-@click.option("--mark-rebuilt", "mark_rebuilt", default=None, metavar="DATASET",
-              help="Record DATASET as rebuilt now, clearing it from --ledger's stale list")
-def drift_cmd(dataset, all_flag, domain, as_json, regenerate, timeout, ledger_flag, mark_rebuilt):
+@click.option(
+    "--regenerate",
+    is_flag=True,
+    help="Overwrite drift_fingerprint.json with observed probe output",
+)
+@click.option(
+    "--timeout", default=60, show_default=True, help="Probe timeout in seconds"
+)
+@click.option(
+    "--ledger",
+    "ledger_flag",
+    is_flag=True,
+    help="List datasets whose upstream moved since their last rebuild",
+)
+@click.option(
+    "--mark-rebuilt",
+    "mark_rebuilt",
+    default=None,
+    metavar="DATASET",
+    help="Record DATASET as rebuilt now, clearing it from --ledger's stale list",
+)
+def drift_cmd(
+    dataset, all_flag, domain, as_json, regenerate, timeout, ledger_flag, mark_rebuilt
+):
     """Compare a plugin's live drift-probe fingerprint against the expected file."""
     if mark_rebuilt is not None:
         # A standalone action, like --regenerate: it takes its OWN dataset name, so a
@@ -77,8 +96,10 @@ def drift_cmd(dataset, all_flag, domain, as_json, regenerate, timeout, ledger_fl
             click.echo("no datasets pending rebuild")
             return
         for name, entry in stale:
-            click.echo(f"{name}\tupstream={entry['last_upstream_change']}\t"
-                       f"rebuilt={entry['rebuilt_at'] or 'never'}")
+            click.echo(
+                f"{name}\tupstream={entry['last_upstream_change']}\t"
+                f"rebuilt={entry['rebuilt_at'] or 'never'}"
+            )
         return
 
     if all_flag and dataset:
@@ -211,7 +232,11 @@ def _stale_datasets(ledger: dict) -> list[tuple[str, dict]]:
             continue
         rebuilt_at = _parse_iso(rebuilt)
         last_upstream_change = _parse_iso(entry.get("last_upstream_change", ""))
-        if rebuilt_at is None or last_upstream_change is None or rebuilt_at < last_upstream_change:
+        if (
+            rebuilt_at is None
+            or last_upstream_change is None
+            or rebuilt_at < last_upstream_change
+        ):
             out.append((name, entry))
     return out
 

@@ -34,6 +34,8 @@ datasets:
         function: download_dataset
 
   - name: adult-ctx
+    acquisition:
+      mode: download
     domain: transcriptomics
     backend: anndata
     artifact_type: ExpressionMatrix
@@ -53,6 +55,8 @@ datasets:
       drift_fingerprint: tests/drift_fingerprint.json
 
   - name: dev-ctx
+    acquisition:
+      mode: download
     domain: transcriptomics
     backend: anndata
     artifact_type: ExpressionMatrix

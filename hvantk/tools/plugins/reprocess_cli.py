@@ -259,11 +259,37 @@ def reprocess_cmd(
         _check_output_extension(spec, output)
 
     # 1. Download stage
-    if not skip_download:
+    acquisition = getattr(spec, "acquisition", None)
+    byo = bool(acquisition and acquisition.is_byo)
+
+    if byo:
+        # --skip-download is implicit: the manifest has already said this dataset
+        # cannot fetch its own inputs, so demanding the flag on every invocation was
+        # asking the user to restate the manifest (#118). Passing it stays legal.
+        if not skip_download:
+            _progress(
+                f"{dataset} declares acquisition.mode=byo "
+                f"({acquisition.reason or 'reason unstated'}); skipping download"
+            )
+        # Pre-flight instead: a BYO dataset with nothing in --raw-dir used to fail deep
+        # inside the builder, on whatever that builder happened to touch first.
+        import os
+
+        if not os.path.isdir(raw_dir) or not os.listdir(raw_dir):
+            hint = (
+                f" See {acquisition.instructions}." if acquisition.instructions else ""
+            )
+            raise click.UsageError(
+                f"{dataset} requires data you supply yourself "
+                f"(acquisition.mode=byo, reason={acquisition.reason or 'unstated'}), "
+                f"but --raw-dir {raw_dir!r} is empty or missing.{hint}"
+            )
+    elif not skip_download:
         if spec.download_fn is None:
             raise click.UsageError(
                 f"{dataset} has no lifecycle.download declared; "
-                "use --skip-download or add it to plugin.yaml"
+                "use --skip-download, add one to plugin.yaml, or declare "
+                "acquisition.mode=byo if it cannot have one"
             )
         _progress(f"download -> {raw_dir}")
         spec.download_fn(raw_dir=raw_dir, **extras)

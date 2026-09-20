@@ -9,6 +9,10 @@ source:
 
 datasets:
   - name: predictions
+    acquisition:
+      mode: byo
+      reason: credentialed
+      instructions: SKILL.md#7-workflow-steps
     domain: genomics
     backend: hail
     artifact_type: AnnotationTable
