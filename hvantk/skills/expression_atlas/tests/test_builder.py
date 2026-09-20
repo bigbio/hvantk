@@ -24,22 +24,20 @@ samples for the expression matrix -- far too large to commit as a fixture):
      "Gene ID\tGene Name\tGeneID\t<320 ERR* sample columns>" -- note the
      THIRD column "GeneID" is the per-row TRANSCRIPT id (e.g.
      "ENSMUST00000000001"), distinct from "Gene ID" (gene id) by a
-     one-space difference. create_anndata_from_expression_atlas() only
-     strips {"Gene ID", "Gene Name"} as non-sample columns
-     (gene_column/gene_name_column defaults), so keeping "GeneID" verbatim
-     makes the builder try to cast transcript-id strings into the float32
-     expression matrix and crash:
-         ValueError: could not convert string to float: 'ENSMUST...'
-     Reproduced independently on a 1-row/2-sample toy frame. This is a
-     latent builder bug present in the real upstream file shape, not an
-     artifact of truncation; fixing it is out of scope here (builder.py /
-     shared/expression_atlas.py are not in the allowed edit list for this
-     fixture-seeding task -- see local report to the ledger owner).
-     The fixture therefore DROPS the "GeneID" transcript column and keeps
-     the first 20 DISTINCT genes (by "Gene ID", first transcript row seen,
-     via drop_duplicates) so var_names come out unique, then keeps 4 sample
-     columns (ERR2588382, ERR2588384, ERR2588383, ERR2588399) -- the first
-     four in header order. Written back out as plain uncompressed TSV.
+     one-space difference.
+
+     That third column is KEPT, deliberately: the fixture reproduces the real
+     production header rather than a sanitised one. It used to be dropped,
+     because create_anndata_from_expression_atlas() classified it as a sample
+     and died casting transcript strings to float32 (issue #342) -- so the
+     passing test was exercising a file shape no download ever produces. The
+     builder now sets non-numeric leading columns aside into .var, and this
+     fixture is what proves it.
+
+     Kept the first 20 DISTINCT genes (by "Gene ID", first transcript row
+     seen) so var_names come out unique, then 4 sample columns
+     (ERR2588382, ERR2588384, ERR2588383, ERR2588399) -- the first four in
+     header order. Written back out as plain uncompressed TSV.
   2. SDRF (E-MTAB-6798.condensed-sdrf.tsv): long-format, one row per
      (sample, characteristic|factor). Kept every line whose 3rd
      tab-separated field (sample_id) is one of the 4 retained sample IDs
@@ -116,7 +114,9 @@ def test_expression_atlas_snapshot_round_trip(tmp_path, regenerate_snapshots):
             builder_kwargs={"sdrf_path": SDRF},
             input_path_kwarg="expression_matrix_path",
         )
-        pytest.skip("Snapshots regenerated; rerun without --regenerate-snapshots to assert.")
+        pytest.skip(
+            "Snapshots regenerated; rerun without --regenerate-snapshots to assert."
+        )
 
     adata = _build_for_snapshot(EXPRESSION, sdrf_path=SDRF)
 
@@ -124,9 +124,76 @@ def test_expression_atlas_snapshot_round_trip(tmp_path, regenerate_snapshots):
     assert adata.n_vars == 20, "twenty genes in the fixture"
 
     expected_schema = load_snapshot(SNAPSHOT_DIR / "schema.json")
-    assert anndata_schema_to_dict(adata) == expected_schema, \
-        "Expression Atlas schema drifted from snapshot"
+    assert (
+        anndata_schema_to_dict(adata) == expected_schema
+    ), "Expression Atlas schema drifted from snapshot"
 
     expected_rows = load_snapshot(SNAPSHOT_DIR / "sample_rows.json")
-    assert anndata_sample_rows(adata) == expected_rows, \
-        "Expression Atlas sample rows drifted from snapshot"
+    assert (
+        anndata_sample_rows(adata) == expected_rows
+    ), "Expression Atlas sample rows drifted from snapshot"
+
+
+# --- Regression: issue #342 ---------------------------------------------------
+# The real upstream header carries THREE leading metadata columns, the third being
+# `GeneID` (transcript id, distinct from `Gene ID` by one space). Classifying it as a
+# sample sent transcript strings into the float32 cast, so every build from an
+# unmodified download died. The committed fixture now reproduces that header, but these
+# pin the behaviour directly -- a fixture can be re-derived, an assertion cannot drift.
+
+
+def test_transcript_id_column_is_annotation_not_sample(tmp_path):
+    """The third metadata column must reach .var, never the expression matrix."""
+    import pandas as pd
+    from hvantk.skills.expression_atlas.shared.expression_atlas import (
+        create_anndata_from_expression_atlas,
+    )
+
+    path = tmp_path / "tpms.tsv"
+    pd.DataFrame(
+        {
+            "Gene ID": ["ENSMUSG00000000001", "ENSMUSG00000000002"],
+            "Gene Name": ["Gnai3", "Cdc45"],
+            "GeneID": ["ENSMUST00000000001", "ENSMUST00000000002"],
+            "ERR1": [16, 3],
+            "ERR2": [7, 1],
+        }
+    ).to_csv(path, sep="\t", index=False)
+
+    adata = create_anndata_from_expression_atlas(expression_matrix_path=str(path))
+
+    assert adata.shape == (
+        2,
+        2,
+    ), "2 samples x 2 genes -- GeneID must not become a third sample"
+    assert list(adata.obs_names) == ["ERR1", "ERR2"]
+    # Preserved, not dropped: it is the only thing disambiguating repeated gene ids.
+    assert "GeneID" in adata.var.columns
+    assert list(adata.var["GeneID"]) == ["ENSMUST00000000001", "ENSMUST00000000002"]
+
+
+def test_all_missing_sample_column_stays_a_sample(tmp_path):
+    """Inference must key on 'non-numeric', not 'not obviously a number'.
+
+    A sample with no measurements reads back as all-NaN. Treating that as metadata
+    would silently drop a real sample from the matrix -- the failure mode that makes
+    content-based inference risky, so it is pinned here.
+    """
+    import numpy as np
+    import pandas as pd
+    from hvantk.skills.expression_atlas.shared.expression_atlas import (
+        create_anndata_from_expression_atlas,
+    )
+
+    path = tmp_path / "tpms.tsv"
+    pd.DataFrame(
+        {
+            "Gene ID": ["ENSMUSG00000000001"],
+            "Gene Name": ["Gnai3"],
+            "ERR1": [16.0],
+            "ERR_empty": [np.nan],
+        }
+    ).to_csv(path, sep="\t", index=False)
+
+    adata = create_anndata_from_expression_atlas(expression_matrix_path=str(path))
+    assert list(adata.obs_names) == ["ERR1", "ERR_empty"]
