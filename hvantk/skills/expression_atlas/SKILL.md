@@ -12,7 +12,7 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes every conve
 
 ## 1. Status & scope
 
-- **Status:** provisional. Builder, downloader, dataset class, and downloader tests are in place under the plugin folder; round-trip builder snapshots are NOT yet seeded (no fixture, no `schema.json`, no `sample_rows.json`) -- writing the first round-trip test is follow-up work tracked alongside this skill.
+- **Status:** provisional. Builder, downloader, dataset class and downloader tests are in place, and the round-trip contract is **seeded**: `tests/testdata/raw/expression-atlas/` holds a truncated fixture, `tests/snapshots/` holds `schema.json` + `sample_rows.json`, and `tests/test_builder.py` asserts against both (§ 9). One caveat carries over — the fixture drops the upstream `GeneID` transcript column the builder cannot yet handle (#342), so the seeded test does not exercise the real production header shape.
 - **In scope:** any single Expression Atlas baseline bulk-RNA-seq experiment with a gene-centric TPM matrix (genes x samples) and a paired SDRF metadata file, converted to an AnnData object keyed `samples x genes`.
 - **Out of scope:** scRNA-seq cell-level matrices (use the UCSC Cell Browser plugin); differential expression matrices; cross-accession multi-experiment merging; gene-symbol / accession normalization (downstream).
 
@@ -72,29 +72,35 @@ When invoked to build or update a single Expression Atlas experiment:
    or via the recipe system: `hvantk reprocess expression-atlas:dataset` (lifecycle download → builder).
 2. **Build:** `hvantk reprocess expression-atlas:dataset --raw-dir <dir> --output <out>.h5ad`.
    - The builder parses the SDRF, transposes the expression matrix, attaches per-sample metadata into `obs`, annotates provenance, and writes `.h5ad`.
-3. **Validate:** TODO — once the round-trip fixture is seeded, run `pytest hvantk/skills/expression_atlas/tests`. Until then, the offline downloader unit tests + drift-probe placeholder test are what guard this plugin.
+3. **Validate:** run `pytest hvantk/skills/expression_atlas/tests`. That covers the seeded round-trip (`test_builder.py`, schema + sample rows + `n_obs`/`n_vars`) alongside the offline downloader and drift-probe tests. Regenerate snapshots only for an intentional change: `pytest hvantk/skills/expression_atlas/tests/test_builder.py --regenerate-snapshots`. **Building from a real, untruncated download will still fail until #342 is fixed** — see § 9.
 
 ## 8. Update playbook
 
 TODO. This section will be fleshed out once per-accession drift detection lands (see § 2 catalog note and the drift-probe placeholder in `hvantk/skills/expression_atlas/drift_probe.py`). Expected shape:
 
 1. For each tracked accession in `hvantk/skills/expression_atlas/catalog/datasets.json` (filter `data_source == "Expression_Atlas"`), re-run the per-accession HEAD probe; flag accessions whose `Last-Modified` or `Content-Length` changed.
-2. Re-download flagged accessions, rebuild via `hvantk reprocess expression-atlas:dataset`, and diff the new AnnData against the snapshotted shape / `obs` columns.
+2. Re-download flagged accessions, rebuild via `hvantk reprocess expression-atlas:dataset`, and diff the new AnnData against the committed snapshots in `tests/snapshots/` (§ 9).
 3. If the SDRF column set changed, document the new factor in § 4.
 
 ## 9. Validation contract
 
 Per `_conventions` § 9:
 
-- **fixture:** `hvantk/skills/expression_atlas/tests/testdata/raw/expression-atlas/` (directory present, not yet seeded). The first round-trip test will populate this with a small TSV + condensed-SDRF pair.
-- **schema_snapshot:** `hvantk/skills/expression_atlas/tests/snapshots/schema.json` (TODO — created on first `--regenerate-snapshots` run).
-- **row_snapshot:** `hvantk/skills/expression_atlas/tests/snapshots/sample_rows.json` (TODO — same).
+- **fixture:** `hvantk/skills/expression_atlas/tests/testdata/raw/expression-atlas/` — seeded. `E-MTAB-6798-transcripts-tpms.tsv` (20 genes x 4 samples, ~0.8 KB) + `E-MTAB-6798.condensed-sdrf.tsv` (the same 4 sample IDs, ~3.3 KB), derived by truncation from the real upstream files under `hvantk/tests/testdata/raw/expression_atlas/`. Recipe recorded at the top of `tests/test_builder.py`.
+- **schema_snapshot:** `hvantk/skills/expression_atlas/tests/snapshots/schema.json` — seeded (4 obs x 20 vars).
+- **row_snapshot:** `hvantk/skills/expression_atlas/tests/snapshots/sample_rows.json` — seeded.
 - **test_command:** `pytest hvantk/skills/expression_atlas/tests`.
 
-The plugin manifest already declares these paths so the loader contract holds. The downloader unit tests + drift-probe placeholder test pass today; the builder round-trip is the gap to close in a follow-up PR.
+The plugin manifest already declares these paths so the loader contract holds. `tests/test_builder.py` now exercises `build_expression_atlas` end-to-end against the committed fixture and asserts both snapshots plus `n_obs`/`n_vars`; regenerate via `pytest hvantk/skills/expression_atlas/tests/test_builder.py --regenerate-snapshots`. No Hail is required — the artifact is AnnData-backed.
 
-> **Snapshot status:** schema.json and sample_rows.json have NOT yet been seeded
-> for this plugin. On first round-trip run in a hail-enabled environment, use
-> `pytest hvantk/skills/expression_atlas/tests/test_builder.py --regenerate-snapshots`
-> to bootstrap them, then commit. Until seeded, the round-trip test cannot verify
-> output against a fixed schema.
+> **Known builder gap (not fixed here):** the real upstream `*-transcripts-tpms.tsv`
+> header is `Gene ID\tGene Name\tGeneID\t<samples...>` — the third `GeneID` column is
+> the per-row *transcript* id, distinct from `Gene ID`. `create_anndata_from_expression_atlas()`
+> only strips `{"Gene ID", "Gene Name"}` as non-sample columns (its `gene_column` /
+> `gene_name_column` defaults), so a real, untruncated file crashes with
+> `ValueError: could not convert string to float: 'ENSMUST...'` before the builder
+> ever gets a matrix. The committed fixture works around this by dropping that
+> third column (see the recipe in `tests/test_builder.py`). A future re-author of
+> this builder should either accept/drop a transcript-id column explicitly or
+> document that only gene-level (2-metadata-column) Expression Atlas files are
+> supported.

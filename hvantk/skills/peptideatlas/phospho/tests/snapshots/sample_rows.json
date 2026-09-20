@@ -1,0 +1,34 @@
+[
+  {
+    "key": {
+      "accession": "P04637",
+      "position": "315"
+    },
+    "row": {
+      "amino_acid": "S",
+      "description": "Phosphoserine",
+      "ensembl_xrefs": null,
+      "evidence_type": "mass_spectrometry",
+      "gene_symbol": "TP53",
+      "n_observations": "80",
+      "sequence_length": "393",
+      "source_db": "PeptideAtlas"
+    }
+  },
+  {
+    "key": {
+      "accession": "P04637",
+      "position": "6"
+    },
+    "row": {
+      "amino_acid": "S",
+      "description": "Phosphoserine",
+      "ensembl_xrefs": null,
+      "evidence_type": "mass_spectrometry",
+      "gene_symbol": "TP53",
+      "n_observations": "10",
+      "sequence_length": "393",
+      "source_db": "PeptideAtlas"
+    }
+  }
+]

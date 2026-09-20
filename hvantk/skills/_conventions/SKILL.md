@@ -43,6 +43,10 @@ Every per-resource `SKILL.md` MUST cover these nine sections, in order, with the
 
 Optional sections (only if they add information not covered above): `## 10. Cross-reference notes`, `## 11. Performance notes`.
 
+Each spec MUST also open with a YAML frontmatter block declaring at least `name` and `description` (conforming files also carry `status`, `backend` and `domain`). That minimum is what an external Agent Skills harness reads to register the directory at all — a spec without it is invisible to one however good its prose.
+
+**This is enforced, not merely documented.** `hvantk.core.plugin.skill_spec` holds the checker; `hvantk/tests/test_plugin_skill_conformance.py` runs it over every per-resource `SKILL.md` on every test run, and `hvantk plugins validate <manifest>` runs it over the specs one manifest declares. Both call the same implementation, so the list above and the check cannot drift apart — a test asserts that every enforced heading is still listed here. Until #334 nothing checked this, and 9 of 23 specs had drifted to zero required headings.
+
 ## 3. Keying conventions per data domain
 
 - Variants → key `(locus, alleles)`, Hail Table or MatrixTable
@@ -166,7 +170,7 @@ This resolves the manifest via `get_registry().get_dataset(...)`, runs `lifecycl
 
 Every per-resource `SKILL.md` MUST declare these paths, which MUST match the `tests:` block in `plugin.yaml`. All paths are resolved relative to the plugin folder, and normally live inside it:
 
-- `fixture` — input file or directory used by the round-trip test. Normally plugin-local (`tests/testdata/raw/<dataset>/`). A fixture that is genuinely shared with cross-cutting tests — `hvantk/tests/test_plugin_conformance.py`, or an integration test in another package — instead lives in the repo-level tree and is referenced in place as `../../tests/testdata/raw/<dataset>`, rather than being duplicated per consumer. Say which form applies in the plugin's `SKILL.md`, since the two are not interchangeable. `dbnsfp`, `ensembl_gene`, `gevir` and `gnomad_metrics` use the shared form.
+- `fixture` — input file or directory used by the round-trip test. Normally plugin-local (`tests/testdata/raw/<dataset>/`). A fixture that is genuinely shared with cross-cutting tests — `hvantk/tests/test_plugin_conformance.py`, or an integration test in another package — instead lives in the repo-level tree and is referenced in place as `../../tests/testdata/raw/<dataset>`, rather than being duplicated per consumer. Say which form applies in the plugin's `SKILL.md`, since the two are not interchangeable. `dbnsfp`, `gevir` and `gnomad_metrics` use the shared form. `ensembl_gene` does **not** — this sentence listed it until #334; its `structure` dataset declares the plugin-local `structure/tests/testdata/raw/ensembl-structure`, which is what `plugin.yaml` and its tests actually read.
 - `schema_snapshot` — `tests/snapshots/schema.json`
 - `row_snapshot` — `tests/snapshots/sample_rows.json`. Keys used to select snapshot rows must be unique-in-table — `_snapshot_utils.collect_sample_rows` does not deduplicate, so a duplicated key yields non-deterministic snapshots. For builders that legitimately produce multi-row keys (e.g., GWAS Catalog), maintain `tests/snapshots/sample_keys.json` listing the singleton-key subset to sample.
 - `drift_fingerprint` — `tests/drift_fingerprint.json` (the expected fingerprint; see § 12).
