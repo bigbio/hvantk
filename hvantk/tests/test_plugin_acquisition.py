@@ -180,3 +180,26 @@ def test_every_dataset_without_a_downloader_has_been_classified():
         "so 'not implemented yet' and 'impossible by design' are indistinguishable:\n  "
         + "\n  ".join(unclassified)
     )
+
+
+def test_acquisition_vocabulary_matches_the_schema():
+    """The Python enum and the JSON schema enum must be one vocabulary, not two.
+
+    They had already drifted when this was written: the dataclass documented four
+    reasons while the schema accepted five (``unstable-url`` was missing from the
+    Python side), in the very commit that introduced both. A comment listing valid
+    values is not a contract -- this is.
+
+    Mirrors ``test_contract_matches_the_conventions_document``, which does the same
+    job for the SKILL.md section list, and is bidirectional for the same reason: a
+    value added to either side alone fails here.
+    """
+    from typing import get_args
+
+    from hvantk.core.plugin.api import AcquisitionMode, AcquisitionReason
+
+    props = SCHEMA["properties"]["datasets"]["items"]["properties"]["acquisition"][
+        "properties"
+    ]
+    assert list(props["mode"]["enum"]) == list(get_args(AcquisitionMode))
+    assert list(props["reason"]["enum"]) == list(get_args(AcquisitionReason))

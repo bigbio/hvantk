@@ -259,8 +259,11 @@ def reprocess_cmd(
         _check_output_extension(spec, output)
 
     # 1. Download stage
-    acquisition = getattr(spec, "acquisition", None)
-    byo = bool(acquisition and acquisition.is_byo)
+    # Not getattr(spec, "acquisition", None): DatasetSpec declares the field with a
+    # default_factory, so it is never missing, and a defensive fallback here would turn
+    # a future rename into a silent flip to download-mode rather than an AttributeError.
+    acquisition = spec.acquisition
+    byo = acquisition.is_byo
 
     if byo:
         # --skip-download is implicit: the manifest has already said this dataset
@@ -273,9 +276,18 @@ def reprocess_cmd(
             )
         # Pre-flight instead: a BYO dataset with nothing in --raw-dir used to fail deep
         # inside the builder, on whatever that builder happened to touch first.
+        #
+        # Only pre-flight the directory that will actually be read. With --skip-parse
+        # and an explicit --intermediate, the build consumes the intermediate and
+        # --raw-dir is never opened (see the parsed_path resolution below), so demanding
+        # it be populated rejects the normal resume-from-staged-input path -- which is
+        # exactly how the large, gated, BYO sources get rebuilt. That worked before
+        # acquisition landed and must keep working.
         import os
 
-        if not os.path.isdir(raw_dir) or not os.listdir(raw_dir):
+        raw_dir_is_read = not (skip_parse and intermediate is not None)
+
+        if raw_dir_is_read and (not os.path.isdir(raw_dir) or not os.listdir(raw_dir)):
             hint = (
                 f" See {acquisition.instructions}." if acquisition.instructions else ""
             )

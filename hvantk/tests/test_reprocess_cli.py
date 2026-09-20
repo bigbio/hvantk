@@ -29,6 +29,7 @@ def _make_spec(
     download_fn=None,
     parse_fn=None,
     builder=None,
+    acquisition=None,
 ) -> DatasetSpec:
     return DatasetSpec(
         name=name,
@@ -43,6 +44,7 @@ def _make_spec(
         test_paths=_make_test_paths(),
         download_fn=download_fn,
         parse_fn=parse_fn,
+        **({"acquisition": acquisition} if acquisition is not None else {}),
     )
 
 
@@ -204,7 +206,9 @@ def test_reprocess_unknown_dataset_errors(tmp_path: Path, monkeypatch):
     assert "unknown dataset" in result.output.lower()
 
 
-def test_reprocess_parse_without_intermediate_auto_defaults(tmp_path: Path, monkeypatch):
+def test_reprocess_parse_without_intermediate_auto_defaults(
+    tmp_path: Path, monkeypatch
+):
     """When a plugin declares lifecycle.parse but --intermediate is omitted,
     reprocess defaults the intermediate under raw_dir instead of hard-erroring (#198).
     """
@@ -511,3 +515,82 @@ def test_coerce_plugin_arg_value_scalar_paths_unchanged():
 
 def test_coerce_plugin_arg_value_strips_whitespace_in_list():
     assert _coerce_plugin_arg_value("chr1, chr2 , chrX") == ["chr1", "chr2", "chrX"]
+
+
+def test_byo_preflight_allows_resuming_from_an_explicit_intermediate(
+    tmp_path: Path, monkeypatch
+):
+    """--raw-dir need not be populated when the build will not read it.
+
+    A BYO dataset is BYO because its source is huge or gated, which makes "parse once,
+    rebuild from the staged intermediate" the normal way to work on one -- and in that
+    mode --raw-dir is never opened, because parsed_path resolves to --intermediate.
+    Pre-flighting it unconditionally rejected that, so #118 broke a workflow that works
+    on main today. Regression guard covering all 8 BYO datasets.
+    """
+    from hvantk.core.plugin.api import Acquisition
+
+    builder = MagicMock()
+    spec = _make_spec(
+        builder=builder,
+        parse_fn=MagicMock(),
+        acquisition=Acquisition(mode="byo", reason="size"),
+    )
+    _install_registry(monkeypatch, spec)
+
+    raw = tmp_path / "raw"  # deliberately absent
+    intermediate = tmp_path / "staged.parquet"
+    intermediate.write_text("gene\tvalue\nA\t1\n")
+    output = tmp_path / "out.parquet"
+
+    result = CliRunner().invoke(
+        reprocess_cmd,
+        [
+            "stub:default",
+            "--raw-dir",
+            str(raw),
+            "--intermediate",
+            str(intermediate),
+            "--skip-parse",
+            "--output",
+            str(output),
+            "--no-check-drift",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    builder.assert_called_once_with(str(intermediate), str(output))
+
+
+def test_byo_preflight_still_fires_when_the_raw_dir_is_the_input(
+    tmp_path: Path, monkeypatch
+):
+    """The guard must survive the fix above: an empty --raw-dir that WILL be read fails."""
+    from hvantk.core.plugin.api import Acquisition
+
+    spec = _make_spec(
+        acquisition=Acquisition(
+            mode="byo", reason="size", instructions="SKILL.md#2-source-identity"
+        )
+    )
+    _install_registry(monkeypatch, spec)
+
+    raw = tmp_path / "raw"
+    raw.mkdir()  # exists but empty
+    output = tmp_path / "out.parquet"
+
+    result = CliRunner().invoke(
+        reprocess_cmd,
+        [
+            "stub:default",
+            "--raw-dir",
+            str(raw),
+            "--output",
+            str(output),
+            "--no-check-drift",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "requires data you supply yourself" in result.output
+    assert "SKILL.md#2-source-identity" in result.output

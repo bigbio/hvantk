@@ -39,10 +39,11 @@ Stable notes:
 - Expression matrix is gene-centric (rows = genes, columns = samples), transposed by the builder to AnnData's samples-as-obs convention.
 - **There are THREE leading metadata columns, not two.** The real header is `Gene ID`, `Gene Name`, `GeneID`, then one float column per sample. `Gene ID` is the gene; **`GeneID` (no space) is the per-row transcript id** — the two differ by a single space, so any matching that is loose about whitespace will drop the wrong one. Treating the third as a sample is what made every build from an unmodified download die with `ValueError: could not convert string to float: 'ENSMUST...'` (#342).
 - `create_anndata_from_expression_atlas` therefore sets aside, as annotations, leading columns that hold values of which **none** are numeric, and preserves them in `var` rather than dropping them. Name them in `extra_annotation_columns` to skip the inference.
-- The inference is bounded on two sides, because misfiring is worse than the original crash — a real sample reclassified as an annotation disappears from the matrix and the build *succeeds*:
+- The inference is bounded on three sides, because misfiring is worse than the original crash — a real sample reclassified as an annotation disappears from the matrix and the build *succeeds*:
   1. a column named in the SDRF (`metadata_df.index`) is a sample whatever it contains, so a bad sentinel (`-`, `n/a `, a comma decimal) reaches the float cast and raises;
-  2. only the **leading run** of columns is considered — everything from the first sample onward is data, so a non-numeric column mid-matrix is malformed, not metadata.
-  Within those bounds content decides, since position alone is not enough (the transcript column is not always third). An all-missing sample column coerces to NaN, which is numeric, so it correctly stays a sample.
+  2. only the **leading run** of columns is considered — everything from the first sample onward is data, so a non-numeric column mid-matrix is malformed, not metadata;
+  3. conversely, a **numeric** leading column the SDRF does *not* declare raises rather than being absorbed as a sample. A numeric annotation column (`Entrez`, gene length, an analytics `p-value`) is indistinguishable by content from a sample the SDRF omits, and the old code guessed "sample" — putting NCBI gene ids into the matrix as expression values, detectable only as an all-NaN `obs` row.
+  Within those bounds content decides, since position alone is not enough (the transcript column is not always third). Note an all-missing column reads as all-NaN, which `to_numeric` also reports as **non**-numeric; it survives as a sample only because of the `values.notna().any()` guard, not because NaN counts as numeric. That guard is load-bearing.
 - Because a `*-transcripts-tpms.tsv` export is transcript-level, **one gene id spans several rows**, so `var_names` are not unique unless rows are de-duplicated (the committed fixture keeps the first row per gene). `var["GeneID"]` is what disambiguates them.
 - SDRF is tab-separated, no header, and condensed-long: each row is `(accession, unused, sample_id, column_type, column_name, column_value)`. The `unused` column is dropped; `column_type` is either `characteristic` or `factor`; duplicates on `(sample_id, column_name)` keep the **last** value (see `_reshape_sdrf_long_to_wide_format`).
 - Column names from SDRF are normalized: spaces → underscores, parentheses stripped (`organism_part_(group)` → `organism_part_group`). Downstream `obs` column names follow this rule.
@@ -51,7 +52,8 @@ Stable notes:
 ## 5. Output contract
 
 - **Object:** `anndata.AnnData` optionally saved to `<output_path>.h5ad`.
-- **Shape:** `obs = samples`, `var = genes`. `X` is `float32` (genes-x-samples after transpose).
+- **Shape:** `obs = samples`, `var = genes`. `X` is `float32`, **samples x genes** — the
+  source TSV is genes x samples and the builder transposes it (`df[sample_cols].values.T`).
 - **`obs`:** indexed by `sample_id`; columns are SDRF characteristics / factors after the long → wide reshape (e.g. `organism`, `tissue`, `cell_type`, ...).
 - **`var`:** indexed by `gene_id`. Includes a `Gene Name` column when the source TSV had one.
 - **`uns["column_summary"]`:** per-`obs`-column summary annotated by `annotate_column_summary_ad`.
@@ -66,7 +68,9 @@ Stable notes:
 - **Lifecycle entry point:** `download_dataset` in `hvantk/skills/expression_atlas/cli.py`.
 - **Build CLI:** `hvantk reprocess expression-atlas:dataset --raw-dir <dir> --output <path>.h5ad` (delegates to the plugin builder; pass builder kwargs via `--plugin-arg key=value`).
 - **Plugin manifest:** `hvantk/skills/expression_atlas/plugin.yaml` (drives loader registration; compound dataset key `expression-atlas:dataset`).
-- **Tests:** `hvantk/skills/expression_atlas/tests/` (downloader unit + drift-probe sanity present; builder round-trip TODO).
+- **Tests:** `hvantk/skills/expression_atlas/tests/` (downloader unit, drift-probe sanity, and
+  `test_builder.py` — builder round-trip against a fixture derived from the real 320-column
+  export, plus the column-inference regression guards).
 
 Read the existing files at these paths as ground truth for shape. This skill does not restate code.
 

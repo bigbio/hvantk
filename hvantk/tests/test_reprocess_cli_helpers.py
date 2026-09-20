@@ -3,10 +3,13 @@ plugin's backend (e.g. a pandas AnnotationTable written to .ht silently invokes
 to_hail(), needing a JVM), and (b) not hard-error on a missing --intermediate when
 the plugin declares a parse stage.
 """
+
 from __future__ import annotations
 
 import click
 import pytest
+
+from hvantk.core.plugin.api import Acquisition
 
 
 def _fake_spec(backend, artifact_type_name=None):
@@ -127,6 +130,10 @@ def test_reprocess_cmd_defaults_missing_intermediate(tmp_path, monkeypatch):
         parse_fn = staticmethod(_fake_parse)
         artifact_type = None  # legacy Phase-A build shape: builder(input, output)
         plugin_version = "0.1.0"
+        # DatasetSpec always has this (default_factory), so the double must too --
+        # reprocess reads spec.acquisition directly rather than via getattr, so that a
+        # field going missing is an error and not a silent fall back to download-mode.
+        acquisition = Acquisition()
 
         def builder(self, parsed_path, output):
             calls["built_from"] = parsed_path
@@ -171,6 +178,10 @@ def test_reprocess_cmd_no_parse_passes_raw_dir(tmp_path, monkeypatch):
         parse_fn = None
         artifact_type = None  # legacy Phase-A build shape: builder(input, output)
         plugin_version = "0.1.0"
+        # DatasetSpec always has this (default_factory), so the double must too --
+        # reprocess reads spec.acquisition directly rather than via getattr, so that a
+        # field going missing is an error and not a silent fall back to download-mode.
+        acquisition = Acquisition()
 
         def builder(self, parsed_path, output):
             seen["parsed_path"] = parsed_path

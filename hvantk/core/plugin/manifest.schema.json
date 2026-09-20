@@ -192,7 +192,7 @@
                   "download",
                   "byo"
                 ],
-                "description": "'download' (default): the plugin fetches its own inputs via lifecycle.download. 'byo': it cannot, and the user must supply --raw-dir. The two are mutually exclusive with lifecycle.download."
+                "description": "'download' (default): acquisition is automatable -- either a lifecycle.download already exists, or one could be written. 'byo': it cannot be automated at all, and the user must supply --raw-dir; 'byo' is mutually exclusive with lifecycle.download. Note 'download' is deliberately the weaker claim, because it is also the default for every manifest that omits this block. The third state -- automatable but not yet implemented, e.g. gevir -- is not a separate enum value because it is already derivable: mode 'download' AND no lifecycle.download."
               },
               "reason": {
                 "type": "string",

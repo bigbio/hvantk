@@ -212,9 +212,10 @@ def validate_cmd(manifest_path: str, strict_artifacts: bool):
             # schema failure above; nothing to add here.
             continue
         if not str(rel).strip():
-            # But the schema types it as a plain string, so `skill: ""` satisfies
-            # "required" and would otherwise fall through this whole check and print
-            # `ok` -- a manifest opting out of the contract by declaring nothing.
+            # `skill: ""` is now rejected upstream by the schema's `minLength: 1`, so
+            # what still reaches here is whitespace-only (`skill: "   "`), which
+            # `minLength` counts as present. Either way a manifest must not be able to
+            # opt out of the contract by declaring nothing.
             spec_problems.append(f"{name}: skill is declared but empty")
             continue
         spec_path = plugin_dir / rel

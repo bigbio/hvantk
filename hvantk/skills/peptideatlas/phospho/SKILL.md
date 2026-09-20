@@ -56,7 +56,7 @@ Aggregation gotcha: the same `(accession, position)` can be observed via multipl
 
 - **Dataset class + parser:** `PeptideAtlasPhosphoDataset`, `parse_peptideatlas_zip`, `write_intermediate_tsv`, `parse_raw_dir` in `hvantk/skills/peptideatlas/phospho/shared/datasets.py`.
 - **Builder:** `build_peptideatlas_phospho(parsed_input, ctx, **params) -> AnnotationTable` in `hvantk/skills/peptideatlas/phospho/builder.py` (declared in `plugin.yaml` under `datasets[].builder`). A legacy `build_peptideatlas_phospho_tb(input_path, output_path, ...)` helper also lives in that module but is NOT the loader entry point.
-- **Downloader CLI:** `download_cmd` in `hvantk/skills/peptideatlas/phospho/cli.py` (registered as `hvantk peptideatlas-phospho-download` and re-bound under `hvantk download peptideatlas-phospho` via `hvantk/tools/plugins/download_cli.py`).
+- **Downloader CLI:** `download_cmd` in `hvantk/skills/peptideatlas/phospho/cli.py` (declared in the manifest's `cli:` block as `peptideatlas-phospho-download`; the loader strips the `-download` suffix and binds it under the `download` group, so the invocation is `hvantk download peptideatlas-phospho`).
 - **Lifecycle entry points:** `download_dataset` and `parse_raw_dir` (loader-wired via `lifecycle.download` + `lifecycle.parse` in `plugin.yaml`).
 - **Drift probe:** `fetch_fingerprint` in `hvantk/skills/peptideatlas/phospho/drift_probe.py` (HEAD against the pinned build's zip URL).
 - **Downstream consumer:** `hvantk/algorithms/ptm/pipeline.py` (`PTMBuildConfig.peptideatlas_tsv`) — reads the intermediate TSV produced here and maps PTM sites to genomic coordinates. Exposed at the user-facing level by `hvantk/algorithms/ptm/atlas.py` (`PTMAtlasConfig.peptideatlas_tsv`).
@@ -76,7 +76,7 @@ When invoked to build or update the PeptideAtlas phospho intermediate:
    ```
 
    The loader auto-resolves the dataset from `plugin.yaml` (`get_registry().get_dataset("peptideatlas:phospho")`) and runs the build through `run_builder_for_spec`. The `lifecycle.download` (`download_dataset`) and `lifecycle.parse` (`parse_raw_dir`) entry points run first, then the Phase B `build_peptideatlas_phospho`.
-2. **Download only.** Either via the standalone CLI (`hvantk peptideatlas-phospho-download -o /data/peptideatlas`) or the lifecycle entry point `download_dataset(raw_dir=...)`. Both produce `<raw_dir>/atlas_build_<id>.tsv.zip` *and* the parsed `<raw_dir>/peptideatlas-phospho-<date>-<id>.tsv`.
+2. **Download only.** Either via the standalone CLI (`hvantk download peptideatlas-phospho -o /data/peptideatlas`) or the lifecycle entry point `download_dataset(raw_dir=...)`. Both produce `<raw_dir>/atlas_build_<id>.tsv.zip` *and* the parsed `<raw_dir>/peptideatlas-phospho-<date>-<id>.tsv`.
 3. **(Lifecycle) parse-only step.** `parse_raw_dir(raw_dir=..., output_path=...)` re-parses an existing zip from `raw_dir` into a fresh intermediate TSV — used when downstream code wants the TSV at a different path than the dataset class's default.
 4. **Builder.** `build_peptideatlas_phospho(parsed_input, ctx, **params)` loads the intermediate TSV (the path produced by `parse_raw_dir`) as a pandas DataFrame and returns an `AnnotationTable`.
 5. **Validate.** `pytest hvantk/skills/peptideatlas/phospho/tests` — parser unit tests + drift-probe sanity. Builder round-trip snapshot test is TODO (see § 9).
@@ -87,7 +87,7 @@ PeptideAtlas releases a new human phospho build once or twice per year. When a n
 
 1. Run the drift probe: `python -c "from hvantk.skills.peptideatlas.phospho.drift_probe import fetch_fingerprint; print(fetch_fingerprint())"`. A change in `source_version` (the `Last-Modified` header) is the trigger.
 2. Update the pinned build coordinates in `hvantk/skills/peptideatlas/phospho/shared/constants.py` (`PEPTIDEATLAS_LATEST_BUILD_DATE`, `PEPTIDEATLAS_LATEST_BUILD_ID`).
-3. Re-download (`hvantk peptideatlas-phospho-download -o /data/peptideatlas --overwrite`) and spot-check the row count against the previous build.
+3. Re-download (`hvantk download peptideatlas-phospho -o /data/peptideatlas --overwrite`) and spot-check the row count against the previous build.
 4. If any new modification notation or table appears in the dump, document it in § 4.
 5. Re-regenerate `tests/drift_fingerprint.json` with the new build's filename + headers.
 6. If a builder snapshot exists (TODO), run `pytest hvantk/skills/peptideatlas/phospho/tests --regenerate-snapshots` and inspect the diff.

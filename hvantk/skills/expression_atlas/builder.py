@@ -23,6 +23,7 @@ def build_expression_atlas(
     gene_column: str = "Gene ID",
     gene_name_column: str = "Gene Name",
     delimiter: str = "\t",
+    extra_annotation_columns: tuple[str, ...] | list[str] | None = None,
 ):
     """Phase B builder — returns an ExpressionMatrix.
 
@@ -56,6 +57,7 @@ def build_expression_atlas(
         gene_id_column=gene_column,
         gene_name_column=gene_name_column,
         delimiter=delimiter,
+        extra_annotation_columns=extra_annotation_columns,
     )
 
     annotate_column_summary_ad(adata)

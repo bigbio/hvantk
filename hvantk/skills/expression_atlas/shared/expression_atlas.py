@@ -190,11 +190,19 @@ def create_anndata_from_expression_atlas(
     ``float32`` cast and killed every build from an unmodified download with
     ``ValueError: could not convert string to float: 'ENSMUST...'`` (issue #342).
 
-    A column is treated as an annotation, not a sample, when it holds values and
-    none of them are numeric. Such columns are moved into ``var`` rather than
-    dropped, so nothing in the file is silently discarded. Naming them in
-    ``extra_annotation_columns`` skips the inference and is preferred when the
-    layout is known.
+    Only the **leading run** of columns is eligible: the scan stops at the first
+    column ``metadata_df`` declares as a sample, and (without an SDRF) at the first
+    numeric column. Within that run a column is treated as an annotation when it
+    holds values and none of them are numeric. Such columns are moved into ``var``
+    rather than dropped, so nothing in the file is silently discarded.
+
+    When ``metadata_df`` is given it is authoritative in both directions, so a
+    *numeric* leading column it does not declare raises rather than being absorbed
+    as a sample -- a numeric annotation column and an undeclared sample are
+    indistinguishable by content, and either guess corrupts the matrix silently.
+
+    Naming the columns in ``extra_annotation_columns`` skips the inference entirely
+    and is preferred when the layout is known.
 
     Parameters
     ----------
@@ -231,6 +239,13 @@ def create_anndata_from_expression_atlas(
     gene_ids = df[gene_id_column].values
     gene_names = df[gene_name_column].values if gene_name_column in df.columns else None
 
+    # A bare string is a single column name, not an iterable of characters. Reached
+    # via `--plugin-arg extra_annotation_columns=Entrez`, which only becomes a list
+    # when the value contains a comma -- so the one-column case would otherwise
+    # silently set aside the columns named 'E', 'n', 't', 'r', 'e', 'z'.
+    if isinstance(extra_annotation_columns, str):
+        extra_annotation_columns = (extra_annotation_columns,)
+
     annotation_cols = [
         c
         for c in df.columns
@@ -256,9 +271,22 @@ def create_anndata_from_expression_atlas(
     #      a non-numeric column appearing mid-matrix is malformed data, not metadata.
     #
     # Content still decides within those bounds, because position alone is not enough:
-    # the transcript column is not always third. And note an all-missing sample column
-    # coerces to NaN, which IS numeric, so it correctly stays a sample.
+    # the transcript column is not always third. Note an all-missing column reads as
+    # all-NaN, which `to_numeric` also reports as non-numeric -- it stays a sample only
+    # because of the `notna().any()` guard below, NOT because NaN counts as numeric.
+    # That guard is load-bearing; deleting it silently drops empty samples.
     known_samples = set(metadata_df.index) if metadata_df is not None else set()
+
+    if metadata_df is not None and not known_samples.intersection(df.columns):
+        raise ValueError(
+            f"{expression_matrix_path}: none of its {len(df.columns)} columns appear in "
+            f"the SDRF, which declares {len(known_samples)} samples "
+            f"(e.g. {sorted(map(str, known_samples))[:3]}). The two files do not "
+            "describe the same experiment, or the sample ids need normalising. "
+            "Refusing to guess: with no authoritative sample list the column-type "
+            "inference below is unguarded, and a wrong guess silently drops samples."
+        )
+
     inferred: list[str] = []
     for col in df.columns:
         if col in annotation_cols:
@@ -266,8 +294,27 @@ def create_anndata_from_expression_atlas(
         if col in known_samples:
             break  # first declared sample: everything from here on is data
         values = df[col]
-        if values.notna().any() and pd.to_numeric(values, errors="coerce").isna().all():
+        non_numeric = (
+            values.notna().any() and pd.to_numeric(values, errors="coerce").isna().all()
+        )
+        if non_numeric:
             inferred.append(col)
+        elif known_samples:
+            # Numeric, in the leading run, and NOT declared by the SDRF. Content says
+            # "data", the authoritative sample list says "not a sample", and nothing
+            # here can break the tie: a numeric annotation column (`Entrez`, gene
+            # length, a p-value column from an analytics export) is indistinguishable
+            # from a sample the SDRF happens to omit. Guessing "sample" -- which this
+            # did until it was caught in review -- puts NCBI gene ids into the
+            # expression matrix as if they were expression values, and the resulting
+            # `.h5ad` carries an extra sample whose only tell is an all-NaN `obs` row.
+            raise ValueError(
+                f"{expression_matrix_path}: leading column {col!r} holds numeric values "
+                "but is not declared as a sample by the SDRF. It is either an extra "
+                "annotation column -- name it in extra_annotation_columns -- or a "
+                "sample missing from the SDRF, in which case fix the SDRF. Refusing to "
+                "guess, because either guess corrupts the matrix silently."
+            )
         else:
             break  # first numeric column ends the leading annotation block
     if inferred:

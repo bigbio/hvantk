@@ -10,10 +10,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Literal, Mapping, Protocol
+from typing import Any, Callable, Literal, Mapping, Protocol, get_args
 
 Domain = Literal["genomics", "transcriptomics", "proteomics", "epigenomics", "mapping"]
 Backend = Literal["hail", "anndata", "pandas"]
+AcquisitionMode = Literal["download", "byo"]
+AcquisitionReason = Literal[
+    "size", "credentialed", "license", "publication-only", "unstable-url"
+]
 
 # Keys excluded from both the canonical fingerprint hash (run_builder) and the
 # drift-comparison diff (drift_runner). `fetched_at` is timestamp noise.
@@ -288,11 +292,37 @@ class Acquisition:
     testability -- ``dbnsfp`` is BYO yet ships a committed fixture and full snapshots --
     so nothing may read ``mode == "byo"`` as exempting a dataset from the validation
     contract. That conflation is exactly what left five datasets ungradable (#341).
+
+    ``mode`` is deliberately the weaker claim in the ``download`` direction, because
+    it is also what every manifest omitting this block gets. "Automatable but not yet
+    implemented" (``gevir``) is not a third enum value: it is already derivable as
+    ``mode == "download"`` with no ``lifecycle.download``.
     """
 
-    mode: str = "download"  # "download" | "byo"
-    reason: str | None = None  # size | credentialed | license | publication-only
+    mode: AcquisitionMode = "download"
+    reason: AcquisitionReason | None = None
     instructions: str | None = None
+
+    def __post_init__(self) -> None:
+        """Validate here so the type defends itself off the manifest path too.
+
+        The JSON schema catches a bad ``mode`` for anything loaded from a
+        ``plugin.yaml``, but ``Acquisition(mode="BYO")`` in a test or an out-of-tree
+        caller would otherwise construct silently and report ``is_byo`` False -- the
+        failure being a *wrong answer* rather than an error.
+        """
+        if self.mode not in get_args(AcquisitionMode):
+            raise ValueError(
+                f"unknown acquisition mode {self.mode!r}; "
+                f"expected one of {list(get_args(AcquisitionMode))}"
+            )
+        if self.reason is not None and self.reason not in get_args(AcquisitionReason):
+            raise ValueError(
+                f"unknown acquisition reason {self.reason!r}; "
+                f"expected one of {list(get_args(AcquisitionReason))}"
+            )
+        if self.is_byo and not self.reason:
+            raise ValueError("acquisition.mode 'byo' requires a reason")
 
     @property
     def is_byo(self) -> bool:
