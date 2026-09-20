@@ -177,6 +177,60 @@
                 "type": "string"
               }
             }
+          },
+          "acquisition": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "How raw inputs reach this dataset. Omitted means mode 'download'. Declared per DATASET, not per provider: onek-genomes ships one BYO dataset (variants, ~1.5 TB) and one auto-downloaded one (samples, ~55 KB), so a provider-level field could not describe it.",
+            "required": [
+              "mode"
+            ],
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "download",
+                  "byo"
+                ],
+                "description": "'download' (default): the plugin fetches its own inputs via lifecycle.download. 'byo': it cannot, and the user must supply --raw-dir. The two are mutually exclusive with lifecycle.download."
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "size",
+                  "credentialed",
+                  "license",
+                  "publication-only",
+                  "unstable-url"
+                ],
+                "description": "Why acquisition cannot be automated. Required when mode is 'byo'. 'unstable-url' covers a source that is public and small but exposes no stable, machine-readable link (CLAUDE.md's downloader framework calls this 'URL structure is complex or fragile'). NOT a statement about testability: a BYO dataset can still ship a fixture (dbnsfp does), so this must never be read as exempting one."
+              },
+              "instructions": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Where a user is told how to obtain the data, e.g. 'SKILL.md#7-workflow-steps'. Surfaced verbatim when --raw-dir is empty."
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "mode": {
+                      "const": "byo"
+                    }
+                  },
+                  "required": [
+                    "mode"
+                  ]
+                },
+                "then": {
+                  "required": [
+                    "mode",
+                    "reason"
+                  ]
+                }
+              }
+            ]
           }
         }
       }

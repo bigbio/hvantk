@@ -23,7 +23,9 @@ Backend = Literal["hail", "anndata", "pandas"]
 # similar) that must never themselves signal drift. hgnc and gencc previously carried
 # Last-Modified in `source_version`, so a byte-identical republish opened a PR -- 8 of 8
 # hgnc drift PRs moved only the timestamp while the content checksum never changed.
-PROBE_FINGERPRINT_IGNORED_KEYS = frozenset({"fetched_at", "probe_version", "informational"})
+PROBE_FINGERPRINT_IGNORED_KEYS = frozenset(
+    {"fetched_at", "probe_version", "informational"}
+)
 
 # Sentinel value for ``probe_status`` marking a drift probe as an intentional
 # stub: a documentation-only / license-gated / publication-only source with no
@@ -238,7 +240,12 @@ class TestPaths:
 
     #: Fields naming an on-disk validation artifact. ``command`` is excluded -- it is a
     #: shell string, not a path.
-    ARTIFACT_FIELDS = ("fixture", "schema_snapshot", "row_snapshot", "drift_fingerprint")
+    ARTIFACT_FIELDS = (
+        "fixture",
+        "schema_snapshot",
+        "row_snapshot",
+        "drift_fingerprint",
+    )
 
     def missing_artifacts(self) -> tuple[tuple[str, str], ...]:
         """Return ``(field, path)`` for every declared artifact absent from disk.
@@ -260,6 +267,36 @@ class TestPaths:
             if not Path(path).exists():
                 missing.append((field_name, path))
         return tuple(missing)
+
+
+@dataclass(frozen=True)
+class Acquisition:
+    """How raw inputs reach a dataset (issue #118).
+
+    The loader previously INFERRED this from whether ``lifecycle.download`` was
+    present, which conflated two structurally different states: "the plugin fetches
+    its own data" and "the plugin cannot, so the user must". They look identical in a
+    manifest, so ``--skip-download`` read as a category error on every BYO invocation
+    and "not implemented yet" was indistinguishable from "impossible by design".
+
+    Declared per DATASET rather than per provider, which is a deliberate departure
+    from the issue's sketch: ``onek-genomes`` ships ``variants`` (~1.5 TB, BYO) beside
+    ``samples`` (~55 KB, auto-downloaded), so one provider-level field could not
+    describe it.
+
+    ``reason`` says why automation is impossible. It is **not** a statement about
+    testability -- ``dbnsfp`` is BYO yet ships a committed fixture and full snapshots --
+    so nothing may read ``mode == "byo"`` as exempting a dataset from the validation
+    contract. That conflation is exactly what left five datasets ungradable (#341).
+    """
+
+    mode: str = "download"  # "download" | "byo"
+    reason: str | None = None  # size | credentialed | license | publication-only
+    instructions: str | None = None
+
+    @property
+    def is_byo(self) -> bool:
+        return self.mode == "byo"
 
 
 @dataclass(frozen=True)
@@ -289,6 +326,7 @@ class DatasetManifest:
     schema_id: str | None = None
     has_download_fn: bool = False
     has_parse_fn: bool = False
+    acquisition: Acquisition = field(default_factory=Acquisition)
     # Module/function references kept as strings so we can resolve lazily
     builder_ref: tuple[str, str] = field(default=("", ""))
     drift_probe_ref: tuple[str, str] = field(default=("", ""))
@@ -331,6 +369,7 @@ class DatasetSpec:
     artifact_type: type | None = None
     schema_id: str | None = None
     plugin_version: str | None = None
+    acquisition: Acquisition = field(default_factory=Acquisition)
 
 
 @dataclass(frozen=True)

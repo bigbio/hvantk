@@ -11,6 +11,8 @@ source:
 
 datasets:
   - name: metrics
+    acquisition:
+      mode: download
     domain: genomics
     backend: hail
     artifact_type: AnnotationTable

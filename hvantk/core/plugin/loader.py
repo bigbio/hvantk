@@ -31,6 +31,7 @@ import jsonschema
 import yaml
 
 from .api import (
+    Acquisition,
     DatasetManifest,
     DatasetSpec,
     PluginLoadError,
@@ -48,6 +49,30 @@ _ENTRY_POINT_GROUP = "hvantk.providers"
 
 def _load_schema() -> dict:
     return json.loads(_SCHEMA_PATH.read_text())
+
+
+def _acquisition_of(ds_manifest: dict, lifecycle: dict, compound: str) -> Acquisition:
+    """Build the Acquisition record, rejecting the one incoherent combination.
+
+    ``acquisition.mode: byo`` and ``lifecycle.download`` contradict each other: the
+    first says the plugin cannot fetch its inputs, the second hands it a function that
+    does. Whichever the runner honoured, the manifest would be lying about the other,
+    so this is a load error rather than a precedence rule.
+
+    Absent block means ``mode: download``, which keeps every existing manifest valid.
+    """
+    raw = ds_manifest.get("acquisition") or {}
+    acq = Acquisition(
+        mode=raw.get("mode", "download"),
+        reason=raw.get("reason"),
+        instructions=raw.get("instructions"),
+    )
+    if acq.is_byo and "download" in lifecycle:
+        raise PluginLoadError(
+            f"{compound}: acquisition.mode is 'byo' but lifecycle.download is declared; "
+            "a dataset either fetches its own inputs or it does not."
+        )
+    return acq
 
 
 class PluginRegistry:
@@ -292,6 +317,7 @@ class PluginRegistry:
             ),
             has_download_fn="download" in lifecycle,
             has_parse_fn="parse" in lifecycle,
+            acquisition=_acquisition_of(ds_manifest, lifecycle, compound),
         )
 
     def _resolve_spec(self, dm: DatasetManifest) -> DatasetSpec:
@@ -301,9 +327,7 @@ class PluginRegistry:
         download_fn = (
             self._resolve_callable(*dm.download_ref) if dm.download_ref else None
         )
-        parse_fn = (
-            self._resolve_callable(*dm.parse_ref) if dm.parse_ref else None
-        )
+        parse_fn = self._resolve_callable(*dm.parse_ref) if dm.parse_ref else None
         artifact_type = None
         if dm.artifact_type_name:
             from hvantk.core import models as _models
@@ -341,6 +365,7 @@ class PluginRegistry:
             plugin_version=dm.plugin_version,
             artifact_type=artifact_type,
             schema_id=dm.schema_id,
+            acquisition=dm.acquisition,
         )
 
     def _build_provider(self, manifest: dict, plugin_dir: Path) -> Provider:
@@ -435,9 +460,7 @@ class PluginRegistry:
                 f"module '{module_path}' has no function '{func_name}'"
             ) from exc
         if not callable(func):
-            raise PluginLoadError(
-                f"'{module_path}.{func_name}' is not callable"
-            )
+            raise PluginLoadError(f"'{module_path}.{func_name}' is not callable")
         return func
 
     def _register(self, provider: Provider, plugin_id: str) -> None:

@@ -11,6 +11,10 @@ source:
 
 datasets:
   - name: variants
+    acquisition:
+      mode: byo
+      reason: size
+      instructions: SKILL.md#1-status--scope
     domain: genomics
     backend: hail
     artifact_type: AnnotationTable
@@ -35,6 +39,8 @@ datasets:
   # Reads H_sapiens_interfacesALL.txt (~49 MB), not the 1.17 GB BED -- the pair table
   # already carries both accessions and both residue lists, so no genomic join is needed.
   - name: interfaces
+    acquisition:
+      mode: download
     domain: genomics
     backend: hail
     artifact_type: AnnotationTable
