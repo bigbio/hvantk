@@ -177,7 +177,10 @@ DataFrame to `gene_biotype == "protein_coding"` rows before the Hail Table is bu
 - **Catalog:** `hvantk/skills/ensembl_gene/catalog/datasets.json`.
 - **CLI:**
   `hvantk reprocess ensembl-gene:structure --raw-dir <dir> --output <out>.ht [--plugin-arg protein_coding_only=true]`;
-  standalone download via `hvantk ensembl-structure-download --raw-dir <dir> [--overwrite]`.
+  standalone download via `hvantk download ensembl-structure --raw-dir <dir> [--overwrite]`.
+  (The manifest's `cli:` command is `ensembl-structure-download`; the loader strips the
+  `-download` suffix and binds it under the `download` group, so the suffixed form is
+  not a command.)
 - **Tests:** `hvantk/skills/ensembl_gene/structure/tests/` -- `test_builder.py` (Hail
   snapshot round-trip + key-uniqueness + `protein_coding_only` filter + raw-directory
   handling), `test_parse.py` (Hail-free parser unit tests), `test_resolve_path.py`
@@ -188,7 +191,7 @@ DataFrame to `gene_biotype == "protein_coding"` rows before the Hail Table is bu
 
 When invoked to build, refresh, or extend the `ensembl-gene:structure` table:
 
-1. **Confirm or fetch the raw GTF.** `hvantk ensembl-structure-download --raw-dir <dir>`
+1. **Confirm or fetch the raw GTF.** `hvantk download ensembl-structure --raw-dir <dir>`
    (or let `hvantk reprocess` invoke `download_dataset` itself). This is a no-op if
    `raw_dir/Homo_sapiens.GRCh38.113.gtf.gz` already exists, unless `--overwrite` is
    passed.
@@ -229,7 +232,7 @@ upstream under the same release.
    `ENSEMBL_GTF_FILENAME`; `test_release_pin.py::test_catalog_declares_the_same_release`
    enforces this.
 4. **Re-download and rebuild:**
-   `hvantk ensembl-structure-download --raw-dir <dir> --overwrite`, then
+   `hvantk download ensembl-structure --raw-dir <dir> --overwrite`, then
    `hvantk reprocess ensembl-gene:structure --raw-dir <dir> --output <out>.ht` end to end.
 5. **Regenerate the committed drift baseline,**
    `structure/tests/drift_fingerprint.json`, once the change is validated -- not silently

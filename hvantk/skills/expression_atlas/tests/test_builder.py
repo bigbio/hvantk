@@ -16,12 +16,13 @@ Regenerate after an intentional change:
     pytest hvantk/skills/expression_atlas/tests/test_builder.py --regenerate-snapshots
 
 Fixture derivation recipe (source: the real upstream files already committed
-at hvantk/tests/testdata/raw/expression_atlas/, ~116k transcripts x 320
+at hvantk/tests/testdata/raw/expression_atlas/, ~116k transcripts x 317
 samples for the expression matrix -- far too large to commit as a fixture):
 
   1. Expression matrix (E-MTAB-6798-transcripts-tpms.tsv.bgz -> .tsv):
      read the bgzipped TSV. Its real header is
-     "Gene ID\tGene Name\tGeneID\t<320 ERR* sample columns>" -- note the
+     "Gene ID\tGene Name\tGeneID\t<317 ERR* sample columns>" -- 320 columns
+     in total, of which 3 are metadata -- note the
      THIRD column "GeneID" is the per-row TRANSCRIPT id (e.g.
      "ENSMUST00000000001"), distinct from "Gene ID" (gene id) by a
      one-space difference.
@@ -46,10 +47,8 @@ samples for the expression matrix -- far too large to commit as a fixture):
      convert_sdrf_to_dataframe()'s usecols-inference keeps working
      unmodified.
 
-  Script: /private/tmp/claude-502/-Users-enrique-projects-github-pyvatk/
-  3a2337e9-30fa-4bab-8821-edd370a160ba/scratchpad/derive_fixture.py
-  (not committed; rerun the recipe above against the real files to
-  reproduce).
+  The recipe above is self-sufficient; rerun it against the real files to
+  reproduce the fixture.
 """
 
 from __future__ import annotations
@@ -262,3 +261,68 @@ def test_malformed_sample_without_sdrf_still_raises(tmp_path):
 
     with pytest.raises(ValueError, match="could not convert string to float"):
         create_anndata_from_expression_atlas(expression_matrix_path=str(path))
+
+
+def test_numeric_annotation_column_is_refused_not_absorbed_as_a_sample(tmp_path):
+    """A numeric column the SDRF does not declare must raise, not become a sample.
+
+    Caught in adversarial review of the #342 fix. `Entrez` is numeric, so the content
+    heuristic called it data; it is absent from the SDRF, so the authoritative sample
+    list said otherwise; and the code took content's side silently. The result built
+    cleanly with NCBI gene ids sitting in the expression matrix as expression values
+    and an extra sample whose only tell was an all-NaN `obs` row.
+
+    Real triggers: `Entrez`/`NCBI ID`, gene or effective length, and the `p-value` /
+    `log2foldchange` columns of an analytics TSV.
+
+    Delete the `elif known_samples: raise` branch and this test fails.
+    """
+    import pandas as pd
+    import pytest
+    from hvantk.skills.expression_atlas.shared.expression_atlas import (
+        create_anndata_from_expression_atlas,
+    )
+
+    path = tmp_path / "tpms.tsv"
+    pd.DataFrame(
+        {
+            "Gene ID": ["ENSMUSG00000000001", "ENSMUSG00000000003"],
+            "Gene Name": ["Gnai3", "Pbsn"],
+            "Entrez": [7157, 1017],
+            "ERR1": [16.0, 3.0],
+            "ERR2": [12.0, 1.0],
+        }
+    ).to_csv(path, sep="\t", index=False)
+    sdrf = pd.DataFrame(index=["ERR1", "ERR2"], data={"organism": ["Mus musculus"] * 2})
+
+    with pytest.raises(ValueError, match="not declared as a sample by the SDRF"):
+        create_anndata_from_expression_atlas(
+            expression_matrix_path=str(path), metadata_df=sdrf
+        )
+
+
+def test_sdrf_that_names_no_matrix_column_is_refused(tmp_path):
+    """An empty SDRF-to-matrix intersection silently disarmed the inference's guard.
+
+    `known_samples` is the authority the leading-run heuristic leans on. When the ids
+    do not match, it is empty, every guard keyed on it goes inert, and the old code
+    then wrote an all-NaN `obs` for every sample without raising. Failing here is the
+    difference between "these two files disagree" and a plausible-looking `.h5ad`.
+    """
+    import pandas as pd
+    import pytest
+    from hvantk.skills.expression_atlas.shared.expression_atlas import (
+        create_anndata_from_expression_atlas,
+    )
+
+    path = tmp_path / "tpms.tsv"
+    pd.DataFrame(
+        {"Gene ID": ["ENSMUSG00000000001"], "Gene Name": ["Gnai3"], "ERR1": [16.0]}
+    ).to_csv(path, sep="\t", index=False)
+    # Same experiment, but the SDRF carries accession-prefixed ids.
+    sdrf = pd.DataFrame(index=["E-MTAB-6798:ERR1"], data={"organism": ["Mus musculus"]})
+
+    with pytest.raises(ValueError, match="none of its .* columns appear in the SDRF"):
+        create_anndata_from_expression_atlas(
+            expression_matrix_path=str(path), metadata_df=sdrf
+        )

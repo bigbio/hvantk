@@ -2,10 +2,10 @@
 
 Examples:
     # Default: download the latest known build
-    hvantk peptideatlas-phospho-download -o /data/peptideatlas
+    hvantk download peptideatlas-phospho -o /data/peptideatlas
 
     # Pin a specific build
-    hvantk peptideatlas-phospho-download -o /data/peptideatlas --build-date 202512 --build-id 606
+    hvantk download peptideatlas-phospho -o /data/peptideatlas --build-date 202512 --build-id 606
 """
 
 import logging

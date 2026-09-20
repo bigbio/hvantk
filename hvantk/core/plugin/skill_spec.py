@@ -62,7 +62,14 @@ def iter_skill_specs(skills_dir: Path) -> Iterator[Path]:
     seen: set[Path] = set()
     for pattern in ("*/SKILL.md", "*/*/SKILL.md"):
         for path in sorted(skills_dir.glob(pattern)):
-            if EXEMPT_DIRS.intersection(path.relative_to(skills_dir).parts):
+            parts = path.relative_to(skills_dir).parts
+            if EXEMPT_DIRS.intersection(parts):
+                continue
+            # Track the loader, which skips every `_`-prefixed directory
+            # (`load_from_skills_root`). Without this, adding `_hooks/SKILL.md` would
+            # fail the conformance test for a directory that is not a plugin and that
+            # the registry never reads.
+            if any(part.startswith("_") for part in parts[:-1]):
                 continue
             if path not in seen:
                 seen.add(path)

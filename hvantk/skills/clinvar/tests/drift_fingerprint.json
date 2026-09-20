@@ -48,10 +48,10 @@
     }
   },
   "checksums": {
-    "clinvar.vcf.gz": "51030de727e84d57ec047ecea8dfbaab29d15e14deab5dd9cc0a164b14172d8f"
+    "clinvar.vcf.gz": "6bfa0b7cc0894295474023209da668734abed48cebaaef696967d652ce65c178"
   },
   "extras": {
     "content_length": "193709143"
   },
-  "fetched_at": "2026-09-20T16:29:57.424006+00:00"
+  "fetched_at": "2026-09-20T22:13:17.161850+00:00"
 }
