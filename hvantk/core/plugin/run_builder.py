@@ -9,6 +9,7 @@ returned artifact's type matches the plugin.yaml `artifact_type`, then persists 
 All in-tree plugins use this Phase B contract; the orchestrator is the sole
 dispatch path for `hvantk reprocess` and any other consumer of plugin builders.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -59,8 +60,9 @@ def _coerce_fingerprint(probe_result: Any, dataset_name: str) -> str:
     if "fingerprint" in probe_result:
         return str(probe_result["fingerprint"])
 
-    canonical = {k: v for k, v in probe_result.items()
-                 if k not in PROBE_FINGERPRINT_IGNORED_KEYS}
+    canonical = {
+        k: v for k, v in probe_result.items() if k not in PROBE_FINGERPRINT_IGNORED_KEYS
+    }
     payload = json.dumps(canonical, sort_keys=True, default=str)
     return f"sha256:{hashlib.sha256(payload.encode()).hexdigest()}"
 

@@ -11,6 +11,10 @@ source:
 
 datasets:
   - name: genesets
+    acquisition:
+      mode: byo
+      reason: credentialed
+      instructions: SKILL.md#1-status--scope
     domain: mapping
     backend: hail
     artifact_type: AnnotationTable

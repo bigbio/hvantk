@@ -11,6 +11,10 @@ source:
 
 datasets:
   - name: eqtls
+    acquisition:
+      mode: byo
+      reason: unstable-url
+      instructions: SKILL.md#1-status--scope
     domain: genomics
     backend: hail
     artifact_type: AnnotationTable

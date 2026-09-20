@@ -1,0 +1,20 @@
+{
+  "X_dtype": "float32",
+  "X_format": "ndarray",
+  "layers": [],
+  "n_obs": 4,
+  "n_vars": 20,
+  "obs_columns": [
+    "age",
+    "developmental_stage",
+    "genotype",
+    "organism",
+    "organism_part",
+    "sex",
+    "strain"
+  ],
+  "var_columns": [
+    "Gene Name",
+    "GeneID"
+  ]
+}

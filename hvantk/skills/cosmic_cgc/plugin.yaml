@@ -9,6 +9,10 @@ source:
 
 datasets:
   - name: submissions
+    acquisition:
+      mode: byo
+      reason: credentialed
+      instructions: SKILL.md#2-source-identity
     domain: genomics
     backend: hail
     artifact_type: AnnotationTable

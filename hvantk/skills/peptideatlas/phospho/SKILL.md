@@ -56,7 +56,7 @@ Aggregation gotcha: the same `(accession, position)` can be observed via multipl
 
 - **Dataset class + parser:** `PeptideAtlasPhosphoDataset`, `parse_peptideatlas_zip`, `write_intermediate_tsv`, `parse_raw_dir` in `hvantk/skills/peptideatlas/phospho/shared/datasets.py`.
 - **Builder:** `build_peptideatlas_phospho(parsed_input, ctx, **params) -> AnnotationTable` in `hvantk/skills/peptideatlas/phospho/builder.py` (declared in `plugin.yaml` under `datasets[].builder`). A legacy `build_peptideatlas_phospho_tb(input_path, output_path, ...)` helper also lives in that module but is NOT the loader entry point.
-- **Downloader CLI:** `download_cmd` in `hvantk/skills/peptideatlas/phospho/cli.py` (registered as `hvantk peptideatlas-phospho-download` and re-bound under `hvantk download peptideatlas-phospho` via `hvantk/tools/plugins/download_cli.py`).
+- **Downloader CLI:** `download_cmd` in `hvantk/skills/peptideatlas/phospho/cli.py` (declared in the manifest's `cli:` block as `peptideatlas-phospho-download`; the loader strips the `-download` suffix and binds it under the `download` group, so the invocation is `hvantk download peptideatlas-phospho`).
 - **Lifecycle entry points:** `download_dataset` and `parse_raw_dir` (loader-wired via `lifecycle.download` + `lifecycle.parse` in `plugin.yaml`).
 - **Drift probe:** `fetch_fingerprint` in `hvantk/skills/peptideatlas/phospho/drift_probe.py` (HEAD against the pinned build's zip URL).
 - **Downstream consumer:** `hvantk/algorithms/ptm/pipeline.py` (`PTMBuildConfig.peptideatlas_tsv`) — reads the intermediate TSV produced here and maps PTM sites to genomic coordinates. Exposed at the user-facing level by `hvantk/algorithms/ptm/atlas.py` (`PTMAtlasConfig.peptideatlas_tsv`).
@@ -76,7 +76,7 @@ When invoked to build or update the PeptideAtlas phospho intermediate:
    ```
 
    The loader auto-resolves the dataset from `plugin.yaml` (`get_registry().get_dataset("peptideatlas:phospho")`) and runs the build through `run_builder_for_spec`. The `lifecycle.download` (`download_dataset`) and `lifecycle.parse` (`parse_raw_dir`) entry points run first, then the Phase B `build_peptideatlas_phospho`.
-2. **Download only.** Either via the standalone CLI (`hvantk peptideatlas-phospho-download -o /data/peptideatlas`) or the lifecycle entry point `download_dataset(raw_dir=...)`. Both produce `<raw_dir>/atlas_build_<id>.tsv.zip` *and* the parsed `<raw_dir>/peptideatlas-phospho-<date>-<id>.tsv`.
+2. **Download only.** Either via the standalone CLI (`hvantk download peptideatlas-phospho -o /data/peptideatlas`) or the lifecycle entry point `download_dataset(raw_dir=...)`. Both produce `<raw_dir>/atlas_build_<id>.tsv.zip` *and* the parsed `<raw_dir>/peptideatlas-phospho-<date>-<id>.tsv`.
 3. **(Lifecycle) parse-only step.** `parse_raw_dir(raw_dir=..., output_path=...)` re-parses an existing zip from `raw_dir` into a fresh intermediate TSV — used when downstream code wants the TSV at a different path than the dataset class's default.
 4. **Builder.** `build_peptideatlas_phospho(parsed_input, ctx, **params)` loads the intermediate TSV (the path produced by `parse_raw_dir`) as a pandas DataFrame and returns an `AnnotationTable`.
 5. **Validate.** `pytest hvantk/skills/peptideatlas/phospho/tests` — parser unit tests + drift-probe sanity. Builder round-trip snapshot test is TODO (see § 9).
@@ -87,7 +87,7 @@ PeptideAtlas releases a new human phospho build once or twice per year. When a n
 
 1. Run the drift probe: `python -c "from hvantk.skills.peptideatlas.phospho.drift_probe import fetch_fingerprint; print(fetch_fingerprint())"`. A change in `source_version` (the `Last-Modified` header) is the trigger.
 2. Update the pinned build coordinates in `hvantk/skills/peptideatlas/phospho/shared/constants.py` (`PEPTIDEATLAS_LATEST_BUILD_DATE`, `PEPTIDEATLAS_LATEST_BUILD_ID`).
-3. Re-download (`hvantk peptideatlas-phospho-download -o /data/peptideatlas --overwrite`) and spot-check the row count against the previous build.
+3. Re-download (`hvantk download peptideatlas-phospho -o /data/peptideatlas --overwrite`) and spot-check the row count against the previous build.
 4. If any new modification notation or table appears in the dump, document it in § 4.
 5. Re-regenerate `tests/drift_fingerprint.json` with the new build's filename + headers.
 6. If a builder snapshot exists (TODO), run `pytest hvantk/skills/peptideatlas/phospho/tests --regenerate-snapshots` and inspect the diff.
@@ -96,17 +96,19 @@ PeptideAtlas releases a new human phospho build once or twice per year. When a n
 
 Per `_conventions` § 9:
 
-- **fixture:** `hvantk/skills/peptideatlas/phospho/tests/testdata/raw/peptideatlas-phospho/` (directory present, not yet seeded — the existing parser unit tests build mock zips on-the-fly via the `mock_pa_zip` fixture in `test_phospho.py`). A future round-trip test will seed a slim multi-table zip here.
-- **schema_snapshot:** `hvantk/skills/peptideatlas/phospho/tests/snapshots/schema.json` (TODO — created on first `--regenerate-snapshots` run).
-- **row_snapshot:** `hvantk/skills/peptideatlas/phospho/tests/snapshots/sample_rows.json` (TODO — same).
+- **fixture:** `hvantk/skills/peptideatlas/phospho/tests/testdata/raw/peptideatlas-phospho/peptideatlas-phospho-synthetic.tsv` (seeded). This is a **synthetic miniature intermediate TSV**, not a truncation of a real PeptideAtlas build — the real `atlas_build_*.tsv.zip` is ~549 MB (`content_length` in `tests/drift_fingerprint.json`) and is not vendored into this repo. It was generated by running the real `parse_peptideatlas_zip` + `write_intermediate_tsv` pipeline over the exact mock zip already used by `test_phospho.py::mock_pa_zip` (a miniature TP53/P04637 protein with two phospho sites, Ser315 and Ser6, plus a DECOY_ accession the parser must drop). It covers the intermediate-TSV -> `AnnotationTable` contract `build_peptideatlas_phospho` actually implements; it does NOT cover upstream zip parsing (table joins, offset extraction, canonical/DECOY filtering, observation aggregation) — that stays the job of `test_phospho.py`'s own mock-zip tests.
+- **schema_snapshot:** `hvantk/skills/peptideatlas/phospho/tests/snapshots/schema.json` (seeded).
+- **row_snapshot:** `hvantk/skills/peptideatlas/phospho/tests/snapshots/sample_rows.json` (seeded, keyed on `(accession, position)` for the two fixture rows).
 - **test_command:** `pytest hvantk/skills/peptideatlas/phospho/tests`.
-- **drift_fingerprint:** `hvantk/skills/peptideatlas/phospho/tests/drift_fingerprint.json` (placeholder shape; refresh via the update playbook).
+- **drift_fingerprint:** `hvantk/skills/peptideatlas/phospho/tests/drift_fingerprint.json` — a real baseline captured from a live probe run (build 202512 / 606, fetched 2026-07-27), not a placeholder. Refresh via the update playbook.
 
-The plugin manifest already declares these paths so the loader contract holds. Parser unit tests + drift-probe sanity test pass today; the builder round-trip is the gap to close in a follow-up.
+The plugin manifest declares these paths and every one now resolves to a real committed file — `peptideatlas:phospho` is off the `KNOWN_INCOMPLETE` ledger in `hvantk/tests/test_plugin_contract_artifacts.py`.
 
-> **Snapshot status:** schema.json and sample_rows.json have NOT yet been seeded
-> for this plugin. This is a pure-pandas builder (no Hail/Spark required). On the
-> first round-trip run, use
-> `pytest hvantk/skills/peptideatlas/phospho/tests/test_builder.py --regenerate-snapshots`
-> (`test_builder.py` to be added) to bootstrap them, then commit. Until seeded, the
-> round-trip test cannot verify output against a fixed schema.
+**Round-trip test:** `hvantk/skills/peptideatlas/phospho/tests/test_builder.py`. It deliberately does NOT go through `hvantk.tests._snapshot_utils.regenerate_snapshots` — that helper only dispatches on `anndata.AnnData` or a Hail-table fallback, and this builder returns a pandas-backed `AnnotationTable` with no native Hail/AnnData representation (see § 3). Routing through the Hail branch would only work via the `to_hail()` escape hatch, at the cost of a full Hail/Spark session (`@pytest.mark.hail`) for a builder that never touches Hail, and it also distorts dtypes in the process (an all-empty `ensembl_xrefs` column round-trips as Hail `float64` instead of the pandas `str`/`NaN` the builder actually produces). The test instead asserts directly against `AnnotationTable.schema` and `AnnotationTable.to_pandas()`, so it runs Hail-free under the default (non-`-m hail`) pytest selection — consistent with § 3's reasoning for choosing the pandas backend in the first place.
+
+Regenerate after an intentional builder change:
+
+```bash
+pytest hvantk/skills/peptideatlas/phospho/tests/test_builder.py --regenerate-snapshots
+pytest hvantk/skills/peptideatlas/phospho/tests -q
+```

@@ -43,6 +43,10 @@ Every per-resource `SKILL.md` MUST cover these nine sections, in order, with the
 
 Optional sections (only if they add information not covered above): `## 10. Cross-reference notes`, `## 11. Performance notes`.
 
+Each spec MUST also open with a YAML frontmatter block declaring at least `name` and `description` (conforming files also carry `status`, `backend` and `domain`). That minimum is what an external Agent Skills harness reads to register the directory at all — a spec without it is invisible to one however good its prose.
+
+**This is enforced, not merely documented.** `hvantk.core.plugin.skill_spec` holds the checker; `hvantk/tests/test_plugin_skill_conformance.py` runs it over every per-resource `SKILL.md` on every test run, and `hvantk plugins validate <manifest>` runs it over the specs one manifest declares. Both call the same implementation, so the list above and the check cannot drift apart — a test asserts that every enforced heading is still listed here. Until #334 nothing checked this, and 9 of 23 specs had drifted to zero required headings.
+
 ## 3. Keying conventions per data domain
 
 - Variants → key `(locus, alleles)`, Hail Table or MatrixTable
@@ -135,6 +139,26 @@ Three states, and the difference matters:
 
 Source names are free strings; consumers compare them through an equivalence map (`ClinVar`, `ClinGen`, `GenCC`, `HGMD`, `OMIM` are all curated disease databases and conflict with one another). Declare the sources as the authors describe them and let the consumer's map do the grouping. `scores:` is optional — a dataset with no trained predictors should omit it entirely rather than declare an empty block.
 
+### Optional: `acquisition:` — can this dataset fetch its own data?
+
+A dataset that ships no `lifecycle.download` is ambiguous: it may mean *nobody has written the downloader yet*, or it may mean *no downloader is possible*. Those are different states and used to look identical (#118), so `--skip-download` read as a category error on every bring-your-own-data build.
+
+```yaml
+    acquisition:
+      mode: byo              # download (default) | byo
+      reason: size           # size | credentialed | license | publication-only | unstable-url
+      instructions: SKILL.md#2-source-identity
+```
+
+Declared **per dataset, not per provider** — `onek-genomes` ships `variants` (~1.5 TB, BYO) beside `samples` (~55 KB, auto-downloaded), so one provider-level field could not describe it.
+
+- Omitting the block means `mode: download`, so every pre-existing manifest stays valid.
+- `mode: download` with no `lifecycle.download` is the honest way to say *a downloader belongs here and is not written yet* — a TODO. See CLAUDE.md's downloader decision framework for when one is warranted.
+- `mode: byo` requires a `reason`, and is **rejected** alongside `lifecycle.download`: a dataset either fetches its own inputs or it does not, and a manifest claiming both is lying about one.
+- Under `mode: byo`, `hvantk reprocess` skips the download stage implicitly (no flag needed) and instead pre-flights `--raw-dir`, failing with `instructions` interpolated if it is empty — rather than dying deep inside the builder.
+
+**`byo` is a statement about acquisition, never about testability.** `dbnsfp` cannot be downloaded at all (#321) yet ships a committed fixture and both snapshots. Nothing may read `mode: byo` as exempting a dataset from the § 9 validation contract; conflating the two is what left five datasets ungradable (#341), and a test enforces the separation.
+
 ## 7. CLI command pattern
 
 Per-provider CLI lives in `hvantk/skills/<provider>/cli.py` (single-dataset) or `hvantk/skills/<provider>/<dataset>/cli.py` (multi-dataset). The manifest's `cli:` block registers Click commands at top-level discovery time:
@@ -166,7 +190,7 @@ This resolves the manifest via `get_registry().get_dataset(...)`, runs `lifecycl
 
 Every per-resource `SKILL.md` MUST declare these paths, which MUST match the `tests:` block in `plugin.yaml`. All paths are resolved relative to the plugin folder, and normally live inside it:
 
-- `fixture` — input file or directory used by the round-trip test. Normally plugin-local (`tests/testdata/raw/<dataset>/`). A fixture that is genuinely shared with cross-cutting tests — `hvantk/tests/test_plugin_conformance.py`, or an integration test in another package — instead lives in the repo-level tree and is referenced in place as `../../tests/testdata/raw/<dataset>`, rather than being duplicated per consumer. Say which form applies in the plugin's `SKILL.md`, since the two are not interchangeable. `dbnsfp`, `ensembl_gene`, `gevir` and `gnomad_metrics` use the shared form.
+- `fixture` — input file or directory used by the round-trip test. Normally plugin-local (`tests/testdata/raw/<dataset>/`). A fixture that is genuinely shared with cross-cutting tests — `hvantk/tests/test_plugin_conformance.py`, or an integration test in another package — instead lives in the repo-level tree and is referenced in place as `../../tests/testdata/raw/<dataset>`, rather than being duplicated per consumer. Say which form applies in the plugin's `SKILL.md`, since the two are not interchangeable. `dbnsfp`, `gevir` and `gnomad_metrics` use the shared form. `ensembl_gene` does **not** — this sentence listed it until #334; its `structure` dataset declares the plugin-local `structure/tests/testdata/raw/ensembl-structure`, which is what `plugin.yaml` and its tests actually read.
 - `schema_snapshot` — `tests/snapshots/schema.json`
 - `row_snapshot` — `tests/snapshots/sample_rows.json`. Keys used to select snapshot rows must be unique-in-table — `_snapshot_utils.collect_sample_rows` does not deduplicate, so a duplicated key yields non-deterministic snapshots. For builders that legitimately produce multi-row keys (e.g., GWAS Catalog), maintain `tests/snapshots/sample_keys.json` listing the singleton-key subset to sample.
 - `drift_fingerprint` — `tests/drift_fingerprint.json` (the expected fingerprint; see § 12).
@@ -202,7 +226,7 @@ Each dataset declares a `drift_probe.module` + `function` in `plugin.yaml`. The 
 }
 ```
 
-`extras` is an open dict for probe-specific content signals that don't fit `headers`/`checksums` but still matter for drift — typically an HTTP `Content-Length`. clingen has fingerprinted `extras.content_length` since the drift-comparator fix in #233; hgnc and gencc now do too.
+`extras` is an open dict for probe-specific content signals that don't fit `headers`/`checksums` but still matter for drift — typically an HTTP `Content-Length`. clingen has fingerprinted `extras.content_length` since the drift-comparator fix in #233; hgnc and gencc now do too, and clinvar joined them in #333 — where placing it under `headers` instead had tiered every weekly release as a schema change, leaving that label constant and therefore uninformative. **A pure content signal belongs in `extras`, but only once the probe can actually see the schema**: moving it there while the probe remains schema-blind converts uninformative positives into false negatives (#271).
 
 `informational` is recorded for human readers and is **excluded from drift comparison** — it is in `PROBE_FINGERPRINT_IGNORED_KEYS` (`hvantk/core/plugin/api.py`) alongside `fetched_at` and `probe_version`. This is where `Last-Modified` now lives for probes whose upstream re-publishes byte-identical content under a fresh timestamp: across hgnc's 8 committed fingerprints from 2026-05-16 to 2026-08-27 the checksum never moved while `Last-Modified` moved on every single one. A probe that puts that kind of timestamp in a field drift actually compares — `source_version`, as hgnc and gencc both did before `probe_version` 2 — opens a PR on every republish carrying no information; recording it under `informational` instead keeps it visible in the committed JSON without ever letting it trigger drift.
 

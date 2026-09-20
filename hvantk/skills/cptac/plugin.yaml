@@ -9,6 +9,8 @@ source:
 
 datasets:
   - name: expression
+    acquisition:
+      mode: download
     domain: proteomics
     backend: anndata
     artifact_type: ExpressionMatrix

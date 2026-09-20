@@ -3,10 +3,20 @@
   "$id": "https://hvantk.dev/schemas/plugin_manifest.schema.json",
   "title": "hvantk plugin manifest",
   "type": "object",
-  "required": ["api_version", "name", "version", "datasets"],
+  "required": [
+    "api_version",
+    "name",
+    "version",
+    "datasets"
+  ],
   "additionalProperties": false,
   "properties": {
-    "api_version": { "enum": [1, 2] },
+    "api_version": {
+      "enum": [
+        1,
+        2
+      ]
+    },
     "name": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9-]*$"
@@ -17,13 +27,21 @@
     },
     "status": {
       "type": "string",
-      "enum": ["provisional", "stable", "deprecated"]
+      "enum": [
+        "provisional",
+        "stable",
+        "deprecated"
+      ]
     },
     "maintainers": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
-    "description": { "type": "string" },
+    "description": {
+      "type": "string"
+    },
     "catalog": {
       "type": "string",
       "description": "Path (relative to the plugin folder) to a JSON file listing the accessions/datasets this plugin can build."
@@ -32,10 +50,14 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "catalog_ref": { "type": "string" },
+        "catalog_ref": {
+          "type": "string"
+        },
         "registry_refs": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -44,7 +66,15 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["name", "domain", "backend", "builder", "drift_probe", "skill", "tests"],
+        "required": [
+          "name",
+          "domain",
+          "backend",
+          "builder",
+          "drift_probe",
+          "skill",
+          "tests"
+        ],
         "additionalProperties": false,
         "properties": {
           "name": {
@@ -53,20 +83,38 @@
           },
           "domain": {
             "type": "string",
-            "enum": ["genomics", "transcriptomics", "proteomics", "epigenomics", "mapping"]
+            "enum": [
+              "genomics",
+              "transcriptomics",
+              "proteomics",
+              "epigenomics",
+              "mapping"
+            ]
           },
           "backend": {
             "type": "string",
-            "enum": ["hail", "anndata", "pandas"]
+            "enum": [
+              "hail",
+              "anndata",
+              "pandas"
+            ]
           },
-          "builder": { "$ref": "#/$defs/callable_ref" },
-          "drift_probe": { "$ref": "#/$defs/callable_ref" },
+          "builder": {
+            "$ref": "#/$defs/callable_ref"
+          },
+          "drift_probe": {
+            "$ref": "#/$defs/callable_ref"
+          },
           "lifecycle": {
             "type": "object",
             "additionalProperties": false,
             "properties": {
-              "download": { "$ref": "#/$defs/callable_ref" },
-              "parse": { "$ref": "#/$defs/callable_ref" }
+              "download": {
+                "$ref": "#/$defs/callable_ref"
+              },
+              "parse": {
+                "$ref": "#/$defs/callable_ref"
+              }
             }
           },
           "artifact_type": {
@@ -77,18 +125,26 @@
             "type": "string",
             "description": "Phase B: the schema identifier stamped onto the artifact's Provenance."
           },
-          "skill": { "type": "string" },
+          "skill": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Path to this dataset's SKILL.md, relative to the plugin folder. Must be non-empty; the file must meet the nine-section contract in _conventions/SKILL.md s 2."
+          },
           "scores": {
             "type": "object",
             "description": "Per-score training provenance, declared once by the plugin author. Circularity is a property of the data, so consumers (e.g. rerank's clean/all arms) inherit these declarations instead of re-reviewing every predictor per analysis. An empty 'trained_on' means the score saw nothing label-derived; an omitted score is unknown, which consumers must treat conservatively rather than as clean.",
             "additionalProperties": {
               "type": "object",
-              "required": ["trained_on"],
+              "required": [
+                "trained_on"
+              ],
               "additionalProperties": false,
               "properties": {
                 "trained_on": {
                   "type": "array",
-                  "items": { "type": "string" },
+                  "items": {
+                    "type": "string"
+                  },
                   "description": "Sources the predictor was fit on (e.g. ClinVar, HGMD, simulated, population_af)."
                 }
               }
@@ -105,12 +161,76 @@
             ],
             "additionalProperties": false,
             "properties": {
-              "command": { "type": "string" },
-              "fixture": { "type": "string" },
-              "schema_snapshot": { "type": "string" },
-              "row_snapshot": { "type": "string" },
-              "drift_fingerprint": { "type": "string" }
+              "command": {
+                "type": "string"
+              },
+              "fixture": {
+                "type": "string"
+              },
+              "schema_snapshot": {
+                "type": "string"
+              },
+              "row_snapshot": {
+                "type": "string"
+              },
+              "drift_fingerprint": {
+                "type": "string"
+              }
             }
+          },
+          "acquisition": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "How raw inputs reach this dataset. Omitted means mode 'download'. Declared per DATASET, not per provider: onek-genomes ships one BYO dataset (variants, ~1.5 TB) and one auto-downloaded one (samples, ~55 KB), so a provider-level field could not describe it.",
+            "required": [
+              "mode"
+            ],
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "download",
+                  "byo"
+                ],
+                "description": "'download' (default): acquisition is automatable -- either a lifecycle.download already exists, or one could be written. 'byo': it cannot be automated at all, and the user must supply --raw-dir; 'byo' is mutually exclusive with lifecycle.download. Note 'download' is deliberately the weaker claim, because it is also the default for every manifest that omits this block. The third state -- automatable but not yet implemented, e.g. gevir -- is not a separate enum value because it is already derivable: mode 'download' AND no lifecycle.download."
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "size",
+                  "credentialed",
+                  "license",
+                  "publication-only",
+                  "unstable-url"
+                ],
+                "description": "Why acquisition cannot be automated. Required when mode is 'byo'. 'unstable-url' covers a source that is public and small but exposes no stable, machine-readable link (CLAUDE.md's downloader framework calls this 'URL structure is complex or fragile'). NOT a statement about testability: a BYO dataset can still ship a fixture (dbnsfp does), so this must never be read as exempting one."
+              },
+              "instructions": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Where a user is told how to obtain the data, e.g. 'SKILL.md#7-workflow-steps'. Surfaced verbatim when --raw-dir is empty."
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "mode": {
+                      "const": "byo"
+                    }
+                  },
+                  "required": [
+                    "mode"
+                  ]
+                },
+                "then": {
+                  "required": [
+                    "mode",
+                    "reason"
+                  ]
+                }
+              }
+            ]
           }
         }
       }
@@ -119,15 +239,23 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["command", "module", "function"],
+        "required": [
+          "command",
+          "module",
+          "function"
+        ],
         "additionalProperties": false,
         "properties": {
           "command": {
             "type": "string",
             "pattern": "^[a-z][a-z0-9-]*$"
           },
-          "module": { "type": "string" },
-          "function": { "type": "string" }
+          "module": {
+            "type": "string"
+          },
+          "function": {
+            "type": "string"
+          }
         }
       }
     },
@@ -135,19 +263,36 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "python": { "type": "array", "items": { "type": "string" } },
-        "system": { "type": "array", "items": { "type": "string" } }
+        "python": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "system": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     }
   },
   "$defs": {
     "callable_ref": {
       "type": "object",
-      "required": ["module", "function"],
+      "required": [
+        "module",
+        "function"
+      ],
       "additionalProperties": false,
       "properties": {
-        "module": { "type": "string" },
-        "function": { "type": "string" }
+        "module": {
+          "type": "string"
+        },
+        "function": {
+          "type": "string"
+        }
       }
     }
   }

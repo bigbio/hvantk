@@ -1,4 +1,5 @@
 """ClinVar concrete streamers."""
+
 from __future__ import annotations
 
 from typing import Iterable, Optional, Sequence, Set
@@ -58,8 +59,7 @@ def apply_clinvar_training_labels(
         if "GENEINFO" in info_fields:
             ht = ht.annotate(
                 gene=hl.if_else(
-                    hl.is_defined(ht.info.GENEINFO)
-                    & (hl.len(ht.info.GENEINFO) > 0),
+                    hl.is_defined(ht.info.GENEINFO) & (hl.len(ht.info.GENEINFO) > 0),
                     ht.info.GENEINFO.split(":")[0],
                     hl.missing(hl.tstr),
                 )
@@ -90,18 +90,14 @@ def apply_clinvar_training_labels(
     if normalized_disease_terms:
         disease_set = hl.literal(normalized_disease_terms)
         clndn = hl.or_else(ht.info.CLNDN, "")
-        tokens = (
-            hl.str(clndn).split(r"\|").map(lambda t: t.replace(" ", "_").lower())
-        )
+        tokens = hl.str(clndn).split(r"\|").map(lambda t: t.replace(" ", "_").lower())
         disease_tp = tokens.any(lambda t: disease_set.contains(t))
     else:
         disease_tp = hl.literal(False)
 
     # --- gene-based TP (legacy process_chunk) ---
     gene_filter = (
-        hl.literal(True)
-        if not gene_set
-        else hl.literal(gene_set).contains(ht.gene)
+        hl.literal(True) if not gene_set else hl.literal(gene_set).contains(ht.gene)
     )
     clnsig = ht.info.CLNSIG
     pathogenic_set = hl.set(pathogenic_labels)
@@ -161,8 +157,7 @@ class ClinVarVariantTableStreamer(VariantTableStreamer):
         # check in algorithms/ptm/analysis.py:_extract_clnsig).
         if isinstance(clnsig.dtype, hl.tarray):
             return ht.filter(
-                hl.is_defined(clnsig)
-                & clnsig.any(lambda x: label_set.contains(x))
+                hl.is_defined(clnsig) & clnsig.any(lambda x: label_set.contains(x))
             )
         return ht.filter(hl.is_defined(clnsig) & label_set.contains(clnsig))
 

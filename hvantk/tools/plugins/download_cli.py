@@ -9,6 +9,7 @@ The loader strips the ``-download`` suffix from each ``command`` name to
 derive the subcommand name within this group (e.g. ``clinvar-download``
 becomes the ``clinvar`` subcommand under ``hvantk download``).
 """
+
 import click
 
 from hvantk.core.config import CONTEXT_SETTINGS

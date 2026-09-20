@@ -11,6 +11,10 @@ source:
 
 datasets:
   - name: variants
+    acquisition:
+      mode: byo
+      reason: size
+      instructions: SKILL.md#2-source-identity
     domain: genomics
     backend: hail
     artifact_type: AnnotationTable

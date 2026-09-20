@@ -1,11 +1,57 @@
 {
-  "probe_version": 1,
-  "source_version": "Sun, 23 Aug 2026 16:56:29 GMT",
+  "probe_version": 2,
+  "source_version": "Mon, 14 Sep 2026 13:55:21 GMT",
   "headers": {
     "clinvar.vcf.gz": {
-      "content_length": "193420805"
+      "INFO": [
+        "AF_ESP",
+        "AF_EXAC",
+        "AF_TGP",
+        "ALLELEID",
+        "CLNDISDB",
+        "CLNDISDBINCL",
+        "CLNDN",
+        "CLNDNINCL",
+        "CLNHGVS",
+        "CLNREVSTAT",
+        "CLNSIG",
+        "CLNSIGCONF",
+        "CLNSIGINCL",
+        "CLNSIGSCV",
+        "CLNVC",
+        "CLNVCSO",
+        "CLNVI",
+        "DBVARID",
+        "GENEINFO",
+        "MC",
+        "ONC",
+        "ONCCONF",
+        "ONCDISDB",
+        "ONCDISDBINCL",
+        "ONCDN",
+        "ONCDNINCL",
+        "ONCINCL",
+        "ONCREVSTAT",
+        "ONCSCV",
+        "ORIGIN",
+        "RS",
+        "SCI",
+        "SCIDISDB",
+        "SCIDISDBINCL",
+        "SCIDN",
+        "SCIDNINCL",
+        "SCIINCL",
+        "SCIREVSTAT",
+        "SCISCV"
+      ],
+      "FORMAT": []
     }
   },
-  "checksums": {},
-  "fetched_at": "2026-08-24T06:58:23.075872+00:00"
+  "checksums": {
+    "clinvar.vcf.gz": "6bfa0b7cc0894295474023209da668734abed48cebaaef696967d652ce65c178"
+  },
+  "extras": {
+    "content_length": "193709143"
+  },
+  "fetched_at": "2026-09-20T22:13:17.161850+00:00"
 }

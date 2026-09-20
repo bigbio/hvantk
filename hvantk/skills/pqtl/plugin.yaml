@@ -9,6 +9,10 @@ source:
 
 datasets:
   - name: metrics
+    acquisition:
+      mode: byo
+      reason: publication-only
+      instructions: SKILL.md#2-source-identity
     domain: proteomics
     backend: hail
     artifact_type: AnnotationTable

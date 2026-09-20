@@ -12,10 +12,13 @@ from hvantk.tests._snapshot_utils import (
     load_snapshot,
     phase_b_snapshot_adapter,
 )
+
 # Aliased to avoid shadowing the fixture name `regenerate_snapshots` in the test signature
 from hvantk.tests._snapshot_utils import regenerate_snapshots as regenerate_snapshots_fn
 
-FIXTURE = "hvantk/skills/clinvar/tests/testdata/raw/clinvar/clinvar_20220403_chr20.vcf.bgz"
+FIXTURE = (
+    "hvantk/skills/clinvar/tests/testdata/raw/clinvar/clinvar_20220403_chr20.vcf.bgz"
+)
 SNAPSHOT_DIR = Path("hvantk/skills/clinvar/tests/snapshots")
 
 # (locus, alleles) is unique-in-table for ClinVar, so keys are inlined here
@@ -49,7 +52,9 @@ def test_clinvar_round_trip(hail_session, tmp_path, regenerate_snapshots):
             keys=SAMPLE_KEYS,
             builder_kwargs=builder_kwargs,
         )
-        pytest.skip("Snapshots regenerated; rerun without --regenerate-snapshots to assert.")
+        pytest.skip(
+            "Snapshots regenerated; rerun without --regenerate-snapshots to assert."
+        )
 
     output_path = str(tmp_path / "clinvar.ht")
     builder(input_path=FIXTURE, output_path=output_path, **builder_kwargs)
