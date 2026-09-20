@@ -79,6 +79,29 @@ When ClinVar releases a new monthly version:
 5. If a parsing gotcha was introduced (e.g., new encoding), add it to § 4.
 6. Open PR; reviewer checks the snapshot diff narrative.
 
+**Reading the drift report** (`probe_version` 2, #333). The probe fetches only the first
+64 KiB of `clinvar.vcf.gz` with a `Range` request and decompresses the leading BGZF
+members, which is enough for the whole meta-header — NCBI honours `Range` and answers
+`206`. From that it records:
+
+- `headers` — the real `INFO` / `FORMAT` ID lists, and `checksums` — a sha256 over the
+  header bytes. These are the **schema** signal; a change here means a field appeared or
+  vanished and `builder.py` may need work, so it opens its own `drift:schema` PR.
+- `extras.content_length` — the full file size (taken from `Content-Range`, *not*
+  `Content-Length`, which on a 206 describes the slice and would never move). This is the
+  **content** signal: ClinVar adding variants moves it and nothing else, so the release
+  batches into the routine PR.
+
+So a `drift:schema` label on ClinVar now means something specific. Under `probe_version` 1
+it did not: `Content-Length` sat under `headers`, so all six regenerations between
+2026-08-04 and 2026-09-08 tiered identically — including one where the file doubled in
+size and one where it grew by 6,645 bytes.
+
+The probe fails closed rather than recording a partial header: no `#CHROM` line inside
+the fetched range, no `##INFO` declarations, or no resolvable full size each raise
+`DriftProbeError`. If the header ever outgrows 64 KiB, that first check is what tells
+you — raise `_RANGE_BYTES` rather than trimming what is parsed.
+
 ## 9. Validation contract
 
 - `fixture`: `hvantk/skills/clinvar/tests/testdata/raw/clinvar/clinvar_20220403_chr20.vcf.bgz`

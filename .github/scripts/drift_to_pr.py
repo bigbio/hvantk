@@ -105,7 +105,9 @@ def strip_ignored(fingerprint: dict) -> dict:
 
 # Fingerprint keys that carry the SCHEMA signal. `headers` is the column list;
 # `checksums` is a hash of the column-header row for the header-hashing probes
-# (clingen, gencc, hgnc), so a moved checksum means the columns moved.
+# (clingen, gencc, hgnc) or of the VCF meta-header (clinvar), so a moved checksum means
+# the columns moved. A probe that puts HTTP metadata here instead makes this tier
+# constant -- see #333, and `extras` for where a pure content signal belongs.
 SCHEMA_KEYS = frozenset({"headers", "checksums"})
 
 
