@@ -8,7 +8,7 @@ domain: protein
 
 # INSIDER (Interactome Insider)
 
-Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes every convention there.
+Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its repository map, helpers, keying conventions, builder pattern, and validation contract.
 
 ## 1. Status & scope
 
@@ -84,6 +84,7 @@ After aggregation, intervals are unique-in-table. Test inlines sample keys.
 - **CLI:** `hvantk reprocess insider:variants --raw-dir <dir> --output <out> [--plugin-arg reference_genome=GRCh38]`. `reprocess` passes the `--raw-dir` directory to the builder as `parsed_input` (insider has no `lifecycle.parse`); `_parse_insider_bed_to_temp_tsv` consumes it as the BED path.
 - **Snapshot util branch:** `hvantk/tests/_snapshot_utils.py` — `hl.tinterval` handlers added in PR #105.
 - **Downloader:** out of scope (manual acquisition; the BED is >1 GB, so no `lifecycle.download` entry in `plugin.yaml`).
+- **Drift probe:** `fetch_fingerprint` in `hvantk/skills/insider/drift_probe.py`, compared against `tests/drift_fingerprint.json` by `hvantk drift insider:variants` (see § 12 of `_conventions`).
 
 ## 7. Workflow steps
 

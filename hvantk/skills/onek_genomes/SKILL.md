@@ -69,7 +69,8 @@ Out of scope for this skill:
 
 **`:variants`** (BYO data):
 1. Populate a directory with per-chromosome `*.vcf.gz` + `.tbi` files from a 1000 Genomes high-coverage mirror (§ 2).
-2. Build: `hvantk reprocess onek-genomes:variants --raw-dir /data/1kg/vcfs/ --output /data/1kg.mt --skip-download --plugin-arg reference_genome=GRCh38 [--plugin-arg chromosomes=chr1,chr2,chrX]`.
+2. Build: `hvantk reprocess onek-genomes:variants --raw-dir /data/1kg/vcfs/ --output /data/1kg.mt --plugin-arg reference_genome=GRCh38 [--plugin-arg chromosomes=chr1,chr2,chrX]`.
+   `--skip-download` is not needed for `:variants` — it declares `acquisition.mode: byo`, so skipping is implicit (#118). `:samples` does have a downloader, so the flag still means something there.
 3. Watch the build log for the "standard chromosomes not found" warning if a full-cohort build was expected (§ 4) — it will not fail the build.
 
 **`:samples`**:

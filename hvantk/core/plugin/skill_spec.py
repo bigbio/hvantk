@@ -24,6 +24,7 @@ harnesses even when its prose is perfect.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Iterator
 
@@ -46,6 +47,42 @@ REQUIRED_SECTIONS: tuple[str, ...] = (
 #: ``description`` are what an external skill harness reads to register the
 #: directory at all; the rest are hvantk's own routing metadata.
 REQUIRED_FRONTMATTER: tuple[str, ...] = ("name", "description")
+
+#: The line every spec opens with, directing a reader to the shared contract before the
+#: provider-specific detail. 21 of 23 already carried it in two wordings; #356 settled on
+#: the majority one and made it checkable, because a spec read in isolation otherwise
+#: looks self-contained when it is not.
+CONVENTIONS_PREAMBLE: str = (
+    "Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its "
+    "repository map, helpers, keying conventions, builder pattern, and validation "
+    "contract."
+)
+
+#: What s 6 must let a reader reach without opening plugin.yaml. Each entry is
+#: (label, substrings that satisfy it). Before #356, seven specs named no drift probe
+#: and five named no tests -- so the section existed while the wiring it documents did
+#: not, which is the same failure as a heading with nothing under it.
+SECTION_6_REFERENCES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("the builder", ("builder", "build_")),
+    (
+        "the drift probe",
+        ("drift_probe", "drift probe", "fetch_fingerprint", "hvantk drift"),
+    ),
+    ("its tests", ("test", "pytest")),
+)
+
+#: The five test-artifact keys s 9 must name, spelled as the manifest's `tests:` keys.
+#: `command`, NOT `test_command`: the schema sets additionalProperties false, so a
+#: manifest authored from the wrong spelling fails validation at load. 18 specs used the
+#: wrong one until #350.
+SECTION_9_ARTIFACT_KEYS: tuple[str, ...] = (
+    "fixture",
+    "schema_snapshot",
+    "row_snapshot",
+    "drift_fingerprint",
+    "command",
+)
+
 
 #: ``_conventions/SKILL.md`` IS the contract and has its own structure, so it is
 #: not measured against itself.
@@ -226,5 +263,54 @@ def check_skill_spec(path: Path) -> list[str]:
                 + "; found "
                 + " -> ".join(s.split(". ", 1)[-1] for s in ordered)
             )
+
+    if CONVENTIONS_PREAMBLE not in text:
+        problems.append(
+            "missing the shared preamble line directing the reader to "
+            "_conventions/SKILL.md (see CONVENTIONS_PREAMBLE)"
+        )
+
+    problems.extend(_section_content_problems(text))
+
+    return problems
+
+
+def _section_body(text: str, section: str) -> str:
+    """The text under ``section``, up to the next ``## `` heading or end of file."""
+    start = text.find(f"\n{section}")
+    if start == -1:
+        return ""
+    rest = text[start + len(section) + 1 :]
+    nxt = re.search(r"^## ", rest, re.MULTILINE)
+    return rest[: nxt.start()] if nxt else rest
+
+
+def _section_content_problems(text: str) -> list[str]:
+    """Check that s 6 and s 9 carry their required content, not just their headings.
+
+    Deliberately substring-based rather than structural. These sections are prose with
+    per-provider shape -- some use ``- **Label:**``, some ``- Label:`` -- and a parser
+    strict enough to read the shape would fail on formatting instead of substance,
+    which is the opposite of useful. The question asked here is only "can a reader get
+    from this section to that thing", which a substring answers honestly.
+    """
+    problems: list[str] = []
+
+    six = _section_body(text, "## 6. hvantk integration points").lower()
+    for label, needles in SECTION_6_REFERENCES:
+        if not any(n in six for n in needles):
+            problems.append(f"section 6 never references {label}")
+
+    nine = _section_body(text, "## 9. Validation contract")
+    absent = [k for k in SECTION_9_ARTIFACT_KEYS if not re.search(rf"\b{k}\b", nine)]
+    if absent:
+        problems.append(
+            "section 9 does not name these test artifacts: " + ", ".join(absent)
+        )
+    if "test_command" in nine:
+        problems.append(
+            "section 9 says 'test_command'; the manifest key is 'command' "
+            "(additionalProperties is false, so the wrong spelling fails at load)"
+        )
 
     return problems

@@ -41,9 +41,67 @@ Every per-resource `SKILL.md` MUST cover these nine sections, in order, with the
 8. `## 8. Update playbook`
 9. `## 9. Validation contract`
 
-Optional sections (only if they add information not covered above): `## 10. Cross-reference notes`, `## 11. Performance notes`.
+Sections beyond the nine are free-form and provider-specific, numbered from `## 10.`
+onward. `## 10. Cross-reference notes` and `## 11. Performance notes` are the common
+ones, but they are examples rather than a closed vocabulary -- `ucsc_cellbrowser` carries
+a `## 10. Onboarding a new dataset within UCSC Cell Browser`, which no shared title would
+describe honestly. Only 1-9 are fixed.
 
 Each spec MUST also open with a YAML frontmatter block declaring at least `name` and `description` (conforming files also carry `status`, `backend` and `domain`). That minimum is what an external Agent Skills harness reads to register the directory at all — a spec without it is invisible to one however good its prose.
+
+### The shape of a conforming spec
+
+The nine headings are the contract; what goes under them was, until #356, whatever each
+author chose. A hygiene pass measured all 23 specs and found the majority had converged
+on one shape anyway. That shape is now the template, and the mechanical parts of it are
+checked:
+
+```markdown
+---
+name: hvantk:resource-<provider>         # all 23 carry these five keys
+description: <one line, what the dataset is>
+status: provisional | stable
+backend: hail | anndata | pandas
+domain: genomics | transcriptomics | proteomics | epigenomics | mapping
+---
+
+# <Provider> resource skill
+
+Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its repository map,
+helpers, keying conventions, builder pattern, and validation contract.
+
+## 1. Status & scope          -> what ships, what is explicitly out of scope
+## 2. Source identity         -> upstream identity; NEVER restate catalog/datasets.json
+## 3. Backend choice + reasoning
+## 4. Raw format & gotchas    -> the section that earns its keep; see below
+## 5. Output contract         -> keys, fields, dtypes, schema_id, provenance
+## 6. hvantk integration points
+## 7. Workflow steps
+## 8. Update playbook
+## 9. Validation contract
+```
+
+**Section 6 MUST name every callable the manifest wires**, so a reader can get from the
+spec to the code without opening `plugin.yaml`: the plugin manifest, the builder, the
+drift probe, the tests, the `hvantk reprocess` invocation, and the downloader when one
+exists. Seven specs named no probe at all and five named no tests before this was
+checked. Optional bullets where they apply: constants, streamer, dataset class,
+downstream consumers.
+
+**Section 9 MUST list the five test artifacts as labelled bullets** -- `fixture`,
+`schema_snapshot`, `row_snapshot`, `drift_fingerprint`, `command` -- spelled exactly as
+the manifest's `tests:` keys, and with values matching it. Note the key is `command`, not
+`test_command`: `additionalProperties: false` means a manifest written from the wrong
+spelling fails validation at load.
+
+**Section 4 is where a spec earns its keep.** It is the longest section in the corpus by
+a wide margin (median ~290 words against ~100 for § 5) because it is the one an agent
+cannot reconstruct from the code: literal header spellings, missing-value sentinels,
+column names needing subscript access, prefix conventions. Write the things that produce
+silently wrong output, not the things a reader would discover on the first run.
+
+Style, as the corpus settled it: flat `-` bullets, no `###` subsections (21 of 23 use
+none), and prose that points at code rather than restating it.
 
 **This is enforced, not merely documented.** `hvantk.core.plugin.skill_spec` holds the checker; `hvantk/tests/test_plugin_skill_conformance.py` runs it over every per-resource `SKILL.md` on every test run, and `hvantk plugins validate <manifest>` runs it over the specs one manifest declares. Both call the same implementation, so the list above and the check cannot drift apart — a test asserts that every enforced heading is still listed here. Until #334 nothing checked this, and 9 of 23 specs had drifted to zero required headings.
 
