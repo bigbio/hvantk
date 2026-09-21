@@ -80,11 +80,12 @@ When GenCC publishes an updated snapshot (any download is effectively a new snap
 ## 9. Validation contract
 
 - `fixture`: `hvantk/skills/gencc/tests/testdata/raw/gencc/gencc_test_sample.tsv`
+- `schema_snapshot`: `hvantk/skills/gencc/tests/snapshots/schema.json`
+- `row_snapshot`: `hvantk/skills/gencc/tests/snapshots/sample_rows.json`
 - `drift_fingerprint`: `hvantk/skills/gencc/tests/drift_fingerprint.json`
 - `command`: `pytest hvantk/skills/gencc/tests -m hail`
 
-> **Snapshot status:** seeded. `tests/snapshots/schema.json` and
-> `tests/snapshots/sample_rows.json` are committed, and `test_builder.py` asserts the
-> build against them. Regenerate after an intentional schema change with
+> **Snapshot status:** seeded and asserted by `test_builder.py`.
+> Regenerate after an intentional schema change with
 > `pytest hvantk/skills/gencc/tests/test_builder.py --regenerate-snapshots`, then
 > commit the result.

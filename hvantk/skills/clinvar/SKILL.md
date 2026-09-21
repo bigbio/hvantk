@@ -8,6 +8,8 @@ domain: variants
 
 # ClinVar resource skill
 
+Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its repository map, helpers, keying conventions, builder pattern, and validation contract.
+
 ## 1. Status & scope
 
 This skill covers BUILD and UPDATE of the ClinVar Hail Table. It does NOT cover download (see `hvantk/skills/clinvar/cli.py`) or downstream analysis.
@@ -49,6 +51,7 @@ Hail Table keyed by `(locus, alleles)`. Reasoning: ClinVar is variant-keyed and 
 - Build CLI: `hvantk reprocess clinvar:variants --raw-dir <dir> --output <path>.ht` (pass builder kwargs via `--plugin-arg KEY=VALUE`, e.g. `--plugin-arg reference_genome=GRCh38`). The plugin loader (`hvantk/core/plugin/loader.py`) resolves the dataset from `plugin.yaml` via `get_registry().get_dataset("clinvar:variants")`; the build runs through `run_builder_for_spec` (`hvantk/core/plugin/run_builder.py`).
 - Plugin manifest: `hvantk/skills/clinvar/plugin.yaml` (drives loader registration; compound dataset key `clinvar:variants`)
 - Test: `hvantk/skills/clinvar/tests/test_builder.py`
+- Drift probe: `fetch_fingerprint` in `hvantk/skills/clinvar/drift_probe.py`, compared against `tests/drift_fingerprint.json` by `hvantk drift clinvar:variants` (see § 12 of `_conventions`).
 
 Read the existing files at these paths as ground truth for shape. This skill does not restate code.
 

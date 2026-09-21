@@ -25,6 +25,7 @@ import pytest
 import yaml
 
 from hvantk.core.plugin.skill_spec import (
+    CONVENTIONS_PREAMBLE,
     REQUIRED_SECTIONS,
     check_skill_spec,
     iter_skill_specs,
@@ -185,6 +186,29 @@ def _swap_heading_lines(text: str) -> str:
                 ln for ln in t.splitlines() if not ln.startswith("description:")
             )
             + "\n",
+        ),
+        # --- content, not just headings (#356). The hygiene pass found sections that
+        # existed while the wiring they document did not: seven specs named no drift
+        # probe, five named no tests, two had no preamble. A heading with nothing
+        # under it passes a heading check, which is the gap these close.
+        ("missing the shared preamble", lambda t: t.replace(CONVENTIONS_PREAMBLE, "")),
+        (
+            "section 6 that never reaches the drift probe",
+            lambda t: re.sub(
+                r"^.*(drift[_ ]probe|fetch_fingerprint|hvantk drift).*$",
+                "",
+                t[: t.index("## 7.")],
+                flags=re.M | re.I,
+            )
+            + t[t.index("## 7.") :],
+        ),
+        (
+            "section 9 missing a test artifact",
+            lambda t: t.replace("row_snapshot", "rowsnap"),
+        ),
+        (
+            "section 9 using the non-existent test_command key",
+            lambda t: t.replace("- `command`:", "- `test_command`:"),
         ),
     ],
 )

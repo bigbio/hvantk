@@ -8,6 +8,8 @@ domain: expression
 
 # UCSC Cell Browser resource skill
 
+Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its repository map, helpers, keying conventions, builder pattern, and validation contract.
+
 ## 1. Status & scope
 
 This skill covers BUILD and UPDATE of a UCSC Cell Browser single-cell AnnData (`.h5ad`) from raw expression + metadata TSVs. It does NOT cover download (see `hvantk/skills/ucsc_cellbrowser/cli.py`), scanpy-based downstream analysis, or atlas-level merging across multiple UCSC collections.
@@ -51,6 +53,7 @@ The builder returns an `ExpressionMatrix` wrapping an `AnnData`; the platform pe
 - CLI: `hvantk reprocess ucsc-cellbrowser:<dataset> --raw-dir <dir> --output <path>.h5ad` (dataset is one of `default`, `adult-ctx`, `dev-ctx`). Builder kwargs flow through `--plugin-arg key=value`.
 - Registry: the plugin loader (`hvantk/core/plugin/loader.py`) auto-resolves each dataset from the plugin manifest at `hvantk/skills/ucsc_cellbrowser/plugin.yaml` via `get_registry().get_dataset("ucsc-cellbrowser:<dataset>")` (one of `default`, `adult-ctx`, `dev-ctx`). Top-level builds run through `run_builder_for_spec` in `hvantk/core/plugin/run_builder.py`. There is no `MATRIX_BUILDERS` registry or `registry.py`.
 - Test: `hvantk/skills/ucsc_cellbrowser/tests/test_builder.py`.
+- Drift probe: `fetch_fingerprint` in `hvantk/skills/ucsc_cellbrowser/drift_probe.py`, compared against `tests/drift_fingerprint.json` by `hvantk drift ucsc-cellbrowser:default` (see § 12 of `_conventions`).
 
 Read the existing files at these paths as ground truth for shape. This skill does not restate code.
 
