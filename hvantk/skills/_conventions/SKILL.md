@@ -42,10 +42,11 @@ Every per-resource `SKILL.md` MUST cover these nine sections, in order, with the
 9. `## 9. Validation contract`
 
 Sections beyond the nine are free-form and provider-specific, numbered from `## 10.`
-onward. `## 10. Cross-reference notes` and `## 11. Performance notes` are the common
-ones, but they are examples rather than a closed vocabulary -- `ucsc_cellbrowser` carries
-a `## 10. Onboarding a new dataset within UCSC Cell Browser`, which no shared title would
-describe honestly. Only 1-9 are fixed.
+onward. Two exist today: `dbnsfp` has a `## 10. Cross-reference notes` and
+`ucsc_cellbrowser` a `## 10. Onboarding a new dataset within UCSC Cell Browser`, which no
+shared title would describe honestly. (`## 11. Performance notes` is suggested by an
+older revision of this document and is used by nothing -- do not add one just because it
+is named.) Only 1-9 are fixed.
 
 Each spec MUST also open with a YAML frontmatter block declaring at least `name` and `description` (conforming files also carry `status`, `backend` and `domain`). That minimum is what an external Agent Skills harness reads to register the directory at all — a spec without it is invisible to one however good its prose.
 
@@ -81,21 +82,29 @@ helpers, keying conventions, builder pattern, and validation contract.
 ## 9. Validation contract
 ```
 
-**Section 6 MUST name every callable the manifest wires**, so a reader can get from the
-spec to the code without opening `plugin.yaml`: the plugin manifest, the builder, the
-drift probe, the tests, the `hvantk reprocess` invocation, and the downloader when one
-exists. Seven specs named no probe at all and five named no tests before this was
-checked. Optional bullets where they apply: constants, streamer, dataset class,
-downstream consumers.
+**Section 6 exists so a reader can get from the spec to the code without opening
+`plugin.yaml`.** Three references are *checked* -- the builder, the drift probe, and the
+tests. Seven specs named no probe at all and five named no tests before that check
+existed.
 
-**Section 9 MUST list the five test artifacts as labelled bullets** -- `fixture`,
-`schema_snapshot`, `row_snapshot`, `drift_fingerprint`, `command` -- spelled exactly as
-the manifest's `tests:` keys, and with values matching it. Note the key is `command`, not
-`test_command`: `additionalProperties: false` means a manifest written from the wrong
-spelling fails validation at load.
+Also expected, but NOT checked, so treat these as convention rather than contract: the
+plugin manifest (23 of 23 name it anyway), the `hvantk reprocess` invocation (15 of 23),
+and the downloader where one exists. Optional bullets where they apply: constants,
+streamer, dataset class, downstream consumers.
+
+**Section 9 MUST name the five test artifacts** -- `fixture`, `schema_snapshot`,
+`row_snapshot`, `drift_fingerprint`, `command` -- spelled exactly as the manifest's
+`tests:` keys. Labelled bullets are the convention all 23 follow; what is checked is that
+the five key names appear, and separately that each manifest `tests:` *value* appears
+somewhere in the spec that declares it.
+
+Note the key is `command`, not `test_command`: `additionalProperties: false` means a
+manifest written from the wrong spelling fails validation at load. 22 of 23 specs used
+the wrong spelling until #350.
 
 **Section 4 is where a spec earns its keep.** It is the longest section in the corpus by
-a wide margin (median ~290 words against ~100 for § 5) because it is the one an agent
+a wide margin (median 283 words against 96 for § 5, and the longest section in 14 of 23
+specs) because it is the one an agent
 cannot reconstruct from the code: literal header spellings, missing-value sentinels,
 column names needing subscript access, prefix conventions. Write the things that produce
 silently wrong output, not the things a reader would discover on the first run.

@@ -68,6 +68,7 @@ def test_broken_manifest_records_error_no_crash():
 
 def test_collision_raises_hard_error(tmp_path: Path):
     import shutil
+
     a = tmp_path / "plugin_a"
     b = tmp_path / "plugin_b"
     shutil.copytree(FIXTURE_ROOT / "fake_plugin", a)
@@ -116,6 +117,7 @@ def test_drift_probe_is_invokable():
 def test_load_from_skills_root_scans_subdirectories(tmp_path: Path):
     """load_from_skills_root finds plugin.yaml in non-underscore subdirs only."""
     import shutil
+
     # Set up: tmp_path/plugins/{normal_plugin, _skipped_plugin}
     skills_root = tmp_path / "skills"
     normal = skills_root / "normal_plugin"
@@ -140,10 +142,13 @@ def test_load_from_skills_root_missing_dir_is_noop(tmp_path: Path):
 def test_dedicated_collision_exception_class():
     """PluginNameCollision is a PluginLoadError subclass."""
     from hvantk.core.plugin.api import PluginLoadError, PluginNameCollision
+
     assert issubclass(PluginNameCollision, PluginLoadError)
     import shutil
+
     # Reuse the collision setup to verify the dedicated class is raised.
     import tempfile
+
     with tempfile.TemporaryDirectory() as tmp:
         a = Path(tmp) / "a"
         b = Path(tmp) / "b"
@@ -153,3 +158,44 @@ def test_dedicated_collision_exception_class():
         reg.load_from_directory(a)
         with pytest.raises(PluginNameCollision):
             reg.load_from_directory(b)
+
+
+def test_a_dataset_that_fails_to_bind_is_logged_not_only_collected(tmp_path, caplog):
+    """Anything dropped from the registry must say so (#351).
+
+    `_load_errors` alone is not enough: `plugins list` prints the survivors with no
+    "N failed" line, and `drift-health.yml` greps the report for `probe_failed` -- so a
+    dataset that never registered emits no row at all and reads as healthy. A dataset can
+    go from monitored to unmonitored with every signal still green.
+
+    The dataset-binding path specifically, because it is the likelier failure and was
+    still silent after the first fix: only the two directory-load paths had been routed
+    through the logging helper.
+    """
+    plugin = tmp_path / "broken"
+    plugin.mkdir()
+    (plugin / "plugin.yaml").write_text(
+        "api_version: 2\n"
+        "name: brokenprov\n"
+        "version: 0.1.0\n"
+        "datasets:\n"
+        "  - name: thing\n"
+        "    domain: genomics\n"
+        "    backend: hail\n"
+        "    builder: {module: hvantk.nope.missing, function: build_thing}\n"
+        "    drift_probe: {module: hvantk.nope.missing, function: fetch_fingerprint}\n"
+        "    skill: SKILL.md\n"
+        "    tests: {command: pytest, fixture: f, schema_snapshot: s,\n"
+        "            row_snapshot: r, drift_fingerprint: d}\n"
+    )
+    (plugin / "SKILL.md").write_text("---\nname: x\ndescription: y\n---\n# x\n")
+
+    reg = PluginRegistry()
+    with caplog.at_level("WARNING", logger="hvantk.core.plugin.loader"):
+        reg.load_from_directory(plugin)
+
+    assert "brokenprov:thing" in [unit for unit, _ in reg.load_errors()]
+    logged = [r.getMessage() for r in caplog.records]
+    assert any(
+        "brokenprov:thing" in m for m in logged
+    ), f"the failure was collected but never logged: {logged}"

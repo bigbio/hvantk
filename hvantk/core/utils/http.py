@@ -103,8 +103,9 @@ def request_with_retry(
     Other ``RequestException`` subclasses (a malformed URL, say) are not retried, since
     repeating them cannot help.
 
-    ``retry_on_empty_body`` additionally retries a *successful* response whose body is
-    empty. That is opt-in because an empty 200 is legitimate for plenty of endpoints,
+    ``retry_on_empty_body`` additionally retries a 2xx response (excluding 204, and
+    excluding HEAD/OPTIONS, which have no body by definition) whose body is empty or
+    whitespace-only. That is opt-in because an empty 200 is legitimate for plenty of endpoints,
     and only the caller knows. It exists because the failure it covers is invisible to
     every status-based rule: on 2026-09-21 the medRxiv API served ``200`` with
     ``Content-Type: application/json`` and zero bytes, so the pqtl probe raised "returned
@@ -148,7 +149,15 @@ def request_with_retry(
         empty_body = (
             retry_on_empty_body
             and not kwargs.get("stream")
-            and response.ok
+            # `response.ok` is merely status < 400, which makes 204 No Content, a 304
+            # from a conditional GET, and every redirect look like an "empty success" --
+            # and a HEAD response has no body by definition. Retrying any of those burns
+            # the full backoff and returns the identical response. gnomad_metrics
+            # already routes a HEAD through this helper, so that is a live footgun and
+            # not a hypothetical one.
+            and method.upper() not in {"HEAD", "OPTIONS"}
+            and 200 <= response.status_code < 300
+            and response.status_code != 204
             and not response.content.strip()
         )
         if is_last or (response.status_code not in retry_statuses and not empty_body):

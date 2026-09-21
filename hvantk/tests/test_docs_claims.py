@@ -152,10 +152,28 @@ DOCUMENTED = _documented_commands()
 
 
 def test_the_extractor_actually_finds_commands():
-    """Guard the guard: a regex that silently matches nothing passes everything."""
-    assert len(DOCUMENTED) > 100, (
-        f"only {len(DOCUMENTED)} documented hvantk commands found -- the "
+    """Guard the guard: a regex that silently matches nothing passes everything.
+
+    Per-source floors, not one total. A single `> 100` bound was calibrated against a
+    corpus a fifth this size, so by #356 it had stopped guarding anything: deleting the
+    whole inline extractor still left 268, and dropping `SKILL.md` from `DOC_FILES`
+    still left 373. Both are the very additions the bound was supposed to protect.
+
+    The SKILL.md floor is the load-bearing one -- a fence-only scan found 5 commands
+    across 24 specs, which is what let seven bogus `hvantk <name>-download` invocations
+    sit in the provider docs until #350.
+    """
+    from_specs = [c for p, c in DOCUMENTED if p.name == "SKILL.md"]
+    from_docs = [c for p, c in DOCUMENTED if p.name != "SKILL.md"]
+
+    assert len(from_docs) > 100, (
+        f"only {len(from_docs)} commands found in docs_site/README -- the fenced-block "
         "extractor is probably broken, which would make the tests below vacuous"
+    )
+    assert len(from_specs) > 100, (
+        f"only {len(from_specs)} commands found in SKILL.md files -- the inline-span "
+        "extractor or the DOC_FILES filter is probably broken. A fence-only scan finds "
+        "about 5, so anything in that range means the inline path is gone."
     )
 
 

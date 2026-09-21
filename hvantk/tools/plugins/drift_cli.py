@@ -109,14 +109,18 @@ def drift_cmd(
 
     reg = plugin_loader.get_registry()
 
-    # A provider that failed to load contributes no rows at all -- not even a
-    # `probe_failed` one -- so `--all` reports a clean sweep over a silently smaller set
-    # and `drift-health.yml`, which greps for `probe_failed`, sees nothing wrong. Say it
-    # on stderr so it is visible in a workflow log without polluting `--json` (#351).
-    for plugin_id, exc in reg.load_errors():
+    # A unit that failed to load contributes no rows at all -- not even a
+    # `probe_failed` one -- so `--all` would report a clean sweep over a silently
+    # smaller set. `drift-health.yml` greps the JSON for `status == "probe_failed"` and
+    # gates on the exit code, so a stderr warning alone is read by humans and by nothing
+    # else: the workflow still prints "all probes healthy" and opens no issue.
+    #
+    # It therefore becomes a real row and a real exit code below, which is what makes
+    # the existing workflow file the issue it already knows how to file (#351).
+    load_errors = reg.load_errors()
+    for unit, exc in load_errors:
         click.echo(
-            f"WARNING: plugin {plugin_id!r} failed to load, so its datasets are NOT "
-            f"being drift-checked: {exc}",
+            f"WARNING: {unit!r} failed to load, so it is NOT being drift-checked: {exc}",
             err=True,
         )
 
@@ -146,7 +150,22 @@ def drift_cmd(
     results = drift_runner.run_drift_checks(targets, timeout=timeout)
 
     if as_json:
-        click.echo(json.dumps([_serialize(r) for r in results], indent=2, default=str))
+        rows = [_serialize(r) for r in results]
+        # Same shape a failing probe produces, so no consumer needs to learn a new key.
+        rows.extend(
+            {
+                "dataset_name": unit,
+                "status": "probe_failed",
+                "observed": None,
+                "expected": None,
+                "diff": None,
+                "probe_error": f"plugin failed to load: {exc}",
+                "fingerprint_path": None,
+                "probe_ref": None,
+            }
+            for unit, exc in load_errors
+        )
+        click.echo(json.dumps(rows, indent=2, default=str))
     else:
         for r in results:
             click.echo(f"{r.dataset_name}: {r.status}")
@@ -178,6 +197,12 @@ def drift_cmd(
             exit_codes.add(EXIT_DRIFTED)
         elif r.status == "probe_failed":
             exit_codes.add(EXIT_PROBE_FAILED)
+    # A unit that never registered is a probe that cannot run. Reporting clean over a
+    # silently smaller set is the failure mode #351 exists to stop, and `drift.yml` /
+    # `drift-health.yml` both gate on `rc > 2`, so 2 still reads as "probe trouble"
+    # rather than "the command itself broke".
+    if load_errors:
+        exit_codes.add(EXIT_PROBE_FAILED)
     raise SystemExit(max(exit_codes))
 
 

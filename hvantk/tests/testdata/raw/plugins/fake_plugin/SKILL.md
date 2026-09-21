@@ -63,7 +63,7 @@ Change this fixture only when a loader or CLI behaviour under test changes.
 - `schema_snapshot`: `tests/snapshots/schema.json` — **deliberately absent**.
 - `row_snapshot`: `tests/snapshots/sample_rows.json` — **deliberately absent**.
 - `drift_fingerprint`: `tests/drift_fingerprint.json` — the one artifact that IS present.
-- `command`: `pytest hvantk/tests/test_plugins_cli.py`.
+- `command`: `pytest -q` — matching `plugin.yaml`, which is the rule this section states.
 
 The absent four are the point: they keep `hvantk plugins validate` exercising its
 declared-but-absent-artifact warning. The paths are still named here, because § 9's job
