@@ -308,11 +308,14 @@ def _section_body(text: str, section: str) -> str:
 def _section_content_problems(text: str) -> list[str]:
     """Check that s 6 and s 9 carry their required content, not just their headings.
 
-    Deliberately substring-based rather than structural. These sections are prose with
-    per-provider shape -- some use ``- **Label:**``, some ``- Label:`` -- and a parser
-    strict enough to read the shape would fail on formatting instead of substance,
-    which is the opposite of useful. The question asked here is only "can a reader get
-    from this section to that thing", which a substring answers honestly.
+    Deliberately a word-bounded regex search rather than a structural parse. These
+    sections are prose with per-provider shape -- some use ``- **Label:**``, some
+    ``- Label:`` -- and a parser strict enough to read the shape would fail on
+    formatting instead of substance, which is the opposite of useful. The question
+    asked here is only "can a reader get from this section to that thing", which a
+    search answers honestly. The word boundaries matter: they are what keeps the
+    s 9 ``command`` needle from matching inside ``test_command`` (``_`` is a word
+    character, so there is no boundary between them).
     """
     problems: list[str] = []
 

@@ -12,6 +12,7 @@ Deliberately non-Hail so it runs in the default suite.
 
 from __future__ import annotations
 
+import logging
 import threading
 
 import pytest
@@ -223,8 +224,24 @@ def test_streamed_requests_are_never_body_checked(requests_mock, slept):
     "method, status, retried",
     [
         ("GET", 200, True),  # the real case: a body that should be there and is not
+        ("GET", 203, True),  # a 200 relayed by a transforming proxy
         ("GET", 204, False),  # No Content means no body, by definition
+        # The rest of 2xx is expected to be bodiless or non-representational, so a
+        # blanket `2xx and not 204` burned the full backoff to return the identical
+        # response -- the exact waste the 204 exclusion exists to stop.
+        ("GET", 201, False),  # Created; routinely answers empty
+        ("GET", 202, False),  # Accepted -- the standard async-job-submitted reply
+        ("GET", 205, False),  # Reset Content MUST NOT carry content (RFC 9110 15.3.6)
+        ("GET", 206, False),  # an empty Partial Content is a range with nothing in it
         ("HEAD", 200, False),  # HEAD responses never carry one either
+        ("OPTIONS", 200, False),
+        # Outside 2xx entirely. These are what `response.ok` (status < 400) would have
+        # swept in, and the allowlist is the only thing excluding them: a conditional
+        # GET's 304 is empty BY DESIGN, and burning a 14s backoff on a hard 404 helps
+        # nobody. Neither was exercised before, so deleting the status clause changed
+        # nothing in this suite.
+        ("GET", 304, False),
+        ("GET", 404, False),
     ],
 )
 def test_only_a_real_empty_2xx_body_is_retried(
@@ -257,3 +274,61 @@ def test_exhausted_empty_body_retries_stop_and_return(requests_mock, slept):
 
     assert resp.status_code == 200 and resp.text == ""
     assert len(slept) == http_util.DEFAULT_ATTEMPTS - 1
+
+
+def test_session_level_stream_is_honoured_by_the_empty_body_check(requests_mock, slept):
+    """`stream` can be set on the Session instead of per-request, and requests merges
+    the two (`Session.merge_environment_settings` does
+    `stream = merge_setting(stream, self.stream)`). Reading only the kwarg therefore
+    treats a genuinely streamed request as buffered and touches `.content`, pulling the
+    whole body into memory on the one path whose comment says it avoids exactly that.
+    """
+    session = requests.Session()
+    session.stream = True
+    requests_mock.get(URL, text="", status_code=200)
+
+    resp = http_util.request_with_retry(
+        "GET", URL, session=session, retry_on_empty_body=True
+    )
+
+    assert slept == [], "a session-streamed request must not be body-checked"
+    assert resp._content_consumed is False
+
+
+def test_exhausted_empty_body_retries_say_so(requests_mock, slept, caplog):
+    """Unlike an exhausted 429, the returned 200 will not raise for the caller.
+
+    `is_last` short-circuits before any logging, so every attempt could fail and the
+    caller still receive a success-shaped response with nothing in the log to say the
+    body was empty every time -- #352 moved four attempts later rather than fixed.
+    """
+    requests_mock.get(URL, text="", status_code=200)
+
+    with caplog.at_level(logging.WARNING, logger=http_util.logger.name):
+        http_util.request_with_retry("GET", URL, retry_on_empty_body=True)
+
+    final = [r for r in caplog.records if "still returned" in r.getMessage()]
+    assert len(final) == 1, [r.getMessage() for r in caplog.records]
+    assert "empty body after 4 attempt(s)" in final[0].getMessage()
+
+
+def test_a_whitespace_only_body_counts_as_empty(requests_mock, slept):
+    """`.strip()` is load-bearing and was undefended.
+
+    A body of `"\\n"` or a few spaces is a failed response wearing a success code just
+    as much as a zero-byte one is -- an upstream that emits a bare newline on error is
+    not rarer than one that emits nothing. Without the strip, `not response.content` is
+    False and the retry never fires.
+    """
+    requests_mock.get(
+        URL,
+        [
+            {"status_code": 200, "text": "   \n\t  "},
+            {"status_code": 200, "text": '{"collection": []}'},
+        ],
+    )
+
+    resp = http_util.request_with_retry("GET", URL, retry_on_empty_body=True)
+
+    assert resp.text == '{"collection": []}'
+    assert len(slept) == 1

@@ -125,3 +125,31 @@ def test_empty_collection_fails_closed():
         m.get(MEDRXIV_API_URL, json={"collection": []})
         with pytest.raises(DriftProbeError, match="no records"):
             fetch_fingerprint()
+
+
+def test_an_empty_200_is_retried_rather_than_reported_as_drift(monkeypatch):
+    """The call site of the #352 fix, not just the helper.
+
+    `request_with_retry` grew `retry_on_empty_body` for this probe specifically, and
+    `test_http_retry.py` covers the helper thoroughly -- but deleting the one
+    `retry_on_empty_body=True` argument here passed the entire suite. The fix and its
+    only consumer were tested separately, so the wire between them was not tested at
+    all.
+
+    Without it the empty 200 reaches `resp.json()` and the probe raises
+    `medRxiv API returned non-JSON`, which the drift bot files as an issue for what is
+    a transient upstream blip -- exactly what #352 recorded.
+    """
+    monkeypatch.setattr("hvantk.core.utils.http.time.sleep", lambda _s: None)
+
+    with requests_mock.Mocker() as m:
+        m.get(
+            MEDRXIV_API_URL,
+            [
+                {"status_code": 200, "text": ""},
+                {"status_code": 200, "json": _payload()},
+            ],
+        )
+        fp = fetch_fingerprint()
+
+    assert fp["source_version"] == "1"

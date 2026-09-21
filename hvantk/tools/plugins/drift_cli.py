@@ -115,8 +115,11 @@ def drift_cmd(
     # gates on the exit code, so a stderr warning alone is read by humans and by nothing
     # else: the workflow still prints "all probes healthy" and opens no issue.
     #
-    # It therefore becomes a real row and a real exit code below, which is what makes
-    # the existing workflow file the issue it already knows how to file (#351).
+    # It therefore becomes a real exit code below, and -- in `--json` mode, which is what
+    # the workflows capture -- a real row too. The human-readable branch still gets only
+    # the stderr warning above, which is the right split: a person reads the warning, CI
+    # reads the row. Together they make the existing workflow file the issue it already
+    # knows how to file (#351).
     load_errors = reg.load_errors()
     for unit, exc in load_errors:
         click.echo(
@@ -142,6 +145,30 @@ def drift_cmd(
     except KeyError:
         click.echo(f"unknown dataset: {dataset}", err=True)
         raise SystemExit(EXIT_REGISTRY_ERROR)
+
+    # An empty sweep is the limiting case of the silently-smaller set #351 is about, and
+    # it slips past every guard above: no targets means no results, `exit_codes` stays
+    # {EXIT_CLEAN}, and `drift.yml` (rc > 2) plus `drift_to_pr.py` both pass on a report
+    # of `[]`. The workflow goes green having checked nothing.
+    #
+    # The two ways to get here need different answers. A --domain that matches nothing is
+    # a caller mistake -- the option takes a free-form string and its help text names no
+    # valid value, so a typo silently means "check nothing" -- and a UsageError can name
+    # the real domains. An empty registry with no filter is an infrastructure failure
+    # (nothing discovered, nothing shipped), which is what EXIT_PROBE_FAILED means.
+    if all_flag and not targets:
+        if domain is not None:
+            known = sorted({d.domain for d in reg.list_datasets() if d.domain})
+            raise click.UsageError(
+                f"--domain {domain!r} matches no dataset; known domains: "
+                f"{', '.join(known) or '(none)'}"
+            )
+        click.echo(
+            "no datasets registered, so nothing was drift-checked -- refusing to "
+            "report a clean sweep over an empty set",
+            err=True,
+        )
+        raise SystemExit(EXIT_PROBE_FAILED)
 
     # run_drift_checks, not a comprehension over run_drift_check: datasets sharing a
     # baseline AND a probe callable share one drift signal, so it is probed once and

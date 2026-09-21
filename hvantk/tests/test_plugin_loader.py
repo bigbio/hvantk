@@ -199,3 +199,56 @@ def test_a_dataset_that_fails_to_bind_is_logged_not_only_collected(tmp_path, cap
     assert any(
         "brokenprov:thing" in m for m in logged
     ), f"the failure was collected but never logged: {logged}"
+
+
+def test_every_load_error_is_recorded_through_the_one_helper():
+    """Enforce the invariant `_record_load_error`'s docstring asserts.
+
+    That docstring says "every path that drops something from the registry must come
+    through here", and nothing checked it. Reverting individual call sites to a bare
+    `self._load_errors.append(...)` -- which collects the error but emits no warning --
+    passed the whole suite for four of the five sites. Per-site tests cannot scale here:
+    each new drop path is a new silent hole, and the failure is invisible by
+    construction (the registry just gets smaller).
+
+    A structural check is the right shape: it costs nothing, it covers sites that do not
+    exist yet, and it fails loudly with the line number when someone appends directly.
+    """
+    import ast
+
+    from hvantk.core.plugin import loader as loader_module
+
+    source = Path(loader_module.__file__).read_text()
+    tree = ast.parse(source)
+
+    offenders = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Attribute) or node.attr != "append":
+            continue
+        target = node.value
+        if (
+            isinstance(target, ast.Attribute)
+            and target.attr == "_load_errors"
+            and isinstance(target.value, ast.Name)
+            and target.value.id == "self"
+        ):
+            offenders.append(node.lineno)
+
+    # Exactly one: the append inside _record_load_error itself.
+    recorder = next(
+        n
+        for n in ast.walk(tree)
+        if isinstance(n, ast.FunctionDef) and n.name == "_record_load_error"
+    )
+    allowed = range(recorder.lineno, recorder.end_lineno + 1)
+
+    outside = [ln for ln in offenders if ln not in allowed]
+    assert outside == [], (
+        "self._load_errors.append(...) appears outside _record_load_error at line(s) "
+        f"{outside} of loader.py. Route it through the helper so the failure is logged "
+        "as well as collected -- a silently-collected error is the #351 failure mode."
+    )
+    assert offenders, (
+        "no self._load_errors.append(...) found at all -- this guard is looking for "
+        "something that no longer exists and has stopped guarding anything"
+    )

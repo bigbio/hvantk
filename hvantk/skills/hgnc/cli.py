@@ -16,8 +16,8 @@ import click
 
 from hvantk.skills.hgnc.shared.constants import (
     HGNC_DOWNLOAD_URL,
-    HGNC_INFO_URL,
-)  # noqa: F401
+    HGNC_INFO_URL,  # noqa: F401 - re-exported for callers importing it from here
+)
 
 logger = logging.getLogger(__name__)
 

@@ -23,6 +23,7 @@ from __future__ import annotations
 import importlib
 import json
 import logging
+import re
 from importlib.metadata import entry_points
 from pathlib import Path
 from typing import Any, Callable, Iterable, get_args
@@ -46,9 +47,47 @@ _SCHEMA_PATH = Path(__file__).parent / "manifest.schema.json"
 _SKILLS_ROOT = Path(__file__).resolve().parent.parent.parent / "skills"
 _ENTRY_POINT_GROUP = "hvantk.providers"
 
+#: Same pattern manifest.schema.json enforces on a provider `name`. Kept here so the
+#: error path can judge a name WITHOUT running the validation that just failed.
+_PROVIDER_NAME_RE = re.compile(r"^[a-z][a-z0-9-]*$")
+
 
 def _load_schema() -> dict:
     return json.loads(_SCHEMA_PATH.read_text())
+
+
+def _provider_id_hint(plugin_dir: Path) -> str:
+    """Name a failed plugin the way its datasets are named, not by filesystem path.
+
+    A load error is reported to humans and to machines: `drift --all --json` turns it
+    into a row whose `dataset_name` goes verbatim into the "Drift probes failing" issue
+    body, and `drift_to_pr.py` splits that value on ``:`` to look up maintainers. An
+    absolute path leaks the build machine's layout into a public issue
+    (``/home/runner/work/hvantk/...``) and gives the maintainer lookup a directory where
+    it expects a provider.
+
+    The manifest's own ``name`` is the right label, but the common reason for landing
+    here is that the manifest would not parse -- so read it best-effort, and accept it
+    only if it is shaped like a provider id. A manifest broken enough to reach this
+    function may well be broken *in its name* (the `broken-manifest` fixture declares
+    ``BROKEN UPPERCASE``), and echoing an invalid name into an issue body and a
+    maintainer lookup helps nobody.
+
+    The fallback is the directory's basename, which is a real identifier even though it
+    is not always the provider name -- ``skills/gwas_catalog/`` declares ``gwas-catalog``
+    -- so the manifest value is preferred when it is usable.
+
+    Never raises: this runs on the error path, where a second failure would mask the
+    first.
+    """
+    try:
+        content = yaml.safe_load((plugin_dir / "plugin.yaml").read_text())
+        name = content.get("name") if isinstance(content, dict) else None
+        if isinstance(name, str) and _PROVIDER_NAME_RE.fullmatch(name):
+            return name
+    except Exception:  # noqa: BLE001 - best effort; the fallback is always usable
+        pass
+    return plugin_dir.name
 
 
 def _acquisition_of(ds_manifest: dict, lifecycle: dict, compound: str) -> Acquisition:
@@ -170,6 +209,18 @@ class PluginRegistry:
             if child.is_dir() and not child.name.startswith("_"):
                 if (child / "plugin.yaml").is_file():
                     self.load_from_directory(child)
+                else:
+                    # A manifest that fails to LOAD is recorded; one that fails to
+                    # EXIST was not, so the whole provider left the registry with no
+                    # row, no warning and exit 0 -- verbatim the #351 failure. The
+                    # loader accepts only `plugin.yaml`, so a `.yml` typo, a bad
+                    # rebase, or a packaging glob that stops shipping the manifest
+                    # all land here. Underscore-prefixed directories are skipped
+                    # above (`_conventions`, `_hooks`), so anything reaching this
+                    # branch is shaped like a provider and claims to be one.
+                    self._record_load_error(
+                        child.name, PluginLoadError(f"no plugin.yaml in {child}")
+                    )
 
     def load_from_directory(self, plugin_dir: Path) -> None:
         """Load a single plugin from its directory.
@@ -192,11 +243,11 @@ class PluginRegistry:
             # Hard error: silent shadowing is the worst failure mode.
             raise
         except PluginLoadError as exc:
-            self._record_load_error(plugin_id, exc)
+            self._record_load_error(_provider_id_hint(plugin_dir), exc)
         except Exception as exc:  # noqa: BLE001
             err = PluginLoadError(str(exc))
             err.__cause__ = exc
-            self._record_load_error(plugin_id, err)
+            self._record_load_error(_provider_id_hint(plugin_dir), err)
 
     def _record_load_error(self, unit: str, exc: Exception) -> None:
         """Collect a load failure AND say so.
@@ -213,8 +264,11 @@ class PluginRegistry:
         Every path that drops something from the registry must come through here. When
         this landed it covered only the two directory-load paths, leaving the entry-point
         path and all three dataset-binding paths silent -- and the dataset ones are the
-        likelier failure, since `jsonschema.validate` checks the whole document so one
-        bad entry takes its provider with it.
+        likelier failure, because they fire on a callable that will not import, which no
+        amount of manifest validation can catch. (Manifest-level breakage takes the
+        OTHER route: `jsonschema.validate` runs in `_read_and_validate_manifest`, so a
+        malformed entry fails the whole document and is recorded at the provider level
+        by `load_from_directory` -- one of the two paths already covered.)
         """
         self._load_errors.append((unit, exc))
         logger.warning(

@@ -67,6 +67,24 @@ def parse_retry_after(value: str | None) -> float | None:
     return max(0.0, (when - datetime.now(timezone.utc)).total_seconds())
 
 
+def _is_streamed(kwargs: dict, session: requests.Session | None) -> bool:
+    """Whether this request is actually streamed, per-request kwarg OR session default.
+
+    Checking only ``kwargs["stream"]`` reads a genuinely streamed request as buffered:
+    ``Session.merge_environment_settings`` does ``stream = merge_setting(stream,
+    self.stream)`` (requests 2.32.5), so ``session.stream = True`` with no per-request
+    kwarg streams the response anyway. The empty-body check would then touch
+    ``response.content`` and pull the whole body into memory -- measured at 84 MB peak
+    for a 40 MB download that the per-request form keeps at 0.2 MB -- and set
+    ``_content_consumed``, silently defeating the streaming the caller asked for on a
+    path whose own comment says it avoids exactly that. No caller sets ``session.stream``
+    today, but gnomad_metrics and gencc already pass ``session=``, so it is one line away.
+    """
+    if kwargs.get("stream"):
+        return True
+    return bool(session is not None and getattr(session, "stream", False))
+
+
 def _backoff(backoff_s: float, attempt: int, max_sleep_s: float) -> float:
     """Exponential backoff for `attempt`, clamped to `max_sleep_s`.
 
@@ -103,8 +121,8 @@ def request_with_retry(
     Other ``RequestException`` subclasses (a malformed URL, say) are not retried, since
     repeating them cannot help.
 
-    ``retry_on_empty_body`` additionally retries a 2xx response (excluding 204, and
-    excluding HEAD/OPTIONS, which have no body by definition) whose body is empty or
+    ``retry_on_empty_body`` additionally retries a ``200``/``203`` response (excluding
+    HEAD/OPTIONS, which have no body by definition) whose body is empty or
     whitespace-only. That is opt-in because an empty 200 is legitimate for plenty of endpoints,
     and only the caller knows. It exists because the failure it covers is invisible to
     every status-based rule: on 2026-09-21 the medRxiv API served ``200`` with
@@ -112,6 +130,9 @@ def request_with_retry(
     non-JSON" and filed #352 -- a transient upstream fault wearing a success code, which
     no amount of 5xx retrying would have caught. Not applied to streamed requests, where
     touching ``.content`` would consume the body the caller asked to stream.
+
+    If every attempt comes back empty the final response is still returned -- but with a
+    warning, because unlike an exhausted 429 it will not raise for the caller.
     """
     if attempts < 1:
         raise ValueError(f"attempts must be >= 1, got {attempts}")
@@ -148,19 +169,42 @@ def request_with_retry(
 
         empty_body = (
             retry_on_empty_body
-            and not kwargs.get("stream")
+            and not _is_streamed(kwargs, session)
             # `response.ok` is merely status < 400, which makes 204 No Content, a 304
             # from a conditional GET, and every redirect look like an "empty success" --
             # and a HEAD response has no body by definition. Retrying any of those burns
             # the full backoff and returns the identical response. gnomad_metrics
-            # already routes a HEAD through this helper, so that is a live footgun and
-            # not a hypothetical one.
+            # already routes a HEAD through this helper (without opting in today), so
+            # the guard is one caller away from mattering rather than hypothetical.
             and method.upper() not in {"HEAD", "OPTIONS"}
-            and 200 <= response.status_code < 300
-            and response.status_code != 204
+            # An allowlist, not `2xx and not 204`: the rest of 2xx is *expected* to be
+            # bodiless or non-representational, so a blanket range retries four codes
+            # that can never improve -- 201 Created and 202 Accepted routinely answer
+            # empty (202 is the standard async-job-submitted reply), 205 Reset Content
+            # MUST NOT carry content per RFC 9110 s15.3.6, and an empty 206 is a range
+            # the server had nothing for. Each would burn the full backoff to return
+            # the identical response: the exact waste the 204 exclusion exists to stop.
+            # 203 is in because it is a 200 relayed by a transforming proxy.
+            and response.status_code in {200, 203}
             and not response.content.strip()
         )
         if is_last or (response.status_code not in retry_statuses and not empty_body):
+            # `is_last` short-circuits, so an exhausted empty-body retry would otherwise
+            # return in silence. The docstring's defence -- "returns the final Response
+            # without raise_for_status, so callers keep their existing error handling" --
+            # holds for statuses (a persistent 429 still raises) but NOT here: a 200
+            # passes raise_for_status, so the caller receives a success indistinguishable
+            # from a legitimately-empty endpoint after every attempt failed. Say so, or
+            # this is #352 moved four attempts later rather than fixed.
+            if is_last and empty_body:
+                logger.warning(
+                    "%s %s still returned %d with an empty body after %d attempt(s); "
+                    "returning it anyway -- the caller sees a success-shaped response",
+                    method.upper(),
+                    url,
+                    response.status_code,
+                    attempts,
+                )
             return response
 
         # Retryable, with attempts left. Read Retry-After BEFORE closing: a streamed
