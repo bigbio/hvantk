@@ -337,11 +337,21 @@ def test_spec_declares_the_test_artifact_paths_its_manifest_does():
 #: every declared artifact IS on disk, so a genuinely ungradable dataset can still say
 #: so -- `alphagenome`, `cosmic_cgc` and `pqtl` ship no fixture and must keep explaining
 #: why.
+#: Phrasings that claim an artifact does not exist. Matched case-insensitively, so
+#: `NOT yet been seeded` needs no separate entry -- it was one, strictly subsumed by the
+#: first pattern, and produced a duplicate problem line whenever it fired.
+#:
+#: `TODO -- same` is here because the rot this check was written against used it as a
+#: back-reference: cptac/phospho's row_snapshot said `(TODO -- same)`, meaning "same as
+#: the schema_snapshot line above", which itself said `TODO -- created on first ...`.
+#: The guard caught the antecedent and missed the reference, in one of the very files it
+#: had just cleaned. They co-occur in practice, which is exactly why the narrower
+#: pattern looked sufficient.
 _UNSEEDED_CLAIMS = (
     r"not yet (?:been )?seeded",
-    r"NOT yet been seeded",
     r"not yet created",
     r"TODO -- created on first",
+    r"TODO -- same",
     r"declared but not yet",
 )
 

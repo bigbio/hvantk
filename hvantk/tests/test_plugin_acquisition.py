@@ -252,3 +252,33 @@ def test_byo_and_lifecycle_download_are_mutually_exclusive_in_the_schema(
         accepted = False
 
     assert accepted is valid
+
+
+def test_validate_explains_the_byo_rule_instead_of_quoting_jsonschema(tmp_path):
+    """The translated sentence is the whole point of `_explain`, and was untested.
+
+    The schema rule itself is covered above, but a conditional `if/then` reports as
+    `... should not be valid under {'required': [...]}` -- which names the mechanism and
+    not the problem. Reverting `_explain(exc)` to `exc.message` passed the entire suite,
+    so the message a third-party plugin author actually reads was unguarded.
+    """
+    from click.testing import CliRunner
+
+    from hvantk.tools.plugins.plugins_cli import plugins_group
+
+    manifest = _manifest_with({"mode": "byo", "reason": "size"})
+    manifest["datasets"][0]["lifecycle"] = {
+        "download": {"module": "m", "function": "download_dataset"}
+    }
+    path = tmp_path / "plugin.yaml"
+    path.write_text(yaml.safe_dump(manifest))
+
+    result = CliRunner().invoke(plugins_group, ["validate", str(path)])
+
+    assert result.exit_code != 0, result.output
+    assert (
+        "acquisition.mode is 'byo' but lifecycle.download is declared" in result.output
+    ), result.output
+    assert "should not be valid under" not in result.output, (
+        "raw jsonschema text leaked to the user: " + result.output
+    )

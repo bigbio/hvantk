@@ -235,6 +235,13 @@ def test_streamed_requests_are_never_body_checked(requests_mock, slept):
         ("GET", 206, False),  # an empty Partial Content is a range with nothing in it
         ("HEAD", 200, False),  # HEAD responses never carry one either
         ("OPTIONS", 200, False),
+        # Outside 2xx entirely. These are what `response.ok` (status < 400) would have
+        # swept in, and the allowlist is the only thing excluding them: a conditional
+        # GET's 304 is empty BY DESIGN, and burning a 14s backoff on a hard 404 helps
+        # nobody. Neither was exercised before, so deleting the status clause changed
+        # nothing in this suite.
+        ("GET", 304, False),
+        ("GET", 404, False),
     ],
 )
 def test_only_a_real_empty_2xx_body_is_retried(
@@ -303,3 +310,25 @@ def test_exhausted_empty_body_retries_say_so(requests_mock, slept, caplog):
     final = [r for r in caplog.records if "still returned" in r.getMessage()]
     assert len(final) == 1, [r.getMessage() for r in caplog.records]
     assert "empty body after 4 attempt(s)" in final[0].getMessage()
+
+
+def test_a_whitespace_only_body_counts_as_empty(requests_mock, slept):
+    """`.strip()` is load-bearing and was undefended.
+
+    A body of `"\\n"` or a few spaces is a failed response wearing a success code just
+    as much as a zero-byte one is -- an upstream that emits a bare newline on error is
+    not rarer than one that emits nothing. Without the strip, `not response.content` is
+    False and the retry never fires.
+    """
+    requests_mock.get(
+        URL,
+        [
+            {"status_code": 200, "text": "   \n\t  "},
+            {"status_code": 200, "text": '{"collection": []}'},
+        ],
+    )
+
+    resp = http_util.request_with_retry("GET", URL, retry_on_empty_body=True)
+
+    assert resp.text == '{"collection": []}'
+    assert len(slept) == 1

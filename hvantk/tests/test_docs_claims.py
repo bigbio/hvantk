@@ -106,9 +106,9 @@ _INVOCATION = re.compile(r"^\s*(hvantk\s+.*?)(?=\n(?!\s)|\Z)", re.S | re.M)
 
 #: `hvantk ...` inside a single-backtick span. The fenced-block extractor above is not
 #: enough for the per-provider specs: they name commands inline, in prose, so a fence-only
-#: scan found 5 commands across 24 `SKILL.md` files and missed every one of the seven
-#: `hvantk <name>-download` invocations #348 had to fix by hand. Restricted to a single
-#: line so it cannot swallow a fenced block, and to spans that start with `hvantk`.
+#: scan found 5 commands across 24 `SKILL.md` files and missed every one of the ten
+#: `hvantk <name>-download` invocations #353 removed. Restricted to a single line so it
+#: cannot swallow a fenced block, and to spans that start with `hvantk`.
 _INLINE_INVOCATION = re.compile(r"`(hvantk\s+[^`\n]+)`")
 
 
@@ -136,20 +136,33 @@ def _is_prose_shorthand(argv: list[str]) -> bool:
     return False
 
 
-def _documented_commands() -> list[tuple[Path, str]]:
-    out: list[tuple[Path, str]] = []
+def _documented_commands_by_origin() -> dict[str, list[tuple[Path, str]]]:
+    """Extracted commands, split by which extractor produced them.
+
+    Split at the source rather than recounted afterwards so the floors below measure
+    what actually reaches `DOCUMENTED`. A floor that re-runs the regexes independently
+    guards the *patterns* but not the *wiring*: gutting this function's fenced loop left
+    such a floor green, because it was still matching `_BASH_BLOCK` itself.
+    """
+    out: dict[str, list[tuple[Path, str]]] = {"fenced": [], "inline": []}
     for path in DOC_FILES:
         text = path.read_text()
         for block in _BASH_BLOCK.findall(text):
             for raw in _INVOCATION.findall(block.replace("\\\n", " ")):
-                out.append((path, " ".join(raw.split())))
+                out["fenced"].append((path, " ".join(raw.split())))
         # Strip fenced blocks first so their contents are not counted twice.
         for raw in _INLINE_INVOCATION.findall(_BASH_BLOCK.sub("", text)):
-            out.append((path, " ".join(raw.split())))
+            out["inline"].append((path, " ".join(raw.split())))
     return out
 
 
-DOCUMENTED = _documented_commands()
+def _documented_commands() -> list[tuple[Path, str]]:
+    by_origin = _documented_commands_by_origin()
+    return by_origin["fenced"] + by_origin["inline"]
+
+
+BY_ORIGIN = _documented_commands_by_origin()
+DOCUMENTED = BY_ORIGIN["fenced"] + BY_ORIGIN["inline"]
 
 
 def test_the_extractor_actually_finds_commands():
@@ -164,18 +177,76 @@ def test_the_extractor_actually_finds_commands():
     across 24 specs, which is what let ten bogus `hvantk <name>-download` invocations sit
     in the provider docs until #353 removed them. (#348 reviewed the same promotion but
     did not touch them: all ten were still present at its tip.)
+
+    Splitting by SOURCE FILE was not enough, because `docs_site/` is read by BOTH
+    extractors. `from_docs > 100` claims to protect the fenced-block path, and does not:
+    the inline path alone supplies 110 of those 373, so the fenced extractor can die
+    completely and the bound still passes with margin. That is the same miscalibration
+    this docstring says was fixed, one level down -- so the floors below are per
+    EXTRACTOR, and each one is checked against what the other would leave behind.
     """
     from_specs = [c for p, c in DOCUMENTED if p.name == "SKILL.md"]
     from_docs = [c for p, c in DOCUMENTED if p.name != "SKILL.md"]
 
+    # Read off what actually reached DOCUMENTED, not a recount from the regexes --
+    # see _documented_commands_by_origin. Commands, not blocks: one ```bash fence
+    # routinely holds several invocations.
+    fenced = len(BY_ORIGIN["fenced"])
+    inline = len(BY_ORIGIN["inline"])
+
     assert len(from_docs) > 100, (
-        f"only {len(from_docs)} commands found in docs_site/README -- the fenced-block "
-        "extractor is probably broken, which would make the tests below vacuous"
+        f"only {len(from_docs)} commands found in docs_site/README -- the extractors or "
+        "the DOC_FILES filter are probably broken, which would make the tests below "
+        "vacuous"
     )
     assert len(from_specs) > 100, (
         f"only {len(from_specs)} commands found in SKILL.md files -- the inline-span "
         "extractor or the DOC_FILES filter is probably broken. A fence-only scan finds "
         "about 5, so anything in that range means the inline path is gone."
+    )
+    assert fenced > 200, (
+        f"only {fenced} commands from fenced ```bash blocks (was 268) -- the fenced "
+        "extractor is broken. A floor on from_docs cannot catch this: the inline "
+        "extractor alone supplies 110 of those 373."
+    )
+    assert inline > 180, (
+        f"only {inline} commands from inline `hvantk ...` spans (was 242) -- the inline "
+        "extractor is broken. SKILL.md uses backticks rather than fences, so this is "
+        "the path that reaches the provider specs at all."
+    )
+
+
+def test_almost_every_extracted_command_is_actually_checked():
+    """Guard the guard, one level in: extraction is not the same as assertion.
+
+    `test_the_extractor_actually_finds_commands` bounds how many commands are FOUND.
+    Nothing bounded how many are then `--help`-CHECKED, and `_is_prose_shorthand` sits
+    between the two: widen it by accident -- a new placeholder token, a looser
+    heuristic -- and every parametrised case below turns into a skip. The suite stays
+    green, the count of collected tests does not move, and 488 assertions quietly stop
+    running. A predicate that can disable the whole check is the one thing that most
+    needs a bound of its own.
+
+    The gap is deliberately narrow (22 of 510 today) because prose shorthand is rare:
+    `<provider>:<dataset>` placeholders and `a/b/c`-style alternations. If a legitimate
+    new shorthand pushes this over, raise the ratio and say which one -- do not delete
+    the bound.
+    """
+    parseable = []
+    for _, command in DOCUMENTED:
+        try:
+            argv = shlex.split(command)[1:]
+        except ValueError:
+            continue
+        parseable.append([a for a in argv if a != "..."])
+
+    checked = [a for a in parseable if not _is_prose_shorthand(a)]
+    skipped = len(parseable) - len(checked)
+
+    assert len(checked) > 450, (
+        f"only {len(checked)} of {len(parseable)} documented commands survive "
+        f"_is_prose_shorthand to reach a --help assertion ({skipped} skipped). The "
+        "predicate has widened and the option checks below are now largely decorative."
     )
 
 
@@ -357,4 +428,47 @@ def test_documented_artifact_annotations_are_importable():
     assert not offenders, (
         f"documentation annotates {stale}, which hvantk.core.models no longer "
         f"exports (it exports {sorted(exported)}): {offenders}"
+    )
+
+
+def test_the_retired_download_command_form_is_gone_from_the_whole_tree():
+    """`hvantk <name>-download` never existed and must not come back -- anywhere.
+
+    `DOC_FILES` is built from `_tracked(".md")`, so no `.py` file is ever read. When
+    #353 removed this form it found ten occurrences in specs and **thirty** more across
+    seven `cli.py` module docstrings -- three times as many in exactly the files the
+    markdown guard cannot see. Those docstrings are what `--help` prints, so they are
+    read by more people than the specs are.
+
+    The loader strips the `-download` suffix and binds the command under the `download`
+    group, so the correct form is `hvantk download <name>`. This is a plain tree-wide
+    grep rather than an extractor: the point is that no file type is exempt.
+    """
+    tracked = subprocess.run(
+        ["git", "ls-files", "-z"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.split("\0")
+
+    pattern = re.compile(r"hvantk\s+[a-z0-9_-]+-download\b")
+    offenders: list[str] = []
+    for rel in tracked:
+        if not rel or not rel.endswith((".py", ".md", ".yaml", ".yml", ".rst")):
+            continue
+        path = REPO_ROOT / rel
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        # This test names the form in its own docstring; skip itself.
+        if path.resolve() == Path(__file__).resolve():
+            continue
+        offenders.extend(f"{rel}: {m}" for m in pattern.findall(text))
+
+    assert offenders == [], (
+        "the retired `hvantk <name>-download` form is back in "
+        f"{len(offenders)} place(s); use `hvantk download <name>`:\n  "
+        + "\n  ".join(offenders)
     )
