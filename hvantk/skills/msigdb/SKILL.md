@@ -8,7 +8,7 @@ domain: mapping
 
 # MSigDB (Molecular Signatures Database)
 
-Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes every convention there.
+Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its repository map, helpers, keying conventions, builder pattern, and validation contract.
 
 ## 1. Status & scope
 
@@ -60,8 +60,10 @@ Per `_conventions` § 9, set names are unique-in-table for a single GMT, so **no
 
 - **Builder:** `build_msigdb_genesets` in `hvantk/skills/msigdb/builder.py`. Signature: `(parsed_input, ctx) -> AnnotationTable`. The table is built inline (`hl.import_lines` + `split`/`select`/`key_by`) — there is no `_create_table_base` helper and no `output_path`/`overwrite` kwargs. The shared temp helper, if needed, is `cleanup_temp_file` in `hvantk/core/utils/hail_helpers.py`.
 - **Registry:** declared via the plugin manifest at `hvantk/skills/msigdb/plugin.yaml` (dataset `genesets`). The plugin loader (`hvantk/core/plugin/loader.py`) auto-resolves it from the manifest via `get_registry().get_dataset("msigdb:genesets")`; there is no `TABLE_BUILDERS`/`MATRIX_BUILDERS` registry or adapter. Top-level builds run through `run_builder_for_spec` (`hvantk/core/plugin/run_builder.py`).
-- **CLI:** `hvantk reprocess msigdb:genesets --raw-dir <dir> --output <path>.ht --skip-download` (msigdb declares no `lifecycle.download`, so `--skip-download` is always required; `<dir>` must contain the unzipped `.gmt`). The builder takes no `--plugin-arg` params; no reference-genome arg — gene-set membership is genome-independent.
+- **CLI:** `hvantk reprocess msigdb:genesets --raw-dir <dir> --output <path>.ht` (`<dir>` must contain the unzipped `.gmt`). `--skip-download` is **not** required: the manifest declares `acquisition.mode: byo`, which makes skipping implicit (#118). Passing it stays legal. The builder takes no `--plugin-arg` params; no reference-genome arg — gene-set membership is genome-independent.
 - **Catalog wiring:** see § 2. **Downloader:** out of scope (manual acquisition).
+- **Drift probe:** `fetch_fingerprint` in `hvantk/skills/msigdb/drift_probe.py`, compared against `tests/drift_fingerprint.json` by `hvantk drift msigdb:genesets` (see § 12 of `_conventions`).
+- **Tests:** `pytest hvantk/skills/msigdb/tests -m hail` — artifact paths in § 9.
 
 ## 7. Workflow steps
 
@@ -90,6 +92,7 @@ Per `_conventions` § 9:
 - **fixture:** `hvantk/skills/msigdb/tests/testdata/raw/msigdb/c2.cp-sample.gmt`. 20 gene sets, ~24 KB, sampled from the v2026.1 C2 CP source by picking representative rows by line index (the GMT format is line-oriented, so a deterministic line subset is a valid sub-GMT). Exercises the short edge (size 5: BIOCARTA, SA), medium sets (60-330 genes), a long set (`REACTOME_CELL_CYCLE`, 688 genes), and the extra-long tail (`REACTOME_POST_TRANSLATIONAL_PROTEIN_MODIFICATION`, 1,497 genes). All 20 fixture rows have a `https://www.gsea-msigdb.org/` URL in column 2 (matches the live-file invariant).
 - **schema_snapshot:** `hvantk/skills/msigdb/tests/snapshots/schema.json`.
 - **row_snapshot:** `hvantk/skills/msigdb/tests/snapshots/sample_rows.json`. `set_name` keys are unique-in-table, so no `sample_keys.json` is maintained per `_conventions` § 9 (post-#101). The round-trip test inlines the small key list.
-- **test_command:** `pytest hvantk/skills/msigdb/tests -m hail`.
+- **drift_fingerprint:** `hvantk/skills/msigdb/tests/drift_fingerprint.json` — the expected fingerprint compared by `hvantk drift` (see § 12).
+- **command:** `pytest hvantk/skills/msigdb/tests -m hail`.
 
 Round-trip test asserts: the built `AnnotationTable` schema matches `schema.json`; deterministic sorted row slice matches `sample_rows.json`. Regenerate snapshots when the schema changes (rare — see § 8).

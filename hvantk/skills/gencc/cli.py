@@ -4,10 +4,10 @@ Coalition) submissions data.
 
 Examples:
     # Download today's snapshot
-    hvantk gencc-download --output-dir data/gencc
+    hvantk download gencc --output-dir data/gencc
 
     # Check download availability
-    hvantk gencc-download --list-versions
+    hvantk download gencc --list-versions
 """
 
 import logging
@@ -103,11 +103,11 @@ def download_cmd(ctx, version_date, output_dir, overwrite, list_versions):
 
         # Download today's snapshot
 
-        hvantk gencc-download --output-dir data/gencc
+        hvantk download gencc --output-dir data/gencc
 
         # Check download availability
 
-        hvantk gencc-download --list-versions
+        hvantk download gencc --list-versions
     """
     if list_versions:
         _print_available_versions()

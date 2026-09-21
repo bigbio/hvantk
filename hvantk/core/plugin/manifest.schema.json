@@ -232,7 +232,40 @@
               }
             ]
           }
-        }
+        },
+        "allOf": [
+          {
+            "$comment": "acquisition.mode 'byo' and lifecycle.download are mutually exclusive: a dataset either fetches its own inputs or it cannot. The loader enforced this (_acquisition_of) but the schema did not, so `hvantk plugins validate` printed ok for a manifest the loader then refused to load -- two validation surfaces disagreeing, with the trusted one wrong (#351). Expressed here rather than inside `acquisition` because a subschema cannot see its sibling `lifecycle`.",
+            "if": {
+              "properties": {
+                "acquisition": {
+                  "properties": {
+                    "mode": {
+                      "const": "byo"
+                    }
+                  },
+                  "required": [
+                    "mode"
+                  ]
+                }
+              },
+              "required": [
+                "acquisition"
+              ]
+            },
+            "then": {
+              "properties": {
+                "lifecycle": {
+                  "not": {
+                    "required": [
+                      "download"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ]
       }
     },
     "cli": {

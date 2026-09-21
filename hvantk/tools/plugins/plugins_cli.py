@@ -59,6 +59,24 @@ def errors_cmd():
         click.echo(f"{plugin_id}: {exc}")
 
 
+def _explain(exc) -> str:
+    """Render a schema error, translating the ones whose raw text explains nothing.
+
+    A conditional rule reports as `... should not be valid under {'required': [...]}`,
+    which states the mechanism and not the problem. This is the message a third-party
+    plugin author sees, so the rules expressed as `if/then` get a sentence instead.
+    """
+    path = list(exc.absolute_path)
+    if exc.validator == "not" and "lifecycle" in path:
+        return (
+            "acquisition.mode is 'byo' but lifecycle.download is declared. A dataset "
+            "either fetches its own inputs or it cannot -- drop the downloader, or set "
+            "acquisition.mode to 'download'."
+        )
+    where = " -> ".join(str(x) for x in path)
+    return f"{exc.message}{f' (at {where})' if where else ''}"
+
+
 @plugins_group.command(name="validate")
 @click.argument("manifest_path", type=click.Path(exists=True, dir_okay=False))
 @click.option(
@@ -82,7 +100,7 @@ def validate_cmd(manifest_path: str, strict_artifacts: bool):
     try:
         jsonschema.validate(content, schema)
     except jsonschema.ValidationError as exc:
-        raise click.ClickException(f"validation failed: {exc.message}")
+        raise click.ClickException(f"validation failed: {_explain(exc)}")
     catalog_rel = content.get("catalog")
     if catalog_rel:
         catalog_path = Path(manifest_path).parent / catalog_rel

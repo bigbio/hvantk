@@ -4,10 +4,10 @@ CLI command and lifecycle entry point for downloading UniProt PTM
 
 Examples:
     # Download today's snapshot
-    hvantk uniprot-ptm-download --output-dir data/uniprot_ptm
+    hvantk download uniprot-ptm --output-dir data/uniprot_ptm
 
     # Download with an explicit date label
-    hvantk uniprot-ptm-download --output-dir data/uniprot_ptm --version 2026-05-15
+    hvantk download uniprot-ptm --output-dir data/uniprot_ptm --version 2026-05-15
 """
 
 import logging
@@ -85,11 +85,11 @@ def download_cmd(ctx, version_date, output_dir, overwrite):
 
         # Download today's snapshot
 
-        hvantk uniprot-ptm-download --output-dir data/uniprot_ptm
+        hvantk download uniprot-ptm --output-dir data/uniprot_ptm
 
         # Download with an explicit date label
 
-        hvantk uniprot-ptm-download --output-dir data/uniprot_ptm --version 2026-05-15
+        hvantk download uniprot-ptm --output-dir data/uniprot_ptm --version 2026-05-15
     """
     try:
         if version_date == "latest":

@@ -56,6 +56,7 @@ All facts below are from `hvantk/skills/cosmic_cgc/builder.py` and `hvantk/skill
 - Constants: `COSMIC_CGC_FIELDS`, `COSMIC_CGC_CLASSIFICATION_LEVELS`, `COSMIC_TISSUE_TYPES`, `COSMIC_MUTATION_CONTEXTS` in `hvantk/skills/cosmic_cgc/shared/constants.py`.
 - Drift probe: `fetch_fingerprint` in `hvantk/skills/cosmic_cgc/drift_probe.py` (`PROBE_VERSION = 2`). Probes the public release-notes page only — the gated Census data is never fetched — and anchors on `id="v<N>"` HTML attributes, never on prose (a prior prose-matching approach picked up unrelated `Actionability`-product version mentions). Fails closed if the response redirected (the host 302s the trailing-slash variant to a login form) or if no anchors are found.
 - Streamer: `CosmicCGCGeneDiseaseTableStreamer` in `hvantk/skills/cosmic_cgc/streamers.py`, subclassing `GeneDiseaseTableStreamer` (`hvantk/core/streamers/gene_disease_table.py`). Adds `filter_by_mutation_context`, `get_geneset_per_tumour_type`/`_role`/`_tissue`, `mutation_context_summary`, `role_summary`, `classification_summary`, `describe`. Because CGC is one row per gene (not per gene-disease assertion), the MONDO/disease-dependent base methods (`get_genes_by_mondo_id`, `categorize_by_ontology`, `get_genes_by_disease`, `get_genes_by_moi`, `get_geneset_per_disease`, `categorize_by_ontology_summary`) are overridden to raise `NotImplementedError`.
+- Tests: `pytest hvantk/skills/cosmic_cgc/tests` — artifact paths in § 9.
 
 ## 7. Workflow steps
 
@@ -82,7 +83,7 @@ Declared in `plugin.yaml`'s `tests:` block (`hvantk/skills/cosmic_cgc/plugin.yam
 - `schema_snapshot`: `tests/snapshots/schema.json`
 - `row_snapshot`: `tests/snapshots/sample_rows.json`
 - `drift_fingerprint`: `tests/drift_fingerprint.json`
-- `test_command`: `pytest hvantk/skills/cosmic_cgc/tests`
+- `command`: `pytest hvantk/skills/cosmic_cgc/tests`
 
 **`fixture`, `schema_snapshot`, and `row_snapshot` do not exist and cannot be created.** `cosmic-cgc:submissions` is on the `KNOWN_INCOMPLETE` ledger in `hvantk/tests/test_plugin_contract_artifacts.py` with exactly those three fields missing, because COSMIC's licence forbids redistributing rows — this is cause 2 of the two the ledger's header comment documents ("licence forbids redistributing rows (cosmic-cgc)"), distinct from "not yet seeded." This is a permanent gap, not a to-do.
 

@@ -78,7 +78,7 @@ pin tests, regenerate the drift fingerprint) is entirely dataset-scoped today --
 ## 9. Validation contract
 
 Declared in `plugin.yaml`'s `datasets[0].tests` block; the exact `fixture` /
-`schema_snapshot` / `row_snapshot` / `drift_fingerprint` / `test_command` paths, and the
+`schema_snapshot` / `row_snapshot` / `drift_fingerprint` / `command` paths, and the
 note that the fixture is plugin-local (not the shared repo-level form
 `_conventions` § 9 otherwise implies for this provider), are in `structure/SKILL.md` § 9.
 No provider-level test target exists beyond that dataset's own

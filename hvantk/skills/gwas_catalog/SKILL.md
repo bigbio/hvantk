@@ -8,7 +8,7 @@ domain: variants
 
 # GWAS Catalog (EBI) — v1.0 full associations
 
-Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes every convention there.
+Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its repository map, helpers, keying conventions, builder pattern, and validation contract.
 
 ## 1. Status & scope
 
@@ -79,6 +79,8 @@ Type coercions in transform (all string at import):
 - **Registry:** declared by the plugin manifest at `hvantk/skills/gwas_catalog/plugin.yaml` under `datasets[].builder` (dataset key `gwas-catalog:associations`). The plugin loader (`hvantk/core/plugin/loader.py`) auto-resolves the dataset via `get_registry().get_dataset("gwas-catalog:associations")`; top-level builds run through `run_builder_for_spec` (`hvantk/core/plugin/run_builder.py`). There is no `TABLE_BUILDERS` registry.
 - **CLI:** `hvantk reprocess gwas-catalog:associations --raw-dir <dir> --output <path>.ht` (gwas-catalog declares no `lifecycle.download`; `<dir>` must contain the unzipped TSV). Builder kwargs (`reference_genome`) flow through `--plugin-arg key=value`.
 - **Catalog wiring:** see §2. **Downloader:** out of scope.
+- **Drift probe:** `fetch_fingerprint` in `hvantk/skills/gwas_catalog/drift_probe.py`, compared against `tests/drift_fingerprint.json` by `hvantk drift gwas-catalog:associations` (see § 12 of `_conventions`).
+- **Tests:** `pytest hvantk/skills/gwas_catalog/tests -m hail` — artifact paths in § 9.
 
 ## 7. Workflow steps
 
@@ -111,6 +113,7 @@ Per conventions §9:
 - **schema_snapshot:** `hvantk/skills/gwas_catalog/tests/snapshots/schema.json`.
 - **row_snapshot:** `hvantk/skills/gwas_catalog/tests/snapshots/sample_rows.json`.
 - **sample_keys:** `hvantk/skills/gwas_catalog/tests/snapshots/sample_keys.json`. Lists the `(locus, alleles)` keys used for `row_snapshot` assertions. These keys MUST be unique-in-table — `_snapshot_utils.collect_sample_rows` does not deduplicate, so a duplicated key produces non-deterministic snapshots. Multi-trait-per-variant rows in this catalog routinely share keys; the snapshot subset must use singleton-key rows.
-- **test_command:** `pytest hvantk/skills/gwas_catalog/tests -m hail`.
+- **drift_fingerprint:** `hvantk/skills/gwas_catalog/tests/drift_fingerprint.json` — the expected fingerprint compared by `hvantk drift` (see § 12).
+- **command:** `pytest hvantk/skills/gwas_catalog/tests -m hail`.
 
 Round-trip test (`tests/test_builder.py`) asserts: the materialized schema matches `schema.json`; the row slice for the keys in `sample_keys.json` matches `sample_rows.json`. The test drives the builder through `phase_b_snapshot_adapter`, which materializes the returned `AnnotationTable` to a temp `.ht`. Regenerate via `--regenerate-snapshots` when a judgment call resolves or the schema changes.

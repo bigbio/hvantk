@@ -8,11 +8,11 @@ domain: proteomics
 
 # CPTAC protein expression resource skill
 
-Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes every convention there.
+Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its repository map, helpers, keying conventions, builder pattern, and validation contract.
 
 ## 1. Status & scope
 
-- **Status:** provisional. Builder + drift-probe placeholder live under the plugin folder. Builder round-trip snapshots are NOT yet seeded; the fixture directory exists but is empty. Plugin tests (drift-probe sanity) live in `hvantk/skills/cptac/expression/tests/`.
+- **Status:** provisional. Builder + drift-probe placeholder live under the plugin folder. Builder round-trip snapshots and the fixture are seeded; `test_builder.py` asserts against both. Plugin tests (drift-probe sanity) live in `hvantk/skills/cptac/expression/tests/`.
 - **In scope:** one long-format CPTAC protein-expression TSV/CSV at a time, paired with a sample metadata file. Output is an AnnData (`.h5ad`) keyed `samples x genes` with `float32` `X`. The user is responsible for staging the inputs -- there is no automated downloader for the expression matrix today (the `cptac` Python package fetches into memory for the phospho path; mirroring that for expression is a follow-up).
 - **Out of scope:** phosphoproteomics (sibling dataset `cptac:phospho`); per-cancer-type batch builds (callers loop themselves); any Hail-Table or wide-format representation.
 
@@ -77,16 +77,14 @@ CPTAC ships new cohorts and re-processed runs via the `cptac` Python package. Wh
 
 Per `_conventions` § 9:
 
-- **fixture:** `hvantk/skills/cptac/expression/tests/testdata/raw/cptac-expression/` (declared in `plugin.yaml`; not yet seeded).
-- **schema_snapshot:** `hvantk/skills/cptac/expression/tests/snapshots/schema.json` (TODO -- created on first `--regenerate-snapshots` run).
-- **row_snapshot:** `hvantk/skills/cptac/expression/tests/snapshots/sample_rows.json` (TODO -- same).
-- **test_command:** `pytest hvantk/skills/cptac/expression/tests`.
+- **fixture:** `hvantk/skills/cptac/expression/tests/testdata/raw/cptac-expression/` — seeded (`expression.tsv` + `metadata.tsv`).
+- **schema_snapshot:** `hvantk/skills/cptac/expression/tests/snapshots/schema.json` — seeded.
+- **row_snapshot:** `hvantk/skills/cptac/expression/tests/snapshots/sample_rows.json` — seeded.
+- **command:** `pytest hvantk/skills/cptac/expression/tests`.
 - **drift_fingerprint:** `hvantk/skills/cptac/expression/tests/drift_fingerprint.json` (placeholder shape; refresh via the update playbook).
 
-The plugin manifest declares these paths so the loader contract holds. Drift-probe sanity test passes today; the builder round-trip snapshot is the gap to close in a follow-up.
+The plugin manifest declares these paths so the loader contract holds. Drift-probe sanity and builder round-trip tests both pass.
 
-> **Snapshot status:** schema.json and sample_rows.json have NOT yet been seeded
-> for this plugin. On first round-trip run, use
-> `pytest hvantk/skills/cptac/expression/tests --regenerate-snapshots`
-> to bootstrap them, then commit. Until seeded, the round-trip test cannot verify
-> output against a fixed schema.
+> **Snapshot status:** seeded. `test_builder.py` asserts the build against both
+> snapshots. Regenerate after an intentional schema change with
+> `pytest hvantk/skills/cptac/expression/tests/test_builder.py --regenerate-snapshots`, then commit.

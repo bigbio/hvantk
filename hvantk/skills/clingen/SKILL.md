@@ -78,12 +78,13 @@ When ClinGen publishes an updated snapshot (any download is effectively a new sn
 ## 9. Validation contract
 
 - `fixture`: `hvantk/skills/clingen/tests/testdata/raw/clingen/clingen_test_sample.csv`
+- `schema_snapshot`: `hvantk/skills/clingen/tests/snapshots/schema.json`
+- `row_snapshot`: `hvantk/skills/clingen/tests/snapshots/sample_rows.json`
 - `drift_fingerprint`: `hvantk/skills/clingen/tests/drift_fingerprint.json`
-- `test_command`: `pytest hvantk/skills/clingen/tests -m hail`
+- `command`: `pytest hvantk/skills/clingen/tests -m hail`
 
-> **Snapshot status:** seeded. `tests/snapshots/schema.json` and
-> `tests/snapshots/sample_rows.json` are committed, and `test_builder.py` asserts the
-> build against them. Regenerate after an intentional schema change with
+> **Snapshot status:** seeded and asserted by `test_builder.py`.
+> Regenerate after an intentional schema change with
 > `pytest hvantk/skills/clingen/tests/test_builder.py --regenerate-snapshots`, then
 > commit the result. The other live tests are `test_downloader.py`,
 > `test_drift_probe.py`, and `test_streamer.py`.

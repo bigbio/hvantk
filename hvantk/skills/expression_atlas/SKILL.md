@@ -8,7 +8,7 @@ domain: transcriptomics
 
 # EBI Expression Atlas resource skill
 
-Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes every convention there.
+Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its repository map, helpers, keying conventions, builder pattern, and validation contract.
 
 ## 1. Status & scope
 
@@ -64,10 +64,11 @@ Stable notes:
 - **Builder:** `build_expression_atlas` (signature `(parsed_input, ctx, **params) -> ExpressionMatrix`) in `hvantk/skills/expression_atlas/builder.py`.
 - **SDRF / matrix helpers:** `hvantk/skills/expression_atlas/shared/expression_atlas.py`.
 - **Dataset / collection classes:** `ExpressionAtlasDataset`, `ExpressionAtlasDatasetCollection` in `hvantk/skills/expression_atlas/shared/datasets.py`.
-- **Downloader CLI:** `download_experiments` in `hvantk/skills/expression_atlas/cli.py` (registered as `hvantk expression-atlas-download` and also re-bound under `hvantk download expression-atlas`).
+- **Downloader CLI:** `download_experiments` in `hvantk/skills/expression_atlas/cli.py` (declared in the manifest's `cli:` block as `expression-atlas-download`; the loader strips the `-download` suffix and binds it under the `download` group, so the invocation is `hvantk download expression-atlas`).
 - **Lifecycle entry point:** `download_dataset` in `hvantk/skills/expression_atlas/cli.py`.
 - **Build CLI:** `hvantk reprocess expression-atlas:dataset --raw-dir <dir> --output <path>.h5ad` (delegates to the plugin builder; pass builder kwargs via `--plugin-arg key=value`).
 - **Plugin manifest:** `hvantk/skills/expression_atlas/plugin.yaml` (drives loader registration; compound dataset key `expression-atlas:dataset`).
+- **Drift probe:** `fetch_fingerprint` in `hvantk/skills/expression_atlas/drift_probe.py`, compared against `tests/drift_fingerprint.json` by `hvantk drift expression-atlas:dataset` (see § 12 of `_conventions`).
 - **Tests:** `hvantk/skills/expression_atlas/tests/` (downloader unit, drift-probe sanity, and
   `test_builder.py` — builder round-trip against a fixture derived from the real 320-column
   export, plus the column-inference regression guards).
@@ -79,7 +80,7 @@ Read the existing files at these paths as ground truth for shape. This skill doe
 When invoked to build or update a single Expression Atlas experiment:
 
 1. **Resolve raw paths.** Either download via
-   `hvantk expression-atlas-download --accession <E-XXXX-N> --download_path /tmp/atlas`,
+   `hvantk download expression-atlas --accession <E-XXXX-N> --download_path /tmp/atlas`,
    or via the recipe system: `hvantk reprocess expression-atlas:dataset` (lifecycle download → builder).
 2. **Build:** `hvantk reprocess expression-atlas:dataset --raw-dir <dir> --output <out>.h5ad`.
    - The builder parses the SDRF, transposes the expression matrix, attaches per-sample metadata into `obs`, annotates provenance, and writes `.h5ad`.
@@ -100,7 +101,8 @@ Per `_conventions` § 9:
 - **fixture:** `hvantk/skills/expression_atlas/tests/testdata/raw/expression-atlas/` — seeded. `E-MTAB-6798-transcripts-tpms.tsv` (20 genes x 4 samples, ~0.8 KB) + `E-MTAB-6798.condensed-sdrf.tsv` (the same 4 sample IDs, ~3.3 KB), derived by truncation from the real upstream files under `hvantk/tests/testdata/raw/expression_atlas/`. Recipe recorded at the top of `tests/test_builder.py`.
 - **schema_snapshot:** `hvantk/skills/expression_atlas/tests/snapshots/schema.json` — seeded (4 obs x 20 vars).
 - **row_snapshot:** `hvantk/skills/expression_atlas/tests/snapshots/sample_rows.json` — seeded.
-- **test_command:** `pytest hvantk/skills/expression_atlas/tests`.
+- **drift_fingerprint:** `hvantk/skills/expression_atlas/tests/drift_fingerprint.json` — the expected fingerprint compared by `hvantk drift` (see § 12).
+- **command:** `pytest hvantk/skills/expression_atlas/tests`.
 
 The plugin manifest already declares these paths so the loader contract holds. `tests/test_builder.py` now exercises `build_expression_atlas` end-to-end against the committed fixture and asserts both snapshots plus `n_obs`/`n_vars`; regenerate via `pytest hvantk/skills/expression_atlas/tests/test_builder.py --regenerate-snapshots`. No Hail is required — the artifact is AnnData-backed.
 

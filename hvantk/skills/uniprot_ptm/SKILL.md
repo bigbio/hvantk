@@ -78,14 +78,14 @@ When UniProt releases a new monthly snapshot (typically late in the month):
 
 ## 9. Validation contract
 
-- `fixture`: `hvantk/skills/uniprot_ptm/tests/testdata/raw/uniprot-ptm/` (placeholder; integration coverage lives in `hvantk/tests/test_ptm.py`)
+- `fixture`: `hvantk/skills/uniprot_ptm/tests/testdata/raw/uniprot-ptm/ptm_sites.tsv` — a real 6-row slice (TP53 and friends), not a placeholder.
+- `schema_snapshot`: `hvantk/skills/uniprot_ptm/tests/snapshots/schema.json`
+- `row_snapshot`: `hvantk/skills/uniprot_ptm/tests/snapshots/sample_rows.json`
 - `drift_fingerprint`: `hvantk/skills/uniprot_ptm/tests/drift_fingerprint.json`
-- `test_command`: `pytest hvantk/skills/uniprot_ptm/tests -m hail`
+- `command`: `pytest hvantk/skills/uniprot_ptm/tests -m hail`
 
-> **Snapshot status:** the `schema_snapshot` (`tests/snapshots/schema.json`) and
-> `row_snapshot` (`tests/snapshots/sample_rows.json`) declared in `plugin.yaml`
-> have NOT yet been seeded for this plugin (the `tests/` directory currently holds
-> only `test_drift_probe.py` and `drift_fingerprint.json`). Seed them on the first
-> round-trip run in a hail-enabled environment, then commit. Until seeded, the
-> round-trip test cannot verify output against a fixed schema; integration coverage
-> meanwhile lives in `hvantk/tests/test_ptm.py`.
+> **Snapshot status:** seeded. `test_builder.py`'s `test_uniprot_ptm_snapshot_round_trip`
+> drives the builder through `phase_b_snapshot_adapter` and asserts both snapshots.
+> Regenerate after an intentional schema change with
+> `pytest hvantk/skills/uniprot_ptm/tests/test_builder.py -m hail --regenerate-snapshots`,
+> then commit the result. Broader integration coverage lives in `hvantk/tests/test_ptm.py`.

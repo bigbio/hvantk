@@ -61,6 +61,7 @@ Live release row count: 19,361 genes (§ 2). The committed row snapshot (`tests/
 - Drift probe: `fetch_fingerprint` in `hvantk/skills/gevir/drift_probe.py` (`PROBE_VERSION = 2`). Issues a single HEAD against `GEVIR_SUPPLEMENTARY_URL` with `Accept-Encoding: identity`, comparing `Content-Length` and a normalized `ETag` (Springer serves it as an MD5 content digest) under `headers`; `checksums` stays empty because the probe never fetches a body and so has no schema signal to offer. `Last-Modified` is demoted to `informational` (excluded from drift comparison), following the `hgnc` precedent where every regeneration moved only the timestamp. Fails closed if either validator is missing/empty, or if the response is not identity-encoded (a compressing proxy would make `Content-Length` describe the compressed body).
 - No `streamers.py` exists for this plugin (confirmed absent from the plugin directory) and no `cli.py`.
 - Catalog: `hvantk/skills/gevir/catalog/datasets.json` (`GeVIR_v1.0`).
+- Tests: `pytest hvantk/skills/gevir/tests -m hail` — artifact paths in § 9.
 
 ## 7. Workflow steps
 
@@ -86,7 +87,7 @@ Declared in `plugin.yaml`'s `tests:` block (`hvantk/skills/gevir/plugin.yaml`), 
 - `schema_snapshot`: `tests/snapshots/schema.json` (committed — see § 5)
 - `row_snapshot`: `tests/snapshots/sample_rows.json` (committed — see § 5)
 - `drift_fingerprint`: `tests/drift_fingerprint.json` (committed — see § 8)
-- `test_command`: `pytest hvantk/skills/gevir/tests -m hail`
+- `command`: `pytest hvantk/skills/gevir/tests -m hail`
 
 All four artifacts are shipped. `gevir` is **not** on the `KNOWN_INCOMPLETE` ledger in `hvantk/tests/test_plugin_contract_artifacts.py`; that file's header comment records that `gevir` "shipped its drift fingerprint as part of the gevir plugin-review work, so it left this list."
 

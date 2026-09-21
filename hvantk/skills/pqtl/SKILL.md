@@ -90,6 +90,6 @@ Declared in `plugin.yaml`'s `tests:` block (all paths plugin-relative under `hva
 - `schema_snapshot`: `tests/snapshots/schema.json`
 - `row_snapshot`: `tests/snapshots/sample_rows.json`
 - `drift_fingerprint`: `tests/drift_fingerprint.json`
-- `test_command`: `pytest hvantk/skills/pqtl/tests`
+- `command`: `pytest hvantk/skills/pqtl/tests`
 
 **Snapshot status:** `pqtl:metrics` is on the `KNOWN_INCOMPLETE` ledger in `hvantk/tests/test_plugin_contract_artifacts.py`, missing `fixture`, `schema_snapshot`, and `row_snapshot`. Per that file's comment block, pQTL is cause (1) of the two the ledger now records: it is "publication-only supplementary data" with "no static upstream artifact" that "cannot be snapshotted" — the Fang et al. allpairs files are preprint supplementary material with no stable, redistributable download URL to derive a committable fixture from, so no fixture and no schema/row snapshot can be generated. `tests/test_pqtl.py::test_pqtl_metrics_round_trip` is `@pytest.mark.skip`'d for this reason ("No fixture available for pqtl; manual smoke-test only"). Only `drift_fingerprint` is populated (from a live probe run against the medRxiv API) — see § 3 and § 8.

@@ -203,3 +203,82 @@ def test_acquisition_vocabulary_matches_the_schema():
     ]
     assert list(props["mode"]["enum"]) == list(get_args(AcquisitionMode))
     assert list(props["reason"]["enum"]) == list(get_args(AcquisitionReason))
+
+
+@pytest.mark.parametrize(
+    "acquisition, lifecycle, valid",
+    [
+        # The rule itself: a dataset either fetches its own inputs or it cannot.
+        (
+            {"mode": "byo", "reason": "size"},
+            {"download": {"module": "m", "function": "f"}},
+            False,
+        ),
+        # Each half alone is fine.
+        ({"mode": "byo", "reason": "size"}, None, True),
+        ({"mode": "download"}, {"download": {"module": "m", "function": "f"}}, True),
+        # An omitted block defaults to "download", so a downloader must stay legal.
+        (None, {"download": {"module": "m", "function": "f"}}, True),
+        # `byo` beside a parse-only lifecycle is coherent: BYO is about acquisition.
+        (
+            {"mode": "byo", "reason": "license"},
+            {"parse": {"module": "m", "function": "f"}},
+            True,
+        ),
+    ],
+)
+def test_byo_and_lifecycle_download_are_mutually_exclusive_in_the_schema(
+    acquisition, lifecycle, valid
+):
+    """`hvantk plugins validate` must reject what the loader rejects (#351).
+
+    `_acquisition_of` raised `PluginLoadError` on this combination, but `plugins
+    validate` runs jsonschema and not the loader, so a third-party author got `ok:
+    plugin.yaml` followed by a plugin that would not load. Two validation surfaces
+    disagreeing is worse than one, because the one people run before shipping was the
+    wrong one.
+
+    Encoded in the schema rather than duplicated into the CLI so the loader, the CLI
+    and any future consumer inherit it together.
+    """
+    manifest = _manifest_with(acquisition)
+    if lifecycle is not None:
+        manifest["datasets"][0]["lifecycle"] = lifecycle
+
+    try:
+        jsonschema.validate(manifest, SCHEMA)
+        accepted = True
+    except jsonschema.ValidationError:
+        accepted = False
+
+    assert accepted is valid
+
+
+def test_validate_explains_the_byo_rule_instead_of_quoting_jsonschema(tmp_path):
+    """The translated sentence is the whole point of `_explain`, and was untested.
+
+    The schema rule itself is covered above, but a conditional `if/then` reports as
+    `... should not be valid under {'required': [...]}` -- which names the mechanism and
+    not the problem. Reverting `_explain(exc)` to `exc.message` passed the entire suite,
+    so the message a third-party plugin author actually reads was unguarded.
+    """
+    from click.testing import CliRunner
+
+    from hvantk.tools.plugins.plugins_cli import plugins_group
+
+    manifest = _manifest_with({"mode": "byo", "reason": "size"})
+    manifest["datasets"][0]["lifecycle"] = {
+        "download": {"module": "m", "function": "download_dataset"}
+    }
+    path = tmp_path / "plugin.yaml"
+    path.write_text(yaml.safe_dump(manifest))
+
+    result = CliRunner().invoke(plugins_group, ["validate", str(path)])
+
+    assert result.exit_code != 0, result.output
+    assert (
+        "acquisition.mode is 'byo' but lifecycle.download is declared" in result.output
+    ), result.output
+    assert "should not be valid under" not in result.output, (
+        "raw jsonschema text leaked to the user: " + result.output
+    )

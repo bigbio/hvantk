@@ -2,13 +2,13 @@
 
 Examples:
     # List available accessions configured in the bundled registry
-    hvantk expression-atlas-download --list_datasets --download_path data/atlas
+    hvantk download expression-atlas --list_datasets --download_path data/atlas
 
     # Download a single accession's files
-    hvantk expression-atlas-download --accession E-MTAB-6798 --download_path data/atlas
+    hvantk download expression-atlas --accession E-MTAB-6798 --download_path data/atlas
 
     # Download every experiment listed in a JSON config file
-    hvantk expression-atlas-download --config_path /path/to/expression_atlas.json --download_path data/atlas
+    hvantk download expression-atlas --config_path /path/to/expression_atlas.json --download_path data/atlas
 """
 
 import click

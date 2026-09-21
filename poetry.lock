@@ -3323,7 +3323,7 @@ description = "A Python package for describing statistical models and for buildi
 optional = true
 python-versions = ">=3.6"
 groups = ["main"]
-markers = "extra == \"ptm\" or extra == \"expression\""
+markers = "extra == \"ptm\" or extra == \"constraint\" or extra == \"expression\""
 files = [
     {file = "patsy-1.0.2-py2.py3-none-any.whl", hash = "sha256:37bfddbc58fcf0362febb5f54f10743f8b21dd2aa73dec7e7ef59d1b02ae668a"},
     {file = "patsy-1.0.2.tar.gz", hash = "sha256:cdc995455f6233e90e22de72c37fcadb344e7586fb83f06696f54d92f8ce74c0"},
@@ -5234,7 +5234,7 @@ description = "Statistical computations and models for Python"
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "extra == \"ptm\" or extra == \"expression\""
+markers = "extra == \"ptm\" or extra == \"constraint\" or extra == \"expression\""
 files = [
     {file = "statsmodels-0.14.5-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:9fc2b5cdc0c95cba894849651fec1fa1511d365e3eb72b0cc75caac44077cd48"},
     {file = "statsmodels-0.14.5-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:b8d96b0bbaeabd3a557c35cc7249baa9cfbc6dd305c32a9f2cbdd7f46c037e7f"},
@@ -5911,7 +5911,7 @@ remote = ["fsspec (>=2023.10.0)", "obstore (>=0.5.1)"]
 [extras]
 ancestry = ["matplotlib", "scikit-learn", "scipy", "seaborn"]
 cohort = ["scipy"]
-constraint = ["matplotlib", "scipy", "seaborn", "tspex"]
+constraint = ["matplotlib", "scipy", "seaborn", "statsmodels", "tspex"]
 duckdb = ["duckdb"]
 enrichex = ["matplotlib", "scipy", "seaborn"]
 expression = ["scanpy", "scipy"]
@@ -5925,4 +5925,4 @@ viz = ["matplotlib", "plotly", "seaborn"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10.0,<4.0.0"
-content-hash = "fbb88cb70f9ae3a346b90c1130a408c8bc74bcc4368f0ecb0ac24baec6339624"
+content-hash = "70b228bab3c5bb35d78d12237fc028ab41d3a5c6297661a37c7fd1d2fbe0d3f5"

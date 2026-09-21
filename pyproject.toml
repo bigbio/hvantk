@@ -119,7 +119,12 @@ interactive = ["plotly"]
 hgc = ["matplotlib", "seaborn"]
 psroc = ["matplotlib", "plotly", "scikit-learn>=1.4,<2.0", "scipy>=1.8"]
 ptm = ["cptac", "sorted-nearest"]
-constraint = ["tspex>=0.6.0", "matplotlib", "seaborn", "scipy>=1.8"]
+# statsmodels is imported at MODULE scope by algorithms/ptm/lmm.py ("Phase-2 PTM
+# constraint tests"), reached from `hvantk ptm test`. It was declared in no dependency
+# set at all until #318, so a fresh install raised ModuleNotFoundError on that path --
+# invisible because ptm_cli imports lmm lazily, inside the command body, so `--help`
+# and every other subcommand kept working.
+constraint = ["tspex>=0.6.0", "matplotlib", "seaborn", "scipy>=1.8", "statsmodels>=0.14"]
 # enrichex needs matplotlib as well as scipy. scipy is eager -- overlap.py imports
 # scipy.stats at module scope, so `hvantk enrichex overlap` needs it to import at all.
 # matplotlib is no longer eager: enrichex/__init__ resolves plot.py / report.py through a

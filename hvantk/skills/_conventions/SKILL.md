@@ -41,9 +41,119 @@ Every per-resource `SKILL.md` MUST cover these nine sections, in order, with the
 8. `## 8. Update playbook`
 9. `## 9. Validation contract`
 
-Optional sections (only if they add information not covered above): `## 10. Cross-reference notes`, `## 11. Performance notes`.
+Sections beyond the nine are free-form and provider-specific, numbered from `## 10.`
+onward. Two exist today: `dbnsfp` has a `## 10. Cross-reference notes` and
+`ucsc_cellbrowser` a `## 10. Onboarding a new dataset within UCSC Cell Browser`, which no
+shared title would describe honestly. (`## 11. Performance notes` is suggested by an
+older revision of this document and is used by nothing -- do not add one just because it
+is named.) Only 1-9 are fixed.
 
 Each spec MUST also open with a YAML frontmatter block declaring at least `name` and `description` (conforming files also carry `status`, `backend` and `domain`). That minimum is what an external Agent Skills harness reads to register the directory at all — a spec without it is invisible to one however good its prose.
+
+### The shape of a conforming spec
+
+The nine headings are the contract; what goes under them was, until #356, whatever each
+author chose. A hygiene pass measured all 23 specs and found the majority had converged
+on one shape anyway. That shape is now the template, and the mechanical parts of it are
+checked.
+
+Copy the block below **verbatim** and replace the `<...>` placeholders. Everything
+outside the placeholders is load-bearing: the preamble is matched as a single-line exact
+substring (do not re-wrap it), the headings are matched by whole-line equality (do not
+append annotations to them), and the § 6 and § 9 bodies shown here are the minimum that
+satisfies the content checks. `test_the_shipped_template_satisfies_its_own_checker`
+asserts exactly this, so the template cannot drift from the rule it documents:
+
+```markdown
+---
+name: hvantk:resource-<provider>
+description: <one line, what the dataset is>
+status: provisional | stable
+backend: hail | anndata | pandas
+domain: genomics | transcriptomics | proteomics | epigenomics | mapping
+---
+
+# <Provider> resource skill
+
+Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its repository map, helpers, keying conventions, builder pattern, and validation contract.
+
+## 1. Status & scope
+
+<What ships, and what is explicitly out of scope.>
+
+## 2. Source identity
+
+<Upstream release, URL and licence. NEVER restate `catalog/datasets.json`.>
+
+## 3. Backend choice + reasoning
+
+<hail | anndata | pandas, and why this dataset needs that one.>
+
+## 4. Raw format & gotchas
+
+<The section that earns its keep -- see "Section 4 is where the value is" below.>
+
+## 5. Output contract
+
+<Keys, fields, dtypes, `schema_id`, provenance.>
+
+## 6. hvantk integration points
+
+- Builder: `build_<provider>_<dataset>` in `builder.py`
+- Drift probe: `fetch_fingerprint` in `drift_probe.py`
+- Tests: `tests/`, run with the `command` declared in `plugin.yaml`
+- Build with: `hvantk reprocess <provider>:<dataset> --raw-dir <dir> --output <out>`
+
+## 7. Workflow steps
+
+<Download -> parse -> build -> drift-check, as commands a reader can run.>
+
+## 8. Update playbook
+
+<What to do when upstream moves: which artifacts to regenerate, in which order.>
+
+## 9. Validation contract
+
+Declared in `plugin.yaml`'s `tests:` block:
+
+- `fixture`: <path>
+- `schema_snapshot`: <path>
+- `row_snapshot`: <path>
+- `drift_fingerprint`: <path>
+- `command`: <the pytest selector that runs them>
+```
+
+The five frontmatter keys are not optional in practice: all 23 specs carry them.
+
+**Section 6 exists so a reader can get from the spec to the code without opening
+`plugin.yaml`.** Three references are *checked* -- the builder, the drift probe, and the
+tests. Seven specs named no probe at all and five named no tests before that check
+existed.
+
+Also expected, but NOT checked, so treat these as convention rather than contract: the
+plugin manifest (23 of 23 name it anyway), the `hvantk reprocess` invocation (15 of 23),
+and the downloader where one exists. Optional bullets where they apply: constants,
+streamer, dataset class, downstream consumers.
+
+**Section 9 MUST name the five test artifacts** -- `fixture`, `schema_snapshot`,
+`row_snapshot`, `drift_fingerprint`, `command` -- spelled exactly as the manifest's
+`tests:` keys. Labelled bullets are the convention all 23 follow; what is checked is that
+the five key names appear, and separately that each manifest `tests:` *value* appears
+somewhere in the spec that declares it.
+
+Note the key is `command`, not `test_command`: `additionalProperties: false` means a
+manifest written from the wrong spelling fails validation at load. 22 of 23 specs used
+the wrong spelling until #350.
+
+**Section 4 is where a spec earns its keep.** It is the longest section in the corpus by
+a wide margin (median 283 words against 96 for § 5, and the longest section in 14 of 23
+specs) because it is the one an agent
+cannot reconstruct from the code: literal header spellings, missing-value sentinels,
+column names needing subscript access, prefix conventions. Write the things that produce
+silently wrong output, not the things a reader would discover on the first run.
+
+Style, as the corpus settled it: flat `-` bullets, no `###` subsections (21 of 23 use
+none), and prose that points at code rather than restating it.
 
 **This is enforced, not merely documented.** `hvantk.core.plugin.skill_spec` holds the checker; `hvantk/tests/test_plugin_skill_conformance.py` runs it over every per-resource `SKILL.md` on every test run, and `hvantk plugins validate <manifest>` runs it over the specs one manifest declares. Both call the same implementation, so the list above and the check cannot drift apart — a test asserts that every enforced heading is still listed here. Until #334 nothing checked this, and 9 of 23 specs had drifted to zero required headings.
 

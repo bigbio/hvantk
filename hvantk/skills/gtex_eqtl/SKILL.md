@@ -8,7 +8,7 @@ domain: qtl
 
 # GTEx eQTL (cis-QTL, significant variant-gene pairs)
 
-Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes every convention there.
+Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its repository map, helpers, keying conventions, builder pattern, and validation contract.
 
 ## 1. Status & scope
 
@@ -97,6 +97,8 @@ For eqtlgen, both `af` and `maf` remain `hl.missing` (the source distributes nei
 - **Plugin resolution:** declared in `hvantk/skills/gtex_eqtl/plugin.yaml` (dataset `eqtls`, builder `hvantk.skills.gtex_eqtl.builder:build_eqtl_associations`). The plugin loader (`hvantk/core/plugin/loader.py`) auto-resolves `gtex-eqtl:eqtls` via `get_registry().get_dataset(...)`; the build runs through `run_builder_for_spec` (`hvantk/core/plugin/run_builder.py`). No `TABLE_BUILDERS` registry or `create_table_adapter`.
 - **CLI:** `hvantk reprocess gtex-eqtl:eqtls --raw-dir <dir> --output <path>.ht`. Source-specific kwargs (`source`, `tissue`, `p_threshold`, `reference_genome`) flow through `--plugin-arg key=value`.
 - **Downstream consumer:** `hvantk/qtlcascade/` — the eQTL Hail Table is one half of the eQTL ⊕ pQTL cascade join.
+- **Drift probe:** `fetch_fingerprint` in `hvantk/skills/gtex_eqtl/drift_probe.py`, compared against `tests/drift_fingerprint.json` by `hvantk drift gtex-eqtl:eqtls` (see § 12 of `_conventions`).
+- **Tests:** `pytest hvantk/skills/gtex_eqtl/tests -m hail` — artifact paths in § 9.
 
 ## 7. Workflow steps
 
@@ -117,7 +119,6 @@ For eqtlgen, both `af` and `maf` remain `hl.missing` (the source distributes nei
 hvantk reprocess gtex-eqtl:eqtls \
     --raw-dir /path/to/gtex_v11_eqtl/ \
     --output /path/to/gtex_v11_eqtl_Liver.ht \
-    --skip-download \
     --plugin-arg source=gtex_v11 \
     --plugin-arg tissue=Liver \
     --plugin-arg p_threshold=0 \
@@ -144,7 +145,7 @@ Per `_conventions` § 9:
 - **schema_snapshot:** `hvantk/skills/gtex_eqtl/tests/snapshots/schema.json`.
 - **row_snapshot:** `hvantk/skills/gtex_eqtl/tests/snapshots/sample_rows.json`. Triple key `(locus, alleles, gene_id)` is unique-in-table for signif_pairs, so the test inlines a small key list and no `sample_keys.json` is maintained (per `_conventions` § 9 post-#101).
 - **drift_fingerprint:** `hvantk/skills/gtex_eqtl/tests/drift_fingerprint.json`.
-- **test_command:** `pytest hvantk/skills/gtex_eqtl/tests -m hail`.
+- **command:** `pytest hvantk/skills/gtex_eqtl/tests -m hail`.
 
 Round-trip test asserts: checkpointed schema matches `schema.json`; deterministic sample-row slice matches `sample_rows.json`. Test uses `source="gtex_v11"`, `tissue="Liver"`, `p_threshold=0` (retain all rows in the fixture). Spark session is initialized on demand by `_import_gtex_parquet`; the `hail_session` fixture ensures Hail (and therefore Spark) is up.
 

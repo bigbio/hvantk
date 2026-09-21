@@ -109,6 +109,24 @@ def drift_cmd(
 
     reg = plugin_loader.get_registry()
 
+    # A unit that failed to load contributes no rows at all -- not even a
+    # `probe_failed` one -- so `--all` would report a clean sweep over a silently
+    # smaller set. `drift-health.yml` greps the JSON for `status == "probe_failed"` and
+    # gates on the exit code, so a stderr warning alone is read by humans and by nothing
+    # else: the workflow still prints "all probes healthy" and opens no issue.
+    #
+    # It therefore becomes a real exit code below, and -- in `--json` mode, which is what
+    # the workflows capture -- a real row too. The human-readable branch still gets only
+    # the stderr warning above, which is the right split: a person reads the warning, CI
+    # reads the row. Together they make the existing workflow file the issue it already
+    # knows how to file (#351).
+    load_errors = reg.load_errors()
+    for unit, exc in load_errors:
+        click.echo(
+            f"WARNING: {unit!r} failed to load, so it is NOT being drift-checked: {exc}",
+            err=True,
+        )
+
     if regenerate:
         if all_flag:
             raise click.UsageError("--regenerate requires a specific dataset name")
@@ -128,6 +146,30 @@ def drift_cmd(
         click.echo(f"unknown dataset: {dataset}", err=True)
         raise SystemExit(EXIT_REGISTRY_ERROR)
 
+    # An empty sweep is the limiting case of the silently-smaller set #351 is about, and
+    # it slips past every guard above: no targets means no results, `exit_codes` stays
+    # {EXIT_CLEAN}, and `drift.yml` (rc > 2) plus `drift_to_pr.py` both pass on a report
+    # of `[]`. The workflow goes green having checked nothing.
+    #
+    # The two ways to get here need different answers. A --domain that matches nothing is
+    # a caller mistake -- the option takes a free-form string and its help text names no
+    # valid value, so a typo silently means "check nothing" -- and a UsageError can name
+    # the real domains. An empty registry with no filter is an infrastructure failure
+    # (nothing discovered, nothing shipped), which is what EXIT_PROBE_FAILED means.
+    if all_flag and not targets:
+        if domain is not None:
+            known = sorted({d.domain for d in reg.list_datasets() if d.domain})
+            raise click.UsageError(
+                f"--domain {domain!r} matches no dataset; known domains: "
+                f"{', '.join(known) or '(none)'}"
+            )
+        click.echo(
+            "no datasets registered, so nothing was drift-checked -- refusing to "
+            "report a clean sweep over an empty set",
+            err=True,
+        )
+        raise SystemExit(EXIT_PROBE_FAILED)
+
     # run_drift_checks, not a comprehension over run_drift_check: datasets sharing a
     # baseline AND a probe callable share one drift signal, so it is probed once and
     # fanned out. Every dataset still gets its own entry; they just agree, and the CI
@@ -135,7 +177,22 @@ def drift_cmd(
     results = drift_runner.run_drift_checks(targets, timeout=timeout)
 
     if as_json:
-        click.echo(json.dumps([_serialize(r) for r in results], indent=2, default=str))
+        rows = [_serialize(r) for r in results]
+        # Same shape a failing probe produces, so no consumer needs to learn a new key.
+        rows.extend(
+            {
+                "dataset_name": unit,
+                "status": "probe_failed",
+                "observed": None,
+                "expected": None,
+                "diff": None,
+                "probe_error": f"plugin failed to load: {exc}",
+                "fingerprint_path": None,
+                "probe_ref": None,
+            }
+            for unit, exc in load_errors
+        )
+        click.echo(json.dumps(rows, indent=2, default=str))
     else:
         for r in results:
             click.echo(f"{r.dataset_name}: {r.status}")
@@ -167,6 +224,12 @@ def drift_cmd(
             exit_codes.add(EXIT_DRIFTED)
         elif r.status == "probe_failed":
             exit_codes.add(EXIT_PROBE_FAILED)
+    # A unit that never registered is a probe that cannot run. Reporting clean over a
+    # silently smaller set is the failure mode #351 exists to stop, and `drift.yml` /
+    # `drift-health.yml` both gate on `rc > 2`, so 2 still reads as "probe trouble"
+    # rather than "the command itself broke".
+    if load_errors:
+        exit_codes.add(EXIT_PROBE_FAILED)
     raise SystemExit(max(exit_codes))
 
 

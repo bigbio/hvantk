@@ -8,6 +8,8 @@ domain: genomics
 
 # Fake test plugin
 
+Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its repository map, helpers, keying conventions, builder pattern, and validation contract.
+
 Used by hvantk loader tests. **Not a real provider** — there is no upstream source
 behind it and nothing here should be copied as fact.
 
@@ -57,6 +59,12 @@ Change this fixture only when a loader or CLI behaviour under test changes.
 
 ## 9. Validation contract
 
-`plugin.yaml`'s `tests:` block declares a fixture and snapshots that **deliberately do
-not exist**, so that `hvantk plugins validate` keeps exercising its
-declared-but-absent-artifact warning. Only `tests/drift_fingerprint.json` is present.
+- `fixture`: `tests/testdata/raw/fake` — **deliberately absent**.
+- `schema_snapshot`: `tests/snapshots/schema.json` — **deliberately absent**.
+- `row_snapshot`: `tests/snapshots/sample_rows.json` — **deliberately absent**.
+- `drift_fingerprint`: `tests/drift_fingerprint.json` — the one artifact that IS present.
+- `command`: `pytest -q` — matching `plugin.yaml`, which is the rule this section states.
+
+The absent four are the point: they keep `hvantk plugins validate` exercising its
+declared-but-absent-artifact warning. The paths are still named here, because § 9's job
+is to say what the manifest declares — whether or not it is on disk yet.

@@ -8,6 +8,8 @@ domain: expression
 
 # UCSC Cell Browser resource skill
 
+Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its repository map, helpers, keying conventions, builder pattern, and validation contract.
+
 ## 1. Status & scope
 
 This skill covers BUILD and UPDATE of a UCSC Cell Browser single-cell AnnData (`.h5ad`) from raw expression + metadata TSVs. It does NOT cover download (see `hvantk/skills/ucsc_cellbrowser/cli.py`), scanpy-based downstream analysis, or atlas-level merging across multiple UCSC collections.
@@ -51,6 +53,7 @@ The builder returns an `ExpressionMatrix` wrapping an `AnnData`; the platform pe
 - CLI: `hvantk reprocess ucsc-cellbrowser:<dataset> --raw-dir <dir> --output <path>.h5ad` (dataset is one of `default`, `adult-ctx`, `dev-ctx`). Builder kwargs flow through `--plugin-arg key=value`.
 - Registry: the plugin loader (`hvantk/core/plugin/loader.py`) auto-resolves each dataset from the plugin manifest at `hvantk/skills/ucsc_cellbrowser/plugin.yaml` via `get_registry().get_dataset("ucsc-cellbrowser:<dataset>")` (one of `default`, `adult-ctx`, `dev-ctx`). Top-level builds run through `run_builder_for_spec` in `hvantk/core/plugin/run_builder.py`. There is no `MATRIX_BUILDERS` registry or `registry.py`.
 - Test: `hvantk/skills/ucsc_cellbrowser/tests/test_builder.py`.
+- Drift probe: `fetch_fingerprint` in `hvantk/skills/ucsc_cellbrowser/drift_probe.py`, compared against `tests/drift_fingerprint.json` by `hvantk drift ucsc-cellbrowser:default` (see § 12 of `_conventions`).
 
 Read the existing files at these paths as ground truth for shape. This skill does not restate code.
 
@@ -82,10 +85,35 @@ UCSC datasets are per-collection. To refresh a collection's build:
 
 ## 9. Validation contract
 
-- `fixture`: `hvantk/skills/ucsc_cellbrowser/tests/testdata/raw/ucsc-cellbrowser/expression_matrix.tsv` (primary) and `hvantk/skills/ucsc_cellbrowser/tests/testdata/raw/ucsc-cellbrowser/metadata.tsv` (secondary).
-- `schema_snapshot`: `hvantk/skills/ucsc_cellbrowser/tests/snapshots/ucsc-cellbrowser/schema.json`
-- `row_snapshot`: `hvantk/skills/ucsc_cellbrowser/tests/snapshots/ucsc-cellbrowser/sample_rows.json`
-- `test_command`: `pytest hvantk/skills/ucsc_cellbrowser/tests/test_builder.py`
+This provider ships **three datasets**, each with its own fixture and snapshot pair.
+Until #350 this section documented only `default`, so the two cortex datasets' artifacts
+were declared in `plugin.yaml` and named nowhere an agent would look. All paths below are
+relative to `hvantk/skills/ucsc_cellbrowser/` and match the manifest exactly.
+
+**`default`**
+
+- `fixture`: `tests/testdata/raw/ucsc-cellbrowser` — `expression_matrix.tsv` (primary) and `metadata.tsv` (secondary).
+- `schema_snapshot`: `tests/snapshots/ucsc-cellbrowser/schema.json`
+- `row_snapshot`: `tests/snapshots/ucsc-cellbrowser/sample_rows.json`
+
+**`adult-ctx`**
+
+- `fixture`: `tests/testdata/raw/ucsc-cellbrowser-adult-ctx`
+- `schema_snapshot`: `tests/snapshots/ucsc-cellbrowser-adult-ctx/schema.json`
+- `row_snapshot`: `tests/snapshots/ucsc-cellbrowser-adult-ctx/sample_rows.json`
+
+**`dev-ctx`**
+
+- `fixture`: `tests/testdata/raw/ucsc-cellbrowser-dev-ctx`
+- `schema_snapshot`: `tests/snapshots/ucsc-cellbrowser-dev-ctx/schema.json`
+- `row_snapshot`: `tests/snapshots/ucsc-cellbrowser-dev-ctx/sample_rows.json`
+
+**Shared by all three**
+
+- `drift_fingerprint`: `tests/drift_fingerprint.json` — one file covering every dataset (see § 12).
+- `command`: `pytest hvantk/skills/ucsc_cellbrowser/tests` — the whole directory. This
+  section previously named `tests/test_builder.py` alone, which disagreed with the
+  manifest and silently excluded the drift-probe tests.
 
 ## 10. Onboarding a new dataset within UCSC Cell Browser
 

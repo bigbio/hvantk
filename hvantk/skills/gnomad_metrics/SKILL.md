@@ -62,7 +62,7 @@ Row fields (from the v2.1.1 `by_gene` schema snapshot) fall into: identifiers (`
 
 ## 7. Workflow steps
 
-1. **Confirm the raw file is present.** If absent, run `hvantk gnomad-metrics-download --output <path> [--version v2.1.1|v4.0] [--table <name>]`.
+1. **Confirm the raw file is present.** If absent, run `hvantk download gnomad-metrics --output <path> [--version v2.1.1|v4.0] [--table <name>]`.
 2. **If pointing `--raw-dir` at a directory**, ensure it holds exactly one `*.bgz`/`*.tsv` constraint file — the builder raises `ValueError` on more than one candidate rather than guessing.
 3. **Build the table**: `hvantk reprocess gnomad-metrics:metrics --raw-dir <dir> --output <out>.ht [--plugin-arg fields='["gene_id","pLI","oe_lof"]'] [--plugin-arg key=transcript]` (the `key` override is required for v4.0).
 4. **Sanity-check the output.** Confirm the key matches what was requested (`gene_id` by default), and that `constraint_flag` values are empty strings rather than nulls for unflagged genes (§ 4).
@@ -85,4 +85,4 @@ Declared in `plugin.yaml`'s `tests:` block for dataset `gnomad-metrics:metrics`.
 - `schema_snapshot`: `tests/snapshots/schema.json`
 - `row_snapshot`: `tests/snapshots/sample_rows.json`
 - `drift_fingerprint`: `tests/drift_fingerprint.json`
-- `test_command`: `pytest hvantk/skills/gnomad_metrics/tests -m hail`
+- `command`: `pytest hvantk/skills/gnomad_metrics/tests -m hail`
