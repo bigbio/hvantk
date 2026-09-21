@@ -45,7 +45,7 @@ Stable provider notes the catalog will not capture:
 
 ## 5. Output contract
 
-Hail Table keyed by `hgnc_id` (string, with `HGNC:` prefix preserved). Builder returns an `AnnotationTable` (`hvantk.core.models.AnnotationTable`) wrapping the Hail Table with provenance (`schema_id="hgnc-lookup-v1"`). Schema is the source of truth — see `hvantk/skills/hgnc/tests/snapshots/schema.json` (declared in `plugin.yaml`; not yet seeded — regenerate via `--regenerate-snapshots` on first round-trip run).
+Hail Table keyed by `hgnc_id` (string, with `HGNC:` prefix preserved). Builder returns an `AnnotationTable` (`hvantk.core.models.AnnotationTable`) wrapping the Hail Table with provenance (`schema_id="hgnc-lookup-v1"`). Schema is the source of truth — see `hvantk/skills/hgnc/tests/snapshots/schema.json` (declared in `plugin.yaml`; seeded and asserted by `test_hgnc_snapshot_round_trip` — regenerate via `--regenerate-snapshots` after an intentional schema change).
 
 Summary: one row per approved gene (≈43k in the live release; 5 in the fixture). Row fields fall into core identifiers (`hgnc_id`, `gene_symbol`, `gene_name`, `status`), symbol history arrays (`alias_symbols`, `alias_names`, `prev_symbols`, `prev_names`), cross-reference IDs (`ensembl_gene_id`, `entrez_id`, `uniprot_ids`, `refseq_id`, `ucsc_id`, `ccds_id`), classification (`locus_group`, `locus_type`, `gene_group`), location (`location`, `location_sortable`), clinical links (`omim_id`, `orphanet_id`, `gencc`, `mane_select`), and audit dates. Pipe-separated multi-value fields are arrays; the rest are scalars (mostly `tstr`).
 
@@ -57,7 +57,7 @@ Summary: one row per approved gene (≈43k in the live release; 5 in the fixture
 - Constants: `HGNC_GENE_FIELDS`, `HGNC_PIPE_SEPARATED_FIELDS`, `HGNC_DOWNLOAD_URL`, `HGNC_INFO_URL` in `hvantk/skills/hgnc/shared/constants.py`.
 - Downloader: `hvantk/skills/hgnc/cli.py` (`download_dataset` lifecycle entry point, wired via `plugin.yaml` `lifecycle.download`; CLI command `hvantk download hgnc` via the `cli:` block).
 - Streamer: `HGNCGeneCatalogStreamer` in `hvantk/skills/hgnc/streamers.py` (subclass of `GeneCatalogStreamer` in `hvantk/core/streamers/gene_catalog.py`; validates the table is keyed by `hgnc_id` and absorbs the retired `GeneMapper`/`gene_aliases` logic).
-- Existing tests: `hvantk/skills/hgnc/tests/test_downloader.py` and `test_drift_probe.py`. The snapshot round-trip test (see § 9) is declared in `plugin.yaml` but not yet seeded; create it on first round-trip run.
+- Existing tests: `hvantk/skills/hgnc/tests/` — `test_builder.py` (`test_hgnc_snapshot_round_trip`, asserting against the committed snapshots), `test_downloader.py` and `test_drift_probe.py`. See § 9 for the artifact paths.
 - Downstream consumers (read-only): the ClinGen/GenCC streamers in `hvantk/skills/clingen/streamers.py` and `hvantk/skills/gencc/streamers.py` (over `GeneDiseaseTableStreamer`), and `hvantk/algorithms/psroc/pipeline.py`.
 
 ## 7. Workflow steps
@@ -91,8 +91,6 @@ Declared in `plugin.yaml`'s `tests:` block (all paths plugin-relative under `hva
 - `row_snapshot`: `tests/snapshots/sample_rows.json`
 - `drift_fingerprint`: `tests/drift_fingerprint.json`
 - `command`: `pytest hvantk/skills/hgnc/tests -m hail`
-
-The snapshot directory and round-trip test file are declared but not yet created — initial run uses `pytest … --regenerate-snapshots` to seed them, per `_conventions` § 8.
 
 > **Snapshot status:** seeded. `tests/snapshots/schema.json` and
 > `tests/snapshots/sample_rows.json` are committed, and `test_builder.py` asserts the

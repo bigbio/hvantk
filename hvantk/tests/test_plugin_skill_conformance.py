@@ -299,3 +299,66 @@ def test_spec_declares_the_test_artifact_paths_its_manifest_does():
         "plugin.yaml declares test artifacts that the SKILL.md never names "
         "(_conventions s 9 requires them to match):\n  " + "\n  ".join(problems)
     )
+
+
+#: Phrases a spec uses to say an artifact has not been produced yet. Matched only when
+#: every declared artifact IS on disk, so a genuinely ungradable dataset can still say
+#: so -- `alphagenome`, `cosmic_cgc` and `pqtl` ship no fixture and must keep explaining
+#: why.
+_UNSEEDED_CLAIMS = (
+    r"not yet (?:been )?seeded",
+    r"NOT yet been seeded",
+    r"not yet created",
+    r"TODO -- created on first",
+    r"declared but not yet",
+)
+
+
+def test_no_spec_claims_an_artifact_is_missing_when_it_is_on_disk():
+    """Snapshot-status prose must not outlive the snapshots being committed.
+
+    This rot is quiet and it propagates. `hgnc` is the plugin CLAUDE.md names as the
+    canonical reference, and its s 9 said the round-trip test and snapshots were
+    "declared but not yet created" while `test_hgnc_snapshot_round_trip` and both JSON
+    files sat committed beside it -- with a blockquote two lines below saying the
+    opposite. An agent following the canonical example would run
+    `--regenerate-snapshots` and overwrite committed baselines.
+
+    Four specs carried some version of it (`hgnc`, `uniprot_ptm`, `cptac/expression`,
+    `cptac/phospho`), all seeded years apart from the prose that describes them.
+
+    Only fires when the manifest's fixture and both snapshots all exist, so
+    "cannot be created" on a genuinely ungradable dataset stays legal and correct.
+    """
+    problems: list[str] = []
+    for manifest_path in sorted(SKILLS_DIR.glob("*/plugin.yaml")):
+        manifest = yaml.safe_load(manifest_path.read_text())
+        for dataset in manifest.get("datasets", []):
+            rel = dataset.get("skill")
+            if not rel:
+                continue
+            spec_path = manifest_path.parent / rel
+            if not spec_path.is_file():
+                continue
+            tests = dataset.get("tests") or {}
+            declared = [
+                manifest_path.parent / tests[k]
+                for k in ("fixture", "schema_snapshot", "row_snapshot")
+                if tests.get(k)
+            ]
+            if len(declared) != 3 or not all(p.exists() for p in declared):
+                continue  # genuinely unseeded; the spec may and should say so
+
+            text = spec_path.read_text()
+            for pattern in _UNSEEDED_CLAIMS:
+                for m in re.finditer(pattern, text, re.IGNORECASE):
+                    line = text.count("\n", 0, m.start()) + 1
+                    problems.append(
+                        f"{spec_path.relative_to(SKILLS_DIR)}:{line} says "
+                        f"{m.group(0)!r}, but every declared artifact is on disk"
+                    )
+
+    assert not problems, (
+        "SKILL.md prose claims artifacts are unseeded that are committed:\n  "
+        + "\n  ".join(problems)
+    )
