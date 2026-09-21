@@ -10,7 +10,6 @@
       "locus_type",
       "status",
       "location",
-      "location_sortable",
       "alias_symbol",
       "alias_name",
       "prev_symbol",
@@ -60,13 +59,13 @@
     ]
   },
   "checksums": {
-    "hgnc_complete_set.txt": "b8cfde58b7ea456e6f05482a4cf663fe329a6508a00809713167cc827200790c"
+    "hgnc_complete_set.txt": "104a5675960251af89301c336ed07a5744612ca6651ecbc09765e01adc1eeafb"
   },
   "extras": {
-    "content_length": "16948224"
+    "content_length": "16913731"
   },
   "informational": {
-    "last_modified": "Fri, 28 Aug 2026 17:02:20 GMT"
+    "last_modified": "Fri, 11 Sep 2026 13:36:41 GMT"
   },
-  "fetched_at": "2026-08-28T23:46:56.653661+00:00"
+  "fetched_at": "2026-09-15T10:45:46.111285+00:00"
 }
