@@ -118,6 +118,38 @@ def test_contract_matches_the_conventions_document():
     )
 
 
+def test_the_shipped_template_satisfies_its_own_checker(tmp_path):
+    """The copy-me template in ``_conventions`` must pass ``check_skill_spec``.
+
+    ``_conventions`` is in ``EXEMPT_DIRS``, so nothing checked the template it ships --
+    and it did not conform. When #356 added it, the checker reported nine problems
+    against it: the preamble was hard-wrapped while ``CONVENTIONS_PREAMBLE`` is matched
+    as a single-line substring, five of the nine headings carried ``-> annotation``
+    suffixes that whole-line equality rejects, and s 6 / s 9 were bare headings with no
+    body to satisfy the content checks.
+
+    That is worse than shipping no template. CLAUDE.md points plugin authors here, an
+    agent copying the canonical example produces a spec the checker rejects, and the
+    failure is invisible to the author because the file it came from is exempt.
+    """
+    conventions = (SKILLS_DIR / "_conventions" / "SKILL.md").read_text()
+    blocks = re.findall(r"```markdown\n(.*?)```", conventions, re.S)
+    assert len(blocks) == 1, (
+        f"expected exactly one ```markdown template block in _conventions/SKILL.md, "
+        f"found {len(blocks)} -- this test would otherwise check the wrong one"
+    )
+
+    template = tmp_path / "SKILL.md"
+    template.write_text(blocks[0])
+    problems = check_skill_spec(template)
+
+    assert problems == [], (
+        "the template _conventions/SKILL.md tells authors to copy does not itself pass "
+        "check_skill_spec, so following it produces a non-conforming spec:\n  "
+        + "\n  ".join(problems)
+    )
+
+
 # --- Negative cases. Each of these passed the first version of the checker, which is
 def _strip_probe_from_section_6(text: str) -> str:
     """Remove every drift-probe reference from section 6, and only section 6.

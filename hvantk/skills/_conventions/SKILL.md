@@ -55,11 +55,18 @@ Each spec MUST also open with a YAML frontmatter block declaring at least `name`
 The nine headings are the contract; what goes under them was, until #356, whatever each
 author chose. A hygiene pass measured all 23 specs and found the majority had converged
 on one shape anyway. That shape is now the template, and the mechanical parts of it are
-checked:
+checked.
+
+Copy the block below **verbatim** and replace the `<...>` placeholders. Everything
+outside the placeholders is load-bearing: the preamble is matched as a single-line exact
+substring (do not re-wrap it), the headings are matched by whole-line equality (do not
+append annotations to them), and the § 6 and § 9 bodies shown here are the minimum that
+satisfies the content checks. `test_the_shipped_template_satisfies_its_own_checker`
+asserts exactly this, so the template cannot drift from the rule it documents:
 
 ```markdown
 ---
-name: hvantk:resource-<provider>         # all 23 carry these five keys
+name: hvantk:resource-<provider>
 description: <one line, what the dataset is>
 status: provisional | stable
 backend: hail | anndata | pandas
@@ -68,19 +75,55 @@ domain: genomics | transcriptomics | proteomics | epigenomics | mapping
 
 # <Provider> resource skill
 
-Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its repository map,
-helpers, keying conventions, builder pattern, and validation contract.
+Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its repository map, helpers, keying conventions, builder pattern, and validation contract.
 
-## 1. Status & scope          -> what ships, what is explicitly out of scope
-## 2. Source identity         -> upstream identity; NEVER restate catalog/datasets.json
+## 1. Status & scope
+
+<What ships, and what is explicitly out of scope.>
+
+## 2. Source identity
+
+<Upstream release, URL and licence. NEVER restate `catalog/datasets.json`.>
+
 ## 3. Backend choice + reasoning
-## 4. Raw format & gotchas    -> the section that earns its keep; see below
-## 5. Output contract         -> keys, fields, dtypes, schema_id, provenance
+
+<hail | anndata | pandas, and why this dataset needs that one.>
+
+## 4. Raw format & gotchas
+
+<The section that earns its keep -- see "Section 4 is where the value is" below.>
+
+## 5. Output contract
+
+<Keys, fields, dtypes, `schema_id`, provenance.>
+
 ## 6. hvantk integration points
+
+- Builder: `build_<provider>_<dataset>` in `builder.py`
+- Drift probe: `fetch_fingerprint` in `drift_probe.py`
+- Tests: `tests/`, run with the `command` declared in `plugin.yaml`
+- Build with: `hvantk reprocess <provider>:<dataset> --raw-dir <dir> --output <out>`
+
 ## 7. Workflow steps
+
+<Download -> parse -> build -> drift-check, as commands a reader can run.>
+
 ## 8. Update playbook
+
+<What to do when upstream moves: which artifacts to regenerate, in which order.>
+
 ## 9. Validation contract
+
+Declared in `plugin.yaml`'s `tests:` block:
+
+- `fixture`: <path>
+- `schema_snapshot`: <path>
+- `row_snapshot`: <path>
+- `drift_fingerprint`: <path>
+- `command`: <the pytest selector that runs them>
 ```
+
+The five frontmatter keys are not optional in practice: all 23 specs carry them.
 
 **Section 6 exists so a reader can get from the spec to the code without opening
 `plugin.yaml`.** Three references are *checked* -- the builder, the drift probe, and the

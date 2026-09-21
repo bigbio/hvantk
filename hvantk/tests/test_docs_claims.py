@@ -86,9 +86,10 @@ def _tracked(*suffixes: str) -> list[Path]:
 #: are read by humans; the per-provider `SKILL.md` files are read by coding agents that
 #: then *write plugin code* from them, so a wrong command there is executed rather than
 #: merely misleading. They were outside this filter until #350, and the promotion review
-#: found seven invocations of `hvantk <name>-download` across two specs and a docstring
-#: -- a form that has never existed, because the loader strips the `-download` suffix and
-#: binds the command under the `download` group.
+#: found ten invocations of `hvantk <name>-download` across five specs (plus thirty more
+#: across seven downloader docstrings, which this filter still does not reach) -- a form
+#: that has never existed, because the loader strips the `-download` suffix and binds the
+#: command under the `download` group.
 DOC_FILES = [
     p
     for p in _tracked(".md")
@@ -160,8 +161,9 @@ def test_the_extractor_actually_finds_commands():
     still left 373. Both are the very additions the bound was supposed to protect.
 
     The SKILL.md floor is the load-bearing one -- a fence-only scan found 5 commands
-    across 24 specs, which is what let seven bogus `hvantk <name>-download` invocations
-    sit in the provider docs until #350.
+    across 24 specs, which is what let ten bogus `hvantk <name>-download` invocations sit
+    in the provider docs until #353 removed them. (#348 reviewed the same promotion but
+    did not touch them: all ten were still present at its tip.)
     """
     from_specs = [c for p, c in DOCUMENTED if p.name == "SKILL.md"]
     from_docs = [c for p, c in DOCUMENTED if p.name != "SKILL.md"]

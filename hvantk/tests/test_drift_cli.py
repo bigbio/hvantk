@@ -377,3 +377,100 @@ def test_ledger_flag_rejects_json(tmp_path, monkeypatch):
     result = CliRunner().invoke(drift_cli.drift_cmd, ["--ledger", "--json"])
     assert result.exit_code != 0
     assert "--ledger" in result.output and "--json" in result.output, result.output
+
+
+# --- #351: a unit that never registered must become a row and an exit code -----------
+#
+# The mechanism #351 added had no test at all: `grep -c 'load_error\|probe_failed'` over
+# this file returned 0 until these landed. `test_plugin_loader.py` pins the logging half,
+# but nothing pinned the synthetic JSON row or EXIT_PROBE_FAILED -- so a refactor could
+# delete the behaviour and leave every signal green, which is verbatim the failure #351
+# documents. This module's sibling says it best: a check that cannot fail is decoration.
+
+
+def _registry_with_load_error(monkeypatch, unit="brokenprov"):
+    """A registry holding one healthy dataset and one recorded load failure."""
+    reg = plugin_loader.PluginRegistry()
+    reg.load_from_directory(FIXTURE_ROOT / "fake_plugin")
+    reg._record_load_error(unit, plugin_loader.PluginLoadError("boom"))
+    monkeypatch.setattr(plugin_loader, "get_registry", lambda: reg)
+    return reg
+
+
+def test_load_error_becomes_a_probe_failed_row_in_json_mode(monkeypatch):
+    """drift-health.yml greps the JSON for status == 'probe_failed' and reads
+    dataset_name. A unit that never registered contributes no DriftResult, so without
+    this it is absent from the report entirely and the workflow prints 'all probes
+    healthy' over a silently smaller set."""
+    _registry_with_load_error(monkeypatch)
+    result = CliRunner().invoke(drift_cmd, ["--all", "--json"])
+
+    # .stdout, not .output: the command also writes a WARNING to stderr, and CliRunner
+    # folds stderr into .output. Machine-readable stdout staying clean is the point.
+    rows = json.loads(result.stdout)
+    failed = [r for r in rows if r["status"] == "probe_failed"]
+    assert [r["dataset_name"] for r in failed] == ["brokenprov"], rows
+    assert "plugin failed to load" in failed[0]["probe_error"]
+    # Same shape as a genuinely failing probe, so no consumer learns a new key.
+    assert set(failed[0]) == set(rows[0])
+
+
+def test_load_error_sets_exit_probe_failed_even_when_every_probe_is_clean(monkeypatch):
+    """The exit code is the other half: drift.yml and drift-health.yml both gate on
+    `rc > 2`, so 2 reads as 'probe trouble' rather than 'the command broke'."""
+    _registry_with_load_error(monkeypatch)
+    result = CliRunner().invoke(drift_cmd, ["--all"])
+    assert result.exit_code == 2  # EXIT_PROBE_FAILED, despite fake:default being clean
+
+
+def test_load_error_is_named_by_provider_not_by_absolute_path(tmp_path, monkeypatch):
+    """The recorded unit goes verbatim into the drift-health issue body, and
+    drift_to_pr.py splits it on ':' to look up maintainers. An absolute path would leak
+    the build machine's layout (/home/runner/work/...) and hand the lookup a directory.
+    """
+    broken = tmp_path / "skills" / "wonky"
+    broken.mkdir(parents=True)
+    (broken / "plugin.yaml").write_text("api_version: 2\nname: wonky\ndatasets: nope\n")
+
+    reg = plugin_loader.PluginRegistry()
+    reg.load_from_directory(broken)
+
+    units = [u for u, _ in reg.load_errors()]
+    assert units == ["wonky"], units
+    assert not any(str(tmp_path) in u for u in units), units
+
+
+def test_a_provider_directory_with_no_manifest_is_recorded_not_skipped(tmp_path):
+    """A manifest that fails to LOAD was recorded; one that fails to EXIST was not, so
+    the provider left the registry with no row, no warning and exit 0. The loader accepts
+    only `plugin.yaml`, so a `.yml` typo or a packaging glob that stops shipping it lands
+    here."""
+    root = tmp_path / "skills"
+    (root / "ghost").mkdir(parents=True)
+    (root / "ghost" / "plugin.yml").write_text("name: ghost\n")  # note: .yml
+    (root / "_conventions").mkdir()  # underscore dirs are not providers
+
+    reg = plugin_loader.PluginRegistry()
+    reg.load_from_skills_root(root)
+
+    units = [u for u, _ in reg.load_errors()]
+    assert units == ["ghost"], units
+    assert "_conventions" not in units
+
+
+def test_drift_all_refuses_to_report_clean_over_an_empty_registry(monkeypatch):
+    """An empty sweep is the limiting case of the silently-smaller set: no targets means
+    no results, so exit_codes stays {EXIT_CLEAN} and drift.yml (rc > 2) passes on a
+    report of []. Green, having checked nothing."""
+    monkeypatch.setattr(plugin_loader, "get_registry", plugin_loader.PluginRegistry)
+    result = CliRunner().invoke(drift_cmd, ["--all"])
+    assert result.exit_code == 2  # EXIT_PROBE_FAILED, not 0
+
+
+def test_drift_all_rejects_a_domain_that_matches_nothing(monkeypatch):
+    """--domain takes a free-form string and its help text names no valid value, so a
+    typo silently meant 'check nothing' and exited 0."""
+    result = CliRunner().invoke(drift_cmd, ["--all", "--domain", "genomicz"])
+    assert result.exit_code != 0
+    assert "matches no dataset" in result.output
+    assert "genomics" in result.output  # names the real ones
