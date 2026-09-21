@@ -9,6 +9,7 @@ instead of ``urllib3.util.Retry``: that honours ``Retry-After`` via ``time.sleep
 with no upper bound, so a host answering ``Retry-After: 3600`` would park CI for an hour.
 Deliberately non-Hail so it runs in the default suite.
 """
+
 from __future__ import annotations
 
 import threading
@@ -121,7 +122,10 @@ def test_connection_errors_are_retried_but_other_request_errors_are_not(
         ("not-a-date", None),
         ("", None),
         (None, None),
-        ("Wed, 21 Oct 1990 07:28:00 GMT", 0.0),  # in the past -> clamped to 0, not negative
+        (
+            "Wed, 21 Oct 1990 07:28:00 GMT",
+            0.0,
+        ),  # in the past -> clamped to 0, not negative
     ],
 )
 def test_parse_retry_after(header, expected):
@@ -131,10 +135,13 @@ def test_parse_retry_after(header, expected):
 # --- review findings on #268 ---------------------------------------------------------
 
 
-@pytest.mark.parametrize("kwargs", [
-    {"backoff_s": -1.0},
-    {"max_sleep_s": -5.0},
-])
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"backoff_s": -1.0},
+        {"max_sleep_s": -5.0},
+    ],
+)
 def test_negative_timings_are_rejected_before_the_first_request(kwargs):
     """A negative value would otherwise surface only AFTER a transient failure, replacing
     the upstream error the caller was retrying with ValueError('sleep length must be
@@ -158,3 +165,55 @@ def test_backoff_is_capped_at_max_sleep_for_any_attempt():
     assert http_util._backoff(2.0, 4, 30.0) == 16.0
     assert http_util._backoff(2.0, 99, 30.0) == 30.0
     assert http_util._backoff(2.0, 10**6, 30.0) == 30.0
+
+
+def test_empty_success_body_is_retried_when_asked(requests_mock, slept):
+    """A 200 with zero bytes is a transient fault no status rule can see (#352).
+
+    Observed 2026-09-21: the medRxiv API served ``200`` with
+    ``Content-Type: application/json`` and an empty body, six times running, where the
+    same URL had returned real JSON half an hour earlier. The pqtl probe already used
+    this helper and still failed, because retries keyed on 429/5xx and this wore a
+    success code -- so the drift bot filed an issue for an upstream blip.
+    """
+    requests_mock.get(
+        URL,
+        [
+            {"status_code": 200, "text": ""},
+            {"status_code": 200, "text": '{"collection": []}'},
+        ],
+    )
+
+    resp = http_util.request_with_retry("GET", URL, retry_on_empty_body=True)
+
+    assert resp.text == '{"collection": []}'
+    assert len(slept) == 1
+
+
+def test_empty_success_body_is_not_retried_by_default(requests_mock, slept):
+    """Opt-in, because an empty 200 is perfectly legal for many endpoints.
+
+    Retrying it everywhere would turn a normal empty result into four requests and a
+    delay, so the caller -- who knows whether the body may legitimately be empty -- asks
+    for it.
+    """
+    requests_mock.get(
+        URL, [{"status_code": 200, "text": ""}, {"status_code": 200, "text": "late"}]
+    )
+
+    resp = http_util.request_with_retry("GET", URL)
+
+    assert resp.text == ""
+    assert slept == []
+
+
+def test_streamed_requests_are_never_body_checked(requests_mock, slept):
+    """Touching ``.content`` would consume the body the caller asked to stream."""
+    requests_mock.get(URL, [{"status_code": 200, "text": ""}])
+
+    resp = http_util.request_with_retry(
+        "GET", URL, retry_on_empty_body=True, stream=True
+    )
+
+    assert resp.status_code == 200
+    assert slept == []

@@ -15,6 +15,7 @@ A rate-limited host answering ``Retry-After: 3600`` would therefore park a CI jo
 hour. This helper honours the header, because ignoring a server's explicit backoff
 request is how you get rate-limited harder, but clamps it to ``max_sleep_s``.
 """
+
 from __future__ import annotations
 
 import logging
@@ -86,6 +87,7 @@ def request_with_retry(
     backoff_s: float = DEFAULT_BACKOFF_S,
     max_sleep_s: float = DEFAULT_MAX_SLEEP_S,
     retry_statuses: Iterable[int] = RETRY_STATUSES,
+    retry_on_empty_body: bool = False,
     session: requests.Session | None = None,
     **kwargs,
 ) -> requests.Response:
@@ -100,6 +102,15 @@ def request_with_retry(
     as a 503, and a probe that dies on one flaky TCP handshake is the bug this fixes.
     Other ``RequestException`` subclasses (a malformed URL, say) are not retried, since
     repeating them cannot help.
+
+    ``retry_on_empty_body`` additionally retries a *successful* response whose body is
+    empty. That is opt-in because an empty 200 is legitimate for plenty of endpoints,
+    and only the caller knows. It exists because the failure it covers is invisible to
+    every status-based rule: on 2026-09-21 the medRxiv API served ``200`` with
+    ``Content-Type: application/json`` and zero bytes, so the pqtl probe raised "returned
+    non-JSON" and filed #352 -- a transient upstream fault wearing a success code, which
+    no amount of 5xx retrying would have caught. Not applied to streamed requests, where
+    touching ``.content`` would consume the body the caller asked to stream.
     """
     if attempts < 1:
         raise ValueError(f"attempts must be >= 1, got {attempts}")
@@ -124,12 +135,23 @@ def request_with_retry(
             sleep_s = _backoff(backoff_s, attempt, max_sleep_s)
             logger.warning(
                 "%s %s failed (%s); retrying in %.1fs (attempt %d/%d)",
-                method.upper(), url, type(exc).__name__, sleep_s, attempt, attempts,
+                method.upper(),
+                url,
+                type(exc).__name__,
+                sleep_s,
+                attempt,
+                attempts,
             )
             time.sleep(sleep_s)
             continue
 
-        if is_last or response.status_code not in retry_statuses:
+        empty_body = (
+            retry_on_empty_body
+            and not kwargs.get("stream")
+            and response.ok
+            and not response.content.strip()
+        )
+        if is_last or (response.status_code not in retry_statuses and not empty_body):
             return response
 
         # Retryable, with attempts left. Read Retry-After BEFORE closing: a streamed
@@ -140,8 +162,14 @@ def request_with_retry(
         backoff = _backoff(backoff_s, attempt, max_sleep_s)
         sleep_s = min(retry_after, max_sleep_s) if retry_after is not None else backoff
         logger.warning(
-            "%s %s returned %d; retrying in %.1fs (attempt %d/%d)",
-            method.upper(), url, response.status_code, sleep_s, attempt, attempts,
+            "%s %s returned %d%s; retrying in %.1fs (attempt %d/%d)",
+            method.upper(),
+            url,
+            response.status_code,
+            " with an empty body" if empty_body else "",
+            sleep_s,
+            attempt,
+            attempts,
         )
         time.sleep(sleep_s)
 

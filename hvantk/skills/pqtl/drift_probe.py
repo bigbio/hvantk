@@ -51,7 +51,15 @@ def fetch_fingerprint() -> dict:
     """Fingerprint the upstream preprint's version metadata."""
     try:
         resp = request_with_retry(
-            "GET", MEDRXIV_API_URL, timeout=_TIMEOUT_S, allow_redirects=True
+            "GET",
+            MEDRXIV_API_URL,
+            timeout=_TIMEOUT_S,
+            allow_redirects=True,
+            # The API answers 200 / application/json with ZERO bytes when it is
+            # unhappy, which no status-based retry can see. Observed 2026-09-21:
+            # six consecutive empty 200s where the same URL had served real JSON
+            # half an hour earlier, which is what filed #352.
+            retry_on_empty_body=True,
         )
         resp.raise_for_status()
     except requests.RequestException as exc:
