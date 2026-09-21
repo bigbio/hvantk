@@ -12,7 +12,7 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its reposit
 
 ## 1. Status & scope
 
-- **Status:** provisional. Downloader + dataset class + parser helpers + builder + drift-probe placeholder + parser unit tests live under the plugin folder. Builder round-trip snapshots are NOT yet seeded; the fixture directory exists but is empty. Plugin tests (parser + drift-probe sanity) live in `hvantk/skills/cptac/phospho/tests/`.
+- **Status:** provisional. Downloader + dataset class + parser helpers + builder + drift-probe placeholder + parser unit tests live under the plugin folder. Builder round-trip snapshots and the fixture are seeded; `test_builder.py` asserts against both. Plugin tests (parser + drift-probe sanity) live in `hvantk/skills/cptac/phospho/tests/`.
 - **In scope:** per-cancer-type phospho fetches (one of `CPTAC_CANCER_TYPES`) via the `cptac` Python package, written as a 13-column intermediate TSV consumed by the PTM pipeline (`hvantk/algorithms/ptm/pipeline.py`) AND a wide-format matrix CSV + metadata CSV consumed by the AnnData builder. The builder produces a `(samples x sites)` AnnData with parsed site annotations in `var`.
 - **Out of scope:** non-phospho PTM atlases on CPTAC (those would land as sibling datasets under `hvantk/skills/cptac/<ptm-type>/`); pan-cancer joint analysis (the downloader merges per-cancer TSVs but does not produce a joint AnnData).
 
@@ -111,16 +111,14 @@ CPTAC publishes refreshed datasets through the `cptac` Python package. When a ne
 
 Per `_conventions` § 9:
 
-- **fixture:** `hvantk/skills/cptac/phospho/tests/testdata/raw/cptac-phospho/` (directory present, not yet seeded -- parser unit tests build mock multi-index DataFrames on the fly).
-- **schema_snapshot:** `hvantk/skills/cptac/phospho/tests/snapshots/schema.json` (TODO -- created on first `--regenerate-snapshots` run).
-- **row_snapshot:** `hvantk/skills/cptac/phospho/tests/snapshots/sample_rows.json` (TODO -- same).
+- **fixture:** `hvantk/skills/cptac/phospho/tests/testdata/raw/cptac-phospho/` — seeded (`phospho.tsv` + `metadata.tsv`).
+- **schema_snapshot:** `hvantk/skills/cptac/phospho/tests/snapshots/schema.json` — seeded.
+- **row_snapshot:** `hvantk/skills/cptac/phospho/tests/snapshots/sample_rows.json` — seeded.
 - **command:** `pytest hvantk/skills/cptac/phospho/tests`.
 - **drift_fingerprint:** `hvantk/skills/cptac/phospho/tests/drift_fingerprint.json` (placeholder shape; refresh via the update playbook).
 
-The plugin manifest already declares these paths so the loader contract holds. Parser unit tests + drift-probe sanity test pass today; the builder round-trip snapshot is the gap to close in a follow-up.
+The plugin manifest declares these paths so the loader contract holds. Parser unit tests, download-resilience, drift-probe sanity and the builder round-trip all pass.
 
-> **Snapshot status:** schema.json and sample_rows.json have NOT yet been seeded
-> for this plugin. On first round-trip run, use
-> `pytest hvantk/skills/cptac/phospho/tests --regenerate-snapshots`
-> to bootstrap them, then commit. Until seeded, the round-trip test cannot verify
-> output against a fixed schema.
+> **Snapshot status:** seeded. `test_builder.py` asserts the build against both
+> snapshots. Regenerate after an intentional schema change with
+> `pytest hvantk/skills/cptac/phospho/tests/test_builder.py --regenerate-snapshots`, then commit.

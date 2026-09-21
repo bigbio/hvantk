@@ -12,7 +12,7 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its reposit
 
 ## 1. Status & scope
 
-- **Status:** provisional. Downloader + parser + downloader tests + drift-probe placeholder are migrated under the plugin folder. Builder round-trip snapshots (`schema.json`, `sample_rows.json`) are NOT yet seeded; the fixture directory exists but is empty.
+- **Status:** provisional. Downloader + parser + downloader tests + drift-probe placeholder are migrated under the plugin folder. Builder round-trip snapshots (`schema.json`, `sample_rows.json`) and the fixture are seeded; `test_builder.py` asserts against both.
 - **In scope:** one PeptideAtlas human phospho build at a time (default: `(202512, 606)` — see `PEPTIDEATLAS_LATEST_BUILD_DATE` / `PEPTIDEATLAS_LATEST_BUILD_ID` in `hvantk/skills/peptideatlas/phospho/shared/constants.py`). Output is the wide intermediate TSV consumed by `hvantk/algorithms/ptm/pipeline.py` via its `peptideatlas_tsv` argument.
 - **Out of scope:** non-human PeptideAtlas builds; non-phospho PTM atlases on PeptideAtlas (those would land as sibling datasets under `hvantk/skills/peptideatlas/<ptm-type>/`); any Hail-Table or AnnData representation — the only downstream consumer today reads the TSV directly.
 

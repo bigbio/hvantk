@@ -217,3 +217,43 @@ def test_streamed_requests_are_never_body_checked(requests_mock, slept):
 
     assert resp.status_code == 200
     assert slept == []
+
+
+@pytest.mark.parametrize(
+    "method, status, retried",
+    [
+        ("GET", 200, True),  # the real case: a body that should be there and is not
+        ("GET", 204, False),  # No Content means no body, by definition
+        ("HEAD", 200, False),  # HEAD responses never carry one either
+    ],
+)
+def test_only_a_real_empty_2xx_body_is_retried(
+    requests_mock, slept, method, status, retried
+):
+    """`response.ok` is merely status < 400, which is too wide to gate on.
+
+    It makes 204, a conditional GET's 304 and every redirect look like an empty success.
+    `gnomad_metrics` already routes a HEAD through this helper, so turning
+    `retry_on_empty_body` on there -- the natural move for whoever hits the next flaky
+    probe -- would have burned the full 2+4+8s backoff on every run and returned the
+    identical response.
+    """
+    getattr(requests_mock, method.lower())(URL, text="", status_code=status)
+
+    http_util.request_with_retry(method, URL, retry_on_empty_body=True)
+
+    assert bool(slept) is retried
+
+
+def test_exhausted_empty_body_retries_stop_and_return(requests_mock, slept):
+    """A persistently empty endpoint must terminate, not spin.
+
+    The caller then decides: the pqtl probe raises `DriftProbeError` on the unparseable
+    body rather than recording a fingerprint a later run would compare equal to.
+    """
+    requests_mock.get(URL, text="", status_code=200)
+
+    resp = http_util.request_with_retry("GET", URL, retry_on_empty_body=True)
+
+    assert resp.status_code == 200 and resp.text == ""
+    assert len(slept) == http_util.DEFAULT_ATTEMPTS - 1

@@ -68,8 +68,8 @@ Stable notes:
 - **Lifecycle entry point:** `download_dataset` in `hvantk/skills/expression_atlas/cli.py`.
 - **Build CLI:** `hvantk reprocess expression-atlas:dataset --raw-dir <dir> --output <path>.h5ad` (delegates to the plugin builder; pass builder kwargs via `--plugin-arg key=value`).
 - **Plugin manifest:** `hvantk/skills/expression_atlas/plugin.yaml` (drives loader registration; compound dataset key `expression-atlas:dataset`).
-- **Tests:** `hvantk/skills/expression_atlas/tests/` (downloader unit, drift-probe sanity, and
 - **Drift probe:** `fetch_fingerprint` in `hvantk/skills/expression_atlas/drift_probe.py`, compared against `tests/drift_fingerprint.json` by `hvantk drift expression-atlas:dataset` (see § 12 of `_conventions`).
+- **Tests:** `hvantk/skills/expression_atlas/tests/` (downloader unit, drift-probe sanity, and
   `test_builder.py` — builder round-trip against a fixture derived from the real 320-column
   export, plus the column-inference regression guards).
 
