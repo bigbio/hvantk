@@ -117,7 +117,7 @@ Per `_conventions` § 9:
 - **fixture:** `hvantk/skills/insider/tests/testdata/raw/insider/insider_sample.bed`. 5 PPI tracks (~21 raw data rows; 17 valid after zero-length filtering). ~1.9 KB. Sliced from the full BED by a track-aware sub-sampler (keeps the `browser` directive plus the first N `track` blocks, each header paired with its data rows) — a plain `head -N` would split a track block and produce an invalid BED.
 - **schema_snapshot:** `hvantk/skills/insider/tests/snapshots/schema.json`. Records the `{interval, ppi_ids: array<str>}` shape.
 - **row_snapshot:** `hvantk/skills/insider/tests/snapshots/sample_rows.json`. Intervals are unique-in-table after the aggregation; test inlines 3 sample keys (per `_conventions` § 9 post-#101 rule — unique-key skills inline).
-- **test_command:** `pytest hvantk/skills/insider/tests -m hail`.
+- **command:** `pytest hvantk/skills/insider/tests -m hail`.
 - **drift_fingerprint:** `hvantk/skills/insider/tests/drift_fingerprint.json` for
   `variants`, and `interfaces/tests/drift_fingerprint.json` for `interfaces` — **one
   baseline per dataset, deliberately not shared.** The two products are versioned
@@ -168,7 +168,7 @@ genomic join.
 - **fixture:** `hvantk/skills/insider/interfaces/tests/testdata/raw/interfaces/H_sapiens_interfacesALL.txt` (3 pair rows, 3 proteins; covers a range IRES `[5,7-9]`, an empty `[]`, and both a predicted and an experimental source).
 - **schema_snapshot:** `hvantk/skills/insider/interfaces/tests/snapshots/schema.json` — `{uniprot_id, n_partners, n_partners_experimental, n_partners_predicted, n_interface_residues}`, keyed `uniprot_id`.
 - **row_snapshot:** `hvantk/skills/insider/interfaces/tests/snapshots/sample_rows.json`.
-- **test_command:** `pytest hvantk/skills/insider/interfaces/tests -m hail`.
+- **command:** `pytest hvantk/skills/insider/interfaces/tests -m hail`.
 
 `n_interface_residues` is the size of the UNION of a protein's interface residues across
 all its interactions, so it is bounded by protein length rather than by partner count --

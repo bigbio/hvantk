@@ -3,16 +3,16 @@ CLI command and lifecycle entry point for downloading ClinVar VCF data.
 
 Examples:
     # Download latest ClinVar VCF (GRCh38)
-    hvantk clinvar-download --output-dir data/clinvar
+    hvantk download clinvar --output-dir data/clinvar
 
     # Download a specific archived version
-    hvantk clinvar-download --version 20260101 --output-dir data/clinvar
+    hvantk download clinvar --version 20260101 --output-dir data/clinvar
 
     # Download GRCh37 build without tabix index
-    hvantk clinvar-download --genome-build GRCh37 --no-index
+    hvantk download clinvar --genome-build GRCh37 --no-index
 
     # Download and verify MD5 checksum
-    hvantk clinvar-download --verify-md5
+    hvantk download clinvar --verify-md5
 """
 
 import logging
@@ -128,15 +128,15 @@ def clinvar_downloader(
 
         # Download the latest ClinVar VCF
 
-        hvantk clinvar-download --output-dir data/clinvar
+        hvantk download clinvar --output-dir data/clinvar
 
         # Download a specific archived version
 
-        hvantk clinvar-download --version 20260101 --output-dir data/clinvar
+        hvantk download clinvar --version 20260101 --output-dir data/clinvar
 
         # Download GRCh37 build
 
-        hvantk clinvar-download --genome-build GRCh37
+        hvantk download clinvar --genome-build GRCh37
     """
     # Create dataset reference
     try:

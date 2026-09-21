@@ -144,7 +144,7 @@ Per `_conventions` § 9:
 - **schema_snapshot:** `hvantk/skills/gtex_eqtl/tests/snapshots/schema.json`.
 - **row_snapshot:** `hvantk/skills/gtex_eqtl/tests/snapshots/sample_rows.json`. Triple key `(locus, alleles, gene_id)` is unique-in-table for signif_pairs, so the test inlines a small key list and no `sample_keys.json` is maintained (per `_conventions` § 9 post-#101).
 - **drift_fingerprint:** `hvantk/skills/gtex_eqtl/tests/drift_fingerprint.json`.
-- **test_command:** `pytest hvantk/skills/gtex_eqtl/tests -m hail`.
+- **command:** `pytest hvantk/skills/gtex_eqtl/tests -m hail`.
 
 Round-trip test asserts: checkpointed schema matches `schema.json`; deterministic sample-row slice matches `sample_rows.json`. Test uses `source="gtex_v11"`, `tissue="Liver"`, `p_threshold=0` (retain all rows in the fixture). Spark session is initialized on demand by `_import_gtex_parquet`; the `hail_session` fixture ensures Hail (and therefore Spark) is up.
 

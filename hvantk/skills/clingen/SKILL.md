@@ -79,7 +79,7 @@ When ClinGen publishes an updated snapshot (any download is effectively a new sn
 
 - `fixture`: `hvantk/skills/clingen/tests/testdata/raw/clingen/clingen_test_sample.csv`
 - `drift_fingerprint`: `hvantk/skills/clingen/tests/drift_fingerprint.json`
-- `test_command`: `pytest hvantk/skills/clingen/tests -m hail`
+- `command`: `pytest hvantk/skills/clingen/tests -m hail`
 
 > **Snapshot status:** seeded. `tests/snapshots/schema.json` and
 > `tests/snapshots/sample_rows.json` are committed, and `test_builder.py` asserts the

@@ -62,7 +62,14 @@ def _tracked(*suffixes: str) -> list[Path]:
     """
     try:
         out = subprocess.run(
-            ["git", "-C", str(REPO_ROOT), "ls-files", "-z", *(f"*{s}" for s in suffixes)],
+            [
+                "git",
+                "-C",
+                str(REPO_ROOT),
+                "ls-files",
+                "-z",
+                *(f"*{s}" for s in suffixes),
+            ],
             capture_output=True,
             text=True,
             check=True,
@@ -75,10 +82,18 @@ def _tracked(*suffixes: str) -> list[Path]:
     return [REPO_ROOT / rel for rel in out.split("\0") if rel]
 
 
+#: The prose whose `hvantk ...` invocations are checked. `docs_site/` and `README.md`
+#: are read by humans; the per-provider `SKILL.md` files are read by coding agents that
+#: then *write plugin code* from them, so a wrong command there is executed rather than
+#: merely misleading. They were outside this filter until #350, and the promotion review
+#: found seven invocations of `hvantk <name>-download` across two specs and a docstring
+#: -- a form that has never existed, because the loader strips the `-download` suffix and
+#: binds the command under the `download` group.
 DOC_FILES = [
     p
     for p in _tracked(".md")
     if p.parts[len(REPO_ROOT.parts)] in {"docs_site", "README.md"}
+    or (p.name == "SKILL.md" and "skills" in p.parts)
 ]
 
 
@@ -88,12 +103,48 @@ _BASH_BLOCK = re.compile(r"```bash\n(.*?)```", re.S)
 _INVOCATION = re.compile(r"^\s*(hvantk\s+.*?)(?=\n(?!\s)|\Z)", re.S | re.M)
 
 
+#: `hvantk ...` inside a single-backtick span. The fenced-block extractor above is not
+#: enough for the per-provider specs: they name commands inline, in prose, so a fence-only
+#: scan found 5 commands across 24 `SKILL.md` files and missed every one of the seven
+#: `hvantk <name>-download` invocations #348 had to fix by hand. Restricted to a single
+#: line so it cannot swallow a fenced block, and to spans that start with `hvantk`.
+_INLINE_INVOCATION = re.compile(r"`(hvantk\s+[^`\n]+)`")
+
+
+#: Characters that mark a token as a stand-in rather than a literal subcommand:
+#: `<source>`, `{list,show}`, `list/describe/errors`, and a bare ellipsis.
+_PLACEHOLDER_CHARS = set("<>{}/,\u2026")
+
+
+def _is_prose_shorthand(argv: list[str]) -> bool:
+    """True when the *command path* is a placeholder rather than a real subcommand.
+
+    Only the leading tokens are examined -- those before the first `-`-prefixed option
+    -- because that is the part click has to resolve. A placeholder further right is an
+    ordinary argument (`--raw-dir <dir>` is fine and common) and must stay checked, or
+    widening this test to the specs would drop most of what it is meant to catch.
+
+    Deliberately narrow: this skips documentation that never claimed to be literal
+    (`hvantk download <source>`), not documentation that is simply wrong.
+    """
+    for token in argv:
+        if token.startswith("-"):
+            break
+        if set(token) & _PLACEHOLDER_CHARS:
+            return True
+    return False
+
+
 def _documented_commands() -> list[tuple[Path, str]]:
     out: list[tuple[Path, str]] = []
     for path in DOC_FILES:
-        for block in _BASH_BLOCK.findall(path.read_text()):
+        text = path.read_text()
+        for block in _BASH_BLOCK.findall(text):
             for raw in _INVOCATION.findall(block.replace("\\\n", " ")):
                 out.append((path, " ".join(raw.split())))
+        # Strip fenced blocks first so their contents are not counted twice.
+        for raw in _INLINE_INVOCATION.findall(_BASH_BLOCK.sub("", text)):
+            out.append((path, " ".join(raw.split())))
     return out
 
 
@@ -124,6 +175,8 @@ def test_documented_command_options_exist(path: Path, command: str):
         pytest.skip("not a parseable shell command")
     # Placeholders like `...` are prose, not arguments.
     argv = [a for a in argv if a != "..."]
+    if _is_prose_shorthand(argv):
+        pytest.skip("prose shorthand, not a literal invocation")
 
     result = CliRunner().invoke(cli, argv + ["--help"], catch_exceptions=True)
     # "No such command" matters as much as "No such option": a doc that says
@@ -270,9 +323,9 @@ def test_documented_artifact_annotations_are_importable():
             getattr(models, name)
         except Exception as exc:  # noqa: BLE001 - report any import failure
             unresolvable.append(f"{name}: {type(exc).__name__}: {exc}")
-    assert not unresolvable, (
-        f"hvantk.core.models lists these in __all__ but cannot resolve them: {unresolvable}"
-    )
+    assert (
+        not unresolvable
+    ), f"hvantk.core.models lists these in __all__ but cannot resolve them: {unresolvable}"
 
     stale = sorted(HVANTK_ARTIFACT_NAMES - exported)
     offenders = []

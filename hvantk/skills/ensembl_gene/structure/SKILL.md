@@ -264,7 +264,7 @@ folder (`hvantk/skills/ensembl_gene/`):
   `gene_id` (one per fixture gene).
 - `drift_fingerprint`: `structure/tests/drift_fingerprint.json` -- seeded
   (`probe_version: 2`, `extras.release: "113"`).
-- `test_command`: `pytest hvantk/skills/ensembl_gene/structure/tests -m hail`.
+- `command`: `pytest hvantk/skills/ensembl_gene/structure/tests -m hail`.
 
 Not part of `plugin.yaml`'s `tests:` block, but load-bearing companions to this
 dataset's contract (§ 2, § 8): `hvantk/skills/ensembl_gene/tests/test_release_pin.py`

@@ -81,7 +81,7 @@ When GenCC publishes an updated snapshot (any download is effectively a new snap
 
 - `fixture`: `hvantk/skills/gencc/tests/testdata/raw/gencc/gencc_test_sample.tsv`
 - `drift_fingerprint`: `hvantk/skills/gencc/tests/drift_fingerprint.json`
-- `test_command`: `pytest hvantk/skills/gencc/tests -m hail`
+- `command`: `pytest hvantk/skills/gencc/tests -m hail`
 
 > **Snapshot status:** seeded. `tests/snapshots/schema.json` and
 > `tests/snapshots/sample_rows.json` are committed, and `test_builder.py` asserts the

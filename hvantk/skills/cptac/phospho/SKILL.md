@@ -114,7 +114,7 @@ Per `_conventions` § 9:
 - **fixture:** `hvantk/skills/cptac/phospho/tests/testdata/raw/cptac-phospho/` (directory present, not yet seeded -- parser unit tests build mock multi-index DataFrames on the fly).
 - **schema_snapshot:** `hvantk/skills/cptac/phospho/tests/snapshots/schema.json` (TODO -- created on first `--regenerate-snapshots` run).
 - **row_snapshot:** `hvantk/skills/cptac/phospho/tests/snapshots/sample_rows.json` (TODO -- same).
-- **test_command:** `pytest hvantk/skills/cptac/phospho/tests`.
+- **command:** `pytest hvantk/skills/cptac/phospho/tests`.
 - **drift_fingerprint:** `hvantk/skills/cptac/phospho/tests/drift_fingerprint.json` (placeholder shape; refresh via the update playbook).
 
 The plugin manifest already declares these paths so the loader contract holds. Parser unit tests + drift-probe sanity test pass today; the builder round-trip snapshot is the gap to close in a follow-up.

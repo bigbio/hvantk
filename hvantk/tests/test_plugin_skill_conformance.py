@@ -118,6 +118,22 @@ def test_contract_matches_the_conventions_document():
 
 
 # --- Negative cases. Each of these passed the first version of the checker, which is
+def _swap_heading_lines(text: str) -> str:
+    """Swap two required headings in place, leaving all nine present and well-formed.
+
+    Renumbering them instead (`## 8.` <-> `## 9.`) does NOT test ordering: the result is
+    two headings that are not in ``REQUIRED_SECTIONS`` at all, so both count as missing,
+    the `len(positions)` guard short-circuits and the ordering branch is never reached.
+    That mistake made the first version of this case pass against a checker with the
+    branch deleted. Only the heading LINES move, so every section keeps its body.
+    """
+    a, b = "## 8. Update playbook", "## 9. Validation contract"
+    lines = text.splitlines()
+    ia, ib = lines.index(a), lines.index(b)
+    lines[ia], lines[ib] = lines[ib], lines[ia]
+    return "\n".join(lines) + "\n"
+
+
 # --- why they are pinned here: a conformance check that cannot fail is decoration.
 @pytest.mark.parametrize(
     "label, mutate",
@@ -148,6 +164,28 @@ def test_contract_matches_the_conventions_document():
                 "status: provisional", "status: provisional\nname: sneaky"
             ),
         ),
+        # The two below reach branches that NOTHING else exercised. Mutation-tested
+        # when they were added (#351): `check_skill_spec` with both the ordering check
+        # and the required-key check deleted still passed 41/41 tests. Both branches
+        # worked; nothing called them, so either could have been removed undetected.
+        #
+        # Sections present but out of order. The other cases all delete or corrupt a
+        # heading, so the ordering branch was never reached with nine valid headings.
+        (
+            "sections out of order",
+            _swap_heading_lines,
+        ),
+        # Frontmatter that parses cleanly but omits a required key. `name` and
+        # `description` are what an external Agent Skills harness reads to register the
+        # directory at all, so losing this check makes a spec invisible to the harness
+        # with no other symptom.
+        (
+            "frontmatter missing a required key",
+            lambda t: "\n".join(
+                ln for ln in t.splitlines() if not ln.startswith("description:")
+            )
+            + "\n",
+        ),
     ],
 )
 def test_checker_rejects_non_conforming_variants(tmp_path, label, mutate):
@@ -160,3 +198,44 @@ def test_checker_rejects_non_conforming_variants(tmp_path, label, mutate):
     broken = tmp_path / "SKILL.md"
     broken.write_text(mutate(conforming))
     assert check_skill_spec(broken), f"checker accepted a spec with a {label}"
+
+
+def test_spec_declares_the_test_artifact_paths_its_manifest_does():
+    """``_conventions`` s 9 says these MUST match; until #350 nothing checked it.
+
+    The spec's s 9 is where an agent looks to find a plugin's fixture and snapshots.
+    When the manifest declares a path the spec never mentions, the agent either invents
+    one or concludes there is none -- and a `drift_fingerprint` that no spec names is a
+    baseline nobody knows to regenerate.
+
+    Measured when this landed: 12 unmatched values across 4 specs, the worst being
+    `ucsc_cellbrowser`, whose s 9 documented only the `default` dataset while the
+    manifest declared four further artifact paths each for `adult-ctx` and `dev-ctx`.
+
+    Substring matching is deliberate. The specs write these paths inside prose and
+    backticks, sometimes relative to the plugin folder, so anything stricter would
+    fail on formatting rather than on substance.
+    """
+    problems: list[str] = []
+    for manifest_path in sorted(SKILLS_DIR.glob("*/plugin.yaml")):
+        manifest = yaml.safe_load(manifest_path.read_text())
+        for dataset in manifest.get("datasets", []):
+            rel = dataset.get("skill")
+            if not rel:
+                continue
+            spec_path = manifest_path.parent / rel
+            if not spec_path.is_file():
+                continue  # covered by the manifest schema / plugins validate
+            spec_text = spec_path.read_text()
+            for key, value in (dataset.get("tests") or {}).items():
+                if isinstance(value, str) and value not in spec_text:
+                    problems.append(
+                        f"{spec_path.relative_to(SKILLS_DIR)} "
+                        f"[{dataset.get('name')}] does not mention "
+                        f"tests.{key} = {value}"
+                    )
+
+    assert not problems, (
+        "plugin.yaml declares test artifacts that the SKILL.md never names "
+        "(_conventions s 9 requires them to match):\n  " + "\n  ".join(problems)
+    )
