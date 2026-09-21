@@ -203,3 +203,52 @@ def test_acquisition_vocabulary_matches_the_schema():
     ]
     assert list(props["mode"]["enum"]) == list(get_args(AcquisitionMode))
     assert list(props["reason"]["enum"]) == list(get_args(AcquisitionReason))
+
+
+@pytest.mark.parametrize(
+    "acquisition, lifecycle, valid",
+    [
+        # The rule itself: a dataset either fetches its own inputs or it cannot.
+        (
+            {"mode": "byo", "reason": "size"},
+            {"download": {"module": "m", "function": "f"}},
+            False,
+        ),
+        # Each half alone is fine.
+        ({"mode": "byo", "reason": "size"}, None, True),
+        ({"mode": "download"}, {"download": {"module": "m", "function": "f"}}, True),
+        # An omitted block defaults to "download", so a downloader must stay legal.
+        (None, {"download": {"module": "m", "function": "f"}}, True),
+        # `byo` beside a parse-only lifecycle is coherent: BYO is about acquisition.
+        (
+            {"mode": "byo", "reason": "license"},
+            {"parse": {"module": "m", "function": "f"}},
+            True,
+        ),
+    ],
+)
+def test_byo_and_lifecycle_download_are_mutually_exclusive_in_the_schema(
+    acquisition, lifecycle, valid
+):
+    """`hvantk plugins validate` must reject what the loader rejects (#351).
+
+    `_acquisition_of` raised `PluginLoadError` on this combination, but `plugins
+    validate` runs jsonschema and not the loader, so a third-party author got `ok:
+    plugin.yaml` followed by a plugin that would not load. Two validation surfaces
+    disagreeing is worse than one, because the one people run before shipping was the
+    wrong one.
+
+    Encoded in the schema rather than duplicated into the CLI so the loader, the CLI
+    and any future consumer inherit it together.
+    """
+    manifest = _manifest_with(acquisition)
+    if lifecycle is not None:
+        manifest["datasets"][0]["lifecycle"] = lifecycle
+
+    try:
+        jsonschema.validate(manifest, SCHEMA)
+        accepted = True
+    except jsonschema.ValidationError:
+        accepted = False
+
+    assert accepted is valid

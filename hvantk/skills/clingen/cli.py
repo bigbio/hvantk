@@ -4,10 +4,10 @@ Validity data.
 
 Examples:
     # Download today's snapshot
-    hvantk clingen-download --output-dir data/clingen
+    hvantk download clingen --output-dir data/clingen
 
     # Check download availability
-    hvantk clingen-download --list-versions
+    hvantk download clingen --list-versions
 """
 
 import logging
@@ -106,11 +106,11 @@ def download_cmd(ctx, version_date, output_dir, overwrite, list_versions):
 
         # Download today's snapshot
 
-        hvantk clingen-download --output-dir data/clingen
+        hvantk download clingen --output-dir data/clingen
 
         # Check download availability
 
-        hvantk clingen-download --list-versions
+        hvantk download clingen --list-versions
     """
     if list_versions:
         _print_available_versions()

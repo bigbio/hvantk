@@ -192,11 +192,29 @@ class PluginRegistry:
             # Hard error: silent shadowing is the worst failure mode.
             raise
         except PluginLoadError as exc:
-            self._load_errors.append((plugin_id, exc))
+            self._record_load_error(plugin_id, exc)
         except Exception as exc:  # noqa: BLE001
             err = PluginLoadError(str(exc))
             err.__cause__ = exc
-            self._load_errors.append((plugin_id, err))
+            self._record_load_error(plugin_id, err)
+
+    def _record_load_error(self, plugin_id: str, exc: Exception) -> None:
+        """Collect a load failure AND say so.
+
+        Collecting silently means one bad dataset entry removes its whole provider from
+        the registry -- `jsonschema.validate` checks the document, not the entry -- and
+        nothing downstream notices. `plugins list` prints the survivors with no "N
+        failed" line, and `drift-health.yml` greps the report for `probe_failed`, so a
+        provider that never registered emits no row at all. A dataset can go from
+        monitored to unmonitored with every signal still green (#351).
+        """
+        self._load_errors.append((plugin_id, exc))
+        logger.warning(
+            "plugin %r failed to load; its datasets are NOT registered and will not "
+            "be drift-checked: %s",
+            plugin_id,
+            exc,
+        )
 
     def load_from_entry_points(self) -> None:
         """Iterate hvantk.providers entry points and load each."""

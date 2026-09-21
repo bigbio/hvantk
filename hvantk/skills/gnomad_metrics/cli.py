@@ -7,10 +7,10 @@ they qualify for a built-in downloader.
 
 Examples:
     # Default: gnomAD v2.1.1 per-gene constraint (the hvantk standard)
-    hvantk gnomad-metrics-download --output data/gnomad/gnomad.v2.1.1.lof_metrics.by_gene.txt.bgz
+    hvantk download gnomad-metrics --output data/gnomad/gnomad.v2.1.1.lof_metrics.by_gene.txt.bgz
 
     # v4.0 (GRCh38) constraint metrics
-    hvantk gnomad-metrics-download --version v4.0 --output data/gnomad/gnomad.v4.0.constraint_metrics.tsv
+    hvantk download gnomad-metrics --version v4.0 --output data/gnomad/gnomad.v4.0.constraint_metrics.tsv
 """
 
 import logging
@@ -177,9 +177,9 @@ def download_cmd(ctx, output_path, version, table, overwrite):
 
     Examples:
 
-        hvantk gnomad-metrics-download --output data/gnomad/gnomad.v2.1.1.lof_metrics.by_gene.txt.bgz
+        hvantk download gnomad-metrics --output data/gnomad/gnomad.v2.1.1.lof_metrics.by_gene.txt.bgz
 
-        hvantk gnomad-metrics-download --version v4.0 --output data/gnomad/gnomad.v4.0.constraint_metrics.tsv
+        hvantk download gnomad-metrics --version v4.0 --output data/gnomad/gnomad.v4.0.constraint_metrics.tsv
     """
     try:
         url = constraint_url(version, table)

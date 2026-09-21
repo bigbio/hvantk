@@ -87,6 +87,6 @@ Declared in `plugin.yaml`'s `tests:` block (all paths plugin-relative under `hva
 - `schema_snapshot`: `tests/snapshots/schema.json`
 - `row_snapshot`: `tests/snapshots/sample_rows.json`
 - `drift_fingerprint`: `tests/drift_fingerprint.json`
-- `test_command`: `pytest hvantk/skills/alphagenome/tests`
+- `command`: `pytest hvantk/skills/alphagenome/tests`
 
 **Snapshot status:** `alphagenome:predictions` is on the `KNOWN_INCOMPLETE` ledger in `hvantk/tests/test_plugin_contract_artifacts.py`, missing `fixture`, `schema_snapshot`, and `row_snapshot`. Per that file's comment block, AlphaGenome is cause (1) of the two the ledger now records: "a credentialed live prediction API" with "no static upstream artifact" that "cannot be snapshotted" — there is no raw file to commit as a fixture, and the row-level schema depends on the live model/config at build time (§ 5), so no fixed schema or row snapshot can exist either. `tests/test_alphagenome.py::test_alphagenome_predictions_round_trip` is `@pytest.mark.skip`'d for this reason ("No fixture available for alphagenome (requires AlphaGenome API access); manual smoke-test only"). Only `drift_fingerprint` is populated (from a live probe run against PyPI) — see § 3 and § 8. `tests/testdata/alphagenome_config.yaml` is a checked-in config fixture used by `test_pipelines.py`'s `TestLoadConfig` unit tests, distinct from the `fixture` path in the `tests:` block (which remains unpopulated).

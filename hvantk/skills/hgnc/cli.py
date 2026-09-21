@@ -3,10 +3,10 @@ CLI command and lifecycle entry point for downloading HGNC gene nomenclature dat
 
 Examples:
     # Download via the Click command
-    hvantk hgnc-download --output data/hgnc/hgnc_complete_set.txt
+    hvantk download hgnc --output data/hgnc/hgnc_complete_set.txt
 
     # Download with overwrite
-    hvantk hgnc-download --output data/hgnc/hgnc_complete_set.txt --overwrite
+    hvantk download hgnc --output data/hgnc/hgnc_complete_set.txt --overwrite
 """
 
 import logging
@@ -14,7 +14,10 @@ from pathlib import Path
 
 import click
 
-from hvantk.skills.hgnc.shared.constants import HGNC_DOWNLOAD_URL, HGNC_INFO_URL  # noqa: F401
+from hvantk.skills.hgnc.shared.constants import (
+    HGNC_DOWNLOAD_URL,
+    HGNC_INFO_URL,
+)  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -130,11 +133,11 @@ def download_cmd(ctx, output_path, overwrite):
 
         # Download HGNC data
 
-        hvantk hgnc-download --output data/hgnc/hgnc_complete_set.txt
+        hvantk download hgnc --output data/hgnc/hgnc_complete_set.txt
 
         # Overwrite existing file
 
-        hvantk hgnc-download --output data/hgnc/hgnc_complete_set.txt --overwrite
+        hvantk download hgnc --output data/hgnc/hgnc_complete_set.txt --overwrite
     """
     click.echo("Downloading HGNC gene nomenclature data...")
     click.echo(f"Source: {HGNC_DOWNLOAD_URL}")

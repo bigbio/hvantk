@@ -82,7 +82,7 @@ Declared in `plugin.yaml`'s `tests:` block (`hvantk/skills/cosmic_cgc/plugin.yam
 - `schema_snapshot`: `tests/snapshots/schema.json`
 - `row_snapshot`: `tests/snapshots/sample_rows.json`
 - `drift_fingerprint`: `tests/drift_fingerprint.json`
-- `test_command`: `pytest hvantk/skills/cosmic_cgc/tests`
+- `command`: `pytest hvantk/skills/cosmic_cgc/tests`
 
 **`fixture`, `schema_snapshot`, and `row_snapshot` do not exist and cannot be created.** `cosmic-cgc:submissions` is on the `KNOWN_INCOMPLETE` ledger in `hvantk/tests/test_plugin_contract_artifacts.py` with exactly those three fields missing, because COSMIC's licence forbids redistributing rows — this is cause 2 of the two the ledger's header comment documents ("licence forbids redistributing rows (cosmic-cgc)"), distinct from "not yet seeded." This is a permanent gap, not a to-do.
 

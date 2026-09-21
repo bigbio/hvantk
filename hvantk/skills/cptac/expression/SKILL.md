@@ -80,7 +80,7 @@ Per `_conventions` § 9:
 - **fixture:** `hvantk/skills/cptac/expression/tests/testdata/raw/cptac-expression/` (declared in `plugin.yaml`; not yet seeded).
 - **schema_snapshot:** `hvantk/skills/cptac/expression/tests/snapshots/schema.json` (TODO -- created on first `--regenerate-snapshots` run).
 - **row_snapshot:** `hvantk/skills/cptac/expression/tests/snapshots/sample_rows.json` (TODO -- same).
-- **test_command:** `pytest hvantk/skills/cptac/expression/tests`.
+- **command:** `pytest hvantk/skills/cptac/expression/tests`.
 - **drift_fingerprint:** `hvantk/skills/cptac/expression/tests/drift_fingerprint.json` (placeholder shape; refresh via the update playbook).
 
 The plugin manifest declares these paths so the loader contract holds. Drift-probe sanity test passes today; the builder round-trip snapshot is the gap to close in a follow-up.

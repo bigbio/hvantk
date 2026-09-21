@@ -82,10 +82,35 @@ UCSC datasets are per-collection. To refresh a collection's build:
 
 ## 9. Validation contract
 
-- `fixture`: `hvantk/skills/ucsc_cellbrowser/tests/testdata/raw/ucsc-cellbrowser/expression_matrix.tsv` (primary) and `hvantk/skills/ucsc_cellbrowser/tests/testdata/raw/ucsc-cellbrowser/metadata.tsv` (secondary).
-- `schema_snapshot`: `hvantk/skills/ucsc_cellbrowser/tests/snapshots/ucsc-cellbrowser/schema.json`
-- `row_snapshot`: `hvantk/skills/ucsc_cellbrowser/tests/snapshots/ucsc-cellbrowser/sample_rows.json`
-- `test_command`: `pytest hvantk/skills/ucsc_cellbrowser/tests/test_builder.py`
+This provider ships **three datasets**, each with its own fixture and snapshot pair.
+Until #350 this section documented only `default`, so the two cortex datasets' artifacts
+were declared in `plugin.yaml` and named nowhere an agent would look. All paths below are
+relative to `hvantk/skills/ucsc_cellbrowser/` and match the manifest exactly.
+
+**`default`**
+
+- `fixture`: `tests/testdata/raw/ucsc-cellbrowser` — `expression_matrix.tsv` (primary) and `metadata.tsv` (secondary).
+- `schema_snapshot`: `tests/snapshots/ucsc-cellbrowser/schema.json`
+- `row_snapshot`: `tests/snapshots/ucsc-cellbrowser/sample_rows.json`
+
+**`adult-ctx`**
+
+- `fixture`: `tests/testdata/raw/ucsc-cellbrowser-adult-ctx`
+- `schema_snapshot`: `tests/snapshots/ucsc-cellbrowser-adult-ctx/schema.json`
+- `row_snapshot`: `tests/snapshots/ucsc-cellbrowser-adult-ctx/sample_rows.json`
+
+**`dev-ctx`**
+
+- `fixture`: `tests/testdata/raw/ucsc-cellbrowser-dev-ctx`
+- `schema_snapshot`: `tests/snapshots/ucsc-cellbrowser-dev-ctx/schema.json`
+- `row_snapshot`: `tests/snapshots/ucsc-cellbrowser-dev-ctx/sample_rows.json`
+
+**Shared by all three**
+
+- `drift_fingerprint`: `tests/drift_fingerprint.json` — one file covering every dataset (see § 12).
+- `command`: `pytest hvantk/skills/ucsc_cellbrowser/tests` — the whole directory. This
+  section previously named `tests/test_builder.py` alone, which disagreed with the
+  manifest and silently excluded the drift-probe tests.
 
 ## 10. Onboarding a new dataset within UCSC Cell Browser
 

@@ -61,7 +61,7 @@ Out of scope for this skill:
 
 - Plugin manifest: `hvantk/skills/onek_genomes/plugin.yaml`, dataset keys `onek-genomes:variants` and `onek-genomes:samples`.
 - Builders: `build_onek_genomes_variants` in `hvantk/skills/onek_genomes/builder.py`; `build_onek_genomes_samples` in `hvantk/skills/onek_genomes/samples_builder.py`. Both are `(parsed_input, ctx, **params) -> <Artifact>`.
-- Downloader: only `:samples` has one — `download_igsr_samples` in `hvantk/skills/onek_genomes/samples_download.py`, wired as `lifecycle.download` for that dataset in `plugin.yaml`. There is no `cli.py` and no `cli:` block for this plugin — no `hvantk onek-genomes-download`-style command exists for either dataset.
+- Downloader: only `:samples` has one — `download_igsr_samples` in `hvantk/skills/onek_genomes/samples_download.py`, wired as `lifecycle.download` for that dataset in `plugin.yaml`. There is no `cli.py` and no `cli:` block for this plugin, so neither dataset appears under `hvantk download`. Supply `:variants` yourself (`acquisition.mode: byo`).
 - Drift probes: `fetch_variants_fingerprint` and `fetch_samples_fingerprint`, both in `hvantk/skills/onek_genomes/drift_probe.py` — two independent probes, matching the two separate `drift_probe:` entries in `plugin.yaml`.
 - Tests: `hvantk/skills/onek_genomes/tests/test_builder.py` builds both datasets from the shared fixture directory and asserts against per-dataset snapshots via `phase_b_snapshot_adapter` (`hvantk.tests._snapshot_utils`), which bridges the `(parsed_input, ctx, **params)` builder signature to the legacy `(input_path, output_path, **kw)` snapshot-test calling convention.
 
@@ -105,12 +105,12 @@ Declared in `plugin.yaml`'s `tests:` block, one per dataset, both under a **plug
   - `schema_snapshot`: `tests/snapshots/variants_schema.json`
   - `row_snapshot`: `tests/snapshots/variants_sample_rows.json`
   - `drift_fingerprint`: `tests/drift_fingerprint_variants.json`
-  - `test_command`: `pytest hvantk/skills/onek_genomes/tests -m hail`
+  - `command`: `pytest hvantk/skills/onek_genomes/tests -m hail`
 - `onek-genomes:samples`:
   - `fixture`: `tests/testdata/raw/onek_genomes` (same directory; contains `igsr_samples.tsv`)
   - `schema_snapshot`: `tests/snapshots/samples_schema.json`
   - `row_snapshot`: `tests/snapshots/samples_sample_rows.json`
   - `drift_fingerprint`: `tests/drift_fingerprint_samples.json`
-  - `test_command`: `pytest hvantk/skills/onek_genomes/tests -m hail`
+  - `command`: `pytest hvantk/skills/onek_genomes/tests -m hail`
 
 Per `_conventions` § 12, these two datasets deliberately do **not** share one drift fingerprint: each has its own probe function (`fetch_variants_fingerprint` vs `fetch_samples_fingerprint`) and its own baseline file, because they are independent upstream signals (a VCF release vs. a samples panel) rather than one provider-wide signal fanned out to variants.

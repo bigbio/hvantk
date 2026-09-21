@@ -111,6 +111,7 @@ Per conventions §9:
 - **schema_snapshot:** `hvantk/skills/gwas_catalog/tests/snapshots/schema.json`.
 - **row_snapshot:** `hvantk/skills/gwas_catalog/tests/snapshots/sample_rows.json`.
 - **sample_keys:** `hvantk/skills/gwas_catalog/tests/snapshots/sample_keys.json`. Lists the `(locus, alleles)` keys used for `row_snapshot` assertions. These keys MUST be unique-in-table — `_snapshot_utils.collect_sample_rows` does not deduplicate, so a duplicated key produces non-deterministic snapshots. Multi-trait-per-variant rows in this catalog routinely share keys; the snapshot subset must use singleton-key rows.
-- **test_command:** `pytest hvantk/skills/gwas_catalog/tests -m hail`.
+- **drift_fingerprint:** `hvantk/skills/gwas_catalog/tests/drift_fingerprint.json` — the expected fingerprint compared by `hvantk drift` (see § 12).
+- **command:** `pytest hvantk/skills/gwas_catalog/tests -m hail`.
 
 Round-trip test (`tests/test_builder.py`) asserts: the materialized schema matches `schema.json`; the row slice for the keys in `sample_keys.json` matches `sample_rows.json`. The test drives the builder through `phase_b_snapshot_adapter`, which materializes the returned `AnnotationTable` to a temp `.ht`. Regenerate via `--regenerate-snapshots` when a judgment call resolves or the schema changes.

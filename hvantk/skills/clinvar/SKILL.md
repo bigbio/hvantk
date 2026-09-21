@@ -44,7 +44,7 @@ Hail Table keyed by `(locus, alleles)`. Reasoning: ClinVar is variant-keyed and 
 
 - Builder: `build_clinvar` in `hvantk/skills/clinvar/builder.py`
 - Streamer: `ClinVarVariantTableStreamer` in `hvantk/skills/clinvar/streamers.py` (subclass of `VariantTableStreamer` in `hvantk/core/streamers/`)
-- Downloader CLI: `clinvar_downloader` in `hvantk/skills/clinvar/cli.py` (registered as `hvantk clinvar-download`; lifecycle download via `download_dataset` in the same module)
+- Downloader CLI: `clinvar_downloader` in `hvantk/skills/clinvar/cli.py` (registered as `hvantk download clinvar`; lifecycle download via `download_dataset` in the same module)
 - Dataset class: `ClinVarDataset` in `hvantk/skills/clinvar/shared/datasets.py`
 - Build CLI: `hvantk reprocess clinvar:variants --raw-dir <dir> --output <path>.ht` (pass builder kwargs via `--plugin-arg KEY=VALUE`, e.g. `--plugin-arg reference_genome=GRCh38`). The plugin loader (`hvantk/core/plugin/loader.py`) resolves the dataset from `plugin.yaml` via `get_registry().get_dataset("clinvar:variants")`; the build runs through `run_builder_for_spec` (`hvantk/core/plugin/run_builder.py`).
 - Plugin manifest: `hvantk/skills/clinvar/plugin.yaml` (drives loader registration; compound dataset key `clinvar:variants`)
@@ -70,7 +70,7 @@ When invoked to build or update:
 
 When ClinVar releases a new monthly version:
 
-1. Fetch the new release: `hvantk clinvar-download --output-dir /tmp/clinvar`.
+1. Fetch the new release: `hvantk download clinvar --output-dir /tmp/clinvar`.
 2. Regenerate the fixture: extract a small representative slice (mix of CLNSIG values, multi-allelic site, multi-CLNDN row). The current pilot fixture is a single-chromosome slice (`hvantk/skills/clinvar/tests/testdata/raw/clinvar/clinvar_20220403_chr20.vcf.bgz`) — this is adequate because ClinVar parsing is INFO-field driven, not chromosome-dependent. Replace the file (re-bgzip if needed). A `.tbi` index is optional; `hl.import_vcf(force=True)` reads `.bgz` directly.
 3. Run snapshot regeneration: `pytest hvantk/skills/clinvar/tests -m hail --regenerate-snapshots`.
 4. Inspect the snapshot diff:
@@ -108,4 +108,4 @@ you — raise `_RANGE_BYTES` rather than trimming what is parsed.
 - `schema_snapshot`: `hvantk/skills/clinvar/tests/snapshots/schema.json`
 - `row_snapshot`: `hvantk/skills/clinvar/tests/snapshots/sample_rows.json`
 - `drift_fingerprint`: `hvantk/skills/clinvar/tests/drift_fingerprint.json`
-- `test_command`: `pytest hvantk/skills/clinvar/tests -m hail`
+- `command`: `pytest hvantk/skills/clinvar/tests -m hail`

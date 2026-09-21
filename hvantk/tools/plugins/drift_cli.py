@@ -109,6 +109,17 @@ def drift_cmd(
 
     reg = plugin_loader.get_registry()
 
+    # A provider that failed to load contributes no rows at all -- not even a
+    # `probe_failed` one -- so `--all` reports a clean sweep over a silently smaller set
+    # and `drift-health.yml`, which greps for `probe_failed`, sees nothing wrong. Say it
+    # on stderr so it is visible in a workflow log without polluting `--json` (#351).
+    for plugin_id, exc in reg.load_errors():
+        click.echo(
+            f"WARNING: plugin {plugin_id!r} failed to load, so its datasets are NOT "
+            f"being drift-checked: {exc}",
+            err=True,
+        )
+
     if regenerate:
         if all_flag:
             raise click.UsageError("--regenerate requires a specific dataset name")

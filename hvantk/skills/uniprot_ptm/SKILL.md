@@ -80,7 +80,7 @@ When UniProt releases a new monthly snapshot (typically late in the month):
 
 - `fixture`: `hvantk/skills/uniprot_ptm/tests/testdata/raw/uniprot-ptm/` (placeholder; integration coverage lives in `hvantk/tests/test_ptm.py`)
 - `drift_fingerprint`: `hvantk/skills/uniprot_ptm/tests/drift_fingerprint.json`
-- `test_command`: `pytest hvantk/skills/uniprot_ptm/tests -m hail`
+- `command`: `pytest hvantk/skills/uniprot_ptm/tests -m hail`
 
 > **Snapshot status:** the `schema_snapshot` (`tests/snapshots/schema.json`) and
 > `row_snapshot` (`tests/snapshots/sample_rows.json`) declared in `plugin.yaml`
