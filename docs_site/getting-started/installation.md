@@ -40,7 +40,7 @@ poetry install --extras "viz hgc"      # or: poetry install --all-extras
 | `psroc` | scikit-learn, matplotlib, plotly, scipy | `hvantk psroc` |
 | `hgc` | matplotlib, seaborn | `hvantk hgc` QC plots/reports |
 | `ptm` | cptac, sorted-nearest | CPTAC PTM downloads |
-| `constraint` | tspex, matplotlib, seaborn, scipy | `hvantk ptm constraint` |
+| `constraint` | tspex, matplotlib, seaborn, scipy, statsmodels | `hvantk ptm constraint`, `hvantk ptm test` |
 | `enrichex` | scipy, matplotlib, seaborn | `hvantk enrichex overlap` / `burden` |
 | `cohort` | scipy | `hvantk cohort burden` |
 | `duckdb` | duckdb | DuckDB-backed catalog queries |
