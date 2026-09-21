@@ -1,0 +1,2273 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Hail-based toolkit for multi-omics variant annotation and analysis">
+      
+      
+      
+        <link rel="canonical" href="https://bigbio.github.io/hvantk/guide/data-sources/">
+      
+      
+        <link rel="prev" href="../usage/">
+      
+      
+        <link rel="next" href="../hpc-migration/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Data Sources - hvantk</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#data-sources" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="hvantk" class="md-header__button md-logo" aria-label="hvantk" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            hvantk
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Data Sources
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/bigbio/hvantk" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    bigbio/hvantk
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="hvantk" class="md-nav__button md-logo" aria-label="hvantk" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    hvantk
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/bigbio/hvantk" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    bigbio/hvantk
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building Tables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Sources
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#file-format-note" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File format note
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sources-with-built-in-downloaders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sources with built-in downloaders
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Sources with built-in downloaders">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#clinvar" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ClinVar
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clingen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ClinGen
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gencc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GenCC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hgnc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HGNC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ucsc-cell-browser" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        UCSC Cell Browser
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#expression-atlas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expression Atlas
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#manual-download-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual download sources
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Manual download sources">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dbnsfp-45-gb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dbNSFP (~45 GB)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gnomad-constraint-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        gnomAD constraint metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#insider-interactome-12-gb-genomic-bed-49-mb-pair-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        INSIDER interactome (~1.2 GB genomic BED; ~49 MB pair table)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ensembl-gene-annotations-60-mb-gtf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ensembl gene annotations (~60 MB GTF)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gevir-1-2-mb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GeVIR (~1-2 MB)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cosmic-cancer-gene-census" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        COSMIC Cancer Gene Census
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#uniprot-ptm-sites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        UniProt PTM Sites
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ensembl-gtf-50-mb-compressed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ensembl GTF (~50 MB compressed)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#qtl-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        QTL data
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="QTL data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#gtex-eqtl-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GTEx eQTL data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fang-et-al-2025-pqtl-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fang et al. (2025) pQTL data
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#expression-data-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expression data sources
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Expression data sources">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#bulk-rna-seq" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bulk RNA-seq
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#single-cell-rna-seq" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Single-cell RNA-seq
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hpc-migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HPC Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tools
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tools
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tools/hgc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HGC - Joint Genotyping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tools/enrichex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EnrichEx - Enrichment Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tools/psroc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PS-ROC - Score Evaluation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tools/ancestry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ancestry Inference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tools/ptm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM - Variant Classification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tools/ptm-constraint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM Constraint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tools/qtlcascade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QTL Cascade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Examples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/hgc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HGC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/enrichex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EnrichEx
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/psroc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PS-ROC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/ancestry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ancestry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/clinvar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ClinVar Streaming
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/clingen/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ClinGen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/qtlcascade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QTL Cascade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/ptm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#file-format-note" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File format note
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sources-with-built-in-downloaders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sources with built-in downloaders
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Sources with built-in downloaders">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#clinvar" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ClinVar
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clingen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ClinGen
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gencc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GenCC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hgnc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HGNC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ucsc-cell-browser" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        UCSC Cell Browser
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#expression-atlas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expression Atlas
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#manual-download-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual download sources
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Manual download sources">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dbnsfp-45-gb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dbNSFP (~45 GB)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gnomad-constraint-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        gnomAD constraint metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#insider-interactome-12-gb-genomic-bed-49-mb-pair-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        INSIDER interactome (~1.2 GB genomic BED; ~49 MB pair table)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ensembl-gene-annotations-60-mb-gtf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ensembl gene annotations (~60 MB GTF)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gevir-1-2-mb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GeVIR (~1-2 MB)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cosmic-cancer-gene-census" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        COSMIC Cancer Gene Census
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#uniprot-ptm-sites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        UniProt PTM Sites
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ensembl-gtf-50-mb-compressed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ensembl GTF (~50 MB compressed)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#qtl-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        QTL data
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="QTL data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#gtex-eqtl-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GTEx eQTL data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fang-et-al-2025-pqtl-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fang et al. (2025) pQTL data
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#expression-data-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expression data sources
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Expression data sources">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#bulk-rna-seq" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bulk RNA-seq
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#single-cell-rna-seq" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Single-cell RNA-seq
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="data-sources">Data Sources<a class="headerlink" href="#data-sources" title="Permanent link">&para;</a></h1>
+<p>This page covers all annotation and expression data sources supported by hvantk: what they are, where to get them, and how to build datasets from the raw data. Sources are split into two categories: those with <strong>built-in downloaders</strong> (automated) and those that require <strong>manual download</strong> (too large, license-gated, or fragile URLs).</p>
+<p>Every build on this page goes through the unified <code>hvantk reprocess &lt;plugin&gt;:&lt;dataset&gt;</code> entry point — see the <a href="../usage/#1-build-a-dataset-with-hvantk-reprocess">Usage Guide</a> for the orchestration pattern, lifecycle flags, and <code>--plugin-arg KEY=VALUE</code> conventions used below.</p>
+<h2 id="file-format-note">File format note<a class="headerlink" href="#file-format-note" title="Permanent link">&para;</a></h2>
+<p>Downloaded <code>.gz</code> files may be standard gzip (single-threaded in Hail) rather than BGZF (parallel). Pre-convert before building:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>hvantk<span class="w"> </span>utils<span class="w"> </span>convert-bgz<span class="w"> </span>input.gz
+</code></pre></div>
+<h2 id="sources-with-built-in-downloaders">Sources with built-in downloaders<a class="headerlink" href="#sources-with-built-in-downloaders" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Command</th>
+<th>Approx. Size</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ClinVar</td>
+<td><code>hvantk download clinvar</code></td>
+<td>~500 MB</td>
+</tr>
+<tr>
+<td>ClinGen</td>
+<td><code>hvantk download clingen</code></td>
+<td>~5 MB</td>
+</tr>
+<tr>
+<td>GenCC</td>
+<td><code>hvantk download gencc</code></td>
+<td>~10 MB</td>
+</tr>
+<tr>
+<td>HGNC</td>
+<td><code>hvantk download hgnc</code></td>
+<td>~20 MB</td>
+</tr>
+<tr>
+<td>gnomAD constraint</td>
+<td><code>hvantk download gnomad-metrics</code></td>
+<td>~4.6 MB (v2.1.1) / ~82 MB (v4.0)</td>
+</tr>
+<tr>
+<td>UCSC Cell Browser</td>
+<td><code>hvantk download ucsc</code></td>
+<td>varies</td>
+</tr>
+<tr>
+<td>Expression Atlas</td>
+<td><code>hvantk download expression-atlas</code></td>
+<td>varies</td>
+</tr>
+</tbody>
+</table>
+<h3 id="clinvar">ClinVar<a class="headerlink" href="#clinvar" title="Permanent link">&para;</a></h3>
+<p>Clinically relevant variants and their annotations (e.g. Pathogenic, Benign, VUS).
+URL: https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Download latest ClinVar VCF (GRCh38) with tabix index</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>hvantk<span class="w"> </span>download<span class="w"> </span>clinvar<span class="w"> </span>--output-dir<span class="w"> </span>data/clinvar
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># Download a specific archived version</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>hvantk<span class="w"> </span>download<span class="w"> </span>clinvar<span class="w"> </span>--version<span class="w"> </span><span class="m">20260101</span><span class="w"> </span>--output-dir<span class="w"> </span>data/clinvar
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="c1"># Download GRCh37 build, verify checksum</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>hvantk<span class="w"> </span>download<span class="w"> </span>clinvar<span class="w"> </span>--genome-build<span class="w"> </span>GRCh37<span class="w"> </span>--verify-md5
+</code></pre></div>
+<h3 id="clingen">ClinGen<a class="headerlink" href="#clingen" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Download today's ClinGen Gene-Disease Validity snapshot</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1"># Output: Clingen-Gene-Disease-Summary-&lt;YYYY-MM-DD&gt;.csv</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>hvantk<span class="w"> </span>download<span class="w"> </span>clingen<span class="w"> </span>--output-dir<span class="w"> </span>data/clingen
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1"># Check download availability</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>hvantk<span class="w"> </span>download<span class="w"> </span>clingen<span class="w"> </span>--list-versions
+</code></pre></div>
+<h3 id="gencc">GenCC<a class="headerlink" href="#gencc" title="Permanent link">&para;</a></h3>
+<p>GenCC (Gene Curation Coalition) aggregates gene-disease validity assertions from 12+ submitting organizations (ClinGen, PanelApp, G2P, Orphanet, etc.).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># Download today's GenCC submissions snapshot</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>hvantk<span class="w"> </span>download<span class="w"> </span>gencc<span class="w"> </span>--output-dir<span class="w"> </span>data/gencc
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># Check download availability</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>hvantk<span class="w"> </span>download<span class="w"> </span>gencc<span class="w"> </span>--list-versions
+</code></pre></div>
+<h3 id="hgnc">HGNC<a class="headerlink" href="#hgnc" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># Download HGNC complete gene nomenclature set</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>hvantk<span class="w"> </span>download<span class="w"> </span>hgnc<span class="w"> </span>--output<span class="w"> </span>data/hgnc/hgnc_complete_set.txt
+</code></pre></div>
+<p><strong>Build Hail Table</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># Single command: download into data/hgnc/ then build the table</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>hvantk<span class="w"> </span>reprocess<span class="w"> </span>hgnc:lookup<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span>--raw-dir<span class="w"> </span>data/hgnc/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">  </span>--output<span class="w"> </span>hgnc.ht
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="c1"># Or, if you already downloaded the TSV into data/hgnc/:</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>hvantk<span class="w"> </span>reprocess<span class="w"> </span>hgnc:lookup<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">  </span>--raw-dir<span class="w"> </span>data/hgnc/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">  </span>--output<span class="w"> </span>hgnc.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="w">  </span>--skip-download
+</code></pre></div>
+<h3 id="ucsc-cell-browser">UCSC Cell Browser<a class="headerlink" href="#ucsc-cell-browser" title="Permanent link">&para;</a></h3>
+<p>The UCSC Cell Browser hosts 267+ datasets. About half are <strong>collections</strong> (groups of
+related datasets with no expression matrix at the top level). Use <code>--list_datasets</code>
+and <code>--search</code> to discover downloadable datasets.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># Discover available datasets</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>hvantk<span class="w"> </span>download<span class="w"> </span>ucsc<span class="w"> </span>--list_datasets
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1"># Search by name, organism, or tissue (expands collections to show children)</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>hvantk<span class="w"> </span>download<span class="w"> </span>ucsc<span class="w"> </span>--list_datasets<span class="w"> </span>--search<span class="w"> </span>heart
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>hvantk<span class="w"> </span>download<span class="w"> </span>ucsc<span class="w"> </span>--list_datasets<span class="w"> </span>--search<span class="w"> </span>pancreas
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="c1"># Download a leaf dataset directly</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>hvantk<span class="w"> </span>download<span class="w"> </span>ucsc<span class="w"> </span>--dataset<span class="w"> </span>adultPancreas<span class="w"> </span>--output-dir<span class="w"> </span>data/ucsc
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="c1"># Download a child dataset from a collection (use the full path)</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>hvantk<span class="w"> </span>download<span class="w"> </span>ucsc<span class="w"> </span>--dataset<span class="w"> </span>hoc/all-heart<span class="w"> </span>--output-dir<span class="w"> </span>data/ucsc
+</code></pre></div>
+<blockquote>
+<p><strong>Note:</strong> Collection names (e.g., <code>hoc</code>) cannot be downloaded directly — they
+contain no expression matrix. Use <code>--search</code> to find child dataset paths like
+<code>hoc/all-heart</code>, then download those.</p>
+</blockquote>
+<h3 id="expression-atlas">Expression Atlas<a class="headerlink" href="#expression-atlas" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># Download bulk RNA-seq experiments</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>hvantk<span class="w"> </span>download<span class="w"> </span>expression-atlas<span class="w"> </span>--download_path<span class="w"> </span>data/expression_atlas
+</code></pre></div>
+<h2 id="manual-download-sources">Manual download sources<a class="headerlink" href="#manual-download-sources" title="Permanent link">&para;</a></h2>
+<p>These sources are too large, require license acceptance, or have complex download procedures. Follow the instructions below, place the raw file(s) in a per-source directory, then build via <code>hvantk reprocess &lt;plugin&gt;:&lt;dataset&gt; --skip-download</code>.</p>
+<h3 id="dbnsfp-45-gb">dbNSFP (~45 GB)<a class="headerlink" href="#dbnsfp-45-gb" title="Permanent link">&para;</a></h3>
+<p>A database of functional prediction scores for human missense variants.
+URL: https://sites.google.com/site/jpopgen/dbNSFP</p>
+<p><strong>Download</strong>: Requires academic license acceptance. Download from the project page:
+https://sites.google.com/site/jpopgen/dbNSFP</p>
+<p><strong>Pre-processing</strong>: dbNSFP is distributed as per-chromosome <code>.gz</code> files (standard gzip, not BGZF). The builder expects a <strong>single combined file</strong>, so concatenate and BGZF-compress first:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># Concatenate per-chromosome files into a single BGZF file</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="c1"># (header is taken from chr1; remaining files skip the header line)</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>head<span class="w"> </span>-1<span class="w"> </span>&lt;<span class="o">(</span>zcat<span class="w"> </span>dbNSFP4.9a_variant.chr1.gz<span class="o">)</span><span class="w"> </span>&gt;<span class="w"> </span>/tmp/dbnsfp_header.txt
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="o">(</span>cat<span class="w"> </span>/tmp/dbnsfp_header.txt<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>f<span class="w"> </span><span class="k">in</span><span class="w"> </span>dbNSFP4.9a_variant.chr*.gz<span class="p">;</span><span class="w"> </span><span class="k">do</span><span class="w"> </span>zcat<span class="w"> </span><span class="s2">"</span><span class="nv">$f</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-n<span class="w"> </span>+2<span class="p">;</span><span class="w"> </span><span class="k">done</span><span class="o">)</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>bgzip<span class="w"> </span>-@<span class="w"> </span><span class="m">4</span><span class="w"> </span>&gt;<span class="w"> </span>dbNSFP4.9a_variant.bgz
+</code></pre></div>
+<p><strong>Build</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># Place the concatenated BGZF file in data/dbnsfp/ (so the builder sees it),</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="c1"># then build. dbNSFP has no plugin downloader; --skip-download is required.</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>hvantk<span class="w"> </span>reprocess<span class="w"> </span>dbnsfp:variants<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">  </span>--raw-dir<span class="w"> </span>data/dbnsfp/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">  </span>--output<span class="w"> </span>dbnsfp.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="w">  </span>--skip-download
+</code></pre></div>
+<blockquote>
+<p><strong>Note:</strong> dbNSFP's builder reads BGZF input. If you only have a single combined <code>.gz</code>, pre-convert with <code>hvantk utils convert-bgz dbNSFP4.9a_variant.gz</code> before building.</p>
+</blockquote>
+<h3 id="gnomad-constraint-metrics">gnomAD constraint metrics<a class="headerlink" href="#gnomad-constraint-metrics" title="Permanent link">&para;</a></h3>
+<p>Per-gene constraint metrics (pLI, oe_lof / LOEUF, missense Z) from gnomAD. The
+tables are small and public, so hvantk ships a downloader
+(<code>hvantk download gnomad-metrics</code>; it is also in the built-in-downloader list above).</p>
+<ul>
+<li><strong>v2.1.1</strong> (GRCh37, ~4.6 MB) — the default and the table hvantk standardises on
+  (keyed by <code>gene_id</code>).</li>
+<li><strong>v4.0</strong> (GRCh38, ~82 MB) — newer; per-transcript rows, dotted column names, and
+  <strong>no <code>gene_id</code></strong> column, so build with <code>--plugin-arg key=transcript</code>. gnomAD did
+  not re-release constraint for v4.1.</li>
+</ul>
+<p><strong>Download + build</strong> (end-to-end, defaults to v2.1.1 by-gene):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>hvantk<span class="w"> </span>reprocess<span class="w"> </span>gnomad-metrics:metrics<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">  </span>--raw-dir<span class="w"> </span>data/gnomad_metrics/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">  </span>--output<span class="w"> </span>gnomad_metrics.ht
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="c1"># v4.0 (GRCh38) instead:</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>hvantk<span class="w"> </span>download<span class="w"> </span>gnomad-metrics<span class="w"> </span>--version<span class="w"> </span>v4.0<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="w">  </span>--output<span class="w"> </span>data/gnomad_metrics/gnomad.v4.0.constraint_metrics.tsv
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>hvantk<span class="w"> </span>reprocess<span class="w"> </span>gnomad-metrics:metrics<span class="w"> </span>--skip-download<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="w">  </span>--raw-dir<span class="w"> </span>data/gnomad_metrics/<span class="w"> </span>--output<span class="w"> </span>gnomad_metrics_v4.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="w">  </span>--plugin-arg<span class="w"> </span><span class="nv">key</span><span class="o">=</span>transcript
+</code></pre></div>
+<h3 id="insider-interactome-12-gb-genomic-bed-49-mb-pair-table">INSIDER interactome (~1.2 GB genomic BED; ~49 MB pair table)<a class="headerlink" href="#insider-interactome-12-gb-genomic-bed-49-mb-pair-table" title="Permanent link">&para;</a></h3>
+<p>Protein-protein interaction interface residues from the INSIDER database.
+URL: http://interactomeinsider.yulab.org/downloads.html</p>
+<p>INSIDER ships <strong>two</strong> products, and hvantk builds a dataset from each:</p>
+<table>
+<thead>
+<tr>
+<th>dataset</th>
+<th>file</th>
+<th>size</th>
+<th>direct URL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>insider:variants</code></td>
+<td><code>Whole_Human_Interactome_Interface_hg38.bed</code></td>
+<td>~1.17 GB</td>
+<td><code>http://interactomeinsider.yulab.org/bed/all.bed</code></td>
+</tr>
+<tr>
+<td><code>insider:interfaces</code></td>
+<td><code>H_sapiens_interfacesALL.txt</code></td>
+<td>~49 MB</td>
+<td><code>http://interactomeinsider.yulab.org/downloads/interfacesALL/H_sapiens_interfacesALL.txt</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Download</strong>: the downloads page carries no links in its markup, so use the direct
+URLs above (they are also recorded in the plugin catalog — <code>hvantk catalog show
+INSIDER_v1.0</code>). Both are served over plain HTTP; the site has no HTTPS listener.
+The BED is &gt;1 GB, so acquisition is manual per the downloader framework in CLAUDE.md.</p>
+<p><strong>Build</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># Place insider_interaction_sites.bed.bgz in data/insider/ then:</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>hvantk<span class="w"> </span>reprocess<span class="w"> </span>insider:variants<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">  </span>--raw-dir<span class="w"> </span>data/insider/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">  </span>--output<span class="w"> </span>interactome.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="w">  </span>--skip-download
+</code></pre></div>
+<p>INSIDER also ships a <strong>gene-level</strong> dataset, <code>insider:interfaces</code>, built from
+<code>H_sapiens_interfacesALL.txt</code> rather than the BED file. Where <code>insider:variants</code> is
+locus-keyed (interaction sites as genomic intervals), <code>insider:interfaces</code> is keyed by
+<code>uniprot_id</code> and summarises each protein's interactome: <code>n_partners</code>,
+<code>n_partners_experimental</code>, <code>n_partners_predicted</code> and <code>n_interface_residues</code>. The two are
+complementary, not alternatives — use <code>interfaces</code> when the question is "how connected is
+this gene", and <code>variants</code> when it is "does this variant fall in an interaction site".</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># Place H_sapiens_interfacesALL.txt in data/insider/ then:</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>hvantk<span class="w"> </span>reprocess<span class="w"> </span>insider:interfaces<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="w">  </span>--raw-dir<span class="w"> </span>data/insider/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="w">  </span>--output<span class="w"> </span>insider_interfaces.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="w">  </span>--skip-download
+</code></pre></div>
+<h3 id="ensembl-gene-annotations-60-mb-gtf">Ensembl gene annotations (~60 MB GTF)<a class="headerlink" href="#ensembl-gene-annotations-60-mb-gtf" title="Permanent link">&para;</a></h3>
+<p>The canonical per-gene table (<code>ensembl-gene:structure</code>): gene ID, gene name, biotype,
+coordinates, CDS length, coding-exon count, transcript count, and MANE Select — parsed from
+the pinned-release Ensembl GTF. The release is pinned in
+<code>hvantk/resources/ensembl_release.py</code>; the same pin governs the PTM coordinate mapper.</p>
+<p><strong>Download</strong>: the release-pinned GTF from the Ensembl FTP
+(https://ftp.ensembl.org/pub/), or via the plugin's downloader.</p>
+<p><strong>Build</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>hvantk<span class="w"> </span>reprocess<span class="w"> </span>ensembl-gene:structure<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">  </span>--raw-dir<span class="w"> </span>data/ensembl/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="w">  </span>--output<span class="w"> </span>ensembl_structure.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="w">  </span>--skip-download
+</code></pre></div>
+<h3 id="gevir-1-2-mb">GeVIR (~1-2 MB)<a class="headerlink" href="#gevir-1-2-mb" title="Permanent link">&para;</a></h3>
+<p>Gene-level intolerance-to-variation ranks (GeVIR and VIRLoF percentiles) for
+19,361 protein-coding genes, keyed by Ensembl gene_id. Not a variant-level
+pathogenicity score. Abramovs, Brass &amp; Tassabehji, 2020, Nature Genetics
+52(1):35-39 (PMID 31873297, DOI 10.1038/s41588-019-0560-2).
+URL: https://www.nature.com/articles/s41588-019-0560-2</p>
+<p><strong>Download</strong>: the metric table is <strong>Supplementary Table 2</strong> of the Nature Genetics
+paper, served as the article's MOESM3 object:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>https://static-content.springer.com/esm/art%3A10.1038%2Fs41588-019-0560-2/MediaObjects/41588_2019_560_MOESM3_ESM.xlsx
+</code></pre></div>
+<p>That is a ~10.3 MB <code>.xlsx</code> workbook (only MOESM3 of the six supplementary slots is
+public; the rest return 403). The builder reads a bgzipped TSV, so extract sheet
+<code>table_2</code> and BGZF-compress it before building.</p>
+<blockquote>
+<p><strong>Note:</strong> the authors' repository at https://github.com/gevirank/gevir ships the
+<strong>analysis code only</strong> — its <code>tables/</code> directory holds a placeholder file — so it
+is not a source for the metric table. Earlier revisions of this guide pointed
+there.</p>
+</blockquote>
+<p>A real downloader would have to do the extract-and-convert step, not just fetch the
+URL, so it is more than the usual thin wrapper — a recommended follow-up (not yet
+implemented).</p>
+<p><strong>Build</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1"># Place gevir_metrics.tsv.bgz in data/gevir/ then:</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>hvantk<span class="w"> </span>reprocess<span class="w"> </span>gevir:metrics<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="w">  </span>--raw-dir<span class="w"> </span>data/gevir/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="w">  </span>--output<span class="w"> </span>gevir.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="w">  </span>--skip-download
+</code></pre></div>
+<h3 id="cosmic-cancer-gene-census">COSMIC Cancer Gene Census<a class="headerlink" href="#cosmic-cancer-gene-census" title="Permanent link">&para;</a></h3>
+<p>Gene-level cancer annotations from the COSMIC Cancer Gene Census.
+URL: https://cancer.sanger.ac.uk/census</p>
+<p><strong>Download</strong>: Requires COSMIC account. Download the Cancer Gene Census TSV from the COSMIC website.</p>
+<p><strong>Build</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="c1"># Place cancer_gene_census.tsv in data/cosmic_cgc/ then:</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>hvantk<span class="w"> </span>reprocess<span class="w"> </span>cosmic-cgc:submissions<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="w">  </span>--raw-dir<span class="w"> </span>data/cosmic_cgc/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="w">  </span>--output<span class="w"> </span>cosmic_cgc.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="w">  </span>--skip-download
+</code></pre></div>
+<h3 id="uniprot-ptm-sites">UniProt PTM Sites<a class="headerlink" href="#uniprot-ptm-sites" title="Permanent link">&para;</a></h3>
+<p>Curated post-translational modification sites (phosphorylation, ubiquitination, acetylation, etc.) for reviewed human proteins from UniProt/Swiss-Prot.
+URL: https://www.uniprot.org/</p>
+<p>The <code>hvantk ptm build</code> command downloads PTM data automatically via the UniProt REST API. For pre-download or manual acquisition:</p>
+<p><strong>Download</strong> (optional, for offline use):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="c1"># UniProt PTM TSV via REST API</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>hvantk<span class="w"> </span>download<span class="w"> </span>uniprot-ptm<span class="w"> </span>--output-dir<span class="w"> </span>data/ptm/
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="c1"># Ensembl GTF for coordinate mapping (download manually)</span>
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="c1"># wget https://ftp.ensembl.org/pub/current_gtf/homo_sapiens/Homo_sapiens.GRCh38.*.gtf.gz -P data/ref/</span>
+</code></pre></div>
+<p><strong>Build</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="c1"># Automatic download and build</span>
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>hvantk<span class="w"> </span>ptm<span class="w"> </span>build<span class="w"> </span>--output-dir<span class="w"> </span>data/ptm/<span class="w"> </span>--output-ht<span class="w"> </span>data/ptm/ptm_sites.ht
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="c1"># With pre-downloaded files</span>
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>hvantk<span class="w"> </span>ptm<span class="w"> </span>build<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a><span class="w">  </span>--gtf-path<span class="w"> </span>data/ref/Homo_sapiens.GRCh38.113.gtf.gz<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a><span class="w">  </span>--ptm-tsv<span class="w"> </span>data/ptm/uniprot-ptm-human.tsv<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a><span class="w">  </span>--output-dir<span class="w"> </span>data/ptm/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a><span class="w">  </span>--output-ht<span class="w"> </span>data/ptm/ptm_sites.ht
+</code></pre></div>
+<h3 id="ensembl-gtf-50-mb-compressed">Ensembl GTF (~50 MB compressed)<a class="headerlink" href="#ensembl-gtf-50-mb-compressed" title="Permanent link">&para;</a></h3>
+<p>Gene annotation with exon coordinates and CDS phases, used by the PTM mapper for residue-to-genomic coordinate mapping.
+URL: https://ftp.ensembl.org/pub/release-113/gtf/homo_sapiens/</p>
+<p><strong>Download</strong>: Auto-downloaded by <code>hvantk ptm build</code>. For manual download:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>wget<span class="w"> </span>https://ftp.ensembl.org/pub/release-113/gtf/homo_sapiens/Homo_sapiens.GRCh38.113.gtf.gz
+</code></pre></div>
+<h2 id="qtl-data">QTL data<a class="headerlink" href="#qtl-data" title="Permanent link">&para;</a></h2>
+<p>These datasets are used to build eQTL and pQTL Hail Tables for the QTL cascade pipeline.</p>
+<h3 id="gtex-eqtl-data">GTEx eQTL data<a class="headerlink" href="#gtex-eqtl-data" title="Permanent link">&para;</a></h3>
+<p>Expression quantitative trait loci from the GTEx project. Available as significant pairs (genome-wide significant associations) and allpairs (full summary statistics for coloc).</p>
+<p><strong>GTEx v11</strong> (recommended):
+URL: https://www.gtexportal.org/home/downloads/adult-gtex/qtl</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="c1"># Download significant pairs (Parquet format, ~50 MB per tissue)</span>
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="c1"># Navigate to GTEx Portal → Downloads → Adult GTEx → QTL → eQTL → Significant pairs.</span>
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="c1"># Place per-tissue files under /data/gtex_v11/signif_pairs/ then:</span>
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a><span class="c1"># Build significant-pairs table</span>
+<a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a>hvantk<span class="w"> </span>reprocess<span class="w"> </span>gtex-eqtl:eqtls<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a><span class="w">  </span>--raw-dir<span class="w"> </span>/data/gtex_v11/signif_pairs/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a><span class="w">  </span>--output<span class="w"> </span>eqtl_liver.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-20-9" name="__codelineno-20-9" href="#__codelineno-20-9"></a><span class="w">  </span>--skip-download<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-20-10" name="__codelineno-20-10" href="#__codelineno-20-10"></a><span class="w">  </span>--plugin-arg<span class="w"> </span><span class="nv">source</span><span class="o">=</span>gtex_v11<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-20-11" name="__codelineno-20-11" href="#__codelineno-20-11"></a><span class="w">  </span>--plugin-arg<span class="w"> </span><span class="nv">tissue</span><span class="o">=</span>Liver
+<a id="__codelineno-20-12" name="__codelineno-20-12" href="#__codelineno-20-12"></a>
+<a id="__codelineno-20-13" name="__codelineno-20-13" href="#__codelineno-20-13"></a><span class="c1"># Build allpairs table for coloc (set p-threshold to 0)</span>
+<a id="__codelineno-20-14" name="__codelineno-20-14" href="#__codelineno-20-14"></a>hvantk<span class="w"> </span>reprocess<span class="w"> </span>gtex-eqtl:eqtls<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-20-15" name="__codelineno-20-15" href="#__codelineno-20-15"></a><span class="w">  </span>--raw-dir<span class="w"> </span>/data/gtex_v11/allpairs/Liver/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-20-16" name="__codelineno-20-16" href="#__codelineno-20-16"></a><span class="w">  </span>--output<span class="w"> </span>eqtl_allpairs_liver.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-20-17" name="__codelineno-20-17" href="#__codelineno-20-17"></a><span class="w">  </span>--skip-download<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-20-18" name="__codelineno-20-18" href="#__codelineno-20-18"></a><span class="w">  </span>--plugin-arg<span class="w"> </span><span class="nv">source</span><span class="o">=</span>gtex_v11<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-20-19" name="__codelineno-20-19" href="#__codelineno-20-19"></a><span class="w">  </span>--plugin-arg<span class="w"> </span><span class="nv">tissue</span><span class="o">=</span>Liver<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-20-20" name="__codelineno-20-20" href="#__codelineno-20-20"></a><span class="w">  </span>--plugin-arg<span class="w"> </span><span class="nv">p_threshold</span><span class="o">=</span><span class="m">0</span>
+</code></pre></div>
+<p><strong>GTEx v8</strong> (TSV format):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="c1"># Place Liver.v8.signif_variant_gene_pairs.txt.gz under /data/gtex_v8/ then:</span>
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>hvantk<span class="w"> </span>reprocess<span class="w"> </span>gtex-eqtl:eqtls<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a><span class="w">  </span>--raw-dir<span class="w"> </span>/data/gtex_v8/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a><span class="w">  </span>--output<span class="w"> </span>eqtl_liver_v8.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a><span class="w">  </span>--skip-download<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a><span class="w">  </span>--plugin-arg<span class="w"> </span><span class="nv">source</span><span class="o">=</span>gtex_v8
+</code></pre></div>
+<p><strong>eQTLGen</strong> (blood eQTLs):
+URL: https://www.eqtlgen.org/cis-eqtls.html</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="c1"># Place cis-eQTLs_full.txt.gz under /data/eqtlgen/ then:</span>
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>hvantk<span class="w"> </span>reprocess<span class="w"> </span>gtex-eqtl:eqtls<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a><span class="w">  </span>--raw-dir<span class="w"> </span>/data/eqtlgen/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a><span class="w">  </span>--output<span class="w"> </span>eqtl_blood.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a><span class="w">  </span>--skip-download<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a><span class="w">  </span>--plugin-arg<span class="w"> </span><span class="nv">source</span><span class="o">=</span>eqtlgen
+</code></pre></div>
+<h3 id="fang-et-al-2025-pqtl-data">Fang et al. (2025) pQTL data<a class="headerlink" href="#fang-et-al-2025-pqtl-data" title="Permanent link">&para;</a></h3>
+<p>Protein quantitative trait loci from Fang et al. (2025), covering 5 tissues (Colon, Heart, Liver, Lung, Thyroid). Space-delimited allpairs format with columns: <code>gene_name SNP CHR BP A1 NMISS BETA STAT P</code>. SE is derived as <code>|BETA/STAT|</code> (rows with <code>STAT = 0</code> are filtered out).</p>
+<p>URL: Contact authors or GTEx Portal supplementary data.</p>
+<blockquote>
+<p><strong>Note:</strong> Fang pQTL data uses gene symbols. Pass an Ensembl gene-table path via <code>--plugin-arg hgnc_ht=&lt;path&gt;</code> for symbol → Ensembl ID mapping (the builder uses an HGNC-style lookup table).</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="c1"># Build pQTL table with gene mapping</span>
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="c1"># Place Liver_allpairs.txt.gz under /data/fang_pqtl/ then:</span>
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>hvantk<span class="w"> </span>reprocess<span class="w"> </span>pqtl:metrics<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a><span class="w">  </span>--raw-dir<span class="w"> </span>/data/fang_pqtl/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a><span class="w">  </span>--output<span class="w"> </span>pqtl_liver.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a><span class="w">  </span>--skip-download<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a><span class="w">  </span>--plugin-arg<span class="w"> </span><span class="nv">source</span><span class="o">=</span>gtex_fang<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-23-8" name="__codelineno-23-8" href="#__codelineno-23-8"></a><span class="w">  </span>--plugin-arg<span class="w"> </span><span class="nv">tissue</span><span class="o">=</span>Liver<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-23-9" name="__codelineno-23-9" href="#__codelineno-23-9"></a><span class="w">  </span>--plugin-arg<span class="w"> </span><span class="nv">hgnc_ht</span><span class="o">=</span>ensembl_gene.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-23-10" name="__codelineno-23-10" href="#__codelineno-23-10"></a><span class="w">  </span>--plugin-arg<span class="w"> </span><span class="nv">p_threshold</span><span class="o">=</span>5e-8
+<a id="__codelineno-23-11" name="__codelineno-23-11" href="#__codelineno-23-11"></a>
+<a id="__codelineno-23-12" name="__codelineno-23-12" href="#__codelineno-23-12"></a><span class="c1"># Allpairs for coloc (omit p_threshold to keep all variants)</span>
+<a id="__codelineno-23-13" name="__codelineno-23-13" href="#__codelineno-23-13"></a>hvantk<span class="w"> </span>reprocess<span class="w"> </span>pqtl:metrics<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-23-14" name="__codelineno-23-14" href="#__codelineno-23-14"></a><span class="w">  </span>--raw-dir<span class="w"> </span>/data/fang_pqtl/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-23-15" name="__codelineno-23-15" href="#__codelineno-23-15"></a><span class="w">  </span>--output<span class="w"> </span>pqtl_allpairs_liver.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-23-16" name="__codelineno-23-16" href="#__codelineno-23-16"></a><span class="w">  </span>--skip-download<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-23-17" name="__codelineno-23-17" href="#__codelineno-23-17"></a><span class="w">  </span>--plugin-arg<span class="w"> </span><span class="nv">source</span><span class="o">=</span>gtex_fang<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-23-18" name="__codelineno-23-18" href="#__codelineno-23-18"></a><span class="w">  </span>--plugin-arg<span class="w"> </span><span class="nv">tissue</span><span class="o">=</span>Liver<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-23-19" name="__codelineno-23-19" href="#__codelineno-23-19"></a><span class="w">  </span>--plugin-arg<span class="w"> </span><span class="nv">hgnc_ht</span><span class="o">=</span>ensembl_gene.ht
+</code></pre></div>
+<h2 id="expression-data-sources">Expression data sources<a class="headerlink" href="#expression-data-sources" title="Permanent link">&para;</a></h2>
+<p>These datasets are used to build expression MatrixTables via the UCSC Cell Browser and Expression Atlas downloaders.</p>
+<h3 id="bulk-rna-seq">Bulk RNA-seq<a class="headerlink" href="#bulk-rna-seq" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Human tissue expression E-MTAB-6814</strong> — Human tissue gene expression (brain, heart, liver, kidney), multiple developmental time points.
+  URL: https://www.ebi.ac.uk/biostudies/arrayexpress/studies/E-MTAB-6814</li>
+</ul>
+<h3 id="single-cell-rna-seq">Single-cell RNA-seq<a class="headerlink" href="#single-cell-rna-seq" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Human heart scRNA-seq (Asp 2019)</strong> — Embryonic human heart single-cell RNA-seq data 6.5 wpc (PMID:31835037).
+  URL: https://data.mendeley.com/datasets/mbvhhf8m62/2</li>
+<li><strong>Human heart scRNA-seq (Farah 2024)</strong> — Single-cell RNA-seq data of the developing human heart, 9-15 wpc.
+  URL: https://cells.ucsc.edu/?bp=heart&amp;ds=hoc</li>
+<li><strong>Human heart cell atlas (HCA)</strong> — Adult human heart cell atlas (https://doi.org/10.1038/s41586-020-2797-4).
+  URL: https://cells.ucsc.edu/?bp=heart&amp;ds=heart-cell-atlas</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

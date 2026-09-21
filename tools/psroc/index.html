@@ -1,0 +1,4080 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Hail-based toolkit for multi-omics variant annotation and analysis">
+      
+      
+      
+        <link rel="canonical" href="https://bigbio.github.io/hvantk/tools/psroc/">
+      
+      
+        <link rel="prev" href="../enrichex/">
+      
+      
+        <link rel="next" href="../ancestry/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>PS-ROC - Score Evaluation - hvantk</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#psroc-prediction-score-roc-analysis" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="hvantk" class="md-header__button md-logo" aria-label="hvantk" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            hvantk
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              PS-ROC - Score Evaluation
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/bigbio/hvantk" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    bigbio/hvantk
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="hvantk" class="md-nav__button md-logo" aria-label="hvantk" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    hvantk
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/bigbio/hvantk" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    bigbio/hvantk
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building Tables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/data-sources/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/hpc-migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HPC Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tools
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tools
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hgc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HGC - Joint Genotyping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../enrichex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EnrichEx - Enrichment Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PS-ROC - Score Evaluation
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PS-ROC - Score Evaluation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#primary-functionality" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Primary Functionality
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Features
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Start
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Quick Start">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#command-line-interface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command-Line Interface
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#python-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python API
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-with-synthetic-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example with Synthetic Data
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Example with Synthetic Data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#running-the-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running the Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#synthetic-dataset-characteristics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Synthetic Dataset Characteristics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#expected-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expected Results
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-data-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Data Files
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#detailed-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Detailed Usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Detailed Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#input-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Input Sources
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Input Sources">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-1-gene-symbols" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 1: Gene Symbols
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-2-variant-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 2: Variant List
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-3-named-gene-set-collection-multi-group-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 3: Named Gene Set Collection (Multi-Group Analysis)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#required-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Required Tables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#score-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Score Selection
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Score Selection">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dbnsfp-score-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dbNSFP Score Reference
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#missingness-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Missingness Handling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clinvar-review-status-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ClinVar Review Status Filtering
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#threshold-optimization-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Threshold Optimization Methods
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pipeline-stages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline Stages
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Pipeline Stages">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#label-assignment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Label Assignment
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#output-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output Files
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Output Files">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#metrics-json-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metrics JSON Format
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#missingness-report-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Missingness Report Format
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cli-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLI Reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CLI Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#command-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#python-api-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python API Reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Python API Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Classes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core Classes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#psrocconfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PSROCConfig
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#psrocpipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PSROCPipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#psrocresult" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PSROCResult
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#roc-analysis-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ROC Analysis Functions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plotting-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plotting Functions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#end-to-end-deployment-guide" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        End-to-End Deployment Guide
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="End-to-End Deployment Guide">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-1-install-hvantk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1: Install hvantk
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-download-data-layer-1-downloaders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2: Download Data (Layer 1 — Downloaders)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-build-hail-tables-layer-1-builders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3: Build Hail Tables (Layer 1 — Builders)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-prepare-gene-sets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: Prepare Gene Sets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-5-run-psroc-layer-3-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5: Run PSROC (Layer 3 — Pipeline)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-6-review-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 6: Review Results
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#preparing-gene-set-collections" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Preparing Gene Set Collections
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Preparing Gene Set Collections">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#from-custom-gene-panels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From Custom Gene Panels
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#from-clingen-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From ClinGen (CLI)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#from-clingen-python-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From ClinGen (Python API)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#from-gmt-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From GMT Files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#saving-for-cli-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Saving for CLI Use
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interpreting-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interpreting Results
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Interpreting Results">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#auc-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AUC Values
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optimal-threshold" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optimal Threshold
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sensitivity-vs-specificity-trade-off" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sensitivity vs Specificity Trade-off
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best Practices
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Best Practices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#data-quality" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Quality
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#score-selection_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Score Selection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#threshold-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Threshold Selection
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#common-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Issues
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ancestry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ancestry Inference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ptm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM - Variant Classification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ptm-constraint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM Constraint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../qtlcascade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QTL Cascade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Examples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/hgc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HGC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/enrichex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EnrichEx
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/psroc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PS-ROC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/ancestry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ancestry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/clinvar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ClinVar Streaming
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/clingen/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ClinGen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/qtlcascade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QTL Cascade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/ptm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#primary-functionality" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Primary Functionality
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Features
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Start
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Quick Start">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#command-line-interface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command-Line Interface
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#python-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python API
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-with-synthetic-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example with Synthetic Data
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Example with Synthetic Data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#running-the-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running the Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#synthetic-dataset-characteristics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Synthetic Dataset Characteristics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#expected-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expected Results
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-data-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Data Files
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#detailed-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Detailed Usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Detailed Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#input-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Input Sources
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Input Sources">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-1-gene-symbols" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 1: Gene Symbols
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-2-variant-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 2: Variant List
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-3-named-gene-set-collection-multi-group-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 3: Named Gene Set Collection (Multi-Group Analysis)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#required-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Required Tables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#score-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Score Selection
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Score Selection">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dbnsfp-score-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dbNSFP Score Reference
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#missingness-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Missingness Handling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clinvar-review-status-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ClinVar Review Status Filtering
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#threshold-optimization-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Threshold Optimization Methods
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pipeline-stages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline Stages
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Pipeline Stages">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#label-assignment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Label Assignment
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#output-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output Files
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Output Files">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#metrics-json-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metrics JSON Format
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#missingness-report-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Missingness Report Format
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cli-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLI Reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CLI Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#command-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#python-api-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python API Reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Python API Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Classes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core Classes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#psrocconfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PSROCConfig
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#psrocpipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PSROCPipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#psrocresult" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PSROCResult
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#roc-analysis-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ROC Analysis Functions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plotting-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plotting Functions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#end-to-end-deployment-guide" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        End-to-End Deployment Guide
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="End-to-End Deployment Guide">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-1-install-hvantk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1: Install hvantk
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-download-data-layer-1-downloaders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2: Download Data (Layer 1 — Downloaders)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-build-hail-tables-layer-1-builders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3: Build Hail Tables (Layer 1 — Builders)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-prepare-gene-sets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: Prepare Gene Sets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-5-run-psroc-layer-3-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5: Run PSROC (Layer 3 — Pipeline)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-6-review-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 6: Review Results
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#preparing-gene-set-collections" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Preparing Gene Set Collections
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Preparing Gene Set Collections">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#from-custom-gene-panels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From Custom Gene Panels
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#from-clingen-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From ClinGen (CLI)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#from-clingen-python-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From ClinGen (Python API)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#from-gmt-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From GMT Files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#saving-for-cli-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Saving for CLI Use
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interpreting-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interpreting Results
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Interpreting Results">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#auc-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AUC Values
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optimal-threshold" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optimal Threshold
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sensitivity-vs-specificity-trade-off" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sensitivity vs Specificity Trade-off
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best Practices
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Best Practices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#data-quality" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Quality
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#score-selection_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Score Selection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#threshold-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Threshold Selection
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#common-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Issues
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="psroc-prediction-score-roc-analysis">PSROC: Prediction Score ROC Analysis<a class="headerlink" href="#psroc-prediction-score-roc-analysis" title="Permanent link">&para;</a></h1>
+<p>PSROC is a module within hvantk that evaluates variant pathogenicity prediction scores using ROC (Receiver Operating Characteristic) curve analysis. It compares prediction scores from databases like dbNSFP against ClinVar truth labels to assess their discriminative power.</p>
+<p><img alt="PS-ROC workflow" src="../../images/hvantk-psroc-workflow.svg" /></p>
+<p><strong>Figure 1.</strong> <em>PS-ROC pipeline — from ClinVar/dbNSFP table loading through label assignment, score annotation, missingness filtering, ROC computation, and output generation.</em></p>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>The PSROC module provides an end-to-end pipeline for benchmarking variant pathogenicity prediction scores:</p>
+<h3 id="primary-functionality">Primary Functionality<a class="headerlink" href="#primary-functionality" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>ROC Analysis</strong> - Compute AUC, optimal thresholds, and sensitivity/specificity for each score</li>
+<li><strong>Missingness Handling</strong> - Track and filter scores based on missing value rates</li>
+<li><strong>Visualization</strong> - Generate publication-quality ROC curves and comparison plots</li>
+<li><strong>Pipeline Orchestration</strong> - Single command runs the complete analysis workflow</li>
+</ul>
+<h3 id="key-features">Key Features<a class="headerlink" href="#key-features" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Multi-Score Comparison</strong> - Evaluate multiple prediction scores simultaneously</li>
+<li><strong>Configurable Thresholds</strong> - Youden's J, closest-to-corner, and F1 optimization methods</li>
+<li><strong>Automatic Filtering</strong> - Exclude scores with excessive missing values</li>
+<li><strong>Flexible Input</strong> - Filter by genes, gene lists, or specific variants</li>
+<li><strong>Comprehensive Outputs</strong> - JSON metrics, TSV exports, and visualization plots</li>
+</ul>
+<h2 id="quick-start">Quick Start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
+<h3 id="command-line-interface">Command-Line Interface<a class="headerlink" href="#command-line-interface" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Basic usage with specific genes</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>hvantk<span class="w"> </span>psroc<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span>--genes<span class="w"> </span>BRCA1,BRCA2<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span>--clinvar-ht<span class="w"> </span>/data/clinvar_grch38.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span>--dbnsfp-ht<span class="w"> </span>/data/dbnsfp_grch38.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span>--scores<span class="w"> </span><span class="s2">"CADD_phred,REVEL_score,MetaLR_score"</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">  </span>--output-dir<span class="w"> </span>/results/brca_psroc
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="c1"># View execution plan without running</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>hvantk<span class="w"> </span>psroc<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">  </span>--genes<span class="w"> </span>BRCA1<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">  </span>--clinvar-ht<span class="w"> </span>/data/clinvar.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">  </span>--dbnsfp-ht<span class="w"> </span>/data/dbnsfp.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">  </span>--scores<span class="w"> </span><span class="s2">"CADD_phred"</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">  </span>--output-dir<span class="w"> </span>/results<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">  </span>--dry-run
+</code></pre></div>
+<h3 id="python-api">Python API<a class="headerlink" href="#python-api" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.psroc</span><span class="w"> </span><span class="kn">import</span> <span class="n">PSROCConfig</span><span class="p">,</span> <span class="n">PSROCPipeline</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1"># Configure analysis</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">config</span> <span class="o">=</span> <span class="n">PSROCConfig</span><span class="p">(</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">genes</span><span class="o">=</span><span class="p">[</span><span class="s2">"BRCA1"</span><span class="p">,</span> <span class="s2">"BRCA2"</span><span class="p">],</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="n">clinvar_ht</span><span class="o">=</span><span class="s2">"/data/clinvar_grch38.ht"</span><span class="p">,</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="n">dbnsfp_ht</span><span class="o">=</span><span class="s2">"/data/dbnsfp_grch38.ht"</span><span class="p">,</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="n">scores</span><span class="o">=</span><span class="p">[</span><span class="s2">"CADD_phred"</span><span class="p">,</span> <span class="s2">"REVEL_score"</span><span class="p">,</span> <span class="s2">"MetaLR_score"</span><span class="p">],</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="n">output_dir</span><span class="o">=</span><span class="s2">"/results/brca_psroc"</span><span class="p">,</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    <span class="n">max_missingness</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="p">)</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="c1"># Run pipeline</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">PSROCPipeline</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="n">result</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="c1"># View results</span>
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">summary</span><span class="p">())</span>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="k">for</span> <span class="n">score_name</span><span class="p">,</span> <span class="n">roc</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">score_name</span><span class="si">}</span><span class="s2">: AUC=</span><span class="si">{</span><span class="n">roc</span><span class="o">.</span><span class="n">auc</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="example-with-synthetic-data">Example with Synthetic Data<a class="headerlink" href="#example-with-synthetic-data" title="Permanent link">&para;</a></h2>
+<p>The PSROC module includes synthetic test data for learning and testing. This data
+allows you to run the complete pipeline without needing real ClinVar or dbNSFP tables.</p>
+<h3 id="running-the-example">Running the Example<a class="headerlink" href="#running-the-example" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Run the example script (builds Hail Tables from synthetic TSVs and runs full pipeline)</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>python<span class="w"> </span>examples/psroc/run_psroc_example.py<span class="w"> </span>--output-dir<span class="w"> </span>/tmp/psroc_example
+</code></pre></div>
+<h3 id="synthetic-dataset-characteristics">Synthetic Dataset Characteristics<a class="headerlink" href="#synthetic-dataset-characteristics" title="Permanent link">&para;</a></h3>
+<p>The synthetic dataset contains:</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Variants</strong></td>
+<td>100 variants across BRCA1, BRCA2, and TP53</td>
+</tr>
+<tr>
+<td><strong>Labels</strong></td>
+<td>50 pathogenic, 40 benign, 10 VUS (excluded)</td>
+</tr>
+<tr>
+<td><strong>Scores</strong></td>
+<td>4 prediction scores with varying performance</td>
+</tr>
+</tbody>
+</table>
+<h3 id="expected-results">Expected Results<a class="headerlink" href="#expected-results" title="Permanent link">&para;</a></h3>
+<p>The synthetic scores are designed to demonstrate different discriminative capabilities:</p>
+<table>
+<thead>
+<tr>
+<th>Score</th>
+<th>Expected AUC</th>
+<th>Missingness</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>REVEL_score</td>
+<td>~0.95</td>
+<td>~2%</td>
+<td>Included</td>
+</tr>
+<tr>
+<td>CADD_phred</td>
+<td>~0.90</td>
+<td>~5%</td>
+<td>Included</td>
+</tr>
+<tr>
+<td>MetaLR_score</td>
+<td>~0.75</td>
+<td>~10%</td>
+<td>Included</td>
+</tr>
+<tr>
+<td>VEST4_score</td>
+<td>N/A</td>
+<td>~40%</td>
+<td>Excluded</td>
+</tr>
+</tbody>
+</table>
+<p>The VEST4_score is intentionally designed with high missingness to demonstrate
+the automatic score exclusion feature when missingness exceeds the threshold.</p>
+<h3 id="test-data-files">Test Data Files<a class="headerlink" href="#test-data-files" title="Permanent link">&para;</a></h3>
+<p>Located in <code>hvantk/tests/testdata/psroc/</code>:</p>
+<ul>
+<li><code>synthetic_clinvar.tsv</code> - ClinVar-like variant annotations</li>
+<li><code>synthetic_dbnsfp.tsv</code> - dbNSFP-like prediction scores</li>
+<li><code>test_genes.txt</code> - Gene list for <code>--genes-file</code> testing</li>
+<li><code>test_variants.txt</code> - Variant list for <code>--variants</code> testing</li>
+</ul>
+<h2 id="detailed-usage">Detailed Usage<a class="headerlink" href="#detailed-usage" title="Permanent link">&para;</a></h2>
+<h3 id="input-sources">Input Sources<a class="headerlink" href="#input-sources" title="Permanent link">&para;</a></h3>
+<p>PSROC requires exactly one input source to select variants for analysis:</p>
+<h4 id="option-1-gene-symbols">Option 1: Gene Symbols<a class="headerlink" href="#option-1-gene-symbols" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># Comma-separated gene symbols</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>hvantk<span class="w"> </span>psroc<span class="w"> </span>--genes<span class="w"> </span>BRCA1,BRCA2,TP53<span class="w"> </span>...
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># From a file (one gene per line)</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>hvantk<span class="w"> </span>psroc<span class="w"> </span>--genes-file<span class="w"> </span>/data/cardiac_genes.txt<span class="w"> </span>...
+</code></pre></div>
+<h4 id="option-2-variant-list">Option 2: Variant List<a class="headerlink" href="#option-2-variant-list" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># Variant file format: chr:pos:ref:alt (one per line)</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>hvantk<span class="w"> </span>psroc<span class="w"> </span>--variants<span class="w"> </span>/data/my_variants.txt<span class="w"> </span>...
+</code></pre></div>
+<p>Example variant file:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>chr1:12345:A:T
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>chr2:67890:G:C
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>chr17:41245466:G:A
+</code></pre></div></p>
+<h4 id="option-3-named-gene-set-collection-multi-group-analysis">Option 3: Named Gene Set Collection (Multi-Group Analysis)<a class="headerlink" href="#option-3-named-gene-set-collection-multi-group-analysis" title="Permanent link">&para;</a></h4>
+<p>Run PSROC independently for each named gene set in a collection. Each group
+gets its own output subdirectory with per-group metrics and plots.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># From a JSON gene set collection</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>hvantk<span class="w"> </span>psroc<span class="w"> </span>--gene-sets<span class="w"> </span>/data/disease_gene_sets.json<span class="w"> </span>...
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1"># From a GMT file (e.g., MSigDB pathways)</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>hvantk<span class="w"> </span>psroc<span class="w"> </span>--gene-sets<span class="w"> </span>/data/pathways.gmt<span class="w"> </span>...
+</code></pre></div>
+<p>Gene set collections can be prepared from various sources using hvantk's
+streamer layer. See <a href="#preparing-gene-set-collections">Preparing Gene Set Collections</a>
+and the CLI commands below:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># Prepare gene sets from ClinGen</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>hvantk<span class="w"> </span>genesets<span class="w"> </span>clingen<span class="w"> </span>--ht<span class="w"> </span>/data/clingen.ht<span class="w"> </span>--group-by<span class="w"> </span>gcep<span class="w"> </span>-o<span class="w"> </span>gene_sets.json
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="c1"># From COSMIC Cancer Gene Census</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>hvantk<span class="w"> </span>genesets<span class="w"> </span>cosmic<span class="w"> </span>--ht<span class="w"> </span>/data/cosmic_cgc.ht<span class="w"> </span>-o<span class="w"> </span>cosmic_gene_sets.json
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="c1"># Or from custom panels</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>hvantk<span class="w"> </span>genesets<span class="w"> </span>prepare<span class="w"> </span>-i<span class="w"> </span>panels.tsv<span class="w"> </span>-o<span class="w"> </span>panels.json<span class="w"> </span>--hgnc<span class="w"> </span>/data/hgnc.ht
+</code></pre></div>
+<h3 id="required-tables">Required Tables<a class="headerlink" href="#required-tables" title="Permanent link">&para;</a></h3>
+<p>PSROC requires pre-built Hail Tables for ClinVar and dbNSFP:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># Build ClinVar table (clinvar plugin has a built-in downloader; raw-dir</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="c1"># holds clinvar.vcf.gz + .tbi).</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>hvantk<span class="w"> </span>reprocess<span class="w"> </span>clinvar:variants<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">  </span>--raw-dir<span class="w"> </span>/data/clinvar/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">  </span>--output<span class="w"> </span>/data/clinvar_grch38.ht
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="c1"># Build dbNSFP table from the concatenated BGZF (see Deployment Guide).</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="c1"># dbNSFP has no plugin downloader; --skip-download is required.</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>hvantk<span class="w"> </span>reprocess<span class="w"> </span>dbnsfp:variants<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="w">  </span>--raw-dir<span class="w"> </span>/data/dbnsfp/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="w">  </span>--output<span class="w"> </span>/data/dbnsfp_grch38.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="w">  </span>--skip-download
+</code></pre></div>
+<h3 id="score-selection">Score Selection<a class="headerlink" href="#score-selection" title="Permanent link">&para;</a></h3>
+<p>Specify dbNSFP score fields to evaluate:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>--scores<span class="w"> </span><span class="s2">"CADD_phred,REVEL_score,MetaLR_score,VEST4_score,ClinPred_score"</span>
+</code></pre></div>
+<h4 id="dbnsfp-score-reference">dbNSFP Score Reference<a class="headerlink" href="#dbnsfp-score-reference" title="Permanent link">&para;</a></h4>
+<p>The table below lists commonly used prediction scores available in dbNSFP 4.x.
+Field names are case-sensitive and must match the dbNSFP column names exactly.</p>
+<blockquote>
+<p><strong>Important:</strong> PSROC assumes <strong>higher score = more pathogenic</strong>. Scores marked
+with inverted directionality (lower = pathogenic) will produce AUC &lt; 0.5 and
+should not be used directly. Use <code>_rankscore</code> variants instead (see note below).</p>
+</blockquote>
+<p><strong>Ensemble / meta-predictor scores</strong> (recommended — combine multiple signals):</p>
+<table>
+<thead>
+<tr>
+<th>Field name</th>
+<th>Description</th>
+<th>Range</th>
+<th>Direction</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>REVEL_score</code></td>
+<td>Rare Exome Variant Ensemble Learner</td>
+<td>0–1</td>
+<td>Higher = pathogenic</td>
+</tr>
+<tr>
+<td><code>MetaLR_score</code></td>
+<td>Meta-analytic logistic regression</td>
+<td>0–1</td>
+<td>Higher = pathogenic</td>
+</tr>
+<tr>
+<td><code>MetaSVM_score</code></td>
+<td>Meta-analytic support vector machine</td>
+<td>unbounded</td>
+<td>Higher = pathogenic</td>
+</tr>
+<tr>
+<td><code>MetaRNN_score</code></td>
+<td>Meta-analytic recurrent neural network</td>
+<td>0–1</td>
+<td>Higher = pathogenic</td>
+</tr>
+<tr>
+<td><code>ClinPred_score</code></td>
+<td>Clinical pathogenicity prediction</td>
+<td>0–1</td>
+<td>Higher = pathogenic</td>
+</tr>
+<tr>
+<td><code>BayesDel_addAF_score</code></td>
+<td>BayesDel with allele frequency features</td>
+<td>-1 to 1</td>
+<td>Higher = pathogenic</td>
+</tr>
+<tr>
+<td><code>BayesDel_noAF_score</code></td>
+<td>BayesDel without allele frequency</td>
+<td>-1 to 1</td>
+<td>Higher = pathogenic</td>
+</tr>
+<tr>
+<td><code>CADD_phred</code></td>
+<td>CADD Phred-scaled C-score</td>
+<td>0–60+</td>
+<td>Higher = pathogenic</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Individual predictor scores</strong> (higher = pathogenic):</p>
+<table>
+<thead>
+<tr>
+<th>Field name</th>
+<th>Description</th>
+<th>Range</th>
+<th>Direction</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>VEST4_score</code></td>
+<td>Variant Effect Scoring Tool v4</td>
+<td>0–1</td>
+<td>Higher = pathogenic</td>
+</tr>
+<tr>
+<td><code>MVP_score</code></td>
+<td>Missense Variant Pathogenicity</td>
+<td>0–1</td>
+<td>Higher = pathogenic</td>
+</tr>
+<tr>
+<td><code>gMVP_score</code></td>
+<td>Generalized MVP</td>
+<td>0–1</td>
+<td>Higher = pathogenic</td>
+</tr>
+<tr>
+<td><code>MPC_score</code></td>
+<td>Missense badness, PolyPhen-2, Constraint</td>
+<td>0–5</td>
+<td>Higher = pathogenic</td>
+</tr>
+<tr>
+<td><code>PrimateAI_score</code></td>
+<td>Primate AI deep learning</td>
+<td>0–1</td>
+<td>Higher = pathogenic</td>
+</tr>
+<tr>
+<td><code>DEOGEN2_score</code></td>
+<td>DEOGEN2 pathogenicity prediction</td>
+<td>0–1</td>
+<td>Higher = pathogenic</td>
+</tr>
+<tr>
+<td><code>DANN_score</code></td>
+<td>Deep Annotation Neural Network</td>
+<td>0–1</td>
+<td>Higher = pathogenic</td>
+</tr>
+<tr>
+<td><code>M-CAP_score</code></td>
+<td>Mendelian Clinically Applicable Pathogenicity</td>
+<td>0–1</td>
+<td>Higher = pathogenic</td>
+</tr>
+<tr>
+<td><code>LIST-S2_score</code></td>
+<td>LIST variant-specific score</td>
+<td>0–1</td>
+<td>Higher = pathogenic</td>
+</tr>
+<tr>
+<td><code>AlphaMissense_score</code></td>
+<td>AlphaMissense deep learning</td>
+<td>0–1</td>
+<td>Higher = pathogenic</td>
+</tr>
+<tr>
+<td><code>EVE_score</code></td>
+<td>Evolutionary model of Variant Effect</td>
+<td>0–1</td>
+<td>Higher = pathogenic</td>
+</tr>
+<tr>
+<td><code>VARITY_R_score</code></td>
+<td>VARITY regular</td>
+<td>0–1</td>
+<td>Higher = pathogenic</td>
+</tr>
+<tr>
+<td><code>VARITY_ER_score</code></td>
+<td>VARITY extended regular</td>
+<td>0–1</td>
+<td>Higher = pathogenic</td>
+</tr>
+<tr>
+<td><code>Polyphen2_HDIV_score</code></td>
+<td>PolyPhen-2 HumDiv</td>
+<td>0–1</td>
+<td>Higher = pathogenic</td>
+</tr>
+<tr>
+<td><code>Polyphen2_HVAR_score</code></td>
+<td>PolyPhen-2 HumVar</td>
+<td>0–1</td>
+<td>Higher = pathogenic</td>
+</tr>
+<tr>
+<td><code>MutationAssessor_score</code></td>
+<td>Mutation Assessor functional impact</td>
+<td>-5.5 to 6.5</td>
+<td>Higher = pathogenic</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Scores with inverted directionality</strong> (do NOT use directly with PSROC):</p>
+<table>
+<thead>
+<tr>
+<th>Field name</th>
+<th>Description</th>
+<th>Range</th>
+<th>Direction</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SIFT_score</code></td>
+<td>Sorting Intolerant From Tolerant</td>
+<td>0–1</td>
+<td><strong>Lower</strong> = pathogenic</td>
+</tr>
+<tr>
+<td><code>PROVEAN_score</code></td>
+<td>Protein Variation Effect Analyzer</td>
+<td>unbounded</td>
+<td><strong>More negative</strong> = pathogenic</td>
+</tr>
+<tr>
+<td><code>FATHMM_score</code></td>
+<td>Functional Analysis Through HMMs</td>
+<td>unbounded</td>
+<td><strong>More negative</strong> = pathogenic</td>
+</tr>
+<tr>
+<td><code>LRT_score</code></td>
+<td>Likelihood Ratio Test</td>
+<td>0–1</td>
+<td><strong>Lower</strong> = pathogenic</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Tip — using <code>_rankscore</code> variants:</strong> dbNSFP provides normalized rank scores
+(e.g., <code>SIFT_converted_rankscore</code>, <code>FATHMM_converted_rankscore</code>) where
+higher = more damaging for all scores. These work directly with PSROC and are
+a good alternative when you want to include scores with inverted directionality.</p>
+<p>Rank scores are valid for ROC analysis: AUC values and score comparisons are
+correct because the monotonic ranking is preserved. However, the optimal
+threshold reported by PSROC will be in <strong>rank space</strong> (e.g., 0.85) rather than
+the original score units (e.g., SIFT 0.05). This means rank-score thresholds
+are useful for benchmarking which scores discriminate best, but cannot be used
+directly as clinical cutoffs in the native score scale.</p>
+</blockquote>
+<p><strong>Conservation scores</strong> (measure evolutionary constraint, not variant-specific):</p>
+<table>
+<thead>
+<tr>
+<th>Field name</th>
+<th>Description</th>
+<th>Range</th>
+<th>Direction</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GERP++_RS</code></td>
+<td>GERP rejected substitutions</td>
+<td>-12 to 6.2</td>
+<td>Higher = conserved</td>
+</tr>
+<tr>
+<td><code>phyloP100way_vertebrate</code></td>
+<td>phyloP 100-way vertebrate</td>
+<td>-20 to 11.2</td>
+<td>Higher = conserved</td>
+</tr>
+<tr>
+<td><code>phastCons100way_vertebrate</code></td>
+<td>phastCons 100-way vertebrate</td>
+<td>0–1</td>
+<td>Higher = conserved</td>
+</tr>
+</tbody>
+</table>
+<p>The exact set of available scores depends on the dbNSFP version used to build
+the Hail Table. To list all score fields in your table, run:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">hail</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">hl</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="n">ht</span> <span class="o">=</span> <span class="n">hl</span><span class="o">.</span><span class="n">read_table</span><span class="p">(</span><span class="s1">'/path/to/dbnsfp.ht'</span><span class="p">)</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="n">score_fields</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">ht</span><span class="o">.</span><span class="n">row</span> <span class="k">if</span> <span class="n">f</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">'_score'</span><span class="p">)</span> <span class="ow">or</span> <span class="n">f</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">'_phred'</span><span class="p">))</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="nb">print</span><span class="p">(</span><span class="n">score_fields</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="missingness-handling">Missingness Handling<a class="headerlink" href="#missingness-handling" title="Permanent link">&para;</a></h3>
+<p>Scores with high rates of missing values can bias ROC analysis. PSROC automatically:</p>
+<ol>
+<li>Computes missingness statistics for each score</li>
+<li>Excludes scores exceeding the threshold from ROC analysis</li>
+<li>Reports all missingness statistics in the output</li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># Default: exclude scores with &gt;30% missing values</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>hvantk<span class="w"> </span>psroc<span class="w"> </span>...<span class="w"> </span>--max-missingness<span class="w"> </span><span class="m">0</span>.3
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="c1"># Stricter threshold for high-quality analysis</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>hvantk<span class="w"> </span>psroc<span class="w"> </span>...<span class="w"> </span>--max-missingness<span class="w"> </span><span class="m">0</span>.1
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="c1"># Relaxed threshold for exploratory analysis</span>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>hvantk<span class="w"> </span>psroc<span class="w"> </span>...<span class="w"> </span>--max-missingness<span class="w"> </span><span class="m">0</span>.5
+</code></pre></div>
+<h3 id="clinvar-review-status-filtering">ClinVar Review Status Filtering<a class="headerlink" href="#clinvar-review-status-filtering" title="Permanent link">&para;</a></h3>
+<p>Filter variants by ClinVar review status (star rating):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># Require at least 1 star (default)</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>hvantk<span class="w"> </span>psroc<span class="w"> </span>...<span class="w"> </span>--min-stars<span class="w"> </span><span class="m">1</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="c1"># Require expert panel review (3+ stars)</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>hvantk<span class="w"> </span>psroc<span class="w"> </span>...<span class="w"> </span>--min-stars<span class="w"> </span><span class="m">3</span>
+</code></pre></div>
+<p>Star ratings:
+- 0 stars: No assertion criteria provided
+- 1 star: Single submitter with criteria
+- 2 stars: Multiple submitters, no conflicts
+- 3 stars: Reviewed by expert panel
+- 4 stars: Practice guideline</p>
+<h3 id="threshold-optimization-methods">Threshold Optimization Methods<a class="headerlink" href="#threshold-optimization-methods" title="Permanent link">&para;</a></h3>
+<p>PSROC supports three methods for finding optimal classification thresholds:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="c1"># Youden's J statistic (default) - maximizes (sensitivity + specificity - 1)</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>hvantk<span class="w"> </span>psroc<span class="w"> </span>...<span class="w"> </span>--threshold-method<span class="w"> </span>youden
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="c1"># Closest to corner - minimizes distance to perfect classifier (0,1)</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>hvantk<span class="w"> </span>psroc<span class="w"> </span>...<span class="w"> </span>--threshold-method<span class="w"> </span>closest_to_corner
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="c1"># F1 score approximation</span>
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>hvantk<span class="w"> </span>psroc<span class="w"> </span>...<span class="w"> </span>--threshold-method<span class="w"> </span>f1
+</code></pre></div>
+<h2 id="pipeline-stages">Pipeline Stages<a class="headerlink" href="#pipeline-stages" title="Permanent link">&para;</a></h2>
+<p>The PSROC pipeline executes seven stages:</p>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1. Load Tables</td>
+<td>Read ClinVar and dbNSFP Hail Tables</td>
+</tr>
+<tr>
+<td>2. Filter ClinVar</td>
+<td>Filter to target genes or variants</td>
+</tr>
+<tr>
+<td>3. Assign Labels</td>
+<td>Convert CLNSIG to binary P/B labels</td>
+</tr>
+<tr>
+<td>4. Annotate Scores</td>
+<td>Join with dbNSFP prediction scores</td>
+</tr>
+<tr>
+<td>5. Compute Missingness</td>
+<td>Calculate per-score missingness statistics</td>
+</tr>
+<tr>
+<td>6. Compute ROC</td>
+<td>Compute ROC metrics for qualifying scores</td>
+</tr>
+<tr>
+<td>7. Generate Outputs</td>
+<td>Create plots, metrics JSON, and reports</td>
+</tr>
+</tbody>
+</table>
+<h3 id="label-assignment">Label Assignment<a class="headerlink" href="#label-assignment" title="Permanent link">&para;</a></h3>
+<p>ClinVar clinical significance values are mapped to binary labels:</p>
+<p><strong>Pathogenic (label=1):</strong>
+- Pathogenic
+- Likely_pathogenic
+- Pathogenic/Likely_pathogenic</p>
+<p><strong>Benign (label=0):</strong>
+- Benign
+- Likely_benign
+- Benign/Likely_benign</p>
+<p><strong>Excluded:</strong>
+- Uncertain_significance
+- Conflicting_interpretations_of_pathogenicity
+- All other values</p>
+<h2 id="output-files">Output Files<a class="headerlink" href="#output-files" title="Permanent link">&para;</a></h2>
+<p>PSROC generates the following outputs:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>output_dir/
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>├── psroc_metrics.json           # ROC metrics (AUC, thresholds, etc.)
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>├── psroc_missingness.json       # Per-score missingness statistics
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>├── psroc_annotated.ht/          # Hail Table with labels and scores
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>├── psroc_annotated.tsv          # TSV export (if --export-tsv)
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>├── plots/
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>│   ├── psroc_roc_curves.png     # Multi-score ROC overlay
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>│   ├── psroc_auc_comparison.png # AUC bar chart
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>│   ├── psroc_missingness.png    # Missingness summary
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>│   └── psroc_dashboard.png      # Summary dashboard
+<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>├── logs/
+<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a>│   └── psroc_*.log              # Execution log
+<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a>└── .pipeline_state.json         # State for recovery
+</code></pre></div>
+<h3 id="metrics-json-format">Metrics JSON Format<a class="headerlink" href="#metrics-json-format" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="p">{</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="w">  </span><span class="nt">"total_variants"</span><span class="p">:</span><span class="w"> </span><span class="mi">1250</span><span class="p">,</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="w">  </span><span class="nt">"n_pathogenic"</span><span class="p">:</span><span class="w"> </span><span class="mi">620</span><span class="p">,</span>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="w">  </span><span class="nt">"n_benign"</span><span class="p">:</span><span class="w"> </span><span class="mi">580</span><span class="p">,</span>
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="w">  </span><span class="nt">"n_excluded"</span><span class="p">:</span><span class="w"> </span><span class="mi">50</span><span class="p">,</span>
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="w">  </span><span class="nt">"scores_included"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"CADD_phred"</span><span class="p">,</span><span class="w"> </span><span class="s2">"REVEL_score"</span><span class="p">],</span>
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="w">  </span><span class="nt">"scores_excluded"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"MetaLR_score"</span><span class="p">],</span>
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a><span class="w">  </span><span class="nt">"max_missingness_threshold"</span><span class="p">:</span><span class="w"> </span><span class="mf">0.3</span><span class="p">,</span>
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a><span class="w">  </span><span class="nt">"metrics"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a><span class="w">    </span><span class="nt">"CADD_phred"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a><span class="w">      </span><span class="nt">"score_name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"CADD_phred"</span><span class="p">,</span>
+<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a><span class="w">      </span><span class="nt">"auc"</span><span class="p">:</span><span class="w"> </span><span class="mf">0.892</span><span class="p">,</span>
+<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a><span class="w">      </span><span class="nt">"optimal_threshold"</span><span class="p">:</span><span class="w"> </span><span class="mf">22.5</span><span class="p">,</span>
+<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a><span class="w">      </span><span class="nt">"sensitivity_at_optimal"</span><span class="p">:</span><span class="w"> </span><span class="mf">0.85</span><span class="p">,</span>
+<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a><span class="w">      </span><span class="nt">"specificity_at_optimal"</span><span class="p">:</span><span class="w"> </span><span class="mf">0.82</span><span class="p">,</span>
+<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a><span class="w">      </span><span class="nt">"n_variants_used"</span><span class="p">:</span><span class="w"> </span><span class="mi">1180</span><span class="p">,</span>
+<a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a><span class="w">      </span><span class="nt">"missingness"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a><span class="w">        </span><span class="nt">"n_total"</span><span class="p">:</span><span class="w"> </span><span class="mi">1200</span><span class="p">,</span>
+<a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a><span class="w">        </span><span class="nt">"n_present"</span><span class="p">:</span><span class="w"> </span><span class="mi">1180</span><span class="p">,</span>
+<a id="__codelineno-15-20" name="__codelineno-15-20" href="#__codelineno-15-20"></a><span class="w">        </span><span class="nt">"n_missing"</span><span class="p">:</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span>
+<a id="__codelineno-15-21" name="__codelineno-15-21" href="#__codelineno-15-21"></a><span class="w">        </span><span class="nt">"missingness_rate"</span><span class="p">:</span><span class="w"> </span><span class="mf">0.017</span><span class="p">,</span>
+<a id="__codelineno-15-22" name="__codelineno-15-22" href="#__codelineno-15-22"></a><span class="w">        </span><span class="nt">"included_in_analysis"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<a id="__codelineno-15-23" name="__codelineno-15-23" href="#__codelineno-15-23"></a><span class="w">      </span><span class="p">}</span>
+<a id="__codelineno-15-24" name="__codelineno-15-24" href="#__codelineno-15-24"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-15-25" name="__codelineno-15-25" href="#__codelineno-15-25"></a><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-15-26" name="__codelineno-15-26" href="#__codelineno-15-26"></a><span class="p">}</span>
+</code></pre></div>
+<h3 id="missingness-report-format">Missingness Report Format<a class="headerlink" href="#missingness-report-format" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="p">{</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="w">  </span><span class="nt">"total_variants"</span><span class="p">:</span><span class="w"> </span><span class="mi">1200</span><span class="p">,</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="w">  </span><span class="nt">"max_missingness_threshold"</span><span class="p">:</span><span class="w"> </span><span class="mf">0.3</span><span class="p">,</span>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="w">  </span><span class="nt">"scores_included"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"CADD_phred"</span><span class="p">,</span><span class="w"> </span><span class="s2">"REVEL_score"</span><span class="p">],</span>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="w">  </span><span class="nt">"scores_excluded"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"MetaLR_score"</span><span class="p">],</span>
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="w">  </span><span class="nt">"scores"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="w">    </span><span class="nt">"CADD_phred"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a><span class="w">      </span><span class="nt">"n_total"</span><span class="p">:</span><span class="w"> </span><span class="mi">1200</span><span class="p">,</span>
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a><span class="w">      </span><span class="nt">"n_present"</span><span class="p">:</span><span class="w"> </span><span class="mi">1180</span><span class="p">,</span>
+<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a><span class="w">      </span><span class="nt">"n_missing"</span><span class="p">:</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span>
+<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a><span class="w">      </span><span class="nt">"missingness_rate"</span><span class="p">:</span><span class="w"> </span><span class="mf">0.017</span><span class="p">,</span>
+<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a><span class="w">      </span><span class="nt">"included_in_analysis"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a><span class="w">      </span><span class="nt">"exclusion_reason"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span>
+<a id="__codelineno-16-14" name="__codelineno-16-14" href="#__codelineno-16-14"></a><span class="w">    </span><span class="p">},</span>
+<a id="__codelineno-16-15" name="__codelineno-16-15" href="#__codelineno-16-15"></a><span class="w">    </span><span class="nt">"MetaLR_score"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-16-16" name="__codelineno-16-16" href="#__codelineno-16-16"></a><span class="w">      </span><span class="nt">"n_total"</span><span class="p">:</span><span class="w"> </span><span class="mi">1200</span><span class="p">,</span>
+<a id="__codelineno-16-17" name="__codelineno-16-17" href="#__codelineno-16-17"></a><span class="w">      </span><span class="nt">"n_present"</span><span class="p">:</span><span class="w"> </span><span class="mi">720</span><span class="p">,</span>
+<a id="__codelineno-16-18" name="__codelineno-16-18" href="#__codelineno-16-18"></a><span class="w">      </span><span class="nt">"n_missing"</span><span class="p">:</span><span class="w"> </span><span class="mi">480</span><span class="p">,</span>
+<a id="__codelineno-16-19" name="__codelineno-16-19" href="#__codelineno-16-19"></a><span class="w">      </span><span class="nt">"missingness_rate"</span><span class="p">:</span><span class="w"> </span><span class="mf">0.4</span><span class="p">,</span>
+<a id="__codelineno-16-20" name="__codelineno-16-20" href="#__codelineno-16-20"></a><span class="w">      </span><span class="nt">"included_in_analysis"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<a id="__codelineno-16-21" name="__codelineno-16-21" href="#__codelineno-16-21"></a><span class="w">      </span><span class="nt">"exclusion_reason"</span><span class="p">:</span><span class="w"> </span><span class="s2">"missingness_rate (0.40) exceeds max_missingness (0.30)"</span>
+<a id="__codelineno-16-22" name="__codelineno-16-22" href="#__codelineno-16-22"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-16-23" name="__codelineno-16-23" href="#__codelineno-16-23"></a><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-16-24" name="__codelineno-16-24" href="#__codelineno-16-24"></a><span class="p">}</span>
+</code></pre></div>
+<h2 id="cli-reference">CLI Reference<a class="headerlink" href="#cli-reference" title="Permanent link">&para;</a></h2>
+<h3 id="command-options">Command Options<a class="headerlink" href="#command-options" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>hvantk psroc [OPTIONS]
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>Input Sources (exactly one required):
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>  --genes TEXT              Comma-separated gene symbols
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>  --genes-file PATH         File with gene symbols (one per line)
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>  --variants PATH           Variant list (chr:pos:ref:alt format)
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>  --gene-sets PATH          Gene set collection (JSON/GMT) for multi-group analysis
+<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>
+<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>Required:
+<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a>  --clinvar-ht PATH         Path to ClinVar Hail Table
+<a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a>  --dbnsfp-ht PATH          Path to dbNSFP Hail Table
+<a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a>  --scores TEXT             Comma-separated score field names
+<a id="__codelineno-17-13" name="__codelineno-17-13" href="#__codelineno-17-13"></a>  -o, --output-dir PATH     Output directory
+<a id="__codelineno-17-14" name="__codelineno-17-14" href="#__codelineno-17-14"></a>
+<a id="__codelineno-17-15" name="__codelineno-17-15" href="#__codelineno-17-15"></a>Optional:
+<a id="__codelineno-17-16" name="__codelineno-17-16" href="#__codelineno-17-16"></a>  --reference-genome        GRCh37 or GRCh38 [default: GRCh38]
+<a id="__codelineno-17-17" name="__codelineno-17-17" href="#__codelineno-17-17"></a>  --min-stars INTEGER       Minimum ClinVar stars [default: 1]
+<a id="__codelineno-17-18" name="__codelineno-17-18" href="#__codelineno-17-18"></a>  --max-missingness FLOAT   Max missingness rate [default: 0.3]
+<a id="__codelineno-17-19" name="__codelineno-17-19" href="#__codelineno-17-19"></a>  --threshold-method        youden|closest_to_corner|f1 [default: youden]
+<a id="__codelineno-17-20" name="__codelineno-17-20" href="#__codelineno-17-20"></a>  --output-prefix TEXT      Output filename prefix [default: psroc]
+<a id="__codelineno-17-21" name="__codelineno-17-21" href="#__codelineno-17-21"></a>  --export-tsv              Export annotated variants as TSV
+<a id="__codelineno-17-22" name="__codelineno-17-22" href="#__codelineno-17-22"></a>  --no-plots                Skip plot generation
+<a id="__codelineno-17-23" name="__codelineno-17-23" href="#__codelineno-17-23"></a>  --overwrite               Overwrite existing files
+<a id="__codelineno-17-24" name="__codelineno-17-24" href="#__codelineno-17-24"></a>  --dry-run                 Show plan without running
+<a id="__codelineno-17-25" name="__codelineno-17-25" href="#__codelineno-17-25"></a>  --log-level               DEBUG|INFO|WARNING|ERROR [default: INFO]
+</code></pre></div>
+<h3 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="c1"># Evaluate scores for BRCA genes with stricter criteria</span>
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>hvantk<span class="w"> </span>psroc<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="w">  </span>--genes<span class="w"> </span>BRCA1,BRCA2<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="w">  </span>--clinvar-ht<span class="w"> </span>/data/clinvar.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a><span class="w">  </span>--dbnsfp-ht<span class="w"> </span>/data/dbnsfp.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a><span class="w">  </span>--scores<span class="w"> </span><span class="s2">"CADD_phred,REVEL_score,MetaLR_score"</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a><span class="w">  </span>--output-dir<span class="w"> </span>/results/brca<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a><span class="w">  </span>--min-stars<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a><span class="w">  </span>--max-missingness<span class="w"> </span><span class="m">0</span>.1
+<a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a>
+<a id="__codelineno-18-11" name="__codelineno-18-11" href="#__codelineno-18-11"></a><span class="c1"># Use genes from file with TSV export</span>
+<a id="__codelineno-18-12" name="__codelineno-18-12" href="#__codelineno-18-12"></a>hvantk<span class="w"> </span>psroc<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-13" name="__codelineno-18-13" href="#__codelineno-18-13"></a><span class="w">  </span>--genes-file<span class="w"> </span>/data/cardiac_genes.txt<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-14" name="__codelineno-18-14" href="#__codelineno-18-14"></a><span class="w">  </span>--clinvar-ht<span class="w"> </span>/data/clinvar.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-15" name="__codelineno-18-15" href="#__codelineno-18-15"></a><span class="w">  </span>--dbnsfp-ht<span class="w"> </span>/data/dbnsfp.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-16" name="__codelineno-18-16" href="#__codelineno-18-16"></a><span class="w">  </span>--scores<span class="w"> </span><span class="s2">"REVEL_score,ClinPred_score"</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-17" name="__codelineno-18-17" href="#__codelineno-18-17"></a><span class="w">  </span>--output-dir<span class="w"> </span>/results/cardiac<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-18" name="__codelineno-18-18" href="#__codelineno-18-18"></a><span class="w">  </span>--export-tsv
+<a id="__codelineno-18-19" name="__codelineno-18-19" href="#__codelineno-18-19"></a>
+<a id="__codelineno-18-20" name="__codelineno-18-20" href="#__codelineno-18-20"></a><span class="c1"># Analyze specific variants</span>
+<a id="__codelineno-18-21" name="__codelineno-18-21" href="#__codelineno-18-21"></a>hvantk<span class="w"> </span>psroc<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-22" name="__codelineno-18-22" href="#__codelineno-18-22"></a><span class="w">  </span>--variants<span class="w"> </span>/data/candidate_variants.txt<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-23" name="__codelineno-18-23" href="#__codelineno-18-23"></a><span class="w">  </span>--clinvar-ht<span class="w"> </span>/data/clinvar.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-24" name="__codelineno-18-24" href="#__codelineno-18-24"></a><span class="w">  </span>--dbnsfp-ht<span class="w"> </span>/data/dbnsfp.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-25" name="__codelineno-18-25" href="#__codelineno-18-25"></a><span class="w">  </span>--scores<span class="w"> </span><span class="s2">"CADD_phred,DANN_score,PrimateAI_score"</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-26" name="__codelineno-18-26" href="#__codelineno-18-26"></a><span class="w">  </span>--output-dir<span class="w"> </span>/results/candidates
+<a id="__codelineno-18-27" name="__codelineno-18-27" href="#__codelineno-18-27"></a>
+<a id="__codelineno-18-28" name="__codelineno-18-28" href="#__codelineno-18-28"></a><span class="c1"># Exploratory analysis with relaxed missingness</span>
+<a id="__codelineno-18-29" name="__codelineno-18-29" href="#__codelineno-18-29"></a>hvantk<span class="w"> </span>psroc<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-30" name="__codelineno-18-30" href="#__codelineno-18-30"></a><span class="w">  </span>--genes<span class="w"> </span>TP53<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-31" name="__codelineno-18-31" href="#__codelineno-18-31"></a><span class="w">  </span>--clinvar-ht<span class="w"> </span>/data/clinvar.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-32" name="__codelineno-18-32" href="#__codelineno-18-32"></a><span class="w">  </span>--dbnsfp-ht<span class="w"> </span>/data/dbnsfp.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-33" name="__codelineno-18-33" href="#__codelineno-18-33"></a><span class="w">  </span>--scores<span class="w"> </span><span class="s2">"CADD_phred,REVEL_score,VEST4_score"</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-34" name="__codelineno-18-34" href="#__codelineno-18-34"></a><span class="w">  </span>--output-dir<span class="w"> </span>/results/tp53<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-35" name="__codelineno-18-35" href="#__codelineno-18-35"></a><span class="w">  </span>--max-missingness<span class="w"> </span><span class="m">0</span>.5<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-36" name="__codelineno-18-36" href="#__codelineno-18-36"></a><span class="w">  </span>--no-plots
+</code></pre></div>
+<h2 id="python-api-reference">Python API Reference<a class="headerlink" href="#python-api-reference" title="Permanent link">&para;</a></h2>
+<h3 id="core-classes">Core Classes<a class="headerlink" href="#core-classes" title="Permanent link">&para;</a></h3>
+<h4 id="psrocconfig">PSROCConfig<a class="headerlink" href="#psrocconfig" title="Permanent link">&para;</a></h4>
+<p>Configuration dataclass for the pipeline:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.psroc</span><span class="w"> </span><span class="kn">import</span> <span class="n">PSROCConfig</span>
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="n">config</span> <span class="o">=</span> <span class="n">PSROCConfig</span><span class="p">(</span>
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>    <span class="c1"># Input sources (exactly one required)</span>
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>    <span class="n">genes</span><span class="o">=</span><span class="p">[</span><span class="s2">"BRCA1"</span><span class="p">,</span> <span class="s2">"BRCA2"</span><span class="p">],</span>        <span class="c1"># Gene symbols</span>
+<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>    <span class="n">genes_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>                  <span class="c1"># Path to gene file</span>
+<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>    <span class="n">variants_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>               <span class="c1"># Path to variant file</span>
+<a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a>    <span class="n">gene_set_collection</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>         <span class="c1"># Dict[str, Set[str]] for multi-group</span>
+<a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a>
+<a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a>    <span class="c1"># Required paths</span>
+<a id="__codelineno-19-11" name="__codelineno-19-11" href="#__codelineno-19-11"></a>    <span class="n">clinvar_ht</span><span class="o">=</span><span class="s2">"/data/clinvar.ht"</span><span class="p">,</span>
+<a id="__codelineno-19-12" name="__codelineno-19-12" href="#__codelineno-19-12"></a>    <span class="n">dbnsfp_ht</span><span class="o">=</span><span class="s2">"/data/dbnsfp.ht"</span><span class="p">,</span>
+<a id="__codelineno-19-13" name="__codelineno-19-13" href="#__codelineno-19-13"></a>
+<a id="__codelineno-19-14" name="__codelineno-19-14" href="#__codelineno-19-14"></a>    <span class="c1"># Score configuration</span>
+<a id="__codelineno-19-15" name="__codelineno-19-15" href="#__codelineno-19-15"></a>    <span class="n">scores</span><span class="o">=</span><span class="p">[</span><span class="s2">"CADD_phred"</span><span class="p">,</span> <span class="s2">"REVEL_score"</span><span class="p">],</span>
+<a id="__codelineno-19-16" name="__codelineno-19-16" href="#__codelineno-19-16"></a>
+<a id="__codelineno-19-17" name="__codelineno-19-17" href="#__codelineno-19-17"></a>    <span class="c1"># Output</span>
+<a id="__codelineno-19-18" name="__codelineno-19-18" href="#__codelineno-19-18"></a>    <span class="n">output_dir</span><span class="o">=</span><span class="s2">"/results/psroc"</span><span class="p">,</span>
+<a id="__codelineno-19-19" name="__codelineno-19-19" href="#__codelineno-19-19"></a>    <span class="n">output_prefix</span><span class="o">=</span><span class="s2">"psroc"</span><span class="p">,</span>
+<a id="__codelineno-19-20" name="__codelineno-19-20" href="#__codelineno-19-20"></a>
+<a id="__codelineno-19-21" name="__codelineno-19-21" href="#__codelineno-19-21"></a>    <span class="c1"># Processing options</span>
+<a id="__codelineno-19-22" name="__codelineno-19-22" href="#__codelineno-19-22"></a>    <span class="n">reference_genome</span><span class="o">=</span><span class="s2">"GRCh38"</span><span class="p">,</span>
+<a id="__codelineno-19-23" name="__codelineno-19-23" href="#__codelineno-19-23"></a>    <span class="n">min_stars</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+<a id="__codelineno-19-24" name="__codelineno-19-24" href="#__codelineno-19-24"></a>    <span class="n">max_missingness</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+<a id="__codelineno-19-25" name="__codelineno-19-25" href="#__codelineno-19-25"></a>    <span class="n">threshold_method</span><span class="o">=</span><span class="s2">"youden"</span><span class="p">,</span>
+<a id="__codelineno-19-26" name="__codelineno-19-26" href="#__codelineno-19-26"></a>
+<a id="__codelineno-19-27" name="__codelineno-19-27" href="#__codelineno-19-27"></a>    <span class="c1"># Output options</span>
+<a id="__codelineno-19-28" name="__codelineno-19-28" href="#__codelineno-19-28"></a>    <span class="n">export_tsv</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-19-29" name="__codelineno-19-29" href="#__codelineno-19-29"></a>    <span class="n">overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-19-30" name="__codelineno-19-30" href="#__codelineno-19-30"></a>    <span class="n">generate_plots</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-19-31" name="__codelineno-19-31" href="#__codelineno-19-31"></a><span class="p">)</span>
+<a id="__codelineno-19-32" name="__codelineno-19-32" href="#__codelineno-19-32"></a>
+<a id="__codelineno-19-33" name="__codelineno-19-33" href="#__codelineno-19-33"></a><span class="c1"># Validate configuration</span>
+<a id="__codelineno-19-34" name="__codelineno-19-34" href="#__codelineno-19-34"></a><span class="n">errors</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">validate</span><span class="p">()</span>
+<a id="__codelineno-19-35" name="__codelineno-19-35" href="#__codelineno-19-35"></a><span class="k">if</span> <span class="n">errors</span><span class="p">:</span>
+<a id="__codelineno-19-36" name="__codelineno-19-36" href="#__codelineno-19-36"></a>    <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">errors</span><span class="p">:</span>
+<a id="__codelineno-19-37" name="__codelineno-19-37" href="#__codelineno-19-37"></a>        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</code></pre></div>
+<h4 id="psrocpipeline">PSROCPipeline<a class="headerlink" href="#psrocpipeline" title="Permanent link">&para;</a></h4>
+<p>Main pipeline orchestrator:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.psroc</span><span class="w"> </span><span class="kn">import</span> <span class="n">PSROCPipeline</span>
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">PSROCPipeline</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a><span class="c1"># Preview execution plan</span>
+<a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a><span class="n">pipeline</span><span class="o">.</span><span class="n">show_plan</span><span class="p">()</span>
+<a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a>
+<a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a><span class="c1"># Run single gene set pipeline</span>
+<a id="__codelineno-20-9" name="__codelineno-20-9" href="#__codelineno-20-9"></a><span class="n">result</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+<a id="__codelineno-20-10" name="__codelineno-20-10" href="#__codelineno-20-10"></a>
+<a id="__codelineno-20-11" name="__codelineno-20-11" href="#__codelineno-20-11"></a><span class="c1"># --- Multi-group analysis ---</span>
+<a id="__codelineno-20-12" name="__codelineno-20-12" href="#__codelineno-20-12"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.psroc</span><span class="w"> </span><span class="kn">import</span> <span class="n">PSROCConfig</span><span class="p">,</span> <span class="n">PSROCPipeline</span>
+<a id="__codelineno-20-13" name="__codelineno-20-13" href="#__codelineno-20-13"></a>
+<a id="__codelineno-20-14" name="__codelineno-20-14" href="#__codelineno-20-14"></a><span class="n">collection_config</span> <span class="o">=</span> <span class="n">PSROCConfig</span><span class="p">(</span>
+<a id="__codelineno-20-15" name="__codelineno-20-15" href="#__codelineno-20-15"></a>    <span class="n">gene_set_collection</span><span class="o">=</span><span class="p">{</span>
+<a id="__codelineno-20-16" name="__codelineno-20-16" href="#__codelineno-20-16"></a>        <span class="s2">"cardiac"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"MYH7"</span><span class="p">,</span> <span class="s2">"TNNT2"</span><span class="p">,</span> <span class="s2">"LMNA"</span><span class="p">},</span>
+<a id="__codelineno-20-17" name="__codelineno-20-17" href="#__codelineno-20-17"></a>        <span class="s2">"neuro"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"SCN1A"</span><span class="p">,</span> <span class="s2">"SCN2A"</span><span class="p">,</span> <span class="s2">"KCNQ2"</span><span class="p">},</span>
+<a id="__codelineno-20-18" name="__codelineno-20-18" href="#__codelineno-20-18"></a>    <span class="p">},</span>
+<a id="__codelineno-20-19" name="__codelineno-20-19" href="#__codelineno-20-19"></a>    <span class="n">clinvar_ht</span><span class="o">=</span><span class="s2">"/data/clinvar.ht"</span><span class="p">,</span>
+<a id="__codelineno-20-20" name="__codelineno-20-20" href="#__codelineno-20-20"></a>    <span class="n">dbnsfp_ht</span><span class="o">=</span><span class="s2">"/data/dbnsfp.ht"</span><span class="p">,</span>
+<a id="__codelineno-20-21" name="__codelineno-20-21" href="#__codelineno-20-21"></a>    <span class="n">scores</span><span class="o">=</span><span class="p">[</span><span class="s2">"CADD_phred"</span><span class="p">,</span> <span class="s2">"REVEL_score"</span><span class="p">],</span>
+<a id="__codelineno-20-22" name="__codelineno-20-22" href="#__codelineno-20-22"></a>    <span class="n">output_dir</span><span class="o">=</span><span class="s2">"/results/multi_group"</span><span class="p">,</span>
+<a id="__codelineno-20-23" name="__codelineno-20-23" href="#__codelineno-20-23"></a><span class="p">)</span>
+<a id="__codelineno-20-24" name="__codelineno-20-24" href="#__codelineno-20-24"></a>
+<a id="__codelineno-20-25" name="__codelineno-20-25" href="#__codelineno-20-25"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">PSROCPipeline</span><span class="p">(</span><span class="n">collection_config</span><span class="p">)</span>
+<a id="__codelineno-20-26" name="__codelineno-20-26" href="#__codelineno-20-26"></a><span class="n">results</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">run_collection</span><span class="p">()</span>  <span class="c1"># Dict[str, PSROCResult]</span>
+<a id="__codelineno-20-27" name="__codelineno-20-27" href="#__codelineno-20-27"></a>
+<a id="__codelineno-20-28" name="__codelineno-20-28" href="#__codelineno-20-28"></a><span class="k">for</span> <span class="n">group_name</span><span class="p">,</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">results</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<a id="__codelineno-20-29" name="__codelineno-20-29" href="#__codelineno-20-29"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">group_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">n_total</span><span class="si">}</span><span class="s2"> variants"</span><span class="p">)</span>
+<a id="__codelineno-20-30" name="__codelineno-20-30" href="#__codelineno-20-30"></a>    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">roc</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<a id="__codelineno-20-31" name="__codelineno-20-31" href="#__codelineno-20-31"></a>        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: AUC=</span><span class="si">{</span><span class="n">roc</span><span class="o">.</span><span class="n">auc</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</code></pre></div>
+<h4 id="psrocresult">PSROCResult<a class="headerlink" href="#psrocresult" title="Permanent link">&para;</a></h4>
+<p>Results from pipeline execution:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="c1"># Access results</span>
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Variants: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">n_total</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Pathogenic: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">n_pathogenic</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Benign: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">n_benign</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Excluded: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">n_excluded</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>
+<a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a><span class="c1"># ROC metrics (only for included scores)</span>
+<a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a><span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">roc</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<a id="__codelineno-21-9" name="__codelineno-21-9" href="#__codelineno-21-9"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: AUC=</span><span class="si">{</span><span class="n">roc</span><span class="o">.</span><span class="n">auc</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, threshold=</span><span class="si">{</span><span class="n">roc</span><span class="o">.</span><span class="n">optimal_threshold</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<a id="__codelineno-21-10" name="__codelineno-21-10" href="#__codelineno-21-10"></a>
+<a id="__codelineno-21-11" name="__codelineno-21-11" href="#__codelineno-21-11"></a><span class="c1"># Missingness stats (all scores)</span>
+<a id="__codelineno-21-12" name="__codelineno-21-12" href="#__codelineno-21-12"></a><span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">miss</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">missingness</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<a id="__codelineno-21-13" name="__codelineno-21-13" href="#__codelineno-21-13"></a>    <span class="n">status</span> <span class="o">=</span> <span class="s2">"included"</span> <span class="k">if</span> <span class="n">miss</span><span class="o">.</span><span class="n">included_in_analysis</span> <span class="k">else</span> <span class="s2">"EXCLUDED"</span>
+<a id="__codelineno-21-14" name="__codelineno-21-14" href="#__codelineno-21-14"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">miss</span><span class="o">.</span><span class="n">missingness_rate</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2"> missing [</span><span class="si">{</span><span class="n">status</span><span class="si">}</span><span class="s2">]"</span><span class="p">)</span>
+<a id="__codelineno-21-15" name="__codelineno-21-15" href="#__codelineno-21-15"></a>
+<a id="__codelineno-21-16" name="__codelineno-21-16" href="#__codelineno-21-16"></a><span class="c1"># Generate summary</span>
+<a id="__codelineno-21-17" name="__codelineno-21-17" href="#__codelineno-21-17"></a><span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">summary</span><span class="p">())</span>
+<a id="__codelineno-21-18" name="__codelineno-21-18" href="#__codelineno-21-18"></a>
+<a id="__codelineno-21-19" name="__codelineno-21-19" href="#__codelineno-21-19"></a><span class="c1"># Serialize to dict</span>
+<a id="__codelineno-21-20" name="__codelineno-21-20" href="#__codelineno-21-20"></a><span class="n">result_dict</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
+</code></pre></div>
+<h3 id="roc-analysis-functions">ROC Analysis Functions<a class="headerlink" href="#roc-analysis-functions" title="Permanent link">&para;</a></h3>
+<p>For direct use without the pipeline:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.psroc</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>    <span class="n">compute_roc_metrics</span><span class="p">,</span>
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>    <span class="n">compute_all_missingness</span><span class="p">,</span>
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>    <span class="n">filter_scores_by_missingness</span><span class="p">,</span>
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a><span class="p">)</span>
+<a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<a id="__codelineno-22-7" name="__codelineno-22-7" href="#__codelineno-22-7"></a>
+<a id="__codelineno-22-8" name="__codelineno-22-8" href="#__codelineno-22-8"></a><span class="c1"># Prepare data</span>
+<a id="__codelineno-22-9" name="__codelineno-22-9" href="#__codelineno-22-9"></a><span class="n">labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>  <span class="c1"># 0=benign, 1=pathogenic</span>
+<a id="__codelineno-22-10" name="__codelineno-22-10" href="#__codelineno-22-10"></a><span class="n">scores</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-22-11" name="__codelineno-22-11" href="#__codelineno-22-11"></a>    <span class="s2">"CADD_phred"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">10</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">28</span><span class="p">,</span> <span class="mi">30</span><span class="p">]),</span>
+<a id="__codelineno-22-12" name="__codelineno-22-12" href="#__codelineno-22-12"></a>    <span class="s2">"REVEL_score"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">]),</span>
+<a id="__codelineno-22-13" name="__codelineno-22-13" href="#__codelineno-22-13"></a><span class="p">}</span>
+<a id="__codelineno-22-14" name="__codelineno-22-14" href="#__codelineno-22-14"></a>
+<a id="__codelineno-22-15" name="__codelineno-22-15" href="#__codelineno-22-15"></a><span class="c1"># Compute ROC metrics</span>
+<a id="__codelineno-22-16" name="__codelineno-22-16" href="#__codelineno-22-16"></a><span class="n">results</span> <span class="o">=</span> <span class="n">compute_roc_metrics</span><span class="p">(</span>
+<a id="__codelineno-22-17" name="__codelineno-22-17" href="#__codelineno-22-17"></a>    <span class="n">labels</span><span class="o">=</span><span class="n">labels</span><span class="p">,</span>
+<a id="__codelineno-22-18" name="__codelineno-22-18" href="#__codelineno-22-18"></a>    <span class="n">scores</span><span class="o">=</span><span class="n">scores</span><span class="p">,</span>
+<a id="__codelineno-22-19" name="__codelineno-22-19" href="#__codelineno-22-19"></a>    <span class="n">max_missingness</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+<a id="__codelineno-22-20" name="__codelineno-22-20" href="#__codelineno-22-20"></a>    <span class="n">threshold_method</span><span class="o">=</span><span class="s2">"youden"</span><span class="p">,</span>
+<a id="__codelineno-22-21" name="__codelineno-22-21" href="#__codelineno-22-21"></a><span class="p">)</span>
+<a id="__codelineno-22-22" name="__codelineno-22-22" href="#__codelineno-22-22"></a>
+<a id="__codelineno-22-23" name="__codelineno-22-23" href="#__codelineno-22-23"></a><span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">roc</span> <span class="ow">in</span> <span class="n">results</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<a id="__codelineno-22-24" name="__codelineno-22-24" href="#__codelineno-22-24"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: AUC=</span><span class="si">{</span><span class="n">roc</span><span class="o">.</span><span class="n">auc</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="plotting-functions">Plotting Functions<a class="headerlink" href="#plotting-functions" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.algorithms.psroc</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>    <span class="n">plot_roc_curves</span><span class="p">,</span>
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>    <span class="n">plot_auc_comparison</span><span class="p">,</span>
+<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a>    <span class="n">plot_missingness_summary</span><span class="p">,</span>
+<a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a>    <span class="n">plot_psroc_summary_dashboard</span><span class="p">,</span>
+<a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a><span class="p">)</span>
+<a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a>
+<a id="__codelineno-23-8" name="__codelineno-23-8" href="#__codelineno-23-8"></a><span class="c1"># Multi-score ROC overlay</span>
+<a id="__codelineno-23-9" name="__codelineno-23-9" href="#__codelineno-23-9"></a><span class="n">fig</span> <span class="o">=</span> <span class="n">plot_roc_curves</span><span class="p">(</span>
+<a id="__codelineno-23-10" name="__codelineno-23-10" href="#__codelineno-23-10"></a>    <span class="n">result</span><span class="o">.</span><span class="n">metrics</span><span class="p">,</span>
+<a id="__codelineno-23-11" name="__codelineno-23-11" href="#__codelineno-23-11"></a>    <span class="n">output_path</span><span class="o">=</span><span class="s2">"roc_curves.png"</span><span class="p">,</span>
+<a id="__codelineno-23-12" name="__codelineno-23-12" href="#__codelineno-23-12"></a>    <span class="n">title</span><span class="o">=</span><span class="s2">"Pathogenicity Score Comparison"</span><span class="p">,</span>
+<a id="__codelineno-23-13" name="__codelineno-23-13" href="#__codelineno-23-13"></a>    <span class="n">show_optimal</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-23-14" name="__codelineno-23-14" href="#__codelineno-23-14"></a><span class="p">)</span>
+<a id="__codelineno-23-15" name="__codelineno-23-15" href="#__codelineno-23-15"></a>
+<a id="__codelineno-23-16" name="__codelineno-23-16" href="#__codelineno-23-16"></a><span class="c1"># AUC bar chart comparison</span>
+<a id="__codelineno-23-17" name="__codelineno-23-17" href="#__codelineno-23-17"></a><span class="n">fig</span> <span class="o">=</span> <span class="n">plot_auc_comparison</span><span class="p">(</span>
+<a id="__codelineno-23-18" name="__codelineno-23-18" href="#__codelineno-23-18"></a>    <span class="n">result</span><span class="o">.</span><span class="n">metrics</span><span class="p">,</span>
+<a id="__codelineno-23-19" name="__codelineno-23-19" href="#__codelineno-23-19"></a>    <span class="n">output_path</span><span class="o">=</span><span class="s2">"auc_comparison.png"</span><span class="p">,</span>
+<a id="__codelineno-23-20" name="__codelineno-23-20" href="#__codelineno-23-20"></a>    <span class="n">horizontal</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-23-21" name="__codelineno-23-21" href="#__codelineno-23-21"></a><span class="p">)</span>
+<a id="__codelineno-23-22" name="__codelineno-23-22" href="#__codelineno-23-22"></a>
+<a id="__codelineno-23-23" name="__codelineno-23-23" href="#__codelineno-23-23"></a><span class="c1"># Missingness summary</span>
+<a id="__codelineno-23-24" name="__codelineno-23-24" href="#__codelineno-23-24"></a><span class="n">fig</span> <span class="o">=</span> <span class="n">plot_missingness_summary</span><span class="p">(</span>
+<a id="__codelineno-23-25" name="__codelineno-23-25" href="#__codelineno-23-25"></a>    <span class="n">result</span><span class="o">.</span><span class="n">missingness</span><span class="p">,</span>
+<a id="__codelineno-23-26" name="__codelineno-23-26" href="#__codelineno-23-26"></a>    <span class="n">output_path</span><span class="o">=</span><span class="s2">"missingness.png"</span><span class="p">,</span>
+<a id="__codelineno-23-27" name="__codelineno-23-27" href="#__codelineno-23-27"></a>    <span class="n">max_missingness_threshold</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+<a id="__codelineno-23-28" name="__codelineno-23-28" href="#__codelineno-23-28"></a><span class="p">)</span>
+<a id="__codelineno-23-29" name="__codelineno-23-29" href="#__codelineno-23-29"></a>
+<a id="__codelineno-23-30" name="__codelineno-23-30" href="#__codelineno-23-30"></a><span class="c1"># Summary dashboard</span>
+<a id="__codelineno-23-31" name="__codelineno-23-31" href="#__codelineno-23-31"></a><span class="n">fig</span> <span class="o">=</span> <span class="n">plot_psroc_summary_dashboard</span><span class="p">(</span>
+<a id="__codelineno-23-32" name="__codelineno-23-32" href="#__codelineno-23-32"></a>    <span class="n">result</span><span class="o">.</span><span class="n">metrics</span><span class="p">,</span>
+<a id="__codelineno-23-33" name="__codelineno-23-33" href="#__codelineno-23-33"></a>    <span class="n">result</span><span class="o">.</span><span class="n">missingness</span><span class="p">,</span>
+<a id="__codelineno-23-34" name="__codelineno-23-34" href="#__codelineno-23-34"></a>    <span class="n">output_path</span><span class="o">=</span><span class="s2">"dashboard.png"</span><span class="p">,</span>
+<a id="__codelineno-23-35" name="__codelineno-23-35" href="#__codelineno-23-35"></a>    <span class="n">max_missingness_threshold</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+<a id="__codelineno-23-36" name="__codelineno-23-36" href="#__codelineno-23-36"></a><span class="p">)</span>
+</code></pre></div>
+<h2 id="end-to-end-deployment-guide">End-to-End Deployment Guide<a class="headerlink" href="#end-to-end-deployment-guide" title="Permanent link">&para;</a></h2>
+<p>This section walks through running the full PSROC pipeline on a fresh host,
+from installation through results.</p>
+<h3 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Requirement</th>
+<th>Version</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Python</td>
+<td>&gt;= 3.10</td>
+<td></td>
+</tr>
+<tr>
+<td>Java</td>
+<td>8 or 11</td>
+<td>Required by Hail/Spark</td>
+</tr>
+<tr>
+<td>HTSlib / bgzip</td>
+<td>&gt;= 1.10</td>
+<td>Required for BGZF compression in Step 2</td>
+</tr>
+<tr>
+<td>Disk space</td>
+<td>~50 GB</td>
+<td>dbNSFP (~45 GB) + intermediate tables</td>
+</tr>
+</tbody>
+</table>
+<p>Verify Java is available:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>java<span class="w"> </span>-version<span class="w">   </span><span class="c1"># Should show 1.8 or 11</span>
+</code></pre></div>
+<h3 id="step-1-install-hvantk">Step 1: Install hvantk<a class="headerlink" href="#step-1-install-hvantk" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>pip<span class="w"> </span>install<span class="w"> </span>hvantk
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a><span class="c1"># or from source:</span>
+<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/bigbio/hvantk
+<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a><span class="nb">cd</span><span class="w"> </span>hvantk<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>poetry<span class="w"> </span>install
+</code></pre></div>
+<h3 id="step-2-download-data-layer-1-downloaders">Step 2: Download Data (Layer 1 — Downloaders)<a class="headerlink" href="#step-2-download-data-layer-1-downloaders" title="Permanent link">&para;</a></h3>
+<p><strong>ClinVar</strong> (automated):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>hvantk<span class="w"> </span>download<span class="w"> </span>clinvar<span class="w"> </span>--output-dir<span class="w"> </span>/data/clinvar
+<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a><span class="c1"># Downloads clinvar.vcf.gz (~80 MB) + .tbi index</span>
+</code></pre></div>
+<p><strong>dbNSFP</strong> (manual — ~45 GB, license-gated):</p>
+<ol>
+<li>Visit https://sites.google.com/site/jpaboreno/dbNSFP</li>
+<li>Download the <code>dbNSFP4.x</code> archive and extract the per-chromosome <code>.gz</code> files</li>
+<li>Concatenate into a single BGZF file (the builder expects one file):
+   <div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a>head<span class="w"> </span>-1<span class="w"> </span>&lt;<span class="o">(</span>zcat<span class="w"> </span>dbNSFP4.9a_variant.chr1.gz<span class="o">)</span><span class="w"> </span>&gt;<span class="w"> </span>/tmp/dbnsfp_header.txt
+<a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a><span class="o">(</span>cat<span class="w"> </span>/tmp/dbnsfp_header.txt<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>f<span class="w"> </span><span class="k">in</span><span class="w"> </span>dbNSFP4.9a_variant.chr*.gz<span class="p">;</span><span class="w"> </span><span class="k">do</span><span class="w"> </span>zcat<span class="w"> </span><span class="s2">"</span><span class="nv">$f</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-n<span class="w"> </span>+2<span class="p">;</span><span class="w"> </span><span class="k">done</span><span class="o">)</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>bgzip<span class="w"> </span>-@<span class="w"> </span><span class="m">4</span><span class="w"> </span>&gt;<span class="w"> </span>/data/dbnsfp/dbNSFP4.9a_variant.bgz
+</code></pre></div></li>
+</ol>
+<p><strong>ClinGen</strong> (automated, for gene set extraction):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a>hvantk<span class="w"> </span>download<span class="w"> </span>clingen<span class="w"> </span>--output-dir<span class="w"> </span>/data/clingen
+<a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a><span class="c1"># Downloads Clingen-Gene-Disease-Summary-&lt;YYYY-MM-DD&gt;.csv</span>
+</code></pre></div>
+<h3 id="step-3-build-hail-tables-layer-1-builders">Step 3: Build Hail Tables (Layer 1 — Builders)<a class="headerlink" href="#step-3-build-hail-tables-layer-1-builders" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a><span class="c1"># Build ClinVar table from the already-downloaded VCF in /data/clinvar/.</span>
+<a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a><span class="c1"># Note: ClinVar distributes standard gzip (.vcf.gz), which Hail reads</span>
+<a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a><span class="c1"># single-threaded. For parallel reads, recompress as BGZF first:</span>
+<a id="__codelineno-29-4" name="__codelineno-29-4" href="#__codelineno-29-4"></a><span class="c1">#   hvantk utils convert-bgz /data/clinvar/clinvar.vcf.gz</span>
+<a id="__codelineno-29-5" name="__codelineno-29-5" href="#__codelineno-29-5"></a>hvantk<span class="w"> </span>reprocess<span class="w"> </span>clinvar:variants<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-29-6" name="__codelineno-29-6" href="#__codelineno-29-6"></a><span class="w">  </span>--raw-dir<span class="w"> </span>/data/clinvar/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-29-7" name="__codelineno-29-7" href="#__codelineno-29-7"></a><span class="w">  </span>--output<span class="w"> </span>/data/tables/clinvar_grch38.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-29-8" name="__codelineno-29-8" href="#__codelineno-29-8"></a><span class="w">  </span>--skip-download
+<a id="__codelineno-29-9" name="__codelineno-29-9" href="#__codelineno-29-9"></a>
+<a id="__codelineno-29-10" name="__codelineno-29-10" href="#__codelineno-29-10"></a><span class="c1"># Build dbNSFP table from the concatenated BGZF file prepared in Step 2.</span>
+<a id="__codelineno-29-11" name="__codelineno-29-11" href="#__codelineno-29-11"></a>hvantk<span class="w"> </span>reprocess<span class="w"> </span>dbnsfp:variants<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-29-12" name="__codelineno-29-12" href="#__codelineno-29-12"></a><span class="w">  </span>--raw-dir<span class="w"> </span>/data/dbnsfp/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-29-13" name="__codelineno-29-13" href="#__codelineno-29-13"></a><span class="w">  </span>--output<span class="w"> </span>/data/tables/dbnsfp_grch38.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-29-14" name="__codelineno-29-14" href="#__codelineno-29-14"></a><span class="w">  </span>--skip-download
+<a id="__codelineno-29-15" name="__codelineno-29-15" href="#__codelineno-29-15"></a>
+<a id="__codelineno-29-16" name="__codelineno-29-16" href="#__codelineno-29-16"></a><span class="c1"># Build ClinGen table (for gene set extraction). raw-dir contains the</span>
+<a id="__codelineno-29-17" name="__codelineno-29-17" href="#__codelineno-29-17"></a><span class="c1"># Clingen-Gene-Disease-Summary-&lt;YYYY-MM-DD&gt;.csv downloaded in Step 2.</span>
+<a id="__codelineno-29-18" name="__codelineno-29-18" href="#__codelineno-29-18"></a>hvantk<span class="w"> </span>reprocess<span class="w"> </span>clingen:gene-disease<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-29-19" name="__codelineno-29-19" href="#__codelineno-29-19"></a><span class="w">  </span>--raw-dir<span class="w"> </span>/data/clingen/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-29-20" name="__codelineno-29-20" href="#__codelineno-29-20"></a><span class="w">  </span>--output<span class="w"> </span>/data/tables/clingen.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-29-21" name="__codelineno-29-21" href="#__codelineno-29-21"></a><span class="w">  </span>--skip-download
+</code></pre></div>
+<h3 id="step-4-prepare-gene-sets">Step 4: Prepare Gene Sets<a class="headerlink" href="#step-4-prepare-gene-sets" title="Permanent link">&para;</a></h3>
+<p>Extract named gene set collections from ClinGen or other sources. See
+<a href="#preparing-gene-set-collections">Preparing Gene Set Collections</a> below.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a><span class="c1"># GCEP-based gene sets (recommended — broader, biologically coherent panels)</span>
+<a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a>hvantk<span class="w"> </span>genesets<span class="w"> </span>clingen<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-30-3" name="__codelineno-30-3" href="#__codelineno-30-3"></a><span class="w">  </span>--ht<span class="w"> </span>/data/tables/clingen.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-30-4" name="__codelineno-30-4" href="#__codelineno-30-4"></a><span class="w">  </span>--group-by<span class="w"> </span>gcep<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-30-5" name="__codelineno-30-5" href="#__codelineno-30-5"></a><span class="w">  </span>--min-classification<span class="w"> </span>Moderate<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-30-6" name="__codelineno-30-6" href="#__codelineno-30-6"></a><span class="w">  </span>--min-genes<span class="w"> </span><span class="m">20</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-30-7" name="__codelineno-30-7" href="#__codelineno-30-7"></a><span class="w">  </span>-o<span class="w"> </span>/data/gene_sets/clingen_gcep.json
+<a id="__codelineno-30-8" name="__codelineno-30-8" href="#__codelineno-30-8"></a>
+<a id="__codelineno-30-9" name="__codelineno-30-9" href="#__codelineno-30-9"></a><span class="c1"># Or keyword-based disease categories</span>
+<a id="__codelineno-30-10" name="__codelineno-30-10" href="#__codelineno-30-10"></a>hvantk<span class="w"> </span>genesets<span class="w"> </span>clingen<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-30-11" name="__codelineno-30-11" href="#__codelineno-30-11"></a><span class="w">  </span>--ht<span class="w"> </span>/data/tables/clingen.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-30-12" name="__codelineno-30-12" href="#__codelineno-30-12"></a><span class="w">  </span>--group-by<span class="w"> </span>keyword<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-30-13" name="__codelineno-30-13" href="#__codelineno-30-13"></a><span class="w">  </span>--categories-json<span class="w"> </span>/data/my_categories.json<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-30-14" name="__codelineno-30-14" href="#__codelineno-30-14"></a><span class="w">  </span>-o<span class="w"> </span>/data/gene_sets/clingen_keywords.json
+</code></pre></div>
+<h3 id="step-5-run-psroc-layer-3-pipeline">Step 5: Run PSROC (Layer 3 — Pipeline)<a class="headerlink" href="#step-5-run-psroc-layer-3-pipeline" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a><span class="c1"># Single gene set</span>
+<a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a>hvantk<span class="w"> </span>psroc<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a><span class="w">  </span>--genes<span class="w"> </span>BRCA1,BRCA2,TP53<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-31-4" name="__codelineno-31-4" href="#__codelineno-31-4"></a><span class="w">  </span>--clinvar-ht<span class="w"> </span>/data/tables/clinvar_grch38.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-31-5" name="__codelineno-31-5" href="#__codelineno-31-5"></a><span class="w">  </span>--dbnsfp-ht<span class="w"> </span>/data/tables/dbnsfp_grch38.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-31-6" name="__codelineno-31-6" href="#__codelineno-31-6"></a><span class="w">  </span>--scores<span class="w"> </span><span class="s2">"CADD_phred,REVEL_score,MetaLR_score,VEST4_score,AlphaMissense_score"</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-31-7" name="__codelineno-31-7" href="#__codelineno-31-7"></a><span class="w">  </span>--output-dir<span class="w"> </span>/results/psroc<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-31-8" name="__codelineno-31-8" href="#__codelineno-31-8"></a><span class="w">  </span>--min-stars<span class="w"> </span><span class="m">1</span>
+<a id="__codelineno-31-9" name="__codelineno-31-9" href="#__codelineno-31-9"></a>
+<a id="__codelineno-31-10" name="__codelineno-31-10" href="#__codelineno-31-10"></a><span class="c1"># Multi-group analysis with gene set collection</span>
+<a id="__codelineno-31-11" name="__codelineno-31-11" href="#__codelineno-31-11"></a>hvantk<span class="w"> </span>psroc<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-31-12" name="__codelineno-31-12" href="#__codelineno-31-12"></a><span class="w">  </span>--gene-sets<span class="w"> </span>/data/gene_sets/disease_categories.json<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-31-13" name="__codelineno-31-13" href="#__codelineno-31-13"></a><span class="w">  </span>--clinvar-ht<span class="w"> </span>/data/tables/clinvar_grch38.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-31-14" name="__codelineno-31-14" href="#__codelineno-31-14"></a><span class="w">  </span>--dbnsfp-ht<span class="w"> </span>/data/tables/dbnsfp_grch38.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-31-15" name="__codelineno-31-15" href="#__codelineno-31-15"></a><span class="w">  </span>--scores<span class="w"> </span><span class="s2">"CADD_phred,REVEL_score,MetaLR_score,AlphaMissense_score"</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-31-16" name="__codelineno-31-16" href="#__codelineno-31-16"></a><span class="w">  </span>--output-dir<span class="w"> </span>/results/psroc_multi
+</code></pre></div>
+<h3 id="step-6-review-results">Step 6: Review Results<a class="headerlink" href="#step-6-review-results" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a>/results/psroc_multi/
+<a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a>├── cardiac/
+<a id="__codelineno-32-3" name="__codelineno-32-3" href="#__codelineno-32-3"></a>│   ├── psroc_cardiac_metrics.json
+<a id="__codelineno-32-4" name="__codelineno-32-4" href="#__codelineno-32-4"></a>│   ├── plots/
+<a id="__codelineno-32-5" name="__codelineno-32-5" href="#__codelineno-32-5"></a>│   │   ├── psroc_cardiac_roc_curves.png
+<a id="__codelineno-32-6" name="__codelineno-32-6" href="#__codelineno-32-6"></a>│   │   └── psroc_cardiac_dashboard.png
+<a id="__codelineno-32-7" name="__codelineno-32-7" href="#__codelineno-32-7"></a>│   └── ...
+<a id="__codelineno-32-8" name="__codelineno-32-8" href="#__codelineno-32-8"></a>├── neurological/
+<a id="__codelineno-32-9" name="__codelineno-32-9" href="#__codelineno-32-9"></a>│   └── ...
+<a id="__codelineno-32-10" name="__codelineno-32-10" href="#__codelineno-32-10"></a>└── ...
+</code></pre></div>
+<hr />
+<h2 id="preparing-gene-set-collections">Preparing Gene Set Collections<a class="headerlink" href="#preparing-gene-set-collections" title="Permanent link">&para;</a></h2>
+<p>Gene set collections are <code>Dict[str, Set[str]]</code> mappings from a group name to
+a set of gene symbols. They can be loaded from JSON or GMT files.</p>
+<h3 id="from-custom-gene-panels">From Custom Gene Panels<a class="headerlink" href="#from-custom-gene-panels" title="Permanent link">&para;</a></h3>
+<p>If you have gene panels as text files or spreadsheet exports, use
+<code>hvantk genesets prepare</code> to convert them:</p>
+<ol>
+<li>Format your panels as a headerless two-column TSV
+   (gene_set_name<TAB>gene_symbol), one gene per line:</li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a>cardiac  MYH7
+<a id="__codelineno-33-2" name="__codelineno-33-2" href="#__codelineno-33-2"></a>cardiac  TNNT2
+<a id="__codelineno-33-3" name="__codelineno-33-3" href="#__codelineno-33-3"></a>cardiac  LMNA
+<a id="__codelineno-33-4" name="__codelineno-33-4" href="#__codelineno-33-4"></a>epilepsy SCN1A
+<a id="__codelineno-33-5" name="__codelineno-33-5" href="#__codelineno-33-5"></a>epilepsy SCN2A
+</code></pre></div>
+<ol>
+<li>Convert to gene set JSON:</li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a><span class="c1"># Basic conversion</span>
+<a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a>hvantk<span class="w"> </span>genesets<span class="w"> </span>prepare<span class="w"> </span>-i<span class="w"> </span>panels.tsv<span class="w"> </span>-o<span class="w"> </span>panels.json
+<a id="__codelineno-34-3" name="__codelineno-34-3" href="#__codelineno-34-3"></a>
+<a id="__codelineno-34-4" name="__codelineno-34-4" href="#__codelineno-34-4"></a><span class="c1"># With HGNC validation (recommended)</span>
+<a id="__codelineno-34-5" name="__codelineno-34-5" href="#__codelineno-34-5"></a>hvantk<span class="w"> </span>genesets<span class="w"> </span>prepare<span class="w"> </span>-i<span class="w"> </span>panels.tsv<span class="w"> </span>-o<span class="w"> </span>panels.json<span class="w"> </span>--hgnc<span class="w"> </span>/data/hgnc.ht
+</code></pre></div>
+<ol>
+<li>Run PSROC:</li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a>hvantk<span class="w"> </span>psroc<span class="w"> </span>--gene-sets<span class="w"> </span>panels.json<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-35-2" name="__codelineno-35-2" href="#__codelineno-35-2"></a><span class="w">  </span>--clinvar-ht<span class="w"> </span>/data/clinvar.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-35-3" name="__codelineno-35-3" href="#__codelineno-35-3"></a><span class="w">  </span>--dbnsfp-ht<span class="w"> </span>/data/dbnsfp.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-35-4" name="__codelineno-35-4" href="#__codelineno-35-4"></a><span class="w">  </span>--scores<span class="w"> </span><span class="s2">"CADD_phred,REVEL_score"</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-35-5" name="__codelineno-35-5" href="#__codelineno-35-5"></a><span class="w">  </span>-o<span class="w"> </span>/results/psroc
+</code></pre></div>
+<p><strong>Gene identifier requirements:</strong>
+- Use HGNC-approved human gene symbols (e.g., BRCA1, TP53, SCN1A).
+- Ensembl IDs, mouse symbols, and Entrez IDs are not accepted.
+- Use <code>--hgnc</code> to automatically resolve outdated aliases (e.g., FANCD1 → BRCA2).</p>
+<h3 id="from-clingen-cli">From ClinGen (CLI)<a class="headerlink" href="#from-clingen-cli" title="Permanent link">&para;</a></h3>
+<p>The <code>hvantk genesets clingen</code> command extracts gene sets from ClinGen data:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a><span class="c1"># GCEP-based gene sets (recommended — broader panels, 20-300 genes each)</span>
+<a id="__codelineno-36-2" name="__codelineno-36-2" href="#__codelineno-36-2"></a>hvantk<span class="w"> </span>genesets<span class="w"> </span>clingen<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-36-3" name="__codelineno-36-3" href="#__codelineno-36-3"></a><span class="w">  </span>--ht<span class="w"> </span>/data/tables/clingen.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-36-4" name="__codelineno-36-4" href="#__codelineno-36-4"></a><span class="w">  </span>--group-by<span class="w"> </span>gcep<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-36-5" name="__codelineno-36-5" href="#__codelineno-36-5"></a><span class="w">  </span>--min-classification<span class="w"> </span>Moderate<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-36-6" name="__codelineno-36-6" href="#__codelineno-36-6"></a><span class="w">  </span>--min-genes<span class="w"> </span><span class="m">20</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-36-7" name="__codelineno-36-7" href="#__codelineno-36-7"></a><span class="w">  </span>-o<span class="w"> </span>/data/gene_sets/clingen_gcep.json
+<a id="__codelineno-36-8" name="__codelineno-36-8" href="#__codelineno-36-8"></a>
+<a id="__codelineno-36-9" name="__codelineno-36-9" href="#__codelineno-36-9"></a><span class="c1"># Keyword-based disease categories</span>
+<a id="__codelineno-36-10" name="__codelineno-36-10" href="#__codelineno-36-10"></a>hvantk<span class="w"> </span>genesets<span class="w"> </span>clingen<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-36-11" name="__codelineno-36-11" href="#__codelineno-36-11"></a><span class="w">  </span>--ht<span class="w"> </span>/data/tables/clingen.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-36-12" name="__codelineno-36-12" href="#__codelineno-36-12"></a><span class="w">  </span>--group-by<span class="w"> </span>keyword<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-36-13" name="__codelineno-36-13" href="#__codelineno-36-13"></a><span class="w">  </span>--categories-json<span class="w"> </span>/data/my_categories.json<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-36-14" name="__codelineno-36-14" href="#__codelineno-36-14"></a><span class="w">  </span>-o<span class="w"> </span>/data/gene_sets/clingen_keywords.json
+<a id="__codelineno-36-15" name="__codelineno-36-15" href="#__codelineno-36-15"></a>
+<a id="__codelineno-36-16" name="__codelineno-36-16" href="#__codelineno-36-16"></a><span class="c1"># Disease-level grouping (fine-grained — most have 1-3 genes)</span>
+<a id="__codelineno-36-17" name="__codelineno-36-17" href="#__codelineno-36-17"></a>hvantk<span class="w"> </span>genesets<span class="w"> </span>clingen<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-36-18" name="__codelineno-36-18" href="#__codelineno-36-18"></a><span class="w">  </span>--ht<span class="w"> </span>/data/tables/clingen.ht<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-36-19" name="__codelineno-36-19" href="#__codelineno-36-19"></a><span class="w">  </span>--group-by<span class="w"> </span>disease<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-36-20" name="__codelineno-36-20" href="#__codelineno-36-20"></a><span class="w">  </span>--min-genes<span class="w"> </span><span class="m">5</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-36-21" name="__codelineno-36-21" href="#__codelineno-36-21"></a><span class="w">  </span>-o<span class="w"> </span>/data/gene_sets/clingen_diseases.json
+</code></pre></div>
+<h3 id="from-clingen-python-api">From ClinGen (Python API)<a class="headerlink" href="#from-clingen-python-api" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.skills.clingen.streamers</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClinGenGeneDiseaseTableStreamer</span>
+<a id="__codelineno-37-2" name="__codelineno-37-2" href="#__codelineno-37-2"></a>
+<a id="__codelineno-37-3" name="__codelineno-37-3" href="#__codelineno-37-3"></a><span class="n">streamer</span> <span class="o">=</span> <span class="n">ClinGenGeneDiseaseTableStreamer</span><span class="p">(</span><span class="n">table_path</span><span class="o">=</span><span class="s2">"/data/tables/clingen.ht"</span><span class="p">)</span>
+<a id="__codelineno-37-4" name="__codelineno-37-4" href="#__codelineno-37-4"></a><span class="n">streamer</span><span class="o">.</span><span class="n">setup</span><span class="p">()</span>
+<a id="__codelineno-37-5" name="__codelineno-37-5" href="#__codelineno-37-5"></a>
+<a id="__codelineno-37-6" name="__codelineno-37-6" href="#__codelineno-37-6"></a><span class="c1"># GCEP-based (recommended)</span>
+<a id="__codelineno-37-7" name="__codelineno-37-7" href="#__codelineno-37-7"></a><span class="n">gene_sets</span> <span class="o">=</span> <span class="n">streamer</span><span class="o">.</span><span class="n">get_geneset_per_gcep</span><span class="p">(</span>
+<a id="__codelineno-37-8" name="__codelineno-37-8" href="#__codelineno-37-8"></a>    <span class="n">min_classification</span><span class="o">=</span><span class="s2">"Moderate"</span><span class="p">,</span> <span class="n">min_genes</span><span class="o">=</span><span class="mi">20</span>
+<a id="__codelineno-37-9" name="__codelineno-37-9" href="#__codelineno-37-9"></a><span class="p">)</span>
+<a id="__codelineno-37-10" name="__codelineno-37-10" href="#__codelineno-37-10"></a>
+<a id="__codelineno-37-11" name="__codelineno-37-11" href="#__codelineno-37-11"></a><span class="c1"># Keyword-based</span>
+<a id="__codelineno-37-12" name="__codelineno-37-12" href="#__codelineno-37-12"></a><span class="n">gene_sets</span> <span class="o">=</span> <span class="n">streamer</span><span class="o">.</span><span class="n">aggregate_by_disease_category</span><span class="p">({</span>
+<a id="__codelineno-37-13" name="__codelineno-37-13" href="#__codelineno-37-13"></a>    <span class="s2">"cardiac"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"cardiomyopathy"</span><span class="p">,</span> <span class="s2">"arrhythmia"</span><span class="p">,</span> <span class="s2">"long_qt"</span><span class="p">],</span>
+<a id="__codelineno-37-14" name="__codelineno-37-14" href="#__codelineno-37-14"></a>    <span class="s2">"neurological"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"epilepsy"</span><span class="p">,</span> <span class="s2">"neuropathy"</span><span class="p">,</span> <span class="s2">"ataxia"</span><span class="p">],</span>
+<a id="__codelineno-37-15" name="__codelineno-37-15" href="#__codelineno-37-15"></a>    <span class="s2">"cancer"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"cancer"</span><span class="p">,</span> <span class="s2">"tumor"</span><span class="p">,</span> <span class="s2">"neoplasm"</span><span class="p">],</span>
+<a id="__codelineno-37-16" name="__codelineno-37-16" href="#__codelineno-37-16"></a><span class="p">})</span>
+<a id="__codelineno-37-17" name="__codelineno-37-17" href="#__codelineno-37-17"></a>
+<a id="__codelineno-37-18" name="__codelineno-37-18" href="#__codelineno-37-18"></a><span class="c1"># MONDO ontology-based</span>
+<a id="__codelineno-37-19" name="__codelineno-37-19" href="#__codelineno-37-19"></a><span class="n">result</span> <span class="o">=</span> <span class="n">streamer</span><span class="o">.</span><span class="n">categorize_by_ontology</span><span class="p">(</span><span class="n">ontology</span><span class="o">=</span><span class="s2">"/data/mondo.obo"</span><span class="p">)</span>
+<a id="__codelineno-37-20" name="__codelineno-37-20" href="#__codelineno-37-20"></a><span class="n">gene_sets</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-37-21" name="__codelineno-37-21" href="#__codelineno-37-21"></a>    <span class="n">cat</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="s2">"genes"</span><span class="p">]</span> <span class="k">for</span> <span class="n">cat</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+<a id="__codelineno-37-22" name="__codelineno-37-22" href="#__codelineno-37-22"></a><span class="p">}</span>
+</code></pre></div>
+<h3 id="from-gmt-files">From GMT Files<a class="headerlink" href="#from-gmt-files" title="Permanent link">&para;</a></h3>
+<p>Standard GMT files (e.g., MSigDB pathways) can be loaded directly:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.core.utils.gene_sets</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_gene_sets</span>
+<a id="__codelineno-38-2" name="__codelineno-38-2" href="#__codelineno-38-2"></a>
+<a id="__codelineno-38-3" name="__codelineno-38-3" href="#__codelineno-38-3"></a><span class="n">collection</span> <span class="o">=</span> <span class="n">load_gene_sets</span><span class="p">(</span><span class="s2">"/data/pathways.gmt"</span><span class="p">)</span>
+<a id="__codelineno-38-4" name="__codelineno-38-4" href="#__codelineno-38-4"></a><span class="n">gene_set_dict</span> <span class="o">=</span> <span class="p">{</span><span class="n">gs</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">gs</span><span class="o">.</span><span class="n">genes</span> <span class="k">for</span> <span class="n">gs</span> <span class="ow">in</span> <span class="n">collection</span><span class="p">}</span>
+</code></pre></div>
+<h3 id="saving-for-cli-use">Saving for CLI Use<a class="headerlink" href="#saving-for-cli-use" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.core.utils.gene_sets</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_gene_sets_from_dict</span>
+<a id="__codelineno-39-2" name="__codelineno-39-2" href="#__codelineno-39-2"></a>
+<a id="__codelineno-39-3" name="__codelineno-39-3" href="#__codelineno-39-3"></a><span class="n">collection</span> <span class="o">=</span> <span class="n">load_gene_sets_from_dict</span><span class="p">(</span><span class="n">gene_sets</span><span class="p">)</span>
+<a id="__codelineno-39-4" name="__codelineno-39-4" href="#__codelineno-39-4"></a><span class="n">collection</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">"/data/gene_sets/my_collection.json"</span><span class="p">)</span>
+<a id="__codelineno-39-5" name="__codelineno-39-5" href="#__codelineno-39-5"></a><span class="c1"># Then: hvantk psroc --gene-sets /data/gene_sets/my_collection.json ...</span>
+</code></pre></div>
+<hr />
+<h2 id="interpreting-results">Interpreting Results<a class="headerlink" href="#interpreting-results" title="Permanent link">&para;</a></h2>
+<h3 id="auc-values">AUC Values<a class="headerlink" href="#auc-values" title="Permanent link">&para;</a></h3>
+<p>The Area Under the ROC Curve (AUC) ranges from 0 to 1:</p>
+<table>
+<thead>
+<tr>
+<th>AUC Range</th>
+<th>Interpretation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.9 - 1.0</td>
+<td>Excellent discrimination</td>
+</tr>
+<tr>
+<td>0.8 - 0.9</td>
+<td>Good discrimination</td>
+</tr>
+<tr>
+<td>0.7 - 0.8</td>
+<td>Acceptable discrimination</td>
+</tr>
+<tr>
+<td>0.6 - 0.7</td>
+<td>Poor discrimination</td>
+</tr>
+<tr>
+<td>0.5 - 0.6</td>
+<td>Near random (uninformative)</td>
+</tr>
+<tr>
+<td>&lt; 0.5</td>
+<td>Worse than random (inverse predictor)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="optimal-threshold">Optimal Threshold<a class="headerlink" href="#optimal-threshold" title="Permanent link">&para;</a></h3>
+<p>The optimal threshold represents the score value that best separates pathogenic from benign variants. Use this value for binary classification:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-40-1" name="__codelineno-40-1" href="#__codelineno-40-1"></a><span class="c1"># Classify new variants</span>
+<a id="__codelineno-40-2" name="__codelineno-40-2" href="#__codelineno-40-2"></a><span class="n">threshold</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">metrics</span><span class="p">[</span><span class="s2">"CADD_phred"</span><span class="p">]</span><span class="o">.</span><span class="n">optimal_threshold</span>
+<a id="__codelineno-40-3" name="__codelineno-40-3" href="#__codelineno-40-3"></a><span class="n">prediction</span> <span class="o">=</span> <span class="s2">"pathogenic"</span> <span class="k">if</span> <span class="n">score</span> <span class="o">&gt;=</span> <span class="n">threshold</span> <span class="k">else</span> <span class="s2">"benign"</span>
+</code></pre></div>
+<h3 id="sensitivity-vs-specificity-trade-off">Sensitivity vs Specificity Trade-off<a class="headerlink" href="#sensitivity-vs-specificity-trade-off" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Sensitivity</strong> (True Positive Rate): Proportion of pathogenic variants correctly identified</li>
+<li><strong>Specificity</strong> (True Negative Rate): Proportion of benign variants correctly identified</li>
+</ul>
+<p>Choose your operating point based on clinical context:
+- <strong>High sensitivity</strong>: For screening (minimize false negatives)
+- <strong>High specificity</strong>: For confirmatory testing (minimize false positives)</p>
+<h2 id="best-practices">Best Practices<a class="headerlink" href="#best-practices" title="Permanent link">&para;</a></h2>
+<h3 id="data-quality">Data Quality<a class="headerlink" href="#data-quality" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Use sufficient sample size</strong>: At least 30 variants per class for reliable AUC estimates</li>
+<li><strong>Filter by review status</strong>: Use <code>--min-stars 2</code> for higher-confidence labels</li>
+<li><strong>Check class balance</strong>: Large imbalances may bias results</li>
+</ol>
+<h3 id="score-selection_1">Score Selection<a class="headerlink" href="#score-selection_1" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Start broad</strong>: Include multiple scores to identify best performers</li>
+<li><strong>Check missingness</strong>: Scores with high missingness may be unreliable</li>
+<li><strong>Consider ensembles</strong>: Combine top performers for better predictions</li>
+</ol>
+<h3 id="threshold-selection">Threshold Selection<a class="headerlink" href="#threshold-selection" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Match clinical context</strong>: Choose threshold method based on use case</li>
+<li><strong>Validate externally</strong>: Test thresholds on independent datasets</li>
+<li><strong>Report confidence</strong>: Include variant counts and confidence intervals</li>
+</ol>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="common-issues">Common Issues<a class="headerlink" href="#common-issues" title="Permanent link">&para;</a></h3>
+<p><strong>Issue: "All scores were excluded due to high missingness"</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-41-1" name="__codelineno-41-1" href="#__codelineno-41-1"></a>Solution: Increase --max-missingness threshold or use scores with better coverage:
+<a id="__codelineno-41-2" name="__codelineno-41-2" href="#__codelineno-41-2"></a>hvantk psroc ... --max-missingness 0.5
+</code></pre></div></p>
+<p><strong>Issue: "Need both pathogenic and benign variants"</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-42-1" name="__codelineno-42-1" href="#__codelineno-42-1"></a>Solution: Expand gene list or use variant file with both classes:
+<a id="__codelineno-42-2" name="__codelineno-42-2" href="#__codelineno-42-2"></a>hvantk psroc --genes-file larger_gene_list.txt ...
+</code></pre></div></p>
+<p><strong>Issue: "Low pathogenic/benign count may affect ROC reliability"</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-43-1" name="__codelineno-43-1" href="#__codelineno-43-1"></a>Solution: This is a warning. Consider:
+<a id="__codelineno-43-2" name="__codelineno-43-2" href="#__codelineno-43-2"></a>1. Adding more genes to increase variant count
+<a id="__codelineno-43-3" name="__codelineno-43-3" href="#__codelineno-43-3"></a>2. Relaxing ClinVar review status filter (--min-stars 0)
+<a id="__codelineno-43-4" name="__codelineno-43-4" href="#__codelineno-43-4"></a>3. Interpreting results with caution
+</code></pre></div></p>
+<p><strong>Issue: "Score not found in dbNSFP table"</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-44-1" name="__codelineno-44-1" href="#__codelineno-44-1"></a>Solution: Check score field names match dbNSFP column names:
+<a id="__codelineno-44-2" name="__codelineno-44-2" href="#__codelineno-44-2"></a>- Use exact field names from dbNSFP (case-sensitive)
+<a id="__codelineno-44-3" name="__codelineno-44-3" href="#__codelineno-44-3"></a>- Verify dbNSFP table version includes the score
+</code></pre></div></p>
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="https://www.ncbi.nlm.nih.gov/clinvar/">ClinVar Database</a></li>
+<li><a href="https://sites.google.com/site/jpaboreno/dbNSFP">dbNSFP Database</a></li>
+<li><a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3755824/">ROC Analysis in Clinical Research</a></li>
+<li><a href="https://www.acmg.net/ACMG/Medical-Genetics-Practice-Resources/Practice-Guidelines.aspx">ACMG/AMP Guidelines for Variant Classification</a></li>
+</ul>
+<hr />
+<p>See <a href="../../getting-started/installation/">Installation</a> for setup, <a href="../../contributing/">Contributing</a> for development workflow.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,2367 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Hail-based toolkit for multi-omics variant annotation and analysis">
+      
+      
+      
+        <link rel="canonical" href="https://bigbio.github.io/hvantk/guide/hpc-migration/">
+      
+      
+        <link rel="prev" href="../data-sources/">
+      
+      
+        <link rel="next" href="../../tools/hgc/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>HPC Migration - hvantk</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#migrating-hvantk-to-an-hpc-cluster" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="hvantk" class="md-header__button md-logo" aria-label="hvantk" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            hvantk
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              HPC Migration
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/bigbio/hvantk" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    bigbio/hvantk
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="hvantk" class="md-nav__button md-logo" aria-label="hvantk" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    hvantk
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/bigbio/hvantk" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    bigbio/hvantk
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building Tables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../data-sources/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HPC Migration
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HPC Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#0-tldr-the-recommended-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0. TL;DR — the recommended path
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-what-moves-and-how" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. What moves, and how
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. What moves, and how">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-keeping-the-clusters-clone-current" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 Keeping the cluster's clone current
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-cluster-facts-to-confirm-on-first-login" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Cluster facts to confirm on first login
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-environment-build-the-apptainer-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Environment: build the Apptainer image
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Environment: build the Apptainer image">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-critical-version-pins-do-not-drift" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Critical version pins (do not drift)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-hvantkdef-build-from-the-locked-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 hvantk.def (build from the locked environment)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-build-rootless-and-validate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Build (rootless) and validate
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-running-hail-on-the-cluster" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Running Hail on the cluster
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Running Hail on the cluster">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-default-spark-local-mode-on-one-exclusive-fat-node" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Default: Spark local mode on one exclusive fat node
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-escalation-multi-node-via-the-clusters-spark-on-slurm-launcher" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Escalation: multi-node via the cluster's Spark-on-Slurm launcher
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-migrating-the-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Migrating the data
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Migrating the data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-action-split" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Action split
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-filesystem-placement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Filesystem placement
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-moving-the-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Moving the data
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-external-streaming-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. External / streaming data
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-running-experiments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Running experiments
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Running experiments">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-a-reprocess-build-single-node" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 A reprocess build (single node)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-embarrassingly-parallel-fan-out-array-job" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Embarrassingly-parallel fan-out (array job)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-reproducibility-and-provenance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Reproducibility and provenance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-runbook-ordered" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Runbook (ordered)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-gotchas-quick-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Gotchas quick-reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tools
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tools
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tools/hgc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HGC - Joint Genotyping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tools/enrichex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EnrichEx - Enrichment Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tools/psroc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PS-ROC - Score Evaluation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tools/ancestry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ancestry Inference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tools/ptm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM - Variant Classification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tools/ptm-constraint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM Constraint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tools/qtlcascade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QTL Cascade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Examples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/hgc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HGC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/enrichex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EnrichEx
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/psroc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PS-ROC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/ancestry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ancestry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/clinvar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ClinVar Streaming
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/clingen/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ClinGen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/qtlcascade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QTL Cascade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/ptm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#0-tldr-the-recommended-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0. TL;DR — the recommended path
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-what-moves-and-how" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. What moves, and how
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. What moves, and how">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-keeping-the-clusters-clone-current" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 Keeping the cluster's clone current
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-cluster-facts-to-confirm-on-first-login" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Cluster facts to confirm on first login
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-environment-build-the-apptainer-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Environment: build the Apptainer image
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Environment: build the Apptainer image">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-critical-version-pins-do-not-drift" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Critical version pins (do not drift)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-hvantkdef-build-from-the-locked-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 hvantk.def (build from the locked environment)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-build-rootless-and-validate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Build (rootless) and validate
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-running-hail-on-the-cluster" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Running Hail on the cluster
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Running Hail on the cluster">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-default-spark-local-mode-on-one-exclusive-fat-node" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Default: Spark local mode on one exclusive fat node
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-escalation-multi-node-via-the-clusters-spark-on-slurm-launcher" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Escalation: multi-node via the cluster's Spark-on-Slurm launcher
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-migrating-the-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Migrating the data
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Migrating the data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-action-split" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Action split
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-filesystem-placement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Filesystem placement
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-moving-the-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Moving the data
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-external-streaming-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. External / streaming data
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-running-experiments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Running experiments
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Running experiments">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-a-reprocess-build-single-node" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 A reprocess build (single node)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-embarrassingly-parallel-fan-out-array-job" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Embarrassingly-parallel fan-out (array job)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-reproducibility-and-provenance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Reproducibility and provenance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-runbook-ordered" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Runbook (ordered)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-gotchas-quick-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Gotchas quick-reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="migrating-hvantk-to-an-hpc-cluster">Migrating hvantk to an HPC cluster<a class="headerlink" href="#migrating-hvantk-to-an-hpc-cluster" title="Permanent link">&para;</a></h1>
+<p>This guide describes how to move the hvantk toolkit, its environment, and its data
+from a local workstation to a shared HPC cluster, so that dataset builds, pipelines,
+and experiments run at scale on the cluster.</p>
+<p>It is written for a cluster with:</p>
+<ul>
+<li>a <strong>Slurm</strong> scheduler (with a supported Spark-on-Slurm launcher),</li>
+<li><strong>Apptainer/Singularity</strong> available for containers,</li>
+<li><strong>outbound internet on compute nodes</strong> (if your compute nodes are firewalled, see
+  the staging notes in §6 below),</li>
+<li>a standard three-tier filesystem (small backed-up <strong>home</strong>, large <strong>project/work</strong>,
+  fast purged <strong>scratch</strong>).</li>
+</ul>
+<p>Adjust the partition names, paths, and Spark-on-Slurm launcher to your site.</p>
+<hr />
+<h2 id="0-tldr-the-recommended-path">0. TL;DR — the recommended path<a class="headerlink" href="#0-tldr-the-recommended-path" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Code</strong> → <code>git clone</code> the repo on the cluster. The gitignored <code>local/</code> data tree
+   moves separately (step 4).</li>
+<li><strong>Environment</strong> → ship <strong>one Apptainer image</strong> (<code>hvantk.sif</code>) built from the
+   repo's <code>poetry.lock</code>, pinning <strong>Java 11</strong> + Hail 0.2.137 + pyspark 3.5.8 + all
+   native libraries. This is the most important decision: it eliminates the
+   native-library portability class of failure (e.g. an <code>RPATH</code>/<code>libz</code> break in a
+   compiled wheel like <code>pysam</code>/<code>pyBigWig</code>).</li>
+<li><strong>Hail</strong> → default to <strong>Spark local mode on one exclusive fat node</strong>; escalate to
+   the cluster's <strong>Spark-on-Slurm</strong> multi-node launcher (via <code>HVANTK_SKIP_HAIL_INIT</code>)
+   only when the working set exceeds a fat node's RAM.</li>
+<li><strong>Data</strong> → move the data that must be transferred via <strong>Globus</strong> (through a Data
+   Transfer Node), <strong>re-fetch</strong> the public bulk downloads on the login node,
+   <strong>regenerate</strong> the derived Hail <code>.mt</code>s on-cluster, and <strong>skip</strong> redundant/raw
+   files.</li>
+<li><strong>Streaming experiments</strong> → where compute nodes have internet, code that streams
+   from VEP / GCS / UCSC / eQTL sources runs as-is. Still <strong>stage the big/repeated
+   pulls</strong> (gnomAD, the ~9 GB phyloP bigWig) to project storage for speed and to
+   respect rate limits.</li>
+<li><strong>Validate</strong> every new node with <code>hvantk utils check-install</code> before running
+   pipelines.</li>
+</ol>
+<hr />
+<h2 id="1-what-moves-and-how">1. What moves, and how<a class="headerlink" href="#1-what-moves-and-how" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>What</th>
+<th>Mechanism</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Code</td>
+<td><code>hvantk/</code>, <code>pyproject.toml</code>, <code>poetry.lock</code>, <code>tests/</code></td>
+<td><code>git clone</code></td>
+<td>tracked; tiny</td>
+</tr>
+<tr>
+<td>Environment</td>
+<td>Python 3.10 + Hail/JVM + native libs</td>
+<td><strong>Apptainer <code>.sif</code></strong></td>
+<td>built from <code>poetry.lock</code>; §3</td>
+</tr>
+<tr>
+<td>Data</td>
+<td>gitignored <code>local/</code> tree</td>
+<td><strong>Globus / refetch / regenerate</strong></td>
+<td>§5 split</td>
+</tr>
+<tr>
+<td>Secrets/access</td>
+<td>EGA gvcfs, UKB-PPP, other gated sources</td>
+<td>manual copy</td>
+<td>§5</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Why a container and not conda or <code>poetry install</code> on the node.</strong> A conda env or a
+node-level <code>poetry install</code> still links against the <em>host's</em> system libraries
+(<code>libz</code>, <code>libbz2</code>, <code>libcurl</code>, <code>libhdf5</code>, <code>glibc</code>). A mismatch there is the canonical
+cause of <code>dlopen</code>/<code>RPATH</code> failures in compiled wheels. A <code>.sif</code> carries its own
+copies of those libraries, so the dynamic loader resolves against them regardless of
+the node. A container is also <strong>one file</strong> (vs. a conda env's ~100k files, which
+exhausts inode quotas and stresses the shared filesystem). hvantk's stack is
+unusually native-lib-heavy — Hail's JVM/Spark, <code>pysam</code> (htslib), <code>pyarrow</code> (Arrow
+C++), <code>h5py</code> (HDF5), <code>scipy</code>/<code>scikit-learn</code> (BLAS/LAPACK), <code>duckdb</code> — so the
+container payoff is large.</p>
+<h3 id="11-keeping-the-clusters-clone-current">1.1 Keeping the cluster's clone current<a class="headerlink" href="#11-keeping-the-clusters-clone-current" title="Permanent link">&para;</a></h3>
+<p>The cluster has its own bare repo, and the working repo pushes to it via a <strong>second
+remote</strong> called <code>hpc</code>. Local branches track <code>origin</code> (GitHub), so a bare <code>git push</code>
+<strong>does not</strong> update the cluster:</p>
+<table>
+<thead>
+<tr>
+<th>Remote</th>
+<th>URL</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>origin</code></td>
+<td><code>git@github.com:bigbio/hvantk.git</code></td>
+<td>GitHub; PRs and CI</td>
+</tr>
+<tr>
+<td><code>hpc</code></td>
+<td><code>hpc:/user/&lt;user&gt;/git/pyvatk.git</code></td>
+<td>bare repo on the cluster; the node-side clone pulls from here</td>
+</tr>
+</tbody>
+</table>
+<p>After anything lands on <code>main</code> or <code>dev</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># confirm it is a fast-forward, so no cluster-side commits are clobbered</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>git<span class="w"> </span>fetch<span class="w"> </span>hpc
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>git<span class="w"> </span>merge-base<span class="w"> </span>--is-ancestor<span class="w"> </span>hpc/dev<span class="w"> </span>origin/dev<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"fast-forward, safe"</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>git<span class="w"> </span>push<span class="w"> </span>hpc<span class="w"> </span>main<span class="w"> </span>dev
+</code></pre></div>
+<p><strong>This matters more than ordinary repo hygiene</strong>, because the <code>.sif</code> is built from
+<code>poetry.lock</code> (§3.2). A stale cluster clone rebuilds the <em>previous</em> dependency set
+without any error — the build succeeds, it is just the wrong environment. Rebuild the
+image whenever <code>poetry.lock</code> changes, not only when <code>hvantk/</code> does.</p>
+<hr />
+<h2 id="2-cluster-facts-to-confirm-on-first-login">2. Cluster facts to confirm on first login<a class="headerlink" href="#2-cluster-facts-to-confirm-on-first-login" title="Permanent link">&para;</a></h2>
+<p>Run on the login node to fill in the exact paths/flags used below:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>sinfo<span class="w"> </span>-o<span class="w"> </span><span class="s2">"%P %l %c %m %G"</span><span class="w">          </span><span class="c1"># partitions: time limit, cores, mem, gres (lscratch?)</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>module<span class="w"> </span>avail<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-iE<span class="w"> </span><span class="s2">"java|apptainer|singularity|spark|globus"</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nb">echo</span><span class="w"> </span><span class="nv">$HOME</span><span class="p">;</span><span class="w"> </span>df<span class="w"> </span>-h<span class="w"> </span><span class="nv">$HOME</span><span class="w">            </span><span class="c1"># home quota (code only)</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># project/work + scratch paths &amp; quotas are site-specific (check docs / `quota`)</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>which<span class="w"> </span>apptainer<span class="w"> </span><span class="o">||</span><span class="w"> </span>which<span class="w"> </span>singularity
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>apptainer<span class="w"> </span>build<span class="w"> </span>--fakeroot<span class="w"> </span>--help<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-1<span class="w">   </span><span class="c1"># is --fakeroot allowed?</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>java<span class="w"> </span>-version<span class="w">                      </span><span class="c1"># default Java — MUST be 8 or 11 for Hail</span>
+</code></pre></div>
+<p>Note the <strong>scratch path</strong> (often <code>/scratch/$USER</code> or <code>/lscratch/$SLURM_JOB_ID</code>),
+whether <strong><code>--fakeroot</code></strong> is permitted (if not, build the image elsewhere and copy
+it), and the <strong>Spark-on-Slurm</strong> launcher's name/usage.</p>
+<hr />
+<h2 id="3-environment-build-the-apptainer-image">3. Environment: build the Apptainer image<a class="headerlink" href="#3-environment-build-the-apptainer-image" title="Permanent link">&para;</a></h2>
+<h3 id="31-critical-version-pins-do-not-drift">3.1 Critical version pins (do not drift)<a class="headerlink" href="#31-critical-version-pins-do-not-drift" title="Permanent link">&para;</a></h3>
+<p>The repo's <code>poetry.lock</code> encodes a tested triad: Hail <strong>0.2.137</strong> + pyspark
+<strong>3.5.8</strong> + py4j 0.10.9.9 + <strong>numpy 2.2.5</strong> (with the <code>np.bool = np.bool_</code> shim in
+<code>hvantk/core/utils/hail_context.py</code> that Hail 0.2.x needs under NumPy 2). Build from
+the lock; do not regenerate or loosen it. And:</p>
+<blockquote>
+<p><strong>Java 11, not 17.</strong> Hail 0.2.137 / Spark 3.5 (Scala 2.12) support <strong>Java 8 or 11
+only</strong>. HPC <code>module load java</code> frequently defaults to 17/21, which breaks Hail.
+Bake Java 11 into the container so the host's Java module is irrelevant.</p>
+</blockquote>
+<h3 id="32-hvantkdef-build-from-the-locked-environment">3.2 <code>hvantk.def</code> (build from the locked environment)<a class="headerlink" href="#32-hvantkdef-build-from-the-locked-environment" title="Permanent link">&para;</a></h3>
+<p>The definition file lives in the repo at <strong><code>containers/hvantk.def</code></strong>
+— build from that file rather than copying a snippet, so the base image and extras
+cannot drift from what was last built and validated. It installs the <strong>exact</strong> locked
+dependency set, not an unpinned <code>pip install hail</code>.</p>
+<p>Two choices in it are load-bearing and must not be "modernised" without re-validating:</p>
+<ul>
+<li><strong>Base image is <code>python:3.10-slim-bullseye</code>, not bookworm.</strong> Debian 12 (bookworm) has
+  no <code>openjdk-11</code> package at all — <code>apt-get install openjdk-11-jdk-headless</code> fails with
+  <em>"Package 'openjdk-11-jdk-headless' has no installation candidate … the following
+  packages replace it: openjdk-17-jre-headless"</em>. Hail 0.2.x / Spark 3.5 support Java 8
+  or 11 <strong>only</strong>, so a bookworm base either fails the build or silently gives you
+  Java 17. Debian 11 (bullseye) ships <code>openjdk-11-jdk-headless</code> (11.0.32.1).</li>
+<li><strong>Extras include <code>expression</code>.</strong> The set
+  <code>hgc ptm ancestry psroc constraint enrichex cohort viz duckdb expression</code>
+  is checked against <code>[project.optional-dependencies]</code> in <code>pyproject.toml</code> and covers
+  every unique package across all extras. Omitting <code>expression</code> builds an image with no
+  scanpy, so <code>hvantk expression …</code> cannot run. <code>ml</code> and <code>interactive</code> are redundant:
+  scikit-learn arrives via <code>ancestry</code>/<code>psroc</code>, plotly via <code>viz</code>.</li>
+</ul>
+<p>The <code>%post</code> block ends by printing <code>java -version</code> and importing <code>hail</code>, so a broken
+image fails at <strong>build</strong> time rather than at first use.</p>
+<h3 id="33-build-rootless-and-validate">3.3 Build (rootless) and validate<a class="headerlink" href="#33-build-rootless-and-validate" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Keep build cache/tmp OFF the small home quota</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">SINGULARITY_CACHEDIR</span><span class="o">=</span><span class="nv">$WORK</span>/containers/cache<span class="w">     </span><span class="c1"># APPTAINER_* if you have apptainer</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">SINGULARITY_TMPDIR</span><span class="o">=</span><span class="nv">$WORK</span>/containers/tmp
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="nv">$SINGULARITY_CACHEDIR</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$SINGULARITY_TMPDIR</span><span class="s2">"</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="c1"># Build from the REPO ROOT: %files paths in the def are relative to the build CWD.</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="nb">cd</span><span class="w"> </span>&lt;the<span class="w"> </span>cluster<span class="w"> </span>clone&gt;
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>singularity<span class="w"> </span>build<span class="w"> </span><span class="nv">$WORK</span>/containers/hvantk.sif<span class="w"> </span>containers/hvantk.def
+</code></pre></div>
+<p><strong><code>--fakeroot</code> is not usable on every cluster.</strong> It needs a <code>/etc/subuid</code> entry for your
+account; without one the build fails immediately with
+<code>could not use fakeroot: no valid mapping entry found for &lt;user&gt;</code>, and a plain
+unprivileged build is refused outright with
+<code>--remote, --fakeroot, or the proot command are required to build this source as a
+non-root user</code>. Check before assuming:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>grep<span class="w"> </span><span class="s2">"^</span><span class="nv">$USER</span><span class="s2">:"</span><span class="w"> </span>/etc/subuid<span class="w">    </span><span class="c1"># empty output =&gt; --fakeroot will NOT work here</span>
+</code></pre></div>
+<p>When there is no <code>subuid</code> entry, SingularityCE 3.11+/4.x accepts a static <strong><code>proot</code></strong>
+instead, which needs no privileges at all:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>mkdir<span class="w"> </span>-p<span class="w"> </span>~/bin<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>curl<span class="w"> </span>-fsSL<span class="w"> </span>-o<span class="w"> </span>~/bin/proot<span class="w"> </span>https://proot.gitlab.io/proot/bin/proot
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>chmod<span class="w"> </span>+x<span class="w"> </span>~/bin/proot
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="s2">"</span><span class="nv">$HOME</span><span class="s2">/bin:</span><span class="nv">$PATH</span><span class="s2">"</span><span class="w">       </span><span class="c1"># singularity picks proot up from PATH</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>singularity<span class="w"> </span>build<span class="w"> </span><span class="nv">$WORK</span>/containers/hvantk.sif<span class="w"> </span>containers/hvantk.def
+</code></pre></div>
+<p>Builds take roughly 10 minutes and the image is ~2.2 GB.</p>
+<p>Validate the full native + JVM stack on a <strong>compute</strong> node (not login) — and go through
+the run wrapper, because Hail cannot initialise inside the container without Spark
+scratch (see §4.1):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>srun<span class="w"> </span>-c<span class="w"> </span><span class="m">4</span><span class="w"> </span>--mem<span class="w"> </span>16g<span class="w"> </span>bash<span class="w"> </span>containers/hvantk_run.sh<span class="w"> </span>utils<span class="w"> </span>check-install
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="c1">#   expects: Hail version prints, balding_nichols_model smoke test passes.</span>
+</code></pre></div>
+<p><code>hvantk utils check-install</code> is the canonical go/no-go for a node — it initializes
+Hail, prints <code>hl.version()</code>, runs a Hail smoke test, and diagnoses proxy problems.</p>
+<h2 id="4-running-hail-on-the-cluster">4. Running Hail on the cluster<a class="headerlink" href="#4-running-hail-on-the-cluster" title="Permanent link">&para;</a></h2>
+<h3 id="41-default-spark-local-mode-on-one-exclusive-fat-node">4.1 Default: Spark local mode on one exclusive fat node<a class="headerlink" href="#41-default-spark-local-mode-on-one-exclusive-fat-node" title="Permanent link">&para;</a></h3>
+<p>hvantk runs Hail in <strong>local Spark mode</strong> — every <code>init_hail()</code> call uses local
+defaults (no master/memory config in the repo). On HPC that maps to <strong>one exclusive
+node, many cores, high memory</strong>, with Spark temp on <strong>node-local scratch</strong>.</p>
+<blockquote>
+<p><strong><code>SPARK_LOCAL_DIRS</code> is mandatory when running from the container, and its absence
+is misdiagnosed.</strong> Without a writable node-local scratch bound into the image, Hail
+init dies with
+<code>DiskBlockManager: ERROR: Failed to create any local dir</code>, followed by
+<code>Hail initialisation failed: [Errno 111] Connection refused</code> from py4j. The second
+message is what you see first and it reads like a network or proxy fault; it is not.
+<code>containers/hvantk_run.sh</code> sets the scratch dir up and binds it, so prefer:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>bash<span class="w"> </span>containers/hvantk_run.sh<span class="w"> </span>utils<span class="w"> </span>check-install
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="nv">HVANTK_BIND</span><span class="o">=</span><span class="s2">"</span><span class="nv">$WORK</span><span class="s2">:</span><span class="nv">$WORK</span><span class="s2">"</span><span class="w"> </span>bash<span class="w"> </span>containers/hvantk_run.sh<span class="w"> </span>reprocess<span class="w"> </span>clinvar:variants<span class="w"> </span>...
+</code></pre></div>
+</blockquote>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="ch">#!/bin/bash</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="c1">#SBATCH --job-name=hvantk-hail</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="c1">#SBATCH --nodes=1</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="c1">#SBATCH --exclusive</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="c1">#SBATCH --cpus-per-task=32</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="c1">#SBATCH --mem=240G</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="c1">#SBATCH --time=12:00:00</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="c1">#SBATCH --output=logs/%x_%j.out</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="c1"># node-local fast scratch for Spark spill + Hail tmp (NEVER home/Lustre/GPFS)</span>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="nb">export</span><span class="w"> </span><span class="nv">SCRATCH_DIR</span><span class="o">=</span><span class="si">${</span><span class="nv">SLURM_TMPDIR</span><span class="k">:-</span><span class="p">/scratch/</span><span class="nv">$USER</span><span class="p">/</span><span class="nv">$SLURM_JOB_ID</span><span class="si">}</span>
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="nv">$SCRATCH_DIR</span><span class="s2">"</span>
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="nb">export</span><span class="w"> </span><span class="nv">SPARK_LOCAL_DIRS</span><span class="o">=</span><span class="s2">"</span><span class="nv">$SCRATCH_DIR</span><span class="s2">"</span>
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="nb">export</span><span class="w"> </span><span class="nv">NO_PROXY</span><span class="o">=</span>localhost,127.0.0.1,0.0.0.0,::1<span class="w">   </span><span class="c1"># protect py4j localhost socket</span>
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>apptainer<span class="w"> </span><span class="nb">exec</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a><span class="w">  </span>--bind<span class="w"> </span>/project/<span class="nv">$USER</span>/hvantk:/data<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a><span class="w">  </span>--bind<span class="w"> </span><span class="s2">"</span><span class="nv">$SCRATCH_DIR</span><span class="s2">"</span>:/scratch<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a><span class="w">  </span>hvantk.sif<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a><span class="w">  </span>hvantk<span class="w"> </span>hgc<span class="w"> </span>pipeline<span class="w"> </span>-i<span class="w"> </span>/data/gvcfs<span class="w"> </span>-o<span class="w"> </span>/data/out/cohort.vds
+</code></pre></div>
+<p>The three settings that prevent the most common failures:</p>
+<ol>
+<li><strong>Driver memory must sit <em>below</em> the Slurm <code>--mem</code> cgroup limit.</strong> In local mode
+   the driver JVM <em>is</em> the executor, and Hail uses large off-heap/native memory
+   (BLAS, LZ4) plus Python workers that live outside the JVM heap. Setting
+   <code>spark.driver.memory == --mem</code> triggers a silent <strong>cgroup OOM-kill</strong>. Use
+   <strong>~75–85% of <code>--mem</code></strong> (e.g. <code>--mem=240G</code> → <code>spark.driver.memory=192g</code>).</li>
+<li><strong>Pin cores; don't let Spark grab the machine.</strong> On an <code>--exclusive</code> node
+   <code>local[*]</code> is fine; on a shared node use <code>local[&lt;cpus-per-task&gt;]</code>. Uncapped
+   <code>local[*]</code> on a shared node causes thread oversubscription and "Executor
+   heartbeat timed out" errors.</li>
+<li><strong>Spark/Hail temp on node-local scratch</strong>, never the parallel filesystem.</li>
+</ol>
+<p>To set these explicitly, wrap your script's <code>init_hail()</code> → <code>hl.init()</code>. A drop-in
+Hail init for a 240 GB node:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">os</span><span class="o">,</span><span class="w"> </span><span class="nn">hail</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">hl</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="n">scratch</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">"SCRATCH_DIR"</span><span class="p">]</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">hl</span><span class="o">.</span><span class="n">init</span><span class="p">(</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="n">master</span><span class="o">=</span><span class="s2">"local[*]"</span><span class="p">,</span>                 <span class="c1"># exclusive node → all cores OK</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="n">tmp_dir</span><span class="o">=</span><span class="n">scratch</span><span class="p">,</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    <span class="n">spark_conf</span><span class="o">=</span><span class="p">{</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>        <span class="s2">"spark.driver.memory"</span><span class="p">:</span> <span class="s2">"192g"</span><span class="p">,</span>  <span class="c1"># ~80% of --mem=240G</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>        <span class="s2">"spark.local.dir"</span><span class="p">:</span> <span class="n">scratch</span><span class="p">,</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>        <span class="s2">"spark.driver.maxResultSize"</span><span class="p">:</span> <span class="s2">"16g"</span><span class="p">,</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>        <span class="s2">"spark.serializer"</span><span class="p">:</span> <span class="s2">"org.apache.spark.serializer.KryoSerializer"</span><span class="p">,</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>        <span class="s2">"spark.kryo.registrator"</span><span class="p">:</span> <span class="s2">"is.hail.kryo.HailKryoRegistrator"</span><span class="p">,</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>    <span class="p">},</span>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="p">)</span>
+</code></pre></div>
+<p><strong>Avoid small-file storms.</strong> Each Hail <code>.ht</code>/<code>.mt</code> partition is a part file; too many
+tiny parts saturate Lustre/GPFS metadata servers and slow the whole cluster.
+Coalesce before writing big outputs, and prefer scratch then archive:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">mt</span> <span class="o">=</span> <span class="n">mt</span><span class="o">.</span><span class="n">naive_coalesce</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>        <span class="c1"># ~hundreds-of-MB parts, not thousands of tiny ones</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="n">mt</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">"/scratch/.../cohort.mt"</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="c1"># then tar the .mt directory to project storage rather than leaving 1000s of parts on Lustre</span>
+</code></pre></div>
+<h3 id="42-escalation-multi-node-via-the-clusters-spark-on-slurm-launcher">4.2 Escalation: multi-node via the cluster's Spark-on-Slurm launcher<a class="headerlink" href="#42-escalation-multi-node-via-the-clusters-spark-on-slurm-launcher" title="Permanent link">&para;</a></h3>
+<p>Use this only when one fat node cannot hold the working set. hvantk supports
+<strong>adopting an externally-initialized Spark/Hail session</strong> via the
+<strong><code>HVANTK_SKIP_HAIL_INIT</code></strong> environment variable (checked in
+<code>hvantk/core/utils/hail_context.py</code>): set it non-empty and <code>init_hail()</code> will not
+call <code>hl.init()</code>, deferring to a session you created. Pattern:</p>
+<ol>
+<li>Launch the cluster's Spark standalone cluster inside a Slurm allocation (per your
+   center's docs — e.g. a <code>spark start ...</code> that yields a <code>spark://host:7077</code>
+   master).</li>
+<li>In a thin wrapper, call <code>hl.init(sc=&lt;existing SparkContext&gt;)</code> (or
+   <code>hl.init(master="spark://host:7077", ...)</code>) <strong>before</strong> importing hvantk
+   pipelines, then <code>export HVANTK_SKIP_HAIL_INIT=1</code> so hvantk adopts that backend.</li>
+<li>Run inside the container with the Hail jar on the Spark classpath (<code>--jars
+   $HAIL_HOME/hail-all-spark.jar</code>, Kryo serializer + <code>HailKryoRegistrator</code>).</li>
+</ol>
+<p>Spark-on-Slurm launchers are cluster-specific and double-allocate resources (Slurm
+<em>and</em> spark-submit flags must agree); expect operational friction. Stay in §4.1 local
+mode unless data forces this.</p>
+<hr />
+<h2 id="5-migrating-the-data">5. Migrating the data<a class="headerlink" href="#5-migrating-the-data" title="Permanent link">&para;</a></h2>
+<p>The gitignored <code>local/</code> tree is <strong>not</strong> part of the git clone — it must be moved
+explicitly. Split it by action rather than copying it wholesale.</p>
+<h3 id="51-action-split">5.1 Action split<a class="headerlink" href="#51-action-split" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Examples</th>
+<th>How</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Transfer</strong> (experiment state / gated / source-specific)</td>
+<td>notebooks + outputs, single-cell <code>.h5ad</code> atlases, planning docs, EGA gvcfs, interactome BED, GTEx proteomics, UKB-PPP, per-study cardiac data</td>
+<td><strong>Globus</strong> via DTN</td>
+</tr>
+<tr>
+<td><strong>Refetch</strong> on login node</td>
+<td>raw UCSC Cell Browser dumps, GTEx/iPSC-CM eQTL stats, ArrayExpress, 1000 Genomes, GWAS Catalog, GenCC, ClinVar, Ensembl GTF, gnomAD lof-metrics</td>
+<td><code>hvantk download …</code> / skill downloaders</td>
+</tr>
+<tr>
+<td><strong>Regenerate</strong> on-cluster</td>
+<td>derived Hail <code>.mt</code>s (e.g. Expression Atlas, GTEx TPM matrices)</td>
+<td>hvantk build steps</td>
+</tr>
+<tr>
+<td><strong>Skip</strong> (redundant)</td>
+<td>uncompressed <code>.tsv</code> where a <code>.bgz</code> exists; raw dumps that a built <code>.h5ad</code> supersedes; duplicate <code>.gz</code> next to <code>.bgz</code></td>
+<td>don't copy</td>
+</tr>
+</tbody>
+</table>
+<p>Net effect: physically move the experiment state and gated sources, refetch public
+bulk on the cluster, regenerate derived artifacts, and avoid copying redundancy.
+Globus is fast enough that transferring what you already have is often simpler than
+re-deriving it — decide per-subtree.</p>
+<h3 id="52-filesystem-placement">5.2 Filesystem placement<a class="headerlink" href="#52-filesystem-placement" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong><code>$HOME</code></strong> (small, backed up): the cloned repo + <code>hvantk.sif</code> + sbatch scripts.
+  Never bulk data.</li>
+<li><strong><code>/project</code> (or work)</strong>: the <code>local/</code> data tree, e.g. <code>/project/$USER/hvantk/local/</code>,
+  <strong>bound into the container</strong> as <code>/data</code>. Keep the same <code>local/...</code> substructure so
+  experiment scripts' relative paths work.</li>
+<li><strong>scratch (purged)</strong>: Spark/Hail tmp, per-job intermediates, container build cache.
+  Copy results back to project before the purge window (often 30–60 days).</li>
+</ul>
+<h3 id="53-moving-the-data">5.3 Moving the data<a class="headerlink" href="#53-moving-the-data" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># Preferred: Globus (resumable, parallel, auto-checksum), endpoint = the cluster DTN</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>module<span class="w"> </span>load<span class="w"> </span>globus-cli<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>globus<span class="w"> </span>transfer<span class="w"> </span>--recursive<span class="w"> </span>--verify-checksum<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="w">  </span><span class="s2">"</span><span class="nv">$LAPTOP_ENDPOINT</span><span class="s2">:/path/to/pyvatk/local"</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="w">  </span><span class="s2">"</span><span class="nv">$CLUSTER_ENDPOINT</span><span class="s2">:/project/</span><span class="nv">$USER</span><span class="s2">/hvantk/local"</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="c1"># Fallback: rsync through the Data Transfer Node (NOT the login node)</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>rsync<span class="w"> </span>-avP<span class="w"> </span>--partial<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="w">  </span>/path/to/pyvatk/local/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="w">  </span><span class="nv">$USER</span>@dtn.cluster.edu:/project/<span class="nv">$USER</span>/hvantk/local/
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a><span class="c1"># verify (checksum compare, dry-run)</span>
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>rsync<span class="w"> </span>-avnc<span class="w"> </span>/path/to/pyvatk/local/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a><span class="w">  </span><span class="nv">$USER</span>@dtn.cluster.edu:/project/<span class="nv">$USER</span>/hvantk/local/
+</code></pre></div>
+<p>Add <code>--exclude</code> rules for the §5.1 "skip" rows (e.g. uncompressed <code>.tsv</code> files that
+duplicate a <code>.bgz</code>) to avoid moving redundant gigabytes.</p>
+<hr />
+<h2 id="6-external-streaming-data">6. External / streaming data<a class="headerlink" href="#6-external-streaming-data" title="Permanent link">&para;</a></h2>
+<p>Several experiment paths stream from external sources at runtime. Where compute nodes
+have internet they run in-job; the concern is volume and rate limits, so stage the
+heavy/repeated pulls:</p>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Used by</th>
+<th>Recommendation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>gnomAD v4.1 (GCS / googleapis)</td>
+<td>gnomAD-MAPS / constraint experiments</td>
+<td><strong>Stage once</strong> to <code>/project/.../gnomad/</code> (per-chr sites or a filtered HT); repoint scripts at the local path</td>
+</tr>
+<tr>
+<td>UCSC phyloP100way bigWig (~9 GB)</td>
+<td>phyloP per-codon queries</td>
+<td><strong>Download once</strong> to project; point the query at the local <code>.bw</code> (also removes remote-query latency)</td>
+</tr>
+<tr>
+<td>Ensembl VEP REST</td>
+<td>VEP annotation experiments</td>
+<td>keep batch ≤ 200 + honor <code>Retry-After</code>; for big sets use a local VEP install. (Public VEP does <strong>not</strong> serve AlphaMissense — use the standalone TSV if needed)</td>
+</tr>
+<tr>
+<td>eQTL Catalogue / Pan-UKB (EBI FTP, AWS S3)</td>
+<td>coloc / QTL experiments</td>
+<td>transfer any existing local <code>data_cache</code> so re-streaming is unnecessary</td>
+</tr>
+<tr>
+<td>Ensembl GTF (ftp.ensembl.org)</td>
+<td>PTM pipeline</td>
+<td>transfer the cached GTF; pass the local path to skip the download step</td>
+</tr>
+</tbody>
+</table>
+<p>Two operational notes:</p>
+<ul>
+<li><strong>Drift checks need internet by design.</strong> Run <code>hvantk drift</code> / <code>hvantk download</code>
+  on the login node; pass <code>--no-check-drift</code> to <code>hvantk reprocess</code> inside batch jobs
+  if a compute partition is ever firewalled.</li>
+<li><strong>Proxy:</strong> if the cluster routes outbound traffic through an HTTP proxy, set
+  <code>http_proxy</code>/<code>https_proxy</code> <strong>and</strong> keep <code>NO_PROXY=localhost,127.0.0.1,0.0.0.0,::1</code>
+  so Hail's py4j localhost socket is not intercepted.</li>
+</ul>
+<hr />
+<h2 id="7-running-experiments">7. Running experiments<a class="headerlink" href="#7-running-experiments" title="Permanent link">&para;</a></h2>
+<h3 id="71-a-reprocess-build-single-node">7.1 A <code>reprocess</code> build (single node)<a class="headerlink" href="#71-a-reprocess-build-single-node" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>srun<span class="w"> </span>--partition<span class="o">=</span>standard<span class="w"> </span>-c<span class="w"> </span><span class="m">8</span><span class="w"> </span>--mem<span class="w"> </span>48g<span class="w"> </span>-t<span class="w"> </span><span class="m">4</span>:00:00<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">  </span>apptainer<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>--bind<span class="w"> </span>/project/<span class="nv">$USER</span>/hvantk/local:/data<span class="w"> </span>hvantk.sif<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">    </span>hvantk<span class="w"> </span>reprocess<span class="w"> </span>clinvar:variants<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">      </span>--raw-dir<span class="w"> </span>/data/data/clinvar_ts<span class="w"> </span>--output<span class="w"> </span>/data/out/clinvar.ht
+</code></pre></div>
+<h3 id="72-embarrassingly-parallel-fan-out-array-job">7.2 Embarrassingly-parallel fan-out (array job)<a class="headerlink" href="#72-embarrassingly-parallel-fan-out-array-job" title="Permanent link">&para;</a></h3>
+<p>Ideal for per-gene/per-site sweeps. Build a task list and index it with
+<code>$SLURM_ARRAY_TASK_ID</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="ch">#!/bin/bash</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="c1">#SBATCH --job-name=hvantk-fanout</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="c1">#SBATCH --array=1-500%50            # 500 genes, ≤50 concurrent</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="c1">#SBATCH --cpus-per-task=4 --mem=16G --time=04:00:00</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="c1">#SBATCH --output=logs/%x_%A_%a.out</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="nv">GENE</span><span class="o">=</span><span class="k">$(</span>sed<span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">SLURM_ARRAY_TASK_ID</span><span class="si">}</span><span class="s2">p"</span><span class="w"> </span>genes.txt<span class="k">)</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>apptainer<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>--bind<span class="w"> </span>/project/<span class="nv">$USER</span>/hvantk/local:/data<span class="w"> </span>hvantk.sif<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="w">  </span>hvantk<span class="w"> </span>qtlcascade<span class="w"> </span>cascade<span class="w"> </span>--gene<span class="w"> </span><span class="s2">"</span><span class="nv">$GENE</span><span class="s2">"</span><span class="w"> </span>--out<span class="w"> </span>/data/out/<span class="si">${</span><span class="nv">GENE</span><span class="si">}</span>.ht
+</code></pre></div>
+<p>For experiments that stream remote data (e.g. phyloP bigWig, gnomAD), pre-stage those
+inputs to project storage (§6) and repoint the scripts at the local paths before
+launching at scale.</p>
+<hr />
+<h2 id="8-reproducibility-and-provenance">8. Reproducibility and provenance<a class="headerlink" href="#8-reproducibility-and-provenance" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Pin the container, not just the code.</strong> Record the <code>.sif</code>'s build date and the
+  <code>poetry.lock</code> hash; a given <code>hvantk.sif</code> reproduces the exact Hail/numpy/native
+  stack. Re-derive the image only by re-running <code>apptainer build</code> against the same
+  lock.</li>
+<li><strong>hvantk stamps provenance</strong> on every artifact (<code>ctx.provenance(...)</code>) and has
+  <code>hvantk drift</code> for source fingerprints — keep using both on-cluster so results
+  carry their input lineage.</li>
+<li>Treat scratch as ephemeral; the <strong>project copy of outputs + the <code>.sif</code> + the git
+  SHA</strong> are the reproducible record.</li>
+</ul>
+<hr />
+<h2 id="9-runbook-ordered">9. Runbook (ordered)<a class="headerlink" href="#9-runbook-ordered" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Login node:</strong> <code>git clone</code> the repo into <code>$HOME</code>. Note partitions, scratch path,
+   <code>--fakeroot</code> availability, Spark-on-Slurm launcher (§2).</li>
+<li><strong>Build the image:</strong> write <code>hvantk.def</code> (§3.2), set <code>APPTAINER_*</code> to scratch,
+   <code>apptainer build --fakeroot hvantk.sif hvantk.def</code> (or build on a laptop + copy).</li>
+<li><strong>Validate:</strong> <code>srun ... apptainer exec hvantk.sif hvantk utils check-install</code>.</li>
+<li><strong>Move data (§5):</strong> Globus the "transfer" set into <code>/project/$USER/hvantk/local/</code>;
+   refetch the public bulk on the login node; regenerate <code>.mt</code>s on-cluster; skip the
+   redundant files.</li>
+<li><strong>Stage streaming inputs (§6):</strong> download the phyloP bigWig + a gnomAD slice to
+   project; repoint the relevant scripts at local paths.</li>
+<li><strong>First real run:</strong> submit the §4.1 single-fat-node Hail job for a known pipeline;
+   confirm it writes to project and stays under the cgroup memory limit.</li>
+<li><strong>Scale out:</strong> use array jobs (§7.2) for fan-out; reserve the Spark-on-Slurm path
+   (§4.2) for working sets that exceed a fat node.</li>
+</ol>
+<hr />
+<h2 id="10-gotchas-quick-reference">10. Gotchas quick-reference<a class="headerlink" href="#10-gotchas-quick-reference" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Java 17 default</strong> → Hail breaks. Force <strong>Java 11</strong> (baked into the container).</li>
+<li><strong>A bookworm base image</strong> → there is no <code>openjdk-11</code> in Debian 12 at all; apt offers
+  <code>openjdk-17-jre-headless</code> instead. Use <code>python:3.10-slim-bullseye</code>.</li>
+<li><strong><code>--fakeroot</code> with no <code>/etc/subuid</code> entry</strong> → <code>no valid mapping entry found</code>, and an
+  unprivileged build is refused. Put a static <code>proot</code> on <code>PATH</code> instead (§3.3).</li>
+<li><strong>Container Hail init: <code>[Errno 111] Connection refused</code></strong> → almost never the network.
+  Look one line up for <code>DiskBlockManager: Failed to create any local dir</code>: Spark has no
+  writable scratch. Use <code>containers/hvantk_run.sh</code> (§4.1).</li>
+<li><strong><code>spark.driver.memory == --mem</code></strong> → silent cgroup OOM-kill. Use ~80%.</li>
+<li><strong><code>local[*]</code> on a shared node</strong> → heartbeat timeouts. Pin to <code>--cpus-per-task</code>, or
+  use <code>--exclusive</code>.</li>
+<li><strong>Spark/Hail tmp on Lustre/GPFS or <code>$HOME</code></strong> → slow + metadata storms. Use
+  node-local scratch.</li>
+<li><strong>Over-partitioned <code>.mt</code>/<code>.ht</code></strong> → millions of tiny part files choke the parallel
+  filesystem. <code>naive_coalesce</code> before writing; archive off the parallel FS.</li>
+<li><strong>HTTP proxy intercepting localhost</strong> → Hail/py4j init fails. Set <code>NO_PROXY</code> for
+  localhost.</li>
+<li><strong>Stray system/conda Python</strong> below the 3.10 floor → use the container's Python;
+  never run hvantk against an unmanaged interpreter.</li>
+<li><strong>Core install ≠ full toolkit</strong> — install the right <strong>extras</strong> (<code>hgc ptm
+  ancestry psroc constraint enrichex cohort viz duckdb expression</code>) in the image.
+  Dropping <code>expression</code> yields an image with no scanpy, so <code>hvantk expression …</code> fails.</li>
+<li><strong>Scratch is purged</strong> — copy results to project/home before the window.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

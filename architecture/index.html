@@ -1,0 +1,2478 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Hail-based toolkit for multi-omics variant annotation and analysis">
+      
+      
+      
+        <link rel="canonical" href="https://bigbio.github.io/hvantk/architecture/">
+      
+      
+        <link rel="prev" href="../examples/ptm/">
+      
+      
+        <link rel="next" href="../contributing/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Architecture - hvantk</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#hvantk-architecture" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="hvantk" class="md-header__button md-logo" aria-label="hvantk" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            hvantk
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Architecture
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/bigbio/hvantk" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    bigbio/hvantk
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="hvantk" class="md-nav__button md-logo" aria-label="hvantk" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    hvantk
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/bigbio/hvantk" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    bigbio/hvantk
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guide/usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building Tables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guide/data-sources/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guide/hpc-migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HPC Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tools
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tools
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tools/hgc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HGC - Joint Genotyping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tools/enrichex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EnrichEx - Enrichment Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tools/psroc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PS-ROC - Score Evaluation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tools/ancestry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ancestry Inference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tools/ptm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM - Variant Classification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tools/ptm-constraint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM Constraint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tools/qtlcascade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QTL Cascade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Examples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/hgc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HGC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/enrichex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EnrichEx
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/psroc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PS-ROC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/ancestry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ancestry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/clinvar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ClinVar Streaming
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/clingen/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ClinGen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/qtlcascade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QTL Cascade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/ptm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PTM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#project-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Project Structure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#design-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Design Principles
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Design Principles">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-domain-separation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Domain Separation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-artifact-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Artifact Contract
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-plugin-contract-adding-a-data-source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Plugin Contract — adding a data source
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#streamer-placement-rule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Streamer placement rule
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-cli-first-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. CLI-First Design
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-data-flow-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Data Flow Patterns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Data Flow Patterns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pattern-1-builder-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pattern 1: Builder → Table
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pattern-2-multi-omics-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pattern 2: Multi-Omics Integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#module-details" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Module Details
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Module Details">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-module-core" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Module (core/)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#skills-module-skills" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Skills Module (skills/)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tools-module-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tools Module (tools/)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hgc-module-hgc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HGC Module (hgc/)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resources-module-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resources Module (resources/)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#testing-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing Strategy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extension-points" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extension Points
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Extension Points">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#adding-a-new-data-source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding a New Data Source
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adding-a-new-algorithm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding a New Algorithm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adding-a-new-cli-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding a New CLI Command
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dependencies
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Considerations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#project-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Project Structure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#design-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Design Principles
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Design Principles">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-domain-separation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Domain Separation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-artifact-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Artifact Contract
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-plugin-contract-adding-a-data-source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Plugin Contract — adding a data source
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#streamer-placement-rule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Streamer placement rule
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-cli-first-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. CLI-First Design
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-data-flow-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Data Flow Patterns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Data Flow Patterns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pattern-1-builder-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pattern 1: Builder → Table
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pattern-2-multi-omics-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pattern 2: Multi-Omics Integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#module-details" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Module Details
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Module Details">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-module-core" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Module (core/)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#skills-module-skills" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Skills Module (skills/)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tools-module-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tools Module (tools/)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hgc-module-hgc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HGC Module (hgc/)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resources-module-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resources Module (resources/)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#testing-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing Strategy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extension-points" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extension Points
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Extension Points">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#adding-a-new-data-source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding a New Data Source
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adding-a-new-algorithm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding a New Algorithm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adding-a-new-cli-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding a New CLI Command
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dependencies
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Considerations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="hvantk-architecture">hvantk Architecture<a class="headerlink" href="#hvantk-architecture" title="Permanent link">&para;</a></h1>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p><code>hvantk</code> is a multi-omics variant annotation toolkit. It is organized as a
+five-package layout — four code layers (<code>core/</code>, <code>algorithms/</code>, <code>skills/</code>,
+<code>tools/</code>) plus a substrate-level data registry (<code>resources/</code>) — with a
+strict one-way dependency rule enforced by
+<a href="https://github.com/bigbio/hvantk/blob/main/hvantk/tests/test_dependency_directions.py"><code>hvantk/tests/test_dependency_directions.py</code></a>:</p>
+<p align="center">
+  <img src="images/hvantk-platform-architecture.svg" alt="hvantk platform architecture: tools/ depends on skills/, algorithms/, and core/; skills/ depends on algorithms/ and core/; algorithms/ depends on core/. resources/ sits at the substrate level alongside core/ and is consumed by skills/ and tools/. Arrows flow downward only." width="860">
+</p>
+
+<p><code>resources/</code> is a peer of <code>core/</code> (not a layer above it): both are
+substrate that the code layers depend on, neither imports upward.
+Placement rule: dataset-registry JSON, JSON schemas, and the validator /
+aggregator code that operates on them go in <code>resources/</code>. Per-plugin
+catalog JSON (<code>skills/&lt;provider&gt;/catalog/datasets.json</code>) stays with its
+plugin and is aggregated by <code>resources/unified_registry.py</code>. See the
+<a href="#resources-module-resources">Resources Module</a> section below for the
+full rule.</p>
+<p>Design priorities:</p>
+<ol>
+<li><strong>Stable contracts</strong> — algorithms consume typed artifacts; source adapters can
+   rot when upstream APIs change without breaking analysis code.</li>
+<li><strong>Manifest-driven</strong> — plugins declare themselves via <code>plugin.yaml</code>; the loader
+   discovers descriptively first (no imports), binds executable callables lazily.</li>
+<li><strong>Provenance everywhere</strong> — every artifact carries a <code>Provenance</code> (plugin,
+   version, source fingerprint, schema id, build timestamp, derivation parents).</li>
+<li><strong>Backend-portable + native escape hatch</strong> — the artifact API works on either
+   Hail or pandas; algorithms that legitimately need raw Hail use
+   <code>core_io.load_native</code> / <code>save_native</code> (zero-cost passthrough with provenance).</li>
+</ol>
+<h2 id="project-structure">Project Structure<a class="headerlink" href="#project-structure" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>hvantk/
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── __main__.py            # Main CLI entry point
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>│
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>├── core/                  # L1: Core infrastructure
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>│   ├── config.py          # Configuration management
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>│   ├── io/                # Artifact loader (load/save Hail Tables, AnnData, etc.)
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>│   ├── tool/              # tool manifest discovery (descriptive)
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>│   ├── ontology/          # OBO / MONDO parsers
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>│   ├── models/            # Domain model types
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>│   │   ├── annotation_table.py  # AnnotationTable artifact
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>│   │   ├── expression_matrix.py # ExpressionMatrix artifact (AnnData-only)
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>│   │   ├── variant_matrix.py    # VariantMatrix artifact (Hail MatrixTable)
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>│   │   ├── gene_set.py          # GeneSet artifact
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>│   │   ├── backends.py          # AlgorithmMeta, Backend, @algorithm decorator
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>│   │   ├── build_context.py     # BuildContext passed to plugin builders
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>│   │   ├── anndata_utils.py     # annotate_column_summary_ad (AnnData obs summary)
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>│   │   └── provenance.py        # Source-fingerprint provenance stamping
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>│   ├── plugin/            # Plugin system
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>│   │   ├── api.py         # Provider, DatasetSpec, PROBE_FINGERPRINT_IGNORED_KEYS
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>│   │   ├── loader.py      # Plugin discovery (filesystem + entry points)
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>│   │   ├── run_builder.py # run_builder_for_spec() — Phase B orchestrator
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>│   │   └── drift_runner.py# Drift probe execution
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>│   ├── utils/             # Cross-cutting utilities
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>│   │   ├── hail_context.py   # Idempotent Hail init
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>│   │   ├── hail_helpers.py   # create_table_base, cleanup_temp_file
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>│   │   ├── qtl_helpers.py    # GTEx variant-ID parsing (shared by eqtl/pqtl)
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>│   │   ├── bgzf.py           # BGZF utilities
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>│   │   ├── file_utils.py     # File I/O helpers
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>│   │   ├── gene_sets.py      # Gene set utilities
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>│   │   ├── geneset_io.py     # Gene set parsing / validation
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>│   │   ├── genome.py         # Genome/contig utilities (contig_recoding)
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>│   │   ├── table_utils.py    # Hail Table manipulation helpers
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>│   │   └── http.py           # retrying HTTP helper (drift probes, downloaders)
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>│   ├── streamers/         # Base streamer classes (consumed by algorithms/ + skills/)
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>│   │   ├── gene_disease_table.py # GeneDiseaseTableStreamer (clingen/gencc/cosmic-cgc base)
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>│   │   ├── variant_table.py      # VariantTableStreamer (clinvar base)
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>│   │   └── gene_catalog.py       # GeneCatalogStreamer (hgnc base)
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>│   └── ontology/          # OBO / MONDO ontology parsers
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>│       ├── obo.py             # Generic OBO parser
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>│       └── mondo.py           # MONDO disease-category map (MONDO_DISEASE_CATEGORIES)
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>│
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>├── algorithms/            # L4-L5: Analysis pipelines
+<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>│   ├── annotation/        # Variant annotation pipeline
+<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a>│   ├── ancestry/          # Population ancestry inference
+<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a>│   ├── enrichex/          # Gene set enrichment analysis
+<a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a>│   ├── expression/        # Expression data processing
+<a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a>│   ├── hgc/               # Joint genotyping (HGC) pipeline
+<a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a>│   ├── psroc/             # Pathogenicity score evaluation
+<a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a>│   ├── ptm/               # Post-translational modification analysis
+<a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a>│   ├── qtlcascade/        # QTL cascade analysis
+<a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a>│   ├── statistics/        # Statistical utilities
+<a id="__codelineno-0-52" name="__codelineno-0-52" href="#__codelineno-0-52"></a>│   ├── burden/            # rare-variant burden
+<a id="__codelineno-0-53" name="__codelineno-0-53" href="#__codelineno-0-53"></a>│   ├── cohort/            # external cohort handling
+<a id="__codelineno-0-54" name="__codelineno-0-54" href="#__codelineno-0-54"></a>│   ├── rerank/            # multi-omic gene re-ranking
+<a id="__codelineno-0-55" name="__codelineno-0-55" href="#__codelineno-0-55"></a>│   └── visualization/     # Shared visualization helpers
+<a id="__codelineno-0-56" name="__codelineno-0-56" href="#__codelineno-0-56"></a>│
+<a id="__codelineno-0-57" name="__codelineno-0-57" href="#__codelineno-0-57"></a>├── skills/                # L2-L3: Per-provider data plugins (21 providers;
+<a id="__codelineno-0-58" name="__codelineno-0-58" href="#__codelineno-0-58"></a>│                          #   a selection is shown -- see "Current providers" below
+<a id="__codelineno-0-59" name="__codelineno-0-59" href="#__codelineno-0-59"></a>│                          #   for the full list)
+<a id="__codelineno-0-60" name="__codelineno-0-60" href="#__codelineno-0-60"></a>│   ├── _conventions/      # Shared plugin contract (SKILL.md)
+<a id="__codelineno-0-61" name="__codelineno-0-61" href="#__codelineno-0-61"></a>│   ├── _hooks/            # Plugin lifecycle hooks
+<a id="__codelineno-0-62" name="__codelineno-0-62" href="#__codelineno-0-62"></a>│   ├── clingen/           # ClinGen gene-disease validity
+<a id="__codelineno-0-63" name="__codelineno-0-63" href="#__codelineno-0-63"></a>│   ├── clinvar/           # ClinVar variant annotations
+<a id="__codelineno-0-64" name="__codelineno-0-64" href="#__codelineno-0-64"></a>│   ├── cptac/             # CPTAC proteomics (expression/, phospho/)
+<a id="__codelineno-0-65" name="__codelineno-0-65" href="#__codelineno-0-65"></a>│   ├── expression_atlas/  # Expression Atlas bulk RNA-seq
+<a id="__codelineno-0-66" name="__codelineno-0-66" href="#__codelineno-0-66"></a>│   ├── gencc/             # GenCC gene-disease assertions
+<a id="__codelineno-0-67" name="__codelineno-0-67" href="#__codelineno-0-67"></a>│   ├── gtex_eqtl/         # GTEx eQTL data
+<a id="__codelineno-0-68" name="__codelineno-0-68" href="#__codelineno-0-68"></a>│   ├── gwas_catalog/      # GWAS Catalog
+<a id="__codelineno-0-69" name="__codelineno-0-69" href="#__codelineno-0-69"></a>│   ├── hgnc/              # HGNC gene nomenclature
+<a id="__codelineno-0-70" name="__codelineno-0-70" href="#__codelineno-0-70"></a>│   ├── insider/           # INSIDER protein-protein interaction sites
+<a id="__codelineno-0-71" name="__codelineno-0-71" href="#__codelineno-0-71"></a>│   ├── msigdb/            # MSigDB gene sets
+<a id="__codelineno-0-72" name="__codelineno-0-72" href="#__codelineno-0-72"></a>│   ├── peptideatlas/      # PeptideAtlas proteomics
+<a id="__codelineno-0-73" name="__codelineno-0-73" href="#__codelineno-0-73"></a>│   ├── ucsc_cellbrowser/  # UCSC Cell Browser single-cell RNA-seq
+<a id="__codelineno-0-74" name="__codelineno-0-74" href="#__codelineno-0-74"></a>│   └── uniprot_ptm/       # UniProt PTM annotations
+<a id="__codelineno-0-75" name="__codelineno-0-75" href="#__codelineno-0-75"></a>│
+<a id="__codelineno-0-76" name="__codelineno-0-76" href="#__codelineno-0-76"></a>├── tools/                 # CLI command implementations (replaces legacy commands/)
+<a id="__codelineno-0-77" name="__codelineno-0-77" href="#__codelineno-0-77"></a>│   ├── ancestry/          # Ancestry CLI subcommands
+<a id="__codelineno-0-78" name="__codelineno-0-78" href="#__codelineno-0-78"></a>│   ├── annotation/        # Annotation CLI subcommands
+<a id="__codelineno-0-79" name="__codelineno-0-79" href="#__codelineno-0-79"></a>│   ├── enrichex/          # EnrichEx CLI subcommands
+<a id="__codelineno-0-80" name="__codelineno-0-80" href="#__codelineno-0-80"></a>│   ├── expression/        # Expression analysis commands
+<a id="__codelineno-0-81" name="__codelineno-0-81" href="#__codelineno-0-81"></a>│   ├── genesets/          # Gene set extraction/preparation
+<a id="__codelineno-0-82" name="__codelineno-0-82" href="#__codelineno-0-82"></a>│   ├── hgc/               # HGC CLI subcommands
+<a id="__codelineno-0-83" name="__codelineno-0-83" href="#__codelineno-0-83"></a>│   ├── infra/             # Installation check, BGZF validation, utils
+<a id="__codelineno-0-84" name="__codelineno-0-84" href="#__codelineno-0-84"></a>│   ├── cohort/            # Cohort validate / burden / attach
+<a id="__codelineno-0-85" name="__codelineno-0-85" href="#__codelineno-0-85"></a>│   ├── rerank/            # Re-ranking CLI
+<a id="__codelineno-0-86" name="__codelineno-0-86" href="#__codelineno-0-86"></a>│   ├── training_sets/     # Training-set construction (library; no CLI command)
+<a id="__codelineno-0-87" name="__codelineno-0-87" href="#__codelineno-0-87"></a>│   ├── plugins/           # hvantk plugins / hvantk drift commands
+<a id="__codelineno-0-88" name="__codelineno-0-88" href="#__codelineno-0-88"></a>│   ├── ptm/               # PTM CLI subcommands
+<a id="__codelineno-0-89" name="__codelineno-0-89" href="#__codelineno-0-89"></a>│   └── qtl/               # QTL CLI subcommands
+<a id="__codelineno-0-90" name="__codelineno-0-90" href="#__codelineno-0-90"></a>│
+<a id="__codelineno-0-91" name="__codelineno-0-91" href="#__codelineno-0-91"></a>├── resources/             # Data catalog and schemas
+<a id="__codelineno-0-92" name="__codelineno-0-92" href="#__codelineno-0-92"></a>│   ├── schemas/           # JSON schema definitions
+<a id="__codelineno-0-93" name="__codelineno-0-93" href="#__codelineno-0-93"></a>│   ├── ensembl_release.py # pinned Ensembl release / GTF URL
+<a id="__codelineno-0-94" name="__codelineno-0-94" href="#__codelineno-0-94"></a>│   ├── drift_ledger.json  # committed drift fingerprints
+<a id="__codelineno-0-95" name="__codelineno-0-95" href="#__codelineno-0-95"></a>│   └── unified_registry.py# Aggregates the per-plugin catalog/datasets.json files
+<a id="__codelineno-0-96" name="__codelineno-0-96" href="#__codelineno-0-96"></a>│
+<a id="__codelineno-0-97" name="__codelineno-0-97" href="#__codelineno-0-97"></a>└── tests/                 # Test suite
+<a id="__codelineno-0-98" name="__codelineno-0-98" href="#__codelineno-0-98"></a>    ├── conftest.py        # Pytest fixtures (hail_session, etc.)
+<a id="__codelineno-0-99" name="__codelineno-0-99" href="#__codelineno-0-99"></a>    ├── testdata/          # Test data fixtures
+<a id="__codelineno-0-100" name="__codelineno-0-100" href="#__codelineno-0-100"></a>    ├── hgc/               # HGC tests
+<a id="__codelineno-0-101" name="__codelineno-0-101" href="#__codelineno-0-101"></a>    ├── ancestry/          # Ancestry tests
+<a id="__codelineno-0-102" name="__codelineno-0-102" href="#__codelineno-0-102"></a>    ├── psroc/             # PSROC tests
+<a id="__codelineno-0-103" name="__codelineno-0-103" href="#__codelineno-0-103"></a>    ├── enrichex/          # EnrichEx tests
+<a id="__codelineno-0-104" name="__codelineno-0-104" href="#__codelineno-0-104"></a>    └── test_*.py          # Unit and integration tests
+</code></pre></div>
+<h2 id="design-principles">Design Principles<a class="headerlink" href="#design-principles" title="Permanent link">&para;</a></h2>
+<h3 id="1-domain-separation">1. Domain Separation<a class="headerlink" href="#1-domain-separation" title="Permanent link">&para;</a></h3>
+<p>The codebase is organized by function and biological domain:</p>
+<p><strong>Data Builders</strong> (<code>skills/&lt;provider&gt;/builder.py</code>):
+- Each plugin under <code>hvantk/skills/</code> owns its Phase B builder
+  (<code>build_&lt;provider&gt;_&lt;dataset&gt;</code>). Builders return <code>AnnotationTable</code>,
+  <code>ExpressionMatrix</code>, <code>VariantMatrix</code>, or <code>GeneSet</code> artifacts, stamped
+  with <code>Provenance</code> by the platform via <code>run_builder_for_spec</code>.
+- <code>hvantk reprocess &lt;provider&gt;:&lt;dataset&gt;</code> is the <strong>only</strong> public build
+  path. There is no separate programmatic API; in-process callers that
+  need to build a table inside a tool/pipeline invoke
+  <code>hvantk.core.plugin.run_builder.run_builder_for_spec</code> directly.
+- Generic Hail helpers live in <code>hvantk/core/utils/hail_helpers.py</code>
+  (<code>create_table_base</code>, <code>cleanup_temp_file</code>); QTL-shared helpers in
+  <code>hvantk/core/utils/qtl_helpers.py</code>.</p>
+<p><strong>Analysis Pipelines</strong> (separate modules):
+- <code>hgc/</code> - Joint genotyping and cohort analysis
+- <code>ancestry/</code> - Population ancestry inference
+- <code>psroc/</code> - Pathogenicity score evaluation
+- <code>enrichex/</code> - Gene set enrichment analysis
+- <code>ptm/</code> - Post-translational modification variant classification. Includes
+  <code>constraint.py</code> + helpers for the stratified AF-depletion analysis
+  (<code>hvantk ptm constraint</code>), a tissue/cell-type-aware complement to
+  <code>landscape</code> and <code>population</code>.</p>
+<p><strong>Data Product Keying</strong>:
+- <strong>Variants</strong> - Keyed by <code>(locus, alleles)</code>
+- <strong>Genes</strong> - Keyed by <code>gene_id</code>
+- <strong>Proteins</strong> - Keyed by <code>protein_id</code> or <code>interval</code>
+- <strong>Expression</strong> - AnnData matrices (<code>.h5ad</code>) with rows=samples/cells (<code>obs</code>), columns=genes (<code>var</code>)</p>
+<h3 id="2-artifact-contract">2. Artifact Contract<a class="headerlink" href="#2-artifact-contract" title="Permanent link">&para;</a></h3>
+<p>Every data product is one of three semantic artifact types in
+<a href="https://github.com/bigbio/hvantk/tree/main/hvantk/core/models"><code>hvantk/core/models/</code></a>:</p>
+<table>
+<thead>
+<tr>
+<th>Artifact</th>
+<th>Backends</th>
+<th>On-disk format</th>
+<th>Used for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AnnotationTable</code></td>
+<td><code>hail</code> / <code>pandas</code></td>
+<td><code>.ht/</code> or <code>.parquet</code></td>
+<td>variants, gene-disease pairs, eQTLs, PTM sites</td>
+</tr>
+<tr>
+<td><code>ExpressionMatrix</code></td>
+<td><code>anndata</code></td>
+<td><code>.h5ad</code></td>
+<td>bulk + single-cell expression, proteomics matrices</td>
+</tr>
+<tr>
+<td><code>VariantMatrix</code></td>
+<td><code>hail-mt</code></td>
+<td><code>.mt/</code></td>
+<td>multi-sample variant cohorts (genotypes × samples × multi-field entries)</td>
+</tr>
+<tr>
+<td><code>GeneSet</code></td>
+<td>(in-memory <code>frozenset</code>)</td>
+<td><code>.geneset.json</code></td>
+<td>curated gene collections</td>
+</tr>
+</tbody>
+</table>
+<p>Each artifact carries a <code>Provenance</code> record (plugin, version, source
+fingerprint, schema id, build timestamp, derivation <code>parents</code>). The
+<code>@algorithm</code> decorator chains input provenances onto output artifacts
+automatically, so the build graph is preserved end-to-end.</p>
+<p>Artifacts expose a <strong>portable query API</strong> (<code>filter</code>, <code>select</code>, <code>join</code>,
+<code>with_columns</code>, <code>group_by().agg()</code>) via the <a href="https://github.com/bigbio/hvantk/blob/main/hvantk/core/models/_expr.py"><code>col(...)</code></a>
+expression DSL compiled to either backend at execution time. Algorithms
+can be written backend-agnostically:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.core.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">AnnotationTable</span><span class="p">,</span> <span class="n">col</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">filter_high_impact</span><span class="p">(</span><span class="n">ann</span><span class="p">:</span> <span class="n">AnnotationTable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AnnotationTable</span><span class="p">:</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="k">return</span> <span class="n">ann</span><span class="o">.</span><span class="n">filter</span><span class="p">((</span><span class="n">col</span><span class="p">(</span><span class="s2">"score"</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">col</span><span class="p">(</span><span class="s2">"chrom"</span><span class="p">)</span> <span class="o">==</span> <span class="s2">"chr17"</span><span class="p">))</span>
+</code></pre></div>
+<p>When an algorithm legitimately needs the raw native object (Hail-distributed
+joins, genotype matrices), use the <strong>native passthrough</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">io</span> <span class="k">as</span> <span class="n">core_io</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1"># zero-cost when backend matches file format</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">ht</span><span class="p">,</span> <span class="n">source_prov</span> <span class="o">=</span> <span class="n">core_io</span><span class="o">.</span><span class="n">load_native</span><span class="p">(</span><span class="s2">"variants.ht"</span><span class="p">)</span>  <span class="c1"># → hl.Table</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">filtered</span> <span class="o">=</span> <span class="n">ht</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">ht</span><span class="o">.</span><span class="n">AC</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="n">core_io</span><span class="o">.</span><span class="n">save_native</span><span class="p">(</span><span class="n">filtered</span><span class="p">,</span> <span class="s2">"filtered.ht"</span><span class="p">,</span> <span class="n">provenance</span><span class="o">=</span><span class="n">Provenance</span><span class="p">(</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="o">...</span><span class="p">,</span> <span class="n">parents</span><span class="o">=</span><span class="p">(</span><span class="n">source_prov</span><span class="p">,)</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="p">))</span>
+</code></pre></div>
+<h3 id="3-plugin-contract-adding-a-data-source">3. Plugin Contract — adding a data source<a class="headerlink" href="#3-plugin-contract-adding-a-data-source" title="Permanent link">&para;</a></h3>
+<p>Each plugin under <code>hvantk/skills/&lt;plugin&gt;/</code> declares itself via <code>plugin.yaml</code>
+and provides a builder that returns a typed artifact. The platform's
+<code>run_builder_for_spec</code> orchestrates the build:</p>
+<pre class="mermaid"><code>sequenceDiagram
+    participant CLI as hvantk reprocess
+    participant Reg as plugin registry
+    participant Probe as drift_probe()
+    participant Build as build_fn(parsed, ctx)
+    participant IO as core/io
+
+    CLI-&gt;&gt;Reg: get_dataset("clinvar:variants")
+    Reg--&gt;&gt;CLI: DatasetSpec (lazy bind on first access)
+    CLI-&gt;&gt;Probe: compute source fingerprint
+    Probe--&gt;&gt;CLI: probe dict
+    CLI-&gt;&gt;CLI: BuildContext(plugin, version, fingerprint, …)
+    CLI-&gt;&gt;Build: (parsed_input, ctx, **params)
+    Build--&gt;&gt;CLI: AnnotationTable(provenance=ctx.provenance(schema_id=…))
+    CLI-&gt;&gt;CLI: validate artifact_type + schema_id
+    CLI-&gt;&gt;IO: artifact.save(path)
+    IO--&gt;&gt;IO: write data + sidecar .provenance.json</code></pre>
+<p>A minimal <code>plugin.yaml</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">api_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-source</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.1.0</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">My data source — variant table</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="nt">datasets</span><span class="p">:</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">variants</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">    </span><span class="nt">domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">genomics</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">    </span><span class="nt">backend</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hail</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="w">    </span><span class="nt">artifact_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">AnnotationTable</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="w">    </span><span class="nt">schema_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-source-variants-v1</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="w">    </span><span class="nt">builder</span><span class="p">:</span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="w">      </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hvantk.skills.my_source.builder</span>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="w">      </span><span class="nt">function</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">build_my_source_variants</span>
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="w">    </span><span class="nt">drift_probe</span><span class="p">:</span>
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="w">      </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hvantk.skills.my_source.drift_probe</span>
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a><span class="w">      </span><span class="nt">function</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fetch_fingerprint</span>
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a><span class="w">    </span><span class="nt">skill</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SKILL.md</span>
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a><span class="w">    </span><span class="nt">tests</span><span class="p">:</span>
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a><span class="w">      </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pytest hvantk/skills/my_source/tests -m hail</span>
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a><span class="w">      </span><span class="nt">fixture</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tests/testdata/raw/my-source</span>
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a><span class="w">      </span><span class="nt">schema_snapshot</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tests/snapshots/schema.json</span>
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a><span class="w">      </span><span class="nt">row_snapshot</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tests/snapshots/sample_rows.json</span>
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a><span class="w">      </span><span class="nt">drift_fingerprint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tests/drift_fingerprint.json</span>
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a><span class="nt">cli</span><span class="p">:</span>
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-source-download</span>
+<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a><span class="w">    </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hvantk.skills.my_source.cli</span>
+<a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a><span class="w">    </span><span class="nt">function</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">download_cmd</span>
+</code></pre></div>
+<p>A matching builder:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># hvantk/skills/my_source/builder.py</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">hail</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">hl</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.core.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">AnnotationTable</span><span class="p">,</span> <span class="n">BuildContext</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="k">def</span><span class="w"> </span><span class="nf">build_my_source_variants</span><span class="p">(</span><span class="n">parsed_input</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">BuildContext</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AnnotationTable</span><span class="p">:</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    <span class="n">ht</span> <span class="o">=</span> <span class="n">hl</span><span class="o">.</span><span class="n">import_vcf</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">parsed_input</span><span class="p">),</span> <span class="n">force</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">rows</span><span class="p">()</span><span class="o">.</span><span class="n">key_by</span><span class="p">(</span><span class="s2">"locus"</span><span class="p">,</span> <span class="s2">"alleles"</span><span class="p">)</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    <span class="k">return</span> <span class="n">AnnotationTable</span><span class="o">.</span><span class="n">from_hail</span><span class="p">(</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>        <span class="n">ht</span><span class="p">,</span> <span class="n">provenance</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">provenance</span><span class="p">(</span><span class="n">schema_id</span><span class="o">=</span><span class="s2">"my-source-variants-v1"</span><span class="p">)</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    <span class="p">)</span>
+</code></pre></div>
+<p>A shipped one to copy from: <code>hvantk/skills/clinvar/builder.py</code> defines
+<code>build_clinvar</code>, which <code>hvantk/skills/clinvar/plugin.yaml</code> binds to the
+<code>clinvar:variants</code> dataset under schema <code>clinvar-variants-v1</code>. The builder name
+is whatever <code>plugin.yaml</code>'s <code>builder.function</code> declares — plugins in the tree use
+both the short form (<code>build_clinvar</code>) and the per-dataset form
+(<code>build_clingen_gene_disease</code>).</p>
+<p>The plugin loader (<code>hvantk/core/plugin/loader.py</code>) discovers manifests via a
+<strong>two-pass mechanism</strong>:</p>
+<ol>
+<li><strong>Pass 1 (descriptive, eager)</strong> — reads YAML, populates <code>DatasetManifest</code>.
+   No imports. <code>registry.list_manifests()</code> works without optional runtimes.</li>
+<li><strong>Pass 2 (executable, lazy)</strong> — on first <code>get_dataset(name)</code>, imports the
+   builder/probe modules and caches a <code>DatasetSpec</code>. Missing optional
+   runtimes only affect the <em>single</em> dataset that needs them.</li>
+</ol>
+<p>Downloader CLI commands are wired automatically from the manifest's <code>cli:</code>
+block — no manual edits in <code>hvantk/tools/plugins/download_cli.py</code> needed.</p>
+<h3 id="streamer-placement-rule">Streamer placement rule<a class="headerlink" href="#streamer-placement-rule" title="Permanent link">&para;</a></h3>
+<p>Streamers (classes that yield batches over a built table) are split between a
+<strong>base class</strong> that lives above the skills layer and <strong>per-provider subclasses</strong>
+that ship with their plugin. This keeps the one-way
+<code>skills → algorithms → tools</code> dependency direction clean: the sibling-skill
+rule (<code>skills/X</code> cannot import from <code>skills/Y</code>) forces any base class shared by
+multiple skills to live in <code>core/streamers/</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Streamer kind</th>
+<th>Lives in</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Shared base class</td>
+<td><code>core/streamers/</code></td>
+<td><code>GeneDiseaseTableStreamer</code> (<code>gene_disease_table.py</code>), <code>VariantTableStreamer</code> (<code>variant_table.py</code>), <code>GeneCatalogStreamer</code> (<code>gene_catalog.py</code>)</td>
+</tr>
+<tr>
+<td>Per-provider subclass</td>
+<td><code>skills/&lt;provider&gt;/streamers.py</code></td>
+<td><code>ClinGenGeneDiseaseTableStreamer</code> (<code>clingen/streamers.py</code>), <code>GenCCGeneDiseaseTableStreamer</code> (<code>gencc/streamers.py</code>), <code>ClinVarVariantTableStreamer</code> (<code>clinvar/streamers.py</code>)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="3-cli-first-design">3. CLI-First Design<a class="headerlink" href="#3-cli-first-design" title="Permanent link">&para;</a></h3>
+<p>The primary interface is a well-structured CLI with domain-specific commands:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># Download data</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>hvantk<span class="w"> </span>download<span class="w"> </span>ucsc<span class="w"> </span>--dataset<span class="w"> </span>adultPancreas<span class="w"> </span>--output-dir<span class="w"> </span>data/
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1"># Build any dataset (full pipeline: download -&gt; parse -&gt; build -&gt; drift check)</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>hvantk<span class="w"> </span>reprocess<span class="w"> </span>clinvar:variants<span class="w"> </span>--raw-dir<span class="w"> </span>data/<span class="w"> </span>--output<span class="w"> </span>clinvar.ht
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>hvantk<span class="w"> </span>reprocess<span class="w"> </span>ucsc-cellbrowser:adultPancreas<span class="w"> </span>--raw-dir<span class="w"> </span>data/<span class="w"> </span>--output<span class="w"> </span>ucsc.h5ad
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="c1"># Joint genotyping (HGC)</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>gvcf-combine<span class="w"> </span>-g<span class="w"> </span>/data/gvcfs<span class="w"> </span>-o<span class="w"> </span>cohort.vds
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>hvantk<span class="w"> </span>hgc<span class="w"> </span>compute-qc<span class="w"> </span>-i<span class="w"> </span>cohort.mt<span class="w"> </span>-o<span class="w"> </span>cohort_qc.mt
+</code></pre></div>
+<h3 id="4-data-flow-patterns">4. Data Flow Patterns<a class="headerlink" href="#4-data-flow-patterns" title="Permanent link">&para;</a></h3>
+<h4 id="pattern-1-builder-table">Pattern 1: Builder → Table<a class="headerlink" href="#pattern-1-builder-table" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>Raw File (VCF/TSV/BED) → Builder → Hail Table → Disk (.ht)
+</code></pre></div>
+<p>Example:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># The reprocess CLI runs the full Phase B pipeline: download → parse → build → drift-check</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>hvantk<span class="w"> </span>reprocess<span class="w"> </span>clinvar:variants<span class="w"> </span>--raw-dir<span class="w"> </span>data/<span class="w"> </span>--output<span class="w"> </span>clinvar.ht
+</code></pre></div>
+In-process callers drive the same Phase B builder via
+<code>run_builder_for_spec(spec, *, parsed_input, output_path, plugin_version, **params)</code>
+(in <code>hvantk/core/plugin/run_builder.py</code>), which takes a resolved <code>DatasetSpec</code>
+and returns the stamped <code>Provenance</code>.</p>
+<h4 id="pattern-2-multi-omics-integration">Pattern 2: Multi-Omics Integration<a class="headerlink" href="#pattern-2-multi-omics-integration" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>Variant Table + Gene Table + Expression Matrix → Integrated Analysis
+</code></pre></div>
+<p>Example:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># Load different data types</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="n">variants</span> <span class="o">=</span> <span class="n">hl</span><span class="o">.</span><span class="n">read_table</span><span class="p">(</span><span class="s1">'clinvar.ht'</span><span class="p">)</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">genes</span> <span class="o">=</span> <span class="n">hl</span><span class="o">.</span><span class="n">read_table</span><span class="p">(</span><span class="s1">'ensembl.ht'</span><span class="p">)</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="n">expression</span> <span class="o">=</span> <span class="n">hl</span><span class="o">.</span><span class="n">read_matrix_table</span><span class="p">(</span><span class="s1">'ucsc.mt'</span><span class="p">)</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="c1"># Join for integrated analysis</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="n">annotated</span> <span class="o">=</span> <span class="n">variants</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>    <span class="n">gene</span><span class="o">=</span><span class="n">genes</span><span class="p">[</span><span class="n">variants</span><span class="o">.</span><span class="n">gene_id</span><span class="p">],</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>    <span class="n">expression</span><span class="o">=</span><span class="n">expression</span><span class="p">[</span><span class="n">variants</span><span class="o">.</span><span class="n">gene_id</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">expression</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="p">)</span>
+</code></pre></div></p>
+<h2 id="module-details">Module Details<a class="headerlink" href="#module-details" title="Permanent link">&para;</a></h2>
+<h3 id="core-module-core">Core Module (<code>core/</code>)<a class="headerlink" href="#core-module-core" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose</strong>: Shared infrastructure used by all other modules</p>
+<p><strong>Key Components</strong>:
+- <code>config.py</code> - Configuration management, context settings
+- <code>constants.py</code> - Shared constants (e.g., Ensembl field definitions)
+- <code>utils/hail_context.py</code> - Hail session initialization and management
+- <code>protocols.py</code> - Protocol definitions for extensibility
+- <code>models/</code> - Domain artifact types (<code>AnnotationTable</code>, <code>ExpressionMatrix</code>, <code>VariantMatrix</code>, <code>GeneSet</code>)
+- <code>plugin/</code> - Plugin schema (<code>api.py</code>), discovery (<code>loader.py</code>), and builder dispatch (<code>run_builder.py</code>)</p>
+<p><strong>Design principle</strong>: No domain logic, only infrastructure</p>
+<h3 id="skills-module-skills">Skills Module (<code>skills/</code>)<a class="headerlink" href="#skills-module-skills" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose</strong>: Per-provider data plugins. Each provider folder contains <code>plugin.yaml</code>, <code>builder.py</code>, <code>cli.py</code>, <code>drift_probe.py</code>, <code>SKILL.md</code>, <code>catalog/datasets.json</code>, and <code>tests/</code>. Multi-dataset providers (e.g., <code>cptac/</code>) have one sub-folder per dataset.</p>
+<p><strong>Current providers</strong> (21): <code>alphagenome</code>, <code>clingen</code>, <code>clinvar</code>, <code>cosmic_cgc</code>, <code>cptac</code>, <code>dbnsfp</code>, <code>ensembl_gene</code>, <code>expression_atlas</code>, <code>gencc</code>, <code>gevir</code>, <code>gnomad_metrics</code>, <code>gtex_eqtl</code>, <code>gwas_catalog</code>, <code>hgnc</code>, <code>insider</code>, <code>msigdb</code>, <code>onek_genomes</code>, <code>peptideatlas</code>, <code>pqtl</code>, <code>ucsc_cellbrowser</code>, <code>uniprot_ptm</code>.</p>
+<p><strong>Builder outputs</strong>:
+- Variant / gene tables keyed by <code>(locus, alleles)</code> or <code>gene_id</code> → <code>AnnotationTable</code>
+- Expression matrices rows=samples/cells (<code>obs</code>), columns=genes (<code>var</code>) → <code>ExpressionMatrix</code>
+- Multi-sample variant cohorts (variants × samples × genotypes) → <code>VariantMatrix</code>
+- Gene set collections → <code>GeneSet</code></p>
+<h3 id="tools-module-tools">Tools Module (<code>tools/</code>)<a class="headerlink" href="#tools-module-tools" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose</strong>: Top-level CLI command implementations (replaces the legacy <code>commands/</code> directory)</p>
+<p><strong>Key sub-packages</strong>:
+- <code>plugins/</code> - <code>hvantk reprocess</code>, <code>hvantk drift</code>, <code>hvantk plugins list/describe/errors/validate</code> commands
+- <code>build/</code> - standalone reference panel builds (e.g. 1000 Genomes)
+- <code>hgc/</code> - HGC joint genotyping subcommands (combine, convert, QC, pipeline)
+- <code>ancestry/</code>, <code>enrichex/</code>, <code>ptm/</code>, <code>qtl/</code> - Per-pipeline CLI subcommands
+- <code>infra/</code> - Installation check, BGZF validation, utils</p>
+<h3 id="hgc-module-hgc">HGC Module (<code>hgc/</code>)<a class="headerlink" href="#hgc-module-hgc" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose</strong>: High-performance joint genotyping workflows</p>
+<p><strong>Features</strong>:
+- GVCF combination at scale
+- Format conversion (VDS ↔ MatrixTable ↔ VCF)
+- Comprehensive QC metrics and visualization
+- Optimized for large cohorts (1000s of samples)</p>
+<p><strong>Status</strong>: Feature-complete, well-established module</p>
+<h3 id="resources-module-resources">Resources Module (<code>resources/</code>)<a class="headerlink" href="#resources-module-resources" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose</strong>: Substrate-level data registry and schema definitions.
+Peer of <code>core/</code>, not a layer above it.</p>
+<p><strong>Contents</strong>:
+- <code>registry/</code> - Surviving legacy per-domain dataset metadata (genomics only; transcriptomics / proteomics / epigenomics moved into per-plugin <code>hvantk/skills/&lt;provider&gt;/catalog/datasets.json</code>)
+- <code>unified_registry.py</code> - <code>HvantkRegistry</code> aggregator surfaced via <code>hvantk catalog {list,show,stats,search}</code>. Reads both the legacy per-domain registry above and the per-plugin catalog JSON under <code>skills/&lt;provider&gt;/catalog/</code>.
+- <code>schemas/</code> - JSON schema definitions used by <code>schema_validator.py</code> to validate catalog entries.
+- <code>schema_validator.py</code> - Validation entry point invoked by the unified registry.</p>
+<p><strong>Placement rule</strong> (what goes here vs. nearby alternatives):</p>
+<table>
+<thead>
+<tr>
+<th>Lives in</th>
+<th>Use for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>resources/registry/</code></td>
+<td>Cross-plugin / legacy per-domain catalog JSON that hasn't been migrated to a per-plugin folder.</td>
+</tr>
+<tr>
+<td><code>resources/schemas/</code></td>
+<td>JSON schemas that describe catalog / dataset metadata, shared across plugins.</td>
+</tr>
+<tr>
+<td><code>resources/unified_registry.py</code></td>
+<td>Code that aggregates per-plugin catalog JSON with the legacy registry.</td>
+</tr>
+<tr>
+<td><code>skills/&lt;provider&gt;/catalog/datasets.json</code></td>
+<td>Per-plugin dataset metadata (the canonical location for new providers).</td>
+</tr>
+<tr>
+<td><code>core/models/</code></td>
+<td>Artifact types (<code>AnnotationTable</code>, <code>ExpressionMatrix</code>, <code>VariantMatrix</code>, <code>GeneSet</code>) — runtime data shapes, not catalog metadata.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Dependency direction</strong>: <code>resources/</code> may be imported by <code>algorithms/</code>,
+<code>skills/</code>, and <code>tools/</code>. It must NOT import from any of those — like
+<code>core/</code>, it is substrate. This is enforced by
+<code>test_resources_does_not_import_upward</code> in
+<a href="https://github.com/bigbio/hvantk/blob/main/hvantk/tests/test_dependency_directions.py"><code>hvantk/tests/test_dependency_directions.py</code></a>.</p>
+<h2 id="testing-strategy">Testing Strategy<a class="headerlink" href="#testing-strategy" title="Permanent link">&para;</a></h2>
+<p>Tests are organized to mirror the module structure:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>hvantk/tests/
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>├── conftest.py        # Pytest fixtures (hail_session, etc.)
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>├── test_*.py          # Unit and integration tests
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>├── hgc/               # HGC module tests
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>├── ancestry/          # Ancestry module tests
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>├── psroc/             # PSROC module tests
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>├── enrichex/          # EnrichEx module tests
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>└── testdata/          # Test data fixtures
+</code></pre></div>
+<h2 id="extension-points">Extension Points<a class="headerlink" href="#extension-points" title="Permanent link">&para;</a></h2>
+<h3 id="adding-a-new-data-source">Adding a New Data Source<a class="headerlink" href="#adding-a-new-data-source" title="Permanent link">&para;</a></h3>
+<p>See the "Plugin Contract" section above for the full pattern. The minimal
+checklist:</p>
+<ol>
+<li>Create <code>hvantk/skills/&lt;provider&gt;/</code> with <code>plugin.yaml</code>, <code>builder.py</code> (returns
+   <code>AnnotationTable</code> / <code>ExpressionMatrix</code> / <code>VariantMatrix</code> / <code>GeneSet</code> via <code>ctx.provenance(schema_id=…)</code>),
+   <code>drift_probe.py</code>, <code>SKILL.md</code>, <code>catalog/datasets.json</code>, and <code>tests/</code>.</li>
+<li>Loader picks it up automatically — no edits to <code>hvantk/hvantk.py</code> or
+   <code>hvantk/tools/plugins/download_cli.py</code> required.</li>
+<li>CLI downloader command is wired from the manifest's <code>cli:</code> block.</li>
+<li>Add a conformance test using the <code>run_builder_for_spec</code> orchestrator
+   (see <code>hvantk/tests/test_plugin_conformance.py</code> for the template).</li>
+<li>Run <code>hvantk plugins list</code> — your plugin should appear.</li>
+</ol>
+<p>See <code>hvantk/skills/_conventions/SKILL.md</code> for the full contract.</p>
+<h3 id="adding-a-new-algorithm">Adding a New Algorithm<a class="headerlink" href="#adding-a-new-algorithm" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Place the algorithm body in <code>hvantk/algorithms/&lt;domain&gt;/</code>.</li>
+<li>Decorate the entry point with <code>@algorithm</code>:
+   <div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hvantk.core.models.backends</span><span class="w"> </span><span class="kn">import</span> <span class="n">Backend</span><span class="p">,</span> <span class="n">algorithm</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="nd">@algorithm</span><span class="p">(</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">"my_algorithm"</span><span class="p">,</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    <span class="n">backends</span><span class="o">=</span><span class="p">[</span><span class="n">Backend</span><span class="o">.</span><span class="n">PANDAS</span><span class="p">],</span>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>    <span class="n">inputs</span><span class="o">=</span><span class="p">{</span><span class="s2">"data"</span><span class="p">:</span> <span class="s2">"AnnotationTable"</span><span class="p">,</span> <span class="s2">"gene_set"</span><span class="p">:</span> <span class="s2">"GeneSet"</span><span class="p">},</span>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>    <span class="n">outputs</span><span class="o">=</span><span class="p">{</span><span class="s2">"result"</span><span class="p">:</span> <span class="s2">"AnnotationTable"</span><span class="p">},</span>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="p">)</span>
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a><span class="k">def</span><span class="w"> </span><span class="nf">my_algorithm</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">gene_set</span><span class="p">):</span>
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>    <span class="o">...</span>
+</code></pre></div></li>
+<li>The decorator handles provenance chaining automatically. Output
+   artifacts inherit <code>parents = (data.provenance, gene_set.provenance)</code>.</li>
+<li>For Hail-native algorithms, declare <code>required_backend="hail"</code> and use
+   <code>core_io.load_native</code> to read inputs natively.</li>
+</ol>
+<h3 id="adding-a-new-cli-command">Adding a New CLI Command<a class="headerlink" href="#adding-a-new-cli-command" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Place the click command in <code>hvantk/tools/&lt;domain&gt;/</code>.</li>
+<li>Add a <code>&lt;basename&gt;.tool.yaml</code> manifest for discoverability via
+   <code>hvantk tools list</code> (descriptive metadata; not authoritative for
+   wiring today — that's Phase Q follow-up).</li>
+<li>
+<p>Add an entry to <code>_LAZY_COMMANDS</code> in <code>hvantk/hvantk.py</code> — the command
+    name mapped to <code>(module, attribute, short help)</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="s2">"mycmd"</span><span class="p">:</span> <span class="p">(</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>   <span class="s2">"hvantk.tools.mydomain.mycmd_cli"</span><span class="p">,</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>   <span class="s2">"mycmd_group"</span><span class="p">,</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>   <span class="s2">"One-line summary, matching the command's own short help."</span><span class="p">,</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="p">),</span>
+</code></pre></div>
+<p>Do <strong>not</strong> add a module-level <code>from hvantk.tools... import ...</code> plus
+<code>cli.add_command(...)</code>. <code>LazyGroup</code> still honours <code>add_command</code>, so that
+works — and silently costs every single invocation the import of whatever
+your command pulls in. That eager wiring is what made <code>hvantk --help</code> take
+~10 s; going through <code>_LAZY_COMMANDS</code> keeps it at ~0.1 s because nothing is
+imported until the command is actually run. No test will catch the
+regression; only startup time changes.</p>
+<p>The short help is duplicated in the registry because listing the commands
+must not import them. <code>test_lazy_command_registry_matches_real_commands</code>
+asserts your entry still matches the real command, so a later edit to the
+docstring fails CI rather than silently staling <code>hvantk --help</code>.</p>
+</li>
+</ol>
+<h2 id="dependencies">Dependencies<a class="headerlink" href="#dependencies" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Hail</strong> - Distributed data processing framework</li>
+<li><strong>Click</strong> - CLI framework</li>
+<li><strong>Pandas</strong> - Data manipulation</li>
+<li><strong>PyYAML</strong> - YAML manifest parsing (<code>plugin.yaml</code>)</li>
+<li><strong>Matplotlib/Seaborn/Plotly</strong> - Visualization (optional)</li>
+</ul>
+<h2 id="performance-considerations">Performance Considerations<a class="headerlink" href="#performance-considerations" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Partitioning</strong>: Builders use appropriate partitioning for Hail operations</li>
+<li><strong>Checkpointing</strong>: Large intermediate results are checkpointed</li>
+<li><strong>Memory</strong>: HGC module optimized for memory-efficient large cohort processing</li>
+<li><strong>Caching</strong>: Hail's lazy evaluation allows for optimization</li>
+</ul>
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="https://hail.is/docs/0.2/">Hail Documentation</a></li>
+<li><a href="https://gnomad.broadinstitute.org/">gnomAD Browser</a></li>
+<li><a href="https://cells.ucsc.edu/">UCSC Cell Browser</a></li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy", "content.tabs.link"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
