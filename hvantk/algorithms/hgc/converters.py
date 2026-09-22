@@ -202,7 +202,7 @@ def convert_vds_to_mt(
     3. Densifies to MatrixTable
     4. Repairs out-of-bounds genotypes (lazily, fused into the write)
     5. Annotates adjusted genotypes (optional)
-    6. Keys by sample and writes to disk
+    6. Keys the columns by sample, sorts them by sample ID, and writes to disk
 
     Parameters:
         vds_path: Path to the input VDS
@@ -212,7 +212,8 @@ def convert_vds_to_mt(
             Skipped with a warning if the densified MT lacks GT/GQ/DP/AD.
         skip_split_multi: If True, skip splitting multi-allelic variants
         skip_validation: If True, skip both the biallelic audit and the repair
-        skip_keying_by_cols: If True, skip keying the MatrixTable by columns
+        skip_keying_by_cols: If True, skip keying the MatrixTable columns by sample and
+            sorting them by sample ID (the columns then keep the VDS's own order)
         overwrite: Whether to overwrite the output if it already exists
         n_partitions: Coalesce the dense MatrixTable to this many partitions before
             writing. Reduces only -- `naive_coalesce` is a no-op if the count is already
@@ -318,10 +319,25 @@ def convert_vds_to_mt(
                 mt = annotate_adj(mt)
                 logging.info("Adjusted genotype annotation completed.")
 
-        # Step 6: Key by sample (optional)
+        # Step 6: Key by sample and put the columns in sample order (optional)
         if not skip_keying_by_cols:
-            logging.info("Keying MatrixTable by sample column 's'...")
+            logging.info(
+                "Keying MatrixTable by sample column 's' and sorting columns..."
+            )
             mt = mt.key_cols_by(mt["s"])
+            # `key_cols_by` keys the columns but does not order them, so each contig's
+            # dense matrix inherits its own VDS's sample order -- and the per-contig VCFs
+            # exported from it differ in column order. On the 2026-09-22 chr1..chrY
+            # regeneration that was 24 different orders, and `bcftools concat` refused
+            # them ("Different sample names") until every file had been rewritten with
+            # `bcftools view -S`. Sorting here makes the order a property of the cohort,
+            # not of the contig. Codepoint order, i.e. what `LC_ALL=C sort` gives.
+            #
+            # The collect reads the column table only -- measured 0.5 s against a 115 s
+            # write on the test VDS -- so the "densify runs once, at the write" rule
+            # above still holds.
+            samples = mt.s.collect()
+            mt = mt.choose_cols(sorted(range(len(samples)), key=samples.__getitem__))
 
         # Step 7: Write output -- the ONLY action that executes the densify
         logging.info(f"Writing MatrixTable to {output_path}...")

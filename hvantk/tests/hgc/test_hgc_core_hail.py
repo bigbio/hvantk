@@ -119,9 +119,20 @@ def test_convert_vds_to_mt_honours_n_partitions(tmp_path):
         f"no-op and the assertion below would prove nothing"
     )
 
+    # Reverse the sample columns of the fixture (both VDS components, identically): its
+    # three samples are already in sorted order, so on the unmodified fixture the
+    # column-order assertion below could never fail.
+    vds = hl.vds.read_vds(vds_path)
+    n_cols = vds.variant_data.count_cols()
+    reverse = list(range(n_cols - 1, -1, -1))
+    vds_rev_path = str(tmp_path / "cohort_rev.vds")
+    hl.vds.VariantDataset(
+        vds.reference_data.choose_cols(reverse), vds.variant_data.choose_cols(reverse)
+    ).write(vds_rev_path, overwrite=True)
+
     out = tmp_path / "coalesced.mt"
     convert_vds_to_mt(
-        vds_path=vds_path,
+        vds_path=vds_rev_path,
         output_path=str(out),
         adjust_genotypes=False,
         skip_validation=True,
@@ -131,8 +142,13 @@ def test_convert_vds_to_mt_honours_n_partitions(tmp_path):
         n_partitions=4,
     )
 
-    written_parts = hl.read_matrix_table(str(out)).n_partitions()
+    written = hl.read_matrix_table(str(out))
+    written_parts = written.n_partitions()
     assert written_parts == 4, f"expected 4 partitions, got {written_parts}"
+    # Columns come out in sample order regardless of the VDS's order -- otherwise every
+    # contig exports with its own column order and `bcftools concat` refuses the set.
+    samples = written.s.collect()
+    assert samples == sorted(samples), f"columns not sorted by sample: {samples}"
 
 
 @pytest.mark.hail
