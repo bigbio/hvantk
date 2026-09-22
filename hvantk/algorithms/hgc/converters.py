@@ -401,6 +401,73 @@ def _assert_adj_is_computable(
         )
 
 
+# Header declarations for every field `convert_mt_to_multi_sample_vcf` can export.
+#
+# Without these, `hl.export_vcf` derives `Number=` from the HAIL type, and every array
+# field comes out as `Number=.` -- including PL, AD and SB, whose cardinality the VCF
+# spec defines (G, R and 4). bcftools then prints
+# `[W::bcf_hdr_check_sanity] PL should be declared as Number=G` on EVERY invocation,
+# and cannot re-index PL/AD when it merges multi-allelics (`norm -m+any`), trims
+# alleles (`view -a`) or converts PL to GL (`+tag2tag`). Collaborators hit this on the
+# first chr20 share.
+#
+# The declarations are truthful only because the export is biallelic-only, which the
+# `ValueError` just before the export guarantees: `G` is always 3 and `R` always 2.
+# AC and AF are written as a single value, so `Number=A` and `Number=1` agree on this
+# file, and `A` is the one bcftools needs to re-merge multi-allelics correctly.
+# Keys for fields absent from the MatrixTable are ignored by Hail.
+VCF_EXPORT_METADATA = {
+    "format": {
+        "GT": {"Number": "1", "Description": "Genotype"},
+        "AD": {
+            "Number": "R",
+            "Description": "Allelic depths for the ref and alt alleles in the order listed",
+        },
+        "DP": {
+            "Number": "1",
+            "Description": "Approximate read depth (MIN_DP on reference-block genotypes)",
+        },
+        "GQ": {"Number": "1", "Description": "Genotype Quality"},
+        "PL": {
+            "Number": "G",
+            "Description": (
+                "Normalized, Phred-scaled likelihoods for genotypes as defined in the "
+                "VCF specification"
+            ),
+        },
+        "PID": {
+            "Number": "1",
+            "Description": "Physical phasing ID information",
+        },
+        "SB": {
+            "Number": "4",
+            "Description": (
+                "Per-sample component statistics which comprise the Fisher's Exact "
+                "Test to detect strand bias"
+            ),
+        },
+    },
+    "info": {
+        "AC": {
+            "Number": "A",
+            "Description": "Alternate allele count in called genotypes",
+        },
+        "AN": {
+            "Number": "1",
+            "Description": "Total number of alleles in called genotypes",
+        },
+        "AF": {
+            "Number": "A",
+            "Description": "Alternate allele frequency in called genotypes",
+        },
+        "call_rate": {
+            "Number": "1",
+            "Description": "Fraction of samples with a called genotype",
+        },
+    },
+}
+
+
 def convert_mt_to_multi_sample_vcf(
     mt_path: str,
     vcf_path: str,
@@ -634,16 +701,11 @@ def convert_mt_to_multi_sample_vcf(
 
         # CHECKPOINT 4: Select VCF-compatible fields
         logging.info("CHECKPOINT 4: Selecting VCF-compatible entry fields...")
-        vcf_standard_entry_fields = {"GT", "DP", "GQ", "PID", "SB"}
-
-        # Add AD and PL if they exist in the MT
-        if "AD" in mt.entry.keys():
-            vcf_standard_entry_fields.add("AD")
-        if "PL" in mt.entry.keys():
-            vcf_standard_entry_fields.add("PL")
-
+        # In the metadata's (conventional) order, so the FORMAT column is the same on
+        # every run. This used to iterate a `set`, which hash-randomizes per process:
+        # three exports of the same MatrixTable gave three different FORMAT orders.
         entry_fields_to_keep = [
-            f for f in vcf_standard_entry_fields if f in mt.entry.keys()
+            f for f in VCF_EXPORT_METADATA["format"] if f in mt.entry.keys()
         ]
 
         if entry_fields_to_keep:
@@ -690,7 +752,7 @@ def convert_mt_to_multi_sample_vcf(
         logging.info("  ✓ All validations passed")
 
         logging.info(f"Exporting VCF to {vcf_path}...")
-        hl.export_vcf(mt, vcf_path)
+        hl.export_vcf(mt, vcf_path, metadata=VCF_EXPORT_METADATA)
         logging.info("VCF successfully written.")
 
     except Exception:
