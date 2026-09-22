@@ -23,8 +23,8 @@ from hvantk.algorithms.hgc.converters import convert_vds_to_mt
 class SpyMT:
     """A stand-in MatrixTable that records the calls made against it.
 
-    Hail's MatrixTable methods are a mix of lazy (annotate_entries, key_cols_by -> return a new
-    MT) and eager (aggregate_entries, write -> execute the plan). We return `self` from the lazy
+    Hail's MatrixTable methods are a mix of lazy (annotate_entries, key_cols_by, choose_cols
+    -> return a new MT) and eager (aggregate_entries, write -> execute the plan). We return `self` from the lazy
     ones so a chain of them stays observable on one object, and record everything in order.
     """
 
@@ -38,13 +38,33 @@ class SpyMT:
     }
 
     def __init__(
-        self, name, entry_fields=("GT", "AD", "GQ", "DP"), aggregate_result=None
+        self,
+        name,
+        entry_fields=("GT", "AD", "GQ", "DP"),
+        aggregate_result=None,
+        samples=("s2", "s1", "s3"),
     ):
         self.name = name
         self.entry = dict.fromkeys(entry_fields)
         self.calls = []
         self.annotate_entries_kwargs = []
         self._aggregate_result = aggregate_result
+        # Deliberately unsorted: the converter must put them in sample order.
+        self.samples = list(samples)
+
+    @property
+    def s(self):
+        """The sample-ID column expression. Its `collect()` reads the column table only
+        -- measured 0.5 s against a 115 s write on the fixture VDS -- so it is not a
+        densify-forcing action and is not counted in EAGER."""
+        expr = MagicMock(name=f"{self.name}.s")
+        expr.collect.return_value = list(self.samples)
+        return expr
+
+    def choose_cols(self, indices):
+        self.calls.append("choose_cols")
+        self.samples = [self.samples[i] for i in indices]
+        return self
 
     # -- lazy ops: record, return self so the chain stays on this spy --
     def annotate_entries(self, **kwargs):
@@ -133,6 +153,10 @@ def test_dense_mt_is_materialized_exactly_once(spies):
     assert (
         dense.n_eager == 1
     ), f"expected exactly one densify-forcing action, got {dense.calls}"
+    # The column sort is lazy (choose_cols before the write) and must not add an eager
+    # action; the permutation it computes puts the spy's unsorted samples in order.
+    assert dense.calls.index("choose_cols") < dense.calls.index("write")
+    assert dense.samples == sorted(dense.samples), dense.samples
 
 
 def test_audit_runs_on_sparse_variant_data(spies):
