@@ -6,6 +6,7 @@ Merged from: test_file_utils, test_gvcf_combiner, test_converters,
 Tests are ordered to reflect the pipeline: combine → convert → combine MTs → sort.
 """
 
+import gzip
 import random
 from pathlib import Path
 
@@ -170,6 +171,29 @@ def test_convert_mt_to_cvcf(tmp_path):
         split_multi=True,
     )
     assert vcf_output_path.exists()
+
+    # Both regressions this guards against -- dropping `metadata=` from `export_vcf`
+    # (PL/AD/SB back to `Number=.`, which bcftools warns about on every call) and
+    # building the field list from a set (FORMAT order differs per process) -- leave
+    # the file existing and readable, so existence alone catches neither.
+    header, first_record = [], None
+    with gzip.open(vcf_output_path, "rt") as fh:
+        for line in fh:
+            if line.startswith("##"):
+                header.append(line)
+            elif not line.startswith("#"):
+                first_record = line
+                break
+    header = "".join(header)
+    for declaration in (
+        "##FORMAT=<ID=PL,Number=G,",
+        "##FORMAT=<ID=AD,Number=R,",
+        "##FORMAT=<ID=SB,Number=4,",
+        "##INFO=<ID=AC,Number=A,",
+        "##INFO=<ID=AF,Number=A,",
+    ):
+        assert declaration in header, declaration
+    assert first_record.split("\t")[8] == "GT:AD:DP:GQ:PL:PID:SB"
 
 
 @pytest.mark.hail
