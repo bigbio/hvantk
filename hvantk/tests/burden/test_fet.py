@@ -203,3 +203,35 @@ def test_run_default_no_mtc_keeps_raw_prior():
     # winning route is lof; its raw min-p equals the standalone fisher p for that 2x2
     exp_p, _ = fisher_2x2(8, 1, 92, 399)
     assert math.isclose(out.set_index("gene").loc["G", "minp"], exp_p, rel_tol=1e-9)
+
+
+def test_driver_af_tie_on_cc_is_resolved_toward_the_rarest_driver_regardless_of_order():
+    """#230: max() on cc alone left a cc-tie to the order Hail collected the drivers in,
+    so driver_af could differ between two runs on identical input."""
+    from hvantk.algorithms.burden.fet import _driver_af
+
+    drivers = [{"cc": 3, "ctrl_freq": 0.05}, {"cc": 3, "ctrl_freq": 0.004}]
+    assert _driver_af(drivers) == 0.004
+    assert _driver_af(list(reversed(drivers))) == 0.004
+
+
+def test_driver_af_still_prefers_the_higher_case_carrier_count():
+    from hvantk.algorithms.burden.fet import _driver_af
+
+    assert _driver_af([{"cc": 1, "ctrl_freq": 0.001}, {"cc": 2, "ctrl_freq": 0.05}]) == 0.05
+
+
+def test_driver_af_treats_a_nan_control_frequency_as_the_worst_tie_breaker():
+    """A NaN key makes max() order-dependent again (NaN compares False both ways)."""
+    from hvantk.algorithms.burden.fet import _driver_af
+
+    drivers = [{"cc": 3, "ctrl_freq": float("nan")}, {"cc": 3, "ctrl_freq": 0.01}]
+    assert _driver_af(drivers) == 0.01
+    assert _driver_af(list(reversed(drivers))) == 0.01
+
+
+def test_driver_af_empty_or_missing_is_nan():
+    from hvantk.algorithms.burden.fet import _driver_af
+
+    assert math.isnan(_driver_af([]))
+    assert math.isnan(_driver_af(None))

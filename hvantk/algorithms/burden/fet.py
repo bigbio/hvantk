@@ -43,9 +43,19 @@ def _driver_af(drivers) -> float:
     # max-case-carrier ("cc") driver variant, not an allele frequency; the exact
     # allele-vs-carrier semantics are pinned by the CHD reproduction gate -- do not
     # change without re-running it.
+    #
+    # Ties on cc are broken toward the LOWEST control-carrier frequency (the rarest
+    # driver in controls), so the pick no longer depends on the order Hail collected
+    # the drivers in (#230). A NaN ctrl_freq sorts last: NaN compares False both ways
+    # and would otherwise make max() order-dependent again.
     if not isinstance(drivers, (list, np.ndarray)) or len(drivers) == 0:
         return float("nan")
-    top = max(drivers, key=lambda d: d["cc"])
+
+    def _key(d):
+        freq = float(d["ctrl_freq"])
+        return (d["cc"], -freq if freq == freq else -float("inf"))
+
+    top = max(drivers, key=_key)
     return float(top["ctrl_freq"])
 
 
