@@ -474,3 +474,32 @@ def test_drift_all_rejects_a_domain_that_matches_nothing(monkeypatch):
     assert result.exit_code != 0
     assert "matches no dataset" in result.output
     assert "genomics" in result.output  # names the real ones
+
+
+# --- #361: --regenerate must not write a failing probe's output, and must not exit 1 -----
+
+
+def test_regenerate_reports_a_failing_probe_as_probe_failed_exit_code(tmp_path: Path, monkeypatch):
+    import shutil
+
+    from hvantk.core.plugin.api import DriftProbeError
+
+    plugin_dir = tmp_path / "fake_plugin"
+    shutil.copytree(FIXTURE_ROOT / "fake_plugin", plugin_dir)
+    reg = plugin_loader.PluginRegistry()
+    reg.load_from_directory(plugin_dir)
+    monkeypatch.setattr(plugin_loader, "get_registry", lambda: reg)
+    spec = reg.get_dataset("fake:default")
+
+    def boom():
+        raise DriftProbeError("upstream down")
+
+    object.__setattr__(spec, "drift_probe", boom)
+    fp_path = plugin_dir / "tests" / "drift_fingerprint.json"
+    before = fp_path.read_text()
+
+    result = CliRunner().invoke(drift_cmd, ["--regenerate", "fake:default"])
+
+    assert result.exit_code == 2, result.output  # EXIT_PROBE_FAILED, not a traceback's 1
+    assert "upstream down" in result.output
+    assert fp_path.read_text() == before, "a failed probe must not overwrite the baseline"

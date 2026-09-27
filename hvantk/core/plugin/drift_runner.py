@@ -5,10 +5,12 @@ fingerprint. Returns a structured DriftResult that the CLI / CI can consume.
 from __future__ import annotations
 
 import json
+import os
 import signal
+import tempfile
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping
 
 from .api import (
     DatasetSpec,
@@ -171,6 +173,38 @@ def _run_drift_check_with_spec(spec: DatasetSpec, *, timeout: int = 60) -> Drift
             fingerprint_path=str(fp_path),
             probe_ref=_probe_ref(spec),
         )
+    except (OSError, ValueError) as exc:
+        # A baseline that exists but cannot be read (permissions, a directory) or parsed
+        # (truncated, empty -- json.JSONDecodeError is a ValueError). Before #361 this
+        # propagated as a traceback, which exits 1 == EXIT_DRIFTED: drift.yml gates on
+        # rc > 2, so the step went green, and because the JSON report is echoed only after
+        # every check completes, one bad file discarded the report for all 26 datasets.
+        # It is this dataset's problem, so it is this dataset's probe_failed row.
+        return DriftResult(
+            dataset_name=spec.name,
+            status="probe_failed",
+            observed=observed,
+            probe_error=DriftProbeError(
+                f"committed baseline at {fp_path} could not be read as JSON "
+                f"({type(exc).__name__}: {exc}); run `hvantk drift --regenerate {spec.name}`"
+            ),
+            fingerprint_path=str(fp_path),
+            probe_ref=_probe_ref(spec),
+        )
+    if not isinstance(expected, dict):
+        # `placeholder_baseline_reason` and `_compare_fingerprints` both call `.get`/`.items`
+        # on this, so a JSON list or scalar died there with an AttributeError instead.
+        return DriftResult(
+            dataset_name=spec.name,
+            status="probe_failed",
+            observed=observed,
+            probe_error=DriftProbeError(
+                f"committed baseline at {fp_path} is not a JSON object (got "
+                f"{type(expected).__name__}); run `hvantk drift --regenerate {spec.name}`"
+            ),
+            fingerprint_path=str(fp_path),
+            probe_ref=_probe_ref(spec),
+        )
 
     # A hand-seeded baseline cannot equal a live observation, so diffing it would
     # report drift forever. That is a missing baseline wearing a committed file's
@@ -247,6 +281,44 @@ def _coerce_fingerprint(result) -> dict:
             f"probe returned non-mapping value: {type(result).__name__} "
             f"({result!r})"
         ) from exc
+
+
+def write_fingerprint(path: Path, fingerprint: Mapping[str, Any]) -> None:
+    """Write a fingerprint file atomically, in the byte format `--regenerate` always used.
+
+    Temp file in the SAME directory, then ``os.replace``: rename is atomic only within one
+    filesystem, and the drift bot runs ``--regenerate`` unattended, so an interrupted or
+    out-of-disk write must leave either the old baseline or the new one -- never a
+    truncated file, which is exactly the crash the baseline reader above now reports.
+    The serialisation is deliberately identical to what the CLI wrote before (indent=2,
+    default=str, no trailing newline) so regenerated files do not churn.
+    """
+    path = Path(path)
+    fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as fh:
+            fh.write(json.dumps(fingerprint, indent=2, default=str))
+        os.replace(tmp_name, path)
+    except BaseException:
+        try:
+            os.unlink(tmp_name)
+        except FileNotFoundError:
+            pass
+        raise
+
+
+def regenerate_fingerprint(spec: DatasetSpec, *, timeout: int = 60) -> dict:
+    """Run ``spec``'s probe and overwrite its committed baseline with the result.
+
+    Goes through the same ``_invoke_with_timeout`` / ``_coerce_fingerprint`` path as a
+    drift check, so a probe that hangs, raises, or returns a list fails here with a
+    ``DriftProbeError`` and the file on disk is not touched. Before #361 the CLI called
+    ``spec.drift_probe()`` bare and ``write_text``'d whatever came back, which is how a
+    corrupt baseline could be committed by the unattended bot in the first place.
+    """
+    observed = _invoke_with_timeout(spec.drift_probe, timeout=timeout)
+    write_fingerprint(Path(spec.test_paths.drift_fingerprint), observed)
+    return observed
 
 
 def _compare_fingerprints(

@@ -10,6 +10,7 @@ from pathlib import Path
 import click
 
 from hvantk.core.plugin import drift_runner, loader as plugin_loader
+from hvantk.core.plugin.api import DriftProbeError
 
 
 EXIT_CLEAN = 0
@@ -131,10 +132,19 @@ def drift_cmd(
         if all_flag:
             raise click.UsageError("--regenerate requires a specific dataset name")
         try:
-            _regenerate_fingerprint(reg, dataset)
+            _regenerate_fingerprint(reg, dataset, timeout=timeout)
         except KeyError:
             click.echo(f"unknown dataset: {dataset}", err=True)
             raise SystemExit(EXIT_REGISTRY_ERROR)
+        except DriftProbeError as exc:
+            # The probe raised, timed out, or returned a non-mapping: nothing was written.
+            # Exit 2, not a traceback's 1 (== EXIT_DRIFTED): drift_to_pr.py treats any
+            # non-zero here as "do not commit", which is the right outcome either way, but
+            # a human reading exit codes must not see "drifted" for "the probe broke".
+            click.echo(
+                f"probe failed for {dataset}; fingerprint NOT rewritten: {exc}", err=True
+            )
+            raise SystemExit(EXIT_PROBE_FAILED)
         click.echo(f"regenerated: {dataset}")
         return
 
@@ -233,12 +243,9 @@ def drift_cmd(
     raise SystemExit(max(exit_codes))
 
 
-def _regenerate_fingerprint(reg, dataset_name: str) -> None:
+def _regenerate_fingerprint(reg, dataset_name: str, *, timeout: int) -> None:
     spec = reg.get_dataset(dataset_name)
-    observed = spec.drift_probe()
-    Path(spec.test_paths.drift_fingerprint).write_text(
-        json.dumps(observed, indent=2, default=str)
-    )
+    drift_runner.regenerate_fingerprint(spec, timeout=timeout)
 
 
 def _serialize(result: drift_runner.DriftResult) -> dict:
