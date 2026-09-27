@@ -18,7 +18,7 @@ The builder is `build_clinvar` in `hvantk/skills/clinvar/builder.py`. It has the
 
 ## 2. Source identity
 
-Provider metadata (URL, version cadence, license, citation) lives in the ClinVar entry inside `hvantk/resources/registry/genomics/datasets.json` (find by `accession: "ClinVar_latest"`), surfaced via `hvantk catalog show ClinVar_latest`. Read that file; do not restate.
+Provider metadata (URL, version cadence, license, citation) lives in the ClinVar entry inside `hvantk/skills/clinvar/catalog/datasets.json` (find by `accession: "ClinVar_latest"`), surfaced via `hvantk catalog show ClinVar_latest`. Read that file; do not restate.
 
 Stable note (not in catalog): ClinVar releases monthly. New INFO fields are uncommon but do occur (e.g., the addition of `ONCOGENICITY` in the oncogenicity supplement).
 

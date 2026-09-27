@@ -19,13 +19,13 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its reposit
 ## 2. Source identity
 
 - **Provider:** Broad Institute MSigDB. **Variant pinned by this skill's catalog entry:** C2 / CP / human / gene symbols / v2026.1.
-- **Catalog entry:** present. `hvantk/resources/registry/genomics/datasets.json` contains `MSigDB_C2_CP_v2026.1.Hs.symbols` (surfaced via `hvantk catalog show MSigDB_C2_CP_v2026.1.Hs.symbols`). URLs / cadence / license / citation live in the registry entry — not here.
+- **Catalog entry:** present. `hvantk/skills/msigdb/catalog/datasets.json` contains `MSigDB_C2_CP_v2026.1.Hs.symbols` (surfaced via `hvantk catalog show MSigDB_C2_CP_v2026.1.Hs.symbols`). URLs / cadence / license / citation live in the catalog entry — not here.
 
 Stable note (not in catalog): MSigDB ships per-collection GMT files. The GMT format is the same across collections, so this builder works for any MSigDB GMT, but each onboarded collection needs its own catalog entry to record license / version / file path.
 
 ## 3. Backend choice + reasoning
 
-**`backend: hail`, `domain: mapping`.** A C2 CP GMT is ~4k rows × variable-width gene columns. Per `_conventions` § 3 "Lookup / mapping" allows a Hail Table or pandas DataFrame. Hail wins here because downstream consumers (enrichment / burden / overlap, e.g., `hvantk/enrichex/`) join against Hail Tables keyed on gene symbols — producing a Hail Table avoids re-materialization at every join site, mirroring the HGNC decision. Key by `set_name` (string, unique-in-file).
+**`backend: hail`, `domain: mapping`.** A C2 CP GMT is ~4k rows × variable-width gene columns. Per `_conventions` § 3 "Lookup / mapping" allows a Hail Table or pandas DataFrame. Hail wins here because downstream consumers (enrichment / burden / overlap, e.g., `hvantk/algorithms/enrichex/`) join against Hail Tables keyed on gene symbols — producing a Hail Table avoids re-materialization at every join site, mirroring the HGNC decision. Key by `set_name` (string, unique-in-file).
 
 > Catalog placement note: this skill's catalog entry lives in `registry/genomics/datasets.json`, not a dedicated `mapping/` registry directory (no such directory exists today). The decision is consistent with `GWAS_Catalog_v1.0_*` (also gene-symbol / variant-adjacent annotation curation) and avoids invasive changes to `hvantk/resources/unified_registry.py`. Revisit if a `mapping/` domain is later introduced.
 
@@ -89,7 +89,7 @@ MSigDB releases ~annually (versioned `v<year>.<n>`, e.g., `v2026.1`, `v2025.1`).
 
 Per `_conventions` § 9:
 
-- **fixture:** `hvantk/skills/msigdb/tests/testdata/raw/msigdb/c2.cp-sample.gmt`. 20 gene sets, ~24 KB, sampled from the v2026.1 C2 CP source by picking representative rows by line index (the GMT format is line-oriented, so a deterministic line subset is a valid sub-GMT). Exercises the short edge (size 5: BIOCARTA, SA), medium sets (60-330 genes), a long set (`REACTOME_CELL_CYCLE`, 688 genes), and the extra-long tail (`REACTOME_POST_TRANSLATIONAL_PROTEIN_MODIFICATION`, 1,497 genes). All 20 fixture rows have a `https://www.gsea-msigdb.org/` URL in column 2 (matches the live-file invariant).
+- **fixture:** `hvantk/skills/msigdb/tests/testdata/raw/msigdb/c2.cp-sample.gmt`. 20 gene sets, ~24 KB, sampled from the v2026.1 C2 CP source by picking representative rows by line index (the GMT format is line-oriented, so a deterministic line subset is a valid sub-GMT). Exercises the short edge (three of the four BIOCARTA sets are size 5 — `BIOCARTA_ACETAMINOPHEN_PATHWAY`, `BIOCARTA_BOTULIN_PATHWAY`, `BIOCARTA_DICER_PATHWAY`; `BIOCARTA_INTRINSIC_PATHWAY` is 23, and the SA sets are bigger still — `SA_CASPASE_CASCADE` 19, `SA_B_CELL_RECEPTOR_COMPLEXES` 24), medium sets (44-332 genes, e.g. `KEGG_ACUTE_MYELOID_LEUKEMIA` 57, `REACTOME_DNA_REPAIR` 332), a long set (`REACTOME_CELL_CYCLE`, 688 genes), and the extra-long tail (`REACTOME_POST_TRANSLATIONAL_PROTEIN_MODIFICATION`, 1,497 genes). All 20 fixture rows have a `https://www.gsea-msigdb.org/` URL in column 2 (matches the live-file invariant).
 - **schema_snapshot:** `hvantk/skills/msigdb/tests/snapshots/schema.json`.
 - **row_snapshot:** `hvantk/skills/msigdb/tests/snapshots/sample_rows.json`. `set_name` keys are unique-in-table, so no `sample_keys.json` is maintained per `_conventions` § 9 (post-#101). The round-trip test inlines the small key list.
 - **drift_fingerprint:** `hvantk/skills/msigdb/tests/drift_fingerprint.json` — the expected fingerprint compared by `hvantk drift` (see § 12).

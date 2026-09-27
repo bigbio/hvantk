@@ -437,8 +437,8 @@ annotated = variants.annotate(
 Peer of `core/`, not a layer above it.
 
 **Contents**:
-- `registry/` - Surviving legacy per-domain dataset metadata (genomics only; transcriptomics / proteomics / epigenomics moved into per-plugin `hvantk/skills/<provider>/catalog/datasets.json`)
-- `unified_registry.py` - `HvantkRegistry` aggregator surfaced via `hvantk catalog {list,show,stats,search}`. Reads both the legacy per-domain registry above and the per-plugin catalog JSON under `skills/<provider>/catalog/`.
+- (removed) the legacy per-domain `registry/` directory: the five-package refactor deleted it, and its genomics-only content moved into per-plugin `hvantk/skills/<provider>/catalog/datasets.json` files.
+- `unified_registry.py` - `HvantkRegistry` aggregator surfaced via `hvantk catalog {list,show,stats,search}`. Reads the per-plugin catalog JSON under `skills/<provider>/catalog/` declared via each plugin's `plugin.yaml`; there is no legacy fallback.
 - `schemas/` - JSON schema definitions used by `schema_validator.py` to validate catalog entries.
 - `schema_validator.py` - Validation entry point invoked by the unified registry.
 
@@ -446,9 +446,9 @@ Peer of `core/`, not a layer above it.
 
 | Lives in | Use for |
 |---|---|
-| `resources/registry/` | Cross-plugin / legacy per-domain catalog JSON that hasn't been migrated to a per-plugin folder. |
+| _(removed)_ | Was the legacy per-domain dataset registry directory under `resources/`, deleted in the five-package refactor; replaced by the per-plugin folder below. |
 | `resources/schemas/` | JSON schemas that describe catalog / dataset metadata, shared across plugins. |
-| `resources/unified_registry.py` | Code that aggregates per-plugin catalog JSON with the legacy registry. |
+| `resources/unified_registry.py` | Code that aggregates per-plugin catalog JSON declared via each plugin's `plugin.yaml`. |
 | `skills/<provider>/catalog/datasets.json` | Per-plugin dataset metadata (the canonical location for new providers). |
 | `core/models/` | Artifact types (`AnnotationTable`, `ExpressionMatrix`, `VariantMatrix`, `GeneSet`) — runtime data shapes, not catalog metadata. |
 

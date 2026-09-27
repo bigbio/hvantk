@@ -20,14 +20,14 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its reposit
 ## 2. Source identity
 
 - **Provider:** GTEx Consortium. **Variant pinned by this skill:** v11 / cis-eQTL / signif_pairs / per-tissue parquet.
-- **Catalog entry:** present. `hvantk/resources/registry/genomics/datasets.json` contains `GTEx_v11_eQTL_signif_pairs`. URLs / cadence / license / citation live in the registry — not here.
+- **Catalog entry:** present. `hvantk/skills/gtex_eqtl/catalog/datasets.json` contains `GTEx_v11_eQTL_signif_pairs`. URLs / cadence / license / citation live in the catalog entry — not here.
 - **Source schema documentation:** the `README_eQTL_v11.txt` that GTEx ships inside the v11 cis-QTL release archive (download via the GTEx portal). The skill cites this README as the authoritative format reference; do NOT restate column definitions here.
 
 Stable note (not in catalog): GTEx ships per-tissue parquet files named `<Tissue>.v11.eQTLs.signif_pairs.parquet`. The builder scans a directory and infers tissue from the filename prefix before the first dot (e.g., `Liver.v11.eQTLs.signif_pairs.parquet` → `Liver`). Single-file input is also accepted.
 
 ## 3. Backend choice + reasoning
 
-**`backend: hail`, `domain: qtl`.** Per `_conventions` § 3, variant-level annotations key on `(locus, alleles)` — but eQTL summary stats have an additional gene axis: one variant can be an eQTL for multiple genes. The builder uses the **triple key** `(locus, alleles, gene_id)` to prevent information loss and enable correct cascade joins in `hvantk/qtlcascade/`. This is the first skill to exercise the triple-key shape; `_conventions` § 3 declares it but no prior skill anchored it.
+**`backend: hail`, `domain: qtl`.** Per `_conventions` § 3, variant-level annotations key on `(locus, alleles)` — but eQTL summary stats have an additional gene axis: one variant can be an eQTL for multiple genes. The builder uses the **triple key** `(locus, alleles, gene_id)` to prevent information loss and enable correct cascade joins in `hvantk/algorithms/qtlcascade/`. This is the first skill to exercise the triple-key shape; `_conventions` § 3 declares it but no prior skill anchored it.
 
 **Multi-source dispatch under one builder.** `build_eqtl_associations` accepts `source ∈ {"gtex_v11", "gtex_v8", "eqtlgen"}` (see `hvantk/skills/gtex_eqtl/shared/constants.py:EQTL_SOURCES`). Each source uses a different import helper:
 
@@ -96,7 +96,7 @@ For eqtlgen, both `af` and `maf` remain `hl.missing` (the source distributes nei
 - **Source constants:** `EQTL_SOURCES = ("gtex_v11", "gtex_v8", "eqtlgen")` in `hvantk/skills/gtex_eqtl/shared/constants.py`.
 - **Plugin resolution:** declared in `hvantk/skills/gtex_eqtl/plugin.yaml` (dataset `eqtls`, builder `hvantk.skills.gtex_eqtl.builder:build_eqtl_associations`). The plugin loader (`hvantk/core/plugin/loader.py`) auto-resolves `gtex-eqtl:eqtls` via `get_registry().get_dataset(...)`; the build runs through `run_builder_for_spec` (`hvantk/core/plugin/run_builder.py`). No `TABLE_BUILDERS` registry or `create_table_adapter`.
 - **CLI:** `hvantk reprocess gtex-eqtl:eqtls --raw-dir <dir> --output <path>.ht`. Source-specific kwargs (`source`, `tissue`, `p_threshold`, `reference_genome`) flow through `--plugin-arg key=value`.
-- **Downstream consumer:** `hvantk/qtlcascade/` — the eQTL Hail Table is one half of the eQTL ⊕ pQTL cascade join.
+- **Downstream consumer:** `hvantk/algorithms/qtlcascade/` — the eQTL Hail Table is one half of the eQTL ⊕ pQTL cascade join.
 - **Drift probe:** `fetch_fingerprint` in `hvantk/skills/gtex_eqtl/drift_probe.py`, compared against `tests/drift_fingerprint.json` by `hvantk drift gtex-eqtl:eqtls` (see § 12 of `_conventions`).
 - **Tests:** `pytest hvantk/skills/gtex_eqtl/tests -m hail` — artifact paths in § 9.
 

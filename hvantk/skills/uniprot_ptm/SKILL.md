@@ -12,7 +12,7 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its reposit
 
 ## 1. Status & scope
 
-This skill covers BUILD and UPDATE of the UniProt PTM sites Hail Table. It does NOT cover the upstream PTM coordinate mapping pipeline (`hvantk/algorithms/ptm/pipeline.py`), variant annotation against PTM regions (`hvantk/algorithms/ptm/annotate.py`), or the constraint LMM (`hvantk/algorithms/ptm/analysis.py`, `hvantk/algorithms/ptm/test.py`) — those modules are PTM analysis tooling that *consumes* the table built here.
+This skill covers BUILD and UPDATE of the UniProt PTM sites Hail Table. It does NOT cover the upstream PTM coordinate mapping pipeline (`hvantk/algorithms/ptm/pipeline.py`), variant annotation against PTM regions (`hvantk/algorithms/ptm/annotate.py`), or the constraint LMM (`hvantk/algorithms/ptm/lmm.py`) — those modules are PTM analysis tooling that *consumes* the table built here.
 
 ## 2. Source identity
 

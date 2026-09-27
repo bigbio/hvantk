@@ -16,7 +16,7 @@ This skill covers BUILD and UPDATE of the GenCC Submissions Hail Table. It does 
 
 ## 2. Source identity
 
-Provider metadata (URL, license, citation) lives in the plugin's `catalog/datasets.json` (or query it with `hvantk catalog show <accession>` once a GenCC catalog entry exists). The URL/version constants live in `hvantk/skills/gencc/shared/constants.py` (`GENCC_BASE_URL`, `GENCC_FILE_PREFIX`). Read those files; do not restate.
+Provider metadata (URL, license, citation) would live in the plugin's `catalog/datasets.json`, but GenCC has no catalog entry yet: `plugin.yaml` declares `catalog_ref: gencc` and ships no `catalog:` file. Query `hvantk catalog show <accession>` once one is added. The URL/version constants live in `hvantk/skills/gencc/shared/constants.py` (`GENCC_BASE_URL`, `GENCC_FILE_PREFIX`). Read those files; do not restate.
 
 Stable provider notes the catalog will not capture:
 - GenCC serves a single rolling submissions TSV; there are no dated archives. Freshness is **not** determined by `Last-Modified`: the drift probe's content signal is the HTTP `Content-Length` header (`extras.content_length`) instead. Across the 4 fingerprint commits from 2026-07-27 to 2026-08-23 the checksum (`6f07ac79f9…`) never moved while `Last-Modified` moved on every regeneration. `Last-Modified` is still recorded, under `informational` (excluded from drift comparison) alongside the `submitted_as_date` values in the body; `source_version` is `null`, and the probe (`probe_version` 2) fails closed — raises `DriftProbeError` — if the server omits `Content-Length`.
