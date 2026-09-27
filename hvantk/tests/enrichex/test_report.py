@@ -92,3 +92,12 @@ def test_generate_report_external_plots(tmp_path):
     assert "External Assets" in contents
     assert "enrichex_overlap.png" in contents
     assert (tmp_path / "enrichex_overlap.png").exists()
+
+
+def test_report_and_plot_share_one_pvalue_column_resolver():
+    """#308: report.py derived p_col with a LOCAL copy of the resolver and fed it to
+    plot.py's IMPORTED _resolve_significance, so adding a column name to
+    _P_VALUE_COLUMNS fixed the plots and not the report."""
+    from hvantk.algorithms.enrichex import plot, report
+
+    assert report._resolve_pvalue_column is plot._resolve_pvalue_column

@@ -80,17 +80,10 @@ def plot_cascade_classes(
     counts = [class_counts[c] for c in classes]
 
     if not counts:
-        fig, ax = plt.subplots(figsize=figsize)
-        ax.text(
-            0.5,
-            0.5,
-            "No data",
-            transform=ax.transAxes,
-            ha="center",
-            va="center",
-            fontsize=14,
-        )
-        ax.set_title(title, fontsize=14, fontweight="bold")
+        # Imported lazily so importing this module stays matplotlib-optional.
+        from hvantk.algorithms.visualization.base import empty_figure
+
+        fig = empty_figure(title=title, figsize=figsize)
         _save_figure(fig, output_path)
         return fig
 
@@ -138,16 +131,10 @@ def plot_attenuation(
     both = df[df["cascade_class"].isin(["eqtl_mediated", "discordant"])].copy()
     if both.empty:
         logger.warning("No concordant/discordant pairs for attenuation plot")
-        fig, ax = plt.subplots(figsize=figsize)
-        ax.text(
-            0.5,
-            0.5,
-            "No data",
-            transform=ax.transAxes,
-            ha="center",
-            va="center",
-            fontsize=14,
-        )
+        # Imported lazily so importing this module stays matplotlib-optional.
+        from hvantk.algorithms.visualization.base import empty_figure
+
+        fig = empty_figure(title=title, figsize=figsize)
         _save_figure(fig, output_path)
         return fig
 
