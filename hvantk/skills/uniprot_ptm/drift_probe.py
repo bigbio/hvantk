@@ -1,16 +1,22 @@
-"""UniProt PTM drift probe: HEAD + minimal page-of-1 GET against the REST API.
+"""UniProt PTM drift probe: the release UniProt itself reports, plus the query's result count.
 
-UniProt's REST search endpoint (``UNIPROT_API_URL``) is a live JSON API,
-not a static TSV. There is no ``Last-Modified`` header on a query URL and
-no archival versioning. To surface upstream schema drift we issue a HEAD
-(reachability) and a small ``size=1`` GET, then fingerprint the keys
-present in the first result entry. The keys come directly from the
-UniProt JSON schema; if UniProt removes or renames a key the fingerprint
-changes.
+The REST search endpoint is a live JSON API: no ``Last-Modified``, no archive. Probe
+version 1 therefore recorded ``source_version: null`` and hashed only the KEYS of the
+first result -- the shape of the API response, which changes when UniProt changes its
+API and not when it releases new annotations. A UniProt release (roughly every eight
+weeks, routinely revising PTM annotations) left that fingerprint byte-identical (#271).
 
-A second list of column names — the local TSV column order written by
-:mod:`hvantk.skills.uniprot_ptm.shared.datasets` — is also captured so
-that downstream consumers can compare against the output file shape.
+UniProt exposes what the probe needs on every response: ``X-UniProt-Release`` (the
+release tag, ``2026_03``), ``X-UniProt-Release-Date``, and ``X-Total-Results`` (the
+number of entries matching the exact query the builder runs). The release is the
+version; the count is a content signal in ``extras``; the date is informational, since
+it is a function of the release. The key list and the local TSV column order stay as
+the schema signal under ``headers``/``checksums``.
+
+Fail-closed: a response without the release or the count is not fingerprinted. The
+drift bot regenerates drifted baselines unattended, so one transient omission would
+otherwise be committed as the new baseline and retire content detection for good --
+the reasoning clingen, hgnc and gencc already follow.
 """
 
 from __future__ import annotations
@@ -22,6 +28,7 @@ from datetime import datetime, timezone
 import requests
 
 from hvantk.core.plugin.api import DriftProbeError
+from hvantk.core.utils.http import request_with_retry
 from hvantk.skills.uniprot_ptm.shared.constants import (
     UNIPROT_API_FIELDS,
     UNIPROT_API_URL,
@@ -29,58 +36,69 @@ from hvantk.skills.uniprot_ptm.shared.constants import (
 )
 from hvantk.skills.uniprot_ptm.shared.datasets import _TSV_COLUMNS, _build_search_url
 
-PROBE_VERSION = 1
+PROBE_VERSION = 2
 _FILENAME = "uniprot-ptm-human.tsv"
-_TIMEOUT_S = 30
+_TIMEOUT_S = (5.0, 15.0)
+
+_RELEASE_HEADER = "X-UniProt-Release"
+_RELEASE_DATE_HEADER = "X-UniProt-Release-Date"
+_TOTAL_HEADER = "X-Total-Results"
 
 
 def fetch_fingerprint() -> dict:
-    """Lightweight fingerprint of the live UniProt PTM REST endpoint.
-
-    Performs a HEAD for reachability and a ``size=1`` GET to capture the
-    JSON keys of a single result entry. Hashes the canonicalised key list
-    so column drift in the upstream response surfaces as a checksum
-    change.
-    """
+    """Fingerprint the live UniProt PTM query: release tag, result count, response keys."""
     probe_url = _build_search_url(
         UNIPROT_API_URL, UNIPROT_HUMAN_PTM_QUERY, UNIPROT_API_FIELDS, 1
     )
-
     try:
-        head = requests.head(probe_url, timeout=_TIMEOUT_S, allow_redirects=True)
-        head.raise_for_status()
-        last_modified = head.headers.get("Last-Modified")
-
-        resp = requests.get(
+        resp = request_with_retry(
+            "GET",
             probe_url,
             timeout=_TIMEOUT_S,
             headers={"Accept": "application/json"},
             allow_redirects=True,
         )
         resp.raise_for_status()
-        payload = resp.json()
     except requests.RequestException as exc:
         raise DriftProbeError(f"HTTP failure: {exc}") from exc
+    try:
+        payload = resp.json()
     except ValueError as exc:
         raise DriftProbeError(f"Non-JSON response: {exc}") from exc
+
+    release = (resp.headers.get(_RELEASE_HEADER) or "").strip()
+    if not release:
+        raise DriftProbeError(
+            f"UniProt response carried no {_RELEASE_HEADER}; refusing to record a "
+            "fingerprint with no version signal."
+        )
+    total_raw = resp.headers.get(_TOTAL_HEADER)
+    try:
+        total_results = int(total_raw)
+    except (TypeError, ValueError):
+        raise DriftProbeError(
+            f"UniProt response carried no usable {_TOTAL_HEADER} (got {total_raw!r}); "
+            "refusing to record a fingerprint with no content signal."
+        ) from None
 
     results = payload.get("results", [])
     if not results:
         raise DriftProbeError(
             "UniProt size=1 probe returned zero results; cannot fingerprint."
         )
-
     entry_keys = sorted(results[0].keys())
     canonical = json.dumps(entry_keys, separators=(",", ":"), sort_keys=True)
     checksum = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
     return {
         "probe_version": PROBE_VERSION,
-        "source_version": last_modified,
+        "source_version": release,
         "headers": {
             _FILENAME: list(_TSV_COLUMNS),
             "uniprot_entry_keys": entry_keys,
         },
         "checksums": {_FILENAME: checksum},
+        "extras": {"total_results": total_results},
+        "informational": {"release_date": resp.headers.get(_RELEASE_DATE_HEADER)},
         "fetched_at": datetime.now(timezone.utc).isoformat(),
     }
