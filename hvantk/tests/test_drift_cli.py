@@ -503,3 +503,67 @@ def test_regenerate_reports_a_failing_probe_as_probe_failed_exit_code(tmp_path: 
     assert result.exit_code == 2, result.output  # EXIT_PROBE_FAILED, not a traceback's 1
     assert "upstream down" in result.output
     assert fp_path.read_text() == before, "a failed probe must not overwrite the baseline"
+    assert sorted(p.name for p in (plugin_dir / "tests").iterdir()) == [
+        "drift_fingerprint.json"
+    ], "no temp sibling left behind"
+
+
+def test_regenerate_reports_a_non_driftprobe_exception_as_probe_failed_exit_code(
+    tmp_path: Path, monkeypatch
+):
+    """A probe that raises something other than DriftProbeError (KeyError,
+    AttributeError, zlib.error, ...) must not escape as a traceback -- exit 2 either
+    way, with the underlying exception type named."""
+    import shutil
+
+    plugin_dir = tmp_path / "fake_plugin"
+    shutil.copytree(FIXTURE_ROOT / "fake_plugin", plugin_dir)
+    reg = plugin_loader.PluginRegistry()
+    reg.load_from_directory(plugin_dir)
+    monkeypatch.setattr(plugin_loader, "get_registry", lambda: reg)
+    spec = reg.get_dataset("fake:default")
+
+    def boom():
+        raise KeyError("boom")
+
+    object.__setattr__(spec, "drift_probe", boom)
+    fp_path = plugin_dir / "tests" / "drift_fingerprint.json"
+    before = fp_path.read_text()
+
+    result = CliRunner().invoke(drift_cmd, ["--regenerate", "fake:default"])
+
+    assert result.exit_code == 2, result.output  # EXIT_PROBE_FAILED, not a traceback's 1
+    assert "KeyError" in result.output
+    assert fp_path.read_text() == before, "a failed probe must not overwrite the baseline"
+    assert sorted(p.name for p in (plugin_dir / "tests").iterdir()) == [
+        "drift_fingerprint.json"
+    ], "no temp sibling left behind"
+
+
+def test_regenerate_reports_a_write_failure_as_probe_failed_exit_code(
+    tmp_path: Path, monkeypatch
+):
+    """A probe that succeeds but a write_fingerprint that fails (disk full, permission
+    denied, ...) must also exit 2, not let the OSError escape as a traceback's 1."""
+    import shutil
+
+    from hvantk.core.plugin import drift_runner
+
+    plugin_dir = tmp_path / "fake_plugin"
+    shutil.copytree(FIXTURE_ROOT / "fake_plugin", plugin_dir)
+    reg = plugin_loader.PluginRegistry()
+    reg.load_from_directory(plugin_dir)
+    monkeypatch.setattr(plugin_loader, "get_registry", lambda: reg)
+    fp_path = plugin_dir / "tests" / "drift_fingerprint.json"
+    before = fp_path.read_text()
+
+    def boom_write(path, fingerprint):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(drift_runner, "write_fingerprint", boom_write)
+
+    result = CliRunner().invoke(drift_cmd, ["--regenerate", "fake:default"])
+
+    assert result.exit_code == 2, result.output  # EXIT_PROBE_FAILED, not a traceback's 1
+    assert "disk full" in result.output
+    assert fp_path.read_text() == before, "a write failure must not corrupt the baseline"

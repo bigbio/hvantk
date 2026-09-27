@@ -145,6 +145,15 @@ def drift_cmd(
                 f"probe failed for {dataset}; fingerprint NOT rewritten: {exc}", err=True
             )
             raise SystemExit(EXIT_PROBE_FAILED)
+        except OSError as exc:
+            # The probe succeeded but write_fingerprint's write/replace failed (disk
+            # full, permission denied, ...). Same outcome for the caller as a probe
+            # failure -- nothing was rewritten -- so the same exit 2, not an unhandled
+            # traceback's 1 (== EXIT_DRIFTED).
+            click.echo(
+                f"could not write the fingerprint for {dataset}: {exc}", err=True
+            )
+            raise SystemExit(EXIT_PROBE_FAILED)
         click.echo(f"regenerated: {dataset}")
         return
 

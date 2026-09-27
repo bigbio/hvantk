@@ -483,6 +483,8 @@ def _probe_and_baseline(tmp_path: Path, baseline_text: str | None):
         ("truncated json", '{"probe_version": 1, "headers": {', "JSONDecodeError"),
         ("empty file", "", "JSONDecodeError"),
         ("json list", "[1, 2]", "not a JSON object"),
+        ("json null", "null", "not a JSON object"),
+        ("json number", "42", "not a JSON object"),
     ],
 )
 def test_corrupt_baseline_is_probe_failed_not_a_crash(tmp_path: Path, label, text, expect):
@@ -523,6 +525,22 @@ def test_regenerate_fingerprint_writes_the_same_bytes_the_cli_always_wrote(tmp_p
     assert out == observed
     assert fp_path.read_text() == json.dumps(observed, indent=2, default=str)
     assert sorted(p.name for p in tmp_path.iterdir()) == ["fp.json"], "no temp file left behind"
+
+
+def test_regenerate_fingerprint_preserves_the_baselines_file_mode(tmp_path: Path):
+    """`tempfile.mkstemp` always creates its temp file mode 0600; a bare `os.replace`
+    would carry that onto the baseline, silently tightening it on every regenerate."""
+    import stat
+
+    fp_path = tmp_path / "fp.json"
+    fp_path.write_text('{"probe_version": 1}')
+    fp_path.chmod(0o644)
+    observed = {"probe_version": 2, "headers": {}, "checksums": {}}
+    spec = _make_spec(probe_return=observed, fingerprint_path=fp_path)
+
+    drift_runner.regenerate_fingerprint(spec, timeout=5)
+
+    assert stat.S_IMODE(fp_path.stat().st_mode) == 0o644
 
 
 def test_regenerate_fingerprint_refuses_a_non_mapping_probe_result(tmp_path: Path):
