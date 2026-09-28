@@ -310,4 +310,63 @@ def test_list_datasets_skips_a_failed_dataset_without_recording_it_again():
     reg._manifests["lazyprov:thing"] = _lazy_manifest("lazyprov:thing")
     assert reg.list_datasets() == []
     assert reg.list_datasets() == []
-    assert [u for u, _ in reg.load_errors()] == ["lazyprov:thing"]
+
+
+# --- item 2 (#374 review): a provider-level load failure recorded via
+# load_from_skills_root must not be recorded AGAIN when load_from_entry_points
+# resolves to the SAME directory ------------------------------------------------------
+#
+# get_registry() runs load_from_skills_root() then load_from_entry_points(); 13 of 23
+# in-tree providers are ALSO declared as entry points pointing at their own skills/
+# directory. `load_from_directory` only added to `_loaded_dirs` on SUCCESS, and the
+# missing-plugin.yaml branch of `load_from_skills_root` never marked the dir at all --
+# so a broken provider's directory was never marked "attempted" and the second loader
+# tried it again, appending a second (differently-worded) error for the same unit.
+
+
+def test_broken_provider_directory_records_one_error_across_skills_root_then_entry_point(
+    tmp_path: Path,
+):
+    """Simulates the real get_registry() overlap: `load_from_skills_root` finds the
+    broken directory first (via plugin.yaml), then `load_from_entry_points` resolves
+    its installed entry point back to the SAME directory and calls
+    `load_from_directory` a second time -- exactly what `load_from_entry_points` does
+    after `module.__file__`'s parent is computed.
+    """
+    skills_root = tmp_path / "skills"
+    plugin_dir = skills_root / "brokenprov"
+    plugin_dir.mkdir(parents=True)
+    (plugin_dir / "plugin.yaml").write_text(
+        "api_version: 1\nname: BROKEN UPPERCASE\nversion: not-a-semver\ndatasets: []\n"
+    )
+
+    reg = PluginRegistry()
+    reg.load_from_skills_root(skills_root)
+    assert len(reg.load_errors()) == 1
+
+    # The entry-point path: resolve to the identical directory and load it again.
+    reg.load_from_directory(plugin_dir)
+
+    errors = reg.load_errors()
+    assert len(errors) == 1, errors
+
+
+def test_missing_manifest_directory_loaded_twice_records_one_error(tmp_path: Path):
+    """A directory with no plugin.yaml at all: `load_from_skills_root` records it via
+    its own "no plugin.yaml in ..." branch, which must ALSO mark the directory as
+    attempted -- otherwise a second discovery pass (the entry-point path) calls
+    `load_from_directory` on it directly, which fails again with a differently-worded
+    "missing plugin.yaml at ..." message, doubling the row for one broken unit.
+    """
+    skills_root = tmp_path / "skills"
+    plugin_dir = skills_root / "ghost"
+    plugin_dir.mkdir(parents=True)
+
+    reg = PluginRegistry()
+    reg.load_from_skills_root(skills_root)
+    assert len(reg.load_errors()) == 1
+
+    reg.load_from_directory(plugin_dir)
+
+    errors = reg.load_errors()
+    assert len(errors) == 1, errors

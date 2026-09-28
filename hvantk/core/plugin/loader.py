@@ -232,6 +232,15 @@ class PluginRegistry:
                     # all land here. Underscore-prefixed directories are skipped
                     # above (`_conventions`, `_hooks`), so anything reaching this
                     # branch is shaped like a provider and claims to be one.
+                    #
+                    # Mark the directory as attempted too (item 2, #374 review): 13 of
+                    # 23 in-tree providers are ALSO declared as entry points pointing
+                    # at this same directory, and get_registry() runs
+                    # load_from_entry_points() right after this method. Without this,
+                    # that second pass calls load_from_directory() on the identical
+                    # path, which fails again -- with a differently-worded message --
+                    # and doubles this one broken unit's row.
+                    self._loaded_dirs.add(child.resolve())
                     self._record_load_error(
                         child.name, PluginLoadError(f"no plugin.yaml in {child}")
                     )
@@ -247,12 +256,17 @@ class PluginRegistry:
         plugin_dir = Path(plugin_dir).resolve()
         if plugin_dir in self._loaded_dirs:
             return
+        # Mark as attempted regardless of outcome (item 2, #374 review): this used to
+        # happen only on success, so a directory whose manifest failed to load was
+        # never marked, and get_registry()'s second pass (load_from_entry_points, which
+        # resolves 13 of 23 in-tree providers back to this same directory) retried it
+        # and recorded a second, differently-worded error for the same unit.
+        self._loaded_dirs.add(plugin_dir)
         plugin_id = str(plugin_dir)
         try:
             manifest = self._read_and_validate_manifest(plugin_dir / "plugin.yaml")
             provider = self._build_provider(manifest, plugin_dir)
             self._register(provider, plugin_id)
-            self._loaded_dirs.add(plugin_dir)
         except PluginNameCollision:
             # Hard error: silent shadowing is the worst failure mode.
             raise
