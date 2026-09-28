@@ -252,3 +252,62 @@ def test_every_load_error_is_recorded_through_the_one_helper():
         "no self._load_errors.append(...) found at all -- this guard is looking for "
         "something that no longer exists and has stopped guarding anything"
     )
+
+
+def _lazy_manifest(name: str):
+    """A manifest injected straight into the registry, bypassing the eager bind pass, so
+    the lazy get_dataset path is the FIRST to try importing the callables."""
+    from hvantk.core.plugin.api import DatasetManifest, TestPaths
+
+    return DatasetManifest(
+        name=name,
+        domain="genomics",
+        backend="hail",
+        skill_path="/abs/SKILL.md",
+        test_paths=TestPaths(
+            command="pytest", fixture="/f", schema_snapshot="/s",
+            row_snapshot="/r", drift_fingerprint="/d",
+        ),
+        plugin_name=name.split(":")[0],
+        builder_ref=("hvantk.nope.missing", "build"),
+        drift_probe_ref=("hvantk.nope.missing", "fetch_fingerprint"),
+    )
+
+
+def test_lazy_get_dataset_records_a_binding_failure_once(caplog):
+    """`get_dataset` wrote `_failed_datasets` without recording (#364 item 2). Benign only
+    because the eager pass pre-populates both dicts, and the docstring promised otherwise."""
+    reg = PluginRegistry()
+    reg._manifests["lazyprov:thing"] = _lazy_manifest("lazyprov:thing")
+
+    with caplog.at_level("WARNING", logger="hvantk.core.plugin.loader"):
+        with pytest.raises(PluginLoadError):
+            reg.get_dataset("lazyprov:thing")
+        with pytest.raises(PluginLoadError):
+            reg.get_dataset("lazyprov:thing")  # cached: must not record twice
+
+    assert [u for u, _ in reg.load_errors()] == ["lazyprov:thing"]
+    assert any("lazyprov:thing" in r.getMessage() for r in caplog.records)
+
+
+def test_lazy_get_dataset_wraps_a_non_plugin_error_like_the_eager_pass(monkeypatch):
+    """The eager pass wraps any Exception into PluginLoadError and caches it; the lazy
+    path must give the same answer, or the same registry returns two different errors."""
+    reg = PluginRegistry()
+    reg._manifests["lazyprov:thing"] = _lazy_manifest("lazyprov:thing")
+
+    def explode(*_a, **_k):
+        raise RuntimeError("module body blew up")
+
+    monkeypatch.setattr(reg, "_resolve_spec", explode)
+    with pytest.raises(PluginLoadError, match="module body blew up"):
+        reg.get_dataset("lazyprov:thing")
+    assert [u for u, _ in reg.load_errors()] == ["lazyprov:thing"]
+
+
+def test_list_datasets_skips_a_failed_dataset_without_recording_it_again():
+    reg = PluginRegistry()
+    reg._manifests["lazyprov:thing"] = _lazy_manifest("lazyprov:thing")
+    assert reg.list_datasets() == []
+    assert reg.list_datasets() == []
+    assert [u for u, _ in reg.load_errors()] == ["lazyprov:thing"]

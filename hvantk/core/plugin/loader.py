@@ -162,7 +162,17 @@ class PluginRegistry:
             spec = self._resolve_spec(self._manifests[name])
         except PluginLoadError as exc:
             self._failed_datasets[name] = exc
+            self._record_load_error(name, exc)
             raise
+        except Exception as exc:  # noqa: BLE001
+            # Same wrapping as the eager pass in _build_provider: a module that raises
+            # something other than ImportError at import time must produce the same cached
+            # PluginLoadError on every lookup, not a different exception on the first.
+            err = PluginLoadError(str(exc))
+            err.__cause__ = exc
+            self._failed_datasets[name] = err
+            self._record_load_error(name, err)
+            raise err from exc
         self._datasets[name] = spec
         return spec
 
@@ -182,7 +192,11 @@ class PluginRegistry:
         for name, dm in self._manifests.items():
             try:
                 spec = self.get_dataset(name)
-            except Exception:  # noqa: BLE001
+            except PluginLoadError:
+                # Already recorded by whichever path cached it -- the eager pass in
+                # _build_provider or the lazy path in get_dataset -- so recording here
+                # would duplicate the row. get_dataset raises nothing else for a name
+                # taken from self._manifests.
                 continue
             out.append(spec)
         if domain is not None:
@@ -261,7 +275,10 @@ class PluginRegistry:
         dataset can go from monitored to unmonitored with every signal still green
         (#351).
 
-        Every path that drops something from the registry must come through here. When
+        Every path that drops something from the registry must come through here.
+        `get_dataset`'s lazy bind records on first failure and re-raises the cached
+        error afterwards; `list_datasets` merely skips those cached failures, which is
+        why it is the one `except` in this class that does not record. When
         this landed it covered only the two directory-load paths, leaving the entry-point
         path and all three dataset-binding paths silent -- and the dataset ones are the
         likelier failure, because they fire on a callable that will not import, which no

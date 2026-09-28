@@ -23,10 +23,29 @@ def list_cmd():
     providers = reg.list_providers()
     if not providers:
         click.echo("(no plugins loaded)")
-        return
-    click.echo(f"{'NAME':<24} {'VERSION':<12} {'DATASETS':<8}")
-    for p in providers:
-        click.echo(f"{p.name:<24} {p.version:<12} {len(p.datasets):<8}")
+    else:
+        click.echo(f"{'NAME':<24} {'VERSION':<12} {'DATASETS':<8}")
+        for p in providers:
+            click.echo(f"{p.name:<24} {p.version:<12} {len(p.datasets):<8}")
+    _echo_load_failure_summary(reg)
+
+
+def _echo_load_failure_summary(reg) -> None:
+    """One stderr line under the table when anything failed to load (#364).
+
+    stderr, not stdout: the table is machine-counted (the packaging job in
+    python-package-conda.yml counts `plugins list` stdout lines against the manifests
+    in the tree), and a human at a terminal sees both streams anyway. Before this the
+    table said a provider was fine with zero datasets, and both `list` and `describe`
+    exited 0 -- the only signal was a logger.warning, which nothing reads.
+    """
+    errs = reg.load_errors()
+    if errs:
+        click.echo(
+            f"{len(errs)} unit(s) failed to load and are NOT listed "
+            "(see: hvantk plugins errors)",
+            err=True,
+        )
 
 
 @plugins_group.command(name="describe")
@@ -34,9 +53,13 @@ def list_cmd():
 def describe_cmd(provider: str):
     """Show full details for one provider."""
     reg = plugin_loader.get_registry()
+    errors = reg.load_errors()
     try:
         p = reg.get_provider(provider)
     except KeyError:
+        failed = [exc for unit, exc in errors if unit == provider]
+        if failed:
+            raise click.ClickException(f"provider {provider!r} failed to load: {failed[0]}")
         raise click.ClickException(f"unknown provider: {provider}")
     click.echo(f"name:    {p.name}")
     click.echo(f"version: {p.version}")
@@ -45,11 +68,18 @@ def describe_cmd(provider: str):
         click.echo(f"  - {ds.name}  ({ds.domain}, {ds.backend})")
         click.echo(f"      skill: {ds.skill_path}")
         click.echo(f"      drift_fingerprint: {ds.test_paths.drift_fingerprint}")
+    # A dataset that failed to bind is absent from p.datasets but present in the load
+    # errors under its compound key; without this the section printed "datasets:" with
+    # nothing under it and exit 0 for a provider whose one dataset was broken.
+    bound = {ds.name for ds in p.datasets}
+    for unit, exc in errors:
+        if unit.startswith(f"{p.name}:") and unit not in bound:
+            click.echo(f"  - {unit}  FAILED TO LOAD: {exc}")
 
 
 @plugins_group.command(name="errors")
 def errors_cmd():
-    """List plugins that failed to load and why."""
+    """List plugins that failed to load and why. Exits 1 when there is anything to list."""
     reg = plugin_loader.get_registry()
     errs = reg.load_errors()
     if not errs:
@@ -57,6 +87,9 @@ def errors_cmd():
         return
     for plugin_id, exc in errs:
         click.echo(f"{plugin_id}: {exc}")
+    # Rows mean the registry is missing something. A script asking `plugins errors`
+    # should not have to parse the text to learn that.
+    raise SystemExit(1)
 
 
 def _explain(exc) -> str:
