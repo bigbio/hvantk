@@ -5936,4 +5936,4 @@ viz = ["matplotlib", "plotly", "seaborn"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10.0,<4.0.0"
-content-hash = "afa5dcf6576e3a9aea278813813ef3479595fec5f1d1c988799159809f8fde12"
+content-hash = "9ed8fa0b0408cdedc31eae50a610c2557aa5bce54e50831977ce64beb5d201e0"
