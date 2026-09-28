@@ -51,7 +51,9 @@ REQUIRED_FRONTMATTER: tuple[str, ...] = ("name", "description")
 #: The line every spec opens with, directing a reader to the shared contract before the
 #: provider-specific detail. 21 of 23 already carried it in two wordings; #356 settled on
 #: the majority one and made it checkable, because a spec read in isolation otherwise
-#: looks self-contained when it is not.
+#: looks self-contained when it is not. Checked as the first line ``_first_body_line``
+#: returns, not as a substring anywhere in the file (#364): a whole-file ``in text`` test
+#: passed a spec with the line moved to the end, or quoted only inside a code fence.
 CONVENTIONS_PREAMBLE: str = (
     "Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its "
     "repository map, helpers, keying conventions, builder pattern, and validation "
@@ -205,6 +207,37 @@ def _body_heading_lines(text: str) -> list[str]:
     return out
 
 
+def _first_body_line(text: str) -> str | None:
+    """The first line of prose in the body: after the frontmatter, ignoring blank lines,
+    headings and fenced code blocks. ``None`` when there is no such line (an empty body,
+    or a frontmatter block that never closes).
+
+    The preamble is checked HERE rather than by substring over the whole file: ``in text``
+    accepted a spec with the line deleted from the top and pasted at the bottom, or present
+    only inside a fence, while ``CONVENTIONS_PREAMBLE``'s own docstring says it is the line
+    every spec *opens* with (#364).
+    """
+    lines = text.splitlines()
+    start = 0
+    if lines and lines[0].strip() == "---":
+        try:
+            start = next(
+                i for i, line in enumerate(lines[1:], start=1) if line.strip() == "---"
+            ) + 1
+        except StopIteration:
+            return None
+    in_fence = False
+    for line in lines[start:]:
+        stripped = line.strip()
+        if stripped.startswith("```") or stripped.startswith("~~~"):
+            in_fence = not in_fence
+            continue
+        if in_fence or not stripped or stripped.startswith("#"):
+            continue
+        return stripped
+    return None
+
+
 def check_skill_spec(path: Path) -> list[str]:
     """Return a list of contract violations for one ``SKILL.md``; empty means conforming.
 
@@ -266,10 +299,15 @@ def check_skill_spec(path: Path) -> list[str]:
                 + " -> ".join(s.split(". ", 1)[-1] for s in ordered)
             )
 
-    if CONVENTIONS_PREAMBLE not in text:
+    if _first_body_line(text) != CONVENTIONS_PREAMBLE:
+        where = (
+            " (it appears later in the file, or only inside a code fence)"
+            if CONVENTIONS_PREAMBLE in text
+            else ""
+        )
         problems.append(
-            "missing the shared preamble line directing the reader to "
-            "_conventions/SKILL.md (see CONVENTIONS_PREAMBLE)"
+            "the body must open with the shared preamble line directing the reader to "
+            f"_conventions/SKILL.md (see CONVENTIONS_PREAMBLE){where}"
         )
 
     problems.extend(_section_content_problems(text))

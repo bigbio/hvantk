@@ -254,6 +254,16 @@ def _swap_heading_lines(text: str) -> str:
             "shared preamble",
         ),
         (
+            "preamble moved to the end of the file",
+            lambda t: t.replace(CONVENTIONS_PREAMBLE, "") + "\n" + CONVENTIONS_PREAMBLE + "\n",
+            "must open with the shared preamble",
+        ),
+        (
+            "preamble present only inside a code fence",
+            lambda t: t.replace(CONVENTIONS_PREAMBLE, "```\n" + CONVENTIONS_PREAMBLE + "\n```"),
+            "must open with the shared preamble",
+        ),
+        (
             "section 6 that never reaches the drift probe",
             _strip_probe_from_section_6,
             "never references the drift probe",
@@ -290,6 +300,17 @@ def test_checker_rejects_non_conforming_variants(tmp_path, label, mutate, expect
         f"{label}: rejected, but for the wrong reason. Expected a problem mentioning "
         f"{expected!r}, got {problems}"
     )
+
+
+def test_first_body_line_skips_frontmatter_blanks_headings_and_fences():
+    from hvantk.core.plugin.skill_spec import _first_body_line
+
+    text = (
+        "---\nname: x\ndescription: y\n---\n\n# Title\n\n```\nnot prose\n```\n\n"
+        "## 1. Status & scope\n\nThe real first line.\n"
+    )
+    assert _first_body_line(text) == "The real first line."
+    assert _first_body_line("---\nname: x\n") is None  # unterminated frontmatter: no body
 
 
 def test_spec_declares_the_test_artifact_paths_its_manifest_does():
