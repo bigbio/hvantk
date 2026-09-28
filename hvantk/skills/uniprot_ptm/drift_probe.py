@@ -8,7 +8,7 @@ weeks, routinely revising PTM annotations) left that fingerprint byte-identical 
 
 UniProt exposes what the probe needs on every response: ``X-UniProt-Release`` (the
 release tag, ``2026_03``), ``X-UniProt-Release-Date``, and ``X-Total-Results`` (the
-number of entries matching the exact query the builder runs). The release is the
+number of entries matching the exact query the downloader runs). The release is the
 version; the count is a content signal in ``extras``; the date is informational, since
 it is a function of the release. The key list and the local TSV column order stay as
 the schema signal under ``headers``/``checksums``.
@@ -38,7 +38,15 @@ from hvantk.skills.uniprot_ptm.shared.datasets import _TSV_COLUMNS, _build_searc
 
 PROBE_VERSION = 2
 _FILENAME = "uniprot-ptm-human.tsv"
-_TIMEOUT_S = (5.0, 15.0)
+
+# drift_runner wraps every probe in a 60s SIGALRM by default
+# (`run_drift_checks(timeout=60)`; the drift workflows pass no `--timeout`), so the
+# retry budget below must fit under it with room to spare. Worst case -- every
+# attempt exhausts both timeouts and every retry sleeps the full backoff:
+# 2+4 s backoff (attempts 1->2, 2->3) + 3x15 s worst-case timeout (5 s connect +
+# 10 s read, per attempt) = 51 s < 60 s.
+_ATTEMPTS = 3
+_TIMEOUT_S = (5.0, 10.0)
 
 _RELEASE_HEADER = "X-UniProt-Release"
 _RELEASE_DATE_HEADER = "X-UniProt-Release-Date"
@@ -57,6 +65,10 @@ def fetch_fingerprint() -> dict:
             timeout=_TIMEOUT_S,
             headers={"Accept": "application/json"},
             allow_redirects=True,
+            attempts=_ATTEMPTS,
+            # UniProt is a JSON API; an empty 200 is the same invisible transient
+            # fault #352 documents for medRxiv, not a legitimate empty response.
+            retry_on_empty_body=True,
         )
         resp.raise_for_status()
     except requests.RequestException as exc:

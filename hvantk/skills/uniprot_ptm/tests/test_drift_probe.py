@@ -19,7 +19,7 @@ from hvantk.skills.uniprot_ptm.shared.constants import (
     UNIPROT_API_URL,
     UNIPROT_HUMAN_PTM_QUERY,
 )
-from hvantk.skills.uniprot_ptm.shared.datasets import _TSV_COLUMNS, _build_search_url
+from hvantk.skills.uniprot_ptm.shared.datasets import _build_search_url
 
 PROBE_URL = _build_search_url(UNIPROT_API_URL, UNIPROT_HUMAN_PTM_QUERY, UNIPROT_API_FIELDS, 1)
 
@@ -59,7 +59,17 @@ def test_fingerprint_carries_the_release_the_count_and_the_schema():
     assert fp["source_version"] == "2026_03"
     assert fp["extras"] == {"total_results": 9493}
     assert fp["informational"] == {"release_date": "02-September-2026"}
-    assert fp["headers"]["uniprot-ptm-human.tsv"] == list(_TSV_COLUMNS)
+    # Pinned literally, not against `_TSV_COLUMNS`: comparing against the same
+    # constant the probe reads back cannot catch a change to that constant.
+    assert fp["headers"]["uniprot-ptm-human.tsv"] == [
+        "accession",
+        "gene_symbol",
+        "position",
+        "description",
+        "amino_acid",
+        "ensembl_xrefs",
+        "sequence_length",
+    ]
     assert fp["headers"]["uniprot_entry_keys"] == [
         "entryType", "extraAttributes", "features", "genes",
         "primaryAccession", "sequence", "uniProtKBCrossReferences",
@@ -96,6 +106,21 @@ def test_missing_release_or_count_header_fails_closed(missing):
         _probe(headers=headers)
 
 
+def test_blank_release_header_fails_closed():
+    # Present but whitespace-only -- distinct from the missing-header case above:
+    # `.strip()` must still reduce it to "no version signal" rather than recording
+    # a blank string as a release tag.
+    with pytest.raises(DriftProbeError, match="X-UniProt-Release"):
+        _probe(headers={**_LIVE_HEADERS, "X-UniProt-Release": "  "})
+
+
+def test_non_json_body_fails_closed():
+    with requests_mock.Mocker() as m:
+        m.get(PROBE_URL, text="<html>", headers=_LIVE_HEADERS)
+        with pytest.raises(DriftProbeError, match="Non-JSON"):
+            fetch_fingerprint()
+
+
 def test_non_integer_count_fails_closed():
     with pytest.raises(DriftProbeError, match="X-Total-Results"):
         _probe(headers={**_LIVE_HEADERS, "X-Total-Results": "many"})
@@ -107,8 +132,29 @@ def test_zero_results_fails_closed():
 
 
 def test_http_error_is_a_probe_error():
-    # 503 is in RETRY_STATUSES (request_with_retry backs off across 4 attempts, ~14s of
-    # real sleep) -- 404 is not retried, so this stays a fast, offline check of the same
-    # fail-closed path (HTTP failure -> DriftProbeError) without patching time.sleep.
+    # 503 is in RETRY_STATUSES (request_with_retry backs off across the probe's 3
+    # attempts, ~6s of real sleep) -- 404 is not retried, so this stays a fast, offline
+    # check of the same fail-closed path (HTTP failure -> DriftProbeError) without
+    # patching time.sleep.
     with pytest.raises(DriftProbeError, match="HTTP"):
         _probe(status=404)
+
+
+def test_worst_case_retry_budget_fits_under_the_runner_timeout():
+    """The probe's retry budget must fit under drift_runner's SIGALRM with room to
+    spare, or a probe that legitimately exhausts every retry gets killed mid-request
+    instead of raising the ordinary DriftProbeError callers already handle.
+    """
+    import inspect
+
+    from hvantk.core.plugin import drift_runner
+    from hvantk.core.utils.http import DEFAULT_BACKOFF_S, DEFAULT_MAX_SLEEP_S, _backoff
+    from hvantk.skills.uniprot_ptm.drift_probe import _ATTEMPTS, _TIMEOUT_S
+
+    runner_timeout = inspect.signature(
+        drift_runner.run_drift_checks
+    ).parameters["timeout"].default
+    worst_case = sum(
+        _backoff(DEFAULT_BACKOFF_S, a, DEFAULT_MAX_SLEEP_S) for a in range(1, _ATTEMPTS)
+    ) + _ATTEMPTS * sum(_TIMEOUT_S)
+    assert worst_case < runner_timeout

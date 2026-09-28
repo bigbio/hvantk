@@ -68,7 +68,7 @@ When invoked to build or update:
 
 ## 8. Update playbook
 
-When UniProt releases a new monthly snapshot (typically late in the month):
+When UniProt releases a new snapshot (roughly every eight weeks):
 
 1. Re-download: `hvantk download uniprot-ptm --output-dir <raw_dir> --overwrite`. Note the date label.
 2. Diff the new raw TSV header against the previous fixture. New `_TSV_COLUMNS` entries imply a downloader schema change and require updating `shared/datasets.py`.
