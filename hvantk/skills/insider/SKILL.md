@@ -57,7 +57,7 @@ chr11   700235   700235        .   0   +   700235   700235   247,176,91
 - **Zero-length intervals are common**: many rows have `start == end` (e.g., `chr11 700235 700235`). The custom parser skips these (matching `hl.import_bed(skip_invalid_intervals=True)`'s historical behavior). In the test fixture, 21 raw data rows produced 20 valid intervals (1 zero-length skipped); the aggregation then collapses overlapping intervals across PPIs, yielding 16 unique-interval rows here (most singletons, but `chr3:9801712-9801714` collapses 4 tracks into one row and `chr3:9827137-9827139` collapses 2 — see the Multi-PPI intervals note below).
 - **Multi-PPI intervals.** In the full 208,448-track file, a genomic position can fall on the interface of multiple PPIs (a residue in a hub protein that participates in many complexes). The aggregation `group_by(interval).aggregate(ppi_ids=collect_as_set(ppi_id))` produces a length-N array per such position. The fixture does exercise this case (`chr3:9801712-9801714` spans 4 tracks, `chr3:9827137-9827139` spans 2), but the round-trip test's inlined sample keys (§ 9) fall on other, singleton-`ppi_ids` positions, so the multi-PPI aggregation runs in the build but is not asserted by the snapshot.
 
-**Historical note (Gap 1, fixed in PR #105 via the track-aware parser):** prior implementation used `hl.import_bed(...).distinct()`, which silently dropped `track name=...` headers and then collapsed overlapping intervals from different PPIs. The output table answered "does any PPI interface touch this position?" but **not** "which PPI(s)?". The current builder restores that identity via the custom parser described in § 3 (now `_parse_insider_bed_to_temp_tsv` in `hvantk/skills/insider/builder.py`).
+**Historical note (Gap 1, fixed in PR #105 via the track-aware parser):** prior implementation used `hl.import_bed(...).distinct()`, which silently dropped `track name=...` headers and then collapsed overlapping intervals from different PPIs. The output table answered "does any PPI interface touch this position?" but **not** "which PPI(s)?". The current builder restores that identity via the custom parser described in § 3 (now `_parse_insider_bed_to_temp_tsv` in `hvantk/skills/insider/variants/builder.py`).
 
 **Gap 2 (fixed in PR #105): wrong filename in the catalog entry.** Prior `INSIDER_v1.0` catalog entry listed `insider_interaction_sites.tsv` which does not exist in any INSIDER distribution. The two real products are `Whole_Human_Interactome_Interface_hg38.bed` (this skill) and `H_sapiens_interfacesALL.txt` (separate skill). The filename, format, and size_bytes were corrected in PR #105.
 
@@ -78,13 +78,13 @@ After aggregation, intervals are unique-in-table. Test inlines sample keys.
 
 ## 6. hvantk integration points
 
-- **Builder:** `build_insider_interactome(parsed_input, ctx, *, reference_genome="GRCh38") -> AnnotationTable` in `hvantk/skills/insider/builder.py`. Builds the table inline: calls `_parse_insider_bed_to_temp_tsv(str(parsed_input))` (track-aware Python pre-processor), then `hl.import_table` + `hl.locus_interval`, then `group_by(interval).aggregate(ppi_ids=collect_as_set(ppi_id))` + `hl.sorted(hl.array(...))`, and wraps the result via `AnnotationTable.from_hail(grouped, provenance=ctx.provenance(schema_id="insider-variants-v1"))`. The only shared helper it imports is `cleanup_temp_file` from `hvantk/core/utils/hail_helpers.py` (used on the error path). It does **not** use `create_table_base`.
-- **Track parser helper:** `_parse_insider_bed_to_temp_tsv` (private) lives in `hvantk/skills/insider/builder.py` (only consumer is this plugin). Reads the BED, tracks `current_ppi_id` from `track name=...` headers, skips zero-length and malformed rows, writes a 4-column TSV to `hl.utils.new_temp_file(extension="tsv")`.
+- **Builder:** `build_insider_interactome(parsed_input, ctx, *, reference_genome="GRCh38") -> AnnotationTable` in `hvantk/skills/insider/variants/builder.py`. Builds the table inline: calls `_parse_insider_bed_to_temp_tsv(str(parsed_input))` (track-aware Python pre-processor), then `hl.import_table` + `hl.locus_interval`, then `group_by(interval).aggregate(ppi_ids=collect_as_set(ppi_id))` + `hl.sorted(hl.array(...))`, and wraps the result via `AnnotationTable.from_hail(grouped, provenance=ctx.provenance(schema_id="insider-variants-v1"))`. The only shared helper it imports is `cleanup_temp_file` from `hvantk/core/utils/hail_helpers.py` (used on the error path). It does **not** use `create_table_base`.
+- **Track parser helper:** `_parse_insider_bed_to_temp_tsv` (private) lives in `hvantk/skills/insider/variants/builder.py` (only consumer is this plugin). Reads the BED, tracks `current_ppi_id` from `track name=...` headers, skips zero-length and malformed rows, writes a 4-column TSV to `hl.utils.new_temp_file(extension="tsv")`.
 - **Registry / loader:** plugin-driven; the in-tree plugin manifest at `hvantk/skills/insider/plugin.yaml` declares dataset `variants` with `builder.function: build_insider_interactome`. The plugin loader (`hvantk/core/plugin/loader.py`) auto-resolves the dataset under compound key `insider:variants` via `get_registry().get_dataset("insider:variants")`; the top-level build runs through `run_builder_for_spec` (`hvantk/core/plugin/run_builder.py`). There is no `TABLE_BUILDERS` registry or `registry.py`.
 - **CLI:** `hvantk reprocess insider:variants --raw-dir <dir> --output <out> [--plugin-arg reference_genome=GRCh38]`. `reprocess` passes the `--raw-dir` directory to the builder as `parsed_input` (insider has no `lifecycle.parse`); `_parse_insider_bed_to_temp_tsv` consumes it as the BED path.
 - **Snapshot util branch:** `hvantk/tests/_snapshot_utils.py` — `hl.tinterval` handlers added in PR #105.
 - **Downloader:** out of scope (manual acquisition; the BED is >1 GB, so no `lifecycle.download` entry in `plugin.yaml`).
-- **Drift probe:** `fetch_fingerprint` in `hvantk/skills/insider/drift_probe.py`, compared against `tests/drift_fingerprint.json` by `hvantk drift insider:variants` (see § 12 of `_conventions`).
+- **Drift probe:** `fetch_fingerprint` in `hvantk/skills/insider/variants/drift_probe.py`, compared against `variants/tests/drift_fingerprint.json` by `hvantk drift insider:variants` (see § 12 of `_conventions`).
 
 ## 7. Workflow steps
 
@@ -108,18 +108,18 @@ After aggregation, intervals are unique-in-table. Test inlines sample keys.
 INSIDER updates are irregular. To onboard a new release:
 
 1. **Acquire** the new BED. Update `path` / `size_bytes` / `last_updated` in the catalog entry; bump `accession` if the release version changes (`INSIDER_v1.0` → `INSIDER_v1.x`).
-2. **Re-run round-trip (§ 9).** If the BED format is unchanged (still 9-column UCSC-style with `track name=...` directives in the established `<P1>_ppi_<P2>` shape), no builder change. If a release changes the track naming pattern (e.g., adds a third underscore-separated field), the `_TRACK_NAME_RE` regex in `hvantk/skills/insider/builder.py` and the `<P1>_ppi_<P2>` convention in the catalog description need updating.
+2. **Re-run round-trip (§ 9).** If the BED format is unchanged (still 9-column UCSC-style with `track name=...` directives in the established `<P1>_ppi_<P2>` shape), no builder change. If a release changes the track naming pattern (e.g., adds a third underscore-separated field), the `_TRACK_NAME_RE` regex in `hvantk/skills/insider/variants/builder.py` and the `<P1>_ppi_<P2>` convention in the catalog description need updating.
 3. **Consider onboarding the `.txt` product** as a sibling skill. It carries Source provenance (ECLAIR / PDB / I3D) which the BED does not; downstream filtering on confidence level requires the TXT. Builder would need range-notation parsing for `*_IRES` arrays (e.g., `[1-11,13-14,...]`).
 
 ## 9. Validation contract
 
 Per `_conventions` § 9:
 
-- **fixture:** `hvantk/skills/insider/tests/testdata/raw/insider/insider_sample.bed`. 5 PPI tracks (~21 raw data rows; 20 valid after zero-length filtering). ~1.9 KB. Sliced from the full BED by a track-aware sub-sampler (keeps the `browser` directive plus the first N `track` blocks, each header paired with its data rows) — a plain `head -N` would split a track block and produce an invalid BED.
-- **schema_snapshot:** `hvantk/skills/insider/tests/snapshots/schema.json`. Records the `{interval, ppi_ids: array<str>}` shape.
-- **row_snapshot:** `hvantk/skills/insider/tests/snapshots/sample_rows.json`. Intervals are unique-in-table after the aggregation; test inlines 3 sample keys (per `_conventions` § 9 post-#101 rule — unique-key skills inline).
-- **command:** `pytest hvantk/skills/insider/tests -m hail`.
-- **drift_fingerprint:** `hvantk/skills/insider/tests/drift_fingerprint.json` for
+- **fixture:** `hvantk/skills/insider/variants/tests/testdata/raw/insider/insider_sample.bed` (manifest value: `variants/tests/testdata/raw/insider`). 5 PPI tracks (~21 raw data rows; 20 valid after zero-length filtering). ~1.9 KB. Sliced from the full BED by a track-aware sub-sampler (keeps the `browser` directive plus the first N `track` blocks, each header paired with its data rows) — a plain `head -N` would split a track block and produce an invalid BED.
+- **schema_snapshot:** `hvantk/skills/insider/variants/tests/snapshots/schema.json`. Records the `{interval, ppi_ids: array<str>}` shape.
+- **row_snapshot:** `hvantk/skills/insider/variants/tests/snapshots/sample_rows.json`. Intervals are unique-in-table after the aggregation; test inlines 3 sample keys (per `_conventions` § 9 post-#101 rule — unique-key skills inline).
+- **command:** `pytest hvantk/skills/insider/variants/tests -m hail`.
+- **drift_fingerprint:** `hvantk/skills/insider/variants/tests/drift_fingerprint.json` for
   `variants`, and `interfaces/tests/drift_fingerprint.json` for `interfaces` — **one
   baseline per dataset, deliberately not shared.** The two products are versioned
   independently upstream (the BED has not moved since 2018-03-05; the interfaces table
@@ -152,7 +152,7 @@ Per `_conventions` § 9:
   serves **no HTTPS listener**, so these are cleartext requests; comparing two
   independent validators rather than one is a mitigation, not a fix.
 
-Round-trip test (`hvantk/skills/insider/tests/test_builder.py`, via `phase_b_snapshot_adapter(build_insider_interactome, "insider:variants")`) asserts: checkpointed schema matches `schema.json`; deterministic sample-row slice matches `sample_rows.json`. The test exercises the `hl.tinterval` handling in `_snapshot_utils` (added in PR #105) — if that branch breaks, this test breaks.
+Round-trip test (`hvantk/skills/insider/variants/tests/test_builder.py`, via `phase_b_snapshot_adapter(build_insider_interactome, "insider:variants")`) asserts: checkpointed schema matches `schema.json`; deterministic sample-row slice matches `sample_rows.json`. The test exercises the `hl.tinterval` handling in `_snapshot_utils` (added in PR #105) — if that branch breaks, this test breaks.
 
 Regenerate via `--regenerate-snapshots` when:
 - The builder adds / removes / renames fields (e.g., if a future PR adds a `source: array<str>` derived from `track description="..."` Source values).
@@ -178,10 +178,10 @@ it reads as "how much of this protein is interface" and does not inherit degree 
 split is retained as two partner counts because PPI degree tracks study effort, so a
 predicted-only re-measurement is the axis's study-bias control.
 
-**Layout note (deliberate):** `variants` keeps the flat single-dataset layout it shipped
-with, while `interfaces` uses the `<provider>/<dataset>/` form from `_conventions` § 1.
-Migrating `variants` would churn its manifest, snapshots, drift fingerprint and the
-contract ratchet for no functional gain, so it was left alone; a future PR may unify them.
+**Layout note:** `variants` and `interfaces` both use the `<provider>/<dataset>/` form
+from `_conventions` § 1 (issue #232). `variants` originally shipped with a flat
+single-dataset layout at the provider root; it was migrated into `variants/` to match
+`interfaces` and complete the multi-dataset layout.
 
 The parse core (`interfaces/parse.py`) is pure Python and has no Hail dependency, so the
 whole reduction is covered by fast tests (`interfaces/tests/test_parse.py`); only the

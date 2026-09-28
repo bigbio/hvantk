@@ -16,8 +16,8 @@ from hvantk.tests._snapshot_utils import (
 # Aliased to avoid shadowing the fixture name `regenerate_snapshots` in the test signature
 from hvantk.tests._snapshot_utils import regenerate_snapshots as regenerate_snapshots_fn
 
-FIXTURE = "hvantk/skills/insider/tests/testdata/raw/insider/insider_sample.bed"
-SNAPSHOT_DIR = Path("hvantk/skills/insider/tests/snapshots")
+FIXTURE = "hvantk/skills/insider/variants/tests/testdata/raw/insider/insider_sample.bed"
+SNAPSHOT_DIR = Path("hvantk/skills/insider/variants/tests/snapshots")
 
 # `interval` is unique-in-table after .distinct() (per skill §5), so keys are
 # inlined here. Picked from observed fixture rows on chr3 (the first track was
@@ -35,7 +35,7 @@ SAMPLE_KEYS = [
 def test_insider_round_trip(hail_session, tmp_path, regenerate_snapshots):
     """Build INSIDER BED from fixture; assert schema and sample-row stability."""
     import hail as hl
-    from hvantk.skills.insider.builder import build_insider_interactome
+    from hvantk.skills.insider.variants.builder import build_insider_interactome
 
     builder = phase_b_snapshot_adapter(build_insider_interactome, "insider:variants")
     builder_kwargs = {"reference_genome": "GRCh38"}
@@ -79,11 +79,11 @@ def test_insider_drops_invalid_loci(hail_session, tmp_path):
     ``skip_invalid_intervals=True`` intent) and the build succeeds.
 
     Hail-dependent: must run on Slurm
-    (``pytest hvantk/skills/insider/tests -m hail``); the login node OOMs on
+    (``pytest hvantk/skills/insider/variants/tests -m hail``); the login node OOMs on
     Hail init, so this test is intentionally not executed there.
     """
     import hail as hl
-    from hvantk.skills.insider.builder import build_insider_interactome
+    from hvantk.skills.insider.variants.builder import build_insider_interactome
 
     # One in-bounds chr21 row, plus two rows that would abort the old builder:
     # a non-reference contig and an out-of-range coordinate (chr21 on GRCh38 is
