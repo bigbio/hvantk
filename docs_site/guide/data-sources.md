@@ -121,22 +121,21 @@ hvantk download expression-atlas --download_path data/expression_atlas
 
 These sources are too large, require license acceptance, or have complex download procedures. Follow the instructions below, place the raw file(s) in a per-source directory, then build via `hvantk reprocess <plugin>:<dataset> --skip-download`.
 
-### dbNSFP (~45 GB)
+### dbNSFP (~50 GB)
 
 A database of functional prediction scores for human missense variants.
-URL: https://sites.google.com/site/jpopgen/dbNSFP
+URL: https://www.dbnsfp.org/
 
-**Download**: Requires academic license acceptance. Download from the project page:
-https://sites.google.com/site/jpopgen/dbNSFP
+**Download**: Academic access is a two-step form process: (1) register with an institutional email through a Google Form and receive an access code once the domain is verified; (2) request the download links with that same email and code through a second form. The academic release is distributed under the CC BY-NC-ND 4.0 licence, as a ~50 GB ZIP of per-chromosome variant tables plus the gene table and the `search_dbNSFP` program; it is also searchable online through an "Academic Portal". Commercial licensing goes through the maintainers. Start at the releases page, https://www.dbnsfp.org/releases/, or the download page, https://www.dbnsfp.org/download/. (Verified 2026-09-28: the legacy landing page, https://sites.google.com/site/jpopgen/dbNSFP, is frozen at v4.9 (2024-08-08) and now tells readers to access the current dbNSFP at dbNSFP.org; its S3 and Box archive links are dead.)
 
 **Pre-processing**: dbNSFP is distributed as per-chromosome `.gz` files (standard gzip, not BGZF). The builder expects a **single combined file**, so concatenate and BGZF-compress first:
 
 ```bash
 # Concatenate per-chromosome files into a single BGZF file
 # (header is taken from chr1; remaining files skip the header line)
-head -1 <(zcat dbNSFP4.9a_variant.chr1.gz) > /tmp/dbnsfp_header.txt
-(cat /tmp/dbnsfp_header.txt && for f in dbNSFP4.9a_variant.chr*.gz; do zcat "$f" | tail -n +2; done) \
-  | bgzip -@ 4 > dbNSFP4.9a_variant.bgz
+head -1 <(zcat dbNSFP<version>_variant.chr1.gz) > /tmp/dbnsfp_header.txt
+(cat /tmp/dbnsfp_header.txt && for f in dbNSFP<version>_variant.chr*.gz; do zcat "$f" | tail -n +2; done) \
+  | bgzip -@ 4 > dbnsfp_variant.bgz
 ```
 
 **Build**:
@@ -150,7 +149,7 @@ hvantk reprocess dbnsfp:variants \
   --skip-download
 ```
 
-> **Note:** dbNSFP's builder reads BGZF input. If you only have a single combined `.gz`, pre-convert with `hvantk utils convert-bgz dbNSFP4.9a_variant.gz` before building.
+> **Note:** dbNSFP's builder reads BGZF input. If you only have a single combined `.gz`, pre-convert with `hvantk utils convert-bgz dbNSFP<version>_variant.gz` before building.
 
 ### gnomAD constraint metrics
 

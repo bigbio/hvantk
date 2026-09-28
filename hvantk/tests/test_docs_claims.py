@@ -374,6 +374,70 @@ def test_the_tree_parser_reconstructs_nested_paths():
     assert "core" in drawn and len(drawn) > 20
 
 
+# --- backticked repo paths must exist ----------------------------------------------------
+#
+# `test_documented_command_options_exist` catches a wrong COMMAND, but a wrong PATH in prose
+# rode through: `hvantk/resources/registry/...` (removed in the five-package refactor),
+# `hvantk/qtlcascade/`, `hvantk/enrichex/`, `hvantk/algorithms/ptm/test.py` all survived
+# in provider specs until #359. A path in backticks is a claim about the tree.
+
+_REPO_PATH_SPAN = re.compile(r"`(hvantk/[^`\s]+)`")
+
+#: Paths a document names precisely to say they do NOT exist. Keep this list short and
+#: each entry justified; a stale entry here is the same rot this test exists to stop.
+DELIBERATELY_ABSENT_PATHS = {
+    # _conventions/SKILL.md: "There is no `hvantk/core/builders/table.py`" -- the sentence
+    # explains why builders return artifacts rather than a shared base class.
+    "hvantk/core/builders/table.py",
+}
+
+
+def _documented_repo_paths() -> list[tuple[str, str]]:
+    """(source file, span) for every backticked hvantk/... path in the docs."""
+    out = []
+    files = sorted((REPO_ROOT / "hvantk" / "skills").rglob("SKILL.md")) + sorted(
+        (REPO_ROOT / "docs_site").rglob("*.md")
+    )
+    for md in files:
+        for span in _REPO_PATH_SPAN.findall(md.read_text()):
+            out.append((str(md.relative_to(REPO_ROOT)), span))
+    return out
+
+
+def _path_part(span: str) -> str:
+    """`hvantk/x/test_y.py::test_z` -> `hvantk/x/test_y.py`; `hvantk/x/c.py:SYMBOL` -> `hvantk/x/c.py`."""
+    path = span.split("::", 1)[0]
+    head, sep, tail = path.rpartition(":")
+    if sep and tail and not tail.startswith("/") and "/" not in tail:
+        path = head
+    return path.rstrip("/")
+
+
+def test_documented_repo_paths_exist():
+    missing = sorted(
+        {
+            (src, span)
+            for src, span in _documented_repo_paths()
+            if not _is_illustrative(span)
+            and _path_part(span) not in DELIBERATELY_ABSENT_PATHS
+            and not (REPO_ROOT / _path_part(span)).exists()
+        }
+    )
+    assert not missing, (
+        "backticked hvantk/... paths that do not exist in the tree (fix the doc, or if the "
+        "sentence is about the path NOT existing, add it to DELIBERATELY_ABSENT_PATHS with "
+        f"a reason):\n" + "\n".join(f"  {src}: `{span}`" for src, span in missing)
+    )
+
+
+def test_deliberately_absent_paths_are_still_absent_and_still_cited():
+    """The allowlist must not outlive the sentences it excuses."""
+    cited = {_path_part(span) for _, span in _documented_repo_paths()}
+    for path in DELIBERATELY_ABSENT_PATHS:
+        assert not (REPO_ROOT / path).exists(), f"{path} exists now; drop it from the allowlist"
+        assert path in cited, f"{path} is no longer cited anywhere; drop it from the allowlist"
+
+
 #: Names hvantk has presented as builder return types, current and historical.
 #: Hardcoded rather than pattern-matched because Hail owns `Table` and
 #: `MatrixTable`, which the HGC docs legitimately annotate with -- a shape-based

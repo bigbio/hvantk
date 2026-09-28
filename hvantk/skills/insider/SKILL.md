@@ -29,7 +29,7 @@ This skill is the **first interval-keyed skill** in hvantk. Conventions § 3 dec
   catalog owns them: see `catalog/datasets.json`, or run
   `hvantk catalog show INSIDER_v1.0`. Both are what the drift probes pin.
 - **License:** Academic use (per the existing catalog entry).
-- **Catalog entry:** `INSIDER_v1.0` in `hvantk/resources/registry/genomics/datasets.json`. **Filename and metadata corrected in the same PR that adds this skill** — the prior entry listed `insider_interaction_sites.tsv` which is not a real INSIDER distribution product (see § 4 Gap 2).
+- **Catalog entry:** `INSIDER_v1.0` in `hvantk/skills/insider/catalog/datasets.json`. **Filename and metadata corrected in the same PR that adds this skill** — the prior entry listed `insider_interaction_sites.tsv` which is not a real INSIDER distribution product (see § 4 Gap 2).
 
 Stable note (not in catalog): INSIDER releases two complementary products from one source. This skill anchors the genomic BED only. The protein-residue TXT is documented in the catalog as a follow-up; see § 8.
 
@@ -54,8 +54,8 @@ chr11   700235   700235        .   0   +   700235   700235   247,176,91
 - The `browser` directive (line 1) is ignored.
 - `track name=<P1>_ppi_<P2> description="..."` lines name each PPI. **The builder parses these and assigns the parsed name as the row's `ppi_id` for the subsequent data block**, preserving PPI identity (this is the fix to the historical Gap 1; see below).
 - BED data rows: `chr, start, end, name, score, strand, thickStart, thickEnd, itemRgb`. Only the first three columns are read; column 4 (`name`) is always `.` in this file (PPI identity is in the track header instead).
-- **Zero-length intervals are common**: many rows have `start == end` (e.g., `chr11 700235 700235`). The custom parser skips these (matching `hl.import_bed(skip_invalid_intervals=True)`'s historical behavior). In the test fixture, 21 raw data rows produced 17 valid intervals (4 zero-length skipped); the aggregation then collapses overlapping intervals across PPIs, yielding 17 unique-interval rows here (each with a singleton `ppi_ids` since the 5-track fixture doesn't include cross-PPI overlaps).
-- **Multi-PPI intervals.** In the full 208,448-track file, a genomic position can fall on the interface of multiple PPIs (a residue in a hub protein that participates in many complexes). The aggregation `group_by(interval).aggregate(ppi_ids=collect_as_set(ppi_id))` produces a length-N array per such position. The fixture doesn't exercise this case (each interval has a singleton array), so the multi-PPI behavior is by inspection only — not covered by the round-trip test.
+- **Zero-length intervals are common**: many rows have `start == end` (e.g., `chr11 700235 700235`). The custom parser skips these (matching `hl.import_bed(skip_invalid_intervals=True)`'s historical behavior). In the test fixture, 21 raw data rows produced 20 valid intervals (1 zero-length skipped); the aggregation then collapses overlapping intervals across PPIs, yielding 16 unique-interval rows here (most singletons, but `chr3:9801712-9801714` collapses 4 tracks into one row and `chr3:9827137-9827139` collapses 2 — see the Multi-PPI intervals note below).
+- **Multi-PPI intervals.** In the full 208,448-track file, a genomic position can fall on the interface of multiple PPIs (a residue in a hub protein that participates in many complexes). The aggregation `group_by(interval).aggregate(ppi_ids=collect_as_set(ppi_id))` produces a length-N array per such position. The fixture does exercise this case (`chr3:9801712-9801714` spans 4 tracks, `chr3:9827137-9827139` spans 2), but the round-trip test's inlined sample keys (§ 9) fall on other, singleton-`ppi_ids` positions, so the multi-PPI aggregation runs in the build but is not asserted by the snapshot.
 
 **Historical note (Gap 1, fixed in PR #105 via the track-aware parser):** prior implementation used `hl.import_bed(...).distinct()`, which silently dropped `track name=...` headers and then collapsed overlapping intervals from different PPIs. The output table answered "does any PPI interface touch this position?" but **not** "which PPI(s)?". The current builder restores that identity via the custom parser described in § 3 (now `_parse_insider_bed_to_temp_tsv` in `hvantk/skills/insider/builder.py`).
 
@@ -115,7 +115,7 @@ INSIDER updates are irregular. To onboard a new release:
 
 Per `_conventions` § 9:
 
-- **fixture:** `hvantk/skills/insider/tests/testdata/raw/insider/insider_sample.bed`. 5 PPI tracks (~21 raw data rows; 17 valid after zero-length filtering). ~1.9 KB. Sliced from the full BED by a track-aware sub-sampler (keeps the `browser` directive plus the first N `track` blocks, each header paired with its data rows) — a plain `head -N` would split a track block and produce an invalid BED.
+- **fixture:** `hvantk/skills/insider/tests/testdata/raw/insider/insider_sample.bed`. 5 PPI tracks (~21 raw data rows; 20 valid after zero-length filtering). ~1.9 KB. Sliced from the full BED by a track-aware sub-sampler (keeps the `browser` directive plus the first N `track` blocks, each header paired with its data rows) — a plain `head -N` would split a track block and produce an invalid BED.
 - **schema_snapshot:** `hvantk/skills/insider/tests/snapshots/schema.json`. Records the `{interval, ppi_ids: array<str>}` shape.
 - **row_snapshot:** `hvantk/skills/insider/tests/snapshots/sample_rows.json`. Intervals are unique-in-table after the aggregation; test inlines 3 sample keys (per `_conventions` § 9 post-#101 rule — unique-key skills inline).
 - **command:** `pytest hvantk/skills/insider/tests -m hail`.
