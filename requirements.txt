@@ -23,6 +23,9 @@ psutil
 pysam>=0.22
 certifi
 anndata>=0.10.0
+# h5py is imported at module scope by skills/ucsc_cellbrowser/shared/ucsc.py; it always
+# arrived transitively via anndata, which is exactly why it went undeclared (#363).
+h5py>=3.7
 # numpy is imported at module scope in ~68 modules. It arrives transitively via
 # pandas/hail, but the code uses it directly, so it is declared rather than assumed.
 # The floor matches pyproject and is non-binding in practice: hail itself requires
