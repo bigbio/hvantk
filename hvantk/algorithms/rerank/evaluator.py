@@ -24,16 +24,18 @@ from sklearn.metrics import average_precision_score, brier_score_loss, roc_auc_s
 from sklearn.model_selection import StratifiedKFold, cross_val_predict
 
 from hvantk.algorithms.rerank.reranker import _gbm
+from hvantk.algorithms.rerank.seeds import DEFAULT_SEED
 
 
-def _raw_oof(matrix, cols, y, selector=None):
+def _raw_oof(matrix, cols, y, selector=None, groups=None, seed=DEFAULT_SEED):
     """Uncalibrated out-of-fold probabilities for one feature subset.
 
     Mirrors ReRanker.score's nesting contract: when a selector is given it runs per fold on
     the training slice only, so every ablation delta-AUC is as leakage-free as the headline.
     """
+    # groups: threaded in Task 5
     y = np.asarray(y)
-    cv = StratifiedKFold(5, shuffle=True, random_state=42)
+    cv = StratifiedKFold(5, shuffle=True, random_state=seed)
     if selector is None:
         return cross_val_predict(
             _gbm(), matrix[cols].values, y, cv=cv, method="predict_proba"
