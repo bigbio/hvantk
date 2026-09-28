@@ -109,6 +109,20 @@ def test_building_the_cli_imports_no_subcommand_module():
     assert not heavy, f"CLI import pulled {heavy}; something heavy is imported at module scope"
 
 
+def test_a_typo_suggestion_imports_no_subcommand_module():
+    """The suggestion list must come from the registry, not from resolving commands."""
+    loaded = _modules_after(
+        "from click.testing import CliRunner\n"
+        "from hvantk.hvantk import cli\n"
+        "r = CliRunner().invoke(cli, ['drif'])\n"
+        "assert r.exit_code == 2, r.output\n"
+    )
+    eager = sorted(m for m in _subcommand_modules() if _is_loaded(m, loaded))
+    assert not eager, f"a typo resolved subcommand modules: {eager}"
+    heavy = sorted(set(HEAVY) & loaded)
+    assert not heavy, f"a typo pulled {heavy}"
+
+
 def test_listing_commands_imports_no_subcommand_module():
     """``hvantk --help`` renders every short help; it may only read the registry.
 
