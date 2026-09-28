@@ -10,7 +10,7 @@ from pathlib import Path
 import click
 
 from hvantk.core.plugin import drift_runner, loader as plugin_loader
-from hvantk.core.plugin.api import DriftProbeError
+from hvantk.core.plugin.api import DriftProbeError, PluginLoadError
 
 
 EXIT_CLEAN = 0
@@ -121,7 +121,12 @@ def drift_cmd(
     # the stderr warning above, which is the right split: a person reads the warning, CI
     # reads the row. Together they make the existing workflow file the issue it already
     # knows how to file (#351).
-    load_errors = reg.load_errors()
+    load_errors = _relevant_load_errors(
+        reg,
+        reg.load_errors(),
+        dataset=None if all_flag else dataset,
+        domain=domain if all_flag else None,
+    )
     for unit, exc in load_errors:
         click.echo(
             f"WARNING: {unit!r} failed to load, so it is NOT being drift-checked: {exc}",
@@ -154,7 +159,38 @@ def drift_cmd(
                 f"could not write the fingerprint for {dataset}: {exc}", err=True
             )
             raise SystemExit(EXIT_PROBE_FAILED)
+        except PluginLoadError as exc:
+            click.echo(
+                f"{dataset} failed to load, so its fingerprint cannot be regenerated: "
+                f"{exc}",
+                err=True,
+            )
+            raise SystemExit(EXIT_PROBE_FAILED)
+        except Exception as exc:  # noqa: BLE001
+            # Anything else write_fingerprint or the probe can raise that is not one of
+            # the specific cases above -- e.g. a probe returning a dict with a
+            # non-string-safe key makes json.dumps raise TypeError deep inside
+            # write_fingerprint. Before this, that escaped as an unhandled traceback's
+            # exit 1 (== EXIT_DRIFTED), same failure mode #361 fixed for DriftProbeError
+            # and OSError specifically.
+            click.echo(
+                f"could not regenerate the fingerprint for {dataset}: "
+                f"{type(exc).__name__}: {exc}",
+                err=True,
+            )
+            raise SystemExit(EXIT_PROBE_FAILED)
         click.echo(f"regenerated: {dataset}")
+        if load_errors:
+            # The exit-code block below is never reached on this path, so the #351 guard
+            # did not apply to --regenerate. Only units relevant to THIS dataset are in
+            # `load_errors` now, so this fires when its provider is broken, not when an
+            # unrelated plugin is (drift_to_pr.py runs this step unattended).
+            click.echo(
+                f"WARNING: {len(load_errors)} unit(s) related to {dataset} failed to "
+                f"load (listed above); exiting {EXIT_PROBE_FAILED}",
+                err=True,
+            )
+            raise SystemExit(EXIT_PROBE_FAILED)
         return
 
     try:
@@ -164,6 +200,14 @@ def drift_cmd(
     except KeyError:
         click.echo(f"unknown dataset: {dataset}", err=True)
         raise SystemExit(EXIT_REGISTRY_ERROR)
+    except PluginLoadError as exc:
+        # A dataset whose callables would not import: the registry cached the failure and
+        # get_dataset re-raises it. Not a KeyError, so before #364 it escaped as a
+        # traceback -- exit 1, which a wrapper reads as EXIT_DRIFTED.
+        if as_json:
+            click.echo(json.dumps([_load_error_row(dataset, exc)], indent=2, default=str))
+        click.echo(f"{dataset} failed to load, so it cannot be drift-checked: {exc}", err=True)
+        raise SystemExit(EXIT_PROBE_FAILED)
 
     # An empty sweep is the limiting case of the silently-smaller set #351 is about, and
     # it slips past every guard above: no targets means no results, `exit_codes` stays
@@ -197,20 +241,7 @@ def drift_cmd(
 
     if as_json:
         rows = [_serialize(r) for r in results]
-        # Same shape a failing probe produces, so no consumer needs to learn a new key.
-        rows.extend(
-            {
-                "dataset_name": unit,
-                "status": "probe_failed",
-                "observed": None,
-                "expected": None,
-                "diff": None,
-                "probe_error": f"plugin failed to load: {exc}",
-                "fingerprint_path": None,
-                "probe_ref": None,
-            }
-            for unit, exc in load_errors
-        )
+        rows.extend(_load_error_row(unit, exc) for unit, exc in load_errors)
         click.echo(json.dumps(rows, indent=2, default=str))
     else:
         for r in results:
@@ -255,6 +286,53 @@ def drift_cmd(
 def _regenerate_fingerprint(reg, dataset_name: str, *, timeout: int) -> None:
     spec = reg.get_dataset(dataset_name)
     drift_runner.regenerate_fingerprint(spec, timeout=timeout)
+
+
+def _load_error_row(unit: str, exc: Exception) -> dict:
+    """The JSON row a unit that never registered gets -- the same shape a failing probe
+    produces, so no consumer needs to learn a new key."""
+    return {
+        "dataset_name": unit,
+        "status": "probe_failed",
+        "observed": None,
+        "expected": None,
+        "diff": None,
+        "probe_error": f"plugin failed to load: {exc}",
+        "fingerprint_path": None,
+        "probe_ref": None,
+    }
+
+
+def _relevant_load_errors(
+    reg, load_errors, *, dataset: str | None, domain: str | None
+) -> list[tuple[str, Exception]]:
+    """The load errors that bear on THIS invocation.
+
+    Applying every recorded failure to every run made `hvantk drift clinvar:variants`
+    report -- and fail on -- plugins the caller never asked about, and made every
+    unattended `--regenerate` fail whenever any unrelated plugin was broken (#364).
+
+    Units come in three shapes (`loader._record_load_error`): a bare provider name, a
+    `provider:dataset` key, or `entry-point:<name>`. For one dataset, its own key, its
+    provider and its provider's entry point are relevant; for `--all --domain X`, a
+    dataset-level unit whose manifest declares another domain is not, while provider and
+    entry-point units carry no domain and are kept -- dropping them would recreate the
+    silently-smaller sweep #351 exists to stop.
+    """
+    if dataset is not None:
+        provider = dataset.split(":", 1)[0]
+        wanted = {dataset, provider, f"entry-point:{provider}"}
+        return [(unit, exc) for unit, exc in load_errors if unit in wanted]
+    if domain is None:
+        return list(load_errors)
+    domains = {m.name: m.domain for m in reg.list_manifests()}
+    return [
+        (unit, exc)
+        for unit, exc in load_errors
+        if unit.startswith("entry-point:")
+        or ":" not in unit
+        or domains.get(unit, domain) == domain
+    ]
 
 
 def _serialize(result: drift_runner.DriftResult) -> dict:

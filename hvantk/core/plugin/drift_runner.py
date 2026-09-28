@@ -279,11 +279,16 @@ def _current_umask() -> int:
     """Read the process umask without changing it.
 
     ``os.umask`` is set-and-return-the-old-value -- there is no read-only form -- so
-    the only way to read it is to set some value and immediately set it back.
+    the only way to read it is to set some value and immediately set it back. The
+    restore is in a ``finally`` so an exception raised in that window (e.g. an
+    asynchronously-delivered signal) cannot leave the process umask at 0 for the rest
+    of the run.
     """
     mask = os.umask(0)
-    os.umask(mask)
-    return mask
+    try:
+        return mask
+    finally:
+        os.umask(mask)
 
 
 def write_fingerprint(path: Path, fingerprint: Mapping[str, Any]) -> None:

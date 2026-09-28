@@ -567,3 +567,166 @@ def test_regenerate_reports_a_write_failure_as_probe_failed_exit_code(
     assert result.exit_code == 2, result.output  # EXIT_PROBE_FAILED, not a traceback's 1
     assert "disk full" in result.output
     assert fp_path.read_text() == before, "a write failure must not corrupt the baseline"
+
+
+def test_regenerate_reports_a_fingerprint_serialization_failure_as_probe_failed_exit_code(
+    tmp_path: Path, monkeypatch
+):
+    """A probe returning a dict with a tuple key makes json.dumps raise TypeError
+    inside write_fingerprint -- not DriftProbeError, KeyError, OSError, or
+    PluginLoadError, so before the generic `except Exception` clause this still
+    escaped as an unhandled traceback (exit 1).
+    """
+    import shutil
+
+    plugin_dir = tmp_path / "fake_plugin"
+    shutil.copytree(FIXTURE_ROOT / "fake_plugin", plugin_dir)
+    reg = plugin_loader.PluginRegistry()
+    reg.load_from_directory(plugin_dir)
+    monkeypatch.setattr(plugin_loader, "get_registry", lambda: reg)
+    spec = reg.get_dataset("fake:default")
+
+    object.__setattr__(spec, "drift_probe", lambda: {("a", "b"): 1})
+    fp_path = plugin_dir / "tests" / "drift_fingerprint.json"
+    before = fp_path.read_text()
+
+    result = CliRunner().invoke(drift_cmd, ["--regenerate", "fake:default"])
+
+    assert result.exit_code == 2, result.output  # EXIT_PROBE_FAILED, not a traceback's 1
+    assert "could not regenerate the fingerprint for fake:default" in result.output
+    assert "TypeError" in result.output
+    assert fp_path.read_text() == before, "a serialization failure must not corrupt the baseline"
+    assert sorted(p.name for p in (plugin_dir / "tests").iterdir()) == [
+        "drift_fingerprint.json"
+    ], "no temp sibling left behind"
+
+
+# --- #364: load errors are scoped to what the caller asked about --------------------
+#
+# `load_errors` was applied unconditionally, so `hvantk drift clinvar:variants --json`
+# emitted probe_failed rows for units the caller never asked about and exited 2 even
+# when clinvar was clean; `--all --domain X` filtered list_datasets but not load_errors;
+# and `--regenerate` returned before the exit-code block, so it exited 0 with load errors
+# present -- while a PluginLoadError from get_dataset escaped as a traceback, exit 1.
+
+_BROKEN_MANIFEST = (
+    "api_version: 2\n"
+    "name: brokenprov\n"
+    "version: 0.1.0\n"
+    "datasets:\n"
+    "  - name: thing\n"
+    "    domain: proteomics\n"
+    "    backend: hail\n"
+    "    builder: {module: hvantk.nope.missing, function: build_thing}\n"
+    "    drift_probe: {module: hvantk.nope.missing, function: fetch_fingerprint}\n"
+    "    skill: SKILL.md\n"
+    "    tests: {command: pytest, fixture: f, schema_snapshot: s,\n"
+    "            row_snapshot: r, drift_fingerprint: d}\n"
+)
+
+
+def _registry_with_broken_dataset(tmp_path, monkeypatch):
+    """fake:default (genomics, healthy) plus brokenprov:thing (proteomics, will not bind)."""
+    plugin = tmp_path / "brokenprov"
+    plugin.mkdir()
+    (plugin / "plugin.yaml").write_text(_BROKEN_MANIFEST)
+    (plugin / "SKILL.md").write_text("---\nname: x\ndescription: y\n---\n# x\n")
+    reg = plugin_loader.PluginRegistry()
+    reg.load_from_directory(FIXTURE_ROOT / "fake_plugin")
+    reg.load_from_directory(plugin)
+    monkeypatch.setattr(plugin_loader, "get_registry", lambda: reg)
+    return reg
+
+
+def _stdout_rows(result):
+    return json.loads(result.stdout)
+
+
+def test_single_dataset_drift_ignores_unrelated_load_errors(monkeypatch):
+    _registry_with_load_error(monkeypatch, unit="brokenprov")
+    result = CliRunner().invoke(drift_cmd, ["--json", "fake:default"])
+    assert result.exit_code == 0, result.output
+    assert [r["dataset_name"] for r in _stdout_rows(result)] == ["fake:default"]
+    assert "brokenprov" not in result.output
+
+
+@pytest.mark.parametrize("unit", ["fake", "entry-point:fake"])
+def test_single_dataset_drift_reports_its_own_providers_failure(monkeypatch, unit):
+    _registry_with_load_error(monkeypatch, unit=unit)
+    result = CliRunner().invoke(drift_cmd, ["--json", "fake:default"])
+    assert result.exit_code == 2, result.output
+    rows = _stdout_rows(result)
+    assert {r["dataset_name"] for r in rows} == {"fake:default", unit}
+    assert [r["status"] for r in rows if r["dataset_name"] == unit] == ["probe_failed"]
+
+
+def test_domain_filter_drops_dataset_level_errors_from_other_domains(tmp_path, monkeypatch):
+    _registry_with_broken_dataset(tmp_path, monkeypatch)
+    result = CliRunner().invoke(drift_cmd, ["--all", "--domain", "genomics", "--json"])
+    assert result.exit_code == 0, result.output
+    assert [r["dataset_name"] for r in _stdout_rows(result)] == ["fake:default"]
+    assert "brokenprov" not in result.output
+
+
+def test_all_without_domain_still_reports_every_load_error(tmp_path, monkeypatch):
+    _registry_with_broken_dataset(tmp_path, monkeypatch)
+    result = CliRunner().invoke(drift_cmd, ["--all", "--json"])
+    assert result.exit_code == 2, result.output
+    assert "brokenprov:thing" in {r["dataset_name"] for r in _stdout_rows(result)}
+
+
+def test_domain_filter_keeps_provider_level_errors(monkeypatch):
+    """A provider whose manifest did not load has no domain to filter on; dropping it
+    would recreate the silently-smaller sweep #351 is about."""
+    _registry_with_load_error(monkeypatch, unit="ghostprov")
+    result = CliRunner().invoke(drift_cmd, ["--all", "--domain", "genomics", "--json"])
+    assert result.exit_code == 2, result.output
+    assert "ghostprov" in {r["dataset_name"] for r in _stdout_rows(result)}
+
+
+def test_regenerate_ignores_unrelated_load_errors(tmp_path, monkeypatch):
+    """drift_to_pr.py runs --regenerate unattended and discards the staged fingerprint on
+    any non-zero exit, so an unrelated broken plugin must not fail every regenerate."""
+    import shutil
+
+    plugin_dir = tmp_path / "fake_plugin"
+    shutil.copytree(FIXTURE_ROOT / "fake_plugin", plugin_dir)
+    reg = plugin_loader.PluginRegistry()
+    reg.load_from_directory(plugin_dir)
+    reg._record_load_error("brokenprov", plugin_loader.PluginLoadError("boom"))
+    monkeypatch.setattr(plugin_loader, "get_registry", lambda: reg)
+    result = CliRunner().invoke(drift_cmd, ["--regenerate", "fake:default"])
+    assert result.exit_code == 0, result.output
+
+
+def test_regenerate_exits_probe_failed_when_the_datasets_own_provider_failed(tmp_path, monkeypatch):
+    import shutil
+
+    plugin_dir = tmp_path / "fake_plugin"
+    shutil.copytree(FIXTURE_ROOT / "fake_plugin", plugin_dir)
+    reg = plugin_loader.PluginRegistry()
+    reg.load_from_directory(plugin_dir)
+    reg._record_load_error("entry-point:fake", plugin_loader.PluginLoadError("boom"))
+    monkeypatch.setattr(plugin_loader, "get_registry", lambda: reg)
+    result = CliRunner().invoke(drift_cmd, ["--regenerate", "fake:default"])
+    assert result.exit_code == 2, result.output
+    assert "entry-point:fake" in result.output
+
+
+@pytest.mark.parametrize("args", [["brokenprov:thing"], ["--regenerate", "brokenprov:thing"]])
+def test_a_dataset_that_failed_to_bind_exits_probe_failed_not_a_traceback(tmp_path, monkeypatch, args):
+    """get_dataset re-raises the cached PluginLoadError, which is not a KeyError, so it
+    escaped the `except KeyError` and a wrapper reading exit codes saw 1 == 'drifted'."""
+    _registry_with_broken_dataset(tmp_path, monkeypatch)
+    result = CliRunner().invoke(drift_cmd, args)
+    assert result.exit_code == 2, result.output
+    assert not isinstance(result.exception, plugin_loader.PluginLoadError), result.exception
+    assert "failed to load" in result.output
+
+
+def test_a_dataset_that_failed_to_bind_gets_a_json_row(tmp_path, monkeypatch):
+    _registry_with_broken_dataset(tmp_path, monkeypatch)
+    result = CliRunner().invoke(drift_cmd, ["--json", "brokenprov:thing"])
+    assert result.exit_code == 2, result.output
+    rows = _stdout_rows(result)
+    assert [(r["dataset_name"], r["status"]) for r in rows] == [("brokenprov:thing", "probe_failed")]
