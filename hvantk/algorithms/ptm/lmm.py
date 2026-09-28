@@ -26,7 +26,6 @@ from typing import Dict, List
 
 import numpy as np
 import pandas as pd
-import statsmodels.formula.api as smf
 
 from hvantk.algorithms.ptm.constants import (
     LMM_BINNED_MIN_CELL_N,
@@ -36,6 +35,9 @@ from hvantk.algorithms.ptm.constants import (
     LMM_MIN_N_PTM,
     LOG_AF_EPSILON,
 )
+from hvantk.algorithms.ptm.optional_deps import require_statsmodels
+
+smf = require_statsmodels()
 
 logger = logging.getLogger(__name__)
 

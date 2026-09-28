@@ -927,6 +927,16 @@ def ptm_test(
           --expression-pkl brain_gene_celltype_median_expr.pkl \\
           -o results/celltype_binned.tsv
     """
+    # Checked before the try below: click.ClickException subclasses Exception, so raising
+    # it inside that block would be folded into the generic handler and logged as a
+    # traceback -- the exact shape #362 is about.
+    from hvantk.algorithms.ptm.optional_deps import require_statsmodels
+
+    try:
+        require_statsmodels()
+    except ImportError as exc:
+        raise click.ClickException(str(exc)) from exc
+
     try:
         import os as _os
 
@@ -1022,6 +1032,10 @@ def ptm_test(
 
         click.echo(f"Wrote {len(rows)} rows to {output}")
 
+    except (click.ClickException, click.exceptions.Exit):
+        # click's own control flow (ctx.exit(), a usage error) must not be re-wrapped
+        # into "PTM test failed: 1" with a logged traceback.
+        raise
     except Exception as e:
         logger.exception(f"PTM test failed: {e}")
         click.echo(f"Error: {e}", err=True)

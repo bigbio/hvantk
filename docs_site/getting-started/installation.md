@@ -57,7 +57,8 @@ Three command paths need this extra:
 
 `hvantk expression describe` and `summarize-ucsc` do not touch scanpy and work on
 a base install. Without the extra, these paths exit with an actionable message
-naming it, not a traceback.
+naming it, not a traceback -- the same holds for `hvantk ptm test`, which needs
+statsmodels from the `constraint` extra.
 
 > **`expression` is unavailable on Intel macOS.** scanpy pulls `numba` →
 > `llvmlite`, which ships no x86_64 macOS wheel from 0.47 onward and fails to
