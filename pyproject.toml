@@ -48,13 +48,6 @@ dependencies = [
     # transitively via anndata (which requires h5py>=3.7), which is exactly why nothing
     # noticed it was declared nowhere (#363). Same floor as anndata's own requirement.
     "h5py>=3.7",
-    # Same file (skills/ucsc_cellbrowser/shared/ucsc.py) also imports scipy.sparse at
-    # module scope, same reasoning as h5py above (#363 follow-up): `installation.md`
-    # says `summarize-ucsc` works on a base install, so its module-scope imports must
-    # be base dependencies, not left to arrive only via an extra (scipy was already
-    # declared in six extras, but never unconditionally). Same floor requirements.txt
-    # and environment.yml already use.
-    "scipy>=1.8",
 ]
 
 [project.urls]
