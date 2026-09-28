@@ -44,7 +44,9 @@ _FILENAME = "uniprot-ptm-human.tsv"
 # retry budget below must fit under it with room to spare. Worst case -- every
 # attempt exhausts both timeouts and every retry sleeps the full backoff:
 # 2+4 s backoff (attempts 1->2, 2->3) + 3x15 s worst-case timeout (5 s connect +
-# 10 s read, per attempt) = 51 s < 60 s.
+# 10 s read, per attempt) = 51 s < 60 s. The 51 s bound covers the exponential-backoff
+# path; a Retry-After sleep is clamped to max_sleep_s and can exceed it, and the drift
+# runner's SIGALRM is the backstop in that case.
 _ATTEMPTS = 3
 _TIMEOUT_S = (5.0, 10.0)
 

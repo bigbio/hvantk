@@ -140,10 +140,42 @@ def test_http_error_is_a_probe_error():
         _probe(status=404)
 
 
+def test_an_empty_200_is_retried_rather_than_reported_as_drift(monkeypatch):
+    """The call site of the #271 fix, not just the helper.
+
+    `request_with_retry` grew `retry_on_empty_body` for this probe specifically, and
+    `test_http_retry.py` covers the helper thoroughly -- but deleting the one
+    `retry_on_empty_body=True` argument here passed the entire suite. The fix and its
+    only consumer were tested separately, so the wire between them was not tested at
+    all.
+
+    Without it the empty 200 reaches `resp.json()` and the probe raises
+    `Non-JSON response`, which the drift bot files as an issue for what is
+    a transient upstream blip -- exactly what #271 recorded.
+    """
+    monkeypatch.setattr("hvantk.core.utils.http.time.sleep", lambda _s: None)
+
+    with requests_mock.Mocker() as m:
+        m.get(
+            PROBE_URL,
+            [
+                {"status_code": 200, "text": ""},
+                {"status_code": 200, "json": _BODY, "headers": _LIVE_HEADERS},
+            ],
+        )
+        fp = fetch_fingerprint()
+
+    assert fp["source_version"] == "2026_03"
+
+
 def test_worst_case_retry_budget_fits_under_the_runner_timeout():
     """The probe's retry budget must fit under drift_runner's SIGALRM with room to
     spare, or a probe that legitimately exhausts every retry gets killed mid-request
     instead of raising the ordinary DriftProbeError callers already handle.
+
+    Note: the 51 s bound covers the exponential-backoff path; a Retry-After sleep is
+    clamped to max_sleep_s and can exceed it, and the drift runner's SIGALRM is the
+    backstop in that case.
     """
     import inspect
 
