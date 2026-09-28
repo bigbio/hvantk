@@ -16,17 +16,6 @@ import click
 
 logger = logging.getLogger(__name__)
 
-# Import HGC QC functionality
-from hvantk.algorithms.hgc import (
-    check_path_exists_and_readable,
-    compute_full_qc,
-    compute_sample_qc,
-    compute_variant_qc,
-    filter_samples_by_qc,
-    filter_variants_by_qc,
-    save_qc_metrics,
-)
-
 # Import utility functions
 from .utils import validate_input_files, validate_output_path
 
@@ -113,6 +102,13 @@ def compute_qc(
         hvantk hgc compute-qc -i cohort.mt -o qc_results/ --no-sample-qc
         hvantk hgc compute-qc -i cohort.mt -o qc_results/ --call-field LGT
     """
+    from hvantk.algorithms.hgc import (
+        compute_full_qc,
+        compute_sample_qc,
+        compute_variant_qc,
+        save_qc_metrics,
+    )
+
     try:
         logger.info("Starting QC metrics computation")
 
@@ -334,6 +330,8 @@ def filter_qc(
         hvantk hgc filter-qc -i cohort_qc.mt -o cohort_filtered.mt --min-ac 5 --min-af 0.01
         hvantk hgc filter-qc -i cohort_qc.mt -o cohort_filtered.mt --min-sample-call-rate 0.9
     """
+    from hvantk.algorithms.hgc import filter_samples_by_qc, filter_variants_by_qc
+
     try:
         logger.info("Starting QC-based filtering")
 
@@ -659,6 +657,8 @@ def qc_report(ctx, input, output, title, include_plots, style, dry_run):
         hvantk hgc qc-report -i cohort_qc.mt -o report.html --include-plots sample_overview variant_overview
         hvantk hgc qc-report -i cohort_qc.mt -o report.html --style publication --dry-run
     """
+    from hvantk.algorithms.hgc import check_path_exists_and_readable
+
     try:
         # hail_context (init_hail) first: it applies the NumPy np.bool
         # compatibility shim before Hail is imported.

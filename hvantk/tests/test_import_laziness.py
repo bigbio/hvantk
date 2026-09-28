@@ -277,3 +277,29 @@ def test_shell_completion_renders_the_same_as_a_resolved_group():
         cli.get_command(ctx, name)  # force-resolve, then use click's stock path
     eager = [(i.value, i.help) for i in click.Group.shell_complete(cli, ctx, "")]
     assert lazy == eager
+
+
+@pytest.mark.parametrize(
+    "group,also_forbidden",
+    [
+        ("hgc", ()),
+        ("enrichex", ("scipy",)),
+        ("qtlcascade", ("matplotlib",)),
+    ],
+)
+def test_subgroup_help_imports_nothing_heavy(group, also_forbidden):
+    """#306: three subgroups still paid the Hail/matplotlib import for their own --help.
+
+    hgc: its CLI modules imported hvantk.algorithms.hgc at module scope. enrichex: the
+    burden CLI needs a constant at decorator time, and importing enrichex.constants ran a
+    package __init__ that eagerly imported burden (hail). qtlcascade: same shape, with
+    pandas and matplotlib. `hvantk --help` was fixed in #303; these were not.
+    """
+    loaded = _modules_after(
+        "from click.testing import CliRunner\n"
+        "from hvantk.hvantk import cli\n"
+        f"r = CliRunner().invoke(cli, ['{group}', '--help'])\n"
+        "assert r.exit_code == 0, r.output\n"
+    )
+    heavy = sorted((set(HEAVY) | set(also_forbidden)) & loaded)
+    assert not heavy, f"`hvantk {group} --help` pulled {heavy}"

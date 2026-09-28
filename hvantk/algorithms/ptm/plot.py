@@ -1,7 +1,7 @@
 """PTM-specific visualization functions.
 
 Provides publication-quality plots for PTM-variant analysis results (Q1, Q3).
-Follows the pattern of hvantk/enrichex/plot.py: matplotlib-based, optional
+Follows the pattern of hvantk/algorithms/enrichex/plot.py: matplotlib-based, optional
 seaborn, each function saves to file and returns the Figure.
 
 Plot functions:
