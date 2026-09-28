@@ -13,6 +13,11 @@ import logging
 
 import click
 
+from .combine_cli import register_combine_commands
+from .convert_cli import register_convert_commands
+from .pipeline_cli import register_pipeline_command
+from .qc_cli import register_qc_commands
+
 logger = logging.getLogger(__name__)
 
 
@@ -29,11 +34,6 @@ def hgc_group(ctx):
     ctx.ensure_object(dict)
     logger.info("Starting HGC command")
 
-
-from .combine_cli import register_combine_commands
-from .convert_cli import register_convert_commands
-from .pipeline_cli import register_pipeline_command
-from .qc_cli import register_qc_commands
 
 register_combine_commands(hgc_group)
 register_convert_commands(hgc_group)

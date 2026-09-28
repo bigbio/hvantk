@@ -52,3 +52,31 @@ def test_submodule_access_still_works_for_a_real_package():
     import hvantk.algorithms.enrichex as ex
 
     assert ex.constants.GENOTYPE_AGGREGATION_METHODS
+
+
+@pytest.mark.parametrize(
+    "package_name",
+    [
+        "hvantk.algorithms.enrichex",
+        "hvantk.algorithms.qtlcascade",
+    ],
+)
+def test_all_lazy_exports_are_resolvable(package_name):
+    """Every name in a lazy package's __all__ must resolve on access.
+
+    Wrong module paths in the exports map are now only caught at attribute access,
+    not at package import time. This test ensures a typo in the map does not silently
+    break the export: __dir__ lists every map key, so set(__all__) - set(dir())
+    cannot catch it. We must actually getattr() each name.
+    """
+    pkg = __import__(package_name, fromlist=["__all__"])
+    exported = set(pkg.__all__)
+    unresolvable = []
+    for name in sorted(exported):
+        try:
+            getattr(pkg, name)
+        except Exception as exc:  # noqa: BLE001 - report any failure
+            unresolvable.append(f"{name}: {type(exc).__name__}: {exc}")
+    assert (
+        not unresolvable
+    ), f"{package_name} lists these in __all__ but cannot resolve them: {unresolvable}"
