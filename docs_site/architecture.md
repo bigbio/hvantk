@@ -439,8 +439,8 @@ Peer of `core/`, not a layer above it.
 **Contents**:
 - (removed) the legacy per-domain `registry/` directory: the five-package refactor deleted it, and its genomics-only content moved into per-plugin `hvantk/skills/<provider>/catalog/datasets.json` files.
 - `unified_registry.py` - `HvantkRegistry` aggregator surfaced via `hvantk catalog {list,show,stats,search}`. Reads the per-plugin catalog JSON under `skills/<provider>/catalog/` declared via each plugin's `plugin.yaml`; there is no legacy fallback.
-- `schemas/` - JSON schema definitions used by `schema_validator.py` to validate catalog entries.
-- `schema_validator.py` - Validation entry point invoked by the unified registry.
+- `schemas/` - JSON schema definitions (`cohort_manifest.schema.json`, `feature_spec.schema.json`, `selection_policy.schema.json`), each read directly by its consumer via `jsonschema.validate()` -- e.g. `hvantk/algorithms/cohort/spec.py`, `hvantk/algorithms/annotation/spec.py`, `hvantk/algorithms/rerank/selection.py`.
+- Catalog entries are validated separately: `hvantk plugins validate` (`hvantk/tools/plugins/plugins_cli.py`) checks each `catalog/datasets.json` entry against `hvantk/core/plugin/catalog_entry.schema.json`.
 
 **Placement rule** (what goes here vs. nearby alternatives):
 

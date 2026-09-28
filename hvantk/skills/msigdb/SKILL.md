@@ -27,7 +27,7 @@ Stable note (not in catalog): MSigDB ships per-collection GMT files. The GMT for
 
 **`backend: hail`, `domain: mapping`.** A C2 CP GMT is ~4k rows × variable-width gene columns. Per `_conventions` § 3 "Lookup / mapping" allows a Hail Table or pandas DataFrame. Hail wins here because downstream consumers (enrichment / burden / overlap, e.g., `hvantk/algorithms/enrichex/`) join against Hail Tables keyed on gene symbols — producing a Hail Table avoids re-materialization at every join site, mirroring the HGNC decision. Key by `set_name` (string, unique-in-file).
 
-> Catalog placement note: this skill's catalog entry lives in `registry/genomics/datasets.json`, not a dedicated `mapping/` registry directory (no such directory exists today). The decision is consistent with `GWAS_Catalog_v1.0_*` (also gene-symbol / variant-adjacent annotation curation) and avoids invasive changes to `hvantk/resources/unified_registry.py`. Revisit if a `mapping/` domain is later introduced.
+> Catalog placement note: this skill's catalog entry lives in `hvantk/skills/msigdb/catalog/datasets.json`, the plugin's own catalog file -- there is no separate per-domain registry to place it in instead; every plugin owns its own `catalog/datasets.json`.
 
 ## 4. Raw format & gotchas
 
@@ -80,7 +80,7 @@ Per `_conventions` § 9, set names are unique-in-table for a single GMT, so **no
 
 MSigDB releases ~annually (versioned `v<year>.<n>`, e.g., `v2026.1`, `v2025.1`). Per release:
 
-1. Acquire the new GMT (manual download). Update the file path / version in the corresponding `registry/genomics/datasets.json` entry; bump `accession` (`MSigDB_C2_CP_v2026.1.Hs.symbols` → `MSigDB_C2_CP_v2027.1.Hs.symbols`).
+1. Acquire the new GMT (manual download). Update the file path / version in `hvantk/skills/msigdb/catalog/datasets.json`; bump `accession` (`MSigDB_C2_CP_v2026.1.Hs.symbols` → `MSigDB_C2_CP_v2027.1.Hs.symbols`).
 2. Re-run the round-trip test (§ 9). If it passes, no builder change.
 3. The GMT format has been stable for ~15 years; column 1 / column 2 / variable-tail shape has not changed. If MSigDB ever changes the description column (column 2) away from a URL, the `source_url` field name becomes misleading — rename to `description` and update this skill.
 4. To onboard a different collection (e.g., C5 GO, H Hallmark): add a new catalog entry with the new accession; the same `build_msigdb_genesets` builder works without modification. Add a parallel fixture and snapshot directory if the new collection has structural quirks (e.g., GMTs with embedded null bytes).
