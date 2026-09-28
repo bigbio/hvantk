@@ -572,10 +572,13 @@ def test_regenerate_reports_a_write_failure_as_probe_failed_exit_code(
 def test_regenerate_reports_a_fingerprint_serialization_failure_as_probe_failed_exit_code(
     tmp_path: Path, monkeypatch
 ):
-    """A probe returning a dict with a tuple key makes json.dumps raise TypeError
-    inside write_fingerprint -- not DriftProbeError, KeyError, OSError, or
-    PluginLoadError, so before the generic `except Exception` clause this still
-    escaped as an unhandled traceback (exit 1).
+    """A probe returning a dict with a tuple key fails `_coerce_fingerprint`'s
+    JSON-serialisability round-trip (item 1) as a DriftProbeError, uniformly with
+    the plain check path -- so it no longer needs to fall through to
+    write_fingerprint's own json.dumps and the CLI's generic `except Exception`
+    backstop. Exit code and the no-corruption guarantee are unchanged; only the
+    message is now the same shape a probe that raises DriftProbeError directly
+    would produce.
     """
     import shutil
 
@@ -593,8 +596,8 @@ def test_regenerate_reports_a_fingerprint_serialization_failure_as_probe_failed_
     result = CliRunner().invoke(drift_cmd, ["--regenerate", "fake:default"])
 
     assert result.exit_code == 2, result.output  # EXIT_PROBE_FAILED, not a traceback's 1
-    assert "could not regenerate the fingerprint for fake:default" in result.output
-    assert "TypeError" in result.output
+    assert "fingerprint NOT rewritten" in result.output
+    assert "not JSON-serialisable" in result.output
     assert fp_path.read_text() == before, "a serialization failure must not corrupt the baseline"
     assert sorted(p.name for p in (plugin_dir / "tests").iterdir()) == [
         "drift_fingerprint.json"
@@ -799,3 +802,48 @@ def test_regenerate_and_json_are_mutually_exclusive():
     result = CliRunner().invoke(drift_cmd, ["--regenerate", "--json", "fake:default"])
     assert result.exit_code != 0
     assert "--regenerate" in result.output and "--json" in result.output, result.output
+
+
+# --- item 1: a non-str-keyed fingerprint must not crash the CHECK path's echo --------
+#
+# `default=str` in `json.dumps(rows, indent=2, default=str)` rescues non-serialisable
+# VALUES, not KEYS. A probe returning `{("a", "b"): 1}` (or a bytes/frozenset/Path key)
+# passes `_coerce_fingerprint`'s Mapping check, so the drift RUN succeeds and produces a
+# DriftResult carrying the bad-keyed dict in `observed` (and, once diffed, possibly in
+# `diff`) -- and only blows up later, as an uncaught TypeError, when the CLI tries to
+# `json.dumps` it for output. `--regenerate` already turned this into exit 2 via its own
+# catch-all; the plain check path had no such backstop.
+
+
+def _tuple_keyed_probe_registry(monkeypatch):
+    reg = plugin_loader.PluginRegistry()
+    reg.load_from_directory(FIXTURE_ROOT / "fake_plugin")
+    spec = reg.get_dataset("fake:default")
+    object.__setattr__(spec, "drift_probe", lambda: {("a", "b"): 1})
+    monkeypatch.setattr(plugin_loader, "get_registry", lambda: reg)
+    return reg
+
+
+def test_drift_json_single_dataset_exits_probe_failed_on_non_str_keyed_fingerprint(monkeypatch):
+    _tuple_keyed_probe_registry(monkeypatch)
+    result = CliRunner().invoke(drift_cmd, ["--json", "fake:default"])
+    assert result.exit_code == 2, result.output  # EXIT_PROBE_FAILED, not a traceback's 1
+    rows = json.loads(result.output)
+    assert rows[0]["dataset_name"] == "fake:default"
+    assert rows[0]["status"] == "probe_failed"
+
+
+def test_drift_all_json_exits_probe_failed_on_non_str_keyed_fingerprint(monkeypatch):
+    _tuple_keyed_probe_registry(monkeypatch)
+    result = CliRunner().invoke(drift_cmd, ["--all", "--json"])
+    assert result.exit_code == 2, result.output  # EXIT_PROBE_FAILED, not a traceback's 1
+    rows = json.loads(result.output)
+    matching = [r for r in rows if r["dataset_name"] == "fake:default"]
+    assert matching and matching[0]["status"] == "probe_failed"
+
+
+def test_drift_human_readable_exits_probe_failed_on_non_str_keyed_fingerprint(monkeypatch):
+    _tuple_keyed_probe_registry(monkeypatch)
+    result = CliRunner().invoke(drift_cmd, ["fake:default"])
+    assert result.exit_code == 2, result.output  # EXIT_PROBE_FAILED, not a traceback's 1
+    assert "probe_failed" in result.output

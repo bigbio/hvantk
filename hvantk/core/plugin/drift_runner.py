@@ -263,16 +263,35 @@ def _invoke_with_timeout(fn, *, timeout: int) -> dict:
 
 def _coerce_fingerprint(result) -> dict:
     """Convert a probe's return value to a plain dict, raising a clear
-    DriftProbeError if the value isn't dict-like."""
+    DriftProbeError if the value isn't dict-like or isn't JSON-serialisable.
+
+    ``default=str`` at every `json.dumps` call site downstream (the CLI's echo,
+    `write_fingerprint`) rescues non-serialisable VALUES, not KEYS: a probe
+    returning e.g. ``{("a", "b"): 1}`` (or a bytes/frozenset/Path key) passes the
+    Mapping check below, and previously blew up as an uncaught TypeError wherever
+    it was first serialised -- the CLI's echo for a plain drift check, deep inside
+    `write_fingerprint` for `--regenerate`. Round-tripping through `json.dumps`
+    here, while callers still hold a `DriftProbeError`-catching try/except around
+    the probe invocation, turns both into the same uniform probe_failed outcome
+    instead of two different uncaught-TypeError call sites.
+    """
     if isinstance(result, dict):
-        return result
+        value = result
+    else:
+        try:
+            value = dict(result)
+        except (TypeError, ValueError) as exc:
+            raise DriftProbeError(
+                f"probe returned non-mapping value: {type(result).__name__} "
+                f"({result!r})"
+            ) from exc
     try:
-        return dict(result)
-    except (TypeError, ValueError) as exc:
+        json.dumps(value, default=str)
+    except TypeError as exc:
         raise DriftProbeError(
-            f"probe returned non-mapping value: {type(result).__name__} "
-            f"({result!r})"
+            f"probe returned a fingerprint that is not JSON-serialisable: {exc}"
         ) from exc
+    return value
 
 
 def _current_umask() -> int:
