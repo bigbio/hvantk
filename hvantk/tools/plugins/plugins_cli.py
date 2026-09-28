@@ -57,7 +57,16 @@ def describe_cmd(provider: str):
     try:
         p = reg.get_provider(provider)
     except KeyError:
-        failed = [exc for unit, exc in errors if unit == provider]
+        # Normalised the same way `drift_cli._relevant_load_errors` is: a provider-level
+        # unit can be recorded under the plugin DIRECTORY's name (`load_from_skills_root`,
+        # `_provider_id_hint`), which differs from the manifest's `name:` by `_` vs `-` for
+        # 9 of the 23 in-tree providers (`gwas_catalog` vs `gwas-catalog`, ...). Exact
+        # equality here reported "unknown provider" for a provider that in fact failed to
+        # load, with no mention of why.
+        failed = [
+            exc for unit, exc in errors
+            if unit.replace("_", "-") == provider.replace("_", "-")
+        ]
         if failed:
             raise click.ClickException(f"provider {provider!r} failed to load: {failed[0]}")
         raise click.ClickException(f"unknown provider: {provider}")

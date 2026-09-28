@@ -49,6 +49,9 @@ _FILENAME = "medrxiv-preprint-metadata"
 # passes no --timeout). Four attempts at (5, 15) plus 2+4+8 s of backoff is 94 s worst
 # case, so the fourth attempt could never run and a degraded API surfaced as "probe
 # timed out" rather than the diagnostic below. Three attempts at (5, 10) is 6 + 45 = 51 s.
+# The 51 s bound covers the exponential-backoff path; a Retry-After sleep is clamped to
+# max_sleep_s and can exceed it, and the drift runner's SIGALRM is the backstop in that
+# case.
 _ATTEMPTS = 3
 _TIMEOUT_S = (5.0, 10.0)
 

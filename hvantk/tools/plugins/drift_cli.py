@@ -136,10 +136,13 @@ def drift_cmd(
     if regenerate:
         if all_flag:
             raise click.UsageError("--regenerate requires a specific dataset name")
+        if as_json:
+            raise click.UsageError("--regenerate does not support --json")
         try:
             _regenerate_fingerprint(reg, dataset, timeout=timeout)
         except KeyError:
             click.echo(f"unknown dataset: {dataset}", err=True)
+            _echo_unknown_dataset_hint(reg)
             raise SystemExit(EXIT_REGISTRY_ERROR)
         except DriftProbeError as exc:
             # The probe raised, timed out, or returned a non-mapping: nothing was written.
@@ -199,6 +202,7 @@ def drift_cmd(
         )
     except KeyError:
         click.echo(f"unknown dataset: {dataset}", err=True)
+        _echo_unknown_dataset_hint(reg)
         raise SystemExit(EXIT_REGISTRY_ERROR)
     except PluginLoadError as exc:
         # A dataset whose callables would not import: the registry cached the failure and
@@ -283,6 +287,24 @@ def drift_cmd(
     raise SystemExit(max(exit_codes))
 
 
+def _echo_unknown_dataset_hint(reg) -> None:
+    """A second stderr line pointing at `hvantk plugins errors` when the registry has
+    load failures that might be why the caller's dataset was not found.
+
+    `unknown dataset: gwas-catalog:associations` alone reads as a typo, but the real
+    cause can be that the whole `gwas_catalog` directory (dir name, not the
+    hyphenated `name:` the manifest declares) never loaded at all -- the caller typed
+    the provider's real name and got a KeyError with no mention of the load failure
+    that explains it.
+    """
+    n = len(reg.load_errors())
+    if n:
+        click.echo(
+            f"({n} unit(s) failed to load and may include it; see: hvantk plugins errors)",
+            err=True,
+        )
+
+
 def _regenerate_fingerprint(reg, dataset_name: str, *, timeout: int) -> None:
     spec = reg.get_dataset(dataset_name)
     drift_runner.regenerate_fingerprint(spec, timeout=timeout)
@@ -318,11 +340,25 @@ def _relevant_load_errors(
     dataset-level unit whose manifest declares another domain is not, while provider and
     entry-point units carry no domain and are kept -- dropping them would recreate the
     silently-smaller sweep #351 exists to stop.
+
+    A bare provider-level unit is matched against the requested dataset's provider after
+    normalising ``_``/``-`` on both sides: `load_from_skills_root` records the plugin
+    DIRECTORY's name when `plugin.yaml` is missing, and `_provider_id_hint` falls back to
+    it too when the manifest's own `name` cannot be read -- and 9 of the 23 in-tree
+    providers have a directory name that differs from the manifest's `name:` only by
+    `_` vs `-` (`gwas_catalog` vs `gwas-catalog`, `uniprot_ptm` vs `uniprot-ptm`, ...).
+    Exact string equality silently dropped those. The `entry-point:<name>` match stays an
+    exact comparison -- it is keyed by the installed entry point's own name, which is
+    expected to follow the provider's naming convention already.
     """
     if dataset is not None:
         provider = dataset.split(":", 1)[0]
-        wanted = {dataset, provider, f"entry-point:{provider}"}
-        return [(unit, exc) for unit, exc in load_errors if unit in wanted]
+        wanted = {dataset, f"entry-point:{provider}"}
+        return [
+            (unit, exc)
+            for unit, exc in load_errors
+            if unit in wanted or unit.replace("_", "-") == provider.replace("_", "-")
+        ]
     if domain is None:
         return list(load_errors)
     domains = {m.name: m.domain for m in reg.list_manifests()}

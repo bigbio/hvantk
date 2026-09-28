@@ -32,7 +32,7 @@ def test_require_statsmodels_returns_the_formula_api_when_installed():
 
 
 def test_ptm_test_names_the_extra_instead_of_a_traceback(tmp_path, monkeypatch):
-    from hvantk.tools.ptm.ptm_cli import ptm_group  # adjust to the group/command object the existing ptm CLI tests use
+    from hvantk.tools.ptm.ptm_cli import ptm_group
 
     _hide_statsmodels(monkeypatch)
     inp = tmp_path / "in.tsv"

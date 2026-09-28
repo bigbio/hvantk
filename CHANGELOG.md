@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- `hvantk plugins errors` now exits 1 when it lists anything (was 0).
+
 ## 0.3.1 — 2026-08-30
 
 Reworks the scheduled drift bot. Fewer PRs, each carrying a signal that means

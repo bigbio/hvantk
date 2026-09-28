@@ -159,7 +159,11 @@ def test_retry_budget_fits_under_the_drift_runners_default_timeout():
     """drift.yml passes no --timeout, so each probe runs under drift_runner's default
     SIGALRM budget. Four attempts at (5, 15) with 2+4+8 s backoff was 94 s worst case
     against 60 s: the fourth attempt could never run, and a degraded medRxiv reported
-    "probe timed out" instead of the diagnostic this probe exists to give (#364)."""
+    "probe timed out" instead of the diagnostic this probe exists to give (#364).
+
+    Note: the 51 s bound covers the exponential-backoff path; a Retry-After sleep is
+    clamped to max_sleep_s and can exceed it, and the drift runner's SIGALRM is the
+    backstop in that case."""
     import inspect
 
     from hvantk.core.plugin import drift_runner

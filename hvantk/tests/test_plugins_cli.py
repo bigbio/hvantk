@@ -303,3 +303,22 @@ def test_errors_command_exits_zero_when_clean(monkeypatch):
     result = CliRunner().invoke(plugins_group, ["errors"])
     assert result.exit_code == 0
     assert "(no load errors)" in result.output
+
+
+def test_describe_names_a_provider_recorded_under_its_directorys_underscored_name(
+    monkeypatch,
+):
+    """`gwas_catalog/plugin.yaml` failing to load is recorded under the directory name
+    (`load_from_skills_root`, `_provider_id_hint`), but the manifest's own `name:` --
+    and what a caller types -- is the hyphenated `gwas-catalog`. Exact string equality
+    reported "unknown provider" for a provider that in fact failed to load.
+    """
+    reg = plugin_loader.PluginRegistry()
+    reg._record_load_error("gwas_catalog", plugin_loader.PluginLoadError("boom"))
+    monkeypatch.setattr(plugin_loader, "get_registry", lambda: reg)
+
+    result = CliRunner().invoke(plugins_group, ["describe", "gwas-catalog"])
+
+    assert result.exit_code != 0
+    assert "failed to load" in result.output
+    assert "unknown provider" not in result.output

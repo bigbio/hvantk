@@ -730,3 +730,72 @@ def test_a_dataset_that_failed_to_bind_gets_a_json_row(tmp_path, monkeypatch):
     assert result.exit_code == 2, result.output
     rows = _stdout_rows(result)
     assert [(r["dataset_name"], r["status"]) for r in rows] == [("brokenprov:thing", "probe_failed")]
+
+
+# --- follow-up: provider-level load errors recorded under the DIRECTORY name must
+# still be relevant to a dataset addressed by the manifest's hyphenated `name:` -------
+#
+# `load_from_skills_root` records `child.name` (the directory) when `plugin.yaml` is
+# missing, and `_provider_id_hint` falls back to `plugin_dir.name` too when the
+# manifest's own `name` cannot be read. 9 of the 23 in-tree providers have a directory
+# name that differs from the declared `name:` only by `_` vs `-` (`gwas_catalog` dir,
+# `gwas-catalog` name; `uniprot_ptm` dir, `uniprot-ptm` name; ...), so exact string
+# equality in `_relevant_load_errors` silently dropped a directly-relevant failure.
+
+
+def test_single_dataset_drift_matches_a_provider_level_error_across_underscore_hyphen(
+    tmp_path, monkeypatch
+):
+    """A provider whose real name uses hyphens (as `gwas-catalog` does) can have a
+    load failure recorded under its directory's underscored spelling. That unit must
+    still be reported as relevant to `hvantk drift gwas-catalog:associations`."""
+    import shutil
+
+    plugin_dir = tmp_path / "gwas_catalog"
+    shutil.copytree(FIXTURE_ROOT / "fake_plugin", plugin_dir)
+    manifest = plugin_dir / "plugin.yaml"
+    manifest.write_text(
+        manifest.read_text()
+        .replace("name: fake", "name: gwas-catalog", 1)
+        .replace("name: default", "name: associations", 1)
+    )
+
+    reg = plugin_loader.PluginRegistry()
+    reg.load_from_directory(plugin_dir)
+    reg._record_load_error("gwas_catalog", plugin_loader.PluginLoadError("boom"))
+    monkeypatch.setattr(plugin_loader, "get_registry", lambda: reg)
+
+    result = CliRunner().invoke(drift_cmd, ["--json", "gwas-catalog:associations"])
+
+    assert result.exit_code == 2, result.output
+    assert "gwas_catalog" in result.stderr
+    rows = _stdout_rows(result)
+    assert {r["dataset_name"] for r in rows} == {"gwas-catalog:associations", "gwas_catalog"}
+    assert [r["status"] for r in rows if r["dataset_name"] == "gwas_catalog"] == ["probe_failed"]
+
+
+# --- follow-up: an unknown dataset should hint at `plugins errors` when there is a
+# recorded load failure that might explain it -----------------------------------------
+
+
+def test_unknown_dataset_hints_at_plugins_errors_when_something_failed_to_load(monkeypatch):
+    _registry_with_load_error(monkeypatch, unit="brokenprov")
+    result = CliRunner().invoke(drift_cmd, ["does:not:exist"])
+    assert result.exit_code == 3, result.output
+    assert "plugins errors" in result.stderr
+
+
+def test_unknown_dataset_prints_no_hint_when_nothing_failed_to_load():
+    result = CliRunner().invoke(drift_cmd, ["does:not:exist"])
+    assert result.exit_code == 3, result.output
+    assert "plugins errors" not in result.stderr
+
+
+# --- minor: --regenerate --json writes prose to stdout, breaking the machine-readable
+# contract; reject the combination up front instead ------------------------------------
+
+
+def test_regenerate_and_json_are_mutually_exclusive():
+    result = CliRunner().invoke(drift_cmd, ["--regenerate", "--json", "fake:default"])
+    assert result.exit_code != 0
+    assert "--regenerate" in result.output and "--json" in result.output, result.output
