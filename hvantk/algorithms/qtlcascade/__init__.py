@@ -27,21 +27,9 @@ from __future__ import annotations
 
 import logging
 
+from hvantk.core.utils.lazy_exports import install_lazy_exports
+
 logger = logging.getLogger(__name__)
-
-# Core cascade
-from hvantk.algorithms.qtlcascade.cascade import build_cascade
-
-# Gene-level summary
-from hvantk.algorithms.qtlcascade.gene_summary import build_cascade_gene_summary
-
-# Colocalization (pure NumPy — always available)
-from hvantk.algorithms.qtlcascade.coloc import (
-    coloc_abf,
-    compute_log_abf,
-    prepare_coloc_data,
-    run_coloc_per_gene,
-)
 
 # Constants
 from hvantk.algorithms.qtlcascade.constants import (
@@ -58,21 +46,50 @@ from hvantk.algorithms.qtlcascade.constants import (
     DEFAULT_PQTL_P_THRESHOLD,
 )
 
-# Pipeline
-from hvantk.algorithms.qtlcascade.pipeline import CascadeConfig, CascadePipeline, CascadeResult
 
-# Plotting
-from hvantk.algorithms.qtlcascade.plot import (
-    encode_figure_to_base64,
-    plot_attenuation,
-    plot_cascade_classes,
-    plot_coloc_posteriors,
-    plot_cross_tissue_heatmap,
-    plot_loeuf_by_cascade_class,
+def _missing_hint(exc: ModuleNotFoundError) -> "str | None":
+    if (exc.name or "").split(".")[0] in {"matplotlib", "seaborn"}:
+        return (
+            "matplotlib is required for qtlcascade plotting and reporting, and is not "
+            "part of the base install. Install the 'viz' extra:\n"
+            "    pip install 'hvantk[viz]'\n"
+            "    poetry install --extras viz"
+        )
+    return None
+
+
+# Everything below is resolved on ATTRIBUTE ACCESS, not at package import (PEP 562).
+#
+# The qtlcascade CLI needs constants (e.g. CASCADE_CLASSES) at decorator time, so it
+# imports hvantk.algorithms.qtlcascade.constants, which runs this module -- and this
+# module eagerly imported cascade, gene_summary (pandas), coloc, pipeline, plot
+# (matplotlib) and report, whether or not the command being run needed any of them.
+# `hvantk qtlcascade --help` paid the full cost just to print its own help text (#306).
+#
+# The names below stay importable and stay in __all__, so this is not an API change; the
+# import simply happens on first use, via install_lazy_exports (hvantk/core/utils/lazy_exports.py).
+install_lazy_exports(
+    globals(),
+    {
+        "build_cascade": "hvantk.algorithms.qtlcascade.cascade",
+        "build_cascade_gene_summary": "hvantk.algorithms.qtlcascade.gene_summary",
+        "coloc_abf": "hvantk.algorithms.qtlcascade.coloc",
+        "compute_log_abf": "hvantk.algorithms.qtlcascade.coloc",
+        "prepare_coloc_data": "hvantk.algorithms.qtlcascade.coloc",
+        "run_coloc_per_gene": "hvantk.algorithms.qtlcascade.coloc",
+        "CascadeConfig": "hvantk.algorithms.qtlcascade.pipeline",
+        "CascadePipeline": "hvantk.algorithms.qtlcascade.pipeline",
+        "CascadeResult": "hvantk.algorithms.qtlcascade.pipeline",
+        "encode_figure_to_base64": "hvantk.algorithms.qtlcascade.plot",
+        "plot_attenuation": "hvantk.algorithms.qtlcascade.plot",
+        "plot_cascade_classes": "hvantk.algorithms.qtlcascade.plot",
+        "plot_coloc_posteriors": "hvantk.algorithms.qtlcascade.plot",
+        "plot_cross_tissue_heatmap": "hvantk.algorithms.qtlcascade.plot",
+        "plot_loeuf_by_cascade_class": "hvantk.algorithms.qtlcascade.plot",
+        "generate_report": "hvantk.algorithms.qtlcascade.report",
+    },
+    missing_hint=_missing_hint,
 )
-
-# Report
-from hvantk.algorithms.qtlcascade.report import generate_report
 
 __all__ = [
     # Cascade core

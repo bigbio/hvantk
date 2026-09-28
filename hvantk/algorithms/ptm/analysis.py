@@ -290,17 +290,15 @@ def export_ptm_strata(
         "non_ptm": annotated_ht.filter(~is_ptm),
     }
 
-    # Both stratum sizes come from a single pass over the table. Calling
-    # ``ht.count()`` per stratum inside the loop below ran an extra full Spark
-    # job each time -- and because ``annotated_ht`` is lazy, every one of those
-    # jobs re-ran the whole PTM annotation pipeline just to produce a log line.
-    counts = annotated_ht.aggregate(
-        hl.struct(
-            ptm=hl.agg.count_where(is_ptm),
-            non_ptm=hl.agg.count_where(~is_ptm),
-        )
-    )
-
+    # One export per stratum is the whole cost: two full passes over the table. The
+    # per-stratum counts used to come from a third pass (an `aggregate`, and before
+    # #303 from a `count()` per stratum). Every in-tree caller hands this function a
+    # table read from disk (`hl.read_table` in ptm_cli, a checkpoint in the docs
+    # example), so each pass re-reads and re-filters that file -- it never re-runs
+    # the annotation pipeline -- and the honest way to avoid the third read is to
+    # count what the export just wrote: `Table.export(path, header=False)` on the
+    # local directory this function creates produces one uncompressed file with one
+    # variant per line.
     paths = {}
     for name, ht in strata.items():
         out_path = os.path.join(output_dir, f"{name}_variants.txt")
@@ -316,7 +314,9 @@ def export_ptm_strata(
             )
         )
         ht_out.key_by().select("_vid").export(out_path, header=False)
-        logger.info(f"Exported {counts[name]:,} {name} variants to {out_path}")
+        with open(out_path) as fh:
+            n_rows = sum(1 for _ in fh)
+        logger.info(f"Exported {n_rows:,} {name} variants to {out_path}")
         paths[name] = out_path
 
     return paths

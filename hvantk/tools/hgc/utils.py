@@ -9,8 +9,6 @@ import glob
 import os
 import tempfile
 
-from hvantk.algorithms.hgc import check_path_exists_and_readable, validate_vds_paths
-
 logger = logging.getLogger(__name__)
 
 DEFAULT_TEMP_DIR = os.environ.get("HGC_TEMP_DIR", tempfile.gettempdir())
@@ -49,6 +47,8 @@ def expand_file_patterns(patterns):
 
 def validate_input_files(file_paths, file_type="gvcf"):
     """Validate input files and return (is_valid, errors) tuple."""
+    from hvantk.algorithms.hgc import check_path_exists_and_readable, validate_vds_paths
+
     errors = []
     try:
         if file_type == "gvcf":

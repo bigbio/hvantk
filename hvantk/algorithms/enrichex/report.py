@@ -22,6 +22,7 @@ from hvantk.core.utils.gene_sets import GeneSetCollection
 from hvantk.algorithms.visualization.base import encode_figure_to_base64
 from hvantk.algorithms.enrichex.plot import (
     _resolve_significance,
+    _resolve_pvalue_column,
     plot_burden_forest,
     plot_enrichment_dotplot,
 )
@@ -630,13 +631,6 @@ def _get_css_styles(colors: Dict[str, str]) -> str:
             color: #666;
         }}
     """
-
-
-def _resolve_pvalue_column(df: pd.DataFrame) -> str:
-    for column in ("p_adjusted", "p_value"):
-        if column in df.columns:
-            return column
-    raise ValueError("Results must include p_adjusted or p_value columns.")
 
 
 def _format_float(value: Any) -> str:

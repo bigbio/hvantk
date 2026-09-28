@@ -8,7 +8,6 @@ import logging
 import os
 import click
 
-from hvantk.algorithms.hgc import combine_gvcfs, combine_vdses
 from .utils import validate_output_path, DEFAULT_TEMP_DIR
 
 logger = logging.getLogger(__name__)
@@ -105,6 +104,8 @@ def gvcf_combine(
         hvantk hgc gvcf-combine -g /path/to/gvcfs -v existing.vds -o combined.vds
         hvantk hgc gvcf-combine -g /path/to/gvcfs -o combined.vds --import-interval-size 600000
     """
+    from hvantk.algorithms.hgc import combine_gvcfs
+
     try:
         logger.info("Starting GVCF combination workflow")
 
@@ -200,6 +201,8 @@ def vds_combine(ctx, input_dir, output, validate, overwrite, dry_run):
         hvantk hgc vds-combine -i /path/to/vds_datasets -o combined.vds
         hvantk hgc vds-combine -i /path/to/vds_datasets -o combined.vds --no-validate
     """
+    from hvantk.algorithms.hgc import combine_vdses
+
     try:
         logger.info("Starting VDS combination workflow")
 

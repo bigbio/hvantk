@@ -109,6 +109,20 @@ def test_building_the_cli_imports_no_subcommand_module():
     assert not heavy, f"CLI import pulled {heavy}; something heavy is imported at module scope"
 
 
+def test_a_typo_suggestion_imports_no_subcommand_module():
+    """The suggestion list must come from the registry, not from resolving commands."""
+    loaded = _modules_after(
+        "from click.testing import CliRunner\n"
+        "from hvantk.hvantk import cli\n"
+        "r = CliRunner().invoke(cli, ['drif'])\n"
+        "assert r.exit_code == 2, r.output\n"
+    )
+    eager = sorted(m for m in _subcommand_modules() if _is_loaded(m, loaded))
+    assert not eager, f"a typo resolved subcommand modules: {eager}"
+    heavy = sorted(set(HEAVY) & loaded)
+    assert not heavy, f"a typo pulled {heavy}"
+
+
 def test_listing_commands_imports_no_subcommand_module():
     """``hvantk --help`` renders every short help; it may only read the registry.
 
@@ -263,3 +277,29 @@ def test_shell_completion_renders_the_same_as_a_resolved_group():
         cli.get_command(ctx, name)  # force-resolve, then use click's stock path
     eager = [(i.value, i.help) for i in click.Group.shell_complete(cli, ctx, "")]
     assert lazy == eager
+
+
+@pytest.mark.parametrize(
+    "group,also_forbidden",
+    [
+        ("hgc", ()),
+        ("enrichex", ("scipy",)),
+        ("qtlcascade", ("matplotlib",)),
+    ],
+)
+def test_subgroup_help_imports_nothing_heavy(group, also_forbidden):
+    """#306: three subgroups still paid the Hail/matplotlib import for their own --help.
+
+    hgc: its CLI modules imported hvantk.algorithms.hgc at module scope. enrichex: the
+    burden CLI needs a constant at decorator time, and importing enrichex.constants ran a
+    package __init__ that eagerly imported burden (hail). qtlcascade: same shape, with
+    pandas and matplotlib. `hvantk --help` was fixed in #303; these were not.
+    """
+    loaded = _modules_after(
+        "from click.testing import CliRunner\n"
+        "from hvantk.hvantk import cli\n"
+        f"r = CliRunner().invoke(cli, ['{group}', '--help'])\n"
+        "assert r.exit_code == 0, r.output\n"
+    )
+    heavy = sorted((set(HEAVY) | set(also_forbidden)) & loaded)
+    assert not heavy, f"`hvantk {group} --help` pulled {heavy}"

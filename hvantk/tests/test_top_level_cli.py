@@ -19,6 +19,22 @@ def test_drift_subcommand_is_attached():
     assert "--all" in result.output
 
 
+def test_a_typo_gets_a_did_you_mean_suggestion():
+    """#305: click >= 8.4 builds suggestions from `self.commands`, which LazyGroup never
+    populates until something is dispatched, so `hvantk drif` lost the hint an eager
+    group gives."""
+    import click.exceptions
+
+    if not hasattr(click.exceptions, "NoSuchCommand"):
+        import pytest
+
+        pytest.skip("click < 8.4 has no suggestions to preserve")
+    result = CliRunner().invoke(cli, ["drif"])
+    assert result.exit_code == 2
+    assert "No such command 'drif'" in result.output
+    assert "Did you mean 'drift'?" in result.output, result.output
+
+
 def test_lazy_command_registry_matches_real_commands():
     """``_LAZY_COMMANDS`` must stay in sync with the commands it stands in for.
 
@@ -45,6 +61,11 @@ def test_lazy_command_registry_matches_real_commands():
         if actual != short_help:
             mismatches.append(
                 f"{module}.{attr}: registry help {short_help!r} != actual {actual!r}"
+            )
+        if command.hidden:
+            mismatches.append(
+                f"{module}.{attr}: is hidden, but _LAZY_COMMANDS cannot express hidden "
+                "commands -- format_commands and shell_complete would still list it"
             )
 
     assert not mismatches, "stale _LAZY_COMMANDS entries:\n  " + "\n  ".join(mismatches)

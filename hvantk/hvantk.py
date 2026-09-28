@@ -19,6 +19,11 @@ from hvantk.core.config import CONTEXT_SETTINGS
 # them. That duplication is the one maintenance cost of this design: if a
 # subcommand's own help text changes, update the copy here too, or ``hvantk
 # --help`` will show the stale wording.
+#
+# Registry entries cannot be hidden: ``format_commands`` and ``shell_complete``
+# read this registry, not the command object, so a registered command's
+# ``hidden=True`` is silently ignored -- ``test_lazy_command_registry_matches_real_commands``
+# fails if one is ever registered here.
 _LAZY_COMMANDS: dict[str, tuple[str, str, str]] = {
     "ancestry-inference": (
         "hvantk.tools.ancestry.ancestry_cli",
@@ -195,6 +200,26 @@ class LazyGroup(click.Group):
         if rows:
             with formatter.section("Commands"):
                 formatter.write_dl(rows)
+
+    def resolve_command(self, ctx, args):
+        """Keep click's typo suggestions, which it builds from ``self.commands``.
+
+        That dict is empty here until a command has been dispatched, so on click >= 8.4
+        ``hvantk drif`` said ``No such command 'drif'.`` with no ``Did you mean
+        'drift'?`` -- a regression from the lazy pattern, not a missing click feature.
+        The registry already knows every name, so the suggestion is rebuilt from it.
+        Older click (the lock pins 8.1.8) has no ``NoSuchCommand`` and no suggestions;
+        nothing changes there.
+        """
+        try:
+            return super().resolve_command(ctx, args)
+        except click.UsageError as exc:
+            no_such = getattr(click.exceptions, "NoSuchCommand", None)
+            if no_such is None or not isinstance(exc, no_such) or exc.possibilities:
+                raise
+            raise no_such(
+                exc.command_name, possibilities=self.list_commands(ctx), ctx=ctx
+            ) from None
 
 
 # Main CLI entry point for the package (hvantk)

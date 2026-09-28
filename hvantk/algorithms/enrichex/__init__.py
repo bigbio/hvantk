@@ -22,45 +22,10 @@ from __future__ import annotations
 
 import logging
 
+from hvantk.core.utils.lazy_exports import install_lazy_exports
+
 logger = logging.getLogger(__name__)
 
-try:
-    from hvantk.algorithms.enrichex.burden import (
-        VariantFilter,
-        build_variant_classes_from_presets,
-        permutation_burden_test,
-        compute_geneset_burden_mt,
-        compute_per_gene_burden_mt,
-        linear_burden_test,
-        logistic_burden_test,
-        run_burden_analysis,
-        run_stratified_burden_analysis,
-    )
-except (
-    ModuleNotFoundError
-) as exc:  # pragma: no cover - depends on optional Hail install
-    _exc = exc
-    logger.warning(
-        "Hail-dependent EnrichEx burden methods unavailable: %s. "
-        "Install hvantk with the required extras to enable them.",
-        exc,
-    )
-
-    class VariantFilter:
-        def __init__(self, *a, **k):
-            raise ImportError(
-                "Burden analysis requires the optional Hail dependency. "
-                "Install hvantk with the 'hail' requirements."
-            ) from _exc
-
-    build_variant_classes_from_presets = VariantFilter  # type: ignore[assignment]
-    permutation_burden_test = VariantFilter  # type: ignore[assignment]
-    compute_geneset_burden_mt = VariantFilter  # type: ignore[assignment]
-    compute_per_gene_burden_mt = VariantFilter  # type: ignore[assignment]
-    linear_burden_test = VariantFilter  # type: ignore[assignment]
-    logistic_burden_test = VariantFilter  # type: ignore[assignment]
-    run_burden_analysis = VariantFilter  # type: ignore[assignment]
-    run_stratified_burden_analysis = VariantFilter  # type: ignore[assignment]
 from hvantk.algorithms.enrichex.constants import (
     CORRECTION_METHODS,
     DEFAULT_ALPHA,
@@ -72,50 +37,6 @@ from hvantk.algorithms.enrichex.constants import (
     PHENOTYPE_TYPES,
     VARIANT_CLASS_PRESETS,
 )
-from hvantk.algorithms.statistics.correction import apply_correction, fdr_threshold
-from hvantk.core.utils.gene_sets import (
-    GeneSet,
-    GeneSetCollection,
-    load_gene_sets_from_dict,
-    load_marker_genes,
-)
-from hvantk.algorithms.enrichex.overlap import (
-    OverlapResult,
-    compute_overlap_enrichment,
-    compute_overlap_enrichment_pandas,
-)
-from hvantk.algorithms.enrichex.pipeline import (
-    BurdenConfig,
-    BurdenPipeline,
-    BurdenRunResult,
-)
-from hvantk.algorithms.enrichex.simulation import check_type_i_error
-
-# Plotting and reporting are resolved on ATTRIBUTE ACCESS, not at package import (PEP 562).
-#
-# They used to be plain `from ... import` lines here, and that broke `hvantk` outright: the
-# CLI imports hvantk.algorithms.enrichex.constants, which runs this module, which pulled in
-# enrichex.plot / enrichex.report / visualization.base -- all three import matplotlib at
-# module scope. matplotlib is optional, so on a base install `pip install hvantk` produced a
-# console script where even `hvantk --help` raised ModuleNotFoundError. Every command paid
-# for plotting whether or not it plotted.
-#
-# The names below stay importable and stay in __all__, so this is not an API change; the
-# import simply happens on first use. The CLI never trips it -- overlap_cli and burden_cli
-# already import `generate_report` inside the functions that need it -- so a base install
-# now runs, and the `enrichex` extra (which carries matplotlib) is what a plotting caller
-# installs.
-_LAZY = {
-    "encode_figure_to_base64": "hvantk.algorithms.visualization.base",
-    "generate_report": "hvantk.algorithms.enrichex.report",
-    "plot_burden_forest": "hvantk.algorithms.enrichex.plot",
-    "plot_burden_volcano": "hvantk.algorithms.enrichex.plot",
-    "plot_celltype_burden_heatmap": "hvantk.algorithms.enrichex.plot",
-    "plot_celltype_forest": "hvantk.algorithms.enrichex.plot",
-    "plot_enrichment_barplot": "hvantk.algorithms.enrichex.plot",
-    "plot_enrichment_dotplot": "hvantk.algorithms.enrichex.plot",
-}
-
 
 _PLOTTING_HINT = (
     "matplotlib is required for EnrichEx plotting and reporting, and is not part of the "
@@ -124,35 +45,77 @@ _PLOTTING_HINT = (
     "    poetry install --extras enrichex"
 )
 
-
-def __getattr__(name: str):
-    """Resolve the plotting/reporting exports on first access."""
-    module = _LAZY.get(name)
-    if module is None:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    import importlib
-
-    try:
-        value = getattr(importlib.import_module(module), name)
-    except ModuleNotFoundError as exc:  # pragma: no cover - needs matplotlib absent
-        # Same contract as require_scanpy (algorithms/expression/matrix_utils.py) and
-        # _require_matplotlib (algorithms/qtlcascade/plot.py): name the extra rather than
-        # leave the caller a bare ModuleNotFoundError. Deferring the import must not also
-        # degrade the message -- that was the review finding on the scanpy extra in #248.
-        if exc.name and exc.name.split(".")[0] in {"matplotlib", "seaborn"}:
-            raise ImportError(_PLOTTING_HINT) from exc
-        raise
-    globals()[name] = value  # cache, so the import cost is paid once
-    return value
+_HAIL_HINT = (
+    "Burden analysis requires Hail, which is part of the base install; if this import "
+    "fails the environment is broken -- reinstall hvantk (pip install hvantk) or check "
+    "that Java 8/11 is available to Hail."
+)
 
 
-def __dir__():
-    return sorted(set(globals()) | set(_LAZY))
+def _missing_hint(exc: ModuleNotFoundError) -> "str | None":
+    root = (exc.name or "").split(".")[0]
+    if root in {"matplotlib", "seaborn"}:
+        return _PLOTTING_HINT
+    if root == "hail":
+        return _HAIL_HINT
+    return None
 
-try:
-    from hvantk.algorithms.enrichex.simulation import generate_synthetic_burden_cohort
-except ModuleNotFoundError:  # pragma: no cover - depends on optional Hail install
-    generate_synthetic_burden_cohort = VariantFilter  # type: ignore[assignment]
+
+# Everything below is resolved on ATTRIBUTE ACCESS, not at package import (PEP 562).
+#
+# It used to be plain `from ... import` lines here, and that broke `hvantk` outright: the
+# burden CLI needs `GENOTYPE_AGGREGATION_METHODS` at decorator time (`click.Choice(...)`),
+# so it imports `hvantk.algorithms.enrichex.constants`, which runs this module -- and this
+# module eagerly imported burden (Hail, ~5 s), overlap (scipy), pipeline, simulation and
+# gene_sets, whether or not the command being run needed any of them. `hvantk enrichex
+# --help` paid the full cost just to print its own help text (#306).
+#
+# The names below stay importable and stay in __all__, so this is not an API change; the
+# import simply happens on first use, via install_lazy_exports (hvantk/core/utils/lazy_exports.py).
+install_lazy_exports(
+    globals(),
+    {
+        # Core data structures + loaders
+        "GeneSet": "hvantk.core.utils.gene_sets",
+        "GeneSetCollection": "hvantk.core.utils.gene_sets",
+        "load_gene_sets_from_dict": "hvantk.core.utils.gene_sets",
+        "load_marker_genes": "hvantk.core.utils.gene_sets",
+        # Overlap enrichment (scipy at module scope in overlap.py)
+        "OverlapResult": "hvantk.algorithms.enrichex.overlap",
+        "compute_overlap_enrichment": "hvantk.algorithms.enrichex.overlap",
+        "compute_overlap_enrichment_pandas": "hvantk.algorithms.enrichex.overlap",
+        # Burden testing (Hail)
+        "VariantFilter": "hvantk.algorithms.enrichex.burden",
+        "build_variant_classes_from_presets": "hvantk.algorithms.enrichex.burden",
+        "permutation_burden_test": "hvantk.algorithms.enrichex.burden",
+        "compute_geneset_burden_mt": "hvantk.algorithms.enrichex.burden",
+        "compute_per_gene_burden_mt": "hvantk.algorithms.enrichex.burden",
+        "logistic_burden_test": "hvantk.algorithms.enrichex.burden",
+        "linear_burden_test": "hvantk.algorithms.enrichex.burden",
+        "run_burden_analysis": "hvantk.algorithms.enrichex.burden",
+        "run_stratified_burden_analysis": "hvantk.algorithms.enrichex.burden",
+        # Multiple testing correction
+        "apply_correction": "hvantk.algorithms.statistics.correction",
+        "fdr_threshold": "hvantk.algorithms.statistics.correction",
+        # Plotting / reporting (matplotlib)
+        "plot_enrichment_dotplot": "hvantk.algorithms.enrichex.plot",
+        "plot_enrichment_barplot": "hvantk.algorithms.enrichex.plot",
+        "plot_burden_forest": "hvantk.algorithms.enrichex.plot",
+        "plot_burden_volcano": "hvantk.algorithms.enrichex.plot",
+        "plot_celltype_burden_heatmap": "hvantk.algorithms.enrichex.plot",
+        "plot_celltype_forest": "hvantk.algorithms.enrichex.plot",
+        "encode_figure_to_base64": "hvantk.algorithms.visualization.base",
+        "generate_report": "hvantk.algorithms.enrichex.report",
+        # Pipeline orchestration
+        "BurdenConfig": "hvantk.algorithms.enrichex.pipeline",
+        "BurdenPipeline": "hvantk.algorithms.enrichex.pipeline",
+        "BurdenRunResult": "hvantk.algorithms.enrichex.pipeline",
+        # Simulation / validation
+        "generate_synthetic_burden_cohort": "hvantk.algorithms.enrichex.simulation",
+        "check_type_i_error": "hvantk.algorithms.enrichex.simulation",
+    },
+    missing_hint=_missing_hint,
+)
 
 __all__ = [
     # Core data structures
