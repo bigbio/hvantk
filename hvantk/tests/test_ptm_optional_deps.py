@@ -31,6 +31,37 @@ def test_require_statsmodels_returns_the_formula_api_when_installed():
     assert hasattr(require_statsmodels(), "mixedlm")
 
 
+def test_lmm_module_imports_without_statsmodels_installed(monkeypatch):
+    """#374 review item 4: `require_statsmodels()` used to run at MODULE scope
+    (`smf = require_statsmodels()`), so merely `from hvantk.algorithms.ptm.lmm import
+    run_lmm` failed on an install lacking statsmodels -- not only a call into the
+    module. `require_scanpy`, the stated model for this pattern, is called inside the
+    function that needs it; `lmm.py` must do the same.
+    """
+    _hide_statsmodels(monkeypatch)
+    import hvantk.algorithms.ptm.lmm as lmm  # must not raise
+
+    assert hasattr(lmm, "run_lmm")
+    assert hasattr(lmm, "run_binned_interaction_lmm")
+
+
+def test_run_lmm_raises_the_actionable_import_error_when_called_without_statsmodels(
+    monkeypatch,
+):
+    import pandas as pd
+
+    _hide_statsmodels(monkeypatch)
+    import hvantk.algorithms.ptm.lmm as lmm
+
+    df = pd.DataFrame(
+        {"gene": ["G1"], "af_filled": [0.1], "is_ptm": [True]}
+    )
+    with pytest.raises(ImportError) as info:
+        lmm.run_lmm(df, stratum="A")
+    msg = str(info.value)
+    assert "constraint" in msg and "hvantk[constraint]" in msg
+
+
 def test_ptm_test_names_the_extra_instead_of_a_traceback(tmp_path, monkeypatch):
     from hvantk.tools.ptm.ptm_cli import ptm_group
 

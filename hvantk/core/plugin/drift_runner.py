@@ -302,6 +302,11 @@ def _current_umask() -> int:
     restore is in a ``finally`` so an exception raised in that window (e.g. an
     asynchronously-delivered signal) cannot leave the process umask at 0 for the rest
     of the run.
+
+    The umask is process-wide, so a concurrent file create in another thread during
+    this window observes umask 0 and gets mode 0666/0777 instead of its intended one;
+    acceptable for a CLI, which is not expected to be creating files from other
+    threads while a drift check runs.
     """
     mask = os.umask(0)
     try:

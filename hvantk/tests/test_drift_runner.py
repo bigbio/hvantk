@@ -569,6 +569,55 @@ def test_regenerate_fingerprint_times_out_and_leaves_the_baseline_alone(tmp_path
     assert fp_path.read_text() == '{"probe_version": 1}'
 
 
+def test_regenerate_fingerprint_creates_a_new_baseline_with_the_umasked_mode(
+    tmp_path: Path,
+):
+    """The mode/cleanup coverage claim for a BRAND-NEW baseline (no existing file to
+    copymode from): `write_fingerprint` applies `0o666 & ~umask` -- an ordinary file
+    create's mode -- not `tempfile.mkstemp`'s hardcoded 0600, and not an unmasked
+    0o666 either. The prior test only pinned the copymode branch (an existing file),
+    which passes even with a bare `Path.write_text` -- it does not exercise this one.
+    """
+    import stat
+
+    fp_path = tmp_path / "fp.json"  # deliberately does not exist yet
+    observed = {"probe_version": 1, "headers": {}, "checksums": {}}
+    spec = _make_spec(probe_return=observed, fingerprint_path=fp_path)
+
+    umask = drift_runner._current_umask()
+    drift_runner.regenerate_fingerprint(spec, timeout=5)
+
+    assert stat.S_IMODE(fp_path.stat().st_mode) == (0o666 & ~umask)
+
+
+def test_regenerate_fingerprint_leaves_no_tmp_sibling_after_a_failed_replace(
+    tmp_path: Path, monkeypatch
+):
+    """After `os.replace` fails partway through the write (disk full, cross-device,
+    permission denied, ...), no `.drift_fingerprint*.tmp` sibling must remain and the
+    original baseline bytes must be untouched -- `write_fingerprint`'s `except
+    BaseException` cleanup path.
+    """
+    fp_path = tmp_path / "fp.json"
+    before = '{"probe_version": 1}'
+    fp_path.write_text(before)
+    observed = {"probe_version": 2, "headers": {}, "checksums": {}}
+    spec = _make_spec(probe_return=observed, fingerprint_path=fp_path)
+
+    def boom(src, dst):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(drift_runner.os, "replace", boom)
+
+    with pytest.raises(OSError, match="disk full"):
+        drift_runner.regenerate_fingerprint(spec, timeout=5)
+
+    assert fp_path.read_text() == before, "the original baseline must be untouched"
+    assert sorted(p.name for p in tmp_path.iterdir()) == [
+        "fp.json"
+    ], "no temp sibling left behind after a failed write"
+
+
 def test_write_fingerprint_replaces_atomically_via_the_same_directory(tmp_path: Path, monkeypatch):
     """The temp file must live next to the target: os.replace is only atomic within one
     filesystem, and a probe interrupted mid-write must never leave a half-written baseline."""

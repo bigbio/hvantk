@@ -37,8 +37,6 @@ from hvantk.algorithms.ptm.constants import (
 )
 from hvantk.algorithms.ptm.optional_deps import require_statsmodels
 
-smf = require_statsmodels()
-
 logger = logging.getLogger(__name__)
 
 
@@ -121,6 +119,11 @@ def run_lmm(
     min_n_ptm, min_n_nonptm, min_mixed_genes : int
         Filter thresholds (notebook M defaults).
     """
+    # Deferred, not module scope (#374 review, item 4): `require_scanpy` -- the stated
+    # model for this pattern -- is called inside the function that needs it, so an
+    # install lacking statsmodels can still `from hvantk.algorithms.ptm.lmm import
+    # run_lmm` and only hits the actionable ImportError on an actual call.
+    smf = require_statsmodels()
     # Drop rows missing any required column (match notebook M's dropna).
     sub = df.dropna(subset=[af_col, gene_col, is_ptm_col]).copy()
     sub = sub[sub[af_col] > 0].copy()
@@ -227,6 +230,8 @@ def run_binned_interaction_lmm(
     min_cell_n : int
         Minimum count per ``(expr_bin, is_ptm)`` cell to proceed with the fit.
     """
+    # Deferred, not module scope -- see run_lmm's docstring note.
+    smf = require_statsmodels()
     # Drop rows missing AF/gene/is_ptm, then af > 0 (matches notebook K).
     dfx = df.dropna(subset=[af_col, gene_col, is_ptm_col]).copy()
     dfx = dfx[dfx[af_col] > 0].copy()
