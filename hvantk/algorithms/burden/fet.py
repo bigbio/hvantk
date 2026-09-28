@@ -44,19 +44,38 @@ def _driver_af(drivers) -> float:
     # allele-vs-carrier semantics are pinned by the CHD reproduction gate -- do not
     # change without re-running it.
     #
-    # Ties on cc are broken toward the LOWEST control-carrier frequency (the rarest
-    # driver in controls), so the pick no longer depends on the order Hail collected
-    # the drivers in (#230). A NaN ctrl_freq sorts last: NaN compares False both ways
-    # and would otherwise make max() order-dependent again.
+    # Ties on cc are common (in the committed CHD oracle, about half the genes have
+    # every driver at cc == 1) and are broken toward the HIGHEST control-carrier
+    # frequency -- the most common driver in controls among the tied candidates. This
+    # is deterministic regardless of the order Hail collected the drivers in (#230),
+    # for any cc that is a defined integer: cc is a count_where int64, and a NaN cc is
+    # not guarded here. It is also the conservative direction for driver_af's only
+    # documented consumer, hvantk.algorithms.rerank.audit, which reads driver_af as an
+    # upper-bound leak alarm (daf > 5e-5, daf > 1e-3): resolving a tie toward the max
+    # control frequency can only raise driver_af, so a tie can only ever ADD a QC flag,
+    # never silently drop one because of collection order.
+    #
+    # A missing or NaN ctrl_freq sorts last, via a -inf secondary key that is never a
+    # real frequency. This reverses the previous commit's sign convention -- there,
+    # negating ctrl_freq meant a real +inf ctrl_freq also collapsed to -inf, colliding
+    # with the NaN sentinel; here the un-negated key keeps +inf distinct from -inf, so
+    # an explicit +inf ctrl_freq still beats a NaN one on a tie. An all-NaN tie still
+    # returns NaN, as before. ctrl_freq is never None in the pipeline (aggregate.py's
+    # `_ctrl_freq` is always a defined float, derived from count_where / n_ctrl), but a
+    # hand-built frame might have one; guard it the same as NaN rather than raising.
     if not isinstance(drivers, (list, np.ndarray)) or len(drivers) == 0:
         return float("nan")
 
+    def _freq(d):
+        raw = d["ctrl_freq"]
+        return float(raw) if raw is not None else float("nan")
+
     def _key(d):
-        freq = float(d["ctrl_freq"])
-        return (d["cc"], -freq if freq == freq else -float("inf"))
+        freq = _freq(d)
+        return (d["cc"], freq if freq == freq else -float("inf"))
 
     top = max(drivers, key=_key)
-    return float(top["ctrl_freq"])
+    return _freq(top)
 
 
 def finalize_reductions(reductions_df: pd.DataFrame) -> pd.DataFrame:
