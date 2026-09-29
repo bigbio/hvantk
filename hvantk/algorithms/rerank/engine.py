@@ -224,12 +224,14 @@ def _run_nulls(config, df, baseline, groups_map, y, selector, arm, blocks):
         seed=getattr(config, "seed", DEFAULT_SEED), folds=folds,
     )
     deltas = permutation_deltas(
-        df, baseline_cols, candidates, y, config=config.nulls, scorer=scorer
+        df, baseline_cols, candidates, y, config=config.nulls, scorer=scorer, blocks=blocks
     )
     _, observed = axis_deltas(df, baseline_cols, candidates, y, scorer=scorer)
-    block_digest = None if blocks is None else block_digest(blocks)
+    # `digest`, not `block_digest`: the latter would shadow the function imported above for
+    # the rest of this scope.
+    digest = None if blocks is None else block_digest(blocks)
     setting = _control_setting(
-        config, baseline_cols, candidates, arm, block_digest, folds
+        config, baseline_cols, candidates, arm, digest, folds
     )
     return NullDistribution.from_deltas(
         deltas, setting, null_config=config.nulls, observed=observed

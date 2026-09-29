@@ -46,7 +46,13 @@ nothing given the baseline already in the model. With an informative baseline, t
 permutation null of the delta is wider than the delta's true sampling spread under the
 conditional null, so the test is valid but conservative, increasingly so as the baseline
 strengthens: failing to clear the selected-maximum null is weak evidence that the axis adds
-nothing, not proof that it does not.
+nothing, not proof that it does not -- for the permutation scheme matching the folds. When
+the folds are blocked, that scheme is the block permutation, not the global one: paralogues
+share labels, so labels are not exchangeable across genes, and a global permutation then
+understates the null's spread and is ANTI-conservative rather than merely conservative. The
+"valid but conservative" statement above is about a null permuted the same way the folds are
+built; a global permutation applied to blocked folds is a mismatched null, not a conservative
+one.
 """
 from __future__ import annotations
 
@@ -130,7 +136,10 @@ class ControlSetting:
         :func:`~hvantk.algorithms.rerank.blocks.block_digest`), or ``None`` when folds were
         unblocked. Recording WHICH blocking, not only whether one was used, matters because
         nulls computed under two different block tables -- another HGNC release, another
-        grouping -- would otherwise compare equal.
+        grouping -- would otherwise compare equal. A non-``None`` digest also means the
+        null's labels were permuted BY those same blocks, not globally: the engine builds
+        both the scorer's folds and the permutation from the one ``blocks`` array, so this
+        digest speaks for both.
 
     Both ``leakage`` and ``selection`` are themselves frozen dataclasses with scalar fields,
     so an instance of this record stays hashable.
@@ -271,6 +280,12 @@ def oof_scorer(
     that hard to get wrong. A caller wrapping ``_raw_oof`` to add caching, or to swap in a
     different estimator entirely, can still hand the result to ``permutation_deltas`` as
     ``scorer=``, provided it keeps the same ``(matrix, cols, y) -> scores`` shape.
+
+    The returned callable carries the ``groups`` it was built with as a ``.groups``
+    attribute. This is what lets ``permutation_deltas`` notice a scorer built with blocked
+    folds whose caller forgot to also pass ``blocks=`` -- without it, that mistake would
+    silently fall back to a global label permutation while the scorer itself kept scoring
+    blocked folds, understating the null's spread for exactly the reason blocking exists.
     """
     from hvantk.algorithms.rerank.evaluator import ABLATION_FOLDS, _raw_oof
 
@@ -282,6 +297,7 @@ def oof_scorer(
             folds=resolved_folds,
         )
 
+    _score.groups = groups
     return _score
 
 
@@ -351,6 +367,61 @@ def axis_deltas(matrix, baseline, axes, y, *, scorer) -> tuple:
     return base_auc, deltas
 
 
+def _block_structure(blocks) -> dict:
+    """Per block size, the member-index arrays in canonical order: blocks sorted by label,
+    members in ascending gene position.
+
+    Precomputed ONCE per :func:`permutation_deltas` call and reused for every permutation --
+    rebuilding it per draw would be pure waste, since it depends only on ``blocks``, never on
+    the (permuted) labels. ``blocks`` is not assumed to be the engine's own 0..B-1 codes:
+    :func:`permutation_deltas` is public, so any hashable/sortable label array is grouped
+    with ``np.unique(..., return_inverse=True)``.
+    """
+    blocks = np.asarray(blocks)
+    labels, inverse = np.unique(blocks, return_inverse=True)
+    members: list = [[] for _ in range(len(labels))]
+    for position, code in enumerate(inverse):
+        members[code].append(position)
+    structure: dict = {}
+    for member_positions in members:
+        arr = np.asarray(member_positions, dtype=int)
+        structure.setdefault(arr.size, []).append(arr)
+    return structure
+
+
+def _permute_labels(y, rng, structure=None):
+    """Draw ONE permutation of ``y``: global when ``structure`` is ``None``, else a block
+    permutation over the exchangeability blocks ``structure`` describes.
+
+    ``structure is None`` reduces to exactly ``rng.permutation(y)`` -- the whole call, no
+    extra RNG draws either side of it -- so an unblocked null consumes its random-number
+    generator in the identical sequence as before this function existed, and every unblocked
+    null (and every test of one) is byte-identical.
+
+    With a ``structure``, permutes whole blocks among blocks of the SAME size, then shuffles
+    each block's own members (Winkler et al., NeuroImage 2015, "multi-level block
+    permutation"): for each block size in ascending order, one draw
+    ``order = rng.permutation(n_blocks_of_that_size)`` decides that source block ``k``'s
+    label vector is placed at destination block ``order[k]``, and one further draw per block
+    shuffles that vector before it is placed. Singletons (size 1) therefore permute freely
+    among singletons, and a size-1 "shuffle" is a no-op, exactly as it should be. The whole
+    draw is a function of ``(seed, i)`` alone: the size groups are visited in a fixed
+    (ascending) order and nothing here reads global state, so the same ``rng`` in the same
+    starting state always produces the same permutation.
+    """
+    if structure is None:
+        return rng.permutation(y)
+    y = np.asarray(y)
+    out = np.empty_like(y)
+    for size in sorted(structure):
+        blocks_of_size = structure[size]
+        order = rng.permutation(len(blocks_of_size))
+        for source_k, source_members in enumerate(blocks_of_size):
+            dest_members = blocks_of_size[order[source_k]]
+            out[dest_members] = rng.permutation(y[source_members])
+    return out
+
+
 def permutation_deltas(
     matrix,
     baseline: Sequence[str],
@@ -359,6 +430,7 @@ def permutation_deltas(
     *,
     config: NullConfig,
     scorer: Callable | None = None,
+    blocks=None,
 ) -> pd.DataFrame:
     """One row per (permutation, axis): the delta-AUC of baseline+axis over baseline alone.
 
@@ -372,10 +444,42 @@ def permutation_deltas(
     a selector, with blocked folds, with another seed or with another fold count, the caller
     must pass ``oof_scorer(...)`` built from those SAME inputs -- otherwise the null bounds
     a different model from the one the observed value came from.
+
+    ``blocks=None`` permutes the label globally, which assumes every unit is exchangeable
+    with every other. When the scorer's folds are blocked, paralogues share labels and that
+    assumption is false, so pass the SAME block labels the scorer used here too: whole blocks
+    are then permuted among blocks of the same size, and shuffled within each block (see
+    :func:`_permute_labels`), which is the null a blocked scorer needs -- a global permutation
+    understates its spread and is anti-conservative. The engine does this for you. Note that a
+    permuted labelling can still produce a degenerate blocked fold (e.g. a class confined to
+    too few blocks); the scorer's own grouped-split guard raises in that case rather than
+    returning a partial null.
+
+    If ``scorer`` declares the blocks it was built with (as ``oof_scorer`` does, via a
+    ``.groups`` attribute on the callable it returns), those must match ``blocks`` exactly --
+    otherwise a caller who built a blocked scorer and forgot ``blocks=`` here would silently
+    get the anti-conservative global permutation while the scorer kept scoring blocked folds.
+    A custom scorer with no ``.groups`` attribute is not checked.
     """
     y = np.asarray(y)
     baseline = list(baseline)
     score = scorer if scorer is not None else oof_scorer()
+    declared = getattr(score, "groups", None)
+    if declared is not None and (
+        blocks is None or not np.array_equal(np.asarray(blocks), np.asarray(declared))
+    ):
+        raise ValueError(
+            "the scorer's folds are blocked, so the labels must be permuted by the same "
+            "blocks; pass blocks="
+        )
+    if blocks is not None:
+        blocks = np.asarray(blocks)
+        if len(blocks) != len(y):
+            raise ValueError(
+                f"blocks must have one entry per label; got {len(blocks)} for {len(y)} "
+                "labels"
+            )
+    structure = None if blocks is None else _block_structure(blocks)
     lo, hi = config.span()
     chunk_size = hi - lo
     # ~every 10% of the chunk; for a chunk under 10 draws that floors to 0, so `max(1, ...)`
@@ -385,7 +489,7 @@ def permutation_deltas(
     rows = []
     for i in range(lo, hi):
         # seed + i, so this permutation is the same one whichever chunk computes it.
-        yp = rng_for(config.seed, i).permutation(y)
+        yp = _permute_labels(y, rng_for(config.seed, i), structure)
         # axis_deltas refits the baseline HERE, on the permuted label. Reusing an unpermuted
         # baseline AUC would make every delta a measure of the permutation rather than of
         # the axis.

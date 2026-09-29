@@ -99,6 +99,80 @@ def test_a_chunk_reproduces_exactly_the_permutations_the_whole_run_would_have():
         merged.sort_values(["perm", "axis"]).delta.to_numpy(),
     )
 
+    # D7: the block draw is a function of (seed, i) alone too, so a chunk of a BLOCKED run
+    # must reproduce exactly the draws the whole blocked run makes for those indices.
+    blocked_blocks = np.arange(120) // 4
+    whole_blocked = permutation_deltas(
+        matrix, baseline, axes, y,
+        config=NullConfig(n_perm=6, seed=5), scorer=scorer, blocks=blocked_blocks,
+    )
+    part_blocked = permutation_deltas(
+        matrix, baseline, axes, y,
+        config=NullConfig(n_perm=6, chunk=1, n_chunks=3, seed=5), scorer=scorer,
+        blocks=blocked_blocks,
+    )
+    merged_blocked = whole_blocked[whole_blocked.perm.isin([2, 3])].reset_index(drop=True)
+    assert np.allclose(
+        part_blocked.sort_values(["perm", "axis"]).delta.to_numpy(),
+        merged_blocked.sort_values(["perm", "axis"]).delta.to_numpy(),
+    )
+
+
+def test_a_blocked_null_permutes_whole_blocks():
+    """Blocks of sizes {1, 3, 4}, several of each, labels constant within some blocks. A
+    block permutation may only reassign WHICH block gets which label pattern, so every draw
+    must preserve the multiset of per-block positive counts within each size class and the
+    total positive count -- never invent or destroy a positive, and never move one across a
+    block boundary on its own."""
+    from hvantk.algorithms.rerank.nulls import _block_structure, _permute_labels
+
+    blocks = np.array(
+        [0, 1, 2, 3]          # four singletons
+        + [4, 4, 4]           # size-3 block, all positive
+        + [5, 5, 5]           # size-3 block, all negative
+        + [6, 6, 6]           # size-3 block, all negative
+        + [7, 7, 7, 7]        # size-4 block, all positive
+        + [8, 8, 8, 8]        # size-4 block, mixed
+    )
+    y = np.array(
+        [1, 1, 0, 0]
+        + [1, 1, 1]
+        + [0, 0, 0]
+        + [0, 0, 0]
+        + [1, 1, 1, 1]
+        + [1, 1, 0, 0]
+    )
+    assert len(blocks) == len(y)
+    structure = _block_structure(blocks)
+
+    def counts_by_size(labels):
+        return {
+            size: sorted(int(labels[idx].sum()) for idx in members)
+            for size, members in structure.items()
+        }
+
+    observed_counts = counts_by_size(y)
+    total_positive = int(y.sum())
+    differs = False
+    for i in range(8):
+        yp = _permute_labels(y, np.random.default_rng(1000 + i), structure)
+        assert counts_by_size(yp) == observed_counts
+        assert int(yp.sum()) == total_positive
+        differs = differs or not np.array_equal(yp, y)
+    assert differs
+
+    # 3a: the scorer's declared blocks and permutation_deltas' own `blocks=` must agree, or
+    # a caller could silently fall back to the anti-conservative global permutation while
+    # the scorer itself still scores blocked folds -- e.g. building `oof_scorer(groups=b)`
+    # and forgetting to also pass `blocks=b` here.
+    mm_matrix, mm_y, mm_baseline, mm_axes = permuted_labels(n=60, n_noise=1)
+    mismatched_scorer = oof_scorer(groups=np.arange(60))
+    with pytest.raises(ValueError, match="blocks"):
+        permutation_deltas(
+            mm_matrix, mm_baseline, {"axis0": mm_axes["axis0"]}, mm_y,
+            config=NullConfig(n_perm=1, seed=1), scorer=mismatched_scorer,
+        )
+
 
 def test_n_chunks_of_one_is_the_whole_range():
     assert NullConfig(n_perm=13).span() == (0, 13)

@@ -77,29 +77,30 @@ def _grouped_splits(cv, X, y, groups):
     if n_blocks < n_folds:
         raise ValueError(
             f"only {n_blocks} paralogue block(s) for {n_folds} folds -- lower the fold "
-            "count, widen the label set, or run without blocks"
+            "count, or run without blocks (blocks come from the universe, not the labels, "
+            "so widening the label set cannot add more of them)"
         )
     splits = list(cv.split(X, y, groups))
     for i, (train_idx, test_idx) in enumerate(splits):
         if len(test_idx) == 0:
             raise ValueError(
-                f"blocked fold {i} has no test example: only {n_blocks} paralogue "
-                f"block(s) for {n_folds} folds -- lower the fold count, widen the label "
-                "set, or run without blocks"
+                f"blocked fold {i} has no test example: the paralogue blocks split too "
+                f"unevenly across {n_folds} folds -- lower the fold count, or run without "
+                "blocks"
             )
         train_y = y[train_idx]
         if train_y.size == 0:
             raise ValueError(
-                f"blocked fold {i} has no training example at all: only {n_blocks} "
-                f"paralogue block(s) for {n_folds} folds -- lower the fold count, widen "
-                "the label set, or run without blocks"
+                f"blocked fold {i} has no training example at all: the paralogue blocks "
+                f"split too unevenly across {n_folds} folds -- lower the fold count, or "
+                "run without blocks"
             )
         if train_y.min() == train_y.max():
             label = "positive" if train_y.max() == 0 else "negative"
             raise ValueError(
-                f"blocked fold {i} has no {label} training example: the {label}s sit in "
-                f"too few paralogue blocks for {n_folds} folds -- lower the fold count, "
-                "widen the label set, or run without blocks"
+                f"blocked fold {i} has no {label} training example: the {label}s are "
+                f"confined to too few of the paralogue blocks to cover {n_folds} folds -- "
+                "lower the fold count, widen the label set, or run without blocks"
             )
     return splits
 

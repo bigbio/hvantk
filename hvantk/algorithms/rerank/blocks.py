@@ -5,32 +5,36 @@ paralogues share sequence, share constraint, share expression pattern, and share
 status, so a family split across train and test lets the model recognise a relative rather
 than generalise. Blocking is the standard answer, and nothing in the library offered it.
 
-**Primary group, not connected components.** HGNC's ``gene_group`` is multi-membership and
-pipe-separated, and the obvious blocker -- union-find over shared membership -- is not merely
-conservative here, it is INVALID. Membership chains transitively (A in {X,Y}, B in {Y,Z}, C in
-{Z,W}, ...), so the closure can collapse a large fraction of a gene universe into one
-component. ``StratifiedGroupKFold`` must place a whole block in one fold, so the pooled
+**First-listed group, not connected components.** HGNC's ``gene_group`` is multi-membership
+and pipe-separated, and the obvious blocker -- union-find over shared membership -- is not
+merely conservative here, it is INVALID. Membership chains transitively (A in {X,Y}, B in
+{Y,Z}, C in {Z,W}, ...), so the closure can collapse a large fraction of a gene universe into
+one component. ``StratifiedGroupKFold`` must place a whole block in one fold, so the pooled
 out-of-fold AUC then estimates something different from the random-fold AUC it is compared
 against; the tell-tale is a "harder" grouped model scoring HIGHER than random folds, which
-blocking cannot do. Blocking on the first-listed (primary) group keeps blocks small; the
-residual leak -- a pair sharing only a secondary group -- is a far smaller error than an
-incomparable estimator.
+blocking cannot do. Blocking on the first-listed group (in HGNC's list order -- HGNC does not
+designate a "primary" one) keeps blocks small; the residual leak -- a pair sharing only a
+later-listed group -- is a far smaller error than an incomparable estimator.
 
-**The ceiling is a hard abort.** Same argument, one step on: if the primary group is itself
-oversized for this universe, the run must fail rather than produce a plausible number. A
-warning is not enough precisely because the failure is silent -- the output looks fine and the
-tell-tale is a counterintuitive AUC that a reader has no reason to question.
+**The ceiling is a hard abort.** Same argument, one step on: if the first-listed group is
+itself oversized for this universe, the run must fail rather than produce a plausible number.
+A warning is not enough precisely because the failure is silent -- the output looks fine and
+the tell-tale is a counterintuitive AUC that a reader has no reason to question.
 """
 from __future__ import annotations
 
 import hashlib
+import logging
 import math
+import numbers
 import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping, Sequence
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_MAX_BLOCK_FRAC = 0.10
 """Largest permitted block, as a fraction of the universe -- a guard rail rather than a
@@ -43,9 +47,20 @@ class DominantBlockError(ValueError):
 
 def _validate_max_block_frac(value) -> float:
     """Shared by ``BlockPolicy`` and ``gene_blocks``, which each validate independently --
-    the former at policy-construction time, the latter wherever it is called directly."""
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
+    the former at policy-construction time, the latter wherever it is called directly.
+
+    Accepts any ``numbers.Real`` (a bare ``float``/``int``, or a numpy scalar such as
+    ``np.float32`` -- none of these are ``isinstance``-compatible with plain ``float``),
+    but never a ``bool``: ``bool`` is itself a ``numbers.Real`` subtype in Python, and
+    ``True``/``False`` silently reading as ``1.0``/``0.0`` is not a ceiling anyone meant to
+    set. A non-number (e.g. a string) gets its own message that does not mention bool --
+    conflating "wrong type entirely" with "the one wrong-type value we specifically guard
+    against" would mislead a caller who passed neither.
+    """
+    if isinstance(value, bool):
         raise ValueError(f"max_block_frac must be a real number, not bool; got {value!r}")
+    if not isinstance(value, numbers.Real):
+        raise ValueError(f"max_block_frac must be a real number; got {value!r}")
     if not math.isfinite(value):
         raise ValueError(f"max_block_frac must be a finite number; got {value!r}")
     if not 0.0 < float(value) <= 1.0:
@@ -89,16 +104,35 @@ def block_digest(labels) -> str:
     grouping -- must not compare equal just because both happen to be "blocked": this is
     what lets ``ControlSetting`` tell them apart rather than silently answering for a
     blocking it was not built under.
+
+    Canonicalised with ``pandas.factorize`` before hashing, so the digest is a function of
+    the PARTITION (which positions share a block) rather than of the raw label values:
+    float or string labels work, and two labels that are merely close in value (e.g.
+    ``1.2`` and ``1.7``) are never accidentally collapsed into one block the way a naive
+    integer cast would collapse them (both truncate to ``1``). Hashed as fixed-width
+    little-endian int64 bytes (``"<i8"``) rather than the platform's native byte order, so
+    the digest does not depend on the machine it was computed on. ``gene_blocks`` already
+    emits canonical 0..B-1 codes in first-appearance order, so ``factorize`` reproduces
+    them unchanged and every digest computed from an engine-built blocking is unchanged
+    by this.
     """
-    return hashlib.sha1(np.asarray(labels, dtype=np.int64).tobytes()).hexdigest()
+    import pandas as pd
+
+    codes = pd.factorize(np.asarray(labels))[0]
+    return hashlib.sha1(np.asarray(codes, dtype="<i8").tobytes()).hexdigest()
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=False)
 class BlockReport:
     """The blocking, plus what a reader needs to judge whether it binds.
 
     Grouped folds cannot be balanced the way stratified random folds are, so how much of the
     matrix is actually constrained is part of the result, not a debug detail.
+
+    ``eq=False``: ``blocks`` is a numpy array, whose ``==`` returns an array rather than a
+    bool, which makes the dataclass-generated ``__eq__``/``__hash__`` raise the moment
+    either is used -- there is no valid default to fall back to, so it is turned off rather
+    than left to fail at a random call site.
     """
 
     blocks: np.ndarray
@@ -106,6 +140,13 @@ class BlockReport:
     largest: int
     largest_frac: float
     n_in_multi: int
+    n_matched: int
+    """How many of the universe's genes were present as keys of the gene-group mapping
+    (an empty group still counts as matched -- only ABSENCE from the table does not). A low
+    match rate usually means the table's gene keys do not agree with the universe's (e.g. an
+    older/newer HGNC release, or symbols vs. a different identifier), silently degrading
+    "blocked" CV toward unblocked without any block-count signal to catch it, since a wave of
+    unmatched genes still shows up as ordinary (if numerous) singletons."""
 
     @property
     def digest(self) -> str:
@@ -117,7 +158,11 @@ def load_gene_groups(path) -> dict:
     """``{symbol: gene_group}`` from an HGNC complete-set TSV, Approved entries only.
 
     Withdrawn and merged entries are dropped rather than kept: a withdrawn symbol's family
-    is not a statement about the gene that carries that symbol today.
+    is not a statement about the gene that carries that symbol today. Matching against a
+    universe of gene identifiers is on the approved HGNC ``symbol`` column ONLY -- aliases
+    and previous symbols are not consulted, so a gene known to the universe only by an alias
+    or an old symbol will not be found here and falls through to being its own singleton
+    block (see ``gene_blocks``), not an error by itself.
     """
     import pandas as pd
 
@@ -140,7 +185,12 @@ def gene_blocks(
     *,
     max_block_frac: float = DEFAULT_MAX_BLOCK_FRAC,
 ) -> BlockReport:
-    """Block codes aligned to ``genes``, one block per primary HGNC gene group.
+    """Block codes aligned to ``genes``, one block per first-listed HGNC gene group.
+
+    Matching a gene against ``gene_group`` is a plain key lookup -- the mapping is expected
+    to already be keyed on whatever identifier ``genes`` uses (see ``load_gene_groups``,
+    which keys on the approved HGNC ``symbol`` only; aliases and previous symbols are not
+    matched and fall through to singletons).
 
     Raises ``DominantBlockError`` when the largest block exceeds ``max_block_frac`` of the
     universe -- see the module docstring for why that is an abort rather than a warning.
@@ -162,22 +212,49 @@ def gene_blocks(
 
     codes: dict = {}
     out = []
-    for i, gene in enumerate(genes):
+    n_matched = 0
+    for gene in genes:
+        matched = gene in gene_group
+        n_matched += matched
         raw = gene_group.get(gene)
-        primary = raw.split("|")[0].strip() if isinstance(raw, str) else ""
+        first_listed = raw.split("|")[0].strip() if isinstance(raw, str) else ""
         # An ungrouped gene has no paralogue to leak through, so it is its own block --
         # unconstrained, which is the correct treatment, not pooled with the other orphans.
-        key = f"fam:{primary}" if primary else f"solo:{i}"
+        # Keyed by the gene itself (not by position): duplicate rows of the SAME gene must
+        # land in the SAME singleton block, or they could be split across folds despite
+        # being, trivially, each other's closest possible paralogue.
+        key = f"fam:{first_listed}" if first_listed else f"solo:{gene}"
         out.append(codes.setdefault(key, len(codes)))
+
+    n = len(genes)
+    if n and n_matched < n / 2:
+        logger.warning(
+            "gene-group table matched only %d/%d genes (%.0f%%) in this universe; a custom "
+            "family table may legitimately cover a subset, but this usually means the "
+            "table's gene keys disagree with the universe's (e.g. a different HGNC release, "
+            "or symbols vs. another identifier) -- the unmatched genes were treated as "
+            "unconstrained singletons, not as an error",
+            n_matched, n, 100.0 * n_matched / n,
+        )
 
     blocks = np.asarray(out, dtype=int)
     sizes = np.bincount(blocks) if len(blocks) else np.zeros(0, dtype=int)
     largest = int(sizes.max()) if sizes.size else 0
-    n = len(genes)
-    if n and largest > max_block_frac * n:
+    # Comparing by division (largest/n > frac) rather than by multiplication
+    # (largest > frac*n) makes an exact-equality boundary exact: 0.29 * 100 ==
+    # 28.999999999999996 in float arithmetic, so the multiply form wrongly aborted a
+    # 29/100 block at a 0.29 ceiling although the abort is pinned to strictly greater.
+    # `largest > 1` first: a blocking made only of singletons is stratified random CV and
+    # must never abort, but for n < 1/max_block_frac the division form alone still fires
+    # (a largest of 1 exceeds a ceiling fraction of e.g. 0.02 on a 20-gene universe).
+    if largest > 1 and largest / n > max_block_frac:
+        code_to_key = {code: key for key, code in codes.items()}
+        largest_code = int(np.argmax(sizes))
+        largest_key = code_to_key[largest_code]
+        group_name = largest_key[len("fam:"):] if largest_key.startswith("fam:") else largest_key
         raise DominantBlockError(
-            f"the largest paralogue block holds {largest}/{n} units "
-            f"({largest / n:.1%}), over the {max_block_frac:.0%} ceiling "
+            f"the largest paralogue block (group {group_name!r}) holds {largest}/{n} units "
+            f"({largest / n:.1%}), over the {max_block_frac:g} ceiling "
             f"(max_block_frac). StratifiedGroupKFold must place a whole block in one fold, "
             f"so one fold would hold that entire block and the pooled out-of-fold AUC would "
             f"not estimate the same quantity as the unblocked run. Raise max_block_frac "
@@ -190,4 +267,5 @@ def gene_blocks(
         largest=largest,
         largest_frac=float(largest / n) if n else 0.0,
         n_in_multi=n_in_multi,
+        n_matched=n_matched,
     )

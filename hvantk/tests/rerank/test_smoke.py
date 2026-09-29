@@ -9,7 +9,7 @@ from hvantk.algorithms.rerank import (
 from hvantk.algorithms.rerank.evaluator import ABLATION_FOLDS
 
 
-def test_engine_end_to_end(tmp_path):
+def test_engine_end_to_end(tmp_path, monkeypatch):
     rng = np.random.default_rng(0)
     n = 200
     genes = [f"g{i}" for i in range(n)]
@@ -64,10 +64,27 @@ def test_engine_end_to_end(tmp_path):
         folds=3,
         blocks=BlockPolicy(table=str(groups_path)),
     )
+
+    # Guard the headline block wiring: spy on ReRanker.score at the class level so every
+    # call this run makes -- however it is reached -- is checked against the SAME block
+    # array the engine resolved, not merely that the run as a whole "looks blocked".
+    from hvantk.algorithms.rerank.reranker import ReRanker
+
+    calls = []
+    real_score = ReRanker.score
+
+    def _spy_score(self, *args, **kwargs):
+        calls.append(kwargs.get("groups"))
+        return real_score(self, *args, **kwargs)
+
+    monkeypatch.setattr(ReRanker, "score", _spy_score)
     res2 = rerank(cfg2)
+    assert calls, "ReRanker.score was never called for the blocked run"
+    assert all(np.array_equal(g, res2.blocks.blocks) for g in calls)
     assert res2.nulls is not None
     assert res2.nulls.axes == ("z",)
     assert res2.nulls.setting.folds == ABLATION_FOLDS
     assert res2.nulls.setting.block_digest is not None
+    assert res2.blocks.digest == res2.nulls.setting.block_digest
     abl = res2.metrics.ablation.set_index("family")["auc"]
     assert abs((abl["z"] - abl["x"]) - res2.nulls.observed["z"]) <= 1e-3

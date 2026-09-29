@@ -34,10 +34,9 @@ def test_genes_in_one_primary_family_share_a_block():
 def test_an_ungrouped_gene_is_its_own_block():
     """A gene with no known family has no paralogue to leak through, so it must be
     unconstrained rather than pooled with every other ungrouped gene."""
-    # max_block_frac=1.0: this fixture is about grouping correctness, not the ceiling, and
-    # at n=3 a single gene is already 33% of the universe -- the ceiling is exercised on its
-    # own purpose-built (n=100) fixtures below, not on these tiny illustrative ones.
-    rep = gene_blocks(["a", "b", "c"], {"a": "", "b": "", "c": "Fam"}, max_block_frac=1.0)
+    # No max_block_frac override needed: every block here is a singleton (largest=1), and
+    # a singleton-only blocking must never abort regardless of the ceiling.
+    rep = gene_blocks(["a", "b", "c"], {"a": "", "b": "", "c": "Fam"})
     assert len({int(rep.blocks[0]), int(rep.blocks[1])}) == 2
 
 
@@ -45,9 +44,8 @@ def test_only_the_primary_group_is_used_not_connected_components():
     """Every gene here shares a SECONDARY group, so a components blocker would return one
     block for the whole matrix. Primary-only keeps them apart."""
     mapping = {"a": "Fam A|Shared", "b": "Fam B|Shared", "c": "Fam A|Other"}
-    # max_block_frac=1.0: see test_an_ungrouped_gene_is_its_own_block -- two of three genes
-    # sharing a primary group is inherently a 67% block at this scale, which is the point
-    # being tested, not a ceiling violation.
+    # max_block_frac=1.0: two of three genes sharing a primary group is a genuine 67% block
+    # at this scale, which is the point being tested here, not a ceiling violation.
     rep = gene_blocks(["a", "b", "c"], mapping, max_block_frac=1.0)
     assert rep.blocks[0] == rep.blocks[2]
     assert rep.blocks[1] != rep.blocks[0]
@@ -55,12 +53,14 @@ def test_only_the_primary_group_is_used_not_connected_components():
 
 
 def test_whitespace_and_missing_values_are_treated_as_ungrouped():
-    rep = gene_blocks(["a", "b", "c"], {"a": "  ", "b": None, "c": "Fam"}, max_block_frac=1.0)
+    # No max_block_frac override: every block here is a singleton, which never aborts.
+    rep = gene_blocks(["a", "b", "c"], {"a": "  ", "b": None, "c": "Fam"})
     assert rep.n_blocks == 3
 
 
 def test_a_gene_absent_from_the_mapping_is_a_singleton():
-    rep = gene_blocks(["a", "b"], {"a": "Fam"}, max_block_frac=1.0)
+    # No max_block_frac override: every block here is a singleton, which never aborts.
+    rep = gene_blocks(["a", "b"], {"a": "Fam"})
     assert rep.n_blocks == 2
 
 
@@ -107,8 +107,22 @@ def test_just_under_the_ceiling_is_allowed():
     rep = gene_blocks(genes, mapping, max_block_frac=0.10)
     assert rep.largest == 10  # == the ceiling exactly; the abort is on strictly greater
 
+    # A blocking made only of singletons is stratified random CV, so it must never abort --
+    # not even at n=5 under the default 10% ceiling, where n < 1/max_block_frac and the old
+    # `largest > max_block_frac * n` comparison wrongly fired (1 > 0.5) for a largest of 1.
+    genes5 = [f"g{i}" for i in range(5)]
+    rep5 = gene_blocks(genes5, {g: "" for g in genes5})
+    assert rep5.largest == 1
 
-@pytest.mark.parametrize("bad", [0.0, -0.1, 1.5, float("nan"), True])
+    # 0.29 * 100 == 28.999999999999996 in float arithmetic, so the old multiply-based
+    # comparison aborted a 29/100 block at a 0.29 ceiling although 29/100 == 0.29 exactly and
+    # the abort is pinned to strictly greater. Comparing by division makes the equality exact.
+    genes29, mapping29 = paralogue_groups(n=100, family_size=4, dominant=29)
+    rep29 = gene_blocks(genes29, mapping29, max_block_frac=0.29)
+    assert rep29.largest == 29
+
+
+@pytest.mark.parametrize("bad", [0.0, -0.1, 1.5, float("nan"), True, "0.1"])
 def test_an_impossible_ceiling_is_rejected(bad):
     with pytest.raises(ValueError, match="max_block_frac"):
         gene_blocks(["a"], {"a": ""}, max_block_frac=bad)
@@ -168,7 +182,7 @@ def test_config_rejects_a_bare_path_instead_of_a_policy():
         Config(name="x", features=[], labels=None, blocks="/some/hgnc.txt").__post_init__()
 
 
-def test_config_rejects_an_impossible_ceiling_at_construction_time():
+def test_block_policy_rejects_a_bad_ceiling_or_a_blank_table():
     with pytest.raises(ValueError, match="max_block_frac"):
         BlockPolicy(table="hgnc.txt", max_block_frac=1.5)
     with pytest.raises(ValueError, match="table"):
