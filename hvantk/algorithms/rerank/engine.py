@@ -289,7 +289,7 @@ def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
         summary = _selection_summary(
             config, df, y,
             _leakage_filtered_groups(df, y, groups, leakage_policy),
-            scores, frequency, _arm, _n_conflicted, _n_unknown
+            scores, frequency, _arm, _n_conflicted, _n_unknown, blocks=blocks
         )
     else:
         # Leakage control is independent of SelectionPolicy: one asks whether a column's
@@ -396,13 +396,18 @@ def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
 
 
 def _selection_summary(config, df, y, groups, scores, frequency, arm,
-                       n_conflicted, n_unknown) -> SelectionSummary:
+                       n_conflicted, n_unknown, blocks=None) -> SelectionSummary:
     """Run the global pass and package it with the nested result.
 
     The global pass exists ONLY to produce a human-readable "these are the features"
     list -- one selection over all the data, which is what a reader can actually inspect
     and argue with. Its AUC is reported alongside as ``auc_global`` so the selection bias
     it carries is visible rather than hidden; nothing downstream ranks on it.
+
+    ``blocks`` must be threaded into this pass's own ``score`` call too: once folds are
+    blocked, an unblocked ``auc_global`` sitting beside a blocked ``auc_nested`` would
+    inflate the gap between them with paralogue leakage on top of whatever the gap is
+    already reporting, silently acquiring a third, one-directional component.
     """
     from sklearn.metrics import roc_auc_score
 
@@ -415,7 +420,9 @@ def _selection_summary(config, df, y, groups, scores, frequency, arm,
     picked = [c for cols in global_features.values() for c in cols]
     auc_global = float("nan")
     if picked:
-        global_scores = ReRanker(config.calibration, config.folds).score(df, picked, y)
+        global_scores = ReRanker(config.calibration, config.folds).score(
+            df, picked, y, groups=blocks
+        )
         auc_global = float(roc_auc_score(y, global_scores))
     return SelectionSummary(
         arm=arm,

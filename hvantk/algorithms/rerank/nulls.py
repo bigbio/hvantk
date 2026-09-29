@@ -713,8 +713,8 @@ class NullDistribution:
                 "null_mean": float(finite.mean()) if finite.size else float("nan"),
                 "null_sd": float(finite.std()) if finite.size else float("nan"),
                 "null_p95": float(np.percentile(finite, 95)) if finite.size else float("nan"),
-                "selmax_median": float(np.median(sm)),
-                "selmax_p95": float(np.percentile(sm, 95)),
+                "selmax_median": float(np.median(sm)) if sm.size else float("nan"),
+                "selmax_p95": float(np.percentile(sm, 95)) if sm.size else float("nan"),
             }
             if self.observed is not None:
                 obs = self.observed[axis]

@@ -23,7 +23,7 @@ from sklearn.calibration import calibration_curve
 from sklearn.metrics import average_precision_score, brier_score_loss, roc_auc_score
 from sklearn.model_selection import cross_val_predict
 
-from hvantk.algorithms.rerank.reranker import _cv, _gbm
+from hvantk.algorithms.rerank.reranker import _cv, _gbm, _grouped_splits
 from hvantk.algorithms.rerank.seeds import DEFAULT_SEED
 
 
@@ -45,17 +45,15 @@ def _raw_oof(
     """
     y = np.asarray(y)
     cv = _cv(folds, seed, groups)
+    X = matrix[cols].values
     if selector is None:
+        cv_arg = cv if groups is None else _grouped_splits(cv, X, y, groups)
         return cross_val_predict(
-            _gbm(), matrix[cols].values, y, cv=cv, groups=groups, method="predict_proba"
+            _gbm(), X, y, cv=cv_arg, groups=groups, method="predict_proba"
         )[:, 1]
 
     oof = np.full(len(y), np.nan)
-    splits = (
-        cv.split(matrix[cols].values, y)
-        if groups is None
-        else cv.split(matrix[cols].values, y, groups)
-    )
+    splits = cv.split(X, y) if groups is None else _grouped_splits(cv, X, y, groups)
     for train_idx, test_idx in splits:
         X_tr = matrix.iloc[train_idx]
         sel = list(selector(X_tr, y[train_idx], list(cols)))
