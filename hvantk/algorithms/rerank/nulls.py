@@ -540,10 +540,15 @@ def permutation_deltas(
             )
     if chunk_size > 0 and every_draw_unchanged:
         # Every block was either a singleton or a size-occurs-once, label-homogeneous block
-        # (see _permute_labels's power caveat): nothing in this chunk ever moved.
+        # (see _permute_labels's power caveat): nothing in THIS CHUNK ever moved. That is a
+        # statement about the chunk, not about the whole null -- a chunk of one draw can land
+        # on the identity permutation by chance, so this must not be read as "the null has no
+        # spread" until the MERGED null (NullDistribution.merge) confirms it.
         logger.warning(
-            "every permutation in this chunk reproduced the observed labels exactly -- this "
-            "null has no spread and every p-value computed from it will be 1.0"
+            "every permutation in this chunk (%d draw(s), chunk %d/%d) reproduced the "
+            "observed labels exactly -- this chunk contributed no spread; check the merged "
+            "null before concluding the null itself has none",
+            chunk_size, config.chunk, config.n_chunks,
         )
     return pd.DataFrame(rows, columns=["perm", "axis", "delta", "base_auc"])
 

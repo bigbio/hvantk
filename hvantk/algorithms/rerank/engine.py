@@ -355,7 +355,8 @@ def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
     flag = flag_reason != ""
     tiers = TierAssigner(config.tiers).assign(scores)  # pure credibility, no flag input
     metrics = Evaluator().evaluate(
-        df, feat_cols, y, scores, groups, baseline, selector, groups=blocks, seed=config.seed
+        df, feat_cols, y, scores, groups, baseline, selector, groups=blocks,
+        seed=config.seed, n_seeds=config.seed_sweep,
     )
     nulls = _run_nulls(config, df, baseline, groups, y, selector, _arm, blocks)
     table = pd.DataFrame(
@@ -439,7 +440,7 @@ def _selection_summary(config, df, y, groups, scores, frequency, arm,
     picked = [c for cols in global_features.values() for c in cols]
     auc_global = float("nan")
     if picked:
-        global_scores = ReRanker(config.calibration, config.folds).score(
+        global_scores = ReRanker(config.calibration, config.folds, seed=config.seed).score(
             df, picked, y, groups=blocks
         )
         auc_global = float(roc_auc_score(y, global_scores))

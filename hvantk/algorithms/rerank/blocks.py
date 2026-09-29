@@ -115,10 +115,16 @@ def block_digest(labels) -> str:
     emits canonical 0..B-1 codes in first-appearance order, so ``factorize`` reproduces
     them unchanged and every digest computed from an engine-built blocking is unchanged
     by this.
+
+    ``use_na_sentinel=False``, matching :func:`~hvantk.algorithms.rerank.nulls.
+    _block_structure`'s convention: a NaN label is one ordinary block rather than an
+    excluded sentinel (-1) in both places, so the two never disagree about how many blocks
+    a NaN-containing label array has. Every label ``gene_blocks`` produces is a NaN-free
+    int code, so this leaves the digest of any engine-built blocking unchanged.
     """
     import pandas as pd
 
-    codes = pd.factorize(np.asarray(labels))[0]
+    codes = pd.factorize(np.asarray(labels), use_na_sentinel=False)[0]
     return hashlib.sha1(np.asarray(codes, dtype="<i8").tobytes()).hexdigest()
 
 

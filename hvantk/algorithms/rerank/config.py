@@ -169,6 +169,10 @@ class Config:
     (``NullConfig.seed``); permutations for nearby seeds overlap (see ``rng_for``). Was
     hardcoded in five places, which made the CV partition the one variance component in the
     reported interval that no caller could vary."""
+    seed_sweep: int = 1
+    """How many CV seeds the ablation intervals are computed over (``seed``,
+    ``seed + 1``, ...). 1 is the historic behaviour: one partition, and an interval that
+    cannot see partition variance at all."""
 
     def __post_init__(self):
         # bool is an int in Python, and numpy/sklearn both reject a negative seed, so
@@ -177,6 +181,11 @@ class Config:
         self.seed = _coerce_int(self.seed, "seed")
         if self.seed < 0:
             raise ValueError(f"Config.seed must be an int >= 0; got {self.seed!r}")
+        self.seed_sweep = _coerce_int(self.seed_sweep, "seed_sweep")
+        if self.seed_sweep < 1:
+            raise ValueError(
+                f"Config.seed_sweep must be an int >= 1; got {self.seed_sweep!r}"
+            )
         if self.audit is None:
             from hvantk.algorithms.rerank.audit import NoAudit
 

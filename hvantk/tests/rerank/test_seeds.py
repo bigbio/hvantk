@@ -24,7 +24,9 @@ PACKAGE = Path(rerank_pkg.__file__).parent
 def test_no_bare_42_outside_seeds_py():
     """The structural form of the plan's grep gate. Five literals existed before #247:
     reranker.py:10 and :32, evaluator.py:17 and :38, selection.py:177 -- five copies of one
-    decision, which is five places to forget it."""
+    decision, which is five places to forget it. Also flags a float ``42.0``: the grep gate
+    is text-based and would miss it, so the AST check is the only automated guard against a
+    literal reappearing spelled as a float instead of an int."""
     offenders = {}
     for path in sorted(PACKAGE.rglob("*.py")):
         if path.name == "seeds.py":
@@ -33,7 +35,11 @@ def test_no_bare_42_outside_seeds_py():
         hits = [
             node.lineno
             for node in ast.walk(tree)
-            if isinstance(node, ast.Constant) and node.value == 42 and type(node.value) is int
+            if isinstance(node, ast.Constant)
+            and (
+                (type(node.value) is int and node.value == 42)
+                or (isinstance(node.value, float) and node.value == 42.0)
+            )
         ]
         if hits:
             offenders[str(path.relative_to(PACKAGE))] = hits
