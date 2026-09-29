@@ -194,9 +194,10 @@ def _run_nulls(config, df, baseline, groups_map, y, selector, arm, blocks):
     candidates = {k: list(v) for k, v in groups_map.items() if v and k != baseline}
     if not candidates:
         logger.warning(
-            "Config.nulls was set but only the baseline axis %r survived (no candidate "
-            "axes were offered); the multiplicity correction was requested and could not "
-            "run",
+            "Config.nulls was set but arm %r has no candidate axes with columns left -- "
+            "only the baseline axis %r has columns left in this arm; the multiplicity "
+            "correction was requested and could not run",
+            arm,
             baseline,
         )
         return None
@@ -272,6 +273,7 @@ def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
     }
     groups = {k: v for k, v in groups.items() if v}
     baseline = next(iter(groups))
+    blocks = None  # Task 5 replaces this with the resolved paralogue-block array.
     reranker = ReRanker(config.calibration, config.folds)
     leakage_policy = getattr(config, "leakage", None)
     selector = summary = None
@@ -283,7 +285,7 @@ def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
         recording = _compose_selector(
             _axis_selector(config.selection, groups, frequency), leakage_policy
         )
-        scores = reranker.score(df, feat_cols, y, selector=recording)
+        scores = reranker.score(df, feat_cols, y, selector=recording, groups=blocks)
         summary = _selection_summary(
             config, df, y,
             _leakage_filtered_groups(df, y, groups, leakage_policy),
@@ -295,9 +297,9 @@ def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
         # Requiring a selection policy to get the leakage control would couple them.
         selector = _compose_selector(None, leakage_policy)
         scores = (
-            reranker.score(df, feat_cols, y, selector=selector)
+            reranker.score(df, feat_cols, y, selector=selector, groups=blocks)
             if selector is not None
-            else reranker.score(df, feat_cols, y)
+            else reranker.score(df, feat_cols, y, groups=blocks)
         )
     audit_table = df
     if config.cohort is not None:
@@ -334,8 +336,10 @@ def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
     flag_reason = config.audit.apply(audit_table).reset_index(drop=True)
     flag = flag_reason != ""
     tiers = TierAssigner(config.tiers).assign(scores)  # pure credibility, no flag input
-    metrics = Evaluator().evaluate(df, feat_cols, y, scores, groups, baseline, selector)
-    nulls = _run_nulls(config, df, baseline, groups, y, selector, _arm, None)
+    metrics = Evaluator().evaluate(
+        df, feat_cols, y, scores, groups, baseline, selector, groups=blocks
+    )
+    nulls = _run_nulls(config, df, baseline, groups, y, selector, _arm, blocks)
     table = pd.DataFrame(
         {
             "gene": df.gene,

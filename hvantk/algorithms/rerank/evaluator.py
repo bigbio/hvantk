@@ -21,9 +21,9 @@ import numpy as np
 import pandas as pd
 from sklearn.calibration import calibration_curve
 from sklearn.metrics import average_precision_score, brier_score_loss, roc_auc_score
-from sklearn.model_selection import StratifiedKFold, cross_val_predict
+from sklearn.model_selection import cross_val_predict
 
-from hvantk.algorithms.rerank.reranker import _gbm
+from hvantk.algorithms.rerank.reranker import _cv, _gbm
 from hvantk.algorithms.rerank.seeds import DEFAULT_SEED
 
 
@@ -38,18 +38,25 @@ def _raw_oof(
 
     Mirrors ReRanker.score's nesting contract: when a selector is given it runs per fold on
     the training slice only, so every ablation delta-AUC is as leakage-free as the headline.
+
+    ``groups`` switches to paralogue-blocked folds. It is threaded to the ABLATION path as
+    well as the headline deliberately: a blocked headline beside unblocked deltas would
+    report a corrected level and an uncorrected claim.
     """
-    if groups is not None:
-        raise NotImplementedError("grouped (blocked) folds are not wired into _raw_oof yet")
     y = np.asarray(y)
-    cv = StratifiedKFold(folds, shuffle=True, random_state=seed)
+    cv = _cv(folds, seed, groups)
     if selector is None:
         return cross_val_predict(
-            _gbm(), matrix[cols].values, y, cv=cv, method="predict_proba"
+            _gbm(), matrix[cols].values, y, cv=cv, groups=groups, method="predict_proba"
         )[:, 1]
 
     oof = np.full(len(y), np.nan)
-    for train_idx, test_idx in cv.split(matrix[cols].values, y):
+    splits = (
+        cv.split(matrix[cols].values, y)
+        if groups is None
+        else cv.split(matrix[cols].values, y, groups)
+    )
+    for train_idx, test_idx in splits:
         X_tr = matrix.iloc[train_idx]
         sel = list(selector(X_tr, y[train_idx], list(cols)))
         if not sel:
@@ -87,7 +94,8 @@ def _boot_ci(y, p1, p0, n=1000):
 
 class Evaluator:
     def evaluate(
-        self, matrix, feat_cols, y, scores, axis_groups, baseline_axis, selector=None
+        self, matrix, feat_cols, y, scores, axis_groups, baseline_axis, selector=None,
+        groups=None,
     ):
         y = np.asarray(y)
         scores = np.asarray(scores)
@@ -98,7 +106,7 @@ class Evaluator:
         cal = calibration_curve(y, cs, n_bins=8, strategy="quantile")
 
         base_cols = axis_groups[baseline_axis]
-        p_base = _raw_oof(matrix, base_cols, y, selector)
+        p_base = _raw_oof(matrix, base_cols, y, selector, groups=groups)
         base_auc = roc_auc_score(y, p_base)
         rows = [
             {
@@ -113,7 +121,7 @@ class Evaluator:
             if fam == baseline_axis:
                 continue
             cc = list(dict.fromkeys(base_cols + cols))
-            p = _raw_oof(matrix, cc, y, selector)
+            p = _raw_oof(matrix, cc, y, selector, groups=groups)
             lo, md, hi = _boot_ci(y, p, p_base)
             rows.append(
                 {

@@ -51,6 +51,7 @@ def test_engine_end_to_end(tmp_path):
         cfg,
         features=[cfg.features[0], FeatureAxis("z", lambda: noise)],
         nulls=NullConfig(n_perm=2, seed=1),
+        folds=3,
     )
     res2 = rerank(cfg2)
     assert res2.nulls is not None

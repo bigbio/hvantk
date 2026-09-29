@@ -379,7 +379,7 @@ def permutation_deltas(
         for name, delta in deltas.items():
             rows.append({"perm": i, "axis": name, "delta": delta, "base_auc": base_auc})
         done = i - lo + 1
-        if done % log_every == 0:
+        if done % log_every == 0 or done == chunk_size:
             logger.info(
                 "permutation null: %d/%d draws (chunk %d/%d)",
                 done, chunk_size, config.chunk, config.n_chunks,
@@ -498,13 +498,13 @@ class NullDistribution:
         ``setting.candidates`` (an empty, silently-dropped per-axis null), and a ``perm``
         column read back as text sorts ``"10"`` before ``"2"``.
 
-        Every ``(perm, axis)`` pair must appear exactly once. A chunk concatenated into
-        ``deltas`` twice leaves the SET of permutations and the SET of axes unchanged -- so
-        neither check below would catch it -- yet it doubles every per-axis and
-        selected-maximum draw, which narrows every p-value this null goes on to report
-        without changing what a single permutation actually looks like. Caught here by
-        checking the grid is exactly complete (``len(deltas) == axes x permutations``)
-        rather than merely present.
+        Every ``(perm, axis)`` pair must appear exactly once. The explicit duplicate check
+        just below catches a chunk concatenated into ``deltas`` twice -- including the
+        duplicate-plus-missing-cell case where a chunk both doubles one pair and drops
+        another, leaving the total row count unchanged and so invisible to a grid-size
+        check alone. The grid-completeness check further down
+        (``len(deltas) == axes x permutations``) catches the remaining case: cells missing
+        without an offsetting duplicate, where the row count falls short.
 
         ``observed`` is optional; passing it is what lets :meth:`merge` later detect chunks
         computed on different data, a different CV seed or a different estimator. If every
@@ -526,6 +526,11 @@ class NullDistribution:
                 f"offers {list(axes)!r}, deltas contain {sorted(seen_axes)!r}"
             )
         if observed is not None:
+            # Coerce keys to str first, exactly like `deltas["axis"]` above: an integer-keyed
+            # `observed` (e.g. {0: ..., 1: ...}) would otherwise compare unequal to the str
+            # axis names in `setting.candidates` and fail with a confusing "expected ['0',
+            # '1'], got [0, 1]".
+            observed = {str(k): v for k, v in observed.items()}
             observed_keys = set(observed)
             if observed_keys != set(axes):
                 raise ValueError(
@@ -696,7 +701,7 @@ class NullDistribution:
         itself is NaN or this axis's per-axis null has no finite draws: that axis has
         nothing to report, not a real p-value that happens to look favourable.
         """
-        sm = self.selected_max
+        sm = self.selected_max[np.isfinite(self.selected_max)]
         rows = []
         for axis in self.axes:
             draws = self.per_axis[axis]
