@@ -11,6 +11,7 @@ from hvantk.algorithms.cohort.spec import CohortManifest
 if TYPE_CHECKING:
     from hvantk.algorithms.rerank.audit import Audit
     from hvantk.algorithms.rerank.leakage import LeakagePolicy
+    from hvantk.algorithms.rerank.nulls import NullConfig
     from hvantk.algorithms.rerank.selection import SelectionPolicy
 
 logger = logging.getLogger(__name__)
@@ -143,6 +144,14 @@ class Config:
     somewhere to live -- without this field the override is silently discarded and the
     clean/all split is computed against the defaults, which is a wrong answer rather than
     an error."""
+    nulls: Optional["NullConfig"] = None
+    """Permutation-null settings for the multiplicity correction, or None to skip it.
+
+    Independent of `selection`, `leakage` and `feature_provenance`: those three decide
+    WHICH columns are admissible, this one decides whether the resulting best-of-N delta
+    survives the fact that N axes were searched. None (default) reproduces the previous
+    code path exactly -- and reproduces it with no correction at all, which is what #247
+    is about."""
 
     def __post_init__(self):
         if self.audit is None:
@@ -175,6 +184,18 @@ class Config:
             ):
                 raise ValueError(
                     f"Config.leakage.min_auc must be finite and in [0, 1]; got {_m!r}"
+                )
+        if self.nulls is not None:
+            from hvantk.algorithms.rerank.nulls import NullConfig
+
+            # Checked, not duck-typed, for the same reason Config.leakage is: a bare int
+            # here (the obvious `nulls=200`) would be ignored by the engine, and a
+            # multiplicity correction that is off while the caller believes it is on is
+            # worse than one that was never offered.
+            if not isinstance(self.nulls, NullConfig):
+                raise TypeError(
+                    f"Config.nulls must be a NullConfig or None; got "
+                    f"{type(self.nulls).__name__}. For defaults, pass NullConfig()."
                 )
         if self.cohort is not None:
             if self.prior is None:

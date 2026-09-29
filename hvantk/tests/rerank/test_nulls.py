@@ -113,6 +113,7 @@ def test_n_chunks_of_one_is_the_whole_range():
         (dict(n_perm=10, chunk=-1), "chunk"),
         (dict(n_perm=3, n_chunks=10), "n_chunks"),
         (dict(seed=-1), "seed"),
+        (dict(n_perm=1e3), "n_perm"),
     ],
 )
 def test_null_config_rejects_impossible_chunking(kw, match):
@@ -224,15 +225,26 @@ def test_nulls_module_imports_without_hail():
     Runs in a subprocess: an in-process re-import only clears `hvantk.algorithms.rerank`
     modules, misses transitive imports some other test already cached under a different
     name, and leaves the parent package's `nulls` attribute pointing at a throwaway
-    re-imported copy instead of the original."""
+    re-imported copy instead of the original. The subprocess's cwd is pinned to the repo
+    root (rather than inherited from wherever pytest was invoked) so it always audits the
+    code under test in THIS worktree. `leakage`/`selection` are audited too: `ControlSetting`
+    loads them lazily, and until now nothing ever imported them under this guard.
+    """
     import subprocess
     import sys
+    from pathlib import Path
+
+    import hvantk
 
     subprocess.run(
         [
             sys.executable,
             "-c",
-            "import sys; sys.modules['hail'] = None; import hvantk.algorithms.rerank.nulls",
+            "import sys; sys.modules['hail'] = None; "
+            "import hvantk.algorithms.rerank.nulls; "
+            "import hvantk.algorithms.rerank.leakage; "
+            "import hvantk.algorithms.rerank.selection",
         ],
         check=True,
+        cwd=Path(hvantk.__file__).resolve().parents[1],
     )

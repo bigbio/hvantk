@@ -1,5 +1,6 @@
 # local/rerank_engine/engine.py
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 import pandas as pd
 from hvantk.algorithms.cohort.frame import load_cohort_frame
 from hvantk.algorithms.rerank.config import validate
@@ -7,6 +8,9 @@ from hvantk.algorithms.rerank.features import FeatureAssembler
 from hvantk.algorithms.rerank.reranker import ReRanker
 from hvantk.algorithms.rerank.tiers import TierAssigner
 from hvantk.algorithms.rerank.evaluator import Evaluator, EvalResult
+
+if TYPE_CHECKING:
+    from hvantk.algorithms.rerank.nulls import NullDistribution
 
 
 @dataclass
@@ -42,6 +46,7 @@ class RerankResult:
     metrics: EvalResult
     coverage: dict
     selection: "SelectionSummary | None" = None
+    nulls: "NullDistribution | None" = None
 
 
 def _axis_selector(policy, groups, frequency=None):
@@ -147,6 +152,60 @@ def _leakage_filtered_groups(df, y, groups, leakage_policy):
         if kept:
             out[axis] = kept
     return out
+
+
+def _control_setting(config, baseline_cols, candidates, arm, blocked, folds):
+    """The exact setting this run's deltas were computed under.
+
+    Built in one place so the null and the observed deltas cannot disagree about it -- which
+    is the mismatch `NullDistribution._require` exists to catch, and it can only catch it if
+    the description is derived rather than typed twice.
+    """
+    from hvantk.algorithms.rerank.nulls import ControlSetting
+
+    return ControlSetting(
+        arm=arm,
+        leakage=getattr(config, "leakage", None),
+        selection=getattr(config, "selection", None),
+        baseline=tuple(baseline_cols),
+        candidates=candidates,
+        folds=folds,
+        blocked=bool(blocked),
+    )
+
+
+def _run_nulls(config, df, baseline, groups_map, y, selector, arm, blocks):
+    """The permutation null for this run, with its observed deltas, or None when unset."""
+    if getattr(config, "nulls", None) is None:
+        return None
+    from hvantk.algorithms.rerank.evaluator import ABLATION_FOLDS
+    from hvantk.algorithms.rerank.nulls import (
+        NullDistribution,
+        axis_deltas,
+        oof_scorer,
+        permutation_deltas,
+    )
+    from hvantk.algorithms.rerank.seeds import DEFAULT_SEED
+
+    baseline_cols = list(groups_map[baseline])
+    candidates = {k: list(v) for k, v in groups_map.items() if v and k != baseline}
+    if not candidates:
+        return None
+    folds = ABLATION_FOLDS  # ONE variable feeds the scorer and the recorded setting
+    scorer = oof_scorer(
+        selector=selector, groups=blocks,
+        seed=getattr(config, "seed", DEFAULT_SEED), folds=folds,
+    )
+    deltas = permutation_deltas(
+        df, baseline_cols, candidates, y, config=config.nulls, scorer=scorer
+    )
+    _, observed = axis_deltas(df, baseline_cols, candidates, y, scorer=scorer)
+    setting = _control_setting(
+        config, baseline_cols, candidates, arm, blocks is not None, folds
+    )
+    return NullDistribution.from_deltas(
+        deltas, setting, null_config=config.nulls, observed=observed
+    )
 
 
 def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
@@ -267,6 +326,7 @@ def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
     flag = flag_reason != ""
     tiers = TierAssigner(config.tiers).assign(scores)  # pure credibility, no flag input
     metrics = Evaluator().evaluate(df, feat_cols, y, scores, groups, baseline, selector)
+    nulls = _run_nulls(config, df, baseline, groups, y, selector, _arm, None)
     table = pd.DataFrame(
         {
             "gene": df.gene,
@@ -318,7 +378,7 @@ def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
         ]
     ]
     return RerankResult(
-        table=table, metrics=metrics, coverage=coverage, selection=summary
+        table=table, metrics=metrics, coverage=coverage, selection=summary, nulls=nulls
     )
 
 

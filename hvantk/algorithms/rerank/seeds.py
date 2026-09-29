@@ -23,11 +23,10 @@ reproduces exactly. It carries no other meaning; callers should feel free to cha
 def rng_for(seed: int, offset: int = 0) -> np.random.Generator:
     """``default_rng(seed + offset)``.
 
-    Permutation ``i`` is seeded by ``seed + i`` rather than by spawning from a parent
-    ``SeedSequence``. Not because spawning would depend on how the work is chunked --
-    ``SeedSequence(seed, spawn_key=(i,))`` is just as chunk-independent -- but because
-    ``seed + i`` keeps permutation ``i`` a function of ``(seed, i)`` alone and matches the
-    draws this module was ported from, so earlier nulls reproduce bit-for-bit.
+    ``seed + i`` is the historic scheme for seeding permutation ``i``, kept so nulls
+    computed before this module existed reproduce exactly. It is chunk-independent --
+    rerunning one chunk reproduces exactly the permutations the whole run would have drawn
+    for it -- and its one cost is the seed-proximity caveat below.
 
     Caveat: nulls from seeds closer together than ``n_perm`` share permutations (``seed=42``
     and ``seed=43`` share ``n_perm - 1`` of their draws), so an independent replicate null
