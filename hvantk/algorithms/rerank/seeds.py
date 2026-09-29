@@ -6,10 +6,7 @@ Every stochastic step in this package carried its own literal ``42``: the CV par
 ``SelectionPolicy.seed``. Five copies of one decision is five places to forget it, and the
 consequence is not cosmetic: the CV partition is one of at least three variance components
 in the reported interval (gene resampling, CV partition, best-of-N axis selection) and it
-was the only one no caller could vary. Measured on the CHD lattice, a single-seed run
-scored 0.765 against a 25-seed mean of 0.784
-(``analysis/baseline-lattice/nested_check.py:161-175``) -- the published figure was the
-unluckiest of 25 draws, and nothing in the API let a user notice.
+was the only one no caller could vary.
 
 ``hvantk/tests/rerank/test_seeds.py`` greps the package and fails if a bare ``42``
 reappears outside this file.
@@ -24,13 +21,16 @@ reproduces exactly. It carries no other meaning; callers should feel free to cha
 
 
 def rng_for(seed: int, offset: int = 0) -> np.random.Generator:
-    """``default_rng(seed + offset)`` -- deliberately NOT ``SeedSequence.spawn``.
+    """``default_rng(seed + offset)``.
 
-    The permutation null is chunked across array tasks, and a chunk has to be reproducible
-    on its own: permutation ``i`` is seeded by ``seed + i`` whichever chunk computes it, so
-    rerunning chunk 3 reproduces exactly permutations ``[lo, hi)``
-    (``analysis/rerank-homogenised/perm_null_arm.py:77-86``). Spawning from a parent
-    sequence makes draw ``i`` depend on how the work was divided, which is the one property
-    a chunkable null cannot have.
+    Permutation ``i`` is seeded by ``seed + i`` rather than by spawning from a parent
+    ``SeedSequence``. Not because spawning would depend on how the work is chunked --
+    ``SeedSequence(seed, spawn_key=(i,))`` is just as chunk-independent -- but because
+    ``seed + i`` keeps permutation ``i`` a function of ``(seed, i)`` alone and matches the
+    draws this module was ported from, so earlier nulls reproduce bit-for-bit.
+
+    Caveat: nulls from seeds closer together than ``n_perm`` share permutations (``seed=42``
+    and ``seed=43`` share ``n_perm - 1`` of their draws), so an independent replicate null
+    needs its seed moved by at least ``n_perm``.
     """
     return np.random.default_rng(int(seed) + int(offset))

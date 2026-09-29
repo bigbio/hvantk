@@ -27,15 +27,22 @@ from hvantk.algorithms.rerank.reranker import _gbm
 from hvantk.algorithms.rerank.seeds import DEFAULT_SEED
 
 
-def _raw_oof(matrix, cols, y, selector=None, groups=None, seed=DEFAULT_SEED):
+ABLATION_FOLDS = 5
+"""The ablation's fold count. ``Config.folds`` governs ``ReRanker.score`` only."""
+
+
+def _raw_oof(
+    matrix, cols, y, selector=None, groups=None, seed=DEFAULT_SEED, folds=ABLATION_FOLDS
+):
     """Uncalibrated out-of-fold probabilities for one feature subset.
 
     Mirrors ReRanker.score's nesting contract: when a selector is given it runs per fold on
     the training slice only, so every ablation delta-AUC is as leakage-free as the headline.
     """
-    # groups: threaded in Task 5
+    if groups is not None:
+        raise NotImplementedError("grouped (blocked) folds are not wired into _raw_oof yet")
     y = np.asarray(y)
-    cv = StratifiedKFold(5, shuffle=True, random_state=seed)
+    cv = StratifiedKFold(folds, shuffle=True, random_state=seed)
     if selector is None:
         return cross_val_predict(
             _gbm(), matrix[cols].values, y, cv=cv, method="predict_proba"

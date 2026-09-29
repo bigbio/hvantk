@@ -68,11 +68,10 @@ def cheap_scorer(folds=3, seed=0):
     The distributional claims (`p` uniform under a permuted label, a wider candidate set
     raising the null median) need tens of permutations to mean anything, and tens of
     permutations of the real HistGBM is a multi-minute job -- not something that belongs on
-    a login node. `permutation_deltas` takes an injectable `scorer` for exactly the reason
-    the analysis code does (`analysis/rerank-homogenised/run_arm.py:197` wraps `_raw_oof`
-    the same way to add grouped folds and caching), so the statistics are exercised here
-    with logistic regression and the DEFAULT scorer -- the real GBM -- is pinned separately
-    by test_default_scorer_is_raw_oof.
+    a login node. `permutation_deltas` takes an injectable `scorer` for exactly this reason
+    -- swapping in a cheap model keeps the statistics honest without paying for the shipped
+    estimator -- so the statistics are exercised here with logistic regression, and the
+    DEFAULT scorer -- the real GBM -- is pinned separately by test_default_scorer_is_raw_oof.
     """
     from sklearn.linear_model import LogisticRegression
     from sklearn.model_selection import StratifiedKFold, cross_val_predict
