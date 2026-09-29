@@ -1,4 +1,5 @@
 # local/rerank_engine/engine.py
+import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 import pandas as pd
@@ -11,6 +12,8 @@ from hvantk.algorithms.rerank.evaluator import Evaluator, EvalResult
 
 if TYPE_CHECKING:
     from hvantk.algorithms.rerank.nulls import NullDistribution
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -190,6 +193,12 @@ def _run_nulls(config, df, baseline, groups_map, y, selector, arm, blocks):
     baseline_cols = list(groups_map[baseline])
     candidates = {k: list(v) for k, v in groups_map.items() if v and k != baseline}
     if not candidates:
+        logger.warning(
+            "Config.nulls was set but only the baseline axis %r survived (no candidate "
+            "axes were offered); the multiplicity correction was requested and could not "
+            "run",
+            baseline,
+        )
         return None
     folds = ABLATION_FOLDS  # ONE variable feeds the scorer and the recorded setting
     scorer = oof_scorer(

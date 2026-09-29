@@ -50,6 +50,7 @@ nothing, not proof that it does not.
 """
 from __future__ import annotations
 
+import logging
 import numbers
 from dataclasses import dataclass, fields
 from typing import TYPE_CHECKING, Callable, Mapping, Sequence
@@ -62,6 +63,8 @@ from hvantk.algorithms.rerank.seeds import DEFAULT_SEED, rng_for
 if TYPE_CHECKING:
     from hvantk.algorithms.rerank.leakage import LeakagePolicy
     from hvantk.algorithms.rerank.selection import SelectionPolicy
+
+logger = logging.getLogger(__name__)
 
 
 def _coerce_int(value, name: str) -> int:
@@ -360,6 +363,10 @@ def permutation_deltas(
     baseline = list(baseline)
     score = scorer if scorer is not None else oof_scorer()
     lo, hi = config.span()
+    chunk_size = hi - lo
+    # ~every 10% of the chunk; for a chunk under 10 draws that floors to 0, so `max(1, ...)`
+    # falls back to logging every permutation instead of going silent for the whole chunk.
+    log_every = max(1, chunk_size // 10)
 
     rows = []
     for i in range(lo, hi):
@@ -371,6 +378,12 @@ def permutation_deltas(
         base_auc, deltas = axis_deltas(matrix, baseline, axes, yp, scorer=score)
         for name, delta in deltas.items():
             rows.append({"perm": i, "axis": name, "delta": delta, "base_auc": base_auc})
+        done = i - lo + 1
+        if done % log_every == 0:
+            logger.info(
+                "permutation null: %d/%d draws (chunk %d/%d)",
+                done, chunk_size, config.chunk, config.n_chunks,
+            )
     return pd.DataFrame(rows, columns=["perm", "axis", "delta", "base_auc"])
 
 
@@ -387,13 +400,21 @@ def selected_maximum(deltas: pd.DataFrame) -> np.ndarray:
     be the one actually searched, and why :meth:`NullDistribution.merge` refuses to merge
     chunks that offered different axes.
 
-    NaN axes are skipped rather than treated as 0: an axis wholly inside the baseline was
-    not a candidate on that permutation.
+    Computed over the FULL frame, exactly one entry per permutation present, sorted by
+    permutation index: ``groupby("perm").max()`` already skips a NaN axis WITHIN a
+    permutation's group (an axis wholly inside the baseline was not a candidate on that
+    permutation, so it must not drag the maximum down to it), and it yields NaN -- rather
+    than dropping the permutation from the result -- for the one permutation whose every
+    offered axis was NaN. Dropping such a permutation instead of recording NaN for it would
+    leave the result shorter than the caller's permutation index, which is what
+    :meth:`NullDistribution.from_deltas` relies on to stay aligned with ``perms``. Raises
+    only when EVERY permutation is like that: then there is no finite delta anywhere for
+    this candidate set to report.
     """
-    d = deltas.dropna(subset=["delta"])
-    if d.empty:
+    sm = deltas.groupby("perm")["delta"].max().sort_index()
+    if sm.isna().all():
         raise ValueError("no finite deltas: every offered axis was inside the baseline")
-    return d.groupby("perm")["delta"].max().sort_index().to_numpy(dtype=float)
+    return sm.to_numpy(dtype=float)
 
 
 def _setting_mismatch(generated: ControlSetting, asked: ControlSetting) -> str:
@@ -470,11 +491,35 @@ class NullDistribution:
 
         ``setting.candidates`` is the source of truth for which axes this null covers, and
         ``deltas`` must describe exactly the permutations ``null_config.span()`` says it
-        should -- both checked here, rather than assumed, because a null silently missing a
-        permutation or an axis would still produce a plausible-looking p-value.
+        should -- checked here, rather than assumed, because a null silently missing a
+        permutation or an axis would still produce a plausible-looking p-value. ``axis`` and
+        ``perm`` are coerced to ``str``/``int`` before anything else reads them: an integer
+        axis name would otherwise compare unequal to the ``str`` names in
+        ``setting.candidates`` (an empty, silently-dropped per-axis null), and a ``perm``
+        column read back as text sorts ``"10"`` before ``"2"``.
+
+        Every ``(perm, axis)`` pair must appear exactly once. A chunk concatenated into
+        ``deltas`` twice leaves the SET of permutations and the SET of axes unchanged -- so
+        neither check below would catch it -- yet it doubles every per-axis and
+        selected-maximum draw, which narrows every p-value this null goes on to report
+        without changing what a single permutation actually looks like. Caught here by
+        checking the grid is exactly complete (``len(deltas) == axes x permutations``)
+        rather than merely present.
+
+        ``observed`` is optional; passing it is what lets :meth:`merge` later detect chunks
+        computed on different data, a different CV seed or a different estimator. If every
+        chunk's ``observed`` is left ``None``, that check is silently off.
         """
+        d = deltas.assign(axis=deltas["axis"].astype(str), perm=deltas["perm"].astype(int))
+
+        if d.duplicated(["perm", "axis"]).any():
+            raise ValueError(
+                "duplicate (perm, axis) pair(s): each must appear once; a chunk "
+                "concatenated twice double-counts its draws and narrows every p-value"
+            )
+
         axes = tuple(a for a, _ in setting.candidates)
-        seen_axes = set(str(a) for a in deltas["axis"].unique())
+        seen_axes = set(d["axis"].unique())
         if seen_axes != set(axes):
             raise ValueError(
                 "the setting must describe the null it is attached to: setting.candidates "
@@ -491,22 +536,28 @@ class NullDistribution:
 
         lo, hi = null_config.span()
         expected_perms = set(range(lo, hi))
-        seen_perms = set(int(p) for p in deltas["perm"].unique())
+        seen_perms = set(int(p) for p in d["perm"].unique())
         if seen_perms != expected_perms:
             raise ValueError(
                 f"deltas must cover exactly the permutations null_config describes -- "
                 f"expected range({lo}, {hi}), got {len(seen_perms)} distinct perm value(s)"
             )
+        if len(d) != len(axes) * (hi - lo):
+            raise ValueError(
+                "deltas must be a complete grid of axes x permutations: expected "
+                f"{len(axes)} axes x {hi - lo} permutations = {len(axes) * (hi - lo)} "
+                f"rows, got {len(d)}"
+            )
 
         per_axis = {
-            a: deltas[deltas.axis == a].sort_values("perm")["delta"].to_numpy(dtype=float)
+            a: d[d.axis == a].sort_values("perm")["delta"].to_numpy(dtype=float)
             for a in axes
         }
         return cls(
             setting=setting,
             axes=axes,
             per_axis=per_axis,
-            selected_max=selected_maximum(deltas),
+            selected_max=selected_maximum(d),
             perms=tuple(sorted(seen_perms)),
             perm_seed=null_config.seed,
             planned_n_perm=null_config.n_perm,
@@ -524,10 +575,17 @@ class NullDistribution:
         2. the control setting -- ditto;
         3. the base seed and the planned permutation count -- chunks from different base
            seeds can draw the SAME underlying permutations from DISJOINT chunk indices
-           (seed 42's chunk ``[20, 40)`` and seed 52's chunk ``[0, 20)`` can share draws),
-           which the plain index-overlap check below cannot see;
-        4. the observed deltas riding with the null -- chunks that disagree ran on
-           different data;
+           (seed 10's chunk ``[20, 40)`` and seed 20's chunk ``[0, 20)`` share the 10 draws
+           seeded 30..39), which the plain index-overlap check below cannot see;
+        4. the observed deltas riding with the null, WHEN both sides carry one -- chunks
+           whose ``observed`` disagree ran on different data, a different CV seed or a
+           different estimator. Compared with the same tie tolerance ``p_value`` uses
+           (genuinely different data moves a delta by at least the AUC grid spacing, far
+           above it), not exact equality: nodes with different CPU instruction sets can
+           otherwise differ in the last few bits and refuse a chunk that is actually fine.
+           Passing ``observed`` at all is what turns this check on -- if every chunk's
+           ``observed`` is ``None``, there is nothing here to disagree, and this check
+           cannot catch chunks that were in fact computed on different data;
         5. overlapping permutation indices -- the same permutation counted twice narrows
            every p-value for free.
         """
@@ -570,7 +628,9 @@ class NullDistribution:
             head_obs = observed_list[0]
             for other_obs in observed_list[1:]:
                 same = set(other_obs) == set(head_obs) and all(
-                    np.array_equal([head_obs[a]], [other_obs[a]], equal_nan=True)
+                    np.allclose(
+                        [head_obs[a]], [other_obs[a]], rtol=0, atol=_TIE_TOL, equal_nan=True
+                    )
                     for a in head_obs
                 )
                 if not same:

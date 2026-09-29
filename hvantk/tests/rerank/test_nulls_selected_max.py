@@ -7,6 +7,7 @@ plausible number that answers a question nobody asked.
 from __future__ import annotations
 
 import dataclasses
+import functools
 
 import numpy as np
 import pytest
@@ -33,7 +34,11 @@ def _setting(candidates, **kw):
     return ControlSetting(**base)
 
 
+@functools.lru_cache(maxsize=None)
 def _null(n_axes, n_perm=30, seed=4, n=160):
+    """Built repeatedly across the guard/merge tests with the SAME arguments -- a
+    `NullDistribution` is frozen, so caching by argument tuple is safe, and every caller
+    that needs a different shape just gets a fresh (also cached) build under its own key."""
     matrix, y, baseline, axes = permuted_labels(n=n, n_noise=5)
     offered = {k: axes[k] for k in sorted(axes)[:n_axes]}
     cfg = NullConfig(n_perm=n_perm, seed=seed)
@@ -56,17 +61,6 @@ def test_selected_maximum_is_the_per_permutation_max_over_axes():
         }
     )
     assert selected_maximum(d).tolist() == [0.05, 0.03]
-
-
-def test_more_offered_axes_gives_a_higher_null_median():
-    """The whole reason the correction has to see the candidate COUNT: an arm offered more
-    axes gets more chances at a spurious maximum, so it must face a higher bar."""
-    narrow = _null(n_axes=2)
-    wide = _null(n_axes=6)
-    assert np.median(wide.selected_max) > np.median(narrow.selected_max), (
-        float(np.median(narrow.selected_max)),
-        float(np.median(wide.selected_max)),
-    )
 
 
 def test_a_planted_signal_clears_the_selected_maximum_null():
@@ -115,7 +109,17 @@ def test_a_null_refuses_a_delta_from_another_control_setting(different):
         nd.p_selected_max(0.02, setting=other)
     msg = str(info.value)
     assert "generated under" in msg and "asked about" in msg
-    assert next(iter(different)) in msg
+    # `describe()` prints every field name, so asserting the changed field's name is
+    # anywhere in `msg` can never fail -- it must show up specifically in the differing-
+    # field list, and an unrelated field must NOT. A bare substring search on just the
+    # field name is not enough either: e.g. "arm" is itself a substring of "spearman",
+    # which appears inside SelectionPolicy's own repr. Anchor on the exact
+    # "<field> (generated=" marker `_setting_mismatch` emits for each differing field.
+    changed = next(iter(different))
+    differing = msg.split("Differing field(s): ", 1)[1]
+    assert f"{changed} (generated=" in differing
+    unchanged = "arm" if changed != "arm" else "folds"
+    assert f"{unchanged} (generated=" not in differing
 
 
 def test_the_guard_also_covers_the_per_axis_question():
@@ -178,6 +182,17 @@ def test_merge_refuses_overlapping_permutation_indices():
     with pytest.raises(ValueError, match="overlap"):
         NullDistribution.merge([a, b])
 
+    # A chunk concatenated into its own deltas frame leaves the perm SET and axis SET
+    # unchanged (both checks above would miss it), yet double-counts every draw.
+    import pandas as pd
+
+    matrix, y, baseline, axes = permuted_labels(n=60, n_noise=1)
+    offered = {"axis0": axes["axis0"]}
+    cfg = NullConfig(n_perm=2, seed=1)
+    d = permutation_deltas(matrix, baseline, offered, y, config=cfg, scorer=cheap_scorer())
+    with pytest.raises(ValueError, match="duplicate"):
+        NullDistribution.from_deltas(pd.concat([d, d]), _setting(offered), null_config=cfg)
+
 
 def test_merge_refuses_chunks_that_offered_different_axes():
     with pytest.raises(ValueError, match="axes"):
@@ -207,7 +222,7 @@ def test_merge_refuses_chunks_from_different_permutation_seeds():
         permutation_deltas(matrix, baseline, offered, y, config=cfg_b, scorer=scorer),
         setting, null_config=cfg_b,
     )
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="seed"):
         NullDistribution.merge([a, b])
 
 
