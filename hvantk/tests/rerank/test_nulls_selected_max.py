@@ -29,7 +29,7 @@ from hvantk.tests.rerank._synth import cheap_scorer, permuted_labels, planted_si
 
 def _setting(candidates, **kw):
     base = dict(arm="all", leakage=None, selection=None, baseline=("base",),
-                candidates=candidates, folds=ABLATION_FOLDS, blocked=False)
+                candidates=candidates, folds=ABLATION_FOLDS, block_digest=None)
     base.update(kw)
     return ControlSetting(**base)
 
@@ -94,7 +94,7 @@ def test_selected_max_is_never_below_the_per_axis_draw_it_contains():
         dict(selection=SelectionPolicy()),
         dict(arm="clean"),
         dict(baseline=("base", "burden")),
-        dict(blocked=True),
+        dict(block_digest="0" * 40),
         dict(folds=10),
         dict(candidates={"axis0": ("elsewhere",)}),
     ],

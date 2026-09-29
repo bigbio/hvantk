@@ -8,6 +8,7 @@ from hvantk.algorithms.rerank.config import (
     validate,
 )
 from hvantk.algorithms.rerank.audit import Audit, CaseControlArchitectureAudit, NoAudit
+from hvantk.algorithms.rerank.blocks import BlockPolicy, BlockReport, DominantBlockError
 from hvantk.algorithms.rerank.catalog import DiseaseProfile, build_config, AXES, axis
 from hvantk.algorithms.rerank.nulls import (
     ControlSetting,
@@ -19,11 +20,14 @@ from hvantk.algorithms.rerank.nulls import (
 __all__ = [
     "AXES",
     "Audit",
+    "BlockPolicy",
+    "BlockReport",
     "CaseControlArchitectureAudit",
     "Config",
     "ControlSetting",
     "ControlSettingMismatch",
     "DiseaseProfile",
+    "DominantBlockError",
     "FeatureAxis",
     "LabelSpec",
     "NoAudit",

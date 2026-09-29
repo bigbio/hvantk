@@ -11,6 +11,7 @@ from hvantk.algorithms.rerank.tiers import TierAssigner
 from hvantk.algorithms.rerank.evaluator import Evaluator, EvalResult
 
 if TYPE_CHECKING:
+    from hvantk.algorithms.rerank.blocks import BlockReport
     from hvantk.algorithms.rerank.nulls import NullDistribution
 
 logger = logging.getLogger(__name__)
@@ -50,6 +51,7 @@ class RerankResult:
     coverage: dict
     selection: "SelectionSummary | None" = None
     nulls: "NullDistribution | None" = None
+    blocks: "BlockReport | None" = None
 
 
 def _axis_selector(policy, groups, frequency=None):
@@ -157,7 +159,21 @@ def _leakage_filtered_groups(df, y, groups, leakage_policy):
     return out
 
 
-def _control_setting(config, baseline_cols, candidates, arm, blocked, folds):
+def _resolve_blocks(config, df):
+    """Paralogue block codes for this run's universe, or (None, None) when not configured."""
+    policy = getattr(config, "blocks", None)
+    if policy is None:
+        return None, None
+    from hvantk.algorithms.rerank.blocks import gene_blocks, load_gene_groups
+
+    mapping = load_gene_groups(policy.table)
+    report = gene_blocks(
+        df["gene"].tolist(), mapping, max_block_frac=policy.max_block_frac
+    )
+    return report.blocks, report
+
+
+def _control_setting(config, baseline_cols, candidates, arm, block_digest, folds):
     """The exact setting this run's deltas were computed under.
 
     Built in one place so the null and the observed deltas cannot disagree about it -- which
@@ -173,7 +189,7 @@ def _control_setting(config, baseline_cols, candidates, arm, blocked, folds):
         baseline=tuple(baseline_cols),
         candidates=candidates,
         folds=folds,
-        blocked=bool(blocked),
+        block_digest=block_digest,
     )
 
 
@@ -181,6 +197,7 @@ def _run_nulls(config, df, baseline, groups_map, y, selector, arm, blocks):
     """The permutation null for this run, with its observed deltas, or None when unset."""
     if getattr(config, "nulls", None) is None:
         return None
+    from hvantk.algorithms.rerank.blocks import block_digest
     from hvantk.algorithms.rerank.evaluator import ABLATION_FOLDS
     from hvantk.algorithms.rerank.nulls import (
         NullDistribution,
@@ -210,8 +227,9 @@ def _run_nulls(config, df, baseline, groups_map, y, selector, arm, blocks):
         df, baseline_cols, candidates, y, config=config.nulls, scorer=scorer
     )
     _, observed = axis_deltas(df, baseline_cols, candidates, y, scorer=scorer)
+    block_digest = None if blocks is None else block_digest(blocks)
     setting = _control_setting(
-        config, baseline_cols, candidates, arm, blocks is not None, folds
+        config, baseline_cols, candidates, arm, block_digest, folds
     )
     return NullDistribution.from_deltas(
         deltas, setting, null_config=config.nulls, observed=observed
@@ -273,7 +291,7 @@ def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
     }
     groups = {k: v for k, v in groups.items() if v}
     baseline = next(iter(groups))
-    blocks = None  # Task 5 replaces this with the resolved paralogue-block array.
+    blocks, block_report = _resolve_blocks(config, df)
     reranker = ReRanker(config.calibration, config.folds)
     leakage_policy = getattr(config, "leakage", None)
     selector = summary = None
@@ -391,7 +409,8 @@ def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
         ]
     ]
     return RerankResult(
-        table=table, metrics=metrics, coverage=coverage, selection=summary, nulls=nulls
+        table=table, metrics=metrics, coverage=coverage, selection=summary, nulls=nulls,
+        blocks=block_report,
     )
 
 

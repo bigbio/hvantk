@@ -61,8 +61,9 @@ def _cv(folds, seed, groups):
 def _grouped_splits(cv, X, y, groups):
     """The blocked splits, materialised once and checked.
 
-    ``StratifiedGroupKFold`` balances class counts PER BLOCK, not per fold, so it has no
-    way to notice when a class is confined to too few blocks for the requested fold count.
+    ``StratifiedGroupKFold`` balances per-fold class PROPORTIONS over whole blocks, but its
+    own check operates on class sizes in SAMPLES rather than in blocks, so it has no way to
+    notice when a class is confined to too few blocks for the requested fold count.
     Left unchecked that surfaces two different ways: a training fold with no example of a
     class -- a classifier fit on a single class predicts that class with probability 1, so
     every held-out positive silently scores 0.0, with nothing louder than a sklearn
@@ -71,9 +72,14 @@ def _grouped_splits(cv, X, y, groups):
     Both are refused HERE, before either can reach an estimator.
     """
     y = np.asarray(y)
-    splits = list(cv.split(X, y, groups))
-    n_folds = len(splits)
+    n_folds = cv.get_n_splits()
     n_blocks = len(np.unique(groups))
+    if n_blocks < n_folds:
+        raise ValueError(
+            f"only {n_blocks} paralogue block(s) for {n_folds} folds -- lower the fold "
+            "count, widen the label set, or run without blocks"
+        )
+    splits = list(cv.split(X, y, groups))
     for i, (train_idx, test_idx) in enumerate(splits):
         if len(test_idx) == 0:
             raise ValueError(
@@ -82,8 +88,14 @@ def _grouped_splits(cv, X, y, groups):
                 "set, or run without blocks"
             )
         train_y = y[train_idx]
-        if train_y.size == 0 or train_y.min() == train_y.max():
-            label = "positive" if train_y.size == 0 or train_y.max() == 0 else "negative"
+        if train_y.size == 0:
+            raise ValueError(
+                f"blocked fold {i} has no training example at all: only {n_blocks} "
+                f"paralogue block(s) for {n_folds} folds -- lower the fold count, widen "
+                "the label set, or run without blocks"
+            )
+        if train_y.min() == train_y.max():
+            label = "positive" if train_y.max() == 0 else "negative"
             raise ValueError(
                 f"blocked fold {i} has no {label} training example: the {label}s sit in "
                 f"too few paralogue blocks for {n_folds} folds -- lower the fold count, "

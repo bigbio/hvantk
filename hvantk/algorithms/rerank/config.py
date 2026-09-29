@@ -10,6 +10,7 @@ from hvantk.algorithms.cohort.spec import CohortManifest
 
 if TYPE_CHECKING:
     from hvantk.algorithms.rerank.audit import Audit
+    from hvantk.algorithms.rerank.blocks import BlockPolicy
     from hvantk.algorithms.rerank.leakage import LeakagePolicy
     from hvantk.algorithms.rerank.nulls import NullConfig
     from hvantk.algorithms.rerank.selection import SelectionPolicy
@@ -152,6 +153,10 @@ class Config:
     survives the fact that N axes were searched. None (default) reproduces the previous
     code path exactly -- and reproduces it with no correction at all, which is what #247
     is about."""
+    blocks: Optional["BlockPolicy"] = None
+    """Paralogue-blocked cross-validation, or None for the stratified random folds the
+    engine has always used. Blocking is strictly harder, so every absolute AUC is expected
+    to fall; the quantity of interest is whether a delta survives."""
 
     def __post_init__(self):
         if self.audit is None:
@@ -196,6 +201,20 @@ class Config:
                 raise TypeError(
                     f"Config.nulls must be a NullConfig or None; got "
                     f"{type(self.nulls).__name__}. For defaults, pass NullConfig()."
+                )
+        if self.blocks is not None:
+            from hvantk.algorithms.rerank.blocks import BlockPolicy
+
+            # Checked, not duck-typed, for the same reason Config.leakage/Config.nulls are:
+            # a bare path string here would be silently ignored by the engine, and blocked
+            # CV that is off while the caller believes it is on is worse than one that was
+            # never offered. BlockPolicy itself validates max_block_frac and the table path
+            # at construction time, so nothing further needs checking here.
+            if not isinstance(self.blocks, BlockPolicy):
+                raise TypeError(
+                    f"Config.blocks must be a BlockPolicy or None; got "
+                    f"{type(self.blocks).__name__}. For an HGNC table, pass "
+                    f"BlockPolicy(table=...)."
                 )
         if self.cohort is not None:
             if self.prior is None:

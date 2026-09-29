@@ -4,7 +4,7 @@ import dataclasses
 import numpy as np, pandas as pd
 from hvantk.algorithms.cohort.spec import CohortManifest, CohortPrior
 from hvantk.algorithms.rerank import (
-    rerank, Config, PriorSpec, FeatureAxis, LabelSpec, NullConfig,
+    rerank, Config, PriorSpec, FeatureAxis, LabelSpec, NullConfig, BlockPolicy,
 )
 from hvantk.algorithms.rerank.evaluator import ABLATION_FOLDS
 
@@ -47,15 +47,27 @@ def test_engine_end_to_end(tmp_path):
     # baseline, offered first), so the null must cover only `z`, and the null's own observed
     # delta for `z` must agree with the ablation table's independently-computed AUC gap.
     noise = pd.DataFrame({"gene": genes, "z": rng.normal(0, 1, n)})
+    # D1 engine-wiring guard: a real block table (families of 4, status Approved) so
+    # Task 5's _run_nulls edit is exercised on an actual blocking, not just blocks=None.
+    groups_path = tmp_path / "hgnc_groups.tsv"
+    pd.DataFrame(
+        {
+            "symbol": genes,
+            "gene_group": [f"Family {i // 4}" for i in range(n)],
+            "status": ["Approved"] * n,
+        }
+    ).to_csv(groups_path, sep="\t", index=False)
     cfg2 = dataclasses.replace(
         cfg,
         features=[cfg.features[0], FeatureAxis("z", lambda: noise)],
         nulls=NullConfig(n_perm=2, seed=1),
         folds=3,
+        blocks=BlockPolicy(table=str(groups_path)),
     )
     res2 = rerank(cfg2)
     assert res2.nulls is not None
     assert res2.nulls.axes == ("z",)
     assert res2.nulls.setting.folds == ABLATION_FOLDS
+    assert res2.nulls.setting.block_digest is not None
     abl = res2.metrics.ablation.set_index("family")["auc"]
     assert abs((abl["z"] - abl["x"]) - res2.nulls.observed["z"]) <= 1e-3

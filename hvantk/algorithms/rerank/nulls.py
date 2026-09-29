@@ -29,9 +29,9 @@ the caller:
    set can never license that (Phipson & Smyth 2010).
 3. **A null belongs to ONE control setting.** The leakage and selection policies, the
    provenance arm, the exact baseline columns, the offered candidate axes and their
-   columns, the fold count the scorer actually used, and whether folds were blocked all
-   change what is being permuted. ``NullDistribution`` records the setting it was built
-   under and raises rather than answer a question about a different one.
+   columns, the fold count the scorer actually used, and which blocking (if any) the folds
+   used all change what is being permuted. ``NullDistribution`` records the setting it was
+   built under and raises rather than answer a question about a different one.
 
 The CV SEED is held fixed across permutations, not the partition: the stratified partition
 is a function of ``(seed, labels)`` and is recomputed for every permutation exactly as it is
@@ -125,8 +125,12 @@ class ControlSetting:
     folds
         The fold count the scorer ACTUALLY used -- not ``Config.folds``, which governs
         ``ReRanker.score`` only (see ``evaluator.ABLATION_FOLDS``).
-    blocked
-        Whether folds were group-blocked.
+    block_digest
+        A digest of the exact block labels the folds were built from (see
+        :func:`~hvantk.algorithms.rerank.blocks.block_digest`), or ``None`` when folds were
+        unblocked. Recording WHICH blocking, not only whether one was used, matters because
+        nulls computed under two different block tables -- another HGNC release, another
+        grouping -- would otherwise compare equal.
 
     Both ``leakage`` and ``selection`` are themselves frozen dataclasses with scalar fields,
     so an instance of this record stays hashable.
@@ -138,7 +142,7 @@ class ControlSetting:
     baseline: tuple
     candidates: tuple
     folds: int
-    blocked: bool
+    block_digest: "str | None"
 
     def __post_init__(self) -> None:
         from hvantk.algorithms.rerank.leakage import LeakagePolicy
@@ -188,11 +192,21 @@ class ControlSetting:
         if folds < 2:
             raise ValueError(f"folds must be an int >= 2; got {folds!r}")
 
+        if self.block_digest is not None:
+            if not isinstance(self.block_digest, str):
+                raise TypeError(
+                    f"block_digest must be None or a str; got "
+                    f"{type(self.block_digest).__name__}"
+                )
+            if not self.block_digest.strip():
+                raise ValueError("block_digest must be None or a non-empty str")
+
     def describe(self) -> str:
         candidates = {axis: len(cols) for axis, cols in self.candidates}
+        digest = None if self.block_digest is None else self.block_digest[:12]
         return (
             f"arm={self.arm!r} leakage={self.leakage!r} selection={self.selection!r} "
-            f"folds={self.folds} blocked={self.blocked} baseline={list(self.baseline)!r} "
+            f"folds={self.folds} block_digest={digest!r} baseline={list(self.baseline)!r} "
             f"candidates={candidates!r}"
         )
 

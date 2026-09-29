@@ -32,7 +32,7 @@ def _setting(baseline=("base",), **kw):
         baseline=baseline,
         candidates=kw.get("candidates", {"axis0": ("axis0_a",)}),
         folds=kw.get("folds", 5),
-        blocked=kw.get("blocked", False),
+        block_digest=kw.get("block_digest", None),
     )
 
 
