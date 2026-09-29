@@ -7,6 +7,8 @@ import pandas as pd
 
 from hvantk.algorithms.cohort.frame import load_prior_frame
 from hvantk.algorithms.cohort.spec import CohortManifest
+from hvantk.algorithms.rerank.nulls import _coerce_int
+from hvantk.algorithms.rerank.seeds import DEFAULT_SEED
 
 if TYPE_CHECKING:
     from hvantk.algorithms.rerank.audit import Audit
@@ -157,8 +159,24 @@ class Config:
     """Paralogue-blocked cross-validation, or None for the stratified random folds the
     engine has always used. Blocking is strictly harder, so every absolute AUC is expected
     to fall; the quantity of interest is whether a delta survives."""
+    seed: int = DEFAULT_SEED
+    """The one seed for this run: it drives the CV partition (both the headline scores and
+    the ablation), the GBM's ``random_state``, the bootstrap resample, and the null's
+    scorer. ``SelectionPolicy`` carries its own ``seed`` (default ``DEFAULT_SEED``) as a
+    separate field -- the wrapper's inner CV is not driven by this one -- and neither is the
+    calibration split (``CalibratedClassifierCV(cv=<int>)`` is unshuffled and takes no seed
+    at all). The CLI also uses this seed as the permutation null's base seed
+    (``NullConfig.seed``); permutations for nearby seeds overlap (see ``rng_for``). Was
+    hardcoded in five places, which made the CV partition the one variance component in the
+    reported interval that no caller could vary."""
 
     def __post_init__(self):
+        # bool is an int in Python, and numpy/sklearn both reject a negative seed, so
+        # `_coerce_int` (shared with NullConfig/ControlSetting) checks the TYPE and this
+        # checks the RANGE.
+        self.seed = _coerce_int(self.seed, "seed")
+        if self.seed < 0:
+            raise ValueError(f"Config.seed must be an int >= 0; got {self.seed!r}")
         if self.audit is None:
             from hvantk.algorithms.rerank.audit import NoAudit
 

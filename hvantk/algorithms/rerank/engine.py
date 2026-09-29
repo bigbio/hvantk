@@ -205,7 +205,6 @@ def _run_nulls(config, df, baseline, groups_map, y, selector, arm, blocks):
         oof_scorer,
         permutation_deltas,
     )
-    from hvantk.algorithms.rerank.seeds import DEFAULT_SEED
 
     baseline_cols = list(groups_map[baseline])
     candidates = {k: list(v) for k, v in groups_map.items() if v and k != baseline}
@@ -220,8 +219,7 @@ def _run_nulls(config, df, baseline, groups_map, y, selector, arm, blocks):
         return None
     folds = ABLATION_FOLDS  # ONE variable feeds the scorer and the recorded setting
     scorer = oof_scorer(
-        selector=selector, groups=blocks,
-        seed=getattr(config, "seed", DEFAULT_SEED), folds=folds,
+        selector=selector, groups=blocks, seed=config.seed, folds=folds,
     )
     deltas = permutation_deltas(
         df, baseline_cols, candidates, y, config=config.nulls, scorer=scorer, blocks=blocks
@@ -294,7 +292,7 @@ def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
     groups = {k: v for k, v in groups.items() if v}
     baseline = next(iter(groups))
     blocks, block_report = _resolve_blocks(config, df)
-    reranker = ReRanker(config.calibration, config.folds)
+    reranker = ReRanker(config.calibration, config.folds, seed=config.seed)
     leakage_policy = getattr(config, "leakage", None)
     selector = summary = None
     if config.selection is not None:
@@ -357,7 +355,7 @@ def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
     flag = flag_reason != ""
     tiers = TierAssigner(config.tiers).assign(scores)  # pure credibility, no flag input
     metrics = Evaluator().evaluate(
-        df, feat_cols, y, scores, groups, baseline, selector, groups=blocks
+        df, feat_cols, y, scores, groups, baseline, selector, groups=blocks, seed=config.seed
     )
     nulls = _run_nulls(config, df, baseline, groups, y, selector, _arm, blocks)
     table = pd.DataFrame(

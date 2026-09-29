@@ -11,6 +11,7 @@ from __future__ import annotations
 import dataclasses
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from hvantk.algorithms.rerank.leakage import LeakagePolicy
@@ -160,6 +161,23 @@ def test_a_blocked_null_permutes_whole_blocks():
         assert int(yp.sum()) == total_positive
         differs = differs or not np.array_equal(yp, y)
     assert differs
+
+    # Task 5b review, item 1: protect the `_permute_labels(...)` call inside
+    # `permutation_deltas` itself (not just the helper tested directly above) -- reverting
+    # that call to a global `rng_for(config.seed, i).permutation(y)` passed every test that
+    # existed before this assertion.
+    seen = []
+
+    def recording(matrix, cols, labels):
+        seen.append(np.asarray(labels).copy())
+        return np.arange(len(labels), dtype=float)
+
+    frame = pd.DataFrame({"a": np.zeros(len(y)), "b": np.ones(len(y))})
+    permutation_deltas(
+        frame, ["a"], {"ax": ["b"]}, y, config=NullConfig(n_perm=4, seed=3),
+        scorer=recording, blocks=blocks,
+    )
+    assert seen and all(counts_by_size(s) == observed_counts for s in seen)
 
     # 3a: the scorer's declared blocks and permutation_deltas' own `blocks=` must agree, or
     # a caller could silently fall back to the anti-conservative global permutation while

@@ -251,7 +251,15 @@ def gene_blocks(
         code_to_key = {code: key for key, code in codes.items()}
         largest_code = int(np.argmax(sizes))
         largest_key = code_to_key[largest_code]
-        group_name = largest_key[len("fam:"):] if largest_key.startswith("fam:") else largest_key
+        # Strip whichever internal prefix built this key (see `key = ...` above) so the
+        # abort message reads as a gene-group name, not an implementation-internal tag.
+        # `solo:` blocks are always size 1, so `largest > 1` means this branch can never
+        # actually observe one -- stripped for symmetry with `fam:`, not reachability.
+        group_name = largest_key
+        for prefix in ("fam:", "solo:"):
+            if group_name.startswith(prefix):
+                group_name = group_name[len(prefix):]
+                break
         raise DominantBlockError(
             f"the largest paralogue block (group {group_name!r}) holds {largest}/{n} units "
             f"({largest / n:.1%}), over the {max_block_frac:g} ceiling "

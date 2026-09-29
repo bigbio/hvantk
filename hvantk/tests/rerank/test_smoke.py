@@ -63,6 +63,11 @@ def test_engine_end_to_end(tmp_path, monkeypatch):
         nulls=NullConfig(n_perm=2, seed=1),
         folds=3,
         blocks=BlockPolicy(table=str(groups_path)),
+        # A non-default Config.seed: a _run_nulls that dropped config.seed on the floor
+        # (e.g. reverted to the historic DEFAULT_SEED) would then compute its own `observed`
+        # delta under a DIFFERENT CV partition from the one the ablation table below used,
+        # and the two independently-computed deltas would no longer agree to 1e-3.
+        seed=7,
     )
 
     # Guard the headline block wiring: spy on ReRanker.score at the class level so every

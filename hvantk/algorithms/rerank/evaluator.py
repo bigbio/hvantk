@@ -49,7 +49,7 @@ def _raw_oof(
     if selector is None:
         cv_arg = cv if groups is None else _grouped_splits(cv, X, y, groups)
         return cross_val_predict(
-            _gbm(), X, y, cv=cv_arg, groups=groups, method="predict_proba"
+            _gbm(seed), X, y, cv=cv_arg, groups=groups, method="predict_proba"
         )[:, 1]
 
     oof = np.full(len(y), np.nan)
@@ -60,7 +60,7 @@ def _raw_oof(
         if not sel:
             oof[test_idx] = y[train_idx].mean()
             continue
-        m = _gbm().fit(X_tr[sel].values, y[train_idx])
+        m = _gbm(seed).fit(X_tr[sel].values, y[train_idx])
         oof[test_idx] = m.predict_proba(matrix.iloc[test_idx][sel].values)[:, 1]
     return oof
 
@@ -74,13 +74,13 @@ class EvalResult:
     calibration: tuple
 
 
-def _boot_ci(y, p1, p0, n=1000):
+def _boot_ci(y, p1, p0, n=1000, seed=DEFAULT_SEED):
     """Paired bootstrap over GENES for the delta-AUC of ``p1`` over ``p0``.
 
     Draws that end up single-class are skipped rather than counted: AUC is undefined there,
     and substituting 0.5 would drag the interval toward no-difference.
     """
-    rng = np.random.default_rng(42)
+    rng = np.random.default_rng(seed)
     idx = np.arange(len(y))
     d = []
     for _ in range(n):
@@ -93,7 +93,7 @@ def _boot_ci(y, p1, p0, n=1000):
 class Evaluator:
     def evaluate(
         self, matrix, feat_cols, y, scores, axis_groups, baseline_axis, selector=None,
-        groups=None,
+        groups=None, seed=DEFAULT_SEED,
     ):
         y = np.asarray(y)
         scores = np.asarray(scores)
@@ -104,7 +104,7 @@ class Evaluator:
         cal = calibration_curve(y, cs, n_bins=8, strategy="quantile")
 
         base_cols = axis_groups[baseline_axis]
-        p_base = _raw_oof(matrix, base_cols, y, selector, groups=groups)
+        p_base = _raw_oof(matrix, base_cols, y, selector, groups=groups, seed=seed)
         base_auc = roc_auc_score(y, p_base)
         rows = [
             {
@@ -119,8 +119,8 @@ class Evaluator:
             if fam == baseline_axis:
                 continue
             cc = list(dict.fromkeys(base_cols + cols))
-            p = _raw_oof(matrix, cc, y, selector, groups=groups)
-            lo, md, hi = _boot_ci(y, p, p_base)
+            p = _raw_oof(matrix, cc, y, selector, groups=groups, seed=seed)
+            lo, md, hi = _boot_ci(y, p, p_base, seed=seed)
             rows.append(
                 {
                     "family": fam,

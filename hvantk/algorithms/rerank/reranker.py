@@ -7,9 +7,10 @@ from sklearn.model_selection import StratifiedGroupKFold, StratifiedKFold, cross
 from hvantk.algorithms.rerank.seeds import DEFAULT_SEED
 
 
-def _gbm():   # ported from chd_score_lib.gbm()
+def _gbm(seed: int = DEFAULT_SEED):   # ported from chd_score_lib.gbm()
     return HistGradientBoostingClassifier(max_depth=3, max_iter=250, learning_rate=0.05,
-        l2_regularization=1.0, min_samples_leaf=20, class_weight="balanced", random_state=42)
+        l2_regularization=1.0, min_samples_leaf=20, class_weight="balanced",
+        random_state=seed)
 
 
 class _SeededStratifiedGroupKFold(StratifiedGroupKFold):
@@ -109,9 +110,10 @@ class ReRanker:
     """Calibrated GBM scorer: inner isotonic calibration nested inside an outer
     5-fold cross_val_predict for out-of-fold, no-leakage calibrated probabilities.
     Matches Phase-1 chd_calibrate.py exactly."""
-    def __init__(self, calibration="isotonic", folds=5):
+    def __init__(self, calibration="isotonic", folds=5, seed=DEFAULT_SEED):
         self.calibration = calibration
         self.folds = folds
+        self.seed = seed
 
     def score(self, matrix, feat_cols, y, selector=None, groups=None):
         """Out-of-fold calibrated probabilities.
@@ -134,10 +136,10 @@ class ReRanker:
         limit. Documented here rather than silently accepted.
         """
         y = np.asarray(y)
-        cv = _cv(self.folds, DEFAULT_SEED, groups)
+        cv = _cv(self.folds, self.seed, groups)
         if selector is None:
             X = matrix[feat_cols].values
-            clf = CalibratedClassifierCV(_gbm(), method=self.calibration, cv=self.folds)
+            clf = CalibratedClassifierCV(_gbm(self.seed), method=self.calibration, cv=self.folds)
             cv_arg = cv if groups is None else _grouped_splits(cv, X, y, groups)
             return cross_val_predict(
                 clf, X, y, cv=cv_arg, groups=groups, method="predict_proba"
@@ -154,7 +156,7 @@ class ReRanker:
                 # than crash. A fold that selects nothing is information, not an error.
                 oof[test_idx] = y[train_idx].mean()
                 continue
-            clf = CalibratedClassifierCV(_gbm(), method=self.calibration, cv=self.folds)
+            clf = CalibratedClassifierCV(_gbm(self.seed), method=self.calibration, cv=self.folds)
             clf.fit(X_tr[cols].values, y[train_idx])
             oof[test_idx] = clf.predict_proba(matrix.iloc[test_idx][cols].values)[:, 1]
         return oof

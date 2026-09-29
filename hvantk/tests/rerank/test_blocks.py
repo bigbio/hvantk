@@ -20,7 +20,7 @@ from hvantk.algorithms.rerank.blocks import (
 from hvantk.tests.rerank._synth import paralogue_groups
 
 
-def test_genes_in_one_primary_family_share_a_block():
+def test_genes_in_one_first_listed_family_share_a_block():
     genes, mapping = paralogue_groups(n=60, family_size=6)
     rep = gene_blocks(genes, mapping)
     by_family = {}
@@ -40,12 +40,12 @@ def test_an_ungrouped_gene_is_its_own_block():
     assert len({int(rep.blocks[0]), int(rep.blocks[1])}) == 2
 
 
-def test_only_the_primary_group_is_used_not_connected_components():
+def test_only_the_first_listed_group_is_used_not_connected_components():
     """Every gene here shares a SECONDARY group, so a components blocker would return one
-    block for the whole matrix. Primary-only keeps them apart."""
+    block for the whole matrix. First-listed-only keeps them apart."""
     mapping = {"a": "Fam A|Shared", "b": "Fam B|Shared", "c": "Fam A|Other"}
-    # max_block_frac=1.0: two of three genes sharing a primary group is a genuine 67% block
-    # at this scale, which is the point being tested here, not a ceiling violation.
+    # max_block_frac=1.0: two of three genes sharing a first-listed group is a genuine 67%
+    # block at this scale, which is the point being tested here, not a ceiling violation.
     rep = gene_blocks(["a", "b", "c"], mapping, max_block_frac=1.0)
     assert rep.blocks[0] == rep.blocks[2]
     assert rep.blocks[1] != rep.blocks[0]

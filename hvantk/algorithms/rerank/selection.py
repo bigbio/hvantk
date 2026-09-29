@@ -27,6 +27,8 @@ from pathlib import Path
 
 import numpy as np
 
+from hvantk.algorithms.rerank.seeds import DEFAULT_SEED
+
 
 @dataclass(frozen=True)
 class UnivariateStat:
@@ -174,7 +176,7 @@ class SelectionPolicy:
     wrapper: str = "none"            # "none" | "rfecv" -- see the class docstring
     wrapper_estimator: str = "random_forest"
     inner_folds: int = 3             # Table 1: CV3 == CV7 == CV10; more is wasted compute
-    seed: int = 42
+    seed: int = DEFAULT_SEED
 
 
 @dataclass(frozen=True)
