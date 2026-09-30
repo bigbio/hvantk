@@ -2,7 +2,7 @@ api_version: 1
 name: catalog
 domain: infra
 type: command_group
-description: Inspect the hvantk dataset catalog aggregated from per-plugin catalogs.
+description: Inspect the hvantk dataset catalog (aggregated from per-plugin catalogs).
 cli:
   module: hvantk.tools.infra.catalog_cli
   function: catalog

@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 @click.group("expression", context_settings=CONTEXT_SETTINGS)
 def expression_group():
-    """Expression AnnData analysis commands."""
+    """Expression AnnData analysis commands (describe, summarize, markers)."""
     pass
 
 

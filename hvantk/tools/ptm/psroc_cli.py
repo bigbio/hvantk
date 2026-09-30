@@ -251,7 +251,7 @@ def psroc_cmd(
     dry_run,
 ):
     """
-    PSROC: Prediction Score ROC Analysis
+    Per-gene-set ROC evaluation of dbNSFP predictors against ClinVar.
 
     Evaluate variant pathogenicity prediction scores against ClinVar truth labels
     using ROC curve analysis. This command computes AUC, optimal thresholds, and

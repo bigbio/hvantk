@@ -2,7 +2,7 @@ api_version: 1
 name: ancestry-inference
 domain: ancestry
 type: command
-description: Infer ancestry labels for a query cohort from a labeled reference MT.
+description: Infer genetic ancestry using PCA and Random Forest classification.
 cli:
   module: hvantk.tools.ancestry.ancestry_cli
   function: ancestry_inference_cmd

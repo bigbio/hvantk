@@ -12,7 +12,7 @@ from hvantk.core.tool import loader as tool_loader
 
 @click.group(name="tools")
 def tools_group():
-    """Inspect the hvantk tool registry."""
+    """Inspect the hvantk tool manifest registry."""
 
 
 @tools_group.command(name="list")

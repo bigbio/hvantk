@@ -2,7 +2,7 @@ api_version: 1
 name: ptm
 domain: ptm
 type: command_group
-description: Post-translational modification variant classification pipeline.
+description: Post-translational modification variant classification commands.
 cli:
   module: hvantk.tools.ptm.ptm_cli
   function: ptm_group

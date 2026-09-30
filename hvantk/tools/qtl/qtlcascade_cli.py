@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 @click.group(
     name="qtlcascade",
-    help="Molecular QTL cascade analysis (eQTL → pQTL → disease).",
+    help="Molecular QTL cascade analysis (eQTL -> pQTL -> disease).",
     context_settings=CONTEXT_SETTINGS,
 )
 @click.pass_context
