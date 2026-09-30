@@ -191,17 +191,18 @@ class Evaluator:
             "d_md": 0.0,
             "d_hi": 0.0,
         }
-        # The baseline OOF, refit once per sweep seed rather than once per (axis, seed): with
-        # A axes and S seeds that is S baseline fits where A x S would otherwise suffice.
+        # The baseline OOF is fit once per sweep seed, reusing the headline fit for the first seed.
+        # With A axes and S seeds that is S baseline fits where A x S would otherwise suffice.
         base_oof_by_seed = None
         if n_seeds > 1:
             base_row["d_lo_env"] = 0.0
             base_row["d_hi_env"] = 0.0
             base_row["n_seeds"] = n_seeds
-            base_oof_by_seed = {
+            base_oof_by_seed = {seed: p_base}
+            base_oof_by_seed.update({
                 s: _raw_oof(matrix, base_cols, y, selector, groups=groups, seed=s)
-                for s in (seed + k for k in range(n_seeds))
-            }
+                for s in (seed + k for k in range(1, n_seeds))
+            })
         rows = [base_row]
         spreads: dict = {}
         for fam, cols in axis_groups.items():
