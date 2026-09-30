@@ -33,7 +33,6 @@ HGNC_GENE_FIELDS = {
     "gene_group_id": "gene_group_id",
     # Location
     "location": "location",
-    "location_sortable": "location_sortable",
     # Disease/clinical
     "omim_id": "omim_id",
     "orphanet": "orphanet_id",
