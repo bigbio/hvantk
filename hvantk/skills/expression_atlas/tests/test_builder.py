@@ -36,7 +36,13 @@ samples for the expression matrix -- far too large to commit as a fixture):
      fixture is what proves it.
 
      Kept the first 20 DISTINCT genes (by "Gene ID", first transcript row
-     seen) so var_names come out unique, then 4 sample columns
+     seen), PLUS the real second transcript row of the third of those genes
+     (ENSMUSG00000000028 / Cdc45 -- transcript ENSMUST00000096990 immediately
+     follows its first transcript ENSMUST00000000028 in the live file, at
+     line 5), so "Gene ID" repeats exactly once -- the real shape a
+     transcripts-tpms export has throughout, which a one-row-per-gene fixture
+     could never exercise (issue #349: var_names must come from the transcript
+     id, not the non-unique gene id). 21 rows total, then 4 sample columns
      (ERR2588382, ERR2588384, ERR2588383, ERR2588399) -- the first four in
      header order. Written back out as plain uncompressed TSV.
   2. SDRF (E-MTAB-6798.condensed-sdrf.tsv): long-format, one row per
@@ -120,7 +126,8 @@ def test_expression_atlas_snapshot_round_trip(tmp_path, regenerate_snapshots):
     adata = _build_for_snapshot(EXPRESSION, sdrf_path=SDRF)
 
     assert adata.n_obs == 4, "four samples in the fixture"
-    assert adata.n_vars == 20, "twenty genes in the fixture"
+    assert adata.n_vars == 21, "21 transcripts in the fixture (20 genes, one with two)"
+    assert adata.var_names.is_unique, "var_names must be the (unique) transcript id"
 
     expected_schema = load_snapshot(SNAPSHOT_DIR / "schema.json")
     assert (
@@ -133,16 +140,21 @@ def test_expression_atlas_snapshot_round_trip(tmp_path, regenerate_snapshots):
     ), "Expression Atlas sample rows drifted from snapshot"
 
 
-# --- Regression: issue #342 ---------------------------------------------------
+# --- Regression: issues #342 and #349 ------------------------------------------
 # The real upstream header carries THREE leading metadata columns, the third being
 # `GeneID` (transcript id, distinct from `Gene ID` by one space). Classifying it as a
 # sample sent transcript strings into the float32 cast, so every build from an
-# unmodified download died. The committed fixture now reproduces that header, but these
-# pin the behaviour directly -- a fixture can be re-derived, an assertion cannot drift.
+# unmodified download died (#342: fixed by moving it into .var). But a
+# `*-transcripts-tpms.tsv` export has one row per transcript, so `Gene ID` repeats
+# across rows and cannot be var_names either -- anndata accepts the duplicates and
+# only warns, so the .h5ad built and round-tripped with a non-unique index (#349).
+# The committed fixture now reproduces both the header and the repeated gene id, but
+# these pin the behaviour directly -- a fixture can be re-derived, an assertion cannot
+# drift.
 
 
-def test_transcript_id_column_is_annotation_not_sample(tmp_path):
-    """The third metadata column must reach .var, never the expression matrix."""
+def test_transcript_id_column_indexes_var_gene_id_stays_a_column(tmp_path):
+    """A detected transcript column must key `var`, never leave var_names duplicated."""
     import pandas as pd
     from hvantk.skills.expression_atlas.shared.expression_atlas import (
         create_anndata_from_expression_atlas,
@@ -151,11 +163,21 @@ def test_transcript_id_column_is_annotation_not_sample(tmp_path):
     path = tmp_path / "tpms.tsv"
     pd.DataFrame(
         {
-            "Gene ID": ["ENSMUSG00000000001", "ENSMUSG00000000002"],
-            "Gene Name": ["Gnai3", "Cdc45"],
-            "GeneID": ["ENSMUST00000000001", "ENSMUST00000000002"],
-            "ERR1": [16, 3],
-            "ERR2": [7, 1],
+            # Gnai3 has two transcripts -- "Gene ID" repeats, as in a real
+            # transcripts-tpms export.
+            "Gene ID": [
+                "ENSMUSG00000000001",
+                "ENSMUSG00000000001",
+                "ENSMUSG00000000002",
+            ],
+            "Gene Name": ["Gnai3", "Gnai3", "Cdc45"],
+            "GeneID": [
+                "ENSMUST00000000001",
+                "ENSMUST00000000003",
+                "ENSMUST00000000002",
+            ],
+            "ERR1": [16, 9, 3],
+            "ERR2": [7, 2, 1],
         }
     ).to_csv(path, sep="\t", index=False)
 
@@ -163,12 +185,25 @@ def test_transcript_id_column_is_annotation_not_sample(tmp_path):
 
     assert adata.shape == (
         2,
-        2,
-    ), "2 samples x 2 genes -- GeneID must not become a third sample"
+        3,
+    ), "2 samples x 3 transcripts -- GeneID must not become a third sample"
     assert list(adata.obs_names) == ["ERR1", "ERR2"]
-    # Preserved, not dropped: it is the only thing disambiguating repeated gene ids.
-    assert "GeneID" in adata.var.columns
-    assert list(adata.var["GeneID"]) == ["ENSMUST00000000001", "ENSMUST00000000002"]
+    # var is keyed by the transcript id -- unique per row by construction, unlike
+    # the repeated gene id.
+    assert list(adata.var_names) == [
+        "ENSMUST00000000001",
+        "ENSMUST00000000003",
+        "ENSMUST00000000002",
+    ]
+    assert adata.var_names.is_unique
+    # "GeneID" is now the index, not a column; "Gene ID" is demoted to a column and
+    # still repeats -- it is no longer usable as var_names, but is not dropped.
+    assert "GeneID" not in adata.var.columns
+    assert list(adata.var["Gene ID"]) == [
+        "ENSMUSG00000000001",
+        "ENSMUSG00000000001",
+        "ENSMUSG00000000002",
+    ]
 
 
 def test_all_missing_sample_column_stays_a_sample(tmp_path):

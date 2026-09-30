@@ -11,14 +11,14 @@
       7.0,
       0.0,
       0.0,
-      0.0,
+      3.0,
       0.0
     ],
     [
       64.0,
       0.0,
       12.0,
-      0.0,
+      17.0,
       0.0
     ],
     [
@@ -73,29 +73,29 @@
   ],
   "var_head": [
     {
+      "Gene ID": "ENSMUSG00000000001",
       "Gene Name": "Gnai3",
-      "GeneID": "ENSMUST00000000001",
-      "gene_id": "ENSMUSG00000000001"
+      "transcript_id": "ENSMUST00000000001"
     },
     {
+      "Gene ID": "ENSMUSG00000000003",
       "Gene Name": "Pbsn",
-      "GeneID": "ENSMUST00000000003",
-      "gene_id": "ENSMUSG00000000003"
+      "transcript_id": "ENSMUST00000000003"
     },
     {
+      "Gene ID": "ENSMUSG00000000028",
       "Gene Name": "Cdc45",
-      "GeneID": "ENSMUST00000000028",
-      "gene_id": "ENSMUSG00000000028"
+      "transcript_id": "ENSMUST00000000028"
     },
     {
+      "Gene ID": "ENSMUSG00000000028",
+      "Gene Name": "Cdc45",
+      "transcript_id": "ENSMUST00000096990"
+    },
+    {
+      "Gene ID": "ENSMUSG00000000037",
       "Gene Name": "Scml2",
-      "GeneID": "ENSMUST00000019101",
-      "gene_id": "ENSMUSG00000000037"
-    },
-    {
-      "Gene Name": "Apoh",
-      "GeneID": "ENSMUST00000000049",
-      "gene_id": "ENSMUSG00000000049"
+      "transcript_id": "ENSMUST00000019101"
     }
   ]
 }

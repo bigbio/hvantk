@@ -13,7 +13,7 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its reposit
 ## 1. Status & scope
 
 - **Status:** provisional. Builder, downloader, dataset class and downloader tests are in place, and the round-trip contract is **seeded**: `tests/testdata/raw/expression-atlas/` holds a truncated fixture, `tests/snapshots/` holds `schema.json` + `sample_rows.json`, and `tests/test_builder.py` asserts against both (§ 9). The fixture reproduces the **real** upstream header, including the third `GeneID` transcript column that used to break the builder (#342, fixed).
-- **In scope:** any single Expression Atlas baseline bulk-RNA-seq experiment with a gene-centric TPM matrix (genes x samples) and a paired SDRF metadata file, converted to an AnnData object keyed `samples x genes`.
+- **In scope:** any single Expression Atlas baseline bulk-RNA-seq experiment with a gene-centric TPM matrix (genes x samples) and a paired SDRF metadata file, converted to an AnnData object keyed `samples x genes` (`samples x transcripts` for a transcript-level export — see § 4/§ 5).
 - **Out of scope:** scRNA-seq cell-level matrices (use the UCSC Cell Browser plugin); differential expression matrices; cross-accession multi-experiment merging; gene-symbol / accession normalization (downstream).
 
 ## 2. Source identity
@@ -44,7 +44,7 @@ Stable notes:
   2. only the **leading run** of columns is considered — everything from the first sample onward is data, so a non-numeric column mid-matrix is malformed, not metadata;
   3. conversely, a **numeric** leading column the SDRF does *not* declare raises rather than being absorbed as a sample. A numeric annotation column (`Entrez`, gene length, an analytics `p-value`) is indistinguishable by content from a sample the SDRF omits, and the old code guessed "sample" — putting NCBI gene ids into the matrix as expression values, detectable only as an all-NaN `obs` row.
   Within those bounds content decides, since position alone is not enough (the transcript column is not always third). Note an all-missing column reads as all-NaN, which `to_numeric` also reports as **non**-numeric; it survives as a sample only because of the `values.notna().any()` guard, not because NaN counts as numeric. That guard is load-bearing.
-- Because a `*-transcripts-tpms.tsv` export is transcript-level, **one gene id spans several rows**, so `var_names` are not unique unless rows are de-duplicated (the committed fixture keeps the first row per gene). `var["GeneID"]` is what disambiguates them.
+- Because a `*-transcripts-tpms.tsv` export is transcript-level, **one gene id spans several rows** — `Gene ID` repeats once per transcript of that gene. `var_names` therefore cannot be the gene id: anndata accepts duplicate `var_names` and only warns, so a naive build round-trips an `.h5ad` whose index is non-unique and silently returns multiple columns from `adata[:, gene_id]` downstream (#349). `create_anndata_from_expression_atlas` detects the transcript id column (`transcript_id_column`, default `"GeneID"`) among the inferred annotation columns and, when present, indexes `var` by it instead — unique per row by construction — demoting `gene_id_column` to a regular `var` column (`"Gene ID"`) so the gene id is kept, just no longer as the index. A gene-level export (no transcript column detected) is unaffected and still indexes `var` by the gene id.
 - SDRF is tab-separated, no header, and condensed-long: each row is `(accession, unused, sample_id, column_type, column_name, column_value)`. The `unused` column is dropped; `column_type` is either `characteristic` or `factor`; duplicates on `(sample_id, column_name)` keep the **last** value (see `_reshape_sdrf_long_to_wide_format`).
 - Column names from SDRF are normalized: spaces → underscores, parentheses stripped (`organism_part_(group)` → `organism_part_group`). Downstream `obs` column names follow this rule.
 - TODO: enumerate remaining per-accession quirks (mixed-type factor columns, missing SDRF rows, multi-pipeline TPM variants) as they are encountered.
@@ -52,10 +52,11 @@ Stable notes:
 ## 5. Output contract
 
 - **Object:** `anndata.AnnData` optionally saved to `<output_path>.h5ad`.
-- **Shape:** `obs = samples`, `var = genes`. `X` is `float32`, **samples x genes** — the
-  source TSV is genes x samples and the builder transposes it (`df[sample_cols].values.T`).
+- **Shape:** `obs = samples`, `var = genes` (`= transcripts` for a transcript-level
+  export — see below). `X` is `float32`, **samples x var** — the source TSV is
+  genes/transcripts x samples and the builder transposes it (`df[sample_cols].values.T`).
 - **`obs`:** indexed by `sample_id`; columns are SDRF characteristics / factors after the long → wide reshape (e.g. `organism`, `tissue`, `cell_type`, ...).
-- **`var`:** indexed by `gene_id`. Includes a `Gene Name` column when the source TSV had one.
+- **`var`:** indexed by `gene_id` for a gene-level export. For a **transcript-level** export (the real Expression Atlas shape — see § 4), indexed by `transcript_id` instead, with `"Gene ID"` carried as a regular column so the gene id is not lost. Includes a `Gene Name` column when the source TSV had one.
 - **`uns["column_summary"]`:** per-`obs`-column summary annotated by `annotate_column_summary_ad`.
 - **Provenance:** stamped on the returned `ExpressionMatrix` via `ctx.provenance(schema_id="expression-atlas-dataset-v1")`; persisted by the platform as a sidecar `.provenance.json`.
 
@@ -98,8 +99,8 @@ Per-accession drift detection has not landed yet (see the § 2 catalog note and 
 
 Per `_conventions` § 9:
 
-- **fixture:** `hvantk/skills/expression_atlas/tests/testdata/raw/expression-atlas/` — seeded. `E-MTAB-6798-transcripts-tpms.tsv` (20 genes x 4 samples, ~1.1 KB) + `E-MTAB-6798.condensed-sdrf.tsv` (the same 4 sample IDs, ~3.3 KB), derived by truncation from the real upstream files under `hvantk/tests/testdata/raw/expression_atlas/`. Recipe recorded at the top of `tests/test_builder.py`.
-- **schema_snapshot:** `hvantk/skills/expression_atlas/tests/snapshots/schema.json` — seeded (4 obs x 20 vars).
+- **fixture:** `hvantk/skills/expression_atlas/tests/testdata/raw/expression-atlas/` — seeded. `E-MTAB-6798-transcripts-tpms.tsv` (21 transcript rows / 20 distinct genes x 4 samples, ~1.2 KB — one gene carries two transcripts, so the fixture exercises the repeated-gene-id shape a real transcripts-tpms export has, #349) + `E-MTAB-6798.condensed-sdrf.tsv` (the same 4 sample IDs, ~3.3 KB), derived by truncation from the real upstream files under `hvantk/tests/testdata/raw/expression_atlas/`. Recipe recorded at the top of `tests/test_builder.py`.
+- **schema_snapshot:** `hvantk/skills/expression_atlas/tests/snapshots/schema.json` — seeded (4 obs x 21 vars).
 - **row_snapshot:** `hvantk/skills/expression_atlas/tests/snapshots/sample_rows.json` — seeded.
 - **drift_fingerprint:** `hvantk/skills/expression_atlas/tests/drift_fingerprint.json` — the expected fingerprint compared by `hvantk drift` (see § 12).
 - **command:** `pytest hvantk/skills/expression_atlas/tests`.
@@ -110,6 +111,11 @@ The plugin manifest already declares these paths so the loader contract holds. `
 > (`Gene ID`, `Gene Name`, `GeneID`), so the round-trip test exercises the layout an
 > actual download has — not a sanitised one. It previously dropped the `GeneID`
 > transcript column to work around #342; that bug is fixed and the workaround is gone.
-> `tests/test_builder.py` additionally pins the two behaviours directly: the transcript
-> column must reach `var` and not become a third sample, and an all-missing sample
-> column must stay a sample.
+> It also previously kept only one row per gene, which meant the snapshot never
+> exercised a repeated gene id; it now carries a real second transcript row for one
+> gene (#349), so `var` is indexed by `transcript_id` and `"Gene ID"` repeats across
+> two rows exactly as a real transcripts-tpms export would produce.
+> `tests/test_builder.py` additionally pins these behaviours directly: the transcript
+> column must key `var` and not become a third sample, a detected transcript column
+> must leave `var_names` unique with the gene id demoted to a column, and an
+> all-missing sample column must stay a sample.
