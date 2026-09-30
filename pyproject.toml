@@ -208,8 +208,8 @@ line-length = 88
 # CI's advisory pass additionally runs with --preview, which restores the
 # pycodestyle whitespace rules (E1/E2/E3, W29x) that ruff keeps behind preview.
 # `preview` is deliberately NOT set here, in the config: under preview the
-# *blocking* gate also picks up F822 on lazily exported __all__ names, which
-# would turn the gate red for reasons unrelated to this change.
+# *blocking* gate also fires F822 on every name that ptm/, enrichex/ and
+# qtlcascade/ export lazily through `__all__` (83 false positives).
 select = ["E", "W", "F", "C901", "B", "BLE", "S"]
 
 [tool.ruff.lint.mccabe]
