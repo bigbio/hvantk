@@ -128,10 +128,9 @@ def fetch_fingerprint() -> dict:
     except requests.RequestException as exc:
         raise DriftProbeError(f"HTTP failure: {exc}") from exc
 
-    # Decoded explicitly rather than via `resp.text`, for the same reason as before:
-    # requests' charset fallback for text/html is environment dependent when no
-    # charset is declared. This page does declare UTF-8, but there is no upside to
-    # relying on that where an explicit decode costs nothing.
+    # Decoded explicitly rather than via `resp.text`: the Content-Type header carries
+    # no charset, so requests would fall back to ISO-8859-1 for text/html and ignore
+    # the page's own <meta charset="utf-8">.
     body = resp.content.decode("utf-8", errors="replace")
 
     titles = [t.strip() for t in _RELEASE_TITLE_REGEX.findall(body)]
