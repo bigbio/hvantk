@@ -166,6 +166,26 @@ def test_every_new_flag_is_documented_in_help(flag):
     assert flag in r.output
 
 
+def test_a_gene_group_table_matching_no_gene_fails_cleanly(tmp_path):
+    """A gene-group table with no symbols in the universe must fail cleanly with a
+    user-facing error, not a traceback. The run must not write a scored table."""
+    genes, _ = _toy_fixtures(tmp_path, n=150)
+    hgnc = tmp_path / "hgnc.txt"
+    # Write a table with symbols that don't exist in the universe
+    rows = ["symbol\tgene_group\tstatus"]
+    rows.append("NOTAGENE1\tFamily1\tApproved")
+    rows.append("NOTAGENE2\tFamily2\tApproved")
+    rows.append("NOTAGENE3\tFamily3\tApproved")
+    hgnc.write_text("\n".join(rows) + "\n")
+    cfg = _write_config(tmp_path, _cohort(tmp_path))
+    out = tmp_path / "out.tsv"
+    r = CliRunner().invoke(rerank_cmd, ["-c", str(cfg), "-o", str(out), "--blocks", str(hgnc)])
+    assert r.exit_code != 0
+    assert "Traceback" not in r.output
+    assert "none of" in r.output
+    assert not out.exists(), "a failed run must not leave a scored table behind"
+
+
 def test_the_docs_page_documents_every_new_flag():
     """docs_site is where a user looks first, and a flag that only exists in --help is a
     flag only someone who already knew about it will find."""

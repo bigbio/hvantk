@@ -94,7 +94,7 @@ def rerank_cmd(config_path, output, seed, seed_sweep, blocks_path, max_block_fra
     # (and every other subcommand) does NOT require scikit-learn, which is an OPTIONAL
     # dependency. Mirrors the psroc/ancestry deferral pattern.
     from hvantk.algorithms.rerank import rerank, Config
-    from hvantk.algorithms.rerank.blocks import BlockPolicy, DominantBlockError
+    from hvantk.algorithms.rerank.blocks import BlockPolicy
     from hvantk.algorithms.rerank.catalog.builders import table_axis, genelist_labels
     from hvantk.algorithms.rerank.audit import (
         ARCHITECTURE_AUDIT_COLUMNS,
@@ -231,10 +231,13 @@ def rerank_cmd(config_path, output, seed, seed_sweep, blocks_path, max_block_fra
 
     try:
         res = rerank(cfg)
-    except DominantBlockError as exc:
+    except ValueError as exc:
         # A hard abort, surfaced as a clean CLI failure rather than a traceback: the run
         # must not write a scored table whose pooled out-of-fold AUC estimates something
-        # other than what the caller will compare it against.
+        # other than what the caller will compare it against. Every ValueError the engine
+        # raises is a user-facing message (e.g. a gene-group table that matches no gene,
+        # too few paralogue blocks for the fold count), so the CLI reports it cleanly
+        # instead of a traceback.
         raise click.ClickException(str(exc)) from exc
     res.table.to_csv(output, sep="\t", index=False)
     click.echo(f"Wrote {len(res.table)} genes -> {output}")
