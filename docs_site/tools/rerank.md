@@ -25,19 +25,20 @@ All three are opt-in CLI flags, and every one of them defaults to today's behavi
 hvantk rerank -c config.yaml -o out.tsv
 ```
 
-This is the minimal invocation: a config naming a cohort manifest, one or more feature tables, and a label gene list (see **The config YAML** below). It writes a ranked TSV to `out.tsv` and prints a short console summary:
+This is the minimal invocation: a config naming a cohort manifest, one or more feature tables, and a label gene list (see **The config YAML** below). It writes a ranked TSV to `out.tsv` and prints a short console summary. Every console/TSV excerpt on this page, including this one, comes from one small synthetic cohort built purely for illustration -- a couple hundred genes, three feature axes, no real biology or gene names -- so that the numbers agree with each other from section to section:
 
 ```text
-Wrote 1500 genes -> out.tsv
-Credibility: ROBUST=210 / INTERMEDIATE=1290 (over 1500 scored genes)
-Audit: 3 gene(s) FLAGGED for review (advisory; ranking not overridden). Reasons: {...}
+Wrote 200 genes -> out.tsv
+Credibility: ROBUST=80 / INTERMEDIATE=120 (over 200 scored genes)
+Audit: 0 gene(s) FLAGGED for review (advisory; ranking not overridden). Reasons: {}
 Per-axis ablation (delta-AUC over constraint):
-    family   auc  d_lo  d_md  d_hi
-constraint 0.706 0.000 0.000 0.000
-expression 0.744 0.041 0.058 0.083
+      family   auc   d_lo   d_md   d_hi
+  constraint 0.706  0.000  0.000  0.000
+  expression 0.738 -0.020  0.032  0.082
+conservation 0.658 -0.089 -0.050 -0.009
 ```
 
-The ablation table is the per-axis result: out-of-fold AUC of baseline+axis, and a paired gene-resampling bootstrap interval (`d_lo`/`d_md`/`d_hi`) on the delta over the baseline alone. See **Output columns** for the full column reference, including the columns the controls below add.
+The ablation table is the per-axis result: out-of-fold AUC of baseline+axis, and a paired gene-resampling bootstrap interval (`d_lo`/`d_md`/`d_hi`) on the delta over the baseline alone -- here `expression` adds a modest, not-quite-conclusive gain (the interval straddles zero) while `conservation` makes things worse (a genuine illustration of an axis that should not be added, not a hypothetical one). See **Output columns** for the full column reference, including the columns the controls below add.
 
 ## The config YAML
 
@@ -87,7 +88,7 @@ Three controls, six flags, all opt-in:
 | `--n-perm INTEGER` | Multiplicity | `0` (off) |
 | `--null-out PATH` | Multiplicity | none |
 | `--blocks PATH` | Blocked CV | none (unblocked) |
-| `--max-block-frac FLOAT` | Blocked CV | `0.10` |
+| `--max-block-frac FLOAT` | Blocked CV | `0.1` |
 | `--seed INTEGER` | Seeds | `42` |
 | `--seed-sweep INTEGER` | Seeds | `1` |
 
@@ -102,23 +103,29 @@ Both nulls refit the baseline on every permutation -- scoring a permuted-label m
 
 > **What null hypothesis this tests.** Permuting the label tests the *global* null that no feature, baseline included, carries label information -- not the *conditional* null that this one axis adds nothing given the baseline already in the model. With an informative baseline, the permutation null of the delta is wider than the delta's true sampling spread under the conditional null, so the test is valid but conservative: failing to clear the selected-maximum null is weak evidence that the axis adds nothing, not proof that it does not.
 
-That conservatism assumes genes are exchangeable under the label permutation. Paralogues share sequence, constraint, expression and disease status, so when labels and features cluster by gene family that assumption breaks and the *default* (unblocked) null becomes **anti-conservative** instead -- understating its own spread -- regardless of whether `--blocks` happens to be set. Pass `--blocks` whenever that clustering is doubtful; when it is set, the null permutes labels **by block** (whole blocks swapped among blocks of the same size, then shuffled within each block -- Winkler et al. 2015, *NeuroImage*), which is what blocking requires of the null too. A block whose size is unique in the universe has no same-size sibling to swap with, so it is only ever shuffled within itself -- a real power caveat for that block, not a bug.
+That conservatism assumes genes are exchangeable under the label permutation. Paralogues share sequence, constraint, expression and disease status, so when labels and features cluster by gene family that assumption breaks and the *default* (unblocked) null becomes **anti-conservative** instead -- understating its own spread. That clustering is a property of the data, not of a flag: omitting `--blocks` does not remove it, it only removes the correction for it. Pass `--blocks` whenever that clustering is doubtful; when it is set, the null permutes labels **by block** (whole blocks swapped among blocks of the same size, then shuffled within each block -- Winkler et al. 2015, *NeuroImage*), which is what blocking requires of the null too. A block whose size is unique in the universe has no same-size sibling to swap with, so it is only ever shuffled within itself -- a real power caveat for that block, not a bug.
 
 The null is tied to one **control setting** -- the leakage and selection policies, the provenance arm, the exact baseline and candidate columns, the fold count actually used, and which blocking (if any) the folds used -- and refuses to answer about a delta computed under a different one, raising `ControlSettingMismatch` rather than silently comparing incomparable numbers. The ablation (and so the null) always scores 5 folds regardless of `Config.folds`, which governs only the headline score. The null's `observed` deltas are computed at `--seed` alone (never averaged over `--seed-sweep`); see **Seeds** below for why the two are reported separately.
 
 ```bash
-hvantk rerank -c config.yaml -o out.tsv --n-perm 200 --null-out null_summary.tsv
+hvantk rerank -c config.yaml -o out.tsv --blocks hgnc_complete_set.txt --n-perm 20 --seed-sweep 3 --null-out null_summary.tsv
 ```
 
-adds, after the ablation table:
+(This example also passes `--blocks` and `--seed-sweep`, each covered in its own section below, so that every number on this page is drawn from one consistent run.) It adds, after the ablation table:
 
 ```text
-Multiplicity: 1 axis searched over 200 permutations; selected-maximum null median +0.0410
-      axis  observed  selmax_median  p_selected_max
-expression     0.061          0.041            0.07
+Multiplicity: 2 axes searched over 20 permutations; selected-maximum null median +0.0247
+Setting: arm='all' leakage=None selection=None folds=5 block_digest='ad1a7436eced' baseline=['constraint'] candidates={'expression': 1, 'conservation': 1}
+        axis  observed  selmax_median  p_selected_max
+  expression  0.033367       0.024705        0.285714
+conservation -0.025791       0.024705        0.809524
 ```
 
-`--null-out` writes the full per-axis summary (see **Output columns**); without it, the console shows the header line and the four columns above only. `--null-out` requires `--n-perm`: passing `--null-out` without `--n-perm` is rejected before any work starts (`Error: --null-out describes a permutation null; pass --n-perm N too.`), as is a negative `--n-perm` (`Error: --n-perm must be >= 0; got -5.`, for example) -- both a plain `click` failure, never a traceback. Via the Python API, `NullConfig()` alone (with no `n_perm=`) defaults to 200 permutations; the CLI's own default is `0` (off) so that a plain `hvantk rerank` run costs nothing extra.
+The `Setting:` line is `ControlSetting.describe()`: the leakage and selection policies, the provenance arm, the fold count, the baseline/candidate columns and -- whenever `--blocks` is set -- the digest of the blocking the folds actually used, so a p-value can always be traced back to exactly what it was computed under.
+
+`--null-out` writes the full per-axis summary (see **Output columns**); without it, the console shows the summary line, the `Setting:` line, and the four columns above only. `--null-out` requires `--n-perm`: passing `--null-out` without `--n-perm` is rejected before any work starts (`Error: --null-out describes a permutation null; pass --n-perm N too.`), as is a negative `--n-perm` (`Error: --n-perm must be >= 0; got -5.`, for example) -- both a plain `click` failure, never a traceback. `--n-perm` also needs at least one candidate axis besides the baseline: a config naming only a baseline has nothing to search over, and the CLI rejects it before writing any output the same way (`Error: --n-perm needs at least one feature axis besides the baseline; this config has only ['constraint'].`, for example) rather than silently skipping the correction. Via the Python API, `NullConfig()` alone (with no `n_perm=`) defaults to 200 permutations; the CLI's own default is `0` (off) so that a plain `hvantk rerank` run costs nothing extra.
+
+**Cost.** Each permutation refits the baseline and every candidate axis -- roughly `n_perm x (1 + axes)` five-fold fits, and a selection policy (RFECV especially) multiplies that further. On the order of 10-20 seconds per permutation for about 1,000-4,000 genes and 9-17 axes on a 12-core laptop, i.e. tens of minutes to around an hour of wall-clock for `n_perm = 200`. Progress is logged at `INFO`, below the CLI's default `WARNING` level -- run `hvantk -v rerank ...` to see it as it happens.
 
 ### Blocked CV -- `--blocks`, `--max-block-frac`
 
@@ -128,15 +135,15 @@ Every number `hvantk rerank` produces by default comes from plain stratified 5-f
 hvantk rerank -c config.yaml -o out.tsv --blocks hgnc_complete_set.txt
 ```
 
-`--blocks` takes an HGNC complete-set TSV with `symbol`/`gene_group` columns (and, optionally, `status` -- when present, only `Approved` rows are kept). Genes are matched against it by their **approved HGNC symbol only**; a gene absent from the table, or known to your universe only by an alias or a previous symbol, becomes its own unconstrained singleton block rather than an error -- unless *none* of the universe's genes match, which almost always means the table's gene keys disagree with your universe's (e.g. Ensembl IDs against HGNC symbols) and *is* an error. A match rate below 50% is logged as a warning, which a CLI user may not see the logger output for -- the console's `Blocks:` line below always prints the matched count too, precisely so this degradation has a visible signal.
+`--blocks` takes an HGNC complete-set TSV with `symbol`/`gene_group` columns (and, optionally, `status` -- when present, only `Approved` rows are kept). Genes are matched against it by their **approved HGNC symbol only**; a gene absent from the table, or known to your universe only by an alias or a previous symbol, becomes its own unconstrained singleton block rather than an error -- unless *none* of the universe's genes match, which almost always means the table's gene keys disagree with your universe's (e.g. Ensembl IDs against HGNC symbols) and *is* an error. A match rate below 50% is logged as a `WARNING`, which reaches the console by default (`hvantk` sends `WARNING` and above to stderr unless verbosity is turned down) -- but the quickest check either way is the matched count the console's `Blocks:` line below always prints too.
 
-Blocking uses each gene's **first-listed** HGNC gene group -- in HGNC's own list order, since HGNC does not designate a "primary" one -- rather than connected components over the (multi-membership, pipe-separated) `gene_group` field. Group membership chains transitively, so a union-find closure over shared membership can collapse a large fraction of a gene universe into a single component; blocking on it would then let `StratifiedGroupKFold` place nearly the whole universe in one fold, and the pooled out-of-fold AUC would no longer estimate the same quantity as the unblocked run. The tell-tale of that mistake is a *blocked* AUC scoring **higher** than the random-fold one -- correct blocking is strictly harder than random folds and cannot do that, so treat it as a red flag rather than a happy surprise. First-listed grouping keeps blocks small; the residual leak it accepts -- two genes sharing only a later-listed group -- is a far smaller error than an incomparable estimator.
+Blocking uses each gene's **first-listed** HGNC gene group -- in HGNC's own list order, since HGNC does not designate a "primary" one -- rather than connected components over the (multi-membership, pipe-separated) `gene_group` field. Group membership chains transitively, so a union-find closure over shared membership can collapse a large fraction of a gene universe into a single component; blocking on it would then let `StratifiedGroupKFold` place nearly the whole universe in one fold, and the pooled out-of-fold AUC would no longer estimate the same quantity as the unblocked run. The tell-tale of that mistake is a *blocked* AUC scoring **materially** higher than the random-fold one, beyond the across-seed spread `--seed-sweep` reports -- blocking is harder only *on average*, so a single correctly blocked run can still land above the random-fold AUC by chance, and a difference within that spread is not itself suspicious. First-listed grouping keeps blocks small; the residual leak it accepts -- two genes sharing only a later-listed group -- is a far smaller error than an incomparable estimator.
 
-**The ceiling is a hard abort, not a warning.** `--max-block-frac` (default `0.10`) caps the largest block's share of the universe; going over it fails the run instead of producing a plausible-looking number, because the failure mode is otherwise silent -- the output looks fine, and a counterintuitive AUC is the only tell, and a reader has no particular reason to question it:
+**The ceiling is a hard abort, not a warning.** `--max-block-frac` (default `0.1`) caps the largest block's share of the universe; going over it fails the run instead of producing a plausible-looking number, because the failure mode is otherwise silent -- the output looks fine, and a counterintuitive AUC is the only tell, and a reader has no particular reason to question it:
 
 ```text
-$ hvantk rerank -c config.yaml -o out.tsv --blocks hgnc_complete_set.txt
-Error: the largest paralogue block (group 'OR6') holds 620/1500 units (41.3%), over the 0.1 ceiling (max_block_frac). StratifiedGroupKFold must place a whole block in one fold, so one fold would hold that entire block and the pooled out-of-fold AUC would not estimate the same quantity as the unblocked run. Raise max_block_frac deliberately if you accept that, or restrict the universe.
+$ hvantk rerank -c config.yaml -o out.tsv --blocks hgnc_dominant_family.txt
+Error: the largest paralogue block (group 'Family_Huge') holds 40/200 units (20.0%), over the 0.1 ceiling (max_block_frac). StratifiedGroupKFold must place a whole block in one fold, so one fold would hold that entire block and the pooled out-of-fold AUC would not estimate the same quantity as the unblocked run. Raise max_block_frac deliberately if you accept that, or restrict the universe.
 ```
 
 No output file is written when this happens. `--max-block-frac` only means anything alongside `--blocks`; passing it alone is rejected before any work starts (`Error: --max-block-frac only applies to paralogue-blocked folds; pass --blocks too (or drop it).`). Raise it deliberately (`--max-block-frac 0.5`, say) if a dominant block is expected and accepted for your universe.
@@ -148,24 +155,27 @@ Blocking is threaded everywhere a fold boundary matters: the outer cross-validat
 The console's `Blocks:` line (shown whenever `--blocks` did not abort) reports the blocking, including the matched-gene count that catches a silent key mismatch:
 
 ```text
-Blocks: 30 paralogue block(s); largest 5 (3.3%); 150 gene(s) in a block of size > 1; 150/150 genes matched the gene-group table; digest e4d38f98fa1a
+Blocks: 152 paralogue block(s); largest 4 (2.0%); 64 gene(s) in a block of size > 1; 200/200 genes matched the gene-group table; digest ad1a7436eced
 ```
 
 ### Seeds -- `--seed`, `--seed-sweep`
 
 `--seed` (default `42`, the historic value) is the one seed that drives the cross-validation partition (both the headline score and the ablation), the gradient-boosted estimator's own randomness, the bootstrap resample, and the permutation null's base seed. Changing it produces a different, equally valid partition -- it is not a tuning knob, and the default is unchanged so every result produced before `--seed` existed still reproduces exactly.
 
+Doubling as the null's base seed has one consequence worth knowing before you rely on it: permutation `i` is drawn with seed `--seed + i` (see **Chunked runs** below), so bumping `--seed` by 1 is not an independent replicate of the null -- it reuses `n_perm - 1` of the previous run's permutations (`--seed 42` and `--seed 43` at `--n-perm 20` share 19 of their 20 draws). An independent replicate needs a base seed at least `n_perm` away from the first.
+
 ```bash
-hvantk rerank -c config.yaml -o out.tsv --seed-sweep 10
+hvantk rerank -c config.yaml -o out.tsv --seed-sweep 3
 ```
 
 The gene-resampling bootstrap (`d_lo`/`d_md`/`d_hi`) asks how a delta would move if the gene *sample* moved. It cannot see a second variance component: which genes land in which cross-validation fold. `--seed-sweep N` recomputes each axis's delta under `N` consecutive cross-validation seeds (`--seed`, `--seed` + 1, ...) and reports the **envelope** -- the union of the bootstrap interval and the across-seed range -- as `d_lo_env`/`d_hi_env`, beside the untouched `d_lo`/`d_md`/`d_hi`. The same sweep width travels under a different name at each layer: the CLI's `--seed-sweep`, `Config.seed_sweep`, `Evaluator.evaluate`'s `n_seeds` parameter, and the ablation table's own `n_seeds` column all refer to the identical count -- so a reader who encounters more than one of these names is not looking at two different settings:
 
 ```text
 Per-axis ablation (delta-AUC over constraint):
-    family   auc  d_lo  d_md  d_hi  d_lo_env  d_hi_env  n_seeds
-constraint 0.706 0.000 0.000 0.000     0.000     0.000       10
-expression 0.744 0.041 0.058 0.083     0.033     0.091       10
+      family   auc   d_lo   d_md  d_hi  d_lo_env  d_hi_env  n_seeds
+  constraint 0.659  0.000  0.000 0.000     0.000     0.000        3
+  expression 0.693 -0.028  0.034 0.091    -0.028     0.091        3
+conservation 0.633 -0.071 -0.027 0.014    -0.071     0.014        3
 ```
 
 The envelope is a **union, not a calibrated interval** over both components: the two are not independent draws from one distribution, and combining them properly would need a nested design nobody has run. `d_lo_env`/`d_hi_env` are that union rounded to 3 decimal places, exactly like `d_lo`/`d_hi`. The union is guaranteed never to be narrower than the bootstrap interval alone, but **not** guaranteed to be strictly wider -- that depends on the data: when the across-seed range happens to fall entirely inside `[d_lo, d_hi]`, `d_lo_env == d_lo` and `d_hi_env == d_hi` and no widening is visible, which is itself informative (it says the CV partition was not, on this data, a meaningful source of extra spread), not a sign that the sweep did nothing. It exists so a reader cannot mistake one lucky (or unlucky) partition for a measured effect -- a single cross-validation partition can land anywhere within that spread. With the default `--seed-sweep 1`, the three extra columns are **absent** from the ablation table entirely, so a plain `hvantk rerank` run is byte-for-byte what it always was.
@@ -214,8 +224,9 @@ The permutation null (`--n-perm`, above) already recomputes the stratified parti
 | `p_selected_max` | The multiplicity-corrected p-value of `observed` against the selected-maximum null -- the number that answers "could the best of the N offered axes have arisen by chance?" |
 
 ```text
-      axis  n_perm  n_candidates  null_mean  null_sd  null_p95  selmax_median  selmax_p95  observed  p_per_axis  p_selected_max
-expression     200             1     0.0015    0.021     0.039          0.041       0.079     0.061       0.065            0.07
+        axis  n_perm  n_candidates  null_mean  null_sd  null_p95  selmax_median  selmax_p95  observed  p_per_axis  p_selected_max
+  expression      20             2   0.000574 0.055376  0.125819       0.024705    0.125819  0.033367    0.238095        0.285714
+conservation      20             2   0.001621 0.043121  0.065352       0.024705    0.125819 -0.025791    0.714286        0.809524
 ```
 
 ### Blocks summary (console only)

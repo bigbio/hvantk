@@ -18,17 +18,20 @@
   `NullDistribution.merge`) for cluster array jobs.
 - **Paralogue-blocked cross-validation (`--blocks`, `--max-block-frac`).** Plain
   `StratifiedKFold` let gene families straddle folds, so pooled out-of-fold AUC was
-  optimistic wherever paralogues share a label. Blocks come from the primary HGNC
-  `gene_group`, deliberately not connected components over the multi-membership field —
-  that closure can collapse a large fraction of a gene universe into a single block and
-  make the grouped AUC incomparable to the ungrouped one (the tell-tale is a *blocked* AUC
-  scoring higher than the random-fold one, which correct blocking cannot do). A block over
-  the ceiling is a hard abort, because the failure is otherwise silent.
+  optimistic wherever paralogues share a label. Blocks come from each gene's first-listed
+  HGNC `gene_group`, deliberately not connected components over the multi-membership
+  field — that closure can collapse a large fraction of a gene universe into a single
+  block and make the grouped AUC incomparable to the ungrouped one (the tell-tale is a
+  *blocked* AUC scoring materially higher than the random-fold one, beyond the
+  across-seed spread `--seed-sweep` reports — blocking is harder only on average, so a
+  single correctly blocked run can still score above random folds by chance). A block
+  over the ceiling is a hard abort, because the failure is otherwise silent.
 - **A multi-seed evaluation (`--seed-sweep`).** The shipped interval resampled genes only;
   which genes landed in which fold was a second variance component fixed at one hardcoded
   seed. A single cross-validation partition can land anywhere in the across-seed spread,
-  and nothing in the API let a user notice. The ablation now carries `d_lo_env`/`d_hi_env`
-  beside the bootstrap columns.
+  and nothing in the API let a user notice. With `--seed-sweep > 1`, the ablation now
+  carries `d_lo_env`/`d_hi_env` — the union of the bootstrap interval and the across-seed
+  range, never narrower than the interval alone — beside the bootstrap columns.
 
 ### Changed
 

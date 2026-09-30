@@ -1,6 +1,5 @@
 # hvantk/tools/rerank/rerank_cli.py
 import logging
-from pathlib import Path
 
 import click
 import jsonschema
@@ -23,39 +22,6 @@ _ARCHITECTURE_AXIS_NAME = "architecture"
 # 'cohort:', so a 'prior:' block here can never be honoured and silently keeping it
 # around invites exactly the confusion this check exists to prevent.
 _KNOWN_TOP_LEVEL_KEYS = {"name", "cohort", "features", "labels", "min_label_coverage"}
-
-
-def _default_max_block_frac() -> float:
-    """``blocks.DEFAULT_MAX_BLOCK_FRAC``'s value, read from its source rather than
-    imported normally.
-
-    ``hvantk.algorithms.rerank`` is a package whose ``__init__`` unconditionally imports
-    ``engine.py`` (-> ``reranker.py``/``evaluator.py`` -> scikit-learn, the OPTIONAL 'ml'
-    extra), so a normal ``from hvantk.algorithms.rerank.blocks import
-    DEFAULT_MAX_BLOCK_FRAC`` at this module's top level would require scikit-learn just to
-    build this option's help text -- i.e. even for ``hvantk rerank --help`` -- which is
-    exactly what the deferred imports inside ``rerank_cmd`` below exist to avoid. Reading
-    the one assignment out of the file directly costs nothing this module doesn't already
-    pay to parse itself, and stays honest to the real constant rather than a copied literal.
-    """
-    import ast
-
-    import hvantk
-
-    path = Path(hvantk.__file__).parent / "algorithms" / "rerank" / "blocks.py"
-    tree = ast.parse(path.read_text(), filename=str(path))
-    for node in ast.walk(tree):
-        if (
-            isinstance(node, ast.Assign)
-            and len(node.targets) == 1
-            and isinstance(node.targets[0], ast.Name)
-            and node.targets[0].id == "DEFAULT_MAX_BLOCK_FRAC"
-        ):
-            return ast.literal_eval(node.value)
-    raise RuntimeError(f"{path}: DEFAULT_MAX_BLOCK_FRAC assignment not found")
-
-
-_DEFAULT_MAX_BLOCK_FRAC = _default_max_block_frac()
 
 
 @click.command(
@@ -105,7 +71,7 @@ _DEFAULT_MAX_BLOCK_FRAC = _default_max_block_frac()
     type=float,
     default=None,
     help="Abort if the largest paralogue block exceeds this fraction of the universe "
-    f"[default: {_DEFAULT_MAX_BLOCK_FRAC:g}]. Only meaningful with --blocks.",
+    "[default: 0.1]. Only meaningful with --blocks.",
 )
 @click.option(
     "--n-perm",

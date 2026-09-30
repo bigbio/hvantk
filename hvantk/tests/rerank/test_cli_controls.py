@@ -171,6 +171,13 @@ def test_max_block_frac_can_accept_the_dominant_block_deliberately(tmp_path):
 def test_every_new_flag_is_documented_in_help(flag):
     r = CliRunner().invoke(rerank_cmd, ["--help"])
     assert flag in r.output
+    if flag == "--max-block-frac":
+        # The help text hardcodes the default as a literal (avoids importing the rerank
+        # package, and scikit-learn with it, just to build a help string); this assertion
+        # is what stops that literal drifting from the real runtime default.
+        from hvantk.algorithms.rerank.blocks import DEFAULT_MAX_BLOCK_FRAC
+
+        assert f"{DEFAULT_MAX_BLOCK_FRAC:g}" in r.output
 
 
 def test_a_gene_group_table_matching_no_gene_fails_cleanly(tmp_path):

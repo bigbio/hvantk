@@ -18,16 +18,19 @@ purpose:
     the constraint baseline. The disease-specific feature tables are produced
     by user recipes; the engine is disease-agnostic.
 
-    Three controls decide whether a reported gain is real, and all three are
-    opt-in flags. `--blocks` switches cross-validation to paralogue-blocked
-    folds (HGNC primary `gene_group`) so a gene family cannot straddle a fold,
-    and aborts when one block exceeds `--max-block-frac` of the universe.
-    `--n-perm` builds the per-axis and selected-maximum permutation nulls, the
-    latter being the multiplicity correction for having searched several axes
-    and reported the best; the API separately supports chunked nulls
-    (`NullConfig(chunk=, n_chunks=)` + `NullDistribution.merge`) for cluster
-    array jobs. `--seed` and `--seed-sweep` make the CV partition a parameter
-    and report the across-seed spread beside the gene-resampling interval.
+    Three opt-in controls — paralogue-blocked cross-validation, a multiplicity
+    correction, and seed control — let a reported gain be checked rather than
+    assumed. `--blocks` switches cross-validation to paralogue-blocked folds
+    (each gene's first-listed HGNC `gene_group`) so a gene family cannot
+    straddle a fold, and aborts when one block exceeds `--max-block-frac` of
+    the universe. `--n-perm` builds the per-axis and selected-maximum
+    permutation nulls, the latter being the multiplicity correction for having
+    searched several axes and reported the best; the API separately supports
+    chunked nulls (`NullConfig(chunk=, n_chunks=)` + `NullDistribution.merge`)
+    for cluster array jobs. `--seed` makes the CV partition a parameter; with
+    `--seed-sweep > 1` the ablation additionally reports the envelope — the
+    union of the gene-resampling interval and the across-seed range — beside
+    it.
 requires:
   hail: false
   network: false
