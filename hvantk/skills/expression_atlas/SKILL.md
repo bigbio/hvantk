@@ -88,7 +88,7 @@ When invoked to build or update a single Expression Atlas experiment:
 
 ## 8. Update playbook
 
-TODO. This section will be fleshed out once per-accession drift detection lands (see § 2 catalog note and the drift-probe placeholder in `hvantk/skills/expression_atlas/drift_probe.py`). Expected shape:
+Per-accession drift detection has not landed yet (see the § 2 catalog note and the drift-probe placeholder in `hvantk/skills/expression_atlas/drift_probe.py`), so updating an accession is a manual procedure for now. The intended procedure, which the probe will automate:
 
 1. For each tracked accession in `hvantk/skills/expression_atlas/catalog/datasets.json` (filter `data_source == "Expression_Atlas"`), re-run the per-accession HEAD probe; flag accessions whose `Last-Modified` or `Content-Length` changed.
 2. Re-download flagged accessions, rebuild via `hvantk reprocess expression-atlas:dataset`, and diff the new AnnData against the committed snapshots in `tests/snapshots/` (§ 9).

@@ -87,6 +87,23 @@ SECTION_9_ARTIFACT_KEYS: tuple[str, ...] = (
     "command",
 )
 
+#: Tokens that open a stand-in body rather than real content. Checked as a LEAD --
+#: the body need only start this way, not equal it exactly -- because the rot #364
+#: item 8 found was not only a bare ``TODO``/``TBD``/``...``/``n/a`` but also a longer
+#: sentence that opens by admitting it is one (``TODO. This section will be fleshed
+#: out once ...``). Before this, only s 6 and s 9 had any content rule at all, so
+#: ss 1-5, 7 and 8 could be emptied outright and the checker kept passing; and s 6 / s 9's
+#: own rules checked for keywords rather than substance, so a body that only *named* the
+#: required words satisfied them too -- ``TODO. builder, drift probe, tests.`` passes
+#: ``SECTION_6_REFERENCES``, and a sentence merely listing the five ``SECTION_9_ARTIFACT_KEYS``
+#: passes that check, without either being an actual section.
+_PLACEHOLDER_LEADS: tuple[str, ...] = ("todo", "tbd", "...")
+
+#: Tokens that are a stand-in only when they are the WHOLE body. ``n/a`` is also how a
+#: real answer opens -- "N/A for this plugin: the catalog is static" explains why the
+#: section has nothing to add -- so only a bare ``n/a`` (punctuation aside) is rejected.
+_PLACEHOLDER_WHOLE: tuple[str, ...] = ("n/a",)
+
 
 #: ``_conventions/SKILL.md`` IS the contract and has its own structure, so it is
 #: not measured against itself.
@@ -343,19 +360,67 @@ def _section_body(text: str, section: str) -> str:
     return "\n".join(lines[start:]) if start is not None else ""
 
 
-def _section_content_problems(text: str) -> list[str]:
-    """Check that s 6 and s 9 carry their required content, not just their headings.
+def _is_placeholder_body(body: str) -> bool:
+    """True if the text under one heading is empty, or a stand-in rather than content.
 
-    Deliberately a word-bounded regex search rather than a structural parse. These
-    sections are prose with per-provider shape -- some use ``- **Label:**``, some
-    ``- Label:`` -- and a parser strict enough to read the shape would fail on
-    formatting instead of substance, which is the opposite of useful. The question
-    asked here is only "can a reader get from this section to that thing", which a
-    search answers honestly. The word boundaries matter: they are what keeps the
-    s 9 ``command`` needle from matching inside ``test_command`` (``_`` is a word
-    character, so there is no boundary between them).
+    A leading list/quote marker (``- ``, ``* ``, ``> ``) and surrounding Markdown
+    emphasis (backticks, asterisks, underscores) are stripped before matching, so
+    ``- **TODO**`` and `` `TBD` `` are recognised the same as bare ``TODO`` / ``TBD``,
+    and a lone ``-`` counts as empty. A typographic ellipsis (``…``) counts as ``...``.
+    The character immediately following a lead token must not be alphanumeric, so the
+    check fires on ``TODO``, ``TODO.`` and ``TODO: builder, drift probe, tests.``
+    alike, but not on a word that merely starts with the same letters (``TBDone``).
+    It does fire on a sentence whose first word is the token itself (``Todo lists
+    are ...``): the price of checking a lead, paid because no real section opens that
+    way.
+    """
+    normalized = re.sub(r"^[-*>\s]+", "", body.strip()).strip("`*_ \t")
+    lowered = normalized.lower().replace("…", "...")
+    if not lowered or lowered.rstrip(".:;!- \t") in _PLACEHOLDER_WHOLE:
+        return True
+    for token in _PLACEHOLDER_LEADS:
+        if lowered.startswith(token):
+            tail = lowered[len(token) : len(token) + 1]
+            if not tail.isalnum():
+                return True
+    return False
+
+
+def _section_content_problems(text: str) -> list[str]:
+    """Check that every section carries a real body, and that s 6 / s 9 carry their
+    specific required content, not just their headings.
+
+    The per-section check runs against all nine ``REQUIRED_SECTIONS``, but only the
+    ones actually present as a heading: a heading that is missing or malformed is
+    already reported once, by the heading check in ``check_skill_spec``, and re-testing
+    an empty string for a heading that was never found would only duplicate that
+    message under a different name. For every heading that IS present, an empty or
+    placeholder-led body (``_is_placeholder_body``) is rejected regardless of section --
+    which is what makes this the fix for #364 item 8: before it, ss 1-5, 7 and 8 carried
+    no content rule at all, and s 6 / s 9's own rules (below) checked for keywords
+    rather than substance, so a body that only named the required words satisfied them
+    without being a real section.
+
+    The s 6 / s 9 keyword and artifact-key checks are deliberately a word-bounded regex
+    search rather than a structural parse. These sections are prose with per-provider
+    shape -- some use ``- **Label:**``, some ``- Label:`` -- and a parser strict enough
+    to read the shape would fail on formatting instead of substance, which is the
+    opposite of useful. The question asked here is only "can a reader get from this
+    section to that thing", which a search answers honestly. The word boundaries
+    matter: they are what keeps the s 9 ``command`` needle from matching inside
+    ``test_command`` (``_`` is a word character, so there is no boundary between them).
     """
     problems: list[str] = []
+    headings = _body_heading_lines(text)
+
+    for section in REQUIRED_SECTIONS:
+        if section not in headings:
+            continue  # already reported as missing/malformed, above
+        if _is_placeholder_body(_section_body(text, section)):
+            problems.append(
+                f"{section!r} has no real body -- it is empty, or only a "
+                "TODO/TBD/.../n/a-style placeholder"
+            )
 
     six = _section_body(text, "## 6. hvantk integration points").lower()
     for label, needles in SECTION_6_REFERENCES:
