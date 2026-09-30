@@ -138,7 +138,7 @@ def test_extras_agree_on_every_shared_constraint():
     rest left behind -- an inconsistency that would resolve differently depending on which
     extra a user installed. This is the drift the old [tool.poetry.dependencies] split could
     not have, and it arrived with the migration, so it is guarded here. `scipy` used to be
-    the six-times-repeated example here too, until #376 promoted it to
+    the seven-times-repeated example here too, until #376 promoted it to
     [project.dependencies]."""
     seen: dict[str, dict[str, str]] = {}
     for extra, specs in _optional_dependencies().items():

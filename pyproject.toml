@@ -51,9 +51,10 @@ dependencies = [
     # Imported at module scope by the same ucsc.py (`from scipy import sparse`), on the same
     # base-install-reachable path -- yet scipy was declared only in seven extras, none of
     # which gate `summarize-ucsc` or the ucsc builder. It always arrived transitively via
-    # anndata (which requires scipy>1.8 unconditionally), which is exactly why nothing
+    # anndata (which requires scipy unconditionally), which is exactly why nothing
     # noticed a base-reachable command could need an undeclared-at-base package (#376). Also
-    # imported at module scope by algorithms/{ptm/constraint,enrichex/overlap,burden/fet}.py.
+    # imported at module scope by algorithms/{ptm/constraint,enrichex/overlap,burden/fet,
+    # visualization/expression/anndata}.py.
     "scipy>=1.8",
 ]
 

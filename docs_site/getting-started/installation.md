@@ -50,7 +50,7 @@ poetry install --extras "viz hgc"      # or: poetry install --all-extras
 imports it at module scope on a path (`hvantk expression summarize-ucsc`, and the
 `ucsc_cellbrowser` builder) that no extra gates.
 
-Three command paths need this extra:
+Three command paths need the `expression` extra:
 
 - `hvantk expression summarize` — via `summarize_expression_ad`
 - `hvantk expression markers` — scanpy's `rank_genes_groups`
