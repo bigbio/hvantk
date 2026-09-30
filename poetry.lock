@@ -5920,20 +5920,20 @@ optional = ["universal-pathlib"]
 remote = ["fsspec (>=2023.10.0)", "obstore (>=0.5.1)"]
 
 [extras]
-ancestry = ["matplotlib", "scikit-learn", "scipy", "seaborn"]
-cohort = ["scipy"]
-constraint = ["matplotlib", "scipy", "seaborn", "statsmodels", "tspex"]
+ancestry = ["matplotlib", "scikit-learn", "seaborn"]
+cohort = []
+constraint = ["matplotlib", "seaborn", "statsmodels", "tspex"]
 duckdb = ["duckdb"]
-enrichex = ["matplotlib", "scipy", "seaborn"]
-expression = ["scanpy", "scipy"]
+enrichex = ["matplotlib", "seaborn"]
+expression = ["scanpy"]
 hgc = ["matplotlib", "seaborn"]
 interactive = ["plotly"]
-ml = ["scikit-learn", "scipy"]
-psroc = ["matplotlib", "plotly", "scikit-learn", "scipy"]
+ml = ["scikit-learn"]
+psroc = ["matplotlib", "plotly", "scikit-learn"]
 ptm = ["cptac", "sorted-nearest"]
 viz = ["matplotlib", "plotly", "seaborn"]
 
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10.0,<4.0.0"
-content-hash = "afa5dcf6576e3a9aea278813813ef3479595fec5f1d1c988799159809f8fde12"
+content-hash = "4dad0b4f90922289369f8a56ac8b373e131f72320d9c18c4e14ee12184095903"

@@ -133,11 +133,13 @@ def test_no_extra_duplicates_a_base_dependency():
 
 
 def test_extras_agree_on_every_shared_constraint():
-    """PEP 621 puts the full specifier in each extra, so `scipy>=1.8` is written six times
-    and `scikit-learn>=1.4,<2.0` three times. Nothing stops one from being re-pinned and the
+    """PEP 621 puts the full specifier in each extra, so `scikit-learn>=1.4,<2.0` is written
+    three times (`psroc`, `ancestry`, `ml`). Nothing stops one from being re-pinned and the
     rest left behind -- an inconsistency that would resolve differently depending on which
     extra a user installed. This is the drift the old [tool.poetry.dependencies] split could
-    not have, and it arrived with the migration, so it is guarded here."""
+    not have, and it arrived with the migration, so it is guarded here. `scipy` used to be
+    the seven-times-repeated example here too, until #376 promoted it to
+    [project.dependencies]."""
     seen: dict[str, dict[str, str]] = {}
     for extra, specs in _optional_dependencies().items():
         for spec in specs:
