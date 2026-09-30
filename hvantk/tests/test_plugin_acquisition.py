@@ -68,7 +68,10 @@ def _manifest_with(acquisition: dict | None) -> dict:
 @pytest.mark.parametrize(
     "block, valid",
     [
-        ({"mode": "download"}, True),
+        # An explicit mode 'download' with no sibling `lifecycle.download` (as added by
+        # `_manifest_with` below) is the #360 hole: it used to validate here and only
+        # fail once `hvantk reprocess` actually ran it.
+        ({"mode": "download"}, False),
         ({"mode": "byo", "reason": "size"}, True),
         ({"mode": "byo", "reason": "license", "instructions": "SKILL.md#2"}, True),
         # A bare "byo" explains nothing, which is the whole point of the field.
@@ -163,23 +166,38 @@ def test_byo_datasets_are_not_exempt_from_the_validation_contract():
     )
 
 
+#: Datasets whose downloader belongs here but is not written yet (#386). That state is
+#: spelled by OMITTING the acquisition block; this set pins which datasets are in it.
+DOWNLOADER_NOT_WRITTEN_YET = {
+    "cptac:expression",
+    "gevir:metrics",
+    "gwas-catalog:associations",
+    "insider:interfaces",
+}
+
+
 def test_every_dataset_without_a_downloader_has_been_classified():
     """A dataset with no downloader must say WHICH kind of no-downloader it is.
 
-    Leaving it undeclared is what #118 is about: silence currently means both "not
-    written yet" and "impossible", and the loader cannot tell them apart.
+    Silence used to mean both "not written yet" and "impossible" (#118). ``byo`` says
+    impossible, and buys the implicit download skip, the ``--raw-dir`` pre-flight and
+    the instructions. "Not written yet" is spelled by omitting the ``acquisition``
+    block (#360), so omission is legitimate only for the datasets pinned in
+    ``DOWNLOADER_NOT_WRITTEN_YET``: a new dataset left silently undeclared fails here,
+    and so does a pinned one whose downloader has landed (drop it from the set).
     """
-    unclassified = []
-    for name, ds in _declared_acquisitions().items():
-        has_dl = bool((ds.get("lifecycle") or {}).get("download"))
-        declared = (ds.get("acquisition") or {}).get("mode")
-        if not has_dl and declared is None:
-            unclassified.append(name)
-    assert not unclassified, (
-        "these datasets ship no lifecycle.download and declare no acquisition.mode, "
-        "so 'not implemented yet' and 'impossible by design' are indistinguishable:\n  "
-        + "\n  ".join(unclassified)
+    no_downloader = {
+        name: ds
+        for name, ds in _declared_acquisitions().items()
+        if not (ds.get("lifecycle") or {}).get("download")
+        and (ds.get("acquisition") or {}).get("mode") != "byo"
+    }
+    assert set(no_downloader) == DOWNLOADER_NOT_WRITTEN_YET, (
+        f"unclassified: {sorted(set(no_downloader) - DOWNLOADER_NOT_WRITTEN_YET)}; "
+        f"stale: {sorted(DOWNLOADER_NOT_WRITTEN_YET - set(no_downloader))}"
     )
+    # An explicit `mode: download` is a claim that the downloader exists (#360).
+    assert not [name for name, ds in no_downloader.items() if "acquisition" in ds]
 
 
 def test_acquisition_vocabulary_matches_the_schema():
@@ -219,12 +237,21 @@ def test_acquisition_vocabulary_matches_the_schema():
         ({"mode": "download"}, {"download": {"module": "m", "function": "f"}}, True),
         # An omitted block defaults to "download", so a downloader must stay legal.
         (None, {"download": {"module": "m", "function": "f"}}, True),
+        # An omitted block with NO lifecycle at all is the pre-existing, intentional
+        # "not written yet" TODO state (see the 'mode' enum description) -- the #360
+        # rule below must not touch it, only the explicit claim.
+        (None, None, True),
         # `byo` beside a parse-only lifecycle is coherent: BYO is about acquisition.
         (
             {"mode": "byo", "reason": "license"},
             {"parse": {"module": "m", "function": "f"}},
             True,
         ),
+        # The converse (#360): explicit mode 'download' with no lifecycle.download is
+        # the claim gevir:metrics and gwas-catalog:associations both made -- accepted
+        # here at load time, and only failing once `hvantk reprocess` actually ran it.
+        ({"mode": "download"}, None, False),
+        ({"mode": "download"}, {"parse": {"module": "m", "function": "f"}}, False),
     ],
 )
 def test_byo_and_lifecycle_download_are_mutually_exclusive_in_the_schema(
@@ -240,6 +267,12 @@ def test_byo_and_lifecycle_download_are_mutually_exclusive_in_the_schema(
 
     Encoded in the schema rather than duplicated into the CLI so the loader, the CLI
     and any future consumer inherit it together.
+
+    Also covers the converse rule added for #360: an explicit ``mode: download`` with
+    no ``lifecycle.download`` used to validate here and only fail once `hvantk
+    reprocess` actually ran the dataset (`reprocess_cli.py`'s "has no lifecycle.download
+    declared" `UsageError`) -- the same one-directional hole `byo`/`lifecycle.download`
+    had before #351, just facing the other way.
     """
     manifest = _manifest_with(acquisition)
     if lifecycle is not None:
@@ -281,4 +314,21 @@ def test_validate_explains_the_byo_rule_instead_of_quoting_jsonschema(tmp_path):
     ), result.output
     assert "should not be valid under" not in result.output, (
         "raw jsonschema text leaked to the user: " + result.output
+    )
+
+    # Converse (#360): explicit mode 'download' with no lifecycle.download gets its
+    # own translated sentence too, not the raw `'lifecycle' is a required property`.
+    manifest2 = _manifest_with({"mode": "download"})
+    path2 = tmp_path / "plugin2.yaml"
+    path2.write_text(yaml.safe_dump(manifest2))
+
+    result2 = CliRunner().invoke(plugins_group, ["validate", str(path2)])
+
+    assert result2.exit_code != 0, result2.output
+    assert (
+        "acquisition.mode is 'download' but no lifecycle.download is declared"
+        in result2.output
+    ), result2.output
+    assert "is a required property" not in result2.output, (
+        "raw jsonschema text leaked to the user: " + result2.output
     )

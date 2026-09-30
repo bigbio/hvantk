@@ -63,6 +63,11 @@
 - **`hvantk --help` describes each command the way `hvantk tools list` does.** 14 of the 18
   top-level descriptions disagreed with the tool manifests; the manifests are now canonical,
   and a test keeps `_LAZY_COMMANDS` equal to them (#304).
+- **An explicit `acquisition.mode: download` must declare `lifecycle.download`.** The
+  manifest schema accepted a download mode with no downloader, so the mistake surfaced only
+  when someone ran `hvantk reprocess`. A downloader that is not written yet is now spelled by
+  omitting the `acquisition` block (`hvantk reprocess` then needs `--skip-download`), and a
+  test pins which datasets are in that state (#360).
 
 ### Fixed
 
@@ -84,6 +89,11 @@
   pins that release's archive. `msigdb`'s `url` is a registration-gated landing page and is
   marked provenance-only. The closed `data_source` enum is now documented for plugin
   authors (#185).
+- **The documented `hvantk reprocess` commands for `gevir` and `gwas-catalog` could not
+  run.** Both declared a download mode with no downloader; they now omit the block and
+  their documented commands pass `--skip-download` (the downloaders are #386).
+  `ucsc-cellbrowser:adult-ctx` and `dev-ctx`, summaries derived locally from multi-gigabyte
+  collections, are now `byo` (#360).
 
 ## 0.3.1 — 2026-08-30
 

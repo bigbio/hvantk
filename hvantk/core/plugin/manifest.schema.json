@@ -192,7 +192,7 @@
                   "download",
                   "byo"
                 ],
-                "description": "'download' (default): acquisition is automatable -- either a lifecycle.download already exists, or one could be written. 'byo': it cannot be automated at all, and the user must supply --raw-dir; 'byo' is mutually exclusive with lifecycle.download. Note 'download' is deliberately the weaker claim, because it is also the default for every manifest that omits this block. The third state -- automatable but not yet implemented, e.g. gevir -- is not a separate enum value because it is already derivable: mode 'download' AND no lifecycle.download."
+                "description": "'download' (default): acquisition is automatable. The manifest can either omit this block -- meaning a downloader could be written but may not exist yet, so 'hvantk reprocess' needs --skip-download until one lands -- or declare mode 'download' explicitly, which is a stronger claim that a lifecycle.download exists; the schema requires one when mode is spelled out (#360). 'byo': it cannot be automated at all, and the user must supply --raw-dir; 'byo' is mutually exclusive with lifecycle.download."
               },
               "reason": {
                 "type": "string",
@@ -261,6 +261,38 @@
                       "download"
                     ]
                   }
+                }
+              }
+            }
+          },
+          {
+            "$comment": "Converse of the rule above (#360): an explicit acquisition.mode 'download' claims the dataset CAN fetch its own inputs, so it must actually declare lifecycle.download -- otherwise the claim was accepted at load time (`hvantk plugins validate` printed ok) and only failed once someone ran `hvantk reprocess` (reprocess_cli.py's 'has no lifecycle.download declared' UsageError), exactly as it did for gevir:metrics and gwas-catalog:associations. Fires only when mode is spelled out explicitly -- an omitted acquisition block still defaults to 'download' with no downloader required, which is the way to mark a downloader as not-yet-written (see the 'mode' enum description above); this rule only closes the hole for a manifest that explicitly asserts automatability it does not back up.",
+            "if": {
+              "properties": {
+                "acquisition": {
+                  "properties": {
+                    "mode": {
+                      "const": "download"
+                    }
+                  },
+                  "required": [
+                    "mode"
+                  ]
+                }
+              },
+              "required": [
+                "acquisition"
+              ]
+            },
+            "then": {
+              "required": [
+                "lifecycle"
+              ],
+              "properties": {
+                "lifecycle": {
+                  "required": [
+                    "download"
+                  ]
                 }
               }
             }
