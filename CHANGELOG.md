@@ -49,6 +49,41 @@
   opened with `# local/rerank_engine/evaluator.py` and packed several statements per line;
   it is the module all of the above touches most. No behaviour change — pinned by a
   golden-value test captured before the reformat.
+- **`scipy` is a base dependency.** It was declared only in seven extras, yet the UCSC Cell
+  Browser plugin imports `scipy.sparse` at module scope on paths a base install reaches
+  (`hvantk expression summarize-ucsc`, the `ucsc-cellbrowser` builder); it only ever arrived
+  through `anndata`. `requirements.txt` and `environment.yml` already installed it. The
+  `cohort` extra stays, now empty, so `hvantk[cohort]` still resolves, and `poetry.lock`
+  changes only its `[extras]` table (#376).
+- **The `SKILL.md` spec checker requires a real body in every section.** `hvantk plugins
+  validate` and the conformance test checked content in two of the nine sections (§6, §9),
+  and only for keywords, so an emptied section, or a `TODO`-led stub that named the right
+  words, passed. A bare `n/a` is rejected; an explained `N/A ...` is an answer and passes
+  (#364).
+- **`hvantk --help` describes each command the way `hvantk tools list` does.** 14 of the 18
+  top-level descriptions disagreed with the tool manifests; the manifests are now canonical,
+  and a test keeps `_LAZY_COMMANDS` equal to them (#304).
+
+### Fixed
+
+- **The dbNSFP drift probe could never see a new release.** It watched the legacy Google
+  Sites landing page, frozen at v4.9 since 2024. It now reads the dbnsfp.org releases page,
+  and the release list stays under `headers`, so a new release still opens its own
+  `drift:schema` PR (#371).
+- **`hgnc:lookup` promised a column upstream no longer ships.** HGNC dropped
+  `location_sortable`; the field list, fixture, snapshots, SKILL.md and drift baseline now
+  follow the live dump (#355).
+- **Expression Atlas transcript-level builds had non-unique `var_names`.** `var` was keyed by
+  the gene id, which repeats once per transcript, and every RNA-seq accession in the shipped
+  catalog is transcript-level. `var` is now keyed by the transcript id, with the gene id kept
+  as the `Gene ID` column; gene-level exports are unchanged. The generic expression tools
+  read `var_names` as gene ids, so for these builds they now see transcript ids, which is
+  tracked in #383 (#349).
+- **Two catalog URLs did not point at what their entries describe.** `gwas_catalog`'s `url`
+  was the rolling `releases/latest/` alias, which has moved past the entry's release; it now
+  pins that release's archive. `msigdb`'s `url` is a registration-gated landing page and is
+  marked provenance-only. The closed `data_source` enum is now documented for plugin
+  authors (#185).
 
 ## 0.3.1 — 2026-08-30
 
