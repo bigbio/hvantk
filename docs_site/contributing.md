@@ -43,6 +43,8 @@ Follow these guidelines:
 - Use type hints where applicable
 - Write clear docstrings for public functions and classes
 - Keep functions focused and modular
+- Format with `ruff format .`, which CI checks with `ruff format --check .`
+- Lint with `ruff check . --select=E9,F63,F7,F82` (blocking), plus the advisory `ruff check .`
 
 #### Testing
 - Add tests for new functionality

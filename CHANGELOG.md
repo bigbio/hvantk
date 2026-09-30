@@ -68,6 +68,11 @@
   when someone ran `hvantk reprocess`. A downloader that is not written yet is now spelled by
   omitting the `acquisition` block (`hvantk reprocess` then needs `--skip-download`), and a
   test pins which datasets are in that state (#360).
+- **Code is now formatted by `ruff format`, and `black` is dropped.** CI fails on
+  unformatted files (width 88, black's default). `black` was a dev dependency that no
+  workflow ran, which left 262 of 596 files unformatted. The advisory lint (never
+  blocking) now also covers bugbear (`B`), blind-except (`BLE`) and bandit (`S`, minus
+  `assert` in test trees), plus the preview whitespace rules (#309).
 
 ### Fixed
 
