@@ -4,38 +4,52 @@
       "hgnc_id": "HGNC:1100"
     },
     "row": {
-      "agr": null,
+      "agr": "HGNC:1100",
       "alias_names": [
-        "breast cancer 1 early onset"
+        "BRCA1/BRCA2-containing complex, subunit 1",
+        "protein phosphatase 1, regulatory subunit 53",
+        "Fanconi anemia, complementation group S"
       ],
       "alias_symbols": [
+        "RNF53",
         "BRCC1",
-        "FANCS",
-        "PPP1R53"
+        "PPP1R53",
+        "FANCS"
       ],
       "bioparadigms_slc": null,
       "ccds_id": [
         "CCDS11453",
-        "CCDS11456"
+        "CCDS11454",
+        "CCDS11455",
+        "CCDS11456",
+        "CCDS11459"
       ],
       "cd": null,
-      "cosmic": null,
-      "date_approved": "1994-02-07",
-      "date_modified": null,
-      "date_name_changed": null,
+      "cosmic": "BRCA1",
+      "date_approved": "1991-02-20",
+      "date_modified": "2023-03-15",
+      "date_name_changed": "2019-01-22",
       "date_symbol_changed": null,
-      "ena": null,
+      "ena": "U14680",
       "ensembl_gene_id": "ENSG00000012048",
       "entrez_id": "672",
       "enzyme_id": null,
       "gencc": "HGNC:1100",
       "gene_group": [
-        "BRCA1-A complex",
-        "Fanconi anemia complementation groups"
+        "Ring finger proteins",
+        "FA complementation groups",
+        "Protein phosphatase 1 regulatory subunits",
+        "BRCA1 A complex",
+        "BRCA1 B complex",
+        "BRCA1 C complex"
       ],
       "gene_group_id": [
-        "1307",
-        "548"
+        "58",
+        "548",
+        "694",
+        "1328",
+        "1335",
+        "1336"
       ],
       "gene_name": "BRCA1 DNA repair associated",
       "gene_symbol": "BRCA1",
@@ -49,30 +63,30 @@
       "lncipedia": null,
       "lncrnadb": null,
       "location": "17q21.31",
-      "location_sortable": "17q21.31",
       "locus_group": "protein-coding gene",
       "locus_type": "gene with protein product",
-      "lsdb": null,
+      "lsdb": "\"Breast Cancer|http://research.nhgri.nih.gov/bic/|Fanconi Anaemia Mutation Database|http://www2.rockefeller.edu/fanconi|BRCA1 database at LOVD-China|http://genomed.org/LOVD/BC/home.php?select_db=BRCA1|Global Variome shared LOVD|https://databases.lovd.nl/shared/genes/BRCA1|LOVD - Leiden Open Variation Database|http://proteomics.bio21.unimelb.edu.au/lovd/genes/BRCA1|LRG_292|http://ftp.ebi.ac.uk/pub/databases/lrgex/LRG_292.xml\"",
       "mamit-trnadb": null,
       "mane_select": [
         "ENST00000357654.9",
         "NM_007294.4"
       ],
       "merops": null,
-      "mgd_id": null,
+      "mgd_id": "MGI:104537",
       "mirbase": null,
       "omim_id": [
         "113705"
       ],
-      "orphanet_id": "119831|156210",
+      "orphanet_id": "119068",
       "prev_names": [
-        "breast cancer 1 early onset"
+        "breast cancer 1, early onset",
+        "breast cancer 1"
       ],
       "prev_symbols": [],
       "pseudogene.org": null,
-      "pubmed_id": null,
+      "pubmed_id": "\"1676470|25472942\"",
       "refseq_id": "NM_007294",
-      "rgd_id": null,
+      "rgd_id": "RGD:2218",
       "rna_central_id": null,
       "snornabase": null,
       "status": "Approved",
@@ -80,7 +94,7 @@
       "uniprot_ids": [
         "P38398"
       ],
-      "vega_id": null
+      "vega_id": "OTTHUMG00000157426"
     }
   },
   {
@@ -88,13 +102,14 @@
       "hgnc_id": "HGNC:1101"
     },
     "row": {
-      "agr": null,
+      "agr": "HGNC:1101",
       "alias_names": [
-        "breast cancer 2 early onset"
+        "BRCA1/BRCA2-containing complex, subunit 2"
       ],
       "alias_symbols": [
+        "FAD",
+        "FAD1",
         "BRCC2",
-        "FANCD1",
         "XRCC11"
       ],
       "bioparadigms_slc": null,
@@ -102,18 +117,18 @@
         "CCDS9344"
       ],
       "cd": null,
-      "cosmic": null,
-      "date_approved": "1994-02-07",
-      "date_modified": null,
-      "date_name_changed": null,
+      "cosmic": "BRCA2",
+      "date_approved": "1994-10-17",
+      "date_modified": "2023-01-20",
+      "date_name_changed": "2019-01-22",
       "date_symbol_changed": null,
-      "ena": null,
+      "ena": "U43746",
       "ensembl_gene_id": "ENSG00000139618",
       "entrez_id": "675",
       "enzyme_id": null,
       "gencc": "HGNC:1101",
       "gene_group": [
-        "Fanconi anemia complementation groups"
+        "FA complementation groups"
       ],
       "gene_group_id": [
         "548"
@@ -130,30 +145,35 @@
       "lncipedia": null,
       "lncrnadb": null,
       "location": "13q13.1",
-      "location_sortable": "13q13.1",
       "locus_group": "protein-coding gene",
       "locus_type": "gene with protein product",
-      "lsdb": null,
+      "lsdb": "\"Breast Cancer|http://research.nhgri.nih.gov/bic/|Fanconi Anaemia Mutation Database|http://www2.rockefeller.edu/fanconi/|BRCA1 database at LOVD-China|http://genomed.org/LOVD/BC/home.php?select_db=BRCA2|Global Variome shared LOVD|https://databases.lovd.nl/shared/genes/BRCA2|LOVD - Leiden Open Variation Database|http://proteomics.bio21.unimelb.edu.au/lovd/genes/BRCA2|Global Variome shared LOVD|https://databases.lovd.nl/shared/genes/FANCD1|LRG_293|http://ftp.ebi.ac.uk/pub/databases/lrgex/LRG_293.xml\"",
       "mamit-trnadb": null,
       "mane_select": [
         "ENST00000380152.8",
         "NM_000059.4"
       ],
       "merops": null,
-      "mgd_id": null,
+      "mgd_id": "MGI:109337",
       "mirbase": null,
       "omim_id": [
         "600185"
       ],
-      "orphanet_id": "145",
+      "orphanet_id": "119072",
       "prev_names": [
-        "breast cancer 2 early onset"
+        "Fanconi anemia, complementation group D1",
+        "breast cancer 2, early onset",
+        "breast cancer 2"
       ],
-      "prev_symbols": [],
+      "prev_symbols": [
+        "FANCD1",
+        "FACD",
+        "FANCD"
+      ],
       "pseudogene.org": null,
-      "pubmed_id": null,
+      "pubmed_id": "\"8091231|7581463|15057823\"",
       "refseq_id": "NM_000059",
-      "rgd_id": null,
+      "rgd_id": "RGD:2219",
       "rna_central_id": null,
       "snornabase": null,
       "status": "Approved",
@@ -161,7 +181,7 @@
       "uniprot_ids": [
         "P51587"
       ],
-      "vega_id": null
+      "vega_id": "OTTHUMG00000017411"
     }
   },
   {
@@ -177,17 +197,17 @@
       "cd": null,
       "cosmic": null,
       "date_approved": "2001-08-28",
-      "date_modified": null,
-      "date_name_changed": null,
+      "date_modified": "2016-09-30",
+      "date_name_changed": "2015-11-18",
       "date_symbol_changed": null,
-      "ena": null,
+      "ena": "AF315798",
       "ensembl_gene_id": "ENSG00000238101",
       "entrez_id": "114181",
       "enzyme_id": null,
       "gencc": null,
       "gene_group": [],
       "gene_group_id": [],
-      "gene_name": "family with sequence similarity 8 member A5 pseudogene",
+      "gene_name": "family with sequence similarity 8 member A5, pseudogene",
       "gene_symbol": "FAM8A5P",
       "gtrnadb": null,
       "homeodb": null,
@@ -198,8 +218,7 @@
       "kznf_gene_catalog": null,
       "lncipedia": null,
       "lncrnadb": null,
-      "location": "6p21",
-      "location_sortable": "06p21",
+      "location": "6p21 alternate reference locus",
       "locus_group": "pseudogene",
       "locus_type": "pseudogene",
       "lsdb": null,
@@ -211,11 +230,11 @@
       "omim_id": [],
       "orphanet_id": null,
       "prev_names": [
-        "family with sequence similarity 8 member A5 pseudogene"
+        "family with sequence similarity 8, member A5 pseudogene"
       ],
       "prev_symbols": [],
       "pseudogene.org": null,
-      "pubmed_id": null,
+      "pubmed_id": "11707071",
       "refseq_id": "NG_001298",
       "rgd_id": null,
       "rna_central_id": null,
@@ -239,10 +258,10 @@
       "cd": null,
       "cosmic": null,
       "date_approved": "1994-08-10",
-      "date_modified": null,
+      "date_modified": "2023-03-15",
       "date_name_changed": null,
       "date_symbol_changed": null,
-      "ena": null,
+      "ena": "KI270879",
       "ensembl_gene_id": "ENSG00000277656",
       "entrez_id": "2952",
       "enzyme_id": "2.5.1.18",
@@ -264,8 +283,7 @@
       "kznf_gene_catalog": null,
       "lncipedia": null,
       "lncrnadb": null,
-      "location": "22q11.23",
-      "location_sortable": "22q11.23",
+      "location": "22q11.23 alternate reference locus",
       "locus_group": "protein-coding gene",
       "locus_type": "gene with protein product",
       "lsdb": null,
@@ -275,23 +293,18 @@
         "NM_000853.4"
       ],
       "merops": null,
-      "mgd_id": null,
+      "mgd_id": "MGI:107379",
       "mirbase": null,
       "omim_id": [
         "600436"
       ],
       "orphanet_id": "470418",
-      "prev_names": [
-        "glutathione S-transferase theta 1 pseudogene"
-      ],
-      "prev_symbols": [
-        "GSTT1P",
-        "GSTT1-1"
-      ],
+      "prev_names": [],
+      "prev_symbols": [],
       "pseudogene.org": null,
-      "pubmed_id": null,
+      "pubmed_id": "8617495",
       "refseq_id": "NM_000853",
-      "rgd_id": null,
+      "rgd_id": "RGD:2765",
       "rna_central_id": null,
       "snornabase": null,
       "status": "Approved",
@@ -319,10 +332,10 @@
       "cd": null,
       "cosmic": null,
       "date_approved": "2015-08-05",
-      "date_modified": null,
+      "date_modified": "2015-08-05",
       "date_name_changed": null,
       "date_symbol_changed": null,
-      "ena": null,
+      "ena": "\"KI270879|BC050410\"",
       "ensembl_gene_id": null,
       "entrez_id": "106099130",
       "enzyme_id": null,
@@ -344,8 +357,7 @@
       "kznf_gene_catalog": null,
       "lncipedia": null,
       "lncrnadb": null,
-      "location": "22q11.23",
-      "location_sortable": "22q11.23",
+      "location": "22q11.23 alternate reference locus",
       "locus_group": "non-coding RNA",
       "locus_type": "RNA, long non-coding",
       "lsdb": null,
@@ -359,7 +371,7 @@
       "prev_names": [],
       "prev_symbols": [],
       "pseudogene.org": null,
-      "pubmed_id": null,
+      "pubmed_id": "26150504",
       "refseq_id": "NR_132348",
       "rgd_id": null,
       "rna_central_id": null,
