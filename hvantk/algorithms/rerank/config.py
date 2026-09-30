@@ -7,10 +7,14 @@ import pandas as pd
 
 from hvantk.algorithms.cohort.frame import load_prior_frame
 from hvantk.algorithms.cohort.spec import CohortManifest
+from hvantk.algorithms.rerank.nulls import _coerce_int
+from hvantk.algorithms.rerank.seeds import DEFAULT_SEED
 
 if TYPE_CHECKING:
     from hvantk.algorithms.rerank.audit import Audit
+    from hvantk.algorithms.rerank.blocks import BlockPolicy
     from hvantk.algorithms.rerank.leakage import LeakagePolicy
+    from hvantk.algorithms.rerank.nulls import NullConfig
     from hvantk.algorithms.rerank.selection import SelectionPolicy
 
 logger = logging.getLogger(__name__)
@@ -143,8 +147,55 @@ class Config:
     somewhere to live -- without this field the override is silently discarded and the
     clean/all split is computed against the defaults, which is a wrong answer rather than
     an error."""
+    nulls: Optional["NullConfig"] = None
+    """Permutation-null settings for the multiplicity correction, or None to skip it.
+
+    Independent of `selection`, `leakage` and `feature_provenance`: those three decide
+    WHICH columns are admissible, this one decides whether the resulting best-of-N delta
+    survives the fact that N axes were searched. None (default) reproduces the previous
+    code path exactly -- and reproduces it with no correction at all, which is what #247
+    is about."""
+    blocks: Optional["BlockPolicy"] = None
+    """Paralogue-blocked cross-validation, or None for the stratified random folds the
+    engine has always used. Blocking is strictly harder, so every absolute AUC is expected
+    to fall; the quantity of interest is whether a delta survives."""
+    seed: int = DEFAULT_SEED
+    """The one seed for this run: it drives the CV partition (both the headline scores and
+    the ablation), the GBM's ``random_state``, the bootstrap resample, and the null's
+    scorer. ``SelectionPolicy`` carries its own ``seed`` (default ``DEFAULT_SEED``) as a
+    separate field -- the wrapper's inner CV is not driven by this one -- and neither is the
+    calibration split (``CalibratedClassifierCV(cv=<int>)`` is unshuffled and takes no seed
+    at all). The CLI also uses this seed as the permutation null's base seed
+    (``NullConfig.seed``); permutations for nearby seeds overlap (see ``rng_for``). Was
+    hardcoded in five places, which made the CV partition the one variance component in the
+    reported interval that no caller could vary."""
+    seed_sweep: int = 1
+    """How many CV seeds the ablation intervals are computed over (``seed``,
+    ``seed + 1``, ...). 1 is the historic behaviour: one partition, and an interval that
+    cannot see partition variance at all."""
 
     def __post_init__(self):
+        # bool is an int in Python, and numpy/sklearn both reject a negative seed, so
+        # `_coerce_int` (shared with NullConfig/ControlSetting) checks the TYPE and this
+        # checks the RANGE.
+        self.seed = _coerce_int(self.seed, "seed")
+        if self.seed < 0:
+            raise ValueError(f"Config.seed must be an int >= 0; got {self.seed!r}")
+        self.seed_sweep = _coerce_int(self.seed_sweep, "seed_sweep")
+        if self.seed_sweep < 1:
+            raise ValueError(
+                f"Config.seed_sweep must be an int >= 1; got {self.seed_sweep!r}"
+            )
+        # scikit-learn's random_state must be < 2**32 (numpy's legacy RandomState seed
+        # range); the sweep's highest seed is `seed + seed_sweep - 1`, and rejecting it
+        # here -- before any data loads -- is cheaper than sklearn's own late failure deep
+        # inside a fold fit.
+        if self.seed + self.seed_sweep - 1 >= 2**32:
+            raise ValueError(
+                f"Config.seed + Config.seed_sweep - 1 must be < 2**32 (scikit-learn's "
+                f"random_state ceiling); got seed={self.seed!r}, "
+                f"seed_sweep={self.seed_sweep!r}"
+            )
         if self.audit is None:
             from hvantk.algorithms.rerank.audit import NoAudit
 
@@ -175,6 +226,32 @@ class Config:
             ):
                 raise ValueError(
                     f"Config.leakage.min_auc must be finite and in [0, 1]; got {_m!r}"
+                )
+        if self.nulls is not None:
+            from hvantk.algorithms.rerank.nulls import NullConfig
+
+            # Checked, not duck-typed, for the same reason Config.leakage is: a bare int
+            # here (the obvious `nulls=200`) would be ignored by the engine, and a
+            # multiplicity correction that is off while the caller believes it is on is
+            # worse than one that was never offered.
+            if not isinstance(self.nulls, NullConfig):
+                raise TypeError(
+                    f"Config.nulls must be a NullConfig or None; got "
+                    f"{type(self.nulls).__name__}. For defaults, pass NullConfig()."
+                )
+        if self.blocks is not None:
+            from hvantk.algorithms.rerank.blocks import BlockPolicy
+
+            # Checked, not duck-typed, for the same reason Config.leakage/Config.nulls are:
+            # a bare path string here would be silently ignored by the engine, and blocked
+            # CV that is off while the caller believes it is on is worse than one that was
+            # never offered. BlockPolicy itself validates max_block_frac and the table path
+            # at construction time, so nothing further needs checking here.
+            if not isinstance(self.blocks, BlockPolicy):
+                raise TypeError(
+                    f"Config.blocks must be a BlockPolicy or None; got "
+                    f"{type(self.blocks).__name__}. For an HGNC table, pass "
+                    f"BlockPolicy(table=...)."
                 )
         if self.cohort is not None:
             if self.prior is None:

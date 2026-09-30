@@ -2,6 +2,37 @@
 
 ## Unreleased
 
+### Added
+
+- **A multiplicity correction for `hvantk rerank` (`--n-perm`).** The engine shipped the
+  circularity and presence-leakage controls but nothing that asked whether a best-of-N
+  delta could arise by chance, so "axis X adds +0.02" was not interpretable. Two nulls are
+  built: per-axis, and the **selected maximum** over every offered axis — only the second
+  is a multiplicity correction, since the maximum over several candidate axes is
+  stochastically larger than any single one of them: the selected-maximum null sits above
+  zero and can exceed an axis's entire measured gain, which is exactly the multiplicity a
+  per-axis-only report would miss. Every permutation refits the baseline, p-values use
+  `(1 + #{null >= obs}) / (1 + n_perm)` so a finite permutation set can never license
+  `p = 0`, and a null refuses to answer about a delta computed under a different control
+  setting. Chunkable through the API (`NullConfig(chunk=, n_chunks=)` +
+  `NullDistribution.merge`) for cluster array jobs.
+- **Paralogue-blocked cross-validation (`--blocks`, `--max-block-frac`).** Plain
+  `StratifiedKFold` let gene families straddle folds, so pooled out-of-fold AUC was
+  optimistic wherever paralogues share a label. Blocks come from each gene's first-listed
+  HGNC `gene_group`, deliberately not connected components over the multi-membership
+  field — that closure can collapse a large fraction of a gene universe into a single
+  block and make the grouped AUC incomparable to the ungrouped one (the tell-tale is a
+  *blocked* AUC scoring materially higher than the random-fold one, beyond the
+  across-seed spread `--seed-sweep` reports — blocking is harder only on average, so a
+  single correctly blocked run can still score above random folds by chance). A block
+  over the ceiling is a hard abort, because the failure is otherwise silent.
+- **A multi-seed evaluation (`--seed-sweep`).** The shipped interval resampled genes only;
+  which genes landed in which fold was a second variance component fixed at one hardcoded
+  seed. A single cross-validation partition can land anywhere in the across-seed spread,
+  and nothing in the API let a user notice. With `--seed-sweep > 1`, the ablation now
+  carries `d_lo_env`/`d_hi_env` — the union of the bootstrap interval and the across-seed
+  range, never narrower than the interval alone — beside the bootstrap columns.
+
 ### Changed
 
 - **`hvantk plugins errors` now exits 1 when it lists anything** (was 0). Rows mean
@@ -10,6 +41,14 @@
 - **`hvantk drift <dataset>` and `--regenerate` now scope load errors to the
   requested dataset/provider**, so an unrelated broken plugin no longer makes them
   exit 2 (previously every load error in the registry counted).
+- **`seed` is a `Config` field and a `--seed` flag.** `random_state=42` was hardcoded in
+  five places across `evaluator.py`, `reranker.py` and `selection.py`; a test now fails if
+  a bare `42` reappears anywhere in `hvantk/algorithms/rerank/`. Defaults are unchanged, so
+  every previously produced result reproduces exactly.
+- **`evaluator.py` lost its prototype header and its multi-statement lines.** The file still
+  opened with `# local/rerank_engine/evaluator.py` and packed several statements per line;
+  it is the module all of the above touches most. No behaviour change — pinned by a
+  golden-value test captured before the reformat.
 
 ## 0.3.1 — 2026-08-30
 
