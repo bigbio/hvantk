@@ -1,0 +1,6 @@
+# Revisions that `git blame` should skip. GitHub's blame view reads this file
+# automatically; locally, run once:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# ruff format adoption (#309): the mechanical reformat of 304 Python files.
+0b187c7ee4ebaace01624922005a607a8a59a3ce

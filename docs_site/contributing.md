@@ -45,6 +45,7 @@ Follow these guidelines:
 - Keep functions focused and modular
 - Format with `ruff format .`, which CI checks with `ruff format --check .`
 - Lint with `ruff check . --select=E9,F63,F7,F82` (blocking), plus the advisory `ruff check .`
+- Run `git config blame.ignoreRevsFile .git-blame-ignore-revs` once, so `git blame` skips bulk reformats
 
 #### Testing
 - Add tests for new functionality
