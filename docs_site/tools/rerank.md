@@ -165,8 +165,11 @@ Blocks: 152 paralogue block(s); largest 4 (2.0%); 64 gene(s) in a block of size 
 Doubling as the null's base seed has one consequence worth knowing before you rely on it: permutation `i` is drawn with seed `--seed + i` (see **Chunked runs** below), so bumping `--seed` by 1 is not an independent replicate of the null -- it reuses `n_perm - 1` of the previous run's permutations (`--seed 42` and `--seed 43` at `--n-perm 20` share 19 of their 20 draws). An independent replicate needs a base seed at least `n_perm` away from the first.
 
 ```bash
-hvantk rerank -c config.yaml -o out.tsv --seed-sweep 3
+hvantk rerank -c config.yaml -o out.tsv --blocks hgnc_complete_set.txt --seed-sweep 3
 ```
+
+(Shown with `--blocks` because the tables on this page all come from one blocked run; the
+envelope works the same way without it.)
 
 The gene-resampling bootstrap (`d_lo`/`d_md`/`d_hi`) asks how a delta would move if the gene *sample* moved. It cannot see a second variance component: which genes land in which cross-validation fold. `--seed-sweep N` recomputes each axis's delta under `N` consecutive cross-validation seeds (`--seed`, `--seed` + 1, ...) and reports the **envelope** -- the union of the bootstrap interval and the across-seed range -- as `d_lo_env`/`d_hi_env`, beside the untouched `d_lo`/`d_md`/`d_hi`. The same sweep width travels under a different name at each layer: the CLI's `--seed-sweep`, `Config.seed_sweep`, `Evaluator.evaluate`'s `n_seeds` parameter, and the ablation table's own `n_seeds` column all refer to the identical count -- so a reader who encounters more than one of these names is not looking at two different settings:
 
