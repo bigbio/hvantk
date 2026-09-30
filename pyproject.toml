@@ -48,6 +48,13 @@ dependencies = [
     # transitively via anndata (which requires h5py>=3.7), which is exactly why nothing
     # noticed it was declared nowhere (#363). Same floor as anndata's own requirement.
     "h5py>=3.7",
+    # Imported at module scope by the same ucsc.py (`from scipy import sparse`), on the same
+    # base-install-reachable path -- yet scipy was declared only in seven extras, none of
+    # which gate `summarize-ucsc` or the ucsc builder. It always arrived transitively via
+    # anndata (which requires scipy>1.8 unconditionally), which is exactly why nothing
+    # noticed a base-reachable command could need an undeclared-at-base package (#376). Also
+    # imported at module scope by algorithms/{ptm/constraint,enrichex/overlap,burden/fet}.py.
+    "scipy>=1.8",
 ]
 
 [project.urls]
@@ -93,19 +100,19 @@ exclude = [
 # compares a live probe against.
 
 # Optional dependencies. In PEP 621 an extra carries the full specifier, so a constraint
-# repeated across extras (scipy in six, scikit-learn in three) is a drift surface that the
-# old [tool.poetry.dependencies] + [tool.poetry.extras] split did not have -- one extra could
+# repeated across extras (scikit-learn in three) is a drift surface that the old
+# [tool.poetry.dependencies] + [tool.poetry.extras] split did not have -- one extra could
 # be re-pinned and the others left behind, silently. test_pyproject_extras.py asserts every
 # extra spells the same package identically, so that divergence fails the build.
 #
-# scipy is NOT only needed where sklearn is. Three modules `from scipy...` at MODULE scope
-# with no sklearn nearby, and they sit on three DIFFERENT commands -- check the call graph
-# before assigning one to an extra, because the obvious mapping is wrong:
-#   algorithms/ptm/constraint.py     -> `hvantk ptm constraint`      -> constraint extra
-#   algorithms/enrichex/overlap.py   -> `hvantk enrichex overlap`    -> enrichex extra
-#   algorithms/burden/fet.py         -> `hvantk cohort burden`       -> cohort extra
-# fet.py is NOT reached by `hvantk enrichex burden`: its only importer is
-# algorithms/burden/pipeline.py, which is imported by tools/cohort/cohort_cli.py alone.
+# scipy moved to [project.dependencies] (#376): it used to be split across seven extras by
+# call graph (ptm/constraint.py, enrichex/overlap.py, burden/fet.py and
+# visualization/expression/anndata.py each import it at module scope, on four different
+# commands), but skills/ucsc_cellbrowser/shared/ucsc.py imports scipy.sparse at module scope
+# on a path no extra gates (`hvantk expression summarize-ucsc`, reachable from a base
+# install), so extras-only placement was never actually sound. anndata already requires
+# scipy unconditionally, so the promotion changes no resolution. `cohort` had no other
+# member and is kept as an empty extra so `pip install hvantk[cohort]` keeps working.
 #
 # scikit-learn floor is >=1.4, not >=1.3: rerank's opt-in RFECV step wraps
 # RandomForestClassifier, which only tolerates NaN from 1.4 onward, and these feature
@@ -122,31 +129,32 @@ viz = ["matplotlib", "seaborn", "plotly"]
 duckdb = ["duckdb>=0.9.0"]
 interactive = ["plotly"]
 hgc = ["matplotlib", "seaborn"]
-psroc = ["matplotlib", "plotly", "scikit-learn>=1.4,<2.0", "scipy>=1.8"]
+psroc = ["matplotlib", "plotly", "scikit-learn>=1.4,<2.0"]
 ptm = ["cptac", "sorted-nearest"]
 # statsmodels is imported at MODULE scope by algorithms/ptm/lmm.py ("Phase-2 PTM
 # constraint tests"), reached from `hvantk ptm test`. It was declared in no dependency
 # set at all until #318, so a fresh install raised ModuleNotFoundError on that path --
 # invisible because ptm_cli imports lmm lazily, inside the command body, so `--help`
 # and every other subcommand kept working.
-constraint = ["tspex>=0.6.0", "matplotlib", "seaborn", "scipy>=1.8", "statsmodels>=0.14"]
-# enrichex needs matplotlib as well as scipy. scipy is eager -- overlap.py imports
-# scipy.stats at module scope, so `hvantk enrichex overlap` needs it to import at all.
-# matplotlib is no longer eager: enrichex/__init__ resolves plot.py / report.py through a
-# PEP 562 __getattr__, so a base install can run the CLI. It is still in this extra because
-# the plotting and --generate-report paths need it at call time, and accessing a plotting
-# name without it raises an ImportError naming this extra.
-enrichex = ["scipy>=1.8", "matplotlib", "seaborn"]
-# cohort covers `hvantk cohort burden`, whose pipeline reaches algorithms/burden/fet.py and
-# its module-scope `from scipy.stats import fisher_exact`. scipy alone: nothing on that path
-# imports matplotlib.
-cohort = ["scipy>=1.8"]
-ancestry = ["scikit-learn>=1.4,<2.0", "matplotlib", "seaborn", "scipy>=1.8"]
-ml = ["scikit-learn>=1.4,<2.0", "scipy>=1.8"]
-# scanpy already depends on scipy, so listing it changes no resolution -- but
-# visualization/expression/anndata.py imports scipy.sparse directly, and this file's rule is
-# to declare what is imported rather than inherit it from a transitive edge that can move.
-expression = ["scanpy>=1.10.0", "scipy>=1.8"]
+constraint = ["tspex>=0.6.0", "matplotlib", "seaborn", "statsmodels>=0.14"]
+# enrichex's eager import need is now covered by the base scipy dependency -- overlap.py
+# imports scipy.stats at module scope, so `hvantk enrichex overlap` needs it to import at
+# all (#376). matplotlib stays in this extra: enrichex/__init__ resolves plot.py / report.py
+# through a PEP 562 __getattr__, so a base install can run the CLI, and only the plotting
+# and --generate-report paths need matplotlib at call time, raising an ImportError naming
+# this extra if it is missing.
+enrichex = ["matplotlib", "seaborn"]
+# cohort covered `hvantk cohort burden`, whose pipeline reaches algorithms/burden/fet.py and
+# its module-scope `from scipy.stats import fisher_exact` -- scipy alone, since nothing on
+# that path imports matplotlib. scipy is now a base dependency (#376), so this extra has no
+# packages left; kept as an empty list (rather than removed) so `pip install hvantk[cohort]`
+# / `poetry install --extras cohort` keep working for anyone already using them.
+cohort = []
+ancestry = ["scikit-learn>=1.4,<2.0", "matplotlib", "seaborn"]
+ml = ["scikit-learn>=1.4,<2.0"]
+# scipy moved to [project.dependencies] (#376); scanpy already depended on it too, so this
+# extra now only needs to add scanpy itself.
+expression = ["scanpy>=1.10.0"]
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"

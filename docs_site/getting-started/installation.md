@@ -35,16 +35,20 @@ poetry install --extras "viz hgc"      # or: poetry install --all-extras
 |---|---|---|
 | `viz` | matplotlib, seaborn, plotly | plots and HTML reports |
 | `interactive` | plotly | interactive QC dashboards |
-| `ml` | scikit-learn, scipy | ML-backed analyses |
-| `ancestry` | scikit-learn, matplotlib, seaborn, scipy | `hvantk ancestry-inference` |
-| `psroc` | scikit-learn, matplotlib, plotly, scipy | `hvantk psroc` |
+| `ml` | scikit-learn | ML-backed analyses |
+| `ancestry` | scikit-learn, matplotlib, seaborn | `hvantk ancestry-inference` |
+| `psroc` | scikit-learn, matplotlib, plotly | `hvantk psroc` |
 | `hgc` | matplotlib, seaborn | `hvantk hgc` QC plots/reports |
 | `ptm` | cptac, sorted-nearest | CPTAC PTM downloads |
-| `constraint` | tspex, matplotlib, seaborn, scipy, statsmodels | `hvantk ptm constraint`, `hvantk ptm test` |
-| `enrichex` | scipy, matplotlib, seaborn | `hvantk enrichex overlap` / `burden` |
-| `cohort` | scipy | `hvantk cohort burden` |
+| `constraint` | tspex, matplotlib, seaborn, statsmodels | `hvantk ptm constraint`, `hvantk ptm test` |
+| `enrichex` | matplotlib, seaborn | `hvantk enrichex overlap` / `burden` |
+| `cohort` | | `hvantk cohort burden` -- scipy is now a base dependency, so this extra pulls in nothing extra; kept empty for `pip install hvantk[cohort]` compatibility |
 | `duckdb` | duckdb | DuckDB-backed catalog queries |
-| `expression` | scanpy, scipy | `hvantk expression summarize` and `markers` |
+| `expression` | scanpy | `hvantk expression summarize` and `markers` |
+
+`scipy` is a base dependency, not an extra: `hvantk/skills/ucsc_cellbrowser/shared/ucsc.py`
+imports it at module scope on a path (`hvantk expression summarize-ucsc`, and the
+`ucsc_cellbrowser` builder) that no extra gates.
 
 Three command paths need this extra:
 
