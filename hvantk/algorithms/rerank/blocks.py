@@ -11,10 +11,12 @@ merely conservative here, it is INVALID. Membership chains transitively (A in {X
 {Y,Z}, C in {Z,W}, ...), so the closure can collapse a large fraction of a gene universe into
 one component. ``StratifiedGroupKFold`` must place a whole block in one fold, so the pooled
 out-of-fold AUC then estimates something different from the random-fold AUC it is compared
-against; the tell-tale is a "harder" grouped model scoring HIGHER than random folds, which
-blocking cannot do. Blocking on the first-listed group (in HGNC's list order -- HGNC does not
-designate a "primary" one) keeps blocks small; the residual leak -- a pair sharing only a
-later-listed group -- is a far smaller error than an incomparable estimator.
+against; the tell-tale is a blocked AUC MATERIALLY higher than the random-fold one, beyond
+the across-seed spread ``--seed-sweep`` reports -- blocking is harder only ON AVERAGE, so a
+single correctly blocked run can still score above random folds by chance. Blocking on the
+first-listed group (in HGNC's list order -- HGNC does not designate a "primary" one) keeps
+blocks small; the residual leak -- a pair sharing only a later-listed group -- is a far
+smaller error than an incomparable estimator.
 
 **The ceiling is a hard abort.** Same argument, one step on: if the first-listed group is
 itself oversized for this universe, the run must fail rather than produce a plausible number.
@@ -75,9 +77,9 @@ class BlockPolicy:
     ``table`` is REQUIRED, not defaulted: an empty policy would resolve to an empty
     gene-group mapping, every gene would become its own singleton block, and "blocked" CV
     would silently equal random folds while a null built from it still recorded a blocking
-    -- a control that looks on but is off, which is exactly what this batch exists to
-    prevent. It is a path rather than a packaged resource because the file is versioned
-    upstream and updated independently of this library.
+    -- a control that looks on but is off, which is exactly the failure mode blocking
+    exists to prevent. It is a path rather than a packaged resource because the file is
+    versioned upstream and updated independently of this library.
     """
 
     table: str | os.PathLike

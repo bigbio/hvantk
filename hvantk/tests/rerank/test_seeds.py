@@ -22,11 +22,12 @@ PACKAGE = Path(rerank_pkg.__file__).parent
 
 
 def test_no_bare_42_outside_seeds_py():
-    """The structural form of the plan's grep gate. Five literals existed before #247:
-    reranker.py:10 and :32, evaluator.py:17 and :38, selection.py:177 -- five copies of one
-    decision, which is five places to forget it. Also flags a float ``42.0``: the grep gate
-    is text-based and would miss it, so the AST check is the only automated guard against a
-    literal reappearing spelled as a float instead of an int."""
+    """An AST-based version of a plain-text grep for a bare ``42``, and stronger than one.
+    Five literals existed before #247: reranker.py:10 and :32, evaluator.py:17 and :38,
+    selection.py:177 -- five copies of one decision, which is five places to forget it.
+    Also flags a float ``42.0``: a text-based grep would miss it, so the AST check is the
+    only automated guard against a literal reappearing spelled as a float instead of an
+    int."""
     offenders = {}
     for path in sorted(PACKAGE.rglob("*.py")):
         if path.name == "seeds.py":
@@ -112,7 +113,7 @@ def test_config_seed_defaults_to_the_shared_constant():
     assert Config.__dataclass_fields__["seed"].default == DEFAULT_SEED
 
 
-@pytest.mark.parametrize("bad", ["42", 4.5, None, -1])
+@pytest.mark.parametrize("bad", ["42", 4.5, None, -1, 2**32])
 def test_config_rejects_a_non_integer_seed(bad):
     from hvantk.algorithms.rerank.config import Config
 

@@ -76,16 +76,24 @@ def test_the_envelope_of_no_sweep_is_the_bootstrap_interval():
 # --- the reported interval widens -----------------------------------------------------------
 
 
-def test_the_sweep_envelope_is_wired_through_evaluate():
-    """The ablation's envelope columns are exactly the rounded union of the bootstrap interval
-    and the across-seed range, and never narrower than the bootstrap interval (a strict
-    widening depends on the data and is not guaranteed)."""
+@pytest.fixture(scope="module")
+def _single_and_swept():
+    """``single``/``swept`` are each a full ablation fit (several GBM fits apiece), and the
+    envelope-wiring test below and the bootstrap-untouched test both need the exact same
+    pair -- computed once here and shared, rather than each test paying for its own fit."""
     matrix, y, base, axis = _fixture()
     groups = {"base": base, "axis0": axis}
     scores = _raw_oof(matrix, base, y)
     single = Evaluator().evaluate(matrix, base + axis, y, scores, groups, "base")
     swept = Evaluator().evaluate(matrix, base + axis, y, scores, groups, "base", n_seeds=5)
+    return single, swept
 
+
+def test_the_sweep_envelope_is_wired_through_evaluate(_single_and_swept):
+    """The ablation's envelope columns are exactly the rounded union of the bootstrap interval
+    and the across-seed range, and never narrower than the bootstrap interval (a strict
+    widening depends on the data and is not guaranteed)."""
+    single, swept = _single_and_swept
     row_single = single.ablation.set_index("family").loc["axis0"]
     row_swept = swept.ablation.set_index("family").loc["axis0"]
     spread = swept.seed_spread["axis0"]
@@ -94,14 +102,10 @@ def test_the_sweep_envelope_is_wired_through_evaluate():
     assert row_swept.d_lo_env <= row_single.d_lo and row_swept.d_hi_env >= row_single.d_hi
 
 
-def test_the_bootstrap_columns_are_untouched_by_the_sweep():
+def test_the_bootstrap_columns_are_untouched_by_the_sweep(_single_and_swept):
     """d_lo/d_md/d_hi keep meaning exactly what they meant: the gene-resampling interval.
     The sweep adds columns beside them rather than redefining them."""
-    matrix, y, base, axis = _fixture()
-    groups = {"base": base, "axis0": axis}
-    scores = _raw_oof(matrix, base, y)
-    single = Evaluator().evaluate(matrix, base + axis, y, scores, groups, "base")
-    swept = Evaluator().evaluate(matrix, base + axis, y, scores, groups, "base", n_seeds=5)
+    single, swept = _single_and_swept
     for col in ("d_lo", "d_md", "d_hi"):
         assert single.ablation[col].tolist() == swept.ablation[col].tolist()
 

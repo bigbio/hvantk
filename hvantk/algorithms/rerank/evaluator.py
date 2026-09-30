@@ -98,15 +98,17 @@ class SeedSpread:
 
 
 def seed_sweep(matrix, base_cols, axis_cols, y, *, seeds, selector=None, groups=None,
-                base_oof=None):
+                base_oof=None, aug_oof=None):
     """Delta-AUC of baseline+axis over baseline, recomputed under each CV seed.
 
-    ``base_oof``, given as ``{seed: baseline OOF array}``, is used instead of refitting the
-    baseline for a seed already present in it (a seed missing from the mapping is still
-    computed). This is what lets ``Evaluator.evaluate`` fit the baseline once per sweep seed
-    and share it across every axis, rather than refitting it once per (axis, seed) pair. The
-    standalone call with no ``base_oof`` computes every seed's baseline itself and behaves
-    exactly as the brief specifies.
+    ``base_oof``/``aug_oof``, each given as ``{seed: OOF array}`` (baseline-only /
+    baseline+axis respectively), are used instead of refitting for a seed already present in
+    them (a seed missing from either mapping is still computed). This is what lets
+    ``Evaluator.evaluate`` fit the baseline once per sweep seed and share it across every
+    axis, and reuse the headline seed's already-fitted augmented model here instead of
+    refitting it a second time, rather than refitting both once per (axis, seed) pair. The
+    standalone call with neither mapping computes every seed's baseline and augmented fit
+    itself.
     """
     from sklearn.metrics import roc_auc_score
 
@@ -118,7 +120,10 @@ def seed_sweep(matrix, base_cols, axis_cols, y, *, seeds, selector=None, groups=
             p0 = base_oof[seed]
         else:
             p0 = _raw_oof(matrix, list(base_cols), y, selector, groups=groups, seed=seed)
-        p1 = _raw_oof(matrix, cc, y, selector, groups=groups, seed=seed)
+        if aug_oof is not None and seed in aug_oof:
+            p1 = aug_oof[seed]
+        else:
+            p1 = _raw_oof(matrix, cc, y, selector, groups=groups, seed=seed)
         deltas.append(float(roc_auc_score(y, p1) - roc_auc_score(y, p0)))
     arr = np.asarray(deltas, dtype=float)
     return SeedSpread(
@@ -225,6 +230,7 @@ class Evaluator:
                     matrix, base_cols, cols, y,
                     seeds=tuple(seed + k for k in range(n_seeds)),
                     selector=selector, groups=groups, base_oof=base_oof_by_seed,
+                    aug_oof={seed: p},
                 )
                 spreads[fam] = spread
                 env_lo, env_hi = _envelope((lo, hi), spread)

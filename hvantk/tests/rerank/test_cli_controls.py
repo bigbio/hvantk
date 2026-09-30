@@ -79,7 +79,7 @@ def test_seed_is_a_flag(tmp_path):
     assert sa != sb, "--seed did not reach the partition"
 
 
-def test_seed_sweep_widens_the_reported_interval(tmp_path):
+def test_seed_sweep_adds_the_envelope_columns_only_when_sweeping(tmp_path):
     plain, _ = _run(tmp_path / "p")
     swept, _ = _run(tmp_path / "s", "--seed-sweep", "3")
     assert swept.exit_code == 0, swept.output
@@ -87,17 +87,10 @@ def test_seed_sweep_widens_the_reported_interval(tmp_path):
     assert "d_lo_env" not in plain.output
 
 
-def test_n_perm_prints_a_selection_corrected_p(tmp_path):
-    genes, y = _toy_fixtures(tmp_path, n=150)
-    cfg = _write_two_axis_config(tmp_path, genes, y)
-    r = CliRunner().invoke(
-        rerank_cmd, ["-c", str(cfg), "-o", str(tmp_path / "out.tsv"), "--n-perm", "5"]
-    )
-    assert r.exit_code == 0, r.output
-    assert "p_selected_max" in r.output
-
-
-def test_null_out_writes_the_summary(tmp_path):
+def test_n_perm_prints_a_selection_corrected_p_and_null_out_writes_the_summary(tmp_path):
+    """One CLI run covers both --n-perm's console output and --null-out's TSV: the two were
+    previously separate tests that each paid for their own permutation run over the same
+    two-axis config."""
     genes, y = _toy_fixtures(tmp_path, n=150)
     cfg = _write_two_axis_config(tmp_path, genes, y)
     nul = tmp_path / "null.tsv"
@@ -106,8 +99,22 @@ def test_null_out_writes_the_summary(tmp_path):
         ["-c", str(cfg), "-o", str(tmp_path / "out.tsv"), "--n-perm", "5", "--null-out", str(nul)],
     )
     assert r.exit_code == 0, r.output
+    assert "p_selected_max" in r.output
     summary = pd.read_csv(nul, sep="\t")
     assert {"axis", "n_perm", "n_candidates", "selmax_median"} <= set(summary.columns)
+
+
+def test_n_perm_on_a_single_axis_config_fails_cleanly(tmp_path):
+    """The Minor 6 guard: `_write_config`/`_toy_fixtures` (shared with `_run` above)
+    declare exactly one feature axis, which is then also the baseline, so there is no
+    candidate axis left for `--n-perm` to search over. This must be a clean CLI failure
+    before any output is written, not a silent no-op (the engine used to return
+    `res.nulls is None` and the CLI just skipped the Multiplicity block)."""
+    r, out = _run(tmp_path, "--n-perm", "3")
+    assert r.exit_code != 0
+    assert "Traceback" not in r.output
+    assert "--n-perm" in r.output
+    assert not out.exists(), "a failed run must not leave a scored table behind"
 
 
 def test_blocks_flag_wires_the_block_builder(tmp_path):

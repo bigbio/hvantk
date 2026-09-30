@@ -100,8 +100,8 @@ def test_a_chunk_reproduces_exactly_the_permutations_the_whole_run_would_have():
         merged.sort_values(["perm", "axis"]).delta.to_numpy(),
     )
 
-    # D7: the block draw is a function of (seed, i) alone too, so a chunk of a BLOCKED run
-    # must reproduce exactly the draws the whole blocked run makes for those indices.
+    # The block draw is a function of (seed, i) alone too, so a chunk of a BLOCKED run must
+    # reproduce exactly the draws the whole blocked run makes for those indices.
     blocked_blocks = np.arange(120) // 4
     whole_blocked = permutation_deltas(
         matrix, baseline, axes, y,
@@ -162,10 +162,10 @@ def test_a_blocked_null_permutes_whole_blocks():
         differs = differs or not np.array_equal(yp, y)
     assert differs
 
-    # Task 5b review, item 1: protect the `_permute_labels(...)` call inside
-    # `permutation_deltas` itself (not just the helper tested directly above) -- reverting
-    # that call to a global `rng_for(config.seed, i).permutation(y)` passed every test that
-    # existed before this assertion.
+    # Protect the `_permute_labels(...)` call inside `permutation_deltas` itself (not just
+    # the helper tested directly above) -- reverting that call to a global
+    # `rng_for(config.seed, i).permutation(y)` passed every test that existed before this
+    # assertion.
     seen = []
 
     def recording(matrix, cols, labels):
@@ -179,10 +179,10 @@ def test_a_blocked_null_permutes_whole_blocks():
     )
     assert seen and all(counts_by_size(s) == observed_counts for s in seen)
 
-    # 3a: the scorer's declared blocks and permutation_deltas' own `blocks=` must agree, or
-    # a caller could silently fall back to the anti-conservative global permutation while
-    # the scorer itself still scores blocked folds -- e.g. building `oof_scorer(groups=b)`
-    # and forgetting to also pass `blocks=b` here.
+    # The scorer's declared blocks and permutation_deltas' own `blocks=` must agree, or a
+    # caller could silently fall back to the anti-conservative global permutation while the
+    # scorer itself still scores blocked folds -- e.g. building `oof_scorer(groups=b)` and
+    # forgetting to also pass `blocks=b` here.
     mm_matrix, mm_y, mm_baseline, mm_axes = permuted_labels(n=60, n_noise=1)
     mismatched_scorer = oof_scorer(groups=np.arange(60))
     with pytest.raises(ValueError, match="blocks"):
@@ -228,8 +228,13 @@ def test_every_permutation_refits_the_baseline():
 
 
 def test_the_observed_labels_are_never_scored():
-    """A permutation null that included the real label as a draw would be biased toward
-    not rejecting. Every yp handed to the scorer must differ from y."""
+    """A permutation draw that reproduces the real labels is not excluded outright --
+    ``permutation_deltas`` only warns when EVERY draw in a chunk is the identity (see its
+    ``every_draw_unchanged`` check), since one draw landing on it by chance is not a defect.
+    This fixture's labels are unbalanced enough (30% positive of 120) that a global
+    permutation reproducing them exactly by chance is astronomically unlikely, so in
+    practice every yp handed to the scorer differs from y -- which is what this test
+    checks."""
     matrix, y, baseline, axes = planted_signal(n=120, n_noise=1)
     seen = []
 

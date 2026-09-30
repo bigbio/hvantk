@@ -56,9 +56,9 @@ block permutation described above (whole blocks permuted among blocks of the sam
 GLOBAL permutation of the same labels does not restore it, whether or not the folds
 themselves happen to be blocked. This is why the DEFAULT (unblocked) null carries the same
 risk: its "valid but conservative" statement assumes labels exchangeable across genes, and
-it is equally anti-conservative whenever labels and features cluster by family --
-regardless of whether ``Config.blocks``/``--blocks`` is set. Pass blocks whenever that
-clustering is doubtful.
+the clustering is a property of the DATA -- omitting ``Config.blocks``/``--blocks`` does not
+remove it, it only removes the correction for it. Pass blocks (``--blocks``) whenever labels
+may cluster by family.
 """
 from __future__ import annotations
 

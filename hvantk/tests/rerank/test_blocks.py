@@ -71,9 +71,9 @@ def test_the_report_describes_the_blocking():
     assert rep.largest_frac == pytest.approx(rep.largest / len(genes))
     assert 0 < rep.n_in_multi <= len(genes)
     assert rep.n_blocks == len(set(rep.blocks.tolist()))
-    # D1: WHICH blocking, not only whether one was used -- two different groupings of the
-    # same genes must not collide, and re-blocking the same genes the same way must
-    # reproduce exactly.
+    # WHICH blocking, not only whether one was used -- two different groupings of the same
+    # genes must not collide, and re-blocking the same genes the same way must reproduce
+    # exactly.
     assert gene_blocks(genes, mapping).digest == rep.digest
     _, other_mapping = paralogue_groups(n=60, family_size=6, seed=2)
     assert gene_blocks(genes, other_mapping).digest != rep.digest
@@ -85,8 +85,10 @@ def test_the_report_describes_the_blocking():
 def test_a_dominant_block_aborts_above_the_ceiling():
     """Hard failure, not a warning. StratifiedGroupKFold must put a whole block in one
     fold, so an oversized block forces one fold to hold a large fraction of the data and the
-    pooled OOF AUC stops estimating the same quantity as the ungrouped run. It shows as a
-    'harder' grouped model scoring HIGHER than random folds, which blocking cannot do."""
+    pooled OOF AUC stops estimating the same quantity as the ungrouped run. The tell-tale is
+    a blocked AUC MATERIALLY higher than the random-fold one, beyond the across-seed spread
+    --seed-sweep reports -- blocking is harder only on average, so a single run can score
+    higher by chance."""
     genes, mapping = paralogue_groups(n=100, family_size=4, dominant=40)
     with pytest.raises(DominantBlockError) as info:
         gene_blocks(genes, mapping)

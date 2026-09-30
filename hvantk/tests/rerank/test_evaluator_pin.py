@@ -1,12 +1,12 @@
 """A byte-for-byte pin on evaluator.py, captured BEFORE the #247 reformat.
 
 `evaluator.py` opened with the stale line `# local/rerank_engine/evaluator.py` and packed
-several statements onto most lines. It is the module all three #247 passes edit most, so it
-was reformatted first and separately -- but "no behaviour change" is a claim, and a claim
-about a stochastic estimator needs a fixed seed and recorded numbers rather than a reading
-of the diff. These values come from the unmodified file at dev@693c490c; every later task
-in this batch must leave them untouched too, which is why the file stays in the rerank
-selection each task runs.
+several statements onto most lines. It is the module #247 edits most, so it was reformatted
+first and separately -- but "no behaviour change" is a claim, and a claim about a stochastic
+estimator needs a fixed seed and recorded numbers rather than a reading of the diff. These
+values come from the unmodified file at dev@693c490c; every later change to this module must
+leave them untouched too, which is why this file stays in the rerank test selection every
+time evaluator.py is touched.
 """
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ import pandas as pd
 
 from hvantk.algorithms.rerank.evaluator import Evaluator, _boot_ci, _raw_oof
 
-# --- captured from dev@693c490c, see the plan's Task 1 Step 1 capture command -----------
+# --- captured from dev@693c490c, via a fixed-seed run of the fixture below --------------
 OOF_HEAD = [0.294651741677, 0.164421721731, 0.444986827035, 0.930760857286, 0.89923815832, 0.485374629101, 0.93073060035, 0.134549842236]      # list[float], 8 values
 OOF_SUM = 70.790331372377       # float
 BOOT_CI = [-0.027, 0.009, 0.04]       # list[float], 3 values

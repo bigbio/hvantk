@@ -7,7 +7,7 @@ from sklearn.model_selection import StratifiedGroupKFold, StratifiedKFold, cross
 from hvantk.algorithms.rerank.seeds import DEFAULT_SEED
 
 
-def _gbm(seed: int = DEFAULT_SEED):   # ported from chd_score_lib.gbm()
+def _gbm(seed: int = DEFAULT_SEED):
     return HistGradientBoostingClassifier(max_depth=3, max_iter=250, learning_rate=0.05,
         l2_regularization=1.0, min_samples_leaf=20, class_weight="balanced",
         random_state=seed)

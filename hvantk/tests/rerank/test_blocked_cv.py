@@ -33,17 +33,17 @@ def _fold_assignment(matrix, cols, y, groups, folds=5, seed=0):
     return assign
 
 
-def test_no_fold_contains_two_members_of_one_block():
+def test_every_block_sits_in_a_single_test_fold():
     matrix, y, baseline, _, blocks = _blocked_fixture()
     assign = _fold_assignment(matrix, baseline, y, blocks)
     per_block = pd.DataFrame({"block": blocks, "fold": assign}).groupby("block").fold.nunique()
     assert (per_block == 1).all(), per_block[per_block > 1]
 
-    # D6 guard: with every group a singleton, a correctly stratified grouped splitter must
-    # balance positives across test folds the same way StratifiedKFold does (differ by at
-    # most 1). sklearn's own `StratifiedGroupKFold(shuffle=True)` decides each group's fold
-    # from another group's shuffled class counts, not its own, so it does not -- this is
-    # the defect the seeded relabelling fixes.
+    # With every group a singleton, a correctly stratified grouped splitter must balance
+    # positives across test folds the same way StratifiedKFold does (differ by at most 1).
+    # sklearn's own `StratifiedGroupKFold(shuffle=True)` decides each group's fold from
+    # another group's shuffled class counts, not its own, so it does not -- this is the
+    # defect the seeded relabelling fixes.
     singleton_groups = np.arange(len(y))
     cv = _cv(5, 0, singleton_groups)
     pos_per_fold = [
@@ -125,8 +125,9 @@ def test_a_degenerate_blocked_fold_is_refused_with_a_clear_message():
     unbalances the folds rather than leaking -- but an unbalanced fold can still leave a
     training slice with no example of a class, or a test slice with none at all. Both must
     be refused with a message naming the problem, not left to a silent column of 0.0
-    predictions or an opaque estimator error. Task 5's dominant-block ceiling is a separate,
-    additional guard for the SILENT unbalancing this one does not cover."""
+    predictions or an opaque estimator error. `gene_blocks`'s dominant-block ceiling
+    (``max_block_frac``) is a separate, additional guard for the SILENT unbalancing this
+    one does not cover."""
     matrix, y, baseline, _, _ = _blocked_fixture(n=60)
     one_block = np.zeros(60, dtype=int)  # one block for everything
     with pytest.raises(ValueError, match="lower the fold count"):

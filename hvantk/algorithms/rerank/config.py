@@ -186,6 +186,16 @@ class Config:
             raise ValueError(
                 f"Config.seed_sweep must be an int >= 1; got {self.seed_sweep!r}"
             )
+        # scikit-learn's random_state must be < 2**32 (numpy's legacy RandomState seed
+        # range); the sweep's highest seed is `seed + seed_sweep - 1`, and rejecting it
+        # here -- before any data loads -- is cheaper than sklearn's own late failure deep
+        # inside a fold fit.
+        if self.seed + self.seed_sweep - 1 >= 2**32:
+            raise ValueError(
+                f"Config.seed + Config.seed_sweep - 1 must be < 2**32 (scikit-learn's "
+                f"random_state ceiling); got seed={self.seed!r}, "
+                f"seed_sweep={self.seed_sweep!r}"
+            )
         if self.audit is None:
             from hvantk.algorithms.rerank.audit import NoAudit
 

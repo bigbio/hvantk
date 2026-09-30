@@ -1,12 +1,12 @@
 """Three tiny synthetic datasets, built offline in milliseconds.
 
-Deliberately not fixtures in conftest.py: Tasks 2-7 each run their own test file in
-isolation on the login node, and an importable module keeps that selection honest while
-still guaranteeing all of them see the same three datasets.
+Deliberately not fixtures in conftest.py: each rerank test file can run alone, and an
+importable module keeps that selection honest while still guaranteeing every file sees the
+same three datasets.
 
   planted_signal  -- one axis genuinely predicts the label; the control that must CLEAR.
-  permuted_labels -- the same matrix with the label shuffled; nothing predicts anything,
-                     so every p-value computed on it must be approximately uniform.
+  permuted_labels -- the same matrix with the label shuffled; nothing predicts anything, so
+                     this is the pure-noise fixture the null-distribution tests build on.
   paralogue_groups-- genes in families, families of a controllable size; the fixture the
                      blocked-CV tests and the dominant-block abort run on.
 """
@@ -65,13 +65,12 @@ def paralogue_groups(n=180, family_size=6, dominant=0, seed=3):
 def cheap_scorer(folds=3, seed=0):
     """A fast, honest out-of-fold scorer for the STATISTICAL tests.
 
-    The distributional claims (`p` uniform under a permuted label, a wider candidate set
-    raising the null median) need tens of permutations to mean anything, and tens of
-    permutations of the real HistGBM is a multi-minute job -- not something that belongs on
-    a login node. `permutation_deltas` takes an injectable `scorer` for exactly this reason
-    -- swapping in a cheap model keeps the statistics honest without paying for the shipped
-    estimator -- so the statistics are exercised here with logistic regression, and the
-    DEFAULT scorer -- the real GBM -- is pinned separately by test_default_scorer_is_raw_oof.
+    Building a null distribution needs tens of permutations to mean anything, and tens of
+    permutations of the real HistGBM is a multi-minute job. `permutation_deltas` takes an
+    injectable `scorer` for exactly this reason -- swapping in a cheap model keeps the
+    statistics honest without paying for the shipped estimator -- so the statistics are
+    exercised here with logistic regression, and the DEFAULT scorer -- the real GBM -- is
+    pinned separately by test_default_scorer_is_raw_oof.
     """
     from sklearn.linear_model import LogisticRegression
     from sklearn.model_selection import StratifiedKFold, cross_val_predict

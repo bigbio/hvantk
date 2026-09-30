@@ -40,15 +40,15 @@ def test_engine_end_to_end(tmp_path, monkeypatch):
     assert len(res.table) == n and res.metrics.auc > 0.7
     assert {"gene", "score", "tier", "verdict"} <= set(res.table.columns)
 
-    # Guard the engine's null wiring: Tasks 4 and 6 both edit `_run_nulls`, and a
-    # regression that computed the observed deltas with a different scorer from the one
-    # `permutation_deltas` used would silently produce wrong p-values with nothing here to
-    # catch it. `z` is pure noise, offered alongside the existing `x` axis (which stays the
-    # baseline, offered first), so the null must cover only `z`, and the null's own observed
-    # delta for `z` must agree with the ablation table's independently-computed AUC gap.
+    # Guard the engine's null wiring: `_run_nulls` computing the observed deltas with a
+    # different scorer from the one `permutation_deltas` used would silently produce wrong
+    # p-values with nothing here to catch it. `z` is pure noise, offered alongside the
+    # existing `x` axis (which stays the baseline, offered first), so the null must cover
+    # only `z`, and the null's own observed delta for `z` must agree with the ablation
+    # table's independently-computed AUC gap.
     noise = pd.DataFrame({"gene": genes, "z": rng.normal(0, 1, n)})
-    # D1 engine-wiring guard: a real block table (families of 4, status Approved) so
-    # Task 5's _run_nulls edit is exercised on an actual blocking, not just blocks=None.
+    # Engine-wiring guard: a real block table (families of 4, status Approved) so
+    # `_run_nulls` is exercised on an actual blocking, not just blocks=None.
     groups_path = tmp_path / "hgnc_groups.tsv"
     pd.DataFrame(
         {

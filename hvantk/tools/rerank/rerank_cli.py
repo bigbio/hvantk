@@ -1,5 +1,6 @@
 # hvantk/tools/rerank/rerank_cli.py
 import logging
+from pathlib import Path
 
 import click
 import jsonschema
@@ -22,6 +23,39 @@ _ARCHITECTURE_AXIS_NAME = "architecture"
 # 'cohort:', so a 'prior:' block here can never be honoured and silently keeping it
 # around invites exactly the confusion this check exists to prevent.
 _KNOWN_TOP_LEVEL_KEYS = {"name", "cohort", "features", "labels", "min_label_coverage"}
+
+
+def _default_max_block_frac() -> float:
+    """``blocks.DEFAULT_MAX_BLOCK_FRAC``'s value, read from its source rather than
+    imported normally.
+
+    ``hvantk.algorithms.rerank`` is a package whose ``__init__`` unconditionally imports
+    ``engine.py`` (-> ``reranker.py``/``evaluator.py`` -> scikit-learn, the OPTIONAL 'ml'
+    extra), so a normal ``from hvantk.algorithms.rerank.blocks import
+    DEFAULT_MAX_BLOCK_FRAC`` at this module's top level would require scikit-learn just to
+    build this option's help text -- i.e. even for ``hvantk rerank --help`` -- which is
+    exactly what the deferred imports inside ``rerank_cmd`` below exist to avoid. Reading
+    the one assignment out of the file directly costs nothing this module doesn't already
+    pay to parse itself, and stays honest to the real constant rather than a copied literal.
+    """
+    import ast
+
+    import hvantk
+
+    path = Path(hvantk.__file__).parent / "algorithms" / "rerank" / "blocks.py"
+    tree = ast.parse(path.read_text(), filename=str(path))
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id == "DEFAULT_MAX_BLOCK_FRAC"
+        ):
+            return ast.literal_eval(node.value)
+    raise RuntimeError(f"{path}: DEFAULT_MAX_BLOCK_FRAC assignment not found")
+
+
+_DEFAULT_MAX_BLOCK_FRAC = _default_max_block_frac()
 
 
 @click.command(
@@ -54,8 +88,9 @@ _KNOWN_TOP_LEVEL_KEYS = {"name", "cohort", "features", "labels", "min_label_cove
     default=1,
     show_default=True,
     help="Recompute each axis's interval over this many CV seeds (seed, seed+1, ...) and "
-    "report the widened envelope beside the gene-resampling interval. 1 leaves the "
-    "reported interval blind to which genes landed in which fold.",
+    "report the envelope (the union of the gene-bootstrap interval and the across-seed "
+    "range; never narrower) beside the gene-resampling interval. 1 leaves the reported "
+    "interval blind to which genes landed in which fold.",
 )
 @click.option(
     "--blocks",
@@ -70,7 +105,7 @@ _KNOWN_TOP_LEVEL_KEYS = {"name", "cohort", "features", "labels", "min_label_cove
     type=float,
     default=None,
     help="Abort if the largest paralogue block exceeds this fraction of the universe "
-    "[default: 0.10]. Only meaningful with --blocks.",
+    f"[default: {_DEFAULT_MAX_BLOCK_FRAC:g}]. Only meaningful with --blocks.",
 )
 @click.option(
     "--n-perm",
@@ -78,15 +113,20 @@ _KNOWN_TOP_LEVEL_KEYS = {"name", "cohort", "features", "labels", "min_label_cove
     default=0,
     show_default=True,
     help="Label permutations for the per-axis and selected-maximum nulls. 0 disables the "
-    "multiplicity correction entirely, which is what every run before #247 did.",
+    "multiplicity correction entirely (the historic behaviour). Each permutation refits "
+    "the baseline and every candidate axis (about n_perm x (1 + axes) five-fold fits; a "
+    "selection policy, RFECV especially, multiplies that further) -- expect tens of "
+    "minutes for a few hundred permutations on ~1,000 genes. Run `hvantk -v rerank ...` "
+    "to see progress.",
 )
 @click.option(
     "--null-out",
     type=click.Path(),
     default=None,
-    help="Write the per-axis null summary (TSV) here. Requires --n-perm. The API also "
-    "supports chunked nulls (NullConfig(chunk=, n_chunks=) + NullDistribution.merge) for "
-    "cluster array jobs; there is no --chunk/--n-chunks here.",
+    help="Write the per-axis null summary (TSV) here (the control setting the p-values "
+    "belong to is printed to the console, not written to this file). Requires --n-perm. "
+    "The API also supports chunked nulls (NullConfig(chunk=, n_chunks=) + "
+    "NullDistribution.merge) for cluster array jobs; there is no --chunk/--n-chunks here.",
 )
 def rerank_cmd(config_path, output, seed, seed_sweep, blocks_path, max_block_frac,
                n_perm, null_out):
@@ -94,7 +134,7 @@ def rerank_cmd(config_path, output, seed, seed_sweep, blocks_path, max_block_fra
     # (and every other subcommand) does NOT require scikit-learn, which is an OPTIONAL
     # dependency. Mirrors the psroc/ancestry deferral pattern.
     from hvantk.algorithms.rerank import rerank, Config
-    from hvantk.algorithms.rerank.blocks import BlockPolicy
+    from hvantk.algorithms.rerank.blocks import BlockPolicy, DEFAULT_MAX_BLOCK_FRAC
     from hvantk.algorithms.rerank.catalog.builders import table_axis, genelist_labels
     from hvantk.algorithms.rerank.audit import (
         ARCHITECTURE_AUDIT_COLUMNS,
@@ -217,7 +257,9 @@ def rerank_cmd(config_path, output, seed, seed_sweep, blocks_path, max_block_fra
                 if blocks_path is None
                 else BlockPolicy(
                     table=blocks_path,
-                    max_block_frac=(0.10 if max_block_frac is None else max_block_frac),
+                    max_block_frac=(
+                        DEFAULT_MAX_BLOCK_FRAC if max_block_frac is None else max_block_frac
+                    ),
                 )
             ),
             nulls=(
@@ -239,6 +281,15 @@ def rerank_cmd(config_path, output, seed, seed_sweep, blocks_path, max_block_fra
         # too few paralogue blocks for the fold count), so the CLI reports it cleanly
         # instead of a traceback.
         raise click.ClickException(str(exc)) from exc
+    if n_perm > 0 and res.nulls is None:
+        # cfg.nulls is a NullConfig here (n_perm > 0), so the only way _run_nulls returns
+        # None is "no candidate axis besides the baseline" -- checked before any output is
+        # written, the same as every other flag-combination error above.
+        axis_names = [f.name for f in cfg.features]
+        raise click.ClickException(
+            "--n-perm needs at least one feature axis besides the baseline; this config "
+            f"has only {axis_names}."
+        )
     res.table.to_csv(output, sep="\t", index=False)
     click.echo(f"Wrote {len(res.table)} genes -> {output}")
     scored = res.table[res.table["score"].notna()]
@@ -274,6 +325,7 @@ def rerank_cmd(config_path, output, seed, seed_sweep, blocks_path, max_block_fra
             f"{res.nulls.n_perm:,} permutations; selected-maximum null median "
             f"{summary['selmax_median'].iloc[0]:+.4f}"
         )
+        click.echo(f"Setting: {res.nulls.setting.describe()}")
         click.echo(
             summary[["axis", "observed", "selmax_median", "p_selected_max"]].to_string(
                 index=False
