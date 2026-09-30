@@ -223,6 +223,12 @@ max-line-length = 127  # advisory E501 threshold; independent of the formatter w
 "hvantk/tests/**" = ["S101"]
 "hvantk/skills/**/tests/**" = ["S101"]
 
+[tool.ruff.format]
+# Python files only. ruff also formats the Python fences inside Markdown, where it
+# reflows examples and pseudo-schemas laid out by hand for the reader (e.g. the
+# fingerprint shape in _conventions/SKILL.md).
+exclude = ["*.md"]
+
 [tool.pytest.ini_options]
 testpaths = ["hvantk/tests", "hvantk/skills"]
 
