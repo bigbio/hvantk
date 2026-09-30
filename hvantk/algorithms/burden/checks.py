@@ -5,6 +5,7 @@ fails fast with an actionable message before any Spark start-up, exactly like
 ``hvantk/algorithms/cohort/checks.py``. Data-dependent checks (bi-allelic rows,
 binary arm) live in ``aggregate.assert_clean_mt`` because they need the MatrixTable.
 """
+
 from __future__ import annotations
 
 KEY_SPACES: tuple[str, ...] = ("gene_id", "hgnc_id", "symbol")

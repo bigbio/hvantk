@@ -46,7 +46,9 @@ def _imports_in(layer: str) -> list[tuple[Path, str]]:
     return out
 
 
-def _forbidden_matches(layer: str, forbidden_prefixes: list[str]) -> list[tuple[Path, str]]:
+def _forbidden_matches(
+    layer: str, forbidden_prefixes: list[str]
+) -> list[tuple[Path, str]]:
     bad: list[tuple[Path, str]] = []
     for file, dotted in _imports_in(layer):
         for prefix in forbidden_prefixes:

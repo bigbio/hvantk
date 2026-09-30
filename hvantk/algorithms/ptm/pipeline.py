@@ -134,8 +134,7 @@ def download_ensembl_gtf(output_dir: str, overwrite: bool = False) -> str:
     parsed = urllib.parse.urlparse(ENSEMBL_GTF_URL)
     if parsed.scheme != "https":
         raise ValueError(
-            "Invalid Ensembl GTF URL scheme (expected https): %s"
-            % ENSEMBL_GTF_URL
+            "Invalid Ensembl GTF URL scheme (expected https): %s" % ENSEMBL_GTF_URL
         )
     host = parsed.hostname or ""
     if host != "ftp.ensembl.org" and not host.endswith(".ensembl.org"):
@@ -379,12 +378,14 @@ def ptm_build_pipeline_core(config: PTMBuildConfig) -> PTMBuildResult:
     extra_sources: List[tuple] = []
     if config.peptideatlas_tsv:
         extra_sources.append(
-            ("PeptideAtlas", config.peptideatlas_tsv, "peptideatlas_sites_mapped.tsv.bgz")
+            (
+                "PeptideAtlas",
+                config.peptideatlas_tsv,
+                "peptideatlas_sites_mapped.tsv.bgz",
+            )
         )
     if config.cptac_tsv:
-        extra_sources.append(
-            ("CPTAC", config.cptac_tsv, "cptac_sites_mapped.tsv.bgz")
-        )
+        extra_sources.append(("CPTAC", config.cptac_tsv, "cptac_sites_mapped.tsv.bgz"))
 
     source_paths = [mapped_path]
     for source_name, source_tsv, source_filename in extra_sources:
@@ -403,9 +404,7 @@ def ptm_build_pipeline_core(config: PTMBuildConfig) -> PTMBuildResult:
             )
 
     if len(source_paths) > 1:
-        combined_path = os.path.join(
-            config.output_dir, "ptm_sites_combined.tsv.bgz"
-        )
+        combined_path = os.path.join(config.output_dir, "ptm_sites_combined.tsv.bgz")
         _concat_bgz_tsvs(source_paths, combined_path)
         mapped_path = combined_path
         result.mapped_tsv_path = combined_path

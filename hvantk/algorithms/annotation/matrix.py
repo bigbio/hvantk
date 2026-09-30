@@ -13,6 +13,7 @@ has no specificity fn (its ``rank_genes_groups`` is DE markers on raw cells), an
 per-tissue ``spm`` is an L2/cosine metric, so both give different numbers. It is kept inline as a
 definitional row-normalization by design (confirmed with the user 2026-07-24).
 """
+
 from __future__ import annotations
 
 import logging

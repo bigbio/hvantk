@@ -12,6 +12,7 @@ existing circularity check in provenance.py: that machinery asks what a predicto
 TRAINED on. This asks which genes it was RUN on. The two are independent, and the second
 had no control.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -177,9 +178,9 @@ def test_report_partitions_the_columns_exactly():
     """clean and leaking must together account for every column, with no overlap."""
     rng, y = _frame()
     x_leak = rng.normal(size=len(y))
-    x_leak[
-        np.where(y == 1, rng.random(len(y)) < 0.1, rng.random(len(y)) < 0.9)
-    ] = np.nan
+    x_leak[np.where(y == 1, rng.random(len(y)) < 0.1, rng.random(len(y)) < 0.9)] = (
+        np.nan
+    )
     X = pd.DataFrame({"leaky": x_leak, "fine": rng.normal(size=len(y))})
 
     report = resolve_leakage(X, y, ["leaky", "fine"])

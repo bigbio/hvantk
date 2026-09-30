@@ -18,6 +18,7 @@ concept expressed at two layers.
 Layering: this module imports stdlib + jsonschema + yaml only. It must never import
 ``hvantk.skills`` or ``hvantk.tools``.
 """
+
 from __future__ import annotations
 
 import json

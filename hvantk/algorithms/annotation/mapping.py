@@ -9,6 +9,7 @@ The failure this exists to prevent: the previous per-gene matrix merged on raw s
 with no alias resolution, so every previous-symbol or alias mismatch dropped a gene and
 nothing reported it.
 """
+
 from __future__ import annotations
 
 import logging

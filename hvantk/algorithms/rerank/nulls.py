@@ -60,6 +60,7 @@ the clustering is a property of the DATA -- omitting ``Config.blocks``/``--block
 remove it, it only removes the correction for it. Pass blocks (``--blocks``) whenever labels
 may cluster by family.
 """
+
 from __future__ import annotations
 
 import logging
@@ -196,7 +197,9 @@ class ControlSetting:
             raise TypeError(
                 f"leakage must be None or a LeakagePolicy; got {type(self.leakage).__name__}"
             )
-        if self.selection is not None and not isinstance(self.selection, SelectionPolicy):
+        if self.selection is not None and not isinstance(
+            self.selection, SelectionPolicy
+        ):
             raise TypeError(
                 "selection must be None or a SelectionPolicy; got "
                 f"{type(self.selection).__name__}"
@@ -299,7 +302,12 @@ def oof_scorer(
 
     def _score(matrix, cols, y):
         return _raw_oof(
-            matrix, list(cols), y, selector=selector, groups=groups, seed=seed,
+            matrix,
+            list(cols),
+            y,
+            selector=selector,
+            groups=groups,
+            seed=seed,
             folds=resolved_folds,
         )
 
@@ -536,7 +544,10 @@ def permutation_deltas(
         if done % log_every == 0 or done == chunk_size:
             logger.info(
                 "permutation null: %d/%d draws (chunk %d/%d)",
-                done, chunk_size, config.chunk, config.n_chunks,
+                done,
+                chunk_size,
+                config.chunk,
+                config.n_chunks,
             )
     if chunk_size > 0 and every_draw_unchanged:
         # Every block was either a singleton or a size-occurs-once, label-homogeneous block
@@ -548,7 +559,9 @@ def permutation_deltas(
             "every permutation in this chunk (%d draw(s), chunk %d/%d) reproduced the "
             "observed labels exactly -- this chunk contributed no spread; check the merged "
             "null before concluding the null itself has none",
-            chunk_size, config.chunk, config.n_chunks,
+            chunk_size,
+            config.chunk,
+            config.n_chunks,
         )
     return pd.DataFrame(rows, columns=["perm", "axis", "delta", "base_auc"])
 
@@ -592,7 +605,8 @@ def _setting_mismatch(generated: ControlSetting, asked: ControlSetting) -> str:
     values.
     """
     names = [
-        f.name for f in fields(ControlSetting)
+        f.name
+        for f in fields(ControlSetting)
         if getattr(generated, f.name) != getattr(asked, f.name)
     ]
     detail = "; ".join(
@@ -676,7 +690,9 @@ class NullDistribution:
         computed on different data, a different CV seed or a different estimator. If every
         chunk's ``observed`` is left ``None``, that check is silently off.
         """
-        d = deltas.assign(axis=deltas["axis"].astype(str), perm=deltas["perm"].astype(int))
+        d = deltas.assign(
+            axis=deltas["axis"].astype(str), perm=deltas["perm"].astype(int)
+        )
 
         if d.duplicated(["perm", "axis"]).any():
             raise ValueError(
@@ -800,7 +816,11 @@ class NullDistribution:
             for other_obs in observed_list[1:]:
                 same = set(other_obs) == set(head_obs) and all(
                     np.allclose(
-                        [head_obs[a]], [other_obs[a]], rtol=0, atol=_TIE_TOL, equal_nan=True
+                        [head_obs[a]],
+                        [other_obs[a]],
+                        rtol=0,
+                        atol=_TIE_TOL,
+                        equal_nan=True,
                     )
                     for a in head_obs
                 )
@@ -824,11 +844,13 @@ class NullDistribution:
             setting=head.setting,
             axes=head.axes,
             per_axis={
-                a: np.concatenate([p.per_axis[a] for p in parts])[order] for a in head.axes
+                a: np.concatenate([p.per_axis[a] for p in parts])[order]
+                for a in head.axes
             },
             selected_max=np.concatenate([p.selected_max for p in parts])[order],
             perms=tuple(
-                int(v) for v in np.concatenate([np.asarray(p.perms) for p in parts])[order]
+                int(v)
+                for v in np.concatenate([np.asarray(p.perms) for p in parts])[order]
             ),
             perm_seed=head.perm_seed,
             planned_n_perm=head.planned_n_perm,
@@ -844,12 +866,16 @@ class NullDistribution:
                 "setting you are reporting."
             )
 
-    def p_per_axis(self, axis: str, observed: float, *, setting: ControlSetting) -> float:
+    def p_per_axis(
+        self, axis: str, observed: float, *, setting: ControlSetting
+    ) -> float:
         """Could THIS axis's delta arise by chance? Correct only if the axis was
         pre-specified; if it is reported because it came top, use ``p_selected_max``."""
         self._require(setting)
         if axis not in self.per_axis:
-            raise KeyError(f"axis {axis!r} is not in this null; offered: {list(self.axes)!r}")
+            raise KeyError(
+                f"axis {axis!r} is not in this null; offered: {list(self.axes)!r}"
+            )
         return p_value(self.per_axis[axis], observed)
 
     def p_selected_max(self, observed: float, *, setting: ControlSetting) -> float:
@@ -878,7 +904,9 @@ class NullDistribution:
                 "n_candidates": len(self.axes),
                 "null_mean": float(finite.mean()) if finite.size else float("nan"),
                 "null_sd": float(finite.std()) if finite.size else float("nan"),
-                "null_p95": float(np.percentile(finite, 95)) if finite.size else float("nan"),
+                "null_p95": float(np.percentile(finite, 95))
+                if finite.size
+                else float("nan"),
                 "selmax_median": float(np.median(sm)) if sm.size else float("nan"),
                 "selmax_p95": float(np.percentile(sm, 95)) if sm.size else float("nan"),
             }
@@ -887,11 +915,13 @@ class NullDistribution:
                 degenerate = not np.isfinite(obs) or finite.size == 0
                 row["observed"] = obs
                 row["p_per_axis"] = (
-                    float("nan") if degenerate
+                    float("nan")
+                    if degenerate
                     else self.p_per_axis(axis, obs, setting=self.setting)
                 )
                 row["p_selected_max"] = (
-                    float("nan") if degenerate
+                    float("nan")
+                    if degenerate
                     else self.p_selected_max(obs, setting=self.setting)
                 )
             rows.append(row)

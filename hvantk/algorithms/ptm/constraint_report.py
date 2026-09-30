@@ -18,7 +18,10 @@ from typing import TYPE_CHECKING, Any, Dict, List, Sequence
 import pandas as pd
 
 if TYPE_CHECKING:  # pragma: no cover
-    from hvantk.algorithms.ptm.constraint import PTMConstraintConfig, PTMConstraintResult
+    from hvantk.algorithms.ptm.constraint import (
+        PTMConstraintConfig,
+        PTMConstraintResult,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -33,25 +36,57 @@ _NAN_STR = "—"
 
 # Ordered columns per section (only those actually present are rendered).
 _COLS_GROUP = (
-    "group", "n_ptm", "n_non", "mean_ptm", "mean_non",
-    "ratio", "log2_ratio", "p_value",
+    "group",
+    "n_ptm",
+    "n_non",
+    "mean_ptm",
+    "mean_non",
+    "ratio",
+    "log2_ratio",
+    "p_value",
 )
 _COLS_TAU = (
-    "tau_quartile", "n_ptm", "n_non", "mean_ptm", "mean_non",
-    "ratio", "log2_ratio", "p_value",
+    "tau_quartile",
+    "n_ptm",
+    "n_non",
+    "mean_ptm",
+    "mean_non",
+    "ratio",
+    "log2_ratio",
+    "p_value",
 )
 _COLS_LOEUF = (
-    "tau_bin", "loeuf_bin", "n_ptm", "n_non", "mean_ptm", "mean_non",
-    "ratio", "log2_ratio", "p_value",
+    "tau_bin",
+    "loeuf_bin",
+    "n_ptm",
+    "n_non",
+    "mean_ptm",
+    "mean_non",
+    "ratio",
+    "log2_ratio",
+    "p_value",
 )
 _COLS_CAT = (
-    "group", "category", "n_ptm", "n_non", "mean_ptm", "mean_non",
-    "ratio", "log2_ratio", "p_value",
+    "group",
+    "category",
+    "n_ptm",
+    "n_non",
+    "mean_ptm",
+    "mean_non",
+    "ratio",
+    "log2_ratio",
+    "p_value",
 )
 
 _RATIO_COLS = {
-    "ratio", "log2_ratio", "mean_ptm", "mean_non",
-    "med_ptm", "med_non", "delta", "statistic",
+    "ratio",
+    "log2_ratio",
+    "mean_ptm",
+    "mean_non",
+    "med_ptm",
+    "med_non",
+    "delta",
+    "statistic",
 }
 _INT_COLS = {"n_ptm", "n_non", "n_genes"}
 
@@ -112,9 +147,7 @@ def render_html(
 # ---------------------------------------------------------------------------
 
 
-def _build_header(
-    title: str, date: str, config: "PTMConstraintConfig"
-) -> str:
+def _build_header(title: str, date: str, config: "PTMConstraintConfig") -> str:
     items = [
         ("grouping", getattr(config, "grouping", "")),
         ("expression source", getattr(config, "expression_source", "")),
@@ -167,9 +200,7 @@ def _build_key_findings(result: "PTMConstraintResult") -> str:
     )
 
 
-def _build_per_group_section(
-    result: "PTMConstraintResult", plots_dir: Path
-) -> str:
+def _build_per_group_section(result: "PTMConstraintResult", plots_dir: Path) -> str:
     rows = list(getattr(result, "top_groups", []) or [])[:20]
     return _build_table_section(
         heading="Per-group ranking",
@@ -202,8 +233,7 @@ def _build_loeuf_section(result: "PTMConstraintResult", plots_dir: Path) -> str:
     return _build_table_section(
         heading="LOEUF × τ factorial",
         note=(
-            "Two-way factorial: gene τ bin × LOEUF bin "
-            "(constrained vs unconstrained)."
+            "Two-way factorial: gene τ bin × LOEUF bin (constrained vs unconstrained)."
         ),
         rows=rows,
         columns=_COLS_LOEUF,
@@ -211,17 +241,17 @@ def _build_loeuf_section(result: "PTMConstraintResult", plots_dir: Path) -> str:
     )
 
 
-def _build_category_section(
-    result: "PTMConstraintResult", plots_dir: Path
-) -> str:
+def _build_category_section(result: "PTMConstraintResult", plots_dir: Path) -> str:
     rows = list(getattr(result, "category_heatmap", []) or [])
     if rows:
         try:
             df = pd.DataFrame(rows)
             if "log2_ratio" in df.columns:
-                df = df.assign(_abs=df["log2_ratio"].abs()).sort_values(
-                    "_abs", ascending=False, na_position="last"
-                ).drop(columns=["_abs"])
+                df = (
+                    df.assign(_abs=df["log2_ratio"].abs())
+                    .sort_values("_abs", ascending=False, na_position="last")
+                    .drop(columns=["_abs"])
+                )
             rows = df.head(30).to_dict(orient="records")
         except Exception:  # pragma: no cover - defensive
             logger.warning("Could not sort category heatmap rows.", exc_info=True)
@@ -234,9 +264,7 @@ def _build_category_section(
         ),
         rows=rows,
         columns=_COLS_CAT,
-        image=_embed_png(
-            plots_dir / "category_group_heatmap.png", "Category heatmap"
-        ),
+        image=_embed_png(plots_dir / "category_group_heatmap.png", "Category heatmap"),
     )
 
 

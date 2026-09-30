@@ -1,4 +1,5 @@
 """GeneSet: a named collection of gene identifiers with provenance."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -52,12 +53,14 @@ class GeneSet:
 
     def save(self, path: str | Path) -> None:
         from hvantk.core import io as core_io
+
         core_io.save(self, path)
 
     @classmethod
     def load(cls, path: "str | Path") -> "GeneSet":
         """Read a GeneSet artifact from disk via core/io."""
         from hvantk.core import io as core_io
+
         result = core_io.load(path)
         if not isinstance(result, cls):
             raise TypeError(

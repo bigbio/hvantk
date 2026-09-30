@@ -23,6 +23,7 @@ itself oversized for this universe, the run must fail rather than produce a plau
 A warning is not enough precisely because the failure is silent -- the output looks fine and
 the tell-tale is a counterintuitive AUC that a reader has no reason to question.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -60,7 +61,9 @@ def _validate_max_block_frac(value) -> float:
     against" would mislead a caller who passed neither.
     """
     if isinstance(value, bool):
-        raise ValueError(f"max_block_frac must be a real number, not bool; got {value!r}")
+        raise ValueError(
+            f"max_block_frac must be a real number, not bool; got {value!r}"
+        )
     if not isinstance(value, numbers.Real):
         raise ValueError(f"max_block_frac must be a real number; got {value!r}")
     if not math.isfinite(value):
@@ -242,7 +245,9 @@ def gene_blocks(
             "table's gene keys disagree with the universe's (e.g. a different HGNC release, "
             "or symbols vs. another identifier) -- the unmatched genes were treated as "
             "unconstrained singletons, not as an error",
-            n_matched, n, 100.0 * n_matched / n,
+            n_matched,
+            n,
+            100.0 * n_matched / n,
         )
 
     blocks = np.asarray(out, dtype=int)
@@ -266,7 +271,7 @@ def gene_blocks(
         group_name = largest_key
         for prefix in ("fam:", "solo:"):
             if group_name.startswith(prefix):
-                group_name = group_name[len(prefix):]
+                group_name = group_name[len(prefix) :]
                 break
         raise DominantBlockError(
             f"the largest paralogue block (group {group_name!r}) holds {largest}/{n} units "

@@ -1,4 +1,5 @@
 """Conformance test for the gnomad-metrics plugin (Phase K)."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -45,6 +46,7 @@ def test_gnomad_metrics_metrics_round_trip(tmp_path):
     assert prov.schema_id == "gnomad-metrics-v1"
 
     from hvantk.core import io as core_io
+
     loaded = core_io.load(out)
     assert isinstance(loaded, AnnotationTable)
     assert loaded.backend == "hail"

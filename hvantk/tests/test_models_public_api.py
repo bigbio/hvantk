@@ -1,6 +1,7 @@
 """The public API surface of hvantk.core.models is what plugin authors
 and algorithms see. Pinning it as a test catches accidental removals.
 """
+
 from __future__ import annotations
 
 
@@ -16,6 +17,7 @@ def test_public_exports_available():
         agg_mean,
         agg_sum,
     )
+
     assert AnnotationTable is not None
     assert ExpressionMatrix is not None
     assert GeneSet is not None

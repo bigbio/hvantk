@@ -81,9 +81,7 @@ def test_vds2mt_cli_skip_validation():
 def test_mt2vcf_cli_basic():
     """Test mt2vcf command with basic options."""
     runner = CliRunner()
-    with patch(
-        "hvantk.algorithms.hgc.convert_mt_to_multi_sample_vcf"
-    ) as mock_convert:
+    with patch("hvantk.algorithms.hgc.convert_mt_to_multi_sample_vcf") as mock_convert:
         with patch(
             "hvantk.tools.hgc.convert_cli.validate_input_files"
         ) as mock_validate:
@@ -135,9 +133,7 @@ def test_mt2vcf_cli_dry_run():
 def test_mt2vcf_cli_min_ac():
     """Test mt2vcf command with custom min-ac."""
     runner = CliRunner()
-    with patch(
-        "hvantk.algorithms.hgc.convert_mt_to_multi_sample_vcf"
-    ) as mock_convert:
+    with patch("hvantk.algorithms.hgc.convert_mt_to_multi_sample_vcf") as mock_convert:
         with patch(
             "hvantk.tools.hgc.convert_cli.validate_input_files"
         ) as mock_validate:
@@ -156,9 +152,7 @@ def test_mt2vcf_cli_min_ac():
 def test_mt2vcf_cli_no_filter_adj():
     """Test mt2vcf command with --no-filter-adj."""
     runner = CliRunner()
-    with patch(
-        "hvantk.algorithms.hgc.convert_mt_to_multi_sample_vcf"
-    ) as mock_convert:
+    with patch("hvantk.algorithms.hgc.convert_mt_to_multi_sample_vcf") as mock_convert:
         with patch(
             "hvantk.tools.hgc.convert_cli.validate_input_files"
         ) as mock_validate:

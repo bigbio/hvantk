@@ -10,6 +10,7 @@ Reads ``H_sapiens_interfacesALL.txt`` (~49 MB), not the 1.17 GB BED: the pair ta
 already carries both accessions and both interface-residue lists, so no genomic join is
 needed for a gene-level reduction.
 """
+
 from __future__ import annotations
 
 import logging

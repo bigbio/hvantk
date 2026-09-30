@@ -207,7 +207,7 @@ def generate_synthetic_burden_cohort(
     ).key_by("s")
 
     logger.info(
-        "Synthetic cohort: %d cases, %d controls, %d genes, " "%d signal gene sets",
+        "Synthetic cohort: %d cases, %d controls, %d genes, %d signal gene sets",
         n_cases,
         n_controls,
         n_genes,

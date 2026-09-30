@@ -16,6 +16,7 @@ become plugins (see Phase K and follow-ups). For now they continue to be
 read by path with an unknown-provenance marker (see ``core/io/_legacy.py``)
 attached when wrapped in an AnnotationTable.
 """
+
 from __future__ import annotations
 
 import logging
@@ -79,8 +80,7 @@ def load_legacy_table(name: str, source_dir: Optional[str] = None) -> "hl.Table"
 
     if name not in _LEGACY_PATHS:
         raise KeyError(
-            f"Unknown legacy dataset: {name!r}. "
-            f"Known keys: {sorted(_LEGACY_PATHS)}"
+            f"Unknown legacy dataset: {name!r}. Known keys: {sorted(_LEGACY_PATHS)}"
         )
     sd = _require_source_dir(source_dir)
     rel = _LEGACY_PATHS[name]
@@ -106,9 +106,7 @@ def load_legacy_gene_expression_table(
     t = load_legacy_table("gene_expression", source_dir=source_dir)
 
     # Get available time points for the specified organ
-    tps = (
-        t[tp_col].key_set().filter(lambda x: x.organ == organ).time_point.collect()[0]
-    )
+    tps = t[tp_col].key_set().filter(lambda x: x.organ == organ).time_point.collect()[0]
 
     # Annotate expression values per time point
     t = t.annotate(

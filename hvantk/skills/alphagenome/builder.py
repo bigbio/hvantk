@@ -5,6 +5,7 @@ external API for each variant, persists predictions and checkpoint files
 to a temp directory, then re-emits a Hail Table keyed by (locus, alleles)
 under the Phase B contract.
 """
+
 from __future__ import annotations
 
 import logging
@@ -102,9 +103,7 @@ def build_alphagenome_predictions(parsed_input, ctx, **params):
     from hvantk.core.models import AnnotationTable
 
     safe_params = {
-        k: v
-        for k, v in params.items()
-        if k not in ("output_path", "overwrite")
+        k: v for k, v in params.items() if k not in ("output_path", "overwrite")
     }
 
     with tempfile.TemporaryDirectory() as td:
@@ -118,9 +117,7 @@ def build_alphagenome_predictions(parsed_input, ctx, **params):
         )
         ht_path = os.path.join(tmp_out, "alphagenome_variants.ht")
         ht = hl.read_table(ht_path)
-        persistent_tmp = hl.utils.new_temp_file(
-            prefix="alphagenome_", extension=".ht"
-        )
+        persistent_tmp = hl.utils.new_temp_file(prefix="alphagenome_", extension=".ht")
         ht = ht.checkpoint(persistent_tmp, overwrite=True)
 
     return AnnotationTable.from_hail(

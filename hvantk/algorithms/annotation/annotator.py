@@ -30,7 +30,9 @@ class Annotator(ABC):
     chunked-IO streaming base.
     """
 
-    def __init__(self, name: str, annotation_source: str, chunk_size: int = DEFAULT_CHUNK_SIZE):
+    def __init__(
+        self, name: str, annotation_source: str, chunk_size: int = DEFAULT_CHUNK_SIZE
+    ):
         self.name = name
         self.annotation_source = annotation_source
         self.chunk_size = chunk_size
@@ -66,9 +68,7 @@ class Annotator(ABC):
         This is used when the annotator is the first in pipeline.
         Usually annotators are used to process existing chunks.
         """
-        raise NotImplementedError(
-            "Annotators typically process existing data chunks"
-        )
+        raise NotImplementedError("Annotators typically process existing data chunks")
 
     def process_chunk(self, chunk: hl.Table) -> hl.Table:
         """Process a chunk by adding annotations"""
@@ -190,7 +190,10 @@ class GeneExpressionAnnotator(Annotator):
     """
 
     def __init__(
-        self, expression_path: str, tissue_focus: str = "heart", chunk_size: int = DEFAULT_CHUNK_SIZE
+        self,
+        expression_path: str,
+        tissue_focus: str = "heart",
+        chunk_size: int = DEFAULT_CHUNK_SIZE,
     ):
         super().__init__("GeneExpression", expression_path, chunk_size)
         self.expression_path = expression_path
@@ -367,5 +370,3 @@ class PopulationFrequencyAnnotator(Annotator):
         )
 
         return annotated
-
-

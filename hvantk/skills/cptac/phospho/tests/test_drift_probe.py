@@ -18,7 +18,9 @@ from hvantk.skills.cptac.shared import drift as shared_drift
 from hvantk.skills.cptac.phospho import drift_probe
 
 
-def _mock_release_response(m, *, tag_name="v1.6.0", published_at="2026-04-01T00:00:00Z"):
+def _mock_release_response(
+    m, *, tag_name="v1.6.0", published_at="2026-04-01T00:00:00Z"
+):
     m.get(
         shared_drift.GITHUB_LATEST_RELEASE_URL,
         json={"tag_name": tag_name, "published_at": published_at},

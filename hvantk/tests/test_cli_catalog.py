@@ -45,9 +45,7 @@ def test_show_known_accession_yaml():
 
 
 def test_show_known_accession_json():
-    result = CliRunner().invoke(
-        catalog_group, ["show", "E-GTEX-8", "--format", "json"]
-    )
+    result = CliRunner().invoke(catalog_group, ["show", "E-GTEX-8", "--format", "json"])
     assert result.exit_code == 0, result.output
     assert '"accession"' in result.output
     assert "E-GTEX-8" in result.output

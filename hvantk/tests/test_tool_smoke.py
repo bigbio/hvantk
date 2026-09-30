@@ -9,9 +9,8 @@ def test_all_tool_manifests_load_without_errors():
     tool_loader.reset_registry_for_tests()
     reg = tool_loader.get_registry()
     errors = reg.load_errors()
-    assert errors == [], (
-        "Unexpected tool manifest load errors:\n"
-        + "\n".join(f"  {p}: {e}" for p, e in errors)
+    assert errors == [], "Unexpected tool manifest load errors:\n" + "\n".join(
+        f"  {p}: {e}" for p, e in errors
     )
 
 
@@ -23,8 +22,15 @@ def test_all_expected_tool_domains_have_at_least_one_tool():
     # NOTE: "annotation" intentionally absent — its only tool (annotate_features,
     # a legacy unwired argparse script) was removed; the domain has no CLI tool.
     expected = {
-        "plugins", "expression", "genesets",
-        "ptm", "ancestry", "qtl", "enrichex", "hgc", "infra",
+        "plugins",
+        "expression",
+        "genesets",
+        "ptm",
+        "ancestry",
+        "qtl",
+        "enrichex",
+        "hgc",
+        "infra",
     }
     missing = expected - domains
     assert not missing, f"Domains with no manifested tool: {missing}"

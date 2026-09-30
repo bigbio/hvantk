@@ -47,10 +47,19 @@ class TestLoadConfig:
         from hvantk.skills.alphagenome.pipelines import load_config
 
         cfg = {
-            "api": {"key": None, "max_retries": 3, "retry_backoff": 2.0, "request_timeout": 120},
+            "api": {
+                "key": None,
+                "max_retries": 3,
+                "retry_backoff": 2.0,
+                "request_timeout": 120,
+            },
             "ontology": {"terms": ["UBERON:0001157"], "output_types": ["RNA_SEQ"]},
-            "intervals": {"default_size": 1048576, "adaptive": True,
-                          "adaptive_max_size": 1048576, "density_window": 50000},
+            "intervals": {
+                "default_size": 1048576,
+                "adaptive": True,
+                "adaptive_max_size": 1048576,
+                "density_window": 50000,
+            },
         }
         cfg_path = tmp_path / "cfg.yaml"
         cfg_path.write_text(yaml.dump(cfg))
@@ -62,10 +71,19 @@ class TestLoadConfig:
         from hvantk.skills.alphagenome.pipelines import load_config
 
         cfg = {
-            "api": {"key": None, "max_retries": 3, "retry_backoff": 2.0, "request_timeout": 120},
+            "api": {
+                "key": None,
+                "max_retries": 3,
+                "retry_backoff": 2.0,
+                "request_timeout": 120,
+            },
             "ontology": {"terms": ["UBERON:0001157"], "output_types": ["RNA_SEQ"]},
-            "intervals": {"default_size": 1048576, "adaptive": True,
-                          "adaptive_max_size": 1048576, "density_window": 50000},
+            "intervals": {
+                "default_size": 1048576,
+                "adaptive": True,
+                "adaptive_max_size": 1048576,
+                "density_window": 50000,
+            },
         }
         cfg_path = tmp_path / "cfg.yaml"
         cfg_path.write_text(yaml.dump(cfg))
@@ -85,8 +103,13 @@ class SimpleVariant:
 class TestComputeIntervals:
     """Test compute_intervals() as a pure function."""
 
-    def _make_config(self, adaptive=True, default_size=1_048_576,
-                     adaptive_max_size=1_048_576, density_window=50_000):
+    def _make_config(
+        self,
+        adaptive=True,
+        default_size=1_048_576,
+        adaptive_max_size=1_048_576,
+        density_window=50_000,
+    ):
         return {
             "intervals": {
                 "adaptive": adaptive,
@@ -242,9 +265,7 @@ class TestCheckpointManager:
         mgr.save_state()
         mgr.clear()
         assert mgr.completed_intervals == set()
-        assert not os.path.isfile(
-            os.path.join(out_dir, "_checkpoints", "state.json")
-        )
+        assert not os.path.isfile(os.path.join(out_dir, "_checkpoints", "state.json"))
 
 
 class TestRateLimitedCaller:
@@ -266,8 +287,10 @@ class TestRateLimitedCaller:
         caller = RateLimitedCaller(mock_model, self._make_api_config())
 
         result = caller.call_predict_variant(
-            interval=MagicMock(), variant=MagicMock(),
-            ontology_terms=["UBERON:0001157"], output_types=["RNA_SEQ"],
+            interval=MagicMock(),
+            variant=MagicMock(),
+            ontology_terms=["UBERON:0001157"],
+            output_types=["RNA_SEQ"],
         )
         assert result == {"rna_seq": [1.0]}
         mock_model.predict_variant.assert_called_once()
@@ -283,8 +306,10 @@ class TestRateLimitedCaller:
         ]
         caller = RateLimitedCaller(mock_model, self._make_api_config())
         result = caller.call_predict_variant(
-            interval=MagicMock(), variant=MagicMock(),
-            ontology_terms=[], output_types=[],
+            interval=MagicMock(),
+            variant=MagicMock(),
+            ontology_terms=[],
+            output_types=[],
         )
         assert result == {"rna_seq": [1.0]}
         assert mock_model.predict_variant.call_count == 3
@@ -294,12 +319,12 @@ class TestRateLimitedCaller:
 
         mock_model = MagicMock()
         mock_model.predict_variant.side_effect = Exception("503 Server Error")
-        caller = RateLimitedCaller(
-            mock_model, self._make_api_config(max_retries=2)
-        )
+        caller = RateLimitedCaller(mock_model, self._make_api_config(max_retries=2))
         result = caller.call_predict_variant(
-            interval=MagicMock(), variant=MagicMock(),
-            ontology_terms=[], output_types=[],
+            interval=MagicMock(),
+            variant=MagicMock(),
+            ontology_terms=[],
+            output_types=[],
         )
         assert result is None
         assert mock_model.predict_variant.call_count == 2
@@ -327,12 +352,19 @@ class TestAlphaGenomePipeline:
 
     def _make_config_file(self, tmp_path, overrides=None):
         cfg = {
-            "api": {"key": "test-key", "max_retries": 2,
-                    "retry_backoff": 0.01, "request_timeout": 5},
-            "ontology": {"terms": ["UBERON:0001157"],
-                         "output_types": ["RNA_SEQ"]},
-            "intervals": {"default_size": 100_000, "adaptive": False,
-                          "adaptive_max_size": 100_000, "density_window": 50_000},
+            "api": {
+                "key": "test-key",
+                "max_retries": 2,
+                "retry_backoff": 0.01,
+                "request_timeout": 5,
+            },
+            "ontology": {"terms": ["UBERON:0001157"], "output_types": ["RNA_SEQ"]},
+            "intervals": {
+                "default_size": 100_000,
+                "adaptive": False,
+                "adaptive_max_size": 100_000,
+                "density_window": 50_000,
+            },
         }
         if overrides:
             for section, vals in overrides.items():
@@ -351,7 +383,9 @@ class TestAlphaGenomePipeline:
         out = str(tmp_path / "output")
 
         streamer = AlphaGenomePipeline(
-            input_path=tsv, output_dir=out, config_path=cfg,
+            input_path=tsv,
+            output_dir=out,
+            config_path=cfg,
         )
         streamer.setup()
         assert len(streamer._variants) == 1
@@ -360,7 +394,9 @@ class TestAlphaGenomePipeline:
 
     @patch("hvantk.skills.alphagenome.pipelines._import_alphagenome")
     @patch("hvantk.skills.alphagenome.pipelines._create_dna_client")
-    def test_stream_calls_api_per_variant(self, mock_create_client, mock_import, tmp_path):
+    def test_stream_calls_api_per_variant(
+        self, mock_create_client, mock_import, tmp_path
+    ):
         from hvantk.skills.alphagenome.pipelines import AlphaGenomePipeline
 
         mock_model = MagicMock()
@@ -382,7 +418,9 @@ class TestAlphaGenomePipeline:
         out = str(tmp_path / "output")
 
         streamer = AlphaGenomePipeline(
-            input_path=tsv, output_dir=out, config_path=cfg,
+            input_path=tsv,
+            output_dir=out,
+            config_path=cfg,
         )
         streamer.setup()
         batches = list(streamer.stream())
@@ -403,10 +441,16 @@ class TestAlphaGenomePipeline:
         os.makedirs(ckpt_dir, exist_ok=True)
         state_path = os.path.join(ckpt_dir, "state.json")
         with open(state_path, "w") as f:
-            json.dump({"completed_intervals": ["chr1:450000-550000"], "failed_variants": []}, f)
+            json.dump(
+                {"completed_intervals": ["chr1:450000-550000"], "failed_variants": []},
+                f,
+            )
 
         streamer = AlphaGenomePipeline(
-            input_path=tsv, output_dir=out, config_path=cfg, no_resume=True,
+            input_path=tsv,
+            output_dir=out,
+            config_path=cfg,
+            no_resume=True,
         )
         streamer.setup()
         assert not os.path.isfile(state_path)
@@ -418,7 +462,9 @@ class TestEndToEnd:
 
     @patch("hvantk.skills.alphagenome.pipelines._import_alphagenome")
     @patch("hvantk.skills.alphagenome.pipelines._create_dna_client")
-    def test_full_pipeline_tsv_input(self, mock_create_client, mock_import_ag, tmp_path):
+    def test_full_pipeline_tsv_input(
+        self, mock_create_client, mock_import_ag, tmp_path
+    ):
         from hvantk.skills.alphagenome.pipelines import AlphaGenomePipeline
 
         # Setup mock model
@@ -447,12 +493,19 @@ class TestEndToEnd:
 
         # Write config
         cfg = {
-            "api": {"key": "test-key", "max_retries": 2,
-                    "retry_backoff": 0.01, "request_timeout": 5},
-            "ontology": {"terms": ["UBERON:0001157"],
-                         "output_types": ["RNA_SEQ"]},
-            "intervals": {"default_size": 100_000, "adaptive": True,
-                          "adaptive_max_size": 100_000, "density_window": 50_000},
+            "api": {
+                "key": "test-key",
+                "max_retries": 2,
+                "retry_backoff": 0.01,
+                "request_timeout": 5,
+            },
+            "ontology": {"terms": ["UBERON:0001157"], "output_types": ["RNA_SEQ"]},
+            "intervals": {
+                "default_size": 100_000,
+                "adaptive": True,
+                "adaptive_max_size": 100_000,
+                "density_window": 50_000,
+            },
         }
         cfg_path = tmp_path / "config.yaml"
         cfg_path.write_text(yaml.dump(cfg))
@@ -499,17 +552,22 @@ class TestEndToEnd:
 
         tsv_path = tmp_path / "variants.tsv"
         tsv_path.write_text(
-            "chrom\tpos\tref\talt\n"
-            "chr1\t100000\tA\tT\n"
-            "chr2\t500000\tC\tG\n"
+            "chrom\tpos\tref\talt\nchr1\t100000\tA\tT\nchr2\t500000\tC\tG\n"
         )
         cfg = {
-            "api": {"key": "test-key", "max_retries": 2,
-                    "retry_backoff": 0.01, "request_timeout": 5},
-            "ontology": {"terms": ["UBERON:0001157"],
-                         "output_types": ["RNA_SEQ"]},
-            "intervals": {"default_size": 100_000, "adaptive": False,
-                          "adaptive_max_size": 100_000, "density_window": 50_000},
+            "api": {
+                "key": "test-key",
+                "max_retries": 2,
+                "retry_backoff": 0.01,
+                "request_timeout": 5,
+            },
+            "ontology": {"terms": ["UBERON:0001157"], "output_types": ["RNA_SEQ"]},
+            "intervals": {
+                "default_size": 100_000,
+                "adaptive": False,
+                "adaptive_max_size": 100_000,
+                "density_window": 50_000,
+            },
         }
         cfg_path = tmp_path / "config.yaml"
         cfg_path.write_text(yaml.dump(cfg))
@@ -517,7 +575,8 @@ class TestEndToEnd:
 
         # Run first time
         streamer = AlphaGenomePipeline(
-            input_path=str(tsv_path), output_dir=out_dir,
+            input_path=str(tsv_path),
+            output_dir=out_dir,
             config_path=str(cfg_path),
         )
         streamer.setup()
@@ -528,7 +587,8 @@ class TestEndToEnd:
         # Run again — should skip all intervals
         mock_model.predict_variant.reset_mock()
         streamer2 = AlphaGenomePipeline(
-            input_path=str(tsv_path), output_dir=out_dir,
+            input_path=str(tsv_path),
+            output_dir=out_dir,
             config_path=str(cfg_path),
         )
         streamer2.setup()

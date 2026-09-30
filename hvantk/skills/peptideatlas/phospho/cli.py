@@ -12,7 +12,9 @@ import logging
 
 import click
 
-from hvantk.skills.peptideatlas.phospho.shared.datasets import PeptideAtlasPhosphoDataset
+from hvantk.skills.peptideatlas.phospho.shared.datasets import (
+    PeptideAtlasPhosphoDataset,
+)
 
 logger = logging.getLogger(__name__)
 

@@ -1,4 +1,5 @@
 """compose: generic Stage-2 left-join of prepared Layer-1 axes onto the spine."""
+
 from __future__ import annotations
 
 import pytest

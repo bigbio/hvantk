@@ -3,6 +3,7 @@
 All pure Python -- no Hail -- so these run in the default fast suite. The contract's
 validation logic is deliberately Hail-free (design G1).
 """
+
 from pathlib import Path
 
 import pytest
@@ -93,7 +94,7 @@ def test_prior_is_required(tmp_path):
 
 
 def test_prior_direction_is_required(tmp_path):
-    text = "name: demo\nkey: symbol\ntable: /data/t.tsv\n" "prior:\n  column: minp\n"
+    text = "name: demo\nkey: symbol\ntable: /data/t.tsv\nprior:\n  column: minp\n"
     with pytest.raises(Exception):
         load_cohort(_write(tmp_path, text))
 
@@ -159,7 +160,7 @@ def test_axis_column_colliding_with_the_prior_column_is_rejected(tmp_path):
     """The minp trap: the prior stat and a same-named model feature are different
     transforms of the same quantity (raw p vs -log10 p). Declaring both silently
     feeds the untransformed value in as a feature."""
-    text = MINIMAL + ("cohort_axes:\n" "  - {axis: burden, columns: [minp]}\n")
+    text = MINIMAL + ("cohort_axes:\n  - {axis: burden, columns: [minp]}\n")
     with pytest.raises(ValueError, match="duplicate declared column 'minp'"):
         load_cohort(_write(tmp_path, text))
 

@@ -3,6 +3,7 @@
 The collision check is pure Python (schema introspection only) and is deliberately
 unmarked so it runs in the fast suite; the join tests need Hail.
 """
+
 import pytest
 
 from hvantk.algorithms.cohort.attach import (

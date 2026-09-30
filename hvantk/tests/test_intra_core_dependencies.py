@@ -6,6 +6,7 @@
 
 Same shape as test_dependency_directions.py: AST walk every import.
 """
+
 from __future__ import annotations
 
 import ast
@@ -36,7 +37,9 @@ def _imports_in(subpath: str) -> list[tuple[Path, str]]:
 
 
 def _has(forbidden: str, imports: list[tuple[Path, str]]) -> list[tuple[Path, str]]:
-    return [(p, m) for p, m in imports if m == forbidden or m.startswith(forbidden + ".")]
+    return [
+        (p, m) for p, m in imports if m == forbidden or m.startswith(forbidden + ".")
+    ]
 
 
 def test_core_models_does_not_import_core_io():
@@ -48,8 +51,9 @@ def test_core_models_does_not_import_core_io():
 
 
 def test_core_utils_does_not_import_core_models_or_io():
-    bad = _has("hvantk.core.models", _imports_in("utils")) + \
-          _has("hvantk.core.io", _imports_in("utils"))
+    bad = _has("hvantk.core.models", _imports_in("utils")) + _has(
+        "hvantk.core.io", _imports_in("utils")
+    )
     assert not bad, (
         "core/utils must stay generic (no core/models or core/io imports). "
         f"Offenders: {bad}"
@@ -119,7 +123,8 @@ def test_core_constants_has_no_plugin_specific_blocks():
         return
     source = core_constants.read_text()
     offenders = [
-        prefix for prefix in forbidden_prefixes
+        prefix
+        for prefix in forbidden_prefixes
         if any(line.lstrip().startswith(prefix) for line in source.splitlines())
     ]
     assert not offenders, (
@@ -141,7 +146,9 @@ def test_core_streamers_imports_no_skills():
             continue
         for i, line in enumerate(py.read_text().splitlines(), 1):
             s = line.lstrip()
-            if s.startswith("from hvantk.skills") or s.startswith("import hvantk.skills"):
+            if s.startswith("from hvantk.skills") or s.startswith(
+                "import hvantk.skills"
+            ):
                 offenders.append(f"{py.relative_to(PACKAGE_ROOT)}:{i}: {s}")
     assert not offenders, (
         "core/streamers/ must not import from hvantk.skills. "
@@ -153,10 +160,27 @@ def test_core_streamers_imports_no_skills():
 def test_core_streamers_has_no_plugin_specific_classes():
     """No class declared in core/streamers/ may carry a plugin-name prefix."""
     forbidden_prefixes = (
-        "ClinGen", "ClinVar", "GenCC", "COSMIC", "CosmicCGC", "HGNC",
-        "Ensembl", "MSigDB", "DbNSFP", "UCSC", "AlphaGenome",
-        "ExpressionAtlas", "GTEx", "PQTL", "GWAS",
-        "GnomAD", "GeVIR", "UniProt", "PeptideAtlas", "CPTAC", "Insider",
+        "ClinGen",
+        "ClinVar",
+        "GenCC",
+        "COSMIC",
+        "CosmicCGC",
+        "HGNC",
+        "Ensembl",
+        "MSigDB",
+        "DbNSFP",
+        "UCSC",
+        "AlphaGenome",
+        "ExpressionAtlas",
+        "GTEx",
+        "PQTL",
+        "GWAS",
+        "GnomAD",
+        "GeVIR",
+        "UniProt",
+        "PeptideAtlas",
+        "CPTAC",
+        "Insider",
     )
     streamers_dir = PACKAGE_ROOT / "core" / "streamers"
     if not streamers_dir.is_dir():
@@ -168,7 +192,7 @@ def test_core_streamers_has_no_plugin_specific_classes():
         for i, line in enumerate(py.read_text().splitlines(), 1):
             s = line.lstrip()
             if s.startswith("class "):
-                name = s[len("class "):]
+                name = s[len("class ") :]
                 if any(name.startswith(p) for p in forbidden_prefixes):
                     offenders.append(f"{py.relative_to(PACKAGE_ROOT)}:{i}: {s}")
     assert not offenders, (
@@ -182,9 +206,20 @@ def test_core_streamers_has_no_plugin_specific_classes():
 def test_core_utils_has_no_provider_specific_files():
     """core/utils/ must not hold provider-specific files."""
     forbidden_prefixes = (
-        "clinvar_", "mondo_", "hgnc_", "cosmic_", "gencc_", "clingen_",
-        "gtex_", "expression_atlas_", "ucsc_", "alphagenome_",
-        "peptideatlas_", "uniprot_", "cptac_", "gene_disease_",
+        "clinvar_",
+        "mondo_",
+        "hgnc_",
+        "cosmic_",
+        "gencc_",
+        "clingen_",
+        "gtex_",
+        "expression_atlas_",
+        "ucsc_",
+        "alphagenome_",
+        "peptideatlas_",
+        "uniprot_",
+        "cptac_",
+        "gene_disease_",
     )
     utils_dir = PACKAGE_ROOT / "core" / "utils"
     if not utils_dir.is_dir():

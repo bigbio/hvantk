@@ -1,4 +1,5 @@
 """Tests for ExpressionMatrix: construction, obs/var access, subsetting."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone

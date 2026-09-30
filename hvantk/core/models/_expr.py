@@ -6,6 +6,7 @@ hvantk.core.models._compile. The tree is frozen + introspectable so the
 same expression can be logged, cached, or run on either backend without
 changing the algorithm.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

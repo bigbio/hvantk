@@ -94,8 +94,9 @@ _KNOWN_TOP_LEVEL_KEYS = {"name", "cohort", "features", "labels", "min_label_cove
     "The API also supports chunked nulls (NullConfig(chunk=, n_chunks=) + "
     "NullDistribution.merge) for cluster array jobs; there is no --chunk/--n-chunks here.",
 )
-def rerank_cmd(config_path, output, seed, seed_sweep, blocks_path, max_block_frac,
-               n_perm, null_out):
+def rerank_cmd(
+    config_path, output, seed, seed_sweep, blocks_path, max_block_frac, n_perm, null_out
+):
     # Heavy ML imports are deferred to invocation time so that importing the hvantk CLI
     # (and every other subcommand) does NOT require scikit-learn, which is an OPTIONAL
     # dependency. Mirrors the psroc/ancestry deferral pattern.
@@ -224,14 +225,18 @@ def rerank_cmd(config_path, output, seed, seed_sweep, blocks_path, max_block_fra
                 else BlockPolicy(
                     table=blocks_path,
                     max_block_frac=(
-                        DEFAULT_MAX_BLOCK_FRAC if max_block_frac is None else max_block_frac
+                        DEFAULT_MAX_BLOCK_FRAC
+                        if max_block_frac is None
+                        else max_block_frac
                     ),
                 )
             ),
             nulls=(
                 None
                 if n_perm <= 0
-                else NullConfig(n_perm=n_perm, seed=DEFAULT_SEED if seed is None else seed)
+                else NullConfig(
+                    n_perm=n_perm, seed=DEFAULT_SEED if seed is None else seed
+                )
             ),
         )
     except (TypeError, ValueError) as exc:

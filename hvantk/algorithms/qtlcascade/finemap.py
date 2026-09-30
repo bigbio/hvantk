@@ -75,8 +75,13 @@ def finemap_available() -> tuple[bool, list[str]]:
 
 
 def _cache_dir(ld_cache_dir: Optional[str]) -> Path:
-    d = Path(ld_cache_dir) if ld_cache_dir else Path(
-        os.environ.get("HVANTK_LD_CACHE", Path.home() / ".cache" / "hvantk" / "1kg"))
+    d = (
+        Path(ld_cache_dir)
+        if ld_cache_dir
+        else Path(
+            os.environ.get("HVANTK_LD_CACHE", Path.home() / ".cache" / "hvantk" / "1kg")
+        )
+    )
     d.mkdir(parents=True, exist_ok=True)
     return d
 
@@ -106,15 +111,20 @@ def _download_file(url: str, dest: Path, timeout: int = 300, retries: int = 3) -
                 raise IOError("empty download")
             if expected is not None and size != int(expected):
                 raise IOError(f"truncated download: {size} != {expected} bytes")
-            os.replace(part, dest)            # atomic; never leaves a partial dest
+            os.replace(part, dest)  # atomic; never leaves a partial dest
             return
         except Exception as exc:  # network flakiness; retry with backoff
             last = exc
-            logger.warning("download attempt %d/%d failed for %s: %s",
-                           attempt + 1, retries, url, exc)
+            logger.warning(
+                "download attempt %d/%d failed for %s: %s",
+                attempt + 1,
+                retries,
+                url,
+                exc,
+            )
             part.unlink(missing_ok=True)
             if attempt + 1 < retries:
-                time.sleep(min(2 ** attempt, 8))
+                time.sleep(min(2**attempt, 8))
     raise RuntimeError(f"failed to download {url}: {last}")
 
 
@@ -130,8 +140,12 @@ def _unrelated_samples(cache: Path, superpop: str) -> list[str]:
     with open(panel) as fh:
         header = fh.readline().split()
         idx = {name: i for i, name in enumerate(header)}
-        sid, fat, mot, sup = (idx["SampleID"], idx["FatherID"],
-                              idx["MotherID"], idx["Superpopulation"])
+        sid, fat, mot, sup = (
+            idx["SampleID"],
+            idx["FatherID"],
+            idx["MotherID"],
+            idx["Superpopulation"],
+        )
         for line in fh:
             f = line.split()
             if len(f) > sup and f[sup] == superpop and f[fat] == "0" and f[mot] == "0":
@@ -164,7 +178,11 @@ def _resolve_contig(vf, chrom: str) -> str:
 
 
 def _panel_dosages(
-    chrom: str, start: int, end: int, cache: Path, superpop: str,
+    chrom: str,
+    start: int,
+    end: int,
+    cache: Path,
+    superpop: str,
     ld_vcf: Optional[str] = None,
 ) -> dict[tuple[int, str, str], np.ndarray]:
     """Region ALT-dosage matrix over the reference samples (biallelic SNPs).
@@ -177,7 +195,7 @@ def _panel_dosages(
     import pysam
 
     if ld_vcf:
-        sources = [(ld_vcf, None, None)]            # local VCF: use all samples
+        sources = [(ld_vcf, None, None)]  # local VCF: use all samples
     else:
         samples = _unrelated_samples(cache, superpop)
         idx = _kg_index(chrom, cache)
@@ -197,12 +215,17 @@ def _panel_dosages(
                     if not present:
                         raise RuntimeError(
                             f"none of the {len(keep)} {superpop} samples are in the "
-                            "reference VCF header")
+                            "reference VCF header"
+                        )
                     vf.subset_samples(present)
                 contig = _resolve_contig(vf, chrom)
                 for rec in vf.fetch(contig, max(0, start - 1), end):
-                    if len(rec.ref) != 1 or not rec.alts or len(rec.alts) != 1 \
-                            or len(rec.alts[0]) != 1:
+                    if (
+                        len(rec.ref) != 1
+                        or not rec.alts
+                        or len(rec.alts) != 1
+                        or len(rec.alts[0]) != 1
+                    ):
                         continue  # biallelic SNPs only (mirrors bcftools -m2 -M2 -v snps)
                     dos = []
                     for s in rec.samples.values():
@@ -215,8 +238,10 @@ def _panel_dosages(
             return out
         except Exception as exc:
             last = exc
-            logger.warning("1000G region fetch attempt %d/8 failed: %s", attempt + 1, exc)
-            time.sleep(min(2 ** attempt, 8))  # backoff: don't burn all retries on a blip
+            logger.warning(
+                "1000G region fetch attempt %d/8 failed: %s", attempt + 1, exc
+            )
+            time.sleep(min(2**attempt, 8))  # backoff: don't burn all retries on a blip
     raise RuntimeError(f"1000G region fetch failed after retries: {last}")
 
 
@@ -245,8 +270,16 @@ class _Harmonized:
     R: np.ndarray
 
 
-def _build_inputs(gwas, eqtl_recs, chrom, start, end, cache: Path, superpop: str,
-                  ld_vcf: Optional[str] = None) -> _Harmonized:
+def _build_inputs(
+    gwas,
+    eqtl_recs,
+    chrom,
+    start,
+    end,
+    cache: Path,
+    superpop: str,
+    ld_vcf: Optional[str] = None,
+) -> _Harmonized:
     """Harmonize GWAS ∩ eQTL ∩ 1000G panel → z-scores + signed LD matrix.
 
     Effects oriented to the GWAS ALT allele; LD computed as ALT-dosage
@@ -282,13 +315,19 @@ def _build_inputs(gwas, eqtl_recs, chrom, start, end, cache: Path, superpop: str
         rows.append((f"{chrom}:{pos}:{ref}:{alt}", pos, bg, sg, be, se))
         dosages.append(dv)
     if len(rows) < 2:
-        return _Harmonized(snps=[r[0] for r in rows], z_gwas=np.zeros(0),
-                           z_eqtl=np.zeros(0), R=np.zeros((0, 0)))
+        return _Harmonized(
+            snps=[r[0] for r in rows],
+            z_gwas=np.zeros(0),
+            z_eqtl=np.zeros(0),
+            R=np.zeros((0, 0)),
+        )
     if len(rows) > 5000:
         logger.warning(
             "%d variants in the LD region; the %dx%d correlation matrix is large "
             "and SuSiE may be slow/memory-heavy. Consider a smaller --window-kb.",
-            len(rows), len(rows), len(rows),
+            len(rows),
+            len(rows),
+            len(rows),
         )
     order = np.argsort([r[1] for r in rows])
     rows = [rows[i] for i in order]
@@ -321,23 +360,30 @@ def run_finemap(
     """
     ok, missing = finemap_available()
     if not ok:
-        return FineMapResult(available=False,
-                             note="fine-map skipped; missing: " + ", ".join(missing))
+        return FineMapResult(
+            available=False, note="fine-map skipped; missing: " + ", ".join(missing)
+        )
     cache = _cache_dir(ld_cache_dir)
     try:
-        h = _build_inputs(gwas, eqtl_recs, chrom, start, end, cache, superpop,
-                          ld_vcf=ld_vcf)
+        h = _build_inputs(
+            gwas, eqtl_recs, chrom, start, end, cache, superpop, ld_vcf=ld_vcf
+        )
     except Exception as exc:
         # LD reference unobtainable is a *known* graceful-degrade path -> available=False
         # so the verdict falls back to SUGGESTIVE (ABF only). An unexpected SuSiE-kernel
         # crash below is treated differently (available=True, pp4=None -> INCONCLUSIVE).
-        logger.warning("fine-map LD reference unavailable, continuing without it: %s", exc)
+        logger.warning(
+            "fine-map LD reference unavailable, continuing without it: %s", exc
+        )
         return FineMapResult(available=False, note=f"LD reference unavailable: {exc}")
 
     n = len(h.snps)
     if n < 2:
-        return FineMapResult(available=True, n_variants=n,
-                             note="too few overlapping variants for fine-mapping")
+        return FineMapResult(
+            available=True,
+            n_variants=n,
+            note="too few overlapping variants for fine-mapping",
+        )
 
     if work_dir:  # optional debug dump of the exact SuSiE inputs
         try:
@@ -357,12 +403,17 @@ def run_finemap(
         cs_g, cs_e = len(sg.cs), len(se.cs)
         pp4 = coloc_susie(sg, se)  # 0.0 when either trait has no credible set
         return FineMapResult(
-            available=True, n_variants=n,
-            cs_gwas=cs_g, cs_eqtl=cs_e, coloc_susie_pp4=pp4,
-            ld_s_gwas=None, ld_s_eqtl=None,  # estimate_s_rss diagnostic dropped (R-only)
+            available=True,
+            n_variants=n,
+            cs_gwas=cs_g,
+            cs_eqtl=cs_e,
+            coloc_susie_pp4=pp4,
+            ld_s_gwas=None,
+            ld_s_eqtl=None,  # estimate_s_rss diagnostic dropped (R-only)
             note="ok",
         )
     except Exception as exc:  # fine-mapping is optional: degrade, don't abort the run
         logger.warning("fine-mapping failed, continuing without it: %s", exc)
-        return FineMapResult(available=True, n_variants=n,
-                             note=f"fine-map error: {exc}")
+        return FineMapResult(
+            available=True, n_variants=n, note=f"fine-map error: {exc}"
+        )

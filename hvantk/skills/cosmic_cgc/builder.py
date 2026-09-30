@@ -4,6 +4,7 @@ Phase B builder: imports the COSMIC CGC TSV, normalises tier classifications,
 optionally filters by mutation context, and emits an AnnotationTable with
 source-fingerprint provenance.
 """
+
 from __future__ import annotations
 
 import logging

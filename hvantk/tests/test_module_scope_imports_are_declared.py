@@ -6,6 +6,7 @@ to require it. That is the pattern pyproject's own numpy comment warns about: "t
 pandas drops or re-pins numpy, the break surfaces somewhere unrelated." Nothing asserted
 the rule, so this does. Stdlib-only, no Hail; runs in the default selection.
 """
+
 from __future__ import annotations
 
 import ast
@@ -110,7 +111,9 @@ def module_scope_imports(path: Path) -> set[str]:
 
 
 def _third_party(names: set[str]) -> set[str]:
-    return {n for n in names if n not in _STDLIB and n != "hvantk" and not n.startswith("_")}
+    return {
+        n for n in names if n not in _STDLIB and n != "hvantk" and not n.startswith("_")
+    }
 
 
 def test_the_scanner_sees_a_known_module_scope_import():

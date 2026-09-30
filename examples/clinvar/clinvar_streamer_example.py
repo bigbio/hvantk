@@ -113,8 +113,8 @@ def example_with_validation():
 
         print(f"Training Set Validation:")
         print(f"  Total variants: {total_count}")
-        print(f"  True Positives: {tp_count} ({tp_count/total_count*100:.1f}%)")
-        print(f"  True Negatives: {tn_count} ({tn_count/total_count*100:.1f}%)")
+        print(f"  True Positives: {tp_count} ({tp_count / total_count * 100:.1f}%)")
+        print(f"  True Negatives: {tn_count} ({tn_count / total_count * 100:.1f}%)")
 
         # Check for balanced dataset
         if abs(tp_count - tn_count) / total_count > 0.3:

@@ -220,7 +220,10 @@ def test_driver_af_tie_on_cc_is_resolved_toward_the_most_common_driver_regardles
 def test_driver_af_still_prefers_the_higher_case_carrier_count():
     from hvantk.algorithms.burden.fet import _driver_af
 
-    assert _driver_af([{"cc": 1, "ctrl_freq": 0.001}, {"cc": 2, "ctrl_freq": 0.05}]) == 0.05
+    assert (
+        _driver_af([{"cc": 1, "ctrl_freq": 0.001}, {"cc": 2, "ctrl_freq": 0.05}])
+        == 0.05
+    )
 
 
 def test_driver_af_treats_a_nan_control_frequency_as_the_worst_tie_breaker():
@@ -253,7 +256,10 @@ def test_driver_af_treats_a_none_control_frequency_like_nan():
 def test_driver_af_all_nan_tie_is_nan():
     from hvantk.algorithms.burden.fet import _driver_af
 
-    drivers = [{"cc": 3, "ctrl_freq": float("nan")}, {"cc": 3, "ctrl_freq": float("nan")}]
+    drivers = [
+        {"cc": 3, "ctrl_freq": float("nan")},
+        {"cc": 3, "ctrl_freq": float("nan")},
+    ]
     assert math.isnan(_driver_af(drivers))
     assert math.isnan(_driver_af(list(reversed(drivers))))
 
@@ -263,7 +269,10 @@ def test_driver_af_inf_control_frequency_beats_nan_on_a_tie():
     commit's sign convention, since negating a +inf ctrl_freq also produced -inf."""
     from hvantk.algorithms.burden.fet import _driver_af
 
-    drivers = [{"cc": 3, "ctrl_freq": float("inf")}, {"cc": 3, "ctrl_freq": float("nan")}]
+    drivers = [
+        {"cc": 3, "ctrl_freq": float("inf")},
+        {"cc": 3, "ctrl_freq": float("nan")},
+    ]
     assert _driver_af(drivers) == float("inf")
     assert _driver_af(list(reversed(drivers))) == float("inf")
 

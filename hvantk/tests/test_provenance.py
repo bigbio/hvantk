@@ -1,4 +1,5 @@
 """Tests for Provenance dataclass: required fields, unknown() factory, immutability."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone

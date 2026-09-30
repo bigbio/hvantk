@@ -3,6 +3,7 @@
 `_boot_ci` resamples GENES. Which genes land in which fold is a second source of variation,
 and the shipped interval could not see it at all.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -63,7 +64,9 @@ def test_a_sweep_is_reproducible():
 
 def test_the_envelope_can_only_widen():
     boot = (-0.01, 0.05)
-    assert _envelope(boot, SeedSpread((1, 2), (0.0, 0.02), 0.0, 0.02, 0.01, 0.01)) == boot
+    assert (
+        _envelope(boot, SeedSpread((1, 2), (0.0, 0.02), 0.0, 0.02, 0.01, 0.01)) == boot
+    )
     wider = _envelope(boot, SeedSpread((1, 2), (-0.03, 0.09), -0.03, 0.09, 0.03, 0.06))
     assert wider[0] <= boot[0] and wider[1] >= boot[1]
     assert wider == (-0.03, 0.09)
@@ -85,7 +88,9 @@ def _single_and_swept():
     groups = {"base": base, "axis0": axis}
     scores = _raw_oof(matrix, base, y)
     single = Evaluator().evaluate(matrix, base + axis, y, scores, groups, "base")
-    swept = Evaluator().evaluate(matrix, base + axis, y, scores, groups, "base", n_seeds=5)
+    swept = Evaluator().evaluate(
+        matrix, base + axis, y, scores, groups, "base", n_seeds=5
+    )
     return single, swept
 
 
@@ -98,8 +103,13 @@ def test_the_sweep_envelope_is_wired_through_evaluate(_single_and_swept):
     row_swept = swept.ablation.set_index("family").loc["axis0"]
     spread = swept.seed_spread["axis0"]
     env_lo, env_hi = _envelope((row_single.d_lo, row_single.d_hi), spread)
-    assert (row_swept.d_lo_env, row_swept.d_hi_env) == (round(env_lo, 3), round(env_hi, 3))
-    assert row_swept.d_lo_env <= row_single.d_lo and row_swept.d_hi_env >= row_single.d_hi
+    assert (row_swept.d_lo_env, row_swept.d_hi_env) == (
+        round(env_lo, 3),
+        round(env_hi, 3),
+    )
+    assert (
+        row_swept.d_lo_env <= row_single.d_lo and row_swept.d_hi_env >= row_single.d_hi
+    )
 
 
 def test_the_bootstrap_columns_are_untouched_by_the_sweep(_single_and_swept):
@@ -116,7 +126,9 @@ def test_the_default_run_adds_no_sweep_columns():
     pins the exact records this default run produces; this test pins the shape."""
     matrix, y, base, axis = _fixture()
     groups = {"base": base, "axis0": axis}
-    ev = Evaluator().evaluate(matrix, base + axis, y, _raw_oof(matrix, base, y), groups, "base")
+    ev = Evaluator().evaluate(
+        matrix, base + axis, y, _raw_oof(matrix, base, y), groups, "base"
+    )
     assert not {"d_lo_env", "d_hi_env", "n_seeds"} & set(ev.ablation.columns)
     assert ev.seed_spread is None
 
@@ -128,7 +140,11 @@ def test_the_spread_is_attached_per_axis():
         matrix, base + axis, y, _raw_oof(matrix, base, y), groups, "base", n_seeds=3
     )
     assert set(ev.seed_spread) == {"axis0"}
-    assert ev.seed_spread["axis0"].seeds == (DEFAULT_SEED, DEFAULT_SEED + 1, DEFAULT_SEED + 2)
+    assert ev.seed_spread["axis0"].seeds == (
+        DEFAULT_SEED,
+        DEFAULT_SEED + 1,
+        DEFAULT_SEED + 2,
+    )
 
 
 # --- config wiring ---------------------------------------------------------------------------

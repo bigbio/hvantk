@@ -131,7 +131,7 @@ def parse_ensembl_gtf(gtf_path: str) -> GTFData:
                 tab3 = line.index("\t", tab2 + 1)
             except ValueError:
                 continue
-            feature = line[tab2 + 1:tab3]
+            feature = line[tab2 + 1 : tab3]
 
             if feature != "transcript" and feature != "CDS":
                 continue

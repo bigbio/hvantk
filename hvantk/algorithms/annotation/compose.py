@@ -17,6 +17,7 @@ Layering: this module imports Hail and sibling ``hvantk.algorithms.annotation`` 
 only -- it must never import ``hvantk.skills`` or ``hvantk.tools`` (the source is data,
 already reduced to a Hail Table by Stage 1; compose has no business reading raw sources).
 """
+
 from __future__ import annotations
 
 import logging

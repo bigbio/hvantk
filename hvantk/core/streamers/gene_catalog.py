@@ -3,6 +3,7 @@
 Concrete subclasses live in ``skills/<plugin>/streamer.py``. Algorithms
 consume the ABC; callers wire concrete catalogs at construction time.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -20,6 +21,7 @@ class GeneCatalogStreamer(ABC):
     def from_path(cls, path: str) -> "GeneCatalogStreamer":
         """Construct a streamer from a persisted artifact path."""
         from hvantk.core.io import load
+
         return cls(load(path))
 
     @abstractmethod
@@ -31,9 +33,7 @@ class GeneCatalogStreamer(ABC):
         """Return canonical symbol if ``symbol`` is a known alias, else None."""
 
     @abstractmethod
-    def expand_with_aliases(
-        self, symbols: set[str]
-    ) -> tuple[set[str], dict[str, str]]:
+    def expand_with_aliases(self, symbols: set[str]) -> tuple[set[str], dict[str, str]]:
         """Expand ``symbols`` with known aliases.
 
         Returns

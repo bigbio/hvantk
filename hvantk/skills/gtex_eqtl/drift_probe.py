@@ -65,9 +65,7 @@ def fetch_fingerprint() -> dict:
         (build_date_match.group(1) if build_date_match else "") or ""
     ).strip()
 
-    fingerprint_blob = (
-        f"{gtex_version}|{gtex_build_date}|{etag}".encode("utf-8")
-    )
+    fingerprint_blob = f"{gtex_version}|{gtex_build_date}|{etag}".encode("utf-8")
     checksum = hashlib.sha256(fingerprint_blob).hexdigest()
 
     return {

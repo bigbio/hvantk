@@ -57,7 +57,7 @@ def test_missing_column_is_rejected(tmp_path):
     from hvantk.skills.insider.interfaces.parse import parse_interfaces
 
     p = tmp_path / "bad.txt"
-    p.write_text("P1\tP2\tSource\n" "Q1\tQ2\tECLAIR\n")
+    p.write_text("P1\tP2\tSource\nQ1\tQ2\tECLAIR\n")
     with pytest.raises(ValueError, match="missing column"):
         parse_interfaces(str(p))
 

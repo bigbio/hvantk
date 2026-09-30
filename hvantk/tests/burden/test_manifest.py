@@ -45,7 +45,9 @@ def test_prior_column_is_overridable():
 
     doc = yaml.safe_load(
         render_cohort_manifest(
-            name="epilepsy_dee", key="symbol", table="/x/epi25.tsv",
+            name="epilepsy_dee",
+            key="symbol",
+            table="/x/epi25.tsv",
             prior_column="p_dee",
         )
     )
@@ -67,8 +69,11 @@ def test_architecture_axis_can_be_omitted():
 
     doc = yaml.safe_load(
         render_cohort_manifest(
-            name="epilepsy_dee", key="symbol", table="/x/epi25.tsv",
-            prior_column="p_dee", architecture_columns=None,
+            name="epilepsy_dee",
+            key="symbol",
+            table="/x/epi25.tsv",
+            prior_column="p_dee",
+            architecture_columns=None,
         )
     )
     assert "cohort_axes" not in doc

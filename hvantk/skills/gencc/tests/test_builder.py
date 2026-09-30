@@ -20,6 +20,7 @@ from hvantk.tests._snapshot_utils import (
     load_snapshot,
     phase_b_snapshot_adapter,
 )
+
 # Aliased to avoid shadowing the fixture name `regenerate_snapshots` in the test signature
 from hvantk.tests._snapshot_utils import regenerate_snapshots as regenerate_snapshots_fn
 
@@ -30,10 +31,18 @@ SNAPSHOT_DIR = Path("hvantk/skills/gencc/tests/snapshots")
 # KeyError for any key absent from the table, so these cannot be invented.
 SAMPLE_KEYS = [
     {"hgnc_id": "1100", "mondo_id": "0005144", "submitter": "ClinGen"},
-    {"hgnc_id": "1100", "mondo_id": "0005144", "submitter": "Genomics England PanelApp"},
+    {
+        "hgnc_id": "1100",
+        "mondo_id": "0005144",
+        "submitter": "Genomics England PanelApp",
+    },
     {"hgnc_id": "1100", "mondo_id": "0013683", "submitter": "G2P"},
     {"hgnc_id": "1101", "mondo_id": "0005145", "submitter": "ClinGen"},
-    {"hgnc_id": "1101", "mondo_id": "0005145", "submitter": "Genomics England PanelApp"},
+    {
+        "hgnc_id": "1101",
+        "mondo_id": "0005145",
+        "submitter": "Genomics England PanelApp",
+    },
     {"hgnc_id": "11998", "mondo_id": "0007903", "submitter": "ClinGen"},
 ]
 
@@ -53,14 +62,18 @@ def test_gencc_snapshot_round_trip(hail_session, tmp_path, regenerate_snapshots)
             snapshot_dir=SNAPSHOT_DIR,
             keys=SAMPLE_KEYS,
         )
-        pytest.skip("Snapshots regenerated; rerun without --regenerate-snapshots to assert.")
+        pytest.skip(
+            "Snapshots regenerated; rerun without --regenerate-snapshots to assert."
+        )
 
     output_path = str(tmp_path / "gencc.ht")
     builder(input_path=FIXTURE, output_path=output_path)
     ht = hl.read_table(output_path)
 
     expected_schema = load_snapshot(SNAPSHOT_DIR / "schema.json")
-    assert hail_schema_to_dict(ht) == expected_schema, "GenCC schema drifted from snapshot"
+    assert hail_schema_to_dict(ht) == expected_schema, (
+        "GenCC schema drifted from snapshot"
+    )
 
     expected_rows = load_snapshot(SNAPSHOT_DIR / "sample_rows.json")
     actual_rows = collect_sample_rows(ht, keys=SAMPLE_KEYS)

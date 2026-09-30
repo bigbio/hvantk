@@ -23,7 +23,9 @@ import pytest
 def _write_tsv(path, fieldnames, rows):
     """Helper to write a TSV file with given columns and rows."""
     with open(path, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter="\t", lineterminator="\n")
+        writer = csv.DictWriter(
+            f, fieldnames=fieldnames, delimiter="\t", lineterminator="\n"
+        )
         writer.writeheader()
         for row in rows:
             writer.writerow(row)
@@ -42,8 +44,14 @@ def mock_pa_zip(tmp_path):
     # biosequence table
     _write_tsv(
         tables_dir / "biosequence.tsv",
-        ["biosequence_id", "biosequence_name", "biosequence_accession",
-         "biosequence_gene_name", "biosequence_seq", "organism_id"],
+        [
+            "biosequence_id",
+            "biosequence_name",
+            "biosequence_accession",
+            "biosequence_gene_name",
+            "biosequence_seq",
+            "organism_id",
+        ],
         [
             {
                 "biosequence_id": "100",
@@ -69,28 +77,67 @@ def mock_pa_zip(tmp_path):
         tables_dir / "peptide_instance.tsv",
         ["peptide_instance_id", "peptide_id", "n_observations", "n_samples"],
         [
-            {"peptide_instance_id": "1", "peptide_id": "10", "n_observations": "50", "n_samples": "5"},
-            {"peptide_instance_id": "2", "peptide_id": "20", "n_observations": "30", "n_samples": "3"},
-            {"peptide_instance_id": "3", "peptide_id": "30", "n_observations": "10", "n_samples": "1"},
+            {
+                "peptide_instance_id": "1",
+                "peptide_id": "10",
+                "n_observations": "50",
+                "n_samples": "5",
+            },
+            {
+                "peptide_instance_id": "2",
+                "peptide_id": "20",
+                "n_observations": "30",
+                "n_samples": "3",
+            },
+            {
+                "peptide_instance_id": "3",
+                "peptide_id": "30",
+                "n_observations": "10",
+                "n_samples": "1",
+            },
         ],
     )
 
     # peptide_mapping table
     _write_tsv(
         tables_dir / "peptide_mapping.tsv",
-        ["peptide_instance_id", "matched_biosequence_id", "start_in_biosequence", "end_in_biosequence"],
         [
-            {"peptide_instance_id": "1", "matched_biosequence_id": "100", "start_in_biosequence": "310", "end_in_biosequence": "320"},
-            {"peptide_instance_id": "2", "matched_biosequence_id": "100", "start_in_biosequence": "313", "end_in_biosequence": "325"},
-            {"peptide_instance_id": "3", "matched_biosequence_id": "100", "start_in_biosequence": "1", "end_in_biosequence": "15"},
+            "peptide_instance_id",
+            "matched_biosequence_id",
+            "start_in_biosequence",
+            "end_in_biosequence",
+        ],
+        [
+            {
+                "peptide_instance_id": "1",
+                "matched_biosequence_id": "100",
+                "start_in_biosequence": "310",
+                "end_in_biosequence": "320",
+            },
+            {
+                "peptide_instance_id": "2",
+                "matched_biosequence_id": "100",
+                "start_in_biosequence": "313",
+                "end_in_biosequence": "325",
+            },
+            {
+                "peptide_instance_id": "3",
+                "matched_biosequence_id": "100",
+                "start_in_biosequence": "1",
+                "end_in_biosequence": "15",
+            },
         ],
     )
 
     # modified_peptide_instance table
     _write_tsv(
         tables_dir / "modified_peptide_instance.tsv",
-        ["modified_peptide_instance_id", "peptide_instance_id",
-         "modified_peptide_sequence", "modification_mass"],
+        [
+            "modified_peptide_instance_id",
+            "peptide_instance_id",
+            "modified_peptide_sequence",
+            "modification_mass",
+        ],
         [
             {
                 "modified_peptide_instance_id": "1001",
@@ -126,7 +173,9 @@ def mock_pa_zip(tmp_path):
 
 def test_parse_phospho_sites(mock_pa_zip, tmp_path):
     """Phospho sites are correctly extracted with positions and counts."""
-    from hvantk.skills.peptideatlas.phospho.shared.datasets import parse_peptideatlas_zip
+    from hvantk.skills.peptideatlas.phospho.shared.datasets import (
+        parse_peptideatlas_zip,
+    )
 
     sites = parse_peptideatlas_zip(str(mock_pa_zip))
 
@@ -149,7 +198,9 @@ def test_parse_phospho_sites(mock_pa_zip, tmp_path):
 
 def test_decoy_sequences_filtered(mock_pa_zip):
     """DECOY and contaminant sequences are excluded."""
-    from hvantk.skills.peptideatlas.phospho.shared.datasets import parse_peptideatlas_zip
+    from hvantk.skills.peptideatlas.phospho.shared.datasets import (
+        parse_peptideatlas_zip,
+    )
 
     sites = parse_peptideatlas_zip(str(mock_pa_zip))
     accessions = {s["accession"] for s in sites}
@@ -161,7 +212,9 @@ def test_decoy_sequences_filtered(mock_pa_zip):
 
 def test_dataset_from_latest():
     """from_latest() creates a dataset with current build defaults."""
-    from hvantk.skills.peptideatlas.phospho.shared.datasets import PeptideAtlasPhosphoDataset
+    from hvantk.skills.peptideatlas.phospho.shared.datasets import (
+        PeptideAtlasPhosphoDataset,
+    )
 
     dataset = PeptideAtlasPhosphoDataset.from_latest()
     assert dataset.build_date == "202512"
@@ -172,7 +225,9 @@ def test_dataset_from_latest():
 
 def test_dataset_from_build():
     """from_build() creates a dataset with specified build parameters."""
-    from hvantk.skills.peptideatlas.phospho.shared.datasets import PeptideAtlasPhosphoDataset
+    from hvantk.skills.peptideatlas.phospho.shared.datasets import (
+        PeptideAtlasPhosphoDataset,
+    )
 
     dataset = PeptideAtlasPhosphoDataset.from_build("202204", "500")
     assert dataset.build_date == "202204"
@@ -201,9 +256,16 @@ def test_write_intermediate_tsv(mock_pa_zip, tmp_path):
 
     assert len(rows) == 2
     expected_cols = {
-        "accession", "gene_symbol", "position", "description",
-        "amino_acid", "ensembl_xrefs", "sequence_length",
-        "n_observations", "source_db", "evidence_type",
+        "accession",
+        "gene_symbol",
+        "position",
+        "description",
+        "amino_acid",
+        "ensembl_xrefs",
+        "sequence_length",
+        "n_observations",
+        "source_db",
+        "evidence_type",
     }
     assert set(reader.fieldnames) == expected_cols
 
@@ -247,7 +309,9 @@ def test_write_intermediate_tsv(mock_pa_zip, tmp_path):
 )
 def test_extract_phospho_offsets(mod_seq, expected):
     """_extract_phospho_offsets handles all PeptideAtlas notations."""
-    from hvantk.skills.peptideatlas.phospho.shared.datasets import _extract_phospho_offsets
+    from hvantk.skills.peptideatlas.phospho.shared.datasets import (
+        _extract_phospho_offsets,
+    )
 
     result = _extract_phospho_offsets(mod_seq)
     assert result == expected
@@ -258,11 +322,15 @@ def test_extract_phospho_offsets(mod_seq, expected):
 
 def test_parse_raises_when_required_tables_missing(tmp_path):
     """Missing required tables should raise FileNotFoundError."""
-    from hvantk.skills.peptideatlas.phospho.shared.datasets import parse_peptideatlas_zip
+    from hvantk.skills.peptideatlas.phospho.shared.datasets import (
+        parse_peptideatlas_zip,
+    )
 
     zip_path = tmp_path / "missing_tables.zip"
     with zipfile.ZipFile(zip_path, "w") as zf:
-        zf.writestr("biosequence.tsv", "biosequence_id\tbiosequence_accession\n1\tP12345\n")
+        zf.writestr(
+            "biosequence.tsv", "biosequence_id\tbiosequence_accession\n1\tP12345\n"
+        )
 
     with pytest.raises(FileNotFoundError):
         parse_peptideatlas_zip(str(zip_path))
@@ -273,7 +341,9 @@ def test_parse_raises_when_required_tables_missing(tmp_path):
 
 def test_dataset_download_returns_intermediate_tsv(tmp_path, mock_pa_zip):
     """download() returns generated intermediate TSV path."""
-    from hvantk.skills.peptideatlas.phospho.shared.datasets import PeptideAtlasPhosphoDataset
+    from hvantk.skills.peptideatlas.phospho.shared.datasets import (
+        PeptideAtlasPhosphoDataset,
+    )
 
     dataset = PeptideAtlasPhosphoDataset.from_build("202512", "606")
     output_dir = tmp_path / "out"
@@ -307,7 +377,9 @@ def test_dataset_download_returns_intermediate_tsv(tmp_path, mock_pa_zip):
 
 def test_canonical_protein_filtering(tmp_path):
     """Only canonical proteins (presence_level_id=1) are included."""
-    from hvantk.skills.peptideatlas.phospho.shared.datasets import parse_peptideatlas_zip
+    from hvantk.skills.peptideatlas.phospho.shared.datasets import (
+        parse_peptideatlas_zip,
+    )
 
     tables_dir = tmp_path / "tables"
     tables_dir.mkdir()
@@ -315,15 +387,31 @@ def test_canonical_protein_filtering(tmp_path):
     # biosequence: two proteins
     _write_tsv(
         tables_dir / "biosequence.tsv",
-        ["biosequence_id", "biosequence_name", "biosequence_accession",
-         "biosequence_gene_name", "biosequence_seq", "organism_id"],
         [
-            {"biosequence_id": "100", "biosequence_name": "TP53_HUMAN",
-             "biosequence_accession": "P04637", "biosequence_gene_name": "TP53",
-             "biosequence_seq": "M" * 393, "organism_id": "9606"},
-            {"biosequence_id": "300", "biosequence_name": "FOO_HUMAN",
-             "biosequence_accession": "Q99999", "biosequence_gene_name": "FOO",
-             "biosequence_seq": "M" * 200, "organism_id": "9606"},
+            "biosequence_id",
+            "biosequence_name",
+            "biosequence_accession",
+            "biosequence_gene_name",
+            "biosequence_seq",
+            "organism_id",
+        ],
+        [
+            {
+                "biosequence_id": "100",
+                "biosequence_name": "TP53_HUMAN",
+                "biosequence_accession": "P04637",
+                "biosequence_gene_name": "TP53",
+                "biosequence_seq": "M" * 393,
+                "organism_id": "9606",
+            },
+            {
+                "biosequence_id": "300",
+                "biosequence_name": "FOO_HUMAN",
+                "biosequence_accession": "Q99999",
+                "biosequence_gene_name": "FOO",
+                "biosequence_seq": "M" * 200,
+                "organism_id": "9606",
+            },
         ],
     )
 
@@ -332,10 +420,16 @@ def test_canonical_protein_filtering(tmp_path):
         tables_dir / "protein_identification.tsv",
         ["biosequence_id", "presence_level_id", "protein_identification_id"],
         [
-            {"biosequence_id": "100", "presence_level_id": "1",
-             "protein_identification_id": "1"},
-            {"biosequence_id": "300", "presence_level_id": "3",
-             "protein_identification_id": "2"},
+            {
+                "biosequence_id": "100",
+                "presence_level_id": "1",
+                "protein_identification_id": "1",
+            },
+            {
+                "biosequence_id": "300",
+                "presence_level_id": "3",
+                "protein_identification_id": "2",
+            },
         ],
     )
 
@@ -344,33 +438,56 @@ def test_canonical_protein_filtering(tmp_path):
         tables_dir / "peptide_instance.tsv",
         ["peptide_instance_id", "peptide_id", "n_observations", "n_samples"],
         [
-            {"peptide_instance_id": "1", "peptide_id": "10",
-             "n_observations": "50", "n_samples": "5"},
+            {
+                "peptide_instance_id": "1",
+                "peptide_id": "10",
+                "n_observations": "50",
+                "n_samples": "5",
+            },
         ],
     )
 
     # peptide_mapping: peptide maps to BOTH proteins
     _write_tsv(
         tables_dir / "peptide_mapping.tsv",
-        ["peptide_instance_id", "matched_biosequence_id",
-         "start_in_biosequence", "end_in_biosequence"],
         [
-            {"peptide_instance_id": "1", "matched_biosequence_id": "100",
-             "start_in_biosequence": "310", "end_in_biosequence": "320"},
-            {"peptide_instance_id": "1", "matched_biosequence_id": "300",
-             "start_in_biosequence": "50", "end_in_biosequence": "60"},
+            "peptide_instance_id",
+            "matched_biosequence_id",
+            "start_in_biosequence",
+            "end_in_biosequence",
+        ],
+        [
+            {
+                "peptide_instance_id": "1",
+                "matched_biosequence_id": "100",
+                "start_in_biosequence": "310",
+                "end_in_biosequence": "320",
+            },
+            {
+                "peptide_instance_id": "1",
+                "matched_biosequence_id": "300",
+                "start_in_biosequence": "50",
+                "end_in_biosequence": "60",
+            },
         ],
     )
 
     # modified_peptide_instance: phospho at offset 5
     _write_tsv(
         tables_dir / "modified_peptide_instance.tsv",
-        ["modified_peptide_instance_id", "peptide_instance_id",
-         "modified_peptide_sequence", "modification_mass"],
         [
-            {"modified_peptide_instance_id": "1001", "peptide_instance_id": "1",
-             "modified_peptide_sequence": "AAAAAS[Phospho]AAAAA",
-             "modification_mass": "79.9663"},
+            "modified_peptide_instance_id",
+            "peptide_instance_id",
+            "modified_peptide_sequence",
+            "modification_mass",
+        ],
+        [
+            {
+                "modified_peptide_instance_id": "1001",
+                "peptide_instance_id": "1",
+                "modified_peptide_sequence": "AAAAAS[Phospho]AAAAA",
+                "modification_mass": "79.9663",
+            },
         ],
     )
 
@@ -394,7 +511,9 @@ def test_canonical_protein_filtering(tmp_path):
 
 def test_url_no_doubled_phospho():
     """from_build() URL should not contain doubled /phospho/."""
-    from hvantk.skills.peptideatlas.phospho.shared.datasets import PeptideAtlasPhosphoDataset
+    from hvantk.skills.peptideatlas.phospho.shared.datasets import (
+        PeptideAtlasPhosphoDataset,
+    )
 
     dataset = PeptideAtlasPhosphoDataset.from_build("202512", "606")
     assert "/phospho/phospho/" not in dataset.zip_url

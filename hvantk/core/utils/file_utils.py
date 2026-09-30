@@ -50,16 +50,19 @@ def download_file(url: str, out_dir: str, file_name: str):
         max_size = 1024 * 1024 * 1024  # 1GB
         if total_size > max_size:
             logger.warning(
-                f"File is very large ({total_size/1024/1024:.1f} MB), exceeding recommended size of {max_size/1024/1024:.1f} MB"
+                f"File is very large ({total_size / 1024 / 1024:.1f} MB), exceeding recommended size of {max_size / 1024 / 1024:.1f} MB"
             )
 
-        with open(local_path, "wb") as f, tqdm(
-            desc=file_name,
-            total=total_size,
-            unit="B",
-            unit_scale=True,
-            unit_divisor=1024,
-        ) as bar:
+        with (
+            open(local_path, "wb") as f,
+            tqdm(
+                desc=file_name,
+                total=total_size,
+                unit="B",
+                unit_scale=True,
+                unit_divisor=1024,
+            ) as bar,
+        ):
             for chunk in response.iter_content(chunk_size=8192):
                 size = f.write(chunk)
                 bar.update(size)
@@ -258,6 +261,7 @@ def decompress_files(
 # ---------------------------------------------------------------------------
 # BGZF / GZIP detection and conversion
 # ---------------------------------------------------------------------------
+
 
 def is_gzipped(filepath: str) -> bool:
     """Check if a file starts with the gzip magic bytes (``\\x1f\\x8b``).

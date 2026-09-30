@@ -4,6 +4,7 @@ A null is generated under ONE control setting and covers ONE candidate set. Atta
 deltas computed under a different feature set, or merging chunks that disagree, produces a
 plausible number that answers a question nobody asked.
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -28,8 +29,15 @@ from hvantk.tests.rerank._synth import cheap_scorer, permuted_labels, planted_si
 
 
 def _setting(candidates, **kw):
-    base = dict(arm="all", leakage=None, selection=None, baseline=("base",),
-                candidates=candidates, folds=ABLATION_FOLDS, block_digest=None)
+    base = dict(
+        arm="all",
+        leakage=None,
+        selection=None,
+        baseline=("base",),
+        candidates=candidates,
+        folds=ABLATION_FOLDS,
+        block_digest=None,
+    )
     base.update(kw)
     return ControlSetting(**base)
 
@@ -42,7 +50,9 @@ def _null(n_axes, n_perm=30, seed=4, n=160):
     matrix, y, baseline, axes = permuted_labels(n=n, n_noise=5)
     offered = {k: axes[k] for k in sorted(axes)[:n_axes]}
     cfg = NullConfig(n_perm=n_perm, seed=seed)
-    d = permutation_deltas(matrix, baseline, offered, y, config=cfg, scorer=cheap_scorer())
+    d = permutation_deltas(
+        matrix, baseline, offered, y, config=cfg, scorer=cheap_scorer()
+    )
     return NullDistribution.from_deltas(d, _setting(offered), null_config=cfg)
 
 
@@ -151,14 +161,19 @@ def test_merged_chunks_equal_the_whole_run():
 
     whole_cfg = NullConfig(n_perm=6, seed=8)
     whole = NullDistribution.from_deltas(
-        permutation_deltas(matrix, baseline, offered, y, config=whole_cfg, scorer=scorer),
-        setting, null_config=whole_cfg,
+        permutation_deltas(
+            matrix, baseline, offered, y, config=whole_cfg, scorer=scorer
+        ),
+        setting,
+        null_config=whole_cfg,
     )
 
     parts = []
     for c in range(3):
         cfg = NullConfig(n_perm=6, chunk=c, n_chunks=3, seed=8)
-        deltas = permutation_deltas(matrix, baseline, offered, y, config=cfg, scorer=scorer)
+        deltas = permutation_deltas(
+            matrix, baseline, offered, y, config=cfg, scorer=scorer
+        )
         parts.append(NullDistribution.from_deltas(deltas, setting, null_config=cfg))
 
     merged = NullDistribution.merge(parts)
@@ -169,7 +184,9 @@ def test_merged_chunks_equal_the_whole_run():
 def test_merge_refuses_chunks_from_different_control_settings():
     a = _null(n_axes=2, seed=1)
     b = _null(n_axes=2, seed=1)
-    b = dataclasses.replace(b, setting=dataclasses.replace(b.setting, leakage=LeakagePolicy()))
+    b = dataclasses.replace(
+        b, setting=dataclasses.replace(b.setting, leakage=LeakagePolicy())
+    )
     with pytest.raises(ControlSettingMismatch):
         NullDistribution.merge([a, b])
 
@@ -189,14 +206,20 @@ def test_merge_refuses_overlapping_permutation_indices():
     matrix, y, baseline, axes = permuted_labels(n=60, n_noise=1)
     offered = {"axis0": axes["axis0"]}
     cfg = NullConfig(n_perm=2, seed=1)
-    d = permutation_deltas(matrix, baseline, offered, y, config=cfg, scorer=cheap_scorer())
+    d = permutation_deltas(
+        matrix, baseline, offered, y, config=cfg, scorer=cheap_scorer()
+    )
     with pytest.raises(ValueError, match="duplicate"):
-        NullDistribution.from_deltas(pd.concat([d, d]), _setting(offered), null_config=cfg)
+        NullDistribution.from_deltas(
+            pd.concat([d, d]), _setting(offered), null_config=cfg
+        )
 
 
 def test_merge_refuses_chunks_that_offered_different_axes():
     with pytest.raises(ValueError, match="axes"):
-        NullDistribution.merge([_null(n_axes=2, n_perm=4), _null(n_axes=3, n_perm=4, seed=9)])
+        NullDistribution.merge(
+            [_null(n_axes=2, n_perm=4), _null(n_axes=3, n_perm=4, seed=9)]
+        )
 
 
 def test_merge_of_one_is_that_one():
@@ -216,11 +239,13 @@ def test_merge_refuses_chunks_from_different_permutation_seeds():
     cfg_b = NullConfig(40, chunk=0, n_chunks=2, seed=52)
     a = NullDistribution.from_deltas(
         permutation_deltas(matrix, baseline, offered, y, config=cfg_a, scorer=scorer),
-        setting, null_config=cfg_a,
+        setting,
+        null_config=cfg_a,
     )
     b = NullDistribution.from_deltas(
         permutation_deltas(matrix, baseline, offered, y, config=cfg_b, scorer=scorer),
-        setting, null_config=cfg_b,
+        setting,
+        null_config=cfg_b,
     )
     with pytest.raises(ValueError, match="seed"):
         NullDistribution.merge([a, b])
@@ -236,9 +261,13 @@ def test_observed_deltas_ride_with_the_null_and_must_agree_across_chunks():
     parts = []
     for c in range(2):
         cfg = NullConfig(n_perm=6, chunk=c, n_chunks=2, seed=8)
-        deltas = permutation_deltas(matrix, baseline, offered, y, config=cfg, scorer=scorer)
+        deltas = permutation_deltas(
+            matrix, baseline, offered, y, config=cfg, scorer=scorer
+        )
         parts.append(
-            NullDistribution.from_deltas(deltas, setting, null_config=cfg, observed=observed)
+            NullDistribution.from_deltas(
+                deltas, setting, null_config=cfg, observed=observed
+            )
         )
 
     merged = NullDistribution.merge(parts)

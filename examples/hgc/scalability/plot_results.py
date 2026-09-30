@@ -366,7 +366,7 @@ def generate_summary_report(
         size = int(row["sample_size"])
         total = row["total_sec"]
         report_lines.append(
-            f"Sample Size: {size:4d} | Total Runtime: {total:8.1f}s ({total/60:6.1f}min)"
+            f"Sample Size: {size:4d} | Total Runtime: {total:8.1f}s ({total / 60:6.1f}min)"
         )
 
     report_lines.append("")
@@ -415,7 +415,7 @@ def generate_summary_report(
         size_ratio = sample_sizes[i + 1] / sample_sizes[i]
         time_ratio = total_times[i + 1] / total_times[i]
         report_lines.append(
-            f"{sample_sizes[i]:4.0f} → {sample_sizes[i+1]:4.0f} samples "
+            f"{sample_sizes[i]:4.0f} → {sample_sizes[i + 1]:4.0f} samples "
             f"({size_ratio:4.2f}x): {time_ratio:4.2f}x time increase"
         )
 

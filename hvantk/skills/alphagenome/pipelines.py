@@ -112,6 +112,7 @@ def load_config(config_path: str) -> Dict[str, Any]:
 @dataclass
 class VariantRecord:
     """A single variant position for AlphaGenome prediction."""
+
     chrom: str
     pos: int
     ref: str
@@ -121,6 +122,7 @@ class VariantRecord:
 @dataclass
 class GenomicInterval:
     """A genomic interval for an AlphaGenome API call."""
+
     chrom: str
     start: int
     end: int
@@ -192,6 +194,7 @@ def _compute_adaptive_intervals(
     density_window: int,
 ) -> List[Tuple[GenomicInterval, List[Any]]]:
     """Group nearby variants into shared intervals."""
+
     def _chrom_sort_key(chrom: str) -> Tuple[int, Any]:
         c = chrom.lower()
         if c.startswith("chr"):
@@ -246,9 +249,7 @@ def _compute_adaptive_intervals(
                         sub_group, default_size, max_size, density_window, result
                     )
                     sub_group = [v]
-            _emit_subgroup(
-                sub_group, default_size, max_size, density_window, result
-            )
+            _emit_subgroup(sub_group, default_size, max_size, density_window, result)
 
     return result
 
@@ -304,9 +305,7 @@ class CheckpointManager:
 
     def save_batch(self, batch_index: int, data: Any) -> None:
         os.makedirs(self._checkpoint_dir, exist_ok=True)
-        batch_path = os.path.join(
-            self._checkpoint_dir, f"batch_{batch_index:03d}.json"
-        )
+        batch_path = os.path.join(self._checkpoint_dir, f"batch_{batch_index:03d}.json")
         with open(batch_path, "w") as f:
             json.dump(data, f)
 
@@ -347,8 +346,12 @@ class RateLimitedCaller:
         self._model = model
         api_cfg = config["api"]
         self._max_retries = api_cfg.get("max_retries", ALPHAGENOME_DEFAULT_MAX_RETRIES)
-        self._retry_backoff = api_cfg.get("retry_backoff", ALPHAGENOME_DEFAULT_RETRY_BACKOFF)
-        self._request_timeout = api_cfg.get("request_timeout", ALPHAGENOME_DEFAULT_REQUEST_TIMEOUT)
+        self._retry_backoff = api_cfg.get(
+            "retry_backoff", ALPHAGENOME_DEFAULT_RETRY_BACKOFF
+        )
+        self._request_timeout = api_cfg.get(
+            "request_timeout", ALPHAGENOME_DEFAULT_REQUEST_TIMEOUT
+        )
         self._consecutive_rate_limits = 0
         self._total_calls = 0
         self._total_failures = 0
@@ -410,9 +413,7 @@ class RateLimitedCaller:
                     self._consecutive_rate_limits += 1
 
                 if self._is_transient_error(exc) and attempt < self._max_retries:
-                    delay = self._retry_backoff ** attempt * (
-                        1 + random.random() * 0.5
-                    )
+                    delay = self._retry_backoff**attempt * (1 + random.random() * 0.5)
                     logger.warning(
                         f"Transient error (attempt {attempt}/{self._max_retries}): "
                         f"{exc}. Retrying in {delay:.1f}s."
@@ -438,8 +439,7 @@ def _import_alphagenome() -> Tuple[Any, Any]:
         from alphagenome.models import dna_client as ag_client
     except ImportError:
         raise ImportError(
-            "alphagenome package not installed. "
-            "Install with: pip install alphagenome"
+            "alphagenome package not installed. Install with: pip install alphagenome"
         )
     return ag_genome, ag_client
 
@@ -459,12 +459,14 @@ def _load_variants_from_tsv(tsv_path: str) -> List[VariantRecord]:
     with open(tsv_path) as f:
         reader = csv_module.DictReader(f, delimiter="\t")
         for row in reader:
-            variants.append(VariantRecord(
-                chrom=row["chrom"],
-                pos=int(row["pos"]),
-                ref=row["ref"],
-                alt=row["alt"],
-            ))
+            variants.append(
+                VariantRecord(
+                    chrom=row["chrom"],
+                    pos=int(row["pos"]),
+                    ref=row["ref"],
+                    alt=row["alt"],
+                )
+            )
     return variants
 
 
@@ -612,13 +614,16 @@ class AlphaGenomePipeline:
             self._variants = self._load_variants_from_hail_table()
         else:
             self._variants = _load_variants_from_tsv(self.input_path)
-        self.logger.info(f"Loaded {len(self._variants)} variants from {self.input_path}")
+        self.logger.info(
+            f"Loaded {len(self._variants)} variants from {self.input_path}"
+        )
 
         self._interval_groups = compute_intervals(self._variants, self._config)
         self.logger.info(f"Computed {len(self._interval_groups)} intervals")
 
         pending = [
-            (iv, vs) for iv, vs in self._interval_groups
+            (iv, vs)
+            for iv, vs in self._interval_groups
             if not self._checkpoint.is_interval_complete(_interval_key(iv))
         ]
         skipped = len(self._interval_groups) - len(pending)
@@ -652,8 +657,7 @@ class AlphaGenomePipeline:
             alt=ht.alleles[1],
         ).collect()
         return [
-            VariantRecord(chrom=r.chrom, pos=r.pos, ref=r.ref, alt=r.alt)
-            for r in rows
+            VariantRecord(chrom=r.chrom, pos=r.pos, ref=r.ref, alt=r.alt) for r in rows
         ]
 
     def stream(self) -> Iterator[Dict[str, Any]]:
@@ -666,7 +670,9 @@ class AlphaGenomePipeline:
         output_types = []
         for ot in output_types_raw:
             if not hasattr(ag_client.OutputType, ot):
-                allowed = [n for n in dir(ag_client.OutputType) if not n.startswith("_")]
+                allowed = [
+                    n for n in dir(ag_client.OutputType) if not n.startswith("_")
+                ]
                 raise ValueError(
                     f"Invalid AlphaGenome OutputType in config: '{ot}'. "
                     f"Allowed values: {', '.join(sorted(allowed))}"
@@ -677,7 +683,7 @@ class AlphaGenomePipeline:
         processed_variants = 0
 
         for batch_idx in range(0, total, self.chunk_size):
-            batch = self._interval_groups[batch_idx:batch_idx + self.chunk_size]
+            batch = self._interval_groups[batch_idx : batch_idx + self.chunk_size]
             batch_results: Dict[str, Any] = {}
 
             for interval, variants in batch:
@@ -711,9 +717,10 @@ class AlphaGenomePipeline:
                 self._checkpoint.mark_interval_complete(_interval_key(interval))
 
             batch_num = batch_idx // self.chunk_size
-            self._checkpoint.save_batch(batch_num, {
-                k: _serialize_prediction(v) for k, v in batch_results.items()
-            })
+            self._checkpoint.save_batch(
+                batch_num,
+                {k: _serialize_prediction(v) for k, v in batch_results.items()},
+            )
             self._checkpoint.save_state()
 
             elapsed = time.time() - self._start_time
@@ -757,7 +764,8 @@ class AlphaGenomePipeline:
             return
 
         batch_files = sorted(
-            f for f in os.listdir(checkpoint_dir)
+            f
+            for f in os.listdir(checkpoint_dir)
             if f.startswith("batch_") and f.endswith(".json")
         )
         if not batch_files:

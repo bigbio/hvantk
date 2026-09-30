@@ -182,7 +182,7 @@ def strip_curie_prefix(expr: hl.StringExpression, prefix: str) -> hl.StringExpre
     -------
     hl.StringExpression
     """
-    return hl.if_else(expr.startswith(prefix), expr[len(prefix):], expr)
+    return hl.if_else(expr.startswith(prefix), expr[len(prefix) :], expr)
 
 
 def annotate_classification_level(
@@ -316,8 +316,7 @@ def resolve_field(obj: Any, field_path: str) -> Any:
     available = _available_fields(obj)
     available_str = ", ".join(sorted(available)) if available else "(none)"
     raise LookupError(
-        f"Field '{field_path}' not found. "
-        f"Available top-level fields: {available_str}"
+        f"Field '{field_path}' not found. Available top-level fields: {available_str}"
     )
 
 

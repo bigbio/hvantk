@@ -53,7 +53,9 @@ def install_lazy_exports(
                 # construction in sys.modules, so the branch only matters for a namespace
                 # evicted from sys.modules (which is what the unit test does).
                 if exc.name == qualified or qualified.startswith(f"{exc.name}."):
-                    raise AttributeError(f"module {package!r} has no attribute {name!r}") from None
+                    raise AttributeError(
+                        f"module {package!r} has no attribute {name!r}"
+                    ) from None
                 raise
         try:
             value = getattr(importlib.import_module(module_name), name)

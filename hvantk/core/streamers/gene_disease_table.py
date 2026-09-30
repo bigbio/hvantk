@@ -56,9 +56,7 @@ def _categorize_rows_by_ontology(
     for row in rows:
         gene = row.gene_symbol if hasattr(row, "gene_symbol") else row["gene_symbol"]
         disease = (
-            row.disease_label
-            if hasattr(row, "disease_label")
-            else row["disease_label"]
+            row.disease_label if hasattr(row, "disease_label") else row["disease_label"]
         )
         mondo_id = row.mondo_id if hasattr(row, "mondo_id") else row["mondo_id"]
 
@@ -1113,7 +1111,11 @@ class GeneDiseaseTableStreamer:
             )
         prefix = self.annotation_prefix
         mapped = gene_table.annotate(
-            **{f"{prefix}gene_symbol": gene_annotation_ht[gene_table[gene_id_field]].gene_name}
+            **{
+                f"{prefix}gene_symbol": gene_annotation_ht[
+                    gene_table[gene_id_field]
+                ].gene_name
+            }
         )
         return mapped, mapped[f"{prefix}gene_symbol"], "gene_symbol"
 

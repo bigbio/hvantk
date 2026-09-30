@@ -663,10 +663,8 @@ def convert_mt_to_multi_sample_vcf(
                 n_invalid=hl.agg.count_where(
                     hl.is_defined(mt.GT)
                     & (
-                        (
-                            mt.GT.unphased_diploid_gt_index() >= 3
-                        )  # For biallelic: 0/0=0, 0/1=1, 1/1=2, anything >=3 is invalid
-                    )
+                        mt.GT.unphased_diploid_gt_index() >= 3
+                    )  # For biallelic: 0/0=0, 0/1=1, 1/1=2, anything >=3 is invalid
                 ),
                 example_invalid=hl.agg.filter(
                     hl.is_defined(mt.GT) & (mt.GT.unphased_diploid_gt_index() >= 3),

@@ -5,6 +5,7 @@ caching, and reproducibility can work end-to-end. Use Provenance.unknown(reason)
 only for tests, the legacy-file shim, or scripts that legitimately have no
 upstream lineage; production code must plumb real provenance.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

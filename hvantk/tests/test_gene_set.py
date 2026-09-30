@@ -1,4 +1,5 @@
 """Tests for GeneSet: membership, set algebra, immutability."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -22,7 +23,9 @@ def _prov():
 
 
 def test_membership_and_len():
-    gs = GeneSet(name="brca", provenance=_prov(), _members=frozenset({"BRCA1", "BRCA2"}))
+    gs = GeneSet(
+        name="brca", provenance=_prov(), _members=frozenset({"BRCA1", "BRCA2"})
+    )
     assert "BRCA1" in gs
     assert "TP53" not in gs
     assert len(gs) == 2
@@ -44,7 +47,9 @@ def test_to_list_and_to_set():
 
 
 def test_load_classmethod_round_trip(tmp_path):
-    gs = GeneSet(name="brca", provenance=_prov(), _members=frozenset({"BRCA1", "BRCA2"}))
+    gs = GeneSet(
+        name="brca", provenance=_prov(), _members=frozenset({"BRCA1", "BRCA2"})
+    )
     out = tmp_path / "brca.geneset.json"
     gs.save(out)
 

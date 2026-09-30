@@ -20,6 +20,7 @@ threshold is roughly a 1-SE gate -- for 219 positives against 19,229 negatives t
 is about 0.020 -- so noise passes. The univariate step uses within-axis BH-FDR instead,
 which adapts to both cohort size and axis width with no per-cohort tuning.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -102,7 +103,9 @@ def univariate_filter(X, y, columns, q: float = 0.10):
     passing = set()
     for rank, col in enumerate(order, start=1):
         if stats[col].p <= q * rank / m:
-            passing.update(order[:rank])   # BH: everything up to the largest passing rank
+            passing.update(
+                order[:rank]
+            )  # BH: everything up to the largest passing rank
     for col in passing:
         s = stats[col]
         stats[col] = UnivariateStat(s.auc, s.z, s.p, True, s.n_pos, s.n_neg)
@@ -169,13 +172,13 @@ class SelectionPolicy:
     outcome comparison rather than an elimination count.
     """
 
-    univariate: str = "auc"          # "auc" | "none"
-    q: float = 0.10                  # BH-FDR level, within axis
-    redundancy: str = "spearman"     # "spearman" | "none"
+    univariate: str = "auc"  # "auc" | "none"
+    q: float = 0.10  # BH-FDR level, within axis
+    redundancy: str = "spearman"  # "spearman" | "none"
     redundancy_max: float = 0.75
-    wrapper: str = "none"            # "none" | "rfecv" -- see the class docstring
+    wrapper: str = "none"  # "none" | "rfecv" -- see the class docstring
     wrapper_estimator: str = "random_forest"
-    inner_folds: int = 3             # Table 1: CV3 == CV7 == CV10; more is wasted compute
+    inner_folds: int = 3  # Table 1: CV3 == CV7 == CV10; more is wasted compute
     # Independent of Config.seed by design: this wrapper's own randomness (inner CV /
     # RFECV), not the engine's CV partition.
     seed: int = DEFAULT_SEED
@@ -207,8 +210,11 @@ def _rfecv(X, y, columns, policy):
     from sklearn.model_selection import StratifiedKFold
 
     est = RandomForestClassifier(
-        n_estimators=200, min_samples_leaf=20, class_weight="balanced",
-        random_state=policy.seed, n_jobs=-1,
+        n_estimators=200,
+        min_samples_leaf=20,
+        class_weight="balanced",
+        random_state=policy.seed,
+        n_jobs=-1,
     )
     sel = RFECV(
         estimator=est,

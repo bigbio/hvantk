@@ -4,6 +4,7 @@ The CV partition is one of at least three variance components in the reported in
 (gene resampling, CV partition, best-of-N axis selection) and it was the only one no caller
 could vary.
 """
+
 from __future__ import annotations
 
 import ast
@@ -50,7 +51,8 @@ def test_no_bare_42_outside_seeds_py():
 def test_seeds_py_holds_exactly_one():
     tree = ast.parse((PACKAGE / "seeds.py").read_text())
     hits = [
-        n for n in ast.walk(tree)
+        n
+        for n in ast.walk(tree)
         if isinstance(n, ast.Constant) and n.value == 42 and type(n.value) is int
     ]
     assert len(hits) == 1
@@ -75,7 +77,9 @@ def test_two_seeds_give_different_cv_partitions():
 
 def test_the_default_seed_reproduces_the_historic_partition():
     matrix, y, baseline, _ = planted_signal(n=160, n_noise=0)
-    assert np.allclose(_raw_oof(matrix, baseline, y), _raw_oof(matrix, baseline, y, seed=42))
+    assert np.allclose(
+        _raw_oof(matrix, baseline, y), _raw_oof(matrix, baseline, y, seed=42)
+    )
 
 
 def test_boot_ci_takes_a_seed():

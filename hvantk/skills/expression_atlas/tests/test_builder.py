@@ -130,14 +130,14 @@ def test_expression_atlas_snapshot_round_trip(tmp_path, regenerate_snapshots):
     assert adata.var_names.is_unique, "var_names must be the (unique) transcript id"
 
     expected_schema = load_snapshot(SNAPSHOT_DIR / "schema.json")
-    assert (
-        anndata_schema_to_dict(adata) == expected_schema
-    ), "Expression Atlas schema drifted from snapshot"
+    assert anndata_schema_to_dict(adata) == expected_schema, (
+        "Expression Atlas schema drifted from snapshot"
+    )
 
     expected_rows = load_snapshot(SNAPSHOT_DIR / "sample_rows.json")
-    assert (
-        anndata_sample_rows(adata) == expected_rows
-    ), "Expression Atlas sample rows drifted from snapshot"
+    assert anndata_sample_rows(adata) == expected_rows, (
+        "Expression Atlas sample rows drifted from snapshot"
+    )
 
 
 # --- Regression: issues #342 and #349 ------------------------------------------

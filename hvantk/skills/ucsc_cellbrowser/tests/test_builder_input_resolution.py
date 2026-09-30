@@ -7,6 +7,7 @@ passes the raw dir straight to the builder. Before the fix, ``ucsc-cellbrowser:d
 crashed end-to-end because the builder assumed a dict. These are self-contained (no
 network, no snapshots) so they run without the plugin's snapshot-test harness.
 """
+
 import pytest
 
 from hvantk.skills.ucsc_cellbrowser.builder import _resolve_ucsc_inputs

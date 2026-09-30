@@ -164,7 +164,8 @@ def summarize_expression_ad(
     if na_mask.any():
         logger.warning(
             "Dropped %d cells with NaN in group_by columns %s before aggregation",
-            int(na_mask.sum()), by,
+            int(na_mask.sum()),
+            by,
         )
         adata = adata[~na_mask].copy()
 

@@ -81,12 +81,12 @@ def test_gnomad_metrics_snapshot_round_trip(
     ht = hl.read_table(output_path)
 
     expected_schema = load_snapshot(SNAPSHOT_DIR / "schema.json")
-    assert (
-        hail_schema_to_dict(ht) == expected_schema
-    ), "gnomAD constraint metrics schema drifted from snapshot"
+    assert hail_schema_to_dict(ht) == expected_schema, (
+        "gnomAD constraint metrics schema drifted from snapshot"
+    )
 
     expected_rows = load_snapshot(SNAPSHOT_DIR / "sample_rows.json")
     actual_rows = collect_sample_rows(ht, keys=SAMPLE_KEYS)
-    assert (
-        actual_rows == expected_rows
-    ), "gnomAD constraint metrics sample rows drifted from snapshot"
+    assert actual_rows == expected_rows, (
+        "gnomAD constraint metrics sample rows drifted from snapshot"
+    )

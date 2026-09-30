@@ -27,7 +27,9 @@ def test_equivalence_map_is_overridable(tmp_path):
     from hvantk.algorithms.rerank.selection import load_policy
 
     p = tmp_path / "selection.yaml"
-    p.write_text("equivalence:\n  curated_disease_db: [ClinVar, GenCC]\n  my_class: [SourceA]\n")
+    p.write_text(
+        "equivalence:\n  curated_disease_db: [ClinVar, GenCC]\n  my_class: [SourceA]\n"
+    )
     _, equivalence = load_policy(p)
     assert equivalence["my_class"] == ["SourceA"]
 

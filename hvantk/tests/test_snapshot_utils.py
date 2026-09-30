@@ -118,8 +118,16 @@ def test_collect_sample_rows_handles_array_keys(hail_session):
 
     ht = hl.Table.parallelize(
         [
-            {"locus": hl.Locus("chr1", 100, reference_genome="GRCh38"), "alleles": ["A", "G"], "score": 1},
-            {"locus": hl.Locus("chr1", 200, reference_genome="GRCh38"), "alleles": ["C", "T"], "score": 2},
+            {
+                "locus": hl.Locus("chr1", 100, reference_genome="GRCh38"),
+                "alleles": ["A", "G"],
+                "score": 1,
+            },
+            {
+                "locus": hl.Locus("chr1", 200, reference_genome="GRCh38"),
+                "alleles": ["C", "T"],
+                "score": 2,
+            },
         ],
         schema=hl.tstruct(
             locus=hl.tlocus("GRCh38"),
@@ -166,7 +174,9 @@ def test_anndata_sample_rows():
 
     X = np.arange(12, dtype=np.float32).reshape(3, 4)
     obs = pd.DataFrame({"celltype": ["A", "B", "C"]}, index=["c1", "c2", "c3"])
-    var = pd.DataFrame({"gene_id": ["g1", "g2", "g3", "g4"]}, index=["g1", "g2", "g3", "g4"])
+    var = pd.DataFrame(
+        {"gene_id": ["g1", "g2", "g3", "g4"]}, index=["g1", "g2", "g3", "g4"]
+    )
     a = ad.AnnData(X=X, obs=obs, var=var)
 
     rows = anndata_sample_rows(a, n=2)

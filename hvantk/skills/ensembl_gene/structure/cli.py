@@ -1,4 +1,5 @@
 """Download lifecycle for ensembl-gene:structure -- fetches the pinned Ensembl GTF."""
+
 from __future__ import annotations
 
 import logging

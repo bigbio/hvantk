@@ -9,6 +9,7 @@ appropriate artifact for genotype cohorts.
 obs and var are exposed as AnnotationTable instances so the same Expr DSL
 works against them as against any other AnnotationTable.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -55,7 +56,9 @@ class ExpressionMatrix:
         return self._n_vars_cached
 
     @classmethod
-    def from_anndata(cls, adata: ad.AnnData, *, provenance: Provenance) -> "ExpressionMatrix":
+    def from_anndata(
+        cls, adata: ad.AnnData, *, provenance: Provenance
+    ) -> "ExpressionMatrix":
         return cls(
             provenance=provenance,
             _matrix=adata,
@@ -81,14 +84,16 @@ class ExpressionMatrix:
         obs_df = _materialize_metadata_df(self._matrix.obs, "obs_id")
         mask = compile_to_pandas(predicate, obs_df)
         return ExpressionMatrix.from_anndata(
-            self._matrix[mask.values, :].copy(), provenance=self.provenance,
+            self._matrix[mask.values, :].copy(),
+            provenance=self.provenance,
         )
 
     def subset_var(self, predicate: Expr) -> "ExpressionMatrix":
         var_df = _materialize_metadata_df(self._matrix.var, "var_id")
         mask = compile_to_pandas(predicate, var_df)
         return ExpressionMatrix.from_anndata(
-            self._matrix[:, mask.values].copy(), provenance=self.provenance,
+            self._matrix[:, mask.values].copy(),
+            provenance=self.provenance,
         )
 
     def X(self, layer: str | None = None) -> Any:
@@ -118,11 +123,13 @@ class ExpressionMatrix:
 
     def save(self, path: str | Path) -> None:
         from hvantk.core import io as core_io
+
         core_io.save(self, path)
 
     @classmethod
     def load(cls, path: "str | Path") -> "ExpressionMatrix":
         from hvantk.core import io as core_io
+
         result = core_io.load(path)
         if not isinstance(result, cls):
             raise TypeError(

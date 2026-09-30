@@ -173,7 +173,9 @@ def ledger_entry(*, dataset: str, diff: dict | None, pr_ref: str, now: str) -> d
     }
 
 
-def ledger_update(ledger: dict, *, dataset: str, diff: dict | None, pr_ref: str, now: str) -> dict:
+def ledger_update(
+    ledger: dict, *, dataset: str, diff: dict | None, pr_ref: str, now: str
+) -> dict:
     """Return a copy of ``ledger`` with ``dataset`` updated. Never touches other rows."""
     out = dict(ledger)
     out[dataset] = ledger_entry(dataset=dataset, diff=diff, pr_ref=pr_ref, now=now)
@@ -209,9 +211,12 @@ def should_escalate(*, pr_created_at: str, now: str) -> bool:
     Returns False on any unparseable input: escalation is a notification, and a parse
     failure must not turn into repeated comments on the PR.
     """
+
     def _parse(s: str) -> datetime | None:
         try:
-            return datetime.fromisoformat(s.replace("Z", "+00:00")).astimezone(timezone.utc)
+            return datetime.fromisoformat(s.replace("Z", "+00:00")).astimezone(
+                timezone.utc
+            )
         except (ValueError, AttributeError, TypeError):
             return None
 
@@ -247,7 +252,11 @@ def branch_name_for_signal(datasets: list[str], fingerprint_path: str = "") -> s
 
     base = "drift/" + providers.pop()
     stem = Path(fingerprint_path).stem if fingerprint_path else ""
-    suffix = stem[len("drift_fingerprint"):].strip("_-") if stem.startswith("drift_fingerprint") else stem
+    suffix = (
+        stem[len("drift_fingerprint") :].strip("_-")
+        if stem.startswith("drift_fingerprint")
+        else stem
+    )
     return f"{base}-{suffix}" if suffix else base
 
 
@@ -396,9 +405,7 @@ def build_pr_body(
     lines.append(classification_table([{"dataset_name": dataset, "diff": diff}]))
     lines.append("")
     others = [d for d in (covers or []) if d and d != dataset]
-    lines.append(
-        f"Automated drift detection found upstream changes for `{dataset}`."
-    )
+    lines.append(f"Automated drift detection found upstream changes for `{dataset}`.")
     if others:
         listed = ", ".join(f"`{d}`" for d in others)
         lines.append("")
@@ -416,15 +423,9 @@ def build_pr_body(
         "below to decide whether this is:"
     )
     lines.append("")
-    lines.append(
-        "- a compatible upstream update (merge the snapshot bump as-is),"
-    )
-    lines.append(
-        "- a breaking schema change (also update the plugin's `builder.py`),"
-    )
-    lines.append(
-        "- or a spurious probe difference (fix the probe instead of merging)."
-    )
+    lines.append("- a compatible upstream update (merge the snapshot bump as-is),")
+    lines.append("- a breaking schema change (also update the plugin's `builder.py`),")
+    lines.append("- or a spurious probe difference (fix the probe instead of merging).")
     lines.append("")
     if skill_md is not None:
         rel = skill_md.relative_to(REPO_ROOT).as_posix()
@@ -459,7 +460,9 @@ def commit_message_for(dataset: str) -> str:
 # --------------------------------------------------------------------------- #
 
 
-def _run(cmd: list[str], *, dry_run: bool, check: bool = True) -> subprocess.CompletedProcess:
+def _run(
+    cmd: list[str], *, dry_run: bool, check: bool = True
+) -> subprocess.CompletedProcess:
     """Wrapper around subprocess that prints (and optionally skips) the
     command. ``check=True`` is the default; pass ``check=False`` for probes
     like ``git ls-remote`` whose nonzero exit is meaningful.
@@ -513,7 +516,9 @@ def _discard_staged_fingerprints(*, dry_run: bool) -> None:
         return
     result = subprocess.run(
         ["git", "checkout", "HEAD", "--", "hvantk/skills"],
-        check=False, text=True, capture_output=True,
+        check=False,
+        text=True,
+        capture_output=True,
     )
     if result.returncode != 0:
         # `check=False` keeps one failed cleanup from aborting the whole run, but
@@ -544,7 +549,9 @@ def branch_needs_update(branch: str, *, dry_run: bool) -> bool:
 
     staged = subprocess.run(
         ["git", "diff", "--cached", "--name-only"],
-        check=False, text=True, capture_output=True,
+        check=False,
+        text=True,
+        capture_output=True,
     )
     paths = [p for p in (staged.stdout or "").split("\n") if p.strip()]
     if staged.returncode != 0 or not paths:
@@ -555,7 +562,9 @@ def branch_needs_update(branch: str, *, dry_run: bool) -> bool:
     # origin/<branch> is present.
     fetched = subprocess.run(
         ["git", "fetch", "origin", branch],
-        check=False, text=True, capture_output=True,
+        check=False,
+        text=True,
+        capture_output=True,
     )
     if fetched.returncode != 0:
         return True
@@ -573,7 +582,10 @@ def branch_needs_update(branch: str, *, dry_run: bool) -> bool:
         # valid UTF-8 would raise UnicodeDecodeError out of subprocess itself.
         previous = subprocess.run(
             ["git", "show", f"FETCH_HEAD:{path}"],
-            check=False, text=True, errors="replace", capture_output=True,
+            check=False,
+            text=True,
+            errors="replace",
+            capture_output=True,
         )
         if current is None or previous.returncode != 0:
             return True
@@ -591,11 +603,17 @@ def pr_exists_for_branch(branch: str, *, dry_run: bool) -> str | None:
         return None
     result = subprocess.run(
         [
-            "gh", "pr", "list",
-            "--head", branch,
-            "--state", "open",
-            "--json", "number",
-            "--jq", ".[0].number // empty",
+            "gh",
+            "pr",
+            "list",
+            "--head",
+            branch,
+            "--state",
+            "open",
+            "--json",
+            "number",
+            "--jq",
+            ".[0].number // empty",
         ],
         check=False,
         text=True,
@@ -621,7 +639,9 @@ def _pr_created_at(pr_number: str, *, dry_run: bool) -> str:
         return ""
     result = subprocess.run(
         ["gh", "pr", "view", pr_number, "--json", "createdAt", "--jq", ".createdAt"],
-        check=False, text=True, capture_output=True,
+        check=False,
+        text=True,
+        capture_output=True,
     )
     return (result.stdout or "").strip()
 
@@ -643,8 +663,19 @@ def _pr_has_escalation_comment(pr_number: str, *, dry_run: bool) -> bool:
     if dry_run:
         return False
     result = subprocess.run(
-        ["gh", "pr", "view", pr_number, "--json", "comments", "--jq", ".comments[].body"],
-        check=False, text=True, capture_output=True,
+        [
+            "gh",
+            "pr",
+            "view",
+            pr_number,
+            "--json",
+            "comments",
+            "--jq",
+            ".comments[].body",
+        ],
+        check=False,
+        text=True,
+        capture_output=True,
     )
     return ESCALATION_MARKER in (result.stdout or "")
 
@@ -673,11 +704,18 @@ def maybe_escalate(pr_number: str, *, dry_run: bool) -> None:
     if _pr_has_escalation_comment(pr_number, dry_run=dry_run):
         return
     _run(
-        ["gh", "pr", "comment", pr_number, "--body",
-         f"{ESCALATION_MARKER}\n"
-         "This drift PR has been open for a full regeneration cycle (14 days). "
-         "Upstream is still drifted and the baseline here is still unmerged."],
-        dry_run=dry_run, check=False,
+        [
+            "gh",
+            "pr",
+            "comment",
+            pr_number,
+            "--body",
+            f"{ESCALATION_MARKER}\n"
+            "This drift PR has been open for a full regeneration cycle (14 days). "
+            "Upstream is still drifted and the baseline here is still unmerged.",
+        ],
+        dry_run=dry_run,
+        check=False,
     )
 
 
@@ -887,9 +925,14 @@ def handle_drifted(
         print(f"  updating existing PR #{existing}")
         _run(
             [
-                "gh", "pr", "edit", existing,
-                "--title", title,
-                "--body", body,
+                "gh",
+                "pr",
+                "edit",
+                existing,
+                "--title",
+                title,
+                "--body",
+                body,
             ],
             dry_run=dry_run,
         )
@@ -897,8 +940,12 @@ def handle_drifted(
         print("  creating new PR")
         _run(
             pr_create_argv(
-                base_branch=base_branch, branch=branch, title=title, body=body,
-                risk="schema", assignees=assignees,
+                base_branch=base_branch,
+                branch=branch,
+                title=title,
+                body=body,
+                risk="schema",
+                assignees=assignees,
             ),
             dry_run=dry_run,
         )
@@ -1018,9 +1065,13 @@ def handle_routine_batch(
     _run(["git", "add", "hvantk/resources/drift_ledger.json"], dry_run=dry_run)
 
     _run(
-        ["git", "commit", "-m",
-         f"chore(drift): refresh {len(datasets)} snapshots\n\n"
-         + "\n".join(f"- {n}" for n in datasets)],
+        [
+            "git",
+            "commit",
+            "-m",
+            f"chore(drift): refresh {len(datasets)} snapshots\n\n"
+            + "\n".join(f"- {n}" for n in datasets),
+        ],
         dry_run=dry_run,
     )
     _run(
@@ -1033,22 +1084,30 @@ def handle_routine_batch(
     # Collect maintainers across every dataset in the batch, then resolve ONCE on the
     # combined list -- not per dataset, or a fallback would land on the batch as many
     # times as it has entries with no declared maintainer of their own.
-    maintainers = sorted({
-        m
-        for e in entries
-        for m in read_maintainers(split_dataset(e["dataset_name"])[0])
-    })
+    maintainers = sorted(
+        {
+            m
+            for e in entries
+            for m in read_maintainers(split_dataset(e["dataset_name"])[0])
+        }
+    )
     assignees = resolve_assignees(maintainers)
 
     existing = pr_exists_for_branch(branch, dry_run=dry_run)
     if existing:
-        _run(["gh", "pr", "edit", existing, "--title", title, "--body", body],
-             dry_run=dry_run)
+        _run(
+            ["gh", "pr", "edit", existing, "--title", title, "--body", body],
+            dry_run=dry_run,
+        )
     else:
         _run(
             pr_create_argv(
-                base_branch=base_branch, branch=branch, title=title, body=body,
-                risk="routine", assignees=assignees,
+                base_branch=base_branch,
+                branch=branch,
+                title=title,
+                body=body,
+                risk="routine",
+                assignees=assignees,
             ),
             dry_run=dry_run,
         )
@@ -1078,12 +1137,19 @@ def pr_create_argv(
     Never emits ``--auto``: nothing in this pipeline may auto-merge.
     """
     argv = [
-        "gh", "pr", "create",
-        "--base", base_branch,
-        "--head", branch,
-        "--title", title,
-        "--body", body,
-        "--label", f"drift:{risk}",
+        "gh",
+        "pr",
+        "create",
+        "--base",
+        base_branch,
+        "--head",
+        branch,
+        "--title",
+        title,
+        "--body",
+        body,
+        "--label",
+        f"drift:{risk}",
     ]
     if assignees:
         argv += ["--assignee", ",".join(assignees)]
@@ -1303,7 +1369,9 @@ def main(argv: list[str] | None = None) -> int:
             # entry regenerates one baseline on behalf of several datasets, so
             # reporting `dataset_name` alone would show the operator one dataset when
             # several are left unaddressed.
-            covered = [str(d) for d in (entry.get("datasets") or [entry.get("dataset_name")])]
+            covered = [
+                str(d) for d in (entry.get("datasets") or [entry.get("dataset_name")])
+            ]
             failed.extend(covered)
             label = ", ".join(covered)
             print(

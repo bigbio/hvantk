@@ -1,4 +1,5 @@
 """matrix.py: EWCE specificity + summary-AnnData -> per-gene table."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -194,8 +195,11 @@ def test_emit_rollup_suppresses_the_vector():
         group_axis="celltype",
         atlas="asp",
         specificity=SpecificitySpec(
-            method="ewce_fraction", targets=("CM",), combine="max",
-            name="cm_spec", emit="rollup",
+            method="ewce_fraction",
+            targets=("CM",),
+            combine="max",
+            name="cm_spec",
+            emit="rollup",
         ),
     )
     df = reduce_matrix_to_gene(_summary_adata(), mspec)

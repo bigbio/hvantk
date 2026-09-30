@@ -7,6 +7,7 @@ site counts), coding-exon count, transcript count, and the MANE Select transcrip
 is also a mechanical confounder of rare-variant burden counts, so it must be available as a
 nuisance covariate rather than omitted.
 """
+
 from __future__ import annotations
 
 import logging

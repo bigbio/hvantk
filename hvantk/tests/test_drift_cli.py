@@ -85,6 +85,7 @@ def test_drift_stub_emits_warning_to_stderr_in_json_mode():
 def test_drift_regenerate_overwrites_fingerprint(tmp_path: Path, monkeypatch):
     # Point the fixture at a tmpdir-copy so we don't mutate the test asset.
     import shutil
+
     plugin_dir = tmp_path / "fake_plugin"
     shutil.copytree(FIXTURE_ROOT / "fake_plugin", plugin_dir)
     plugin_loader.reset_registry_for_tests()
@@ -107,7 +108,9 @@ def test_unknown_dataset_returns_registry_error_exit_code():
     runner = CliRunner()
     result = runner.invoke(drift_cmd, ["does:not:exist"])
     assert result.exit_code == 3  # EXIT_REGISTRY_ERROR
-    assert "unknown dataset" in result.output.lower() or "unknown dataset" in (result.stderr or "")
+    assert "unknown dataset" in result.output.lower() or "unknown dataset" in (
+        result.stderr or ""
+    )
 
 
 def test_regenerate_unknown_dataset_returns_registry_error_exit_code():
@@ -122,20 +125,31 @@ def test_regenerate_unknown_dataset_returns_registry_error_exit_code():
 # now be stale. `hvantk drift --ledger` reads the rebuild ledger (written by the drift
 # bot; see .github/scripts/drift_to_pr.py) and lists what is still pending a rebuild.
 
+
 def test_ledger_flag_lists_datasets_needing_rebuild(tmp_path, monkeypatch):
     """A dataset whose upstream moved after its last rebuild is stale. Never-rebuilt
     (rebuilt_at None) counts as stale."""
     from hvantk.tools.plugins import drift_cli
 
     ledger = tmp_path / "drift_ledger.json"
-    ledger.write_text(json.dumps({
-        "clinvar:variants": {"last_upstream_change": "2026-08-23T00:00:00+00:00",
-                             "accepted_in": "PR #288", "signal": "routine",
-                             "rebuilt_at": None},
-        "hgnc:lookup": {"last_upstream_change": "2026-08-01T00:00:00+00:00",
-                        "accepted_in": "PR #286", "signal": "routine",
-                        "rebuilt_at": "2026-08-20T00:00:00+00:00"},
-    }))
+    ledger.write_text(
+        json.dumps(
+            {
+                "clinvar:variants": {
+                    "last_upstream_change": "2026-08-23T00:00:00+00:00",
+                    "accepted_in": "PR #288",
+                    "signal": "routine",
+                    "rebuilt_at": None,
+                },
+                "hgnc:lookup": {
+                    "last_upstream_change": "2026-08-01T00:00:00+00:00",
+                    "accepted_in": "PR #286",
+                    "signal": "routine",
+                    "rebuilt_at": "2026-08-20T00:00:00+00:00",
+                },
+            }
+        )
+    )
     monkeypatch.setattr(drift_cli, "LEDGER_PATH", ledger)
 
     result = CliRunner().invoke(drift_cli.drift_cmd, ["--ledger"])
@@ -260,14 +274,23 @@ def test_mark_rebuilt_clears_a_dataset_from_the_stale_list(tmp_path, monkeypatch
     from hvantk.tools.plugins import drift_cli
 
     ledger = tmp_path / "drift_ledger.json"
-    ledger.write_text(json.dumps({
-        "clinvar:variants": {"last_upstream_change": "2026-08-23T00:00:00+00:00",
-                             "accepted_in": "PR #288", "signal": "routine",
-                             "rebuilt_at": None},
-    }))
+    ledger.write_text(
+        json.dumps(
+            {
+                "clinvar:variants": {
+                    "last_upstream_change": "2026-08-23T00:00:00+00:00",
+                    "accepted_in": "PR #288",
+                    "signal": "routine",
+                    "rebuilt_at": None,
+                },
+            }
+        )
+    )
     monkeypatch.setattr(drift_cli, "LEDGER_PATH", ledger)
 
-    result = CliRunner().invoke(drift_cli.drift_cmd, ["--mark-rebuilt", "clinvar:variants"])
+    result = CliRunner().invoke(
+        drift_cli.drift_cmd, ["--mark-rebuilt", "clinvar:variants"]
+    )
     assert result.exit_code == 0, result.output
 
     stale = CliRunner().invoke(drift_cli.drift_cmd, ["--ledger"])
@@ -276,7 +299,9 @@ def test_mark_rebuilt_clears_a_dataset_from_the_stale_list(tmp_path, monkeypatch
     assert "clinvar:variants" not in stale.output
 
 
-def test_mark_rebuilt_unknown_dataset_errors_without_creating_an_entry(tmp_path, monkeypatch):
+def test_mark_rebuilt_unknown_dataset_errors_without_creating_an_entry(
+    tmp_path, monkeypatch
+):
     """Marking a dataset that never drifted (so it has no ledger row) must fail loudly,
     not silently fabricate a row the drift bot never wrote."""
     from hvantk.tools.plugins import drift_cli
@@ -285,7 +310,9 @@ def test_mark_rebuilt_unknown_dataset_errors_without_creating_an_entry(tmp_path,
     ledger.write_text("{}")
     monkeypatch.setattr(drift_cli, "LEDGER_PATH", ledger)
 
-    result = CliRunner().invoke(drift_cli.drift_cmd, ["--mark-rebuilt", "does:not:exist"])
+    result = CliRunner().invoke(
+        drift_cli.drift_cmd, ["--mark-rebuilt", "does:not:exist"]
+    )
 
     assert result.exit_code != 0
     assert "does:not:exist" in (result.output or "")
@@ -296,18 +323,30 @@ def test_mark_rebuilt_preserves_every_other_entry_untouched(tmp_path, monkeypatc
     from hvantk.tools.plugins import drift_cli
 
     ledger = tmp_path / "drift_ledger.json"
-    other_entry = {"last_upstream_change": "2026-08-01T00:00:00+00:00",
-                    "accepted_in": "PR #286", "signal": "routine",
-                    "rebuilt_at": "2026-08-20T00:00:00+00:00"}
-    ledger.write_text(json.dumps({
-        "clinvar:variants": {"last_upstream_change": "2026-08-23T00:00:00+00:00",
-                             "accepted_in": "PR #288", "signal": "routine",
-                             "rebuilt_at": None},
-        "hgnc:lookup": other_entry,
-    }))
+    other_entry = {
+        "last_upstream_change": "2026-08-01T00:00:00+00:00",
+        "accepted_in": "PR #286",
+        "signal": "routine",
+        "rebuilt_at": "2026-08-20T00:00:00+00:00",
+    }
+    ledger.write_text(
+        json.dumps(
+            {
+                "clinvar:variants": {
+                    "last_upstream_change": "2026-08-23T00:00:00+00:00",
+                    "accepted_in": "PR #288",
+                    "signal": "routine",
+                    "rebuilt_at": None,
+                },
+                "hgnc:lookup": other_entry,
+            }
+        )
+    )
     monkeypatch.setattr(drift_cli, "LEDGER_PATH", ledger)
 
-    result = CliRunner().invoke(drift_cli.drift_cmd, ["--mark-rebuilt", "clinvar:variants"])
+    result = CliRunner().invoke(
+        drift_cli.drift_cmd, ["--mark-rebuilt", "clinvar:variants"]
+    )
     assert result.exit_code == 0, result.output
 
     on_disk = json.loads(ledger.read_text())
@@ -330,7 +369,9 @@ def test_mark_rebuilt_and_ledger_flag_are_mutually_exclusive(tmp_path, monkeypat
     assert result.exit_code != 0
     # Must be OUR validation catching the combination, not e.g. an unrecognized-option
     # error from click -- the wording should name both flags.
-    assert "--ledger" in result.output and "--mark-rebuilt" in result.output, result.output
+    assert "--ledger" in result.output and "--mark-rebuilt" in result.output, (
+        result.output
+    )
 
 
 # --- --ledger must not silently swallow co-occurring flags ----------------------------
@@ -367,7 +408,9 @@ def test_ledger_flag_rejects_regenerate(tmp_path, monkeypatch):
     monkeypatch.setattr(drift_cli, "LEDGER_PATH", tmp_path / "drift_ledger.json")
     result = CliRunner().invoke(drift_cli.drift_cmd, ["--ledger", "--regenerate"])
     assert result.exit_code != 0
-    assert "--ledger" in result.output and "--regenerate" in result.output, result.output
+    assert "--ledger" in result.output and "--regenerate" in result.output, (
+        result.output
+    )
 
 
 def test_ledger_flag_rejects_json(tmp_path, monkeypatch):
@@ -479,7 +522,9 @@ def test_drift_all_rejects_a_domain_that_matches_nothing(monkeypatch):
 # --- #361: --regenerate must not write a failing probe's output, and must not exit 1 -----
 
 
-def test_regenerate_reports_a_failing_probe_as_probe_failed_exit_code(tmp_path: Path, monkeypatch):
+def test_regenerate_reports_a_failing_probe_as_probe_failed_exit_code(
+    tmp_path: Path, monkeypatch
+):
     import shutil
 
     from hvantk.core.plugin.api import DriftProbeError
@@ -500,9 +545,13 @@ def test_regenerate_reports_a_failing_probe_as_probe_failed_exit_code(tmp_path: 
 
     result = CliRunner().invoke(drift_cmd, ["--regenerate", "fake:default"])
 
-    assert result.exit_code == 2, result.output  # EXIT_PROBE_FAILED, not a traceback's 1
+    assert result.exit_code == 2, (
+        result.output
+    )  # EXIT_PROBE_FAILED, not a traceback's 1
     assert "upstream down" in result.output
-    assert fp_path.read_text() == before, "a failed probe must not overwrite the baseline"
+    assert fp_path.read_text() == before, (
+        "a failed probe must not overwrite the baseline"
+    )
     assert sorted(p.name for p in (plugin_dir / "tests").iterdir()) == [
         "drift_fingerprint.json"
     ], "no temp sibling left behind"
@@ -532,9 +581,13 @@ def test_regenerate_reports_a_non_driftprobe_exception_as_probe_failed_exit_code
 
     result = CliRunner().invoke(drift_cmd, ["--regenerate", "fake:default"])
 
-    assert result.exit_code == 2, result.output  # EXIT_PROBE_FAILED, not a traceback's 1
+    assert result.exit_code == 2, (
+        result.output
+    )  # EXIT_PROBE_FAILED, not a traceback's 1
     assert "KeyError" in result.output
-    assert fp_path.read_text() == before, "a failed probe must not overwrite the baseline"
+    assert fp_path.read_text() == before, (
+        "a failed probe must not overwrite the baseline"
+    )
     assert sorted(p.name for p in (plugin_dir / "tests").iterdir()) == [
         "drift_fingerprint.json"
     ], "no temp sibling left behind"
@@ -564,9 +617,13 @@ def test_regenerate_reports_a_write_failure_as_probe_failed_exit_code(
 
     result = CliRunner().invoke(drift_cmd, ["--regenerate", "fake:default"])
 
-    assert result.exit_code == 2, result.output  # EXIT_PROBE_FAILED, not a traceback's 1
+    assert result.exit_code == 2, (
+        result.output
+    )  # EXIT_PROBE_FAILED, not a traceback's 1
     assert "disk full" in result.output
-    assert fp_path.read_text() == before, "a write failure must not corrupt the baseline"
+    assert fp_path.read_text() == before, (
+        "a write failure must not corrupt the baseline"
+    )
 
 
 def test_regenerate_reports_a_fingerprint_serialization_failure_as_probe_failed_exit_code(
@@ -595,10 +652,14 @@ def test_regenerate_reports_a_fingerprint_serialization_failure_as_probe_failed_
 
     result = CliRunner().invoke(drift_cmd, ["--regenerate", "fake:default"])
 
-    assert result.exit_code == 2, result.output  # EXIT_PROBE_FAILED, not a traceback's 1
+    assert result.exit_code == 2, (
+        result.output
+    )  # EXIT_PROBE_FAILED, not a traceback's 1
     assert "fingerprint NOT rewritten" in result.output
     assert "not JSON-serialisable" in result.output
-    assert fp_path.read_text() == before, "a serialization failure must not corrupt the baseline"
+    assert fp_path.read_text() == before, (
+        "a serialization failure must not corrupt the baseline"
+    )
     assert sorted(p.name for p in (plugin_dir / "tests").iterdir()) == [
         "drift_fingerprint.json"
     ], "no temp sibling left behind"
@@ -663,7 +724,9 @@ def test_single_dataset_drift_reports_its_own_providers_failure(monkeypatch, uni
     assert [r["status"] for r in rows if r["dataset_name"] == unit] == ["probe_failed"]
 
 
-def test_domain_filter_drops_dataset_level_errors_from_other_domains(tmp_path, monkeypatch):
+def test_domain_filter_drops_dataset_level_errors_from_other_domains(
+    tmp_path, monkeypatch
+):
     _registry_with_broken_dataset(tmp_path, monkeypatch)
     result = CliRunner().invoke(drift_cmd, ["--all", "--domain", "genomics", "--json"])
     assert result.exit_code == 0, result.output
@@ -702,7 +765,9 @@ def test_regenerate_ignores_unrelated_load_errors(tmp_path, monkeypatch):
     assert result.exit_code == 0, result.output
 
 
-def test_regenerate_exits_probe_failed_when_the_datasets_own_provider_failed(tmp_path, monkeypatch):
+def test_regenerate_exits_probe_failed_when_the_datasets_own_provider_failed(
+    tmp_path, monkeypatch
+):
     import shutil
 
     plugin_dir = tmp_path / "fake_plugin"
@@ -716,14 +781,20 @@ def test_regenerate_exits_probe_failed_when_the_datasets_own_provider_failed(tmp
     assert "entry-point:fake" in result.output
 
 
-@pytest.mark.parametrize("args", [["brokenprov:thing"], ["--regenerate", "brokenprov:thing"]])
-def test_a_dataset_that_failed_to_bind_exits_probe_failed_not_a_traceback(tmp_path, monkeypatch, args):
+@pytest.mark.parametrize(
+    "args", [["brokenprov:thing"], ["--regenerate", "brokenprov:thing"]]
+)
+def test_a_dataset_that_failed_to_bind_exits_probe_failed_not_a_traceback(
+    tmp_path, monkeypatch, args
+):
     """get_dataset re-raises the cached PluginLoadError, which is not a KeyError, so it
     escaped the `except KeyError` and a wrapper reading exit codes saw 1 == 'drifted'."""
     _registry_with_broken_dataset(tmp_path, monkeypatch)
     result = CliRunner().invoke(drift_cmd, args)
     assert result.exit_code == 2, result.output
-    assert not isinstance(result.exception, plugin_loader.PluginLoadError), result.exception
+    assert not isinstance(result.exception, plugin_loader.PluginLoadError), (
+        result.exception
+    )
     assert "failed to load" in result.output
 
 
@@ -732,7 +803,9 @@ def test_a_dataset_that_failed_to_bind_gets_a_json_row(tmp_path, monkeypatch):
     result = CliRunner().invoke(drift_cmd, ["--json", "brokenprov:thing"])
     assert result.exit_code == 2, result.output
     rows = _stdout_rows(result)
-    assert [(r["dataset_name"], r["status"]) for r in rows] == [("brokenprov:thing", "probe_failed")]
+    assert [(r["dataset_name"], r["status"]) for r in rows] == [
+        ("brokenprov:thing", "probe_failed")
+    ]
 
 
 # --- follow-up: provider-level load errors recorded under the DIRECTORY name must
@@ -773,15 +846,22 @@ def test_single_dataset_drift_matches_a_provider_level_error_across_underscore_h
     assert result.exit_code == 2, result.output
     assert "gwas_catalog" in result.stderr
     rows = _stdout_rows(result)
-    assert {r["dataset_name"] for r in rows} == {"gwas-catalog:associations", "gwas_catalog"}
-    assert [r["status"] for r in rows if r["dataset_name"] == "gwas_catalog"] == ["probe_failed"]
+    assert {r["dataset_name"] for r in rows} == {
+        "gwas-catalog:associations",
+        "gwas_catalog",
+    }
+    assert [r["status"] for r in rows if r["dataset_name"] == "gwas_catalog"] == [
+        "probe_failed"
+    ]
 
 
 # --- follow-up: an unknown dataset should hint at `plugins errors` when there is a
 # recorded load failure that might explain it -----------------------------------------
 
 
-def test_unknown_dataset_hints_at_plugins_errors_when_something_failed_to_load(monkeypatch):
+def test_unknown_dataset_hints_at_plugins_errors_when_something_failed_to_load(
+    monkeypatch,
+):
     _registry_with_load_error(monkeypatch, unit="brokenprov")
     result = CliRunner().invoke(drift_cmd, ["does:not:exist"])
     assert result.exit_code == 3, result.output
@@ -824,10 +904,14 @@ def _tuple_keyed_probe_registry(monkeypatch):
     return reg
 
 
-def test_drift_json_single_dataset_exits_probe_failed_on_non_str_keyed_fingerprint(monkeypatch):
+def test_drift_json_single_dataset_exits_probe_failed_on_non_str_keyed_fingerprint(
+    monkeypatch,
+):
     _tuple_keyed_probe_registry(monkeypatch)
     result = CliRunner().invoke(drift_cmd, ["--json", "fake:default"])
-    assert result.exit_code == 2, result.output  # EXIT_PROBE_FAILED, not a traceback's 1
+    assert result.exit_code == 2, (
+        result.output
+    )  # EXIT_PROBE_FAILED, not a traceback's 1
     rows = json.loads(result.output)
     assert rows[0]["dataset_name"] == "fake:default"
     assert rows[0]["status"] == "probe_failed"
@@ -836,14 +920,20 @@ def test_drift_json_single_dataset_exits_probe_failed_on_non_str_keyed_fingerpri
 def test_drift_all_json_exits_probe_failed_on_non_str_keyed_fingerprint(monkeypatch):
     _tuple_keyed_probe_registry(monkeypatch)
     result = CliRunner().invoke(drift_cmd, ["--all", "--json"])
-    assert result.exit_code == 2, result.output  # EXIT_PROBE_FAILED, not a traceback's 1
+    assert result.exit_code == 2, (
+        result.output
+    )  # EXIT_PROBE_FAILED, not a traceback's 1
     rows = json.loads(result.output)
     matching = [r for r in rows if r["dataset_name"] == "fake:default"]
     assert matching and matching[0]["status"] == "probe_failed"
 
 
-def test_drift_human_readable_exits_probe_failed_on_non_str_keyed_fingerprint(monkeypatch):
+def test_drift_human_readable_exits_probe_failed_on_non_str_keyed_fingerprint(
+    monkeypatch,
+):
     _tuple_keyed_probe_registry(monkeypatch)
     result = CliRunner().invoke(drift_cmd, ["fake:default"])
-    assert result.exit_code == 2, result.output  # EXIT_PROBE_FAILED, not a traceback's 1
+    assert result.exit_code == 2, (
+        result.output
+    )  # EXIT_PROBE_FAILED, not a traceback's 1
     assert "probe_failed" in result.output

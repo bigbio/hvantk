@@ -57,9 +57,9 @@ def test_sample_qc():
         first_sample = sample_qc[0]["sample_qc"]
         required_fields = ["call_rate", "n_called", "n_het", "n_hom_ref", "n_hom_var"]
         for field in required_fields:
-            assert (
-                field in first_sample
-            ), f"Required field {field} not found in sample QC"
+            assert field in first_sample, (
+                f"Required field {field} not found in sample QC"
+            )
 
         logger.info("✅ Sample QC test passed")
         return True
@@ -93,9 +93,9 @@ def test_variant_qc():
         first_variant = variant_qc[0]["variant_qc"]
         required_fields = ["call_rate", "AC", "AF", "n_called", "n_het", "p_value_hwe"]
         for field in required_fields:
-            assert (
-                field in first_variant
-            ), f"Required field {field} not found in variant QC"
+            assert field in first_variant, (
+                f"Required field {field} not found in variant QC"
+            )
 
         # Check AC/AF arrays have correct length (should be 2 for biallelic)
         assert len(first_variant["AC"]) == 2, "AC should be array of length 2"
@@ -172,7 +172,8 @@ def test_qc_filtering():
 
         # Test sample filtering
         mt_sample_filtered = filter_samples_by_qc(
-            qc_results.mt, min_call_rate=0.5  # Lenient threshold for test data
+            qc_results.mt,
+            min_call_rate=0.5,  # Lenient threshold for test data
         )
 
         samples_before = mt.count_cols()
@@ -189,12 +190,12 @@ def test_qc_filtering():
         logger.info(f"Variant filtering: {variants_before} → {variants_after}")
 
         # Should have removed some low-quality data
-        assert (
-            samples_after <= samples_before
-        ), "Sample filtering should not increase sample count"
-        assert (
-            variants_after <= variants_before
-        ), "Variant filtering should not increase variant count"
+        assert samples_after <= samples_before, (
+            "Sample filtering should not increase sample count"
+        )
+        assert variants_after <= variants_before, (
+            "Variant filtering should not increase variant count"
+        )
 
         logger.info("✅ QC filtering test passed")
         return True
@@ -228,9 +229,9 @@ def test_qc_export():
             # Check that files were created
             expected_files = ["sample_qc", "variant_qc", "matrix_table"]
             for file_type in expected_files:
-                assert (
-                    file_type in saved_files
-                ), f"Expected file type {file_type} not saved"
+                assert file_type in saved_files, (
+                    f"Expected file type {file_type} not saved"
+                )
                 logger.info(f"Saved {file_type}: {saved_files[file_type]}")
 
         # Test visualization preparation

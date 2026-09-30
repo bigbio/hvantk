@@ -4,6 +4,7 @@ Given per-(gene,route) 2x2 counts and reduction inputs from ``aggregate.py``, co
 the Fisher p/OR, take the min-p route as the gene's prior, attach the architecture
 reductions of that winning route, and (optionally) a multiple-testing-corrected column.
 """
+
 from __future__ import annotations
 
 import numpy as np

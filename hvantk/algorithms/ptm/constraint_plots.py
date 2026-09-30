@@ -20,7 +20,10 @@ from typing import Dict
 
 import matplotlib
 
-if matplotlib.get_backend().lower() not in {"agg", "module://matplotlib_inline.backend_inline"}:
+if matplotlib.get_backend().lower() not in {
+    "agg",
+    "module://matplotlib_inline.backend_inline",
+}:
     try:
         matplotlib.use("Agg")
     except Exception:  # pragma: no cover - backend already locked in
@@ -39,9 +42,7 @@ _LOEUF_BIN_ORDER = ["constrained", "unconstrained"]
 _MAX_GROUPS_PANEL_A = 25
 
 
-def render_panels(
-    results: Dict[str, pd.DataFrame], output_dir: str
-) -> Dict[str, str]:
+def render_panels(results: Dict[str, pd.DataFrame], output_dir: str) -> Dict[str, str]:
     """Render the 4 constraint panels as PNGs under ``output_dir/plots/``.
 
     Parameters
@@ -106,9 +107,7 @@ def _render_per_group_ranking(df: pd.DataFrame, output_path: str) -> None:
 
     data = df.dropna(subset=["log2_ratio"]).copy()
     if data.empty:
-        logger.warning(
-            "per_group_ranking has no finite log2_ratio values; skipping."
-        )
+        logger.warning("per_group_ranking has no finite log2_ratio values; skipping.")
         return
 
     n_total_groups = len(data)
@@ -154,7 +153,9 @@ def _render_tau_quartile(df: pd.DataFrame, output_path: str) -> None:
     import matplotlib.pyplot as plt
 
     data = df.copy()
-    order = [q for q in _TAU_QUARTILE_ORDER if q in set(data["tau_quartile"].astype(str))]
+    order = [
+        q for q in _TAU_QUARTILE_ORDER if q in set(data["tau_quartile"].astype(str))
+    ]
     extras = [q for q in data["tau_quartile"].astype(str).unique() if q not in order]
     order = order + extras
     data["tau_quartile"] = pd.Categorical(
@@ -175,7 +176,9 @@ def _render_tau_quartile(df: pd.DataFrame, output_path: str) -> None:
         linewidth=0.5,
     )
     ax.set_xticks(list(x))
-    ax.set_xticklabels(data["tau_quartile"].astype(str).tolist(), rotation=15, ha="right")
+    ax.set_xticklabels(
+        data["tau_quartile"].astype(str).tolist(), rotation=15, ha="right"
+    )
     ax.set_ylabel("non-PTM / PTM AF ratio")
     ax.set_title("PTM AF depletion by τ quartile")
     ax.axhline(1.0, color="gray", linestyle="--", linewidth=0.8, alpha=0.7)
@@ -282,7 +285,9 @@ def _render_category_group_heatmap(df: pd.DataFrame, output_path: str) -> None:
         return
 
     pivot = pivot.reindex(sorted(pivot.index))
-    col_order = pivot.mean(axis=0, skipna=True).sort_values(ascending=False).index.tolist()
+    col_order = (
+        pivot.mean(axis=0, skipna=True).sort_values(ascending=False).index.tolist()
+    )
     pivot = pivot.reindex(columns=col_order)
 
     vmax = float(pivot.abs().max().max()) if pivot.size else 1.0

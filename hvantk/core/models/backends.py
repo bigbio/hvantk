@@ -151,6 +151,7 @@ def algorithm(
                 result_prov = getattr(result, "provenance", None)
                 if isinstance(result_prov, Provenance) and result_prov.parents == ():
                     import dataclasses
+
                     result.provenance = dataclasses.replace(
                         result_prov, parents=tuple(input_provs)
                     )

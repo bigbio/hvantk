@@ -163,7 +163,9 @@ def _run_drift_check_with_spec(spec: DatasetSpec, *, timeout: int = 60) -> Drift
             probe_ref=_probe_ref(spec),
         )
 
-    def _bad_baseline(message: str, *, expected: dict[str, Any] | None = None) -> DriftResult:
+    def _bad_baseline(
+        message: str, *, expected: dict[str, Any] | None = None
+    ) -> DriftResult:
         """Build this dataset's probe_failed row for a baseline that is present but
         unusable (missing, unreadable, unparseable, wrong shape, or hand-seeded).
 
@@ -336,7 +338,9 @@ def write_fingerprint(path: Path, fingerprint: Mapping[str, Any]) -> None:
     would get (0666 masked by the process umask) is applied instead.
     """
     path = Path(path)
-    fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+    fd, tmp_name = tempfile.mkstemp(
+        dir=path.parent, prefix=f".{path.name}.", suffix=".tmp"
+    )
     try:
         with os.fdopen(fd, "w") as fh:
             fh.write(json.dumps(fingerprint, indent=2, default=str))

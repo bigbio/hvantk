@@ -524,11 +524,7 @@ def _build_burden_section(section: Dict[str, Any]) -> str:
     )
 
     return (
-        "<section id='burden'>"
-        "<h2>Burden Testing</h2>"
-        f"{plot_html}"
-        f"{table_html}"
-        "</section>"
+        f"<section id='burden'><h2>Burden Testing</h2>{plot_html}{table_html}</section>"
     )
 
 
@@ -573,7 +569,7 @@ def _get_css_styles(colors: Dict[str, str]) -> str:
             background-color: #f7f7f7;
         }}
         header {{
-            background: linear-gradient(90deg, {colors['primary']}, {colors['secondary']});
+            background: linear-gradient(90deg, {colors["primary"]}, {colors["secondary"]});
             color: white;
             padding: 30px;
             border-radius: 10px;
@@ -612,7 +608,7 @@ def _get_css_styles(colors: Dict[str, str]) -> str:
             padding: 10px;
         }}
         th {{
-            background-color: {colors['primary']};
+            background-color: {colors["primary"]};
             color: white;
         }}
         .embedded-image {{

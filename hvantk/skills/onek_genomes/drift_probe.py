@@ -4,6 +4,7 @@ Both probes are release-identity probes (the upstream sources are immutable
 per release). A new release ships at a new URL — bumping the constants here
 is how a new release flips the fingerprint.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -18,8 +19,7 @@ PROBE_VERSION = 1
 
 _VARIANTS_RELEASE_DIR = "1000G_2504_high_coverage"
 _VARIANTS_ANCHOR_FILE = (
-    "CCDG_14151_B01_GRM_WGS_2020-08-05_chr22"
-    ".filtered.shapeit2-duohmm-phased.vcf.gz"
+    "CCDG_14151_B01_GRM_WGS_2020-08-05_chr22.filtered.shapeit2-duohmm-phased.vcf.gz"
 )
 _VARIANTS_BASE = "https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections"
 _VARIANTS_URL = (
@@ -54,10 +54,12 @@ def fetch_variants_fingerprint() -> dict:
     return {
         "probe_version": PROBE_VERSION,
         "source_version": _VARIANTS_RELEASE_DIR,
-        "headers": {_VARIANTS_ANCHOR_FILE: {
-            "last_modified": resp.headers.get("Last-Modified"),
-            "content_length": resp.headers.get("Content-Length"),
-        }},
+        "headers": {
+            _VARIANTS_ANCHOR_FILE: {
+                "last_modified": resp.headers.get("Last-Modified"),
+                "content_length": resp.headers.get("Content-Length"),
+            }
+        },
         "checksums": {},
         "fetched_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -74,10 +76,12 @@ def fetch_samples_fingerprint() -> dict:
     return {
         "probe_version": PROBE_VERSION,
         "source_version": _SAMPLES_VERSION,
-        "headers": {"integrated_call_samples_v3.20130502.ALL.panel": {
-            "last_modified": resp.headers.get("Last-Modified"),
-            "content_length": resp.headers.get("Content-Length"),
-        }},
+        "headers": {
+            "integrated_call_samples_v3.20130502.ALL.panel": {
+                "last_modified": resp.headers.get("Last-Modified"),
+                "content_length": resp.headers.get("Content-Length"),
+            }
+        },
         "checksums": {},
         "fetched_at": datetime.now(timezone.utc).isoformat(),
     }

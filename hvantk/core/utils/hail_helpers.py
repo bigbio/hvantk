@@ -110,7 +110,7 @@ def cleanup_temp_file(tmp_path: Optional[str]) -> None:
     try:
         local_path = tmp_path
         if local_path.startswith(_FILE_URI_PREFIX):
-            local_path = local_path[len(_FILE_URI_PREFIX):]
+            local_path = local_path[len(_FILE_URI_PREFIX) :]
         if os.path.exists(local_path):
             os.remove(local_path)
     except Exception:

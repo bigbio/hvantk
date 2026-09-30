@@ -24,6 +24,7 @@ A plugin manifest's ``artifact_type:`` must still name a *concrete* type -- the
 union would make the build-time isinstance check vacuous, so the loader rejects
 it.
 """
+
 from __future__ import annotations
 
 from hvantk.core.models.annotation_table import AnnotationTable

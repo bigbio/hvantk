@@ -49,9 +49,7 @@ PROBE_VERSION = 2
 # at runtime.
 OBJECT_PATHS: tuple[str, ...] = tuple(
     sorted(
-        path
-        for tables in GNOMAD_CONSTRAINT_TABLES.values()
-        for path in tables.values()
+        path for tables in GNOMAD_CONSTRAINT_TABLES.values() for path in tables.values()
     )
 )
 
@@ -67,9 +65,7 @@ _TIMEOUT_S = (5.0, 10.0)
 _HEADERS = {"Accept-Encoding": "identity"}
 
 
-def _head_object(
-    session: requests.Session, path: str
-) -> tuple[dict, str | None]:
+def _head_object(session: requests.Session, path: str) -> tuple[dict, str | None]:
     """Return (compared signals, Last-Modified) for one object, or raise."""
     url = f"{GNOMAD_RELEASE_BASE_URL}/{path}"
     try:

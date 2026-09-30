@@ -5,6 +5,7 @@ components over shared membership -- is wrong here, and wrong in a way that prod
 plausible output: membership chains transitively, so the closure can collapse a large
 fraction of a gene universe into one component.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -181,7 +182,9 @@ def test_config_rejects_a_bare_path_instead_of_a_policy():
     from hvantk.algorithms.rerank.config import Config
 
     with pytest.raises(TypeError, match="BlockPolicy"):
-        Config(name="x", features=[], labels=None, blocks="/some/hgnc.txt").__post_init__()
+        Config(
+            name="x", features=[], labels=None, blocks="/some/hgnc.txt"
+        ).__post_init__()
 
 
 def test_block_policy_rejects_a_bad_ceiling_or_a_blank_table():

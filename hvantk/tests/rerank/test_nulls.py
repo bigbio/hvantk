@@ -6,6 +6,7 @@ interpretable: a per-axis null can sit near zero while the selected-maximum null
 because the maximum over several candidate axes is stochastically larger than any one of
 them.
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -86,12 +87,20 @@ def test_a_chunk_reproduces_exactly_the_permutations_the_whole_run_would_have():
     axes = {"axis0": axes["axis0"], "axis1": axes["axis1"]}
     scorer = cheap_scorer()
     whole = permutation_deltas(
-        matrix, baseline, axes, y,
-        config=NullConfig(n_perm=6, seed=5), scorer=scorer,
+        matrix,
+        baseline,
+        axes,
+        y,
+        config=NullConfig(n_perm=6, seed=5),
+        scorer=scorer,
     )
     part = permutation_deltas(
-        matrix, baseline, axes, y,
-        config=NullConfig(n_perm=6, chunk=1, n_chunks=3, seed=5), scorer=scorer,
+        matrix,
+        baseline,
+        axes,
+        y,
+        config=NullConfig(n_perm=6, chunk=1, n_chunks=3, seed=5),
+        scorer=scorer,
     )
     assert sorted(part.perm.unique().tolist()) == [2, 3]
     merged = whole[whole.perm.isin([2, 3])].reset_index(drop=True)
@@ -104,15 +113,26 @@ def test_a_chunk_reproduces_exactly_the_permutations_the_whole_run_would_have():
     # reproduce exactly the draws the whole blocked run makes for those indices.
     blocked_blocks = np.arange(120) // 4
     whole_blocked = permutation_deltas(
-        matrix, baseline, axes, y,
-        config=NullConfig(n_perm=6, seed=5), scorer=scorer, blocks=blocked_blocks,
-    )
-    part_blocked = permutation_deltas(
-        matrix, baseline, axes, y,
-        config=NullConfig(n_perm=6, chunk=1, n_chunks=3, seed=5), scorer=scorer,
+        matrix,
+        baseline,
+        axes,
+        y,
+        config=NullConfig(n_perm=6, seed=5),
+        scorer=scorer,
         blocks=blocked_blocks,
     )
-    merged_blocked = whole_blocked[whole_blocked.perm.isin([2, 3])].reset_index(drop=True)
+    part_blocked = permutation_deltas(
+        matrix,
+        baseline,
+        axes,
+        y,
+        config=NullConfig(n_perm=6, chunk=1, n_chunks=3, seed=5),
+        scorer=scorer,
+        blocks=blocked_blocks,
+    )
+    merged_blocked = whole_blocked[whole_blocked.perm.isin([2, 3])].reset_index(
+        drop=True
+    )
     assert np.allclose(
         part_blocked.sort_values(["perm", "axis"]).delta.to_numpy(),
         merged_blocked.sort_values(["perm", "axis"]).delta.to_numpy(),
@@ -128,20 +148,15 @@ def test_a_blocked_null_permutes_whole_blocks():
     from hvantk.algorithms.rerank.nulls import _block_structure, _permute_labels
 
     blocks = np.array(
-        [0, 1, 2, 3]          # four singletons
-        + [4, 4, 4]           # size-3 block, all positive
-        + [5, 5, 5]           # size-3 block, all negative
-        + [6, 6, 6]           # size-3 block, all negative
-        + [7, 7, 7, 7]        # size-4 block, all positive
-        + [8, 8, 8, 8]        # size-4 block, mixed
+        [0, 1, 2, 3]  # four singletons
+        + [4, 4, 4]  # size-3 block, all positive
+        + [5, 5, 5]  # size-3 block, all negative
+        + [6, 6, 6]  # size-3 block, all negative
+        + [7, 7, 7, 7]  # size-4 block, all positive
+        + [8, 8, 8, 8]  # size-4 block, mixed
     )
     y = np.array(
-        [1, 1, 0, 0]
-        + [1, 1, 1]
-        + [0, 0, 0]
-        + [0, 0, 0]
-        + [1, 1, 1, 1]
-        + [1, 1, 0, 0]
+        [1, 1, 0, 0] + [1, 1, 1] + [0, 0, 0] + [0, 0, 0] + [1, 1, 1, 1] + [1, 1, 0, 0]
     )
     assert len(blocks) == len(y)
     structure = _block_structure(blocks)
@@ -174,8 +189,13 @@ def test_a_blocked_null_permutes_whole_blocks():
 
     frame = pd.DataFrame({"a": np.zeros(len(y)), "b": np.ones(len(y))})
     permutation_deltas(
-        frame, ["a"], {"ax": ["b"]}, y, config=NullConfig(n_perm=4, seed=3),
-        scorer=recording, blocks=blocks,
+        frame,
+        ["a"],
+        {"ax": ["b"]},
+        y,
+        config=NullConfig(n_perm=4, seed=3),
+        scorer=recording,
+        blocks=blocks,
     )
     assert seen and all(counts_by_size(s) == observed_counts for s in seen)
 
@@ -187,8 +207,12 @@ def test_a_blocked_null_permutes_whole_blocks():
     mismatched_scorer = oof_scorer(groups=np.arange(60))
     with pytest.raises(ValueError, match="blocks"):
         permutation_deltas(
-            mm_matrix, mm_baseline, {"axis0": mm_axes["axis0"]}, mm_y,
-            config=NullConfig(n_perm=1, seed=1), scorer=mismatched_scorer,
+            mm_matrix,
+            mm_baseline,
+            {"axis0": mm_axes["axis0"]},
+            mm_y,
+            config=NullConfig(n_perm=1, seed=1),
+            scorer=mismatched_scorer,
         )
 
 
@@ -221,8 +245,12 @@ def test_every_permutation_refits_the_baseline():
     measures the permutation rather than the axis."""
     matrix, y, baseline, axes = permuted_labels(n=120, n_noise=1)
     d = permutation_deltas(
-        matrix, baseline, {"axis0": axes["axis0"]}, y,
-        config=NullConfig(n_perm=6, seed=1), scorer=cheap_scorer(),
+        matrix,
+        baseline,
+        {"axis0": axes["axis0"]},
+        y,
+        config=NullConfig(n_perm=6, seed=1),
+        scorer=cheap_scorer(),
     )
     assert d.base_auc.nunique() > 1, "the baseline was not refit per permutation"
 
@@ -243,18 +271,28 @@ def test_the_observed_labels_are_never_scored():
         return cheap_scorer()(m, cols, yy)
 
     permutation_deltas(
-        matrix, baseline, {"axis0": axes["axis0"]}, y,
-        config=NullConfig(n_perm=4, seed=1), scorer=spy,
+        matrix,
+        baseline,
+        {"axis0": axes["axis0"]},
+        y,
+        config=NullConfig(n_perm=4, seed=1),
+        scorer=spy,
     )
     assert seen and all(not np.array_equal(s, np.asarray(y)) for s in seen)
-    assert all(int(s.sum()) == int(np.asarray(y).sum()) for s in seen), "labels not permuted"
+    assert all(int(s.sum()) == int(np.asarray(y).sum()) for s in seen), (
+        "labels not permuted"
+    )
 
 
 def test_an_axis_wholly_inside_the_baseline_is_nan_not_zero():
     matrix, y, baseline, _ = planted_signal(n=120, n_noise=1)
     d = permutation_deltas(
-        matrix, baseline, {"same": ["base"]}, y,
-        config=NullConfig(n_perm=2, seed=1), scorer=cheap_scorer(),
+        matrix,
+        baseline,
+        {"same": ["base"]},
+        y,
+        config=NullConfig(n_perm=2, seed=1),
+        scorer=cheap_scorer(),
     )
     assert d.delta.isna().all()
 
@@ -268,8 +306,12 @@ def test_per_axis_p_value_on_a_planted_signal_clears():
     a0 = roc_auc_score(y, scorer(matrix, baseline, y))
     a1 = roc_auc_score(y, scorer(matrix, baseline + axes["axis0"], y))
     d = permutation_deltas(
-        matrix, baseline, {"axis0": axes["axis0"]}, y,
-        config=NullConfig(n_perm=39, seed=1), scorer=scorer,
+        matrix,
+        baseline,
+        {"axis0": axes["axis0"]},
+        y,
+        config=NullConfig(n_perm=39, seed=1),
+        scorer=scorer,
     )
     p = p_value(d[d.axis == "axis0"].delta.to_numpy(), a1 - a0)
     assert p <= 0.05, p
@@ -291,7 +333,11 @@ def test_permutation_deltas_runs_end_to_end_on_the_shipped_estimator():
     """Two permutations only -- the point is that the default path works, not its shape."""
     matrix, y, baseline, axes = planted_signal(n=100, n_noise=0)
     d = permutation_deltas(
-        matrix, baseline, {"axis0": axes["axis0"]}, y, config=NullConfig(n_perm=2, seed=1)
+        matrix,
+        baseline,
+        {"axis0": axes["axis0"]},
+        y,
+        config=NullConfig(n_perm=2, seed=1),
     )
     assert len(d) == 2 and d.delta.notna().all()
 

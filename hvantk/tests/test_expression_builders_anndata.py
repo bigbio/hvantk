@@ -27,7 +27,9 @@ class TestExpressionAtlasHelpers:
         with open(path, "w") as fh:
             fh.write("Gene ID\tGene Name\t" + "\t".join(samples) + "\n")
             for gid, gname, row in zip(gene_ids, gene_names, values):
-                fh.write(gid + "\t" + gname + "\t" + "\t".join(str(v) for v in row) + "\n")
+                fh.write(
+                    gid + "\t" + gname + "\t" + "\t".join(str(v) for v in row) + "\n"
+                )
 
     def test_builds_without_sdrf_metadata(self, tmp_path):
         """Build AnnData from expression TSV only, no SDRF."""
@@ -79,6 +81,7 @@ class TestVisualizeExpressionAd:
             visualize_expression_distribution,
         )
         import matplotlib
+
         matplotlib.use("Agg")  # non-interactive backend
         import matplotlib.pyplot as plt
 
@@ -96,6 +99,7 @@ class TestVisualizeExpressionAd:
             visualize_expression_distribution,
         )
         import matplotlib
+
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
 

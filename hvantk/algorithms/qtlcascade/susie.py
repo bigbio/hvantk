@@ -25,6 +25,7 @@ References
 - Zou, Carbonetto, Wang, Stephens (2022) PLoS Genet 18(7):e1010299 — SuSiE-RSS.
 - Wallace (2021) PLoS Genet 17(9):e1009440 — coloc with SuSiE (``coloc.susie``).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -169,19 +170,20 @@ def susie_rss(
     R = np.asarray(R, dtype=float)
     p = len(z)
     if p == 0:
-        return SusieFit(alpha=np.zeros((0, 0)), lbf_variable=np.zeros((0, 0)),
-                        V=np.zeros(0))
+        return SusieFit(
+            alpha=np.zeros((0, 0)), lbf_variable=np.zeros((0, 0)), V=np.zeros(0)
+        )
 
     # susie_rss z-score regularisation (n-provided path).
-    adj = (n - 1) / (z ** 2 + n - 2)
+    adj = (n - 1) / (z**2 + n - 2)
     z = np.sqrt(adj) * z
 
     # Sufficient statistics for standardised X and y (var_y = 1).
     XtX = (n - 1) * R
     Xty = np.sqrt(n - 1) * z
-    sigma2 = 1.0                       # residual variance, held fixed (RSS default)
+    sigma2 = 1.0  # residual variance, held fixed (RSS default)
     dj = np.diag(XtX).astype(float).copy()
-    dj[dj <= 0] = n - 1                # guard a degenerate reference diagonal
+    dj[dj <= 0] = n - 1  # guard a degenerate reference diagonal
     shat2 = sigma2 / dj
 
     L = min(L, p)
@@ -189,7 +191,7 @@ def susie_rss(
     mu = np.zeros((L, p))
     lbf_var = np.zeros((L, p))
     V = np.full(L, float(scaled_prior_variance))
-    b = np.zeros((L, p))               # alpha*mu contribution per effect
+    b = np.zeros((L, p))  # alpha*mu contribution per effect
     b_tot = np.zeros(p)
     Xtb = XtX @ b_tot
     logpi = -np.log(p)
@@ -200,7 +202,7 @@ def susie_rss(
             # Residualise: subtract every effect except `eff`.
             Xtr = Xty - (Xtb - XtX @ b[eff])
             bhat = Xtr / dj
-            z2 = (bhat ** 2) / shat2
+            z2 = (bhat**2) / shat2
             Veff = _optimize_V(z2, shat2)
             V[eff] = Veff
             if Veff <= 0:
@@ -209,8 +211,9 @@ def susie_rss(
                 lbf_var[eff] = 0.0
                 b_new = np.zeros(p)
             else:
-                lbf = (0.5 * np.log(shat2 / (shat2 + Veff))
-                       + 0.5 * z2 * (Veff / (Veff + shat2)))
+                lbf = 0.5 * np.log(shat2 / (shat2 + Veff)) + 0.5 * z2 * (
+                    Veff / (Veff + shat2)
+                )
                 lbf_var[eff] = lbf
                 w = lbf + logpi
                 w -= w.max()
@@ -231,11 +234,12 @@ def susie_rss(
     return fit
 
 
-def _annotate_credible_sets(fit: SusieFit, R: np.ndarray,
-                            coverage: float, min_abs_corr: float) -> None:
+def _annotate_credible_sets(
+    fit: SusieFit, R: np.ndarray, coverage: float, min_abs_corr: float
+) -> None:
     """``susie_get_cs``: per-effect 95% CS with a purity filter; drop duplicates."""
     seen: List[frozenset] = []
-    rng = np.random.RandomState(1)     # deterministic purity subsampling
+    rng = np.random.RandomState(1)  # deterministic purity subsampling
     for eff in range(fit.alpha.shape[0]):
         if fit.V[eff] <= 0:
             continue
@@ -267,8 +271,9 @@ def _annotate_credible_sets(fit: SusieFit, R: np.ndarray,
 # ---------------------------------------------------------------------------
 
 
-def _coloc_from_lbf(lbf1: np.ndarray, lbf2: np.ndarray,
-                    p1: float, p2: float, p12: float) -> float:
+def _coloc_from_lbf(
+    lbf1: np.ndarray, lbf2: np.ndarray, p1: float, p2: float, p12: float
+) -> float:
     """PP.H4 for one pair of single-effect log-BF vectors (``coloc.bf_bf`` algebra).
 
     Same H0–H4 combination as :func:`coloc.coloc_abf`, but the per-variant log
@@ -278,13 +283,15 @@ def _coloc_from_lbf(lbf1: np.ndarray, lbf2: np.ndarray,
     s1 = _logsumexp(lbf1)
     s2 = _logsumexp(lbf2)
     s_both = _logsumexp(lbf1 + lbf2)
-    log_h = np.array([
-        0.0,
-        np.log(p1) + s1,
-        np.log(p2) + s2,
-        np.log(p1) + np.log(p2) + _logdiff(s1 + s2, s_both),
-        np.log(p12) + s_both,
-    ])
+    log_h = np.array(
+        [
+            0.0,
+            np.log(p1) + s1,
+            np.log(p2) + s2,
+            np.log(p1) + np.log(p2) + _logdiff(s1 + s2, s_both),
+            np.log(p12) + s_both,
+        ]
+    )
     post = np.exp(log_h - log_h.max())
     post /= post.sum()
     return float(post[4])
@@ -307,6 +314,10 @@ def coloc_susie(
     best = 0.0
     for i in fit1.cs_effect:
         for j in fit2.cs_effect:
-            best = max(best, _coloc_from_lbf(
-                fit1.lbf_variable[i], fit2.lbf_variable[j], p1, p2, p12))
+            best = max(
+                best,
+                _coloc_from_lbf(
+                    fit1.lbf_variable[i], fit2.lbf_variable[j], p1, p2, p12
+                ),
+            )
     return best

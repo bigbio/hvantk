@@ -374,16 +374,16 @@ def run_hgc_workflow(
     )
     logger.info(f"[{sample_size}] Timing breakdown:")
     logger.info(
-        f"[{sample_size}]   - GVCF → VDS:    {timings['gvcf_combine']:.1f}s ({timings['gvcf_combine']/timings['total']*100:.1f}%)"
+        f"[{sample_size}]   - GVCF → VDS:    {timings['gvcf_combine']:.1f}s ({timings['gvcf_combine'] / timings['total'] * 100:.1f}%)"
     )
     logger.info(
-        f"[{sample_size}]   - VDS → MT:      {timings['vds_to_mt']:.1f}s ({timings['vds_to_mt']/timings['total']*100:.1f}%)"
+        f"[{sample_size}]   - VDS → MT:      {timings['vds_to_mt']:.1f}s ({timings['vds_to_mt'] / timings['total'] * 100:.1f}%)"
     )
     logger.info(
-        f"[{sample_size}]   - Compute QC:    {timings['compute_qc']:.1f}s ({timings['compute_qc']/timings['total']*100:.1f}%)"
+        f"[{sample_size}]   - Compute QC:    {timings['compute_qc']:.1f}s ({timings['compute_qc'] / timings['total'] * 100:.1f}%)"
     )
     logger.info(
-        f"[{sample_size}]   - MT → VCF:      {timings['mt_to_vcf']:.1f}s ({timings['mt_to_vcf']/timings['total']*100:.1f}%)"
+        f"[{sample_size}]   - MT → VCF:      {timings['mt_to_vcf']:.1f}s ({timings['mt_to_vcf'] / timings['total'] * 100:.1f}%)"
     )
     logger.info(f"[{sample_size}] Final outputs:")
     logger.info(f"[{sample_size}]   - Cohort VCF: {vcf_path}")

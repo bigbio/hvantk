@@ -11,6 +11,7 @@ was the only one no caller could vary.
 ``hvantk/tests/rerank/test_seeds.py`` greps the package and fails if a bare ``42``
 reappears outside this file.
 """
+
 from __future__ import annotations
 
 import numpy as np

@@ -7,7 +7,11 @@ import json
 import pandas as pd
 import pytest
 
-from hvantk.algorithms.enrichex.pipeline import BurdenConfig, BurdenPipeline, BurdenRunResult
+from hvantk.algorithms.enrichex.pipeline import (
+    BurdenConfig,
+    BurdenPipeline,
+    BurdenRunResult,
+)
 from hvantk.core.utils.table_utils import leaf_name
 
 

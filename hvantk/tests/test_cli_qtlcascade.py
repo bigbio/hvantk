@@ -13,11 +13,12 @@ def test_cascade_cmd():
     # started, plus build_cascade so no Hail ops run. Patching sys.modules
     # instead is order-fragile: it only intercepts Hail if hail_context hasn't
     # already bound the real module earlier in the suite.
-    with patch(
-        "hvantk.core.utils.hail_context.init_hail"
-    ), patch(
-        "hvantk.algorithms.qtlcascade.cascade.build_cascade", return_value=mock_ht
-    ) as mock_build:
+    with (
+        patch("hvantk.core.utils.hail_context.init_hail"),
+        patch(
+            "hvantk.algorithms.qtlcascade.cascade.build_cascade", return_value=mock_ht
+        ) as mock_build,
+    ):
         result = runner.invoke(
             qtlcascade_group,
             [
@@ -57,10 +58,12 @@ def test_coloc_cmd(tmp_path):
         }
     )
 
-    with patch(
-        "hvantk.core.utils.hail_context.init_hail"
-    ), patch(
-        "hvantk.algorithms.qtlcascade.coloc.run_coloc_per_gene", return_value=mock_df
+    with (
+        patch("hvantk.core.utils.hail_context.init_hail"),
+        patch(
+            "hvantk.algorithms.qtlcascade.coloc.run_coloc_per_gene",
+            return_value=mock_df,
+        ),
     ):
         result = runner.invoke(
             qtlcascade_group,

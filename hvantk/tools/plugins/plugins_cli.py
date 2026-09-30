@@ -64,11 +64,14 @@ def describe_cmd(provider: str):
         # equality here reported "unknown provider" for a provider that in fact failed to
         # load, with no mention of why.
         failed = [
-            exc for unit, exc in errors
+            exc
+            for unit, exc in errors
             if unit.replace("_", "-") == provider.replace("_", "-")
         ]
         if failed:
-            raise click.ClickException(f"provider {provider!r} failed to load: {failed[0]}")
+            raise click.ClickException(
+                f"provider {provider!r} failed to load: {failed[0]}"
+            )
         raise click.ClickException(f"unknown provider: {provider}")
     click.echo(f"name:    {p.name}")
     click.echo(f"version: {p.version}")

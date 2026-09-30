@@ -1,4 +1,5 @@
 """Feature-spec parsing and validation (keys: gene_id, hgnc_id, symbol, variant)."""
+
 from __future__ import annotations
 
 import json
@@ -279,11 +280,7 @@ def test_aggregate_count_name_is_configurable(tmp_path):
 def test_variant_key_without_aggregate_is_rejected(tmp_path):
     from hvantk.algorithms.annotation.spec import load_spec
 
-    doc = (
-        "name: t\n"
-        "layer1:\n"
-        "  - {axis: x, source: s:d, key: variant, columns: [c1]}\n"
-    )
+    doc = "name: t\nlayer1:\n  - {axis: x, source: s:d, key: variant, columns: [c1]}\n"
     p = tmp_path / "s.yaml"
     p.write_text(doc)
     with pytest.raises(

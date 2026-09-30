@@ -23,7 +23,7 @@ from hvantk.skills.insider.shared import normalize_hadoop_path
 
 logger = logging.getLogger(__name__)
 
-_TRACK_NAME_RE = re.compile(r'name=([^\s]+)')
+_TRACK_NAME_RE = re.compile(r"name=([^\s]+)")
 
 # Shared with insider:interfaces -- both datasets take the same two input shapes.
 _normalize_hadoop_path = normalize_hadoop_path

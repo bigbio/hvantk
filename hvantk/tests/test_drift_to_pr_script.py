@@ -197,16 +197,22 @@ def test_fingerprints_match_treats_a_content_change_as_material(drift_to_pr):
     That must still count as a change -- this guard is about suppressing *timestamp*
     churn, not about suppressing upstream content revisions.
     """
-    base = {"checksums": {"f.csv": "abc"}, "extras": {"content_length": "1113685"},
-            "fetched_at": "2026-08-01T00:00:00+00:00"}
-    grown = {"checksums": {"f.csv": "abc"}, "extras": {"content_length": "1114672"},
-             "fetched_at": "2026-08-04T00:00:00+00:00"}
+    base = {
+        "checksums": {"f.csv": "abc"},
+        "extras": {"content_length": "1113685"},
+        "fetched_at": "2026-08-01T00:00:00+00:00",
+    }
+    grown = {
+        "checksums": {"f.csv": "abc"},
+        "extras": {"content_length": "1114672"},
+        "fetched_at": "2026-08-04T00:00:00+00:00",
+    }
 
     assert not drift_to_pr.fingerprints_match(json.dumps(base), json.dumps(grown))
 
 
 def test_unparseable_fingerprint_is_never_treated_as_matching(drift_to_pr):
-    """"I cannot tell" must mean "push", never "skip".
+    """ "I cannot tell" must mean "push", never "skip".
 
     Returning True here would silently suppress a real drift PR whenever a fingerprint
     was malformed -- the failure mode this whole script exists to avoid.
@@ -240,19 +246,28 @@ def test_branch_needs_update_is_true_when_the_branch_is_new(drift_to_pr, monkeyp
 
 
 def _drifted(name, path):
-    return {"dataset_name": name, "status": "drifted", "fingerprint_path": path,
-            "observed": {}, "expected": {}, "diff": {}, "probe_error": None}
+    return {
+        "dataset_name": name,
+        "status": "drifted",
+        "fingerprint_path": path,
+        "observed": {},
+        "expected": {},
+        "diff": {},
+        "probe_error": None,
+    }
 
 
 UCSC_FP = "hvantk/skills/ucsc_cellbrowser/tests/drift_fingerprint.json"
 
 
 def test_datasets_sharing_a_baseline_collapse_to_one_entry(drift_to_pr):
-    groups = drift_to_pr.group_by_drift_signal([
-        _drifted("ucsc-cellbrowser:default", UCSC_FP),
-        _drifted("ucsc-cellbrowser:adult-ctx", UCSC_FP),
-        _drifted("ucsc-cellbrowser:dev-ctx", UCSC_FP),
-    ])
+    groups = drift_to_pr.group_by_drift_signal(
+        [
+            _drifted("ucsc-cellbrowser:default", UCSC_FP),
+            _drifted("ucsc-cellbrowser:adult-ctx", UCSC_FP),
+            _drifted("ucsc-cellbrowser:dev-ctx", UCSC_FP),
+        ]
+    )
 
     assert len(groups) == 1
     assert groups[0]["datasets"] == [
@@ -264,29 +279,46 @@ def test_datasets_sharing_a_baseline_collapse_to_one_entry(drift_to_pr):
 
 def test_distinct_baselines_are_never_merged(drift_to_pr):
     """The guard that keeps this from over-collapsing: different file, different PR."""
-    groups = drift_to_pr.group_by_drift_signal([
-        _drifted("clinvar:variants", "hvantk/skills/clinvar/tests/drift_fingerprint.json"),
-        _drifted("hgnc:lookup", "hvantk/skills/hgnc/tests/drift_fingerprint.json"),
-    ])
+    groups = drift_to_pr.group_by_drift_signal(
+        [
+            _drifted(
+                "clinvar:variants", "hvantk/skills/clinvar/tests/drift_fingerprint.json"
+            ),
+            _drifted("hgnc:lookup", "hvantk/skills/hgnc/tests/drift_fingerprint.json"),
+        ]
+    )
     assert len(groups) == 2
 
 
 def test_entries_without_a_fingerprint_path_are_never_grouped(drift_to_pr):
     """An older report shape must not silently collapse unrelated datasets into one PR."""
-    groups = drift_to_pr.group_by_drift_signal([
-        {"dataset_name": "a:x", "status": "drifted"},
-        {"dataset_name": "b:y", "status": "drifted"},
-    ])
+    groups = drift_to_pr.group_by_drift_signal(
+        [
+            {"dataset_name": "a:x", "status": "drifted"},
+            {"dataset_name": "b:y", "status": "drifted"},
+        ]
+    )
     assert len(groups) == 2
     assert [g["datasets"] for g in groups] == [["a:x"], ["b:y"]]
 
 
-def test_group_branch_is_provider_level_but_single_datasets_keep_their_name(drift_to_pr):
+def test_group_branch_is_provider_level_but_single_datasets_keep_their_name(
+    drift_to_pr,
+):
     """A lone dataset must keep its historical branch, or open PRs stop being matched."""
-    assert drift_to_pr.branch_name_for_signal(["clinvar:variants"]) == "drift/clinvar-variants"
-    assert drift_to_pr.branch_name_for_signal([
-        "ucsc-cellbrowser:default", "ucsc-cellbrowser:adult-ctx",
-    ]) == "drift/ucsc-cellbrowser"
+    assert (
+        drift_to_pr.branch_name_for_signal(["clinvar:variants"])
+        == "drift/clinvar-variants"
+    )
+    assert (
+        drift_to_pr.branch_name_for_signal(
+            [
+                "ucsc-cellbrowser:default",
+                "ucsc-cellbrowser:adult-ctx",
+            ]
+        )
+        == "drift/ucsc-cellbrowser"
+    )
 
 
 def test_group_branch_is_stable_regardless_of_member_order(drift_to_pr):
@@ -298,7 +330,10 @@ def test_group_branch_is_stable_regardless_of_member_order(drift_to_pr):
 
 def test_grouped_pr_names_every_dataset_it_covers(drift_to_pr):
     body = drift_to_pr.build_pr_body(
-        "ucsc-cellbrowser:default", {}, None, [],
+        "ucsc-cellbrowser:default",
+        {},
+        None,
+        [],
         covers=["ucsc-cellbrowser:default", "ucsc-cellbrowser:adult-ctx"],
     )
     assert "ucsc-cellbrowser:adult-ctx" in body
@@ -312,6 +347,8 @@ def test_grouped_pr_names_every_dataset_it_covers(drift_to_pr):
     assert drift_to_pr.pr_title_for("clinvar:variants") == (
         "chore(drift): clinvar:variants snapshot regeneration"
     )
+
+
 # --- the skip path itself, end to end -----------------------------------------------
 #
 # Adversarial review caught that NO test exercised the behaviour this change adds:
@@ -321,7 +358,14 @@ def test_grouped_pr_names_every_dataset_it_covers(drift_to_pr):
 
 
 def _capture_handle_drifted(
-    drift_to_pr, monkeypatch, tmp_path, *, needs_update, pr_exists, staged=True, entry=None
+    drift_to_pr,
+    monkeypatch,
+    tmp_path,
+    *,
+    needs_update,
+    pr_exists,
+    staged=True,
+    entry=None,
 ):
     """Run handle_drifted with git/gh stubbed.
 
@@ -340,9 +384,13 @@ def _capture_handle_drifted(
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
     monkeypatch.setattr(drift_to_pr, "_run", _record)
-    monkeypatch.setattr(drift_to_pr, "branch_needs_update", lambda b, dry_run: needs_update)
     monkeypatch.setattr(
-        drift_to_pr, "pr_exists_for_branch", lambda b, dry_run: "7" if pr_exists else None
+        drift_to_pr, "branch_needs_update", lambda b, dry_run: needs_update
+    )
+    monkeypatch.setattr(
+        drift_to_pr,
+        "pr_exists_for_branch",
+        lambda b, dry_run: "7" if pr_exists else None,
     )
     # Record the KWARGS, not just the fact of a call. `_discard_staged_fingerprints`
     # is a no-op under dry_run=True (it prints and returns), so a spy that discards its
@@ -356,7 +404,9 @@ def _capture_handle_drifted(
     monkeypatch.setattr(
         subprocess,
         "run",
-        lambda *a, **k: subprocess.CompletedProcess(a[0] if a else [], 1 if staged else 0),
+        lambda *a, **k: subprocess.CompletedProcess(
+            a[0] if a else [], 1 if staged else 0
+        ),
     )
 
     summary = tmp_path / "summary.md"
@@ -410,7 +460,12 @@ def test_grouped_entry_checks_out_the_signal_branch_and_titles_the_group(
     regression #263 exists to prevent.
     """
     cmds, _, _ = _capture_handle_drifted(
-        drift_to_pr, monkeypatch, tmp_path, needs_update=True, pr_exists=False, entry=GROUPED
+        drift_to_pr,
+        monkeypatch,
+        tmp_path,
+        needs_update=True,
+        pr_exists=False,
+        entry=GROUPED,
     )
     joined = [" ".join(c) for c in cmds]
 
@@ -423,7 +478,9 @@ def test_grouped_entry_checks_out_the_signal_branch_and_titles_the_group(
     assert "(2 datasets)" in create, create
 
 
-def test_matching_branch_with_no_open_pr_is_never_skipped(drift_to_pr, monkeypatch, tmp_path):
+def test_matching_branch_with_no_open_pr_is_never_skipped(
+    drift_to_pr, monkeypatch, tmp_path
+):
     """A branch can outlive its PR -- closing a PR leaves the head branch, and a run
     whose push succeeded while `gh pr create` failed leaves a branch with no PR at all.
     Skipping on branch content alone would suppress that dataset's drift forever."""
@@ -457,7 +514,10 @@ def test_routine_batch_discards_working_tree_on_mid_loop_regenerate_failure(
 
     def _regen_fails_on_third(cmd, **kwargs):
         calls.append(list(cmd))
-        if cmd[:4] == ["python", "-m", "hvantk.hvantk", "drift"] and cmd[-1] == "c:three":
+        if (
+            cmd[:4] == ["python", "-m", "hvantk.hvantk", "drift"]
+            and cmd[-1] == "c:three"
+        ):
             raise subprocess.CalledProcessError(1, cmd, output="", stderr="boom")
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
@@ -596,8 +656,10 @@ def test_discard_staged_fingerprints_clears_index_and_worktree(
     drift_to_pr._discard_staged_fingerprints(dry_run=False)
 
     assert _git(repo, "diff", "--cached", "--name-only").stdout.strip() == ""
-    assert fp.read_text() == original, "working tree must be restored too, or the next "\
+    assert fp.read_text() == original, (
+        "working tree must be restored too, or the next "
         "`git add hvantk/skills` re-stages the leak"
+    )
 
 
 def test_two_signals_from_one_provider_do_not_collide_on_one_branch(drift_to_pr):
@@ -612,20 +674,27 @@ def test_two_signals_from_one_provider_do_not_collide_on_one_branch(drift_to_pr)
         ["p:three", "p:four"], "hvantk/skills/p/tests/drift_fingerprint_samples.json"
     )
     assert a != b, f"distinct signals collided on {a}"
-    assert a == "drift/p"                 # the unsuffixed baseline keeps the plain name
+    assert a == "drift/p"  # the unsuffixed baseline keeps the plain name
     assert b == "drift/p-samples"
 
 
 def test_group_branch_still_stable_across_member_order(drift_to_pr):
     fp = "hvantk/skills/ucsc_cellbrowser/tests/drift_fingerprint.json"
-    assert drift_to_pr.branch_name_for_signal(["u:a", "u:b", "u:c"], fp) == \
-           drift_to_pr.branch_name_for_signal(["u:c", "u:a", "u:b"], fp)
+    assert drift_to_pr.branch_name_for_signal(
+        ["u:a", "u:b", "u:c"], fp
+    ) == drift_to_pr.branch_name_for_signal(["u:c", "u:a", "u:b"], fp)
+
 
 def test_nothing_staged_path_also_discards(drift_to_pr, monkeypatch, tmp_path):
     """The OTHER early return after `git add`. Both must clean up, or whichever is left
     uncovered reintroduces contamination on its own path."""
     _, cleanups, _ = _capture_handle_drifted(
-        drift_to_pr, monkeypatch, tmp_path, needs_update=True, pr_exists=True, staged=False
+        drift_to_pr,
+        monkeypatch,
+        tmp_path,
+        needs_update=True,
+        pr_exists=True,
+        staged=False,
     )
     assert cleanups == [{"dry_run": False}], (
         "the 'nothing to commit' return must discard too, and for real"
@@ -641,19 +710,23 @@ def test_same_baseline_different_probes_are_not_grouped(drift_to_pr):
     regeneration covers only the first dataset and leaving the second's drift silently
     unaddressed.
     """
-    groups = drift_to_pr.group_by_drift_signal([
-        {**_drifted("p:one", UCSC_FP), "probe_ref": "mod:probe_a"},
-        {**_drifted("p:two", UCSC_FP), "probe_ref": "mod:probe_b"},
-    ])
+    groups = drift_to_pr.group_by_drift_signal(
+        [
+            {**_drifted("p:one", UCSC_FP), "probe_ref": "mod:probe_a"},
+            {**_drifted("p:two", UCSC_FP), "probe_ref": "mod:probe_b"},
+        ]
+    )
     assert len(groups) == 2, "different probes must not share a PR"
 
 
 def test_same_baseline_same_probe_still_groups(drift_to_pr):
     """The complement: the ucsc case must keep collapsing."""
-    groups = drift_to_pr.group_by_drift_signal([
-        {**_drifted("u:a", UCSC_FP), "probe_ref": "mod:fetch_fingerprint"},
-        {**_drifted("u:b", UCSC_FP), "probe_ref": "mod:fetch_fingerprint"},
-    ])
+    groups = drift_to_pr.group_by_drift_signal(
+        [
+            {**_drifted("u:a", UCSC_FP), "probe_ref": "mod:fetch_fingerprint"},
+            {**_drifted("u:b", UCSC_FP), "probe_ref": "mod:fetch_fingerprint"},
+        ]
+    )
     assert len(groups) == 1
     assert groups[0]["datasets"] == ["u:a", "u:b"]
 
@@ -679,13 +752,17 @@ def test_an_undecodable_staged_file_does_not_abort_the_run(
 # PR, schema changes get their own. Misclassifying a schema change as routine would bury
 # a builder-breaking change inside a batch nobody reads closely.
 
+
 def test_classify_risk_routine_when_headers_unchanged(drift_to_pr):
     diff = {
         "changed": {
-            "extras": {"expected": {"content_length": "100"},
-                       "observed": {"content_length": "205"}},
+            "extras": {
+                "expected": {"content_length": "100"},
+                "observed": {"content_length": "205"},
+            },
         },
-        "added": {}, "removed": {},
+        "added": {},
+        "removed": {},
     }
     assert drift_to_pr.classify_risk(diff) == "routine"
 
@@ -693,10 +770,13 @@ def test_classify_risk_routine_when_headers_unchanged(drift_to_pr):
 def test_classify_risk_schema_when_headers_changed(drift_to_pr):
     diff = {
         "changed": {
-            "headers": {"expected": {"f.txt": ["a", "b"]},
-                        "observed": {"f.txt": ["a", "b", "c"]}},
+            "headers": {
+                "expected": {"f.txt": ["a", "b"]},
+                "observed": {"f.txt": ["a", "b", "c"]},
+            },
         },
-        "added": {}, "removed": {},
+        "added": {},
+        "removed": {},
     }
     assert drift_to_pr.classify_risk(diff) == "schema"
 
@@ -708,7 +788,8 @@ def test_classify_risk_schema_when_checksums_changed(drift_to_pr):
         "changed": {
             "checksums": {"expected": {"f.txt": "aaa"}, "observed": {"f.txt": "bbb"}},
         },
-        "added": {}, "removed": {},
+        "added": {},
+        "removed": {},
     }
     assert drift_to_pr.classify_risk(diff) == "schema"
 
@@ -716,12 +797,22 @@ def test_classify_risk_schema_when_checksums_changed(drift_to_pr):
 def test_classify_risk_schema_when_keys_added_or_removed(drift_to_pr):
     """A probe that gained or lost a top-level key changed shape; treat as schema so a
     human looks. Cheap to be wrong in this direction."""
-    assert drift_to_pr.classify_risk({"added": {"extras": {}}, "removed": {}, "changed": {}}) == "schema"
-    assert drift_to_pr.classify_risk({"added": {}, "removed": {"checksums": {}}, "changed": {}}) == "schema"
+    assert (
+        drift_to_pr.classify_risk(
+            {"added": {"extras": {}}, "removed": {}, "changed": {}}
+        )
+        == "schema"
+    )
+    assert (
+        drift_to_pr.classify_risk(
+            {"added": {}, "removed": {"checksums": {}}, "changed": {}}
+        )
+        == "schema"
+    )
 
 
 def test_classify_risk_unparseable_diff_is_schema(drift_to_pr):
-    """"I cannot tell" must mean "show a human", never "batch it silently"."""
+    """ "I cannot tell" must mean "show a human", never "batch it silently"."""
     assert drift_to_pr.classify_risk(None) == "schema"
     assert drift_to_pr.classify_risk({}) == "schema"
 
@@ -731,12 +822,14 @@ def test_classify_risk_source_version_alone_is_routine(drift_to_pr):
     portal version cl361->cl362, which is a website redeploy, not a data schema change."""
     diff = {
         "changed": {"source_version": {"expected": "cl361", "observed": "cl362"}},
-        "added": {}, "removed": {},
+        "added": {},
+        "removed": {},
     }
     assert drift_to_pr.classify_risk(diff) == "routine"
 
 
 # --- routine batching ---------------------------------------------------------------
+
 
 def test_routine_datasets_share_one_branch(drift_to_pr):
     """All routine drift lands on a single branch so it becomes one reviewable PR.
@@ -747,12 +840,18 @@ def test_routine_datasets_share_one_branch(drift_to_pr):
 
 def test_partition_by_risk_splits_the_report(drift_to_pr):
     drifted = [
-        {"dataset_name": "hgnc:lookup",
-         "diff": {"changed": {"extras": {}}, "added": {}, "removed": {}}},
-        {"dataset_name": "gtex-eqtl:eqtls",
-         "diff": {"changed": {"headers": {}}, "added": {}, "removed": {}}},
-        {"dataset_name": "clinvar:variants",
-         "diff": {"changed": {"extras": {}}, "added": {}, "removed": {}}},
+        {
+            "dataset_name": "hgnc:lookup",
+            "diff": {"changed": {"extras": {}}, "added": {}, "removed": {}},
+        },
+        {
+            "dataset_name": "gtex-eqtl:eqtls",
+            "diff": {"changed": {"headers": {}}, "added": {}, "removed": {}},
+        },
+        {
+            "dataset_name": "clinvar:variants",
+            "diff": {"changed": {"extras": {}}, "added": {}, "removed": {}},
+        },
     ]
     routine, schema = drift_to_pr.partition_by_risk(drifted)
 
@@ -768,7 +867,9 @@ def test_handle_routine_batch_is_a_noop_on_empty_input(drift_to_pr, monkeypatch)
     """No routine drift must mean no branch, no commit, no PR -- not an empty PR."""
     calls = []
     monkeypatch.setattr(drift_to_pr, "_run", lambda cmd, **kw: calls.append(cmd))
-    drift_to_pr.handle_routine_batch([], base_branch="dev", dry_run=True, step_summary=None)
+    drift_to_pr.handle_routine_batch(
+        [], base_branch="dev", dry_run=True, step_summary=None
+    )
     assert calls == []
 
 
@@ -821,13 +922,18 @@ def test_handle_routine_batch_does_not_commit_when_nothing_staged(
 
 # --- visibility requirements (V1 ready-for-review, V3 assigned, V4 labelled, V5 table)
 
+
 def test_pr_is_created_ready_for_review_not_draft(drift_to_pr):
     """V1. A draft PR cannot be merged and is filtered out of most review queues and
     notification defaults, so the old shape hid the work it was asking for -- which is
     why five PRs sat unreviewed for 3 days on 2026-08-28."""
     argv = drift_to_pr.pr_create_argv(
-        base_branch="dev", branch="drift/routine-batch",
-        title="t", body="b", risk="routine", assignees=["enriquea"],
+        base_branch="dev",
+        branch="drift/routine-batch",
+        title="t",
+        body="b",
+        risk="routine",
+        assignees=["enriquea"],
     )
     assert "--draft" not in argv
 
@@ -835,8 +941,12 @@ def test_pr_is_created_ready_for_review_not_draft(drift_to_pr):
 def test_pr_create_applies_the_risk_label(drift_to_pr):
     """V4."""
     argv = drift_to_pr.pr_create_argv(
-        base_branch="dev", branch="b", title="t", body="b",
-        risk="schema", assignees=[],
+        base_branch="dev",
+        branch="b",
+        title="t",
+        body="b",
+        risk="schema",
+        assignees=[],
     )
     assert "--label" in argv
     assert "drift:schema" in argv
@@ -845,8 +955,12 @@ def test_pr_create_applies_the_risk_label(drift_to_pr):
 def test_pr_create_assigns_maintainers(drift_to_pr):
     """V3. Nobody was assigned, so nothing appeared on anyone's list."""
     argv = drift_to_pr.pr_create_argv(
-        base_branch="dev", branch="b", title="t", body="b",
-        risk="routine", assignees=["enriquea", "ypriverol"],
+        base_branch="dev",
+        branch="b",
+        title="t",
+        body="b",
+        risk="routine",
+        assignees=["enriquea", "ypriverol"],
     )
     assert "--assignee" in argv
     assert "enriquea,ypriverol" in argv
@@ -855,8 +969,12 @@ def test_pr_create_assigns_maintainers(drift_to_pr):
 def test_pr_create_omits_assignee_when_no_maintainers(drift_to_pr):
     """`gh pr create --assignee ''` errors, so the flag must be absent, not empty."""
     argv = drift_to_pr.pr_create_argv(
-        base_branch="dev", branch="b", title="t", body="b",
-        risk="routine", assignees=[],
+        base_branch="dev",
+        branch="b",
+        title="t",
+        body="b",
+        risk="routine",
+        assignees=[],
     )
     assert "--assignee" not in argv
 
@@ -864,8 +982,12 @@ def test_pr_create_omits_assignee_when_no_maintainers(drift_to_pr):
 def test_pr_create_never_auto_merges(drift_to_pr):
     """Explicit project constraint: nothing in this pipeline may auto-merge."""
     argv = drift_to_pr.pr_create_argv(
-        base_branch="dev", branch="b", title="t", body="b",
-        risk="routine", assignees=[],
+        base_branch="dev",
+        branch="b",
+        title="t",
+        body="b",
+        risk="routine",
+        assignees=[],
     )
     assert "--auto" not in argv
     assert "merge" not in argv
@@ -873,12 +995,18 @@ def test_pr_create_never_auto_merges(drift_to_pr):
 
 def test_classification_table_marks_schema_changes(drift_to_pr):
     """A reviewer must be able to spot a schema change without reading JSON."""
-    table = drift_to_pr.classification_table([
-        {"dataset_name": "hgnc:lookup",
-         "diff": {"changed": {"extras": {}}, "added": {}, "removed": {}}},
-        {"dataset_name": "gtex-eqtl:eqtls",
-         "diff": {"changed": {"headers": {}}, "added": {}, "removed": {}}},
-    ])
+    table = drift_to_pr.classification_table(
+        [
+            {
+                "dataset_name": "hgnc:lookup",
+                "diff": {"changed": {"extras": {}}, "added": {}, "removed": {}},
+            },
+            {
+                "dataset_name": "gtex-eqtl:eqtls",
+                "diff": {"changed": {"headers": {}}, "added": {}, "removed": {}},
+            },
+        ]
+    )
     assert "`hgnc:lookup`" in table
     assert "routine — schema unchanged" in table
     assert "**SCHEMA CHANGE**" in table
@@ -887,10 +1015,14 @@ def test_classification_table_marks_schema_changes(drift_to_pr):
 def test_batch_body_leads_with_the_table_not_the_json(drift_to_pr):
     """V5. The old body opened with per-dataset JSON, which is why five PRs were
     indistinguishable at a glance."""
-    body = drift_to_pr.build_batch_pr_body([
-        {"dataset_name": "hgnc:lookup",
-         "diff": {"changed": {"extras": {}}, "added": {}, "removed": {}}},
-    ])
+    body = drift_to_pr.build_batch_pr_body(
+        [
+            {
+                "dataset_name": "hgnc:lookup",
+                "diff": {"changed": {"extras": {}}, "added": {}, "removed": {}},
+            },
+        ]
+    )
     assert body.index("| Dataset |") < body.index("```json")
 
 
@@ -898,7 +1030,8 @@ def test_schema_change_pr_is_also_not_a_draft(drift_to_pr):
     """V1 applies to the schema path too -- arguably more so, since that is the PR that
     most needs a human to look at it."""
     import re
-    src = (drift_to_pr.__file__ or "")
+
+    src = drift_to_pr.__file__ or ""
     assert src, "could not locate the script source"
     text = open(src).read()
     assert "--draft" not in text
@@ -910,6 +1043,7 @@ def test_schema_change_pr_is_also_not_a_draft(drift_to_pr):
 # currently declares -- so without a fallback the assignment requirement is dead code
 # and drift PRs go on nobody's list, which is half of why five sat unreviewed for
 # three days.
+
 
 def test_resolve_assignees_prefers_declared_maintainers(drift_to_pr, monkeypatch):
     monkeypatch.setattr(drift_to_pr, "DEFAULT_ASSIGNEE", "fallback-user")
@@ -940,6 +1074,7 @@ def test_resolve_assignees_rejects_a_malformed_fallback(drift_to_pr, monkeypatch
 # artifact is now stale survives only in git history. ClinVar gained ~408 KB of variants
 # across 2026-08 with nothing recording that a rebuild was due.
 
+
 def test_ledger_entry_records_the_accepted_change(drift_to_pr):
     entry = drift_to_pr.ledger_entry(
         dataset="clinvar:variants",
@@ -960,19 +1095,30 @@ def test_ledger_entry_signal_matches_classify_risk(drift_to_pr):
     tell different stories about the same change."""
     diff = {"changed": {"extras": {}}, "added": {}, "removed": {}}
     entry = drift_to_pr.ledger_entry(
-        dataset="hgnc:lookup", diff=diff, pr_ref="PR #1", now="2026-08-01T00:00:00+00:00"
+        dataset="hgnc:lookup",
+        diff=diff,
+        pr_ref="PR #1",
+        now="2026-08-01T00:00:00+00:00",
     )
     assert entry["signal"] == drift_to_pr.classify_risk(diff) == "routine"
 
 
 def test_ledger_update_preserves_rebuilt_at_of_other_datasets(drift_to_pr):
     """Updating one dataset must not clear another's rebuild record."""
-    ledger = {"hgnc:lookup": {"last_upstream_change": "x", "accepted_in": "PR #1",
-                              "signal": "routine", "rebuilt_at": "2026-08-01T00:00:00+00:00"}}
+    ledger = {
+        "hgnc:lookup": {
+            "last_upstream_change": "x",
+            "accepted_in": "PR #1",
+            "signal": "routine",
+            "rebuilt_at": "2026-08-01T00:00:00+00:00",
+        }
+    }
     out = drift_to_pr.ledger_update(
-        ledger, dataset="clinvar:variants",
+        ledger,
+        dataset="clinvar:variants",
         diff={"changed": {"extras": {}}, "added": {}, "removed": {}},
-        pr_ref="PR #2", now="2026-08-23T00:00:00+00:00",
+        pr_ref="PR #2",
+        now="2026-08-23T00:00:00+00:00",
     )
     assert out["hgnc:lookup"]["rebuilt_at"] == "2026-08-01T00:00:00+00:00"
     assert out["clinvar:variants"]["signal"] == "routine"
@@ -981,13 +1127,18 @@ def test_ledger_update_preserves_rebuilt_at_of_other_datasets(drift_to_pr):
 def test_ledger_update_does_not_mutate_its_input(drift_to_pr):
     ledger = {}
     drift_to_pr.ledger_update(
-        ledger, dataset="a:b", diff={"changed": {}, "added": {}, "removed": {}},
-        pr_ref="PR #1", now="2026-08-01T00:00:00+00:00",
+        ledger,
+        dataset="a:b",
+        diff={"changed": {}, "added": {}, "removed": {}},
+        pr_ref="PR #1",
+        now="2026-08-01T00:00:00+00:00",
     )
     assert ledger == {}
 
 
-def test_load_ledger_returns_empty_dict_on_corrupt_file(drift_to_pr, monkeypatch, tmp_path):
+def test_load_ledger_returns_empty_dict_on_corrupt_file(
+    drift_to_pr, monkeypatch, tmp_path
+):
     """A broken ledger must not block a drift PR -- it just starts recording afresh."""
     bad = tmp_path / "drift_ledger.json"
     bad.write_text("{ not json")
@@ -1000,7 +1151,9 @@ def test_load_ledger_returns_empty_dict_when_absent(drift_to_pr, monkeypatch, tm
     assert drift_to_pr.load_ledger() == {}
 
 
-def test_load_ledger_returns_empty_dict_on_truthy_non_dict_json(drift_to_pr, monkeypatch, tmp_path):
+def test_load_ledger_returns_empty_dict_on_truthy_non_dict_json(
+    drift_to_pr, monkeypatch, tmp_path
+):
     """`json.loads(text) or {}` only substitutes `{}` for FALSY JSON (`[]`, `0`, `""`,
     `null`) -- truthy non-dict JSON (a populated list, a bare string) passes straight
     through unchanged, breaking the docstring's "a missing or corrupt file yields {}"
@@ -1089,7 +1242,10 @@ def test_handle_routine_batch_stages_the_ledger_only_after_the_emptiness_guard(
     monkeypatch.setattr(drift_to_pr, "branch_needs_update", lambda b, dry_run: True)
     monkeypatch.setattr(drift_to_pr, "pr_exists_for_branch", lambda b, dry_run: None)
 
-    entries = [{"dataset_name": "a:one", "diff": {}}, {"dataset_name": "b:two", "diff": {}}]
+    entries = [
+        {"dataset_name": "a:one", "diff": {}},
+        {"dataset_name": "b:two", "diff": {}},
+    ]
     drift_to_pr.handle_routine_batch(
         entries, base_branch="dev", dry_run=False, step_summary=None
     )
@@ -1109,28 +1265,48 @@ def test_handle_routine_batch_stages_the_ledger_only_after_the_emptiness_guard(
 
 def test_pr_older_than_one_cycle_is_escalated(drift_to_pr):
     """A PR still open after a full regeneration cycle was not acted on."""
-    assert drift_to_pr.should_escalate(
-        pr_created_at="2026-08-01T06:00:00Z", now="2026-08-16T06:00:00Z"
-    ) is True
+    assert (
+        drift_to_pr.should_escalate(
+            pr_created_at="2026-08-01T06:00:00Z", now="2026-08-16T06:00:00Z"
+        )
+        is True
+    )
 
 
 def test_pr_within_one_cycle_is_not_escalated(drift_to_pr):
-    assert drift_to_pr.should_escalate(
-        pr_created_at="2026-08-01T06:00:00Z", now="2026-08-10T06:00:00Z"
-    ) is False
+    assert (
+        drift_to_pr.should_escalate(
+            pr_created_at="2026-08-01T06:00:00Z", now="2026-08-10T06:00:00Z"
+        )
+        is False
+    )
 
 
 def test_pr_exactly_at_the_cycle_boundary_is_escalated(drift_to_pr):
-    assert drift_to_pr.should_escalate(
-        pr_created_at="2026-08-01T06:00:00Z", now="2026-08-15T06:00:00Z"
-    ) is True
+    assert (
+        drift_to_pr.should_escalate(
+            pr_created_at="2026-08-01T06:00:00Z", now="2026-08-15T06:00:00Z"
+        )
+        is True
+    )
 
 
 def test_unparseable_timestamp_does_not_escalate(drift_to_pr):
     """Escalation is a notification; a parse failure must not spam the PR."""
-    assert drift_to_pr.should_escalate(pr_created_at="not-a-date", now="2026-08-16T06:00:00Z") is False
-    assert drift_to_pr.should_escalate(pr_created_at="2026-08-01T06:00:00Z", now="") is False
-    assert drift_to_pr.should_escalate(pr_created_at=None, now="2026-08-16T06:00:00Z") is False
+    assert (
+        drift_to_pr.should_escalate(
+            pr_created_at="not-a-date", now="2026-08-16T06:00:00Z"
+        )
+        is False
+    )
+    assert (
+        drift_to_pr.should_escalate(pr_created_at="2026-08-01T06:00:00Z", now="")
+        is False
+    )
+    assert (
+        drift_to_pr.should_escalate(pr_created_at=None, now="2026-08-16T06:00:00Z")
+        is False
+    )
 
 
 # `maybe_escalate` itself: the plumbing from a PR number to (at most) one `gh pr
@@ -1140,14 +1316,20 @@ def test_unparseable_timestamp_does_not_escalate(drift_to_pr):
 # through `_run`.
 
 
-def test_maybe_escalate_comments_once_when_pr_outlived_a_cycle(drift_to_pr, monkeypatch):
+def test_maybe_escalate_comments_once_when_pr_outlived_a_cycle(
+    drift_to_pr, monkeypatch
+):
     """The plumbing: a stale createdAt drives exactly one `gh pr comment`."""
     stale = (datetime.now(timezone.utc) - timedelta(days=20)).isoformat()
     monkeypatch.setattr(drift_to_pr, "_pr_created_at", lambda pr, *, dry_run: stale)
     calls: list[list[str]] = []
     monkeypatch.setattr(
-        drift_to_pr, "_run",
-        lambda cmd, **kw: calls.append(list(cmd)) or subprocess.CompletedProcess(cmd, 0, stdout="", stderr=""),
+        drift_to_pr,
+        "_run",
+        lambda cmd, **kw: (
+            calls.append(list(cmd))
+            or subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+        ),
     )
 
     drift_to_pr.maybe_escalate("55", dry_run=False)
@@ -1162,8 +1344,12 @@ def test_maybe_escalate_does_not_comment_when_pr_is_recent(drift_to_pr, monkeypa
     monkeypatch.setattr(drift_to_pr, "_pr_created_at", lambda pr, *, dry_run: recent)
     calls: list[list[str]] = []
     monkeypatch.setattr(
-        drift_to_pr, "_run",
-        lambda cmd, **kw: calls.append(list(cmd)) or subprocess.CompletedProcess(cmd, 0, stdout="", stderr=""),
+        drift_to_pr,
+        "_run",
+        lambda cmd, **kw: (
+            calls.append(list(cmd))
+            or subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+        ),
     )
 
     drift_to_pr.maybe_escalate("55", dry_run=False)
@@ -1171,14 +1357,20 @@ def test_maybe_escalate_does_not_comment_when_pr_is_recent(drift_to_pr, monkeypa
     assert calls == []
 
 
-def test_maybe_escalate_does_nothing_when_pr_created_at_is_unknown(drift_to_pr, monkeypatch):
+def test_maybe_escalate_does_nothing_when_pr_created_at_is_unknown(
+    drift_to_pr, monkeypatch
+):
     """`_pr_created_at` returns "" whenever gh could not answer. No timestamp means no
     verdict, so no comment -- never a crash."""
     monkeypatch.setattr(drift_to_pr, "_pr_created_at", lambda pr, *, dry_run: "")
     calls: list[list[str]] = []
     monkeypatch.setattr(
-        drift_to_pr, "_run",
-        lambda cmd, **kw: calls.append(list(cmd)) or subprocess.CompletedProcess(cmd, 0, stdout="", stderr=""),
+        drift_to_pr,
+        "_run",
+        lambda cmd, **kw: (
+            calls.append(list(cmd))
+            or subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+        ),
     )
 
     drift_to_pr.maybe_escalate("55", dry_run=False)
@@ -1195,13 +1387,20 @@ def test_maybe_escalate_is_a_noop_under_dry_run(drift_to_pr, monkeypatch):
     """
     run_calls: list[list[str]] = []
     monkeypatch.setattr(
-        drift_to_pr, "_run",
-        lambda cmd, **kw: run_calls.append(list(cmd)) or subprocess.CompletedProcess(cmd, 0, stdout="", stderr=""),
+        drift_to_pr,
+        "_run",
+        lambda cmd, **kw: (
+            run_calls.append(list(cmd))
+            or subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+        ),
     )
     direct_calls: list = []
     monkeypatch.setattr(
-        subprocess, "run",
-        lambda *a, **k: direct_calls.append(a) or subprocess.CompletedProcess(a[0] if a else [], 0),
+        subprocess,
+        "run",
+        lambda *a, **k: (
+            direct_calls.append(a) or subprocess.CompletedProcess(a[0] if a else [], 0)
+        ),
     )
 
     drift_to_pr.maybe_escalate("999", dry_run=True)
@@ -1226,9 +1425,13 @@ def test_pr_created_at_is_empty_under_dry_run(drift_to_pr):
 
 def test_pr_has_escalation_comment_true_when_marker_present(drift_to_pr, monkeypatch):
     monkeypatch.setattr(
-        subprocess, "run",
+        subprocess,
+        "run",
         lambda *a, **k: subprocess.CompletedProcess(
-            a[0], 0, stdout=f"unrelated\n{drift_to_pr.ESCALATION_MARKER}\nmore text", stderr=""
+            a[0],
+            0,
+            stdout=f"unrelated\n{drift_to_pr.ESCALATION_MARKER}\nmore text",
+            stderr="",
         ),
     )
     assert drift_to_pr._pr_has_escalation_comment("1", dry_run=False) is True
@@ -1236,8 +1439,11 @@ def test_pr_has_escalation_comment_true_when_marker_present(drift_to_pr, monkeyp
 
 def test_pr_has_escalation_comment_false_when_absent(drift_to_pr, monkeypatch):
     monkeypatch.setattr(
-        subprocess, "run",
-        lambda *a, **k: subprocess.CompletedProcess(a[0], 0, stdout="just a normal comment", stderr=""),
+        subprocess,
+        "run",
+        lambda *a, **k: subprocess.CompletedProcess(
+            a[0], 0, stdout="just a normal comment", stderr=""
+        ),
     )
     assert drift_to_pr._pr_has_escalation_comment("1", dry_run=False) is False
 
@@ -1247,23 +1453,34 @@ def test_pr_has_escalation_comment_false_under_dry_run(drift_to_pr, monkeypatch)
     subprocess call of any kind under --dry-run."""
     calls: list = []
     monkeypatch.setattr(
-        subprocess, "run",
-        lambda *a, **k: calls.append(a) or subprocess.CompletedProcess(a[0] if a else [], 0),
+        subprocess,
+        "run",
+        lambda *a, **k: (
+            calls.append(a) or subprocess.CompletedProcess(a[0] if a else [], 0)
+        ),
     )
     assert drift_to_pr._pr_has_escalation_comment("1", dry_run=True) is False
     assert calls == []
 
 
-def test_maybe_escalate_includes_the_marker_in_the_comment_body(drift_to_pr, monkeypatch):
+def test_maybe_escalate_includes_the_marker_in_the_comment_body(
+    drift_to_pr, monkeypatch
+):
     """The marker must actually be IN the posted comment, or the next run's
     `_pr_has_escalation_comment` check can never find it."""
     stale = (datetime.now(timezone.utc) - timedelta(days=20)).isoformat()
     monkeypatch.setattr(drift_to_pr, "_pr_created_at", lambda pr, *, dry_run: stale)
-    monkeypatch.setattr(drift_to_pr, "_pr_has_escalation_comment", lambda pr, *, dry_run: False)
+    monkeypatch.setattr(
+        drift_to_pr, "_pr_has_escalation_comment", lambda pr, *, dry_run: False
+    )
     calls: list[list[str]] = []
     monkeypatch.setattr(
-        drift_to_pr, "_run",
-        lambda cmd, **kw: calls.append(list(cmd)) or subprocess.CompletedProcess(cmd, 0, stdout="", stderr=""),
+        drift_to_pr,
+        "_run",
+        lambda cmd, **kw: (
+            calls.append(list(cmd))
+            or subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+        ),
     )
 
     drift_to_pr.maybe_escalate("55", dry_run=False)
@@ -1287,7 +1504,9 @@ def test_maybe_escalate_is_idempotent_across_repeated_calls(drift_to_pr, monkeyp
 
     def _fake_subprocess_run(cmd, **kwargs):
         if cmd[:3] == ["gh", "pr", "view"]:
-            return subprocess.CompletedProcess(cmd, 0, stdout="\n".join(posted_comments), stderr="")
+            return subprocess.CompletedProcess(
+                cmd, 0, stdout="\n".join(posted_comments), stderr=""
+            )
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
     monkeypatch.setattr(subprocess, "run", _fake_subprocess_run)
@@ -1318,10 +1537,13 @@ def test_maybe_escalate_is_idempotent_across_repeated_calls(drift_to_pr, monkeyp
 # must not escalate.
 
 
-def test_handle_drifted_skip_path_calls_maybe_escalate(drift_to_pr, monkeypatch, tmp_path):
+def test_handle_drifted_skip_path_calls_maybe_escalate(
+    drift_to_pr, monkeypatch, tmp_path
+):
     escalated: list[tuple] = []
     monkeypatch.setattr(
-        drift_to_pr, "maybe_escalate",
+        drift_to_pr,
+        "maybe_escalate",
         lambda pr, *, dry_run: escalated.append((pr, dry_run)),
     )
     _capture_handle_drifted(
@@ -1335,7 +1557,8 @@ def test_handle_drifted_update_path_never_escalates(drift_to_pr, monkeypatch, tm
     must not also escalate."""
     escalated: list[tuple] = []
     monkeypatch.setattr(
-        drift_to_pr, "maybe_escalate",
+        drift_to_pr,
+        "maybe_escalate",
         lambda pr, *, dry_run: escalated.append((pr, dry_run)),
     )
     _capture_handle_drifted(
@@ -1344,16 +1567,24 @@ def test_handle_drifted_update_path_never_escalates(drift_to_pr, monkeypatch, tm
     assert escalated == []
 
 
-def test_handle_drifted_nothing_staged_path_never_escalates(drift_to_pr, monkeypatch, tmp_path):
+def test_handle_drifted_nothing_staged_path_never_escalates(
+    drift_to_pr, monkeypatch, tmp_path
+):
     """The OTHER early return (nothing to commit) is not "an existing PR left
     untouched" -- there may be no PR at all yet -- so it must not escalate."""
     escalated: list[tuple] = []
     monkeypatch.setattr(
-        drift_to_pr, "maybe_escalate",
+        drift_to_pr,
+        "maybe_escalate",
         lambda pr, *, dry_run: escalated.append((pr, dry_run)),
     )
     _capture_handle_drifted(
-        drift_to_pr, monkeypatch, tmp_path, needs_update=True, pr_exists=True, staged=False
+        drift_to_pr,
+        monkeypatch,
+        tmp_path,
+        needs_update=True,
+        pr_exists=True,
+        staged=False,
     )
     assert escalated == []
 
@@ -1372,13 +1603,16 @@ def test_handle_routine_batch_skip_path_calls_maybe_escalate(drift_to_pr, monkey
     monkeypatch.setattr(drift_to_pr, "pr_exists_for_branch", lambda b, dry_run: "42")
     monkeypatch.setattr(drift_to_pr, "_discard_staged_fingerprints", lambda **kw: None)
     monkeypatch.setattr(
-        drift_to_pr, "maybe_escalate",
+        drift_to_pr,
+        "maybe_escalate",
         lambda pr, *, dry_run: escalated.append((pr, dry_run)),
     )
 
     drift_to_pr.handle_routine_batch(
         [{"dataset_name": "hgnc:lookup", "diff": {}}],
-        base_branch="dev", dry_run=False, step_summary=None,
+        base_branch="dev",
+        dry_run=False,
+        step_summary=None,
     )
 
     assert escalated == [("42", False)]
@@ -1436,6 +1670,10 @@ def test_nothing_in_the_drift_pipeline_auto_merges():
             if stripped.startswith("#") or stripped.startswith("Never emits"):
                 continue
             if banned.search(line):
-                offenders.append(f"{path.relative_to(root.parent)}:{lineno}: {stripped}")
+                offenders.append(
+                    f"{path.relative_to(root.parent)}:{lineno}: {stripped}"
+                )
 
-    assert not offenders, "auto-merge found in the drift pipeline:\n" + "\n".join(offenders)
+    assert not offenders, "auto-merge found in the drift pipeline:\n" + "\n".join(
+        offenders
+    )
