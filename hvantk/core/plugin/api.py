@@ -293,10 +293,13 @@ class Acquisition:
     so nothing may read ``mode == "byo"`` as exempting a dataset from the validation
     contract. That conflation is exactly what left five datasets ungradable (#341).
 
-    ``mode`` is deliberately the weaker claim in the ``download`` direction, because
-    it is also what every manifest omitting this block gets. "Automatable but not yet
-    implemented" (``gevir``) is not a third enum value: it is already derivable as
-    ``mode == "download"`` with no ``lifecycle.download``.
+    ``mode`` is deliberately the weaker claim in the ``download`` direction: the
+    default, "automatable but not yet implemented" (omitting this block entirely), is
+    not a third enum value -- it is already derivable as ``mode == "download"`` with no
+    ``lifecycle.download``. An **explicit** ``mode == "download"`` asserts more than
+    that default: it claims a downloader exists, so the schema requires a sibling
+    ``lifecycle.download`` (#360) -- omitting the block is how a manifest says "not
+    written yet" without also claiming automation it cannot back up.
     """
 
     mode: AcquisitionMode = "download"

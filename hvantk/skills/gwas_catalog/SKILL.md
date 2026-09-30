@@ -14,7 +14,7 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its reposit
 
 - **Status:** provisional. The builder, fixture, snapshots, and round-trip test now exist; this skill remains the design contract and update reference for future agents.
 - **In scope:** raw GWAS Catalog v1.0 full-associations TSV → single Hail Table, checkpointed, keyed for variant joins.
-- **Out of scope:** downloader; v1.0.2 schema (EFO URIs — possible follow-on); trait-aware enrichment / burden / PS-ROC; cross-source joins.
+- **Out of scope:** downloader — no `lifecycle.download` is declared yet (§4); v1.0.2 schema (EFO URIs — possible follow-on); trait-aware enrichment / burden / PS-ROC; cross-source joins.
 
 ## 2. Source identity
 
@@ -33,7 +33,7 @@ Key by `(locus, alleles)` with sentinel ALT — `alleles = [<risk_allele>, "N"]`
 
 ## 4. Raw format & gotchas
 
-Single 556 MB tab-separated UTF-8 TSV inside a zip (`gwas-catalog-download-associations-v1.0-full.tsv`), ~1.1M rows, **34 columns** with whitespace-and-slash-laden headers (`DISEASE/TRAIT`, `STRONGEST SNP-RISK ALLELE`, `OR or BETA`, `95% CI (TEXT)`, `PLATFORM [SNPS PASSING QC]`). Use `hl.import_table(..., delimiter='\t', quote=None, missing='', impute=False)` — column names with spaces, mixed types, and sparse missing values make Hail's imputation brittle. Rename to snake_case in the transform.
+Single ~601 MB tab-separated UTF-8 TSV inside a ~69.5 MB zip (`gwas-catalog-download-associations-v1.0-full.tsv`; verified live 2026-09-30: `latest`'s zip is 69,506,531 bytes, the TSV inside is 600,996,055 bytes), ~1.1M rows, **34 columns** with whitespace-and-slash-laden headers (`DISEASE/TRAIT`, `STRONGEST SNP-RISK ALLELE`, `OR or BETA`, `95% CI (TEXT)`, `PLATFORM [SNPS PASSING QC]`). Use `hl.import_table(..., delimiter='\t', quote=None, missing='', impute=False)` — column names with spaces, mixed types, and sparse missing values make Hail's imputation brittle. Rename to snake_case in the transform.
 
 Type coercions in transform (all string at import):
 
@@ -76,9 +76,10 @@ Type coercions in transform (all string at import):
 ## 6. hvantk integration points
 
 - **Builder:** `build_gwas_catalog_associations` in `hvantk/skills/gwas_catalog/builder.py`. Signature `(parsed_input, ctx, *, reference_genome="GRCh38") -> AnnotationTable`. Imports and transforms the table inline; no shared `_create_table_base` helper exists.
-- **Registry:** declared by the plugin manifest at `hvantk/skills/gwas_catalog/plugin.yaml` under `datasets[].builder` (dataset key `gwas-catalog:associations`). The plugin loader (`hvantk/core/plugin/loader.py`) auto-resolves the dataset via `get_registry().get_dataset("gwas-catalog:associations")`; top-level builds run through `run_builder_for_spec` (`hvantk/core/plugin/run_builder.py`). There is no `TABLE_BUILDERS` registry.
-- **CLI:** `hvantk reprocess gwas-catalog:associations --raw-dir <dir> --output <path>.ht` (gwas-catalog declares no `lifecycle.download`; `<dir>` must contain the unzipped TSV). Builder kwargs (`reference_genome`) flow through `--plugin-arg key=value`.
-- **Catalog wiring:** see §2. **Downloader:** out of scope.
+- **Plugin manifest:** `hvantk/skills/gwas_catalog/plugin.yaml`, `datasets[].builder` (dataset key `gwas-catalog:associations`). The plugin loader (`hvantk/core/plugin/loader.py`) auto-resolves the dataset via `get_registry().get_dataset("gwas-catalog:associations")`; top-level builds run through `run_builder_for_spec` (`hvantk/core/plugin/run_builder.py`). There is no `TABLE_BUILDERS` registry.
+- **CLI:** `hvantk reprocess gwas-catalog:associations --raw-dir <dir> --intermediate <dir>/<unzipped-tsv> --skip-parse --skip-download --output <path>.ht` (verified #360, 2026-09-30). `--skip-download` is required: no `lifecycle.download` is declared yet (#386). Builder kwargs (`reference_genome`) flow through `--plugin-arg key=value`.
+  - **`--intermediate ... --skip-parse` is required too**, despite this dataset declaring no `lifecycle.parse`: the builder (`build_gwas_catalog_associations`) calls `hl.import_table(paths=str(parsed_input), ...)` on `parsed_input` directly with no directory resolution (unlike `gevir`'s `_resolve_gevir_path`). Absent `lifecycle.parse`, `reprocess_cli.py` forwards `--raw-dir` itself as `parsed_input` -- but `--raw-dir` is `click.Path(file_okay=False)`, so it can never BE the file, only a directory containing it, and Hail refuses to `import_table` a directory (`FileNotFoundException: '...' is a directory`). Passing `--skip-parse --intermediate <exact-tsv-path>` bypasses this: `reprocess_cli.py` then resolves `parsed_path` to `--intermediate` verbatim, which *can* be a file. This is a separate, pre-existing gap (not part of #360's acquisition/schema fix, and not fixed here) -- no existing test caught it because the round-trip test calls `build_gwas_catalog_associations(input_path=FIXTURE, ...)` directly, bypassing `hvantk reprocess` entirely. Tracked in #388.
+- **Catalog wiring:** see §2. **Downloader:** out of scope — no `lifecycle.download` is declared yet (§4).
 - **Drift probe:** `fetch_fingerprint` in `hvantk/skills/gwas_catalog/drift_probe.py`, compared against `tests/drift_fingerprint.json` by `hvantk drift gwas-catalog:associations` (see § 12 of `_conventions`).
 - **Tests:** `pytest hvantk/skills/gwas_catalog/tests -m hail` — artifact paths in § 9.
 
@@ -98,7 +99,7 @@ Type coercions in transform (all string at import):
 
 ## 8. Update playbook
 
-Releases ~quarterly (tags like `e116_r2026-08-xx`). Per release:
+Releases every 1-3 weeks (verified live 2026-09-30 against `releases/2026/{06..09}/`: 2026-06-01, -06-22, -07-10, -07-20, -08-03, -08-24, -09-04, -09-15 -- gaps of 10-21 days). Per release:
 
 1. Update the GWAS Catalog entry in `hvantk/skills/gwas_catalog/catalog/datasets.json` (`last_updated`, file path). Bump accession only on schema change.
 2. Re-run the round-trip test (§9). If it passes, no builder change.

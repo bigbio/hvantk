@@ -262,8 +262,8 @@ A dataset that ships no `lifecycle.download` is ambiguous: it may mean *nobody h
 
 Declared **per dataset, not per provider** — `onek-genomes` ships `variants` (~1.5 TB, BYO) beside `samples` (~55 KB, auto-downloaded), so one provider-level field could not describe it.
 
-- Omitting the block means `mode: download`, so every pre-existing manifest stays valid.
-- `mode: download` with no `lifecycle.download` is the honest way to say *a downloader belongs here and is not written yet* — a TODO. See CLAUDE.md's downloader decision framework for when one is warranted.
+- Omitting the block means `mode: download`, so every pre-existing manifest stays valid. This is also the honest way to say *a downloader belongs here and is not written yet* — a TODO; `hvantk reprocess` then needs `--skip-download` until one lands.
+- An **explicit** `mode: download` is a stronger claim than the default: it asserts a downloader exists, so the schema requires a sibling `lifecycle.download` (#360) — the converse of the `byo` rule below. `mode: download` with no `lifecycle.download` is rejected, not a second way to spell the TODO state above.
 - `mode: byo` requires a `reason`, and is **rejected** alongside `lifecycle.download`: a dataset either fetches its own inputs or it does not, and a manifest claiming both is lying about one.
 - Under `mode: byo`, `hvantk reprocess` skips the download stage implicitly (no flag needed) and instead pre-flights `--raw-dir`, failing with `instructions` interpolated if it is empty — rather than dying deep inside the builder.
 

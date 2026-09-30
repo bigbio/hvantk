@@ -265,8 +265,7 @@ public; the rest return 403). The builder reads a bgzipped TSV, so extract sheet
 > there.
 
 A real downloader would have to do the extract-and-convert step, not just fetch the
-URL, so it is more than the usual thin wrapper — a recommended follow-up (not yet
-implemented).
+URL, so it is more than the usual thin wrapper — tracked as a follow-up in #386.
 
 **Build**:
 
@@ -277,6 +276,40 @@ hvantk reprocess gevir:metrics \
   --output gevir.ht \
   --skip-download
 ```
+
+### GWAS Catalog (~69.5 MB zip, ~601 MB unzipped)
+
+The NHGRI-EBI GWAS Catalog full-associations TSV — SNP-trait associations with
+study provenance, p-value, effect size, and risk-allele frequency, built into a
+Hail Table keyed by `(locus, alleles)` with a sentinel ALT. v1.0 schema (34 columns).
+URL: https://www.ebi.ac.uk/gwas/
+
+**Download**: a periodic full dump, zipped, from EBI's FTP, released every 1-3 weeks:
+
+```
+https://ftp.ebi.ac.uk/pub/databases/gwas/releases/latest/gwas-catalog-associations-full.zip
+```
+
+Unzip to get `gwas-catalog-download-associations-v1.0-full.tsv` (verified live
+2026-09-30: zip 69,506,531 bytes, TSV 600,996,055 bytes). No `lifecycle.download` is
+declared yet for this plugin — see #386.
+
+**Build**:
+
+```bash
+# Place the unzipped TSV in data/gwas_catalog/ then:
+hvantk reprocess gwas-catalog:associations \
+  --raw-dir data/gwas_catalog/ \
+  --intermediate data/gwas_catalog/gwas-catalog-download-associations-v1.0-full.tsv \
+  --skip-parse \
+  --skip-download \
+  --output gwas_catalog.ht
+```
+
+> **Note:** `--intermediate <file> --skip-parse` is required, not optional, even though
+> this dataset declares no `lifecycle.parse` — the builder needs the exact TSV path, and
+> `--raw-dir` can only be a directory. `--skip-download` is also required — no
+> `lifecycle.download` is declared. See `hvantk/skills/gwas_catalog/SKILL.md` §6.
 
 ### COSMIC Cancer Gene Census
 

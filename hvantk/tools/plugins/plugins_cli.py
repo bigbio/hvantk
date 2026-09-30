@@ -115,6 +115,15 @@ def _explain(exc) -> str:
             "either fetches its own inputs or it cannot -- drop the downloader, or set "
             "acquisition.mode to 'download'."
         )
+    if exc.validator == "required" and (
+        exc.validator_value == ["lifecycle"]
+        or (exc.validator_value == ["download"] and path and path[-1] == "lifecycle")
+    ):
+        return (
+            "acquisition.mode is 'download' but no lifecycle.download is declared. "
+            "Declare the downloader, or set acquisition.mode to 'byo' with a reason; "
+            "omit the acquisition block while a downloader is still to be written."
+        )
     where = " -> ".join(str(x) for x in path)
     return f"{exc.message}{f' (at {where})' if where else ''}"
 
