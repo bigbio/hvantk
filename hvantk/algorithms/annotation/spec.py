@@ -5,6 +5,7 @@ source's key maps onto the spine's ``gene_id``. P2a supports only ``gene_id``-ke
 entries (direct); P2c widens the key types and adds aggregation transforms. Parsing is
 pure Python -- no Hail -- so specs validate in the fast test suite.
 """
+
 from __future__ import annotations
 
 import json
@@ -91,12 +92,12 @@ class SpecificitySpec:
 
     def __post_init__(self):
         if self.emit not in ("vector", "rollup"):
-            raise ValueError(
-                f"emit must be 'vector' or 'rollup'; got {self.emit!r}")
+            raise ValueError(f"emit must be 'vector' or 'rollup'; got {self.emit!r}")
         if self.emit == "rollup" and not self.targets:
             raise ValueError(
                 "emit='rollup' needs targets; with none there is nothing to roll up "
-                "(an empty target set would silently sum to an all-zero column)")
+                "(an empty target set would silently sum to an all-zero column)"
+            )
         # Validated for the same reason as emit, and it matters more: the old
         # reduce_matrix_to_gene dispatched sum/mean/else-max, so an unrecognised
         # value did not raise -- it silently became 'max'. A spec author writing

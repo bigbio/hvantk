@@ -5,8 +5,16 @@ Moved from hvantk/core/ptm_constants.py per issue #122 (clean-core principle).
 
 # CPTAC Phospho (via cptac Python package)
 CPTAC_CANCER_TYPES = [
-    "brca", "ccrcc", "coad", "gbm",
-    "hnscc", "lscc", "luad", "ov", "pdac", "ucec",
+    "brca",
+    "ccrcc",
+    "coad",
+    "gbm",
+    "hnscc",
+    "lscc",
+    "luad",
+    "ov",
+    "pdac",
+    "ucec",
 ]
 CPTAC_CANCER_CLASS_MAP = {
     "brca": "Brca",

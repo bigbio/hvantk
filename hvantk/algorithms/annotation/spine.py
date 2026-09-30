@@ -9,6 +9,7 @@ must stay in the spine with a missing ``hgnc_id``, not vanish. Dropping it would
 universe depend on HGNC's coverage, which is the class of silent loss this rebuild exists
 to remove.
 """
+
 from __future__ import annotations
 
 import logging

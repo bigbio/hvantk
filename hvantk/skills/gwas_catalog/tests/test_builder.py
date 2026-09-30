@@ -17,7 +17,9 @@ from hvantk.tests._snapshot_utils import (
 # Aliased to avoid shadowing the fixture name `regenerate_snapshots` in the test signature
 from hvantk.tests._snapshot_utils import regenerate_snapshots as regenerate_snapshots_fn
 
-FIXTURE = "hvantk/skills/gwas_catalog/tests/testdata/raw/gwas-catalog/gwas-catalog-sample.tsv"
+FIXTURE = (
+    "hvantk/skills/gwas_catalog/tests/testdata/raw/gwas-catalog/gwas-catalog-sample.tsv"
+)
 SNAPSHOT_DIR = Path("hvantk/skills/gwas_catalog/tests/snapshots")
 
 
@@ -56,6 +58,6 @@ def test_gwas_catalog_round_trip(hail_session, tmp_path, regenerate_snapshots):
 
     expected_rows = load_snapshot(SNAPSHOT_DIR / "sample_rows.json")
     actual_rows = collect_sample_rows(ht, keys=keys)
-    assert (
-        actual_rows == expected_rows
-    ), "GWAS Catalog sample rows drifted from snapshot"
+    assert actual_rows == expected_rows, (
+        "GWAS Catalog sample rows drifted from snapshot"
+    )

@@ -22,15 +22,21 @@ from hvantk.algorithms.qtlcascade.gwas_pipeline import (
 MYOZ1 = "ENSG00000177791"
 
 
-@pytest.mark.skipif(not finemap_available()[0],
-                    reason="needs pysam for the 1000G LD reference")
+@pytest.mark.skipif(
+    not finemap_available()[0], reason="needs pysam for the 1000G LD reference"
+)
 def test_af_myoz1_positive_control_confirmed(tmp_path):
     cfg = GwasColocConfig(
-        endpoint="I9_AF", chrom="10", lead=73600000,
-        eqtl_dataset="QTD000251",            # GTEx heart atrial appendage
+        endpoint="I9_AF",
+        chrom="10",
+        lead=73600000,
+        eqtl_dataset="QTD000251",  # GTEx heart atrial appendage
         gene_of_interest=MYOZ1,
-        gwas_N=261395, eqtl_N=372, fine_map=True,
-        output_dir=str(tmp_path), ld_cache_dir=str(tmp_path / "ld"),
+        gwas_N=261395,
+        eqtl_N=372,
+        fine_map=True,
+        output_dir=str(tmp_path),
+        ld_cache_dir=str(tmp_path / "ld"),
     )
     report = run_gwas_coloc_pipeline(cfg)
 

@@ -18,6 +18,7 @@ that removal is why one prose table is now guarded rather than two. Keep it that
 new copy of this table anywhere is a new thing to drift, and it belongs in this list if it
 is added. Deliberately non-Hail so it runs in the default suite.
 """
+
 from __future__ import annotations
 
 import re
@@ -55,8 +56,10 @@ def _requirement_name(spec: str) -> str:
 
 def _declared_extras() -> dict[str, set[str]]:
     """Extras as bare package names, for comparison against the prose tables."""
-    return {k: {_requirement_name(s) for s in v}
-            for k, v in _optional_dependencies().items()}
+    return {
+        k: {_requirement_name(s) for s in v}
+        for k, v in _optional_dependencies().items()
+    }
 
 
 def _parse_doc_table(path: Path, dep_header: str) -> dict[str, set[str]]:
@@ -85,14 +88,18 @@ def _parse_doc_table(path: Path, dep_header: str) -> dict[str, set[str]]:
             if dep_header in cells:
                 header_cols = cells
             continue
-        if set("".join(cells)) <= set("-: "):        # the |---|---| separator
+        if set("".join(cells)) <= set("-: "):  # the |---|---| separator
             continue
         name = re.fullmatch(r"`([a-z0-9-]+)`", cells[0])
         if not name:
             continue
         deps = cells[header_cols.index(dep_header)]
-        rows[name.group(1)] = {d.strip().strip("`") for d in deps.split(",") if d.strip()}
-    assert header_cols is not None, f"{path.name}: no table with a {dep_header!r} column"
+        rows[name.group(1)] = {
+            d.strip().strip("`") for d in deps.split(",") if d.strip()
+        }
+    assert header_cols is not None, (
+        f"{path.name}: no table with a {dep_header!r} column"
+    )
     return rows
 
 
@@ -146,10 +153,14 @@ def test_extras_agree_on_every_shared_constraint():
             seen.setdefault(_requirement_name(spec), {})[extra] = spec
     for pkg, by_extra in sorted(seen.items()):
         distinct = set(by_extra.values())
-        assert len(distinct) == 1, f"{pkg} is spelled inconsistently across extras: {by_extra}"
+        assert len(distinct) == 1, (
+            f"{pkg} is spelled inconsistently across extras: {by_extra}"
+        )
 
 
-@pytest.mark.parametrize("path,dep_header", DOC_TABLES, ids=lambda p: getattr(p, "name", p))
+@pytest.mark.parametrize(
+    "path,dep_header", DOC_TABLES, ids=lambda p: getattr(p, "name", p)
+)
 def test_documented_extras_match_pyproject(path: Path, dep_header: str):
     declared = _declared_extras()
     documented = _parse_doc_table(path, dep_header)
@@ -160,7 +171,10 @@ def test_documented_extras_match_pyproject(path: Path, dep_header: str):
     assert not unknown, f"{path.name}: extras documented but not declared: {unknown}"
 
     wrong = {
-        name: {"documented": sorted(documented[name]), "declared": sorted(declared[name])}
+        name: {
+            "documented": sorted(documented[name]),
+            "declared": sorted(declared[name]),
+        }
         for name in sorted(declared)
         if documented[name] != declared[name]
     }

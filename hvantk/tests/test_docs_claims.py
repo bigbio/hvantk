@@ -434,8 +434,12 @@ def test_deliberately_absent_paths_are_still_absent_and_still_cited():
     """The allowlist must not outlive the sentences it excuses."""
     cited = {_path_part(span) for _, span in _documented_repo_paths()}
     for path in DELIBERATELY_ABSENT_PATHS:
-        assert not (REPO_ROOT / path).exists(), f"{path} exists now; drop it from the allowlist"
-        assert path in cited, f"{path} is no longer cited anywhere; drop it from the allowlist"
+        assert not (REPO_ROOT / path).exists(), (
+            f"{path} exists now; drop it from the allowlist"
+        )
+        assert path in cited, (
+            f"{path} is no longer cited anywhere; drop it from the allowlist"
+        )
 
 
 #: Names hvantk has presented as builder return types, current and historical.
@@ -478,9 +482,9 @@ def test_documented_artifact_annotations_are_importable():
             getattr(models, name)
         except Exception as exc:  # noqa: BLE001 - report any import failure
             unresolvable.append(f"{name}: {type(exc).__name__}: {exc}")
-    assert (
-        not unresolvable
-    ), f"hvantk.core.models lists these in __all__ but cannot resolve them: {unresolvable}"
+    assert not unresolvable, (
+        f"hvantk.core.models lists these in __all__ but cannot resolve them: {unresolvable}"
+    )
 
     stale = sorted(HVANTK_ARTIFACT_NAMES - exported)
     offenders = []

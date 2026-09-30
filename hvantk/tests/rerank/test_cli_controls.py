@@ -3,6 +3,7 @@
 A control that exists only as a Config field is a control nobody running `hvantk rerank`
 can use, which is the state leakage.py (#244) was left in.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -46,9 +47,9 @@ def _write_two_axis_config(tmp_path, genes, y):
     fixture, which every other rerank CLI test relies on staying single-axis.
     """
     rng = np.random.default_rng(1)
-    pd.DataFrame(
-        {"gene": genes, "z": y + rng.normal(0, 0.5, len(genes))}
-    ).to_parquet(tmp_path / "feat2.parquet")
+    pd.DataFrame({"gene": genes, "z": y + rng.normal(0, 0.5, len(genes))}).to_parquet(
+        tmp_path / "feat2.parquet"
+    )
     (tmp_path / "cohort.yaml").write_text(yaml.safe_dump(_cohort(tmp_path)))
     spec = {
         "name": "toy",
@@ -87,7 +88,9 @@ def test_seed_sweep_adds_the_envelope_columns_only_when_sweeping(tmp_path):
     assert "d_lo_env" not in plain.output
 
 
-def test_n_perm_prints_a_selection_corrected_p_and_null_out_writes_the_summary(tmp_path):
+def test_n_perm_prints_a_selection_corrected_p_and_null_out_writes_the_summary(
+    tmp_path,
+):
     """One CLI run covers both --n-perm's console output and --null-out's TSV: the two were
     previously separate tests that each paid for their own permutation run over the same
     two-axis config."""
@@ -96,7 +99,16 @@ def test_n_perm_prints_a_selection_corrected_p_and_null_out_writes_the_summary(t
     nul = tmp_path / "null.tsv"
     r = CliRunner().invoke(
         rerank_cmd,
-        ["-c", str(cfg), "-o", str(tmp_path / "out.tsv"), "--n-perm", "5", "--null-out", str(nul)],
+        [
+            "-c",
+            str(cfg),
+            "-o",
+            str(tmp_path / "out.tsv"),
+            "--n-perm",
+            "5",
+            "--null-out",
+            str(nul),
+        ],
     )
     assert r.exit_code == 0, r.output
     assert "p_selected_max" in r.output
@@ -126,7 +138,8 @@ def test_blocks_flag_wires_the_block_builder(tmp_path):
     hgnc.write_text("\n".join(rows) + "\n")
     cfg = _write_config(tmp_path, _cohort(tmp_path))
     r = CliRunner().invoke(
-        rerank_cmd, ["-c", str(cfg), "-o", str(tmp_path / "out.tsv"), "--blocks", str(hgnc)]
+        rerank_cmd,
+        ["-c", str(cfg), "-o", str(tmp_path / "out.tsv"), "--blocks", str(hgnc)],
     )
     assert r.exit_code == 0, r.output
     assert "blocks" in r.output.lower()
@@ -143,7 +156,9 @@ def test_a_dominant_block_fails_the_command_rather_than_scoring(tmp_path):
     hgnc.write_text("\n".join(rows) + "\n")
     cfg = _write_config(tmp_path, _cohort(tmp_path))
     out = tmp_path / "out.tsv"
-    r = CliRunner().invoke(rerank_cmd, ["-c", str(cfg), "-o", str(out), "--blocks", str(hgnc)])
+    r = CliRunner().invoke(
+        rerank_cmd, ["-c", str(cfg), "-o", str(out), "--blocks", str(hgnc)]
+    )
     assert r.exit_code != 0
     assert "ceiling" in r.output or "max_block_frac" in r.output
     assert "Traceback" not in r.output
@@ -160,14 +175,31 @@ def test_max_block_frac_can_accept_the_dominant_block_deliberately(tmp_path):
     cfg = _write_config(tmp_path, _cohort(tmp_path))
     r = CliRunner().invoke(
         rerank_cmd,
-        ["-c", str(cfg), "-o", str(tmp_path / "out.tsv"), "--blocks", str(hgnc),
-         "--max-block-frac", "0.5"],
+        [
+            "-c",
+            str(cfg),
+            "-o",
+            str(tmp_path / "out.tsv"),
+            "--blocks",
+            str(hgnc),
+            "--max-block-frac",
+            "0.5",
+        ],
     )
     assert r.exit_code == 0, r.output
 
 
-@pytest.mark.parametrize("flag", ["--seed", "--seed-sweep", "--blocks", "--max-block-frac",
-                                  "--n-perm", "--null-out"])
+@pytest.mark.parametrize(
+    "flag",
+    [
+        "--seed",
+        "--seed-sweep",
+        "--blocks",
+        "--max-block-frac",
+        "--n-perm",
+        "--null-out",
+    ],
+)
 def test_every_new_flag_is_documented_in_help(flag):
     r = CliRunner().invoke(rerank_cmd, ["--help"])
     assert flag in r.output
@@ -193,7 +225,9 @@ def test_a_gene_group_table_matching_no_gene_fails_cleanly(tmp_path):
     hgnc.write_text("\n".join(rows) + "\n")
     cfg = _write_config(tmp_path, _cohort(tmp_path))
     out = tmp_path / "out.tsv"
-    r = CliRunner().invoke(rerank_cmd, ["-c", str(cfg), "-o", str(out), "--blocks", str(hgnc)])
+    r = CliRunner().invoke(
+        rerank_cmd, ["-c", str(cfg), "-o", str(out), "--blocks", str(hgnc)]
+    )
     assert r.exit_code != 0
     assert "Traceback" not in r.output
     assert "none of" in r.output
@@ -207,9 +241,17 @@ def test_the_docs_page_documents_every_new_flag():
 
     import hvantk
 
-    doc = Path(hvantk.__file__).resolve().parents[1] / "docs_site" / "tools" / "rerank.md"
+    doc = (
+        Path(hvantk.__file__).resolve().parents[1] / "docs_site" / "tools" / "rerank.md"
+    )
     text = doc.read_text()
-    for flag in ("--seed", "--seed-sweep", "--blocks", "--max-block-frac", "--n-perm",
-                 "--null-out"):
+    for flag in (
+        "--seed",
+        "--seed-sweep",
+        "--blocks",
+        "--max-block-frac",
+        "--n-perm",
+        "--null-out",
+    ):
         assert flag in text, flag
     assert "selected-maximum" in text

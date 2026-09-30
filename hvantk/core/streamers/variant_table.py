@@ -3,6 +3,7 @@
 Per-variant rows keyed by (locus, alleles), arbitrary annotations.
 Concrete subclasses live in ``skills/<plugin>/streamers.py``.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -22,6 +23,7 @@ class VariantTableStreamer(ABC):
     @classmethod
     def from_path(cls, path: str) -> "VariantTableStreamer":
         from hvantk.core.io import load
+
         return cls(load(path))
 
     @abstractmethod

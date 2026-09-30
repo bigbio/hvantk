@@ -26,7 +26,11 @@ import os
 from dataclasses import dataclass, field
 from typing import List, Optional, Sequence
 
-from hvantk.algorithms.ptm.pipeline import PTMBuildConfig, PTMBuildResult, ptm_build_pipeline_core
+from hvantk.algorithms.ptm.pipeline import (
+    PTMBuildConfig,
+    PTMBuildResult,
+    ptm_build_pipeline_core,
+)
 
 logger = logging.getLogger(__name__)
 

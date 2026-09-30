@@ -102,8 +102,14 @@ def annotate_variants_with_ptm(
     # Detect which evidence fields are available in the PTM table
     ptm_fields = set(ptm.row)
     evidence_fields = [
-        "source_db", "evidence_type", "n_observations",
-        "uniprot_id", "gene_symbol", "residue_pos", "amino_acid", "ptm_type",
+        "source_db",
+        "evidence_type",
+        "n_observations",
+        "uniprot_id",
+        "gene_symbol",
+        "residue_pos",
+        "amino_acid",
+        "ptm_type",
     ]
     available_evidence = [f for f in evidence_fields if f in ptm_fields]
     has_evidence = len(available_evidence) > 0
@@ -124,8 +130,9 @@ def annotate_variants_with_ptm(
     if has_evidence:
         # Collect evidence structs, keeping only the closest PTM sites
         agg_exprs["_evidence_all"] = hl.agg.collect(
-            hl.struct(_bp_dist=ptm._bp_dist, _in_codon=ptm._in_codon,
-                      evidence=ptm._evidence)
+            hl.struct(
+                _bp_dist=ptm._bp_dist, _in_codon=ptm._in_codon, evidence=ptm._evidence
+            )
         )
 
     ptm_by_pos = ptm.group_by(locus=ptm._join_locus).aggregate(**agg_exprs)
@@ -151,13 +158,17 @@ def annotate_variants_with_ptm(
             (ann._min_bp_dist + 2) // 3,
             hl.missing(hl.tint32),
         ),
-        **({
-            "ptm_evidence": hl.if_else(
-                hl.is_defined(ann),
-                ann._nearest_evidence,
-                hl.missing(ann._nearest_evidence.dtype),
-            )
-        } if has_evidence else {}),
+        **(
+            {
+                "ptm_evidence": hl.if_else(
+                    hl.is_defined(ann),
+                    ann._nearest_evidence,
+                    hl.missing(ann._nearest_evidence.dtype),
+                )
+            }
+            if has_evidence
+            else {}
+        ),
     )
 
     logger.info("PTM annotation complete")
@@ -220,15 +231,11 @@ def annotate_variants_by_symbol(
     required_variant_cols = {variant_gene_col, variant_chrom_col, variant_pos_col}
     missing = required_variant_cols - set(variants_df.columns)
     if missing:
-        raise KeyError(
-            f"variants_df is missing required columns: {sorted(missing)}"
-        )
+        raise KeyError(f"variants_df is missing required columns: {sorted(missing)}")
     required_atlas_cols = {atlas_gene_col, atlas_chrom_col, "codon_start", "codon_end"}
     missing = required_atlas_cols - set(ptm_df.columns)
     if missing:
-        raise KeyError(
-            f"ptm_df is missing required columns: {sorted(missing)}"
-        )
+        raise KeyError(f"ptm_df is missing required columns: {sorted(missing)}")
 
     out = variants_df.copy()
 

@@ -96,8 +96,7 @@ def _overview_section(class_counts, tissues, cascade_summary_df):
             pct = cnt / total * 100 if total else 0
             safe_cls = html_mod.escape(str(cls))
             rows.append(
-                f"<tr><td>&nbsp;&nbsp;{safe_cls}</td>"
-                f"<td>{cnt:,} ({pct:.1f}%)</td></tr>"
+                f"<tr><td>&nbsp;&nbsp;{safe_cls}</td><td>{cnt:,} ({pct:.1f}%)</td></tr>"
             )
     if cascade_summary_df is not None:
         n_genes = (

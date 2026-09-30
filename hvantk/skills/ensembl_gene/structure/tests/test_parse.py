@@ -1,4 +1,5 @@
 """Per-gene structural summary parsed from an Ensembl GTF."""
+
 from __future__ import annotations
 
 import os

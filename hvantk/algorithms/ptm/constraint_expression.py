@@ -295,8 +295,7 @@ def _load_from_hail_mt(
 
     if entry_field not in set(mt.entry):
         raise KeyError(
-            f"Entry field '{entry_field}' not found. "
-            f"Available: {list(mt.entry)}"
+            f"Entry field '{entry_field}' not found. Available: {list(mt.entry)}"
         )
 
     entry = mt[entry_field]
@@ -345,11 +344,7 @@ def _load_from_hail_mt(
     else:
         gene_col = gene_key
 
-    df_long["_agg"] = (
-        df_long["_agg"]
-        .astype(str)
-        .str.replace(",", ".", regex=False)
-    )
+    df_long["_agg"] = df_long["_agg"].astype(str).str.replace(",", ".", regex=False)
     df_long["_agg"] = pd.to_numeric(df_long["_agg"], errors="coerce")
 
     wide = df_long.pivot(index=gene_col, columns=grouping_col, values="_agg")

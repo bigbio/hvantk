@@ -59,9 +59,9 @@ def test_insider_interfaces_round_trip(hail_session, tmp_path, regenerate_snapsh
     assert hail_schema_to_dict(ht) == expected_schema, "interfaces schema drifted"
 
     expected_rows = load_snapshot(SNAPSHOT_DIR / "sample_rows.json")
-    assert (
-        collect_sample_rows(ht, keys=SAMPLE_KEYS) == expected_rows
-    ), "interfaces sample rows drifted"
+    assert collect_sample_rows(ht, keys=SAMPLE_KEYS) == expected_rows, (
+        "interfaces sample rows drifted"
+    )
 
 
 @pytest.mark.hail

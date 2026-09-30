@@ -64,7 +64,9 @@ _PROTEOMICS_FIELDS = {
 }
 
 
-def _infer_omics_for_entry(entry: Dict[str, Any], fallback: Optional[str]) -> Optional[str]:
+def _infer_omics_for_entry(
+    entry: Dict[str, Any], fallback: Optional[str]
+) -> Optional[str]:
     """Pick an omics bucket for a single catalog entry.
 
     Most entries adopt the owning plugin's primary domain (``fallback``).
@@ -89,9 +91,7 @@ class HvantkRegistry:
 
     def __init__(self):
         """Initialize the unified registry."""
-        self._cache: Dict[str, List[Dict[str, Any]]] = {
-            t: [] for t in self.omics_types
-        }
+        self._cache: Dict[str, List[Dict[str, Any]]] = {t: [] for t in self.omics_types}
         self._load_registry()
 
     def _load_registry(self) -> None:
@@ -232,14 +232,16 @@ class HvantkRegistry:
                     if query_lc not in searchable:
                         continue
 
-                if organism_lc and organism_lc not in (
-                    dataset.get("organism") or ""
-                ).lower():
+                if (
+                    organism_lc
+                    and organism_lc not in (dataset.get("organism") or "").lower()
+                ):
                     continue
 
-                if data_source_lc and data_source_lc not in (
-                    dataset.get("data_source") or ""
-                ).lower():
+                if (
+                    data_source_lc
+                    and data_source_lc not in (dataset.get("data_source") or "").lower()
+                ):
                     continue
 
                 result = dataset.copy()

@@ -196,9 +196,9 @@ def test_a_dataset_that_fails_to_bind_is_logged_not_only_collected(tmp_path, cap
 
     assert "brokenprov:thing" in [unit for unit, _ in reg.load_errors()]
     logged = [r.getMessage() for r in caplog.records]
-    assert any(
-        "brokenprov:thing" in m for m in logged
-    ), f"the failure was collected but never logged: {logged}"
+    assert any("brokenprov:thing" in m for m in logged), (
+        f"the failure was collected but never logged: {logged}"
+    )
 
 
 def test_every_load_error_is_recorded_through_the_one_helper():
@@ -265,8 +265,11 @@ def _lazy_manifest(name: str):
         backend="hail",
         skill_path="/abs/SKILL.md",
         test_paths=TestPaths(
-            command="pytest", fixture="/f", schema_snapshot="/s",
-            row_snapshot="/r", drift_fingerprint="/d",
+            command="pytest",
+            fixture="/f",
+            schema_snapshot="/s",
+            row_snapshot="/r",
+            drift_fingerprint="/d",
         ),
         plugin_name=name.split(":")[0],
         builder_ref=("hvantk.nope.missing", "build"),

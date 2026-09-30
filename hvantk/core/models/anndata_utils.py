@@ -69,9 +69,7 @@ def annotate_column_summary_ad(
                     "n_missing": n_missing,
                 }
             else:
-                top_levels = (
-                    series.value_counts().head(top_n_levels).index.tolist()
-                )
+                top_levels = series.value_counts().head(top_n_levels).index.tolist()
                 summary[col] = {
                     "dtype": "categorical",
                     "n_unique": n_unique,

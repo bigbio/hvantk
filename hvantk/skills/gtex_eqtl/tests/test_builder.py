@@ -17,7 +17,9 @@ from hvantk.tests._snapshot_utils import (
 from hvantk.tests._snapshot_utils import regenerate_snapshots as regenerate_snapshots_fn
 
 _TESTS_DIR = Path(__file__).parent
-FIXTURE_FILE = _TESTS_DIR / "testdata/raw/gtex-eqtl/Liver.v11.eQTLs.signif_pairs.parquet"
+FIXTURE_FILE = (
+    _TESTS_DIR / "testdata/raw/gtex-eqtl/Liver.v11.eQTLs.signif_pairs.parquet"
+)
 FIXTURE_DIR = str(FIXTURE_FILE.parent)
 SNAPSHOT_DIR = _TESTS_DIR / "snapshots"
 

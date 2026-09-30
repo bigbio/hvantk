@@ -325,7 +325,7 @@ class PipelineRunner:
             "qc_report": str(qc_dir / f"{prefix}_qc_report.html"),
             "state": str(output_dir / ".pipeline_state.json"),
             "log": str(
-                logs_dir / f'pipeline_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log'
+                logs_dir / f"pipeline_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
             ),
         }
 

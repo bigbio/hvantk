@@ -286,7 +286,10 @@ class TestEncodeFigure:
 
     def test_encode_figure_to_base64(self, sample_predictions_df):
         """Test encoding figure to base64 string."""
-        from hvantk.algorithms.ancestry.plot import plot_pca_scatter, encode_figure_to_base64
+        from hvantk.algorithms.ancestry.plot import (
+            plot_pca_scatter,
+            encode_figure_to_base64,
+        )
 
         fig = plot_pca_scatter(sample_predictions_df)
         encoded = encode_figure_to_base64(fig)
@@ -297,7 +300,10 @@ class TestEncodeFigure:
 
     def test_encode_figure_different_dpi(self, sample_predictions_df):
         """Test encoding with different DPI settings."""
-        from hvantk.algorithms.ancestry.plot import plot_pca_scatter, encode_figure_to_base64
+        from hvantk.algorithms.ancestry.plot import (
+            plot_pca_scatter,
+            encode_figure_to_base64,
+        )
 
         fig = plot_pca_scatter(sample_predictions_df)
         encoded_low = encode_figure_to_base64(fig, dpi=50)

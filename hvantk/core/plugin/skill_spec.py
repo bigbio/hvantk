@@ -238,9 +238,14 @@ def _first_body_line(text: str) -> str | None:
     start = 0
     if lines and lines[0].strip() == "---":
         try:
-            start = next(
-                i for i, line in enumerate(lines[1:], start=1) if line.strip() == "---"
-            ) + 1
+            start = (
+                next(
+                    i
+                    for i, line in enumerate(lines[1:], start=1)
+                    if line.strip() == "---"
+                )
+                + 1
+            )
         except StopIteration:
             return None
     in_fence = False

@@ -182,6 +182,7 @@ def test_map_ptm_sites_roundtrip(tmp_path, gtf_data):
 
     # Read back and verify (BGZF is gzip-compatible)
     import gzip
+
     with gzip.open(output_bgz, "rt") as f:
         reader = csv.DictReader(f, delimiter="\t")
         rows = list(reader)

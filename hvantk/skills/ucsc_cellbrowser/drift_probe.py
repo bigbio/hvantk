@@ -63,9 +63,7 @@ def fetch_fingerprint() -> dict:
     upstream_last_modified = head.headers.get("Last-Modified")
     upstream_etag = head.headers.get("ETag", "")
     upstream_content_length = head.headers.get("Content-Length", "")
-    upstream_blob = (
-        f"{upstream_etag}|{upstream_content_length}".encode("utf-8")
-    )
+    upstream_blob = f"{upstream_etag}|{upstream_content_length}".encode("utf-8")
     upstream_checksum = hashlib.sha256(upstream_blob).hexdigest()
 
     return {

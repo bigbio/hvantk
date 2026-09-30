@@ -58,7 +58,9 @@ def describe_expression_cmd(matrix_path):
         click.echo("Metadata fields:")
         for f in info["fields"]:
             if f["dtype"] == "categorical":
-                click.echo(f"  {f['name']:<40s}  categorical  ({f.get('n_unique', '?')} levels)")
+                click.echo(
+                    f"  {f['name']:<40s}  categorical  ({f.get('n_unique', '?')} levels)"
+                )
             else:
                 click.echo(
                     f"  {f['name']:<40s}  numeric      "

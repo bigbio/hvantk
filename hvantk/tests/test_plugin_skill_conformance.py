@@ -71,9 +71,9 @@ def test_discovery_matches_what_the_manifests_declare():
     """
     discovered = {p.resolve() for p in SPECS}
     declared = _manifest_declared_specs()
-    assert (
-        declared
-    ), "no plugin.yaml declared a skill: -- has the manifest schema moved?"
+    assert declared, (
+        "no plugin.yaml declared a skill: -- has the manifest schema moved?"
+    )
     missing = sorted(str(p.relative_to(SKILLS_DIR)) for p in declared - discovered)
     assert not missing, (
         "these SKILL.md files are declared by a plugin.yaml but were NOT discovered by "
@@ -255,10 +255,12 @@ def _replace_section_body(
         # with no other symptom.
         (
             "frontmatter missing a required key",
-            lambda t: "\n".join(
-                ln for ln in t.splitlines() if not ln.startswith("description:")
-            )
-            + "\n",
+            lambda t: (
+                "\n".join(
+                    ln for ln in t.splitlines() if not ln.startswith("description:")
+                )
+                + "\n"
+            ),
             "frontmatter missing or empty",
         ),
         # --- content, not just headings (#356). The hygiene pass found sections that
@@ -272,12 +274,16 @@ def _replace_section_body(
         ),
         (
             "preamble moved to the end of the file",
-            lambda t: t.replace(CONVENTIONS_PREAMBLE, "") + "\n" + CONVENTIONS_PREAMBLE + "\n",
+            lambda t: (
+                t.replace(CONVENTIONS_PREAMBLE, "") + "\n" + CONVENTIONS_PREAMBLE + "\n"
+            ),
             "must open with the shared preamble",
         ),
         (
             "preamble present only inside a code fence",
-            lambda t: t.replace(CONVENTIONS_PREAMBLE, "```\n" + CONVENTIONS_PREAMBLE + "\n```"),
+            lambda t: t.replace(
+                CONVENTIONS_PREAMBLE, "```\n" + CONVENTIONS_PREAMBLE + "\n```"
+            ),
             "must open with the shared preamble",
         ),
         (
@@ -346,9 +352,9 @@ def test_checker_rejects_non_conforming_variants(tmp_path, label, mutate, expect
     *different* check, which then carried the assertion. `expected` pins which one.
     """
     conforming = (SKILLS_DIR / "hgnc" / "SKILL.md").read_text()
-    assert not check_skill_spec(
-        SKILLS_DIR / "hgnc" / "SKILL.md"
-    ), "baseline must conform"
+    assert not check_skill_spec(SKILLS_DIR / "hgnc" / "SKILL.md"), (
+        "baseline must conform"
+    )
 
     broken = tmp_path / "SKILL.md"
     broken.write_text(mutate(conforming))
@@ -368,7 +374,9 @@ def test_first_body_line_skips_frontmatter_blanks_headings_and_fences():
         "## 1. Status & scope\n\nThe real first line.\n"
     )
     assert _first_body_line(text) == "The real first line."
-    assert _first_body_line("---\nname: x\n") is None  # unterminated frontmatter: no body
+    assert (
+        _first_body_line("---\nname: x\n") is None
+    )  # unterminated frontmatter: no body
 
 
 def test_spec_declares_the_test_artifact_paths_its_manifest_does():

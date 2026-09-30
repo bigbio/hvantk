@@ -9,6 +9,7 @@ Each test:
 
 Each plugin gets its own test as Phase B migrates it.
 """
+
 from __future__ import annotations
 
 import csv

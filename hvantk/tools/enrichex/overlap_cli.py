@@ -195,9 +195,9 @@ def overlap_test(
 
     # Summary statistics
     n_significant = (df["p_adjusted"] < alpha).sum()
-    click.echo(f"\n{'='*60}")
+    click.echo(f"\n{'=' * 60}")
     click.echo("ENRICHMENT SUMMARY")
-    click.echo(f"{'='*60}")
+    click.echo(f"{'=' * 60}")
     click.echo(f"Total gene sets tested: {len(df)}")
     click.echo(f"Significant gene sets (p_adj < {alpha}): {n_significant}")
 
@@ -244,4 +244,4 @@ def overlap_test(
             )
             click.echo(line)
 
-    click.echo(f"{'='*60}\n")
+    click.echo(f"{'=' * 60}\n")

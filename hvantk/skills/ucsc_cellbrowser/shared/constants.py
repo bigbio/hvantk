@@ -2,6 +2,7 @@
 
 Moved from hvantk/core/constants.py per issue #120 (clean-core principle).
 """
+
 from pathlib import Path
 
 # Plugin root directory. This skill owns its operational dataset manifest

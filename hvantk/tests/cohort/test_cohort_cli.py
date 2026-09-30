@@ -3,6 +3,7 @@
 The parse/validate paths are pure Python and run in the fast suite; only the end-to-end
 attach needs Hail.
 """
+
 import json
 
 import pytest

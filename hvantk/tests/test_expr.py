@@ -1,4 +1,5 @@
 """Tests for the Expr algebra: column refs, literals, binary/unary ops, composition."""
+
 from __future__ import annotations
 
 import pytest

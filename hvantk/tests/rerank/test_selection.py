@@ -20,7 +20,9 @@ def test_auc_ignores_monotone_rescaling():
 
     y = np.array([0, 0, 1, 1])
     x = np.array([1.0, 2.0, 3.0, 4.0])
-    assert univariate_auc(x, y)[0] == pytest.approx(univariate_auc(np.exp(x) * 1000, y)[0])
+    assert univariate_auc(x, y)[0] == pytest.approx(
+        univariate_auc(np.exp(x) * 1000, y)[0]
+    )
 
 
 def test_auc_uses_only_rows_where_the_feature_is_defined():
@@ -48,7 +50,7 @@ def test_fdr_is_stricter_for_a_wider_axis():
     rng = np.random.default_rng(42)
     n = 4000
     y = np.repeat([0, 1], n // 2)
-    signal = y + rng.normal(0, 3.0, n)          # weak but real
+    signal = y + rng.normal(0, 3.0, n)  # weak but real
     noise = {f"noise{i}": rng.normal(0, 1, n) for i in range(49)}
 
     narrow = pd.DataFrame({"signal": signal})
@@ -135,8 +137,10 @@ def test_bh_admits_more_weak_signals_than_a_fixed_bonferroni_bound():
     rng = np.random.default_rng(51)
     n = 400
     y = np.repeat([0, 1], n // 2)
-    signal = {f"signal{i}": y + rng.normal(0, 2.5, n) for i in range(20)}   # weak but real
-    noise = {f"noise{i}": rng.normal(0, 1, n) for i in range(30)}          # pure noise
+    signal = {
+        f"signal{i}": y + rng.normal(0, 2.5, n) for i in range(20)
+    }  # weak but real
+    noise = {f"noise{i}": rng.normal(0, 1, n) for i in range(30)}  # pure noise
     X = pd.DataFrame({**signal, **noise})
 
     q = 0.10
@@ -161,9 +165,14 @@ def test_redundancy_keeps_the_stronger_member_of_a_correlated_pair():
 
     rng = np.random.default_rng(1)
     base = rng.normal(0, 1, 500)
-    X = pd.DataFrame({"strong": base, "copy": base * 3.0 + 1.0, "other": rng.normal(0, 1, 500)})
+    X = pd.DataFrame(
+        {"strong": base, "copy": base * 3.0 + 1.0, "other": rng.normal(0, 1, 500)}
+    )
     kept, dropped = redundancy_filter(
-        X, ["strong", "copy", "other"], {"strong": 0.30, "copy": 0.10, "other": 0.20}, 0.75
+        X,
+        ["strong", "copy", "other"],
+        {"strong": 0.30, "copy": 0.10, "other": 0.20},
+        0.75,
     )
     assert "strong" in kept and "other" in kept
     assert "copy" not in kept
@@ -212,9 +221,14 @@ def test_redundancy_stronger_column_survives_regardless_of_list_order():
 
     rng = np.random.default_rng(1)
     base = rng.normal(0, 1, 500)
-    X = pd.DataFrame({"strong": base, "copy": base * 3.0 + 1.0, "other": rng.normal(0, 1, 500)})
+    X = pd.DataFrame(
+        {"strong": base, "copy": base * 3.0 + 1.0, "other": rng.normal(0, 1, 500)}
+    )
     kept, dropped = redundancy_filter(
-        X, ["copy", "strong", "other"], {"strong": 0.30, "copy": 0.10, "other": 0.20}, 0.75
+        X,
+        ["copy", "strong", "other"],
+        {"strong": 0.30, "copy": 0.10, "other": 0.20},
+        0.75,
     )
     assert "strong" in kept and "other" in kept
     assert "copy" not in kept
@@ -262,10 +276,23 @@ def test_redundancy_tiny_overlap_is_not_declared_redundant():
     X = pd.DataFrame(
         {
             "dense": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0],
-            "sparse": [10.0, 20.0, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan],
+            "sparse": [
+                10.0,
+                20.0,
+                np.nan,
+                np.nan,
+                np.nan,
+                np.nan,
+                np.nan,
+                np.nan,
+                np.nan,
+                np.nan,
+            ],
         }
     )
-    kept, dropped = redundancy_filter(X, ["dense", "sparse"], {"dense": 0.30, "sparse": 0.20}, 0.75)
+    kept, dropped = redundancy_filter(
+        X, ["dense", "sparse"], {"dense": 0.30, "sparse": 0.20}, 0.75
+    )
     assert set(kept) == {"dense", "sparse"}
     assert dropped == {}
 
@@ -296,7 +323,9 @@ def test_redundancy_checks_survivors_not_everything_walked_so_far():
     assert X["B"].corr(X["C"], method="spearman") >= 0.75
     assert X["A"].corr(X["C"], method="spearman") < 0.75
 
-    kept, dropped = redundancy_filter(X, ["A", "B", "C"], {"A": 0.30, "B": 0.20, "C": 0.10}, 0.75)
+    kept, dropped = redundancy_filter(
+        X, ["A", "B", "C"], {"A": 0.30, "B": 0.20, "C": 0.10}, 0.75
+    )
     assert kept == ["A", "C"]
     assert dropped == {"B": "redundant_with:A"}
 
@@ -356,11 +385,13 @@ def test_select_axis_runs_all_three_steps_and_reports_reasons():
     n = 1500
     y = np.repeat([0, 1], n // 2)
     signal = y + rng.normal(0, 1.0, n)
-    X = pd.DataFrame({
-        "signal": signal,
-        "signal_copy": signal * 2.0,                       # redundant with signal
-        **{f"noise{i}": rng.normal(0, 1, n) for i in range(8)},
-    })
+    X = pd.DataFrame(
+        {
+            "signal": signal,
+            "signal_copy": signal * 2.0,  # redundant with signal
+            **{f"noise{i}": rng.normal(0, 1, n) for i in range(8)},
+        }
+    )
     noise = [f"noise{i}" for i in range(8)]
 
     # wrapper explicitly ON: the default is "none", and this test is specifically about
@@ -371,7 +402,9 @@ def test_select_axis_runs_all_three_steps_and_reports_reasons():
     assert rep.dropped.get("signal_copy", "").startswith("redundant_with:")
     assert set(rep.kept) | set(rep.dropped) == set(X.columns)
     assert set(rep.kept) & set(rep.dropped) == set()
-    assert {c for c, why in rep.dropped.items() if why == "univariate_fdr"} <= set(noise)
+    assert {c for c, why in rep.dropped.items() if why == "univariate_fdr"} <= set(
+        noise
+    )
     assert sum(c in rep.dropped for c in noise) >= 7
 
 
@@ -415,7 +448,9 @@ def test_disabled_steps_are_no_ops():
     X = pd.DataFrame({f"f{i}": rng.normal(0, 1, 200) for i in range(5)})
     y = np.repeat([0, 1], 100)
     rep = select_axis(
-        X, y, list(X.columns),
+        X,
+        y,
+        list(X.columns),
         _policy(univariate="none", redundancy="none", wrapper="none"),
     )
     assert set(rep.kept) == set(X.columns)

@@ -1,4 +1,5 @@
 """Per-format handlers. Dispatch table lives in __init__.py."""
+
 from __future__ import annotations
 
 import json as _json
@@ -18,7 +19,9 @@ def save_annotation_table_parquet(ann: AnnotationTable, path: Path) -> None:
     df.to_parquet(path, index=False)
 
 
-def load_annotation_table_parquet(path: Path, provenance: Provenance) -> AnnotationTable:
+def load_annotation_table_parquet(
+    path: Path, provenance: Provenance
+) -> AnnotationTable:
     df = pd.read_parquet(path)
     return AnnotationTable.from_pandas(df, provenance=provenance)
 
@@ -61,10 +64,15 @@ def load_variant_matrix_mt(path: Path, provenance: Provenance) -> "VariantMatrix
 
 
 def save_gene_set_json(gs: GeneSet, path: Path) -> None:
-    path.write_text(_json.dumps({
-        "name": gs.name,
-        "members": sorted(gs.to_list()),
-    }, indent=2))
+    path.write_text(
+        _json.dumps(
+            {
+                "name": gs.name,
+                "members": sorted(gs.to_list()),
+            },
+            indent=2,
+        )
+    )
 
 
 def load_gene_set_json(path: Path, provenance: Provenance) -> GeneSet:

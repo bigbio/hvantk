@@ -125,7 +125,9 @@ def download_cmd(ctx, output_dir, cancer_type, download_all, list_cancers, overw
         return
 
     if not output_dir:
-        click.echo("Error: --output-dir is required (unless using --list-cancers)", err=True)
+        click.echo(
+            "Error: --output-dir is required (unless using --list-cancers)", err=True
+        )
         ctx.exit(1)
 
     if not cancer_type and not download_all:
@@ -169,7 +171,9 @@ def download_cmd(ctx, output_dir, cancer_type, download_all, list_cancers, overw
     # Pan-cancer merge over the cancer types that actually succeeded.
     if download_all and len(all_tsv_paths) > 1:
         pancancer_path = os.path.join(output_dir, "cptac-phospho-pancancer.tsv")
-        click.echo(f"Merging {len(all_tsv_paths)} cancer types into {pancancer_path}...")
+        click.echo(
+            f"Merging {len(all_tsv_paths)} cancer types into {pancancer_path}..."
+        )
 
         with open(pancancer_path, "w", newline="") as fout:
             writer = csv.DictWriter(

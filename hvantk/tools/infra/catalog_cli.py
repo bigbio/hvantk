@@ -132,17 +132,13 @@ def stats():
         click.echo(f"  {omics:<16} {count}")
     click.echo("")
 
-    top_organisms = sorted(
-        s.get("organisms", {}).items(), key=lambda x: -x[1]
-    )[:10]
+    top_organisms = sorted(s.get("organisms", {}).items(), key=lambda x: -x[1])[:10]
     click.echo("top organisms:")
     for org, count in top_organisms:
         click.echo(f"  {org:<40} {count}")
     click.echo("")
 
-    top_sources = sorted(
-        s.get("data_sources", {}).items(), key=lambda x: -x[1]
-    )[:10]
+    top_sources = sorted(s.get("data_sources", {}).items(), key=lambda x: -x[1])[:10]
     click.echo("top data sources:")
     for src, count in top_sources:
         click.echo(f"  {src:<40} {count}")

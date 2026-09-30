@@ -12,6 +12,7 @@ The size ceiling is deliberately generous. It is a tripwire for "someone added a
 shipped path", not a byte budget -- a real regression here is an order of magnitude, not a few
 percent.
 """
+
 from __future__ import annotations
 
 import glob
@@ -27,7 +28,9 @@ REPO = Path(__file__).resolve().parents[2]
 def main() -> int:
     wheels = glob.glob(str(REPO / "dist" / "*.whl"))
     if len(wheels) != 1:
-        print(f"FAIL expected exactly one wheel in dist/, found {len(wheels)}: {wheels}")
+        print(
+            f"FAIL expected exactly one wheel in dist/, found {len(wheels)}: {wheels}"
+        )
         return 1
     names = zipfile.ZipFile(wheels[0]).infolist()
     paths = [i.filename for i in names]
@@ -56,11 +59,15 @@ def main() -> int:
         lambda p: "/tests/" in p and not (_is_fingerprint(p) or p.endswith(".gitkeep"))
     )
     if fixtures:
-        failures.append(f"{fixtures} test fixtures under a tests/ dir (only fingerprints ship)")
+        failures.append(
+            f"{fixtures} test fixtures under a tests/ dir (only fingerprints ship)"
+        )
 
     mb = sum(i.file_size for i in names) / 1e6
     if mb > MAX_UNCOMPRESSED_MB:
-        failures.append(f"wheel is {mb:.1f} MB uncompressed, ceiling is {MAX_UNCOMPRESSED_MB}")
+        failures.append(
+            f"wheel is {mb:.1f} MB uncompressed, ceiling is {MAX_UNCOMPRESSED_MB}"
+        )
 
     # --- things that MUST ship. Counted against the tree, so adding a provider needs no edit
     # here; a packaging glob that silently drops one is what this catches.
@@ -74,28 +81,51 @@ def main() -> int:
     # disk would fail every run) and must NOT be applied to fingerprints, which legitimately
     # live under tests/.
     not_a_test = lambda p: "/tests/" not in Path(p).as_posix()  # noqa: E731
-    everything = lambda p: True                                  # noqa: E731
+    everything = lambda p: True  # noqa: E731
 
     for label, pattern, wheel_pred, keep_disk in (
-        ("plugin.yaml manifests", "hvantk/skills/**/plugin.yaml",
-         lambda p: p.endswith("plugin.yaml"), everything),
-        ("SKILL.md files", "hvantk/skills/**/SKILL.md",
-         lambda p: p.endswith("SKILL.md"), everything),
-        ("catalog datasets.json", "hvantk/skills/**/catalog/*.json",
-         lambda p: "/catalog/" in p and p.endswith(".json"), everything),
-        ("drift fingerprints", "hvantk/skills/**/tests/drift_fingerprint*.json",
-         _is_fingerprint, everything),
-        ("skills modules", "hvantk/skills/**/*.py",
-         lambda p: p.startswith("hvantk/skills/") and p.endswith(".py"), not_a_test),
+        (
+            "plugin.yaml manifests",
+            "hvantk/skills/**/plugin.yaml",
+            lambda p: p.endswith("plugin.yaml"),
+            everything,
+        ),
+        (
+            "SKILL.md files",
+            "hvantk/skills/**/SKILL.md",
+            lambda p: p.endswith("SKILL.md"),
+            everything,
+        ),
+        (
+            "catalog datasets.json",
+            "hvantk/skills/**/catalog/*.json",
+            lambda p: "/catalog/" in p and p.endswith(".json"),
+            everything,
+        ),
+        (
+            "drift fingerprints",
+            "hvantk/skills/**/tests/drift_fingerprint*.json",
+            _is_fingerprint,
+            everything,
+        ),
+        (
+            "skills modules",
+            "hvantk/skills/**/*.py",
+            lambda p: p.startswith("hvantk/skills/") and p.endswith(".py"),
+            not_a_test,
+        ),
     ):
-        on_disk = len([p for p in glob.glob(str(REPO / pattern), recursive=True)
-                       if keep_disk(p)])
+        on_disk = len(
+            [p for p in glob.glob(str(REPO / pattern), recursive=True) if keep_disk(p)]
+        )
         in_wheel = count(wheel_pred)
         if on_disk != in_wheel:
             failures.append(f"{label}: {on_disk} in tree but {in_wheel} in wheel")
 
     if not count(lambda p: p.endswith("entry_points.txt")):
-        failures.append("no entry_points.txt -- console script and provider plugins are unregistered")
+        failures.append(
+            "no entry_points.txt -- console script and provider plugins are unregistered"
+        )
 
     for f in failures:
         print(f"FAIL {f}")

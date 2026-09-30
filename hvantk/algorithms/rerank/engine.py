@@ -36,8 +36,8 @@ class SelectionSummary:
     """
 
     arm: str
-    frequency: dict          # axis -> column -> number of folds that selected it
-    global_features: dict    # axis -> columns selected by the global (all-data) pass
+    frequency: dict  # axis -> column -> number of folds that selected it
+    global_features: dict  # axis -> columns selected by the global (all-data) pass
     auc_nested: float
     auc_global: float
     n_conflicted: int
@@ -219,25 +219,33 @@ def _run_nulls(config, df, baseline, groups_map, y, selector, arm, blocks):
         return None
     folds = ABLATION_FOLDS  # ONE variable feeds the scorer and the recorded setting
     scorer = oof_scorer(
-        selector=selector, groups=blocks, seed=config.seed, folds=folds,
+        selector=selector,
+        groups=blocks,
+        seed=config.seed,
+        folds=folds,
     )
     deltas = permutation_deltas(
-        df, baseline_cols, candidates, y, config=config.nulls, scorer=scorer, blocks=blocks
+        df,
+        baseline_cols,
+        candidates,
+        y,
+        config=config.nulls,
+        scorer=scorer,
+        blocks=blocks,
     )
     _, observed = axis_deltas(df, baseline_cols, candidates, y, scorer=scorer)
     # `digest`, not `block_digest`: the latter would shadow the function imported above for
     # the rest of this scope.
     digest = None if blocks is None else block_digest(blocks)
-    setting = _control_setting(
-        config, baseline_cols, candidates, arm, digest, folds
-    )
+    setting = _control_setting(config, baseline_cols, candidates, arm, digest, folds)
     return NullDistribution.from_deltas(
         deltas, setting, null_config=config.nulls, observed=observed
     )
 
 
-def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
-           _n_unknown=0) -> RerankResult:
+def rerank(
+    config, _allowed_columns=None, _arm="all", _n_conflicted=0, _n_unknown=0
+) -> RerankResult:
     validate(config)
     matrix, coverage = FeatureAssembler().assemble(config)
     prior = config.prior.load().rename(columns={"unit": "gene"})
@@ -274,7 +282,7 @@ def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
     if pos and covered / len(pos) < config.min_label_coverage:
         raise ValueError(
             f"label/feature join coverage too low: only {covered}/{len(pos)} "
-            f"({covered/len(pos):.0%}) positive units are in the feature matrix — likely a gene-symbol/build mismatch"
+            f"({covered / len(pos):.0%}) positive units are in the feature matrix — likely a gene-symbol/build mismatch"
         )
     n_pos = int(y.sum())
     n_neg = int(len(y) - n_pos)
@@ -305,9 +313,16 @@ def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
         )
         scores = reranker.score(df, feat_cols, y, selector=recording, groups=blocks)
         summary = _selection_summary(
-            config, df, y,
+            config,
+            df,
+            y,
             _leakage_filtered_groups(df, y, groups, leakage_policy),
-            scores, frequency, _arm, _n_conflicted, _n_unknown, blocks=blocks
+            scores,
+            frequency,
+            _arm,
+            _n_conflicted,
+            _n_unknown,
+            blocks=blocks,
         )
     else:
         # Leakage control is independent of SelectionPolicy: one asks whether a column's
@@ -355,8 +370,16 @@ def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
     flag = flag_reason != ""
     tiers = TierAssigner(config.tiers).assign(scores)  # pure credibility, no flag input
     metrics = Evaluator().evaluate(
-        df, feat_cols, y, scores, groups, baseline, selector, groups=blocks,
-        seed=config.seed, n_seeds=config.seed_sweep,
+        df,
+        feat_cols,
+        y,
+        scores,
+        groups,
+        baseline,
+        selector,
+        groups=blocks,
+        seed=config.seed,
+        n_seeds=config.seed_sweep,
     )
     nulls = _run_nulls(config, df, baseline, groups, y, selector, _arm, blocks)
     table = pd.DataFrame(
@@ -410,13 +433,18 @@ def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
         ]
     ]
     return RerankResult(
-        table=table, metrics=metrics, coverage=coverage, selection=summary, nulls=nulls,
+        table=table,
+        metrics=metrics,
+        coverage=coverage,
+        selection=summary,
+        nulls=nulls,
         blocks=block_report,
     )
 
 
-def _selection_summary(config, df, y, groups, scores, frequency, arm,
-                       n_conflicted, n_unknown, blocks=None) -> SelectionSummary:
+def _selection_summary(
+    config, df, y, groups, scores, frequency, arm, n_conflicted, n_unknown, blocks=None
+) -> SelectionSummary:
     """Run the global pass and package it with the nested result.
 
     The global pass exists ONLY to produce a human-readable "these are the features"
@@ -440,9 +468,9 @@ def _selection_summary(config, df, y, groups, scores, frequency, arm,
     picked = [c for cols in global_features.values() for c in cols]
     auc_global = float("nan")
     if picked:
-        global_scores = ReRanker(config.calibration, config.folds, seed=config.seed).score(
-            df, picked, y, groups=blocks
-        )
+        global_scores = ReRanker(
+            config.calibration, config.folds, seed=config.seed
+        ).score(df, picked, y, groups=blocks)
         auc_global = float(roc_auc_score(y, global_scores))
     return SelectionSummary(
         arm=arm,

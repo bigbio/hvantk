@@ -3,6 +3,7 @@
 Pure Python -- no Hail. Note this uses hvantk.core.utils.gene_sets.GeneSet (the plain
 named set inside a collection), NOT hvantk.core.models.GeneSet (the typed artifact).
 """
+
 import json
 
 import pytest

@@ -615,7 +615,7 @@ def filter_samples_by_qc(
         n_removed = n_samples_before - n_samples_after
 
         logger.info(
-            f"Filtered {n_removed} samples ({n_removed/n_samples_before*100:.1f}%), "
+            f"Filtered {n_removed} samples ({n_removed / n_samples_before * 100:.1f}%), "
             f"{n_samples_after} samples remaining"
         )
 
@@ -694,7 +694,7 @@ def filter_variants_by_qc(
         n_removed = n_variants_before - n_variants_after
 
         logger.info(
-            f"Filtered {n_removed} variants ({n_removed/n_variants_before*100:.1f}%), "
+            f"Filtered {n_removed} variants ({n_removed / n_variants_before * 100:.1f}%), "
             f"{n_variants_after} variants remaining"
         )
 

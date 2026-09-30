@@ -104,7 +104,15 @@ def ptm_group(ctx):
 )
 @click.pass_context
 def ptm_build(
-    ctx, output_dir, output_ht, gtf_path, ptm_tsv, peptideatlas_tsv, cptac_tsv, flanking_codons, overwrite
+    ctx,
+    output_dir,
+    output_ht,
+    gtf_path,
+    ptm_tsv,
+    peptideatlas_tsv,
+    cptac_tsv,
+    flanking_codons,
+    overwrite,
 ):
     """Download PTM data, map coordinates to genome, and build a Hail Table.
 
@@ -460,7 +468,10 @@ def ptm_report(ctx, output, landscape_json, population_json, title, description)
 
     try:
         import json
-        from hvantk.algorithms.ptm.analysis import PTMLandscapeResult, PTMPopulationResult
+        from hvantk.algorithms.ptm.analysis import (
+            PTMLandscapeResult,
+            PTMPopulationResult,
+        )
         from hvantk.algorithms.ptm.report import generate_report
 
         landscape_result = None
@@ -642,7 +653,10 @@ def ptm_constraint(
           --output-dir results/ptm-farah/
     """
     try:
-        from hvantk.algorithms.ptm.constraint import PTMConstraintConfig, run_ptm_constraint
+        from hvantk.algorithms.ptm.constraint import (
+            PTMConstraintConfig,
+            run_ptm_constraint,
+        )
 
         config = PTMConstraintConfig(
             variants_ht_path=variants_ht,
@@ -814,7 +828,11 @@ def _read_variants_table(path: str):
     # ``variants.csv.bgz`` are parsed as CSV, not TSV.
     compression_suffixes = {".gz", ".bgz", ".bz2"}
     base_suffix = next(
-        (s.lower() for s in reversed(Path(p).suffixes) if s.lower() not in compression_suffixes),
+        (
+            s.lower()
+            for s in reversed(Path(p).suffixes)
+            if s.lower() not in compression_suffixes
+        ),
         "",
     )
     if base_suffix in {".tsv", ".tab"}:
@@ -968,19 +986,21 @@ def ptm_test(
                     af_col=af_col,
                     is_ptm_col=is_ptm_col,
                 )
-                rows.append({
-                    "stratum": r.stratum,
-                    "n_variants": r.n_variants,
-                    "n_ptm": r.n_ptm,
-                    "n_nonptm": r.n_nonptm,
-                    "n_genes": r.n_genes,
-                    "n_mixed_genes": r.n_mixed_genes,
-                    "beta_ptm": r.beta_ptm,
-                    "se_ptm": r.se_ptm,
-                    "p_ptm": r.p_ptm,
-                    "converged": r.converged,
-                    "note": r.note,
-                })
+                rows.append(
+                    {
+                        "stratum": r.stratum,
+                        "n_variants": r.n_variants,
+                        "n_ptm": r.n_ptm,
+                        "n_nonptm": r.n_nonptm,
+                        "n_genes": r.n_genes,
+                        "n_mixed_genes": r.n_mixed_genes,
+                        "beta_ptm": r.beta_ptm,
+                        "se_ptm": r.se_ptm,
+                        "p_ptm": r.p_ptm,
+                        "converged": r.converged,
+                        "note": r.note,
+                    }
+                )
             _pd.DataFrame(rows).to_csv(output, sep="\t", index=False)
         else:  # lmm-binned
             if not (expression_pkl or expression_tsv):
@@ -997,14 +1017,16 @@ def ptm_test(
             for s in strata:
                 sub = df[df[stratum_col] == s]
                 if s not in wide.columns:
-                    rows.append({
-                        "stratum": str(s),
-                        "n_variants": int(len(sub)),
-                        "n_genes": int(sub[gene_col].nunique()) if len(sub) else 0,
-                        "bin_levels": "",
-                        "converged": False,
-                        "note": f"stratum '{s}' not found in expression matrix",
-                    })
+                    rows.append(
+                        {
+                            "stratum": str(s),
+                            "n_variants": int(len(sub)),
+                            "n_genes": int(sub[gene_col].nunique()) if len(sub) else 0,
+                            "bin_levels": "",
+                            "converged": False,
+                            "note": f"stratum '{s}' not found in expression matrix",
+                        }
+                    )
                     continue
                 r = run_binned_interaction_lmm(
                     sub,

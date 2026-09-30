@@ -14,6 +14,7 @@ Every function here raises plain ``ValueError`` -- this module must never import
 
 Layering: stdlib only.
 """
+
 from __future__ import annotations
 
 import csv

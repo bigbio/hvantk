@@ -1,4 +1,5 @@
 """Legacy raw-file shim: core/io.load wraps unmanifested files with Provenance.unknown."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -25,9 +26,11 @@ def test_legacy_parquet_loaded_with_unknown_provenance(tmp_path):
 
 
 def test_legacy_h5ad_loaded_with_unknown_provenance(tmp_path):
-    adata = ad.AnnData(X=np.array([[1.0]]),
-                       obs=pd.DataFrame({"t": ["a"]}, index=["s1"]),
-                       var=pd.DataFrame({"g": ["g1"]}, index=["v1"]))
+    adata = ad.AnnData(
+        X=np.array([[1.0]]),
+        obs=pd.DataFrame({"t": ["a"]}, index=["s1"]),
+        var=pd.DataFrame({"g": ["g1"]}, index=["v1"]),
+    )
     legacy_path = tmp_path / "legacy.h5ad"
     adata.write_h5ad(str(legacy_path))
 

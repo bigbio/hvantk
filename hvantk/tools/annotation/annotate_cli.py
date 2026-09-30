@@ -8,6 +8,7 @@ top-level group (``hvantk cohort``) rather than a subcommand here.
 The command does its work in-process. Scheduling is deliberately external -- sbatch
 wrappers submit it -- so that hvantk never imports a scheduler.
 """
+
 from __future__ import annotations
 
 import logging

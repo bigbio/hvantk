@@ -8,7 +8,9 @@ import sys
 import tempfile
 
 # Set up logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s"
+)
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 VARIANTS_TSV = os.path.join(SCRIPT_DIR, "test_alphagenome_variants.tsv")
@@ -100,8 +102,10 @@ with tempfile.TemporaryDirectory(prefix="alphagenome_test_") as output_dir:
             print(f"\n  Checkpoint state:")
             print(f"    Completed intervals: {len(state['completed_intervals'])}")
             print(f"    Failed variants: {len(state['failed_variants'])}")
-            if state['failed_variants']:
-                for fv in state['failed_variants']:
-                    print(f"      FAILED: {fv['chrom']}:{fv['pos']} {fv['ref']}>{fv['alt']} - {fv['reason']}")
+            if state["failed_variants"]:
+                for fv in state["failed_variants"]:
+                    print(
+                        f"      FAILED: {fv['chrom']}:{fv['pos']} {fv['ref']}>{fv['alt']} - {fv['reason']}"
+                    )
 
 print("\n=== Done ===")

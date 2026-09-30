@@ -21,7 +21,9 @@ from hvantk.skills.uniprot_ptm.shared.constants import (
 )
 from hvantk.skills.uniprot_ptm.shared.datasets import _build_search_url
 
-PROBE_URL = _build_search_url(UNIPROT_API_URL, UNIPROT_HUMAN_PTM_QUERY, UNIPROT_API_FIELDS, 1)
+PROBE_URL = _build_search_url(
+    UNIPROT_API_URL, UNIPROT_HUMAN_PTM_QUERY, UNIPROT_API_FIELDS, 1
+)
 
 _LIVE_HEADERS = {
     "X-UniProt-Release": "2026_03",
@@ -38,9 +40,16 @@ _BODY = {
             "primaryAccession": "P38398",
             "genes": [{"geneName": {"value": "BRCA1"}}],
             "sequence": {"value": "MDLSALRVEEV", "length": 11},
-            "uniProtKBCrossReferences": [{"database": "Ensembl", "id": "ENST00000357654"}],
-            "features": [{"type": "Modified residue", "description": "Phosphoserine",
-                          "location": {"start": {"value": 2}}}],
+            "uniProtKBCrossReferences": [
+                {"database": "Ensembl", "id": "ENST00000357654"}
+            ],
+            "features": [
+                {
+                    "type": "Modified residue",
+                    "description": "Phosphoserine",
+                    "location": {"start": {"value": 2}},
+                }
+            ],
         }
     ]
 }
@@ -71,8 +80,13 @@ def test_fingerprint_carries_the_release_the_count_and_the_schema():
         "sequence_length",
     ]
     assert fp["headers"]["uniprot_entry_keys"] == [
-        "entryType", "extraAttributes", "features", "genes",
-        "primaryAccession", "sequence", "uniProtKBCrossReferences",
+        "entryType",
+        "extraAttributes",
+        "features",
+        "genes",
+        "primaryAccession",
+        "sequence",
+        "uniProtKBCrossReferences",
     ]
     assert "uniprot-ptm-human.tsv" in fp["checksums"]
     assert "fetched_at" in fp
@@ -83,9 +97,14 @@ def test_a_new_release_moves_the_compared_surface():
     from hvantk.core.plugin.drift_runner import _compare_fingerprints
 
     before, _ = _probe()
-    after, _ = _probe(headers={**_LIVE_HEADERS, "X-UniProt-Release": "2026_04",
-                               "X-UniProt-Release-Date": "15-October-2026",
-                               "X-Total-Results": "9512"})
+    after, _ = _probe(
+        headers={
+            **_LIVE_HEADERS,
+            "X-UniProt-Release": "2026_04",
+            "X-UniProt-Release-Date": "15-October-2026",
+            "X-Total-Results": "9512",
+        }
+    )
     diff = _compare_fingerprints(before, after)
     assert diff is not None
     assert set(diff["changed"]) == {"source_version", "extras"}
@@ -95,7 +114,9 @@ def test_release_date_alone_never_signals_drift():
     from hvantk.core.plugin.drift_runner import _compare_fingerprints
 
     a, _ = _probe()
-    b, _ = _probe(headers={**_LIVE_HEADERS, "X-UniProt-Release-Date": "03-September-2026"})
+    b, _ = _probe(
+        headers={**_LIVE_HEADERS, "X-UniProt-Release-Date": "03-September-2026"}
+    )
     assert _compare_fingerprints(a, b) is None
 
 
@@ -183,9 +204,9 @@ def test_worst_case_retry_budget_fits_under_the_runner_timeout():
     from hvantk.core.utils.http import DEFAULT_BACKOFF_S, DEFAULT_MAX_SLEEP_S, _backoff
     from hvantk.skills.uniprot_ptm.drift_probe import _ATTEMPTS, _TIMEOUT_S
 
-    runner_timeout = inspect.signature(
-        drift_runner.run_drift_checks
-    ).parameters["timeout"].default
+    runner_timeout = (
+        inspect.signature(drift_runner.run_drift_checks).parameters["timeout"].default
+    )
     worst_case = sum(
         _backoff(DEFAULT_BACKOFF_S, a, DEFAULT_MAX_SLEEP_S) for a in range(1, _ATTEMPTS)
     ) + _ATTEMPTS * sum(_TIMEOUT_S)

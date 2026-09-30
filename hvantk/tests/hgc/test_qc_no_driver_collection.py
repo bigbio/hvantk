@@ -96,9 +96,9 @@ def test_save_qc_metrics_exports_variants_without_collecting(tmp_path):
         "JSON, both full of commas that Hail does not quote -- a comma-delimited file "
         "is silently malformed"
     )
-    assert (
-        variant.flattened
-    ), "flatten() first, or all 28 QC metrics collapse into one JSON blob column"
+    assert variant.flattened, (
+        "flatten() first, or all 28 QC metrics collapse into one JSON blob column"
+    )
     assert variant.to_pandas_calls == 0
     assert saved["variant_qc"] == str(tmp_path / "t_variant_qc.tsv")
 
@@ -233,7 +233,7 @@ def test_dataframe_cache_respects_a_changed_budget():
     assert small.attrs["subsampled"] is True
 
     full = qc.get_variant_metrics_df(max_rows=0)
-    assert (
-        full.attrs["subsampled"] is False
-    ), "the cache ignored max_rows and handed back the earlier subsample"
+    assert full.attrs["subsampled"] is False, (
+        "the cache ignored max_rows and handed back the earlier subsample"
+    )
     assert len(full) == 1_000_000

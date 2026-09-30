@@ -130,7 +130,9 @@ def test_ucsc_cellbrowser_round_trip(
             builder_kwargs=call_kwargs,
             input_path_kwarg="expression_matrix_path",
         )
-        pytest.skip("Snapshots regenerated; rerun without --regenerate-snapshots to assert.")
+        pytest.skip(
+            "Snapshots regenerated; rerun without --regenerate-snapshots to assert."
+        )
 
     adata = _build_for_snapshot(
         expression_matrix_path=expr_fixture,
@@ -139,8 +141,12 @@ def test_ucsc_cellbrowser_round_trip(
 
     expected_schema = load_snapshot(snapshot_dir / "schema.json")
     actual_schema = anndata_schema_to_dict(adata)
-    assert actual_schema == expected_schema, f"UCSC sc schema drifted from snapshot ({snapshot_dir})"
+    assert actual_schema == expected_schema, (
+        f"UCSC sc schema drifted from snapshot ({snapshot_dir})"
+    )
 
     expected_rows = load_snapshot(snapshot_dir / "sample_rows.json")
     actual_rows = anndata_sample_rows(adata)
-    assert actual_rows == expected_rows, f"UCSC sc sample rows drifted from snapshot ({snapshot_dir})"
+    assert actual_rows == expected_rows, (
+        f"UCSC sc sample rows drifted from snapshot ({snapshot_dir})"
+    )

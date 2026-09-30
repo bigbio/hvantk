@@ -48,8 +48,7 @@ def _get_matplotlib():
         return plt, mpatches, Line2D
     except ImportError as e:
         raise ImportError(
-            "matplotlib is required for plotting. "
-            "Install with: pip install matplotlib"
+            "matplotlib is required for plotting. Install with: pip install matplotlib"
         ) from e
 
 

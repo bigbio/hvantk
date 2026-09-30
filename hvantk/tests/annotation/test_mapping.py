@@ -1,4 +1,5 @@
 """Identifier mapping onto the gene spine, with measurable loss."""
+
 from __future__ import annotations
 
 import pytest
@@ -65,7 +66,9 @@ def test_uniprot_ids_map_through_hgnc_to_spine():
     mapping, report = mapper.from_uniprot_ids(["P00001", "P99999"], source="insider")
 
     assert mapping["P00001"] == "ENSG00000106631"
-    assert mapping["P99999"] is None  # unknown accession is unmapped, not dropped silently
+    assert (
+        mapping["P99999"] is None
+    )  # unknown accession is unmapped, not dropped silently
     assert report.key_type == "uniprot_id"
     assert report.n_in == 2 and report.n_mapped == 1
     assert report.unmapped == ("P99999",)

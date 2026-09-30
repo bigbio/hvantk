@@ -40,6 +40,7 @@ score to beat it -- which separates "the score is informative" from "having the 
 informative". This module implements the blunt one because it is what a headline result can
 be defended with.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

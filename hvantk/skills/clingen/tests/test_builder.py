@@ -20,6 +20,7 @@ from hvantk.tests._snapshot_utils import (
     load_snapshot,
     phase_b_snapshot_adapter,
 )
+
 # Aliased to avoid shadowing the fixture name `regenerate_snapshots` in the test signature
 from hvantk.tests._snapshot_utils import regenerate_snapshots as regenerate_snapshots_fn
 
@@ -44,7 +45,9 @@ def test_clingen_snapshot_round_trip(hail_session, tmp_path, regenerate_snapshot
     import hail as hl
     from hvantk.skills.clingen.builder import build_clingen_gene_disease
 
-    builder = phase_b_snapshot_adapter(build_clingen_gene_disease, "clingen:gene-disease")
+    builder = phase_b_snapshot_adapter(
+        build_clingen_gene_disease, "clingen:gene-disease"
+    )
 
     if regenerate_snapshots:
         regenerate_snapshots_fn(
@@ -53,14 +56,18 @@ def test_clingen_snapshot_round_trip(hail_session, tmp_path, regenerate_snapshot
             snapshot_dir=SNAPSHOT_DIR,
             keys=SAMPLE_KEYS,
         )
-        pytest.skip("Snapshots regenerated; rerun without --regenerate-snapshots to assert.")
+        pytest.skip(
+            "Snapshots regenerated; rerun without --regenerate-snapshots to assert."
+        )
 
     output_path = str(tmp_path / "clingen.ht")
     builder(input_path=FIXTURE, output_path=output_path)
     ht = hl.read_table(output_path)
 
     expected_schema = load_snapshot(SNAPSHOT_DIR / "schema.json")
-    assert hail_schema_to_dict(ht) == expected_schema, "ClinGen schema drifted from snapshot"
+    assert hail_schema_to_dict(ht) == expected_schema, (
+        "ClinGen schema drifted from snapshot"
+    )
 
     expected_rows = load_snapshot(SNAPSHOT_DIR / "sample_rows.json")
     actual_rows = collect_sample_rows(ht, keys=SAMPLE_KEYS)

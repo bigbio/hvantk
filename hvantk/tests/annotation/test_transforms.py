@@ -1,4 +1,5 @@
 """transforms.py: stat-token vocabulary + gene aggregation."""
+
 from __future__ import annotations
 
 import pytest
@@ -192,12 +193,19 @@ def test_identity_reduce_supports_sources_with_scalar_score_columns(hail_session
         to="uniprot_id",
         reduce="identity",
         count_name="n_ptm_sites",
-        scores=(ScoreSpec("obs", "n_observations", ("mean", "max")),
-                ScoreSpec("sc", "score", ("max",))),
+        scores=(
+            ScoreSpec("obs", "n_observations", ("mean", "max")),
+            ScoreSpec("sc", "score", ("max",)),
+        ),
     )
     grouped = aggregate_to_gene(_scalar_ht(), spec)
-    assert set(grouped.row) == {"uniprot_id", "obs_mean", "obs_max", "sc_max",
-                                "n_ptm_sites"}
+    assert set(grouped.row) == {
+        "uniprot_id",
+        "obs_mean",
+        "obs_max",
+        "sc_max",
+        "n_ptm_sites",
+    }
     d = {r.uniprot_id: r for r in grouped.collect()}
     assert d["P00001"].n_ptm_sites == 2
     assert d["P00001"].obs_max == 10

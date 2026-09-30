@@ -337,7 +337,7 @@ def main(output_dir: str = "./examples/ancestry/results") -> int:
         inference_accuracy = correct / len(assigned)
         print(f"\n  Inference accuracy (assigned samples): {inference_accuracy:.2%}")
         print(
-            f"  Samples assigned: {len(assigned)}/{len(query_pred)} ({100*len(assigned)/len(query_pred):.1f}%)"
+            f"  Samples assigned: {len(assigned)}/{len(query_pred)} ({100 * len(assigned) / len(query_pred):.1f}%)"
         )
 
         # Per-population accuracy

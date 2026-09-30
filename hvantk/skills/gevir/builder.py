@@ -3,6 +3,7 @@
 Owns the Phase B ``build_gevir_metrics`` builder. Imports the GeVIR metrics
 TSV keyed by ``gene_id`` and wraps with Provenance.
 """
+
 from __future__ import annotations
 
 import glob

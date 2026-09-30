@@ -5,6 +5,7 @@ expression (pandas Series of bools for filters, scalar Series for value
 expressions). The two compilers MUST stay semantically aligned —
 property-based parity tests enforce this.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -23,6 +24,7 @@ from hvantk.core.models._expr import (
 
 
 # ---------- pandas compiler ----------
+
 
 def compile_to_pandas(expr: Expr, df: pd.DataFrame) -> pd.Series:
     """Compile an Expr to a pandas Series (boolean for predicates, scalar for value exprs)."""
@@ -54,22 +56,23 @@ def compile_to_pandas(expr: Expr, df: pd.DataFrame) -> pd.Series:
 
 _PANDAS_BINOPS = {
     "and": lambda a, b: a & b,
-    "or":  lambda a, b: a | b,
-    "eq":  lambda a, b: a == b,
-    "ne":  lambda a, b: a != b,
-    "gt":  lambda a, b: a > b,
-    "ge":  lambda a, b: a >= b,
-    "lt":  lambda a, b: a < b,
-    "le":  lambda a, b: a <= b,
+    "or": lambda a, b: a | b,
+    "eq": lambda a, b: a == b,
+    "ne": lambda a, b: a != b,
+    "gt": lambda a, b: a > b,
+    "ge": lambda a, b: a >= b,
+    "lt": lambda a, b: a < b,
+    "le": lambda a, b: a <= b,
     "add": lambda a, b: a + b,
     "sub": lambda a, b: a - b,
     "mul": lambda a, b: a * b,
     "div": lambda a, b: a / b,
-    "pow": lambda a, b: a ** b,
+    "pow": lambda a, b: a**b,
 }
 
 
 # ---------- hail compiler ----------
+
 
 def _compile_to_hail_with_field_accessor(expr: Expr, field_accessor) -> "Any":
     """Internal: compile an Expr to Hail using a custom field accessor callable.
@@ -85,7 +88,11 @@ def _compile_to_hail_with_field_accessor(expr: Expr, field_accessor) -> "Any":
         if isinstance(e, Col):
             return field_accessor(e.name)
         if isinstance(e, Literal):
-            return hl.literal(e.value) if isinstance(e.value, (list, tuple, set)) else e.value
+            return (
+                hl.literal(e.value)
+                if isinstance(e.value, (list, tuple, set))
+                else e.value
+            )
         if isinstance(e, UnaryOp) and e.op == "not":
             return ~go(e.operand)
         if isinstance(e, BinOp):
@@ -122,18 +129,18 @@ def compile_to_hail(expr: Expr, ht: "Any") -> "Any":
 
 _HAIL_BINOPS = {
     "and": lambda a, b: a & b,
-    "or":  lambda a, b: a | b,
-    "eq":  lambda a, b: a == b,
-    "ne":  lambda a, b: a != b,
-    "gt":  lambda a, b: a > b,
-    "ge":  lambda a, b: a >= b,
-    "lt":  lambda a, b: a < b,
-    "le":  lambda a, b: a <= b,
+    "or": lambda a, b: a | b,
+    "eq": lambda a, b: a == b,
+    "ne": lambda a, b: a != b,
+    "gt": lambda a, b: a > b,
+    "ge": lambda a, b: a >= b,
+    "lt": lambda a, b: a < b,
+    "le": lambda a, b: a <= b,
     "add": lambda a, b: a + b,
     "sub": lambda a, b: a - b,
     "mul": lambda a, b: a * b,
     "div": lambda a, b: a / b,
-    "pow": lambda a, b: a ** b,
+    "pow": lambda a, b: a**b,
 }
 
 
@@ -173,6 +180,7 @@ def compile_to_hail_mt_row(expr: Expr, mt: "Any") -> "Any":
 
 # ---------- aggregation compilers ----------
 
+
 def compile_agg_to_pandas(agg: AggOp, group_df: pd.DataFrame):
     if agg.name == "count":
         return len(group_df)
@@ -182,6 +190,7 @@ def compile_agg_to_pandas(agg: AggOp, group_df: pd.DataFrame):
 
 def compile_agg_to_hail(agg: AggOp, ht: "Any"):
     import hail as hl
+
     if agg.name == "count":
         return hl.agg.count()
     inner = compile_to_hail(agg.argument, ht)

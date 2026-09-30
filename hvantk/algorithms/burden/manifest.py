@@ -5,6 +5,7 @@ reductions ``n_case_var``/``conc``/``driver_af``). This renders the matching ``c
 so a user doesn't hand-author it -- the last bit of friction in the originate-a-prior ->
 ``rerank`` loop. Pure Python (no Hail): fast-testable.
 """
+
 from __future__ import annotations
 
 import yaml

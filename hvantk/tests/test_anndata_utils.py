@@ -14,9 +14,7 @@ def _make_test_adata() -> ad.AnnData:
     X = np.random.rand(20, 10)
     obs = pd.DataFrame(
         {
-            "cell_type": pd.Categorical(
-                np.random.choice(["A", "B", "C"], size=20)
-            ),
+            "cell_type": pd.Categorical(np.random.choice(["A", "B", "C"], size=20)),
             "n_counts": np.random.rand(20) * 1000,
         },
         index=[f"cell_{i}" for i in range(20)],

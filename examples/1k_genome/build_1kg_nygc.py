@@ -185,12 +185,18 @@ def main(
         import subprocess
 
         cmd = [
-            "hvantk", "reprocess", "onek-genomes:variants",
-            "--raw-dir", stage_dir,
-            "--output", output_mt,
+            "hvantk",
+            "reprocess",
+            "onek-genomes:variants",
+            "--raw-dir",
+            stage_dir,
+            "--output",
+            output_mt,
             "--skip-download",
-            "--plugin-arg", f"reference_genome={reference_genome}",
-            "--plugin-arg", f"auto_convert_bgz={'true' if auto_convert_bgz else 'false'}",
+            "--plugin-arg",
+            f"reference_genome={reference_genome}",
+            "--plugin-arg",
+            f"auto_convert_bgz={'true' if auto_convert_bgz else 'false'}",
         ]
         if chrom_list:
             cmd += ["--plugin-arg", f"chromosomes={','.join(chrom_list)}"]

@@ -68,7 +68,7 @@ def test_run_locus_coloc_ranks_shared_above_distinct():
     n = 40
     gwas = _gwas_dict(n, peak_idx=20, peak_z=7.0)
     eqtl = {
-        "ENSG_SHARED": _eqtl_recs(n, peak_idx=20, peak_z=7.0),   # same peak -> coloc
+        "ENSG_SHARED": _eqtl_recs(n, peak_idx=20, peak_z=7.0),  # same peak -> coloc
         "ENSG_DISTINCT": _eqtl_recs(n, peak_idx=3, peak_z=7.0),  # different peak
     }
     res = run_locus_coloc(gwas=gwas, eqtl=eqtl, region="chr1:1-40", min_snps=20)
@@ -93,7 +93,9 @@ def test_run_locus_coloc_allele_flip_matches():
     gwas = _gwas_dict(n, peak_idx=20, peak_z=7.0)
     z = np.linspace(-0.5, 0.5, n)
     z[20] = 7.0
-    eqtl = {"ENSG_FLIP": [((i + 1, "G", "A"), -z[i] * 0.03, 0.03, 1.0) for i in range(n)]}
+    eqtl = {
+        "ENSG_FLIP": [((i + 1, "G", "A"), -z[i] * 0.03, 0.03, 1.0) for i in range(n)]
+    }
     res = run_locus_coloc(gwas=gwas, eqtl=eqtl, region="chr1:1-40", min_snps=20)
     assert not res.table.empty
     assert res.table.iloc[0]["PP4"] > 0.5  # flip handled -> still colocalizes
@@ -124,8 +126,19 @@ def test_gwas_coloc_cli_requires_n_for_finemap(tmp_path):
 
     r = CliRunner().invoke(
         qtlcascade_group,
-        ["gwas-coloc", "--endpoint", "I9_AF", "--chrom", "10", "--lead", "73600000",
-         "--eqtl", "QTD000251", "-o", str(tmp_path / "out")],  # fine-map on, no -n
+        [
+            "gwas-coloc",
+            "--endpoint",
+            "I9_AF",
+            "--chrom",
+            "10",
+            "--lead",
+            "73600000",
+            "--eqtl",
+            "QTD000251",
+            "-o",
+            str(tmp_path / "out"),
+        ],  # fine-map on, no -n
     )
     assert r.exit_code == 1
     # Validation errors go to stderr (err=True); Click 8.1 mixes it into .output,
@@ -145,18 +158,38 @@ def test_gwas_coloc_cli_runs_with_mocked_pipeline(tmp_path, monkeypatch):
     fake = {
         "region": "chr10:73100000-74100000",
         "gwas": {"min_p_in_region": 2.7e-14},
-        "results": {"n_genes_tested": 51, "top_effector": "ENSG00000177791",
-                    "top_PP4": 0.812, "report_json": str(tmp_path / "r.json")},
-        "fine_map": {"available": True, "credible_sets_gwas": 1,
-                     "credible_sets_eqtl": 1, "coloc_susie_PP4": 0.71},
+        "results": {
+            "n_genes_tested": 51,
+            "top_effector": "ENSG00000177791",
+            "top_PP4": 0.812,
+            "report_json": str(tmp_path / "r.json"),
+        },
+        "fine_map": {
+            "available": True,
+            "credible_sets_gwas": 1,
+            "credible_sets_eqtl": 1,
+            "coloc_susie_PP4": 0.71,
+        },
         "verdict": "CONFIRMED (ABF + fine-mapping agree)",
     }
     monkeypatch.setattr(gp, "run_gwas_coloc_pipeline", lambda config: fake)
 
     r = CliRunner().invoke(
         qtlcascade_cli.qtlcascade_group,
-        ["gwas-coloc", "--endpoint", "I9_AF", "--chrom", "10", "--lead", "73600000",
-         "--eqtl", "QTD000251", "--no-fine-map", "-o", str(tmp_path)],
+        [
+            "gwas-coloc",
+            "--endpoint",
+            "I9_AF",
+            "--chrom",
+            "10",
+            "--lead",
+            "73600000",
+            "--eqtl",
+            "QTD000251",
+            "--no-fine-map",
+            "-o",
+            str(tmp_path),
+        ],
     )
     assert r.exit_code == 0, r.output
     assert "CONFIRMED" in r.output
@@ -168,18 +201,26 @@ def test_pipeline_user_gene_absent_not_misattributed(tmp_path, monkeypatch):
     # inherit the top gene's PP4 (verdict must be about the requested gene).
     import hvantk.algorithms.qtlcascade.gwas_coloc as gc
     from hvantk.algorithms.qtlcascade.gwas_pipeline import (
-        GwasColocConfig, run_gwas_coloc_pipeline,
+        GwasColocConfig,
+        run_gwas_coloc_pipeline,
     )
 
-    monkeypatch.setattr(gc, "fetch_finngen_region",
-                        lambda *a, **k: _gwas_dict(40, 20, 7.0))
-    monkeypatch.setattr(gc, "fetch_eqtl_region",
-                        lambda *a, **k: {"ENSG_OTHER": _eqtl_recs(40, 20, 7.0)})
+    monkeypatch.setattr(
+        gc, "fetch_finngen_region", lambda *a, **k: _gwas_dict(40, 20, 7.0)
+    )
+    monkeypatch.setattr(
+        gc, "fetch_eqtl_region", lambda *a, **k: {"ENSG_OTHER": _eqtl_recs(40, 20, 7.0)}
+    )
     cfg = GwasColocConfig(
-        endpoint="X", chrom="1", lead=1_000_000, eqtl_dataset="QTD",
-        gene_of_interest="ENSG_ABSENT", fine_map=False, output_dir=str(tmp_path),
+        endpoint="X",
+        chrom="1",
+        lead=1_000_000,
+        eqtl_dataset="QTD",
+        gene_of_interest="ENSG_ABSENT",
+        fine_map=False,
+        output_dir=str(tmp_path),
     )
     rep = run_gwas_coloc_pipeline(cfg)
-    assert rep["results"]["goi_PP4_abf"] is None          # not the top gene's PP4
+    assert rep["results"]["goi_PP4_abf"] is None  # not the top gene's PP4
     assert rep["results"]["top_effector"] == "ENSG_OTHER"  # top still reported
     assert rep["verdict"].startswith("NO COLOC")

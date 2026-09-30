@@ -35,9 +35,7 @@ def test_fetch_fingerprint_shape():
         )
         fp = fetch_fingerprint()
 
-    expected_blob = (
-        b'cl361-2-gd31acd02|3/13/2026, 2:21:21 PM|"69b455fb-2424"'
-    )
+    expected_blob = b'cl361-2-gd31acd02|3/13/2026, 2:21:21 PM|"69b455fb-2424"'
     expected_checksum = hashlib.sha256(expected_blob).hexdigest()
 
     assert fp["probe_version"] == 1

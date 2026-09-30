@@ -7,6 +7,7 @@ detail — algorithms must not branch on it.
 This file delivers construction, conversion, and identity. The portable
 query API (filter, select, etc.) lands in subsequent tasks.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -43,12 +44,16 @@ class AnnotationTable:
 
     def __post_init__(self) -> None:
         if self.backend not in _BACKENDS:
-            raise ValueError(f"backend must be one of {_BACKENDS}; got {self.backend!r}")
+            raise ValueError(
+                f"backend must be one of {_BACKENDS}; got {self.backend!r}"
+            )
 
     # --- constructors ---
 
     @classmethod
-    def from_pandas(cls, df: pd.DataFrame, *, provenance: Provenance) -> "AnnotationTable":
+    def from_pandas(
+        cls, df: pd.DataFrame, *, provenance: Provenance
+    ) -> "AnnotationTable":
         schema = {col: _normalize_dtype(dtype) for col, dtype in df.dtypes.items()}
         return cls(backend="pandas", provenance=provenance, schema=schema, _table=df)
 
@@ -130,8 +135,12 @@ class AnnotationTable:
         )
 
     def join(
-        self, other: "AnnotationTable", on: str | list[str], how: str = "inner",
-        *, suffixes: tuple[str, str] | None = None,
+        self,
+        other: "AnnotationTable",
+        on: str | list[str],
+        how: str = "inner",
+        *,
+        suffixes: tuple[str, str] | None = None,
     ) -> "AnnotationTable":
         if self.backend != other.backend:
             raise ValueError(
@@ -216,12 +225,14 @@ class AnnotationTable:
 
     def save(self, path: str | Path) -> None:
         from hvantk.core import io as core_io
+
         core_io.save(self, path)
 
     @classmethod
     def load(cls, path: "str | Path") -> "AnnotationTable":
         """Read an AnnotationTable artifact from disk via core/io."""
         from hvantk.core import io as core_io
+
         result = core_io.load(path)
         if not isinstance(result, cls):
             raise TypeError(

@@ -37,7 +37,9 @@ def save_anndata(
     if not overwrite and os.path.exists(path):
         raise FileExistsError(f"File already exists: {path}")
 
-    logger.info("Saving AnnData (%d obs x %d var) to %s", adata.n_obs, adata.n_vars, path)
+    logger.info(
+        "Saving AnnData (%d obs x %d var) to %s", adata.n_obs, adata.n_vars, path
+    )
     adata.write_h5ad(path)
 
 

@@ -73,10 +73,20 @@ def test_newest_version_wins_regardless_of_response_order(newest_first):
     response pinned the OLDEST record, so a v2 posting -- the single event this
     probe exists to detect -- compared equal to the baseline forever."""
     records = [
-        {"version": "1", "date": "2025-01-13", "published": "NA",
-         "doi": PQTL_SOURCE_DOI, "title": "t"},
-        {"version": "2", "date": "2025-06-01", "published": "NA",
-         "doi": PQTL_SOURCE_DOI, "title": "t"},
+        {
+            "version": "1",
+            "date": "2025-01-13",
+            "published": "NA",
+            "doi": PQTL_SOURCE_DOI,
+            "title": "t",
+        },
+        {
+            "version": "2",
+            "date": "2025-06-01",
+            "published": "NA",
+            "doi": PQTL_SOURCE_DOI,
+            "title": "t",
+        },
     ]
     if newest_first:
         records.reverse()
@@ -170,7 +180,12 @@ def test_retry_budget_fits_under_the_drift_runners_default_timeout():
     from hvantk.core.utils.http import DEFAULT_BACKOFF_S, DEFAULT_MAX_SLEEP_S, _backoff
     from hvantk.skills.pqtl import drift_probe
 
-    runner_timeout = inspect.signature(drift_runner.run_drift_checks).parameters["timeout"].default
-    sleeps = sum(_backoff(DEFAULT_BACKOFF_S, a, DEFAULT_MAX_SLEEP_S) for a in range(1, drift_probe._ATTEMPTS))
+    runner_timeout = (
+        inspect.signature(drift_runner.run_drift_checks).parameters["timeout"].default
+    )
+    sleeps = sum(
+        _backoff(DEFAULT_BACKOFF_S, a, DEFAULT_MAX_SLEEP_S)
+        for a in range(1, drift_probe._ATTEMPTS)
+    )
     worst_case = sleeps + drift_probe._ATTEMPTS * sum(drift_probe._TIMEOUT_S)
     assert worst_case < runner_timeout, (worst_case, runner_timeout)

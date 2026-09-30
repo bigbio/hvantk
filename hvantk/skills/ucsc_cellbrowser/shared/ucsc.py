@@ -20,7 +20,10 @@ import pandas as pd
 from anndata.io import sparse_dataset, write_elem
 from scipy import sparse
 
-from hvantk.skills.ucsc_cellbrowser.shared.constants import UCSC_CELL_ID_COLUMN, UCSC_GENE_COLUMN
+from hvantk.skills.ucsc_cellbrowser.shared.constants import (
+    UCSC_CELL_ID_COLUMN,
+    UCSC_GENE_COLUMN,
+)
 
 __all__ = [
     "load_ucsc_metadata",
@@ -79,9 +82,7 @@ def _iter_ucsc_rows(
         header = fh.readline().rstrip("\n").rstrip("\r")
         if not header:
             fh.close()
-            raise ValueError(
-                f"Expression matrix {expression_matrix_path!r} is empty."
-            )
+            raise ValueError(f"Expression matrix {expression_matrix_path!r} is empty.")
         header_fields = header.split(delimiter)
         cell_ids = header_fields[1:]
         n_cells = len(cell_ids)
@@ -101,9 +102,7 @@ def _iter_ucsc_rows(
                 gene = line[:tab]
                 if split_gene_field:
                     gene = gene.split("|", 1)[0]
-                row = np.fromstring(
-                    line[tab + 1:], sep=delimiter, dtype=np.float32
-                )
+                row = np.fromstring(line[tab + 1 :], sep=delimiter, dtype=np.float32)
                 if row.shape[0] != n_cells:
                     raise ValueError(
                         f"Row for gene {gene!r} has {row.shape[0]} parseable "
@@ -137,9 +136,7 @@ def _iter_ucsc_gene_names_only(
     try:
         header = fh.readline().rstrip("\n").rstrip("\r")
         if not header:
-            raise ValueError(
-                f"Expression matrix {expression_matrix_path!r} is empty."
-            )
+            raise ValueError(f"Expression matrix {expression_matrix_path!r} is empty.")
         cell_ids = header.split(delimiter)[1:]
         gene_names: list[str] = []
         for line in fh:
@@ -242,7 +239,12 @@ def load_ucsc_metadata(
             "Keeping first occurrence of each %s. This often indicates an "
             "upstream parsing issue (e.g. unquoted newlines in string fields); "
             "dedupe the source file if this masks real inconsistencies.",
-            metadata_path, n_dup, index_name, n_before, len(df), index_name,
+            metadata_path,
+            n_dup,
+            index_name,
+            n_before,
+            len(df),
+            index_name,
         )
     return df
 
@@ -446,7 +448,9 @@ def build_ucsc_atlas_backed(
 
     logger.info(
         "Backed-write atlas → %s (n_cells=%d, column_batch=%d)",
-        output_path, n_cells, column_batch,
+        output_path,
+        n_cells,
+        column_batch,
     )
 
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
@@ -504,7 +508,9 @@ def build_ucsc_atlas_backed(
 
     logger.info(
         "Backed atlas written: %d cells × %d genes → %s",
-        n_cells, n_appended, output_path,
+        n_cells,
+        n_appended,
+        output_path,
     )
     return output_path
 
@@ -563,7 +569,9 @@ def finalize_partial_atlas(
     n_cells_x, n_genes_x = x_shape
     logger.info(
         "Finalizing partial atlas at %s (/X shape=%d × %d)",
-        output_path, n_cells_x, n_genes_x,
+        output_path,
+        n_cells_x,
+        n_genes_x,
     )
 
     cell_ids, gene_names = _iter_ucsc_gene_names_only(
@@ -608,7 +616,9 @@ def finalize_partial_atlas(
 
     logger.info(
         "Finalized partial atlas at %s (%d cells × %d genes)",
-        output_path, n_cells_x, n_genes_x,
+        output_path,
+        n_cells_x,
+        n_genes_x,
     )
     return output_path
 
@@ -668,7 +678,9 @@ def summarize_ucsc_streaming(
     n_cells = len(cell_ids)
     logger.info(
         "Fused aggregate stream → %s (n_cells=%d, group_by=%s)",
-        expression_matrix_path, n_cells, by,
+        expression_matrix_path,
+        n_cells,
+        by,
     )
 
     # Align metadata to expression header order, keep only cells present
@@ -690,7 +702,8 @@ def summarize_ucsc_streaming(
         example = cell_ids[int(np.where(dropped_nan_mask)[0][0])]
         logger.info(
             "Dropped %d cells with NaN in group-by columns (example: %s).",
-            n_dropped_nan, example,
+            n_dropped_nan,
+            example,
         )
 
     # Factorize on the tuple of group-by values so ("T_cell","donor1") and
@@ -710,7 +723,9 @@ def summarize_ucsc_streaming(
     group_idx = np.full(n_cells, -1, dtype=np.int64)
     group_idx[keep_mask] = codes
     valid = group_idx >= 0
-    n_cells_per_group = np.bincount(group_idx[valid], minlength=n_groups).astype(np.int64)
+    n_cells_per_group = np.bincount(group_idx[valid], minlength=n_groups).astype(
+        np.int64
+    )
 
     # Collect filled blocks into lists and concatenate once at the end to
     # avoid O(n_genes^2) cost from repeated np.concatenate on the growing
@@ -767,7 +782,9 @@ def summarize_ucsc_streaming(
 
     n_cells_col = n_cells_per_group[:, None]
     with np.errstate(divide="ignore", invalid="ignore"):
-        mean = np.where(n_cells_col > 0, sum_matrix / n_cells_col, 0.0).astype(np.float32)
+        mean = np.where(n_cells_col > 0, sum_matrix / n_cells_col, 0.0).astype(
+            np.float32
+        )
         fraction_expressed = np.where(
             n_cells_col > 0, count_nz_matrix / n_cells_col, 0.0
         ).astype(np.float32)
@@ -780,9 +797,7 @@ def summarize_ucsc_streaming(
     # index into the sorted uniques.
     by_src = aligned.loc[keep_mask, by].copy()
     by_src["_code"] = codes
-    per_group = (
-        by_src.groupby("_code", sort=True).first().reindex(np.arange(n_groups))
-    )
+    per_group = by_src.groupby("_code", sort=True).first().reindex(np.arange(n_groups))
 
     obs = pd.DataFrame({"n_cells": n_cells_per_group}, index=pd.Index(label_strs))
     for col in by:
@@ -814,6 +829,8 @@ def summarize_ucsc_streaming(
     )
     logger.info(
         "Aggregated AnnData: %d groups × %d genes (dropped %d groups below min_cells)",
-        adata.n_obs, adata.n_vars, int((~keep_groups).sum()),
+        adata.n_obs,
+        adata.n_vars,
+        int((~keep_groups).sum()),
     )
     return adata

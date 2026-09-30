@@ -253,11 +253,7 @@ def _build_population_section(
         embed,
     )
 
-    return (
-        "<section><h2>Population Analysis (Q3)</h2>"
-        f"{overview}{af_img}"
-        "</section>"
-    )
+    return f"<section><h2>Population Analysis (Q3)</h2>{overview}{af_img}</section>"
 
 
 def _build_key_findings(
@@ -334,10 +330,7 @@ def _build_key_findings(
         return ""
     items = "".join(f"<li>{b}</li>" for b in bullets)
     return (
-        "<section class='key-findings'>"
-        "<h2>Key Findings</h2>"
-        f"<ul>{items}</ul>"
-        "</section>"
+        f"<section class='key-findings'><h2>Key Findings</h2><ul>{items}</ul></section>"
     )
 
 
@@ -413,7 +406,7 @@ def _get_css(colors: Dict[str, str]) -> str:
             background-color: #f7f7f7;
         }}
         header {{
-            background: linear-gradient(90deg, {colors['primary']}, {colors['secondary']});
+            background: linear-gradient(90deg, {colors["primary"]}, {colors["secondary"]});
             color: white;
             padding: 30px;
             border-radius: 10px;
@@ -450,7 +443,7 @@ def _get_css(colors: Dict[str, str]) -> str:
             padding: 10px;
         }}
         th {{
-            background-color: {colors['primary']};
+            background-color: {colors["primary"]};
             color: white;
         }}
         .embedded-image {{
@@ -462,7 +455,7 @@ def _get_css(colors: Dict[str, str]) -> str:
         }}
         .key-findings {{
             background-color: #eef4ff;
-            border-left: 4px solid {colors['secondary']};
+            border-left: 4px solid {colors["secondary"]};
         }}
         .key-findings ul {{
             margin: 10px 0;
@@ -688,7 +681,7 @@ def _build_phase2_binned_section(results: Sequence["BinnedLMMResult"]) -> str:
 
     if not body_rows:
         body_rows = (
-            f"<tr><td colspan='{3 + 3 * len(all_bins) + 2}'>" "(no results)</td></tr>"
+            f"<tr><td colspan='{3 + 3 * len(all_bins) + 2}'>(no results)</td></tr>"
         )
 
     return (

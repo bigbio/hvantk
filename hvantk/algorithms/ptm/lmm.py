@@ -257,7 +257,9 @@ def run_binned_interaction_lmm(
         )
 
     if len(pos) < min_pos_expr:
-        return _skipped(f"skipped: only {len(pos)} positive-expr variants < {min_pos_expr}")
+        return _skipped(
+            f"skipped: only {len(pos)} positive-expr variants < {min_pos_expr}"
+        )
 
     try:
         pos_bins = pd.qcut(pos, q=n_quantiles, duplicates="drop")
@@ -293,7 +295,9 @@ def run_binned_interaction_lmm(
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            md = smf.mixedlm("log_af ~ is_ptm * expr_bin", data=dfx, groups=dfx[gene_col])
+            md = smf.mixedlm(
+                "log_af ~ is_ptm * expr_bin", data=dfx, groups=dfx[gene_col]
+            )
             mf = md.fit(method="lbfgs", reml=True)
     except Exception as e:
         return _skipped(f"fit failed: {str(e)[:80]}", bin_levels=ordered)

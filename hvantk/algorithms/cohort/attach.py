@@ -16,6 +16,7 @@ Two properties matter and are the reason this is not a plain merge:
 Layering: imports Hail, sibling ``hvantk.algorithms`` modules and ``core`` only -- never
 ``hvantk.skills`` or ``hvantk.tools``. The HGNC catalog is passed in by the caller.
 """
+
 from __future__ import annotations
 
 import logging

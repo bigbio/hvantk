@@ -122,15 +122,15 @@ def test_html_qc_report_generation(test_mt):
 
         # Verify report was created
         assert result_path.exists(), "HTML report should be created"
-        assert (
-            result_path.stat().st_size > 50000
-        ), "Report should be substantial (>50KB)"
+        assert result_path.stat().st_size > 50000, (
+            "Report should be substantial (>50KB)"
+        )
 
         # Check report contains expected content
         report_content = result_path.read_text()
-        assert (
-            report_title in report_content
-        ), "Report should contain the specified title"
+        assert report_title in report_content, (
+            "Report should contain the specified title"
+        )
 
         # Test 2: Generate report through QCMetrics
         report_path2 = Path(tmp_dir) / "qcmetrics_report.html"
@@ -139,15 +139,15 @@ def test_html_qc_report_generation(test_mt):
         )
 
         assert result_path2.exists(), "QCMetrics HTML report should be created"
-        assert (
-            result_path2.stat().st_size > 50000
-        ), "QCMetrics report should be substantial"
+        assert result_path2.stat().st_size > 50000, (
+            "QCMetrics report should be substantial"
+        )
 
         # Verify the title parameter works through QCMetrics wrapper
         report_content2 = result_path2.read_text()
-        assert (
-            "QCMetrics Generated Report" in report_content2
-        ), "Report should contain the QCMetrics title"
+        assert "QCMetrics Generated Report" in report_content2, (
+            "Report should contain the QCMetrics title"
+        )
 
 
 def test_qc_data_validation(test_mt):
@@ -181,6 +181,6 @@ def test_qc_data_validation(test_mt):
         if hasattr(af_data.iloc[0], "__len__") and len(af_data.iloc[0]) > 1:
             # AF is array format, check alternate allele frequency
             alt_afs = [af[1] if len(af) > 1 else 0 for af in af_data]
-            assert all(
-                0 <= af <= 1 for af in alt_afs
-            ), "Allele frequencies should be in [0,1]"
+            assert all(0 <= af <= 1 for af in alt_afs), (
+                "Allele frequencies should be in [0,1]"
+            )

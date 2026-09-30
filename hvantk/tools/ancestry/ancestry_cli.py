@@ -308,7 +308,10 @@ def ancestry_inference_cmd(
         # Import Hail and pipeline after logging is configured
         import hail as hl
         from hvantk.core.utils.hail_context import init_hail
-        from hvantk.algorithms.ancestry.pipeline import run_ancestry_inference, PipelineConfig
+        from hvantk.algorithms.ancestry.pipeline import (
+            run_ancestry_inference,
+            PipelineConfig,
+        )
         from hailtop import fs
 
         # Initialize Hail (handle case where it's already running externally)
@@ -489,7 +492,10 @@ def ancestry_inference_cmd(
 
         # Print summary
         predictions_df = result.get_predictions_df()
-        from hvantk.algorithms.ancestry.constants import SOURCE_COL, PREDICTED_ANCESTRY_COL
+        from hvantk.algorithms.ancestry.constants import (
+            SOURCE_COL,
+            PREDICTED_ANCESTRY_COL,
+        )
 
         query_preds = predictions_df[predictions_df[SOURCE_COL] == "query"]
 

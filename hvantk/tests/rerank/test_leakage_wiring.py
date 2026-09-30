@@ -3,6 +3,7 @@
 The unit behaviour lives in test_leakage.py. This covers the part that makes it reachable:
 a control nobody can switch on does not close the gap it was written for.
 """
+
 from __future__ import annotations
 
 import numpy as np

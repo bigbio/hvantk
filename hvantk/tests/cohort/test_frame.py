@@ -5,6 +5,7 @@ through :mod:`hvantk.algorithms.cohort.frame` rather than through
 :func:`hvantk.algorithms.cohort.attach.attach`. Pure Python -- no Hail -- so these run
 in the default fast suite.
 """
+
 import gzip
 
 import pandas as pd

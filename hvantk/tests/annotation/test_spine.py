@@ -1,4 +1,5 @@
 """The gene spine: one row per protein-coding gene, keyed on Ensembl gene_id."""
+
 from __future__ import annotations
 
 import pytest

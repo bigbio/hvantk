@@ -53,17 +53,14 @@ def _display_single_result(result, pipeline) -> None:
             for name, roc in sorted_metrics:
                 auc_str = f"AUC={roc.auc:.3f}"
                 if roc.auc_ci_lower is not None:
-                    auc_str += (
-                        f" [{roc.auc_ci_lower:.3f}" f"\u2013{roc.auc_ci_upper:.3f}]"
-                    )
+                    auc_str += f" [{roc.auc_ci_lower:.3f}\u2013{roc.auc_ci_upper:.3f}]"
                 click.echo(
-                    f"    {name}: {auc_str}, " f"threshold={roc.optimal_threshold:.3f}"
+                    f"    {name}: {auc_str}, threshold={roc.optimal_threshold:.3f}"
                 )
 
         if result.scores_excluded:
             click.echo(
-                f"\n  Scores excluded (high missingness): "
-                f"{len(result.scores_excluded)}"
+                f"\n  Scores excluded (high missingness): {len(result.scores_excluded)}"
             )
             for name in result.scores_excluded:
                 miss = result.missingness[name]
@@ -398,6 +395,7 @@ def psroc_cmd(
 
         # Construct the gene catalog in tools/ (the only layer allowed to import skills/).
         from hvantk.skills.hgnc.streamers import HGNCGeneCatalogStreamer
+
         gene_catalog = (
             HGNCGeneCatalogStreamer.from_path(config.hgnc_path)
             if config.hgnc_path

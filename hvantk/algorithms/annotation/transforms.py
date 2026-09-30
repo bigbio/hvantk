@@ -6,6 +6,7 @@ contract as ``prepare.py``). Identifier reconciliation onto the spine happens af
 ``prepare.py``, via the existing GeneIdMapper; this module only reshapes a variant table into
 one row per ``agg.by`` value.
 """
+
 from __future__ import annotations
 
 import logging

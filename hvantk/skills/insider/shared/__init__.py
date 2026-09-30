@@ -18,4 +18,4 @@ def normalize_hadoop_path(path: str) -> str:
     not a local file URI is returned unchanged, so remote URIs (gs://, hdfs://) pass
     through to callers that can handle them rather than being silently mangled.
     """
-    return path[len(_FILE_URI_PREFIX):] if path.startswith(_FILE_URI_PREFIX) else path
+    return path[len(_FILE_URI_PREFIX) :] if path.startswith(_FILE_URI_PREFIX) else path

@@ -8,6 +8,7 @@ values come from the unmodified file at dev@693c490c; every later change to this
 leave them untouched too, which is why this file stays in the rerank test selection every
 time evaluator.py is touched.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -16,10 +17,22 @@ import pandas as pd
 from hvantk.algorithms.rerank.evaluator import Evaluator, _boot_ci, _raw_oof
 
 # --- captured from dev@693c490c, via a fixed-seed run of the fixture below --------------
-OOF_HEAD = [0.294651741677, 0.164421721731, 0.444986827035, 0.930760857286, 0.89923815832, 0.485374629101, 0.93073060035, 0.134549842236]      # list[float], 8 values
-OOF_SUM = 70.790331372377       # float
-BOOT_CI = [-0.027, 0.009, 0.04]       # list[float], 3 values
-ABLATION = [{'family': 'b', 'auc': 0.819, 'd_lo': 0.0, 'd_md': 0.0, 'd_hi': 0.0}, {'family': 'e', 'auc': 0.829, 'd_lo': -0.027, 'd_md': 0.01, 'd_hi': 0.041}]      # list[dict]
+OOF_HEAD = [
+    0.294651741677,
+    0.164421721731,
+    0.444986827035,
+    0.930760857286,
+    0.89923815832,
+    0.485374629101,
+    0.93073060035,
+    0.134549842236,
+]  # list[float], 8 values
+OOF_SUM = 70.790331372377  # float
+BOOT_CI = [-0.027, 0.009, 0.04]  # list[float], 3 values
+ABLATION = [
+    {"family": "b", "auc": 0.819, "d_lo": 0.0, "d_md": 0.0, "d_hi": 0.0},
+    {"family": "e", "auc": 0.829, "d_lo": -0.027, "d_md": 0.01, "d_hi": 0.041},
+]  # list[dict]
 
 
 def _fixture():
@@ -53,7 +66,9 @@ def test_boot_ci_is_unchanged():
 def test_ablation_table_is_unchanged():
     m, y = _fixture()
     p = _raw_oof(m, ["base"], y)
-    ev = Evaluator().evaluate(m, ["base", "extra"], y, p, {"b": ["base"], "e": ["extra"]}, "b")
+    ev = Evaluator().evaluate(
+        m, ["base", "extra"], y, p, {"b": ["base"], "e": ["extra"]}, "b"
+    )
     assert ev.ablation.to_dict("records") == ABLATION
 
 

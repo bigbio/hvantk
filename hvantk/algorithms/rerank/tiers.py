@@ -5,6 +5,7 @@ import numpy as np, pandas as pd
 class TierAssigner:
     """Pure credibility tiers over scored genes. The audit flag is a SEPARATE
     axis (see engine.py) and is deliberately NOT folded into the tier ladder."""
+
     def __init__(self, tiers=5):
         self.tiers = tiers
 

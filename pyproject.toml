@@ -161,7 +161,6 @@ expression = ["scanpy>=1.10.0"]
 pytest = "^7.4.0"
 requests-mock = "^1.11"
 ruff = "^0.16"
-black = "^23.7.0"
 hypothesis = ">=6.0"
 matplotlib = "*"
 seaborn = "*"
@@ -190,32 +189,45 @@ gencc = "hvantk.skills.gencc"
 uniprot-ptm = "hvantk.skills.uniprot_ptm"
 
 [tool.ruff]
-# Replaces flake8 (same enforced rule set, ~60x faster). Formatting is NOT
-# managed here -- `ruff format` is deliberately not adopted, because black has
-# been a dev dependency for years and 262/596 files are still unformatted;
-# turning on a formatter is a separate decision with its own large diff.
+# Replaces flake8 (same enforced rule set, ~60x faster). Formatting is
+# `ruff format`, black-compatible, at black's default width -- the width the
+# already-formatted files in this repo already follow. `black` itself is gone
+# (dev dependency, dropped below).
 target-version = "py310"
-line-length = 127  # matches the width the advisory CI pass has always used
+line-length = 88
 
 [tool.ruff.lint]
 # The advisory set. A bare `ruff check` (or a ruff-LSP editor) reports what CI's
 # advisory pass reports; CI narrows to E9,F63,F7,F82 with an explicit --select
 # for the one gate that actually blocks a merge.
 #
-# The blocking gate is exactly equivalent to the flake8 one it replaced: 0
-# findings under both, and an injected F821/syntax error is caught by both.
+# B (bugbear), BLE (blind-except) and S (bandit) are new here so the existing
+# `# noqa: BLE001` / `# noqa: S310` / `# noqa: S324` comments actually suppress
+# something.
 #
-# The *advisory* set is not equivalent, and it would be misleading to say it is:
-# on the same tracked files at the same width and complexity, flake8 reports 378
-# findings across 25 codes and ruff 288 across 15. The ten missing codes --
-# E127 E128 E203 E225 E227 E231 E272 E302 E305 W391 -- are pycodestyle rules
-# ruff keeps behind `preview`. Nothing that blocked a merge stopped blocking;
-# whether to set `preview = true` and take those 90 findings back is a separate
-# decision from replacing the linter.
-select = ["E", "W", "F", "C901"]
+# CI's advisory pass additionally runs with --preview, which restores the
+# pycodestyle whitespace rules (E1/E2/E3, W29x) that ruff keeps behind preview.
+# `preview` is deliberately NOT set here, in the config: under preview the
+# *blocking* gate also fires F822 on every name that ptm/, enrichex/ and
+# qtlcascade/ export lazily through `__all__` (83 false positives).
+select = ["E", "W", "F", "C901", "B", "BLE", "S"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 10
+
+[tool.ruff.lint.pycodestyle]
+max-line-length = 127  # advisory E501 threshold; independent of the formatter width above
+
+[tool.ruff.lint.per-file-ignores]
+# assert is the point of a test.
+"hvantk/tests/**" = ["S101"]
+"hvantk/skills/**/tests/**" = ["S101"]
+
+[tool.ruff.format]
+# Python files only. ruff also formats the Python fences inside Markdown, where it
+# reflows examples and pseudo-schemas laid out by hand for the reader (e.g. the
+# fingerprint shape in _conventions/SKILL.md).
+exclude = ["*.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["hvantk/tests", "hvantk/skills"]

@@ -4,6 +4,7 @@ coad + ov fail *inside* cptac 1.5.14 (upstream); one bad type must not abort the
 whole batch. These tests stub CPTACPhosphoDataset so no `cptac` package or network
 is needed.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -31,8 +32,8 @@ def test_download_dataset_skips_failing_cancer(monkeypatch, tmp_path):
 
     res = cli.download_dataset(str(tmp_path), cancer_type=None)  # all cancers
 
-    assert "coad" in res["_failures"]          # failure recorded, not raised
-    assert "brca" in res                        # others still succeeded
+    assert "coad" in res["_failures"]  # failure recorded, not raised
+    assert "brca" in res  # others still succeeded
     assert res["brca"]["tsv"].endswith("brca.tsv")
 
 
@@ -78,8 +79,12 @@ def test_download_cmd_all_skips_failing_cancer(monkeypatch, tmp_path):
                 fh.write("\t".join(_TSV_COLUMNS) + "\n")  # header, no rows
             return {
                 "tsv": tsv,
-                "matrix": os.path.join(output_dir, f"cptac-phospho-{self.ct}-matrix.csv"),
-                "metadata": os.path.join(output_dir, f"cptac-phospho-{self.ct}-metadata.csv"),
+                "matrix": os.path.join(
+                    output_dir, f"cptac-phospho-{self.ct}-matrix.csv"
+                ),
+                "metadata": os.path.join(
+                    output_dir, f"cptac-phospho-{self.ct}-metadata.csv"
+                ),
             }
 
     monkeypatch.setattr(

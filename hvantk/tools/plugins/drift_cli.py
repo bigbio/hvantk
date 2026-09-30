@@ -150,7 +150,8 @@ def drift_cmd(
             # non-zero here as "do not commit", which is the right outcome either way, but
             # a human reading exit codes must not see "drifted" for "the probe broke".
             click.echo(
-                f"probe failed for {dataset}; fingerprint NOT rewritten: {exc}", err=True
+                f"probe failed for {dataset}; fingerprint NOT rewritten: {exc}",
+                err=True,
             )
             raise SystemExit(EXIT_PROBE_FAILED)
         except OSError as exc:
@@ -209,8 +210,12 @@ def drift_cmd(
         # get_dataset re-raises it. Not a KeyError, so before #364 it escaped as a
         # traceback -- exit 1, which a wrapper reads as EXIT_DRIFTED.
         if as_json:
-            click.echo(json.dumps([_load_error_row(dataset, exc)], indent=2, default=str))
-        click.echo(f"{dataset} failed to load, so it cannot be drift-checked: {exc}", err=True)
+            click.echo(
+                json.dumps([_load_error_row(dataset, exc)], indent=2, default=str)
+            )
+        click.echo(
+            f"{dataset} failed to load, so it cannot be drift-checked: {exc}", err=True
+        )
         raise SystemExit(EXIT_PROBE_FAILED)
 
     # An empty sweep is the limiting case of the silently-smaller set #351 is about, and

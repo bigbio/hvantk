@@ -4,6 +4,7 @@ The malformed-``--prepared`` and axis-validation checks are pure Python (no spec
 no Hail) and run in the fast suite; the end-to-end invocation writes/reads real Hail
 tables and is marked ``@pytest.mark.hail``.
 """
+
 from __future__ import annotations
 
 import json

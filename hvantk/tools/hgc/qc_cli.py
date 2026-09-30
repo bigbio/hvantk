@@ -438,11 +438,11 @@ def filter_qc(
         click.echo("✅ Successfully applied QC filters:")
         click.echo(
             f"   • Samples: {n_samples_initial} → {n_samples_final} "
-            f"({samples_removed} removed, {samples_removed/n_samples_initial*100:.1f}%)"
+            f"({samples_removed} removed, {samples_removed / n_samples_initial * 100:.1f}%)"
         )
         click.echo(
             f"   • Variants: {n_variants_initial} → {n_variants_final} "
-            f"({variants_removed} removed, {variants_removed/n_variants_initial*100:.1f}%)"
+            f"({variants_removed} removed, {variants_removed / n_variants_initial * 100:.1f}%)"
         )
         click.echo(f"   • Output: {output}")
 

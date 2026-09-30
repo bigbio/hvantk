@@ -4,6 +4,7 @@ Wraps the pure algorithm core (:func:`hvantk.algorithms.ptm.pipeline.ptm_build_p
 with the skill-driven download and Hail Table build steps. This is the layer
 that knows about :mod:`hvantk.skills.uniprot_ptm`; the algorithm layer stays pure.
 """
+
 from __future__ import annotations
 
 import logging

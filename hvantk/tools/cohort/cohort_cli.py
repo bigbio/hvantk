@@ -10,6 +10,7 @@ table this contract already describes, so nothing downstream changes.
 Validation is pure Python and runs before any Hail call, so a malformed manifest fails
 fast with a clear message instead of after a Spark start-up.
 """
+
 from __future__ import annotations
 
 import logging

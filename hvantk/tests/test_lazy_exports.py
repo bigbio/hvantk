@@ -1,4 +1,5 @@
 """The PEP 562 installer shared by the package inits that must stay cheap to import (#306)."""
+
 from __future__ import annotations
 
 import sys
@@ -35,7 +36,9 @@ def test_missing_dependency_gets_the_hint(monkeypatch):
         missing_hint=lambda exc: f"install the extra for {exc.name}",
     )
     monkeypatch.delitem(sys.modules, "lazypkg_b", raising=False)
-    with pytest.raises(ImportError, match="install the extra for definitely_not_installed_xyz"):
+    with pytest.raises(
+        ImportError, match="install the extra for definitely_not_installed_xyz"
+    ):
         pkg.thing
 
 
@@ -77,6 +80,6 @@ def test_all_lazy_exports_are_resolvable(package_name):
             getattr(pkg, name)
         except Exception as exc:  # noqa: BLE001 - report any failure
             unresolvable.append(f"{name}: {type(exc).__name__}: {exc}")
-    assert (
-        not unresolvable
-    ), f"{package_name} lists these in __all__ but cannot resolve them: {unresolvable}"
+    assert not unresolvable, (
+        f"{package_name} lists these in __all__ but cannot resolve them: {unresolvable}"
+    )

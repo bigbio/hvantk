@@ -26,8 +26,7 @@ class Audit(ABC):
     overrides, re-ranks, or removes a gene — flagging is advisory only."""
 
     @abstractmethod
-    def apply(self, unit_table: pd.DataFrame) -> pd.Series:
-        ...
+    def apply(self, unit_table: pd.DataFrame) -> pd.Series: ...
 
 
 class NoAudit(Audit):

@@ -211,8 +211,9 @@ class TestGetConversionBackend:
             assert backend in ("pysam", "python")
 
     def test_falls_back_to_python(self):
-        with mock.patch("shutil.which", return_value=None), mock.patch.dict(
-            "sys.modules", {"pysam": None}
+        with (
+            mock.patch("shutil.which", return_value=None),
+            mock.patch.dict("sys.modules", {"pysam": None}),
         ):
             assert _get_conversion_backend() == "python"
 

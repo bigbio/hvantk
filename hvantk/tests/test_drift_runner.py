@@ -41,6 +41,7 @@ def _write_fingerprint(path: Path, fp: dict) -> None:
 def _run_with_spec(spec: DatasetSpec) -> DriftResult:
     """Bypass the registry by calling the internal runner directly."""
     from hvantk.core.plugin.drift_runner import _run_drift_check_with_spec
+
     return _run_drift_check_with_spec(spec)
 
 
@@ -66,7 +67,11 @@ def test_drifted_when_headers_change(tmp_path: Path):
     fp_path = tmp_path / "fp.json"
     _write_fingerprint(
         fp_path,
-        {"probe_version": 1, "headers": {"a.tsv": ["col1"]}, "checksums": {"a.tsv": "x"}},
+        {
+            "probe_version": 1,
+            "headers": {"a.tsv": ["col1"]},
+            "checksums": {"a.tsv": "x"},
+        },
     )
     observed = {
         "probe_version": 1,
@@ -125,9 +130,7 @@ def test_run_drift_check_resolves_dataset_from_registry(monkeypatch, tmp_path: P
     from hvantk.core.plugin import drift_runner, loader as plugin_loader
 
     fp_path = tmp_path / "fp.json"
-    _write_fingerprint(
-        fp_path, {"probe_version": 1, "headers": {}, "checksums": {}}
-    )
+    _write_fingerprint(fp_path, {"probe_version": 1, "headers": {}, "checksums": {}})
     spec = _make_spec(
         probe_return={"probe_version": 1, "headers": {}, "checksums": {}},
         fingerprint_path=fp_path,
@@ -145,9 +148,7 @@ def test_run_drift_check_resolves_dataset_from_registry(monkeypatch, tmp_path: P
 
 def test_drift_diff_reports_added_keys(tmp_path: Path):
     fp_path = tmp_path / "fp.json"
-    _write_fingerprint(
-        fp_path, {"probe_version": 1, "headers": {}, "checksums": {}}
-    )
+    _write_fingerprint(fp_path, {"probe_version": 1, "headers": {}, "checksums": {}})
     observed = {
         "probe_version": 1,
         "headers": {},
@@ -225,13 +226,16 @@ def test_placeholder_checksum_baseline_is_probe_failed_not_drifted(tmp_path: Pat
     from hvantk.core.plugin.api import PLACEHOLDER_CHECKSUM
 
     fp_path = tmp_path / "fp.json"
-    _write_fingerprint(fp_path, {
-        "probe_version": 1,
-        "source_version": None,
-        "headers": {"a.tsv": ["col1"]},
-        "checksums": {"a.tsv": PLACEHOLDER_CHECKSUM},
-        "fetched_at": "2026-05-16T00:00:00+00:00",
-    })
+    _write_fingerprint(
+        fp_path,
+        {
+            "probe_version": 1,
+            "source_version": None,
+            "headers": {"a.tsv": ["col1"]},
+            "checksums": {"a.tsv": PLACEHOLDER_CHECKSUM},
+            "fetched_at": "2026-05-16T00:00:00+00:00",
+        },
+    )
     spec = _make_spec(
         probe_return={
             "probe_version": 1,
@@ -251,13 +255,16 @@ def test_placeholder_checksum_baseline_is_probe_failed_not_drifted(tmp_path: Pat
 def test_epoch_fetched_at_baseline_is_probe_failed_not_drifted(tmp_path: Path):
     """The other seeding marker: cptac's two baselines were stamped at the epoch."""
     fp_path = tmp_path / "fp.json"
-    _write_fingerprint(fp_path, {
-        "probe_version": 1,
-        "source_version": None,
-        "headers": {"protein_expression": ["installed_cptac_version"]},
-        "checksums": {"protein_expression": ""},
-        "fetched_at": "1970-01-01T00:00:00Z",
-    })
+    _write_fingerprint(
+        fp_path,
+        {
+            "probe_version": 1,
+            "source_version": None,
+            "headers": {"protein_expression": ["installed_cptac_version"]},
+            "checksums": {"protein_expression": ""},
+            "fetched_at": "1970-01-01T00:00:00Z",
+        },
+    )
     spec = _make_spec(
         probe_return={
             "probe_version": 1,
@@ -380,7 +387,9 @@ def test_datasets_sharing_a_baseline_and_probe_are_probed_once(tmp_path):
 
     assert len(calls) == 1, f"probe ran {len(calls)} times; expected 1"
     assert [r.dataset_name for r in results] == [
-        "ucsc:default", "ucsc:adult-ctx", "ucsc:dev-ctx"
+        "ucsc:default",
+        "ucsc:adult-ctx",
+        "ucsc:dev-ctx",
     ], "every dataset must still get its own entry"
     assert {r.status for r in results} == {"clean"}
     assert {r.fingerprint_path for r in results} == {str(fp)}
@@ -419,6 +428,7 @@ def test_distinct_baselines_are_probed_separately(tmp_path):
         def probe():
             calls.append(version)
             return {"source_version": version}
+
         return probe
 
     specs = []
@@ -446,7 +456,9 @@ def test_informational_block_does_not_trigger_drift():
         "extras": {"content_length": "100"},
         "informational": {"last_modified": "Wed, 26 Aug 2026 12:56:33 GMT"},
     }
-    observed = dict(expected, informational={"last_modified": "Fri, 28 Aug 2026 17:02:20 GMT"})
+    observed = dict(
+        expected, informational={"last_modified": "Fri, 28 Aug 2026 17:02:20 GMT"}
+    )
 
     assert _compare_fingerprints(expected, observed) is None
 
@@ -487,7 +499,9 @@ def _probe_and_baseline(tmp_path: Path, baseline_text: str | None):
         ("json number", "42", "not a JSON object"),
     ],
 )
-def test_corrupt_baseline_is_probe_failed_not_a_crash(tmp_path: Path, label, text, expect):
+def test_corrupt_baseline_is_probe_failed_not_a_crash(
+    tmp_path: Path, label, text, expect
+):
     spec, fp_path = _probe_and_baseline(tmp_path, text)
     result = _run_with_spec(spec)
     assert result.status == "probe_failed", label
@@ -517,14 +531,23 @@ def test_missing_baseline_message_is_unchanged(tmp_path: Path):
 # --- #361: --regenerate must coerce, time out, and write atomically -------------------
 
 
-def test_regenerate_fingerprint_writes_the_same_bytes_the_cli_always_wrote(tmp_path: Path):
+def test_regenerate_fingerprint_writes_the_same_bytes_the_cli_always_wrote(
+    tmp_path: Path,
+):
     fp_path = tmp_path / "fp.json"
-    observed = {"probe_version": 2, "headers": {"a": ["x"]}, "checksums": {}, "fetched_at": "t"}
+    observed = {
+        "probe_version": 2,
+        "headers": {"a": ["x"]},
+        "checksums": {},
+        "fetched_at": "t",
+    }
     spec = _make_spec(probe_return=observed, fingerprint_path=fp_path)
     out = drift_runner.regenerate_fingerprint(spec, timeout=5)
     assert out == observed
     assert fp_path.read_text() == json.dumps(observed, indent=2, default=str)
-    assert sorted(p.name for p in tmp_path.iterdir()) == ["fp.json"], "no temp file left behind"
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["fp.json"], (
+        "no temp file left behind"
+    )
 
 
 def test_regenerate_fingerprint_preserves_the_baselines_file_mode(tmp_path: Path):
@@ -546,10 +569,14 @@ def test_regenerate_fingerprint_preserves_the_baselines_file_mode(tmp_path: Path
 def test_regenerate_fingerprint_refuses_a_non_mapping_probe_result(tmp_path: Path):
     fp_path = tmp_path / "fp.json"
     fp_path.write_text('{"probe_version": 1}')
-    spec = _make_spec(probe_return=lambda: ["not", "a", "dict"], fingerprint_path=fp_path)
+    spec = _make_spec(
+        probe_return=lambda: ["not", "a", "dict"], fingerprint_path=fp_path
+    )
     with pytest.raises(DriftProbeError, match="non-mapping"):
         drift_runner.regenerate_fingerprint(spec, timeout=5)
-    assert fp_path.read_text() == '{"probe_version": 1}', "the baseline must be untouched"
+    assert fp_path.read_text() == '{"probe_version": 1}', (
+        "the baseline must be untouched"
+    )
     assert sorted(p.name for p in tmp_path.iterdir()) == ["fp.json"]
 
 
@@ -613,12 +640,14 @@ def test_regenerate_fingerprint_leaves_no_tmp_sibling_after_a_failed_replace(
         drift_runner.regenerate_fingerprint(spec, timeout=5)
 
     assert fp_path.read_text() == before, "the original baseline must be untouched"
-    assert sorted(p.name for p in tmp_path.iterdir()) == [
-        "fp.json"
-    ], "no temp sibling left behind after a failed write"
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["fp.json"], (
+        "no temp sibling left behind after a failed write"
+    )
 
 
-def test_write_fingerprint_replaces_atomically_via_the_same_directory(tmp_path: Path, monkeypatch):
+def test_write_fingerprint_replaces_atomically_via_the_same_directory(
+    tmp_path: Path, monkeypatch
+):
     """The temp file must live next to the target: os.replace is only atomic within one
     filesystem, and a probe interrupted mid-write must never leave a half-written baseline."""
     fp_path = tmp_path / "fp.json"

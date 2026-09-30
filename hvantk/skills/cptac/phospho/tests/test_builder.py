@@ -4,6 +4,7 @@ These exercise the builder without the upstream ``cptac`` package: they feed
 matrix/metadata CSVs in the same layout ``CPTACPhosphoDataset.download`` writes
 (matrix index name ``Site``; metadata index name ``SampleID``).
 """
+
 from __future__ import annotations
 
 import pandas as pd
@@ -159,7 +160,9 @@ def test_cptac_phospho_snapshot_round_trip(regenerate_snapshots):
             builder_kwargs={"metadata_path": _METADATA},
             input_path_kwarg="expression_path",
         )
-        pytest.skip("Snapshots regenerated; rerun without --regenerate-snapshots to assert.")
+        pytest.skip(
+            "Snapshots regenerated; rerun without --regenerate-snapshots to assert."
+        )
 
     adata = _build_for_snapshot(_PHOSPHO, metadata_path=_METADATA)
 
@@ -167,9 +170,11 @@ def test_cptac_phospho_snapshot_round_trip(regenerate_snapshots):
     assert adata.n_vars == 2, "two phosphosites in the fixture"
 
     expected_schema = load_snapshot(_SNAPSHOT_DIR / "schema.json")
-    assert anndata_schema_to_dict(adata) == expected_schema, \
+    assert anndata_schema_to_dict(adata) == expected_schema, (
         "CPTAC phospho schema drifted from snapshot"
+    )
 
     expected_rows = load_snapshot(_SNAPSHOT_DIR / "sample_rows.json")
-    assert anndata_sample_rows(adata) == expected_rows, \
+    assert anndata_sample_rows(adata) == expected_rows, (
         "CPTAC phospho sample rows drifted from snapshot"
+    )

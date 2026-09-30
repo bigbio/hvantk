@@ -5,6 +5,7 @@ split across train and test lets the model recognise a relative rather than gene
 the standard robustness objection to naive cross-validation in statistical genetics, and
 nothing in the library addressed it before this.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -25,8 +26,10 @@ def _blocked_fixture(n=180, family_size=6, seed=5):
 def _fold_assignment(matrix, cols, y, groups, folds=5, seed=0):
     cv = _cv(folds, seed, groups)
     assign = np.full(len(y), -1)
-    splitter = cv.split(matrix[cols].values, y, groups) if groups is not None else cv.split(
-        matrix[cols].values, y
+    splitter = (
+        cv.split(matrix[cols].values, y, groups)
+        if groups is not None
+        else cv.split(matrix[cols].values, y)
     )
     for k, (_, te) in enumerate(splitter):
         assign[te] = k
@@ -36,7 +39,9 @@ def _fold_assignment(matrix, cols, y, groups, folds=5, seed=0):
 def test_every_block_sits_in_a_single_test_fold():
     matrix, y, baseline, _, blocks = _blocked_fixture()
     assign = _fold_assignment(matrix, baseline, y, blocks)
-    per_block = pd.DataFrame({"block": blocks, "fold": assign}).groupby("block").fold.nunique()
+    per_block = (
+        pd.DataFrame({"block": blocks, "fold": assign}).groupby("block").fold.nunique()
+    )
     assert (per_block == 1).all(), per_block[per_block > 1]
 
     # With every group a singleton, a correctly stratified grouped splitter must balance

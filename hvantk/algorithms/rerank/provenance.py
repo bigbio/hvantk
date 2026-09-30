@@ -9,6 +9,7 @@ This matters because statistical feature selection cannot detect circularity -- 
 it. A univariate filter ranks REVEL highly precisely because REVEL was trained on genes
 like these. Provenance is therefore not recoverable from the data and has to be declared.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

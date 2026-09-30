@@ -1,4 +1,5 @@
 """prepare_source: map a built source onto the spine's gene_id and select columns."""
+
 from __future__ import annotations
 
 import pytest
@@ -453,7 +454,10 @@ def _by_gene_id_spec(collapse=None):
         columns=("n_pairs", "b_max"),
         collapse=collapse,
         aggregate=AggregateSpec(
-            by="gene_id", to="gene_id", reduce="identity", count_name="n_pairs",
+            by="gene_id",
+            to="gene_id",
+            reduce="identity",
+            count_name="n_pairs",
             scores=(ScoreSpec("b", "beta", ("max",)),),
         ),
     )

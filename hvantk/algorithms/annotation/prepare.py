@@ -11,6 +11,7 @@ Layering: this module reads sources as Hail Tables handed in by the caller (the 
 them by path). It must never import a ``hvantk.skills`` module -- the source is data, not
 code.
 """
+
 from __future__ import annotations
 
 import logging
@@ -37,8 +38,12 @@ def _collapse_reducers():
     """
     import hail as hl
 
-    return {"max": hl.agg.max, "min": hl.agg.min, "mean": hl.agg.mean,
-            "sum": hl.agg.sum}
+    return {
+        "max": hl.agg.max,
+        "min": hl.agg.min,
+        "mean": hl.agg.mean,
+        "sum": hl.agg.sum,
+    }
 
 
 class _LazyCollapseReducers(dict):
@@ -116,7 +121,11 @@ def prepare_source(source_ht, spine_gene_ids, entry, *, hgnc=None):
         prepared = prepared.select(*entry.columns)
     else:
         prepared = _rekey_onto_gene_id(
-            source_ht, key, resolved, entry.columns, entry.source,
+            source_ht,
+            key,
+            resolved,
+            entry.columns,
+            entry.source,
             collapse=entry.collapse,
         )
 
@@ -145,8 +154,9 @@ def _resolve_to_gene_id(source_keys, to_space, source_label, mapper):
     return resolved, report
 
 
-def _rekey_onto_gene_id(source_ht, key_col, resolved, columns, source_label, *,
-                        collapse=None):
+def _rekey_onto_gene_id(
+    source_ht, key_col, resolved, columns, source_label, *, collapse=None
+):
     """Attach gene_id from ``resolved``, drop unresolved, key on gene_id, select columns.
 
     Enforces one row per gene. A many-to-one mapping raises unless the spec entry
@@ -183,7 +193,9 @@ def _rekey_onto_gene_id(source_ht, key_col, resolved, columns, source_label, *,
     agg = COLLAPSE_REDUCERS[collapse]
     logger.info(
         "%s: collapsing %d many-to-one rows onto gene_id with %r",
-        source_label, n_rows - n_genes, collapse,
+        source_label,
+        n_rows - n_genes,
+        collapse,
     )
     return prepared.group_by(prepared.gene_id).aggregate(
         **{c: agg(prepared[c]) for c in columns}

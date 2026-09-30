@@ -9,6 +9,7 @@ source of one, so validate()/rerank() require Config.cohort unconditionally (M3)
 The engine's cohort merge fails loud on a column collision instead of silently
 dropping the cohort's column (M5).
 """
+
 import logging
 
 import numpy as np

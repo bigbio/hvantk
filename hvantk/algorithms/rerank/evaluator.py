@@ -15,6 +15,7 @@ The per-axis interval here resamples GENES only. It is one of at least three var
 components; the CV partition and the best-of-N axis selection are the other two, and they
 live in ``nulls.py`` and in ``seed_sweep`` below.
 """
+
 from dataclasses import dataclass
 
 import numpy as np
@@ -97,8 +98,18 @@ class SeedSpread:
     sd: float
 
 
-def seed_sweep(matrix, base_cols, axis_cols, y, *, seeds, selector=None, groups=None,
-                base_oof=None, aug_oof=None):
+def seed_sweep(
+    matrix,
+    base_cols,
+    axis_cols,
+    y,
+    *,
+    seeds,
+    selector=None,
+    groups=None,
+    base_oof=None,
+    aug_oof=None,
+):
     """Delta-AUC of baseline+axis over baseline, recomputed under each CV seed.
 
     ``base_oof``/``aug_oof``, each given as ``{seed: OOF array}`` (baseline-only /
@@ -119,7 +130,9 @@ def seed_sweep(matrix, base_cols, axis_cols, y, *, seeds, selector=None, groups=
         if base_oof is not None and seed in base_oof:
             p0 = base_oof[seed]
         else:
-            p0 = _raw_oof(matrix, list(base_cols), y, selector, groups=groups, seed=seed)
+            p0 = _raw_oof(
+                matrix, list(base_cols), y, selector, groups=groups, seed=seed
+            )
         if aug_oof is not None and seed in aug_oof:
             p1 = aug_oof[seed]
         else:
@@ -175,8 +188,17 @@ def _boot_ci(y, p1, p0, n=1000, seed=DEFAULT_SEED):
 
 class Evaluator:
     def evaluate(
-        self, matrix, feat_cols, y, scores, axis_groups, baseline_axis, selector=None,
-        groups=None, seed=DEFAULT_SEED, n_seeds=1,
+        self,
+        matrix,
+        feat_cols,
+        y,
+        scores,
+        axis_groups,
+        baseline_axis,
+        selector=None,
+        groups=None,
+        seed=DEFAULT_SEED,
+        n_seeds=1,
     ):
         y = np.asarray(y)
         scores = np.asarray(scores)
@@ -204,10 +226,12 @@ class Evaluator:
             base_row["d_hi_env"] = 0.0
             base_row["n_seeds"] = n_seeds
             base_oof_by_seed = {seed: p_base}
-            base_oof_by_seed.update({
-                s: _raw_oof(matrix, base_cols, y, selector, groups=groups, seed=s)
-                for s in (seed + k for k in range(1, n_seeds))
-            })
+            base_oof_by_seed.update(
+                {
+                    s: _raw_oof(matrix, base_cols, y, selector, groups=groups, seed=s)
+                    for s in (seed + k for k in range(1, n_seeds))
+                }
+            )
         rows = [base_row]
         spreads: dict = {}
         for fam, cols in axis_groups.items():
@@ -227,9 +251,14 @@ class Evaluator:
                 # seed, seed+1, ... rather than a spawned stream: the same reproducibility
                 # argument as rng_for (see seeds.py).
                 spread = seed_sweep(
-                    matrix, base_cols, cols, y,
+                    matrix,
+                    base_cols,
+                    cols,
+                    y,
                     seeds=tuple(seed + k for k in range(n_seeds)),
-                    selector=selector, groups=groups, base_oof=base_oof_by_seed,
+                    selector=selector,
+                    groups=groups,
+                    base_oof=base_oof_by_seed,
                     aug_oof={seed: p},
                 )
                 spreads[fam] = spread
@@ -239,6 +268,10 @@ class Evaluator:
                 row["n_seeds"] = n_seeds
             rows.append(row)
         return EvalResult(
-            round(auc, 3), round(pr, 3), round(brier, 4), pd.DataFrame(rows), cal,
+            round(auc, 3),
+            round(pr, 3),
+            round(brier, 4),
+            pd.DataFrame(rows),
+            cal,
             spreads or None,
         )

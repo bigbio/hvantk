@@ -10,6 +10,7 @@ same three datasets.
   paralogue_groups-- genes in families, families of a controllable size; the fixture the
                      blocked-CV tests and the dominant-block abort run on.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -79,7 +80,10 @@ def cheap_scorer(folds=3, seed=0):
         X = np.nan_to_num(matrix[list(cols)].to_numpy(dtype=float))
         cv = StratifiedKFold(folds, shuffle=True, random_state=seed)
         return cross_val_predict(
-            LogisticRegression(max_iter=200), X, np.asarray(y), cv=cv,
+            LogisticRegression(max_iter=200),
+            X,
+            np.asarray(y),
+            cv=cv,
             method="predict_proba",
         )[:, 1]
 

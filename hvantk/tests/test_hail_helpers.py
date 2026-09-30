@@ -7,6 +7,7 @@ int32 or int64 or float32 or float64``. Hail has no string-max aggregator, so th
 builds one; these tests pin the behaviour it has to keep, in both the grouped and
 ungrouped aggregation contexts the call sites use.
 """
+
 import hail as hl
 import pytest
 

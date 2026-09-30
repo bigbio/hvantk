@@ -86,7 +86,7 @@ class CosmicCGCGeneDiseaseTableStreamer(GeneDiseaseTableStreamer):
         missing = sorted(required - row_fields)
         if missing:
             raise ValueError(
-                f"COSMIC CGC table missing required fields: " f"{', '.join(missing)}"
+                f"COSMIC CGC table missing required fields: {', '.join(missing)}"
             )
         return True
 
@@ -133,7 +133,7 @@ class CosmicCGCGeneDiseaseTableStreamer(GeneDiseaseTableStreamer):
         """
         if context not in COSMIC_MUTATION_CONTEXTS:
             raise ValueError(
-                f"context must be one of {COSMIC_MUTATION_CONTEXTS}, " f"got: {context}"
+                f"context must be one of {COSMIC_MUTATION_CONTEXTS}, got: {context}"
             )
         self._ensure_table_loaded()
         ht = self._table

@@ -1,4 +1,5 @@
 """Tests for core/io: save / load round-trip, sidecar manifest, dispatch by ext."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -79,7 +80,8 @@ def test_save_load_anndata_round_trip(tmp_path):
 
 def test_save_load_geneset_round_trip(tmp_path):
     gs = GeneSet(
-        name="brca", provenance=_prov("brca-v1"),
+        name="brca",
+        provenance=_prov("brca-v1"),
         _members=frozenset({"BRCA1", "BRCA2"}),
     )
     out = tmp_path / "brca.geneset.json"

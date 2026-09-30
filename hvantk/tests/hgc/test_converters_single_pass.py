@@ -150,9 +150,9 @@ def test_dense_mt_is_materialized_exactly_once(spies):
         f"forces a second full densify (calls seen: {dense.calls})"
     )
     assert dense.calls.count("write") == 1
-    assert (
-        dense.n_eager == 1
-    ), f"expected exactly one densify-forcing action, got {dense.calls}"
+    assert dense.n_eager == 1, (
+        f"expected exactly one densify-forcing action, got {dense.calls}"
+    )
     # The column sort is lazy (choose_cols before the write) and must not add an eager
     # action; the permutation it computes puts the spy's unsorted samples in order.
     assert dense.calls.index("choose_cols") < dense.calls.index("write")

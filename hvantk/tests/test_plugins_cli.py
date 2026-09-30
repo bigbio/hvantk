@@ -257,7 +257,9 @@ def _runner():
 
 
 def test_list_names_load_failures_after_the_table(monkeypatch):
-    _registry_with(monkeypatch, FIXTURE_ROOT / "fake_plugin", FIXTURE_ROOT / "broken-manifest")
+    _registry_with(
+        monkeypatch, FIXTURE_ROOT / "fake_plugin", FIXTURE_ROOT / "broken-manifest"
+    )
     result = _runner().invoke(plugins_group, ["list"])
     assert result.exit_code == 0, result.output
     assert "fake" in result.stdout

@@ -5,6 +5,7 @@ Moved out of the CLI (``hvantk.tools.cohort.cohort_cli``) into
 checks the CLI runs, without importing Click. Pure Python -- no Hail -- so these run in
 the default fast suite.
 """
+
 import gzip
 
 import pytest

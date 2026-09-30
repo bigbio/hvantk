@@ -24,9 +24,11 @@ SNAPSHOT_DIR = _TESTS_DIR / "snapshots"
 # rather than maintained in a separate sample_keys.json (per conventions §9).
 SAMPLE_KEYS = [
     {"set_name": "BIOCARTA_ACETAMINOPHEN_PATHWAY"},  # 5 genes (minimum)
-    {"set_name": "KEGG_APOPTOSIS"},                  # 87 genes (medium)
-    {"set_name": "PID_TCR_PATHWAY"},                 # 64 genes (medium)
-    {"set_name": "REACTOME_POST_TRANSLATIONAL_PROTEIN_MODIFICATION"},  # 1497 genes (tail)
+    {"set_name": "KEGG_APOPTOSIS"},  # 87 genes (medium)
+    {"set_name": "PID_TCR_PATHWAY"},  # 64 genes (medium)
+    {
+        "set_name": "REACTOME_POST_TRANSLATIONAL_PROTEIN_MODIFICATION"
+    },  # 1497 genes (tail)
 ]
 
 
