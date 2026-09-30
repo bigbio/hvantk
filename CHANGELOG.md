@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **`hvantk plugins errors` now exits 1 when it lists anything** (was 0). Rows mean
+  the registry is missing something, and a script asking `plugins errors` should not
+  have to parse the text to learn that.
+- **`hvantk drift <dataset>` and `--regenerate` now scope load errors to the
+  requested dataset/provider**, so an unrelated broken plugin no longer makes them
+  exit 2 (previously every load error in the registry counted).
+
 ## 0.3.1 — 2026-08-30
 
 Reworks the scheduled drift bot. Fewer PRs, each carrying a signal that means

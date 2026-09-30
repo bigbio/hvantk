@@ -50,7 +50,10 @@ def test_errors_command_lists_load_errors(monkeypatch):
     monkeypatch.setattr(plugin_loader, "get_registry", lambda: reg)
     runner = CliRunner()
     result = runner.invoke(plugins_group, ["errors"])
-    assert result.exit_code == 0
+    # Rows mean something failed to load and is silently missing from the registry
+    # (#364) -- a non-empty `plugins errors` must not exit 0, or a script checking it
+    # sees "success" for a broken plugin.
+    assert result.exit_code == 1
     assert "broken-manifest" in result.output
 
 
@@ -209,3 +212,113 @@ def test_validate_command_rejects_empty_skill_declaration(tmp_path):
     result = runner.invoke(plugins_group, ["validate", str(plugin_dir / "plugin.yaml")])
     assert result.exit_code != 0
     assert "ok:" not in result.output
+
+
+# --- #364: list/describe/errors must not show a broken provider as fine ------------------
+
+_BROKEN_MANIFEST = (
+    "api_version: 2\n"
+    "name: brokenprov\n"
+    "version: 0.1.0\n"
+    "datasets:\n"
+    "  - name: thing\n"
+    "    domain: genomics\n"
+    "    backend: hail\n"
+    "    builder: {module: hvantk.nope.missing, function: build_thing}\n"
+    "    drift_probe: {module: hvantk.nope.missing, function: fetch_fingerprint}\n"
+    "    skill: SKILL.md\n"
+    "    tests: {command: pytest, fixture: f, schema_snapshot: s,\n"
+    "            row_snapshot: r, drift_fingerprint: d}\n"
+)
+
+
+def _registry_with(monkeypatch, *plugin_dirs):
+    reg = plugin_loader.PluginRegistry()
+    for d in plugin_dirs:
+        reg.load_from_directory(d)
+    monkeypatch.setattr(plugin_loader, "get_registry", lambda: reg)
+    return reg
+
+
+def _broken_dataset_plugin(tmp_path):
+    plugin = tmp_path / "brokenprov"
+    plugin.mkdir()
+    (plugin / "plugin.yaml").write_text(_BROKEN_MANIFEST)
+    (plugin / "SKILL.md").write_text("---\nname: x\ndescription: y\n---\n# x\n")
+    return plugin
+
+
+def _runner():
+    # Click < 8.2 folds stderr into .output unless told otherwise; >= 8.2 always separates.
+    try:
+        return CliRunner(mix_stderr=False)
+    except TypeError:
+        return CliRunner()
+
+
+def test_list_names_load_failures_after_the_table(monkeypatch):
+    _registry_with(monkeypatch, FIXTURE_ROOT / "fake_plugin", FIXTURE_ROOT / "broken-manifest")
+    result = _runner().invoke(plugins_group, ["list"])
+    assert result.exit_code == 0, result.output
+    assert "fake" in result.stdout
+    # stderr, not stdout: CI counts stdout lines of `plugins list` to check packaging.
+    assert "1 unit(s) failed to load" in result.stderr
+    assert "hvantk plugins errors" in result.stderr
+    assert "failed to load" not in result.stdout
+
+
+def test_list_stays_silent_when_nothing_failed(monkeypatch):
+    _registry_with(monkeypatch, FIXTURE_ROOT / "fake_plugin")
+    result = _runner().invoke(plugins_group, ["list"])
+    assert result.exit_code == 0
+    assert "failed to load" not in (result.stderr or "")
+
+
+def test_describe_lists_datasets_that_failed_to_bind(tmp_path, monkeypatch):
+    _registry_with(monkeypatch, _broken_dataset_plugin(tmp_path))
+    result = CliRunner().invoke(plugins_group, ["describe", "brokenprov"])
+    assert result.exit_code == 0, result.output
+    assert "brokenprov:thing" in result.output
+    assert "FAILED TO LOAD" in result.output
+    assert "hvantk.nope.missing" in result.output
+
+
+def test_describe_names_a_provider_that_failed_to_load(monkeypatch):
+    _registry_with(monkeypatch, FIXTURE_ROOT / "broken-manifest")
+    result = CliRunner().invoke(plugins_group, ["describe", "broken-manifest"])
+    assert result.exit_code != 0
+    assert "failed to load" in result.output
+    assert "unknown provider" not in result.output
+
+
+def test_errors_command_exits_non_zero_when_it_has_rows(monkeypatch):
+    _registry_with(monkeypatch, FIXTURE_ROOT / "broken-manifest")
+    result = CliRunner().invoke(plugins_group, ["errors"])
+    assert result.exit_code == 1, result.output
+    assert "broken-manifest" in result.output
+
+
+def test_errors_command_exits_zero_when_clean(monkeypatch):
+    _registry_with(monkeypatch, FIXTURE_ROOT / "fake_plugin")
+    result = CliRunner().invoke(plugins_group, ["errors"])
+    assert result.exit_code == 0
+    assert "(no load errors)" in result.output
+
+
+def test_describe_names_a_provider_recorded_under_its_directorys_underscored_name(
+    monkeypatch,
+):
+    """`gwas_catalog/plugin.yaml` failing to load is recorded under the directory name
+    (`load_from_skills_root`, `_provider_id_hint`), but the manifest's own `name:` --
+    and what a caller types -- is the hyphenated `gwas-catalog`. Exact string equality
+    reported "unknown provider" for a provider that in fact failed to load.
+    """
+    reg = plugin_loader.PluginRegistry()
+    reg._record_load_error("gwas_catalog", plugin_loader.PluginLoadError("boom"))
+    monkeypatch.setattr(plugin_loader, "get_registry", lambda: reg)
+
+    result = CliRunner().invoke(plugins_group, ["describe", "gwas-catalog"])
+
+    assert result.exit_code != 0
+    assert "failed to load" in result.output
+    assert "unknown provider" not in result.output

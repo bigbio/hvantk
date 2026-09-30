@@ -459,3 +459,178 @@ def test_content_length_change_still_triggers_drift():
     observed = {"checksums": {"f.txt": "abc"}, "extras": {"content_length": "205"}}
 
     assert _compare_fingerprints(expected, observed) is not None
+
+
+# --- #361: a corrupt committed baseline must be reported, not raised ------------------
+#
+# The baseline read caught only FileNotFoundError. Truncated JSON, an empty file, a JSON
+# list, or an unreadable path all escaped as a traceback, which exits 1 == EXIT_DRIFTED.
+# drift.yml gates on rc > 2, so the step went green and one bad file discarded the report
+# for every other dataset (drift_to_pr.py then failed on "report is not valid JSON").
+
+
+def _probe_and_baseline(tmp_path: Path, baseline_text: str | None):
+    fp_path = tmp_path / "fp.json"
+    if baseline_text is not None:
+        fp_path.write_text(baseline_text)
+    observed = {"probe_version": 1, "headers": {"a": ["x"]}, "checksums": {"a": "abc"}}
+    return _make_spec(probe_return=observed, fingerprint_path=fp_path), fp_path
+
+
+@pytest.mark.parametrize(
+    "label,text,expect",
+    [
+        ("truncated json", '{"probe_version": 1, "headers": {', "JSONDecodeError"),
+        ("empty file", "", "JSONDecodeError"),
+        ("json list", "[1, 2]", "not a JSON object"),
+        ("json null", "null", "not a JSON object"),
+        ("json number", "42", "not a JSON object"),
+    ],
+)
+def test_corrupt_baseline_is_probe_failed_not_a_crash(tmp_path: Path, label, text, expect):
+    spec, fp_path = _probe_and_baseline(tmp_path, text)
+    result = _run_with_spec(spec)
+    assert result.status == "probe_failed", label
+    msg = str(result.probe_error)
+    assert expect in msg, msg
+    assert str(fp_path) in msg, "the message must name the file, not the report"
+    assert "--regenerate" in msg
+
+
+def test_unreadable_baseline_path_is_probe_failed(tmp_path: Path):
+    """A directory where the file should be raises IsADirectoryError on read."""
+    spec, fp_path = _probe_and_baseline(tmp_path, None)
+    fp_path.mkdir()
+    result = _run_with_spec(spec)
+    assert result.status == "probe_failed"
+    assert "IsADirectoryError" in str(result.probe_error)
+
+
+def test_missing_baseline_message_is_unchanged(tmp_path: Path):
+    """FileNotFoundError is an OSError; the more specific branch must still win."""
+    spec, fp_path = _probe_and_baseline(tmp_path, None)
+    result = _run_with_spec(spec)
+    assert result.status == "probe_failed"
+    assert "missing expected fingerprint" in str(result.probe_error)
+
+
+# --- #361: --regenerate must coerce, time out, and write atomically -------------------
+
+
+def test_regenerate_fingerprint_writes_the_same_bytes_the_cli_always_wrote(tmp_path: Path):
+    fp_path = tmp_path / "fp.json"
+    observed = {"probe_version": 2, "headers": {"a": ["x"]}, "checksums": {}, "fetched_at": "t"}
+    spec = _make_spec(probe_return=observed, fingerprint_path=fp_path)
+    out = drift_runner.regenerate_fingerprint(spec, timeout=5)
+    assert out == observed
+    assert fp_path.read_text() == json.dumps(observed, indent=2, default=str)
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["fp.json"], "no temp file left behind"
+
+
+def test_regenerate_fingerprint_preserves_the_baselines_file_mode(tmp_path: Path):
+    """`tempfile.mkstemp` always creates its temp file mode 0600; a bare `os.replace`
+    would carry that onto the baseline, silently tightening it on every regenerate."""
+    import stat
+
+    fp_path = tmp_path / "fp.json"
+    fp_path.write_text('{"probe_version": 1}')
+    fp_path.chmod(0o644)
+    observed = {"probe_version": 2, "headers": {}, "checksums": {}}
+    spec = _make_spec(probe_return=observed, fingerprint_path=fp_path)
+
+    drift_runner.regenerate_fingerprint(spec, timeout=5)
+
+    assert stat.S_IMODE(fp_path.stat().st_mode) == 0o644
+
+
+def test_regenerate_fingerprint_refuses_a_non_mapping_probe_result(tmp_path: Path):
+    fp_path = tmp_path / "fp.json"
+    fp_path.write_text('{"probe_version": 1}')
+    spec = _make_spec(probe_return=lambda: ["not", "a", "dict"], fingerprint_path=fp_path)
+    with pytest.raises(DriftProbeError, match="non-mapping"):
+        drift_runner.regenerate_fingerprint(spec, timeout=5)
+    assert fp_path.read_text() == '{"probe_version": 1}', "the baseline must be untouched"
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["fp.json"]
+
+
+def test_regenerate_fingerprint_times_out_and_leaves_the_baseline_alone(tmp_path: Path):
+    import time
+
+    fp_path = tmp_path / "fp.json"
+    fp_path.write_text('{"probe_version": 1}')
+
+    def slow():
+        time.sleep(3)
+        return {"probe_version": 1}
+
+    spec = _make_spec(probe_return=slow, fingerprint_path=fp_path)
+    with pytest.raises(DriftProbeError, match="timed out"):
+        drift_runner.regenerate_fingerprint(spec, timeout=1)
+    assert fp_path.read_text() == '{"probe_version": 1}'
+
+
+def test_regenerate_fingerprint_creates_a_new_baseline_with_the_umasked_mode(
+    tmp_path: Path,
+):
+    """The mode/cleanup coverage claim for a BRAND-NEW baseline (no existing file to
+    copymode from): `write_fingerprint` applies `0o666 & ~umask` -- an ordinary file
+    create's mode -- not `tempfile.mkstemp`'s hardcoded 0600, and not an unmasked
+    0o666 either. The prior test only pinned the copymode branch (an existing file),
+    which passes even with a bare `Path.write_text` -- it does not exercise this one.
+    """
+    import stat
+
+    fp_path = tmp_path / "fp.json"  # deliberately does not exist yet
+    observed = {"probe_version": 1, "headers": {}, "checksums": {}}
+    spec = _make_spec(probe_return=observed, fingerprint_path=fp_path)
+
+    umask = drift_runner._current_umask()
+    drift_runner.regenerate_fingerprint(spec, timeout=5)
+
+    assert stat.S_IMODE(fp_path.stat().st_mode) == (0o666 & ~umask)
+
+
+def test_regenerate_fingerprint_leaves_no_tmp_sibling_after_a_failed_replace(
+    tmp_path: Path, monkeypatch
+):
+    """After `os.replace` fails partway through the write (disk full, cross-device,
+    permission denied, ...), no `.drift_fingerprint*.tmp` sibling must remain and the
+    original baseline bytes must be untouched -- `write_fingerprint`'s `except
+    BaseException` cleanup path.
+    """
+    fp_path = tmp_path / "fp.json"
+    before = '{"probe_version": 1}'
+    fp_path.write_text(before)
+    observed = {"probe_version": 2, "headers": {}, "checksums": {}}
+    spec = _make_spec(probe_return=observed, fingerprint_path=fp_path)
+
+    def boom(src, dst):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(drift_runner.os, "replace", boom)
+
+    with pytest.raises(OSError, match="disk full"):
+        drift_runner.regenerate_fingerprint(spec, timeout=5)
+
+    assert fp_path.read_text() == before, "the original baseline must be untouched"
+    assert sorted(p.name for p in tmp_path.iterdir()) == [
+        "fp.json"
+    ], "no temp sibling left behind after a failed write"
+
+
+def test_write_fingerprint_replaces_atomically_via_the_same_directory(tmp_path: Path, monkeypatch):
+    """The temp file must live next to the target: os.replace is only atomic within one
+    filesystem, and a probe interrupted mid-write must never leave a half-written baseline."""
+    fp_path = tmp_path / "fp.json"
+    fp_path.write_text("old")
+    seen: list[Path] = []
+    real_replace = drift_runner.os.replace
+
+    def spy(src, dst):
+        seen.append(Path(src).parent)
+        return real_replace(src, dst)
+
+    monkeypatch.setattr(drift_runner.os, "replace", spy)
+    drift_runner.write_fingerprint(fp_path, {"probe_version": 1})
+    assert seen == [tmp_path]
+    assert json.loads(fp_path.read_text()) == {"probe_version": 1}

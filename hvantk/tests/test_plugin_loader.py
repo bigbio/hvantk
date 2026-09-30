@@ -252,3 +252,121 @@ def test_every_load_error_is_recorded_through_the_one_helper():
         "no self._load_errors.append(...) found at all -- this guard is looking for "
         "something that no longer exists and has stopped guarding anything"
     )
+
+
+def _lazy_manifest(name: str):
+    """A manifest injected straight into the registry, bypassing the eager bind pass, so
+    the lazy get_dataset path is the FIRST to try importing the callables."""
+    from hvantk.core.plugin.api import DatasetManifest, TestPaths
+
+    return DatasetManifest(
+        name=name,
+        domain="genomics",
+        backend="hail",
+        skill_path="/abs/SKILL.md",
+        test_paths=TestPaths(
+            command="pytest", fixture="/f", schema_snapshot="/s",
+            row_snapshot="/r", drift_fingerprint="/d",
+        ),
+        plugin_name=name.split(":")[0],
+        builder_ref=("hvantk.nope.missing", "build"),
+        drift_probe_ref=("hvantk.nope.missing", "fetch_fingerprint"),
+    )
+
+
+def test_lazy_get_dataset_records_a_binding_failure_once(caplog):
+    """`get_dataset` wrote `_failed_datasets` without recording (#364 item 2). Benign only
+    because the eager pass pre-populates both dicts, and the docstring promised otherwise."""
+    reg = PluginRegistry()
+    reg._manifests["lazyprov:thing"] = _lazy_manifest("lazyprov:thing")
+
+    with caplog.at_level("WARNING", logger="hvantk.core.plugin.loader"):
+        with pytest.raises(PluginLoadError):
+            reg.get_dataset("lazyprov:thing")
+        with pytest.raises(PluginLoadError):
+            reg.get_dataset("lazyprov:thing")  # cached: must not record twice
+
+    assert [u for u, _ in reg.load_errors()] == ["lazyprov:thing"]
+    assert any("lazyprov:thing" in r.getMessage() for r in caplog.records)
+
+
+def test_lazy_get_dataset_wraps_a_non_plugin_error_like_the_eager_pass(monkeypatch):
+    """The eager pass wraps any Exception into PluginLoadError and caches it; the lazy
+    path must give the same answer, or the same registry returns two different errors."""
+    reg = PluginRegistry()
+    reg._manifests["lazyprov:thing"] = _lazy_manifest("lazyprov:thing")
+
+    def explode(*_a, **_k):
+        raise RuntimeError("module body blew up")
+
+    monkeypatch.setattr(reg, "_resolve_spec", explode)
+    with pytest.raises(PluginLoadError, match="module body blew up"):
+        reg.get_dataset("lazyprov:thing")
+    assert [u for u, _ in reg.load_errors()] == ["lazyprov:thing"]
+
+
+def test_list_datasets_skips_a_failed_dataset_without_recording_it_again():
+    reg = PluginRegistry()
+    reg._manifests["lazyprov:thing"] = _lazy_manifest("lazyprov:thing")
+    assert reg.list_datasets() == []
+    assert reg.list_datasets() == []
+
+
+# --- item 2 (#374 review): a provider-level load failure recorded via
+# load_from_skills_root must not be recorded AGAIN when load_from_entry_points
+# resolves to the SAME directory ------------------------------------------------------
+#
+# get_registry() runs load_from_skills_root() then load_from_entry_points(); 13 of 23
+# in-tree providers are ALSO declared as entry points pointing at their own skills/
+# directory. `load_from_directory` only added to `_loaded_dirs` on SUCCESS, and the
+# missing-plugin.yaml branch of `load_from_skills_root` never marked the dir at all --
+# so a broken provider's directory was never marked "attempted" and the second loader
+# tried it again, appending a second (differently-worded) error for the same unit.
+
+
+def test_broken_provider_directory_records_one_error_across_skills_root_then_entry_point(
+    tmp_path: Path,
+):
+    """Simulates the real get_registry() overlap: `load_from_skills_root` finds the
+    broken directory first (via plugin.yaml), then `load_from_entry_points` resolves
+    its installed entry point back to the SAME directory and calls
+    `load_from_directory` a second time -- exactly what `load_from_entry_points` does
+    after `module.__file__`'s parent is computed.
+    """
+    skills_root = tmp_path / "skills"
+    plugin_dir = skills_root / "brokenprov"
+    plugin_dir.mkdir(parents=True)
+    (plugin_dir / "plugin.yaml").write_text(
+        "api_version: 1\nname: BROKEN UPPERCASE\nversion: not-a-semver\ndatasets: []\n"
+    )
+
+    reg = PluginRegistry()
+    reg.load_from_skills_root(skills_root)
+    assert len(reg.load_errors()) == 1
+
+    # The entry-point path: resolve to the identical directory and load it again.
+    reg.load_from_directory(plugin_dir)
+
+    errors = reg.load_errors()
+    assert len(errors) == 1, errors
+
+
+def test_missing_manifest_directory_loaded_twice_records_one_error(tmp_path: Path):
+    """A directory with no plugin.yaml at all: `load_from_skills_root` records it via
+    its own "no plugin.yaml in ..." branch, which must ALSO mark the directory as
+    attempted -- otherwise a second discovery pass (the entry-point path) calls
+    `load_from_directory` on it directly, which fails again with a differently-worded
+    "missing plugin.yaml at ..." message, doubling the row for one broken unit.
+    """
+    skills_root = tmp_path / "skills"
+    plugin_dir = skills_root / "ghost"
+    plugin_dir.mkdir(parents=True)
+
+    reg = PluginRegistry()
+    reg.load_from_skills_root(skills_root)
+    assert len(reg.load_errors()) == 1
+
+    reg.load_from_directory(plugin_dir)
+
+    errors = reg.load_errors()
+    assert len(errors) == 1, errors

@@ -44,7 +44,16 @@ MEDRXIV_API_URL = f"https://api.biorxiv.org/details/medrxiv/{PQTL_SOURCE_DOI}"
 _COMPARED_FIELDS = ("version", "date", "published")
 
 _FILENAME = "medrxiv-preprint-metadata"
-_TIMEOUT_S = (5.0, 15.0)
+
+# Budget: the drift runner wraps each probe in a SIGALRM (60 s by default; drift.yml
+# passes no --timeout). Four attempts at (5, 15) plus 2+4+8 s of backoff is 94 s worst
+# case, so the fourth attempt could never run and a degraded API surfaced as "probe
+# timed out" rather than the diagnostic below. Three attempts at (5, 10) is 6 + 45 = 51 s.
+# The 51 s bound covers the exponential-backoff path; a Retry-After sleep is clamped to
+# max_sleep_s and can exceed it, and the drift runner's SIGALRM is the backstop in that
+# case.
+_ATTEMPTS = 3
+_TIMEOUT_S = (5.0, 10.0)
 
 
 def fetch_fingerprint() -> dict:
@@ -54,6 +63,7 @@ def fetch_fingerprint() -> dict:
             "GET",
             MEDRXIV_API_URL,
             timeout=_TIMEOUT_S,
+            attempts=_ATTEMPTS,
             allow_redirects=True,
             # The API answers 200 / application/json with ZERO bytes when it is
             # unhappy, which no status-based retry can see. Observed 2026-09-21:

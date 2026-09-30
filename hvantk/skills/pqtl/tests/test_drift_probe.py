@@ -153,3 +153,24 @@ def test_an_empty_200_is_retried_rather_than_reported_as_drift(monkeypatch):
         fp = fetch_fingerprint()
 
     assert fp["source_version"] == "1"
+
+
+def test_retry_budget_fits_under_the_drift_runners_default_timeout():
+    """drift.yml passes no --timeout, so each probe runs under drift_runner's default
+    SIGALRM budget. Four attempts at (5, 15) with 2+4+8 s backoff was 94 s worst case
+    against 60 s: the fourth attempt could never run, and a degraded medRxiv reported
+    "probe timed out" instead of the diagnostic this probe exists to give (#364).
+
+    Note: the 51 s bound covers the exponential-backoff path; a Retry-After sleep is
+    clamped to max_sleep_s and can exceed it, and the drift runner's SIGALRM is the
+    backstop in that case."""
+    import inspect
+
+    from hvantk.core.plugin import drift_runner
+    from hvantk.core.utils.http import DEFAULT_BACKOFF_S, DEFAULT_MAX_SLEEP_S, _backoff
+    from hvantk.skills.pqtl import drift_probe
+
+    runner_timeout = inspect.signature(drift_runner.run_drift_checks).parameters["timeout"].default
+    sleeps = sum(_backoff(DEFAULT_BACKOFF_S, a, DEFAULT_MAX_SLEEP_S) for a in range(1, drift_probe._ATTEMPTS))
+    worst_case = sleeps + drift_probe._ATTEMPTS * sum(drift_probe._TIMEOUT_S)
+    assert worst_case < runner_timeout, (worst_case, runner_timeout)

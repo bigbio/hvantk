@@ -185,6 +185,11 @@ real_test_output/
 workflow_test_output/
 hail-*.log
 
+# drift_runner.write_fingerprint's atomic --regenerate write leaves this temp sibling
+# next to a baseline if the process is SIGKILLed mid-write; the scheduled drift bot
+# stages hvantk/skills wholesale, so an orphaned one would otherwise get committed.
+hvantk/skills/**/tests/.drift_fingerprint*.tmp
+
 # Temporary development files
 temp_*
 test_*_output/
