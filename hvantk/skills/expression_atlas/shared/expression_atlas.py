@@ -172,6 +172,7 @@ def create_anndata_from_expression_atlas(
     metadata_df: pd.DataFrame = None,
     gene_id_column: str = "Gene ID",
     gene_name_column: str = "Gene Name",
+    transcript_id_column: str = "GeneID",
     delimiter: str = "\t",
     extra_annotation_columns: "list[str] | None" = None,
 ) -> "ad.AnnData":
@@ -204,6 +205,15 @@ def create_anndata_from_expression_atlas(
     Naming the columns in ``extra_annotation_columns`` skips the inference entirely
     and is preferred when the layout is known.
 
+    **Transcript-level exports key ``var`` by the transcript id, not the gene id.**
+    A ``*-transcripts-tpms.tsv`` file has one row per transcript, so ``gene_id_column``
+    repeats across rows and cannot be a valid ``var_names`` (issue #349). When the
+    leading-column inference above detects ``transcript_id_column`` among the
+    annotation columns, it is used as the ``var`` index instead, and ``gene_id_column``
+    becomes a regular ``var`` column alongside ``gene_name_column``. Gene-level exports
+    (no ``transcript_id_column`` present) are unaffected and keep indexing ``var`` by
+    the gene id, as before.
+
     Parameters
     ----------
     expression_matrix_path : str
@@ -215,6 +225,10 @@ def create_anndata_from_expression_atlas(
         Name of the gene identifier column (default ``"Gene ID"``).
     gene_name_column : str
         Name of the gene name column (default ``"Gene Name"``).
+    transcript_id_column : str
+        Name of the per-row transcript identifier column in a transcript-level
+        export (default ``"GeneID"``, matching real Expression Atlas headers).
+        When present, it becomes the ``var`` index instead of ``gene_id_column``.
     delimiter : str
         Column delimiter (default tab).
     extra_annotation_columns : list of str, optional
@@ -224,7 +238,8 @@ def create_anndata_from_expression_atlas(
     Returns
     -------
     ad.AnnData
-        Expression AnnData with genes in ``var`` and samples in ``obs``.
+        Expression AnnData with genes (or, for a transcript-level export,
+        transcripts) in ``var`` and samples in ``obs``.
 
     Raises
     ------
@@ -336,16 +351,31 @@ def create_anndata_from_expression_atlas(
     # Build expression matrix (samples x genes)
     X = df[sample_cols].values.T.astype(np.float32)
 
-    # var DataFrame (genes)
-    var = pd.DataFrame(index=pd.Index(gene_ids, name="gene_id"))
+    # var DataFrame (genes, or transcripts for a transcript-level export)
+    #
+    # A transcript-level export repeats gene_id_column once per transcript, so it
+    # cannot be var_names: anndata accepts the duplicates and only warns, and the
+    # resulting .h5ad round-trips with a non-unique index that silently returns
+    # multiple columns from `adata[:, gene_id]` downstream (issue #349). When the
+    # inference above found transcript_id_column among the annotation columns, key
+    # var by it instead -- it is unique per row by construction -- and demote
+    # gene_id_column to a regular column so the gene id is not lost.
+    is_transcript_level = transcript_id_column in annotation_cols
+    if is_transcript_level:
+        var = pd.DataFrame(
+            index=pd.Index(df[transcript_id_column].values, name="transcript_id")
+        )
+        var[gene_id_column] = gene_ids
+    else:
+        var = pd.DataFrame(index=pd.Index(gene_ids, name="gene_id"))
     if gene_names is not None:
         var[gene_name_column] = gene_names
-    # Carry every other annotation column through instead of discarding it. The
-    # transcript id in particular is the only thing that disambiguates the repeated
-    # gene ids of a transcript-level export.
+    # Carry every other annotation column through instead of discarding it.
     for col in annotation_cols:
         if col in (gene_id_column, gene_name_column):
             continue
+        if is_transcript_level and col == transcript_id_column:
+            continue  # already the var index; do not duplicate it as a column
         var[col] = df[col].values
 
     # obs DataFrame (samples)

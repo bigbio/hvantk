@@ -22,6 +22,7 @@ def build_expression_atlas(
     *,
     gene_column: str = "Gene ID",
     gene_name_column: str = "Gene Name",
+    transcript_id_column: str = "GeneID",
     delimiter: str = "\t",
     extra_annotation_columns: tuple[str, ...] | list[str] | None = None,
 ):
@@ -38,7 +39,10 @@ def build_expression_atlas(
     Returns
     -------
     hvantk.core.models.ExpressionMatrix
-        AnnData-backed ExpressionMatrix wrapped with Provenance.
+        AnnData-backed ExpressionMatrix wrapped with Provenance. For a
+        transcript-level export, ``var`` is keyed by the transcript id (see
+        ``create_anndata_from_expression_atlas``); ``gene_column`` is kept as a
+        ``var`` column rather than being dropped.
     """
     from hvantk.core.models import ExpressionMatrix
     from hvantk.core.models.anndata_utils import annotate_column_summary_ad
@@ -56,6 +60,7 @@ def build_expression_atlas(
         metadata_df=metadata_df,
         gene_id_column=gene_column,
         gene_name_column=gene_name_column,
+        transcript_id_column=transcript_id_column,
         delimiter=delimiter,
         extra_annotation_columns=extra_annotation_columns,
     )

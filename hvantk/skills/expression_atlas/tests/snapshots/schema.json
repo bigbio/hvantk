@@ -3,7 +3,7 @@
   "X_format": "ndarray",
   "layers": [],
   "n_obs": 4,
-  "n_vars": 20,
+  "n_vars": 21,
   "obs_columns": [
     "age",
     "developmental_stage",
@@ -14,7 +14,7 @@
     "strain"
   ],
   "var_columns": [
-    "Gene Name",
-    "GeneID"
+    "Gene ID",
+    "Gene Name"
   ]
 }
