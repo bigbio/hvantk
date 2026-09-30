@@ -36,7 +36,7 @@ samples for the expression matrix -- far too large to commit as a fixture):
      fixture is what proves it.
 
      Kept the first 20 DISTINCT genes (by "Gene ID", first transcript row
-     seen), PLUS the real second transcript row of the fourth of those genes
+     seen), PLUS the real second transcript row of the third of those genes
      (ENSMUSG00000000028 / Cdc45 -- transcript ENSMUST00000096990 immediately
      follows its first transcript ENSMUST00000000028 in the live file, at
      line 5), so "Gene ID" repeats exactly once -- the real shape a
