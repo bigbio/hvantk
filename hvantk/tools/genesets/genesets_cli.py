@@ -106,7 +106,7 @@ def _check_overwrite(output_path, overwrite, ctx):
 
 @click.group(name="genesets")
 def genesets_group():
-    """Extract or prepare gene set collections.
+    """Extract or prepare GeneSetCollection files from curated tables.
 
     \b
     Subcommands:

@@ -18,7 +18,7 @@ from hvantk.core.plugin import loader as plugin_loader
 
 @click.group("download", context_settings=CONTEXT_SETTINGS)
 def download_group():
-    """Download external datasets."""
+    """Download raw datasets from external providers (UCSC, ClinVar, etc)."""
 
 
 # Manifest-driven wiring: each plugin.yaml's cli: block declares its downloader.

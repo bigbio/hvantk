@@ -48,7 +48,7 @@ _LAZY_COMMANDS: dict[str, tuple[str, str, str]] = {
     "download": (
         "hvantk.tools.plugins.download_cli",
         "download_group",
-        "Download external datasets.",
+        "Download raw datasets from external providers (UCSC, ClinVar, etc).",
     ),
     "drift": (
         "hvantk.tools.plugins.drift_cli",
@@ -58,22 +58,22 @@ _LAZY_COMMANDS: dict[str, tuple[str, str, str]] = {
     "enrichex": (
         "hvantk.tools.enrichex",
         "enrichex_group",
-        "Gene set enrichment analysis commands.",
+        "Gene set enrichment analysis (overlap + burden).",
     ),
     "expression": (
         "hvantk.tools.expression.summarize_expression_cli",
         "expression_group",
-        "Expression AnnData analysis commands.",
+        "Expression AnnData analysis commands (describe, summarize, markers).",
     ),
     "genesets": (
         "hvantk.tools.genesets.genesets_cli",
         "genesets_group",
-        "Extract or prepare gene set collections.",
+        "Extract or prepare GeneSetCollection files from curated tables.",
     ),
     "hgc": (
         "hvantk.tools.hgc",
         "hgc_group",
-        "HGC (Hail-based Genotype Combiner) commands for joint genotyping workflows",
+        "Hail-based Genotype Combiner commands for joint genotyping workflows.",
     ),
     "plugins": (
         "hvantk.tools.plugins.plugins_cli",
@@ -83,7 +83,7 @@ _LAZY_COMMANDS: dict[str, tuple[str, str, str]] = {
     "psroc": (
         "hvantk.tools.ptm.psroc_cli",
         "psroc_cmd",
-        "PSROC: Prediction Score ROC Analysis",
+        "Per-gene-set ROC evaluation of dbNSFP predictors against ClinVar.",
     ),
     "ptm": (
         "hvantk.tools.ptm.ptm_cli",
@@ -93,12 +93,12 @@ _LAZY_COMMANDS: dict[str, tuple[str, str, str]] = {
     "qtlcascade": (
         "hvantk.tools.qtl.qtlcascade_cli",
         "qtlcascade_group",
-        "Molecular QTL cascade analysis (eQTL \u2192 pQTL \u2192 disease).",
+        "Molecular QTL cascade analysis (eQTL -> pQTL -> disease).",
     ),
     "reprocess": (
         "hvantk.tools.plugins.reprocess_cli",
         "reprocess_cmd",
-        "Run download -> parse -> build for a plugin dataset.",
+        "Chain download -> parse -> build -> drift-check for a plugin dataset.",
     ),
     "rerank": (
         "hvantk.tools.rerank",
@@ -108,12 +108,12 @@ _LAZY_COMMANDS: dict[str, tuple[str, str, str]] = {
     "tools": (
         "hvantk.tools.plugins.tools_cli",
         "tools_group",
-        "Inspect the hvantk tool registry.",
+        "Inspect the hvantk tool manifest registry.",
     ),
     "utils": (
         "hvantk.tools.infra.utils_cli",
         "utils_group",
-        "Operational utilities: format conversion, validation, diagnostics.",
+        "Operational utilities (format conversion, validation, diagnostics).",
     ),
 }
 

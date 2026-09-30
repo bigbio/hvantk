@@ -216,7 +216,7 @@ def reprocess_cmd(
     verbose,
     quiet,
 ):
-    """Run download -> parse -> build for a plugin dataset."""
+    """Chain download -> parse -> build -> drift-check for a plugin dataset."""
     _configure_logging(verbose)
 
     # Per-stage progress to stderr (keeps stdout clean for piping). Each line

@@ -57,7 +57,7 @@ class TestPSROCCLIHelp:
         result = runner.invoke(psroc_cmd, ["--help"])
 
         assert result.exit_code == 0
-        assert "PSROC: Prediction Score ROC Analysis" in result.output
+        assert "Per-gene-set ROC evaluation of dbNSFP predictors against ClinVar." in result.output
         assert "--clinvar-ht" in result.output
         assert "--dbnsfp-ht" in result.output
         assert "--scores" in result.output

@@ -2,7 +2,7 @@ api_version: 1
 name: drift
 domain: plugins
 type: command
-description: Run plugin drift probes against committed expected fingerprints.
+description: Compare a plugin's live drift-probe fingerprint against the expected file.
 cli:
   module: hvantk.tools.plugins.drift_cli
   function: drift_cmd

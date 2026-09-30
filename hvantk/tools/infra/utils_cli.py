@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 @click.group("utils", context_settings=CONTEXT_SETTINGS)
 def utils_group():
-    """Operational utilities: format conversion, validation, diagnostics."""
+    """Operational utilities (format conversion, validation, diagnostics)."""
 
 
 from hvantk.tools.infra.check_install_cli import check_install_cmd

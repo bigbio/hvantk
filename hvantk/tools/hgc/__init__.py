@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 @click.group(
     name="hgc",
-    help="HGC (Hail-based Genotype Combiner) commands for joint genotyping workflows",
+    help="Hail-based Genotype Combiner commands for joint genotyping workflows.",
 )
 @click.pass_context
 def hgc_group(ctx):
