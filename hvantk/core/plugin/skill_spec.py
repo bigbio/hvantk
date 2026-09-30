@@ -97,7 +97,12 @@ SECTION_9_ARTIFACT_KEYS: tuple[str, ...] = (
 #: required words satisfied them too -- ``TODO. builder, drift probe, tests.`` passes
 #: ``SECTION_6_REFERENCES``, and a sentence merely listing the five ``SECTION_9_ARTIFACT_KEYS``
 #: passes that check, without either being an actual section.
-_PLACEHOLDER_LEADS: tuple[str, ...] = ("todo", "tbd", "n/a", "...")
+_PLACEHOLDER_LEADS: tuple[str, ...] = ("todo", "tbd", "...")
+
+#: Tokens that are a stand-in only when they are the WHOLE body. ``n/a`` is also how a
+#: real answer opens -- "N/A for this plugin: the catalog is static" explains why the
+#: section has nothing to add -- so only a bare ``n/a`` (punctuation aside) is rejected.
+_PLACEHOLDER_WHOLE: tuple[str, ...] = ("n/a",)
 
 
 #: ``_conventions/SKILL.md`` IS the contract and has its own structure, so it is
@@ -360,18 +365,19 @@ def _is_placeholder_body(body: str) -> bool:
 
     A leading list/quote marker (``- ``, ``* ``, ``> ``) and surrounding Markdown
     emphasis (backticks, asterisks, underscores) are stripped before matching, so
-    ``- **TODO**`` and `` `TBD` `` are recognised the same as bare ``TODO`` / ``TBD``.
-    The character immediately following the matched token must not be alphanumeric,
-    so the check fires on ``TODO``, ``TODO.`` and ``TODO: builder, drift probe,
-    tests.`` alike, but would not fire on some unrelated word merely sharing the same
-    first letters (no such word collides with ``todo``/``tbd``/``n/a`` in practice,
-    but the guard is free and keeps the check honest about what it is matching).
+    ``- **TODO**`` and `` `TBD` `` are recognised the same as bare ``TODO`` / ``TBD``,
+    and a lone ``-`` counts as empty. A typographic ellipsis (``…``) counts as ``...``.
+    The character immediately following a lead token must not be alphanumeric, so the
+    check fires on ``TODO``, ``TODO.`` and ``TODO: builder, drift probe, tests.``
+    alike, but not on a word that merely starts with the same letters (``TBDone``).
+    It does fire on a sentence whose first word is the token itself (``Todo lists
+    are ...``): the price of checking a lead, paid because no real section opens that
+    way.
     """
-    stripped = body.strip()
-    if not stripped:
+    normalized = re.sub(r"^[-*>\s]+", "", body.strip()).strip("`*_ \t")
+    lowered = normalized.lower().replace("…", "...")
+    if not lowered or lowered.rstrip(".:;!- \t") in _PLACEHOLDER_WHOLE:
         return True
-    normalized = re.sub(r"^[-*>\s]+", "", stripped).strip("`*_ \t")
-    lowered = normalized.lower()
     for token in _PLACEHOLDER_LEADS:
         if lowered.startswith(token):
             tail = lowered[len(token) : len(token) + 1]
