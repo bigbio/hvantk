@@ -180,14 +180,31 @@ def _swap_heading_lines(text: str) -> str:
 
     Sections 7 and 8 specifically: swapping 8 and 9 relocates section 9's body, which
     then trips the artifact-key check and satisfies the assertion for the wrong reason,
-    leaving the ordering branch deletable all over again. 7 and 8 carry no content
-    rules, so the ordering violation is the only problem produced.
+    leaving the ordering branch deletable all over again. Swapping 7 and 8 instead moves
+    only the heading LINES -- each section's real body stays put and simply travels with
+    whichever heading now precedes it, so neither trips the per-section content check
+    either, and the ordering violation is the only problem produced.
     """
     a, b = "## 7. Workflow steps", "## 8. Update playbook"
     lines = text.splitlines()
     ia, ib = lines.index(a), lines.index(b)
     lines[ia], lines[ib] = lines[ib], lines[ia]
     return "\n".join(lines) + "\n"
+
+
+def _replace_section_body(
+    text: str, heading: str, next_heading: str | None, replacement: str
+) -> str:
+    """Replace everything between ``heading`` and ``next_heading`` (or EOF) with
+    ``replacement``, leaving the heading line and every other section untouched.
+
+    Builds minimal negative cases for the per-section content check (#364 item 8):
+    each case below changes only the one section under test, so a failure says which
+    rule regressed rather than "something about this spec changed".
+    """
+    start = text.index(heading) + len(heading)
+    end = text.index(next_heading, start) if next_heading is not None else len(text)
+    return text[:start] + "\n\n" + replacement + "\n\n" + text[end:]
 
 
 # --- why they are pinned here: a conformance check that cannot fail is decoration.
@@ -277,6 +294,47 @@ def _swap_heading_lines(text: str) -> str:
             "section 9 using the non-existent test_command key",
             lambda t: t.replace("- `command`:", "- `test_command`:"),
             "the manifest key is 'command'",
+        ),
+        # --- content coverage beyond s 6/s 9 (#364 item 8). Before this, ss 1-5, 7 and 8
+        # carried no content rule at all, so a spec could empty any of their bodies
+        # outright and the checker kept passing; and s 6/s 9's own rules checked for
+        # keywords rather than substance, so a body that only *named* the required words
+        # satisfied them without being a real section.
+        (
+            "a section body emptied outright",
+            lambda t: _replace_section_body(
+                t, "## 2. Source identity", "## 3. Backend choice + reasoning", ""
+            ),
+            "has no real body",
+        ),
+        (
+            "a section body that is only the placeholder n/a",
+            lambda t: _replace_section_body(
+                t, "## 4. Raw format & gotchas", "## 5. Output contract", "n/a"
+            ),
+            "has no real body",
+        ),
+        (
+            "section 6 is a TODO-led stub that still names the builder, drift probe "
+            "and tests",
+            lambda t: _replace_section_body(
+                t,
+                "## 6. hvantk integration points",
+                "## 7. Workflow steps",
+                "TODO. builder, drift probe, tests.",
+            ),
+            "has no real body",
+        ),
+        (
+            "section 9 is a TODO-led stub that still names the five test artifacts",
+            lambda t: _replace_section_body(
+                t,
+                "## 9. Validation contract",
+                None,
+                "TODO: fixture, schema_snapshot, row_snapshot, drift_fingerprint, "
+                "command.",
+            ),
+            "has no real body",
         ),
     ],
 )
