@@ -699,9 +699,9 @@ def generate_qc_report(
     #
     # n_variants must be the TRUE variant count, not len(variant_df): above the row
     # budget the DataFrame is a subsample, and reporting its length here would state
-    # "Number of Variants: 500,013" for an 11.1 M variant callset -- the report would
-    # contradict the CLI, which counts in Hail. get_variant_metrics_df records the real
-    # total on df.attrs precisely so this stays honest.
+    # "Number of Variants: 500,000" for an 11-million-variant callset -- the report
+    # would contradict the CLI, which counts in Hail. get_variant_metrics_df records
+    # the real total on df.attrs precisely so this stays honest.
     n_samples = len(sample_df) if sample_df is not None else 0
     if variant_df is not None:
         n_variants = variant_df.attrs.get("n_total_variants", len(variant_df))
@@ -722,9 +722,9 @@ def generate_qc_report(
 
     # Symbolic <*>/<NON_REF> rows are gVCF reference blocks that survived densify, not
     # variants. `compute-qc --remove-star-alleles` (the default) drops them, but a
-    # MatrixTable built another way can still carry them -- on the 1005-sample chr20
-    # callset they were 45% of rows, which makes the AF spectrum meaningless. If any
-    # are present the report must say so rather than quietly plotting them.
+    # MatrixTable built another way can still carry them -- on a real WGS callset they
+    # were about half of rows, which makes the AF spectrum meaningless. If any are
+    # present the report must say so rather than quietly plotting them.
     star_fraction = None
     if variant_df is not None and "alleles" in variant_df.columns:
         try:

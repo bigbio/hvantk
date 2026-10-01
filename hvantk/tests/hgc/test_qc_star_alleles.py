@@ -4,8 +4,8 @@ A gVCF reference block densifies into a row like ("T", "<*>") -- the "any other 
 placeholder DeepVariant and GATK emit. It is not a variant, carries AC=0 on the alt, and
 has no business in a variant-QC population.
 
-Measured on the 1005-sample chr20 dense MatrixTable: 5,139,209 of 11,396,989 rows
-(45.09%) were <*>. A QC report over that is describing reference blocks as much as
+Measured on a ~1,000-sample WGS callset (one chromosome, dense MatrixTable): about half
+the rows were <*>. A QC report over that is describing reference blocks as much as
 variants, which is why its allele-frequency spectrum looked nothing like a real one.
 """
 
@@ -84,20 +84,20 @@ def test_af_spectrum_stats_box_and_legend_do_not_overlap():
 def test_plot_title_discloses_subsampling():
     """A plot lifted out of the report must carry the disclosure in its own title.
 
-    The report's parameter table says "Variants plotted: 500,306 random sample of
-    11,396,989", but the plot titles said "n=500306 variants" -- and an image
+    The report's parameter table says "Variants plotted: 500,000 random sample of
+    11,000,000", but the plot titles said "n=500000 variants" -- and an image
     extracted from the report travels without the table. The title has to say so.
     """
     rng = np.random.default_rng(1)
     df = pd.DataFrame({"AF": np.clip(rng.beta(0.4, 3.0, 2000), 0, 1)})
-    df.attrs["n_total_variants"] = 11_396_989
+    df.attrs["n_total_variants"] = 11_000_000
     df.attrs["subsampled"] = True
 
     fig = plot_allele_frequency_spectrum(df, figsize=(9, 5))
     title = fig.axes[0].get_title()
     plt.close(fig)
 
-    assert "11,396,989" in title, f"true total missing from title: {title!r}"
+    assert "11,000,000" in title, f"true total missing from title: {title!r}"
     assert "sampled" in title, f"sampling not disclosed in title: {title!r}"
 
 

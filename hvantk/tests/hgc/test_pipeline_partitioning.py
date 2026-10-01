@@ -88,8 +88,8 @@ def _runner_without_hail(pipeline_mod, monkeypatch, cfg):
     show_plan() only prints strings and _run_vds_to_mt's converter is stubbed -- but
     without this the file boots Spark inside the DEFAULT `pytest -q` run, which
     pytest.ini deliberately configures to deselect the `hail` marker, and fails outright
-    on any machine with no JVM. Round-3 review caught it: the pre-PR file produced zero
-    Spark banners, this one produced three.
+    on any machine with no JVM. The pre-PR file produced zero Spark banners, this one
+    produced three.
     """
     monkeypatch.setattr(
         pipeline_mod.PipelineRunner, "_initialize_hail", lambda self: None
@@ -131,7 +131,7 @@ def test_pipeline_passes_none_when_unset(tmp_path, monkeypatch):
     assert seen["n_partitions"] is None
 
 
-# --- adversarial-review findings on #261 --------------------------------------------
+# --- regression tests for #261 --------------------------------------------------
 
 
 def test_invalid_n_partitions_is_rejected_by_validate(tmp_path):
@@ -179,8 +179,8 @@ def test_pipeline_help_names_flags_that_exist():
 def test_vds2mt_dry_run_shows_zero_rather_than_auto(tmp_path):
     """The CALL SITE, not just the helper.
 
-    Round-2 review: the helper test alone left both call sites unprotected -- reverting
-    convert_cli.py to `n_partitions or 'auto (VDS layout)'` kept the suite green. This is
+    The helper test alone left both call sites unprotected -- reverting convert_cli.py
+    to `n_partitions or 'auto (VDS layout)'` kept the suite green. This is
     the live half: `vds2mt` has no config.validate() gate, so 0 reaches the dry-run
     printer and the user is told a plan is fine for an invocation that aborts.
     """

@@ -70,7 +70,8 @@ def register_qc_commands(group):
     help=(
         "Drop rows whose alternate allele is the gVCF placeholder <*>/<NON_REF> or the "
         "spanning deletion *. These are not variants; on a densified gVCF callset they "
-        "can be ~45%% of rows and make the allele-frequency spectrum meaningless."
+        "can be around half of all rows and make the allele-frequency spectrum "
+        "meaningless."
     ),
 )
 @click.option(
@@ -192,9 +193,8 @@ def compute_qc(
         # are dropped by default -- filtering on adj is a genuine analytical choice:
         # pre-filter QC answers "how good is my densified data", post-filter answers
         # "what am I shipping". Both are legitimate, so this is opt-in. But silence
-        # would be misleading, because the two differ a lot: on the 1005-sample chr20
-        # callset the densified matrix reads call rate 0.9712 while the delivered VCF
-        # is 0.9161.
+        # would be misleading, because the two differ a lot: on a real WGS callset the
+        # delivered VCF's call rate is several points below the densified matrix's.
         #
         # filter_entries (rather than setting GT to missing) is deliberate: Hail's
         # sample_qc counts filtered entries in the call-rate denominator either way,
