@@ -1314,7 +1314,7 @@ class TestPermutationBurdenTest:
 
 @pytest.mark.hail
 class TestGracefulEmptyHandling:
-    """Tests for Phase 3.1: graceful handling of empty/degenerate results."""
+    """Tests for graceful handling of empty/degenerate results."""
 
     def setup_cohort_mt(self):
         """Create a test cohort MatrixTable."""

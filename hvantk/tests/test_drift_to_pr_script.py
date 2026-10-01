@@ -351,7 +351,7 @@ def test_grouped_pr_names_every_dataset_it_covers(drift_to_pr):
 
 # --- the skip path itself, end to end -----------------------------------------------
 #
-# Adversarial review caught that NO test exercised the behaviour this change adds:
+# No test exercised the behaviour this change adds:
 # replacing the whole body of `branch_needs_update` with `return True` -- a complete
 # neutering of the fix -- left every test green. These drive handle_drifted and assert
 # on the git/gh commands actually issued.
@@ -418,7 +418,7 @@ def _capture_handle_drifted(
 
 def test_skip_issues_no_commit_push_or_pr(drift_to_pr, monkeypatch, tmp_path):
     """The behaviour the whole PR exists for. Fails if branch_needs_update is neutered
-    to `return True`, which is exactly the hole review found."""
+    to `return True`, a hole no other test catches."""
     cmds, cleanups, summary = _capture_handle_drifted(
         drift_to_pr, monkeypatch, tmp_path, needs_update=False, pr_exists=True
     )
@@ -584,8 +584,8 @@ def test_handle_drifted_discards_working_tree_when_regenerate_fails(
 #
 # The stubbed tests above drive handle_drifted's branching, but they monkeypatch
 # branch_needs_update itself, so they cannot detect that function being wrong. Neutering
-# it to `return True` left them all green -- the same vacuity adversarial review found in
-# the first version of this test file. This exercises the real thing over real git.
+# it to `return True` left them all green -- the same vacuity found in the first version
+# of this test file. This exercises the real thing over real git.
 
 
 def _git(repo, *args):

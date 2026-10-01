@@ -1,4 +1,4 @@
-"""Tests for synthetic burden cohort generation (Phase 5.1)."""
+"""Tests for synthetic burden cohort generation."""
 
 import pytest
 import numpy as np

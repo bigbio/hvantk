@@ -1,4 +1,4 @@
-"""Phase N: tests for provenance chaining through @algorithm decorator."""
+"""Tests for provenance chaining through @algorithm decorator."""
 
 from __future__ import annotations
 

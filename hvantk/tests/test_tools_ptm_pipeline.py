@@ -1,4 +1,4 @@
-"""Smoke test: the ptm workflow wrapper exists in tools/ptm/ after Phase C."""
+"""Smoke test: the ptm workflow wrapper exists in tools/ptm/."""
 
 from __future__ import annotations
 

@@ -2,7 +2,7 @@
 
 This guide covers how to build datasets and run analysis tools in hvantk.
 
-> **Migration note:** hvantk has retired the `mktable` and `mkmatrix` CLIs. The unified replacement is `hvantk reprocess <plugin>:<dataset>`, which runs the full Phase B pipeline (download → parse → build → drift check → save with provenance). See section 1 below for the current pattern.
+> **Migration note:** hvantk has retired the `mktable` and `mkmatrix` CLIs. The unified replacement is `hvantk reprocess <plugin>:<dataset>`, which runs the full build pipeline (download → parse → build → drift check → save with provenance). See section 1 below for the current pattern.
 
 If you haven't installed hvantk yet, see the main README for install steps.
 

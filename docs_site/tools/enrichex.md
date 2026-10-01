@@ -259,9 +259,8 @@ generate_report(
 )
 ```
 
-Reports adhere to the CSS+HTML design outlined in the planning document: no
-external dependencies, a single HTML file, and inline PNG/SVG assets when
-embedding is enabled.
+Reports follow a fixed CSS+HTML design: no external dependencies, a single
+HTML file, and inline PNG/SVG assets when embedding is enabled.
 
 ## Synthetic Example Workflow
 

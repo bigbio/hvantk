@@ -130,7 +130,7 @@ hvantk download ucsc --dataset adultPancreas --output-dir data/ucsc
 hvantk download ucsc --dataset adultPancreas --output-dir data/ucsc
 hvantk download clinvar --output-dir data/clinvar
 
-# Build artifacts (one CLI for all providers; runs the full Phase B pipeline)
+# Build artifacts (one CLI for all providers; runs the full build pipeline)
 hvantk reprocess ucsc-cellbrowser:adultPancreas --raw-dir data/ucsc --output data/ucsc/adultPancreas.h5ad
 hvantk reprocess clinvar:variants --raw-dir data/clinvar --output clinvar.ht
 ```

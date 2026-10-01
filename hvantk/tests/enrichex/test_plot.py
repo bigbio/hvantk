@@ -1,4 +1,4 @@
-"""Tests for enrichex visualization functions (core + phase 4)."""
+"""Tests for enrichex visualization functions (core plots and cell-type burden plots)."""
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -52,7 +52,7 @@ def _mock_burden_df() -> pd.DataFrame:
 
 
 def _make_burden_results():
-    """Create a realistic combined burden results DataFrame for phase 4 tests."""
+    """Create a realistic combined burden results DataFrame for the cell-type burden plot tests."""
     rows = []
     for collection in ["heart", "brain"]:
         for vc in ["lof", "missense", "synonymous"]:
@@ -125,7 +125,7 @@ def test_encode_figure_to_base64_returns_string():
     plt.close(fig)
 
 
-# --- Phase 4 plot tests ---
+# --- Celltype burden plot tests ---
 
 
 def test_celltype_burden_heatmap(tmp_path):

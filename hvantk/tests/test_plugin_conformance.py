@@ -1,4 +1,4 @@
-"""Per-plugin conformance tests for the Phase B builder contract.
+"""Per-plugin conformance tests for the plugin builder contract.
 
 Each test:
   1. Looks up the dataset's DatasetSpec from the live registry.
@@ -7,7 +7,7 @@ Each test:
   4. Verifies the saved artifact loads back via core/io with the expected type
      and provenance fields.
 
-Each plugin gets its own test as Phase B migrates it.
+Each plugin has its own test.
 """
 
 from __future__ import annotations
@@ -751,7 +751,7 @@ def test_ucsc_cellbrowser_round_trip(
     assert loaded.n_obs == 2  # 2 cells
 
 
-# ---------- Phase K plugins with fixtures ----------
+# ---------- gevir:metrics, gnomad-metrics:metrics, dbnsfp:variants ----------
 
 
 @pytest.mark.hail

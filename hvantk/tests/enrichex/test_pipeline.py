@@ -1,5 +1,5 @@
 """
-Tests for BurdenPipeline orchestrator (Phase 3.2).
+Tests for BurdenPipeline orchestrator.
 """
 
 import json
