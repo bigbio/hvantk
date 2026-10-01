@@ -94,7 +94,7 @@ def _fake_ctx():
 
 
 def _build_for_snapshot(expression_matrix_path, **call_kwargs):
-    """Adapt the Phase B builder to the snapshot helper's calling convention."""
+    """Adapt the builder to the snapshot helper's calling convention."""
     from hvantk.skills.expression_atlas.builder import build_expression_atlas
 
     sdrf_path = call_kwargs.pop("sdrf_path", SDRF)

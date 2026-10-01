@@ -4,15 +4,14 @@ This module preserves the path-resolution behavior of the now-deleted
 ``hvantk.core.models.dataset.get_*_ht()`` functions. Each entry in
 ``_LEGACY_PATHS`` maps a dataset key to its conventional location
 relative to ``source_dir``. Callers that have not yet been promoted to
-the plugin system (see Phase K of the data-model platform refactor) use
-``load_legacy_table(name)`` to read these tables.
+the plugin system use ``load_legacy_table(name)`` to read these tables.
 
 The ``source_dir`` module-level variable is set by the user (typically
 via CLI configuration or a notebook bootstrap step). When None,
 ``load_legacy_table`` raises a clear error.
 
 Legacy datasets covered here will be retired as their canonical sources
-become plugins (see Phase K and follow-ups). For now they continue to be
+become plugins. For now they continue to be
 read by path with an unknown-provenance marker (see ``core/io/_legacy.py``)
 attached when wrapped in an AnnotationTable.
 """

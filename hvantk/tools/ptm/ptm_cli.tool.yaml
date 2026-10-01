@@ -20,11 +20,11 @@ subcommands:
   - name: annotate
     description: Annotate a variant Hail Table with PTM site information
   - name: landscape
-    description: PTM-variant overlap and enrichment analysis (Q1)
+    description: PTM-variant overlap and enrichment analysis
   - name: export-strata
-    description: Export PTM / non-PTM variant lists for downstream PSROC (Q2)
+    description: Export PTM / non-PTM variant lists for downstream PSROC
   - name: population
-    description: Population-level PTM-variant allele frequency analysis (Q3)
+    description: Population-level PTM-variant allele frequency analysis
   - name: report
     description: Generate a PTM analysis HTML summary report
   - name: constraint

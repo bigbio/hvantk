@@ -1,6 +1,6 @@
 """Hail Table builder for HGNC gene nomenclature data.
 
-Owns the Phase B ``build_hgnc_gene_lookup`` builder. Turns the HGNC
+Owns the ``build_hgnc_gene_lookup`` builder. Turns the HGNC
 complete-set TSV into an ``AnnotationTable`` keyed by ``hgnc_id``.
 """
 
@@ -26,7 +26,7 @@ def build_hgnc_gene_lookup(
     include_withdrawn: bool = False,
     fields=None,
 ):
-    """Phase B builder — returns an AnnotationTable.
+    """Plugin builder — returns an AnnotationTable.
 
     Parameters
     ----------

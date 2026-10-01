@@ -1,6 +1,6 @@
 """Hail Table builder for the ClinVar VCF resource.
 
-Owns the Phase B ``build_clinvar`` builder. Turns the ClinVar VCF into an
+Owns the ``build_clinvar`` builder. Turns the ClinVar VCF into an
 ``AnnotationTable`` keyed by ``(locus, alleles)``.
 """
 
@@ -21,7 +21,7 @@ def build_clinvar(
     *,
     reference_genome: str = "GRCh38",
 ):
-    """Phase B builder — returns an AnnotationTable.
+    """Plugin builder — returns an AnnotationTable.
 
     Builds the lazy Hail Table from the VCF and wraps it with provenance.
     The platform's run_builder_for_spec calls artifact.save() to materialize

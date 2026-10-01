@@ -1,6 +1,6 @@
 """Hail Table builder for the GenCC (Gene Curation Coalition) submissions resource.
 
-Owns the Phase B ``build_gencc_submissions`` builder. GenCC aggregates
+Owns the ``build_gencc_submissions`` builder. GenCC aggregates
 gene-disease validity assertions from 12+ submitting organizations (ClinGen,
 PanelApp, G2P, Orphanet, ...). Keys by ``(hgnc_id, mondo_id, submitter)``.
 """
@@ -32,7 +32,7 @@ def build_gencc_submissions(
     min_classification=None,
     fields=None,
 ):
-    """Phase B builder — returns an AnnotationTable keyed by
+    """Plugin builder — returns an AnnotationTable keyed by
     ``(hgnc_id, mondo_id, submitter)``.
 
     Optional ``min_classification`` filters to assertions at or above the

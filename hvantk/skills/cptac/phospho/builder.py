@@ -1,6 +1,6 @@
 """AnnData builder for the CPTAC phosphoproteomics matrix resource.
 
-Owns the Phase B ``build_cptac_phospho`` builder. Turns a wide-format CPTAC
+Owns the ``build_cptac_phospho`` builder. Turns a wide-format CPTAC
 phospho intensity matrix plus its sample metadata into an ``ExpressionMatrix``
 (samples x sites).
 
@@ -66,7 +66,7 @@ def build_cptac_phospho(
     sample_id_col: str = "SampleID",
     **_ignored,
 ):
-    """Phase B builder — ``ExpressionMatrix`` (samples x sites) for one cancer type.
+    """Plugin builder — ``ExpressionMatrix`` (samples x sites) for one cancer type.
 
     ``site_id_col`` defaults to ``"Site"`` to match the matrix CSV header written
     by ``write_matrix_csv`` (``df.index.name = "Site"``). Extra keyword arguments

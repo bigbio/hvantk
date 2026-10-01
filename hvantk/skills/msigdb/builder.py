@@ -1,6 +1,6 @@
 """Hail Table builder for MSigDB gene-set GMT files.
 
-Owns the Phase B ``build_msigdb_genesets`` builder. Turns an MSigDB GMT file
+Owns the ``build_msigdb_genesets`` builder. Turns an MSigDB GMT file
 (e.g., C2 Canonical Pathways) into an ``AnnotationTable`` keyed by
 ``set_name``.
 
@@ -25,11 +25,11 @@ def build_msigdb_genesets(
     ctx,
     **params,
 ):
-    """Phase B builder — returns an AnnotationTable.
+    """Plugin builder — returns an AnnotationTable.
 
     Each row is one MSigDB gene set keyed by ``set_name``. The ``genes`` column
     is ``array<str>``. msigdb may be promoted to a GeneSet collection
-    artifact in a future phase; for Phase B it stays as an AnnotationTable.
+    artifact later; for now it stays an AnnotationTable.
     """
     from hvantk.core.models import AnnotationTable
 

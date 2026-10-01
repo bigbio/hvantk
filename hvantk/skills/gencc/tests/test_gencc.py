@@ -55,7 +55,7 @@ TEST_DIR = Path(__file__).parent / "testdata"
 
 @pytest.fixture
 def gencc_table_path(tmp_path):
-    """Build a GenCC Hail Table from test fixture via the Phase B builder."""
+    """Build a GenCC Hail Table from test fixture via the builder."""
     from hvantk.core.models.build_context import BuildContext
     from hvantk.skills.gencc.builder import build_gencc_submissions
 

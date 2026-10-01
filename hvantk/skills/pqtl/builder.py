@@ -1,6 +1,6 @@
 """Hail Table builder for the pQTL (protein quantitative trait loci) resource.
 
-Owns the Phase B ``build_pqtl_metrics`` builder. The transform (GTEx
+Owns the ``build_pqtl_metrics`` builder. The transform (GTEx
 variant-ID parsing, SE derivation via ``|BETA / STAT|``, gene-symbol →
 Ensembl-ID mapping via a GeneCatalogStreamer) is implemented directly here.
 
@@ -78,7 +78,7 @@ def build_pqtl_metrics(
     p_threshold: float | None = None,
     fields: list[str] | None = None,
 ):
-    """Phase B builder — returns an AnnotationTable keyed by
+    """Plugin builder — returns an AnnotationTable keyed by
     ``(locus, alleles, gene_id)``.
 
     For ``source='gtex_fang'``: Fang et al. (2025) allpairs files

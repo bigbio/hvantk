@@ -12,7 +12,7 @@ from hvantk.core.models.build_context import BuildContext
 
 pytestmark = [pytest.mark.hail, pytest.mark.slow]
 
-# Fixture lives under the clingen plugin folder after the Phase 2 migration.
+# Fixture lives under the clingen plugin folder after migrating to the plugin system.
 TEST_FIXTURE = (
     Path(__file__).resolve().parent
     / "testdata"

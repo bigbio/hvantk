@@ -145,7 +145,7 @@ def compute_specificity_artifact(
     method: "Method" = "tau",
     log: bool = False,
 ) -> "AnnotationTable":
-    """Phase P artifact-typed wrapper for compute_specificity.
+    """Artifact-typed wrapper for compute_specificity.
 
     Accepts an AnnotationTable of gene-by-tissue/cell-type expression
     (rows = genes, columns = groups). Delegates to compute_specificity

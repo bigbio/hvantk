@@ -1,4 +1,4 @@
-"""Conformance test for the gnomad-metrics plugin (Phase K)."""
+"""Conformance test for the gnomad-metrics plugin."""
 
 from __future__ import annotations
 

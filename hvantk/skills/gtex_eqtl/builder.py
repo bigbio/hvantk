@@ -1,6 +1,6 @@
 """Hail Table builder for GTEx (and compatible) cis-eQTL summary statistics.
 
-Owns the Phase B ``build_eqtl_associations`` builder. Turns a directory of
+Owns the ``build_eqtl_associations`` builder. Turns a directory of
 per-tissue GTEx v11 (parquet), GTEx v8 (TSV), or eQTLGen (TSV) cis-eQTL
 summary statistics into an ``AnnotationTable`` triple-keyed by
 ``(locus, alleles, gene_id)``.
@@ -157,7 +157,7 @@ def build_eqtl_associations(
     p_threshold: float = 5e-8,
     fields=None,
 ):
-    """Phase B builder — returns an AnnotationTable keyed by
+    """Plugin builder — returns an AnnotationTable keyed by
     ``(locus, alleles, gene_id)``.
 
     Supported sources:

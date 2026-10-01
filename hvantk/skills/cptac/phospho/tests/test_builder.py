@@ -1,4 +1,4 @@
-"""Unit tests for the CPTAC phospho Phase B builder (#198).
+"""Unit tests for the CPTAC phospho builder (#198).
 
 These exercise the builder without the upstream ``cptac`` package: they feed
 matrix/metadata CSVs in the same layout ``CPTACPhosphoDataset.download`` writes
@@ -135,7 +135,7 @@ _SNAPSHOT_DIR = Path("hvantk/skills/cptac/phospho/tests/snapshots")
 
 
 def _build_for_snapshot(expression_path, **call_kwargs):
-    """Adapt the Phase B builder to the snapshot helper's calling convention."""
+    """Adapt the builder to the snapshot helper's calling convention."""
     from hvantk.skills.cptac.phospho.builder import build_cptac_phospho
 
     metadata_path = call_kwargs.pop("metadata_path", _METADATA)

@@ -1,6 +1,6 @@
 """Hail Table builder for the COSMIC Cancer Gene Census (CGC) resource.
 
-Phase B builder: imports the COSMIC CGC TSV, normalises tier classifications,
+Plugin builder: imports the COSMIC CGC TSV, normalises tier classifications,
 optionally filters by mutation context, and emits an AnnotationTable with
 source-fingerprint provenance.
 """
@@ -37,7 +37,7 @@ def build_cosmic_cgc_submissions(
     ctx,
     **params,
 ):
-    """Phase B builder — returns an AnnotationTable.
+    """Plugin builder — returns an AnnotationTable.
 
     Imports the COSMIC CGC TSV, renames fields, normalises tier classifications,
     optionally filters by mutation context or tier, and wraps with Provenance.

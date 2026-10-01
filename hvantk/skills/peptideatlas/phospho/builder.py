@@ -26,7 +26,7 @@ def build_peptideatlas_phospho(
     *,
     overwrite: bool = False,
 ):
-    """Phase B builder — returns an AnnotationTable.
+    """Plugin builder — returns an AnnotationTable.
 
     ``parsed_input`` is whatever the plugin's parse_fn produced. For peptideatlas
     this is the path to the intermediate wide TSV (peptideatlas-phospho-*.tsv)
@@ -40,7 +40,7 @@ def build_peptideatlas_phospho(
         Platform-provided context. The plugin supplies schema_id via
         ``ctx.provenance(schema_id=...)``.
     overwrite : bool, optional
-        Unused under the Phase B contract (the platform handles output writing).
+        Unused under the plugin builder contract (the platform handles output writing).
         Accepted for backward compatibility only.
 
     Returns

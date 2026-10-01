@@ -1,9 +1,9 @@
 """Prepare a single annotation source into a per-gene, gene_id-keyed artifact.
 
-`prepare` is Stage 1 of the annotation build (design §3): it reads one already-built
+`prepare` is Stage 1 of the annotation build: it reads one already-built
 source, maps its key onto the spine's ``gene_id``, keeps only the columns a spec entry
 declares, restricts to rows that land on the spine, and returns the prepared table plus a
-:class:`MappingReport`. Stage 2 (compose, P3) left-joins every prepared artifact to the
+:class:`MappingReport`. Stage 2 (compose) left-joins every prepared artifact to the
 spine. Sources keyed on ``gene_id``, ``hgnc_id``, or ``symbol`` are supported; non-``gene_id``
 keys are re-keyed onto ``gene_id`` via the HGNC-backed mapper before column selection.
 

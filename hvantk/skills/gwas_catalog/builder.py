@@ -1,6 +1,6 @@
 """Hail Table builder for the EBI GWAS Catalog v1.0 full-associations TSV.
 
-Owns the Phase B ``build_gwas_catalog_associations`` builder. Turns the
+Owns the ``build_gwas_catalog_associations`` builder. Turns the
 GWAS Catalog v1.0 full-associations TSV into an ``AnnotationTable`` keyed by
 ``(locus, alleles)`` with ``alleles = [<risk_allele>, "N"]`` (sentinel ALT,
 judgment call #1 in the skill).
@@ -63,7 +63,7 @@ def build_gwas_catalog_associations(
     *,
     reference_genome: str = "GRCh38",
 ):
-    """Phase B builder — returns an AnnotationTable keyed by
+    """Plugin builder — returns an AnnotationTable keyed by
     ``(locus, alleles)`` with ``alleles = [<risk_allele>, "N"]`` (sentinel ALT).
 
     Two filters drop rows the schema cannot express cleanly (skill judgment

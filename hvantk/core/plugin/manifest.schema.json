@@ -119,11 +119,11 @@
           },
           "artifact_type": {
             "type": "string",
-            "description": "Phase B: the artifact class name returned by the builder (e.g. AnnotationTable)."
+            "description": "The artifact class name returned by the builder (e.g. AnnotationTable)."
           },
           "schema_id": {
             "type": "string",
-            "description": "Phase B: the schema identifier stamped onto the artifact's Provenance."
+            "description": "The schema identifier stamped onto the artifact's Provenance."
           },
           "skill": {
             "type": "string",

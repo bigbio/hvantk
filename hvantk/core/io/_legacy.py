@@ -2,7 +2,7 @@
 
 When `core/io.load(path)` finds an artifact file with no sidecar manifest,
 it falls back to wrapping the file with `Provenance.unknown(reason=...)`.
-This shim is the bridge that lets Phase A consumers read pre-Phase-B
+This shim is the bridge that lets legacy consumers read pre-plugin
 artifact files (raw .parquet, .h5ad, .ht) without rebuilding everything.
 """
 

@@ -38,7 +38,7 @@ def _resolve_gtf_path(parsed_input) -> str:
 
 
 def build_ensembl_gene_structure(parsed_input, ctx, **params):
-    """Phase B builder -- returns an AnnotationTable keyed on ``gene_id``.
+    """Plugin builder -- returns an AnnotationTable keyed on ``gene_id``.
 
     Parameters
     ----------

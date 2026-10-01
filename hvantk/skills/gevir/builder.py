@@ -1,6 +1,6 @@
 """Hail Table builder for the GeVIR (Gene Vulnerability and Intolerance Rank) resource.
 
-Owns the Phase B ``build_gevir_metrics`` builder. Imports the GeVIR metrics
+Owns the ``build_gevir_metrics`` builder. Imports the GeVIR metrics
 TSV keyed by ``gene_id`` and wraps with Provenance.
 """
 
@@ -48,7 +48,7 @@ def build_gevir_metrics(
     ctx,
     **params,
 ):
-    """Phase B builder — returns an AnnotationTable.
+    """Plugin builder — returns an AnnotationTable.
 
     Imports the GeVIR TSV (keyed by gene_id) and wraps it with Provenance.
     Accepts **params for compatibility (fields, etc.).
