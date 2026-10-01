@@ -135,7 +135,7 @@ def test_missing_optional_runtime_doesnt_drop_manifest(tmp_path):
 def test_failed_dataset_resolution_is_cached_after_pass2(tmp_path):
     """Pass-2 failures are cached so get_dataset() raises consistently.
 
-    Regression guard for F14: prior to the fix, Pass 2 caught the
+    Regression guard: prior to the fix, Pass 2 caught the
     PluginLoadError into _load_errors but did not cache a failure marker,
     so a later get_dataset() call would re-attempt the import. If the
     underlying failure was transient (e.g. a flaky network probe), the

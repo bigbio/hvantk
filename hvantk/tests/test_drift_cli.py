@@ -630,7 +630,7 @@ def test_regenerate_reports_a_fingerprint_serialization_failure_as_probe_failed_
     tmp_path: Path, monkeypatch
 ):
     """A probe returning a dict with a tuple key fails `_coerce_fingerprint`'s
-    JSON-serialisability round-trip (item 1) as a DriftProbeError, uniformly with
+    JSON-serialisability round-trip as a DriftProbeError, uniformly with
     the plain check path -- so it no longer needs to fall through to
     write_fingerprint's own json.dumps and the CLI's generic `except Exception`
     backstop. Exit code and the no-corruption guarantee are unchanged; only the

@@ -7,7 +7,7 @@ Each test:
   4. Verifies the saved artifact loads back via core/io with the expected type
      and provenance fields.
 
-Each plugin gets its own test as it migrates to the plugin builder contract.
+Each plugin has its own test.
 """
 
 from __future__ import annotations
@@ -751,7 +751,7 @@ def test_ucsc_cellbrowser_round_trip(
     assert loaded.n_obs == 2  # 2 cells
 
 
-# ---------- Plugins with fixtures ----------
+# ---------- gevir:metrics, gnomad-metrics:metrics, dbnsfp:variants ----------
 
 
 @pytest.mark.hail

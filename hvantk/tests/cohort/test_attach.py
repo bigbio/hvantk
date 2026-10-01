@@ -252,7 +252,7 @@ def test_attach_raises_on_duplicate_gene_id_rows(hail_session):
     """`prepare_source`'s gene_id branch (Stage-1, never modified here) does not
     enforce one row per gene -- it only filters onto the spine and selects columns.
     Without a cohort-side guard, the later index-join would pick one of the two ENSG1
-    rows arbitrarily and silently drop the other, in violation of R3 ('one row per
+    rows arbitrarily and silently drop the other, in violation of the cohort contract ('one row per
     tested gene')."""
     import hail as hl
 

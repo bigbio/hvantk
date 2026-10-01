@@ -103,16 +103,16 @@ print(pop_result.summary())
 
 ## Workflow
 
-The PTM workflow runs these commands in order; the three analyses in step 3 are independent of each other:
+Run these commands in order; steps 3–5 are independent analyses:
 
 | Step | Command | Description |
 |------|---------|-------------|
 | 1 | `hvantk ptm build` | Download PTM data, map to genome, build Hail Table |
 | 2 | `hvantk ptm annotate` | Annotate variants with PTM site proximity |
-| 3a | `hvantk ptm landscape` | PTM-variant overlap and enrichment |
-| 3b | `hvantk ptm export-strata` + `hvantk psroc` | Predictor evaluation at PTM vs non-PTM sites |
-| 3c | `hvantk ptm population` | Population-level AF analysis |
-| 4 | `hvantk ptm report` | HTML report with embedded plots |
+| 3 | `hvantk ptm landscape` | PTM-variant overlap and enrichment |
+| 4 | `hvantk ptm export-strata` + `hvantk psroc` | Predictor evaluation at PTM vs non-PTM sites |
+| 5 | `hvantk ptm population` | Population-level AF analysis |
+| 6 | `hvantk ptm report` | HTML report with embedded plots |
 
 ### Predictor Evaluation (Composed Workflow)
 

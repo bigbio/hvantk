@@ -314,7 +314,7 @@ explicitly. Split it by action rather than copying it wholesale.
 
 | Action | Examples | How |
 |---|---|---|
-| **Transfer** (experiment state / gated / source-specific) | notebooks + outputs, single-cell `.h5ad` atlases, planning docs, EGA gvcfs, interactome BED, GTEx proteomics, UKB-PPP, per-study cardiac data | **Globus** via DTN |
+| **Transfer** (experiment state / gated / source-specific) | notebooks + outputs, single-cell `.h5ad` atlases, EGA gvcfs, interactome BED, GTEx proteomics, UKB-PPP, per-study cardiac data | **Globus** via DTN |
 | **Refetch** on login node | raw UCSC Cell Browser dumps, GTEx/iPSC-CM eQTL stats, ArrayExpress, 1000 Genomes, GWAS Catalog, GenCC, ClinVar, Ensembl GTF, gnomAD lof-metrics | `hvantk download …` / skill downloaders |
 | **Regenerate** on-cluster | derived Hail `.mt`s (e.g. Expression Atlas, GTEx TPM matrices) | hvantk build steps |
 | **Skip** (redundant) | uncompressed `.tsv` where a `.bgz` exists; raw dumps that a built `.h5ad` supersedes; duplicate `.gz` next to `.bgz` | don't copy |

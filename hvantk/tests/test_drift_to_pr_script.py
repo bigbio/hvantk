@@ -418,7 +418,7 @@ def _capture_handle_drifted(
 
 def test_skip_issues_no_commit_push_or_pr(drift_to_pr, monkeypatch, tmp_path):
     """The behaviour the whole PR exists for. Fails if branch_needs_update is neutered
-    to `return True`, which is exactly the hole review found."""
+    to `return True`, a hole no other test catches."""
     cmds, cleanups, summary = _capture_handle_drifted(
         drift_to_pr, monkeypatch, tmp_path, needs_update=False, pr_exists=True
     )

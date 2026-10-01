@@ -8,11 +8,8 @@ core/ and resources/ are both substrate -- consumed by the code layers above,
 neither imports upward. resources/ holds the data-catalog registry, JSON
 schemas, and the validator/aggregator that operate on them.
 
-Implementation note: each layer-pair is checked independently and gated with
-xfail until the corresponding migration work fixes the violations. Each
-migration step removes its xfail markers as it lands. Once every migration
-step is done, every xfail marker is gone and this test enforces the
-contract for the future.
+Implementation note: each layer pair is checked by its own test, so a failure
+names the offending pair.
 """
 
 from __future__ import annotations
