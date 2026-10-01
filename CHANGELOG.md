@@ -189,9 +189,9 @@ without CI having ever run on them.
   the write. A VDS's on-disk layout is derived from its *reference-block* count, which is
   a property of the genome and saturates (~229 M on chr1 by N≈500 samples) while the dense
   matrix keeps growing with N×M(N). Past that point the partition count stops tracking the
-  size of the data it partitions and work-per-task collapses — measured at 0.69
-  MiB/partition on a 1,005-sample chr1 cohort, where densify and QC plateaued at 1.29× and
-  1.64× going from 16 to 128 cores while well-sized stages scaled 7.8× (#207).
+  size of the data it partitions and work-per-task collapses — measured on a ~1,000-sample
+  chr1 cohort, where partitions shrank to well under a MiB each and densify and QC barely
+  sped up going from 16 to 128 cores while well-sized stages scaled nearly linearly (#207).
   Implemented with `naive_coalesce`, which merges adjacent partitions without a shuffle so
   the densify for a merged group runs inside one task. Reduces only; the default is
   unchanged. **Not** implemented at the read: `hl.vds.read_vds(n_partitions=…)` looks

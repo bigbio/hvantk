@@ -4,10 +4,11 @@
 every column becomes one array *on the driver*. That is O(n_variants) with no ceiling,
 and it does not degrade gracefully: it kills the JVM.
 
-Measured on real data (job 19925591): a 1005-sample chr20 dense MatrixTable has ~11.1 M
-variants. Collecting its 28 variant-QC fields killed a 200 GB driver after ~38 minutes,
-which took ``hvantk hgc compute-qc`` down and therefore made ``hvantk hgc qc-report``
-unreachable -- the whole documented workflow was unusable at cohort scale.
+Measured on real data: a ~1,000-sample WGS callset (one chromosome) has on the order of
+10 M variants. Collecting its 28 variant-QC fields killed a 200 GB driver after ~38
+minutes, which took ``hvantk hgc compute-qc`` down and therefore made
+``hvantk hgc qc-report`` unreachable -- the whole documented workflow was unusable at
+cohort scale.
 
 A fixture-sized test cannot reproduce an OOM, so these tests assert the *mechanism*
 instead: that the export path never touches ``to_pandas`` on the variant table, and that
@@ -85,7 +86,7 @@ def test_save_qc_metrics_exports_variants_without_collecting(tmp_path):
     """The variant CSV must come from Table.export, never to_pandas."""
     # exploding_to_pandas: any collect on the variant table fails the test outright.
     variant = _FakeTable(11_100_000, exploding_to_pandas=True)
-    sample = _FakeTable(1005)
+    sample = _FakeTable(1000)
     qc = QCMetrics(mt=_FakeMT(), sample_qc=sample, variant_qc=variant)
 
     saved = save_qc_metrics(qc, tmp_path, prefix="t")
@@ -105,7 +106,7 @@ def test_save_qc_metrics_exports_variants_without_collecting(tmp_path):
 
 def test_save_qc_metrics_still_collects_samples(tmp_path):
     """Sample QC is bounded by cohort size, so collecting it stays correct."""
-    sample = _FakeTable(1005)
+    sample = _FakeTable(1000)
     qc = QCMetrics(mt=_FakeMT(), sample_qc=sample, variant_qc=None)
 
     save_qc_metrics(qc, tmp_path, prefix="t")
@@ -167,11 +168,11 @@ def test_variant_dataframe_untouched_below_the_budget():
 def test_counts_do_not_build_dataframes():
     """Printing a count must not collect the table (the qc-report bug)."""
     variant = _FakeTable(11_100_000, exploding_to_pandas=True)
-    sample = _FakeTable(1005)
+    sample = _FakeTable(1000)
     qc = QCMetrics(mt=_FakeMT(), sample_qc=sample, variant_qc=variant)
 
     assert qc.count_variants() == 11_100_000
-    assert qc.count_samples() == 1005
+    assert qc.count_samples() == 1000
     assert variant.to_pandas_calls == 0
     assert sample.to_pandas_calls == 0
 

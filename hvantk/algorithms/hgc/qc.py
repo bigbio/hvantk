@@ -41,8 +41,8 @@ DEFAULT_VARIANT_DF_MAX_ROWS = 500_000
 #   *                the VCF spanning-deletion allele: a real representation, but not an
 #                    independent variant, and it distorts an allele-frequency spectrum.
 #
-# Measured on the 1005-sample chr20 dense MatrixTable: 5,139,209 of 11,396,989 rows
-# (45.09%) carried <*>. A QC report computed over that population is describing
+# Measured on a ~1,000-sample WGS callset (one chromosome, dense MatrixTable): about
+# half the rows carried <*>. A QC report computed over that population is describing
 # reference blocks as much as variants, which is why its AF spectrum looks nothing
 # like a real one.
 SYMBOLIC_ALT_ALLELES = frozenset({"<*>", "<NON_REF>", "*"})
@@ -122,9 +122,9 @@ class QCMetrics:
         O(n_variants) in driver memory with no ceiling, and on real data it does not
         degrade gracefully -- it kills the JVM.
 
-        Measured: a 1005-sample chr20 dense MatrixTable has ~11.1 M variants. Collecting
-        its 28 variant-QC fields killed a 200 GB driver after ~38 minutes, taking
-        ``compute-qc`` and therefore ``qc-report`` down with it (job 19925591).
+        Measured: a ~1,000-sample WGS callset (one chromosome) has on the order of 10 M
+        variants. Collecting its 28 variant-QC fields killed a 200 GB driver after ~38
+        minutes, taking ``compute-qc`` and therefore ``qc-report`` down with it.
 
         So this method samples down to ``max_rows`` when the table is larger, which
         keeps every caller (all of which are plotting histograms) working at any cohort
@@ -925,7 +925,7 @@ def save_qc_metrics(
     The variant table is written with ``Table.export`` rather than
     ``to_pandas().to_csv()``. Hail exports from the executors, so every row is written
     and the table is never materialised on the driver -- the collect-based path killed a
-    200 GB driver on a single real chromosome (~11.1 M variants, job 19925591).
+    200 GB driver on a single WGS-density chromosome (on the order of 10 M variants).
 
     Two consequences of exporting through Hail rather than pandas, both deliberate:
     the file is TAB-delimited (``alleles`` and struct fields contain commas that Hail
@@ -933,7 +933,7 @@ def save_qc_metrics(
     precision. All rows, slightly coarser floats.
 
     Sample QC stays on ``to_pandas``: it is bounded by the cohort size, not the variant
-    count, and 1005 rows is nothing.
+    count, and a few thousand rows is nothing.
 
     Args:
         qc_metrics: QCMetrics object

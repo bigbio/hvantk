@@ -108,10 +108,11 @@ def annotate_adj(
       entries whose predicate is not True. Every reference-block hom-ref genotype is
       deleted, and a downstream ``variant_qc`` recomputes AC/AF/AN on the wreckage.
 
-    Measured on the 1005-sample CHD WGS cohort (chr20, 1.25 B hom-ref entries): 96.5%
-    of hom-ref entries had ``adj`` MISSING and were deleted, taking the call rate to
-    0.033. With this fallback it is 0.947. Het and hom-var entries always carry ``DP``
-    (they come from variant records) and were never affected.
+    Measured on a ~1,000-sample WGS callset (one chromosome, over a billion hom-ref
+    entries): nearly every hom-ref entry had ``adj`` MISSING and was deleted, taking
+    the call rate to near zero. With this fallback the call rate is nearly complete.
+    Het and hom-var entries always carry ``DP`` (they come from variant records) and
+    were never affected.
 
     ``MIN_DP`` is the MINIMUM depth across the reference block, so using it is
     conservative -- it under-passes rather than over-passes, which is the right

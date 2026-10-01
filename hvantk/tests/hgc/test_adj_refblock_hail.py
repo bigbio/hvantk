@@ -8,8 +8,8 @@ the reference side, leaving ``DP`` undefined on every hom-ref entry.
 ``adj = (GQ >= 20) & (DP >= 10) & (allele-balance)``. With ``DP`` missing, ``DP >= 10``
 is missing and ``True & missing`` is missing -- so ``adj`` is MISSING rather than False.
 ``filter_entries(adj)`` keeps only True, so every reference-block hom-ref genotype is
-DELETED, silently. On the 1005-sample CHD WGS cohort that destroyed 96.5% of hom-ref
-entries (call rate 0.033) and went unnoticed for ~18 months, because ``variant_qc``
+DELETED, silently. On a real WGS callset that destroyed nearly all hom-ref entries
+(call rate near zero) and went unnoticed for ~18 months, because ``variant_qc``
 recomputed AC/AF/AN afterwards and the output looked self-consistent.
 
 Note a schema check cannot catch this: ``DP`` IS in the entry schema (it comes from

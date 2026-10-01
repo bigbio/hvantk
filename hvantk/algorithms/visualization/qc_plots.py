@@ -81,7 +81,7 @@ def _sampled_note(source_df, n_shown):
     """Return a trailing note disclosing that the frame is a subsample.
 
     get_variant_metrics_df subsamples above its row budget and records the true total
-    on df.attrs. Titling a plot "n=500306 variants" for an 11,396,989-variant callset
+    on df.attrs. Titling a plot "n=500,000 variants" for an 11-million-variant callset
     presents the sample as the population -- and a plot extracted from the report
     carries no other disclosure with it, so the title has to say so itself.
     """

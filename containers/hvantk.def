@@ -7,7 +7,7 @@ From: ubuntu:22.04
 # BASE IMAGE: ubuntu:22.04 (jammy). The previous base, python:3.10-slim-bullseye,
 # sat on Debian 11, whose LTS ended 2026-08-31 -- deb.debian.org still serves the
 # apt *index* while every .deb 404s, so `apt-get update` succeeds and every install
-# fails. That is unfixable by retrying (jobs 19929927, 19930001).
+# fails. That is unfixable by retrying.
 #
 # Debian 12 (bookworm) is not the answer either: it carries no openjdk-11 at all,
 # only 17+, and Hail 0.2.x / Spark 3.5 support Java 8 or 11 ONLY. That constraint is

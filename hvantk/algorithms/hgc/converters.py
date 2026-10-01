@@ -42,9 +42,10 @@ def resolve_reference_depth(mt: hl.MatrixTable) -> hl.MatrixTable:
     missing. Leaving it that way exports genotypes that look depth-less even though the
     depth is exactly what justified keeping them -- and any downstream
     ``FORMAT/DP >= N`` filter then deletes them, reproducing the very bug this pipeline
-    just fixed, one step further along. Measured on the corrected chr20: 62.1% of CALLED
-    genotypes had no ``DP``, and a naive ``DP>=10`` filter would have pushed missingness
-    from 6.8% back to 64.7%.
+    just fixed, one step further along. Measured on a corrected WGS callset (one
+    chromosome): well over half of CALLED genotypes had no ``DP``, and a naive
+    ``DP>=10`` filter would have pushed missingness from a small fraction up to
+    roughly two-thirds.
 
     Folding ``MIN_DP`` into ``DP`` at the joint-genotyping step is the standard
     convention, not a local invention:
@@ -243,10 +244,10 @@ def convert_vds_to_mt(
         # derived from its REFERENCE-BLOCK count, which is a property of the genome and
         # saturates (~229 M on chr1 by N~=500 samples), while the dense matrix keeps
         # growing with N x M(N). Past that point the partition count stops tracking the
-        # size of the data it partitions and work-per-task collapses -- measured at
-        # 0.69 MiB/partition for a 1,005-sample chr1 cohort, where densify and QC
-        # plateaued at 1.29x and 1.64x going from 16 to 128 cores while the well-sized
-        # stages scaled 7.8x. See #207.
+        # size of the data it partitions and work-per-task collapses -- measured on a
+        # ~1,000-sample chr1 cohort, where partitions shrank to well under a MiB each,
+        # and densify and QC barely sped up going from 16 to 128 cores (8x) while the
+        # well-sized stages scaled nearly linearly. See #207.
         logging.info(f"Reading VDS from {vds_path}...")
         if n_partitions is not None and n_partitions < 1:
             raise ValueError(f"n_partitions must be >= 1, got {n_partitions}")
@@ -365,8 +366,8 @@ def _assert_adj_is_computable(
 
     ``filter_entries(mt.adj)`` keeps only entries whose predicate is True, and Hail
     treats MISSING as not-True -- so a systematically-missing ``adj`` silently DELETES
-    genotypes instead of raising. That is precisely how the 1005-sample CHD WGS callset
-    lost 96.5% of its hom-ref genotypes, undetected for ~18 months: the export looked
+    genotypes instead of raising. That is precisely how a real WGS callset lost nearly
+    all of its hom-ref genotypes, undetected for ~18 months: the export looked
     internally consistent because ``variant_qc`` recomputed AC/AF/AN afterwards.
 
     A schema check cannot catch this. ``DP`` is present in the entry schema (it comes
