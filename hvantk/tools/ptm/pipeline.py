@@ -50,7 +50,7 @@ def ptm_build_pipeline(config: PTMBuildConfig) -> PTMBuildResult:
         2. Delegate to :func:`ptm_build_pipeline_core` for GTF download,
            parsing, and coordinate mapping
         3. Build the Hail Table from the mapped TSV by invoking the
-           ``uniprot-ptm:sites`` Phase B builder via
+           ``uniprot-ptm:sites`` plugin builder via
            :func:`hvantk.core.plugin.run_builder.run_builder_for_spec`.
            The build is stamped with platform Provenance.
 
@@ -94,7 +94,7 @@ def ptm_build_pipeline(config: PTMBuildConfig) -> PTMBuildResult:
     # Step 2: Pure coordinate-mapping core (no skills).
     result = ptm_build_pipeline_core(config)
 
-    # Step 3: Build Hail Table from the mapped TSV via the Phase B contract.
+    # Step 3: Build Hail Table from the mapped TSV via the plugin builder contract.
     if result.n_mapped > 0:
         logger.info("Building Hail Table at %s...", config.output_ht)
         reg = plugin_loader.get_registry()

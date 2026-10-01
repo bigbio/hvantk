@@ -95,16 +95,16 @@ _LAZY_MODULES = {
     ),
     # report
     "generate_report": ("hvantk.algorithms.ptm.report", "generate_report"),
-    # Phase-2 atlas facade
+    # Atlas facade
     "PTMAtlasConfig": ("hvantk.algorithms.ptm.atlas", "PTMAtlasConfig"),
     "PTMAtlasResult": ("hvantk.algorithms.ptm.atlas", "PTMAtlasResult"),
     "build_atlas": ("hvantk.algorithms.ptm.atlas", "build_atlas"),
-    # Phase-2 SYMBOL-based annotation (pandas)
+    # SYMBOL-based annotation (pandas)
     "annotate_variants_by_symbol": (
         "hvantk.algorithms.ptm.annotate",
         "annotate_variants_by_symbol",
     ),
-    # Phase-2 constraint tests (statsmodels)
+    # Constraint tests (statsmodels)
     "LMMResult": ("hvantk.algorithms.ptm.lmm", "LMMResult"),
     "BinnedLMMResult": ("hvantk.algorithms.ptm.lmm", "BinnedLMMResult"),
     "run_lmm": ("hvantk.algorithms.ptm.lmm", "run_lmm"),
@@ -112,7 +112,7 @@ _LAZY_MODULES = {
         "hvantk.algorithms.ptm.lmm",
         "run_binned_interaction_lmm",
     ),
-    # Phase-2 report writer
+    # Summary report writer
     "generate_phase2_report": (
         "hvantk.algorithms.ptm.report",
         "generate_phase2_report",
@@ -180,17 +180,17 @@ __all__ = [
     "LMM_MIN_MIXED_GENES",
     "LMM_BINNED_MIN_POS_EXPR",
     "LMM_BINNED_MIN_CELL_N",
-    # Phase-2 atlas
+    # Atlas
     "PTMAtlasConfig",
     "PTMAtlasResult",
     "build_atlas",
-    # Phase-2 SYMBOL annotation
+    # SYMBOL annotation
     "annotate_variants_by_symbol",
-    # Phase-2 tests
+    # Constraint tests
     "LMMResult",
     "BinnedLMMResult",
     "run_lmm",
     "run_binned_interaction_lmm",
-    # Phase-2 report
+    # Summary report
     "generate_phase2_report",
 ]

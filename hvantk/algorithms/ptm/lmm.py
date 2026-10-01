@@ -1,14 +1,15 @@
-"""Phase-2 PTM constraint tests (LMM and binned-interaction LMM).
+"""PTM constraint tests (LMM and binned-interaction LMM).
 
-Factored from:
+Two per-stratum constraint tests:
 
-- notebook M (per-tissue constraint LMM on GTEx) -> :func:`run_lmm`
-- notebook K (per-cell-type binned-interaction LMM on Velmeshev cortex) ->
-  :func:`run_binned_interaction_lmm`
+- :func:`run_lmm` - per-stratum ``log_af ~ is_ptm + (1|gene)``
+- :func:`run_binned_interaction_lmm` - per-stratum
+  ``log_af ~ is_ptm * C(expr_bin) + (1|gene)`` (adds an is_ptm x
+  expression-bin interaction)
 
 Both functions are per-stratum: the caller iterates over tissues / cell types
-and is responsible for assembling results. This matches the notebook style
-and keeps the API surface small.
+and is responsible for assembling results. This keeps each fit independent
+and the API surface small.
 
 Example
 -------
@@ -42,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class LMMResult:
-    """Per-stratum result of the constraint LMM (notebook M Cell 5).
+    """Per-stratum result of the constraint LMM fit.
 
     Fields are populated on fit success; skipped strata return NaN betas and
     an explanatory ``note`` string (never raise).
@@ -63,7 +64,7 @@ class LMMResult:
 
 @dataclass
 class BinnedLMMResult:
-    """Per-stratum result of the binned-interaction LMM (notebook K Cell 4d).
+    """Per-stratum result of the binned-interaction LMM fit.
 
     ``bin_levels`` always starts with ``"b0_none"`` and ends with the last
     quantile bin actually realized by ``pd.qcut(..., duplicates='drop')``.
@@ -95,7 +96,7 @@ def run_lmm(
 ) -> LMMResult:
     """Per-stratum constraint LMM: ``log_af ~ is_ptm + (1|gene)``.
 
-    Replicates notebook_m Cell 5 mixedlm usage exactly. Filters:
+    Fits ``statsmodels`` ``mixedlm`` with gene as the grouping factor. Filters:
 
     - ``af > 0`` on ``af_col``;
     - ``n_ptm >= min_n_ptm`` and ``n_nonptm >= min_n_nonptm``;
@@ -117,14 +118,14 @@ def run_lmm(
     eps : float
         Pseudocount for ``log10(af + eps)``. Default: :data:`LOG_AF_EPSILON`.
     min_n_ptm, min_n_nonptm, min_mixed_genes : int
-        Filter thresholds (notebook M defaults).
+        Filter thresholds (defaults defined in ``hvantk.algorithms.ptm.constants``).
     """
-    # Deferred, not module scope (#374 review, item 4): `require_scanpy` -- the stated
+    # Deferred, not module scope (#374): `require_scanpy` -- the stated
     # model for this pattern -- is called inside the function that needs it, so an
     # install lacking statsmodels can still `from hvantk.algorithms.ptm.lmm import
     # run_lmm` and only hits the actionable ImportError on an actual call.
     smf = require_statsmodels()
-    # Drop rows missing any required column (match notebook M's dropna).
+    # Drop rows missing any required column before fitting.
     sub = df.dropna(subset=[af_col, gene_col, is_ptm_col]).copy()
     sub = sub[sub[af_col] > 0].copy()
     sub["log_af"] = np.log10(sub[af_col] + eps)
@@ -199,7 +200,7 @@ def run_binned_interaction_lmm(
 ) -> BinnedLMMResult:
     """Binned-interaction LMM: ``log_af ~ is_ptm * C(expr_bin) + (1|gene)``.
 
-    Replicates notebook_k Cell 4d mixedlm usage exactly:
+    Fits ``statsmodels`` ``mixedlm`` with gene as the grouping factor:
 
     - ``expr = expr_series[gene]``, ``expr_log = log2(expr + 1)``;
     - ``pd.qcut(expr_log[expr > 0], q=n_quantiles, duplicates='drop')`` yields
@@ -232,7 +233,7 @@ def run_binned_interaction_lmm(
     """
     # Deferred, not module scope -- see run_lmm's docstring note.
     smf = require_statsmodels()
-    # Drop rows missing AF/gene/is_ptm, then af > 0 (matches notebook K).
+    # Drop rows missing AF/gene/is_ptm, then keep af > 0.
     dfx = df.dropna(subset=[af_col, gene_col, is_ptm_col]).copy()
     dfx = dfx[dfx[af_col] > 0].copy()
     dfx["log_af"] = np.log10(dfx[af_col] + eps)
@@ -274,8 +275,7 @@ def run_binned_interaction_lmm(
     bin_map = dict(zip(pos_bins.cat.categories, bin_labels))
     assigned = pd.Series("b0_none", index=dfx.index, dtype=object)
     assigned.loc[~not_expr] = pos_bins.map(bin_map)
-    # Any residual NaN (shouldn't happen) falls back to the first positive bin
-    # to match notebook K's defensive handling.
+    # Any residual NaN (shouldn't happen) falls back to the first positive bin.
     assigned = assigned.fillna(bin_labels[0] if bin_labels else "b0_none")
     ordered = ["b0_none"] + bin_labels
     dfx["expr_bin"] = pd.Categorical(assigned, categories=ordered, ordered=True)

@@ -473,7 +473,7 @@ def _get_css(colors: Dict[str, str]) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Phase-2 report (atlas + SYMBOL annotation + LMM results)
+# PTM summary report (atlas + SYMBOL annotation + LMM results)
 # ---------------------------------------------------------------------------
 
 
@@ -484,10 +484,11 @@ def generate_phase2_report(
     annotation_summary: Optional[Dict[str, Any]] = None,
     lmm_results: Optional[Sequence["LMMResult"]] = None,
     binned_lmm_results: Optional[Sequence["BinnedLMMResult"]] = None,
-    title: str = "PTM Phase-2 Analysis Report",
+    title: str = "PTM Summary Report",
     description: Optional[str] = None,
 ) -> str:
-    """Write a Phase-2 HTML summary (no plots; plots added in Phase 4).
+    """Write an HTML summary of the atlas, annotation, and constraint-LMM
+    sections (no plots).
 
     Each section renders only if its corresponding input is non-None so the
     same report writer serves atlas-only, annotation-only, or test-only runs.
@@ -503,9 +504,9 @@ def generate_phase2_report(
         ``n_total``, ``n_ptm_site``, ``n_ptm_proximal``, ``n_both``,
         ``n_neither`` but any subset is accepted.
     lmm_results : sequence of LMMResult, optional
-        Per-stratum constraint LMM results (notebook M style).
+        Per-stratum constraint LMM results.
     binned_lmm_results : sequence of BinnedLMMResult, optional
-        Per-stratum binned-interaction LMM results (notebook K style).
+        Per-stratum binned-interaction LMM results.
     title : str
         Report title.
     description : str, optional
@@ -518,7 +519,7 @@ def generate_phase2_report(
     """
     out_path = Path(output_path).expanduser()
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    logger.info("Generating PTM Phase-2 report at %s", out_path)
+    logger.info("Generating PTM report at %s", out_path)
 
     sections: List[str] = [
         _build_header(
@@ -547,7 +548,7 @@ def generate_phase2_report(
         f"<style>{css}</style></head><body>{body}</body></html>"
     )
     out_path.write_text(html_out, encoding="utf-8")
-    logger.info("Phase-2 report saved to %s", out_path)
+    logger.info("PTM report saved to %s", out_path)
     return str(output_path)
 
 
@@ -634,7 +635,7 @@ def _build_phase2_lmm_section(results: Sequence["LMMResult"]) -> str:
     return (
         "<section><h2>Constraint LMM</h2>"
         "<p>Per-stratum <code>log_af ~ is_ptm + (1|gene)</code> "
-        "(notebook M).</p>"
+        "mixed-effects regression.</p>"
         "<table><thead><tr>"
         "<th>Stratum</th><th>N</th><th>N PTM</th><th>N non-PTM</th>"
         "<th>N genes</th><th>N mixed</th>"
@@ -687,9 +688,10 @@ def _build_phase2_binned_section(results: Sequence["BinnedLMMResult"]) -> str:
     return (
         "<section><h2>Binned-Interaction LMM</h2>"
         "<p>Per-stratum <code>log_af ~ is_ptm * C(expr_bin) + (1|gene)</code> "
-        "(notebook K). Reference bin <code>b0_none</code> is zero-expression; "
-        "<code>b1..bK</code> are quantiles of <code>log2(expr + 1)</code>. "
-        "Missing cells indicate bins not realized for that stratum.</p>"
+        "mixed-effects regression. Reference bin <code>b0_none</code> is "
+        "zero-expression; <code>b1..bK</code> are quantiles of "
+        "<code>log2(expr + 1)</code>. Missing cells indicate bins not "
+        "realized for that stratum.</p>"
         f"<table><thead>{header}</thead><tbody>{body_rows}</tbody></table>"
         "</section>"
     )

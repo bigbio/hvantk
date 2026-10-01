@@ -1,4 +1,4 @@
-"""Smoke tests for the PTM constraint pipeline (M1-M6).
+"""Smoke tests for the PTM constraint pipeline.
 
 Minimum checks that ``hvantk.algorithms.expression.tissue_specificity``,
 ``hvantk.algorithms.ptm.constraint_expression``, ``hvantk.algorithms.ptm.constraint``, and the

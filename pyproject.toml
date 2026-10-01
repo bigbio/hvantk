@@ -132,7 +132,7 @@ interactive = ["plotly"]
 hgc = ["matplotlib", "seaborn"]
 psroc = ["matplotlib", "plotly", "scikit-learn>=1.4,<2.0"]
 ptm = ["cptac", "sorted-nearest"]
-# statsmodels is imported at MODULE scope by algorithms/ptm/lmm.py ("Phase-2 PTM
+# statsmodels is needed at call time by algorithms/ptm/lmm.py ("PTM
 # constraint tests"), reached from `hvantk ptm test`. It was declared in no dependency
 # set at all until #318, so a fresh install raised ModuleNotFoundError on that path --
 # invisible because ptm_cli imports lmm lazily, inside the command body, so `--help`

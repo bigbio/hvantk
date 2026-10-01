@@ -43,7 +43,7 @@ def test_require_statsmodels_returns_the_formula_api_when_installed():
 
 
 def test_lmm_module_imports_without_statsmodels_installed(monkeypatch):
-    """#374 review item 4: `require_statsmodels()` used to run at MODULE scope
+    """#374: `require_statsmodels()` used to run at MODULE scope
     (`smf = require_statsmodels()`), so merely `from hvantk.algorithms.ptm.lmm import
     run_lmm` failed on an install lacking statsmodels -- not only a call into the
     module. `require_scanpy`, the stated model for this pattern, is called inside the
