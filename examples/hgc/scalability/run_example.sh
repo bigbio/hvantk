@@ -3,7 +3,7 @@
 # Quick Start Example - Run HGC Scalability Benchmark
 #
 # This script provides a simple way to run the benchmark with default settings
-# for the CHD_1000WGS chr20 data.
+# on a directory of chr20 GVCFs.
 
 set -euo pipefail
 

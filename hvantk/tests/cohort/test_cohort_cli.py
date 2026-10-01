@@ -108,7 +108,7 @@ def test_validate_surfaces_a_bad_manifest_as_a_clean_error(tmp_path):
 
 
 def test_validate_succeeds_on_a_gzipped_tsv_table(tmp_path):
-    """finding 3: `Path("x.tsv.gz").suffix == ".gz"`, so the old suffix-whitelist
+    """`Path("x.tsv.gz").suffix == ".gz"`, so the old suffix-whitelist
     delimiter heuristic picked ',' and then opened the gzip bytes as UTF-8 text --
     exit 1, empty output, UnicodeDecodeError on byte 0x8b. Hail's own import_table
     already reads gz/bgz natively, so the header reader was the only blocker."""

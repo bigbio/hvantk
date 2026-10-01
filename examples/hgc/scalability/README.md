@@ -70,10 +70,10 @@ The benchmarks measure the complete end-to-end HGC workflow performance:
 #### 1. Run the Benchmark
 
 ```bash
-cd analysis
+cd examples/hgc/scalability
 
-# Run with default settings
-bash benchmark.sh
+# Run with default settings (the GVCF directory is required)
+bash benchmark.sh --gvcf-dir /path/to/gvcfs
 
 # Or customize parameters
 bash benchmark.sh \
@@ -85,7 +85,7 @@ bash benchmark.sh \
 ```
 
 **Default Configuration:**
-- GVCF directory: `/mnt/nfs/KOL_UOL/projects/CHD_1000WGS/variant_calling/split_vcfs/chr20`
+- GVCF directory: none; pass `--gvcf-dir` or export `GVCF_DIR`
 - Output directory: `./scalability_results`
 - Sample sizes: 20, 50, 100, 250, 500, 750, 1000
 - Reference genome: GRCh38

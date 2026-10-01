@@ -1,4 +1,3 @@
-# local/rerank_engine/config.py
 import logging
 import math
 from dataclasses import dataclass, field
@@ -68,8 +67,8 @@ class _ManifestPrior:
     """PriorSpec-shaped view of a CohortManifest's prior column.
 
     ``Config.__post_init__`` constructs this automatically when a cohort manifest is
-    set and no ``PriorSpec`` was supplied directly (M2: the manifest is now the single
-    user-facing declaration -- callers stop authoring a ``PriorSpec`` by hand). Not
+    set and no ``PriorSpec`` was supplied directly: the manifest is the single
+    user-facing declaration -- callers need not author a ``PriorSpec`` by hand. Not
     part of the public API.
 
     Delegates to :func:`hvantk.algorithms.cohort.frame.load_prior_frame` instead of
@@ -94,7 +93,7 @@ class Config:
     cohort: Optional[CohortManifest] = None
     """External cohort declaration: the single source of the prior statistic and, when
     present, of the case/control architecture columns an Audit reads. Required for
-    rerank()/validate() (M3) -- a PriorSpec-only config can still be constructed (e.g.
+    rerank()/validate() -- a PriorSpec-only config can still be constructed (e.g.
     by DiseaseProfile/build_config's existing callers) but cannot be scored."""
     prior: Optional[PriorSpec] = None
     """The unit -> prior_stat table engine.rerank merges in before scoring. Derived
@@ -113,7 +112,8 @@ class Config:
     min_label_coverage: float = 0.5
     """Minimum fraction of label-positive units that must appear in the feature matrix.
     Set to 0.0 for intentional cross-disease transfer configs where labels come from a
-    different gene universe (e.g. NDD labels scored against a CHD feature matrix)."""
+    different gene universe (e.g. one disease's labels scored against another disease's
+    feature matrix)."""
     selection: Optional["SelectionPolicy"] = None
     """Feature-selection policy. None (default) disables selection entirely and reproduces
     the pre-selection code path exactly."""
@@ -123,9 +123,9 @@ class Config:
     Independent of `selection` and of `feature_provenance`. Provenance asks what a
     predictor was TRAINED on; this asks which units it was RUN on. A predictor can pass the
     first and fail the second -- EVE is unsupervised on alignments, so it is correctly
-    clean on provenance, while the bare flag "was EVE computed for this gene" scored AUC
-    0.716 against a ClinGen/GenCC label in the cohort that motivated this, above the whole
-    constraint axis.
+    clean on provenance, while the bare flag "was EVE computed for this gene" can itself
+    predict a ClinGen/GenCC-derived label, because the proteins EVE covers are enriched for
+    well-studied genes.
 
     None (default) disables the control and reproduces the previous code path exactly."""
     feature_provenance: Optional[dict] = None

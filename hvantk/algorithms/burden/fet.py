@@ -41,12 +41,14 @@ def pick_min_p(fisher_df: pd.DataFrame) -> pd.DataFrame:
 
 def _driver_af(drivers) -> float:
     # "af" here is the control-CARRIER frequency (carriers / control samples) of the
-    # max-case-carrier ("cc") driver variant, not an allele frequency; the exact
-    # allele-vs-carrier semantics are pinned by the CHD reproduction gate -- do not
-    # change without re-running it.
+    # max-case-carrier ("cc") driver variant, not an allele frequency. Treat that meaning
+    # as part of the output contract: changing it changes every reported driver_af, and
+    # no test pins it yet (the audit thresholds below assume carrier units). The
+    # tie-break and NaN handling below are pinned by the test_driver_af_* tests in
+    # hvantk/tests/burden/test_fet.py.
     #
-    # Ties on cc are common (in the committed CHD oracle, about half the genes have
-    # every driver at cc == 1) and are broken toward the HIGHEST control-carrier
+    # Ties on cc are common (with rare variants, many genes have every driver at cc == 1)
+    # and are broken toward the HIGHEST control-carrier
     # frequency -- the most common driver in controls among the tied candidates. This
     # is deterministic regardless of the order Hail collected the drivers in (#230),
     # for any cc that is a defined integer: cc is a count_where int64, and a NaN cc is

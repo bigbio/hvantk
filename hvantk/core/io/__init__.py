@@ -3,13 +3,13 @@
 Dispatch:
   *.parquet            -> AnnotationTable (pandas backend)
   *.ht/                -> AnnotationTable (hail backend)
-  *.h5ad               -> ExpressionMatrix (anndata backend) [Task 14]
+  *.h5ad               -> ExpressionMatrix (anndata backend)
   *.mt/                -> VariantMatrix
-  *.geneset.json       -> GeneSet [Task 15]
+  *.geneset.json       -> GeneSet
 
 Every saved artifact gets a sidecar <path>.provenance.json. Load returns
 the artifact with its manifest re-attached as Provenance, or a legacy
-unknown provenance if no manifest is found [Task 16].
+unknown provenance if no manifest is found.
 """
 
 from __future__ import annotations

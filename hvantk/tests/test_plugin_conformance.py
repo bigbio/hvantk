@@ -78,7 +78,7 @@ def test_peptideatlas_phospho_round_trip(tmp_path, peptideatlas_phospho_parsed_t
 
     assert spec.artifact_type is AnnotationTable
     assert spec.schema_id == "peptideatlas-phospho-v1"
-    assert spec.plugin_version  # populated by Task 1
+    assert spec.plugin_version
 
     out = tmp_path / "phospho.parquet"
 

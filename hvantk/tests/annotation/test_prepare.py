@@ -255,7 +255,8 @@ def test_prepare_variant_source_aggregates_and_maps_onto_spine(hail_session):
 
 @pytest.mark.hail
 def test_prepare_source_gene_id_path_unchanged(hail_session):
-    # Guard the refactor: the direct gene_id path still behaves as in P2c-2.
+    # Guard the refactor: adding variant-source aggregation left the direct gene_id path
+    # unchanged.
     from hvantk.algorithms.annotation.prepare import prepare_source
 
     prepared, report = prepare_source(_source_ht(), {"ENSG1", "ENSG2"}, ENTRY)

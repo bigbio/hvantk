@@ -426,9 +426,9 @@ def test_wrapper_is_skipped_when_too_few_positives_and_says_so():
 def test_wrapper_is_off_by_default():
     """The default policy runs the two filters only -- pinned, because it is a claim.
 
-    Measured across four real cohorts: RFECV's eliminations concentrate in the cohort with
-    the fewest positives, and it prunes the ablation baseline axis. Flipping this default
-    back must be a deliberate, evidenced act, not a drive-by edit.
+    Measured, not assumed: RFECV's eliminations concentrate where positives are fewest,
+    and it can prune the ablation baseline axis (see ``SelectionPolicy``). Flipping this
+    default back must be a deliberate, evidenced act, not a drive-by edit.
     """
     from hvantk.algorithms.rerank.selection import SelectionPolicy, select_axis
 

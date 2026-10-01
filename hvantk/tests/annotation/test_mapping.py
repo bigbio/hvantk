@@ -16,8 +16,7 @@ class FakeHGNC:
     """Minimal stand-in for HGNCGeneCatalogStreamer.
 
     Real HGNC tables need Hail; the mapper's own logic -- alias resolution, spine
-    membership, loss accounting -- does not, so it is tested against this fake and the
-    real streamer is exercised in Task 5's integration test.
+    membership, loss accounting -- does not, so it is tested against this fake.
     """
 
     _CANONICAL = {"MYL7": "MYL7", "OLD1": "NEW1", "NEW1": "NEW1"}

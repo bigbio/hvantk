@@ -25,7 +25,7 @@ def test_engine_end_to_end(tmp_path, monkeypatch):
     pf = tmp_path / "p.tsv"
     prior.to_csv(pf, sep="\t", index=False)
     pos = {g for g, yy in zip(genes, y) if yy == 1}
-    # rerank() requires a cohort manifest (M3); reuse pf as the cohort table too, so
+    # rerank() requires a cohort manifest; reuse pf as the cohort table too, so
     # Config.prior (given explicitly here, matching the old shape) and the cohort's
     # own prior column agree on the exact same values.
     cohort = CohortManifest(

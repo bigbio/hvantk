@@ -376,7 +376,7 @@ def test_attach_fails_loud_when_too_few_label_symbols_resolve(hail_session, tmp_
 
 
 def _cohort_symbols_in_a_column_named_gene():
-    """The exact real-world shape the G1 gate found: identifiers are HGNC symbols,
+    """The exact real-world shape an acceptance run found: identifiers are HGNC symbols,
     but the column holding them is literally named 'gene', not 'symbol'."""
     import hail as hl
 

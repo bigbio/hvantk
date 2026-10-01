@@ -1,4 +1,3 @@
-# local/rerank_engine/reranker.py
 import numpy as np
 from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.calibration import CalibratedClassifierCV
@@ -118,8 +117,7 @@ def _grouped_splits(cv, X, y, groups):
 
 class ReRanker:
     """Calibrated GBM scorer: inner isotonic calibration nested inside an outer
-    5-fold cross_val_predict for out-of-fold, no-leakage calibrated probabilities.
-    Matches Phase-1 chd_calibrate.py exactly."""
+    5-fold cross_val_predict for out-of-fold, no-leakage calibrated probabilities."""
 
     def __init__(self, calibration="isotonic", folds=5, seed=DEFAULT_SEED):
         self.calibration = calibration

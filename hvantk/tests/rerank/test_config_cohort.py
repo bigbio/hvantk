@@ -2,12 +2,12 @@
 """Config/engine consumption of CohortManifest -- the legacy per-rerank cohort loader's
 replacement.
 
-The legacy loader is deleted (M1). Config.cohort is now a CohortManifest, and Config
-derives its prior from the manifest when the caller doesn't supply one directly
-(M2). rerank always needs a prior, and a cohort manifest is now the only supported
-source of one, so validate()/rerank() require Config.cohort unconditionally (M3).
+The legacy loader is deleted. Config.cohort is now a CohortManifest, and Config
+derives its prior from the manifest when the caller doesn't supply one directly.
+rerank always needs a prior, and a cohort manifest is now the only supported
+source of one, so validate()/rerank() require Config.cohort unconditionally.
 The engine's cohort merge fails loud on a column collision instead of silently
-dropping the cohort's column (M5).
+dropping the cohort's column.
 """
 
 import logging
@@ -62,7 +62,7 @@ def _mk(cohort=None, prior=None, audit=None, **kw):
 
 
 # ---------------------------------------------------------------------------
-# Config.cohort / Config.prior derivation (M1, M2)
+# Config.cohort / Config.prior derivation
 # ---------------------------------------------------------------------------
 
 
@@ -91,7 +91,7 @@ def test_config_derives_prior_from_cohort_when_none_given(tmp_path):
 
 
 def test_config_keeps_an_explicitly_given_prior_even_with_a_cohort(tmp_path, caplog):
-    # M2 derives the prior only when the caller didn't already supply one -- an
+    # Config derives the prior only when the caller didn't already supply one -- an
     # explicit PriorSpec is never silently clobbered by the cohort's own prior
     # column (this is exactly registry.build_config's existing calling convention:
     # DiseaseProfile.prior is passed straight through alongside DiseaseProfile.cohort).
@@ -155,7 +155,7 @@ def test_config_derived_prior_matches_load_prior_frame(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# validate() requires a cohort manifest (M3)
+# validate() requires a cohort manifest
 # ---------------------------------------------------------------------------
 
 
@@ -172,7 +172,7 @@ def test_validate_passes_with_a_cohort_manifest(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# Engine cohort merge: loud failure on collision (M5)
+# Engine cohort merge: loud failure on collision
 # ---------------------------------------------------------------------------
 
 
@@ -238,9 +238,9 @@ def test_engine_raises_loud_on_cohort_prior_collision(tmp_path):
 
 
 def test_engine_does_not_collide_when_prior_column_reused_as_a_feature(tmp_path):
-    # Findings 1+2 (whole-branch review): a manifest honestly declaring its prior
+    # A manifest honestly declaring its prior
     # column under the same name a feature axis also carries as a model feature (the
-    # CHD shape: prior.column='minp', and a 'burden' FeatureAxis whose own column is
+    # burden-cohort shape: prior.column='minp', and a 'burden' FeatureAxis whose own column is
     # also 'minp') must run clean. The cohort's prior column was already consumed into
     # 'prior_stat' before the audit merge runs, so re-merging it under its raw name
     # must never happen -- it is not a genuine collision, just the same statistic

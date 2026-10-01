@@ -1,4 +1,3 @@
-# local/rerank_engine/tests/test_config.py
 import pytest, pandas as pd
 from hvantk.algorithms.cohort.spec import CohortManifest, CohortPrior
 from hvantk.algorithms.rerank.config import (
@@ -44,7 +43,7 @@ def test_validate_rejects_variant_units():
 
 
 def test_validate_requires_a_cohort_manifest():
-    # M3: rerank always needs a prior, and a CohortManifest is now its only supported
+    # rerank always needs a prior, and a CohortManifest is now its only supported
     # source -- a PriorSpec-only config (cohort=None) is rejected even with NoAudit.
     with pytest.raises(ValueError, match="cohort"):
         validate(_mk())

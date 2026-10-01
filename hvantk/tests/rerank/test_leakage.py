@@ -1,11 +1,10 @@
 """Presence-leakage control: a column whose MISSINGNESS predicts the label.
 
-Motivating measurement (CHD cohort, 1,362 genes): the bare flag "was EVE computed for this
-gene" scores AUC 0.716 against a ClinGen/GenCC-derived label -- higher than the entire
-nine-feature gnomAD constraint axis. EVE is computed from deep alignments for a curated
-subset of proteins, that subset is enriched for well-studied genes, and well-studied genes
-are disease genes. A gradient-boosted tree learns a default direction for NaN, so
-"not computed" is available to it as a feature.
+The motivating case: the bare flag "was EVE computed for this gene" can score a real AUC
+against a ClinGen/GenCC-derived label on its own. EVE is computed from deep alignments for
+a curated subset of proteins, that subset is enriched for well-studied genes, and
+well-studied genes are disease genes. A gradient-boosted tree learns a default direction
+for NaN, so "not computed" is available to it as a feature.
 
 Critically, EVE is unsupervised on multiple-sequence alignments and therefore PASSES the
 existing circularity check in provenance.py: that machinery asks what a predictor was
@@ -52,7 +51,7 @@ def test_column_present_only_for_positives_is_flagged_as_leaking():
 
 
 def test_column_missing_at_random_is_clean():
-    """Sparsity alone is not the defect. GTEx eQTL is sparser than EVE and inert."""
+    """Sparsity alone is not the defect. A column can be sparser than EVE and still inert."""
     rng, y = _frame()
     x = rng.normal(size=len(y))
     x[rng.random(len(y)) < 0.8] = np.nan  # 20% coverage, unrelated to y
@@ -107,9 +106,9 @@ def test_leakage_is_detected_in_both_directions():
 def test_small_effect_is_not_flagged_even_when_significant():
     """Significance is not sufficient. At large n a trivial imbalance reaches p<0.05.
 
-    The reference axes in the motivating cohort (constraint, expression) sit at presence
-    AUC 0.503-0.530 and must never be barred, or the control would delete the baseline it
-    exists to protect.
+    Near-fully-covered reference axes (constraint, expression) sit just above presence AUC
+    0.5 and must never be barred, or the control would delete the baseline it exists to
+    protect.
     """
     rng = np.random.default_rng(7)
     n = 200_000
