@@ -7,19 +7,19 @@
   },
   "clingen:gene-disease": {
     "accepted_in": "drift/routine-batch",
-    "last_upstream_change": "2026-09-15T10:45:09.783000+00:00",
+    "last_upstream_change": "2026-10-01T12:07:48.768956+00:00",
     "rebuilt_at": null,
     "signal": "routine"
   },
   "clinvar:variants": {
-    "accepted_in": "drift/clinvar-variants",
-    "last_upstream_change": "2026-09-01T10:50:05.475114+00:00",
+    "accepted_in": "drift/routine-batch",
+    "last_upstream_change": "2026-10-01T12:07:48.768956+00:00",
     "rebuilt_at": null,
-    "signal": "schema"
+    "signal": "routine"
   },
   "gencc:submissions": {
     "accepted_in": "drift/routine-batch",
-    "last_upstream_change": "2026-09-15T10:45:09.783000+00:00",
+    "last_upstream_change": "2026-10-01T12:07:48.768956+00:00",
     "rebuilt_at": null,
     "signal": "routine"
   },
