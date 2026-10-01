@@ -488,7 +488,7 @@ def generate_phase2_report(
     description: Optional[str] = None,
 ) -> str:
     """Write an HTML summary of the atlas, annotation, and constraint-LMM
-    sections (no plots; plots added in Phase 4).
+    sections (no plots).
 
     Each section renders only if its corresponding input is non-None so the
     same report writer serves atlas-only, annotation-only, or test-only runs.
