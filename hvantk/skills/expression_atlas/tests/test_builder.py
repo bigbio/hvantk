@@ -301,7 +301,7 @@ def test_malformed_sample_without_sdrf_still_raises(tmp_path):
 def test_numeric_annotation_column_is_refused_not_absorbed_as_a_sample(tmp_path):
     """A numeric column the SDRF does not declare must raise, not become a sample.
 
-    A regression from the #342 fix. `Entrez` is numeric, so the content
+    Found while fixing #342. `Entrez` is numeric, so the content
     heuristic called it data; it is absent from the SDRF, so the authoritative sample
     list said otherwise; and the code took content's side silently. The result built
     cleanly with NCBI gene ids sitting in the expression matrix as expression values
