@@ -22,7 +22,7 @@ class DiseaseProfile:
         default_factory=lambda: ["Definitive", "Strong", "Moderate"]
     )
     extra_positive_genes: set = field(default_factory=set)
-    # per-cohort PTM feature parquet (built by chd_ptm_features.py prep step)
+    # optional per-cohort PTM feature parquet, built outside the package
     ptm_features_path: Optional[str] = None
     # knobs
     min_label_coverage: float = 0.5

@@ -1,7 +1,7 @@
 """Cohort manifest parsing and validation.
 
 All pure Python -- no Hail -- so these run in the default fast suite. The contract's
-validation logic is deliberately Hail-free (design G1).
+validation logic is deliberately Hail-free.
 """
 
 from pathlib import Path
@@ -166,7 +166,7 @@ def test_axis_column_colliding_with_the_prior_column_is_rejected(tmp_path):
 
 
 def test_axis_column_colliding_with_the_prior_column_is_rejected_on_direct_construction():
-    # Finding 3, "related root cause" (re-review): the duplicate-column check used to
+    # The duplicate-column check used to
     # run only inside load_cohort(), so a directly-constructed CohortManifest (every
     # test helper in this codebase, and any future non-YAML caller) could declare an
     # axis column that collides with the prior column. frame.py's include_prior=False

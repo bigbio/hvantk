@@ -4,7 +4,7 @@ These checks used to be private to ``hvantk/tools/cohort/cohort_cli.py``, althou
 cohort concept lives in ``hvantk/algorithms/cohort/``. The consequence was concrete: an
 acceptance script had to import three underscore-private functions out of a CLI module,
 and any Python caller of :func:`hvantk.algorithms.cohort.attach.attach` skipped this
-validation entirely.
+validation entirely. ``attach`` still does not run these checks itself: call them first.
 
 Every function here raises plain ``ValueError`` -- this module must never import
 ``click``, or anything under ``hvantk.skills`` / ``hvantk.tools``. The CLI

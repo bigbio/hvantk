@@ -31,7 +31,7 @@ def test_architecture_audit_reasons():
 
 
 def test_architecture_audit_missing_columns_error_names_every_required_column():
-    # Finding 5 (re-review): apply() must derive its own requirement check from
+    # apply() must derive its own requirement check from
     # ARCHITECTURE_AUDIT_COLUMNS (the constant it and has_architecture_columns() are
     # both supposed to agree on) rather than re-listing ("n_case_var", "conc")
     # separately -- otherwise the two can drift apart silently if the constant is
@@ -42,7 +42,7 @@ def test_architecture_audit_missing_columns_error_names_every_required_column():
     msg = str(excinfo.value)
     for col in ARCHITECTURE_AUDIT_COLUMNS:
         assert col in msg
-    # Finding 3 (re-review): the remedy text must not claim there's a way to declare
+    # The remedy text must not claim there's a way to declare
     # a required column "directly" outside cohort_axes (there isn't -- the manifest
     # schema allows only 'prior' and 'cohort_axes'), and must not blindly point CLI
     # users at leaving Config.audit unset (rerank_cli.py always sets it explicitly).

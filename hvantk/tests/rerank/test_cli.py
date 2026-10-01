@@ -263,7 +263,7 @@ def test_rerank_cli_no_near_miss_warning_when_architecture_columns_are_split(
 def test_rerank_cli_falls_back_cleanly_when_the_prior_column_is_the_missing_third(
     tmp_path, caplog
 ):
-    # Finding 3 (re-review): has_architecture_columns() used to be fed
+    # has_architecture_columns() used to be fed
     # declared_columns() (prior column + axis columns), but engine.rerank() merges
     # the cohort frame with include_prior=False -- the two disagree by exactly the
     # prior column. Reproduction: prior.column='n_case_var', and a cohort_axes

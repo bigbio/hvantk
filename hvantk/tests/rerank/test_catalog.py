@@ -73,7 +73,7 @@ def test_default_audit_depends_on_cohort():
 
 
 def test_default_audit_is_not_fooled_by_the_prior_column_supplying_the_third_column():
-    # Finding 3 (re-review): eligibility must be judged on the columns
+    # Eligibility must be judged on the columns
     # engine.rerank() will actually merge (axis_columns()), not declared_columns()
     # (which also counts the prior column, but the engine merges the cohort frame
     # with include_prior=False). A manifest whose prior IS one of the three required

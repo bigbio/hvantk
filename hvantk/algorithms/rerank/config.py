@@ -68,7 +68,7 @@ class _ManifestPrior:
 
     ``Config.__post_init__`` constructs this automatically when a cohort manifest is
     set and no ``PriorSpec`` was supplied directly: the manifest is the single
-    user-facing declaration -- callers do not author a ``PriorSpec`` by hand. Not
+    user-facing declaration -- callers need not author a ``PriorSpec`` by hand. Not
     part of the public API.
 
     Delegates to :func:`hvantk.algorithms.cohort.frame.load_prior_frame` instead of

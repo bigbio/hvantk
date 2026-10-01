@@ -152,7 +152,7 @@ def test_load_cohort_frame_agrees_with_validate_on_a_comma_header_with_a_space(
 def test_load_cohort_frame_strips_padded_key_values_when_gene_is_not_first_column(
     tmp_path,
 ):
-    # Finding 1 (re-review): a ", "-delimited table pads every value after the first
+    # A ", "-delimited table pads every value after the first
     # field with a leading space, not only the header. The prior fix stripped column
     # NAMES ("minp, gene" -> "minp"/"gene") but not VALUES, so a table whose key
     # column is not the first field loaded "successfully" with space-padded gene
@@ -169,7 +169,7 @@ def test_load_cohort_frame_strips_padded_key_values_when_gene_is_not_first_colum
 
 
 def test_load_prior_frame_joins_cleanly_on_a_padded_comma_delimited_table(tmp_path):
-    # Finding 1 (re-review), engine-facing consequence: the whole point of stripping
+    # Engine-facing consequence: the whole point of stripping
     # values, not merely names, is that a downstream gene-keyed join (here,
     # load_prior_frame -> engine.rerank()'s prior merge) must actually find every
     # gene, not merge a space-padded key against a clean one and silently produce an
@@ -187,7 +187,7 @@ def test_load_prior_frame_joins_cleanly_on_a_padded_comma_delimited_table(tmp_pa
 
 
 def test_load_cohort_frame_raises_on_a_post_strip_duplicate_column_label(tmp_path):
-    # Finding 2 (re-review): "gene\tgene \tminp" is two distinct raw header names,
+    # "gene\tgene \tminp" is two distinct raw header names,
     # but both strip to "gene". Before this check, df[manifest.key_column] silently
     # returned a two-column DataFrame instead of a Series, and the first symptom was
     # an AttributeError several calls downstream naming neither the manifest nor the
@@ -202,7 +202,7 @@ def test_load_cohort_frame_raises_on_a_post_strip_duplicate_column_label(tmp_pat
 
 
 def test_load_cohort_frame_names_a_raw_na_token_value_not_empty_null(tmp_path):
-    # Finding 4 (re-review): pandas.read_csv coerces its default NA strings ("NA",
+    # pandas.read_csv coerces its default NA strings ("NA",
     # "NULL", "None", "nan", ...), so a gene key literally spelled "NA" is rejected
     # -- correctly -- but the old message called it "empty/null", which is wrong for
     # a cell that visibly has a value. The message must say it parsed as a pandas NA
