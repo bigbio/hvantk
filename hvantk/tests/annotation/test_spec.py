@@ -61,7 +61,7 @@ def test_schema_accepts_a_gene_id_entry_and_rejects_a_bad_one():
 def test_schema_rejects_an_unknown_key():
     """Validates that only the allowed keys (gene_id, hgnc_id, symbol) pass validation.
 
-    This is the schema half of the key-restriction defense-in-depth. P2c widened the enum
+    This is the schema half of the key-restriction defense-in-depth. The enum was widened
     to gene_id/hgnc_id/symbol; this tripwire now asserts a still-unknown key (protein_id) is
     rejected, and must be re-pointed at a new unknown key if the enum widens again.
     """

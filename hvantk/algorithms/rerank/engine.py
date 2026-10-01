@@ -29,10 +29,9 @@ class SelectionSummary:
     estimators that differ in two ways at once -- the global one has seen every label
     (which inflates it), and it also commits every fold to a single feature set instead of
     one fitted per fold (which can help or hurt). Those pull in opposite directions and the
-    sum has no guaranteed sign. Measured on the real CHD cohort (1362 genes, 51 features):
-    +0.0098 on the `all` arm but -0.0100 on `clean`, from the same data and the same
-    policy. A large gap in either direction says the selection is unstable on this cohort;
-    a small one says little.
+    sum has no guaranteed sign: one run can show a positive gap on the `all` arm and a
+    negative one on `clean`, from the same data and the same policy. A large gap in either
+    direction says the selection is unstable on this cohort; a small one says little.
     """
 
     arm: str

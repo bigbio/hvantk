@@ -154,11 +154,9 @@ def test_reduce_emits_per_group_stats_when_declared():
 
 # --- vector emission -------------------------------------------------------------------
 # Reducing an atlas to one summed scalar discards the cross-cell-type contrast entirely: the
-# non-target groups are computed, used as the denominator, then thrown away. Measured cost on
-# real data (analysis/rerank-homogenised): collapsing 33 cortical cell types to one number
-# took an epilepsy axis from +0.0795 to +0.0187 and from significant to not, while the
-# multiplicity penalty for keeping the vector was +0.0009. So the vector is the default and
-# the roll-up is additive.
+# non-target groups are computed, used as the denominator, then thrown away. In measurement
+# that cost real AUC, while keeping the vector barely moved the multiplicity penalty. So the
+# vector is the default and the roll-up is additive (see ``SpecificitySpec``).
 
 
 def test_specificity_emits_one_column_per_group_by_default():

@@ -5,8 +5,8 @@ position expansion and locus-based joins. This avoids Hail's interval join
 limitations with overlapping intervals (common for adjacent PTM sites).
 
 Also exposes a pandas-based SYMBOL+chrom annotator
-(``annotate_variants_by_symbol``) that reproduces notebook N's Cell 4 / 11
-semantics for the CHD case-control workflow.
+(``annotate_variants_by_symbol``) for variant tables held in pandas, with a
+gene symbol, chromosome and position per row rather than a Hail locus.
 """
 
 from __future__ import annotations
@@ -187,9 +187,8 @@ def annotate_variants_by_symbol(
 ) -> pd.DataFrame:
     """Per-variant ``is_ptm_site`` / ``is_ptm_proximal`` via SYMBOL + chrom merge.
 
-    Reproduces notebook_n Cell 4 / Cell 11 semantics exactly. Both flags can
-    be True simultaneously (``is_ptm_proximal`` is NOT exclusive of
-    ``is_ptm_site``).
+    Both flags can be True simultaneously (``is_ptm_proximal`` is NOT
+    exclusive of ``is_ptm_site``).
 
     The routine:
 

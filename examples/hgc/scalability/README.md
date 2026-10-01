@@ -85,7 +85,7 @@ bash benchmark.sh \
 ```
 
 **Default Configuration:**
-- GVCF directory: `/mnt/nfs/KOL_UOL/projects/CHD_1000WGS/variant_calling/split_vcfs/chr20`
+- GVCF directory: none; pass `--gvcf-dir` or export `GVCF_DIR`
 - Output directory: `./scalability_results`
 - Sample sizes: 20, 50, 100, 250, 500, 750, 1000
 - Reference genome: GRCh38

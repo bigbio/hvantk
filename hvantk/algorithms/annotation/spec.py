@@ -1,9 +1,10 @@
 """Feature-spec parsing and validation.
 
 A feature spec declares, per source, which columns become gene-level features and how the
-source's key maps onto the spine's ``gene_id``. P2a supports only ``gene_id``-keyed
-entries (direct); P2c widens the key types and adds aggregation transforms. Parsing is
-pure Python -- no Hail -- so specs validate in the fast test suite.
+source's key maps onto the spine's ``gene_id``. A ``gene_id``-keyed entry joins directly;
+other keys (e.g. ``symbol``) are mapped onto ``gene_id``, and ``variant``-keyed entries are
+aggregated through an ``aggregate`` block. Parsing is pure Python -- no Hail -- so specs
+validate in the fast test suite.
 """
 
 from __future__ import annotations
@@ -74,10 +75,10 @@ class SpecificitySpec:
     ``emit`` controls the reduction, and defaults to the VECTOR -- one column per group.
     Reducing an atlas to a single summed scalar throws away the cross-group contrast: the
     non-target groups are computed, used as the denominator of the fraction, and discarded.
-    Measured on real cohorts, that reduction cost an epilepsy axis +0.061 AUC and the
-    difference between significant and not, while keeping the vector raised the
-    selected-maximum null by +0.0009. So the vector is the default and a named roll-up is
-    additive: give ``targets`` and you get the roll-up column IN ADDITION to the vector.
+    That contrast can carry the signal: in measurement, the reduction lost real AUC, while
+    keeping the vector barely moved the selected-maximum null. So the vector is the default
+    and a named roll-up is additive: give ``targets`` and you get the roll-up column IN
+    ADDITION to the vector.
 
     emit
         ``"vector"`` (default) one column per group, plus the roll-up when ``targets`` is

@@ -9,7 +9,7 @@
 #   bash hgc_scalability_benchmark.sh [OPTIONS]
 #
 # Options:
-#   --gvcf-dir DIR        Directory containing GVCF files (default: /mnt/nfs/KOL_UOL/projects/CHD_1000WGS/variant_calling/split_vcfs/chr20)
+#   --gvcf-dir DIR        Directory containing GVCF files (required; or export GVCF_DIR)
 #   --output-dir DIR      Output directory for results (default: ./scalability_results)
 #   --sample-sizes SIZES  Comma-separated sample sizes (default: 20,50,100,250,500,750,1000)
 #   --reference REF       Reference genome (default: GRCh38)

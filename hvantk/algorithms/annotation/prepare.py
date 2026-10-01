@@ -262,7 +262,7 @@ def _collapse_matrix_onto_gene_id(source_ht, key_col, resolved, columns, source_
     plain gene table that is an error -- there is no combine rule -- so :func:`_rekey_onto_gene_id`
     raises. An expression matrix, however, is a matrix->gene reduction: colliding symbols are
     combined by ``max``, matching the reducer's own duplicate-symbol collapse
-    (:func:`hvantk.algorithms.annotation.matrix.reduce_matrix_to_gene`). All P2c-4 matrix features
+    (:func:`hvantk.algorithms.annotation.matrix.reduce_matrix_to_gene`). All matrix features
     (EWCE specificity, fraction expressed, mean expression) are "larger = more signal", so taking
     the max keeps the strongest evidence when one gene carries two symbol rows.
     """

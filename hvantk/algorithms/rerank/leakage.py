@@ -3,21 +3,21 @@
 Circularity, handled in ``provenance.py``, asks what a predictor was TRAINED on. This asks
 which genes it was RUN on. They are independent, and only the first had a control.
 
-The measurement that motivated this module: in a 1,362-gene CHD cohort, the bare flag "was
-EVE computed for this gene" scores AUC 0.716 against a ClinGen/GenCC-derived label -- higher
-than the entire nine-feature gnomAD constraint axis (0.693). EVE is computed from deep
-multiple-sequence alignments for a curated subset of proteins; that subset is enriched for
-well-studied genes; well-studied genes are disease genes. Gradient-boosted trees learn a
-default branch direction for NaN, so "not computed" reaches the model as a usable feature.
-EVE is unsupervised on alignments and so passes every circularity check correctly.
+The case that motivated this module is EVE. It is computed from deep multiple-sequence
+alignments for a curated subset of proteins; that subset is enriched for well-studied
+genes; well-studied genes are disease genes. So the bare flag "was EVE computed for this
+gene" can score a real AUC against a ClinGen/GenCC-derived label -- on its own, without
+any EVE score. Gradient-boosted trees learn a default branch direction for NaN, so "not
+computed" reaches the model as a usable feature. EVE is unsupervised on alignments and so
+passes every circularity check correctly.
 
-Note what is NOT the defect. Sparsity is not: on a 19,448-gene spine GTEx eQTL is sparser
-than EVE (21% against 15% coverage) and its presence indicator is inert (AUC 0.47-0.51),
-while EVE reaches 0.64-0.78. A coverage threshold cannot separate them, and one set at 90%
-would delete four whole axes for the wrong reason. What matters is missingness that
-CORRELATES WITH THE LABEL -- which, exactly like circularity, makes this a property of the
-feature/LABEL pair rather than of the feature. The same column scores 0.78 against one
-disease label and 0.64 against another.
+Note what is NOT the defect. Sparsity is not: a column can be sparser than EVE and still
+have an inert presence indicator (presence AUC near 0.5), when whatever decides its
+coverage is unrelated to the label. A coverage threshold cannot separate the two, and one
+strict enough to catch EVE would delete sparse, non-leaking axes for the wrong reason. What
+matters is missingness that CORRELATES WITH THE LABEL -- which, exactly like circularity,
+makes this a property of the feature/LABEL pair rather than of the feature. The same column
+can leak strongly against one disease label and weakly against another.
 
 Statistical selection cannot find this on its own; it rewards it. A univariate filter ranks
 EVE highly BECAUSE its missingness tracks the label, which is the argument
@@ -29,9 +29,8 @@ sample-size range:
 * an FDR-significant presence/label association -- effect size alone flags noise in a small
   cohort;
 * a minimum effect -- significance alone flags a 1.5-point coverage difference once n is
-  large enough, and in the motivating cohort the reference axes sit at presence AUC
-  0.503-0.530 and must never be barred, or the control deletes the baseline it exists to
-  protect.
+  large enough, and near-fully-covered reference axes sit just above presence AUC 0.5;
+  they must never be barred, or the control deletes the baseline it exists to protect.
 
 Dropping is the bluntest available remedy and deliberately not the only one. A column whose
 presence predicts the label can also be handled by restricting the universe to where it is
@@ -49,10 +48,10 @@ import numpy as np
 
 from hvantk.algorithms.rerank.selection import _null_se, univariate_auc
 
-# Presence AUC at or beyond 0.5 +/- this is "material". Anchored on measurement, not taste:
-# in the motivating cohort the near-fully-covered reference axes (constraint, gevir,
-# expression, tolerance) span 0.503-0.530, so 0.05 sits just above what a non-leaking column
-# reaches, while EVE (0.716) and ptm_density (0.617) are far outside it.
+# Presence AUC at or beyond 0.5 +/- this is "material". Near-fully-covered reference axes
+# (constraint, expression) land within a few hundredths of 0.5, so 0.05 sits just above what
+# a non-leaking column reaches, while a presence flag that genuinely tracks the label (EVE)
+# lands well outside it.
 DEFAULT_MIN_EFFECT = 0.05
 
 # Presence AUC threshold in the same units callers think in.

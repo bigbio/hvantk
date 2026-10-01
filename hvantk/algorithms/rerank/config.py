@@ -123,9 +123,9 @@ class Config:
     Independent of `selection` and of `feature_provenance`. Provenance asks what a
     predictor was TRAINED on; this asks which units it was RUN on. A predictor can pass the
     first and fail the second -- EVE is unsupervised on alignments, so it is correctly
-    clean on provenance, while the bare flag "was EVE computed for this gene" scored AUC
-    0.716 against a ClinGen/GenCC label in the cohort that motivated this, above the whole
-    constraint axis.
+    clean on provenance, while the bare flag "was EVE computed for this gene" can itself
+    predict a ClinGen/GenCC-derived label, because the proteins EVE covers are enriched for
+    well-studied genes.
 
     None (default) disables the control and reproduces the previous code path exactly."""
     feature_provenance: Optional[dict] = None
