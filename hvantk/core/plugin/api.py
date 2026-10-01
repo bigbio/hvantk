@@ -154,7 +154,7 @@ def normalize_etag(value: str | None) -> str | None:
 
 
 class Builder(Protocol):
-    """Phase B builder contract used by ``DatasetSpec.builder``.
+    """Plugin builder contract used by ``DatasetSpec.builder``.
 
     Plugin authors implement this signature; the platform's
     ``run_builder_for_spec`` invokes it after computing the source fingerprint

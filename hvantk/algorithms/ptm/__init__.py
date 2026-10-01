@@ -133,7 +133,7 @@ def __getattr__(name: str):
 __all__ = [
     # Annotation
     "annotate_variants_with_ptm",
-    # Analysis (Q1, Q3)
+    # Analysis
     "PTMLandscapeResult",
     "PTMPopulationResult",
     "ptm_landscape",

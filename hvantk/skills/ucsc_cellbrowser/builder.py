@@ -1,6 +1,6 @@
 """AnnData builder for UCSC Cell Browser collections.
 
-Owns the Phase B ``build_ucsc_cellbrowser`` builder. Turns a UCSC Cell
+Owns the ``build_ucsc_cellbrowser`` builder. Turns a UCSC Cell
 Browser expression TSV plus its metadata file into an ``anndata.AnnData``
 object (cells x genes), returned as an ``ExpressionMatrix`` for the platform
 to persist.
@@ -26,7 +26,7 @@ __all__ = [
     "BACKED_BUILDER_THRESHOLD_BYTES",
 ]
 
-# Map compound dataset names → Phase B schema IDs.
+# Map compound dataset names → schema IDs.
 _SCHEMA_IDS: dict[str, str] = {
     "ucsc-cellbrowser:default": "ucsc-cellbrowser-default-v1",
     "ucsc-cellbrowser:adult-ctx": "ucsc-cellbrowser-adult-ctx-v1",
@@ -39,7 +39,7 @@ def _resolve_ucsc_inputs(parsed_input):
 
     Accepts either:
 
-    * a mapping with ``expression_matrix`` / ``metadata`` keys (direct Phase B callers), or
+    * a mapping with ``expression_matrix`` / ``metadata`` keys (direct builder callers), or
     * a path to the raw download directory. This is the ``hvantk reprocess`` contract:
       the dataset declares no ``lifecycle.parse`` stage, so reprocess passes the raw dir
       to the builder ("no parse stage declared: the builder consumes the raw dir
@@ -109,7 +109,7 @@ def build_ucsc_cellbrowser(
     backed_output_path: str | None = None,
     **params,
 ):
-    """Phase B builder — returns an ExpressionMatrix.
+    """Plugin builder — returns an ExpressionMatrix.
 
     ``parsed_input`` is either a mapping with ``expression_matrix`` / ``metadata``
     keys, or a path to the raw download directory (the ``hvantk reprocess`` contract
@@ -124,8 +124,8 @@ def build_ucsc_cellbrowser(
       directly into an ``AnnData`` object, annotates summary stats, and
       returns it. The platform's ``artifact.save()`` persists to disk.
     - Backed (auto-selected for inputs > ``BACKED_BUILDER_THRESHOLD_BYTES``,
-      or forced via ``backed=True``): writes to disk while streaming. Phase B
-      callers that need backed mode must pass ``backed_output_path`` (the
+      or forced via ``backed=True``): writes to disk while streaming. Callers
+      that need backed mode must pass ``backed_output_path`` (the
       final on-disk path) because backed writing requires materializing
       directly to a file. The platform then re-saves to the requested
       output via ``artifact.save()`` (no-op when paths match).

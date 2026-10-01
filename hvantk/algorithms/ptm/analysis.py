@@ -1,12 +1,12 @@
-"""PTM-variant analysis functions (Q1, Q3).
+"""PTM-variant analysis functions.
 
 Implements:
-- ptm_landscape: PTM-variant overlap counts and enrichment (Q1)
-- ptm_population: Population-level allele frequency analysis at PTM sites (Q3)
+- ptm_landscape: PTM-variant overlap counts and enrichment
+- ptm_population: Population-level allele frequency analysis at PTM sites
 - export_ptm_strata: Export PTM-stratified variant lists for external tools (e.g., PSROC)
 
-Q2 (predictor evaluation) is composed at the workflow level: annotate variants
-with PTM info (Phase 3), export strata, then run hvantk psroc independently.
+Predictor evaluation is composed at the workflow level: annotate variants
+with PTM info, export strata, then run hvantk psroc independently.
 """
 
 import json
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class PTMLandscapeResult:
-    """Result from PTM-variant landscape analysis (Q1)."""
+    """Result from PTM-variant landscape analysis."""
 
     n_variants: int = 0
     n_pathogenic: int = 0
@@ -108,7 +108,7 @@ class PTMLandscapeResult:
 
 @dataclass
 class PTMPopulationResult:
-    """Result from population-level PTM-variant analysis (Q3)."""
+    """Result from population-level PTM-variant analysis."""
 
     n_variants: int = 0
     n_ptm_site: int = 0
@@ -323,7 +323,7 @@ def export_ptm_strata(
 
 
 # ---------------------------------------------------------------------------
-# Q1: PTM-Variant Landscape
+# PTM-Variant Landscape
 # ---------------------------------------------------------------------------
 
 
@@ -336,7 +336,7 @@ def ptm_landscape(
     benign_labels,
     flanking_codons: int = 5,
 ) -> PTMLandscapeResult:
-    """PTM-variant overlap and enrichment analysis (Q1).
+    """PTM-variant overlap and enrichment analysis.
 
     Cross-references ClinVar P/LP variants with PTM sites. Computes overlap
     counts per PTM category, overall enrichment (Fisher's exact test), and
@@ -364,7 +364,7 @@ def ptm_landscape(
     from hvantk.algorithms.ptm.annotate import annotate_variants_with_ptm
 
     os.makedirs(output_dir, exist_ok=True)
-    logger.info("Running PTM-variant landscape analysis (Q1)")
+    logger.info("Running PTM-variant landscape analysis")
 
     # Annotate ClinVar with PTM info and assign P/B labels
     annotated = annotate_variants_with_ptm(clinvar_ht, ptm_ht, flanking_codons)
@@ -482,7 +482,7 @@ def ptm_landscape(
 
 
 # ---------------------------------------------------------------------------
-# Q3: Population-Level PTM-Variant Burden
+# Population-Level PTM-Variant Burden
 # ---------------------------------------------------------------------------
 
 
@@ -493,7 +493,7 @@ def ptm_population(
     af_field: str = "AF",
     flanking_codons: int = 5,
 ) -> PTMPopulationResult:
-    """Population-level allele frequency analysis at PTM sites (Q3).
+    """Population-level allele frequency analysis at PTM sites.
 
     Annotates gnomAD variants with PTM proximity and compares allele
     frequency distributions between PTM-site and non-PTM coding variants.
@@ -519,7 +519,7 @@ def ptm_population(
     from hvantk.algorithms.ptm.annotate import annotate_variants_with_ptm
 
     os.makedirs(output_dir, exist_ok=True)
-    logger.info("Running PTM population analysis (Q3)")
+    logger.info("Running PTM population analysis")
 
     # Annotate gnomAD with PTM info
     annotated = annotate_variants_with_ptm(gnomad_ht, ptm_ht, flanking_codons)

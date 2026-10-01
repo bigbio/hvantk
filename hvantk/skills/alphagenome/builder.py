@@ -3,7 +3,7 @@
 Owns the full pipeline: drives the local AlphaGenomePipeline to call the
 external API for each variant, persists predictions and checkpoint files
 to a temp directory, then re-emits a Hail Table keyed by (locus, alleles)
-under the Phase B contract.
+under the plugin builder contract.
 """
 
 from __future__ import annotations
@@ -88,7 +88,7 @@ def _run_alphagenome_pipeline(
 
 
 def build_alphagenome_predictions(parsed_input, ctx, **params):
-    """Phase B builder — returns an AnnotationTable.
+    """Plugin builder — returns an AnnotationTable.
 
     Parameters
     ----------

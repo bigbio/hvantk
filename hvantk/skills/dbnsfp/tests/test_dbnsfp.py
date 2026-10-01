@@ -1,4 +1,4 @@
-"""Conformance test for the dbnsfp plugin (Phase K)."""
+"""Conformance test for the dbnsfp plugin."""
 
 from __future__ import annotations
 

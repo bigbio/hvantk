@@ -1,6 +1,6 @@
 """HTML report generation for PTM-variant analysis.
 
-Generates a static HTML report combining landscape (Q1) and population (Q3)
+Generates a static HTML report combining landscape and population
 results with embedded matplotlib plots. Follows the enrichex/report.py pattern:
 inline CSS, base64 PNGs, lightweight string formatting (no template engines).
 """
@@ -53,9 +53,9 @@ def generate_report(
     output_path : str
         Destination HTML file path.
     landscape_result : Optional[PTMLandscapeResult]
-        Q1 landscape analysis result.
+        Landscape analysis result.
     population_result : Optional[PTMPopulationResult]
-        Q3 population analysis result.
+        Population analysis result.
     title : str
         Report title.
     description : Optional[str]
@@ -220,7 +220,7 @@ def _build_landscape_section(
         )
 
     return (
-        "<section><h2>Landscape Analysis (Q1)</h2>"
+        "<section><h2>Landscape Analysis</h2>"
         f"{overview}"
         f"{summary_img}{category_img}{table_html}{distance_img}"
         "</section>"
@@ -253,7 +253,7 @@ def _build_population_section(
         embed,
     )
 
-    return f"<section><h2>Population Analysis (Q3)</h2>{overview}{af_img}</section>"
+    return f"<section><h2>Population Analysis</h2>{overview}{af_img}</section>"
 
 
 def _build_key_findings(
@@ -338,7 +338,7 @@ def _build_methods_section(has_landscape: bool, has_population: bool) -> str:
     paragraphs = []
     if has_landscape:
         paragraphs.append(
-            "<p><strong>Landscape (Q1):</strong> ClinVar P/LP and B/LB variants "
+            "<p><strong>Landscape:</strong> ClinVar P/LP and B/LB variants "
             "were cross-referenced with UniProt PTM sites mapped to GRCh38 genomic "
             "coordinates via Ensembl GTF (release 113). A variant is classified as "
             "'PTM site' if it overlaps a PTM-modified codon, 'proximal' if within "
@@ -349,7 +349,7 @@ def _build_methods_section(has_landscape: bool, has_population: bool) -> str:
         )
     if has_population:
         paragraphs.append(
-            "<p><strong>Population (Q3):</strong> gnomAD variant allele frequencies "
+            "<p><strong>Population:</strong> gnomAD variant allele frequencies "
             "were compared between PTM-site, proximal, and non-PTM coding positions. "
             "Lower mean AF at PTM sites suggests purifying selection. The '% ultra-rare' "
             "metric shows the fraction of variants with AF &lt; 10<sup>-4</sup>.</p>"

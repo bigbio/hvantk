@@ -31,7 +31,7 @@ _SNAPSHOT_ROOT = Path("hvantk/skills/ucsc_cellbrowser/tests/snapshots")
 
 # Per-collection cases. ``builder_kwargs`` carries plugin-derived overrides
 # (e.g. ``gene_column``, ``split_gene_field``) when a dataset deviates from
-# Phase B ``build_ucsc_cellbrowser`` defaults; the default values produce empty
+# ``build_ucsc_cellbrowser`` defaults; the default values produce empty
 # dicts. ``dataset_name`` selects the per-dataset schema_id in the builder's
 # ``_SCHEMA_IDS`` table.
 _UCSC_CASES = [
@@ -77,7 +77,7 @@ def _fake_ctx(dataset_name: str):
 
 
 def _build_for_snapshot(expression_matrix_path, **call_kwargs):
-    """Phase B build wrapper for snapshot regeneration / assertion.
+    """Build wrapper for snapshot regeneration / assertion.
 
     Accepts the (input_path, metadata_path, ...) signature the snapshot
     helper expects plus an injected ``dataset_name``; returns the underlying
@@ -87,7 +87,7 @@ def _build_for_snapshot(expression_matrix_path, **call_kwargs):
 
     dataset_name = call_kwargs.pop("dataset_name")
     metadata_path = call_kwargs.pop("metadata_path")
-    # Strip args that only existed on the Phase A signature.
+    # Strip args that only existed on the legacy builder signature.
     call_kwargs.pop("output_path", None)
     call_kwargs.pop("overwrite", None)
 

@@ -1,4 +1,4 @@
-"""Skipped: no fixture for alphagenome; loader-only test (Phase K)."""
+"""Skipped: no fixture for alphagenome; loader-only test."""
 
 from __future__ import annotations
 

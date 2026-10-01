@@ -1,4 +1,4 @@
-"""Shared Hail Table infrastructure used by Phase B plugin builders.
+"""Shared Hail Table infrastructure used by plugin builders.
 
 ``create_table_base`` is the common boilerplate for the small set of plugin
 builders that still follow the import → optional transform → checkpoint →
@@ -6,8 +6,8 @@ optional TSV-export pattern. ``cleanup_temp_file`` provides best-effort
 cleanup of local / Hadoop / S3 / GS temp files.
 
 Both functions were previously in ``hvantk/core/builders/table.py`` alongside
-the (now retired) Phase A ``create_<x>_tb`` builders; they moved here when
-the Phase A surface was retired (issue #114).
+the (now retired) legacy ``create_<x>_tb`` builders; they moved here when
+the legacy surface was retired (issue #114).
 """
 
 from __future__ import annotations
@@ -41,7 +41,7 @@ def create_table_base(
     5. Checkpoints to ``output_path``.
     6. Optionally exports a TSV alongside the checkpoint.
 
-    Provenance is stamped on the resulting artifact by the Phase B
+    Provenance is stamped on the resulting artifact by the build
     orchestrator (``run_builder_for_spec`` -> ``ctx.provenance(...)``);
     callers no longer attach ``hvantk_metadata`` globals.
     """

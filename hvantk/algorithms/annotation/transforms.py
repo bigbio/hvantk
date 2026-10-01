@@ -1,4 +1,4 @@
-"""Declarative variant->gene aggregation (design decision 5's transform vocabulary).
+"""Declarative variant->gene aggregation transforms.
 
 Layering: this module imports hail + stdlib ONLY. It never imports a ``hvantk.skills`` or
 ``hvantk.tools`` module -- the source arrives as a Hail Table handed in by the caller (same

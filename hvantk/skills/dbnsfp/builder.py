@@ -1,6 +1,6 @@
 """Hail Table builder for the dbNSFP variant functional annotation database.
 
-Owns the Phase B ``build_dbnsfp_variants`` builder. Imports the dbNSFP
+Owns the ``build_dbnsfp_variants`` builder. Imports the dbNSFP
 TSV/BGZ, parses variant coordinates to ``(locus, alleles)``, optionally
 groups transcript scores and common prefixes into structs, and wraps with
 Provenance.
@@ -23,7 +23,7 @@ def build_dbnsfp_variants(
     ctx,
     **params,
 ):
-    """Phase B builder — returns an AnnotationTable.
+    """Plugin builder — returns an AnnotationTable.
 
     Imports the dbNSFP TSV/BGZ, parses variant coordinates to (locus, alleles),
     optionally groups transcript scores and common prefixes into structs, and

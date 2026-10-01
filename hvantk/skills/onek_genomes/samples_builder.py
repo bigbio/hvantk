@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 def build_onek_genomes_samples(parsed_input, ctx, **params):
-    """Phase B builder — returns an AnnotationTable of IGSR sample metadata.
+    """Plugin builder — returns an AnnotationTable of IGSR sample metadata.
 
     Parameters
     ----------

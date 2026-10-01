@@ -1,8 +1,7 @@
 """
 Plotting utilities for EnrichEx analyses.
 
-This module provides the publication-quality visualizations described in
-docs/planning/ENRICHEX_VISUALIZATION_DESIGN.md. The implementation uses
+This module provides publication-quality EnrichEx plots. The implementation uses
 matplotlib (and seaborn when available) so that no new dependencies are
 required beyond the existing hvantk[viz] extra.
 """
@@ -264,8 +263,6 @@ def plot_burden_forest(
 ) -> plt.Figure:
     """
     Create a forest plot summarizing burden test results.
-
-    Parameters mirror the implementation plan documented under section 3.2.
     """
     if results_df.empty:
         logger.warning("No burden results available to plot.")
@@ -447,7 +444,6 @@ def plot_enrichment_barplot(
     """
     Create a compact bar plot for enrichment results.
 
-    Parameters mirror the simplified design in docs/planning/ENRICHEX_VISUALIZATION_DESIGN.md.
     Use `alpha_threshold` to control the significance cutoff when `color_by="significant"`.
     """
     orientation = orientation.lower()

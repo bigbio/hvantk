@@ -1,4 +1,4 @@
-"""Hail helpers shared between the eQTL (GTEx) and pQTL (Fang) Phase B builders.
+"""Hail helpers shared between the eQTL (GTEx) and pQTL (Fang) plugin builders.
 
 GTEx and Fang use the same variant-ID format (``chr1_1000050_C_T_b38``) and
 the same tissue-file scanning convention, so the parsing helpers live here

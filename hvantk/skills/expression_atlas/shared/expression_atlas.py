@@ -320,7 +320,7 @@ def create_anndata_from_expression_atlas(
             # here can break the tie: a numeric annotation column (`Entrez`, gene
             # length, a p-value column from an analytics export) is indistinguishable
             # from a sample the SDRF happens to omit. Guessing "sample" -- which this
-            # did until it was caught in review -- puts NCBI gene ids into the
+            # did until the #342 fix -- puts NCBI gene ids into the
             # expression matrix as if they were expression values, and the resulting
             # `.h5ad` carries an extra sample whose only tell is an all-NaN `obs` row.
             raise ValueError(

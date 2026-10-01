@@ -1,6 +1,6 @@
 """AnnData builder for the EBI Expression Atlas resource.
 
-Owns the Phase B ``build_expression_atlas`` builder. Turns an Expression
+Owns the ``build_expression_atlas`` builder. Turns an Expression
 Atlas baseline bulk-RNA-seq expression TSV plus its SDRF metadata file into
 an ``ExpressionMatrix`` (samples x genes).
 
@@ -26,7 +26,7 @@ def build_expression_atlas(
     delimiter: str = "\t",
     extra_annotation_columns: tuple[str, ...] | list[str] | None = None,
 ):
-    """Phase B builder — returns an ExpressionMatrix.
+    """Plugin builder — returns an ExpressionMatrix.
 
     Parameters
     ----------

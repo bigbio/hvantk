@@ -118,7 +118,7 @@ def _resolve_compression_parallel(
 
 
 def build_onek_genomes_variants(parsed_input, ctx, **params):
-    """Phase B builder — returns a VariantMatrix from a directory of 1KG VCFs.
+    """Plugin builder — returns a VariantMatrix from a directory of 1KG VCFs.
 
     Parameters
     ----------

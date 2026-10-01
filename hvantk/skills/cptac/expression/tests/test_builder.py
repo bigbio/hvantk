@@ -50,7 +50,7 @@ def _fake_ctx():
 
 
 def _build_for_snapshot(expression_path, **call_kwargs):
-    """Adapt the Phase B builder to the snapshot helper's calling convention."""
+    """Adapt the builder to the snapshot helper's calling convention."""
     from hvantk.skills.cptac.expression.builder import build_cptac_expression
 
     metadata_path = call_kwargs.pop("metadata_path", METADATA)

@@ -37,7 +37,7 @@ def _resolve_input(parsed_input) -> str:
 
 
 def build_insider_interfaces(parsed_input, ctx, **params):
-    """Phase B builder -- returns an AnnotationTable keyed by ``uniprot_id``.
+    """Plugin builder -- returns an AnnotationTable keyed by ``uniprot_id``.
 
     Columns: ``n_partners``, ``n_partners_experimental``, ``n_partners_predicted``,
     ``n_interface_residues``. Interface-residue counts are a UNION across a protein's

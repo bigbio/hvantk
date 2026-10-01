@@ -1,4 +1,4 @@
-"""Phase B orchestrator: parse → drift probe → BuildContext → build_fn → save.
+"""Build orchestrator: parse → drift probe → BuildContext → build_fn → save.
 
 Skills register a build_fn with signature `(parsed_input, ctx, **params) -> Artifact`.
 This orchestrator wraps that contract: it computes the source fingerprint via the
@@ -6,7 +6,7 @@ plugin's drift_probe, constructs a BuildContext, invokes the builder, validates 
 returned artifact's type matches the plugin.yaml `artifact_type`, then persists via
 `artifact.save(output_path)`.
 
-All in-tree plugins use this Phase B contract; the orchestrator is the sole
+All in-tree plugins use this plugin builder contract; the orchestrator is the sole
 dispatch path for `hvantk reprocess` and any other consumer of plugin builders.
 """
 
@@ -76,11 +76,11 @@ def run_builder_for_spec(
     builder_commit: str | None = None,
     **params,
 ) -> Provenance:
-    """Run a plugin's build_fn under the Phase B contract.
+    """Run a plugin's build_fn under the builder contract.
 
     Args:
         spec: The DatasetSpec resolved from the plugin manifest. Must have
-            artifact_type populated (Phase B-migrated plugins only).
+            artifact_type populated (plugins on the builder contract only).
         parsed_input: Whatever spec.parse_fn returned, or None if the plugin has none.
         output_path: Where to write the produced artifact.
         plugin_version: The plugin's declared version (from plugin.yaml top-level `version:`).
@@ -97,7 +97,7 @@ def run_builder_for_spec(
     if spec.artifact_type is None:
         raise BuilderContractError(
             f"{spec.name}: plugin manifest has no artifact_type; "
-            f"migrate to Phase B contract before calling run_builder_for_spec()"
+            f"migrate to the plugin builder contract before calling run_builder_for_spec()"
         )
 
     # A probe failure must not destroy the build. The probe supplies provenance

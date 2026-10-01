@@ -1,4 +1,4 @@
-"""Skipped: no fixture for pqtl; loader-only test (Phase K)."""
+"""Skipped: no fixture for pqtl; loader-only test."""
 
 from __future__ import annotations
 

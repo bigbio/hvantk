@@ -4,9 +4,9 @@ PTM CLI Commands - Post-Translational Modification Analysis
 This module provides CLI commands for the PTM variant classification pipeline:
 - build: Download PTM data, map coordinates, build Hail Table
 - annotate: Annotate a variant table with PTM site information
-- landscape: PTM-variant overlap analysis (Q1)
-- export-strata: Export PTM/non-PTM variant strata for predictor evaluation (Q2)
-- population: Population-level PTM-variant burden (Q3)
+- landscape: PTM-variant overlap analysis
+- export-strata: Export PTM/non-PTM variant strata for predictor evaluation
+- population: Population-level PTM-variant burden
 - report: Generate summary report
 """
 
@@ -32,14 +32,14 @@ def ptm_group(ctx):
     Workflow:
       1. hvantk ptm build          — Download PTM data + map coordinates + build Hail Table
       2. hvantk ptm annotate       — Annotate variants with PTM site information
-      3. hvantk ptm landscape      — PTM-variant overlap analysis (Q1)
-      4. hvantk ptm export-strata  — Export PTM/non-PTM variant lists for PSROC (Q2)
-      5. hvantk ptm population     — Population-level PTM-variant burden (Q3)
+      3. hvantk ptm landscape      — PTM-variant overlap analysis
+      4. hvantk ptm export-strata  — Export PTM/non-PTM variant lists for PSROC
+      5. hvantk ptm population     — Population-level PTM-variant burden
       6. hvantk ptm constraint     — Stratified AF depletion at PTM codons (by tissue/cell-type)
       7. hvantk ptm report         — Generate summary report
 
     \b
-    For predictor evaluation (Q2), compose with PSROC:
+    For predictor evaluation, compose with PSROC:
       hvantk ptm export-strata --annotated-ht clinvar_ptm.ht -o strata/
       hvantk psroc --variants strata/ptm_variants.txt --clinvar-ht clinvar.ht ...
       hvantk psroc --variants strata/non_ptm_variants.txt --clinvar-ht clinvar.ht ...
@@ -117,7 +117,7 @@ def ptm_build(
     """Download PTM data, map coordinates to genome, and build a Hail Table.
 
     \b
-    This is the main entry point for the PTM pipeline (Phases 1-2). It:
+    This is the main entry point for the PTM pipeline. It:
       1. Downloads the Ensembl GTF (if not provided via --gtf-path)
       2. Downloads UniProt PTM data (if not provided via --ptm-tsv)
       3. Parses the GTF and maps PTM sites to genomic coordinates
@@ -245,7 +245,7 @@ def ptm_annotate(ctx, variants_ht, ptm_ht, output_ht, flanking_codons, overwrite
 @click.option("--save-plots", is_flag=True, help="Save plots alongside JSON output")
 @click.pass_context
 def ptm_landscape_cmd(ctx, clinvar_ht, ptm_ht, output, flanking_codons, save_plots):
-    """PTM-variant overlap and enrichment analysis (Q1).
+    """PTM-variant overlap and enrichment analysis.
 
     \b
     Cross-references ClinVar P/LP variants with PTM sites, computes overlap
@@ -324,7 +324,7 @@ def ptm_landscape_cmd(ctx, clinvar_ht, ptm_ht, output, flanking_codons, save_plo
 )
 @click.pass_context
 def ptm_export_strata(ctx, annotated_ht, output):
-    """Export PTM-stratified variant lists for downstream analysis (Q2).
+    """Export PTM-stratified variant lists for downstream analysis.
 
     \b
     Takes a PTM-annotated variant table (output of 'hvantk ptm annotate') and
@@ -378,7 +378,7 @@ def ptm_export_strata(ctx, annotated_ht, output):
 def ptm_population_cmd(
     ctx, gnomad_ht, ptm_ht, af_field, output, flanking_codons, save_plots
 ):
-    """Population-level PTM-variant allele frequency analysis (Q3).
+    """Population-level PTM-variant allele frequency analysis.
 
     \b
     Compares allele frequency distributions at PTM sites vs non-PTM coding
@@ -449,7 +449,7 @@ def ptm_report(ctx, output, landscape_json, population_json, title, description)
     """Generate PTM analysis summary HTML report.
 
     \b
-    Combines landscape (Q1) and/or population (Q3) results into a single
+    Combines landscape and/or population results into a single
     HTML report with embedded plots and summary tables.
 
     \b

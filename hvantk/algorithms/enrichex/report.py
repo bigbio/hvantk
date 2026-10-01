@@ -1,9 +1,8 @@
 """
 HTML report generation for EnrichEx visualizations.
 
-The report builder follows the simplified approach documented in
-docs/planning/ENRICHEX_VISUALIZATION_DESIGN.md: static matplotlib plots,
-inline CSS, and lightweight string formatting (no template engines).
+The report builder uses static matplotlib plots, inline CSS, and lightweight
+string formatting (no template engines).
 """
 
 from __future__ import annotations
