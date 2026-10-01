@@ -4,9 +4,9 @@ Annotates a variant Hail Table with PTM site proximity information using
 position expansion and locus-based joins. This avoids Hail's interval join
 limitations with overlapping intervals (common for adjacent PTM sites).
 
-Also exposes a pandas-based SYMBOL+chrom annotator
-(``annotate_variants_by_symbol``) that reproduces notebook N's Cell 4 / 11
-semantics for the CHD case-control workflow.
+Also exposes a SYMBOL+chrom annotator (``annotate_variants_by_symbol``) for
+variant tables held in pandas, with a gene symbol, chromosome and position
+per row rather than a Hail locus.
 """
 
 from __future__ import annotations
@@ -187,9 +187,8 @@ def annotate_variants_by_symbol(
 ) -> pd.DataFrame:
     """Per-variant ``is_ptm_site`` / ``is_ptm_proximal`` via SYMBOL + chrom merge.
 
-    Reproduces notebook_n Cell 4 / Cell 11 semantics exactly. Both flags can
-    be True simultaneously (``is_ptm_proximal`` is NOT exclusive of
-    ``is_ptm_site``).
+    Both flags can be True simultaneously (``is_ptm_proximal`` is NOT
+    exclusive of ``is_ptm_site``).
 
     The routine:
 
@@ -220,7 +219,8 @@ def annotate_variants_by_symbol(
         Column names in ``variants_df``.
     atlas_gene_col, atlas_chrom_col : str
         Column names in ``ptm_df``; codon columns are always named
-        ``codon_start`` / ``codon_end`` to match the Phase-2 atlas TSV.
+        ``codon_start`` / ``codon_end`` to match the atlas TSV written by
+        :func:`~hvantk.algorithms.ptm.atlas.build_atlas`.
 
     Returns
     -------
@@ -254,7 +254,7 @@ def annotate_variants_by_symbol(
     atlas["codon_start"] = atlas["codon_start"].astype(int)
     atlas["codon_end"] = atlas["codon_end"].astype(int)
 
-    # --- Cell 4: is_ptm_site (inside codon interval) ---
+    # --- is_ptm_site (inside codon interval) ---
     left = (
         out[[variant_gene_col, variant_chrom_col, variant_pos_col]]
         .reset_index()
@@ -273,7 +273,7 @@ def annotate_variants_by_symbol(
     ptm_var_ix = set(hit_site["_var_ix"].unique())
     out["is_ptm_site"] = out.index.isin(ptm_var_ix)
 
-    # --- Cell 11: is_ptm_proximal (inside expanded codon interval) ---
+    # --- is_ptm_proximal (inside expanded codon interval) ---
     atlas_prox = atlas.copy()
     atlas_prox["prox_start"] = atlas_prox["codon_start"] - int(proximal_bp)
     atlas_prox["prox_end"] = atlas_prox["codon_end"] + int(proximal_bp)

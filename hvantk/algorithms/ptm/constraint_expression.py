@@ -270,8 +270,8 @@ def _load_from_hail_mt(
 ) -> pd.DataFrame:
     """Aggregate a Hail MatrixTable into a gene x group matrix via TSV export.
 
-    Follows the Notebook E/G pattern: ``group_cols_by(...) → aggregate(...) →
-    entries() → export(TSV) → pandas`` to avoid OOM from ``mt.to_pandas()``.
+    Aggregates via ``group_cols_by(...) → aggregate(...) → entries() →
+    export(TSV) → pandas`` to avoid OOM from ``mt.to_pandas()``.
     """
     from hvantk.core.utils.hail_context import hl, init_hail
 

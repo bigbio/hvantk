@@ -1,4 +1,4 @@
-"""Visualization panels for PTM constraint analysis (M4).
+"""Visualization panels for PTM constraint analysis.
 
 Renders the four diagnostic panels produced by :mod:`hvantk.ptm.constraint`:
 

@@ -699,7 +699,7 @@ def ptm_constraint(
 
 
 # ---------------------------------------------------------------------------
-# Phase-2 subcommands: atlas (atlas assembly facade) and test (LMM runners)
+# PTM subcommands: atlas (atlas assembly facade) and test (LMM runners)
 # ---------------------------------------------------------------------------
 
 
@@ -756,7 +756,7 @@ def ptm_constraint(
     type=int,
     default=7,
     show_default=True,
-    help="Flanking-codon window (Phase-2 default matches notebook A).",
+    help="Flanking-codon window for proximity intervals.",
 )
 @click.option("--overwrite", is_flag=True)
 @click.pass_context
@@ -772,7 +772,7 @@ def ptm_atlas(
     flanking_codons,
     overwrite,
 ):
-    """Phase-2 PTM atlas assembly (notebook A facade).
+    """PTM atlas assembly.
 
     \b
     Delegates to hvantk.algorithms.ptm.atlas.build_atlas, which in turn delegates to
@@ -861,7 +861,10 @@ def _read_expression_wide(pkl_path, tsv_path):
     "test_mode",
     type=click.Choice(["lmm", "lmm-binned"], case_sensitive=False),
     required=True,
-    help="LMM variant to run (notebook M = lmm, notebook K = lmm-binned).",
+    help=(
+        "LMM variant to run: 'lmm' (per-tissue constraint) or "
+        "'lmm-binned' (per-cell-type binned-interaction)."
+    ),
 )
 @click.option(
     "--input",
@@ -921,12 +924,12 @@ def ptm_test(
     expression_pkl,
     expression_tsv,
 ):
-    """Run per-stratum PTM constraint tests (notebook M / K).
+    """Run per-stratum PTM constraint tests.
 
     \b
-    --test lmm        Per-stratum log_af ~ is_ptm + (1|gene) (notebook M).
+    --test lmm        Per-stratum log_af ~ is_ptm + (1|gene).
     --test lmm-binned Per-stratum log_af ~ is_ptm * C(expr_bin) + (1|gene)
-                      using an expression matrix keyed gene x stratum (notebook K).
+                      using an expression matrix keyed gene x stratum.
 
     \b
     Output TSV columns:
