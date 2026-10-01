@@ -2,9 +2,10 @@
 
 Two per-stratum constraint tests:
 
-- :func:`run_lmm` - per-tissue constraint LMM on GTEx expression strata
-- :func:`run_binned_interaction_lmm` - per-cell-type binned-interaction LMM
-  on Velmeshev cortex expression strata
+- :func:`run_lmm` - per-stratum ``log_af ~ is_ptm + (1|gene)``
+- :func:`run_binned_interaction_lmm` - per-stratum
+  ``log_af ~ is_ptm * C(expr_bin) + (1|gene)`` (adds an is_ptm x
+  expression-bin interaction)
 
 Both functions are per-stratum: the caller iterates over tissues / cell types
 and is responsible for assembling results. This keeps each fit independent
@@ -119,7 +120,7 @@ def run_lmm(
     min_n_ptm, min_n_nonptm, min_mixed_genes : int
         Filter thresholds (defaults defined in ``hvantk.algorithms.ptm.constants``).
     """
-    # Deferred, not module scope (#374 review, item 4): `require_scanpy` -- the stated
+    # Deferred, not module scope (#374): `require_scanpy` -- the stated
     # model for this pattern -- is called inside the function that needs it, so an
     # install lacking statsmodels can still `from hvantk.algorithms.ptm.lmm import
     # run_lmm` and only hits the actionable ImportError on an actual call.

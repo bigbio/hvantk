@@ -273,7 +273,7 @@ def resolve_transcript(
     """Resolve UniProt Ensembl cross-refs to a single transcript ID.
 
     Uses a 3-strategy cascade:
-    1. MANE Select xref (97% of proteins)
+    1. MANE Select xref (97% of the 100-protein validation set)
     2. Any Ensembl xref with CDS data (3%)
     3. Gene name -> MANE Select fallback (0% needed, safety net)
 

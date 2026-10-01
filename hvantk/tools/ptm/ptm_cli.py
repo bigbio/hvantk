@@ -775,10 +775,9 @@ def ptm_atlas(
     """PTM atlas assembly.
 
     \b
-    Delegates to hvantk.algorithms.ptm.atlas.build_atlas, which in turn delegates to
-    ptm_build_pipeline. Produces ptm_sites_combined.tsv.bgz (UniProt +
-    PeptideAtlas) or ptm_sites_all_combined.tsv.bgz (when --sources includes
-    cptac).
+    Delegates to hvantk.algorithms.ptm.atlas.build_atlas, which in turn calls
+    ptm_build_pipeline_core. Writes ptm_sites_combined.tsv.bgz for multiple
+    sources, or ptm_sites_mapped.tsv.bgz for UniProt alone.
 
     \b
     Example:
@@ -862,8 +861,8 @@ def _read_expression_wide(pkl_path, tsv_path):
     type=click.Choice(["lmm", "lmm-binned"], case_sensitive=False),
     required=True,
     help=(
-        "LMM variant to run: 'lmm' (per-tissue constraint) or "
-        "'lmm-binned' (per-cell-type binned-interaction)."
+        "LMM variant to run: 'lmm', or 'lmm-binned' (adds an is_ptm x "
+        "expression-bin interaction)."
     ),
 )
 @click.option(

@@ -1,7 +1,8 @@
 """PTM atlas assembly API.
 
-Thin facade over :func:`hvantk.algorithms.ptm.pipeline.ptm_build_pipeline_core`
-that builds the combined PTM sites TSV (``ptm_sites_combined.tsv.bgz``). Defaults:
+Thin facade over :func:`hvantk.algorithms.ptm.pipeline.ptm_build_pipeline_core`.
+Writes ``ptm_sites_mapped.tsv.bgz`` for UniProt alone, or
+``ptm_sites_combined.tsv.bgz`` when multiple sources are included. Defaults:
 UniProt + PeptideAtlas sources, CPTAC disabled, flanking window of 7 codons.
 
 This module does NOT reimplement the download, coordinate mapping, or
@@ -143,8 +144,9 @@ class PTMAtlasResult:
 def build_atlas(config: PTMAtlasConfig) -> PTMAtlasResult:
     """Build a PTM atlas by delegating to ``ptm_build_pipeline_core``.
 
-    Produces ``ptm_sites_combined.tsv.bgz``; no cross-source deduplication
-    is performed (matches the existing pipeline).
+    Produces ``ptm_sites_mapped.tsv.bgz`` for UniProt alone, or
+    ``ptm_sites_combined.tsv.bgz`` when multiple sources are included; no
+    cross-source deduplication is performed (matches the existing pipeline).
 
     Parameters
     ----------

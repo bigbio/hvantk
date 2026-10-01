@@ -484,7 +484,7 @@ def generate_phase2_report(
     annotation_summary: Optional[Dict[str, Any]] = None,
     lmm_results: Optional[Sequence["LMMResult"]] = None,
     binned_lmm_results: Optional[Sequence["BinnedLMMResult"]] = None,
-    title: str = "PTM Constraint Analysis Report",
+    title: str = "PTM Summary Report",
     description: Optional[str] = None,
 ) -> str:
     """Write an HTML summary of the atlas, annotation, and constraint-LMM
