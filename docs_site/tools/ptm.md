@@ -4,7 +4,7 @@ PTM is a module within hvantk that maps post-translational modification sites to
 
 ![PTM workflow](../images/hvantk-ptm-workflow.svg)
 
-**Figure 1.** *PTM variant classification pipeline. UniProt PTM sites are mapped to GRCh38 genomic coordinates via Ensembl GTF, then cross-referenced with variant data. Three analysis tracks address landscape enrichment (Q1), predictor evaluation via PSROC composition (Q2), and population-level allele frequency comparison (Q3).*
+**Figure 1.** *PTM variant classification pipeline. UniProt PTM sites are mapped to GRCh38 genomic coordinates via Ensembl GTF, then cross-referenced with variant data. Three analysis tracks address landscape enrichment, predictor evaluation via PSROC composition, and population-level allele frequency comparison.*
 
 ## Overview
 
@@ -14,8 +14,8 @@ The PTM module provides an end-to-end pipeline for studying the relationship bet
 
 - **Coordinate Mapping** - Map UniProt PTM residue positions to GRCh38 genomic coordinates via Ensembl GTF
 - **Variant Annotation** - Annotate variant tables with PTM site proximity (at-site, proximal, non-PTM)
-- **Landscape Analysis (Q1)** - PTM-variant overlap counts and enrichment (Fisher's exact test)
-- **Population Analysis (Q3)** - Allele frequency distributions at PTM sites vs background
+- **Landscape Analysis** - PTM-variant overlap counts and enrichment (Fisher's exact test)
+- **Population Analysis** - Allele frequency distributions at PTM sites vs background
 - **Visualization** - Publication-quality plots and HTML reports
 
 ### Key Features
@@ -23,7 +23,7 @@ The PTM module provides an end-to-end pipeline for studying the relationship bet
 - **Local Coordinate Mapping** - No Ensembl REST API dependency; uses GTF-based transcript resolution
 - **Split Codon Handling** - Correctly handles codons spanning exon boundaries
 - **Position Expansion** - Resolves overlapping flanking intervals via per-position aggregation
-- **Workflow Composition** - Predictor evaluation (Q2) composes with PSROC via exported variant strata
+- **Workflow Composition** - Predictor evaluation composes with PSROC via exported variant strata
 
 ## Quick Start
 
@@ -103,16 +103,16 @@ print(pop_result.summary())
 
 ## Workflow
 
-The PTM pipeline is organized into phases:
+The PTM workflow runs these commands in order; the three analyses in step 3 are independent of each other:
 
-| Phase | Command | Description |
-|-------|---------|-------------|
-| 1-2 | `hvantk ptm build` | Download PTM data, map to genome, build Hail Table |
-| 3 | `hvantk ptm annotate` | Annotate variants with PTM site proximity |
-| 4 Q1 | `hvantk ptm landscape` | PTM-variant overlap and enrichment |
-| 4 Q2 | `hvantk ptm export-strata` + `hvantk psroc` | Predictor evaluation at PTM vs non-PTM sites |
-| 4 Q3 | `hvantk ptm population` | Population-level AF analysis |
-| 5 | `hvantk ptm report` | HTML report with embedded plots |
+| Step | Command | Description |
+|------|---------|-------------|
+| 1 | `hvantk ptm build` | Download PTM data, map to genome, build Hail Table |
+| 2 | `hvantk ptm annotate` | Annotate variants with PTM site proximity |
+| 3a | `hvantk ptm landscape` | PTM-variant overlap and enrichment |
+| 3b | `hvantk ptm export-strata` + `hvantk psroc` | Predictor evaluation at PTM vs non-PTM sites |
+| 3c | `hvantk ptm population` | Population-level AF analysis |
+| 4 | `hvantk ptm report` | HTML report with embedded plots |
 
 ### Predictor Evaluation (Composed Workflow)
 
@@ -172,7 +172,7 @@ The `annotate` command adds these fields to the variant table:
 
 ## Output Files
 
-### Landscape (Q1)
+### Landscape
 
 | File | Description |
 |------|-------------|
@@ -181,7 +181,7 @@ The `annotate` command adds these fields to the variant table:
 | `overlap_by_category.png` | P/LP counts per PTM category (with `--save-plots`) |
 | `distance_distribution.png` | P/LP distance to nearest PTM site (with `--save-plots`) |
 
-### Population (Q3)
+### Population
 
 | File | Description |
 |------|-------------|

@@ -67,7 +67,7 @@ Annotated 200,000 variants:
 Output: data/clinvar_ptm.ht
 ```
 
-## Step 3: Landscape Analysis (Q1)
+## Step 3: Landscape Analysis
 
 PTM-variant overlap and enrichment analysis.
 
@@ -99,7 +99,7 @@ Plots saved to results/landscape/
 - `results/landscape/overlap_by_category.png`
 - `results/landscape/distance_distribution.png`
 
-## Step 4: Predictor Evaluation (Q2 - Composed Workflow)
+## Step 4: Predictor Evaluation (Composed Workflow)
 
 Export PTM-stratified variant lists, then run PSROC independently on each stratum.
 
@@ -126,7 +126,7 @@ hvantk psroc \
 
 Compare AUC values between strata to determine whether predictor performance differs at PTM sites.
 
-## Step 5: Population Analysis (Q3)
+## Step 5: Population Analysis
 
 Compare allele frequency distributions at PTM sites vs non-PTM coding positions in gnomAD.
 
@@ -188,13 +188,13 @@ ptm = hl.read_table("data/ptm/ptm_sites.ht")
 annotated = annotate_variants_with_ptm(clinvar, ptm)
 annotated = annotated.checkpoint("data/clinvar_ptm.ht")
 
-# Landscape (Q1)
+# Landscape
 landscape = ptm_landscape(clinvar, ptm, "results/landscape/")
 
-# Export strata (Q2)
+# Export strata
 strata = export_ptm_strata(annotated, "strata/")
 
-# Population (Q3)
+# Population
 gnomad = hl.read_table("data/gnomad.ht")
 population = ptm_population(gnomad, ptm, "results/population/")
 
@@ -209,6 +209,6 @@ generate_report(
 ## Documentation
 
 - [PTM Documentation](../tools/ptm.md)
-- [PSROC Documentation](../tools/psroc.md) (for Q2 predictor evaluation)
+- [PSROC Documentation](../tools/psroc.md) (for predictor evaluation)
 - [Data Sources](../guide/data-sources.md)
 - [Usage Guide](../guide/usage.md)
