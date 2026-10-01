@@ -1,4 +1,3 @@
-# local/rerank_engine/catalog/profile.py
 from dataclasses import dataclass, field
 from typing import Optional, Callable
 from hvantk.algorithms.cohort.spec import CohortManifest

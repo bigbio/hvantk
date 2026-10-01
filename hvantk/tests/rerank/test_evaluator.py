@@ -1,4 +1,3 @@
-# local/rerank_engine/tests/test_evaluator.py
 import numpy as np, pandas as pd
 from hvantk.algorithms.rerank.evaluator import Evaluator
 

@@ -48,10 +48,11 @@ import numpy as np
 
 from hvantk.algorithms.rerank.selection import _null_se, univariate_auc
 
-# Presence AUC at or beyond 0.5 +/- this is "material". Near-fully-covered reference axes
-# (constraint, expression) land within a few hundredths of 0.5, so 0.05 sits just above what
-# a non-leaking column reaches, while a presence flag that genuinely tracks the label (EVE)
-# lands well outside it.
+# Presence AUC at or beyond 0.5 +/- this is "material". An empirical default, not a derived
+# bound: near-fully-covered reference axes (constraint, expression) land within a few
+# hundredths of 0.5, so 0.05 sits just above what a non-leaking column reaches, while a
+# presence flag that genuinely tracks the label (EVE) lands well outside it. Re-check it
+# for a different spine or label.
 DEFAULT_MIN_EFFECT = 0.05
 
 # Presence AUC threshold in the same units callers think in.

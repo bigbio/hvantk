@@ -51,7 +51,7 @@ def test_column_present_only_for_positives_is_flagged_as_leaking():
 
 
 def test_column_missing_at_random_is_clean():
-    """Sparsity alone is not the defect. GTEx eQTL is sparser than EVE and inert."""
+    """Sparsity alone is not the defect. A column can be sparser than EVE and still inert."""
     rng, y = _frame()
     x = rng.normal(size=len(y))
     x[rng.random(len(y)) < 0.8] = np.nan  # 20% coverage, unrelated to y

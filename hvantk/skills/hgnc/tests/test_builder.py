@@ -96,7 +96,7 @@ def test_quoted_multivalue_fields_are_unquoted_before_splitting(hail_session, tm
     has zero quotes, which is why this never surfaced.
 
     Real-world impact this reproduces: HIST1H1E (previous symbol of H1-4) did not resolve,
-    so genes listed under a previous symbol dropped out at mapping time. ``uniprot_ids``
+    so a lookup by HIST1H1E missed and H1-4 dropped out at mapping time. ``uniprot_ids``
     and ``gene_group`` are corrupted the same way.
     """
     import hail as hl

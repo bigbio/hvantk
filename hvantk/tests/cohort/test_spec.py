@@ -59,7 +59,7 @@ def test_load_cohort_reads_the_minimal_manifest(tmp_path):
     assert m.table == "/data/demo_genes.tsv"
     assert m.prior.column == "minp"
     assert m.prior.direction == "lower_is_better"
-    # Optional blocks default to absent/empty -- a cohort is key + prior (D2).
+    # Optional blocks default to absent/empty -- a cohort is key + prior.
     assert m.labels is None
     assert m.cohort_axes == ()
     assert m.min_mapping_rate == 0.9

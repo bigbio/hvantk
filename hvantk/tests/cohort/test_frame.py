@@ -109,7 +109,7 @@ def test_load_cohort_frame_reads_a_gzipped_tsv(tmp_path):
 
 
 def test_load_cohort_frame_excludes_the_prior_column_when_asked(tmp_path):
-    # Findings 1+2 (whole-branch review): the audit merge/collision-check must be able
+    # The audit merge/collision-check must be able
     # to see the cohort's axis columns without the prior column tagging along -- the
     # prior is already consumed elsewhere (as prior_stat) by the time that matters.
     p = tmp_path / "cohort.tsv"
@@ -126,7 +126,7 @@ def test_load_cohort_frame_excludes_the_prior_column_when_asked(tmp_path):
 def test_load_cohort_frame_agrees_with_validate_on_a_comma_header_with_a_space(
     tmp_path,
 ):
-    # Finding 6 (whole-branch review): check_declared_columns_exist/read_header
+    # check_declared_columns_exist/read_header
     # strips whitespace from header names ('validate' promises this); load must agree
     # or a table that passes 'hvantk cohort validate' can still blow up on load with a
     # bare KeyError naming neither the manifest nor the real column name.
@@ -246,7 +246,7 @@ def test_load_cohort_frame_keeps_an_all_numeric_gene_key_as_string(tmp_path):
 
 
 def test_load_cohort_frame_raises_on_empty_gene_keys_and_counts_them(tmp_path):
-    # Finding 7 (whole-branch review): value_counts() drops NaN by default, so blank
+    # value_counts() drops NaN by default, so blank
     # gene cells used to sail through the duplicate check, enter the frame as NaN
     # genes, and vanish silently in a downstream left-merge. They must be rejected
     # instead, with a count of how many rows are affected.
@@ -260,7 +260,7 @@ def test_load_cohort_frame_raises_on_empty_gene_keys_and_counts_them(tmp_path):
 
 def test_load_prior_frame_matches_priorspec_load_column_names(tmp_path):
     """Must match hvantk.algorithms.rerank.config.PriorSpec.load()'s shape exactly --
-    Task 2 swaps a CohortManifest in for a PriorSpec and nothing downstream may
+    a CohortManifest stands in for a PriorSpec and nothing downstream may
     notice the difference."""
     p = tmp_path / "cohort.tsv"
     _write_tsv(p, ["gene", "minp"], [("A", 0.01), ("B", 0.20)])
@@ -274,7 +274,7 @@ def test_load_prior_frame_matches_priorspec_load_column_names(tmp_path):
 
 
 def test_load_prior_frame_matches_priorspec_load_exactly(tmp_path):
-    """Task 1 review (Minor): the test above only checks column names and value
+    """The test above only checks column names and value
     *sets* and never exercises the real PriorSpec.load() -- two loaders that agree on
     names/sets could still disagree on row order or dtype and this would not catch
     it. Compare full frames instead, so the two implementations cannot drift apart

@@ -70,10 +70,10 @@ The benchmarks measure the complete end-to-end HGC workflow performance:
 #### 1. Run the Benchmark
 
 ```bash
-cd analysis
+cd examples/hgc/scalability
 
-# Run with default settings
-bash benchmark.sh
+# Run with default settings (the GVCF directory is required)
+bash benchmark.sh --gvcf-dir /path/to/gvcfs
 
 # Or customize parameters
 bash benchmark.sh \

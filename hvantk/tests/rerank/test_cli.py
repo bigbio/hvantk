@@ -157,7 +157,7 @@ def test_rerank_cli_wires_up_the_architecture_audit_when_declared(tmp_path):
 
 
 def test_rerank_cli_rejects_a_stale_prior_block(tmp_path):
-    # Finding 4 (whole-branch review): a config migrated to declare 'cohort:' that
+    # A config migrated to declare 'cohort:' that
     # still carries a leftover pre-migration 'prior:' block must fail loud, not be
     # silently ignored -- the prior it names is never read, and prior_stat would come
     # from the cohort manifest's own table instead, with no warning at all.
@@ -216,7 +216,7 @@ def test_rerank_cli_rejects_any_unknown_top_level_key(tmp_path):
 def test_rerank_cli_no_near_miss_warning_when_architecture_columns_are_split(
     tmp_path, caplog
 ):
-    # Finding 5 (whole-branch review): a manifest splitting the three architecture
+    # A manifest splitting the three architecture
     # columns across an "architecture" axis (n_case_var, conc) and a differently-named
     # axis (driver_af here, under "qc") is a WORKING configuration --
     # CaseControlArchitectureAudit genuinely wires up (has_architecture_columns()

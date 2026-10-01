@@ -95,7 +95,7 @@ def run_lmm(
 ) -> LMMResult:
     """Per-stratum constraint LMM: ``log_af ~ is_ptm + (1|gene)``.
 
-    Fits ``statsmodels`` ``mixedlm`` with gene as the grouping factor. Filters:
+    Replicates notebook_m Cell 5 mixedlm usage exactly. Filters:
 
     - ``af > 0`` on ``af_col``;
     - ``n_ptm >= min_n_ptm`` and ``n_nonptm >= min_n_nonptm``;
@@ -199,7 +199,7 @@ def run_binned_interaction_lmm(
 ) -> BinnedLMMResult:
     """Binned-interaction LMM: ``log_af ~ is_ptm * C(expr_bin) + (1|gene)``.
 
-    Fits ``statsmodels`` ``mixedlm`` with gene as the grouping factor:
+    Replicates notebook_k Cell 4d mixedlm usage exactly:
 
     - ``expr = expr_series[gene]``, ``expr_log = log2(expr + 1)``;
     - ``pd.qcut(expr_log[expr > 0], q=n_quantiles, duplicates='drop')`` yields

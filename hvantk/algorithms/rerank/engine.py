@@ -1,4 +1,3 @@
-# local/rerank_engine/engine.py
 import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING

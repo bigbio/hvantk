@@ -1,4 +1,3 @@
-# local/rerank_engine/tests/test_reranker.py
 import numpy as np, pandas as pd
 from sklearn.metrics import roc_auc_score
 from hvantk.algorithms.rerank.reranker import ReRanker

@@ -1,6 +1,6 @@
 """A byte-for-byte pin on evaluator.py, captured BEFORE the #247 reformat.
 
-`evaluator.py` opened with the stale line `# local/rerank_engine/evaluator.py` and packed
+`evaluator.py` opened with a stale prototype path comment and packed
 several statements onto most lines. It is the module #247 edits most, so it was reformatted
 first and separately -- but "no behaviour change" is a claim, and a claim about a stochastic
 estimator needs a fixed seed and recorded numbers rather than a reading of the diff. These
@@ -79,5 +79,5 @@ def test_the_prototype_header_is_gone():
     import hvantk.algorithms.rerank.evaluator as mod
 
     first = Path(mod.__file__).read_text().splitlines()[0]
-    assert "local/rerank_engine" not in first, first
+    assert not first.startswith("# local/"), first
     assert mod.__doc__, "the module needs a docstring, not a path comment"

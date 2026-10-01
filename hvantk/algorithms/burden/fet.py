@@ -42,7 +42,8 @@ def pick_min_p(fisher_df: pd.DataFrame) -> pd.DataFrame:
 def _driver_af(drivers) -> float:
     # "af" here is the control-CARRIER frequency (carriers / control samples) of the
     # max-case-carrier ("cc") driver variant, not an allele frequency. Treat that meaning
-    # as part of the output contract: changing it changes every reported driver_af. The
+    # as part of the output contract: changing it changes every reported driver_af, and
+    # no test pins it yet (the audit thresholds below assume carrier units). The
     # tie-break and NaN handling below are pinned by the test_driver_af_* tests in
     # hvantk/tests/burden/test_fet.py.
     #

@@ -155,13 +155,13 @@ class SelectionPolicy:
     ``wrapper`` defaults to "none" -- the two filters only -- on measured evidence, not on
     principle. RFECV's aggression tracked label scarcity inversely -- it eliminated columns
     mostly where positives were fewest -- which is the signature of a wrapper fitting
-    inner-CV noise: at ~50 positives an inner CV3 fold holds ~17, and "the feature count
-    that maximised inner AUC" is barely distinguishable from chance.
+    inner-CV noise: at ~50 training-slice positives an inner CV3 fold holds ~17, and
+    "the feature count that maximised inner AUC" is barely distinguishable from chance.
 
-    Worse, it can prune the axis whose composition defines the headline metric. Constraint
-    is the ABLATION BASELINE, so cutting that axis down silently inflates every other
-    axis's delta-AUC; and it can remove a column that conditions the gene universe, such
-    as ``n_case_var``.
+    Worse, it can prune the axis whose composition defines the headline metric. The first
+    configured axis (conventionally constraint) is the ABLATION BASELINE, so cutting it
+    down silently inflates every other axis's delta-AUC; and it can remove a column the
+    analysis conditions on, such as ``n_case_var``.
 
     Set ``wrapper="rfecv"`` deliberately, on an axis wide enough to need it (the ~45-column
     dbNSFP predictor axis is the motivating case) and with enough positives to trust the

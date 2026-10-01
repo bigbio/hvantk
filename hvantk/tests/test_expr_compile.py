@@ -69,7 +69,7 @@ def test_pandas_unknown_column_raises(df):
 
 
 # ---------------------------------------------------------------------------
-# Hail compiler tests (Task 4)
+# Hail compiler tests
 # ---------------------------------------------------------------------------
 
 from hvantk.core.models._compile import compile_to_hail

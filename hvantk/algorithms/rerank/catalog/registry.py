@@ -1,4 +1,3 @@
-# local/rerank_engine/catalog/registry.py
 from hvantk.algorithms.rerank.config import Config
 from hvantk.algorithms.rerank.audit import (
     NoAudit,
@@ -27,7 +26,7 @@ def _default_audit(profile):
     # Must agree with hvantk.tools.rerank.rerank_cli's audit-selection: a cohort is
     # only eligible for CaseControlArchitectureAudit when it actually declares the
     # three columns the audit needs (has_architecture_columns), not merely by being
-    # present. Since M3 made Config.cohort mandatory for every rerank config, "cohort
+    # present. Since Config.cohort is mandatory for every rerank config, "cohort
     # is not None" is true for every config -- so it can no longer stand in for "has
     # the architecture columns" the way it once did.
     #
