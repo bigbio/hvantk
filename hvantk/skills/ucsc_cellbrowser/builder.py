@@ -124,8 +124,8 @@ def build_ucsc_cellbrowser(
       directly into an ``AnnData`` object, annotates summary stats, and
       returns it. The platform's ``artifact.save()`` persists to disk.
     - Backed (auto-selected for inputs > ``BACKED_BUILDER_THRESHOLD_BYTES``,
-      or forced via ``backed=True``): writes to disk while streaming. Builder
-      callers that need backed mode must pass ``backed_output_path`` (the
+      or forced via ``backed=True``): writes to disk while streaming. Callers
+      that need backed mode must pass ``backed_output_path`` (the
       final on-disk path) because backed writing requires materializing
       directly to a file. The platform then re-saves to the requested
       output via ``artifact.save()`` (no-op when paths match).

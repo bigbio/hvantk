@@ -2,8 +2,8 @@
 
 When `core/io.load(path)` finds an artifact file with no sidecar manifest,
 it falls back to wrapping the file with `Provenance.unknown(reason=...)`.
-This shim is the bridge that lets legacy consumers read pre-plugin
-artifact files (raw .parquet, .h5ad, .ht) without rebuilding everything.
+This shim is what lets `load()` read such files (raw .parquet, .h5ad, .ht)
+without rebuilding everything.
 """
 
 from __future__ import annotations

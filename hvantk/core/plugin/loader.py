@@ -233,7 +233,7 @@ class PluginRegistry:
                     # above (`_conventions`, `_hooks`), so anything reaching this
                     # branch is shaped like a provider and claims to be one.
                     #
-                    # Mark the directory as attempted too (item 2, #374 review): 13 of
+                    # Mark the directory as attempted too (#374): 13 of
                     # 23 in-tree providers are ALSO declared as entry points pointing
                     # at this same directory, and get_registry() runs
                     # load_from_entry_points() right after this method. Without this,
@@ -256,7 +256,7 @@ class PluginRegistry:
         plugin_dir = Path(plugin_dir).resolve()
         if plugin_dir in self._loaded_dirs:
             return
-        # Mark as attempted regardless of outcome (item 2, #374 review): this used to
+        # Mark as attempted regardless of outcome (#374): this used to
         # happen only on success, so a directory whose manifest failed to load was
         # never marked, and get_registry()'s second pass (load_from_entry_points, which
         # resolves 13 of 23 in-tree providers back to this same directory) retried it
@@ -510,7 +510,7 @@ class PluginRegistry:
         # later get_dataset() call re-raises the same error rather than
         # silently re-attempting and possibly succeeding (which would
         # leave the same registry returning two different answers in one
-        # session — see F14).
+        # session).
         datasets: list[DatasetSpec] = []
         for dm in dm_list:
             try:
