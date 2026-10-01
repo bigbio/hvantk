@@ -85,7 +85,7 @@ class _FakeMT:
 def test_save_qc_metrics_exports_variants_without_collecting(tmp_path):
     """The variant CSV must come from Table.export, never to_pandas."""
     # exploding_to_pandas: any collect on the variant table fails the test outright.
-    variant = _FakeTable(11_100_000, exploding_to_pandas=True)
+    variant = _FakeTable(11_000_000, exploding_to_pandas=True)
     sample = _FakeTable(1000)
     qc = QCMetrics(mt=_FakeMT(), sample_qc=sample, variant_qc=variant)
 
@@ -142,15 +142,15 @@ def test_save_mt_true_still_writes(tmp_path):
 
 def test_variant_dataframe_is_bounded_above_the_budget():
     """A table larger than the budget is sampled down, and says so."""
-    variant = _FakeTable(11_100_000)
+    variant = _FakeTable(11_000_000)
     qc = QCMetrics(mt=_FakeMT(), sample_qc=None, variant_qc=variant)
 
     df = qc.get_variant_metrics_df(max_rows=500_000)
 
-    assert variant.sampled_p == pytest.approx(500_000 / 11_100_000)
+    assert variant.sampled_p == pytest.approx(500_000 / 11_000_000)
     assert len(df) <= 500_000
     assert df.attrs["subsampled"] is True
-    assert df.attrs["n_total_variants"] == 11_100_000
+    assert df.attrs["n_total_variants"] == 11_000_000
 
 
 def test_variant_dataframe_untouched_below_the_budget():
@@ -167,11 +167,11 @@ def test_variant_dataframe_untouched_below_the_budget():
 
 def test_counts_do_not_build_dataframes():
     """Printing a count must not collect the table (the qc-report bug)."""
-    variant = _FakeTable(11_100_000, exploding_to_pandas=True)
+    variant = _FakeTable(11_000_000, exploding_to_pandas=True)
     sample = _FakeTable(1000)
     qc = QCMetrics(mt=_FakeMT(), sample_qc=sample, variant_qc=variant)
 
-    assert qc.count_variants() == 11_100_000
+    assert qc.count_variants() == 11_000_000
     assert qc.count_samples() == 1000
     assert variant.to_pandas_calls == 0
     assert sample.to_pandas_calls == 0

@@ -229,7 +229,7 @@ def convert_vds_to_mt(
           re-execute the densify from the top. The audit therefore runs on the sparse variant data
           and the repair is expressed lazily; see `_audit_split_variant_data`.
         - This algorithm operates on raw `hl.MatrixTable` / `hl.VariantDataset` instances
-          (genotype data). ExpressionMatrix's hail-mt backend isn't available yet (Phase J).
+          (genotype data). ExpressionMatrix's hail-mt backend isn't available yet.
         - `n_partitions` coalesces the DENSE MatrixTable (step 3b), which is the only
           lever that works: `to_dense_mt` takes no partitioning argument, and setting one
           on the read raises inside Hail -- see the comment at step 3b for the measurement.
@@ -242,12 +242,12 @@ def convert_vds_to_mt(
         #
         # Why the partition count is worth overriding at all: a VDS's on-disk layout is
         # derived from its REFERENCE-BLOCK count, which is a property of the genome and
-        # saturates (~229 M on chr1 by N~=500 samples), while the dense matrix keeps
-        # growing with N x M(N). Past that point the partition count stops tracking the
-        # size of the data it partitions and work-per-task collapses -- measured on a
-        # ~1,000-sample chr1 cohort, where partitions shrank to well under a MiB each,
-        # and densify and QC barely sped up going from 16 to 128 cores (8x) while the
-        # well-sized stages scaled nearly linearly. See #207.
+        # saturates (on the order of 10^8 on chr1 by a few hundred samples), while the
+        # dense matrix keeps growing with N x M(N). Past that point the partition count
+        # stops tracking the size of the data it partitions and work-per-task collapses
+        # -- measured on a ~1,000-sample chr1 cohort, where partitions shrank to under a
+        # MiB each, and densify and QC sped up less than 2x going from 16 to 128 cores
+        # (8x) while the well-sized stages scaled nearly linearly. See #207.
         logging.info(f"Reading VDS from {vds_path}...")
         if n_partitions is not None and n_partitions < 1:
             raise ValueError(f"n_partitions must be >= 1, got {n_partitions}")
@@ -328,8 +328,8 @@ def convert_vds_to_mt(
             mt = mt.key_cols_by(mt["s"])
             # `key_cols_by` keys the columns but does not order them, so each contig's
             # dense matrix inherits its own VDS's sample order -- and the per-contig VCFs
-            # exported from it differ in column order. On the 2026-09-22 chr1..chrY
-            # regeneration that was 24 different orders, and `bcftools concat` refused
+            # exported from it differ in column order. On a whole-genome export
+            # (chr1..chrY) that was 24 different orders, and `bcftools concat` refused
             # them ("Different sample names") until every file had been rewritten with
             # `bcftools view -S`. Sorting here makes the order a property of the cohort,
             # not of the contig. Codepoint order, i.e. what `LC_ALL=C sort` gives.
@@ -425,8 +425,7 @@ def _assert_adj_is_computable(
 # spec defines (G, R and 4). bcftools then prints
 # `[W::bcf_hdr_check_sanity] PL should be declared as Number=G` on EVERY invocation,
 # and cannot re-index PL/AD when it merges multi-allelics (`norm -m+any`), trims
-# alleles (`view -a`) or converts PL to GL (`+tag2tag`). Collaborators hit this on the
-# first chr20 share.
+# alleles (`view -a`) or converts PL to GL (`+tag2tag`).
 #
 # The declarations are truthful only because the export is biallelic-only, which the
 # `ValueError` just before the export guarantees: `G` is always 3 and `R` always 2.

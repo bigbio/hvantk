@@ -110,7 +110,7 @@ def annotate_adj(
 
     Measured on a ~1,000-sample WGS callset (one chromosome, over a billion hom-ref
     entries): nearly every hom-ref entry had ``adj`` MISSING and was deleted, taking
-    the call rate to near zero. With this fallback the call rate is nearly complete.
+    the call rate to near zero. With this fallback the call rate recovers to above 0.9.
     Het and hom-var entries always carry ``DP`` (they come from variant records) and
     were never affected.
 

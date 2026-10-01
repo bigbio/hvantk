@@ -171,8 +171,8 @@ def test_mt2vcf_cli_no_filter_adj():
 def test_vds2mt_forwards_n_partitions_to_the_converter():
     """The REAL (non-dry-run) forwarding, which had no test at all.
 
-    Round-3 review: deleting `n_partitions=n_partitions` from the convert_vds_to_mt call
-    left the whole suite green, so `hvantk hgc vds2mt --n-partitions 4` would write with
+    Deleting `n_partitions=n_partitions` from the convert_vds_to_mt call left the whole
+    suite green, so `hvantk hgc vds2mt --n-partitions 4` would write with
     the VDS's own layout while `--dry-run` on the identical command still printed
     `Partitions: 4`. That is #208's failure mode -- a flag accepted, echoed back
     affirmatively, and read by no stage -- reappearing on the command this PR was fixing.

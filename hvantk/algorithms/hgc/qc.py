@@ -463,7 +463,7 @@ def compute_full_qc(
 
     Notes:
         This algorithm operates on raw `hl.MatrixTable` / `hl.VariantDataset` instances
-        (genotype data). ExpressionMatrix's hail-mt backend isn't available yet (Phase J).
+        (genotype data). ExpressionMatrix's hail-mt backend isn't available yet.
     """
     logger.info("Computing comprehensive QC metrics for samples and variants")
 

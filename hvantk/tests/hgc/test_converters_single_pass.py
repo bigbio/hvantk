@@ -4,8 +4,8 @@ Hail is lazy and does not cache. `to_dense_mt` builds a plan; every *eager* acti
 resulting MatrixTable (an aggregate, a count, a write) re-executes that plan from the top --
 including the densify. `convert_vds_to_mt` used to issue two eager actions on the dense MT: an
 `aggregate_entries` to validate biallelic entries, and then the `write`. So it densified the whole
-cohort twice, and the validation pass cost ~42% of the stage's wall time on a 500-sample chr1
-callset.
+cohort twice, and the validation pass cost a large share of the stage's wall time on a
+few-hundred-sample chromosome.
 
 The fix moves the *audit* onto the sparse `variant_data` (where the defects can actually
 originate) and applies the *repair* as a lazy, unconditional expression that folds into the single
