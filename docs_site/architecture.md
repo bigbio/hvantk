@@ -56,7 +56,7 @@ hvantk/
 │   ├── plugin/            # Plugin system
 │   │   ├── api.py         # Provider, DatasetSpec, PROBE_FINGERPRINT_IGNORED_KEYS
 │   │   ├── loader.py      # Plugin discovery (filesystem + entry points)
-│   │   ├── run_builder.py # run_builder_for_spec() — Phase B orchestrator
+│   │   ├── run_builder.py # run_builder_for_spec() — build orchestrator
 │   │   └── drift_runner.py# Drift probe execution
 │   ├── utils/             # Cross-cutting utilities
 │   │   ├── hail_context.py   # Idempotent Hail init
@@ -149,7 +149,7 @@ hvantk/
 The codebase is organized by function and biological domain:
 
 **Data Builders** (`skills/<provider>/builder.py`):
-- Each plugin under `hvantk/skills/` owns its Phase B builder
+- Each plugin under `hvantk/skills/` owns its plugin builder
   (`build_<provider>_<dataset>`). Builders return `AnnotationTable`,
   `ExpressionMatrix`, `VariantMatrix`, or `GeneSet` artifacts, stamped
   with `Provenance` by the platform via `run_builder_for_spec`.
@@ -353,10 +353,10 @@ Raw File (VCF/TSV/BED) → Builder → Hail Table → Disk (.ht)
 
 Example:
 ```bash
-# The reprocess CLI runs the full Phase B pipeline: download → parse → build → drift-check
+# The reprocess CLI runs the full build pipeline: download → parse → build → drift-check
 hvantk reprocess clinvar:variants --raw-dir data/ --output clinvar.ht
 ```
-In-process callers drive the same Phase B builder via
+In-process callers drive the same plugin builder via
 `run_builder_for_spec(spec, *, parsed_input, output_path, plugin_version, **params)`
 (in `hvantk/core/plugin/run_builder.py`), which takes a resolved `DatasetSpec`
 and returns the stamped `Provenance`.
@@ -518,7 +518,7 @@ See `hvantk/skills/_conventions/SKILL.md` for the full contract.
 1. Place the click command in `hvantk/tools/<domain>/`.
 2. Add a `<basename>.tool.yaml` manifest for discoverability via
    `hvantk tools list` (descriptive metadata; not authoritative for
-   wiring today — that's Phase Q follow-up).
+   wiring today — that is a planned follow-up).
 3. Add an entry to `_LAZY_COMMANDS` in `hvantk/hvantk.py` — the command
     name mapped to `(module, attribute, short help)`:
 

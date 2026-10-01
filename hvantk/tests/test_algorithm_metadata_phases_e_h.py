@@ -1,4 +1,4 @@
-"""Smoke test: Phases E/F/G/H entry-points have @algorithm metadata."""
+"""Smoke test: enrichex, expression, qtlcascade, and hgc entry points have @algorithm metadata."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import pytest
 from hvantk.core.models.backends import Backend, get_algorithm_meta
 
 
-# ---------- Phase E: enrichex ----------
+# ---------- enrichex ----------
 
 
 def test_enrichex_burden_analysis_has_metadata():
@@ -27,7 +27,7 @@ def test_enrichex_stratified_burden_has_metadata():
     assert meta.name == "stratified_burden_analysis"
 
 
-# ---------- Phase F: expression ----------
+# ---------- expression ----------
 
 
 def test_expression_tissue_specificity_has_metadata():
@@ -37,7 +37,7 @@ def test_expression_tissue_specificity_has_metadata():
     assert meta.name == "tissue_specificity"
 
 
-# ---------- Phase G: qtlcascade (already had decorators) ----------
+# ---------- qtlcascade (already had decorators) ----------
 
 
 def test_qtlcascade_has_at_least_one_decorated_function():
@@ -54,7 +54,7 @@ def test_qtlcascade_has_at_least_one_decorated_function():
     assert decorated_count > 0
 
 
-# ---------- Phase H: hgc ----------
+# ---------- hgc ----------
 
 
 def test_hgc_combine_gvcfs_has_metadata():

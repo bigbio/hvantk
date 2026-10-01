@@ -248,13 +248,13 @@ def load_snapshot(path: str | Path) -> Any:
 
 
 def phase_b_snapshot_adapter(builder_fn, dataset_name: str):
-    """Adapt a Phase B builder for the snapshot-test calling convention.
+    """Adapt a plugin builder for the snapshot-test calling convention.
 
-    The snapshot helpers below were designed around the legacy Phase A
-    ``(input_path, output_path, **kw) -> hl.Table`` shape. Phase B builders
+    The snapshot helpers below were designed around the legacy
+    ``(input_path, output_path, **kw) -> hl.Table`` shape. Plugin builders
     take ``(parsed_input, ctx, **params) -> Artifact``. This factory bridges
     the two: the returned callable constructs a deterministic ``BuildContext``,
-    invokes the Phase B builder, persists via ``artifact.save()``, and returns
+    invokes the plugin builder, persists via ``artifact.save()``, and returns
     the inner Hail Table so ``regenerate_snapshots`` can introspect it.
 
     ``dataset_name`` should be the plugin's compound dataset key
@@ -269,7 +269,7 @@ def phase_b_snapshot_adapter(builder_fn, dataset_name: str):
     plugin = dataset_name.split(":", 1)[0]
 
     def _adapter(input_path, output_path, **kw):
-        # Strip kwargs the Phase A signature accepted but Phase B does not.
+        # Strip kwargs the legacy signature accepted but the plugin builder does not.
         kw.pop("overwrite", None)
         kw.pop("export_tsv", None)
         ctx = BuildContext(

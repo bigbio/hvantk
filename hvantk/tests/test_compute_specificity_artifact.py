@@ -1,4 +1,4 @@
-"""Phase P: artifact-typed wrapper for compute_specificity."""
+"""Artifact-typed wrapper for compute_specificity."""
 
 from __future__ import annotations
 

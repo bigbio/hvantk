@@ -8,7 +8,7 @@ The docs half exists because the extras table is duplicated -- the
 `[project.optional-dependencies]` table and
 docs_site/getting-started/installation.md -- and only the first is executable. Three
 separate hand-fixes to the prose copies were needed in as many sessions, two of them
-caught only by adversarial review, and a fourth drift (psroc/ancestry/ml missing scipy,
+not caught by any test, and a fourth drift (psroc/ancestry/ml missing scipy,
 ptm missing sorted-nearest -- eight wrong cells) survived a release. A reader following a
 wrong table installs an environment that cannot run the command the table promises, which
 is exactly the failure `pip install hvantk[constraint]` produced.

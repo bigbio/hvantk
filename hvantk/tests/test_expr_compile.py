@@ -1,7 +1,7 @@
 """Tests for compile_to_pandas / compile_to_hail.
 
-This is the load-bearing piece of Phase A: if the two compilers diverge,
-every downstream algorithm silently breaks on backend swap.
+This test is load-bearing: if the two compilers diverge, every downstream
+algorithm silently breaks on backend swap.
 """
 
 from __future__ import annotations

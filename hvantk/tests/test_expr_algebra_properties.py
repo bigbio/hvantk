@@ -1,4 +1,4 @@
-"""Phase O: property-based tests for the Expr algebra.
+"""Property-based tests for the Expr algebra.
 
 These tests assert algebraic laws that must hold for any expression on the
 pandas backend.  They catch subtle compile_to_pandas divergences that the

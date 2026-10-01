@@ -1,4 +1,4 @@
-"""Phase P: artifact-typed wrappers for burden analysis.
+"""Artifact-typed wrappers for burden analysis.
 
 These tests only check that the wrappers accept artifact-typed inputs
 without crashing in the unwrap step. The full burden-analysis behavior
