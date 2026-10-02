@@ -818,7 +818,7 @@ def test_a_dataset_that_failed_to_bind_gets_a_json_row(tmp_path, monkeypatch):
 #
 # `load_from_skills_root` records `child.name` (the directory) when `plugin.yaml` is
 # missing, and `_provider_id_hint` falls back to `plugin_dir.name` too when the
-# manifest's own `name` cannot be read. 9 of the 23 in-tree providers have a directory
+# manifest's own `name` cannot be read. 9 of the 21 in-tree providers have a directory
 # name that differs from the declared `name:` only by `_` vs `-` (`gwas_catalog` dir,
 # `gwas-catalog` name; `uniprot_ptm` dir, `uniprot-ptm` name; ...), so exact string
 # equality in `_relevant_load_errors` silently dropped a directly-relevant failure.
@@ -883,10 +883,19 @@ def test_unknown_dataset_prints_no_hint_when_nothing_failed_to_load():
 # contract; reject the combination up front instead ------------------------------------
 
 
-def test_regenerate_and_json_are_mutually_exclusive():
+def test_regenerate_and_json_are_mutually_exclusive(tmp_path, monkeypatch):
+    # A tmp copy, like the other --regenerate tests: with the autouse registry this
+    # pointed at the COMMITTED fixture, so a regressed guard would have rewritten
+    # hvantk/tests/testdata/raw/plugins/fake_plugin/tests/drift_fingerprint.json.
+    _, plugin_dir = _tmp_fake_plugin_registry(tmp_path, monkeypatch)
+    fp_path = plugin_dir / "tests" / "drift_fingerprint.json"
+    before = fp_path.read_text()
+
     result = CliRunner().invoke(drift_cmd, ["--regenerate", "--json", "fake:default"])
+
     assert result.exit_code != 0
     assert "--regenerate" in result.output and "--json" in result.output, result.output
+    assert fp_path.read_text() == before, "a rejected combination must write nothing"
 
 
 # --- item 1: a non-str-keyed fingerprint must not crash the CHECK path's echo --------
@@ -1085,3 +1094,33 @@ def test_drift_all_domain_typo_lists_the_domains_of_unbound_manifests_too(
     assert result.exit_code != 0
     assert "matches no dataset" in result.output
     assert "proteomics" in result.output, result.output
+
+
+# --- the #364 "unrelated load error" tests above inject a bare provider-name unit; pin
+# the scoping against the unit shapes the loader actually records: a REAL second plugin
+# whose dataset failed to bind (`provider:dataset`) plus an `entry-point:<name>` unit --
+
+
+def test_single_dataset_drift_ignores_a_real_broken_plugin_and_an_entry_point_unit(
+    tmp_path, monkeypatch
+):
+    reg = _registry_with_broken_dataset(tmp_path, monkeypatch)
+    reg._record_load_error("entry-point:otherprov", plugin_loader.PluginLoadError("x"))
+
+    result = CliRunner().invoke(drift_cmd, ["--json", "fake:default"])
+
+    assert result.exit_code == 0, result.output
+    assert [r["dataset_name"] for r in _stdout_rows(result)] == ["fake:default"]
+    assert "brokenprov" not in result.output and "otherprov" not in result.output
+
+
+def test_regenerate_ignores_a_real_broken_plugin_and_an_entry_point_unit(
+    tmp_path, monkeypatch
+):
+    reg, _ = _tmp_fake_plugin_registry(tmp_path, monkeypatch)
+    reg.load_from_directory(_broken_plugin_dir(tmp_path))
+    reg._record_load_error("entry-point:otherprov", plugin_loader.PluginLoadError("x"))
+
+    result = CliRunner().invoke(drift_cmd, ["--regenerate", "fake:default"])
+
+    assert result.exit_code == 0, result.output

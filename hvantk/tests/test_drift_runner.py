@@ -605,16 +605,22 @@ def test_regenerate_fingerprint_creates_a_new_baseline_with_the_umasked_mode(
     0o666 either. The prior test only pinned the copymode branch (an existing file),
     which passes even with a bare `Path.write_text` -- it does not exercise this one.
     """
+    import os
     import stat
 
     fp_path = tmp_path / "fp.json"  # deliberately does not exist yet
     observed = {"probe_version": 1, "headers": {}, "checksums": {}}
     spec = _make_spec(probe_return=observed, fingerprint_path=fp_path)
 
-    umask = drift_runner._current_umask()
-    drift_runner.regenerate_fingerprint(spec, timeout=5)
+    # A KNOWN umask, not `drift_runner._current_umask()`: deriving the expectation
+    # from the helper under test would pass whatever that helper returned.
+    old = os.umask(0o027)
+    try:
+        drift_runner.regenerate_fingerprint(spec, timeout=5)
+    finally:
+        os.umask(old)
 
-    assert stat.S_IMODE(fp_path.stat().st_mode) == (0o666 & ~umask)
+    assert stat.S_IMODE(fp_path.stat().st_mode) == 0o640  # 0o666 & ~0o027
 
 
 def test_regenerate_fingerprint_leaves_no_tmp_sibling_after_a_failed_replace(
