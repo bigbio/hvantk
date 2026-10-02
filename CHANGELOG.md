@@ -101,6 +101,12 @@
   Sites landing page, frozen at v4.9 since 2024. It now reads the dbnsfp.org releases page,
   and the release list stays under `headers`, so a new release still opens its own
   `drift:schema` PR (#371).
+- **The uniprot_ptm drift probe recorded `source_version: null` and could never
+  see a UniProt release.** It now fingerprints the live response's
+  `X-UniProt-Release` header and `X-Total-Results` count, failing closed when
+  either is missing rather than hashing only the response's key shape, and
+  rejects a result count smaller than the number of results it actually
+  received (#370).
 - **`hgnc:lookup` promised a column upstream no longer ships.** HGNC dropped
   `location_sortable`; the field list, fixture, snapshots, SKILL.md and drift baseline now
   follow the live dump (#355).
