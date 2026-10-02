@@ -378,6 +378,24 @@ def create_anndata_from_expression_atlas(
             continue  # already the var index; do not duplicate it as a column
         var[col] = df[col].values
 
+    # A non-unique var index corrupts the matrix silently: anndata only warns
+    # ("Variable names are not unique") and the .h5ad round-trips with
+    # duplicate var_names, so `adata[:, some_id]` quietly returns more than one
+    # row downstream. Seen with: duplicate ids in the column actually used as
+    # the index; a transcript-level file whose transcript column is not named
+    # transcript_id_column (so it is treated as an ordinary annotation and the
+    # duplicate gene id ends up indexing var instead -- the #349 bug again);
+    # duplicate gene ids with no transcript column at all; or a
+    # transcript_id_column= that does not match any column in the file.
+    if not var.index.is_unique:
+        dup_ids = sorted(set(map(str, var.index[var.index.duplicated()])))[:3]
+        raise ValueError(
+            f"{expression_matrix_path}: var index {var.index.name!r} is not "
+            f"unique (e.g. {dup_ids}). If this is a transcript-level export, "
+            "pass transcript_id_column=<the per-row id column> so var is keyed "
+            "by the transcript id instead."
+        )
+
     # obs DataFrame (samples)
     obs = pd.DataFrame(index=pd.Index(sample_cols, name="sample_id"))
 
