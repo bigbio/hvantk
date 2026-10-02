@@ -9,10 +9,10 @@ Example:
     >>> from hvantk.algorithms.ptm.pipeline import PTMBuildConfig, ptm_build_pipeline_core
     >>> config = PTMBuildConfig(
     ...     output_dir="data/ptm/",
-    ...     output_ht="data/ptm/ptm_sites.ht",
+    ...     ptm_tsv="data/ptm/uniprot-ptm-human.tsv",
     ... )
     >>> result = ptm_build_pipeline_core(config)
-    >>> print(result.n_mapped, result.mapped_tsv_path)
+    >>> print(result.sources, result.n_mapped, result.mapped_tsv_path)
 """
 
 import csv
@@ -50,9 +50,17 @@ class PTMBuildConfig:
 
     Attributes:
         output_dir: Directory for intermediate files (GTF, UniProt TSV, mapped TSV).
-        output_ht: Path to write the final PTM sites Hail Table.
+        output_ht: Path for the PTM sites Hail Table. Only
+            :func:`hvantk.tools.ptm.pipeline.ptm_build_pipeline` writes it, and it
+            requires it; :func:`ptm_build_pipeline_core` ignores it.
         gtf_path: Path to a pre-downloaded Ensembl GTF (None = auto-download).
-        ptm_tsv: Path to a pre-downloaded UniProt PTM TSV (None = auto-download).
+        ptm_tsv: Path to a pre-downloaded UniProt PTM TSV. Required by
+            :func:`ptm_build_pipeline_core`; when None,
+            :func:`hvantk.tools.ptm.pipeline.ptm_build_pipeline` downloads it.
+        peptideatlas_tsv: PeptideAtlas phospho TSV (``hvantk download
+            peptideatlas-phospho``); its sites are added when set.
+        cptac_tsv: CPTAC phospho TSV (``hvantk download cptac-phospho``); its sites
+            are added when set.
         flanking_codons: Number of flanking codons for proximal window.
         reference_genome: Reference genome for Hail Table.
         overwrite: Whether to overwrite existing outputs.
@@ -73,8 +81,6 @@ class PTMBuildConfig:
         errors = []
         if not self.output_dir:
             errors.append("output_dir is required")
-        if not self.output_ht:
-            errors.append("output_ht is required")
         if self.gtf_path and not os.path.exists(self.gtf_path):
             errors.append(f"GTF file not found: {self.gtf_path}")
         if self.ptm_tsv and not os.path.exists(self.ptm_tsv):
@@ -95,9 +101,13 @@ class PTMBuildResult:
         n_mapped: Number of sites successfully mapped to genomic coordinates.
         n_failed: Number of sites that failed mapping.
         resolution_counts: Count per transcript resolution method.
-        mapped_tsv_path: Path to the mapped TSV file.
-        output_ht: Path to the built Hail Table.
+        mapped_tsv_path: Path to the mapped TSV file (the combined TSV when more
+            than one source was mapped).
+        output_ht: Path to the built Hail Table; empty when none was built (the
+            core never builds one, and the tools pipeline skips it when no site maps).
         gtf_stats: GTF parsing statistics.
+        sources: Sources mapped, in mapping order: "UniProt", then "PeptideAtlas"
+            and/or "CPTAC" when their TSVs were set.
     """
 
     n_total: int = 0
@@ -107,6 +117,7 @@ class PTMBuildResult:
     mapped_tsv_path: str = ""
     output_ht: str = ""
     gtf_stats: Dict[str, int] = field(default_factory=dict)
+    sources: List[str] = field(default_factory=list)
 
 
 def download_ensembl_gtf(output_dir: str, overwrite: bool = False) -> str:
@@ -319,6 +330,8 @@ def ptm_build_pipeline_core(config: PTMBuildConfig) -> PTMBuildResult:
     Steps:
         1. Download Ensembl GTF (if not provided)
         2. Parse GTF and map PTM sites to genomic coordinates
+        3. Map PeptideAtlas / CPTAC sites when their TSVs are set, and
+           concatenate every source into ``ptm_sites_combined.tsv.bgz``
 
     The UniProt download and Hail Table build steps require
     :mod:`hvantk.skills` and are handled by the workflow layer in
@@ -330,20 +343,29 @@ def ptm_build_pipeline_core(config: PTMBuildConfig) -> PTMBuildResult:
         Pipeline configuration.  ``config.ptm_tsv`` must be set to a
         pre-downloaded UniProt TSV path; callers in the tools layer are
         responsible for downloading it first when it is None.
+        ``config.output_ht`` is not used here.
 
     Returns
     -------
     PTMBuildResult
-        Mapping statistics and output paths (``mapped_tsv_path`` is set).
+        Mapping statistics, output paths (``mapped_tsv_path`` is set) and the
+        sources mapped (``sources``).
 
     Raises
     ------
     ValueError
-        If configuration validation fails.
+        If configuration validation fails or ``config.ptm_tsv`` is None.
     """
     errors = config.validate()
     if errors:
         raise ValueError(f"Invalid config: {'; '.join(errors)}")
+    # Checked before the GTF download and parse, so a missing UniProt TSV fails at once.
+    if config.ptm_tsv is None:
+        raise ValueError(
+            "config.ptm_tsv must be set before calling ptm_build_pipeline_core. "
+            "Use hvantk.tools.ptm.pipeline.ptm_build_pipeline for the full "
+            "workflow including the UniProt download step."
+        )
 
     os.makedirs(config.output_dir, exist_ok=True)
 
@@ -356,24 +378,15 @@ def ptm_build_pipeline_core(config: PTMBuildConfig) -> PTMBuildResult:
     logger.info("Parsing Ensembl GTF...")
     gtf_data = parse_ensembl_gtf(gtf_path)
 
-    # Step 3: Caller is responsible for providing config.ptm_tsv
-    ptm_tsv = config.ptm_tsv
-    if ptm_tsv is None:
-        raise ValueError(
-            "config.ptm_tsv must be set before calling ptm_build_pipeline_core. "
-            "Use hvantk.tools.ptm.pipeline.ptm_build_pipeline for the full "
-            "workflow including the UniProt download step."
-        )
-
     # Shared transcript cache across all mapping calls — avoids rebuilding
     # TranscriptCDS objects when the same ENST appears in multiple sources.
     transcript_cache: Dict = {}
 
-    # Step 4: Map PTM sites to genomic coordinates
+    # Step 3: Map PTM sites to genomic coordinates
     mapped_path = os.path.join(config.output_dir, "ptm_sites_mapped.tsv.bgz")
-    result = map_ptm_sites(ptm_tsv, gtf_data, mapped_path, transcript_cache)
+    result = map_ptm_sites(config.ptm_tsv, gtf_data, mapped_path, transcript_cache)
 
-    # Step 4b: Map additional PTM sources (PeptideAtlas, CPTAC) and
+    # Step 3b: Map additional PTM sources (PeptideAtlas, CPTAC) and
     # merge everything into a single canonical combined TSV.
     extra_sources: List[tuple] = []
     if config.peptideatlas_tsv:
@@ -402,6 +415,8 @@ def ptm_build_pipeline_core(config: PTMBuildConfig) -> PTMBuildResult:
             result.resolution_counts[method] = (
                 result.resolution_counts.get(method, 0) + count
             )
+
+    result.sources = ["UniProt"] + [name for name, _, _ in extra_sources]
 
     if len(source_paths) > 1:
         combined_path = os.path.join(config.output_dir, "ptm_sites_combined.tsv.bgz")
