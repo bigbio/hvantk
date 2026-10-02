@@ -695,7 +695,10 @@ def ptm_constraint(
     "--output-ht",
     type=str,
     required=True,
-    help="Path to the final PTM sites Hail Table (.ht).",
+    help=(
+        "Path for the PTM sites Hail Table (.ht). `ptm atlas` stops at the combined "
+        "TSV and does not write it yet; use `hvantk ptm build` for the table."
+    ),
 )
 @click.option(
     "--sources",
@@ -711,7 +714,10 @@ def ptm_constraint(
     "--uniprot-tsv",
     type=click.Path(exists=True),
     default=None,
-    help="Pre-downloaded UniProt PTM TSV (optional; auto-downloaded if omitted).",
+    help=(
+        "Pre-downloaded UniProt PTM TSV. Needed: `ptm atlas` does not download it "
+        "(`hvantk ptm build` does)."
+    ),
 )
 @click.option(
     "--peptideatlas-tsv",
@@ -789,7 +795,10 @@ def ptm_atlas(
         click.echo(f"Sources used: {', '.join(result.sources_used)}")
         click.echo(f"Sites mapped: {result.n_sites:,}")
         click.echo(f"Combined TSV: {result.combined_tsv}")
-        click.echo(f"Hail Table:   {result.output_ht}")
+        if result.output_ht:
+            click.echo(f"Hail Table:   {result.output_ht}")
+        else:
+            click.echo("Hail Table:   not built (use `hvantk ptm build` for the table)")
 
     except Exception as e:
         logger.exception(f"PTM atlas failed: {e}")

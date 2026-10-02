@@ -139,12 +139,15 @@ hvantk psroc --variants strata/non_ptm_variants.txt --clinvar-ht clinvar.ht --db
 Three further commands assemble a multi-source PTM atlas and test for allele-frequency
 depletion at PTM sites, stratified by tissue or cell type:
 
-- **`hvantk ptm atlas`** — Assembles a combined PTM atlas from UniProt, PeptideAtlas and
-  (optionally) CPTAC, writing `ptm_sites_mapped.tsv.bgz` (UniProt alone) or
-  `ptm_sites_combined.tsv.bgz` (multiple sources) plus the final sites Hail Table.
-  Required: `--output-dir`, `--output-ht`. CPTAC is off by default (`--sources
-  uniprot,peptideatlas`); any source TSV or the GTF not passed in is downloaded
-  automatically.
+- **`hvantk ptm atlas`** — Maps a combined PTM site list from UniProt, PeptideAtlas and
+  (optionally) CPTAC to the genome, writing `ptm_sites_mapped.tsv.bgz` (UniProt alone) or
+  `ptm_sites_combined.tsv.bgz` (multiple sources). It stops at that TSV and does not
+  build a Hail Table; use `hvantk ptm build` for the end-to-end path. The UniProt TSV
+  must be passed (`--uniprot-tsv`): unlike `ptm build`, `atlas` does not download it.
+  PeptideAtlas and CPTAC are included only when their TSV is passed as well; a source
+  named in `--sources` without its TSV is skipped. The Ensembl GTF is downloaded when
+  `--gtf-path` is omitted. Required: `--output-dir`, `--output-ht`. CPTAC is off by
+  default (`--sources uniprot,peptideatlas`).
 - **`hvantk ptm constraint`** — Compares gnomAD allele-frequency distributions between
   PTM-proximal and non-PTM variants, stratified by a metadata field from an expression
   dataset (`--expression-source hail-mt|anndata|tabular`). Runs five tests (per-group

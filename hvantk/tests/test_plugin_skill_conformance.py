@@ -392,6 +392,18 @@ def test_first_body_line_skips_frontmatter_blanks_headings_and_fences():
         ("```\n```", True),
         ("1. TODO", True),
         ("| TODO | TODO |\n| --- | --- |\n| TODO | TODO |", True),
+        # --- a RUN of leading markers. The pre-#407 checker stripped any run
+        # (``^[-*>\s]+``); the first rewrite stripped exactly one, so every case
+        # below passed again until the run was restored.
+        ("---", True),
+        ("- - -", True),
+        ("> - TODO", True),
+        ("- > TODO", True),
+        ("* - TBD", True),
+        (">> TODO", True),
+        ("-- TODO", True),
+        ("- - TODO", True),
+        ("1. - TODO", True),
         # --- bare / marker-wrapped placeholder leads, already documented in
         # _is_placeholder_body's own docstring and _PLACEHOLDER_LEADS/_WHOLE.
         ("TODO", True),
@@ -409,6 +421,9 @@ def test_first_body_line_skips_frontmatter_blanks_headings_and_fences():
         # whose cells are real.
         ("TBDone is a product", False),
         ("- real content", False),
+        ("1. Real content", False),
+        ("- > a quoted, real note", False),
+        ("2.5 GB raw file, fetched by the plugin's downloader", False),
         ("N/A for this plugin: the catalog is static", False),
         ("| Field | Value |\n| --- | --- |\n| real | content |", False),
     ],

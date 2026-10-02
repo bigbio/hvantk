@@ -136,10 +136,11 @@
   collections, are now `byo` (#360).
 - **`hvantk hgc vds2mt` and `hgc pipeline` now write the dense MatrixTable's
   columns sorted by sample ID** (previously the VDS's own order), so the sample
-  order of every exported VCF is deterministic and may differ between runs.
+  order of every exported VCF is deterministic, and may differ from that of an
+  export made before this change.
   `--skip-keying-by-cols` keeps the old VDS order, and its `--help` text now says
   so. A MatrixTable written before this change should be regenerated, or combined
-  through `combine_mts(force_sort_cols=True)`, before being unioned with one
+  through `combine_matrix_table_rows(force_sort_cols=True)`, before being unioned with one
   written after it (#368).
 - **`_driver_af` breaks a tied case-carrier count toward the driver with the
   highest control-carrier frequency, deterministically.** Ties are common with
@@ -150,10 +151,11 @@
 - **`hvantk ptm test` fails with an actionable message naming the `constraint`
   extra when `statsmodels` is missing**, instead of a bare `No module named
   'statsmodels'` traceback that never said which extra fixes it (#362).
-- **`rerank()` raises `ValueError` when `Config.nulls` is set but no candidate
-  axis survives the leakage/provenance filters**, rather than logging a warning
-  and quietly returning `nulls=None`. A requested multiplicity correction can no
-  longer go silently missing from the result.
+- **`rerank()` raises `ValueError` when `Config.nulls` is set but only the
+  baseline axis has columns left in an arm** (the provenance arm restriction barred
+  every other axis, or their tables contribute no feature column), rather than
+  logging a warning and quietly returning `nulls=None`. A requested multiplicity
+  correction can no longer go silently missing from the result.
 - **`Config.selection` is now type-checked the same way as `leakage`, `nulls` and
   `blocks`, and `SelectionPolicy` rejects an unknown `univariate` / `redundancy` /
   `wrapper` value at construction.** A misspelling such as `wrapper="RFECV"`
@@ -187,6 +189,12 @@
   about.
 - **The HGNC builder logs which declared fields are missing from the input
   header**, instead of silently dropping them from the renamed output.
+- **`hvantk ptm atlas` no longer claims sources or outputs it does not have.** It
+  listed every requested source under `Sources used` even when that source's TSV was
+  not passed (and so was skipped), printed an empty `Hail Table:` line, and its
+  `--uniprot-tsv` help promised a download it never performs. It now lists only the
+  sources that reached the pipeline, says the table is not built (use `hvantk ptm
+  build`), and its help and docs say the UniProt TSV must be passed.
 - **Several `hvantk drift` robustness gaps closed.** `DriftResult.status` is
   validated against its four allowed values; a fingerprint is canonicalised to
   its JSON form before comparison, so a probe returning a tuple, `Path` or
@@ -194,9 +202,7 @@
   `--regenerate` refuses to write a stub or placeholder-shaped fingerprint; the
   human-readable `hvantk drift` output now prints each `probe_failed` row's
   reason to stderr; `drift --all --json` emits its load-error rows and exits 2
-  when every in-scope dataset failed to bind, instead of printing nothing; and a
-  provider whose downloader module fails to import is recorded as a load error
-  (visible in `plugins errors`) instead of only a warning and `No such command`.
+  when every in-scope dataset failed to bind, instead of printing nothing.
 
 ## 0.3.1 — 2026-08-30
 

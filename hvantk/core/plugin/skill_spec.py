@@ -381,7 +381,7 @@ _EMPTY_FENCE_RE = re.compile(r"(?m)^[ \t]*(`{3,}|~{3,})[^\n]*\n[ \t]*\1[ \t]*$")
 #: A single leading list/quote marker: ``-``, ``*``, ``>``, or a numbered-list marker
 #: (``1.`` / ``1)``). Widened from a bare ``[-*>]`` class, which cannot see a stub
 #: written as ``1. TODO``.
-_LEADING_MARKER_RE = re.compile(r"^\s*(?:[-*>]|\d+[.)])\s*")
+_LEADING_MARKER_RE = re.compile(r"^\s*(?:(?:[-*>]|\d+[.)])\s*)+")
 
 #: A markdown table separator cell (``---``, ``:--``, ``--:``, ``:-:``). Dropped
 #: before testing a table's cells: its dashes are punctuation, not prose, and would

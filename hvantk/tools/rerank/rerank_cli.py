@@ -164,8 +164,12 @@ def rerank_cmd(
     # writes happen only after the whole run, so a typo in a directory name used to
     # surface as an uncaught OSError traceback AFTER scoring (and the null), with nothing
     # printed. Checked here so the comment above stays true for them as well.
+    # A remote URI (gs://, s3://, ...) is written through pandas/fsspec and has no local
+    # parent directory to check, so it is left to the writer.
     for flag, path in (("--output", output), ("--null-out", null_out)):
-        if path is not None and not Path(path).resolve().parent.is_dir():
+        if path is None or "://" in str(path):
+            continue
+        if not Path(path).resolve().parent.is_dir():
             raise click.ClickException(
                 f"{flag} {path}: its directory {Path(path).resolve().parent} does not "
                 "exist; create it first."

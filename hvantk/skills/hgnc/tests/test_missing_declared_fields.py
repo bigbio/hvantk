@@ -14,7 +14,7 @@ from pathlib import Path
 from hvantk.skills.hgnc.builder import _missing_declared_fields
 from hvantk.skills.hgnc.shared.constants import HGNC_GENE_FIELDS
 
-FIXTURE = Path("hvantk/skills/hgnc/tests/testdata/raw/hgnc/hgnc_test_sample.tsv")
+FIXTURE = Path(__file__).parent / "testdata" / "raw" / "hgnc" / "hgnc_test_sample.tsv"
 
 
 def test_declared_fields_all_present_in_the_live_fixture_header():

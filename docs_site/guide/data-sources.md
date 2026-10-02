@@ -126,10 +126,11 @@ hvantk download expression-atlas --download_path data/expression_atlas
 
 Most of these sources need manual acquisition — too large, license-gated, or a fragile URL
 — and for those, follow the instructions below, place the raw file(s) in a per-source
-directory, then build via `hvantk reprocess <plugin>:<dataset> --skip-download`. A few
-members of this section (gnomAD constraint, Ensembl gene annotations, UniProt PTM sites)
-ship a `hvantk download` command instead and are grouped here only because they carry a
-license, size, or versioning caveat worth reading before relying on them.
+directory, then build via `hvantk reprocess <plugin>:<dataset> --skip-download`. Some
+members of this section ship a downloader instead (gnomAD constraint, Ensembl gene
+annotations, UniProt PTM sites, CPTAC phospho, PeptideAtlas phospho and the 1000 Genomes
+sample metadata); they are grouped here because they carry a license, size, versioning
+or build-path caveat worth reading before relying on them.
 
 ### dbNSFP (~50 GB)
 
@@ -463,7 +464,7 @@ URL: https://proteomics.cancer.gov/programs/cptac
 ```bash
 hvantk reprocess cptac:phospho \
   --raw-dir data/cptac/ \
-  --output cptac_phospho_brca.ht \
+  --output cptac_phospho_brca.h5ad \
   --plugin-arg cancer_type=brca
 ```
 
@@ -484,7 +485,7 @@ URL: https://peptideatlas.org/
 ```bash
 hvantk reprocess peptideatlas:phospho \
   --raw-dir data/peptideatlas/ \
-  --output peptideatlas_phospho.ht
+  --output peptideatlas_phospho.parquet
 ```
 
 The upstream zip (e.g. `atlas_build_606.tsv.zip`) is ~549 MB. `hvantk download
@@ -506,7 +507,7 @@ https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000G_2504_high_cove
 # data/onek_genomes/ then:
 hvantk reprocess onek-genomes:variants \
   --raw-dir data/onek_genomes/ \
-  --output onek_genomes_variants.ht \
+  --output onek_genomes_variants.mt \
   --skip-download
 ```
 

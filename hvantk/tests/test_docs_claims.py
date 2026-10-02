@@ -394,6 +394,54 @@ def test_documented_reprocess_without_a_downloader_passes_skip_download():
     )
 
 
+def _documented_output(argv: list[str]) -> str | None:
+    """The value of ``--output``/``-o`` in a documented argv, in either spelling."""
+    for i, arg in enumerate(argv):
+        if arg in ("--output", "-o") and i + 1 < len(argv):
+            return argv[i + 1]
+        if arg.startswith("--output="):
+            return arg.split("=", 1)[1]
+    return None
+
+
+def test_documented_reprocess_output_has_the_datasets_native_extension():
+    """A documented ``--output`` must carry the extension ``reprocess`` will accept.
+
+    ``reprocess`` refuses a mismatched extension up front (``_check_output_extension``),
+    so a documented ``.ht`` for a dataset that writes ``.h5ad``, ``.parquet`` or ``.mt``
+    exits 2 the moment a reader runs it. ``--help`` cannot see this. The expected
+    extension comes from the same ``_expected_extensions`` the CLI uses, so this check
+    cannot drift from what the command enforces. A placeholder output (``<out>``,
+    ``$OUT``, ``{output}``) is not a path and is skipped.
+    """
+    from types import SimpleNamespace
+
+    from hvantk.core.plugin.loader import get_registry
+    from hvantk.tools.plugins.reprocess_cli import _expected_extensions
+
+    manifests = {m.name: m for m in get_registry().list_manifests()}
+    offenders = []
+    for path, command, argv, dataset in _documented_reprocess_invocations():
+        dm = manifests.get(dataset)
+        output = _documented_output(argv)
+        if dm is None or output is None or any(c in output for c in "<${"):
+            continue
+        spec = SimpleNamespace(
+            artifact_type=SimpleNamespace(__name__=dm.artifact_type_name),
+            backend=dm.backend,
+        )
+        expected = _expected_extensions(spec)
+        if expected and not any(Path(output).name.endswith(e) for e in expected):
+            offenders.append(
+                f"{path.relative_to(REPO_ROOT)}: {dataset} writes "
+                f"{' or '.join(expected)}, documented --output {output}"
+            )
+    assert not offenders, (
+        "documented `hvantk reprocess` --output has an extension the command refuses "
+        "for that dataset:\n  " + "\n  ".join(offenders)
+    )
+
+
 def _tree_paths(markdown: str) -> set[str]:
     """Reconstruct the repo-relative path of every entry in an ASCII tree.
 

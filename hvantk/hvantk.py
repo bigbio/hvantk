@@ -208,8 +208,8 @@ class LazyGroup(click.Group):
         ``hvantk drif`` said ``No such command 'drif'.`` with no ``Did you mean
         'drift'?`` -- a regression from the lazy pattern, not a missing click feature.
         The registry already knows every name, so the suggestion is rebuilt from it.
-        Older click (the lock pins 8.1.8) has no ``NoSuchCommand`` and no suggestions;
-        nothing changes there.
+        Older click (8.1.x, which ``click>=8.1.3`` still allows) has no
+        ``NoSuchCommand`` and no suggestions; nothing changes there.
         """
         try:
             return super().resolve_command(ctx, args)
