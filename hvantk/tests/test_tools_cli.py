@@ -82,7 +82,10 @@ def test_errors_command_lists_load_errors(monkeypatch, tmp_path):
 
     runner = CliRunner()
     result = runner.invoke(tools_group, ["errors"])
-    assert result.exit_code == 0
+    # Rows mean a tool manifest is silently missing from the registry -- the same
+    # contract `plugins errors` keeps: a script asking should not have to parse the
+    # text to learn that, so a non-empty listing must not exit 0.
+    assert result.exit_code == 1
     assert "broken.tool.yaml" in result.output
 
 

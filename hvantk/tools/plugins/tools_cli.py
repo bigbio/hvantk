@@ -57,7 +57,7 @@ def describe_cmd(name):
 
 @tools_group.command(name="errors")
 def errors_cmd():
-    """List tool manifests that failed to load and why."""
+    """List tool manifests that failed to load and why. Exits 1 when there is anything to list."""
     reg = tool_loader.get_registry()
     errs = reg.load_errors()
     if not errs:
@@ -65,6 +65,10 @@ def errors_cmd():
         return
     for manifest_path, exc in errs:
         click.echo(f"{manifest_path}: {exc}")
+    # Rows mean the registry is missing something. A script asking `tools errors`
+    # should not have to parse the text to learn that -- same contract as
+    # `plugins errors`.
+    raise SystemExit(1)
 
 
 @tools_group.command(name="validate")
