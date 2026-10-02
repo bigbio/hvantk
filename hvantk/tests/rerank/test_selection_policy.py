@@ -71,3 +71,24 @@ def test_equivalence_is_not_passed_to_the_policy_dataclass(tmp_path):
     assert policy.q == 0.05
     assert not hasattr(policy, "equivalence")
     assert equivalence == {"my_class": ["SourceA"]}
+
+
+# --- config wiring ---------------------------------------------------------------------
+
+
+def test_config_defaults_to_no_selection():
+    from hvantk.algorithms.rerank.config import Config
+
+    assert Config.__dataclass_fields__["selection"].default is None
+
+
+@pytest.mark.parametrize("bad", [42, "auc", {"wrapper": "rfecv"}])
+def test_config_rejects_a_non_selection_policy(bad):
+    """A bare int, string or dict here used to construct and then fail deep inside a
+    per-fold selector, after scoring had begun, with an AttributeError that named none of
+    this -- the failure mode Config.leakage's, Config.nulls's and Config.blocks's type
+    checks exist for."""
+    from hvantk.algorithms.rerank.config import Config
+
+    with pytest.raises(TypeError, match="SelectionPolicy"):
+        Config(name="x", features=[], labels=None, selection=bad).__post_init__()
