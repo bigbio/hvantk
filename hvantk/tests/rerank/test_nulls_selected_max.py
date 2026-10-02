@@ -329,3 +329,37 @@ def test_config_rejects_a_non_nullconfig():
 
     with pytest.raises(TypeError, match="NullConfig"):
         Config(name="x", features=[], labels=None, nulls=200).__post_init__()
+
+
+def test_a_requested_null_with_no_candidate_axis_is_an_error_not_a_none():
+    """`RerankResult.nulls is None` means "no correction was requested". The engine used to
+    log a warning and return exactly that when a correction WAS requested but no axis
+    besides the baseline had columns left -- the state Config.nulls's type check calls
+    worse than never offering a correction, now reachable through the API with nothing
+    to show for it. It must raise, naming the configured axes, the one that was dropped
+    and why, and how to run without a correction."""
+    import pandas as pd
+
+    from hvantk.algorithms.rerank.config import Config, FeatureAxis, LabelSpec
+    from hvantk.algorithms.rerank.engine import _run_nulls
+
+    frame = pd.DataFrame({"gene": ["A", "B"], "x": [0.1, 0.2]})
+    empty = pd.DataFrame({"gene": ["A", "B"]})  # a table with no feature column
+    cfg = Config(
+        name="x",
+        features=[
+            FeatureAxis("constraint", lambda: frame),
+            FeatureAxis("expression", lambda: empty),
+        ],
+        labels=LabelSpec(lambda: {"A"}),
+        nulls=NullConfig(n_perm=2),
+    )
+
+    with pytest.raises(ValueError) as info:
+        _run_nulls(
+            cfg, frame, "constraint", {"constraint": ["x"]}, [1, 0], None, "all", None
+        )
+    msg = str(info.value)
+    assert "Config.nulls" in msg and "'constraint'" in msg
+    assert "'expression'" in msg and "no feature column" in msg
+    assert "unset" in msg

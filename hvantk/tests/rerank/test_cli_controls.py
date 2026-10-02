@@ -41,10 +41,10 @@ def _write_two_axis_config(tmp_path, genes, y):
 
     `_toy_fixtures`/`_write_config` (shared with test_cli.py, and reused by every other
     test in this file) declare exactly one feature axis. That axis is then also the
-    baseline, so `engine._run_nulls` has no candidate axis left to search over and
-    returns `None` regardless of `--n-perm` -- verified empirically against the current
-    engine before writing this. Written locally, rather than by editing the shared
-    fixture, which every other rerank CLI test relies on staying single-axis.
+    baseline, so there is no candidate axis left for a permutation null to search over
+    and `--n-perm` is refused (see the single-axis test below). Written locally, rather
+    than by editing the shared fixture, which every other rerank CLI test relies on
+    staying single-axis.
     """
     rng = np.random.default_rng(1)
     pd.DataFrame({"gene": genes, "z": y + rng.normal(0, 0.5, len(genes))}).to_parquet(
@@ -121,11 +121,43 @@ def test_n_perm_on_a_single_axis_config_fails_cleanly(tmp_path):
     declare exactly one feature axis, which is then also the baseline, so there is no
     candidate axis left for `--n-perm` to search over. This must be a clean CLI failure
     before any output is written, not a silent no-op (the engine used to return
-    `res.nulls is None` and the CLI just skipped the Multiplicity block)."""
+    `res.nulls is None` and the CLI just skipped the Multiplicity block). It is knowable
+    from the config alone, so the CLI rejects it before any work starts."""
     r, out = _run(tmp_path, "--n-perm", "3")
     assert r.exit_code != 0
     assert "Traceback" not in r.output
     assert "--n-perm" in r.output
+    assert not out.exists(), "a failed run must not leave a scored table behind"
+
+
+def test_n_perm_with_an_axis_that_contributes_no_column_fails_cleanly(tmp_path):
+    """The engine's own refusal must reach the user as a clean CLI error, not a traceback
+    and not a scored table with the correction silently missing. This config passes the
+    one-axis preflight (it names two axes), but the second table carries only a 'gene'
+    column, so after scoring the engine is left with the baseline alone -- the case the
+    CLI cannot see from the config and `engine._run_nulls` raises on."""
+    genes, y = _toy_fixtures(tmp_path, n=150)
+    pd.DataFrame({"gene": genes}).to_parquet(tmp_path / "empty.parquet")
+    (tmp_path / "cohort.yaml").write_text(yaml.safe_dump(_cohort(tmp_path)))
+    spec = {
+        "name": "toy",
+        "cohort": str(tmp_path / "cohort.yaml"),
+        "features": [
+            {"name": "constraint", "path": str(tmp_path / "feat.parquet")},
+            {"name": "expression", "path": str(tmp_path / "empty.parquet")},
+        ],
+        "labels": {"path": str(tmp_path / "labels.txt")},
+        "min_label_coverage": 0.0,
+    }
+    cfg = tmp_path / "c.yaml"
+    cfg.write_text(yaml.safe_dump(spec))
+    out = tmp_path / "out.tsv"
+    r = CliRunner().invoke(
+        rerank_cmd, ["-c", str(cfg), "-o", str(out), "--n-perm", "3"]
+    )
+    assert r.exit_code != 0
+    assert "Traceback" not in r.output
+    assert "'expression'" in r.output and "no feature column" in r.output, r.output
     assert not out.exists(), "a failed run must not leave a scored table behind"
 
 

@@ -1,5 +1,6 @@
 # hvantk/tests/rerank/test_cli.py
 import logging
+import sys
 
 import numpy as np, pandas as pd, yaml
 from click.testing import CliRunner
@@ -327,3 +328,61 @@ def test_rerank_cli_reports_a_missing_cohort_manifest_clearly(tmp_path):
     assert r.exit_code != 0
     assert "does-not-exist.yaml" in r.output
     assert "Traceback" not in r.output
+
+
+# --- optional dependency ---------------------------------------------------------------
+
+
+def _hide_sklearn(monkeypatch):
+    """Make `import sklearn` raise ModuleNotFoundError for the duration of a test.
+
+    The same technique as `_hide_statsmodels` in test_ptm_optional_deps.py. Every cached
+    `sklearn.*` AND `hvantk.algorithms.rerank*` module is dropped too: the command's
+    deferred `from hvantk.algorithms.rerank import ...` would otherwise be served from
+    `sys.modules` and never touch scikit-learn at all, which is not what a base install
+    sees.
+    """
+    for name in [
+        m
+        for m in list(sys.modules)
+        if m == "sklearn"
+        or m.startswith("sklearn.")
+        or m == "hvantk.algorithms.rerank"
+        or m.startswith("hvantk.algorithms.rerank.")
+    ]:
+        monkeypatch.delitem(sys.modules, name)
+    monkeypatch.setitem(
+        sys.modules, "sklearn", None
+    )  # `import sklearn` -> ModuleNotFoundError
+
+
+def test_rerank_names_the_ml_extra_instead_of_a_traceback_without_scikit_learn(
+    tmp_path, monkeypatch, caplog
+):
+    """A path behind an extra exits with an actionable message naming that extra, not a
+    traceback (the standard installation.md documents, and the one `hvantk ptm test`
+    follows for statsmodels). Before this guard, `hvantk rerank` on a base install died
+    inside the command's deferred `from hvantk.algorithms.rerank import ...` with a raw
+    ModuleNotFoundError that named no extra."""
+    _toy_fixtures(tmp_path)
+    config_path = _write_config(
+        tmp_path,
+        {
+            "name": "toy",
+            "key": "symbol",
+            "key_column": "gene",
+            "table": str(tmp_path / "cohort.tsv"),
+            "prior": {"column": "p", "direction": "lower_is_better"},
+        },
+    )
+    out = tmp_path / "out.tsv"
+    _hide_sklearn(monkeypatch)
+    with caplog.at_level(logging.DEBUG):
+        r = CliRunner().invoke(rerank_cmd, ["-c", str(config_path), "-o", str(out)])
+    assert r.exit_code == 1, r.output
+    assert "ml" in r.output and "hvantk[ml]" in r.output, r.output
+    assert "Traceback" not in r.output and "No module named" not in r.output
+    # A ClickException, not the ModuleNotFoundError escaping the command.
+    assert r.exception is None or isinstance(r.exception, SystemExit), repr(r.exception)
+    assert all(rec.exc_info is None for rec in caplog.records)
+    assert not out.exists()
