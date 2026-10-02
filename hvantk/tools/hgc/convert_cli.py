@@ -35,7 +35,12 @@ def register_convert_commands(group):
     help="Skip biallelic validation (faster, use only if confident)",
 )
 @click.option(
-    "--skip-keying-by-cols", is_flag=True, help="Skip keying MatrixTable by columns"
+    "--skip-keying-by-cols",
+    is_flag=True,
+    help=(
+        "Skip keying MatrixTable columns by sample and sorting them by sample ID "
+        "(columns keep the VDS's own order)"
+    ),
 )
 @click.option(
     "--overwrite/--no-overwrite", default=False, help="Overwrite output if exists"

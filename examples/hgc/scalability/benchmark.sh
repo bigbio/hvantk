@@ -398,7 +398,7 @@ for SIZE in "${SIZES[@]}"; do
     # Extract timing from JSON
     if [ -f "$TIMING_FILE" ]; then
         set +e
-        TIMING_OUTPUT=$(python3 "$SCRIPT_DIR/extract_timing.py" "$TIMING_FILE" "$SIZE" 2>&1)
+        TIMING_OUTPUT=$(python3 "$SCRIPT_DIR/../common/extract_timing.py" "$TIMING_FILE" "$SIZE" 2>&1)
         PY_EXIT=$?
         set -e
 
@@ -438,6 +438,6 @@ echo "  - Timings: $TIMING_CSV"
 echo "  - Memory: $MEMORY_CSV"
 echo ""
 echo "To generate plots, run:"
-echo "  python $SCRIPT_DIR/plot_scalability_results.py --results-dir $OUTPUT_DIR"
+echo "  python $SCRIPT_DIR/plot_results.py --results-dir $OUTPUT_DIR"
 echo "========================================================================"
 
