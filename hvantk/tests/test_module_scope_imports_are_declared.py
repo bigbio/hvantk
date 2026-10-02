@@ -39,16 +39,37 @@ def _normalize(dist: str) -> str:
     return re.sub(r"[-_.]+", "-", dist).lower()
 
 
-def _declared_distributions() -> set[str]:
+def _declared_distributions(*, include_extras: bool) -> set[str]:
     try:
         import tomllib as toml  # Python >= 3.11
     except ModuleNotFoundError:  # Python 3.10
         import tomli as toml
     project = toml.loads((ROOT / "pyproject.toml").read_text())["project"]
     specs = list(project["dependencies"])
-    for extra in project.get("optional-dependencies", {}).values():
-        specs.extend(extra)
+    if include_extras:
+        for extra in project.get("optional-dependencies", {}).values():
+            specs.extend(extra)
     return {_normalize(re.split(r"[<>=!~;@\[\s]", s, maxsplit=1)[0]) for s in specs}
+
+
+#: Layers whose module-scope imports must resolve on a BASE install -- `pip install
+#: hvantk` with no extras -- because nothing gates their import behind an extras-only
+#: code path the way a CLI command can. `algorithms/` is exempted and keeps the
+#: any-extra rule: this is the one layer whose entry points are themselves commands a
+#: user reaches only through an extra (`hvantk enrichex`, `hvantk ptm`, ...), so an
+#: import declared in THAT command's own extra is still reachable honestly.
+#:
+#: Unioning base with every extra (the original rule) is exactly the shape of the two
+#: bugs that shipped before this test existed (#363 h5py, #376 scipy): both were
+#: imported at module scope on a base-install-reachable path
+#: (`skills/ucsc_cellbrowser/shared/ucsc.py`) while declared only in extras unrelated
+#: to that path, and the any-extra union made each look declared regardless.
+_BASE_ONLY_LAYERS = ("core", "skills", "tools")
+
+
+def _requires_base_only(path: Path) -> bool:
+    parts = path.relative_to(PACKAGE).parts
+    return parts == ("hvantk.py",) or (parts and parts[0] in _BASE_ONLY_LAYERS)
 
 
 def _source_files():
@@ -124,9 +145,11 @@ def test_the_scanner_sees_a_known_module_scope_import():
 
 
 def test_every_module_scope_third_party_import_is_declared():
-    declared = _declared_distributions()
+    declared_base = _declared_distributions(include_extras=False)
+    declared_any_extra = _declared_distributions(include_extras=True)
     offenders: dict[str, list[str]] = {}
     for path in _source_files():
+        declared = declared_base if _requires_base_only(path) else declared_any_extra
         for name in _third_party(module_scope_imports(path)):
             if name in ALLOWED_UNDECLARED:
                 continue
@@ -134,7 +157,9 @@ def test_every_module_scope_third_party_import_is_declared():
                 continue
             offenders.setdefault(name, []).append(str(path.relative_to(ROOT)))
     assert not offenders, (
-        "module-scope imports of packages declared in no dependency set (declare them in "
-        "pyproject.toml [project.dependencies] or an extra, and mirror requirements.txt / "
-        f"environment.yml):\n{offenders}"
+        "module-scope imports of packages declared in no dependency set reachable from "
+        "that file's layer (core/skills/tools/hvantk.py need the BASE dependencies; "
+        "algorithms/ may rely on any extra) -- declare them in pyproject.toml "
+        "[project.dependencies] or the relevant extra, and mirror requirements.txt / "
+        f"environment.yml:\n{offenders}"
     )
