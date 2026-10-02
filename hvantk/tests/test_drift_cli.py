@@ -1124,3 +1124,25 @@ def test_regenerate_ignores_a_real_broken_plugin_and_an_entry_point_unit(
     result = CliRunner().invoke(drift_cmd, ["--regenerate", "fake:default"])
 
     assert result.exit_code == 0, result.output
+
+
+def test_cli_timeout_default_matches_the_runner_default():
+    """`hvantk drift --timeout` must default to `run_drift_checks`'s own default.
+
+    Probes with a retry budget (pqtl, uniprot_ptm) pin that budget against the runner's
+    default in their own tests, which may not import `tools/` (see
+    `test_dependency_directions.py`). The CLI always passes its `--timeout` through
+    explicitly, so if its default alone dropped below a probe's worst case, every real
+    invocation would kill that probe mid-retry while those tests stayed green. Pinning
+    the two defaults together closes that gap from the one layer allowed to see both.
+    """
+    import inspect
+
+    from hvantk.core.plugin import drift_runner
+    from hvantk.tools.plugins.drift_cli import drift_cmd
+
+    runner_default = (
+        inspect.signature(drift_runner.run_drift_checks).parameters["timeout"].default
+    )
+    cli_default = next(p.default for p in drift_cmd.params if p.name == "timeout")
+    assert cli_default == runner_default
