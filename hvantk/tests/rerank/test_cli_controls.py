@@ -195,6 +195,47 @@ def test_n_perm_with_an_axis_that_contributes_no_column_fails_cleanly(tmp_path):
     assert not out.exists(), "a failed run must not leave a scored table behind"
 
 
+def test_a_missing_output_directory_is_rejected_before_the_run(tmp_path):
+    """`-o` is a bare click.Path and the write happens after the whole run, so a typo in
+    the output directory used to surface as an uncaught OSError traceback AFTER scoring --
+    and after the null, with its p-values never printed. The comment above the flag checks
+    promises typos are caught before any work starts; this makes that true for `-o`."""
+    _toy_fixtures(tmp_path, n=150)
+    cfg = _write_config(tmp_path, _cohort(tmp_path))
+    out = tmp_path / "missing_dir" / "out.tsv"
+    r = CliRunner().invoke(rerank_cmd, ["-c", str(cfg), "-o", str(out)])
+    assert r.exit_code == 1, r.output
+    assert isinstance(r.exception, SystemExit), repr(r.exception)  # not an OSError
+    assert "missing_dir" in r.output and "Traceback" not in r.output
+
+
+def test_a_missing_null_out_directory_is_rejected_before_the_run(tmp_path):
+    """Same for `--null-out`, which is written last of all -- after the scored table and
+    the whole permutation null."""
+    _toy_fixtures(tmp_path, n=150)
+    cfg = _write_config(tmp_path, _cohort(tmp_path))
+    nul = tmp_path / "nowhere" / "null.tsv"
+    r = CliRunner().invoke(
+        rerank_cmd,
+        [
+            "-c",
+            str(cfg),
+            "-o",
+            str(tmp_path / "out.tsv"),
+            "--n-perm",
+            "2",
+            "--null-out",
+            str(nul),
+        ],
+    )
+    assert r.exit_code == 1, r.output
+    assert isinstance(r.exception, SystemExit), repr(r.exception)  # not an OSError
+    assert "nowhere" in r.output and "Traceback" not in r.output
+    assert not (tmp_path / "out.tsv").exists(), (
+        "nothing may be written before the check"
+    )
+
+
 def test_blocks_flag_wires_the_block_builder(tmp_path):
     genes, _ = _toy_fixtures(tmp_path, n=150)
     hgnc = tmp_path / "hgnc.txt"

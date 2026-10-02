@@ -1,5 +1,6 @@
 # hvantk/tools/rerank/rerank_cli.py
 import logging
+from pathlib import Path
 
 import click
 import jsonschema
@@ -159,6 +160,16 @@ def rerank_cmd(
         raise click.ClickException(
             "--null-out describes a permutation null; pass --n-perm N too."
         )
+    # The two output paths are bare click.Path()s (nothing is created up front) and both
+    # writes happen only after the whole run, so a typo in a directory name used to
+    # surface as an uncaught OSError traceback AFTER scoring (and the null), with nothing
+    # printed. Checked here so the comment above stays true for them as well.
+    for flag, path in (("--output", output), ("--null-out", null_out)):
+        if path is not None and not Path(path).resolve().parent.is_dir():
+            raise click.ClickException(
+                f"{flag} {path}: its directory {Path(path).resolve().parent} does not "
+                "exist; create it first."
+            )
     if n_perm > 0 and blocks_path is None:
         # Advisory, not an error, and said ONCE, up front, on stderr: an unblocked null
         # permutes labels across gene families, which understates its spread -- it is
