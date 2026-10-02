@@ -1,13 +1,13 @@
 """Visualization panels for PTM constraint analysis.
 
-Renders the four diagnostic panels produced by :mod:`hvantk.ptm.constraint`:
+Renders the four diagnostic panels produced by :mod:`hvantk.algorithms.ptm.constraint`:
 
     A. Per-group ranking (forest plot of log2(non-PTM / PTM AF ratio))
     B. τ quartile stratification (depletion ratio by tissue specificity)
     C. τ × LOEUF factorial (2x2 heatmap of log2 ratios)
     D. PTM category × group heatmap (diverging, centered at 0)
 
-This module mirrors the tone of :mod:`hvantk.ptm.plot`: a single public entry
+This module mirrors the tone of :mod:`hvantk.algorithms.ptm.plot`: a single public entry
 point, lazy imports for matplotlib/seaborn, and empty-data panels are skipped
 rather than crashing.
 """

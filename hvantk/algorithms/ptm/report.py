@@ -498,7 +498,7 @@ def generate_phase2_report(
     output_path : str
         Destination HTML file path.
     atlas_result : PTMAtlasResult, optional
-        Output of :func:`hvantk.ptm.atlas.build_atlas`.
+        Output of :func:`hvantk.algorithms.ptm.atlas.build_atlas`.
     annotation_summary : dict, optional
         Counters for the SYMBOL-based annotation; expected keys are
         ``n_total``, ``n_ptm_site``, ``n_ptm_proximal``, ``n_both``,

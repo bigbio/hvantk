@@ -26,29 +26,7 @@ logger = logging.getLogger(__name__)
 )
 @click.pass_context
 def ptm_group(ctx):
-    """PTM command group for variant classification analysis.
-
-    \b
-    Workflow:
-      1. hvantk ptm build          — Download PTM data + map coordinates + build Hail Table
-      2. hvantk ptm annotate       — Annotate variants with PTM site information
-      3. hvantk ptm landscape      — PTM-variant overlap analysis
-      4. hvantk ptm export-strata  — Export PTM/non-PTM variant lists for PSROC
-      5. hvantk ptm population     — Population-level PTM-variant burden
-      6. hvantk ptm constraint     — Stratified AF depletion at PTM codons (by tissue/cell-type)
-      7. hvantk ptm report         — Generate summary report
-
-    \b
-    For predictor evaluation, compose with PSROC:
-      hvantk ptm export-strata --annotated-ht clinvar_ptm.ht -o strata/
-      hvantk psroc --variants strata/ptm_variants.txt --clinvar-ht clinvar.ht ...
-      hvantk psroc --variants strata/non_ptm_variants.txt --clinvar-ht clinvar.ht ...
-
-    \b
-    Examples:
-      hvantk ptm build --output-dir data/ptm/ --output-ht data/ptm/ptm_sites.ht
-      hvantk ptm annotate --variants-ht clinvar.ht --ptm-ht ptm_sites.ht -o annotated.ht
-    """
+    """Post-translational modification variant classification commands."""
     ctx.ensure_object(dict)
 
 
@@ -194,6 +172,8 @@ def ptm_annotate(ctx, variants_ht, ptm_ht, output_ht, flanking_codons, overwrite
       is_ptm_proximal  — variant within flanking window (not at codon)
       ptm_types        — set of PTM categories (e.g., phosphorylation)
       ptm_distance     — approximate distance in residues to nearest PTM site
+      ptm_evidence     — per-site evidence for the nearest site(s); present only
+                         when the PTM table carries evidence fields
 
     \b
     Examples:
