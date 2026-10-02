@@ -24,6 +24,7 @@ from hvantk.algorithms.rerank.nulls import (
     permutation_deltas,
     selected_maximum,
 )
+from hvantk.algorithms.rerank.seeds import DEFAULT_SEED
 from hvantk.algorithms.rerank.selection import SelectionPolicy
 from hvantk.tests.rerank._synth import cheap_scorer, permuted_labels, planted_signal
 
@@ -36,6 +37,7 @@ def _setting(candidates, **kw):
         baseline=("base",),
         candidates=candidates,
         folds=ABLATION_FOLDS,
+        seed=DEFAULT_SEED,
         block_digest=None,
     )
     base.update(kw)
@@ -106,6 +108,9 @@ def test_selected_max_is_never_below_the_per_axis_draw_it_contains():
         dict(baseline=("base", "burden")),
         dict(block_digest="0" * 40),
         dict(folds=10),
+        # The CV seed: a seed-0 null used to answer for a seed-1 delta although the two
+        # partitions give different observed deltas (up to 0.049 apart on one cohort).
+        dict(seed=DEFAULT_SEED + 1),
         dict(candidates={"axis0": ("elsewhere",)}),
     ],
 )
@@ -189,6 +194,22 @@ def test_merge_refuses_chunks_from_different_control_settings():
     )
     with pytest.raises(ControlSettingMismatch):
         NullDistribution.merge([a, b])
+
+
+def test_merge_refuses_chunks_scored_under_different_cv_seeds():
+    """Two chunks of one NullConfig scored under CV seeds 0 and 1 are draws under two
+    different partitions. They used to merge silently whenever no `observed` rode with
+    them (the observed-delta check being the only thing that could notice); the setting
+    itself must now carry the seed and refuse, naming it."""
+    a = _null(n_axes=2, seed=1)
+    b = dataclasses.replace(
+        a, setting=dataclasses.replace(a.setting, seed=a.setting.seed + 1)
+    )
+    assert a.observed is None and b.observed is None
+    with pytest.raises(ControlSettingMismatch) as info:
+        NullDistribution.merge([a, b])
+    differing = str(info.value).split("Differing field(s): ", 1)[1]
+    assert "seed (generated=" in differing
 
 
 def test_merge_refuses_overlapping_permutation_indices():

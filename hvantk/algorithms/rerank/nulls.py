@@ -138,6 +138,15 @@ class ControlSetting:
     folds
         The fold count the scorer ACTUALLY used -- not ``Config.folds``, which governs
         ``ReRanker.score`` only (see ``evaluator.ABLATION_FOLDS``).
+    seed
+        The CV seed the scorer's folds were drawn with (``Config.seed``, as handed to
+        ``oof_scorer``). The partition is a function of ``(seed, labels)``, so a null and
+        a delta computed under different seeds are different draws of the partition
+        component and are not the same statistic: without this field two chunks of one
+        ``NullConfig`` scored under CV seeds 0 and 1 merged silently when no ``observed``
+        rode with them, and a seed-0 null answered ``p_selected_max`` for a seed-1 delta
+        (observed deltas differed by up to 0.049). Not ``NullConfig.seed``, which seeds
+        the permutations and is recorded separately as ``perm_seed``.
     block_digest
         A digest of the exact block labels the folds were built from (see
         :func:`~hvantk.algorithms.rerank.blocks.block_digest`), or ``None`` when folds were
@@ -158,6 +167,7 @@ class ControlSetting:
     baseline: tuple
     candidates: tuple
     folds: int
+    seed: int
     block_digest: "str | None"
 
     def __post_init__(self) -> None:
@@ -210,6 +220,11 @@ class ControlSetting:
         if folds < 2:
             raise ValueError(f"folds must be an int >= 2; got {folds!r}")
 
+        seed = _coerce_int(self.seed, "seed")
+        object.__setattr__(self, "seed", seed)
+        if seed < 0:
+            raise ValueError(f"seed must be an int >= 0; got {seed!r}")
+
         if self.block_digest is not None:
             if not isinstance(self.block_digest, str):
                 raise TypeError(
@@ -224,8 +239,8 @@ class ControlSetting:
         digest = None if self.block_digest is None else self.block_digest[:12]
         return (
             f"arm={self.arm!r} leakage={self.leakage!r} selection={self.selection!r} "
-            f"folds={self.folds} block_digest={digest!r} baseline={list(self.baseline)!r} "
-            f"candidates={candidates!r}"
+            f"folds={self.folds} seed={self.seed} block_digest={digest!r} "
+            f"baseline={list(self.baseline)!r} candidates={candidates!r}"
         )
 
 

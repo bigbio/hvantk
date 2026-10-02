@@ -23,6 +23,7 @@ from hvantk.algorithms.rerank.nulls import (
     p_value,
     permutation_deltas,
 )
+from hvantk.algorithms.rerank.seeds import DEFAULT_SEED
 from hvantk.tests.rerank._synth import cheap_scorer, permuted_labels, planted_signal
 
 
@@ -34,6 +35,7 @@ def _setting(baseline=("base",), **kw):
         baseline=baseline,
         candidates=kw.get("candidates", {"axis0": ("axis0_a",)}),
         folds=kw.get("folds", 5),
+        seed=kw.get("seed", DEFAULT_SEED),
         block_digest=kw.get("block_digest", None),
     )
 
@@ -353,6 +355,12 @@ def test_control_setting_is_frozen_and_compares_by_value():
     assert _setting(baseline=["base"]) == _setting()
     assert hash(_setting(baseline=["base"])) == hash(_setting())
     assert a != _setting(candidates={"axis0": ("axis0_a", "axis0_b")})
+    # The CV seed changes the partition and so the statistic: two settings that differ in
+    # nothing else are different settings (observed deltas moved by up to 0.049 between
+    # seeds 0 and 1 on one cohort), and a seed outside sklearn's range is refused.
+    assert a != _setting(seed=DEFAULT_SEED + 1)
+    with pytest.raises(ValueError, match="seed"):
+        _setting(seed=-1)
     with pytest.raises(dataclasses.FrozenInstanceError):
         a.leakage = True
 

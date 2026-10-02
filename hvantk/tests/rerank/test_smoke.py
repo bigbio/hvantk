@@ -95,6 +95,7 @@ def test_engine_end_to_end(tmp_path, monkeypatch):
     assert res2.nulls is not None
     assert res2.nulls.axes == ("z",)
     assert res2.nulls.setting.folds == ABLATION_FOLDS
+    assert res2.nulls.setting.seed == 7  # the CV seed the null's scorer ran under
     assert res2.nulls.setting.block_digest is not None
     assert res2.blocks.digest == res2.nulls.setting.block_digest
     abl = res2.metrics.ablation.set_index("family")["auc"]
