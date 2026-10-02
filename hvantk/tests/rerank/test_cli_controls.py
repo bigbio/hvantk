@@ -237,6 +237,11 @@ def test_a_missing_null_out_directory_is_rejected_before_the_run(tmp_path):
 
 
 def test_blocks_flag_wires_the_block_builder(tmp_path):
+    """Asserted on the `Blocks:` line the CLI prints only when a blocking was applied,
+    with the numbers this table must produce (150 genes in families of 5). The previous
+    `"blocks" in r.output.lower()` was satisfied by the tmp-dir name this very test's name
+    puts in the echoed output path (`.../test_blocks_flag_wires_the_blo0/out.tsv`), so it
+    passed with no `--blocks` at all and with an engine that ignored the blocks."""
     genes, _ = _toy_fixtures(tmp_path, n=150)
     hgnc = tmp_path / "hgnc.txt"
     rows = ["symbol\tgene_group\tstatus"]
@@ -249,7 +254,8 @@ def test_blocks_flag_wires_the_block_builder(tmp_path):
         ["-c", str(cfg), "-o", str(tmp_path / "out.tsv"), "--blocks", str(hgnc)],
     )
     assert r.exit_code == 0, r.output
-    assert "blocks" in r.output.lower()
+    assert "Blocks: 30 paralogue block(s); largest 5 (3.3%)" in r.output, r.output
+    assert "150/150 genes matched the gene-group table" in r.output
 
 
 def test_a_dominant_block_fails_the_command_rather_than_scoring(tmp_path):
