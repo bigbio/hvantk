@@ -731,3 +731,46 @@ def test_regenerate_then_check_is_clean_for_a_probe_returning_tuples(tmp_path: P
     result = _run_with_spec(spec)
 
     assert result.status == "clean", result.diff
+
+
+# --- --regenerate must only write what a live probe captured --------------------------
+#
+# It validated "mapping + JSON-serialisable" and nothing else. A stub sentinel is not a
+# fingerprint (stub plugins ship no baseline by design), and a placeholder-shaped
+# result -- an empty checksum, an epoch fetched_at -- is exactly what the comparator
+# rejects as "never captured from a live probe; run --regenerate": writing it created
+# a loop where --regenerate produced the baseline the next check told you to regenerate.
+
+
+def test_regenerate_fingerprint_refuses_a_stub_probe(tmp_path: Path):
+    from hvantk.core.plugin.api import stub_fingerprint
+
+    fp_path = tmp_path / "fp.json"
+    fp_path.write_text('{"probe_version": 1}')
+    spec = _make_spec(
+        probe_return=lambda: stub_fingerprint("doc-only; no probeable URL"),
+        fingerprint_path=fp_path,
+    )
+
+    with pytest.raises(DriftProbeError, match="stub"):
+        drift_runner.regenerate_fingerprint(spec, timeout=5)
+
+    assert fp_path.read_text() == '{"probe_version": 1}', "baseline must be untouched"
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["fp.json"]
+
+
+def test_regenerate_fingerprint_refuses_a_placeholder_shaped_fingerprint(
+    tmp_path: Path,
+):
+    fp_path = tmp_path / "fp.json"
+    fp_path.write_text('{"probe_version": 1}')
+    spec = _make_spec(
+        probe_return={"probe_version": 1, "checksums": {"a.tsv": ""}},
+        fingerprint_path=fp_path,
+    )
+
+    with pytest.raises(DriftProbeError, match="empty"):
+        drift_runner.regenerate_fingerprint(spec, timeout=5)
+
+    assert fp_path.read_text() == '{"probe_version": 1}', "baseline must be untouched"
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["fp.json"]

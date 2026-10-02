@@ -974,3 +974,33 @@ def test_regenerate_then_check_is_clean_for_a_tuple_valued_fingerprint(
     check = CliRunner().invoke(drift_cmd, ["--json", "fake:default"])
     assert check.exit_code == 0, check.output
     assert [r["status"] for r in _stdout_rows(check)] == ["clean"]
+
+
+# --- --regenerate must not commit a stub sentinel or a placeholder-shaped result as the
+# baseline ----------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("label", ["stub", "placeholder"])
+def test_regenerate_exits_probe_failed_instead_of_writing_a_non_baseline(
+    tmp_path, monkeypatch, label
+):
+    from hvantk.core.plugin.api import stub_fingerprint
+
+    probe = {
+        "stub": lambda: stub_fingerprint("doc-only; no probeable URL"),
+        "placeholder": lambda: {"probe_version": 1, "checksums": {"a.tsv": ""}},
+    }[label]
+    reg, plugin_dir = _tmp_fake_plugin_registry(tmp_path, monkeypatch)
+    spec = reg.get_dataset("fake:default")
+    object.__setattr__(spec, "drift_probe", probe)
+    fp_path = plugin_dir / "tests" / "drift_fingerprint.json"
+    before = fp_path.read_text()
+
+    result = CliRunner().invoke(drift_cmd, ["--regenerate", "fake:default"])
+
+    assert result.exit_code == 2, (label, result.output)  # EXIT_PROBE_FAILED
+    assert "fingerprint NOT rewritten" in result.output
+    assert fp_path.read_text() == before, "the baseline must be untouched"
+    assert sorted(p.name for p in (plugin_dir / "tests").iterdir()) == [
+        "drift_fingerprint.json"
+    ], "no temp sibling left behind"

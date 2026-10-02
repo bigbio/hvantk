@@ -393,6 +393,14 @@ def regenerate_fingerprint(spec: DatasetSpec, *, timeout: int = 60) -> dict:
     disk is not touched. Before #361 the CLI called ``spec.drift_probe()`` bare and
     ``write_text``'d whatever came back, which is how a corrupt baseline could be
     committed by the unattended bot in the first place.
+
+    A mapping that is JSON-serialisable is still not necessarily a baseline. A stub
+    sentinel is not one -- stub plugins ship no committed baseline by design, and
+    writing the sentinel reports success for a dataset that has no drift signal. A
+    placeholder-shaped result (an empty checksum, an epoch ``fetched_at``) is exactly
+    what the check path rejects as "never captured from a live probe; run
+    --regenerate", so writing it made ``--regenerate`` produce the baseline the next
+    check told you to regenerate. Both are refused before the write.
     """
     try:
         observed = _invoke_with_timeout(spec.drift_probe, timeout=timeout)
@@ -400,6 +408,18 @@ def regenerate_fingerprint(spec: DatasetSpec, *, timeout: int = 60) -> dict:
         raise
     except Exception as exc:  # noqa: BLE001
         raise DriftProbeError(f"probe raised {type(exc).__name__}: {exc}") from exc
+    if observed.get("probe_status") == PROBE_STATUS_STUB:
+        raise DriftProbeError(
+            "probe returned a stub fingerprint "
+            f"({observed.get('reason', 'no programmatic source')}); a stub is not a "
+            "baseline, so there is nothing to regenerate"
+        )
+    seeded = placeholder_baseline_reason(observed)
+    if seeded is not None:
+        raise DriftProbeError(
+            f"probe returned a placeholder-shaped fingerprint ({seeded}); a baseline "
+            "must come from a live capture, so it was not written"
+        )
     write_fingerprint(Path(spec.test_paths.drift_fingerprint), observed)
     return observed
 
