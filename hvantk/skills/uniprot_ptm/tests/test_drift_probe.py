@@ -152,6 +152,20 @@ def test_zero_results_fails_closed():
         _probe(body={"results": []})
 
 
+@pytest.mark.parametrize("total", ["0", "-1"])
+def test_impossible_total_results_fails_closed(total):
+    """X-Total-Results must be >= the number of results actually returned.
+
+    A bad edge/proxy response can report a count lower than what it sends back --
+    here 0 or -1 while `results` still carries the one entry the size=1 probe
+    requested. Without this check `int(total_raw)` succeeds either way and the
+    impossible count is recorded as a routine content change, so the drift bot
+    would propose it as the new baseline instead of failing closed.
+    """
+    with pytest.raises(DriftProbeError, match="X-Total-Results"):
+        _probe(headers={**_LIVE_HEADERS, "X-Total-Results": total})
+
+
 def test_http_error_is_a_probe_error():
     # 503 is in RETRY_STATUSES (request_with_retry backs off across the probe's 3
     # attempts, ~6s of real sleep) -- 404 is not retried, so this stays a fast, offline
