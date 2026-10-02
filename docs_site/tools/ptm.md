@@ -136,18 +136,9 @@ hvantk psroc --variants strata/non_ptm_variants.txt --clinvar-ht clinvar.ht --db
 
 ## Constraint Analysis Commands
 
-Three further commands assemble a multi-source PTM atlas and test for allele-frequency
-depletion at PTM sites, stratified by tissue or cell type:
+Two further commands test for allele-frequency depletion at PTM sites, stratified by
+tissue or cell type:
 
-- **`hvantk ptm atlas`** — Maps a combined PTM site list from UniProt, PeptideAtlas and
-  (optionally) CPTAC to the genome, writing `ptm_sites_mapped.tsv.bgz` (UniProt alone) or
-  `ptm_sites_combined.tsv.bgz` (multiple sources). It stops at that TSV and does not
-  build a Hail Table; use `hvantk ptm build` for the end-to-end path. The UniProt TSV
-  must be passed (`--uniprot-tsv`): unlike `ptm build`, `atlas` does not download it.
-  PeptideAtlas and CPTAC are included only when their TSV is passed as well; a source
-  named in `--sources` without its TSV is skipped. The Ensembl GTF is downloaded when
-  `--gtf-path` is omitted. Required: `--output-dir`, `--output-ht`. CPTAC is off by
-  default (`--sources uniprot,peptideatlas`).
 - **`hvantk ptm constraint`** — Compares gnomAD allele-frequency distributions between
   PTM-proximal and non-PTM variants, stratified by a metadata field from an expression
   dataset (`--expression-source hail-mt|anndata|tabular`). Runs five tests (per-group
@@ -176,6 +167,15 @@ hvantk ptm build \
   --ptm-tsv data/ptm/uniprot-ptm-human.tsv \
   --output-dir data/ptm/ \
   --output-ht data/ptm/ptm_sites.ht
+
+# Add PeptideAtlas and/or CPTAC phosphosites: download them first, then pass the TSV
+# path each download prints. All sources are mapped and concatenated into
+# ptm_sites_combined.tsv.bgz, which the Hail Table is built from.
+hvantk download peptideatlas-phospho -o data/ptm/
+hvantk ptm build \
+  --output-dir data/ptm/ \
+  --output-ht data/ptm/ptm_sites.ht \
+  --peptideatlas-tsv data/ptm/peptideatlas-phospho-<build_date>-<build_id>.tsv
 ```
 
 ### Build Options
@@ -186,6 +186,8 @@ hvantk ptm build \
 | `--output-ht` | (required) | Output Hail Table path |
 | `--gtf-path` | auto-download | Pre-downloaded Ensembl GTF |
 | `--ptm-tsv` | auto-download | Pre-downloaded UniProt PTM TSV |
+| `--peptideatlas-tsv` | none | PeptideAtlas phospho TSV written by `hvantk download peptideatlas-phospho`; adds its sites |
+| `--cptac-tsv` | none | CPTAC phospho TSV written by `hvantk download cptac-phospho`; adds its sites |
 | `--flanking-codons` | 5 | Flanking codons for proximal window |
 | `--overwrite` | false | Overwrite existing outputs |
 
@@ -231,6 +233,10 @@ The `annotate` command adds these fields to the variant table:
 
 Curated post-translational modification sites from UniProt (human, reviewed/Swiss-Prot). The `build` command queries the UniProt API automatically or accepts a pre-downloaded TSV.
 
+### PeptideAtlas and CPTAC Phosphosites
+
+Optional mass-spectrometry phosphosites, added to the same table. `hvantk download peptideatlas-phospho` and `hvantk download cptac-phospho` write the TSVs that `build` takes with `--peptideatlas-tsv` and `--cptac-tsv`. Each mapped row keeps its source in `source_db` (`PeptideAtlas` or `CPTAC`).
+
 ### Ensembl GTF
 
 Gene annotation (exon coordinates, CDS phases) from Ensembl GRCh38. Used for mapping protein residue positions to genomic coordinates. Downloaded automatically or provided via `--gtf-path`.
@@ -244,7 +250,6 @@ hvantk/algorithms/ptm/
 ├── optional_deps.py          # Actionable ImportError naming the `constraint` extra for statsmodels
 ├── mapper.py                 # GTF parser and residue-to-genomic coordinate mapper
 ├── pipeline.py               # Build pipeline orchestration
-├── atlas.py                  # Thin facade over pipeline.ptm_build_pipeline_core, for `ptm atlas`
 ├── annotate.py               # Variant-PTM annotation
 ├── analysis.py               # Landscape and population analysis
 ├── plot.py                   # Visualization functions
