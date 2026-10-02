@@ -83,7 +83,9 @@
   all eleven in unconditionally; relocking restores the markers, so a base install
   is now eleven packages lighter. `mypy-extensions`, pulled in only by the
   now-removed `black` dev dependency (#309), drops out of the lock alongside it
-  (#374).
+  (#374). `click` moves from 8.1.8 to 8.5 in the same lock, so a lock-faithful
+  install (the HPC container) gets the `Did you mean` suggestions and the click
+  the CI matrix already tests.
 - **`h5py` is a base dependency**, the same move `scipy` made in #376: the UCSC
   Cell Browser plugin imports it at module scope on a path a base install reaches
   (`hvantk expression summarize-ucsc`, the `ucsc-cellbrowser` builder), and it had
@@ -110,6 +112,12 @@
 - **`hgnc:lookup` promised a column upstream no longer ships.** HGNC dropped
   `location_sortable`; the field list, fixture, snapshots, SKILL.md and drift baseline now
   follow the live dump (#355).
+- **The rebuild ledger records the fingerprint bumps accepted by hand in #378
+  (dbnsfp) and #381 (hgnc).** Both were accepted with a manual `--regenerate`,
+  which writes no ledger row, so `hvantk drift --ledger` could not report that
+  artifacts built before those bumps are pending a rebuild. The rule in the plugin
+  conventions (every accepted bump gets a row in the same commit) applies to manual
+  acceptances as much as to the bot's.
 - **Expression Atlas transcript-level builds had non-unique `var_names`.** `var` was keyed by
   the gene id, which repeats once per transcript, and every RNA-seq accession in the shipped
   catalog is transcript-level. `var` is now keyed by the transcript id, with the gene id kept
@@ -130,8 +138,9 @@
   columns sorted by sample ID** (previously the VDS's own order), so the sample
   order of every exported VCF is deterministic and may differ between runs.
   `--skip-keying-by-cols` keeps the old VDS order, and its `--help` text now says
-  so. A MatrixTable written before this change should be regenerated before being
-  unioned with one written after it (#368).
+  so. A MatrixTable written before this change should be regenerated, or combined
+  through `combine_mts(force_sort_cols=True)`, before being unioned with one
+  written after it (#368).
 - **`_driver_af` breaks a tied case-carrier count toward the driver with the
   highest control-carrier frequency, deterministically.** Ties are common with
   rare variants (many genes have every driver at `cc == 1`), and the previous
