@@ -337,7 +337,8 @@ hvantk download ucsc --dataset adultPancreas --output-dir data/
 
 # Build any dataset (full pipeline: download -> parse -> build -> drift check)
 hvantk reprocess clinvar:variants --raw-dir data/ --output clinvar.ht
-hvantk reprocess ucsc-cellbrowser:adultPancreas --raw-dir data/ --output ucsc.h5ad
+hvantk reprocess ucsc-cellbrowser:default --raw-dir data/ --output ucsc.h5ad \
+  --plugin-arg dataset=adultPancreas
 
 # Joint genotyping (HGC)
 hvantk hgc gvcf-combine -g /data/gvcfs -o cohort.vds
