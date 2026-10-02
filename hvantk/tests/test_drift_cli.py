@@ -689,15 +689,20 @@ _BROKEN_MANIFEST = (
 )
 
 
-def _registry_with_broken_dataset(tmp_path, monkeypatch):
-    """fake:default (genomics, healthy) plus brokenprov:thing (proteomics, will not bind)."""
+def _broken_plugin_dir(tmp_path):
+    """brokenprov:thing (proteomics): a manifest that loads but will not bind."""
     plugin = tmp_path / "brokenprov"
     plugin.mkdir()
     (plugin / "plugin.yaml").write_text(_BROKEN_MANIFEST)
     (plugin / "SKILL.md").write_text("---\nname: x\ndescription: y\n---\n# x\n")
+    return plugin
+
+
+def _registry_with_broken_dataset(tmp_path, monkeypatch):
+    """fake:default (genomics, healthy) plus brokenprov:thing (proteomics, will not bind)."""
     reg = plugin_loader.PluginRegistry()
     reg.load_from_directory(FIXTURE_ROOT / "fake_plugin")
-    reg.load_from_directory(plugin)
+    reg.load_from_directory(_broken_plugin_dir(tmp_path))
     monkeypatch.setattr(plugin_loader, "get_registry", lambda: reg)
     return reg
 
@@ -1004,3 +1009,79 @@ def test_regenerate_exits_probe_failed_instead_of_writing_a_non_baseline(
     assert sorted(p.name for p in (plugin_dir / "tests").iterdir()) == [
         "drift_fingerprint.json"
     ], "no temp sibling left behind"
+
+
+# --- the human-readable branch must say WHY a probe failed ----------------------------
+#
+# It printed `name: status` and the diff; `probe_error` was serialised only under --json,
+# so `hvantk drift x:y` showed `probe_failed` with no reason at all.
+
+
+def test_human_readable_probe_failed_prints_the_reason_to_stderr(tmp_path, monkeypatch):
+    _, plugin_dir = _tmp_fake_plugin_registry(tmp_path, monkeypatch)
+    (plugin_dir / "tests" / "drift_fingerprint.json").write_text(
+        '{"probe_version": 1, "'
+    )
+
+    result = CliRunner().invoke(drift_cmd, ["fake:default"])
+
+    assert result.exit_code == 2, result.output
+    assert "fake:default: probe_failed" in result.stdout
+    assert "could not be read as JSON" in result.stderr
+    assert "could not be read as JSON" not in result.stdout, (
+        "the reason is a diagnostic; stdout stays the one-line-per-dataset summary"
+    )
+
+
+# --- an empty sweep caused by load failures must still print its rows ----------------
+#
+# When every in-scope dataset failed to bind, `targets` was empty and the empty-sweep
+# guard fired: `--all --json` exited 2 with EMPTY stdout and "no datasets registered"
+# (the manifests ARE registered; they failed to bind), and `--all --domain X --json`
+# raised a UsageError with no JSON. drift-health.yml then `json.load`ed an empty file and
+# went red on a parse error instead of filing the probe-failed issue it knows how to file.
+
+
+def _registry_with_only_a_broken_dataset(tmp_path, monkeypatch):
+    reg = plugin_loader.PluginRegistry()
+    reg.load_from_directory(_broken_plugin_dir(tmp_path))
+    monkeypatch.setattr(plugin_loader, "get_registry", lambda: reg)
+    return reg
+
+
+def test_drift_all_json_emits_the_load_error_rows_when_every_dataset_failed_to_bind(
+    tmp_path, monkeypatch
+):
+    _registry_with_only_a_broken_dataset(tmp_path, monkeypatch)
+    result = CliRunner().invoke(drift_cmd, ["--all", "--json"])
+    assert result.exit_code == 2, result.output
+    assert [(r["dataset_name"], r["status"]) for r in _stdout_rows(result)] == [
+        ("brokenprov:thing", "probe_failed")
+    ]
+
+
+def test_drift_all_domain_json_emits_the_load_error_rows_when_its_datasets_failed_to_bind(
+    tmp_path, monkeypatch
+):
+    """The domain IS declared by a manifest; its only dataset did not bind. That is a
+    probe that cannot run, not a typo'd --domain."""
+    _registry_with_only_a_broken_dataset(tmp_path, monkeypatch)
+    result = CliRunner().invoke(
+        drift_cmd, ["--all", "--domain", "proteomics", "--json"]
+    )
+    assert result.exit_code == 2, result.output
+    assert [(r["dataset_name"], r["status"]) for r in _stdout_rows(result)] == [
+        ("brokenprov:thing", "probe_failed")
+    ]
+
+
+def test_drift_all_domain_typo_lists_the_domains_of_unbound_manifests_too(
+    tmp_path, monkeypatch
+):
+    """`known` came from bound datasets only, so with everything unbound the typo
+    message said `known domains: (none)` about a registry that declares one."""
+    _registry_with_only_a_broken_dataset(tmp_path, monkeypatch)
+    result = CliRunner().invoke(drift_cmd, ["--all", "--domain", "genomicz"])
+    assert result.exit_code != 0
+    assert "matches no dataset" in result.output
+    assert "proteomics" in result.output, result.output

@@ -223,24 +223,35 @@ def drift_cmd(
     # {EXIT_CLEAN}, and `drift.yml` (rc > 2) plus `drift_to_pr.py` both pass on a report
     # of `[]`. The workflow goes green having checked nothing.
     #
-    # The two ways to get here need different answers. A --domain that matches nothing is
-    # a caller mistake -- the option takes a free-form string and its help text names no
-    # valid value, so a typo silently means "check nothing" -- and a UsageError can name
-    # the real domains. An empty registry with no filter is an infrastructure failure
-    # (nothing discovered, nothing shipped), which is what EXIT_PROBE_FAILED means.
+    # The two ways to get here need different answers. A --domain that no manifest
+    # declares is a caller mistake -- the option takes a free-form string and its help
+    # text names no valid value, so a typo silently means "check nothing" -- and a
+    # UsageError can name the real domains. `known` comes from the manifests, bound or
+    # not: a domain whose every dataset failed to bind is still a real domain, and
+    # listing it as "(none)" misdescribed the registry. An empty registry with no filter
+    # is an infrastructure failure (nothing discovered, nothing shipped), which is what
+    # EXIT_PROBE_FAILED means.
+    #
+    # Neither applies when the sweep is empty BECAUSE things failed to load: the
+    # manifests are registered, they did not bind, and `load_errors` holds a row for
+    # each. Exiting here printed no JSON at all, so `drift-health.yml` `json.load`ed an
+    # empty capture and went red on a parse error instead of filing the probe-failed
+    # issue it knows how to file. Falling through emits those rows and exits
+    # EXIT_PROBE_FAILED through the load-error rule below.
     if all_flag and not targets:
-        if domain is not None:
-            known = sorted({d.domain for d in reg.list_datasets() if d.domain})
+        known = sorted({m.domain for m in reg.list_manifests() if m.domain})
+        if domain is not None and domain not in known:
             raise click.UsageError(
                 f"--domain {domain!r} matches no dataset; known domains: "
                 f"{', '.join(known) or '(none)'}"
             )
-        click.echo(
-            "no datasets registered, so nothing was drift-checked -- refusing to "
-            "report a clean sweep over an empty set",
-            err=True,
-        )
-        raise SystemExit(EXIT_PROBE_FAILED)
+        if not load_errors:
+            click.echo(
+                "no datasets registered, so nothing was drift-checked -- refusing to "
+                "report a clean sweep over an empty set",
+                err=True,
+            )
+            raise SystemExit(EXIT_PROBE_FAILED)
 
     # run_drift_checks, not a comprehension over run_drift_check: datasets sharing a
     # baseline AND a probe callable share one drift signal, so it is probed once and
@@ -255,6 +266,11 @@ def drift_cmd(
     else:
         for r in results:
             click.echo(f"{r.dataset_name}: {r.status}")
+            if r.probe_error is not None:
+                # The reason was serialised only under --json, so a person running
+                # `hvantk drift x:y` saw `probe_failed` and nothing else. stderr, like
+                # every other diagnostic here: stdout stays the per-dataset summary.
+                click.echo(f"  {r.probe_error}", err=True)
             if r.diff:
                 click.echo(json.dumps(r.diff, indent=2, default=str))
 
