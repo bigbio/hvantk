@@ -98,5 +98,24 @@ def test_engine_end_to_end(tmp_path, monkeypatch):
     assert res2.nulls.setting.seed == 7  # the CV seed the null's scorer ran under
     assert res2.nulls.setting.block_digest is not None
     assert res2.blocks.digest == res2.nulls.setting.block_digest
+    # `observed` recomputed with the null's own scorer -- blocked on the SAME blocks and
+    # at the config seed (7) -- and compared at 1e-12. The ablation table's AUCs are
+    # rounded to 3 dp, so the 1e-3 comparison against them below is consumed by rounding
+    # alone and cannot tell a correctly computed `observed` from one scored unblocked at
+    # DEFAULT_SEED (verified with that mutant). The frame is rebuilt exactly as the
+    # engine's FeatureAssembler builds it (an outer merge, which sorts the gene key), so
+    # the rows -- and the blocks array aligned to them -- are in the engine's order.
+    from hvantk.algorithms.rerank.nulls import axis_deltas, oof_scorer
+
+    frame = feat.merge(noise, on="gene", how="outer")
+    y_vec = frame["gene"].isin(pos).astype(int).to_numpy()
+    _, expected = axis_deltas(
+        frame,
+        ["x"],
+        {"z": ["z"]},
+        y_vec,
+        scorer=oof_scorer(groups=res2.blocks.blocks, seed=7),
+    )
+    assert abs(expected["z"] - res2.nulls.observed["z"]) <= 1e-12
     abl = res2.metrics.ablation.set_index("family")["auc"]
     assert abs((abl["z"] - abl["x"]) - res2.nulls.observed["z"]) <= 1e-3

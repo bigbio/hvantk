@@ -183,7 +183,16 @@ def test_merged_chunks_equal_the_whole_run():
 
     merged = NullDistribution.merge(parts)
     assert merged.n_perm == whole.n_perm == 6
-    assert np.allclose(np.sort(merged.selected_max), np.sort(whole.selected_max))
+    assert merged.perms == whole.perms and merged.axes == whole.axes
+    # Exact, per axis and in permutation order: a sorted `selected_max` alone cannot see
+    # per-axis nulls attached to the wrong axes (verified with a mutant that rotated them
+    # by one axis -- it survived the sorted comparison and fails this one).
+    for axis in whole.axes:
+        assert np.array_equal(merged.per_axis[axis], whole.per_axis[axis]), axis
+    assert np.array_equal(merged.selected_max, whole.selected_max)
+    import pandas as pd
+
+    pd.testing.assert_frame_equal(merged.summary(), whole.summary())
 
 
 def test_merge_refuses_chunks_from_different_control_settings():
