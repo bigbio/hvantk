@@ -1,5 +1,6 @@
 # hvantk/tools/rerank/rerank_cli.py
 import logging
+from pathlib import Path
 
 import click
 import jsonschema
@@ -107,7 +108,8 @@ def _require_sklearn():
     "the baseline and every candidate axis (about n_perm x (1 + axes) five-fold fits; a "
     "selection policy, RFECV especially, multiplies that further) -- expect tens of "
     "minutes for a few hundred permutations on ~1,000 genes. Run `hvantk -v rerank ...` "
-    "to see progress.",
+    "to see progress. Without --blocks the null permutes labels across gene families "
+    "and is anti-conservative wherever labels cluster by family; pass --blocks too.",
 )
 @click.option(
     "--null-out",
@@ -157,6 +159,28 @@ def rerank_cmd(
     if n_perm == 0 and null_out:
         raise click.ClickException(
             "--null-out describes a permutation null; pass --n-perm N too."
+        )
+    # The two output paths are bare click.Path()s (nothing is created up front) and both
+    # writes happen only after the whole run, so a typo in a directory name used to
+    # surface as an uncaught OSError traceback AFTER scoring (and the null), with nothing
+    # printed. Checked here so the comment above stays true for them as well.
+    for flag, path in (("--output", output), ("--null-out", null_out)):
+        if path is not None and not Path(path).resolve().parent.is_dir():
+            raise click.ClickException(
+                f"{flag} {path}: its directory {Path(path).resolve().parent} does not "
+                "exist; create it first."
+            )
+    if n_perm > 0 and blocks_path is None:
+        # Advisory, not an error, and said ONCE, up front, on stderr: an unblocked null
+        # permutes labels across gene families, which understates its spread -- it is
+        # anti-conservative -- wherever labels cluster by family. That clustering is a
+        # property of the data, so omitting --blocks removes the correction, not the
+        # problem (see nulls.py). stderr, so a captured stdout table never carries it.
+        click.echo(
+            "Warning: --n-perm without --blocks permutes labels across gene families; "
+            "the null is anti-conservative wherever labels cluster by family. Pass "
+            "--blocks with an HGNC gene-group table to permute by block instead.",
+            err=True,
         )
 
     with open(config_path) as fh:

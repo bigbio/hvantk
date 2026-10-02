@@ -187,6 +187,9 @@ def _control_setting(config, baseline_cols, candidates, arm, block_digest, folds
         baseline=tuple(baseline_cols),
         candidates=candidates,
         folds=folds,
+        # The scorer's CV seed, the same way `folds` is recorded: `_run_nulls` builds
+        # `oof_scorer(seed=config.seed)`, so the setting must carry that seed too.
+        seed=config.seed,
         block_digest=block_digest,
     )
 

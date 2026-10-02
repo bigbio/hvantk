@@ -11,6 +11,10 @@ from hvantk.algorithms.rerank.seeds import DEFAULT_SEED
 
 
 def _gbm(seed: int = DEFAULT_SEED):
+    # ``early_stopping`` is left at scikit-learn's default ``"auto"`` on purpose, although
+    # above 10,000 rows it opens an unblocked, seed-dependent validation split inside each
+    # fit (see ``ReRanker.score``): changing the estimator would change every historic
+    # result, so the limit is documented rather than engineered away.
     return HistGradientBoostingClassifier(
         max_depth=3,
         max_iter=250,
@@ -139,10 +143,18 @@ class ReRanker:
         ``CalibratedClassifierCV`` takes an integer ``cv`` and so cannot see the blocks,
         which means a family CAN straddle the calibration split WITHIN one training fold.
         The per-axis deltas, which are the scientific claim, go through
-        ``evaluator._raw_oof`` instead, which is uncalibrated and fully blocked. With
-        ``SelectionPolicy(wrapper="rfecv")``, RFECV's own inner ``StratifiedKFold`` inside
-        each training slice is likewise unblocked -- an opt-in path with the same kind of
-        limit. Documented here rather than silently accepted.
+        ``evaluator._raw_oof`` instead, which is uncalibrated and fully blocked (below the
+        row count in the third limit). With ``SelectionPolicy(wrapper="rfecv")``, RFECV's
+        own inner ``StratifiedKFold`` inside each training slice is likewise unblocked --
+        an opt-in path with the same kind of limit. A third limit applies only when a fit
+        sees more than 10,000 rows: ``_gbm`` leaves ``HistGradientBoostingClassifier``'s
+        ``early_stopping="auto"``, which scikit-learn (1.7.2) switches ON for
+        ``n_samples > 10_000``, and each fit then holds out a class-stratified random 10%
+        validation split drawn with the estimator's ``random_state`` -- blind to the
+        blocks, so a family can straddle that split too, and the seed then also varies
+        which rows every fit holds out (``_raw_oof`` included, so the ablation and the
+        null share it). Below that size no such split exists and the statements above
+        hold exactly. Documented here rather than silently accepted.
         """
         y = np.asarray(y)
         cv = _cv(self.folds, self.seed, groups)
