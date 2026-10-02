@@ -341,11 +341,6 @@ class PluginRegistry:
         reserved for future top-level commands.
 
         Idempotent: skips entries whose short name is already registered.
-
-        A downloader whose callable will not import is recorded as a load error
-        under its provider's name, not only logged: ``hvantk download <name>`` then
-        answers "No such command", and without the record ``plugins errors`` stayed
-        clean about it -- a unit dropped from the registry with no row (#351).
         """
         for plugin_name, entries in self._cli_entries.items():
             for entry in entries:
@@ -363,12 +358,6 @@ class PluginRegistry:
                         short_name,
                         plugin_name,
                         exc,
-                    )
-                    self._record_load_error(
-                        plugin_name,
-                        PluginLoadError(
-                            f"downloader {command!r} could not be wired: {exc}"
-                        ),
                     )
                     continue
                 click_group.add_command(fn, name=short_name)
