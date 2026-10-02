@@ -166,8 +166,8 @@ rows over 15,144 proteins), not the 1.17 GB BED: the pair table already carries 
 UniProt accessions and both interface-residue lists, so a per-gene reduction needs no
 genomic join.
 
-**Build**: `interfaces` has no `lifecycle.download` yet (tracked as "automatable but not
-yet written" in CLAUDE.md's downloader ledger), so acquire `H_sapiens_interfacesALL.txt`
+**Build**: `interfaces` has no `lifecycle.download` yet (automatable but not yet written;
+tracked in issue #386), so acquire `H_sapiens_interfacesALL.txt`
 manually from the direct URL in `catalog/datasets.json` and pass `--skip-download`:
 
 ```bash

@@ -160,6 +160,26 @@
   previously disabled that selection stage with no error or warning at all.
 - **`hvantk rerank` fails with a message naming the `ml` extra when scikit-learn
   is not installed**, instead of a bare `ModuleNotFoundError` traceback.
+- **`hvantk rerank --n-perm` without `--blocks` warns that the null is
+  anti-conservative where labels cluster by gene family.** An unblocked null
+  permutes labels across families; on family-clustered labels it can return a
+  small "multiplicity-corrected" p for an axis that only recognises families. The
+  warning goes to stderr, and the `--n-perm` help says the same.
+- **`hvantk rerank` checks that the `--output` and `--null-out` directories exist
+  before the run**, instead of failing with an `OSError` traceback after scoring
+  and the whole permutation null had finished.
+- **`NullDistribution.merge` refuses a chunk set with missing permutations.** Every
+  chunk agreed on `planned_n_perm`, so a pre-empted array task used to shrink the
+  null silently; the merge now names the missing indices, and
+  `merge(..., allow_partial=True)` accepts a smaller null deliberately.
+- **The permutation null's control setting records the CV seed.** The fold
+  partition depends on it, yet two chunks scored under different seeds merged
+  silently and a null answered for a delta computed under another seed; both now
+  raise `ControlSettingMismatch`.
+- **Above 10,000 rows the rerank scorer is not fully blocked, and the docs now say
+  so.** `HistGradientBoostingClassifier`'s default `early_stopping="auto"` turns on
+  there and holds out a random validation split that ignores the paralogue blocks;
+  the estimator is unchanged so historic results reproduce.
 - **The Expression Atlas builder raises `ValueError` naming the duplicated ids**
   when `var` would not be uniquely indexed — for example a transcript-level
   export whose id column is not the configured `transcript_id_column` — instead
