@@ -933,7 +933,7 @@ def save_qc_metrics(
     precision. All rows, slightly coarser floats.
 
     Sample QC stays on ``to_pandas``: it is bounded by the cohort size, not the variant
-    count, and a few thousand rows is nothing.
+    count, and on the order of a thousand rows is nothing.
 
     Args:
         qc_metrics: QCMetrics object
