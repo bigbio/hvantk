@@ -43,7 +43,6 @@ hvantk/
 │   ├── config.py          # Configuration management
 │   ├── io/                # Artifact loader (load/save Hail Tables, AnnData, etc.)
 │   ├── tool/              # tool manifest discovery (descriptive)
-│   ├── ontology/          # OBO / MONDO parsers
 │   ├── models/            # Domain model types
 │   │   ├── annotation_table.py  # AnnotationTable artifact
 │   │   ├── expression_matrix.py # ExpressionMatrix artifact (AnnData-only)
@@ -518,8 +517,10 @@ See `hvantk/skills/_conventions/SKILL.md` for the full contract.
 
 1. Place the click command in `hvantk/tools/<domain>/`.
 2. Add a `<basename>.tool.yaml` manifest for discoverability via
-   `hvantk tools list` (descriptive metadata; not authoritative for
-   wiring today — that is a planned follow-up).
+   `hvantk tools list`. `test_lazy_commands_match_tool_manifests`
+   (`hvantk/tests/test_tool_smoke.py`) requires the manifest's
+   `(cli.module, cli.function, description)` to equal the `_LAZY_COMMANDS`
+   entry below, so the two cannot drift apart silently.
 3. Add an entry to `_LAZY_COMMANDS` in `hvantk/hvantk.py` — the command
     name mapped to `(module, attribute, short help)`:
 
@@ -536,8 +537,10 @@ See `hvantk/skills/_conventions/SKILL.md` for the full contract.
     works — and silently costs every single invocation the import of whatever
     your command pulls in. That eager wiring is what made `hvantk --help` take
     ~10 s; going through `_LAZY_COMMANDS` keeps it at ~0.1 s because nothing is
-    imported until the command is actually run. No test will catch the
-    regression; only startup time changes.
+    imported until the command is actually run. `test_every_command_is_lazy`
+    (`hvantk/tests/test_import_laziness.py`) pins every top-level command to
+    `_LAZY_COMMANDS`, so wiring one eagerly with `add_command` instead fails
+    CI rather than silently costing startup time.
 
     The short help is duplicated in the registry because listing the commands
     must not import them. `test_lazy_command_registry_matches_real_commands`
