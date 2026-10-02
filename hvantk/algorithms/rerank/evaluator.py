@@ -88,6 +88,12 @@ class SeedSpread:
     component the bootstrap cannot see at all. The gap between a single partition's delta and
     the across-seed mean can be larger than several axes' entire measured gain, which is why
     it is reported as a separate number rather than assumed away.
+
+    "Only the fold assignment" holds exactly for fits of up to 10,000 rows. Above that,
+    ``_gbm`` leaves ``HistGradientBoostingClassifier``'s ``early_stopping="auto"`` and
+    scikit-learn (1.7.2) switches it on, so each fit also holds out a random, unblocked
+    validation split drawn with the same seed -- the sweep then varies that split as well
+    as the partition (see ``ReRanker.score`` for the limit and why it is kept).
     """
 
     seeds: tuple
