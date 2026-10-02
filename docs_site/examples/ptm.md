@@ -42,9 +42,9 @@ hvantk ptm build \
 
 **Expected output:**
 ```text
-Mapping complete: 55422/56120 mapped (98.7%), 698 failed
+Mapping complete: 55422/56120 mapped (98.8%), 698 failed
 Resolution: {'xref_mane': 48231, 'xref_any': 7191}
-Mapped TSV: data/ptm/ptm_sites_mapped.tsv
+Mapped TSV: data/ptm/ptm_sites_mapped.tsv.bgz
 Hail Table: data/ptm/ptm_sites.ht
 ```
 
@@ -170,17 +170,18 @@ All steps can also be run programmatically:
 import hail as hl
 from hvantk.algorithms.ptm import (
     PTMBuildConfig,
-    ptm_build_pipeline_core,
     annotate_variants_with_ptm,
     ptm_landscape,
     ptm_population,
     export_ptm_strata,
 )
 from hvantk.algorithms.ptm.report import generate_report
+from hvantk.tools.ptm.pipeline import ptm_build_pipeline
 
-# Build
+# Build (downloads the UniProt TSV and builds the Hail Table; ptm_build_pipeline_core
+# is the pure mapping step this wraps and never builds output_ht itself)
 config = PTMBuildConfig(output_dir="data/ptm/", output_ht="data/ptm/ptm_sites.ht")
-build_result = ptm_build_pipeline_core(config)
+build_result = ptm_build_pipeline(config)
 
 # Annotate
 clinvar = hl.read_table("data/clinvar.ht")
