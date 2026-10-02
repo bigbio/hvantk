@@ -156,14 +156,15 @@ hvantk hgc mt2vcf -i analysis.mt -o results.vcf.gz
 Additional QC commands for analyzing combined cohorts:
 
 ```bash
-# Compute QC metrics for combined cohort
-hvantk hgc compute-qc -i analysis.mt -o analysis_qc.mt
+# Compute QC metrics for combined cohort. -o/--output-dir is a directory; this
+# writes qc_results/qc_metrics_with_qc.mt, named from --prefix (default "qc_metrics").
+hvantk hgc compute-qc -i analysis.mt -o qc_results/
 
 # Generate comprehensive QC report
-hvantk hgc qc-report -i analysis_qc.mt -o qc_report.html
+hvantk hgc qc-report -i qc_results/qc_metrics_with_qc.mt -o qc_report.html
 
 # Filter based on QC metrics
-hvantk hgc filter-qc -i analysis_qc.mt -o filtered.mt --min-sample-call-rate 0.95
+hvantk hgc filter-qc -i qc_results/qc_metrics_with_qc.mt -o filtered.mt --min-sample-call-rate 0.95
 ```
 
 Standalone QC plotting/dashboard CLI support has been retired. `qc-report` produces
@@ -429,7 +430,8 @@ convert_vds_to_mt(
 - `adjust_genotypes`: Annotate with adjusted genotypes using gnomAD quality filters (no extra install needed)
 - `skip_split_multi`: Skip splitting multi-allelic variants (not recommended)
 - `skip_validation`: Skip the biallelic audit and genotype repair (see below)
-- `skip_keying_by_cols`: Skip keying MatrixTable by sample column
+- `skip_keying_by_cols`: Skip keying the MatrixTable columns by sample and sorting
+  them by sample ID (the columns then keep the VDS's own order)
 - `overwrite`: Whether to overwrite existing output
 
 **Important Notes:**
@@ -437,6 +439,8 @@ convert_vds_to_mt(
 - Adjusted genotype annotation needs no extra dependency: `annotate_adj` is ported from
   gnomad_methods (MIT) into `hvantk/algorithms/hgc/adj.py`, with gnomAD's published
   thresholds kept verbatim (GQ >= 20, DP >= 10, AB >= 0.2, haploid DP >= 5)
+- Unless `skip_keying_by_cols` is set, the output MatrixTable's columns are sorted
+  by sample ID, so the sample order in a VCF exported from it is deterministic
 
 #### The densify runs exactly once
 
@@ -455,8 +459,8 @@ matrix**:
   expression on the dense matrix. It fuses into the write, and on clean data it is the identity.
 
 Gating the repair behind `if n_invalid > 0` would look harmless but is not: *reading* that count is
-an eager action, so it forces an entire extra densify of the cohort. On a 500-sample chr1 callset
-that mistake cost ~42% of the stage's wall time.
+an eager action, so it forces an entire extra densify of the cohort. That mistake cost a large share
+of the stage's wall time on a few-hundred-sample chromosome.
 
 `--skip-validation` turns off both the audit and the repair. The audit is cheap (it scans only the
 sparse variant records), so there is rarely a reason to.
