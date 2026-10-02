@@ -98,7 +98,9 @@ def ptm_build(
     This is the main entry point for the PTM pipeline. It:
       1. Downloads the Ensembl GTF (if not provided via --gtf-path)
       2. Downloads UniProt PTM data (if not provided via --ptm-tsv)
-      3. Parses the GTF and maps PTM sites to genomic coordinates
+      3. Parses the GTF and maps PTM sites to genomic coordinates, adding
+         PeptideAtlas and CPTAC phosphosites when --peptideatlas-tsv or
+         --cptac-tsv is given (all sources go into one combined TSV)
       4. Builds a Hail Table keyed by locus
 
     \b
@@ -107,6 +109,8 @@ def ptm_build(
       hvantk ptm build --gtf-path data/ref/Homo_sapiens.GRCh38.113.gtf.gz \\
                        --ptm-tsv data/ptm/uniprot-ptm-human.tsv \\
                        --output-ht data/ptm/ptm_sites.ht --output-dir data/ptm/
+      hvantk ptm build --output-dir data/ptm/ --output-ht data/ptm/ptm_sites.ht \\
+                       --peptideatlas-tsv data/ptm/peptideatlas-phospho.tsv
     """
     try:
         from hvantk.algorithms.ptm.pipeline import PTMBuildConfig
@@ -132,6 +136,7 @@ def ptm_build(
 
         result = ptm_build_pipeline(config)
 
+        click.echo(f"Sources: {', '.join(result.sources)}")
         click.echo(
             f"Mapping complete: {result.n_mapped}/{result.n_total} mapped "
             f"({100 * result.n_mapped / max(result.n_total, 1):.1f}%), "
@@ -139,7 +144,11 @@ def ptm_build(
         )
         click.echo(f"Resolution: {result.resolution_counts}")
         click.echo(f"Mapped TSV: {result.mapped_tsv_path}")
-        click.echo(f"Hail Table: {result.output_ht}")
+        # ptm_build_pipeline skips the table when no site maps.
+        if result.output_ht:
+            click.echo(f"Hail Table: {result.output_ht}")
+        else:
+            click.echo("Hail Table: not built (no PTM sites mapped)")
 
     except Exception as e:
         logger.exception(f"PTM build failed: {e}")
