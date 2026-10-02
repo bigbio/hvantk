@@ -96,6 +96,28 @@
   empty code fence, a numbered-list `TODO`, or a table of `TODO`s as a
   placeholder**, extending the real-body check above to shapes that passed the
   keyword/emptiness test while carrying no content.
+- **`hvantk ptm build` reports which sources it mapped.** It prints `Sources: UniProt,
+  PeptideAtlas` before the mapping summary, from the new `PTMBuildResult.sources`.
+- **`generate_phase2_report` takes `build_result=` (a `PTMBuildResult`) instead of
+  `atlas_result=`**, and its first section shows a Hail Table row only when a table
+  was built.
+- **`PTMBuildConfig.validate()` no longer requires `output_ht`**, which
+  `ptm_build_pipeline_core` never writes. `ptm_build_pipeline`, the one function that
+  writes the table, now validates the config and requires `output_ht` before it
+  downloads anything.
+
+### Removed
+
+- **`hvantk ptm atlas` and its Python API (`build_atlas`, `PTMAtlasConfig`,
+  `PTMAtlasResult`) (#401).** The command ran only the mapping step: it never
+  downloaded UniProt and never wrote the Hail Table its required `--output-ht` named,
+  and `--flanking-codons` had no effect. Repaired, it would have duplicated `hvantk
+  ptm build`, which runs the same mapping plus both missing steps. Migrate with
+  `hvantk ptm atlas --uniprot-tsv U --peptideatlas-tsv P -o D --output-ht H` →
+  `hvantk ptm build --ptm-tsv U --peptideatlas-tsv P -o D --output-ht H`. `--sources`
+  has no replacement: passing a source's TSV is what selects it. In Python, use
+  `hvantk.tools.ptm.pipeline.ptm_build_pipeline`, or
+  `hvantk.algorithms.ptm.ptm_build_pipeline_core` to map without Hail.
 
 ### Fixed
 
@@ -189,12 +211,6 @@
   about.
 - **The HGNC builder logs which declared fields are missing from the input
   header**, instead of silently dropping them from the renamed output.
-- **`hvantk ptm atlas` no longer claims sources or outputs it does not have.** It
-  listed every requested source under `Sources used` even when that source's TSV was
-  not passed (and so was skipped), printed an empty `Hail Table:` line, and its
-  `--uniprot-tsv` help promised a download it never performs. It now lists only the
-  sources that reached the pipeline, says the table is not built (use `hvantk ptm
-  build`), and its help and docs say the UniProt TSV must be passed.
 - **Several `hvantk drift` robustness gaps closed.** `DriftResult.status` is
   validated against its four allowed values; a fingerprint is canonicalised to
   its JSON form before comparison, so a probe returning a tuple, `Path` or
@@ -203,6 +219,11 @@
   human-readable `hvantk drift` output now prints each `probe_failed` row's
   reason to stderr; `drift --all --json` emits its load-error rows and exits 2
   when every in-scope dataset failed to bind, instead of printing nothing.
+- **`hvantk ptm build` printed an empty `Hail Table:` line when no PTM site mapped**
+  (the table is skipped then); it now prints `Hail Table: not built (no PTM sites
+  mapped)`.
+- **`ptm_build_pipeline_core` checked for the UniProt TSV only after downloading and
+  parsing the Ensembl GTF**; a missing `ptm_tsv` now fails before either.
 
 ## 0.3.1 — 2026-08-30
 
