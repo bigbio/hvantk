@@ -6,7 +6,7 @@
     "pubmedid": "30445434",
     "data_source": "GWAS Catalog",
     "last_updated": "2026-04-27T00:00:00.000000",
-    "update_frequency": "quarterly",
+    "update_frequency": "irregular",
     "organism": "Homo sapiens",
     "tissue_type": "all",
     "sample_count": 1100000,
@@ -28,7 +28,7 @@
         "format": "tsv",
         "size_bytes": 556245182,
         "url": "https://ftp.ebi.ac.uk/pub/databases/gwas/releases/2026/04/28/gwas-catalog-associations-full.zip",
-        "description": "Full associations TSV (v1.0, 34 columns), unzipped from the EBI GWAS Catalog full-associations archive. `url` is pinned to the release-specific EBI FTP archive matching this entry's accession (e115 / r2026-04-27): EBI keeps every past release under releases/<year>/<month>/<day>/, and the Catalog publishes on Tuesdays (one day after the nominal Monday release date), so r2026-04-27 lands under releases/2026/04/28/ -- confirmed live via HTTP HEAD (Last-Modified: Tue, 28 Apr 2026). The separate releases/latest/ endpoint (what the drift probe fingerprints, to detect the next release) has since moved on. The legacy api/search/downloads/full endpoint has been retired (404)."
+        "description": "Full associations TSV (v1.0, 34 columns), unzipped from the EBI GWAS Catalog full-associations archive. `url` is pinned to the release-specific EBI FTP archive matching this entry's accession (e115 / r2026-04-27): EBI keeps every past release under releases/<year>/<month>/<day>/. Releases are irregular (every 1-3 weeks; see SKILL.md §8), and the folder date need not match the nominal release date embedded in the accession -- r2026-04-27 lands under releases/2026/04/28/ -- confirmed live via HTTP HEAD (Last-Modified: Tue, 28 Apr 2026). The separate releases/latest/ endpoint (what the drift probe fingerprints, to detect the next release) has since moved on. The legacy api/search/downloads/full endpoint has been retired (404)."
       }
     ]
   }

@@ -71,7 +71,7 @@ def test_run_lmm_raises_the_actionable_import_error_when_called_without_statsmod
     assert "constraint" in msg and "hvantk[constraint]" in msg
 
 
-def test_ptm_test_names_the_extra_instead_of_a_traceback(tmp_path, monkeypatch):
+def test_ptm_test_names_the_extra_instead_of_a_traceback(tmp_path, monkeypatch, caplog):
     from hvantk.tools.ptm.ptm_cli import ptm_group
 
     _hide_statsmodels(monkeypatch)
@@ -95,3 +95,17 @@ def test_ptm_test_names_the_extra_instead_of_a_traceback(tmp_path, monkeypatch):
     assert "constraint" in result.output, result.output
     assert "Traceback" not in result.output
     assert "No module named" not in result.output
+    # `result.output` is only what click itself wrote (echo / a ClickException
+    # message) -- it CANNOT see a traceback either way, because the generic failure
+    # path logs via `logger.exception`, which pytest reports separately as "Captured
+    # log call" and never feeds into click's output stream. So the asserts above stay
+    # green even if the pre-check below is deleted and the ImportError is instead
+    # caught by the big try/except. `caplog` is what actually distinguishes the two
+    # paths: no record here means the ImportError never reached that handler.
+    assert not any(r.exc_info for r in caplog.records), [
+        r.getMessage() for r in caplog.records if r.exc_info
+    ]
+    # The pre-check must also fire BEFORE any work starts. If it were deleted, the
+    # command would get as far as this echo before `run_lmm` ever called
+    # `require_statsmodels()` itself.
+    assert "Running lmm" not in result.output

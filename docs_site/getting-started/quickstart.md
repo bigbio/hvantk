@@ -82,8 +82,10 @@ hvantk plugins list
 # Build ClinVar variants from raw input
 hvantk reprocess clinvar:variants --raw-dir data/ --output clinvar.ht
 
-# Build a UCSC Cell Browser AnnData artifact
-hvantk reprocess ucsc-cellbrowser:adultPancreas --raw-dir data/ucsc --output ucsc.h5ad
+# Build a UCSC Cell Browser AnnData artifact (default's --plugin-arg dataset=
+# selects which UCSC collection to fetch and build)
+hvantk reprocess ucsc-cellbrowser:default --raw-dir data/ucsc --output ucsc.h5ad \
+  --plugin-arg dataset=adultPancreas
 ```
 
 [Usage Guide](../guide/usage.md){ .md-button }
@@ -131,6 +133,7 @@ hvantk download ucsc --dataset adultPancreas --output-dir data/ucsc
 hvantk download clinvar --output-dir data/clinvar
 
 # Build artifacts (one CLI for all providers; runs the full build pipeline)
-hvantk reprocess ucsc-cellbrowser:adultPancreas --raw-dir data/ucsc --output data/ucsc/adultPancreas.h5ad
+hvantk reprocess ucsc-cellbrowser:default --raw-dir data/ucsc \
+  --output data/ucsc/adultPancreas.h5ad --plugin-arg dataset=adultPancreas
 hvantk reprocess clinvar:variants --raw-dir data/clinvar --output clinvar.ht
 ```

@@ -4,7 +4,7 @@ Unifies three backends — Hail MatrixTable, AnnData ``.h5ad``, and pre-computed
 tabular files — behind a single contract: a genes x groups wide pandas
 ``DataFrame`` of aggregate expression.
 
-Downstream analysis (:mod:`hvantk.ptm.constraint`) consumes this single shape
+Downstream analysis (:mod:`hvantk.algorithms.ptm.constraint`) consumes this single shape
 regardless of the origin modality.
 """
 

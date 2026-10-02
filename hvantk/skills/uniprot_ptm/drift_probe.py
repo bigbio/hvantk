@@ -100,6 +100,12 @@ def fetch_fingerprint() -> dict:
         raise DriftProbeError(
             "UniProt size=1 probe returned zero results; cannot fingerprint."
         )
+    if total_results < len(results):
+        raise DriftProbeError(
+            f"UniProt reported {_TOTAL_HEADER}={total_results}, impossible for "
+            f"{len(results)} returned result(s); refusing to record a fingerprint "
+            "with an inconsistent content signal."
+        )
     entry_keys = sorted(results[0].keys())
     canonical = json.dumps(entry_keys, separators=(",", ":"), sort_keys=True)
     checksum = hashlib.sha256(canonical.encode("utf-8")).hexdigest()

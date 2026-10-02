@@ -198,11 +198,21 @@ def build_atlas(config: PTMAtlasConfig) -> PTMAtlasResult:
     #   - ptm_sites_combined.tsv.bgz when multiple sources are merged
     combined_tsv = build_result.mapped_tsv_path
 
+    # Report the sources that actually reached the pipeline, not the ones requested:
+    # a source named in `sources` whose TSV was not supplied is passed as None above,
+    # which skips it, and listing it here anyway claimed data the atlas never held.
+    passed = {
+        "uniprot": build_cfg.ptm_tsv,
+        "peptideatlas": build_cfg.peptideatlas_tsv,
+        "cptac": build_cfg.cptac_tsv,
+    }
+    sources_used = [s for s in sources if passed.get(s) is not None]
+
     return PTMAtlasResult(
         output_ht=build_result.output_ht,
         combined_tsv=combined_tsv,
         n_sites=build_result.n_mapped,
-        sources_used=list(sources),
+        sources_used=sources_used,
     )
 
 

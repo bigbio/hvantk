@@ -174,6 +174,38 @@ def test_clean_arm_refuses_to_run_when_every_column_conflicts(tmp_path):
         rerank_arms(cfg)
 
 
+def test_a_requested_null_refuses_to_run_when_the_clean_arm_has_no_candidate_axis(
+    tmp_path,
+):
+    """With every non-baseline column conflicted, the clean arm -- the headline -- is left
+    with the baseline alone, and a requested multiplicity correction cannot run on it.
+    That must be an error naming the arm and the barred axis, not (as the engine used to
+    do) a clean arm carrying `nulls=None` beside an `all` arm carrying a real null."""
+    import pytest
+
+    from hvantk.algorithms.rerank.engine import rerank_arms
+    from hvantk.algorithms.rerank.nulls import NullConfig
+    from hvantk.algorithms.rerank.selection import SelectionPolicy
+
+    cfg = _cfg(
+        tmp_path,
+        selection=SelectionPolicy(wrapper="none"),
+        feature_provenance={
+            "c1": frozenset(),
+            "c2": frozenset(),
+            "REVEL_rankscore": frozenset({"ClinVar"}),
+        },
+        label_provenance=frozenset({"GenCC"}),
+        nulls=NullConfig(n_perm=2),
+        min_label_coverage=0.0,
+    )
+
+    with pytest.raises(ValueError) as info:
+        rerank_arms(cfg)
+    msg = str(info.value)
+    assert "'clean'" in msg and "'trained'" in msg and "provenance" in msg
+
+
 def test_column_missing_from_the_provenance_map_is_undeclared_not_deleted(tmp_path):
     """An axis nobody declared must land in `all` as conflicted -- never silently vanish.
 

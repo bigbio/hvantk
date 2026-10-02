@@ -206,6 +206,83 @@ def test_transcript_id_column_indexes_var_gene_id_stays_a_column(tmp_path):
     ]
 
 
+def test_duplicate_transcript_ids_raise_instead_of_corrupting_var(tmp_path):
+    """A repeated id in the column that keys `var` must raise, not just warn.
+
+    anndata accepts a duplicate index and only emits "Variable names are not
+    unique", so without this guard the .h5ad round-trips silently corrupted.
+    Here the transcript column is named correctly (`GeneID`) but its own
+    values repeat -- a content defect, not a column-naming mismatch.
+    """
+    import pandas as pd
+    import pytest
+    from hvantk.skills.expression_atlas.shared.expression_atlas import (
+        create_anndata_from_expression_atlas,
+    )
+
+    path = tmp_path / "tpms.tsv"
+    pd.DataFrame(
+        {
+            "Gene ID": [
+                "ENSMUSG00000000001",
+                "ENSMUSG00000000001",
+                "ENSMUSG00000000002",
+            ],
+            "Gene Name": ["Gnai3", "Gnai3", "Cdc45"],
+            # "ENSMUST00000000001" repeats across two rows.
+            "GeneID": [
+                "ENSMUST00000000001",
+                "ENSMUST00000000001",
+                "ENSMUST00000000002",
+            ],
+            "ERR1": [16, 9, 3],
+            "ERR2": [7, 2, 1],
+        }
+    ).to_csv(path, sep="\t", index=False)
+
+    with pytest.raises(ValueError, match="ENSMUST00000000001"):
+        create_anndata_from_expression_atlas(expression_matrix_path=str(path))
+
+
+def test_misnamed_transcript_column_raises_instead_of_keying_var_on_gene_id(tmp_path):
+    """A transcript column not named `transcript_id_column` must still raise.
+
+    Here the per-row id column is real but called "Transcript", not the
+    configured default "GeneID" -- so the leading-column inference treats it
+    as an ordinary annotation instead of the var index, and var falls back to
+    the (duplicate) gene id. This is the #349 bug reopened through a naming
+    mismatch rather than a missing feature; the error must point at
+    transcript_id_column so the fix is obvious.
+    """
+    import pandas as pd
+    import pytest
+    from hvantk.skills.expression_atlas.shared.expression_atlas import (
+        create_anndata_from_expression_atlas,
+    )
+
+    path = tmp_path / "tpms.tsv"
+    pd.DataFrame(
+        {
+            "Gene ID": [
+                "ENSMUSG00000000001",
+                "ENSMUSG00000000001",
+                "ENSMUSG00000000002",
+            ],
+            "Gene Name": ["Gnai3", "Gnai3", "Cdc45"],
+            "Transcript": [
+                "ENSMUST00000000001",
+                "ENSMUST00000000003",
+                "ENSMUST00000000002",
+            ],
+            "ERR1": [16, 9, 3],
+            "ERR2": [7, 2, 1],
+        }
+    ).to_csv(path, sep="\t", index=False)
+
+    with pytest.raises(ValueError, match="transcript_id_column"):
+        create_anndata_from_expression_atlas(expression_matrix_path=str(path))
+
+
 def test_all_missing_sample_column_stays_a_sample(tmp_path):
     """Inference must key on 'non-numeric', not 'not obviously a number'.
 
@@ -231,6 +308,10 @@ def test_all_missing_sample_column_stays_a_sample(tmp_path):
 
     adata = create_anndata_from_expression_atlas(expression_matrix_path=str(path))
     assert list(adata.obs_names) == ["ERR1", "ERR_empty"]
+    # Gene-level export: var is keyed by the gene id itself (contrast with the
+    # transcript-level path, which keys var by transcript_id_column instead).
+    assert list(adata.var_names) == ["ENSMUSG00000000001"]
+    assert adata.var_names.name == "gene_id"
 
 
 def test_malformed_sample_named_in_sdrf_raises_rather_than_vanishing(tmp_path):

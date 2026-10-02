@@ -41,10 +41,10 @@ def _write_two_axis_config(tmp_path, genes, y):
 
     `_toy_fixtures`/`_write_config` (shared with test_cli.py, and reused by every other
     test in this file) declare exactly one feature axis. That axis is then also the
-    baseline, so `engine._run_nulls` has no candidate axis left to search over and
-    returns `None` regardless of `--n-perm` -- verified empirically against the current
-    engine before writing this. Written locally, rather than by editing the shared
-    fixture, which every other rerank CLI test relies on staying single-axis.
+    baseline, so there is no candidate axis left for a permutation null to search over
+    and `--n-perm` is refused (see the single-axis test below). Written locally, rather
+    than by editing the shared fixture, which every other rerank CLI test relies on
+    staying single-axis.
     """
     rng = np.random.default_rng(1)
     pd.DataFrame({"gene": genes, "z": y + rng.normal(0, 0.5, len(genes))}).to_parquet(
@@ -114,6 +114,40 @@ def test_n_perm_prints_a_selection_corrected_p_and_null_out_writes_the_summary(
     assert "p_selected_max" in r.output
     summary = pd.read_csv(nul, sep="\t")
     assert {"axis", "n_perm", "n_candidates", "selmax_median"} <= set(summary.columns)
+    # No --blocks: the unblocked null is anti-conservative wherever labels cluster by
+    # family, and the console must say so ONCE, on stderr (never inside a stdout table).
+    assert r.stderr.count("anti-conservative") == 1, r.stderr
+    assert "--blocks" in r.stderr
+
+
+def test_n_perm_with_blocks_runs_a_blocked_null_and_does_not_warn(tmp_path):
+    """The unblocked-null warning is about the MISSING blocking; with --blocks the null
+    permutes by block and the warning must stay silent -- otherwise it becomes noise on
+    exactly the run that did the right thing."""
+    genes, y = _toy_fixtures(tmp_path, n=150)
+    cfg = _write_two_axis_config(tmp_path, genes, y)
+    hgnc = tmp_path / "hgnc.txt"
+    rows = ["symbol\tgene_group\tstatus"]
+    for i, g in enumerate(genes):
+        rows.append(f"{g}\tFamily {i // 5}\tApproved")
+    hgnc.write_text("\n".join(rows) + "\n")
+    r = CliRunner().invoke(
+        rerank_cmd,
+        [
+            "-c",
+            str(cfg),
+            "-o",
+            str(tmp_path / "out.tsv"),
+            "--n-perm",
+            "2",
+            "--blocks",
+            str(hgnc),
+        ],
+    )
+    assert r.exit_code == 0, r.output
+    assert "p_selected_max" in r.output
+    assert "block_digest='" in r.output  # the Setting line records the blocking
+    assert "anti-conservative" not in r.stderr, r.stderr
 
 
 def test_n_perm_on_a_single_axis_config_fails_cleanly(tmp_path):
@@ -121,7 +155,8 @@ def test_n_perm_on_a_single_axis_config_fails_cleanly(tmp_path):
     declare exactly one feature axis, which is then also the baseline, so there is no
     candidate axis left for `--n-perm` to search over. This must be a clean CLI failure
     before any output is written, not a silent no-op (the engine used to return
-    `res.nulls is None` and the CLI just skipped the Multiplicity block)."""
+    `res.nulls is None` and the CLI just skipped the Multiplicity block). It is knowable
+    from the config alone, so the CLI rejects it before any work starts."""
     r, out = _run(tmp_path, "--n-perm", "3")
     assert r.exit_code != 0
     assert "Traceback" not in r.output
@@ -129,7 +164,84 @@ def test_n_perm_on_a_single_axis_config_fails_cleanly(tmp_path):
     assert not out.exists(), "a failed run must not leave a scored table behind"
 
 
+def test_n_perm_with_an_axis_that_contributes_no_column_fails_cleanly(tmp_path):
+    """The engine's own refusal must reach the user as a clean CLI error, not a traceback
+    and not a scored table with the correction silently missing. This config passes the
+    one-axis preflight (it names two axes), but the second table carries only a 'gene'
+    column, so after scoring the engine is left with the baseline alone -- the case the
+    CLI cannot see from the config and `engine._run_nulls` raises on."""
+    genes, y = _toy_fixtures(tmp_path, n=150)
+    pd.DataFrame({"gene": genes}).to_parquet(tmp_path / "empty.parquet")
+    (tmp_path / "cohort.yaml").write_text(yaml.safe_dump(_cohort(tmp_path)))
+    spec = {
+        "name": "toy",
+        "cohort": str(tmp_path / "cohort.yaml"),
+        "features": [
+            {"name": "constraint", "path": str(tmp_path / "feat.parquet")},
+            {"name": "expression", "path": str(tmp_path / "empty.parquet")},
+        ],
+        "labels": {"path": str(tmp_path / "labels.txt")},
+        "min_label_coverage": 0.0,
+    }
+    cfg = tmp_path / "c.yaml"
+    cfg.write_text(yaml.safe_dump(spec))
+    out = tmp_path / "out.tsv"
+    r = CliRunner().invoke(
+        rerank_cmd, ["-c", str(cfg), "-o", str(out), "--n-perm", "3"]
+    )
+    assert r.exit_code != 0
+    assert "Traceback" not in r.output
+    assert "'expression'" in r.output and "no feature column" in r.output, r.output
+    assert not out.exists(), "a failed run must not leave a scored table behind"
+
+
+def test_a_missing_output_directory_is_rejected_before_the_run(tmp_path):
+    """`-o` is a bare click.Path and the write happens after the whole run, so a typo in
+    the output directory used to surface as an uncaught OSError traceback AFTER scoring --
+    and after the null, with its p-values never printed. The comment above the flag checks
+    promises typos are caught before any work starts; this makes that true for `-o`."""
+    _toy_fixtures(tmp_path, n=150)
+    cfg = _write_config(tmp_path, _cohort(tmp_path))
+    out = tmp_path / "missing_dir" / "out.tsv"
+    r = CliRunner().invoke(rerank_cmd, ["-c", str(cfg), "-o", str(out)])
+    assert r.exit_code == 1, r.output
+    assert isinstance(r.exception, SystemExit), repr(r.exception)  # not an OSError
+    assert "missing_dir" in r.output and "Traceback" not in r.output
+
+
+def test_a_missing_null_out_directory_is_rejected_before_the_run(tmp_path):
+    """Same for `--null-out`, which is written last of all -- after the scored table and
+    the whole permutation null."""
+    _toy_fixtures(tmp_path, n=150)
+    cfg = _write_config(tmp_path, _cohort(tmp_path))
+    nul = tmp_path / "nowhere" / "null.tsv"
+    r = CliRunner().invoke(
+        rerank_cmd,
+        [
+            "-c",
+            str(cfg),
+            "-o",
+            str(tmp_path / "out.tsv"),
+            "--n-perm",
+            "2",
+            "--null-out",
+            str(nul),
+        ],
+    )
+    assert r.exit_code == 1, r.output
+    assert isinstance(r.exception, SystemExit), repr(r.exception)  # not an OSError
+    assert "nowhere" in r.output and "Traceback" not in r.output
+    assert not (tmp_path / "out.tsv").exists(), (
+        "nothing may be written before the check"
+    )
+
+
 def test_blocks_flag_wires_the_block_builder(tmp_path):
+    """Asserted on the `Blocks:` line the CLI prints only when a blocking was applied,
+    with the numbers this table must produce (150 genes in families of 5). The previous
+    `"blocks" in r.output.lower()` was satisfied by the tmp-dir name this very test's name
+    puts in the echoed output path (`.../test_blocks_flag_wires_the_blo0/out.tsv`), so it
+    passed with no `--blocks` at all and with an engine that ignored the blocks."""
     genes, _ = _toy_fixtures(tmp_path, n=150)
     hgnc = tmp_path / "hgnc.txt"
     rows = ["symbol\tgene_group\tstatus"]
@@ -142,7 +254,8 @@ def test_blocks_flag_wires_the_block_builder(tmp_path):
         ["-c", str(cfg), "-o", str(tmp_path / "out.tsv"), "--blocks", str(hgnc)],
     )
     assert r.exit_code == 0, r.output
-    assert "blocks" in r.output.lower()
+    assert "Blocks: 30 paralogue block(s); largest 5 (3.3%)" in r.output, r.output
+    assert "150/150 genes matched the gene-group table" in r.output
 
 
 def test_a_dominant_block_fails_the_command_rather_than_scoring(tmp_path):

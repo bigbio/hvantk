@@ -152,6 +152,20 @@ def test_zero_results_fails_closed():
         _probe(body={"results": []})
 
 
+@pytest.mark.parametrize("total", ["0", "-1"])
+def test_impossible_total_results_fails_closed(total):
+    """X-Total-Results must be >= the number of results actually returned.
+
+    A bad edge/proxy response can report a count lower than what it sends back --
+    here 0 or -1 while `results` still carries the one entry the size=1 probe
+    requested. Without this check `int(total_raw)` succeeds either way and the
+    impossible count is recorded as a routine content change, so the drift bot
+    would propose it as the new baseline instead of failing closed.
+    """
+    with pytest.raises(DriftProbeError, match="X-Total-Results"):
+        _probe(headers={**_LIVE_HEADERS, "X-Total-Results": total})
+
+
 def test_http_error_is_a_probe_error():
     # 503 is in RETRY_STATUSES (request_with_retry backs off across the probe's 3
     # attempts, ~6s of real sleep) -- 404 is not retried, so this stays a fast, offline
@@ -193,6 +207,10 @@ def test_worst_case_retry_budget_fits_under_the_runner_timeout():
     """The probe's retry budget must fit under drift_runner's SIGALRM with room to
     spare, or a probe that legitimately exhausts every retry gets killed mid-request
     instead of raising the ordinary DriftProbeError callers already handle.
+
+    Checked against `run_drift_checks`'s default. The `hvantk drift` CLI passes its own
+    `--timeout` through explicitly; `hvantk/tests/test_drift_cli.py` pins that default
+    to this one, so the check covers both (a skills test may not import `tools/`).
 
     Note: the 51 s bound covers the exponential-backoff path; a Retry-After sleep is
     clamped to max_sleep_s and can exceed it, and the drift runner's SIGALRM is the

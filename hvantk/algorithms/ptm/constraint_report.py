@@ -1,8 +1,8 @@
 """HTML report generation for PTM constraint analysis.
 
 Builds a self-contained report from :class:`PTMConstraintResult`, embedding
-PNG panels produced by :mod:`hvantk.ptm.constraint_plots` as base64 ``<img>``
-tags. Follows :mod:`hvantk.ptm.report`: inline CSS, string-built sections,
+PNG panels produced by :mod:`hvantk.algorithms.ptm.constraint_plots` as base64 ``<img>``
+tags. Follows :mod:`hvantk.algorithms.ptm.report`: inline CSS, string-built sections,
 no template engine.
 """
 
@@ -100,7 +100,7 @@ def render_html(
     """Write a self-contained HTML report into ``output_dir/report.html``.
 
     PNG panels are expected at ``output_dir/plots/*.png`` (created by
-    :func:`hvantk.ptm.constraint_plots.render_panels`). Missing panels fall
+    :func:`hvantk.algorithms.ptm.constraint_plots.render_panels`). Missing panels fall
     back to a short notice rather than raising.
 
     Returns the absolute path to the written HTML file.

@@ -253,6 +253,22 @@ class Config:
                     f"{type(self.blocks).__name__}. For an HGNC table, pass "
                     f"BlockPolicy(table=...)."
                 )
+        if self.selection is not None:
+            from hvantk.algorithms.rerank.selection import SelectionPolicy
+
+            # Checked, not duck-typed, for the same reason Config.leakage/Config.nulls/
+            # Config.blocks are: the engine reads `.univariate`, `.redundancy` and
+            # `.wrapper` off this object inside a per-fold selector, so a bare string or
+            # dict here (the obvious `selection="auc"`) constructs fine and then fails
+            # there -- after the matrix is assembled and scoring has begun -- with an
+            # AttributeError that names none of this. SelectionPolicy validates its own
+            # method names at construction, so nothing further needs checking here.
+            if not isinstance(self.selection, SelectionPolicy):
+                raise TypeError(
+                    f"Config.selection must be a SelectionPolicy or None; got "
+                    f"{type(self.selection).__name__}. For defaults, pass "
+                    f"SelectionPolicy()."
+                )
         if self.cohort is not None:
             if self.prior is None:
                 self.prior = _ManifestPrior(self.cohort)

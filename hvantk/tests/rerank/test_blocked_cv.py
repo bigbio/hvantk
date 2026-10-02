@@ -58,6 +58,39 @@ def test_every_block_sits_in_a_single_test_fold():
     assert max(pos_per_fold) - min(pos_per_fold) <= 1, pos_per_fold
 
 
+def test_blocked_partitions_differ_across_seeds_and_stay_stratified():
+    """The blocked splitter must honour its seed on a NON-singleton blocking -- the
+    stratification check above uses singleton groups only, where any grouped splitter
+    degenerates to StratifiedKFold and the seed is exercised on nothing. Two seeds must
+    give two partitions (a splitter that ignored its seed would make `--seed-sweep` a sweep
+    over one partition, reporting zero partition variance as a measurement), the same seed
+    must reproduce its partition, and under every seed no block may straddle folds while
+    each fold's positive rate stays close to the overall rate -- the seeded relabelling
+    randomises tie-breaks without undoing the stratification it was written to keep.
+    (Measured on this fixture: three seeds, three partitions, |rate - overall| <= 0.061.)
+    """
+    matrix, y, baseline, _, blocks = _blocked_fixture()  # families of 6
+    assignments = {
+        seed: _fold_assignment(matrix, baseline, y, blocks, seed=seed)
+        for seed in (0, 1, 2)
+    }
+    assert not np.array_equal(assignments[0], assignments[1])
+    assert not np.array_equal(assignments[1], assignments[2])
+    assert np.array_equal(
+        assignments[0], _fold_assignment(matrix, baseline, y, blocks, seed=0)
+    )
+    overall = y.mean()
+    for seed, assign in assignments.items():
+        per_block = (
+            pd.DataFrame({"block": blocks, "fold": assign})
+            .groupby("block")
+            .fold.nunique()
+        )
+        assert (per_block == 1).all(), (seed, per_block[per_block > 1])
+        rates = [y[assign == k].mean() for k in range(5)]
+        assert max(abs(r - overall) for r in rates) <= 0.1, (seed, rates)
+
+
 def test_raw_oof_accepts_groups_and_changes_the_answer():
     """If groups were accepted and ignored, every blocked run would silently be an
     unblocked one -- the exact failure a `groups=` parameter is supposed to close."""

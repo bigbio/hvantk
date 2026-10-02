@@ -313,13 +313,16 @@ def test_list_datasets_skips_a_failed_dataset_without_recording_it_again():
     reg._manifests["lazyprov:thing"] = _lazy_manifest("lazyprov:thing")
     assert reg.list_datasets() == []
     assert reg.list_datasets() == []
+    # Recorded exactly once, by get_dataset's lazy bind on the first call -- a second
+    # list_datasets must neither re-record it nor lose it.
+    assert [u for u, _ in reg.load_errors()] == ["lazyprov:thing"]
 
 
 # --- item 2 (#374 review): a provider-level load failure recorded via
 # load_from_skills_root must not be recorded AGAIN when load_from_entry_points
 # resolves to the SAME directory ------------------------------------------------------
 #
-# get_registry() runs load_from_skills_root() then load_from_entry_points(); 13 of 23
+# get_registry() runs load_from_skills_root() then load_from_entry_points(); 13 of 21
 # in-tree providers are ALSO declared as entry points pointing at their own skills/
 # directory. `load_from_directory` only added to `_loaded_dirs` on SUCCESS, and the
 # missing-plugin.yaml branch of `load_from_skills_root` never marked the dir at all --

@@ -605,16 +605,22 @@ def test_regenerate_fingerprint_creates_a_new_baseline_with_the_umasked_mode(
     0o666 either. The prior test only pinned the copymode branch (an existing file),
     which passes even with a bare `Path.write_text` -- it does not exercise this one.
     """
+    import os
     import stat
 
     fp_path = tmp_path / "fp.json"  # deliberately does not exist yet
     observed = {"probe_version": 1, "headers": {}, "checksums": {}}
     spec = _make_spec(probe_return=observed, fingerprint_path=fp_path)
 
-    umask = drift_runner._current_umask()
-    drift_runner.regenerate_fingerprint(spec, timeout=5)
+    # A KNOWN umask, not `drift_runner._current_umask()`: deriving the expectation
+    # from the helper under test would pass whatever that helper returned.
+    old = os.umask(0o027)
+    try:
+        drift_runner.regenerate_fingerprint(spec, timeout=5)
+    finally:
+        os.umask(old)
 
-    assert stat.S_IMODE(fp_path.stat().st_mode) == (0o666 & ~umask)
+    assert stat.S_IMODE(fp_path.stat().st_mode) == 0o640  # 0o666 & ~0o027
 
 
 def test_regenerate_fingerprint_leaves_no_tmp_sibling_after_a_failed_replace(
@@ -663,3 +669,114 @@ def test_write_fingerprint_replaces_atomically_via_the_same_directory(
     drift_runner.write_fingerprint(fp_path, {"probe_version": 1})
     assert seen == [tmp_path]
     assert json.loads(fp_path.read_text()) == {"probe_version": 1}
+
+
+# --- DriftResult.status is a closed set, not a free-form str ------------------------
+#
+# The CLI maps `drifted` -> 1 and `probe_failed` -> 2 and lets anything else fall
+# through to exit 0, so a misspelled status would read as a clean run.
+
+
+def test_drift_result_rejects_an_unknown_status():
+    with pytest.raises(ValueError, match="dirfted"):
+        DriftResult(dataset_name="d", status="dirfted")
+
+
+@pytest.mark.parametrize("status", ["clean", "drifted", "probe_failed", "stub"])
+def test_drift_result_accepts_every_documented_status(status):
+    assert DriftResult(dataset_name="d", status=status).status == status
+
+
+# --- _coerce_fingerprint returns the JSON form, not the raw object ----------------
+#
+# `--regenerate` writes `json.dumps(observed, default=str)`; the next check compares
+# `json.loads(file)` against whatever the probe returned. Only the JSON form can equal
+# the JSON form: a tuple comes back as a list, a datetime/Path as a string, an int key
+# as a string, so a probe emitting any of these reported `drifted` forever -- including
+# on the run right after the baseline was regenerated from that same probe.
+
+
+def test_coerce_fingerprint_returns_the_json_round_tripped_form():
+    from datetime import datetime
+    from pathlib import PurePosixPath
+
+    from hvantk.core.plugin.drift_runner import _coerce_fingerprint
+
+    raw = {
+        "headers": ("a", "b"),
+        "when": datetime(2026, 1, 1),
+        "where": PurePosixPath("/x/y"),
+        1: "int key",
+    }
+    assert _coerce_fingerprint(raw) == {
+        "headers": ["a", "b"],
+        "when": "2026-01-01 00:00:00",
+        "where": "/x/y",
+        "1": "int key",
+    }
+
+
+def test_coerce_fingerprint_rejects_nan_as_a_probe_error():
+    """`json.dumps` emits the non-standard `NaN` token by default, which `json.loads`
+    reads back -- but a NaN never equals itself, so the comparator would call it
+    drifted forever. Refusing it names the real defect."""
+    from hvantk.core.plugin.drift_runner import _coerce_fingerprint
+
+    with pytest.raises(DriftProbeError, match="not JSON-serialisable"):
+        _coerce_fingerprint({"x": float("nan")})
+
+
+def test_regenerate_then_check_is_clean_for_a_probe_returning_tuples(tmp_path: Path):
+    fp_path = tmp_path / "fp.json"
+    spec = _make_spec(
+        probe_return=lambda: {"probe_version": 1, "headers": ("a", "b")},
+        fingerprint_path=fp_path,
+    )
+    drift_runner.regenerate_fingerprint(spec, timeout=5)
+
+    result = _run_with_spec(spec)
+
+    assert result.status == "clean", result.diff
+
+
+# --- --regenerate must only write what a live probe captured --------------------------
+#
+# It validated "mapping + JSON-serialisable" and nothing else. A stub sentinel is not a
+# fingerprint (stub plugins ship no baseline by design), and a placeholder-shaped
+# result -- an empty checksum, an epoch fetched_at -- is exactly what the comparator
+# rejects as "never captured from a live probe; run --regenerate": writing it created
+# a loop where --regenerate produced the baseline the next check told you to regenerate.
+
+
+def test_regenerate_fingerprint_refuses_a_stub_probe(tmp_path: Path):
+    from hvantk.core.plugin.api import stub_fingerprint
+
+    fp_path = tmp_path / "fp.json"
+    fp_path.write_text('{"probe_version": 1}')
+    spec = _make_spec(
+        probe_return=lambda: stub_fingerprint("doc-only; no probeable URL"),
+        fingerprint_path=fp_path,
+    )
+
+    with pytest.raises(DriftProbeError, match="stub"):
+        drift_runner.regenerate_fingerprint(spec, timeout=5)
+
+    assert fp_path.read_text() == '{"probe_version": 1}', "baseline must be untouched"
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["fp.json"]
+
+
+def test_regenerate_fingerprint_refuses_a_placeholder_shaped_fingerprint(
+    tmp_path: Path,
+):
+    fp_path = tmp_path / "fp.json"
+    fp_path.write_text('{"probe_version": 1}')
+    spec = _make_spec(
+        probe_return={"probe_version": 1, "checksums": {"a.tsv": ""}},
+        fingerprint_path=fp_path,
+    )
+
+    with pytest.raises(DriftProbeError, match="empty"):
+        drift_runner.regenerate_fingerprint(spec, timeout=5)
+
+    assert fp_path.read_text() == '{"probe_version": 1}', "baseline must be untouched"
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["fp.json"]

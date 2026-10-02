@@ -1,5 +1,6 @@
 # hvantk/tools/rerank/rerank_cli.py
 import logging
+from pathlib import Path
 
 import click
 import jsonschema
@@ -22,6 +23,30 @@ _ARCHITECTURE_AXIS_NAME = "architecture"
 # 'cohort:', so a 'prior:' block here can never be honoured and silently keeping it
 # around invites exactly the confusion this check exists to prevent.
 _KNOWN_TOP_LEVEL_KEYS = {"name", "cohort", "features", "labels", "min_label_coverage"}
+
+_SKLEARN_HINT = (
+    "scikit-learn is required for `hvantk rerank`, and is not part of the base "
+    "install. Install the 'ml' extra:\n"
+    "    pip install 'hvantk[ml]'\n"
+    "    poetry install --extras ml"
+)
+
+
+def _require_sklearn():
+    """Return the scikit-learn module, or raise ``ImportError`` naming the extra.
+
+    Mirrors ``hvantk.algorithms.ptm.optional_deps.require_statsmodels``: the documented
+    standard (docs_site/getting-started/installation.md) is that a path behind an extra
+    exits with an actionable message naming that extra, not a traceback. It lives here
+    rather than in ``hvantk.algorithms.rerank`` because that package imports scikit-learn
+    at module scope (``reranker.py``, ``evaluator.py``), so a helper inside it could never
+    be reached on the install it exists to explain.
+    """
+    try:
+        import sklearn
+    except ModuleNotFoundError as exc:
+        raise ImportError(_SKLEARN_HINT) from exc
+    return sklearn
 
 
 @click.command(
@@ -83,7 +108,8 @@ _KNOWN_TOP_LEVEL_KEYS = {"name", "cohort", "features", "labels", "min_label_cove
     "the baseline and every candidate axis (about n_perm x (1 + axes) five-fold fits; a "
     "selection policy, RFECV especially, multiplies that further) -- expect tens of "
     "minutes for a few hundred permutations on ~1,000 genes. Run `hvantk -v rerank ...` "
-    "to see progress.",
+    "to see progress. Without --blocks the null permutes labels across gene families "
+    "and is anti-conservative wherever labels cluster by family; pass --blocks too.",
 )
 @click.option(
     "--null-out",
@@ -97,6 +123,14 @@ _KNOWN_TOP_LEVEL_KEYS = {"name", "cohort", "features", "labels", "min_label_cove
 def rerank_cmd(
     config_path, output, seed, seed_sweep, blocks_path, max_block_frac, n_perm, null_out
 ):
+    # First, before the deferred imports below: `hvantk.algorithms.rerank` imports
+    # scikit-learn at module scope, so without this the command's first line on a base
+    # install is a raw ModuleNotFoundError traceback that names no extra.
+    try:
+        _require_sklearn()
+    except ImportError as exc:
+        raise click.ClickException(str(exc)) from exc
+
     # Heavy ML imports are deferred to invocation time so that importing the hvantk CLI
     # (and every other subcommand) does NOT require scikit-learn, which is an OPTIONAL
     # dependency. Mirrors the psroc/ancestry deferral pattern.
@@ -125,6 +159,32 @@ def rerank_cmd(
     if n_perm == 0 and null_out:
         raise click.ClickException(
             "--null-out describes a permutation null; pass --n-perm N too."
+        )
+    # The two output paths are bare click.Path()s (nothing is created up front) and both
+    # writes happen only after the whole run, so a typo in a directory name used to
+    # surface as an uncaught OSError traceback AFTER scoring (and the null), with nothing
+    # printed. Checked here so the comment above stays true for them as well.
+    # A remote URI (gs://, s3://, ...) is written through pandas/fsspec and has no local
+    # parent directory to check, so it is left to the writer.
+    for flag, path in (("--output", output), ("--null-out", null_out)):
+        if path is None or "://" in str(path):
+            continue
+        if not Path(path).resolve().parent.is_dir():
+            raise click.ClickException(
+                f"{flag} {path}: its directory {Path(path).resolve().parent} does not "
+                "exist; create it first."
+            )
+    if n_perm > 0 and blocks_path is None:
+        # Advisory, not an error, and said ONCE, up front, on stderr: an unblocked null
+        # permutes labels across gene families, which understates its spread -- it is
+        # anti-conservative -- wherever labels cluster by family. That clustering is a
+        # property of the data, so omitting --blocks removes the correction, not the
+        # problem (see nulls.py). stderr, so a captured stdout table never carries it.
+        click.echo(
+            "Warning: --n-perm without --blocks permutes labels across gene families; "
+            "the null is anti-conservative wherever labels cluster by family. Pass "
+            "--blocks with an HGNC gene-group table to permute by block instead.",
+            err=True,
         )
 
     with open(config_path) as fh:
@@ -175,6 +235,17 @@ def rerank_cmd(
     except (KeyError, TypeError) as exc:
         raise click.ClickException(
             f"config {config_path}: malformed features/labels block ({exc})"
+        )
+    if n_perm > 0 and len(feats) < 2:
+        # The first axis is the ablation baseline, so a one-axis config leaves the
+        # permutation null nothing to search over. engine._run_nulls refuses the same
+        # state -- and the subtler one where a provenance arm or a column-less table
+        # leaves only the baseline -- but only after the headline scoring has run; this
+        # much is knowable from the config alone, so it is rejected here, before any
+        # work starts, like every other flag-combination error above.
+        raise click.ClickException(
+            "--n-perm needs at least one feature axis besides the baseline; this config "
+            f"has only {[f.name for f in feats]}."
         )
 
     # axis_columns(), not declared_columns(): engine.rerank() merges the cohort frame
@@ -249,18 +320,10 @@ def rerank_cmd(
         # must not write a scored table whose pooled out-of-fold AUC estimates something
         # other than what the caller will compare it against. Every ValueError the engine
         # raises is a user-facing message (e.g. a gene-group table that matches no gene,
-        # too few paralogue blocks for the fold count), so the CLI reports it cleanly
-        # instead of a traceback.
+        # too few paralogue blocks for the fold count, a requested permutation null with
+        # no candidate axis left to search over), so the CLI reports it cleanly instead
+        # of a traceback.
         raise click.ClickException(str(exc)) from exc
-    if n_perm > 0 and res.nulls is None:
-        # cfg.nulls is a NullConfig here (n_perm > 0), so the only way _run_nulls returns
-        # None is "no candidate axis besides the baseline" -- checked before any output is
-        # written, the same as every other flag-combination error above.
-        axis_names = [f.name for f in cfg.features]
-        raise click.ClickException(
-            "--n-perm needs at least one feature axis besides the baseline; this config "
-            f"has only {axis_names}."
-        )
     res.table.to_csv(output, sep="\t", index=False)
     click.echo(f"Wrote {len(res.table)} genes -> {output}")
     scored = res.table[res.table["score"].notna()]

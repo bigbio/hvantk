@@ -69,15 +69,19 @@ hvantk ptm report -o report.html \
 ### Python API
 
 ```python
-from hvantk.algorithms.ptm import PTMBuildConfig, ptm_build_pipeline_core
+from hvantk.algorithms.ptm import PTMBuildConfig
+from hvantk.tools.ptm.pipeline import ptm_build_pipeline
 
-# Build PTM sites table
+# Build PTM sites table (downloads the UniProt TSV, maps coordinates, builds
+# the Hail Table). `ptm_build_pipeline_core` is the pure mapping step this
+# wraps; it requires `config.ptm_tsv` to already be set and never builds
+# `output_ht` itself.
 config = PTMBuildConfig(
     output_dir="data/ptm/",
     output_ht="data/ptm/ptm_sites.ht",
 )
-result = ptm_build_pipeline_core(config)
-print(f"Mapped {result.n_mapped}/{result.n_total} sites")
+result = ptm_build_pipeline(config)
+print(f"Mapped {result.n_mapped}/{result.n_total} sites; Hail Table at {result.output_ht}")
 
 # Annotate variants
 import hail as hl
@@ -130,6 +134,32 @@ hvantk psroc --variants strata/ptm_variants.txt --clinvar-ht clinvar.ht --dbnsfp
 hvantk psroc --variants strata/non_ptm_variants.txt --clinvar-ht clinvar.ht --dbnsfp-ht dbnsfp.ht ...
 ```
 
+## Constraint Analysis Commands
+
+Three further commands assemble a multi-source PTM atlas and test for allele-frequency
+depletion at PTM sites, stratified by tissue or cell type:
+
+- **`hvantk ptm atlas`** — Maps a combined PTM site list from UniProt, PeptideAtlas and
+  (optionally) CPTAC to the genome, writing `ptm_sites_mapped.tsv.bgz` (UniProt alone) or
+  `ptm_sites_combined.tsv.bgz` (multiple sources). It stops at that TSV and does not
+  build a Hail Table; use `hvantk ptm build` for the end-to-end path. The UniProt TSV
+  must be passed (`--uniprot-tsv`): unlike `ptm build`, `atlas` does not download it.
+  PeptideAtlas and CPTAC are included only when their TSV is passed as well; a source
+  named in `--sources` without its TSV is skipped. The Ensembl GTF is downloaded when
+  `--gtf-path` is omitted. Required: `--output-dir`, `--output-ht`. CPTAC is off by
+  default (`--sources uniprot,peptideatlas`).
+- **`hvantk ptm constraint`** — Compares gnomAD allele-frequency distributions between
+  PTM-proximal and non-PTM variants, stratified by a metadata field from an expression
+  dataset (`--expression-source hail-mt|anndata|tabular`). Runs five tests (per-group
+  ranking, tau quartile, LOEUF x group factorial, PTM category x group heatmap,
+  within-gene Wilcoxon) and writes TSVs, PNG panels, and an HTML report. Required:
+  `--variants-ht`, `--expression-source`, `--expression-path`, `--grouping`,
+  `--output-dir`. This is a stratified depletion analysis, not a per-variant scorer.
+- **`hvantk ptm test`** — Runs the per-stratum constraint tests directly (`--test lmm` or
+  `--test lmm-binned`) against a pre-built variant table, without the plotting/report
+  machinery `constraint` adds. Requires the `constraint` extra (`statsmodels`); without
+  it, the command fails with a message naming the extra instead of a traceback.
+
 ## Build Command Details
 
 ### Input Options
@@ -169,6 +199,7 @@ The `annotate` command adds these fields to the variant table:
 | `is_ptm_proximal` | bool | Variant within flanking window (not at codon) |
 | `ptm_types` | set\<str\> | PTM categories (e.g., phosphorylation, ubiquitination) |
 | `ptm_distance` | int | Distance in residues to nearest PTM site |
+| `ptm_evidence` | array\<struct\> | Per-site evidence for the nearest PTM site(s) (`source_db`, `evidence_type`, `n_observations`, `uniprot_id`, `gene_symbol`, `residue_pos`, `amino_acid`, `ptm_type`); present only when the input PTM table carries at least one of those fields |
 
 ## Output Files
 
@@ -208,12 +239,19 @@ Gene annotation (exon coordinates, CDS phases) from Ensembl GRCh38. Used for map
 
 ```text
 hvantk/algorithms/ptm/
-├── __init__.py     # Module exports
-├── constants.py    # PTM-specific constants (URLs, field names, categories)
-├── mapper.py       # GTF parser and residue-to-genomic coordinate mapper
-├── pipeline.py     # Build pipeline orchestration
-├── annotate.py     # Variant-PTM annotation
-├── analysis.py     # Landscape and population analysis
-├── plot.py         # Visualization functions
-└── report.py       # HTML report generation
+├── __init__.py               # Module exports
+├── constants.py              # PTM-specific constants (URLs, field names, categories)
+├── optional_deps.py          # Actionable ImportError naming the `constraint` extra for statsmodels
+├── mapper.py                 # GTF parser and residue-to-genomic coordinate mapper
+├── pipeline.py               # Build pipeline orchestration
+├── atlas.py                  # Thin facade over pipeline.ptm_build_pipeline_core, for `ptm atlas`
+├── annotate.py               # Variant-PTM annotation
+├── analysis.py               # Landscape and population analysis
+├── plot.py                   # Visualization functions
+├── report.py                 # HTML report generation
+├── constraint.py             # Stratified constraint analysis orchestrator, for `ptm constraint`
+├── constraint_expression.py  # Hail MT / AnnData / tabular expression-source adapter
+├── constraint_plots.py       # Diagnostic panels for the constraint analysis
+├── constraint_report.py      # HTML report generation for the constraint analysis
+└── lmm.py                    # Per-stratum constraint tests (plain and binned-interaction LMM), for `ptm test`
 ```

@@ -187,12 +187,22 @@ def _control_setting(config, baseline_cols, candidates, arm, block_digest, folds
         baseline=tuple(baseline_cols),
         candidates=candidates,
         folds=folds,
+        # The scorer's CV seed, the same way `folds` is recorded: `_run_nulls` builds
+        # `oof_scorer(seed=config.seed)`, so the setting must carry that seed too.
+        seed=config.seed,
         block_digest=block_digest,
     )
 
 
 def _run_nulls(config, df, baseline, groups_map, y, selector, arm, blocks):
-    """The permutation null for this run, with its observed deltas, or None when unset."""
+    """The permutation null for this run, with its observed deltas, or None when unset.
+
+    Raises ``ValueError`` when ``Config.nulls`` is set but this arm has no candidate axis
+    to search over. Returning ``None`` there -- as this used to, with a warning -- left the
+    caller holding a ``RerankResult.nulls`` indistinguishable from "no correction was
+    requested", which is the state ``Config.nulls``'s type check calls worse than one
+    that was never offered.
+    """
     if getattr(config, "nulls", None) is None:
         return None
     from hvantk.algorithms.rerank.blocks import block_digest
@@ -207,14 +217,33 @@ def _run_nulls(config, df, baseline, groups_map, y, selector, arm, blocks):
     baseline_cols = list(groups_map[baseline])
     candidates = {k: list(v) for k, v in groups_map.items() if v and k != baseline}
     if not candidates:
-        logger.warning(
-            "Config.nulls was set but arm %r has no candidate axes with columns left -- "
-            "only the baseline axis %r has columns left in this arm; the multiplicity "
-            "correction was requested and could not run",
-            arm,
-            baseline,
+        # Why each configured axis is absent from this arm, so the message is actionable
+        # rather than "no candidates". An axis reaches `groups_map` only if at least one
+        # of its columns survived `rerank`'s provenance restriction, so an axis that
+        # declares columns yet is missing here was barred wholesale by that restriction
+        # (possible only in a restricted arm); one that declares none never had anything
+        # to offer. `ax.load()` is cached, so this re-reads nothing.
+        dropped = []
+        for ax in config.features:
+            if ax.name in groups_map:
+                continue
+            declared = [c for c in ax.load().columns if c != "gene"]
+            why = (
+                f"every column {declared!r} is barred from arm {arm!r} by the "
+                "provenance filter"
+                if declared
+                else "its table contributes no feature column"
+            )
+            dropped.append(f"{ax.name!r} ({why})")
+        raise ValueError(
+            f"Config.nulls is set but arm {arm!r} has no candidate axis to search over: "
+            f"of the configured axes {[ax.name for ax in config.features]!r}, only the "
+            f"baseline {baseline!r} has columns left"
+            + (f"; dropped: {'; '.join(dropped)}" if dropped else "")
+            + ". The multiplicity correction needs at least one axis besides the "
+            "baseline: add one, declare 'trained_on' for the barred columns, or leave "
+            "Config.nulls unset to run without a correction."
         )
-        return None
     folds = ABLATION_FOLDS  # ONE variable feeds the scorer and the recorded setting
     scorer = oof_scorer(
         selector=selector,

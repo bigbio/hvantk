@@ -16,7 +16,7 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its reposit
 - **Anchored variant:** `Whole_Human_Interactome_Interface_hg38.bed` — the genomic projection product. UCSC-style BED with browser/track metadata; 18.6M data rows across **208,448 named PPI tracks**.
 - **In scope:** building an `interval`-keyed Hail Table from the BED file for variant-interval intersection (e.g., "does this variant fall in any predicted interface residue?").
 - **Out of scope:**
-  - The complementary `H_sapiens_interfacesALL.txt` product (protein-pair keyed; encodes per-protein interface residue arrays with Source = ECLAIR / PDB / I3D). This is a separately-onboardable skill — same resource, different shape and different builder. **Not in this PR.**
+  - The complementary `H_sapiens_interfacesALL.txt` product (protein-pair keyed; encodes per-protein interface residue arrays with Source = ECLAIR / PDB / I3D) was out of scope for this skill's initial design. It has since shipped as a second dataset in this same plugin, `insider:interfaces` — see § 9b.
   - Downloader. The BED is >1 GB; per `_conventions` § 11 and the downloader strategy (CLAUDE.md), acquisition is manual.
 
 This skill is the **first interval-keyed skill** in hvantk. Conventions § 3 declares `interval` keying as valid; this skill anchors it.
@@ -31,7 +31,7 @@ This skill is the **first interval-keyed skill** in hvantk. Conventions § 3 dec
 - **License:** Academic use (per the existing catalog entry).
 - **Catalog entry:** `INSIDER_v1.0` in `hvantk/skills/insider/catalog/datasets.json`. **Filename and metadata corrected in the same PR that adds this skill** — the prior entry listed `insider_interaction_sites.tsv` which is not a real INSIDER distribution product (see § 4 Gap 2).
 
-Stable note (not in catalog): INSIDER releases two complementary products from one source. This skill anchors the genomic BED only. The protein-residue TXT is documented in the catalog as a follow-up; see § 8.
+Stable note (not in catalog): INSIDER releases two complementary products from one source. This skill originally anchored the genomic BED only; the protein-residue TXT has since been onboarded as the `insider:interfaces` second dataset — see § 9b.
 
 ## 3. Backend choice + reasoning
 
@@ -109,7 +109,7 @@ INSIDER updates are irregular. To onboard a new release:
 
 1. **Acquire** the new BED. Update `path` / `size_bytes` / `last_updated` in the catalog entry; bump `accession` if the release version changes (`INSIDER_v1.0` → `INSIDER_v1.x`).
 2. **Re-run round-trip (§ 9).** If the BED format is unchanged (still 9-column UCSC-style with `track name=...` directives in the established `<P1>_ppi_<P2>` shape), no builder change. If a release changes the track naming pattern (e.g., adds a third underscore-separated field), the `_TRACK_NAME_RE` regex in `hvantk/skills/insider/variants/builder.py` and the `<P1>_ppi_<P2>` convention in the catalog description need updating.
-3. **Consider onboarding the `.txt` product** as a sibling skill. It carries Source provenance (ECLAIR / PDB / I3D) which the BED does not; downstream filtering on confidence level requires the TXT. Builder would need range-notation parsing for `*_IRES` arrays (e.g., `[1-11,13-14,...]`).
+3. **The `.txt` product has since been onboarded** as `insider:interfaces`, a second dataset in this same plugin rather than a sibling skill — see § 9b. It carries Source provenance (ECLAIR / PDB / I3D) which the BED does not; its builder (`hvantk/skills/insider/interfaces/parse.py`) does the range-notation parsing for `*_IRES` arrays (e.g., `[1-11,13-14,...]`) this step used to anticipate.
 
 ## 9. Validation contract
 
@@ -165,6 +165,17 @@ It reads the OTHER raw INSIDER file, `H_sapiens_interfacesALL.txt` (~49 MB, 122,
 rows over 15,144 proteins), not the 1.17 GB BED: the pair table already carries both
 UniProt accessions and both interface-residue lists, so a per-gene reduction needs no
 genomic join.
+
+**Build**: `interfaces` has no `lifecycle.download` yet (automatable but not yet written;
+tracked in issue #386), so acquire `H_sapiens_interfacesALL.txt`
+manually from the direct URL in `catalog/datasets.json` and pass `--skip-download`:
+
+```bash
+hvantk reprocess insider:interfaces \
+    --raw-dir /path/to/insider_raw_dir \
+    --output /path/to/insider_interfaces.ht \
+    --skip-download
+```
 
 - **fixture:** `hvantk/skills/insider/interfaces/tests/testdata/raw/interfaces/H_sapiens_interfacesALL.txt` (3 pair rows, 3 proteins; covers a range IRES `[5,7-9]`, an empty `[]`, and both a predicted and an experimental source).
 - **schema_snapshot:** `hvantk/skills/insider/interfaces/tests/snapshots/schema.json` — `{uniprot_id, n_partners, n_partners_experimental, n_partners_predicted, n_interface_residues}`, keyed `uniprot_id`.

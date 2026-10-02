@@ -54,14 +54,14 @@ Metadata file is read with the same auto-detect logic and indexed by `SampleID` 
 - **Drift probe:** `fetch_fingerprint` in `hvantk/skills/cptac/expression/drift_probe.py` (fingerprints the installed `cptac` Python package version).
 - **Plugin manifest:** `hvantk/skills/cptac/plugin.yaml` (compound dataset key `cptac:expression`). The loader auto-resolves the dataset via `get_registry().get_dataset("cptac:expression")`; top-level builds run through `run_builder_for_spec` (`hvantk/core/plugin/run_builder.py`).
 - **Tests:** drift-probe sanity in `hvantk/skills/cptac/expression/tests/test_drift_probe.py`.
-- **CLI:** end-to-end `hvantk reprocess cptac:expression` is not yet wired — the manifest does not declare a `lifecycle.parse` stage to produce the `{"expression": <tsv>, "metadata": <tsv>}` `parsed_input` dict. Until that lands, build via the Python API (`build_cptac_expression(parsed_input, ctx, gene_id_col=…, sample_id_col=…, expression_col=…)`).
+- **CLI:** end-to-end `hvantk reprocess` for `cptac:expression` is not yet wired — the manifest does not declare a `lifecycle.parse` stage to produce the `{"expression": <tsv>, "metadata": <tsv>}` `parsed_input` dict. Until that lands, build via the Python API (`build_cptac_expression(parsed_input, ctx, gene_id_col=…, sample_id_col=…, expression_col=…)`).
 
 ## 7. Workflow steps
 
 When invoked to build a CPTAC protein-expression AnnData:
 
 1. **Stage inputs.** Long-format expression TSV/CSV + sample metadata TSV/CSV. (Today the user produces these manually; an automated downloader for expression is a follow-up -- see `cptac:phospho` for the in-package fetcher pattern.)
-2. **Build.** Import `build_cptac_expression(parsed_input, ctx, **params)` directly — see § 6 on why `hvantk reprocess cptac:expression` is not wired yet.
+2. **Build.** Import `build_cptac_expression(parsed_input, ctx, **params)` directly — see § 6 on why `hvantk reprocess` is not wired for `cptac:expression` yet.
 3. **Validate.** `pytest hvantk/skills/cptac/expression/tests` (drift-probe sanity).
 
 ## 8. Update playbook

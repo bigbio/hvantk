@@ -689,15 +689,20 @@ _BROKEN_MANIFEST = (
 )
 
 
-def _registry_with_broken_dataset(tmp_path, monkeypatch):
-    """fake:default (genomics, healthy) plus brokenprov:thing (proteomics, will not bind)."""
+def _broken_plugin_dir(tmp_path):
+    """brokenprov:thing (proteomics): a manifest that loads but will not bind."""
     plugin = tmp_path / "brokenprov"
     plugin.mkdir()
     (plugin / "plugin.yaml").write_text(_BROKEN_MANIFEST)
     (plugin / "SKILL.md").write_text("---\nname: x\ndescription: y\n---\n# x\n")
+    return plugin
+
+
+def _registry_with_broken_dataset(tmp_path, monkeypatch):
+    """fake:default (genomics, healthy) plus brokenprov:thing (proteomics, will not bind)."""
     reg = plugin_loader.PluginRegistry()
     reg.load_from_directory(FIXTURE_ROOT / "fake_plugin")
-    reg.load_from_directory(plugin)
+    reg.load_from_directory(_broken_plugin_dir(tmp_path))
     monkeypatch.setattr(plugin_loader, "get_registry", lambda: reg)
     return reg
 
@@ -813,7 +818,7 @@ def test_a_dataset_that_failed_to_bind_gets_a_json_row(tmp_path, monkeypatch):
 #
 # `load_from_skills_root` records `child.name` (the directory) when `plugin.yaml` is
 # missing, and `_provider_id_hint` falls back to `plugin_dir.name` too when the
-# manifest's own `name` cannot be read. 9 of the 23 in-tree providers have a directory
+# manifest's own `name` cannot be read. 9 of the 21 in-tree providers have a directory
 # name that differs from the declared `name:` only by `_` vs `-` (`gwas_catalog` dir,
 # `gwas-catalog` name; `uniprot_ptm` dir, `uniprot-ptm` name; ...), so exact string
 # equality in `_relevant_load_errors` silently dropped a directly-relevant failure.
@@ -878,10 +883,19 @@ def test_unknown_dataset_prints_no_hint_when_nothing_failed_to_load():
 # contract; reject the combination up front instead ------------------------------------
 
 
-def test_regenerate_and_json_are_mutually_exclusive():
+def test_regenerate_and_json_are_mutually_exclusive(tmp_path, monkeypatch):
+    # A tmp copy, like the other --regenerate tests: with the autouse registry this
+    # pointed at the COMMITTED fixture, so a regressed guard would have rewritten
+    # hvantk/tests/testdata/raw/plugins/fake_plugin/tests/drift_fingerprint.json.
+    _, plugin_dir = _tmp_fake_plugin_registry(tmp_path, monkeypatch)
+    fp_path = plugin_dir / "tests" / "drift_fingerprint.json"
+    before = fp_path.read_text()
+
     result = CliRunner().invoke(drift_cmd, ["--regenerate", "--json", "fake:default"])
+
     assert result.exit_code != 0
     assert "--regenerate" in result.output and "--json" in result.output, result.output
+    assert fp_path.read_text() == before, "a rejected combination must write nothing"
 
 
 # --- item 1: a non-str-keyed fingerprint must not crash the CHECK path's echo --------
@@ -937,3 +951,198 @@ def test_drift_human_readable_exits_probe_failed_on_non_str_keyed_fingerprint(
         result.output
     )  # EXIT_PROBE_FAILED, not a traceback's 1
     assert "probe_failed" in result.output
+
+
+# --- a probe whose output is JSON-serialisable but not JSON-native must be clean right
+# after --regenerate ---------------------------------------------------------------------
+#
+# `--regenerate` writes the JSON form (tuple -> list); the next check compared the RAW
+# object against `json.loads(file)`, and `("a", "b") != ["a", "b"]`, so such a probe
+# reported `drifted` forever -- the bot would regenerate it nightly and never converge.
+
+
+def _tmp_fake_plugin_registry(tmp_path, monkeypatch):
+    """The fake plugin on a tmp copy, so --regenerate cannot touch the committed asset."""
+    import shutil
+
+    plugin_dir = tmp_path / "fake_plugin"
+    shutil.copytree(FIXTURE_ROOT / "fake_plugin", plugin_dir)
+    reg = plugin_loader.PluginRegistry()
+    reg.load_from_directory(plugin_dir)
+    monkeypatch.setattr(plugin_loader, "get_registry", lambda: reg)
+    return reg, plugin_dir
+
+
+def test_regenerate_then_check_is_clean_for_a_tuple_valued_fingerprint(
+    tmp_path, monkeypatch
+):
+    reg, _ = _tmp_fake_plugin_registry(tmp_path, monkeypatch)
+    spec = reg.get_dataset("fake:default")
+    object.__setattr__(
+        spec, "drift_probe", lambda: {"probe_version": 1, "headers": ("a", "b")}
+    )
+
+    regen = CliRunner().invoke(drift_cmd, ["--regenerate", "fake:default"])
+    assert regen.exit_code == 0, regen.output
+
+    check = CliRunner().invoke(drift_cmd, ["--json", "fake:default"])
+    assert check.exit_code == 0, check.output
+    assert [r["status"] for r in _stdout_rows(check)] == ["clean"]
+
+
+# --- --regenerate must not commit a stub sentinel or a placeholder-shaped result as the
+# baseline ----------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("label", ["stub", "placeholder"])
+def test_regenerate_exits_probe_failed_instead_of_writing_a_non_baseline(
+    tmp_path, monkeypatch, label
+):
+    from hvantk.core.plugin.api import stub_fingerprint
+
+    probe = {
+        "stub": lambda: stub_fingerprint("doc-only; no probeable URL"),
+        "placeholder": lambda: {"probe_version": 1, "checksums": {"a.tsv": ""}},
+    }[label]
+    reg, plugin_dir = _tmp_fake_plugin_registry(tmp_path, monkeypatch)
+    spec = reg.get_dataset("fake:default")
+    object.__setattr__(spec, "drift_probe", probe)
+    fp_path = plugin_dir / "tests" / "drift_fingerprint.json"
+    before = fp_path.read_text()
+
+    result = CliRunner().invoke(drift_cmd, ["--regenerate", "fake:default"])
+
+    assert result.exit_code == 2, (label, result.output)  # EXIT_PROBE_FAILED
+    assert "fingerprint NOT rewritten" in result.output
+    assert fp_path.read_text() == before, "the baseline must be untouched"
+    assert sorted(p.name for p in (plugin_dir / "tests").iterdir()) == [
+        "drift_fingerprint.json"
+    ], "no temp sibling left behind"
+
+
+# --- the human-readable branch must say WHY a probe failed ----------------------------
+#
+# It printed `name: status` and the diff; `probe_error` was serialised only under --json,
+# so `hvantk drift x:y` showed `probe_failed` with no reason at all.
+
+
+def test_human_readable_probe_failed_prints_the_reason_to_stderr(tmp_path, monkeypatch):
+    _, plugin_dir = _tmp_fake_plugin_registry(tmp_path, monkeypatch)
+    (plugin_dir / "tests" / "drift_fingerprint.json").write_text(
+        '{"probe_version": 1, "'
+    )
+
+    result = CliRunner().invoke(drift_cmd, ["fake:default"])
+
+    assert result.exit_code == 2, result.output
+    assert "fake:default: probe_failed" in result.stdout
+    assert "could not be read as JSON" in result.stderr
+    assert "could not be read as JSON" not in result.stdout, (
+        "the reason is a diagnostic; stdout stays the one-line-per-dataset summary"
+    )
+
+
+# --- an empty sweep caused by load failures must still print its rows ----------------
+#
+# When every in-scope dataset failed to bind, `targets` was empty and the empty-sweep
+# guard fired: `--all --json` exited 2 with EMPTY stdout and "no datasets registered"
+# (the manifests ARE registered; they failed to bind), and `--all --domain X --json`
+# raised a UsageError with no JSON. drift-health.yml then `json.load`ed an empty file and
+# went red on a parse error instead of filing the probe-failed issue it knows how to file.
+
+
+def _registry_with_only_a_broken_dataset(tmp_path, monkeypatch):
+    reg = plugin_loader.PluginRegistry()
+    reg.load_from_directory(_broken_plugin_dir(tmp_path))
+    monkeypatch.setattr(plugin_loader, "get_registry", lambda: reg)
+    return reg
+
+
+def test_drift_all_json_emits_the_load_error_rows_when_every_dataset_failed_to_bind(
+    tmp_path, monkeypatch
+):
+    _registry_with_only_a_broken_dataset(tmp_path, monkeypatch)
+    result = CliRunner().invoke(drift_cmd, ["--all", "--json"])
+    assert result.exit_code == 2, result.output
+    assert [(r["dataset_name"], r["status"]) for r in _stdout_rows(result)] == [
+        ("brokenprov:thing", "probe_failed")
+    ]
+
+
+def test_drift_all_domain_json_emits_the_load_error_rows_when_its_datasets_failed_to_bind(
+    tmp_path, monkeypatch
+):
+    """The domain IS declared by a manifest; its only dataset did not bind. That is a
+    probe that cannot run, not a typo'd --domain."""
+    _registry_with_only_a_broken_dataset(tmp_path, monkeypatch)
+    result = CliRunner().invoke(
+        drift_cmd, ["--all", "--domain", "proteomics", "--json"]
+    )
+    assert result.exit_code == 2, result.output
+    assert [(r["dataset_name"], r["status"]) for r in _stdout_rows(result)] == [
+        ("brokenprov:thing", "probe_failed")
+    ]
+
+
+def test_drift_all_domain_typo_lists_the_domains_of_unbound_manifests_too(
+    tmp_path, monkeypatch
+):
+    """`known` came from bound datasets only, so with everything unbound the typo
+    message said `known domains: (none)` about a registry that declares one."""
+    _registry_with_only_a_broken_dataset(tmp_path, monkeypatch)
+    result = CliRunner().invoke(drift_cmd, ["--all", "--domain", "genomicz"])
+    assert result.exit_code != 0
+    assert "matches no dataset" in result.output
+    assert "proteomics" in result.output, result.output
+
+
+# --- the #364 "unrelated load error" tests above inject a bare provider-name unit; pin
+# the scoping against the unit shapes the loader actually records: a REAL second plugin
+# whose dataset failed to bind (`provider:dataset`) plus an `entry-point:<name>` unit --
+
+
+def test_single_dataset_drift_ignores_a_real_broken_plugin_and_an_entry_point_unit(
+    tmp_path, monkeypatch
+):
+    reg = _registry_with_broken_dataset(tmp_path, monkeypatch)
+    reg._record_load_error("entry-point:otherprov", plugin_loader.PluginLoadError("x"))
+
+    result = CliRunner().invoke(drift_cmd, ["--json", "fake:default"])
+
+    assert result.exit_code == 0, result.output
+    assert [r["dataset_name"] for r in _stdout_rows(result)] == ["fake:default"]
+    assert "brokenprov" not in result.output and "otherprov" not in result.output
+
+
+def test_regenerate_ignores_a_real_broken_plugin_and_an_entry_point_unit(
+    tmp_path, monkeypatch
+):
+    reg, _ = _tmp_fake_plugin_registry(tmp_path, monkeypatch)
+    reg.load_from_directory(_broken_plugin_dir(tmp_path))
+    reg._record_load_error("entry-point:otherprov", plugin_loader.PluginLoadError("x"))
+
+    result = CliRunner().invoke(drift_cmd, ["--regenerate", "fake:default"])
+
+    assert result.exit_code == 0, result.output
+
+
+def test_cli_timeout_default_matches_the_runner_default():
+    """`hvantk drift --timeout` must default to `run_drift_checks`'s own default.
+
+    Probes with a retry budget (pqtl, uniprot_ptm) pin that budget against the runner's
+    default in their own tests, which may not import `tools/` (see
+    `test_dependency_directions.py`). The CLI always passes its `--timeout` through
+    explicitly, so if its default alone dropped below a probe's worst case, every real
+    invocation would kill that probe mid-retry while those tests stayed green. Pinning
+    the two defaults together closes that gap from the one layer allowed to see both.
+    """
+    import inspect
+
+    from hvantk.core.plugin import drift_runner
+    from hvantk.tools.plugins.drift_cli import drift_cmd
+
+    runner_default = (
+        inspect.signature(drift_runner.run_drift_checks).parameters["timeout"].default
+    )
+    cli_default = next(p.default for p in drift_cmd.params if p.name == "timeout")
+    assert cli_default == runner_default

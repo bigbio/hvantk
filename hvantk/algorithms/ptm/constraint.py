@@ -5,7 +5,7 @@ non-PTM variants, stratified by tissue, cell type, or any categorical
 metadata field derived from an expression dataset.
 
 This module is an **orchestrator**, not a per-variant scorer. For per-site
-PTM flags use :func:`hvantk.ptm.annotate.annotate_variants_with_ptm`.
+PTM flags use :func:`hvantk.algorithms.ptm.annotate.annotate_variants_with_ptm`.
 """
 
 from __future__ import annotations

@@ -24,6 +24,7 @@ from hvantk.algorithms.rerank.nulls import (
     permutation_deltas,
     selected_maximum,
 )
+from hvantk.algorithms.rerank.seeds import DEFAULT_SEED
 from hvantk.algorithms.rerank.selection import SelectionPolicy
 from hvantk.tests.rerank._synth import cheap_scorer, permuted_labels, planted_signal
 
@@ -36,6 +37,7 @@ def _setting(candidates, **kw):
         baseline=("base",),
         candidates=candidates,
         folds=ABLATION_FOLDS,
+        seed=DEFAULT_SEED,
         block_digest=None,
     )
     base.update(kw)
@@ -106,6 +108,9 @@ def test_selected_max_is_never_below_the_per_axis_draw_it_contains():
         dict(baseline=("base", "burden")),
         dict(block_digest="0" * 40),
         dict(folds=10),
+        # The CV seed: a seed-0 null used to answer for a seed-1 delta although the two
+        # partitions give different observed deltas (up to 0.049 apart on one cohort).
+        dict(seed=DEFAULT_SEED + 1),
         dict(candidates={"axis0": ("elsewhere",)}),
     ],
 )
@@ -178,7 +183,16 @@ def test_merged_chunks_equal_the_whole_run():
 
     merged = NullDistribution.merge(parts)
     assert merged.n_perm == whole.n_perm == 6
-    assert np.allclose(np.sort(merged.selected_max), np.sort(whole.selected_max))
+    assert merged.perms == whole.perms and merged.axes == whole.axes
+    # Exact, per axis and in permutation order: a sorted `selected_max` alone cannot see
+    # per-axis nulls attached to the wrong axes (verified with a mutant that rotated them
+    # by one axis -- it survived the sorted comparison and fails this one).
+    for axis in whole.axes:
+        assert np.array_equal(merged.per_axis[axis], whole.per_axis[axis]), axis
+    assert np.array_equal(merged.selected_max, whole.selected_max)
+    import pandas as pd
+
+    pd.testing.assert_frame_equal(merged.summary(), whole.summary())
 
 
 def test_merge_refuses_chunks_from_different_control_settings():
@@ -189,6 +203,22 @@ def test_merge_refuses_chunks_from_different_control_settings():
     )
     with pytest.raises(ControlSettingMismatch):
         NullDistribution.merge([a, b])
+
+
+def test_merge_refuses_chunks_scored_under_different_cv_seeds():
+    """Two chunks of one NullConfig scored under CV seeds 0 and 1 are draws under two
+    different partitions. They used to merge silently whenever no `observed` rode with
+    them (the observed-delta check being the only thing that could notice); the setting
+    itself must now carry the seed and refuse, naming it."""
+    a = _null(n_axes=2, seed=1)
+    b = dataclasses.replace(
+        a, setting=dataclasses.replace(a.setting, seed=a.setting.seed + 1)
+    )
+    assert a.observed is None and b.observed is None
+    with pytest.raises(ControlSettingMismatch) as info:
+        NullDistribution.merge([a, b])
+    differing = str(info.value).split("Differing field(s): ", 1)[1]
+    assert "seed (generated=" in differing
 
 
 def test_merge_refuses_overlapping_permutation_indices():
@@ -225,6 +255,34 @@ def test_merge_refuses_chunks_that_offered_different_axes():
 def test_merge_of_one_is_that_one():
     a = _null(n_axes=2, n_perm=4)
     assert NullDistribution.merge([a]).n_perm == a.n_perm
+
+
+def test_merge_refuses_an_incomplete_null_unless_partial_is_allowed():
+    """Chunks 0 and 1 of a 3-chunk run agree on `planned_n_perm`, so every check `merge`
+    made used to pass and it returned n_perm=8 of 12 without a word -- in the documented
+    array-job recipe a pre-empted task silently shrank the null. The gap must be refused
+    by name (the missing indices), and only `allow_partial=True` may accept it, keeping
+    the draws present and the plan on record."""
+    matrix, y, baseline, axes = permuted_labels(n=60, n_noise=1)
+    offered = {"axis0": axes["axis0"]}
+    scorer = cheap_scorer()
+    setting = _setting(offered)
+    parts = []
+    for c in (0, 1):
+        cfg = NullConfig(n_perm=12, chunk=c, n_chunks=3, seed=8)
+        deltas = permutation_deltas(
+            matrix, baseline, offered, y, config=cfg, scorer=scorer
+        )
+        parts.append(NullDistribution.from_deltas(deltas, setting, null_config=cfg))
+
+    with pytest.raises(ValueError) as info:
+        NullDistribution.merge(parts)
+    msg = str(info.value)
+    assert "8, 9, 10, 11" in msg and "allow_partial" in msg
+
+    partial = NullDistribution.merge(parts, allow_partial=True)
+    assert partial.n_perm == 8 and partial.planned_n_perm == 12
+    assert partial.perms == tuple(range(8))
 
 
 def test_merge_refuses_chunks_from_different_permutation_seeds():
@@ -329,3 +387,37 @@ def test_config_rejects_a_non_nullconfig():
 
     with pytest.raises(TypeError, match="NullConfig"):
         Config(name="x", features=[], labels=None, nulls=200).__post_init__()
+
+
+def test_a_requested_null_with_no_candidate_axis_is_an_error_not_a_none():
+    """`RerankResult.nulls is None` means "no correction was requested". The engine used to
+    log a warning and return exactly that when a correction WAS requested but no axis
+    besides the baseline had columns left -- the state Config.nulls's type check calls
+    worse than never offering a correction, now reachable through the API with nothing
+    to show for it. It must raise, naming the configured axes, the one that was dropped
+    and why, and how to run without a correction."""
+    import pandas as pd
+
+    from hvantk.algorithms.rerank.config import Config, FeatureAxis, LabelSpec
+    from hvantk.algorithms.rerank.engine import _run_nulls
+
+    frame = pd.DataFrame({"gene": ["A", "B"], "x": [0.1, 0.2]})
+    empty = pd.DataFrame({"gene": ["A", "B"]})  # a table with no feature column
+    cfg = Config(
+        name="x",
+        features=[
+            FeatureAxis("constraint", lambda: frame),
+            FeatureAxis("expression", lambda: empty),
+        ],
+        labels=LabelSpec(lambda: {"A"}),
+        nulls=NullConfig(n_perm=2),
+    )
+
+    with pytest.raises(ValueError) as info:
+        _run_nulls(
+            cfg, frame, "constraint", {"constraint": ["x"]}, [1, 0], None, "all", None
+        )
+    msg = str(info.value)
+    assert "Config.nulls" in msg and "'constraint'" in msg
+    assert "'expression'" in msg and "no feature column" in msg
+    assert "unset" in msg

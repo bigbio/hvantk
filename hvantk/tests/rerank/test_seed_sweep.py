@@ -120,6 +120,56 @@ def test_the_bootstrap_columns_are_untouched_by_the_sweep(_single_and_swept):
         assert single.ablation[col].tolist() == swept.ablation[col].tolist()
 
 
+def test_the_cached_oof_arrays_handed_to_the_sweep_match_a_fresh_sweep(
+    _single_and_swept,
+):
+    """`Evaluator.evaluate` hands `seed_sweep` the baseline OOF arrays it already fitted
+    (one per sweep seed) and the headline seed's augmented fit instead of refitting them.
+    The wrong array -- the augmented fit passed as a baseline, or a baseline from another
+    seed -- would still yield a plausible-looking spread, and the envelope test above
+    compares the swept result against its OWN spread, so it cannot see that. Pinned
+    against a sweep that refits everything itself: the two must agree exactly."""
+    _, swept = _single_and_swept
+    matrix, y, base, axis = _fixture()
+    fresh = seed_sweep(
+        matrix, base, axis, y, seeds=tuple(DEFAULT_SEED + k for k in range(5))
+    )
+    assert swept.seed_spread["axis0"] == fresh
+
+
+def test_the_ablation_interval_is_the_bootstrap_at_the_run_seed():
+    """`_boot_ci` must be handed the seed `evaluate` was given, not the default. A fallback
+    to DEFAULT_SEED there would be invisible to a two-seeds-differ check on `evaluate`
+    alone, because a different seed also moves the CV partition and so the OOF arrays the
+    bootstrap resamples. So: on FIXED arrays two seeds give different intervals and one
+    seed gives the same interval twice, and the ablation row at seed 3 is exactly
+    `_boot_ci(..., seed=3)` on the arrays fitted at seed 3."""
+    from hvantk.algorithms.rerank.evaluator import _boot_ci
+
+    matrix, y, base, axis = _fixture()
+    seed = 3
+    p_base = _raw_oof(matrix, base, y, seed=seed)
+    p = _raw_oof(matrix, base + axis, y, seed=seed)
+    assert _boot_ci(y, p, p_base, seed=1) != _boot_ci(y, p, p_base, seed=2)
+    assert _boot_ci(y, p, p_base, seed=seed) == _boot_ci(y, p, p_base, seed=seed)
+
+    row = (
+        Evaluator()
+        .evaluate(
+            matrix,
+            base + axis,
+            y,
+            p_base,
+            {"base": base, "axis0": axis},
+            "base",
+            seed=seed,
+        )
+        .ablation.set_index("family")
+        .loc["axis0"]
+    )
+    assert [row.d_lo, row.d_md, row.d_hi] == _boot_ci(y, p, p_base, seed=seed)
+
+
 def test_the_default_run_adds_no_sweep_columns():
     """`n_seeds=1` (the default) must reproduce today's ablation table exactly: no
     `d_lo_env`/`d_hi_env`/`n_seeds` columns, and no seed_spread. `test_evaluator_pin.py`

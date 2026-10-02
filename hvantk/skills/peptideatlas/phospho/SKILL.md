@@ -72,7 +72,7 @@ When invoked to build or update the PeptideAtlas phospho intermediate:
 1. **End-to-end (recommended).** Run the full download -> parse -> build chain through the plugin loader:
 
    ```bash
-   hvantk reprocess peptideatlas:phospho --raw-dir /data/peptideatlas --output /out/peptideatlas-phospho.ht
+   hvantk reprocess peptideatlas:phospho --raw-dir /data/peptideatlas --output /out/peptideatlas-phospho.parquet
    ```
 
    The loader auto-resolves the dataset from `plugin.yaml` (`get_registry().get_dataset("peptideatlas:phospho")`) and runs the build through `run_builder_for_spec`. The `lifecycle.download` (`download_dataset`) and `lifecycle.parse` (`parse_raw_dir`) entry points run first, then the plugin builder `build_peptideatlas_phospho`.
