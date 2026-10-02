@@ -19,6 +19,16 @@ from hvantk.core.utils.table_utils import get_row_fields
 logger = logging.getLogger(__name__)
 
 
+def _missing_declared_fields(row_fields) -> list[str]:
+    """Declared HGNC_GENE_FIELDS keys absent from the input header.
+
+    Pure helper (no Hail) so a declared field upstream silently drops --
+    e.g. location_sortable in #381, caught only by the drift probe -- shows
+    up as a warning instead of being tolerated forever by the rename map.
+    """
+    return [k for k in HGNC_GENE_FIELDS if k not in row_fields]
+
+
 def build_hgnc_gene_lookup(
     parsed_input,
     ctx,
@@ -55,6 +65,11 @@ def build_hgnc_gene_lookup(
 
     # Rename fields to standardized names
     row_fields = get_row_fields(ht)
+    missing_fields = _missing_declared_fields(row_fields)
+    if missing_fields:
+        logger.warning(
+            "HGNC input is missing declared field(s): %s", ", ".join(missing_fields)
+        )
     rename_map = {k: v for k, v in HGNC_GENE_FIELDS.items() if k in row_fields}
     ht = ht.rename(rename_map)
 

@@ -152,6 +152,20 @@ def test_zero_results_fails_closed():
         _probe(body={"results": []})
 
 
+@pytest.mark.parametrize("total", ["0", "-1"])
+def test_impossible_total_results_fails_closed(total):
+    """X-Total-Results must be >= the number of results actually returned.
+
+    A bad edge/proxy response can report a count lower than what it sends back --
+    here 0 or -1 while `results` still carries the one entry the size=1 probe
+    requested. Without this check `int(total_raw)` succeeds either way and the
+    impossible count is recorded as a routine content change, so the drift bot
+    would propose it as the new baseline instead of failing closed.
+    """
+    with pytest.raises(DriftProbeError, match="X-Total-Results"):
+        _probe(headers={**_LIVE_HEADERS, "X-Total-Results": total})
+
+
 def test_http_error_is_a_probe_error():
     # 503 is in RETRY_STATUSES (request_with_retry backs off across the probe's 3
     # attempts, ~6s of real sleep) -- 404 is not retried, so this stays a fast, offline
@@ -194,6 +208,13 @@ def test_worst_case_retry_budget_fits_under_the_runner_timeout():
     spare, or a probe that legitimately exhausts every retry gets killed mid-request
     instead of raising the ordinary DriftProbeError callers already handle.
 
+    Checked against BOTH timeout defaults that can reach the probe in practice:
+    `run_drift_checks`'s own default (used when it is called directly) and the
+    `hvantk drift` CLI's `--timeout` (`drift_cli.py`), which the CLI always passes
+    through explicitly. Checking only the former would leave this test green if the
+    CLI's default alone dropped below the worst case -- real invocations go through
+    the CLI, so that default is the one that actually governs the watchdog.
+
     Note: the 51 s bound covers the exponential-backoff path; a Retry-After sleep is
     clamped to max_sleep_s and can exceed it, and the drift runner's SIGALRM is the
     backstop in that case.
@@ -203,11 +224,14 @@ def test_worst_case_retry_budget_fits_under_the_runner_timeout():
     from hvantk.core.plugin import drift_runner
     from hvantk.core.utils.http import DEFAULT_BACKOFF_S, DEFAULT_MAX_SLEEP_S, _backoff
     from hvantk.skills.uniprot_ptm.drift_probe import _ATTEMPTS, _TIMEOUT_S
+    from hvantk.tools.plugins.drift_cli import drift_cmd
 
     runner_timeout = (
         inspect.signature(drift_runner.run_drift_checks).parameters["timeout"].default
     )
+    cli_timeout = next(p.default for p in drift_cmd.params if p.name == "timeout")
     worst_case = sum(
         _backoff(DEFAULT_BACKOFF_S, a, DEFAULT_MAX_SLEEP_S) for a in range(1, _ATTEMPTS)
     ) + _ATTEMPTS * sum(_TIMEOUT_S)
     assert worst_case < runner_timeout
+    assert worst_case < cli_timeout

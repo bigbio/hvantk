@@ -101,7 +101,7 @@ Type coercions in transform (all string at import):
 
 Releases every 1-3 weeks (verified live 2026-09-30 against `releases/2026/{06..09}/`: 2026-06-01, -06-22, -07-10, -07-20, -08-03, -08-24, -09-04, -09-15 -- gaps of 10-21 days). Per release:
 
-1. Update the GWAS Catalog entry in `hvantk/skills/gwas_catalog/catalog/datasets.json` (`last_updated`, file path). Bump accession only on schema change.
+1. Update the GWAS Catalog entry in `hvantk/skills/gwas_catalog/catalog/datasets.json`: a release bump updates the pinned `url` (the new release's dated EBI FTP path), the accession's release stamp (`eNNN_rYYYY-MM-DD`), and `last_updated` together. Bump the `vX.Y` schema-version prefix only on an actual schema change.
 2. Re-run the round-trip test (§9). If it passes, no builder change.
 3. On schema change: bump accession suffix, update the rename map in the builder, regenerate snapshots with `pytest --regenerate-snapshots`, revisit §3–§4 judgment calls.
 4. If EBI publishes v1.0.2 alongside v1.0: revisit judgment call #4 (option B).
