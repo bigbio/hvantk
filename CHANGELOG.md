@@ -38,9 +38,12 @@
 - **`hvantk plugins errors` now exits 1 when it lists anything** (was 0). Rows mean
   the registry is missing something, and a script asking `plugins errors` should not
   have to parse the text to learn that.
-- **`hvantk drift <dataset>` and `--regenerate` now scope load errors to the
-  requested dataset/provider**, so an unrelated broken plugin no longer makes them
-  exit 2 (previously every load error in the registry counted).
+- **`hvantk drift <dataset>` now scopes load errors to the requested
+  dataset/provider**, so an unrelated broken plugin no longer makes it exit 2
+  (previously every load error in the registry counted). `--regenerate` exits 2
+  when the dataset's own provider or entry point failed to load, or when the
+  probe or the write fails (previously an uncaught traceback and exit 1), and
+  rejects `--json` as a usage error.
 - **`seed` is a `Config` field and a `--seed` flag.** `random_state=42` was hardcoded in
   five places across `evaluator.py`, `reranker.py` and `selection.py`; a test now fails if
   a bare `42` reappears anywhere in `hvantk/algorithms/rerank/`. Defaults are unchanged, so
@@ -73,6 +76,24 @@
   workflow ran, which left 262 of 596 files unformatted. The advisory lint (never
   blocking) now also covers bugbear (`B`), blind-except (`BLE`) and bandit (`S`, minus
   `assert` in test trees), plus the preview whitespace rules (#309).
+- **`poetry.lock` was regenerated with Poetry 2.3.4.** The previous 2.2.1 lock
+  silently dropped the `markers` entry on eleven extras-gated packages (`cycler`,
+  `fonttools`, `joblib`, `kiwisolver`, `matplotlib`, `pyparsing`, `scikit-learn`,
+  `seaborn`, `threadpoolctl`, `tspex`, `xlrd`), so a base `poetry install` pulled
+  all eleven in unconditionally; relocking restores the markers, so a base install
+  is now eleven packages lighter. `mypy-extensions`, pulled in only by the
+  now-removed `black` dev dependency (#309), drops out of the lock alongside it
+  (#374).
+- **`h5py` is a base dependency**, the same move `scipy` made in #376: the UCSC
+  Cell Browser plugin imports it at module scope on a path a base install reaches
+  (`hvantk expression summarize-ucsc`, the `ucsc-cellbrowser` builder), and it had
+  arrived only transitively via `anndata` (#363).
+- **`hvantk tools errors` now exits 1 when it lists anything**, matching `plugins
+  errors`.
+- **The `SKILL.md` checker also treats a heading-only body, an HTML comment, an
+  empty code fence, a numbered-list `TODO`, or a table of `TODO`s as a
+  placeholder**, extending the real-body check above to shapes that passed the
+  keyword/emptiness test while carrying no content.
 
 ### Fixed
 
@@ -99,6 +120,48 @@
   their documented commands pass `--skip-download` (the downloaders are #386).
   `ucsc-cellbrowser:adult-ctx` and `dev-ctx`, summaries derived locally from multi-gigabyte
   collections, are now `byo` (#360).
+- **`hvantk hgc vds2mt` and `hgc pipeline` now write the dense MatrixTable's
+  columns sorted by sample ID** (previously the VDS's own order), so the sample
+  order of every exported VCF is deterministic and may differ between runs.
+  `--skip-keying-by-cols` keeps the old VDS order, and its `--help` text now says
+  so. A MatrixTable written before this change should be regenerated before being
+  unioned with one written after it (#368).
+- **`_driver_af` breaks a tied case-carrier count toward the driver with the
+  highest control-carrier frequency, deterministically.** Ties are common with
+  rare variants (many genes have every driver at `cc == 1`), and the previous
+  order depended on how Hail happened to collect them. `driver_af` and the
+  `common_driver` audit flag can therefore change on a re-run for genes whose top
+  drivers tied (#369).
+- **`hvantk ptm test` fails with an actionable message naming the `constraint`
+  extra when `statsmodels` is missing**, instead of a bare `No module named
+  'statsmodels'` traceback that never said which extra fixes it (#362).
+- **`rerank()` raises `ValueError` when `Config.nulls` is set but no candidate
+  axis survives the leakage/provenance filters**, rather than logging a warning
+  and quietly returning `nulls=None`. A requested multiplicity correction can no
+  longer go silently missing from the result.
+- **`Config.selection` is now type-checked the same way as `leakage`, `nulls` and
+  `blocks`, and `SelectionPolicy` rejects an unknown `univariate` / `redundancy` /
+  `wrapper` value at construction.** A misspelling such as `wrapper="RFECV"`
+  previously disabled that selection stage with no error or warning at all.
+- **`hvantk rerank` fails with a message naming the `ml` extra when scikit-learn
+  is not installed**, instead of a bare `ModuleNotFoundError` traceback.
+- **The Expression Atlas builder raises `ValueError` naming the duplicated ids**
+  when `var` would not be uniquely indexed — for example a transcript-level
+  export whose id column is not the configured `transcript_id_column` — instead
+  of writing an `.h5ad` with duplicate `var_names` that `anndata` only warns
+  about.
+- **The HGNC builder logs which declared fields are missing from the input
+  header**, instead of silently dropping them from the renamed output.
+- **Several `hvantk drift` robustness gaps closed.** `DriftResult.status` is
+  validated against its four allowed values; a fingerprint is canonicalised to
+  its JSON form before comparison, so a probe returning a tuple, `Path` or
+  `datetime` no longer reports `drifted` forever after `--regenerate`;
+  `--regenerate` refuses to write a stub or placeholder-shaped fingerprint; the
+  human-readable `hvantk drift` output now prints each `probe_failed` row's
+  reason to stderr; `drift --all --json` emits its load-error rows and exits 2
+  when every in-scope dataset failed to bind, instead of printing nothing; and a
+  provider whose downloader module fails to import is recorded as a load error
+  (visible in `plugins errors`) instead of only a warning and `No such command`.
 
 ## 0.3.1 — 2026-08-30
 
