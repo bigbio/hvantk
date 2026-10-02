@@ -23,6 +23,30 @@ _ARCHITECTURE_AXIS_NAME = "architecture"
 # around invites exactly the confusion this check exists to prevent.
 _KNOWN_TOP_LEVEL_KEYS = {"name", "cohort", "features", "labels", "min_label_coverage"}
 
+_SKLEARN_HINT = (
+    "scikit-learn is required for `hvantk rerank`, and is not part of the base "
+    "install. Install the 'ml' extra:\n"
+    "    pip install 'hvantk[ml]'\n"
+    "    poetry install --extras ml"
+)
+
+
+def _require_sklearn():
+    """Return the scikit-learn module, or raise ``ImportError`` naming the extra.
+
+    Mirrors ``hvantk.algorithms.ptm.optional_deps.require_statsmodels``: the documented
+    standard (docs_site/getting-started/installation.md) is that a path behind an extra
+    exits with an actionable message naming that extra, not a traceback. It lives here
+    rather than in ``hvantk.algorithms.rerank`` because that package imports scikit-learn
+    at module scope (``reranker.py``, ``evaluator.py``), so a helper inside it could never
+    be reached on the install it exists to explain.
+    """
+    try:
+        import sklearn
+    except ModuleNotFoundError as exc:
+        raise ImportError(_SKLEARN_HINT) from exc
+    return sklearn
+
 
 @click.command(
     name="rerank",
@@ -97,6 +121,14 @@ _KNOWN_TOP_LEVEL_KEYS = {"name", "cohort", "features", "labels", "min_label_cove
 def rerank_cmd(
     config_path, output, seed, seed_sweep, blocks_path, max_block_frac, n_perm, null_out
 ):
+    # First, before the deferred imports below: `hvantk.algorithms.rerank` imports
+    # scikit-learn at module scope, so without this the command's first line on a base
+    # install is a raw ModuleNotFoundError traceback that names no extra.
+    try:
+        _require_sklearn()
+    except ImportError as exc:
+        raise click.ClickException(str(exc)) from exc
+
     # Heavy ML imports are deferred to invocation time so that importing the hvantk CLI
     # (and every other subcommand) does NOT require scikit-learn, which is an OPTIONAL
     # dependency. Mirrors the psroc/ancestry deferral pattern.

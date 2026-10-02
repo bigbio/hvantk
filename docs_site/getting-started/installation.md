@@ -35,7 +35,7 @@ poetry install --extras "viz hgc"      # or: poetry install --all-extras
 |---|---|---|
 | `viz` | matplotlib, seaborn, plotly | plots and HTML reports |
 | `interactive` | plotly | interactive QC dashboards |
-| `ml` | scikit-learn | ML-backed analyses |
+| `ml` | scikit-learn | `hvantk rerank` and other ML-backed analyses |
 | `ancestry` | scikit-learn, matplotlib, seaborn | `hvantk ancestry-inference` |
 | `psroc` | scikit-learn, matplotlib, plotly | `hvantk psroc` |
 | `hgc` | matplotlib, seaborn | `hvantk hgc` QC plots/reports |
