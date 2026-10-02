@@ -176,6 +176,17 @@ def rerank_cmd(
         raise click.ClickException(
             f"config {config_path}: malformed features/labels block ({exc})"
         )
+    if n_perm > 0 and len(feats) < 2:
+        # The first axis is the ablation baseline, so a one-axis config leaves the
+        # permutation null nothing to search over. engine._run_nulls refuses the same
+        # state -- and the subtler one where a provenance arm or a column-less table
+        # leaves only the baseline -- but only after the headline scoring has run; this
+        # much is knowable from the config alone, so it is rejected here, before any
+        # work starts, like every other flag-combination error above.
+        raise click.ClickException(
+            "--n-perm needs at least one feature axis besides the baseline; this config "
+            f"has only {[f.name for f in feats]}."
+        )
 
     # axis_columns(), not declared_columns(): engine.rerank() merges the cohort frame
     # with include_prior=False, so eligibility must be judged on exactly the columns
@@ -249,18 +260,10 @@ def rerank_cmd(
         # must not write a scored table whose pooled out-of-fold AUC estimates something
         # other than what the caller will compare it against. Every ValueError the engine
         # raises is a user-facing message (e.g. a gene-group table that matches no gene,
-        # too few paralogue blocks for the fold count), so the CLI reports it cleanly
-        # instead of a traceback.
+        # too few paralogue blocks for the fold count, a requested permutation null with
+        # no candidate axis left to search over), so the CLI reports it cleanly instead
+        # of a traceback.
         raise click.ClickException(str(exc)) from exc
-    if n_perm > 0 and res.nulls is None:
-        # cfg.nulls is a NullConfig here (n_perm > 0), so the only way _run_nulls returns
-        # None is "no candidate axis besides the baseline" -- checked before any output is
-        # written, the same as every other flag-combination error above.
-        axis_names = [f.name for f in cfg.features]
-        raise click.ClickException(
-            "--n-perm needs at least one feature axis besides the baseline; this config "
-            f"has only {axis_names}."
-        )
     res.table.to_csv(output, sep="\t", index=False)
     click.echo(f"Wrote {len(res.table)} genes -> {output}")
     scored = res.table[res.table["score"].notna()]
