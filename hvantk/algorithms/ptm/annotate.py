@@ -219,8 +219,9 @@ def annotate_variants_by_symbol(
         Column names in ``variants_df``.
     atlas_gene_col, atlas_chrom_col : str
         Column names in ``ptm_df``; codon columns are always named
-        ``codon_start`` / ``codon_end`` to match the atlas TSV written by
-        :func:`~hvantk.algorithms.ptm.atlas.build_atlas`.
+        ``codon_start`` / ``codon_end`` to match the TSV written by
+        ``hvantk ptm build``
+        (:func:`~hvantk.algorithms.ptm.pipeline.ptm_build_pipeline_core`).
 
     Returns
     -------

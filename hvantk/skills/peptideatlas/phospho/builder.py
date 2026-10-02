@@ -1,9 +1,9 @@
 """Pandas builder for the PeptideAtlas Human Phospho resource.
 
 PeptideAtlas does not have a dedicated Hail Table or AnnData representation
-in hvantk today - the downstream consumer is
-:func:`hvantk.algorithms.ptm.pipeline.ptm_build_pipeline`, which reads the intermediate
-wide TSV produced by the dataset class directly (see
+in hvantk today - the downstream consumer is ``hvantk ptm build
+--peptideatlas-tsv`` (:func:`hvantk.algorithms.ptm.pipeline.ptm_build_pipeline_core`),
+which reads the intermediate wide TSV produced by the dataset class directly (see
 ``peptideatlas_tsv`` in ``PTMBuildConfig``). This builder therefore delegates
 to the existing parse code in
 :mod:`hvantk.skills.peptideatlas.phospho.shared.datasets` and returns the

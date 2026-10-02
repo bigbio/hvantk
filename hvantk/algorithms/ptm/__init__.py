@@ -10,7 +10,6 @@ Example (pure mapping core):
     >>> from hvantk.algorithms.ptm import PTMBuildConfig, ptm_build_pipeline_core
     >>> config = PTMBuildConfig(
     ...     output_dir="data/ptm/",
-    ...     output_ht="data/ptm/ptm_sites.ht",
     ...     gtf_path="data/ref/Homo_sapiens.GRCh38.113.gtf.gz",
     ...     ptm_tsv="data/ptm/uniprot-ptm-human.tsv",
     ... )
