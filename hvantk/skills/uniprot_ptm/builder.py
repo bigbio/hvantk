@@ -1,6 +1,6 @@
 """Hail Table builder for the UniProt post-translational modification (PTM) sites resource.
 
-Owns the Phase B ``build_uniprot_ptm_sites`` builder. Turns the mapped PTM
+Owns the ``build_uniprot_ptm_sites`` builder. Turns the mapped PTM
 coordinates TSV (produced by
 :mod:`hvantk.algorithms.ptm.pipeline.map_ptm_sites`) into a Hail Table keyed
 by locus, wrapped in an ``AnnotationTable`` with Provenance.
@@ -23,7 +23,7 @@ def build_uniprot_ptm_sites(
     flanking_codons: int = 5,
     fields=None,
 ):
-    """Phase B builder — returns an AnnotationTable.
+    """Plugin builder — returns an AnnotationTable.
 
     Reads the mapped PTM sites TSV (output of
     hvantk.algorithms.ptm.pipeline.map_ptm_sites) and wraps the lazy Hail Table

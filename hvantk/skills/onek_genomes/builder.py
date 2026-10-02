@@ -1,4 +1,5 @@
 """Builder for `onek-genomes:variants` — imports per-chromosome 1KG VCFs into a VariantMatrix."""
+
 from __future__ import annotations
 
 import glob
@@ -82,7 +83,8 @@ def _discover_vcf_files(
 
 
 def _resolve_compression_parallel(
-    vcf_files: List[str], auto_convert_bgz: bool,
+    vcf_files: List[str],
+    auto_convert_bgz: bool,
 ) -> tuple[List[str], bool]:
     """Run hvantk.core.utils.file_utils.resolve_compression in parallel across files."""
     from hvantk.core.utils.file_utils import resolve_compression
@@ -95,9 +97,13 @@ def _resolve_compression_parallel(
     def _resolve_one(idx: int, vcf: str) -> tuple[int, str, bool]:
         logger.info(
             "Resolving compression for file %d/%d: %s",
-            idx + 1, n_files, os.path.basename(vcf),
+            idx + 1,
+            n_files,
+            os.path.basename(vcf),
         )
-        path, fbgz = resolve_compression(vcf, force_bgz=True, auto_convert=auto_convert_bgz)
+        path, fbgz = resolve_compression(
+            vcf, force_bgz=True, auto_convert=auto_convert_bgz
+        )
         return idx, path, fbgz
 
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
@@ -112,7 +118,7 @@ def _resolve_compression_parallel(
 
 
 def build_onek_genomes_variants(parsed_input, ctx, **params):
-    """Phase B builder — returns a VariantMatrix from a directory of 1KG VCFs.
+    """Plugin builder — returns a VariantMatrix from a directory of 1KG VCFs.
 
     Parameters
     ----------
@@ -141,10 +147,13 @@ def build_onek_genomes_variants(parsed_input, ctx, **params):
     vcf_files = _discover_vcf_files(input_vcfs, chromosomes=chromosomes)
     logger.info("Found %d VCF file(s)", len(vcf_files))
 
-    resolved_files, force_bgz = _resolve_compression_parallel(vcf_files, auto_convert_bgz)
+    resolved_files, force_bgz = _resolve_compression_parallel(
+        vcf_files, auto_convert_bgz
+    )
     logger.info(
         "Importing %d VCF file(s) with reference genome '%s'",
-        len(resolved_files), reference_genome,
+        len(resolved_files),
+        reference_genome,
     )
     mt = hl.import_vcf(
         resolved_files,
@@ -153,5 +162,6 @@ def build_onek_genomes_variants(parsed_input, ctx, **params):
         array_elements_required=False,
     )
     return VariantMatrix.from_hail_mt(
-        mt, provenance=ctx.provenance(schema_id="onek-genomes-variants-v1"),
+        mt,
+        provenance=ctx.provenance(schema_id="onek-genomes-variants-v1"),
     )

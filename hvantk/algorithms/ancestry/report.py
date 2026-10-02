@@ -255,7 +255,7 @@ def _create_ancestry_table(predictions_df: pd.DataFrame) -> str:
             </tr>
         </thead>
         <tbody>
-            {''.join(rows)}
+            {"".join(rows)}
         </tbody>
     </table>
     """
@@ -322,7 +322,7 @@ def _create_predictions_table(predictions_df: pd.DataFrame, max_rows: int = 100)
     {note}
     <table>
         <thead>{headers}</thead>
-        <tbody>{''.join(rows)}</tbody>
+        <tbody>{"".join(rows)}</tbody>
     </table>
     """
 
@@ -341,7 +341,7 @@ def _create_config_table(config_dict: Dict[str, Any]) -> str:
             <tr><th>Parameter</th><th>Value</th></tr>
         </thead>
         <tbody>
-            {''.join(rows)}
+            {"".join(rows)}
         </tbody>
     </table>
     """

@@ -43,7 +43,6 @@ hvantk/
 │   ├── config.py          # Configuration management
 │   ├── io/                # Artifact loader (load/save Hail Tables, AnnData, etc.)
 │   ├── tool/              # tool manifest discovery (descriptive)
-│   ├── ontology/          # OBO / MONDO parsers
 │   ├── models/            # Domain model types
 │   │   ├── annotation_table.py  # AnnotationTable artifact
 │   │   ├── expression_matrix.py # ExpressionMatrix artifact (AnnData-only)
@@ -56,7 +55,7 @@ hvantk/
 │   ├── plugin/            # Plugin system
 │   │   ├── api.py         # Provider, DatasetSpec, PROBE_FINGERPRINT_IGNORED_KEYS
 │   │   ├── loader.py      # Plugin discovery (filesystem + entry points)
-│   │   ├── run_builder.py # run_builder_for_spec() — Phase B orchestrator
+│   │   ├── run_builder.py # run_builder_for_spec() — build orchestrator
 │   │   └── drift_runner.py# Drift probe execution
 │   ├── utils/             # Cross-cutting utilities
 │   │   ├── hail_context.py   # Idempotent Hail init
@@ -149,7 +148,7 @@ hvantk/
 The codebase is organized by function and biological domain:
 
 **Data Builders** (`skills/<provider>/builder.py`):
-- Each plugin under `hvantk/skills/` owns its Phase B builder
+- Each plugin under `hvantk/skills/` owns its plugin builder
   (`build_<provider>_<dataset>`). Builders return `AnnotationTable`,
   `ExpressionMatrix`, `VariantMatrix`, or `GeneSet` artifacts, stamped
   with `Provenance` by the platform via `run_builder_for_spec`.
@@ -337,7 +336,8 @@ hvantk download ucsc --dataset adultPancreas --output-dir data/
 
 # Build any dataset (full pipeline: download -> parse -> build -> drift check)
 hvantk reprocess clinvar:variants --raw-dir data/ --output clinvar.ht
-hvantk reprocess ucsc-cellbrowser:adultPancreas --raw-dir data/ --output ucsc.h5ad
+hvantk reprocess ucsc-cellbrowser:default --raw-dir data/ --output ucsc.h5ad \
+  --plugin-arg dataset=adultPancreas
 
 # Joint genotyping (HGC)
 hvantk hgc gvcf-combine -g /data/gvcfs -o cohort.vds
@@ -353,10 +353,10 @@ Raw File (VCF/TSV/BED) → Builder → Hail Table → Disk (.ht)
 
 Example:
 ```bash
-# The reprocess CLI runs the full Phase B pipeline: download → parse → build → drift-check
+# The reprocess CLI runs the full build pipeline: download → parse → build → drift-check
 hvantk reprocess clinvar:variants --raw-dir data/ --output clinvar.ht
 ```
-In-process callers drive the same Phase B builder via
+In-process callers drive the same plugin builder via
 `run_builder_for_spec(spec, *, parsed_input, output_path, plugin_version, **params)`
 (in `hvantk/core/plugin/run_builder.py`), which takes a resolved `DatasetSpec`
 and returns the stamped `Provenance`.
@@ -437,18 +437,18 @@ annotated = variants.annotate(
 Peer of `core/`, not a layer above it.
 
 **Contents**:
-- `registry/` - Surviving legacy per-domain dataset metadata (genomics only; transcriptomics / proteomics / epigenomics moved into per-plugin `hvantk/skills/<provider>/catalog/datasets.json`)
-- `unified_registry.py` - `HvantkRegistry` aggregator surfaced via `hvantk catalog {list,show,stats,search}`. Reads both the legacy per-domain registry above and the per-plugin catalog JSON under `skills/<provider>/catalog/`.
-- `schemas/` - JSON schema definitions used by `schema_validator.py` to validate catalog entries.
-- `schema_validator.py` - Validation entry point invoked by the unified registry.
+- (removed) the legacy per-domain `registry/` directory: the five-package refactor deleted it, and its genomics-only content moved into per-plugin `hvantk/skills/<provider>/catalog/datasets.json` files.
+- `unified_registry.py` - `HvantkRegistry` aggregator surfaced via `hvantk catalog {list,show,stats,search}`. Reads the per-plugin catalog JSON under `skills/<provider>/catalog/` declared via each plugin's `plugin.yaml`; there is no legacy fallback.
+- `schemas/` - JSON schema definitions (`cohort_manifest.schema.json`, `feature_spec.schema.json`, `selection_policy.schema.json`), each read directly by its consumer via `jsonschema.validate()` -- e.g. `hvantk/algorithms/cohort/spec.py`, `hvantk/algorithms/annotation/spec.py`, `hvantk/algorithms/rerank/selection.py`.
+- Catalog entries are validated separately: `hvantk plugins validate` (`hvantk/tools/plugins/plugins_cli.py`) checks each `catalog/datasets.json` entry against `hvantk/core/plugin/catalog_entry.schema.json`.
 
 **Placement rule** (what goes here vs. nearby alternatives):
 
 | Lives in | Use for |
 |---|---|
-| `resources/registry/` | Cross-plugin / legacy per-domain catalog JSON that hasn't been migrated to a per-plugin folder. |
+| _(removed)_ | Was the legacy per-domain dataset registry directory under `resources/`, deleted in the five-package refactor; replaced by the per-plugin folder below. |
 | `resources/schemas/` | JSON schemas that describe catalog / dataset metadata, shared across plugins. |
-| `resources/unified_registry.py` | Code that aggregates per-plugin catalog JSON with the legacy registry. |
+| `resources/unified_registry.py` | Code that aggregates per-plugin catalog JSON declared via each plugin's `plugin.yaml`. |
 | `skills/<provider>/catalog/datasets.json` | Per-plugin dataset metadata (the canonical location for new providers). |
 | `core/models/` | Artifact types (`AnnotationTable`, `ExpressionMatrix`, `VariantMatrix`, `GeneSet`) — runtime data shapes, not catalog metadata. |
 
@@ -517,8 +517,10 @@ See `hvantk/skills/_conventions/SKILL.md` for the full contract.
 
 1. Place the click command in `hvantk/tools/<domain>/`.
 2. Add a `<basename>.tool.yaml` manifest for discoverability via
-   `hvantk tools list` (descriptive metadata; not authoritative for
-   wiring today — that's Phase Q follow-up).
+   `hvantk tools list`. `test_lazy_commands_match_tool_manifests`
+   (`hvantk/tests/test_tool_smoke.py`) requires the manifest's
+   `(cli.module, cli.function, description)` to equal the `_LAZY_COMMANDS`
+   entry below, so the two cannot drift apart silently.
 3. Add an entry to `_LAZY_COMMANDS` in `hvantk/hvantk.py` — the command
     name mapped to `(module, attribute, short help)`:
 
@@ -535,8 +537,10 @@ See `hvantk/skills/_conventions/SKILL.md` for the full contract.
     works — and silently costs every single invocation the import of whatever
     your command pulls in. That eager wiring is what made `hvantk --help` take
     ~10 s; going through `_LAZY_COMMANDS` keeps it at ~0.1 s because nothing is
-    imported until the command is actually run. No test will catch the
-    regression; only startup time changes.
+    imported until the command is actually run. `test_every_command_is_lazy`
+    (`hvantk/tests/test_import_laziness.py`) pins every top-level command to
+    `_LAZY_COMMANDS`, so wiring one eagerly with `add_command` instead fails
+    CI rather than silently costing startup time.
 
     The short help is duplicated in the registry because listing the commands
     must not import them. `test_lazy_command_registry_matches_real_commands`

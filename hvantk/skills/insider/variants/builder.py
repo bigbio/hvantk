@@ -1,6 +1,6 @@
 """Hail Table builder for the Interactome Insider (INSIDER) per-residue BED.
 
-Owns the Phase B ``build_insider_interactome`` builder. Turns the INSIDER
+Owns the ``build_insider_interactome`` builder. Turns the INSIDER
 ``Whole_Human_Interactome_Interface_hg38.bed`` (UCSC-style BED with
 ``track name=<P1>_ppi_<P2>`` headers identifying each PPI) into an
 ``AnnotationTable`` keyed by ``interval<locus<rg>>`` with a
@@ -23,7 +23,7 @@ from hvantk.skills.insider.shared import normalize_hadoop_path
 
 logger = logging.getLogger(__name__)
 
-_TRACK_NAME_RE = re.compile(r'name=([^\s]+)')
+_TRACK_NAME_RE = re.compile(r"name=([^\s]+)")
 
 # Shared with insider:interfaces -- both datasets take the same two input shapes.
 _normalize_hadoop_path = normalize_hadoop_path
@@ -96,7 +96,7 @@ def build_insider_interactome(
     *,
     reference_genome: str = "GRCh38",
 ):
-    """Phase B builder — returns an AnnotationTable.
+    """Plugin builder — returns an AnnotationTable.
 
     Parses the INSIDER BED via :func:`_parse_insider_bed_to_temp_tsv`,
     imports + aggregates, and returns the lazy Hail Table wrapped with

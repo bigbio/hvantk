@@ -80,7 +80,9 @@ def _render_burden_summary(result_df, alpha, phenotype_type: str) -> None:
                 lambda x: f"{x:.4f}"
             )
         top_display["p_value"] = top_display["p_value"].apply(lambda x: f"{x:.2e}")
-        top_display["p_adjusted"] = top_display["p_adjusted"].apply(lambda x: f"{x:.2e}")
+        top_display["p_adjusted"] = top_display["p_adjusted"].apply(
+            lambda x: f"{x:.2e}"
+        )
 
         # Print table
         if phenotype_type == "binary":

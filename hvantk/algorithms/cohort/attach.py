@@ -16,6 +16,7 @@ Two properties matter and are the reason this is not a plain merge:
 Layering: imports Hail, sibling ``hvantk.algorithms`` modules and ``core`` only -- never
 ``hvantk.skills`` or ``hvantk.tools``. The HGNC catalog is passed in by the caller.
 """
+
 from __future__ import annotations
 
 import logging
@@ -147,7 +148,7 @@ def _check_no_duplicate_cohort_rows(cohort_ht, manifest) -> None:
     other pipelines and never modified here) does not enforce one row per gene -- it
     only filters onto the spine and selects columns. Without this check, the later
     index-join (``prepared[layer1.gene_id]``) picks one of several matching rows
-    arbitrarily and silently drops the rest, in violation of the contract's R3 rule
+    arbitrarily and silently drops the rest, in violation of the cohort contract's rule
     ("one row per tested gene"). Checked here, on the cohort side, precisely because
     ``prepare_source`` must not change behaviour for its other callers.
 

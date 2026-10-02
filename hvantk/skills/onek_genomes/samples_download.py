@@ -1,4 +1,5 @@
 """Download stage for `onek-genomes:samples` — fetches the 1KG samples panel."""
+
 from __future__ import annotations
 
 import logging

@@ -67,9 +67,7 @@ class TestFilterByMetadataAd:
         filtered = filter_by_metadata_ad(
             test_adata, {"cell_type": ["neuron", "astrocyte"]}
         )
-        assert set(filtered.obs["cell_type"].unique()).issubset(
-            {"neuron", "astrocyte"}
-        )
+        assert set(filtered.obs["cell_type"].unique()).issubset({"neuron", "astrocyte"})
         assert filtered.n_obs > 0
 
 

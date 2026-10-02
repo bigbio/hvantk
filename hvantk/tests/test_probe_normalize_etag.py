@@ -16,12 +16,12 @@ from hvantk.core.plugin.api import normalize_etag
 @pytest.mark.parametrize(
     ("raw", "expected"),
     [
-        ('"abc123"', "abc123"),          # strong
-        ('W/"abc123"', "abc123"),        # weak -- the strip() bug
-        ('w/"abc123"', "abc123"),        # weak, lowercase
-        ('"abc123"-gzip', "abc123"),     # transform suffix appended by mod_deflate
-        ('  "abc123"  ', "abc123"),      # surrounding whitespace
-        ("abc123", "abc123"),            # unquoted, seen from some proxies
+        ('"abc123"', "abc123"),  # strong
+        ('W/"abc123"', "abc123"),  # weak -- the strip() bug
+        ('w/"abc123"', "abc123"),  # weak, lowercase
+        ('"abc123"-gzip', "abc123"),  # transform suffix appended by mod_deflate
+        ('  "abc123"  ', "abc123"),  # surrounding whitespace
+        ("abc123", "abc123"),  # unquoted, seen from some proxies
     ],
 )
 def test_every_form_reduces_to_the_same_tag(raw, expected):
@@ -38,5 +38,5 @@ def test_absent_or_empty_becomes_none(raw):
 
 def test_the_old_strip_bug_would_fail_these():
     """Documents precisely what regressed, so a revert to strip('"') is caught."""
-    assert 'W/"abc"'.strip('"') == 'W/"abc'      # the bug
-    assert normalize_etag('W/"abc"') == "abc"     # the fix
+    assert 'W/"abc"'.strip('"') == 'W/"abc'  # the bug
+    assert normalize_etag('W/"abc"') == "abc"  # the fix

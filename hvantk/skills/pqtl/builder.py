@@ -1,12 +1,13 @@
 """Hail Table builder for the pQTL (protein quantitative trait loci) resource.
 
-Owns the Phase B ``build_pqtl_metrics`` builder. The transform (GTEx
+Owns the ``build_pqtl_metrics`` builder. The transform (GTEx
 variant-ID parsing, SE derivation via ``|BETA / STAT|``, gene-symbol →
 Ensembl-ID mapping via a GeneCatalogStreamer) is implemented directly here.
 
 Shared GTEx variant-ID parsing helpers live in
 ``hvantk.core.utils.qtl_helpers`` (also used by the eQTL builder).
 """
+
 from __future__ import annotations
 
 import logging
@@ -77,7 +78,7 @@ def build_pqtl_metrics(
     p_threshold: float | None = None,
     fields: list[str] | None = None,
 ):
-    """Phase B builder — returns an AnnotationTable keyed by
+    """Plugin builder — returns an AnnotationTable keyed by
     ``(locus, alleles, gene_id)``.
 
     For ``source='gtex_fang'``: Fang et al. (2025) allpairs files
@@ -97,9 +98,7 @@ def build_pqtl_metrics(
     from hvantk.skills.pqtl.shared.constants import PQTL_SOURCES
 
     if source not in PQTL_SOURCES:
-        raise ValueError(
-            f"Unknown pQTL source: {source!r}. Supported: {PQTL_SOURCES}"
-        )
+        raise ValueError(f"Unknown pQTL source: {source!r}. Supported: {PQTL_SOURCES}")
     if source != "gtex_fang":
         raise NotImplementedError(
             f"pQTL source {source!r} is not yet implemented. "
@@ -123,18 +122,14 @@ def build_pqtl_metrics(
     ht = ht.drop("stat", "variant_id")
 
     if gene_catalog is not None:
-        logger.info(
-            "Mapping gene symbols → Ensembl IDs via gene catalog"
-        )
+        logger.info("Mapping gene symbols → Ensembl IDs via gene catalog")
         symbols = set(ht.aggregate(hl.agg.collect_as_set(ht.gene_symbol)))
         ensembl_mapping = gene_catalog.map_ids(
             list(symbols), source_type="gene_symbol", target_type="ensembl_gene_id"
         )
         mapping_literal = hl.literal(ensembl_mapping)
         ht = ht.annotate(
-            gene_id=hl.or_else(
-                mapping_literal.get(ht.gene_symbol), ht.gene_symbol
-            )
+            gene_id=hl.or_else(mapping_literal.get(ht.gene_symbol), ht.gene_symbol)
         )
     else:
         logger.warning(
@@ -152,6 +147,4 @@ def build_pqtl_metrics(
     if fields is not None:
         ht = ht.select(*fields)
 
-    return AnnotationTable.from_hail(
-        ht, provenance=ctx.provenance(schema_id="pqtl-v1")
-    )
+    return AnnotationTable.from_hail(ht, provenance=ctx.provenance(schema_id="pqtl-v1"))

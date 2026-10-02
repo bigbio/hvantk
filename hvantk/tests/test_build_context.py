@@ -1,4 +1,5 @@
 """Tests for BuildContext + extended DatasetSpec fields."""
+
 from __future__ import annotations
 
 import pytest
@@ -28,8 +29,11 @@ def test_build_context_provenance_builds_correctly():
 
 def test_build_context_requires_schema_id_on_provenance():
     ctx = BuildContext(
-        plugin="x", dataset="x:y", plugin_version="0",
-        source_fingerprint="sha256:x", builder_commit=None,
+        plugin="x",
+        dataset="x:y",
+        plugin_version="0",
+        source_fingerprint="sha256:x",
+        builder_commit=None,
     )
     with pytest.raises(TypeError):
         ctx.provenance()  # schema_id is required

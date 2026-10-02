@@ -31,7 +31,11 @@ def test_fetch_fingerprint_shape():
 
     assert fp["probe_version"] == 2
     assert fp["headers"]["hgnc_complete_set.txt"] == [
-        "hgnc_id", "symbol", "name", "status", "locus_type"
+        "hgnc_id",
+        "symbol",
+        "name",
+        "status",
+        "locus_type",
     ]
     assert "checksums" in fp
     assert "fetched_at" in fp

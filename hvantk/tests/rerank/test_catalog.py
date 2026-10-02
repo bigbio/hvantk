@@ -1,7 +1,6 @@
 # hvantk/tests/rerank/test_catalog.py
-# Trimmed for hvantk CI: domain-specific axis builders (constraint/burden/subgenic/labels/ptm)
-# stay in local/rerank_engine/catalog/axes.py (workspace recipes).
-# Only registry mechanics + generic builders are tested here.
+# Registry mechanics and the generic builders only; the domain-specific axis builders
+# (constraint/burden/subgenic/labels/ptm) are not part of the package.
 from hvantk.algorithms.rerank.catalog.profile import DiseaseProfile
 
 
@@ -14,7 +13,7 @@ def test_profile_defaults():
     assert p.extra_positive_genes == set()
 
 
-# Task 2: Registry mechanics tests
+# Registry mechanics
 import pandas as pd
 from hvantk.algorithms.rerank.config import FeatureAxis
 from hvantk.algorithms.rerank.catalog.profile import DiseaseProfile
@@ -42,9 +41,9 @@ def test_default_audit_depends_on_cohort():
 
     assert isinstance(_default_audit(DiseaseProfile(name="t")), NoAudit)
 
-    # M3 made Config.cohort mandatory for every rerank config, so "cohort is not
-    # None" is no longer a useful signal -- a plain prior-only manifest (the minimum
-    # M3 demands) must NOT get the (expensive) architecture audit.
+    # Config.cohort is mandatory for every rerank config, so "cohort is not None" is
+    # no useful signal -- a plain prior-only manifest (the minimum a config needs)
+    # must NOT get the (expensive) architecture audit.
     no_architecture = DiseaseProfile(
         name="t",
         cohort=CohortManifest(
@@ -74,7 +73,7 @@ def test_default_audit_depends_on_cohort():
 
 
 def test_default_audit_is_not_fooled_by_the_prior_column_supplying_the_third_column():
-    # Finding 3 (re-review): eligibility must be judged on the columns
+    # Eligibility must be judged on the columns
     # engine.rerank() will actually merge (axis_columns()), not declared_columns()
     # (which also counts the prior column, but the engine merges the cohort frame
     # with include_prior=False). A manifest whose prior IS one of the three required
@@ -140,7 +139,7 @@ def test_build_config_string_and_override():
         AXES.update(_saved)
 
 
-# Task 3: Generic builders (table_axis / genelist_labels) - path-free synthetic tests
+# Generic builders (table_axis / genelist_labels) - path-free synthetic tests
 def test_table_axis_parquet(tmp_path):
     import pandas as pd
     from hvantk.algorithms.rerank.catalog.builders import table_axis

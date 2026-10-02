@@ -5,9 +5,9 @@ carries its gene identifier, which cohort-derived statistic is its prior (and in
 direction), optionally where its labels live, and optionally which of its columns form
 which feature axis.
 
-A cohort is a spine-mappable gene key PLUS a cohort-derived prior statistic (design D2).
+A cohort is a spine-mappable gene key PLUS a cohort-derived prior statistic.
 Anything with no cohort statistic is a gene set, not a cohort. Labels are optional --
-requirements are per-op, not per-cohort (D4): ``rerank`` needs labels, a credibility/veto
+requirements are per-op, not per-cohort: ``rerank`` needs labels, a credibility/veto
 report does not, and extending annotation needs only the gene key.
 
 Parsing is pure Python -- no Hail -- so manifests validate in the fast test suite. This
@@ -18,6 +18,7 @@ concept expressed at two layers.
 Layering: this module imports stdlib + jsonschema + yaml only. It must never import
 ``hvantk.skills`` or ``hvantk.tools``.
 """
+
 from __future__ import annotations
 
 import json

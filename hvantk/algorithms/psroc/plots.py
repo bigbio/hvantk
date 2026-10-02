@@ -339,8 +339,7 @@ def plot_roc_curve_single(
         auc_line = f"AUC: {roc_result.auc:.3f}"
         if roc_result.auc_ci_lower is not None:
             auc_line += (
-                f" [{roc_result.auc_ci_lower:.3f}"
-                f"\u2013{roc_result.auc_ci_upper:.3f}]"
+                f" [{roc_result.auc_ci_lower:.3f}\u2013{roc_result.auc_ci_upper:.3f}]"
             )
         stats_text = (
             f"Score: {roc_result.score_name}\n"
@@ -474,9 +473,7 @@ def plot_auc_comparison(
                 ci_lower = roc_result.auc_ci_lower
                 ci_upper = roc_result.auc_ci_upper
                 if ci_lower is not None:
-                    text = (
-                        f"{roc_result.auc:.3f} " f"[{ci_lower:.3f}\u2013{ci_upper:.3f}]"
-                    )
+                    text = f"{roc_result.auc:.3f} [{ci_lower:.3f}\u2013{ci_upper:.3f}]"
                     x_text = ci_upper + 0.02
                 else:
                     text = f"{roc_result.auc:.3f}"
@@ -534,10 +531,7 @@ def plot_auc_comparison(
                 ci_lower = roc_result.auc_ci_lower
                 ci_upper = roc_result.auc_ci_upper
                 if ci_lower is not None:
-                    text = (
-                        f"{roc_result.auc:.3f}\n"
-                        f"[{ci_lower:.3f}\u2013{ci_upper:.3f}]"
-                    )
+                    text = f"{roc_result.auc:.3f}\n[{ci_lower:.3f}\u2013{ci_upper:.3f}]"
                     y_text = ci_upper + 0.02
                 else:
                     text = f"{roc_result.auc:.3f}"

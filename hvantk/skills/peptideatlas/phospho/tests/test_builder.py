@@ -190,10 +190,16 @@ def test_peptideatlas_phospho_snapshot_round_trip(regenerate_snapshots):
     if regenerate_snapshots:
         SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
         schema = _schema_to_dict(artifact, df)
-        (SNAPSHOT_DIR / "schema.json").write_text(json.dumps(schema, indent=2, sort_keys=True))
+        (SNAPSHOT_DIR / "schema.json").write_text(
+            json.dumps(schema, indent=2, sort_keys=True)
+        )
         rows = _sample_rows(df, SAMPLE_KEYS)
-        (SNAPSHOT_DIR / "sample_rows.json").write_text(json.dumps(rows, indent=2, sort_keys=True))
-        pytest.skip("Snapshots regenerated; rerun without --regenerate-snapshots to assert.")
+        (SNAPSHOT_DIR / "sample_rows.json").write_text(
+            json.dumps(rows, indent=2, sort_keys=True)
+        )
+        pytest.skip(
+            "Snapshots regenerated; rerun without --regenerate-snapshots to assert."
+        )
 
     expected_schema = load_snapshot(SNAPSHOT_DIR / "schema.json")
     assert _schema_to_dict(artifact, df) == expected_schema, (

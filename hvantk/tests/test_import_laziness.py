@@ -10,6 +10,7 @@ Every check runs in a subprocess. The pytest session has already imported pandas
 anndata and often Hail by the time any test runs, so an in-process
 ``sys.modules`` assertion would pass unconditionally and be worse than no test.
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -31,11 +32,7 @@ def _is_loaded(module: str, loaded: set[str]) -> bool:
 
 def _modules_after(code: str) -> set[str]:
     """Run ``code`` in a clean interpreter, return the full module names it loaded."""
-    probe = (
-        f"{code}\n"
-        "import sys\n"
-        "print(' '.join(sorted(sys.modules)))\n"
-    )
+    probe = f"{code}\nimport sys\nprint(' '.join(sorted(sys.modules)))\n"
     # cwd is pinned rather than inherited: the package is not installed in CI
     # (the workflow installs requirements.txt and runs pytest from the repo
     # root), so `import hvantk` resolves purely by cwd. Inheriting it would make
@@ -106,7 +103,23 @@ def test_building_the_cli_imports_no_subcommand_module():
     # hvantk.py -- the exact case this module's docstring names -- costs ~5.9 s
     # and passes it. The heavy-module check is what catches that, so both run.
     heavy = sorted(set(HEAVY) & loaded)
-    assert not heavy, f"CLI import pulled {heavy}; something heavy is imported at module scope"
+    assert not heavy, (
+        f"CLI import pulled {heavy}; something heavy is imported at module scope"
+    )
+
+
+def test_a_typo_suggestion_imports_no_subcommand_module():
+    """The suggestion list must come from the registry, not from resolving commands."""
+    loaded = _modules_after(
+        "from click.testing import CliRunner\n"
+        "from hvantk.hvantk import cli\n"
+        "r = CliRunner().invoke(cli, ['drif'])\n"
+        "assert r.exit_code == 2, r.output\n"
+    )
+    eager = sorted(m for m in _subcommand_modules() if _is_loaded(m, loaded))
+    assert not eager, f"a typo resolved subcommand modules: {eager}"
+    heavy = sorted(set(HEAVY) & loaded)
+    assert not heavy, f"a typo pulled {heavy}"
 
 
 def test_listing_commands_imports_no_subcommand_module():
@@ -257,9 +270,38 @@ def test_shell_completion_renders_the_same_as_a_resolved_group():
 
     from hvantk.hvantk import _LAZY_COMMANDS, cli
 
-    lazy = [(i.value, i.help) for i in ShellComplete(cli, {}, "h", "_H").get_completions([], "")]
+    lazy = [
+        (i.value, i.help)
+        for i in ShellComplete(cli, {}, "h", "_H").get_completions([], "")
+    ]
     ctx = click.Context(cli)
     for name in list(_LAZY_COMMANDS):
         cli.get_command(ctx, name)  # force-resolve, then use click's stock path
     eager = [(i.value, i.help) for i in click.Group.shell_complete(cli, ctx, "")]
     assert lazy == eager
+
+
+@pytest.mark.parametrize(
+    "group,also_forbidden",
+    [
+        ("hgc", ()),
+        ("enrichex", ("scipy",)),
+        ("qtlcascade", ("matplotlib",)),
+    ],
+)
+def test_subgroup_help_imports_nothing_heavy(group, also_forbidden):
+    """#306: three subgroups still paid the Hail/matplotlib import for their own --help.
+
+    hgc: its CLI modules imported hvantk.algorithms.hgc at module scope. enrichex: the
+    burden CLI needs a constant at decorator time, and importing enrichex.constants ran a
+    package __init__ that eagerly imported burden (hail). qtlcascade: same shape, with
+    pandas and matplotlib. `hvantk --help` was fixed in #303; these were not.
+    """
+    loaded = _modules_after(
+        "from click.testing import CliRunner\n"
+        "from hvantk.hvantk import cli\n"
+        f"r = CliRunner().invoke(cli, ['{group}', '--help'])\n"
+        "assert r.exit_code == 0, r.output\n"
+    )
+    heavy = sorted((set(HEAVY) | set(also_forbidden)) & loaded)
+    assert not heavy, f"`hvantk {group} --help` pulled {heavy}"

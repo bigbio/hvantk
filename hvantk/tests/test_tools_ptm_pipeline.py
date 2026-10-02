@@ -1,4 +1,5 @@
-"""Smoke test: the ptm workflow wrapper exists in tools/ptm/ after Phase C."""
+"""Smoke test: the ptm workflow wrapper exists in tools/ptm/."""
+
 from __future__ import annotations
 
 
@@ -7,6 +8,7 @@ def test_tools_ptm_exports_download_and_pipeline():
         download_uniprot_ptm,
         ptm_build_pipeline,
     )
+
     assert callable(download_uniprot_ptm)
     assert callable(ptm_build_pipeline)
 

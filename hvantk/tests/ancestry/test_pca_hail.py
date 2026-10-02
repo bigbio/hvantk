@@ -158,9 +158,9 @@ class TestPcaPopulationStructure:
         pc2_range = pop_means["PC2"].max() - pop_means["PC2"].min()
 
         # At least one PC should show meaningful separation
-        assert (
-            pc1_range > 0.1 or pc2_range > 0.1
-        ), "Populations should show separation in PC space"
+        assert pc1_range > 0.1 or pc2_range > 0.1, (
+            "Populations should show separation in PC space"
+        )
 
 
 @pytest.mark.hail

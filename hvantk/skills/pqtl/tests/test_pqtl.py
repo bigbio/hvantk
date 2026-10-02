@@ -1,4 +1,5 @@
-"""Skipped: no fixture for pqtl; loader-only test (Phase K)."""
+"""Skipped: no fixture for pqtl; loader-only test."""
+
 from __future__ import annotations
 
 import pytest
@@ -15,8 +16,6 @@ def test_pqtl_metrics_registered():
     assert spec.schema_id == "pqtl-v1"
 
 
-@pytest.mark.skip(
-    reason="No fixture available for pqtl; manual smoke-test only"
-)
+@pytest.mark.skip(reason="No fixture available for pqtl; manual smoke-test only")
 def test_pqtl_metrics_round_trip():
     pass

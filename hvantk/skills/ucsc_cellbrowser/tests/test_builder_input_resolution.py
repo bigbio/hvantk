@@ -1,12 +1,13 @@
 """Regression tests for ``_resolve_ucsc_inputs``.
 
 The builder accepts EITHER a mapping with ``expression_matrix`` / ``metadata`` keys
-(direct Phase B callers) OR a path to the raw download directory -- the ``hvantk
+(direct builder callers) OR a path to the raw download directory -- the ``hvantk
 reprocess`` contract for a dataset with no ``lifecycle.parse`` stage, where reprocess
 passes the raw dir straight to the builder. Before the fix, ``ucsc-cellbrowser:default``
 crashed end-to-end because the builder assumed a dict. These are self-contained (no
 network, no snapshots) so they run without the plugin's snapshot-test harness.
 """
+
 import pytest
 
 from hvantk.skills.ucsc_cellbrowser.builder import _resolve_ucsc_inputs

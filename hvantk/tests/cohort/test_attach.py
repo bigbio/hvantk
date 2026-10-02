@@ -3,6 +3,7 @@
 The collision check is pure Python (schema introspection only) and is deliberately
 unmarked so it runs in the fast suite; the join tests need Hail.
 """
+
 import pytest
 
 from hvantk.algorithms.cohort.attach import (
@@ -251,7 +252,7 @@ def test_attach_raises_on_duplicate_gene_id_rows(hail_session):
     """`prepare_source`'s gene_id branch (Stage-1, never modified here) does not
     enforce one row per gene -- it only filters onto the spine and selects columns.
     Without a cohort-side guard, the later index-join would pick one of the two ENSG1
-    rows arbitrarily and silently drop the other, in violation of R3 ('one row per
+    rows arbitrarily and silently drop the other, in violation of the cohort contract ('one row per
     tested gene')."""
     import hail as hl
 
@@ -375,7 +376,7 @@ def test_attach_fails_loud_when_too_few_label_symbols_resolve(hail_session, tmp_
 
 
 def _cohort_symbols_in_a_column_named_gene():
-    """The exact real-world shape the G1 gate found: identifiers are HGNC symbols,
+    """The exact real-world shape an acceptance run found: identifiers are HGNC symbols,
     but the column holding them is literally named 'gene', not 'symbol'."""
     import hail as hl
 

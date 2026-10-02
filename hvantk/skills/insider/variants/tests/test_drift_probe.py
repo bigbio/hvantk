@@ -12,7 +12,7 @@ import pytest
 import requests_mock
 
 from hvantk.core.plugin.api import DriftProbeError
-from hvantk.skills.insider.drift_probe import (
+from hvantk.skills.insider.variants.drift_probe import (
     INSIDER_BED_FILENAME,
     INSIDER_BED_URL,
     fetch_fingerprint,

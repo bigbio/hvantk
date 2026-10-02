@@ -3,6 +3,7 @@
 H2 — descriptive manifest pass survives missing optional runtimes.
 MH4 — manifest-driven downloader registration via cli: blocks in plugin.yaml.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -134,7 +135,7 @@ def test_missing_optional_runtime_doesnt_drop_manifest(tmp_path):
 def test_failed_dataset_resolution_is_cached_after_pass2(tmp_path):
     """Pass-2 failures are cached so get_dataset() raises consistently.
 
-    Regression guard for F14: prior to the fix, Pass 2 caught the
+    Regression guard: prior to the fix, Pass 2 caught the
     PluginLoadError into _load_errors but did not cache a failure marker,
     so a later get_dataset() call would re-attempt the import. If the
     underlying failure was transient (e.g. a flaky network probe), the
@@ -168,7 +169,9 @@ def test_failed_dataset_resolution_is_cached_after_pass2(tmp_path):
     with pytest.raises(plugin_loader.PluginLoadError) as exc1:
         reg.get_dataset("fake-broken:rows")
     assert exc1.value is cached_error
-    assert resolve_calls == [], "get_dataset re-attempted resolution instead of using the cache"
+    assert resolve_calls == [], (
+        "get_dataset re-attempted resolution instead of using the cache"
+    )
 
     # Second get_dataset call: still cached, still no resolve.
     with pytest.raises(plugin_loader.PluginLoadError) as exc2:

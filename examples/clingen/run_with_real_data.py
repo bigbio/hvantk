@@ -82,7 +82,7 @@ def main():
     for i, (disease, genes) in enumerate(sorted(genesets_per_disease.items())[:15]):
         genes_str = ", ".join(sorted(genes)[:5])
         if len(genes) > 5:
-            genes_str += f", ... (+{len(genes)-5} more)"
+            genes_str += f", ... (+{len(genes) - 5} more)"
         print(f"  {disease}:")
         print(f"    Genes ({len(genes)}): {genes_str}")
 

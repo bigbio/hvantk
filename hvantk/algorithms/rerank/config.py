@@ -1,4 +1,3 @@
-# local/rerank_engine/config.py
 import logging
 import math
 from dataclasses import dataclass, field
@@ -7,10 +6,14 @@ import pandas as pd
 
 from hvantk.algorithms.cohort.frame import load_prior_frame
 from hvantk.algorithms.cohort.spec import CohortManifest
+from hvantk.algorithms.rerank.nulls import _coerce_int
+from hvantk.algorithms.rerank.seeds import DEFAULT_SEED
 
 if TYPE_CHECKING:
     from hvantk.algorithms.rerank.audit import Audit
+    from hvantk.algorithms.rerank.blocks import BlockPolicy
     from hvantk.algorithms.rerank.leakage import LeakagePolicy
+    from hvantk.algorithms.rerank.nulls import NullConfig
     from hvantk.algorithms.rerank.selection import SelectionPolicy
 
 logger = logging.getLogger(__name__)
@@ -64,8 +67,8 @@ class _ManifestPrior:
     """PriorSpec-shaped view of a CohortManifest's prior column.
 
     ``Config.__post_init__`` constructs this automatically when a cohort manifest is
-    set and no ``PriorSpec`` was supplied directly (M2: the manifest is now the single
-    user-facing declaration -- callers stop authoring a ``PriorSpec`` by hand). Not
+    set and no ``PriorSpec`` was supplied directly: the manifest is the single
+    user-facing declaration -- callers need not author a ``PriorSpec`` by hand. Not
     part of the public API.
 
     Delegates to :func:`hvantk.algorithms.cohort.frame.load_prior_frame` instead of
@@ -90,7 +93,7 @@ class Config:
     cohort: Optional[CohortManifest] = None
     """External cohort declaration: the single source of the prior statistic and, when
     present, of the case/control architecture columns an Audit reads. Required for
-    rerank()/validate() (M3) -- a PriorSpec-only config can still be constructed (e.g.
+    rerank()/validate() -- a PriorSpec-only config can still be constructed (e.g.
     by DiseaseProfile/build_config's existing callers) but cannot be scored."""
     prior: Optional[PriorSpec] = None
     """The unit -> prior_stat table engine.rerank merges in before scoring. Derived
@@ -109,7 +112,8 @@ class Config:
     min_label_coverage: float = 0.5
     """Minimum fraction of label-positive units that must appear in the feature matrix.
     Set to 0.0 for intentional cross-disease transfer configs where labels come from a
-    different gene universe (e.g. NDD labels scored against a CHD feature matrix)."""
+    different gene universe (e.g. one disease's labels scored against another disease's
+    feature matrix)."""
     selection: Optional["SelectionPolicy"] = None
     """Feature-selection policy. None (default) disables selection entirely and reproduces
     the pre-selection code path exactly."""
@@ -119,9 +123,9 @@ class Config:
     Independent of `selection` and of `feature_provenance`. Provenance asks what a
     predictor was TRAINED on; this asks which units it was RUN on. A predictor can pass the
     first and fail the second -- EVE is unsupervised on alignments, so it is correctly
-    clean on provenance, while the bare flag "was EVE computed for this gene" scored AUC
-    0.716 against a ClinGen/GenCC label in the cohort that motivated this, above the whole
-    constraint axis.
+    clean on provenance, while the bare flag "was EVE computed for this gene" can itself
+    predict a ClinGen/GenCC-derived label, because the proteins EVE covers are enriched for
+    well-studied genes.
 
     None (default) disables the control and reproduces the previous code path exactly."""
     feature_provenance: Optional[dict] = None
@@ -143,8 +147,55 @@ class Config:
     somewhere to live -- without this field the override is silently discarded and the
     clean/all split is computed against the defaults, which is a wrong answer rather than
     an error."""
+    nulls: Optional["NullConfig"] = None
+    """Permutation-null settings for the multiplicity correction, or None to skip it.
+
+    Independent of `selection`, `leakage` and `feature_provenance`: those three decide
+    WHICH columns are admissible, this one decides whether the resulting best-of-N delta
+    survives the fact that N axes were searched. None (default) reproduces the previous
+    code path exactly -- and reproduces it with no correction at all, which is what #247
+    is about."""
+    blocks: Optional["BlockPolicy"] = None
+    """Paralogue-blocked cross-validation, or None for the stratified random folds the
+    engine has always used. Blocking is strictly harder, so every absolute AUC is expected
+    to fall; the quantity of interest is whether a delta survives."""
+    seed: int = DEFAULT_SEED
+    """The one seed for this run: it drives the CV partition (both the headline scores and
+    the ablation), the GBM's ``random_state``, the bootstrap resample, and the null's
+    scorer. ``SelectionPolicy`` carries its own ``seed`` (default ``DEFAULT_SEED``) as a
+    separate field -- the wrapper's inner CV is not driven by this one -- and neither is the
+    calibration split (``CalibratedClassifierCV(cv=<int>)`` is unshuffled and takes no seed
+    at all). The CLI also uses this seed as the permutation null's base seed
+    (``NullConfig.seed``); permutations for nearby seeds overlap (see ``rng_for``). Was
+    hardcoded in five places, which made the CV partition the one variance component in the
+    reported interval that no caller could vary."""
+    seed_sweep: int = 1
+    """How many CV seeds the ablation intervals are computed over (``seed``,
+    ``seed + 1``, ...). 1 is the historic behaviour: one partition, and an interval that
+    cannot see partition variance at all."""
 
     def __post_init__(self):
+        # bool is an int in Python, and numpy/sklearn both reject a negative seed, so
+        # `_coerce_int` (shared with NullConfig/ControlSetting) checks the TYPE and this
+        # checks the RANGE.
+        self.seed = _coerce_int(self.seed, "seed")
+        if self.seed < 0:
+            raise ValueError(f"Config.seed must be an int >= 0; got {self.seed!r}")
+        self.seed_sweep = _coerce_int(self.seed_sweep, "seed_sweep")
+        if self.seed_sweep < 1:
+            raise ValueError(
+                f"Config.seed_sweep must be an int >= 1; got {self.seed_sweep!r}"
+            )
+        # scikit-learn's random_state must be < 2**32 (numpy's legacy RandomState seed
+        # range); the sweep's highest seed is `seed + seed_sweep - 1`, and rejecting it
+        # here -- before any data loads -- is cheaper than sklearn's own late failure deep
+        # inside a fold fit.
+        if self.seed + self.seed_sweep - 1 >= 2**32:
+            raise ValueError(
+                f"Config.seed + Config.seed_sweep - 1 must be < 2**32 (scikit-learn's "
+                f"random_state ceiling); got seed={self.seed!r}, "
+                f"seed_sweep={self.seed_sweep!r}"
+            )
         if self.audit is None:
             from hvantk.algorithms.rerank.audit import NoAudit
 
@@ -175,6 +226,48 @@ class Config:
             ):
                 raise ValueError(
                     f"Config.leakage.min_auc must be finite and in [0, 1]; got {_m!r}"
+                )
+        if self.nulls is not None:
+            from hvantk.algorithms.rerank.nulls import NullConfig
+
+            # Checked, not duck-typed, for the same reason Config.leakage is: a bare int
+            # here (the obvious `nulls=200`) would be ignored by the engine, and a
+            # multiplicity correction that is off while the caller believes it is on is
+            # worse than one that was never offered.
+            if not isinstance(self.nulls, NullConfig):
+                raise TypeError(
+                    f"Config.nulls must be a NullConfig or None; got "
+                    f"{type(self.nulls).__name__}. For defaults, pass NullConfig()."
+                )
+        if self.blocks is not None:
+            from hvantk.algorithms.rerank.blocks import BlockPolicy
+
+            # Checked, not duck-typed, for the same reason Config.leakage/Config.nulls are:
+            # a bare path string here would be silently ignored by the engine, and blocked
+            # CV that is off while the caller believes it is on is worse than one that was
+            # never offered. BlockPolicy itself validates max_block_frac and the table path
+            # at construction time, so nothing further needs checking here.
+            if not isinstance(self.blocks, BlockPolicy):
+                raise TypeError(
+                    f"Config.blocks must be a BlockPolicy or None; got "
+                    f"{type(self.blocks).__name__}. For an HGNC table, pass "
+                    f"BlockPolicy(table=...)."
+                )
+        if self.selection is not None:
+            from hvantk.algorithms.rerank.selection import SelectionPolicy
+
+            # Checked, not duck-typed, for the same reason Config.leakage/Config.nulls/
+            # Config.blocks are: the engine reads `.univariate`, `.redundancy` and
+            # `.wrapper` off this object inside a per-fold selector, so a bare string or
+            # dict here (the obvious `selection="auc"`) constructs fine and then fails
+            # there -- after the matrix is assembled and scoring has begun -- with an
+            # AttributeError that names none of this. SelectionPolicy validates its own
+            # method names at construction, so nothing further needs checking here.
+            if not isinstance(self.selection, SelectionPolicy):
+                raise TypeError(
+                    f"Config.selection must be a SelectionPolicy or None; got "
+                    f"{type(self.selection).__name__}. For defaults, pass "
+                    f"SelectionPolicy()."
                 )
         if self.cohort is not None:
             if self.prior is None:

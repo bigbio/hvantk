@@ -1,8 +1,9 @@
 """Tests for compile_to_pandas / compile_to_hail.
 
-This is the load-bearing piece of Phase A: if the two compilers diverge,
-every downstream algorithm silently breaks on backend swap.
+This test is load-bearing: if the two compilers diverge, every downstream
+algorithm silently breaks on backend swap.
 """
+
 from __future__ import annotations
 
 import pandas as pd
@@ -34,14 +35,10 @@ def test_pandas_gt_literal(df):
 
 
 def test_pandas_and_or(df):
-    mask = compile_to_pandas(
-        (col("score") > 0.5) & (col("chrom") == "chr17"), df
-    )
+    mask = compile_to_pandas((col("score") > 0.5) & (col("chrom") == "chr17"), df)
     assert mask.tolist() == [True, False, True]
 
-    mask = compile_to_pandas(
-        (col("score") > 0.5) | (col("chrom") == "chr13"), df
-    )
+    mask = compile_to_pandas((col("score") > 0.5) | (col("chrom") == "chr13"), df)
     assert mask.tolist() == [True, True, True]
 
 
@@ -72,7 +69,7 @@ def test_pandas_unknown_column_raises(df):
 
 
 # ---------------------------------------------------------------------------
-# Hail compiler tests (Task 4)
+# Hail compiler tests
 # ---------------------------------------------------------------------------
 
 from hvantk.core.models._compile import compile_to_hail
@@ -85,7 +82,7 @@ def _make_ht():
     rows = [
         {"gene_symbol": "BRCA1", "score": 0.7, "chrom": "chr17"},
         {"gene_symbol": "BRCA2", "score": 0.4, "chrom": "chr13"},
-        {"gene_symbol": "TP53",  "score": 0.9, "chrom": "chr17"},
+        {"gene_symbol": "TP53", "score": 0.9, "chrom": "chr17"},
     ]
     return hl.Table.parallelize(
         rows,

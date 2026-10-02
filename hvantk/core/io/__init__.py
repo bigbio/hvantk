@@ -3,14 +3,15 @@
 Dispatch:
   *.parquet            -> AnnotationTable (pandas backend)
   *.ht/                -> AnnotationTable (hail backend)
-  *.h5ad               -> ExpressionMatrix (anndata backend) [Task 14]
+  *.h5ad               -> ExpressionMatrix (anndata backend)
   *.mt/                -> VariantMatrix
-  *.geneset.json       -> GeneSet [Task 15]
+  *.geneset.json       -> GeneSet
 
 Every saved artifact gets a sidecar <path>.provenance.json. Load returns
 the artifact with its manifest re-attached as Provenance, or a legacy
-unknown provenance if no manifest is found [Task 16].
+unknown provenance if no manifest is found.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -87,6 +88,7 @@ def load(path: str | Path, *, expected_schema_id: str | None = None) -> Any:
     provenance = read_manifest(path)
     if provenance is None:
         from hvantk.core.io._legacy import unknown_provenance_for
+
         provenance = unknown_provenance_for(path)
     elif expected_schema_id is not None and provenance.schema_id != expected_schema_id:
         raise SchemaIdMismatchError(
@@ -153,9 +155,9 @@ def load_native(
 
     if isinstance(artifact, AnnotationTable):
         if artifact.backend == "hail":
-            native = artifact.to_hail()       # zero-cost: returns self._table
+            native = artifact.to_hail()  # zero-cost: returns self._table
         else:
-            native = artifact.to_pandas()     # zero-cost for pandas-backed
+            native = artifact.to_pandas()  # zero-cost for pandas-backed
     elif isinstance(artifact, ExpressionMatrix):
         native = artifact.to_anndata()
     elif isinstance(artifact, VariantMatrix):
@@ -227,7 +229,5 @@ def save_native(
         name = path.stem.replace(".geneset", "")
         artifact = GeneSet(name=name, provenance=provenance, _members=members)
     else:
-        raise ArtifactTypeError(
-            f"save_native: unrecognized extension for {path}"
-        )
+        raise ArtifactTypeError(f"save_native: unrecognized extension for {path}")
     save(artifact, path)

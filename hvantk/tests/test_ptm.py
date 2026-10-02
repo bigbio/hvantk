@@ -1,7 +1,7 @@
 """Tests for hvantk.ptm module.
 
 Covers:
-1. Coordinate mapper correctness (TP53 known positions from Phase 0/0.5)
+1. Coordinate mapper correctness (TP53 known positions from Ensembl REST lookups)
 2. Transcript resolution cascade (3-strategy)
 3. map_ptm_sites pipeline round-trip (TSV → mapped TSV → verify output)
 4. CLI wiring (ptm group registers and renders help)
@@ -58,7 +58,7 @@ def gtf_data(tp53_cds_lookup):
 
 # ---------- Test 1: Mapper correctness ----------
 
-# Ground truth from Phase 0 pilot and Phase 0.5 validation (Ensembl REST API)
+# Ground truth from Ensembl REST API lookups
 _TP53_GROUND_TRUTH = [
     (6, "17", 7676577, 7676579),
     (15, "17", 7676550, 7676552),
@@ -73,7 +73,7 @@ _TP53_GROUND_TRUTH = [
 def test_mapper_tp53_positions(
     tp53_cds_lookup, residue_pos, exp_chrom, exp_start, exp_end
 ):
-    """Mapper reproduces Phase 0/0.5 ground truth for TP53 positions."""
+    """Mapper reproduces Ensembl REST ground truth for TP53 positions."""
     result = map_residue_to_genomic("ENST00000269305", residue_pos, tp53_cds_lookup)
     assert result is not None
     assert result.chrom == exp_chrom
@@ -182,6 +182,7 @@ def test_map_ptm_sites_roundtrip(tmp_path, gtf_data):
 
     # Read back and verify (BGZF is gzip-compatible)
     import gzip
+
     with gzip.open(output_bgz, "rt") as f:
         reader = csv.DictReader(f, delimiter="\t")
         rows = list(reader)

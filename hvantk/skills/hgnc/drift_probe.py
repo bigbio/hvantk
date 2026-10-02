@@ -30,7 +30,9 @@ def fetch_fingerprint() -> dict:
     signal, matching the ClinGen probe's reasoning.
     """
     try:
-        head = requests.head(HGNC_DOWNLOAD_URL, timeout=_TIMEOUT_S, allow_redirects=True)
+        head = requests.head(
+            HGNC_DOWNLOAD_URL, timeout=_TIMEOUT_S, allow_redirects=True
+        )
         head.raise_for_status()
         last_modified = head.headers.get("Last-Modified")
         content_length = head.headers.get("Content-Length")

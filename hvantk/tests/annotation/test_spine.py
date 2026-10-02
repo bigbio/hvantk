@@ -1,4 +1,5 @@
 """The gene spine: one row per protein-coding gene, keyed on Ensembl gene_id."""
+
 from __future__ import annotations
 
 import pytest
@@ -68,7 +69,7 @@ def _hgnc_ht():
     ``gene_group`` is ``array<str>`` to match the real ``hgnc:lookup`` schema (a gene can
     belong to several HGNC gene groups): modelling it as a scalar here would assert a
     contract production never produces. The spine carries the array through unchanged -- it
-    is deliberately not reduced to a scalar, so a P2 consumer sees the real shape.
+    is deliberately not reduced to a scalar, so ``prepare`` sees the real shape.
     """
     import hail as hl
 

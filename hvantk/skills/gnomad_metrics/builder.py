@@ -1,6 +1,6 @@
 """Hail Table builder for the gnomAD constraint gene metrics resource.
 
-Owns the Phase B ``build_gnomad_metrics_metrics`` builder. Imports the
+Owns the ``build_gnomad_metrics_metrics`` builder. Imports the
 gnomAD lof_metrics TSV keyed by ``gene_id`` and wraps with Provenance.
 """
 
@@ -18,7 +18,7 @@ def build_gnomad_metrics_metrics(
     ctx,
     **params,
 ):
-    """Phase B builder — returns an AnnotationTable.
+    """Plugin builder — returns an AnnotationTable.
 
     Imports the gnomAD constraint gene metrics TSV (keyed by gene_id) and
     wraps it with Provenance. Accepts **params for compatibility (fields, etc.).

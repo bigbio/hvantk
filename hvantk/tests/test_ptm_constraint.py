@@ -1,4 +1,4 @@
-"""Smoke tests for the PTM constraint pipeline (M1-M6).
+"""Smoke tests for the PTM constraint pipeline.
 
 Minimum checks that ``hvantk.algorithms.expression.tissue_specificity``,
 ``hvantk.algorithms.ptm.constraint_expression``, ``hvantk.algorithms.ptm.constraint``, and the
@@ -23,18 +23,23 @@ def _toy_expr_matrix() -> pd.DataFrame:
     tissues = [f"t{i}" for i in range(6)]
     genes = [f"g{i}" for i in range(5)]
     # Broad gene, tissue-specific gene, 3 noisy rows.
-    data = np.vstack([
-        np.full(6, 10.0),                      # housekeeping
-        np.array([0.1, 0.1, 0.1, 0.1, 0.1, 50.0]),  # highly specific
-        rng.uniform(1.0, 8.0, size=6),
-        rng.uniform(0.5, 5.0, size=6),
-        np.array([2.0, 0.2, 0.2, 0.2, 0.2, 0.2]),   # specific to t0
-    ])
+    data = np.vstack(
+        [
+            np.full(6, 10.0),  # housekeeping
+            np.array([0.1, 0.1, 0.1, 0.1, 0.1, 50.0]),  # highly specific
+            rng.uniform(1.0, 8.0, size=6),
+            rng.uniform(0.5, 5.0, size=6),
+            np.array([2.0, 0.2, 0.2, 0.2, 0.2, 0.2]),  # specific to t0
+        ]
+    )
     return pd.DataFrame(data, index=genes, columns=tissues)
 
 
 def test_tspex_wrapper_matches_yanai():
-    from hvantk.algorithms.expression.tissue_specificity import compute_specificity, tau_yanai_reference
+    from hvantk.algorithms.expression.tissue_specificity import (
+        compute_specificity,
+        tau_yanai_reference,
+    )
 
     df = _toy_expr_matrix()
     tspex_tau = compute_specificity(df, method="tau")

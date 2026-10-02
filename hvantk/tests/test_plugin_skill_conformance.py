@@ -71,9 +71,9 @@ def test_discovery_matches_what_the_manifests_declare():
     """
     discovered = {p.resolve() for p in SPECS}
     declared = _manifest_declared_specs()
-    assert (
-        declared
-    ), "no plugin.yaml declared a skill: -- has the manifest schema moved?"
+    assert declared, (
+        "no plugin.yaml declared a skill: -- has the manifest schema moved?"
+    )
     missing = sorted(str(p.relative_to(SKILLS_DIR)) for p in declared - discovered)
     assert not missing, (
         "these SKILL.md files are declared by a plugin.yaml but were NOT discovered by "
@@ -180,14 +180,31 @@ def _swap_heading_lines(text: str) -> str:
 
     Sections 7 and 8 specifically: swapping 8 and 9 relocates section 9's body, which
     then trips the artifact-key check and satisfies the assertion for the wrong reason,
-    leaving the ordering branch deletable all over again. 7 and 8 carry no content
-    rules, so the ordering violation is the only problem produced.
+    leaving the ordering branch deletable all over again. Swapping 7 and 8 instead moves
+    only the heading LINES -- each section's real body stays put and simply travels with
+    whichever heading now precedes it, so neither trips the per-section content check
+    either, and the ordering violation is the only problem produced.
     """
     a, b = "## 7. Workflow steps", "## 8. Update playbook"
     lines = text.splitlines()
     ia, ib = lines.index(a), lines.index(b)
     lines[ia], lines[ib] = lines[ib], lines[ia]
     return "\n".join(lines) + "\n"
+
+
+def _replace_section_body(
+    text: str, heading: str, next_heading: str | None, replacement: str
+) -> str:
+    """Replace everything between ``heading`` and ``next_heading`` (or EOF) with
+    ``replacement``, leaving the heading line and every other section untouched.
+
+    Builds minimal negative cases for the per-section content check (#364 item 8):
+    each case below changes only the one section under test, so a failure says which
+    rule regressed rather than "something about this spec changed".
+    """
+    start = text.index(heading) + len(heading)
+    end = text.index(next_heading, start) if next_heading is not None else len(text)
+    return text[:start] + "\n\n" + replacement + "\n\n" + text[end:]
 
 
 # --- why they are pinned here: a conformance check that cannot fail is decoration.
@@ -238,10 +255,12 @@ def _swap_heading_lines(text: str) -> str:
         # with no other symptom.
         (
             "frontmatter missing a required key",
-            lambda t: "\n".join(
-                ln for ln in t.splitlines() if not ln.startswith("description:")
-            )
-            + "\n",
+            lambda t: (
+                "\n".join(
+                    ln for ln in t.splitlines() if not ln.startswith("description:")
+                )
+                + "\n"
+            ),
             "frontmatter missing or empty",
         ),
         # --- content, not just headings (#356). The hygiene pass found sections that
@@ -252,6 +271,20 @@ def _swap_heading_lines(text: str) -> str:
             "missing the shared preamble",
             lambda t: t.replace(CONVENTIONS_PREAMBLE, ""),
             "shared preamble",
+        ),
+        (
+            "preamble moved to the end of the file",
+            lambda t: (
+                t.replace(CONVENTIONS_PREAMBLE, "") + "\n" + CONVENTIONS_PREAMBLE + "\n"
+            ),
+            "must open with the shared preamble",
+        ),
+        (
+            "preamble present only inside a code fence",
+            lambda t: t.replace(
+                CONVENTIONS_PREAMBLE, "```\n" + CONVENTIONS_PREAMBLE + "\n```"
+            ),
+            "must open with the shared preamble",
         ),
         (
             "section 6 that never reaches the drift probe",
@@ -268,6 +301,47 @@ def _swap_heading_lines(text: str) -> str:
             lambda t: t.replace("- `command`:", "- `test_command`:"),
             "the manifest key is 'command'",
         ),
+        # --- content coverage beyond s 6/s 9 (#364 item 8). Before this, ss 1-5, 7 and 8
+        # carried no content rule at all, so a spec could empty any of their bodies
+        # outright and the checker kept passing; and s 6/s 9's own rules checked for
+        # keywords rather than substance, so a body that only *named* the required words
+        # satisfied them without being a real section.
+        (
+            "a section body emptied outright",
+            lambda t: _replace_section_body(
+                t, "## 2. Source identity", "## 3. Backend choice + reasoning", ""
+            ),
+            "has no real body",
+        ),
+        (
+            "a section body that is only the placeholder n/a",
+            lambda t: _replace_section_body(
+                t, "## 4. Raw format & gotchas", "## 5. Output contract", "n/a"
+            ),
+            "has no real body",
+        ),
+        (
+            "section 6 is a TODO-led stub that still names the builder, drift probe "
+            "and tests",
+            lambda t: _replace_section_body(
+                t,
+                "## 6. hvantk integration points",
+                "## 7. Workflow steps",
+                "TODO. builder, drift probe, tests.",
+            ),
+            "has no real body",
+        ),
+        (
+            "section 9 is a TODO-led stub that still names the five test artifacts",
+            lambda t: _replace_section_body(
+                t,
+                "## 9. Validation contract",
+                None,
+                "TODO: fixture, schema_snapshot, row_snapshot, drift_fingerprint, "
+                "command.",
+            ),
+            "has no real body",
+        ),
     ],
 )
 def test_checker_rejects_non_conforming_variants(tmp_path, label, mutate, expected):
@@ -278,9 +352,9 @@ def test_checker_rejects_non_conforming_variants(tmp_path, label, mutate, expect
     *different* check, which then carried the assertion. `expected` pins which one.
     """
     conforming = (SKILLS_DIR / "hgnc" / "SKILL.md").read_text()
-    assert not check_skill_spec(
-        SKILLS_DIR / "hgnc" / "SKILL.md"
-    ), "baseline must conform"
+    assert not check_skill_spec(SKILLS_DIR / "hgnc" / "SKILL.md"), (
+        "baseline must conform"
+    )
 
     broken = tmp_path / "SKILL.md"
     broken.write_text(mutate(conforming))
@@ -290,6 +364,92 @@ def test_checker_rejects_non_conforming_variants(tmp_path, label, mutate, expect
         f"{label}: rejected, but for the wrong reason. Expected a problem mentioning "
         f"{expected!r}, got {problems}"
     )
+
+
+def test_first_body_line_skips_frontmatter_blanks_headings_and_fences():
+    from hvantk.core.plugin.skill_spec import _first_body_line
+
+    text = (
+        "---\nname: x\ndescription: y\n---\n\n# Title\n\n```\nnot prose\n```\n\n"
+        "## 1. Status & scope\n\nThe real first line.\n"
+    )
+    assert _first_body_line(text) == "The real first line."
+    assert (
+        _first_body_line("---\nname: x\n") is None
+    )  # unterminated frontmatter: no body
+
+
+@pytest.mark.parametrize(
+    "body, expected",
+    [
+        # --- release-review findings (PR #407): each of these passed the checker
+        # before _is_placeholder_body stripped structural markup first, because the
+        # lead/whole test only ever looked at the first few characters, none of
+        # which are "#", "<" or a backtick.
+        ("### TODO", True),
+        ("### Details\nTODO", True),
+        ("<!-- TODO -->", True),
+        ("```\n```", True),
+        ("1. TODO", True),
+        ("| TODO | TODO |\n| --- | --- |\n| TODO | TODO |", True),
+        # --- a RUN of leading markers. The pre-#407 checker stripped any run
+        # (``^[-*>\s]+``); the first rewrite stripped exactly one, so every case
+        # below passed again until the run was restored.
+        ("---", True),
+        ("- - -", True),
+        ("> - TODO", True),
+        ("- > TODO", True),
+        ("* - TBD", True),
+        (">> TODO", True),
+        ("-- TODO", True),
+        ("- - TODO", True),
+        ("1. - TODO", True),
+        # --- bare / marker-wrapped placeholder leads, already documented in
+        # _is_placeholder_body's own docstring and _PLACEHOLDER_LEADS/_WHOLE.
+        ("TODO", True),
+        ("TBD", True),
+        ("`TBD`", True),
+        ("- **TODO**", True),
+        ("...", True),
+        ("…", True),
+        ("-", True),
+        ("n/a", True),
+        ("n/a.", True),
+        ("- n/a", True),
+        # --- must NOT be flagged: real content, a word that merely starts with a
+        # lead token, an explained N/A (an answer, not a stand-in), and a table
+        # whose cells are real.
+        ("TBDone is a product", False),
+        ("- real content", False),
+        ("1. Real content", False),
+        ("- > a quoted, real note", False),
+        ("2.5 GB raw file, fetched by the plugin's downloader", False),
+        ("N/A for this plugin: the catalog is static", False),
+        ("| Field | Value |\n| --- | --- |\n| real | content |", False),
+    ],
+)
+def test_is_placeholder_body(body: str, expected: bool):
+    """Unit-test ``_is_placeholder_body`` directly, rather than only through a full
+    SKILL.md section.
+
+    Pins four mutants a reviewer found that passed every test that existed before
+    this one:
+
+    * treating any body merely LED by "n/a" as a placeholder, not just a body that
+      IS "n/a" -- killed by the explained-N/A case, which such a mutant wrongly
+      flags as a placeholder;
+    * dropping the ``tail.isalnum()`` word-boundary guard -- killed by
+      ``"TBDone is a product"``, which such a mutant wrongly flags as a placeholder;
+    * replacing the leading-marker strip with a plain ``body.strip()`` -- killed by
+      ``"- **TODO**"``, ``"-"`` and ``"- n/a"``, which such a mutant wrongly accepts
+      as real content;
+    * dropping ``"tbd"``/``"..."`` from ``_PLACEHOLDER_LEADS`` -- killed by
+      ``"TBD"``, `` "`TBD`" ``, ``"..."`` and ``"…"``, which such a mutant wrongly
+      accepts as real content.
+    """
+    from hvantk.core.plugin.skill_spec import _is_placeholder_body
+
+    assert _is_placeholder_body(body) is expected
 
 
 def test_spec_declares_the_test_artifact_paths_its_manifest_does():

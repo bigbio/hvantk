@@ -14,7 +14,9 @@ def test_empty_trained_on_is_clean():
 def test_shared_equivalence_class_conflicts():
     """ClinVar-trained vs GenCC-derived: different names, same curation class."""
     a = resolve_arms(
-        {"REVEL": frozenset({"HGMD", "ClinVar"})}, frozenset({"GenCC"}), DEFAULT_EQUIVALENCE
+        {"REVEL": frozenset({"HGMD", "ClinVar"})},
+        frozenset({"GenCC"}),
+        DEFAULT_EQUIVALENCE,
     )
     assert a.clean == ()
     assert "REVEL" in a.conflicted
@@ -40,7 +42,9 @@ def test_unrecognised_source_conflicts_with_matching_unrecognised_source():
     unmapped source must still be reported as conflicted.
     """
     a = resolve_arms(
-        {"toy_score": frozenset({"simulated"})}, frozenset({"simulated"}), DEFAULT_EQUIVALENCE
+        {"toy_score": frozenset({"simulated"})},
+        frozenset({"simulated"}),
+        DEFAULT_EQUIVALENCE,
     )
     assert a.clean == ()
     assert a.conflicted == {"toy_score": frozenset({"simulated"})}
@@ -125,7 +129,9 @@ def test_custom_equivalence_map_changes_the_verdict():
     # class containing "FooScore" or "BarLabel", so each maps to itself and they don't
     # collide -- the verdict flips to clean.
     clean = resolve_arms(
-        {"widget": frozenset({"FooScore"})}, frozenset({"BarLabel"}), DEFAULT_EQUIVALENCE
+        {"widget": frozenset({"FooScore"})},
+        frozenset({"BarLabel"}),
+        DEFAULT_EQUIVALENCE,
     )
     assert clean.clean == ("widget",)
 
@@ -171,10 +177,10 @@ def test_declared_dbnsfp_scores_resolve_into_arms_against_a_clinvar_label():
 
     arms = resolve_arms(provenance, frozenset({"ClinGen"}), DEFAULT_EQUIVALENCE)
 
-    assert "REVEL_rankscore" in arms.conflicted          # HGMD/ClinVar vs a ClinGen label
+    assert "REVEL_rankscore" in arms.conflicted  # HGMD/ClinVar vs a ClinGen label
     assert "phyloP100way_vertebrate_rankscore" in arms.clean
-    assert "CADD_raw_rankscore" in arms.clean            # 'simulated' is not a disease db
-    assert arms.undeclared == ()                         # every declared score is declared
+    assert "CADD_raw_rankscore" in arms.clean  # 'simulated' is not a disease db
+    assert arms.undeclared == ()  # every declared score is declared
 
 
 def test_a_source_in_two_equivalence_classes_is_rejected():

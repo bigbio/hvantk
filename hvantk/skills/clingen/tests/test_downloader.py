@@ -59,7 +59,9 @@ class TestClinGenGeneDiseaseDataset:
             output_dir = os.path.join(tmpdir, "new_subdir", "clingen")
             dataset = ClinGenGeneDiseaseDataset.from_date("2026-01-15")
 
-            with patch("hvantk.skills.clingen.shared.datasets.download_file") as mock_dl:
+            with patch(
+                "hvantk.skills.clingen.shared.datasets.download_file"
+            ) as mock_dl:
                 mock_dl.return_value = os.path.join(output_dir, dataset.file_name)
                 dataset.download(output_dir)
                 assert os.path.exists(output_dir)
@@ -87,7 +89,9 @@ class TestClinGenGeneDiseaseDataset:
             with open(file_path, "w") as f:
                 f.write("test")
 
-            with patch("hvantk.skills.clingen.shared.datasets.download_file") as mock_dl:
+            with patch(
+                "hvantk.skills.clingen.shared.datasets.download_file"
+            ) as mock_dl:
                 mock_dl.return_value = file_path
                 result = dataset.download(tmpdir, overwrite=True)
                 assert result == file_path

@@ -88,10 +88,12 @@ def _runner_without_hail(pipeline_mod, monkeypatch, cfg):
     show_plan() only prints strings and _run_vds_to_mt's converter is stubbed -- but
     without this the file boots Spark inside the DEFAULT `pytest -q` run, which
     pytest.ini deliberately configures to deselect the `hail` marker, and fails outright
-    on any machine with no JVM. Round-3 review caught it: the pre-PR file produced zero
-    Spark banners, this one produced three.
+    on any machine with no JVM. The pre-PR file produced zero Spark banners, this one
+    produced three.
     """
-    monkeypatch.setattr(pipeline_mod.PipelineRunner, "_initialize_hail", lambda self: None)
+    monkeypatch.setattr(
+        pipeline_mod.PipelineRunner, "_initialize_hail", lambda self: None
+    )
     return pipeline_mod.PipelineRunner(cfg)
 
 
@@ -106,7 +108,9 @@ def test_pipeline_forwards_n_partitions_to_the_converter(tmp_path, monkeypatch):
 
     monkeypatch.setattr(pipeline_mod, "convert_vds_to_mt", _spy)
 
-    runner = _runner_without_hail(pipeline_mod, monkeypatch, _cfg(tmp_path, n_partitions=64))
+    runner = _runner_without_hail(
+        pipeline_mod, monkeypatch, _cfg(tmp_path, n_partitions=64)
+    )
     runner.state.outputs["vds"] = str(tmp_path / "cohort.vds")
     runner._run_vds_to_mt()
 
@@ -127,7 +131,7 @@ def test_pipeline_passes_none_when_unset(tmp_path, monkeypatch):
     assert seen["n_partitions"] is None
 
 
-# --- adversarial-review findings on #261 --------------------------------------------
+# --- regression tests for #261 --------------------------------------------------
 
 
 def test_invalid_n_partitions_is_rejected_by_validate(tmp_path):
@@ -143,7 +147,9 @@ def test_invalid_n_partitions_is_rejected_by_validate(tmp_path):
 
 
 def test_valid_n_partitions_passes_validate(tmp_path):
-    assert [e for e in _cfg(tmp_path, n_partitions=64).validate() if "n_partitions" in e] == []
+    assert [
+        e for e in _cfg(tmp_path, n_partitions=64).validate() if "n_partitions" in e
+    ] == []
     assert [e for e in _cfg(tmp_path).validate() if "n_partitions" in e] == []
 
 
@@ -160,7 +166,9 @@ def test_pipeline_help_names_flags_that_exist():
     """The --n-partitions help pointed at a `--combiner-*` family that does not exist."""
     from hvantk.tools.hgc.pipeline_cli import pipeline as pipeline_cmd
 
-    opt = next(p for p in pipeline_cmd.params if "--n-partitions" in getattr(p, "opts", []))
+    opt = next(
+        p for p in pipeline_cmd.params if "--n-partitions" in getattr(p, "opts", [])
+    )
     declared = {o for p in pipeline_cmd.params for o in getattr(p, "opts", [])}
     referenced = re.findall(r"--[a-z][a-z0-9-]+", opt.help)
 
@@ -171,8 +179,8 @@ def test_pipeline_help_names_flags_that_exist():
 def test_vds2mt_dry_run_shows_zero_rather_than_auto(tmp_path):
     """The CALL SITE, not just the helper.
 
-    Round-2 review: the helper test alone left both call sites unprotected -- reverting
-    convert_cli.py to `n_partitions or 'auto (VDS layout)'` kept the suite green. This is
+    The helper test alone left both call sites unprotected -- reverting convert_cli.py
+    to `n_partitions or 'auto (VDS layout)'` kept the suite green. This is
     the live half: `vds2mt` has no config.validate() gate, so 0 reaches the dry-run
     printer and the user is told a plan is fine for an invocation that aborts.
     """
@@ -181,12 +189,23 @@ def test_vds2mt_dry_run_shows_zero_rather_than_auto(tmp_path):
 
     from hvantk.tools.hgc.convert_cli import vds2mt
 
-    with patch("hvantk.tools.hgc.convert_cli.validate_input_files", return_value=(True, [])), \
-         patch("hvantk.tools.hgc.convert_cli.validate_output_path", return_value=True):
+    with (
+        patch(
+            "hvantk.tools.hgc.convert_cli.validate_input_files", return_value=(True, [])
+        ),
+        patch("hvantk.tools.hgc.convert_cli.validate_output_path", return_value=True),
+    ):
         result = CliRunner().invoke(
             vds2mt,
-            ["-i", str(tmp_path / "in.vds"), "-o", str(tmp_path / "out.mt"),
-             "--n-partitions", "0", "--dry-run"],
+            [
+                "-i",
+                str(tmp_path / "in.vds"),
+                "-o",
+                str(tmp_path / "out.mt"),
+                "--n-partitions",
+                "0",
+                "--dry-run",
+            ],
         )
 
     assert result.exit_code == 0, result.output

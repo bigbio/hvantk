@@ -2,7 +2,7 @@ api_version: 1
 name: catalog
 domain: infra
 type: command_group
-description: Inspect the hvantk dataset catalog aggregated from per-plugin catalogs.
+description: Inspect the hvantk dataset catalog (aggregated from per-plugin catalogs).
 cli:
   module: hvantk.tools.infra.catalog_cli
   function: catalog
@@ -11,8 +11,8 @@ purpose:
   long: |
     Reads the live catalog by instantiating
     `hvantk.resources.unified_registry.HvantkRegistry`, which aggregates each
-    plugin's `catalog/datasets.json` and the surviving
-    `resources/registry/genomics/datasets.json`. `list` produces a filtered
+    plugin's `catalog/datasets.json` file, declared via that plugin's
+    `plugin.yaml`; there is no legacy registry fallback. `list` produces a filtered
     table (omics-type / data-source / organism), `show` dumps a single entry
     by accession (yaml or json), `stats` reports counts by omics / organism /
     source, and `search` does a free-text match on title / description /

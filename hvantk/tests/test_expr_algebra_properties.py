@@ -1,4 +1,4 @@
-"""Phase O: property-based tests for the Expr algebra.
+"""Property-based tests for the Expr algebra.
 
 These tests assert algebraic laws that must hold for any expression on the
 pandas backend.  They catch subtle compile_to_pandas divergences that the
@@ -10,6 +10,7 @@ Hypothesis is used for random data generation with ``max_examples=20`` and
 All strategies avoid generating null values so pandas NaN propagation does
 not interfere with boolean-algebra identities that assume a two-valued logic.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -34,6 +35,7 @@ from hvantk.core.models.provenance import Provenance  # noqa: E402
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _prov() -> Provenance:
     return Provenance(
@@ -99,6 +101,7 @@ _SETTINGS = dict(max_examples=20, deadline=None)
 # 1. Filter composition law: filter(a).filter(b) ≡ filter(a & b)
 # ---------------------------------------------------------------------------
 
+
 @settings(**_SETTINGS)
 @given(ann=_small_ann(), pred_a=_pred_strat, pred_b=_pred_strat)
 def test_filter_composition_equiv_to_and(ann, pred_a, pred_b):
@@ -113,6 +116,7 @@ def test_filter_composition_equiv_to_and(ann, pred_a, pred_b):
 # 2. Double-negation: filter(~~a) ≡ filter(a)
 # ---------------------------------------------------------------------------
 
+
 @settings(**_SETTINGS)
 @given(ann=_small_ann(), pred=_pred_strat)
 def test_filter_double_negation(ann, pred):
@@ -125,29 +129,36 @@ def test_filter_double_negation(ann, pred):
 # 3. And absorption: filter(a & a) ≡ filter(a)
 # ---------------------------------------------------------------------------
 
+
 @settings(**_SETTINGS)
 @given(ann=_small_ann(), pred=_pred_strat)
 def test_filter_and_absorption(ann, pred):
     """filter(a & a) ≡ filter(a)"""
     p = pred()
-    assert _sort_rows(ann.filter(p & p).collect()) == _sort_rows(ann.filter(p).collect())
+    assert _sort_rows(ann.filter(p & p).collect()) == _sort_rows(
+        ann.filter(p).collect()
+    )
 
 
 # ---------------------------------------------------------------------------
 # 4. Or absorption: filter(a | a) ≡ filter(a)
 # ---------------------------------------------------------------------------
 
+
 @settings(**_SETTINGS)
 @given(ann=_small_ann(), pred=_pred_strat)
 def test_filter_or_absorption(ann, pred):
     """filter(a | a) ≡ filter(a)"""
     p = pred()
-    assert _sort_rows(ann.filter(p | p).collect()) == _sort_rows(ann.filter(p).collect())
+    assert _sort_rows(ann.filter(p | p).collect()) == _sort_rows(
+        ann.filter(p).collect()
+    )
 
 
 # ---------------------------------------------------------------------------
 # 5. And commutativity: filter(a & b) ≡ filter(b & a)
 # ---------------------------------------------------------------------------
+
 
 @settings(**_SETTINGS)
 @given(ann=_small_ann(), pred_a=_pred_strat, pred_b=_pred_strat)
@@ -163,6 +174,7 @@ def test_and_commutative(ann, pred_a, pred_b):
 # 6. Or commutativity: filter(a | b) ≡ filter(b | a)
 # ---------------------------------------------------------------------------
 
+
 @settings(**_SETTINGS)
 @given(ann=_small_ann(), pred_a=_pred_strat, pred_b=_pred_strat)
 def test_or_commutative(ann, pred_a, pred_b):
@@ -177,6 +189,7 @@ def test_or_commutative(ann, pred_a, pred_b):
 # 7. Comparison reflexivity: filter(col == col).count() ≡ count()
 # ---------------------------------------------------------------------------
 
+
 @settings(**_SETTINGS)
 @given(ann=_small_ann())
 def test_eq_reflexive(ann):
@@ -187,6 +200,7 @@ def test_eq_reflexive(ann):
 # ---------------------------------------------------------------------------
 # 8. Comparison anti-reflexivity: filter(col != col).count() == 0
 # ---------------------------------------------------------------------------
+
 
 @settings(**_SETTINGS)
 @given(ann=_small_ann())
@@ -199,6 +213,7 @@ def test_ne_anti_reflexive(ann):
 # 9. Select preserves row count: select(*cols).count() ≡ count()
 # ---------------------------------------------------------------------------
 
+
 @settings(**_SETTINGS)
 @given(ann=_small_ann())
 def test_select_preserves_count(ann):
@@ -210,6 +225,7 @@ def test_select_preserves_count(ann):
 # 10. head bound: head(n).count() <= min(n, count())
 # ---------------------------------------------------------------------------
 
+
 @settings(**_SETTINGS)
 @given(ann=_small_ann(), n=st.integers(min_value=0, max_value=30))
 def test_head_bounded(ann, n):
@@ -220,6 +236,7 @@ def test_head_bounded(ann, n):
 # ---------------------------------------------------------------------------
 # 11. Distinct idempotence: distinct().distinct().count() ≡ distinct().count()
 # ---------------------------------------------------------------------------
+
 
 @settings(**_SETTINGS)
 @given(ann=_small_ann())
@@ -234,6 +251,7 @@ def test_distinct_idempotent(ann):
 # 12. Rename round-trip: rename(x->tmp).rename(tmp->x) ≡ ann (as multisets)
 # ---------------------------------------------------------------------------
 
+
 @settings(**_SETTINGS)
 @given(ann=_small_ann())
 def test_rename_round_trip(ann):
@@ -246,6 +264,7 @@ def test_rename_round_trip(ann):
 # ---------------------------------------------------------------------------
 # 13. Arithmetic: with_columns(z=col(x)+col(y)) produces x+y for each row
 # ---------------------------------------------------------------------------
+
 
 @settings(**_SETTINGS)
 @given(ann=_small_ann())
@@ -260,6 +279,7 @@ def test_with_columns_arithmetic(ann):
 # 14. isin equivalence: col.isin([a,b]) ≡ (col==a)|(col==b)
 # ---------------------------------------------------------------------------
 
+
 @settings(**_SETTINGS)
 @given(ann=_small_ann())
 def test_isin_equiv_to_disjunction(ann):
@@ -272,6 +292,7 @@ def test_isin_equiv_to_disjunction(ann):
 # ---------------------------------------------------------------------------
 # 15. gt implies ge: filter(x>0).count() <= filter(x>=0).count()
 # ---------------------------------------------------------------------------
+
 
 @settings(**_SETTINGS)
 @given(ann=_small_ann())
@@ -286,6 +307,7 @@ def test_gt_implies_ge(ann):
 # 16. collect/count consistency: count() == len(collect())
 # ---------------------------------------------------------------------------
 
+
 @settings(**_SETTINGS)
 @given(ann=_small_ann())
 def test_count_matches_collect_len(ann):
@@ -296,6 +318,7 @@ def test_count_matches_collect_len(ann):
 # ---------------------------------------------------------------------------
 # 17. Filter De Morgan: count(filter(a))+count(filter(~a)) == count()
 # ---------------------------------------------------------------------------
+
 
 @settings(**_SETTINGS)
 @given(ann=_small_ann(), pred=_pred_strat)
@@ -309,13 +332,13 @@ def test_filter_de_morgan_partition(ann, pred):
 # 18. And-identity with tautology: filter(a & (x==x)) ≡ filter(a)
 # ---------------------------------------------------------------------------
 
+
 @settings(**_SETTINGS)
 @given(ann=_small_ann(), pred=_pred_strat)
 def test_and_tautology_identity(ann, pred):
     """filter(a & (col("x")==col("x"))) ≡ filter(a) because (x==x) is always True"""
     p = pred()
     tautology = col("x") == col("x")
-    assert (
-        _sort_rows(ann.filter(p & tautology).collect())
-        == _sort_rows(ann.filter(p).collect())
+    assert _sort_rows(ann.filter(p & tautology).collect()) == _sort_rows(
+        ann.filter(p).collect()
     )

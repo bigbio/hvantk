@@ -1,6 +1,6 @@
 """HTML report generation for PTM-variant analysis.
 
-Generates a static HTML report combining landscape (Q1) and population (Q3)
+Generates a static HTML report combining landscape and population
 results with embedded matplotlib plots. Follows the enrichex/report.py pattern:
 inline CSS, base64 PNGs, lightweight string formatting (no template engines).
 """
@@ -53,9 +53,9 @@ def generate_report(
     output_path : str
         Destination HTML file path.
     landscape_result : Optional[PTMLandscapeResult]
-        Q1 landscape analysis result.
+        Landscape analysis result.
     population_result : Optional[PTMPopulationResult]
-        Q3 population analysis result.
+        Population analysis result.
     title : str
         Report title.
     description : Optional[str]
@@ -220,7 +220,7 @@ def _build_landscape_section(
         )
 
     return (
-        "<section><h2>Landscape Analysis (Q1)</h2>"
+        "<section><h2>Landscape Analysis</h2>"
         f"{overview}"
         f"{summary_img}{category_img}{table_html}{distance_img}"
         "</section>"
@@ -253,11 +253,7 @@ def _build_population_section(
         embed,
     )
 
-    return (
-        "<section><h2>Population Analysis (Q3)</h2>"
-        f"{overview}{af_img}"
-        "</section>"
-    )
+    return f"<section><h2>Population Analysis</h2>{overview}{af_img}</section>"
 
 
 def _build_key_findings(
@@ -334,10 +330,7 @@ def _build_key_findings(
         return ""
     items = "".join(f"<li>{b}</li>" for b in bullets)
     return (
-        "<section class='key-findings'>"
-        "<h2>Key Findings</h2>"
-        f"<ul>{items}</ul>"
-        "</section>"
+        f"<section class='key-findings'><h2>Key Findings</h2><ul>{items}</ul></section>"
     )
 
 
@@ -345,7 +338,7 @@ def _build_methods_section(has_landscape: bool, has_population: bool) -> str:
     paragraphs = []
     if has_landscape:
         paragraphs.append(
-            "<p><strong>Landscape (Q1):</strong> ClinVar P/LP and B/LB variants "
+            "<p><strong>Landscape:</strong> ClinVar P/LP and B/LB variants "
             "were cross-referenced with UniProt PTM sites mapped to GRCh38 genomic "
             "coordinates via Ensembl GTF (release 113). A variant is classified as "
             "'PTM site' if it overlaps a PTM-modified codon, 'proximal' if within "
@@ -356,7 +349,7 @@ def _build_methods_section(has_landscape: bool, has_population: bool) -> str:
         )
     if has_population:
         paragraphs.append(
-            "<p><strong>Population (Q3):</strong> gnomAD variant allele frequencies "
+            "<p><strong>Population:</strong> gnomAD variant allele frequencies "
             "were compared between PTM-site, proximal, and non-PTM coding positions. "
             "Lower mean AF at PTM sites suggests purifying selection. The '% ultra-rare' "
             "metric shows the fraction of variants with AF &lt; 10<sup>-4</sup>.</p>"
@@ -413,7 +406,7 @@ def _get_css(colors: Dict[str, str]) -> str:
             background-color: #f7f7f7;
         }}
         header {{
-            background: linear-gradient(90deg, {colors['primary']}, {colors['secondary']});
+            background: linear-gradient(90deg, {colors["primary"]}, {colors["secondary"]});
             color: white;
             padding: 30px;
             border-radius: 10px;
@@ -450,7 +443,7 @@ def _get_css(colors: Dict[str, str]) -> str:
             padding: 10px;
         }}
         th {{
-            background-color: {colors['primary']};
+            background-color: {colors["primary"]};
             color: white;
         }}
         .embedded-image {{
@@ -462,7 +455,7 @@ def _get_css(colors: Dict[str, str]) -> str:
         }}
         .key-findings {{
             background-color: #eef4ff;
-            border-left: 4px solid {colors['secondary']};
+            border-left: 4px solid {colors["secondary"]};
         }}
         .key-findings ul {{
             margin: 10px 0;
@@ -480,7 +473,7 @@ def _get_css(colors: Dict[str, str]) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Phase-2 report (atlas + SYMBOL annotation + LMM results)
+# PTM summary report (atlas + SYMBOL annotation + LMM results)
 # ---------------------------------------------------------------------------
 
 
@@ -491,10 +484,11 @@ def generate_phase2_report(
     annotation_summary: Optional[Dict[str, Any]] = None,
     lmm_results: Optional[Sequence["LMMResult"]] = None,
     binned_lmm_results: Optional[Sequence["BinnedLMMResult"]] = None,
-    title: str = "PTM Phase-2 Analysis Report",
+    title: str = "PTM Summary Report",
     description: Optional[str] = None,
 ) -> str:
-    """Write a Phase-2 HTML summary (no plots; plots added in Phase 4).
+    """Write an HTML summary of the atlas, annotation, and constraint-LMM
+    sections (no plots).
 
     Each section renders only if its corresponding input is non-None so the
     same report writer serves atlas-only, annotation-only, or test-only runs.
@@ -504,15 +498,15 @@ def generate_phase2_report(
     output_path : str
         Destination HTML file path.
     atlas_result : PTMAtlasResult, optional
-        Output of :func:`hvantk.ptm.atlas.build_atlas`.
+        Output of :func:`hvantk.algorithms.ptm.atlas.build_atlas`.
     annotation_summary : dict, optional
         Counters for the SYMBOL-based annotation; expected keys are
         ``n_total``, ``n_ptm_site``, ``n_ptm_proximal``, ``n_both``,
         ``n_neither`` but any subset is accepted.
     lmm_results : sequence of LMMResult, optional
-        Per-stratum constraint LMM results (notebook M style).
+        Per-stratum constraint LMM results.
     binned_lmm_results : sequence of BinnedLMMResult, optional
-        Per-stratum binned-interaction LMM results (notebook K style).
+        Per-stratum binned-interaction LMM results.
     title : str
         Report title.
     description : str, optional
@@ -525,7 +519,7 @@ def generate_phase2_report(
     """
     out_path = Path(output_path).expanduser()
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    logger.info("Generating PTM Phase-2 report at %s", out_path)
+    logger.info("Generating PTM report at %s", out_path)
 
     sections: List[str] = [
         _build_header(
@@ -554,7 +548,7 @@ def generate_phase2_report(
         f"<style>{css}</style></head><body>{body}</body></html>"
     )
     out_path.write_text(html_out, encoding="utf-8")
-    logger.info("Phase-2 report saved to %s", out_path)
+    logger.info("PTM report saved to %s", out_path)
     return str(output_path)
 
 
@@ -641,7 +635,7 @@ def _build_phase2_lmm_section(results: Sequence["LMMResult"]) -> str:
     return (
         "<section><h2>Constraint LMM</h2>"
         "<p>Per-stratum <code>log_af ~ is_ptm + (1|gene)</code> "
-        "(notebook M).</p>"
+        "mixed-effects regression.</p>"
         "<table><thead><tr>"
         "<th>Stratum</th><th>N</th><th>N PTM</th><th>N non-PTM</th>"
         "<th>N genes</th><th>N mixed</th>"
@@ -688,15 +682,16 @@ def _build_phase2_binned_section(results: Sequence["BinnedLMMResult"]) -> str:
 
     if not body_rows:
         body_rows = (
-            f"<tr><td colspan='{3 + 3 * len(all_bins) + 2}'>" "(no results)</td></tr>"
+            f"<tr><td colspan='{3 + 3 * len(all_bins) + 2}'>(no results)</td></tr>"
         )
 
     return (
         "<section><h2>Binned-Interaction LMM</h2>"
         "<p>Per-stratum <code>log_af ~ is_ptm * C(expr_bin) + (1|gene)</code> "
-        "(notebook K). Reference bin <code>b0_none</code> is zero-expression; "
-        "<code>b1..bK</code> are quantiles of <code>log2(expr + 1)</code>. "
-        "Missing cells indicate bins not realized for that stratum.</p>"
+        "mixed-effects regression. Reference bin <code>b0_none</code> is "
+        "zero-expression; <code>b1..bK</code> are quantiles of "
+        "<code>log2(expr + 1)</code>. Missing cells indicate bins not "
+        "realized for that stratum.</p>"
         f"<table><thead>{header}</thead><tbody>{body_rows}</tbody></table>"
         "</section>"
     )

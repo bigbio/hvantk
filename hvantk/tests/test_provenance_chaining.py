@@ -1,4 +1,5 @@
-"""Phase N: tests for provenance chaining through @algorithm decorator."""
+"""Tests for provenance chaining through @algorithm decorator."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -32,9 +33,7 @@ def test_single_artifact_input_chains_to_output():
     def passthrough(ann: AnnotationTable) -> AnnotationTable:
         # Build a fresh artifact with empty provenance.parents — the decorator
         # should fill them in from the input.
-        return AnnotationTable.from_pandas(
-            ann.to_pandas(), provenance=_prov("derived")
-        )
+        return AnnotationTable.from_pandas(ann.to_pandas(), provenance=_prov("derived"))
 
     input_ann = AnnotationTable.from_pandas(_df(), provenance=_prov("source"))
     output = passthrough(input_ann)
@@ -62,9 +61,7 @@ def test_two_artifact_inputs_chain_both_provenances():
 def test_kwarg_artifact_inputs_are_chained():
     @algorithm(name="kwarg_input", backends=[Backend.PANDAS])
     def kwarg_input(*, ann: AnnotationTable) -> AnnotationTable:
-        return AnnotationTable.from_pandas(
-            ann.to_pandas(), provenance=_prov("derived")
-        )
+        return AnnotationTable.from_pandas(ann.to_pandas(), provenance=_prov("derived"))
 
     src = AnnotationTable.from_pandas(_df(), provenance=_prov("source"))
     output = kwarg_input(ann=src)
@@ -76,9 +73,7 @@ def test_kwarg_artifact_inputs_are_chained():
 def test_non_artifact_args_do_not_chain():
     @algorithm(name="scalar_args", backends=[Backend.PANDAS])
     def scalar_args(ann: AnnotationTable, threshold: float = 0.5) -> AnnotationTable:
-        return AnnotationTable.from_pandas(
-            ann.to_pandas(), provenance=_prov("derived")
-        )
+        return AnnotationTable.from_pandas(ann.to_pandas(), provenance=_prov("derived"))
 
     src = AnnotationTable.from_pandas(_df(), provenance=_prov("source"))
     output = scalar_args(src, threshold=0.3)
@@ -107,9 +102,8 @@ def test_explicit_internal_chaining_is_preserved():
     @algorithm(name="self_chained", backends=[Backend.PANDAS])
     def self_chained(ann: AnnotationTable) -> AnnotationTable:
         import dataclasses
-        prov = dataclasses.replace(
-            _prov("derived"), parents=(deliberate_parent,)
-        )
+
+        prov = dataclasses.replace(_prov("derived"), parents=(deliberate_parent,))
         return AnnotationTable.from_pandas(ann.to_pandas(), provenance=prov)
 
     src = AnnotationTable.from_pandas(_df(), provenance=_prov("source"))

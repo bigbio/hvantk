@@ -30,7 +30,7 @@
         "format": "gmt",
         "size_bytes": 1677390,
         "url": "https://www.gsea-msigdb.org/gsea/msigdb/human/collections.jsp",
-        "description": "C2 Canonical Pathways collection, human gene symbols, v2026.1. 4,115 gene sets ranging from 5 to ~1500 members per set."
+        "description": "C2 Canonical Pathways collection, human gene symbols, v2026.1. 4,115 gene sets ranging from 5 to ~1500 members per set. `url` is provenance-only: the generic MSigDB collections landing page, not a direct download link -- the actual .gmt requires a free registration and, per `license`, a paid licence for commercial use, so acquisition is manual (the plugin declares `acquisition.mode: byo`, reason `credentialed`). Same landing-page pattern as the gtex_eqtl/ucsc_cellbrowser entries, whose `url` cannot resolve to one exact file either."
       }
     ]
   }

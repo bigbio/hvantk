@@ -1,9 +1,8 @@
 """
 HTML report generation for EnrichEx visualizations.
 
-The report builder follows the simplified approach documented in
-docs/planning/ENRICHEX_VISUALIZATION_DESIGN.md: static matplotlib plots,
-inline CSS, and lightweight string formatting (no template engines).
+The report builder uses static matplotlib plots, inline CSS, and lightweight
+string formatting (no template engines).
 """
 
 from __future__ import annotations
@@ -22,6 +21,7 @@ from hvantk.core.utils.gene_sets import GeneSetCollection
 from hvantk.algorithms.visualization.base import encode_figure_to_base64
 from hvantk.algorithms.enrichex.plot import (
     _resolve_significance,
+    _resolve_pvalue_column,
     plot_burden_forest,
     plot_enrichment_dotplot,
 )
@@ -523,11 +523,7 @@ def _build_burden_section(section: Dict[str, Any]) -> str:
     )
 
     return (
-        "<section id='burden'>"
-        "<h2>Burden Testing</h2>"
-        f"{plot_html}"
-        f"{table_html}"
-        "</section>"
+        f"<section id='burden'><h2>Burden Testing</h2>{plot_html}{table_html}</section>"
     )
 
 
@@ -572,7 +568,7 @@ def _get_css_styles(colors: Dict[str, str]) -> str:
             background-color: #f7f7f7;
         }}
         header {{
-            background: linear-gradient(90deg, {colors['primary']}, {colors['secondary']});
+            background: linear-gradient(90deg, {colors["primary"]}, {colors["secondary"]});
             color: white;
             padding: 30px;
             border-radius: 10px;
@@ -611,7 +607,7 @@ def _get_css_styles(colors: Dict[str, str]) -> str:
             padding: 10px;
         }}
         th {{
-            background-color: {colors['primary']};
+            background-color: {colors["primary"]};
             color: white;
         }}
         .embedded-image {{
@@ -630,13 +626,6 @@ def _get_css_styles(colors: Dict[str, str]) -> str:
             color: #666;
         }}
     """
-
-
-def _resolve_pvalue_column(df: pd.DataFrame) -> str:
-    for column in ("p_adjusted", "p_value"):
-        if column in df.columns:
-            return column
-    raise ValueError("Results must include p_adjusted or p_value columns.")
 
 
 def _format_float(value: Any) -> str:

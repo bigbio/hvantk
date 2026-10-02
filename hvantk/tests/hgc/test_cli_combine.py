@@ -11,7 +11,7 @@ from hvantk.tools.hgc.combine_cli import gvcf_combine, vds_combine
 def test_gvcf_combine_cli_basic():
     """Test gvcf-combine command with basic options."""
     runner = CliRunner()
-    with patch("hvantk.tools.hgc.combine_cli.combine_gvcfs") as mock_combine:
+    with patch("hvantk.algorithms.hgc.combine_gvcfs") as mock_combine:
         with patch(
             "hvantk.tools.hgc.combine_cli.validate_output_path"
         ) as mock_validate:
@@ -58,7 +58,7 @@ def test_gvcf_combine_cli_dry_run():
 def test_gvcf_combine_cli_with_vds_paths():
     """Test gvcf-combine command with VDS paths."""
     runner = CliRunner()
-    with patch("hvantk.tools.hgc.combine_cli.combine_gvcfs") as mock_combine:
+    with patch("hvantk.algorithms.hgc.combine_gvcfs") as mock_combine:
         with patch(
             "hvantk.tools.hgc.combine_cli.validate_output_path"
         ) as mock_validate:
@@ -92,7 +92,7 @@ def test_gvcf_combine_cli_default_forwards_empty_kwargs():
     unreachable. Exposing the knobs must not change the default behaviour.
     """
     runner = CliRunner()
-    with patch("hvantk.tools.hgc.combine_cli.combine_gvcfs") as mock_combine:
+    with patch("hvantk.algorithms.hgc.combine_gvcfs") as mock_combine:
         with patch(
             "hvantk.tools.hgc.combine_cli.validate_output_path"
         ) as mock_validate:
@@ -110,7 +110,7 @@ def test_gvcf_combine_cli_default_forwards_empty_kwargs():
 def test_gvcf_combine_cli_import_interval_size():
     """--import-interval-size is forwarded to the combiner (the parallelism knob)."""
     runner = CliRunner()
-    with patch("hvantk.tools.hgc.combine_cli.combine_gvcfs") as mock_combine:
+    with patch("hvantk.algorithms.hgc.combine_gvcfs") as mock_combine:
         with patch(
             "hvantk.tools.hgc.combine_cli.validate_output_path"
         ) as mock_validate:
@@ -137,7 +137,7 @@ def test_gvcf_combine_cli_import_interval_size():
 def test_gvcf_combine_cli_tree_merge_options():
     """--gvcf-batch-size and --branch-factor are forwarded to the combiner."""
     runner = CliRunner()
-    with patch("hvantk.tools.hgc.combine_cli.combine_gvcfs") as mock_combine:
+    with patch("hvantk.algorithms.hgc.combine_gvcfs") as mock_combine:
         with patch(
             "hvantk.tools.hgc.combine_cli.validate_output_path"
         ) as mock_validate:
@@ -167,7 +167,7 @@ def test_gvcf_combine_cli_tree_merge_options():
 def test_gvcf_combine_cli_exome_default_intervals():
     """--use-exome-default-intervals is forwarded (previously unreachable from the CLI)."""
     runner = CliRunner()
-    with patch("hvantk.tools.hgc.combine_cli.combine_gvcfs") as mock_combine:
+    with patch("hvantk.algorithms.hgc.combine_gvcfs") as mock_combine:
         with patch(
             "hvantk.tools.hgc.combine_cli.validate_output_path"
         ) as mock_validate:
@@ -249,7 +249,7 @@ def test_vds_combine_cli_basic():
 
         os.makedirs("input_dir")
 
-        with patch("hvantk.tools.hgc.combine_cli.combine_vdses") as mock_combine:
+        with patch("hvantk.algorithms.hgc.combine_vdses") as mock_combine:
             result = runner.invoke(
                 vds_combine,
                 ["--input-dir", "input_dir", "--output", "/out.vds"],
@@ -298,7 +298,7 @@ def test_vds_combine_cli_no_validate():
 
         os.makedirs("input_dir")
 
-        with patch("hvantk.tools.hgc.combine_cli.combine_vdses") as mock_combine:
+        with patch("hvantk.algorithms.hgc.combine_vdses") as mock_combine:
             result = runner.invoke(
                 vds_combine,
                 ["--input-dir", "input_dir", "--output", "/out.vds", "--no-validate"],

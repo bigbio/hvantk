@@ -10,8 +10,8 @@ compute_variant_qc then each ran a full `aggregate_entries` counting entries whe
 IS DEFINED *and* is invalid. That intersection is empty by construction: the count is the constant
 0 and the `if invalid_count:` warning branch is unreachable.
 
-Each of those aggregates was a full pass over the entry matrix (a 12 GiB MatrixTable on the
-benchmark cohort) to compute a number that could not be anything but zero. These tests assert the
+Each of those aggregates was a full pass over the entry matrix (a multi-GiB MatrixTable at
+cohort scale) to compute a number that could not be anything but zero. These tests assert the
 QC functions perform no eager entry aggregation at all.
 """
 

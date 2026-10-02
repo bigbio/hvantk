@@ -8,6 +8,7 @@ shape for cohort genotype data at TB scale.
 `mt.cols()` / `mt.rows()`. Entry-field access is deliberately not exposed —
 callers go through `to_hail_mt()` for any operation that touches entries.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -60,16 +61,20 @@ class VariantMatrix:
 
     def subset_samples(self, predicate: Expr) -> "VariantMatrix":
         from hvantk.core.models._compile import compile_to_hail_mt_col
+
         hail_expr = compile_to_hail_mt_col(predicate, self._mt)
         return VariantMatrix.from_hail_mt(
-            self._mt.filter_cols(hail_expr), provenance=self.provenance,
+            self._mt.filter_cols(hail_expr),
+            provenance=self.provenance,
         )
 
     def subset_variants(self, predicate: Expr) -> "VariantMatrix":
         from hvantk.core.models._compile import compile_to_hail_mt_row
+
         hail_expr = compile_to_hail_mt_row(predicate, self._mt)
         return VariantMatrix.from_hail_mt(
-            self._mt.filter_rows(hail_expr), provenance=self.provenance,
+            self._mt.filter_rows(hail_expr),
+            provenance=self.provenance,
         )
 
     # --- escape hatch ---
@@ -82,11 +87,13 @@ class VariantMatrix:
 
     def save(self, path: str | Path) -> None:
         from hvantk.core import io as core_io
+
         core_io.save(self, path)
 
     @classmethod
     def load(cls, path: str | Path) -> "VariantMatrix":
         from hvantk.core import io as core_io
+
         result = core_io.load(path)
         if not isinstance(result, cls):
             raise TypeError(

@@ -51,9 +51,7 @@ def fetch_fingerprint() -> dict:
     SYMBOL``). Does not stream the full CSV (~MB-scale).
     """
     try:
-        head = requests.head(
-            CLINGEN_BASE_URL, timeout=_TIMEOUT_S, allow_redirects=True
-        )
+        head = requests.head(CLINGEN_BASE_URL, timeout=_TIMEOUT_S, allow_redirects=True)
         head.raise_for_status()
         content_length = head.headers.get("Content-Length")
         if content_length is None:

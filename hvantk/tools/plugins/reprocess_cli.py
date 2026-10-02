@@ -173,7 +173,7 @@ def _default_intermediate(dataset, raw_dir):
     metavar="KEY=VALUE",
     help=(
         "Plugin-specific kwarg forwarded to the lifecycle download, parse, "
-        "and Phase B build stages (e.g. --plugin-arg cancer_type=brca for "
+        "and build stages (e.g. --plugin-arg cancer_type=brca for "
         "cptac:phospho, --plugin-arg reference_genome=GRCh38 for clinvar). "
         "Repeatable. Values are coerced: 'true'/'false' -> bool, integer "
         "strings -> int, decimal/scientific -> float, otherwise str."
@@ -216,7 +216,7 @@ def reprocess_cmd(
     verbose,
     quiet,
 ):
-    """Run download -> parse -> build for a plugin dataset."""
+    """Chain download -> parse -> build -> drift-check for a plugin dataset."""
     _configure_logging(verbose)
 
     # Per-stage progress to stderr (keeps stdout clean for piping). Each line
@@ -240,7 +240,7 @@ def reprocess_cmd(
         raise click.ClickException(f"unknown dataset: {dataset}")
 
     # Parse --plugin-arg KEY=VALUE pairs into a kwargs dict forwarded to
-    # download_fn, parse_fn, and the Phase B builder. Lets operators target
+    # download_fn, parse_fn, and the builder. Lets operators target
     # plugin-specific options (e.g. cancer_type for cptac:phospho,
     # reference_genome for clinvar, p_threshold for gtex-eqtl) without
     # per-plugin reprocess flags.
@@ -332,12 +332,12 @@ def reprocess_cmd(
     if not skip_build:
         _progress(f"build: {parsed_path} -> {output}")
         if spec.artifact_type is None:
-            # Legacy (Phase A) plugin not yet migrated to Phase B contract.
+            # Legacy plugin not yet migrated to the plugin builder contract.
             # Fall back to the old shape: spec.builder(input, output) writes
             # directly to disk. No provenance / artifact_type validation.
             spec.builder(parsed_path, output)
         else:
-            # Phase B contract: orchestrator handles BuildContext, validation,
+            # Plugin builder contract: orchestrator handles BuildContext, validation,
             # and save. Returns the stamped Provenance.
             #
             # Interface separation (#121): builders receive a GeneCatalogStreamer

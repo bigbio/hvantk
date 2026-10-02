@@ -1,4 +1,5 @@
-"""Smoke test: Phases E/F/G/H entry-points have @algorithm metadata."""
+"""Smoke test: enrichex, expression, qtlcascade, and hgc entry points have @algorithm metadata."""
+
 from __future__ import annotations
 
 import ast
@@ -9,7 +10,8 @@ import pytest
 from hvantk.core.models.backends import Backend, get_algorithm_meta
 
 
-# ---------- Phase E: enrichex ----------
+# ---------- enrichex ----------
+
 
 def test_enrichex_burden_analysis_has_metadata():
     from hvantk.algorithms.enrichex.burden import run_burden_analysis
@@ -25,7 +27,8 @@ def test_enrichex_stratified_burden_has_metadata():
     assert meta.name == "stratified_burden_analysis"
 
 
-# ---------- Phase F: expression ----------
+# ---------- expression ----------
+
 
 def test_expression_tissue_specificity_has_metadata():
     from hvantk.algorithms.expression.tissue_specificity import compute_specificity
@@ -34,7 +37,8 @@ def test_expression_tissue_specificity_has_metadata():
     assert meta.name == "tissue_specificity"
 
 
-# ---------- Phase G: qtlcascade (already had decorators) ----------
+# ---------- qtlcascade (already had decorators) ----------
+
 
 def test_qtlcascade_has_at_least_one_decorated_function():
     """qtlcascade had @algorithm decorators before this PR; verify they still register."""
@@ -43,13 +47,15 @@ def test_qtlcascade_has_at_least_one_decorated_function():
 
     mod = importlib.import_module("hvantk.algorithms.qtlcascade.cascade")
     decorated_count = sum(
-        1 for _, obj in inspect.getmembers(mod)
+        1
+        for _, obj in inspect.getmembers(mod)
         if callable(obj) and hasattr(obj, "_algorithm_meta")
     )
     assert decorated_count > 0
 
 
-# ---------- Phase H: hgc ----------
+# ---------- hgc ----------
+
 
 def test_hgc_combine_gvcfs_has_metadata():
     from hvantk.algorithms.hgc.combiners import combine_gvcfs
@@ -73,6 +79,7 @@ def test_hgc_convert_vds_to_mt_has_metadata():
 
 
 # ---------- Cross-phase: every domain stays skill-free ----------
+
 
 def test_algorithm_meta_captures_inputs_outputs():
     from hvantk.core.models import AnnotationTable
@@ -122,7 +129,9 @@ def test_existing_algorithm_meta_still_works():
     assert meta.outputs == {}
 
 
-@pytest.mark.parametrize("domain", ["enrichex", "expression", "qtlcascade", "hgc", "rerank"])
+@pytest.mark.parametrize(
+    "domain", ["enrichex", "expression", "qtlcascade", "hgc", "rerank"]
+)
 def test_domain_has_no_skill_imports(domain):
     root = Path(__file__).resolve().parents[1] / "algorithms" / domain
     bad = []

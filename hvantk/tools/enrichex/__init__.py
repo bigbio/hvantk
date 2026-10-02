@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 @click.group(
     name="enrichex",
-    help="Gene set enrichment analysis commands.",
+    help="Gene set enrichment analysis (overlap + burden).",
     context_settings=CONTEXT_SETTINGS,
 )
 @click.pass_context

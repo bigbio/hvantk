@@ -20,6 +20,7 @@ from hvantk.tests._snapshot_utils import (
     load_snapshot,
     phase_b_snapshot_adapter,
 )
+
 # Aliased to avoid shadowing the fixture name `regenerate_snapshots` in the test signature
 from hvantk.tests._snapshot_utils import regenerate_snapshots as regenerate_snapshots_fn
 
@@ -59,7 +60,9 @@ def test_uniprot_ptm_snapshot_round_trip(hail_session, tmp_path, regenerate_snap
             keys=SAMPLE_KEYS,
             builder_kwargs=builder_kwargs,
         )
-        pytest.skip("Snapshots regenerated; rerun without --regenerate-snapshots to assert.")
+        pytest.skip(
+            "Snapshots regenerated; rerun without --regenerate-snapshots to assert."
+        )
 
     output_path = str(tmp_path / "uniprot_ptm.ht")
     builder(input_path=FIXTURE, output_path=output_path, **builder_kwargs)
@@ -69,7 +72,9 @@ def test_uniprot_ptm_snapshot_round_trip(hail_session, tmp_path, regenerate_snap
     assert ht.count() == 5, "expected the GL000009.2 row to be filtered out"
 
     expected_schema = load_snapshot(SNAPSHOT_DIR / "schema.json")
-    assert hail_schema_to_dict(ht) == expected_schema, "UniProt PTM schema drifted from snapshot"
+    assert hail_schema_to_dict(ht) == expected_schema, (
+        "UniProt PTM schema drifted from snapshot"
+    )
 
     expected_rows = load_snapshot(SNAPSHOT_DIR / "sample_rows.json")
     actual_rows = collect_sample_rows(ht, keys=SAMPLE_KEYS)

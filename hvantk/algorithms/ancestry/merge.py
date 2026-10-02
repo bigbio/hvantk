@@ -79,8 +79,7 @@ def validate_matrixtable_compatibility(
     expected_keys = ["locus", "alleles"]
     if query_row_key != expected_keys:
         raise ValueError(
-            f"Unexpected row key structure: {query_row_key}. "
-            f"Expected {expected_keys}."
+            f"Unexpected row key structure: {query_row_key}. Expected {expected_keys}."
         )
 
     # Check reference genome compatibility

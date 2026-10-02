@@ -11,7 +11,7 @@ from hvantk.tools.hgc.convert_cli import vds2mt, mt2vcf
 def test_vds2mt_cli_basic():
     """Test vds2mt command with basic options."""
     runner = CliRunner()
-    with patch("hvantk.tools.hgc.convert_cli.convert_vds_to_mt") as mock_convert:
+    with patch("hvantk.algorithms.hgc.convert_vds_to_mt") as mock_convert:
         with patch(
             "hvantk.tools.hgc.convert_cli.validate_input_files"
         ) as mock_validate:
@@ -62,7 +62,7 @@ def test_vds2mt_cli_dry_run():
 def test_vds2mt_cli_skip_validation():
     """Test vds2mt command with --skip-validation."""
     runner = CliRunner()
-    with patch("hvantk.tools.hgc.convert_cli.convert_vds_to_mt") as mock_convert:
+    with patch("hvantk.algorithms.hgc.convert_vds_to_mt") as mock_convert:
         with patch(
             "hvantk.tools.hgc.convert_cli.validate_input_files"
         ) as mock_validate:
@@ -81,9 +81,7 @@ def test_vds2mt_cli_skip_validation():
 def test_mt2vcf_cli_basic():
     """Test mt2vcf command with basic options."""
     runner = CliRunner()
-    with patch(
-        "hvantk.tools.hgc.convert_cli.convert_mt_to_multi_sample_vcf"
-    ) as mock_convert:
+    with patch("hvantk.algorithms.hgc.convert_mt_to_multi_sample_vcf") as mock_convert:
         with patch(
             "hvantk.tools.hgc.convert_cli.validate_input_files"
         ) as mock_validate:
@@ -135,9 +133,7 @@ def test_mt2vcf_cli_dry_run():
 def test_mt2vcf_cli_min_ac():
     """Test mt2vcf command with custom min-ac."""
     runner = CliRunner()
-    with patch(
-        "hvantk.tools.hgc.convert_cli.convert_mt_to_multi_sample_vcf"
-    ) as mock_convert:
+    with patch("hvantk.algorithms.hgc.convert_mt_to_multi_sample_vcf") as mock_convert:
         with patch(
             "hvantk.tools.hgc.convert_cli.validate_input_files"
         ) as mock_validate:
@@ -156,9 +152,7 @@ def test_mt2vcf_cli_min_ac():
 def test_mt2vcf_cli_no_filter_adj():
     """Test mt2vcf command with --no-filter-adj."""
     runner = CliRunner()
-    with patch(
-        "hvantk.tools.hgc.convert_cli.convert_mt_to_multi_sample_vcf"
-    ) as mock_convert:
+    with patch("hvantk.algorithms.hgc.convert_mt_to_multi_sample_vcf") as mock_convert:
         with patch(
             "hvantk.tools.hgc.convert_cli.validate_input_files"
         ) as mock_validate:
@@ -177,14 +171,14 @@ def test_mt2vcf_cli_no_filter_adj():
 def test_vds2mt_forwards_n_partitions_to_the_converter():
     """The REAL (non-dry-run) forwarding, which had no test at all.
 
-    Round-3 review: deleting `n_partitions=n_partitions` from the convert_vds_to_mt call
-    left the whole suite green, so `hvantk hgc vds2mt --n-partitions 4` would write with
+    Deleting `n_partitions=n_partitions` from the convert_vds_to_mt call left the whole
+    suite green, so `hvantk hgc vds2mt --n-partitions 4` would write with
     the VDS's own layout while `--dry-run` on the identical command still printed
     `Partitions: 4`. That is #208's failure mode -- a flag accepted, echoed back
     affirmatively, and read by no stage -- reappearing on the command this PR was fixing.
     """
     runner = CliRunner()
-    with patch("hvantk.tools.hgc.convert_cli.convert_vds_to_mt") as mock_convert:
+    with patch("hvantk.algorithms.hgc.convert_vds_to_mt") as mock_convert:
         with patch(
             "hvantk.tools.hgc.convert_cli.validate_input_files"
         ) as mock_validate:
@@ -203,7 +197,7 @@ def test_vds2mt_defaults_n_partitions_to_none():
     """Unset must reach the converter as None, not 0 or a number: None is what keeps the
     VDS layout, and the converter rejects anything below 1."""
     runner = CliRunner()
-    with patch("hvantk.tools.hgc.convert_cli.convert_vds_to_mt") as mock_convert:
+    with patch("hvantk.algorithms.hgc.convert_vds_to_mt") as mock_convert:
         with patch(
             "hvantk.tools.hgc.convert_cli.validate_input_files"
         ) as mock_validate:

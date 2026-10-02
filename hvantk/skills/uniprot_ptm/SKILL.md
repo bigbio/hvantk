@@ -12,7 +12,7 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its reposit
 
 ## 1. Status & scope
 
-This skill covers BUILD and UPDATE of the UniProt PTM sites Hail Table. It does NOT cover the upstream PTM coordinate mapping pipeline (`hvantk/algorithms/ptm/pipeline.py`), variant annotation against PTM regions (`hvantk/algorithms/ptm/annotate.py`), or the constraint LMM (`hvantk/algorithms/ptm/analysis.py`, `hvantk/algorithms/ptm/test.py`) — those modules are PTM analysis tooling that *consumes* the table built here.
+This skill covers BUILD and UPDATE of the UniProt PTM sites Hail Table. It does NOT cover the upstream PTM coordinate mapping pipeline (`hvantk/algorithms/ptm/pipeline.py`), variant annotation against PTM regions (`hvantk/algorithms/ptm/annotate.py`), or the constraint LMM (`hvantk/algorithms/ptm/lmm.py`) — those modules are PTM analysis tooling that *consumes* the table built here.
 
 ## 2. Source identity
 
@@ -20,6 +20,7 @@ UniProt REST API endpoint, query, fields, and batch size live in `hvantk/skills/
 
 Stable provider notes:
 - UniProt provides a live JSON search endpoint at `https://rest.uniprot.org/uniprotkb/search`. There is no archival versioning at the query level — `Last-Modified` may be absent. The version date on the downloaded TSV is the date of download.
+- The drift probe (`hvantk/skills/uniprot_ptm/drift_probe.py`, probe version 2) fingerprints `X-UniProt-Release` (the release tag, e.g. `2026_03`) as `source_version`, `X-Total-Results` (the result count of the exact PTM query) as `extras.total_results`, and the sorted JSON key list of the first result as `headers.uniprot_entry_keys`; `X-UniProt-Release-Date` is recorded under `informational` and never signals drift. It fails closed — raises `DriftProbeError` rather than recording a partial fingerprint — when the release or count header is absent/unusable, the query returns zero results, or the HTTP request fails, because the scheduled drift bot regenerates a drifted baseline unattended and one transient omission would otherwise be committed as the new baseline (#271). What it cannot see: an in-place revision to a PTM annotation within the same release that leaves the result count unchanged — the count is a content proxy, not a full-body hash.
 - The downloader (`UniProtPTMDataset.download`) pages by cursor (HTTP `Link: <...>; rel="next"`) and writes one TSV row per MOD_RES feature. It does NOT produce mapped genomic coordinates.
 - The builder consumes the *mapped* TSV produced by `hvantk.algorithms.ptm.pipeline.map_ptm_sites`, not the raw UniProt download. The mapping step joins the UniProt TSV against an Ensembl GTF (and optionally CPTAC/PeptideAtlas phospho sources) to derive `chrom`, `codon_start`, `codon_end`, `strand`, `residue_pos`, `tissue_type`, etc.
 
@@ -67,11 +68,11 @@ When invoked to build or update:
 
 ## 8. Update playbook
 
-When UniProt releases a new monthly snapshot (typically late in the month):
+When UniProt releases a new snapshot (roughly every eight weeks):
 
 1. Re-download: `hvantk download uniprot-ptm --output-dir <raw_dir> --overwrite`. Note the date label.
 2. Diff the new raw TSV header against the previous fixture. New `_TSV_COLUMNS` entries imply a downloader schema change and require updating `shared/datasets.py`.
-3. Regenerate the drift fingerprint: invoke `fetch_fingerprint()` against the live endpoint and overwrite `tests/drift_fingerprint.json`. Inspect the `uniprot_entry_keys` field for additions or removals.
+3. Regenerate the drift fingerprint: invoke `fetch_fingerprint()` against the live endpoint and overwrite `tests/drift_fingerprint.json`. Inspect `source_version` and `extras.total_results` for the new release tag and result count, and `headers.uniprot_entry_keys` for additions or removals.
 4. Re-run the mapping pipeline (`hvantk.algorithms.ptm.pipeline.map_ptm_sites`) to refresh the mapped TSV input.
 5. Re-run `pytest hvantk/skills/uniprot_ptm/tests -m hail` and the broader PTM test suite (`pytest hvantk/tests/test_ptm.py -m hail`).
 6. Open PR; reviewer checks the drift fingerprint diff and the row-count delta in the PR description.

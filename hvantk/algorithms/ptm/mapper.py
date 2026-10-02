@@ -3,7 +3,7 @@
 Maps PTM sites from protein coordinates (UniProt accession + residue position)
 to genomic coordinates (chromosome + codon interval) using Ensembl GTF data.
 
-Validated on 100 proteins in Phase 0.5 (99.1% mapping rate, 0.076s for 449 sites).
+Validated on 100 proteins (99.1% mapping rate, 0.076s for 449 sites).
 """
 
 import bisect
@@ -131,7 +131,7 @@ def parse_ensembl_gtf(gtf_path: str) -> GTFData:
                 tab3 = line.index("\t", tab2 + 1)
             except ValueError:
                 continue
-            feature = line[tab2 + 1:tab3]
+            feature = line[tab2 + 1 : tab3]
 
             if feature != "transcript" and feature != "CDS":
                 continue
@@ -272,8 +272,8 @@ def resolve_transcript(
 ) -> Tuple[Optional[str], str]:
     """Resolve UniProt Ensembl cross-refs to a single transcript ID.
 
-    Uses the 3-strategy cascade validated in Phase 0.5:
-    1. MANE Select xref (97% of proteins in Phase 0.5)
+    Uses a 3-strategy cascade:
+    1. MANE Select xref (97% of the 100-protein validation set)
     2. Any Ensembl xref with CDS data (3%)
     3. Gene name -> MANE Select fallback (0% needed, safety net)
 

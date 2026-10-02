@@ -427,14 +427,14 @@ def test_reprocess_phase_b_plugin_uses_run_builder_for_spec(
     """A spec with artifact_type set should route through run_builder_for_spec
     (which uses BuildContext), not the legacy spec.builder(input, output) shape.
 
-    Also guards that --plugin-arg values reach the Phase B builder with type
+    Also guards that --plugin-arg values reach the plugin builder with type
     coercion applied — regressing this would silently drop build-time params
     (reference_genome, p_threshold, tissue, ...) and break the deep-dive docs.
     """
     import pandas as pd
     from hvantk.core.models import AnnotationTable, BuildContext
 
-    # Real Phase B-style builder accepting (parsed, ctx, **params)
+    # Real plugin-style builder accepting (parsed, ctx, **params)
     captured_ctx: dict = {}
     captured_params: dict = {}
 
@@ -447,7 +447,7 @@ def test_reprocess_phase_b_plugin_uses_run_builder_for_spec(
         )
 
     spec = _make_spec(builder=phase_b_builder)
-    # Set the Phase B fields on the spec — _make_spec doesn't set them by default
+    # Set the plugin builder fields on the spec — _make_spec doesn't set them by default
     object.__setattr__(spec, "artifact_type", AnnotationTable)
     object.__setattr__(spec, "schema_id", "test-rows-v1")
     object.__setattr__(spec, "plugin_version", "0.1.0")
@@ -481,7 +481,7 @@ def test_reprocess_phase_b_plugin_uses_run_builder_for_spec(
     # Confirm the builder got a real BuildContext (not a string)
     assert isinstance(captured_ctx["ctx"], BuildContext)
     assert captured_ctx["ctx"].source_fingerprint  # nonempty
-    # Confirm --plugin-arg values reached the Phase B builder with coercion
+    # Confirm --plugin-arg values reached the plugin builder with coercion
     assert captured_params["reference_genome"] == "GRCh38"
     assert captured_params["p_threshold"] == 5e-8
     assert captured_params["overwrite"] is False

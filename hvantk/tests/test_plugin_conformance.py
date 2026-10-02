@@ -1,4 +1,4 @@
-"""Per-plugin conformance tests for the Phase B builder contract.
+"""Per-plugin conformance tests for the plugin builder contract.
 
 Each test:
   1. Looks up the dataset's DatasetSpec from the live registry.
@@ -7,8 +7,9 @@ Each test:
   4. Verifies the saved artifact loads back via core/io with the expected type
      and provenance fields.
 
-Each plugin gets its own test as Phase B migrates it.
+Each plugin has its own test.
 """
+
 from __future__ import annotations
 
 import csv
@@ -77,7 +78,7 @@ def test_peptideatlas_phospho_round_trip(tmp_path, peptideatlas_phospho_parsed_t
 
     assert spec.artifact_type is AnnotationTable
     assert spec.schema_id == "peptideatlas-phospho-v1"
-    assert spec.plugin_version  # populated by Task 1
+    assert spec.plugin_version
 
     out = tmp_path / "phospho.parquet"
 
@@ -349,7 +350,7 @@ def test_insider_variants_round_trip(tmp_path):
     assert spec.schema_id == "insider-variants-v1"
 
     fixture = Path(
-        "hvantk/skills/insider/tests/testdata/raw/insider/insider_sample.bed"
+        "hvantk/skills/insider/variants/tests/testdata/raw/insider/insider_sample.bed"
     )
     assert fixture.exists()
 
@@ -750,7 +751,7 @@ def test_ucsc_cellbrowser_round_trip(
     assert loaded.n_obs == 2  # 2 cells
 
 
-# ---------- Phase K plugins with fixtures ----------
+# ---------- gevir:metrics, gnomad-metrics:metrics, dbnsfp:variants ----------
 
 
 @pytest.mark.hail

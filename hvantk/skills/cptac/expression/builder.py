@@ -1,6 +1,6 @@
 """AnnData builder for the CPTAC long-format protein expression resource.
 
-Owns the Phase B ``build_cptac_expression`` builder. Turns a long-format
+Owns the ``build_cptac_expression`` builder. Turns a long-format
 CPTAC expression TSV plus its sample metadata into an ``ExpressionMatrix``
 (samples x genes).
 """
@@ -21,7 +21,7 @@ def build_cptac_expression(
     sample_id_col: str = "SampleID",
     expression_col: str = "Expression",
 ):
-    """Phase B builder — returns an ExpressionMatrix from long-format CPTAC expression + metadata."""
+    """Plugin builder — returns an ExpressionMatrix from long-format CPTAC expression + metadata."""
     import pandas as pd
     from hvantk.core.models import ExpressionMatrix
     from hvantk.core.models.anndata_utils import annotate_column_summary_ad

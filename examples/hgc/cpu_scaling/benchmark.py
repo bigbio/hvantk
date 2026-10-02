@@ -405,19 +405,19 @@ def run_hgc_workflow(
     )
     logger.info(f"[{num_cpus} CPUs] Timing breakdown:")
     logger.info(
-        f"[{num_cpus} CPUs]   - GVCF → VDS:    {timings['gvcf_combine']:.1f}s ({timings['gvcf_combine']/timings['total']*100:.1f}%)"
+        f"[{num_cpus} CPUs]   - GVCF → VDS:    {timings['gvcf_combine']:.1f}s ({timings['gvcf_combine'] / timings['total'] * 100:.1f}%)"
     )
     logger.info(
-        f"[{num_cpus} CPUs]   - VDS → MT:      {timings['vds_to_mt']:.1f}s ({timings['vds_to_mt']/timings['total']*100:.1f}%)"
+        f"[{num_cpus} CPUs]   - VDS → MT:      {timings['vds_to_mt']:.1f}s ({timings['vds_to_mt'] / timings['total'] * 100:.1f}%)"
     )
     logger.info(
-        f"[{num_cpus} CPUs]   - MT Repartition: {timings.get('mt_repartition_checkpoint', 0):.1f}s ({timings.get('mt_repartition_checkpoint', 0)/timings['total']*100:.1f}%)"
+        f"[{num_cpus} CPUs]   - MT Repartition: {timings.get('mt_repartition_checkpoint', 0):.1f}s ({timings.get('mt_repartition_checkpoint', 0) / timings['total'] * 100:.1f}%)"
     )
     logger.info(
-        f"[{num_cpus} CPUs]   - Compute QC:    {timings['compute_qc']:.1f}s ({timings['compute_qc']/timings['total']*100:.1f}%) [compute={timings.get('compute_qc_compute',0):.1f}s, write={timings.get('compute_qc_write',0):.1f}s]"
+        f"[{num_cpus} CPUs]   - Compute QC:    {timings['compute_qc']:.1f}s ({timings['compute_qc'] / timings['total'] * 100:.1f}%) [compute={timings.get('compute_qc_compute', 0):.1f}s, write={timings.get('compute_qc_write', 0):.1f}s]"
     )
     logger.info(
-        f"[{num_cpus} CPUs]   - MT → VCF:      {timings['mt_to_vcf']:.1f}s ({timings['mt_to_vcf']/timings['total']*100:.1f}%)"
+        f"[{num_cpus} CPUs]   - MT → VCF:      {timings['mt_to_vcf']:.1f}s ({timings['mt_to_vcf'] / timings['total'] * 100:.1f}%)"
     )
     logger.info("=" * 80)
 

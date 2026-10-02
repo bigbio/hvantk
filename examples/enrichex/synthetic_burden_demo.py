@@ -2,10 +2,10 @@
 """
 End-to-end EnrichEx demo on a small synthetic dataset.
 
-Exercises the full pipeline built across Phases 1–5.1:
-  1. Generate synthetic cohort (Phase 5.1)
-  2. Run BurdenPipeline with variant-class stratification (Phases 1–3)
-  3. Generate plots: heatmap, volcano, forest (Phase 4)
+Exercises the full EnrichEx pipeline end to end:
+  1. Generate synthetic cohort
+  2. Run BurdenPipeline with variant-class stratification
+  3. Generate plots: heatmap, volcano, forest
   4. Check type-I error calibration on synonymous (negative control)
 """
 

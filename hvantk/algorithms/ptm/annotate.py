@@ -4,9 +4,9 @@ Annotates a variant Hail Table with PTM site proximity information using
 position expansion and locus-based joins. This avoids Hail's interval join
 limitations with overlapping intervals (common for adjacent PTM sites).
 
-Also exposes a pandas-based SYMBOL+chrom annotator
-(``annotate_variants_by_symbol``) that reproduces notebook N's Cell 4 / 11
-semantics for the CHD case-control workflow.
+Also exposes a SYMBOL+chrom annotator (``annotate_variants_by_symbol``) for
+variant tables held in pandas, with a gene symbol, chromosome and position
+per row rather than a Hail locus.
 """
 
 from __future__ import annotations
@@ -102,8 +102,14 @@ def annotate_variants_with_ptm(
     # Detect which evidence fields are available in the PTM table
     ptm_fields = set(ptm.row)
     evidence_fields = [
-        "source_db", "evidence_type", "n_observations",
-        "uniprot_id", "gene_symbol", "residue_pos", "amino_acid", "ptm_type",
+        "source_db",
+        "evidence_type",
+        "n_observations",
+        "uniprot_id",
+        "gene_symbol",
+        "residue_pos",
+        "amino_acid",
+        "ptm_type",
     ]
     available_evidence = [f for f in evidence_fields if f in ptm_fields]
     has_evidence = len(available_evidence) > 0
@@ -124,8 +130,9 @@ def annotate_variants_with_ptm(
     if has_evidence:
         # Collect evidence structs, keeping only the closest PTM sites
         agg_exprs["_evidence_all"] = hl.agg.collect(
-            hl.struct(_bp_dist=ptm._bp_dist, _in_codon=ptm._in_codon,
-                      evidence=ptm._evidence)
+            hl.struct(
+                _bp_dist=ptm._bp_dist, _in_codon=ptm._in_codon, evidence=ptm._evidence
+            )
         )
 
     ptm_by_pos = ptm.group_by(locus=ptm._join_locus).aggregate(**agg_exprs)
@@ -151,13 +158,17 @@ def annotate_variants_with_ptm(
             (ann._min_bp_dist + 2) // 3,
             hl.missing(hl.tint32),
         ),
-        **({
-            "ptm_evidence": hl.if_else(
-                hl.is_defined(ann),
-                ann._nearest_evidence,
-                hl.missing(ann._nearest_evidence.dtype),
-            )
-        } if has_evidence else {}),
+        **(
+            {
+                "ptm_evidence": hl.if_else(
+                    hl.is_defined(ann),
+                    ann._nearest_evidence,
+                    hl.missing(ann._nearest_evidence.dtype),
+                )
+            }
+            if has_evidence
+            else {}
+        ),
     )
 
     logger.info("PTM annotation complete")
@@ -176,9 +187,8 @@ def annotate_variants_by_symbol(
 ) -> pd.DataFrame:
     """Per-variant ``is_ptm_site`` / ``is_ptm_proximal`` via SYMBOL + chrom merge.
 
-    Reproduces notebook_n Cell 4 / Cell 11 semantics exactly. Both flags can
-    be True simultaneously (``is_ptm_proximal`` is NOT exclusive of
-    ``is_ptm_site``).
+    Both flags can be True simultaneously (``is_ptm_proximal`` is NOT
+    exclusive of ``is_ptm_site``).
 
     The routine:
 
@@ -209,7 +219,8 @@ def annotate_variants_by_symbol(
         Column names in ``variants_df``.
     atlas_gene_col, atlas_chrom_col : str
         Column names in ``ptm_df``; codon columns are always named
-        ``codon_start`` / ``codon_end`` to match the Phase-2 atlas TSV.
+        ``codon_start`` / ``codon_end`` to match the atlas TSV written by
+        :func:`~hvantk.algorithms.ptm.atlas.build_atlas`.
 
     Returns
     -------
@@ -220,15 +231,11 @@ def annotate_variants_by_symbol(
     required_variant_cols = {variant_gene_col, variant_chrom_col, variant_pos_col}
     missing = required_variant_cols - set(variants_df.columns)
     if missing:
-        raise KeyError(
-            f"variants_df is missing required columns: {sorted(missing)}"
-        )
+        raise KeyError(f"variants_df is missing required columns: {sorted(missing)}")
     required_atlas_cols = {atlas_gene_col, atlas_chrom_col, "codon_start", "codon_end"}
     missing = required_atlas_cols - set(ptm_df.columns)
     if missing:
-        raise KeyError(
-            f"ptm_df is missing required columns: {sorted(missing)}"
-        )
+        raise KeyError(f"ptm_df is missing required columns: {sorted(missing)}")
 
     out = variants_df.copy()
 
@@ -247,7 +254,7 @@ def annotate_variants_by_symbol(
     atlas["codon_start"] = atlas["codon_start"].astype(int)
     atlas["codon_end"] = atlas["codon_end"].astype(int)
 
-    # --- Cell 4: is_ptm_site (inside codon interval) ---
+    # --- is_ptm_site (inside codon interval) ---
     left = (
         out[[variant_gene_col, variant_chrom_col, variant_pos_col]]
         .reset_index()
@@ -266,7 +273,7 @@ def annotate_variants_by_symbol(
     ptm_var_ix = set(hit_site["_var_ix"].unique())
     out["is_ptm_site"] = out.index.isin(ptm_var_ix)
 
-    # --- Cell 11: is_ptm_proximal (inside expanded codon interval) ---
+    # --- is_ptm_proximal (inside expanded codon interval) ---
     atlas_prox = atlas.copy()
     atlas_prox["prox_start"] = atlas_prox["codon_start"] - int(proximal_bp)
     atlas_prox["prox_end"] = atlas_prox["codon_end"] + int(proximal_bp)

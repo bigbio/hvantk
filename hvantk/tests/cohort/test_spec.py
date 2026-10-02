@@ -1,8 +1,9 @@
 """Cohort manifest parsing and validation.
 
 All pure Python -- no Hail -- so these run in the default fast suite. The contract's
-validation logic is deliberately Hail-free (design G1).
+validation logic is deliberately Hail-free.
 """
+
 from pathlib import Path
 
 import pytest
@@ -58,7 +59,7 @@ def test_load_cohort_reads_the_minimal_manifest(tmp_path):
     assert m.table == "/data/demo_genes.tsv"
     assert m.prior.column == "minp"
     assert m.prior.direction == "lower_is_better"
-    # Optional blocks default to absent/empty -- a cohort is key + prior (D2).
+    # Optional blocks default to absent/empty -- a cohort is key + prior.
     assert m.labels is None
     assert m.cohort_axes == ()
     assert m.min_mapping_rate == 0.9
@@ -93,7 +94,7 @@ def test_prior_is_required(tmp_path):
 
 
 def test_prior_direction_is_required(tmp_path):
-    text = "name: demo\nkey: symbol\ntable: /data/t.tsv\n" "prior:\n  column: minp\n"
+    text = "name: demo\nkey: symbol\ntable: /data/t.tsv\nprior:\n  column: minp\n"
     with pytest.raises(Exception):
         load_cohort(_write(tmp_path, text))
 
@@ -159,13 +160,13 @@ def test_axis_column_colliding_with_the_prior_column_is_rejected(tmp_path):
     """The minp trap: the prior stat and a same-named model feature are different
     transforms of the same quantity (raw p vs -log10 p). Declaring both silently
     feeds the untransformed value in as a feature."""
-    text = MINIMAL + ("cohort_axes:\n" "  - {axis: burden, columns: [minp]}\n")
+    text = MINIMAL + ("cohort_axes:\n  - {axis: burden, columns: [minp]}\n")
     with pytest.raises(ValueError, match="duplicate declared column 'minp'"):
         load_cohort(_write(tmp_path, text))
 
 
 def test_axis_column_colliding_with_the_prior_column_is_rejected_on_direct_construction():
-    # Finding 3, "related root cause" (re-review): the duplicate-column check used to
+    # The duplicate-column check used to
     # run only inside load_cohort(), so a directly-constructed CohortManifest (every
     # test helper in this codebase, and any future non-YAML caller) could declare an
     # axis column that collides with the prior column. frame.py's include_prior=False

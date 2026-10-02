@@ -1,8 +1,7 @@
 """
 Plotting utilities for EnrichEx analyses.
 
-This module provides the publication-quality visualizations described in
-docs/planning/ENRICHEX_VISUALIZATION_DESIGN.md. The implementation uses
+This module provides publication-quality EnrichEx plots. The implementation uses
 matplotlib (and seaborn when available) so that no new dependencies are
 required beyond the existing hvantk[viz] extra.
 """
@@ -19,7 +18,7 @@ import numpy as np
 import pandas as pd
 
 from hvantk.algorithms.visualization.base import (
-    empty_figure as _empty_figure,
+    empty_figure,
     save_figure_to_path,
 )
 
@@ -103,7 +102,7 @@ def plot_enrichment_dotplot(
     """
     if results_df.empty:
         logger.warning("No enrichment results available to plot.")
-        return _empty_figure(
+        return empty_figure(
             output_path, format=format, dpi=dpi, title=title or "Enrichment Dot Plot"
         )
 
@@ -116,7 +115,7 @@ def plot_enrichment_dotplot(
         df = df[df["n_overlap"] >= max(min_overlap, 0)]
     if df.empty:
         logger.warning("No enrichment results available to plot.")
-        return _empty_figure(
+        return empty_figure(
             output_path, format=format, dpi=dpi, title=title or "Enrichment Dot Plot"
         )
 
@@ -128,7 +127,7 @@ def plot_enrichment_dotplot(
         df = df.head(top_n)
     if df.empty:
         logger.warning("Filtering removed all rows to plot.")
-        return _empty_figure(
+        return empty_figure(
             output_path, format=format, dpi=dpi, title=title or "Enrichment Dot Plot"
         )
 
@@ -264,12 +263,10 @@ def plot_burden_forest(
 ) -> plt.Figure:
     """
     Create a forest plot summarizing burden test results.
-
-    Parameters mirror the implementation plan documented under section 3.2.
     """
     if results_df.empty:
         logger.warning("No burden results available to plot.")
-        return _empty_figure(
+        return empty_figure(
             output_path, format=format, dpi=dpi, title=title or "Burden Forest Plot"
         )
 
@@ -288,7 +285,7 @@ def plot_burden_forest(
         df = df.head(top_n)
     if df.empty:
         logger.warning("No burden results available to plot.")
-        return _empty_figure(
+        return empty_figure(
             output_path, format=format, dpi=dpi, title=title or "Burden Forest Plot"
         )
 
@@ -447,7 +444,6 @@ def plot_enrichment_barplot(
     """
     Create a compact bar plot for enrichment results.
 
-    Parameters mirror the simplified design in docs/planning/ENRICHEX_VISUALIZATION_DESIGN.md.
     Use `alpha_threshold` to control the significance cutoff when `color_by="significant"`.
     """
     orientation = orientation.lower()
@@ -455,7 +451,7 @@ def plot_enrichment_barplot(
         raise ValueError("orientation must be 'horizontal' or 'vertical'.")
     if results_df.empty:
         logger.warning("No enrichment results available to plot.")
-        return _empty_figure(
+        return empty_figure(
             output_path, format=format, dpi=dpi, title=title or "Enrichment Bar Plot"
         )
     _check_dataframe(results_df, {"gene_set_name"})
@@ -473,7 +469,7 @@ def plot_enrichment_barplot(
     df = df.sort_values(value, ascending=orientation == "vertical")
     if df.empty:
         logger.warning("No enrichment results available to plot.")
-        return _empty_figure(
+        return empty_figure(
             output_path, format=format, dpi=dpi, title=title or "Enrichment Bar Plot"
         )
 
@@ -608,7 +604,7 @@ def plot_celltype_burden_heatmap(
         The created figure.
     """
     if results_df.empty:
-        fig = _empty_figure(
+        fig = empty_figure(
             title=title or "Cell-Type Burden Heatmap",
             message="No data available",
             figsize=figsize,
@@ -629,7 +625,7 @@ def plot_celltype_burden_heatmap(
         df = df[df["variant_class"].isin(variant_classes)]
 
     if df.empty:
-        fig = _empty_figure(
+        fig = empty_figure(
             title=title or "Cell-Type Burden Heatmap",
             message="No data after filtering by variant classes",
             figsize=figsize,
@@ -776,7 +772,7 @@ def plot_burden_volcano(
         The created figure.
     """
     if results_df.empty:
-        fig = _empty_figure(
+        fig = empty_figure(
             title=title or "Burden Volcano Plot",
             message="No data available",
             figsize=figsize,
@@ -934,7 +930,7 @@ def plot_celltype_forest(
     default_title = f"Forest Plot: {cell_type}"
 
     if results_df.empty:
-        fig = _empty_figure(
+        fig = empty_figure(
             title=title or default_title,
             message="No data available",
             figsize=figsize,
@@ -944,7 +940,7 @@ def plot_celltype_forest(
 
     # Filter to the requested cell type
     if "gene_set_name" not in results_df.columns:
-        fig = _empty_figure(
+        fig = empty_figure(
             title=title or default_title,
             message="Missing gene_set_name column",
             figsize=figsize,
@@ -954,7 +950,7 @@ def plot_celltype_forest(
 
     df = results_df[results_df["gene_set_name"] == cell_type].copy()
     if df.empty:
-        fig = _empty_figure(
+        fig = empty_figure(
             title=title or default_title,
             message=f"No data for cell type '{cell_type}'",
             figsize=figsize,

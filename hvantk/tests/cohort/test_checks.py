@@ -5,6 +5,7 @@ Moved out of the CLI (``hvantk.tools.cohort.cohort_cli``) into
 checks the CLI runs, without importing Click. Pure Python -- no Hail -- so these run in
 the default fast suite.
 """
+
 import gzip
 
 import pytest
@@ -42,7 +43,7 @@ def test_read_header_reads_a_tab_delimited_table_named_tsv(tmp_path):
 
 
 def test_read_header_sniffs_tab_delimiter_from_an_unusual_extension(tmp_path):
-    """finding 3: the old suffix whitelist (`.tsv`/`.txt`) mis-delimited any tab file
+    """The old suffix whitelist (`.tsv`/`.txt`) mis-delimited any tab file
     with any other extension -- `.tab`, or no extension at all -- producing a
     misleading "table has no column 'gene'" error even though the column is present,
     just comma-split into one field with embedded tabs. Sniffing the header line for a
@@ -53,7 +54,7 @@ def test_read_header_sniffs_tab_delimiter_from_an_unusual_extension(tmp_path):
 
 
 def test_read_header_handles_a_gzipped_tsv_table(tmp_path):
-    """finding 3: `Path("x.tsv.gz").suffix == ".gz"`, so the delimiter picked ','
+    """`Path("x.tsv.gz").suffix == ".gz"`, so the delimiter picked ','
     (wrong) and the file was opened in text mode over raw gzip bytes -- a bare
     UnicodeDecodeError on the gzip magic byte 0x8b, not a clean validation error."""
     p = tmp_path / "cohort.tsv.gz"

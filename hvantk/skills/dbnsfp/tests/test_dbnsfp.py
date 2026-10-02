@@ -1,4 +1,5 @@
-"""Conformance test for the dbnsfp plugin (Phase K)."""
+"""Conformance test for the dbnsfp plugin."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -27,9 +28,7 @@ def test_dbnsfp_variants_round_trip(tmp_path):
     assert spec.artifact_type is AnnotationTable
     assert spec.schema_id == "dbnsfp-v1"
 
-    fixture = Path(
-        "hvantk/tests/testdata/raw/dbnsfp/dbNSFP4_v49a_example_variants.bgz"
-    )
+    fixture = Path("hvantk/tests/testdata/raw/dbnsfp/dbNSFP4_v49a_example_variants.bgz")
     assert fixture.exists(), f"Fixture not found: {fixture}"
 
     out = tmp_path / "variants.ht"
@@ -44,6 +43,7 @@ def test_dbnsfp_variants_round_trip(tmp_path):
     assert prov.schema_id == "dbnsfp-v1"
 
     from hvantk.core import io as core_io
+
     loaded = core_io.load(out)
     assert isinstance(loaded, AnnotationTable)
     assert loaded.backend == "hail"
@@ -71,16 +71,23 @@ def test_rankscores_are_numeric_not_strings(tmp_path):
     spec = plugin_loader.get_registry().get_dataset("dbnsfp:variants")
     fixture = Path("hvantk/tests/testdata/raw/dbnsfp/dbNSFP4_v49a_example_variants.bgz")
     out = tmp_path / "variants.ht"
-    run_builder_for_spec(spec, parsed_input=fixture, output_path=out,
-                         plugin_version=spec.plugin_version)
+    run_builder_for_spec(
+        spec, parsed_input=fixture, output_path=out, plugin_version=spec.plugin_version
+    )
 
     ht = hl.read_table(str(out))
     rank = [f for f in ht.row for _ in (0,) if f.endswith("_rankscore")]
     assert len(rank) >= 50, f"expected dbNSFP's ~57 rankscore fields, found {len(rank)}"
     wrong = [f for f in rank if ht[f].dtype != hl.tfloat64]
-    assert not wrong, f"rankscore fields still non-float: {wrong[:5]} ({len(wrong)} total)"
+    assert not wrong, (
+        f"rankscore fields still non-float: {wrong[:5]} ({len(wrong)} total)"
+    )
 
     # "." must become missing, not 0.0 -- a missing predictor is not a benign one.
-    row = ht.filter(hl.is_defined(ht.MutationTaster_converted_rankscore)).head(1).collect()
+    row = (
+        ht.filter(hl.is_defined(ht.MutationTaster_converted_rankscore))
+        .head(1)
+        .collect()
+    )
     assert row, "no row with a defined MutationTaster_converted_rankscore"
     assert 0.0 <= row[0].MutationTaster_converted_rankscore <= 1.0

@@ -15,6 +15,7 @@ comma list that may contain ``lo-hi`` ranges (``[29,33,36-38,41]``) or be empty 
 The reduction is per PROTEIN, not per pair: each row contributes to both of its
 proteins, so the table is scanned once and both sides accumulated.
 """
+
 from __future__ import annotations
 
 import logging

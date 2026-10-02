@@ -305,6 +305,143 @@ def test_documented_command_does_not_overwrite_its_input(path: Path, command: st
     )
 
 
+# --- `reprocess <provider>:<dataset>` must name a dataset that actually exists -----------
+#
+# `test_documented_command_options_exist` appends `--help`, which click resolves
+# WITHOUT ever looking at the `reprocess` command's positional argument -- `--help`
+# short-circuits before click gets anywhere near resolving it against the plugin
+# registry. So a stale or typo'd dataset name reads as a passing command there. That
+# is exactly how `docs_site/getting-started/quickstart.md` and `docs_site/
+# architecture.md` came to document `hvantk reprocess ucsc-cellbrowser:adultPancreas`,
+# which is not a real dataset (the plugin ships `adult-ctx` / `dev-ctx`) and raises a
+# bare `KeyError` if actually run.
+
+
+def _documented_reprocess_invocations() -> list[tuple[Path, str, list[str], str]]:
+    """(source file, full command, argv, dataset positional) for every documented,
+    non-prose ``hvantk reprocess <dataset> ...`` invocation that names a dataset.
+
+    A bare ``hvantk reprocess`` with no further token (prose naming the subcommand
+    itself, e.g. "the `reprocess` command") is not an invocation of anything and is
+    excluded, same as ``_is_prose_shorthand`` excludes a placeholder dataset like
+    ``<provider>:<dataset>``.
+    """
+    out = []
+    for path, command in DOCUMENTED:
+        try:
+            argv = [a for a in shlex.split(command)[1:] if a != "..."]
+        except ValueError:
+            continue
+        if not argv or argv[0] != "reprocess" or _is_prose_shorthand(argv):
+            continue
+        dataset = next((a for a in argv[1:] if not a.startswith("-")), None)
+        if dataset is None:
+            continue
+        out.append((path, command, argv, dataset))
+    return out
+
+
+def test_documented_reprocess_datasets_exist_in_the_registry():
+    """Every documented ``hvantk reprocess <provider>:<dataset>`` must name a dataset
+    the plugin registry actually knows about.
+
+    Checked against ``list_manifests()`` -- the descriptive, pre-resolution view --
+    rather than ``get_dataset()``: resolving callables can fail for reasons that have
+    nothing to do with whether the documented NAME is real (a missing optional
+    runtime, say), and that is not what this test is about.
+    """
+    from hvantk.core.plugin.loader import get_registry
+
+    known = {m.name for m in get_registry().list_manifests()}
+    offenders = [
+        f"{path.relative_to(REPO_ROOT)}: {command}"
+        for path, command, _argv, dataset in _documented_reprocess_invocations()
+        if dataset not in known
+    ]
+    assert not offenders, (
+        "documented `hvantk reprocess <provider>:<dataset>` names a dataset the "
+        "plugin registry does not know (a --help check cannot catch this -- it "
+        "short-circuits before the positional is ever resolved):\n  "
+        + "\n  ".join(offenders)
+    )
+
+
+def test_documented_reprocess_without_a_downloader_passes_skip_download():
+    """A dataset with no ``lifecycle.download`` and no ``acquisition.mode: byo`` has
+    no downloader to run at all (tracked by issue #386). A documented invocation that
+    omits ``--skip-download`` cannot actually run as written: `reprocess` would try
+    to run a download step the plugin does not implement.
+
+    Skips any dataset name the previous test already flags as unknown, so one stale
+    name produces one failure here rather than two.
+    """
+    from hvantk.core.plugin.loader import get_registry
+
+    manifests = {m.name: m for m in get_registry().list_manifests()}
+    offenders = []
+    for path, command, argv, dataset in _documented_reprocess_invocations():
+        dm = manifests.get(dataset)
+        if dm is None:
+            continue
+        needs_downloader_skip = not dm.has_download_fn and not dm.acquisition.is_byo
+        if needs_downloader_skip and "--skip-download" not in argv:
+            offenders.append(f"{path.relative_to(REPO_ROOT)}: {command}")
+    assert not offenders, (
+        "documented `hvantk reprocess <provider>:<dataset>` for a dataset with "
+        "neither a downloader nor a BYO acquisition note must pass --skip-download, "
+        "or the command cannot actually run as written (see issue #386):\n  "
+        + "\n  ".join(offenders)
+    )
+
+
+def _documented_output(argv: list[str]) -> str | None:
+    """The value of ``--output``/``-o`` in a documented argv, in either spelling."""
+    for i, arg in enumerate(argv):
+        if arg in ("--output", "-o") and i + 1 < len(argv):
+            return argv[i + 1]
+        if arg.startswith("--output="):
+            return arg.split("=", 1)[1]
+    return None
+
+
+def test_documented_reprocess_output_has_the_datasets_native_extension():
+    """A documented ``--output`` must carry the extension ``reprocess`` will accept.
+
+    ``reprocess`` refuses a mismatched extension up front (``_check_output_extension``),
+    so a documented ``.ht`` for a dataset that writes ``.h5ad``, ``.parquet`` or ``.mt``
+    exits 2 the moment a reader runs it. ``--help`` cannot see this. The expected
+    extension comes from the same ``_expected_extensions`` the CLI uses, so this check
+    cannot drift from what the command enforces. A placeholder output (``<out>``,
+    ``$OUT``, ``{output}``) is not a path and is skipped.
+    """
+    from types import SimpleNamespace
+
+    from hvantk.core.plugin.loader import get_registry
+    from hvantk.tools.plugins.reprocess_cli import _expected_extensions
+
+    manifests = {m.name: m for m in get_registry().list_manifests()}
+    offenders = []
+    for path, command, argv, dataset in _documented_reprocess_invocations():
+        dm = manifests.get(dataset)
+        output = _documented_output(argv)
+        if dm is None or output is None or any(c in output for c in "<${"):
+            continue
+        spec = SimpleNamespace(
+            artifact_type=SimpleNamespace(__name__=dm.artifact_type_name),
+            backend=dm.backend,
+        )
+        expected = _expected_extensions(spec)
+        if expected and not any(Path(output).name.endswith(e) for e in expected):
+            offenders.append(
+                f"{path.relative_to(REPO_ROOT)}: {dataset} writes "
+                f"{' or '.join(expected)}, documented --output {output}"
+            )
+    assert not offenders, (
+        "documented `hvantk reprocess` --output has an extension the command refuses "
+        "for that dataset:\n  " + "\n  ".join(offenders)
+    )
+
+
 def _tree_paths(markdown: str) -> set[str]:
     """Reconstruct the repo-relative path of every entry in an ASCII tree.
 
@@ -374,6 +511,74 @@ def test_the_tree_parser_reconstructs_nested_paths():
     assert "core" in drawn and len(drawn) > 20
 
 
+# --- backticked repo paths must exist ----------------------------------------------------
+#
+# `test_documented_command_options_exist` catches a wrong COMMAND, but a wrong PATH in prose
+# rode through: `hvantk/resources/registry/...` (removed in the five-package refactor),
+# `hvantk/qtlcascade/`, `hvantk/enrichex/`, `hvantk/algorithms/ptm/test.py` all survived
+# in provider specs until #359. A path in backticks is a claim about the tree.
+
+_REPO_PATH_SPAN = re.compile(r"`(hvantk/[^`\s]+)`")
+
+#: Paths a document names precisely to say they do NOT exist. Keep this list short and
+#: each entry justified; a stale entry here is the same rot this test exists to stop.
+DELIBERATELY_ABSENT_PATHS = {
+    # _conventions/SKILL.md: "There is no `hvantk/core/builders/table.py`" -- the sentence
+    # explains why builders return artifacts rather than a shared base class.
+    "hvantk/core/builders/table.py",
+}
+
+
+def _documented_repo_paths() -> list[tuple[str, str]]:
+    """(source file, span) for every backticked hvantk/... path in the docs."""
+    out = []
+    files = sorted((REPO_ROOT / "hvantk" / "skills").rglob("SKILL.md")) + sorted(
+        (REPO_ROOT / "docs_site").rglob("*.md")
+    )
+    for md in files:
+        for span in _REPO_PATH_SPAN.findall(md.read_text()):
+            out.append((str(md.relative_to(REPO_ROOT)), span))
+    return out
+
+
+def _path_part(span: str) -> str:
+    """`hvantk/x/test_y.py::test_z` -> `hvantk/x/test_y.py`; `hvantk/x/c.py:SYMBOL` -> `hvantk/x/c.py`."""
+    path = span.split("::", 1)[0]
+    head, sep, tail = path.rpartition(":")
+    if sep and tail and not tail.startswith("/") and "/" not in tail:
+        path = head
+    return path.rstrip("/")
+
+
+def test_documented_repo_paths_exist():
+    missing = sorted(
+        {
+            (src, span)
+            for src, span in _documented_repo_paths()
+            if not _is_illustrative(span)
+            and _path_part(span) not in DELIBERATELY_ABSENT_PATHS
+            and not (REPO_ROOT / _path_part(span)).exists()
+        }
+    )
+    assert not missing, (
+        "backticked hvantk/... paths that do not exist in the tree (fix the doc, or if the "
+        "sentence is about the path NOT existing, add it to DELIBERATELY_ABSENT_PATHS with "
+        f"a reason):\n" + "\n".join(f"  {src}: `{span}`" for src, span in missing)
+    )
+
+
+def test_deliberately_absent_paths_are_still_absent_and_still_cited():
+    """The allowlist must not outlive the sentences it excuses."""
+    cited = {_path_part(span) for _, span in _documented_repo_paths()}
+    for path in DELIBERATELY_ABSENT_PATHS:
+        assert not (REPO_ROOT / path).exists(), (
+            f"{path} exists now; drop it from the allowlist"
+        )
+        assert path in cited, (
+            f"{path} is no longer cited anywhere; drop it from the allowlist"
+        )
+
+
 #: Names hvantk has presented as builder return types, current and historical.
 #: Hardcoded rather than pattern-matched because Hail owns `Table` and
 #: `MatrixTable`, which the HGC docs legitimately annotate with -- a shape-based
@@ -414,9 +619,9 @@ def test_documented_artifact_annotations_are_importable():
             getattr(models, name)
         except Exception as exc:  # noqa: BLE001 - report any import failure
             unresolvable.append(f"{name}: {type(exc).__name__}: {exc}")
-    assert (
-        not unresolvable
-    ), f"hvantk.core.models lists these in __all__ but cannot resolve them: {unresolvable}"
+    assert not unresolvable, (
+        f"hvantk.core.models lists these in __all__ but cannot resolve them: {unresolvable}"
+    )
 
     stale = sorted(HVANTK_ARTIFACT_NAMES - exported)
     offenders = []

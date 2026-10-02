@@ -1,12 +1,12 @@
 """Tests for AnnData-based expression helpers and visualizations.
 
-The Phase A ``build_*_ad`` builders (Expression Atlas, CPTAC, UCSC Cell
+The legacy ``build_*_ad`` builders (Expression Atlas, CPTAC, UCSC Cell
 Browser) were retired with issue #114; the per-skill tests now exercise the
-Phase B ``build_<x>_<dataset>`` builders via ``run_builder_for_spec`` (see
+plugin ``build_<x>_<dataset>`` builders via ``run_builder_for_spec`` (see
 ``hvantk/skills/<plugin>/tests/test_builder.py``). What stays here:
 
 - Coverage for ``create_anndata_from_expression_atlas`` (a shared helper
-  used by the Expression Atlas Phase B builder) — sanity checks that the
+  used by the Expression Atlas plugin builder) — sanity checks that the
   TSV→AnnData transposition is correct.
 - Coverage for ``visualize_expression_distribution`` — generic AnnData
   visualization utility, unrelated to the build path.
@@ -27,7 +27,9 @@ class TestExpressionAtlasHelpers:
         with open(path, "w") as fh:
             fh.write("Gene ID\tGene Name\t" + "\t".join(samples) + "\n")
             for gid, gname, row in zip(gene_ids, gene_names, values):
-                fh.write(gid + "\t" + gname + "\t" + "\t".join(str(v) for v in row) + "\n")
+                fh.write(
+                    gid + "\t" + gname + "\t" + "\t".join(str(v) for v in row) + "\n"
+                )
 
     def test_builds_without_sdrf_metadata(self, tmp_path):
         """Build AnnData from expression TSV only, no SDRF."""
@@ -79,6 +81,7 @@ class TestVisualizeExpressionAd:
             visualize_expression_distribution,
         )
         import matplotlib
+
         matplotlib.use("Agg")  # non-interactive backend
         import matplotlib.pyplot as plt
 
@@ -96,6 +99,7 @@ class TestVisualizeExpressionAd:
             visualize_expression_distribution,
         )
         import matplotlib
+
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
 

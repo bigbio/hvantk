@@ -4,9 +4,9 @@ PTM CLI Commands - Post-Translational Modification Analysis
 This module provides CLI commands for the PTM variant classification pipeline:
 - build: Download PTM data, map coordinates, build Hail Table
 - annotate: Annotate a variant table with PTM site information
-- landscape: PTM-variant overlap analysis (Q1)
-- export-strata: Export PTM/non-PTM variant strata for predictor evaluation (Q2)
-- population: Population-level PTM-variant burden (Q3)
+- landscape: PTM-variant overlap analysis
+- export-strata: Export PTM/non-PTM variant strata for predictor evaluation
+- population: Population-level PTM-variant burden
 - report: Generate summary report
 """
 
@@ -26,29 +26,7 @@ logger = logging.getLogger(__name__)
 )
 @click.pass_context
 def ptm_group(ctx):
-    """PTM command group for variant classification analysis.
-
-    \b
-    Workflow:
-      1. hvantk ptm build          — Download PTM data + map coordinates + build Hail Table
-      2. hvantk ptm annotate       — Annotate variants with PTM site information
-      3. hvantk ptm landscape      — PTM-variant overlap analysis (Q1)
-      4. hvantk ptm export-strata  — Export PTM/non-PTM variant lists for PSROC (Q2)
-      5. hvantk ptm population     — Population-level PTM-variant burden (Q3)
-      6. hvantk ptm constraint     — Stratified AF depletion at PTM codons (by tissue/cell-type)
-      7. hvantk ptm report         — Generate summary report
-
-    \b
-    For predictor evaluation (Q2), compose with PSROC:
-      hvantk ptm export-strata --annotated-ht clinvar_ptm.ht -o strata/
-      hvantk psroc --variants strata/ptm_variants.txt --clinvar-ht clinvar.ht ...
-      hvantk psroc --variants strata/non_ptm_variants.txt --clinvar-ht clinvar.ht ...
-
-    \b
-    Examples:
-      hvantk ptm build --output-dir data/ptm/ --output-ht data/ptm/ptm_sites.ht
-      hvantk ptm annotate --variants-ht clinvar.ht --ptm-ht ptm_sites.ht -o annotated.ht
-    """
+    """Post-translational modification variant classification commands."""
     ctx.ensure_object(dict)
 
 
@@ -104,12 +82,20 @@ def ptm_group(ctx):
 )
 @click.pass_context
 def ptm_build(
-    ctx, output_dir, output_ht, gtf_path, ptm_tsv, peptideatlas_tsv, cptac_tsv, flanking_codons, overwrite
+    ctx,
+    output_dir,
+    output_ht,
+    gtf_path,
+    ptm_tsv,
+    peptideatlas_tsv,
+    cptac_tsv,
+    flanking_codons,
+    overwrite,
 ):
     """Download PTM data, map coordinates to genome, and build a Hail Table.
 
     \b
-    This is the main entry point for the PTM pipeline (Phases 1-2). It:
+    This is the main entry point for the PTM pipeline. It:
       1. Downloads the Ensembl GTF (if not provided via --gtf-path)
       2. Downloads UniProt PTM data (if not provided via --ptm-tsv)
       3. Parses the GTF and maps PTM sites to genomic coordinates
@@ -186,6 +172,8 @@ def ptm_annotate(ctx, variants_ht, ptm_ht, output_ht, flanking_codons, overwrite
       is_ptm_proximal  — variant within flanking window (not at codon)
       ptm_types        — set of PTM categories (e.g., phosphorylation)
       ptm_distance     — approximate distance in residues to nearest PTM site
+      ptm_evidence     — per-site evidence for the nearest site(s); present only
+                         when the PTM table carries evidence fields
 
     \b
     Examples:
@@ -237,7 +225,7 @@ def ptm_annotate(ctx, variants_ht, ptm_ht, output_ht, flanking_codons, overwrite
 @click.option("--save-plots", is_flag=True, help="Save plots alongside JSON output")
 @click.pass_context
 def ptm_landscape_cmd(ctx, clinvar_ht, ptm_ht, output, flanking_codons, save_plots):
-    """PTM-variant overlap and enrichment analysis (Q1).
+    """PTM-variant overlap and enrichment analysis.
 
     \b
     Cross-references ClinVar P/LP variants with PTM sites, computes overlap
@@ -316,7 +304,7 @@ def ptm_landscape_cmd(ctx, clinvar_ht, ptm_ht, output, flanking_codons, save_plo
 )
 @click.pass_context
 def ptm_export_strata(ctx, annotated_ht, output):
-    """Export PTM-stratified variant lists for downstream analysis (Q2).
+    """Export PTM-stratified variant lists for downstream analysis.
 
     \b
     Takes a PTM-annotated variant table (output of 'hvantk ptm annotate') and
@@ -370,7 +358,7 @@ def ptm_export_strata(ctx, annotated_ht, output):
 def ptm_population_cmd(
     ctx, gnomad_ht, ptm_ht, af_field, output, flanking_codons, save_plots
 ):
-    """Population-level PTM-variant allele frequency analysis (Q3).
+    """Population-level PTM-variant allele frequency analysis.
 
     \b
     Compares allele frequency distributions at PTM sites vs non-PTM coding
@@ -441,7 +429,7 @@ def ptm_report(ctx, output, landscape_json, population_json, title, description)
     """Generate PTM analysis summary HTML report.
 
     \b
-    Combines landscape (Q1) and/or population (Q3) results into a single
+    Combines landscape and/or population results into a single
     HTML report with embedded plots and summary tables.
 
     \b
@@ -460,7 +448,10 @@ def ptm_report(ctx, output, landscape_json, population_json, title, description)
 
     try:
         import json
-        from hvantk.algorithms.ptm.analysis import PTMLandscapeResult, PTMPopulationResult
+        from hvantk.algorithms.ptm.analysis import (
+            PTMLandscapeResult,
+            PTMPopulationResult,
+        )
         from hvantk.algorithms.ptm.report import generate_report
 
         landscape_result = None
@@ -642,7 +633,10 @@ def ptm_constraint(
           --output-dir results/ptm-farah/
     """
     try:
-        from hvantk.algorithms.ptm.constraint import PTMConstraintConfig, run_ptm_constraint
+        from hvantk.algorithms.ptm.constraint import (
+            PTMConstraintConfig,
+            run_ptm_constraint,
+        )
 
         config = PTMConstraintConfig(
             variants_ht_path=variants_ht,
@@ -685,7 +679,7 @@ def ptm_constraint(
 
 
 # ---------------------------------------------------------------------------
-# Phase-2 subcommands: atlas (atlas assembly facade) and test (LMM runners)
+# PTM subcommands: atlas (atlas assembly facade) and test (LMM runners)
 # ---------------------------------------------------------------------------
 
 
@@ -701,7 +695,10 @@ def ptm_constraint(
     "--output-ht",
     type=str,
     required=True,
-    help="Path to the final PTM sites Hail Table (.ht).",
+    help=(
+        "Path for the PTM sites Hail Table (.ht). `ptm atlas` stops at the combined "
+        "TSV and does not write it yet; use `hvantk ptm build` for the table."
+    ),
 )
 @click.option(
     "--sources",
@@ -717,7 +714,10 @@ def ptm_constraint(
     "--uniprot-tsv",
     type=click.Path(exists=True),
     default=None,
-    help="Pre-downloaded UniProt PTM TSV (optional; auto-downloaded if omitted).",
+    help=(
+        "Pre-downloaded UniProt PTM TSV. Needed: `ptm atlas` does not download it "
+        "(`hvantk ptm build` does)."
+    ),
 )
 @click.option(
     "--peptideatlas-tsv",
@@ -742,7 +742,7 @@ def ptm_constraint(
     type=int,
     default=7,
     show_default=True,
-    help="Flanking-codon window (Phase-2 default matches notebook A).",
+    help="Flanking-codon window for proximity intervals.",
 )
 @click.option("--overwrite", is_flag=True)
 @click.pass_context
@@ -758,13 +758,12 @@ def ptm_atlas(
     flanking_codons,
     overwrite,
 ):
-    """Phase-2 PTM atlas assembly (notebook A facade).
+    """PTM atlas assembly.
 
     \b
-    Delegates to hvantk.algorithms.ptm.atlas.build_atlas, which in turn delegates to
-    ptm_build_pipeline. Produces ptm_sites_combined.tsv.bgz (UniProt +
-    PeptideAtlas) or ptm_sites_all_combined.tsv.bgz (when --sources includes
-    cptac).
+    Delegates to hvantk.algorithms.ptm.atlas.build_atlas, which in turn calls
+    ptm_build_pipeline_core. Writes ptm_sites_combined.tsv.bgz for multiple
+    sources, or ptm_sites_mapped.tsv.bgz for UniProt alone.
 
     \b
     Example:
@@ -796,7 +795,10 @@ def ptm_atlas(
         click.echo(f"Sources used: {', '.join(result.sources_used)}")
         click.echo(f"Sites mapped: {result.n_sites:,}")
         click.echo(f"Combined TSV: {result.combined_tsv}")
-        click.echo(f"Hail Table:   {result.output_ht}")
+        if result.output_ht:
+            click.echo(f"Hail Table:   {result.output_ht}")
+        else:
+            click.echo("Hail Table:   not built (use `hvantk ptm build` for the table)")
 
     except Exception as e:
         logger.exception(f"PTM atlas failed: {e}")
@@ -814,7 +816,11 @@ def _read_variants_table(path: str):
     # ``variants.csv.bgz`` are parsed as CSV, not TSV.
     compression_suffixes = {".gz", ".bgz", ".bz2"}
     base_suffix = next(
-        (s.lower() for s in reversed(Path(p).suffixes) if s.lower() not in compression_suffixes),
+        (
+            s.lower()
+            for s in reversed(Path(p).suffixes)
+            if s.lower() not in compression_suffixes
+        ),
         "",
     )
     if base_suffix in {".tsv", ".tab"}:
@@ -843,7 +849,10 @@ def _read_expression_wide(pkl_path, tsv_path):
     "test_mode",
     type=click.Choice(["lmm", "lmm-binned"], case_sensitive=False),
     required=True,
-    help="LMM variant to run (notebook M = lmm, notebook K = lmm-binned).",
+    help=(
+        "LMM variant to run: 'lmm', or 'lmm-binned' (adds an is_ptm x "
+        "expression-bin interaction)."
+    ),
 )
 @click.option(
     "--input",
@@ -903,12 +912,12 @@ def ptm_test(
     expression_pkl,
     expression_tsv,
 ):
-    """Run per-stratum PTM constraint tests (notebook M / K).
+    """Run per-stratum PTM constraint tests.
 
     \b
-    --test lmm        Per-stratum log_af ~ is_ptm + (1|gene) (notebook M).
+    --test lmm        Per-stratum log_af ~ is_ptm + (1|gene).
     --test lmm-binned Per-stratum log_af ~ is_ptm * C(expr_bin) + (1|gene)
-                      using an expression matrix keyed gene x stratum (notebook K).
+                      using an expression matrix keyed gene x stratum.
 
     \b
     Output TSV columns:
@@ -927,6 +936,16 @@ def ptm_test(
           --expression-pkl brain_gene_celltype_median_expr.pkl \\
           -o results/celltype_binned.tsv
     """
+    # Checked before the try below: click.ClickException subclasses Exception, so raising
+    # it inside that block would be folded into the generic handler and logged as a
+    # traceback -- the exact shape #362 is about.
+    from hvantk.algorithms.ptm.optional_deps import require_statsmodels
+
+    try:
+        require_statsmodels()
+    except ImportError as exc:
+        raise click.ClickException(str(exc)) from exc
+
     try:
         import os as _os
 
@@ -958,19 +977,21 @@ def ptm_test(
                     af_col=af_col,
                     is_ptm_col=is_ptm_col,
                 )
-                rows.append({
-                    "stratum": r.stratum,
-                    "n_variants": r.n_variants,
-                    "n_ptm": r.n_ptm,
-                    "n_nonptm": r.n_nonptm,
-                    "n_genes": r.n_genes,
-                    "n_mixed_genes": r.n_mixed_genes,
-                    "beta_ptm": r.beta_ptm,
-                    "se_ptm": r.se_ptm,
-                    "p_ptm": r.p_ptm,
-                    "converged": r.converged,
-                    "note": r.note,
-                })
+                rows.append(
+                    {
+                        "stratum": r.stratum,
+                        "n_variants": r.n_variants,
+                        "n_ptm": r.n_ptm,
+                        "n_nonptm": r.n_nonptm,
+                        "n_genes": r.n_genes,
+                        "n_mixed_genes": r.n_mixed_genes,
+                        "beta_ptm": r.beta_ptm,
+                        "se_ptm": r.se_ptm,
+                        "p_ptm": r.p_ptm,
+                        "converged": r.converged,
+                        "note": r.note,
+                    }
+                )
             _pd.DataFrame(rows).to_csv(output, sep="\t", index=False)
         else:  # lmm-binned
             if not (expression_pkl or expression_tsv):
@@ -987,14 +1008,16 @@ def ptm_test(
             for s in strata:
                 sub = df[df[stratum_col] == s]
                 if s not in wide.columns:
-                    rows.append({
-                        "stratum": str(s),
-                        "n_variants": int(len(sub)),
-                        "n_genes": int(sub[gene_col].nunique()) if len(sub) else 0,
-                        "bin_levels": "",
-                        "converged": False,
-                        "note": f"stratum '{s}' not found in expression matrix",
-                    })
+                    rows.append(
+                        {
+                            "stratum": str(s),
+                            "n_variants": int(len(sub)),
+                            "n_genes": int(sub[gene_col].nunique()) if len(sub) else 0,
+                            "bin_levels": "",
+                            "converged": False,
+                            "note": f"stratum '{s}' not found in expression matrix",
+                        }
+                    )
                     continue
                 r = run_binned_interaction_lmm(
                     sub,
@@ -1022,6 +1045,10 @@ def ptm_test(
 
         click.echo(f"Wrote {len(rows)} rows to {output}")
 
+    except (click.ClickException, click.exceptions.Exit):
+        # click's own control flow (ctx.exit(), a usage error) must not be re-wrapped
+        # into "PTM test failed: 1" with a logged traceback.
+        raise
     except Exception as e:
         logger.exception(f"PTM test failed: {e}")
         click.echo(f"Error: {e}", err=True)

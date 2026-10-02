@@ -203,3 +203,101 @@ def test_run_default_no_mtc_keeps_raw_prior():
     # winning route is lof; its raw min-p equals the standalone fisher p for that 2x2
     exp_p, _ = fisher_2x2(8, 1, 92, 399)
     assert math.isclose(out.set_index("gene").loc["G", "minp"], exp_p, rel_tol=1e-9)
+
+
+def test_driver_af_tie_on_cc_is_resolved_toward_the_most_common_driver_regardless_of_order():
+    """#230: max() on cc alone left a cc-tie to the order Hail collected the drivers in,
+    so driver_af could differ between two runs on identical input. Ties resolve toward
+    the HIGHEST control-carrier frequency (the most common driver in controls), which is
+    the conservative direction for the rerank audit's upper-bound leak alarm."""
+    from hvantk.algorithms.burden.fet import _driver_af
+
+    drivers = [{"cc": 3, "ctrl_freq": 0.05}, {"cc": 3, "ctrl_freq": 0.004}]
+    assert _driver_af(drivers) == 0.05
+    assert _driver_af(list(reversed(drivers))) == 0.05
+
+
+def test_driver_af_still_prefers_the_higher_case_carrier_count():
+    from hvantk.algorithms.burden.fet import _driver_af
+
+    assert (
+        _driver_af([{"cc": 1, "ctrl_freq": 0.001}, {"cc": 2, "ctrl_freq": 0.05}])
+        == 0.05
+    )
+
+
+def test_driver_af_treats_a_nan_control_frequency_as_the_worst_tie_breaker():
+    """A NaN key makes max() order-dependent again (NaN compares False both ways)."""
+    from hvantk.algorithms.burden.fet import _driver_af
+
+    drivers = [{"cc": 3, "ctrl_freq": float("nan")}, {"cc": 3, "ctrl_freq": 0.01}]
+    assert _driver_af(drivers) == 0.01
+    assert _driver_af(list(reversed(drivers))) == 0.01
+
+
+def test_driver_af_empty_or_missing_is_nan():
+    from hvantk.algorithms.burden.fet import _driver_af
+
+    assert math.isnan(_driver_af([]))
+    assert math.isnan(_driver_af(None))
+
+
+def test_driver_af_treats_a_none_control_frequency_like_nan():
+    """ctrl_freq is never None in the pipeline (aggregate.py's `_ctrl_freq` is always a
+    defined float, from count_where / n_ctrl), but a hand-built frame might have one;
+    it must behave like NaN -- sort last on a tie -- rather than raise."""
+    from hvantk.algorithms.burden.fet import _driver_af
+
+    drivers = [{"cc": 3, "ctrl_freq": None}, {"cc": 3, "ctrl_freq": 0.01}]
+    assert _driver_af(drivers) == 0.01
+    assert _driver_af(list(reversed(drivers))) == 0.01
+
+
+def test_driver_af_all_nan_tie_is_nan():
+    from hvantk.algorithms.burden.fet import _driver_af
+
+    drivers = [
+        {"cc": 3, "ctrl_freq": float("nan")},
+        {"cc": 3, "ctrl_freq": float("nan")},
+    ]
+    assert math.isnan(_driver_af(drivers))
+    assert math.isnan(_driver_af(list(reversed(drivers))))
+
+
+def test_driver_af_inf_control_frequency_beats_nan_on_a_tie():
+    """float("inf") must not collide with the NaN sentinel: it did under the previous
+    commit's sign convention, since negating a +inf ctrl_freq also produced -inf."""
+    from hvantk.algorithms.burden.fet import _driver_af
+
+    drivers = [
+        {"cc": 3, "ctrl_freq": float("inf")},
+        {"cc": 3, "ctrl_freq": float("nan")},
+    ]
+    assert _driver_af(drivers) == float("inf")
+    assert _driver_af(list(reversed(drivers))) == float("inf")
+
+
+def test_driver_af_accepts_numpy_array_and_scalar_types():
+    import numpy as np
+
+    from hvantk.algorithms.burden.fet import _driver_af
+
+    drivers = np.array(
+        [
+            {"cc": np.int64(3), "ctrl_freq": np.float64(0.004)},
+            {"cc": np.int64(3), "ctrl_freq": np.float64(0.05)},
+        ],
+        dtype=object,
+    )
+    assert _driver_af(drivers) == 0.05
+    assert _driver_af(drivers[::-1]) == 0.05
+
+
+def test_driver_af_casts_string_control_frequency_to_float():
+    """Guards the float() cast: without it, a str ctrl_freq tied on cc against a float
+    one crashes on comparison instead of being ordered numerically."""
+    from hvantk.algorithms.burden.fet import _driver_af
+
+    drivers = [{"cc": 3, "ctrl_freq": "0.02"}, {"cc": 3, "ctrl_freq": 0.01}]
+    assert _driver_af(drivers) == 0.02
+    assert _driver_af(list(reversed(drivers))) == 0.02

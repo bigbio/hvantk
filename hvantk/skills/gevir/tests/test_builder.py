@@ -63,9 +63,9 @@ def test_gevir_snapshot_round_trip(hail_session, tmp_path, regenerate_snapshots)
     ht = hl.read_table(output_path)
 
     expected_schema = load_snapshot(SNAPSHOT_DIR / "schema.json")
-    assert (
-        hail_schema_to_dict(ht) == expected_schema
-    ), "GeVIR schema drifted from snapshot"
+    assert hail_schema_to_dict(ht) == expected_schema, (
+        "GeVIR schema drifted from snapshot"
+    )
 
     expected_rows = load_snapshot(SNAPSHOT_DIR / "sample_rows.json")
     actual_rows = collect_sample_rows(ht, keys=SAMPLE_KEYS)

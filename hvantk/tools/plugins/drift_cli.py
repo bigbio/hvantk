@@ -10,6 +10,7 @@ from pathlib import Path
 import click
 
 from hvantk.core.plugin import drift_runner, loader as plugin_loader
+from hvantk.core.plugin.api import DriftProbeError, PluginLoadError
 
 
 EXIT_CLEAN = 0
@@ -120,7 +121,12 @@ def drift_cmd(
     # the stderr warning above, which is the right split: a person reads the warning, CI
     # reads the row. Together they make the existing workflow file the issue it already
     # knows how to file (#351).
-    load_errors = reg.load_errors()
+    load_errors = _relevant_load_errors(
+        reg,
+        reg.load_errors(),
+        dataset=None if all_flag else dataset,
+        domain=domain if all_flag else None,
+    )
     for unit, exc in load_errors:
         click.echo(
             f"WARNING: {unit!r} failed to load, so it is NOT being drift-checked: {exc}",
@@ -130,12 +136,65 @@ def drift_cmd(
     if regenerate:
         if all_flag:
             raise click.UsageError("--regenerate requires a specific dataset name")
+        if as_json:
+            raise click.UsageError("--regenerate does not support --json")
         try:
-            _regenerate_fingerprint(reg, dataset)
+            _regenerate_fingerprint(reg, dataset, timeout=timeout)
         except KeyError:
             click.echo(f"unknown dataset: {dataset}", err=True)
+            _echo_unknown_dataset_hint(reg)
             raise SystemExit(EXIT_REGISTRY_ERROR)
+        except DriftProbeError as exc:
+            # The probe raised, timed out, or returned a non-mapping: nothing was written.
+            # Exit 2, not a traceback's 1 (== EXIT_DRIFTED): drift_to_pr.py treats any
+            # non-zero here as "do not commit", which is the right outcome either way, but
+            # a human reading exit codes must not see "drifted" for "the probe broke".
+            click.echo(
+                f"probe failed for {dataset}; fingerprint NOT rewritten: {exc}",
+                err=True,
+            )
+            raise SystemExit(EXIT_PROBE_FAILED)
+        except OSError as exc:
+            # The probe succeeded but write_fingerprint's write/replace failed (disk
+            # full, permission denied, ...). Same outcome for the caller as a probe
+            # failure -- nothing was rewritten -- so the same exit 2, not an unhandled
+            # traceback's 1 (== EXIT_DRIFTED).
+            click.echo(
+                f"could not write the fingerprint for {dataset}: {exc}", err=True
+            )
+            raise SystemExit(EXIT_PROBE_FAILED)
+        except PluginLoadError as exc:
+            click.echo(
+                f"{dataset} failed to load, so its fingerprint cannot be regenerated: "
+                f"{exc}",
+                err=True,
+            )
+            raise SystemExit(EXIT_PROBE_FAILED)
+        except Exception as exc:  # noqa: BLE001
+            # Anything else write_fingerprint or the probe can raise that is not one of
+            # the specific cases above -- e.g. a probe returning a dict with a
+            # non-string-safe key makes json.dumps raise TypeError deep inside
+            # write_fingerprint. Before this, that escaped as an unhandled traceback's
+            # exit 1 (== EXIT_DRIFTED), same failure mode #361 fixed for DriftProbeError
+            # and OSError specifically.
+            click.echo(
+                f"could not regenerate the fingerprint for {dataset}: "
+                f"{type(exc).__name__}: {exc}",
+                err=True,
+            )
+            raise SystemExit(EXIT_PROBE_FAILED)
         click.echo(f"regenerated: {dataset}")
+        if load_errors:
+            # The exit-code block below is never reached on this path, so the #351 guard
+            # did not apply to --regenerate. Only units relevant to THIS dataset are in
+            # `load_errors` now, so this fires when its provider is broken, not when an
+            # unrelated plugin is (drift_to_pr.py runs this step unattended).
+            click.echo(
+                f"WARNING: {len(load_errors)} unit(s) related to {dataset} failed to "
+                f"load (listed above); exiting {EXIT_PROBE_FAILED}",
+                err=True,
+            )
+            raise SystemExit(EXIT_PROBE_FAILED)
         return
 
     try:
@@ -144,31 +203,55 @@ def drift_cmd(
         )
     except KeyError:
         click.echo(f"unknown dataset: {dataset}", err=True)
+        _echo_unknown_dataset_hint(reg)
         raise SystemExit(EXIT_REGISTRY_ERROR)
+    except PluginLoadError as exc:
+        # A dataset whose callables would not import: the registry cached the failure and
+        # get_dataset re-raises it. Not a KeyError, so before #364 it escaped as a
+        # traceback -- exit 1, which a wrapper reads as EXIT_DRIFTED.
+        if as_json:
+            click.echo(
+                json.dumps([_load_error_row(dataset, exc)], indent=2, default=str)
+            )
+        click.echo(
+            f"{dataset} failed to load, so it cannot be drift-checked: {exc}", err=True
+        )
+        raise SystemExit(EXIT_PROBE_FAILED)
 
     # An empty sweep is the limiting case of the silently-smaller set #351 is about, and
     # it slips past every guard above: no targets means no results, `exit_codes` stays
     # {EXIT_CLEAN}, and `drift.yml` (rc > 2) plus `drift_to_pr.py` both pass on a report
     # of `[]`. The workflow goes green having checked nothing.
     #
-    # The two ways to get here need different answers. A --domain that matches nothing is
-    # a caller mistake -- the option takes a free-form string and its help text names no
-    # valid value, so a typo silently means "check nothing" -- and a UsageError can name
-    # the real domains. An empty registry with no filter is an infrastructure failure
-    # (nothing discovered, nothing shipped), which is what EXIT_PROBE_FAILED means.
+    # The two ways to get here need different answers. A --domain that no manifest
+    # declares is a caller mistake -- the option takes a free-form string and its help
+    # text names no valid value, so a typo silently means "check nothing" -- and a
+    # UsageError can name the real domains. `known` comes from the manifests, bound or
+    # not: a domain whose every dataset failed to bind is still a real domain, and
+    # listing it as "(none)" misdescribed the registry. An empty registry with no filter
+    # is an infrastructure failure (nothing discovered, nothing shipped), which is what
+    # EXIT_PROBE_FAILED means.
+    #
+    # Neither applies when the sweep is empty BECAUSE things failed to load: the
+    # manifests are registered, they did not bind, and `load_errors` holds a row for
+    # each. Exiting here printed no JSON at all, so `drift-health.yml` `json.load`ed an
+    # empty capture and went red on a parse error instead of filing the probe-failed
+    # issue it knows how to file. Falling through emits those rows and exits
+    # EXIT_PROBE_FAILED through the load-error rule below.
     if all_flag and not targets:
-        if domain is not None:
-            known = sorted({d.domain for d in reg.list_datasets() if d.domain})
+        known = sorted({m.domain for m in reg.list_manifests() if m.domain})
+        if domain is not None and domain not in known:
             raise click.UsageError(
                 f"--domain {domain!r} matches no dataset; known domains: "
                 f"{', '.join(known) or '(none)'}"
             )
-        click.echo(
-            "no datasets registered, so nothing was drift-checked -- refusing to "
-            "report a clean sweep over an empty set",
-            err=True,
-        )
-        raise SystemExit(EXIT_PROBE_FAILED)
+        if not load_errors:
+            click.echo(
+                "no datasets registered, so nothing was drift-checked -- refusing to "
+                "report a clean sweep over an empty set",
+                err=True,
+            )
+            raise SystemExit(EXIT_PROBE_FAILED)
 
     # run_drift_checks, not a comprehension over run_drift_check: datasets sharing a
     # baseline AND a probe callable share one drift signal, so it is probed once and
@@ -178,24 +261,16 @@ def drift_cmd(
 
     if as_json:
         rows = [_serialize(r) for r in results]
-        # Same shape a failing probe produces, so no consumer needs to learn a new key.
-        rows.extend(
-            {
-                "dataset_name": unit,
-                "status": "probe_failed",
-                "observed": None,
-                "expected": None,
-                "diff": None,
-                "probe_error": f"plugin failed to load: {exc}",
-                "fingerprint_path": None,
-                "probe_ref": None,
-            }
-            for unit, exc in load_errors
-        )
+        rows.extend(_load_error_row(unit, exc) for unit, exc in load_errors)
         click.echo(json.dumps(rows, indent=2, default=str))
     else:
         for r in results:
             click.echo(f"{r.dataset_name}: {r.status}")
+            if r.probe_error is not None:
+                # The reason was serialised only under --json, so a person running
+                # `hvantk drift x:y` saw `probe_failed` and nothing else. stderr, like
+                # every other diagnostic here: stdout stays the per-dataset summary.
+                click.echo(f"  {r.probe_error}", err=True)
             if r.diff:
                 click.echo(json.dumps(r.diff, indent=2, default=str))
 
@@ -233,12 +308,88 @@ def drift_cmd(
     raise SystemExit(max(exit_codes))
 
 
-def _regenerate_fingerprint(reg, dataset_name: str) -> None:
+def _echo_unknown_dataset_hint(reg) -> None:
+    """A second stderr line pointing at `hvantk plugins errors` when the registry has
+    load failures that might be why the caller's dataset was not found.
+
+    `unknown dataset: gwas-catalog:associations` alone reads as a typo, but the real
+    cause can be that the whole `gwas_catalog` directory (dir name, not the
+    hyphenated `name:` the manifest declares) never loaded at all -- the caller typed
+    the provider's real name and got a KeyError with no mention of the load failure
+    that explains it.
+    """
+    n = len(reg.load_errors())
+    if n:
+        click.echo(
+            f"({n} unit(s) failed to load and may include it; see: hvantk plugins errors)",
+            err=True,
+        )
+
+
+def _regenerate_fingerprint(reg, dataset_name: str, *, timeout: int) -> None:
     spec = reg.get_dataset(dataset_name)
-    observed = spec.drift_probe()
-    Path(spec.test_paths.drift_fingerprint).write_text(
-        json.dumps(observed, indent=2, default=str)
-    )
+    drift_runner.regenerate_fingerprint(spec, timeout=timeout)
+
+
+def _load_error_row(unit: str, exc: Exception) -> dict:
+    """The JSON row a unit that never registered gets -- the same shape a failing probe
+    produces, so no consumer needs to learn a new key."""
+    return {
+        "dataset_name": unit,
+        "status": "probe_failed",
+        "observed": None,
+        "expected": None,
+        "diff": None,
+        "probe_error": f"plugin failed to load: {exc}",
+        "fingerprint_path": None,
+        "probe_ref": None,
+    }
+
+
+def _relevant_load_errors(
+    reg, load_errors, *, dataset: str | None, domain: str | None
+) -> list[tuple[str, Exception]]:
+    """The load errors that bear on THIS invocation.
+
+    Applying every recorded failure to every run made `hvantk drift clinvar:variants`
+    report -- and fail on -- plugins the caller never asked about, and made every
+    unattended `--regenerate` fail whenever any unrelated plugin was broken (#364).
+
+    Units come in three shapes (`loader._record_load_error`): a bare provider name, a
+    `provider:dataset` key, or `entry-point:<name>`. For one dataset, its own key, its
+    provider and its provider's entry point are relevant; for `--all --domain X`, a
+    dataset-level unit whose manifest declares another domain is not, while provider and
+    entry-point units carry no domain and are kept -- dropping them would recreate the
+    silently-smaller sweep #351 exists to stop.
+
+    A bare provider-level unit is matched against the requested dataset's provider after
+    normalising ``_``/``-`` on both sides: `load_from_skills_root` records the plugin
+    DIRECTORY's name when `plugin.yaml` is missing, and `_provider_id_hint` falls back to
+    it too when the manifest's own `name` cannot be read -- and 9 of the 21 in-tree
+    providers have a directory name that differs from the manifest's `name:` only by
+    `_` vs `-` (`gwas_catalog` vs `gwas-catalog`, `uniprot_ptm` vs `uniprot-ptm`, ...).
+    Exact string equality silently dropped those. The `entry-point:<name>` match stays an
+    exact comparison -- it is keyed by the installed entry point's own name, which is
+    expected to follow the provider's naming convention already.
+    """
+    if dataset is not None:
+        provider = dataset.split(":", 1)[0]
+        wanted = {dataset, f"entry-point:{provider}"}
+        return [
+            (unit, exc)
+            for unit, exc in load_errors
+            if unit in wanted or unit.replace("_", "-") == provider.replace("_", "-")
+        ]
+    if domain is None:
+        return list(load_errors)
+    domains = {m.name: m.domain for m in reg.list_manifests()}
+    return [
+        (unit, exc)
+        for unit, exc in load_errors
+        if unit.startswith("entry-point:")
+        or ":" not in unit
+        or domains.get(unit, domain) == domain
+    ]
 
 
 def _serialize(result: drift_runner.DriftResult) -> dict:

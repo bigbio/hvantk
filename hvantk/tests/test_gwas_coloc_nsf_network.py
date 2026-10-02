@@ -22,15 +22,21 @@ from hvantk.algorithms.qtlcascade.gwas_pipeline import (
 NSF = "ENSG00000073969"
 
 
-@pytest.mark.skipif(not finemap_available()[0],
-                    reason="needs pysam for the 1000G LD reference")
+@pytest.mark.skipif(
+    not finemap_available()[0], reason="needs pysam for the 1000G LD reference"
+)
 def test_chd_nsf_look_alike_refuted(tmp_path):
     cfg = GwasColocConfig(
-        endpoint="Q17_SEPTA_DEFEC", chrom="17", lead=46890164,
-        eqtl_dataset="QTD000136",            # GTEx (eQTL Catalogue) cis-eQTL
+        endpoint="Q17_SEPTA_DEFEC",
+        chrom="17",
+        lead=46890164,
+        eqtl_dataset="QTD000136",  # GTEx (eQTL Catalogue) cis-eQTL
         gene_of_interest=NSF,
-        gwas_N=412181, eqtl_N=213, fine_map=True,
-        output_dir=str(tmp_path), ld_cache_dir=str(tmp_path / "ld"),
+        gwas_N=412181,
+        eqtl_N=213,
+        fine_map=True,
+        output_dir=str(tmp_path),
+        ld_cache_dir=str(tmp_path / "ld"),
     )
     report = run_gwas_coloc_pipeline(cfg)
 

@@ -62,9 +62,9 @@ def test_hgnc_snapshot_round_trip(hail_session, tmp_path, regenerate_snapshots):
     ht = hl.read_table(output_path)
 
     expected_schema = load_snapshot(SNAPSHOT_DIR / "schema.json")
-    assert (
-        hail_schema_to_dict(ht) == expected_schema
-    ), "HGNC schema drifted from snapshot"
+    assert hail_schema_to_dict(ht) == expected_schema, (
+        "HGNC schema drifted from snapshot"
+    )
 
     expected_rows = load_snapshot(SNAPSHOT_DIR / "sample_rows.json")
     actual_rows = collect_sample_rows(ht, keys=SAMPLE_KEYS)
@@ -96,15 +96,15 @@ def test_quoted_multivalue_fields_are_unquoted_before_splitting(hail_session, tm
     has zero quotes, which is why this never surfaced.
 
     Real-world impact this reproduces: HIST1H1E (previous symbol of H1-4) did not resolve,
-    so 5 CHD cohort genes dropped out at mapping time. ``uniprot_ids`` and ``gene_group``
-    are corrupted the same way.
+    so a lookup by HIST1H1E missed and H1-4 dropped out at mapping time. ``uniprot_ids``
+    and ``gene_group`` are corrupted the same way.
     """
     import hail as hl
     from hvantk.skills.hgnc.builder import build_hgnc_gene_lookup
 
     header = (
         "hgnc_id\tsymbol\tname\tlocus_group\tlocus_type\tstatus\tlocation\t"
-        "location_sortable\talias_symbol\talias_name\tprev_symbol\tprev_name\t"
+        "alias_symbol\talias_name\tprev_symbol\tprev_name\t"
         "gene_group\tgene_group_id\tdate_approved_reserved\tdate_symbol_changed\t"
         "date_name_changed\tdate_modified\tentrez_id\tensembl_gene_id\tvega_id\t"
         "ucsc_id\tena\trefseq_accession\tccds_id\tuniprot_ids\n"
@@ -112,7 +112,7 @@ def test_quoted_multivalue_fields_are_unquoted_before_splitting(hail_session, tm
     # Quoted exactly as the real dump writes them.
     row = (
         "HGNC:4718\tH1-4\tH1.4 linker histone\tprotein-coding gene\t"
-        "gene with protein product\tApproved\t6p22.2\t06p22.2\t"
+        "gene with protein product\tApproved\t6p22.2\t"
         '"H1.4|H1e"\t\t"H1F4|HIST1H1E"\t\t"grp1|grp2"\t"1|2"\t\t\t\t\t\t'
         'ENSG00000168298\t\t\t\t\t\t"P10412|Q4VB24"\n'
     )

@@ -16,17 +16,6 @@ import click
 
 logger = logging.getLogger(__name__)
 
-# Import HGC QC functionality
-from hvantk.algorithms.hgc import (
-    check_path_exists_and_readable,
-    compute_full_qc,
-    compute_sample_qc,
-    compute_variant_qc,
-    filter_samples_by_qc,
-    filter_variants_by_qc,
-    save_qc_metrics,
-)
-
 # Import utility functions
 from .utils import validate_input_files, validate_output_path
 
@@ -81,7 +70,8 @@ def register_qc_commands(group):
     help=(
         "Drop rows whose alternate allele is the gVCF placeholder <*>/<NON_REF> or the "
         "spanning deletion *. These are not variants; on a densified gVCF callset they "
-        "can be ~45%% of rows and make the allele-frequency spectrum meaningless."
+        "can be around half of all rows and make the allele-frequency spectrum "
+        "meaningless."
     ),
 )
 @click.option(
@@ -113,6 +103,13 @@ def compute_qc(
         hvantk hgc compute-qc -i cohort.mt -o qc_results/ --no-sample-qc
         hvantk hgc compute-qc -i cohort.mt -o qc_results/ --call-field LGT
     """
+    from hvantk.algorithms.hgc import (
+        compute_full_qc,
+        compute_sample_qc,
+        compute_variant_qc,
+        save_qc_metrics,
+    )
+
     try:
         logger.info("Starting QC metrics computation")
 
@@ -196,9 +193,8 @@ def compute_qc(
         # are dropped by default -- filtering on adj is a genuine analytical choice:
         # pre-filter QC answers "how good is my densified data", post-filter answers
         # "what am I shipping". Both are legitimate, so this is opt-in. But silence
-        # would be misleading, because the two differ a lot: on the 1005-sample chr20
-        # callset the densified matrix reads call rate 0.9712 while the delivered VCF
-        # is 0.9161.
+        # would be misleading, because the two differ a lot: on a real WGS callset the
+        # delivered VCF's call rate is several points below the densified matrix's.
         #
         # filter_entries (rather than setting GT to missing) is deliberate: Hail's
         # sample_qc counts filtered entries in the call-rate denominator either way,
@@ -334,6 +330,8 @@ def filter_qc(
         hvantk hgc filter-qc -i cohort_qc.mt -o cohort_filtered.mt --min-ac 5 --min-af 0.01
         hvantk hgc filter-qc -i cohort_qc.mt -o cohort_filtered.mt --min-sample-call-rate 0.9
     """
+    from hvantk.algorithms.hgc import filter_samples_by_qc, filter_variants_by_qc
+
     try:
         logger.info("Starting QC-based filtering")
 
@@ -440,11 +438,11 @@ def filter_qc(
         click.echo("✅ Successfully applied QC filters:")
         click.echo(
             f"   • Samples: {n_samples_initial} → {n_samples_final} "
-            f"({samples_removed} removed, {samples_removed/n_samples_initial*100:.1f}%)"
+            f"({samples_removed} removed, {samples_removed / n_samples_initial * 100:.1f}%)"
         )
         click.echo(
             f"   • Variants: {n_variants_initial} → {n_variants_final} "
-            f"({variants_removed} removed, {variants_removed/n_variants_initial*100:.1f}%)"
+            f"({variants_removed} removed, {variants_removed / n_variants_initial * 100:.1f}%)"
         )
         click.echo(f"   • Output: {output}")
 
@@ -659,6 +657,8 @@ def qc_report(ctx, input, output, title, include_plots, style, dry_run):
         hvantk hgc qc-report -i cohort_qc.mt -o report.html --include-plots sample_overview variant_overview
         hvantk hgc qc-report -i cohort_qc.mt -o report.html --style publication --dry-run
     """
+    from hvantk.algorithms.hgc import check_path_exists_and_readable
+
     try:
         # hail_context (init_hail) first: it applies the NumPy np.bool
         # compatibility shim before Hail is imported.

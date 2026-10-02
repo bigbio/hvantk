@@ -13,7 +13,7 @@ from typing import Literal
 
 
 Domain = Literal[
-    "plugins",      # plugin-system runtime
+    "plugins",  # plugin-system runtime
     "expression",
     "annotation",
     "genesets",
@@ -37,29 +37,29 @@ class ToolLoadError(Exception):
 class Subcommand:
     name: str
     description: str
-    inputs: tuple = ()                        # tuple of dicts {name, type, required, description}
-    outputs: tuple = ()                       # tuple of output descriptors (strings or dicts)
+    inputs: tuple = ()  # tuple of dicts {name, type, required, description}
+    outputs: tuple = ()  # tuple of output descriptors (strings or dicts)
 
 
 @dataclass(frozen=True)
 class ToolRequirements:
     hail: bool = False
     network: bool = False
-    extras: tuple[str, ...] = ()              # additional Python package extras
+    extras: tuple[str, ...] = ()  # additional Python package extras
 
 
 @dataclass(frozen=True)
 class ToolSpec:
     """One tool, materialised from a tool.yaml manifest."""
 
-    name: str                                 # CLI verb (e.g., "drift", "plugins", "reprocess")
+    name: str  # CLI verb (e.g., "drift", "plugins", "reprocess")
     domain: Domain
     type: ToolType
     description: str
-    cli_module: str                            # e.g., "hvantk.tools.plugins.drift_cli"
-    cli_callable: str                          # name of the Click group/command (e.g., "drift_cmd")
+    cli_module: str  # e.g., "hvantk.tools.plugins.drift_cli"
+    cli_callable: str  # name of the Click group/command (e.g., "drift_cmd")
     purpose_short: str
     purpose_long: str = ""
     subcommands: tuple[Subcommand, ...] = ()
     requires: ToolRequirements = field(default_factory=ToolRequirements)
-    manifest_path: str = ""                    # absolute path to the tool.yaml that produced this
+    manifest_path: str = ""  # absolute path to the tool.yaml that produced this

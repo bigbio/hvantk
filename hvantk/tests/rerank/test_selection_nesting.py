@@ -7,6 +7,7 @@ features, that bias alone produces a healthy-looking AUC from data with no signa
 
 These tests fail loudly if anyone later hoists selection out of the fold loop for speed.
 """
+
 import numpy as np
 import pandas as pd
 
@@ -44,7 +45,9 @@ def test_the_shipped_fdr_gate_selects_nothing_from_pure_noise():
     from hvantk.algorithms.rerank.selection import SelectionPolicy, select_axis
 
     X, y = _noise()
-    kept = select_axis(X, y, list(X.columns), SelectionPolicy(wrapper="none", q=0.50)).kept
+    kept = select_axis(
+        X, y, list(X.columns), SelectionPolicy(wrapper="none", q=0.50)
+    ).kept
     assert kept == ()
 
 
@@ -89,7 +92,9 @@ def test_selector_never_receives_held_out_rows():
 
     ReRanker(folds=5).score(X, list(X.columns), y, selector=selector)
     assert seen_sizes, "selector was never called"
-    assert max(seen_sizes) < len(X), "selector saw the full matrix -- selection is not nested"
+    assert max(seen_sizes) < len(X), (
+        "selector saw the full matrix -- selection is not nested"
+    )
 
 
 def test_selection_none_is_unchanged():

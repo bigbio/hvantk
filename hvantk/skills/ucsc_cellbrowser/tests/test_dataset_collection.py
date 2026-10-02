@@ -82,7 +82,7 @@ def test_list_dataset_names():
     assert "dev-brain-regions" in dataset_names
 
 
-# --- Phase 2.2: search() tests ---
+# --- search() tests ---
 
 
 class TestSearch:
@@ -121,7 +121,7 @@ class TestSearch:
         assert isinstance(results, UCSCDataSetCollection)
 
 
-# --- Phase 1.1: fetch_children() tests ---
+# --- fetch_children() tests ---
 
 
 class TestFetchChildren:

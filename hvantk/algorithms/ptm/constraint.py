@@ -5,7 +5,7 @@ non-PTM variants, stratified by tissue, cell type, or any categorical
 metadata field derived from an expression dataset.
 
 This module is an **orchestrator**, not a per-variant scorer. For per-site
-PTM flags use :func:`hvantk.ptm.annotate.annotate_variants_with_ptm`.
+PTM flags use :func:`hvantk.algorithms.ptm.annotate.annotate_variants_with_ptm`.
 """
 
 from __future__ import annotations
@@ -85,17 +85,11 @@ class PTMConstraintConfig:
         if not os.path.exists(self.variants_ht_path):
             errors.append(f"--variants-ht path does not exist: {self.variants_ht_path}")
         if not os.path.exists(self.expression_path):
-            errors.append(
-                f"--expression-path does not exist: {self.expression_path}"
-            )
+            errors.append(f"--expression-path does not exist: {self.expression_path}")
         if self.gene_id_mapping and not os.path.exists(self.gene_id_mapping):
-            errors.append(
-                f"--gene-id-mapping does not exist: {self.gene_id_mapping}"
-            )
+            errors.append(f"--gene-id-mapping does not exist: {self.gene_id_mapping}")
         if self.group_mapping and not os.path.exists(self.group_mapping):
-            errors.append(
-                f"--group-mapping does not exist: {self.group_mapping}"
-            )
+            errors.append(f"--group-mapping does not exist: {self.group_mapping}")
         if self.min_cells_per_group < 0:
             errors.append("--min-cells-per-group must be >= 0.")
         if self.min_variants_per_group < 1:
@@ -305,9 +299,7 @@ def _load_variants_hail(config: PTMConstraintConfig) -> pd.DataFrame:
             "supply the correct --af-field."
         )
     else:
-        logger.warning(
-            "AF field '%s' not found; filling with zeros.", config.af_field
-        )
+        logger.warning("AF field '%s' not found; filling with zeros.", config.af_field)
         select["af"] = hl.float64(0.0)
 
     if config.loeuf_field in row_fields:
@@ -411,7 +403,8 @@ def _read_variants_tabular_file(path: str) -> pd.DataFrame:
         # produced or trust. Prefer .parquet/.tsv for untrusted sources.
         logger.warning(
             "Loading pickle '%s'; unpickling runs arbitrary code — only use "
-            "trusted files (prefer .parquet/.csv/.tsv otherwise).", path
+            "trusted files (prefer .parquet/.csv/.tsv otherwise).",
+            path,
         )
         return pd.read_pickle(path)
     if ".parquet" in suffixes:
@@ -596,9 +589,7 @@ def _mw_log2_ratio(
     pvalue = np.nan
     if n_ptm >= 3 and n_non >= 3:
         try:
-            _, pvalue = stats.mannwhitneyu(
-                afs_non, afs_ptm, alternative="greater"
-            )
+            _, pvalue = stats.mannwhitneyu(afs_non, afs_ptm, alternative="greater")
             pvalue = float(pvalue)
         except ValueError:
             pvalue = np.nan

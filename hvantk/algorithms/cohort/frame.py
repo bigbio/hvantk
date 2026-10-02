@@ -19,6 +19,7 @@ Layering: stdlib + pandas + sibling ``hvantk.algorithms.cohort`` modules only. T
 module must never import Hail, ``hvantk.skills``, ``hvantk.tools``, or ``click``; every
 function here raises plain ``ValueError``.
 """
+
 from __future__ import annotations
 
 import pandas as pd

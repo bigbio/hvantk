@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 @click.group(
     name="qtlcascade",
-    help="Molecular QTL cascade analysis (eQTL → pQTL → disease).",
+    help="Molecular QTL cascade analysis (eQTL -> pQTL -> disease).",
     context_settings=CONTEXT_SETTINGS,
 )
 @click.pass_context
@@ -152,37 +152,102 @@ def coloc_cmd(
 
 
 @qtlcascade_group.command("gwas-coloc")
-@click.option("--endpoint", required=True, type=str,
-              help="FinnGen R10 endpoint code (e.g. I9_AF).")
+@click.option(
+    "--endpoint",
+    required=True,
+    type=str,
+    help="FinnGen R10 endpoint code (e.g. I9_AF).",
+)
 @click.option("--chrom", required=True, type=str, help="Chromosome (GRCh38, no 'chr').")
 @click.option("--lead", required=True, type=int, help="Lead variant position (GRCh38).")
-@click.option("--eqtl", "eqtl_dataset", required=True, type=str,
-              help="eQTL Catalogue dataset id / URL / local tabix (e.g. QTD000251).")
-@click.option("--eqtl-study", type=str, default=EQTL_CATALOGUE_DEFAULT_STUDY,
-              show_default=True, help="eQTL Catalogue study id.")
-@click.option("--window-kb", type=int, default=DEFAULT_COLOC_WINDOW_KB,
-              show_default=True, help="Regional window (±kb) around the lead.")
-@click.option("--gene", "gene_of_interest", type=str, default=None,
-              help="ENSG of interest to confirm (default: the ABF-top gene).")
-@click.option("--fine-map/--no-fine-map", default=True, show_default=True,
-              help="Run pure-Python SuSiE-RSS/coloc.susie confirmation "
-                   "(needs the 1000G LD reference: network, or --ld-vcf).")
-@click.option("--gwas-n", "gwas_n", type=int, default=None,
-              help="GWAS sample size (required for fine-mapping).")
-@click.option("--eqtl-n", "eqtl_n", type=int, default=None,
-              help="eQTL sample size (required for fine-mapping).")
-@click.option("--superpop", type=str, default=DEFAULT_FINEMAP_SUPERPOP,
-              show_default=True, help="1000G super-population for the LD reference.")
-@click.option("--ld-cache-dir", type=str, default=None,
-              help="Cache directory for the 1000G LD reference.")
-@click.option("--ld-vcf", type=str, default=None,
-              help="Local VCF to use as the LD reference instead of remote 1000G "
-                   "(offline / reproducible runs; uses all its samples).")
+@click.option(
+    "--eqtl",
+    "eqtl_dataset",
+    required=True,
+    type=str,
+    help="eQTL Catalogue dataset id / URL / local tabix (e.g. QTD000251).",
+)
+@click.option(
+    "--eqtl-study",
+    type=str,
+    default=EQTL_CATALOGUE_DEFAULT_STUDY,
+    show_default=True,
+    help="eQTL Catalogue study id.",
+)
+@click.option(
+    "--window-kb",
+    type=int,
+    default=DEFAULT_COLOC_WINDOW_KB,
+    show_default=True,
+    help="Regional window (±kb) around the lead.",
+)
+@click.option(
+    "--gene",
+    "gene_of_interest",
+    type=str,
+    default=None,
+    help="ENSG of interest to confirm (default: the ABF-top gene).",
+)
+@click.option(
+    "--fine-map/--no-fine-map",
+    default=True,
+    show_default=True,
+    help="Run pure-Python SuSiE-RSS/coloc.susie confirmation "
+    "(needs the 1000G LD reference: network, or --ld-vcf).",
+)
+@click.option(
+    "--gwas-n",
+    "gwas_n",
+    type=int,
+    default=None,
+    help="GWAS sample size (required for fine-mapping).",
+)
+@click.option(
+    "--eqtl-n",
+    "eqtl_n",
+    type=int,
+    default=None,
+    help="eQTL sample size (required for fine-mapping).",
+)
+@click.option(
+    "--superpop",
+    type=str,
+    default=DEFAULT_FINEMAP_SUPERPOP,
+    show_default=True,
+    help="1000G super-population for the LD reference.",
+)
+@click.option(
+    "--ld-cache-dir",
+    type=str,
+    default=None,
+    help="Cache directory for the 1000G LD reference.",
+)
+@click.option(
+    "--ld-vcf",
+    type=str,
+    default=None,
+    help="Local VCF to use as the LD reference instead of remote 1000G "
+    "(offline / reproducible runs; uses all its samples).",
+)
 @click.option("-o", "--output-dir", required=True, type=str, help="Output directory.")
 @click.pass_context
-def gwas_coloc_cmd(ctx, endpoint, chrom, lead, eqtl_dataset, eqtl_study, window_kb,
-                   gene_of_interest, fine_map, gwas_n, eqtl_n, superpop,
-                   ld_cache_dir, ld_vcf, output_dir):
+def gwas_coloc_cmd(
+    ctx,
+    endpoint,
+    chrom,
+    lead,
+    eqtl_dataset,
+    eqtl_study,
+    window_kb,
+    gene_of_interest,
+    fine_map,
+    gwas_n,
+    eqtl_n,
+    superpop,
+    ld_cache_dir,
+    ld_vcf,
+    output_dir,
+):
     """GWAS → effector colocalization with optional SuSiE fine-map confirmation.
 
     Ranks cis effectors at a GWAS locus by ABF H4, then (default) confirms the
@@ -195,10 +260,20 @@ def gwas_coloc_cmd(ctx, endpoint, chrom, lead, eqtl_dataset, eqtl_study, window_
     )
 
     config = GwasColocConfig(
-        endpoint=endpoint, chrom=chrom, lead=lead, eqtl_dataset=eqtl_dataset,
-        eqtl_study=eqtl_study, window_kb=window_kb, gene_of_interest=gene_of_interest,
-        fine_map=fine_map, gwas_N=gwas_n, eqtl_N=eqtl_n, superpop=superpop,
-        ld_cache_dir=ld_cache_dir, ld_vcf=ld_vcf, output_dir=output_dir,
+        endpoint=endpoint,
+        chrom=chrom,
+        lead=lead,
+        eqtl_dataset=eqtl_dataset,
+        eqtl_study=eqtl_study,
+        window_kb=window_kb,
+        gene_of_interest=gene_of_interest,
+        fine_map=fine_map,
+        gwas_N=gwas_n,
+        eqtl_N=eqtl_n,
+        superpop=superpop,
+        ld_cache_dir=ld_cache_dir,
+        ld_vcf=ld_vcf,
+        output_dir=output_dir,
     )
     errors = config.validate()
     if errors:
@@ -210,15 +285,19 @@ def gwas_coloc_cmd(ctx, endpoint, chrom, lead, eqtl_dataset, eqtl_study, window_
     res = report["results"]
     gmp = report["gwas"]["min_p_in_region"]
     gmp_str = f"{gmp:.1e}" if isinstance(gmp, float) and math.isfinite(gmp) else "n/a"
-    click.echo(f"\nRegion {report['region']}  |  GWAS min-p {gmp_str}  |  "
-               f"{res['n_genes_tested']} genes tested")
+    click.echo(
+        f"\nRegion {report['region']}  |  GWAS min-p {gmp_str}  |  "
+        f"{res['n_genes_tested']} genes tested"
+    )
     click.echo(f"Top effector: {res['top_effector']} (PP4={res['top_PP4']})")
     if report["fine_map"]:
         fmr = report["fine_map"]
         if fmr["available"]:
-            click.echo(f"Fine-map: credible sets GWAS={fmr['credible_sets_gwas']} "
-                       f"eQTL={fmr['credible_sets_eqtl']}; "
-                       f"coloc.susie PP4={fmr['coloc_susie_PP4']}")
+            click.echo(
+                f"Fine-map: credible sets GWAS={fmr['credible_sets_gwas']} "
+                f"eQTL={fmr['credible_sets_eqtl']}; "
+                f"coloc.susie PP4={fmr['coloc_susie_PP4']}"
+            )
         else:
             click.echo(f"Fine-map: {fmr['note']}", err=True)
     click.echo(f"VERDICT: {report['verdict']}")
@@ -347,9 +426,7 @@ def run_cmd(
             n_pass = 0
             if res.coloc_df is not None and not res.coloc_df.empty:
                 n_pass = (res.coloc_df["H4"] > DEFAULT_COLOC_H4_THRESHOLD).sum()
-            click.echo(
-                f"  {tissue}: {res.n_cascade_genes} genes, " f"{n_pass} colocalised"
-            )
+            click.echo(f"  {tissue}: {res.n_cascade_genes} genes, {n_pass} colocalised")
     else:
         result = pipeline.run()
         click.echo(f"\nCascade genes: {result.n_cascade_genes}")

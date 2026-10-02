@@ -1,4 +1,5 @@
 """Builder for `onek-genomes:samples` — imports IGSR's canonical sample-metadata TSV."""
+
 from __future__ import annotations
 
 import logging
@@ -7,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 def build_onek_genomes_samples(parsed_input, ctx, **params):
-    """Phase B builder — returns an AnnotationTable of IGSR sample metadata.
+    """Plugin builder — returns an AnnotationTable of IGSR sample metadata.
 
     Parameters
     ----------
@@ -35,5 +36,6 @@ def build_onek_genomes_samples(parsed_input, ctx, **params):
         key="sample",
     )
     return AnnotationTable.from_hail(
-        ht, provenance=ctx.provenance(schema_id="onek-genomes-samples-v1"),
+        ht,
+        provenance=ctx.provenance(schema_id="onek-genomes-samples-v1"),
     )

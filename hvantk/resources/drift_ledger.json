@@ -17,6 +17,12 @@
     "rebuilt_at": null,
     "signal": "schema"
   },
+  "dbnsfp:variants": {
+    "accepted_in": "PR #378",
+    "last_upstream_change": "2026-09-30T19:33:48+00:00",
+    "rebuilt_at": null,
+    "signal": "schema"
+  },
   "gencc:submissions": {
     "accepted_in": "drift/routine-batch",
     "last_upstream_change": "2026-09-15T10:45:09.783000+00:00",
@@ -26,6 +32,18 @@
   "gwas-catalog:associations": {
     "accepted_in": "drift/gwas-catalog-associations",
     "last_upstream_change": "2026-09-15T10:45:37.955370+00:00",
+    "rebuilt_at": null,
+    "signal": "schema"
+  },
+  "hgnc:lookup": {
+    "accepted_in": "PR #381",
+    "last_upstream_change": "2026-09-30T19:43:52+00:00",
+    "rebuilt_at": null,
+    "signal": "schema"
+  },
+  "ucsc-cellbrowser:default": {
+    "accepted_in": "drift/ucsc-cellbrowser",
+    "last_upstream_change": "2026-10-01T00:01:51.885110+00:00",
     "rebuilt_at": null,
     "signal": "schema"
   }

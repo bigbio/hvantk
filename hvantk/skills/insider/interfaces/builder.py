@@ -10,6 +10,7 @@ Reads ``H_sapiens_interfacesALL.txt`` (~49 MB), not the 1.17 GB BED: the pair ta
 already carries both accessions and both interface-residue lists, so no genomic join is
 needed for a gene-level reduction.
 """
+
 from __future__ import annotations
 
 import logging
@@ -36,7 +37,7 @@ def _resolve_input(parsed_input) -> str:
 
 
 def build_insider_interfaces(parsed_input, ctx, **params):
-    """Phase B builder -- returns an AnnotationTable keyed by ``uniprot_id``.
+    """Plugin builder -- returns an AnnotationTable keyed by ``uniprot_id``.
 
     Columns: ``n_partners``, ``n_partners_experimental``, ``n_partners_predicted``,
     ``n_interface_residues``. Interface-residue counts are a UNION across a protein's

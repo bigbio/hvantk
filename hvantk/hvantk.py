@@ -19,6 +19,11 @@ from hvantk.core.config import CONTEXT_SETTINGS
 # them. That duplication is the one maintenance cost of this design: if a
 # subcommand's own help text changes, update the copy here too, or ``hvantk
 # --help`` will show the stale wording.
+#
+# Registry entries cannot be hidden: ``format_commands`` and ``shell_complete``
+# read this registry, not the command object, so a registered command's
+# ``hidden=True`` is silently ignored -- ``test_lazy_command_registry_matches_real_commands``
+# fails if one is ever registered here.
 _LAZY_COMMANDS: dict[str, tuple[str, str, str]] = {
     "ancestry-inference": (
         "hvantk.tools.ancestry.ancestry_cli",
@@ -43,7 +48,7 @@ _LAZY_COMMANDS: dict[str, tuple[str, str, str]] = {
     "download": (
         "hvantk.tools.plugins.download_cli",
         "download_group",
-        "Download external datasets.",
+        "Download raw datasets from external providers (UCSC, ClinVar, etc).",
     ),
     "drift": (
         "hvantk.tools.plugins.drift_cli",
@@ -53,22 +58,22 @@ _LAZY_COMMANDS: dict[str, tuple[str, str, str]] = {
     "enrichex": (
         "hvantk.tools.enrichex",
         "enrichex_group",
-        "Gene set enrichment analysis commands.",
+        "Gene set enrichment analysis (overlap + burden).",
     ),
     "expression": (
         "hvantk.tools.expression.summarize_expression_cli",
         "expression_group",
-        "Expression AnnData analysis commands.",
+        "Expression AnnData analysis commands (describe, summarize, markers).",
     ),
     "genesets": (
         "hvantk.tools.genesets.genesets_cli",
         "genesets_group",
-        "Extract or prepare gene set collections.",
+        "Extract or prepare GeneSetCollection files from curated tables.",
     ),
     "hgc": (
         "hvantk.tools.hgc",
         "hgc_group",
-        "HGC (Hail-based Genotype Combiner) commands for joint genotyping workflows",
+        "Hail-based Genotype Combiner commands for joint genotyping workflows.",
     ),
     "plugins": (
         "hvantk.tools.plugins.plugins_cli",
@@ -78,7 +83,7 @@ _LAZY_COMMANDS: dict[str, tuple[str, str, str]] = {
     "psroc": (
         "hvantk.tools.ptm.psroc_cli",
         "psroc_cmd",
-        "PSROC: Prediction Score ROC Analysis",
+        "Per-gene-set ROC evaluation of dbNSFP predictors against ClinVar.",
     ),
     "ptm": (
         "hvantk.tools.ptm.ptm_cli",
@@ -88,12 +93,12 @@ _LAZY_COMMANDS: dict[str, tuple[str, str, str]] = {
     "qtlcascade": (
         "hvantk.tools.qtl.qtlcascade_cli",
         "qtlcascade_group",
-        "Molecular QTL cascade analysis (eQTL \u2192 pQTL \u2192 disease).",
+        "Molecular QTL cascade analysis (eQTL -> pQTL -> disease).",
     ),
     "reprocess": (
         "hvantk.tools.plugins.reprocess_cli",
         "reprocess_cmd",
-        "Run download -> parse -> build for a plugin dataset.",
+        "Chain download -> parse -> build -> drift-check for a plugin dataset.",
     ),
     "rerank": (
         "hvantk.tools.rerank",
@@ -103,12 +108,12 @@ _LAZY_COMMANDS: dict[str, tuple[str, str, str]] = {
     "tools": (
         "hvantk.tools.plugins.tools_cli",
         "tools_group",
-        "Inspect the hvantk tool registry.",
+        "Inspect the hvantk tool manifest registry.",
     ),
     "utils": (
         "hvantk.tools.infra.utils_cli",
         "utils_group",
-        "Operational utilities: format conversion, validation, diagnostics.",
+        "Operational utilities (format conversion, validation, diagnostics).",
     ),
 }
 
@@ -195,6 +200,26 @@ class LazyGroup(click.Group):
         if rows:
             with formatter.section("Commands"):
                 formatter.write_dl(rows)
+
+    def resolve_command(self, ctx, args):
+        """Keep click's typo suggestions, which it builds from ``self.commands``.
+
+        That dict is empty here until a command has been dispatched, so on click >= 8.4
+        ``hvantk drif`` said ``No such command 'drif'.`` with no ``Did you mean
+        'drift'?`` -- a regression from the lazy pattern, not a missing click feature.
+        The registry already knows every name, so the suggestion is rebuilt from it.
+        Older click (8.1.x, which ``click>=8.1.3`` still allows) has no
+        ``NoSuchCommand`` and no suggestions; nothing changes there.
+        """
+        try:
+            return super().resolve_command(ctx, args)
+        except click.UsageError as exc:
+            no_such = getattr(click.exceptions, "NoSuchCommand", None)
+            if no_such is None or not isinstance(exc, no_such) or exc.possibilities:
+                raise
+            raise no_such(
+                exc.command_name, possibilities=self.list_commands(ctx), ctx=ctx
+            ) from None
 
 
 # Main CLI entry point for the package (hvantk)

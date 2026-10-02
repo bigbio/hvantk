@@ -7,7 +7,6 @@ Commands for converting between different variant data formats.
 import logging
 import click
 
-from hvantk.algorithms.hgc import convert_vds_to_mt, convert_mt_to_multi_sample_vcf
 from .utils import validate_input_files, validate_output_path
 
 logger = logging.getLogger(__name__)
@@ -36,7 +35,12 @@ def register_convert_commands(group):
     help="Skip biallelic validation (faster, use only if confident)",
 )
 @click.option(
-    "--skip-keying-by-cols", is_flag=True, help="Skip keying MatrixTable by columns"
+    "--skip-keying-by-cols",
+    is_flag=True,
+    help=(
+        "Skip keying MatrixTable columns by sample and sorting them by sample ID "
+        "(columns keep the VDS's own order)"
+    ),
 )
 @click.option(
     "--overwrite/--no-overwrite", default=False, help="Overwrite output if exists"
@@ -78,6 +82,8 @@ def vds2mt(
         hvantk hgc vds2mt -i dataset.vds -o dataset.mt
         hvantk hgc vds2mt -i dataset.vds -o dataset.mt --skip-validation
     """
+    from hvantk.algorithms.hgc import convert_vds_to_mt
+
     try:
         logger.info("Starting VDS to MatrixTable conversion")
 
@@ -164,6 +170,8 @@ def mt2vcf(ctx, input, output, filter_adj, min_ac, split_multi, check_adj, dry_r
         hvantk hgc mt2vcf -i analysis.mt -o results.vcf.bgz
         hvantk hgc mt2vcf -i analysis.mt -o results.vcf.bgz --min-ac 2
     """
+    from hvantk.algorithms.hgc import convert_mt_to_multi_sample_vcf
+
     try:
         logger.info("Starting MatrixTable to VCF conversion")
 

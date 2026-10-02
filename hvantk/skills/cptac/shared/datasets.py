@@ -20,7 +20,10 @@ import re
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
-from hvantk.skills.cptac.shared.constants import CPTAC_CANCER_TYPES, CPTAC_CANCER_CLASS_MAP
+from hvantk.skills.cptac.shared.constants import (
+    CPTAC_CANCER_TYPES,
+    CPTAC_CANCER_CLASS_MAP,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -195,8 +198,12 @@ def write_matrix_csv(phospho_df, output_path: str) -> None:
 
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
     df.to_csv(output_path)
-    logger.info("Wrote matrix CSV (%d sites x %d samples) to %s",
-                len(df), len(df.columns), output_path)
+    logger.info(
+        "Wrote matrix CSV (%d sites x %d samples) to %s",
+        len(df),
+        len(df.columns),
+        output_path,
+    )
 
 
 def write_metadata_csv(clinical_df, cancer_type: str, output_path: str) -> None:
@@ -292,8 +299,10 @@ class CPTACPhosphoDataset:
         if os.path.exists(tsv_path) and not overwrite:
             logger.info("Output files exist for %s, skipping", ct)
             return {
-                "tsv": tsv_path, "tumor_tsv": tumor_tsv,
-                "normal_tsv": normal_tsv, "matrix": matrix_path,
+                "tsv": tsv_path,
+                "tumor_tsv": tumor_tsv,
+                "normal_tsv": normal_tsv,
+                "matrix": matrix_path,
                 "metadata": metadata_path,
             }
 
@@ -306,7 +315,9 @@ class CPTACPhosphoDataset:
                 return ds.get_phosphoproteomics(source=source, tissue_type=tissue_type)
             except Exception:
                 logger.info(
-                    "Source '%s' unavailable for %s, falling back to default", source, ct
+                    "Source '%s' unavailable for %s, falling back to default",
+                    source,
+                    ct,
                 )
                 return ds.get_phosphoproteomics(tissue_type=tissue_type)
 
@@ -323,7 +334,9 @@ class CPTACPhosphoDataset:
             normal_df = _get_phospho(tissue_type="normal")
             if len(normal_df) > 0:
                 logger.info("Normal: %d samples x %d columns", *normal_df.shape)
-                normal_sites = extract_phospho_sites(normal_df, ct, tissue_type="normal")
+                normal_sites = extract_phospho_sites(
+                    normal_df, ct, tissue_type="normal"
+                )
                 write_intermediate_tsv(normal_sites, normal_tsv)
             else:
                 logger.info("No normal samples available for %s", ct)
@@ -366,18 +379,26 @@ class CPTACPhosphoDataset:
         logger.info(
             "CPTAC %s complete: %d tumor sites, %d normal sites, "
             "%d samples (%d tumor, %d normal)",
-            ct, n_tumor, n_normal, len(both_df),
-            len(tumor_df), len(normal_df) if normal_sites else 0,
+            ct,
+            n_tumor,
+            n_normal,
+            len(both_df),
+            len(tumor_df),
+            len(normal_df) if normal_sites else 0,
         )
 
         return {
-            "tsv": tsv_path, "tumor_tsv": tumor_tsv,
-            "normal_tsv": normal_tsv, "matrix": matrix_path,
+            "tsv": tsv_path,
+            "tumor_tsv": tumor_tsv,
+            "normal_tsv": normal_tsv,
+            "matrix": matrix_path,
             "metadata": metadata_path,
         }
 
 
-def parse_raw_dir(raw_dir: str, output_path: str, cancer_type: Optional[str] = None, **kwargs) -> str:
+def parse_raw_dir(
+    raw_dir: str, output_path: str, cancer_type: Optional[str] = None, **kwargs
+) -> str:
     """Lifecycle ``parse`` entry point for the plugin loader.
 
     Per the ``DatasetSpec`` contract in :mod:`hvantk.core.plugin_api`, a
@@ -412,7 +433,8 @@ def parse_raw_dir(raw_dir: str, output_path: str, cancer_type: Optional[str] = N
         pattern_names = [f"cptac-phospho-{cancer_type}.tsv"]
     else:
         pattern_names = [
-            name for name in os.listdir(raw_dir)
+            name
+            for name in os.listdir(raw_dir)
             if name.startswith("cptac-phospho-")
             and name.endswith(".tsv")
             and "-tumor" not in name
@@ -429,7 +451,10 @@ def parse_raw_dir(raw_dir: str, output_path: str, cancer_type: Optional[str] = N
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
     with open(output_path, "w", newline="") as fout:
         writer = csv.DictWriter(
-            fout, fieldnames=_TSV_COLUMNS, delimiter="\t", lineterminator="\n",
+            fout,
+            fieldnames=_TSV_COLUMNS,
+            delimiter="\t",
+            lineterminator="\n",
             extrasaction="ignore",
         )
         writer.writeheader()
@@ -440,5 +465,7 @@ def parse_raw_dir(raw_dir: str, output_path: str, cancer_type: Optional[str] = N
                 for row in reader:
                     writer.writerow(row)
 
-    logger.info("Consolidated %d cancer-type TSV(s) into %s", len(pattern_names), output_path)
+    logger.info(
+        "Consolidated %d cancer-type TSV(s) into %s", len(pattern_names), output_path
+    )
     return output_path

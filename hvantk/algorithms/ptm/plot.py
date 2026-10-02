@@ -1,7 +1,7 @@
 """PTM-specific visualization functions.
 
-Provides publication-quality plots for PTM-variant analysis results (Q1, Q3).
-Follows the pattern of hvantk/enrichex/plot.py: matplotlib-based, optional
+Provides publication-quality plots for PTM-variant analysis results.
+Follows the pattern of hvantk/algorithms/enrichex/plot.py: matplotlib-based, optional
 seaborn, each function saves to file and returns the Figure.
 
 Plot functions:
@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from hvantk.algorithms.visualization.base import (
-    empty_figure as _empty_figure,
+    empty_figure,
     save_figure_to_path,
 )
 
@@ -73,7 +73,7 @@ def plot_landscape_summary(
     matplotlib.figure.Figure
     """
     if result.n_variants == 0:
-        return _empty_figure(
+        return empty_figure(
             output_path, format=format, dpi=dpi, title=title or "PTM-Variant Landscape"
         )
 
@@ -223,7 +223,7 @@ def plot_overlap_by_category(
     matplotlib.figure.Figure
     """
     if not result.overlap_by_category:
-        return _empty_figure(
+        return empty_figure(
             output_path,
             format=format,
             dpi=dpi,
@@ -272,7 +272,7 @@ def plot_distance_distribution(
     matplotlib.figure.Figure
     """
     if not result.distance_distribution:
-        return _empty_figure(
+        return empty_figure(
             output_path,
             format=format,
             dpi=dpi,
@@ -339,7 +339,7 @@ def plot_population_af(
     matplotlib.figure.Figure
     """
     if result.n_variants == 0:
-        return _empty_figure(
+        return empty_figure(
             output_path,
             format=format,
             dpi=dpi,
@@ -356,7 +356,7 @@ def plot_population_af(
 
     # Fall back to empty figure when AF data is not available (e.g., old JSON)
     if all(len(a) == 0 for a in af_arrays):
-        return _empty_figure(
+        return empty_figure(
             output_path,
             format=format,
             dpi=dpi,
@@ -491,7 +491,7 @@ def plot_source_overlap(
                 site_sources[key]["n_obs"] = max(site_sources[key]["n_obs"], n_obs)
 
     if not site_sources:
-        return _empty_figure(
+        return empty_figure(
             output_path,
             format=format,
             dpi=dpi,

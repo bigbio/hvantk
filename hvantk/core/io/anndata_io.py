@@ -1,4 +1,4 @@
-"""AnnData on-disk I/O. Moved from core/models/anndata_utils.py in Phase Q
+"""AnnData on-disk I/O. Moved from core/models/anndata_utils.py
 to honor the intra-core rule: core/models doesn't perform I/O.
 
 The pure data-transformation helper ``annotate_column_summary_ad`` stays
@@ -37,7 +37,9 @@ def save_anndata(
     if not overwrite and os.path.exists(path):
         raise FileExistsError(f"File already exists: {path}")
 
-    logger.info("Saving AnnData (%d obs x %d var) to %s", adata.n_obs, adata.n_vars, path)
+    logger.info(
+        "Saving AnnData (%d obs x %d var) to %s", adata.n_obs, adata.n_vars, path
+    )
     adata.write_h5ad(path)
 
 

@@ -5,6 +5,7 @@ Manifest path is the artifact path with `.provenance.json` appended:
   expr.h5ad                   -> expr.h5ad.provenance.json
   brca.geneset.json           -> brca.geneset.json.provenance.json
 """
+
 from __future__ import annotations
 
 import json
@@ -32,9 +33,11 @@ def read_manifest(artifact_path: Path) -> Provenance | None:
         return _from_dict(payload)
     except (json.JSONDecodeError, KeyError, ValueError) as e:
         import logging
+
         logging.getLogger(__name__).warning(
             "corrupt provenance manifest at %s (%s); falling back to legacy shim",
-            mp, e,
+            mp,
+            e,
         )
         return None
 

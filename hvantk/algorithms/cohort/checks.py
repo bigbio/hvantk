@@ -1,11 +1,10 @@
 """Validate a cohort manifest against its on-disk table -- no Hail, no Click.
 
-These checks used to be private to ``hvantk/tools/cohort/cohort_cli.py`` (design
-decision D10 puts the cohort concept in ``hvantk/algorithms/cohort/``, but the CLI
-module is the only place that could reach them). The consequence was concrete: the G1
-acceptance gate (``local/planning/cohorts/g1_gate.py``) had to import three
-underscore-private functions out of a CLI module, and any Python caller of
-:func:`hvantk.algorithms.cohort.attach.attach` skipped this validation entirely.
+These checks used to be private to ``hvantk/tools/cohort/cohort_cli.py``, although the
+cohort concept lives in ``hvantk/algorithms/cohort/``. The consequence was concrete: an
+acceptance script had to import three underscore-private functions out of a CLI module,
+and any Python caller of :func:`hvantk.algorithms.cohort.attach.attach` skipped this
+validation entirely. ``attach`` still does not run these checks itself: call them first.
 
 Every function here raises plain ``ValueError`` -- this module must never import
 ``click``, or anything under ``hvantk.skills`` / ``hvantk.tools``. The CLI
@@ -14,6 +13,7 @@ Every function here raises plain ``ValueError`` -- this module must never import
 
 Layering: stdlib only.
 """
+
 from __future__ import annotations
 
 import csv

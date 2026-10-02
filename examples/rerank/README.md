@@ -103,12 +103,11 @@ not penalised merely for carrying redundant columns.
 
 Two filters run by default: a univariate AUC screen with within-axis BH-FDR, then a
 Spearman redundancy filter. A third step, RFECV, exists but is **off by default**
-(`wrapper="rfecv"` turns it on). That default is measured, not assumed — across four real
-cohorts (21 axes) RFECV eliminated columns on 4 of the 11 axes wide enough to run it, and
-3 of those 4 were in the cohort with the fewest positives (54), which is how a wrapper
-fitting inner-CV noise looks. It also pruned the *ablation baseline* axis down to one
-column on that cohort, which silently inflates every other axis's ΔAUC. Turn it on
-deliberately, for a genuinely wide axis with enough positives to trust an inner CV.
+(`wrapper="rfecv"` turns it on). That default is measured, not assumed — RFECV eliminated
+columns mostly where positives were fewest, which is how a wrapper fitting inner-CV noise
+looks, and it can prune the *ablation baseline* axis, which silently inflates every other
+axis's ΔAUC. Turn it on deliberately, for a genuinely wide axis with enough positives to
+trust an inner CV.
 
 Two properties are worth understanding before reading any number this produces:
 
@@ -119,8 +118,8 @@ Two properties are worth understanding before reading any number this produces:
   `SelectionSummary.auc_global` reports what the global pass would have claimed, but treat
   `auc_global − auc_nested` as a stability diagnostic, not as a bias estimate: the global
   pass both sees every label (inflating it) and forces one feature set on every fold
-  (which can hurt it), so the gap has no guaranteed sign. On the real CHD cohort it is
-  **+0.0098 on the `all` arm and −0.0100 on `clean`** — same data, same policy.
+  (which can hurt it), so the gap has no guaranteed sign. It can even be positive on the
+  `all` arm and negative on `clean` in the same run — same data, same policy.
 - **`clean` is always the headline.** Statistical filtering cannot detect circularity; it
   rewards it. `all` exists only to quantify the channel, and it bundles both conflicted and
   undeclared columns — `n_conflicted` and `n_unknown` keep those separate.

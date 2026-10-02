@@ -6,8 +6,8 @@ Their Table 1 is the reason for that order: prefiltering cut RFE runtime ~3x (35
 at equal accuracy, and inner CV3/CV7/CV10 all gave the same RMSE, so 3 inner folds suffice.
 
 Only the first TWO run by default here; the wrapper is opt-in (see ``SelectionPolicy``).
-That is a departure from the reference workflow, taken on measurements from four cohorts
-rather than on principle, and it is reversible per run.
+That is a departure from the reference workflow, taken on measured evidence rather than on
+principle, and it is reversible per run.
 
 EVERY function here takes a training slice. Nothing in this module may see held-out rows.
 Selection that has seen the test labels inflates the reported metric (Ambroise & McLachlan
@@ -16,16 +16,19 @@ is the guardrail that proves the caller respects this.
 
 Departure from the reference workflow: it used a fixed correlation cutoff, appropriate to a
 continuous outcome. With a binary label and a few hundred positives, a fixed |AUC-0.5|
-threshold is roughly a 1-SE gate -- for 219 positives against 19,229 negatives the null SE
-is about 0.020 -- so noise passes. The univariate step uses within-axis BH-FDR instead,
+threshold is roughly a 1-SE gate -- for 200 positives against 20,000 negatives the null SE
+is about 0.02 -- so noise passes. The univariate step uses within-axis BH-FDR instead,
 which adapts to both cohort size and axis width with no per-cohort tuning.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
+
+from hvantk.algorithms.rerank.seeds import DEFAULT_SEED
 
 
 @dataclass(frozen=True)
@@ -100,7 +103,9 @@ def univariate_filter(X, y, columns, q: float = 0.10):
     passing = set()
     for rank, col in enumerate(order, start=1):
         if stats[col].p <= q * rank / m:
-            passing.update(order[:rank])   # BH: everything up to the largest passing rank
+            passing.update(
+                order[:rank]
+            )  # BH: everything up to the largest passing rank
     for col in passing:
         s = stats[col]
         stats[col] = UnivariateStat(s.auc, s.z, s.p, True, s.n_pos, s.n_neg)
@@ -143,22 +148,32 @@ def redundancy_filter(X, columns, scores, max_rho: float = 0.75):
     return kept, dropped
 
 
+# The closed vocabularies ``select_axis`` branches on, spelled out in code HERE and nowhere
+# else: ``SelectionPolicy.__post_init__`` validates against these, and the test suite pins
+# them to the enums in ``selection_policy.schema.json`` so the YAML path (``load_policy``,
+# schema-validated) and the Python constructor can never drift apart.
+UNIVARIATE_METHODS = ("auc", "none")
+REDUNDANCY_METHODS = ("spearman", "none")
+WRAPPER_METHODS = ("none", "rfecv")
+# ``_rfecv`` hardcodes RandomForest (see its docstring), so this is a declaration the
+# schema already restricts to one value rather than a knob anything reads.
+WRAPPER_ESTIMATORS = ("random_forest",)
+
+
 @dataclass(frozen=True)
 class SelectionPolicy:
     """How to filter one axis. An all-defaults instance is the recommended policy.
 
     ``wrapper`` defaults to "none" -- the two filters only -- on measured evidence, not on
-    principle. Across four real cohorts (CHD, CHD-NDD, epilepsy-DEE, SCHEMA-SCZ; 21 axes)
-    RFECV eliminated a column on 4 of the 11 axes wide enough for it to run, and 3 of
-    those 4 were in the cohort with the FEWEST positives (54). Its aggression tracks label
-    scarcity inversely, which is the signature of a wrapper fitting inner-CV noise: at 54
-    positives an inner CV3 fold holds ~18, and "the feature count that maximised inner
-    AUC" is barely distinguishable from chance.
+    principle. RFECV's aggression tracked label scarcity inversely -- it eliminated columns
+    mostly where positives were fewest -- which is the signature of a wrapper fitting
+    inner-CV noise: at ~50 training-slice positives an inner CV3 fold holds ~17, and
+    "the feature count that maximised inner AUC" is barely distinguishable from chance.
 
-    Worse, it prunes the axis whose composition defines the headline metric. On CHD-NDD it
-    cut the constraint axis to a single column, and constraint is the ABLATION BASELINE --
-    a thinner baseline silently inflates every other axis's delta-AUC. On CHD it removed
-    ``n_case_var``, one of the two columns that condition the gene universe.
+    Worse, it can prune the axis whose composition defines the headline metric. The first
+    configured axis (conventionally constraint) is the ABLATION BASELINE, so cutting it
+    down silently inflates every other axis's delta-AUC; and it can remove a column the
+    analysis conditions on, such as ``n_case_var``.
 
     Set ``wrapper="rfecv"`` deliberately, on an axis wide enough to need it (the ~45-column
     dbNSFP predictor axis is the motivating case) and with enough positives to trust the
@@ -167,14 +182,34 @@ class SelectionPolicy:
     outcome comparison rather than an elimination count.
     """
 
-    univariate: str = "auc"          # "auc" | "none"
-    q: float = 0.10                  # BH-FDR level, within axis
-    redundancy: str = "spearman"     # "spearman" | "none"
+    univariate: str = "auc"  # "auc" | "none"
+    q: float = 0.10  # BH-FDR level, within axis
+    redundancy: str = "spearman"  # "spearman" | "none"
     redundancy_max: float = 0.75
-    wrapper: str = "none"            # "none" | "rfecv" -- see the class docstring
+    wrapper: str = "none"  # "none" | "rfecv" -- see the class docstring
     wrapper_estimator: str = "random_forest"
-    inner_folds: int = 3             # Table 1: CV3 == CV7 == CV10; more is wasted compute
-    seed: int = 42
+    inner_folds: int = 3  # Table 1: CV3 == CV7 == CV10; more is wasted compute
+    # Independent of Config.seed by design: this wrapper's own randomness (inner CV /
+    # RFECV), not the engine's CV partition.
+    seed: int = DEFAULT_SEED
+
+    def __post_init__(self) -> None:
+        # ``select_axis`` tests each method by exact string equality with no else branch,
+        # so before this check a misspelling (``wrapper="RFECV"``, ``redundancy="pearson"``)
+        # silently took the "off" branch: the step the caller asked for never ran, every
+        # column survived it, and nothing said so. The YAML path was already closed by the
+        # schema's enums; this closes the constructor against the same vocabulary.
+        for name, allowed in (
+            ("univariate", UNIVARIATE_METHODS),
+            ("redundancy", REDUNDANCY_METHODS),
+            ("wrapper", WRAPPER_METHODS),
+            ("wrapper_estimator", WRAPPER_ESTIMATORS),
+        ):
+            value = getattr(self, name)
+            if value not in allowed:
+                raise ValueError(
+                    f"SelectionPolicy.{name} must be one of {allowed}; got {value!r}"
+                )
 
 
 @dataclass(frozen=True)
@@ -203,8 +238,11 @@ def _rfecv(X, y, columns, policy):
     from sklearn.model_selection import StratifiedKFold
 
     est = RandomForestClassifier(
-        n_estimators=200, min_samples_leaf=20, class_weight="balanced",
-        random_state=policy.seed, n_jobs=-1,
+        n_estimators=200,
+        min_samples_leaf=20,
+        class_weight="balanced",
+        random_state=policy.seed,
+        n_jobs=-1,
     )
     sel = RFECV(
         estimator=est,

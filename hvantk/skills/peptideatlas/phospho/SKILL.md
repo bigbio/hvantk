@@ -19,12 +19,12 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its reposit
 ## 2. Source identity
 
 - **Provider:** PeptideAtlas (<https://peptideatlas.org/>).
-- **Catalog entry:** TODO. No PeptideAtlas entry exists yet in any plugin's `catalog/datasets.json` (verify with `hvantk catalog search peptideatlas`). The pinned build coordinates live in `hvantk/skills/peptideatlas/phospho/shared/constants.py` as `PEPTIDEATLAS_PHOSPHO_BASE_URL`, `PEPTIDEATLAS_LATEST_BUILD_DATE`, and `PEPTIDEATLAS_LATEST_BUILD_ID`. When a dedicated catalog entry lands under `hvantk/skills/peptideatlas/catalog/datasets.json`, point this plugin's `source.catalog_ref` at it and remove this TODO.
+- **Catalog entry:** TODO. No PeptideAtlas entry exists yet in any plugin's `catalog/datasets.json` (verify with `hvantk catalog search peptideatlas`). The pinned build coordinates live in `hvantk/skills/peptideatlas/phospho/shared/constants.py` as `PEPTIDEATLAS_PHOSPHO_BASE_URL`, `PEPTIDEATLAS_LATEST_BUILD_DATE`, and `PEPTIDEATLAS_LATEST_BUILD_ID`. When a dedicated catalog entry lands, point this plugin's `source.catalog_ref` at it and remove this TODO.
 - Download URL is composed by `PeptideAtlasPhosphoDataset.from_build(build_date, build_id)` as `{base}/{build_date}/atlas_build_{build_id}.tsv.zip`. The dataset class enforces HTTPS + `*.peptideatlas.org` host validation before any GET.
 
 ## 3. Backend choice + reasoning
 
-**`backend: pandas`, `domain: proteomics`.** Per `_conventions` § 3, Hail Tables / MatrixTables are for variant- or expression-keyed data joined into the wider hvantk genomics graph; AnnData is for sparse single-cell or sample x gene matrices. PeptideAtlas phospho output is neither: it is a narrow site-level table (one row per `(accession, position)`) keyed by UniProt accession and is consumed downstream by the PTM pipeline (`hvantk/algorithms/ptm/pipeline.py`) as a TSV file. A Hail Table would force a Spark session for a sub-100 MB lookup table. A pandas DataFrame is the natural fit; the Phase B builder `build_peptideatlas_phospho(parsed_input, ctx, **params)` loads the intermediate TSV via `pd.read_csv(... sep="\t" ...)` and wraps it as an `AnnotationTable`.
+**`backend: pandas`, `domain: proteomics`.** Per `_conventions` § 3, Hail Tables / MatrixTables are for variant- or expression-keyed data joined into the wider hvantk genomics graph; AnnData is for sparse single-cell or sample x gene matrices. PeptideAtlas phospho output is neither: it is a narrow site-level table (one row per `(accession, position)`) keyed by UniProt accession and is consumed downstream by the PTM pipeline (`hvantk/algorithms/ptm/pipeline.py`) as a TSV file. A Hail Table would force a Spark session for a sub-100 MB lookup table. A pandas DataFrame is the natural fit; the plugin builder `build_peptideatlas_phospho(parsed_input, ctx, **params)` loads the intermediate TSV via `pd.read_csv(... sep="\t" ...)` and wraps it as an `AnnotationTable`.
 
 ## 4. Raw format & gotchas
 
@@ -72,10 +72,10 @@ When invoked to build or update the PeptideAtlas phospho intermediate:
 1. **End-to-end (recommended).** Run the full download -> parse -> build chain through the plugin loader:
 
    ```bash
-   hvantk reprocess peptideatlas:phospho --raw-dir /data/peptideatlas --output /out/peptideatlas-phospho.ht
+   hvantk reprocess peptideatlas:phospho --raw-dir /data/peptideatlas --output /out/peptideatlas-phospho.parquet
    ```
 
-   The loader auto-resolves the dataset from `plugin.yaml` (`get_registry().get_dataset("peptideatlas:phospho")`) and runs the build through `run_builder_for_spec`. The `lifecycle.download` (`download_dataset`) and `lifecycle.parse` (`parse_raw_dir`) entry points run first, then the Phase B `build_peptideatlas_phospho`.
+   The loader auto-resolves the dataset from `plugin.yaml` (`get_registry().get_dataset("peptideatlas:phospho")`) and runs the build through `run_builder_for_spec`. The `lifecycle.download` (`download_dataset`) and `lifecycle.parse` (`parse_raw_dir`) entry points run first, then the plugin builder `build_peptideatlas_phospho`.
 2. **Download only.** Either via the standalone CLI (`hvantk download peptideatlas-phospho -o /data/peptideatlas`) or the lifecycle entry point `download_dataset(raw_dir=...)`. Both produce `<raw_dir>/atlas_build_<id>.tsv.zip` *and* the parsed `<raw_dir>/peptideatlas-phospho-<date>-<id>.tsv`.
 3. **(Lifecycle) parse-only step.** `parse_raw_dir(raw_dir=..., output_path=...)` re-parses an existing zip from `raw_dir` into a fresh intermediate TSV — used when downstream code wants the TSV at a different path than the dataset class's default.
 4. **Builder.** `build_peptideatlas_phospho(parsed_input, ctx, **params)` loads the intermediate TSV (the path produced by `parse_raw_dir`) as a pandas DataFrame and returns an `AnnotationTable`.

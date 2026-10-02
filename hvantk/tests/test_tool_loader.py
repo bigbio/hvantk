@@ -59,7 +59,9 @@ def test_list_tools_filtered_by_domain_returns_plugin_tools():
 
 def test_broken_manifest_records_load_error(tmp_path: Path):
     bad = tmp_path / "broken.tool.yaml"
-    bad.write_text("api_version: 1\nname: BAD_UPPER\n")  # invalid name + missing required fields
+    bad.write_text(
+        "api_version: 1\nname: BAD_UPPER\n"
+    )  # invalid name + missing required fields
     reg = ToolRegistry()
     reg.load_from_tools_root(tmp_path)
     assert reg.list_tools() == []

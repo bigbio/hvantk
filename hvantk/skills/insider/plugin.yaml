@@ -20,18 +20,18 @@ datasets:
     artifact_type: AnnotationTable
     schema_id: insider-variants-v1
     builder:
-      module: hvantk.skills.insider.builder
+      module: hvantk.skills.insider.variants.builder
       function: build_insider_interactome
     drift_probe:
-      module: hvantk.skills.insider.drift_probe
+      module: hvantk.skills.insider.variants.drift_probe
       function: fetch_fingerprint
     skill: SKILL.md
     tests:
-      command: pytest hvantk/skills/insider/tests -m hail
-      fixture: tests/testdata/raw/insider
-      schema_snapshot: tests/snapshots/schema.json
-      row_snapshot: tests/snapshots/sample_rows.json
-      drift_fingerprint: tests/drift_fingerprint.json
+      command: pytest hvantk/skills/insider/variants/tests -m hail
+      fixture: variants/tests/testdata/raw/insider
+      schema_snapshot: variants/tests/snapshots/schema.json
+      row_snapshot: variants/tests/snapshots/sample_rows.json
+      drift_fingerprint: variants/tests/drift_fingerprint.json
 
   # Gene-level companion to `variants`. Same provider, different question: `variants` is
   # interval-keyed ("does this variant sit in an interface?"), `interfaces` is
@@ -39,8 +39,6 @@ datasets:
   # Reads H_sapiens_interfacesALL.txt (~49 MB), not the 1.17 GB BED -- the pair table
   # already carries both accessions and both residue lists, so no genomic join is needed.
   - name: interfaces
-    acquisition:
-      mode: download
     domain: genomics
     backend: hail
     artifact_type: AnnotationTable

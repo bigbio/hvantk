@@ -153,13 +153,20 @@ def test_variant_reductions_counts_and_drivers():
     # GENEB/mis is carried only by a control -> no case variants
     assert df.loc[("GENEB", "mis"), "n_case_var"] == 0
 
-    # drivers must be usable exactly the way Task 4's pandas layer will use it:
-    # max(drivers, key=lambda d: d["cc"]) then d["ctrl_freq"].
+    # drivers must be usable exactly the way the pandas layer's _driver_af() uses
+    # them: a list of Hail structs (cc, ctrl_freq) fed straight into its tie-break
+    # (see hvantk.algorithms.burden.fet._driver_af for the tie-break/NaN/None
+    # contract; this test only pins the Hail-delivered structure, not that contract).
+    from hvantk.algorithms.burden.fet import _driver_af
+
     drivers = df.loc[("GENEA", "lof"), "drivers"]
     assert len(drivers) == 2
-    top = max(drivers, key=lambda d: d["cc"])
-    assert top["cc"] == 1
-    assert top["ctrl_freq"] == 0.0
+    assert isinstance(_driver_af(drivers), float)
+    # Both GENEA/lof variants are het in exactly one case and carried by zero
+    # controls, so this pins the Hail layer actually delivers a defined 0.0
+    # ctrl_freq (not a NaN/None that _driver_af's float-typed return would mask).
+    assert _driver_af(drivers) == 0.0
+    assert sorted((d["cc"], d["ctrl_freq"]) for d in drivers) == [(1, 0.0), (1, 0.0)]
 
 
 def test_run_from_mt_end_to_end():

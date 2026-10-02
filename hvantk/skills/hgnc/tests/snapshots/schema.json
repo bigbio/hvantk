@@ -34,7 +34,6 @@
     "lncipedia": "str",
     "lncrnadb": "str",
     "location": "str",
-    "location_sortable": "str",
     "locus_group": "str",
     "locus_type": "str",
     "lsdb": "str",

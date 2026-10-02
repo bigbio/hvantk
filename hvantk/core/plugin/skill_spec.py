@@ -51,7 +51,9 @@ REQUIRED_FRONTMATTER: tuple[str, ...] = ("name", "description")
 #: The line every spec opens with, directing a reader to the shared contract before the
 #: provider-specific detail. 21 of 23 already carried it in two wordings; #356 settled on
 #: the majority one and made it checkable, because a spec read in isolation otherwise
-#: looks self-contained when it is not.
+#: looks self-contained when it is not. Checked as the first line ``_first_body_line``
+#: returns, not as a substring anywhere in the file (#364): a whole-file ``in text`` test
+#: passed a spec with the line moved to the end, or quoted only inside a code fence.
 CONVENTIONS_PREAMBLE: str = (
     "Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its "
     "repository map, helpers, keying conventions, builder pattern, and validation "
@@ -84,6 +86,23 @@ SECTION_9_ARTIFACT_KEYS: tuple[str, ...] = (
     "drift_fingerprint",
     "command",
 )
+
+#: Tokens that open a stand-in body rather than real content. Checked as a LEAD --
+#: the body need only start this way, not equal it exactly -- because the rot #364
+#: item 8 found was not only a bare ``TODO``/``TBD``/``...``/``n/a`` but also a longer
+#: sentence that opens by admitting it is one (``TODO. This section will be fleshed
+#: out once ...``). Before this, only s 6 and s 9 had any content rule at all, so
+#: ss 1-5, 7 and 8 could be emptied outright and the checker kept passing; and s 6 / s 9's
+#: own rules checked for keywords rather than substance, so a body that only *named* the
+#: required words satisfied them too -- ``TODO. builder, drift probe, tests.`` passes
+#: ``SECTION_6_REFERENCES``, and a sentence merely listing the five ``SECTION_9_ARTIFACT_KEYS``
+#: passes that check, without either being an actual section.
+_PLACEHOLDER_LEADS: tuple[str, ...] = ("todo", "tbd", "...")
+
+#: Tokens that are a stand-in only when they are the WHOLE body. ``n/a`` is also how a
+#: real answer opens -- "N/A for this plugin: the catalog is static" explains why the
+#: section has nothing to add -- so only a bare ``n/a`` (punctuation aside) is rejected.
+_PLACEHOLDER_WHOLE: tuple[str, ...] = ("n/a",)
 
 
 #: ``_conventions/SKILL.md`` IS the contract and has its own structure, so it is
@@ -205,6 +224,42 @@ def _body_heading_lines(text: str) -> list[str]:
     return out
 
 
+def _first_body_line(text: str) -> str | None:
+    """The first line of prose in the body: after the frontmatter, ignoring blank lines,
+    headings and fenced code blocks. ``None`` when there is no such line (an empty body,
+    or a frontmatter block that never closes).
+
+    The preamble is checked HERE rather than by substring over the whole file: ``in text``
+    accepted a spec with the line deleted from the top and pasted at the bottom, or present
+    only inside a fence, while ``CONVENTIONS_PREAMBLE``'s own docstring says it is the line
+    every spec *opens* with (#364).
+    """
+    lines = text.splitlines()
+    start = 0
+    if lines and lines[0].strip() == "---":
+        try:
+            start = (
+                next(
+                    i
+                    for i, line in enumerate(lines[1:], start=1)
+                    if line.strip() == "---"
+                )
+                + 1
+            )
+        except StopIteration:
+            return None
+    in_fence = False
+    for line in lines[start:]:
+        stripped = line.strip()
+        if stripped.startswith("```") or stripped.startswith("~~~"):
+            in_fence = not in_fence
+            continue
+        if in_fence or not stripped or stripped.startswith("#"):
+            continue
+        return stripped
+    return None
+
+
 def check_skill_spec(path: Path) -> list[str]:
     """Return a list of contract violations for one ``SKILL.md``; empty means conforming.
 
@@ -266,10 +321,15 @@ def check_skill_spec(path: Path) -> list[str]:
                 + " -> ".join(s.split(". ", 1)[-1] for s in ordered)
             )
 
-    if CONVENTIONS_PREAMBLE not in text:
+    if _first_body_line(text) != CONVENTIONS_PREAMBLE:
+        where = (
+            " (it appears later in the file, or only inside a code fence)"
+            if CONVENTIONS_PREAMBLE in text
+            else ""
+        )
         problems.append(
-            "missing the shared preamble line directing the reader to "
-            "_conventions/SKILL.md (see CONVENTIONS_PREAMBLE)"
+            "the body must open with the shared preamble line directing the reader to "
+            f"_conventions/SKILL.md (see CONVENTIONS_PREAMBLE){where}"
         )
 
     problems.extend(_section_content_problems(text))
@@ -305,19 +365,170 @@ def _section_body(text: str, section: str) -> str:
     return "\n".join(lines[start:]) if start is not None else ""
 
 
-def _section_content_problems(text: str) -> list[str]:
-    """Check that s 6 and s 9 carry their required content, not just their headings.
+#: A heading line anywhere in a body -- ``### TODO`` is still a stand-in, not content,
+#: and a heading contributes no content of its own either way.
+_HEADING_LINE_RE = re.compile(r"^#{1,6}\s")
 
-    Deliberately a word-bounded regex search rather than a structural parse. These
-    sections are prose with per-provider shape -- some use ``- **Label:**``, some
-    ``- Label:`` -- and a parser strict enough to read the shape would fail on
-    formatting instead of substance, which is the opposite of useful. The question
-    asked here is only "can a reader get from this section to that thing", which a
-    search answers honestly. The word boundaries matter: they are what keeps the
-    s 9 ``command`` needle from matching inside ``test_command`` (``_`` is a word
-    character, so there is no boundary between them).
+#: An HTML comment, possibly spanning multiple lines (``<!-- TODO -->``). Removed
+#: whole, delimiters included, before the placeholder test runs.
+_HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+
+#: A fenced code block with nothing inside it: the closing fence on the line
+#: immediately after the opening one. A fence that actually wraps content spans more
+#: than two lines and never matches this.
+_EMPTY_FENCE_RE = re.compile(r"(?m)^[ \t]*(`{3,}|~{3,})[^\n]*\n[ \t]*\1[ \t]*$")
+
+#: A single leading list/quote marker: ``-``, ``*``, ``>``, or a numbered-list marker
+#: (``1.`` / ``1)``). Widened from a bare ``[-*>]`` class, which cannot see a stub
+#: written as ``1. TODO``.
+_LEADING_MARKER_RE = re.compile(r"^\s*(?:(?:[-*>]|\d+[.)])\s*)+")
+
+#: A markdown table separator cell (``---``, ``:--``, ``--:``, ``:-:``). Dropped
+#: before testing a table's cells: its dashes are punctuation, not prose, and would
+#: never match a placeholder lead -- which would wrongly clear a table whose real
+#: cells are all ``TODO``.
+_TABLE_SEPARATOR_CELL_RE = re.compile(r"^:?-+:?$")
+
+
+def _strip_structural_noise(body: str) -> str:
+    """Remove markup that can wrap a placeholder without supplying any content of
+    its own.
+
+    ``### TODO``, ``<!-- TODO -->`` and a fenced block with nothing inside it all
+    read as empty to a human. Before this they read as non-empty here, because the
+    checks below only ever looked at the first few characters, none of which are
+    ``#``, ``<`` or a backtick. HTML comments are stripped first, since a comment can
+    itself contain text that looks like a heading or a fence.
+    """
+    text = _HTML_COMMENT_RE.sub("", body)
+    text = _EMPTY_FENCE_RE.sub("", text)
+    lines = [ln for ln in text.splitlines() if not _HEADING_LINE_RE.match(ln.strip())]
+    return "\n".join(lines)
+
+
+def _normalize_lowered(token: str) -> str:
+    """Backtick/asterisk/underscore-stripped, lower-cased, ellipsis-folded text.
+
+    Shared by the whole-body check and the per-cell table check below, so
+    `` `TBD` `` and a typographic ``…`` are recognised the same in both.
+    """
+    return token.strip().strip("`*_ \t").lower().replace("…", "...")
+
+
+def _is_placeholder_lead_or_whole(lowered: str) -> bool:
+    """The lead/whole-body test, applied to text already run through
+    ``_normalize_lowered``.
+
+    The character immediately following a lead token must not be alphanumeric, so
+    the check fires on ``todo``, ``todo.`` and ``todo: builder, drift probe, tests.``
+    alike, but not on a word that merely starts with the same letters (``tbdone``).
+    """
+    if not lowered or lowered.rstrip(".:;!- \t") in _PLACEHOLDER_WHOLE:
+        return True
+    for token in _PLACEHOLDER_LEADS:
+        if lowered.startswith(token):
+            tail = lowered[len(token) : len(token) + 1]
+            if not tail.isalnum():
+                return True
+    return False
+
+
+def _table_row_cells(line: str) -> list[str] | None:
+    """Cell texts of one ``| a | b |`` row, or ``None`` if the line is not a table row."""
+    stripped = line.strip()
+    if "|" not in stripped:
+        return None
+    return [cell.strip() for cell in stripped.strip("|").split("|")]
+
+
+def _is_placeholder_table(cleaned: str) -> bool:
+    """True if ``cleaned`` is (only) a markdown table whose every real cell is a
+    placeholder lead.
+
+    A separator row's cells are dropped cell-by-cell rather than row-by-row, so a
+    malformed or missing separator row does not defeat the check.
+    """
+    lines = [ln for ln in cleaned.strip().splitlines() if ln.strip()]
+    if not lines:
+        return False
+    rows = [_table_row_cells(ln) for ln in lines]
+    if any(row is None for row in rows):
+        return False  # not every line is a table row -- this is not (only) a table
+    cells = [
+        cell
+        for row in rows
+        for cell in row
+        if cell and not _TABLE_SEPARATOR_CELL_RE.match(cell)
+    ]
+    return bool(cells) and all(
+        _is_placeholder_lead_or_whole(_normalize_lowered(cell)) for cell in cells
+    )
+
+
+def _is_placeholder_body(body: str) -> bool:
+    """True if the text under one heading is empty, or a stand-in rather than content.
+
+    Structural markup that carries no content of its own is stripped first
+    (``_strip_structural_noise``): a heading line, an HTML comment, and an empty code
+    fence -- so ``### TODO``, ``<!-- TODO -->`` and a fenced block with nothing
+    inside it are all recognised as empty rather than as content merely because they
+    are not plain text.
+
+    What remains is tested two ways. A markdown table is a placeholder only if EVERY
+    real cell is (``_is_placeholder_table``). Otherwise, a leading list/quote marker
+    (``- ``, ``* ``, ``> ``) or numbered-list marker (``1.``, ``1)``) and surrounding
+    Markdown emphasis (backticks, asterisks, underscores) are stripped before
+    matching, so ``- **TODO**``, `` `TBD` `` and ``1. TODO`` are recognised the same
+    as bare ``TODO`` / ``TBD``, and a lone ``-`` counts as empty. A typographic
+    ellipsis (``…``) counts as ``...``. The character immediately following a lead
+    token must not be alphanumeric, so the check fires on ``TODO``, ``TODO.`` and
+    ``TODO: builder, drift probe, tests.`` alike, but not on a word that merely
+    starts with the same letters (``TBDone``). It does fire on a sentence whose first
+    word is the token itself (``Todo lists are ...``): the price of checking a lead,
+    paid because no real section opens that way.
+    """
+    cleaned = _strip_structural_noise(body)
+    if _is_placeholder_table(cleaned):
+        return True
+    normalized = _LEADING_MARKER_RE.sub("", cleaned.strip())
+    return _is_placeholder_lead_or_whole(_normalize_lowered(normalized))
+
+
+def _section_content_problems(text: str) -> list[str]:
+    """Check that every section carries a real body, and that s 6 / s 9 carry their
+    specific required content, not just their headings.
+
+    The per-section check runs against all nine ``REQUIRED_SECTIONS``, but only the
+    ones actually present as a heading: a heading that is missing or malformed is
+    already reported once, by the heading check in ``check_skill_spec``, and re-testing
+    an empty string for a heading that was never found would only duplicate that
+    message under a different name. For every heading that IS present, an empty or
+    placeholder-led body (``_is_placeholder_body``) is rejected regardless of section --
+    which is what makes this the fix for #364 item 8: before it, ss 1-5, 7 and 8 carried
+    no content rule at all, and s 6 / s 9's own rules (below) checked for keywords
+    rather than substance, so a body that only named the required words satisfied them
+    without being a real section.
+
+    The s 6 / s 9 keyword and artifact-key checks are deliberately a word-bounded regex
+    search rather than a structural parse. These sections are prose with per-provider
+    shape -- some use ``- **Label:**``, some ``- Label:`` -- and a parser strict enough
+    to read the shape would fail on formatting instead of substance, which is the
+    opposite of useful. The question asked here is only "can a reader get from this
+    section to that thing", which a search answers honestly. The word boundaries
+    matter: they are what keeps the s 9 ``command`` needle from matching inside
+    ``test_command`` (``_`` is a word character, so there is no boundary between them).
     """
     problems: list[str] = []
+    headings = _body_heading_lines(text)
+
+    for section in REQUIRED_SECTIONS:
+        if section not in headings:
+            continue  # already reported as missing/malformed, above
+        if _is_placeholder_body(_section_body(text, section)):
+            problems.append(
+                f"{section!r} has no real body -- it is empty, or only a "
+                "TODO/TBD/.../n/a-style placeholder"
+            )
 
     six = _section_body(text, "## 6. hvantk integration points").lower()
     for label, needles in SECTION_6_REFERENCES:

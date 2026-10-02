@@ -4,6 +4,7 @@ Implements ``GeneCatalogStreamer`` for HGNC gene metadata. Absorbs the
 logic previously in ``core/utils/gene_mapper.py`` and
 ``core/utils/gene_aliases.py``.
 """
+
 from __future__ import annotations
 
 import logging

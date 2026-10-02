@@ -1,6 +1,6 @@
 """Compose prepared Layer-1 sources onto the gene spine (Stage 2 of the annotation build).
 
-`compose` is Stage 2 of the annotation build (design §3): it left-joins every axis's
+`compose` is Stage 2 of the annotation build: it left-joins every axis's
 prepared table (Stage 1, ``prepare.py``) onto the ``gene_id``-keyed spine, driven
 entirely by a :class:`~hvantk.algorithms.annotation.spec.FeatureSpec`. It is deliberately
 generic -- axis names, output columns, and any cohort-specific assumptions come only from
@@ -17,6 +17,7 @@ Layering: this module imports Hail and sibling ``hvantk.algorithms.annotation`` 
 only -- it must never import ``hvantk.skills`` or ``hvantk.tools`` (the source is data,
 already reduced to a Hail Table by Stage 1; compose has no business reading raw sources).
 """
+
 from __future__ import annotations
 
 import logging

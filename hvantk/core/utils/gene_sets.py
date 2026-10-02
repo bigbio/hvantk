@@ -576,7 +576,7 @@ def load_gene_sets(
 
     else:
         raise ValueError(
-            f"Unknown gene set file format: {suffix}. " "Supported formats: .json, .gmt"
+            f"Unknown gene set file format: {suffix}. Supported formats: .json, .gmt"
         )
 
 

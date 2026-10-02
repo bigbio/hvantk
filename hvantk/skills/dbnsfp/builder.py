@@ -1,10 +1,11 @@
 """Hail Table builder for the dbNSFP variant functional annotation database.
 
-Owns the Phase B ``build_dbnsfp_variants`` builder. Imports the dbNSFP
+Owns the ``build_dbnsfp_variants`` builder. Imports the dbNSFP
 TSV/BGZ, parses variant coordinates to ``(locus, alleles)``, optionally
 groups transcript scores and common prefixes into structs, and wraps with
 Provenance.
 """
+
 from __future__ import annotations
 
 import logging
@@ -22,7 +23,7 @@ def build_dbnsfp_variants(
     ctx,
     **params,
 ):
-    """Phase B builder — returns an AnnotationTable.
+    """Plugin builder — returns an AnnotationTable.
 
     Imports the dbNSFP TSV/BGZ, parses variant coordinates to (locus, alleles),
     optionally groups transcript scores and common prefixes into structs, and
@@ -92,9 +93,7 @@ def build_dbnsfp_variants(
             "dbNSFP input missing required columns: 'pos(1-based)', 'ref', or 'alt'"
         )
 
-    variant_key_expr = hl.array(
-        [ht.chr, hl.str(ht["pos(1-based)"]), ht.ref, ht.alt]
-    )
+    variant_key_expr = hl.array([ht.chr, hl.str(ht["pos(1-based)"]), ht.ref, ht.alt])
     ht = ht.annotate(variant_key=hl.delimit(variant_key_expr, ":"))
 
     # Parse to locus/alleles
@@ -191,9 +190,7 @@ def build_dbnsfp_variants(
                 prefix,
                 len(pref_fields),
             )
-            ht = ht.annotate(
-                **{prefix: hl.struct(**{f: ht[f] for f in pref_fields})}
-            )
+            ht = ht.annotate(**{prefix: hl.struct(**{f: ht[f] for f in pref_fields})})
             ht = ht.drop(*pref_fields)
 
     # 3. Wrap with provenance

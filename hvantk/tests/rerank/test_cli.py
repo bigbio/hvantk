@@ -1,5 +1,6 @@
 # hvantk/tests/rerank/test_cli.py
 import logging
+import sys
 
 import numpy as np, pandas as pd, yaml
 from click.testing import CliRunner
@@ -157,7 +158,7 @@ def test_rerank_cli_wires_up_the_architecture_audit_when_declared(tmp_path):
 
 
 def test_rerank_cli_rejects_a_stale_prior_block(tmp_path):
-    # Finding 4 (whole-branch review): a config migrated to declare 'cohort:' that
+    # A config migrated to declare 'cohort:' that
     # still carries a leftover pre-migration 'prior:' block must fail loud, not be
     # silently ignored -- the prior it names is never read, and prior_stat would come
     # from the cohort manifest's own table instead, with no warning at all.
@@ -216,7 +217,7 @@ def test_rerank_cli_rejects_any_unknown_top_level_key(tmp_path):
 def test_rerank_cli_no_near_miss_warning_when_architecture_columns_are_split(
     tmp_path, caplog
 ):
-    # Finding 5 (whole-branch review): a manifest splitting the three architecture
+    # A manifest splitting the three architecture
     # columns across an "architecture" axis (n_case_var, conc) and a differently-named
     # axis (driver_af here, under "qc") is a WORKING configuration --
     # CaseControlArchitectureAudit genuinely wires up (has_architecture_columns()
@@ -263,7 +264,7 @@ def test_rerank_cli_no_near_miss_warning_when_architecture_columns_are_split(
 def test_rerank_cli_falls_back_cleanly_when_the_prior_column_is_the_missing_third(
     tmp_path, caplog
 ):
-    # Finding 3 (re-review): has_architecture_columns() used to be fed
+    # has_architecture_columns() used to be fed
     # declared_columns() (prior column + axis columns), but engine.rerank() merges
     # the cohort frame with include_prior=False -- the two disagree by exactly the
     # prior column. Reproduction: prior.column='n_case_var', and a cohort_axes
@@ -327,3 +328,61 @@ def test_rerank_cli_reports_a_missing_cohort_manifest_clearly(tmp_path):
     assert r.exit_code != 0
     assert "does-not-exist.yaml" in r.output
     assert "Traceback" not in r.output
+
+
+# --- optional dependency ---------------------------------------------------------------
+
+
+def _hide_sklearn(monkeypatch):
+    """Make `import sklearn` raise ModuleNotFoundError for the duration of a test.
+
+    The same technique as `_hide_statsmodels` in test_ptm_optional_deps.py. Every cached
+    `sklearn.*` AND `hvantk.algorithms.rerank*` module is dropped too: the command's
+    deferred `from hvantk.algorithms.rerank import ...` would otherwise be served from
+    `sys.modules` and never touch scikit-learn at all, which is not what a base install
+    sees.
+    """
+    for name in [
+        m
+        for m in list(sys.modules)
+        if m == "sklearn"
+        or m.startswith("sklearn.")
+        or m == "hvantk.algorithms.rerank"
+        or m.startswith("hvantk.algorithms.rerank.")
+    ]:
+        monkeypatch.delitem(sys.modules, name)
+    monkeypatch.setitem(
+        sys.modules, "sklearn", None
+    )  # `import sklearn` -> ModuleNotFoundError
+
+
+def test_rerank_names_the_ml_extra_instead_of_a_traceback_without_scikit_learn(
+    tmp_path, monkeypatch, caplog
+):
+    """A path behind an extra exits with an actionable message naming that extra, not a
+    traceback (the standard installation.md documents, and the one `hvantk ptm test`
+    follows for statsmodels). Before this guard, `hvantk rerank` on a base install died
+    inside the command's deferred `from hvantk.algorithms.rerank import ...` with a raw
+    ModuleNotFoundError that named no extra."""
+    _toy_fixtures(tmp_path)
+    config_path = _write_config(
+        tmp_path,
+        {
+            "name": "toy",
+            "key": "symbol",
+            "key_column": "gene",
+            "table": str(tmp_path / "cohort.tsv"),
+            "prior": {"column": "p", "direction": "lower_is_better"},
+        },
+    )
+    out = tmp_path / "out.tsv"
+    _hide_sklearn(monkeypatch)
+    with caplog.at_level(logging.DEBUG):
+        r = CliRunner().invoke(rerank_cmd, ["-c", str(config_path), "-o", str(out)])
+    assert r.exit_code == 1, r.output
+    assert "ml" in r.output and "hvantk[ml]" in r.output, r.output
+    assert "Traceback" not in r.output and "No module named" not in r.output
+    # A ClickException, not the ModuleNotFoundError escaping the command.
+    assert r.exception is None or isinstance(r.exception, SystemExit), repr(r.exception)
+    assert all(rec.exc_info is None for rec in caplog.records)
+    assert not out.exists()

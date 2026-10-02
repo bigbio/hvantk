@@ -4,6 +4,7 @@ Regenerate after an intentional change:
     pytest hvantk/skills/ensembl_gene/structure/tests/test_builder.py -m hail \
         --regenerate-snapshots
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -19,8 +20,7 @@ from hvantk.tests._snapshot_utils import (
 from hvantk.tests._snapshot_utils import regenerate_snapshots as regenerate_snapshots_fn
 
 FIXTURE = (
-    "hvantk/skills/ensembl_gene/structure/tests/testdata/raw/"
-    "ensembl-structure/mini.gtf"
+    "hvantk/skills/ensembl_gene/structure/tests/testdata/raw/ensembl-structure/mini.gtf"
 )
 SNAPSHOT_DIR = Path("hvantk/skills/ensembl_gene/structure/tests/snapshots")
 
@@ -119,9 +119,10 @@ def test_builder_accepts_a_raw_directory(hail_session, tmp_path):
 
     raw_dir = tmp_path / "raw"
     raw_dir.mkdir()
-    with open(FIXTURE, "rb") as src, gzip.open(
-        raw_dir / ENSEMBL_GTF_FILENAME, "wb"
-    ) as dst:
+    with (
+        open(FIXTURE, "rb") as src,
+        gzip.open(raw_dir / ENSEMBL_GTF_FILENAME, "wb") as dst,
+    ):
         dst.write(src.read())  # what the downloader writes: a gzipped GTF
 
     builder = phase_b_snapshot_adapter(

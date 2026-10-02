@@ -2,7 +2,7 @@
 
 This guide covers how to build datasets and run analysis tools in hvantk.
 
-> **Migration note:** hvantk has retired the `mktable` and `mkmatrix` CLIs. The unified replacement is `hvantk reprocess <plugin>:<dataset>`, which runs the full Phase B pipeline (download → parse → build → drift check → save with provenance). See section 1 below for the current pattern.
+> **Migration note:** hvantk has retired the `mktable` and `mkmatrix` CLIs. The unified replacement is `hvantk reprocess <plugin>:<dataset>`, which runs the full build pipeline (download → parse → build → drift check → save with provenance). See section 1 below for the current pattern.
 
 If you haven't installed hvantk yet, see the main README for install steps.
 
@@ -48,23 +48,14 @@ hvantk reprocess clinvar:variants \
 # Pre-parsed intermediate file; skip both download and parse
 hvantk reprocess gevir:metrics \
   --skip-download --skip-parse \
+  --raw-dir /data/gevir/ \
   --intermediate /data/gevir.tsv.bgz \
   --output /out/gevir.ht
 ```
 
 ### Pass plugin-specific parameters
 
-Use `--plugin-arg KEY=VALUE` (repeatable) to forward arguments that the plugin's download / parse / build functions accept. For example, to fetch a specific CPTAC cancer type:
-
-```bash
-hvantk reprocess cptac:expression \
-  --raw-dir /data/cptac/ \
-  --output /out/cptac_brca.h5ad \
-  --plugin-arg cancer_type=brca
-```
-
-CPTAC phosphoproteomics builds one AnnData per cancer type — the single
-`cancer_type` flows to both the download and the build:
+Use `--plugin-arg KEY=VALUE` (repeatable) to forward arguments that the plugin's download / parse / build functions accept. For example, CPTAC phosphoproteomics builds one AnnData per cancer type — the single `cancer_type` flows to both the download and the build:
 
 ```bash
 hvantk reprocess cptac:phospho \

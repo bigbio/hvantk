@@ -20,6 +20,7 @@ Before this probe did any network I/O it returned the two repo constants below a
 nothing else, so it compared equal to its own committed baseline forever -- a permanent
 false "clean" that the module docstring described as a real fingerprint.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone

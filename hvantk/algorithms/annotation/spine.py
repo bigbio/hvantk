@@ -9,6 +9,7 @@ must stay in the spine with a missing ``hgnc_id``, not vanish. Dropping it would
 universe depend on HGNC's coverage, which is the class of silent loss this rebuild exists
 to remove.
 """
+
 from __future__ import annotations
 
 import logging
@@ -106,8 +107,8 @@ def spine_mapping_rate(spine_ht) -> float:
     """Fraction of spine genes carrying an HGNC record.
 
     Reported rather than enforced: a gene with no HGNC record is a real Ensembl gene, not
-    an error. The rate is a health signal for the identifier layer, and P2's per-source
-    gates are where mapping loss becomes fatal.
+    an error. The rate is a health signal for the identifier layer, and the per-source
+    gates in ``prepare`` (Stage 1) are where mapping loss becomes fatal.
     """
     import hail as hl
 

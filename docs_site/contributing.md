@@ -43,6 +43,9 @@ Follow these guidelines:
 - Use type hints where applicable
 - Write clear docstrings for public functions and classes
 - Keep functions focused and modular
+- Format with `ruff format .`, which CI checks with `ruff format --check .`
+- Lint with `ruff check . --select=E9,F63,F7,F82` (blocking), plus the advisory `ruff check .`
+- Run `git config blame.ignoreRevsFile .git-blame-ignore-revs` once, so `git blame` skips bulk reformats
 
 #### Testing
 - Add tests for new functionality
@@ -115,7 +118,7 @@ and copy from an existing plugin (clinvar, hgnc, msigdb are good models).
    - `hvantk/skills/<provider>/plugin.yaml` — manifest declaring the
      `Builder` / `DriftProbe` / optional `DownloadFn` + `ParseFn`,
      `artifact_type`, `schema_id`, and test fixture paths.
-   - `hvantk/skills/<provider>/builder.py` — implement the Phase B
+   - `hvantk/skills/<provider>/builder.py` — implement the plugin builder
      contract: `build_<provider>_<dataset>(parsed_input, ctx, **params)`,
      returning one of `AnnotationTable` / `ExpressionMatrix` / `VariantMatrix` /
      `GeneSet` (the manifest's `artifact_type` declares which).
@@ -123,12 +126,12 @@ and copy from an existing plugin (clinvar, hgnc, msigdb are good models).
      hashes into a `source_fingerprint`.
    - `hvantk/skills/<provider>/SKILL.md` — author-facing operational guide.
 
-2. **Write the Phase B builder**
+2. **Write the plugin builder**
    ```python
    from hvantk.core.models import AnnotationTable
 
    def build_myprovider_dataset(parsed_input, ctx, *, **params):
-       """Phase B builder — returns an AnnotationTable."""
+       """Plugin builder — returns an AnnotationTable."""
        # ... import + transform ...
        return AnnotationTable.from_hail(
            ht, provenance=ctx.provenance(schema_id="myprovider-v1")

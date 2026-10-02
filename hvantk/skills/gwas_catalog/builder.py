@@ -1,6 +1,6 @@
 """Hail Table builder for the EBI GWAS Catalog v1.0 full-associations TSV.
 
-Owns the Phase B ``build_gwas_catalog_associations`` builder. Turns the
+Owns the ``build_gwas_catalog_associations`` builder. Turns the
 GWAS Catalog v1.0 full-associations TSV into an ``AnnotationTable`` keyed by
 ``(locus, alleles)`` with ``alleles = [<risk_allele>, "N"]`` (sentinel ALT,
 judgment call #1 in the skill).
@@ -63,7 +63,7 @@ def build_gwas_catalog_associations(
     *,
     reference_genome: str = "GRCh38",
 ):
-    """Phase B builder — returns an AnnotationTable keyed by
+    """Plugin builder — returns an AnnotationTable keyed by
     ``(locus, alleles)`` with ``alleles = [<risk_allele>, "N"]`` (sentinel ALT).
 
     Two filters drop rows the schema cannot express cleanly (skill judgment
@@ -122,20 +122,18 @@ def build_gwas_catalog_associations(
             hl.missing(hl.tint32),
             hl.parse_int32(ht.snp_id_current),
         ),
-        merged=hl.if_else(
-            ht.merged == "", hl.missing(hl.tint32), hl.int32(ht.merged)
-        ),
+        merged=hl.if_else(ht.merged == "", hl.missing(hl.tint32), hl.int32(ht.merged)),
         intergenic=str_to_bool(ht.intergenic),
         cnv=str_to_bool(ht.cnv),
     )
 
     risk_allele = ht.strongest_snp_risk_allele.split("-")[-1]
-    chr_id_norm = hl.case() \
-        .when((ht.chr_id == "MT") | (ht.chr_id == "chrMT"), "M") \
+    chr_id_norm = (
+        hl.case()
+        .when((ht.chr_id == "MT") | (ht.chr_id == "chrMT"), "M")
         .default(ht.chr_id)
-    contig = hl.if_else(
-        chr_id_norm.startswith("chr"), chr_id_norm, "chr" + chr_id_norm
     )
+    contig = hl.if_else(chr_id_norm.startswith("chr"), chr_id_norm, "chr" + chr_id_norm)
     ht = ht.annotate(
         risk_allele=risk_allele,
         locus=hl.parse_locus(

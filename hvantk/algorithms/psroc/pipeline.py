@@ -169,9 +169,9 @@ class PSROCConfig:
 
     # Score configuration
     scores: List[str] = field(default_factory=list)
-    score_directions: Optional[
-        Dict[str, bool]
-    ] = None  # per-score override: True=higher_is_pathogenic
+    score_directions: Optional[Dict[str, bool]] = (
+        None  # per-score override: True=higher_is_pathogenic
+    )
 
     # Output configuration
     output_dir: str = ""
@@ -628,7 +628,7 @@ class PSROCPipeline:
             "dashboard_png": str(plots_dir / f"{prefix}_dashboard.png"),
             "state": str(output_dir / ".pipeline_state.json"),
             "log": str(
-                logs_dir / f'psroc_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log'
+                logs_dir / f"psroc_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
             ),
         }
 
@@ -788,7 +788,7 @@ class PSROCPipeline:
         for group_name in sorted(collection):
             gene_set = collection[group_name]
             logger.info(
-                f"Running PSROC for group '{group_name}' " f"({len(gene_set)} genes)"
+                f"Running PSROC for group '{group_name}' ({len(gene_set)} genes)"
             )
 
             # Sanitize group name for filesystem paths
@@ -836,13 +836,12 @@ class PSROCPipeline:
 
         if not results:
             raise RuntimeError(
-                "All gene set groups failed. "
-                f"Failed groups: {', '.join(failed_groups)}"
+                f"All gene set groups failed. Failed groups: {', '.join(failed_groups)}"
             )
 
         if failed_groups:
             logger.warning(
-                f"{len(failed_groups)} group(s) failed: " f"{', '.join(failed_groups)}"
+                f"{len(failed_groups)} group(s) failed: {', '.join(failed_groups)}"
             )
 
         logger.info(
@@ -1254,8 +1253,7 @@ class PSROCPipeline:
 
         logger.info(f"   ✓ Computed missingness for {len(missingness_results)} scores")
         logger.info(
-            f"   ✓ Included: {len(scores_included)}, "
-            f"Excluded: {len(scores_excluded)}"
+            f"   ✓ Included: {len(scores_included)}, Excluded: {len(scores_excluded)}"
         )
 
         self.state.outputs["missingness"] = missingness_results

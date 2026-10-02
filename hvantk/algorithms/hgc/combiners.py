@@ -56,7 +56,7 @@ def combine_gvcfs(
 
     Notes:
         This algorithm operates on raw `hl.MatrixTable` / `hl.VariantDataset` instances
-        (genotype data). ExpressionMatrix's hail-mt backend isn't available yet (Phase J).
+        (genotype data). ExpressionMatrix's hail-mt backend isn't available yet.
     """
     try:
         if not (gvcf_dir or vdses):
@@ -201,7 +201,7 @@ def combine_vdses(
 
     Notes:
         This algorithm operates on raw `hl.MatrixTable` / `hl.VariantDataset` instances
-        (genotype data). ExpressionMatrix's hail-mt backend isn't available yet (Phase J).
+        (genotype data). ExpressionMatrix's hail-mt backend isn't available yet.
     """
     try:
         # Ensure a container directory is provided and valid.

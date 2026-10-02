@@ -42,9 +42,9 @@ hvantk ptm build \
 
 **Expected output:**
 ```text
-Mapping complete: 55422/56120 mapped (98.7%), 698 failed
+Mapping complete: 55422/56120 mapped (98.8%), 698 failed
 Resolution: {'xref_mane': 48231, 'xref_any': 7191}
-Mapped TSV: data/ptm/ptm_sites_mapped.tsv
+Mapped TSV: data/ptm/ptm_sites_mapped.tsv.bgz
 Hail Table: data/ptm/ptm_sites.ht
 ```
 
@@ -67,7 +67,7 @@ Annotated 200,000 variants:
 Output: data/clinvar_ptm.ht
 ```
 
-## Step 3: Landscape Analysis (Q1)
+## Step 3: Landscape Analysis
 
 PTM-variant overlap and enrichment analysis.
 
@@ -99,7 +99,7 @@ Plots saved to results/landscape/
 - `results/landscape/overlap_by_category.png`
 - `results/landscape/distance_distribution.png`
 
-## Step 4: Predictor Evaluation (Q2 - Composed Workflow)
+## Step 4: Predictor Evaluation (Composed Workflow)
 
 Export PTM-stratified variant lists, then run PSROC independently on each stratum.
 
@@ -126,7 +126,7 @@ hvantk psroc \
 
 Compare AUC values between strata to determine whether predictor performance differs at PTM sites.
 
-## Step 5: Population Analysis (Q3)
+## Step 5: Population Analysis
 
 Compare allele frequency distributions at PTM sites vs non-PTM coding positions in gnomAD.
 
@@ -170,17 +170,18 @@ All steps can also be run programmatically:
 import hail as hl
 from hvantk.algorithms.ptm import (
     PTMBuildConfig,
-    ptm_build_pipeline_core,
     annotate_variants_with_ptm,
     ptm_landscape,
     ptm_population,
     export_ptm_strata,
 )
 from hvantk.algorithms.ptm.report import generate_report
+from hvantk.tools.ptm.pipeline import ptm_build_pipeline
 
-# Build
+# Build (downloads the UniProt TSV and builds the Hail Table; ptm_build_pipeline_core
+# is the pure mapping step this wraps and never builds output_ht itself)
 config = PTMBuildConfig(output_dir="data/ptm/", output_ht="data/ptm/ptm_sites.ht")
-build_result = ptm_build_pipeline_core(config)
+build_result = ptm_build_pipeline(config)
 
 # Annotate
 clinvar = hl.read_table("data/clinvar.ht")
@@ -188,13 +189,13 @@ ptm = hl.read_table("data/ptm/ptm_sites.ht")
 annotated = annotate_variants_with_ptm(clinvar, ptm)
 annotated = annotated.checkpoint("data/clinvar_ptm.ht")
 
-# Landscape (Q1)
+# Landscape
 landscape = ptm_landscape(clinvar, ptm, "results/landscape/")
 
-# Export strata (Q2)
+# Export strata
 strata = export_ptm_strata(annotated, "strata/")
 
-# Population (Q3)
+# Population
 gnomad = hl.read_table("data/gnomad.ht")
 population = ptm_population(gnomad, ptm, "results/population/")
 
@@ -209,6 +210,6 @@ generate_report(
 ## Documentation
 
 - [PTM Documentation](../tools/ptm.md)
-- [PSROC Documentation](../tools/psroc.md) (for Q2 predictor evaluation)
+- [PSROC Documentation](../tools/psroc.md) (for predictor evaluation)
 - [Data Sources](../guide/data-sources.md)
 - [Usage Guide](../guide/usage.md)

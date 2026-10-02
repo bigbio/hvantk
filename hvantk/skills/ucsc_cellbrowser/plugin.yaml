@@ -35,7 +35,9 @@ datasets:
 
   - name: adult-ctx
     acquisition:
-      mode: download
+      mode: byo
+      reason: size
+      instructions: SKILL.md#4-raw-format--gotchas
     domain: transcriptomics
     backend: anndata
     artifact_type: ExpressionMatrix
@@ -56,7 +58,9 @@ datasets:
 
   - name: dev-ctx
     acquisition:
-      mode: download
+      mode: byo
+      reason: size
+      instructions: SKILL.md#4-raw-format--gotchas
     domain: transcriptomics
     backend: anndata
     artifact_type: ExpressionMatrix

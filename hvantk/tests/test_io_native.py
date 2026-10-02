@@ -1,4 +1,5 @@
 """Tests for core/io.load_native and save_native — Hail-native passthrough."""
+
 from __future__ import annotations
 
 import dataclasses

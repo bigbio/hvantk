@@ -1,6 +1,6 @@
 """Hail Table builder for the ClinGen Gene-Disease Validity resource.
 
-Owns the Phase B ``build_clingen_gene_disease`` builder. Turns the ClinGen
+Owns the ``build_clingen_gene_disease`` builder. Turns the ClinGen
 Gene-Disease Validity CSV into an ``AnnotationTable`` keyed by
 ``(hgnc_id, mondo_id)``. ClinGen provides curated gene-disease associations
 with evidence-based classifications (Definitive, Strong, Moderate, Limited,
@@ -43,7 +43,7 @@ def build_clingen_gene_disease(
     min_classification=None,
     fields=None,
 ):
-    """Phase B builder — returns an AnnotationTable keyed by
+    """Plugin builder — returns an AnnotationTable keyed by
     ``(hgnc_id, mondo_id)``.
     """
     from hvantk.core.models import AnnotationTable

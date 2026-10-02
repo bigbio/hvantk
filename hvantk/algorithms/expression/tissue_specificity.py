@@ -145,7 +145,7 @@ def compute_specificity_artifact(
     method: "Method" = "tau",
     log: bool = False,
 ) -> "AnnotationTable":
-    """Phase P artifact-typed wrapper for compute_specificity.
+    """Artifact-typed wrapper for compute_specificity.
 
     Accepts an AnnotationTable of gene-by-tissue/cell-type expression
     (rows = genes, columns = groups). Delegates to compute_specificity
@@ -161,22 +161,25 @@ def compute_specificity_artifact(
     df = ann.to_pandas()
     # The gene identifier column is conventionally the index; restore it.
     if len(df.columns) > 0 and df.columns[0] in {
-        "gene_id", "gene_symbol", "gene", "ensembl_id"
+        "gene_id",
+        "gene_symbol",
+        "gene",
+        "ensembl_id",
     }:
         df = df.set_index(df.columns[0])
 
     result = compute_specificity(df, method=method, log=log)
     # result is a pd.Series — promote to a 2-column DataFrame: gene + specificity
-    out_df = pd.DataFrame({
-        "gene_id": result.index,
-        "specificity": result.values,
-    })
+    out_df = pd.DataFrame(
+        {
+            "gene_id": result.index,
+            "specificity": result.values,
+        }
+    )
     return AnnotationTable.from_pandas(out_df, provenance=ann.provenance)
 
 
-def tau_yanai_reference(
-    gene_x_group_df: pd.DataFrame, eps: float = 1e-9
-) -> pd.Series:
+def tau_yanai_reference(gene_x_group_df: pd.DataFrame, eps: float = 1e-9) -> pd.Series:
     """Reference Yanai τ used only for validation against ``compute_specificity``.
 
     Not part of the public API — exported for the smoke test so we can confirm

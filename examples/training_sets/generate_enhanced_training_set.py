@@ -85,9 +85,7 @@ def _log_statistics(training_set: hl.Table) -> None:
     feature_stats = training_set.aggregate(
         hl.struct(
             has_prediction_scores=(
-                hl.agg.fraction(
-                    hl.is_defined(training_set.combined_deleteriousness)
-                )
+                hl.agg.fraction(hl.is_defined(training_set.combined_deleteriousness))
                 if "combined_deleteriousness" in row_fields
                 else hl.agg.fraction(hl.literal(False))
             ),
@@ -116,9 +114,7 @@ def _log_statistics(training_set: hl.Table) -> None:
     )
 
     logger.info("Feature coverage statistics:")
-    logger.info(
-        f"  Prediction scores: {feature_stats['has_prediction_scores']:.2%}"
-    )
+    logger.info(f"  Prediction scores: {feature_stats['has_prediction_scores']:.2%}")
     logger.info(f"  Gene expression: {feature_stats['has_expression']:.2%}")
     logger.info(f"  Constraint metrics: {feature_stats['has_constraint']:.2%}")
     logger.info(f"  Population frequency: {feature_stats['has_frequency']:.2%}")

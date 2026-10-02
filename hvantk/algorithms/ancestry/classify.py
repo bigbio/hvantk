@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+
 # Make scikit-learn import optional - only required for classifier training.
 try:
     from sklearn.ensemble import RandomForestClassifier
@@ -372,7 +373,7 @@ def predict_ancestry(
         raise ValueError(f"Missing PC columns in scores_df: {sorted(missing_cols)}")
 
     logger.info(
-        f"Predicting ancestry for {len(scores_df)} samples " f"with min_prob={min_prob}"
+        f"Predicting ancestry for {len(scores_df)} samples with min_prob={min_prob}"
     )
 
     return _create_predictions_df(

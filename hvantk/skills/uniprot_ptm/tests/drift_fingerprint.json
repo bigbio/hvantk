@@ -1,6 +1,6 @@
 {
-  "probe_version": 1,
-  "source_version": null,
+  "probe_version": 2,
+  "source_version": "2026_03",
   "headers": {
     "uniprot-ptm-human.tsv": [
       "accession",
@@ -24,5 +24,11 @@
   "checksums": {
     "uniprot-ptm-human.tsv": "ffe8f6c4b44fcbefc0302349ce29d93aed6ad472576e8ba5f77cfc9a5831fe2f"
   },
-  "fetched_at": "2026-07-27T17:10:10.475194+00:00"
+  "extras": {
+    "total_results": 9493
+  },
+  "informational": {
+    "release_date": "02-September-2026"
+  },
+  "fetched_at": "2026-09-28T06:49:21.515034+00:00"
 }

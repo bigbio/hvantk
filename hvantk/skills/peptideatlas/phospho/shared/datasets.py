@@ -125,9 +125,8 @@ def _extract_phospho_offsets(modified_sequence: str) -> List[tuple]:
             except ValueError:
                 break  # Malformed — unclosed bracket
             bracket_content = seq[i + 1 : end]
-            is_phospho = (
-                bracket_content == "Phospho"
-                or bracket_content.startswith("Phospho:")
+            is_phospho = bracket_content == "Phospho" or bracket_content.startswith(
+                "Phospho:"
             )
             # Also handle numeric mass notation for S/T/Y.
             if not is_phospho:
@@ -245,9 +244,14 @@ def parse_peptideatlas_zip(zip_path: str) -> List[dict]:  # pylint: disable=too-
                 start = int(row["start_in_biosequence"])
                 mapping_by_pi[pi_id].append((bs_id, start))
             if n_mappings % 5_000_000 == 0:
-                logger.info("  ...processed %dM peptide mappings", n_mappings // 1_000_000)
-        logger.info("Processed %d peptide mappings, %d with valid proteins",
-                     n_mappings, len(mapping_by_pi))
+                logger.info(
+                    "  ...processed %dM peptide mappings", n_mappings // 1_000_000
+                )
+        logger.info(
+            "Processed %d peptide mappings, %d with valid proteins",
+            n_mappings,
+            len(mapping_by_pi),
+        )
 
         # Step 4: Stream modified_peptide_instance (3M rows) — extract phospho sites
         logger.info("Extracting phospho sites from modified peptide instances...")
@@ -286,14 +290,19 @@ def parse_peptideatlas_zip(zip_path: str) -> List[dict]:  # pylint: disable=too-
                             "gene_symbol": gene_name,
                             "position": site_pos,
                             "amino_acid": aa_char,
-                            "description": _PHOSPHO_AA_DESC.get(aa_char, "Phosphorylation"),
+                            "description": _PHOSPHO_AA_DESC.get(
+                                aa_char, "Phosphorylation"
+                            ),
                             "ensembl_xrefs": "",
                             "sequence_length": seq_len,
                         }
 
             if n_mpi % 1_000_000 == 0:
-                logger.info("  ...processed %dM modified peptides (%d with phospho)",
-                             n_mpi // 1_000_000, n_with_phospho)
+                logger.info(
+                    "  ...processed %dM modified peptides (%d with phospho)",
+                    n_mpi // 1_000_000,
+                    n_with_phospho,
+                )
 
     # Build final list
     sites = []
@@ -302,8 +311,12 @@ def parse_peptideatlas_zip(zip_path: str) -> List[dict]:  # pylint: disable=too-
         site["n_observations"] = site_obs[key]
         sites.append(site)
 
-    logger.info("Parsed %d distinct phospho sites from %d modified peptides "
-                 "(%d with phospho)", len(sites), n_mpi, n_with_phospho)
+    logger.info(
+        "Parsed %d distinct phospho sites from %d modified peptides (%d with phospho)",
+        len(sites),
+        n_mpi,
+        n_with_phospho,
+    )
     return sites
 
 
@@ -367,8 +380,7 @@ class PeptideAtlasPhosphoDataset:
         if host != "peptideatlas.org" and not host.endswith(".peptideatlas.org"):
             raise ValueError(
                 "Unexpected download host for PeptideAtlas URL "
-                "(expected peptideatlas.org or *.peptideatlas.org): %s"
-                % url
+                "(expected peptideatlas.org or *.peptideatlas.org): %s" % url
             )
 
     @classmethod

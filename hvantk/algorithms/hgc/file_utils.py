@@ -6,7 +6,11 @@ import hail as hl
 
 from typing import Union, List
 
-from hvantk.algorithms.hgc.constants import GVCF_EXTENSION, GVCF_EXTENSION_TBI, VDS_EXTENSION
+from hvantk.algorithms.hgc.constants import (
+    GVCF_EXTENSION,
+    GVCF_EXTENSION_TBI,
+    VDS_EXTENSION,
+)
 
 """
 Utility functions for file handling.

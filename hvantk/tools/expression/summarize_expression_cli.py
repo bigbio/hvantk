@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 @click.group("expression", context_settings=CONTEXT_SETTINGS)
 def expression_group():
-    """Expression AnnData analysis commands."""
+    """Expression AnnData analysis commands (describe, summarize, markers)."""
     pass
 
 
@@ -58,7 +58,9 @@ def describe_expression_cmd(matrix_path):
         click.echo("Metadata fields:")
         for f in info["fields"]:
             if f["dtype"] == "categorical":
-                click.echo(f"  {f['name']:<40s}  categorical  ({f.get('n_unique', '?')} levels)")
+                click.echo(
+                    f"  {f['name']:<40s}  categorical  ({f.get('n_unique', '?')} levels)"
+                )
             else:
                 click.echo(
                     f"  {f['name']:<40s}  numeric      "

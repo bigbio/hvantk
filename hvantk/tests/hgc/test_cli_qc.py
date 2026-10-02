@@ -18,9 +18,9 @@ from hvantk.tools.hgc.qc_cli import (
 def test_compute_qc_cli_basic():
     """Test compute-qc command with basic options."""
     runner = CliRunner()
-    with patch("hvantk.tools.hgc.qc_cli.compute_full_qc") as mock_compute:
+    with patch("hvantk.algorithms.hgc.compute_full_qc") as mock_compute:
         with patch("hvantk.tools.hgc.qc_cli.validate_input_files") as mock_validate:
-            with patch("hvantk.tools.hgc.qc_cli.save_qc_metrics") as mock_save:
+            with patch("hvantk.algorithms.hgc.save_qc_metrics") as mock_save:
                 with patch("hail.init"):
                     with patch("hail.read_matrix_table") as mock_read:
                         # compute-qc now counts symbolic <*>/<NON_REF> rows before
@@ -110,8 +110,8 @@ def test_compute_qc_cli_no_qc_selected():
 def test_filter_qc_cli_basic():
     """Test filter-qc command with basic options."""
     runner = CliRunner()
-    with patch("hvantk.tools.hgc.qc_cli.filter_samples_by_qc") as mock_filter_s:
-        with patch("hvantk.tools.hgc.qc_cli.filter_variants_by_qc") as mock_filter_v:
+    with patch("hvantk.algorithms.hgc.filter_samples_by_qc") as mock_filter_s:
+        with patch("hvantk.algorithms.hgc.filter_variants_by_qc") as mock_filter_v:
             with patch("hvantk.tools.hgc.qc_cli.validate_input_files") as mock_validate:
                 with patch("hail.init"):
                     with patch("hail.read_matrix_table") as mock_read:
@@ -151,8 +151,8 @@ def test_filter_qc_cli_dry_run():
 def test_filter_qc_cli_custom_thresholds():
     """Test filter-qc command with custom thresholds."""
     runner = CliRunner()
-    with patch("hvantk.tools.hgc.qc_cli.filter_samples_by_qc") as mock_filter_s:
-        with patch("hvantk.tools.hgc.qc_cli.filter_variants_by_qc") as mock_filter_v:
+    with patch("hvantk.algorithms.hgc.filter_samples_by_qc") as mock_filter_s:
+        with patch("hvantk.algorithms.hgc.filter_variants_by_qc") as mock_filter_v:
             with patch("hvantk.tools.hgc.qc_cli.validate_input_files") as mock_validate:
                 with patch("hail.init"):
                     with patch("hail.read_matrix_table") as mock_read:
@@ -258,7 +258,7 @@ def test_qc_summary_cli_output_json():
 def test_qc_report_cli_basic():
     """Test qc-report command with basic options."""
     runner = CliRunner()
-    with patch("hvantk.tools.hgc.qc_cli.check_path_exists_and_readable") as mock_check:
+    with patch("hvantk.algorithms.hgc.check_path_exists_and_readable") as mock_check:
         with patch("hail.init"):
             with patch("hail.read_matrix_table") as mock_read:
                 mock_check.return_value = True
@@ -297,7 +297,7 @@ def test_qc_report_cli_basic():
 def test_qc_report_cli_dry_run():
     """Test qc-report command with dry-run."""
     runner = CliRunner()
-    with patch("hvantk.tools.hgc.qc_cli.check_path_exists_and_readable") as mock_check:
+    with patch("hvantk.algorithms.hgc.check_path_exists_and_readable") as mock_check:
         mock_check.return_value = True
 
         result = runner.invoke(
@@ -313,7 +313,7 @@ def test_qc_report_cli_dry_run():
 def test_qc_report_cli_custom_title():
     """Test qc-report command with custom title."""
     runner = CliRunner()
-    with patch("hvantk.tools.hgc.qc_cli.check_path_exists_and_readable") as mock_check:
+    with patch("hvantk.algorithms.hgc.check_path_exists_and_readable") as mock_check:
         with patch("hail.init"):
             with patch("hail.read_matrix_table") as mock_read:
                 mock_check.return_value = True

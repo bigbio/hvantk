@@ -10,6 +10,7 @@
     "description": { "type": "string" },
     "data_source": {
       "type": "string",
+      "description": "Canonical source name. Closed enum, not free text: a plugin author adding a new provider's catalog entry adds its canonical name here first (one spelling per source -- no ad hoc variants, and never the placeholder 'Custom').",
       "enum": [
         "ClinGen",
         "ClinVar",

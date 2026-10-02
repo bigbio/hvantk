@@ -15,7 +15,7 @@ Read `hvantk/skills/_conventions/SKILL.md` first. This skill assumes its reposit
 Provisional. Covers the GeVIR (Gene Variation Intolerance Rank) metrics Hail Table builder (`gevir:metrics`), which imports the per-gene GeVIR/VIRLoF percentile-rank TSV derived from Abramovs, Brass & Tassabehji 2020 (PMID 31873297, *Nature Genetics* 52(1):35-39, DOI 10.1038/s41588-019-0560-2), Supplementary Table 2.
 
 Out of scope for this skill (per `_conventions` § 11):
-- Downloading or deriving the raw TSV — no `lifecycle.download` is declared (see § 4); upstream files are materialized externally.
+- Downloading or deriving the raw TSV — no `lifecycle.download` is declared yet (see § 4); upstream files are materialized externally. A downloader is tracked in #386.
 - Cross-resource gene-ID mapping — owned by `HGNCGeneCatalogStreamer` (`hvantk/skills/hgnc/streamers.py`).
 - Downstream consumers. Those reference the built table by path.
 
@@ -35,7 +35,7 @@ Catalog entry: `hvantk/skills/gevir/catalog/datasets.json`, accession `GeVIR_v1.
 
 All facts below are from `hvantk/skills/gevir/builder.py` and `hvantk/skills/gevir/drift_probe.py`.
 
-- **The probe target and the build input are different files.** The drift probe HEADs the upstream `.xlsx` workbook (`GEVIR_SUPPLEMENTARY_URL`); the builder reads a bgzipped TSV (`gevir_metrics_pmid31873297.tsv.bgz`, ~2,000,000 bytes per the catalog entry) manually derived from sheet `table_2` of that workbook. No downloader or parse step performs that extraction — the catalog `files` entry describes the derived TSV precisely because fetching the upstream URL does not yield it without an extract-and-convert step.
+- **The probe target and the build input are different files.** The drift probe HEADs the upstream `.xlsx` workbook (`GEVIR_SUPPLEMENTARY_URL`); the builder reads a bgzipped TSV (`gevir_metrics_pmid31873297.tsv.bgz`, ~2,000,000 bytes per the catalog entry) manually derived from sheet `table_2` of that workbook. The public artifact is the paper's Supplementary Table 2 `.xlsx`; a downloader needs an extraction step, not a thin URL fetch, and is tracked in #386 rather than a `lifecycle.download`/`cli.py` here today.
 - `_resolve_gevir_path()`: `hvantk reprocess` hands the builder the raw *directory* for datasets with no `lifecycle.parse` (`raw_dir` is forwarded verbatim as `parsed_input`), and `hl.import_table` cannot read a directory. A directory input is resolved by globbing it for the single non-hidden file it contains, raising `ValueError` if zero or more than one candidate is found. A path already pointing at a file is returned unchanged, which is what keeps direct `build(<file>)` calls in tests/snapshots working.
 - Import: `hl.import_table(paths=..., impute=True, min_partitions=100, key="gene_id")` — type inference is **enabled** here, unlike `hgnc`/`cosmic_cgc`, which import as all-string.
 - No field renaming or value transforms beyond an optional `fields` selection — the builder trusts the TSV header names as-is.
@@ -56,7 +56,7 @@ Live release row count: 19,361 genes (§ 2). The committed row snapshot (`tests/
 
 ## 6. hvantk integration points
 
-- Manifest: `hvantk/skills/gevir/plugin.yaml` — dataset `gevir:metrics`, `artifact_type: AnnotationTable`, `schema_id: gevir-metrics-v1`, `catalog: catalog/datasets.json`. No `lifecycle:` or `cli:` block declared.
+- Manifest: `hvantk/skills/gevir/plugin.yaml` — dataset `gevir:metrics`, `artifact_type: AnnotationTable`, `schema_id: gevir-metrics-v1`, `catalog: catalog/datasets.json`. No `acquisition:`, `lifecycle:` or `cli:` block declared — the default `mode: download` with no downloader written yet (a downloader is tracked in #386). `hvantk reprocess gevir:metrics --raw-dir <dir> --output <out.ht> --skip-download` — `--skip-download` is required; omitting it fails before the build stage.
 - Builder: `build_gevir_metrics` in `hvantk/skills/gevir/builder.py`. Signature `(parsed_input, ctx, **params) -> AnnotationTable`. Recognised `params`: `fields` (optional list to select).
 - Drift probe: `fetch_fingerprint` in `hvantk/skills/gevir/drift_probe.py` (`PROBE_VERSION = 2`). Issues a single HEAD against `GEVIR_SUPPLEMENTARY_URL` with `Accept-Encoding: identity`, comparing `Content-Length` and a normalized `ETag` (Springer serves it as an MD5 content digest) under `headers`; `checksums` stays empty because the probe never fetches a body and so has no schema signal to offer. `Last-Modified` is demoted to `informational` (excluded from drift comparison), following the `hgnc` precedent where every regeneration moved only the timestamp. Fails closed if either validator is missing/empty, or if the response is not identity-encoded (a compressing proxy would make `Content-Length` describe the compressed body).
 - No `streamers.py` exists for this plugin (confirmed absent from the plugin directory) and no `cli.py`.
@@ -66,7 +66,7 @@ Live release row count: 19,361 genes (§ 2). The committed row snapshot (`tests/
 ## 7. Workflow steps
 
 1. Confirm the raw derived TSV is present (`gevir_metrics_pmid31873297.tsv.bgz`). There is no downloader, so it must be sourced externally by extracting sheet `table_2` from the MOESM3 workbook and BGZF-compressing it (see § 8).
-2. Build: `hvantk reprocess gevir:metrics --raw-dir <dir-containing-the-tsv> --output <out.ht>`, optionally `--plugin-arg fields=<comma-list>`. A directory input works because `_resolve_gevir_path` globs it for the single file it contains.
+2. Build: `hvantk reprocess gevir:metrics --raw-dir <dir-containing-the-tsv> --output <out.ht> --skip-download`, optionally `--plugin-arg fields=<comma-list>`. `--skip-download` is required — no `lifecycle.download` is declared yet (#386). A directory input works because `_resolve_gevir_path` globs it for the single file it contains.
 3. Sanity-check the output: table keyed by `gene_id`, ~19,361 rows for a full build, `gevir_pct`/`virlof_pct` within `[0, 100]`.
 4. Run the snapshot round-trip test (§ 9); regenerate with `--regenerate-snapshots` after an intentional change and review the diff before committing.
 
@@ -77,7 +77,7 @@ Triggered by an erratum or updated ESM object on the article (rare — the suppl
 1. `hvantk drift gevir:metrics` compares the live `Content-Length`/`ETag` against `tests/drift_fingerprint.json` (currently `content_length: "10270511"`, `etag: "6423adf134a669acc357f619d1162009"`). A drift here means only that the **upstream `.xlsx`** changed — it says nothing about whether the derived TSV was re-extracted, which is a separate, manual step (§ 4).
 2. If sheet `table_2`'s layout changes, the derivation (extract + BGZF-compress; not scripted in this repo) must be re-run to regenerate the TSV, and the fixture plus snapshots regenerated from it.
 3. Regenerate snapshots: `pytest hvantk/skills/gevir/tests/test_builder.py -m hail --regenerate-snapshots`, review the diff, commit.
-4. A real downloader for this source (extract-and-convert, not a thin URL fetch) is a recommended follow-up per the project's downloader decision framework, but is not yet implemented.
+4. A real downloader for this source is tracked in #386: the public artifact is the paper's Supplementary Table 2 `.xlsx`, not the derived TSV the builder reads, so it needs an extraction step rather than a thin URL fetch.
 
 ## 9. Validation contract
 

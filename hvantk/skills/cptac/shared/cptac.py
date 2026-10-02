@@ -79,10 +79,9 @@ def create_anndata_from_cptac_long(
     var = pd.DataFrame(index=wide.columns)
     var.index.name = gene_id_col
     if gene_name_col and gene_name_col in expression_df.columns:
-        name_map = (
-            expression_df.drop_duplicates(subset=[gene_id_col])
-            .set_index(gene_id_col)[gene_name_col]
-        )
+        name_map = expression_df.drop_duplicates(subset=[gene_id_col]).set_index(
+            gene_id_col
+        )[gene_name_col]
         var[gene_name_col] = name_map
 
     # Build obs

@@ -10,6 +10,7 @@ Note this uses ``hvantk.core.utils.gene_sets.GeneSet`` (a plain named set inside
 collection), NOT ``hvantk.core.models.GeneSet`` (the typed artifact). The two are
 unrelated classes that share a name.
 """
+
 from __future__ import annotations
 
 import logging

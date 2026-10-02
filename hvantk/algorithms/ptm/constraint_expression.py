@@ -4,7 +4,7 @@ Unifies three backends — Hail MatrixTable, AnnData ``.h5ad``, and pre-computed
 tabular files — behind a single contract: a genes x groups wide pandas
 ``DataFrame`` of aggregate expression.
 
-Downstream analysis (:mod:`hvantk.ptm.constraint`) consumes this single shape
+Downstream analysis (:mod:`hvantk.algorithms.ptm.constraint`) consumes this single shape
 regardless of the origin modality.
 """
 
@@ -270,8 +270,8 @@ def _load_from_hail_mt(
 ) -> pd.DataFrame:
     """Aggregate a Hail MatrixTable into a gene x group matrix via TSV export.
 
-    Follows the Notebook E/G pattern: ``group_cols_by(...) → aggregate(...) →
-    entries() → export(TSV) → pandas`` to avoid OOM from ``mt.to_pandas()``.
+    Aggregates via ``group_cols_by(...) → aggregate(...) → entries() →
+    export(TSV) → pandas`` to avoid OOM from ``mt.to_pandas()``.
     """
     from hvantk.core.utils.hail_context import hl, init_hail
 
@@ -295,8 +295,7 @@ def _load_from_hail_mt(
 
     if entry_field not in set(mt.entry):
         raise KeyError(
-            f"Entry field '{entry_field}' not found. "
-            f"Available: {list(mt.entry)}"
+            f"Entry field '{entry_field}' not found. Available: {list(mt.entry)}"
         )
 
     entry = mt[entry_field]
@@ -345,11 +344,7 @@ def _load_from_hail_mt(
     else:
         gene_col = gene_key
 
-    df_long["_agg"] = (
-        df_long["_agg"]
-        .astype(str)
-        .str.replace(",", ".", regex=False)
-    )
+    df_long["_agg"] = df_long["_agg"].astype(str).str.replace(",", ".", regex=False)
     df_long["_agg"] = pd.to_numeric(df_long["_agg"], errors="coerce")
 
     wide = df_long.pivot(index=gene_col, columns=grouping_col, values="_agg")

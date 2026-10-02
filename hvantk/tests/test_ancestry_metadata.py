@@ -1,4 +1,5 @@
-"""Phase D smoke test: ancestry pipeline is registered with @algorithm metadata."""
+"""Smoke test: ancestry pipeline is registered with @algorithm metadata."""
+
 from __future__ import annotations
 
 

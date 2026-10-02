@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     import numpy as np
     import pandas as pd
 
-    # Artifact types — used only in string annotations for the Phase P
+    # Artifact types — used only in string annotations for the
     # artifact-typed wrappers. Imported under TYPE_CHECKING so the linter sees
     # the names; the wrappers themselves import lazily inside the function
     # bodies to avoid circular import at module load.
@@ -1737,7 +1737,7 @@ def permutation_burden_test(
 
 
 # ---------------------------------------------------------------------------
-# Phase P: artifact-typed wrappers
+# Artifact-typed wrappers
 # ---------------------------------------------------------------------------
 
 
@@ -1758,7 +1758,7 @@ def run_burden_analysis_artifact(
     phenotype: "AnnotationTable",
     **kwargs,
 ):
-    """Phase P artifact-typed wrapper for run_burden_analysis.
+    """Artifact-typed wrapper for run_burden_analysis.
 
     Accepts:
       - cohort: VariantMatrix with genotype data
@@ -1802,7 +1802,7 @@ def run_stratified_burden_analysis_artifact(
     variant_classes,
     **kwargs,
 ):
-    """Phase P artifact-typed wrapper for run_stratified_burden_analysis.
+    """Artifact-typed wrapper for run_stratified_burden_analysis.
 
     Accepts:
       - cohort: VariantMatrix with genotype data

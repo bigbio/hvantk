@@ -17,8 +17,10 @@ model = ag_client.create(api_key, timeout=120)
 # Single variant: TP53 R175H
 interval = ag_genome.Interval(chromosome="chr17", start=7150800, end=8199376)
 variant = ag_genome.Variant(
-    chromosome="chr17", position=7675088,
-    reference_bases="C", alternate_bases="T",
+    chromosome="chr17",
+    position=7675088,
+    reference_bases="C",
+    alternate_bases="T",
 )
 
 print("Calling predict_variant for TP53 R175H...")
@@ -53,11 +55,17 @@ if hasattr(result, "reference"):
                 for dk, dv in list(v.items())[:3]:
                     print(f"    [{dk!r}]: type={type(dv).__name__}", end="")
                     if hasattr(dv, "__dict__"):
-                        print(f", attrs={[a for a in dir(dv) if not a.startswith('_')]}", end="")
-                        for a in [a for a in dir(dv) if not a.startswith('_')][:5]:
+                        print(
+                            f", attrs={[a for a in dir(dv) if not a.startswith('_')]}",
+                            end="",
+                        )
+                        for a in [a for a in dir(dv) if not a.startswith("_")][:5]:
                             av = getattr(dv, a)
                             if hasattr(av, "shape"):
-                                print(f"\n      .{a}: shape={av.shape}, dtype={av.dtype}", end="")
+                                print(
+                                    f"\n      .{a}: shape={av.shape}, dtype={av.dtype}",
+                                    end="",
+                                )
                             elif callable(av):
                                 pass
                             else:
@@ -67,7 +75,10 @@ if hasattr(result, "reference"):
                 first = v[0]
                 print(f"    [0]: type={type(first).__name__}", end="")
                 if hasattr(first, "__dict__"):
-                    print(f", attrs={[a for a in dir(first) if not a.startswith('_')]}", end="")
+                    print(
+                        f", attrs={[a for a in dir(first) if not a.startswith('_')]}",
+                        end="",
+                    )
                 print()
 
 if hasattr(result, "alternate"):

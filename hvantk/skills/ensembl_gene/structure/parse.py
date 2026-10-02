@@ -9,6 +9,7 @@ The representative coding transcript is MANE Select when the gene has one, other
 transcript with the longest summed CDS. Length is preferred over "first seen" because GTF
 transcript order is not stable across releases.
 """
+
 from __future__ import annotations
 
 import gzip

@@ -12,6 +12,7 @@ It lives in ``resources`` rather than in the plugin because the dependency rule 
 putting it in the skill would make ``algorithms`` depend on ``skills`` and invert the
 rule.
 """
+
 from __future__ import annotations
 
 ENSEMBL_RELEASE = "113"

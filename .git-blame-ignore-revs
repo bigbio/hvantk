@@ -1,0 +1,11 @@
+# Revisions that `git blame` should skip. GitHub's blame view reads this file
+# automatically; locally, run once:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# ruff format adoption (#309): the mechanical reformat of 304 Python files.
+# NOTE: this SHA also carries #394's non-format changes (three CI workflow files,
+# poetry.lock, pyproject.toml, CHANGELOG.md, docs_site/contributing.md), so `git blame`
+# on THOSE files attributes their lines to whatever commit predates this one, not to
+# #394 itself. A future bulk reformat should land as its own commit, with no unrelated
+# changes riding along, so entries added here skip only the reformat.
+0b187c7ee4ebaace01624922005a607a8a59a3ce

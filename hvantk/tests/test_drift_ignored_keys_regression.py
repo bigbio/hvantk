@@ -1,4 +1,4 @@
-"""Regression test for D1 — drift_runner._IGNORED_KEYS is inconsistent with
+"""Regression test for drift_runner._IGNORED_KEYS being inconsistent with
 the run_builder fingerprint-hash ignore set.
 
 `run_builder._coerce_fingerprint` excludes both `fetched_at` and `probe_version`

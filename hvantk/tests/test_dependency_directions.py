@@ -8,10 +8,8 @@ core/ and resources/ are both substrate -- consumed by the code layers above,
 neither imports upward. resources/ holds the data-catalog registry, JSON
 schemas, and the validator/aggregator that operate on them.
 
-Implementation note: each layer-pair is checked independently and gated with
-xfail until the corresponding migration phase fixes the violations. Phases
-remove xfail markers as they land. Phase 7 deletes every xfail marker --
-after that, this test enforces the contract for the future.
+Implementation note: each layer pair is checked by its own test, so a failure
+names the offending pair.
 """
 
 from __future__ import annotations
@@ -46,7 +44,9 @@ def _imports_in(layer: str) -> list[tuple[Path, str]]:
     return out
 
 
-def _forbidden_matches(layer: str, forbidden_prefixes: list[str]) -> list[tuple[Path, str]]:
+def _forbidden_matches(
+    layer: str, forbidden_prefixes: list[str]
+) -> list[tuple[Path, str]]:
     bad: list[tuple[Path, str]] = []
     for file, dotted in _imports_in(layer):
         for prefix in forbidden_prefixes:
@@ -89,8 +89,8 @@ def test_resources_does_not_import_upward():
 
 def test_skills_does_not_import_algorithms_or_tools():
     """Skills are siblings -- they meet only through core/. Already true today
-    (Phase 1 of the original plugin migration enforced this for the 13
-    migrated plugins). Should stay green; no xfail."""
+    (the original plugin migration enforced this for the 13 migrated
+    plugins). Should stay green; no xfail."""
     bad = _forbidden_matches("skills", ["hvantk.algorithms", "hvantk.tools"])
     sibling_bad = [
         (file, dotted)

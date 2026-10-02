@@ -73,10 +73,20 @@ def test_newest_version_wins_regardless_of_response_order(newest_first):
     response pinned the OLDEST record, so a v2 posting -- the single event this
     probe exists to detect -- compared equal to the baseline forever."""
     records = [
-        {"version": "1", "date": "2025-01-13", "published": "NA",
-         "doi": PQTL_SOURCE_DOI, "title": "t"},
-        {"version": "2", "date": "2025-06-01", "published": "NA",
-         "doi": PQTL_SOURCE_DOI, "title": "t"},
+        {
+            "version": "1",
+            "date": "2025-01-13",
+            "published": "NA",
+            "doi": PQTL_SOURCE_DOI,
+            "title": "t",
+        },
+        {
+            "version": "2",
+            "date": "2025-06-01",
+            "published": "NA",
+            "doi": PQTL_SOURCE_DOI,
+            "title": "t",
+        },
     ]
     if newest_first:
         records.reverse()
@@ -153,3 +163,54 @@ def test_an_empty_200_is_retried_rather_than_reported_as_drift(monkeypatch):
         fp = fetch_fingerprint()
 
     assert fp["source_version"] == "1"
+
+
+def test_retry_budget_fits_under_the_drift_runners_default_timeout():
+    """drift.yml passes no --timeout, so each probe runs under drift_runner's default
+    SIGALRM budget. Four attempts at (5, 15) with 2+4+8 s backoff was 94 s worst case
+    against 60 s: the fourth attempt could never run, and a degraded medRxiv reported
+    "probe timed out" instead of the diagnostic this probe exists to give (#364).
+
+    Note: the 51 s bound covers the exponential-backoff path; a Retry-After sleep is
+    clamped to max_sleep_s and can exceed it, and the drift runner's SIGALRM is the
+    backstop in that case."""
+    import inspect
+
+    from hvantk.core.plugin import drift_runner
+    from hvantk.core.utils.http import DEFAULT_BACKOFF_S, DEFAULT_MAX_SLEEP_S, _backoff
+    from hvantk.skills.pqtl import drift_probe
+
+    runner_timeout = (
+        inspect.signature(drift_runner.run_drift_checks).parameters["timeout"].default
+    )
+    sleeps = sum(
+        _backoff(DEFAULT_BACKOFF_S, a, DEFAULT_MAX_SLEEP_S)
+        for a in range(1, drift_probe._ATTEMPTS)
+    )
+    worst_case = sleeps + drift_probe._ATTEMPTS * sum(drift_probe._TIMEOUT_S)
+    assert worst_case < runner_timeout, (worst_case, runner_timeout)
+
+
+def test_fetch_fingerprint_call_site_uses_the_probes_own_retry_budget(monkeypatch):
+    """Pins the CALL SITE, not just the arithmetic recomputed from the constants.
+
+    `test_retry_budget_fits_under_the_drift_runners_default_timeout` reads
+    `drift_probe._ATTEMPTS` / `_TIMEOUT_S` back out of the module itself, so deleting
+    `attempts=_ATTEMPTS` from the `request_with_retry` call in `fetch_fingerprint`
+    (silently falling back to the unrelated `DEFAULT_ATTEMPTS=4`) or hardcoding a
+    different timeout tuple at the call site leaves that test's arithmetic -- and
+    therefore the test -- unchanged. This drives the real retry loop against a
+    constant 503 and checks what it actually did: made exactly `_ATTEMPTS` requests,
+    each with `timeout=_TIMEOUT_S`.
+    """
+    from hvantk.skills.pqtl import drift_probe
+
+    monkeypatch.setattr("hvantk.core.utils.http.time.sleep", lambda _s: None)
+
+    with requests_mock.Mocker() as m:
+        m.get(MEDRXIV_API_URL, status_code=503)
+        with pytest.raises(DriftProbeError):
+            fetch_fingerprint()
+
+    assert m.call_count == drift_probe._ATTEMPTS
+    assert all(req.timeout == drift_probe._TIMEOUT_S for req in m.request_history)

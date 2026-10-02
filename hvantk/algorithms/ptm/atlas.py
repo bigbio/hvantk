@@ -1,7 +1,8 @@
-"""Phase-2 PTM atlas assembly API.
+"""PTM atlas assembly API.
 
-Thin facade over :func:`hvantk.ptm.pipeline.ptm_build_pipeline` that reproduces
-notebook A's ``ptm_sites_combined.tsv.bgz`` output. Defaults match notebook A:
+Thin facade over :func:`hvantk.algorithms.ptm.pipeline.ptm_build_pipeline_core`.
+Writes ``ptm_sites_mapped.tsv.bgz`` for UniProt alone, or
+``ptm_sites_combined.tsv.bgz`` when multiple sources are included. Defaults:
 UniProt + PeptideAtlas sources, CPTAC disabled, flanking window of 7 codons.
 
 This module does NOT reimplement the download, coordinate mapping, or
@@ -26,14 +27,18 @@ import os
 from dataclasses import dataclass, field
 from typing import List, Optional, Sequence
 
-from hvantk.algorithms.ptm.pipeline import PTMBuildConfig, PTMBuildResult, ptm_build_pipeline_core
+from hvantk.algorithms.ptm.pipeline import (
+    PTMBuildConfig,
+    PTMBuildResult,
+    ptm_build_pipeline_core,
+)
 
 logger = logging.getLogger(__name__)
 
 # Default atlas sources: CPTAC is OFF by default because its download path
 # requires the optional ``cptac`` Python package and per-cancer-type fetches.
-# Notebook A uses all three, but the minimal reproducible atlas is UniProt +
-# PeptideAtlas.
+# All three sources can be combined; the minimal reproducible atlas is
+# UniProt + PeptideAtlas.
 DEFAULT_ATLAS_SOURCES: Sequence[str] = ("uniprot", "peptideatlas")
 
 # Known source identifiers (used for validation).
@@ -42,7 +47,7 @@ _KNOWN_SOURCES = frozenset({"uniprot", "peptideatlas", "cptac"})
 
 @dataclass
 class PTMAtlasConfig:
-    """Configuration for a Phase-2 PTM atlas build.
+    """Configuration for a PTM atlas build.
 
     Attributes
     ----------
@@ -52,8 +57,8 @@ class PTMAtlasConfig:
         Path to the final PTM sites Hail Table (required).
     sources : Sequence[str]
         Sources to include; any subset of {"uniprot", "peptideatlas", "cptac"}.
-        Defaults to ("uniprot", "peptideatlas") - matches the minimal notebook-A
-        atlas that produces ``ptm_sites_combined.tsv.bgz``.
+        Defaults to ("uniprot", "peptideatlas") - the minimal atlas config
+        that produces ``ptm_sites_combined.tsv.bgz``.
     uniprot_tsv : Optional[str]
         Pre-downloaded UniProt PTM TSV. If None and "uniprot" is selected,
         the pipeline will download it via the REST API.
@@ -64,8 +69,8 @@ class PTMAtlasConfig:
     gtf_path : Optional[str]
         Pre-downloaded Ensembl GTF (auto-downloaded if None).
     flanking_codons : int
-        Flanking-codon window for proximity intervals. Phase-2 default is 7
-        (matches notebook A); the shipped pipeline default is 5.
+        Flanking-codon window for proximity intervals. This module's default
+        is 7; the shipped pipeline default is 5.
     overwrite : bool
         Force re-run of downstream steps even if outputs exist.
     """
@@ -113,7 +118,7 @@ class PTMAtlasConfig:
 
 @dataclass
 class PTMAtlasResult:
-    """Result of a Phase-2 PTM atlas build.
+    """Result of a PTM atlas build.
 
     Attributes
     ----------
@@ -137,9 +142,10 @@ class PTMAtlasResult:
 
 
 def build_atlas(config: PTMAtlasConfig) -> PTMAtlasResult:
-    """Build a Phase-2 PTM atlas by delegating to ``ptm_build_pipeline``.
+    """Build a PTM atlas by delegating to ``ptm_build_pipeline_core``.
 
-    Reproduces notebook A's ``ptm_sites_combined.tsv.bgz`` exactly - no
+    Produces ``ptm_sites_mapped.tsv.bgz`` for UniProt alone, or
+    ``ptm_sites_combined.tsv.bgz`` when multiple sources are included; no
     cross-source deduplication is performed (matches the existing pipeline).
 
     Parameters
@@ -165,7 +171,7 @@ def build_atlas(config: PTMAtlasConfig) -> PTMAtlasResult:
     include_peptideatlas = "peptideatlas" in sources
     include_cptac = "cptac" in sources
 
-    # Translate the Phase-2 config into the legacy PTMBuildConfig. Unselected
+    # Translate this config into the legacy PTMBuildConfig. Unselected
     # sources are passed as None, which disables the corresponding pipeline
     # step. UniProt is enforced in ``PTMAtlasConfig.validate()`` because the
     # shipped pipeline always runs it as the primary source.
@@ -181,7 +187,7 @@ def build_atlas(config: PTMAtlasConfig) -> PTMAtlasResult:
     )
 
     logger.info(
-        "Building Phase-2 PTM atlas (sources=%s, flanking_codons=%d)",
+        "Building PTM atlas (sources=%s, flanking_codons=%d)",
         sources,
         config.flanking_codons,
     )
@@ -192,11 +198,21 @@ def build_atlas(config: PTMAtlasConfig) -> PTMAtlasResult:
     #   - ptm_sites_combined.tsv.bgz when multiple sources are merged
     combined_tsv = build_result.mapped_tsv_path
 
+    # Report the sources that actually reached the pipeline, not the ones requested:
+    # a source named in `sources` whose TSV was not supplied is passed as None above,
+    # which skips it, and listing it here anyway claimed data the atlas never held.
+    passed = {
+        "uniprot": build_cfg.ptm_tsv,
+        "peptideatlas": build_cfg.peptideatlas_tsv,
+        "cptac": build_cfg.cptac_tsv,
+    }
+    sources_used = [s for s in sources if passed.get(s) is not None]
+
     return PTMAtlasResult(
         output_ht=build_result.output_ht,
         combined_tsv=combined_tsv,
         n_sites=build_result.n_mapped,
-        sources_used=list(sources),
+        sources_used=sources_used,
     )
 
 

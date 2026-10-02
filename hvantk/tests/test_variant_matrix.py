@@ -3,6 +3,7 @@
 All tests here require a live Hail session and are explicitly marked
 ``@pytest.mark.hail``.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -39,9 +40,10 @@ def small_mt(hail_session):
     After VariantMatrix wrapping (n_samples=2, n_variants=3).
     """
     import hail as hl
+
     rows = []
-    for r in range(3):   # rows = variants
-        for c in range(2):   # cols = samples
+    for r in range(3):  # rows = variants
+        for c in range(2):  # cols = samples
             rows.append({"row_idx": r, "col_idx": c, "value": float(r * 10 + c)})
     ht = hl.Table.parallelize(
         rows,
@@ -57,6 +59,7 @@ def small_mt(hail_session):
 # Construction
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.hail
 def test_from_hail_mt_attributes(small_mt):
     vm = VariantMatrix.from_hail_mt(small_mt, provenance=_prov())
@@ -68,6 +71,7 @@ def test_from_hail_mt_attributes(small_mt):
 @pytest.mark.hail
 def test_from_hail_mt_stores_matrix(small_mt):
     import hail as hl
+
     vm = VariantMatrix.from_hail_mt(small_mt, provenance=_prov())
     assert isinstance(vm._mt, hl.MatrixTable)
 
@@ -76,9 +80,11 @@ def test_from_hail_mt_stores_matrix(small_mt):
 # samples / variants accessors
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.hail
 def test_samples_is_annotation_table_hail(small_mt):
     from hvantk.core.models.annotation_table import AnnotationTable
+
     vm = VariantMatrix.from_hail_mt(small_mt, provenance=_prov())
     samples = vm.samples
     assert isinstance(samples, AnnotationTable)
@@ -88,6 +94,7 @@ def test_samples_is_annotation_table_hail(small_mt):
 @pytest.mark.hail
 def test_variants_is_annotation_table_hail(small_mt):
     from hvantk.core.models.annotation_table import AnnotationTable
+
     vm = VariantMatrix.from_hail_mt(small_mt, provenance=_prov())
     variants = vm.variants
     assert isinstance(variants, AnnotationTable)
@@ -110,10 +117,12 @@ def test_variants_count_matches_n_variants(small_mt):
 # to_hail_mt (escape hatch)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.hail
 def test_to_hail_mt_returns_matrix_table(small_mt):
     """to_hail_mt() returns the underlying Hail MatrixTable."""
     import hail as hl
+
     vm = VariantMatrix.from_hail_mt(small_mt, provenance=_prov())
     mt = vm.to_hail_mt()
     assert isinstance(mt, hl.MatrixTable)
@@ -125,6 +134,7 @@ def test_to_hail_mt_returns_matrix_table(small_mt):
 # ---------------------------------------------------------------------------
 # subset_samples / subset_variants
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.hail
 def test_subset_samples_hail_mt(small_mt):
@@ -164,6 +174,7 @@ def test_subset_variants_gt_predicate(small_mt):
 # core/io round-trip: save → load
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.hail
 def test_save_load_mt_round_trip(tmp_path, small_mt):
     """Save a VariantMatrix as .mt/ via core/io; load it back."""
@@ -202,6 +213,7 @@ def test_save_load_mt_entry_count_parity(tmp_path, small_mt):
 # ---------------------------------------------------------------------------
 # Lazy count behavior
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.hail
 def test_from_hail_mt_does_not_eagerly_count(monkeypatch, hail_session):

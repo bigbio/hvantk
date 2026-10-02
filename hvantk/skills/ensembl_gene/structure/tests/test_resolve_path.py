@@ -5,6 +5,7 @@ parse stage is declared), while the plain-Python GTF parser needs the file. Thes
 pin the resolver that bridges the two. Hail-free on purpose, so they run in the default
 suite rather than only on a Hail node.
 """
+
 from __future__ import annotations
 
 from hvantk.resources.ensembl_release import ENSEMBL_GTF_FILENAME

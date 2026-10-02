@@ -4,6 +4,7 @@ Skill authors only ever supply schema_id when calling ctx.provenance(...).
 Everything else (plugin name, version, source fingerprint, builder commit)
 is platform-computed and plumbed through this dataclass.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

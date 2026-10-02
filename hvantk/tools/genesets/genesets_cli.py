@@ -43,14 +43,13 @@ def _save_and_report(
         del gene_sets[k]
     if empty:
         click.echo(
-            f"Warning: removed {len(empty)} empty group(s): "
-            f"{', '.join(sorted(empty))}",
+            f"Warning: removed {len(empty)} empty group(s): {', '.join(sorted(empty))}",
             err=True,
         )
 
     if not gene_sets:
         click.echo(
-            "Error: No gene sets produced. " "Check data and filter settings.",
+            "Error: No gene sets produced. Check data and filter settings.",
             err=True,
         )
         ctx.exit(1)
@@ -106,7 +105,7 @@ def _check_overwrite(output_path, overwrite, ctx):
 
 @click.group(name="genesets")
 def genesets_group():
-    """Extract or prepare gene set collections.
+    """Extract or prepare GeneSetCollection files from curated tables.
 
     \b
     Subcommands:
@@ -649,6 +648,7 @@ def genesets_prepare(
     if hgnc:
         click.echo(f"\nValidating against HGNC ({hgnc}) ...", err=True)
         from hvantk.skills.hgnc.streamers import HGNCGeneCatalogStreamer
+
         catalog = HGNCGeneCatalogStreamer.from_path(hgnc)
         vr = validate_with_catalog(gene_sets, catalog)
         gene_sets = vr.gene_sets

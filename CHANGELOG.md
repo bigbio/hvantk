@@ -1,5 +1,209 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **A multiplicity correction for `hvantk rerank` (`--n-perm`).** The engine shipped the
+  circularity and presence-leakage controls but nothing that asked whether a best-of-N
+  delta could arise by chance, so "axis X adds +0.02" was not interpretable. Two nulls are
+  built: per-axis, and the **selected maximum** over every offered axis — only the second
+  is a multiplicity correction, since the maximum over several candidate axes is
+  stochastically larger than any single one of them: the selected-maximum null sits above
+  zero and can exceed an axis's entire measured gain, which is exactly the multiplicity a
+  per-axis-only report would miss. Every permutation refits the baseline, p-values use
+  `(1 + #{null >= obs}) / (1 + n_perm)` so a finite permutation set can never license
+  `p = 0`, and a null refuses to answer about a delta computed under a different control
+  setting. Chunkable through the API (`NullConfig(chunk=, n_chunks=)` +
+  `NullDistribution.merge`) for cluster array jobs.
+- **Paralogue-blocked cross-validation (`--blocks`, `--max-block-frac`).** Plain
+  `StratifiedKFold` let gene families straddle folds, so pooled out-of-fold AUC was
+  optimistic wherever paralogues share a label. Blocks come from each gene's first-listed
+  HGNC `gene_group`, deliberately not connected components over the multi-membership
+  field — that closure can collapse a large fraction of a gene universe into a single
+  block and make the grouped AUC incomparable to the ungrouped one (the tell-tale is a
+  *blocked* AUC scoring materially higher than the random-fold one, beyond the
+  across-seed spread `--seed-sweep` reports — blocking is harder only on average, so a
+  single correctly blocked run can still score above random folds by chance). A block
+  over the ceiling is a hard abort, because the failure is otherwise silent.
+- **A multi-seed evaluation (`--seed-sweep`).** The shipped interval resampled genes only;
+  which genes landed in which fold was a second variance component fixed at one hardcoded
+  seed. A single cross-validation partition can land anywhere in the across-seed spread,
+  and nothing in the API let a user notice. With `--seed-sweep > 1`, the ablation now
+  carries `d_lo_env`/`d_hi_env` — the union of the bootstrap interval and the across-seed
+  range, never narrower than the interval alone — beside the bootstrap columns.
+
+### Changed
+
+- **`hvantk plugins errors` now exits 1 when it lists anything** (was 0). Rows mean
+  the registry is missing something, and a script asking `plugins errors` should not
+  have to parse the text to learn that.
+- **`hvantk drift <dataset>` now scopes load errors to the requested
+  dataset/provider**, so an unrelated broken plugin no longer makes it exit 2
+  (previously every load error in the registry counted). `--regenerate` exits 2
+  when the dataset's own provider or entry point failed to load, or when the
+  probe or the write fails (previously an uncaught traceback and exit 1), and
+  rejects `--json` as a usage error.
+- **`seed` is a `Config` field and a `--seed` flag.** `random_state=42` was hardcoded in
+  five places across `evaluator.py`, `reranker.py` and `selection.py`; a test now fails if
+  a bare `42` reappears anywhere in `hvantk/algorithms/rerank/`. Defaults are unchanged, so
+  every previously produced result reproduces exactly.
+- **`evaluator.py` lost its prototype header and its multi-statement lines.** The file still
+  opened with a prototype path comment and packed several statements per line;
+  it is the module all of the above touches most. No behaviour change — pinned by a
+  golden-value test captured before the reformat.
+- **`scipy` is a base dependency.** It was declared only in seven extras, yet the UCSC Cell
+  Browser plugin imports `scipy.sparse` at module scope on paths a base install reaches
+  (`hvantk expression summarize-ucsc`, the `ucsc-cellbrowser` builder); it only ever arrived
+  through `anndata`. `requirements.txt` and `environment.yml` already installed it. The
+  `cohort` extra stays, now empty, so `hvantk[cohort]` still resolves, and `poetry.lock`
+  changes only its `[extras]` table (#376).
+- **The `SKILL.md` spec checker requires a real body in every section.** `hvantk plugins
+  validate` and the conformance test checked content in two of the nine sections (§6, §9),
+  and only for keywords, so an emptied section, or a `TODO`-led stub that named the right
+  words, passed. A bare `n/a` is rejected; an explained `N/A ...` is an answer and passes
+  (#364).
+- **`hvantk --help` describes each command the way `hvantk tools list` does.** 14 of the 18
+  top-level descriptions disagreed with the tool manifests; the manifests are now canonical,
+  and a test keeps `_LAZY_COMMANDS` equal to them (#304).
+- **An explicit `acquisition.mode: download` must declare `lifecycle.download`.** The
+  manifest schema accepted a download mode with no downloader, so the mistake surfaced only
+  when someone ran `hvantk reprocess`. A downloader that is not written yet is now spelled by
+  omitting the `acquisition` block (`hvantk reprocess` then needs `--skip-download`), and a
+  test pins which datasets are in that state (#360).
+- **Code is now formatted by `ruff format`, and `black` is dropped.** CI fails on
+  unformatted files (width 88, black's default). `black` was a dev dependency that no
+  workflow ran, which left 262 of 596 files unformatted. The advisory lint (never
+  blocking) now also covers bugbear (`B`), blind-except (`BLE`) and bandit (`S`, minus
+  `assert` in test trees), plus the preview whitespace rules (#309).
+- **`poetry.lock` was regenerated with Poetry 2.3.4.** The previous 2.2.1 lock
+  silently dropped the `markers` entry on eleven extras-gated packages (`cycler`,
+  `fonttools`, `joblib`, `kiwisolver`, `matplotlib`, `pyparsing`, `scikit-learn`,
+  `seaborn`, `threadpoolctl`, `tspex`, `xlrd`), so a base `poetry install` pulled
+  all eleven in unconditionally; relocking restores the markers, so a base install
+  is now eleven packages lighter. `mypy-extensions`, pulled in only by the
+  now-removed `black` dev dependency (#309), drops out of the lock alongside it
+  (#374). `click` moves from 8.1.8 to 8.5 in the same lock, so a lock-faithful
+  install (the HPC container) gets the `Did you mean` suggestions and the click
+  the CI matrix already tests.
+- **`h5py` is a base dependency**, the same move `scipy` made in #376: the UCSC
+  Cell Browser plugin imports it at module scope on a path a base install reaches
+  (`hvantk expression summarize-ucsc`, the `ucsc-cellbrowser` builder), and it had
+  arrived only transitively via `anndata` (#363).
+- **`hvantk tools errors` now exits 1 when it lists anything**, matching `plugins
+  errors`.
+- **The `SKILL.md` checker also treats a heading-only body, an HTML comment, an
+  empty code fence, a numbered-list `TODO`, or a table of `TODO`s as a
+  placeholder**, extending the real-body check above to shapes that passed the
+  keyword/emptiness test while carrying no content.
+
+### Fixed
+
+- **The dbNSFP drift probe could never see a new release.** It watched the legacy Google
+  Sites landing page, frozen at v4.9 since 2024. It now reads the dbnsfp.org releases page,
+  and the release list stays under `headers`, so a new release still opens its own
+  `drift:schema` PR (#371).
+- **The uniprot_ptm drift probe recorded `source_version: null` and could never
+  see a UniProt release.** It now fingerprints the live response's
+  `X-UniProt-Release` header and `X-Total-Results` count, failing closed when
+  either is missing rather than hashing only the response's key shape, and
+  rejects a result count smaller than the number of results it actually
+  received (#370).
+- **`hgnc:lookup` promised a column upstream no longer ships.** HGNC dropped
+  `location_sortable`; the field list, fixture, snapshots, SKILL.md and drift baseline now
+  follow the live dump (#355).
+- **The rebuild ledger records the fingerprint bumps accepted by hand in #378
+  (dbnsfp) and #381 (hgnc).** Both were accepted with a manual `--regenerate`,
+  which writes no ledger row, so `hvantk drift --ledger` could not report that
+  artifacts built before those bumps are pending a rebuild. The rule in the plugin
+  conventions (every accepted bump gets a row in the same commit) applies to manual
+  acceptances as much as to the bot's.
+- **Expression Atlas transcript-level builds had non-unique `var_names`.** `var` was keyed by
+  the gene id, which repeats once per transcript, and every RNA-seq accession in the shipped
+  catalog is transcript-level. `var` is now keyed by the transcript id, with the gene id kept
+  as the `Gene ID` column; gene-level exports are unchanged. The generic expression tools
+  read `var_names` as gene ids, so for these builds they now see transcript ids, which is
+  tracked in #383 (#349).
+- **Two catalog URLs did not point at what their entries describe.** `gwas_catalog`'s `url`
+  was the rolling `releases/latest/` alias, which has moved past the entry's release; it now
+  pins that release's archive. `msigdb`'s `url` is a registration-gated landing page and is
+  marked provenance-only. The closed `data_source` enum is now documented for plugin
+  authors (#185).
+- **The documented `hvantk reprocess` commands for `gevir` and `gwas-catalog` could not
+  run.** Both declared a download mode with no downloader; they now omit the block and
+  their documented commands pass `--skip-download` (the downloaders are #386).
+  `ucsc-cellbrowser:adult-ctx` and `dev-ctx`, summaries derived locally from multi-gigabyte
+  collections, are now `byo` (#360).
+- **`hvantk hgc vds2mt` and `hgc pipeline` now write the dense MatrixTable's
+  columns sorted by sample ID** (previously the VDS's own order), so the sample
+  order of every exported VCF is deterministic, and may differ from that of an
+  export made before this change.
+  `--skip-keying-by-cols` keeps the old VDS order, and its `--help` text now says
+  so. A MatrixTable written before this change should be regenerated, or combined
+  through `combine_matrix_table_rows(force_sort_cols=True)`, before being unioned with one
+  written after it (#368).
+- **`_driver_af` breaks a tied case-carrier count toward the driver with the
+  highest control-carrier frequency, deterministically.** Ties are common with
+  rare variants (many genes have every driver at `cc == 1`), and the previous
+  order depended on how Hail happened to collect them. `driver_af` and the
+  `common_driver` audit flag can therefore change on a re-run for genes whose top
+  drivers tied (#369).
+- **`hvantk ptm test` fails with an actionable message naming the `constraint`
+  extra when `statsmodels` is missing**, instead of a bare `No module named
+  'statsmodels'` traceback that never said which extra fixes it (#362).
+- **`rerank()` raises `ValueError` when `Config.nulls` is set but only the
+  baseline axis has columns left in an arm** (the provenance arm restriction barred
+  every other axis, or their tables contribute no feature column), rather than
+  logging a warning and quietly returning `nulls=None`. A requested multiplicity
+  correction can no longer go silently missing from the result.
+- **`Config.selection` is now type-checked the same way as `leakage`, `nulls` and
+  `blocks`, and `SelectionPolicy` rejects an unknown `univariate` / `redundancy` /
+  `wrapper` value at construction.** A misspelling such as `wrapper="RFECV"`
+  previously disabled that selection stage with no error or warning at all.
+- **`hvantk rerank` fails with a message naming the `ml` extra when scikit-learn
+  is not installed**, instead of a bare `ModuleNotFoundError` traceback.
+- **`hvantk rerank --n-perm` without `--blocks` warns that the null is
+  anti-conservative where labels cluster by gene family.** An unblocked null
+  permutes labels across families; on family-clustered labels it can return a
+  small "multiplicity-corrected" p for an axis that only recognises families. The
+  warning goes to stderr, and the `--n-perm` help says the same.
+- **`hvantk rerank` checks that the `--output` and `--null-out` directories exist
+  before the run**, instead of failing with an `OSError` traceback after scoring
+  and the whole permutation null had finished.
+- **`NullDistribution.merge` refuses a chunk set with missing permutations.** Every
+  chunk agreed on `planned_n_perm`, so a pre-empted array task used to shrink the
+  null silently; the merge now names the missing indices, and
+  `merge(..., allow_partial=True)` accepts a smaller null deliberately.
+- **The permutation null's control setting records the CV seed.** The fold
+  partition depends on it, yet two chunks scored under different seeds merged
+  silently and a null answered for a delta computed under another seed; both now
+  raise `ControlSettingMismatch`.
+- **Above 10,000 rows the rerank scorer is not fully blocked, and the docs now say
+  so.** `HistGradientBoostingClassifier`'s default `early_stopping="auto"` turns on
+  there and holds out a random validation split that ignores the paralogue blocks;
+  the estimator is unchanged so historic results reproduce.
+- **The Expression Atlas builder raises `ValueError` naming the duplicated ids**
+  when `var` would not be uniquely indexed — for example a transcript-level
+  export whose id column is not the configured `transcript_id_column` — instead
+  of writing an `.h5ad` with duplicate `var_names` that `anndata` only warns
+  about.
+- **The HGNC builder logs which declared fields are missing from the input
+  header**, instead of silently dropping them from the renamed output.
+- **`hvantk ptm atlas` no longer claims sources or outputs it does not have.** It
+  listed every requested source under `Sources used` even when that source's TSV was
+  not passed (and so was skipped), printed an empty `Hail Table:` line, and its
+  `--uniprot-tsv` help promised a download it never performs. It now lists only the
+  sources that reached the pipeline, says the table is not built (use `hvantk ptm
+  build`), and its help and docs say the UniProt TSV must be passed.
+- **Several `hvantk drift` robustness gaps closed.** `DriftResult.status` is
+  validated against its four allowed values; a fingerprint is canonicalised to
+  its JSON form before comparison, so a probe returning a tuple, `Path` or
+  `datetime` no longer reports `drifted` forever after `--regenerate`;
+  `--regenerate` refuses to write a stub or placeholder-shaped fingerprint; the
+  human-readable `hvantk drift` output now prints each `probe_failed` row's
+  reason to stderr; `drift --all --json` emits its load-error rows and exits 2
+  when every in-scope dataset failed to bind, instead of printing nothing.
+
 ## 0.3.1 — 2026-08-30
 
 Reworks the scheduled drift bot. Fewer PRs, each carrying a signal that means
@@ -87,11 +291,12 @@ without CI having ever run on them.
 - **`--n-partitions` now controls the VDS → MatrixTable partitioning** on both
   `hvantk hgc vds2mt` and `hvantk hgc pipeline`, coalescing the dense MatrixTable before
   the write. A VDS's on-disk layout is derived from its *reference-block* count, which is
-  a property of the genome and saturates (~229 M on chr1 by N≈500 samples) while the dense
-  matrix keeps growing with N×M(N). Past that point the partition count stops tracking the
-  size of the data it partitions and work-per-task collapses — measured at 0.69
-  MiB/partition on a 1,005-sample chr1 cohort, where densify and QC plateaued at 1.29× and
-  1.64× going from 16 to 128 cores while well-sized stages scaled 7.8× (#207).
+  a property of the genome and saturates (on the order of 10^8 on chr1 by a few hundred
+  samples) while the dense matrix keeps growing with N×M(N). Past that point the partition
+  count stops tracking the size of the data it partitions and work-per-task collapses —
+  measured on a ~1,000-sample chr1 cohort, where partitions shrank to under a MiB each and
+  densify and QC sped up less than 2x going from 16 to 128 cores (8x) while well-sized
+  stages scaled nearly linearly (#207).
   Implemented with `naive_coalesce`, which merges adjacent partitions without a shuffle so
   the densify for a merged group runs inside one task. Reduces only; the default is
   unchanged. **Not** implemented at the read: `hl.vds.read_vds(n_partitions=…)` looks
@@ -176,7 +381,7 @@ which sat on `main` unchanged from 2025-05-04 across 61 merges.
 
 ### Added
 
-- Declarative feature selection for `hvantk rerank` (Python API: `Config.selection`). Filters run within each axis — univariate AUC with within-axis BH-FDR, then Spearman redundancy — re-fitted inside every cross-validation fold on the training slice only, so the reported ΔAUC is not inflated by selection that has seen the held-out labels. A third RFECV step is available but **off by default** (`SelectionPolicy(wrapper="rfecv")`): across four real cohorts it eliminated columns almost exclusively in the one with the fewest positives, and pruned the ablation baseline axis, so it needs an out-of-fold outcome comparison before it can be trusted by default. `Config.selection = None` (the default) reproduces the previous code path exactly, and the CLI is unchanged.
+- Declarative feature selection for `hvantk rerank` (Python API: `Config.selection`). Filters run within each axis — univariate AUC with within-axis BH-FDR, then Spearman redundancy — re-fitted inside every cross-validation fold on the training slice only, so the reported ΔAUC is not inflated by selection that has seen the held-out labels. A third RFECV step is available but **off by default** (`SelectionPolicy(wrapper="rfecv")`): it eliminated columns mostly where positives were fewest and can prune the ablation baseline axis, so it needs an out-of-fold outcome comparison before it can be trusted by default. `Config.selection = None` (the default) reproduces the previous code path exactly, and the CLI is unchanged.
 - `rerank_arms(config)` runs each analysis as two arms, `clean` and `all`, over identical folds. `clean` (columns with no provenance conflict against the label source) is the headline; `all` adds conflicted and undeclared columns so the circularity channel is a measured number rather than an assumption. `RerankResult.selection` carries the per-fold selection frequency, the global-pass feature list, and both nested and global AUCs.
 - Plugin manifests may declare per-predictor training provenance: an optional `scores: {<column>: {trained_on: [...]}}` block per dataset. `hvantk/skills/dbnsfp/plugin.yaml` declares it for 55 of its 57 rankscore predictors. An omitted score means unknown and is never treated as clean.
 - Plugin system for data-provider adapters. Each provider now lives in a single folder under `hvantk/skills/<provider>/` with a `plugin.yaml` manifest, builder code, drift probe, downloader CLI, and tests. The loader auto-discovers plugins from the in-tree filesystem and Python entry points.

@@ -10,6 +10,7 @@ is None.
 Everything statistical happens later in ``fet.py`` on small collected frames; this module
 only does the distributed per-sample counting and the fail-loud input contract.
 """
+
 from __future__ import annotations
 
 try:

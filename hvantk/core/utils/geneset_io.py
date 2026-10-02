@@ -7,6 +7,7 @@ Also provides catalog-based symbol validation and alias resolution via the
 :class:`~hvantk.core.streamers.gene_catalog.GeneCatalogStreamer` ABC. Callers
 in ``tools/`` construct the concrete streamer and pass it here.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

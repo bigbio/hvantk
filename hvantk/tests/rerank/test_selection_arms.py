@@ -3,6 +3,7 @@
 The `clean` arm is the headline; `all` exists only so the circularity channel is a
 measured number. Both arms run over identical folds, so their difference is paired.
 """
+
 import numpy as np
 import pandas as pd
 
@@ -21,9 +22,12 @@ def _cfg(tmp_path, **kw):
     n = 800
     genes = [f"G{i}" for i in range(n)]
     y = np.repeat([0, 1], n // 2)
-    base = pd.DataFrame({"gene": genes, "c1": y + rng.normal(0, 1.0, n),
-                         "c2": rng.normal(0, 1, n)})
-    extra = pd.DataFrame({"gene": genes, "REVEL_rankscore": y * 1.0})   # perfect + circular
+    base = pd.DataFrame(
+        {"gene": genes, "c1": y + rng.normal(0, 1.0, n), "c2": rng.normal(0, 1, n)}
+    )
+    extra = pd.DataFrame(
+        {"gene": genes, "REVEL_rankscore": y * 1.0}
+    )  # perfect + circular
     pos = {g for g, v in zip(genes, y) if v == 1}
 
     prior_path = tmp_path / "prior.tsv"
@@ -39,8 +43,10 @@ def _cfg(tmp_path, **kw):
     return Config(
         name="t",
         cohort=cohort,
-        features=[FeatureAxis("constraint", lambda: base),
-                  FeatureAxis("trained", lambda: extra)],
+        features=[
+            FeatureAxis("constraint", lambda: base),
+            FeatureAxis("trained", lambda: extra),
+        ],
         labels=LabelSpec(loader=lambda: pos),
         **kw,
     )
@@ -53,8 +59,11 @@ def test_arms_split_on_provenance_and_delta_is_reported(tmp_path):
     cfg = _cfg(
         tmp_path,
         selection=SelectionPolicy(wrapper="none"),
-        feature_provenance={"c1": frozenset(), "c2": frozenset(),
-                            "REVEL_rankscore": frozenset({"ClinVar"})},
+        feature_provenance={
+            "c1": frozenset(),
+            "c2": frozenset(),
+            "REVEL_rankscore": frozenset({"ClinVar"}),
+        },
         label_provenance=frozenset({"GenCC"}),
         min_label_coverage=0.0,
     )
@@ -64,7 +73,9 @@ def test_arms_split_on_provenance_and_delta_is_reported(tmp_path):
     assert set(arms) == {"clean", "all"}
     assert arms["all"].metrics.auc > arms["clean"].metrics.auc  # circular column helps
     assert arms["clean"].selection.n_conflicted == 1
-    assert "REVEL_rankscore" not in arms["clean"].selection.global_features.get("trained", ())
+    assert "REVEL_rankscore" not in arms["clean"].selection.global_features.get(
+        "trained", ()
+    )
 
 
 def test_undeclared_column_is_conflicted_and_excluded_from_clean(tmp_path):
@@ -75,8 +86,11 @@ def test_undeclared_column_is_conflicted_and_excluded_from_clean(tmp_path):
     cfg = _cfg(
         tmp_path,
         selection=SelectionPolicy(wrapper="none"),
-        feature_provenance={"c1": frozenset(), "c2": None,
-                            "REVEL_rankscore": frozenset({"ClinVar"})},
+        feature_provenance={
+            "c1": frozenset(),
+            "c2": None,
+            "REVEL_rankscore": frozenset({"ClinVar"}),
+        },
         label_provenance=frozenset({"GenCC"}),
         min_label_coverage=0.0,
     )
@@ -90,9 +104,13 @@ def test_selection_summary_carries_frequency_and_global_list(tmp_path):
     from hvantk.algorithms.rerank.engine import rerank_arms
     from hvantk.algorithms.rerank.selection import SelectionPolicy
 
-    cfg = _cfg(tmp_path, selection=SelectionPolicy(wrapper="none"),
-               feature_provenance=None, label_provenance=frozenset(),
-               min_label_coverage=0.0)
+    cfg = _cfg(
+        tmp_path,
+        selection=SelectionPolicy(wrapper="none"),
+        feature_provenance=None,
+        label_provenance=frozenset(),
+        min_label_coverage=0.0,
+    )
 
     s = rerank_arms(cfg)["all"].selection
 
@@ -118,9 +136,13 @@ def test_noise_column_is_dropped_from_the_global_list(tmp_path):
     from hvantk.algorithms.rerank.engine import rerank_arms
     from hvantk.algorithms.rerank.selection import SelectionPolicy
 
-    cfg = _cfg(tmp_path, selection=SelectionPolicy(wrapper="none"),
-               feature_provenance=None, label_provenance=frozenset(),
-               min_label_coverage=0.0)
+    cfg = _cfg(
+        tmp_path,
+        selection=SelectionPolicy(wrapper="none"),
+        feature_provenance=None,
+        label_provenance=frozenset(),
+        min_label_coverage=0.0,
+    )
 
     s = rerank_arms(cfg)["all"].selection
 
@@ -141,14 +163,47 @@ def test_clean_arm_refuses_to_run_when_every_column_conflicts(tmp_path):
     cfg = _cfg(
         tmp_path,
         selection=SelectionPolicy(wrapper="none"),
-        feature_provenance={c: frozenset({"ClinVar"})
-                            for c in ("c1", "c2", "REVEL_rankscore")},
+        feature_provenance={
+            c: frozenset({"ClinVar"}) for c in ("c1", "c2", "REVEL_rankscore")
+        },
         label_provenance=frozenset({"GenCC"}),
         min_label_coverage=0.0,
     )
 
     with pytest.raises(ValueError, match="clean"):
         rerank_arms(cfg)
+
+
+def test_a_requested_null_refuses_to_run_when_the_clean_arm_has_no_candidate_axis(
+    tmp_path,
+):
+    """With every non-baseline column conflicted, the clean arm -- the headline -- is left
+    with the baseline alone, and a requested multiplicity correction cannot run on it.
+    That must be an error naming the arm and the barred axis, not (as the engine used to
+    do) a clean arm carrying `nulls=None` beside an `all` arm carrying a real null."""
+    import pytest
+
+    from hvantk.algorithms.rerank.engine import rerank_arms
+    from hvantk.algorithms.rerank.nulls import NullConfig
+    from hvantk.algorithms.rerank.selection import SelectionPolicy
+
+    cfg = _cfg(
+        tmp_path,
+        selection=SelectionPolicy(wrapper="none"),
+        feature_provenance={
+            "c1": frozenset(),
+            "c2": frozenset(),
+            "REVEL_rankscore": frozenset({"ClinVar"}),
+        },
+        label_provenance=frozenset({"GenCC"}),
+        nulls=NullConfig(n_perm=2),
+        min_label_coverage=0.0,
+    )
+
+    with pytest.raises(ValueError) as info:
+        rerank_arms(cfg)
+    msg = str(info.value)
+    assert "'clean'" in msg and "'trained'" in msg and "provenance" in msg
 
 
 def test_column_missing_from_the_provenance_map_is_undeclared_not_deleted(tmp_path):
@@ -193,22 +248,33 @@ def test_custom_equivalence_map_reaches_the_arm_split(tmp_path):
     from hvantk.algorithms.rerank.engine import rerank_arms
     from hvantk.algorithms.rerank.selection import SelectionPolicy
 
-    prov = {"c1": frozenset(), "c2": frozenset(),
-            "REVEL_rankscore": frozenset({"SourceB"})}
+    prov = {
+        "c1": frozenset(),
+        "c2": frozenset(),
+        "REVEL_rankscore": frozenset({"SourceB"}),
+    }
 
-    default_arms = rerank_arms(_cfg(
-        tmp_path, selection=SelectionPolicy(wrapper="none"),
-        feature_provenance=prov, label_provenance=frozenset({"SourceA"}),
-        min_label_coverage=0.0,
-    ))
+    default_arms = rerank_arms(
+        _cfg(
+            tmp_path,
+            selection=SelectionPolicy(wrapper="none"),
+            feature_provenance=prov,
+            label_provenance=frozenset({"SourceA"}),
+            min_label_coverage=0.0,
+        )
+    )
     assert default_arms["clean"].selection.n_conflicted == 0
 
-    custom_arms = rerank_arms(_cfg(
-        tmp_path, selection=SelectionPolicy(wrapper="none"),
-        feature_provenance=prov, label_provenance=frozenset({"SourceA"}),
-        provenance_equivalence={"my_class": ["SourceA", "SourceB"]},
-        min_label_coverage=0.0,
-    ))
+    custom_arms = rerank_arms(
+        _cfg(
+            tmp_path,
+            selection=SelectionPolicy(wrapper="none"),
+            feature_provenance=prov,
+            label_provenance=frozenset({"SourceA"}),
+            provenance_equivalence={"my_class": ["SourceA", "SourceB"]},
+            min_label_coverage=0.0,
+        )
+    )
     assert custom_arms["clean"].selection.n_conflicted == 1
 
 
@@ -228,8 +294,11 @@ def test_forgetting_label_provenance_is_rejected(tmp_path):
     cfg = _cfg(
         tmp_path,
         selection=SelectionPolicy(wrapper="none"),
-        feature_provenance={"c1": frozenset(), "c2": frozenset(),
-                            "REVEL_rankscore": frozenset({"ClinVar"})},
+        feature_provenance={
+            "c1": frozenset(),
+            "c2": frozenset(),
+            "REVEL_rankscore": frozenset({"ClinVar"}),
+        },
         min_label_coverage=0.0,
     )  # label_provenance deliberately not passed
 
@@ -245,8 +314,11 @@ def test_explicitly_empty_label_provenance_is_accepted(tmp_path):
     cfg = _cfg(
         tmp_path,
         selection=SelectionPolicy(wrapper="none"),
-        feature_provenance={"c1": frozenset(), "c2": frozenset(),
-                            "REVEL_rankscore": frozenset({"ClinVar"})},
+        feature_provenance={
+            "c1": frozenset(),
+            "c2": frozenset(),
+            "REVEL_rankscore": frozenset({"ClinVar"}),
+        },
         label_provenance=frozenset(),
         min_label_coverage=0.0,
     )

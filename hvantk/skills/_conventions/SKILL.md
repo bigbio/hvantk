@@ -19,7 +19,7 @@ These conventions apply to every per-resource plugin under `hvantk/skills/`. Per
 - `hvantk/core/plugin/loader.py` — discovery (filesystem + Python entry points), manifest validation, and lazy callable resolution. The module-level `get_registry()` returns a `PluginRegistry`; `registry.get_dataset("<provider>:<dataset>")` yields the executable `DatasetSpec`. There is no `registry.py`, no `TABLE_BUILDERS` / `MATRIX_BUILDERS`, and no `create_table_adapter()` / `create_matrix_adapter()`.
 - `hvantk/core/plugin/run_builder.py` — `run_builder_for_spec(...)` is the sole dispatch path: it runs the drift probe, builds a `BuildContext`, invokes the builder, validates the returned artifact's type/`schema_id` against `plugin.yaml`, then saves and returns provenance.
 - `hvantk/tools/` — top-level CLI (`hvantk plugins`, `hvantk drift`, `hvantk reprocess`, `hvantk catalog`). The `reprocess` command lives in `hvantk/tools/plugins/reprocess_cli.py`. Per-provider downloader CLI lives in the plugin's own `cli.py` and is wired by `plugin.yaml`'s `cli:` block.
-- `hvantk/skills/<provider>/catalog/datasets.json` — per-plugin dataset catalog (URLs, version cadence, license, per-accession metadata). Aggregated by `hvantk.resources.unified_registry.HvantkRegistry` and surfaced via `hvantk catalog {list,show,stats,search}`.
+- `hvantk/skills/<provider>/catalog/datasets.json` — per-plugin dataset catalog (URLs, version cadence, license, per-accession metadata). Aggregated by `hvantk.resources.unified_registry.HvantkRegistry` and surfaced via `hvantk catalog {list,show,stats,search}`. Each entry's `data_source` is a closed enum (`hvantk/core/plugin/catalog_entry.schema.json`) — a new provider's canonical name is added to that enum, not left as free text.
 
 When in doubt, READ existing code under these paths before inferring shape.
 
@@ -262,8 +262,8 @@ A dataset that ships no `lifecycle.download` is ambiguous: it may mean *nobody h
 
 Declared **per dataset, not per provider** — `onek-genomes` ships `variants` (~1.5 TB, BYO) beside `samples` (~55 KB, auto-downloaded), so one provider-level field could not describe it.
 
-- Omitting the block means `mode: download`, so every pre-existing manifest stays valid.
-- `mode: download` with no `lifecycle.download` is the honest way to say *a downloader belongs here and is not written yet* — a TODO. See CLAUDE.md's downloader decision framework for when one is warranted.
+- Omitting the block means `mode: download`, so every pre-existing manifest stays valid. This is also the honest way to say *a downloader belongs here and is not written yet* — a TODO; `hvantk reprocess` then needs `--skip-download` until one lands.
+- An **explicit** `mode: download` is a stronger claim than the default: it asserts a downloader exists, so the schema requires a sibling `lifecycle.download` (#360) — the converse of the `byo` rule below. `mode: download` with no `lifecycle.download` is rejected, not a second way to spell the TODO state above.
 - `mode: byo` requires a `reason`, and is **rejected** alongside `lifecycle.download`: a dataset either fetches its own inputs or it does not, and a manifest claiming both is lying about one.
 - Under `mode: byo`, `hvantk reprocess` skips the download stage implicitly (no flag needed) and instead pre-flights `--raw-dir`, failing with `instructions` interpolated if it is empty — rather than dying deep inside the builder.
 

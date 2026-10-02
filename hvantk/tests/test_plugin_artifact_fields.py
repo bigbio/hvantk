@@ -1,4 +1,5 @@
-"""Phase B invariant: every loaded dataset must declare artifact_type and schema_id."""
+"""Plugin contract invariant: every loaded dataset must declare artifact_type and schema_id."""
+
 from __future__ import annotations
 
 from hvantk.core.plugin import loader as plugin_loader

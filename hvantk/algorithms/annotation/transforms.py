@@ -1,4 +1,4 @@
-"""Declarative variant->gene aggregation (design decision 5's transform vocabulary).
+"""Declarative variant->gene aggregation transforms.
 
 Layering: this module imports hail + stdlib ONLY. It never imports a ``hvantk.skills`` or
 ``hvantk.tools`` module -- the source arrives as a Hail Table handed in by the caller (same
@@ -6,6 +6,7 @@ contract as ``prepare.py``). Identifier reconciliation onto the spine happens af
 ``prepare.py``, via the existing GeneIdMapper; this module only reshapes a variant table into
 one row per ``agg.by`` value.
 """
+
 from __future__ import annotations
 
 import logging

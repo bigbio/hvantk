@@ -1,9 +1,9 @@
 """Prepare a single annotation source into a per-gene, gene_id-keyed artifact.
 
-`prepare` is Stage 1 of the annotation build (design §3): it reads one already-built
+`prepare` is Stage 1 of the annotation build: it reads one already-built
 source, maps its key onto the spine's ``gene_id``, keeps only the columns a spec entry
 declares, restricts to rows that land on the spine, and returns the prepared table plus a
-:class:`MappingReport`. Stage 2 (compose, P3) left-joins every prepared artifact to the
+:class:`MappingReport`. Stage 2 (compose) left-joins every prepared artifact to the
 spine. Sources keyed on ``gene_id``, ``hgnc_id``, or ``symbol`` are supported; non-``gene_id``
 keys are re-keyed onto ``gene_id`` via the HGNC-backed mapper before column selection.
 
@@ -11,6 +11,7 @@ Layering: this module reads sources as Hail Tables handed in by the caller (the 
 them by path). It must never import a ``hvantk.skills`` module -- the source is data, not
 code.
 """
+
 from __future__ import annotations
 
 import logging
@@ -37,8 +38,12 @@ def _collapse_reducers():
     """
     import hail as hl
 
-    return {"max": hl.agg.max, "min": hl.agg.min, "mean": hl.agg.mean,
-            "sum": hl.agg.sum}
+    return {
+        "max": hl.agg.max,
+        "min": hl.agg.min,
+        "mean": hl.agg.mean,
+        "sum": hl.agg.sum,
+    }
 
 
 class _LazyCollapseReducers(dict):
@@ -116,7 +121,11 @@ def prepare_source(source_ht, spine_gene_ids, entry, *, hgnc=None):
         prepared = prepared.select(*entry.columns)
     else:
         prepared = _rekey_onto_gene_id(
-            source_ht, key, resolved, entry.columns, entry.source,
+            source_ht,
+            key,
+            resolved,
+            entry.columns,
+            entry.source,
             collapse=entry.collapse,
         )
 
@@ -145,8 +154,9 @@ def _resolve_to_gene_id(source_keys, to_space, source_label, mapper):
     return resolved, report
 
 
-def _rekey_onto_gene_id(source_ht, key_col, resolved, columns, source_label, *,
-                        collapse=None):
+def _rekey_onto_gene_id(
+    source_ht, key_col, resolved, columns, source_label, *, collapse=None
+):
     """Attach gene_id from ``resolved``, drop unresolved, key on gene_id, select columns.
 
     Enforces one row per gene. A many-to-one mapping raises unless the spec entry
@@ -183,7 +193,9 @@ def _rekey_onto_gene_id(source_ht, key_col, resolved, columns, source_label, *,
     agg = COLLAPSE_REDUCERS[collapse]
     logger.info(
         "%s: collapsing %d many-to-one rows onto gene_id with %r",
-        source_label, n_rows - n_genes, collapse,
+        source_label,
+        n_rows - n_genes,
+        collapse,
     )
     return prepared.group_by(prepared.gene_id).aggregate(
         **{c: agg(prepared[c]) for c in columns}
@@ -250,7 +262,7 @@ def _collapse_matrix_onto_gene_id(source_ht, key_col, resolved, columns, source_
     plain gene table that is an error -- there is no combine rule -- so :func:`_rekey_onto_gene_id`
     raises. An expression matrix, however, is a matrix->gene reduction: colliding symbols are
     combined by ``max``, matching the reducer's own duplicate-symbol collapse
-    (:func:`hvantk.algorithms.annotation.matrix.reduce_matrix_to_gene`). All P2c-4 matrix features
+    (:func:`hvantk.algorithms.annotation.matrix.reduce_matrix_to_gene`). All matrix features
     (EWCE specificity, fraction expressed, mean expression) are "larger = more signal", so taking
     the max keeps the strongest evidence when one gene carries two symbol rows.
     """

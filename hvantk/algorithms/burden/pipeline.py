@@ -1,4 +1,5 @@
 """One-call gene-burden FET: clean MT -> assembled CohortManifest-conformant gene table."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING

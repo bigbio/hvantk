@@ -1,5 +1,6 @@
-# local/rerank_engine/engine.py
+import logging
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 import pandas as pd
 from hvantk.algorithms.cohort.frame import load_cohort_frame
 from hvantk.algorithms.rerank.config import validate
@@ -7,6 +8,12 @@ from hvantk.algorithms.rerank.features import FeatureAssembler
 from hvantk.algorithms.rerank.reranker import ReRanker
 from hvantk.algorithms.rerank.tiers import TierAssigner
 from hvantk.algorithms.rerank.evaluator import Evaluator, EvalResult
+
+if TYPE_CHECKING:
+    from hvantk.algorithms.rerank.blocks import BlockReport
+    from hvantk.algorithms.rerank.nulls import NullDistribution
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -21,15 +28,14 @@ class SelectionSummary:
     estimators that differ in two ways at once -- the global one has seen every label
     (which inflates it), and it also commits every fold to a single feature set instead of
     one fitted per fold (which can help or hurt). Those pull in opposite directions and the
-    sum has no guaranteed sign. Measured on the real CHD cohort (1362 genes, 51 features):
-    +0.0098 on the `all` arm but -0.0100 on `clean`, from the same data and the same
-    policy. A large gap in either direction says the selection is unstable on this cohort;
-    a small one says little.
+    sum has no guaranteed sign: one run can show a positive gap on the `all` arm and a
+    negative one on `clean`, from the same data and the same policy. A large gap in either
+    direction says the selection is unstable on this cohort; a small one says little.
     """
 
     arm: str
-    frequency: dict          # axis -> column -> number of folds that selected it
-    global_features: dict    # axis -> columns selected by the global (all-data) pass
+    frequency: dict  # axis -> column -> number of folds that selected it
+    global_features: dict  # axis -> columns selected by the global (all-data) pass
     auc_nested: float
     auc_global: float
     n_conflicted: int
@@ -42,6 +48,8 @@ class RerankResult:
     metrics: EvalResult
     coverage: dict
     selection: "SelectionSummary | None" = None
+    nulls: "NullDistribution | None" = None
+    blocks: "BlockReport | None" = None
 
 
 def _axis_selector(policy, groups, frequency=None):
@@ -149,8 +157,122 @@ def _leakage_filtered_groups(df, y, groups, leakage_policy):
     return out
 
 
-def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
-           _n_unknown=0) -> RerankResult:
+def _resolve_blocks(config, df):
+    """Paralogue block codes for this run's universe, or (None, None) when not configured."""
+    policy = getattr(config, "blocks", None)
+    if policy is None:
+        return None, None
+    from hvantk.algorithms.rerank.blocks import gene_blocks, load_gene_groups
+
+    mapping = load_gene_groups(policy.table)
+    report = gene_blocks(
+        df["gene"].tolist(), mapping, max_block_frac=policy.max_block_frac
+    )
+    return report.blocks, report
+
+
+def _control_setting(config, baseline_cols, candidates, arm, block_digest, folds):
+    """The exact setting this run's deltas were computed under.
+
+    Built in one place so the null and the observed deltas cannot disagree about it -- which
+    is the mismatch `NullDistribution._require` exists to catch, and it can only catch it if
+    the description is derived rather than typed twice.
+    """
+    from hvantk.algorithms.rerank.nulls import ControlSetting
+
+    return ControlSetting(
+        arm=arm,
+        leakage=getattr(config, "leakage", None),
+        selection=getattr(config, "selection", None),
+        baseline=tuple(baseline_cols),
+        candidates=candidates,
+        folds=folds,
+        # The scorer's CV seed, the same way `folds` is recorded: `_run_nulls` builds
+        # `oof_scorer(seed=config.seed)`, so the setting must carry that seed too.
+        seed=config.seed,
+        block_digest=block_digest,
+    )
+
+
+def _run_nulls(config, df, baseline, groups_map, y, selector, arm, blocks):
+    """The permutation null for this run, with its observed deltas, or None when unset.
+
+    Raises ``ValueError`` when ``Config.nulls`` is set but this arm has no candidate axis
+    to search over. Returning ``None`` there -- as this used to, with a warning -- left the
+    caller holding a ``RerankResult.nulls`` indistinguishable from "no correction was
+    requested", which is the state ``Config.nulls``'s type check calls worse than one
+    that was never offered.
+    """
+    if getattr(config, "nulls", None) is None:
+        return None
+    from hvantk.algorithms.rerank.blocks import block_digest
+    from hvantk.algorithms.rerank.evaluator import ABLATION_FOLDS
+    from hvantk.algorithms.rerank.nulls import (
+        NullDistribution,
+        axis_deltas,
+        oof_scorer,
+        permutation_deltas,
+    )
+
+    baseline_cols = list(groups_map[baseline])
+    candidates = {k: list(v) for k, v in groups_map.items() if v and k != baseline}
+    if not candidates:
+        # Why each configured axis is absent from this arm, so the message is actionable
+        # rather than "no candidates". An axis reaches `groups_map` only if at least one
+        # of its columns survived `rerank`'s provenance restriction, so an axis that
+        # declares columns yet is missing here was barred wholesale by that restriction
+        # (possible only in a restricted arm); one that declares none never had anything
+        # to offer. `ax.load()` is cached, so this re-reads nothing.
+        dropped = []
+        for ax in config.features:
+            if ax.name in groups_map:
+                continue
+            declared = [c for c in ax.load().columns if c != "gene"]
+            why = (
+                f"every column {declared!r} is barred from arm {arm!r} by the "
+                "provenance filter"
+                if declared
+                else "its table contributes no feature column"
+            )
+            dropped.append(f"{ax.name!r} ({why})")
+        raise ValueError(
+            f"Config.nulls is set but arm {arm!r} has no candidate axis to search over: "
+            f"of the configured axes {[ax.name for ax in config.features]!r}, only the "
+            f"baseline {baseline!r} has columns left"
+            + (f"; dropped: {'; '.join(dropped)}" if dropped else "")
+            + ". The multiplicity correction needs at least one axis besides the "
+            "baseline: add one, declare 'trained_on' for the barred columns, or leave "
+            "Config.nulls unset to run without a correction."
+        )
+    folds = ABLATION_FOLDS  # ONE variable feeds the scorer and the recorded setting
+    scorer = oof_scorer(
+        selector=selector,
+        groups=blocks,
+        seed=config.seed,
+        folds=folds,
+    )
+    deltas = permutation_deltas(
+        df,
+        baseline_cols,
+        candidates,
+        y,
+        config=config.nulls,
+        scorer=scorer,
+        blocks=blocks,
+    )
+    _, observed = axis_deltas(df, baseline_cols, candidates, y, scorer=scorer)
+    # `digest`, not `block_digest`: the latter would shadow the function imported above for
+    # the rest of this scope.
+    digest = None if blocks is None else block_digest(blocks)
+    setting = _control_setting(config, baseline_cols, candidates, arm, digest, folds)
+    return NullDistribution.from_deltas(
+        deltas, setting, null_config=config.nulls, observed=observed
+    )
+
+
+def rerank(
+    config, _allowed_columns=None, _arm="all", _n_conflicted=0, _n_unknown=0
+) -> RerankResult:
     validate(config)
     matrix, coverage = FeatureAssembler().assemble(config)
     prior = config.prior.load().rename(columns={"unit": "gene"})
@@ -187,7 +309,7 @@ def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
     if pos and covered / len(pos) < config.min_label_coverage:
         raise ValueError(
             f"label/feature join coverage too low: only {covered}/{len(pos)} "
-            f"({covered/len(pos):.0%}) positive units are in the feature matrix — likely a gene-symbol/build mismatch"
+            f"({covered / len(pos):.0%}) positive units are in the feature matrix — likely a gene-symbol/build mismatch"
         )
     n_pos = int(y.sum())
     n_neg = int(len(y) - n_pos)
@@ -204,7 +326,8 @@ def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
     }
     groups = {k: v for k, v in groups.items() if v}
     baseline = next(iter(groups))
-    reranker = ReRanker(config.calibration, config.folds)
+    blocks, block_report = _resolve_blocks(config, df)
+    reranker = ReRanker(config.calibration, config.folds, seed=config.seed)
     leakage_policy = getattr(config, "leakage", None)
     selector = summary = None
     if config.selection is not None:
@@ -215,11 +338,18 @@ def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
         recording = _compose_selector(
             _axis_selector(config.selection, groups, frequency), leakage_policy
         )
-        scores = reranker.score(df, feat_cols, y, selector=recording)
+        scores = reranker.score(df, feat_cols, y, selector=recording, groups=blocks)
         summary = _selection_summary(
-            config, df, y,
+            config,
+            df,
+            y,
             _leakage_filtered_groups(df, y, groups, leakage_policy),
-            scores, frequency, _arm, _n_conflicted, _n_unknown
+            scores,
+            frequency,
+            _arm,
+            _n_conflicted,
+            _n_unknown,
+            blocks=blocks,
         )
     else:
         # Leakage control is independent of SelectionPolicy: one asks whether a column's
@@ -227,9 +357,9 @@ def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
         # Requiring a selection policy to get the leakage control would couple them.
         selector = _compose_selector(None, leakage_policy)
         scores = (
-            reranker.score(df, feat_cols, y, selector=selector)
+            reranker.score(df, feat_cols, y, selector=selector, groups=blocks)
             if selector is not None
-            else reranker.score(df, feat_cols, y)
+            else reranker.score(df, feat_cols, y, groups=blocks)
         )
     audit_table = df
     if config.cohort is not None:
@@ -266,7 +396,19 @@ def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
     flag_reason = config.audit.apply(audit_table).reset_index(drop=True)
     flag = flag_reason != ""
     tiers = TierAssigner(config.tiers).assign(scores)  # pure credibility, no flag input
-    metrics = Evaluator().evaluate(df, feat_cols, y, scores, groups, baseline, selector)
+    metrics = Evaluator().evaluate(
+        df,
+        feat_cols,
+        y,
+        scores,
+        groups,
+        baseline,
+        selector,
+        groups=blocks,
+        seed=config.seed,
+        n_seeds=config.seed_sweep,
+    )
+    nulls = _run_nulls(config, df, baseline, groups, y, selector, _arm, blocks)
     table = pd.DataFrame(
         {
             "gene": df.gene,
@@ -318,18 +460,29 @@ def rerank(config, _allowed_columns=None, _arm="all", _n_conflicted=0,
         ]
     ]
     return RerankResult(
-        table=table, metrics=metrics, coverage=coverage, selection=summary
+        table=table,
+        metrics=metrics,
+        coverage=coverage,
+        selection=summary,
+        nulls=nulls,
+        blocks=block_report,
     )
 
 
-def _selection_summary(config, df, y, groups, scores, frequency, arm,
-                       n_conflicted, n_unknown) -> SelectionSummary:
+def _selection_summary(
+    config, df, y, groups, scores, frequency, arm, n_conflicted, n_unknown, blocks=None
+) -> SelectionSummary:
     """Run the global pass and package it with the nested result.
 
     The global pass exists ONLY to produce a human-readable "these are the features"
     list -- one selection over all the data, which is what a reader can actually inspect
     and argue with. Its AUC is reported alongside as ``auc_global`` so the selection bias
     it carries is visible rather than hidden; nothing downstream ranks on it.
+
+    ``blocks`` must be threaded into this pass's own ``score`` call too: once folds are
+    blocked, an unblocked ``auc_global`` sitting beside a blocked ``auc_nested`` would
+    inflate the gap between them with paralogue leakage on top of whatever the gap is
+    already reporting, silently acquiring a third, one-directional component.
     """
     from sklearn.metrics import roc_auc_score
 
@@ -342,7 +495,9 @@ def _selection_summary(config, df, y, groups, scores, frequency, arm,
     picked = [c for cols in global_features.values() for c in cols]
     auc_global = float("nan")
     if picked:
-        global_scores = ReRanker(config.calibration, config.folds).score(df, picked, y)
+        global_scores = ReRanker(
+            config.calibration, config.folds, seed=config.seed
+        ).score(df, picked, y, groups=blocks)
         auc_global = float(roc_auc_score(y, global_scores))
     return SelectionSummary(
         arm=arm,

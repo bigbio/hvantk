@@ -77,20 +77,18 @@ def _jsonable_to_hail_python(value: Any, dtype: Any) -> Any:
         # (recurses into tlocus above for locus<rg>-typed intervals).
         start = _jsonable_to_hail_python(value["start"], dtype.point_type)
         end = _jsonable_to_hail_python(value["end"], dtype.point_type)
-        return hl.Interval(start=start, end=end, includes_start=True, includes_end=False)
+        return hl.Interval(
+            start=start, end=end, includes_start=True, includes_end=False
+        )
     if isinstance(dtype, hl.tarray):
         return [_jsonable_to_hail_python(v, dtype.element_type) for v in value]
     if isinstance(dtype, hl.tset):
         return {_jsonable_to_hail_python(v, dtype.element_type) for v in value}
     if isinstance(dtype, hl.ttuple):
-        return tuple(
-            _jsonable_to_hail_python(v, t)
-            for v, t in zip(value, dtype.types)
-        )
+        return tuple(_jsonable_to_hail_python(v, t) for v, t in zip(value, dtype.types))
     if isinstance(dtype, hl.tstruct):
         return {
-            name: _jsonable_to_hail_python(value[name], dtype[name])
-            for name in dtype
+            name: _jsonable_to_hail_python(value[name], dtype[name]) for name in dtype
         }
     return value
 
@@ -127,8 +125,7 @@ def collect_sample_rows(table: Any, keys: list[dict]) -> list[dict]:
     for row in collected:
         row_dict = dict(row)
         key_tuple = tuple(
-            _to_hashable(_to_jsonable(row_dict[k]))
-            for k in key_field_names
+            _to_hashable(_to_jsonable(row_dict[k])) for k in key_field_names
         )
         by_key[key_tuple] = {
             "key": {k: _to_jsonable(row_dict[k]) for k in key_field_names},
@@ -141,7 +138,9 @@ def collect_sample_rows(table: Any, keys: list[dict]) -> list[dict]:
 
     out: list[dict] = []
     for k in keys:
-        key_tuple = tuple(_to_hashable(_to_jsonable(k[name])) for name in key_field_names)
+        key_tuple = tuple(
+            _to_hashable(_to_jsonable(k[name])) for name in key_field_names
+        )
         if key_tuple not in by_key:
             raise KeyError(
                 f"collect_sample_rows: requested key {k!r} not found in table; "
@@ -172,6 +171,7 @@ def _to_jsonable(value: Any) -> Any:
         return {k: _to_jsonable(v) for k, v in value.items()}
     try:
         import hail as hl
+
         if isinstance(value, hl.Locus):
             return f"{value.contig}:{value.position}"
         if isinstance(value, hl.Struct):
@@ -248,13 +248,13 @@ def load_snapshot(path: str | Path) -> Any:
 
 
 def phase_b_snapshot_adapter(builder_fn, dataset_name: str):
-    """Adapt a Phase B builder for the snapshot-test calling convention.
+    """Adapt a plugin builder for the snapshot-test calling convention.
 
-    The snapshot helpers below were designed around the legacy Phase A
-    ``(input_path, output_path, **kw) -> hl.Table`` shape. Phase B builders
+    The snapshot helpers below were designed around the legacy
+    ``(input_path, output_path, **kw) -> hl.Table`` shape. Plugin builders
     take ``(parsed_input, ctx, **params) -> Artifact``. This factory bridges
     the two: the returned callable constructs a deterministic ``BuildContext``,
-    invokes the Phase B builder, persists via ``artifact.save()``, and returns
+    invokes the plugin builder, persists via ``artifact.save()``, and returns
     the inner Hail Table so ``regenerate_snapshots`` can introspect it.
 
     ``dataset_name`` should be the plugin's compound dataset key
@@ -269,7 +269,7 @@ def phase_b_snapshot_adapter(builder_fn, dataset_name: str):
     plugin = dataset_name.split(":", 1)[0]
 
     def _adapter(input_path, output_path, **kw):
-        # Strip kwargs the Phase A signature accepted but Phase B does not.
+        # Strip kwargs the legacy signature accepted but the plugin builder does not.
         kw.pop("overwrite", None)
         kw.pop("export_tsv", None)
         ctx = BuildContext(
@@ -377,7 +377,11 @@ def regenerate_snapshots(
 
         ht = hl.read_table(call_kwargs["output_path"])
         schema = hail_schema_to_dict(ht)
-        (snapshot_dir / "schema.json").write_text(json.dumps(schema, indent=2, sort_keys=True))
+        (snapshot_dir / "schema.json").write_text(
+            json.dumps(schema, indent=2, sort_keys=True)
+        )
 
         rows = collect_sample_rows(ht, keys=list(keys or []))
-        (snapshot_dir / "sample_rows.json").write_text(json.dumps(rows, indent=2, sort_keys=True))
+        (snapshot_dir / "sample_rows.json").write_text(
+            json.dumps(rows, indent=2, sort_keys=True)
+        )

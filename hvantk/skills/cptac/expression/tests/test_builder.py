@@ -50,7 +50,7 @@ def _fake_ctx():
 
 
 def _build_for_snapshot(expression_path, **call_kwargs):
-    """Adapt the Phase B builder to the snapshot helper's calling convention."""
+    """Adapt the builder to the snapshot helper's calling convention."""
     from hvantk.skills.cptac.expression.builder import build_cptac_expression
 
     metadata_path = call_kwargs.pop("metadata_path", METADATA)
@@ -75,7 +75,9 @@ def test_cptac_expression_snapshot_round_trip(tmp_path, regenerate_snapshots):
             builder_kwargs={"metadata_path": METADATA},
             input_path_kwarg="expression_path",
         )
-        pytest.skip("Snapshots regenerated; rerun without --regenerate-snapshots to assert.")
+        pytest.skip(
+            "Snapshots regenerated; rerun without --regenerate-snapshots to assert."
+        )
 
     adata = _build_for_snapshot(EXPRESSION, metadata_path=METADATA)
 
@@ -83,9 +85,11 @@ def test_cptac_expression_snapshot_round_trip(tmp_path, regenerate_snapshots):
     assert adata.n_vars == 2, "two genes in the fixture"
 
     expected_schema = load_snapshot(SNAPSHOT_DIR / "schema.json")
-    assert anndata_schema_to_dict(adata) == expected_schema, \
+    assert anndata_schema_to_dict(adata) == expected_schema, (
         "CPTAC expression schema drifted from snapshot"
+    )
 
     expected_rows = load_snapshot(SNAPSHOT_DIR / "sample_rows.json")
-    assert anndata_sample_rows(adata) == expected_rows, \
+    assert anndata_sample_rows(adata) == expected_rows, (
         "CPTAC expression sample rows drifted from snapshot"
+    )

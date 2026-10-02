@@ -67,11 +67,11 @@ def test_download_metadata(temp_dir):
             assert f.read() == b"metadata test data"
 
 
-# --- Phase 0: Validation and collection warning tests ---
+# --- Validation and collection warning tests ---
 
 
 class TestDatasetValidation:
-    """Tests for dataset name validation (Phase 0.1)."""
+    """Tests for dataset name validation."""
 
     def test_slashed_child_dataset_passes_validation(self, tmp_path):
         """Forward slashes are allowed for UCSC child dataset paths."""
@@ -122,7 +122,7 @@ class TestDatasetValidation:
 
 
 class TestCollectionWarning:
-    """Tests for collection detection and warning (Phase 0.2)."""
+    """Tests for collection detection and warning."""
 
     def test_collection_dataset_warns(self):
         """Requesting a known collection prints a warning and exits."""
@@ -156,7 +156,7 @@ class TestCollectionWarning:
 
 
 class TestListDatasetsSearch:
-    """Tests for --list_datasets --search (Phase 2.1)."""
+    """Tests for --list_datasets --search."""
 
     def test_list_datasets_no_search(self):
         """--list_datasets without search shows all datasets."""

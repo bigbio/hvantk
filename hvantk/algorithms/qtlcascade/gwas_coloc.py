@@ -108,7 +108,11 @@ def fetch_finngen_region(
 
 
 def fetch_eqtl_region(
-    dataset: str, chrom: str, start: int, end: int, study: str = EQTL_CATALOGUE_DEFAULT_STUDY
+    dataset: str,
+    chrom: str,
+    start: int,
+    end: int,
+    study: str = EQTL_CATALOGUE_DEFAULT_STUDY,
 ) -> dict[str, list[tuple[tuple[int, str, str], float, float, float]]]:
     """eQTL Catalogue cis-eQTL over a region → ``{gene_id: [(key, beta, se, pval), ...]}``.
 
@@ -158,25 +162,40 @@ def coloc_abf_two_traits(
     """
     n = len(beta1)
     if n == 0:
-        return {"H0": 1.0, "H1": 0.0, "H2": 0.0, "H3": 0.0, "H4": 0.0,
-                "n_variants": 0, "lead_idx": -1}
+        return {
+            "H0": 1.0,
+            "H1": 0.0,
+            "H2": 0.0,
+            "H3": 0.0,
+            "H4": 0.0,
+            "n_variants": 0,
+            "lead_idx": -1,
+        }
     la1 = compute_log_abf(np.asarray(beta1), np.asarray(se1), W1)
     la2 = compute_log_abf(np.asarray(beta2), np.asarray(se2), W2)
     s1, s2 = _logsumexp(la1), _logsumexp(la2)
     la_both = la1 + la2
     s_both = _logsumexp(la_both)
-    log_h = np.array([
-        0.0,
-        np.log(p1) + s1,
-        np.log(p2) + s2,
-        np.log(p1) + np.log(p2) + _logdiff(s1 + s2, s_both),
-        np.log(p12) + s_both,
-    ])
+    log_h = np.array(
+        [
+            0.0,
+            np.log(p1) + s1,
+            np.log(p2) + s2,
+            np.log(p1) + np.log(p2) + _logdiff(s1 + s2, s_both),
+            np.log(p12) + s_both,
+        ]
+    )
     post = np.exp(log_h - np.max(log_h))
     post /= post.sum()
-    return {"H0": float(post[0]), "H1": float(post[1]), "H2": float(post[2]),
-            "H3": float(post[3]), "H4": float(post[4]),
-            "n_variants": n, "lead_idx": int(np.argmax(la_both))}
+    return {
+        "H0": float(post[0]),
+        "H1": float(post[1]),
+        "H2": float(post[2]),
+        "H3": float(post[3]),
+        "H4": float(post[4]),
+        "n_variants": n,
+        "lead_idx": int(np.argmax(la_both)),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -188,7 +207,7 @@ def coloc_abf_two_traits(
 class GwasColocResult:
     """Ranked coloc result for one GWAS locus × one eQTL dataset."""
 
-    table: pd.DataFrame          # gene_id, n_snp, eqtl_minp, PP3, PP4 (PP4-sorted)
+    table: pd.DataFrame  # gene_id, n_snp, eqtl_minp, PP3, PP4 (PP4-sorted)
     gwas_min_p: float
     n_genes_tested: int
     region: str
@@ -232,19 +251,34 @@ def run_locus_coloc(
         if len(b1) < min_snps:
             continue
         res = coloc_abf_two_traits(
-            np.array(b1), np.array(s1), np.array(b2), np.array(s2),
-            W1=W1, W2=W2, p1=p1, p2=p2, p12=p12,
+            np.array(b1),
+            np.array(s1),
+            np.array(b2),
+            np.array(s2),
+            W1=W1,
+            W2=W2,
+            p1=p1,
+            p2=p2,
+            p12=p12,
         )
-        rows.append({
-            "gene_id": ensg,
-            "gene": (gene_symbols or {}).get(ensg, ensg),
-            "n_snp": len(b1),
-            "eqtl_min_p": min(eqtl_ps),
-            "PP3": res["H3"],
-            "PP4": res["H4"],
-        })
+        rows.append(
+            {
+                "gene_id": ensg,
+                "gene": (gene_symbols or {}).get(ensg, ensg),
+                "n_snp": len(b1),
+                "eqtl_min_p": min(eqtl_ps),
+                "PP3": res["H3"],
+                "PP4": res["H4"],
+            }
+        )
     cols = ["gene_id", "gene", "n_snp", "eqtl_min_p", "PP3", "PP4"]
-    df = (pd.DataFrame(rows, columns=cols).sort_values("PP4", ascending=False)
-          .reset_index(drop=True) if rows else pd.DataFrame(columns=cols))
-    return GwasColocResult(table=df, gwas_min_p=gwas_min_p,
-                           n_genes_tested=len(df), region=region)
+    df = (
+        pd.DataFrame(rows, columns=cols)
+        .sort_values("PP4", ascending=False)
+        .reset_index(drop=True)
+        if rows
+        else pd.DataFrame(columns=cols)
+    )
+    return GwasColocResult(
+        table=df, gwas_min_p=gwas_min_p, n_genes_tested=len(df), region=region
+    )
