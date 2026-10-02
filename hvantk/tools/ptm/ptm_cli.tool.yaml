@@ -9,10 +9,11 @@ cli:
 purpose:
   short: Build, annotate, and analyze PTM-variant overlap and constraint.
   long: |
-    Wraps the full PTM analysis workflow: download UniProt/PeptideAtlas/CPTAC
-    PTM sources, map sites to genomic coordinates, annotate variant tables,
-    run landscape / population / per-stratum constraint tests, and emit
-    HTML summary reports. Composable with `hvantk psroc` for predictor
+    Wraps the full PTM analysis workflow: build the PTM-sites Hail Table
+    (UniProt sites downloaded automatically, PeptideAtlas / CPTAC
+    phosphosites added from `hvantk download` output), annotate variant
+    tables, run landscape / population / per-stratum constraint tests, and
+    emit HTML summary reports. Composable with `hvantk psroc` for predictor
     stratification on PTM vs non-PTM variant lists.
 subcommands:
   - name: build
@@ -29,8 +30,6 @@ subcommands:
     description: Generate a PTM analysis HTML summary report
   - name: constraint
     description: Stratified PTM constraint across groups (tissue / cell-type)
-  - name: atlas
-    description: PTM atlas assembly (UniProt + PeptideAtlas + optional CPTAC)
   - name: test
     description: Per-stratum LMM PTM constraint tests (lmm or lmm-binned)
 requires:
