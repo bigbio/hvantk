@@ -74,10 +74,14 @@ def test_ptm_build_pipeline_resolves_hyphenated_uniprot_key(monkeypatch, tmp_pat
     )
     monkeypatch.setattr(pl, "ptm_build_pipeline_core", lambda cfg: _FakeResult())
 
+    # The file must exist: ptm_build_pipeline validates the config before it
+    # downloads or maps anything.
+    ptm_tsv = tmp_path / "ptm.tsv"
+    ptm_tsv.write_text("")
     cfg = PTMBuildConfig(
         output_dir=str(tmp_path),
         output_ht=str(tmp_path / "out.ht"),
-        ptm_tsv=str(tmp_path / "ptm.tsv"),  # non-None -> download step skipped
+        ptm_tsv=str(ptm_tsv),  # non-None -> download step skipped
     )
     pl.ptm_build_pipeline(cfg)
 

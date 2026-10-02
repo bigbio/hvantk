@@ -52,28 +52,39 @@ def ptm_build_pipeline(config: PTMBuildConfig) -> PTMBuildResult:
         3. Build the Hail Table from the mapped TSV by invoking the
            ``uniprot-ptm:sites`` plugin builder via
            :func:`hvantk.core.plugin.run_builder.run_builder_for_spec`.
-           The build is stamped with platform Provenance.
+           The build is stamped with platform Provenance. Skipped when no
+           site maps; ``output_ht`` then stays empty on the result.
 
     Parameters
     ----------
     config : PTMBuildConfig
         Pipeline configuration.  If ``config.ptm_tsv`` is None the UniProt
-        TSV will be downloaded automatically.
+        TSV will be downloaded automatically.  ``config.output_ht`` is
+        required: this is the function that writes the table.
 
     Returns
     -------
     PTMBuildResult
-        Mapping statistics, ``mapped_tsv_path``, and ``output_ht``.
+        Mapping statistics, ``mapped_tsv_path``, ``output_ht`` and ``sources``.
 
     Raises
     ------
     ValueError
-        If configuration validation fails.
+        If configuration validation fails or ``config.output_ht`` is empty;
+        both are checked before anything is downloaded.
     """
     from pathlib import Path
 
     from hvantk.core.plugin import loader as plugin_loader
     from hvantk.core.plugin.run_builder import run_builder_for_spec
+
+    # Validate before the UniProt download. output_ht is checked here rather than
+    # in PTMBuildConfig.validate() because this is the function that writes it.
+    errors = config.validate()
+    if not config.output_ht:
+        errors.append("output_ht is required")
+    if errors:
+        raise ValueError(f"Invalid config: {'; '.join(errors)}")
 
     # Step 1: Ensure UniProt PTM TSV is available before calling the core.
     # ptm_build_pipeline_core requires config.ptm_tsv to be set.
