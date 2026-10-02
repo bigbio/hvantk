@@ -275,3 +275,13 @@ def test_build_core_records_the_sources_it_mapped(tmp_path, gtf_data, monkeypatc
     assert result.sources == ["UniProt", "PeptideAtlas"]
     assert result.n_mapped == 2
     assert result.mapped_tsv_path.endswith("ptm_sites_combined.tsv.bgz")
+
+    # UniProt alone is the default `ptm build` run; it skips the concat step.
+    alone = ptm_pipeline.ptm_build_pipeline_core(
+        PTMBuildConfig(
+            output_dir=str(tmp_path / "alone"),
+            gtf_path=str(gtf),
+            ptm_tsv=str(uniprot),
+        )
+    )
+    assert alone.sources == ["UniProt"]
