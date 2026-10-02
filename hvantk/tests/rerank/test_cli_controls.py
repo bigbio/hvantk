@@ -114,6 +114,40 @@ def test_n_perm_prints_a_selection_corrected_p_and_null_out_writes_the_summary(
     assert "p_selected_max" in r.output
     summary = pd.read_csv(nul, sep="\t")
     assert {"axis", "n_perm", "n_candidates", "selmax_median"} <= set(summary.columns)
+    # No --blocks: the unblocked null is anti-conservative wherever labels cluster by
+    # family, and the console must say so ONCE, on stderr (never inside a stdout table).
+    assert r.stderr.count("anti-conservative") == 1, r.stderr
+    assert "--blocks" in r.stderr
+
+
+def test_n_perm_with_blocks_runs_a_blocked_null_and_does_not_warn(tmp_path):
+    """The unblocked-null warning is about the MISSING blocking; with --blocks the null
+    permutes by block and the warning must stay silent -- otherwise it becomes noise on
+    exactly the run that did the right thing."""
+    genes, y = _toy_fixtures(tmp_path, n=150)
+    cfg = _write_two_axis_config(tmp_path, genes, y)
+    hgnc = tmp_path / "hgnc.txt"
+    rows = ["symbol\tgene_group\tstatus"]
+    for i, g in enumerate(genes):
+        rows.append(f"{g}\tFamily {i // 5}\tApproved")
+    hgnc.write_text("\n".join(rows) + "\n")
+    r = CliRunner().invoke(
+        rerank_cmd,
+        [
+            "-c",
+            str(cfg),
+            "-o",
+            str(tmp_path / "out.tsv"),
+            "--n-perm",
+            "2",
+            "--blocks",
+            str(hgnc),
+        ],
+    )
+    assert r.exit_code == 0, r.output
+    assert "p_selected_max" in r.output
+    assert "block_digest='" in r.output  # the Setting line records the blocking
+    assert "anti-conservative" not in r.stderr, r.stderr
 
 
 def test_n_perm_on_a_single_axis_config_fails_cleanly(tmp_path):
