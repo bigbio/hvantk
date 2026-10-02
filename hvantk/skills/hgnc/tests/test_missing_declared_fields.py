@@ -1,0 +1,30 @@
+"""Unit tests for the hgnc builder's missing-declared-field check.
+
+Pure Python, no Hail needed. build_hgnc_gene_lookup's rename map used to
+silently tolerate any HGNC_GENE_FIELDS key absent from the input header --
+upstream dropped location_sortable and only the drift probe noticed (#381).
+_missing_declared_fields() is the extracted computation that lets the
+builder warn about this instead.
+"""
+
+from __future__ import annotations
+
+from hvantk.skills.hgnc.builder import _missing_declared_fields
+from hvantk.skills.hgnc.shared.constants import HGNC_GENE_FIELDS
+
+
+def test_missing_declared_fields_is_empty_when_header_has_everything():
+    assert _missing_declared_fields(set(HGNC_GENE_FIELDS)) == []
+
+
+def test_missing_declared_fields_reports_each_absent_key():
+    row_fields = set(HGNC_GENE_FIELDS) - {"location", "omim_id"}
+    assert set(_missing_declared_fields(row_fields)) == {"location", "omim_id"}
+
+
+def test_missing_declared_fields_ignores_undeclared_extra_columns():
+    """An extra header column not in HGNC_GENE_FIELDS is not "missing" -- it is
+    simply unmapped, which the existing rename-map filtering already handles.
+    """
+    row_fields = set(HGNC_GENE_FIELDS) | {"some_new_upstream_column"}
+    assert _missing_declared_fields(row_fields) == []
