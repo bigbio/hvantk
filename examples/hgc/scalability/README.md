@@ -42,7 +42,7 @@ The benchmarks measure the complete end-to-end HGC workflow performance:
 ├── benchmark.sh       # Orchestration script (sample size scaling)
 ├── benchmark.py       # Python workflow runner
 ├── plot_results.py        # Visualization script
-└── README_scalability.md              # This file
+└── README.md                          # This file
 ```
 
 ### CPU Scaling (NEW)
@@ -51,9 +51,7 @@ The benchmarks measure the complete end-to-end HGC workflow performance:
 ├── ../cpu_scaling/benchmark.py       # Python workflow runner with CPU config
 ├── ../cpu_scaling/plot_results.py        # CPU scaling visualization
 ├── ../common/generate_sample_list.sh            # Helper to create fixed sample lists
-├── ../cpu_scaling/run_example.sh         # Complete example workflow
-├── README_cpu_scaling.md              # Full CPU scaling documentation
-└── QUICKREF_cpu_scaling.md            # Quick reference guide
+└── ../cpu_scaling/run_example.sh         # Complete example workflow
 ```
 
 ## Requirements
@@ -179,10 +177,6 @@ open ./cpu_scaling_500/cpu_scaling_comprehensive.png
 - **Efficiency**: CPU utilization percentage (100% = perfect)
 - **Sweet spot**: Optimal CPU count for efficiency/cost tradeoff
 
-For detailed documentation, see:
-- `README_cpu_scaling.md` - Full documentation
-- `QUICKREF_cpu_scaling.md` - Quick reference guide
-
 ---
 
 ## Sample Size Benchmark Output Structure
@@ -304,7 +298,7 @@ The summary report includes:
 
 ```bash
 # 1. Run benchmark (takes several hours for 7 sample sizes)
-bash benchmark.sh
+bash benchmark.sh --gvcf-dir /path/to/gvcfs
 
 # 2. Generate plots
 python plot_results.py --results-dir ./scalability_results
@@ -346,6 +340,7 @@ rm -rf scalability_results/run_*/analysis_*.mt
 
 ```bash
 bash benchmark.sh \
+    --gvcf-dir /path/to/gvcfs \
     --sample-sizes 10,25,50,100,200,400,800 \
     --output-dir ./custom_results
 ```
@@ -355,6 +350,7 @@ bash benchmark.sh \
 ```bash
 # Quick test with small sizes
 bash benchmark.sh \
+    --gvcf-dir /path/to/gvcfs \
     --sample-sizes 20,50 \
     --output-dir ./test_run
 ```
@@ -363,6 +359,7 @@ bash benchmark.sh \
 
 ```bash
 bash benchmark.sh \
+    --gvcf-dir /path/to/gvcfs \
     --reference GRCh37
 ```
 
