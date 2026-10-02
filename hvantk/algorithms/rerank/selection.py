@@ -148,6 +148,18 @@ def redundancy_filter(X, columns, scores, max_rho: float = 0.75):
     return kept, dropped
 
 
+# The closed vocabularies ``select_axis`` branches on, spelled out in code HERE and nowhere
+# else: ``SelectionPolicy.__post_init__`` validates against these, and the test suite pins
+# them to the enums in ``selection_policy.schema.json`` so the YAML path (``load_policy``,
+# schema-validated) and the Python constructor can never drift apart.
+UNIVARIATE_METHODS = ("auc", "none")
+REDUNDANCY_METHODS = ("spearman", "none")
+WRAPPER_METHODS = ("none", "rfecv")
+# ``_rfecv`` hardcodes RandomForest (see its docstring), so this is a declaration the
+# schema already restricts to one value rather than a knob anything reads.
+WRAPPER_ESTIMATORS = ("random_forest",)
+
+
 @dataclass(frozen=True)
 class SelectionPolicy:
     """How to filter one axis. An all-defaults instance is the recommended policy.
@@ -180,6 +192,24 @@ class SelectionPolicy:
     # Independent of Config.seed by design: this wrapper's own randomness (inner CV /
     # RFECV), not the engine's CV partition.
     seed: int = DEFAULT_SEED
+
+    def __post_init__(self) -> None:
+        # ``select_axis`` tests each method by exact string equality with no else branch,
+        # so before this check a misspelling (``wrapper="RFECV"``, ``redundancy="pearson"``)
+        # silently took the "off" branch: the step the caller asked for never ran, every
+        # column survived it, and nothing said so. The YAML path was already closed by the
+        # schema's enums; this closes the constructor against the same vocabulary.
+        for name, allowed in (
+            ("univariate", UNIVARIATE_METHODS),
+            ("redundancy", REDUNDANCY_METHODS),
+            ("wrapper", WRAPPER_METHODS),
+            ("wrapper_estimator", WRAPPER_ESTIMATORS),
+        ):
+            value = getattr(self, name)
+            if value not in allowed:
+                raise ValueError(
+                    f"SelectionPolicy.{name} must be one of {allowed}; got {value!r}"
+                )
 
 
 @dataclass(frozen=True)
