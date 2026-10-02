@@ -752,7 +752,7 @@ class NullDistribution:
         )
 
     @classmethod
-    def merge(cls, parts) -> "NullDistribution":
+    def merge(cls, parts, *, allow_partial: bool = False) -> "NullDistribution":
         """Combine chunks of ONE run. Every disagreement is an error, not a reconciliation.
 
         Checked in this order, each an error rather than a reconciliation:
@@ -774,7 +774,13 @@ class NullDistribution:
            ``observed`` is ``None``, there is nothing here to disagree, and this check
            cannot catch chunks that were in fact computed on different data;
         5. overlapping permutation indices -- the same permutation counted twice narrows
-           every p-value for free.
+           every p-value for free;
+        6. a gap in the planned permutations -- ``planned_n_perm`` agrees between any two
+           chunks of one run, so a chunk that never arrived (a pre-empted or failed array
+           task) used to pass every check above and silently shrink the null to the draws
+           present, with ``n_perm`` reporting the smaller count as if it were the plan.
+           Refused unless ``allow_partial=True``, which keeps that behaviour for a caller
+           who has decided a smaller null is acceptable and says so.
         """
         parts = list(parts)
         if not parts:
@@ -838,6 +844,18 @@ class NullDistribution:
                     "the same permutation counted twice narrows every p-value"
                 )
             seen |= set(part.perms)
+        planned = set(range(head.planned_n_perm))
+        if seen != planned and not allow_partial:
+            missing = sorted(planned - seen)
+            shown = ", ".join(str(i) for i in missing[:10]) + (
+                ", ..." if len(missing) > 10 else ""
+            )
+            raise ValueError(
+                f"merged null covers {len(seen)} of the {head.planned_n_perm} planned "
+                f"permutations; missing {len(missing)} index(es): [{shown}]. A chunk is "
+                "absent (a pre-empted or failed array task?) -- rerun it, or pass "
+                "allow_partial=True to accept the smaller null deliberately."
+            )
 
         order = np.argsort(np.concatenate([np.asarray(p.perms) for p in parts]))
         return cls(

@@ -227,6 +227,34 @@ def test_merge_of_one_is_that_one():
     assert NullDistribution.merge([a]).n_perm == a.n_perm
 
 
+def test_merge_refuses_an_incomplete_null_unless_partial_is_allowed():
+    """Chunks 0 and 1 of a 3-chunk run agree on `planned_n_perm`, so every check `merge`
+    made used to pass and it returned n_perm=8 of 12 without a word -- in the documented
+    array-job recipe a pre-empted task silently shrank the null. The gap must be refused
+    by name (the missing indices), and only `allow_partial=True` may accept it, keeping
+    the draws present and the plan on record."""
+    matrix, y, baseline, axes = permuted_labels(n=60, n_noise=1)
+    offered = {"axis0": axes["axis0"]}
+    scorer = cheap_scorer()
+    setting = _setting(offered)
+    parts = []
+    for c in (0, 1):
+        cfg = NullConfig(n_perm=12, chunk=c, n_chunks=3, seed=8)
+        deltas = permutation_deltas(
+            matrix, baseline, offered, y, config=cfg, scorer=scorer
+        )
+        parts.append(NullDistribution.from_deltas(deltas, setting, null_config=cfg))
+
+    with pytest.raises(ValueError) as info:
+        NullDistribution.merge(parts)
+    msg = str(info.value)
+    assert "8, 9, 10, 11" in msg and "allow_partial" in msg
+
+    partial = NullDistribution.merge(parts, allow_partial=True)
+    assert partial.n_perm == 8 and partial.planned_n_perm == 12
+    assert partial.perms == tuple(range(8))
+
+
 def test_merge_refuses_chunks_from_different_permutation_seeds():
     """Two chunks whose BASE seeds differ can draw the same underlying permutations from
     disjoint chunk indices, which the plain perm-index overlap check cannot see."""
