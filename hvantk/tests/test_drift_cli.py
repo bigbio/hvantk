@@ -937,3 +937,40 @@ def test_drift_human_readable_exits_probe_failed_on_non_str_keyed_fingerprint(
         result.output
     )  # EXIT_PROBE_FAILED, not a traceback's 1
     assert "probe_failed" in result.output
+
+
+# --- a probe whose output is JSON-serialisable but not JSON-native must be clean right
+# after --regenerate ---------------------------------------------------------------------
+#
+# `--regenerate` writes the JSON form (tuple -> list); the next check compared the RAW
+# object against `json.loads(file)`, and `("a", "b") != ["a", "b"]`, so such a probe
+# reported `drifted` forever -- the bot would regenerate it nightly and never converge.
+
+
+def _tmp_fake_plugin_registry(tmp_path, monkeypatch):
+    """The fake plugin on a tmp copy, so --regenerate cannot touch the committed asset."""
+    import shutil
+
+    plugin_dir = tmp_path / "fake_plugin"
+    shutil.copytree(FIXTURE_ROOT / "fake_plugin", plugin_dir)
+    reg = plugin_loader.PluginRegistry()
+    reg.load_from_directory(plugin_dir)
+    monkeypatch.setattr(plugin_loader, "get_registry", lambda: reg)
+    return reg, plugin_dir
+
+
+def test_regenerate_then_check_is_clean_for_a_tuple_valued_fingerprint(
+    tmp_path, monkeypatch
+):
+    reg, _ = _tmp_fake_plugin_registry(tmp_path, monkeypatch)
+    spec = reg.get_dataset("fake:default")
+    object.__setattr__(
+        spec, "drift_probe", lambda: {"probe_version": 1, "headers": ("a", "b")}
+    )
+
+    regen = CliRunner().invoke(drift_cmd, ["--regenerate", "fake:default"])
+    assert regen.exit_code == 0, regen.output
+
+    check = CliRunner().invoke(drift_cmd, ["--json", "fake:default"])
+    assert check.exit_code == 0, check.output
+    assert [r["status"] for r in _stdout_rows(check)] == ["clean"]

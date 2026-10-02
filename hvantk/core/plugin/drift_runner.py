@@ -11,7 +11,7 @@ import signal
 import tempfile
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any, Iterable, Literal, Mapping, get_args
 
 from .api import (
     DatasetSpec,
@@ -21,11 +21,13 @@ from .api import (
     placeholder_baseline_reason,
 )
 
+DriftStatus = Literal["clean", "drifted", "probe_failed", "stub"]
+
 
 @dataclass(frozen=True)
 class DriftResult:
     dataset_name: str
-    status: str  # clean | drifted | probe_failed | stub
+    status: DriftStatus
     observed: dict[str, Any] | None = None
     expected: dict[str, Any] | None = None
     diff: dict[str, Any] | None = None
@@ -41,6 +43,19 @@ class DriftResult:
     #: deliberately kept apart -- opening one PR whose regeneration covers only the first
     #: dataset and silently leaving the second's drift unaddressed.
     probe_ref: str | None = None
+
+    def __post_init__(self) -> None:
+        """Validate here so the type defends itself.
+
+        The CLI maps ``drifted`` to exit 1 and ``probe_failed`` to exit 2 and lets any
+        other value fall through to exit 0, so a misspelled status would read as a
+        clean run -- the failure being a *wrong answer* rather than an error.
+        """
+        if self.status not in get_args(DriftStatus):
+            raise ValueError(
+                f"unknown drift status {self.status!r}; "
+                f"expected one of {list(get_args(DriftStatus))}"
+            )
 
 
 def run_drift_check(dataset_name: str, *, timeout: int = 60) -> DriftResult:
@@ -264,8 +279,9 @@ def _invoke_with_timeout(fn, *, timeout: int) -> dict:
 
 
 def _coerce_fingerprint(result) -> dict:
-    """Convert a probe's return value to a plain dict, raising a clear
-    DriftProbeError if the value isn't dict-like or isn't JSON-serialisable.
+    """Convert a probe's return value to the plain dict its JSON form reads back as,
+    raising a clear DriftProbeError if the value isn't dict-like or isn't
+    JSON-serialisable.
 
     ``default=str`` at every `json.dumps` call site downstream (the CLI's echo,
     `write_fingerprint`) rescues non-serialisable VALUES, not KEYS: a probe
@@ -276,6 +292,15 @@ def _coerce_fingerprint(result) -> dict:
     here, while callers still hold a `DriftProbeError`-catching try/except around
     the probe invocation, turns both into the same uniform probe_failed outcome
     instead of two different uncaught-TypeError call sites.
+
+    The round-tripped value is what is RETURNED, not the raw object. The committed
+    baseline is the JSON form, and the comparator diffs ``json.loads(file)`` against
+    this value, so only the JSON form can ever equal it: a tuple reads back as a list,
+    a datetime or Path as a string, an int key as a string. Returning the raw object
+    made a probe emitting any of those report ``drifted`` forever -- including on the
+    run right after ``--regenerate`` wrote that same probe's output. ``allow_nan=False``
+    for the same reason: ``json.dumps`` would otherwise emit the non-standard ``NaN``
+    token, which reads back as a float that never equals itself.
     """
     if isinstance(result, dict):
         value = result
@@ -288,12 +313,11 @@ def _coerce_fingerprint(result) -> dict:
                 f"({result!r})"
             ) from exc
     try:
-        json.dumps(value, default=str)
-    except TypeError as exc:
+        return json.loads(json.dumps(value, default=str, allow_nan=False))
+    except (TypeError, ValueError) as exc:
         raise DriftProbeError(
             f"probe returned a fingerprint that is not JSON-serialisable: {exc}"
         ) from exc
-    return value
 
 
 def _current_umask() -> int:

@@ -663,3 +663,71 @@ def test_write_fingerprint_replaces_atomically_via_the_same_directory(
     drift_runner.write_fingerprint(fp_path, {"probe_version": 1})
     assert seen == [tmp_path]
     assert json.loads(fp_path.read_text()) == {"probe_version": 1}
+
+
+# --- DriftResult.status is a closed set, not a free-form str ------------------------
+#
+# The CLI maps `drifted` -> 1 and `probe_failed` -> 2 and lets anything else fall
+# through to exit 0, so a misspelled status would read as a clean run.
+
+
+def test_drift_result_rejects_an_unknown_status():
+    with pytest.raises(ValueError, match="dirfted"):
+        DriftResult(dataset_name="d", status="dirfted")
+
+
+@pytest.mark.parametrize("status", ["clean", "drifted", "probe_failed", "stub"])
+def test_drift_result_accepts_every_documented_status(status):
+    assert DriftResult(dataset_name="d", status=status).status == status
+
+
+# --- _coerce_fingerprint returns the JSON form, not the raw object ----------------
+#
+# `--regenerate` writes `json.dumps(observed, default=str)`; the next check compares
+# `json.loads(file)` against whatever the probe returned. Only the JSON form can equal
+# the JSON form: a tuple comes back as a list, a datetime/Path as a string, an int key
+# as a string, so a probe emitting any of these reported `drifted` forever -- including
+# on the run right after the baseline was regenerated from that same probe.
+
+
+def test_coerce_fingerprint_returns_the_json_round_tripped_form():
+    from datetime import datetime
+    from pathlib import PurePosixPath
+
+    from hvantk.core.plugin.drift_runner import _coerce_fingerprint
+
+    raw = {
+        "headers": ("a", "b"),
+        "when": datetime(2026, 1, 1),
+        "where": PurePosixPath("/x/y"),
+        1: "int key",
+    }
+    assert _coerce_fingerprint(raw) == {
+        "headers": ["a", "b"],
+        "when": "2026-01-01 00:00:00",
+        "where": "/x/y",
+        "1": "int key",
+    }
+
+
+def test_coerce_fingerprint_rejects_nan_as_a_probe_error():
+    """`json.dumps` emits the non-standard `NaN` token by default, which `json.loads`
+    reads back -- but a NaN never equals itself, so the comparator would call it
+    drifted forever. Refusing it names the real defect."""
+    from hvantk.core.plugin.drift_runner import _coerce_fingerprint
+
+    with pytest.raises(DriftProbeError, match="not JSON-serialisable"):
+        _coerce_fingerprint({"x": float("nan")})
+
+
+def test_regenerate_then_check_is_clean_for_a_probe_returning_tuples(tmp_path: Path):
+    fp_path = tmp_path / "fp.json"
+    spec = _make_spec(
+        probe_return=lambda: {"probe_version": 1, "headers": ("a", "b")},
+        fingerprint_path=fp_path,
+    )
+    drift_runner.regenerate_fingerprint(spec, timeout=5)
+
+    result = _run_with_spec(spec)
+
+    assert result.status == "clean", result.diff
