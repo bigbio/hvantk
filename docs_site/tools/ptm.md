@@ -186,8 +186,8 @@ hvantk ptm build \
 | `--output-ht` | (required) | Output Hail Table path |
 | `--gtf-path` | auto-download | Pre-downloaded Ensembl GTF |
 | `--ptm-tsv` | auto-download | Pre-downloaded UniProt PTM TSV |
-| `--peptideatlas-tsv` | none | PeptideAtlas phospho TSV written by `hvantk download peptideatlas-phospho`; adds its sites |
-| `--cptac-tsv` | none | CPTAC phospho TSV written by `hvantk download cptac-phospho`; adds its sites |
+| `--peptideatlas-tsv` | none | PeptideAtlas phospho TSV written by `hvantk download peptideatlas-phospho` (`peptideatlas-phospho-<build_date>-<build_id>.tsv`); adds its sites |
+| `--cptac-tsv` | none | CPTAC phospho TSV written by `hvantk download cptac-phospho` (`cptac-phospho-<cancer_type>.tsv`, or `cptac-phospho-pancancer.tsv` with `--all`); adds its sites |
 | `--flanking-codons` | 5 | Flanking codons for proximal window |
 | `--overwrite` | false | Overwrite existing outputs |
 
@@ -235,7 +235,7 @@ Curated post-translational modification sites from UniProt (human, reviewed/Swis
 
 ### PeptideAtlas and CPTAC Phosphosites
 
-Optional mass-spectrometry phosphosites, added to the same table. `hvantk download peptideatlas-phospho` and `hvantk download cptac-phospho` write the TSVs that `build` takes with `--peptideatlas-tsv` and `--cptac-tsv`. Each mapped row keeps its source in `source_db` (`PeptideAtlas` or `CPTAC`).
+Optional mass-spectrometry phosphosites, added to the same table. `hvantk download peptideatlas-phospho` writes `peptideatlas-phospho-<build_date>-<build_id>.tsv`, which `build` takes with `--peptideatlas-tsv`. `hvantk download cptac-phospho` needs `--cancer-type` or `--all`; pass its site table, `cptac-phospho-<cancer_type>.tsv` (or `cptac-phospho-pancancer.tsv` with `--all`), with `--cptac-tsv`, not the `-tumor`/`-normal` TSVs or the matrix and metadata CSVs it also writes. Each mapped row keeps its source in `source_db` (`PeptideAtlas` or `CPTAC`).
 
 ### Ensembl GTF
 

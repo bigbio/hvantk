@@ -42,6 +42,7 @@ hvantk ptm build \
 
 **Expected output:**
 ```text
+Sources: UniProt
 Mapping complete: 55422/56120 mapped (98.8%), 698 failed
 Resolution: {'xref_mane': 48231, 'xref_any': 7191}
 Mapped TSV: data/ptm/ptm_sites_mapped.tsv.bgz

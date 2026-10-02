@@ -110,7 +110,8 @@ def ptm_build(
                        --ptm-tsv data/ptm/uniprot-ptm-human.tsv \\
                        --output-ht data/ptm/ptm_sites.ht --output-dir data/ptm/
       hvantk ptm build --output-dir data/ptm/ --output-ht data/ptm/ptm_sites.ht \\
-                       --peptideatlas-tsv data/ptm/peptideatlas-phospho.tsv
+                       --peptideatlas-tsv \\
+                       data/ptm/peptideatlas-phospho-<build_date>-<build_id>.tsv
     """
     try:
         from hvantk.algorithms.ptm.pipeline import PTMBuildConfig
