@@ -242,8 +242,8 @@ def test_ptm_build_config_validation():
 def test_build_core_records_the_sources_it_mapped(tmp_path, gtf_data, monkeypatch):
     """`sources` lists UniProt plus each extra source the core mapped.
 
-    Replaces the source-reporting guard of the removed `ptm atlas`. Runs without Hail,
-    network or output_ht: the GTF parse is stubbed with the TP53 fixture.
+    Runs without Hail, network or output_ht: the GTF parse is stubbed with the TP53
+    fixture.
     """
     from hvantk.algorithms.ptm import pipeline as ptm_pipeline
 
