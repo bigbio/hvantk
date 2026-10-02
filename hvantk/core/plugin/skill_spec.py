@@ -365,22 +365,64 @@ def _section_body(text: str, section: str) -> str:
     return "\n".join(lines[start:]) if start is not None else ""
 
 
-def _is_placeholder_body(body: str) -> bool:
-    """True if the text under one heading is empty, or a stand-in rather than content.
+#: A heading line anywhere in a body -- ``### TODO`` is still a stand-in, not content,
+#: and a heading contributes no content of its own either way.
+_HEADING_LINE_RE = re.compile(r"^#{1,6}\s")
 
-    A leading list/quote marker (``- ``, ``* ``, ``> ``) and surrounding Markdown
-    emphasis (backticks, asterisks, underscores) are stripped before matching, so
-    ``- **TODO**`` and `` `TBD` `` are recognised the same as bare ``TODO`` / ``TBD``,
-    and a lone ``-`` counts as empty. A typographic ellipsis (``…``) counts as ``...``.
-    The character immediately following a lead token must not be alphanumeric, so the
-    check fires on ``TODO``, ``TODO.`` and ``TODO: builder, drift probe, tests.``
-    alike, but not on a word that merely starts with the same letters (``TBDone``).
-    It does fire on a sentence whose first word is the token itself (``Todo lists
-    are ...``): the price of checking a lead, paid because no real section opens that
-    way.
+#: An HTML comment, possibly spanning multiple lines (``<!-- TODO -->``). Removed
+#: whole, delimiters included, before the placeholder test runs.
+_HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+
+#: A fenced code block with nothing inside it: the closing fence on the line
+#: immediately after the opening one. A fence that actually wraps content spans more
+#: than two lines and never matches this.
+_EMPTY_FENCE_RE = re.compile(r"(?m)^[ \t]*(`{3,}|~{3,})[^\n]*\n[ \t]*\1[ \t]*$")
+
+#: A single leading list/quote marker: ``-``, ``*``, ``>``, or a numbered-list marker
+#: (``1.`` / ``1)``). Widened from a bare ``[-*>]`` class, which cannot see a stub
+#: written as ``1. TODO``.
+_LEADING_MARKER_RE = re.compile(r"^\s*(?:[-*>]|\d+[.)])\s*")
+
+#: A markdown table separator cell (``---``, ``:--``, ``--:``, ``:-:``). Dropped
+#: before testing a table's cells: its dashes are punctuation, not prose, and would
+#: never match a placeholder lead -- which would wrongly clear a table whose real
+#: cells are all ``TODO``.
+_TABLE_SEPARATOR_CELL_RE = re.compile(r"^:?-+:?$")
+
+
+def _strip_structural_noise(body: str) -> str:
+    """Remove markup that can wrap a placeholder without supplying any content of
+    its own.
+
+    ``### TODO``, ``<!-- TODO -->`` and a fenced block with nothing inside it all
+    read as empty to a human. Before this they read as non-empty here, because the
+    checks below only ever looked at the first few characters, none of which are
+    ``#``, ``<`` or a backtick. HTML comments are stripped first, since a comment can
+    itself contain text that looks like a heading or a fence.
     """
-    normalized = re.sub(r"^[-*>\s]+", "", body.strip()).strip("`*_ \t")
-    lowered = normalized.lower().replace("…", "...")
+    text = _HTML_COMMENT_RE.sub("", body)
+    text = _EMPTY_FENCE_RE.sub("", text)
+    lines = [ln for ln in text.splitlines() if not _HEADING_LINE_RE.match(ln.strip())]
+    return "\n".join(lines)
+
+
+def _normalize_lowered(token: str) -> str:
+    """Backtick/asterisk/underscore-stripped, lower-cased, ellipsis-folded text.
+
+    Shared by the whole-body check and the per-cell table check below, so
+    `` `TBD` `` and a typographic ``…`` are recognised the same in both.
+    """
+    return token.strip().strip("`*_ \t").lower().replace("…", "...")
+
+
+def _is_placeholder_lead_or_whole(lowered: str) -> bool:
+    """The lead/whole-body test, applied to text already run through
+    ``_normalize_lowered``.
+
+    The character immediately following a lead token must not be alphanumeric, so
+    the check fires on ``todo``, ``todo.`` and ``todo: builder, drift probe, tests.``
+    alike, but not on a word that merely starts with the same letters (``tbdone``).
+    """
     if not lowered or lowered.rstrip(".:;!- \t") in _PLACEHOLDER_WHOLE:
         return True
     for token in _PLACEHOLDER_LEADS:
@@ -389,6 +431,67 @@ def _is_placeholder_body(body: str) -> bool:
             if not tail.isalnum():
                 return True
     return False
+
+
+def _table_row_cells(line: str) -> list[str] | None:
+    """Cell texts of one ``| a | b |`` row, or ``None`` if the line is not a table row."""
+    stripped = line.strip()
+    if "|" not in stripped:
+        return None
+    return [cell.strip() for cell in stripped.strip("|").split("|")]
+
+
+def _is_placeholder_table(cleaned: str) -> bool:
+    """True if ``cleaned`` is (only) a markdown table whose every real cell is a
+    placeholder lead.
+
+    A separator row's cells are dropped cell-by-cell rather than row-by-row, so a
+    malformed or missing separator row does not defeat the check.
+    """
+    lines = [ln for ln in cleaned.strip().splitlines() if ln.strip()]
+    if not lines:
+        return False
+    rows = [_table_row_cells(ln) for ln in lines]
+    if any(row is None for row in rows):
+        return False  # not every line is a table row -- this is not (only) a table
+    cells = [
+        cell
+        for row in rows
+        for cell in row
+        if cell and not _TABLE_SEPARATOR_CELL_RE.match(cell)
+    ]
+    return bool(cells) and all(
+        _is_placeholder_lead_or_whole(_normalize_lowered(cell)) for cell in cells
+    )
+
+
+def _is_placeholder_body(body: str) -> bool:
+    """True if the text under one heading is empty, or a stand-in rather than content.
+
+    Structural markup that carries no content of its own is stripped first
+    (``_strip_structural_noise``): a heading line, an HTML comment, and an empty code
+    fence -- so ``### TODO``, ``<!-- TODO -->`` and a fenced block with nothing
+    inside it are all recognised as empty rather than as content merely because they
+    are not plain text.
+
+    What remains is tested two ways. A markdown table is a placeholder only if EVERY
+    real cell is (``_is_placeholder_table``). Otherwise, a leading list/quote marker
+    (``- ``, ``* ``, ``> ``) or numbered-list marker (``1.``, ``1)``) and surrounding
+    Markdown emphasis (backticks, asterisks, underscores) are stripped before
+    matching, so ``- **TODO**``, `` `TBD` `` and ``1. TODO`` are recognised the same
+    as bare ``TODO`` / ``TBD``, and a lone ``-`` counts as empty. A typographic
+    ellipsis (``…``) counts as ``...``. The character immediately following a lead
+    token must not be alphanumeric, so the check fires on ``TODO``, ``TODO.`` and
+    ``TODO: builder, drift probe, tests.`` alike, but not on a word that merely
+    starts with the same letters (``TBDone``). It does fire on a sentence whose first
+    word is the token itself (``Todo lists are ...``): the price of checking a lead,
+    paid because no real section opens that way.
+    """
+    cleaned = _strip_structural_noise(body)
+    if _is_placeholder_table(cleaned):
+        return True
+    normalized = _LEADING_MARKER_RE.sub("", cleaned.strip())
+    return _is_placeholder_lead_or_whole(_normalize_lowered(normalized))
 
 
 def _section_content_problems(text: str) -> list[str]:
