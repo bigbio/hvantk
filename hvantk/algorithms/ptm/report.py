@@ -25,8 +25,8 @@ from hvantk.algorithms.ptm.plot import (
 )
 
 if TYPE_CHECKING:  # avoid import-time Hail/statsmodels load for type hints
-    from hvantk.algorithms.ptm.atlas import PTMAtlasResult
     from hvantk.algorithms.ptm.lmm import BinnedLMMResult, LMMResult
+    from hvantk.algorithms.ptm.pipeline import PTMBuildResult
 
 logger = logging.getLogger(__name__)
 
@@ -473,32 +473,34 @@ def _get_css(colors: Dict[str, str]) -> str:
 
 
 # ---------------------------------------------------------------------------
-# PTM summary report (atlas + SYMBOL annotation + LMM results)
+# PTM summary report (PTM sites + SYMBOL annotation + LMM results)
 # ---------------------------------------------------------------------------
 
 
 def generate_phase2_report(
     output_path: str,
     *,
-    atlas_result: Optional["PTMAtlasResult"] = None,
+    build_result: Optional["PTMBuildResult"] = None,
     annotation_summary: Optional[Dict[str, Any]] = None,
     lmm_results: Optional[Sequence["LMMResult"]] = None,
     binned_lmm_results: Optional[Sequence["BinnedLMMResult"]] = None,
     title: str = "PTM Summary Report",
     description: Optional[str] = None,
 ) -> str:
-    """Write an HTML summary of the atlas, annotation, and constraint-LMM
+    """Write an HTML summary of the PTM sites, annotation, and constraint-LMM
     sections (no plots).
 
     Each section renders only if its corresponding input is non-None so the
-    same report writer serves atlas-only, annotation-only, or test-only runs.
+    same report writer serves build-only, annotation-only, or test-only runs.
 
     Parameters
     ----------
     output_path : str
         Destination HTML file path.
-    atlas_result : PTMAtlasResult, optional
-        Output of :func:`hvantk.algorithms.ptm.atlas.build_atlas`.
+    build_result : PTMBuildResult, optional
+        Output of :func:`hvantk.tools.ptm.pipeline.ptm_build_pipeline` (or of
+        :func:`~hvantk.algorithms.ptm.pipeline.ptm_build_pipeline_core`, which
+        builds no Hail Table).
     annotation_summary : dict, optional
         Counters for the SYMBOL-based annotation; expected keys are
         ``n_total``, ``n_ptm_site``, ``n_ptm_proximal``, ``n_both``,
@@ -529,8 +531,8 @@ def generate_phase2_report(
         )
     ]
 
-    if atlas_result is not None:
-        sections.append(_build_phase2_atlas_section(atlas_result))
+    if build_result is not None:
+        sections.append(_build_phase2_sites_section(build_result))
     if annotation_summary is not None:
         sections.append(_build_phase2_annotation_section(annotation_summary))
     if lmm_results is not None:
@@ -552,20 +554,22 @@ def generate_phase2_report(
     return str(output_path)
 
 
-def _build_phase2_atlas_section(result: "PTMAtlasResult") -> str:
-    sources = ", ".join(html.escape(s) for s in result.sources_used) or "-"
+def _build_phase2_sites_section(result: "PTMBuildResult") -> str:
+    sources = ", ".join(html.escape(s) for s in result.sources) or "-"
+    rows = f"<tr><td>Mapped TSV</td><td>{html.escape(result.mapped_tsv_path)}</td></tr>"
+    # No row for a table that was not built: ptm_build_pipeline_core never builds
+    # one, and ptm_build_pipeline skips it when no site maps.
+    if result.output_ht:
+        rows += f"<tr><td>Hail Table</td><td>{html.escape(result.output_ht)}</td></tr>"
     return (
-        "<section><h2>Atlas Summary</h2>"
+        "<section><h2>PTM Sites Summary</h2>"
         "<div class='card-grid'>"
         f"<div class='card'><h3>Sources</h3><p>{sources}</p></div>"
         f"<div class='card'><h3>Sites Mapped</h3>"
-        f"<p>{result.n_sites:,}</p></div>"
+        f"<p>{result.n_mapped:,}</p></div>"
         "</div>"
         "<table><thead><tr><th>Output</th><th>Path</th></tr></thead>"
-        "<tbody>"
-        f"<tr><td>Combined TSV</td><td>{html.escape(result.combined_tsv)}</td></tr>"
-        f"<tr><td>Hail Table</td><td>{html.escape(result.output_ht)}</td></tr>"
-        "</tbody></table>"
+        f"<tbody>{rows}</tbody></table>"
         "</section>"
     )
 
