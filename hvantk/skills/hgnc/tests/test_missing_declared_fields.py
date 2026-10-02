@@ -9,8 +9,28 @@ builder warn about this instead.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from hvantk.skills.hgnc.builder import _missing_declared_fields
 from hvantk.skills.hgnc.shared.constants import HGNC_GENE_FIELDS
+
+FIXTURE = Path("hvantk/skills/hgnc/tests/testdata/raw/hgnc/hgnc_test_sample.tsv")
+
+
+def test_declared_fields_all_present_in_the_live_fixture_header():
+    """HGNC_GENE_FIELDS must not declare a column the live dump no longer ships.
+
+    hgnc_test_sample.tsv is derived from a real download, so its header is
+    the closest thing to "what HGNC currently publishes" this suite can check
+    without a network fetch. Catches the #381 case (location_sortable
+    declared but dropped upstream) directly, instead of relying on the
+    build-time warning or the drift probe noticing first.
+    """
+    header = FIXTURE.read_text().splitlines()[0].split("\t")
+    missing = set(HGNC_GENE_FIELDS) - set(header)
+    assert not missing, (
+        f"declared in HGNC_GENE_FIELDS but absent from {FIXTURE}: {missing}"
+    )
 
 
 def test_missing_declared_fields_is_empty_when_header_has_everything():
