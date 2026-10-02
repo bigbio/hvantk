@@ -305,6 +305,95 @@ def test_documented_command_does_not_overwrite_its_input(path: Path, command: st
     )
 
 
+# --- `reprocess <provider>:<dataset>` must name a dataset that actually exists -----------
+#
+# `test_documented_command_options_exist` appends `--help`, which click resolves
+# WITHOUT ever looking at the `reprocess` command's positional argument -- `--help`
+# short-circuits before click gets anywhere near resolving it against the plugin
+# registry. So a stale or typo'd dataset name reads as a passing command there. That
+# is exactly how `docs_site/getting-started/quickstart.md` and `docs_site/
+# architecture.md` came to document `hvantk reprocess ucsc-cellbrowser:adultPancreas`,
+# which is not a real dataset (the plugin ships `adult-ctx` / `dev-ctx`) and raises a
+# bare `KeyError` if actually run.
+
+
+def _documented_reprocess_invocations() -> list[tuple[Path, str, list[str], str]]:
+    """(source file, full command, argv, dataset positional) for every documented,
+    non-prose ``hvantk reprocess <dataset> ...`` invocation that names a dataset.
+
+    A bare ``hvantk reprocess`` with no further token (prose naming the subcommand
+    itself, e.g. "the `reprocess` command") is not an invocation of anything and is
+    excluded, same as ``_is_prose_shorthand`` excludes a placeholder dataset like
+    ``<provider>:<dataset>``.
+    """
+    out = []
+    for path, command in DOCUMENTED:
+        try:
+            argv = [a for a in shlex.split(command)[1:] if a != "..."]
+        except ValueError:
+            continue
+        if not argv or argv[0] != "reprocess" or _is_prose_shorthand(argv):
+            continue
+        dataset = next((a for a in argv[1:] if not a.startswith("-")), None)
+        if dataset is None:
+            continue
+        out.append((path, command, argv, dataset))
+    return out
+
+
+def test_documented_reprocess_datasets_exist_in_the_registry():
+    """Every documented ``hvantk reprocess <provider>:<dataset>`` must name a dataset
+    the plugin registry actually knows about.
+
+    Checked against ``list_manifests()`` -- the descriptive, pre-resolution view --
+    rather than ``get_dataset()``: resolving callables can fail for reasons that have
+    nothing to do with whether the documented NAME is real (a missing optional
+    runtime, say), and that is not what this test is about.
+    """
+    from hvantk.core.plugin.loader import get_registry
+
+    known = {m.name for m in get_registry().list_manifests()}
+    offenders = [
+        f"{path.relative_to(REPO_ROOT)}: {command}"
+        for path, command, _argv, dataset in _documented_reprocess_invocations()
+        if dataset not in known
+    ]
+    assert not offenders, (
+        "documented `hvantk reprocess <provider>:<dataset>` names a dataset the "
+        "plugin registry does not know (a --help check cannot catch this -- it "
+        "short-circuits before the positional is ever resolved):\n  "
+        + "\n  ".join(offenders)
+    )
+
+
+def test_documented_reprocess_without_a_downloader_passes_skip_download():
+    """A dataset with no ``lifecycle.download`` and no ``acquisition.mode: byo`` has
+    no downloader to run at all (tracked by issue #386). A documented invocation that
+    omits ``--skip-download`` cannot actually run as written: `reprocess` would try
+    to run a download step the plugin does not implement.
+
+    Skips any dataset name the previous test already flags as unknown, so one stale
+    name produces one failure here rather than two.
+    """
+    from hvantk.core.plugin.loader import get_registry
+
+    manifests = {m.name: m for m in get_registry().list_manifests()}
+    offenders = []
+    for path, command, argv, dataset in _documented_reprocess_invocations():
+        dm = manifests.get(dataset)
+        if dm is None:
+            continue
+        needs_downloader_skip = not dm.has_download_fn and not dm.acquisition.is_byo
+        if needs_downloader_skip and "--skip-download" not in argv:
+            offenders.append(f"{path.relative_to(REPO_ROOT)}: {command}")
+    assert not offenders, (
+        "documented `hvantk reprocess <provider>:<dataset>` for a dataset with "
+        "neither a downloader nor a BYO acquisition note must pass --skip-download, "
+        "or the command cannot actually run as written (see issue #386):\n  "
+        + "\n  ".join(offenders)
+    )
+
+
 def _tree_paths(markdown: str) -> set[str]:
     """Reconstruct the repo-relative path of every entry in an ASCII tree.
 

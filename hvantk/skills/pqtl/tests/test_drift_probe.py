@@ -189,3 +189,28 @@ def test_retry_budget_fits_under_the_drift_runners_default_timeout():
     )
     worst_case = sleeps + drift_probe._ATTEMPTS * sum(drift_probe._TIMEOUT_S)
     assert worst_case < runner_timeout, (worst_case, runner_timeout)
+
+
+def test_fetch_fingerprint_call_site_uses_the_probes_own_retry_budget(monkeypatch):
+    """Pins the CALL SITE, not just the arithmetic recomputed from the constants.
+
+    `test_retry_budget_fits_under_the_drift_runners_default_timeout` reads
+    `drift_probe._ATTEMPTS` / `_TIMEOUT_S` back out of the module itself, so deleting
+    `attempts=_ATTEMPTS` from the `request_with_retry` call in `fetch_fingerprint`
+    (silently falling back to the unrelated `DEFAULT_ATTEMPTS=4`) or hardcoding a
+    different timeout tuple at the call site leaves that test's arithmetic -- and
+    therefore the test -- unchanged. This drives the real retry loop against a
+    constant 503 and checks what it actually did: made exactly `_ATTEMPTS` requests,
+    each with `timeout=_TIMEOUT_S`.
+    """
+    from hvantk.skills.pqtl import drift_probe
+
+    monkeypatch.setattr("hvantk.core.utils.http.time.sleep", lambda _s: None)
+
+    with requests_mock.Mocker() as m:
+        m.get(MEDRXIV_API_URL, status_code=503)
+        with pytest.raises(DriftProbeError):
+            fetch_fingerprint()
+
+    assert m.call_count == drift_probe._ATTEMPTS
+    assert all(req.timeout == drift_probe._TIMEOUT_S for req in m.request_history)

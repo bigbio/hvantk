@@ -379,6 +379,64 @@ def test_first_body_line_skips_frontmatter_blanks_headings_and_fences():
     )  # unterminated frontmatter: no body
 
 
+@pytest.mark.parametrize(
+    "body, expected",
+    [
+        # --- release-review findings (PR #407): each of these passed the checker
+        # before _is_placeholder_body stripped structural markup first, because the
+        # lead/whole test only ever looked at the first few characters, none of
+        # which are "#", "<" or a backtick.
+        ("### TODO", True),
+        ("### Details\nTODO", True),
+        ("<!-- TODO -->", True),
+        ("```\n```", True),
+        ("1. TODO", True),
+        ("| TODO | TODO |\n| --- | --- |\n| TODO | TODO |", True),
+        # --- bare / marker-wrapped placeholder leads, already documented in
+        # _is_placeholder_body's own docstring and _PLACEHOLDER_LEADS/_WHOLE.
+        ("TODO", True),
+        ("TBD", True),
+        ("`TBD`", True),
+        ("- **TODO**", True),
+        ("...", True),
+        ("…", True),
+        ("-", True),
+        ("n/a", True),
+        ("n/a.", True),
+        ("- n/a", True),
+        # --- must NOT be flagged: real content, a word that merely starts with a
+        # lead token, an explained N/A (an answer, not a stand-in), and a table
+        # whose cells are real.
+        ("TBDone is a product", False),
+        ("- real content", False),
+        ("N/A for this plugin: the catalog is static", False),
+        ("| Field | Value |\n| --- | --- |\n| real | content |", False),
+    ],
+)
+def test_is_placeholder_body(body: str, expected: bool):
+    """Unit-test ``_is_placeholder_body`` directly, rather than only through a full
+    SKILL.md section.
+
+    Pins four mutants a reviewer found that passed every test that existed before
+    this one:
+
+    * treating any body merely LED by "n/a" as a placeholder, not just a body that
+      IS "n/a" -- killed by the explained-N/A case, which such a mutant wrongly
+      flags as a placeholder;
+    * dropping the ``tail.isalnum()`` word-boundary guard -- killed by
+      ``"TBDone is a product"``, which such a mutant wrongly flags as a placeholder;
+    * replacing the leading-marker strip with a plain ``body.strip()`` -- killed by
+      ``"- **TODO**"``, ``"-"`` and ``"- n/a"``, which such a mutant wrongly accepts
+      as real content;
+    * dropping ``"tbd"``/``"..."`` from ``_PLACEHOLDER_LEADS`` -- killed by
+      ``"TBD"``, `` "`TBD`" ``, ``"..."`` and ``"…"``, which such a mutant wrongly
+      accepts as real content.
+    """
+    from hvantk.core.plugin.skill_spec import _is_placeholder_body
+
+    assert _is_placeholder_body(body) is expected
+
+
 def test_spec_declares_the_test_artifact_paths_its_manifest_does():
     """``_conventions`` s 9 says these MUST match; until #350 nothing checked it.
 
