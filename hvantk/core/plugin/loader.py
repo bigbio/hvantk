@@ -234,7 +234,7 @@ class PluginRegistry:
                     # branch is shaped like a provider and claims to be one.
                     #
                     # Mark the directory as attempted too (#374): 13 of
-                    # 23 in-tree providers are ALSO declared as entry points pointing
+                    # 21 in-tree providers are ALSO declared as entry points pointing
                     # at this same directory, and get_registry() runs
                     # load_from_entry_points() right after this method. Without this,
                     # that second pass calls load_from_directory() on the identical
@@ -259,7 +259,7 @@ class PluginRegistry:
         # Mark as attempted regardless of outcome (#374): this used to
         # happen only on success, so a directory whose manifest failed to load was
         # never marked, and get_registry()'s second pass (load_from_entry_points, which
-        # resolves 13 of 23 in-tree providers back to this same directory) retried it
+        # resolves 13 of 21 in-tree providers back to this same directory) retried it
         # and recorded a second, differently-worded error for the same unit.
         self._loaded_dirs.add(plugin_dir)
         plugin_id = str(plugin_dir)

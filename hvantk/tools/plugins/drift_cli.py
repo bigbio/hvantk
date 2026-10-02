@@ -365,7 +365,7 @@ def _relevant_load_errors(
     A bare provider-level unit is matched against the requested dataset's provider after
     normalising ``_``/``-`` on both sides: `load_from_skills_root` records the plugin
     DIRECTORY's name when `plugin.yaml` is missing, and `_provider_id_hint` falls back to
-    it too when the manifest's own `name` cannot be read -- and 9 of the 23 in-tree
+    it too when the manifest's own `name` cannot be read -- and 9 of the 21 in-tree
     providers have a directory name that differs from the manifest's `name:` only by
     `_` vs `-` (`gwas_catalog` vs `gwas-catalog`, `uniprot_ptm` vs `uniprot-ptm`, ...).
     Exact string equality silently dropped those. The `entry-point:<name>` match stays an
