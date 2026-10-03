@@ -555,12 +555,14 @@ def generate_phase2_report(
 
 
 def _build_phase2_sites_section(result: "PTMBuildResult") -> str:
-    sources = ", ".join(html.escape(s) for s in result.sources) or "-"
-    rows = f"<tr><td>Mapped TSV</td><td>{html.escape(result.mapped_tsv_path)}</td></tr>"
-    # No row for a table that was not built: ptm_build_pipeline_core never builds
-    # one, and ptm_build_pipeline skips it when no site maps.
-    if result.output_ht:
-        rows += f"<tr><td>Hail Table</td><td>{html.escape(result.output_ht)}</td></tr>"
+    sources = (
+        ", ".join(
+            f"{html.escape(name)} ({n:,})" for name, n in result.source_counts.items()
+        )
+        or "-"
+    )
+    # ptm_build_pipeline_core never builds a table; say so rather than leave a gap.
+    table = html.escape(result.output_ht) if result.output_ht else "not built"
     return (
         "<section><h2>PTM Sites Summary</h2>"
         "<div class='card-grid'>"
@@ -569,7 +571,10 @@ def _build_phase2_sites_section(result: "PTMBuildResult") -> str:
         f"<p>{result.n_mapped:,}</p></div>"
         "</div>"
         "<table><thead><tr><th>Output</th><th>Path</th></tr></thead>"
-        f"<tbody>{rows}</tbody></table>"
+        "<tbody>"
+        f"<tr><td>Mapped TSV</td><td>{html.escape(result.mapped_tsv_path)}</td></tr>"
+        f"<tr><td>Hail Table</td><td>{table}</td></tr>"
+        "</tbody></table>"
         "</section>"
     )
 

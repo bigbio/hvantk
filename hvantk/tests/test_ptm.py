@@ -240,7 +240,7 @@ def test_ptm_build_config_validation():
 
 
 def test_build_core_records_the_sources_it_mapped(tmp_path, gtf_data, monkeypatch):
-    """`sources` lists UniProt plus each extra source the core mapped.
+    """`source_counts` gives the sites each source contributed, UniProt first.
 
     Runs without Hail, network or output_ht: the GTF parse is stubbed with the TP53
     fixture.
@@ -272,7 +272,7 @@ def test_build_core_records_the_sources_it_mapped(tmp_path, gtf_data, monkeypatc
         )
     )
 
-    assert result.sources == ["UniProt", "PeptideAtlas"]
+    assert result.source_counts == {"UniProt": 1, "PeptideAtlas": 1}
     assert result.n_mapped == 2
     assert result.mapped_tsv_path.endswith("ptm_sites_combined.tsv.bgz")
 
@@ -284,4 +284,5 @@ def test_build_core_records_the_sources_it_mapped(tmp_path, gtf_data, monkeypatc
             ptm_tsv=str(uniprot),
         )
     )
-    assert alone.sources == ["UniProt"]
+    assert alone.source_counts == {"UniProt": 1}
+    assert alone.mapped_tsv_path.endswith("ptm_sites_mapped.tsv.bgz")

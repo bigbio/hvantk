@@ -8,6 +8,8 @@ This module provides CLI commands for the PTM variant classification pipeline:
 - export-strata: Export PTM/non-PTM variant strata for predictor evaluation
 - population: Population-level PTM-variant burden
 - report: Generate summary report
+- constraint: Stratified PTM constraint analysis across tissue / cell-type groups
+- test: Per-stratum LMM PTM constraint tests
 """
 
 import logging
@@ -96,48 +98,52 @@ def ptm_build(
 
     \b
     This is the main entry point for the PTM pipeline. It:
-      1. Downloads the Ensembl GTF (if not provided via --gtf-path)
-      2. Downloads UniProt PTM data (if not provided via --ptm-tsv)
+      1. Downloads UniProt PTM data (if not provided via --ptm-tsv)
+      2. Downloads the Ensembl GTF (if not provided via --gtf-path)
       3. Parses the GTF and maps PTM sites to genomic coordinates, adding
          PeptideAtlas and CPTAC phosphosites when --peptideatlas-tsv or
          --cptac-tsv is given (all sources go into one combined TSV)
-      4. Builds a Hail Table keyed by locus
+      4. Builds a Hail Table keyed by locus; fails if no site maps
 
     \b
     Examples:
       hvantk ptm build --output-dir data/ptm/ --output-ht data/ptm/ptm_sites.ht
       hvantk ptm build --gtf-path data/ref/Homo_sapiens.GRCh38.113.gtf.gz \\
-                       --ptm-tsv data/ptm/uniprot-ptm-human.tsv \\
+                       --ptm-tsv data/ptm/uniprot-ptm-human-<YYYY-MM-DD>.tsv \\
                        --output-ht data/ptm/ptm_sites.ht --output-dir data/ptm/
       hvantk ptm build --output-dir data/ptm/ --output-ht data/ptm/ptm_sites.ht \\
                        --peptideatlas-tsv \\
                        data/ptm/peptideatlas-phospho-<build_date>-<build_id>.tsv
     """
+    from hvantk.algorithms.ptm.pipeline import PTMBuildConfig
+    from hvantk.tools.ptm.pipeline import config_errors, ptm_build_pipeline
+
+    config = PTMBuildConfig(
+        output_dir=output_dir,
+        output_ht=output_ht,
+        gtf_path=gtf_path,
+        ptm_tsv=ptm_tsv,
+        peptideatlas_tsv=peptideatlas_tsv,
+        cptac_tsv=cptac_tsv,
+        flanking_codons=flanking_codons,
+        overwrite=overwrite,
+    )
+    # Checked outside the try below: ctx.exit raises click's Exit, a RuntimeError
+    # that `except Exception` would catch and report as a crash with a traceback.
+    errors = config_errors(config)
+    if errors:
+        click.echo("Configuration validation failed:", err=True)
+        for error in errors:
+            click.echo(f"  - {error}", err=True)
+        ctx.exit(1)
+
     try:
-        from hvantk.algorithms.ptm.pipeline import PTMBuildConfig
-        from hvantk.tools.ptm.pipeline import ptm_build_pipeline
-
-        config = PTMBuildConfig(
-            output_dir=output_dir,
-            output_ht=output_ht,
-            gtf_path=gtf_path,
-            ptm_tsv=ptm_tsv,
-            peptideatlas_tsv=peptideatlas_tsv,
-            cptac_tsv=cptac_tsv,
-            flanking_codons=flanking_codons,
-            overwrite=overwrite,
-        )
-
-        errors = config.validate()
-        if errors:
-            click.echo("Configuration validation failed:", err=True)
-            for error in errors:
-                click.echo(f"  - {error}", err=True)
-            ctx.exit(1)
-
         result = ptm_build_pipeline(config)
 
-        click.echo(f"Sources: {', '.join(result.sources)}")
+        counts = ", ".join(
+            f"{name} ({n:,} mapped)" for name, n in result.source_counts.items()
+        )
+        click.echo(f"Sources: {counts}")
         click.echo(
             f"Mapping complete: {result.n_mapped}/{result.n_total} mapped "
             f"({100 * result.n_mapped / max(result.n_total, 1):.1f}%), "
@@ -145,11 +151,7 @@ def ptm_build(
         )
         click.echo(f"Resolution: {result.resolution_counts}")
         click.echo(f"Mapped TSV: {result.mapped_tsv_path}")
-        # ptm_build_pipeline skips the table when no site maps.
-        if result.output_ht:
-            click.echo(f"Hail Table: {result.output_ht}")
-        else:
-            click.echo("Hail Table: not built (no PTM sites mapped)")
+        click.echo(f"Hail Table: {result.output_ht}")
 
     except Exception as e:
         logger.exception(f"PTM build failed: {e}")
