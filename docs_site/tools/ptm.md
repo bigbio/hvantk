@@ -164,7 +164,7 @@ hvantk ptm build --output-dir data/ptm/ --output-ht data/ptm/ptm_sites.ht
 # Pre-downloaded files
 hvantk ptm build \
   --gtf-path data/ref/Homo_sapiens.GRCh38.113.gtf.gz \
-  --ptm-tsv data/ptm/uniprot-ptm-human.tsv \
+  --ptm-tsv data/ptm/uniprot-ptm-human-<YYYY-MM-DD>.tsv \
   --output-dir data/ptm/ \
   --output-ht data/ptm/ptm_sites.ht
 
@@ -177,6 +177,11 @@ hvantk ptm build \
   --output-ht data/ptm/ptm_sites.ht \
   --peptideatlas-tsv data/ptm/peptideatlas-phospho-<build_date>-<build_id>.tsv
 ```
+
+`build` prints the sites mapped from each source and warns about a source that maps
+none, which usually means the wrong file was passed. If no site maps at all, it exits
+with an error and writes no Hail Table; a table left at `--output-ht` by an earlier run
+is not touched.
 
 ### Build Options
 
@@ -235,7 +240,7 @@ Curated post-translational modification sites from UniProt (human, reviewed/Swis
 
 ### PeptideAtlas and CPTAC Phosphosites
 
-Optional mass-spectrometry phosphosites, added to the same table. `hvantk download peptideatlas-phospho` writes `peptideatlas-phospho-<build_date>-<build_id>.tsv`, which `build` takes with `--peptideatlas-tsv`. `hvantk download cptac-phospho` needs `--cancer-type` or `--all`; pass its site table, `cptac-phospho-<cancer_type>.tsv` (or `cptac-phospho-pancancer.tsv` with `--all`), with `--cptac-tsv`, not the `-tumor`/`-normal` TSVs or the matrix and metadata CSVs it also writes. Each mapped row keeps its source in `source_db` (`PeptideAtlas` or `CPTAC`).
+Optional mass-spectrometry phosphosites, added to the same table. `hvantk download peptideatlas-phospho` writes `peptideatlas-phospho-<build_date>-<build_id>.tsv`, which `build` takes with `--peptideatlas-tsv`. `hvantk download cptac-phospho` requires the `ptm` extra (`cptac`) and needs `--cancer-type` or `--all`; pass its site table, `cptac-phospho-<cancer_type>.tsv` (or `cptac-phospho-pancancer.tsv` with `--all`), with `--cptac-tsv`, not the `-tumor`/`-normal` TSVs or the matrix and metadata CSVs it also writes. Each mapped row keeps its source in `source_db` (`PeptideAtlas` or `CPTAC`).
 
 ### Ensembl GTF
 

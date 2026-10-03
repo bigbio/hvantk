@@ -35,19 +35,21 @@ hvantk ptm build \
 # Or with pre-downloaded inputs
 hvantk ptm build \
   --gtf-path data/ref/Homo_sapiens.GRCh38.113.gtf.gz \
-  --ptm-tsv data/ptm/uniprot-ptm-human.tsv \
+  --ptm-tsv data/ptm/uniprot-ptm-human-<YYYY-MM-DD>.tsv \
   --output-dir data/ptm/ \
   --output-ht data/ptm/ptm_sites.ht
 ```
 
-**Expected output:**
+**Example output** (counts depend on the UniProt release):
 ```text
-Sources: UniProt
+Sources: UniProt (55,422 mapped)
 Mapping complete: 55422/56120 mapped (98.8%), 698 failed
-Resolution: {'xref_mane': 48231, 'xref_any': 7191}
+Resolution: {'xref_mane': …, 'xref_any': …, 'gene_mane': …, 'unresolved': …}
 Mapped TSV: data/ptm/ptm_sites_mapped.tsv.bgz
 Hail Table: data/ptm/ptm_sites.ht
 ```
+
+`Resolution` counts proteins, not sites, by how each protein's transcript was resolved.
 
 ## Step 2: Annotate Variants
 

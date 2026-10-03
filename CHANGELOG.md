@@ -96,28 +96,39 @@
   empty code fence, a numbered-list `TODO`, or a table of `TODO`s as a
   placeholder**, extending the real-body check above to shapes that passed the
   keyword/emptiness test while carrying no content.
-- **`hvantk ptm build` reports which sources it mapped.** It prints `Sources: UniProt,
-  PeptideAtlas` before the mapping summary, from the new `PTMBuildResult.sources`.
-- **`generate_phase2_report` takes `build_result=` (a `PTMBuildResult`) instead of
-  `atlas_result=`**, and its first section shows a Hail Table row only when a table
-  was built.
+- **`hvantk ptm build` reports the sites mapped from each source**, as
+  `Sources: UniProt (N mapped), PeptideAtlas (M mapped)`, from the new
+  `PTMBuildResult.source_counts`. A source whose sites all fail to map, usually the
+  wrong file, is logged as a warning naming the file.
+- **Breaking (ptm). `generate_phase2_report` takes `build_result=` (a
+  `PTMBuildResult`) instead of `atlas_result=`**, which now raises `TypeError`. Its
+  "Atlas Summary" section is now "PTM Sites Summary", with sites per source, a
+  "Mapped TSV" row (was "Combined TSV") and a Hail Table row that reads "not built"
+  when no table was built.
 - **`PTMBuildConfig.validate()` no longer requires `output_ht`**, which
-  `ptm_build_pipeline_core` never writes. `ptm_build_pipeline`, the one function that
-  writes the table, now validates the config and requires `output_ht` before it
-  downloads anything.
+  `ptm_build_pipeline_core` never writes, and now rejects a negative
+  `flanking_codons`. `ptm_build_pipeline`, the one function that writes the table,
+  checks `output_ht` (`hvantk.tools.ptm.pipeline.config_errors`) and resolves the
+  `uniprot-ptm:sites` plugin before it downloads anything.
 
 ### Removed
 
 - **`hvantk ptm atlas` and its Python API (`build_atlas`, `PTMAtlasConfig`,
-  `PTMAtlasResult`) (#401).** The command ran only the mapping step: it never
-  downloaded UniProt and never wrote the Hail Table its required `--output-ht` named,
-  and `--flanking-codons` had no effect. Repaired, it would have duplicated `hvantk
-  ptm build`, which runs the same mapping plus both missing steps. Migrate with
+  `PTMAtlasResult`, `DEFAULT_ATLAS_SOURCES`, module `hvantk.algorithms.ptm.atlas`)
+  (#401).** The command ran only the mapping step: it never downloaded UniProt and
+  never wrote the Hail Table its required `--output-ht` named, and `--flanking-codons`
+  had no effect. Repaired, it would have duplicated `hvantk ptm build`, which runs the
+  same mapping plus both missing steps. Migrate with
   `hvantk ptm atlas --uniprot-tsv U --peptideatlas-tsv P -o D --output-ht H` →
   `hvantk ptm build --ptm-tsv U --peptideatlas-tsv P -o D --output-ht H`. `--sources`
-  has no replacement: passing a source's TSV is what selects it. In Python, use
-  `hvantk.tools.ptm.pipeline.ptm_build_pipeline`, or
-  `hvantk.algorithms.ptm.ptm_build_pipeline_core` to map without Hail.
+  has no replacement: passing a source's TSV is what selects it. `--cptac-tsv`,
+  `--gtf-path`, `--overwrite` and `--flanking-codons` keep their names, and `build`
+  applies `--flanking-codons` to the table with a default of 5 (`atlas` advertised 7).
+  In Python, use `hvantk.tools.ptm.pipeline.ptm_build_pipeline`, or
+  `hvantk.algorithms.ptm.ptm_build_pipeline_core` to map without Hail;
+  `PTMAtlasConfig.uniprot_tsv` is `PTMBuildConfig.ptm_tsv`, and
+  `PTMAtlasResult.combined_tsv` / `.n_sites` / `.sources_used` are
+  `PTMBuildResult.mapped_tsv_path` / `.n_mapped` / `.source_counts`.
 
 ### Fixed
 
@@ -219,11 +230,17 @@
   human-readable `hvantk drift` output now prints each `probe_failed` row's
   reason to stderr; `drift --all --json` emits its load-error rows and exits 2
   when every in-scope dataset failed to bind, instead of printing nothing.
-- **`hvantk ptm build` printed an empty `Hail Table:` line when no PTM site mapped**
-  (the table is skipped then); it now prints `Hail Table: not built (no PTM sites
-  mapped)`.
+- **`hvantk ptm build` exited 0 when no PTM site mapped**, printing an empty
+  `Hail Table:` line and leaving any table from an earlier run at `--output-ht` for
+  `ptm annotate` and the others to read. It now fails (exit 1) and says no table was
+  written.
+- **`hvantk ptm build` reported its own validation errors as a crash** (`PTM build
+  failed: 1`, a traceback, `Error: 1`), because the `ctx.exit` that ends it was caught
+  by the command's catch-all; an empty `-o` or `--output-ht` now prints the error and
+  exits 1.
 - **`ptm_build_pipeline_core` checked for the UniProt TSV only after downloading and
-  parsing the Ensembl GTF**; a missing `ptm_tsv` now fails before either.
+  parsing the Ensembl GTF**, and let an empty `ptm_tsv` through; a missing or empty
+  `ptm_tsv` now fails before either.
 
 ## 0.3.1 — 2026-08-30
 

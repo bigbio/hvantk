@@ -209,9 +209,10 @@ def annotate_variants_by_symbol(
         Variants with at minimum ``variant_gene_col``, ``variant_chrom_col``,
         and ``variant_pos_col`` columns.
     ptm_df : pandas.DataFrame
-        PTM atlas rows (e.g. parsed from ``ptm_sites_combined.tsv.bgz``) with
-        ``atlas_gene_col``, ``atlas_chrom_col``, ``codon_start``, and
-        ``codon_end`` columns.
+        PTM-site rows from ``hvantk ptm build`` (``ptm_sites_mapped.tsv.bgz``, or
+        ``ptm_sites_combined.tsv.bgz`` when PeptideAtlas or CPTAC sites were
+        added) with ``atlas_gene_col``, ``atlas_chrom_col``, ``codon_start``, and
+        ``codon_end`` columns; the ``atlas_*`` names refer to this table.
     proximal_bp : int
         Flank (in base pairs) applied to both ends of the codon interval for
         ``is_ptm_proximal``. Default: :data:`PROXIMAL_BP` (21 bp).

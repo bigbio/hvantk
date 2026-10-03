@@ -435,7 +435,7 @@ hvantk ptm build --output-dir data/ptm/ --output-ht data/ptm/ptm_sites.ht
 # With pre-downloaded files
 hvantk ptm build \
   --gtf-path data/ref/Homo_sapiens.GRCh38.113.gtf.gz \
-  --ptm-tsv data/ptm/uniprot-ptm-human.tsv \
+  --ptm-tsv data/ptm/uniprot-ptm-human-<YYYY-MM-DD>.tsv \
   --output-dir data/ptm/ \
   --output-ht data/ptm/ptm_sites.ht
 ```

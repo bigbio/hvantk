@@ -11,7 +11,7 @@ Example (pure mapping core):
     >>> config = PTMBuildConfig(
     ...     output_dir="data/ptm/",
     ...     gtf_path="data/ref/Homo_sapiens.GRCh38.113.gtf.gz",
-    ...     ptm_tsv="data/ptm/uniprot-ptm-human.tsv",
+    ...     ptm_tsv="data/ptm/uniprot-ptm-human-2026-10-01.tsv",
     ... )
     >>> result = ptm_build_pipeline_core(config)
 """
