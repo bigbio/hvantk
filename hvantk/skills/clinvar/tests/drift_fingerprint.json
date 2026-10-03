@@ -1,6 +1,6 @@
 {
   "probe_version": 2,
-  "source_version": "Mon, 14 Sep 2026 13:55:21 GMT",
+  "source_version": "Tue, 29 Sep 2026 19:57:29 GMT",
   "headers": {
     "clinvar.vcf.gz": {
       "INFO": [
@@ -51,7 +51,7 @@
     "clinvar.vcf.gz": "6bfa0b7cc0894295474023209da668734abed48cebaaef696967d652ce65c178"
   },
   "extras": {
-    "content_length": "193709143"
+    "content_length": "198125411"
   },
-  "fetched_at": "2026-09-20T22:13:17.161850+00:00"
+  "fetched_at": "2026-10-01T12:07:29.622650+00:00"
 }
