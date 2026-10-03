@@ -43,7 +43,7 @@
   },
   "ucsc-cellbrowser:default": {
     "accepted_in": "drift/ucsc-cellbrowser",
-    "last_upstream_change": "2026-10-01T00:01:51.885110+00:00",
+    "last_upstream_change": "2026-10-01T12:08:14.376591+00:00",
     "rebuilt_at": null,
     "signal": "schema"
   }
