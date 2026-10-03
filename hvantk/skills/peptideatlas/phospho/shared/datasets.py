@@ -485,7 +485,8 @@ def parse_raw_dir(raw_dir: str, output_path: str, **kwargs) -> str:
     writes an intermediate representation to ``output_path``.
 
     The intermediate is the same wide TSV consumed by the PTM pipeline
-    (``hvantk/ptm/pipeline.py`` ``peptideatlas_tsv`` argument).
+    (``hvantk ptm build --peptideatlas-tsv``, i.e. ``PTMBuildConfig.peptideatlas_tsv``
+    in :mod:`hvantk.algorithms.ptm.pipeline`).
 
     Parameters
     ----------

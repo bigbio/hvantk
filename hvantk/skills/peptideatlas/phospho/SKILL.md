@@ -59,7 +59,7 @@ Aggregation gotcha: the same `(accession, position)` can be observed via multipl
 - **Downloader CLI:** `download_cmd` in `hvantk/skills/peptideatlas/phospho/cli.py` (declared in the manifest's `cli:` block as `peptideatlas-phospho-download`; the loader strips the `-download` suffix and binds it under the `download` group, so the invocation is `hvantk download peptideatlas-phospho`).
 - **Lifecycle entry points:** `download_dataset` and `parse_raw_dir` (loader-wired via `lifecycle.download` + `lifecycle.parse` in `plugin.yaml`).
 - **Drift probe:** `fetch_fingerprint` in `hvantk/skills/peptideatlas/phospho/drift_probe.py` (HEAD against the pinned build's zip URL).
-- **Downstream consumer:** `hvantk/algorithms/ptm/pipeline.py` (`PTMBuildConfig.peptideatlas_tsv`) — reads the intermediate TSV produced here and maps PTM sites to genomic coordinates. Exposed at the user-facing level by `hvantk/algorithms/ptm/atlas.py` (`PTMAtlasConfig.peptideatlas_tsv`).
+- **Downstream consumer:** `hvantk/algorithms/ptm/pipeline.py` (`PTMBuildConfig.peptideatlas_tsv`) — reads the intermediate TSV produced here and maps PTM sites to genomic coordinates. Exposed at the user-facing level by `hvantk ptm build` (`--peptideatlas-tsv`).
 - **Plugin manifest:** `hvantk/skills/peptideatlas/plugin.yaml` (compound dataset key `peptideatlas:phospho`).
 - **Tests:** `hvantk/skills/peptideatlas/phospho/tests/` (parser unit tests + drift-probe sanity test).
 

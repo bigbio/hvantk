@@ -61,7 +61,8 @@ def test_ptm_build_pipeline_resolves_hyphenated_uniprot_key(monkeypatch, tmp_pat
 
     class _FakeResult:
         n_mapped = 5
-        mapped_tsv_path = str(tmp_path / "ptm_sites_mapped.tsv.bgz")
+        # The combined name, so a builder fed the UniProt-only fallback path fails.
+        mapped_tsv_path = str(tmp_path / "ptm_sites_combined.tsv.bgz")
         output_ht = None
 
     # get_registry + run_builder_for_spec are imported INSIDE ptm_build_pipeline;
@@ -70,15 +71,23 @@ def test_ptm_build_pipeline_resolves_hyphenated_uniprot_key(monkeypatch, tmp_pat
         "hvantk.core.plugin.loader.get_registry", lambda: _FakeRegistry()
     )
     monkeypatch.setattr(
-        "hvantk.core.plugin.run_builder.run_builder_for_spec", lambda *a, **k: None
+        "hvantk.core.plugin.run_builder.run_builder_for_spec",
+        lambda *a, **k: captured.update(k),
     )
     monkeypatch.setattr(pl, "ptm_build_pipeline_core", lambda cfg: _FakeResult())
 
+    # The file must exist: ptm_build_pipeline validates the config before it
+    # downloads or maps anything.
+    ptm_tsv = tmp_path / "ptm.tsv"
+    ptm_tsv.write_text("")
     cfg = PTMBuildConfig(
         output_dir=str(tmp_path),
         output_ht=str(tmp_path / "out.ht"),
-        ptm_tsv=str(tmp_path / "ptm.tsv"),  # non-None -> download step skipped
+        ptm_tsv=str(ptm_tsv),  # non-None -> download step skipped
     )
-    pl.ptm_build_pipeline(cfg)
+    result = pl.ptm_build_pipeline(cfg)
 
     assert captured["key"] == "uniprot-ptm:sites"
+    # A multi-source run must build the table from the combined TSV, and say so.
+    assert captured["parsed_input"] == _FakeResult.mapped_tsv_path
+    assert result.output_ht == cfg.output_ht
