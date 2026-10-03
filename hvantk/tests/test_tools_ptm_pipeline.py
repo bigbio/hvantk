@@ -1,6 +1,8 @@
-"""Smoke test: the ptm workflow wrapper exists in tools/ptm/."""
+"""Tests for the PTM workflow wrapper in tools/ptm/."""
 
 from __future__ import annotations
+
+import pytest
 
 
 def test_tools_ptm_exports_download_and_pipeline():
@@ -91,3 +93,48 @@ def test_ptm_build_pipeline_resolves_hyphenated_uniprot_key(monkeypatch, tmp_pat
     # A multi-source run must build the table from the combined TSV, and say so.
     assert captured["parsed_input"] == _FakeResult.mapped_tsv_path
     assert result.output_ht == cfg.output_ht
+
+
+def test_ptm_build_pipeline_fails_when_no_site_maps(monkeypatch, tmp_path):
+    """A build that maps no PTM site must raise before the Hail build step.
+
+    Returning without a table would let the CLI exit 0 while a table from an
+    earlier run at ``output_ht`` stays there for ``ptm annotate`` to read.
+    """
+    import hvantk.tools.ptm.pipeline as pl
+    from hvantk.algorithms.ptm.pipeline import PTMBuildConfig, PTMBuildResult
+
+    class _FakeSpec:
+        plugin_version = "0.1.0"
+
+    class _FakeRegistry:
+        def get_dataset(self, key):
+            return _FakeSpec()
+
+    builds = []
+    monkeypatch.setattr(
+        "hvantk.core.plugin.loader.get_registry", lambda: _FakeRegistry()
+    )
+    monkeypatch.setattr(
+        "hvantk.core.plugin.run_builder.run_builder_for_spec",
+        lambda *a, **k: builds.append(k),
+    )
+    monkeypatch.setattr(
+        pl, "ptm_build_pipeline_core", lambda cfg: PTMBuildResult(n_total=3, n_mapped=0)
+    )
+
+    ptm_tsv = tmp_path / "ptm.tsv"
+    ptm_tsv.write_text("")
+    earlier_table = tmp_path / "out.ht"
+    earlier_table.mkdir()
+    (earlier_table / "marker").write_text("earlier run")
+    cfg = PTMBuildConfig(
+        output_dir=str(tmp_path),
+        output_ht=str(earlier_table),
+        ptm_tsv=str(ptm_tsv),
+    )
+
+    with pytest.raises(ValueError, match="No PTM sites mapped"):
+        pl.ptm_build_pipeline(cfg)
+    assert builds == []
+    assert (earlier_table / "marker").read_text() == "earlier run"
