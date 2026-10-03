@@ -8,6 +8,8 @@ This module provides CLI commands for the PTM variant classification pipeline:
 - export-strata: Export PTM/non-PTM variant strata for predictor evaluation
 - population: Population-level PTM-variant burden
 - report: Generate summary report
+- constraint: Stratified PTM constraint analysis across tissue / cell-type groups
+- test: Per-stratum LMM PTM constraint tests
 """
 
 import logging
@@ -96,42 +98,52 @@ def ptm_build(
 
     \b
     This is the main entry point for the PTM pipeline. It:
-      1. Downloads the Ensembl GTF (if not provided via --gtf-path)
-      2. Downloads UniProt PTM data (if not provided via --ptm-tsv)
-      3. Parses the GTF and maps PTM sites to genomic coordinates
-      4. Builds a Hail Table keyed by locus
+      1. Downloads UniProt PTM data (if not provided via --ptm-tsv)
+      2. Downloads the Ensembl GTF (if not provided via --gtf-path)
+      3. Parses the GTF and maps PTM sites to genomic coordinates, adding
+         PeptideAtlas and CPTAC phosphosites when --peptideatlas-tsv or
+         --cptac-tsv is given (all sources go into one combined TSV)
+      4. Builds a Hail Table keyed by locus; fails if no site maps
 
     \b
     Examples:
       hvantk ptm build --output-dir data/ptm/ --output-ht data/ptm/ptm_sites.ht
       hvantk ptm build --gtf-path data/ref/Homo_sapiens.GRCh38.113.gtf.gz \\
-                       --ptm-tsv data/ptm/uniprot-ptm-human.tsv \\
+                       --ptm-tsv data/ptm/uniprot-ptm-human-<YYYY-MM-DD>.tsv \\
                        --output-ht data/ptm/ptm_sites.ht --output-dir data/ptm/
+      hvantk ptm build --output-dir data/ptm/ --output-ht data/ptm/ptm_sites.ht \\
+                       --peptideatlas-tsv \\
+                       data/ptm/peptideatlas-phospho-<build_date>-<build_id>.tsv
     """
+    from hvantk.algorithms.ptm.pipeline import PTMBuildConfig
+    from hvantk.tools.ptm.pipeline import config_errors, ptm_build_pipeline
+
+    config = PTMBuildConfig(
+        output_dir=output_dir,
+        output_ht=output_ht,
+        gtf_path=gtf_path,
+        ptm_tsv=ptm_tsv,
+        peptideatlas_tsv=peptideatlas_tsv,
+        cptac_tsv=cptac_tsv,
+        flanking_codons=flanking_codons,
+        overwrite=overwrite,
+    )
+    # Checked outside the try below: ctx.exit raises click's Exit, a RuntimeError
+    # that `except Exception` would catch and report as a crash with a traceback.
+    errors = config_errors(config)
+    if errors:
+        click.echo("Configuration validation failed:", err=True)
+        for error in errors:
+            click.echo(f"  - {error}", err=True)
+        ctx.exit(1)
+
     try:
-        from hvantk.algorithms.ptm.pipeline import PTMBuildConfig
-        from hvantk.tools.ptm.pipeline import ptm_build_pipeline
-
-        config = PTMBuildConfig(
-            output_dir=output_dir,
-            output_ht=output_ht,
-            gtf_path=gtf_path,
-            ptm_tsv=ptm_tsv,
-            peptideatlas_tsv=peptideatlas_tsv,
-            cptac_tsv=cptac_tsv,
-            flanking_codons=flanking_codons,
-            overwrite=overwrite,
-        )
-
-        errors = config.validate()
-        if errors:
-            click.echo("Configuration validation failed:", err=True)
-            for error in errors:
-                click.echo(f"  - {error}", err=True)
-            ctx.exit(1)
-
         result = ptm_build_pipeline(config)
 
+        counts = ", ".join(
+            f"{name} ({n:,} mapped)" for name, n in result.source_counts.items()
+        )
+        click.echo(f"Sources: {counts}")
         click.echo(
             f"Mapping complete: {result.n_mapped}/{result.n_total} mapped "
             f"({100 * result.n_mapped / max(result.n_total, 1):.1f}%), "
@@ -679,131 +691,8 @@ def ptm_constraint(
 
 
 # ---------------------------------------------------------------------------
-# PTM subcommands: atlas (atlas assembly facade) and test (LMM runners)
+# PTM subcommands: test (LMM runners)
 # ---------------------------------------------------------------------------
-
-
-@ptm_group.command("atlas")
-@click.option(
-    "--output-dir",
-    "-o",
-    type=click.Path(),
-    required=True,
-    help="Directory for intermediate + combined TSV output.",
-)
-@click.option(
-    "--output-ht",
-    type=str,
-    required=True,
-    help=(
-        "Path for the PTM sites Hail Table (.ht). `ptm atlas` stops at the combined "
-        "TSV and does not write it yet; use `hvantk ptm build` for the table."
-    ),
-)
-@click.option(
-    "--sources",
-    type=str,
-    default="uniprot,peptideatlas",
-    show_default=True,
-    help=(
-        "Comma-separated subset of {uniprot,peptideatlas,cptac}. "
-        "CPTAC is off by default (optional dependency)."
-    ),
-)
-@click.option(
-    "--uniprot-tsv",
-    type=click.Path(exists=True),
-    default=None,
-    help=(
-        "Pre-downloaded UniProt PTM TSV. Needed: `ptm atlas` does not download it "
-        "(`hvantk ptm build` does)."
-    ),
-)
-@click.option(
-    "--peptideatlas-tsv",
-    type=click.Path(exists=True),
-    default=None,
-    help="Pre-downloaded PeptideAtlas phospho intermediate TSV.",
-)
-@click.option(
-    "--cptac-tsv",
-    type=click.Path(exists=True),
-    default=None,
-    help="Pre-downloaded CPTAC phospho combined TSV.",
-)
-@click.option(
-    "--gtf-path",
-    type=click.Path(exists=True),
-    default=None,
-    help="Pre-downloaded Ensembl GTF (auto-downloaded if omitted).",
-)
-@click.option(
-    "--flanking-codons",
-    type=int,
-    default=7,
-    show_default=True,
-    help="Flanking-codon window for proximity intervals.",
-)
-@click.option("--overwrite", is_flag=True)
-@click.pass_context
-def ptm_atlas(
-    ctx,
-    output_dir,
-    output_ht,
-    sources,
-    uniprot_tsv,
-    peptideatlas_tsv,
-    cptac_tsv,
-    gtf_path,
-    flanking_codons,
-    overwrite,
-):
-    """PTM atlas assembly.
-
-    \b
-    Delegates to hvantk.algorithms.ptm.atlas.build_atlas, which in turn calls
-    ptm_build_pipeline_core. Writes ptm_sites_combined.tsv.bgz for multiple
-    sources, or ptm_sites_mapped.tsv.bgz for UniProt alone.
-
-    \b
-    Example:
-      hvantk ptm atlas -o data/ptm/ --output-ht data/ptm/ptm_sites.ht
-    """
-    try:
-        from hvantk.algorithms.ptm.atlas import PTMAtlasConfig, build_atlas
-
-        source_list = [s.strip().lower() for s in sources.split(",") if s.strip()]
-        config = PTMAtlasConfig(
-            output_dir=output_dir,
-            output_ht=output_ht,
-            sources=source_list,
-            uniprot_tsv=uniprot_tsv,
-            peptideatlas_tsv=peptideatlas_tsv,
-            cptac_tsv=cptac_tsv,
-            gtf_path=gtf_path,
-            flanking_codons=flanking_codons,
-            overwrite=overwrite,
-        )
-        errors = config.validate()
-        if errors:
-            click.echo("Configuration validation failed:", err=True)
-            for err in errors:
-                click.echo(f"  - {err}", err=True)
-            ctx.exit(1)
-
-        result = build_atlas(config)
-        click.echo(f"Sources used: {', '.join(result.sources_used)}")
-        click.echo(f"Sites mapped: {result.n_sites:,}")
-        click.echo(f"Combined TSV: {result.combined_tsv}")
-        if result.output_ht:
-            click.echo(f"Hail Table:   {result.output_ht}")
-        else:
-            click.echo("Hail Table:   not built (use `hvantk ptm build` for the table)")
-
-    except Exception as e:
-        logger.exception(f"PTM atlas failed: {e}")
-        click.echo(f"Error: {e}", err=True)
-        ctx.exit(1)
 
 
 def _read_variants_table(path: str):

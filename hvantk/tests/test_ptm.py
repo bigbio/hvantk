@@ -5,6 +5,7 @@ Covers:
 2. Transcript resolution cascade (3-strategy)
 3. map_ptm_sites pipeline round-trip (TSV → mapped TSV → verify output)
 4. CLI wiring (ptm group registers and renders help)
+5. Build core: records the sources it mapped and needs no output_ht
 """
 
 import csv
@@ -228,10 +229,60 @@ def test_ptm_cli_help():
 def test_ptm_build_config_validation():
     """PTMBuildConfig.validate catches missing required fields."""
     config = PTMBuildConfig()
-    errors = config.validate()
-    assert len(errors) == 2
-    assert any("output_dir" in e for e in errors)
-    assert any("output_ht" in e for e in errors)
+    assert config.validate() == ["output_dir is required"]
 
-    config2 = PTMBuildConfig(output_dir="/tmp/test", output_ht="/tmp/test/out.ht")
+    # output_ht is not required here: only hvantk.tools.ptm.pipeline writes the table.
+    config2 = PTMBuildConfig(output_dir="/tmp/test")
     assert config2.validate() == []
+
+
+# ---------- Test 5: build core ----------
+
+
+def test_build_core_records_the_sources_it_mapped(tmp_path, gtf_data, monkeypatch):
+    """`source_counts` gives the sites each source contributed, UniProt first.
+
+    Runs without Hail, network or output_ht: the GTF parse is stubbed with the TP53
+    fixture.
+    """
+    from hvantk.algorithms.ptm import pipeline as ptm_pipeline
+
+    monkeypatch.setattr(ptm_pipeline, "parse_ensembl_gtf", lambda path: gtf_data)
+    gtf = tmp_path / "annotation.gtf"
+    gtf.write_text("")
+    row = {
+        "accession": "P04637",
+        "gene_symbol": "TP53",
+        "position": "315",
+        "description": "Phosphoserine",
+        "amino_acid": "S",
+        "ensembl_xrefs": "ENST00000269305.8",
+    }
+    uniprot = tmp_path / "uniprot.tsv"
+    peptideatlas = tmp_path / "peptideatlas.tsv"
+    for path in (uniprot, peptideatlas):
+        path.write_text("\t".join(row) + "\n" + "\t".join(row.values()) + "\n")
+
+    result = ptm_pipeline.ptm_build_pipeline_core(
+        PTMBuildConfig(
+            output_dir=str(tmp_path / "out"),
+            gtf_path=str(gtf),
+            ptm_tsv=str(uniprot),
+            peptideatlas_tsv=str(peptideatlas),
+        )
+    )
+
+    assert result.source_counts == {"UniProt": 1, "PeptideAtlas": 1}
+    assert result.n_mapped == 2
+    assert result.mapped_tsv_path.endswith("ptm_sites_combined.tsv.bgz")
+
+    # UniProt alone is the default `ptm build` run; it skips the concat step.
+    alone = ptm_pipeline.ptm_build_pipeline_core(
+        PTMBuildConfig(
+            output_dir=str(tmp_path / "alone"),
+            gtf_path=str(gtf),
+            ptm_tsv=str(uniprot),
+        )
+    )
+    assert alone.source_counts == {"UniProt": 1}
+    assert alone.mapped_tsv_path.endswith("ptm_sites_mapped.tsv.bgz")

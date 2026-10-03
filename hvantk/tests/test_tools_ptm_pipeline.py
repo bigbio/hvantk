@@ -1,6 +1,8 @@
-"""Smoke test: the ptm workflow wrapper exists in tools/ptm/."""
+"""Tests for the PTM workflow wrapper in tools/ptm/."""
 
 from __future__ import annotations
+
+import pytest
 
 
 def test_tools_ptm_exports_download_and_pipeline():
@@ -61,7 +63,8 @@ def test_ptm_build_pipeline_resolves_hyphenated_uniprot_key(monkeypatch, tmp_pat
 
     class _FakeResult:
         n_mapped = 5
-        mapped_tsv_path = str(tmp_path / "ptm_sites_mapped.tsv.bgz")
+        # The combined name, so a builder fed the UniProt-only fallback path fails.
+        mapped_tsv_path = str(tmp_path / "ptm_sites_combined.tsv.bgz")
         output_ht = None
 
     # get_registry + run_builder_for_spec are imported INSIDE ptm_build_pipeline;
@@ -70,15 +73,68 @@ def test_ptm_build_pipeline_resolves_hyphenated_uniprot_key(monkeypatch, tmp_pat
         "hvantk.core.plugin.loader.get_registry", lambda: _FakeRegistry()
     )
     monkeypatch.setattr(
-        "hvantk.core.plugin.run_builder.run_builder_for_spec", lambda *a, **k: None
+        "hvantk.core.plugin.run_builder.run_builder_for_spec",
+        lambda *a, **k: captured.update(k),
     )
     monkeypatch.setattr(pl, "ptm_build_pipeline_core", lambda cfg: _FakeResult())
 
+    # The file must exist: ptm_build_pipeline validates the config before it
+    # downloads or maps anything.
+    ptm_tsv = tmp_path / "ptm.tsv"
+    ptm_tsv.write_text("")
     cfg = PTMBuildConfig(
         output_dir=str(tmp_path),
         output_ht=str(tmp_path / "out.ht"),
-        ptm_tsv=str(tmp_path / "ptm.tsv"),  # non-None -> download step skipped
+        ptm_tsv=str(ptm_tsv),  # non-None -> download step skipped
     )
-    pl.ptm_build_pipeline(cfg)
+    result = pl.ptm_build_pipeline(cfg)
 
     assert captured["key"] == "uniprot-ptm:sites"
+    # A multi-source run must build the table from the combined TSV, and say so.
+    assert captured["parsed_input"] == _FakeResult.mapped_tsv_path
+    assert result.output_ht == cfg.output_ht
+
+
+def test_ptm_build_pipeline_fails_when_no_site_maps(monkeypatch, tmp_path):
+    """A build that maps no PTM site must raise before the Hail build step.
+
+    Returning without a table would let the CLI exit 0 while a table from an
+    earlier run at ``output_ht`` stays there for ``ptm annotate`` to read.
+    """
+    import hvantk.tools.ptm.pipeline as pl
+    from hvantk.algorithms.ptm.pipeline import PTMBuildConfig, PTMBuildResult
+
+    class _FakeSpec:
+        plugin_version = "0.1.0"
+
+    class _FakeRegistry:
+        def get_dataset(self, key):
+            return _FakeSpec()
+
+    builds = []
+    monkeypatch.setattr(
+        "hvantk.core.plugin.loader.get_registry", lambda: _FakeRegistry()
+    )
+    monkeypatch.setattr(
+        "hvantk.core.plugin.run_builder.run_builder_for_spec",
+        lambda *a, **k: builds.append(k),
+    )
+    monkeypatch.setattr(
+        pl, "ptm_build_pipeline_core", lambda cfg: PTMBuildResult(n_total=3, n_mapped=0)
+    )
+
+    ptm_tsv = tmp_path / "ptm.tsv"
+    ptm_tsv.write_text("")
+    earlier_table = tmp_path / "out.ht"
+    earlier_table.mkdir()
+    (earlier_table / "marker").write_text("earlier run")
+    cfg = PTMBuildConfig(
+        output_dir=str(tmp_path),
+        output_ht=str(earlier_table),
+        ptm_tsv=str(ptm_tsv),
+    )
+
+    with pytest.raises(ValueError, match="No PTM sites mapped"):
+        pl.ptm_build_pipeline(cfg)
+    assert builds == []
+    assert (earlier_table / "marker").read_text() == "earlier run"

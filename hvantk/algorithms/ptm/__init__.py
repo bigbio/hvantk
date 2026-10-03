@@ -10,9 +10,8 @@ Example (pure mapping core):
     >>> from hvantk.algorithms.ptm import PTMBuildConfig, ptm_build_pipeline_core
     >>> config = PTMBuildConfig(
     ...     output_dir="data/ptm/",
-    ...     output_ht="data/ptm/ptm_sites.ht",
     ...     gtf_path="data/ref/Homo_sapiens.GRCh38.113.gtf.gz",
-    ...     ptm_tsv="data/ptm/uniprot-ptm-human.tsv",
+    ...     ptm_tsv="data/ptm/uniprot-ptm-human-2026-10-01.tsv",
     ... )
     >>> result = ptm_build_pipeline_core(config)
 """
@@ -95,10 +94,6 @@ _LAZY_MODULES = {
     ),
     # report
     "generate_report": ("hvantk.algorithms.ptm.report", "generate_report"),
-    # Atlas facade
-    "PTMAtlasConfig": ("hvantk.algorithms.ptm.atlas", "PTMAtlasConfig"),
-    "PTMAtlasResult": ("hvantk.algorithms.ptm.atlas", "PTMAtlasResult"),
-    "build_atlas": ("hvantk.algorithms.ptm.atlas", "build_atlas"),
     # SYMBOL-based annotation (pandas)
     "annotate_variants_by_symbol": (
         "hvantk.algorithms.ptm.annotate",
@@ -180,10 +175,6 @@ __all__ = [
     "LMM_MIN_MIXED_GENES",
     "LMM_BINNED_MIN_POS_EXPR",
     "LMM_BINNED_MIN_CELL_N",
-    # Atlas
-    "PTMAtlasConfig",
-    "PTMAtlasResult",
-    "build_atlas",
     # SYMBOL annotation
     "annotate_variants_by_symbol",
     # Constraint tests
