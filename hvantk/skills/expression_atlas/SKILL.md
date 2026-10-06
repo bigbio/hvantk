@@ -99,7 +99,7 @@ Per-accession drift detection has not landed yet (see the § 2 catalog note and 
 
 Per `_conventions` § 9:
 
-- **fixture:** `hvantk/skills/expression_atlas/tests/testdata/raw/expression-atlas/` — seeded. `E-MTAB-6798-transcripts-tpms.tsv` (21 transcript rows / 20 distinct genes x 4 samples, ~1.2 KB — one gene carries two transcripts, so the fixture exercises the repeated-gene-id shape a real transcripts-tpms export has, #349) + `E-MTAB-6798.condensed-sdrf.tsv` (the same 4 sample IDs, ~3.3 KB), derived by truncation from the real upstream files under `hvantk/tests/testdata/raw/expression_atlas/`. Recipe recorded at the top of `tests/test_builder.py`.
+- **fixture:** `hvantk/skills/expression_atlas/tests/testdata/raw/expression-atlas/` — seeded. `E-MTAB-6798-transcripts-tpms.tsv` (21 transcript rows / 20 distinct genes x 4 samples, ~1.2 KB — one gene carries two transcripts, so the fixture exercises the repeated-gene-id shape a real transcripts-tpms export has, #349) + `E-MTAB-6798.condensed-sdrf.tsv` (the same 4 sample IDs, ~3.3 KB), derived by truncation from the real upstream E-MTAB-6798 files (recipe at the top of `tests/test_builder.py`).
 - **schema_snapshot:** `hvantk/skills/expression_atlas/tests/snapshots/schema.json` — seeded (4 obs x 21 vars).
 - **row_snapshot:** `hvantk/skills/expression_atlas/tests/snapshots/sample_rows.json` — seeded.
 - **drift_fingerprint:** `hvantk/skills/expression_atlas/tests/drift_fingerprint.json` — the expected fingerprint compared by `hvantk drift` (see § 12).
