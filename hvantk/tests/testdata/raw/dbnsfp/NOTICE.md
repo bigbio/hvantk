@@ -18,7 +18,7 @@ nothing was edited, trimmed or reordered. It is stored BGZF-compressed.
 
 ## Attribution
 
-dbNSFP, © Genos Bioinformatics LLC, <https://www.dbnsfp.org>. Cite: Liu X, Li C,
+dbNSFP, © 2024–2026 Genos Bioinformatics LLC, <https://www.dbnsfp.org>. Cite: Liu X, Li C,
 Mou C, Dong Y, Tu Y. dbNSFP v4: a comprehensive database of transcript-specific
 functional predictions and annotations for human nonsynonymous and splice-site SNVs.
 *Genome Medicine* 12, 103 (2020). <https://doi.org/10.1186/s13073-020-00803-9>

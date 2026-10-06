@@ -65,7 +65,7 @@ This document lists third-party datasets committed to this repository as test fi
 
 **Licence**: CC BY-NC-ND 4.0 (https://creativecommons.org/licenses/by-nc-nd/4.0/), the licence of the dbNSFP academic branch (https://www.dbnsfp.org/license/): non-commercial use only, with attribution, and no sharing of modified versions. Commercial use requires dbNSFP's paid commercial licence, and the CADD, VEST, M-CAP, MutScore, PolyPhen-2, PrimateAI and RGC Million Exome scores in the academic branch also need commercial licences from their authors. Not covered by this repository's MIT licence; the notice is `NOTICE.md` in the fixture directory, with a second one beside the snapshot.
 
-**Attribution**: dbNSFP, © Genos Bioinformatics LLC — https://www.dbnsfp.org. Citation: Liu X, Li C, Mou C, Dong Y, Tu Y. "dbNSFP v4: a comprehensive database of transcript-specific functional predictions and annotations for human nonsynonymous and splice-site SNVs." *Genome Medicine* 12, 103 (2020), https://doi.org/10.1186/s13073-020-00803-9.
+**Attribution**: dbNSFP, © 2024–2026 Genos Bioinformatics LLC — https://www.dbnsfp.org. Citation: Liu X, Li C, Mou C, Dong Y, Tu Y. "dbNSFP v4: a comprehensive database of transcript-specific functional predictions and annotations for human nonsynonymous and splice-site SNVs." *Genome Medicine* 12, 103 (2020), https://doi.org/10.1186/s13073-020-00803-9.
 
 **Modifications**:
 - None to the content: the header (all 458 columns) and the first 4,999 variants on chromosome 10 of the v4.9a variant table, byte-identical to the release once decompressed, stored BGZF-compressed

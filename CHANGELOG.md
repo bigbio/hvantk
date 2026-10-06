@@ -41,12 +41,12 @@
   a real subset under the AlphaGenome Output Terms. `peptideatlas:phospho`'s fixture is
   now a synthetic raw build zip, so its round-trip test grades `parse_raw_dir` as well
   as the builder (#415).
-- **`THIRD_PARTY_DATA.md` and a fixture-provenance rule (#413).** Every fixture that
-  holds real third-party data has an entry: source, version or retrieval date, licence,
-  attribution and modifications (`hvantk/skills/_conventions/SKILL.md` § 9). A licence
-  that forbids redistributing rows limits what a fixture may contain, not whether one
-  exists. The Expression Atlas, AlphaGenome and dbNSFP fixtures are listed (#413, #421,
-  #423).
+- **`THIRD_PARTY_DATA.md` and a fixture-provenance rule (#413).** A fixture that holds
+  real third-party data must have an entry there: source, version or retrieval date,
+  licence, attribution and modifications (`hvantk/skills/_conventions/SKILL.md` § 9). A
+  licence that forbids redistributing rows limits what a fixture may contain, not
+  whether one exists. The Expression Atlas, AlphaGenome and dbNSFP fixtures are listed
+  so far (#413, #421, #423).
 
 ### Changed
 
