@@ -20,28 +20,39 @@ _TESTS_DIR = Path(__file__).parent
 FIXTURE_DIR = str(_TESTS_DIR / "testdata/raw/pqtl")
 SNAPSHOT_DIR = _TESTS_DIR / "snapshots"
 
-# (locus, alleles, gene_id) keys for the synthetic fixture rows -- see
-# testdata/raw/pqtl/README.md for the full row-purpose table. Picked to cover a
-# mapped symbol (BRCA1), a negative-BETA/STAT mapped symbol (BRCA2, so SE must still
-# come out positive), and an unmapped symbol that must fall back to its raw
-# gene_name (SYNTHGENE1).
+# (locus, alleles, gene_id) keys for all 7 surviving fixture rows (the 8th, with
+# STAT == 0, is dropped) -- see testdata/raw/pqtl/README.md for the full
+# row-purpose table. Every surviving row is pinned here, not just a subset, so the
+# snapshot actually proves each edge case transformed correctly rather than merely
+# surviving: a mapped symbol (BRCA1); a negative-BETA/STAT mapped symbol (BRCA2, so
+# SE must still come out positive); an unmapped symbol that must fall back to its
+# raw gene_name (SYNTHGENE1); a second gene (TP53) at the *same* locus/alleles as
+# the BRCA1 row -- the key stays unique only because gene_id differs; a chrX
+# variant; an indel id (multi-base REF/ALT); and an extreme p-value row.
 SAMPLE_KEYS = [
     {"locus": "chr17:43094687", "alleles": ["A", "G"], "gene_id": "ENSG00000012048"},
     {"locus": "chr13:32340073", "alleles": ["G", "C"], "gene_id": "ENSG00000139618"},
     {"locus": "chr5:100000", "alleles": ["A", "T"], "gene_id": "SYNTHGENE1"},
+    {"locus": "chr17:43094687", "alleles": ["A", "G"], "gene_id": "ENSG00000141510"},
+    {"locus": "chrX:71130000", "alleles": ["C", "T"], "gene_id": "ENSG00000139618"},
+    {"locus": "chr1:1000000", "alleles": ["AT", "A"], "gene_id": "ENSG00000141510"},
+    {"locus": "chr17:43110000", "alleles": ["T", "C"], "gene_id": "ENSG00000012048"},
 ]
 
 
 class _StubGeneCatalog:
-    """Minimal gene_catalog double: maps only the symbols this fixture uses.
+    """Minimal gene_catalog double: maps only the symbols this fixture knows.
 
     Mirrors the ``GeneCatalogStreamer.map_ids`` contract via duck typing -- the
     builder only ever calls ``.map_ids``, and ``GeneCatalogStreamer`` is imported
     solely under ``TYPE_CHECKING`` in builder.py, so no subclassing is required.
-    Returns a mapping restricted to the known symbols among those passed in; an
-    unmapped symbol (``SYNTHGENE1``) is simply absent from the result, which is what
-    drives the builder's ``hl.or_else(..., ht.gene_symbol)`` fallback-to-raw-symbol
-    path.
+    Per that contract (``hvantk/core/streamers/gene_catalog.py``), the returned
+    dict has the *same keys as the input* -- an unmapped symbol (``SYNTHGENE1``)
+    maps to ``None`` rather than being omitted. This does not change which
+    ``gene_id`` any row gets: the builder's
+    ``hl.or_else(mapping_literal.get(ht.gene_symbol), ht.gene_symbol)`` falls back
+    to the raw symbol identically whether the key is missing or present with a
+    ``None``/missing value.
     """
 
     _KNOWN = {
@@ -53,7 +64,7 @@ class _StubGeneCatalog:
     def map_ids(self, symbols, source_type, target_type):
         assert source_type == "gene_symbol"
         assert target_type == "ensembl_gene_id"
-        return {s: self._KNOWN[s] for s in symbols if s in self._KNOWN}
+        return {s: self._KNOWN.get(s) for s in symbols}
 
 
 @pytest.mark.hail

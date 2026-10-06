@@ -55,5 +55,81 @@
       "source": "gtex_fang",
       "tissue": "Liver"
     }
+  },
+  {
+    "key": {
+      "alleles": [
+        "A",
+        "G"
+      ],
+      "gene_id": "ENSG00000141510",
+      "locus": "chr17:43094687"
+    },
+    "row": {
+      "beta": 0.1033,
+      "gene_symbol": "TP53",
+      "is_cis": true,
+      "p_value": 0.0477,
+      "se": 0.052171717171717175,
+      "source": "gtex_fang",
+      "tissue": "Liver"
+    }
+  },
+  {
+    "key": {
+      "alleles": [
+        "C",
+        "T"
+      ],
+      "gene_id": "ENSG00000139618",
+      "locus": "chrX:71130000"
+    },
+    "row": {
+      "beta": 0.1455,
+      "gene_symbol": "BRCA2",
+      "is_cis": true,
+      "p_value": 0.0086,
+      "se": 0.05532319391634981,
+      "source": "gtex_fang",
+      "tissue": "Liver"
+    }
+  },
+  {
+    "key": {
+      "alleles": [
+        "AT",
+        "A"
+      ],
+      "gene_id": "ENSG00000141510",
+      "locus": "chr1:1000000"
+    },
+    "row": {
+      "beta": -0.0871,
+      "gene_symbol": "TP53",
+      "is_cis": true,
+      "p_value": 0.0512,
+      "se": 0.04466666666666667,
+      "source": "gtex_fang",
+      "tissue": "Liver"
+    }
+  },
+  {
+    "key": {
+      "alleles": [
+        "T",
+        "C"
+      ],
+      "gene_id": "ENSG00000012048",
+      "locus": "chr17:43110000"
+    },
+    "row": {
+      "beta": 0.512,
+      "gene_symbol": "BRCA1",
+      "is_cis": true,
+      "p_value": 1e-300,
+      "se": 0.011990632318501171,
+      "source": "gtex_fang",
+      "tissue": "Liver"
+    }
   }
 ]
