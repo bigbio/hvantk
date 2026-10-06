@@ -2,32 +2,48 @@
   {
     "key": {
       "accession": "P04637",
-      "position": "315"
+      "position": "14"
     },
     "row": {
-      "amino_acid": "S",
-      "description": "Phosphoserine",
+      "amino_acid": "T",
+      "description": "Phosphothreonine",
       "ensembl_xrefs": null,
       "evidence_type": "mass_spectrometry",
       "gene_symbol": "TP53",
-      "n_observations": "80",
-      "sequence_length": "393",
+      "n_observations": "59",
+      "sequence_length": "60",
       "source_db": "PeptideAtlas"
     }
   },
   {
     "key": {
       "accession": "P04637",
-      "position": "6"
+      "position": "35"
+    },
+    "row": {
+      "amino_acid": "Y",
+      "description": "Phosphotyrosine",
+      "ensembl_xrefs": null,
+      "evidence_type": "mass_spectrometry",
+      "gene_symbol": "TP53",
+      "n_observations": "30",
+      "sequence_length": "60",
+      "source_db": "PeptideAtlas"
+    }
+  },
+  {
+    "key": {
+      "accession": "P99999",
+      "position": "23"
     },
     "row": {
       "amino_acid": "S",
       "description": "Phosphoserine",
       "ensembl_xrefs": null,
       "evidence_type": "mass_spectrometry",
-      "gene_symbol": "TP53",
-      "n_observations": "10",
-      "sequence_length": "393",
+      "gene_symbol": "FAKEB",
+      "n_observations": "8",
+      "sequence_length": "60",
       "source_db": "PeptideAtlas"
     }
   }
