@@ -48,8 +48,12 @@ class _StubGeneCatalog:
     """Minimal gene_catalog stub -- duck-typed, not a GeneCatalogStreamer subclass.
 
     The builder only ever calls ``.map_ids(...)`` on whatever object is passed
-    as ``gene_catalog``, so a plain stub is sufficient. Maps SYNTHA-D to
-    invented HGNC ids; SYNTHE is deliberately absent so the builder's
+    as ``gene_catalog``, so a plain stub is sufficient. Matches the real
+    contract (``hvantk/core/streamers/gene_catalog.py``'s ABC docstring, and
+    ``HGNCGeneCatalogStreamer.map_ids`` in ``hvantk/skills/hgnc/streamers.py``):
+    the returned dict has the same keys as the input ``ids``, with unresolved
+    ids mapped to ``None`` rather than omitted. SYNTHA-D map to invented HGNC
+    ids; SYNTHE maps to ``None``, so the builder's
     ``hl.is_defined(hgnc_id) & (hgnc_id != "")`` filter drops that row.
     """
 
@@ -65,8 +69,9 @@ class _StubGeneCatalog:
             "build_cosmic_cgc_submissions must resolve gene_symbol -> hgnc_id, "
             f"got {source_type!r} -> {target_type!r}"
         )
-        # Restricted to the symbols actually passed, like a real catalog would be.
-        return {k: v for k, v in self._FULL_MAP.items() if k in ids}
+        # Same keys as the input; unresolved ids (SYNTHE) map to None instead
+        # of being omitted, like a real catalog would return.
+        return {id_: self._FULL_MAP.get(id_) for id_ in ids}
 
 
 @pytest.mark.hail

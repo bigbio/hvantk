@@ -88,9 +88,10 @@ def build_cosmic_cgc_submissions(
         import_kwargs["force_bgz"] = True
     else:
         # The real COSMIC CGC export is standard (non-block) gzip, not BGZF
-        # (confirmed from its magic bytes), which hl.import_table cannot
-        # split across min_partitions>1 without this flag -- it otherwise
-        # raises HailException: ".gz cannot be loaded in parallel". Harmless
+        # (confirmed from its magic bytes). hl.import_table refuses to read
+        # ANY non-BGZF .gz path at all without this flag -- regardless of
+        # min_partitions (confirmed empirically with it unset, 1, and 10) --
+        # raising HailException: ".gz cannot be loaded in parallel". Harmless
         # for uncompressed input: partition count is unaffected either way,
         # and resolve_compression() already separates genuine bgzf (handled
         # above) from plain gzip and uncompressed, both of which land here.

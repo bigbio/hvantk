@@ -60,9 +60,10 @@ and conventions only, never rows (the COSMIC licence forbids redistributing thos
 - Compression: the real `.tsv.gz` is **standard gzip, not BGZF** — confirmed from its
   magic bytes (`FLG=0x08`/FNAME set; no BGZF `"BC"` extra-field subfield).
   `resolve_compression()` (`hvantk/core/utils/file_utils.py`) correctly classifies it as
-  plain gzip (`force_bgz=False`), but `hl.import_table(..., min_partitions=10)` cannot
-  split a non-block-gzip file and raises `HailException` for exactly this input unless
-  `force=True` is also passed. The builder now passes `force=True` whenever
+  plain gzip (`force_bgz=False`), but `hl.import_table()` refuses to read ANY non-BGZF
+  `.gz` path at all without `force=True` — regardless of `min_partitions` (confirmed
+  empirically with it unset, 1, and 10) — raising `HailException` for exactly this
+  input. The builder now passes `force=True` whenever
   `force_bgz` is `False` — confirmed harmless for uncompressed input (partition count is
   unaffected either way) and required for the real export's actual compression.
 - Missing-value convention: the empty string. No literal `NA`/`N/A`/`-`/`null` sentinel
