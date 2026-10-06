@@ -22,3 +22,28 @@ This document lists third-party datasets committed to this repository as test fi
 - Expression matrix: first 21 transcript rows (20 distinct genes; one gene's second transcript retained to exercise the fixture's multi-transcript-per-gene shape)
 - Samples: first 4 of 317 samples (ERR2588382, ERR2588384, ERR2588383, ERR2588399 in header order)
 - SDRF: lines for the 4 retained samples only, preserving the original ragged field layout
+
+## AlphaGenome
+
+### Fixture: `hvantk/skills/alphagenome/tests/testdata/raw/alphagenome/`
+
+**Source**: AlphaGenome (Google DeepMind) variant-effect predictions for 411 ClinVar canonical-splice variants, from an AlphaGenome SDK `score_variant` → `variant_scorers.tidy_scores()` run on 2026-06-24 (RECOMMENDED scorers, 1 Mb interval, organism human, API backend).
+
+**Version**: the AlphaGenome SDK and hosted model as of that run; the exact SDK version was not recorded (the run's manifest records the backend, scorer set, interval and organism, but no SDK version). Source shard `scores.shard-00000-of-00001.parquet`, 16,642,316 rows, sha256 `261cf87273f1b36d20db640305f414b2e9bdc55824cddff9e4cc4bcc4c6745a1`.
+
+**Files**:
+- `clinvar-subset.parquet`: AlphaGenome scores in the `tidy_scores()` long format
+- `NOTICE.md`: the AlphaGenome Output Terms notice that must stay with the data
+- `make_fixture.py`: the script that selected the rows (code, not data)
+
+**Other copies of these outputs** (same source and terms):
+- `hvantk/skills/alphagenome/tests/snapshots/sample_rows.json`: the builder's summary of the fixture, with scores and track names verbatim; its notice is `tests/snapshots/NOTICE.md` beside it
+- `hvantk/skills/alphagenome/tests/test_builder.py`: the oracle constants `AG_SPLICE_SITES` and `HEART_SPLICE_SITE_USAGE`, marked by a comment
+
+**Licence**: AlphaGenome Output Terms of Use (https://deepmind.google.com/science/alphagenome/output-terms): non-commercial use only, and the outputs must not be used to train machine-learning models. Not covered by this repository's MIT licence; the conspicuous notice the terms require is `NOTICE.md` in the fixture directory, with a second one beside the snapshot.
+
+**Attribution**: Google DeepMind, AlphaGenome. ClinVar variant identities are public domain.
+
+**Modifications**:
+- Rows only: 3 of the 411 variants (`chr3:39408741:T>C`, `chr6:112216367:C>A`, `chrX:153694448:T>G`) and 150 of the 16,642,316 rows, selected by `make_fixture.py` with seed 20261006 and written in reverse source order. For each variant and scorer it keeps the row with the largest |quantile_score|, the row with the largest |raw_score| and one random row, plus every heart SPLICE_SITE_USAGE row
+- Columns: unchanged

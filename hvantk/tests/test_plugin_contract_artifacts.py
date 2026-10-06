@@ -34,16 +34,16 @@ ARTIFACT_FIELDS = ("fixture", "schema_snapshot", "row_snapshot", "drift_fingerpr
 # Datasets that do NOT yet ship every declared artifact, with the fields still missing.
 # Shrink this as snapshots land; never grow it for a new provider without a reason here.
 #
-# One cause remains: there is no artifact that CAN be committed at all, so the entry
-# below is permanent rather than pending -- alphagenome is a credentialed live prediction
-# API.
+# Empty since the plugin-completion work (#413, #414, #415, #417 and the alphagenome
+# rewrite): every dataset now ships its fixture, both snapshots and its drift
+# fingerprint. The dicts stay so the ratchet keeps guarding new plugins.
 #
-# A licence that forbids redistributing real rows is NOT this kind of cause, and is no
-# longer accepted as one: it limits what a fixture may contain, never whether one exists.
-# cosmic-cgc used to sit here under exactly that reasoning; it now ships a synthetic,
-# format-faithful fixture instead (invented gene symbols, real header and conventions)
-# and has left both KNOWN_INCOMPLETE and PERMANENTLY_UNGRADABLE -- see "History of
-# departures" below.
+# Neither a licence that forbids redistributing real rows nor a source with no static
+# file is a reason to sit here: such a constraint limits what a fixture may contain, never
+# whether one exists. pqtl, cosmic-cgc and alphagenome used to sit here under that
+# reasoning; pqtl and cosmic-cgc now ship synthetic, format-faithful fixtures, and
+# alphagenome a small real subset under its NOTICE.md -- see "History of departures"
+# below.
 #
 # Another cause used to dominate this list -- "simply never seeded, though the builder
 # runs from a committed fixture". As of the #341 plugin follow-ups it is empty:
@@ -75,24 +75,19 @@ ARTIFACT_FIELDS = ("fixture", "schema_snapshot", "row_snapshot", "drift_fingerpr
 #     against the real allpairs files.
 #   cosmic-cgc -- synthetic fixture (the COSMIC licence forbids real rows); header and
 #     conventions checked against a licensed v103 export.
+#   alphagenome -- builder rewritten to ingest SDK tidy_scores parquet; real-subset
+#     fixture with NOTICE.md (AlphaGenome Output Terms, non-commercial).
 #
-# The entry below is NOT a dataset without a drift probe: every dataset in the tree ships
-# a live one. It is the dataset that cannot ship a *fixture* or *snapshot* at all.
-KNOWN_INCOMPLETE: dict[str, tuple[str, ...]] = {
-    "alphagenome:predictions": ("fixture", "schema_snapshot", "row_snapshot"),
-}
+# A future entry must be a dataset that cannot ship a *fixture* or *snapshot* at all;
+# missing drift probes do not belong here (every dataset in the tree ships a live one).
+KNOWN_INCOMPLETE: dict[str, tuple[str, ...]] = {}
 
 # Why each remaining entry can never be completed. Every KNOWN_INCOMPLETE key must appear
 # here (enforced below), so a future entry cannot join a list of permanent exemptions
 # without someone writing down why it belongs there. If the honest answer is "not seeded
 # yet", it does not belong in KNOWN_INCOMPLETE at all -- seed it, as #341 did for
 # expression-atlas and peptideatlas.
-PERMANENTLY_UNGRADABLE: dict[str, str] = {
-    "alphagenome:predictions": (
-        "credentialed live prediction API; there is no upstream file to truncate, and "
-        "recorded predictions would pin a model version rather than a data release"
-    ),
-}
+PERMANENTLY_UNGRADABLE: dict[str, str] = {}
 
 
 def _declared_artifact_gaps() -> dict[str, tuple[str, ...]]:

@@ -352,36 +352,38 @@ hvantk reprocess cosmic-cgc:submissions \
   --skip-download
 ```
 
-### AlphaGenome variant effect predictions
+### AlphaGenome variant-effect scores
 
-Per-variant deep-learning effect predictions (expression, chromatin, and other molecular
-phenotypes) from Google DeepMind's AlphaGenome model (`alphagenome:predictions`), fetched
-live through a credentialed API rather than read from any downloadable file. SDK:
-https://pypi.org/project/alphagenome/
+Per-variant scores from Google DeepMind's AlphaGenome model (`alphagenome:predictions`) for
+expression, splicing, chromatin and contact-map tracks. hvantk does not call AlphaGenome: it
+ingests scores you have already produced with the AlphaGenome SDK, through the API or local
+weights, and summarises them into one row per variant. SDK: https://pypi.org/project/alphagenome/
+(documentation: https://www.alphagenomedocs.com).
 
-**Access**: provision API credentials yourself — `api.key` in a config YAML, or the
-`ALPHAGENOME_API_KEY` environment variable; hvantk does not provision them. The config YAML
-needs `api` and `ontology` sections (ontology terms plus output types such as `RNA_SEQ`,
-`CHROMATIN`); see `hvantk/skills/alphagenome/tests/testdata/alphagenome_config.yaml` for the
-shape.
+**Licence**: AlphaGenome outputs fall under the AlphaGenome Output Terms of Use: non-commercial
+use only, not for training machine-learning models, and any copy keeps a conspicuous notice
+(see `hvantk/skills/alphagenome/tests/testdata/raw/alphagenome/NOTICE.md`).
+
+**Produce the input**: score each variant with `score_variant(...)`, convert the result with
+`variant_scorers.tidy_scores(...)`, cast `variant_id` and `scored_interval` to strings, and write
+the DataFrame with `to_parquet()`. `hvantk/skills/alphagenome/SKILL.md` §2 has the snippet. Put
+only these parquet files in one directory; every `*.parquet` file in it is read.
 
 **Build**:
 
 ```bash
-# Place a variant Hail Table (or a directory containing one) at data/alphagenome/variants.ht
+# Place the tidy_scores parquet files in data/alphagenome/ then:
 hvantk reprocess alphagenome:predictions \
-  --raw-dir data/alphagenome/variants.ht \
-  --output alphagenome.ht \
-  --skip-download \
-  --plugin-arg config_path=path/to/alphagenome_config.yaml
+  --raw-dir data/alphagenome/ \
+  --output alphagenome.ht
 ```
 
-> **Note:** `--skip-download` is not strictly required here — `acquisition.mode: byo`
-> already makes skipping implicit — but passing it stays legal and matches the rest of
-> this section. `--raw-dir` must be a directory (a Hail Table satisfies this; a plain
-> `.tsv` does not), since the plugin declares no `lifecycle.parse` and `reprocess` forwards
-> `--raw-dir` straight to the builder. Each build issues live, billed API calls with no
-> cross-run resume, so budget accordingly and prefer chunking a large variant set.
+> **Note:** the table is keyed by `(locus, alleles)` and carries one struct per AlphaGenome
+> scorer (the 19 of the SDK's recommended set): the track with the largest absolute quantile
+> score, the largest absolute raw score and the number of rows. `--plugin-arg output_types=...`
+> and `--plugin-arg ontology_curies=...` filter rows before they are summarised. A scorer the
+> plugin does not know, or a parquet file without the tidy-scores columns, stops the build with
+> an error. `--skip-download` is not needed: the dataset declares `acquisition.mode: byo`.
 
 ### MSigDB gene sets
 
