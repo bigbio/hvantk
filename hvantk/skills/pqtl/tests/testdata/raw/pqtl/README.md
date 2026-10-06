@@ -1,10 +1,9 @@
 # Synthetic pQTL fixture
 
 SYNTHETIC. Contains no rows from Fang et al. (medRxiv 10.1101/2025.01.10.25320181,
-licence `cc_no`). Header, delimiter and value conventions checked against
-`/dss/work/heto4575/hvantk-datasets/raw/qtls/gtex/raw/Liver.allpairs_nobsGE72.txt.gz`
-(whole file, 34,480,083 data rows) and
-`.../Heart.allpairs_nobsGE72.txt.gz` (first 5,000,000 lines) on 2026-10-06.
+licence `cc_no`). Header, delimiter and value conventions checked against the
+maintainer's copy of `Liver.allpairs_nobsGE72.txt.gz` (whole file, 34,480,083 data
+rows) and `Heart.allpairs_nobsGE72.txt.gz` (first 5,000,000 lines) on 2026-10-06.
 
 ## Format facts verified against the real files (both clean, zero anomalies)
 
@@ -53,9 +52,8 @@ chr17:43,044,295-43,125,364) and row 2 (inside BRCA2, chr13:32,315,474-32,400,26
 ## Generation
 
 1. Verified the real-format facts above by streaming `zcat <file> | awk ...` over the
-   Liver file (whole file) and the first 5,000,000 lines of the Heart file on the
-   cluster (`/dss/work/heto4575/agent-runs/pqtl-step0/`), via `sbatch` on
-   `rosa_express.p` (job 20318211, ~1m43s elapsed).
+   Liver file (whole file) and the first 5,000,000 lines of the Heart file, as a
+   batch job on an HPC cluster (about 1m43s elapsed).
 2. Hand-authored 8 rows (above) as plain text with the verified header and single-space
    delimiter.
 3. `gzip -c Liver.allpairs_nobsGE72-synthetic.txt > Liver.allpairs_nobsGE72-synthetic.txt.gz`
