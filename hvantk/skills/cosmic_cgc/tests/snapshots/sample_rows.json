@@ -1,0 +1,112 @@
+[
+  {
+    "key": {
+      "hgnc_id": "900001"
+    },
+    "row": {
+      "cancer_syndrome": "synthetic syndrome A",
+      "chr_band": "1p36.33",
+      "chromosome": "1",
+      "classification": "Tier 1",
+      "classification_level": 0,
+      "cosmic_gene_id": "COSG90001",
+      "gene_name": "synthetic gene A",
+      "gene_symbol": "SYNTHA",
+      "genome_start": 1000000,
+      "genome_stop": 1002000,
+      "germline": true,
+      "molecular_genetics": "",
+      "mutation_types": [
+        "Mis"
+      ],
+      "other_germline_mut": "",
+      "other_syndrome": "",
+      "role_in_cancer": [
+        "oncogene"
+      ],
+      "somatic": true,
+      "synonyms": "SYNA1,SYNA2",
+      "tissue_type": "E",
+      "translocation_partner": "",
+      "tumour_types_germline": [
+        "synthetic germline tumour A"
+      ],
+      "tumour_types_somatic": [
+        "synthetic carcinoma A",
+        "synthetic sarcoma A"
+      ]
+    }
+  },
+  {
+    "key": {
+      "hgnc_id": "900002"
+    },
+    "row": {
+      "cancer_syndrome": "",
+      "chr_band": "2q14.1",
+      "chromosome": "2",
+      "classification": "Tier 2",
+      "classification_level": 1,
+      "cosmic_gene_id": "COSG90002",
+      "gene_name": "synthetic gene B",
+      "gene_symbol": "SYNTHB",
+      "genome_start": 2000000,
+      "genome_stop": 2002000,
+      "germline": true,
+      "molecular_genetics": "",
+      "mutation_types": [
+        "N"
+      ],
+      "other_germline_mut": "",
+      "other_syndrome": "",
+      "role_in_cancer": [
+        "TSG"
+      ],
+      "somatic": false,
+      "synonyms": "SYNB1",
+      "tissue_type": "L",
+      "translocation_partner": "",
+      "tumour_types_germline": [
+        "synthetic germline tumour B"
+      ],
+      "tumour_types_somatic": []
+    }
+  },
+  {
+    "key": {
+      "hgnc_id": "900004"
+    },
+    "row": {
+      "cancer_syndrome": "",
+      "chr_band": "Xp11.23",
+      "chromosome": "X",
+      "classification": "Tier 2",
+      "classification_level": 1,
+      "cosmic_gene_id": "COSG90004",
+      "gene_name": "synthetic gene D",
+      "gene_symbol": "SYNTHD",
+      "genome_start": 4000000,
+      "genome_stop": 4002000,
+      "germline": false,
+      "molecular_genetics": "",
+      "mutation_types": [
+        "Mis",
+        "N"
+      ],
+      "other_germline_mut": "",
+      "other_syndrome": "",
+      "role_in_cancer": [
+        "oncogene",
+        "fusion"
+      ],
+      "somatic": true,
+      "synonyms": "SYND1, SYND2",
+      "tissue_type": "O",
+      "translocation_partner": "SYNTHD-PARTNER",
+      "tumour_types_germline": [],
+      "tumour_types_somatic": [
+        "synthetic carcinoma D"
+      ]
+    }
+  }
+]
