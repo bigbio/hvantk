@@ -10,7 +10,7 @@ as an explicit diff rather than silently.
 
 Fixture provenance -- READ THIS BEFORE TRUSTING THE NUMBERS
 -------------------------------------------------------------
-``testdata/raw/peptideatlas-phospho/atlas_build_synthetic.tsv.zip`` is a
+``testdata/raw/peptideatlas-phospho/atlas_build_606-synthetic.tsv.zip`` is a
 **synthetic miniature raw build**, not a truncation of a real PeptideAtlas
 build: the real ``atlas_build_*.tsv.zip`` is ~549 MB (``content_length`` in
 the committed ``tests/drift_fingerprint.json``) and is not (and should not

@@ -3,7 +3,7 @@
 SYNTHETIC. Contains no PeptideAtlas rows. Table headers and modification
 notation checked against human phospho build 202512/606 on 2026-10-06.
 
-`atlas_build_synthetic.tsv.zip` is a miniature, fully fabricated stand-in for
+`atlas_build_606-synthetic.tsv.zip` is a miniature, fully fabricated stand-in for
 a PeptideAtlas `atlas_build_<id>.tsv.zip` raw TSV dump. It lets
 `parse_raw_dir` / `parse_peptideatlas_zip`
 (`hvantk/skills/peptideatlas/phospho/shared/datasets.py`) run against
@@ -36,9 +36,9 @@ already-parsed intermediate TSV the builder itself consumes.
 | `P04637`, `peptide_instance` 203 -> `modified_peptide_instance` 303 (`AAS[Phospho]AAY[Phospho]AA`) | one peptide with two phospho sites (S and Y) — multi-site offset extraction |
 | `P04637`, `peptide_instance` 204 -> `modified_peptide_instance` 304 (`AAC[Carbamidomethyl]AAAA`) | a non-phospho modification; must contribute zero output rows |
 | `P04637` + `P99999`, `peptide_instance` 205 -> `modified_peptide_instance` 305, two `peptide_mapping` rows (`matched_biosequence_id` 100 and 101) | one peptide mapping to two proteins — multi-mapping |
-| `Q99999` (`biosequence_id` 102), `protein_identification.presence_level_id` = `3` | non-canonical isoform — excluded by the canonical filter |
-| `DECOY_FAKE1` (`biosequence_id` 103) | dropped by the `DECOY_` accession-prefix filter |
-| `CONTAM_FAKE1` (`biosequence_id` 104) | dropped by the `CONTAM_` accession-prefix filter |
+| `Q99999` (`biosequence_id` 102), `protein_identification.presence_level_id` = `3`, `peptide_instance` 206 -> `modified_peptide_instance` 306 | non-canonical isoform — excluded by the canonical filter |
+| `DECOY_FAKE1` (`biosequence_id` 103), `peptide_instance` 207 -> `modified_peptide_instance` 307 | dropped by the `DECOY_` accession-prefix filter |
+| `CONTAM_FAKE1` (`biosequence_id` 104), `peptide_instance` 208 -> `modified_peptide_instance` 308 | dropped by the `CONTAM_` accession-prefix filter |
 
 Together `P04637` ends up with phospho sites on S, T, *and* Y residues,
 covering all three phosphorylatable amino acids on one canonical protein.
@@ -64,4 +64,4 @@ regenerating it): write the five TSVs in memory using the real headers from
 this file's "What's real" section, with every row (header and data) ending
 in the extra trailing tab the real dump also carries, then
 `zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED).writestr(table_name,
-content)` once per table, named `atlas_build_synthetic.tsv.zip`.
+content)` once per table, named `atlas_build_606-synthetic.tsv.zip`.
