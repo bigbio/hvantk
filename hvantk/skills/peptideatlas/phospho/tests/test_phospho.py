@@ -37,6 +37,12 @@ def mock_pa_zip(tmp_path):
 
     Simulates: TP53 protein with two phospho sites (Ser315, Ser6),
     where Ser315 is observed by two distinct peptides (counts should sum).
+
+    Also maps peptide_instance 4 (phospho, modified_peptide_instance 1004) onto
+    the DECOY_Q99999 biosequence (id 200), so the DECOY_ accession-prefix filter
+    actually has a phospho site to remove. Without this mapping, DECOY_Q99999
+    carries no peptide at all and `test_decoy_sequences_filtered`'s assertion
+    passes vacuously regardless of whether the prefix filter exists.
     """
     tables_dir = tmp_path / "tables"
     tables_dir.mkdir()
@@ -95,6 +101,12 @@ def mock_pa_zip(tmp_path):
                 "n_observations": "10",
                 "n_samples": "1",
             },
+            {
+                "peptide_instance_id": "4",
+                "peptide_id": "40",
+                "n_observations": "15",
+                "n_samples": "2",
+            },
         ],
     )
 
@@ -126,6 +138,12 @@ def mock_pa_zip(tmp_path):
                 "start_in_biosequence": "1",
                 "end_in_biosequence": "15",
             },
+            {
+                "peptide_instance_id": "4",
+                "matched_biosequence_id": "200",
+                "start_in_biosequence": "5",
+                "end_in_biosequence": "15",
+            },
         ],
     )
 
@@ -155,6 +173,12 @@ def mock_pa_zip(tmp_path):
                 "modified_peptide_instance_id": "1003",
                 "peptide_instance_id": "3",
                 "modified_peptide_sequence": "AAAAAS[167]AAAAAAAAA",
+                "modification_mass": "79.9663",
+            },
+            {
+                "modified_peptide_instance_id": "1004",
+                "peptide_instance_id": "4",
+                "modified_peptide_sequence": "AAAAS[Phospho]AAAAA",
                 "modification_mass": "79.9663",
             },
         ],
@@ -197,7 +221,12 @@ def test_parse_phospho_sites(mock_pa_zip, tmp_path):
 
 
 def test_decoy_sequences_filtered(mock_pa_zip):
-    """DECOY and contaminant sequences are excluded."""
+    """DECOY and contaminant sequences are excluded.
+
+    `mock_pa_zip` maps a real phospho peptide onto the DECOY_Q99999 biosequence,
+    so this exercises the DECOY_ accession-prefix filter itself (dropping a site
+    that would otherwise be produced), not just the absence of DECOY input.
+    """
     from hvantk.skills.peptideatlas.phospho.shared.datasets import (
         parse_peptideatlas_zip,
     )
@@ -205,6 +234,7 @@ def test_decoy_sequences_filtered(mock_pa_zip):
     sites = parse_peptideatlas_zip(str(mock_pa_zip))
     accessions = {s["accession"] for s in sites}
     assert all(not acc.startswith("DECOY_") for acc in accessions)
+    assert len(sites) == 2, "the DECOY-mapped site must not appear in the output"
 
 
 # ---------- Test 3: Dataset class ----------
